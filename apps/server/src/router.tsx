@@ -1,7 +1,33 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
 import { isServer } from "solid-js/web";
+import { isTransientApiError } from "./infrastructure/api-clients/error-policy";
 import { routeTree } from "./routeTree.gen";
+
+const QUERY_RETRY_DELAY_CAP_MS = 5_000;
+const QUERY_RETRY_DELAY_BASE_MS = 1_000;
+const QUERY_STALE_TIME_MS = 5_000;
+
+function createAppQueryClient(): QueryClient {
+	return new QueryClient({
+		defaultOptions: {
+			queries: {
+				refetchOnWindowFocus: false,
+				retry: (failureCount, error) =>
+					isTransientApiError(error) && failureCount < 2,
+				retryDelay: (attemptIndex) =>
+					Math.min(
+						QUERY_RETRY_DELAY_BASE_MS * 2 ** attemptIndex,
+						QUERY_RETRY_DELAY_CAP_MS,
+					),
+				staleTime: QUERY_STALE_TIME_MS,
+			},
+			mutations: {
+				retry: false,
+			},
+		},
+	});
+}
 
 if (isServer) {
 	console.log("[Router] Server-side initialization starting...");
@@ -22,24 +48,12 @@ let clientQueryClient: QueryClient | undefined;
 export function getRouter() {
 	try {
 		if (!isServer && !clientQueryClient) {
-			clientQueryClient = new QueryClient({
-				defaultOptions: {
-					queries: {
-						retry: false,
-					},
-				},
-			});
+			clientQueryClient = createAppQueryClient();
 		}
 
 		const queryClient =
 			isServer || !clientQueryClient
-				? new QueryClient({
-						defaultOptions: {
-							queries: {
-								retry: false,
-							},
-						},
-					})
+				? createAppQueryClient()
 				: clientQueryClient;
 
 		return createTanStackRouter({

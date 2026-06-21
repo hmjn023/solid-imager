@@ -1,6 +1,11 @@
 {
-  "extends": "../../tsconfig.json",
   "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    "strict": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "allowJs": true,
@@ -8,8 +13,6 @@
     "types": ["vitest/globals"],
     "isolatedModules": true,
     "skipLibCheck": true,
-    "moduleResolution": "bundler",
-    "baseUrl": ".",
     "paths": {
       "~/*": ["./src/*"],
       "@solid-imager/ui/*": ["../../packages/ui/src/*"],

@@ -1,12 +1,16 @@
 {
-	"extends": "../../tsconfig.json",
 	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"allowSyntheticDefaultImports": true,
+		"esModuleInterop": true,
+		"strict": true,
 		"jsx": "preserve",
 		"jsxImportSource": "solid-js",
 		"noEmit": true,
 		"isolatedModules": true,
 		"skipLibCheck": true,
-		"moduleResolution": "bundler",
 		"paths": {
 			"~/*": ["./src/*"],
 			"@solid-imager/core": ["../../packages/core/src"],

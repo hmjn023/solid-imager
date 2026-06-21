@@ -12,6 +12,7 @@ export type SourcesScreenProps = {
 	isLoading: boolean;
 	isError: boolean;
 	error: Error | null;
+	onRetry?: () => void;
 	renderSourceCard: (source: SafeMediaSource | MediaSourceInfo) => JSX.Element;
 	renderFormModal: (props: {
 		editingSource: SafeMediaSource | MediaSourceInfo | null;
@@ -66,10 +67,22 @@ export function SourcesScreen(props: SourcesScreenProps) {
 			</Show>
 
 			<Show when={props.isError}>
-				<div class="mt-8 text-center">
-					<p class="text-red-500">
-						Error loading sources: {props.error?.message}
+				<div class="mt-8 rounded-md border border-destructive/30 bg-error p-4 text-center">
+					<p class="font-medium text-error-foreground">
+						ソース一覧を読み込めませんでした
 					</p>
+					<p class="mt-1 text-muted-foreground text-sm">
+						{props.error?.message ?? "API connection failed"}
+					</p>
+					<Show when={props.onRetry}>
+						<button
+							class="mt-3 rounded border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+							onClick={props.onRetry}
+							type="button"
+						>
+							再試行
+						</button>
+					</Show>
 				</div>
 			</Show>
 
