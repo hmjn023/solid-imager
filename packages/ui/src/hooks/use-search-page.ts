@@ -240,7 +240,7 @@ export function useSearchPage(
 			return;
 		}
 		const hasNextPage = searchResultQuery.hasNextPage;
-		const isFetching = searchResultQuery.isFetchingNextPage;
+		const isFetching = searchResultQuery.isFetching;
 
 		if (!hasNextPage || isFetching) {
 			return;
