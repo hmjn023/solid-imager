@@ -14,6 +14,7 @@ export type AiTaggingModalProps = {
 	onClose: () => void;
 	fetchTags: () => Promise<TaggingResponse>;
 	description?: string;
+	onSuccess?: () => void;
 };
 
 const PERCENTAGE_MULTIPLIER = 100;
@@ -37,6 +38,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 					const data = await props.fetchTags();
 					if (!isCancelled) {
 						setResult(data);
+						props.onSuccess?.();
 					}
 				} catch (err) {
 					if (!isCancelled) {

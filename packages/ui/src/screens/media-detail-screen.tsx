@@ -40,7 +40,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 
 	const handleUpdate = async () => {
 		await queryClient.invalidateQueries({
-			queryKey: ["mediaDetails", props.mediaSourceId, props.mediaId],
+			queryKey: props.mediaDetailsQueryOptions(props.mediaSourceId, props.mediaId).queryKey,
 		});
 		if (props.onAdditionalInvalidate) {
 			await props.onAdditionalInvalidate();

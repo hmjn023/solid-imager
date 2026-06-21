@@ -142,6 +142,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			projectId,
 		);
 		queryClient.invalidateQueries({ queryKey: projectsForMediaKey });
+		props.onUpdate?.();
 	};
 
 	const handleRemoveProject = async (projectId: string) => {
@@ -151,6 +152,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			projectId,
 		);
 		queryClient.invalidateQueries({ queryKey: projectsForMediaKey });
+		props.onUpdate?.();
 	};
 
 	const handleCreateProject = async (name: string) => {
@@ -235,8 +237,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	return (
 		<aside class="h-full space-y-4 overflow-y-auto rounded-lg border bg-gray-50 p-4">
 			<div>
-				<h1 class="font-bold text-xl">{props.media.fileName}</h1>
-				<p class="text-gray-500 text-sm">{props.media.filePath}</p>
+				<h1 class="font-bold text-xl break-all">{props.media.fileName}</h1>
+				<p class="text-gray-500 text-sm break-all">{props.media.filePath}</p>
 			</div>
 
 			<div class="flex flex-col gap-2">
@@ -263,6 +265,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				mediaId={props.media.id}
 				mediaSourceId={props.media.mediaSourceId}
 				onClose={() => setIsAiTaggingModalOpen(false)}
+				onSuccess={props.onUpdate}
 			/>
 
 			<CharacterCropModal
