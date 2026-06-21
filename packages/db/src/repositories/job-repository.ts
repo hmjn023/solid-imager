@@ -206,21 +206,22 @@ export function createJobRepository(
 		async incrementProgress(id: string): Promise<void> {
 			await db().execute(
 				sql`UPDATE ${jobs} SET payload = jsonb_set(
-					t.parsed_payload,
-					'{processed}',
-					(COALESCE(t.parsed_payload->>'processed', '0')::int + 1)::text::jsonb
-				)
-				FROM (
-					SELECT id,
+					COALESCE(
 						CASE 
-							WHEN payload IS NULL THEN '{}'::jsonb
 							WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
 							ELSE payload
-						END AS parsed_payload
-					FROM ${jobs}
-					WHERE id = ${id}
-				) t
-				WHERE ${jobs}.id = t.id`,
+						END,
+						'{}'::jsonb
+					),
+					'{processed}',
+					(COALESCE(
+						(CASE 
+							WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
+							ELSE payload
+						END)->>'processed',
+						'0'
+					)::int + 1)::text::jsonb
+				) WHERE id = ${id}`,
 			);
 		},
 	};
