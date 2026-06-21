@@ -179,37 +179,40 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		const payload = job.payload;
 		if (!isRecord(payload)) {
-			this.logger?.warn("Missing payload or invalid payload in job", {
-				jobId: job.id,
-			});
+			this.logger?.warn(
+				{ jobId: job.id },
+				"Missing payload or invalid payload in job",
+			);
 			return;
 		}
 		const mediaId = payload.mediaId;
 		if (typeof mediaId !== "string") {
-			this.logger?.warn("Missing or invalid mediaId in job payload", {
-				jobId: job.id,
-			});
+			this.logger?.warn(
+				{ jobId: job.id },
+				"Missing or invalid mediaId in job payload",
+			);
 			return;
 		}
 
 		const media = await this.mediaRepo.findById(mediaId);
 		if (!media) {
-			this.logger?.warn("Media not found for processMedia job", { mediaId });
+			this.logger?.warn({ mediaId }, "Media not found for processMedia job");
 			return;
 		}
 
 		const sourcePath = payload.sourcePath;
 		if (typeof sourcePath !== "string") {
-			this.logger?.warn("Missing or invalid sourcePath in job payload", {
-				jobId: job.id,
-			});
+			this.logger?.warn(
+				{ jobId: job.id },
+				"Missing or invalid sourcePath in job payload",
+			);
 			return;
 		}
 		const mediaPath = path.join(sourcePath, media.filePath);
 
 		const mediaSourceId = job.mediaSourceId;
 		if (!mediaSourceId) {
-			this.logger?.warn("Missing mediaSourceId in job", { jobId: job.id });
+			this.logger?.warn({ jobId: job.id }, "Missing mediaSourceId in job");
 			return;
 		}
 
