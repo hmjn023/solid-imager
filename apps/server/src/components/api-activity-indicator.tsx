@@ -4,6 +4,7 @@ import {
 	createMemo,
 	createSignal,
 	onCleanup,
+	onMount,
 	Show,
 } from "solid-js";
 import { isServer } from "solid-js/web";
@@ -52,11 +53,7 @@ export function ApiActivityIndicator() {
 		});
 	});
 
-	createEffect(() => {
-		if (isServer) {
-			return;
-		}
-
+	onMount(() => {
 		const handleOnline = () => setIsOnline(true);
 		const handleOffline = () => setIsOnline(false);
 
