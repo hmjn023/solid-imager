@@ -37,7 +37,13 @@ function Popup() {
 				type: "GET_SOURCES",
 			});
 			setSources(resp || []);
-			if (resp && resp.length > 0 && !selectedSourceId()) {
+
+			const hasSelectedSource = resp?.some((s) => s.id === selectedSourceId());
+			if (
+				resp &&
+				resp.length > 0 &&
+				(!selectedSourceId() || !hasSelectedSource)
+			) {
 				const firstId = resp[0].id;
 				setSelectedSourceId(firstId);
 				await chrome.storage.local.set({ selectedSourceId: firstId });

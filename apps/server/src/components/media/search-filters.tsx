@@ -68,10 +68,10 @@ function FilterSection<T>(props: {
 		const items = props.items;
 		if (!items) return [];
 		const query = filterText().toLowerCase();
-		if (!query) return items;
-		return items.filter((item) =>
-			props.getItemLabel(item).toLowerCase().includes(query),
-		);
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => props.getItemLabel(item).toLowerCase().includes(query))
+			.slice(0, 100);
 	});
 
 	return (
