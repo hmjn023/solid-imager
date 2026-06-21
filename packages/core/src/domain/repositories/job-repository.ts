@@ -32,7 +32,11 @@ export type IJobRepository = {
 	findById(id: string): Promise<Job | null>;
 	findPending(
 		limit: number,
-		options?: { excludeTypes?: string[]; includeTypes?: string[] },
+		options?: {
+			excludeTypes?: string[];
+			includeTypes?: string[];
+			excludeLanceDbSourceIds?: string[];
+		},
 	): Promise<Job[]>;
 	markAsInProgress(id: string): Promise<void>;
 	markAsCompleted(id: string, result?: unknown): Promise<void>;
