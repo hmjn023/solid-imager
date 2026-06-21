@@ -342,6 +342,7 @@ function CriterionBuilder(props: {
 		if (!query) return items.slice(0, 100);
 		return items
 			.filter((item) => {
+				if (!item) return false;
 				const label =
 					props.criterion.target === "author"
 						? getAuthorLabel(item as Author)
@@ -485,15 +486,19 @@ function CriterionBuilder(props: {
 						}}
 						onInputChange={(text) => setFilterText(text)}
 						optionLabel={(item) =>
-							props.criterion.target === "author"
-								? getAuthorLabel(item as Author)
-								: (item as { name: string }).name
+							item
+								? props.criterion.target === "author"
+									? getAuthorLabel(item as Author)
+									: (item as { name: string }).name
+								: ""
 						}
 						options={filteredItems()}
 						optionTextValue={(item) =>
-							props.criterion.target === "author"
-								? getAuthorLabel(item as Author)
-								: (item as { name: string }).name
+							item
+								? props.criterion.target === "author"
+									? getAuthorLabel(item as Author)
+									: (item as { name: string }).name
+								: ""
 						}
 						optionValue={(item: { name: string }) => item.name}
 						placeholder="検索..."

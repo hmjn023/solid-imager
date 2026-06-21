@@ -322,6 +322,7 @@ function CriterionBuilder(props: {
 		if (!query) return items.slice(0, 100);
 		return items
 			.filter((item) => {
+				if (!item) return false;
 				const label = "accountId" in item ? getAuthorLabel(item) : item.name;
 				return label.toLowerCase().includes(query);
 			})
@@ -480,11 +481,19 @@ function CriterionBuilder(props: {
 						}}
 						onInputChange={(text) => setFilterText(text)}
 						optionLabel={(item) =>
-							"accountId" in item ? getAuthorLabel(item) : item.name
+							item
+								? "accountId" in item
+									? getAuthorLabel(item)
+									: item.name
+								: ""
 						}
 						options={filteredItems()}
 						optionTextValue={(item) =>
-							"accountId" in item ? getAuthorLabel(item) : item.name
+							item
+								? "accountId" in item
+									? getAuthorLabel(item)
+									: item.name
+								: ""
 						}
 						optionValue={(item) => item.name}
 						placeholder="検索..."
