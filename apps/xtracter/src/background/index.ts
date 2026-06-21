@@ -83,24 +83,12 @@ async function getTargetSourceId(): Promise<string | null> {
 	const result: { selectedSourceId?: string } = await chrome.storage.local.get([
 		"selectedSourceId",
 	]);
-
-	const sources = await getMediaSources();
-
 	if (result.selectedSourceId) {
-		if (sources.length > 0) {
-			const exists = sources.some((s) => s.id === result.selectedSourceId);
-			if (exists) {
-				return result.selectedSourceId;
-			}
-			// Remove invalid source ID from storage and proceed to fallback
-			await chrome.storage.local.remove("selectedSourceId");
-		} else {
-			// Fallback to the stored ID if source retrieval failed (e.g. network issue)
-			return result.selectedSourceId;
-		}
+		return result.selectedSourceId;
 	}
 
 	// 2. Fallback
+	const sources = await getMediaSources();
 	const twitterSource = sources.find((s) => s.name === "twitter");
 	if (twitterSource?.id) {
 		await chrome.storage.local.set({ selectedSourceId: twitterSource.id });

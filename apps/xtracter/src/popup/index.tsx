@@ -47,9 +47,6 @@ function Popup() {
 				const firstId = resp[0].id;
 				setSelectedSourceId(firstId);
 				await chrome.storage.local.set({ selectedSourceId: firstId });
-			} else if (!resp || resp.length === 0) {
-				setSelectedSourceId("");
-				await chrome.storage.local.remove("selectedSourceId");
 			}
 			setStatus("");
 		} catch (_err) {
