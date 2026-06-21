@@ -44,26 +44,19 @@ function createTimedFetch(
 ): (request: Request, init?: FetchInit) => Promise<Response> {
 	return async (request, init) => {
 		const controller = new AbortController();
-		const abortByTimeout = () =>
+		const timeout = setTimeout(() => {
 			controller.abort(createTimeoutError(timeoutMs));
-		const timeout = setTimeout(abortByTimeout, timeoutMs);
-		const upstreamSignal = init?.signal;
+		}, timeoutMs);
 
-		const abortByUpstream = () => {
-			controller.abort(upstreamSignal?.reason);
-		};
-		if (upstreamSignal?.aborted) {
-			abortByUpstream();
-		} else {
-			upstreamSignal?.addEventListener("abort", abortByUpstream, {
-				once: true,
-			});
-		}
+		const upstreamSignal = init?.signal;
+		const signal = upstreamSignal
+			? AbortSignal.any([upstreamSignal, controller.signal])
+			: controller.signal;
 
 		try {
-			return await fetchImpl(request, { ...init, signal: controller.signal });
+			return await fetchImpl(request, { ...init, signal });
 		} catch (error) {
-			if (controller.signal.reason instanceof APIError) {
+			if (controller.signal.aborted) {
 				throw controller.signal.reason;
 			}
 			if (isAbortError(error) && upstreamSignal?.aborted) {
@@ -72,7 +65,6 @@ function createTimedFetch(
 			throw createNetworkError(error);
 		} finally {
 			clearTimeout(timeout);
-			upstreamSignal?.removeEventListener("abort", abortByUpstream);
 		}
 	};
 }

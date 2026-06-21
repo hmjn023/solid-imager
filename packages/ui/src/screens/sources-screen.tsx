@@ -75,15 +75,13 @@ export function SourcesScreen(props: SourcesScreenProps) {
 						{props.error?.message ?? "API connection failed"}
 					</p>
 					<Show when={props.onRetry}>
-						{(onRetry) => (
-							<button
-								class="mt-3 rounded border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
-								onClick={onRetry()}
-								type="button"
-							>
-								再試行
-							</button>
-						)}
+						<button
+							class="mt-3 rounded border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
+							onClick={props.onRetry}
+							type="button"
+						>
+							再試行
+						</button>
 					</Show>
 				</div>
 			</Show>

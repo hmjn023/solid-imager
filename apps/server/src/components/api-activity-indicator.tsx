@@ -34,10 +34,11 @@ export function ApiActivityIndicator() {
 	const [showSlowRequest, setShowSlowRequest] = createSignal(false);
 
 	const activeCount = createMemo(() => isFetching() + isMutating());
+	const isActive = createMemo(() => activeCount() > 0);
 	const isVisible = createMemo(() => !isOnline() || showSlowRequest());
 
 	createEffect(() => {
-		if (activeCount() === 0) {
+		if (!isActive()) {
 			setShowSlowRequest(false);
 			return;
 		}
