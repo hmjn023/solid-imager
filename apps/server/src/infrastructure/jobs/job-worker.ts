@@ -3,6 +3,8 @@ import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 
+const StaleInProgressJobMs = 60 * 60 * 1000;
+
 export class JobWorker {
 	private isRunning = false;
 	private timeoutId: NodeJS.Timeout | null = null;
@@ -29,6 +31,7 @@ export class JobWorker {
 		}
 		this.isRunning = true;
 		logger.info("Job processing worker started");
+		void this.recoverStaleJobs();
 		this.poll();
 	}
 
@@ -77,7 +80,7 @@ export class JobWorker {
 			if (this.activeAiJobs < this.aiConcurrency) {
 				const slots = this.aiConcurrency - this.activeAiJobs;
 				if (slots > 0) {
-					const jobs = await this.jobRepo.findPending(slots, {
+					const jobs = await this.jobRepo.claimPending(slots, {
 						includeTypes: Array.from(this.aiJobTypes),
 					});
 					for (const job of jobs) {
@@ -92,7 +95,7 @@ export class JobWorker {
 			if (activeOtherJobs < this.concurrency) {
 				const slots = this.concurrency - activeOtherJobs;
 				if (slots > 0) {
-					const jobs = await this.jobRepo.findPending(slots, {
+					const jobs = await this.jobRepo.claimPending(slots, {
 						excludeTypes: Array.from(this.aiJobTypes),
 						excludeLanceDbSourceIds: Array.from(this.activeLanceDbSyncKeys),
 					});
@@ -130,7 +133,7 @@ export class JobWorker {
 		}
 
 		try {
-			await this.jobRepo.markAsInProgress(job.id);
+
 			await this.processor(job);
 			await this.jobRepo.markAsCompleted(job.id, { success: true });
 		} catch (error) {
@@ -146,6 +149,20 @@ export class JobWorker {
 			if (lanceDbSyncKey) {
 				this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);
 			}
+		}
+	}
+	private async recoverStaleJobs() {
+		const olderThan = new Date(Date.now() - StaleInProgressJobMs);
+		try {
+			const count = await this.jobRepo.requeueStaleInProgress(olderThan);
+			if (count > 0) {
+				logger.warn(
+					{ count, olderThan },
+					"Requeued stale in-progress jobs on worker startup",
+				);
+			}
+		} catch (error) {
+			logger.error({ err: error }, "Failed to requeue stale in-progress jobs");
 		}
 	}
 }

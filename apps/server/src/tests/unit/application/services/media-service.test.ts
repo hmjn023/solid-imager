@@ -107,6 +107,8 @@ describe("MediaService Unit Tests", () => {
 			createIfUnique: vi.fn(),
 			findById: vi.fn(),
 			findPending: vi.fn(),
+			claimPending: vi.fn(),
+			requeueStaleInProgress: vi.fn(),
 			markAsInProgress: vi.fn(),
 			markAsCompleted: vi.fn(),
 			markAsFailed: vi.fn(),
