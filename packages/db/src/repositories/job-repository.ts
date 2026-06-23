@@ -329,7 +329,7 @@ export function createJobRepository(
 				RETURNING
 					id,
 					type,
-					media_source_id AS "mediaSourceId",
+					source_id AS "mediaSourceId",
 					status,
 					payload,
 					result,
