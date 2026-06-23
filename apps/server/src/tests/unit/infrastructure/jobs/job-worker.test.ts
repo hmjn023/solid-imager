@@ -41,7 +41,9 @@ describe("JobWorker", () => {
 			createIfUnique: vi.fn(),
 			findById: vi.fn(),
 			findPending: vi.fn().mockResolvedValue([]),
+			claimPending: vi.fn().mockResolvedValue([]),
 			markAsInProgress: vi.fn().mockResolvedValue(undefined),
+			requeueStaleInProgress: vi.fn().mockResolvedValue(0),
 			markAsCompleted: vi.fn().mockResolvedValue(undefined),
 			markAsFailed: vi.fn().mockResolvedValue(undefined),
 			update: vi.fn(),
@@ -75,9 +77,9 @@ describe("JobWorker", () => {
 				}) as Job,
 		);
 
-		// Mock findPending to return jobs
+		// Mock claimPending to return jobs
 		// When excluding AI types, return normal jobs
-		(jobRepo.findPending as any).mockImplementation(
+		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.excludeTypes) {
 					return Promise.resolve(normalJobs.slice(0, limit));
@@ -90,7 +92,7 @@ describe("JobWorker", () => {
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
 		// Should fetch 2 normal jobs
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({ excludeTypes: ["auto_tagging"] }),
 		);
@@ -114,8 +116,8 @@ describe("JobWorker", () => {
 				}) as Job,
 		);
 
-		// Mock findPending
-		(jobRepo.findPending as any).mockImplementation(
+		// Mock claimPending
+		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.includeTypes) {
 					return Promise.resolve(aiJobs.slice(0, limit));
@@ -128,7 +130,7 @@ describe("JobWorker", () => {
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
 		// Should fetch 1 AI job
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
 		);
@@ -160,8 +162,8 @@ describe("JobWorker", () => {
 			status: "pending",
 		} as Job;
 
-		// Mock findPending
-		(jobRepo.findPending as any).mockImplementation(
+		// Mock claimPending
+		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.includeTypes) {
 					// AI request
@@ -179,11 +181,11 @@ describe("JobWorker", () => {
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
 		// Should fetch 1 AI job and 2 Normal jobs
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
 		);
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({ excludeTypes: ["auto_tagging"] }),
 		);

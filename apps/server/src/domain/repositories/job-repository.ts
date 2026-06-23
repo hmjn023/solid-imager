@@ -33,10 +33,28 @@ export type IJobRepository = {
 	): Promise<Job[]>;
 
 	/**
+	 * Atomically claims pending jobs for processing.
+	 * Claimed jobs are returned after their status is changed to in_progress.
+	 * @param limit - The maximum number of jobs to claim.
+	 * @returns Claimed jobs.
+	 */
+	claimPending(
+		limit: number,
+		options?: { excludeTypes?: string[]; includeTypes?: string[] },
+	): Promise<Job[]>;
+
+	/**
 	 * Marks a job as in progress.
 	 * @param id - The ID of the job.
 	 */
 	markAsInProgress(id: string): Promise<void>;
+
+	/**
+	 * Requeues in-progress jobs that have not been updated since the given date.
+	 * @param olderThan - Jobs older than this timestamp are moved back to pending.
+	 * @returns Number of requeued jobs.
+	 */
+	requeueStaleInProgress(olderThan: Date): Promise<number>;
 
 	/**
 	 * Marks a job as completed.
