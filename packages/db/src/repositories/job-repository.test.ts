@@ -48,6 +48,11 @@ describe("JobRepository", () => {
 			}),
 		]);
 		expect(mockExecutor.execute).toHaveBeenCalledOnce();
+		const query = extractSqlText(mockExecutor.execute.mock.calls[0]?.[0]);
+		expect(query).toContain("ROW_NUMBER() OVER");
+		expect(query).toContain("ELSE id");
+		expect(query).toContain("active.status = 'in_progress'");
+		expect(query).toContain("FOR UPDATE OF jobs SKIP LOCKED");
 	});
 
 	it("rejects conflicting pending filters", async () => {
@@ -70,3 +75,16 @@ describe("JobRepository", () => {
 		expect(mockExecutor.update).toHaveBeenCalledOnce();
 	});
 });
+
+function extractSqlText(value: unknown): string {
+	if (typeof value === "string") {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		return value.map(extractSqlText).join("");
+	}
+	if (value && typeof value === "object") {
+		return Object.values(value).map(extractSqlText).join("");
+	}
+	return "";
+}

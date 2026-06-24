@@ -84,7 +84,7 @@ export class JobWorker {
 						includeTypes: Array.from(this.aiJobTypes),
 					});
 					for (const job of jobs) {
-						this.tryProcessJob(job);
+						void this.tryProcessJob(job);
 					}
 				}
 			}
@@ -100,7 +100,7 @@ export class JobWorker {
 						excludeLanceDbSourceIds: Array.from(this.activeLanceDbSyncKeys),
 					});
 					for (const job of jobs) {
-						this.tryProcessJob(job);
+						void this.tryProcessJob(job);
 					}
 				}
 			}
@@ -113,16 +113,21 @@ export class JobWorker {
 		}
 	}
 
-	private tryProcessJob(job: Job) {
+	private async tryProcessJob(job: Job) {
 		const lanceDbSyncKey = getLanceDbSyncKey(job);
 		if (lanceDbSyncKey) {
 			if (this.activeLanceDbSyncKeys.has(lanceDbSyncKey)) {
+				logger.warn(
+					{ jobId: job.id, mediaSourceId: lanceDbSyncKey },
+					"Requeueing overlapping claimed LanceDB sync job",
+				);
+				await this.jobRepo.update(job.id, { status: "pending" });
 				return;
 			}
 			this.activeLanceDbSyncKeys.add(lanceDbSyncKey);
 		}
 
-		this.processJob(job, lanceDbSyncKey);
+		void this.processJob(job, lanceDbSyncKey);
 	}
 
 	private async processJob(job: Job, lanceDbSyncKey?: string) {
@@ -133,7 +138,6 @@ export class JobWorker {
 		}
 
 		try {
-
 			await this.processor(job);
 			await this.jobRepo.markAsCompleted(job.id, { success: true });
 		} catch (error) {

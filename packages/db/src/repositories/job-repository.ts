@@ -315,13 +315,53 @@ export function createJobRepository(
 
 			const now = new Date();
 			const result: unknown = await db().execute(sql`
-				WITH next_jobs AS (
-					SELECT id
-					FROM jobs
+				WITH eligible_jobs AS (
+					SELECT
+						id,
+						created_at,
+						CASE
+							WHEN type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
+								AND source_id IS NOT NULL
+							THEN ROW_NUMBER() OVER (
+								PARTITION BY CASE
+									WHEN type IN (
+										'sync_lancedb',
+										'sync_lancedb_full',
+										'sync_lancedb_delta'
+									)
+									THEN source_id
+									ELSE id
+								END
+								ORDER BY created_at ASC, id ASC
+							)
+							ELSE 1
+						END AS source_rank
+					FROM jobs candidate
 					WHERE ${sql.join(conditions, sql` AND `)}
-					ORDER BY created_at ASC
+						AND NOT (
+							type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
+							AND source_id IS NOT NULL
+							AND EXISTS (
+								SELECT 1
+								FROM jobs active
+								WHERE active.status = 'in_progress'
+									AND active.type IN (
+										'sync_lancedb',
+										'sync_lancedb_full',
+										'sync_lancedb_delta'
+									)
+									AND active.source_id = candidate.source_id
+							)
+						)
+				),
+				next_jobs AS (
+					SELECT jobs.id
+					FROM jobs
+					INNER JOIN eligible_jobs ON eligible_jobs.id = jobs.id
+					WHERE eligible_jobs.source_rank = 1
+					ORDER BY eligible_jobs.created_at ASC, jobs.id ASC
 					LIMIT ${limit}
-					FOR UPDATE SKIP LOCKED
+					FOR UPDATE OF jobs SKIP LOCKED
 				)
 				UPDATE jobs
 				SET status = 'in_progress', updated_at = ${now}

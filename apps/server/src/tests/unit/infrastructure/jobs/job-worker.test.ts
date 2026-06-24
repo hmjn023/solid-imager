@@ -193,7 +193,7 @@ describe("JobWorker", () => {
 		expect(processor).toHaveBeenCalledTimes(TotalExpectedCalls);
 	});
 
-	it("should serialize LanceDB sync jobs per media source", async () => {
+	it("should requeue overlapping claimed LanceDB sync jobs per media source", async () => {
 		worker.updateConfig({
 			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
 		} as AppConfig);
@@ -249,8 +249,11 @@ describe("JobWorker", () => {
 
 		expect(processor).toHaveBeenCalledTimes(2);
 		expect(processor).toHaveBeenCalledWith(fullSyncJob);
-		expect(processor).toHaveBeenCalledWith(deltaSyncOtherSourceJob);
 		expect(processor).not.toHaveBeenCalledWith(deltaSyncSameSourceJob);
+		expect(processor).toHaveBeenCalledWith(deltaSyncOtherSourceJob);
+		expect(jobRepo.update).toHaveBeenCalledWith(deltaSyncSameSourceJob.id, {
+			status: "pending",
+		});
 
 		resolveProcessor();
 		await vi.runOnlyPendingTimersAsync();
