@@ -430,8 +430,8 @@ function mapClaimedJob(row: unknown): Job {
 		type: requireString(raw.type, "type"),
 		mediaSourceId: nullableString(raw.mediaSourceId, "mediaSourceId"),
 		status: requireJobStatus(raw.status),
-		payload: raw.payload,
-		result: raw.result,
+		payload: parseJsonColumn(raw.payload, "payload"),
+		result: parseJsonColumn(raw.result, "result"),
 		error: nullableString(raw.error, "error"),
 		createdAt: requireDate(raw.createdAt, "createdAt"),
 		updatedAt: requireDate(raw.updatedAt, "updatedAt"),
@@ -479,6 +479,17 @@ function requireDate(value: unknown, fieldName: string): Date {
 		}
 	}
 	throw new Error(`Invalid claimed job row: ${fieldName}`);
+}
+
+function parseJsonColumn(value: unknown, fieldName: string): unknown {
+	if (typeof value !== "string") {
+		return value;
+	}
+	try {
+		return JSON.parse(value);
+	} catch {
+		throw new Error(`Invalid claimed job row: ${fieldName}`);
+	}
 }
 
 function mergeDeltaPayload(

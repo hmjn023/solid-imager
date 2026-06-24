@@ -179,19 +179,11 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		const payload = job.payload;
 		if (!isRecord(payload)) {
-			this.logger?.warn(
-				{ jobId: job.id },
-				"Missing payload or invalid payload in job",
-			);
-			return;
+			throw new Error(`Missing payload or invalid payload in job ${job.id}`);
 		}
 		const mediaId = payload.mediaId;
 		if (typeof mediaId !== "string") {
-			this.logger?.warn(
-				{ jobId: job.id },
-				"Missing or invalid mediaId in job payload",
-			);
-			return;
+			throw new Error(`Missing or invalid mediaId in job payload ${job.id}`);
 		}
 
 		const media = await this.mediaRepo.findById(mediaId);
@@ -202,18 +194,13 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		const sourcePath = payload.sourcePath;
 		if (typeof sourcePath !== "string") {
-			this.logger?.warn(
-				{ jobId: job.id },
-				"Missing or invalid sourcePath in job payload",
-			);
-			return;
+			throw new Error(`Missing or invalid sourcePath in job payload ${job.id}`);
 		}
 		const mediaPath = path.join(sourcePath, media.filePath);
 
 		const mediaSourceId = job.mediaSourceId;
 		if (!mediaSourceId) {
-			this.logger?.warn({ jobId: job.id }, "Missing mediaSourceId in job");
-			return;
+			throw new Error(`Missing mediaSourceId in job ${job.id}`);
 		}
 
 		// Step 1: Metadata extraction
