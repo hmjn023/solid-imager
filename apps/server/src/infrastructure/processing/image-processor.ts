@@ -21,6 +21,10 @@ import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
 const RANDOM_STRING_RADIX = 36;
 let isFfmpegAvailable: boolean | undefined;
 
+function openImage(input: string) {
+	return sharp(input, { failOn: "none" });
+}
+
 /**
  * Provides image processing functionalities such as thumbnail generation, metadata extraction, and dimension retrieval.
  */
@@ -85,7 +89,7 @@ export class LocalImageProcessor implements IImageProcessor {
 				});
 
 				// Process the screenshot with sharp (convert to webp)
-				await sharp(tempScreenshot)
+				await openImage(tempScreenshot)
 					.resize(size, size, { fit: "inside", withoutEnlargement: true })
 					.webp({ quality })
 					.toFile(outputPath);
@@ -111,7 +115,7 @@ export class LocalImageProcessor implements IImageProcessor {
 
 		// Default image processing
 		try {
-			await sharp(mediaPath)
+			await openImage(mediaPath)
 				.resize(size, size, { fit: "inside", withoutEnlargement: true })
 				.webp({ quality })
 				.toFile(outputPath);
@@ -159,7 +163,7 @@ export class LocalImageProcessor implements IImageProcessor {
 				return { tags: [], prompt: null, workflow: null };
 			}
 
-			const metadata = await sharp(mediaPath).metadata();
+			const metadata = await openImage(mediaPath).metadata();
 
 			const comments: ImageMetadataComment[] = [];
 			if (metadata.comments) {
@@ -258,7 +262,7 @@ export class LocalImageProcessor implements IImageProcessor {
 			});
 		}
 
-		const metadata = await sharp(mediaPath).metadata();
+		const metadata = await openImage(mediaPath).metadata();
 		if (metadata.width === undefined || metadata.height === undefined) {
 			throw new Error(`Failed to get dimensions for image: ${mediaPath}`);
 		}
