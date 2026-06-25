@@ -130,7 +130,14 @@ export class JobWorker {
 					{ jobId: job.id, mediaSourceId: lanceDbSyncKey },
 					"Requeueing overlapping claimed LanceDB sync job",
 				);
-				await this.jobRepo.update(job.id, { status: "pending" });
+				try {
+					await this.jobRepo.update(job.id, { status: "pending" });
+				} catch (error) {
+					logger.error(
+						{ err: error, jobId: job.id },
+						"Failed to requeue overlapping job",
+					);
+				}
 				return;
 			}
 			this.activeLanceDbSyncKeys.add(lanceDbSyncKey);
