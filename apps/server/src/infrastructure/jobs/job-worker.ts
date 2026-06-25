@@ -8,6 +8,7 @@ const StaleInProgressJobMs = 60 * 60 * 1000;
 export class JobWorker {
 	private isRunning = false;
 	private timeoutId: NodeJS.Timeout | null = null;
+	private recoverStaleJobsIntervalId: NodeJS.Timeout | null = null;
 	private pollIntervalMs = 1000;
 	private concurrency = 3;
 	private aiConcurrency = 1;
@@ -32,6 +33,10 @@ export class JobWorker {
 		this.isRunning = true;
 		logger.info("Job processing worker started");
 		void this.recoverStaleJobs();
+		this.recoverStaleJobsIntervalId = setInterval(
+			() => void this.recoverStaleJobs(),
+			5 * 60 * 1000,
+		);
 		this.poll();
 	}
 
@@ -40,6 +45,10 @@ export class JobWorker {
 		if (this.timeoutId) {
 			clearTimeout(this.timeoutId);
 			this.timeoutId = null;
+		}
+		if (this.recoverStaleJobsIntervalId) {
+			clearInterval(this.recoverStaleJobsIntervalId);
+			this.recoverStaleJobsIntervalId = null;
 		}
 		logger.info("Job processing worker stopped");
 	}
@@ -160,10 +169,7 @@ export class JobWorker {
 		try {
 			const count = await this.jobRepo.requeueStaleInProgress(olderThan);
 			if (count > 0) {
-				logger.warn(
-					{ count, olderThan },
-					"Requeued stale in-progress jobs on worker startup",
-				);
+				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
 			}
 		} catch (error) {
 			logger.error({ err: error }, "Failed to requeue stale in-progress jobs");
