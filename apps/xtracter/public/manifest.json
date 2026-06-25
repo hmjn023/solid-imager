@@ -18,7 +18,8 @@
     "https://danbooru.donmai.us/*",
     "http://localhost:*/*",
     "http://127.0.0.1:*/*",
-    "http://*/*"
+    "http://*/*",
+    "https://*/*"
   ],
   "icons": {
     "128": "icon.png"

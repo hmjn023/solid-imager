@@ -1,0 +1,59 @@
+events {
+    worker_connections 1024;
+}
+
+http {
+    include       /etc/nginx/mime.types;
+    default_type  application/octet-stream;
+
+    # アクセスログとエラーログ
+    access_log /var/log/nginx/access.log;
+    error_log  /var/log/nginx/error.log;
+
+    # TLSプロトコル設定 (HTTP/3にはTLS 1.3が必須、TLS 1.2は下位互換用)
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_prefer_server_ciphers off;
+
+    server {
+        # HTTP/3 (QUIC) 用の設定
+        listen 443 quic reuseport;
+        # 従来のHTTPS用設定
+        listen 443 ssl;
+        http2 on;
+
+        # 🌟 本番ドメイン名に変更してください (例: imager.yourdomain.com)
+        server_name imager.example.com;
+
+        # Certbotで取得した証明書をマウントしたパス (ドメイン名部分を変更してください)
+        ssl_certificate     /etc/letsencrypt/live/imager.example.com/fullchain.pem;
+        ssl_certificate_key /etc/letsencrypt/live/imager.example.com/privkey.pem;
+
+        # HTTP/3 有効化と Alt-Svc ヘッダーの付与
+        http3 on;
+        add_header Alt-Svc 'h3=":443"; ma=86400';
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+
+        location / {
+            # アプリコンテナ（app）へ転送
+            proxy_pass http://app:3000;
+
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            
+            # WebSocketサポート (oRPC や HMR等で必要な場合)
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+        }
+    }
+
+    # HTTP から HTTPS へのリダイレクト
+    server {
+        listen 80;
+        server_name imager.example.com; # 🌟 本番ドメイン名に変更してください
+        return 301 https://$host$request_uri;
+    }
+}
