@@ -864,31 +864,60 @@ export const mediaCollections = pgTable(
  * Manages background jobs such as thumbnail generation, metadata extraction, and bulk tagging.
  * It tracks their progress and results.
  */
-export const jobs = pgTable("jobs", {
-	id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
-	/** ジョブの種類 (例: "thumbnail_generation", "metadata_extraction", "auto_tagging") */
-	type: text("type").notNull(),
-	/** 関連するメディアソースID (オプショナル) */
-	mediaSourceId: uuid("source_id").references(() => mediaSources.id, {
-		onDelete: "cascade",
+export const jobs = pgTable(
+	"jobs",
+	{
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		/** ジョブの種類 (例: "thumbnail_generation", "metadata_extraction", "auto_tagging") */
+		type: text("type").notNull(),
+		/** 関連するメディアソースID (オプショナル) */
+		mediaSourceId: uuid("source_id").references(() => mediaSources.id, {
+			onDelete: "cascade",
+		}),
+		/** ジョブのステータス */
+		status: jobStatusEnum("status").notNull().default("pending"),
+		/** ジョブの入力パラメータ (JSON) */
+		payload: jsonb("payload"),
+		/** ジョブの実行結果 (JSON) */
+		result: jsonb("result"),
+		/** エラーメッセージ (失敗時) */
+		error: text("error"),
+		/** ジョブ作成日時 */
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		/** 最終更新日時 */
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		/** 親ジョブID (バッチ処理用) */
+		parentId: uuid("parent_id").references((): AnyPgColumn => jobs.id, {
+			onDelete: "cascade",
+		}),
+	},
+	(table) => ({
+		pendingCreatedIndex: index("idx_jobs_pending_created")
+			.on(table.createdAt, table.id)
+			.where(
+				sql`${table.status} = 'pending' AND ${table.type} <> 'import_request'`,
+			),
+		pendingTypeCreatedIndex: index("idx_jobs_pending_type_created")
+			.on(table.type, table.createdAt, table.id)
+			.where(
+				sql`${table.status} = 'pending' AND ${table.type} <> 'import_request'`,
+			),
+		pendingLanceDbSourceIndex: index("idx_jobs_pending_lancedb_source")
+			.on(table.mediaSourceId, table.createdAt, table.id)
+			.where(
+				sql`${table.status} = 'pending'
+					AND ${table.type} IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
+					AND ${table.mediaSourceId} IS NOT NULL`,
+			),
+		activeLanceDbSourceIndex: index("idx_jobs_active_lancedb_source")
+			.on(table.mediaSourceId)
+			.where(
+				sql`${table.status} = 'in_progress'
+					AND ${table.type} IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
+					AND ${table.mediaSourceId} IS NOT NULL`,
+			),
 	}),
-	/** ジョブのステータス */
-	status: jobStatusEnum("status").notNull().default("pending"),
-	/** ジョブの入力パラメータ (JSON) */
-	payload: jsonb("payload"),
-	/** ジョブの実行結果 (JSON) */
-	result: jsonb("result"),
-	/** エラーメッセージ (失敗時) */
-	error: text("error"),
-	/** ジョブ作成日時 */
-	createdAt: timestamp("created_at").notNull().defaultNow(),
-	/** 最終更新日時 */
-	updatedAt: timestamp("updated_at").notNull().defaultNow(),
-	/** 親ジョブID (バッチ処理用) */
-	parentId: uuid("parent_id").references((): AnyPgColumn => jobs.id, {
-		onDelete: "cascade",
-	}),
-});
+);
 
 /**
  * Schema for the presets table.
