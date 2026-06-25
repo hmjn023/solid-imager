@@ -64,3 +64,6 @@ apps/tauri/src-tauri/target/
 apps/tauri/src-tauri/gen/
 apps/server/src/routeTree.gen.ts
 .worktree/
+# Systemd & Certbot & Nginx (for production deployment, not committed)
+/nginx.conf
+/compose.production.override.yml

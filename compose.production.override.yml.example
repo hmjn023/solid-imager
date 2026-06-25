@@ -1,0 +1,7 @@
+services:
+  app:
+    volumes:
+      # Add every host media source that the application needs to access.
+      # Keep the container path identical to the path stored in the database.
+      - /path/to/Medias:/path/to/Medias:ro
+      # - /another/media/source:/another/media/source:ro
