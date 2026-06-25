@@ -14,10 +14,17 @@ import {
 	ne,
 	not,
 	notInArray,
+	type SQL,
 	sql,
 } from "drizzle-orm";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
+
+const LanceDbJobTypes = [
+	"sync_lancedb",
+	"sync_lancedb_full",
+	"sync_lancedb_delta",
+] as const;
 
 type RawClaimedJob = {
 	id: unknown;
@@ -292,7 +299,10 @@ export function createJobRepository(
 				);
 			}
 
-			const conditions = [sql`status = 'pending'`, sql`type <> 'import_request'`];
+			const conditions = [
+				sql`status = 'pending'`,
+				sql`type <> 'import_request'`,
+			];
 
 			if (options?.excludeTypes?.length) {
 				conditions.push(sql`type NOT IN ${sqlTuple(options.excludeTypes)}`);
@@ -314,70 +324,10 @@ export function createJobRepository(
 			}
 
 			const now = new Date();
-			const result: unknown = await db().execute(sql`
-				WITH eligible_jobs AS (
-					SELECT
-						id,
-						created_at,
-						CASE
-							WHEN type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
-								AND source_id IS NOT NULL
-							THEN ROW_NUMBER() OVER (
-								PARTITION BY CASE
-									WHEN type IN (
-										'sync_lancedb',
-										'sync_lancedb_full',
-										'sync_lancedb_delta'
-									)
-									THEN source_id
-									ELSE id
-								END
-								ORDER BY created_at ASC, id ASC
-							)
-							ELSE 1
-						END AS source_rank
-					FROM jobs candidate
-					WHERE ${sql.join(conditions, sql` AND `)}
-						AND NOT (
-							type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
-							AND source_id IS NOT NULL
-							AND EXISTS (
-								SELECT 1
-								FROM jobs active
-								WHERE active.status = 'in_progress'
-									AND active.type IN (
-										'sync_lancedb',
-										'sync_lancedb_full',
-										'sync_lancedb_delta'
-									)
-									AND active.source_id = candidate.source_id
-							)
-						)
-				),
-				next_jobs AS (
-					SELECT jobs.id
-					FROM jobs
-					INNER JOIN eligible_jobs ON eligible_jobs.id = jobs.id
-					WHERE eligible_jobs.source_rank = 1
-					ORDER BY eligible_jobs.created_at ASC, jobs.id ASC
-					LIMIT ${limit}
-					FOR UPDATE OF jobs SKIP LOCKED
-				)
-				UPDATE jobs
-				SET status = 'in_progress', updated_at = ${now}
-				WHERE id IN (SELECT id FROM next_jobs)
-				RETURNING
-					id,
-					type,
-					source_id AS "mediaSourceId",
-					status,
-					payload,
-					result,
-					error,
-					created_at AS "createdAt",
-					updated_at AS "updatedAt",
-					parent_id AS "parentId"
-			`);
+			const query = canIncludeLanceDbJobs(options)
+				? buildSerializedClaimQuery(conditions, limit, now)
+				: buildSimpleClaimQuery(conditions, limit, now);
+			const result: unknown = await db().execute(query);
 
 			return extractRows(result).map(mapClaimedJob);
 		},
@@ -397,6 +347,105 @@ export function createJobRepository(
 			return rows.length;
 		},
 	};
+}
+
+function canIncludeLanceDbJobs(options?: {
+	excludeTypes?: string[];
+	includeTypes?: string[];
+}): boolean {
+	if (options?.includeTypes?.length) {
+		return options.includeTypes.some((type) =>
+			LanceDbJobTypes.some((lanceDbType) => lanceDbType === type),
+		);
+	}
+
+	if (options?.excludeTypes?.length) {
+		return LanceDbJobTypes.some(
+			(type) => !options.excludeTypes?.includes(type),
+		);
+	}
+
+	return true;
+}
+
+function buildSimpleClaimQuery(conditions: SQL[], limit: number, now: Date) {
+	return sql`
+		WITH next_jobs AS (
+			SELECT id
+			FROM jobs
+			WHERE ${sql.join(conditions, sql` AND `)}
+			ORDER BY created_at ASC, id ASC
+			LIMIT ${limit}
+			FOR UPDATE SKIP LOCKED
+		)
+		${buildClaimUpdate(now)}
+	`;
+}
+
+function buildSerializedClaimQuery(
+	conditions: SQL[],
+	limit: number,
+	now: Date,
+) {
+	return sql`
+		WITH eligible_jobs AS (
+			SELECT id, created_at
+			FROM jobs candidate
+			WHERE ${sql.join(conditions, sql` AND `)}
+				AND (
+					type NOT IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
+					OR source_id IS NULL
+				)
+			UNION ALL
+			(
+				SELECT DISTINCT ON (source_id) id, created_at
+				FROM jobs candidate
+				WHERE ${sql.join(conditions, sql` AND `)}
+					AND type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
+					AND source_id IS NOT NULL
+					AND NOT EXISTS (
+						SELECT 1
+						FROM jobs active
+						WHERE active.status = 'in_progress'
+							AND active.type IN (
+								'sync_lancedb',
+								'sync_lancedb_full',
+								'sync_lancedb_delta'
+							)
+							AND active.source_id = candidate.source_id
+					)
+				ORDER BY source_id, created_at ASC, id ASC
+			)
+		),
+		next_jobs AS (
+			SELECT jobs.id
+			FROM jobs
+			INNER JOIN eligible_jobs ON eligible_jobs.id = jobs.id
+			ORDER BY eligible_jobs.created_at ASC, jobs.id ASC
+			LIMIT ${limit}
+			FOR UPDATE OF jobs SKIP LOCKED
+		)
+		${buildClaimUpdate(now)}
+	`;
+}
+
+function buildClaimUpdate(now: Date) {
+	return sql`
+		UPDATE jobs
+		SET status = 'in_progress', updated_at = ${now}
+		WHERE id IN (SELECT id FROM next_jobs)
+		RETURNING
+			id,
+			type,
+			source_id AS "mediaSourceId",
+			status,
+			payload,
+			result,
+			error,
+			created_at AS "createdAt",
+			updated_at AS "updatedAt",
+			parent_id AS "parentId"
+	`;
 }
 
 function sqlTuple(values: string[]) {

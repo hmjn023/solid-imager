@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
-import { createJobRepository } from "./job-repository";
 import type { DrizzleExecutor } from "../types";
+import { createJobRepository } from "./job-repository";
 
 describe("JobRepository", () => {
 	let mockExecutor: any;
@@ -27,15 +27,17 @@ describe("JobRepository", () => {
 			update: vi.fn().mockReturnThis(),
 			set: vi.fn().mockReturnThis(),
 			where: vi.fn().mockReturnThis(),
-			returning: vi.fn().mockResolvedValue([{ id: "11111111-1111-4111-8111-111111111111" }]),
+			returning: vi
+				.fn()
+				.mockResolvedValue([{ id: "11111111-1111-4111-8111-111111111111" }]),
 		};
 
 		repository = createJobRepository(() => mockExecutor as DrizzleExecutor);
 	});
 
-	it("claims pending jobs and maps returned rows", async () => {
+	it("claims non-LanceDB jobs without source serialization", async () => {
 		const claimed = await repository.claimPending(1, {
-			excludeTypes: ["auto_tagging"],
+			includeTypes: ["auto_tagging"],
 		});
 
 		expect(claimed).toEqual([
@@ -50,8 +52,20 @@ describe("JobRepository", () => {
 		]);
 		expect(mockExecutor.execute).toHaveBeenCalledOnce();
 		const query = extractSqlText(mockExecutor.execute.mock.calls[0]?.[0]);
-		expect(query).toContain("ROW_NUMBER() OVER");
-		expect(query).toContain("ELSE id");
+		expect(query).not.toContain("eligible_jobs");
+		expect(query).not.toContain("DISTINCT ON");
+		expect(query).not.toContain("active.status = 'in_progress'");
+		expect(query).toContain("FOR UPDATE SKIP LOCKED");
+	});
+
+	it("serializes LanceDB jobs per media source", async () => {
+		await repository.claimPending(2, {
+			includeTypes: ["sync_lancedb_delta"],
+		});
+
+		const query = extractSqlText(mockExecutor.execute.mock.calls[0]?.[0]);
+		expect(query).toContain("eligible_jobs");
+		expect(query).toContain("DISTINCT ON (source_id)");
 		expect(query).toContain("active.status = 'in_progress'");
 		expect(query).toContain("FOR UPDATE OF jobs SKIP LOCKED");
 	});
