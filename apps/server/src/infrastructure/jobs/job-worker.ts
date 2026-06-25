@@ -3,9 +3,12 @@ import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 
+const StaleInProgressJobMs = 60 * 60 * 1000;
+
 export class JobWorker {
 	private isRunning = false;
 	private timeoutId: NodeJS.Timeout | null = null;
+	private recoverStaleJobsIntervalId: NodeJS.Timeout | null = null;
 	private pollIntervalMs = 1000;
 	private concurrency = 3;
 	private aiConcurrency = 1;
@@ -29,6 +32,11 @@ export class JobWorker {
 		}
 		this.isRunning = true;
 		logger.info("Job processing worker started");
+		void this.recoverStaleJobs();
+		this.recoverStaleJobsIntervalId = setInterval(
+			() => void this.recoverStaleJobs(),
+			5 * 60 * 1000,
+		);
 		this.poll();
 	}
 
@@ -37,6 +45,10 @@ export class JobWorker {
 		if (this.timeoutId) {
 			clearTimeout(this.timeoutId);
 			this.timeoutId = null;
+		}
+		if (this.recoverStaleJobsIntervalId) {
+			clearInterval(this.recoverStaleJobsIntervalId);
+			this.recoverStaleJobsIntervalId = null;
 		}
 		logger.info("Job processing worker stopped");
 	}
@@ -77,11 +89,11 @@ export class JobWorker {
 			if (this.activeAiJobs < this.aiConcurrency) {
 				const slots = this.aiConcurrency - this.activeAiJobs;
 				if (slots > 0) {
-					const jobs = await this.jobRepo.findPending(slots, {
+					const jobs = await this.jobRepo.claimPending(slots, {
 						includeTypes: Array.from(this.aiJobTypes),
 					});
 					for (const job of jobs) {
-						this.tryProcessJob(job);
+						void this.tryProcessJob(job);
 					}
 				}
 			}
@@ -92,12 +104,12 @@ export class JobWorker {
 			if (activeOtherJobs < this.concurrency) {
 				const slots = this.concurrency - activeOtherJobs;
 				if (slots > 0) {
-					const jobs = await this.jobRepo.findPending(slots, {
+					const jobs = await this.jobRepo.claimPending(slots, {
 						excludeTypes: Array.from(this.aiJobTypes),
 						excludeLanceDbSourceIds: Array.from(this.activeLanceDbSyncKeys),
 					});
 					for (const job of jobs) {
-						this.tryProcessJob(job);
+						void this.tryProcessJob(job);
 					}
 				}
 			}
@@ -110,16 +122,21 @@ export class JobWorker {
 		}
 	}
 
-	private tryProcessJob(job: Job) {
+	private async tryProcessJob(job: Job) {
 		const lanceDbSyncKey = getLanceDbSyncKey(job);
 		if (lanceDbSyncKey) {
 			if (this.activeLanceDbSyncKeys.has(lanceDbSyncKey)) {
+				logger.warn(
+					{ jobId: job.id, mediaSourceId: lanceDbSyncKey },
+					"Requeueing overlapping claimed LanceDB sync job",
+				);
+				await this.jobRepo.update(job.id, { status: "pending" });
 				return;
 			}
 			this.activeLanceDbSyncKeys.add(lanceDbSyncKey);
 		}
 
-		this.processJob(job, lanceDbSyncKey);
+		void this.processJob(job, lanceDbSyncKey);
 	}
 
 	private async processJob(job: Job, lanceDbSyncKey?: string) {
@@ -130,7 +147,6 @@ export class JobWorker {
 		}
 
 		try {
-			await this.jobRepo.markAsInProgress(job.id);
 			await this.processor(job);
 			await this.jobRepo.markAsCompleted(job.id, { success: true });
 		} catch (error) {
@@ -146,6 +162,17 @@ export class JobWorker {
 			if (lanceDbSyncKey) {
 				this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);
 			}
+		}
+	}
+	private async recoverStaleJobs() {
+		const olderThan = new Date(Date.now() - StaleInProgressJobMs);
+		try {
+			const count = await this.jobRepo.requeueStaleInProgress(olderThan);
+			if (count > 0) {
+				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
+			}
+		} catch (error) {
+			logger.error({ err: error }, "Failed to requeue stale in-progress jobs");
 		}
 	}
 }
