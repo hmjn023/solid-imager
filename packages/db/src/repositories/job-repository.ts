@@ -10,6 +10,7 @@ import {
 	eq,
 	inArray,
 	isNotNull,
+	lt,
 	ne,
 	not,
 	notInArray,
@@ -17,6 +18,19 @@ import {
 } from "drizzle-orm";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
+
+type RawClaimedJob = {
+	id: unknown;
+	type: unknown;
+	mediaSourceId: unknown;
+	status: unknown;
+	payload: unknown;
+	result: unknown;
+	error: unknown;
+	createdAt: unknown;
+	updatedAt: unknown;
+	parentId: unknown;
+};
 
 function mapJob(row: typeof jobs.$inferSelect): Job {
 	return {
@@ -259,7 +273,223 @@ export function createJobRepository(
 				) WHERE id = ${id}`,
 			);
 		},
+
+		async claimPending(
+			limit: number,
+			options?: {
+				excludeTypes?: string[];
+				includeTypes?: string[];
+				excludeLanceDbSourceIds?: string[];
+			},
+		): Promise<Job[]> {
+			if (limit <= 0) {
+				return [];
+			}
+
+			if (options?.excludeTypes?.length && options?.includeTypes?.length) {
+				throw new Error(
+					"Cannot use excludeTypes and includeTypes simultaneously.",
+				);
+			}
+
+			const conditions = [sql`status = 'pending'`, sql`type <> 'import_request'`];
+
+			if (options?.excludeTypes?.length) {
+				conditions.push(sql`type NOT IN ${sqlTuple(options.excludeTypes)}`);
+			}
+
+			if (options?.includeTypes?.length) {
+				conditions.push(sql`type IN ${sqlTuple(options.includeTypes)}`);
+			}
+
+			if (
+				options?.excludeLanceDbSourceIds &&
+				options.excludeLanceDbSourceIds.length > 0
+			) {
+				conditions.push(
+					sql`NOT (type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta') AND source_id IS NOT NULL AND source_id IN ${sqlTuple(
+						options.excludeLanceDbSourceIds,
+					)})`,
+				);
+			}
+
+			const now = new Date();
+			const result: unknown = await db().execute(sql`
+				WITH eligible_jobs AS (
+					SELECT
+						id,
+						created_at,
+						CASE
+							WHEN type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
+								AND source_id IS NOT NULL
+							THEN ROW_NUMBER() OVER (
+								PARTITION BY CASE
+									WHEN type IN (
+										'sync_lancedb',
+										'sync_lancedb_full',
+										'sync_lancedb_delta'
+									)
+									THEN source_id
+									ELSE id
+								END
+								ORDER BY created_at ASC, id ASC
+							)
+							ELSE 1
+						END AS source_rank
+					FROM jobs candidate
+					WHERE ${sql.join(conditions, sql` AND `)}
+						AND NOT (
+							type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
+							AND source_id IS NOT NULL
+							AND EXISTS (
+								SELECT 1
+								FROM jobs active
+								WHERE active.status = 'in_progress'
+									AND active.type IN (
+										'sync_lancedb',
+										'sync_lancedb_full',
+										'sync_lancedb_delta'
+									)
+									AND active.source_id = candidate.source_id
+							)
+						)
+				),
+				next_jobs AS (
+					SELECT jobs.id
+					FROM jobs
+					INNER JOIN eligible_jobs ON eligible_jobs.id = jobs.id
+					WHERE eligible_jobs.source_rank = 1
+					ORDER BY eligible_jobs.created_at ASC, jobs.id ASC
+					LIMIT ${limit}
+					FOR UPDATE OF jobs SKIP LOCKED
+				)
+				UPDATE jobs
+				SET status = 'in_progress', updated_at = ${now}
+				WHERE id IN (SELECT id FROM next_jobs)
+				RETURNING
+					id,
+					type,
+					source_id AS "mediaSourceId",
+					status,
+					payload,
+					result,
+					error,
+					created_at AS "createdAt",
+					updated_at AS "updatedAt",
+					parent_id AS "parentId"
+			`);
+
+			return extractRows(result).map(mapClaimedJob);
+		},
+
+		async requeueStaleInProgress(olderThan: Date): Promise<number> {
+			const rows = await db()
+				.update(jobs)
+				.set({
+					status: "pending",
+					updatedAt: new Date(),
+				})
+				.where(
+					and(eq(jobs.status, "in_progress"), lt(jobs.updatedAt, olderThan)),
+				)
+				.returning();
+
+			return rows.length;
+		},
 	};
+}
+
+function sqlTuple(values: string[]) {
+	return sql`(${sql.join(
+		values.map((value) => sql`${value}`),
+		sql`, `,
+	)})`;
+}
+
+function extractRows(result: unknown): unknown[] {
+	if (Array.isArray(result)) {
+		return result;
+	}
+
+	if (result && typeof result === "object" && "rows" in result) {
+		const rows = (result as { rows: unknown }).rows;
+		return Array.isArray(rows) ? rows : [];
+	}
+
+	return [];
+}
+
+function mapClaimedJob(row: unknown): Job {
+	if (!row || typeof row !== "object") {
+		throw new Error("Invalid claimed job row");
+	}
+
+	const raw = row as RawClaimedJob;
+	return {
+		id: requireString(raw.id, "id"),
+		type: requireString(raw.type, "type"),
+		mediaSourceId: nullableString(raw.mediaSourceId, "mediaSourceId"),
+		status: requireJobStatus(raw.status),
+		payload: parseJsonColumn(raw.payload, "payload"),
+		result: parseJsonColumn(raw.result, "result"),
+		error: nullableString(raw.error, "error"),
+		createdAt: requireDate(raw.createdAt, "createdAt"),
+		updatedAt: requireDate(raw.updatedAt, "updatedAt"),
+		parentId: nullableString(raw.parentId, "parentId"),
+	};
+}
+
+function requireString(value: unknown, fieldName: string): string {
+	if (typeof value !== "string") {
+		throw new Error(`Invalid claimed job row: ${fieldName}`);
+	}
+	return value;
+}
+
+function nullableString(value: unknown, fieldName: string): string | null {
+	if (value === null) {
+		return null;
+	}
+	if (typeof value !== "string") {
+		throw new Error(`Invalid claimed job row: ${fieldName}`);
+	}
+	return value;
+}
+
+function requireJobStatus(value: unknown): Job["status"] {
+	if (
+		value === "pending" ||
+		value === "in_progress" ||
+		value === "completed" ||
+		value === "failed"
+	) {
+		return value;
+	}
+	throw new Error("Invalid claimed job row: status");
+}
+
+function requireDate(value: unknown, fieldName: string): Date {
+	if (value instanceof Date) {
+		return value;
+	}
+	if (typeof value === "string") {
+		const date = new Date(value);
+		if (!Number.isNaN(date.getTime())) {
+			return date;
+		}
+	}
+	throw new Error(`Invalid claimed job row: ${fieldName}`);
+}
+
+function parseJsonColumn(value: unknown, fieldName: string): unknown {
+	if (typeof value !== "string") {
+		return value;
+	}
+	try {
+		return JSON.parse(value);
+	} catch {
+		throw new Error(`Invalid claimed job row: ${fieldName}`);
+	}
 }
 
 function mergeDeltaPayload(

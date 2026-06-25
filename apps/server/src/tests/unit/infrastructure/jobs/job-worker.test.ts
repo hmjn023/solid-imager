@@ -41,6 +41,8 @@ describe("JobWorker", () => {
 			createIfUnique: vi.fn(),
 			findById: vi.fn(),
 			findPending: vi.fn().mockResolvedValue([]),
+			claimPending: vi.fn().mockResolvedValue([]),
+			requeueStaleInProgress: vi.fn().mockResolvedValue(0),
 			markAsInProgress: vi.fn().mockResolvedValue(undefined),
 			markAsCompleted: vi.fn().mockResolvedValue(undefined),
 			markAsFailed: vi.fn().mockResolvedValue(undefined),
@@ -75,9 +77,9 @@ describe("JobWorker", () => {
 				}) as Job,
 		);
 
-		// Mock findPending to return jobs
+		// Mock claimPending to return jobs
 		// When excluding AI types, return normal jobs
-		(jobRepo.findPending as any).mockImplementation(
+		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.excludeTypes) {
 					return Promise.resolve(normalJobs.slice(0, limit));
@@ -90,7 +92,7 @@ describe("JobWorker", () => {
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
 		// Should fetch 2 normal jobs
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({ excludeTypes: ["auto_tagging"] }),
 		);
@@ -114,8 +116,8 @@ describe("JobWorker", () => {
 				}) as Job,
 		);
 
-		// Mock findPending
-		(jobRepo.findPending as any).mockImplementation(
+		// Mock claimPending
+		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.includeTypes) {
 					return Promise.resolve(aiJobs.slice(0, limit));
@@ -128,7 +130,7 @@ describe("JobWorker", () => {
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
 		// Should fetch 1 AI job
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
 		);
@@ -160,8 +162,8 @@ describe("JobWorker", () => {
 			status: "pending",
 		} as Job;
 
-		// Mock findPending
-		(jobRepo.findPending as any).mockImplementation(
+		// Mock claimPending
+		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.includeTypes) {
 					// AI request
@@ -179,11 +181,11 @@ describe("JobWorker", () => {
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
 		// Should fetch 1 AI job and 2 Normal jobs
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
 		);
-		expect(jobRepo.findPending).toHaveBeenCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({ excludeTypes: ["auto_tagging"] }),
 		);
@@ -191,7 +193,7 @@ describe("JobWorker", () => {
 		expect(processor).toHaveBeenCalledTimes(TotalExpectedCalls);
 	});
 
-	it("should serialize LanceDB sync jobs per media source", async () => {
+	it("should requeue overlapping claimed LanceDB sync jobs per media source", async () => {
 		worker.updateConfig({
 			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
 		} as AppConfig);
@@ -227,7 +229,7 @@ describe("JobWorker", () => {
 			status: "pending",
 		} as Job;
 
-		(jobRepo.findPending as any).mockImplementation(
+		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.excludeTypes) {
 					return Promise.resolve(
@@ -247,14 +249,17 @@ describe("JobWorker", () => {
 
 		expect(processor).toHaveBeenCalledTimes(2);
 		expect(processor).toHaveBeenCalledWith(fullSyncJob);
-		expect(processor).toHaveBeenCalledWith(deltaSyncOtherSourceJob);
 		expect(processor).not.toHaveBeenCalledWith(deltaSyncSameSourceJob);
+		expect(processor).toHaveBeenCalledWith(deltaSyncOtherSourceJob);
+		expect(jobRepo.update).toHaveBeenCalledWith(deltaSyncSameSourceJob.id, {
+			status: "pending",
+		});
 
 		resolveProcessor();
 		await vi.runOnlyPendingTimersAsync();
 	});
 
-	it("should pass active LanceDB sync source IDs to findPending for exclusion", async () => {
+	it("should pass active LanceDB sync source IDs to claimPending for exclusion", async () => {
 		worker.updateConfig({
 			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
 		} as AppConfig);
@@ -279,12 +284,12 @@ describe("JobWorker", () => {
 		} as AppConfig);
 
 		// First call: returns the sync job, making it active
-		(jobRepo.findPending as any).mockImplementationOnce(() => {
+		(jobRepo.claimPending as any).mockImplementationOnce(() => {
 			return Promise.resolve([syncJob]);
 		});
 
 		// Second call: should include "source-active" in excludeLanceDbSourceIds
-		(jobRepo.findPending as any).mockImplementationOnce(
+		(jobRepo.claimPending as any).mockImplementationOnce(
 			(_limit: number, options: any) => {
 				expect(options?.excludeLanceDbSourceIds).toContain("source-active");
 				return Promise.resolve([]);
@@ -301,7 +306,7 @@ describe("JobWorker", () => {
 		// Advance to trigger second poll while syncJob is still active
 		await vi.advanceTimersByTimeAsync(1000);
 
-		expect(jobRepo.findPending).toHaveBeenLastCalledWith(
+		expect(jobRepo.claimPending).toHaveBeenLastCalledWith(
 			2, // 3 slots total - 1 active job = 2 slots remaining
 			expect.objectContaining({
 				excludeLanceDbSourceIds: ["source-active"],

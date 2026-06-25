@@ -2,6 +2,7 @@ import type { TaggingServiceDeps } from "@solid-imager/application/services/tagg
 import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
 import { services } from "~/application/registry";
 import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { logger } from "~/infrastructure/logger";
 
 export { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
 
@@ -20,6 +21,7 @@ const getTaggingService = () => {
 			tagRepo: services.getTagRepository(),
 			characterRepo: services.getCharacterRepository(),
 			ipRepo: services.getIpRepository(),
+			logger,
 			sseSendEvent: (mediaSourceId: string, eventType: string, data: unknown) =>
 				SseManager.sendEvent(mediaSourceId, eventType, data),
 			readFileBuffer,

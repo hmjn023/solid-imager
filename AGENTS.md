@@ -48,6 +48,7 @@
 | スキル名 | 説明 | ロード条件 |
 |---|---|---|
 | `solid-imager` | プロジェクト概要、セットアップ、コーディング規約 | 常時 |
+| `logging-rules` | ロギング方針、Pino loggerの利用、アプリケーション・コア層でのILogger依存注入ルール | ログ出力の実装・変更、デバッグコードの整理時 |
 | `orpc-api` | oRPC APIエンドポイント開発ワークフロー | API実装・変更時 |
 | `database-schema` | DBスキーマ変更・マイグレーション手順 | DBスキーマ変更時 |
 | `ai-service` | Python AIサービス連携 | AI機能実装時 |

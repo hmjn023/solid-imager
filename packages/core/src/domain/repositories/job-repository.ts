@@ -43,4 +43,13 @@ export type IJobRepository = {
 	markAsFailed(id: string, error: string): Promise<void>;
 	update(id: string, data: Partial<Job>): Promise<void>;
 	incrementProgress(id: string): Promise<void>;
+	claimPending(
+		limit: number,
+		options?: {
+			excludeTypes?: string[];
+			includeTypes?: string[];
+			excludeLanceDbSourceIds?: string[];
+		},
+	): Promise<Job[]>;
+	requeueStaleInProgress(olderThan: Date): Promise<number>;
 };

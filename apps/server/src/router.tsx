@@ -3,6 +3,7 @@ import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
 import { isServer } from "solid-js/web";
 import { isTransientApiError } from "./infrastructure/api-clients/error-policy";
 import { routeTree } from "./routeTree.gen";
+import type { logger as LoggerInstance } from "./infrastructure/logger";
 
 const QUERY_RETRY_DELAY_CAP_MS = 5_000;
 const QUERY_RETRY_DELAY_BASE_MS = 1_000;
@@ -29,17 +30,27 @@ function createAppQueryClient(): QueryClient {
 	});
 }
 
+let serverLogger: typeof LoggerInstance | null = null;
+
 if (isServer) {
-	console.log("[Router] Server-side initialization starting...");
+	import("./infrastructure/logger")
+		.then(({ logger }) => {
+			serverLogger = logger;
+		})
+		.catch(() => {});
+
 	// Initialize services on server startup.
 	// We don't use top-level await here to avoid module format issues with CJS dependencies.
 	import("./infrastructure/bootstrap")
 		.then(({ initServices }) => {
-			console.log("[Router] Calling initServices()...");
 			initServices();
 		})
 		.catch((err) => {
-			console.error("[Router] Failed to initialize services:", err);
+			if (serverLogger) {
+				serverLogger.error({ err }, "[Router] Failed to initialize services");
+			} else {
+				console.error("[Router] Failed to initialize services:", err);
+			}
 		});
 }
 
@@ -69,7 +80,11 @@ export function getRouter() {
 			),
 		});
 	} catch (error) {
-		console.error("[Router] Error creating router:", error);
+		if (isServer && serverLogger) {
+			serverLogger.error({ err: error }, "[Router] Error creating router");
+		} else {
+			console.error("[Router] Error creating router:", error);
+		}
 		throw error;
 	}
 }

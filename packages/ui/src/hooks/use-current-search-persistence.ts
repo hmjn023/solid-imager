@@ -5,6 +5,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import { deepEqual } from "@solid-imager/core/utils/deep-equal";
 import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
+import { isServer } from "solid-js/web";
 import {
 	getSearchCondition,
 	loadPreset,
@@ -42,7 +43,7 @@ export function useCurrentSearchPersistence(
 
 	createEffect(() => {
 		const presetName = getCurrentPresetName();
-		if (!presetName) {
+		if (!presetName || isServer) {
 			return;
 		}
 
@@ -54,8 +55,9 @@ export function useCurrentSearchPersistence(
 			setIsInitialLoad(true);
 
 			try {
-				const current = await presetClient.getByName(presetName);
-				if (current) {
+				const sessionDataStr = sessionStorage.getItem(presetName);
+				if (sessionDataStr) {
+					const current = JSON.parse(sessionDataStr);
 					const allPresets = await presetClient.list();
 
 					const matchingPreset = allPresets.find(
@@ -70,16 +72,19 @@ export function useCurrentSearchPersistence(
 							order: current.order,
 						});
 					} else {
-						loadPreset(current);
+						loadPreset({
+							id: -1,
+							name: presetName,
+							value: current.value,
+							sort: current.sort,
+							order: current.order,
+							mode: current.mode,
+							createdAt: new Date(),
+						});
 						setSearchState("activePresetId", null);
 					}
 				} else {
 					resetSearchState();
-					await presetClient.create({
-						name: presetName,
-						value: { type: "group", operator: "and", children: [] },
-						mode: "simple",
-					});
 				}
 			} catch {
 				// silent — persistence errors should not disrupt the UI
@@ -108,7 +113,7 @@ export function useCurrentSearchPersistence(
 		];
 		void _track;
 
-		if (isInitialLoad() || !getCurrentPresetName()) {
+		if (isInitialLoad() || !getCurrentPresetName() || isServer) {
 			return;
 		}
 
@@ -126,7 +131,7 @@ export function useCurrentSearchPersistence(
 
 	const saveCurrentState = async () => {
 		const presetName = getCurrentPresetName();
-		if (!presetName) {
+		if (!presetName || isServer) {
 			return;
 		}
 
@@ -144,17 +149,10 @@ export function useCurrentSearchPersistence(
 		};
 
 		try {
-			const current = await presetClient.getByName(presetName);
-			if (current) {
-				await presetClient.update(current.id, presetData);
-			} else {
-				await presetClient.create({
-					name: presetName,
-					...presetData,
-				});
-			}
+			sessionStorage.setItem(presetName, JSON.stringify(presetData));
 		} catch {
 			// silent — persistence errors should not disrupt the UI
 		}
 	};
 }
+

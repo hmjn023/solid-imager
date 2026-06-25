@@ -15,6 +15,8 @@ import { mediaTags, tags } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
 type DbTag = InferSelectModel<typeof tags>;
+const DeadlockRetryLimit = 3;
+const DeadlockRetryBaseDelayMs = 25;
 
 function mapTag(dbTag: DbTag): Tag {
 	return {
@@ -219,7 +221,7 @@ export function createTagRepository(
 				const execute = async (exec: DrizzleExecutor) => {
 					const uniqueTagNames = Array.from(
 						new Set(tagsToInsert.map((tag) => tag.name)),
-					);
+					).sort(compareTagNames);
 					if (uniqueTagNames.length === 0) {
 						return;
 					}
@@ -235,21 +237,23 @@ export function createTagRepository(
 						.where(inArray(tags.name, uniqueTagNames));
 
 					const allTagsMap = new Map(allTags.map((t) => [t.name, t]));
-					const mediaTagsToInsert = tagsToInsert.map((tagToInsert) => {
-						const foundTag = allTagsMap.get(tagToInsert.name);
-						if (!foundTag) {
-							throw new Error(
-								`Tag ${tagToInsert.name} not found after insertion`,
-							);
-						}
-						return {
-							mediaId,
-							tagId: foundTag.id,
-							tagType: tagToInsert.type,
-							confidence: tagToInsert.confidence ?? null,
-							source,
-						};
-					});
+					const mediaTagsToInsert = tagsToInsert
+						.map((tagToInsert) => {
+							const foundTag = allTagsMap.get(tagToInsert.name);
+							if (!foundTag) {
+								throw new Error(
+									`Tag ${tagToInsert.name} not found after insertion`,
+								);
+							}
+							return {
+								mediaId,
+								tagId: foundTag.id,
+								tagType: tagToInsert.type,
+								confidence: tagToInsert.confidence ?? null,
+								source,
+							};
+						})
+						.sort((left, right) => compareTagNames(left.tagId, right.tagId));
 
 					if (mediaTagsToInsert.length > 0) {
 						let sourceUpdateSql = sql`excluded.source`;
@@ -279,7 +283,9 @@ export function createTagRepository(
 				if (tx) {
 					await execute(getExecutor(tx));
 				} else {
-					await getExecutor().transaction((innerTx) => execute(innerTx));
+					await retryDeadlockedTransaction(() =>
+						getExecutor().transaction((innerTx) => execute(innerTx)),
+					);
 				}
 			} catch (error) {
 				if (
@@ -299,4 +305,57 @@ export function createTagRepository(
 			}
 		},
 	};
+}
+
+function compareTagNames(left: string, right: string): number {
+	return left < right ? -1 : left > right ? 1 : 0;
+}
+
+async function retryDeadlockedTransaction(
+	run: () => Promise<void>,
+): Promise<void> {
+	for (let attempt = 1; attempt <= DeadlockRetryLimit; attempt++) {
+		try {
+			await run();
+			return;
+		} catch (error) {
+			if (!isPostgresDeadlock(error) || attempt === DeadlockRetryLimit) {
+				throw error;
+			}
+			await new Promise((resolve) => {
+				setTimeout(resolve, DeadlockRetryBaseDelayMs * attempt);
+			});
+		}
+	}
+}
+
+function isPostgresDeadlock(error: unknown): boolean {
+	const pending: unknown[] = [error];
+	const visited = new Set<object>();
+
+	while (pending.length > 0) {
+		const current = pending.pop();
+		if (!current || typeof current !== "object" || visited.has(current)) {
+			continue;
+		}
+		visited.add(current);
+
+		if (
+			("code" in current && current.code === "40P01") ||
+			("message" in current &&
+				typeof current.message === "string" &&
+				current.message.includes("deadlock detected"))
+		) {
+			return true;
+		}
+
+		if ("cause" in current) {
+			pending.push(current.cause);
+		}
+		if ("originalError" in current) {
+			pending.push(current.originalError);
+		}
+	}
+
+	return false;
 }

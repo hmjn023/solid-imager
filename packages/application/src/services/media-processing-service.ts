@@ -21,6 +21,7 @@ import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas
 import type { IMediaStorage } from "@solid-imager/core/interfaces/media-storage";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
 import type { IMediaProcessingService } from "../ports/media-processing-service";
+import type { ILogger } from "../ports/media-service";
 
 export type MediaProcessingServiceDeps = {
 	sourceRepo: SourceRepository;
@@ -33,7 +34,7 @@ export type MediaProcessingServiceDeps = {
 	jobRepo: IJobRepository;
 	imageProcessor: IImageProcessor;
 	mediaStorage: IMediaStorage;
-	logger?: { warn(msg: string, data?: unknown): void };
+	logger?: ILogger;
 	enableAutoTagging: boolean;
 	supportedExtensions: {
 		image: string[];
@@ -67,7 +68,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
 	private readonly generateThumbnail: MediaProcessingServiceDeps["generateThumbnail"];
 	private readonly sseSendEvent: MediaProcessingServiceDeps["sseSendEvent"];
-	private readonly logger?: { warn(msg: string, data?: unknown): void };
+	private readonly logger?: ILogger;
 
 	constructor(deps: MediaProcessingServiceDeps) {
 		this.sourceRepo = deps.sourceRepo;
@@ -178,38 +179,28 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		const payload = job.payload;
 		if (!isRecord(payload)) {
-			this.logger?.warn("Missing payload or invalid payload in job", {
-				jobId: job.id,
-			});
-			return;
+			throw new Error(`Missing payload or invalid payload in job ${job.id}`);
 		}
 		const mediaId = payload.mediaId;
 		if (typeof mediaId !== "string") {
-			this.logger?.warn("Missing or invalid mediaId in job payload", {
-				jobId: job.id,
-			});
-			return;
+			throw new Error(`Missing or invalid mediaId in job payload ${job.id}`);
 		}
 
 		const media = await this.mediaRepo.findById(mediaId);
 		if (!media) {
-			this.logger?.warn("Media not found for processMedia job", { mediaId });
+			this.logger?.warn({ mediaId }, "Media not found for processMedia job");
 			return;
 		}
 
 		const sourcePath = payload.sourcePath;
 		if (typeof sourcePath !== "string") {
-			this.logger?.warn("Missing or invalid sourcePath in job payload", {
-				jobId: job.id,
-			});
-			return;
+			throw new Error(`Missing or invalid sourcePath in job payload ${job.id}`);
 		}
 		const mediaPath = path.join(sourcePath, media.filePath);
 
 		const mediaSourceId = job.mediaSourceId;
 		if (!mediaSourceId) {
-			this.logger?.warn("Missing mediaSourceId in job", { jobId: job.id });
-			return;
+			throw new Error(`Missing mediaSourceId in job ${job.id}`);
 		}
 
 		// Step 1: Metadata extraction
@@ -235,7 +226,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 					);
 				}
 			} catch (e) {
-				console.warn(
+				this.logger?.warn(
 					{ err: e, mediaId },
 					"Metadata extraction failed, continuing...",
 				);
@@ -249,7 +240,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				mediaId: media.id,
 			});
 		} catch (e) {
-			console.error({ err: e, mediaId }, "Thumbnail generation failed");
+			this.logger?.error({ err: e, mediaId }, "Thumbnail generation failed");
 		}
 
 		// Step 3: AI tagging
@@ -267,7 +258,10 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 					},
 				});
 			} catch (e) {
-				console.warn({ err: e, mediaId }, "Failed to queue AI tagging job");
+				this.logger?.warn(
+					{ err: e, mediaId },
+					"Failed to queue AI tagging job",
+				);
 			}
 		}
 
@@ -336,7 +330,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			const authorIds = allAuthors.map((a) => a.id);
 			await this.authorRepo.addMediaBulk(mediaId, authorIds, tx);
 		} catch (e) {
-			console.warn({ err: e }, "Failed to register authors");
+			this.logger?.warn({ err: e }, "Failed to register authors");
 		}
 	}
 
@@ -471,7 +465,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				);
 			}
 		} catch (e) {
-			console.warn({ err: e }, "Failed to register characters");
+			this.logger?.warn({ err: e }, "Failed to register characters");
 		}
 	}
 
@@ -509,7 +503,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 			await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "manual", tx);
 		} catch (e) {
-			console.warn({ err: e }, "Failed to register IPs");
+			this.logger?.warn({ err: e }, "Failed to register IPs");
 		}
 	}
 
@@ -527,7 +521,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			const projectIds = allProjects.map((p) => p.id);
 			await this.projectRepo.addMediaBulk(mediaId, projectIds, tx);
 		} catch (e) {
-			console.warn({ err: e }, "Failed to register projects");
+			this.logger?.warn({ err: e }, "Failed to register projects");
 		}
 	}
 
