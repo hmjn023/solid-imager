@@ -20,24 +20,27 @@ UI: Kobalte + Tailwind CSS + solid-ui
 Database: PostgreSQL / PGlite
 ORM: Drizzle ORM
 Validation: Zod
-AI/ML: Python (FastAPI, dghs-imgutils, onnxruntime)
+AI/ML: dghs-imgutils-rs
 Testing: Vitest / Playwright
-Lint: Biome
+Tooling: Vite+ / Biome
 ```
 
 ### プロジェクト構成（モノレポ）
 
-- `apps/server/`: メインサーバー (TanStack Start + oRPC)。バックエンドAPIとフロントエンドUIを統合。
+- `apps/server/`: メインサーバー (TanStack Start + oRPC)。バックエンドAPIとWeb UIを統合。
+- `apps/tauri/`: Tauri アプリ。`src/` は独立 SPA、`src-tauri/` は Rust 実装。
 - `apps/cli/`: メディア管理・同期用CLIツール。
-- `packages/core/`: ドメインモデル、Zodスキーマ、ビジネスロジック、各インターフェース。
-- `packages/ui/`: 共通UIコンポーネントライブラリ (Kobalte + Tailwind CSS + solid-ui)。
-- `xtracter/`: メディア収集用ブラウザ拡張機能。
-- `src-python/`: AI解析サービス (FastAPI + dghs-imgutils)。
+- `apps/xtracter/`: メディア収集用ブラウザ拡張機能。
+- `packages/core/`: ドメインモデル、Zodスキーマ、contract、各種 port。
+- `packages/application/`: ユースケース・アプリケーションサービス。
+- `packages/db/`: Drizzle schema、DB repository 実装、transaction manager。
+- `packages/ui/`: 共通UIコンポーネントライブラリ。
+- `packages/client/`: oRPC client factory などの共有クライアント基盤。
 
 ## セットアップ
 
 ```bash
-bun install
+vp install
 cp apps/server/.env.example apps/server/.env
 sudo -E docker compose --project-directory . up -d
 bun --filter @solid-imager/server run db:migrate
@@ -49,23 +52,26 @@ bun run dev
 | コマンド | 用途 |
 |---|---|
 | `bun run dev` | 開発サーバー起動 |
-| `bun run test` | ユニットテスト |
-| `bun run test:e2e` | E2Eテスト |
-| `bun run lint` | リントチェック |
-| `bun run db:generate` | マイグレーション生成 |
+| `vp check` | format / lint / typecheck |
+| `vp test` | Vite+ 管理下のテスト |
+| `bun run test` | ワークスペース横断テスト |
+| `bun run lint` | lint |
+| `bun --filter @solid-imager/server run db:generate` | マイグレーション生成 |
 
 ## 設定ファイル
 
 | ファイル | 用途 |
 |---|---|
-| `drizzle.config.ts` | DB接続、マイグレーション |
+| `packages/db/src/schema.ts` | Drizzle DBスキーマ |
+| `apps/server/drizzle.config.ts` | DB接続、マイグレーション |
 | `biome.json` | Linter/Formatter |
-| `vitest.config.ts` | ユニットテスト |
-| `playwright.config.ts` | E2Eテスト |
+| `vitest.workspace.ts` | Vitest workspace |
+| `apps/server/playwright.config.ts` | E2Eテスト |
 | `compose.yml` | PostgreSQL (Docker) |
 
 ## 詳細
 
 - **API設計**: [docs/design/api-design.md](./docs/design/api-design.md)
-- **DBスキーマ**: `apps/server/src/infrastructure/db/schema.ts`
+- **Tauri SPA設計**: [docs/design/tauri-spa-architecture.md](./docs/design/tauri-spa-architecture.md)
+- **DBスキーマ**: `packages/db/src/schema.ts`
 - **開発ルール**: [AGENTS.md](./AGENTS.md)
