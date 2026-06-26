@@ -25,7 +25,7 @@
 		"@tanstack/db": "^0.6.8",
 		"@tanstack/query-db-collection": "^1.0.40",
 		"@tanstack/solid-db": "^0.2.22",
-		"@tanstack/solid-query": "5.99.2",
+		"@tanstack/solid-query": "5.101.1",
 		"@tanstack/solid-router": "latest",
 		"@tanstack/tauri-db-sqlite-persistence": "^0.2.0",
 		"@tauri-apps/api": "^2.11.0",
@@ -44,6 +44,6 @@
 		"tailwindcss-animate": "^1.0.7",
 		"typescript": "rc",
 		"vite-plugin-solid": "^2.11.12",
-		"vite-plus": "^0.1.24"
+		"vite-plus": "^0.2.1"
 	}
 }
