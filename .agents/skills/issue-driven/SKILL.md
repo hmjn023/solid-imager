@@ -1,6 +1,6 @@
 ---
 name: issue-driven
-description: GitHub Issue を「タスクの定義」と「思考の証跡」として活用する自律型開発ワークフロー。タスク開始時の issue コメント、実装過程の証跡、およびプルリクエスト作成前の進捗管理を issue 単位で行う際に使用してください。
+description: GitHub Issue をタスク定義と思考の証跡として使う開発ワークフロー。issue 起点の調査、計画コメント、実装メモ、PR前の進捗管理を行う時に使用する。
 ---
 
 # Issue-Driven Development Skill

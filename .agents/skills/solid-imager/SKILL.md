@@ -1,76 +1,104 @@
 ---
 name: solid-imager
-description: solid-imager プロジェクトの全体像、モノレポ構成、クリーンアーキテクチャの依存関係ルール、および共通のコーディング規約（TypeScript/Biome）。開発環境のセットアップ、環境変数の設定、またはプロジェクト全体の設計方針を確認する際に使用してください。
+description: solid-imager プロジェクトの全体像、モノレポ構成、クリーンアーキテクチャ、共通のコーディング規約を扱う。開発環境、依存方向、パッケージ境界、全体設計の確認時に使用する。
 ---
 
 # solid-imager プロジェクトスキル
 
-このプロジェクトは、AIによって生成された画像などのメディアを管理する包括的なメディア管理システムです。モノレポ構成で、サーバー(`apps/server`)、コアパッケージ(`packages/core`)、ブラウザ拡張機能(`xtracter`)で構成されています。
+このプロジェクトは、AIによって生成された画像などのメディアを管理する包括的なメディア管理システムです。Bun/Vite+ ベースのモノレポで、Web サーバー、Tauri SPA、CLI、ブラウザ拡張、共有ドメイン、アプリケーションサービス、DB 実装、共有 UI を分離しています。
+
+## 現在の主要構成
+
+- `apps/server`: `@solid-imager/server`。TanStack Start + oRPC の Web/SSR アプリ。API ルーター、サーバー固有の wiring、ジョブ、ストレージ実装を持つ。
+- `apps/tauri`: Tauri アプリ。`src/` は独立 SPA、`src-tauri/` は Rust 側実装。
+- `apps/cli`: `@solid-imager/cli`。管理・同期用 CLI。
+- `apps/xtracter`: ブラウザ拡張機能。
+- `packages/core`: ドメインスキーマ、ドメイン型、契約、repository/service/interface の port。
+- `packages/application`: ユースケース・アプリケーションサービス。原則として `core` の port に依存し、server/DB 固有実装へ依存しない。
+- `packages/db`: Drizzle schema、DB repository 実装、transaction manager。
+- `packages/ui`: SolidJS 共有 UI、hooks、query options、layout、画面部品。
+- `packages/client`: oRPC client factory などの共有クライアント基盤。
 
 ## 主要ドキュメント
 
-- **アーキテクチャ:** `docs/architecture/ARCHITECTURE.md`
-- **データベース設計:** `apps/server/src/infrastructure/db/schema.ts` (Drizzle スキーマ)
+- **開発ルール:** `AGENTS.md`
 - **API設計:** `docs/design/api-design.md`
-- **技術スタック:** `docs/design/technology-stack.md`
+- **Tauri SPA 設計:** `docs/design/tauri-spa-architecture.md`
+- **DBスキーマ:** `packages/db/src/schema.ts` (`apps/server/src/infrastructure/db/schema.ts` は再 export)
+- **OpenAPI出力:** `apps/server/public/openapi.json`
 
 ## 開発セットアップ
 
-すべてのコマンドは `bun` を使用して実行します。
+このリポジトリは Vite+ を導入しています。`vp` はグローバルに入っていないことがあるため、コマンド例では `bun x vp ...` を使います。依存関係の更新後や作業開始時は AGENTS.md の Vite+ チェックリストを優先してください。
 
 1. **依存関係のインストール:**
    ```bash
-   bun install
+   bun x vp install
    ```
 
 2. **環境変数の設定:**
    ```bash
-   cp .env.example .env
+   cp apps/server/.env.example apps/server/.env
    ```
 
 3. **データベースのセットアップ:**
    - PostgreSQL (Docker):
      ```bash
      sudo -E docker compose --project-directory . up -d
-     bun --filter @solid-imager/server db:migrate
+     bun --filter @solid-imager/server run db:migrate
      ```
    - PGlite:
      ```bash
-     # .env で DB_HOST=pglite を設定
-     bun --filter @solid-imager/server db:migrate:pglite
+     # apps/server/.env で DB_HOST=pglite を設定
+     bun --filter @solid-imager/server run db:migrate:pglite
      ```
 
 ## Working Rules
 
 ### クリーンアーキテクチャ
-`ARCHITECTURE.md` に記載されているレイヤー間の依存関係ルールを厳守してください。ドメイン層は他のどのレイヤーにも依存してはいけません。
+依存方向は原則として `apps/*` / `infrastructure` -> `packages/application` -> `packages/core` です。`packages/core` は他のプロジェクト内パッケージへ依存しません。`packages/application` は DB、server、Tauri などの実装詳細へ依存せず、`core` の port とドメイン型を使います。`packages/db` は `core` の repository port を実装します。
+
+### パッケージ境界
+既存コードには deep import が多く残っていますが、新規コードでは公開 API を薄く保つ方針を優先します。内部ファイル構成に直接依存する import を増やす前に、適切な barrel、port、factory を用意できないか検討してください。
 
 ### 型安全性
-`any` 型の使用は避け、TypeScriptの型システムを最大限に活用してください。型定義のインポートには `import type` を使用します。
+`any`、不要な `unknown`、`as unknown as ...`、`as any` による型のごまかしは禁止です。外部ライブラリ境界では公開型、型ガード、Zod schema、明示的 mapper を優先し、やむを得ない場合は最小スコープに限定して理由をコメントします。型定義のインポートには `import type` を使用します。
 
 ### インポートエイリアス
 - **Server:** `~/*` → `apps/server/src`
 - **Core Package:** `@/*` → `packages/core/src`
+- **Workspace Packages:** `@solid-imager/core`, `@solid-imager/application`, `@solid-imager/db`, `@solid-imager/ui`, `@solid-imager/client`
 
 ### Bun固有APIの活用
-サーバー側（`apps/server` など）の実装においては、パフォーマンスの最大化と開発効率の向上のため、`Bun.file()` などのBun固有のAPIを積極的に活用してください。ただし、ブラウザや他の環境で動作する共有パッケージ（`packages/core`, `packages/client` 等）では、ポータビリティを確保するため、可能な限りNode.js互換のAPIやWeb標準APIを使用してください。
+サーバー側（`apps/server` など）の実装では Bun API を使えます。ただし、ブラウザ、Tauri、共有パッケージ（`packages/core`, `packages/application`, `packages/ui`, `packages/client` 等）では、ポータビリティを確保するため Node.js 互換 API や Web 標準 API を優先してください。
 
-### 開発サーバーの不使用
-開発サーバー (`bun run dev`) を起動しないでください。あなたの役割はコードの実装と修正であり、アプリケーションを直接実行することではありません。
+### 開発サーバー
+通常のコード修正では開発サーバーを起動しません。UI 実装やブラウザ検証が必要な場合のみ、既存ポートを確認して `bun x vp dev` など適切なコマンドを使います。
 
 ### コード品質
-コミットする前には、必ず **Biome** を使ってコードの品質をチェックしてください。
+コミット前には Vite+ / Biome / TypeScript のチェックを実行してください。
 ```bash
-bun run lint          # ルートでのチェック
-bun --filter @solid-imager/server check  # サーバー側（型チェック含む）
-bun run format        # フォーマットのみ
+bun x vp check
+bun run typecheck
 ```
 
 ### テスト
 ```bash
-bun run test                                          # ユニット/インテグレーション
-bun --filter @solid-imager/server test:e2e            # E2E
+bun x vp test
+bun run test
 ```
+
+必要に応じて package/app 単位の script も確認して実行します。
+
+## 変更時に参照する関連スキル
+
+- API/oRPC 変更: `orpc-api`, `schema-driven-dev`, `safe-dto`, `api-docs`
+- DB schema/repository 変更: `database-schema`, `repository-rules`
+- UI 変更: `ui-components`, `tanstack-db`, 必要に応じて `modern-web-guidance`
+- AI/ML 連携: `ai-service`
+- CLI 変更: `cli`
+- ブラウザ拡張: `browser-extension`
+- ログ実装・整理: `logging-rules`
 
 ### TypeScript コーディング規約 (Google TypeScript Style Guide 基準)
 

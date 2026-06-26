@@ -1,6 +1,6 @@
 ---
 name: tanstack-db
-description: TanStack DBを用いたクライアント側データレイヤーの実装。コレクション定義、永続化設定、useLiveQueryフックの使用、includesによる階層的データ投影を行う際に使用してください。
+description: TanStack DBを用いたクライアント側データレイヤーの実装。コレクション定義、永続化設定、useLiveQuery、includes による階層的データ投影、Tauri/ブラウザのローカルDB同期を扱う時に使用する。
 ---
 
 # TanStack DB Skill

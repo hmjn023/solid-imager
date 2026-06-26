@@ -1,6 +1,6 @@
 ---
 name: ui-components
-description: solid-ui (shadcn/ui port) のコンポーネント管理。UIコンポーネントの新規追加 ('solidui-cli add')、初期化、テーマ設定、またはボタンや入力フォームなどのUIパーツを 'apps/server/src/components/ui/' 配下に実装・修正する際に使用してください。
+description: solid-ui (shadcn/ui port) と共有UIの管理。ボタン、入力、ダイアログ等のUI部品、'packages/ui/src/'、またはアプリ固有UIの実装・修正時に使用する。
 ---
 
 # UI Components (solid-ui) スキル
@@ -9,7 +9,9 @@ description: solid-ui (shadcn/ui port) のコンポーネント管理。UIコン
 
 ## Working Rules
 
-コンポーネントの追加等は `apps/server` ディレクトリで行ってください。
+共通化できるUIは `packages/ui/src/` を優先します。server/Tauri 固有のルーティングやAPI呼び出しを含む場合だけ、各 `apps/*/src` 側に置きます。
+
+solid-ui CLI を使う場合は、追加先の app/package の既存構成を確認してから実行します。
 
 - **初期化コマンド:**
   ```bash
@@ -25,6 +27,6 @@ description: solid-ui (shadcn/ui port) のコンポーネント管理。UIコン
 
 | ユーザーの意図 | やること |
 |---|---|
-| solid-ui初期化 | `cd apps/server && bunx solidui-cli@latest init` |
-| コンポーネント追加 | `cd apps/server && bunx solidui-cli@latest add [component]` |
+| solid-ui初期化 | 追加先を確認して `solidui-cli init` |
+| コンポーネント追加 | 共有なら `packages/ui/src/`、固有なら該当 app 側へ追加 |
 | コンポーネント一覧確認 | solid-ui.com で利用可能なコンポーネントを確認 |
