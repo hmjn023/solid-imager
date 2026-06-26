@@ -17,7 +17,7 @@
     "@kobalte/core": "^0.13.11",
     "@solidjs/router": "^0.16.1",
     "@tanstack/solid-form": "^1.33.0",
-    "@tanstack/solid-query": "5.99.2",
+    "@tanstack/solid-query": "5.101.1",
     "@tanstack/solid-router": "^1.170.11",
     "@tanstack/solid-virtual": "^3.13.26",
     "@tanstack/zod-form-adapter": "^0.42.1",
@@ -35,7 +35,7 @@
     "@biomejs/biome": "^2.4.16",
     "@solid-imager/core": "workspace:*",
     "typescript": "rc",
-    "vite-plus": "^0.1.24",
+    "vite-plus": "^0.2.1",
     "vite-tsconfig-paths": "^6.1.1",
     "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
   }

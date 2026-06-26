@@ -25,6 +25,6 @@
     "@types/bun": "^1.3.14",
     "typescript": "rc",
     "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
-    "vite-plus": "^0.1.24"
+    "vite-plus": "^0.2.1"
   }
 }
