@@ -1,6 +1,6 @@
 ---
 name: solid-imager
-description: solid-imager プロジェクトの全体像、モノレポ構成、クリーンアーキテクチャの依存関係ルール、および共通のコーディング規約（TypeScript/Biome）。開発環境のセットアップ、環境変数の設定、またはプロジェクト全体の設計方針を確認する際に使用してください。
+description: solid-imager プロジェクトの全体像、モノレポ構成、クリーンアーキテクチャ、共通のコーディング規約を扱う。開発環境、依存方向、パッケージ境界、全体設計の確認時に使用する。
 ---
 
 # solid-imager プロジェクトスキル
@@ -50,7 +50,7 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
    - PGlite:
      ```bash
      # apps/server/.env で DB_HOST=pglite を設定
-     bun --filter @solid-imager/server db:migrate:pglite
+     bun --filter @solid-imager/server run db:migrate:pglite
      ```
 
 ## Working Rules
