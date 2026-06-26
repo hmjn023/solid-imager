@@ -18,7 +18,7 @@ description: Node/Bun パッケージの追加・更新・削除を扱う。pack
 
 1. 既存依存を確認する。
    ```bash
-   bun pm pkg get dependencies devDependencies
+   bun pm ls
    sed -n '1,140p' <workspace>/package.json
    ```
 
