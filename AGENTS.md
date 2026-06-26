@@ -62,6 +62,7 @@
 | `repository-rules` | リポジトリ層ルール（明示的マッピング） | リポジトリ実装時 |
 | `schema-driven-dev` | ZodによるSchema-Driven Development | スキーマ定義時 |
 | `ui-components` | solid-ui (shadcn/ui ポート) コンポーネント開発 | UIコンポーネント変更時 |
+| `package-management` | Bun/Nodeパッケージ追加・更新・削除 | package.json・bun.lock変更時 |
 | `vite-plus` | Vite+ CLI操作（既存） | Vite+関連タスク時 |
 | `cli` | imager-cli コマンド開発 | CLIコマンド追加・変更時 |
 | `git-worktree` | git worktree を用いた並列開発ワークフロー | 複数PRの同時進行時 |
