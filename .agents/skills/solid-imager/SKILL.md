@@ -29,11 +29,11 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 
 ## 開発セットアップ
 
-このリポジトリは Vite+ (`vp`) を導入しています。依存関係の更新後や作業開始時は AGENTS.md の Vite+ チェックリストを優先してください。
+このリポジトリは Vite+ を導入しています。`vp` はグローバルに入っていないことがあるため、コマンド例では `bun x vp ...` を使います。依存関係の更新後や作業開始時は AGENTS.md の Vite+ チェックリストを優先してください。
 
 1. **依存関係のインストール:**
    ```bash
-   vp install
+   bun x vp install
    ```
 
 2. **環境変数の設定:**
@@ -73,18 +73,18 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 サーバー側（`apps/server` など）の実装では Bun API を使えます。ただし、ブラウザ、Tauri、共有パッケージ（`packages/core`, `packages/application`, `packages/ui`, `packages/client` 等）では、ポータビリティを確保するため Node.js 互換 API や Web 標準 API を優先してください。
 
 ### 開発サーバー
-通常のコード修正では開発サーバーを起動しません。UI 実装やブラウザ検証が必要な場合のみ、既存ポートを確認して `vp dev` など適切なコマンドを使います。
+通常のコード修正では開発サーバーを起動しません。UI 実装やブラウザ検証が必要な場合のみ、既存ポートを確認して `bun x vp dev` など適切なコマンドを使います。
 
 ### コード品質
 コミット前には Vite+ / Biome / TypeScript のチェックを実行してください。
 ```bash
-vp check
+bun x vp check
 bun run typecheck
 ```
 
 ### テスト
 ```bash
-vp test
+bun x vp test
 bun run test
 ```
 

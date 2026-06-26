@@ -40,7 +40,7 @@ Tooling: Vite+ / Biome
 ## セットアップ
 
 ```bash
-vp install
+bun x vp install
 cp apps/server/.env.example apps/server/.env
 sudo -E docker compose --project-directory . up -d
 bun --filter @solid-imager/server run db:migrate
@@ -52,8 +52,8 @@ bun run dev
 | コマンド | 用途 |
 |---|---|
 | `bun run dev` | 開発サーバー起動 |
-| `vp check` | format / lint / typecheck |
-| `vp test` | Vite+ 管理下のテスト |
+| `bun x vp check` | format / lint / typecheck |
+| `bun x vp test` | Vite+ 管理下のテスト |
 | `bun run test` | ワークスペース横断テスト |
 | `bun run lint` | lint |
 | `bun --filter @solid-imager/server run db:generate` | マイグレーション生成 |
