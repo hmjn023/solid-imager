@@ -3,7 +3,7 @@ import path from "node:path";
 import { Glob } from "bun";
 import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -61,7 +61,7 @@ async function processDeletions(
 			try {
 				await MediaRepository.delete(fileToDelete.id);
 				await deleteThumbnail(mediaSourceId, fileToDelete.id);
-				SseManager.sendEvent(mediaSourceId, "media-deleted", {
+				RealtimeEventBus.publishSource(mediaSourceId, "media-deleted", {
 					filePath: fileToDelete.relativePath,
 					timestamp: new Date().toISOString(),
 				});

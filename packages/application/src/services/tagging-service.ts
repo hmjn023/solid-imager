@@ -5,6 +5,7 @@ import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-re
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
+import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/events";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { DEFAULT_MANUAL_CONFIDENCE } from "@solid-imager/core/domain/tagging/constants";
 import type {
@@ -22,11 +23,7 @@ export type TaggingServiceDeps = {
 	characterRepo: CharacterRepository;
 	ipRepo: IIpRepository;
 	logger?: ILogger;
-	sseSendEvent: (
-		mediaSourceId: string,
-		eventType: string,
-		data: unknown,
-	) => void;
+	publishSourceEvent: SourceEventPublisher;
 	readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
 };
 
@@ -37,11 +34,7 @@ export class TaggingServiceImpl implements ITaggingService {
 	private readonly tagRepo: TagRepositoryDef;
 	private readonly characterRepo: CharacterRepository;
 	private readonly ipRepo: IIpRepository;
-	private readonly sseSendEvent: (
-		mediaSourceId: string,
-		eventType: string,
-		data: unknown,
-	) => void;
+	private readonly publishSourceEvent: SourceEventPublisher;
 	private readonly readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
 	private readonly logger?: ILogger;
 
@@ -52,7 +45,7 @@ export class TaggingServiceImpl implements ITaggingService {
 		this.tagRepo = deps.tagRepo;
 		this.characterRepo = deps.characterRepo;
 		this.ipRepo = deps.ipRepo;
-		this.sseSendEvent = deps.sseSendEvent;
+		this.publishSourceEvent = deps.publishSourceEvent;
 		this.readFileBuffer = deps.readFileBuffer;
 		this.logger = deps.logger;
 	}
@@ -306,7 +299,7 @@ export class TaggingServiceImpl implements ITaggingService {
 		}
 
 		// Notify clients of the update
-		this.sseSendEvent(mediaSourceId, "media-changed", {
+		this.publishSourceEvent(mediaSourceId, "media-changed", {
 			filePath,
 			mediaId,
 			timestamp: new Date().toISOString(),

@@ -69,6 +69,7 @@
 | `git-pr` | ブランチ作成→コミット→push→PR作成の標準ワークフロー | 単一PRの作成時 |
 | `issue-driven` | GitHub Issue駆動開発ワークフロー（証跡・進捗管理） | issueをベースに開発作業を始めるとき |
 | `tanstack-db` | TanStack DBクライアントデータレイヤー（永続化、useLiveQuery、includes） | クライアント側データレイヤー変更時 |
+| `realtime-events` | 型付きリアルタイムイベント、oRPC Event Iterator、pub/sub、再接続 | SSE・イベント配信・購読・イベントschema変更時 |
 
 <!--VITE PLUS START-->
 

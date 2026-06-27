@@ -1,5 +1,9 @@
-import { os } from "@orpc/server";
+import { eventIterator, os } from "@orpc/server";
 import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
+import {
+	type SourceEvent,
+	sourceEventSchema,
+} from "@solid-imager/core/domain/sources/events";
 import {
 	localConnectionSchema,
 	mediaSourceInfoSchema,
@@ -15,7 +19,7 @@ import { BackupService } from "~/application/services/backup-service";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import {
 	asDumpStream,
@@ -488,16 +492,14 @@ export const sourcesRouter = {
 			},
 		})
 		.input(z.object({ id: z.string().uuid().or(z.literal("*")) }))
+		.output(eventIterator(sourceEventSchema))
 		.handler(async function* ({ input, signal }) {
-			// Yield initial connection event
-			yield { event: "connected", data: "connected" };
-
 			// Queue for events — use pointer index instead of shift()
-			const queue: { event: string; data: unknown }[] = [];
+			const queue: SourceEvent[] = [];
 			let head = 0;
 			let resolve: (() => void) | null = null;
 
-			const onEvent = (payload: { event: string; data: unknown }) => {
+			const onEvent = (payload: SourceEvent) => {
 				queue.push(payload);
 				if (resolve) {
 					resolve();
@@ -505,8 +507,7 @@ export const sourcesRouter = {
 				}
 			};
 
-			const eventName = input.id === "*" ? "event:*" : `event:${input.id}`;
-			SseManager.emitter.on(eventName, onEvent);
+			const unsubscribe = RealtimeEventBus.subscribeToSource(input.id, onEvent);
 
 			try {
 				while (!signal?.aborted) {
@@ -538,7 +539,7 @@ export const sourcesRouter = {
 					}
 				}
 			} finally {
-				SseManager.emitter.off(eventName, onEvent);
+				unsubscribe();
 			}
 		}),
 };

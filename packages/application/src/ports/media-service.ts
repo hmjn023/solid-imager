@@ -13,6 +13,11 @@ import type {
 	UploadMediaRequest,
 	UploadResponse,
 } from "@solid-imager/core/domain/media/upload-schemas";
+import type {
+	SourceEventCommand,
+	SourceEventData,
+	SourceEventName,
+} from "@solid-imager/core/domain/sources/events";
 
 // ============================================================================
 // Deferred Action Types (moved from server's job-dispatch-service)
@@ -34,11 +39,9 @@ export type DeferredJobs = {
 	jobs: DeferredJob[];
 };
 
-export type DeferredSse = {
+export type DeferredSourceEvent = {
 	mediaSourceId: string;
-	event: string;
-	payload: unknown;
-};
+} & SourceEventCommand;
 
 export type FileToDelete = {
 	basePath: string;
@@ -52,7 +55,7 @@ export type ThumbnailToDelete = {
 
 export type DeferredActions = {
 	jobs: DeferredJobs[];
-	sse: DeferredSse[];
+	sourceEvents: DeferredSourceEvent[];
 	filesToDelete?: FileToDelete[];
 	thumbnailsToDelete?: ThumbnailToDelete[];
 };
@@ -61,8 +64,12 @@ export type DeferredActions = {
 // Infrastructure Abstractions (server-specific concerns)
 // ============================================================================
 
-export interface ISseNotifier {
-	sendEvent(mediaSourceId: string, eventType: string, data: unknown): void;
+export interface ISourceEventPublisher {
+	publishSource<TName extends SourceEventName>(
+		mediaSourceId: string,
+		eventType: TName,
+		data: SourceEventData<TName>,
+	): void;
 	notifyMediaCopied(sourceId: string, targetId: string, media: Media): void;
 }
 

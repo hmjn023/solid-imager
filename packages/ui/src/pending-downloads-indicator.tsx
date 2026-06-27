@@ -1,3 +1,4 @@
+import type { ImportEvent } from "@solid-imager/core/domain/sources/events";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
@@ -8,17 +9,13 @@ import {
 	onMount,
 	Show,
 } from "solid-js";
-import { isImportInboxEvent } from "./import-inbox-helpers";
 import {
 	ImportReviewModal,
 	type PendingImportJob,
 } from "./import-review-modal";
 import { toast } from "./toast";
 
-export type ImportEventHandler = (
-	event: string,
-	payload: unknown,
-) => void | Promise<void>;
+export type ImportEventHandler = (event: ImportEvent) => void | Promise<void>;
 
 export type PendingDownloadsIndicatorProps = {
 	listPending: () => Promise<PendingImportJob[]>;
@@ -51,10 +48,8 @@ export function PendingDownloadsIndicator(
 		let cleanup: (() => void) | undefined;
 
 		void Promise.resolve(
-			props.subscribeImportEvents((event) => {
-				if (isImportInboxEvent(event)) {
-					void refetch();
-				}
+			props.subscribeImportEvents(() => {
+				void refetch();
 			}),
 		)
 			.then((unsub) => {

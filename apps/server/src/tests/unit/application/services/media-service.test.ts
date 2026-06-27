@@ -187,7 +187,7 @@ describe("MediaService Unit Tests", () => {
 		};
 
 		const mockSseNotifier = {
-			sendEvent: vi.fn(),
+			publishSource: vi.fn(),
 			notifyMediaCopied: vi.fn(),
 		};
 		const mockThumbnailManager = {
