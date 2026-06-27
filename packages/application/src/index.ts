@@ -14,7 +14,7 @@ export type {
 	IPresetService,
 	IProjectService,
 	ISearchService,
-	ISseNotifier,
+	ISourceEventPublisher,
 	ITaggingService,
 	ITagService,
 	IThumbnailManager,

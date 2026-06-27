@@ -17,6 +17,7 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/events";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { IMediaStorage } from "@solid-imager/core/interfaces/media-storage";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
@@ -46,11 +47,7 @@ export type MediaProcessingServiceDeps = {
 		sourcePath: string,
 		mediaSourceId: string,
 	) => Promise<void>;
-	sseSendEvent: (
-		mediaSourceId: string,
-		eventType: string,
-		data: unknown,
-	) => void;
+	publishSourceEvent: SourceEventPublisher;
 };
 
 export class MediaProcessingServiceImpl implements IMediaProcessingService {
@@ -67,7 +64,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private enableAutoTagging: boolean;
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
 	private readonly generateThumbnail: MediaProcessingServiceDeps["generateThumbnail"];
-	private readonly sseSendEvent: MediaProcessingServiceDeps["sseSendEvent"];
+	private readonly publishSourceEvent: SourceEventPublisher;
 	private readonly logger?: ILogger;
 
 	constructor(deps: MediaProcessingServiceDeps) {
@@ -84,7 +81,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		this.enableAutoTagging = deps.enableAutoTagging;
 		this.supportedExtensions = deps.supportedExtensions;
 		this.generateThumbnail = deps.generateThumbnail;
-		this.sseSendEvent = deps.sseSendEvent;
+		this.publishSourceEvent = deps.publishSourceEvent;
 		this.logger = deps.logger;
 	}
 
@@ -164,7 +161,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		});
 
 		// Notify clients
-		this.sseSendEvent(mediaSourceId, "media-added", {
+		this.publishSourceEvent(mediaSourceId, "media-added", {
 			mediaId: media.id,
 			filePath: media.filePath,
 		});
@@ -236,7 +233,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		// Step 2: Thumbnail generation
 		try {
 			await this.generateThumbnail(media, sourcePath, mediaSourceId);
-			this.sseSendEvent(mediaSourceId, "thumbnail-generated", {
+			this.publishSourceEvent(mediaSourceId, "thumbnail-generated", {
 				mediaId: media.id,
 			});
 		} catch (e) {

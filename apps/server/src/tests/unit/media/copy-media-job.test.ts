@@ -208,7 +208,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 				audio: [".mp3", ".wav"],
 			},
 			generateThumbnail: generateThumbnail as any,
-			sseSendEvent: vi.fn() as any,
+			publishSourceEvent: vi.fn() as any,
 		});
 		services.registerMediaProcessingService(mediaProcessingService);
 	});

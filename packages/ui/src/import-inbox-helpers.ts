@@ -12,11 +12,3 @@ export function getPreferredImportSourceId(sources: SafeMediaSource[]): string {
 export function getPendingImportPrimaryAuthor(item: DownloadItem): string {
 	return item.authors?.[0]?.name || "?";
 }
-
-export function isImportInboxEvent(event: string): boolean {
-	return (
-		event === "import-request:created" ||
-		event === "import-request:processed" ||
-		event === "import-request:deleted"
-	);
-}

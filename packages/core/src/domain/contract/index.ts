@@ -7,6 +7,7 @@ export { directoriesContract } from "./directories.contract";
 export { downloadsContract } from "./downloads.contract";
 export { importsContract } from "./imports.contract";
 export { ipsContract } from "./ips.contract";
+export { jobsContract } from "./jobs.contract";
 export { mediaContract } from "./media.contract";
 export { presetsContract } from "./presets.contract";
 export { projectsContract } from "./projects.contract";
@@ -24,6 +25,7 @@ import { directoriesContract } from "./directories.contract";
 import { downloadsContract } from "./downloads.contract";
 import { importsContract } from "./imports.contract";
 import { ipsContract } from "./ips.contract";
+import { jobsContract } from "./jobs.contract";
 import { mediaContract } from "./media.contract";
 import { presetsContract } from "./presets.contract";
 import { projectsContract } from "./projects.contract";
@@ -50,6 +52,7 @@ export const appContract = {
 	directories: directoriesContract,
 	ai: aiContract,
 	imports: importsContract,
+	jobs: jobsContract,
 	utils: utilsContract,
 	config: configContract,
 	presets: presetsContract,

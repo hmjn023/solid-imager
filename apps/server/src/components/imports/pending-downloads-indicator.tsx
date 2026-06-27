@@ -1,3 +1,4 @@
+import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import {
 	type PendingDownloadsIndicatorProps,
 	PendingDownloadsIndicator as SharedPendingDownloadsIndicator,
@@ -30,25 +31,10 @@ export function PendingDownloadsIndicator() {
 			return { success: result.success };
 		},
 		subscribeImportEvents: (handler) => {
-			const ac = new AbortController();
-
-			void (async () => {
-				try {
-					const stream = await orpc.imports.events(undefined, {
-						signal: ac.signal,
-					});
-					for await (const msg of stream) {
-						if (ac.signal.aborted) break;
-						await handler(msg.event, msg);
-					}
-				} catch {
-					// stream ended
-				}
-			})();
-
-			return () => {
-				ac.abort();
-			};
+			return subscribeToEventStream(
+				(signal) => orpc.imports.events(undefined, { signal }),
+				handler,
+			);
 		},
 	};
 

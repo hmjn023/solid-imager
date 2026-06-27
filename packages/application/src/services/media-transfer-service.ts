@@ -22,11 +22,11 @@ import type { SourceRepository } from "@solid-imager/core/domain/repositories/so
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type {
 	DeferredActions,
-	DeferredSse,
+	DeferredSourceEvent,
 	IDeferredActionExecutor,
 	ILogger,
 	IMediaContextProcessor,
-	ISseNotifier,
+	ISourceEventPublisher,
 	IThumbnailManager,
 } from "../ports/media-service";
 
@@ -41,7 +41,7 @@ export class MediaTransferService {
 		private readonly ipRepository: IIpRepository,
 		private readonly transactionManager: TransactionManager,
 		private readonly jobRepo: IJobRepository,
-		private readonly sseNotifier: ISseNotifier,
+		private readonly eventPublisher: ISourceEventPublisher,
 		private readonly thumbnailManager: IThumbnailManager,
 		private readonly logger: ILogger,
 		private readonly deferredActionExecutor: IDeferredActionExecutor,
@@ -207,10 +207,10 @@ export class MediaTransferService {
 					jobs: [deferredJob, deferredSyncJob],
 				},
 			],
-			sse: [],
+			sourceEvents: [],
 		};
 
-		const sseEvent: DeferredSse = {
+		const sourceEvent: DeferredSourceEvent = {
 			mediaSourceId: validatedTargetSourceId,
 			event: "media-copied",
 			payload: {
@@ -221,7 +221,7 @@ export class MediaTransferService {
 		};
 
 		if (tx) {
-			deferredActions.sse.push(sseEvent);
+			deferredActions.sourceEvents.push(sourceEvent);
 			return {
 				success: true,
 				media: newMediaEntry,
@@ -244,7 +244,7 @@ export class MediaTransferService {
 			payload: { reason: "media_added", mediaIds: [newMediaEntry.id] },
 		});
 
-		this.sseNotifier.notifyMediaCopied(
+		this.eventPublisher.notifyMediaCopied(
 			sourceMediaId,
 			validatedTargetSourceId,
 			newMediaEntry,
@@ -264,7 +264,7 @@ export class MediaTransferService {
 		const execute = async (t: Transaction) => {
 			const accumulatedDeferred: DeferredActions = {
 				jobs: [],
-				sse: [],
+				sourceEvents: [],
 			};
 
 			let copiedFileCleanup: { targetPath: string; filePath: string } | null =
@@ -321,7 +321,7 @@ export class MediaTransferService {
 							}
 						}
 
-						const sseEventSource: DeferredSse = {
+						const sourceEvent: DeferredSourceEvent = {
 							mediaSourceId: sourceMedia.mediaSourceId,
 							event: "media-moved",
 							payload: {
@@ -331,7 +331,7 @@ export class MediaTransferService {
 								timestamp: new Date().toISOString(),
 							},
 						};
-						const sseEventTarget: DeferredSse = {
+						const targetEvent: DeferredSourceEvent = {
 							mediaSourceId: targetSourceId,
 							event: "media-moved",
 							payload: {
@@ -341,7 +341,7 @@ export class MediaTransferService {
 								timestamp: new Date().toISOString(),
 							},
 						};
-						accumulatedDeferred.sse.push(sseEventSource, sseEventTarget);
+						accumulatedDeferred.sourceEvents.push(sourceEvent, targetEvent);
 					}
 				}
 				return {
@@ -414,7 +414,7 @@ export class MediaTransferService {
 			{ mediaSourceId: validatedSourceId, mediaId: validatedMediaId },
 		];
 
-		const sseEvent: DeferredSse = {
+		const sourceEvent: DeferredSourceEvent = {
 			mediaSourceId: validatedSourceId,
 			event: "media-deleted",
 			payload: {
@@ -440,7 +440,7 @@ export class MediaTransferService {
 						],
 					},
 				],
-				sse: [sseEvent],
+				sourceEvents: [sourceEvent],
 				filesToDelete,
 				thumbnailsToDelete,
 			};
@@ -478,10 +478,10 @@ export class MediaTransferService {
 			}
 		}
 
-		this.sseNotifier.sendEvent(
-			sseEvent.mediaSourceId,
-			sseEvent.event,
-			sseEvent.payload,
+		this.eventPublisher.publishSource(
+			sourceEvent.mediaSourceId,
+			sourceEvent.event,
+			sourceEvent.payload,
 		);
 	}
 

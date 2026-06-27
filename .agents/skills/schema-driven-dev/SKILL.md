@@ -1,6 +1,6 @@
 ---
 name: schema-driven-dev
-description: Schema-Driven Development (SDD) に基づく Zod スキーマの定義と、そこからの TypeScript 型導出（z.infer）。APIのリクエスト/レスポンス、ドメインモデル、または 'packages/core/src/domain/**/schemas.ts' で共通のデータ構造を定義・変更する際に使用してください。
+description: Schema-Driven Development (SDD) に基づく Zod スキーマ定義と TypeScript 型導出（z.infer）を扱う。API入出力、ドメインモデル、'packages/core/src/domain/**/schemas.ts' の共通データ構造を変更する時に使用する。
 ---
 
 # Schema-Driven Development (SDD) with Zod スキル
@@ -8,7 +8,7 @@ description: Schema-Driven Development (SDD) に基づく Zod スキーマの定
 ## Working Rules
 
 - **Single Source of Truth:** データ構造（APIのRequest/Response、ドメインモデルなど）の定義は、関連する`schemas.ts`ファイルにZodスキーマとして記述することを唯一の正とします。
-- **型の導出:** TypeScriptの型は、Zodスキーマから`z.infer`を用いて導出します。手書きで型を再定義することは禁止します。
+- **型の導出:** APIやドメイン境界で共有される TypeScript 型は、Zodスキーマから `z.infer` で導出する。型とランタイム検証を別々に手書きすると、片方だけ更新される drift が起きやすいため。
 
 ```typescript
 // ✅ Good: Zodスキーマを定義

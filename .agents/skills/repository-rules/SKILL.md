@@ -1,13 +1,13 @@
 ---
 name: repository-rules
-description: リポジトリ層におけるデータアクセスとドメインモデルへの明示的なマッピングルール。データベースからの戻り値をドメインエンティティに変換する際や、'apps/server/src/infrastructure/repositories/' 配下での実装、および DBスキーマとドメイン層の型不整合を防ぐためのマッピング処理を行う際に使用してください。
+description: リポジトリ層のデータアクセスとドメインモデルへの明示的マッピングを扱う。'packages/db/src/repositories/' の実装、DB行からドメイン型への変換、DBスキーマ変更後の mapper 調整時に使用する。
 ---
 
 # Repository Rules スキル
 
 ## Working Rules
 
-- **明示的なマッピング:** データベースからの戻り値を `as unknown as Type` でキャストすることを禁止します。必ず `mapToDomain` などのヘルパー関数を作成し、明示的にマッピングしてください。これにより、DBスキーマの変更による型不整合を防ぎます。
+- **明示的なマッピング:** データベースからの戻り値を `as unknown as Type` でドメイン型へ飛ばさない。`mapToDomain` などの mapper を置くと、DB カラム名・nullable・JSON 型の差分が一箇所に集まり、スキーマ変更時の不整合をレビューしやすい。
 
 ```typescript
 // ✅ Good

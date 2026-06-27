@@ -60,9 +60,9 @@ vi.mock("~/infrastructure/jobs/thumbnails", () => ({
 	deleteThumbnail: vi.fn(),
 }));
 
-vi.mock("~/infrastructure/jobs/sse-manager", () => ({
-	SseManager: {
-		sendEvent: vi.fn(),
+vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
+	RealtimeEventBus: {
+		publishSource: vi.fn(),
 	},
 }));
 
