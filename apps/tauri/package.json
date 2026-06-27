@@ -44,6 +44,7 @@
 		"tailwindcss-animate": "^1.0.7",
 		"typescript": "rc",
 		"vite-plugin-solid": "^2.11.12",
-		"vite-plus": "^0.1.24"
+		"vite-plus": "^0.1.24",
+		"vite": "^8.0.16"
 	}
 }

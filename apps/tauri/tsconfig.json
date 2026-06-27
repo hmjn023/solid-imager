@@ -4,6 +4,7 @@
 		"jsx": "preserve",
 		"jsxImportSource": "solid-js",
 		"isolatedModules": true,
+		"types": ["vite/client"],
 		"paths": {
 			"~/*": ["./src/*"],
 			"@solid-imager/core": ["../../packages/core/src"],
