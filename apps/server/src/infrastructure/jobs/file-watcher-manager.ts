@@ -1,5 +1,6 @@
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
+import { logger } from "~/infrastructure/logger";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 
 const IGNORE_DOTFILES_REGEX = /(^|[/\\])\../;
@@ -20,7 +21,13 @@ const watchers = globalWatchers.__FILE_WATCHERS_MAP__;
 if (!globalWatchers.__FILE_WATCHERS_CLEANUP_REGISTERED__) {
 	const cleanup = async () => {
 		await Promise.all(
-			Array.from(watchers.values()).map((entry) => entry.watcher.close()),
+			Array.from(watchers.values()).map(async (entry) => {
+				try {
+					await entry.watcher.close();
+				} catch (err) {
+					logger.error({ err, path: entry.path }, "Failed to close watcher during cleanup");
+				}
+			}),
 		);
 		watchers.clear();
 	};
@@ -67,11 +74,19 @@ export const FileWatcherManager = {
 		watcher.on("unlink", (filePath) => run(callbacks.onDelete, filePath));
 		watcher.on("change", (filePath) => run(callbacks.onChange, filePath));
 		watcher.on("error", (error) => {
-			RealtimeEventBus.publishSource(mediaSourceId, "watcher-error", {
-				mediaSourceId,
-				error: String(error),
-				timestamp: new Date().toISOString(),
-			});
+			const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(mediaSourceId);
+			try {
+				RealtimeEventBus.publishSource(mediaSourceId, "watcher-error", {
+					mediaSourceId: isUuid ? mediaSourceId : undefined,
+					error: String(error),
+					timestamp: new Date().toISOString(),
+				});
+			} catch (publishError) {
+				logger.error(
+					{ err: publishError, mediaSourceId, originalError: error },
+					"Failed to publish watcher error event",
+				);
+			}
 		});
 
 		watchers.set(mediaSourceId, { watcher, path: watchPath });
@@ -82,7 +97,11 @@ export const FileWatcherManager = {
 		if (!entry) {
 			return;
 		}
-		await entry.watcher.close();
+		try {
+			await entry.watcher.close();
+		} catch (err) {
+			logger.error({ err, mediaSourceId }, "Failed to close watcher in stop method");
+		}
 		watchers.delete(mediaSourceId);
 	},
 };

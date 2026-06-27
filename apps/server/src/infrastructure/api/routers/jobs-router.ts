@@ -21,7 +21,14 @@ export const jobsRouter = {
 		try {
 			while (!signal?.aborted) {
 				if (queue.length === 0) {
+					if (signal?.aborted) {
+						break;
+					}
 					await new Promise<void>((done) => {
+						if (signal?.aborted) {
+							done();
+							return;
+						}
 						const onAbort = () => {
 							done();
 						};
