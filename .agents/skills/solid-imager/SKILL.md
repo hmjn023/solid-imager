@@ -95,6 +95,7 @@ bun run test
 - API/oRPC 変更: `orpc-api`, `schema-driven-dev`, `safe-dto`, `api-docs`
 - DB schema/repository 変更: `database-schema`, `repository-rules`
 - UI 変更: `ui-components`, `tanstack-db`, 必要に応じて `modern-web-guidance`
+- リアルタイムイベント/SSE 変更: `realtime-events`, `orpc-api`, `schema-driven-dev`
 - AI/ML 連携: `ai-service`
 - CLI 変更: `cli`
 - ブラウザ拡張: `browser-extension`

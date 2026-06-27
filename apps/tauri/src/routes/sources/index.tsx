@@ -1,4 +1,6 @@
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
+import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
+import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
@@ -8,6 +10,7 @@ import { useLiveQuery } from "@tanstack/solid-db";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { getCollections } from "~/collections";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createMediaSource,
 	deleteMediaSource,
@@ -22,6 +25,13 @@ export const Route = createFileRoute("/sources/")({
 	},
 	component: SourcesRoute,
 });
+
+function registerSourceEvents(handler: RawEventHandler): () => void {
+	return subscribeToEventStream(
+		(signal) => orpc.sources.events({ id: "*" }, { signal }),
+		handler,
+	);
+}
 
 function SourcesRoute() {
 	const queryClient = useQueryClient();
@@ -49,6 +59,7 @@ function SourcesRoute() {
 		},
 		queryClient,
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
+		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
 			mediaSources()
 				?.map((s) => s.id ?? s.name)

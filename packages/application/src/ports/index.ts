@@ -15,12 +15,12 @@ export type {
 	DeferredActions,
 	DeferredJob,
 	DeferredJobs,
-	DeferredSse,
+	DeferredSourceEvent,
 	IDeferredActionExecutor,
 	ILogger,
 	IMediaContextProcessor,
 	IMediaService,
-	ISseNotifier,
+	ISourceEventPublisher,
 	IThumbnailManager,
 } from "./media-service";
 export type { IPresetService } from "./preset-service";

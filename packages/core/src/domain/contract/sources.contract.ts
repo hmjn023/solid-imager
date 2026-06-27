@@ -1,5 +1,6 @@
-import { oc } from "@orpc/contract";
+import { eventIterator, oc } from "@orpc/contract";
 import { z } from "zod";
+import { sourceEventSchema } from "../sources/events";
 import {
 	mediaSourceInfoSchema,
 	mediaSourceStatusSchema,
@@ -108,4 +109,8 @@ export const sourcesContract = {
 	status: oc
 		.input(z.object({ id: z.string().uuid() }))
 		.output(mediaSourceStatusSchema),
+
+	events: oc
+		.input(z.object({ id: z.string().uuid().or(z.literal("*")) }))
+		.output(eventIterator(sourceEventSchema)),
 };

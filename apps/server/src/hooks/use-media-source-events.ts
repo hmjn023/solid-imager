@@ -1,4 +1,5 @@
 import {
+	createSourceEventTransport,
 	type MediaSourceEventTransport,
 	type UseMediaSourceEventsOptions,
 	useMediaSourceEvents as useMediaSourceEventsShared,
@@ -21,79 +22,16 @@ export type {
 
 type MediaSourceEventsOptions = Omit<UseMediaSourceEventsOptions, "transport">;
 
-const MAX_RETRY_DELAY = 30_000;
-const INITIAL_RETRY_DELAY = 1_000;
-
 export function createServerTransport(
 	mediaSourceId: Accessor<string | undefined>,
 ): MediaSourceEventTransport {
-	return {
-		listen(handler) {
-			const id = mediaSourceId();
-			if (!id) {
-				return () => {
-					/* no-op */
-				};
-			}
-
-			const ac = new AbortController();
-
-			const startEventStream = async () => {
-				let retryCount = 0;
-
-				while (!ac.signal.aborted) {
-					try {
-						const events = await orpc.sources.events(
-							{ id },
-							{ signal: ac.signal },
-						);
-
-						retryCount = 0;
-
-						for await (const msg of events) {
-							if (ac.signal.aborted) {
-								break;
-							}
-							handler(msg.event, msg.data);
-						}
-					} catch (err) {
-						if (ac.signal.aborted) {
-							break;
-						}
-
-						retryCount++;
-						const delay = Math.min(
-							INITIAL_RETRY_DELAY * 2 ** (retryCount - 1),
-							MAX_RETRY_DELAY,
-						);
-
-						logger.error(
-							{ err, retryCount, delay },
-							"Event stream error, retrying",
-						);
-
-						await new Promise<void>((resolve) => {
-							const onAbort = () => {
-								clearTimeout(timer);
-								resolve();
-							};
-							const timer = setTimeout(() => {
-								ac.signal.removeEventListener("abort", onAbort);
-								resolve();
-							}, delay);
-							ac.signal.addEventListener("abort", onAbort, { once: true });
-						});
-					}
-				}
-			};
-
-			startEventStream();
-
-			return () => {
-				ac.abort();
-			};
+	return createSourceEventTransport(
+		mediaSourceId,
+		(id, signal) => orpc.sources.events({ id }, { signal }),
+		(err, retryCount, delay) => {
+			logger.error({ err, retryCount, delay }, "Event stream error, retrying");
 		},
-	};
+	);
 }
 
 export function useMediaSourceEvents(

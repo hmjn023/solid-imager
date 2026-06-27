@@ -7,6 +7,7 @@ import { directoriesRouter } from "~/infrastructure/api/routers/directories-rout
 import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
 import { importsRouter } from "~/infrastructure/api/routers/imports-router";
 import { ipsRouter } from "~/infrastructure/api/routers/ips-router";
+import { jobsRouter } from "~/infrastructure/api/routers/jobs-router";
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { presetsRouter } from "~/infrastructure/api/routers/presets-router";
 import { projectsRouter } from "~/infrastructure/api/routers/projects-router";
@@ -34,6 +35,7 @@ export const appRouter = {
 	authors: authorsRouter,
 	utils: utilsRouter,
 	imports: importsRouter,
+	jobs: jobsRouter,
 	config: configRouter,
 	presets: presetsRouter,
 };

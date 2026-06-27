@@ -8,7 +8,7 @@ import type {
 	IDeferredActionExecutor,
 	ILogger,
 	IMediaContextProcessor,
-	ISseNotifier,
+	ISourceEventPublisher,
 	IThumbnailManager,
 } from "@solid-imager/application/ports/media-service";
 import { MediaQueryService } from "@solid-imager/application/services/media-query-service";
@@ -22,7 +22,7 @@ import type { TransactionManager } from "@solid-imager/core/domain/interfaces/tr
 import { services } from "~/application/registry";
 import { executeDeferredActions } from "~/application/services/job-dispatch-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
@@ -30,12 +30,12 @@ import { logger } from "~/infrastructure/logger";
 export { MediaServiceImpl, validateFileSignature };
 
 // Infrastructure adapters that wrap server-specific implementations
-const sseNotifier: ISseNotifier = {
-	sendEvent(mediaSourceId, eventType, data) {
-		SseManager.sendEvent(mediaSourceId, eventType, data);
+const eventPublisher: ISourceEventPublisher = {
+	publishSource(mediaSourceId, eventType, data) {
+		RealtimeEventBus.publishSource(mediaSourceId, eventType, data);
 	},
 	notifyMediaCopied(sourceId, targetId, media) {
-		SseManager.notifyMediaCopied(sourceId, targetId, media);
+		RealtimeEventBus.notifyMediaCopied(sourceId, targetId, media);
 	},
 };
 
@@ -105,7 +105,7 @@ function createMediaService(): MediaServiceImpl {
 		services.getIpRepository(),
 		DrizzleTransactionManager as TransactionManager,
 		services.getJobRepository(),
-		sseNotifier,
+		eventPublisher,
 		thumbnailManager,
 		appLogger,
 		deferredActionExecutor,

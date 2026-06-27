@@ -8,7 +8,8 @@ import path from "node:path";
 import { services } from "~/application/registry";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { FileWatcherManager } from "~/infrastructure/jobs/file-watcher-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -88,7 +89,7 @@ async function handleFileDeleted(
 		await deleteThumbnail(mediaSourceId, media.id);
 
 		// Notify
-		SseManager.sendEvent(mediaSourceId, "media-deleted", {
+		RealtimeEventBus.publishSource(mediaSourceId, "media-deleted", {
 			filePath: media.filePath,
 			timestamp: new Date().toISOString(),
 		});
@@ -148,7 +149,7 @@ async function handleFileChanged(
 		});
 
 		// Notify
-		SseManager.sendEvent(mediaSourceId, "media-changed", {
+		RealtimeEventBus.publishSource(mediaSourceId, "media-changed", {
 			mediaId: media.id,
 			filePath: media.filePath,
 		});
@@ -186,7 +187,7 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 			);
 		}
 
-		SseManager.startFileSystemMonitoring(mediaSourceId, basePath, {
+		await FileWatcherManager.start(mediaSourceId, basePath, {
 			onAdd: (filePath) => handleFileAdded(mediaSourceId, filePath),
 			onDelete: (filePath) => handleFileDeleted(mediaSourceId, filePath),
 			onChange: (filePath) => handleFileChanged(mediaSourceId, filePath),
@@ -200,7 +201,7 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
  * Stops file system monitoring for a media source.
  */
 export async function stopMonitoring(mediaSourceId: string): Promise<void> {
-	await SseManager.stopFileSystemMonitoring(mediaSourceId);
+	await FileWatcherManager.stop(mediaSourceId);
 }
 
 /**

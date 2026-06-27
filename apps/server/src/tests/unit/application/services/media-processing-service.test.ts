@@ -103,7 +103,7 @@ describe("MediaProcessingService", () => {
 				audio: [".mp3", ".wav"],
 			},
 			generateThumbnail: vi.fn() as any,
-			sseSendEvent: vi.fn() as any,
+			publishSourceEvent: vi.fn() as any,
 		});
 	});
 

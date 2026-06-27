@@ -1,4 +1,5 @@
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
+import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
@@ -24,35 +25,10 @@ export const Route = createFileRoute("/sources/")({
 });
 
 function registerSourceEvents(handler: RawEventHandler): () => void {
-	const ac = new AbortController();
-
-	const startListening = async () => {
-		try {
-			const events = await orpc.sources.events(
-				{ id: "*" },
-				{ signal: ac.signal },
-			);
-			for await (const msg of events) {
-				if (ac.signal.aborted) {
-					break;
-				}
-				if (msg.event === "connected") {
-					continue;
-				}
-				handler(msg.event, msg.data);
-			}
-		} catch (_err) {
-			if (!ac.signal.aborted) {
-				// connection error - will be cleaned up on unmount
-			}
-		}
-	};
-
-	startListening();
-
-	return () => {
-		ac.abort();
-	};
+	return subscribeToEventStream(
+		(signal) => orpc.sources.events({ id: "*" }, { signal }),
+		handler,
+	);
 }
 
 function SourcesRoute() {

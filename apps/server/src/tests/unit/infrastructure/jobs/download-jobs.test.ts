@@ -57,9 +57,9 @@ vi.mock("~/infrastructure/storage/server-media-storage", () => ({
 	},
 }));
 // job-manager mock removed
-vi.mock("~/infrastructure/jobs/sse-manager", () => ({
-	SseManager: {
-		sendEvent: vi.fn(),
+vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
+	RealtimeEventBus: {
+		publishSource: vi.fn(),
 	},
 }));
 vi.mock("~/application/services/media-processing-service", () => ({
