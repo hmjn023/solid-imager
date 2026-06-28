@@ -18,8 +18,8 @@ import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
@@ -362,8 +362,8 @@ async function handleYtDlpDownload(
 	} catch (error) {
 		logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
 
-		// Notify frontend via SSE
-		SseManager.sendEvent(mediaSourceId, "download-error", {
+		// Notify frontend through the typed event bus.
+		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
 			url: item.targetUrl,
 			error: error instanceof Error ? error.message : String(error),
 		});
@@ -630,8 +630,8 @@ async function handleDirectImageDownload(
 			"[DownloadJob] Download failed",
 		);
 
-		// Notify frontend via SSE
-		SseManager.sendEvent(mediaSourceId, "download-error", {
+		// Notify frontend through the typed event bus.
+		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
 			url: item.targetUrl,
 			error: error instanceof Error ? error.message : String(error),
 		});
@@ -694,7 +694,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	if (mediaSource?.type !== "local") {
 		const error = "Media source not found or not a local source";
 		logger.error({ mediaSourceId }, `[DownloadJob] ${error}`);
-		SseManager.sendEvent(mediaSourceId, "download-error", {
+		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
 			url: item.targetUrl,
 			error,
 		});
@@ -725,8 +725,8 @@ export async function processDownloadJob(job: Job): Promise<void> {
 			{ err: error, url: item.targetUrl },
 			"[DownloadJob] Job execution failed",
 		);
-		// Notify frontend via SSE
-		SseManager.sendEvent(mediaSourceId, "download-error", {
+		// Notify frontend through the typed event bus.
+		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
 			url: item.targetUrl,
 			error: error instanceof Error ? error.message : String(error),
 		});
@@ -762,7 +762,7 @@ async function updateExistingMediaWithMetadata(
 		projects: item.projects,
 	});
 
-	SseManager.sendEvent(mediaSourceId, "media-added", {
+	RealtimeEventBus.publishSource(mediaSourceId, "media-added", {
 		mediaId,
 		filePath: newMedia.filePath,
 	});

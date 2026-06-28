@@ -55,6 +55,7 @@ export type AllJobsCompletedEvent = z.infer<typeof allJobsCompletedEventSchema>;
 export const watcherErrorEventSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),
 	error: z.string().optional(),
+	timestamp: z.string().optional(),
 });
 export type WatcherErrorEvent = z.infer<typeof watcherErrorEventSchema>;
 
@@ -76,3 +77,113 @@ export const jobFailedEventSchema = z.object({
 	error: z.string().optional(),
 });
 export type JobFailedEvent = z.infer<typeof jobFailedEventSchema>;
+
+export const downloadErrorEventSchema = z.object({
+	url: z.string(),
+	error: z.string(),
+});
+export type DownloadErrorEvent = z.infer<typeof downloadErrorEventSchema>;
+
+export const importRequestCreatedEventSchema = z.object({
+	count: z.number(),
+});
+export type ImportRequestCreatedEvent = z.infer<
+	typeof importRequestCreatedEventSchema
+>;
+
+export const importRequestProcessedEventSchema = z.object({
+	processedCount: z.number(),
+});
+export type ImportRequestProcessedEvent = z.infer<
+	typeof importRequestProcessedEventSchema
+>;
+
+export const importRequestDeletedEventSchema = z.object({
+	jobIds: z.array(z.string().uuid()),
+});
+export type ImportRequestDeletedEvent = z.infer<
+	typeof importRequestDeletedEventSchema
+>;
+
+export const sourceEventSchema = z.discriminatedUnion("event", [
+	z.object({ event: z.literal("media-added"), data: mediaAddedEventSchema }),
+	z.object({
+		event: z.literal("media-deleted"),
+		data: mediaDeletedEventSchema,
+	}),
+	z.object({
+		event: z.literal("media-changed"),
+		data: mediaChangedEventSchema,
+	}),
+	z.object({ event: z.literal("media-copied"), data: mediaCopiedEventSchema }),
+	z.object({ event: z.literal("media-moved"), data: mediaMovedEventSchema }),
+	z.object({
+		event: z.literal("thumbnail-generated"),
+		data: thumbnailGeneratedEventSchema,
+	}),
+	z.object({
+		event: z.literal("all-jobs-completed"),
+		data: allJobsCompletedEventSchema,
+	}),
+	z.object({
+		event: z.literal("watcher-error"),
+		data: watcherErrorEventSchema,
+	}),
+	z.object({
+		event: z.literal("download-error"),
+		data: downloadErrorEventSchema,
+	}),
+]);
+export type SourceEvent = z.infer<typeof sourceEventSchema>;
+export type SourceEventName = SourceEvent["event"];
+export type SourceEventData<TName extends SourceEventName> = Extract<
+	SourceEvent,
+	{ event: TName }
+>["data"];
+export type SourceEventPublisher = <TName extends SourceEventName>(
+	mediaSourceId: string,
+	eventType: TName,
+	data: SourceEventData<TName>,
+) => void;
+export type SourceEventCommand = {
+	[TName in SourceEventName]: {
+		event: TName;
+		payload: SourceEventData<TName>;
+	};
+}[SourceEventName];
+
+export const jobEventSchema = z.discriminatedUnion("event", [
+	z.object({ event: z.literal("job-progress"), data: jobProgressEventSchema }),
+	z.object({
+		event: z.literal("job-completed"),
+		data: jobCompletedEventSchema,
+	}),
+	z.object({ event: z.literal("job-failed"), data: jobFailedEventSchema }),
+]);
+export type JobEvent = z.infer<typeof jobEventSchema>;
+export type JobEventName = JobEvent["event"];
+export type JobEventData<TName extends JobEventName> = Extract<
+	JobEvent,
+	{ event: TName }
+>["data"];
+
+export const importEventSchema = z.discriminatedUnion("event", [
+	z.object({
+		event: z.literal("import-request:created"),
+		data: importRequestCreatedEventSchema,
+	}),
+	z.object({
+		event: z.literal("import-request:processed"),
+		data: importRequestProcessedEventSchema,
+	}),
+	z.object({
+		event: z.literal("import-request:deleted"),
+		data: importRequestDeletedEventSchema,
+	}),
+]);
+export type ImportEvent = z.infer<typeof importEventSchema>;
+export type ImportEventName = ImportEvent["event"];
+export type ImportEventData<TName extends ImportEventName> = Extract<
+	ImportEvent,
+	{ event: TName }
+>["data"];

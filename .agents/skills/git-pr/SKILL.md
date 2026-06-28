@@ -1,6 +1,6 @@
 ---
 name: git-pr
-description: 作業ブランチの作成、コミット、push、PR作成を一連の流れで行うワークフロー。featureブランチからdevelop（またはmain）に向けてPRを作成する際に使用してください。
+description: 作業ブランチ作成、ステージ、コミット、push、PR作成までのワークフロー。ローカル変更を develop または main 向けPRとして提出する時に使用する。
 ---
 
 # Git PR ワークフロー

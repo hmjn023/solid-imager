@@ -480,9 +480,6 @@ export function useSourceMediaPage(
 				queryKey: ["media", id()],
 			});
 		},
-		onJobProgress: (data) => {
-			setJobProgress(data);
-		},
 		onAllJobsCompleted: (data) => {
 			setJobProgress(null);
 			toast.success(

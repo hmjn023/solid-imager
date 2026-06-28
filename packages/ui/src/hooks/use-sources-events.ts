@@ -1,5 +1,6 @@
 import {
 	allJobsCompletedEventSchema,
+	type SourceEvent,
 	watcherErrorEventSchema,
 } from "@solid-imager/core/domain/sources/events";
 import type { QueryClient, QueryKey } from "@tanstack/solid-query";
@@ -7,7 +8,7 @@ import { type Accessor, createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
 import { toast } from "../toast";
 
-export type RawEventHandler = (eventName: string, payload: unknown) => void;
+export type RawEventHandler = (event: SourceEvent) => void;
 
 /**
  * Platform-specific event transport registration.
@@ -30,12 +31,12 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 			return;
 		}
 
-		const cleanup = options.registerEvents((eventName, payload) => {
+		const cleanup = options.registerEvents((event) => {
 			const activeSourceIds = new Set(options.sourceIds());
 
-			switch (eventName) {
+			switch (event.event) {
 				case "all-jobs-completed": {
-					const result = allJobsCompletedEventSchema.safeParse(payload);
+					const result = allJobsCompletedEventSchema.safeParse(event.data);
 					if (!result.success) {
 						console.warn(
 							"[useSourcesEvents] Invalid all-jobs-completed payload:",
@@ -55,7 +56,7 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 					break;
 				}
 				case "watcher-error": {
-					const result = watcherErrorEventSchema.safeParse(payload);
+					const result = watcherErrorEventSchema.safeParse(event.data);
 					if (!result.success) {
 						console.warn(
 							"[useSourcesEvents] Invalid watcher-error payload:",

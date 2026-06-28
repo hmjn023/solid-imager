@@ -1,12 +1,16 @@
-import { os } from "@orpc/server";
+import { eventIterator, os } from "@orpc/server";
 import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import {
+	type ImportEvent,
+	importEventSchema,
+} from "@solid-imager/core/domain/sources/events";
 import { and, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
 
 /**
  * Helper to classify items into Restore (file exists) and Import (URL available)
@@ -108,7 +112,7 @@ export const bulkAddHandler = async ({
 		}
 		addedCount = importItems.length;
 
-		SseManager.sendEvent("global-imports", "import-request:created", {
+		RealtimeEventBus.publishImport("import-request:created", {
 			count: addedCount,
 		});
 	}
@@ -181,7 +185,7 @@ export const importsRouter = {
 				.set({ status: "completed", updatedAt: new Date() })
 				.where(inArray(jobs.id, jobIds));
 
-			SseManager.sendEvent("global-imports", "import-request:processed", {
+			RealtimeEventBus.publishImport("import-request:processed", {
 				processedCount: itemsToDownload.length,
 			});
 
@@ -204,7 +208,7 @@ export const importsRouter = {
 			}
 
 			await db.delete(jobs).where(inArray(jobs.id, jobIds));
-			SseManager.sendEvent("global-imports", "import-request:deleted", {
+			RealtimeEventBus.publishImport("import-request:deleted", {
 				jobIds,
 			});
 			return { success: true };
@@ -213,17 +217,14 @@ export const importsRouter = {
 	/**
 	 * Real-time events stream for imports
 	 */
-	events: os.handler(async function* ({ signal }) {
-		// Yield initial connection event
-		yield { event: "connected", data: "connected" };
-
+	events: os.output(eventIterator(importEventSchema)).handler(async function* ({
+		signal,
+	}) {
 		// Queue for events
-		const queue: { event: string; data: unknown }[] = [];
+		const queue: ImportEvent[] = [];
 		let resolve: (() => void) | null = null;
 
-		const mediaSourceId = "global-imports";
-
-		const onEvent = (payload: { event: string; data: unknown }) => {
+		const onEvent = (payload: ImportEvent) => {
 			queue.push(payload);
 			if (resolve) {
 				resolve();
@@ -231,8 +232,7 @@ export const importsRouter = {
 			}
 		};
 
-		const eventName = `event:${mediaSourceId}`;
-		SseManager.emitter.on(eventName, onEvent);
+		const unsubscribe = RealtimeEventBus.subscribeToImports(onEvent);
 
 		try {
 			while (!signal?.aborted) {
@@ -261,7 +261,7 @@ export const importsRouter = {
 				}
 			}
 		} finally {
-			SseManager.emitter.off(eventName, onEvent);
+			unsubscribe();
 		}
 	}),
 };

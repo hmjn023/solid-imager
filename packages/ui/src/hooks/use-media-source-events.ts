@@ -1,8 +1,9 @@
 import {
 	type AllJobsCompletedEvent,
 	allJobsCompletedEventSchema,
+	type DownloadErrorEvent,
+	downloadErrorEventSchema,
 	type JobProgressEvent,
-	jobProgressEventSchema,
 	type MediaAddedEvent,
 	type MediaChangedEvent,
 	type MediaCopiedEvent,
@@ -13,6 +14,7 @@ import {
 	mediaCopiedEventSchema,
 	mediaDeletedEventSchema,
 	mediaMovedEventSchema,
+	type SourceEvent,
 	type ThumbnailGeneratedEvent,
 	thumbnailGeneratedEventSchema,
 	type WatcherErrorEvent,
@@ -20,9 +22,11 @@ import {
 } from "@solid-imager/core/domain/sources/events";
 import { type Accessor, createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
+import { subscribeToEventStream } from "../event-stream";
 
 export type {
 	AllJobsCompletedEvent,
+	DownloadErrorEvent,
 	JobProgressEvent,
 	MediaAddedEvent,
 	MediaChangedEvent,
@@ -35,14 +39,42 @@ export type {
 
 /**
  * Transport adapter interface. Implementations bridge the shared hook to a
- * concrete event source (oRPC SSE for server, Tauri event bus for desktop).
+ * concrete typed oRPC event stream.
  *
- * `listen` must call `handler` with the event name and raw payload for every
- * incoming event and return a cleanup function that cancels the subscription.
+ * `listen` must call `handler` with a validated source event and return a
+ * cleanup function that cancels the subscription.
  */
 export type MediaSourceEventTransport = {
-	listen(handler: (event: string, data: unknown) => void): () => void;
+	listen(handler: (event: SourceEvent) => void): () => void;
 };
+
+export type SourceEventStreamFactory = (
+	mediaSourceId: string,
+	signal: AbortSignal,
+) => Promise<AsyncIterable<SourceEvent>>;
+
+export function createSourceEventTransport(
+	mediaSourceId: Accessor<string | undefined>,
+	openStream: SourceEventStreamFactory,
+	onError?: (error: unknown, retryCount: number, delay: number) => void,
+): MediaSourceEventTransport {
+	return {
+		listen(handler) {
+			const id = mediaSourceId();
+			if (!id) {
+				return () => {
+					/* no-op */
+				};
+			}
+
+			return subscribeToEventStream(
+				(signal) => openStream(id, signal),
+				handler,
+				onError,
+			);
+		},
+	};
+}
 
 export type UseMediaSourceEventsOptions = {
 	transport: MediaSourceEventTransport;
@@ -55,8 +87,7 @@ export type UseMediaSourceEventsOptions = {
 	onThumbnailGenerated?: (data: ThumbnailGeneratedEvent) => void;
 	onAllJobsCompleted?: (data: AllJobsCompletedEvent) => void;
 	onWatcherError?: (data: WatcherErrorEvent) => void;
-	/** Tauri-only in practice, but included in the shared interface. */
-	onJobProgress?: (data: JobProgressEvent) => void;
+	onDownloadError?: (data: DownloadErrorEvent) => void;
 };
 
 type SafeParseSchema<T> = {
@@ -64,6 +95,10 @@ type SafeParseSchema<T> = {
 		input: unknown,
 	) => { success: true; data: T } | { success: false; error: unknown };
 };
+
+function assertNever(value: never): never {
+	throw new Error(`Unhandled source event: ${value}`);
+}
 
 function validateAndDispatch<T>(
 	schema: SafeParseSchema<T>,
@@ -89,8 +124,8 @@ function validateAndDispatch<T>(
  * Shared hook that dispatches media-source events to caller-provided callbacks.
  *
  * Event delivery is decoupled from the transport via `MediaSourceEventTransport`,
- * allowing the same hook to work with oRPC SSE (server) and the Tauri event bus
- * (desktop) without any conditional logic inside the hook itself.
+ * allowing the same hook to work in the server and Tauri clients without
+ * transport-specific logic.
  */
 export function useMediaSourceEvents(
 	options: UseMediaSourceEventsOptions,
@@ -109,7 +144,8 @@ export function useMediaSourceEvents(
 			return;
 		}
 
-		const cleanup = options.transport.listen((event, data) => {
+		const cleanup = options.transport.listen((message) => {
+			const { event, data } = message;
 			switch (event) {
 				case "media-added":
 					validateAndDispatch(
@@ -175,23 +211,16 @@ export function useMediaSourceEvents(
 						event,
 					);
 					break;
-				case "job-progress":
+				case "download-error":
 					validateAndDispatch(
-						jobProgressEventSchema,
+						downloadErrorEventSchema,
 						data,
-						options.onJobProgress,
+						options.onDownloadError,
 						event,
 					);
 					break;
-				case "connected":
-					// Connection established — no action needed.
-					break;
 				default:
-					console.debug(
-						`[useMediaSourceEvents] Unknown event received: "${event}"`,
-						data,
-					);
-					break;
+					assertNever(event);
 			}
 		});
 

@@ -1,52 +1,13 @@
+import type { DeferredActions } from "@solid-imager/application/ports/media-service";
 import { services } from "~/application/registry";
 import type { Job as DbJob } from "~/infrastructure/db/schema";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
 	processAutoTaggingJob,
 	processBulkTaggingDispatchJob,
 } from "~/infrastructure/jobs/tagging-jobs";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
-
-export type DeferredJob = {
-	// Fields for constructing a job
-	mediaId?: string;
-	sourcePath?: string;
-	type:
-		| "processMedia"
-		| "downloadImage"
-		| "sync_lancedb"
-		| "sync_lancedb_delta";
-	payload?: unknown;
-};
-
-export type DeferredJobs = {
-	mediaSourceId: string;
-	jobs: DeferredJob[];
-};
-
-export type DeferredSse = {
-	mediaSourceId: string;
-	event: string;
-	payload: unknown;
-};
-
-export type FileToDelete = {
-	basePath: string;
-	filePath: string;
-};
-
-export type ThumbnailToDelete = {
-	mediaSourceId: string;
-	mediaId: string;
-};
-
-export type DeferredActions = {
-	jobs: DeferredJobs[];
-	sse: DeferredSse[];
-	filesToDelete?: FileToDelete[];
-	thumbnailsToDelete?: ThumbnailToDelete[];
-};
 
 // Helper for unified job processing (Called by JobWorker)
 export async function processJob(job: DbJob) {
@@ -163,9 +124,9 @@ export async function executeDeferredActions(actions: DeferredActions) {
 			}
 		}
 	}
-	if (actions.sse.length > 0) {
-		for (const item of actions.sse) {
-			SseManager.sendEvent(item.mediaSourceId, item.event, item.payload);
+	if (actions.sourceEvents.length > 0) {
+		for (const item of actions.sourceEvents) {
+			RealtimeEventBus.publishSourceCommand(item.mediaSourceId, item);
 		}
 	}
 	if (actions.filesToDelete && actions.filesToDelete.length > 0) {

@@ -109,7 +109,7 @@ describe("TaggingServiceImpl", () => {
 			tagRepo: mockTagRepo,
 			characterRepo: mockCharacterRepo,
 			ipRepo: mockIpRepo,
-			sseSendEvent: mockSseSendEvent as any,
+			publishSourceEvent: mockSseSendEvent as any,
 			readFileBuffer: mockReadFileBuffer as any,
 		};
 

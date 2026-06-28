@@ -13,7 +13,7 @@ import {
 	mediaTags,
 	type NewJob,
 } from "~/infrastructure/db/schema";
-import { SseManager } from "~/infrastructure/jobs/sse-manager";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 
 const autoTaggingPayloadSchema = z.object({
@@ -31,7 +31,6 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 	const payload = autoTaggingPayloadSchema.parse(job.payload);
 	const { mediaId, force } = payload;
 	const { mediaSourceId, parentId } = job;
-	const JOB_EVENTS_CHANNEL = "global-jobs";
 
 	if (!(mediaId && mediaSourceId)) {
 		throw new Error("Missing mediaId or mediaSourceId");
@@ -60,8 +59,8 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 				try {
 					const parentPayload = parentPayloadSchema.parse(parentJob.payload);
 
-					// SSE event
-					SseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-progress", {
+					// Publish typed job progress.
+					RealtimeEventBus.publishJob("job-progress", {
 						jobId: parentId,
 						processed: parentPayload.processed,
 						total: parentPayload.total,
@@ -69,7 +68,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 
 					if (parentPayload.processed >= parentPayload.total) {
 						await jobRepo.update(parentId, { status: "completed" });
-						SseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-completed", {
+						RealtimeEventBus.publishJob("job-completed", {
 							jobId: parentId,
 						});
 					}
@@ -86,7 +85,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 		logger.error({ err: error, mediaId }, "Auto tagging failed");
 		if (parentId) {
 			await services.getJobRepository().update(parentId, { status: "failed" });
-			SseManager.sendEvent(JOB_EVENTS_CHANNEL, "job-failed", {
+			RealtimeEventBus.publishJob("job-failed", {
 				jobId: parentId,
 				error: getErrorMessage(error),
 			});
