@@ -58,16 +58,24 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 
 	private async connection(): Promise<Connection> {
 		if (!this.connectionPromise) {
-			this.connectionPromise = import("@lancedb/lancedb").then((lancedb) =>
-				lancedb.connect(path.resolve(process.cwd(), this.directory)),
-			);
+			this.connectionPromise = import("@lancedb/lancedb")
+				.then((lancedb) =>
+					lancedb.connect(path.resolve(process.cwd(), this.directory)),
+				)
+				.catch((err) => {
+					this.connectionPromise = null;
+					throw err;
+				});
 		}
 		return await this.connectionPromise;
 	}
 
 	private async table(): Promise<Table> {
 		if (!this.tablePromise) {
-			this.tablePromise = this.openOrCreateTable();
+			this.tablePromise = this.openOrCreateTable().catch((err) => {
+				this.tablePromise = null;
+				throw err;
+			});
 		}
 		return await this.tablePromise;
 	}

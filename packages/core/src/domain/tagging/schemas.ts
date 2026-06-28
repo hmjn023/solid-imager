@@ -40,8 +40,8 @@ export const ccipDifferenceRequestSchema = z.object({
 });
 
 export const ccipDistancesRequestSchema = z.object({
-	feature: z.array(z.number()),
-	candidates: z.array(z.array(z.number())),
+	feature: z.array(z.number()).length(768),
+	candidates: z.array(z.array(z.number()).length(768)),
 });
 
 export const ccipDistancesResponseSchema = z.object({

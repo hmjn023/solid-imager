@@ -18,6 +18,7 @@ import { z } from "zod";
 import { BulkOperationService } from "~/application/services/bulk-operation-service";
 import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { MediaService } from "~/application/services/media-service";
+import { logger } from "~/infrastructure/logger";
 
 /**
  * Media Router Implementation
@@ -200,7 +201,11 @@ export const mediaRouter = {
 		)
 		.handler(async ({ input }) => {
 			await MediaService.deleteMedia(input.sourceId, input.mediaId);
-			await ccipVectorService.delete(input.mediaId);
+			try {
+				await ccipVectorService.delete(input.mediaId);
+			} catch (err) {
+				logger.warn({ err, mediaId: input.mediaId }, "[MediaRouter] Vector delete failed after media delete");
+			}
 			return { success: true };
 		}),
 
@@ -234,7 +239,11 @@ export const mediaRouter = {
 				input.mediaId,
 				input.targetSourceId,
 			);
-			await ccipVectorService.delete(input.mediaId);
+			try {
+				await ccipVectorService.delete(input.mediaId);
+			} catch (err) {
+				logger.warn({ err, mediaId: input.mediaId }, "[MediaRouter] Vector delete failed after media move");
+			}
 			return result;
 		}),
 
@@ -289,8 +298,14 @@ export const mediaRouter = {
 				input.mediaSourceId,
 				input.mediaIds,
 			);
-			await Promise.all(
-				input.mediaIds.map((mediaId) => ccipVectorService.delete(mediaId)),
+			await Promise.allSettled(
+				input.mediaIds.map(async (mediaId) => {
+					try {
+						await ccipVectorService.delete(mediaId);
+					} catch (err) {
+						logger.warn({ err, mediaId }, "[MediaRouter] Vector delete failed after bulk media delete");
+					}
+				}),
 			);
 			return { success: true };
 		}),

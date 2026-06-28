@@ -96,25 +96,22 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	>("missing");
 	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
-	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
+	let ccipAbortController: AbortController | null = null;
 
 	const refreshCcipStatus = async () => {
-		const requestId = ccipStatusRequestId() + 1;
-		setCcipStatusRequestId(requestId);
+		ccipAbortController?.abort();
+		ccipAbortController = new AbortController();
+		const { signal } = ccipAbortController;
 		try {
 			const result = await getCcipVectorStatus(
 				props.media.mediaSourceId,
 				props.media.id,
 			);
-			if (ccipStatusRequestId() !== requestId) {
-				return;
-			}
+			if (signal.aborted) return;
 			setCcipStatus(result.status);
 			setActiveCcipJobId(result.jobId ?? null);
 		} catch {
-			if (ccipStatusRequestId() !== requestId) {
-				return;
-			}
+			if (signal.aborted) return;
 			setCcipStatus("failed");
 			setActiveCcipJobId(null);
 		}
@@ -130,16 +127,19 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 	const handleCcipExtraction = async () => {
 		setIsExtractingCcip(true);
+		const currentMediaId = props.media.id;
 		try {
 			const result = await startCcipExtraction(
 				props.media.mediaSourceId,
-				props.media.id,
+				currentMediaId,
 				ccipStatus() === "ready" || ccipStatus() === "stale",
 			);
+			if (props.media.id !== currentMediaId) return;
 			setCcipStatus("processing");
 			setActiveCcipJobId(result.jobId);
 			toast.success("CCIP vector extraction queued");
 		} catch (error) {
+			if (props.media.id !== currentMediaId) return;
 			toast.error(`Failed to extract CCIP vector: ${getErrorMessage(error)}`);
 		} finally {
 			setIsExtractingCcip(false);

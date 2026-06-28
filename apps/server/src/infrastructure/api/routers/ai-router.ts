@@ -499,6 +499,7 @@ export const aiRouter = {
 				where: and(
 					inArray(medias.id, input.mediaIds),
 					eq(medias.mediaType, "image"),
+					input.mediaSourceId ? eq(medias.mediaSourceId, input.mediaSourceId) : undefined,
 				),
 				columns: { id: true, mediaSourceId: true },
 			});

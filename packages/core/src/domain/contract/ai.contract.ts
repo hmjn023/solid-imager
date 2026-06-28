@@ -1,6 +1,6 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
-import { mediaSchema } from "../media/schemas";
+import { mediaSafeSchema } from "../media/schemas";
 import {
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
@@ -52,7 +52,7 @@ export const aiContract = {
 
 	scanBatchCcipTargets: oc
 		.input(batchCcipExtractionRequestSchema)
-		.output(z.array(mediaSchema)),
+		.output(z.array(mediaSafeSchema)),
 
 	startBatchCcipExtraction: oc
 		.input(
@@ -64,7 +64,7 @@ export const aiContract = {
 
 	scanBatchTaggingTargets: oc
 		.input(batchTaggingRequestSchema)
-		.output(z.array(mediaSchema)),
+		.output(z.array(mediaSafeSchema)),
 
 	batchTagging: oc
 		.input(batchTaggingRequestSchema)

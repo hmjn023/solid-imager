@@ -154,6 +154,9 @@ export const mediaSchema = z.object({
 
 export type Media = z.infer<typeof mediaSchema>;
 
+export const mediaSafeSchema = mediaSchema.omit({ filePath: true });
+export type MediaSafe = z.infer<typeof mediaSafeSchema>;
+
 export const authorSchema = z.object({
 	id: z.uuid({ version: "v4" }),
 	name: z.string(),

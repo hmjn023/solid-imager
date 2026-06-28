@@ -271,7 +271,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		if (this.enableAutoCcipExtraction && media.mediaType === "image") {
 			try {
-				await this.jobRepo.create({
+				await this.jobRepo.createIfUnique({
 					type: "extract_ccip_vector",
 					mediaSourceId,
 					payload: {

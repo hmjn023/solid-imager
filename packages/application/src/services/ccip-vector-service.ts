@@ -33,7 +33,7 @@ export class CcipVectorService {
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
 		const media = await this.requireImage(mediaSourceId, mediaId);
 		const existing = await this.deps.vectorStore.get(mediaId);
-		if (!force && existing && this.isCurrent(existing, media)) {
+		if (!force && existing && this.isCurrent(existing, media, mediaSourceId)) {
 			return { record: existing, skipped: true };
 		}
 
@@ -66,7 +66,7 @@ export class CcipVectorService {
 		const record = await this.deps.vectorStore.get(mediaId);
 		if (!record) return { status: "missing" };
 		return {
-			status: this.isCurrent(record, media) ? "ready" : "stale",
+			status: this.isCurrent(record, media, mediaSourceId) ? "ready" : "stale",
 			model: record.model,
 			extractedAt: record.extractedAt,
 		};
@@ -96,7 +96,7 @@ export class CcipVectorService {
 		const anchorMedia = await this.deps.mediaRepository.findById(anchorMediaId);
 		if (!anchorMedia) throw new Error(`Media not found: ${anchorMediaId}`);
 		const anchor = await this.deps.vectorStore.get(anchorMediaId);
-		if (!anchor || !this.isCurrent(anchor, anchorMedia)) {
+		if (!anchor || !this.isCurrent(anchor, anchorMedia, anchorMedia.mediaSourceId)) {
 			throw new Error("CCIP vector is missing or stale for the anchor media");
 		}
 
@@ -120,7 +120,7 @@ export class CcipVectorService {
 		const mediaById = new Map(media.map((item) => [item.id, item]));
 		const currentCandidates = candidates.filter((candidate) => {
 			const item = mediaById.get(candidate.mediaId);
-			return item ? this.isCurrent(candidate, item) : false;
+			return item ? this.isCurrent(candidate, item, item.mediaSourceId) : false;
 		});
 		if (currentCandidates.length === 0) {
 			return { media: [], total: 0, scores: [] };
@@ -156,10 +156,11 @@ export class CcipVectorService {
 		};
 	}
 
-	private isCurrent(record: CcipVectorRecord, media: Media): boolean {
+	private isCurrent(record: CcipVectorRecord, media: Media, mediaSourceId: string): boolean {
 		return (
 			record.model === CCIP_MODEL &&
 			record.embeddingVersion === CCIP_EMBEDDING_VERSION &&
+			record.mediaSourceId === mediaSourceId &&
 			record.mediaModifiedAt.getTime() === media.modifiedAt.getTime()
 		);
 	}

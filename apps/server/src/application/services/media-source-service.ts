@@ -4,6 +4,7 @@ import type {
 } from "@solid-imager/core/domain/repositories/source-repository";
 import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { logger } from "~/infrastructure/logger";
 
 /**
  * Custom error class for fetch operations.
@@ -60,7 +61,11 @@ const deleteSourceServer = async (
 	// We fetch it first before deleting to satisfy the return type if needed.
 	const source = await sourceRepo.findById(mediaSourceId);
 	await sourceRepo.delete(mediaSourceId);
-	await ccipVectorService.deleteBySource(mediaSourceId);
+	try {
+		await ccipVectorService.deleteBySource(mediaSourceId);
+	} catch (err) {
+		logger.warn({ err, mediaSourceId }, "Failed to delete CCIP vectors during source deletion");
+	}
 	return source ? [source] : [];
 };
 

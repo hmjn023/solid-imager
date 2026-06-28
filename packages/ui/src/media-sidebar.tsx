@@ -136,14 +136,17 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const extractCcipVector = async () => {
 		if (!props.startCcipExtraction) return;
 		setIsExtractingCcip(true);
+		const currentMediaId = props.media.id;
 		try {
 			const result = await props.startCcipExtraction(
 				ccipStatus() === "ready" || ccipStatus() === "stale",
 			);
+			if (props.media.id !== currentMediaId) return;
 			setCcipStatus("processing");
 			setActiveCcipJobId(result.jobId);
 			toast.success("CCIP vector extraction queued");
 		} catch (error) {
+			if (props.media.id !== currentMediaId) return;
 			toast.error(`Failed to extract CCIP vector: ${getErrorMessage(error)}`);
 		} finally {
 			setIsExtractingCcip(false);
