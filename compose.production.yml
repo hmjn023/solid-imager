@@ -1,6 +1,6 @@
 services:
   app:
-    image: oven/bun:alpine
+    image: oven/bun:debian
     container_name: solid-imager-app
     restart: always
     working_dir: /app
