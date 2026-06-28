@@ -9,7 +9,9 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { MediaCardItem } from "~/components/media/media-card-item";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
+	scanBatchCcipTargets,
 	scanBatchTaggingTargets,
+	startBatchCcipExtraction,
 	startBatchTaggingWithIds,
 } from "~/infrastructure/api-clients/ai-api";
 import {
@@ -57,6 +59,8 @@ const managerActions = {
 	deleteCharacter,
 	scanBatchTaggingTargets,
 	startBatchTaggingWithIds,
+	scanBatchCcipTargets,
+	startBatchCcipExtraction,
 	findDuplicateMedia,
 	bulkDeleteMedia,
 };

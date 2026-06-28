@@ -20,5 +20,8 @@ export interface IMediaProcessingService {
 		tx?: Transaction,
 	): Promise<void>;
 
-	updateConfig(config: { enableAutoTagging: boolean }): void;
+	updateConfig(config: {
+		enableAutoTagging: boolean;
+		enableAutoCcipExtraction: boolean;
+	}): void;
 }

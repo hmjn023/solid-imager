@@ -20,5 +20,10 @@ export type IAiClient = {
 		feature2: number[],
 	): Promise<CcipDifferenceResponse>;
 
+	calculateCcipDistances(
+		feature: number[],
+		candidates: number[][],
+	): Promise<number[]>;
+
 	getBaseUrl?: () => string;
 };

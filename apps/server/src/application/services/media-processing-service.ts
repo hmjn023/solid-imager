@@ -34,7 +34,10 @@ export const MediaProcessingService = {
 			.addContextMetadataToExistingMedia(mediaId, context, tx);
 	},
 
-	updateConfig: (config: { enableAutoTagging: boolean }) => {
+	updateConfig: (config: {
+		enableAutoTagging: boolean;
+		enableAutoCcipExtraction: boolean;
+	}) => {
 		return services.getMediaProcessingService().updateConfig(config);
 	},
 };

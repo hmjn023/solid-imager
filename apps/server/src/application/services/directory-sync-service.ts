@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { Glob } from "bun";
 import { services } from "~/application/registry";
+import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -60,6 +61,14 @@ async function processDeletions(
 		filesToDelete.map(async (fileToDelete) => {
 			try {
 				await MediaRepository.delete(fileToDelete.id);
+				try {
+					await ccipVectorService.delete(fileToDelete.id);
+				} catch (error) {
+					logger.warn(
+						{ err: error, mediaId: fileToDelete.id },
+						"Failed to delete CCIP vector during directory sync",
+					);
+				}
 				await deleteThumbnail(mediaSourceId, fileToDelete.id);
 				RealtimeEventBus.publishSource(mediaSourceId, "media-deleted", {
 					filePath: fileToDelete.relativePath,

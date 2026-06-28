@@ -73,12 +73,16 @@ const managerTabs: ManagerEntityType[] = [
 	"ips",
 	"characters",
 	"tagging",
+	"vectors",
 	"duplicates",
 ];
 
 function tabLabel(tab: ManagerEntityType) {
 	if (tab === "tagging") {
 		return "Batch Tagging";
+	}
+	if (tab === "vectors") {
+		return "Vector Extraction";
 	}
 	if (tab === "ips") {
 		return "IPs";
@@ -105,6 +109,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 				<Show
 					when={
 						manager().activeTab() !== "tagging" &&
+						manager().activeTab() !== "vectors" &&
 						manager().activeTab() !== "duplicates"
 					}
 				>
@@ -130,13 +135,24 @@ export function ManagerScreen(props: ManagerScreenProps) {
 				</For>
 			</div>
 
-			<Show when={manager().activeTab() === "tagging"}>
+			<Show
+				when={
+					manager().activeTab() === "tagging" ||
+					manager().activeTab() === "vectors"
+				}
+			>
 				<div class="space-y-6">
 					<Card>
 						<CardHeader>
-							<CardTitle>Batch AI Tagging</CardTitle>
+							<CardTitle>
+								{manager().activeTab() === "vectors"
+									? "Batch CCIP Vector Extraction"
+									: "Batch AI Tagging"}
+							</CardTitle>
 							<CardDescription>
-								Analyze and tag images across your media sources using AI.
+								{manager().activeTab() === "vectors"
+									? "Extract CCIP character embeddings for similarity search."
+									: "Analyze and tag images across your media sources using AI."}
 							</CardDescription>
 						</CardHeader>
 						<CardContent class="space-y-4">
@@ -191,21 +207,33 @@ export function ManagerScreen(props: ManagerScreenProps) {
 									onChange={manager().setForceRetag}
 								>
 									<CheckboxControl />
-									<CheckboxLabel>Force Re-tagging</CheckboxLabel>
+									<CheckboxLabel>
+										{manager().activeTab() === "vectors"
+											? "Force Re-extraction"
+											: "Force Re-tagging"}
+									</CheckboxLabel>
 								</Checkbox>
 							</div>
 							<p class="text-muted-foreground text-xs">
-								If checked, existing AI tags will be ignored and images will be
-								re-analyzed.
+								{manager().activeTab() === "vectors"
+									? "If checked, existing CCIP vectors are overwritten."
+									: "If checked, existing AI tags will be ignored and images will be re-analyzed."}
 							</p>
 
 							<div class="flex items-center gap-x-2 pt-2">
 								<Button onClick={manager().handleScan}>Scan for Targets</Button>
 								<Button
 									disabled={manager().scannedMedia().length === 0}
-									onClick={manager().handleStartBatchTagging}
+									onClick={
+										manager().activeTab() === "vectors"
+											? manager().handleStartBatchCcipExtraction
+											: manager().handleStartBatchTagging
+									}
 								>
-									Start Batch Tagging ({manager().selectedMedia().size})
+									{manager().activeTab() === "vectors"
+										? "Start Vector Extraction"
+										: "Start Batch Tagging"}{" "}
+									({manager().selectedMedia().size})
 								</Button>
 							</div>
 
@@ -470,6 +498,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 			<Show
 				when={
 					manager().activeTab() !== "tagging" &&
+					manager().activeTab() !== "vectors" &&
 					manager().activeTab() !== "duplicates"
 				}
 			>
@@ -532,7 +561,8 @@ export function ManagerScreen(props: ManagerScreenProps) {
 					<DialogHeader>
 						<DialogTitle>
 							{manager().editingItem() ? "Edit" : "Create"}{" "}
-							{manager().activeTab() === "tagging"
+							{manager().activeTab() === "tagging" ||
+							manager().activeTab() === "vectors"
 								? "TAGGING"
 								: manager().activeTab().slice(0, -1).toUpperCase()}
 						</DialogTitle>

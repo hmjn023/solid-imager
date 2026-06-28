@@ -39,6 +39,60 @@ export const ccipDifferenceRequestSchema = z.object({
 	feature2: z.array(z.number()),
 });
 
+export const ccipDistancesRequestSchema = z.object({
+	feature: z.array(z.number()),
+	candidates: z.array(z.array(z.number())),
+});
+
+export const ccipDistancesResponseSchema = z.object({
+	distances: z.array(z.number()),
+});
+
+export const ccipVectorStatusSchema = z.object({
+	status: z.enum(["missing", "processing", "ready", "stale", "failed"]),
+	jobId: z.string().uuid().optional(),
+	model: z.string().optional(),
+	extractedAt: z.coerce.date().optional(),
+	error: z.string().optional(),
+});
+
+export type CcipVectorStatus = z.infer<typeof ccipVectorStatusSchema>;
+
+export const ccipExtractionRequestSchema = z.object({
+	mediaSourceId: z.string().uuid(),
+	mediaId: z.string().uuid(),
+	force: z.boolean().default(false),
+});
+
+export const batchCcipExtractionRequestSchema = z.object({
+	force: z.boolean().default(false),
+	mediaSourceId: z.string().uuid().optional(),
+});
+
+export const startCcipExtractionResponseSchema = z.object({
+	success: z.boolean(),
+	message: z.string(),
+	jobId: z.string().uuid(),
+});
+
+export type StartCcipExtractionResponse = z.infer<
+	typeof startCcipExtractionResponseSchema
+>;
+
+export const similarMediaRequestSchema = z.object({
+	anchorMediaId: z.string().uuid(),
+	mediaSourceId: z.string().uuid().optional(),
+	topK: z.number().int().min(1).max(100).default(50),
+});
+
+export const similarMediaScoreSchema = z.object({
+	mediaId: z.string().uuid(),
+	cosineDistance: z.number(),
+	ccipDistance: z.number(),
+});
+
+export type SimilarMediaScore = z.infer<typeof similarMediaScoreSchema>;
+
 export const batchTaggingRequestSchema = z.object({
 	force: z.boolean().optional(),
 	batchSize: z.number().optional(),

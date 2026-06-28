@@ -43,3 +43,30 @@ export function startBatchTaggingWithIds(params: {
 }) {
 	return orpc.ai.startBatchTaggingWithIds(params);
 }
+
+export function getCcipVectorStatus(mediaSourceId: string, mediaId: string) {
+	return orpc.ai.ccipVectorStatus({ mediaSourceId, mediaId });
+}
+
+export function startCcipExtraction(
+	mediaSourceId: string,
+	mediaId: string,
+	force = false,
+) {
+	return orpc.ai.startCcipExtraction({ mediaSourceId, mediaId, force });
+}
+
+export function scanBatchCcipTargets(params: {
+	force?: boolean;
+	mediaSourceId?: string;
+}) {
+	return orpc.ai.scanBatchCcipTargets(params);
+}
+
+export function startBatchCcipExtraction(params: {
+	force?: boolean;
+	mediaSourceId?: string;
+	mediaIds: string[];
+}) {
+	return orpc.ai.startBatchCcipExtraction(params);
+}

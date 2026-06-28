@@ -6,6 +6,7 @@
 
 import path from "node:path";
 import { services } from "~/application/registry";
+import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -84,6 +85,14 @@ async function handleFileDeleted(
 
 		// Delete from database
 		await MediaRepository.delete(media.id);
+		try {
+			await ccipVectorService.delete(media.id);
+		} catch (error) {
+			logger.warn(
+				{ err: error, mediaId: media.id },
+				"Failed to delete CCIP vector for removed media",
+			);
+		}
 
 		// Delete thumbnail
 		await deleteThumbnail(mediaSourceId, media.id);

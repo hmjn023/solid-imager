@@ -10,8 +10,11 @@ import type { SearchState } from "./schema";
  */
 export const calculateNextModeState = (
 	currentState: SearchState,
-	nextMode: "simple" | "pro",
+	nextMode: "simple" | "pro" | "vector",
 ): Partial<SearchState> => {
+	if (nextMode === "vector") {
+		return { mode: "vector", offset: 0, scrollY: 0 };
+	}
 	if (nextMode === "pro") {
 		// Switching from simple to pro: populate advancedCondition from current simple filters
 		const condition = getSearchConditionFromState(currentState);
@@ -122,6 +125,7 @@ const applyCriterionToState = (
 export const getSearchConditionFromState = (
 	state: SearchState,
 ): SearchGroup | undefined => {
+	if (state.mode === "vector") return;
 	if (state.mode === "pro") {
 		return state.advancedCondition || undefined;
 	}

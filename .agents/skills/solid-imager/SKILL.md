@@ -97,6 +97,8 @@ bun run test
 - UI 変更: `ui-components`, `tanstack-db`, 必要に応じて `modern-web-guidance`
 - リアルタイムイベント/SSE 変更: `realtime-events`, `orpc-api`, `schema-driven-dev`
 - AI/ML 連携: `ai-service`
+- Background job・batch進捗: `job-system`
+- メディア検索・検索状態・類似検索: `media-search`
 - CLI 変更: `cli`
 - ブラウザ拡張: `browser-extension`
 - ログ実装・整理: `logging-rules`

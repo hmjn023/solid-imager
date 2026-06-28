@@ -105,6 +105,7 @@ export function initServices() {
 		mediaStorage: services.getMediaStorage(),
 		logger,
 		enableAutoTagging: config.jobs.enableAutoTagging,
+		enableAutoCcipExtraction: config.jobs.enableAutoCcipExtraction,
 		supportedExtensions: config.media.supportedExtensions,
 		generateThumbnail: (
 			media: { id: string; filePath: string },
@@ -118,6 +119,7 @@ export function initServices() {
 	configService.onChange((newConfig) =>
 		mediaProcessingService.updateConfig({
 			enableAutoTagging: newConfig.jobs.enableAutoTagging,
+			enableAutoCcipExtraction: newConfig.jobs.enableAutoCcipExtraction,
 		}),
 	);
 }

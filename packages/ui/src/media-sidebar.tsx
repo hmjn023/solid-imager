@@ -2,6 +2,15 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type {
+	CcipVectorStatus,
+	StartCcipExtractionResponse,
+} from "@solid-imager/core/domain/tagging/schemas";
+import type {
+	JobCompletedEvent,
+	JobFailedEvent,
+	JobProgressEvent,
+} from "@solid-imager/core/domain/sources/events";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
@@ -9,6 +18,7 @@ import {
 	createSignal,
 	For,
 	type JSX,
+	onMount,
 	Show,
 } from "solid-js";
 import { AssociationManager } from "./association-manager";
@@ -37,6 +47,17 @@ type MediaSidebarProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
+	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
+	startCcipExtraction?: (force: boolean) => Promise<StartCcipExtractionResponse>;
+	useCcipJobEvents?: (
+		activeJobId: () => string | null,
+		handlers: {
+			handleJobProgress: (event: JobProgressEvent) => void;
+			handleJobCompleted: (event: JobCompletedEvent) => void;
+			handleJobFailed: (event: JobFailedEvent) => void;
+		},
+	) => void;
+	onFindSimilar?: () => void;
 	onUpdate?: () => void;
 	onDescriptionUpdate: (description: string) => void | Promise<void>;
 	onProjectAdd: (projectId: string) => void | Promise<void>;
@@ -68,6 +89,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
+	const [ccipStatus, setCcipStatus] =
+		createSignal<CcipVectorStatus["status"]>("missing");
+	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
+	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
+	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
 	);
@@ -76,6 +102,69 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		if (!isEditingDescription()) {
 			setDescriptionValue(props.media.description || "");
 		}
+	});
+
+	const refreshCcipStatus = async () => {
+		const requestId = ccipStatusRequestId() + 1;
+		setCcipStatusRequestId(requestId);
+		if (props.getCcipVectorStatus) {
+			try {
+				const result = await props.getCcipVectorStatus();
+				if (ccipStatusRequestId() !== requestId) {
+					return;
+				}
+				setCcipStatus(result.status);
+				setActiveCcipJobId(result.jobId ?? null);
+			} catch {
+				if (ccipStatusRequestId() !== requestId) {
+					return;
+				}
+				setCcipStatus("failed");
+				setActiveCcipJobId(null);
+			}
+		}
+	};
+
+	createEffect(() => {
+		props.media.id;
+		props.media.mediaSourceId;
+		setCcipStatus("missing");
+		setActiveCcipJobId(null);
+		void refreshCcipStatus();
+	});
+
+	const extractCcipVector = async () => {
+		if (!props.startCcipExtraction) return;
+		setIsExtractingCcip(true);
+		try {
+			const result = await props.startCcipExtraction(
+				ccipStatus() === "ready" || ccipStatus() === "stale",
+			);
+			setCcipStatus("processing");
+			setActiveCcipJobId(result.jobId);
+			toast.success("CCIP vector extraction queued");
+		} catch (error) {
+			toast.error(`Failed to extract CCIP vector: ${getErrorMessage(error)}`);
+		} finally {
+			setIsExtractingCcip(false);
+		}
+	};
+
+	props.useCcipJobEvents?.(activeCcipJobId, {
+		handleJobProgress: () => {
+			setCcipStatus("processing");
+		},
+		handleJobCompleted: () => {
+			setActiveCcipJobId(null);
+			void refreshCcipStatus();
+		},
+		handleJobFailed: (event) => {
+			setCcipStatus("failed");
+			setActiveCcipJobId(null);
+			if (event.error) {
+				toast.error(`Failed to extract CCIP vector: ${event.error}`);
+			}
+		},
 	});
 
 	const positiveTags = createMemo(() =>
@@ -171,6 +260,26 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							<span class="i-lucide-scan" />
 							Detect &amp; Crop Characters
 						</button>
+					</Show>
+					<Show when={props.startCcipExtraction}>
+						<Button
+							disabled={isExtractingCcip() || ccipStatus() === "processing"}
+							onClick={extractCcipVector}
+							variant="outline"
+						>
+							<span class="i-lucide-binary" />
+							{ccipStatus() === "ready" || ccipStatus() === "stale"
+								? "Re-extract CCIP Vector"
+								: ccipStatus() === "processing"
+									? "Extracting CCIP Vector..."
+									: "Extract CCIP Vector"}
+						</Button>
+					</Show>
+					<Show when={ccipStatus() === "ready" && props.onFindSimilar}>
+						<Button onClick={props.onFindSimilar} variant="outline">
+							<span class="i-lucide-scan-search" />
+							Find Similar
+						</Button>
 					</Show>
 				</div>
 			</Show>

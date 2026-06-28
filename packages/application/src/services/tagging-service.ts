@@ -361,6 +361,13 @@ export class TaggingServiceImpl implements ITaggingService {
 		return result.difference;
 	}
 
+	async getCcipDistances(
+		feature: number[],
+		candidates: number[][],
+	): Promise<number[]> {
+		return await this.aiClient.calculateCcipDistances(feature, candidates);
+	}
+
 	/**
 	 * Check if AI service is running on localhost
 	 * Path-based API only works when AI service can access the file system

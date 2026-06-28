@@ -1,5 +1,10 @@
 export type { IAuthorService } from "./author-service";
 export type { ICategoryService } from "./category-service";
+export type {
+	CcipVectorCandidate,
+	CcipVectorRecord,
+	ICcipVectorStore,
+} from "./ccip-vector-store";
 export type { ICharacterService } from "./character-service";
 export type { ICollectionService } from "./collection-service";
 export type { IIpService } from "./ip-service";

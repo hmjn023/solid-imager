@@ -2,10 +2,16 @@ import { oc } from "@orpc/contract";
 import { z } from "zod";
 import { mediaSchema } from "../media/schemas";
 import {
+	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
+	ccipDistancesRequestSchema,
+	ccipDistancesResponseSchema,
+	ccipExtractionRequestSchema,
 	ccipFeatureRequestSchema,
+	ccipVectorStatusSchema,
 	detectAndCropResponseSchema,
+	startCcipExtractionResponseSchema,
 	taggingResponseSchema,
 	tagImageRequestSchema,
 } from "../tagging/schemas";
@@ -29,6 +35,32 @@ export const aiContract = {
 	),
 
 	ccipDifference: oc.input(ccipDifferenceRequestSchema),
+
+	ccipDistances: oc
+		.input(ccipDistancesRequestSchema)
+		.output(ccipDistancesResponseSchema),
+
+	ccipVectorStatus: oc
+		.input(
+			ccipExtractionRequestSchema.pick({ mediaSourceId: true, mediaId: true }),
+		)
+		.output(ccipVectorStatusSchema),
+
+	startCcipExtraction: oc
+		.input(ccipExtractionRequestSchema)
+		.output(startCcipExtractionResponseSchema),
+
+	scanBatchCcipTargets: oc
+		.input(batchCcipExtractionRequestSchema)
+		.output(z.array(mediaSchema)),
+
+	startBatchCcipExtraction: oc
+		.input(
+			batchCcipExtractionRequestSchema.extend({
+				mediaIds: z.array(z.string().uuid()).min(1),
+			}),
+		)
+		.output(startCcipExtractionResponseSchema),
 
 	scanBatchTaggingTargets: oc
 		.input(batchTaggingRequestSchema)

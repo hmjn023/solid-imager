@@ -42,7 +42,7 @@ export type IJobRepository = {
 	markAsCompleted(id: string, result?: unknown): Promise<void>;
 	markAsFailed(id: string, error: string): Promise<void>;
 	update(id: string, data: Partial<Job>): Promise<void>;
-	incrementProgress(id: string): Promise<void>;
+	incrementProgress(id: string, progressKey?: string): Promise<boolean>;
 	claimPending(
 		limit: number,
 		options?: {
