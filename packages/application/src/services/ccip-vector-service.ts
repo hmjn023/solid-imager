@@ -111,6 +111,9 @@ export class CcipVectorService {
 				mediaSourceId,
 			)
 		).filter((candidate) => candidate.mediaId !== anchorMediaId);
+		if (candidates.length === 0) {
+			return { media: [], total: 0, scores: [] };
+		}
 		const media = await this.deps.mediaRepository.findByIds(
 			candidates.map((candidate) => candidate.mediaId),
 		);
@@ -119,6 +122,9 @@ export class CcipVectorService {
 			const item = mediaById.get(candidate.mediaId);
 			return item ? this.isCurrent(candidate, item) : false;
 		});
+		if (currentCandidates.length === 0) {
+			return { media: [], total: 0, scores: [] };
+		}
 		const distances = await this.deps.taggingService.getCcipDistances(
 			anchor.vector,
 			currentCandidates.map((candidate) => candidate.vector),

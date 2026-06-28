@@ -7,7 +7,7 @@ import { activateVectorSearch } from "@solid-imager/ui/stores/search-store";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
-import { createMemo, createSignal, For, onMount, Show } from "solid-js";
+import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AiTaggingModal } from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import CharacterCropModal from "~/components/media/character-crop-modal";
@@ -96,22 +96,35 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	>("missing");
 	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
+	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
 
 	const refreshCcipStatus = async () => {
+		const requestId = ccipStatusRequestId() + 1;
+		setCcipStatusRequestId(requestId);
 		try {
 			const result = await getCcipVectorStatus(
 				props.media.mediaSourceId,
 				props.media.id,
 			);
+			if (ccipStatusRequestId() !== requestId) {
+				return;
+			}
 			setCcipStatus(result.status);
 			setActiveCcipJobId(result.jobId ?? null);
 		} catch {
+			if (ccipStatusRequestId() !== requestId) {
+				return;
+			}
 			setCcipStatus("failed");
 			setActiveCcipJobId(null);
 		}
 	};
 
-	onMount(() => {
+	createEffect(() => {
+		props.media.id;
+		props.media.mediaSourceId;
+		setCcipStatus("missing");
+		setActiveCcipJobId(null);
 		void refreshCcipStatus();
 	});
 

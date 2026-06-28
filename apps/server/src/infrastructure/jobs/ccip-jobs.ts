@@ -32,7 +32,7 @@ async function updateParent(job: Job): Promise<void> {
 		processed: payload.processed,
 		total: payload.total,
 	});
-	if (payload.processed >= payload.total) {
+	if (parent.status !== "failed" && payload.processed >= payload.total) {
 		await jobRepository.markAsCompleted(parent.id, { success: true });
 		RealtimeEventBus.publishJob("job-completed", {
 			jobId: parent.id,

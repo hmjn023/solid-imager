@@ -93,6 +93,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		createSignal<CcipVectorStatus["status"]>("missing");
 	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
+	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
 	);
@@ -104,19 +105,31 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	});
 
 	const refreshCcipStatus = async () => {
+		const requestId = ccipStatusRequestId() + 1;
+		setCcipStatusRequestId(requestId);
 		if (props.getCcipVectorStatus) {
 			try {
 				const result = await props.getCcipVectorStatus();
+				if (ccipStatusRequestId() !== requestId) {
+					return;
+				}
 				setCcipStatus(result.status);
 				setActiveCcipJobId(result.jobId ?? null);
 			} catch {
+				if (ccipStatusRequestId() !== requestId) {
+					return;
+				}
 				setCcipStatus("failed");
 				setActiveCcipJobId(null);
 			}
 		}
 	};
 
-	onMount(() => {
+	createEffect(() => {
+		props.media.id;
+		props.media.mediaSourceId;
+		setCcipStatus("missing");
+		setActiveCcipJobId(null);
 		void refreshCcipStatus();
 	});
 
