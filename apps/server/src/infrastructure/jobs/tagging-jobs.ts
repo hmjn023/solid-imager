@@ -70,8 +70,11 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 						total: parentPayload.total,
 					});
 
-					if (parentPayload.processed >= parentPayload.total) {
-						await jobRepo.update(parentId, { status: "completed" });
+					if (
+						parentJob.status !== "failed" &&
+						parentPayload.processed >= parentPayload.total
+					) {
+						await jobRepo.markAsCompleted(parentId);
 						RealtimeEventBus.publishJob("job-completed", {
 							jobId: parentId,
 						});

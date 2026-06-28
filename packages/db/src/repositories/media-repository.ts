@@ -1142,6 +1142,7 @@ export function createMediaRepository(
 					.select()
 					.from(medias)
 					.where(eq(medias.mediaSourceId, mediaSourceId))
+					.orderBy(asc(medias.id))
 					.limit(limit)
 					.offset(offset);
 				const results = await query;

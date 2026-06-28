@@ -68,7 +68,14 @@ export function subscribeToEventStream<TEvent>(
 					INITIAL_RETRY_DELAY * 2 ** (retryCount - 1),
 					MAX_RETRY_DELAY,
 				);
-				onError?.(error, retryCount, delay);
+				try {
+					onError?.(error, retryCount, delay);
+				} catch (handlerError) {
+					console.error(
+						"[subscribeToEventStream] Error handler failed:",
+						handlerError,
+					);
+				}
 				await waitForRetry(delay, abortController.signal);
 			}
 		}

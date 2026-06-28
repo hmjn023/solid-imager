@@ -11,6 +11,7 @@ import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import { AiTaggingModal } from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import CharacterCropModal from "~/components/media/character-crop-modal";
+import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	getCcipVectorStatus,
 	startCcipExtraction,
@@ -37,7 +38,6 @@ import {
 	allProjectsQueryOptions,
 	projectsForMediaQueryOptions,
 } from "~/infrastructure/api-clients/queries";
-import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 
 type MediaSidebarProps = {
 	media: MediaDetails;
@@ -94,25 +94,26 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [ccipStatus, setCcipStatus] = createSignal<
 		"missing" | "processing" | "ready" | "stale" | "failed"
 	>("missing");
-	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
+	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(
+		null,
+	);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
-	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
+	let ccipStatusRequestId = 0;
 
 	const refreshCcipStatus = async () => {
-		const requestId = ccipStatusRequestId() + 1;
-		setCcipStatusRequestId(requestId);
+		const requestId = ++ccipStatusRequestId;
 		try {
 			const result = await getCcipVectorStatus(
 				props.media.mediaSourceId,
 				props.media.id,
 			);
-			if (ccipStatusRequestId() !== requestId) {
+			if (ccipStatusRequestId !== requestId) {
 				return;
 			}
 			setCcipStatus(result.status);
 			setActiveCcipJobId(result.jobId ?? null);
 		} catch {
-			if (ccipStatusRequestId() !== requestId) {
+			if (ccipStatusRequestId !== requestId) {
 				return;
 			}
 			setCcipStatus("failed");

@@ -13,7 +13,7 @@ description: 画像の自動タグ付け、類似度計算、CCIP特徴量など
 - 画像間の類似度計算
 
 ### AI サービス連携ルール
-- AI機能への呼び出しは `apps/server/src/application/services/tagging-service.ts` を経由します
+- AI機能への呼び出しは、対象機能のapplication serviceを経由します
 - AIサービスへの呼び出しはサービス層経由を基本にする。リトライ、エラー変換、ロギング、テスト差し替えの入口を一箇所に保つため。
 
 ## Task Routing

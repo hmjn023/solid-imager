@@ -3,14 +3,14 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
-	CcipVectorStatus,
-	StartCcipExtractionResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
-import type {
 	JobCompletedEvent,
 	JobFailedEvent,
 	JobProgressEvent,
 } from "@solid-imager/core/domain/sources/events";
+import type {
+	CcipVectorStatus,
+	StartCcipExtractionResponse,
+} from "@solid-imager/core/domain/tagging/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
@@ -18,7 +18,6 @@ import {
 	createSignal,
 	For,
 	type JSX,
-	onMount,
 	Show,
 } from "solid-js";
 import { AssociationManager } from "./association-manager";
@@ -48,7 +47,9 @@ type MediaSidebarProps = {
 		onClose: () => void;
 	}) => JSX.Element;
 	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
-	startCcipExtraction?: (force: boolean) => Promise<StartCcipExtractionResponse>;
+	startCcipExtraction?: (
+		force: boolean,
+	) => Promise<StartCcipExtractionResponse>;
 	useCcipJobEvents?: (
 		activeJobId: () => string | null,
 		handlers: {
@@ -91,7 +92,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [ccipStatus, setCcipStatus] =
 		createSignal<CcipVectorStatus["status"]>("missing");
-	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
+	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(
+		null,
+	);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
 	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
 	const [descriptionValue, setDescriptionValue] = createSignal(
@@ -240,8 +243,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				<p class="text-gray-500 text-sm">{props.media.filePath}</p>
 			</div>
 
-			<Show when={props.aiTaggingModal}>
-				<div class="flex flex-col gap-2">
+			<div class="flex flex-col gap-2">
+				<Show when={props.aiTaggingModal}>
 					<button
 						class="flex w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
 						onClick={() => setIsAiTaggingModalOpen(true)}
@@ -250,39 +253,38 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						<span class="i-lucide-sparkles" />
 						Extract Tags (AI)
 					</button>
-
-					<Show when={props.characterCropModal}>
-						<button
-							class="flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
-							onClick={() => setIsCharacterCropModalOpen(true)}
-							type="button"
-						>
-							<span class="i-lucide-scan" />
-							Detect &amp; Crop Characters
-						</button>
-					</Show>
-					<Show when={props.startCcipExtraction}>
-						<Button
-							disabled={isExtractingCcip() || ccipStatus() === "processing"}
-							onClick={extractCcipVector}
-							variant="outline"
-						>
-							<span class="i-lucide-binary" />
-							{ccipStatus() === "ready" || ccipStatus() === "stale"
-								? "Re-extract CCIP Vector"
-								: ccipStatus() === "processing"
-									? "Extracting CCIP Vector..."
-									: "Extract CCIP Vector"}
-						</Button>
-					</Show>
-					<Show when={ccipStatus() === "ready" && props.onFindSimilar}>
-						<Button onClick={props.onFindSimilar} variant="outline">
-							<span class="i-lucide-scan-search" />
-							Find Similar
-						</Button>
-					</Show>
-				</div>
-			</Show>
+				</Show>
+				<Show when={props.characterCropModal}>
+					<button
+						class="flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
+						onClick={() => setIsCharacterCropModalOpen(true)}
+						type="button"
+					>
+						<span class="i-lucide-scan" />
+						Detect &amp; Crop Characters
+					</button>
+				</Show>
+				<Show when={props.startCcipExtraction}>
+					<Button
+						disabled={isExtractingCcip() || ccipStatus() === "processing"}
+						onClick={extractCcipVector}
+						variant="outline"
+					>
+						<span class="i-lucide-binary" />
+						{ccipStatus() === "ready" || ccipStatus() === "stale"
+							? "Re-extract CCIP Vector"
+							: ccipStatus() === "processing"
+								? "Extracting CCIP Vector..."
+								: "Extract CCIP Vector"}
+					</Button>
+				</Show>
+				<Show when={ccipStatus() === "ready" && props.onFindSimilar}>
+					<Button onClick={props.onFindSimilar} variant="outline">
+						<span class="i-lucide-scan-search" />
+						Find Similar
+					</Button>
+				</Show>
+			</div>
 			{props.aiTaggingModal?.({
 				isOpen: isAiTaggingModalOpen(),
 				onClose: () => setIsAiTaggingModalOpen(false),

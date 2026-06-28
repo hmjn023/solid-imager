@@ -39,9 +39,11 @@ vi.mock("~/application/registry", () => ({
 }));
 
 // Mock lancedb-dump-service
-const mockReadMediaIds = vi.fn();
+const mockReadMediaIdPages = vi.fn();
+const mockFindExistingMediaIds = vi.fn();
 vi.mock("~/application/services/lancedb-dump-service", () => ({
-	readMediaIds: mockReadMediaIds,
+	readMediaIdPages: mockReadMediaIdPages,
+	findExistingMediaIds: mockFindExistingMediaIds,
 }));
 
 // Mock backup-service
@@ -68,6 +70,8 @@ const mockMediaRepo = {
 	findIdsWithMissingGenerationInfo: vi.fn(),
 	findAllMediaIndices: vi.fn(),
 	findAllPathsBySourceId: vi.fn(),
+	findAllBySourceId: vi.fn(),
+	findByIds: vi.fn(),
 };
 
 const mockJobRepo = {
@@ -95,6 +99,12 @@ function makeLocalSource(id: string, path: string) {
 	return { id, type: "local", connectionInfo: { path } };
 }
 
+async function* mediaIdPages(...pages: string[][]): AsyncIterable<string[]> {
+	for (const page of pages) {
+		yield page;
+	}
+}
+
 // ---- Test suite ----
 
 describe("MaintenanceService", () => {
@@ -108,11 +118,16 @@ describe("MaintenanceService", () => {
 		);
 		mockSourceRepo.findAll.mockResolvedValue([]);
 		mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([]);
+		mockMediaRepo.findAllBySourceId.mockResolvedValue([]);
+		mockMediaRepo.findByIds.mockResolvedValue([]);
+		mockReadMediaIdPages.mockImplementation(() => mediaIdPages());
+		mockFindExistingMediaIds.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
-		mockReadMediaIds.mockReset();
+		mockReadMediaIdPages.mockReset();
+		mockFindExistingMediaIds.mockReset();
 		mockQueueSourceLanceDBDelta.mockReset();
 	});
 
@@ -393,10 +408,10 @@ describe("MaintenanceService", () => {
 			);
 
 			// Both LanceDB and Postgres have media-1
-			mockReadMediaIds.mockResolvedValue(["media-1"]);
-			mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([
-				{ id: "media-1", filePath: "/media/media-1.png" },
-			]);
+			mockReadMediaIdPages.mockImplementation(() => mediaIdPages(["media-1"]));
+			mockFindExistingMediaIds.mockResolvedValue(["media-1"]);
+			mockMediaRepo.findAllBySourceId.mockResolvedValue([makeMedia("media-1")]);
+			mockMediaRepo.findByIds.mockResolvedValue([makeMedia("media-1")]);
 
 			await service.performStartupChecks();
 
@@ -425,11 +440,15 @@ describe("MaintenanceService", () => {
 			// Postgres: media-1, media-2
 			// LanceDB: media-2, media-3
 			// Discrepancies: upsert [media-1], delete [media-3]
-			mockReadMediaIds.mockResolvedValue(["media-2", "media-3"]);
-			mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([
-				{ id: "media-1", filePath: "/media/media-1.png" },
-				{ id: "media-2", filePath: "/media/media-2.png" },
+			mockReadMediaIdPages.mockImplementation(() =>
+				mediaIdPages(["media-2", "media-3"]),
+			);
+			mockFindExistingMediaIds.mockResolvedValue(["media-2"]);
+			mockMediaRepo.findAllBySourceId.mockResolvedValue([
+				makeMedia("media-1"),
+				makeMedia("media-2"),
 			]);
+			mockMediaRepo.findByIds.mockResolvedValue([makeMedia("media-2")]);
 
 			await service.performStartupChecks();
 
@@ -470,8 +489,9 @@ describe("MaintenanceService", () => {
 				JSON.stringify({ version: 3 }),
 			);
 
-			// readMediaIds throws error
-			mockReadMediaIds.mockRejectedValue(new Error("LanceDB read error"));
+			mockReadMediaIdPages.mockImplementation(() => {
+				throw new Error("LanceDB read error");
+			});
 
 			await service.performStartupChecks();
 

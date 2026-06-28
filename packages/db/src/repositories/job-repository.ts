@@ -230,7 +230,12 @@ export function createJobRepository(
 					result: result ?? null,
 					updatedAt: new Date(),
 				})
-				.where(eq(jobs.id, id));
+				.where(
+					and(
+						eq(jobs.id, id),
+						notInArray(jobs.status, ["failed", "completed"]),
+					),
+				);
 		},
 
 		async markAsFailed(id: string, error: string): Promise<void> {

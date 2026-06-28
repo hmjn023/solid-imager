@@ -14,16 +14,20 @@ function createTable(rows: Record<string, unknown>[] = []) {
 		),
 		delete: vi.fn(),
 		optimize: mockOptimize,
-		query: vi.fn(() => ({
-			limit: (limit: number) => ({
-				offset: (offset: number) => ({
-					toArray: async () => rows.slice(offset, offset + limit),
+		query: vi.fn(() => {
+			const query = {
+				select: () => query,
+				limit: (limit: number) => ({
+					offset: (offset: number) => ({
+						toArray: async () => rows.slice(offset, offset + limit),
+					}),
 				}),
-			}),
-			where: () => ({
-				toArray: async () => rows,
-			}),
-		})),
+				where: () => ({
+					toArray: async () => rows,
+				}),
+			};
+			return query;
+		}),
 	};
 }
 
@@ -162,6 +166,24 @@ describe("LanceDB Dump Service", () => {
 			sourceUrls: ["https://example.com/image1"],
 		});
 		expect(chunks[0][0].generationInfo?.workflow).toEqual({ node: true });
+	});
+
+	it("reads media IDs in bounded pages", async () => {
+		const { createLanceDbDumpService } = await import(
+			"@solid-imager/application/services/lancedb-dump-service"
+		);
+		const service = createLanceDbDumpService({
+			connect: createMockConnect({
+				media: [{ id: "item-1" }, { id: "item-2" }, { id: "item-3" }],
+			}),
+		});
+
+		const pages: string[][] = [];
+		for await (const page of service.readMediaIdPages("/tmp/lancedb", 2)) {
+			pages.push(page);
+		}
+
+		expect(pages).toEqual([["item-1", "item-2"], ["item-3"]]);
 	});
 
 	it("applies delta sync by deleting target media rows before adding current rows", async () => {

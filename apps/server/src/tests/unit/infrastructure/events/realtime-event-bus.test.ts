@@ -23,6 +23,7 @@ describe("RealtimeEventBus", () => {
 		});
 
 		const expected = {
+			mediaSourceId: "source-1",
 			event: "media-added",
 			data: { filePath: "images/new.png" },
 		};
@@ -62,5 +63,24 @@ describe("RealtimeEventBus", () => {
 		expect(jobListener).toHaveBeenCalledOnce();
 		expect(sourceListener).not.toHaveBeenCalled();
 		expect(importListener).not.toHaveBeenCalled();
+	});
+
+	it("continues delivering after a subscriber throws", () => {
+		const throwingListener = vi.fn(() => {
+			throw new Error("listener failed");
+		});
+		const healthyListener = vi.fn();
+		cleanups.push(
+			RealtimeEventBus.subscribeToSource("source-1", throwingListener),
+			RealtimeEventBus.subscribeToSource("source-1", healthyListener),
+		);
+
+		expect(() =>
+			RealtimeEventBus.publishSource("source-1", "media-added", {
+				filePath: "images/new.png",
+			}),
+		).not.toThrow();
+		expect(throwingListener).toHaveBeenCalledOnce();
+		expect(healthyListener).toHaveBeenCalledOnce();
 	});
 });

@@ -137,7 +137,7 @@ export type ManagerJobHandlers = {
 
 export type UseManagerPageResult = {
 	activeTab: Accessor<ManagerEntityType>;
-	setActiveTab: Setter<ManagerEntityType>;
+	setActiveTab: (tab: ManagerEntityType) => void;
 	isDialogOpen: Accessor<boolean>;
 	setIsDialogOpen: Setter<boolean>;
 	isDeleteDialogOpen: Accessor<boolean>;
@@ -241,7 +241,8 @@ export function useManagerPage(
 		sources: () => sourcesQuery.data,
 	};
 
-	const [activeTab, setActiveTab] = createSignal<ManagerEntityType>("projects");
+	const [activeTab, setActiveTabState] =
+		createSignal<ManagerEntityType>("projects");
 	const [isDialogOpen, setIsDialogOpen] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [editingItem, setEditingItem] = createSignal<ManagerEntity | null>(
@@ -270,6 +271,15 @@ export function useManagerPage(
 	);
 	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
 	const [currentPage, setCurrentPage] = createSignal(1);
+
+	const setActiveTab = (tab: ManagerEntityType) => {
+		if (tab !== activeTab()) {
+			setScannedMedia([]);
+			setSelectedMedia(new Set<string>());
+			setTaggingStatus(null);
+		}
+		setActiveTabState(tab);
+	};
 
 	// Duplicates state
 	const [duplicateSourceId, setDuplicateSourceId] = createSignal<
@@ -452,6 +462,11 @@ export function useManagerPage(
 				setActiveJobId(result.jobId);
 				setScannedMedia([]);
 				setSelectedMedia(new Set<string>());
+			} else {
+				const message =
+					result.message || "Failed to start batch CCIP extraction.";
+				toast.error(message);
+				setTaggingStatus(message);
 			}
 		} catch (error) {
 			toast.error(`Error: ${getErrorMessage(error)}`);

@@ -6,6 +6,7 @@ import type {
 import { deepEqual } from "@solid-imager/core/utils/deep-equal";
 import { type Accessor, createEffect, createSignal, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
+import { z } from "zod";
 import {
 	getSearchCondition,
 	loadPreset,
@@ -59,13 +60,18 @@ export function useCurrentSearchPersistence(
 				if (sessionDataStr) {
 					const current = JSON.parse(sessionDataStr);
 					if (current.mode === "vector") {
+						const anchorResult = z
+							.string()
+							.uuid()
+							.safeParse(current.similarityAnchorMediaId);
+						if (!anchorResult.success) {
+							resetSearchState();
+							return;
+						}
 						resetSearchState();
 						setSearchState({
 							mode: "vector",
-							similarityAnchorMediaId:
-								typeof current.similarityAnchorMediaId === "string"
-									? current.similarityAnchorMediaId
-									: null,
+							similarityAnchorMediaId: anchorResult.data,
 							similarityTopK:
 								current.similarityTopK === 20 || current.similarityTopK === 100
 									? current.similarityTopK

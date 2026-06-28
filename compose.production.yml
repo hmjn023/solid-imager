@@ -15,8 +15,10 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       NITRO_HOST: 0.0.0.0
       PORT: 3000
+      CONFIG_PATH: /app/data/config.json
     volumes:
-      - .:/app
+      - app-config:/app/data
+      - app-cache:/app/.cache
     command: ["bun", "run", "start"]
     depends_on:
       - db
@@ -34,3 +36,7 @@ services:
       - ${HOME}/.config/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - app
+
+volumes:
+  app-config:
+  app-cache:

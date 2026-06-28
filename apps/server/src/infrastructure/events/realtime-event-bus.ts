@@ -14,6 +14,7 @@ import {
 	type SourceEventName,
 	sourceEventSchema,
 } from "@solid-imager/core/domain/sources/events";
+import { logger } from "~/infrastructure/logger";
 
 const JOB_EVENTS_CHANNEL = "jobs";
 const IMPORT_EVENTS_CHANNEL = "imports";
@@ -33,7 +34,13 @@ if (!globalEvents.__REALTIME_EVENT_EMITTER__) {
 const emitter = globalEvents.__REALTIME_EVENT_EMITTER__;
 
 function publish(channel: string, event: SourceEvent | JobEvent | ImportEvent) {
-	emitter.emit(channel, event);
+	for (const listener of emitter.rawListeners(channel)) {
+		try {
+			listener(event);
+		} catch (error) {
+			logger.error({ err: error, channel }, "Realtime event subscriber failed");
+		}
+	}
 }
 
 function subscribe<TEvent>(
@@ -52,7 +59,11 @@ export const RealtimeEventBus = {
 		eventType: TName,
 		data: SourceEventData<TName>,
 	): void {
-		const event = sourceEventSchema.parse({ event: eventType, data });
+		const event = sourceEventSchema.parse({
+			mediaSourceId,
+			event: eventType,
+			data,
+		});
 		publish(`source:${mediaSourceId}`, event);
 		publish(ALL_SOURCE_EVENTS_CHANNEL, event);
 	},
@@ -62,6 +73,7 @@ export const RealtimeEventBus = {
 		command: SourceEventCommand,
 	): void {
 		const event = sourceEventSchema.parse({
+			mediaSourceId,
 			event: command.event,
 			data: command.payload,
 		});

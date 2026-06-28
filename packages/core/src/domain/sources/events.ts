@@ -85,14 +85,14 @@ export const downloadErrorEventSchema = z.object({
 export type DownloadErrorEvent = z.infer<typeof downloadErrorEventSchema>;
 
 export const importRequestCreatedEventSchema = z.object({
-	count: z.number(),
+	count: z.number().int().min(0),
 });
 export type ImportRequestCreatedEvent = z.infer<
 	typeof importRequestCreatedEventSchema
 >;
 
 export const importRequestProcessedEventSchema = z.object({
-	processedCount: z.number(),
+	processedCount: z.number().int().min(0),
 });
 export type ImportRequestProcessedEvent = z.infer<
 	typeof importRequestProcessedEventSchema
@@ -106,30 +106,48 @@ export type ImportRequestDeletedEvent = z.infer<
 >;
 
 export const sourceEventSchema = z.discriminatedUnion("event", [
-	z.object({ event: z.literal("media-added"), data: mediaAddedEventSchema }),
 	z.object({
+		mediaSourceId: z.string(),
+		event: z.literal("media-added"),
+		data: mediaAddedEventSchema,
+	}),
+	z.object({
+		mediaSourceId: z.string(),
 		event: z.literal("media-deleted"),
 		data: mediaDeletedEventSchema,
 	}),
 	z.object({
+		mediaSourceId: z.string(),
 		event: z.literal("media-changed"),
 		data: mediaChangedEventSchema,
 	}),
-	z.object({ event: z.literal("media-copied"), data: mediaCopiedEventSchema }),
-	z.object({ event: z.literal("media-moved"), data: mediaMovedEventSchema }),
 	z.object({
+		mediaSourceId: z.string(),
+		event: z.literal("media-copied"),
+		data: mediaCopiedEventSchema,
+	}),
+	z.object({
+		mediaSourceId: z.string(),
+		event: z.literal("media-moved"),
+		data: mediaMovedEventSchema,
+	}),
+	z.object({
+		mediaSourceId: z.string(),
 		event: z.literal("thumbnail-generated"),
 		data: thumbnailGeneratedEventSchema,
 	}),
 	z.object({
+		mediaSourceId: z.string(),
 		event: z.literal("all-jobs-completed"),
 		data: allJobsCompletedEventSchema,
 	}),
 	z.object({
+		mediaSourceId: z.string(),
 		event: z.literal("watcher-error"),
 		data: watcherErrorEventSchema,
 	}),
 	z.object({
+		mediaSourceId: z.string(),
 		event: z.literal("download-error"),
 		data: downloadErrorEventSchema,
 	}),

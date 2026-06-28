@@ -15,6 +15,9 @@ export const calculateNextModeState = (
 	if (nextMode === "vector") {
 		return { mode: "vector", offset: 0, scrollY: 0 };
 	}
+	if (currentState.mode === "vector") {
+		return { mode: nextMode, offset: 0, scrollY: 0 };
+	}
 	if (nextMode === "pro") {
 		// Switching from simple to pro: populate advancedCondition from current simple filters
 		const condition = getSearchConditionFromState(currentState);

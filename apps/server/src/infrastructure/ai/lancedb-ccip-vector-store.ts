@@ -74,32 +74,32 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 
 	private async openOrCreateTable(): Promise<Table> {
 		const db = await this.connection();
-		try {
+		const tableNames = await db.tableNames();
+		if (tableNames.includes(TABLE_NAME)) {
 			return await db.openTable(TABLE_NAME);
-		} catch {
-			const arrow = await import("apache-arrow");
-			const schema = new arrow.Schema([
-				new arrow.Field("mediaId", new arrow.Utf8(), false),
-				new arrow.Field("mediaSourceId", new arrow.Utf8(), false),
-				new arrow.Field(
-					"vector",
-					new arrow.FixedSizeList(
-						VECTOR_DIMENSIONS,
-						new arrow.Field("item", new arrow.Float32(), false),
-					),
-					false,
-				),
-				new arrow.Field("model", new arrow.Utf8(), false),
-				new arrow.Field("embeddingVersion", new arrow.Int32(), false),
-				new arrow.Field(
-					"mediaModifiedAt",
-					new arrow.TimestampMillisecond(),
-					false,
-				),
-				new arrow.Field("extractedAt", new arrow.TimestampMillisecond(), false),
-			]);
-			return await db.createTable(TABLE_NAME, [], { schema });
 		}
+		const arrow = await import("apache-arrow");
+		const schema = new arrow.Schema([
+			new arrow.Field("mediaId", new arrow.Utf8(), false),
+			new arrow.Field("mediaSourceId", new arrow.Utf8(), false),
+			new arrow.Field(
+				"vector",
+				new arrow.FixedSizeList(
+					VECTOR_DIMENSIONS,
+					new arrow.Field("item", new arrow.Float32(), false),
+				),
+				false,
+			),
+			new arrow.Field("model", new arrow.Utf8(), false),
+			new arrow.Field("embeddingVersion", new arrow.Int32(), false),
+			new arrow.Field(
+				"mediaModifiedAt",
+				new arrow.TimestampMillisecond(),
+				false,
+			),
+			new arrow.Field("extractedAt", new arrow.TimestampMillisecond(), false),
+		]);
+		return await db.createTable(TABLE_NAME, [], { schema });
 	}
 
 	private async serializeWrite(operation: () => Promise<void>): Promise<void> {
@@ -121,14 +121,17 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 	async upsert(record: CcipVectorRecord): Promise<void> {
 		await this.serializeWrite(async () => {
 			const table = await this.table();
-			await table.delete(`mediaId = '${escapeSqlString(record.mediaId)}'`);
-			await table.add([
-				{
-					...record,
-					mediaModifiedAt: record.mediaModifiedAt,
-					extractedAt: record.extractedAt,
-				},
-			]);
+			await table
+				.mergeInsert("mediaId")
+				.whenMatchedUpdateAll()
+				.whenNotMatchedInsertAll()
+				.execute([
+					{
+						...record,
+						mediaModifiedAt: record.mediaModifiedAt,
+						extractedAt: record.extractedAt,
+					},
+				]);
 		});
 	}
 

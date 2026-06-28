@@ -39,10 +39,22 @@ export const ccipDifferenceRequestSchema = z.object({
 	feature2: z.array(z.number()),
 });
 
-export const ccipDistancesRequestSchema = z.object({
-	feature: z.array(z.number()),
-	candidates: z.array(z.array(z.number())),
-});
+export const ccipDistancesRequestSchema = z
+	.object({
+		feature: z.array(z.number()).min(1),
+		candidates: z.array(z.array(z.number()).min(1)),
+	})
+	.superRefine(({ feature, candidates }, ctx) => {
+		for (const [index, candidate] of candidates.entries()) {
+			if (candidate.length !== feature.length) {
+				ctx.addIssue({
+					code: "custom",
+					path: ["candidates", index],
+					message: "Candidate vector length must match feature length",
+				});
+			}
+		}
+	});
 
 export const ccipDistancesResponseSchema = z.object({
 	distances: z.array(z.number()),

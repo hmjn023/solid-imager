@@ -415,14 +415,14 @@ export const aiRouter = {
 				),
 				orderBy: desc(jobs.createdAt),
 			});
-			if (status.status === "ready" || status.status === "stale") {
-				return status;
-			}
 			if (
 				latestJob?.status === "pending" ||
 				latestJob?.status === "in_progress"
 			) {
 				return { status: "processing" as const, jobId: latestJob.id };
+			}
+			if (status.status === "ready" || status.status === "stale") {
+				return status;
 			}
 			if (latestJob?.status === "failed") {
 				return {
@@ -499,6 +499,9 @@ export const aiRouter = {
 				where: and(
 					inArray(medias.id, input.mediaIds),
 					eq(medias.mediaType, "image"),
+					input.mediaSourceId
+						? eq(medias.mediaSourceId, input.mediaSourceId)
+						: undefined,
 				),
 				columns: { id: true, mediaSourceId: true },
 			});
@@ -518,16 +521,24 @@ export const aiRouter = {
 					processedJobIds: [],
 				},
 			});
-			await Promise.all(
-				mediaItems.map((media) =>
-					jobRepository.create({
-						type: "extract_ccip_vector",
-						mediaSourceId: media.mediaSourceId,
-						parentId: parent.id,
-						payload: { mediaId: media.id, force: input.force },
-					}),
-				),
-			);
+			try {
+				await Promise.all(
+					mediaItems.map((media) =>
+						jobRepository.create({
+							type: "extract_ccip_vector",
+							mediaSourceId: media.mediaSourceId,
+							parentId: parent.id,
+							payload: { mediaId: media.id, force: input.force },
+						}),
+					),
+				);
+			} catch (error) {
+				await jobRepository.markAsFailed(
+					parent.id,
+					error instanceof Error ? error.message : String(error),
+				);
+				throw error;
+			}
 			return {
 				success: true,
 				message: "Batch CCIP vector extraction started",

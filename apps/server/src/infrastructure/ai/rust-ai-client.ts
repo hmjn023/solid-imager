@@ -12,6 +12,8 @@ import {
 } from "@solid-imager/core/domain/tagging/schemas";
 import type { appRouter } from "~/domain/shared/api-contract";
 
+const CCIP_FALLBACK_CONCURRENCY = 8;
+
 function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
 	return createClient<typeof appRouter>({
 		url: remoteUrl,
@@ -278,11 +280,28 @@ export class RustAiClient implements IAiClient {
 				return await nativeModule.ccipDistances(feature, candidates);
 			}
 		}
-		return await Promise.all(
-			candidates.map(async (candidate) => {
-				const result = await this.calculateCcipDifference(feature, candidate);
-				return result.difference;
-			}),
-		);
+		const distances: number[] = [];
+		for (
+			let offset = 0;
+			offset < candidates.length;
+			offset += CCIP_FALLBACK_CONCURRENCY
+		) {
+			const batch = candidates.slice(
+				offset,
+				offset + CCIP_FALLBACK_CONCURRENCY,
+			);
+			distances.push(
+				...(await Promise.all(
+					batch.map(async (candidate) => {
+						const result = await this.calculateCcipDifference(
+							feature,
+							candidate,
+						);
+						return result.difference;
+					}),
+				)),
+			);
+		}
+		return distances;
 	}
 }

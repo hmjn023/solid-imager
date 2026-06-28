@@ -361,12 +361,6 @@ async function handleYtDlpDownload(
 		}
 	} catch (error) {
 		logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
-
-		// Notify frontend through the typed event bus.
-		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
 		throw error;
 	}
 }
@@ -629,13 +623,6 @@ async function handleDirectImageDownload(
 			{ err: error, url: item.targetUrl },
 			"[DownloadJob] Download failed",
 		);
-
-		// Notify frontend through the typed event bus.
-		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
-
 		throw error;
 	}
 }

@@ -50,14 +50,18 @@ export const activateVectorSearch = (mediaId: string) => {
 	};
 	setSearchState(nextState);
 	if (typeof sessionStorage !== "undefined") {
-		sessionStorage.setItem(
-			"current-all",
-			JSON.stringify({
-				mode: nextState.mode,
-				similarityAnchorMediaId: nextState.similarityAnchorMediaId,
-				similarityTopK: nextState.similarityTopK,
-			}),
-		);
+		try {
+			sessionStorage.setItem(
+				"current-all",
+				JSON.stringify({
+					mode: nextState.mode,
+					similarityAnchorMediaId: nextState.similarityAnchorMediaId,
+					similarityTopK: nextState.similarityTopK,
+				}),
+			);
+		} catch {
+			// Session persistence is optional.
+		}
 	}
 };
 

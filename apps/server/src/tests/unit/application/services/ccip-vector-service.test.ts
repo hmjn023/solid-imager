@@ -40,6 +40,35 @@ describe("CcipVectorService", () => {
 		expect(taggingService.getCcipFeatureForMedia).not.toHaveBeenCalled();
 	});
 
+	it("treats a vector from the previous source as stale after a move", async () => {
+		const service = new CcipVectorService({
+			mediaRepository: {
+				findById: vi.fn().mockResolvedValue(media),
+			} as any,
+			sourceRepository: {
+				findById: vi.fn().mockResolvedValue(source),
+			} as any,
+			taggingService: {} as any,
+			vectorStore: {
+				get: vi.fn().mockResolvedValue({
+					mediaId: media.id,
+					mediaSourceId: "00000000-0000-4000-8000-000000000099",
+					vector: new Array(768).fill(0),
+					model: "ccip-caformer-24-randaug-pruned",
+					embeddingVersion: 1,
+					mediaModifiedAt: media.modifiedAt,
+					extractedAt: new Date(),
+				}),
+			} as any,
+		});
+
+		await expect(service.getStatus(source.id, media.id)).resolves.toMatchObject(
+			{
+				status: "stale",
+			},
+		);
+	});
+
 	it("reranks LanceDB candidates using CCIP distance", async () => {
 		const anchorVector = new Array(768).fill(0);
 		const candidateA = {

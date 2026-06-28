@@ -18,6 +18,18 @@ import { z } from "zod";
 import { BulkOperationService } from "~/application/services/bulk-operation-service";
 import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { MediaService } from "~/application/services/media-service";
+import { logger } from "~/infrastructure/logger";
+
+async function deleteCcipVectorBestEffort(mediaId: string): Promise<void> {
+	try {
+		await ccipVectorService.delete(mediaId);
+	} catch (error) {
+		logger.warn(
+			{ err: error, mediaId },
+			"Failed to delete CCIP vector after media mutation",
+		);
+	}
+}
 
 /**
  * Media Router Implementation
@@ -200,7 +212,7 @@ export const mediaRouter = {
 		)
 		.handler(async ({ input }) => {
 			await MediaService.deleteMedia(input.sourceId, input.mediaId);
-			await ccipVectorService.delete(input.mediaId);
+			await deleteCcipVectorBestEffort(input.mediaId);
 			return { success: true };
 		}),
 
@@ -234,7 +246,7 @@ export const mediaRouter = {
 				input.mediaId,
 				input.targetSourceId,
 			);
-			await ccipVectorService.delete(input.mediaId);
+			await deleteCcipVectorBestEffort(input.mediaId);
 			return result;
 		}),
 
@@ -289,9 +301,7 @@ export const mediaRouter = {
 				input.mediaSourceId,
 				input.mediaIds,
 			);
-			await Promise.all(
-				input.mediaIds.map((mediaId) => ccipVectorService.delete(mediaId)),
-			);
+			await Promise.all(input.mediaIds.map(deleteCcipVectorBestEffort));
 			return { success: true };
 		}),
 

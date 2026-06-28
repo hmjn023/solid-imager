@@ -59,5 +59,13 @@ export interface ILanceDbDumpService {
 		options?: ReadOptions,
 	): Promise<MediaDumpItemWithImageData[]>;
 	readMediaIds(lanceDbDir: string): Promise<string[]>;
+	readMediaIdPages(
+		lanceDbDir: string,
+		pageSize?: number,
+	): AsyncIterable<string[]>;
+	findExistingMediaIds(
+		lanceDbDir: string,
+		mediaIds: string[],
+	): Promise<string[]>;
 	cleanupLanceDBDir(dir: string): Promise<void>;
 }

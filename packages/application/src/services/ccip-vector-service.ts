@@ -158,6 +158,7 @@ export class CcipVectorService {
 
 	private isCurrent(record: CcipVectorRecord, media: Media): boolean {
 		return (
+			record.mediaSourceId === media.mediaSourceId &&
 			record.model === CCIP_MODEL &&
 			record.embeddingVersion === CCIP_EMBEDDING_VERSION &&
 			record.mediaModifiedAt.getTime() === media.modifiedAt.getTime()

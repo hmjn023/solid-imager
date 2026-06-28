@@ -107,39 +107,31 @@ export class MaintenanceService {
 				if (hasCache) {
 					try {
 						const cacheDir = await this.getLanceDbCacheDir(source.id);
-						const { readMediaIds } = await import(
+						const { findExistingMediaIds, readMediaIdPages } = await import(
 							"~/application/services/lancedb-dump-service"
 						);
-						const lanceDbIds = await readMediaIds(cacheDir);
-						const postgresMedias = await this.mediaRepo.findAllPathsBySourceId(
-							source.id,
+						const { BackupService } = await import(
+							"~/application/services/backup-service"
 						);
+						const compareBatchSize = 500;
+						let postgresOffset = 0;
+						let toUpsertCount = 0;
+						let toDeleteCount = 0;
 
-						const postgresIdsSet = new Set(postgresMedias.map((m) => m.id));
-						const lanceDbIdsSet = new Set(lanceDbIds);
-
-						// PostgreSQL にあって LanceDB にない -> 追加 (upsert)
-						const toUpsert = postgresMedias
-							.filter((m) => !lanceDbIdsSet.has(m.id))
-							.map((m) => m.id);
-
-						// LanceDB にあって PostgreSQL にない -> 削除 (delete)
-						const toDelete = lanceDbIds.filter((id) => !postgresIdsSet.has(id));
-
-						if (toUpsert.length > 0 || toDelete.length > 0) {
-							logger.info(
-								{
-									sourceId: source.id,
-									toUpsertCount: toUpsert.length,
-									toDeleteCount: toDelete.length,
-								},
-								"Found discrepancies between PostgreSQL and LanceDB on startup. Queueing delta sync.",
+						while (true) {
+							const postgresMedias = await this.mediaRepo.findAllBySourceId(
+								source.id,
+								compareBatchSize,
+								postgresOffset,
 							);
-
-							const { BackupService } = await import(
-								"~/application/services/backup-service"
+							if (postgresMedias.length === 0) break;
+							const postgresIds = postgresMedias.map((media) => media.id);
+							const lanceDbIds = new Set(
+								await findExistingMediaIds(cacheDir, postgresIds),
 							);
-
+							const toUpsert = postgresIds.filter(
+								(mediaId) => !lanceDbIds.has(mediaId),
+							);
 							if (toUpsert.length > 0) {
 								await BackupService.queueSourceLanceDBDelta(
 									source.id,
@@ -147,7 +139,25 @@ export class MaintenanceService {
 									"upsert",
 									{ enqueueJob: false },
 								);
+								toUpsertCount += toUpsert.length;
 							}
+							if (postgresMedias.length < compareBatchSize) break;
+							postgresOffset += postgresMedias.length;
+						}
+
+						for await (const lanceDbIds of readMediaIdPages(
+							cacheDir,
+							compareBatchSize,
+						)) {
+							const postgresMedias = await this.mediaRepo.findByIds(lanceDbIds);
+							const postgresIds = new Set(
+								postgresMedias
+									.filter((media) => media.mediaSourceId === source.id)
+									.map((media) => media.id),
+							);
+							const toDelete = lanceDbIds.filter(
+								(mediaId) => !postgresIds.has(mediaId),
+							);
 							if (toDelete.length > 0) {
 								await BackupService.queueSourceLanceDBDelta(
 									source.id,
@@ -155,7 +165,19 @@ export class MaintenanceService {
 									"delete",
 									{ enqueueJob: false },
 								);
+								toDeleteCount += toDelete.length;
 							}
+						}
+
+						if (toUpsertCount > 0 || toDeleteCount > 0) {
+							logger.info(
+								{
+									sourceId: source.id,
+									toUpsertCount,
+									toDeleteCount,
+								},
+								"Found discrepancies between PostgreSQL and LanceDB on startup. Queueing delta sync.",
+							);
 						}
 
 						jobType = "sync_lancedb_delta";

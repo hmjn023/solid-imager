@@ -1,0 +1,14 @@
+.git
+.worktree
+.env
+**/.env
+**/config.json
+**/db.config.json
+**/.cache
+node_modules
+**/node_modules
+**/.output
+**/dist
+db-data
+coverage
+*.log

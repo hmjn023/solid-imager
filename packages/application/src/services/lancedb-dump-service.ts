@@ -846,14 +846,53 @@ export function createLanceDbDumpService(deps?: {
 	}
 
 	async function readMediaIds(lanceDbDir: string): Promise<string[]> {
+		const ids: string[] = [];
+		for await (const page of readMediaIdPages(lanceDbDir)) {
+			ids.push(...page);
+		}
+		return ids;
+	}
+
+	async function* readMediaIdPages(
+		lanceDbDir: string,
+		pageSize = READ_CHUNK_SIZE,
+	): AsyncIterable<string[]> {
+		if (!Number.isInteger(pageSize) || pageSize <= 0) {
+			throw new Error("pageSize must be a positive integer");
+		}
 		const connect = await getConnect();
 		const db = await connect(lanceDbDir);
 		const mediaTable = await db.openTable("media");
-		const rows = await mediaTable.query().select(["id"]).toArray();
-		return rows.flatMap((row) => {
-			const id = safeString(row.id);
-			return id ? [id] : [];
-		});
+		let offset = 0;
+		while (true) {
+			const rows = await mediaTable
+				.query()
+				.select(["id"])
+				.limit(pageSize)
+				.offset(offset)
+				.toArray();
+			if (rows.length === 0) break;
+			yield mediaIdsFromRows(rows);
+			if (rows.length < pageSize) break;
+			offset += rows.length;
+		}
+	}
+
+	async function findExistingMediaIds(
+		lanceDbDir: string,
+		mediaIds: string[],
+	): Promise<string[]> {
+		if (mediaIds.length === 0) return [];
+		const connect = await getConnect();
+		const db = await connect(lanceDbDir);
+		const mediaTable = await db.openTable("media");
+		const ids = sqlInList(mediaIds);
+		const rows = await mediaTable
+			.query()
+			.select(["id"])
+			.where(`id IN (${ids})`)
+			.toArray();
+		return mediaIdsFromRows(rows);
 	}
 
 	async function cleanupLanceDBDir(dir: string): Promise<void> {
@@ -867,6 +906,8 @@ export function createLanceDbDumpService(deps?: {
 		syncLanceDBDelta,
 		readFromLanceDB,
 		readMediaIds,
+		readMediaIdPages,
+		findExistingMediaIds,
 		cleanupLanceDBDir,
 	};
 }

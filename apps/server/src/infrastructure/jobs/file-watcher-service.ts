@@ -95,7 +95,14 @@ async function handleFileDeleted(
 		}
 
 		// Delete thumbnail
-		await deleteThumbnail(mediaSourceId, media.id);
+		try {
+			await deleteThumbnail(mediaSourceId, media.id);
+		} catch (error) {
+			logger.warn(
+				{ err: error, mediaId: media.id },
+				"Failed to delete thumbnail for removed media",
+			);
+		}
 
 		// Notify
 		RealtimeEventBus.publishSource(mediaSourceId, "media-deleted", {

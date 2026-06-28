@@ -5,6 +5,7 @@ import { processAutoTaggingJob } from "~/infrastructure/jobs/tagging-jobs";
 const createIfUnique = vi.fn();
 const incrementProgress = vi.fn();
 const findById = vi.fn();
+const markAsCompleted = vi.fn();
 const publishJob = vi.fn();
 const getTagsForMedia = vi.fn();
 
@@ -15,7 +16,8 @@ const jobRepository: IJobRepository = {
 	findById: (...args: Parameters<typeof findById>) => findById(...args),
 	findPending: vi.fn(),
 	markAsInProgress: vi.fn(),
-	markAsCompleted: vi.fn(),
+	markAsCompleted: (...args: Parameters<typeof markAsCompleted>) =>
+		markAsCompleted(...args),
 	markAsFailed: vi.fn(),
 	update: vi.fn(),
 	incrementProgress: (...args: Parameters<typeof incrementProgress>) =>
@@ -86,5 +88,39 @@ describe("processAutoTaggingJob", () => {
 		);
 		expect(findById).not.toHaveBeenCalled();
 		expect(publishJob).not.toHaveBeenCalled();
+	});
+
+	it("does not complete a parent that has already failed", async () => {
+		incrementProgress.mockResolvedValue(true);
+		findById.mockResolvedValue({
+			id: "00000000-0000-4000-8000-000000000010",
+			type: "bulk_tagging_parent",
+			mediaSourceId: null,
+			status: "failed",
+			payload: { total: 1, processed: 1, processedJobIds: [] },
+			result: null,
+			error: "child failed",
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			parentId: null,
+		});
+
+		await processAutoTaggingJob({
+			id: "00000000-0000-4000-8000-000000000020",
+			type: "auto_tagging",
+			mediaSourceId: "00000000-0000-4000-8000-000000000001",
+			status: "in_progress",
+			payload: {
+				mediaId: "00000000-0000-4000-8000-000000000030",
+				force: false,
+			},
+			result: null,
+			error: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			parentId: "00000000-0000-4000-8000-000000000010",
+		});
+
+		expect(markAsCompleted).not.toHaveBeenCalled();
 	});
 });

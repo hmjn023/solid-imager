@@ -1,7 +1,7 @@
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
-import { logger } from "~/infrastructure/logger";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { logger } from "~/infrastructure/logger";
 
 const IGNORE_DOTFILES_REGEX = /(^|[/\\])\../;
 
@@ -12,11 +12,44 @@ type FileWatcher = {
 
 const globalWatchers = globalThis as typeof globalThis & {
 	__FILE_WATCHERS_MAP__?: Map<string, FileWatcher>;
+	__FILE_WATCHER_OPERATIONS__?: Map<string, Promise<void>>;
 	__FILE_WATCHERS_CLEANUP_REGISTERED__?: boolean;
 };
 
 globalWatchers.__FILE_WATCHERS_MAP__ ??= new Map<string, FileWatcher>();
+globalWatchers.__FILE_WATCHER_OPERATIONS__ ??= new Map<string, Promise<void>>();
 const watchers = globalWatchers.__FILE_WATCHERS_MAP__;
+const operations = globalWatchers.__FILE_WATCHER_OPERATIONS__;
+
+async function closeWatcher(mediaSourceId: string): Promise<void> {
+	const entry = watchers.get(mediaSourceId);
+	if (!entry) {
+		return;
+	}
+	try {
+		await entry.watcher.close();
+	} catch (err) {
+		logger.error({ err, mediaSourceId }, "Failed to close watcher");
+	} finally {
+		watchers.delete(mediaSourceId);
+	}
+}
+
+async function serializeWatcherOperation(
+	mediaSourceId: string,
+	operation: () => Promise<void>,
+): Promise<void> {
+	const previous = operations.get(mediaSourceId) ?? Promise.resolve();
+	const next = previous.catch(() => undefined).then(operation);
+	operations.set(mediaSourceId, next);
+	try {
+		await next;
+	} finally {
+		if (operations.get(mediaSourceId) === next) {
+			operations.delete(mediaSourceId);
+		}
+	}
+}
 
 if (!globalWatchers.__FILE_WATCHERS_CLEANUP_REGISTERED__) {
 	const cleanup = async () => {
@@ -25,7 +58,10 @@ if (!globalWatchers.__FILE_WATCHERS_CLEANUP_REGISTERED__) {
 				try {
 					await entry.watcher.close();
 				} catch (err) {
-					logger.error({ err, path: entry.path }, "Failed to close watcher during cleanup");
+					logger.error(
+						{ err, path: entry.path },
+						"Failed to close watcher during cleanup",
+					);
 				}
 			}),
 		);
@@ -47,61 +83,59 @@ export const FileWatcherManager = {
 			onChange: (filePath: string) => Promise<void>;
 		},
 	): Promise<void> {
-		await this.stop(mediaSourceId);
+		await serializeWatcherOperation(mediaSourceId, async () => {
+			await closeWatcher(mediaSourceId);
 
-		const watcher = chokidar.watch(watchPath, {
-			ignored: IGNORE_DOTFILES_REGEX,
-			persistent: true,
-			ignoreInitial: true,
-			awaitWriteFinish: {
-				stabilityThreshold: 2000,
-				pollInterval: 100,
-			},
+			const watcher = chokidar.watch(watchPath, {
+				ignored: IGNORE_DOTFILES_REGEX,
+				persistent: true,
+				ignoreInitial: true,
+				awaitWriteFinish: {
+					stabilityThreshold: 2000,
+					pollInterval: 100,
+				},
+			});
+
+			const run = async (
+				callback: (filePath: string) => Promise<void>,
+				filePath: string,
+			) => {
+				try {
+					await callback(path.relative(watchPath, filePath));
+				} catch {
+					// Callback owns contextual error logging.
+				}
+			};
+
+			watcher.on("add", (filePath) => run(callbacks.onAdd, filePath));
+			watcher.on("unlink", (filePath) => run(callbacks.onDelete, filePath));
+			watcher.on("change", (filePath) => run(callbacks.onChange, filePath));
+			watcher.on("error", (error) => {
+				const isUuid =
+					/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+						mediaSourceId,
+					);
+				try {
+					RealtimeEventBus.publishSource(mediaSourceId, "watcher-error", {
+						mediaSourceId: isUuid ? mediaSourceId : undefined,
+						error: String(error),
+						timestamp: new Date().toISOString(),
+					});
+				} catch (publishError) {
+					logger.error(
+						{ err: publishError, mediaSourceId, originalError: error },
+						"Failed to publish watcher error event",
+					);
+				}
+			});
+
+			watchers.set(mediaSourceId, { watcher, path: watchPath });
 		});
-
-		const run = async (
-			callback: (filePath: string) => Promise<void>,
-			filePath: string,
-		) => {
-			try {
-				await callback(path.relative(watchPath, filePath));
-			} catch {
-				// Callback owns contextual error logging.
-			}
-		};
-
-		watcher.on("add", (filePath) => run(callbacks.onAdd, filePath));
-		watcher.on("unlink", (filePath) => run(callbacks.onDelete, filePath));
-		watcher.on("change", (filePath) => run(callbacks.onChange, filePath));
-		watcher.on("error", (error) => {
-			const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(mediaSourceId);
-			try {
-				RealtimeEventBus.publishSource(mediaSourceId, "watcher-error", {
-					mediaSourceId: isUuid ? mediaSourceId : undefined,
-					error: String(error),
-					timestamp: new Date().toISOString(),
-				});
-			} catch (publishError) {
-				logger.error(
-					{ err: publishError, mediaSourceId, originalError: error },
-					"Failed to publish watcher error event",
-				);
-			}
-		});
-
-		watchers.set(mediaSourceId, { watcher, path: watchPath });
 	},
 
 	async stop(mediaSourceId: string): Promise<void> {
-		const entry = watchers.get(mediaSourceId);
-		if (!entry) {
-			return;
-		}
-		try {
-			await entry.watcher.close();
-		} catch (err) {
-			logger.error({ err, mediaSourceId }, "Failed to close watcher in stop method");
-		}
-		watchers.delete(mediaSourceId);
+		await serializeWatcherOperation(mediaSourceId, () =>
+			closeWatcher(mediaSourceId),
+		);
 	},
 };

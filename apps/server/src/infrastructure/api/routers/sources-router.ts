@@ -532,8 +532,7 @@ export const sourcesRouter = {
 						yield queue[head++];
 					}
 
-					// Periodically trim stale entries to prevent memory leak
-					if (head > 1000) {
+					if (head > 0) {
 						queue.splice(0, head);
 						head = 0;
 					}
