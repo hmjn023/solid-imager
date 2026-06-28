@@ -100,9 +100,74 @@ export class MaintenanceService {
 			let queuedCount = 0;
 
 			for (const source of sources) {
-				const jobType = (await this.hasLanceDbCache(source.id))
-					? "sync_lancedb_delta"
-					: "sync_lancedb_full";
+				const hasCache = await this.hasLanceDbCache(source.id);
+				let jobType: "sync_lancedb_full" | "sync_lancedb_delta" =
+					"sync_lancedb_full";
+
+				if (hasCache) {
+					try {
+						const cacheDir = await this.getLanceDbCacheDir(source.id);
+						const { readMediaIds } = await import(
+							"~/application/services/lancedb-dump-service"
+						);
+						const lanceDbIds = await readMediaIds(cacheDir);
+						const postgresMedias = await this.mediaRepo.findAllPathsBySourceId(
+							source.id,
+						);
+
+						const postgresIdsSet = new Set(postgresMedias.map((m) => m.id));
+						const lanceDbIdsSet = new Set(lanceDbIds);
+
+						// PostgreSQL にあって LanceDB にない -> 追加 (upsert)
+						const toUpsert = postgresMedias
+							.filter((m) => !lanceDbIdsSet.has(m.id))
+							.map((m) => m.id);
+
+						// LanceDB にあって PostgreSQL にない -> 削除 (delete)
+						const toDelete = lanceDbIds.filter((id) => !postgresIdsSet.has(id));
+
+						if (toUpsert.length > 0 || toDelete.length > 0) {
+							logger.info(
+								{
+									sourceId: source.id,
+									toUpsertCount: toUpsert.length,
+									toDeleteCount: toDelete.length,
+								},
+								"Found discrepancies between PostgreSQL and LanceDB on startup. Queueing delta sync.",
+							);
+
+							const { BackupService } = await import(
+								"~/application/services/backup-service"
+							);
+
+							if (toUpsert.length > 0) {
+								await BackupService.queueSourceLanceDBDelta(
+									source.id,
+									toUpsert,
+									"upsert",
+									{ enqueueJob: false },
+								);
+							}
+							if (toDelete.length > 0) {
+								await BackupService.queueSourceLanceDBDelta(
+									source.id,
+									toDelete,
+									"delete",
+									{ enqueueJob: false },
+								);
+							}
+						}
+
+						jobType = "sync_lancedb_delta";
+					} catch (compareError) {
+						logger.error(
+							{ err: compareError, sourceId: source.id },
+							"Failed to compare PostgreSQL and LanceDB on startup. Falling back to full sync.",
+						);
+						jobType = "sync_lancedb_full";
+					}
+				}
+
 				const created = await this.jobRepo.createIfUnique({
 					type: jobType,
 					mediaSourceId: source.id,
@@ -124,14 +189,16 @@ export class MaintenanceService {
 		}
 	}
 
+	private async getLanceDbCacheDir(sourceId: string): Promise<string> {
+		const { services } = await import("~/application/registry");
+		const config = services.getConfigService().getConfig();
+		const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
+		return path.resolve(process.cwd(), baseCacheDir, `source-${sourceId}`);
+	}
+
 	private async hasLanceDbCache(sourceId: string): Promise<boolean> {
-		const manifestPath = path.join(
-			process.cwd(),
-			".cache",
-			"lancedb-cache",
-			`source-${sourceId}`,
-			"manifest.json",
-		);
+		const cacheDir = await this.getLanceDbCacheDir(sourceId);
+		const manifestPath = path.join(cacheDir, "manifest.json");
 		try {
 			const content = await fs.readFile(manifestPath, "utf-8");
 			const manifest = JSON.parse(content) as { version?: unknown };
