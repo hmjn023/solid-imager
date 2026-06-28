@@ -39,8 +39,18 @@ export const ccipDifferenceRequestSchema = z.object({
 	feature2: z.array(z.number()),
 });
 
+export const ccipDistancesRequestSchema = z.object({
+	feature: z.array(z.number()),
+	candidates: z.array(z.array(z.number())),
+});
+
+export const ccipDistancesResponseSchema = z.object({
+	distances: z.array(z.number()),
+});
+
 export const ccipVectorStatusSchema = z.object({
 	status: z.enum(["missing", "processing", "ready", "stale", "failed"]),
+	jobId: z.string().uuid().optional(),
 	model: z.string().optional(),
 	extractedAt: z.coerce.date().optional(),
 	error: z.string().optional(),

@@ -259,26 +259,45 @@ export function createJobRepository(
 			await db().update(jobs).set(updates).where(eq(jobs.id, id));
 		},
 
-		async incrementProgress(id: string): Promise<void> {
-			await db().execute(
-				sql`UPDATE ${jobs} SET payload = jsonb_set(
-					COALESCE(
-						CASE 
-							WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
-							ELSE payload
-						END,
-						'{}'::jsonb
-					),
-					'{processed}',
-					(COALESCE(
-						(CASE 
-							WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
-							ELSE payload
-						END)->>'processed',
-						'0'
-					)::int + 1)::text::jsonb
-				), updated_at = NOW() WHERE id = ${id}`,
+		async incrementProgress(
+			id: string,
+			progressKey?: string,
+		): Promise<boolean> {
+			const normalizedPayload = sql`COALESCE(
+				CASE
+					WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
+					ELSE payload
+				END,
+				'{}'::jsonb
+			)`;
+			const processedJobIds = sql`COALESCE(${normalizedPayload}->'processedJobIds', '[]'::jsonb)`;
+			const result: unknown = await db().execute(
+				progressKey
+					? sql`UPDATE ${jobs}
+						SET payload = jsonb_set(
+							jsonb_set(
+								${normalizedPayload},
+								'{processed}',
+								(COALESCE((${normalizedPayload}->>'processed'), '0')::int + 1)::text::jsonb
+							),
+							'{processedJobIds}',
+							${processedJobIds} || jsonb_build_array(${progressKey}::text)
+						),
+						updated_at = NOW()
+						WHERE id = ${id}
+							AND NOT (${processedJobIds} @> jsonb_build_array(${progressKey}::text))
+						RETURNING id`
+					: sql`UPDATE ${jobs}
+						SET payload = jsonb_set(
+							${normalizedPayload},
+							'{processed}',
+							(COALESCE((${normalizedPayload}->>'processed'), '0')::int + 1)::text::jsonb
+						),
+						updated_at = NOW()
+						WHERE id = ${id}
+						RETURNING id`,
 			);
+			return extractRows(result).length > 0;
 		},
 
 		async claimPending(

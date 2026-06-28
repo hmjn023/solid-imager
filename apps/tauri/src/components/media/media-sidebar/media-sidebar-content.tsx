@@ -18,6 +18,7 @@ import {
 	createProject,
 	removeProjectFromMedia,
 } from "~/infrastructure/api-clients/projects-api";
+import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 import { client } from "~/orpc-client";
@@ -88,6 +89,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					mediaId: props.media.id,
 				})
 			}
+			useCcipJobEvents={useBatchJobEvents}
 			startCcipExtraction={(force) =>
 				client.ai.startCcipExtraction({
 					mediaSourceId: props.media.mediaSourceId,

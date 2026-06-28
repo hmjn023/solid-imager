@@ -2096,6 +2096,32 @@
         }
       }
     },
+    "/ai/ccipDistances": {
+      "post": {
+        "operationId": "ai.ccipDistances",
+        "summary": "ccipDistances",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ai/scanBatchTaggingTargets": {
       "post": {
         "operationId": "ai.scanBatchTaggingTargets",

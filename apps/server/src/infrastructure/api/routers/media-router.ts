@@ -229,10 +229,14 @@ export const mediaRouter = {
 				targetSourceId: z.string().uuid(),
 			}),
 		)
-		.handler(
-			async ({ input }) =>
-				await MediaService.moveMedia(input.mediaId, input.targetSourceId),
-		),
+		.handler(async ({ input }) => {
+			const result = await MediaService.moveMedia(
+				input.mediaId,
+				input.targetSourceId,
+			);
+			await ccipVectorService.delete(input.mediaId);
+			return result;
+		}),
 
 	/**
 	 * Upload media to a source

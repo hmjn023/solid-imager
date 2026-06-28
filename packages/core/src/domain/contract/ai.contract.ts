@@ -5,6 +5,8 @@ import {
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
+	ccipDistancesRequestSchema,
+	ccipDistancesResponseSchema,
 	ccipExtractionRequestSchema,
 	ccipFeatureRequestSchema,
 	ccipVectorStatusSchema,
@@ -33,6 +35,10 @@ export const aiContract = {
 	),
 
 	ccipDifference: oc.input(ccipDifferenceRequestSchema),
+
+	ccipDistances: oc
+		.input(ccipDistancesRequestSchema)
+		.output(ccipDistancesResponseSchema),
 
 	ccipVectorStatus: oc
 		.input(

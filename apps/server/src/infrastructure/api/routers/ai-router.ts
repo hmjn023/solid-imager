@@ -15,6 +15,8 @@ import {
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
+	ccipDistancesRequestSchema,
+	ccipDistancesResponseSchema,
 	ccipExtractionRequestSchema,
 	ccipFeatureRequestSchema,
 	ccipVectorStatusSchema,
@@ -272,6 +274,16 @@ export const aiRouter = {
 				await taggingService.getCcipDifference(input.feature1, input.feature2),
 		),
 
+	ccipDistances: os
+		.input(ccipDistancesRequestSchema)
+		.output(ccipDistancesResponseSchema)
+		.handler(async ({ input }) => ({
+			distances: await taggingService.getCcipDistances(
+				input.feature,
+				input.candidates,
+			),
+		})),
+
 	scanBatchTaggingTargets: os
 		.input(batchTaggingRequestSchema)
 		.output(z.array(mediaSchema))
@@ -346,6 +358,7 @@ export const aiRouter = {
 				payload: {
 					total: mediaIds.length,
 					processed: 0,
+					processedJobIds: [],
 				},
 			});
 
@@ -390,6 +403,10 @@ export const aiRouter = {
 		)
 		.output(ccipVectorStatusSchema)
 		.handler(async ({ input }) => {
+			const status = await ccipVectorService.getStatus(
+				input.mediaSourceId,
+				input.mediaId,
+			);
 			const latestJob = await db.query.jobs.findFirst({
 				where: and(
 					eq(jobs.type, "extract_ccip_vector"),
@@ -398,19 +415,19 @@ export const aiRouter = {
 				),
 				orderBy: desc(jobs.createdAt),
 			});
+			if (status.status === "ready" || status.status === "stale") {
+				return status;
+			}
 			if (
 				latestJob?.status === "pending" ||
 				latestJob?.status === "in_progress"
 			) {
-				return { status: "processing" as const };
+				return { status: "processing" as const, jobId: latestJob.id };
 			}
-			const status = await ccipVectorService.getStatus(
-				input.mediaSourceId,
-				input.mediaId,
-			);
-			if (latestJob?.status === "failed" && status.status !== "ready") {
+			if (latestJob?.status === "failed") {
 				return {
 					status: "failed" as const,
+					jobId: latestJob.id,
 					error: latestJob.error ?? "CCIP vector extraction failed",
 				};
 			}
@@ -495,7 +512,11 @@ export const aiRouter = {
 				type: "batch_ccip_parent",
 				status: "in_progress",
 				mediaSourceId: input.mediaSourceId,
-				payload: { total: mediaItems.length, processed: 0 },
+				payload: {
+					total: mediaItems.length,
+					processed: 0,
+					processedJobIds: [],
+				},
 			});
 			await Promise.all(
 				mediaItems.map((media) =>

@@ -14,12 +14,16 @@ const payloadSchema = z.object({
 const parentPayloadSchema = z.object({
 	total: z.number().int().nonnegative(),
 	processed: z.number().int().nonnegative(),
+	processedJobIds: z.array(z.string().uuid()).optional(),
 });
 
 async function updateParent(job: Job): Promise<void> {
 	if (!job.parentId) return;
 	const jobRepository = services.getJobRepository();
-	await jobRepository.incrementProgress(job.parentId);
+	const updated = await jobRepository.incrementProgress(job.parentId, job.id);
+	if (!updated) {
+		return;
+	}
 	const parent = await jobRepository.findById(job.parentId);
 	if (!parent) return;
 	const payload = parentPayloadSchema.parse(parent.payload);
@@ -48,12 +52,20 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 			payload.mediaId,
 			payload.force,
 		);
+		RealtimeEventBus.publishJob("job-completed", {
+			jobId: job.id,
+			message: "CCIP vector extraction completed",
+		});
 		await updateParent(job);
 	} catch (error) {
 		logger.error(
 			{ err: error, mediaId: payload.mediaId },
 			"CCIP vector extraction failed",
 		);
+		RealtimeEventBus.publishJob("job-failed", {
+			jobId: job.id,
+			error: getErrorMessage(error),
+		});
 		if (job.parentId) {
 			await services
 				.getJobRepository()

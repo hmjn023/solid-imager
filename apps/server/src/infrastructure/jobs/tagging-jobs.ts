@@ -48,13 +48,17 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 
 		if (parentId) {
 			const jobRepo = services.getJobRepository();
-			await jobRepo.incrementProgress(parentId);
+			const updated = await jobRepo.incrementProgress(parentId, job.id);
+			if (!updated) {
+				return;
+			}
 			const parentJob = await jobRepo.findById(parentId);
 
 			if (parentJob) {
 				const parentPayloadSchema = z.object({
 					total: z.number(),
 					processed: z.number(),
+					processedJobIds: z.array(z.string().uuid()).optional(),
 				});
 				try {
 					const parentPayload = parentPayloadSchema.parse(parentJob.payload);

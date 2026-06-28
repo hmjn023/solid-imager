@@ -261,6 +261,17 @@ export class RustAiClient implements IAiClient {
 		feature: number[],
 		candidates: number[][],
 	): Promise<number[]> {
+		if (this.baseUrl) {
+			if (!this.client) {
+				throw new Error("Client is not initialized (baseUrl is empty)");
+			}
+			const result = await this.client.ai.ccipDistances({
+				feature,
+				candidates,
+			});
+			return result.distances;
+		}
+
 		if (!this.baseUrl) {
 			const nativeModule: unknown = await import("dghs-imgutils-rs");
 			if (hasCcipDistances(nativeModule)) {

@@ -37,6 +37,7 @@ import {
 	allProjectsQueryOptions,
 	projectsForMediaQueryOptions,
 } from "~/infrastructure/api-clients/queries";
+import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 
 type MediaSidebarProps = {
 	media: MediaDetails;
@@ -93,29 +94,37 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [ccipStatus, setCcipStatus] = createSignal<
 		"missing" | "processing" | "ready" | "stale" | "failed"
 	>("missing");
+	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
 
-	onMount(async () => {
+	const refreshCcipStatus = async () => {
 		try {
 			const result = await getCcipVectorStatus(
 				props.media.mediaSourceId,
 				props.media.id,
 			);
 			setCcipStatus(result.status);
+			setActiveCcipJobId(result.jobId ?? null);
 		} catch {
 			setCcipStatus("failed");
+			setActiveCcipJobId(null);
 		}
+	};
+
+	onMount(() => {
+		void refreshCcipStatus();
 	});
 
 	const handleCcipExtraction = async () => {
 		setIsExtractingCcip(true);
 		try {
-			await startCcipExtraction(
+			const result = await startCcipExtraction(
 				props.media.mediaSourceId,
 				props.media.id,
 				ccipStatus() === "ready" || ccipStatus() === "stale",
 			);
 			setCcipStatus("processing");
+			setActiveCcipJobId(result.jobId);
 			toast.success("CCIP vector extraction queued");
 		} catch (error) {
 			toast.error(`Failed to extract CCIP vector: ${getErrorMessage(error)}`);
@@ -123,6 +132,23 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			setIsExtractingCcip(false);
 		}
 	};
+
+	useBatchJobEvents(() => activeCcipJobId(), {
+		handleJobProgress: () => {
+			setCcipStatus("processing");
+		},
+		handleJobCompleted: () => {
+			setActiveCcipJobId(null);
+			void refreshCcipStatus();
+		},
+		handleJobFailed: (event) => {
+			setCcipStatus("failed");
+			setActiveCcipJobId(null);
+			if (event.error) {
+				toast.error(`Failed to extract CCIP vector: ${event.error}`);
+			}
+		},
+	});
 
 	// Description editing state
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
