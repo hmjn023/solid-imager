@@ -1,6 +1,9 @@
 services:
   app:
-    image: oven/bun:debian
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: solid-imager-app:latest
     container_name: solid-imager-app
     restart: always
     working_dir: /app
