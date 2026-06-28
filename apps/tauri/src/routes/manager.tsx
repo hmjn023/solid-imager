@@ -31,6 +31,7 @@ import {
 	deleteProject,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
+import { client } from "~/orpc-client";
 import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
@@ -57,6 +58,13 @@ const managerActions = {
 	deleteCharacter,
 	scanBatchTaggingTargets,
 	startBatchTaggingWithIds,
+	scanBatchCcipTargets: (input: { force: boolean; mediaSourceId?: string }) =>
+		client.ai.scanBatchCcipTargets(input),
+	startBatchCcipExtraction: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+		mediaIds: string[];
+	}) => client.ai.startBatchCcipExtraction(input),
 	findDuplicateMedia,
 	bulkDeleteMedia,
 };

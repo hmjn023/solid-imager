@@ -335,6 +335,22 @@ export const mediaSearchResponseSchema = z.object({
 
 export type MediaSearchResponse = z.infer<typeof mediaSearchResponseSchema>;
 
+export const similarMediaSearchResponseSchema = z.object({
+	media: z.array(mediaSchema),
+	total: z.number(),
+	scores: z.array(
+		z.object({
+			mediaId: z.string().uuid(),
+			cosineDistance: z.number(),
+			ccipDistance: z.number(),
+		}),
+	),
+});
+
+export type SimilarMediaSearchResponse = z.infer<
+	typeof similarMediaSearchResponseSchema
+>;
+
 // Combined schema for the details endpoint
 export const mediaDetailsSchema = mediaSchema.extend({
 	tags: z.array(tagSchema),

@@ -97,7 +97,7 @@ export function PresetManager(props: {
 				value: condition,
 				sort: searchState.sortBy,
 				order: searchState.sortOrder,
-				mode: searchState.mode,
+				mode: searchState.mode === "simple" ? "simple" : "pro",
 			});
 			setIsSaveDialogOpen(false);
 			setNewPresetName("");

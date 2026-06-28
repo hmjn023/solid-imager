@@ -1,6 +1,11 @@
 export type { SearchOptions } from "../ports/search-service";
 export { createAuthorService } from "./author-service";
 export { createCategoryService } from "./category-service";
+export {
+	CCIP_EMBEDDING_VERSION,
+	CCIP_MODEL,
+	CcipVectorService,
+} from "./ccip-vector-service";
 export { CharacterServiceImpl } from "./character-service";
 export { createCollectionService } from "./collection-service";
 export { createIpService } from "./ip-service";

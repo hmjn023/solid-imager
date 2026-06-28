@@ -17,7 +17,10 @@ import {
 	mediaSourcesQueryOptions,
 	tagsQueryOptions,
 } from "~/infrastructure/api-clients/queries";
-import { searchMedia } from "~/infrastructure/api-clients/search-api";
+import {
+	searchMedia,
+	searchSimilar,
+} from "~/infrastructure/api-clients/search-api";
 import {
 	getSearchCondition,
 	searchState,
@@ -49,6 +52,7 @@ function SearchRoute() {
 
 	const page = useSearchPage({
 		searchMedia,
+		searchSimilar,
 		queryClient,
 		queries: {
 			tags: tagsQueryOptions,
@@ -66,6 +70,9 @@ function SearchRoute() {
 		scrollY: () => searchState.scrollY,
 		setScrollY: (y) => setSearchState("scrollY", y),
 		setOffset: (o) => setSearchState("offset", o),
+		mode: () => searchState.mode,
+		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
+		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
 	});
 

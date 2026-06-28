@@ -94,7 +94,9 @@ describe("JobWorker", () => {
 		// Should fetch 2 normal jobs
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			2,
-			expect.objectContaining({ excludeTypes: ["auto_tagging"] }),
+			expect.objectContaining({
+				excludeTypes: ["auto_tagging", "extract_ccip_vector"],
+			}),
 		);
 		expect(processor).toHaveBeenCalledTimes(2);
 	});
@@ -132,7 +134,9 @@ describe("JobWorker", () => {
 		// Should fetch 1 AI job
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
-			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
+			expect.objectContaining({
+				includeTypes: ["auto_tagging", "extract_ccip_vector"],
+			}),
 		);
 		expect(processor).toHaveBeenCalledTimes(1);
 		expect(processor).toHaveBeenCalledWith(
@@ -183,11 +187,15 @@ describe("JobWorker", () => {
 		// Should fetch 1 AI job and 2 Normal jobs
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
-			expect.objectContaining({ includeTypes: ["auto_tagging"] }),
+			expect.objectContaining({
+				includeTypes: ["auto_tagging", "extract_ccip_vector"],
+			}),
 		);
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			2,
-			expect.objectContaining({ excludeTypes: ["auto_tagging"] }),
+			expect.objectContaining({
+				excludeTypes: ["auto_tagging", "extract_ccip_vector"],
+			}),
 		);
 
 		expect(processor).toHaveBeenCalledTimes(TotalExpectedCalls);

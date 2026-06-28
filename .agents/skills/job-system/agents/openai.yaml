@@ -1,0 +1,4 @@
+interface:
+  display_name: "Job System"
+  short_description: "solid-imagerのbackground job設計と実装規約"
+  default_prompt: "既存のjob worker、dispatch、進捗イベント設計に従って変更してください。"

@@ -277,7 +277,7 @@ export function createJobRepository(
 						END)->>'processed',
 						'0'
 					)::int + 1)::text::jsonb
-				) WHERE id = ${id}`,
+				), updated_at = NOW() WHERE id = ${id}`,
 			);
 		},
 
@@ -340,7 +340,11 @@ export function createJobRepository(
 					updatedAt: new Date(),
 				})
 				.where(
-					and(eq(jobs.status, "in_progress"), lt(jobs.updatedAt, olderThan)),
+					and(
+						eq(jobs.status, "in_progress"),
+						lt(jobs.updatedAt, olderThan),
+						notInArray(jobs.type, ["batch_ccip_parent", "bulk_tagging_parent"]),
+					),
 				)
 				.returning();
 

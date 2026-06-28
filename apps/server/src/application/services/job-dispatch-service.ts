@@ -28,6 +28,11 @@ export async function processJob(job: DbJob) {
 		await processDownloadJob(job);
 	} else if (job.type === "auto_tagging") {
 		await processAutoTaggingJob(job);
+	} else if (job.type === "extract_ccip_vector") {
+		const { processCcipExtractionJob } = await import(
+			"~/infrastructure/jobs/ccip-jobs"
+		);
+		await processCcipExtractionJob(job);
 	} else if (job.type === "bulk_tagging_dispatch") {
 		await processBulkTaggingDispatchJob(job);
 	} else if (job.type === "sync_lancedb" || job.type === "sync_lancedb_full") {

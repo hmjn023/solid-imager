@@ -161,6 +161,22 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									</div>
 								)}
 							</form.Field>
+
+							<form.Field name="jobs.enableAutoCcipExtraction">
+								{(field) => (
+									<div class="flex items-center space-x-2">
+										<Switch
+											checked={field().state.value ?? false}
+											onChange={field().handleChange}
+										>
+											<SwitchControl>
+												<SwitchThumb />
+											</SwitchControl>
+											<SwitchLabel>Enable Auto CCIP Extraction</SwitchLabel>
+										</Switch>
+									</div>
+								)}
+							</form.Field>
 						</div>
 					</TabsContent>
 

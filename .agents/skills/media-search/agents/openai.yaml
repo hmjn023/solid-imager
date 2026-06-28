@@ -1,0 +1,4 @@
+interface:
+  display_name: "Media Search"
+  short_description: "solid-imagerの検索状態・API・UI設計規約"
+  default_prompt: "既存の検索store、session persistence、API、共有UI設計に従って変更してください。"

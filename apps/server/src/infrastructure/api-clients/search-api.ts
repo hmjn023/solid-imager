@@ -23,3 +23,11 @@ export function searchMedia(
 		params,
 	});
 }
+
+export function searchSimilar(input: {
+	anchorMediaId: string;
+	mediaSourceId?: string;
+	topK: number;
+}) {
+	return orpc.media.searchSimilar(input);
+}

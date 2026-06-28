@@ -22,3 +22,5 @@ description: 画像の自動タグ付け、類似度計算、CCIP特徴量など
 |---|---|
 | タグ付け機能の実装 | `tagging-service.ts` を経由して `RustAiClient` を呼び出し |
 | 類似度計算 | CCIP特徴量を使用したサービス層の実装 |
+
+CCIP抽出をjob化する場合は`job-system`、検索画面へ統合する場合は`media-search`も参照する。

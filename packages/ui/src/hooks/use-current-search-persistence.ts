@@ -58,6 +58,21 @@ export function useCurrentSearchPersistence(
 				const sessionDataStr = sessionStorage.getItem(presetName);
 				if (sessionDataStr) {
 					const current = JSON.parse(sessionDataStr);
+					if (current.mode === "vector") {
+						resetSearchState();
+						setSearchState({
+							mode: "vector",
+							similarityAnchorMediaId:
+								typeof current.similarityAnchorMediaId === "string"
+									? current.similarityAnchorMediaId
+									: null,
+							similarityTopK:
+								current.similarityTopK === 20 || current.similarityTopK === 100
+									? current.similarityTopK
+									: 50,
+						});
+						return;
+					}
 					const allPresets = await presetClient.list();
 
 					const matchingPreset = allPresets.find(
@@ -108,6 +123,8 @@ export function useCurrentSearchPersistence(
 			searchState.selectedCharacters,
 			searchState.selectedAuthors,
 			searchState.advancedCondition,
+			searchState.similarityAnchorMediaId,
+			searchState.similarityTopK,
 			searchState.sortBy,
 			searchState.sortOrder,
 		];
@@ -146,6 +163,8 @@ export function useCurrentSearchPersistence(
 			sort: searchState.sortBy,
 			order: searchState.sortOrder,
 			mode: searchState.mode,
+			similarityAnchorMediaId: searchState.similarityAnchorMediaId,
+			similarityTopK: searchState.similarityTopK,
 		};
 
 		try {
@@ -155,4 +174,3 @@ export function useCurrentSearchPersistence(
 		}
 	};
 }
-

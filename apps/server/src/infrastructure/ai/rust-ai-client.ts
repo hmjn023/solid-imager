@@ -25,6 +25,21 @@ function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
 	});
 }
 
+function hasCcipDistances(value: unknown): value is {
+	ccipDistances(
+		feature: number[],
+		candidates: number[][],
+		modelName?: string,
+	): number[] | Promise<number[]>;
+} {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"ccipDistances" in value &&
+		typeof value.ccipDistances === "function"
+	);
+}
+
 export class RustAiClient implements IAiClient {
 	private baseUrl: string;
 	private timeoutMs: number;
@@ -240,5 +255,23 @@ export class RustAiClient implements IAiClient {
 		return ccipDifferenceResponseSchema.parse({
 			difference: distance,
 		});
+	}
+
+	async calculateCcipDistances(
+		feature: number[],
+		candidates: number[][],
+	): Promise<number[]> {
+		if (!this.baseUrl) {
+			const nativeModule: unknown = await import("dghs-imgutils-rs");
+			if (hasCcipDistances(nativeModule)) {
+				return await nativeModule.ccipDistances(feature, candidates);
+			}
+		}
+		return await Promise.all(
+			candidates.map(async (candidate) => {
+				const result = await this.calculateCcipDifference(feature, candidate);
+				return result.difference;
+			}),
+		);
 	}
 }

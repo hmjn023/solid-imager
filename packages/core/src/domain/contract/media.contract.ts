@@ -8,10 +8,12 @@ import {
 	mediaSchema,
 	mediaSearchRequestSchema,
 	mediaSearchResponseSchema,
+	similarMediaSearchResponseSchema,
 	tagSchema,
 	updateMediaRequestSchema,
 } from "../media/schemas";
 import { uploadResponseSchema } from "../media/upload-schemas";
+import { similarMediaRequestSchema } from "../tagging/schemas";
 
 export const mediaContract = {
 	search: oc
@@ -22,6 +24,10 @@ export const mediaContract = {
 			}),
 		)
 		.output(mediaSearchResponseSchema),
+
+	searchSimilar: oc
+		.input(similarMediaRequestSchema)
+		.output(similarMediaSearchResponseSchema),
 
 	get: oc
 		.input(

@@ -3,13 +3,18 @@ import { getErrorMessage } from "@solid-imager/core/utils";
 import { Badge } from "@solid-imager/ui/badge";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
+import { activateVectorSearch } from "@solid-imager/ui/stores/search-store";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { useNavigate } from "@tanstack/solid-router";
+import { createMemo, createSignal, For, onMount, Show } from "solid-js";
 import { AiTaggingModal } from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import CharacterCropModal from "~/components/media/character-crop-modal";
-
+import {
+	getCcipVectorStatus,
+	startCcipExtraction,
+} from "~/infrastructure/api-clients/ai-api";
 import {
 	addCharacterToMedia,
 	createCharacter,
@@ -20,15 +25,12 @@ import {
 	createIp,
 	removeIpFromMedia,
 } from "~/infrastructure/api-clients/ips-api";
-
 import { updateMedia } from "~/infrastructure/api-clients/media-api";
-
 import {
 	addProjectToMedia,
 	createProject,
 	removeProjectFromMedia,
 } from "~/infrastructure/api-clients/projects-api";
-
 import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
@@ -82,11 +84,45 @@ const _CollapsibleSection = (props: {
 
 export function MediaSidebar(props: MediaSidebarProps) {
 	const queryClient = useQueryClient();
+	const navigate = useNavigate();
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
 
 	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
+	const [ccipStatus, setCcipStatus] = createSignal<
+		"missing" | "processing" | "ready" | "stale" | "failed"
+	>("missing");
+	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
+
+	onMount(async () => {
+		try {
+			const result = await getCcipVectorStatus(
+				props.media.mediaSourceId,
+				props.media.id,
+			);
+			setCcipStatus(result.status);
+		} catch {
+			setCcipStatus("failed");
+		}
+	});
+
+	const handleCcipExtraction = async () => {
+		setIsExtractingCcip(true);
+		try {
+			await startCcipExtraction(
+				props.media.mediaSourceId,
+				props.media.id,
+				ccipStatus() === "ready" || ccipStatus() === "stale",
+			);
+			setCcipStatus("processing");
+			toast.success("CCIP vector extraction queued");
+		} catch (error) {
+			toast.error(`Failed to extract CCIP vector: ${getErrorMessage(error)}`);
+		} finally {
+			setIsExtractingCcip(false);
+		}
+	};
 
 	// Description editing state
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
@@ -263,6 +299,32 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<span class="i-lucide-scan" />
 					Detect &amp; Crop Characters
 				</button>
+				<button
+					class="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 font-medium text-sm transition-colors hover:bg-gray-100 disabled:opacity-50"
+					disabled={isExtractingCcip() || ccipStatus() === "processing"}
+					onClick={handleCcipExtraction}
+					type="button"
+				>
+					<span class="i-lucide-binary" />
+					{ccipStatus() === "ready" || ccipStatus() === "stale"
+						? "Re-extract CCIP Vector"
+						: ccipStatus() === "processing"
+							? "Extracting CCIP Vector..."
+							: "Extract CCIP Vector"}
+				</button>
+				<Show when={ccipStatus() === "ready"}>
+					<button
+						class="flex w-full items-center justify-center gap-2 rounded-md border px-3 py-2 font-medium text-sm transition-colors hover:bg-gray-100"
+						onClick={() => {
+							activateVectorSearch(props.media.id);
+							void navigate({ to: "/search" });
+						}}
+						type="button"
+					>
+						<span class="i-lucide-scan-search" />
+						Find Similar
+					</button>
+				</Show>
 			</div>
 
 			<AiTaggingModal

@@ -26,6 +26,7 @@ export type ManagerEntityType =
 	| "ips"
 	| "characters"
 	| "tagging"
+	| "vectors"
 	| "duplicates";
 export type ManagerEntity = Project | Ip | Character;
 
@@ -73,11 +74,22 @@ export type ManagerPageActions = {
 		mediaSourceId?: string;
 		mediaIds: string[];
 	}) => Promise<StartBatchTaggingResult>;
+	scanBatchCcipTargets: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+	}) => Promise<Media[]>;
+	startBatchCcipExtraction: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+		mediaIds: string[];
+	}) => Promise<StartBatchTaggingResult>;
 	findDuplicateMedia: (
 		mediaSourceId?: string,
 	) => Promise<{ groups: DuplicateGroup[] }>;
 	bulkDeleteMedia: (sourceId: string, mediaIds: string[]) => Promise<unknown>;
-	invalidate: (entityType: Exclude<ManagerEntityType, "tagging">) => void;
+	invalidate: (
+		entityType: Exclude<ManagerEntityType, "tagging" | "vectors">,
+	) => void;
 };
 
 export type ManagerPageMutationActions = Omit<ManagerPageActions, "invalidate">;
@@ -158,6 +170,7 @@ export type UseManagerPageResult = {
 	handleConfirmDelete: () => Promise<void>;
 	handleScan: () => Promise<void>;
 	handleStartBatchTagging: () => Promise<void>;
+	handleStartBatchCcipExtraction: () => Promise<void>;
 	toggleMediaSelection: (mediaId: string) => void;
 	toggleSelectAll: () => void;
 	jobHandlers: ManagerJobHandlers;
@@ -195,8 +208,10 @@ function resetForm(setFormData: Setter<ManagerFormData>) {
 
 function activeCrudTab(
 	activeTab: ManagerEntityType,
-): Exclude<ManagerEntityType, "tagging" | "duplicates"> | null {
-	return activeTab === "tagging" || activeTab === "duplicates"
+): Exclude<ManagerEntityType, "tagging" | "vectors" | "duplicates"> | null {
+	return activeTab === "tagging" ||
+		activeTab === "vectors" ||
+		activeTab === "duplicates"
 		? null
 		: activeTab;
 }
@@ -399,16 +414,48 @@ export function useManagerPage(
 		try {
 			setTaggingStatus("Scanning...");
 			setScannedMedia([]);
-			const result = await actions.scanBatchTaggingTargets({
-				force: forceRetag(),
-				mediaSourceId: selectedSourceId(),
-			});
+			const result =
+				activeTab() === "vectors"
+					? await actions.scanBatchCcipTargets({
+							force: forceRetag(),
+							mediaSourceId: selectedSourceId(),
+						})
+					: await actions.scanBatchTaggingTargets({
+							force: forceRetag(),
+							mediaSourceId: selectedSourceId(),
+						});
 			setScannedMedia(result);
 			setSelectedMedia(new Set(result.map((item) => item.id)));
 			setTaggingStatus(`${result.length} items found.`);
 		} catch (error) {
 			toast.error(`Error: ${getErrorMessage(error)}`);
 			setTaggingStatus(`Error during scan: ${getErrorMessage(error)}`);
+		}
+	};
+
+	const handleStartBatchCcipExtraction = async () => {
+		if (selectedMedia().size === 0) {
+			toast.error("No media selected");
+			return;
+		}
+		try {
+			setTaggingStatus("Starting...");
+			setJobProgress(null);
+			const result = await actions.startBatchCcipExtraction({
+				force: forceRetag(),
+				mediaSourceId: selectedSourceId(),
+				mediaIds: Array.from(selectedMedia()),
+			});
+			if (result.success && result.jobId) {
+				toast.success(result.message);
+				setTaggingStatus("Batch CCIP extraction in progress...");
+				setActiveJobId(result.jobId);
+				setScannedMedia([]);
+				setSelectedMedia(new Set<string>());
+			}
+		} catch (error) {
+			toast.error(`Error: ${getErrorMessage(error)}`);
+			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
 		}
 	};
 
@@ -642,12 +689,12 @@ export function useManagerPage(
 
 	const handleJobProgress = (event: JobProgressEvent) => {
 		setJobProgress(event);
-		setTaggingStatus(`Processing: ${event.processed} / ${event.total} tagged.`);
+		setTaggingStatus(`Processing: ${event.processed} / ${event.total}.`);
 	};
 
 	const handleJobCompleted = (event: JobCompletedEvent) => {
-		toast.success(event.message || "Batch tagging completed!");
-		setTaggingStatus("Batch tagging completed successfully.");
+		toast.success(event.message || "Batch operation completed!");
+		setTaggingStatus("Batch operation completed successfully.");
 		setActiveJobId(null);
 		setJobProgress(null);
 	};
@@ -703,6 +750,7 @@ export function useManagerPage(
 		handleConfirmDelete,
 		handleScan,
 		handleStartBatchTagging,
+		handleStartBatchCcipExtraction,
 		toggleMediaSelection,
 		toggleSelectAll,
 		jobHandlers,

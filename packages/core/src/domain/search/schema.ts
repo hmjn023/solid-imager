@@ -3,7 +3,7 @@ import { searchGroupSchema } from "@/domain/media/schemas";
 
 export const searchStateSchema = z.object({
 	// Modes
-	mode: z.enum(["simple", "pro"]),
+	mode: z.enum(["simple", "pro", "vector"]),
 	activePresetId: z.number().nullable(),
 
 	// Filters (Simple Mode)
@@ -19,6 +19,8 @@ export const searchStateSchema = z.object({
 
 	// Filters (Pro Mode)
 	advancedCondition: searchGroupSchema.nullable(),
+	similarityAnchorMediaId: z.string().uuid().nullable(),
+	similarityTopK: z.union([z.literal(20), z.literal(50), z.literal(100)]),
 
 	// Pagination
 	limit: z.number(),
@@ -47,6 +49,8 @@ export const defaultState: SearchState = {
 	selectedCharacters: [],
 	selectedAuthors: [],
 	advancedCondition: null,
+	similarityAnchorMediaId: null,
+	similarityTopK: 50,
 	limit: 20,
 	offset: 0,
 	sortBy: "date",

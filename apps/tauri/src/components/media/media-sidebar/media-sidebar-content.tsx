@@ -1,5 +1,7 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
+import { activateVectorSearch } from "@solid-imager/ui/stores/search-store";
+import { useNavigate } from "@tanstack/solid-router";
 import {
 	addCharacterToMedia,
 	createCharacter,
@@ -18,6 +20,7 @@ import {
 } from "~/infrastructure/api-clients/projects-api";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
+import { client } from "~/orpc-client";
 import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
@@ -35,6 +38,7 @@ type MediaSidebarProps = {
 };
 
 export function MediaSidebar(props: MediaSidebarProps) {
+	const navigate = useNavigate();
 	const loadMediaFile = async () => {
 		const url = buildMediaContentUrl(props.media.mediaSourceId, props.media.id);
 		const response = await getApiFetch()(url);
@@ -78,6 +82,23 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					onClose={modalProps.onClose}
 				/>
 			)}
+			getCcipVectorStatus={() =>
+				client.ai.ccipVectorStatus({
+					mediaSourceId: props.media.mediaSourceId,
+					mediaId: props.media.id,
+				})
+			}
+			startCcipExtraction={(force) =>
+				client.ai.startCcipExtraction({
+					mediaSourceId: props.media.mediaSourceId,
+					mediaId: props.media.id,
+					force,
+				})
+			}
+			onFindSimilar={() => {
+				activateVectorSearch(props.media.id);
+				void navigate({ to: "/search" });
+			}}
 			updateMediaDescription={(mediaSourceId, mediaId, description) =>
 				updateMedia(mediaSourceId, mediaId, { description })
 			}
