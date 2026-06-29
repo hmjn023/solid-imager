@@ -152,17 +152,48 @@ export class JobWorker {
 	private async processJob(job: Job, lanceDbSyncKey?: string) {
 		this.activeJobs++;
 		const isAiJob = this.aiJobTypes.has(job.type);
+		const startedAt = Date.now();
 		if (isAiJob) {
 			this.activeAiJobs++;
 		}
 
+		logger.info(
+			{
+				jobId: job.id,
+				type: job.type,
+				mediaSourceId: job.mediaSourceId,
+				parentId: job.parentId,
+				isAiJob,
+			},
+			"Job started",
+		);
 		try {
 			await this.processor(job);
 			await this.jobRepo.markAsCompleted(job.id, { success: true });
+			logger.info(
+				{
+					jobId: job.id,
+					type: job.type,
+					mediaSourceId: job.mediaSourceId,
+					parentId: job.parentId,
+					durationMs: Date.now() - startedAt,
+				},
+				"Job completed",
+			);
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			logger.error({ err: error, jobId: job.id }, "Job failed");
+			logger.error(
+				{
+					err: error,
+					jobId: job.id,
+					type: job.type,
+					mediaSourceId: job.mediaSourceId,
+					parentId: job.parentId,
+					durationMs: Date.now() - startedAt,
+				},
+				"Job failed",
+			);
 			await this.jobRepo.markAsFailed(job.id, errorMessage);
 		} finally {
 			this.activeJobs--;

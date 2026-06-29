@@ -187,10 +187,29 @@ export const aiRouter = {
 			]),
 		)
 		.handler(async ({ input }) => {
+			const startedAt = Date.now();
+			const logContext =
+				"file" in input
+					? {
+							inputType: "file",
+							fileName: input.file.name,
+							fileSize: input.file.size,
+						}
+					: {
+							inputType: "media",
+							mediaSourceId: input.mediaSourceId,
+							mediaId: input.mediaId,
+						};
+			logger.info(logContext, "AI tagging started");
 			try {
 				if ("file" in input) {
 					const buffer = await input.file.arrayBuffer();
-					return await taggingService.getTags(buffer);
+					const result = await taggingService.getTags(buffer);
+					logger.info(
+						{ ...logContext, durationMs: Date.now() - startedAt },
+						"AI tagging completed",
+					);
+					return result;
 				}
 
 				const { mediaSourceId, mediaId } = input;
@@ -224,17 +243,45 @@ export const aiRouter = {
 					}
 					const fullPath = path.join(connectionInfo.path, media.filePath);
 					const fileBuffer = await readFileBuffer(fullPath);
-					return (await callRemoteTagging(
+					const result = (await callRemoteTagging(
 						remoteUrl,
 						fileBuffer,
 						path.basename(fullPath),
 						config.ai.timeoutMs,
 					)) as import("@solid-imager/core/domain/tagging/schemas").TaggingResponse;
+					logger.info(
+						{
+							...logContext,
+							execution: "remote",
+							durationMs: Date.now() - startedAt,
+						},
+						"AI tagging completed",
+					);
+					return result;
 				}
 
-				return await taggingService.getTagsForMedia(mediaSourceId, mediaId);
+				const result = await taggingService.getTagsForMedia(
+					mediaSourceId,
+					mediaId,
+				);
+				logger.info(
+					{
+						...logContext,
+						execution: "local",
+						durationMs: Date.now() - startedAt,
+					},
+					"AI tagging completed",
+				);
+				return result;
 			} catch (error) {
-				logger.error({ err: error, input }, "AI tagging failed");
+				logger.error(
+					{
+						err: error,
+						...logContext,
+						durationMs: Date.now() - startedAt,
+					},
+					"AI tagging failed",
+				);
 				const message =
 					error instanceof Error ? error.message : "Unknown error";
 				throw new ORPCError("UNPROCESSABLE_CONTENT", {
@@ -443,6 +490,15 @@ export const aiRouter = {
 				mediaSourceId: input.mediaSourceId,
 				payload: { mediaId: input.mediaId, force: input.force },
 			});
+			logger.info(
+				{
+					jobId: job.id,
+					mediaSourceId: input.mediaSourceId,
+					mediaId: input.mediaId,
+					force: input.force,
+				},
+				"CCIP vector extraction queued",
+			);
 			return {
 				success: true,
 				message: "CCIP vector extraction queued",
@@ -499,7 +555,9 @@ export const aiRouter = {
 				where: and(
 					inArray(medias.id, input.mediaIds),
 					eq(medias.mediaType, "image"),
-					input.mediaSourceId ? eq(medias.mediaSourceId, input.mediaSourceId) : undefined,
+					input.mediaSourceId
+						? eq(medias.mediaSourceId, input.mediaSourceId)
+						: undefined,
 				),
 				columns: { id: true, mediaSourceId: true },
 			});
@@ -550,6 +608,21 @@ export const aiRouter = {
 			]),
 		)
 		.handler(async ({ input }) => {
+			const startedAt = Date.now();
+			const logContext =
+				"file" in input
+					? {
+							inputType: "file",
+							fileName: input.file.name,
+							fileSize: input.file.size,
+							transparent: input.transparent,
+						}
+					: {
+							inputType: "media",
+							mediaId: input.mediaId,
+							transparent: input.transparent,
+						};
+			logger.info(logContext, "Character detection and cropping started");
 			try {
 				const transparent = input.transparent ?? false;
 
@@ -570,6 +643,14 @@ export const aiRouter = {
 							),
 						);
 
+						logger.info(
+							{
+								...logContext,
+								detectionCount: resultDetections.length,
+								durationMs: Date.now() - startedAt,
+							},
+							"Character detection and cropping completed",
+						);
 						return { detections: resultDetections };
 					} finally {
 						await Bun.file(tmpPath)
@@ -608,7 +689,7 @@ export const aiRouter = {
 				const config = services.getConfigService().getConfig();
 				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
 					const fileBuffer = await readFileBuffer(fullPath);
-					return (await callRemoteCrop(
+					const result = (await callRemoteCrop(
 						remoteUrl,
 						fileBuffer,
 						path.basename(fullPath),
@@ -624,6 +705,16 @@ export const aiRouter = {
 							height: number;
 						}>;
 					};
+					logger.info(
+						{
+							...logContext,
+							execution: "remote",
+							detectionCount: result.detections.length,
+							durationMs: Date.now() - startedAt,
+						},
+						"Character detection and cropping completed",
+					);
+					return result;
 				}
 
 				const { detectPerson } = await import("dghs-imgutils-rs");
@@ -635,10 +726,23 @@ export const aiRouter = {
 					),
 				);
 
+				logger.info(
+					{
+						...logContext,
+						execution: "local",
+						detectionCount: resultDetections.length,
+						durationMs: Date.now() - startedAt,
+					},
+					"Character detection and cropping completed",
+				);
 				return { detections: resultDetections };
 			} catch (error) {
 				logger.error(
-					{ err: error, input },
+					{
+						err: error,
+						...logContext,
+						durationMs: Date.now() - startedAt,
+					},
 					"Character detection and cropping failed",
 				);
 				const message =
