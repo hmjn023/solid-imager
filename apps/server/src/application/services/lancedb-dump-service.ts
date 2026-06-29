@@ -20,4 +20,5 @@ export const syncLanceDBPages = service.syncLanceDBPages;
 export const syncLanceDBDelta = service.syncLanceDBDelta;
 export const readFromLanceDB = service.readFromLanceDB;
 export const readMediaIds = service.readMediaIds;
+export const readMediaFilePaths = service.readMediaFilePaths;
 export const cleanupLanceDBDir = service.cleanupLanceDBDir;

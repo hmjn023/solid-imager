@@ -1524,6 +1524,70 @@ export const BackupService = {
 		}
 
 		if (targetMode === "lancedb") {
+			const { services } = await import("~/application/registry");
+			const config = services.getConfigService().getConfig();
+			const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
+			const cacheDir = path.resolve(
+				process.cwd(),
+				baseCacheDir,
+				`source-${mediaSourceId}`,
+			);
+
+			const includeImages = options?.includeImages ?? true;
+			const archiverMod = await importArchiverModule();
+			const { PassThrough } = await import("node:stream");
+
+			let cacheExists = false;
+			try {
+				await fs.access(cacheDir);
+				cacheExists = true;
+			} catch {
+				// cache does not exist
+			}
+
+			if (cacheExists) {
+				const { readMediaFilePaths } = await import(
+					"~/application/services/lancedb-dump-service"
+				);
+				const driver = getDriver(mediaSource);
+				const mediaFilePaths = await readMediaFilePaths(cacheDir);
+
+				const passThrough = new PassThrough();
+				const archive = new archiverMod.TarArchive();
+				archive.pipe(passThrough);
+
+				(async () => {
+					try {
+						archive.directory(cacheDir, false);
+
+						if (includeImages) {
+							for (const item of mediaFilePaths) {
+								if (!item.filePath) continue;
+								try {
+									const buffer = await driver.get(item.filePath);
+									archive.append(buffer, {
+										name: `images/${item.filePath}`,
+									});
+								} catch {
+									// ignore missing files
+								}
+							}
+						}
+
+						await archive.finalize();
+					} catch (err) {
+						logger.error(
+							{ err },
+							"Error generating LanceDB TAR dump from cache",
+						);
+						archive.abort();
+					}
+				})();
+
+				return nodeStreamToWebReadable(passThrough);
+			}
+
+			// Fallback: rebuild from DB when cache is unavailable
 			const { writeToLanceDB, cleanupLanceDBDir } = await import(
 				"~/application/services/lancedb-dump-service"
 			);
@@ -1533,7 +1597,6 @@ export const BackupService = {
 				"lancedb-dump",
 				`source-${mediaSourceId}`,
 			);
-			const includeImages = options?.includeImages ?? true;
 			const dumpedItems: MediaDumpItem[] = [];
 			const limit = 1000;
 			let lastId: string | null = null;
@@ -1574,8 +1637,6 @@ export const BackupService = {
 				tempDir: tempBaseDir,
 			});
 			const driver = getDriver(mediaSource);
-			const archiverMod = await importArchiverModule();
-			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
 			const archive = new archiverMod.TarArchive();
