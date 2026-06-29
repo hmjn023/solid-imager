@@ -4,6 +4,7 @@ import type {
 	Author,
 	MediaSearchRequest,
 	MediaSearchResponse,
+	SimilarMediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
@@ -48,6 +49,11 @@ export interface UseSearchPageOptions {
 		sourceId: string | undefined,
 		params: MediaSearchRequest,
 	) => Promise<MediaSearchResponse>;
+	searchSimilar?: (input: {
+		anchorMediaId: string;
+		mediaSourceId?: string;
+		topK: number;
+	}) => Promise<SimilarMediaSearchResponse>;
 	queryClient: QueryClient;
 	queries: SearchPageQueryOptions;
 	selectedSource: () => string | null | undefined;
@@ -58,6 +64,9 @@ export interface UseSearchPageOptions {
 	scrollY: () => number;
 	setScrollY: (y: number) => void;
 	setOffset: (o: number) => void;
+	mode?: () => "simple" | "pro" | "vector";
+	similarityAnchorMediaId?: () => string | null;
+	similarityTopK?: () => number;
 	gcTime?: number;
 	refreshDebounceMs?: number;
 }
@@ -93,6 +102,9 @@ export function useSearchPage(
 		scrollY,
 		setScrollY,
 		setOffset,
+		mode = () => "simple",
+		similarityAnchorMediaId = () => null,
+		similarityTopK = () => 50,
 		gcTime = DEFAULT_GC_TIME,
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
 	} = options;
@@ -127,19 +139,35 @@ export function useSearchPage(
 		return {
 			queryKey: [
 				"searchResults",
+				mode(),
 				source,
 				conditionKey(),
 				sortBy(),
 				sortOrder(),
 				limit(),
+				similarityAnchorMediaId(),
+				similarityTopK(),
 			],
-			queryFn: async ({ pageParam }) =>
-				await searchMedia(source, {
+			queryFn: async ({ pageParam }) => {
+				if (mode() === "vector") {
+					const anchorMediaId = similarityAnchorMediaId();
+					if (!(anchorMediaId && options.searchSimilar)) {
+						return { media: [], total: 0 };
+					}
+					return await options.searchSimilar({
+						anchorMediaId,
+						mediaSourceId: source,
+						topK: similarityTopK(),
+					});
+				}
+				return await searchMedia(source, {
 					...params,
 					offset: pageParam as number,
-				}),
+				});
+			},
 			initialPageParam: 0,
 			getNextPageParam: (lastPage, allPages) => {
+				if (mode() === "vector") return;
 				const loadedCount = allPages.reduce(
 					(sum, page) => sum + page.media.length,
 					0,

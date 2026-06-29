@@ -2,8 +2,17 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type {
+	CcipVectorStatus,
+	StartCcipExtractionResponse,
+} from "@solid-imager/core/domain/tagging/schemas";
+import type {
+	JobCompletedEvent,
+	JobFailedEvent,
+	JobProgressEvent,
+} from "@solid-imager/core/domain/sources/events";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import type { JSX } from "solid-js";
+import type { Accessor, JSX } from "solid-js";
 import { MediaSidebar } from "./media-sidebar";
 import { projectsQueryKeys } from "./query-options";
 
@@ -20,6 +29,17 @@ export type MediaSidebarContentProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
+	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
+	startCcipExtraction?: (force: boolean) => Promise<StartCcipExtractionResponse>;
+	useCcipJobEvents?: (
+		activeJobId: Accessor<string | null>,
+		handlers: {
+			handleJobProgress: (event: JobProgressEvent) => void;
+			handleJobCompleted: (event: JobCompletedEvent) => void;
+			handleJobFailed: (event: JobFailedEvent) => void;
+		},
+	) => void;
+	onFindSimilar?: () => void;
 	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	projectsForMediaQueryOptions: (mediaSourceId: string, mediaId: string) => any;
 	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
@@ -94,6 +114,10 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 		<MediaSidebar
 			aiTaggingModal={props.aiTaggingModal}
 			characterCropModal={props.characterCropModal}
+			getCcipVectorStatus={props.getCcipVectorStatus}
+			startCcipExtraction={props.startCcipExtraction}
+			useCcipJobEvents={props.useCcipJobEvents}
+			onFindSimilar={props.onFindSimilar}
 			allCharacters={allCharacters.data || []}
 			allIps={allIps.data || []}
 			allProjects={allProjects.data || []}

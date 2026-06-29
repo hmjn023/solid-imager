@@ -37,6 +37,7 @@ export type MediaProcessingServiceDeps = {
 	mediaStorage: IMediaStorage;
 	logger?: ILogger;
 	enableAutoTagging: boolean;
+	enableAutoCcipExtraction?: boolean;
 	supportedExtensions: {
 		image: string[];
 		video: string[];
@@ -62,6 +63,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly imageProcessor: IImageProcessor;
 	private readonly mediaStorage: IMediaStorage;
 	private enableAutoTagging: boolean;
+	private enableAutoCcipExtraction: boolean;
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
 	private readonly generateThumbnail: MediaProcessingServiceDeps["generateThumbnail"];
 	private readonly publishSourceEvent: SourceEventPublisher;
@@ -79,14 +81,19 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		this.imageProcessor = deps.imageProcessor;
 		this.mediaStorage = deps.mediaStorage;
 		this.enableAutoTagging = deps.enableAutoTagging;
+		this.enableAutoCcipExtraction = deps.enableAutoCcipExtraction ?? false;
 		this.supportedExtensions = deps.supportedExtensions;
 		this.generateThumbnail = deps.generateThumbnail;
 		this.publishSourceEvent = deps.publishSourceEvent;
 		this.logger = deps.logger;
 	}
 
-	updateConfig(config: { enableAutoTagging: boolean }): void {
+	updateConfig(config: {
+		enableAutoTagging: boolean;
+		enableAutoCcipExtraction: boolean;
+	}): void {
 		this.enableAutoTagging = config.enableAutoTagging;
+		this.enableAutoCcipExtraction = config.enableAutoCcipExtraction;
 	}
 
 	async registerAndProcess(
@@ -258,6 +265,23 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				this.logger?.warn(
 					{ err: e, mediaId },
 					"Failed to queue AI tagging job",
+				);
+			}
+		}
+
+		if (this.enableAutoCcipExtraction && media.mediaType === "image") {
+			try {
+				await this.jobRepo.createIfUnique({
+					type: "extract_ccip_vector",
+					mediaSourceId,
+					payload: {
+						mediaId: media.id,
+					},
+				});
+			} catch (e) {
+				this.logger?.warn(
+					{ err: e, mediaId },
+					"Failed to queue CCIP vector extraction job",
 				);
 			}
 		}

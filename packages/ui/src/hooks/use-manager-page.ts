@@ -2,7 +2,7 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type {
 	DuplicateGroup,
-	Media,
+	MediaSafe,
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
@@ -26,6 +26,7 @@ export type ManagerEntityType =
 	| "ips"
 	| "characters"
 	| "tagging"
+	| "vectors"
 	| "duplicates";
 export type ManagerEntity = Project | Ip | Character;
 
@@ -67,8 +68,17 @@ export type ManagerPageActions = {
 	scanBatchTaggingTargets: (input: {
 		force: boolean;
 		mediaSourceId?: string;
-	}) => Promise<Media[]>;
+	}) => Promise<MediaSafe[]>;
 	startBatchTaggingWithIds: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+		mediaIds: string[];
+	}) => Promise<StartBatchTaggingResult>;
+	scanBatchCcipTargets: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+	}) => Promise<MediaSafe[]>;
+	startBatchCcipExtraction: (input: {
 		force: boolean;
 		mediaSourceId?: string;
 		mediaIds: string[];
@@ -77,7 +87,9 @@ export type ManagerPageActions = {
 		mediaSourceId?: string,
 	) => Promise<{ groups: DuplicateGroup[] }>;
 	bulkDeleteMedia: (sourceId: string, mediaIds: string[]) => Promise<unknown>;
-	invalidate: (entityType: Exclude<ManagerEntityType, "tagging">) => void;
+	invalidate: (
+		entityType: Exclude<ManagerEntityType, "tagging" | "vectors">,
+	) => void;
 };
 
 export type ManagerPageMutationActions = Omit<ManagerPageActions, "invalidate">;
@@ -140,7 +152,7 @@ export type UseManagerPageResult = {
 	forceRetag: Accessor<boolean>;
 	setForceRetag: Setter<boolean>;
 	taggingStatus: Accessor<string | null>;
-	scannedMedia: Accessor<Media[]>;
+	scannedMedia: Accessor<MediaSafe[]>;
 	selectedMedia: Accessor<Set<string>>;
 	jobProgress: Accessor<JobProgressEvent | null>;
 	activeJobId: Accessor<string | null>;
@@ -148,7 +160,7 @@ export type UseManagerPageResult = {
 	setCurrentPage: Setter<number>;
 	itemsPerPage: number;
 	totalPages: Accessor<number>;
-	paginatedMedia: Accessor<Media[]>;
+	paginatedMedia: Accessor<MediaSafe[]>;
 	sources: Accessor<SafeMediaSource[]>;
 	ips: Accessor<Ip[]>;
 	getActiveItems: Accessor<ManagerEntity[]>;
@@ -158,6 +170,7 @@ export type UseManagerPageResult = {
 	handleConfirmDelete: () => Promise<void>;
 	handleScan: () => Promise<void>;
 	handleStartBatchTagging: () => Promise<void>;
+	handleStartBatchCcipExtraction: () => Promise<void>;
 	toggleMediaSelection: (mediaId: string) => void;
 	toggleSelectAll: () => void;
 	jobHandlers: ManagerJobHandlers;
@@ -195,8 +208,10 @@ function resetForm(setFormData: Setter<ManagerFormData>) {
 
 function activeCrudTab(
 	activeTab: ManagerEntityType,
-): Exclude<ManagerEntityType, "tagging" | "duplicates"> | null {
-	return activeTab === "tagging" || activeTab === "duplicates"
+): Exclude<ManagerEntityType, "tagging" | "vectors" | "duplicates"> | null {
+	return activeTab === "tagging" ||
+		activeTab === "vectors" ||
+		activeTab === "duplicates"
 		? null
 		: activeTab;
 }
@@ -246,7 +261,7 @@ export function useManagerPage(
 	>(undefined);
 	const [forceRetag, setForceRetag] = createSignal(false);
 	const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
-	const [scannedMedia, setScannedMedia] = createSignal<Media[]>([]);
+	const [scannedMedia, setScannedMedia] = createSignal<MediaSafe[]>([]);
 	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(
 		new Set(),
 	);
@@ -255,6 +270,18 @@ export function useManagerPage(
 	);
 	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
 	const [currentPage, setCurrentPage] = createSignal(1);
+
+	createEffect(() => {
+		const tab = activeTab();
+		if (tab !== "tagging" && tab !== "vectors") {
+			return;
+		}
+
+		setScannedMedia([]);
+		setSelectedMedia(new Set<string>());
+		setTaggingStatus(null);
+		setCurrentPage(1);
+	});
 
 	// Duplicates state
 	const [duplicateSourceId, setDuplicateSourceId] = createSignal<
@@ -396,19 +423,62 @@ export function useManagerPage(
 	};
 
 	const handleScan = async () => {
+		const scanTab = activeTab();
+		if (scanTab !== "tagging" && scanTab !== "vectors") {
+			return;
+		}
+
 		try {
 			setTaggingStatus("Scanning...");
 			setScannedMedia([]);
-			const result = await actions.scanBatchTaggingTargets({
-				force: forceRetag(),
-				mediaSourceId: selectedSourceId(),
-			});
+			const result =
+				scanTab === "vectors"
+					? await actions.scanBatchCcipTargets({
+							force: forceRetag(),
+							mediaSourceId: selectedSourceId(),
+						})
+					: await actions.scanBatchTaggingTargets({
+							force: forceRetag(),
+							mediaSourceId: selectedSourceId(),
+						});
+			if (activeTab() !== scanTab) {
+				return;
+			}
 			setScannedMedia(result);
 			setSelectedMedia(new Set(result.map((item) => item.id)));
 			setTaggingStatus(`${result.length} items found.`);
 		} catch (error) {
+			if (activeTab() !== scanTab) {
+				return;
+			}
 			toast.error(`Error: ${getErrorMessage(error)}`);
 			setTaggingStatus(`Error during scan: ${getErrorMessage(error)}`);
+		}
+	};
+
+	const handleStartBatchCcipExtraction = async () => {
+		if (selectedMedia().size === 0) {
+			toast.error("No media selected");
+			return;
+		}
+		try {
+			setTaggingStatus("Starting...");
+			setJobProgress(null);
+			const result = await actions.startBatchCcipExtraction({
+				force: forceRetag(),
+				mediaSourceId: selectedSourceId(),
+				mediaIds: Array.from(selectedMedia()),
+			});
+			if (result.success && result.jobId) {
+				toast.success(result.message);
+				setTaggingStatus("Batch CCIP extraction in progress...");
+				setActiveJobId(result.jobId);
+				setScannedMedia([]);
+				setSelectedMedia(new Set<string>());
+			}
+		} catch (error) {
+			toast.error(`Error: ${getErrorMessage(error)}`);
+			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
 		}
 	};
 
@@ -642,12 +712,12 @@ export function useManagerPage(
 
 	const handleJobProgress = (event: JobProgressEvent) => {
 		setJobProgress(event);
-		setTaggingStatus(`Processing: ${event.processed} / ${event.total} tagged.`);
+		setTaggingStatus(`Processing: ${event.processed} / ${event.total}.`);
 	};
 
 	const handleJobCompleted = (event: JobCompletedEvent) => {
-		toast.success(event.message || "Batch tagging completed!");
-		setTaggingStatus("Batch tagging completed successfully.");
+		toast.success(event.message || "Batch operation completed!");
+		setTaggingStatus("Batch operation completed successfully.");
 		setActiveJobId(null);
 		setJobProgress(null);
 	};
@@ -703,6 +773,7 @@ export function useManagerPage(
 		handleConfirmDelete,
 		handleScan,
 		handleStartBatchTagging,
+		handleStartBatchCcipExtraction,
 		toggleMediaSelection,
 		toggleSelectAll,
 		jobHandlers,

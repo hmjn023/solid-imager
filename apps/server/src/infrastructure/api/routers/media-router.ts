@@ -9,12 +9,16 @@ import {
 	bulkTagMediaRequestSchema,
 	findDuplicatesRequestSchema,
 	mediaSearchRequestSchema,
+	similarMediaSearchResponseSchema,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import { similarMediaRequestSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { z } from "zod";
 import { BulkOperationService } from "~/application/services/bulk-operation-service";
+import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { MediaService } from "~/application/services/media-service";
+import { logger } from "~/infrastructure/logger";
 
 /**
  * Media Router Implementation
@@ -34,6 +38,17 @@ export const mediaRouter = {
 			async ({ input }) =>
 				await MediaService.searchMedia(input.sourceId, input.params),
 		),
+
+	searchSimilar: os
+		.input(similarMediaRequestSchema)
+		.output(similarMediaSearchResponseSchema)
+		.handler(async ({ input }) => {
+			return await ccipVectorService.searchSimilar(
+				input.anchorMediaId,
+				input.topK,
+				input.mediaSourceId,
+			);
+		}),
 
 	/**
 	 * Get a specific media file
@@ -186,6 +201,11 @@ export const mediaRouter = {
 		)
 		.handler(async ({ input }) => {
 			await MediaService.deleteMedia(input.sourceId, input.mediaId);
+			try {
+				await ccipVectorService.delete(input.mediaId);
+			} catch (err) {
+				logger.warn({ err, mediaId: input.mediaId }, "[MediaRouter] Vector delete failed after media delete");
+			}
 			return { success: true };
 		}),
 
@@ -214,10 +234,18 @@ export const mediaRouter = {
 				targetSourceId: z.string().uuid(),
 			}),
 		)
-		.handler(
-			async ({ input }) =>
-				await MediaService.moveMedia(input.mediaId, input.targetSourceId),
-		),
+		.handler(async ({ input }) => {
+			const result = await MediaService.moveMedia(
+				input.mediaId,
+				input.targetSourceId,
+			);
+			try {
+				await ccipVectorService.delete(input.mediaId);
+			} catch (err) {
+				logger.warn({ err, mediaId: input.mediaId }, "[MediaRouter] Vector delete failed after media move");
+			}
+			return result;
+		}),
 
 	/**
 	 * Upload media to a source
@@ -269,6 +297,15 @@ export const mediaRouter = {
 			await BulkOperationService.bulkDeleteMedia(
 				input.mediaSourceId,
 				input.mediaIds,
+			);
+			await Promise.allSettled(
+				input.mediaIds.map(async (mediaId) => {
+					try {
+						await ccipVectorService.delete(mediaId);
+					} catch (err) {
+						logger.warn({ err, mediaId }, "[MediaRouter] Vector delete failed after bulk media delete");
+					}
+				}),
 			);
 			return { success: true };
 		}),

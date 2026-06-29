@@ -34,9 +34,31 @@ export const loadPreset = (preset: Preset) => {
 	setSearchState(nextState);
 };
 
-export const setSearchMode = (mode: "simple" | "pro") => {
+export const setSearchMode = (mode: "simple" | "pro" | "vector") => {
 	const nextState = calculateNextModeState(searchState, mode);
 	setSearchState(nextState);
+};
+
+export const activateVectorSearch = (mediaId: string) => {
+	const nextState = {
+		mode: "vector" as const,
+		similarityAnchorMediaId: mediaId,
+		similarityTopK: 50 as const,
+		selectedSource: "",
+		offset: 0,
+		scrollY: 0,
+	};
+	setSearchState(nextState);
+	if (typeof sessionStorage !== "undefined") {
+		sessionStorage.setItem(
+			"current-all",
+			JSON.stringify({
+				mode: nextState.mode,
+				similarityAnchorMediaId: nextState.similarityAnchorMediaId,
+				similarityTopK: nextState.similarityTopK,
+			}),
+		);
+	}
 };
 
 export const getSearchCondition = () =>

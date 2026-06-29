@@ -1,16 +1,20 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSafe } from "@solid-imager/core/domain/media/schemas";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import { Card } from "./card";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import { cn } from "./utils/cn";
 
+export type MediaCardMedia = MediaSafe & {
+	filePath?: string;
+};
+
 export type MediaCardThumbnailProps = {
 	alt: string;
 	class: string;
 	height?: number | null;
 	loading: "eager" | "lazy";
-	media: Media;
+	media: MediaCardMedia;
 	sourceRootPath?: string;
 	width?: number | null;
 };
@@ -23,13 +27,13 @@ export type MediaCardLinkProps = {
 };
 
 type MediaCardItemProps = {
-	media: Media;
+	media: MediaCardMedia;
 	selectable?: boolean;
 	isSelected?: boolean;
 	onSelect?: (id: string) => void;
 	priority?: boolean;
 	sourceRootPath?: string;
-	canRenderThumbnail?: (media: Media) => boolean;
+	canRenderThumbnail?: (media: MediaCardMedia) => boolean;
 	linkComponent?: (props: MediaCardLinkProps) => JSX.Element;
 	renderThumbnail: (props: MediaCardThumbnailProps) => JSX.Element;
 	class?: string;
@@ -46,7 +50,7 @@ function formatFileSize(bytes: number | null | undefined) {
 	return `${(bytes / 1024).toFixed(1)} KB`;
 }
 
-function formatDimensions(media: Media, separator: string) {
+function formatDimensions(media: MediaCardMedia, separator: string) {
 	return media.width && media.height
 		? `${media.width}${separator}${media.height}`
 		: "N/A";
@@ -123,12 +127,14 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				<h3 class="truncate font-semibold text-sm" title={props.media.fileName}>
 					{props.media.fileName}
 				</h3>
-				<p
-					class="truncate text-muted-foreground text-xs"
-					title={props.media.filePath}
-				>
-					{props.media.filePath}
-				</p>
+				<Show when={props.media.filePath}>
+					<p
+						class="truncate text-muted-foreground text-xs"
+						title={props.media.filePath}
+					>
+						{props.media.filePath}
+					</p>
+				</Show>
 				<div class="flex justify-between pt-1 text-muted-foreground text-xs">
 					<span>
 						{formatDimensions(

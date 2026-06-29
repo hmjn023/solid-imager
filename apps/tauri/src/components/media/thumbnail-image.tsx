@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSafe } from "@solid-imager/core/domain/media/schemas";
 import {
 	ThumbnailImage as SharedThumbnailImage,
 	type ThumbnailImageProps as SharedThumbnailImageProps,
@@ -16,7 +16,7 @@ type ThumbnailImageProps = {
 	height?: number | null;
 	loading?: "eager" | "lazy";
 	maxRetries?: number;
-	media: Media;
+	media: MediaSafe;
 	retryDelayMs?: number;
 	sourceRootPath?: string;
 	width?: number | null;

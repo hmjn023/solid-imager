@@ -2,6 +2,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createClient } from "@solid-imager/client";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import {
 	type CcipDifferenceResponse,
 	type CcipFeatureResponse,
@@ -23,6 +24,21 @@ function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
 			return fetch(request, { ...init, signal });
 		},
 	});
+}
+
+function hasCcipDistances(value: unknown): value is {
+	ccipDistances(
+		feature: number[],
+		candidates: number[][],
+		modelName?: string,
+	): number[] | Promise<number[]>;
+} {
+	return (
+		typeof value === "object" &&
+		value !== null &&
+		"ccipDistances" in value &&
+		typeof value.ccipDistances === "function"
+	);
 }
 
 export class RustAiClient implements IAiClient {
@@ -239,6 +255,37 @@ export class RustAiClient implements IAiClient {
 		const distance = await ccipDistance(feature1, feature2);
 		return ccipDifferenceResponseSchema.parse({
 			difference: distance,
+		});
+	}
+
+	async calculateCcipDistances(
+		feature: number[],
+		candidates: number[][],
+	): Promise<number[]> {
+		if (this.baseUrl) {
+			if (!this.client) {
+				throw new Error("Client is not initialized (baseUrl is empty)");
+			}
+			const result = await this.client.ai.ccipDistances({
+				feature,
+				candidates,
+			});
+			return result.distances;
+		}
+
+		if (!this.baseUrl) {
+			const nativeModule: unknown = await import("dghs-imgutils-rs");
+			if (hasCcipDistances(nativeModule)) {
+				return await nativeModule.ccipDistances(feature, candidates);
+			}
+		}
+		const settledResults = await asyncPool(candidates, 50, async (candidate) => {
+			const result = await this.calculateCcipDifference(feature, candidate);
+			return result.difference;
+		});
+		return settledResults.map((r) => {
+			if (r.status === "fulfilled") return r.value;
+			throw r.reason;
 		});
 	}
 }

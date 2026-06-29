@@ -154,6 +154,22 @@ export const mediaSchema = z.object({
 
 export type Media = z.infer<typeof mediaSchema>;
 
+export const mediaSafeSchema = mediaSchema.pick({
+	id: true,
+	mediaSourceId: true,
+	fileName: true,
+	mediaType: true,
+	width: true,
+	height: true,
+	fileSize: true,
+	description: true,
+	createdAt: true,
+	modifiedAt: true,
+	indexedAt: true,
+	status: true,
+});
+export type MediaSafe = z.infer<typeof mediaSafeSchema>;
+
 export const authorSchema = z.object({
 	id: z.uuid({ version: "v4" }),
 	name: z.string(),
@@ -334,6 +350,22 @@ export const mediaSearchResponseSchema = z.object({
 });
 
 export type MediaSearchResponse = z.infer<typeof mediaSearchResponseSchema>;
+
+export const similarMediaSearchResponseSchema = z.object({
+	media: z.array(mediaSchema),
+	total: z.number(),
+	scores: z.array(
+		z.object({
+			mediaId: z.string().uuid(),
+			cosineDistance: z.number(),
+			ccipDistance: z.number(),
+		}),
+	),
+});
+
+export type SimilarMediaSearchResponse = z.infer<
+	typeof similarMediaSearchResponseSchema
+>;
 
 // Combined schema for the details endpoint
 export const mediaDetailsSchema = mediaSchema.extend({

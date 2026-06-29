@@ -17,4 +17,8 @@ export interface ITaggingService {
 		mediaId: string,
 	): Promise<CcipFeatureResponse>;
 	getCcipDifference(feature1: number[], feature2: number[]): Promise<number>;
+	getCcipDistances(
+		feature: number[],
+		candidates: number[][],
+	): Promise<number[]>;
 }

@@ -1,6 +1,10 @@
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { ORPCError, os } from "@orpc/server";
+import {
+	CCIP_EMBEDDING_VERSION,
+	CCIP_MODEL,
+} from "@solid-imager/application/services/ccip-vector-service";
 import { createClient } from "@solid-imager/client";
 import {
 	type Media,
@@ -8,22 +12,40 @@ import {
 } from "@solid-imager/core/domain/media/schemas";
 import type { NapiBBox } from "@solid-imager/core/domain/tagging/schemas";
 import {
+	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
 	ccipDifferenceRequestSchema,
+	ccipDistancesRequestSchema,
+	ccipDistancesResponseSchema,
+	ccipExtractionRequestSchema,
 	ccipFeatureRequestSchema,
+	ccipVectorStatusSchema,
 	startBatchTaggingResponseSchema,
+	startCcipExtractionResponseSchema,
 	tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
-import { and, asc, eq, getTableColumns, inArray, isNull } from "drizzle-orm";
+import {
+	and,
+	asc,
+	desc,
+	eq,
+	getTableColumns,
+	inArray,
+	isNull,
+	sql,
+} from "drizzle-orm";
 import sharp from "sharp";
 import { z } from "zod";
 import { services } from "~/application/registry";
+import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { taggingService } from "~/application/services/tagging-service";
 import type { appRouter } from "~/domain/shared/api-contract";
 import { db } from "~/infrastructure/db";
 import {
+	jobs,
 	mediaCharacters,
 	mediaIps,
+	mediaSources,
 	medias,
 	mediaTags,
 } from "~/infrastructure/db/schema";
@@ -252,6 +274,16 @@ export const aiRouter = {
 				await taggingService.getCcipDifference(input.feature1, input.feature2),
 		),
 
+	ccipDistances: os
+		.input(ccipDistancesRequestSchema)
+		.output(ccipDistancesResponseSchema)
+		.handler(async ({ input }) => ({
+			distances: await taggingService.getCcipDistances(
+				input.feature,
+				input.candidates,
+			),
+		})),
+
 	scanBatchTaggingTargets: os
 		.input(batchTaggingRequestSchema)
 		.output(z.array(mediaSchema))
@@ -321,10 +353,12 @@ export const aiRouter = {
 
 			const parentJob = await jobRepo.create({
 				type: "bulk_tagging_parent",
+				status: "in_progress",
 				mediaSourceId,
 				payload: {
 					total: mediaIds.length,
 					processed: 0,
+					processedJobIds: [],
 				},
 			});
 
@@ -360,6 +394,145 @@ export const aiRouter = {
 				success: true,
 				message: "Batch tagging started with selected media.",
 				jobId: parentJob.id,
+			};
+		}),
+
+	ccipVectorStatus: os
+		.input(
+			ccipExtractionRequestSchema.pick({ mediaSourceId: true, mediaId: true }),
+		)
+		.output(ccipVectorStatusSchema)
+		.handler(async ({ input }) => {
+			const status = await ccipVectorService.getStatus(
+				input.mediaSourceId,
+				input.mediaId,
+			);
+			const latestJob = await db.query.jobs.findFirst({
+				where: and(
+					eq(jobs.type, "extract_ccip_vector"),
+					eq(jobs.mediaSourceId, input.mediaSourceId),
+					sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
+				),
+				orderBy: desc(jobs.createdAt),
+			});
+			if (status.status === "ready" || status.status === "stale") {
+				return status;
+			}
+			if (
+				latestJob?.status === "pending" ||
+				latestJob?.status === "in_progress"
+			) {
+				return { status: "processing" as const, jobId: latestJob.id };
+			}
+			if (latestJob?.status === "failed") {
+				return {
+					status: "failed" as const,
+					jobId: latestJob.id,
+					error: latestJob.error ?? "CCIP vector extraction failed",
+				};
+			}
+			return status;
+		}),
+
+	startCcipExtraction: os
+		.input(ccipExtractionRequestSchema)
+		.output(startCcipExtractionResponseSchema)
+		.handler(async ({ input }) => {
+			const job = await services.getJobRepository().create({
+				type: "extract_ccip_vector",
+				mediaSourceId: input.mediaSourceId,
+				payload: { mediaId: input.mediaId, force: input.force },
+			});
+			return {
+				success: true,
+				message: "CCIP vector extraction queued",
+				jobId: job.id,
+			};
+		}),
+
+	scanBatchCcipTargets: os
+		.input(batchCcipExtractionRequestSchema)
+		.output(z.array(mediaSchema))
+		.handler(async ({ input }) => {
+			const rows = await db
+				.select(getTableColumns(medias))
+				.from(medias)
+				.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
+				.where(
+					and(
+						eq(medias.mediaType, "image"),
+						eq(mediaSources.type, "local"),
+						input.mediaSourceId
+							? eq(medias.mediaSourceId, input.mediaSourceId)
+							: undefined,
+					),
+				)
+				.orderBy(asc(medias.id));
+			if (input.force) return rows.map((row) => mediaSchema.parse(row));
+			const records = new Map(
+				(await ccipVectorService.listRecords(input.mediaSourceId)).map(
+					(record) => [record.mediaId, record],
+				),
+			);
+			return rows
+				.filter((row) => {
+					const record = records.get(row.id);
+					return (
+						!record ||
+						record.model !== CCIP_MODEL ||
+						record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
+						record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
+					);
+				})
+				.map((row) => mediaSchema.parse(row));
+		}),
+
+	startBatchCcipExtraction: os
+		.input(
+			batchCcipExtractionRequestSchema.extend({
+				mediaIds: z.array(z.string().uuid()).min(1),
+			}),
+		)
+		.output(startCcipExtractionResponseSchema)
+		.handler(async ({ input }) => {
+			const mediaItems = await db.query.medias.findMany({
+				where: and(
+					inArray(medias.id, input.mediaIds),
+					eq(medias.mediaType, "image"),
+					input.mediaSourceId ? eq(medias.mediaSourceId, input.mediaSourceId) : undefined,
+				),
+				columns: { id: true, mediaSourceId: true },
+			});
+			if (mediaItems.length === 0) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "No valid images selected",
+				});
+			}
+			const jobRepository = services.getJobRepository();
+			const parent = await jobRepository.create({
+				type: "batch_ccip_parent",
+				status: "in_progress",
+				mediaSourceId: input.mediaSourceId,
+				payload: {
+					total: mediaItems.length,
+					processed: 0,
+					processedJobIds: [],
+				},
+			});
+			await Promise.all(
+				mediaItems.map((media) =>
+					jobRepository.create({
+						type: "extract_ccip_vector",
+						mediaSourceId: media.mediaSourceId,
+						parentId: parent.id,
+						payload: { mediaId: media.id, force: input.force },
+					}),
+				),
+			);
+			return {
+				success: true,
+				message: "Batch CCIP vector extraction started",
+				jobId: parent.id,
 			};
 		}),
 

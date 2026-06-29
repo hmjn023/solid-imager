@@ -5,6 +5,7 @@ const DEFAULT_JOBS_POLL_INTERVAL = 1000;
 const MIN_JOBS_CONCURRENCY = 1;
 const MIN_JOBS_POLL_INTERVAL = 100;
 const DEFAULT_AUTO_TAGGING = false;
+const DEFAULT_AUTO_CCIP_EXTRACTION = false;
 
 export const JobsConfigSchema = z.object({
 	concurrency: z
@@ -17,6 +18,7 @@ export const JobsConfigSchema = z.object({
 		.min(MIN_JOBS_POLL_INTERVAL)
 		.default(DEFAULT_JOBS_POLL_INTERVAL),
 	enableAutoTagging: z.boolean().default(DEFAULT_AUTO_TAGGING),
+	enableAutoCcipExtraction: z.boolean().default(DEFAULT_AUTO_CCIP_EXTRACTION),
 });
 
 const DEFAULT_JOBS_CONFIG = {
@@ -24,6 +26,7 @@ const DEFAULT_JOBS_CONFIG = {
 	aiConcurrency: 1,
 	pollIntervalMs: DEFAULT_JOBS_POLL_INTERVAL,
 	enableAutoTagging: DEFAULT_AUTO_TAGGING,
+	enableAutoCcipExtraction: DEFAULT_AUTO_CCIP_EXTRACTION,
 } as const;
 
 const DEFAULT_AI_BASE_URL = "";
@@ -151,11 +154,13 @@ const DEFAULT_LOGGING_CONFIG = {
 export const LanceDbConfigSchema = z.object({
 	autoFullSync: z.boolean().default(true),
 	cacheDir: z.string().default(".cache/lancedb-cache"),
+	ccipVectorDir: z.string().default(".cache/lancedb-ccip"),
 });
 
 const DEFAULT_LANCEDB_CONFIG = {
 	autoFullSync: true,
 	cacheDir: ".cache/lancedb-cache",
+	ccipVectorDir: ".cache/lancedb-ccip",
 } as const;
 
 export const AppConfigSchema = z.object({

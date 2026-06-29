@@ -613,6 +613,32 @@
         }
       }
     },
+    "/media/searchSimilar": {
+      "post": {
+        "operationId": "media.searchSimilar",
+        "summary": "searchSimilar",
+        "tags": [
+          "Media"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/media/get": {
       "post": {
         "operationId": "media.get",
@@ -2070,6 +2096,32 @@
         }
       }
     },
+    "/ai/ccipDistances": {
+      "post": {
+        "operationId": "ai.ccipDistances",
+        "summary": "ccipDistances",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ai/scanBatchTaggingTargets": {
       "post": {
         "operationId": "ai.scanBatchTaggingTargets",
@@ -2126,6 +2178,110 @@
       "post": {
         "operationId": "ai.startBatchTaggingWithIds",
         "summary": "startBatchTaggingWithIds",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/ccipVectorStatus": {
+      "post": {
+        "operationId": "ai.ccipVectorStatus",
+        "summary": "ccipVectorStatus",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/startCcipExtraction": {
+      "post": {
+        "operationId": "ai.startCcipExtraction",
+        "summary": "startCcipExtraction",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/scanBatchCcipTargets": {
+      "post": {
+        "operationId": "ai.scanBatchCcipTargets",
+        "summary": "scanBatchCcipTargets",
+        "tags": [
+          "AI"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/startBatchCcipExtraction": {
+      "post": {
+        "operationId": "ai.startBatchCcipExtraction",
+        "summary": "startBatchCcipExtraction",
         "tags": [
           "AI"
         ],

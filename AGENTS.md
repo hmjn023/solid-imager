@@ -70,6 +70,8 @@
 | `issue-driven` | GitHub Issue駆動開発ワークフロー（証跡・進捗管理） | issueをベースに開発作業を始めるとき |
 | `tanstack-db` | TanStack DBクライアントデータレイヤー（永続化、useLiveQuery、includes） | クライアント側データレイヤー変更時 |
 | `realtime-events` | 型付きリアルタイムイベント、oRPC Event Iterator、pub/sub、再接続 | SSE・イベント配信・購読・イベントschema変更時 |
+| `job-system` | background job、worker、dispatch、AI concurrency、batch親子進捗 | job type追加・非同期処理・batch操作変更時 |
+| `media-search` | 検索schema、shared store、session persistence、preset、類似検索 | 検索条件・mode・検索画面変更時 |
 
 <!--VITE PLUS START-->
 

@@ -1,10 +1,10 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSafe } from "@solid-imager/core/domain/media/schemas";
 import { MediaCardItem as SharedMediaCardItem } from "@solid-imager/ui/media-card-item";
 import { Link } from "@tanstack/solid-router";
 import { ThumbnailImage } from "./thumbnail-image";
 
 type MediaCardItemProps = {
-	media: Media;
+	media: MediaSafe;
 	selectable?: boolean;
 	selected?: boolean;
 	onToggle?: (id: string) => void;

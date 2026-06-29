@@ -845,6 +845,17 @@ export function createLanceDbDumpService(deps?: {
 		return allItems;
 	}
 
+	async function readMediaIds(lanceDbDir: string): Promise<string[]> {
+		const connect = await getConnect();
+		const db = await connect(lanceDbDir);
+		const mediaTable = await db.openTable("media");
+		const rows = await mediaTable.query().select(["id"]).toArray();
+		return rows.flatMap((row) => {
+			const id = safeString(row.id);
+			return id ? [id] : [];
+		});
+	}
+
 	async function cleanupLanceDBDir(dir: string): Promise<void> {
 		await fs.rm(dir, { recursive: true, force: true });
 	}
@@ -855,6 +866,7 @@ export function createLanceDbDumpService(deps?: {
 		syncLanceDBPages,
 		syncLanceDBDelta,
 		readFromLanceDB,
+		readMediaIds,
 		cleanupLanceDBDir,
 	};
 }

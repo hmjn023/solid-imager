@@ -8,7 +8,10 @@ import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
-import { searchMedia } from "~/infrastructure/api-clients/search-api";
+import {
+	searchMedia,
+	searchSimilar,
+} from "~/infrastructure/api-clients/search-api";
 import {
 	getSearchCondition,
 	searchState,
@@ -48,6 +51,7 @@ function SearchRoute() {
 
 	const page = useSearchPage({
 		searchMedia,
+		searchSimilar,
 		queryClient,
 		queries: {
 			tags: tagsQueryOptions,
@@ -65,6 +69,9 @@ function SearchRoute() {
 		scrollY: () => searchState.scrollY,
 		setScrollY: (y) => setSearchState("scrollY", y),
 		setOffset: (o) => setSearchState("offset", o),
+		mode: () => searchState.mode,
+		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
+		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
 	});
 

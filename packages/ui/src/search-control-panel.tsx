@@ -98,16 +98,25 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					>
 						詳細
 					</Button>
+					<Button
+						onClick={() => setSearchMode("vector")}
+						size="sm"
+						variant={searchState.mode === "vector" ? "default" : "outline"}
+					>
+						ベクトル類似
+					</Button>
 				</div>
 			</div>
 
-			<SortControls
-				className="mb-4"
-				onSortByChange={(value) => setSearchState("sortBy", value)}
-				onSortOrderChange={(value) => setSearchState("sortOrder", value)}
-				sortBy={searchState.sortBy}
-				sortOrder={searchState.sortOrder}
-			/>
+			<Show when={searchState.mode !== "vector"}>
+				<SortControls
+					className="mb-4"
+					onSortByChange={(value) => setSearchState("sortBy", value)}
+					onSortOrderChange={(value) => setSearchState("sortOrder", value)}
+					sortBy={searchState.sortBy}
+					sortOrder={searchState.sortOrder}
+				/>
+			</Show>
 
 			<div class="my-4 h-px bg-border" />
 
@@ -141,6 +150,43 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						tags={props.filterData.tags}
 						value={searchState.advancedCondition || null}
 					/>
+				</div>
+			</div>
+
+			<div class={searchState.mode === "vector" ? "block" : "hidden"}>
+				<div class="space-y-4">
+					<div class="space-y-2">
+						<Label>類似元メディア</Label>
+						<div class="rounded-md border p-3 text-sm">
+							{searchState.similarityAnchorMediaId ??
+								"メディア個別画面の「Find Similar」から選択してください。"}
+						</div>
+					</div>
+					<div class="space-y-2">
+						<Label>表示件数</Label>
+						<div class="flex gap-2">
+							{([20, 50, 100] as const).map((value) => (
+								<Button
+									onClick={() => setSearchState("similarityTopK", value)}
+									size="sm"
+									variant={
+										searchState.similarityTopK === value ? "default" : "outline"
+									}
+								>
+									{value}
+								</Button>
+							))}
+						</div>
+					</div>
+					<Button
+						disabled={!searchState.similarityAnchorMediaId}
+						onClick={props.onSearch}
+					>
+						類似メディアを検索
+					</Button>
+					<p class="text-muted-foreground text-xs">
+						CCIPによるキャラクター類似検索です。一般的な画像重複検索とは異なります。
+					</p>
 				</div>
 			</div>
 		</div>
