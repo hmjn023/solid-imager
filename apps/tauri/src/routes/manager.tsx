@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSafe } from "@solid-imager/core/domain/media/schemas";
 import {
 	prefetchManagerPageQueries,
 	useManagerPage,
@@ -90,7 +90,7 @@ function ManagerPage() {
 		<ManagerScreen
 			manager={manager}
 			renderMediaCard={(
-				media: Media,
+				media: MediaSafe,
 				selected: boolean,
 				onToggle: (mediaId: string) => void,
 			) => (

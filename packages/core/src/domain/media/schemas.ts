@@ -154,7 +154,20 @@ export const mediaSchema = z.object({
 
 export type Media = z.infer<typeof mediaSchema>;
 
-export const mediaSafeSchema = mediaSchema.omit({ filePath: true });
+export const mediaSafeSchema = mediaSchema.pick({
+	id: true,
+	mediaSourceId: true,
+	fileName: true,
+	mediaType: true,
+	width: true,
+	height: true,
+	fileSize: true,
+	description: true,
+	createdAt: true,
+	modifiedAt: true,
+	indexedAt: true,
+	status: true,
+});
 export type MediaSafe = z.infer<typeof mediaSafeSchema>;
 
 export const authorSchema = z.object({

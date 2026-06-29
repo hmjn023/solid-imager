@@ -1,7 +1,7 @@
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type {
 	DuplicateGroup,
-	Media,
+	MediaSafe,
 } from "@solid-imager/core/domain/media/schemas";
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
@@ -62,7 +62,7 @@ import {
 export type ManagerScreenProps = {
 	manager: UseManagerPageResult;
 	renderMediaCard: (
-		media: Media,
+		media: MediaSafe,
 		selected: boolean,
 		onToggle: (mediaId: string) => void,
 	) => JSX.Element;
