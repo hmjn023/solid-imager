@@ -58,7 +58,7 @@ vi.mock("~/infrastructure/logger", () => ({
 describe("processAutoTaggingJob", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		getTagsForMedia.mockResolvedValue({});
+		getTagsForMedia.mockResolvedValue({ general: {}, character: {}, ips: [], ips_mapping: {} });
 		createIfUnique.mockResolvedValue(null);
 		incrementProgress.mockResolvedValue(false);
 	});
