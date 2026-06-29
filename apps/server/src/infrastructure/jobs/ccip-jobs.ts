@@ -47,10 +47,21 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 		throw new Error("CCIP extraction job is missing mediaSourceId");
 	}
 	try {
-		await ccipVectorService.extract(
+		const result = await ccipVectorService.extract(
 			job.mediaSourceId,
 			payload.mediaId,
 			payload.force,
+		);
+		logger.info(
+			{
+				jobId: job.id,
+				parentId: job.parentId,
+				mediaSourceId: job.mediaSourceId,
+				mediaId: payload.mediaId,
+				force: payload.force,
+				skipped: result.skipped,
+			},
+			"CCIP vector extraction completed",
 		);
 		RealtimeEventBus.publishJob("job-completed", {
 			jobId: job.id,

@@ -43,11 +43,45 @@ export const mediaRouter = {
 		.input(similarMediaRequestSchema)
 		.output(similarMediaSearchResponseSchema)
 		.handler(async ({ input }) => {
-			return await ccipVectorService.searchSimilar(
-				input.anchorMediaId,
-				input.topK,
-				input.mediaSourceId,
+			const startedAt = Date.now();
+			logger.info(
+				{
+					anchorMediaId: input.anchorMediaId,
+					mediaSourceId: input.mediaSourceId,
+					topK: input.topK,
+				},
+				"Vector similarity search started",
 			);
+			try {
+				const result = await ccipVectorService.searchSimilar(
+					input.anchorMediaId,
+					input.topK,
+					input.mediaSourceId,
+				);
+				logger.info(
+					{
+						anchorMediaId: input.anchorMediaId,
+						mediaSourceId: input.mediaSourceId,
+						topK: input.topK,
+						resultCount: result.media.length,
+						durationMs: Date.now() - startedAt,
+					},
+					"Vector similarity search completed",
+				);
+				return result;
+			} catch (error) {
+				logger.error(
+					{
+						err: error,
+						anchorMediaId: input.anchorMediaId,
+						mediaSourceId: input.mediaSourceId,
+						topK: input.topK,
+						durationMs: Date.now() - startedAt,
+					},
+					"Vector similarity search failed",
+				);
+				throw error;
+			}
 		}),
 
 	/**
@@ -204,7 +238,10 @@ export const mediaRouter = {
 			try {
 				await ccipVectorService.delete(input.mediaId);
 			} catch (err) {
-				logger.warn({ err, mediaId: input.mediaId }, "[MediaRouter] Vector delete failed after media delete");
+				logger.warn(
+					{ err, mediaId: input.mediaId },
+					"[MediaRouter] Vector delete failed after media delete",
+				);
 			}
 			return { success: true };
 		}),
@@ -242,7 +279,10 @@ export const mediaRouter = {
 			try {
 				await ccipVectorService.delete(input.mediaId);
 			} catch (err) {
-				logger.warn({ err, mediaId: input.mediaId }, "[MediaRouter] Vector delete failed after media move");
+				logger.warn(
+					{ err, mediaId: input.mediaId },
+					"[MediaRouter] Vector delete failed after media move",
+				);
 			}
 			return result;
 		}),
@@ -303,7 +343,10 @@ export const mediaRouter = {
 					try {
 						await ccipVectorService.delete(mediaId);
 					} catch (err) {
-						logger.warn({ err, mediaId }, "[MediaRouter] Vector delete failed after bulk media delete");
+						logger.warn(
+							{ err, mediaId },
+							"[MediaRouter] Vector delete failed after bulk media delete",
+						);
 					}
 				}),
 			);
