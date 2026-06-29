@@ -1537,54 +1537,63 @@ export const BackupService = {
 			const archiverMod = await importArchiverModule();
 			const { PassThrough } = await import("node:stream");
 
-			let cacheExists = false;
+			let cacheValid = false;
 			try {
-				await fs.access(cacheDir);
-				cacheExists = true;
+				await fs.access(path.join(cacheDir, "manifest.json"));
+				cacheValid = true;
 			} catch {
-				// cache does not exist
+				// cache or manifest does not exist
 			}
 
-			if (cacheExists) {
-				const { readMediaFilePaths } = await import(
-					"~/application/services/lancedb-dump-service"
-				);
-				const driver = getDriver(mediaSource);
-				const mediaFilePaths = await readMediaFilePaths(cacheDir);
+			if (cacheValid) {
+				try {
+					const driver = getDriver(mediaSource);
+					const passThrough = new PassThrough();
+					const archive = new archiverMod.TarArchive();
+					archive.pipe(passThrough);
 
-				const passThrough = new PassThrough();
-				const archive = new archiverMod.TarArchive();
-				archive.pipe(passThrough);
+					(async () => {
+						try {
+							archive.directory(cacheDir, false);
 
-				(async () => {
-					try {
-						archive.directory(cacheDir, false);
+							if (includeImages) {
+								const { readMediaFilePaths } = await import(
+									"~/application/services/lancedb-dump-service"
+								);
+								const mediaFilePaths = await readMediaFilePaths(cacheDir);
 
-						if (includeImages) {
-							for (const item of mediaFilePaths) {
-								if (!item.filePath) continue;
-								try {
-									const buffer = await driver.get(item.filePath);
-									archive.append(buffer, {
-										name: `images/${item.filePath}`,
-									});
-								} catch {
-									// ignore missing files
-								}
+								await Promise.all(
+									mediaFilePaths.map(async (item) => {
+										if (!item.filePath) return;
+										try {
+											const buffer = await driver.get(item.filePath);
+											archive.append(buffer, {
+												name: `images/${item.filePath}`,
+											});
+										} catch {
+											// ignore missing files
+										}
+									}),
+								);
 							}
+
+							await archive.finalize();
+						} catch (err) {
+							logger.error(
+								{ err },
+								"Error generating LanceDB TAR dump from cache",
+							);
+							archive.abort();
 						}
+					})();
 
-						await archive.finalize();
-					} catch (err) {
-						logger.error(
-							{ err },
-							"Error generating LanceDB TAR dump from cache",
-						);
-						archive.abort();
-					}
-				})();
-
-				return nodeStreamToWebReadable(passThrough);
+					return nodeStreamToWebReadable(passThrough);
+				} catch (err) {
+					logger.warn(
+						{ err },
+						"Failed to read LanceDB cache, falling back to DB rebuild",
+					);
+				}
 			}
 
 			// Fallback: rebuild from DB when cache is unavailable
