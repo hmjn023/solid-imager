@@ -86,4 +86,34 @@ describe("AuthorRepository Deduplication", () => {
 
 		expect(fanboxAuthor.id).not.toBe(twitterAuthor.id);
 	});
+
+	it("links a platform account to a legacy author without creating a duplicate", async () => {
+		const [legacyAuthor] = await db
+			.insert(authors)
+			.values({ name: "Legacy Creator", accountId: "legacy-creator" })
+			.returning();
+
+		const resolved = await AuthorRepository.create({
+			name: "Legacy Creator",
+			accountId: "legacy-creator",
+			platform: "twitter",
+		});
+
+		expect(resolved.id).toBe(legacyAuthor.id);
+		const matchingAuthors = await db
+			.select()
+			.from(authors)
+			.where(eq(authors.accountId, "legacy-creator"));
+		expect(matchingAuthors).toHaveLength(1);
+		const accounts = await db
+			.select()
+			.from(authorAccounts)
+			.where(eq(authorAccounts.authorId, legacyAuthor.id));
+		expect(accounts).toEqual([
+			expect.objectContaining({
+				platform: "twitter",
+				accountId: "legacy-creator",
+			}),
+		]);
+	});
 });

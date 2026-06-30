@@ -12,15 +12,12 @@ export function processFanboxMedia(
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
-	const postUrl = getPostUrl();
-	if (!postUrl) {
+	const match = window.location.pathname.match(FANBOX_POST_PATH);
+	if (!match) {
 		return;
 	}
-
-	const postId = new URL(postUrl).pathname.match(FANBOX_POST_PATH)?.[1];
-	if (!postId) {
-		return;
-	}
+	const postId = match[1];
+	const postUrl = `${window.location.origin}/posts/${postId}`;
 
 	const images = querySelectorAllTyped<HTMLImageElement>(document, "img");
 	for (const imageElement of images) {
@@ -44,15 +41,6 @@ export function processFanboxMedia(
 		imageElement.dataset.xtracterProcessed = "true";
 		container.appendChild(createButtonContainer(metadata, "IMAGE"));
 	}
-}
-
-function getPostUrl(): string | null {
-	const match = window.location.pathname.match(FANBOX_POST_PATH);
-	if (!match) {
-		return null;
-	}
-
-	return `${window.location.origin}/posts/${match[1]}`;
 }
 
 function getFanboxImageUrl(
@@ -84,9 +72,11 @@ function getFanboxImageUrl(
 }
 
 function extractMetadata(targetUrl: string, postUrl: string): TweetMetadata {
-	const creatorId = window.location.hostname.endsWith(".fanbox.cc")
-		? window.location.hostname.slice(0, -".fanbox.cc".length)
-		: "";
+	const hostname = window.location.hostname;
+	const creatorId =
+		hostname.endsWith(".fanbox.cc") && !hostname.startsWith("www.")
+			? hostname.slice(0, -".fanbox.cc".length)
+			: "";
 	const authorName =
 		document.querySelector<HTMLElement>('a[href="/"] h1')?.innerText.trim() ||
 		creatorId;
