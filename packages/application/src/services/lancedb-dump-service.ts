@@ -14,7 +14,7 @@ import type {
 
 const ROW_CHUNK_SIZE = 5000;
 const READ_CHUNK_SIZE = 5000;
-const LANCEDB_DUMP_VERSION = 3;
+const LANCEDB_DUMP_VERSION = 4;
 
 type JsonValue =
 	| string
@@ -126,6 +126,7 @@ async function createSchemas(): Promise<Record<TableName, Schema>> {
 			["mediaId", utf8()],
 			["name", utf8()],
 			["accountId", utf8()],
+			["platform", utf8()],
 		]),
 		media_characters: await createSchema([
 			["key", utf8(), false],
@@ -222,10 +223,11 @@ function itemsToRows(items: MediaDumpItem[]): TableRows {
 			});
 		for (const author of item.authors ?? [])
 			rows.authors.push({
-				key: rowKey(mediaId, author.name, author.accountId),
+				key: rowKey(mediaId, author.name, author.platform, author.accountId),
 				mediaId,
 				name: author.name,
 				accountId: author.accountId ?? null,
+				platform: author.platform ?? null,
 			});
 		for (const character of item.characters ?? []) {
 			rows.characters.push({
@@ -377,6 +379,16 @@ async function openTables(db: Connection): Promise<LanceTables> {
 		media_urls: await db.openTable("media_urls"),
 		media_generation_info: await db.openTable("media_generation_info"),
 	};
+}
+
+async function migrateLanceDbSchema(tables: LanceTables): Promise<void> {
+	const authorSchema = await tables.media_authors.schema();
+	if (!authorSchema.fields.some((field) => field.name === "platform")) {
+		const arrow = await import("apache-arrow");
+		await tables.media_authors.addColumns(
+			new arrow.Field("platform", new arrow.Utf8(), true),
+		);
+	}
 }
 
 function sqlInList(values: string[]): string {
@@ -548,6 +560,12 @@ function rowsToItems(
 			authors: (authors.get(id) ?? []).map((row) => ({
 				name: safeString(row.name) ?? "",
 				accountId: safeString(row.accountId),
+				platform:
+					row.platform === "twitter" ||
+					row.platform === "pixiv-fanbox" ||
+					row.platform === "danbooru"
+						? row.platform
+						: undefined,
 			})),
 			characters: (characters.get(id) ?? []).map((row) => {
 				const name = safeString(row.name) ?? "";
@@ -772,6 +790,7 @@ export function createLanceDbDumpService(deps?: {
 		const connect = await getConnect();
 		const db = await connect(lanceDbDir);
 		const tables = await openTables(db);
+		await migrateLanceDbSchema(tables);
 		await deleteMediaRows(tables, targetIds);
 		await addRowsToTables(tables, itemsToRows(itemsToUpsert));
 

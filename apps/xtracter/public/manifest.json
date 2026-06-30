@@ -15,6 +15,8 @@
     "https://twimg.com/*",
     "https://pbs.twimg.com/*",
     "https://video.twimg.com/*",
+    "https://*.fanbox.cc/*",
+    "https://downloads.fanbox.cc/*",
     "https://danbooru.donmai.us/*",
     "http://localhost:*/*",
     "http://127.0.0.1:*/*",
@@ -33,6 +35,7 @@
       "matches": [
         "https://twitter.com/*",
         "https://x.com/*",
+        "https://*.fanbox.cc/*",
         "https://danbooru.donmai.us/*"
       ],
       "js": ["content.js"],

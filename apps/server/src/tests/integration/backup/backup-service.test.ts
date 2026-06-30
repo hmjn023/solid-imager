@@ -10,6 +10,7 @@ import {
 import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
+	authorAccounts,
 	authors,
 	characterIps,
 	characters,
@@ -108,8 +109,13 @@ describe("BackupService Integration", () => {
 			.values({ characterId: character.id, ipId: ip.id, source: "manual" });
 		const [author] = await db
 			.insert(authors)
-			.values({ name: "Dump Author" })
+			.values({ name: "Dump Author", accountId: "dump-author" })
 			.returning();
+		await db.insert(authorAccounts).values({
+			authorId: author.id,
+			platform: "pixiv-fanbox",
+			accountId: "dump-author",
+		});
 
 		await db
 			.insert(mediaProjects)
@@ -166,6 +172,7 @@ describe("BackupService Integration", () => {
 
 		expect(item.authors).toHaveLength(1);
 		expect(item.authors[0].name).toBe("Dump Author");
+		expect(item.authors[0].platform).toBe("pixiv-fanbox");
 
 		expect(item.sourceUrls).toHaveLength(1);
 		expect(item.sourceUrls[0]).toBe("https://example.com/source");
@@ -194,7 +201,13 @@ describe("BackupService Integration", () => {
 				{ name: "Restore Character", confidence: confidenceRestoreChar },
 			],
 			ips: [{ name: "Restore IP" }],
-			authors: [{ name: "Restore Author", accountId: "test_account_123" }],
+			authors: [
+				{
+					name: "Restore Author",
+					accountId: "test_account_123",
+					platform: "pixiv-fanbox",
+				},
+			],
 			sourceUrls: ["https://example.com/restore"],
 		};
 
@@ -214,7 +227,7 @@ describe("BackupService Integration", () => {
 				projects: { with: { project: true } },
 				characters: true,
 				ips: { with: { ip: true } },
-				authors: { with: { author: true } },
+				authors: { with: { author: { with: { accounts: true } } } },
 				urls: true,
 			},
 		});
@@ -235,6 +248,12 @@ describe("BackupService Integration", () => {
 		expect(restoredMedia?.authors).toHaveLength(1);
 		expect(restoredMedia?.authors[0].author.name).toBe("Restore Author");
 		expect(restoredMedia?.authors[0].author.accountId).toBe("test_account_123");
+		expect(restoredMedia?.authors[0].author.accounts).toEqual([
+			expect.objectContaining({
+				platform: "pixiv-fanbox",
+				accountId: "test_account_123",
+			}),
+		]);
 
 		expect(restoredMedia?.urls).toHaveLength(1);
 		expect(restoredMedia?.urls[0].url).toBe("https://example.com/restore");

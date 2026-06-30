@@ -3,6 +3,7 @@ import { z } from "zod";
 export const authorSchema = z.object({
 	name: z.string(),
 	accountId: z.string().nullable().optional(),
+	platform: z.enum(["twitter", "pixiv-fanbox", "danbooru"]).optional(),
 });
 
 export type Author = z.infer<typeof authorSchema>;

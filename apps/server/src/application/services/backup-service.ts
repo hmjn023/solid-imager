@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
+	type AuthorPlatform,
 	type MediaDumpItem,
 	mediaDumpItemSchema,
 } from "@solid-imager/core/domain/media/schemas";
@@ -11,6 +12,7 @@ import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
 import {
+	authorAccounts,
 	authors,
 	characterIps,
 	characters,
@@ -86,7 +88,14 @@ interface MediaListQueryItem {
 		source: string;
 	}[];
 	authors: {
-		author: { name: string; accountId: string | null };
+		author: {
+			name: string;
+			accountId: string | null;
+			accounts?: {
+				platform: AuthorPlatform;
+				accountId: string;
+			}[];
+		};
 	}[];
 	characters: {
 		character: {
@@ -394,6 +403,33 @@ export const BackupService = {
 			authorData,
 			_tx,
 		);
+		const restoredAuthorAccounts = new Map<
+			string,
+			{
+				authorId: string;
+				platform: AuthorPlatform;
+				accountId: string;
+			}
+		>();
+		for (const item of validItems) {
+			for (const author of item.authors ?? []) {
+				if (!(author.platform && author.accountId)) continue;
+				const authorId = authorMap.get(author.name);
+				if (!authorId) continue;
+				const key = `${author.platform}:${author.accountId}`;
+				restoredAuthorAccounts.set(key, {
+					authorId,
+					platform: author.platform,
+					accountId: author.accountId,
+				});
+			}
+		}
+		if (restoredAuthorAccounts.size > 0) {
+			await (_tx ?? db)
+				.insert(authorAccounts)
+				.values([...restoredAuthorAccounts.values()])
+				.onConflictDoNothing();
+		}
 		const projectMap = await this._ensureMasterData(
 			projects,
 			projects.id,
@@ -1213,7 +1249,7 @@ export const BackupService = {
 						generationInfo: true,
 						urls: true,
 						tags: { with: { tag: true } },
-						authors: { with: { author: true } },
+						authors: { with: { author: { with: { accounts: true } } } },
 						characters: {
 							with: {
 								character: {
@@ -1323,7 +1359,7 @@ export const BackupService = {
 						generationInfo: true,
 						urls: true,
 						tags: { with: { tag: true } },
-						authors: { with: { author: true } },
+						authors: { with: { author: { with: { accounts: true } } } },
 						characters: {
 							with: { character: { with: { ips: { with: { ip: true } } } } },
 						},
@@ -1407,7 +1443,9 @@ export const BackupService = {
 									generationInfo: true,
 									urls: true,
 									tags: { with: { tag: true } },
-									authors: { with: { author: true } },
+									authors: {
+										with: { author: { with: { accounts: true } } },
+									},
 									characters: {
 										with: {
 											character: { with: { ips: { with: { ip: true } } } },
@@ -1474,7 +1512,9 @@ export const BackupService = {
 									generationInfo: true,
 									urls: true,
 									tags: { with: { tag: true } },
-									authors: { with: { author: true } },
+									authors: {
+										with: { author: { with: { accounts: true } } },
+									},
 									characters: {
 										with: {
 											character: { with: { ips: { with: { ip: true } } } },
@@ -1623,7 +1663,7 @@ export const BackupService = {
 						generationInfo: true,
 						urls: true,
 						tags: { with: { tag: true } },
-						authors: { with: { author: true } },
+						authors: { with: { author: { with: { accounts: true } } } },
 						characters: {
 							with: {
 								character: { with: { ips: { with: { ip: true } } } },
@@ -1706,6 +1746,9 @@ export const BackupService = {
 			const simpleAuthors = (media.authors || []).map((ma) => ({
 				name: ma.author?.name || "",
 				accountId: ma.author?.accountId ?? null,
+				platform: ma.author?.accounts?.find(
+					(account) => account.accountId === ma.author?.accountId,
+				)?.platform,
 			}));
 
 			// Extract characters

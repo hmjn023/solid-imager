@@ -12,6 +12,13 @@ import { z } from "zod";
 export const mediaTypeSchema = z.enum(["image", "video", "audio"]);
 export type MediaType = z.infer<typeof mediaTypeSchema>;
 
+export const authorPlatformSchema = z.enum([
+	"twitter",
+	"pixiv-fanbox",
+	"danbooru",
+]);
+export type AuthorPlatform = z.infer<typeof authorPlatformSchema>;
+
 /**
  * Zod schema for validating the request body when adding new media.
  * Ensures all required fields for new media are present and correctly formatted.
@@ -71,6 +78,7 @@ export const updateMediaRequestSchema = z.object({
 			z.object({
 				name: z.string(),
 				accountId: z.string().optional().nullable(),
+				platform: authorPlatformSchema.optional(),
 			}),
 		)
 		.optional(),
@@ -183,6 +191,7 @@ export type Author = z.infer<typeof authorSchema>;
 export const newAuthorSchema = z.object({
 	name: z.string(),
 	accountId: z.string().nullable().optional(),
+	platform: authorPlatformSchema.optional(),
 });
 
 export type NewAuthor = z.infer<typeof newAuthorSchema>;
@@ -412,6 +421,7 @@ export const mediaMetadataContextSchema = z.object({
 			z.object({
 				name: z.string(),
 				accountId: z.string().nullable().optional(),
+				platform: authorPlatformSchema.optional(),
 			}),
 		)
 		.optional(),

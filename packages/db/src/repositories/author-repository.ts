@@ -5,7 +5,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import { and, eq, inArray } from "drizzle-orm";
-import { authors, mediaAuthors } from "../schema";
+import { authorAccounts, authors, mediaAuthors } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
 type AuthorRepositoryOptions = {
@@ -62,22 +62,56 @@ export function createAuthorRepository(
 
 		async create(author: NewAuthor, tx?: unknown): Promise<Author> {
 			const client = getExecutor(tx);
-			const condition = author.accountId
-				? eq(authors.accountId, author.accountId)
-				: eq(authors.name, author.name);
 
-			const existing = await client
-				.select()
-				.from(authors)
-				.where(condition)
-				.limit(1);
+			if (author.platform && author.accountId) {
+				const existingByAccount = await client
+					.select({ author: authors })
+					.from(authorAccounts)
+					.innerJoin(authors, eq(authorAccounts.authorId, authors.id))
+					.where(
+						and(
+							eq(authorAccounts.platform, author.platform),
+							eq(authorAccounts.accountId, author.accountId),
+						),
+					)
+					.limit(1);
 
-			if (existing[0]) {
-				return mapAuthor(existing[0]);
+				if (existingByAccount[0]) {
+					return mapAuthor(existingByAccount[0].author);
+				}
+			} else {
+				const condition = author.accountId
+					? eq(authors.accountId, author.accountId)
+					: eq(authors.name, author.name);
+				const existing = await client
+					.select()
+					.from(authors)
+					.where(condition)
+					.limit(1);
+
+				if (existing[0]) {
+					return mapAuthor(existing[0]);
+				}
 			}
 
-			const result = await client.insert(authors).values(author).returning();
-			return mapAuthor(result[0]);
+			const result = await client
+				.insert(authors)
+				.values({
+					name: author.name,
+					accountId: author.accountId,
+				})
+				.returning();
+			const created = result[0];
+
+			if (author.platform && author.accountId) {
+				await client.insert(authorAccounts).values({
+					authorId: created.id,
+					platform: author.platform,
+					accountId: author.accountId,
+				});
+			}
+
+			return mapAuthor(created);
 		},
 
 		async update(
@@ -167,30 +201,25 @@ export function createAuthorRepository(
 				.onConflictDoNothing();
 		},
 
-		async findOrCreateBulk(names: string[], tx?: unknown): Promise<Author[]> {
-			if (names.length === 0) return [];
-			const uniqueNames = [...new Set(names)].filter((n) => n.length > 0);
-			const client = getExecutor(tx);
-
-			const existing = await client
-				.select()
-				.from(authors)
-				.where(inArray(authors.name, uniqueNames));
-			const existingNames = new Set(existing.map((a) => a.name));
-
-			const newNames = uniqueNames.filter((n) => !existingNames.has(n));
-			if (newNames.length > 0) {
-				await client
-					.insert(authors)
-					.values(newNames.map((name) => ({ name })))
-					.onConflictDoNothing();
+		async findOrCreateBulk(
+			inputs: NewAuthor[],
+			tx?: unknown,
+		): Promise<Author[]> {
+			const uniqueInputs = new Map<string, NewAuthor>();
+			for (const input of inputs) {
+				if (input.name.length === 0) continue;
+				const key =
+					input.platform && input.accountId
+						? `${input.platform}:${input.accountId}`
+						: `name:${input.name}`;
+				uniqueInputs.set(key, input);
 			}
 
-			const all = await client
-				.select()
-				.from(authors)
-				.where(inArray(authors.name, uniqueNames));
-			return all.map(mapAuthor);
+			const result: Author[] = [];
+			for (const input of uniqueInputs.values()) {
+				result.push(await this.create(input, tx));
+			}
+			return result;
 		},
 	};
 }
