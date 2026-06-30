@@ -25,10 +25,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@solid-imager/ui/select";
-import {
-	createDebouncedSignal,
-	parseSelectValue,
-} from "@solid-imager/ui/utils";
+import { parseSelectValue } from "@solid-imager/ui/utils";
 import { cn } from "@solid-imager/ui/utils/cn";
 import { createMemo, Index, Match, Show, Switch } from "solid-js";
 
@@ -333,25 +330,6 @@ function CriterionBuilder(props: {
 			? `${author.name}: (twitter)${author.accountId}`
 			: author.name;
 
-	const [filterText, setFilterText] = createDebouncedSignal("", 150);
-
-	const filteredItems = createMemo(() => {
-		const items = autocompleteItems();
-		if (!items) return [];
-		const query = filterText().toLowerCase();
-		if (!query) return items.slice(0, 100);
-		return items
-			.filter((item) => {
-				if (!item) return false;
-				const label =
-					props.criterion.target === "author"
-						? getAuthorLabel(item as Author)
-						: (item as { name: string }).name;
-				return label.toLowerCase().includes(query);
-			})
-			.slice(0, 100);
-	});
-
 	// Helper to determine available items for autocomplete
 	const autocompleteItems = createMemo(() => {
 		switch (props.criterion.target) {
@@ -484,7 +462,7 @@ function CriterionBuilder(props: {
 								props.onChange({ ...props.criterion, value: val.name });
 							}
 						}}
-						onInputChange={(text) => setFilterText(text)}
+						defaultFilter="contains"
 						optionLabel={(item) =>
 							item
 								? props.criterion.target === "author"
@@ -492,7 +470,7 @@ function CriterionBuilder(props: {
 									: (item as { name: string }).name
 								: ""
 						}
-						options={filteredItems()}
+						options={autocompleteItems() ?? []}
 						optionTextValue={(item) =>
 							item
 								? props.criterion.target === "author"
@@ -500,7 +478,7 @@ function CriterionBuilder(props: {
 									: (item as { name: string }).name
 								: ""
 						}
-						optionValue={(item: { name: string }) => item.name}
+						optionValue={(item) => item.id}
 						placeholder="検索..."
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(

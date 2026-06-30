@@ -16,8 +16,7 @@ import {
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
 import { cn } from "@solid-imager/ui/utils/cn";
-import { createDebouncedSignal } from "@solid-imager/ui/utils/debounce";
-import { createMemo, createSignal, For } from "solid-js";
+import { createSignal, For } from "solid-js";
 
 export type SearchFilterState = {
 	searchQuery: string;
@@ -56,23 +55,13 @@ function FilterSection<T>(props: {
 	onSelect: (item: T) => void;
 	onRemove: (id: string) => void;
 	getItemKey: (item: T) => string;
+	getSelectedItemValue?: (item: T) => string;
 	getItemLabel: (item: T) => string;
 	getItemDescription?: (item: T) => string | undefined | null;
 	placeholder?: string;
 	badgeVariant?: "default" | "destructive" | "secondary" | "outline";
 }) {
 	const [value, setValue] = createSignal<T | null>(null);
-	const [filterText, setFilterText] = createDebouncedSignal("", 150);
-
-	const filteredItems = createMemo(() => {
-		const items = props.items;
-		if (!items) return [];
-		const query = filterText().toLowerCase();
-		if (!query) return items.slice(0, 100);
-		return items
-			.filter((item) => props.getItemLabel(item).toLowerCase().includes(query))
-			.slice(0, 100);
-	});
 
 	return (
 		<div class="space-y-2">
@@ -80,7 +69,10 @@ function FilterSection<T>(props: {
 			<div class="mb-2 flex flex-wrap gap-2">
 				<For each={props.selectedItems}>
 					{(id) => {
-						const item = props.items?.find((i) => props.getItemKey(i) === id);
+						const item = props.items?.find(
+							(i) =>
+								(props.getSelectedItemValue?.(i) ?? props.getItemKey(i)) === id,
+						);
 						return (
 							<Badge
 								class="cursor-pointer"
@@ -111,13 +103,12 @@ function FilterSection<T>(props: {
 						setValue(() => val);
 						requestAnimationFrame(() => {
 							setValue(null);
-							setFilterText("");
 						});
 					}
 				}}
-				onInputChange={(text) => setFilterText(text)}
+				defaultFilter="contains"
 				optionLabel={props.getItemLabel}
-				options={filteredItems()}
+				options={props.items ?? []}
 				optionTextValue={props.getItemLabel}
 				optionValue={(item) => props.getItemKey(item)}
 				placeholder={props.placeholder}
@@ -259,8 +250,9 @@ export function SearchFilters(props: SearchFiltersProps) {
 			{/* Author Filter */}
 			<FilterSection
 				badgeVariant="secondary"
-				getItemKey={(author) => author.name}
+				getItemKey={(author) => author.id}
 				getItemLabel={getAuthorLabel}
+				getSelectedItemValue={(author) => author.name}
 				items={props.authors}
 				label="作者"
 				onRemove={(name) =>
