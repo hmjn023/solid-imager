@@ -248,7 +248,12 @@ describe("LanceDB Dump Service", () => {
 		});
 
 		const authorTable = await mockOpenTable.mock.results[2].value;
-		expect(authorTable.addColumns).toHaveBeenCalledTimes(1);
+		expect(authorTable.addColumns).toHaveBeenCalledWith([
+			{
+				name: "platform",
+				valueSql: "CAST(NULL AS STRING)",
+			},
+		]);
 	});
 
 	it("updates the manifest version after delta schema migration", async () => {
