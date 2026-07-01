@@ -19,6 +19,7 @@ import {
 } from "./select";
 import { SortControls } from "./sort-controls";
 import {
+	clearVectorSearchAnchor,
 	searchState,
 	setSearchMode,
 	setSearchState,
@@ -161,6 +162,16 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 							{searchState.similarityAnchorMediaId ??
 								"メディア個別画面の「Find Similar」から選択してください。"}
 						</div>
+						<Show when={searchState.similarityAnchorMediaId}>
+							<Button
+								class="w-full"
+								onClick={clearVectorSearchAnchor}
+								size="sm"
+								variant="outline"
+							>
+								類似元を解除
+							</Button>
+						</Show>
 					</div>
 					<div class="space-y-2">
 						<Label>表示件数</Label>

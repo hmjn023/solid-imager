@@ -40,6 +40,7 @@ vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
 
 vi.mock("~/infrastructure/logger", () => ({
 	logger: {
+		info: vi.fn(),
 		error: (...args: Parameters<typeof loggerError>) => loggerError(...args),
 	},
 }));
@@ -50,7 +51,7 @@ describe("processCcipExtractionJob", () => {
 	});
 
 	it("publishes child completion and completes the parent once", async () => {
-		extract.mockResolvedValue(undefined);
+		extract.mockResolvedValue({ record: { mediaId: "00000000-0000-4000-8000-000000000030" }, skipped: false });
 		vi.mocked(jobRepository.incrementProgress).mockResolvedValue(true);
 		vi.mocked(jobRepository.findById).mockResolvedValue({
 			id: "00000000-0000-4000-8000-000000000010",
@@ -106,7 +107,7 @@ describe("processCcipExtractionJob", () => {
 	});
 
 	it("skips parent progress when the child was already counted", async () => {
-		extract.mockResolvedValue(undefined);
+		extract.mockResolvedValue({ record: { mediaId: "00000000-0000-4000-8000-000000000031" }, skipped: false });
 		vi.mocked(jobRepository.incrementProgress).mockResolvedValue(false);
 
 		await processCcipExtractionJob({

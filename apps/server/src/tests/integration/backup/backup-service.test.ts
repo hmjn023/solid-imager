@@ -10,6 +10,7 @@ import {
 import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
+	authorAccounts,
 	authors,
 	characterIps,
 	characters,
@@ -108,8 +109,13 @@ describe("BackupService Integration", () => {
 			.values({ characterId: character.id, ipId: ip.id, source: "manual" });
 		const [author] = await db
 			.insert(authors)
-			.values({ name: "Dump Author" })
+			.values({ name: "Dump Author", accountId: "dump-author" })
 			.returning();
+		await db.insert(authorAccounts).values({
+			authorId: author.id,
+			platform: "pixiv-fanbox",
+			accountId: "dump-author",
+		});
 
 		await db
 			.insert(mediaProjects)
@@ -166,9 +172,39 @@ describe("BackupService Integration", () => {
 
 		expect(item.authors).toHaveLength(1);
 		expect(item.authors[0].name).toBe("Dump Author");
+		expect(item.authors[0].platform).toBe("pixiv-fanbox");
 
 		expect(item.sourceUrls).toHaveLength(1);
 		expect(item.sourceUrls[0]).toBe("https://example.com/source");
+	});
+
+	it("exports a sole platform account when the legacy account ID is absent", () => {
+		const [item] = BackupService._transformMediaList([
+			{
+				authors: [
+					{
+						author: {
+							name: "Account-only Author",
+							accountId: null,
+							accounts: [
+								{
+									platform: "pixiv-fanbox",
+									accountId: "account-only",
+								},
+							],
+						},
+					},
+				],
+			},
+		]);
+
+		expect(item?.authors).toEqual([
+			{
+				name: "Account-only Author",
+				accountId: "account-only",
+				platform: "pixiv-fanbox",
+			},
+		]);
 	});
 
 	it("should restore projects, characters, ips, authors, and sourceUrls from dump item", async () => {
@@ -194,7 +230,13 @@ describe("BackupService Integration", () => {
 				{ name: "Restore Character", confidence: confidenceRestoreChar },
 			],
 			ips: [{ name: "Restore IP" }],
-			authors: [{ name: "Restore Author", accountId: "test_account_123" }],
+			authors: [
+				{
+					name: "Restore Author",
+					accountId: "test_account_123",
+					platform: "pixiv-fanbox",
+				},
+			],
 			sourceUrls: ["https://example.com/restore"],
 		};
 
@@ -214,7 +256,7 @@ describe("BackupService Integration", () => {
 				projects: { with: { project: true } },
 				characters: true,
 				ips: { with: { ip: true } },
-				authors: { with: { author: true } },
+				authors: { with: { author: { with: { accounts: true } } } },
 				urls: true,
 			},
 		});
@@ -235,9 +277,68 @@ describe("BackupService Integration", () => {
 		expect(restoredMedia?.authors).toHaveLength(1);
 		expect(restoredMedia?.authors[0].author.name).toBe("Restore Author");
 		expect(restoredMedia?.authors[0].author.accountId).toBe("test_account_123");
+		expect(restoredMedia?.authors[0].author.accounts).toEqual([
+			expect.objectContaining({
+				platform: "pixiv-fanbox",
+				accountId: "test_account_123",
+			}),
+		]);
 
 		expect(restoredMedia?.urls).toHaveLength(1);
 		expect(restoredMedia?.urls[0].url).toBe("https://example.com/restore");
+	});
+
+	it("restores same-name authors separately by platform account identity", async () => {
+		await db
+			.update(mediaSources)
+			.set({ type: "s3" })
+			.where(eq(mediaSources.id, testSourceId));
+
+		const baseItem = {
+			mediaType: "image",
+			width: 100,
+			height: 100,
+			fileSize: 1024,
+			createdAt: new Date().toISOString(),
+			modifiedAt: new Date().toISOString(),
+		};
+		const result = await BackupService.restoreSource(testSourceId, [
+			{
+				...baseItem,
+				filePath: "fanbox.png",
+				fileName: "fanbox.png",
+				authors: [
+					{
+						name: "Shared Name",
+						accountId: "fanbox-creator",
+						platform: "pixiv-fanbox",
+					},
+				],
+			},
+			{
+				...baseItem,
+				filePath: "twitter.png",
+				fileName: "twitter.png",
+				authors: [
+					{
+						name: "Shared Name",
+						accountId: "twitter-creator",
+						platform: "twitter",
+					},
+				],
+			},
+		]);
+
+		expect(result.processed).toBe(2);
+		const restored = await db.query.medias.findMany({
+			where: eq(medias.mediaSourceId, testSourceId),
+			with: { authors: { with: { author: { with: { accounts: true } } } } },
+		});
+		const authorIds = restored.map((media) => media.authors[0]?.author.id);
+		expect(new Set(authorIds).size).toBe(2);
+		expect(
+			restored.map((media) => media.authors[0]?.author.accounts[0]?.platform),
+		).toEqual(expect.arrayContaining(["pixiv-fanbox", "twitter"]));
 	});
 
 	it("should infer character-IP relationships from media when linkedIps is not provided", async () => {

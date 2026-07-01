@@ -1,4 +1,4 @@
-import type { DownloadItem } from "../schemas";
+import type { AuthorPlatform, DownloadItem } from "../schemas";
 
 const TWITTER_ID_PREFIX_LENGTH = 1;
 const FILENAME_SANITIZE_REGEX = /[/\\?%*:|"<>.]/g;
@@ -22,9 +22,10 @@ export function sanitizeFilenamePart(part: string): string {
 
 const TWITTER_STATUS_REGEX = /\/status\/(\d+)/;
 const DANBOORU_POST_REGEX = /\/posts\/(\d+)/;
+const FANBOX_POST_REGEX = /\/posts\/(\d+)/;
 
 /**
- * Extract a unique ID from common media source URLs (Twitter, Danbooru).
+ * Extract a unique post ID from supported media source URLs.
  */
 export function extractIdFromUrl(url: string): string | null {
 	try {
@@ -42,6 +43,14 @@ export function extractIdFromUrl(url: string): string | null {
 			const match = urlObj.pathname.match(DANBOORU_POST_REGEX);
 			return match ? match[1] : null;
 		}
+		// pixivFANBOX: https://creator.fanbox.cc/posts/123456
+		if (
+			urlObj.hostname === "fanbox.cc" ||
+			urlObj.hostname.endsWith(".fanbox.cc")
+		) {
+			const match = urlObj.pathname.match(FANBOX_POST_REGEX);
+			return match ? match[1] : null;
+		}
 	} catch (_e) {
 		return null;
 	}
@@ -50,35 +59,24 @@ export function extractIdFromUrl(url: string): string | null {
 
 /**
  * Generate a unified filename based on media metadata.
- * Format: {authorId}_{date}_{contentId}.{extension}
+ * Format: {accountId}_{platform}_{postId}_{assetId}.{extension}
  */
 export function generateMediaFilename(
 	item: DownloadItem,
 	extension: string,
 ): string {
 	const authorId = getAuthorPart(item);
-	const dateStr = getDatePart(item);
+	const platform = getPlatformPart(item);
 	const contentId = getContentIdPart(item);
+	const assetId = getAssetIdPart(item);
 
-	let base = "";
-	if (authorId || dateStr || contentId) {
-		const parts: string[] = [];
-		if (authorId) {
-			parts.push(authorId);
-		}
-		if (dateStr) {
-			parts.push(dateStr);
-		}
-		if (contentId) {
-			parts.push(contentId);
-		}
-		base = parts.join("_");
-	} else {
-		base = getFallbackBase(item);
-	}
+	const parts = [authorId, platform, contentId, assetId].filter(
+		(part) => part.length > 0,
+	);
+	let base = parts.join("_");
 
 	if (!base) {
-		base = "media";
+		base = getFallbackBase(item) || "media";
 	}
 
 	return `${base}${sanitizeExtension(extension)}`;
@@ -95,19 +93,43 @@ function getAuthorPart(item: DownloadItem): string {
 	return "";
 }
 
-function getDatePart(item: DownloadItem): string {
-	if (item.createdAt) {
-		const date = new Date(item.createdAt);
-		if (!Number.isNaN(date.getTime())) {
-			const DATE_ISO_SUBSTRING_START = 0;
-			const DATE_ISO_SUBSTRING_END = 10;
-			return date
-				.toISOString()
-				.slice(DATE_ISO_SUBSTRING_START, DATE_ISO_SUBSTRING_END)
-				.replace(/-/g, "");
-		}
+function getPlatformPart(item: DownloadItem): string {
+	const declaredPlatform = item.authors?.[0]?.platform;
+	if (declaredPlatform) {
+		return declaredPlatform;
 	}
+
+	for (const candidate of [...(item.sourceUrls ?? []), item.targetUrl]) {
+		if (!candidate) continue;
+		const inferred = inferPlatformFromUrl(candidate);
+		if (inferred) return inferred;
+	}
+
 	return "";
+}
+
+function inferPlatformFromUrl(url: string): AuthorPlatform | null {
+	try {
+		const hostname = new URL(url).hostname;
+		if (
+			hostname === "twitter.com" ||
+			hostname.endsWith(".twitter.com") ||
+			hostname === "x.com" ||
+			hostname.endsWith(".x.com") ||
+			hostname.endsWith(".twimg.com")
+		) {
+			return "twitter";
+		}
+		if (hostname === "fanbox.cc" || hostname.endsWith(".fanbox.cc")) {
+			return "pixiv-fanbox";
+		}
+		if (hostname === "danbooru.donmai.us" || hostname.endsWith(".donmai.us")) {
+			return "danbooru";
+		}
+	} catch {
+		return null;
+	}
+	return null;
 }
 
 function getContentIdPart(item: DownloadItem): string {
@@ -125,6 +147,21 @@ function getContentIdPart(item: DownloadItem): string {
 	}
 
 	return "";
+}
+
+function getAssetIdPart(item: DownloadItem): string {
+	if (!item.targetUrl) return "";
+
+	try {
+		const pathname = new URL(item.targetUrl).pathname;
+		const filename = pathname.split("/").filter(Boolean).pop() ?? "";
+		const extensionIndex = filename.lastIndexOf(".");
+		const assetId =
+			extensionIndex > 0 ? filename.slice(0, extensionIndex) : filename;
+		return sanitizeFilenamePart(assetId);
+	} catch {
+		return "";
+	}
 }
 
 function getFallbackBase(item: DownloadItem): string {

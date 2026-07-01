@@ -120,6 +120,13 @@
       "when": 1782395330635,
       "tag": "0016_nebulous_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1782830770400,
+      "tag": "0017_ambitious_gideon",
+      "breakpoints": true
     }
   ]
 }

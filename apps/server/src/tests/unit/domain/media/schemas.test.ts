@@ -10,7 +10,9 @@ describe("downloadItemSchema", () => {
 				"https://example.com/image.jpg",
 			],
 			description: "Test description",
-			authors: [{ name: "Test Author", accountId: "@test" }],
+			authors: [
+				{ name: "Test Author", accountId: "@test", platform: "twitter" },
+			],
 			tags: [{ name: "tag1", type: "positive" }],
 			cookies: [{ name: "session", value: "123" }],
 			userAgent: "Mozilla/5.0",
@@ -18,6 +20,21 @@ describe("downloadItemSchema", () => {
 
 		const result = downloadItemSchema.safeParse(validItem);
 		expect(result.success).toBe(true);
+	});
+
+	it("rejects an unsupported author platform", () => {
+		const result = downloadItemSchema.safeParse({
+			targetUrl: "https://example.com/image.jpg",
+			authors: [
+				{
+					name: "Test Author",
+					accountId: "test",
+					platform: "unsupported",
+				},
+			],
+		});
+
+		expect(result.success).toBe(false);
 	});
 
 	it("should allow missing targetUrl (for restore scenarios)", () => {

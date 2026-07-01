@@ -37,6 +37,6 @@ export type IAuthorRepository = {
 		tx?: Transaction,
 	): Promise<void>;
 
-	/** Bulk find-or-create authors by name (uses ON CONFLICT DO NOTHING with unique constraint on name). */
-	findOrCreateBulk(names: string[], tx?: Transaction): Promise<Author[]>;
+	/** Bulk find-or-create authors, preferring platform-scoped account identity. */
+	findOrCreateBulk(authors: NewAuthor[], tx?: Transaction): Promise<Author[]>;
 };

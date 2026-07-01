@@ -41,6 +41,7 @@ function FilterSection<T>(props: {
 	onSelect: (item: T) => void;
 	onRemove: (id: string) => void;
 	getItemKey: (item: T) => string;
+	getSelectedItemValue?: (item: T) => string;
 	getItemLabel: (item: T) => string;
 	getItemDescription?: (item: T) => string | undefined | null;
 	placeholder?: string;
@@ -48,7 +49,6 @@ function FilterSection<T>(props: {
 }) {
 	const [value, setValue] = createSignal<T | null>(null);
 	const [filterText, setFilterText] = createDebouncedSignal("", 150);
-
 	const filteredItems = createMemo(() => {
 		const items = props.items;
 		if (!items) return [];
@@ -66,7 +66,8 @@ function FilterSection<T>(props: {
 				<For each={props.selectedItems}>
 					{(id) => {
 						const item = props.items?.find(
-							(i) => props.getItemKey(i) === id,
+							(i) =>
+								(props.getSelectedItemValue?.(i) ?? props.getItemKey(i)) === id,
 						) as T;
 						return (
 							<Badge
@@ -121,9 +122,7 @@ function FilterSection<T>(props: {
 }
 
 const getAuthorLabel = (author: Author) =>
-	author.accountId
-		? `${author.name}：(twitter)${author.accountId}`
-		: author.name;
+	author.accountId ? `${author.name}：${author.accountId}` : author.name;
 
 export function SearchFilters(props: SearchFiltersProps) {
 	const addTag = (tagName: string) => {
@@ -240,8 +239,9 @@ export function SearchFilters(props: SearchFiltersProps) {
 
 			<FilterSection
 				badgeVariant="secondary"
-				getItemKey={(author) => author.name}
+				getItemKey={(author) => author.id}
 				getItemLabel={getAuthorLabel}
+				getSelectedItemValue={(author) => author.name}
 				items={props.authors}
 				label="作者"
 				onRemove={(name) =>

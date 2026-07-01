@@ -176,6 +176,7 @@ function extractMetadata(
 		authors.push({
 			name: authorName || authorId,
 			accountId: authorId,
+			platform: "twitter",
 		});
 	}
 

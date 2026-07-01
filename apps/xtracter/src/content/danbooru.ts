@@ -191,7 +191,11 @@ function parseDanbooruApiMetadata(
 
 	// Parse artists
 	for (const name of parseTagsFromApiString(data.tag_string_artist)) {
-		authors.push({ name, accountId: twitterAccountId });
+		authors.push({
+			name,
+			accountId: twitterAccountId ?? name,
+			platform: twitterAccountId ? "twitter" : "danbooru",
+		});
 	}
 
 	// Parse copyrights (IPs)
@@ -267,6 +271,12 @@ function extractDanbooruMetadata(container: HTMLElement): TweetMetadata | null {
 			if (!author.accountId) {
 				author.accountId = twitterAccountId;
 			}
+			author.platform = "twitter";
+		}
+	} else {
+		for (const author of authors) {
+			author.accountId = author.accountId ?? author.name;
+			author.platform = "danbooru";
 		}
 	}
 

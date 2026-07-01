@@ -1,0 +1,14 @@
+language: ja-JP
+
+reviews:
+  profile: chill
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    drafts: false
+    base_branches:
+      - develop
+    ignore_title_keywords:
+      - WIP
+      - "DO NOT MERGE"
+      - "[skip review]"

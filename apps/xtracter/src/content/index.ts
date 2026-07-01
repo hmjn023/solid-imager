@@ -1,5 +1,6 @@
 import type { TweetMetadata } from "@ext/schema";
 import { processDanbooruMedia } from "./danbooru";
+import { processFanboxMedia } from "./fanbox";
 import { processTwitterMedia } from "./twitter";
 
 const OBSERVER_CONFIG = { childList: true, subtree: true };
@@ -180,6 +181,8 @@ function processMedia() {
 	const hostname = window.location.hostname;
 	if (hostname.includes("twitter.com") || hostname.includes("x.com")) {
 		processTwitterMedia(processedMetadata, createButtonContainer);
+	} else if (hostname === "fanbox.cc" || hostname.endsWith(".fanbox.cc")) {
+		processFanboxMedia(processedMetadata, createButtonContainer);
 	} else if (hostname.includes("danbooru.donmai.us")) {
 		processDanbooruMedia(createButtonContainer, createAsyncButtonContainer);
 	}

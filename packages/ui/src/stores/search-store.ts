@@ -61,5 +61,13 @@ export const activateVectorSearch = (mediaId: string) => {
 	}
 };
 
+export const clearVectorSearchAnchor = () => {
+	setSearchState({
+		similarityAnchorMediaId: null,
+		offset: 0,
+		scrollY: 0,
+	});
+};
+
 export const getSearchCondition = () =>
 	getSearchConditionFromState(searchState);
