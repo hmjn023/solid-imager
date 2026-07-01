@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -7,13 +10,18 @@ const { mockCreateTable, mockOpenTable, mockOptimize } = vi.hoisted(() => ({
 	mockOptimize: vi.fn(),
 }));
 
-function createTable(rows: Record<string, unknown>[] = []) {
+function createTable(
+	rows: Record<string, unknown>[] = [],
+	schemaFields: { name: string }[] = [],
+) {
 	return {
 		add: vi.fn(async (newRows: Record<string, unknown>[]) =>
 			rows.push(...newRows),
 		),
+		addColumns: vi.fn(),
 		delete: vi.fn(),
 		optimize: mockOptimize,
+		schema: vi.fn(async () => ({ fields: schemaFields })),
 		query: vi.fn(() => ({
 			limit: (limit: number) => ({
 				offset: (offset: number) => ({
@@ -32,8 +40,12 @@ function createMockConnect(
 ) {
 	const tables = new Map<string, ReturnType<typeof createTable>>();
 	mockCreateTable.mockImplementation(
-		async (name: string, rows: Record<string, unknown>[]) => {
-			const table = createTable([...rows]);
+		async (
+			name: string,
+			rows: Record<string, unknown>[],
+			options: { schema?: { fields?: { name: string }[] } },
+		) => {
+			const table = createTable([...rows], options.schema?.fields ?? []);
 			tables.set(name, table);
 			return table;
 		},
@@ -70,7 +82,9 @@ describe("LanceDB Dump Service", () => {
 				height: 100,
 				fileSize: 1024,
 				tags: [{ name: "tag-a", type: "positive", confidence: 0.9 }],
-				authors: [{ name: "author-a", accountId: "acct" }],
+				authors: [
+					{ name: "author-a", accountId: "acct", platform: "pixiv-fanbox" },
+				],
 				characters: [{ name: "char-a", linkedIps: ["ip-a"] }],
 				ips: [{ name: "ip-a" }],
 				projects: [{ name: "project-a" }],
@@ -103,6 +117,11 @@ describe("LanceDB Dump Service", () => {
 			fileName: "image1.png",
 		});
 		expect(mediaRows[0]).not.toHaveProperty("imageData");
+		expect(mockCreateTable.mock.calls[2][1][0]).toMatchObject({
+			name: "author-a",
+			accountId: "acct",
+			platform: "pixiv-fanbox",
+		});
 	});
 
 	it("reads v2 tables back into MediaDumpItem chunks", async () => {
@@ -123,7 +142,12 @@ describe("LanceDB Dump Service", () => {
 				],
 				media_tags: [{ mediaId: "item-1", name: "tag-a", type: "positive" }],
 				media_authors: [
-					{ mediaId: "item-1", name: "author-a", accountId: "acct" },
+					{
+						mediaId: "item-1",
+						name: "author-a",
+						accountId: "acct",
+						platform: "pixiv-fanbox",
+					},
 				],
 				media_characters: [{ mediaId: "item-1", name: "char-a" }],
 				media_character_ips: [
@@ -155,7 +179,9 @@ describe("LanceDB Dump Service", () => {
 			id: "item-1",
 			filePath: "test/image1.png",
 			tags: [{ name: "tag-a", type: "positive" }],
-			authors: [{ name: "author-a", accountId: "acct" }],
+			authors: [
+				{ name: "author-a", accountId: "acct", platform: "pixiv-fanbox" },
+			],
 			characters: [{ name: "char-a", linkedIps: ["ip-a"] }],
 			ips: [{ name: "ip-a" }],
 			projects: [{ name: "project-a" }],
@@ -193,5 +219,75 @@ describe("LanceDB Dump Service", () => {
 		expect(mediaTable.add).toHaveBeenCalledWith([
 			expect.objectContaining({ id: "new-media", filePath: "new.png" }),
 		]);
+	});
+
+	it("adds the author platform column before syncing an older LanceDB cache", async () => {
+		const { createLanceDbDumpService } = await import(
+			"@solid-imager/application/services/lancedb-dump-service"
+		);
+		const service = createLanceDbDumpService({ connect: createMockConnect() });
+
+		await service.syncLanceDBDelta("/tmp/lancedb-v3", {
+			itemsToUpsert: [
+				{
+					id: "new-media",
+					filePath: "new.png",
+					fileName: "new.png",
+					mediaType: "image",
+					width: 10,
+					height: 20,
+					authors: [
+						{
+							name: "creator",
+							accountId: "creator",
+							platform: "pixiv-fanbox",
+						},
+					],
+				},
+			],
+		});
+
+		const authorTable = await mockOpenTable.mock.results[2].value;
+		expect(authorTable.addColumns).toHaveBeenCalledTimes(1);
+	});
+
+	it("updates the manifest version after delta schema migration", async () => {
+		const { createLanceDbDumpService } = await import(
+			"@solid-imager/application/services/lancedb-dump-service"
+		);
+		const service = createLanceDbDumpService({ connect: createMockConnect() });
+		const dumpDir = await fs.mkdtemp(path.join(os.tmpdir(), "lancedb-v3-"));
+		await fs.writeFile(
+			path.join(dumpDir, "manifest.json"),
+			JSON.stringify({
+				format: "solid-imager-lancedb",
+				version: 3,
+				includeImages: false,
+			}),
+		);
+
+		try {
+			await service.syncLanceDBDelta(dumpDir, {
+				itemsToUpsert: [
+					{
+						id: "new-media",
+						filePath: "new.png",
+						fileName: "new.png",
+						mediaType: "image",
+					},
+				],
+			});
+
+			const manifest = JSON.parse(
+				await fs.readFile(path.join(dumpDir, "manifest.json"), "utf8"),
+			);
+			expect(manifest).toMatchObject({
+				format: "solid-imager-lancedb",
+				version: 4,
+				includeImages: false,
+			});
+		} finally {
+			await fs.rm(dumpDir, { recursive: true, force: true });
+		}
 	});
 });

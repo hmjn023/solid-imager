@@ -329,28 +329,7 @@ function CriterionBuilder(props: {
 	tags?: TagResponse[];
 }) {
 	const getAuthorLabel = (author: Author) =>
-		author.accountId
-			? `${author.name}: (twitter)${author.accountId}`
-			: author.name;
-
-	const [filterText, setFilterText] = createDebouncedSignal("", 150);
-
-	const filteredItems = createMemo(() => {
-		const items = autocompleteItems();
-		if (!items) return [];
-		const query = filterText().toLowerCase();
-		if (!query) return items.slice(0, 100);
-		return items
-			.filter((item) => {
-				if (!item) return false;
-				const label =
-					props.criterion.target === "author"
-						? getAuthorLabel(item as Author)
-						: (item as { name: string }).name;
-				return label.toLowerCase().includes(query);
-			})
-			.slice(0, 100);
-	});
+		author.accountId ? `${author.name}: ${author.accountId}` : author.name;
 
 	// Helper to determine available items for autocomplete
 	const autocompleteItems = createMemo(() => {
@@ -368,6 +347,23 @@ function CriterionBuilder(props: {
 			default:
 				return;
 		}
+	});
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+	const filteredItems = createMemo(() => {
+		const items = autocompleteItems();
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => {
+				if (!item) return false;
+				const label =
+					props.criterion.target === "author"
+						? getAuthorLabel(item as Author)
+						: (item as { name: string }).name;
+				return label.toLowerCase().includes(query);
+			})
+			.slice(0, 100);
 	});
 
 	const getValidOperators = (target: string) => {
@@ -500,7 +496,7 @@ function CriterionBuilder(props: {
 									: (item as { name: string }).name
 								: ""
 						}
-						optionValue={(item: { name: string }) => item.name}
+						optionValue={(item) => item.id}
 						placeholder="検索..."
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(

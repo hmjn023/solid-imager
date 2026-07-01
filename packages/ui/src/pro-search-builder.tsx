@@ -309,25 +309,7 @@ function CriterionBuilder(props: {
 	authors?: Author[];
 }) {
 	const getAuthorLabel = (author: Author) =>
-		author.accountId
-			? `${author.name}：(twitter)${author.accountId}`
-			: author.name;
-
-	const [filterText, setFilterText] = createDebouncedSignal("", 150);
-
-	const filteredItems = createMemo(() => {
-		const items = autocompleteItems();
-		if (!items) return [];
-		const query = filterText().toLowerCase();
-		if (!query) return items.slice(0, 100);
-		return items
-			.filter((item) => {
-				if (!item) return false;
-				const label = "accountId" in item ? getAuthorLabel(item) : item.name;
-				return label.toLowerCase().includes(query);
-			})
-			.slice(0, 100);
-	});
+		author.accountId ? `${author.name}：${author.accountId}` : author.name;
 
 	const autocompleteItems = createMemo<RelationOption[] | undefined>(() => {
 		switch (props.criterion.target) {
@@ -344,6 +326,20 @@ function CriterionBuilder(props: {
 			default:
 				return undefined;
 		}
+	});
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+	const filteredItems = createMemo(() => {
+		const items = autocompleteItems();
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => {
+				if (!item) return false;
+				const label = "accountId" in item ? getAuthorLabel(item) : item.name;
+				return label.toLowerCase().includes(query);
+			})
+			.slice(0, 100);
 	});
 
 	const isNumericTarget = createMemo(() =>
@@ -495,7 +491,7 @@ function CriterionBuilder(props: {
 									: item.name
 								: ""
 						}
-						optionValue={(item) => item.name}
+						optionValue={(item) => item.id}
 						placeholder="検索..."
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(

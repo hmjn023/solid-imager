@@ -82,6 +82,12 @@ export const mediaRelationTypeEnum = pgEnum("media_relation_type", [
  */
 export const tagTypeEnum = pgEnum("tag_type", ["positive", "negative"]);
 
+export const authorPlatformEnum = pgEnum("author_platform", [
+	"twitter",
+	"pixiv-fanbox",
+	"danbooru",
+]);
+
 // テーブル
 /**
  * Schema for the media_sources table.
@@ -743,6 +749,31 @@ export const authors = pgTable(
 );
 
 /**
+ * External accounts belonging to an author.
+ * An author can be linked to multiple platform identities.
+ */
+export const authorAccounts = pgTable(
+	"author_accounts",
+	{
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		authorId: uuid("author_id")
+			.notNull()
+			.references(() => authors.id, { onDelete: "cascade" }),
+		platform: authorPlatformEnum("platform").notNull(),
+		accountId: text("account_id").notNull(),
+		profileUrl: text("profile_url"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => ({
+		authorIdIndex: index("idx_author_accounts_author_id").on(table.authorId),
+		platformAccountUnique: uniqueIndex(
+			"idx_author_accounts_platform_account_unique",
+		).on(table.platform, table.accountId),
+	}),
+);
+
+/**
  * Schema for the media_authors join table.
  * Many-to-many relationship between media and authors.
  */
@@ -1298,8 +1329,17 @@ export const mediaCollectionsRelations = relations(
 export const authorsRelations = relations(authors, ({ many }) => ({
 	/** Authorに関連するメディア */
 	media: many(mediaAuthors),
+	/** Authorの外部サービス上のアカウント */
+	accounts: many(authorAccounts),
 	/** Authorに関連するタグ */
 	tags: many(tags),
+}));
+
+export const authorAccountsRelations = relations(authorAccounts, ({ one }) => ({
+	author: one(authors, {
+		fields: [authorAccounts.authorId],
+		references: [authors.id],
+	}),
 }));
 
 /**

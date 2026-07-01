@@ -141,7 +141,7 @@ describe("MediaProcessingService", () => {
 			});
 
 			expect(mockAuthorRepo.findOrCreateBulk).toHaveBeenCalledWith(
-				["Author Name"],
+				[{ name: "Author Name", accountId: "acc-123" }],
 				undefined,
 			);
 			expect(mockAuthorRepo.addMediaBulk).toHaveBeenCalledWith(

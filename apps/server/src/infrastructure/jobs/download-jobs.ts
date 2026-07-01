@@ -754,6 +754,7 @@ async function updateExistingMediaWithMetadata(
 		authors: item.authors?.map((a) => ({
 			name: a.name,
 			accountId: a.accountId ?? null,
+			...(a.platform ? { platform: a.platform } : {}),
 		})),
 		// We can also update other metadata if needed, consistent with registerMedia
 		tags: item.tags,
@@ -794,6 +795,7 @@ async function registerMedia(
 				authors: item.authors?.map((a) => ({
 					name: a.name,
 					accountId: a.accountId ?? null,
+					...(a.platform ? { platform: a.platform } : {}),
 				})),
 				tags: item.tags,
 				characters: item.characters,
