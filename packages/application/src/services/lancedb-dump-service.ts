@@ -405,10 +405,12 @@ async function openTables(db: Connection): Promise<LanceTables> {
 async function migrateLanceDbSchema(tables: LanceTables): Promise<void> {
 	const authorSchema = await tables.media_authors.schema();
 	if (!authorSchema.fields.some((field) => field.name === "platform")) {
-		const arrow = await import("apache-arrow");
-		await tables.media_authors.addColumns(
-			new arrow.Field("platform", new arrow.Utf8(), true),
-		);
+		await tables.media_authors.addColumns([
+			{
+				name: "platform",
+				valueSql: "CAST(NULL AS STRING)",
+			},
+		]);
 	}
 }
 
