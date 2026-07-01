@@ -30,7 +30,7 @@ import {
 	parseSelectValue,
 } from "@solid-imager/ui/utils";
 import { cn } from "@solid-imager/ui/utils/cn";
-import { createMemo, Index, Match, Show, Switch } from "solid-js";
+import { createMemo, For, Match, Show, Switch } from "solid-js";
 
 // Labels for targets
 const TARGET_LABELS: Record<string, string> = {
@@ -263,37 +263,37 @@ function GroupBuilder(props: {
 				</div>
 
 				<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
-					<Index each={props.group.children}>
+					<For each={props.group.children}>
 						{(child, index) => (
 							<Show
 								fallback={
 									<CriterionBuilder
 										authors={props.authors}
 										characters={props.characters}
-										criterion={child() as SearchCriterion}
+										criterion={child as SearchCriterion}
 										ips={props.ips}
-										onChange={(c) => updateChild(index, c)}
-										onRemove={() => removeChild(index)}
+										onChange={(c) => updateChild(index(), c)}
+										onRemove={() => removeChild(index())}
 										projects={props.projects}
 										tags={props.tags}
 									/>
 								}
-								when={isSearchGroup(child())}
+								when={isSearchGroup(child)}
 							>
 								<GroupBuilder
 									authors={props.authors}
 									characters={props.characters}
 									depth={props.depth + 1}
-									group={child() as SearchGroup}
+									group={child as SearchGroup}
 									ips={props.ips}
-									onChange={(g) => updateChild(index, g)}
-									onRemove={() => removeChild(index)}
+									onChange={(g) => updateChild(index(), g)}
+									onRemove={() => removeChild(index())}
 									projects={props.projects}
 									tags={props.tags}
 								/>
 							</Show>
 						)}
-					</Index>
+					</For>
 					{props.group.children.length === 0 && (
 						<div class="p-2 text-muted-foreground text-sm italic">
 							条件がありません。「+ 条件」ボタンで追加してください。
