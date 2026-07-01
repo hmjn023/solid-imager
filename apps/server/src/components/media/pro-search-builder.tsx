@@ -25,7 +25,10 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@solid-imager/ui/select";
-import { parseSelectValue } from "@solid-imager/ui/utils";
+import {
+	createDebouncedSignal,
+	parseSelectValue,
+} from "@solid-imager/ui/utils";
 import { cn } from "@solid-imager/ui/utils/cn";
 import { createMemo, Index, Match, Show, Switch } from "solid-js";
 
@@ -345,6 +348,23 @@ function CriterionBuilder(props: {
 				return;
 		}
 	});
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+	const filteredItems = createMemo(() => {
+		const items = autocompleteItems();
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => {
+				if (!item) return false;
+				const label =
+					props.criterion.target === "author"
+						? getAuthorLabel(item as Author)
+						: (item as { name: string }).name;
+				return label.toLowerCase().includes(query);
+			})
+			.slice(0, 100);
+	});
 
 	const getValidOperators = (target: string) => {
 		// Fast path checks using sets or direct includes
@@ -460,7 +480,7 @@ function CriterionBuilder(props: {
 								props.onChange({ ...props.criterion, value: val.name });
 							}
 						}}
-						defaultFilter="contains"
+						onInputChange={(text) => setFilterText(text)}
 						optionLabel={(item) =>
 							item
 								? props.criterion.target === "author"
@@ -468,7 +488,7 @@ function CriterionBuilder(props: {
 									: (item as { name: string }).name
 								: ""
 						}
-						options={autocompleteItems() ?? []}
+						options={filteredItems()}
 						optionTextValue={(item) =>
 							item
 								? props.criterion.target === "author"

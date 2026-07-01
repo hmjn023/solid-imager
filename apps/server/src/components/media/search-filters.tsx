@@ -16,7 +16,8 @@ import {
 import { Input } from "@solid-imager/ui/input";
 import { Label } from "@solid-imager/ui/label";
 import { cn } from "@solid-imager/ui/utils/cn";
-import { createSignal, For } from "solid-js";
+import { createDebouncedSignal } from "@solid-imager/ui/utils/debounce";
+import { createMemo, createSignal, For } from "solid-js";
 
 export type SearchFilterState = {
 	searchQuery: string;
@@ -62,6 +63,16 @@ function FilterSection<T>(props: {
 	badgeVariant?: "default" | "destructive" | "secondary" | "outline";
 }) {
 	const [value, setValue] = createSignal<T | null>(null);
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+	const filteredItems = createMemo(() => {
+		const items = props.items;
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => props.getItemLabel(item).toLowerCase().includes(query))
+			.slice(0, 100);
+	});
 
 	return (
 		<div class="space-y-2">
@@ -103,12 +114,13 @@ function FilterSection<T>(props: {
 						setValue(() => val);
 						requestAnimationFrame(() => {
 							setValue(null);
+							setFilterText("");
 						});
 					}
 				}}
-				defaultFilter="contains"
+				onInputChange={(text) => setFilterText(text)}
 				optionLabel={props.getItemLabel}
-				options={props.items ?? []}
+				options={filteredItems()}
 				optionTextValue={props.getItemLabel}
 				optionValue={(item) => props.getItemKey(item)}
 				placeholder={props.placeholder}

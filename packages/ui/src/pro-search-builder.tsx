@@ -27,6 +27,7 @@ import {
 	SelectValue,
 } from "./select";
 import { cn } from "./utils/cn";
+import { createDebouncedSignal } from "./utils/debounce";
 import { parseSelectValue } from "./utils/parse-select-value";
 
 const TARGET_LABELS: Record<string, string> = {
@@ -326,6 +327,20 @@ function CriterionBuilder(props: {
 				return undefined;
 		}
 	});
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+	const filteredItems = createMemo(() => {
+		const items = autocompleteItems();
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => {
+				if (!item) return false;
+				const label = "accountId" in item ? getAuthorLabel(item) : item.name;
+				return label.toLowerCase().includes(query);
+			})
+			.slice(0, 100);
+	});
 
 	const isNumericTarget = createMemo(() =>
 		[
@@ -460,7 +475,7 @@ function CriterionBuilder(props: {
 								props.onChange({ ...props.criterion, value: value.name });
 							}
 						}}
-						defaultFilter="contains"
+						onInputChange={(text) => setFilterText(text)}
 						optionLabel={(item) =>
 							item
 								? "accountId" in item
@@ -468,7 +483,7 @@ function CriterionBuilder(props: {
 									: item.name
 								: ""
 						}
-						options={autocompleteItems() ?? []}
+						options={filteredItems()}
 						optionTextValue={(item) =>
 							item
 								? "accountId" in item
