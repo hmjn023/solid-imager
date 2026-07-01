@@ -22,6 +22,12 @@ describe("AuthorRepository Deduplication", () => {
 		await db.delete(authors);
 	});
 
+	it("rejects an empty author name", async () => {
+		await expect(
+			AuthorRepository.create({ name: "", accountId: null }),
+		).rejects.toThrow("Author name cannot be empty");
+	});
+
 	it("should NOT create duplicate authors when accountId is missing but name matches", async () => {
 		// 1. Create first author without accountId
 		const author1 = await AuthorRepository.create({

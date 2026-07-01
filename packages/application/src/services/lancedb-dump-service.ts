@@ -16,6 +16,27 @@ const ROW_CHUNK_SIZE = 5000;
 const READ_CHUNK_SIZE = 5000;
 const LANCEDB_DUMP_VERSION = 4;
 
+async function updateLanceDbManifestVersion(lanceDbDir: string): Promise<void> {
+	const manifestPath = path.join(lanceDbDir, "manifest.json");
+	let manifest: unknown;
+	try {
+		manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+	} catch {
+		return;
+	}
+	if (
+		typeof manifest !== "object" ||
+		manifest === null ||
+		Array.isArray(manifest)
+	) {
+		return;
+	}
+	await fs.writeFile(
+		manifestPath,
+		JSON.stringify({ ...manifest, version: LANCEDB_DUMP_VERSION }, null, 2),
+	);
+}
+
 type JsonValue =
 	| string
 	| number
@@ -793,6 +814,7 @@ export function createLanceDbDumpService(deps?: {
 		await migrateLanceDbSchema(tables);
 		await deleteMediaRows(tables, targetIds);
 		await addRowsToTables(tables, itemsToRows(itemsToUpsert));
+		await updateLanceDbManifestVersion(lanceDbDir);
 
 		if (options.optimize) {
 			await Promise.all(

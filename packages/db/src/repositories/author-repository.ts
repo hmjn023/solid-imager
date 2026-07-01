@@ -210,8 +210,15 @@ export function createAuthorRepository(
 		},
 
 		async create(author: NewAuthor, tx?: unknown): Promise<Author> {
+			if (author.name.trim().length === 0) {
+				throw new Error("Author name cannot be empty");
+			}
 			const result = await findOrCreateAuthorsBulk(getExecutor(tx), [author]);
-			return result[0];
+			const created = result[0];
+			if (!created) {
+				throw new Error("Failed to create author");
+			}
+			return created;
 		},
 
 		async update(

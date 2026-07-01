@@ -326,9 +326,7 @@ function CriterionBuilder(props: {
 	tags?: TagResponse[];
 }) {
 	const getAuthorLabel = (author: Author) =>
-		author.accountId
-			? `${author.name}: (twitter)${author.accountId}`
-			: author.name;
+		author.accountId ? `${author.name}: ${author.accountId}` : author.name;
 
 	// Helper to determine available items for autocomplete
 	const autocompleteItems = createMemo(() => {

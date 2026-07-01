@@ -308,9 +308,7 @@ function CriterionBuilder(props: {
 	authors?: Author[];
 }) {
 	const getAuthorLabel = (author: Author) =>
-		author.accountId
-			? `${author.name}：(twitter)${author.accountId}`
-			: author.name;
+		author.accountId ? `${author.name}：${author.accountId}` : author.name;
 
 	const autocompleteItems = createMemo<RelationOption[] | undefined>(() => {
 		switch (props.criterion.target) {

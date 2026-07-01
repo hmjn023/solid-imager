@@ -110,9 +110,7 @@ function FilterSection<T>(props: {
 }
 
 const getAuthorLabel = (author: Author) =>
-	author.accountId
-		? `${author.name}：(twitter)${author.accountId}`
-		: author.name;
+	author.accountId ? `${author.name}：${author.accountId}` : author.name;
 
 export function SearchFilters(props: SearchFiltersProps) {
 	const addTag = (tagName: string) => {

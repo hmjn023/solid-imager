@@ -1,3 +1,6 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
@@ -246,5 +249,45 @@ describe("LanceDB Dump Service", () => {
 
 		const authorTable = await mockOpenTable.mock.results[2].value;
 		expect(authorTable.addColumns).toHaveBeenCalledTimes(1);
+	});
+
+	it("updates the manifest version after delta schema migration", async () => {
+		const { createLanceDbDumpService } = await import(
+			"@solid-imager/application/services/lancedb-dump-service"
+		);
+		const service = createLanceDbDumpService({ connect: createMockConnect() });
+		const dumpDir = await fs.mkdtemp(path.join(os.tmpdir(), "lancedb-v3-"));
+		await fs.writeFile(
+			path.join(dumpDir, "manifest.json"),
+			JSON.stringify({
+				format: "solid-imager-lancedb",
+				version: 3,
+				includeImages: false,
+			}),
+		);
+
+		try {
+			await service.syncLanceDBDelta(dumpDir, {
+				itemsToUpsert: [
+					{
+						id: "new-media",
+						filePath: "new.png",
+						fileName: "new.png",
+						mediaType: "image",
+					},
+				],
+			});
+
+			const manifest = JSON.parse(
+				await fs.readFile(path.join(dumpDir, "manifest.json"), "utf8"),
+			);
+			expect(manifest).toMatchObject({
+				format: "solid-imager-lancedb",
+				version: 4,
+				includeImages: false,
+			});
+		} finally {
+			await fs.rm(dumpDir, { recursive: true, force: true });
+		}
 	});
 });

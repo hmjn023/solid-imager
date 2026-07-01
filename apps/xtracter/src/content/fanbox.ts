@@ -48,7 +48,12 @@ function getFanboxImageUrl(
 	postId: string,
 ): string | null {
 	const linkedUrl = imageElement.closest("a")?.href;
-	const candidates = [linkedUrl, imageElement.currentSrc, imageElement.src];
+	const candidates = [
+		linkedUrl,
+		imageElement.dataset.src,
+		imageElement.currentSrc,
+		imageElement.src,
+	];
 
 	for (const candidate of candidates) {
 		if (!candidate) {
@@ -78,8 +83,9 @@ function extractMetadata(targetUrl: string, postUrl: string): TweetMetadata {
 			? hostname.slice(0, -".fanbox.cc".length)
 			: "";
 	const authorName =
-		document.querySelector<HTMLElement>('a[href="/"] h1')?.innerText.trim() ||
-		creatorId;
+		document
+			.querySelector<HTMLElement>('a[href="/"] h1')
+			?.textContent?.trim() || creatorId;
 	const authors: Author[] = [];
 
 	if (authorName || creatorId) {
