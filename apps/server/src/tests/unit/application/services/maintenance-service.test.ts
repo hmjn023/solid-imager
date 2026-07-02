@@ -40,10 +40,13 @@ vi.mock("~/application/registry", () => ({
 
 // Mock lancedb-dump-service
 const mockReadMediaIds = vi.fn();
-vi.mock("~/application/services/lancedb-dump-service", () => ({
-	LANCEDB_DUMP_VERSION: 4,
-	readMediaIds: mockReadMediaIds,
-}));
+vi.mock("~/application/services/lancedb-dump-service", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("~/application/services/lancedb-dump-service")>();
+	return {
+		...actual,
+		readMediaIds: mockReadMediaIds,
+	};
+});
 
 // Mock backup-service
 const mockQueueSourceLanceDBDelta = vi.fn();
