@@ -202,7 +202,10 @@ export class MaintenanceService {
 		try {
 			const content = await fs.readFile(manifestPath, "utf-8");
 			const manifest = JSON.parse(content) as { version?: unknown };
-			return manifest.version === 3;
+			const { LANCEDB_DUMP_VERSION } = await import(
+				"~/application/services/lancedb-dump-service"
+			);
+			return manifest.version === LANCEDB_DUMP_VERSION;
 		} catch {
 			return false;
 		}

@@ -14,7 +14,7 @@ import type {
 
 const ROW_CHUNK_SIZE = 5000;
 const READ_CHUNK_SIZE = 5000;
-const LANCEDB_DUMP_VERSION = 4;
+export const LANCEDB_DUMP_VERSION = 4;
 
 async function updateLanceDbManifestVersion(lanceDbDir: string): Promise<void> {
 	const manifestPath = path.join(lanceDbDir, "manifest.json");

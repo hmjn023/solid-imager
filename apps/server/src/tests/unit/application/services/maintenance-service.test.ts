@@ -40,9 +40,13 @@ vi.mock("~/application/registry", () => ({
 
 // Mock lancedb-dump-service
 const mockReadMediaIds = vi.fn();
-vi.mock("~/application/services/lancedb-dump-service", () => ({
-	readMediaIds: mockReadMediaIds,
-}));
+vi.mock("~/application/services/lancedb-dump-service", async (importOriginal) => {
+	const actual = await importOriginal<typeof import("~/application/services/lancedb-dump-service")>();
+	return {
+		...actual,
+		readMediaIds: mockReadMediaIds,
+	};
+});
 
 // Mock backup-service
 const mockQueueSourceLanceDBDelta = vi.fn();
@@ -387,9 +391,9 @@ describe("MaintenanceService", () => {
 			]);
 			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
 
-			// Simulate manifest.json exists (version: 3)
+			// Simulate a current manifest.json.
 			(fs.readFile as unknown as Mock).mockResolvedValue(
-				JSON.stringify({ version: 3 }),
+				JSON.stringify({ version: 4 }),
 			);
 
 			// Both LanceDB and Postgres have media-1
@@ -417,9 +421,9 @@ describe("MaintenanceService", () => {
 			]);
 			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
 
-			// Simulate manifest.json exists (version: 3)
+			// Simulate a current manifest.json.
 			(fs.readFile as unknown as Mock).mockResolvedValue(
-				JSON.stringify({ version: 3 }),
+				JSON.stringify({ version: 4 }),
 			);
 
 			// Postgres: media-1, media-2
@@ -465,9 +469,9 @@ describe("MaintenanceService", () => {
 			]);
 			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
 
-			// Simulate manifest.json exists (version: 3)
+			// Simulate a current manifest.json.
 			(fs.readFile as unknown as Mock).mockResolvedValue(
-				JSON.stringify({ version: 3 }),
+				JSON.stringify({ version: 4 }),
 			);
 
 			// readMediaIds throws error
