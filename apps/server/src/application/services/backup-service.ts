@@ -10,6 +10,7 @@ import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
 import { and, asc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
+import { LANCEDB_DUMP_VERSION } from "~/application/services/lancedb-dump-service";
 import { db } from "~/infrastructure/db";
 import {
 	authorAccounts,
@@ -1194,7 +1195,7 @@ export const BackupService = {
 		try {
 			const content = await fs.readFile(manifestPath, "utf-8");
 			const manifest = JSON.parse(content) as { version?: unknown };
-			if (manifest.version !== 3) {
+			if (manifest.version !== LANCEDB_DUMP_VERSION) {
 				if (!config.lancedb?.autoFullSync) {
 					logger.warn(
 						{ mediaSourceId },
