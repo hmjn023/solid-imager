@@ -35,7 +35,7 @@ async function findOrCreateAuthorsBulk(
 ): Promise<Author[]> {
 	const uniqueInputs = new Map<string, NewAuthor>();
 	for (const input of inputs) {
-		if (input.name.length > 0) {
+		if (input.name.trim().length > 0) {
 			uniqueInputs.set(authorInputKey(input), input);
 		}
 	}
@@ -116,6 +116,7 @@ async function findOrCreateAuthorsBulk(
 
 	const accountsToInsert: (typeof authorAccounts.$inferInsert)[] = [];
 	const authorsToInsert: (typeof authors.$inferInsert)[] = [];
+	const newlyCreatedAuthorByKey = new Map<string, string>();
 	for (const [key, input] of unresolved) {
 		const legacyByMatchingAccount = input.accountId
 			? legacyByAccount.get(input.accountId)
@@ -143,6 +144,7 @@ async function findOrCreateAuthorsBulk(
 				name: author.name,
 				accountId: author.accountId,
 			});
+			newlyCreatedAuthorByKey.set(key, author.id);
 		}
 		resolved.set(key, author);
 
@@ -159,10 +161,54 @@ async function findOrCreateAuthorsBulk(
 		await client.insert(authors).values(authorsToInsert);
 	}
 	if (accountsToInsert.length > 0) {
-		await client
+		const insertedAccounts = await client
 			.insert(authorAccounts)
 			.values(accountsToInsert)
-			.onConflictDoNothing();
+			.onConflictDoNothing()
+			.returning();
+		const insertedKeys = new Set(
+			insertedAccounts.map(
+				(account) => `${account.platform}:${account.accountId}`,
+			),
+		);
+		const attemptedKeys = new Set(
+			accountsToInsert.map(
+				(account) => `${account.platform}:${account.accountId}`,
+			),
+		);
+		const conflicted = [...uniqueInputs.entries()].filter(
+			([key, input]) =>
+				input.platform &&
+				input.accountId &&
+				attemptedKeys.has(key) &&
+				!insertedKeys.has(key),
+		);
+		if (conflicted.length > 0) {
+			const conditions = conflicted.flatMap(([, input]) => {
+				if (!(input.platform && input.accountId)) return [];
+				const condition = and(
+					eq(authorAccounts.platform, input.platform),
+					eq(authorAccounts.accountId, input.accountId),
+				);
+				return condition ? [condition] : [];
+			});
+			const canonicalAccounts = await client
+				.select({ account: authorAccounts, author: authors })
+				.from(authorAccounts)
+				.innerJoin(authors, eq(authorAccounts.authorId, authors.id))
+				.where(or(...conditions));
+			for (const row of canonicalAccounts) {
+				const key = `${row.account.platform}:${row.account.accountId}`;
+				resolved.set(key, row.author);
+			}
+			const orphanIds = conflicted.flatMap(([key]) => {
+				const id = newlyCreatedAuthorByKey.get(key);
+				return id ? [id] : [];
+			});
+			if (orphanIds.length > 0) {
+				await client.delete(authors).where(inArray(authors.id, orphanIds));
+			}
+		}
 	}
 
 	return [...uniqueInputs.keys()].flatMap((key) => {

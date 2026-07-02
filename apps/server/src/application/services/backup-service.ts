@@ -8,13 +8,12 @@ import {
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
-import { and, asc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { LANCEDB_DUMP_VERSION } from "~/application/services/lancedb-dump-service";
 import { db } from "~/infrastructure/db";
 import {
 	authorAccounts,
-	authors,
 	characterIps,
 	characters,
 	ips,
@@ -413,92 +412,16 @@ export const BackupService = {
 			_tx,
 		);
 		const authorInputs = [...authorData.values()];
-		const d = _tx ?? db;
 		const authorMap = new Map<string, string>();
-		for (const input of authorInputs) {
-			let authorId: string | undefined;
-			if (input.platform && input.accountId) {
-				const existingAccount = await d
-					.select({ authorId: authorAccounts.authorId })
-					.from(authorAccounts)
-					.where(
-						and(
-							eq(authorAccounts.platform, input.platform),
-							eq(authorAccounts.accountId, input.accountId),
-						),
-					)
-					.limit(1);
-				authorId = existingAccount[0]?.authorId;
-
-				if (!authorId) {
-					const legacyCandidates = await d
-						.select()
-						.from(authors)
-						.where(
-							or(
-								eq(authors.accountId, input.accountId),
-								eq(authors.name, input.name),
-							),
-						);
-					const candidateIds = legacyCandidates.map((author) => author.id);
-					const linkedIds =
-						candidateIds.length > 0
-							? new Set(
-									(
-										await d
-											.select({ authorId: authorAccounts.authorId })
-											.from(authorAccounts)
-											.where(inArray(authorAccounts.authorId, candidateIds))
-									).map((account) => account.authorId),
-								)
-							: new Set<string>();
-					const reusable = legacyCandidates.find(
-						(author) =>
-							!linkedIds.has(author.id) &&
-							(author.accountId === input.accountId ||
-								(author.name === input.name && !author.accountId)),
-					);
-					if (reusable) {
-						authorId = reusable.id;
-					} else {
-						const inserted = await d
-							.insert(authors)
-							.values({
-								name: input.name,
-								accountId: input.accountId,
-							})
-							.returning();
-						authorId = inserted[0]?.id;
-					}
-					if (authorId) {
-						await d
-							.insert(authorAccounts)
-							.values({
-								authorId,
-								platform: input.platform,
-								accountId: input.accountId,
-							})
-							.onConflictDoNothing();
-					}
-				}
-			} else {
-				const existing = await d
-					.select({ id: authors.id })
-					.from(authors)
-					.where(eq(authors.name, input.name))
-					.limit(1);
-				authorId = existing[0]?.id;
-				if (!authorId) {
-					const inserted = await d
-						.insert(authors)
-						.values({
-							name: input.name,
-							accountId: input.accountId ?? null,
-						})
-						.returning();
-					authorId = inserted[0]?.id;
-				}
-			}
+		const validAuthorInputs = authorInputs.filter(
+			(input) => input.name.trim().length > 0,
+		);
+		const { services } = await import("~/application/registry");
+		const restoredAuthors = await services
+			.getAuthorRepository()
+			.findOrCreateBulk(validAuthorInputs, _tx);
+		for (const [index, input] of validAuthorInputs.entries()) {
+			const authorId = restoredAuthors[index]?.id;
 			if (!authorId) continue;
 			authorMap.set(authorRestoreKey(input), authorId);
 			if (!authorMap.has(`name:${input.name}`)) {
@@ -1592,6 +1515,12 @@ export const BackupService = {
 			if (cacheValid) {
 				try {
 					const driver = getDriver(mediaSource);
+					const { readMediaFilePaths } = await import(
+						"~/application/services/lancedb-dump-service"
+					);
+					const mediaFilePaths = includeImages
+						? await readMediaFilePaths(cacheDir)
+						: [];
 					const passThrough = new PassThrough();
 					const archive = new archiverMod.TarArchive();
 					archive.pipe(passThrough);
@@ -1601,11 +1530,6 @@ export const BackupService = {
 							archive.directory(cacheDir, false);
 
 							if (includeImages) {
-								const { readMediaFilePaths } = await import(
-									"~/application/services/lancedb-dump-service"
-								);
-								const mediaFilePaths = await readMediaFilePaths(cacheDir);
-
 								await Promise.all(
 									mediaFilePaths.map(async (item) => {
 										if (!item.filePath) return;
