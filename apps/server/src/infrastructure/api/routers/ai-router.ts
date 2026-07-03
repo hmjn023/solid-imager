@@ -10,7 +10,6 @@ import {
 	type Media,
 	mediaSchema,
 } from "@solid-imager/core/domain/media/schemas";
-import type { NapiBBox } from "@solid-imager/core/domain/tagging/schemas";
 import {
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
@@ -20,8 +19,11 @@ import {
 	ccipExtractionRequestSchema,
 	ccipFeatureRequestSchema,
 	ccipVectorStatusSchema,
+	detectAndCropResponseSchema,
+	type NapiBBox,
 	startBatchTaggingResponseSchema,
 	startCcipExtractionResponseSchema,
+	taggingResponseSchema,
 	tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import {
@@ -192,7 +194,6 @@ export const aiRouter = {
 				"file" in input
 					? {
 							inputType: "file",
-							fileName: input.file.name,
 							fileSize: input.file.size,
 						}
 					: {
@@ -243,12 +244,14 @@ export const aiRouter = {
 					}
 					const fullPath = path.join(connectionInfo.path, media.filePath);
 					const fileBuffer = await readFileBuffer(fullPath);
-					const result = (await callRemoteTagging(
-						remoteUrl,
-						fileBuffer,
-						path.basename(fullPath),
-						config.ai.timeoutMs,
-					)) as import("@solid-imager/core/domain/tagging/schemas").TaggingResponse;
+					const result = taggingResponseSchema.parse(
+						await callRemoteTagging(
+							remoteUrl,
+							fileBuffer,
+							path.basename(fullPath),
+							config.ai.timeoutMs,
+						),
+					);
 					logger.info(
 						{
 							...logContext,
@@ -689,22 +692,14 @@ export const aiRouter = {
 				const config = services.getConfigService().getConfig();
 				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
 					const fileBuffer = await readFileBuffer(fullPath);
-					const result = (await callRemoteCrop(
-						remoteUrl,
-						fileBuffer,
-						path.basename(fullPath),
-						config.ai.timeoutMs,
-					)) as {
-						detections: Array<{
-							index: number;
-							bbox: NapiBBox;
-							label: string;
-							score: number;
-							imageBase64: string;
-							width: number;
-							height: number;
-						}>;
-					};
+					const result = detectAndCropResponseSchema.parse(
+						await callRemoteCrop(
+							remoteUrl,
+							fileBuffer,
+							path.basename(fullPath),
+							config.ai.timeoutMs,
+						),
+					);
 					logger.info(
 						{
 							...logContext,
