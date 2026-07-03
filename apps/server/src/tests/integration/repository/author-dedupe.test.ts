@@ -52,10 +52,10 @@ describe("AuthorRepository Deduplication", () => {
 		expect(count).toHaveLength(1);
 	});
 
-	it("deduplicates an author by platform and account ID", async () => {
+	it("deduplicates by platform account and refreshes the display name", async () => {
 		const author1 = await AuthorRepository.create({
 			name: "Original Name",
-			accountId: "@creator",
+			accountId: "@Creator",
 			platform: "twitter",
 		});
 		const author2 = await AuthorRepository.create({
@@ -65,6 +65,7 @@ describe("AuthorRepository Deduplication", () => {
 		});
 
 		expect(author2.id).toBe(author1.id);
+		expect(author2.name).toBe("Updated Display Name");
 		const accounts = await db
 			.select()
 			.from(authorAccounts)
@@ -76,6 +77,10 @@ describe("AuthorRepository Deduplication", () => {
 			);
 		expect(accounts).toHaveLength(1);
 		expect(accounts[0]?.authorId).toBe(author1.id);
+		const storedAuthor = await db.query.authors.findFirst({
+			where: eq(authors.id, author1.id),
+		});
+		expect(storedAuthor?.name).toBe("Updated Display Name");
 	});
 
 	it("keeps identical account IDs on different platforms separate", async () => {
