@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
+	type AuthorPlatform,
 	type MediaDumpItem,
 	mediaDumpItemSchema,
 } from "@solid-imager/core/domain/media/schemas";
@@ -9,9 +10,10 @@ import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
 import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
+import { LANCEDB_DUMP_VERSION } from "~/application/services/lancedb-dump-service";
 import { db } from "~/infrastructure/db";
 import {
-	authors,
+	authorAccounts,
 	characterIps,
 	characters,
 	ips,
@@ -56,6 +58,16 @@ type JsonValue =
 
 const LanceDbDirtyMaxAttempts = 5;
 
+function authorRestoreKey(author: {
+	name: string;
+	platform?: AuthorPlatform;
+	accountId?: string | null;
+}): string {
+	return author.platform && author.accountId
+		? `${author.platform}:${author.accountId}`
+		: `name:${author.name}`;
+}
+
 interface MediaListQueryItem {
 	id: string;
 	filePath: string;
@@ -86,7 +98,14 @@ interface MediaListQueryItem {
 		source: string;
 	}[];
 	authors: {
-		author: { name: string; accountId: string | null };
+		author: {
+			name: string;
+			accountId: string | null;
+			accounts?: {
+				platform: AuthorPlatform;
+				accountId: string;
+			}[];
+		};
 	}[];
 	characters: {
 		character: {
@@ -325,7 +344,14 @@ export const BackupService = {
 
 	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: BackupDbClient) {
 		const tagNames = new Set<string>();
-		const authorData = new Map<string, { accountId?: string | null }>();
+		const authorData = new Map<
+			string,
+			{
+				name: string;
+				accountId?: string | null;
+				platform?: AuthorPlatform;
+			}
+		>();
 		const projectNames = new Set<string>();
 		const charNames = new Set<string>();
 		const ipNames = new Set<string>();
@@ -340,9 +366,8 @@ export const BackupService = {
 			}
 			if (item.authors) {
 				for (const a of item.authors) {
-					// Preserve accountId if available
-					if (a.name && (!authorData.has(a.name) || a.accountId)) {
-						authorData.set(a.name, { accountId: a.accountId });
+					if (a.name) {
+						authorData.set(authorRestoreKey(a), a);
 					}
 				}
 			}
@@ -386,14 +411,50 @@ export const BackupService = {
 			},
 			_tx,
 		);
-		const authorMap = await this._ensureMasterDataWithExtras(
-			authors,
-			authors.id,
-			authors.name,
-			authors.accountId,
-			authorData,
-			_tx,
+		const authorInputs = [...authorData.values()];
+		const authorMap = new Map<string, string>();
+		const validAuthorInputs = authorInputs.filter(
+			(input) => input.name.trim().length > 0,
 		);
+		const { services } = await import("~/application/registry");
+		const restoredAuthors = await services
+			.getAuthorRepository()
+			.findOrCreateBulk(validAuthorInputs, _tx);
+		for (const [index, input] of validAuthorInputs.entries()) {
+			const authorId = restoredAuthors[index]?.id;
+			if (!authorId) continue;
+			authorMap.set(authorRestoreKey(input), authorId);
+			if (!authorMap.has(`name:${input.name}`)) {
+				authorMap.set(`name:${input.name}`, authorId);
+			}
+		}
+		const restoredAuthorAccounts = new Map<
+			string,
+			{
+				authorId: string;
+				platform: AuthorPlatform;
+				accountId: string;
+			}
+		>();
+		for (const item of validItems) {
+			for (const author of item.authors ?? []) {
+				if (!(author.platform && author.accountId)) continue;
+				const authorId = authorMap.get(authorRestoreKey(author));
+				if (!authorId) continue;
+				const key = `${author.platform}:${author.accountId}`;
+				restoredAuthorAccounts.set(key, {
+					authorId,
+					platform: author.platform,
+					accountId: author.accountId,
+				});
+			}
+		}
+		if (restoredAuthorAccounts.size > 0) {
+			await (_tx ?? db)
+				.insert(authorAccounts)
+				.values([...restoredAuthorAccounts.values()])
+				.onConflictDoNothing();
+		}
 		const projectMap = await this._ensureMasterData(
 			projects,
 			projects.id,
@@ -569,7 +630,9 @@ export const BackupService = {
 
 			if (item.authors) {
 				for (const a of item.authors) {
-					const authorId = a.name ? authorMap.get(a.name) : undefined;
+					const authorId = a.name
+						? authorMap.get(authorRestoreKey(a))
+						: undefined;
 					if (authorId) {
 						mediaAuthorsData.push({ mediaId, authorId });
 					}
@@ -756,106 +819,6 @@ export const BackupService = {
 			.where(inArray(nameColumn, nameList))) as { id: string; name: string }[];
 
 		return new Map(records.map((r) => [r.name, r.id]));
-	},
-
-	/**
-	 * Ensures master data with extra fields (specifically for authors with accountId).
-	 * Authors table has no unique constraint on name (display names can overlap),
-	 * so we use manual dedup by name and update accountId when available.
-	 */
-	async _ensureMasterDataWithExtras(
-		table: Table,
-		idColumn: PgColumn,
-		nameColumn: PgColumn,
-		accountIdColumn: PgColumn,
-		dataMap: Map<string, { accountId?: string | null }>,
-		_tx?: BackupDbClient,
-	): Promise<Map<string, string>> {
-		const d = _tx ?? db;
-		if (dataMap.size === 0) {
-			return new Map();
-		}
-
-		const entries = Array.from(dataMap.entries());
-		const nameList = entries.map(([name]) => name);
-
-		// First, find existing authors by name
-		const existingRecords = (await d
-			.select({
-				id: idColumn,
-				name: nameColumn,
-				accountId: accountIdColumn,
-			})
-			.from(table)
-			.where(inArray(nameColumn, nameList))) as {
-			id: string;
-			name: string;
-			accountId: string | null;
-		}[];
-
-		const existingByName = new Map<
-			string,
-			{ id: string; accountId: string | null }
-		>();
-		for (const r of existingRecords) {
-			const existing = existingByName.get(r.name);
-			// Prioritize entry with an accountId, or just take the first one if none have it yet.
-			if (!existing || (!existing.accountId && r.accountId)) {
-				existingByName.set(r.name, { id: r.id, accountId: r.accountId });
-			}
-		}
-
-		// Update existing authors with new accountId if provided
-		// Note: Update ALL authors with matching name (handles duplicates)
-		for (const [name, data] of entries) {
-			const existing = existingByName.get(name);
-			if (existing && data.accountId && existing.accountId !== data.accountId) {
-				await d
-					.update(table)
-					.set({ accountId: data.accountId })
-					.where(eq(nameColumn, name));
-			}
-		}
-
-		// Insert new authors that don't exist
-		const newEntries = entries.filter(([name]) => !existingByName.has(name));
-		if (newEntries.length > 0) {
-			await d.insert(table).values(
-				newEntries.map(([name, data]) => ({
-					name,
-					accountId: data.accountId || null,
-				})),
-			);
-
-			// Fetch the newly inserted records
-			const newRecords = (await d
-				.select({
-					id: idColumn,
-					name: nameColumn,
-					accountId: accountIdColumn,
-				})
-				.from(table)
-				.where(
-					inArray(
-						nameColumn,
-						newEntries.map(([name]) => name),
-					),
-				)) as { id: string; name: string; accountId: string | null }[];
-
-			for (const r of newRecords) {
-				if (!existingByName.has(r.name)) {
-					existingByName.set(r.name, { id: r.id, accountId: r.accountId });
-				}
-			}
-		}
-
-		// Return map of name -> id
-		return new Map(
-			Array.from(existingByName.entries()).map(([name, data]) => [
-				name,
-				data.id,
-			]),
-		);
 	},
 
 	/**
@@ -1155,7 +1118,7 @@ export const BackupService = {
 		try {
 			const content = await fs.readFile(manifestPath, "utf-8");
 			const manifest = JSON.parse(content) as { version?: unknown };
-			if (manifest.version !== 3) {
+			if (manifest.version !== LANCEDB_DUMP_VERSION) {
 				if (!config.lancedb?.autoFullSync) {
 					logger.warn(
 						{ mediaSourceId },
@@ -1213,7 +1176,7 @@ export const BackupService = {
 						generationInfo: true,
 						urls: true,
 						tags: { with: { tag: true } },
-						authors: { with: { author: true } },
+						authors: { with: { author: { with: { accounts: true } } } },
 						characters: {
 							with: {
 								character: {
@@ -1323,7 +1286,7 @@ export const BackupService = {
 						generationInfo: true,
 						urls: true,
 						tags: { with: { tag: true } },
-						authors: { with: { author: true } },
+						authors: { with: { author: { with: { accounts: true } } } },
 						characters: {
 							with: { character: { with: { ips: { with: { ip: true } } } } },
 						},
@@ -1407,7 +1370,9 @@ export const BackupService = {
 									generationInfo: true,
 									urls: true,
 									tags: { with: { tag: true } },
-									authors: { with: { author: true } },
+									authors: {
+										with: { author: { with: { accounts: true } } },
+									},
 									characters: {
 										with: {
 											character: { with: { ips: { with: { ip: true } } } },
@@ -1474,7 +1439,9 @@ export const BackupService = {
 									generationInfo: true,
 									urls: true,
 									tags: { with: { tag: true } },
-									authors: { with: { author: true } },
+									authors: {
+										with: { author: { with: { accounts: true } } },
+									},
 									characters: {
 										with: {
 											character: { with: { ips: { with: { ip: true } } } },
@@ -1524,6 +1491,80 @@ export const BackupService = {
 		}
 
 		if (targetMode === "lancedb") {
+			const { services } = await import("~/application/registry");
+			const config = services.getConfigService().getConfig();
+			const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
+			const cacheDir = path.resolve(
+				process.cwd(),
+				baseCacheDir,
+				`source-${mediaSourceId}`,
+			);
+
+			const includeImages = options?.includeImages ?? true;
+			const archiverMod = await importArchiverModule();
+			const { PassThrough } = await import("node:stream");
+
+			let cacheValid = false;
+			try {
+				await fs.access(path.join(cacheDir, "manifest.json"));
+				cacheValid = true;
+			} catch {
+				// cache or manifest does not exist
+			}
+
+			if (cacheValid) {
+				try {
+					const driver = getDriver(mediaSource);
+					const { readMediaFilePaths } = await import(
+						"~/application/services/lancedb-dump-service"
+					);
+					const mediaFilePaths = includeImages
+						? await readMediaFilePaths(cacheDir)
+						: [];
+					const passThrough = new PassThrough();
+					const archive = new archiverMod.TarArchive();
+					archive.pipe(passThrough);
+
+					(async () => {
+						try {
+							archive.directory(cacheDir, false);
+
+							if (includeImages) {
+								await Promise.all(
+									mediaFilePaths.map(async (item) => {
+										if (!item.filePath) return;
+										try {
+											const buffer = await driver.get(item.filePath);
+											archive.append(buffer, {
+												name: `images/${item.filePath}`,
+											});
+										} catch {
+											// ignore missing files
+										}
+									}),
+								);
+							}
+
+							await archive.finalize();
+						} catch (err) {
+							logger.error(
+								{ err },
+								"Error generating LanceDB TAR dump from cache",
+							);
+							archive.abort();
+						}
+					})();
+
+					return nodeStreamToWebReadable(passThrough);
+				} catch (err) {
+					logger.warn(
+						{ err },
+						"Failed to read LanceDB cache, falling back to DB rebuild",
+					);
+				}
+			}
+
+			// Fallback: rebuild from DB when cache is unavailable
 			const { writeToLanceDB, cleanupLanceDBDir } = await import(
 				"~/application/services/lancedb-dump-service"
 			);
@@ -1533,7 +1574,6 @@ export const BackupService = {
 				"lancedb-dump",
 				`source-${mediaSourceId}`,
 			);
-			const includeImages = options?.includeImages ?? true;
 			const dumpedItems: MediaDumpItem[] = [];
 			const limit = 1000;
 			let lastId: string | null = null;
@@ -1551,7 +1591,7 @@ export const BackupService = {
 						generationInfo: true,
 						urls: true,
 						tags: { with: { tag: true } },
-						authors: { with: { author: true } },
+						authors: { with: { author: { with: { accounts: true } } } },
 						characters: {
 							with: {
 								character: { with: { ips: { with: { ip: true } } } },
@@ -1574,8 +1614,6 @@ export const BackupService = {
 				tempDir: tempBaseDir,
 			});
 			const driver = getDriver(mediaSource);
-			const archiverMod = await importArchiverModule();
-			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
 			const archive = new archiverMod.TarArchive();
@@ -1633,10 +1671,21 @@ export const BackupService = {
 			}));
 
 			// Extract authors
-			const simpleAuthors = (media.authors || []).map((ma) => ({
-				name: ma.author?.name || "",
-				accountId: ma.author?.accountId ?? null,
-			}));
+			const simpleAuthors = (media.authors || []).map((ma) => {
+				const legacyAccount = ma.author?.accounts?.find(
+					(account) => account.accountId === ma.author?.accountId,
+				);
+				const account =
+					legacyAccount ??
+					(ma.author?.accounts?.length === 1
+						? ma.author.accounts[0]
+						: undefined);
+				return {
+					name: ma.author?.name || "",
+					accountId: account?.accountId ?? ma.author?.accountId ?? null,
+					platform: account?.platform,
+				};
+			});
 
 			// Extract characters
 			const simpleCharacters = (media.characters || []).map((mc) => ({

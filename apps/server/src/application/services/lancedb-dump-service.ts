@@ -1,6 +1,10 @@
-import { createLanceDbDumpService } from "@solid-imager/application/services/lancedb-dump-service";
+import {
+	createLanceDbDumpService,
+	LANCEDB_DUMP_VERSION,
+} from "@solid-imager/application/services/lancedb-dump-service";
 
 export type { MediaDumpItemWithImageData } from "@solid-imager/application/ports/lancedb-dump-service";
+export { LANCEDB_DUMP_VERSION };
 
 import { logger } from "~/infrastructure/logger";
 
@@ -20,4 +24,5 @@ export const syncLanceDBPages = service.syncLanceDBPages;
 export const syncLanceDBDelta = service.syncLanceDBDelta;
 export const readFromLanceDB = service.readFromLanceDB;
 export const readMediaIds = service.readMediaIds;
+export const readMediaFilePaths = service.readMediaFilePaths;
 export const cleanupLanceDBDir = service.cleanupLanceDBDir;

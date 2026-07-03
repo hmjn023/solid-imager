@@ -7,7 +7,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { createMemo, Index, Match, Show, Switch } from "solid-js";
+import { createMemo, For, Match, Show, Switch } from "solid-js";
 import { Button } from "./button";
 import { Card, CardContent } from "./card";
 import {
@@ -258,18 +258,17 @@ function GroupBuilder(props: {
 				</div>
 
 				<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
-					<Index each={props.group.children}>
-						{(child, index) => {
-							const c = child();
-							return c.type === "group" ? (
+					<For each={props.group.children}>
+						{(child, index) =>
+							child.type === "group" ? (
 								<GroupBuilder
 									authors={props.authors}
 									characters={props.characters}
 									depth={props.depth + 1}
-									group={c}
+									group={child}
 									ips={props.ips}
-									onChange={(value) => updateChild(index, value)}
-									onRemove={() => removeChild(index)}
+									onChange={(value) => updateChild(index(), value)}
+									onRemove={() => removeChild(index())}
 									projects={props.projects}
 									tags={props.tags}
 								/>
@@ -277,16 +276,16 @@ function GroupBuilder(props: {
 								<CriterionBuilder
 									authors={props.authors}
 									characters={props.characters}
-									criterion={c}
+									criterion={child}
 									ips={props.ips}
-									onChange={(value) => updateChild(index, value)}
-									onRemove={() => removeChild(index)}
+									onChange={(value) => updateChild(index(), value)}
+									onRemove={() => removeChild(index())}
 									projects={props.projects}
 									tags={props.tags}
 								/>
-							);
-						}}
-					</Index>
+							)
+						}
+					</For>
 					<Show when={props.group.children.length === 0}>
 						<div class="p-2 text-muted-foreground text-sm italic">
 							条件がありません。「+ 条件」ボタンで追加してください。
@@ -309,25 +308,7 @@ function CriterionBuilder(props: {
 	authors?: Author[];
 }) {
 	const getAuthorLabel = (author: Author) =>
-		author.accountId
-			? `${author.name}：(twitter)${author.accountId}`
-			: author.name;
-
-	const [filterText, setFilterText] = createDebouncedSignal("", 150);
-
-	const filteredItems = createMemo(() => {
-		const items = autocompleteItems();
-		if (!items) return [];
-		const query = filterText().toLowerCase();
-		if (!query) return items.slice(0, 100);
-		return items
-			.filter((item) => {
-				if (!item) return false;
-				const label = "accountId" in item ? getAuthorLabel(item) : item.name;
-				return label.toLowerCase().includes(query);
-			})
-			.slice(0, 100);
-	});
+		author.accountId ? `${author.name}：${author.accountId}` : author.name;
 
 	const autocompleteItems = createMemo<RelationOption[] | undefined>(() => {
 		switch (props.criterion.target) {
@@ -344,6 +325,20 @@ function CriterionBuilder(props: {
 			default:
 				return undefined;
 		}
+	});
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+	const filteredItems = createMemo(() => {
+		const items = autocompleteItems();
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => {
+				if (!item) return false;
+				const label = "accountId" in item ? getAuthorLabel(item) : item.name;
+				return label.toLowerCase().includes(query);
+			})
+			.slice(0, 100);
 	});
 
 	const isNumericTarget = createMemo(() =>
@@ -495,7 +490,7 @@ function CriterionBuilder(props: {
 									: item.name
 								: ""
 						}
-						optionValue={(item) => item.name}
+						optionValue={(item) => item.id}
 						placeholder="検索..."
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(

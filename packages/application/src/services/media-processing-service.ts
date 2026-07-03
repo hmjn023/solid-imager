@@ -345,9 +345,8 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		if (authors.length === 0) {
 			return;
 		}
-		const names = authors.map((a) => a.name);
 		try {
-			const allAuthors = await this.authorRepo.findOrCreateBulk(names, tx);
+			const allAuthors = await this.authorRepo.findOrCreateBulk(authors, tx);
 			const authorIds = allAuthors.map((a) => a.id);
 			await this.authorRepo.addMediaBulk(mediaId, authorIds, tx);
 		} catch (e) {

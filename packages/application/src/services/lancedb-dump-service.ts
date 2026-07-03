@@ -14,7 +14,28 @@ import type {
 
 const ROW_CHUNK_SIZE = 5000;
 const READ_CHUNK_SIZE = 5000;
-const LANCEDB_DUMP_VERSION = 3;
+export const LANCEDB_DUMP_VERSION = 4;
+
+async function updateLanceDbManifestVersion(lanceDbDir: string): Promise<void> {
+	const manifestPath = path.join(lanceDbDir, "manifest.json");
+	let manifest: unknown;
+	try {
+		manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+	} catch {
+		return;
+	}
+	if (
+		typeof manifest !== "object" ||
+		manifest === null ||
+		Array.isArray(manifest)
+	) {
+		return;
+	}
+	await fs.writeFile(
+		manifestPath,
+		JSON.stringify({ ...manifest, version: LANCEDB_DUMP_VERSION }, null, 2),
+	);
+}
 
 type JsonValue =
 	| string
@@ -126,6 +147,7 @@ async function createSchemas(): Promise<Record<TableName, Schema>> {
 			["mediaId", utf8()],
 			["name", utf8()],
 			["accountId", utf8()],
+			["platform", utf8()],
 		]),
 		media_characters: await createSchema([
 			["key", utf8(), false],
@@ -222,10 +244,11 @@ function itemsToRows(items: MediaDumpItem[]): TableRows {
 			});
 		for (const author of item.authors ?? [])
 			rows.authors.push({
-				key: rowKey(mediaId, author.name, author.accountId),
+				key: rowKey(mediaId, author.name, author.platform, author.accountId),
 				mediaId,
 				name: author.name,
 				accountId: author.accountId ?? null,
+				platform: author.platform ?? null,
 			});
 		for (const character of item.characters ?? []) {
 			rows.characters.push({
@@ -377,6 +400,18 @@ async function openTables(db: Connection): Promise<LanceTables> {
 		media_urls: await db.openTable("media_urls"),
 		media_generation_info: await db.openTable("media_generation_info"),
 	};
+}
+
+async function migrateLanceDbSchema(tables: LanceTables): Promise<void> {
+	const authorSchema = await tables.media_authors.schema();
+	if (!authorSchema.fields.some((field) => field.name === "platform")) {
+		await tables.media_authors.addColumns([
+			{
+				name: "platform",
+				valueSql: "CAST(NULL AS STRING)",
+			},
+		]);
+	}
 }
 
 function sqlInList(values: string[]): string {
@@ -548,6 +583,12 @@ function rowsToItems(
 			authors: (authors.get(id) ?? []).map((row) => ({
 				name: safeString(row.name) ?? "",
 				accountId: safeString(row.accountId),
+				platform:
+					row.platform === "twitter" ||
+					row.platform === "pixiv-fanbox" ||
+					row.platform === "danbooru"
+						? row.platform
+						: undefined,
 			})),
 			characters: (characters.get(id) ?? []).map((row) => {
 				const name = safeString(row.name) ?? "";
@@ -772,8 +813,10 @@ export function createLanceDbDumpService(deps?: {
 		const connect = await getConnect();
 		const db = await connect(lanceDbDir);
 		const tables = await openTables(db);
+		await migrateLanceDbSchema(tables);
 		await deleteMediaRows(tables, targetIds);
 		await addRowsToTables(tables, itemsToRows(itemsToUpsert));
+		await updateLanceDbManifestVersion(lanceDbDir);
 
 		if (options.optimize) {
 			await Promise.all(
@@ -856,6 +899,19 @@ export function createLanceDbDumpService(deps?: {
 		});
 	}
 
+	async function readMediaFilePaths(
+		lanceDbDir: string,
+	): Promise<{ id: string; filePath: string | undefined }[]> {
+		const connect = await getConnect();
+		const db = await connect(lanceDbDir);
+		const mediaTable = await db.openTable("media");
+		const rows = await mediaTable.query().select(["id", "filePath"]).toArray();
+		return rows.flatMap((row) => {
+			const id = safeString(row.id);
+			return id ? [{ id, filePath: safeString(row.filePath) }] : [];
+		});
+	}
+
 	async function cleanupLanceDBDir(dir: string): Promise<void> {
 		await fs.rm(dir, { recursive: true, force: true });
 	}
@@ -867,6 +923,7 @@ export function createLanceDbDumpService(deps?: {
 		syncLanceDBDelta,
 		readFromLanceDB,
 		readMediaIds,
+		readMediaFilePaths,
 		cleanupLanceDBDir,
 	};
 }

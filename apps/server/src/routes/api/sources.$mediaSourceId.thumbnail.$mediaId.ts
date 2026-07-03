@@ -14,7 +14,14 @@ export const Route = createFileRoute(
 				const file = Bun.file(thumbnailPath);
 
 				if (!(await file.exists())) {
-					return new Response("Thumbnail not found", { status: 404 });
+					// A missing thumbnail is an expected transient state while the
+					// background job is running. The image component treats an empty
+					// response as a load error and retries, without flooding the
+					// browser console with expected 404 responses.
+					return new Response(null, {
+						status: 204,
+						headers: { "Cache-Control": "no-store" },
+					});
 				}
 
 				return new Response(file, {

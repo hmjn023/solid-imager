@@ -61,5 +61,33 @@ export const activateVectorSearch = (mediaId: string) => {
 	}
 };
 
+export const clearVectorSearchAnchor = () => {
+	setSearchState({
+		similarityAnchorMediaId: null,
+		offset: 0,
+		scrollY: 0,
+	});
+	if (typeof sessionStorage !== "undefined") {
+		const stored = sessionStorage.getItem("current-all");
+		if (!stored) return;
+		try {
+			const current: unknown = JSON.parse(stored);
+			if (typeof current !== "object" || current === null) {
+				sessionStorage.removeItem("current-all");
+				return;
+			}
+			sessionStorage.setItem(
+				"current-all",
+				JSON.stringify({
+					...current,
+					similarityAnchorMediaId: null,
+				}),
+			);
+		} catch {
+			sessionStorage.removeItem("current-all");
+		}
+	}
+};
+
 export const getSearchCondition = () =>
 	getSearchConditionFromState(searchState);

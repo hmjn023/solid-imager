@@ -59,5 +59,8 @@ export interface ILanceDbDumpService {
 		options?: ReadOptions,
 	): Promise<MediaDumpItemWithImageData[]>;
 	readMediaIds(lanceDbDir: string): Promise<string[]>;
+	readMediaFilePaths(
+		lanceDbDir: string,
+	): Promise<{ id: string; filePath: string | undefined }[]>;
 	cleanupLanceDBDir(dir: string): Promise<void>;
 }

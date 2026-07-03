@@ -30,7 +30,7 @@ import {
 	parseSelectValue,
 } from "@solid-imager/ui/utils";
 import { cn } from "@solid-imager/ui/utils/cn";
-import { createMemo, Index, Match, Show, Switch } from "solid-js";
+import { createMemo, For, Match, Show, Switch } from "solid-js";
 
 // Labels for targets
 const TARGET_LABELS: Record<string, string> = {
@@ -263,37 +263,37 @@ function GroupBuilder(props: {
 				</div>
 
 				<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
-					<Index each={props.group.children}>
+					<For each={props.group.children}>
 						{(child, index) => (
 							<Show
 								fallback={
 									<CriterionBuilder
 										authors={props.authors}
 										characters={props.characters}
-										criterion={child() as SearchCriterion}
+										criterion={child as SearchCriterion}
 										ips={props.ips}
-										onChange={(c) => updateChild(index, c)}
-										onRemove={() => removeChild(index)}
+										onChange={(c) => updateChild(index(), c)}
+										onRemove={() => removeChild(index())}
 										projects={props.projects}
 										tags={props.tags}
 									/>
 								}
-								when={isSearchGroup(child())}
+								when={isSearchGroup(child)}
 							>
 								<GroupBuilder
 									authors={props.authors}
 									characters={props.characters}
 									depth={props.depth + 1}
-									group={child() as SearchGroup}
+									group={child as SearchGroup}
 									ips={props.ips}
-									onChange={(g) => updateChild(index, g)}
-									onRemove={() => removeChild(index)}
+									onChange={(g) => updateChild(index(), g)}
+									onRemove={() => removeChild(index())}
 									projects={props.projects}
 									tags={props.tags}
 								/>
 							</Show>
 						)}
-					</Index>
+					</For>
 					{props.group.children.length === 0 && (
 						<div class="p-2 text-muted-foreground text-sm italic">
 							条件がありません。「+ 条件」ボタンで追加してください。
@@ -329,28 +329,7 @@ function CriterionBuilder(props: {
 	tags?: TagResponse[];
 }) {
 	const getAuthorLabel = (author: Author) =>
-		author.accountId
-			? `${author.name}: (twitter)${author.accountId}`
-			: author.name;
-
-	const [filterText, setFilterText] = createDebouncedSignal("", 150);
-
-	const filteredItems = createMemo(() => {
-		const items = autocompleteItems();
-		if (!items) return [];
-		const query = filterText().toLowerCase();
-		if (!query) return items.slice(0, 100);
-		return items
-			.filter((item) => {
-				if (!item) return false;
-				const label =
-					props.criterion.target === "author"
-						? getAuthorLabel(item as Author)
-						: (item as { name: string }).name;
-				return label.toLowerCase().includes(query);
-			})
-			.slice(0, 100);
-	});
+		author.accountId ? `${author.name}: ${author.accountId}` : author.name;
 
 	// Helper to determine available items for autocomplete
 	const autocompleteItems = createMemo(() => {
@@ -368,6 +347,23 @@ function CriterionBuilder(props: {
 			default:
 				return;
 		}
+	});
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+	const filteredItems = createMemo(() => {
+		const items = autocompleteItems();
+		if (!items) return [];
+		const query = filterText().toLowerCase();
+		if (!query) return items.slice(0, 100);
+		return items
+			.filter((item) => {
+				if (!item) return false;
+				const label =
+					props.criterion.target === "author"
+						? getAuthorLabel(item as Author)
+						: (item as { name: string }).name;
+				return label.toLowerCase().includes(query);
+			})
+			.slice(0, 100);
 	});
 
 	const getValidOperators = (target: string) => {
@@ -500,7 +496,7 @@ function CriterionBuilder(props: {
 									: (item as { name: string }).name
 								: ""
 						}
-						optionValue={(item: { name: string }) => item.name}
+						optionValue={(item) => item.id}
 						placeholder="検索..."
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(
