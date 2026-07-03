@@ -51,6 +51,10 @@ function authorIdentityKey(
 	return `${platform}:${identity}`;
 }
 
+function normalizeLegacyAccountId(accountId: string): string {
+	return accountId.replace(/^@/, "").toLowerCase();
+}
+
 function authorInputKey(author: NewAuthor): string {
 	return author.platform && author.accountId
 		? authorIdentityKey(author.platform, author.accountId)
@@ -111,7 +115,10 @@ async function findOrCreateAuthorsBulk(
 	const names = [...new Set(unresolved.map(([, input]) => input.name))];
 	const legacyConditions: SQL[] = [];
 	if (accountIds.length > 0) {
-		legacyConditions.push(inArray(authors.accountId, accountIds));
+		const allVariants = [
+			...new Set(accountIds.flatMap((id) => [id, `@${id}`])),
+		];
+		legacyConditions.push(inArray(authors.accountId, allVariants));
 	}
 	if (names.length > 0) {
 		legacyConditions.push(inArray(authors.name, names));
@@ -125,9 +132,17 @@ async function findOrCreateAuthorsBulk(
 					.where(or(...legacyConditions))
 			: [];
 	const legacyByAccount = new Map(
-		legacyAuthors.flatMap((author) =>
-			author.accountId ? [[author.accountId, author] as const] : [],
-		),
+		legacyAuthors.flatMap((author) => {
+			if (!author.accountId) return [];
+			const normalized = normalizeLegacyAccountId(author.accountId);
+			const entries: [string, typeof authors.$inferSelect][] = [
+				[normalized, author],
+			];
+			if (normalized !== author.accountId) {
+				entries.push([author.accountId, author]);
+			}
+			return entries;
+		}),
 	);
 	const legacyByName = new Map(
 		legacyAuthors.map((author) => [author.name, author] as const),
@@ -259,7 +274,7 @@ async function findOrCreateAuthorsBulk(
 	if (desiredNames.size > 0) {
 		const ids = [...desiredNames.keys()];
 		const cases = ids.map(
-			(id) => sql`WHEN ${id}::uuid THEN ${desiredNames.get(id)}`,
+			(id) => sql`WHEN ${authors.id} = ${id}::uuid THEN ${desiredNames.get(id)}`,
 		);
 		await client
 			.update(authors)
