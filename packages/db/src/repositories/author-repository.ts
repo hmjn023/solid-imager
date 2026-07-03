@@ -5,7 +5,7 @@ import type {
 	NewAuthor,
 } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import { and, eq, inArray, or, type SQL } from "drizzle-orm";
+import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
 import { authorAccounts, authors, mediaAuthors } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -23,9 +23,37 @@ function mapAuthor(row: typeof authors.$inferSelect): Author {
 	};
 }
 
+function normalizeAccountId(
+	platform: NonNullable<NewAuthor["platform"]>,
+	accountId: string,
+): string {
+	if (platform !== "twitter") return accountId;
+	return accountId.toLowerCase();
+}
+
+function normalizeAuthorInput(author: NewAuthor): NewAuthor {
+	if (!(author.platform && author.accountId)) return author;
+	return {
+		...author,
+		accountId: normalizeAccountId(author.platform, author.accountId),
+	};
+}
+
+function authorIdentityKey(
+	platform: NonNullable<NewAuthor["platform"]>,
+	accountId: string,
+): string {
+	const normalizedAccountId = normalizeAccountId(platform, accountId);
+	const identity =
+		platform === "twitter"
+			? normalizedAccountId.replace(/^@/, "")
+			: normalizedAccountId;
+	return `${platform}:${identity}`;
+}
+
 function authorInputKey(author: NewAuthor): string {
 	return author.platform && author.accountId
-		? `${author.platform}:${author.accountId}`
+		? authorIdentityKey(author.platform, author.accountId)
 		: `name:${author.name}`;
 }
 
@@ -34,7 +62,8 @@ async function findOrCreateAuthorsBulk(
 	inputs: NewAuthor[],
 ): Promise<Author[]> {
 	const uniqueInputs = new Map<string, NewAuthor>();
-	for (const input of inputs) {
+	for (const rawInput of inputs) {
+		const input = normalizeAuthorInput(rawInput);
 		if (input.name.length > 0) {
 			uniqueInputs.set(authorInputKey(input), input);
 		}
@@ -46,7 +75,9 @@ async function findOrCreateAuthorsBulk(
 		if (input.platform && input.accountId) {
 			const condition = and(
 				eq(authorAccounts.platform, input.platform),
-				eq(authorAccounts.accountId, input.accountId),
+				input.platform === "twitter"
+					? sql`lower(regexp_replace(${authorAccounts.accountId}, '^@', '')) = ${input.accountId.replace(/^@/, "")}`
+					: eq(authorAccounts.accountId, input.accountId),
 			);
 			if (condition) identityConditions.push(condition);
 		}
@@ -61,7 +92,7 @@ async function findOrCreateAuthorsBulk(
 			.where(or(...identityConditions));
 		for (const row of existingIdentities) {
 			resolved.set(
-				`${row.account.platform}:${row.account.accountId}`,
+				authorIdentityKey(row.account.platform, row.account.accountId),
 				row.author,
 			);
 		}
@@ -163,6 +194,34 @@ async function findOrCreateAuthorsBulk(
 			.insert(authorAccounts)
 			.values(accountsToInsert)
 			.onConflictDoNothing();
+	}
+
+	const desiredNames = new Map<string, string>();
+	for (const [key, input] of uniqueInputs) {
+		const author = resolved.get(key);
+		if (
+			author &&
+			input.platform &&
+			input.accountId &&
+			author.name !== input.name
+		) {
+			desiredNames.set(author.id, input.name);
+		}
+	}
+
+	const refreshedAuthors = new Map<string, typeof authors.$inferSelect>();
+	for (const [authorId, name] of desiredNames) {
+		const [updated] = await client
+			.update(authors)
+			.set({ name, updatedAt: new Date() })
+			.where(eq(authors.id, authorId))
+			.returning();
+		if (updated) refreshedAuthors.set(authorId, updated);
+	}
+
+	for (const [key, author] of resolved) {
+		const refreshed = refreshedAuthors.get(author.id);
+		if (refreshed) resolved.set(key, refreshed);
 	}
 
 	return [...uniqueInputs.keys()].flatMap((key) => {

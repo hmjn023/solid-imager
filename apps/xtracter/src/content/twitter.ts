@@ -3,7 +3,32 @@ import { querySelectorAllTyped, querySelectorTyped } from "../utils/dom-utils";
 
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
 const PROCESSED_VIDEO_CLASS = "xtracter-video-processed";
-const AUTHOR_ID_REGEX = /@\w+/;
+const TWITTER_HANDLE_REGEX = /^[A-Za-z0-9_]{1,15}$/;
+
+export function extractTwitterAuthorIdFromStatusUrl(urlValue: string): string {
+	try {
+		const url = new URL(urlValue);
+		const isTwitterHost =
+			url.hostname === "x.com" ||
+			url.hostname === "www.x.com" ||
+			url.hostname === "twitter.com" ||
+			url.hostname === "www.twitter.com";
+		if (!isTwitterHost) {
+			return "";
+		}
+		const pathParts = url.pathname.split("/").filter(Boolean);
+		if (
+			pathParts.length < 3 ||
+			pathParts[1] !== "status" ||
+			!TWITTER_HANDLE_REGEX.test(pathParts[0] ?? "")
+		) {
+			return "";
+		}
+		return `@${pathParts[0]}`;
+	} catch {
+		return "";
+	}
+}
 
 export function processTwitterMedia(
 	processedMetadata: Map<string, TweetMetadata>,
@@ -125,7 +150,6 @@ function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
 	const url = new URL(window.location.href);
 	const pathParts = url.pathname.split("/").filter((p) => p);
 
-	let authorId = "";
 	let tweetUrl = window.location.href;
 
 	const MIN_PATH_PARTS_FOR_STATUS = 3;
@@ -136,11 +160,13 @@ function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
 		pathParts.length >= MIN_PATH_PARTS_FOR_STATUS &&
 		pathParts[STATUS_PART_INDEX] === "status"
 	) {
-		authorId = `@${pathParts[0]}`;
 		tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[TWEET_ID_PART_INDEX]}`;
 	}
 
-	return { authorId, tweetUrl };
+	return {
+		authorId: extractTwitterAuthorIdFromStatusUrl(tweetUrl),
+		tweetUrl,
+	};
 }
 
 function extractMetadata(
@@ -211,7 +237,7 @@ function determineTargetUrl(
 		const url = new URL(element.src);
 		url.searchParams.set("name", "orig");
 		return url.toString();
-	} catch (_e) {
+	} catch {
 		if (element instanceof HTMLImageElement) {
 			return element.src;
 		}
@@ -238,23 +264,7 @@ function extractFromArticle(article: HTMLElement) {
 	const userNameNode = article.querySelector('div[data-testid="User-Name"]');
 	const authorName = userNameNode?.querySelector("span")?.innerText || "";
 
-	let authorId = "";
-	const userAnchor = userNameNode?.querySelector("a");
-	if (userAnchor) {
-		try {
-			const url = new URL(userAnchor.href);
-			const pathParts = url.pathname.split("/").filter((p) => p);
-			if (pathParts.length > 0) {
-				authorId = `@${pathParts[0]}`;
-			}
-		} catch (_e) {
-			// Ignored
-		}
-	}
-
-	if (!authorId) {
-		authorId = userNameNode?.textContent?.match(AUTHOR_ID_REGEX)?.[0] || "";
-	}
+	const authorId = extractTwitterAuthorIdFromStatusUrl(tweetUrl);
 
 	return { tweetText, timestamp, tweetUrl, authorName, authorId };
 }
