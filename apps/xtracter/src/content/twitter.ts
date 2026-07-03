@@ -147,25 +147,9 @@ function findTweetArticle(element: HTMLElement): HTMLElement | null {
 }
 
 function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
-	const url = new URL(window.location.href);
-	const pathParts = url.pathname.split("/").filter((p) => p);
-
-	let tweetUrl = window.location.href;
-
-	const MIN_PATH_PARTS_FOR_STATUS = 3;
-	const STATUS_PART_INDEX = 1;
-	const TWEET_ID_PART_INDEX = 2;
-
-	if (
-		pathParts.length >= MIN_PATH_PARTS_FOR_STATUS &&
-		pathParts[STATUS_PART_INDEX] === "status"
-	) {
-		tweetUrl = `${url.origin}/${pathParts[0]}/status/${pathParts[TWEET_ID_PART_INDEX]}`;
-	}
-
 	return {
-		authorId: extractTwitterAuthorIdFromStatusUrl(tweetUrl),
-		tweetUrl,
+		authorId: extractTwitterAuthorIdFromStatusUrl(window.location.href),
+		tweetUrl: window.location.href,
 	};
 }
 

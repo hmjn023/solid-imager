@@ -28,7 +28,7 @@ function normalizeAccountId(
 	accountId: string,
 ): string {
 	if (platform !== "twitter") return accountId;
-	return accountId.toLowerCase();
+	return accountId.replace(/^@/, "").toLowerCase();
 }
 
 function normalizeAuthorInput(author: NewAuthor): NewAuthor {
@@ -64,7 +64,7 @@ async function findOrCreateAuthorsBulk(
 	const uniqueInputs = new Map<string, NewAuthor>();
 	for (const rawInput of inputs) {
 		const input = normalizeAuthorInput(rawInput);
-		if (input.name.length > 0) {
+		if (input.name.trim().length > 0) {
 			uniqueInputs.set(authorInputKey(input), input);
 		}
 	}
@@ -147,6 +147,7 @@ async function findOrCreateAuthorsBulk(
 
 	const accountsToInsert: (typeof authorAccounts.$inferInsert)[] = [];
 	const authorsToInsert: (typeof authors.$inferInsert)[] = [];
+	const newlyCreatedAuthorByKey = new Map<string, string>();
 	for (const [key, input] of unresolved) {
 		const legacyByMatchingAccount = input.accountId
 			? legacyByAccount.get(input.accountId)
@@ -174,6 +175,7 @@ async function findOrCreateAuthorsBulk(
 				name: author.name,
 				accountId: author.accountId,
 			});
+			newlyCreatedAuthorByKey.set(key, author.id);
 		}
 		resolved.set(key, author);
 
@@ -190,10 +192,54 @@ async function findOrCreateAuthorsBulk(
 		await client.insert(authors).values(authorsToInsert);
 	}
 	if (accountsToInsert.length > 0) {
-		await client
+		const insertedAccounts = await client
 			.insert(authorAccounts)
 			.values(accountsToInsert)
-			.onConflictDoNothing();
+			.onConflictDoNothing()
+			.returning();
+		const insertedKeys = new Set(
+			insertedAccounts.map(
+				(account) => authorIdentityKey(account.platform, account.accountId),
+			),
+		);
+		const attemptedKeys = new Set(
+			accountsToInsert.map(
+				(account) => authorIdentityKey(account.platform, account.accountId),
+			),
+		);
+		const conflicted = [...uniqueInputs.entries()].filter(
+			([key, input]) =>
+				input.platform &&
+				input.accountId &&
+				attemptedKeys.has(key) &&
+				!insertedKeys.has(key),
+		);
+		if (conflicted.length > 0) {
+			const conditions = conflicted.flatMap(([, input]) => {
+				if (!(input.platform && input.accountId)) return [];
+				const condition = and(
+					eq(authorAccounts.platform, input.platform),
+					eq(authorAccounts.accountId, input.accountId),
+				);
+				return condition ? [condition] : [];
+			});
+			const canonicalAccounts = await client
+				.select({ account: authorAccounts, author: authors })
+				.from(authorAccounts)
+				.innerJoin(authors, eq(authorAccounts.authorId, authors.id))
+				.where(or(...conditions));
+			for (const row of canonicalAccounts) {
+				const key = authorIdentityKey(row.account.platform, row.account.accountId);
+				resolved.set(key, row.author);
+			}
+			const orphanIds = conflicted.flatMap(([key]) => {
+				const id = newlyCreatedAuthorByKey.get(key);
+				return id ? [id] : [];
+			});
+			if (orphanIds.length > 0) {
+				await client.delete(authors).where(inArray(authors.id, orphanIds));
+			}
+		}
 	}
 
 	const desiredNames = new Map<string, string>();
@@ -210,13 +256,26 @@ async function findOrCreateAuthorsBulk(
 	}
 
 	const refreshedAuthors = new Map<string, typeof authors.$inferSelect>();
-	for (const [authorId, name] of desiredNames) {
-		const [updated] = await client
+	if (desiredNames.size > 0) {
+		const ids = [...desiredNames.keys()];
+		const cases = ids.map(
+			(id) => sql`WHEN ${id}::uuid THEN ${desiredNames.get(id)}`,
+		);
+		await client
 			.update(authors)
-			.set({ name, updatedAt: new Date() })
-			.where(eq(authors.id, authorId))
-			.returning();
-		if (updated) refreshedAuthors.set(authorId, updated);
+			.set({
+				name: sql`CASE ${sql.join(cases, sql` `)} END`,
+				updatedAt: new Date(),
+			})
+			.where(inArray(authors.id, ids));
+
+		const updatedRows = await client
+			.select()
+			.from(authors)
+			.where(inArray(authors.id, ids));
+		for (const row of updatedRows) {
+			refreshedAuthors.set(row.id, row);
+		}
 	}
 
 	for (const [key, author] of resolved) {
