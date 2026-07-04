@@ -31,7 +31,12 @@ export class CcipVectorService {
 		mediaId: string,
 		force = false,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
-		const result = await this.prepareExtraction(mediaSourceId, mediaId, force);
+		const existing = force ? null : await this.deps.vectorStore.get(mediaId);
+		const result = await this.prepareExtraction(
+			mediaSourceId,
+			mediaId,
+			existing,
+		);
 		if (!result.skipped) {
 			await this.deps.vectorStore.upsert(result.record);
 		}
@@ -49,10 +54,17 @@ export class CcipVectorService {
 			skipped: boolean;
 		}>[]
 	> {
+		const existingById = force
+			? new Map<string, CcipVectorRecord>()
+			: await this.deps.vectorStore.getMany(mediaIds);
 		const results = await Promise.allSettled(
 			mediaIds.map(async (mediaId) => ({
 				mediaId,
-				...(await this.prepareExtraction(mediaSourceId, mediaId, force)),
+				...(await this.prepareExtraction(
+					mediaSourceId,
+					mediaId,
+					existingById.get(mediaId) ?? null,
+				)),
 			})),
 		);
 		const records = results.flatMap((result) =>
@@ -67,11 +79,10 @@ export class CcipVectorService {
 	private async prepareExtraction(
 		mediaSourceId: string,
 		mediaId: string,
-		force: boolean,
+		existing: CcipVectorRecord | null,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
 		const media = await this.requireImage(mediaSourceId, mediaId);
-		const existing = await this.deps.vectorStore.get(mediaId);
-		if (!force && existing && this.isCurrent(existing, media, mediaSourceId)) {
+		if (existing && this.isCurrent(existing, media, mediaSourceId)) {
 			return { record: existing, skipped: true };
 		}
 
