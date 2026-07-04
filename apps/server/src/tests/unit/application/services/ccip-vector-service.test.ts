@@ -46,7 +46,7 @@ describe("CcipVectorService", () => {
 			id: "00000000-0000-4000-8000-000000000002",
 		};
 		const vectorStore = {
-			get: vi.fn().mockResolvedValue(null),
+			getMany: vi.fn().mockResolvedValue(new Map()),
 			upsertMany: vi.fn().mockResolvedValue(undefined),
 		};
 		const taggingService = {
@@ -78,6 +78,7 @@ describe("CcipVectorService", () => {
 		]);
 
 		expect(results.every((result) => result.status === "fulfilled")).toBe(true);
+		expect(vectorStore.getMany).toHaveBeenCalledOnce();
 		expect(vectorStore.upsertMany).toHaveBeenCalledOnce();
 		expect(vectorStore.upsertMany.mock.calls[0]?.[0]).toEqual([
 			expect.objectContaining({ mediaId: media.id }),
