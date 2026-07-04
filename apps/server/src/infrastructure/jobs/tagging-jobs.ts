@@ -1,5 +1,5 @@
-import { getErrorMessage } from "@solid-imager/core/utils";
-import { and, asc, eq, notExists } from "drizzle-orm";
+import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
+import { and, asc, eq, gt, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
@@ -26,6 +26,26 @@ const bulkTaggingDispatchPayloadSchema = z.object({
 	batchSize: z.number().optional(),
 	mediaSourceId: z.string().optional(),
 });
+
+async function finalizeBatchParent(
+	parentId: string,
+	progress: { processed: number; failed: number; total: number },
+): Promise<void> {
+	const jobRepo = services.getJobRepository();
+	if (progress.failed > 0) {
+		await jobRepo.update(parentId, { status: "failed" });
+		RealtimeEventBus.publishJob("job-failed", {
+			jobId: parentId,
+			error: `${progress.failed} child job(s) failed`,
+		});
+		return;
+	}
+	await jobRepo.update(parentId, { status: "completed" });
+	RealtimeEventBus.publishJob("job-completed", {
+		jobId: parentId,
+		message: "Batch tagging completed",
+	});
+}
 
 export async function processAutoTaggingJob(job: Job): Promise<void> {
 	const payload = autoTaggingPayloadSchema.parse(job.payload);
@@ -65,51 +85,36 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 
 		if (parentId) {
 			const jobRepo = services.getJobRepository();
-			const updated = await jobRepo.incrementProgress(parentId, job.id);
-			if (!updated) {
+			const progress = await jobRepo.incrementProgress(parentId, job.id);
+			if (!progress || progress.total === 0) {
 				return;
 			}
-			const parentJob = await jobRepo.findById(parentId);
 
-			if (parentJob) {
-				const parentPayloadSchema = z.object({
-					total: z.number(),
-					processed: z.number(),
-					processedJobIds: z.array(z.string().uuid()).optional(),
-				});
-				try {
-					const parentPayload = parentPayloadSchema.parse(parentJob.payload);
+			RealtimeEventBus.publishJob("job-progress", {
+				jobId: parentId,
+				processed: progress.processed,
+				total: progress.total,
+			});
 
-					// Publish typed job progress.
-					RealtimeEventBus.publishJob("job-progress", {
-						jobId: parentId,
-						processed: parentPayload.processed,
-						total: parentPayload.total,
-					});
-
-					if (parentPayload.processed >= parentPayload.total) {
-						await jobRepo.update(parentId, { status: "completed" });
-						RealtimeEventBus.publishJob("job-completed", {
-							jobId: parentId,
-						});
-					}
-				} catch (e) {
-					logger.error(
-						{ parentId, payload: parentJob.payload, error: e },
-						"Invalid parent job payload",
-					);
-					return;
-				}
+			if (progress.processed + progress.failed >= progress.total) {
+				await finalizeBatchParent(parentId, progress);
 			}
 		}
 	} catch (error) {
 		logger.error({ err: error, mediaId }, "Auto tagging failed");
 		if (parentId) {
-			await services.getJobRepository().update(parentId, { status: "failed" });
-			RealtimeEventBus.publishJob("job-failed", {
-				jobId: parentId,
-				error: getErrorMessage(error),
-			});
+			const jobRepo = services.getJobRepository();
+			const progress = await jobRepo.incrementFailedCount(parentId, job.id);
+			if (progress && progress.total > 0) {
+				RealtimeEventBus.publishJob("job-progress", {
+					jobId: parentId,
+					processed: progress.processed,
+					total: progress.total,
+				});
+				if (progress.processed + progress.failed >= progress.total) {
+					await finalizeBatchParent(parentId, progress);
+				}
+			}
 		}
 		throw error;
 	}
@@ -121,8 +126,13 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 	const batchSize = payload?.batchSize ?? 1000;
 	const mediaSourceId = payload?.mediaSourceId;
 
+	if (!job.parentId) {
+		throw new Error("bulk_tagging_dispatch requires parentId");
+	}
+	const parentId = job.parentId;
+
 	logger.info(
-		{ jobId: job.id, mediaSourceId, force, batchSize },
+		{ jobId: job.id, parentId, mediaSourceId, force, batchSize },
 		"Starting bulk tagging dispatch job",
 	);
 
@@ -167,8 +177,21 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 				),
 	);
 
-	let offset = 0;
-	let processedCount = 0;
+	const existingChild = db
+		.select({ id: jobs.id })
+		.from(jobs)
+		.where(
+			and(
+				eq(jobs.parentId, parentId),
+				eq(jobs.type, "auto_tagging"),
+				sql`(${jobs.payload}->>'mediaId')::uuid = ${medias.id}`,
+			),
+		);
+	const whereWithDedupe = and(whereClause, notExists(existingChild));
+
+	let lastSeenId: string | null = null;
+	let dispatchedCount = 0;
+	const CHILD_INSERT_CHUNK = 500;
 
 	while (true) {
 		const results = await db
@@ -177,50 +200,75 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 				mediaSourceId: medias.mediaSourceId,
 			})
 			.from(medias)
-			.where(whereClause)
+			.where(
+				and(
+					whereWithDedupe,
+					lastSeenId ? gt(medias.id, lastSeenId) : undefined,
+				),
+			)
 			.orderBy(asc(medias.id))
-			.limit(batchSize)
-			.offset(offset);
+			.limit(batchSize);
 
 		if (results.length === 0) {
-			if (processedCount === 0) {
+			if (dispatchedCount === 0) {
 				logger.info(
-					{ jobId: job.id, mediaSourceId, force },
+					{ jobId: job.id, parentId, mediaSourceId, force },
 					"No matching images found for bulk tagging",
 				);
 			}
 			break;
 		}
 
-		// Create jobs (bulk insert with batch chunking)
 		const jobRows: NewJob[] = results.map((row) => ({
 			type: "auto_tagging",
 			mediaSourceId: row.mediaSourceId,
+			parentId,
 			payload: {
 				mediaId: row.id,
-				mediaSourceId: row.mediaSourceId,
 				force,
 			},
 		}));
-		if (jobRows.length === 0) continue;
-		const BATCH_SIZE = 500;
-		for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
-			const chunk = jobRows.slice(i, i + BATCH_SIZE);
+		for (let i = 0; i < jobRows.length; i += CHILD_INSERT_CHUNK) {
+			const chunk = jobRows.slice(i, i + CHILD_INSERT_CHUNK);
 			await db.insert(jobs).values(chunk);
 		}
 
-		processedCount += results.length;
-		offset += batchSize;
+		dispatchedCount += results.length;
+		lastSeenId = results[results.length - 1].id;
 
-		// Log progress
 		logger.info(
-			{ jobId: job.id, processedCount },
+			{
+				jobId: job.id,
+				parentId,
+				dispatchedCount,
+			},
 			"Bulk tagging dispatch progress",
 		);
 	}
 
+	const jobRepo = services.getJobRepository();
+	const parentJob = await jobRepo.findById(parentId);
+	const parentPayload = batchParentPayloadSchema.parse(parentJob?.payload ?? {});
+	await jobRepo.update(parentId, {
+		payload: { ...parentPayload, total: dispatchedCount },
+	});
+
+	if (dispatchedCount === 0) {
+		await jobRepo.update(parentId, { status: "completed" });
+		RealtimeEventBus.publishJob("job-completed", {
+			jobId: parentId,
+			message: "Batch tagging completed (no targets)",
+		});
+	} else {
+		RealtimeEventBus.publishJob("job-progress", {
+			jobId: parentId,
+			processed: 0,
+			total: dispatchedCount,
+		});
+	}
+
 	logger.info(
-		{ jobId: job.id, processedCount },
+		{ jobId: job.id, parentId, dispatchedCount },
 		"Bulk tagging dispatch completed",
 	);
 }

@@ -1,9 +1,9 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
-import { mediaSafeSchema } from "../media/schemas";
 import {
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
+	batchTargetCountResponseSchema,
 	ccipDifferenceRequestSchema,
 	ccipDistancesRequestSchema,
 	ccipDistancesResponseSchema,
@@ -11,6 +11,7 @@ import {
 	ccipFeatureRequestSchema,
 	ccipVectorStatusSchema,
 	detectAndCropResponseSchema,
+	startBatchTaggingResponseSchema,
 	startCcipExtractionResponseSchema,
 	taggingResponseSchema,
 	tagImageRequestSchema,
@@ -52,37 +53,19 @@ export const aiContract = {
 
 	scanBatchCcipTargets: oc
 		.input(batchCcipExtractionRequestSchema)
-		.output(z.array(mediaSafeSchema)),
+		.output(batchTargetCountResponseSchema),
 
 	startBatchCcipExtraction: oc
-		.input(
-			batchCcipExtractionRequestSchema.extend({
-				mediaIds: z.array(z.string().uuid()).min(1),
-			}),
-		)
+		.input(batchCcipExtractionRequestSchema)
 		.output(startCcipExtractionResponseSchema),
 
 	scanBatchTaggingTargets: oc
 		.input(batchTaggingRequestSchema)
-		.output(z.array(mediaSafeSchema)),
+		.output(batchTargetCountResponseSchema),
 
-	batchTagging: oc
+	startBatchTagging: oc
 		.input(batchTaggingRequestSchema)
-		.output(z.object({ success: z.boolean(), message: z.string() })),
-
-	startBatchTaggingWithIds: oc
-		.input(
-			batchTaggingRequestSchema.extend({
-				mediaIds: z.array(z.string()),
-			}),
-		)
-		.output(
-			z.object({
-				success: z.boolean(),
-				message: z.string(),
-				jobId: z.string(),
-			}),
-		),
+		.output(startBatchTaggingResponseSchema),
 
 	detectAndCropCharacters: oc
 		.input(

@@ -18,7 +18,6 @@ import {
 	createSignal,
 	For,
 	type JSX,
-	onMount,
 	Show,
 } from "solid-js";
 import { AssociationManager } from "./association-manager";

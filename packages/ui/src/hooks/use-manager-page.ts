@@ -1,9 +1,6 @@
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type {
-	DuplicateGroup,
-	MediaSafe,
-} from "@solid-imager/core/domain/media/schemas";
+import type { DuplicateGroup } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
 	JobCompletedEvent,
@@ -68,20 +65,18 @@ export type ManagerPageActions = {
 	scanBatchTaggingTargets: (input: {
 		force: boolean;
 		mediaSourceId?: string;
-	}) => Promise<MediaSafe[]>;
-	startBatchTaggingWithIds: (input: {
+	}) => Promise<{ count: number }>;
+	startBatchTagging: (input: {
 		force: boolean;
 		mediaSourceId?: string;
-		mediaIds: string[];
 	}) => Promise<StartBatchTaggingResult>;
 	scanBatchCcipTargets: (input: {
 		force: boolean;
 		mediaSourceId?: string;
-	}) => Promise<MediaSafe[]>;
+	}) => Promise<{ count: number }>;
 	startBatchCcipExtraction: (input: {
 		force: boolean;
 		mediaSourceId?: string;
-		mediaIds: string[];
 	}) => Promise<StartBatchTaggingResult>;
 	findDuplicateMedia: (
 		mediaSourceId?: string,
@@ -114,7 +109,6 @@ export type UseManagerPageOptions = {
 		handlers: ManagerJobHandlers,
 	) => void;
 	onBatchTaggingStart?: (result: StartBatchTaggingResult) => void;
-	itemsPerPage?: number;
 };
 
 export async function prefetchManagerPageQueries(
@@ -152,15 +146,8 @@ export type UseManagerPageResult = {
 	forceRetag: Accessor<boolean>;
 	setForceRetag: Setter<boolean>;
 	taggingStatus: Accessor<string | null>;
-	scannedMedia: Accessor<MediaSafe[]>;
-	selectedMedia: Accessor<Set<string>>;
 	jobProgress: Accessor<JobProgressEvent | null>;
 	activeJobId: Accessor<string | null>;
-	currentPage: Accessor<number>;
-	setCurrentPage: Setter<number>;
-	itemsPerPage: number;
-	totalPages: Accessor<number>;
-	paginatedMedia: Accessor<MediaSafe[]>;
 	sources: Accessor<SafeMediaSource[]>;
 	ips: Accessor<Ip[]>;
 	getActiveItems: Accessor<ManagerEntity[]>;
@@ -171,8 +158,6 @@ export type UseManagerPageResult = {
 	handleScan: () => Promise<void>;
 	handleStartBatchTagging: () => Promise<void>;
 	handleStartBatchCcipExtraction: () => Promise<void>;
-	toggleMediaSelection: (mediaId: string) => void;
-	toggleSelectAll: () => void;
 	jobHandlers: ManagerJobHandlers;
 	// Duplicates tab
 	duplicateSourceId: Accessor<string | undefined>;
@@ -225,7 +210,6 @@ export function useManagerPage(
 		queryOptions,
 		useBatchJobEvents,
 		onBatchTaggingStart,
-		itemsPerPage = 50,
 	} = options;
 	const projects = createQuery<Project[]>(() => queryOptions.projects());
 	const ipsQuery = createQuery<Ip[]>(() => queryOptions.ips());
@@ -261,15 +245,10 @@ export function useManagerPage(
 	>(undefined);
 	const [forceRetag, setForceRetag] = createSignal(false);
 	const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
-	const [scannedMedia, setScannedMedia] = createSignal<MediaSafe[]>([]);
-	const [selectedMedia, setSelectedMedia] = createSignal<Set<string>>(
-		new Set(),
-	);
 	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(
 		null,
 	);
 	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
-	const [currentPage, setCurrentPage] = createSignal(1);
 
 	createEffect(() => {
 		const tab = activeTab();
@@ -277,10 +256,7 @@ export function useManagerPage(
 			return;
 		}
 
-		setScannedMedia([]);
-		setSelectedMedia(new Set<string>());
 		setTaggingStatus(null);
-		setCurrentPage(1);
 	});
 
 	// Duplicates state
@@ -316,18 +292,7 @@ export function useManagerPage(
 		}
 	};
 
-	const totalPages = () => Math.ceil(scannedMedia().length / itemsPerPage);
 
-	const paginatedMedia = () => {
-		const start = (currentPage() - 1) * itemsPerPage;
-		return scannedMedia().slice(start, start + itemsPerPage);
-	};
-
-	createEffect(() => {
-		if (scannedMedia().length > 0) {
-			setCurrentPage(1);
-		}
-	});
 
 	const invalidateActive = () => {
 		const tab = activeCrudTab(activeTab());
@@ -430,7 +395,6 @@ export function useManagerPage(
 
 		try {
 			setTaggingStatus("Scanning...");
-			setScannedMedia([]);
 			const result =
 				scanTab === "vectors"
 					? await actions.scanBatchCcipTargets({
@@ -444,9 +408,7 @@ export function useManagerPage(
 			if (activeTab() !== scanTab) {
 				return;
 			}
-			setScannedMedia(result);
-			setSelectedMedia(new Set(result.map((item) => item.id)));
-			setTaggingStatus(`${result.length} items found.`);
+			setTaggingStatus(`${result.count} items found.`);
 		} catch (error) {
 			if (activeTab() !== scanTab) {
 				return;
@@ -457,24 +419,20 @@ export function useManagerPage(
 	};
 
 	const handleStartBatchCcipExtraction = async () => {
-		if (selectedMedia().size === 0) {
-			toast.error("No media selected");
-			return;
-		}
 		try {
 			setTaggingStatus("Starting...");
 			setJobProgress(null);
 			const result = await actions.startBatchCcipExtraction({
 				force: forceRetag(),
 				mediaSourceId: selectedSourceId(),
-				mediaIds: Array.from(selectedMedia()),
 			});
 			if (result.success && result.jobId) {
 				toast.success(result.message);
 				setTaggingStatus("Batch CCIP extraction in progress...");
 				setActiveJobId(result.jobId);
-				setScannedMedia([]);
-				setSelectedMedia(new Set<string>());
+			} else {
+				toast.error("Failed to start batch CCIP extraction.");
+				setTaggingStatus("Failed to start batch CCIP extraction.");
 			}
 		} catch (error) {
 			toast.error(`Error: ${getErrorMessage(error)}`);
@@ -483,26 +441,18 @@ export function useManagerPage(
 	};
 
 	const handleStartBatchTagging = async () => {
-		if (selectedMedia().size === 0) {
-			toast.error("No media selected");
-			return;
-		}
-
 		try {
 			setTaggingStatus("Starting...");
 			setJobProgress(null);
-			const result = await actions.startBatchTaggingWithIds({
+			const result = await actions.startBatchTagging({
 				force: forceRetag(),
 				mediaSourceId: selectedSourceId(),
-				mediaIds: Array.from(selectedMedia()),
 			});
 			if (result.success && result.jobId) {
 				onBatchTaggingStart?.(result);
 				toast.success(result.message);
 				setTaggingStatus("Batch tagging in progress...");
 				setActiveJobId(result.jobId);
-				setScannedMedia([]);
-				setSelectedMedia(new Set<string>());
 			} else {
 				toast.error("Failed to start batch tagging.");
 				setTaggingStatus("Failed to start batch tagging.");
@@ -510,26 +460,6 @@ export function useManagerPage(
 		} catch (error) {
 			toast.error(`Error: ${getErrorMessage(error)}`);
 			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
-		}
-	};
-
-	const toggleMediaSelection = (mediaId: string) => {
-		setSelectedMedia((previous) => {
-			const next = new Set(previous);
-			if (next.has(mediaId)) {
-				next.delete(mediaId);
-			} else {
-				next.add(mediaId);
-			}
-			return next;
-		});
-	};
-
-	const toggleSelectAll = () => {
-		if (selectedMedia().size === scannedMedia().length) {
-			setSelectedMedia(new Set<string>());
-		} else {
-			setSelectedMedia(new Set(scannedMedia().map((item) => item.id)));
 		}
 	};
 
@@ -755,15 +685,8 @@ export function useManagerPage(
 		forceRetag,
 		setForceRetag,
 		taggingStatus,
-		scannedMedia,
-		selectedMedia,
 		jobProgress,
 		activeJobId,
-		currentPage,
-		setCurrentPage,
-		itemsPerPage,
-		totalPages,
-		paginatedMedia,
 		sources,
 		ips,
 		getActiveItems,
@@ -774,8 +697,6 @@ export function useManagerPage(
 		handleScan,
 		handleStartBatchTagging,
 		handleStartBatchCcipExtraction,
-		toggleMediaSelection,
-		toggleSelectAll,
 		jobHandlers,
 		// Duplicates
 		duplicateSourceId,

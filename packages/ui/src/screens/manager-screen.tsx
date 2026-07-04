@@ -1,9 +1,5 @@
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type {
-	DuplicateGroup,
-	MediaSafe,
-} from "@solid-imager/core/domain/media/schemas";
-import type { JSX } from "solid-js";
+import type { DuplicateGroup } from "@solid-imager/core/domain/media/schemas";
 import { For, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -49,7 +45,6 @@ import type {
 } from "../hooks/use-manager-page";
 import { Input } from "../input";
 import { Label } from "../label";
-import { PaginationControls } from "../pagination-controls";
 import { Progress } from "../progress";
 import {
 	Select,
@@ -61,11 +56,6 @@ import {
 
 export type ManagerScreenProps = {
 	manager: UseManagerPageResult;
-	renderMediaCard: (
-		media: MediaSafe,
-		selected: boolean,
-		onToggle: (mediaId: string) => void,
-	) => JSX.Element;
 };
 
 const managerTabs: ManagerEntityType[] = [
@@ -223,7 +213,6 @@ export function ManagerScreen(props: ManagerScreenProps) {
 							<div class="flex items-center gap-x-2 pt-2">
 								<Button onClick={manager().handleScan}>Scan for Targets</Button>
 								<Button
-									disabled={manager().scannedMedia().length === 0}
 									onClick={
 										manager().activeTab() === "vectors"
 											? manager().handleStartBatchCcipExtraction
@@ -232,8 +221,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 								>
 									{manager().activeTab() === "vectors"
 										? "Start Vector Extraction"
-										: "Start Batch Tagging"}{" "}
-									({manager().selectedMedia().size})
+										: "Start Batch Tagging"}
 								</Button>
 							</div>
 
@@ -253,53 +241,6 @@ export function ManagerScreen(props: ManagerScreenProps) {
 							</Show>
 						</CardContent>
 					</Card>
-
-					<Show when={manager().scannedMedia().length > 0}>
-						<div class="mt-4">
-							<div class="mb-2 flex items-center justify-between">
-								<h3 class="font-bold text-lg">
-									Scanned Media ({manager().scannedMedia().length})
-								</h3>
-								<div class="flex items-center gap-2">
-									<PaginationControls
-										currentPage={manager().currentPage()}
-										onPageChange={manager().setCurrentPage}
-										totalPages={manager().totalPages()}
-									/>
-									<Button
-										onClick={manager().toggleSelectAll}
-										size="sm"
-										variant="outline"
-									>
-										{manager().selectedMedia().size ===
-										manager().scannedMedia().length
-											? "Deselect All"
-											: "Select All"}
-									</Button>
-								</div>
-							</div>
-
-							<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-								<For each={manager().paginatedMedia()}>
-									{(media) =>
-										props.renderMediaCard(
-											media,
-											manager().selectedMedia().has(media.id),
-											manager().toggleMediaSelection,
-										)
-									}
-								</For>
-							</div>
-
-							<div class="mt-4 flex justify-center">
-								<PaginationControls
-									currentPage={manager().currentPage()}
-									onPageChange={manager().setCurrentPage}
-									totalPages={manager().totalPages()}
-								/>
-							</div>
-						</div>
-					</Show>
 				</div>
 			</Show>
 

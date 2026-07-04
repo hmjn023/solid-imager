@@ -1,4 +1,6 @@
+import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import type {
+	BatchProgress,
 	IJobRepository,
 	Job,
 	NewJob,
@@ -262,42 +264,15 @@ export function createJobRepository(
 		async incrementProgress(
 			id: string,
 			progressKey?: string,
-		): Promise<boolean> {
-			const normalizedPayload = sql`COALESCE(
-				CASE
-					WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
-					ELSE payload
-				END,
-				'{}'::jsonb
-			)`;
-			const processedJobIds = sql`COALESCE(${normalizedPayload}->'processedJobIds', '[]'::jsonb)`;
-			const result: unknown = await db().execute(
-				progressKey
-					? sql`UPDATE ${jobs}
-						SET payload = jsonb_set(
-							jsonb_set(
-								${normalizedPayload},
-								'{processed}',
-								(COALESCE((${normalizedPayload}->>'processed'), '0')::int + 1)::text::jsonb
-							),
-							'{processedJobIds}',
-							${processedJobIds} || jsonb_build_array(${progressKey}::text)
-						),
-						updated_at = NOW()
-						WHERE id = ${id}
-							AND NOT (${processedJobIds} @> jsonb_build_array(${progressKey}::text))
-						RETURNING id`
-					: sql`UPDATE ${jobs}
-						SET payload = jsonb_set(
-							${normalizedPayload},
-							'{processed}',
-							(COALESCE((${normalizedPayload}->>'processed'), '0')::int + 1)::text::jsonb
-						),
-						updated_at = NOW()
-						WHERE id = ${id}
-						RETURNING id`,
-			);
-			return extractRows(result).length > 0;
+		): Promise<BatchProgress | null> {
+			return incrementBatchCount(db, id, "processed", progressKey);
+		},
+
+		async incrementFailedCount(
+			id: string,
+			progressKey?: string,
+		): Promise<BatchProgress | null> {
+			return incrementBatchCount(db, id, "failed", progressKey);
 		},
 
 		async claimPending(
@@ -597,4 +572,61 @@ function extractStringArrayOrSingle(value: unknown): string[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizedPayloadExpression() {
+	return sql`COALESCE(
+		CASE
+			WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
+			ELSE payload
+		END,
+		'{}'::jsonb
+	)`;
+}
+
+async function incrementBatchCount(
+	getExecutor: () => DrizzleExecutor,
+	id: string,
+	field: "processed" | "failed",
+	progressKey?: string,
+): Promise<BatchProgress | null> {
+	const normalizedPayload = normalizedPayloadExpression();
+	const key = progressKey ?? null;
+	const raw: unknown = await getExecutor().execute(sql`
+		WITH updated_child AS (
+			UPDATE ${jobs}
+			SET result = COALESCE(result, '{}'::jsonb) || '{"parentProcessed": true}'::jsonb
+			WHERE id = ${key}::uuid
+				AND parent_id = ${id}
+				AND (result IS NULL OR result->>'parentProcessed' IS DISTINCT FROM 'true')
+			RETURNING id
+		)
+		UPDATE ${jobs}
+		SET payload = jsonb_set(
+			${normalizedPayload},
+			${`{${field}}`},
+			(COALESCE((${normalizedPayload}->>${field}), '0')::int + 1)::text::jsonb
+		),
+		updated_at = NOW()
+		WHERE id = ${id}
+			AND (${key} IS NULL OR EXISTS (SELECT 1 FROM updated_child))
+		RETURNING payload
+	`);
+	const rows = extractRows(raw);
+	if (rows.length === 0) {
+		return null;
+	}
+	const payload = parseJsonColumn(
+		(rows[0] as { payload?: unknown }).payload,
+		"payload",
+	);
+	const parsed = batchParentPayloadSchema.safeParse(payload);
+	if (!parsed.success) {
+		return null;
+	}
+	return {
+		processed: parsed.data.processed,
+		failed: parsed.data.failed,
+		total: parsed.data.total,
+	};
 }
