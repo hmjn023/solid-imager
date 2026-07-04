@@ -21,6 +21,9 @@ function toJsonSafeValue(value: unknown): JsonSafeValue {
 	) {
 		return value ?? null;
 	}
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
 	if (Array.isArray(value)) {
 		return value.map(toJsonSafeValue);
 	}

@@ -612,8 +612,8 @@ async function incrementBatchCount(
 				SET result = COALESCE(result, '{}'::jsonb) || jsonb_build_object(${resultMarker}::text, true)
 				WHERE id = ${progressKey}::uuid
 					AND parent_id = ${id}
-					AND (result IS NULL OR result->>(${resultMarker}::text) IS DISTINCT FROM 'true')
-					AND (result IS NULL OR result->>(${otherResultMarker}::text) IS DISTINCT FROM 'true')
+					AND NOT (COALESCE(result, '{}'::jsonb) ? ${resultMarker})
+					AND NOT (COALESCE(result, '{}'::jsonb) ? ${otherResultMarker})
 				RETURNING id
 			)
 			UPDATE ${jobs}
