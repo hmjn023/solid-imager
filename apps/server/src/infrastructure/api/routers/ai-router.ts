@@ -18,11 +18,11 @@ import {
 	ccipFeatureRequestSchema,
 	ccipVectorStatusSchema,
 	detectAndCropResponseSchema,
+	type NapiBBox,
 	startBatchTaggingResponseSchema,
 	startCcipExtractionResponseSchema,
 	taggingResponseSchema,
 	tagImageRequestSchema,
-	type NapiBBox,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import sharp from "sharp";
@@ -329,7 +329,7 @@ export const aiRouter = {
 		.handler(async ({ input }) => {
 			const { mediaSourceId, force } = input;
 
-			const [{ count }] = await db
+			const [{ count: rawCount }] = await db
 				.select({
 					count: sql<number>`count(distinct ${medias.id})`,
 				})
@@ -363,7 +363,7 @@ export const aiRouter = {
 					),
 				);
 
-			return { count: count ?? 0 };
+			return { count: Number(rawCount ?? 0) };
 		}),
 
 	startBatchTagging: os
