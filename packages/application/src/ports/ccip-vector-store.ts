@@ -8,6 +8,8 @@ export type CcipVectorRecord = {
 	extractedAt: Date;
 };
 
+export type CcipVectorMetadata = Omit<CcipVectorRecord, "vector">;
+
 export type CcipVectorCandidate = CcipVectorRecord & {
 	cosineDistance: number;
 };
@@ -15,6 +17,7 @@ export type CcipVectorCandidate = CcipVectorRecord & {
 export interface ICcipVectorStore {
 	get(mediaId: string): Promise<CcipVectorRecord | null>;
 	getMany(mediaIds: string[]): Promise<Map<string, CcipVectorRecord>>;
+	getMetadataMany(mediaIds: string[]): Promise<Map<string, CcipVectorMetadata>>;
 	upsert(record: CcipVectorRecord): Promise<void>;
 	upsertMany(records: CcipVectorRecord[]): Promise<void>;
 	delete(mediaId: string): Promise<void>;

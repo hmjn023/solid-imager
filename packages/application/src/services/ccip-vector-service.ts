@@ -4,7 +4,9 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import type {
+	CcipVectorMetadata,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "../ports/ccip-vector-store";
@@ -47,6 +49,7 @@ export class CcipVectorService {
 		mediaSourceId: string,
 		mediaIds: string[],
 		force = false,
+		concurrency = 1,
 	): Promise<
 		PromiseSettledResult<{
 			mediaId: string;
@@ -57,16 +60,14 @@ export class CcipVectorService {
 		const existingById = force
 			? new Map<string, CcipVectorRecord>()
 			: await this.deps.vectorStore.getMany(mediaIds);
-		const results = await Promise.allSettled(
-			mediaIds.map(async (mediaId) => ({
+		const results = await asyncPool(mediaIds, concurrency, async (mediaId) => ({
+			mediaId,
+			...(await this.prepareExtraction(
+				mediaSourceId,
 				mediaId,
-				...(await this.prepareExtraction(
-					mediaSourceId,
-					mediaId,
-					existingById.get(mediaId) ?? null,
-				)),
-			})),
-		);
+				existingById.get(mediaId) ?? null,
+			)),
+		}));
 		const records = results.flatMap((result) =>
 			result.status === "fulfilled" && !result.value.skipped
 				? [result.value.record]
@@ -126,6 +127,16 @@ export class CcipVectorService {
 
 	async deleteBySource(mediaSourceId: string): Promise<void> {
 		await this.deps.vectorStore.deleteBySource(mediaSourceId);
+	}
+
+	async getMany(mediaIds: string[]): Promise<Map<string, CcipVectorRecord>> {
+		return await this.deps.vectorStore.getMany(mediaIds);
+	}
+
+	async getMetadataMany(
+		mediaIds: string[],
+	): Promise<Map<string, CcipVectorMetadata>> {
+		return await this.deps.vectorStore.getMetadataMany(mediaIds);
 	}
 
 	async listExtractedMediaIds(mediaSourceId?: string): Promise<string[]> {

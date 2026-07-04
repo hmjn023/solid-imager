@@ -5,7 +5,7 @@ import type {
 	NewAuthor,
 } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import { and, eq, inArray, or, sql, type SQL } from "drizzle-orm";
+import { and, eq, inArray, or, type SQL, sql } from "drizzle-orm";
 import { authorAccounts, authors, mediaAuthors } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -213,13 +213,13 @@ async function findOrCreateAuthorsBulk(
 			.onConflictDoNothing()
 			.returning();
 		const insertedKeys = new Set(
-			insertedAccounts.map(
-				(account) => authorIdentityKey(account.platform, account.accountId),
+			insertedAccounts.map((account) =>
+				authorIdentityKey(account.platform, account.accountId),
 			),
 		);
 		const attemptedKeys = new Set(
-			accountsToInsert.map(
-				(account) => authorIdentityKey(account.platform, account.accountId),
+			accountsToInsert.map((account) =>
+				authorIdentityKey(account.platform, account.accountId),
 			),
 		);
 		const conflicted = [...uniqueInputs.entries()].filter(
@@ -244,7 +244,10 @@ async function findOrCreateAuthorsBulk(
 				.innerJoin(authors, eq(authorAccounts.authorId, authors.id))
 				.where(or(...conditions));
 			for (const row of canonicalAccounts) {
-				const key = authorIdentityKey(row.account.platform, row.account.accountId);
+				const key = authorIdentityKey(
+					row.account.platform,
+					row.account.accountId,
+				);
 				resolved.set(key, row.author);
 			}
 			const orphanIds = conflicted.flatMap(([key]) => {
@@ -274,7 +277,8 @@ async function findOrCreateAuthorsBulk(
 	if (desiredNames.size > 0) {
 		const ids = [...desiredNames.keys()];
 		const cases = ids.map(
-			(id) => sql`WHEN ${authors.id} = ${id}::uuid THEN ${desiredNames.get(id)}`,
+			(id) =>
+				sql`WHEN ${authors.id} = ${id}::uuid THEN ${desiredNames.get(id)}`,
 		);
 		await client
 			.update(authors)
