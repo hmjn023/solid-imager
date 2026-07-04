@@ -50,9 +50,6 @@ function parseForceReextract(value: string | undefined): boolean {
 }
 
 function parseOptions(args: string[]): ScriptOptions {
-  if (args.includes("--help") || args.includes("-h")) {
-    throw new Error(usage);
-  }
   if (args.length < 3 || args.length > 4) {
     throw new Error(usage);
   }
@@ -66,7 +63,13 @@ function parseOptions(args: string[]): ScriptOptions {
 }
 
 async function main(): Promise<void> {
-  const options = parseOptions(process.argv.slice(2));
+  const args = process.argv.slice(2);
+  if (args.includes("--help") || args.includes("-h")) {
+    process.stdout.write(`${usage}\n`);
+    return;
+  }
+
+  const options = parseOptions(args);
   initServices();
 
   const source = await services.getSourceRepository().findById(options.sourceId);
