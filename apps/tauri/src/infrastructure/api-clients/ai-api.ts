@@ -7,10 +7,23 @@ export function scanBatchTaggingTargets(params: {
 	return client.ai.scanBatchTaggingTargets(params);
 }
 
-export function startBatchTaggingWithIds(params: {
+export function startBatchTagging(params: {
 	force?: boolean;
 	mediaSourceId?: string;
-	mediaIds: string[];
 }) {
-	return client.ai.startBatchTaggingWithIds(params);
+	return client.ai.startBatchTagging(params);
+}
+
+export function scanBatchCcipTargets(params: {
+	force?: boolean;
+	mediaSourceId?: string;
+}) {
+	return client.ai.scanBatchCcipTargets(params);
+}
+
+export function startBatchCcipExtraction(params: {
+	force?: boolean;
+	mediaSourceId?: string;
+}) {
+	return client.ai.startBatchCcipExtraction(params);
 }

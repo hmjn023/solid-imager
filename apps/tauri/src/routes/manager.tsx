@@ -10,7 +10,7 @@ import { MediaCardItem } from "~/components/media/media-card-item";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	scanBatchTaggingTargets,
-	startBatchTaggingWithIds,
+	startBatchTagging,
 } from "~/infrastructure/api-clients/ai-api";
 import {
 	createCharacter,
@@ -57,13 +57,12 @@ const managerActions = {
 	updateCharacter,
 	deleteCharacter,
 	scanBatchTaggingTargets,
-	startBatchTaggingWithIds,
+	startBatchTagging,
 	scanBatchCcipTargets: (input: { force: boolean; mediaSourceId?: string }) =>
 		client.ai.scanBatchCcipTargets(input),
 	startBatchCcipExtraction: (input: {
 		force: boolean;
 		mediaSourceId?: string;
-		mediaIds: string[];
 	}) => client.ai.startBatchCcipExtraction(input),
 	findDuplicateMedia,
 	bulkDeleteMedia,

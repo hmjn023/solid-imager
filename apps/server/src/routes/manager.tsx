@@ -12,7 +12,7 @@ import {
 	scanBatchCcipTargets,
 	scanBatchTaggingTargets,
 	startBatchCcipExtraction,
-	startBatchTaggingWithIds,
+	startBatchTagging,
 } from "~/infrastructure/api-clients/ai-api";
 import {
 	createCharacter,
@@ -58,7 +58,7 @@ const managerActions = {
 	updateCharacter,
 	deleteCharacter,
 	scanBatchTaggingTargets,
-	startBatchTaggingWithIds,
+	startBatchTagging,
 	scanBatchCcipTargets,
 	startBatchCcipExtraction,
 	findDuplicateMedia,

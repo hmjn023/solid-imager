@@ -36,12 +36,11 @@ export function scanBatchTaggingTargets(params: {
 	return orpc.ai.scanBatchTaggingTargets(params);
 }
 
-export function startBatchTaggingWithIds(params: {
+export function startBatchTagging(params: {
 	force?: boolean;
 	mediaSourceId?: string;
-	mediaIds: string[];
 }) {
-	return orpc.ai.startBatchTaggingWithIds(params);
+	return orpc.ai.startBatchTagging(params);
 }
 
 export function getCcipVectorStatus(mediaSourceId: string, mediaId: string) {
@@ -66,7 +65,6 @@ export function scanBatchCcipTargets(params: {
 export function startBatchCcipExtraction(params: {
 	force?: boolean;
 	mediaSourceId?: string;
-	mediaIds: string[];
 }) {
 	return orpc.ai.startBatchCcipExtraction(params);
 }

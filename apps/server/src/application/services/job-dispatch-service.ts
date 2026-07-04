@@ -35,6 +35,11 @@ export async function processJob(job: DbJob) {
 		await processCcipExtractionJob(job);
 	} else if (job.type === "bulk_tagging_dispatch") {
 		await processBulkTaggingDispatchJob(job);
+	} else if (job.type === "batch_ccip_dispatch") {
+		const { processBatchCcipDispatchJob } = await import(
+			"~/infrastructure/jobs/ccip-jobs"
+		);
+		await processBatchCcipDispatchJob(job);
 	} else if (job.type === "sync_lancedb" || job.type === "sync_lancedb_full") {
 		if (!mediaSourceId) {
 			throw new Error(`Job ${job.id} missing mediaSourceId`);

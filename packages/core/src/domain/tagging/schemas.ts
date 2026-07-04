@@ -141,3 +141,21 @@ export const startBatchTaggingResponseSchema = z.object({
 export type StartBatchTaggingResponse = z.infer<
 	typeof startBatchTaggingResponseSchema
 >;
+
+export const batchTargetCountResponseSchema = z.object({
+	count: z.number().int().nonnegative(),
+});
+
+export type BatchTargetCountResponse = z.infer<
+	typeof batchTargetCountResponseSchema
+>;
+
+export const batchParentPayloadSchema = z.object({
+	total: z.number().int().nonnegative(),
+	processed: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+	mediaSourceId: z.string().optional(),
+	force: z.boolean().optional(),
+});
+
+export type BatchParentPayload = z.infer<typeof batchParentPayloadSchema>;
