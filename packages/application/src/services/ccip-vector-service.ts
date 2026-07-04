@@ -128,6 +128,10 @@ export class CcipVectorService {
 		await this.deps.vectorStore.deleteBySource(mediaSourceId);
 	}
 
+	async getMany(mediaIds: string[]): Promise<Map<string, CcipVectorRecord>> {
+		return await this.deps.vectorStore.getMany(mediaIds);
+	}
+
 	async listExtractedMediaIds(mediaSourceId?: string): Promise<string[]> {
 		return await this.deps.vectorStore.listMediaIds(mediaSourceId);
 	}

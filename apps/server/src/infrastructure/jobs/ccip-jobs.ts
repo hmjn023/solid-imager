@@ -83,16 +83,6 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			),
 		);
 
-	let records: Map<string, CcipVectorRecord> | undefined;
-	if (!force) {
-		records = new Map(
-			(await ccipVectorService.listRecords(mediaSourceId)).map((record) => [
-				record.mediaId,
-				record,
-			]),
-		);
-	}
-
 	let lastSeenId: string | null = null;
 	let dispatchedCount = 0;
 	const CHILD_INSERT_CHUNK = 500;
@@ -126,17 +116,20 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			break;
 		}
 
-		const targetRows = records
-			? rows.filter((row) => {
-					const record = records?.get(row.id);
-					return (
-						!record ||
-						record.model !== CCIP_MODEL ||
-						record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
-						record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
-					);
-				})
-			: rows;
+		const mediaIds = rows.map((row) => row.id);
+		const existingById = force
+			? new Map<string, CcipVectorRecord>()
+			: await ccipVectorService.getMany(mediaIds);
+
+		const targetRows = rows.filter((row) => {
+			const record = existingById.get(row.id);
+			return (
+				!record ||
+				record.model !== CCIP_MODEL ||
+				record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
+				record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
+			);
+		});
 
 		const jobRows: NewJob[] = targetRows.map((row) => ({
 			type: "extract_ccip_vector",
@@ -167,7 +160,9 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 
 	const jobRepo = services.getJobRepository();
 	const parentJob = await jobRepo.findById(parentId);
-	const parentPayload = batchParentPayloadSchema.parse(parentJob?.payload ?? {});
+	const parentPayload = batchParentPayloadSchema.parse(
+		parentJob?.payload ?? {},
+	);
 	await jobRepo.update(parentId, {
 		payload: { ...parentPayload, total: dispatchedCount },
 	});
@@ -244,10 +239,7 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 		});
 		if (job.parentId) {
 			const jobRepo = services.getJobRepository();
-			const progress = await jobRepo.incrementFailedCount(
-				job.parentId,
-				job.id,
-			);
+			const progress = await jobRepo.incrementFailedCount(job.parentId, job.id);
 			if (progress && progress.total > 0) {
 				RealtimeEventBus.publishJob("job-progress", {
 					jobId: job.parentId,
