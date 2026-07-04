@@ -31,6 +31,44 @@ export class CcipVectorService {
 		mediaId: string,
 		force = false,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
+		const result = await this.prepareExtraction(mediaSourceId, mediaId, force);
+		if (!result.skipped) {
+			await this.deps.vectorStore.upsert(result.record);
+		}
+		return result;
+	}
+
+	async extractBatch(
+		mediaSourceId: string,
+		mediaIds: string[],
+		force = false,
+	): Promise<
+		PromiseSettledResult<{
+			mediaId: string;
+			record: CcipVectorRecord;
+			skipped: boolean;
+		}>[]
+	> {
+		const results = await Promise.allSettled(
+			mediaIds.map(async (mediaId) => ({
+				mediaId,
+				...(await this.prepareExtraction(mediaSourceId, mediaId, force)),
+			})),
+		);
+		const records = results.flatMap((result) =>
+			result.status === "fulfilled" && !result.value.skipped
+				? [result.value.record]
+				: [],
+		);
+		await this.deps.vectorStore.upsertMany(records);
+		return results;
+	}
+
+	private async prepareExtraction(
+		mediaSourceId: string,
+		mediaId: string,
+		force: boolean,
+	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
 		const media = await this.requireImage(mediaSourceId, mediaId);
 		const existing = await this.deps.vectorStore.get(mediaId);
 		if (!force && existing && this.isCurrent(existing, media, mediaSourceId)) {
@@ -50,7 +88,6 @@ export class CcipVectorService {
 			mediaModifiedAt: media.modifiedAt,
 			extractedAt: new Date(),
 		};
-		await this.deps.vectorStore.upsert(record);
 		return { record, skipped: false };
 	}
 
@@ -96,7 +133,10 @@ export class CcipVectorService {
 		const anchorMedia = await this.deps.mediaRepository.findById(anchorMediaId);
 		if (!anchorMedia) throw new Error(`Media not found: ${anchorMediaId}`);
 		const anchor = await this.deps.vectorStore.get(anchorMediaId);
-		if (!anchor || !this.isCurrent(anchor, anchorMedia, anchorMedia.mediaSourceId)) {
+		if (
+			!anchor ||
+			!this.isCurrent(anchor, anchorMedia, anchorMedia.mediaSourceId)
+		) {
 			throw new Error("CCIP vector is missing or stale for the anchor media");
 		}
 
@@ -156,7 +196,11 @@ export class CcipVectorService {
 		};
 	}
 
-	private isCurrent(record: CcipVectorRecord, media: Media, mediaSourceId: string): boolean {
+	private isCurrent(
+		record: CcipVectorRecord,
+		media: Media,
+		mediaSourceId: string,
+	): boolean {
 		return (
 			record.model === CCIP_MODEL &&
 			record.embeddingVersion === CCIP_EMBEDDING_VERSION &&

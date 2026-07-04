@@ -15,6 +15,7 @@ export type CcipVectorCandidate = CcipVectorRecord & {
 export interface ICcipVectorStore {
 	get(mediaId: string): Promise<CcipVectorRecord | null>;
 	upsert(record: CcipVectorRecord): Promise<void>;
+	upsertMany(records: CcipVectorRecord[]): Promise<void>;
 	delete(mediaId: string): Promise<void>;
 	deleteBySource(mediaSourceId: string): Promise<void>;
 	listMediaIds(mediaSourceId?: string): Promise<string[]>;

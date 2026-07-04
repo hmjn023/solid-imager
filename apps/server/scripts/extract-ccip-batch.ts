@@ -127,10 +127,10 @@ async function main(): Promise<void> {
     }
 
     batchNumber += 1;
-    const results = await Promise.allSettled(
-      batch.map((media) =>
-        ccipVectorService.extract(options.sourceId, media.id, options.forceReextract),
-      ),
+    const results = await ccipVectorService.extractBatch(
+      options.sourceId,
+      batch.map((media) => media.id),
+      options.forceReextract,
     );
 
     for (const [index, result] of results.entries()) {
