@@ -1,11 +1,11 @@
-import type { CcipVectorRecord } from "@solid-imager/application/ports/ccip-vector-store";
+import type { CcipVectorMetadata } from "@solid-imager/application/ports/ccip-vector-store";
 import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
 } from "@solid-imager/application/services/ccip-vector-service";
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { and, asc, eq, gt, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, gt, notExists, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { services } from "~/application/registry";
 import { ccipVectorService } from "~/application/services/ccip-vector-service";
@@ -20,16 +20,29 @@ import {
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 
-const payloadSchema = z.object({
+const singleExtractionPayloadSchema = z.object({
 	mediaId: z.string().uuid(),
 	force: z.boolean().default(false),
 });
 
+const batchExtractionPayloadSchema = z.object({
+	mediaIds: z.array(z.string().uuid()).min(1).max(25),
+	force: z.boolean().default(false),
+});
+
+const extractionPayloadSchema = z.union([
+	singleExtractionPayloadSchema,
+	batchExtractionPayloadSchema,
+]);
+
 const batchCcipDispatchPayloadSchema = z.object({
 	force: z.boolean().default(false),
-	batchSize: z.number().optional(),
+	batchSize: z.number().int().min(1).max(5000).optional(),
 	mediaSourceId: z.string().uuid().optional(),
 });
+
+const EXTRACTION_JOB_BATCH_SIZE = 25;
+const CHILD_INSERT_CHUNK = 500;
 
 async function finalizeBatchParent(
 	parentId: string,
@@ -40,7 +53,7 @@ async function finalizeBatchParent(
 		await jobRepo.update(parentId, { status: "failed" });
 		RealtimeEventBus.publishJob("job-failed", {
 			jobId: parentId,
-			error: `${progress.failed} child job(s) failed`,
+			error: `${progress.failed} item(s) failed`,
 		});
 		return;
 	}
@@ -79,13 +92,15 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			and(
 				eq(jobs.parentId, parentId),
 				eq(jobs.type, "extract_ccip_vector"),
-				sql`(${jobs.payload}->>'mediaId')::uuid = ${medias.id}`,
+				or(
+					sql`${jobs.payload}->>'mediaId' = ${medias.id}::text`,
+					sql`(${jobs.payload}->'mediaIds') ? ${medias.id}::text`,
+				),
 			),
 		);
 
 	let lastSeenId: string | null = null;
 	let dispatchedCount = 0;
-	const CHILD_INSERT_CHUNK = 500;
 
 	while (true) {
 		const rows = await db
@@ -118,8 +133,8 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 
 		const mediaIds = rows.map((row) => row.id);
 		const existingById = force
-			? new Map<string, CcipVectorRecord>()
-			: await ccipVectorService.getMany(mediaIds);
+			? new Map<string, CcipVectorMetadata>()
+			: await ccipVectorService.getMetadataMany(mediaIds);
 
 		const targetRows = rows.filter((row) => {
 			const record = existingById.get(row.id);
@@ -131,15 +146,32 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			);
 		});
 
-		const jobRows: NewJob[] = targetRows.map((row) => ({
-			type: "extract_ccip_vector",
-			mediaSourceId: row.mediaSourceId,
-			parentId,
-			payload: {
-				mediaId: row.id,
-				force,
-			},
-		}));
+		const rowsBySource = new Map<string, typeof targetRows>();
+		for (const row of targetRows) {
+			const sourceRows = rowsBySource.get(row.mediaSourceId) ?? [];
+			sourceRows.push(row);
+			rowsBySource.set(row.mediaSourceId, sourceRows);
+		}
+		const jobRows: NewJob[] = [];
+		for (const [sourceId, sourceRows] of rowsBySource) {
+			for (
+				let index = 0;
+				index < sourceRows.length;
+				index += EXTRACTION_JOB_BATCH_SIZE
+			) {
+				jobRows.push({
+					type: "extract_ccip_vector",
+					mediaSourceId: sourceId,
+					parentId,
+					payload: {
+						mediaIds: sourceRows
+							.slice(index, index + EXTRACTION_JOB_BATCH_SIZE)
+							.map((row) => row.id),
+						force,
+					},
+				});
+			}
+		}
 		for (let i = 0; i < jobRows.length; i += CHILD_INSERT_CHUNK) {
 			const chunk = jobRows.slice(i, i + CHILD_INSERT_CHUNK);
 			await db.insert(jobs).values(chunk);
@@ -159,15 +191,38 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 	}
 
 	const jobRepo = services.getJobRepository();
-	const parentJob = await jobRepo.findById(parentId);
+	const [childSummary] = await db
+		.select({
+			total: sql<number>`COALESCE(SUM(
+				CASE
+					WHEN jsonb_typeof(${jobs.payload}->'mediaIds') = 'array'
+						THEN jsonb_array_length(${jobs.payload}->'mediaIds')
+					ELSE 1
+				END
+			), 0)::int`,
+		})
+		.from(jobs)
+		.where(
+			and(eq(jobs.parentId, parentId), eq(jobs.type, "extract_ccip_vector")),
+		);
+	const total = Number(childSummary?.total ?? 0);
+	const [updatedParent] = await db
+		.update(jobs)
+		.set({
+			payload: sql`jsonb_set(
+				COALESCE(${jobs.payload}, '{}'::jsonb),
+				'{total}',
+				to_jsonb(${total}::int)
+			)`,
+			updatedAt: new Date(),
+		})
+		.where(eq(jobs.id, parentId))
+		.returning();
 	const parentPayload = batchParentPayloadSchema.parse(
-		parentJob?.payload ?? {},
+		updatedParent?.payload ?? {},
 	);
-	await jobRepo.update(parentId, {
-		payload: { ...parentPayload, total: dispatchedCount },
-	});
 
-	if (dispatchedCount === 0) {
+	if (total === 0) {
 		await jobRepo.update(parentId, { status: "completed" });
 		RealtimeEventBus.publishJob("job-completed", {
 			jobId: parentId,
@@ -176,9 +231,16 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 	} else {
 		RealtimeEventBus.publishJob("job-progress", {
 			jobId: parentId,
-			processed: 0,
-			total: dispatchedCount,
+			processed: parentPayload.processed,
+			total,
 		});
+		if (parentPayload.processed + parentPayload.failed >= total) {
+			await finalizeBatchParent(parentId, {
+				processed: parentPayload.processed,
+				failed: parentPayload.failed,
+				total,
+			});
+		}
 	}
 
 	logger.info(
@@ -188,14 +250,20 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 }
 
 export async function processCcipExtractionJob(job: Job): Promise<void> {
-	const payload = payloadSchema.parse(job.payload);
+	const payload = extractionPayloadSchema.parse(job.payload);
 	if (!job.mediaSourceId) {
 		throw new Error("CCIP extraction job is missing mediaSourceId");
 	}
+	const mediaIds = "mediaIds" in payload ? payload.mediaIds : [payload.mediaId];
+	if (mediaIds.length > 1) {
+		await processCcipExtractionBatch(job, mediaIds, payload.force);
+		return;
+	}
 	try {
+		const mediaId = mediaIds[0];
 		const result = await ccipVectorService.extract(
 			job.mediaSourceId,
-			payload.mediaId,
+			mediaId,
 			payload.force,
 		);
 		logger.info(
@@ -203,7 +271,7 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 				jobId: job.id,
 				parentId: job.parentId,
 				mediaSourceId: job.mediaSourceId,
-				mediaId: payload.mediaId,
+				mediaId,
 				force: payload.force,
 				skipped: result.skipped,
 			},
@@ -214,43 +282,110 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 			message: "CCIP vector extraction completed",
 		});
 
-		if (job.parentId) {
-			const jobRepo = services.getJobRepository();
-			const progress = await jobRepo.incrementProgress(job.parentId, job.id);
-			if (progress && progress.total > 0) {
-				RealtimeEventBus.publishJob("job-progress", {
-					jobId: job.parentId,
-					processed: progress.processed,
-					total: progress.total,
-				});
-				if (progress.processed + progress.failed >= progress.total) {
-					await finalizeBatchParent(job.parentId, progress);
-				}
-			}
-		}
+		await updateParentProgress(job, 1, 0);
+	} catch (error) {
+		logger.error({ err: error, mediaIds }, "CCIP vector extraction failed");
+		RealtimeEventBus.publishJob("job-failed", {
+			jobId: job.id,
+			error: getErrorMessage(error),
+		});
+		await updateParentProgress(job, 0, mediaIds.length);
+		throw error;
+	}
+}
+
+async function processCcipExtractionBatch(
+	job: Job,
+	mediaIds: string[],
+	force: boolean,
+): Promise<void> {
+	if (!job.mediaSourceId) {
+		throw new Error("CCIP extraction job is missing mediaSourceId");
+	}
+	let results: Awaited<ReturnType<typeof ccipVectorService.extractBatch>>;
+	try {
+		results = await ccipVectorService.extractBatch(
+			job.mediaSourceId,
+			mediaIds,
+			force,
+			1,
+		);
 	} catch (error) {
 		logger.error(
-			{ err: error, mediaId: payload.mediaId },
-			"CCIP vector extraction failed",
+			{ err: error, mediaIds },
+			"CCIP vector extraction batch failed",
 		);
 		RealtimeEventBus.publishJob("job-failed", {
 			jobId: job.id,
 			error: getErrorMessage(error),
 		});
-		if (job.parentId) {
-			const jobRepo = services.getJobRepository();
-			const progress = await jobRepo.incrementFailedCount(job.parentId, job.id);
-			if (progress && progress.total > 0) {
-				RealtimeEventBus.publishJob("job-progress", {
-					jobId: job.parentId,
-					processed: progress.processed,
-					total: progress.total,
-				});
-				if (progress.processed + progress.failed >= progress.total) {
-					await finalizeBatchParent(job.parentId, progress);
-				}
-			}
-		}
+		await updateParentProgress(job, 0, mediaIds.length);
 		throw error;
+	}
+	const processed = results.filter(
+		(result) => result.status === "fulfilled",
+	).length;
+	const failures = results.filter(
+		(result): result is PromiseRejectedResult => result.status === "rejected",
+	);
+	await updateParentProgress(job, processed, failures.length);
+
+	if (failures.length > 0) {
+		const error = new Error(
+			`${failures.length} of ${mediaIds.length} CCIP extraction(s) failed: ${getErrorMessage(failures[0].reason)}`,
+		);
+		logger.error(
+			{ err: error, mediaIds },
+			"CCIP vector extraction batch failed",
+		);
+		RealtimeEventBus.publishJob("job-failed", {
+			jobId: job.id,
+			error: error.message,
+		});
+		throw error;
+	}
+
+	logger.info(
+		{
+			jobId: job.id,
+			parentId: job.parentId,
+			mediaSourceId: job.mediaSourceId,
+			count: mediaIds.length,
+			force,
+		},
+		"CCIP vector extraction batch completed",
+	);
+	RealtimeEventBus.publishJob("job-completed", {
+		jobId: job.id,
+		message: `CCIP vector extraction completed (${mediaIds.length} items)`,
+	});
+}
+
+async function updateParentProgress(
+	job: Job,
+	processed: number,
+	failed: number,
+): Promise<void> {
+	if (!job.parentId) {
+		return;
+	}
+	const jobRepo = services.getJobRepository();
+	let progress = null;
+	if (processed > 0) {
+		progress = await jobRepo.incrementProgress(job.parentId, job.id, processed);
+	}
+	if (failed > 0) {
+		progress = await jobRepo.incrementFailedCount(job.parentId, job.id, failed);
+	}
+	if (!progress || progress.total <= 0) {
+		return;
+	}
+	RealtimeEventBus.publishJob("job-progress", {
+		jobId: job.parentId,
+		processed: progress.processed,
+		total: progress.total,
+	});
+	if (progress.processed + progress.failed >= progress.total) {
+		await finalizeBatchParent(job.parentId, progress);
 	}
 }

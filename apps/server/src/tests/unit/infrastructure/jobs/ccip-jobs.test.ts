@@ -7,6 +7,7 @@ import {
 
 const publishJob = vi.fn();
 const extract = vi.fn();
+const extractBatch = vi.fn();
 const loggerError = vi.fn();
 const update = vi.fn();
 const incrementProgress = vi.fn();
@@ -38,6 +39,8 @@ vi.mock("~/application/registry", () => ({
 vi.mock("~/application/services/ccip-vector-service", () => ({
 	ccipVectorService: {
 		extract: (...args: Parameters<typeof extract>) => extract(...args),
+		extractBatch: (...args: Parameters<typeof extractBatch>) =>
+			extractBatch(...args),
 	},
 }));
 
@@ -94,6 +97,7 @@ describe("processCcipExtractionJob", () => {
 		expect(incrementProgress).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
 			"00000000-0000-4000-8000-000000000020",
+			1,
 		);
 		expect(publishJob).toHaveBeenCalledWith("job-completed", {
 			jobId: "00000000-0000-4000-8000-000000000020",
@@ -166,6 +170,7 @@ describe("processCcipExtractionJob", () => {
 		expect(incrementFailedCount).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
 			"00000000-0000-4000-8000-000000000020",
+			1,
 		);
 		expect(update).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
@@ -173,8 +178,59 @@ describe("processCcipExtractionJob", () => {
 		);
 		expect(publishJob).toHaveBeenCalledWith("job-failed", {
 			jobId: "00000000-0000-4000-8000-000000000010",
-			error: "1 child job(s) failed",
+			error: "1 item(s) failed",
 		});
+	});
+
+	it("extracts and persists a CCIP batch with item-based parent progress", async () => {
+		const mediaIds = [
+			"00000000-0000-4000-8000-000000000031",
+			"00000000-0000-4000-8000-000000000032",
+		];
+		extractBatch.mockResolvedValue(
+			mediaIds.map((mediaId) => ({
+				status: "fulfilled",
+				value: {
+					mediaId,
+					record: { mediaId },
+					skipped: false,
+				},
+			})),
+		);
+		incrementProgress.mockResolvedValue({
+			processed: 2,
+			failed: 0,
+			total: 2,
+		});
+
+		await processCcipExtractionJob({
+			id: "00000000-0000-4000-8000-000000000022",
+			type: "extract_ccip_vector",
+			mediaSourceId: "00000000-0000-4000-8000-000000000001",
+			status: "in_progress",
+			payload: { mediaIds, force: false },
+			result: null,
+			error: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+			parentId: "00000000-0000-4000-8000-000000000012",
+		});
+
+		expect(extractBatch).toHaveBeenCalledWith(
+			"00000000-0000-4000-8000-000000000001",
+			mediaIds,
+			false,
+			1,
+		);
+		expect(incrementProgress).toHaveBeenCalledWith(
+			"00000000-0000-4000-8000-000000000012",
+			"00000000-0000-4000-8000-000000000022",
+			2,
+		);
+		expect(update).toHaveBeenCalledWith(
+			"00000000-0000-4000-8000-000000000012",
+			{ status: "completed" },
+		);
 	});
 });
 

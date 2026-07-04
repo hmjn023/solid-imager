@@ -51,10 +51,12 @@ export type IJobRepository = {
 	incrementProgress(
 		id: string,
 		progressKey?: string,
+		amount?: number,
 	): Promise<BatchProgress | null>;
 	incrementFailedCount(
 		id: string,
 		progressKey?: string,
+		amount?: number,
 	): Promise<BatchProgress | null>;
 	claimPending(
 		limit: number,
