@@ -86,7 +86,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 		if (parentId) {
 			const jobRepo = services.getJobRepository();
 			const progress = await jobRepo.incrementProgress(parentId, job.id);
-			if (!progress) {
+			if (!progress || progress.total === 0) {
 				return;
 			}
 
@@ -105,7 +105,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 		if (parentId) {
 			const jobRepo = services.getJobRepository();
 			const progress = await jobRepo.incrementFailedCount(parentId, job.id);
-			if (progress) {
+			if (progress && progress.total > 0) {
 				RealtimeEventBus.publishJob("job-progress", {
 					jobId: parentId,
 					processed: progress.processed,
@@ -184,7 +184,7 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 			and(
 				eq(jobs.parentId, parentId),
 				eq(jobs.type, "auto_tagging"),
-				sql`${jobs.payload}->>'mediaId' = ${medias.id}`,
+				sql`(${jobs.payload}->>'mediaId')::uuid = ${medias.id}`,
 			),
 		);
 	const whereWithDedupe = and(whereClause, notExists(existingChild));
@@ -253,11 +253,19 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 		payload: { ...parentPayload, total: dispatchedCount },
 	});
 
-	RealtimeEventBus.publishJob("job-progress", {
-		jobId: parentId,
-		processed: 0,
-		total: dispatchedCount,
-	});
+	if (dispatchedCount === 0) {
+		await jobRepo.update(parentId, { status: "completed" });
+		RealtimeEventBus.publishJob("job-completed", {
+			jobId: parentId,
+			message: "Batch tagging completed (no targets)",
+		});
+	} else {
+		RealtimeEventBus.publishJob("job-progress", {
+			jobId: parentId,
+			processed: 0,
+			total: dispatchedCount,
+		});
+	}
 
 	logger.info(
 		{ jobId: job.id, parentId, dispatchedCount },

@@ -430,6 +430,9 @@ export function useManagerPage(
 				toast.success(result.message);
 				setTaggingStatus("Batch CCIP extraction in progress...");
 				setActiveJobId(result.jobId);
+			} else {
+				toast.error("Failed to start batch CCIP extraction.");
+				setTaggingStatus("Failed to start batch CCIP extraction.");
 			}
 		} catch (error) {
 			toast.error(`Error: ${getErrorMessage(error)}`);

@@ -1,9 +1,5 @@
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type {
-	DuplicateGroup,
-	MediaSafe,
-} from "@solid-imager/core/domain/media/schemas";
-import type { JSX } from "solid-js";
+import type { DuplicateGroup } from "@solid-imager/core/domain/media/schemas";
 import { For, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -60,11 +56,6 @@ import {
 
 export type ManagerScreenProps = {
 	manager: UseManagerPageResult;
-	renderMediaCard: (
-		media: MediaSafe,
-		selected: boolean,
-		onToggle: (mediaId: string) => void,
-	) => JSX.Element;
 };
 
 const managerTabs: ManagerEntityType[] = [

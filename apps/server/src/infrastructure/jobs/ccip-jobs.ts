@@ -1,3 +1,4 @@
+import type { CcipVectorRecord } from "@solid-imager/application/ports/ccip-vector-store";
 import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
@@ -78,9 +79,19 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			and(
 				eq(jobs.parentId, parentId),
 				eq(jobs.type, "extract_ccip_vector"),
-				sql`${jobs.payload}->>'mediaId' = ${medias.id}`,
+				sql`(${jobs.payload}->>'mediaId')::uuid = ${medias.id}`,
 			),
 		);
+
+	let records: Map<string, CcipVectorRecord> | undefined;
+	if (!force) {
+		records = new Map(
+			(await ccipVectorService.listRecords(mediaSourceId)).map((record) => [
+				record.mediaId,
+				record,
+			]),
+		);
+	}
 
 	let lastSeenId: string | null = null;
 	let dispatchedCount = 0;
@@ -115,23 +126,17 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			break;
 		}
 
-		let targetRows = rows;
-		if (!force) {
-			const records = new Map(
-				(await ccipVectorService.listRecords(mediaSourceId)).map(
-					(record) => [record.mediaId, record],
-				),
-			);
-			targetRows = rows.filter((row) => {
-				const record = records.get(row.id);
-				return (
-					!record ||
-					record.model !== CCIP_MODEL ||
-					record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
-					record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
-				);
-			});
-		}
+		const targetRows = records
+			? rows.filter((row) => {
+					const record = records?.get(row.id);
+					return (
+						!record ||
+						record.model !== CCIP_MODEL ||
+						record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
+						record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
+					);
+				})
+			: rows;
 
 		const jobRows: NewJob[] = targetRows.map((row) => ({
 			type: "extract_ccip_vector",
@@ -167,11 +172,19 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 		payload: { ...parentPayload, total: dispatchedCount },
 	});
 
-	RealtimeEventBus.publishJob("job-progress", {
-		jobId: parentId,
-		processed: 0,
-		total: dispatchedCount,
-	});
+	if (dispatchedCount === 0) {
+		await jobRepo.update(parentId, { status: "completed" });
+		RealtimeEventBus.publishJob("job-completed", {
+			jobId: parentId,
+			message: "Batch CCIP extraction completed (no targets)",
+		});
+	} else {
+		RealtimeEventBus.publishJob("job-progress", {
+			jobId: parentId,
+			processed: 0,
+			total: dispatchedCount,
+		});
+	}
 
 	logger.info(
 		{ jobId: job.id, parentId, dispatchedCount },
@@ -209,7 +222,7 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 		if (job.parentId) {
 			const jobRepo = services.getJobRepository();
 			const progress = await jobRepo.incrementProgress(job.parentId, job.id);
-			if (progress) {
+			if (progress && progress.total > 0) {
 				RealtimeEventBus.publishJob("job-progress", {
 					jobId: job.parentId,
 					processed: progress.processed,
@@ -235,7 +248,7 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 				job.parentId,
 				job.id,
 			);
-			if (progress) {
+			if (progress && progress.total > 0) {
 				RealtimeEventBus.publishJob("job-progress", {
 					jobId: job.parentId,
 					processed: progress.processed,

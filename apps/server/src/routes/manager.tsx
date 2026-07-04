@@ -1,4 +1,3 @@
-import type { MediaSafe } from "@solid-imager/core/domain/media/schemas";
 import {
 	prefetchManagerPageQueries,
 	useManagerPage,
@@ -6,7 +5,6 @@ import {
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { MediaCardItem } from "~/components/media/media-card-item";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	scanBatchCcipTargets,
@@ -82,21 +80,5 @@ function ManagerPage() {
 		useBatchJobEvents,
 	});
 
-	return (
-		<ManagerScreen
-			manager={manager}
-			renderMediaCard={(
-				media: MediaSafe,
-				selected: boolean,
-				onToggle: (mediaId: string) => void,
-			) => (
-				<MediaCardItem
-					media={media}
-					onToggle={onToggle}
-					selectable
-					selected={selected}
-				/>
-			)}
-		/>
-	);
+	return <ManagerScreen manager={manager} />;
 }

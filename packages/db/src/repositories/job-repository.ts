@@ -591,11 +591,12 @@ async function incrementBatchCount(
 	progressKey?: string,
 ): Promise<BatchProgress | null> {
 	const normalizedPayload = normalizedPayloadExpression();
+	const key = progressKey ?? null;
 	const raw: unknown = await getExecutor().execute(sql`
 		WITH updated_child AS (
 			UPDATE ${jobs}
 			SET result = COALESCE(result, '{}'::jsonb) || '{"parentProcessed": true}'::jsonb
-			WHERE id = ${progressKey ?? null}::uuid
+			WHERE id = ${key}::uuid
 				AND parent_id = ${id}
 				AND (result IS NULL OR result->>'parentProcessed' IS DISTINCT FROM 'true')
 			RETURNING id
@@ -608,7 +609,7 @@ async function incrementBatchCount(
 		),
 		updated_at = NOW()
 		WHERE id = ${id}
-			AND (${progressKey} IS NULL OR EXISTS (SELECT 1 FROM updated_child))
+			AND (${key} IS NULL OR EXISTS (SELECT 1 FROM updated_child))
 		RETURNING payload
 	`);
 	const rows = extractRows(raw);
