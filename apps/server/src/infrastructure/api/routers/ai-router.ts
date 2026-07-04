@@ -370,7 +370,7 @@ export const aiRouter = {
 		.input(batchTaggingRequestSchema)
 		.output(startBatchTaggingResponseSchema)
 		.handler(async ({ input }) => {
-			const { mediaSourceId, force } = input;
+			const { mediaSourceId, force, batchSize } = input;
 			const jobRepo = services.getJobRepository();
 
 			const parentJob = await jobRepo.create({
@@ -393,6 +393,7 @@ export const aiRouter = {
 				payload: {
 					mediaSourceId,
 					force,
+					...(batchSize !== undefined ? { batchSize } : {}),
 				},
 			});
 

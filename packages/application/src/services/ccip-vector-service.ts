@@ -57,6 +57,9 @@ export class CcipVectorService {
 			skipped: boolean;
 		}>[]
 	> {
+		if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+			throw new Error("concurrency must be a positive integer");
+		}
 		const existingById = force
 			? new Map<string, CcipVectorRecord>()
 			: await this.deps.vectorStore.getMany(mediaIds);

@@ -131,6 +131,7 @@ async function main(): Promise<void> {
       options.sourceId,
       batch.map((media) => media.id),
       options.forceReextract,
+      options.batchSize,
     );
 
     for (const [index, result] of results.entries()) {

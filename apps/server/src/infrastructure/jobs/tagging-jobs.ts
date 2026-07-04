@@ -248,12 +248,24 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 
 	const jobRepo = services.getJobRepository();
 	const parentJob = await jobRepo.findById(parentId);
-	const parentPayload = batchParentPayloadSchema.parse(parentJob?.payload ?? {});
+	const parentPayload = batchParentPayloadSchema.parse(
+		parentJob?.payload ?? {},
+	);
+	const [{ count: rawTotalChildCount }] = await db
+		.select({ count: sql<number>`count(*)` })
+		.from(jobs)
+		.where(and(eq(jobs.parentId, parentId), eq(jobs.type, "auto_tagging")));
+	const totalChildCount = Number(rawTotalChildCount ?? 0);
+	const progress = {
+		processed: parentPayload.processed,
+		failed: parentPayload.failed,
+		total: totalChildCount,
+	};
 	await jobRepo.update(parentId, {
-		payload: { ...parentPayload, total: dispatchedCount },
+		payload: { ...parentPayload, total: totalChildCount },
 	});
 
-	if (dispatchedCount === 0) {
+	if (totalChildCount === 0) {
 		await jobRepo.update(parentId, { status: "completed" });
 		RealtimeEventBus.publishJob("job-completed", {
 			jobId: parentId,
@@ -262,9 +274,12 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 	} else {
 		RealtimeEventBus.publishJob("job-progress", {
 			jobId: parentId,
-			processed: 0,
-			total: dispatchedCount,
+			processed: progress.processed,
+			total: totalChildCount,
 		});
+		if (progress.processed + progress.failed >= progress.total) {
+			await finalizeBatchParent(parentId, progress);
+		}
 	}
 
 	logger.info(

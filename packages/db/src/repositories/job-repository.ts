@@ -600,6 +600,8 @@ async function incrementBatchCount(
 	const executor = getExecutor();
 	const resultMarker =
 		field === "processed" ? "parentProcessed" : "parentFailed";
+	const otherResultMarker =
+		field === "processed" ? "parentFailed" : "parentProcessed";
 
 	let raw: unknown;
 
@@ -611,6 +613,7 @@ async function incrementBatchCount(
 				WHERE id = ${progressKey}::uuid
 					AND parent_id = ${id}
 					AND (result IS NULL OR result->>(${resultMarker}::text) IS DISTINCT FROM 'true')
+					AND (result IS NULL OR result->>(${otherResultMarker}::text) IS DISTINCT FROM 'true')
 				RETURNING id
 			)
 			UPDATE ${jobs}
