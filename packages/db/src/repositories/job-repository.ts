@@ -1,10 +1,10 @@
-import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import type {
 	BatchProgress,
 	IJobRepository,
 	Job,
 	NewJob,
 } from "@solid-imager/core/domain/repositories/job-repository";
+import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { isJobStatus } from "@solid-imager/core/utils/type-guards";
 import {
 	and,
@@ -591,27 +591,45 @@ async function incrementBatchCount(
 	progressKey?: string,
 ): Promise<BatchProgress | null> {
 	const normalizedPayload = normalizedPayloadExpression();
-	const key = progressKey ?? null;
-	const raw: unknown = await getExecutor().execute(sql`
-		WITH updated_child AS (
+	const executor = getExecutor();
+
+	let raw: unknown;
+
+	if (progressKey) {
+		raw = await executor.execute(sql`
+			WITH updated_child AS (
+				UPDATE ${jobs}
+				SET result = COALESCE(result, '{}'::jsonb) || '{"parentProcessed": true}'::jsonb
+				WHERE id = ${progressKey}::uuid
+					AND parent_id = ${id}
+					AND (result IS NULL OR result->>'parentProcessed' IS DISTINCT FROM 'true')
+				RETURNING id
+			)
 			UPDATE ${jobs}
-			SET result = COALESCE(result, '{}'::jsonb) || '{"parentProcessed": true}'::jsonb
-			WHERE id = ${key}::uuid
-				AND parent_id = ${id}
-				AND (result IS NULL OR result->>'parentProcessed' IS DISTINCT FROM 'true')
-			RETURNING id
-		)
-		UPDATE ${jobs}
-		SET payload = jsonb_set(
-			${normalizedPayload},
-			${`{${field}}`},
-			(COALESCE((${normalizedPayload}->>${field}), '0')::int + 1)::text::jsonb
-		),
-		updated_at = NOW()
-		WHERE id = ${id}
-			AND (${key} IS NULL OR EXISTS (SELECT 1 FROM updated_child))
-		RETURNING payload
-	`);
+			SET payload = jsonb_set(
+				${normalizedPayload},
+				${`{${field}}`},
+				(COALESCE((${normalizedPayload}->>${field}), '0')::int + 1)::text::jsonb
+			),
+			updated_at = NOW()
+			WHERE id = ${id}
+				AND EXISTS (SELECT 1 FROM updated_child)
+			RETURNING payload
+		`);
+	} else {
+		raw = await executor.execute(sql`
+			UPDATE ${jobs}
+			SET payload = jsonb_set(
+				${normalizedPayload},
+				${`{${field}}`},
+				(COALESCE((${normalizedPayload}->>${field}), '0')::int + 1)::text::jsonb
+			),
+			updated_at = NOW()
+			WHERE id = ${id}
+			RETURNING payload
+		`);
+	}
+
 	const rows = extractRows(raw);
 	if (rows.length === 0) {
 		return null;
