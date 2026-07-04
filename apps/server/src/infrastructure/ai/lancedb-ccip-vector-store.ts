@@ -127,16 +127,20 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 	}
 
 	async upsert(record: CcipVectorRecord): Promise<void> {
+		await this.upsertMany([record]);
+	}
+
+	async upsertMany(records: CcipVectorRecord[]): Promise<void> {
+		if (records.length === 0) {
+			return;
+		}
 		await this.serializeWrite(async () => {
 			const table = await this.table();
-			await table.delete(`mediaId = '${escapeSqlString(record.mediaId)}'`);
-			await table.add([
-				{
-					...record,
-					mediaModifiedAt: record.mediaModifiedAt,
-					extractedAt: record.extractedAt,
-				},
-			]);
+			await table
+				.mergeInsert("mediaId")
+				.whenMatchedUpdateAll()
+				.whenNotMatchedInsertAll()
+				.execute(records);
 		});
 	}
 
