@@ -89,17 +89,42 @@ describe("JobRepository", () => {
 		expect(count).toBe(1);
 		expect(mockExecutor.update).toHaveBeenCalledOnce();
 	});
+
+	it("casts dynamic batch result marker keys to PostgreSQL text", async () => {
+		mockExecutor.execute.mockResolvedValueOnce({
+			rows: [{ payload: { processed: 25, failed: 0, total: 100 } }],
+		});
+
+		const progress = await repository.incrementProgress(
+			"11111111-1111-4111-8111-111111111110",
+			"11111111-1111-4111-8111-111111111111",
+			25,
+		);
+
+		expect(progress).toEqual({ processed: 25, failed: 0, total: 100 });
+		const query = extractSqlText(mockExecutor.execute.mock.calls[0]?.[0]);
+		expect(query).toContain("jsonb_build_object(");
+		expect(query).toContain("::text, true)");
+		expect(query).toContain("->>(");
+		expect(query).toContain("::text)");
+	});
 });
 
-function extractSqlText(value: unknown): string {
+function extractSqlText(value: unknown, seen = new WeakSet<object>()): string {
 	if (typeof value === "string") {
 		return value;
 	}
 	if (Array.isArray(value)) {
-		return value.map(extractSqlText).join("");
+		return value.map((item) => extractSqlText(item, seen)).join("");
 	}
 	if (value && typeof value === "object") {
-		return Object.values(value).map(extractSqlText).join("");
+		if (seen.has(value)) {
+			return "";
+		}
+		seen.add(value);
+		return Object.values(value)
+			.map((item) => extractSqlText(item, seen))
+			.join("");
 	}
 	return "";
 }

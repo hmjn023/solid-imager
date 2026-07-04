@@ -607,10 +607,10 @@ async function incrementBatchCount(
 		raw = await executor.execute(sql`
 			WITH updated_child AS (
 				UPDATE ${jobs}
-				SET result = COALESCE(result, '{}'::jsonb) || jsonb_build_object(${resultMarker}, true)
+				SET result = COALESCE(result, '{}'::jsonb) || jsonb_build_object(${resultMarker}::text, true)
 				WHERE id = ${progressKey}::uuid
 					AND parent_id = ${id}
-					AND (result IS NULL OR result->>${resultMarker} IS DISTINCT FROM 'true')
+					AND (result IS NULL OR result->>(${resultMarker}::text) IS DISTINCT FROM 'true')
 				RETURNING id
 			)
 			UPDATE ${jobs}
