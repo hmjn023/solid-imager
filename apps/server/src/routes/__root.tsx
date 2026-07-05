@@ -1,4 +1,8 @@
 import { AppShell } from "@solid-imager/ui/layouts/app-shell";
+import {
+	RoutePendingScreen,
+	RouteTransitionIndicator,
+} from "@solid-imager/ui/router-status";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import {
@@ -45,12 +49,12 @@ function RootComponent() {
 			</head>
 			<body>
 				<Toaster />
-				<Suspense>
-					<AppShell nav={<Nav />}>
-						<ApiActivityIndicator />
+				<AppShell nav={<Nav />} statusIndicator={<RouteTransitionIndicator />}>
+					<ApiActivityIndicator />
+					<Suspense fallback={<RoutePendingScreen />}>
 						<Outlet />
-					</AppShell>
-				</Suspense>
+					</Suspense>
+				</AppShell>
 				<Scripts />
 			</body>
 		</html>
