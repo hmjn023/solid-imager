@@ -1,3 +1,4 @@
+import { charactersQueryKeys } from "@solid-imager/ui/query-options";
 import { createCollection } from "@tanstack/db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistence";
@@ -18,8 +19,8 @@ export function createCharactersCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["allCharacters"],
-				queryFn: () => client.characters.list(),
+				queryKey: charactersQueryKeys.all(),
+				queryFn: ({ signal }) => client.characters.list(undefined, { signal }),
 				queryClient,
 				getKey: (character) => character.id,
 			}),

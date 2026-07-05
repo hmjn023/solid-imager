@@ -17,6 +17,8 @@ import {
 } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
+import { searchQueryKeys } from "../query-options";
+import { type QueryUiState, toQueryUiState } from "../query-state";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
 const DEFAULT_REFRESH_DEBOUNCE_MS = 0;
@@ -48,12 +50,16 @@ export interface UseSearchPageOptions {
 	searchMedia: (
 		sourceId: string | undefined,
 		params: MediaSearchRequest,
+		signal?: AbortSignal,
 	) => Promise<MediaSearchResponse>;
-	searchSimilar?: (input: {
-		anchorMediaId: string;
-		mediaSourceId?: string;
-		topK: number;
-	}) => Promise<SimilarMediaSearchResponse>;
+	searchSimilar?: (
+		input: {
+			anchorMediaId: string;
+			mediaSourceId?: string;
+			topK: number;
+		},
+		signal?: AbortSignal,
+	) => Promise<SimilarMediaSearchResponse>;
 	queryClient: QueryClient;
 	queries: SearchPageQueryOptions;
 	selectedSource: () => string | null | undefined;
@@ -76,6 +82,15 @@ export interface UseSearchPageResult {
 		typeof createInfiniteQuery<MediaSearchResponse>
 	>;
 	searchResults: () => MediaSearchResponse["media"];
+	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
+	filterStates: {
+		tags: () => QueryUiState<TagResponse[]>;
+		sources: () => QueryUiState<SafeMediaSource[]>;
+		projects: () => QueryUiState<Project[]>;
+		ips: () => QueryUiState<Ip[]>;
+		characters: () => QueryUiState<Character[]>;
+		authors: () => QueryUiState<Author[]>;
+	};
 	filterData: SearchPageFilterData;
 	sources: () => SafeMediaSource[] | undefined;
 	getSourceRootPath: (mediaSourceId: string) => string | undefined;
@@ -137,33 +152,39 @@ export function useSearchPage(
 		const params = buildSearchParams();
 		const source = selectedSource() || undefined;
 		return {
-			queryKey: [
-				"searchResults",
-				mode(),
-				source,
-				conditionKey(),
-				sortBy(),
-				sortOrder(),
-				limit(),
-				similarityAnchorMediaId(),
-				similarityTopK(),
-			],
-			queryFn: async ({ pageParam }) => {
+			queryKey: searchQueryKeys.results({
+				mode: mode(),
+				sourceId: source,
+				conditionKey: conditionKey(),
+				sort: sortBy(),
+				order: sortOrder(),
+				limit: limit(),
+				similarityAnchorMediaId: similarityAnchorMediaId(),
+				similarityTopK: similarityTopK(),
+			}),
+			queryFn: async ({ pageParam, signal }) => {
 				if (mode() === "vector") {
 					const anchorMediaId = similarityAnchorMediaId();
 					if (!(anchorMediaId && options.searchSimilar)) {
 						return { media: [], total: 0 };
 					}
-					return await options.searchSimilar({
-						anchorMediaId,
-						mediaSourceId: source,
-						topK: similarityTopK(),
-					});
+					return await options.searchSimilar(
+						{
+							anchorMediaId,
+							mediaSourceId: source,
+							topK: similarityTopK(),
+						},
+						signal,
+					);
 				}
-				return await searchMedia(source, {
-					...params,
-					offset: pageParam as number,
-				});
+				return await searchMedia(
+					source,
+					{
+						...params,
+						offset: pageParam as number,
+					},
+					signal,
+				);
 			},
 			initialPageParam: 0,
 			getNextPageParam: (lastPage, allPages) => {
@@ -193,6 +214,22 @@ export function useSearchPage(
 			},
 		);
 	});
+	const contentState = () =>
+		toQueryUiState(
+			{
+				data: searchResultQuery.data ? searchResults() : undefined,
+				error: searchResultQuery.error,
+				status: searchResultQuery.status,
+				fetchStatus: searchResultQuery.fetchStatus,
+			},
+			{ isEmpty: (data) => data.length === 0 },
+		);
+	const arrayState = <T>(query: {
+		data: T[] | undefined;
+		error: unknown;
+		status: "pending" | "error" | "success";
+		fetchStatus: "idle" | "fetching" | "paused";
+	}) => toQueryUiState(query, { isEmpty: (data) => data.length === 0 });
 
 	const getSourceRootPath = (mediaSourceId: string) => {
 		const source = sources.data?.find((item) => item.id === mediaSourceId);
@@ -213,13 +250,13 @@ export function useSearchPage(
 			clearTimeout(timer);
 		}
 		if (refreshDebounceMs <= 0) {
-			void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+			void queryClient.invalidateQueries({ queryKey: searchQueryKeys.all() });
 			setRefreshTimer(null);
 			return;
 		}
 		setRefreshTimer(
 			setTimeout(() => {
-				void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+				void queryClient.invalidateQueries({ queryKey: searchQueryKeys.all() });
 				setRefreshTimer(null);
 			}, refreshDebounceMs),
 		);
@@ -289,6 +326,15 @@ export function useSearchPage(
 	return {
 		searchResultQuery,
 		searchResults,
+		contentState,
+		filterStates: {
+			tags: () => arrayState(tags),
+			sources: () => arrayState(sources),
+			projects: () => arrayState(allProjects),
+			ips: () => arrayState(allIps),
+			characters: () => arrayState(allCharacters),
+			authors: () => arrayState(allAuthors),
+		},
 		filterData: {
 			get tags() {
 				return tags.data;

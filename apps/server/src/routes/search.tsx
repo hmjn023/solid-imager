@@ -1,6 +1,7 @@
 import { Button } from "@solid-imager/ui/button";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
+import { prefetchQueryOnClient } from "@solid-imager/ui/query-options";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
@@ -28,15 +29,25 @@ import {
 } from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
-	loader: async ({ context }) => {
-		await Promise.all([
-			context.queryClient.ensureQueryData(tagsQueryOptions()),
-			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
-			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
-			context.queryClient.ensureQueryData(allIpsQueryOptions()),
-			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
-			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
-		]);
+	loader: ({ context }) => {
+		prefetchQueryOnClient(() =>
+			context.queryClient.prefetchQuery(tagsQueryOptions()),
+		);
+		prefetchQueryOnClient(() =>
+			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
+		);
+		prefetchQueryOnClient(() =>
+			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
+		);
+		prefetchQueryOnClient(() =>
+			context.queryClient.prefetchQuery(allIpsQueryOptions()),
+		);
+		prefetchQueryOnClient(() =>
+			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
+		);
+		prefetchQueryOnClient(() =>
+			context.queryClient.prefetchQuery(allAuthorsQueryOptions()),
+		);
 	},
 	component: SearchRoute,
 });

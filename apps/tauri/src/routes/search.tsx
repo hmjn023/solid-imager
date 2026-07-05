@@ -27,15 +27,13 @@ import {
 } from "~/queries";
 
 export const Route = createFileRoute("/search")({
-	loader: async ({ context }) => {
-		await Promise.all([
-			context.queryClient.ensureQueryData(tagsQueryOptions()),
-			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
-			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
-			context.queryClient.ensureQueryData(allIpsQueryOptions()),
-			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
-			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
-		]);
+	loader: ({ context }) => {
+		void context.queryClient.prefetchQuery(tagsQueryOptions());
+		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
+		void context.queryClient.prefetchQuery(allProjectsQueryOptions());
+		void context.queryClient.prefetchQuery(allIpsQueryOptions());
+		void context.queryClient.prefetchQuery(allCharactersQueryOptions());
+		void context.queryClient.prefetchQuery(allAuthorsQueryOptions());
 	},
 	component: SearchRoute,
 });

@@ -91,6 +91,7 @@ const ALL_SOURCES_OPTION = { id: "__all__", name: "All Sources" };
 
 export function ManagerScreen(props: ManagerScreenProps) {
 	const manager = () => props.manager;
+	const queryStates = () => Object.values(manager().queryStates());
 
 	return (
 		<div class="container mx-auto p-8">
@@ -124,6 +125,40 @@ export function ManagerScreen(props: ManagerScreenProps) {
 					)}
 				</For>
 			</div>
+			<Show when={queryStates().some((state) => state.phase === "pending")}>
+				<p class="mb-4 text-muted-foreground text-sm" role="status">
+					管理データを読み込み中...
+				</p>
+			</Show>
+			<Show
+				when={queryStates().some(
+					(state) =>
+						(state.phase === "error" || state.phase === "offline") &&
+						state.data === undefined,
+				)}
+			>
+				<p class="mb-4 text-destructive text-sm" role="status">
+					一部の管理データを取得できませんでした。接続後に再試行します。
+				</p>
+			</Show>
+			<Show
+				when={queryStates().some(
+					(state) => state.fetchState === "background-fetching",
+				)}
+			>
+				<p class="mb-4 text-muted-foreground text-sm" role="status">
+					管理データを更新中...
+				</p>
+			</Show>
+			<Show
+				when={queryStates().some(
+					(state) => state.fetchState === "paused" && state.data !== undefined,
+				)}
+			>
+				<p class="mb-4 text-muted-foreground text-sm" role="status">
+					オフラインのため保存済みデータを表示しています。
+				</p>
+			</Show>
 
 			<Show
 				when={

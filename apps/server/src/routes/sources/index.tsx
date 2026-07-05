@@ -2,6 +2,8 @@ import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas
 import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
+import { prefetchQueryOnClient } from "@solid-imager/ui/query-options";
+import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
@@ -18,8 +20,10 @@ import {
 } from "~/infrastructure/api-clients/sources-api";
 
 export const Route = createFileRoute("/sources/")({
-	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(mediaSourcesQueryOptions());
+	loader: ({ context }) => {
+		prefetchQueryOnClient(() =>
+			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
+		);
 	},
 	component: SourcesRoute,
 });
@@ -57,9 +61,11 @@ function SourcesRoute() {
 		<SourcesScreen
 			page={page}
 			mediaSources={() => mediaSources.data}
-			isLoading={mediaSources.isLoading}
-			isError={mediaSources.isError}
-			error={mediaSources.error ?? null}
+			state={() =>
+				toQueryUiState(mediaSources, {
+					isEmpty: (data) => data.length === 0,
+				})
+			}
 			onRetry={() => {
 				void mediaSources.refetch();
 			}}

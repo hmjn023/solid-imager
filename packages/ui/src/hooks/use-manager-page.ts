@@ -16,6 +16,8 @@ import {
 	createSignal,
 	type Setter,
 } from "solid-js";
+import { prefetchQueryOnClient } from "../query-options";
+import { type QueryUiState, toQueryUiState } from "../query-state";
 import { toast } from "../toast";
 
 export type ManagerEntityType =
@@ -111,16 +113,20 @@ export type UseManagerPageOptions = {
 	onBatchTaggingStart?: (result: StartBatchTaggingResult) => void;
 };
 
-export async function prefetchManagerPageQueries(
+export function prefetchManagerPageQueries(
 	queryClient: QueryClient,
 	queryOptions: ManagerPageQueryOptions,
-) {
-	await Promise.all([
-		queryClient.ensureQueryData(queryOptions.projects()),
-		queryClient.ensureQueryData(queryOptions.ips()),
-		queryClient.ensureQueryData(queryOptions.characters()),
-		queryClient.ensureQueryData(queryOptions.sources()),
-	]);
+): void {
+	prefetchQueryOnClient(() =>
+		queryClient.prefetchQuery(queryOptions.projects()),
+	);
+	prefetchQueryOnClient(() => queryClient.prefetchQuery(queryOptions.ips()));
+	prefetchQueryOnClient(() =>
+		queryClient.prefetchQuery(queryOptions.characters()),
+	);
+	prefetchQueryOnClient(() =>
+		queryClient.prefetchQuery(queryOptions.sources()),
+	);
 }
 
 export type ManagerJobHandlers = {
@@ -151,6 +157,12 @@ export type UseManagerPageResult = {
 	sources: Accessor<SafeMediaSource[]>;
 	ips: Accessor<Ip[]>;
 	getActiveItems: Accessor<ManagerEntity[]>;
+	queryStates: Accessor<{
+		projects: QueryUiState<Project[]>;
+		ips: QueryUiState<Ip[]>;
+		characters: QueryUiState<Character[]>;
+		sources: QueryUiState<SafeMediaSource[]>;
+	}>;
 	openCreateDialog: () => void;
 	openEditDialog: (item: ManagerEntity) => void;
 	handleSave: () => Promise<void>;
@@ -291,8 +303,20 @@ export function useManagerPage(
 				return [];
 		}
 	};
-
-
+	const queryStates = () => ({
+		projects: toQueryUiState(projects, {
+			isEmpty: (data) => data.length === 0,
+		}),
+		ips: toQueryUiState(ipsQuery, {
+			isEmpty: (data) => data.length === 0,
+		}),
+		characters: toQueryUiState(characters, {
+			isEmpty: (data) => data.length === 0,
+		}),
+		sources: toQueryUiState(sourcesQuery, {
+			isEmpty: (data) => data.length === 0,
+		}),
+	});
 
 	const invalidateActive = () => {
 		const tab = activeCrudTab(activeTab());
@@ -690,6 +714,7 @@ export function useManagerPage(
 		sources,
 		ips,
 		getActiveItems,
+		queryStates,
 		openCreateDialog,
 		openEditDialog,
 		handleSave: () => (editingItem() ? handleUpdate() : handleCreate()),

@@ -3,18 +3,22 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
-	CcipVectorStatus,
-	StartCcipExtractionResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
-import type {
 	JobCompletedEvent,
 	JobFailedEvent,
 	JobProgressEvent,
 } from "@solid-imager/core/domain/sources/events";
+import type {
+	CcipVectorStatus,
+	StartCcipExtractionResponse,
+} from "@solid-imager/core/domain/tagging/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import type { Accessor, JSX } from "solid-js";
 import { MediaSidebar } from "./media-sidebar";
-import { projectsQueryKeys } from "./query-options";
+import {
+	charactersQueryKeys,
+	ipsQueryKeys,
+	projectsQueryKeys,
+} from "./query-options";
 
 export type MediaSidebarContentProps = {
 	media: MediaDetails;
@@ -30,7 +34,9 @@ export type MediaSidebarContentProps = {
 		onClose: () => void;
 	}) => JSX.Element;
 	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
-	startCcipExtraction?: (force: boolean) => Promise<StartCcipExtractionResponse>;
+	startCcipExtraction?: (
+		force: boolean,
+	) => Promise<StartCcipExtractionResponse>;
 	useCcipJobEvents?: (
 		activeJobId: Accessor<string | null>,
 		handlers: {
@@ -135,7 +141,9 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 			}}
 			onCharacterCreate={async (name) => {
 				const character = await props.createCharacter({ name });
-				await queryClient.invalidateQueries({ queryKey: ["allCharacters"] });
+				await queryClient.invalidateQueries({
+					queryKey: charactersQueryKeys.all(),
+				});
 				return character;
 			}}
 			onCharacterRemove={async (characterId) => {
@@ -163,7 +171,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 			}}
 			onIpCreate={async (name) => {
 				const ip = await props.createIp({ name });
-				await queryClient.invalidateQueries({ queryKey: ["allIps"] });
+				await queryClient.invalidateQueries({ queryKey: ipsQueryKeys.all() });
 				return ip;
 			}}
 			onIpRemove={async (ipId) => {
@@ -184,7 +192,9 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 			}}
 			onProjectCreate={async (name) => {
 				const project = await props.createProject({ name });
-				await queryClient.invalidateQueries({ queryKey: ["allProjects"] });
+				await queryClient.invalidateQueries({
+					queryKey: projectsQueryKeys.all(),
+				});
 				return project;
 			}}
 			onProjectRemove={async (projectId) => {

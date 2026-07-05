@@ -1,3 +1,4 @@
+import { tagsQueryKeys } from "@solid-imager/ui/query-options";
 import { createCollection } from "@tanstack/db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistence";
@@ -16,8 +17,8 @@ export function createTagsCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["tags"],
-				queryFn: () => client.tags.list(),
+				queryKey: tagsQueryKeys.all(),
+				queryFn: ({ signal }) => client.tags.list(undefined, { signal }),
 				queryClient,
 				getKey: (tag) => tag.id,
 			}),

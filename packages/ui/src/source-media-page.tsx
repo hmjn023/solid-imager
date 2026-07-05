@@ -15,6 +15,7 @@ import {
 	useSourceMediaPage,
 } from "./hooks/use-source-media-page";
 import { MediaListActions } from "./media-list-actions";
+import { toQueryUiState } from "./query-state";
 import {
 	SourceMediaScreen,
 	type SourceMediaScreenProps,
@@ -72,6 +73,23 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			characters: () => allCharacters.data,
 			authors: () => allAuthors.data,
 		},
+		queryStates: () => ({
+			tags: toQueryUiState(tags, {
+				isEmpty: (data) => data.length === 0,
+			}),
+			projects: toQueryUiState(allProjects, {
+				isEmpty: (data) => data.length === 0,
+			}),
+			ips: toQueryUiState(allIps, {
+				isEmpty: (data) => data.length === 0,
+			}),
+			characters: toQueryUiState(allCharacters, {
+				isEmpty: (data) => data.length === 0,
+			}),
+			authors: toQueryUiState(allAuthors, {
+				isEmpty: (data) => data.length === 0,
+			}),
+		}),
 		actions: props.actions,
 		queryClient,
 		presetClient: props.presetClient,

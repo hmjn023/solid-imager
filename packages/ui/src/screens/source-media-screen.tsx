@@ -72,6 +72,7 @@ export type SourceMediaScreenProps = {
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const page = () => props.page;
+	const filterStates = () => Object.values(page().filterStates());
 
 	// Enable auto-save/restore of search conditions
 	useCurrentSearchPersistence(page().mediaSourceId, page().presetClient);
@@ -113,6 +114,15 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					{page().isSyncingMedia() ? "Syncing..." : "Sync Loaded Media"}
 				</Button>
 			</div>
+			<Show
+				when={filterStates().some(
+					(state) => state.phase === "error" || state.phase === "offline",
+				)}
+			>
+				<p class="mb-3 text-muted-foreground text-sm" role="status">
+					一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。
+				</p>
+			</Show>
 
 			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
 				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
@@ -131,35 +141,59 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					</CardContent>
 				</Card>
 
-				<SourceMediaGrid
-					contextMenuMediaId={page().contextMenuMediaId}
-					enableVirtualization={props.enableVirtualization}
-					isError={page().mediaQuery.isError}
-					isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
-					isPending={page().mediaQuery.isPending}
-					mediaResults={page().mediaResults}
-					mediaSourceId={page().mediaSourceId}
-					onCopyMove={page().handleCopyMove}
-					onDelete={page().handleDelete}
-					onLoadMore={() => page().mediaQuery.fetchNextPage()}
-					onRetry={() => {
-						void page().mediaQuery.refetch();
-					}}
-					onSyncSingleMedia={page().handleSyncSingleMedia}
-					onToggleSelect={props.onToggleSelect}
-					isBulkSelectMode={props.isBulkSelectMode}
-					isSelected={props.isSelected}
-					onBulkAction={props.onBulkAction}
-					onClearSelection={props.onClearSelection}
-					selectedCount={props.selectedCount}
-					hasNextPage={page().mediaQuery.hasNextPage}
-					queryError={page().mediaQuery.error ?? null}
-					renderItem={props.renderItem}
-					setContextMenuMediaId={page().setContextMenuMediaId}
-					setLoadMoreRef={page().setLoadMoreRef}
-					showOpenInNewTab={props.showOpenInNewTab}
-					totalCount={page().mediaQuery.data?.pages[0]?.total}
-				/>
+				<div>
+					<Show
+						when={page().contentState().fetchState === "background-fetching"}
+					>
+						<p class="mb-2 text-muted-foreground text-sm" role="status">
+							メディア一覧を更新中...
+						</p>
+					</Show>
+					<Show
+						when={
+							page().contentState().fetchState === "paused" &&
+							page().contentState().data !== undefined
+						}
+					>
+						<p class="mb-2 text-muted-foreground text-sm" role="status">
+							オフラインのため保存済みデータを表示しています
+						</p>
+					</Show>
+					<Show when={page().contentState().phase === "offline"}>
+						<p class="mb-2 text-muted-foreground text-sm" role="status">
+							オフラインです。接続後にメディア一覧を読み込みます
+						</p>
+					</Show>
+					<SourceMediaGrid
+						contextMenuMediaId={page().contextMenuMediaId}
+						enableVirtualization={props.enableVirtualization}
+						isError={page().contentState().phase === "error"}
+						isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
+						isPending={page().contentState().phase === "pending"}
+						mediaResults={page().mediaResults}
+						mediaSourceId={page().mediaSourceId}
+						onCopyMove={page().handleCopyMove}
+						onDelete={page().handleDelete}
+						onLoadMore={() => page().mediaQuery.fetchNextPage()}
+						onRetry={() => {
+							void page().mediaQuery.refetch();
+						}}
+						onSyncSingleMedia={page().handleSyncSingleMedia}
+						onToggleSelect={props.onToggleSelect}
+						isBulkSelectMode={props.isBulkSelectMode}
+						isSelected={props.isSelected}
+						onBulkAction={props.onBulkAction}
+						onClearSelection={props.onClearSelection}
+						selectedCount={props.selectedCount}
+						hasNextPage={page().mediaQuery.hasNextPage}
+						queryError={page().mediaQuery.error ?? null}
+						renderItem={props.renderItem}
+						setContextMenuMediaId={page().setContextMenuMediaId}
+						setLoadMoreRef={page().setLoadMoreRef}
+						showOpenInNewTab={props.showOpenInNewTab}
+						totalCount={page().mediaQuery.data?.pages[0]?.total}
+					/>
+				</div>
 			</div>
 
 			{/* Hidden file inputs */}

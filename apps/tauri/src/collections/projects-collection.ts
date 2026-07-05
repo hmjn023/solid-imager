@@ -1,3 +1,4 @@
+import { projectsQueryKeys } from "@solid-imager/ui/query-options";
 import { createCollection } from "@tanstack/db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistence";
@@ -16,8 +17,8 @@ export function createProjectsCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["allProjects"],
-				queryFn: () => client.projects.list(),
+				queryKey: projectsQueryKeys.all(),
+				queryFn: ({ signal }) => client.projects.list(undefined, { signal }),
 				queryClient,
 				getKey: (project) => project.id,
 			}),

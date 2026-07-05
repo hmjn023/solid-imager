@@ -1,3 +1,5 @@
+import { isTransientApiError } from "@solid-imager/client";
+import { createAppQueryClientConfig } from "@solid-imager/ui/query-options";
 import {
 	ROUTE_PENDING_DELAY_MS,
 	ROUTE_PENDING_MIN_DURATION_MS,
@@ -5,36 +7,15 @@ import {
 	RoutePendingScreen,
 } from "@solid-imager/ui/router-status";
 import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
-import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
+import { QueryClient } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
+import { setupRouterSsrQueryIntegration } from "@tanstack/solid-router-ssr-query";
 import { isServer } from "solid-js/web";
-import { isTransientApiError } from "./infrastructure/api-clients/error-policy";
 import type { logger as LoggerInstance } from "./infrastructure/logger";
 import { routeTree } from "./routeTree.gen";
 
-const QUERY_RETRY_DELAY_CAP_MS = 5_000;
-const QUERY_RETRY_DELAY_BASE_MS = 1_000;
-const QUERY_STALE_TIME_MS = 5_000;
-
 function createAppQueryClient(): QueryClient {
-	return new QueryClient({
-		defaultOptions: {
-			queries: {
-				refetchOnWindowFocus: false,
-				retry: (failureCount, error) =>
-					isTransientApiError(error) && failureCount < 2,
-				retryDelay: (attemptIndex) =>
-					Math.min(
-						QUERY_RETRY_DELAY_BASE_MS * 2 ** attemptIndex,
-						QUERY_RETRY_DELAY_CAP_MS,
-					),
-				staleTime: QUERY_STALE_TIME_MS,
-			},
-			mutations: {
-				retry: false,
-			},
-		},
-	});
+	return new QueryClient(createAppQueryClientConfig(isTransientApiError));
 }
 
 let serverLogger: typeof LoggerInstance | null = null;
@@ -74,7 +55,7 @@ export function getRouter() {
 				? createAppQueryClient()
 				: clientQueryClient;
 
-		return createTanStackRouter({
+		const router = createTanStackRouter({
 			routeTree,
 			context: { queryClient },
 			scrollRestoration: true,
@@ -85,12 +66,9 @@ export function getRouter() {
 			defaultNotFoundComponent: NotFoundScreen,
 			defaultPendingMs: ROUTE_PENDING_DELAY_MS,
 			defaultPendingMinMs: ROUTE_PENDING_MIN_DURATION_MS,
-			Wrap: (props) => (
-				<QueryClientProvider client={queryClient}>
-					{props.children}
-				</QueryClientProvider>
-			),
 		});
+		setupRouterSsrQueryIntegration({ router, queryClient });
+		return router;
 	} catch (error) {
 		if (isServer && serverLogger) {
 			serverLogger.error({ err: error }, "[Router] Error creating router");

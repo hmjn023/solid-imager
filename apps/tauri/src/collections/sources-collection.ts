@@ -1,3 +1,4 @@
+import { sourcesQueryKeys } from "@solid-imager/ui/query-options";
 import { createCollection } from "@tanstack/db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistence";
@@ -16,8 +17,8 @@ export function createSourcesCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["mediaSources"],
-				queryFn: () => client.sources.list(),
+				queryKey: sourcesQueryKeys.all(),
+				queryFn: ({ signal }) => client.sources.list(undefined, { signal }),
 				queryClient,
 				getKey: (source) => source.id ?? source.name,
 			}),

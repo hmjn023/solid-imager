@@ -5,13 +5,12 @@ import type {
 import type { JSX } from "solid-js";
 import { For, Show } from "solid-js";
 import type { UseSourcesPageResult } from "../hooks/use-sources-page";
+import type { QueryUiState } from "../query-state";
 
 export type SourcesScreenProps = {
 	page: UseSourcesPageResult;
 	mediaSources: () => (SafeMediaSource | MediaSourceInfo)[] | undefined;
-	isLoading: boolean;
-	isError: boolean;
-	error: Error | null;
+	state: () => QueryUiState<(SafeMediaSource | MediaSourceInfo)[]>;
 	onRetry?: () => void;
 	renderSourceCard: (source: SafeMediaSource | MediaSourceInfo) => JSX.Element;
 	renderFormModal: (props: {
@@ -30,6 +29,10 @@ export type SourcesScreenProps = {
 
 export function SourcesScreen(props: SourcesScreenProps) {
 	const page = () => props.page;
+	const errorMessage = () => {
+		const error = props.state().error;
+		return error instanceof Error ? error.message : "API connection failed";
+	};
 
 	return (
 		<div class="container mx-auto p-6">
@@ -60,19 +63,25 @@ export function SourcesScreen(props: SourcesScreenProps) {
 				</For>
 			</div>
 
-			<Show when={props.isLoading}>
+			<Show when={props.state().phase === "pending"}>
 				<div class="mt-8 text-center">
 					<p class="text-muted-foreground">Loading sources...</p>
 				</div>
 			</Show>
 
-			<Show when={props.isError}>
+			<Show
+				when={
+					props.state().phase === "error" || props.state().phase === "offline"
+				}
+			>
 				<div class="mt-8 rounded-md border border-destructive/30 bg-error p-4 text-center">
 					<p class="font-medium text-error-foreground">
 						ソース一覧を読み込めませんでした
 					</p>
 					<p class="mt-1 text-muted-foreground text-sm">
-						{props.error?.message ?? "API connection failed"}
+						{props.state().phase === "offline"
+							? "オフラインです。接続後に再試行します"
+							: errorMessage()}
 					</p>
 					<Show when={props.onRetry}>
 						<button
@@ -84,6 +93,22 @@ export function SourcesScreen(props: SourcesScreenProps) {
 						</button>
 					</Show>
 				</div>
+			</Show>
+
+			<Show when={props.state().fetchState === "background-fetching"}>
+				<p class="mt-3 text-muted-foreground text-sm" role="status">
+					ソース一覧を更新中...
+				</p>
+			</Show>
+			<Show
+				when={
+					props.state().fetchState === "paused" &&
+					props.state().data !== undefined
+				}
+			>
+				<p class="mt-3 text-muted-foreground text-sm" role="status">
+					オフラインのため保存済みデータを表示しています
+				</p>
 			</Show>
 
 			{props.renderFormModal({

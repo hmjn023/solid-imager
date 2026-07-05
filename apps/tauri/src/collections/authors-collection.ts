@@ -1,3 +1,4 @@
+import { authorsQueryKeys } from "@solid-imager/ui/query-options";
 import { createCollection } from "@tanstack/db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistence";
@@ -16,8 +17,8 @@ export function createAuthorsCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["allAuthors"],
-				queryFn: () => client.authors.list(),
+				queryKey: authorsQueryKeys.all(),
+				queryFn: ({ signal }) => client.authors.list(undefined, { signal }),
 				queryClient,
 				getKey: (author) => author.id,
 			}),

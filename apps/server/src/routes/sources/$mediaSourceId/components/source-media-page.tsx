@@ -1,5 +1,6 @@
 import { Button } from "@solid-imager/ui/button";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
+import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
@@ -76,7 +77,7 @@ export function SourceMediaPage() {
 	const handleBulkSuccess = () => {
 		handleCancelSelect();
 		queryClient.invalidateQueries({
-			queryKey: ["media", mediaSourceId()],
+			queryKey: sourceMediaQueryKeys.forSource(mediaSourceId()),
 		});
 	};
 

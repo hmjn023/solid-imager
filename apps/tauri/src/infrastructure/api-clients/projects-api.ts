@@ -1,5 +1,9 @@
 export { fetchAllProjects } from "~/api/entities-api";
 
+import {
+	defaultProjectsQueryConfig,
+	projectsQueryKeys,
+} from "@solid-imager/ui/query-options";
 import { client } from "~/orpc-client";
 
 export function createProject(data: { name: string; description?: string }) {
@@ -30,7 +34,9 @@ export async function removeProjectFromMedia(
 
 export function projectsForMediaQueryOptions(mediaId: string) {
 	return {
-		queryKey: ["projectsForMedia", mediaId],
-		queryFn: () => client.projects.listForMedia({ mediaId }),
+		queryKey: projectsQueryKeys.forMedia(mediaId),
+		queryFn: ({ signal }: { signal: AbortSignal }) =>
+			client.projects.listForMedia({ mediaId }, { signal }),
+		...defaultProjectsQueryConfig,
 	};
 }
