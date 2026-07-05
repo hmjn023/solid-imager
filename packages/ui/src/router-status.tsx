@@ -134,7 +134,7 @@ interface BootstrapStatusScreenProps {
 export function BootstrapStatusScreen(props: BootstrapStatusScreenProps) {
 	return (
 		<section
-			aria-live="polite"
+			aria-live={props.error ? undefined : "polite"}
 			class="mx-auto flex min-h-64 max-w-xl flex-col items-center justify-center gap-4 p-6 text-center"
 			role={props.error ? "alert" : "status"}
 		>
