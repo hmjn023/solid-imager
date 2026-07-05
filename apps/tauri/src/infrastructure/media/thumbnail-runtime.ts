@@ -28,7 +28,3 @@ export function buildMediaContentUrl(
 export function notifyThumbnailReady(_mediaId: string) {
 	// No-op for remote server mode
 }
-
-export function resetThumbnailRuntimeCache() {
-	// No-op for remote server mode
-}

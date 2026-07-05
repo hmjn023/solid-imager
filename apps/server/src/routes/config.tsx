@@ -1,8 +1,9 @@
-import { createQuery } from "@tanstack/solid-query";
+import { ConfigScreen } from "@solid-imager/ui/screens/config-screen";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { Show } from "solid-js";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { configQueryOptions } from "~/infrastructure/api-clients/queries";
-import { ConfigForm } from "./config/-config-form";
 
 export const Route = createFileRoute("/config")({
 	loader: async ({ context }) => {
@@ -13,6 +14,7 @@ export const Route = createFileRoute("/config")({
 
 function ConfigPage() {
 	const configQuery = createQuery(() => configQueryOptions());
+	const queryClient = useQueryClient();
 
 	return (
 		<div class="container mx-auto max-w-4xl p-6">
@@ -25,7 +27,15 @@ function ConfigPage() {
 			</Show>
 
 			<Show when={configQuery.data}>
-				{(data) => <ConfigForm data={data()} />}
+				{(data) => (
+					<ConfigScreen
+						data={data()}
+						onSubmit={async (value) => {
+							await orpc.config.update(value);
+							await queryClient.invalidateQueries({ queryKey: ["config"] });
+						}}
+					/>
+				)}
 			</Show>
 		</div>
 	);
