@@ -3,6 +3,40 @@ import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 
+type JsonSafeValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonSafeValue[]
+	| { [key: string]: JsonSafeValue };
+
+function toJsonSafeValue(value: unknown): JsonSafeValue {
+	if (
+		value === null ||
+		value === undefined ||
+		typeof value === "string" ||
+		typeof value === "number" ||
+		typeof value === "boolean"
+	) {
+		return value ?? null;
+	}
+	if (value instanceof Date) {
+		return value.toISOString();
+	}
+	if (Array.isArray(value)) {
+		return value.map(toJsonSafeValue);
+	}
+	if (typeof value === "object") {
+		const result: Record<string, JsonSafeValue> = {};
+		for (const [key, val] of Object.entries(value)) {
+			result[key] = toJsonSafeValue(val);
+		}
+		return result;
+	}
+	return null;
+}
+
 const StaleInProgressJobMs = 60 * 60 * 1000;
 
 export class JobWorker {
@@ -17,14 +51,17 @@ export class JobWorker {
 	private readonly activeLanceDbSyncKeys = new Set<string>();
 
 	private readonly jobRepo: IJobRepository;
-	private readonly processor: (job: Job) => Promise<void>;
+	private readonly processor: (job: Job) => Promise<unknown>;
 
 	private readonly aiJobTypes = new Set([
 		"auto_tagging",
 		"extract_ccip_vector",
 	]);
 
-	constructor(jobRepo: IJobRepository, processor: (job: Job) => Promise<void>) {
+	constructor(
+		jobRepo: IJobRepository,
+		processor: (job: Job) => Promise<unknown>,
+	) {
 		this.jobRepo = jobRepo;
 		this.processor = processor;
 	}
@@ -168,8 +205,10 @@ export class JobWorker {
 			"Job started",
 		);
 		try {
-			await this.processor(job);
-			await this.jobRepo.markAsCompleted(job.id, { success: true });
+			const result = await this.processor(job);
+			const safeResult =
+				result !== undefined ? toJsonSafeValue(result) : { success: true };
+			await this.jobRepo.markAsCompleted(job.id, safeResult);
 			logger.info(
 				{
 					jobId: job.id,

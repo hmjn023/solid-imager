@@ -2148,36 +2148,10 @@
         }
       }
     },
-    "/ai/batchTagging": {
+    "/ai/startBatchTagging": {
       "post": {
-        "operationId": "ai.batchTagging",
-        "summary": "batchTagging",
-        "tags": [
-          "AI"
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {},
-                    {
-                      "not": {}
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/ai/startBatchTaggingWithIds": {
-      "post": {
-        "operationId": "ai.startBatchTaggingWithIds",
-        "summary": "startBatchTaggingWithIds",
+        "operationId": "ai.startBatchTagging",
+        "summary": "startBatchTagging",
         "tags": [
           "AI"
         ],

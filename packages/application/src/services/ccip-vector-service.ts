@@ -4,7 +4,9 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import type {
+	CcipVectorMetadata,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "../ports/ccip-vector-store";
@@ -31,9 +33,60 @@ export class CcipVectorService {
 		mediaId: string,
 		force = false,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
+		const existing = force ? null : await this.deps.vectorStore.get(mediaId);
+		const result = await this.prepareExtraction(
+			mediaSourceId,
+			mediaId,
+			existing,
+		);
+		if (!result.skipped) {
+			await this.deps.vectorStore.upsert(result.record);
+		}
+		return result;
+	}
+
+	async extractBatch(
+		mediaSourceId: string,
+		mediaIds: string[],
+		force = false,
+		concurrency = 1,
+	): Promise<
+		PromiseSettledResult<{
+			mediaId: string;
+			record: CcipVectorRecord;
+			skipped: boolean;
+		}>[]
+	> {
+		if (!Number.isSafeInteger(concurrency) || concurrency < 1) {
+			throw new Error("concurrency must be a positive integer");
+		}
+		const existingById = force
+			? new Map<string, CcipVectorRecord>()
+			: await this.deps.vectorStore.getMany(mediaIds);
+		const results = await asyncPool(mediaIds, concurrency, async (mediaId) => ({
+			mediaId,
+			...(await this.prepareExtraction(
+				mediaSourceId,
+				mediaId,
+				existingById.get(mediaId) ?? null,
+			)),
+		}));
+		const records = results.flatMap((result) =>
+			result.status === "fulfilled" && !result.value.skipped
+				? [result.value.record]
+				: [],
+		);
+		await this.deps.vectorStore.upsertMany(records);
+		return results;
+	}
+
+	private async prepareExtraction(
+		mediaSourceId: string,
+		mediaId: string,
+		existing: CcipVectorRecord | null,
+	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
 		const media = await this.requireImage(mediaSourceId, mediaId);
-		const existing = await this.deps.vectorStore.get(mediaId);
-		if (!force && existing && this.isCurrent(existing, media, mediaSourceId)) {
+		if (existing && this.isCurrent(existing, media, mediaSourceId)) {
 			return { record: existing, skipped: true };
 		}
 
@@ -50,7 +103,6 @@ export class CcipVectorService {
 			mediaModifiedAt: media.modifiedAt,
 			extractedAt: new Date(),
 		};
-		await this.deps.vectorStore.upsert(record);
 		return { record, skipped: false };
 	}
 
@@ -80,6 +132,16 @@ export class CcipVectorService {
 		await this.deps.vectorStore.deleteBySource(mediaSourceId);
 	}
 
+	async getMany(mediaIds: string[]): Promise<Map<string, CcipVectorRecord>> {
+		return await this.deps.vectorStore.getMany(mediaIds);
+	}
+
+	async getMetadataMany(
+		mediaIds: string[],
+	): Promise<Map<string, CcipVectorMetadata>> {
+		return await this.deps.vectorStore.getMetadataMany(mediaIds);
+	}
+
 	async listExtractedMediaIds(mediaSourceId?: string): Promise<string[]> {
 		return await this.deps.vectorStore.listMediaIds(mediaSourceId);
 	}
@@ -96,7 +158,10 @@ export class CcipVectorService {
 		const anchorMedia = await this.deps.mediaRepository.findById(anchorMediaId);
 		if (!anchorMedia) throw new Error(`Media not found: ${anchorMediaId}`);
 		const anchor = await this.deps.vectorStore.get(anchorMediaId);
-		if (!anchor || !this.isCurrent(anchor, anchorMedia, anchorMedia.mediaSourceId)) {
+		if (
+			!anchor ||
+			!this.isCurrent(anchor, anchorMedia, anchorMedia.mediaSourceId)
+		) {
 			throw new Error("CCIP vector is missing or stale for the anchor media");
 		}
 
@@ -156,7 +221,11 @@ export class CcipVectorService {
 		};
 	}
 
-	private isCurrent(record: CcipVectorRecord, media: Media, mediaSourceId: string): boolean {
+	private isCurrent(
+		record: CcipVectorRecord,
+		media: Media,
+		mediaSourceId: string,
+	): boolean {
 		return (
 			record.model === CCIP_MODEL &&
 			record.embeddingVersion === CCIP_EMBEDDING_VERSION &&

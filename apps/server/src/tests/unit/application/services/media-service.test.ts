@@ -114,6 +114,7 @@ describe("MediaService Unit Tests", () => {
 			markAsFailed: vi.fn(),
 			update: vi.fn(),
 			incrementProgress: vi.fn(),
+			incrementFailedCount: vi.fn(),
 		};
 		services.getJobRepository = vi.fn().mockReturnValue(mockJobRepository);
 

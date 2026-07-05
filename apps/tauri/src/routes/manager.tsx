@@ -1,4 +1,3 @@
-import type { MediaSafe } from "@solid-imager/core/domain/media/schemas";
 import {
 	prefetchManagerPageQueries,
 	useManagerPage,
@@ -6,11 +5,12 @@ import {
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { MediaCardItem } from "~/components/media/media-card-item";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
+	scanBatchCcipTargets,
 	scanBatchTaggingTargets,
-	startBatchTaggingWithIds,
+	startBatchCcipExtraction,
+	startBatchTagging,
 } from "~/infrastructure/api-clients/ai-api";
 import {
 	createCharacter,
@@ -31,7 +31,6 @@ import {
 	deleteProject,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
-import { client } from "~/orpc-client";
 import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
@@ -57,14 +56,9 @@ const managerActions = {
 	updateCharacter,
 	deleteCharacter,
 	scanBatchTaggingTargets,
-	startBatchTaggingWithIds,
-	scanBatchCcipTargets: (input: { force: boolean; mediaSourceId?: string }) =>
-		client.ai.scanBatchCcipTargets(input),
-	startBatchCcipExtraction: (input: {
-		force: boolean;
-		mediaSourceId?: string;
-		mediaIds: string[];
-	}) => client.ai.startBatchCcipExtraction(input),
+	startBatchTagging,
+	scanBatchCcipTargets,
+	startBatchCcipExtraction,
 	findDuplicateMedia,
 	bulkDeleteMedia,
 };
@@ -86,21 +80,5 @@ function ManagerPage() {
 		useBatchJobEvents,
 	});
 
-	return (
-		<ManagerScreen
-			manager={manager}
-			renderMediaCard={(
-				media: MediaSafe,
-				selected: boolean,
-				onToggle: (mediaId: string) => void,
-			) => (
-				<MediaCardItem
-					media={media}
-					onToggle={onToggle}
-					selectable
-					selected={selected}
-				/>
-			)}
-		/>
-	);
+	return <ManagerScreen manager={manager} />;
 }

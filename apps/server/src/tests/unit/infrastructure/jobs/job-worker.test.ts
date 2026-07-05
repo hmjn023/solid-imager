@@ -48,6 +48,7 @@ describe("JobWorker", () => {
 			markAsFailed: vi.fn().mockResolvedValue(undefined),
 			update: vi.fn(),
 			incrementProgress: vi.fn(),
+			incrementFailedCount: vi.fn(),
 		};
 
 		processor = vi.fn().mockResolvedValue(undefined);
@@ -199,6 +200,42 @@ describe("JobWorker", () => {
 		);
 
 		expect(processor).toHaveBeenCalledTimes(TotalExpectedCalls);
+	});
+
+	it("should use processor return value as the completed job result", async () => {
+		worker.updateConfig({
+			jobs: { concurrency: 1, aiConcurrency: 1, pollIntervalMs: 1000 },
+		} as AppConfig);
+
+		const customJob = {
+			id: "custom-1",
+			type: "custom",
+			status: "pending",
+		} as Job;
+
+		processor = vi.fn().mockResolvedValue({ success: true, parentProcessed: true });
+		worker = new JobWorker(jobRepo, processor);
+		worker.updateConfig({
+			jobs: { concurrency: 1, aiConcurrency: 1, pollIntervalMs: 1000 },
+		} as AppConfig);
+
+		(jobRepo.claimPending as any).mockImplementation(
+			(limit: number, options: any) => {
+				if (options?.excludeTypes) {
+					return Promise.resolve([customJob].slice(0, limit));
+				}
+				return Promise.resolve([]);
+			},
+		);
+
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+
+		expect(processor).toHaveBeenCalledWith(customJob);
+		expect(jobRepo.markAsCompleted).toHaveBeenCalledWith("custom-1", {
+			success: true,
+			parentProcessed: true,
+		});
 	});
 
 	it("should requeue overlapping claimed LanceDB sync jobs per media source", async () => {

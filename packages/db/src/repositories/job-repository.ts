@@ -1,8 +1,10 @@
 import type {
+	BatchProgress,
 	IJobRepository,
 	Job,
 	NewJob,
 } from "@solid-imager/core/domain/repositories/job-repository";
+import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { isJobStatus } from "@solid-imager/core/utils/type-guards";
 import {
 	and,
@@ -262,42 +264,17 @@ export function createJobRepository(
 		async incrementProgress(
 			id: string,
 			progressKey?: string,
-		): Promise<boolean> {
-			const normalizedPayload = sql`COALESCE(
-				CASE
-					WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
-					ELSE payload
-				END,
-				'{}'::jsonb
-			)`;
-			const processedJobIds = sql`COALESCE(${normalizedPayload}->'processedJobIds', '[]'::jsonb)`;
-			const result: unknown = await db().execute(
-				progressKey
-					? sql`UPDATE ${jobs}
-						SET payload = jsonb_set(
-							jsonb_set(
-								${normalizedPayload},
-								'{processed}',
-								(COALESCE((${normalizedPayload}->>'processed'), '0')::int + 1)::text::jsonb
-							),
-							'{processedJobIds}',
-							${processedJobIds} || jsonb_build_array(${progressKey}::text)
-						),
-						updated_at = NOW()
-						WHERE id = ${id}
-							AND NOT (${processedJobIds} @> jsonb_build_array(${progressKey}::text))
-						RETURNING id`
-					: sql`UPDATE ${jobs}
-						SET payload = jsonb_set(
-							${normalizedPayload},
-							'{processed}',
-							(COALESCE((${normalizedPayload}->>'processed'), '0')::int + 1)::text::jsonb
-						),
-						updated_at = NOW()
-						WHERE id = ${id}
-						RETURNING id`,
-			);
-			return extractRows(result).length > 0;
+			amount = 1,
+		): Promise<BatchProgress | null> {
+			return incrementBatchCount(db, id, "processed", progressKey, amount);
+		},
+
+		async incrementFailedCount(
+			id: string,
+			progressKey?: string,
+			amount = 1,
+		): Promise<BatchProgress | null> {
+			return incrementBatchCount(db, id, "failed", progressKey, amount);
 		},
 
 		async claimPending(
@@ -597,4 +574,88 @@ function extractStringArrayOrSingle(value: unknown): string[] {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizedPayloadExpression() {
+	return sql`COALESCE(
+		CASE
+			WHEN jsonb_typeof(payload) = 'string' THEN (payload#>>'{}')::jsonb
+			ELSE payload
+		END,
+		'{}'::jsonb
+	)`;
+}
+
+async function incrementBatchCount(
+	getExecutor: () => DrizzleExecutor,
+	id: string,
+	field: "processed" | "failed",
+	progressKey?: string,
+	amount = 1,
+): Promise<BatchProgress | null> {
+	if (!Number.isInteger(amount) || amount < 1) {
+		throw new Error("Batch progress amount must be a positive integer");
+	}
+	const normalizedPayload = normalizedPayloadExpression();
+	const executor = getExecutor();
+	const resultMarker =
+		field === "processed" ? "parentProcessed" : "parentFailed";
+	const otherResultMarker =
+		field === "processed" ? "parentFailed" : "parentProcessed";
+
+	let raw: unknown;
+
+	if (progressKey) {
+		raw = await executor.execute(sql`
+			WITH updated_child AS (
+				UPDATE ${jobs}
+				SET result = COALESCE(result, '{}'::jsonb) || jsonb_build_object(${resultMarker}::text, true)
+				WHERE id = ${progressKey}::uuid
+					AND parent_id = ${id}
+					AND NOT (COALESCE(result, '{}'::jsonb) ? ${resultMarker})
+					AND NOT (COALESCE(result, '{}'::jsonb) ? ${otherResultMarker})
+				RETURNING id
+			)
+			UPDATE ${jobs}
+			SET payload = jsonb_set(
+				${normalizedPayload},
+				${`{${field}}`},
+				(COALESCE((${normalizedPayload}->>${field}), '0')::int + ${amount})::text::jsonb
+			),
+			updated_at = NOW()
+			WHERE id = ${id}
+				AND EXISTS (SELECT 1 FROM updated_child)
+			RETURNING payload
+		`);
+	} else {
+		raw = await executor.execute(sql`
+			UPDATE ${jobs}
+			SET payload = jsonb_set(
+				${normalizedPayload},
+				${`{${field}}`},
+				(COALESCE((${normalizedPayload}->>${field}), '0')::int + ${amount})::text::jsonb
+			),
+			updated_at = NOW()
+			WHERE id = ${id}
+			RETURNING payload
+		`);
+	}
+
+	const rows = extractRows(raw);
+	if (rows.length === 0) {
+		return null;
+	}
+	const payload = parseJsonColumn(
+		(rows[0] as { payload?: unknown }).payload,
+		"payload",
+	);
+	const parsed = batchParentPayloadSchema.safeParse(payload);
+	if (!parsed.success) {
+		return null;
+	}
+	return {
+		processed: parsed.data.processed,
+		failed: parsed.data.failed,
+		total: parsed.data.total,
+	};
 }

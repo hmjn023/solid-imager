@@ -47,6 +47,20 @@ bun --filter @solid-imager/server run db:migrate
 bun run dev
 ```
 
+### AI ネイティブ依存（GPU 対応）
+
+AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。GPU (CUDA) を有効にするには、システムにインストールされた共有 ONNX Runtime を動的リンクしてビルドしてください。
+
+```bash
+ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun x vp install
+```
+
+要件:
+- `/usr/lib/libonnxruntime.so.1` と `/usr/lib/libonnxruntime_providers_cuda.so` が存在すること
+- NVIDIA ドライバーと CUDA ランタイムがインストールされていること
+
+CPU のみで使用する場合は通常通り `bun x vp install` してください。
+
 ## 主要スクリプト
 
 | コマンド | 用途 |

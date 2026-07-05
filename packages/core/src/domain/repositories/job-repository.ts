@@ -26,6 +26,12 @@ export type NewJob = {
 	parentId?: string | null;
 };
 
+export type BatchProgress = {
+	processed: number;
+	failed: number;
+	total: number;
+};
+
 export type IJobRepository = {
 	create(job: NewJob): Promise<Job>;
 	createIfUnique(job: NewJob): Promise<Job | null>;
@@ -42,7 +48,16 @@ export type IJobRepository = {
 	markAsCompleted(id: string, result?: unknown): Promise<void>;
 	markAsFailed(id: string, error: string): Promise<void>;
 	update(id: string, data: Partial<Job>): Promise<void>;
-	incrementProgress(id: string, progressKey?: string): Promise<boolean>;
+	incrementProgress(
+		id: string,
+		progressKey?: string,
+		amount?: number,
+	): Promise<BatchProgress | null>;
+	incrementFailedCount(
+		id: string,
+		progressKey?: string,
+		amount?: number,
+	): Promise<BatchProgress | null>;
 	claimPending(
 		limit: number,
 		options?: {

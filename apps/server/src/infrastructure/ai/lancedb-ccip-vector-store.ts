@@ -2,6 +2,7 @@ import * as path from "node:path";
 import type { Connection, Table } from "@lancedb/lancedb";
 import type {
 	CcipVectorCandidate,
+	CcipVectorMetadata,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "@solid-imager/application/ports/ccip-vector-store";
@@ -9,6 +10,7 @@ import { z } from "zod";
 
 const TABLE_NAME = "media_ccip";
 const VECTOR_DIMENSIONS = 768;
+const AUTO_OPTIMIZE_WRITE_OPERATIONS = 100;
 
 const rowSchema = z.object({
 	mediaId: z.string().uuid(),
@@ -32,6 +34,11 @@ const rowSchema = z.object({
 	_distance: z.number().optional(),
 });
 
+const metadataRowSchema = rowSchema.omit({
+	vector: true,
+	_distance: true,
+});
+
 function escapeSqlString(value: string): string {
 	return value.replaceAll("'", "''");
 }
@@ -49,10 +56,15 @@ function toRecord(value: unknown): CcipVectorRecord {
 	};
 }
 
+function toMetadata(value: unknown): CcipVectorMetadata {
+	return metadataRowSchema.parse(value);
+}
+
 export class LanceDbCcipVectorStore implements ICcipVectorStore {
 	private connectionPromise: Promise<Connection> | null = null;
 	private tablePromise: Promise<Table> | null = null;
 	private writeQueue: Promise<void> = Promise.resolve();
+	private writeOperationsSinceOptimize = 0;
 
 	constructor(private readonly directory: string) {}
 
@@ -82,8 +94,9 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 
 	private async openOrCreateTable(): Promise<Table> {
 		const db = await this.connection();
+		let table: Table;
 		try {
-			return await db.openTable(TABLE_NAME);
+			table = await db.openTable(TABLE_NAME);
 		} catch {
 			const arrow = await import("apache-arrow");
 			const schema = new arrow.Schema([
@@ -106,8 +119,22 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 				),
 				new arrow.Field("extractedAt", new arrow.TimestampMillisecond(), false),
 			]);
-			return await db.createTable(TABLE_NAME, [], { schema });
+			table = await db.createTable(TABLE_NAME, [], { schema });
 		}
+		await this.ensureMediaIdIndex(table);
+		return table;
+	}
+
+	private async ensureMediaIdIndex(table: Table): Promise<void> {
+		const indices = await table.listIndices();
+		if (
+			indices.some((index) => index.columns.includes("mediaId")) ||
+			(await table.countRows()) === 0
+		) {
+			return;
+		}
+		const { Index } = await import("@lancedb/lancedb");
+		await table.createIndex("mediaId", { config: Index.btree() });
 	}
 
 	private async serializeWrite(operation: () => Promise<void>): Promise<void> {
@@ -117,26 +144,80 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 	}
 
 	async get(mediaId: string): Promise<CcipVectorRecord | null> {
+		return (await this.getMany([mediaId])).get(mediaId) ?? null;
+	}
+
+	async getMany(mediaIds: string[]): Promise<Map<string, CcipVectorRecord>> {
+		if (mediaIds.length === 0) {
+			return new Map();
+		}
+		const predicate = mediaIds
+			.map((mediaId) => `'${escapeSqlString(mediaId)}'`)
+			.join(", ");
 		const table = await this.table();
 		const rows = await table
 			.query()
-			.where(`mediaId = '${escapeSqlString(mediaId)}'`)
-			.limit(1)
+			.where(`mediaId IN (${predicate})`)
 			.toArray();
-		return rows[0] ? toRecord(rows[0]) : null;
+		return new Map(
+			rows.map((row) => {
+				const record = toRecord(row);
+				return [record.mediaId, record];
+			}),
+		);
+	}
+
+	async getMetadataMany(
+		mediaIds: string[],
+	): Promise<Map<string, CcipVectorMetadata>> {
+		if (mediaIds.length === 0) {
+			return new Map();
+		}
+		const predicate = mediaIds
+			.map((mediaId) => `'${escapeSqlString(mediaId)}'`)
+			.join(", ");
+		const table = await this.table();
+		const rows = await table
+			.query()
+			.select([
+				"mediaId",
+				"mediaSourceId",
+				"model",
+				"embeddingVersion",
+				"mediaModifiedAt",
+				"extractedAt",
+			])
+			.where(`mediaId IN (${predicate})`)
+			.toArray();
+		return new Map(
+			rows.map((row) => {
+				const metadata = toMetadata(row);
+				return [metadata.mediaId, metadata];
+			}),
+		);
 	}
 
 	async upsert(record: CcipVectorRecord): Promise<void> {
+		await this.upsertMany([record]);
+	}
+
+	async upsertMany(records: CcipVectorRecord[]): Promise<void> {
+		if (records.length === 0) {
+			return;
+		}
 		await this.serializeWrite(async () => {
 			const table = await this.table();
-			await table.delete(`mediaId = '${escapeSqlString(record.mediaId)}'`);
-			await table.add([
-				{
-					...record,
-					mediaModifiedAt: record.mediaModifiedAt,
-					extractedAt: record.extractedAt,
-				},
-			]);
+			await table
+				.mergeInsert("mediaId")
+				.whenMatchedUpdateAll()
+				.whenNotMatchedInsertAll()
+				.execute(records);
+			this.writeOperationsSinceOptimize++;
+			if (this.writeOperationsSinceOptimize >= AUTO_OPTIMIZE_WRITE_OPERATIONS) {
+				await table.optimize();
+				await this.ensureMediaIdIndex(table);
+				this.writeOperationsSinceOptimize = 0;
+			}
 		});
 	}
 

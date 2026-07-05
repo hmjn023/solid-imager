@@ -14,7 +14,7 @@ describe("CcipVectorService", () => {
 		const record = {
 			mediaId: media.id,
 			mediaSourceId: source.id,
-			vector: new Array(768).fill(0),
+			vector: Array.from({ length: 768 }, () => 0),
 			model: "ccip-caformer-24-randaug-pruned",
 			embeddingVersion: 1,
 			mediaModifiedAt: media.modifiedAt,
@@ -40,8 +40,54 @@ describe("CcipVectorService", () => {
 		expect(taggingService.getCcipFeatureForMedia).not.toHaveBeenCalled();
 	});
 
+	it("persists successful batch extractions with one bulk upsert", async () => {
+		const secondMedia = {
+			...media,
+			id: "00000000-0000-4000-8000-000000000002",
+		};
+		const vectorStore = {
+			getMany: vi.fn().mockResolvedValue(new Map()),
+			upsertMany: vi.fn().mockResolvedValue(undefined),
+		};
+		const taggingService = {
+			getCcipFeatureForMedia: vi
+				.fn()
+				.mockResolvedValueOnce({
+					feature: Array.from({ length: 768 }, () => 1),
+				})
+				.mockResolvedValueOnce({
+					feature: Array.from({ length: 768 }, () => 2),
+				}),
+		};
+		const service = new CcipVectorService({
+			mediaRepository: {
+				findById: vi.fn((id: string) =>
+					Promise.resolve(id === media.id ? media : secondMedia),
+				),
+			} as any,
+			sourceRepository: {
+				findById: vi.fn().mockResolvedValue(source),
+			} as any,
+			taggingService: taggingService as any,
+			vectorStore: vectorStore as any,
+		});
+
+		const results = await service.extractBatch(source.id, [
+			media.id,
+			secondMedia.id,
+		]);
+
+		expect(results.every((result) => result.status === "fulfilled")).toBe(true);
+		expect(vectorStore.getMany).toHaveBeenCalledOnce();
+		expect(vectorStore.upsertMany).toHaveBeenCalledOnce();
+		expect(vectorStore.upsertMany.mock.calls[0]?.[0]).toEqual([
+			expect.objectContaining({ mediaId: media.id }),
+			expect.objectContaining({ mediaId: secondMedia.id }),
+		]);
+	});
+
 	it("reranks LanceDB candidates using CCIP distance", async () => {
-		const anchorVector = new Array(768).fill(0);
+		const anchorVector = Array.from({ length: 768 }, () => 0);
 		const candidateA = {
 			...media,
 			id: "00000000-0000-4000-8000-000000000002",
@@ -74,11 +120,17 @@ describe("CcipVectorService", () => {
 				get: vi.fn().mockResolvedValue(record(media, anchorVector)),
 				search: vi.fn().mockResolvedValue([
 					{
-						...record(candidateA, new Array(768).fill(1)),
+						...record(
+							candidateA,
+							Array.from({ length: 768 }, () => 1),
+						),
 						cosineDistance: 0.1,
 					},
 					{
-						...record(candidateB, new Array(768).fill(2)),
+						...record(
+							candidateB,
+							Array.from({ length: 768 }, () => 2),
+						),
 						cosineDistance: 0.2,
 					},
 				]),
