@@ -1,9 +1,16 @@
+import {
+	ROUTE_PENDING_DELAY_MS,
+	ROUTE_PENDING_MIN_DURATION_MS,
+	RouteErrorScreen,
+	RoutePendingScreen,
+} from "@solid-imager/ui/router-status";
+import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
 import { isServer } from "solid-js/web";
 import { isTransientApiError } from "./infrastructure/api-clients/error-policy";
-import { routeTree } from "./routeTree.gen";
 import type { logger as LoggerInstance } from "./infrastructure/logger";
+import { routeTree } from "./routeTree.gen";
 
 const QUERY_RETRY_DELAY_CAP_MS = 5_000;
 const QUERY_RETRY_DELAY_BASE_MS = 1_000;
@@ -73,6 +80,11 @@ export function getRouter() {
 			scrollRestoration: true,
 			defaultPreload: "intent",
 			defaultPreloadStaleTime: 0,
+			defaultPendingComponent: RoutePendingScreen,
+			defaultErrorComponent: RouteErrorScreen,
+			defaultNotFoundComponent: NotFoundScreen,
+			defaultPendingMs: ROUTE_PENDING_DELAY_MS,
+			defaultPendingMinMs: ROUTE_PENDING_MIN_DURATION_MS,
 			Wrap: (props) => (
 				<QueryClientProvider client={queryClient}>
 					{props.children}

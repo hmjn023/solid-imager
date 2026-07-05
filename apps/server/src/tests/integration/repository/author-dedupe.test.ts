@@ -72,7 +72,7 @@ describe("AuthorRepository Deduplication", () => {
 			.where(
 				and(
 					eq(authorAccounts.platform, "twitter"),
-					eq(authorAccounts.accountId, "@creator"),
+					eq(authorAccounts.accountId, "creator"),
 				),
 			);
 		expect(accounts).toHaveLength(1);
