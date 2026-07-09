@@ -213,7 +213,9 @@ describe("JobWorker", () => {
 			status: "pending",
 		} as Job;
 
-		processor = vi.fn().mockResolvedValue({ success: true, parentProcessed: true });
+		processor = vi
+			.fn()
+			.mockResolvedValue({ success: true, parentProcessed: true });
 		worker = new JobWorker(jobRepo, processor);
 		worker.updateConfig({
 			jobs: { concurrency: 1, aiConcurrency: 1, pollIntervalMs: 1000 },

@@ -303,6 +303,7 @@ export function useManagerPage(
 				return [];
 		}
 	};
+
 	const queryStates = () => ({
 		projects: toQueryUiState(projects, {
 			isEmpty: (data) => data.length === 0,

@@ -1,10 +1,10 @@
-import { ipsQueryKeys } from "@solid-imager/ui/query-options";
 import { createCollection } from "@tanstack/db";
 import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistence";
 import type { getPersistence } from "~/infrastructure/db/persistence";
 import { client } from "~/orpc-client";
 import { queryClient } from "~/router";
+import { collectionQueryKeys } from "./query-keys";
 
 type IpResponse = Awaited<ReturnType<typeof client.ips.list>>[number];
 
@@ -17,7 +17,7 @@ export function createIpsCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ipsQueryKeys.all(),
+				queryKey: collectionQueryKeys.ips(),
 				queryFn: ({ signal }) => client.ips.list(undefined, { signal }),
 				queryClient,
 				getKey: (ip) => ip.id,

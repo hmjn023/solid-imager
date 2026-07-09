@@ -14,7 +14,12 @@ export const calculateNextModeState = (
 ): Partial<SearchState> => {
 	if (nextMode === "vector") {
 		const condition = getSearchConditionFromState(currentState);
-		return { mode: "vector", offset: 0, scrollY: 0, advancedCondition: condition || null };
+		return {
+			mode: "vector",
+			offset: 0,
+			scrollY: 0,
+			advancedCondition: condition || null,
+		};
 	}
 	if (nextMode === "pro") {
 		// Switching from simple to pro: populate advancedCondition from current simple filters
