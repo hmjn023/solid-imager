@@ -3,14 +3,14 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
-	CcipVectorStatus,
-	StartCcipExtractionResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
-import type {
 	JobCompletedEvent,
 	JobFailedEvent,
 	JobProgressEvent,
 } from "@solid-imager/core/domain/sources/events";
+import type {
+	CcipVectorStatus,
+	StartCcipExtractionResponse,
+} from "@solid-imager/core/domain/tagging/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import type { Accessor, JSX } from "solid-js";
 import { MediaSidebar } from "./media-sidebar";
@@ -30,7 +30,9 @@ export type MediaSidebarContentProps = {
 		onClose: () => void;
 	}) => JSX.Element;
 	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
-	startCcipExtraction?: (force: boolean) => Promise<StartCcipExtractionResponse>;
+	startCcipExtraction?: (
+		force: boolean,
+	) => Promise<StartCcipExtractionResponse>;
 	useCcipJobEvents?: (
 		activeJobId: Accessor<string | null>,
 		handlers: {

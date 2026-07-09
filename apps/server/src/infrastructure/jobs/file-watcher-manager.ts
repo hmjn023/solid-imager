@@ -1,7 +1,7 @@
 import path from "node:path";
 import chokidar, { type FSWatcher } from "chokidar";
-import { logger } from "~/infrastructure/logger";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { logger } from "~/infrastructure/logger";
 
 const IGNORE_DOTFILES_REGEX = /(^|[/\\])\../;
 
@@ -25,7 +25,10 @@ if (!globalWatchers.__FILE_WATCHERS_CLEANUP_REGISTERED__) {
 				try {
 					await entry.watcher.close();
 				} catch (err) {
-					logger.error({ err, path: entry.path }, "Failed to close watcher during cleanup");
+					logger.error(
+						{ err, path: entry.path },
+						"Failed to close watcher during cleanup",
+					);
 				}
 			}),
 		);
@@ -74,7 +77,10 @@ export const FileWatcherManager = {
 		watcher.on("unlink", (filePath) => run(callbacks.onDelete, filePath));
 		watcher.on("change", (filePath) => run(callbacks.onChange, filePath));
 		watcher.on("error", (error) => {
-			const isUuid = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(mediaSourceId);
+			const isUuid =
+				/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
+					mediaSourceId,
+				);
 			try {
 				RealtimeEventBus.publishSource(mediaSourceId, "watcher-error", {
 					mediaSourceId: isUuid ? mediaSourceId : undefined,
@@ -100,7 +106,10 @@ export const FileWatcherManager = {
 		try {
 			await entry.watcher.close();
 		} catch (err) {
-			logger.error({ err, mediaSourceId }, "Failed to close watcher in stop method");
+			logger.error(
+				{ err, mediaSourceId },
+				"Failed to close watcher in stop method",
+			);
 		}
 		watchers.delete(mediaSourceId);
 	},

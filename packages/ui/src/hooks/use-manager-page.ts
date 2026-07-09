@@ -292,8 +292,6 @@ export function useManagerPage(
 		}
 	};
 
-
-
 	const invalidateActive = () => {
 		const tab = activeCrudTab(activeTab());
 		if (tab) {

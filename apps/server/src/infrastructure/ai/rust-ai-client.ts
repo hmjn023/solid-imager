@@ -2,7 +2,6 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createClient } from "@solid-imager/client";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
-import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import {
 	type CcipDifferenceResponse,
 	type CcipFeatureResponse,
@@ -11,6 +10,7 @@ import {
 	type TaggingResponse,
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import type { appRouter } from "~/domain/shared/api-contract";
 
 function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
@@ -279,10 +279,14 @@ export class RustAiClient implements IAiClient {
 				return await nativeModule.ccipDistances(feature, candidates);
 			}
 		}
-		const settledResults = await asyncPool(candidates, 50, async (candidate) => {
-			const result = await this.calculateCcipDifference(feature, candidate);
-			return result.difference;
-		});
+		const settledResults = await asyncPool(
+			candidates,
+			50,
+			async (candidate) => {
+				const result = await this.calculateCcipDifference(feature, candidate);
+				return result.difference;
+			},
+		);
 		return settledResults.map((r) => {
 			if (r.status === "fulfilled") return r.value;
 			throw r.reason;
