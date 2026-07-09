@@ -5,7 +5,7 @@ const HTTP_INTERNAL_SERVER_ERROR = 500;
 const CLIENT_QUERY_SETTLE_MS = 500;
 
 test.describe("SSR Crashing Check - E2E", () => {
-	const pages = ["/", "/config", "/about"];
+	const pages = ["/", "/config", "/about", "/search"];
 
 	for (const pagePath of pages) {
 		test(`should load ${pagePath} without crashing`, async ({ page }) => {

@@ -1,8 +1,5 @@
 import { AppShell } from "@solid-imager/ui/layouts/app-shell";
-import {
-	RoutePendingScreen,
-	RouteTransitionIndicator,
-} from "@solid-imager/ui/router-status";
+import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import {
@@ -11,7 +8,6 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/solid-router";
-import { Suspense } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
 import { ApiActivityIndicator } from "~/components/api-activity-indicator";
@@ -51,9 +47,7 @@ function RootComponent() {
 				<Toaster />
 				<AppShell nav={<Nav />} statusIndicator={<RouteTransitionIndicator />}>
 					<ApiActivityIndicator />
-					<Suspense fallback={<RoutePendingScreen />}>
-						<Outlet />
-					</Suspense>
+					<Outlet />
 				</AppShell>
 				<Scripts />
 			</body>
