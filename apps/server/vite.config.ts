@@ -58,7 +58,8 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
 		const handler = new RPCHandler(appRouter);
 
 		server.middlewares.use(async (req, res, next) => {
-			if (!req.url?.startsWith("/api/rpc")) {
+			const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+			if (pathname !== "/api/rpc" && !pathname.startsWith("/api/rpc/")) {
 				next();
 				return;
 			}
@@ -71,7 +72,13 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
 				});
 
 				if (!matched) {
-					next();
+					logger.warn(
+						{ method: req.method, url: req.url },
+						"Unmatched RPC request",
+					);
+					res.statusCode = 404;
+					res.end("Not Found");
+					return;
 				}
 			} catch (error) {
 				logger.error({ err: error }, "Dev RPC middleware failed");
