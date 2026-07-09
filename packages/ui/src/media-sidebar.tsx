@@ -3,14 +3,14 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
-	CcipVectorStatus,
-	StartCcipExtractionResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
-import type {
 	JobCompletedEvent,
 	JobFailedEvent,
 	JobProgressEvent,
 } from "@solid-imager/core/domain/sources/events";
+import type {
+	CcipVectorStatus,
+	StartCcipExtractionResponse,
+} from "@solid-imager/core/domain/tagging/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
@@ -47,7 +47,9 @@ type MediaSidebarProps = {
 		onClose: () => void;
 	}) => JSX.Element;
 	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
-	startCcipExtraction?: (force: boolean) => Promise<StartCcipExtractionResponse>;
+	startCcipExtraction?: (
+		force: boolean,
+	) => Promise<StartCcipExtractionResponse>;
 	useCcipJobEvents?: (
 		activeJobId: () => string | null,
 		handlers: {
@@ -90,7 +92,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [ccipStatus, setCcipStatus] =
 		createSignal<CcipVectorStatus["status"]>("missing");
-	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
+	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(
+		null,
+	);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
 	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
 	const [descriptionValue, setDescriptionValue] = createSignal(
