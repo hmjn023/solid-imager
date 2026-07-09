@@ -1,6 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Component, JSX } from "solid-js";
-import { Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { Button } from "../button";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import {
@@ -71,11 +71,17 @@ export type SourceMediaScreenProps = {
 };
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
+	const [isMounted, setIsMounted] = createSignal(false);
 	const page = () => props.page;
 	const filterStates = () => Object.values(page().filterStates());
+	const shouldRenderGrid = () => !props.enableVirtualization || isMounted();
 
 	// Enable auto-save/restore of search conditions
 	useCurrentSearchPersistence(page().mediaSourceId, page().presetClient);
+
+	onMount(() => {
+		setIsMounted(true);
+	});
 
 	return (
 		<section
@@ -164,35 +170,44 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							オフラインです。接続後にメディア一覧を読み込みます
 						</p>
 					</Show>
-					<SourceMediaGrid
-						contextMenuMediaId={page().contextMenuMediaId}
-						enableVirtualization={props.enableVirtualization}
-						isError={page().contentState().phase === "error"}
-						isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
-						isPending={page().contentState().phase === "pending"}
-						mediaResults={page().mediaResults}
-						mediaSourceId={page().mediaSourceId}
-						onCopyMove={page().handleCopyMove}
-						onDelete={page().handleDelete}
-						onLoadMore={() => page().mediaQuery.fetchNextPage()}
-						onRetry={() => {
-							void page().mediaQuery.refetch();
-						}}
-						onSyncSingleMedia={page().handleSyncSingleMedia}
-						onToggleSelect={props.onToggleSelect}
-						isBulkSelectMode={props.isBulkSelectMode}
-						isSelected={props.isSelected}
-						onBulkAction={props.onBulkAction}
-						onClearSelection={props.onClearSelection}
-						selectedCount={props.selectedCount}
-						hasNextPage={page().mediaQuery.hasNextPage}
-						queryError={page().mediaQuery.error ?? null}
-						renderItem={props.renderItem}
-						setContextMenuMediaId={page().setContextMenuMediaId}
-						setLoadMoreRef={page().setLoadMoreRef}
-						showOpenInNewTab={props.showOpenInNewTab}
-						totalCount={page().mediaQuery.data?.pages[0]?.total}
-					/>
+					<Show
+						fallback={
+							<div class="flex h-64 items-center justify-center text-muted-foreground">
+								メディア一覧を読み込んでいます...
+							</div>
+						}
+						when={shouldRenderGrid()}
+					>
+						<SourceMediaGrid
+							contextMenuMediaId={page().contextMenuMediaId}
+							enableVirtualization={props.enableVirtualization}
+							isError={page().contentState().phase === "error"}
+							isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
+							isPending={page().contentState().phase === "pending"}
+							mediaResults={page().mediaResults}
+							mediaSourceId={page().mediaSourceId}
+							onCopyMove={page().handleCopyMove}
+							onDelete={page().handleDelete}
+							onLoadMore={() => page().mediaQuery.fetchNextPage()}
+							onRetry={() => {
+								void page().mediaQuery.refetch();
+							}}
+							onSyncSingleMedia={page().handleSyncSingleMedia}
+							onToggleSelect={props.onToggleSelect}
+							isBulkSelectMode={props.isBulkSelectMode}
+							isSelected={props.isSelected}
+							onBulkAction={props.onBulkAction}
+							onClearSelection={props.onClearSelection}
+							selectedCount={props.selectedCount}
+							hasNextPage={page().mediaQuery.hasNextPage}
+							queryError={page().mediaQuery.error ?? null}
+							renderItem={props.renderItem}
+							setContextMenuMediaId={page().setContextMenuMediaId}
+							setLoadMoreRef={page().setLoadMoreRef}
+							showOpenInNewTab={props.showOpenInNewTab}
+							totalCount={page().mediaQuery.data?.pages[0]?.total}
+						/>
+					</Show>
 				</div>
 			</div>
 

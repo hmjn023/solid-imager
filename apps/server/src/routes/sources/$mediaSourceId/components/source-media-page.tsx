@@ -4,7 +4,7 @@ import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
-import { createSignal, Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
@@ -45,6 +45,7 @@ export function SourceMediaPage() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
 	const mediaSourceId = () => params().mediaSourceId;
 	const queryClient = useQueryClient();
+	const [isMounted, setIsMounted] = createSignal(false);
 
 	const transport = createServerTransport(mediaSourceId);
 
@@ -81,8 +82,19 @@ export function SourceMediaPage() {
 		});
 	};
 
+	onMount(() => {
+		setIsMounted(true);
+	});
+
 	return (
-		<>
+		<Show
+			fallback={
+				<div class="flex min-h-[60vh] items-center justify-center text-muted-foreground">
+					メディア一覧を読み込んでいます...
+				</div>
+			}
+			when={isMounted()}
+		>
 			<SourceMediaPageComponent
 				enableVirtualization
 				mediaSourceId={mediaSourceId}
@@ -154,6 +166,6 @@ export function SourceMediaPage() {
 				mediaIds={selectedMediaIds()}
 				onSuccess={handleBulkSuccess}
 			/>
-		</>
+		</Show>
 	);
 }

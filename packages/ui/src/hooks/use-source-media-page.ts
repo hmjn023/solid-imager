@@ -286,6 +286,7 @@ export function useSourceMediaPage(
 			return;
 		},
 		placeholderData: keepPreviousData,
+		enabled: !isServer && !!id(),
 	}));
 
 	// --- Deduplicated results ---
