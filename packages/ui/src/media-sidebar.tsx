@@ -75,6 +75,7 @@ type MediaSidebarProps = {
 };
 
 const CCIP_STATUS_REFRESH_INTERVAL_MS = 1_000;
+const CCIP_MISSING_STATUS_LIMIT = 5;
 
 function formatBytes(bytes: number, decimals = 2) {
 	if (bytes === 0) {
@@ -102,6 +103,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [isCcipJobPending, setIsCcipJobPending] = createSignal(false);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
 	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
+	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
 	);
@@ -127,8 +129,16 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					activeJobIdAtRequest &&
 					activeCcipJobId() === activeJobIdAtRequest
 				) {
+					const missingStatusCount = ccipMissingStatusCount() + 1;
+					setCcipMissingStatusCount(missingStatusCount);
+					if (missingStatusCount >= CCIP_MISSING_STATUS_LIMIT) {
+						setCcipStatus("failed");
+						setActiveCcipJobId(null);
+						setIsCcipJobPending(false);
+					}
 					return;
 				}
+				setCcipMissingStatusCount(0);
 				setCcipStatus(result.status);
 				setActiveCcipJobId(result.jobId ?? null);
 				setIsCcipJobPending(result.status === "processing");
@@ -151,6 +161,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		setCcipStatus("missing");
 		setActiveCcipJobId(null);
 		setIsCcipJobPending(false);
+		setCcipMissingStatusCount(0);
 		void refreshCcipStatus();
 	});
 
@@ -166,6 +177,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			setCcipStatus("processing");
 			setActiveCcipJobId(result.jobId);
 			setIsCcipJobPending(true);
+			setCcipMissingStatusCount(0);
 			void refreshCcipStatus();
 			toast.success("CCIP vector extraction queued");
 		} catch (error) {
@@ -182,6 +194,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			handleJobProgress: () => {
 				setCcipStatus("processing");
 				setIsCcipJobPending(true);
+				setCcipMissingStatusCount(0);
 			},
 			handleJobCompleted: () => {
 				void refreshCcipStatus();
@@ -190,6 +203,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				setCcipStatus("failed");
 				setActiveCcipJobId(null);
 				setIsCcipJobPending(false);
+				setCcipMissingStatusCount(0);
 				if (event.error) {
 					toast.error(`Failed to extract CCIP vector: ${event.error}`);
 				}

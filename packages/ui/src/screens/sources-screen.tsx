@@ -31,7 +31,7 @@ export function SourcesScreen(props: SourcesScreenProps) {
 	const page = () => props.page;
 	const errorMessage = () => {
 		const error = props.state().error;
-		return error instanceof Error ? error.message : "API connection failed";
+		return error instanceof Error ? error.message : "API接続に失敗しました";
 	};
 
 	return (
@@ -65,7 +65,7 @@ export function SourcesScreen(props: SourcesScreenProps) {
 
 			<Show when={props.state().phase === "pending"}>
 				<div class="mt-8 text-center" role="status">
-					<p class="text-muted-foreground">Loading sources...</p>
+					<p class="text-muted-foreground">ソースを読み込んでいます...</p>
 				</div>
 			</Show>
 

@@ -144,6 +144,7 @@ export const RealtimeEventBus = {
 		for (const { event } of recentJobEvents) {
 			deliver(event);
 		}
+		deliveredEvents.clear();
 		return unsubscribe;
 	},
 
