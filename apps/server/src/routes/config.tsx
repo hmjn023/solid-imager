@@ -10,6 +10,7 @@ import { configQueryOptions } from "~/infrastructure/api-clients/queries";
 
 export const Route = createFileRoute("/config")({
 	ssr: false,
+	pendingComponent: () => null,
 	component: ConfigPage,
 });
 

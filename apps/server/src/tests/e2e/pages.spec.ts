@@ -60,6 +60,40 @@ test.describe("SSR Crashing Check - E2E", () => {
 		expect(hydrationWarnings).toHaveLength(0);
 	});
 
+	test("should reload /search without hydrating a route pending fallback", async ({
+		page,
+	}) => {
+		const hydrationWarnings: string[] = [];
+		page.on("console", (message) => {
+			if (message.text().includes("Hydration Mismatch")) {
+				hydrationWarnings.push(message.text());
+			}
+		});
+
+		const ssrResponse = await page.request.get("/search");
+		expect(ssrResponse.status()).toBe(HTTP_OK);
+		expect(await ssrResponse.text()).not.toContain("画面を読み込んでいます...");
+
+		const response = await page.goto("/search");
+		expect(response?.status()).toBe(HTTP_OK);
+		await page.evaluate(
+			() =>
+				new Promise<void>((resolve) => {
+					requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+				}),
+		);
+
+		const reloadResponse = await page.reload();
+		expect(reloadResponse?.status()).toBe(HTTP_OK);
+		await page.evaluate(
+			() =>
+				new Promise<void>((resolve) => {
+					requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+				}),
+		);
+		expect(hydrationWarnings).toHaveLength(0);
+	});
+
 	test("should not duplicate the initial config query after hydration", async ({
 		page,
 	}) => {

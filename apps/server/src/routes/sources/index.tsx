@@ -21,6 +21,7 @@ import {
 
 export const Route = createFileRoute("/sources/")({
 	ssr: false,
+	pendingComponent: () => null,
 	component: SourcesRoute,
 });
 

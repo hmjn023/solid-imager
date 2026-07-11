@@ -62,6 +62,7 @@ const managerActions = {
 
 export const Route = createFileRoute("/manager")({
 	ssr: false,
+	pendingComponent: () => null,
 	component: ManagerPage,
 });
 

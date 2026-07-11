@@ -29,6 +29,7 @@ import {
 
 export const Route = createFileRoute("/search")({
 	ssr: false,
+	pendingComponent: () => null,
 	component: SearchRoute,
 });
 
