@@ -10,6 +10,8 @@ import {
 	type MediaSourceEventTransport,
 	useMediaSourceEvents,
 } from "../hooks/use-media-source-events";
+import { sourceMediaQueryKeys } from "../query-options";
+import { toQueryUiState } from "../query-state";
 
 export type MediaDetailScreenProps = {
 	mediaSourceId: string;
@@ -37,6 +39,13 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	const mediaDetails = createQuery<MediaDetails>(() =>
 		props.mediaDetailsQueryOptions(props.mediaSourceId, props.mediaId),
 	);
+	const state = () => toQueryUiState(mediaDetails);
+	const errorMessage = () => {
+		const error = state().error;
+		return error instanceof Error
+			? error.message
+			: "Failed to load media details";
+	};
 
 	const handleUpdate = async () => {
 		await queryClient.invalidateQueries({
@@ -54,12 +63,12 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 		transport: props.transport,
 		onMediaAdded: () => {
 			void queryClient.invalidateQueries({
-				queryKey: ["media", props.mediaSourceId],
+				queryKey: sourceMediaQueryKeys.forSource(props.mediaSourceId),
 			});
 		},
 		onMediaDeleted: (data: MediaDeletedEvent) => {
 			void queryClient.invalidateQueries({
-				queryKey: ["media", props.mediaSourceId],
+				queryKey: sourceMediaQueryKeys.forSource(props.mediaSourceId),
 			});
 			if (
 				data.mediaId === props.mediaId ||
@@ -70,7 +79,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 		},
 		onMediaChanged: (data: MediaChangedEvent) => {
 			void queryClient.invalidateQueries({
-				queryKey: ["media", props.mediaSourceId],
+				queryKey: sourceMediaQueryKeys.forSource(props.mediaSourceId),
 			});
 			if (
 				data.mediaId === props.mediaId ||
@@ -89,10 +98,21 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	return (
 		<div class="container mx-auto p-4">
 			<Switch>
-				<Match when={mediaDetails.isError}>
-					<div class="text-red-500">Error: {mediaDetails.error?.message}</div>
+				<Match when={state().fetchState === "background-fetching"}>
+					<p class="mb-2 text-muted-foreground text-sm" role="status">
+						メディア情報を更新中...
+					</p>
 				</Match>
-				<Match when={mediaDetails.data}>
+				<Match
+					when={state().fetchState === "paused" && state().data !== undefined}
+				>
+					<p class="mb-2 text-muted-foreground text-sm" role="status">
+						オフラインのため保存済みデータを表示しています
+					</p>
+				</Match>
+			</Switch>
+			<Switch>
+				<Match when={state().data}>
 					{(details) => (
 						<div class="flex h-[calc(100vh-80px)] flex-col gap-4 lg:flex-row">
 							<div class="flex-grow">
@@ -108,6 +128,21 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 							</div>
 						</div>
 					)}
+				</Match>
+				<Match when={state().phase === "offline"}>
+					<div class="text-muted-foreground" role="status">
+						Offline. Media details will load after reconnecting.
+					</div>
+				</Match>
+				<Match when={state().phase === "error"}>
+					<div class="text-red-500" role="alert">
+						Error: {errorMessage()}
+					</div>
+				</Match>
+				<Match when={state().phase === "pending"}>
+					<div class="text-muted-foreground" role="status">
+						Loading media details...
+					</div>
 				</Match>
 			</Switch>
 		</div>

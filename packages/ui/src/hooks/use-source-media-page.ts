@@ -26,6 +26,8 @@ import {
 } from "solid-js";
 import { isServer } from "solid-js/web";
 import { z } from "zod";
+import { sourceMediaQueryKeys } from "../query-options";
+import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
 import { getRestoreImportStrategies } from "./restore-import";
@@ -63,10 +65,19 @@ export type SourceMediaPageQueries = {
 	authors: Accessor<Author[] | undefined>;
 };
 
+export type SourceMediaPageQueryStates = {
+	tags: QueryUiState<TagResponse[]>;
+	projects: QueryUiState<Project[]>;
+	ips: QueryUiState<Ip[]>;
+	characters: QueryUiState<Character[]>;
+	authors: QueryUiState<Author[]>;
+};
+
 export type SourceMediaPageActions = {
 	searchMedia: (
 		sourceId: string,
 		params: MediaSearchRequest,
+		signal?: AbortSignal,
 	) => Promise<MediaSearchResponse>;
 	uploadMedia: (
 		sourceId: string,
@@ -145,6 +156,7 @@ export type SourceMediaPagePresetClient = PresetManagerClient &
 export type UseSourceMediaPageOptions = {
 	mediaSourceId: () => string | undefined;
 	queries: SourceMediaPageQueries;
+	queryStates: () => SourceMediaPageQueryStates;
 	actions: SourceMediaPageActions;
 	queryClient: QueryClient;
 	presetClient: SourceMediaPagePresetClient;
@@ -160,7 +172,9 @@ export type UseSourceMediaPageResult = {
 	mediaSourceId: () => string | undefined;
 	mediaQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
 	mediaResults: () => MediaSearchResponse["media"];
+	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
 	filterData: () => SourceMediaPageFilterData;
+	filterStates: () => SourceMediaPageQueryStates;
 	handleSearch: () => void;
 	loadMoreRef: () => HTMLDivElement | undefined;
 	setLoadMoreRef: (el: HTMLDivElement) => void;
@@ -208,6 +222,7 @@ export function useSourceMediaPage(
 	const {
 		mediaSourceId,
 		queries,
+		queryStates,
 		actions,
 		queryClient,
 		presetClient,
@@ -236,19 +251,28 @@ export function useSourceMediaPage(
 	);
 
 	const mediaQuery = createInfiniteQuery<MediaSearchResponse>(() => ({
-		queryKey: ["media", id(), searchConditionKey(), sortBy(), sortOrder()],
-		queryFn: ({ pageParam }) => {
+		queryKey: sourceMediaQueryKeys.results({
+			sourceId: id(),
+			conditionKey: searchConditionKey(),
+			sort: sortBy(),
+			order: sortOrder(),
+		}),
+		queryFn: ({ pageParam, signal }) => {
 			const sourceId = id();
 			if (!sourceId) {
 				throw new Error("Media source ID is required");
 			}
-			return actions.searchMedia(sourceId, {
-				condition: getSearchCondition() || undefined,
-				sort: sortBy(),
-				order: sortOrder(),
-				limit: itemsPerPage,
-				offset: pageParam as number,
-			});
+			return actions.searchMedia(
+				sourceId,
+				{
+					condition: getSearchCondition() || undefined,
+					sort: sortBy(),
+					order: sortOrder(),
+					limit: itemsPerPage,
+					offset: pageParam as number,
+				},
+				signal,
+			);
 		},
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, allPages) => {
@@ -262,6 +286,7 @@ export function useSourceMediaPage(
 			return;
 		},
 		placeholderData: keepPreviousData,
+		enabled: !isServer && !!id(),
 	}));
 
 	// --- Deduplicated results ---
@@ -277,6 +302,16 @@ export function useSourceMediaPage(
 			},
 		);
 	});
+	const contentState = () =>
+		toQueryUiState(
+			{
+				data: mediaQuery.data ? mediaResults() : undefined,
+				error: mediaQuery.error,
+				status: mediaQuery.status,
+				fetchStatus: mediaQuery.fetchStatus,
+			},
+			{ isEmpty: (data) => data.length === 0 },
+		);
 
 	// --- Search handler ---
 	const handleSearch = () => {
@@ -393,7 +428,7 @@ export function useSourceMediaPage(
 	const refreshMediaQuery = () => {
 		void mediaQuery.refetch();
 		void queryClient.invalidateQueries({
-			queryKey: ["media", id()],
+			queryKey: sourceMediaQueryKeys.forSource(id()),
 		});
 	};
 
@@ -477,7 +512,7 @@ export function useSourceMediaPage(
 				onThumbnailReady(data.mediaId);
 			}
 			queryClient.invalidateQueries({
-				queryKey: ["media", id()],
+				queryKey: sourceMediaQueryKeys.forSource(id()),
 			});
 		},
 		onAllJobsCompleted: (data) => {
@@ -911,7 +946,7 @@ export function useSourceMediaPage(
 			refreshMediaQuery();
 			if (sourceId !== targetSourceId) {
 				await queryClient.invalidateQueries({
-					queryKey: ["media", targetSourceId],
+					queryKey: sourceMediaQueryKeys.forSource(targetSourceId),
 				});
 			}
 		} catch (e) {
@@ -960,7 +995,9 @@ export function useSourceMediaPage(
 		mediaSourceId: id,
 		mediaQuery,
 		mediaResults,
+		contentState,
 		filterData,
+		filterStates: queryStates,
 		handleSearch,
 		loadMoreRef,
 		setLoadMoreRef,

@@ -17,6 +17,8 @@ import {
 } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
+import { searchQueryKeys } from "../query-options";
+import { type QueryUiState, toQueryUiState } from "../query-state";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
 const DEFAULT_REFRESH_DEBOUNCE_MS = 0;
@@ -30,17 +32,17 @@ export type SearchPageFilterData = {
 };
 
 export type SearchPageQueryOptions = {
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 	tags: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 	sources: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 	projects: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 	ips: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 	characters: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 	authors: () => any;
 };
 
@@ -48,12 +50,16 @@ export interface UseSearchPageOptions {
 	searchMedia: (
 		sourceId: string | undefined,
 		params: MediaSearchRequest,
+		signal?: AbortSignal,
 	) => Promise<MediaSearchResponse>;
-	searchSimilar?: (input: {
-		anchorMediaId: string;
-		mediaSourceId?: string;
-		topK: number;
-	}) => Promise<SimilarMediaSearchResponse>;
+	searchSimilar?: (
+		input: {
+			anchorMediaId: string;
+			mediaSourceId?: string;
+			topK: number;
+		},
+		signal?: AbortSignal,
+	) => Promise<SimilarMediaSearchResponse>;
 	queryClient: QueryClient;
 	queries: SearchPageQueryOptions;
 	selectedSource: () => string | null | undefined;
@@ -76,6 +82,15 @@ export interface UseSearchPageResult {
 		typeof createInfiniteQuery<MediaSearchResponse>
 	>;
 	searchResults: () => MediaSearchResponse["media"];
+	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
+	filterStates: {
+		tags: () => QueryUiState<TagResponse[]>;
+		sources: () => QueryUiState<SafeMediaSource[]>;
+		projects: () => QueryUiState<Project[]>;
+		ips: () => QueryUiState<Ip[]>;
+		characters: () => QueryUiState<Character[]>;
+		authors: () => QueryUiState<Author[]>;
+	};
 	filterData: SearchPageFilterData;
 	sources: () => SafeMediaSource[] | undefined;
 	getSourceRootPath: (mediaSourceId: string) => string | undefined;
@@ -109,12 +124,30 @@ export function useSearchPage(
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
 	} = options;
 
-	const tags = createQuery<TagResponse[]>(() => queries.tags());
-	const sources = createQuery<SafeMediaSource[]>(() => queries.sources());
-	const allProjects = createQuery<Project[]>(() => queries.projects());
-	const allIps = createQuery<Ip[]>(() => queries.ips());
-	const allCharacters = createQuery<Character[]>(() => queries.characters());
-	const allAuthors = createQuery<Author[]>(() => queries.authors());
+	const tags = createQuery<TagResponse[]>(() => ({
+		...queries.tags(),
+		enabled: !isServer,
+	}));
+	const sources = createQuery<SafeMediaSource[]>(() => ({
+		...queries.sources(),
+		enabled: !isServer,
+	}));
+	const allProjects = createQuery<Project[]>(() => ({
+		...queries.projects(),
+		enabled: !isServer,
+	}));
+	const allIps = createQuery<Ip[]>(() => ({
+		...queries.ips(),
+		enabled: !isServer,
+	}));
+	const allCharacters = createQuery<Character[]>(() => ({
+		...queries.characters(),
+		enabled: !isServer,
+	}));
+	const allAuthors = createQuery<Author[]>(() => ({
+		...queries.authors(),
+		enabled: !isServer,
+	}));
 
 	const conditionKey = createMemo(() =>
 		JSON.stringify(getSearchCondition() ?? null),
@@ -137,33 +170,40 @@ export function useSearchPage(
 		const params = buildSearchParams();
 		const source = selectedSource() || undefined;
 		return {
-			queryKey: [
-				"searchResults",
-				mode(),
-				source,
-				conditionKey(),
-				sortBy(),
-				sortOrder(),
-				limit(),
-				similarityAnchorMediaId(),
-				similarityTopK(),
-			],
-			queryFn: async ({ pageParam }) => {
+			enabled: !isServer,
+			queryKey: searchQueryKeys.results({
+				mode: mode(),
+				sourceId: source,
+				conditionKey: conditionKey(),
+				sort: sortBy(),
+				order: sortOrder(),
+				limit: limit(),
+				similarityAnchorMediaId: similarityAnchorMediaId(),
+				similarityTopK: similarityTopK(),
+			}),
+			queryFn: async ({ pageParam, signal }) => {
 				if (mode() === "vector") {
 					const anchorMediaId = similarityAnchorMediaId();
 					if (!(anchorMediaId && options.searchSimilar)) {
 						return { media: [], total: 0 };
 					}
-					return await options.searchSimilar({
-						anchorMediaId,
-						mediaSourceId: source,
-						topK: similarityTopK(),
-					});
+					return await options.searchSimilar(
+						{
+							anchorMediaId,
+							mediaSourceId: source,
+							topK: similarityTopK(),
+						},
+						signal,
+					);
 				}
-				return await searchMedia(source, {
-					...params,
-					offset: pageParam as number,
-				});
+				return await searchMedia(
+					source,
+					{
+						...params,
+						offset: pageParam as number,
+					},
+					signal,
+				);
 			},
 			initialPageParam: 0,
 			getNextPageParam: (lastPage, allPages) => {
@@ -193,6 +233,22 @@ export function useSearchPage(
 			},
 		);
 	});
+	const contentState = () =>
+		toQueryUiState(
+			{
+				data: searchResultQuery.data ? searchResults() : undefined,
+				error: searchResultQuery.error,
+				status: searchResultQuery.status,
+				fetchStatus: searchResultQuery.fetchStatus,
+			},
+			{ isEmpty: (data) => data.length === 0 },
+		);
+	const arrayState = <T>(query: {
+		data: T[] | undefined;
+		error: unknown;
+		status: "pending" | "error" | "success";
+		fetchStatus: "idle" | "fetching" | "paused";
+	}) => toQueryUiState(query, { isEmpty: (data) => data.length === 0 });
 
 	const getSourceRootPath = (mediaSourceId: string) => {
 		const source = sources.data?.find((item) => item.id === mediaSourceId);
@@ -213,13 +269,13 @@ export function useSearchPage(
 			clearTimeout(timer);
 		}
 		if (refreshDebounceMs <= 0) {
-			void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+			void queryClient.invalidateQueries({ queryKey: searchQueryKeys.all() });
 			setRefreshTimer(null);
 			return;
 		}
 		setRefreshTimer(
 			setTimeout(() => {
-				void queryClient.invalidateQueries({ queryKey: ["searchResults"] });
+				void queryClient.invalidateQueries({ queryKey: searchQueryKeys.all() });
 				setRefreshTimer(null);
 			}, refreshDebounceMs),
 		);
@@ -289,6 +345,15 @@ export function useSearchPage(
 	return {
 		searchResultQuery,
 		searchResults,
+		contentState,
+		filterStates: {
+			tags: () => arrayState(tags),
+			sources: () => arrayState(sources),
+			projects: () => arrayState(allProjects),
+			ips: () => arrayState(allIps),
+			characters: () => arrayState(allCharacters),
+			authors: () => arrayState(allAuthors),
+		},
 		filterData: {
 			get tags() {
 				return tags.data;

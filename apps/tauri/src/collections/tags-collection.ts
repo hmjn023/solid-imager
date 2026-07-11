@@ -4,6 +4,7 @@ import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistenc
 import type { getPersistence } from "~/infrastructure/db/persistence";
 import { client } from "~/orpc-client";
 import { queryClient } from "~/router";
+import { collectionQueryKeys } from "./query-keys";
 
 type TagResponse = Awaited<ReturnType<typeof client.tags.list>>[number];
 
@@ -16,8 +17,8 @@ export function createTagsCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["tags"],
-				queryFn: () => client.tags.list(),
+				queryKey: collectionQueryKeys.tags(),
+				queryFn: ({ signal }) => client.tags.list(undefined, { signal }),
 				queryClient,
 				getKey: (tag) => tag.id,
 			}),

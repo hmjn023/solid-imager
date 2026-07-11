@@ -144,6 +144,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			if (!isCurrentMedia()) return;
 			setCcipStatus("processing");
 			setActiveCcipJobId(result.jobId);
+			void refreshCcipStatus();
 			toast.success("CCIP vector extraction queued");
 		} catch (error) {
 			if (!isCurrentMedia()) return;
@@ -155,22 +156,26 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		}
 	};
 
-	useBatchJobEvents(() => activeCcipJobId(), {
-		handleJobProgress: () => {
-			setCcipStatus("processing");
+	useBatchJobEvents(
+		() => activeCcipJobId(),
+		{
+			handleJobProgress: () => {
+				setCcipStatus("processing");
+			},
+			handleJobCompleted: () => {
+				setActiveCcipJobId(null);
+				void refreshCcipStatus();
+			},
+			handleJobFailed: (event) => {
+				setCcipStatus("failed");
+				setActiveCcipJobId(null);
+				if (event.error) {
+					toast.error(`Failed to extract CCIP vector: ${event.error}`);
+				}
+			},
 		},
-		handleJobCompleted: () => {
-			setActiveCcipJobId(null);
-			void refreshCcipStatus();
-		},
-		handleJobFailed: (event) => {
-			setCcipStatus("failed");
-			setActiveCcipJobId(null);
-			if (event.error) {
-				toast.error(`Failed to extract CCIP vector: ${event.error}`);
-			}
-		},
-	});
+		{ subscribeImmediately: true },
+	);
 
 	// Description editing state
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);

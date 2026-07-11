@@ -9,14 +9,18 @@ export function searchMedia(
 		order?: "asc" | "desc";
 		condition?: unknown;
 	},
+	signal?: AbortSignal,
 ) {
-	return client.media.search({ sourceId, params });
+	return client.media.search({ sourceId, params }, { signal });
 }
 
-export function searchSimilar(input: {
-	anchorMediaId: string;
-	mediaSourceId?: string;
-	topK: number;
-}) {
-	return client.media.searchSimilar(input);
+export function searchSimilar(
+	input: {
+		anchorMediaId: string;
+		mediaSourceId?: string;
+		topK: number;
+	},
+	signal?: AbortSignal,
+) {
+	return client.media.searchSimilar(input, { signal });
 }

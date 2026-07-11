@@ -57,6 +57,7 @@ type MediaSidebarProps = {
 			handleJobCompleted: (event: JobCompletedEvent) => void;
 			handleJobFailed: (event: JobFailedEvent) => void;
 		},
+		options?: { subscribeImmediately?: boolean },
 	) => void;
 	onFindSimilar?: () => void;
 	onUpdate?: () => void;
@@ -147,6 +148,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			if (props.media.id !== currentMediaId) return;
 			setCcipStatus("processing");
 			setActiveCcipJobId(result.jobId);
+			void refreshCcipStatus();
 			toast.success("CCIP vector extraction queued");
 		} catch (error) {
 			if (props.media.id !== currentMediaId) return;
@@ -156,22 +158,26 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		}
 	};
 
-	props.useCcipJobEvents?.(activeCcipJobId, {
-		handleJobProgress: () => {
-			setCcipStatus("processing");
+	props.useCcipJobEvents?.(
+		activeCcipJobId,
+		{
+			handleJobProgress: () => {
+				setCcipStatus("processing");
+			},
+			handleJobCompleted: () => {
+				setActiveCcipJobId(null);
+				void refreshCcipStatus();
+			},
+			handleJobFailed: (event) => {
+				setCcipStatus("failed");
+				setActiveCcipJobId(null);
+				if (event.error) {
+					toast.error(`Failed to extract CCIP vector: ${event.error}`);
+				}
+			},
 		},
-		handleJobCompleted: () => {
-			setActiveCcipJobId(null);
-			void refreshCcipStatus();
-		},
-		handleJobFailed: (event) => {
-			setCcipStatus("failed");
-			setActiveCcipJobId(null);
-			if (event.error) {
-				toast.error(`Failed to extract CCIP vector: ${event.error}`);
-			}
-		},
-	});
+		{ subscribeImmediately: true },
+	);
 
 	const positiveTags = createMemo(() =>
 		tags().filter((tag) => tag.type === "positive"),

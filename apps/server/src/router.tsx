@@ -1,3 +1,5 @@
+import { isTransientApiError } from "@solid-imager/client";
+import { createAppQueryClientConfig } from "@solid-imager/ui/query-options";
 import {
 	ROUTE_PENDING_DELAY_MS,
 	ROUTE_PENDING_MIN_DURATION_MS,
@@ -8,33 +10,11 @@ import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
 import { isServer } from "solid-js/web";
-import { isTransientApiError } from "./infrastructure/api-clients/error-policy";
 import type { logger as LoggerInstance } from "./infrastructure/logger";
 import { routeTree } from "./routeTree.gen";
 
-const QUERY_RETRY_DELAY_CAP_MS = 5_000;
-const QUERY_RETRY_DELAY_BASE_MS = 1_000;
-const QUERY_STALE_TIME_MS = 5_000;
-
 function createAppQueryClient(): QueryClient {
-	return new QueryClient({
-		defaultOptions: {
-			queries: {
-				refetchOnWindowFocus: false,
-				retry: (failureCount, error) =>
-					isTransientApiError(error) && failureCount < 2,
-				retryDelay: (attemptIndex) =>
-					Math.min(
-						QUERY_RETRY_DELAY_BASE_MS * 2 ** attemptIndex,
-						QUERY_RETRY_DELAY_CAP_MS,
-					),
-				staleTime: QUERY_STALE_TIME_MS,
-			},
-			mutations: {
-				retry: false,
-			},
-		},
-	});
+	return new QueryClient(createAppQueryClientConfig(isTransientApiError));
 }
 
 let serverLogger: typeof LoggerInstance | null = null;
@@ -80,7 +60,10 @@ export function getRouter() {
 			scrollRestoration: true,
 			defaultPreload: "intent",
 			defaultPreloadStaleTime: 0,
-			defaultPendingComponent: RoutePendingScreen,
+			// A route with `ssr: false` renders its pending component on the server,
+			// but its route component immediately on the client. Keep the server
+			// fallback empty so the hydration trees remain identical.
+			defaultPendingComponent: isServer ? undefined : RoutePendingScreen,
 			defaultErrorComponent: RouteErrorScreen,
 			defaultNotFoundComponent: NotFoundScreen,
 			defaultPendingMs: ROUTE_PENDING_DELAY_MS,

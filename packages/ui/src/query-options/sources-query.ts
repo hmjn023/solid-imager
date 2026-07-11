@@ -3,6 +3,7 @@ import { queryOptions } from "@tanstack/solid-query";
 
 export const sourcesQueryKeys = {
 	all: () => ["mediaSources"] as const,
+	detail: (sourceId: string) => ["mediaSources", sourceId] as const,
 };
 
 export const defaultSourcesQueryConfig = {
