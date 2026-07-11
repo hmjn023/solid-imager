@@ -1,3 +1,5 @@
+import { isTransientApiError } from "@solid-imager/client";
+import { createAppQueryClientConfig } from "@solid-imager/ui/query-options";
 import {
 	ROUTE_PENDING_DELAY_MS,
 	ROUTE_PENDING_MIN_DURATION_MS,
@@ -13,13 +15,9 @@ export type AppRouterContext = {
 	queryClient: QueryClient;
 };
 
-export const queryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			retry: false,
-		},
-	},
-});
+export const queryClient = new QueryClient(
+	createAppQueryClientConfig(isTransientApiError),
+);
 
 export function createAppRouter() {
 	return createRouter({

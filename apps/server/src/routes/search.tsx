@@ -28,16 +28,8 @@ import {
 } from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
-	loader: async ({ context }) => {
-		await Promise.all([
-			context.queryClient.ensureQueryData(tagsQueryOptions()),
-			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
-			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
-			context.queryClient.ensureQueryData(allIpsQueryOptions()),
-			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
-			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
-		]);
-	},
+	ssr: false,
+	pendingComponent: () => null,
 	component: SearchRoute,
 });
 

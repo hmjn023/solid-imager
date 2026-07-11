@@ -23,12 +23,26 @@ export {
 	defaultMediaDetailsQueryConfig,
 	mediaDetailsQueryKeys,
 } from "./media-query";
+export { prefetchQueryOnClient } from "./prefetch";
 export {
 	buildProjectsForMediaQueryOptions,
 	buildProjectsQueryOptions,
 	defaultProjectsQueryConfig,
 	projectsQueryKeys,
 } from "./projects-query";
+export {
+	createAppQueryClientConfig,
+	QUERY_GC_TIME_MS,
+	QUERY_RETRY_DELAY_BASE_MS,
+	QUERY_RETRY_DELAY_CAP_MS,
+	QUERY_STALE_TIME_MS,
+} from "./query-client";
+export {
+	type SearchResultsQueryKeyInput,
+	type SourceMediaQueryKeyInput,
+	searchQueryKeys,
+	sourceMediaQueryKeys,
+} from "./search-query";
 export {
 	buildSourcesQueryOptions,
 	defaultSourcesQueryConfig,

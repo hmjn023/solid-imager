@@ -1,6 +1,6 @@
-export { fetchAllProjects } from "~/api/entities-api";
-
 import { client } from "~/orpc-client";
+
+export { fetchAllProjects } from "~/api/entities-api";
 
 export function createProject(data: { name: string; description?: string }) {
 	return client.projects.create(data);
@@ -26,11 +26,4 @@ export async function removeProjectFromMedia(
 	projectId: string,
 ) {
 	await client.projects.removeFromMedia({ mediaId, projectId });
-}
-
-export function projectsForMediaQueryOptions(mediaId: string) {
-	return {
-		queryKey: ["projectsForMedia", mediaId],
-		queryFn: () => client.projects.listForMedia({ mediaId }),
-	};
 }

@@ -1,24 +1,19 @@
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
+import { projectsQueryKeys } from "@solid-imager/ui/query-options";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaDetailsQueryOptions, mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: async ({ context, params }) => {
-		await Promise.all([
-			context.queryClient.ensureQueryData(
-				mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
-			),
-			context.queryClient.ensureQueryData({
-				queryKey: ["mediaSource", params.mediaSourceId],
-				queryFn: () => orpc.sources.get({ id: params.mediaSourceId }),
-			}),
-		]);
+		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
+		await context.queryClient.ensureQueryData(
+			mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
+		);
 	},
 	component: MediaDetailRoute,
 });
@@ -38,7 +33,7 @@ function MediaDetailRoute() {
 			mediaSourceId={mediaSourceId()}
 			onAdditionalInvalidate={async () => {
 				await queryClient.invalidateQueries({
-					queryKey: ["projectsForMedia", mediaId()],
+					queryKey: projectsQueryKeys.forMedia(mediaId()),
 				});
 			}}
 			renderMediaSidebar={(media, isUpdating, onUpdate, srp) => (

@@ -2,12 +2,14 @@ import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas
 import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
+import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
+import { isServer } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
 import {
@@ -18,9 +20,8 @@ import {
 } from "~/infrastructure/api-clients/sources-api";
 
 export const Route = createFileRoute("/sources/")({
-	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(mediaSourcesQueryOptions());
-	},
+	ssr: false,
+	pendingComponent: () => null,
 	component: SourcesRoute,
 });
 
@@ -33,7 +34,10 @@ function registerSourceEvents(handler: RawEventHandler): () => void {
 
 function SourcesRoute() {
 	const queryClient = useQueryClient();
-	const mediaSources = createQuery(() => mediaSourcesQueryOptions());
+	const mediaSources = createQuery(() => ({
+		...mediaSourcesQueryOptions(),
+		enabled: !isServer,
+	}));
 
 	const page = useSourcesPage({
 		actions: {
@@ -57,9 +61,11 @@ function SourcesRoute() {
 		<SourcesScreen
 			page={page}
 			mediaSources={() => mediaSources.data}
-			isLoading={mediaSources.isLoading}
-			isError={mediaSources.isError}
-			error={mediaSources.error ?? null}
+			state={() =>
+				toQueryUiState(mediaSources, {
+					isEmpty: (data) => data.length === 0,
+				})
+			}
 			onRetry={() => {
 				void mediaSources.refetch();
 			}}

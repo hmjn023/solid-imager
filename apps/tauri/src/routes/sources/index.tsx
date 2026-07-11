@@ -2,12 +2,13 @@ import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas
 import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
+import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { useQueryClient } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { getCollections } from "~/collections";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -20,8 +21,8 @@ import {
 import { mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/")({
-	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(mediaSourcesQueryOptions());
+	loader: ({ context }) => {
+		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
 	},
 	component: SourcesRoute,
 });
@@ -37,6 +38,7 @@ function SourcesRoute() {
 	const queryClient = useQueryClient();
 	const { sources } = getCollections();
 	const mediaSources = useLiveQuery(() => sources);
+	const mediaSourcesQuery = createQuery(() => mediaSourcesQueryOptions());
 
 	const page = useSourcesPage({
 		actions: {
@@ -70,9 +72,17 @@ function SourcesRoute() {
 		<SourcesScreen
 			page={page}
 			mediaSources={() => mediaSources()}
-			isLoading={false}
-			isError={false}
-			error={null}
+			state={() =>
+				toQueryUiState(
+					{
+						data: mediaSources(),
+						error: mediaSourcesQuery.error,
+						status: mediaSourcesQuery.status,
+						fetchStatus: mediaSourcesQuery.fetchStatus,
+					},
+					{ isEmpty: (data) => data.length === 0 },
+				)
+			}
 			renderSourceCard={(source) => (
 				<SourceCard
 					href={source.id ? `#/sources/${source.id}` : "#/sources"}

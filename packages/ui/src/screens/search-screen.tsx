@@ -39,6 +39,14 @@ export function SearchScreen(props: SearchScreenProps) {
 	});
 
 	const page = () => props.page;
+	const filterStates = () => [
+		page().filterStates.tags(),
+		page().filterStates.sources(),
+		page().filterStates.projects(),
+		page().filterStates.ips(),
+		page().filterStates.characters(),
+		page().filterStates.authors(),
+	];
 	const openMobileFilters = () => setIsMobileFilterOpen(true);
 
 	const panel = (
@@ -55,10 +63,13 @@ export function SearchScreen(props: SearchScreenProps) {
 	);
 
 	const showResults = () => {
+		const hasRenderableState =
+			page().contentState().phase === "data" ||
+			page().contentState().phase === "empty";
 		if (props.ssrGuard) {
-			return !page().searchResultQuery.isLoading && isMounted();
+			return hasRenderableState && isMounted();
 		}
-		return !page().searchResultQuery.isLoading;
+		return hasRenderableState;
 	};
 
 	return (
@@ -95,15 +106,54 @@ export function SearchScreen(props: SearchScreenProps) {
 
 				<div class="space-y-4">
 					<Show
-						fallback={<div class="py-8 text-center">読み込み中...</div>}
+						when={filterStates().some(
+							(state) => state.phase === "error" || state.phase === "offline",
+						)}
+					>
+						<p class="text-muted-foreground text-sm" role="status">
+							一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。
+						</p>
+					</Show>
+					<Show
+						when={page().contentState().fetchState === "background-fetching"}
+					>
+						<p class="text-muted-foreground text-sm" role="status">
+							検索結果を更新中...
+						</p>
+					</Show>
+					<Show
+						when={
+							page().contentState().fetchState === "paused" &&
+							page().contentState().data !== undefined
+						}
+					>
+						<p class="text-muted-foreground text-sm" role="status">
+							オフラインのため保存済みの検索結果を表示しています
+						</p>
+					</Show>
+					<Show
+						fallback={
+							<div
+								class="py-8 text-center"
+								role={
+									page().contentState().phase === "error" ? "alert" : "status"
+								}
+							>
+								{page().contentState().phase === "offline"
+									? "オフラインです。接続後に検索を再開します"
+									: page().contentState().phase === "error"
+										? "検索結果を取得できませんでした"
+										: "読み込み中..."}
+							</div>
+						}
 						when={showResults()}
 					>
 						<SourceMediaGrid
 							disableContextMenu
 							enableVirtualization={props.enableVirtualization}
-							isError={page().searchResultQuery.isError}
+							isError={page().contentState().phase === "error"}
 							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
-							isPending={page().searchResultQuery.isLoading}
+							isPending={page().contentState().phase === "pending"}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
 							onLoadMore={() => page().searchResultQuery.fetchNextPage()}

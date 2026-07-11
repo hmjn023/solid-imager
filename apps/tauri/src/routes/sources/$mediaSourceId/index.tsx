@@ -10,15 +10,13 @@ import {
 import { SourceMediaPage } from "./components/source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
-	loader: async ({ context }) => {
-		await Promise.all([
-			context.queryClient.ensureQueryData(tagsQueryOptions()),
-			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
-			context.queryClient.ensureQueryData(allIpsQueryOptions()),
-			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
-			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
-			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
-		]);
+	loader: ({ context }) => {
+		void context.queryClient.prefetchQuery(tagsQueryOptions());
+		void context.queryClient.prefetchQuery(allProjectsQueryOptions());
+		void context.queryClient.prefetchQuery(allIpsQueryOptions());
+		void context.queryClient.prefetchQuery(allCharactersQueryOptions());
+		void context.queryClient.prefetchQuery(allAuthorsQueryOptions());
+		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
 	},
 	component: SourceMediaPage,
 });

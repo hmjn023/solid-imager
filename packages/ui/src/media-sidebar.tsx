@@ -18,6 +18,7 @@ import {
 	createSignal,
 	For,
 	type JSX,
+	onCleanup,
 	Show,
 } from "solid-js";
 import { AssociationManager } from "./association-manager";
@@ -57,6 +58,7 @@ type MediaSidebarProps = {
 			handleJobCompleted: (event: JobCompletedEvent) => void;
 			handleJobFailed: (event: JobFailedEvent) => void;
 		},
+		options?: { subscribeImmediately?: boolean },
 	) => void;
 	onFindSimilar?: () => void;
 	onUpdate?: () => void;
@@ -71,6 +73,9 @@ type MediaSidebarProps = {
 	onCharacterRemove: (characterId: string) => void | Promise<void>;
 	onCharacterCreate: (name: string) => Promise<{ id: string }>;
 };
+
+const CCIP_STATUS_REFRESH_INTERVAL_MS = 1_000;
+const CCIP_MISSING_STATUS_LIMIT = 5;
 
 function formatBytes(bytes: number, decimals = 2) {
 	if (bytes === 0) {
@@ -95,8 +100,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(
 		null,
 	);
+	const [isCcipJobPending, setIsCcipJobPending] = createSignal(false);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
 	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
+	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
 	);
@@ -110,20 +117,40 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const refreshCcipStatus = async () => {
 		const requestId = ccipStatusRequestId() + 1;
 		setCcipStatusRequestId(requestId);
+		const activeJobIdAtRequest = activeCcipJobId();
 		if (props.getCcipVectorStatus) {
 			try {
 				const result = await props.getCcipVectorStatus();
 				if (ccipStatusRequestId() !== requestId) {
 					return;
 				}
+				if (
+					result.status === "missing" &&
+					activeJobIdAtRequest &&
+					activeCcipJobId() === activeJobIdAtRequest
+				) {
+					const missingStatusCount = ccipMissingStatusCount() + 1;
+					setCcipMissingStatusCount(missingStatusCount);
+					if (missingStatusCount >= CCIP_MISSING_STATUS_LIMIT) {
+						setCcipStatus("failed");
+						setActiveCcipJobId(null);
+						setIsCcipJobPending(false);
+					}
+					return;
+				}
+				setCcipMissingStatusCount(0);
 				setCcipStatus(result.status);
 				setActiveCcipJobId(result.jobId ?? null);
+				setIsCcipJobPending(result.status === "processing");
 			} catch {
 				if (ccipStatusRequestId() !== requestId) {
 					return;
 				}
-				setCcipStatus("failed");
-				setActiveCcipJobId(null);
+				if (!activeCcipJobId()) {
+					setCcipStatus("failed");
+					setActiveCcipJobId(null);
+					setIsCcipJobPending(false);
+				}
 			}
 		}
 	};
@@ -133,6 +160,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		props.media.mediaSourceId;
 		setCcipStatus("missing");
 		setActiveCcipJobId(null);
+		setIsCcipJobPending(false);
+		setCcipMissingStatusCount(0);
 		void refreshCcipStatus();
 	});
 
@@ -147,6 +176,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			if (props.media.id !== currentMediaId) return;
 			setCcipStatus("processing");
 			setActiveCcipJobId(result.jobId);
+			setIsCcipJobPending(true);
+			setCcipMissingStatusCount(0);
+			void refreshCcipStatus();
 			toast.success("CCIP vector extraction queued");
 		} catch (error) {
 			if (props.media.id !== currentMediaId) return;
@@ -156,21 +188,38 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		}
 	};
 
-	props.useCcipJobEvents?.(activeCcipJobId, {
-		handleJobProgress: () => {
-			setCcipStatus("processing");
+	props.useCcipJobEvents?.(
+		activeCcipJobId,
+		{
+			handleJobProgress: () => {
+				setCcipStatus("processing");
+				setIsCcipJobPending(true);
+				setCcipMissingStatusCount(0);
+			},
+			handleJobCompleted: () => {
+				void refreshCcipStatus();
+			},
+			handleJobFailed: (event) => {
+				setCcipStatus("failed");
+				setActiveCcipJobId(null);
+				setIsCcipJobPending(false);
+				setCcipMissingStatusCount(0);
+				if (event.error) {
+					toast.error(`Failed to extract CCIP vector: ${event.error}`);
+				}
+			},
 		},
-		handleJobCompleted: () => {
-			setActiveCcipJobId(null);
+		{ subscribeImmediately: true },
+	);
+
+	createEffect(() => {
+		if (!isCcipJobPending() || !activeCcipJobId()) {
+			return;
+		}
+		const intervalId = setInterval(() => {
 			void refreshCcipStatus();
-		},
-		handleJobFailed: (event) => {
-			setCcipStatus("failed");
-			setActiveCcipJobId(null);
-			if (event.error) {
-				toast.error(`Failed to extract CCIP vector: ${event.error}`);
-			}
-		},
+		}, CCIP_STATUS_REFRESH_INTERVAL_MS);
+		onCleanup(() => clearInterval(intervalId));
 	});
 
 	const positiveTags = createMemo(() =>
@@ -269,7 +318,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					</Show>
 					<Show when={props.startCcipExtraction}>
 						<Button
-							disabled={isExtractingCcip() || ccipStatus() === "processing"}
+							disabled={isExtractingCcip() || isCcipJobPending()}
 							onClick={extractCcipVector}
 							variant="outline"
 						>

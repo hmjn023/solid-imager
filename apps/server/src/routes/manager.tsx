@@ -1,7 +1,4 @@
-import {
-	prefetchManagerPageQueries,
-	useManagerPage,
-} from "@solid-imager/ui/hooks/use-manager-page";
+import { useManagerPage } from "@solid-imager/ui/hooks/use-manager-page";
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
@@ -64,9 +61,8 @@ const managerActions = {
 };
 
 export const Route = createFileRoute("/manager")({
-	loader: async ({ context }) => {
-		await prefetchManagerPageQueries(context.queryClient, managerQueryOptions);
-	},
+	ssr: false,
+	pendingComponent: () => null,
 	component: ManagerPage,
 });
 

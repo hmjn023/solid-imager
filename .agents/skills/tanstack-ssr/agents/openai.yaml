@@ -1,0 +1,4 @@
+interface:
+  display_name: "TanStack SSR"
+  short_description: "SSR・hydration・直接アクセス障害の診断手順"
+  default_prompt: "Use $tanstack-ssr to diagnose and safely fix this TanStack Start SSR or hydration issue."

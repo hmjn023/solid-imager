@@ -4,6 +4,7 @@ import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistenc
 import type { getPersistence } from "~/infrastructure/db/persistence";
 import { client } from "~/orpc-client";
 import { queryClient } from "~/router";
+import { collectionQueryKeys } from "./query-keys";
 
 type AuthorResponse = Awaited<ReturnType<typeof client.authors.list>>[number];
 
@@ -16,8 +17,8 @@ export function createAuthorsCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["allAuthors"],
-				queryFn: () => client.authors.list(),
+				queryKey: collectionQueryKeys.authors(),
+				queryFn: ({ signal }) => client.authors.list(undefined, { signal }),
 				queryClient,
 				getKey: (author) => author.id,
 			}),

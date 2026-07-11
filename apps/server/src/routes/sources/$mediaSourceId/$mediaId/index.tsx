@@ -6,11 +6,8 @@ import { createServerTransport } from "~/hooks/use-media-source-events";
 import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
-	loader: async ({ context, params }) => {
-		await context.queryClient.ensureQueryData(
-			mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
-		);
-	},
+	ssr: false,
+	pendingComponent: () => null,
 	component: Media,
 });
 

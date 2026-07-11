@@ -17,7 +17,7 @@ describe("CcipVectorService", () => {
 			vector: Array.from({ length: 768 }, () => 0),
 			model: "ccip-caformer-24-randaug-pruned",
 			embeddingVersion: 1,
-			mediaModifiedAt: media.modifiedAt,
+			mediaModifiedAt: new Date(media.modifiedAt.getTime() - 500),
 			extractedAt: new Date(),
 		};
 		const taggingService = { getCcipFeatureForMedia: vi.fn() };

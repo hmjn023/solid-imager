@@ -4,6 +4,7 @@ import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistenc
 import type { getPersistence } from "~/infrastructure/db/persistence";
 import { client } from "~/orpc-client";
 import { queryClient } from "~/router";
+import { collectionQueryKeys } from "./query-keys";
 
 type CharacterResponse = Awaited<
 	ReturnType<typeof client.characters.list>
@@ -18,8 +19,8 @@ export function createCharactersCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["allCharacters"],
-				queryFn: () => client.characters.list(),
+				queryKey: collectionQueryKeys.characters(),
+				queryFn: ({ signal }) => client.characters.list(undefined, { signal }),
 				queryClient,
 				getKey: (character) => character.id,
 			}),

@@ -8,6 +8,7 @@ import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import type { Accessor, JSX } from "solid-js";
+import { isServer } from "solid-js/web";
 import type { MediaSourceEventTransport } from "./hooks/use-media-source-events";
 import {
 	type SourceMediaPageActions,
@@ -15,13 +16,21 @@ import {
 	useSourceMediaPage,
 } from "./hooks/use-source-media-page";
 import { MediaListActions } from "./media-list-actions";
+import { toQueryUiState } from "./query-state";
 import {
 	SourceMediaScreen,
 	type SourceMediaScreenProps,
 } from "./screens/source-media-screen";
 
-// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 type QueryOptionFactory<_TData> = () => any;
+
+function clientOnlyQueryOptions<TData>(factory: QueryOptionFactory<TData>) {
+	return () => ({
+		...factory(),
+		enabled: !isServer,
+	});
+}
 
 export type SourceMediaPageProps = {
 	mediaSourceId: Accessor<string>;
@@ -53,15 +62,21 @@ export type SourceMediaPageProps = {
 export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	const queryClient = useQueryClient();
 
-	const tags = createQuery<TagResponse[]>(() => props.tagsQueryOptions());
-	const allProjects = createQuery<Project[]>(() =>
-		props.projectsQueryOptions(),
+	const tags = createQuery<TagResponse[]>(
+		clientOnlyQueryOptions(props.tagsQueryOptions),
 	);
-	const allIps = createQuery<Ip[]>(() => props.ipsQueryOptions());
-	const allCharacters = createQuery<Character[]>(() =>
-		props.charactersQueryOptions(),
+	const allProjects = createQuery<Project[]>(
+		clientOnlyQueryOptions(props.projectsQueryOptions),
 	);
-	const allAuthors = createQuery<Author[]>(() => props.authorsQueryOptions());
+	const allIps = createQuery<Ip[]>(
+		clientOnlyQueryOptions(props.ipsQueryOptions),
+	);
+	const allCharacters = createQuery<Character[]>(
+		clientOnlyQueryOptions(props.charactersQueryOptions),
+	);
+	const allAuthors = createQuery<Author[]>(
+		clientOnlyQueryOptions(props.authorsQueryOptions),
+	);
 
 	const page = useSourceMediaPage({
 		mediaSourceId: props.mediaSourceId,
@@ -72,6 +87,23 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			characters: () => allCharacters.data,
 			authors: () => allAuthors.data,
 		},
+		queryStates: () => ({
+			tags: toQueryUiState(tags, {
+				isEmpty: (data) => data.length === 0,
+			}),
+			projects: toQueryUiState(allProjects, {
+				isEmpty: (data) => data.length === 0,
+			}),
+			ips: toQueryUiState(allIps, {
+				isEmpty: (data) => data.length === 0,
+			}),
+			characters: toQueryUiState(allCharacters, {
+				isEmpty: (data) => data.length === 0,
+			}),
+			authors: toQueryUiState(allAuthors, {
+				isEmpty: (data) => data.length === 0,
+			}),
+		}),
 		actions: props.actions,
 		queryClient,
 		presetClient: props.presetClient,

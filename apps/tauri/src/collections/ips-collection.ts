@@ -4,6 +4,7 @@ import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistenc
 import type { getPersistence } from "~/infrastructure/db/persistence";
 import { client } from "~/orpc-client";
 import { queryClient } from "~/router";
+import { collectionQueryKeys } from "./query-keys";
 
 type IpResponse = Awaited<ReturnType<typeof client.ips.list>>[number];
 
@@ -16,8 +17,8 @@ export function createIpsCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["allIps"],
-				queryFn: () => client.ips.list(),
+				queryKey: collectionQueryKeys.ips(),
+				queryFn: ({ signal }) => client.ips.list(undefined, { signal }),
 				queryClient,
 				getKey: (ip) => ip.id,
 			}),

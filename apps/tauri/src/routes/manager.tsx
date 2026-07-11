@@ -64,8 +64,8 @@ const managerActions = {
 };
 
 export const Route = createFileRoute("/manager")({
-	loader: async ({ context }) => {
-		await prefetchManagerPageQueries(context.queryClient, managerQueryOptions);
+	loader: ({ context }) => {
+		prefetchManagerPageQueries(context.queryClient, managerQueryOptions);
 	},
 	component: ManagerPage,
 });
