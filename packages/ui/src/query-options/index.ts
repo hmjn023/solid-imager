@@ -38,8 +38,12 @@ export {
 	QUERY_STALE_TIME_MS,
 } from "./query-client";
 export {
+	buildSearchResultsQueryOptions,
+	buildSourceMediaResultsQueryOptions,
 	type SearchResultsQueryKeyInput,
+	type SearchResultsQueryOptionsInput,
 	type SourceMediaQueryKeyInput,
+	type SourceMediaResultsQueryOptionsInput,
 	searchQueryKeys,
 	sourceMediaQueryKeys,
 } from "./search-query";

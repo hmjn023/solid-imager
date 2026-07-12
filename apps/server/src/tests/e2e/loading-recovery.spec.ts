@@ -1,4 +1,8 @@
-import { E2E_PRIMARY_FILE_NAME, mediaPath } from "./support/fixture";
+import {
+	E2E_PRIMARY_FILE_NAME,
+	mediaPath,
+	sourcePath,
+} from "./support/fixture";
 import { expect, test } from "./support/test";
 
 const searchEndpoint = /\/api\/rpc\/media\/search(?:\?|$)/;
@@ -91,31 +95,46 @@ test.describe("loading and recovery", () => {
 		).toHaveCount(0);
 	});
 
-	test("keeps a media-detail status visible while its initial response is delayed", async ({
+	test("keeps route content visible while SPA media-detail preload is delayed", async ({
 		page,
 	}) => {
 		let releaseRequest: () => void = () => {};
+		let markRequestSeen: () => void = () => {};
 		const requestGate = new Promise<void>((resolve) => {
 			releaseRequest = resolve;
 		});
+		const requestSeen = new Promise<void>((resolve) => {
+			markRequestSeen = resolve;
+		});
 		await page.route(mediaDetailsEndpoint, async (route) => {
+			markRequestSeen();
 			await requestGate;
 			await route.continue();
 		});
 
-		await page.goto(mediaPath(), { waitUntil: "commit" });
+		await page.goto(sourcePath());
+		const mediaLink = page.getByRole("link", {
+			name: new RegExp(E2E_PRIMARY_FILE_NAME),
+		});
+		await expect(mediaLink).toBeVisible();
+
+		const navigation = mediaLink.click();
+		await requestSeen;
 		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
 		await expect(
-			page.getByText("メディア詳細を準備しています...", { exact: true }),
+			page.getByRole("heading", {
+				name: /Media in Source:/,
+			}),
 		).toBeVisible();
 
 		releaseRequest();
+		await navigation;
 		await expect(
 			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
 		).toBeVisible();
 	});
 
-	test("shows a recoverable error and reload recovery when media detail is unavailable", async ({
+	test("shows a recoverable SPA error and reload recovery when media detail is unavailable", async ({
 		page,
 		browserHealth,
 	}) => {
@@ -131,7 +150,11 @@ test.describe("loading and recovery", () => {
 			}),
 		);
 
-		await page.goto(mediaPath());
+		await page.goto(sourcePath());
+		await page
+			.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) })
+			.click();
+		await expect(page).toHaveURL(new RegExp(`${mediaPath()}/?$`));
 		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
 		await expect(page.getByRole("alert")).toContainText("Error:");
 

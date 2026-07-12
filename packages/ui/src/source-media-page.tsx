@@ -9,6 +9,7 @@ import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import type { Accessor, JSX } from "solid-js";
 import { isServer } from "solid-js/web";
+import { useCurrentSearchPersistence } from "./hooks/use-current-search-persistence";
 import type { MediaSourceEventTransport } from "./hooks/use-media-source-events";
 import {
 	type SourceMediaPageActions,
@@ -61,6 +62,9 @@ export type SourceMediaPageProps = {
 
 export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	const queryClient = useQueryClient();
+	const isSearchStateRestored = useCurrentSearchPersistence(
+		props.mediaSourceId,
+	);
 
 	const tags = createQuery<TagResponse[]>(
 		clientOnlyQueryOptions(props.tagsQueryOptions),
@@ -112,6 +116,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		sortBy: props.sortBy,
 		sortOrder: props.sortOrder,
 		onThumbnailReady: props.onThumbnailReady,
+		isSearchStateRestored,
 	});
 
 	const renderActions: SourceMediaScreenProps["renderActions"] = () => (

@@ -8,6 +8,7 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/solid-router";
+import { createSignal, onMount } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
 import { ApiActivityIndicator } from "~/components/api-activity-indicator";
@@ -37,8 +38,13 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootComponent() {
+	const [isHydrated, setIsHydrated] = createSignal(false);
+	onMount(() => {
+		setIsHydrated(true);
+	});
+
 	return (
-		<html lang="ja">
+		<html data-hydrated={isHydrated() ? "true" : "false"} lang="ja">
 			<head>
 				<HydrationScript />
 				<HeadContent />

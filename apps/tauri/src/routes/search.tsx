@@ -45,7 +45,7 @@ const PresetClient = createPresetClient(rawPresetClient);
 function SearchRoute() {
 	const queryClient = useQueryClient();
 
-	useCurrentSearchPersistence("all", PresetClient);
+	const isSearchStateRestored = useCurrentSearchPersistence("all");
 
 	const page = useSearchPage({
 		searchMedia,
@@ -71,6 +71,7 @@ function SearchRoute() {
 		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
+		isSearchStateRestored,
 	});
 
 	useMediaSourceEvents(() => searchState.selectedSource || undefined, {

@@ -1,7 +1,9 @@
-import type {
-	Preset,
-	SearchGroup,
+import {
+	type Preset,
+	type SearchGroup,
+	searchGroupSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import { deepEqual } from "@solid-imager/core/utils/deep-equal";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -37,6 +39,7 @@ import {
 	getSearchCondition,
 	loadPreset,
 	searchState,
+	setSearchState,
 } from "./stores/search-store";
 import { toast } from "./toast";
 import { cn } from "./utils/cn";
@@ -53,6 +56,16 @@ export interface PresetManagerClient {
 	delete(id: number): Promise<unknown>;
 }
 
+function normalizeSearchCondition(condition: SearchGroup | undefined) {
+	return searchGroupSchema.parse(
+		condition ?? {
+			type: "group",
+			operator: "and",
+			children: [],
+		},
+	);
+}
+
 export function PresetManager(props: {
 	presetClient: PresetManagerClient;
 	class?: string;
@@ -61,6 +74,20 @@ export function PresetManager(props: {
 	const [data, { refetch }] = createResource(props.presetClient.list);
 
 	const presets = () => data()?.filter((p) => !p.name.startsWith("current"));
+
+	createEffect(() => {
+		const availablePresets = presets();
+		if (!availablePresets || searchState.activePresetId !== null) {
+			return;
+		}
+		const condition = normalizeSearchCondition(getSearchCondition());
+		const matchingPreset = availablePresets.find((preset) =>
+			deepEqual(normalizeSearchCondition(preset.value), condition),
+		);
+		if (matchingPreset) {
+			setSearchState("activePresetId", matchingPreset.id);
+		}
+	});
 
 	const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);

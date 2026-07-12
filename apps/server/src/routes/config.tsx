@@ -1,44 +1,50 @@
 import { configQueryKeys } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { ConfigScreen } from "@solid-imager/ui/screens/config-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { ClientOnly, createFileRoute } from "@tanstack/solid-router";
+import { createFileRoute } from "@tanstack/solid-router";
 import { Show } from "solid-js";
-import { isServer } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { configQueryOptions } from "~/infrastructure/api-clients/queries";
 
 export const Route = createFileRoute("/config")({
-	ssr: false,
-	pendingComponent: () => null,
-	component: ConfigPage,
+	ssr: true,
+	loader: async ({ context }) => {
+		const config = await context.queryClient.fetchQuery(configQueryOptions());
+		return { config };
+	},
+	pendingComponent: () => (
+		<RouteDataPendingScreen
+			description="設定を準備しています..."
+			title="Settings"
+		/>
+	),
+	pendingMinMs: 0,
+	component: ConfigPageContent,
 });
 
-function ConfigPage() {
-	return (
-		<ClientOnly fallback={null}>
-			<ConfigPageContent />
-		</ClientOnly>
-	);
-}
-
 function ConfigPageContent() {
-	const configQuery = createQuery(() => ({
-		...configQueryOptions(),
-		enabled: !isServer,
-	}));
+	const loaderData = Route.useLoaderData();
+	const configQuery = createQuery(configQueryOptions);
 	const queryClient = useQueryClient();
 	const state = () => toQueryUiState(configQuery);
+	const config = () => configQuery.data ?? loaderData().config;
 
 	return (
 		<div class="container mx-auto max-w-4xl p-6">
-			<Show when={state().phase === "pending"}>
+			<Show when={state().phase === "pending" && config() === undefined}>
 				<div class="py-10 text-center" role="status">
 					Loading settings...
 				</div>
 			</Show>
 
-			<Show when={state().phase === "error" || state().phase === "offline"}>
+			<Show
+				when={
+					(state().phase === "error" || state().phase === "offline") &&
+					config() === undefined
+				}
+			>
 				<div class="py-10 text-red-500" role="alert">
 					{state().phase === "offline"
 						? "Offline. Settings will load after reconnecting."
@@ -58,7 +64,7 @@ function ConfigPageContent() {
 				</p>
 			</Show>
 
-			<Show when={state().data}>
+			<Show when={config()}>
 				{(data) => (
 					<ConfigScreen
 						data={data()}

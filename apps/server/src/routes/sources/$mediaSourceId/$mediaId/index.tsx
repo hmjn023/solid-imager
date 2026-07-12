@@ -4,13 +4,31 @@ import { createSignal, onMount, Show } from "solid-js";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
-import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
+import {
+	allCharactersQueryOptions,
+	allIpsQueryOptions,
+	allProjectsQueryOptions,
+	mediaDetailsQueryOptions,
+	projectsForMediaQueryOptions,
+} from "~/infrastructure/api-clients/queries";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
-	// The detail data remains client-fetched, but render a server-safe static
-	// fallback so direct navigation never starts with an empty page.
 	ssr: true,
+	loader: async ({ context, params }) => {
+		await Promise.all([
+			context.queryClient.prefetchQuery(
+				mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
+			),
+			context.queryClient.prefetchQuery(
+				projectsForMediaQueryOptions(params.mediaSourceId, params.mediaId),
+			),
+			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
+			context.queryClient.prefetchQuery(allIpsQueryOptions()),
+			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
+		]);
+	},
 	pendingComponent: MediaRouteFallback,
+	pendingMinMs: 0,
 	component: Media,
 });
 
