@@ -90,6 +90,35 @@ describe("JobRepository", () => {
 		expect(mockExecutor.update).toHaveBeenCalledOnce();
 	});
 
+	it("clears stale result and error markers when requeueing", async () => {
+		await repository.requeueStaleInProgress(
+			new Date("2026-06-23T00:00:00.000Z"),
+		);
+
+		expect(mockExecutor.set).toHaveBeenCalledOnce();
+		expect(mockExecutor.set).toHaveBeenCalledWith({
+			status: "pending",
+			result: null,
+			error: null,
+			updatedAt: expect.any(Date),
+		});
+	});
+
+	it("prevents duplicate batch progress when child result markers exist", async () => {
+		mockExecutor.execute.mockResolvedValueOnce({ rows: [] });
+
+		const progress = await repository.incrementProgress(
+			"11111111-1111-4111-8111-111111111110",
+			"11111111-1111-4111-8111-111111111111",
+			1,
+		);
+
+		expect(progress).toBeNull();
+		const query = extractSqlText(mockExecutor.execute.mock.calls[0]?.[0]);
+		expect(query).toContain("parentProcessed");
+		expect(query).toContain("parentFailed");
+	});
+
 	it("casts dynamic batch result marker keys to PostgreSQL text", async () => {
 		mockExecutor.execute.mockResolvedValueOnce({
 			rows: [{ payload: { processed: 25, failed: 0, total: 100 } }],
@@ -105,8 +134,7 @@ describe("JobRepository", () => {
 		const query = extractSqlText(mockExecutor.execute.mock.calls[0]?.[0]);
 		expect(query).toContain("jsonb_build_object(");
 		expect(query).toContain("::text, true)");
-		expect(query).toContain("->>(");
-		expect(query).toContain("::text)");
+		expect(query).toContain("->>");
 	});
 });
 

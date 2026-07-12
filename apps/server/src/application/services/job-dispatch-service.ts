@@ -12,7 +12,11 @@ import { logger } from "~/infrastructure/logger";
 // Helper for unified job processing (Called by JobWorker)
 export async function processJob(job: DbJob) {
 	const mediaSourceId = job.mediaSourceId;
-	if (!mediaSourceId && job.type !== "bulk_tagging_dispatch") {
+	if (
+		!mediaSourceId &&
+		job.type !== "bulk_tagging_dispatch" &&
+		job.type !== "batch_ccip_dispatch"
+	) {
 		throw new Error(`Job ${job.id} missing mediaSourceId`);
 	}
 
