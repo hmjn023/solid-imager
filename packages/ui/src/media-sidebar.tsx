@@ -18,6 +18,7 @@ import {
 	createSignal,
 	For,
 	type JSX,
+	on,
 	onCleanup,
 	Show,
 } from "solid-js";
@@ -102,11 +103,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	);
 	const [isCcipJobPending, setIsCcipJobPending] = createSignal(false);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
-	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
 	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
 	);
+	let ccipStatusRequestId = 0;
 
 	createEffect(() => {
 		if (!isEditingDescription()) {
@@ -115,13 +116,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	});
 
 	const refreshCcipStatus = async () => {
-		const requestId = ccipStatusRequestId() + 1;
-		setCcipStatusRequestId(requestId);
+		const requestId = ccipStatusRequestId + 1;
+		ccipStatusRequestId = requestId;
 		const activeJobIdAtRequest = activeCcipJobId();
 		if (props.getCcipVectorStatus) {
 			try {
 				const result = await props.getCcipVectorStatus();
-				if (ccipStatusRequestId() !== requestId) {
+				if (ccipStatusRequestId !== requestId) {
 					return;
 				}
 				if (
@@ -143,7 +144,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				setActiveCcipJobId(result.jobId ?? null);
 				setIsCcipJobPending(result.status === "processing");
 			} catch {
-				if (ccipStatusRequestId() !== requestId) {
+				if (ccipStatusRequestId !== requestId) {
 					return;
 				}
 				if (!activeCcipJobId()) {
@@ -155,15 +156,15 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		}
 	};
 
-	createEffect(() => {
-		props.media.id;
-		props.media.mediaSourceId;
-		setCcipStatus("missing");
-		setActiveCcipJobId(null);
-		setIsCcipJobPending(false);
-		setCcipMissingStatusCount(0);
-		void refreshCcipStatus();
-	});
+	createEffect(
+		on([() => props.media.id, () => props.media.mediaSourceId], () => {
+			setCcipStatus("missing");
+			setActiveCcipJobId(null);
+			setIsCcipJobPending(false);
+			setCcipMissingStatusCount(0);
+			void refreshCcipStatus();
+		}),
+	);
 
 	const extractCcipVector = async () => {
 		if (!props.startCcipExtraction) return;

@@ -8,7 +8,7 @@ import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createFileRoute } from "@tanstack/solid-router";
+import { ClientOnly, createFileRoute } from "@tanstack/solid-router";
 import { isServer } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
@@ -33,6 +33,14 @@ function registerSourceEvents(handler: RawEventHandler): () => void {
 }
 
 function SourcesRoute() {
+	return (
+		<ClientOnly fallback={null}>
+			<SourcesRouteContent />
+		</ClientOnly>
+	);
+}
+
+function SourcesRouteContent() {
 	const queryClient = useQueryClient();
 	const mediaSources = createQuery(() => ({
 		...mediaSourcesQueryOptions(),

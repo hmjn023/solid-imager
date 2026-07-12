@@ -12,6 +12,7 @@ import {
 	createMemo,
 	createSignal,
 	For,
+	on,
 	onCleanup,
 	Show,
 } from "solid-js";
@@ -110,19 +111,18 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [isCcipJobPending, setIsCcipJobPending] = createSignal(false);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
 	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
-	let ccipAbortController: AbortController | null = null;
+	let ccipStatusRequestId = 0;
 
 	const refreshCcipStatus = async () => {
-		ccipAbortController?.abort();
-		ccipAbortController = new AbortController();
-		const { signal } = ccipAbortController;
+		const requestId = ccipStatusRequestId + 1;
+		ccipStatusRequestId = requestId;
 		const activeJobIdAtRequest = activeCcipJobId();
 		try {
 			const result = await getCcipVectorStatus(
 				props.media.mediaSourceId,
 				props.media.id,
 			);
-			if (signal.aborted) return;
+			if (ccipStatusRequestId !== requestId) return;
 			if (
 				result.status === "missing" &&
 				activeJobIdAtRequest &&
@@ -142,7 +142,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			setActiveCcipJobId(result.jobId ?? null);
 			setIsCcipJobPending(result.status === "processing");
 		} catch {
-			if (signal.aborted) return;
+			if (ccipStatusRequestId !== requestId) return;
 			if (activeCcipJobId()) return;
 			setCcipStatus("failed");
 			setActiveCcipJobId(null);
@@ -150,16 +150,16 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		}
 	};
 
-	createEffect(() => {
-		props.media.id;
-		props.media.mediaSourceId;
-		setIsExtractingCcip(false);
-		setIsCcipJobPending(false);
-		setCcipStatus("missing");
-		setActiveCcipJobId(null);
-		setCcipMissingStatusCount(0);
-		void refreshCcipStatus();
-	});
+	createEffect(
+		on([() => props.media.id, () => props.media.mediaSourceId], () => {
+			setIsExtractingCcip(false);
+			setIsCcipJobPending(false);
+			setCcipStatus("missing");
+			setActiveCcipJobId(null);
+			setCcipMissingStatusCount(0);
+			void refreshCcipStatus();
+		}),
+	);
 
 	const handleCcipExtraction = async () => {
 		setIsExtractingCcip(true);

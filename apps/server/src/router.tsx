@@ -10,8 +10,8 @@ import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
 import { isServer } from "solid-js/web";
+import { routeTree } from "#route-tree";
 import type { logger as LoggerInstance } from "./infrastructure/logger";
-import { routeTree } from "./routeTree.gen";
 
 function createAppQueryClient(): QueryClient {
 	return new QueryClient(createAppQueryClientConfig(isTransientApiError));
