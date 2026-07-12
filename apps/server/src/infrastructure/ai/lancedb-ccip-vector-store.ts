@@ -72,7 +72,12 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		if (!this.connectionPromise) {
 			this.connectionPromise = import("@lancedb/lancedb")
 				.then((lancedb) =>
-					lancedb.connect(path.resolve(process.cwd(), this.directory)),
+					lancedb.connect(path.resolve(process.cwd(), this.directory), {
+						// Vite HMR can leave the job worker and API handler with
+						// different Table handles. Check the latest committed version on
+						// every read so a completed extraction is immediately visible.
+						readConsistencyInterval: 0,
+					}),
 				)
 				.catch((err) => {
 					this.connectionPromise = null;

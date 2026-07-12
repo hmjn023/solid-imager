@@ -164,6 +164,26 @@ describe("LanceDbCcipVectorStore integration", () => {
 		);
 	});
 
+	it("sees vectors committed by another open store instance", async () => {
+		directory = await mkdtemp(
+			path.join(tmpdir(), "solid-imager-ccip-lancedb-"),
+		);
+		const writer = new LanceDbCcipVectorStore(directory);
+		const reader = new LanceDbCcipVectorStore(directory);
+		const anchor = createRecord(ANCHOR_MEDIA_ID, SOURCE_A_ID, vector(1));
+		const near = createRecord(NEAR_MEDIA_ID, SOURCE_A_ID, vector(0.875, 0.125));
+
+		await writer.upsert(anchor);
+		expect(await reader.get(ANCHOR_MEDIA_ID)).toEqual(anchor);
+
+		// The reader's Table handle is already open at the previous version.
+		// This mirrors Vite HMR, where an older API module and the active job
+		// worker can hold separate LanceDB connections to the same directory.
+		await writer.upsert(near);
+
+		expect(await reader.get(NEAR_MEDIA_ID)).toEqual(near);
+	});
+
 	it("reports ready and stale status and searches candidates through the real store", async () => {
 		directory = await mkdtemp(
 			path.join(tmpdir(), "solid-imager-ccip-lancedb-"),
