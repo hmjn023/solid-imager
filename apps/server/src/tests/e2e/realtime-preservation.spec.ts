@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import { copyFile } from "node:fs/promises";
 import path from "node:path";
+import type { Request } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SOURCE_NAME,
@@ -9,20 +11,41 @@ import {
 } from "./support/fixture";
 import { expect, test } from "./support/test";
 
-const SYNCED_FILE_NAME = "realtime-sse-event.png";
+const sourceEventsEndpoint = /\/api\/rpc\/sources\/events(?:\?|$)/;
 
-test("preserves an open dialog, input value, and focus while a source sync SSE event refreshes media", async ({
+test("preserves an open dialog, input value, and focus after an SSE reconnect refreshes media", async ({
 	context,
 	page,
 }) => {
-	const streamConnected = page.waitForResponse(
+	let streamAttempts = 0;
+	let reconnectedRequest: Request | undefined;
+	const reconnected = page.waitForResponse(
 		(response) =>
-			new URL(response.url()).pathname === "/api/rpc/sources/events" &&
-			response.status() === 200,
+			response.request() === reconnectedRequest && response.status() === 200,
 	);
+	await page.route(sourceEventsEndpoint, async (route) => {
+		streamAttempts++;
+		if (streamAttempts === 1) {
+			// Close a valid SSE response immediately. This exercises the normal
+			// completion path and retry backoff without creating a browser error.
+			await route.fulfill({
+				status: 200,
+				contentType: "text/event-stream",
+				body: "",
+			});
+			return;
+		}
+		if (streamAttempts === 2) {
+			reconnectedRequest = route.request();
+		}
+		await route.continue();
+	});
+
 	await page.goto(sourcePath());
 	await expect(page.getByRole("button", { name: "Add media" })).toBeVisible();
-	await streamConnected;
+	await reconnected;
+	expect(streamAttempts).toBeGreaterThanOrEqual(2);
+	await page.unroute(sourceEventsEndpoint);
 
 	const fileChooser = page.waitForEvent("filechooser");
 	await page.getByRole("button", { name: "Add media" }).click();
@@ -37,9 +60,10 @@ test("preserves an open dialog, input value, and focus while a source sync SSE e
 	await filenameInput.focus();
 	await expect(filenameInput).toBeFocused();
 
+	const syncedFileName = `realtime-sse-event-${randomUUID()}.png`;
 	await copyFile(
 		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
-		path.join(getE2eMediaDir(), SYNCED_FILE_NAME),
+		path.join(getE2eMediaDir(), syncedFileName),
 	);
 
 	const syncPage = await context.newPage();

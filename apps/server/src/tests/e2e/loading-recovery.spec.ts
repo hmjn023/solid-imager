@@ -3,6 +3,28 @@ import { expect, test } from "./support/test";
 
 const searchEndpoint = /\/api\/rpc\/media\/search(?:\?|$)/;
 const mediaDetailsEndpoint = /\/api\/rpc\/media\/getDetails(?:\?|$)/;
+const networkFailures = [
+	{
+		name: "connection failed",
+		errorCode: "connectionfailed",
+		consoleMessage: "net::ERR_CONNECTION_FAILED",
+	},
+	{
+		name: "connection refused",
+		errorCode: "connectionrefused",
+		consoleMessage: "net::ERR_CONNECTION_REFUSED",
+	},
+	{
+		name: "timed out",
+		errorCode: "timedout",
+		consoleMessage: "net::ERR_TIMED_OUT",
+	},
+	{
+		name: "connection reset",
+		errorCode: "connectionreset",
+		consoleMessage: "net::ERR_CONNECTION_RESET",
+	},
+] as const;
 
 test.describe("loading and recovery", () => {
 	test("keeps the app shell visible while the initial search response is delayed", async ({
@@ -93,18 +115,44 @@ test.describe("loading and recovery", () => {
 		).toBeVisible();
 	});
 
-	for (const failure of ["connectionfailed", "timedout"] as const) {
-		test(`shows a recoverable error when search ${failure}`, async ({
+	test("shows a recoverable error and reload recovery when media detail is unavailable", async ({
+		page,
+		browserHealth,
+	}) => {
+		browserHealth.allowResponseFailure("/api/rpc/media/getDetails");
+		browserHealth.allowConsole(
+			"Failed to load resource: the server responded with a status of 503",
+		);
+		await page.route(mediaDetailsEndpoint, (route) =>
+			route.fulfill({
+				status: 503,
+				contentType: "text/plain",
+				body: "Service Unavailable",
+			}),
+		);
+
+		await page.goto(mediaPath());
+		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
+		await expect(page.getByRole("alert")).toContainText("Error:");
+
+		await page.unroute(mediaDetailsEndpoint);
+		const recoveryResponse = await page.reload();
+		expect(recoveryResponse?.ok()).toBeTruthy();
+		await expect(
+			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+		).toBeVisible();
+	});
+
+	for (const failure of networkFailures) {
+		test(`shows a recoverable error when search ${failure.name}`, async ({
 			page,
 			browserHealth,
 		}) => {
 			browserHealth.allowRequestFailure("/api/rpc/media/search");
-			browserHealth.allowConsole(
-				failure === "connectionfailed"
-					? "net::ERR_CONNECTION_FAILED"
-					: "net::ERR_TIMED_OUT",
+			browserHealth.allowConsole(failure.consoleMessage);
+			await page.route(searchEndpoint, (route) =>
+				route.abort(failure.errorCode),
 			);
-			await page.route(searchEndpoint, (route) => route.abort(failure));
 
 			await page.goto("/search");
 			await expect(
