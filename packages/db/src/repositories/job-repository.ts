@@ -333,6 +333,8 @@ export function createJobRepository(
 				.update(jobs)
 				.set({
 					status: "pending",
+					result: null,
+					error: null,
 					updatedAt: new Date(),
 				})
 				.where(
