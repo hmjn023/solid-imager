@@ -13,8 +13,6 @@ import mkcert from "vite-plugin-mkcert";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isE2e = process.env.E2E === "1";
-const e2ePort = Number.parseInt(process.env.E2E_PORT ?? "3100", 10);
-const e2eHmrPort = Number.parseInt(process.env.E2E_HMR_PORT ?? "3101", 10);
 const defaultRouteTreePath = path.resolve(__dirname, "src/routeTree.gen.ts");
 
 function getRequiredE2eEnvironment(name: string): string {
@@ -24,6 +22,20 @@ function getRequiredE2eEnvironment(name: string): string {
 	}
 	return value;
 }
+
+function getE2ePort(name: "E2E_PORT" | "E2E_HMR_PORT", fallback: number): number {
+	if (!isE2e) {
+		return fallback;
+	}
+	const port = Number.parseInt(getRequiredE2eEnvironment(name), 10);
+	if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+		throw new Error(`${name} must be an integer between 1 and 65535 when E2E=1`);
+	}
+	return port;
+}
+
+const e2ePort = getE2ePort("E2E_PORT", 3100);
+const e2eHmrPort = getE2ePort("E2E_HMR_PORT", 3101);
 
 const routeTreePath = isE2e
 	? path.resolve(getRequiredE2eEnvironment("E2E_ROUTE_TREE_PATH"))
@@ -127,7 +139,7 @@ export default defineConfig({
 	server: isE2e
 		? {
 			host: "127.0.0.1",
-			port: Number.isNaN(e2ePort) ? 3100 : e2ePort,
+			port: e2ePort,
 			strictPort: true,
 			// Keep the dev-only transform and HMR client active. This catches the
 			// class of regressions that production builds cannot reproduce, while
@@ -135,8 +147,8 @@ export default defineConfig({
 			hmr: {
 				protocol: "ws",
 				host: "127.0.0.1",
-				port: Number.isNaN(e2eHmrPort) ? 3101 : e2eHmrPort,
-				clientPort: Number.isNaN(e2eHmrPort) ? 3101 : e2eHmrPort,
+				port: e2eHmrPort,
+				clientPort: e2eHmrPort,
 			},
 			fs: {
 				allow: [workspaceRoot, path.dirname(routeTreePath)],

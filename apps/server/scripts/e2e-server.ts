@@ -1,4 +1,4 @@
-import { mkdir, rm, stat, symlink, writeFile } from "node:fs/promises";
+import { lstat, mkdir, rm, stat, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -252,9 +252,23 @@ async function linkProductionDependencies(outputDir: string): Promise<void> {
 	// Nitro bundles most dependencies, but LanceDB dynamically resolves
 	// apache-arrow at runtime. An output rooted in /tmp has no ancestor
 	// node_modules directory, unlike the application's normal .output.
+	const targetPath = path.join(outputDir, "node_modules");
+	try {
+		await lstat(targetPath);
+		return;
+	} catch (error) {
+		if (
+			typeof error !== "object" ||
+			error === null ||
+			!("code" in error) ||
+			error.code !== "ENOENT"
+		) {
+			throw error;
+		}
+	}
 	await symlink(
 		path.join(appRoot, "node_modules"),
-		path.join(outputDir, "node_modules"),
+		targetPath,
 		"dir",
 	);
 }
