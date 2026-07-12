@@ -34,6 +34,16 @@ export function subscribeToEventStream<TEvent>(
 	onError?: EventStreamErrorHandler,
 ): () => void {
 	const abortController = new AbortController();
+	const canObservePageLifecycle = typeof window !== "undefined";
+	const onPageHide = (event: PageTransitionEvent) => {
+		if (!event.persisted) {
+			abortController.abort();
+		}
+	};
+
+	if (canObservePageLifecycle) {
+		window.addEventListener("pagehide", onPageHide);
+	}
 
 	const start = async () => {
 		let retryCount = 0;
@@ -77,6 +87,9 @@ export function subscribeToEventStream<TEvent>(
 	void start();
 
 	return () => {
+		if (canObservePageLifecycle) {
+			window.removeEventListener("pagehide", onPageHide);
+		}
 		abortController.abort();
 	};
 }

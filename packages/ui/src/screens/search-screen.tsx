@@ -49,7 +49,7 @@ export function SearchScreen(props: SearchScreenProps) {
 	];
 	const openMobileFilters = () => setIsMobileFilterOpen(true);
 
-	const panel = (
+	const renderPanel = () => (
 		<SearchControlPanel
 			context="global"
 			filterData={props.filterData}
@@ -84,7 +84,7 @@ export function SearchScreen(props: SearchScreenProps) {
 						<DialogHeader>
 							<DialogTitle>検索フィルター</DialogTitle>
 						</DialogHeader>
-						<div class="space-y-4">{panel}</div>
+						<div class="space-y-4">{renderPanel()}</div>
 					</DialogContent>
 				</Dialog>
 			</ClientOnly>
@@ -101,7 +101,7 @@ export function SearchScreen(props: SearchScreenProps) {
 					<CardHeader>
 						<CardTitle>検索フィルター</CardTitle>
 					</CardHeader>
-					<CardContent class="space-y-4">{panel}</CardContent>
+					<CardContent class="space-y-4">{renderPanel()}</CardContent>
 				</Card>
 
 				<div class="space-y-4">

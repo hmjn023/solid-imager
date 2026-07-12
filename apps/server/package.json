@@ -25,7 +25,10 @@
     "test": "bun run test:unit && bun run test:integration",
     "test:unit": "vp test run -c vitest.unit.config.ts",
     "test:integration": "vp test run -c vitest.integration.config.ts",
-    "test:e2e": "playwright test",
+    "test:e2e": "bun scripts/run-e2e.ts --mode=all",
+    "test:e2e:dev": "bun scripts/run-e2e.ts --mode=dev",
+    "test:e2e:production": "bun scripts/run-e2e.ts --mode=production",
+    "test:e2e:playwright": "playwright test",
     "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'",
     "gen:spec": "bun scripts/generate-swagger-spec.ts",
     "docs:generate": "typedoc"

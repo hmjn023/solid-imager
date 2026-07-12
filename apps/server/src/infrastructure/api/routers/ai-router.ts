@@ -419,35 +419,50 @@ export const aiRouter = {
 		)
 		.output(ccipVectorStatusSchema)
 		.handler(async ({ input }) => {
-			const status = await ccipVectorService.getStatus(
-				input.mediaSourceId,
-				input.mediaId,
-			);
-			const latestJob = await db.query.jobs.findFirst({
-				where: and(
-					eq(jobs.type, "extract_ccip_vector"),
-					eq(jobs.mediaSourceId, input.mediaSourceId),
-					sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
-				),
-				orderBy: desc(jobs.createdAt),
-			});
-			if (status.status === "ready" || status.status === "stale") {
+			try {
+				const status = await ccipVectorService.getStatus(
+					input.mediaSourceId,
+					input.mediaId,
+				);
+				const latestJob = await db.query.jobs.findFirst({
+					where: and(
+						eq(jobs.type, "extract_ccip_vector"),
+						eq(jobs.mediaSourceId, input.mediaSourceId),
+						sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
+					),
+					orderBy: desc(jobs.createdAt),
+				});
+				if (status.status === "ready" || status.status === "stale") {
+					return status;
+				}
+				if (
+					latestJob?.status === "pending" ||
+					latestJob?.status === "in_progress"
+				) {
+					return { status: "processing" as const, jobId: latestJob.id };
+				}
+				if (latestJob?.status === "failed") {
+					return {
+						status: "failed" as const,
+						jobId: latestJob.id,
+						error: latestJob.error ?? "CCIP vector extraction failed",
+					};
+				}
 				return status;
+			} catch (error) {
+				const isError = error instanceof Error;
+				logger.error(
+					{
+						errorName: isError ? error.name : typeof error,
+						errorMessage: isError ? error.message : String(error),
+						errorStack: isError ? error.stack : undefined,
+						mediaSourceId: input.mediaSourceId,
+						mediaId: input.mediaId,
+					},
+					"CCIP vector status lookup failed",
+				);
+				throw error;
 			}
-			if (
-				latestJob?.status === "pending" ||
-				latestJob?.status === "in_progress"
-			) {
-				return { status: "processing" as const, jobId: latestJob.id };
-			}
-			if (latestJob?.status === "failed") {
-				return {
-					status: "failed" as const,
-					jobId: latestJob.id,
-					error: latestJob.error ?? "CCIP vector extraction failed",
-				};
-			}
-			return status;
 		}),
 
 	startCcipExtraction: os

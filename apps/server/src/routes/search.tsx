@@ -4,6 +4,7 @@ import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
+import { createSignal, onMount, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -28,8 +29,10 @@ import {
 } from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
-	ssr: false,
-	pendingComponent: () => null,
+	// SearchScreen is client-only, but this route itself must render on the
+	// server so its static fallback hydrates against the same component tree.
+	ssr: true,
+	pendingComponent: SearchRouteFallback,
 	component: SearchRoute,
 });
 
@@ -38,6 +41,35 @@ const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 const PresetClient = createPresetClient(rawPresetClient);
 
 function SearchRoute() {
+	const [isMounted, setIsMounted] = createSignal(false);
+
+	onMount(() => {
+		setIsMounted(true);
+	});
+
+	return (
+		<Show fallback={<SearchRouteFallback />} when={isMounted()}>
+			{(_mounted) => <SearchRouteContent />}
+		</Show>
+	);
+}
+
+function SearchRouteFallback() {
+	return (
+		<main class="container mx-auto p-4">
+			<section
+				aria-live="polite"
+				class="flex min-h-48 flex-col items-center justify-center gap-2 text-muted-foreground"
+				role="status"
+			>
+				<h1 class="font-bold text-2xl text-foreground">メディア検索</h1>
+				<p>検索画面を準備しています...</p>
+			</section>
+		</main>
+	);
+}
+
+function SearchRouteContent() {
 	const queryClient = useQueryClient();
 
 	useCurrentSearchPersistence("all", PresetClient);

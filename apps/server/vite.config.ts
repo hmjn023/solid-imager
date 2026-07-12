@@ -12,6 +12,40 @@ import { devtools } from "@tanstack/devtools-vite";
 import mkcert from "vite-plugin-mkcert";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const isE2e = process.env.E2E === "1";
+const e2ePort = Number.parseInt(process.env.E2E_PORT ?? "3100", 10);
+const e2eHmrPort = Number.parseInt(process.env.E2E_HMR_PORT ?? "3101", 10);
+const defaultRouteTreePath = path.resolve(__dirname, "src/routeTree.gen.ts");
+
+function getRequiredE2eEnvironment(name: string): string {
+	const value = process.env[name];
+	if (!value) {
+		throw new Error(`${name} must be set when E2E=1`);
+	}
+	return value;
+}
+
+const routeTreePath = isE2e
+	? path.resolve(getRequiredE2eEnvironment("E2E_ROUTE_TREE_PATH"))
+	: defaultRouteTreePath;
+const e2eNitroOutput = isE2e
+	? (() => {
+		const dir = path.resolve(getRequiredE2eEnvironment("E2E_OUTPUT_DIR"));
+		return {
+			dir,
+			serverDir: path.join(dir, "server"),
+			publicDir: path.join(dir, "public"),
+		};
+	})()
+	: undefined;
+const e2eViteCacheDir = isE2e
+	? path.join(getRequiredE2eEnvironment("E2E_RUNTIME_DIR"), "vite-cache")
+	: undefined;
+const e2eRouterTmpDir = isE2e
+	? path.join(getRequiredE2eEnvironment("E2E_RUNTIME_DIR"), "tanstack-tmp")
+	: undefined;
+const workspaceRoot = path.resolve(__dirname, "../..");
+const routeFileIgnorePattern = "^components$";
 
 type RuntimeImport = <TModule>(specifier: string) => Promise<TModule>;
 
@@ -89,16 +123,36 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
 });
 
 export default defineConfig({
-	server: {
-		hmr: {
-			protocol: "wss",
-			host: "localhost",
-			port: 3001,
-			clientPort: 3001,
+	cacheDir: e2eViteCacheDir,
+	server: isE2e
+		? {
+			host: "127.0.0.1",
+			port: Number.isNaN(e2ePort) ? 3100 : e2ePort,
+			strictPort: true,
+			// Keep the dev-only transform and HMR client active. This catches the
+			// class of regressions that production builds cannot reproduce, while
+			// using a run-specific socket avoids the developer server's port.
+			hmr: {
+				protocol: "ws",
+				host: "127.0.0.1",
+				port: Number.isNaN(e2eHmrPort) ? 3101 : e2eHmrPort,
+				clientPort: Number.isNaN(e2eHmrPort) ? 3101 : e2eHmrPort,
+			},
+			fs: {
+				allow: [workspaceRoot, path.dirname(routeTreePath)],
+			},
+		}
+		: {
+			hmr: {
+				protocol: "wss",
+				host: "localhost",
+				port: 3001,
+				clientPort: 3001,
+			},
 		},
-	},
 	resolve: {
 		alias: {
+			"#route-tree": routeTreePath,
 			"@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
 			"@": path.resolve(__dirname, "../../packages/core/src"),
 			"~": path.resolve(__dirname, "./src"),
@@ -106,20 +160,42 @@ export default defineConfig({
 		tsconfigPaths: true,
 	},
 	plugins: [
-		mkcert(),
+		...(isE2e ? [] : [mkcert()]),
 		bypassSecFetchDestPlugin(),
 		devOrpcNodeMiddlewarePlugin(),
 		devtools({
 			consolePiping: { enabled: false },
 		}),
-		nitro(),
-		tanstackRouter({
-			target: "solid",
-			autoCodeSplitting: true,
-			routeFileIgnorePattern: ".*/components/.*",
-		}),
+		nitro(
+			e2eNitroOutput
+				? {
+					output: e2eNitroOutput,
+				}
+				: undefined,
+		),
+	tanstackRouter({
+		target: "solid",
+		autoCodeSplitting: true,
+		routeFileIgnorePattern,
+		tmpDir: e2eRouterTmpDir,
+		// TanStack Start owns route generation below. Keep this standalone plugin
+		// disabled during E2E so two generators do not race on the same runtime
+		// file.
+		generatedRouteTree: routeTreePath,
+		enableRouteGeneration: !isE2e,
+	}),
 		tailwindcss(),
-		tanstackStart(),
+	tanstackStart({
+		router: {
+				// The generator matches each directory name, not its full path.
+				routeFileIgnorePattern,
+				// Start's generator powers its client route-tree transform, so keep it
+				// enabled. Its output path is isolated above during E2E.
+				generatedRouteTree: routeTreePath,
+				enableRouteGeneration: true,
+				tmpDir: e2eRouterTmpDir,
+			},
+		}),
 		solidPlugin({ ssr: true }),
 	],
 	optimizeDeps: {

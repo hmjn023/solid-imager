@@ -2,7 +2,7 @@ import { configQueryKeys } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { ConfigScreen } from "@solid-imager/ui/screens/config-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createFileRoute } from "@tanstack/solid-router";
+import { ClientOnly, createFileRoute } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -15,6 +15,14 @@ export const Route = createFileRoute("/config")({
 });
 
 function ConfigPage() {
+	return (
+		<ClientOnly fallback={null}>
+			<ConfigPageContent />
+		</ClientOnly>
+	);
+}
+
+function ConfigPageContent() {
 	const configQuery = createQuery(() => ({
 		...configQueryOptions(),
 		enabled: !isServer,
