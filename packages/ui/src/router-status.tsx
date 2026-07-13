@@ -1,6 +1,8 @@
 import type { ErrorComponentProps } from "@tanstack/solid-router";
 import { Link, useRouter, useRouterState } from "@tanstack/solid-router";
 import { createEffect, createSignal, onCleanup, Show, untrack } from "solid-js";
+import { ErrorState } from "./async-state";
+import { ScreenSkeleton, type ScreenSkeletonLayout } from "./screen-skeleton";
 
 export const ROUTE_PENDING_DELAY_MS = 300;
 export const ROUTE_PENDING_MIN_DURATION_MS = 500;
@@ -62,7 +64,7 @@ export function RouteTransitionIndicator() {
 				class="fixed inset-x-0 top-0 z-[70] h-1 overflow-hidden bg-primary/20"
 				role="progressbar"
 			>
-				<div class="h-full w-1/2 animate-pulse rounded-full bg-primary" />
+				<div class="h-full w-1/2 animate-pulse rounded-full bg-primary motion-reduce:animate-none" />
 			</div>
 		</Show>
 	);
@@ -70,131 +72,92 @@ export function RouteTransitionIndicator() {
 
 export function RoutePendingScreen() {
 	return (
-		<section
-			aria-live="polite"
-			class="mx-auto flex min-h-48 max-w-xl items-center justify-center gap-3 p-6 text-muted-foreground"
-			role="status"
-		>
-			<span
-				aria-hidden="true"
-				class="size-5 animate-spin rounded-full border-2 border-current border-r-transparent"
-			/>
-			<span>画面を読み込んでいます...</span>
-		</section>
+		<ScreenSkeleton
+			layout="cards"
+			loadingLabel="画面を読み込んでいます..."
+			title="画面を読み込んでいます"
+		/>
 	);
 }
 
 export type RouteDataPendingScreenProps = {
+	class?: string;
 	title: string;
 	description: string;
+	layout?: ScreenSkeletonLayout;
+	showAction?: boolean;
+	showDescription?: boolean;
 };
 
 export function RouteDataPendingScreen(props: RouteDataPendingScreenProps) {
 	return (
-		<main class="container mx-auto p-4">
-			<section
-				aria-labelledby="route-data-pending-title"
-				aria-live="polite"
-				class="flex min-h-48 flex-col items-center justify-center gap-2 text-center text-muted-foreground"
-				role="status"
-			>
-				<h1
-					class="font-bold text-2xl text-foreground"
-					id="route-data-pending-title"
-				>
-					{props.title}
-				</h1>
-				<p>{props.description}</p>
-			</section>
-		</main>
+		<ScreenSkeleton
+			class={props.class}
+			description={props.description}
+			layout={props.layout ?? "cards"}
+			loadingLabel={props.description}
+			showAction={props.showAction}
+			showDescription={props.showDescription}
+			title={props.title}
+		/>
 	);
 }
 
 export function RouteErrorScreen(props: ErrorComponentProps) {
 	const router = useRouter();
 
-	const retry = () => {
-		void router.invalidate().finally(() => {
+	const retry = async () => {
+		await router.invalidate().finally(() => {
 			props.reset();
 		});
 	};
 
 	return (
-		<section
-			aria-labelledby="route-error-title"
-			class="mx-auto flex min-h-64 max-w-xl flex-col items-center justify-center gap-4 p-6 text-center"
-			role="alert"
-		>
-			<div>
-				<h1 class="text-xl font-semibold" id="route-error-title">
-					画面を表示できませんでした
-				</h1>
-				<p class="mt-2 text-sm text-muted-foreground">
-					通信状態を確認して、もう一度お試しください。
-				</p>
-			</div>
-			<div class="flex flex-wrap justify-center gap-2">
-				<button
-					class="rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
-					onClick={retry}
-					type="button"
-				>
-					再試行
-				</button>
+		<div class="container mx-auto p-4">
+			<ErrorState
+				class="mx-auto max-w-xl"
+				description="通信状態を確認して、もう一度お試しください。"
+				headingLevel={1}
+				onRetry={retry}
+				title="画面を表示できませんでした"
+			>
 				<Link
 					class="rounded-md border border-border px-4 py-2 hover:bg-muted"
 					to="/"
 				>
 					ホームへ戻る
 				</Link>
-			</div>
-		</section>
+			</ErrorState>
+		</div>
 	);
 }
 
 interface BootstrapStatusScreenProps {
 	error?: Error;
-	onRetry: () => void;
+	onRetry: () => void | Promise<void>;
 }
 
 export function BootstrapStatusScreen(props: BootstrapStatusScreenProps) {
 	return (
-		<section
-			aria-live={props.error ? undefined : "polite"}
-			class="mx-auto flex min-h-64 max-w-xl flex-col items-center justify-center gap-4 p-6 text-center"
-			role={props.error ? "alert" : "status"}
+		<Show
+			fallback={
+				<ScreenSkeleton
+					description="保存済みデータを読み込んでいます。"
+					layout="cards"
+					loadingLabel="アプリを準備しています..."
+					showDescription
+					title="アプリを準備しています"
+				/>
+			}
+			when={props.error}
 		>
-			<Show
-				fallback={
-					<>
-						<span
-							aria-hidden="true"
-							class="size-6 animate-spin rounded-full border-2 border-current border-r-transparent text-primary"
-						/>
-						<div>
-							<h1 class="font-semibold">アプリを準備しています</h1>
-							<p class="mt-2 text-sm text-muted-foreground">
-								保存済みデータを読み込んでいます。
-							</p>
-						</div>
-					</>
-				}
-				when={props.error}
-			>
-				<div>
-					<h1 class="text-xl font-semibold">アプリを起動できませんでした</h1>
-					<p class="mt-2 text-sm text-muted-foreground">
-						ローカルデータの初期化に失敗しました。
-					</p>
-				</div>
-				<button
-					class="rounded-md bg-primary px-4 py-2 text-primary-foreground hover:bg-primary/90"
-					onClick={props.onRetry}
-					type="button"
-				>
-					再試行
-				</button>
-			</Show>
-		</section>
+			<ErrorState
+				class="mx-auto max-w-xl"
+				description="ローカルデータの初期化に失敗しました。"
+				headingLevel={1}
+				onRetry={props.onRetry}
+				title="アプリを起動できませんでした"
+			/>
+		</Show>
 	);
 }

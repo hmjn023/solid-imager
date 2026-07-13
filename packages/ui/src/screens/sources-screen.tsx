@@ -3,15 +3,23 @@ import type {
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
 import type { JSX } from "solid-js";
-import { For, Show } from "solid-js";
+import { For, Match, Switch } from "solid-js";
+import {
+	EmptyState,
+	ErrorState,
+	OfflineState,
+	QueryStatus,
+} from "../async-state";
+import { Button } from "../button";
 import type { UseSourcesPageResult } from "../hooks/use-sources-page";
 import type { QueryUiState } from "../query-state";
+import { CardGridSkeleton, LoadingRegion } from "../skeleton";
 
 export type SourcesScreenProps = {
 	page: UseSourcesPageResult;
 	mediaSources: () => (SafeMediaSource | MediaSourceInfo)[] | undefined;
 	state: () => QueryUiState<(SafeMediaSource | MediaSourceInfo)[]>;
-	onRetry?: () => void;
+	onRetry?: () => void | Promise<void>;
 	renderSourceCard: (source: SafeMediaSource | MediaSourceInfo) => JSX.Element;
 	renderFormModal: (props: {
 		editingSource: SafeMediaSource | MediaSourceInfo | null;
@@ -36,83 +44,63 @@ export function SourcesScreen(props: SourcesScreenProps) {
 
 	return (
 		<div class="container mx-auto p-6">
-			<div class="mb-6 flex items-center justify-between">
+			<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
 				<h1 class="font-bold text-3xl">Media Sources</h1>
-				<div class="flex items-center gap-2">
-					<button
-						class="rounded bg-green-500 px-4 py-2 text-white shadow hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+				<div class="flex flex-wrap items-center gap-2">
+					<Button
 						disabled={page().isSyncing() || !props.mediaSources()?.length}
 						onClick={() => page().handleSyncAll(props.mediaSources())}
-						type="button"
+						variant="outline"
 					>
 						{page().isSyncing() ? "Syncing..." : "Sync All"}
-					</button>
-					<button
-						class="rounded bg-blue-500 px-4 py-2 text-white shadow hover:bg-blue-600"
-						onClick={() => page().handleAddSource()}
-						type="button"
+					</Button>
+					<Button onClick={() => page().handleAddSource()}>Add Source</Button>
+				</div>
+			</div>
+
+			<QueryStatus
+				class="mb-3"
+				fetchState={props.state().fetchState}
+				hasData={props.state().data !== undefined}
+				offlineLabel="オフラインのため保存済みデータを表示しています"
+				updatingLabel="ソース一覧を更新中..."
+			/>
+
+			<Switch>
+				<Match when={props.state().phase === "pending"}>
+					<LoadingRegion label="ソースを読み込んでいます...">
+						<CardGridSkeleton />
+					</LoadingRegion>
+				</Match>
+				<Match when={props.state().phase === "error"}>
+					<ErrorState
+						description={errorMessage()}
+						onRetry={props.onRetry}
+						title="ソース一覧を読み込めませんでした"
+					/>
+				</Match>
+				<Match when={props.state().phase === "offline"}>
+					<OfflineState
+						description="接続を確認してから再試行してください。"
+						onRetry={props.onRetry}
+					/>
+				</Match>
+				<Match when={props.state().phase === "empty"}>
+					<EmptyState
+						description="画像を管理するメディアソースを追加してください。"
+						title="メディアソースがありません"
 					>
-						Add Source
-					</button>
-				</div>
-			</div>
-
-			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-				<For each={props.mediaSources()}>
-					{(source) => props.renderSourceCard(source)}
-				</For>
-			</div>
-
-			<Show when={props.state().phase === "pending"}>
-				<div class="mt-8 text-center" role="status">
-					<p class="text-muted-foreground">ソースを読み込んでいます...</p>
-				</div>
-			</Show>
-
-			<Show
-				when={
-					props.state().phase === "error" || props.state().phase === "offline"
-				}
-			>
-				<div
-					class="mt-8 rounded-md border border-destructive/30 bg-error p-4 text-center"
-					role="alert"
-				>
-					<p class="font-medium text-error-foreground">
-						ソース一覧を読み込めませんでした
-					</p>
-					<p class="mt-1 text-muted-foreground text-sm">
-						{props.state().phase === "offline"
-							? "オフラインです。接続後に再試行します"
-							: errorMessage()}
-					</p>
-					<Show when={props.onRetry}>
-						<button
-							class="mt-3 rounded border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
-							onClick={props.onRetry}
-							type="button"
-						>
-							再試行
-						</button>
-					</Show>
-				</div>
-			</Show>
-
-			<Show when={props.state().fetchState === "background-fetching"}>
-				<p class="mt-3 text-muted-foreground text-sm" role="status">
-					ソース一覧を更新中...
-				</p>
-			</Show>
-			<Show
-				when={
-					props.state().fetchState === "paused" &&
-					props.state().data !== undefined
-				}
-			>
-				<p class="mt-3 text-muted-foreground text-sm" role="status">
-					オフラインのため保存済みデータを表示しています
-				</p>
-			</Show>
+						<Button onClick={() => page().handleAddSource()}>Add Source</Button>
+					</EmptyState>
+				</Match>
+				<Match when={props.state().phase === "data"}>
+					<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+						<For each={props.mediaSources()}>
+							{(source) => props.renderSourceCard(source)}
+						</For>
+					</div>
+				</Match>
+			</Switch>
 
 			{props.renderFormModal({
 				editingSource: page().editingSource(),

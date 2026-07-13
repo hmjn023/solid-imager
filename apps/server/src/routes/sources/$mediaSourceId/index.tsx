@@ -30,6 +30,8 @@ function SourceMediaRouteFallback() {
 	return (
 		<RouteDataPendingScreen
 			description="メディア一覧を準備しています..."
+			layout="media-grid"
+			showAction
 			title="メディア一覧"
 		/>
 	);

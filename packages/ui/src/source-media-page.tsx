@@ -132,6 +132,15 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	return (
 		<SourceMediaScreen
 			enableVirtualization={props.enableVirtualization}
+			onRetryFilters={async () => {
+				await Promise.all([
+					tags.refetch(),
+					allProjects.refetch(),
+					allIps.refetch(),
+					allCharacters.refetch(),
+					allAuthors.refetch(),
+				]);
+			}}
 			page={page}
 			renderActions={renderActions}
 			renderItem={props.renderItem}

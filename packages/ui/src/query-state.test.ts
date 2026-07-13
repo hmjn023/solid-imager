@@ -48,6 +48,19 @@ describe("toQueryUiState", () => {
 		).toMatchObject({ phase: "offline", fetchState: "paused" });
 	});
 
+	it("maps an unavailable network without data to offline", () => {
+		expect(
+			toQueryUiState(
+				{
+					data: undefined,
+					status: "error",
+					fetchStatus: "idle",
+				},
+				{ isOnline: false },
+			),
+		).toMatchObject({ phase: "offline", fetchState: "idle" });
+	});
+
 	it("preserves cached data during a background fetch", () => {
 		expect(
 			toQueryUiState({
@@ -90,6 +103,32 @@ describe("toQueryUiState", () => {
 			phase: "data",
 			fetchState: "paused",
 			data: ["cached"],
+		});
+	});
+
+	it("preserves an empty result during a background fetch", () => {
+		expect(
+			toQueryUiState(
+				{ data: [], status: "success", fetchStatus: "fetching" },
+				{ isEmpty: (data) => data.length === 0 },
+			),
+		).toMatchObject({
+			phase: "empty",
+			fetchState: "background-fetching",
+			data: [],
+		});
+	});
+
+	it("preserves an empty cached result while paused", () => {
+		expect(
+			toQueryUiState(
+				{ data: [], status: "success", fetchStatus: "paused" },
+				{ isEmpty: (data) => data.length === 0 },
+			),
+		).toMatchObject({
+			phase: "empty",
+			fetchState: "paused",
+			data: [],
 		});
 	});
 });

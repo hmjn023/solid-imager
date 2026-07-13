@@ -1,3 +1,4 @@
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { ClientOnly, createFileRoute, useParams } from "@tanstack/solid-router";
 import { createSignal, onMount, Show } from "solid-js";
@@ -48,16 +49,12 @@ function Media() {
 
 function MediaRouteFallback() {
 	return (
-		<main class="container mx-auto p-4">
-			<section
-				aria-live="polite"
-				class="flex min-h-48 flex-col items-center justify-center gap-2 text-muted-foreground"
-				role="status"
-			>
-				<h1 class="font-bold text-2xl text-foreground">メディア詳細</h1>
-				<p>メディア詳細を準備しています...</p>
-			</section>
-		</main>
+		<RouteDataPendingScreen
+			description="メディア詳細を準備しています..."
+			layout="media-detail"
+			showDescription
+			title="メディア詳細"
+		/>
 	);
 }
 

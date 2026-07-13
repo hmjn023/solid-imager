@@ -2,6 +2,7 @@ import { Button } from "@solid-imager/ui/button";
 import { useCurrentSearchPersistence } from "@solid-imager/ui/hooks/use-current-search-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
@@ -65,16 +66,12 @@ function SearchRouteBoundary() {
 
 function SearchRouteFallback() {
 	return (
-		<main class="container mx-auto p-4">
-			<section
-				aria-live="polite"
-				class="flex min-h-48 flex-col items-center justify-center gap-2 text-muted-foreground"
-				role="status"
-			>
-				<h1 class="font-bold text-2xl text-foreground">メディア検索</h1>
-				<p>検索画面を準備しています...</p>
-			</section>
-		</main>
+		<RouteDataPendingScreen
+			description="検索画面を準備しています..."
+			layout="media-grid"
+			showDescription
+			title="メディア検索"
+		/>
 	);
 }
 

@@ -1,5 +1,6 @@
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { projectsQueryKeys } from "@solid-imager/ui/query-options";
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useParams } from "@tanstack/solid-router";
@@ -9,12 +10,20 @@ import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { mediaDetailsQueryOptions, mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
-	loader: async ({ context, params }) => {
+	loader: ({ context, params }) => {
 		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
-		await context.queryClient.ensureQueryData(
+		void context.queryClient.prefetchQuery(
 			mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
 		);
 	},
+	pendingComponent: () => (
+		<RouteDataPendingScreen
+			description="メディア詳細を準備しています..."
+			layout="media-detail"
+			showDescription
+			title="メディア詳細"
+		/>
+	),
 	component: MediaDetailRoute,
 });
 

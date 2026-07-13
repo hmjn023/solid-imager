@@ -6,12 +6,14 @@ import type {
 } from "@solid-imager/core/domain/sources/events";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { type JSX, Match, Switch } from "solid-js";
+import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import {
 	type MediaSourceEventTransport,
 	useMediaSourceEvents,
 } from "../hooks/use-media-source-events";
 import { sourceMediaQueryKeys } from "../query-options";
 import { toQueryUiState } from "../query-state";
+import { LoadingRegion, MediaDetailSkeleton } from "../skeleton";
 
 export type MediaDetailScreenProps = {
 	mediaSourceId: string;
@@ -97,20 +99,12 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 
 	return (
 		<div class="container mx-auto p-4">
-			<Switch>
-				<Match when={state().fetchState === "background-fetching"}>
-					<p class="mb-2 text-muted-foreground text-sm" role="status">
-						メディア情報を更新中...
-					</p>
-				</Match>
-				<Match
-					when={state().fetchState === "paused" && state().data !== undefined}
-				>
-					<p class="mb-2 text-muted-foreground text-sm" role="status">
-						オフラインのため保存済みデータを表示しています
-					</p>
-				</Match>
-			</Switch>
+			<QueryStatus
+				fetchState={state().fetchState}
+				hasData={state().data !== undefined}
+				offlineLabel="オフラインのため保存済みデータを表示しています"
+				updatingLabel="メディア情報を更新中..."
+			/>
 			<Switch>
 				<Match when={state().data}>
 					{(details) => (
@@ -130,19 +124,24 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 					)}
 				</Match>
 				<Match when={state().phase === "offline"}>
-					<div class="text-muted-foreground" role="status">
-						Offline. Media details will load after reconnecting.
-					</div>
+					<OfflineState
+						description="接続が戻ったらメディア情報を再取得できます。"
+						headingLevel={1}
+						onRetry={() => mediaDetails.refetch().then(() => undefined)}
+					/>
 				</Match>
 				<Match when={state().phase === "error"}>
-					<div class="text-red-500" role="alert">
-						Error: {errorMessage()}
-					</div>
+					<ErrorState
+						description={errorMessage()}
+						headingLevel={1}
+						onRetry={() => mediaDetails.refetch().then(() => undefined)}
+						title="メディア情報を読み込めませんでした"
+					/>
 				</Match>
 				<Match when={state().phase === "pending"}>
-					<div class="text-muted-foreground" role="status">
-						Loading media details...
-					</div>
+					<LoadingRegion label="メディア情報を読み込んでいます...">
+						<MediaDetailSkeleton />
+					</LoadingRegion>
 				</Match>
 			</Switch>
 		</div>

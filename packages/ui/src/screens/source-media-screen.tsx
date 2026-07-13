@@ -1,6 +1,7 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Component, JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
+import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import {
@@ -16,6 +17,7 @@ import type {
 	UseSourceMediaPageResult,
 } from "../hooks/use-source-media-page";
 import { SearchControlPanel } from "../search-control-panel";
+import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
 
 export type SourceMediaScreenProps = {
@@ -67,6 +69,7 @@ export type SourceMediaScreenProps = {
 	onBulkAction?: () => void;
 	onClearSelection?: () => void;
 	selectedCount?: () => number;
+	onRetryFilters: () => void | Promise<void>;
 };
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
@@ -102,8 +105,8 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				})}
 			</Show>
 
-			<div class="mb-4 flex items-center justify-between">
-				<h1 class="font-bold text-2xl">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+				<h1 class="min-w-0 break-all font-bold text-2xl">
 					Media in Source: {page().mediaSourceId()}
 				</h1>
 				<Button
@@ -121,9 +124,11 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					(state) => state.phase === "error" || state.phase === "offline",
 				)}
 			>
-				<p class="mb-3 text-muted-foreground text-sm" role="status">
-					一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。
-				</p>
+				<FilterErrorBanner
+					class="mb-3"
+					message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
+					onRetry={props.onRetryFilters}
+				/>
 			</Show>
 
 			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
@@ -144,49 +149,32 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				</Card>
 
 				<div>
-					<Show
-						when={page().contentState().fetchState === "background-fetching"}
-					>
-						<p class="mb-2 text-muted-foreground text-sm" role="status">
-							メディア一覧を更新中...
-						</p>
-					</Show>
-					<Show
-						when={
-							page().contentState().fetchState === "paused" &&
-							page().contentState().data !== undefined
-						}
-					>
-						<p class="mb-2 text-muted-foreground text-sm" role="status">
-							オフラインのため保存済みデータを表示しています
-						</p>
-					</Show>
-					<Show when={page().contentState().phase === "offline"}>
-						<p class="mb-2 text-muted-foreground text-sm" role="status">
-							オフラインです。接続後にメディア一覧を読み込みます
-						</p>
-					</Show>
+					<QueryStatus
+						class="mb-2"
+						fetchState={page().contentState().fetchState}
+						hasData={page().contentState().data !== undefined}
+						offlineLabel="オフラインのため保存済みデータを表示しています"
+						updatingLabel="メディア一覧を更新中..."
+					/>
 					<Show
 						fallback={
-							<div class="flex h-64 items-center justify-center text-muted-foreground">
-								メディア一覧を読み込んでいます...
-							</div>
+							<LoadingRegion label="メディア一覧を読み込んでいます...">
+								<MediaGridSkeleton />
+							</LoadingRegion>
 						}
 						when={shouldRenderGrid()}
 					>
 						<SourceMediaGrid
 							contextMenuMediaId={page().contextMenuMediaId}
 							enableVirtualization={props.enableVirtualization}
-							isError={page().contentState().phase === "error"}
 							isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
-							isPending={page().contentState().phase === "pending"}
 							mediaResults={page().mediaResults}
 							mediaSourceId={page().mediaSourceId}
 							onCopyMove={page().handleCopyMove}
 							onDelete={page().handleDelete}
 							onLoadMore={() => page().mediaQuery.fetchNextPage()}
-							onRetry={() => {
-								void page().mediaQuery.refetch();
+							onRetry={async () => {
+								await page().mediaQuery.refetch();
 							}}
 							onSyncSingleMedia={page().handleSyncSingleMedia}
 							onToggleSelect={props.onToggleSelect}
@@ -196,11 +184,11 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							onClearSelection={props.onClearSelection}
 							selectedCount={props.selectedCount}
 							hasNextPage={page().mediaQuery.hasNextPage}
-							queryError={page().mediaQuery.error ?? null}
 							renderItem={props.renderItem}
 							setContextMenuMediaId={page().setContextMenuMediaId}
 							setLoadMoreRef={page().setLoadMoreRef}
 							showOpenInNewTab={props.showOpenInNewTab}
+							state={page().contentState}
 							totalCount={page().mediaQuery.data?.pages[0]?.total}
 						/>
 					</Show>

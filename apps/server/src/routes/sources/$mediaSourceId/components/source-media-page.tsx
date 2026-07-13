@@ -1,6 +1,7 @@
 import { Button } from "@solid-imager/ui/button";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
@@ -89,9 +90,12 @@ export function SourceMediaPage() {
 	return (
 		<Show
 			fallback={
-				<div class="flex min-h-[60vh] items-center justify-center text-muted-foreground">
-					メディア一覧を読み込んでいます...
-				</div>
+				<RouteDataPendingScreen
+					description="メディア一覧を読み込んでいます..."
+					layout="media-grid"
+					showAction
+					title="メディア一覧"
+				/>
 			}
 			when={isMounted()}
 		>
