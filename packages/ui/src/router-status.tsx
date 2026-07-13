@@ -84,6 +84,32 @@ export function RoutePendingScreen() {
 	);
 }
 
+export type RouteDataPendingScreenProps = {
+	title: string;
+	description: string;
+};
+
+export function RouteDataPendingScreen(props: RouteDataPendingScreenProps) {
+	return (
+		<main class="container mx-auto p-4">
+			<section
+				aria-labelledby="route-data-pending-title"
+				aria-live="polite"
+				class="flex min-h-48 flex-col items-center justify-center gap-2 text-center text-muted-foreground"
+				role="status"
+			>
+				<h1
+					class="font-bold text-2xl text-foreground"
+					id="route-data-pending-title"
+				>
+					{props.title}
+				</h1>
+				<p>{props.description}</p>
+			</section>
+		</main>
+	);
+}
+
 export function RouteErrorScreen(props: ErrorComponentProps) {
 	const router = useRouter();
 

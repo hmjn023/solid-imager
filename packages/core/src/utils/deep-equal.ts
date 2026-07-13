@@ -13,6 +13,13 @@ export function deepEqual(a: unknown, b: unknown): boolean {
 		return a.getTime() === b.getTime();
 	}
 
+	if (Array.isArray(a) || Array.isArray(b)) {
+		if (!(Array.isArray(a) && Array.isArray(b)) || a.length !== b.length) {
+			return false;
+		}
+		return a.every((value, index) => deepEqual(value, b[index]));
+	}
+
 	if (!isRecord(a) || !isRecord(b)) {
 		return false;
 	}

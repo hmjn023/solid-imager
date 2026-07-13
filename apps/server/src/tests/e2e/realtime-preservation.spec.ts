@@ -9,7 +9,7 @@ import {
 	getFixtureMediaPath,
 	sourcePath,
 } from "./support/fixture";
-import { expect, test } from "./support/test";
+import { expect, test, waitForAppHydration } from "./support/test";
 
 const sourceEventsEndpoint = /\/api\/rpc\/sources\/events(?:\?|$)/;
 
@@ -43,6 +43,7 @@ test("preserves an open dialog, input value, and focus after an SSE reconnect re
 
 	await page.goto(sourcePath());
 	await expect(page.getByRole("button", { name: "Add media" })).toBeVisible();
+	await waitForAppHydration(page);
 	await reconnected;
 	expect(streamAttempts).toBeGreaterThanOrEqual(2);
 	await page.unroute(sourceEventsEndpoint);
@@ -72,7 +73,19 @@ test("preserves an open dialog, input value, and focus after an SSE reconnect re
 		.getByTestId("source-card")
 		.filter({ hasText: E2E_SOURCE_NAME });
 	await expect(sourceCard).toBeVisible();
-	await sourceCard.getByTestId("sync-source-btn").click();
+	await waitForAppHydration(syncPage);
+	const addSourceButton = syncPage.getByRole("button", { name: "Add Source" });
+	await addSourceButton.click();
+	await expect(syncPage.getByRole("dialog")).toBeVisible();
+	await syncPage.getByRole("button", { name: "Cancel" }).click();
+	await expect(syncPage.getByRole("dialog")).toHaveCount(0);
+	const syncResponse = syncPage.waitForResponse((response) => {
+		const url = new URL(response.url());
+		return url.pathname === "/api/rpc/sources/sync" && response.ok();
+	});
+	const syncButton = sourceCard.getByTestId("sync-source-btn");
+	await syncButton.click();
+	await syncResponse;
 
 	await expect(
 		page.locator("p").filter({ hasText: /^3 件の結果$/ }),

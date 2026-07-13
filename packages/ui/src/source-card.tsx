@@ -2,6 +2,7 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
+import { Link } from "@tanstack/solid-router";
 import {
 	Card,
 	CardContent,
@@ -65,62 +66,91 @@ export function SourceCard(props: SourceCardProps) {
 		props.onDelete?.(props.mediaSource);
 	};
 
-	return (
-		<a
-			class="block text-current no-underline"
-			href={props.href ?? `/sources/${props.mediaSource.id}`}
-		>
-			<Card class="relative h-full hover:bg-gray-50" data-testid="source-card">
-				<CardHeader>
-					<CardTitle data-testid="source-name">
-						{props.mediaSource.name}
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<CardDescription>{props.mediaSource.description}</CardDescription>
-					<div class="mt-4 space-y-2 text-sm">
-						<p>
-							<span class="font-semibold">Type:</span>{" "}
-							{getTypeLabel(props.mediaSource.type)}
-						</p>
-						<p class="truncate" title={getConnectionDetails(props.mediaSource)}>
-							{getConnectionDetails(props.mediaSource)}
-						</p>
-					</div>
-				</CardContent>
-				<div class="absolute top-2 right-2 z-10 flex gap-1">
-					{props.onSync && (
-						<button
-							class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
-							data-testid="sync-source-btn"
-							onClick={handleSyncClick}
-							type="button"
-						>
-							Sync
-						</button>
-					)}
-					{props.onEdit && (
-						<button
-							class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
-							data-testid="edit-source-btn"
-							onClick={handleEditClick}
-							type="button"
-						>
-							Edit
-						</button>
-					)}
-					{props.onDelete && (
-						<button
-							class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
-							data-testid="delete-source-btn"
-							onClick={handleDeleteClick}
-							type="button"
-						>
-							Delete
-						</button>
-					)}
+	const content = () => (
+		<>
+			<CardHeader>
+				<CardTitle data-testid="source-name">
+					{props.mediaSource.name}
+				</CardTitle>
+			</CardHeader>
+			<CardContent>
+				<CardDescription>{props.mediaSource.description}</CardDescription>
+				<div class="mt-4 space-y-2 text-sm">
+					<p>
+						<span class="font-semibold">Type:</span>{" "}
+						{getTypeLabel(props.mediaSource.type)}
+					</p>
+					<p class="truncate" title={getConnectionDetails(props.mediaSource)}>
+						{getConnectionDetails(props.mediaSource)}
+					</p>
 				</div>
-			</Card>
-		</a>
+			</CardContent>
+		</>
+	);
+
+	const sourceLink = () => {
+		if (props.href) {
+			return (
+				<a class="block h-full text-current no-underline" href={props.href}>
+					{content()}
+				</a>
+			);
+		}
+
+		if (!props.mediaSource.id) {
+			return (
+				<Link class="block h-full text-current no-underline" to="/sources">
+					{content()}
+				</Link>
+			);
+		}
+
+		return (
+			<Link
+				class="block h-full text-current no-underline"
+				params={{ mediaSourceId: props.mediaSource.id }}
+				to="/sources/$mediaSourceId"
+			>
+				{content()}
+			</Link>
+		);
+	};
+
+	return (
+		<Card class="relative h-full hover:bg-gray-50" data-testid="source-card">
+			{sourceLink()}
+			<div class="absolute top-2 right-2 z-10 flex gap-1">
+				{props.onSync && (
+					<button
+						class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+						data-testid="sync-source-btn"
+						onClick={handleSyncClick}
+						type="button"
+					>
+						Sync
+					</button>
+				)}
+				{props.onEdit && (
+					<button
+						class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+						data-testid="edit-source-btn"
+						onClick={handleEditClick}
+						type="button"
+					>
+						Edit
+					</button>
+				)}
+				{props.onDelete && (
+					<button
+						class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
+						data-testid="delete-source-btn"
+						onClick={handleDeleteClick}
+						type="button"
+					>
+						Delete
+					</button>
+				)}
+			</div>
+		</Card>
 	);
 }

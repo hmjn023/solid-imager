@@ -3,13 +3,13 @@ import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { ClientOnly, createFileRoute } from "@tanstack/solid-router";
-import { isServer } from "solid-js/web";
+import { createFileRoute } from "@tanstack/solid-router";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
 import {
@@ -20,9 +20,21 @@ import {
 } from "~/infrastructure/api-clients/sources-api";
 
 export const Route = createFileRoute("/sources/")({
-	ssr: false,
-	pendingComponent: () => null,
-	component: SourcesRoute,
+	ssr: true,
+	loader: async ({ context }) => {
+		const mediaSources = await context.queryClient.fetchQuery(
+			mediaSourcesQueryOptions(),
+		);
+		return { mediaSources };
+	},
+	pendingComponent: () => (
+		<RouteDataPendingScreen
+			description="ソース一覧を準備しています..."
+			title="Media Sources"
+		/>
+	),
+	pendingMinMs: 0,
+	component: SourcesRouteContent,
 });
 
 function registerSourceEvents(handler: RawEventHandler): () => void {
@@ -32,20 +44,11 @@ function registerSourceEvents(handler: RawEventHandler): () => void {
 	);
 }
 
-function SourcesRoute() {
-	return (
-		<ClientOnly fallback={null}>
-			<SourcesRouteContent />
-		</ClientOnly>
-	);
-}
-
 function SourcesRouteContent() {
 	const queryClient = useQueryClient();
-	const mediaSources = createQuery(() => ({
-		...mediaSourcesQueryOptions(),
-		enabled: !isServer,
-	}));
+	const loaderData = Route.useLoaderData();
+	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const sourceData = () => mediaSources.data ?? loaderData().mediaSources;
 
 	const page = useSourcesPage({
 		actions: {
@@ -60,15 +63,14 @@ function SourcesRouteContent() {
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
-			mediaSources.data
+			sourceData()
 				?.map((s) => s.id)
 				.filter((id): id is string => Boolean(id)) ?? [],
 	});
-
 	return (
 		<SourcesScreen
 			page={page}
-			mediaSources={() => mediaSources.data}
+			mediaSources={sourceData}
 			state={() =>
 				toQueryUiState(mediaSources, {
 					isEmpty: (data) => data.length === 0,

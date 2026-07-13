@@ -10,14 +10,19 @@ import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import type { QueryClient } from "@tanstack/solid-query";
+import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
 import {
-	createInfiniteQuery,
-	createQuery,
-	keepPreviousData,
-} from "@tanstack/solid-query";
-import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
+	type Accessor,
+	createEffect,
+	createMemo,
+	createSignal,
+	onCleanup,
+} from "solid-js";
 import { isServer } from "solid-js/web";
-import { searchQueryKeys } from "../query-options";
+import {
+	buildSearchResultsQueryOptions,
+	searchQueryKeys,
+} from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
@@ -75,6 +80,7 @@ export interface UseSearchPageOptions {
 	similarityTopK?: () => number;
 	gcTime?: number;
 	refreshDebounceMs?: number;
+	isSearchStateRestored?: Accessor<boolean>;
 }
 
 export interface UseSearchPageResult {
@@ -122,6 +128,7 @@ export function useSearchPage(
 		similarityTopK = () => 50,
 		gcTime = DEFAULT_GC_TIME,
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
+		isSearchStateRestored = () => true,
 	} = options;
 
 	const tags = createQuery<TagResponse[]>(() => ({
@@ -153,73 +160,23 @@ export function useSearchPage(
 		JSON.stringify(getSearchCondition() ?? null),
 	);
 
-	const buildSearchParams = (): Pick<
-		MediaSearchRequest,
-		"condition" | "sort" | "order" | "limit"
-	> => {
-		const condition = getSearchCondition();
-		return {
-			condition: condition || undefined,
+	const searchResultQuery = createInfiniteQuery(() =>
+		buildSearchResultsQueryOptions({
+			mode: mode(),
+			sourceId: selectedSource() || undefined,
+			condition: getSearchCondition(),
+			conditionKey: conditionKey(),
 			sort: sortBy(),
 			order: sortOrder(),
 			limit: limit(),
-		};
-	};
-
-	const searchResultQuery = createInfiniteQuery<MediaSearchResponse>(() => {
-		const params = buildSearchParams();
-		const source = selectedSource() || undefined;
-		return {
-			enabled: !isServer,
-			queryKey: searchQueryKeys.results({
-				mode: mode(),
-				sourceId: source,
-				conditionKey: conditionKey(),
-				sort: sortBy(),
-				order: sortOrder(),
-				limit: limit(),
-				similarityAnchorMediaId: similarityAnchorMediaId(),
-				similarityTopK: similarityTopK(),
-			}),
-			queryFn: async ({ pageParam, signal }) => {
-				if (mode() === "vector") {
-					const anchorMediaId = similarityAnchorMediaId();
-					if (!(anchorMediaId && options.searchSimilar)) {
-						return { media: [], total: 0 };
-					}
-					return await options.searchSimilar(
-						{
-							anchorMediaId,
-							mediaSourceId: source,
-							topK: similarityTopK(),
-						},
-						signal,
-					);
-				}
-				return await searchMedia(
-					source,
-					{
-						...params,
-						offset: pageParam as number,
-					},
-					signal,
-				);
-			},
-			initialPageParam: 0,
-			getNextPageParam: (lastPage, allPages) => {
-				if (mode() === "vector") return;
-				const loadedCount = allPages.reduce(
-					(sum, page) => sum + page.media.length,
-					0,
-				);
-				if (loadedCount < lastPage.total) {
-					return loadedCount;
-				}
-			},
-			placeholderData: keepPreviousData,
+			similarityAnchorMediaId: similarityAnchorMediaId(),
+			similarityTopK: similarityTopK(),
+			searchMedia,
+			searchSimilar: options.searchSimilar,
+			enabled: !isServer && isSearchStateRestored(),
 			gcTime,
-		};
-	});
+		}),
+	);
 
 	const searchResults = createMemo(() => {
 		const seen = new Set<string>();

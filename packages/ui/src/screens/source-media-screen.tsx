@@ -11,7 +11,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../dialog";
-import { useCurrentSearchPersistence } from "../hooks/use-current-search-persistence";
 import type {
 	UploadOptions,
 	UseSourceMediaPageResult,
@@ -75,9 +74,6 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const page = () => props.page;
 	const filterStates = () => Object.values(page().filterStates());
 	const shouldRenderGrid = () => !props.enableVirtualization || isMounted();
-
-	// Enable auto-save/restore of search conditions
-	useCurrentSearchPersistence(page().mediaSourceId, page().presetClient);
 
 	onMount(() => {
 		setIsMounted(true);

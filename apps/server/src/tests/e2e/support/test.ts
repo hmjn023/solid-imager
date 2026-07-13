@@ -8,8 +8,15 @@ type BrowserHealth = {
 	allowRequestFailure: (matcher: UrlMatcher) => void;
 	allowResponseFailure: (matcher: UrlMatcher) => void;
 	apiRequestCount: (matcher: UrlMatcher) => number;
+	apiRequestCountPathSince: (checkpoint: number, pathname: string) => number;
 	apiRequests: () => readonly string[];
 	recordContentReady: (label: string, elapsedMs: number) => void;
+	recordNavigation: (
+		label: string,
+		elapsedMs: number,
+		requestCheckpoint: number,
+	) => void;
+	requestCheckpoint: () => number;
 };
 
 type BrowserPerformanceMetric = {
@@ -28,6 +35,25 @@ type ContentReadyMetric = {
 	elapsedMs: number;
 };
 
+type NavigationMetric = ContentReadyMetric & {
+	apiRequestCount: number;
+	duplicateApiRequests: Array<{ request: string; count: number }>;
+};
+
+function summarizeRequests(urls: readonly string[]) {
+	const counts = new Map<string, number>();
+	for (const requestUrl of urls) {
+		const url = new URL(requestUrl);
+		counts.set(url.pathname, (counts.get(url.pathname) ?? 0) + 1);
+	}
+	return {
+		apiRequestCount: urls.length,
+		duplicateApiRequests: [...counts.entries()]
+			.filter(([, count]) => count > 1)
+			.map(([request, count]) => ({ request, count })),
+	};
+}
+
 function matches(value: string, matchers: UrlMatcher[]): boolean {
 	return matchers.some((matcher) =>
 		typeof matcher === "string" ? value.includes(matcher) : matcher.test(value),
@@ -40,6 +66,16 @@ export async function expectRouteHealthy(page: Page): Promise<void> {
 	).toHaveCount(0);
 	await expect(page.getByText("[object Object]", { exact: true })).toHaveCount(
 		0,
+	);
+}
+
+export async function waitForAppHydration(page: Page): Promise<void> {
+	await expect(page.locator("html")).toHaveAttribute("data-hydrated", "true");
+	await page.evaluate(
+		() =>
+			new Promise<void>((resolve) => {
+				requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+			}),
 	);
 }
 
@@ -79,6 +115,7 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 			const apiRequestUrls: string[] = [];
 			const apiRequestCounts = new Map<string, number>();
 			const contentReadyMetrics: ContentReadyMetric[] = [];
+			const navigationMetrics: NavigationMetric[] = [];
 			const observedPages = new Set<Page>();
 
 			const observePage = (target: Page) => {
@@ -171,10 +208,27 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 						allowedResponseFailures.push(matcher),
 					apiRequestCount: (matcher) =>
 						apiRequestUrls.filter((url) => matches(url, [matcher])).length,
+					apiRequestCountPathSince: (checkpoint, pathname) =>
+						apiRequestUrls
+							.slice(checkpoint)
+							.filter((requestUrl) => new URL(requestUrl).pathname === pathname)
+							.length,
 					apiRequests: () => apiRequestUrls,
 					recordContentReady: (label, elapsedMs) => {
 						contentReadyMetrics.push({ label, elapsedMs });
 					},
+					recordNavigation: (label, elapsedMs, requestCheckpoint) => {
+						contentReadyMetrics.push({ label, elapsedMs });
+						const requestSummary = summarizeRequests(
+							apiRequestUrls.slice(requestCheckpoint),
+						);
+						navigationMetrics.push({
+							label,
+							elapsedMs,
+							...requestSummary,
+						});
+					},
+					requestCheckpoint: () => apiRequestUrls.length,
 				});
 			} finally {
 				context.off("page", handleNewPage);
@@ -219,6 +273,10 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 				});
 				await testInfo.attach("browser-content-ready-metrics", {
 					body: JSON.stringify(contentReadyMetrics, null, 2),
+					contentType: "application/json",
+				});
+				await testInfo.attach("browser-navigation-metrics", {
+					body: JSON.stringify(navigationMetrics, null, 2),
 					contentType: "application/json",
 				});
 

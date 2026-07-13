@@ -7,8 +7,9 @@ import {
 	RoutePendingScreen,
 } from "@solid-imager/ui/router-status";
 import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
-import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
+import { QueryClient } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
+import { setupRouterSsrQueryIntegration } from "@tanstack/solid-router-ssr-query";
 import { isServer } from "solid-js/web";
 import { routeTree } from "#route-tree";
 import type { logger as LoggerInstance } from "./infrastructure/logger";
@@ -18,33 +19,32 @@ function createAppQueryClient(): QueryClient {
 }
 
 let serverLogger: typeof LoggerInstance | null = null;
+let serverInitializationPromise: Promise<void> | undefined;
 
-if (isServer) {
-	import("./infrastructure/logger")
-		.then(({ logger }) => {
+async function initializeServerDependencies(): Promise<void> {
+	if (!isServer) {
+		return;
+	}
+
+	if (!serverInitializationPromise) {
+		serverInitializationPromise = Promise.all([
+			import("./infrastructure/logger"),
+			import("./infrastructure/bootstrap"),
+		]).then(([{ logger }, { initServices }]) => {
 			serverLogger = logger;
-		})
-		.catch(() => {});
-
-	// Initialize services on server startup.
-	// We don't use top-level await here to avoid module format issues with CJS dependencies.
-	import("./infrastructure/bootstrap")
-		.then(({ initServices }) => {
 			initServices();
-		})
-		.catch((err) => {
-			if (serverLogger) {
-				serverLogger.error({ err }, "[Router] Failed to initialize services");
-			} else {
-				console.error("[Router] Failed to initialize services:", err);
-			}
 		});
+	}
+
+	await serverInitializationPromise;
 }
 
 let clientQueryClient: QueryClient | undefined;
 
-export function getRouter() {
+export async function getRouter() {
 	try {
+		await initializeServerDependencies();
+
 		if (!isServer && !clientQueryClient) {
 			clientQueryClient = createAppQueryClient();
 		}
@@ -54,7 +54,7 @@ export function getRouter() {
 				? createAppQueryClient()
 				: clientQueryClient;
 
-		return createTanStackRouter({
+		const router = createTanStackRouter({
 			routeTree,
 			context: { queryClient },
 			scrollRestoration: true,
@@ -68,16 +68,13 @@ export function getRouter() {
 			defaultNotFoundComponent: NotFoundScreen,
 			defaultPendingMs: ROUTE_PENDING_DELAY_MS,
 			defaultPendingMinMs: ROUTE_PENDING_MIN_DURATION_MS,
-			Wrap: (props) => (
-				<QueryClientProvider client={queryClient}>
-					{props.children}
-				</QueryClientProvider>
-			),
 		});
+		setupRouterSsrQueryIntegration({ router, queryClient });
+		return router;
 	} catch (error) {
 		if (isServer && serverLogger) {
 			serverLogger.error({ err: error }, "[Router] Error creating router");
-		} else {
+		} else if (!isServer) {
 			console.error("[Router] Error creating router:", error);
 		}
 		throw error;
@@ -86,6 +83,6 @@ export function getRouter() {
 
 declare module "@tanstack/solid-router" {
 	interface Register {
-		router: ReturnType<typeof getRouter>;
+		router: Awaited<ReturnType<typeof getRouter>>;
 	}
 }

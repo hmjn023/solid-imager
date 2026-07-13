@@ -15,7 +15,7 @@ import {
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import type { QueryClient } from "@tanstack/solid-query";
-import { createInfiniteQuery, keepPreviousData } from "@tanstack/solid-query";
+import { createInfiniteQuery } from "@tanstack/solid-query";
 import type { Accessor, Setter } from "solid-js";
 import {
 	createEffect,
@@ -26,16 +26,18 @@ import {
 } from "solid-js";
 import { isServer } from "solid-js/web";
 import { z } from "zod";
-import { sourceMediaQueryKeys } from "../query-options";
+import {
+	buildSourceMediaResultsQueryOptions,
+	sourceMediaQueryKeys,
+} from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
 import { getRestoreImportStrategies } from "./restore-import";
-import type { PresetClientLike } from "./use-current-search-persistence";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
-const MEDIA_ITEMS_PER_PAGE = 200;
+export const SOURCE_MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 const MEDIA_REFRESH_DEBOUNCE_MS = 300;
@@ -150,8 +152,7 @@ export type SourceMediaPageActions = {
 	parseRestoreFile?: (file: File) => Promise<unknown>;
 };
 
-export type SourceMediaPagePresetClient = PresetManagerClient &
-	PresetClientLike;
+export type SourceMediaPagePresetClient = PresetManagerClient;
 
 export type UseSourceMediaPageOptions = {
 	mediaSourceId: () => string | undefined;
@@ -166,6 +167,7 @@ export type UseSourceMediaPageOptions = {
 	sortOrder: () => "asc" | "desc";
 	itemsPerPage?: number;
 	onThumbnailReady?: (mediaId: string) => void;
+	isSearchStateRestored?: Accessor<boolean>;
 };
 
 export type UseSourceMediaPageResult = {
@@ -230,8 +232,9 @@ export function useSourceMediaPage(
 		getSearchCondition,
 		sortBy,
 		sortOrder,
-		itemsPerPage = MEDIA_ITEMS_PER_PAGE,
+		itemsPerPage = SOURCE_MEDIA_ITEMS_PER_PAGE,
 		onThumbnailReady,
+		isSearchStateRestored = () => true,
 	} = options;
 
 	const id = mediaSourceId;
@@ -250,44 +253,18 @@ export function useSourceMediaPage(
 		JSON.stringify(getSearchCondition() ?? null),
 	);
 
-	const mediaQuery = createInfiniteQuery<MediaSearchResponse>(() => ({
-		queryKey: sourceMediaQueryKeys.results({
+	const mediaQuery = createInfiniteQuery(() =>
+		buildSourceMediaResultsQueryOptions({
 			sourceId: id(),
+			condition: getSearchCondition(),
 			conditionKey: searchConditionKey(),
 			sort: sortBy(),
 			order: sortOrder(),
+			limit: itemsPerPage,
+			searchMedia: actions.searchMedia,
+			enabled: !isServer && isSearchStateRestored() && !!id(),
 		}),
-		queryFn: ({ pageParam, signal }) => {
-			const sourceId = id();
-			if (!sourceId) {
-				throw new Error("Media source ID is required");
-			}
-			return actions.searchMedia(
-				sourceId,
-				{
-					condition: getSearchCondition() || undefined,
-					sort: sortBy(),
-					order: sortOrder(),
-					limit: itemsPerPage,
-					offset: pageParam as number,
-				},
-				signal,
-			);
-		},
-		initialPageParam: 0,
-		getNextPageParam: (lastPage, allPages) => {
-			const loadedCount = allPages.reduce(
-				(sum, page) => sum + page.media.length,
-				0,
-			);
-			if (loadedCount < lastPage.total) {
-				return loadedCount;
-			}
-			return;
-		},
-		placeholderData: keepPreviousData,
-		enabled: !isServer && !!id(),
-	}));
+	);
 
 	// --- Deduplicated results ---
 	const mediaResults = createMemo(() => {

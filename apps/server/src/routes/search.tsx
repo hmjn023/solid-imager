@@ -1,4 +1,5 @@
 import { Button } from "@solid-imager/ui/button";
+import { useCurrentSearchPersistence } from "@solid-imager/ui/hooks/use-current-search-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
@@ -6,7 +7,6 @@ import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createSignal, onMount, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
-import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 
@@ -29,18 +29,27 @@ import {
 } from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
-	// SearchScreen is client-only, but this route itself must render on the
-	// server so its static fallback hydrates against the same component tree.
 	ssr: true,
+	loader: async ({ context }) => {
+		await Promise.all([
+			context.queryClient.prefetchQuery(tagsQueryOptions()),
+			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
+			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
+			context.queryClient.prefetchQuery(allIpsQueryOptions()),
+			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
+			context.queryClient.prefetchQuery(allAuthorsQueryOptions()),
+		]);
+	},
 	pendingComponent: SearchRouteFallback,
-	component: SearchRoute,
+	pendingMinMs: 0,
+	component: SearchRouteBoundary,
 });
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 
 const PresetClient = createPresetClient(rawPresetClient);
 
-function SearchRoute() {
+function SearchRouteBoundary() {
 	const [isMounted, setIsMounted] = createSignal(false);
 
 	onMount(() => {
@@ -49,7 +58,7 @@ function SearchRoute() {
 
 	return (
 		<Show fallback={<SearchRouteFallback />} when={isMounted()}>
-			{(_mounted) => <SearchRouteContent />}
+			{(_mounted) => <SearchRoute />}
 		</Show>
 	);
 }
@@ -69,10 +78,10 @@ function SearchRouteFallback() {
 	);
 }
 
-function SearchRouteContent() {
+function SearchRoute() {
 	const queryClient = useQueryClient();
 
-	useCurrentSearchPersistence("all", PresetClient);
+	const isSearchStateRestored = useCurrentSearchPersistence("all");
 
 	const page = useSearchPage({
 		searchMedia,
@@ -98,6 +107,7 @@ function SearchRouteContent() {
 		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
+		isSearchStateRestored,
 	});
 
 	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
