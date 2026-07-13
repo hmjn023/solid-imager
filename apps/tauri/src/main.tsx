@@ -74,13 +74,13 @@ function App() {
 				<AppShell nav={<BootstrapNav />}>
 					<BootstrapStatusScreen
 						error={bootstrapError()}
-						onRetry={() => void initialize()}
+						onRetry={initialize}
 					/>
 				</AppShell>
 			</Match>
 			<Match when={state().status === "loading"}>
 				<AppShell nav={<BootstrapNav />}>
-					<BootstrapStatusScreen onRetry={() => void initialize()} />
+					<BootstrapStatusScreen onRetry={initialize} />
 				</AppShell>
 			</Match>
 		</Switch>

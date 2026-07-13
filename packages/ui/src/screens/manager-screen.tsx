@@ -1,6 +1,6 @@
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { DuplicateGroup } from "@solid-imager/core/domain/media/schemas";
-import { For, Show } from "solid-js";
+import { For, Match, Show, Switch } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -11,6 +11,13 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "../alert-dialog";
+import {
+	EmptyState,
+	ErrorState,
+	OfflineState,
+	QueryStatus,
+	RetryButton,
+} from "../async-state";
 import { Button } from "../button";
 import {
 	Card,
@@ -53,6 +60,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../select";
+import { CardGridSkeleton, LoadingRegion } from "../skeleton";
 
 export type ManagerScreenProps = {
 	manager: UseManagerPageResult;
@@ -87,32 +95,55 @@ function isCharacter(item: ManagerEntity) {
 	return "ips" in item;
 }
 
+function isCrudTab(tab: ManagerEntityType) {
+	return tab === "projects" || tab === "ips" || tab === "characters";
+}
+
 const ALL_SOURCES_OPTION = { id: "__all__", name: "All Sources" };
 
 export function ManagerScreen(props: ManagerScreenProps) {
 	const manager = () => props.manager;
-	const queryStates = () => Object.values(manager().queryStates());
+	const activeQueryState = () => {
+		const states = manager().queryStates();
+		switch (manager().activeTab()) {
+			case "projects":
+				return states.projects;
+			case "ips":
+				return states.ips;
+			case "characters":
+				return states.characters;
+			default:
+				return states.sources;
+		}
+	};
+	const canRenderActiveTab = () =>
+		activeQueryState().phase === "data" ||
+		(activeQueryState().phase === "empty" && !isCrudTab(manager().activeTab()));
+	const characterIpState = () => manager().queryStates().ips;
+	const hasCharacterIpError = () =>
+		manager().activeTab() === "characters" &&
+		(characterIpState().phase === "error" ||
+			characterIpState().phase === "offline");
 
 	return (
-		<div class="container mx-auto p-8">
-			<div class="mb-8 flex items-center justify-between">
+		<div class="container mx-auto p-4 sm:p-8">
+			<div class="mb-8 flex flex-wrap items-center justify-between gap-4">
 				<h1 class="font-bold text-3xl">Entity Manager</h1>
 				<Show
 					when={
-						manager().activeTab() !== "tagging" &&
-						manager().activeTab() !== "vectors" &&
-						manager().activeTab() !== "duplicates"
+						isCrudTab(manager().activeTab()) &&
+						activeQueryState().phase !== "empty"
 					}
 				>
 					<Button onClick={manager().openCreateDialog}>Create New</Button>
 				</Show>
 			</div>
 
-			<div class="mb-6 flex space-x-4 border-b">
+			<div class="mb-6 flex gap-4 overflow-x-auto border-b">
 				<For each={managerTabs}>
 					{(tab) => (
 						<button
-							class={`border-b-2 px-4 py-2 font-medium transition-colors ${
+							class={`shrink-0 border-b-2 px-4 py-2 font-medium transition-colors ${
 								manager().activeTab() === tab
 									? "border-primary text-primary"
 									: "border-transparent text-muted-foreground hover:text-foreground"
@@ -125,45 +156,66 @@ export function ManagerScreen(props: ManagerScreenProps) {
 					)}
 				</For>
 			</div>
-			<Show when={queryStates().some((state) => state.phase === "pending")}>
-				<p class="mb-4 text-muted-foreground text-sm" role="status">
-					管理データを読み込み中...
-				</p>
+
+			<QueryStatus
+				class="mb-4"
+				fetchState={activeQueryState().fetchState}
+				hasData={activeQueryState().data !== undefined}
+				offlineLabel="オフラインのため保存済みの管理データを表示しています。"
+				updatingLabel="管理データを更新中..."
+			/>
+			<Show when={hasCharacterIpError()}>
+				<div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3">
+					<p class="text-muted-foreground text-sm" role="status">
+						IP候補を取得できませんでした。Characters一覧は引き続き利用できます。
+					</p>
+					<RetryButton
+						class="h-8 px-3 text-xs"
+						label="IP候補を再取得"
+						onRetry={manager().retryQueries}
+					/>
+				</div>
 			</Show>
-			<Show
-				when={queryStates().some(
-					(state) =>
-						(state.phase === "error" || state.phase === "offline") &&
-						state.data === undefined,
-				)}
-			>
-				<p class="mb-4 text-destructive text-sm" role="alert">
-					一部の管理データを取得できませんでした。接続後に再試行します。
-				</p>
-			</Show>
-			<Show
-				when={queryStates().some(
-					(state) => state.fetchState === "background-fetching",
-				)}
-			>
-				<p class="mb-4 text-muted-foreground text-sm" role="status">
-					管理データを更新中...
-				</p>
-			</Show>
-			<Show
-				when={queryStates().some(
-					(state) => state.fetchState === "paused" && state.data !== undefined,
-				)}
-			>
-				<p class="mb-4 text-muted-foreground text-sm" role="status">
-					オフラインのため保存済みデータを表示しています。
-				</p>
-			</Show>
+
+			<Switch>
+				<Match when={activeQueryState().phase === "pending"}>
+					<LoadingRegion label="管理データを読み込んでいます...">
+						<CardGridSkeleton />
+					</LoadingRegion>
+				</Match>
+				<Match when={activeQueryState().phase === "error"}>
+					<ErrorState
+						description="接続を確認して、もう一度お試しください。"
+						onRetry={manager().retryQueries}
+						title="管理データを取得できませんでした"
+					/>
+				</Match>
+				<Match when={activeQueryState().phase === "offline"}>
+					<OfflineState
+						description="接続が戻ったら、この画面から再試行できます。"
+						onRetry={manager().retryQueries}
+					/>
+				</Match>
+				<Match
+					when={
+						activeQueryState().phase === "empty" &&
+						isCrudTab(manager().activeTab())
+					}
+				>
+					<EmptyState
+						description="最初の項目を作成すると、ここに表示されます。"
+						title={`登録された ${tabLabel(manager().activeTab())} はありません`}
+					>
+						<Button onClick={manager().openCreateDialog}>Create New</Button>
+					</EmptyState>
+				</Match>
+			</Switch>
 
 			<Show
 				when={
-					manager().activeTab() === "tagging" ||
-					manager().activeTab() === "vectors"
+					(manager().activeTab() === "tagging" ||
+						manager().activeTab() === "vectors") &&
+					canRenderActiveTab()
 				}
 			>
 				<div class="space-y-6">
@@ -279,7 +331,9 @@ export function ManagerScreen(props: ManagerScreenProps) {
 				</div>
 			</Show>
 
-			<Show when={manager().activeTab() === "duplicates"}>
+			<Show
+				when={manager().activeTab() === "duplicates" && canRenderActiveTab()}
+			>
 				<div class="space-y-6">
 					<Card>
 						<CardHeader>
@@ -473,9 +527,8 @@ export function ManagerScreen(props: ManagerScreenProps) {
 
 			<Show
 				when={
-					manager().activeTab() !== "tagging" &&
-					manager().activeTab() !== "vectors" &&
-					manager().activeTab() !== "duplicates"
+					isCrudTab(manager().activeTab()) &&
+					activeQueryState().phase === "data"
 				}
 			>
 				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

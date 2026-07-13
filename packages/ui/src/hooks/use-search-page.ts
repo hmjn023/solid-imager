@@ -102,6 +102,7 @@ export interface UseSearchPageResult {
 	getSourceRootPath: (mediaSourceId: string) => string | undefined;
 	isRestored: () => boolean;
 	handleSearch: () => void;
+	retryFilters: () => Promise<void>;
 	refreshSearchResults: () => void;
 	loadMoreRef: () => HTMLDivElement | undefined;
 	setLoadMoreRef: (el: HTMLDivElement | undefined) => void;
@@ -206,6 +207,16 @@ export function useSearchPage(
 		status: "pending" | "error" | "success";
 		fetchStatus: "idle" | "fetching" | "paused";
 	}) => toQueryUiState(query, { isEmpty: (data) => data.length === 0 });
+	const retryFilters = async () => {
+		await Promise.all([
+			tags.refetch(),
+			sources.refetch(),
+			allProjects.refetch(),
+			allIps.refetch(),
+			allCharacters.refetch(),
+			allAuthors.refetch(),
+		]);
+	};
 
 	const getSourceRootPath = (mediaSourceId: string) => {
 		const source = sources.data?.find((item) => item.id === mediaSourceId);
@@ -332,6 +343,7 @@ export function useSearchPage(
 		getSourceRootPath,
 		isRestored,
 		handleSearch,
+		retryFilters,
 		refreshSearchResults,
 		loadMoreRef,
 		setLoadMoreRef,

@@ -3,6 +3,7 @@ import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas"
 import { ClientOnly } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
+import { QueryStatus, RetryButton } from "../async-state";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import type {
@@ -11,6 +12,7 @@ import type {
 } from "../hooks/use-search-page";
 import type { SourceMediaPagePresetClient } from "../hooks/use-source-media-page";
 import { SearchControlPanel } from "../search-control-panel";
+import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
 
 export type SearchScreenNavActions = {
@@ -62,18 +64,10 @@ export function SearchScreen(props: SearchScreenProps) {
 		/>
 	);
 
-	const showResults = () => {
-		const hasRenderableState =
-			page().contentState().phase === "data" ||
-			page().contentState().phase === "empty";
-		if (props.ssrGuard) {
-			return hasRenderableState && isMounted();
-		}
-		return hasRenderableState;
-	};
+	const canRenderContent = () => !props.ssrGuard || isMounted();
 
 	return (
-		<main class="container mx-auto p-4">
+		<div class="container mx-auto p-4">
 			{props.renderNavActions?.({ openMobileFilters })}
 			<ClientOnly>
 				<Dialog
@@ -110,68 +104,53 @@ export function SearchScreen(props: SearchScreenProps) {
 							(state) => state.phase === "error" || state.phase === "offline",
 						)}
 					>
-						<p class="text-muted-foreground text-sm" role="status">
-							一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。
-						</p>
+						<div class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3">
+							<p class="text-muted-foreground text-sm" role="status">
+								一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。
+							</p>
+							<RetryButton
+								class="h-8 px-3 text-xs"
+								label="フィルターを再取得"
+								onRetry={page().retryFilters}
+							/>
+						</div>
 					</Show>
-					<Show
-						when={page().contentState().fetchState === "background-fetching"}
-					>
-						<p class="text-muted-foreground text-sm" role="status">
-							検索結果を更新中...
-						</p>
-					</Show>
-					<Show
-						when={
-							page().contentState().fetchState === "paused" &&
-							page().contentState().data !== undefined
-						}
-					>
-						<p class="text-muted-foreground text-sm" role="status">
-							オフラインのため保存済みの検索結果を表示しています
-						</p>
-					</Show>
+					<QueryStatus
+						fetchState={page().contentState().fetchState}
+						hasData={page().contentState().data !== undefined}
+						offlineLabel="オフラインのため保存済みの検索結果を表示しています"
+						updatingLabel="検索結果を更新中..."
+					/>
 					<Show
 						fallback={
-							<div
-								class="py-8 text-center"
-								role={
-									page().contentState().phase === "error" ? "alert" : "status"
-								}
-							>
-								{page().contentState().phase === "offline"
-									? "オフラインです。接続後に検索を再開します"
-									: page().contentState().phase === "error"
-										? "検索結果を取得できませんでした"
-										: "読み込み中..."}
-							</div>
+							<LoadingRegion label="検索結果を読み込んでいます...">
+								<MediaGridSkeleton />
+							</LoadingRegion>
 						}
-						when={showResults()}
+						when={canRenderContent()}
 					>
 						<SourceMediaGrid
 							disableContextMenu
 							enableVirtualization={props.enableVirtualization}
-							isError={page().contentState().phase === "error"}
+							errorTitle="検索結果を取得できませんでした"
 							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
-							isPending={page().contentState().phase === "pending"}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
 							onLoadMore={() => page().searchResultQuery.fetchNextPage()}
+							onRetry={async () => {
+								await page().searchResultQuery.refetch();
+							}}
 							hasNextPage={page().searchResultQuery.hasNextPage}
-							queryError={
-								page().searchResultQuery.error instanceof Error
-									? page().searchResultQuery.error
-									: null
-							}
 							renderItem={(media, _options) => props.renderMediaItem(media)}
 							setLoadMoreRef={page().setLoadMoreRef}
 							showEmptyState
 							showResultCount
+							state={page().contentState}
 							totalCount={page().searchResultQuery.data?.pages[0]?.total}
 						/>
 					</Show>
 				</div>
 			</div>
-		</main>
+		</div>
 	);
 }

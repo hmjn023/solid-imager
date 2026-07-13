@@ -34,6 +34,7 @@ test.describe("loading and recovery", () => {
 	test("keeps the app shell visible while the initial search response is delayed", async ({
 		page,
 	}) => {
+		await page.emulateMedia({ reducedMotion: "reduce" });
 		let releaseRequest: () => void = () => {};
 		const requestGate = new Promise<void>((resolve) => {
 			releaseRequest = resolve;
@@ -45,9 +46,23 @@ test.describe("loading and recovery", () => {
 
 		const navigation = page.goto("/search", { waitUntil: "commit" });
 		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
+		const screenSkeleton = page.locator('[data-screen-skeleton="media-grid"]');
+		await expect(screenSkeleton).toBeVisible();
 		await expect(
-			page.getByText("検索画面を準備しています...", { exact: true }),
+			screenSkeleton.locator(':scope > [aria-busy="true"]'),
 		).toBeVisible();
+		await expect(
+			screenSkeleton
+				.locator("p:not(.sr-only)")
+				.filter({ hasText: "検索画面を準備しています..." }),
+		).toBeVisible();
+		await expect(screenSkeleton.locator('[role="status"]')).toHaveCount(1);
+		await page.waitForLoadState("load");
+		await expect(
+			screenSkeleton
+				.locator('[data-skeleton="media-grid"] [aria-hidden="true"]')
+				.first(),
+		).toHaveCSS("animation-name", "none");
 		await expect(
 			page.getByText("APIの応答を待っています...", { exact: true }),
 		).toBeVisible();
@@ -57,6 +72,7 @@ test.describe("loading and recovery", () => {
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();
+		await expect(screenSkeleton).toHaveCount(0);
 	});
 
 	test("keeps existing results and form input during a background refresh", async ({
@@ -82,17 +98,26 @@ test.describe("loading and recovery", () => {
 
 		holdBackgroundRequest = true;
 		const searchInput = page.getByPlaceholder("ファイル名を入力...");
+		await primaryLink.evaluate((element) => {
+			element.setAttribute("data-existing-result", "true");
+		});
 		await searchInput.fill(E2E_PRIMARY_FILE_NAME);
 		await expect(
 			page.getByText("検索結果を更新中...", { exact: true }),
 		).toBeVisible();
 		await expect(searchInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
+		await expect(searchInput).toBeFocused();
 		await expect(primaryLink).toBeVisible();
+		await expect(page.locator('[data-existing-result="true"]')).toBeVisible();
+		await expect(page.locator("[data-screen-skeleton]")).toHaveCount(0);
 
 		releaseRequest();
 		await expect(
 			page.getByText("検索結果を更新中...", { exact: true }),
 		).toHaveCount(0);
+		await expect(searchInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
+		await expect(searchInput).toBeFocused();
+		await expect(primaryLink).toBeVisible();
 	});
 
 	test("keeps route content visible while SPA media-detail preload is delayed", async ({
@@ -134,7 +159,7 @@ test.describe("loading and recovery", () => {
 		).toBeVisible();
 	});
 
-	test("shows a recoverable SPA error and reload recovery when media detail is unavailable", async ({
+	test("recovers a SPA media-detail error with the keyboard retry action", async ({
 		page,
 		browserHealth,
 	}) => {
@@ -156,11 +181,15 @@ test.describe("loading and recovery", () => {
 			.click();
 		await expect(page).toHaveURL(new RegExp(`${mediaPath()}/?$`));
 		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
-		await expect(page.getByRole("alert")).toContainText("Error:");
+		await expect(page.getByRole("alert")).toContainText(
+			"メディア情報を読み込めませんでした",
+		);
 
 		await page.unroute(mediaDetailsEndpoint);
-		const recoveryResponse = await page.reload();
-		expect(recoveryResponse?.ok()).toBeTruthy();
+		const retryButton = page.getByRole("button", { name: "再試行" });
+		await retryButton.focus();
+		await expect(retryButton).toBeFocused();
+		await retryButton.press("Enter");
 		await expect(
 			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
 		).toBeVisible();
@@ -183,7 +212,7 @@ test.describe("loading and recovery", () => {
 			).toBeVisible();
 
 			await page.unroute(searchEndpoint);
-			await page.reload();
+			await page.getByRole("button", { name: "再試行" }).click();
 			await expect(
 				page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 			).toBeVisible();
@@ -212,10 +241,24 @@ test.describe("loading and recovery", () => {
 		).toBeVisible();
 
 		await page.unroute(searchEndpoint);
-		await page.reload();
+		await page.getByRole("button", { name: "再試行" }).click();
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();
+	});
+
+	test("shows the shared empty state for an unmatched search", async ({
+		page,
+	}) => {
+		await page.goto("/search");
+		await page
+			.getByPlaceholder("ファイル名を入力...")
+			.fill("__issue_579_no_matching_media__");
+
+		const emptyState = page.locator('[data-state-ui="empty"]');
+		await expect(emptyState).toBeVisible();
+		await expect(emptyState).toContainText("検索結果が見つかりませんでした");
+		await expect(emptyState.locator('[role="alert"]')).toHaveCount(0);
 	});
 
 	test("shows and clears the offline API status without replacing existing content", async ({

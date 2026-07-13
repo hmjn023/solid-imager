@@ -39,6 +39,12 @@ function SourcesRoute() {
 	const { sources } = getCollections();
 	const mediaSources = useLiveQuery(() => sources);
 	const mediaSourcesQuery = createQuery(() => mediaSourcesQueryOptions());
+	const sourceData = () => {
+		const cachedSources = mediaSources();
+		return cachedSources.length > 0 || mediaSources.isReady
+			? cachedSources
+			: undefined;
+	};
 
 	const page = useSourcesPage({
 		actions: {
@@ -63,21 +69,31 @@ function SourcesRoute() {
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
-			mediaSources()
-				?.map((s) => s.id ?? s.name)
+			(sourceData() ?? [])
+				.map((s) => s.id ?? s.name)
 				.filter((id): id is string => Boolean(id)) ?? [],
 	});
 
 	return (
 		<SourcesScreen
 			page={page}
-			mediaSources={() => mediaSources()}
+			mediaSources={sourceData}
+			onRetry={async () => {
+				await Promise.all([
+					mediaSourcesQuery.refetch(),
+					sources.utils.refetch(),
+				]);
+			}}
 			state={() =>
 				toQueryUiState(
 					{
-						data: mediaSources(),
-						error: mediaSourcesQuery.error,
-						status: mediaSourcesQuery.status,
+						data: sourceData(),
+						error:
+							mediaSourcesQuery.error ??
+							(mediaSources.isError
+								? new Error("保存済みのソースを読み込めませんでした")
+								: undefined),
+						status: mediaSources.isError ? "error" : mediaSourcesQuery.status,
 						fetchStatus: mediaSourcesQuery.fetchStatus,
 					},
 					{ isEmpty: (data) => data.length === 0 },

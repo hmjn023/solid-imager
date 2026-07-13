@@ -164,6 +164,7 @@ export type UseManagerPageResult = {
 		characters: QueryUiState<Character[]>;
 		sources: QueryUiState<SafeMediaSource[]>;
 	}>;
+	retryQueries: () => Promise<void>;
 	openCreateDialog: () => void;
 	openEditDialog: (item: ManagerEntity) => void;
 	handleSave: () => Promise<void>;
@@ -329,6 +330,15 @@ export function useManagerPage(
 			isEmpty: (data) => data.length === 0,
 		}),
 	});
+
+	const retryQueries = async () => {
+		await Promise.all([
+			projects.refetch(),
+			ipsQuery.refetch(),
+			characters.refetch(),
+			sourcesQuery.refetch(),
+		]);
+	};
 
 	const invalidateActive = () => {
 		const tab = activeCrudTab(activeTab());
@@ -727,6 +737,7 @@ export function useManagerPage(
 		ips,
 		getActiveItems,
 		queryStates,
+		retryQueries,
 		openCreateDialog,
 		openEditDialog,
 		handleSave: () => (editingItem() ? handleUpdate() : handleCreate()),

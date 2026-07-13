@@ -29,7 +29,10 @@ export const Route = createFileRoute("/sources/")({
 	},
 	pendingComponent: () => (
 		<RouteDataPendingScreen
+			class="p-6"
 			description="ソース一覧を準備しています..."
+			layout="cards"
+			showAction
 			title="Media Sources"
 		/>
 	),
@@ -72,12 +75,18 @@ function SourcesRouteContent() {
 			page={page}
 			mediaSources={sourceData}
 			state={() =>
-				toQueryUiState(mediaSources, {
-					isEmpty: (data) => data.length === 0,
-				})
+				toQueryUiState(
+					{
+						data: sourceData(),
+						error: mediaSources.error,
+						fetchStatus: mediaSources.fetchStatus,
+						status: mediaSources.status,
+					},
+					{ isEmpty: (data) => data.length === 0 },
+				)
 			}
-			onRetry={() => {
-				void mediaSources.refetch();
+			onRetry={async () => {
+				await mediaSources.refetch();
 			}}
 			renderSourceCard={(source) => (
 				<SourceCard

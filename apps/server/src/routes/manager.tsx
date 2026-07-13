@@ -80,7 +80,10 @@ export const Route = createFileRoute("/manager")({
 function ManagerRouteFallback() {
 	return (
 		<RouteDataPendingScreen
+			class="p-4 sm:p-8"
 			description="管理データを準備しています..."
+			layout="manager"
+			showAction
 			title="Entity Manager"
 		/>
 	);
