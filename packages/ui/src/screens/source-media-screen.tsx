@@ -1,7 +1,7 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Component, JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
-import { QueryStatus, RetryButton } from "../async-state";
+import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import {
@@ -124,16 +124,11 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					(state) => state.phase === "error" || state.phase === "offline",
 				)}
 			>
-				<div class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3">
-					<p class="text-muted-foreground text-sm" role="status">
-						一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。
-					</p>
-					<RetryButton
-						class="h-8 px-3 text-xs"
-						label="フィルターを再取得"
-						onRetry={props.onRetryFilters}
-					/>
-				</div>
+				<FilterErrorBanner
+					class="mb-3"
+					message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
+					onRetry={props.onRetryFilters}
+				/>
 			</Show>
 
 			<div class="grid gap-6 md:grid-cols-[300px_1fr]">

@@ -3,7 +3,7 @@ import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas"
 import { ClientOnly } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
-import { QueryStatus, RetryButton } from "../async-state";
+import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import type {
@@ -104,16 +104,10 @@ export function SearchScreen(props: SearchScreenProps) {
 							(state) => state.phase === "error" || state.phase === "offline",
 						)}
 					>
-						<div class="flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3">
-							<p class="text-muted-foreground text-sm" role="status">
-								一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。
-							</p>
-							<RetryButton
-								class="h-8 px-3 text-xs"
-								label="フィルターを再取得"
-								onRetry={page().retryFilters}
-							/>
-						</div>
+						<FilterErrorBanner
+							message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
+							onRetry={page().retryFilters}
+						/>
 					</Show>
 					<QueryStatus
 						fetchState={page().contentState().fetchState}

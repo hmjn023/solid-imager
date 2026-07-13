@@ -179,6 +179,35 @@ export function OfflineState(props: OfflineStateProps) {
 	);
 }
 
+export type FilterErrorBannerProps = {
+	class?: string;
+	message: string;
+	onRetry: () => void | Promise<void>;
+	retryLabel?: string;
+};
+
+/** Keeps usable content visible when only supplementary search filters fail. */
+export function FilterErrorBanner(props: FilterErrorBannerProps) {
+	return (
+		<div
+			class={cn(
+				"flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3",
+				props.class,
+			)}
+			data-state-ui="filter-error"
+		>
+			<p class="text-muted-foreground text-sm" role="status">
+				{props.message}
+			</p>
+			<RetryButton
+				class="h-8 px-3 text-xs"
+				label={props.retryLabel ?? "フィルターを再取得"}
+				onRetry={props.onRetry}
+			/>
+		</div>
+	);
+}
+
 export type QueryStatusProps = {
 	class?: string;
 	fetchState: QueryUiFetchState;
