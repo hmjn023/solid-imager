@@ -1,8 +1,8 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { createFileRoute } from "@tanstack/solid-router";
 import { appRouter } from "~/domain/shared/api-contract";
-import { bootstrap } from "~/infrastructure/bootstrap";
 import { logger } from "~/infrastructure/logger";
+import { bootstrapServerRoute } from "~/infrastructure/server-route-bootstrap";
 
 const handler = new RPCHandler(appRouter);
 
@@ -10,7 +10,7 @@ export const Route = createFileRoute("/api/rpc/$")({
 	server: {
 		handlers: {
 			ANY: async ({ request }) => {
-				bootstrap();
+				bootstrapServerRoute();
 				const { response } = await handler.handle(request, {
 					prefix: "/api/rpc",
 					context: {},

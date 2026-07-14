@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { bootstrap } from "~/infrastructure/bootstrap";
 import { getThumbnailPath } from "~/infrastructure/jobs/thumbnails";
+import { bootstrapServerRoute } from "~/infrastructure/server-route-bootstrap";
 
 export const Route = createFileRoute(
 	"/api/sources/$mediaSourceId/thumbnail/$mediaId",
@@ -8,7 +8,7 @@ export const Route = createFileRoute(
 	server: {
 		handlers: {
 			GET: async ({ params }) => {
-				bootstrap();
+				bootstrapServerRoute();
 				const { mediaSourceId, mediaId } = params;
 				const thumbnailPath = getThumbnailPath(mediaSourceId, mediaId);
 				const file = Bun.file(thumbnailPath);
