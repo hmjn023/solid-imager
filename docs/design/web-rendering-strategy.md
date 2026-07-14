@@ -143,7 +143,7 @@ bun run --cwd apps/server measure:dev-startup -- --profile=without-devtools
 | without mkcert | 11217 | 3680 | 2292 | 5878 | 51 |
 | without Devtools | 11376 | 3171 | 1871 | 4944 | 61 |
 
-通常 dev では TanStack Start だけを route tree と code splitting の owner とする。`@tanstack/router-plugin` を別に登録して同じ output を生成してはならない。dev oRPC middleware の server-only import は最初の RPC まで lazy にし、worker / maintenance は最初の成功 RPC 応答後に一度だけ開始する。TanStack Start の server route graph は dev では `initServices` のみを行い、thumbnail や media body の request が二本目の worker を作らないようにする。SSR loader が必要とする `initServices` は router 側で維持する。
+通常 dev では TanStack Start だけを route tree と code splitting の owner とする。`@tanstack/router-plugin` を別に登録して同じ output を生成してはならない。dev oRPC middleware の server-only import は最初の RPC まで lazy にし、worker / maintenance は最初の 2xx RPC 応答完了後に一度だけ開始する。TanStack Start の server route graph は dev では `initServices` のみを行い、thumbnail や media body の request が二本目の worker を作らないようにする。SSR loader が必要とする `initServices` は router 側で維持する。
 
 ## E2E budget
 
