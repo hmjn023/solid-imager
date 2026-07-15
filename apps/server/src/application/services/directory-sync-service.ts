@@ -72,6 +72,7 @@ async function processDeletions(
 				await deleteThumbnail(mediaSourceId, fileToDelete.id);
 				RealtimeEventBus.publishSource(mediaSourceId, "media-deleted", {
 					filePath: fileToDelete.relativePath,
+					mediaId: fileToDelete.id,
 					timestamp: new Date().toISOString(),
 				});
 				result.deleted++;

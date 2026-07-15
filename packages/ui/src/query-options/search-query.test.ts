@@ -8,6 +8,8 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	buildSearchResultsQueryOptions,
 	buildSourceMediaResultsQueryOptions,
+	isSourceMediaResultsQueryKey,
+	removeMediaFromInfiniteQueryData,
 	searchQueryKeys,
 	sourceMediaQueryKeys,
 } from "./search-query";
@@ -67,6 +69,54 @@ describe("query key factories", () => {
 			limit: 200,
 		});
 		expect(key.slice(0, 2)).toEqual(sourceMediaQueryKeys.forSource("source"));
+	});
+
+	it("matches only source media result keys for local cache updates", () => {
+		const resultKey = sourceMediaQueryKeys.results({
+			sourceId: "source",
+			conditionKey: "null",
+			sort: undefined,
+			order: "desc",
+			limit: 200,
+		});
+
+		expect(isSourceMediaResultsQueryKey(resultKey, "source")).toBe(true);
+		expect(
+			isSourceMediaResultsQueryKey(["media", "source", "media-id"], "source"),
+		).toBe(false);
+	});
+});
+
+describe("removeMediaFromInfiniteQueryData", () => {
+	it("removes a known deleted media item without touching other cached entries", () => {
+		const otherMedia: Media = {
+			...TEST_MEDIA,
+			id: "33333333-3333-4333-8333-333333333333",
+			fileName: "other.png",
+		};
+		const data = {
+			pages: [{ media: [TEST_MEDIA, otherMedia], total: 2 }],
+			pageParams: [0],
+		};
+
+		expect(removeMediaFromInfiniteQueryData(data, TEST_MEDIA.id)).toEqual({
+			pages: [{ media: [otherMedia], total: 1 }],
+			pageParams: [0],
+		});
+	});
+
+	it("preserves the cached object when the deleted media is not loaded", () => {
+		const data = {
+			pages: [{ media: [TEST_MEDIA], total: 1 }],
+			pageParams: [0],
+		};
+
+		expect(
+			removeMediaFromInfiniteQueryData(
+				data,
+				"33333333-3333-4333-8333-333333333333",
+			),
+		).toBe(data);
 	});
 });
 

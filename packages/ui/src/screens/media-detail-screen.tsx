@@ -11,7 +11,6 @@ import {
 	type MediaSourceEventTransport,
 	useMediaSourceEvents,
 } from "../hooks/use-media-source-events";
-import { sourceMediaQueryKeys } from "../query-options";
 import { toQueryUiState } from "../query-state";
 import { LoadingRegion, MediaDetailSkeleton } from "../skeleton";
 
@@ -63,15 +62,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 
 	useMediaSourceEvents({
 		transport: props.transport,
-		onMediaAdded: () => {
-			void queryClient.invalidateQueries({
-				queryKey: sourceMediaQueryKeys.forSource(props.mediaSourceId),
-			});
-		},
 		onMediaDeleted: (data: MediaDeletedEvent) => {
-			void queryClient.invalidateQueries({
-				queryKey: sourceMediaQueryKeys.forSource(props.mediaSourceId),
-			});
 			if (
 				data.mediaId === props.mediaId ||
 				data.filePath === mediaDetails.data?.filePath
@@ -80,9 +71,6 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 			}
 		},
 		onMediaChanged: (data: MediaChangedEvent) => {
-			void queryClient.invalidateQueries({
-				queryKey: sourceMediaQueryKeys.forSource(props.mediaSourceId),
-			});
 			if (
 				data.mediaId === props.mediaId ||
 				data.filePath === mediaDetails.data?.filePath

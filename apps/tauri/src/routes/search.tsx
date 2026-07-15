@@ -2,7 +2,6 @@ import { Button } from "@solid-imager/ui/button";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
-import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
@@ -43,14 +42,11 @@ const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 const PresetClient = createPresetClient(rawPresetClient);
 
 function SearchRoute() {
-	const queryClient = useQueryClient();
-
 	const isSearchStateRestored = useCurrentSearchPersistence("all");
 
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
-		queryClient,
 		queries: {
 			tags: tagsQueryOptions,
 			sources: mediaSourcesQueryOptions,
@@ -74,10 +70,12 @@ function SearchRoute() {
 		isSearchStateRestored,
 	});
 
-	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
+	useMediaSourceEvents(() => searchState.selectedSource || "*", {
 		onMediaAdded: page.refreshSearchResults,
 		onMediaDeleted: page.refreshSearchResults,
 		onMediaChanged: page.refreshSearchResults,
+		onMediaCopied: page.refreshSearchResults,
+		onMediaMoved: page.refreshSearchResults,
 		onAllJobsCompleted: page.refreshSearchResults,
 	});
 

@@ -2,7 +2,11 @@ import type {
 	MediaSearchRequest,
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
-import { infiniteQueryOptions, keepPreviousData } from "@tanstack/solid-query";
+import {
+	type InfiniteData,
+	infiniteQueryOptions,
+	keepPreviousData,
+} from "@tanstack/solid-query";
 
 export type SearchResultsQueryKeyInput = {
 	mode: "simple" | "pro" | "vector";
@@ -35,6 +39,59 @@ export const sourceMediaQueryKeys = {
 	results: (input: SourceMediaQueryKeyInput) =>
 		["media", input.sourceId, input] as const,
 };
+
+export function isSourceMediaResultsQueryKey(
+	queryKey: readonly unknown[],
+	sourceId: string,
+): boolean {
+	const [scope, querySourceId, input] = queryKey;
+	return (
+		scope === "media" &&
+		querySourceId === sourceId &&
+		typeof input === "object" &&
+		input !== null &&
+		"conditionKey" in input
+	);
+}
+
+/**
+ * Removes a known-deleted media item from cached infinite result pages.
+ *
+ * A source event only identifies the deleted record; it does not contain
+ * enough data to safely insert or replace records for arbitrary filters and
+ * sort orders. Removing an existing item is therefore the only safe local
+ * cache update, with a subsequent background refetch reconciling pagination.
+ */
+export function removeMediaFromInfiniteQueryData(
+	data: InfiniteData<MediaSearchResponse> | undefined,
+	mediaId: string,
+): InfiniteData<MediaSearchResponse> | undefined {
+	if (!data) {
+		return data;
+	}
+
+	let removed = false;
+	const pages = data.pages.map((page) => {
+		const media = page.media.filter((item) => item.id !== mediaId);
+		if (media.length === page.media.length) {
+			return page;
+		}
+		removed = true;
+		return { ...page, media };
+	});
+
+	if (!removed) {
+		return data;
+	}
+
+	return {
+		...data,
+		pages: pages.map((page) => ({
+			...page,
+			total: Math.max(page.total - 1, 0),
+		})),
+	};
+}
 
 type SearchMedia = (
 	sourceId: string | undefined,
