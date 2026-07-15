@@ -8,9 +8,10 @@ import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { getCollections } from "~/collections";
+import { collectionQueryKeys } from "~/collections/query-keys";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createMediaSource,
@@ -18,12 +19,8 @@ import {
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
-import { mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/")({
-	loader: ({ context }) => {
-		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
-	},
 	component: SourcesRoute,
 });
 
@@ -38,12 +35,18 @@ function SourcesRoute() {
 	const queryClient = useQueryClient();
 	const { sources } = getCollections();
 	const mediaSources = useLiveQuery(() => sources);
-	const mediaSourcesQuery = createQuery(() => mediaSourcesQueryOptions());
 	const sourceData = () => {
 		const cachedSources = mediaSources();
-		return cachedSources.length > 0 || mediaSources.isReady
+		return cachedSources.length > 0 ||
+			(mediaSources.isReady && !sources.utils.isError)
 			? cachedSources
 			: undefined;
+	};
+	const fetchStatus = () => {
+		if (sources.utils.fetchStatus.includes("paused")) {
+			return "paused" as const;
+		}
+		return sources.utils.isFetching ? ("fetching" as const) : ("idle" as const);
 	};
 
 	const page = useSourcesPage({
@@ -66,7 +69,7 @@ function SourcesRoute() {
 			},
 		},
 		queryClient,
-		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
+		invalidateQueryKey: collectionQueryKeys.sources(),
 		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
 			(sourceData() ?? [])
@@ -78,23 +81,23 @@ function SourcesRoute() {
 		<SourcesScreen
 			page={page}
 			mediaSources={sourceData}
-			onRetry={async () => {
-				await Promise.all([
-					mediaSourcesQuery.refetch(),
-					sources.utils.refetch(),
-				]);
-			}}
+			onRetry={() => sources.utils.clearError()}
 			state={() =>
 				toQueryUiState(
 					{
 						data: sourceData(),
 						error:
-							mediaSourcesQuery.error ??
+							sources.utils.lastError ??
 							(mediaSources.isError
 								? new Error("保存済みのソースを読み込めませんでした")
 								: undefined),
-						status: mediaSources.isError ? "error" : mediaSourcesQuery.status,
-						fetchStatus: mediaSourcesQuery.fetchStatus,
+						status:
+							mediaSources.isError || sources.utils.isError
+								? "error"
+								: sourceData() === undefined || sources.utils.isLoading
+									? "pending"
+									: "success",
+						fetchStatus: fetchStatus(),
 					},
 					{ isEmpty: (data) => data.length === 0 },
 				)

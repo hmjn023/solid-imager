@@ -1,5 +1,16 @@
 # Tauri対応: apps/tauri/src の SPA 設計方針
 
+## ローカル優先の collection と remote sync（#588）
+
+Tauri の一覧データは、役割を次のように分離する。TanStack DB collection は SQLite に保存した一覧の読込とリアクティブ表示を担当し、TanStack Query integration は collection の remote sync を担当する。画面 route は同じ一覧 API を loader や `createQuery()` で重複取得しない。
+
+| collection | 現在の採用状況 | 移行方針 |
+| --- | --- | --- |
+| sources | collection を表示と同期の唯一のデータ源に採用 | mutation 成功後に `utils.refetch()` で同期する。 |
+| tags / projects / characters / ips / authors | collection を永続化・同期基盤として初期化済み | 対応画面を変更する際、一覧 Query を collection の `useLiveQuery()` に段階移行する。 |
+
+画面状態は `useLiveQuery()` のローカル初期化状態と、collection `utils` の remote 状態を別々に扱う。保存済みデータがあれば remote sync の失敗時も一覧を保持して同期不能を表示する。保存済みデータがなく同期に失敗した場合だけ error state を表示する。mutation は API 呼び出しを維持し、失敗時には collection を再取得しないため、失敗した remote 変更をローカル表示へ反映しない。
+
 ## 背景
 
 `issue-169-tauri-build-bootstrap` ブランチで試みたTauri対応は失敗だった。
