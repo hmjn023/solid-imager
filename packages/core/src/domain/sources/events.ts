@@ -10,7 +10,9 @@ const sourceScopedEventSchema = z.object({
 export const mediaAddedEventSchema = sourceScopedEventSchema;
 export type MediaAddedEvent = z.infer<typeof mediaAddedEventSchema>;
 
-export const mediaDeletedEventSchema = sourceScopedEventSchema;
+export const mediaDeletedEventSchema = sourceScopedEventSchema.extend({
+	mediaId: z.string().uuid(),
+});
 export type MediaDeletedEvent = z.infer<typeof mediaDeletedEventSchema>;
 
 export const mediaChangedEventSchema = sourceScopedEventSchema;

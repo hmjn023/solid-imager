@@ -15,7 +15,7 @@ import {
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import type { QueryClient } from "@tanstack/solid-query";
-import { createInfiniteQuery } from "@tanstack/solid-query";
+import { createInfiniteQuery, type InfiniteData } from "@tanstack/solid-query";
 import type { Accessor, Setter } from "solid-js";
 import {
 	createEffect,
@@ -28,6 +28,8 @@ import { isServer } from "solid-js/web";
 import { z } from "zod";
 import {
 	buildSourceMediaResultsQueryOptions,
+	isSourceMediaResultsQueryKey,
+	removeMediaFromInfiniteQueryData,
 	sourceMediaQueryKeys,
 } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
@@ -404,9 +406,6 @@ export function useSourceMediaPage(
 	// --- Refresh helpers ---
 	const refreshMediaQuery = () => {
 		void mediaQuery.refetch();
-		void queryClient.invalidateQueries({
-			queryKey: sourceMediaQueryKeys.forSource(id()),
-		});
 	};
 
 	const [mediaRefreshTimer, setMediaRefreshTimer] = createSignal<ReturnType<
@@ -472,7 +471,18 @@ export function useSourceMediaPage(
 				}, DEBOUNCE_DELAY_MS),
 			);
 		},
-		onMediaDeleted: () => {
+		onMediaDeleted: (data) => {
+			const sourceId = id();
+			if (!sourceId) {
+				return;
+			}
+			queryClient.setQueriesData<InfiniteData<MediaSearchResponse>>(
+				{
+					predicate: (query) =>
+						isSourceMediaResultsQueryKey(query.queryKey, sourceId),
+				},
+				(previous) => removeMediaFromInfiniteQueryData(previous, data.mediaId),
+			);
 			scheduleMediaRefresh();
 		},
 		onMediaChanged: () => {
@@ -488,9 +498,6 @@ export function useSourceMediaPage(
 			if (onThumbnailReady) {
 				onThumbnailReady(data.mediaId);
 			}
-			queryClient.invalidateQueries({
-				queryKey: sourceMediaQueryKeys.forSource(id()),
-			});
 		},
 		onAllJobsCompleted: (data) => {
 			setJobProgress(null);

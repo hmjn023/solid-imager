@@ -40,6 +40,8 @@ export {
 export {
 	buildSearchResultsQueryOptions,
 	buildSourceMediaResultsQueryOptions,
+	isSourceMediaResultsQueryKey,
+	removeMediaFromInfiniteQueryData,
 	type SearchResultsQueryKeyInput,
 	type SearchResultsQueryOptionsInput,
 	type SourceMediaQueryKeyInput,

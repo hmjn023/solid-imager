@@ -4,7 +4,6 @@ import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
-import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createSignal, onMount, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
@@ -76,14 +75,11 @@ function SearchRouteFallback() {
 }
 
 function SearchRoute() {
-	const queryClient = useQueryClient();
-
 	const isSearchStateRestored = useCurrentSearchPersistence("all");
 
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
-		queryClient,
 		queries: {
 			tags: tagsQueryOptions,
 			sources: mediaSourcesQueryOptions,
@@ -107,10 +103,12 @@ function SearchRoute() {
 		isSearchStateRestored,
 	});
 
-	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
+	useMediaSourceEvents(() => searchState.selectedSource || "*", {
 		onMediaAdded: page.refreshSearchResults,
 		onMediaDeleted: page.refreshSearchResults,
 		onMediaChanged: page.refreshSearchResults,
+		onMediaCopied: page.refreshSearchResults,
+		onMediaMoved: page.refreshSearchResults,
 		onAllJobsCompleted: page.refreshSearchResults,
 	});
 

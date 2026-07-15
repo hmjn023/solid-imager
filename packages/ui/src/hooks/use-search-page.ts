@@ -9,7 +9,6 @@ import type {
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import type { QueryClient } from "@tanstack/solid-query";
 import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
 import {
 	type Accessor,
@@ -19,10 +18,7 @@ import {
 	onCleanup,
 } from "solid-js";
 import { isServer } from "solid-js/web";
-import {
-	buildSearchResultsQueryOptions,
-	searchQueryKeys,
-} from "../query-options";
+import { buildSearchResultsQueryOptions } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
@@ -65,7 +61,6 @@ export interface UseSearchPageOptions {
 		},
 		signal?: AbortSignal,
 	) => Promise<SimilarMediaSearchResponse>;
-	queryClient: QueryClient;
 	queries: SearchPageQueryOptions;
 	selectedSource: () => string | null | undefined;
 	getSearchCondition: () => MediaSearchRequest["condition"];
@@ -114,7 +109,6 @@ export function useSearchPage(
 ): UseSearchPageResult {
 	const {
 		searchMedia,
-		queryClient,
 		queries,
 		selectedSource,
 		getSearchCondition,
@@ -237,13 +231,15 @@ export function useSearchPage(
 			clearTimeout(timer);
 		}
 		if (refreshDebounceMs <= 0) {
-			void queryClient.invalidateQueries({ queryKey: searchQueryKeys.all() });
+			// Refetching the observer targets its current exact query key. Do not
+			// invalidate cached results for other sources, modes, or conditions.
+			void searchResultQuery.refetch();
 			setRefreshTimer(null);
 			return;
 		}
 		setRefreshTimer(
 			setTimeout(() => {
-				void queryClient.invalidateQueries({ queryKey: searchQueryKeys.all() });
+				void searchResultQuery.refetch();
 				setRefreshTimer(null);
 			}, refreshDebounceMs),
 		);

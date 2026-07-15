@@ -419,6 +419,7 @@ export class MediaTransferService {
 			event: "media-deleted",
 			payload: {
 				filePath: media.filePath,
+				mediaId: validatedMediaId,
 				timestamp: new Date().toISOString(),
 			},
 		};
