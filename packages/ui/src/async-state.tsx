@@ -210,8 +210,10 @@ export function FilterErrorBanner(props: FilterErrorBannerProps) {
 
 export type QueryStatusProps = {
 	class?: string;
+	errorLabel?: string;
 	fetchState: QueryUiFetchState;
 	hasData: boolean;
+	hasError?: boolean;
 	offlineLabel: string;
 	updatingLabel: string;
 };
@@ -244,6 +246,16 @@ export function QueryStatus(props: QueryStatusProps) {
 							class="size-2 rounded-full bg-warning-foreground"
 						/>
 						{props.offlineLabel}
+					</p>
+				</Match>
+				<Match when={props.hasError && props.hasData}>
+					<p
+						class="flex items-center gap-2 text-warning-foreground text-sm"
+						data-state-ui="cached-sync-error"
+						role="status"
+					>
+						<span aria-hidden="true" class="size-2 rounded-full bg-current" />
+						{props.errorLabel ?? "最新のデータを取得できませんでした"}
 					</p>
 				</Match>
 			</Switch>

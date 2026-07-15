@@ -60,8 +60,10 @@ export function SourcesScreen(props: SourcesScreenProps) {
 
 			<QueryStatus
 				class="mb-3"
+				errorLabel="同期できなかったため、保存済みのソースを表示しています"
 				fetchState={props.state().fetchState}
 				hasData={props.state().data !== undefined}
+				hasError={props.state().error !== undefined}
 				offlineLabel="オフラインのため保存済みデータを表示しています"
 				updatingLabel="ソース一覧を更新中..."
 			/>
