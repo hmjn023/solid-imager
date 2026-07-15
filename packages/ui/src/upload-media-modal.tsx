@@ -304,35 +304,35 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 							</div>
 						</Show>
 
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label class="text-right" for="filename">
+						<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+							<Label class="sm:text-right" for="filename">
 								ファイル名
 							</Label>
 							<Input
-								class="col-span-3"
+								class="sm:col-span-3"
 								id="filename"
 								onInput={(event) => setFilename(event.currentTarget.value)}
 								value={filename()}
 							/>
 						</div>
 
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label class="text-right" for="description">
+						<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+							<Label class="sm:text-right" for="description">
 								説明
 							</Label>
 							<Input
-								class="col-span-3"
+								class="sm:col-span-3"
 								id="description"
 								onInput={(event) => setDescription(event.currentTarget.value)}
 								value={description()}
 							/>
 						</div>
 
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label class="text-right" for="sourceUrl">
+						<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+							<Label class="sm:text-right" for="sourceUrl">
 								ソースURL
 							</Label>
-							<div class="relative col-span-3">
+							<div class="relative sm:col-span-3">
 								<Input
 									disabled={isFetchingUrl()}
 									id="sourceUrl"
@@ -346,7 +346,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								</Show>
 							</div>
 							<Show when={previewUrl()}>
-								<div class="col-span-4 mt-2 flex justify-center">
+								<div class="mt-2 flex justify-center sm:col-span-4">
 									<img
 										alt="Fetched preview"
 										class="max-h-48 rounded-md object-contain"
