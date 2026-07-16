@@ -24,7 +24,7 @@ import type { QueryUiState } from "./query-state";
 import { LoadingRegion, MediaGridSkeleton } from "./skeleton";
 
 const VIRTUALIZATION_THRESHOLD = 100;
-const GRID_GAP_PX = 16;
+const GRID_GAP_PX = 12;
 const GRID_ITEM_ASPECT_RATIO = 4 / 3;
 const VIRTUAL_ROWS_OVERSCAN = 4;
 
@@ -93,9 +93,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	let mediaGridRef: HTMLDivElement | undefined;
 
 	const columnCount = createMemo(() => {
-		const width = windowWidth();
-		if (width >= 1024) return 5;
-		if (width >= 768) return 3;
+		const width = mediaGridWidth() || windowWidth();
+		if (width >= 1100) return 5;
+		if (width >= 640) return 3;
 		return 2;
 	});
 
@@ -202,7 +202,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	const gridContent = (
 		<div
-			class="relative w-full"
+			class="relative min-w-0 w-full"
 			ref={(element) => {
 				mediaGridRef = element;
 				requestAnimationFrame(() => {
@@ -217,7 +217,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		>
 			<Show
 				fallback={
-					<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+					<div
+						class="grid gap-3"
+						style={{
+							"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
+						}}
+					>
 						<For each={props.mediaResults()}>
 							{(media) =>
 								props.renderItem(media, {
@@ -240,7 +245,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						const rowMedia = () => mediaRows()[virtualRow.index] || [];
 						return (
 							<div
-								class="absolute left-0 top-0 grid gap-4"
+								class="absolute top-0 left-0 grid gap-3"
 								style={{
 									"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
 									height: `${virtualRow.size}px`,
@@ -270,7 +275,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	);
 
 	return (
-		<div class="min-h-0 space-y-4">
+		<div class="min-h-0 min-w-0 space-y-4">
 			<Switch>
 				<Match when={props.state().phase === "pending"}>
 					<LoadingRegion label="メディア一覧を読み込んでいます...">
@@ -297,7 +302,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				>
 					{/* Result count */}
 					<Show when={showResultCount() && props.mediaResults().length > 0}>
-						<div class="mb-4 flex items-center justify-between">
+						<div class="mb-4 flex min-w-0 items-center justify-between gap-3">
 							<p class="text-gray-600 text-sm">{totalCount()} 件の結果</p>
 						</div>
 					</Show>
@@ -305,7 +310,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					{/* Grid with optional context menu */}
 					<Show fallback={gridContent} when={!disableContextMenu()}>
 						<ContextMenu>
-							<ContextMenuTrigger class="block w-full">
+							<ContextMenuTrigger class="block min-w-0 w-full">
 								{gridContent}
 							</ContextMenuTrigger>
 							<ContextMenuContent>
@@ -426,13 +431,21 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 					{/* Load more sentinel */}
 					<div
-						class="flex h-10 w-full items-center justify-center text-gray-500"
+						aria-live="polite"
+						class="flex min-h-11 w-full items-center justify-center py-2 text-gray-500 text-sm"
+						data-testid="media-load-more-sentinel"
 						ref={props.setLoadMoreRef}
+						role="status"
 					>
-						<Show when={props.isFetchingNextPage}>
-							<p class="text-center text-gray-500" role="status">
-								読み込み中...
-							</p>
+						<Show
+							fallback={
+								<Show when={props.hasNextPage}>
+									<p>スクロールしてさらに読み込む</p>
+								</Show>
+							}
+							when={props.isFetchingNextPage}
+						>
+							<p>読み込み中...</p>
 						</Show>
 					</div>
 				</Match>

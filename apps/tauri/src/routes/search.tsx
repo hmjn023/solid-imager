@@ -94,7 +94,7 @@ function SearchRoute() {
 			)}
 			renderNavActions={({ openMobileFilters }) => (
 				<Button
-					class="border-white text-white hover:bg-sky-700 md:hidden"
+					class="size-11 border-input text-foreground hover:bg-accent md:hidden"
 					onClick={openMobileFilters}
 					size="icon"
 					variant="outline"

@@ -2,9 +2,12 @@ import type { Author } from "@solid-imager/core/domain/authors/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import { calculateNextModeState } from "@solid-imager/core/domain/search/logic";
+import type { SearchState } from "@solid-imager/core/domain/search/schema";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Show } from "solid-js";
+import type { SetStoreFunction } from "solid-js/store";
 import { Button } from "./button";
 import { Label } from "./label";
 import { PresetManager, type PresetManagerClient } from "./preset-manager";
@@ -21,7 +24,6 @@ import { SortControls } from "./sort-controls";
 import {
 	clearVectorSearchAnchor,
 	searchState,
-	setSearchMode,
 	setSearchState,
 } from "./stores/search-store";
 
@@ -41,11 +43,44 @@ export type SearchControlPanelProps = {
 	sources?: SafeMediaSource[];
 	selectedSource?: string;
 	onSelectSource?: (id: string) => void;
+	/** Optional isolated state for a draft editing surface. */
+	state?: SearchState;
+	setState?: SetStoreFunction<SearchState>;
+	/** Hide inline submit controls when an enclosing surface supplies Apply. */
+	showSearchButton?: boolean;
 	class?: string;
 	usePopover?: boolean;
 };
 
 export function SearchControlPanel(props: SearchControlPanelProps) {
+	const currentState = () => props.state ?? searchState;
+	const updateState = props.setState ?? setSearchState;
+	const selectedSource = () =>
+		props.state?.selectedSource ??
+		props.selectedSource ??
+		searchState.selectedSource;
+	const handleSelectSource = (id: string) => {
+		if (props.setState) {
+			props.setState("selectedSource", id);
+			return;
+		}
+		props.onSelectSource?.(id);
+	};
+	const handleSetMode = (mode: "simple" | "pro" | "vector") => {
+		updateState(calculateNextModeState(currentState(), mode));
+	};
+	const clearSimilarityAnchor = () => {
+		if (!props.setState) {
+			clearVectorSearchAnchor();
+			return;
+		}
+		props.setState({
+			similarityAnchorMediaId: null,
+			offset: 0,
+			scrollY: 0,
+		});
+	};
+
 	return (
 		<div class={props.class}>
 			<Show when={props.context === "global" && props.sources}>
@@ -59,7 +94,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						)}
 						onChange={(value) => {
 							const selected = value as { id: string } | undefined;
-							props.onSelectSource?.(selected?.id ?? "");
+							handleSelectSource(selected?.id ?? "");
 						}}
 						options={[
 							{ id: "", name: "すべてのソース" },
@@ -70,7 +105,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						value={[
 							{ id: "", name: "すべてのソース" },
 							...(props.sources || []),
-						].find((source) => source.id === props.selectedSource)}
+						].find((source) => source.id === selectedSource())}
 					>
 						<SelectTrigger>
 							<SelectValue<{ name: string }>>
@@ -82,90 +117,99 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				</div>
 			</Show>
 
-			<div class="mb-4 flex items-center justify-between">
+			<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
 				<Label class="font-medium text-sm">検索モード</Label>
-				<div class="flex gap-2">
+				<div class="flex flex-wrap gap-2">
 					<Button
-						onClick={() => setSearchMode("simple")}
+						class="min-h-11 md:min-h-9"
+						onClick={() => handleSetMode("simple")}
 						size="sm"
-						variant={searchState.mode === "simple" ? "default" : "outline"}
+						variant={currentState().mode === "simple" ? "default" : "outline"}
 					>
 						簡易
 					</Button>
 					<Button
-						onClick={() => setSearchMode("pro")}
+						class="min-h-11 md:min-h-9"
+						onClick={() => handleSetMode("pro")}
 						size="sm"
-						variant={searchState.mode === "pro" ? "default" : "outline"}
+						variant={currentState().mode === "pro" ? "default" : "outline"}
 					>
 						詳細
 					</Button>
 					<Button
-						onClick={() => setSearchMode("vector")}
+						class="min-h-11 md:min-h-9"
+						onClick={() => handleSetMode("vector")}
 						size="sm"
-						variant={searchState.mode === "vector" ? "default" : "outline"}
+						variant={currentState().mode === "vector" ? "default" : "outline"}
 					>
 						ベクトル類似
 					</Button>
 				</div>
 			</div>
 
-			<Show when={searchState.mode !== "vector"}>
+			<Show when={currentState().mode !== "vector"}>
 				<SortControls
 					className="mb-4"
-					onSortByChange={(value) => setSearchState("sortBy", value)}
-					onSortOrderChange={(value) => setSearchState("sortOrder", value)}
-					sortBy={searchState.sortBy}
-					sortOrder={searchState.sortOrder}
+					onSortByChange={(value) => updateState("sortBy", value)}
+					onSortOrderChange={(value) => updateState("sortOrder", value)}
+					sortBy={currentState().sortBy}
+					sortOrder={currentState().sortOrder}
 				/>
 			</Show>
 
 			<div class="my-4 h-px bg-border" />
 
-			<div class={searchState.mode === "simple" ? "block" : "hidden"}>
+			<div class={currentState().mode === "simple" ? "block" : "hidden"}>
 				<SearchFilters
 					authors={props.filterData.authors}
 					characters={props.filterData.characters}
 					ips={props.filterData.ips}
-					onSearch={props.onSearch}
+					onSearch={
+						props.showSearchButton === false ? undefined : props.onSearch
+					}
 					projects={props.filterData.projects}
-					setState={setSearchState}
-					state={searchState}
+					setState={updateState}
+					state={currentState()}
 					tags={props.filterData.tags}
 					usePopover={props.usePopover}
 				/>
 			</div>
 
-			<div class={searchState.mode === "pro" ? "block" : "hidden"}>
+			<div class={currentState().mode === "pro" ? "block" : "hidden"}>
 				<div class="space-y-4">
 					<PresetManager
 						class="w-full flex-col items-stretch"
 						presetClient={props.presetClient}
+						setState={props.setState}
+						state={props.state}
 					/>
 					<ProSearchDialog
 						authors={props.filterData.authors}
 						characters={props.filterData.characters}
 						ips={props.filterData.ips}
-						onChange={(value) => setSearchState("advancedCondition", value)}
-						onSearch={props.onSearch}
+						onChange={(value) => updateState("advancedCondition", value)}
+						onSearch={
+							props.showSearchButton === false ? undefined : props.onSearch
+						}
 						projects={props.filterData.projects}
 						tags={props.filterData.tags}
-						value={searchState.advancedCondition || null}
+						value={currentState().advancedCondition || null}
 					/>
 				</div>
 			</div>
 
-			<div class={searchState.mode === "vector" ? "block" : "hidden"}>
+			<div class={currentState().mode === "vector" ? "block" : "hidden"}>
 				<div class="space-y-4">
 					<div class="space-y-2">
 						<Label>類似元メディア</Label>
 						<div class="rounded-md border p-3 text-sm">
-							{searchState.similarityAnchorMediaId ??
+							{currentState().similarityAnchorMediaId ??
 								"メディア個別画面の「Find Similar」から選択してください。"}
 						</div>
-						<Show when={searchState.similarityAnchorMediaId}>
+						<Show when={currentState().similarityAnchorMediaId}>
 							<Button
 								class="w-full"
-								onClick={clearVectorSearchAnchor}
+								onClick={clearSimilarityAnchor}
 								size="sm"
 								variant="outline"
 							>
@@ -178,10 +222,13 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						<div class="flex gap-2">
 							{([20, 50, 100] as const).map((value) => (
 								<Button
-									onClick={() => setSearchState("similarityTopK", value)}
+									class="min-h-11 md:min-h-9"
+									onClick={() => updateState("similarityTopK", value)}
 									size="sm"
 									variant={
-										searchState.similarityTopK === value ? "default" : "outline"
+										currentState().similarityTopK === value
+											? "default"
+											: "outline"
 									}
 								>
 									{value}
@@ -189,12 +236,14 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 							))}
 						</div>
 					</div>
-					<Button
-						disabled={!searchState.similarityAnchorMediaId}
-						onClick={props.onSearch}
-					>
-						類似メディアを検索
-					</Button>
+					<Show when={props.showSearchButton !== false}>
+						<Button
+							disabled={!currentState().similarityAnchorMediaId}
+							onClick={props.onSearch}
+						>
+							類似メディアを検索
+						</Button>
+					</Show>
 					<p class="text-muted-foreground text-xs">
 						CCIPによるキャラクター類似検索です。一般的な画像重複検索とは異なります。
 					</p>
