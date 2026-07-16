@@ -105,7 +105,14 @@ test("source media preserves the mobile filter draft and focus after an SSE refr
 	await fileNameInput.fill("e2e");
 	await fileNameInput.focus();
 	await expect(fileNameInput).toBeFocused();
-	const initialMediaCount = await page.locator("[data-media-id]").count();
+	const resultCount = page.locator("p").filter({
+		hasText: /^\d+ 件の結果$/,
+	});
+	await expect(resultCount).toBeVisible();
+	const initialMediaCount = Number.parseInt(
+		(await resultCount.textContent()) ?? "0",
+		10,
+	);
 
 	const syncedFileName = `e2e-source-filter-sse-${randomUUID()}.png`;
 	await copyFile(
@@ -129,7 +136,10 @@ test("source media preserves the mobile filter draft and focus after an SSE refr
 	await syncResponse;
 
 	await expect
-		.poll(() => page.locator("[data-media-id]").count(), { timeout: 30_000 })
+		.poll(
+			async () => Number.parseInt((await resultCount.textContent()) ?? "0", 10),
+			{ timeout: 30_000 },
+		)
 		.toBeGreaterThan(initialMediaCount);
 	await expect(filterDialog).toBeVisible();
 	await expect(fileNameInput).toHaveValue("e2e");

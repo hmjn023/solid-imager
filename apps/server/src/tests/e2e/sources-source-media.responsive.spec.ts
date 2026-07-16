@@ -18,6 +18,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 async function expectTouchTarget(locator: Locator): Promise<void> {
 	const box = await locator.boundingBox();
 	expect(box).not.toBeNull();
+	expect(box?.width ?? 0).toBeGreaterThanOrEqual(44);
 	expect(box?.height ?? 0).toBeGreaterThanOrEqual(44);
 }
 

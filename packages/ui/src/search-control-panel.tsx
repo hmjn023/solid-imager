@@ -188,7 +188,9 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						characters={props.filterData.characters}
 						ips={props.filterData.ips}
 						onChange={(value) => updateState("advancedCondition", value)}
-						onSearch={props.onSearch}
+						onSearch={
+							props.showSearchButton === false ? undefined : props.onSearch
+						}
 						projects={props.filterData.projects}
 						tags={props.filterData.tags}
 						value={currentState().advancedCondition || null}

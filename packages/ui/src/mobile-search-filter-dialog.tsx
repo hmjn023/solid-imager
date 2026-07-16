@@ -84,17 +84,15 @@ function getActiveConditionLabels(
 	}
 
 	if (state.mode === "pro") {
-		labels.push(
-			state.advancedCondition ? "詳細条件を設定済み" : "詳細条件は未設定",
-		);
+		if (state.advancedCondition) {
+			labels.push("詳細条件を設定済み");
+		}
 		return labels;
 	}
 
-	labels.push(
-		state.similarityAnchorMediaId
-			? "類似元メディアを設定済み"
-			: "類似元メディアは未設定",
-	);
+	if (state.similarityAnchorMediaId) {
+		labels.push("類似元メディアを設定済み");
+	}
 	return labels;
 }
 
@@ -139,22 +137,29 @@ function CurrentSearchConditions(props: {
 }
 
 export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
+	const currentSearchState = () =>
+		copySearchState({
+			...searchState,
+			selectedSource: props.selectedSource ?? searchState.selectedSource,
+		});
 	const [draft, setDraft] = createStore<SearchState>(
-		copySearchState(searchState),
+		currentSearchState(),
 	);
 	let wasOpen = false;
 
 	createEffect(() => {
 		if (props.open && !wasOpen) {
-			setDraft(copySearchState(searchState));
+			setDraft(currentSearchState());
 		}
 		wasOpen = props.open;
 	});
 
 	const handleApply = () => {
-		setSearchState(copySearchState(draft));
-		props.onSearch();
+		const nextState = copySearchState(draft);
+		setSearchState(nextState);
+		props.onSelectSource?.(nextState.selectedSource);
 		props.onOpenChange(false);
+		props.onSearch();
 	};
 	const handleClear = () => {
 		setDraft(createClearedSearchState(draft));

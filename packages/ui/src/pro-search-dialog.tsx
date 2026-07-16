@@ -24,7 +24,7 @@ type Props = {
 	authors?: Author[];
 	value: SearchGroup | null;
 	onChange: (value: SearchGroup | null) => void;
-	onSearch: () => void;
+	onSearch?: () => void;
 };
 
 export function ProSearchDialog(props: Props) {
@@ -53,11 +53,11 @@ export function ProSearchDialog(props: Props) {
 				<DialogFooter>
 					<Button
 						onClick={() => {
-							props.onSearch();
+							props.onSearch?.();
 							setOpen(false);
 						}}
 					>
-						検索
+						{props.onSearch ? "検索" : "完了"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
