@@ -63,7 +63,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 			onOpenChange={(open) => !open && props.onClose()}
 			open={props.isOpen}
 		>
-			<DialogContent class="max-h-[90vh] overflow-y-auto sm:max-w-[900px]">
+			<DialogContent class="sm:max-w-[900px]">
 				<DialogHeader>
 					<DialogTitle class="flex items-center gap-2">
 						<span class="i-lucide-scan text-indigo-600" />

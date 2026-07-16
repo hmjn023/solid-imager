@@ -29,7 +29,7 @@ const ComboboxItem = <T extends ValidComponent = "li">(
 	return (
 		<ComboboxPrimitive.Item
 			class={cn(
-				"relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50",
+				"relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50",
 				local.class,
 			)}
 			{...others}
@@ -147,7 +147,10 @@ const ComboboxTrigger = <T extends ValidComponent = "button">(
 	]);
 	return (
 		<ComboboxPrimitive.Trigger
-			class={cn("size-4 opacity-50", local.class)}
+			class={cn(
+				"flex min-h-11 min-w-11 items-center justify-center opacity-50",
+				local.class,
+			)}
 			{...others}
 		>
 			<ComboboxPrimitive.Icon>
@@ -189,7 +192,7 @@ const ComboboxContent = <T extends ValidComponent = "div">(
 		<ComboboxPrimitive.Portal>
 			<ComboboxPrimitive.Content
 				class={cn(
-					"fade-in-80 relative z-50 min-w-32 animate-in overflow-y-auto overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+					"fade-in-80 relative z-50 max-h-[min(24rem,calc(100dvh-2rem))] min-w-32 max-w-[calc(100dvw-2rem)] animate-in overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
 					local.class,
 				)}
 				{...others}
@@ -200,7 +203,7 @@ const ComboboxContent = <T extends ValidComponent = "div">(
 	);
 };
 
-const ITEM_HEIGHT_PX = 32;
+const ITEM_HEIGHT_PX = 44;
 const VIRTUAL_OVERSCAN = 5;
 
 const VirtualComboboxContent = <T extends ValidComponent = "div">(
@@ -220,7 +223,7 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 		<ComboboxPrimitive.Portal>
 			<ComboboxPrimitive.Content
 				class={cn(
-					"fade-in-80 relative z-50 min-w-32 animate-in overflow-x-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+					"fade-in-80 relative z-50 max-h-[min(24rem,calc(100dvh-2rem))] min-w-32 max-w-[calc(100dvw-2rem)] animate-in overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
 					local.class,
 				)}
 				{...others}
@@ -276,7 +279,7 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 											>
 												<ComboboxPrimitive.Item
 													item={item}
-													class="relative flex cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50"
+													class="relative flex min-h-11 cursor-default select-none items-center justify-between rounded-sm px-2 py-1.5 text-sm outline-none data-[disabled]:pointer-events-none data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground data-[disabled]:opacity-50"
 												>
 													<ComboboxPrimitive.ItemLabel>
 														{item.textValue}

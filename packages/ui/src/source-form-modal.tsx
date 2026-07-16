@@ -178,7 +178,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 
 	return (
 		<Dialog onOpenChange={() => props.onClose()} open={props.isOpen}>
-			<DialogContent class="max-h-[80vh] overflow-y-auto sm:max-w-[500px]">
+			<DialogContent class="sm:max-w-[500px]">
 				<DialogHeader>
 					<DialogTitle>
 						{props.editingSource ? "Edit Source" : "Add New Source"}
@@ -273,7 +273,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						</Show>
 
 						<Show when={formData.type === "sftp"}>
-							<div class="grid grid-cols-2 gap-4">
+							<div class="grid gap-4 sm:grid-cols-2">
 								<div class="space-y-2">
 									<Label for="host">Host</Label>
 									<Input
@@ -364,7 +364,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						</Show>
 
 						<Show when={formData.type === "s3"}>
-							<div class="grid grid-cols-2 gap-4">
+							<div class="grid gap-4 sm:grid-cols-2">
 								<div class="space-y-2">
 									<Label for="bucket">Bucket</Label>
 									<Input
