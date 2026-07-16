@@ -58,13 +58,9 @@ export function SourceMediaPage() {
 	const handleToggleSelect = (mediaId: string) => {
 		setIsBulkSelectMode(true);
 		setSelectedMediaIds((prev) => {
-			const next = prev.includes(mediaId)
+			return prev.includes(mediaId)
 				? prev.filter((id) => id !== mediaId)
 				: [...prev, mediaId];
-			if (next.length === 0) {
-				setIsBulkSelectMode(false);
-			}
-			return next;
 		});
 	};
 
@@ -133,6 +129,7 @@ export function SourceMediaPage() {
 				onBulkAction={() => setIsBulkActionOpen(true)}
 				onClearSelection={handleCancelSelect}
 				selectedCount={() => selectedMediaIds().length}
+				onEnterBulkSelectMode={() => setIsBulkSelectMode(true)}
 				renderItem={(media, options) => (
 					<MediaGridItem
 						media={media}
@@ -148,15 +145,26 @@ export function SourceMediaPage() {
 			/>
 
 			{/* 一括選択ツールバー */}
-			<Show when={isBulkSelectMode() && selectedMediaIds().length > 0}>
-				<div class="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-4 border border-primary/20 bg-background/95 px-6 py-3 shadow-lg backdrop-blur rounded-full">
-					<span class="font-medium text-sm">
+			<Show when={isBulkSelectMode()}>
+				<div
+					class="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-background/95 px-3 py-3 shadow-lg backdrop-blur sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-4 sm:rounded-full sm:px-6"
+					data-testid="bulk-actions-bar"
+				>
+					<span class="w-full text-center font-medium text-sm sm:w-auto">
 						{selectedMediaIds().length} 件選択中
 					</span>
-					<Button onClick={() => setIsBulkActionOpen(true)} size="sm">
+					<Button
+						class="flex-1 sm:flex-none"
+						disabled={selectedMediaIds().length === 0}
+						onClick={() => setIsBulkActionOpen(true)}
+					>
 						一括操作を実行
 					</Button>
-					<Button onClick={handleCancelSelect} variant="outline" size="sm">
+					<Button
+						class="flex-1 sm:flex-none"
+						onClick={handleCancelSelect}
+						variant="outline"
+					>
 						解除
 					</Button>
 				</div>

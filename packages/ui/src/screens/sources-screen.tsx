@@ -43,18 +43,24 @@ export function SourcesScreen(props: SourcesScreenProps) {
 	};
 
 	return (
-		<div class="container mx-auto p-6">
-			<div class="mb-6 flex flex-wrap items-center justify-between gap-4">
-				<h1 class="font-bold text-3xl">Media Sources</h1>
-				<div class="flex flex-wrap items-center gap-2">
+		<div class="container mx-auto p-4 sm:p-6">
+			<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+				<h1 class="font-bold text-2xl sm:text-3xl">Media Sources</h1>
+				<div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
 					<Button
+						class="w-full sm:w-auto"
 						disabled={page().isSyncing() || !props.mediaSources()?.length}
 						onClick={() => page().handleSyncAll(props.mediaSources())}
 						variant="outline"
 					>
 						{page().isSyncing() ? "Syncing..." : "Sync All"}
 					</Button>
-					<Button onClick={() => page().handleAddSource()}>Add Source</Button>
+					<Button
+						class="w-full sm:w-auto"
+						onClick={() => page().handleAddSource()}
+					>
+						Add Source
+					</Button>
 				</div>
 			</div>
 
@@ -96,7 +102,7 @@ export function SourcesScreen(props: SourcesScreenProps) {
 					</EmptyState>
 				</Match>
 				<Match when={props.state().phase === "data"}>
-					<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+					<div class="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
 						<For each={props.mediaSources()}>
 							{(source) => props.renderSourceCard(source)}
 						</For>

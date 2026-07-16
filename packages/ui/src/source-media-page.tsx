@@ -58,6 +58,7 @@ export type SourceMediaPageProps = {
 	onBulkAction?: () => void;
 	onClearSelection?: () => void;
 	selectedCount?: () => number;
+	onEnterBulkSelectMode?: () => void;
 };
 
 export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
@@ -119,13 +120,11 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		isSearchStateRestored,
 	});
 
-	const renderActions: SourceMediaScreenProps["renderActions"] = () => (
+	const renderActions: SourceMediaScreenProps["renderActions"] = (actions) => (
 		<MediaListActions
-			filterData={page.filterData()}
 			onDumpDownload={page.handleDumpDownload}
 			onLanceDBDump={page.handleLanceDBDump}
-			onSearch={page.handleSearch}
-			presetClient={props.presetClient}
+			onOpenMobileFilters={actions.onOpenMobileFilters}
 		/>
 	);
 
@@ -153,6 +152,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			onBulkAction={props.onBulkAction}
 			onClearSelection={props.onClearSelection}
 			selectedCount={props.selectedCount}
+			onEnterBulkSelectMode={props.onEnterBulkSelectMode}
 		/>
 	);
 }
