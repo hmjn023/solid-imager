@@ -53,7 +53,7 @@ export function MediaViewer(props: MediaViewerProps) {
 	});
 
 	return (
-		<div class="flex h-full w-full items-center justify-center bg-black/5">
+		<div class="flex h-full min-h-0 min-w-0 w-full items-center justify-center overflow-hidden rounded-lg bg-black/5 p-2 sm:p-4">
 			<Switch>
 				<Match when={props.source.type === "video"}>
 					<Show
@@ -65,7 +65,11 @@ export function MediaViewer(props: MediaViewerProps) {
 						when={mediaUrl()}
 					>
 						{(url) => (
-							<video class="max-h-full max-w-full" controls src={url()}>
+							<video
+								class="max-h-full max-w-full rounded-md"
+								controls
+								src={url()}
+							>
 								<track kind="captions" />
 							</video>
 						)}
@@ -81,7 +85,7 @@ export function MediaViewer(props: MediaViewerProps) {
 						when={mediaUrl()}
 					>
 						{(url) => (
-							<audio controls src={url()}>
+							<audio class="max-w-full" controls src={url()}>
 								<track kind="captions" />
 							</audio>
 						)}
@@ -107,7 +111,7 @@ export function MediaViewer(props: MediaViewerProps) {
 						{(url) => (
 							<img
 								alt={props.fileName}
-								class="max-h-full max-w-full object-contain"
+								class="max-h-full max-w-full rounded-md object-contain"
 								height={props.height}
 								src={url()}
 								width={props.width}

@@ -20,7 +20,7 @@ export function ConfigStateScreen(props: ConfigStateScreenProps) {
 	const hasData = () => props.data !== undefined;
 
 	return (
-		<div class={cn("container mx-auto max-w-4xl p-6", props.class)}>
+		<div class={cn("container mx-auto max-w-4xl p-3 sm:p-6", props.class)}>
 			<Show when={hasData()}>
 				<QueryStatus
 					class="mb-2"
