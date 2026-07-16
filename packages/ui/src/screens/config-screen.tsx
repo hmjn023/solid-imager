@@ -1,8 +1,14 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { createForm } from "@tanstack/solid-form";
-import { createSignal, Show } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
+import type { z } from "zod";
 import { Button } from "../button";
+import {
+	FormError,
+	FormFieldMessage,
+	getFormErrorMessage,
+} from "../form-message";
 import { Input } from "../input";
 import { Label } from "../label";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
@@ -10,15 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
 
-type DeepFormConfig<T> = T extends number
-	? number | undefined
-	: T extends Array<infer U>
-		? Array<DeepFormConfig<U>>
-		: T extends object
-			? { [K in keyof T]: DeepFormConfig<T[K]> }
-			: T;
+type AppConfigFormValues = z.input<typeof AppConfigSchema>;
 
-type FormConfig = DeepFormConfig<AppConfig>;
+function toFormValues(data: AppConfig): AppConfigFormValues {
+	return data;
+}
 
 function parseNumberInput(val: string): number | undefined {
 	const n = Number(val);
@@ -32,36 +34,60 @@ export type ConfigScreenProps = {
 
 export function ConfigScreen(props: ConfigScreenProps) {
 	const [activeTab, setActiveTab] = createSignal("jobs");
+	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const form = createForm(() => ({
-		defaultValues: props.data as unknown as FormConfig,
+		defaultValues: toFormValues(props.data),
 		validators: {
-			onChange: AppConfigSchema as never,
+			onChange: AppConfigSchema,
 		},
 		onSubmit: async ({ value }) => {
+			setSubmitError(null);
 			try {
-				await props.onSubmit(value as Partial<AppConfig>);
+				const parsedValue = AppConfigSchema.parse(value);
+				await props.onSubmit(parsedValue);
+				form.reset(parsedValue);
 				props.onSubmitSuccess?.();
 				toast.success("Configuration saved successfully");
-			} catch (_error) {
+			} catch (error) {
+				setSubmitError(
+					getFormErrorMessage(error) ?? "Failed to save configuration",
+				);
 				toast.error("Failed to save configuration");
 			}
 		},
 	}));
 
+	createEffect(() => {
+		const data = props.data;
+		if (!form.state.isDirty) {
+			form.reset(toFormValues(data));
+		}
+	});
+
 	return (
 		<div class="min-w-0 space-y-6 [&_input]:scroll-mt-28 [&_input]:text-base [&_select]:scroll-mt-28 [&_select]:text-base [&_textarea]:scroll-mt-28 [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
 			<div class="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-3 flex flex-col gap-3 border-b bg-background px-3 py-3 sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
 				<h1 class="font-bold text-2xl sm:text-3xl">Settings</h1>
-				<Button
-					class="w-full sm:w-auto"
-					disabled={form.state.isSubmitting}
-					onClick={() => {
-						void form.handleSubmit();
-					}}
+				<form.Subscribe
+					selector={(state) => ({
+						canSubmit: state.canSubmit,
+						isSubmitting: state.isSubmitting,
+					})}
 				>
-					{form.state.isSubmitting ? "Saving..." : "Save Changes"}
-				</Button>
+					{(state) => (
+						<Button
+							class="w-full sm:w-auto"
+							disabled={!state().canSubmit || state().isSubmitting}
+							onClick={() => {
+								void form.handleSubmit();
+							}}
+						>
+							{state().isSubmitting ? "Saving..." : "Save Changes"}
+						</Button>
+					)}
+				</form.Subscribe>
 			</div>
+			<FormError message={submitError()} />
 
 			<Tabs class="min-w-0 w-full" onChange={setActiveTab} value={activeTab()}>
 				<TabsList
@@ -102,6 +128,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<div class="space-y-2">
 										<Label for={field().name}>Concurrency</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
@@ -110,11 +138,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={field().state.value ?? ""}
 										/>
-										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
-										</Show>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 										<div class="text-muted-foreground text-xs">
 											Number of concurrent downloads/processings.
 										</div>
@@ -127,6 +156,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<div class="space-y-2">
 										<Label for={field().name}>AI Concurrency</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
@@ -135,11 +166,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={field().state.value ?? ""}
 										/>
-										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
-										</Show>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 										<div class="text-muted-foreground text-xs">
 											Number of concurrent AI tagging jobs.
 										</div>
@@ -152,6 +184,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<div class="space-y-2">
 										<Label for={field().name}>Poll Interval (ms)</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
@@ -160,11 +194,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={field().state.value ?? ""}
 										/>
-										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
-										</Show>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 									</div>
 								)}
 							</form.Field>
@@ -213,6 +248,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											Remote AI Server URL (oRPC)
 										</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => field().handleChange(e.target.value)}
@@ -281,11 +318,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={field().state.value ?? ""}
 										/>
-										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
-										</Show>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 									</div>
 								)}
 							</form.Field>

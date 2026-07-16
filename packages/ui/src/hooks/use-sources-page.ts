@@ -99,6 +99,7 @@ export function useSourcesPage(
 			toast.error(
 				`Failed to save source: ${error instanceof Error ? error.message : String(error)}`,
 			);
+			throw error;
 		}
 	};
 
