@@ -203,7 +203,7 @@ const ComboboxContent = <T extends ValidComponent = "div">(
 	);
 };
 
-const ITEM_HEIGHT_PX = 32;
+const ITEM_HEIGHT_PX = 44;
 const VIRTUAL_OVERSCAN = 5;
 
 const VirtualComboboxContent = <T extends ValidComponent = "div">(
