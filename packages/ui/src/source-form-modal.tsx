@@ -229,7 +229,9 @@ export function SourceFormModal(props: SourceFormModalProps) {
 	};
 	const form = createForm(() => ({
 		defaultValues: defaultValues(),
-		validators: { onSubmit: createSourceFormSchema(!props.editingSource) },
+		validators: {
+			onSubmit: createSourceFormSchema(props.editingSource?.type !== "s3"),
+		},
 		onSubmit: async ({ value }) => {
 			form.setErrorMap({ onSubmit: undefined });
 			try {
@@ -242,10 +244,13 @@ export function SourceFormModal(props: SourceFormModalProps) {
 		},
 	}));
 
+	let wasOpen = false;
 	createEffect(() => {
-		if (props.isOpen) {
+		const isOpen = props.isOpen;
+		if (isOpen && !wasOpen) {
 			form.reset(defaultValues());
 		}
+		wasOpen = isOpen;
 	});
 
 	const selectOptions = () =>
@@ -395,6 +400,8 @@ export function SourceFormModal(props: SourceFormModalProps) {
 												<div class="space-y-2">
 													<Label for={field().name}>Port</Label>
 													<Input
+														aria-describedby={`${field().name}-error`}
+														aria-invalid={field().state.meta.errors.length > 0}
 														id={field().name}
 														min="1"
 														onBlur={field().handleBlur}

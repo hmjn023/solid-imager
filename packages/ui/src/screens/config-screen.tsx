@@ -256,6 +256,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											placeholder="http://power-machine:3000"
 											value={field().state.value ?? ""}
 										/>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 										<div class="text-muted-foreground text-xs">
 											外部の solid-imager サーバーの oRPC
 											エンドポイントを指定。AI
@@ -308,6 +314,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<div class="space-y-2">
 										<Label for={field().name}>リクエスト間隔 (ms)</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											max="60000"
 											min="0"

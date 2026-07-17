@@ -53,6 +53,22 @@ describe("source form schema", () => {
 			true,
 		);
 	});
+
+	test("validates the port only for SFTP sources", () => {
+		const localValues = { ...validSourceValues, port: Number.NaN };
+		expect(createSourceFormSchema(true).safeParse(localValues).success).toBe(
+			true,
+		);
+		expect(
+			createSourceFormSchema(true).safeParse({
+				...localValues,
+				type: "sftp",
+				host: "example.com",
+				username: "user",
+				remotePath: "/photos",
+			}).success,
+		).toBe(false);
+	});
 });
 
 describe("upload form schema", () => {

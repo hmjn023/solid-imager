@@ -8,7 +8,7 @@ export const createSourceFormSchema = (requireSecrets: boolean) =>
 			type: z.enum(["local", "sftp", "s3"]),
 			path: z.string(),
 			host: z.string(),
-			port: z.number().int().positive("Port must be positive"),
+			port: z.number().or(z.nan()),
 			username: z.string(),
 			password: z.string(),
 			remotePath: z.string(),
@@ -39,6 +39,13 @@ export const createSourceFormSchema = (requireSecrets: boolean) =>
 			if (value.type === "local") {
 				requireField("path", "Path is required");
 			} else if (value.type === "sftp") {
+				if (!Number.isInteger(value.port) || value.port <= 0) {
+					context.addIssue({
+						code: "custom",
+						message: "Port must be positive",
+						path: ["port"],
+					});
+				}
 				requireField("host", "Host is required");
 				requireField("username", "Username is required");
 				requireField("remotePath", "Remote path is required");

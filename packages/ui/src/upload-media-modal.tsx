@@ -147,9 +147,11 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	}));
 
 	const setFiles = (files: File[]) => {
+		const previousAutoName = selectedFiles()[0]?.name;
 		setSelectedFiles(files);
 		props.onFilesSelected(files);
-		if (files[0] && !form.getFieldValue("filename")) {
+		const filename = form.getFieldValue("filename");
+		if (files[0] && (!filename || filename === previousAutoName)) {
 			form.setFieldValue("filename", files[0].name);
 		}
 	};
@@ -444,6 +446,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 														<div class="flex items-center gap-2">
 															<input
 																checked={field().state.value === option.value}
+																name={field().name}
 																onChange={() =>
 																	field().handleChange(option.value)
 																}
