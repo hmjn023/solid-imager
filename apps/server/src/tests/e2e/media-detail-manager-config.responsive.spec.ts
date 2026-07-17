@@ -174,6 +174,17 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		page.getByRole("heading", { name: "Settings", exact: true }),
 	).toBeVisible();
 	await waitForAppHydration(page);
+	const saveButton = page.getByRole("button", {
+		name: "Save Changes",
+		exact: true,
+	});
+	const concurrencyInput = page.getByLabel("Concurrency", { exact: true });
+	await concurrencyInput.fill("0");
+	await expect(concurrencyInput).toHaveAttribute("aria-invalid", "true");
+	await expect(saveButton).toBeDisabled();
+	await concurrencyInput.fill("3");
+	await expect(concurrencyInput).toHaveAttribute("aria-invalid", "false");
+	await expect(saveButton).toBeEnabled();
 
 	for (const category of [
 		{ tab: "Jobs", heading: "Job Processing" },

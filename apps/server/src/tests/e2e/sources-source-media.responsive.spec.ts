@@ -68,9 +68,30 @@ test("sources actions stay operable without horizontal overflow", async ({
 	await expectTouchTarget(sourceCard.getByTestId("delete-source-btn"));
 
 	await addSourceButton.click();
-	await expect(page.getByRole("dialog")).toBeVisible();
+	const addSourceDialog = page.getByRole("dialog");
+	await expect(addSourceDialog).toBeVisible();
+	await addSourceDialog.getByLabel("Name", { exact: true }).fill("temporary");
+	await addSourceDialog
+		.getByLabel("Directory Path", { exact: true })
+		.fill("/tmp/temporary");
 	await page.keyboard.press("Escape");
 	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect(addSourceButton).toBeFocused();
+
+	await addSourceButton.click();
+	await expect(addSourceDialog.getByLabel("Name", { exact: true })).toHaveValue(
+		"",
+	);
+	await expect(
+		addSourceDialog.getByLabel("Directory Path", { exact: true }),
+	).toHaveValue("");
+	await addSourceDialog
+		.getByRole("button", { name: "Add Source", exact: true })
+		.click();
+	await expect(addSourceDialog.getByText("Name is required")).toBeVisible();
+	await expect(addSourceDialog.getByText("Path is required")).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(addSourceDialog).toBeHidden();
 
 	await sourceCard.getByTestId("edit-source-btn").click();
 	await expect(page.getByRole("dialog")).toBeVisible();
@@ -102,6 +123,30 @@ test("source media exposes mobile filters and touch selection", async ({
 	const addMediaButton = page.getByRole("button", { name: "Add media" });
 	await expectTouchTarget(addMediaButton);
 	await expectInsideViewport(page, addMediaButton);
+	await addMediaButton.click();
+	const uploadDialog = page.getByRole("dialog");
+	await expect(
+		uploadDialog.getByRole("heading", {
+			name: "メディアをアップロード",
+			exact: true,
+		}),
+	).toBeVisible();
+	await uploadDialog
+		.getByRole("button", { name: "アップロード", exact: true })
+		.click();
+	await expect(
+		uploadDialog.getByText("アップロードするファイルがありません。"),
+	).toBeVisible();
+	await uploadDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
+	await expect(uploadDialog).toBeHidden();
+	await addMediaButton.click();
+	await expect(
+		uploadDialog.getByText("アップロードするファイルがありません。"),
+	).toHaveCount(0);
+	await page.keyboard.press("Escape");
+	await expect(uploadDialog).toBeHidden();
 
 	const selectModeButton = page.getByRole("button", {
 		name: "複数選択",
