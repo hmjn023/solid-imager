@@ -21,6 +21,22 @@ describe("toQueryUiState", () => {
 		).toMatchObject({ phase: "empty", fetchState: "idle" });
 	});
 
+	it("normalizes a successful query's null error", () => {
+		expect(
+			toQueryUiState({
+				data: ["source"],
+				error: null,
+				status: "success",
+				fetchStatus: "idle",
+			}),
+		).toEqual({
+			phase: "data",
+			fetchState: "idle",
+			data: ["source"],
+			error: undefined,
+		});
+	});
+
 	it("maps an initial error to error", () => {
 		const error = new Error("failed");
 		expect(

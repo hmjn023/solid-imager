@@ -26,6 +26,7 @@ export function toQueryUiState<T>(
 	options: ToQueryUiStateOptions<T> = {},
 ): QueryUiState<T> {
 	const hasData = query.data !== undefined;
+	const error = query.error ?? undefined;
 	const fetchState: QueryUiFetchState =
 		query.fetchStatus === "paused"
 			? "paused"
@@ -38,7 +39,7 @@ export function toQueryUiState<T>(
 			phase: options.isEmpty?.(query.data) ? "empty" : "data",
 			fetchState,
 			data: query.data,
-			error: query.error,
+			error,
 		};
 	}
 
@@ -48,6 +49,6 @@ export function toQueryUiState<T>(
 		phase: offline ? "offline" : query.status === "error" ? "error" : "pending",
 		fetchState,
 		data: undefined,
-		error: query.error,
+		error,
 	};
 }
