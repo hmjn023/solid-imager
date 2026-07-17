@@ -5,7 +5,7 @@ import type {
 	ThumbnailGeneratedEvent,
 } from "@solid-imager/core/domain/sources/events";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { type JSX, Match, Switch } from "solid-js";
+import { type Accessor, type JSX, Match, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import {
 	type MediaSourceEventTransport,
@@ -15,8 +15,8 @@ import { toQueryUiState } from "../query-state";
 import { LoadingRegion, MediaDetailSkeleton } from "../skeleton";
 
 export type MediaDetailScreenProps = {
-	mediaSourceId: string;
-	mediaId: string;
+	mediaSourceId: Accessor<string>;
+	mediaId: Accessor<string>;
 	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
 	mediaDetailsQueryOptions: (mediaSourceId: string, mediaId: string) => any;
 	sourceRootPath?: string;
@@ -38,7 +38,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	const queryClient = useQueryClient();
 
 	const mediaDetails = createQuery<MediaDetails>(() =>
-		props.mediaDetailsQueryOptions(props.mediaSourceId, props.mediaId),
+		props.mediaDetailsQueryOptions(props.mediaSourceId(), props.mediaId()),
 	);
 	const state = () => toQueryUiState(mediaDetails);
 	const errorMessage = () => {
@@ -51,8 +51,8 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	const handleUpdate = async () => {
 		await queryClient.invalidateQueries({
 			queryKey: props.mediaDetailsQueryOptions(
-				props.mediaSourceId,
-				props.mediaId,
+				props.mediaSourceId(),
+				props.mediaId(),
 			).queryKey,
 		});
 		if (props.onAdditionalInvalidate) {
@@ -64,7 +64,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 		transport: props.transport,
 		onMediaDeleted: (data: MediaDeletedEvent) => {
 			if (
-				data.mediaId === props.mediaId ||
+				data.mediaId === props.mediaId() ||
 				data.filePath === mediaDetails.data?.filePath
 			) {
 				void handleUpdate();
@@ -72,14 +72,14 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 		},
 		onMediaChanged: (data: MediaChangedEvent) => {
 			if (
-				data.mediaId === props.mediaId ||
+				data.mediaId === props.mediaId() ||
 				data.filePath === mediaDetails.data?.filePath
 			) {
 				void handleUpdate();
 			}
 		},
 		onThumbnailGenerated: (data: ThumbnailGeneratedEvent) => {
-			if (data.mediaId === props.mediaId) {
+			if (data.mediaId === props.mediaId()) {
 				void handleUpdate();
 			}
 		},
@@ -94,22 +94,24 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 				updatingLabel="メディア情報を更新中..."
 			/>
 			<Switch>
-				<Match when={state().data}>
-					{(details) => (
-						<div class="flex flex-col gap-4 lg:h-[calc(100dvh-5rem)] lg:flex-row">
-							<div class="aspect-[4/3] min-h-64 min-w-0 overflow-hidden rounded-lg lg:aspect-auto lg:min-h-0 lg:flex-1">
-								{props.renderMediaViewer(details(), props.sourceRootPath)}
+				<Match when={state().phase === "data"}>
+					<Show keyed when={state().data}>
+						{(details) => (
+							<div class="flex flex-col gap-4 lg:h-[calc(100dvh-5rem)] lg:flex-row">
+								<div class="aspect-[4/3] min-h-64 min-w-0 overflow-hidden rounded-lg lg:aspect-auto lg:min-h-0 lg:flex-1">
+									{props.renderMediaViewer(details, props.sourceRootPath)}
+								</div>
+								<div class="min-w-0 shrink-0 lg:w-96 lg:max-w-[40%]">
+									{props.renderMediaSidebar(
+										details,
+										mediaDetails.isRefetching,
+										handleUpdate,
+										props.sourceRootPath,
+									)}
+								</div>
 							</div>
-							<div class="min-w-0 shrink-0 lg:w-96 lg:max-w-[40%]">
-								{props.renderMediaSidebar(
-									details(),
-									mediaDetails.isRefetching,
-									handleUpdate,
-									props.sourceRootPath,
-								)}
-							</div>
-						</div>
-					)}
+						)}
+					</Show>
 				</Match>
 				<Match when={state().phase === "offline"}>
 					<OfflineState
