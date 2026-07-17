@@ -1,7 +1,11 @@
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
-import { ClientOnly, createFileRoute, useParams } from "@tanstack/solid-router";
-import { createSignal, onMount, Show } from "solid-js";
+import {
+	ClientOnly,
+	createFileRoute,
+	useRouterState,
+} from "@tanstack/solid-router";
+import { type Accessor, createSignal, onMount, Show } from "solid-js";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
@@ -27,6 +31,10 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 			context.queryClient.prefetchQuery(allIpsQueryOptions()),
 			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
 		]);
+		return {
+			mediaId: params.mediaId,
+			mediaSourceId: params.mediaSourceId,
+		};
 	},
 	pendingComponent: MediaRouteFallback,
 	pendingMinMs: 0,
@@ -59,17 +67,25 @@ function MediaRouteFallback() {
 }
 
 function MediaRouteContent() {
-	const params = useParams({ from: "/sources/$mediaSourceId/$mediaId/" });
-	const mediaSourceId = () => params().mediaSourceId;
-	const mediaId = () => params().mediaId;
+	const routeData = Route.useLoaderData();
+	const currentParams = useRouterState({
+		select: (state) =>
+			state.matches.find((match) => match.routeId === Route.id)?.params,
+	});
+	const mediaSourceId = () =>
+		currentParams()?.mediaSourceId ?? routeData().mediaSourceId;
+	const mediaId = () => currentParams()?.mediaId ?? routeData().mediaId;
 	return (
 		<ClientOnly fallback={<MediaRouteFallback />}>
-			<MediaContent mediaId={mediaId()} mediaSourceId={mediaSourceId()} />
+			<MediaContent mediaId={mediaId} mediaSourceId={mediaSourceId} />
 		</ClientOnly>
 	);
 }
 
-function MediaContent(props: { mediaId: string; mediaSourceId: string }) {
+function MediaContent(props: {
+	mediaId: Accessor<string>;
+	mediaSourceId: Accessor<string>;
+}) {
 	return (
 		<MediaDetailScreen
 			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
@@ -83,7 +99,7 @@ function MediaContent(props: { mediaId: string; mediaSourceId: string }) {
 				/>
 			)}
 			renderMediaViewer={(media) => <MediaViewer media={media} />}
-			transport={createServerTransport(() => props.mediaSourceId)}
+			transport={createServerTransport(props.mediaSourceId)}
 		/>
 	);
 }

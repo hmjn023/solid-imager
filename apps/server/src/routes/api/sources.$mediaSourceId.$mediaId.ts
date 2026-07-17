@@ -49,7 +49,10 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 
 				const contentType = getContentTypeFromExtension(media.fileName);
 				return new Response(file, {
-					headers: { "Content-Type": contentType },
+					headers: {
+						"Cache-Control": "no-store",
+						"Content-Type": contentType,
+					},
 				});
 			},
 		},

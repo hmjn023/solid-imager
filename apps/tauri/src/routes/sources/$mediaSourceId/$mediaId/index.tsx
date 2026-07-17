@@ -3,7 +3,7 @@ import { projectsQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { useQueryClient } from "@tanstack/solid-query";
-import { createFileRoute, useParams } from "@tanstack/solid-router";
+import { createFileRoute, useRouterState } from "@tanstack/solid-router";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
@@ -15,6 +15,10 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 		void context.queryClient.prefetchQuery(
 			mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
 		);
+		return {
+			mediaId: params.mediaId,
+			mediaSourceId: params.mediaSourceId,
+		};
 	},
 	pendingComponent: () => (
 		<RouteDataPendingScreen
@@ -28,18 +32,23 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 });
 
 function MediaDetailRoute() {
-	const params = useParams({ from: "/sources/$mediaSourceId/$mediaId/" });
+	const routeData = Route.useLoaderData();
+	const currentParams = useRouterState({
+		select: (state) =>
+			state.matches.find((match) => match.routeId === Route.id)?.params,
+	});
 	const queryClient = useQueryClient();
-	const mediaSourceId = () => params().mediaSourceId;
-	const mediaId = () => params().mediaId;
+	const mediaSourceId = () =>
+		currentParams()?.mediaSourceId ?? routeData().mediaSourceId;
+	const mediaId = () => currentParams()?.mediaId ?? routeData().mediaId;
 
 	const sourceRootPathResolver = useSourceRootPath(mediaSourcesQueryOptions);
 
 	return (
 		<MediaDetailScreen
 			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
-			mediaId={mediaId()}
-			mediaSourceId={mediaSourceId()}
+			mediaId={mediaId}
+			mediaSourceId={mediaSourceId}
 			onAdditionalInvalidate={async () => {
 				await queryClient.invalidateQueries({
 					queryKey: projectsQueryKeys.forMedia(mediaId()),

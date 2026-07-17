@@ -27,6 +27,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		const source = props.source;
 		let currentUrl: string | null = null;
 		let disposed = false;
+		setMediaUrl(null);
 
 		void (async () => {
 			try {
