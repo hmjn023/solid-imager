@@ -276,6 +276,7 @@ describe("buildSearchResultsQueryOptions", () => {
 			throw new Error("getNextPageParam must be defined");
 		}
 		expect(getNextPageParam(response, [response], 0, [0])).toBeUndefined();
+		expect(options.placeholderData).toBeUndefined();
 	});
 
 	it("returns an empty result when vector search requirements are absent", async () => {
