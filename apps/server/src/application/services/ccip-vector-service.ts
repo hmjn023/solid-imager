@@ -3,6 +3,7 @@ import { services } from "~/application/registry";
 import { taggingService } from "~/application/services/tagging-service";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { db } from "~/infrastructure/db";
+import { logger } from "~/infrastructure/logger";
 
 let service: CcipVectorService | null = null;
 
@@ -12,7 +13,8 @@ export function getCcipVectorService(): CcipVectorService {
 			mediaRepository: services.getMediaRepository(),
 			sourceRepository: services.getSourceRepository(),
 			taggingService,
-			vectorStore: new PostgresCcipVectorStore(db),
+			vectorStore: new PostgresCcipVectorStore(db, logger),
+			logger,
 		});
 	}
 	return service;

@@ -1,0 +1,1 @@
+CREATE INDEX "idx_ccip_embeddings_embedding_cosine" ON "ccip_embeddings" USING hnsw ("embedding" vector_cosine_ops) WITH (m=16,ef_construction=64);
