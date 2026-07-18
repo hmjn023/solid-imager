@@ -245,9 +245,13 @@ export function SourceFormModal(props: SourceFormModalProps) {
 	}));
 
 	let wasOpen = false;
+	let restoreFocusElement: HTMLElement | undefined;
 	createEffect(() => {
 		const isOpen = props.isOpen;
 		if (isOpen && !wasOpen) {
+			const activeElement = document.activeElement;
+			restoreFocusElement =
+				activeElement instanceof HTMLElement ? activeElement : undefined;
 			form.reset(defaultValues());
 		}
 		wasOpen = isOpen;
@@ -264,7 +268,15 @@ export function SourceFormModal(props: SourceFormModalProps) {
 			onOpenChange={(open) => !open && props.onClose()}
 			open={props.isOpen}
 		>
-			<DialogContent class="sm:max-w-[500px]">
+			<DialogContent
+				class="sm:max-w-[500px]"
+				onCloseAutoFocus={(event) => {
+					if (restoreFocusElement?.isConnected) {
+						event.preventDefault();
+						restoreFocusElement.focus();
+					}
+				}}
+			>
 				<DialogHeader>
 					<DialogTitle>
 						{props.editingSource ? "Edit Source" : "Add New Source"}

@@ -236,22 +236,27 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 		updatePreview(nextFiles[0] ?? null);
 	};
 
-	createEffect(() => {
-		if (!props.isOpen) {
-			return;
-		}
-		const initialFiles = props.initialFile ? [props.initialFile] : [];
-		setSelectedFiles(initialFiles);
-		props.onFilesSelected(initialFiles);
-		updatePreview(props.initialFile);
-		setLastFetchedUrl(null);
-		form.reset({
-			...EMPTY_UPLOAD_FORM,
-			filename: props.initialFile?.name ?? "",
-			sourceUrl: props.pastedUrl ?? "",
-		});
-		setAsyncError(null);
-	});
+	createEffect(
+		on(
+			() => props.isOpen,
+			(isOpen) => {
+				if (!isOpen) {
+					return;
+				}
+				const initialFiles = props.initialFile ? [props.initialFile] : [];
+				setSelectedFiles(initialFiles);
+				props.onFilesSelected(initialFiles);
+				updatePreview(props.initialFile);
+				setLastFetchedUrl(null);
+				form.reset({
+					...EMPTY_UPLOAD_FORM,
+					filename: props.initialFile?.name ?? "",
+					sourceUrl: props.pastedUrl ?? "",
+				});
+				setAsyncError(null);
+			},
+		),
+	);
 
 	onCleanup(() => {
 		const currentPreview = previewUrl();
