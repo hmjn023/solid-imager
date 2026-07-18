@@ -355,7 +355,11 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 				: undefined,
 		].filter((value): value is SQL => value !== undefined);
 		const startedAt = performance.now();
-		const raw = await this.database.execute(sql`
+		const candidates = await this.database.transaction(async (transaction) => {
+			await transaction.execute(
+				sql`SET LOCAL hnsw.iterative_scan = 'relaxed_order'`,
+			);
+			const raw = await transaction.execute(sql`
 			SELECT
 				${medias.id} AS "mediaId",
 				${medias.mediaSourceId} AS "mediaSourceId",
@@ -371,10 +375,9 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 			WHERE ${sql.join(filters, sql` AND `)}
 			ORDER BY ${ccipEmbeddings.embedding} <=> ${literal}::vector
 			LIMIT ${limit}
-		`);
-		const candidates = extractRows(raw).map((row) =>
-			rawCandidateRowSchema.parse(row),
-		);
+			`);
+			return extractRows(raw).map((row) => rawCandidateRowSchema.parse(row));
+		});
 		this.logger?.info(
 			{
 				durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
