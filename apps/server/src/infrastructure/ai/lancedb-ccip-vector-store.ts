@@ -4,6 +4,7 @@ import type {
 	CcipVectorCandidate,
 	CcipVectorMetadata,
 	CcipVectorQuery,
+	CcipVectorReadQuery,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "@solid-imager/application/ports/ccip-vector-store";
@@ -181,14 +182,14 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 
 	async get(
 		mediaId: string,
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<CcipVectorRecord | null> {
 		return (await this.getMany([mediaId], query)).get(mediaId) ?? null;
 	}
 
 	async getMany(
 		mediaIds: string[],
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<Map<string, CcipVectorRecord>> {
 		if (mediaIds.length === 0) {
 			return new Map();
@@ -211,7 +212,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 
 	async getMetadataMany(
 		mediaIds: string[],
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<Map<string, CcipVectorMetadata>> {
 		if (mediaIds.length === 0) {
 			return new Map();
@@ -306,10 +307,51 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		return rows.map(toRecord);
 	}
 
+	/**
+	 * Reads legacy rows in bounded pages for the one-time PostgreSQL migration.
+	 * Ordering groups duplicate logical embeddings next to one another so the
+	 * caller can resolve them without retaining the complete table in memory.
+	 */
+	async *listBatches(
+		batchSize: number,
+		query?: CcipVectorQuery,
+	): AsyncGenerator<CcipVectorRecord[]> {
+		if (!Number.isSafeInteger(batchSize) || batchSize < 1) {
+			throw new Error("batchSize must be a positive integer");
+		}
+		const table = await this.table();
+		const predicates = queryPredicates(query);
+		let offset = 0;
+		while (true) {
+			const tableQuery = table
+				.query()
+				.orderBy([
+					{ columnName: "mediaId" },
+					{ columnName: "model" },
+					{ columnName: "embeddingVersion" },
+					{ columnName: "extractedAt" },
+				])
+				.limit(batchSize)
+				.offset(offset);
+			if (predicates.length > 0) {
+				tableQuery.where(predicates.join(" AND "));
+			}
+			const rows = await tableQuery.toArray();
+			if (rows.length === 0) {
+				return;
+			}
+			yield rows.map(toRecord);
+			offset += rows.length;
+			if (rows.length < batchSize) {
+				return;
+			}
+		}
+	}
+
 	async search(
 		vector: number[],
 		limit: number,
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<CcipVectorCandidate[]> {
 		const table = await this.table();
 		const tableQuery = table

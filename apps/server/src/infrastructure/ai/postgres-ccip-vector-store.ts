@@ -2,6 +2,7 @@ import type {
 	CcipVectorCandidate,
 	CcipVectorMetadata,
 	CcipVectorQuery,
+	CcipVectorReadQuery,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "@solid-imager/application/ports/ccip-vector-store";
@@ -110,14 +111,14 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 
 	async get(
 		mediaId: string,
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<CcipVectorRecord | null> {
 		return (await this.getMany([mediaId], query)).get(mediaId) ?? null;
 	}
 
 	async getMany(
 		mediaIds: string[],
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<Map<string, CcipVectorRecord>> {
 		if (mediaIds.length === 0) {
 			return new Map();
@@ -138,7 +139,7 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 
 	async getMetadataMany(
 		mediaIds: string[],
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<Map<string, CcipVectorMetadata>> {
 		if (mediaIds.length === 0) {
 			return new Map();
@@ -169,41 +170,74 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 	}
 
 	async upsertMany(records: CcipVectorRecord[]): Promise<void> {
+		if (records.length === 0) {
+			return;
+		}
+		const regionsByMediaId = new Map<string, CcipVectorRecord>();
+		const embeddingsByKey = new Map<string, CcipVectorRecord>();
 		for (const record of records) {
 			vectorLiteral(record.vector);
-			const [region] = await this.database
+			const existingRegion = regionsByMediaId.get(record.mediaId);
+			if (
+				!existingRegion ||
+				record.mediaModifiedAt.getTime() >
+					existingRegion.mediaModifiedAt.getTime()
+			) {
+				regionsByMediaId.set(record.mediaId, record);
+			}
+			const embeddingKey = `${record.mediaId}:${record.model}:${record.embeddingVersion}`;
+			const existingEmbedding = embeddingsByKey.get(embeddingKey);
+			if (
+				!existingEmbedding ||
+				record.extractedAt.getTime() > existingEmbedding.extractedAt.getTime()
+			) {
+				embeddingsByKey.set(embeddingKey, record);
+			}
+		}
+		const now = new Date();
+		await this.database.transaction(async (transaction) => {
+			const regions = await transaction
 				.insert(mediaRegions)
-				.values({
-					mediaId: record.mediaId,
-					kind: FULL_REGION_KIND,
-					sourceModifiedAt: record.mediaModifiedAt,
-					updatedAt: new Date(),
-				})
+				.values(
+					[...regionsByMediaId.values()].map((record) => ({
+						mediaId: record.mediaId,
+						kind: "full" as const,
+						sourceModifiedAt: record.mediaModifiedAt,
+						updatedAt: now,
+					})),
+				)
 				.onConflictDoUpdate({
 					target: mediaRegions.mediaId,
 					targetWhere: sql`${mediaRegions.kind} = 'full'`,
 					set: {
-						sourceModifiedAt: record.mediaModifiedAt,
-						updatedAt: new Date(),
+						sourceModifiedAt: sql`excluded.source_modified_at`,
+						updatedAt: now,
 					},
 				})
 				.returning();
-			if (!region) {
-				throw new Error(
-					`Unable to create full region for media ${record.mediaId}`,
-				);
-			}
-			await this.database
-				.insert(ccipEmbeddings)
-				.values({
-					regionId: region.id,
+			const regionIdByMediaId = new Map(
+				regions.map((region) => [region.mediaId, region.id]),
+			);
+			const embeddings = [...embeddingsByKey.values()].map((record) => {
+				const regionId = regionIdByMediaId.get(record.mediaId);
+				if (!regionId) {
+					throw new Error(
+						`Unable to create full region for media ${record.mediaId}`,
+					);
+				}
+				return {
+					regionId,
 					embedding: record.vector,
 					model: record.model,
 					embeddingVersion: record.embeddingVersion,
 					mediaModifiedAt: record.mediaModifiedAt,
 					extractedAt: record.extractedAt,
-					updatedAt: new Date(),
-				})
+					updatedAt: now,
+				};
+			});
+			await transaction
+				.insert(ccipEmbeddings)
+				.values(embeddings)
 				.onConflictDoUpdate({
 					target: [
 						ccipEmbeddings.regionId,
@@ -211,13 +245,13 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 						ccipEmbeddings.embeddingVersion,
 					],
 					set: {
-						embedding: record.vector,
-						mediaModifiedAt: record.mediaModifiedAt,
-						extractedAt: record.extractedAt,
-						updatedAt: new Date(),
+						embedding: sql`excluded.embedding`,
+						mediaModifiedAt: sql`excluded.media_modified_at`,
+						extractedAt: sql`excluded.extracted_at`,
+						updatedAt: now,
 					},
 				});
-		}
+		});
 	}
 
 	async delete(mediaId: string): Promise<void> {
@@ -264,7 +298,7 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 	async search(
 		vector: number[],
 		limit: number,
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<CcipVectorCandidate[]> {
 		if (!Number.isSafeInteger(limit) || limit < 1) {
 			throw new Error("limit must be a positive integer");

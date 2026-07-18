@@ -102,6 +102,11 @@ describe("PostgresCcipVectorStore", () => {
 		const anchor = record(ANCHOR_MEDIA_ID, SOURCE_A_ID, vector(1));
 		await store.upsertMany([
 			anchor,
+			{
+				...record(ANCHOR_MEDIA_ID, SOURCE_A_ID, vector(0, 1)),
+				model: "ccip-legacy-model",
+				embeddingVersion: 2,
+			},
 			record(NEAR_MEDIA_ID, SOURCE_A_ID, vector(0.875, 0.125)),
 			record(FAR_MEDIA_ID, SOURCE_A_ID, vector(0, 1)),
 			record(OTHER_SOURCE_MEDIA_ID, SOURCE_B_ID, vector(0.75, 0.25)),

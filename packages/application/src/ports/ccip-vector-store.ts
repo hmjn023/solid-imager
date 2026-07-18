@@ -14,6 +14,13 @@ export type CcipVectorQuery = {
 	embeddingVersion?: number;
 };
 
+/** Query used by reads that must not mix embedding spaces. */
+export type CcipVectorReadQuery = {
+	mediaSourceId?: string;
+	model: string;
+	embeddingVersion: number;
+};
+
 export type CcipVectorMetadata = Omit<CcipVectorRecord, "vector">;
 
 export type CcipVectorCandidate = CcipVectorRecord & {
@@ -23,15 +30,15 @@ export type CcipVectorCandidate = CcipVectorRecord & {
 export interface ICcipVectorStore {
 	get(
 		mediaId: string,
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<CcipVectorRecord | null>;
 	getMany(
 		mediaIds: string[],
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<Map<string, CcipVectorRecord>>;
 	getMetadataMany(
 		mediaIds: string[],
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<Map<string, CcipVectorMetadata>>;
 	upsert(record: CcipVectorRecord): Promise<void>;
 	upsertMany(records: CcipVectorRecord[]): Promise<void>;
@@ -42,6 +49,6 @@ export interface ICcipVectorStore {
 	search(
 		vector: number[],
 		limit: number,
-		query?: CcipVectorQuery,
+		query: CcipVectorReadQuery,
 	): Promise<CcipVectorCandidate[]>;
 }

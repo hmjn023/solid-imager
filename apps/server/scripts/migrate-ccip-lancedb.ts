@@ -68,30 +68,6 @@ function recordsMatch(left: CcipVectorRecord, right: CcipVectorRecord): boolean 
 	);
 }
 
-function collapseRecords(records: CcipVectorRecord[]): {
-	records: CcipVectorRecord[];
-	collapsedDuplicates: number;
-} {
-	const byKey = new Map<string, CcipVectorRecord>();
-	let collapsedDuplicates = 0;
-	for (const record of records) {
-		const key = migrationKey(record);
-		const existing = byKey.get(key);
-		if (!existing) {
-			byKey.set(key, record);
-			continue;
-		}
-		if (!recordsMatch(existing, record)) {
-			throw new Error(`Conflicting LanceDB CCIP records for ${key}`);
-		}
-		collapsedDuplicates += 1;
-		if (record.extractedAt.getTime() > existing.extractedAt.getTime()) {
-			byKey.set(key, record);
-		}
-	}
-	return { records: [...byKey.values()], collapsedDuplicates };
-}
-
 async function main(): Promise<void> {
 	const args = process.argv.slice(2);
 	if (args.includes("--help") || args.includes("-h")) {
@@ -104,45 +80,74 @@ async function main(): Promise<void> {
 	const legacyStore = new LanceDbCcipVectorStore(config.lancedb.ccipVectorDir, {
 		readOnly: true,
 	});
-	const rawRecords = await legacyStore.list({
+	const targetStore = options.dryRun
+		? null
+		: new PostgresCcipVectorStore(db);
+	let rawRows = 0;
+	let uniqueLogicalRows = 0;
+	let collapsedDuplicates = 0;
+	let migrated = 0;
+	let current: CcipVectorRecord | null = null;
+	let pending: CcipVectorRecord[] = [];
+
+	const flush = async (): Promise<void> => {
+		if (pending.length === 0) return;
+		const batch = pending;
+		pending = [];
+		if (targetStore) {
+			await targetStore.upsertMany(batch);
+			migrated += batch.length;
+			logger.info(
+				{ migrated, batchSize: batch.length },
+				"CCIP LanceDB migration batch completed",
+			);
+		}
+	};
+
+	for await (const records of legacyStore.listBatches(options.batchSize, {
 		mediaSourceId: options.mediaSourceId,
-	});
-	const collapsed = collapseRecords(rawRecords);
+	})) {
+		rawRows += records.length;
+		for (const record of records) {
+			if (!current) {
+				current = record;
+				continue;
+			}
+			if (migrationKey(current) === migrationKey(record)) {
+				if (!recordsMatch(current, record)) {
+					throw new Error(
+						`Conflicting LanceDB CCIP records for ${migrationKey(record)}`,
+					);
+				}
+				collapsedDuplicates += 1;
+				if (record.extractedAt.getTime() > current.extractedAt.getTime()) {
+					current = record;
+				}
+				continue;
+			}
+			pending.push(current);
+			uniqueLogicalRows += 1;
+			current = record;
+			if (pending.length >= options.batchSize) {
+				await flush();
+			}
+		}
+	}
+	if (current) {
+		pending.push(current);
+		uniqueLogicalRows += 1;
+	}
+	await flush();
 
 	logger.info(
 		{
 			dryRun: options.dryRun,
 			mediaSourceId: options.mediaSourceId,
-			rawRows: rawRecords.length,
-			uniqueLogicalRows: collapsed.records.length,
-			collapsedDuplicates: collapsed.collapsedDuplicates,
+			rawRows,
+			uniqueLogicalRows,
+			collapsedDuplicates,
+			migrated,
 			batchSize: options.batchSize,
-		},
-		"CCIP LanceDB migration prepared",
-	);
-
-	if (options.dryRun) {
-		return;
-	}
-
-	const targetStore = new PostgresCcipVectorStore(db);
-	for (let start = 0; start < collapsed.records.length; start += options.batchSize) {
-		const batch = collapsed.records.slice(start, start + options.batchSize);
-		await targetStore.upsertMany(batch);
-		logger.info(
-			{
-				migrated: Math.min(start + batch.length, collapsed.records.length),
-				total: collapsed.records.length,
-			},
-			"CCIP LanceDB migration batch completed",
-		);
-	}
-
-	logger.info(
-		{
-			rawRows: rawRecords.length,
-			uniqueLogicalRows: collapsed.records.length,
-			collapsedDuplicates: collapsed.collapsedDuplicates,
 		},
 		"CCIP LanceDB migration completed",
 	);
