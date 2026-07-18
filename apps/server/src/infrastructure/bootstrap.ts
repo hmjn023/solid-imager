@@ -1,4 +1,5 @@
 import { services } from "~/application/registry";
+import { configureCcipVectorService } from "~/application/services/ccip-vector-service";
 import { CharacterServiceImpl } from "~/application/services/character-service";
 import { processJob } from "~/application/services/job-dispatch-service";
 import { MaintenanceService } from "~/application/services/maintenance-service";
@@ -35,6 +36,7 @@ export function initServices() {
 		return;
 	}
 	logger.info("[Bootstrap] Initializing server services...");
+	configureCcipVectorService(logger);
 	isBootstrapped = true;
 
 	// Initialize and load configuration

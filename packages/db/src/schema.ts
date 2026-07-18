@@ -272,6 +272,9 @@ export const ccipEmbeddings = pgTable(
 			"uq_ccip_embeddings_region_model_version",
 		).on(table.regionId, table.model, table.embeddingVersion),
 		regionIdIndex: index("idx_ccip_embeddings_region_id").on(table.regionId),
+		embeddingCosineIndex: index("idx_ccip_embeddings_embedding_cosine")
+			.using("hnsw", table.embedding.op("vector_cosine_ops"))
+			.with({ m: 16, ef_construction: 64 }),
 	}),
 );
 

@@ -134,6 +134,13 @@
       "when": 1784367056664,
       "tag": "0018_charming_korvac",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784389747874,
+      "tag": "0019_purple_devos",
+      "breakpoints": true
     }
   ]
 }
