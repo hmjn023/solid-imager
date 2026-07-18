@@ -6,6 +6,7 @@ import type {
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "@solid-imager/application/ports/ccip-vector-store";
+import type { ILogger } from "@solid-imager/application/ports/media-service";
 import {
 	CCIP_VECTOR_DIMENSIONS,
 	ccipEmbeddings,
@@ -107,7 +108,10 @@ const recordColumns = {
 
 /** pgvector-backed CCIP store used by the application at runtime. */
 export class PostgresCcipVectorStore implements ICcipVectorStore {
-	constructor(private readonly database: DrizzleExecutor) {}
+	constructor(
+		private readonly database: DrizzleExecutor,
+		private readonly logger?: ILogger,
+	) {}
 
 	async get(
 		mediaId: string,
@@ -350,7 +354,12 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 				? sql`${ccipEmbeddings.embeddingVersion} = ${query.embeddingVersion}`
 				: undefined,
 		].filter((value): value is SQL => value !== undefined);
-		const raw = await this.database.execute(sql`
+		const startedAt = performance.now();
+		const candidates = await this.database.transaction(async (transaction) => {
+			await transaction.execute(
+				sql`SET LOCAL hnsw.iterative_scan = 'relaxed_order'`,
+			);
+			const raw = await transaction.execute(sql`
 			SELECT
 				${medias.id} AS "mediaId",
 				${medias.mediaSourceId} AS "mediaSourceId",
@@ -366,7 +375,18 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 			WHERE ${sql.join(filters, sql` AND `)}
 			ORDER BY ${ccipEmbeddings.embedding} <=> ${literal}::vector
 			LIMIT ${limit}
-		`);
-		return extractRows(raw).map((row) => rawCandidateRowSchema.parse(row));
+			`);
+			return extractRows(raw).map((row) => rawCandidateRowSchema.parse(row));
+		});
+		this.logger?.info(
+			{
+				durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
+				candidateCount: candidates.length,
+				limit,
+				hasMediaSourceFilter: Boolean(query?.mediaSourceId),
+			},
+			"CCIP pgvector candidate search completed",
+		);
+		return candidates;
 	}
 }

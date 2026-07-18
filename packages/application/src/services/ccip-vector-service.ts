@@ -4,6 +4,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import type { ILogger } from "../ports/media-service";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import type {
 	CcipVectorMetadata,
@@ -23,6 +24,7 @@ export type CcipVectorServiceDeps = {
 	sourceRepository: SourceRepository;
 	taggingService: ITaggingService;
 	vectorStore: ICcipVectorStore;
+	logger?: ILogger;
 };
 
 export class CcipVectorService {
@@ -198,11 +200,25 @@ export class CcipVectorService {
 				mediaSourceId,
 			})
 		).filter((candidate) => candidate.mediaId !== anchorMediaId);
+		this.deps.logger?.info(
+			{ candidateCount: candidates.length, candidateLimit },
+			"CCIP vector candidates loaded",
+		);
 		if (candidates.length === 0) {
 			return { media: [], total: 0, scores: [] };
 		}
+		const mediaStartedAt = performance.now();
 		const media = await this.deps.mediaRepository.findByIds(
 			candidates.map((candidate) => candidate.mediaId),
+		);
+		this.deps.logger?.info(
+			{
+				durationMs:
+					Math.round((performance.now() - mediaStartedAt) * 100) / 100,
+					mediaCount: media.length,
+					candidateCount: candidates.length,
+			},
+			"CCIP similar media lookup completed",
 		);
 		const mediaById = new Map(media.map((item) => [item.id, item]));
 		const currentCandidates = candidates.filter((candidate) => {
@@ -212,9 +228,18 @@ export class CcipVectorService {
 		if (currentCandidates.length === 0) {
 			return { media: [], total: 0, scores: [] };
 		}
+		const rerankStartedAt = performance.now();
 		const distances = await this.deps.taggingService.getCcipDistances(
 			anchor.vector,
 			currentCandidates.map((candidate) => candidate.vector),
+		);
+		this.deps.logger?.info(
+			{
+				durationMs:
+					Math.round((performance.now() - rerankStartedAt) * 100) / 100,
+					candidateCount: currentCandidates.length,
+			},
+			"CCIP Rust reranking completed",
 		);
 		const ranked = currentCandidates
 			.map((candidate, index) => ({
