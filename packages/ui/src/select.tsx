@@ -47,7 +47,7 @@ const SelectTrigger = <T extends ValidComponent = "button">(
 	return (
 		<SelectPrimitiveTrigger
 			class={cn(
-				"flex h-10 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+				"flex min-h-11 w-full items-center justify-between rounded-md border border-input bg-transparent px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
 				local.class,
 			)}
 			{...others}
@@ -84,7 +84,7 @@ const SelectContent = <T extends ValidComponent = "div">(
 		<SelectPrimitivePortal>
 			<SelectPrimitiveContent
 				class={cn(
-					"fade-in-80 relative z-50 min-w-32 animate-in overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md",
+					"fade-in-80 relative z-50 max-h-[min(24rem,calc(100dvh-2rem))] min-w-32 max-w-[calc(100dvw-2rem)] animate-in overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
 					local.class,
 				)}
 				{...others}
@@ -111,7 +111,7 @@ const SelectItem = <T extends ValidComponent = "li">(
 	return (
 		<SelectPrimitiveItem
 			class={cn(
-				"relative mt-0 flex w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+				"relative mt-0 flex min-h-11 w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
 				local.class,
 			)}
 			{...others}

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Solid Imager E2E Testing"
+  short_description: "Run isolated dev and production E2E checks"
+  default_prompt: "Use $e2e-testing to add and validate isolated dev/production browser E2E coverage."

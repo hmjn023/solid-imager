@@ -1,10 +1,9 @@
-import {
-	prefetchManagerPageQueries,
-	useManagerPage,
-} from "@solid-imager/ui/hooks/use-manager-page";
+import { useManagerPage } from "@solid-imager/ui/hooks/use-manager-page";
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
+import { createSignal, onMount, Show } from "solid-js";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	scanBatchCcipTargets,
@@ -64,13 +63,47 @@ const managerActions = {
 };
 
 export const Route = createFileRoute("/manager")({
+	ssr: true,
 	loader: async ({ context }) => {
-		await prefetchManagerPageQueries(context.queryClient, managerQueryOptions);
+		await Promise.all([
+			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
+			context.queryClient.prefetchQuery(allIpsQueryOptions()),
+			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
+			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
+		]);
 	},
+	pendingComponent: ManagerRouteFallback,
+	pendingMinMs: 0,
 	component: ManagerPage,
 });
 
+function ManagerRouteFallback() {
+	return (
+		<RouteDataPendingScreen
+			class="p-4 sm:p-8"
+			description="管理データを準備しています..."
+			layout="manager"
+			showAction
+			title="Entity Manager"
+		/>
+	);
+}
+
 function ManagerPage() {
+	const [isMounted, setIsMounted] = createSignal(false);
+
+	onMount(() => {
+		setIsMounted(true);
+	});
+
+	return (
+		<Show fallback={<ManagerRouteFallback />} when={isMounted()}>
+			{(_mounted) => <ManagerPageContent />}
+		</Show>
+	);
+}
+
+function ManagerPageContent() {
 	const queryClient = useQueryClient();
 
 	const manager = useManagerPage({

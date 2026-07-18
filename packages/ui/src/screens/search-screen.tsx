@@ -3,14 +3,16 @@ import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas"
 import { ClientOnly } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
+import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "../dialog";
 import type {
 	SearchPageFilterData,
 	UseSearchPageResult,
 } from "../hooks/use-search-page";
 import type { SourceMediaPagePresetClient } from "../hooks/use-source-media-page";
+import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
+import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
 
 export type SearchScreenNavActions = {
@@ -39,9 +41,17 @@ export function SearchScreen(props: SearchScreenProps) {
 	});
 
 	const page = () => props.page;
+	const filterStates = () => [
+		page().filterStates.tags(),
+		page().filterStates.sources(),
+		page().filterStates.projects(),
+		page().filterStates.ips(),
+		page().filterStates.characters(),
+		page().filterStates.authors(),
+	];
 	const openMobileFilters = () => setIsMobileFilterOpen(true);
 
-	const panel = (
+	const renderPanel = () => (
 		<SearchControlPanel
 			context="global"
 			filterData={props.filterData}
@@ -54,74 +64,90 @@ export function SearchScreen(props: SearchScreenProps) {
 		/>
 	);
 
-	const showResults = () => {
-		if (props.ssrGuard) {
-			return !page().searchResultQuery.isLoading && isMounted();
-		}
-		return !page().searchResultQuery.isLoading;
-	};
+	const canRenderContent = () => !props.ssrGuard || isMounted();
 
 	return (
-		<main class="container mx-auto p-4">
-			{props.renderNavActions?.({ openMobileFilters })}
+		<div class="container mx-auto p-4">
+			<div class="mb-4 flex justify-end">
+				{props.renderNavActions?.({ openMobileFilters })}
+			</div>
 			<ClientOnly>
-				<Dialog
+				<MobileSearchFilterDialog
+					context="global"
+					filterData={props.filterData}
+					onSearch={page().handleSearch}
+					onSelectSource={props.onSelectSource}
 					open={isMobileFilterOpen()}
 					onOpenChange={setIsMobileFilterOpen}
-				>
-					<DialogContent class="max-h-[80vh] overflow-y-auto">
-						<DialogHeader>
-							<DialogTitle>検索フィルター</DialogTitle>
-						</DialogHeader>
-						<div class="space-y-4">{panel}</div>
-					</DialogContent>
-				</Dialog>
+					presetClient={props.presetClient}
+					selectedSource={props.selectedSource ?? undefined}
+					sources={props.sources}
+					usePopover={false}
+				/>
 			</ClientOnly>
 
-			<div class="mb-8 flex items-center justify-between">
+			<div class="mb-6 sm:mb-8">
 				<div>
-					<h1 class="mb-2 font-bold text-3xl">メディア検索</h1>
+					<h1 class="mb-2 font-bold text-2xl sm:text-3xl">メディア検索</h1>
 					<p class="text-gray-600">タグやファイル名でメディアを検索できます</p>
 				</div>
 			</div>
 
-			<div class="grid gap-6 md:grid-cols-[300px_1fr]">
+			<div class="grid min-w-0 gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
 				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
 					<CardHeader>
 						<CardTitle>検索フィルター</CardTitle>
 					</CardHeader>
-					<CardContent class="space-y-4">{panel}</CardContent>
+					<CardContent class="space-y-4">{renderPanel()}</CardContent>
 				</Card>
 
-				<div class="space-y-4">
+				<div class="min-w-0 space-y-4">
 					<Show
-						fallback={<div class="py-8 text-center">読み込み中...</div>}
-						when={showResults()}
+						when={filterStates().some(
+							(state) => state.phase === "error" || state.phase === "offline",
+						)}
+					>
+						<FilterErrorBanner
+							message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
+							onRetry={page().retryFilters}
+						/>
+					</Show>
+					<QueryStatus
+						fetchState={page().contentState().fetchState}
+						hasData={page().contentState().data !== undefined}
+						offlineLabel="オフラインのため保存済みの検索結果を表示しています"
+						updatingLabel="検索結果を更新中..."
+					/>
+					<Show
+						fallback={
+							<LoadingRegion label="検索結果を読み込んでいます...">
+								<MediaGridSkeleton />
+							</LoadingRegion>
+						}
+						when={canRenderContent()}
 					>
 						<SourceMediaGrid
 							disableContextMenu
 							enableVirtualization={props.enableVirtualization}
-							isError={page().searchResultQuery.isError}
+							errorTitle="検索結果を取得できませんでした"
 							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
-							isPending={page().searchResultQuery.isLoading}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
 							onLoadMore={() => page().searchResultQuery.fetchNextPage()}
+							onRetry={async () => {
+								await page().searchResultQuery.refetch();
+							}}
 							hasNextPage={page().searchResultQuery.hasNextPage}
-							queryError={
-								page().searchResultQuery.error instanceof Error
-									? page().searchResultQuery.error
-									: null
-							}
 							renderItem={(media, _options) => props.renderMediaItem(media)}
 							setLoadMoreRef={page().setLoadMoreRef}
 							showEmptyState
 							showResultCount
+							state={page().contentState}
 							totalCount={page().searchResultQuery.data?.pages[0]?.total}
 						/>
 					</Show>
 				</div>
 			</div>
-		</main>
+		</div>
 	);
 }

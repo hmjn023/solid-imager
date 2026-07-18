@@ -23,3 +23,10 @@ export class APIError extends Error {
 		this.originalError = originalError;
 	}
 }
+
+export function isTransientApiError(error: unknown): boolean {
+	if (error instanceof APIError) {
+		return error.code === "NETWORK_ERROR" || error.code === "TIMEOUT";
+	}
+	return error instanceof TypeError;
+}

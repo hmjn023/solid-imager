@@ -1,8 +1,19 @@
-import type {
-	Preset,
-	SearchGroup,
+import {
+	type Preset,
+	type SearchGroup,
+	searchGroupSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import {
+	getSearchConditionFromState,
+	preparePresetState,
+} from "@solid-imager/core/domain/search/logic";
+import {
+	defaultState,
+	type SearchState,
+} from "@solid-imager/core/domain/search/schema";
+import { deepEqual } from "@solid-imager/core/utils/deep-equal";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
+import type { SetStoreFunction } from "solid-js/store";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -32,12 +43,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./select";
-import {
-	clearPresetFilters,
-	getSearchCondition,
-	loadPreset,
-	searchState,
-} from "./stores/search-store";
+import { searchState, setSearchState } from "./stores/search-store";
 import { toast } from "./toast";
 import { cn } from "./utils/cn";
 
@@ -53,14 +59,59 @@ export interface PresetManagerClient {
 	delete(id: number): Promise<unknown>;
 }
 
-export function PresetManager(props: {
+type PresetManagerProps = {
 	presetClient: PresetManagerClient;
 	class?: string;
 	onAction?: () => void;
-}) {
-	const [data, { refetch }] = createResource(props.presetClient.list);
+	state?: SearchState;
+	setState?: SetStoreFunction<SearchState>;
+};
 
-	const presets = () => data()?.filter((p) => !p.name.startsWith("current"));
+function normalizeSearchCondition(condition: SearchGroup | undefined) {
+	return searchGroupSchema.parse(
+		condition ?? {
+			type: "group",
+			operator: "and",
+			children: [],
+		},
+	);
+}
+
+function createClearedSearchState(state: SearchState): SearchState {
+	return {
+		...defaultState,
+		mode: state.mode,
+		selectedSource: state.selectedSource,
+		sortBy: state.sortBy,
+		sortOrder: state.sortOrder,
+		tagMode: state.tagMode,
+	};
+}
+
+export function PresetManager(props: PresetManagerProps) {
+	const [data, { refetch }] = createResource(props.presetClient.list);
+	const currentState = () => props.state ?? searchState;
+	const updateState = props.setState ?? setSearchState;
+
+	const presets = () =>
+		data()?.filter((preset) => !preset.name.startsWith("current"));
+
+	createEffect(() => {
+		const availablePresets = presets();
+		const state = currentState();
+		if (!availablePresets || state.activePresetId !== null) {
+			return;
+		}
+		const condition = normalizeSearchCondition(
+			getSearchConditionFromState(state),
+		);
+		const matchingPreset = availablePresets.find((preset) =>
+			deepEqual(normalizeSearchCondition(preset.value), condition),
+		);
+		if (matchingPreset) {
+			updateState("activePresetId", matchingPreset.id);
+		}
+	});
 
 	const [isSaveDialogOpen, setIsSaveDialogOpen] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
@@ -71,7 +122,7 @@ export function PresetManager(props: {
 	);
 
 	createEffect(() => {
-		const active = searchState.activePresetId;
+		const active = currentState().activePresetId;
 		if (active) {
 			setSelectedPresetId(String(active));
 		} else {
@@ -85,7 +136,8 @@ export function PresetManager(props: {
 			return;
 		}
 
-		const condition = getSearchCondition();
+		const state = currentState();
+		const condition = getSearchConditionFromState(state);
 		if (!condition) {
 			toast.error("検索条件がありません");
 			return;
@@ -95,9 +147,9 @@ export function PresetManager(props: {
 			await props.presetClient.create({
 				name: newPresetName(),
 				value: condition,
-				sort: searchState.sortBy,
-				order: searchState.sortOrder,
-				mode: searchState.mode === "simple" ? "simple" : "pro",
+				sort: state.sortBy,
+				order: state.sortOrder,
+				mode: state.mode === "simple" ? "simple" : "pro",
 			});
 			setIsSaveDialogOpen(false);
 			setNewPresetName("");
@@ -139,16 +191,16 @@ export function PresetManager(props: {
 		if (!id) {
 			return;
 		}
-		const preset = presets()?.find((p: Preset) => p.id === Number(id));
+		const preset = presets()?.find((item: Preset) => item.id === Number(id));
 		if (preset) {
-			loadPreset(preset);
+			updateState(preparePresetState(preset, currentState()));
 			props.onAction?.();
 		}
 	};
 
 	const handleClearSelection = () => {
 		setSelectedPresetId(null);
-		clearPresetFilters();
+		updateState(createClearedSearchState(currentState()));
 		props.onAction?.();
 	};
 
@@ -182,7 +234,7 @@ export function PresetManager(props: {
 					<Select<string>
 						itemComponent={(itemProps) => {
 							const preset = presets()?.find(
-								(p: Preset) => String(p.id) === itemProps.item.rawValue,
+								(item: Preset) => String(item.id) === itemProps.item.rawValue,
 							);
 							return (
 								<SelectItem
@@ -194,7 +246,9 @@ export function PresetManager(props: {
 							);
 						}}
 						onChange={setSelectedPresetId}
-						options={presets()?.map((p: Preset) => String(p.id)) || []}
+						options={
+							presets()?.map((preset: Preset) => String(preset.id)) || []
+						}
 						placeholder="プリセットを選択..."
 						value={selectedPresetId()}
 					>
@@ -202,7 +256,8 @@ export function PresetManager(props: {
 							<SelectValue<string>>
 								{(state) => {
 									const preset = presets()?.find(
-										(p: Preset) => String(p.id) === state.selectedOption(),
+										(item: Preset) =>
+											String(item.id) === state.selectedOption(),
 									);
 									return (
 										<span class="truncate">

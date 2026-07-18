@@ -1,11 +1,12 @@
 import { Button } from "@solid-imager/ui/button";
+import { useCurrentSearchPersistence } from "@solid-imager/ui/hooks/use-current-search-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
-import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
+import { createSignal, onMount, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
-import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 
@@ -28,32 +29,57 @@ import {
 } from "~/presentation/store/search-store";
 
 export const Route = createFileRoute("/search")({
+	ssr: true,
 	loader: async ({ context }) => {
 		await Promise.all([
-			context.queryClient.ensureQueryData(tagsQueryOptions()),
-			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
-			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
-			context.queryClient.ensureQueryData(allIpsQueryOptions()),
-			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
-			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
+			context.queryClient.prefetchQuery(tagsQueryOptions()),
+			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
+			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
+			context.queryClient.prefetchQuery(allIpsQueryOptions()),
+			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
+			context.queryClient.prefetchQuery(allAuthorsQueryOptions()),
 		]);
 	},
-	component: SearchRoute,
+	pendingComponent: SearchRouteFallback,
+	pendingMinMs: 0,
+	component: SearchRouteBoundary,
 });
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 
 const PresetClient = createPresetClient(rawPresetClient);
 
-function SearchRoute() {
-	const queryClient = useQueryClient();
+function SearchRouteBoundary() {
+	const [isMounted, setIsMounted] = createSignal(false);
 
-	useCurrentSearchPersistence("all", PresetClient);
+	onMount(() => {
+		setIsMounted(true);
+	});
+
+	return (
+		<Show fallback={<SearchRouteFallback />} when={isMounted()}>
+			{(_mounted) => <SearchRoute />}
+		</Show>
+	);
+}
+
+function SearchRouteFallback() {
+	return (
+		<RouteDataPendingScreen
+			description="検索画面を準備しています..."
+			layout="media-grid"
+			showDescription
+			title="メディア検索"
+		/>
+	);
+}
+
+function SearchRoute() {
+	const isSearchStateRestored = useCurrentSearchPersistence("all");
 
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
-		queryClient,
 		queries: {
 			tags: tagsQueryOptions,
 			sources: mediaSourcesQueryOptions,
@@ -74,12 +100,15 @@ function SearchRoute() {
 		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
+		isSearchStateRestored,
 	});
 
-	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
+	useMediaSourceEvents(() => searchState.selectedSource || "*", {
 		onMediaAdded: page.refreshSearchResults,
 		onMediaDeleted: page.refreshSearchResults,
 		onMediaChanged: page.refreshSearchResults,
+		onMediaCopied: page.refreshSearchResults,
+		onMediaMoved: page.refreshSearchResults,
 		onAllJobsCompleted: page.refreshSearchResults,
 	});
 
@@ -93,7 +122,7 @@ function SearchRoute() {
 			renderMediaItem={(media) => <MediaGridItem media={media} />}
 			renderNavActions={({ openMobileFilters }) => (
 				<Button
-					class="border-white text-white hover:bg-sky-700 md:hidden"
+					class="size-11 border-input text-foreground hover:bg-accent md:hidden"
 					onClick={openMobileFilters}
 					size="icon"
 					variant="outline"

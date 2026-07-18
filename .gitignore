@@ -54,6 +54,7 @@ public/docs/
 
 # TanStack Router generated
 routeTree.gen.ts
+apps/server/.tanstack/
 
 # Config
 config.json

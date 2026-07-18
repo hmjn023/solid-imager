@@ -1,6 +1,6 @@
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { DuplicateGroup } from "@solid-imager/core/domain/media/schemas";
-import { For, Show } from "solid-js";
+import { For, Match, Show, Switch } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -11,6 +11,13 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "../alert-dialog";
+import {
+	EmptyState,
+	ErrorState,
+	OfflineState,
+	QueryStatus,
+	RetryButton,
+} from "../async-state";
 import { Button } from "../button";
 import {
 	Card,
@@ -53,6 +60,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../select";
+import { CardGridSkeleton, LoadingRegion } from "../skeleton";
 
 export type ManagerScreenProps = {
 	manager: UseManagerPageResult;
@@ -87,31 +95,58 @@ function isCharacter(item: ManagerEntity) {
 	return "ips" in item;
 }
 
+function isCrudTab(tab: ManagerEntityType) {
+	return tab === "projects" || tab === "ips" || tab === "characters";
+}
+
 const ALL_SOURCES_OPTION = { id: "__all__", name: "All Sources" };
 
 export function ManagerScreen(props: ManagerScreenProps) {
 	const manager = () => props.manager;
+	const activeQueryState = () => {
+		const states = manager().queryStates();
+		switch (manager().activeTab()) {
+			case "projects":
+				return states.projects;
+			case "ips":
+				return states.ips;
+			case "characters":
+				return states.characters;
+			default:
+				return states.sources;
+		}
+	};
+	const canRenderActiveTab = () =>
+		activeQueryState().phase === "data" ||
+		(activeQueryState().phase === "empty" && !isCrudTab(manager().activeTab()));
+	const characterIpState = () => manager().queryStates().ips;
+	const hasCharacterIpError = () =>
+		manager().activeTab() === "characters" &&
+		(characterIpState().phase === "error" ||
+			characterIpState().phase === "offline");
 
 	return (
-		<div class="container mx-auto p-8">
-			<div class="mb-8 flex items-center justify-between">
-				<h1 class="font-bold text-3xl">Entity Manager</h1>
+		<div class="container mx-auto px-3 py-4 sm:p-8">
+			<div class="mb-6 flex flex-col gap-3 sm:mb-8 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+				<h1 class="font-bold text-2xl sm:text-3xl">Entity Manager</h1>
 				<Show
 					when={
-						manager().activeTab() !== "tagging" &&
-						manager().activeTab() !== "vectors" &&
-						manager().activeTab() !== "duplicates"
+						isCrudTab(manager().activeTab()) &&
+						activeQueryState().phase !== "empty"
 					}
 				>
-					<Button onClick={manager().openCreateDialog}>Create New</Button>
+					<Button class="w-full sm:w-auto" onClick={manager().openCreateDialog}>
+						Create New
+					</Button>
 				</Show>
 			</div>
 
-			<div class="mb-6 flex space-x-4 border-b">
+			<div class="-mx-3 mb-6 flex gap-1 overflow-x-auto border-b px-3 sm:mx-0 sm:gap-4 sm:px-0">
 				<For each={managerTabs}>
 					{(tab) => (
 						<button
-							class={`border-b-2 px-4 py-2 font-medium transition-colors ${
+							aria-pressed={manager().activeTab() === tab}
+							class={`min-h-11 shrink-0 border-b-2 px-3 py-2 font-medium transition-colors sm:px-4 ${
 								manager().activeTab() === tab
 									? "border-primary text-primary"
 									: "border-transparent text-muted-foreground hover:text-foreground"
@@ -125,10 +160,65 @@ export function ManagerScreen(props: ManagerScreenProps) {
 				</For>
 			</div>
 
+			<QueryStatus
+				class="mb-4"
+				fetchState={activeQueryState().fetchState}
+				hasData={activeQueryState().data !== undefined}
+				offlineLabel="オフラインのため保存済みの管理データを表示しています。"
+				updatingLabel="管理データを更新中..."
+			/>
+			<Show when={hasCharacterIpError()}>
+				<div class="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3">
+					<p class="text-muted-foreground text-sm" role="status">
+						IP候補を取得できませんでした。Characters一覧は引き続き利用できます。
+					</p>
+					<RetryButton
+						class="h-8 px-3 text-xs"
+						label="IP候補を再取得"
+						onRetry={manager().retryQueries}
+					/>
+				</div>
+			</Show>
+
+			<Switch>
+				<Match when={activeQueryState().phase === "pending"}>
+					<LoadingRegion label="管理データを読み込んでいます...">
+						<CardGridSkeleton />
+					</LoadingRegion>
+				</Match>
+				<Match when={activeQueryState().phase === "error"}>
+					<ErrorState
+						description="接続を確認して、もう一度お試しください。"
+						onRetry={manager().retryQueries}
+						title="管理データを取得できませんでした"
+					/>
+				</Match>
+				<Match when={activeQueryState().phase === "offline"}>
+					<OfflineState
+						description="接続が戻ったら、この画面から再試行できます。"
+						onRetry={manager().retryQueries}
+					/>
+				</Match>
+				<Match
+					when={
+						activeQueryState().phase === "empty" &&
+						isCrudTab(manager().activeTab())
+					}
+				>
+					<EmptyState
+						description="最初の項目を作成すると、ここに表示されます。"
+						title={`登録された ${tabLabel(manager().activeTab())} はありません`}
+					>
+						<Button onClick={manager().openCreateDialog}>Create New</Button>
+					</EmptyState>
+				</Match>
+			</Switch>
+
 			<Show
 				when={
-					manager().activeTab() === "tagging" ||
-					manager().activeTab() === "vectors"
+					(manager().activeTab() === "tagging" ||
+						manager().activeTab() === "vectors") &&
+					canRenderActiveTab()
 				}
 			>
 				<div class="space-y-6">
@@ -210,9 +300,12 @@ export function ManagerScreen(props: ManagerScreenProps) {
 									: "If checked, existing AI tags will be ignored and images will be re-analyzed."}
 							</p>
 
-							<div class="flex items-center gap-x-2 pt-2">
-								<Button onClick={manager().handleScan}>Scan for Targets</Button>
+							<div class="sticky bottom-0 z-10 -mx-2 flex flex-col gap-2 border-t bg-card px-2 py-3 sm:static sm:mx-0 sm:flex-row sm:border-0 sm:bg-transparent sm:p-0">
+								<Button class="w-full sm:w-auto" onClick={manager().handleScan}>
+									Scan for Targets
+								</Button>
 								<Button
+									class="w-full sm:w-auto"
 									onClick={
 										manager().activeTab() === "vectors"
 											? manager().handleStartBatchCcipExtraction
@@ -226,13 +319,19 @@ export function ManagerScreen(props: ManagerScreenProps) {
 							</div>
 
 							<Show when={manager().taggingStatus()}>
-								<div class="mt-4 rounded bg-gray-100 p-2 text-sm">
+								<div class="mt-4 break-words rounded bg-gray-100 p-2 text-sm">
 									{manager().taggingStatus()}
 								</div>
 							</Show>
 							<Show when={manager().jobProgress()}>
 								{(progress) => (
-									<div class="mt-4">
+									<div class="mt-4 space-y-2" role="status">
+										<div class="flex flex-wrap justify-between gap-x-3 gap-y-1 text-muted-foreground text-sm">
+											<span>Batch progress</span>
+											<span>
+												{progress().processed} / {progress().total}
+											</span>
+										</div>
 										<Progress
 											value={(progress().processed / progress().total) * 100}
 										/>
@@ -244,7 +343,9 @@ export function ManagerScreen(props: ManagerScreenProps) {
 				</div>
 			</Show>
 
-			<Show when={manager().activeTab() === "duplicates"}>
+			<Show
+				when={manager().activeTab() === "duplicates" && canRenderActiveTab()}
+			>
 				<div class="space-y-6">
 					<Card>
 						<CardHeader>
@@ -299,8 +400,11 @@ export function ManagerScreen(props: ManagerScreenProps) {
 								</Select>
 							</div>
 
-							<div class="flex items-center gap-x-2 pt-2">
-								<Button onClick={manager().handleScanDuplicates}>
+							<div class="sticky bottom-0 z-10 -mx-2 flex flex-col gap-2 border-t bg-card px-2 py-3 sm:static sm:mx-0 sm:flex-row sm:border-0 sm:bg-transparent sm:p-0">
+								<Button
+									class="w-full sm:w-auto"
+									onClick={manager().handleScanDuplicates}
+								>
 									Scan for Duplicates
 								</Button>
 							</div>
@@ -314,12 +418,13 @@ export function ManagerScreen(props: ManagerScreenProps) {
 					</Card>
 
 					<Show when={manager().duplicateGroups().length > 0}>
-						<div class="flex items-center justify-between">
+						<div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 							<h3 class="font-bold text-lg">
 								Duplicate Groups ({manager().duplicateGroups().length})
 							</h3>
-							<div class="flex gap-2">
+							<div class="grid grid-cols-2 gap-2 sm:flex">
 								<Button
+									class="w-full sm:w-auto"
 									onClick={manager().selectKeepOldest}
 									size="sm"
 									variant="outline"
@@ -327,6 +432,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 									Keep Oldest
 								</Button>
 								<Button
+									class="w-full sm:w-auto"
 									onClick={manager().selectKeepLargest}
 									size="sm"
 									variant="outline"
@@ -334,6 +440,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 									Keep Largest
 								</Button>
 								<Button
+									class="col-span-2 w-full sm:col-auto sm:w-auto"
 									onClick={manager().handleDeleteDuplicates}
 									variant="destructive"
 								>
@@ -438,17 +545,16 @@ export function ManagerScreen(props: ManagerScreenProps) {
 
 			<Show
 				when={
-					manager().activeTab() !== "tagging" &&
-					manager().activeTab() !== "vectors" &&
-					manager().activeTab() !== "duplicates"
+					isCrudTab(manager().activeTab()) &&
+					activeQueryState().phase === "data"
 				}
 			>
 				<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					<For each={manager().getActiveItems()}>
 						{(item) => (
 							<Card>
-								<CardHeader>
-									<CardTitle>{item.name}</CardTitle>
+								<CardHeader class="min-w-0">
+									<CardTitle class="break-words">{item.name}</CardTitle>
 									<Show when={item.description}>
 										<CardDescription>{item.description}</CardDescription>
 									</Show>
@@ -468,8 +574,10 @@ export function ManagerScreen(props: ManagerScreenProps) {
 									</Show>
 								</CardHeader>
 								<CardContent>
-									<div class="flex justify-end space-x-2">
+									<div class="flex flex-col gap-2 sm:flex-row sm:justify-end">
 										<Button
+											aria-label={`Edit ${item.name}`}
+											class="w-full sm:w-auto"
 											onClick={() => manager().openEditDialog(item)}
 											size="sm"
 											variant="outline"
@@ -477,6 +585,7 @@ export function ManagerScreen(props: ManagerScreenProps) {
 											Edit
 										</Button>
 										<Button
+											class="w-full sm:w-auto"
 											onClick={() => {
 												manager().setItemToDelete(item);
 												manager().setIsDeleteDialogOpen(true);
@@ -514,10 +623,13 @@ export function ManagerScreen(props: ManagerScreenProps) {
 						</DialogDescription>
 					</DialogHeader>
 					<div class="grid gap-4 py-4">
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label class="text-right">Name</Label>
+						<div class="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+							<Label class="sm:text-right" for="manager-entity-name">
+								Name
+							</Label>
 							<Input
-								class="col-span-3"
+								class="w-full text-base sm:col-span-3 sm:text-sm"
+								id="manager-entity-name"
 								onInput={(event) =>
 									manager().setFormData({
 										...manager().formData(),
@@ -527,10 +639,13 @@ export function ManagerScreen(props: ManagerScreenProps) {
 								value={manager().formData().name}
 							/>
 						</div>
-						<div class="grid grid-cols-4 items-center gap-4">
-							<Label class="text-right">Description</Label>
+						<div class="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+							<Label class="sm:text-right" for="manager-entity-description">
+								Description
+							</Label>
 							<Input
-								class="col-span-3"
+								class="w-full text-base sm:col-span-3 sm:text-sm"
+								id="manager-entity-description"
 								onInput={(event) =>
 									manager().setFormData({
 										...manager().formData(),
@@ -541,9 +656,11 @@ export function ManagerScreen(props: ManagerScreenProps) {
 							/>
 						</div>
 						<Show when={manager().activeTab() === "characters"}>
-							<div class="grid grid-cols-4 items-center gap-4">
-								<Label class="text-right">IPs</Label>
-								<div class="col-span-3">
+							<div class="grid grid-cols-1 gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+								<Label class="sm:text-right" for="manager-entity-ips">
+									IPs
+								</Label>
+								<div class="w-full sm:col-span-3">
 									<Combobox<Ip>
 										itemComponent={(comboboxProps) => (
 											<ComboboxItem item={comboboxProps.item}>
@@ -571,7 +688,10 @@ export function ManagerScreen(props: ManagerScreenProps) {
 											)}
 									>
 										<ComboboxControl>
-											<ComboboxInput placeholder="Select IPs..." />
+											<ComboboxInput
+												id="manager-entity-ips"
+												placeholder="Select IPs..."
+											/>
 											<ComboboxTrigger />
 										</ComboboxControl>
 										<ComboboxContent />

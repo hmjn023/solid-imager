@@ -42,7 +42,7 @@ class ApiMediaSource implements MediaSource {
 
 	async getUrl() {
 		const url = `/api/sources/${this.media.mediaSourceId}/${this.media.id}`;
-		const response = await fetch(url);
+		const response = await fetch(url, { cache: "no-store" });
 		if (!response.ok) {
 			throw new Error(`Failed to fetch media: ${response.status}`);
 		}

@@ -3,7 +3,7 @@ import { getContentTypeFromExtension } from "@solid-imager/core/domain/media/uti
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { createFileRoute } from "@tanstack/solid-router";
 import { services } from "~/application/registry";
-import { bootstrap } from "~/infrastructure/bootstrap";
+import { bootstrapServerRoute } from "~/infrastructure/server-route-bootstrap";
 
 const resolveSafePath = (basePath: string, targetPath: string): string => {
 	const resolvedPath = path.resolve(basePath, targetPath);
@@ -22,7 +22,7 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 	server: {
 		handlers: {
 			GET: async ({ params }) => {
-				bootstrap();
+				bootstrapServerRoute();
 				const { mediaSourceId, mediaId } = params;
 
 				const media = await services.getMediaRepository().findById(mediaId);
@@ -49,7 +49,10 @@ export const Route = createFileRoute("/api/sources/$mediaSourceId/$mediaId")({
 
 				const contentType = getContentTypeFromExtension(media.fileName);
 				return new Response(file, {
-					headers: { "Content-Type": contentType },
+					headers: {
+						"Cache-Control": "no-store",
+						"Content-Type": contentType,
+					},
 				});
 			},
 		},

@@ -6,10 +6,13 @@ import {
 	createMemo,
 	createSignal,
 	For,
+	Match,
 	onCleanup,
 	onMount,
 	Show,
+	Switch,
 } from "solid-js";
+import { EmptyState, ErrorState, OfflineState } from "./async-state";
 import {
 	ContextMenu,
 	ContextMenuContent,
@@ -17,20 +20,20 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "./context-menu";
+import type { QueryUiState } from "./query-state";
+import { LoadingRegion, MediaGridSkeleton } from "./skeleton";
 
 const VIRTUALIZATION_THRESHOLD = 100;
-const GRID_GAP_PX = 16;
+const GRID_GAP_PX = 12;
 const GRID_ITEM_ASPECT_RATIO = 4 / 3;
 const VIRTUAL_ROWS_OVERSCAN = 4;
 
 type SourceMediaGridProps = {
 	mediaResults: Accessor<Media[]>;
 	mediaSourceId: Accessor<string | undefined>;
-	isPending: boolean;
-	isError: boolean;
+	state: Accessor<QueryUiState<Media[]>>;
 	isFetchingNextPage: boolean;
-	queryError: Error | null;
-	onRetry?: () => void;
+	onRetry?: () => void | Promise<void>;
 	contextMenuMediaId?: Accessor<string | null>;
 	setContextMenuMediaId?: Setter<string | null>;
 	onDelete?: (mediaId: string) => void;
@@ -68,6 +71,8 @@ type SourceMediaGridProps = {
 	showOpenInNewTab?: boolean;
 	/** Total result count. If omitted, uses mediaResults().length (may not reflect total). */
 	totalCount?: number;
+	/** Screen-specific copy for the initial error state. */
+	errorTitle?: string;
 };
 
 export function SourceMediaGrid(props: SourceMediaGridProps) {
@@ -77,6 +82,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const enableVirtualization = () => props.enableVirtualization ?? false;
 	const disableContextMenu = () => props.disableContextMenu ?? false;
 	const totalCount = () => props.totalCount ?? props.mediaResults().length;
+	const errorMessage = () => {
+		const error = props.state().error;
+		return error instanceof Error ? error.message : "API接続に失敗しました";
+	};
 
 	// --- Virtual grid setup ---
 	const [windowWidth, setWindowWidth] = createSignal(0);
@@ -84,9 +93,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	let mediaGridRef: HTMLDivElement | undefined;
 
 	const columnCount = createMemo(() => {
-		const width = windowWidth();
-		if (width >= 1024) return 5;
-		if (width >= 768) return 3;
+		const width = mediaGridWidth() || windowWidth();
+		if (width >= 1100) return 5;
+		if (width >= 640) return 3;
 		return 2;
 	});
 
@@ -193,7 +202,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	const gridContent = (
 		<div
-			class="relative w-full"
+			class="relative min-w-0 w-full"
 			ref={(element) => {
 				mediaGridRef = element;
 				requestAnimationFrame(() => {
@@ -208,7 +217,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		>
 			<Show
 				fallback={
-					<div class="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5">
+					<div
+						class="grid gap-3"
+						style={{
+							"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
+						}}
+					>
 						<For each={props.mediaResults()}>
 							{(media) =>
 								props.renderItem(media, {
@@ -231,7 +245,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						const rowMedia = () => mediaRows()[virtualRow.index] || [];
 						return (
 							<div
-								class="absolute left-0 top-0 grid gap-4"
+								class="absolute top-0 left-0 grid gap-3"
 								style={{
 									"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
 									height: `${virtualRow.size}px`,
@@ -261,178 +275,181 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	);
 
 	return (
-		<div class="min-h-0 space-y-4">
-			{/* Loading state */}
-			<Show when={props.isPending && props.mediaResults().length === 0}>
-				<div class="flex h-64 items-center justify-center">
-					<div class="animate-pulse text-lg text-muted-foreground">
-						Loading media...
-					</div>
-				</div>
-			</Show>
-
-			{/* Error state */}
-			<Show when={props.isError}>
-				<div class="rounded-md border border-destructive/30 bg-error p-4">
-					<p class="font-medium text-error-foreground">
-						メディア一覧を読み込めませんでした
-					</p>
-					<p class="mt-1 text-muted-foreground text-sm">
-						{props.queryError?.message ?? "API connection failed"}
-					</p>
-					<Show when={props.onRetry}>
-						<button
-							class="mt-3 rounded border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
-							onClick={props.onRetry}
-							type="button"
-						>
-							再試行
-						</button>
+		<div class="min-h-0 min-w-0 space-y-4">
+			<Switch>
+				<Match when={props.state().phase === "pending"}>
+					<LoadingRegion label="メディア一覧を読み込んでいます...">
+						<MediaGridSkeleton />
+					</LoadingRegion>
+				</Match>
+				<Match when={props.state().phase === "error"}>
+					<ErrorState
+						description={errorMessage()}
+						onRetry={props.onRetry}
+						title={props.errorTitle ?? "メディア一覧を読み込めませんでした"}
+					/>
+				</Match>
+				<Match when={props.state().phase === "offline"}>
+					<OfflineState
+						description="接続を確認してから再試行してください。"
+						onRetry={props.onRetry}
+					/>
+				</Match>
+				<Match
+					when={
+						props.state().phase === "data" || props.state().phase === "empty"
+					}
+				>
+					{/* Result count */}
+					<Show when={showResultCount() && props.mediaResults().length > 0}>
+						<div class="mb-4 flex min-w-0 items-center justify-between gap-3">
+							<p class="text-gray-600 text-sm">{totalCount()} 件の結果</p>
+						</div>
 					</Show>
-				</div>
-			</Show>
 
-			{/* Result count */}
-			<Show when={showResultCount() && props.mediaResults().length > 0}>
-				<div class="mb-4 flex items-center justify-between">
-					<p class="text-gray-600 text-sm">{totalCount()} 件の結果</p>
-				</div>
-			</Show>
+					{/* Grid with optional context menu */}
+					<Show fallback={gridContent} when={!disableContextMenu()}>
+						<ContextMenu>
+							<ContextMenuTrigger class="block min-w-0 w-full">
+								{gridContent}
+							</ContextMenuTrigger>
+							<ContextMenuContent>
+								<Show
+									fallback={
+										<ContextMenuItem disabled>
+											No media selected
+										</ContextMenuItem>
+									}
+									when={contextMenuMediaId()}
+								>
+									<ContextMenuItem
+										onSelect={() => {
+											const id = contextMenuMediaId();
+											if (id) props.onToggleSelect?.(id);
+										}}
+									>
+										{(() => {
+											const id = contextMenuMediaId();
+											return id &&
+												props.isBulkSelectMode?.() &&
+												props.isSelected?.(id)
+												? "選択解除"
+												: "選択";
+										})()}
+									</ContextMenuItem>
 
-			{/* Grid with optional context menu */}
-			<Show fallback={gridContent} when={!disableContextMenu()}>
-				<ContextMenu>
-					<ContextMenuTrigger class="block w-full">
-						{gridContent}
-					</ContextMenuTrigger>
-					<ContextMenuContent>
+									<ContextMenuSeparator />
+
+									<Show
+										when={
+											props.isBulkSelectMode?.() &&
+											(props.selectedCount?.() ?? 0) > 0
+										}
+									>
+										<ContextMenuItem
+											onSelect={() => {
+												props.onBulkAction?.();
+											}}
+										>
+											一括操作を実行 ({props.selectedCount?.()}件選択中)
+										</ContextMenuItem>
+										<ContextMenuItem
+											onSelect={() => {
+												props.onClearSelection?.();
+											}}
+										>
+											選択をクリア
+										</ContextMenuItem>
+										<ContextMenuSeparator />
+									</Show>
+
+									<Show when={showOpenInNewTab()}>
+										<ContextMenuItem
+											onSelect={() => {
+												const id = contextMenuMediaId();
+												const sourceId = props.mediaSourceId();
+												if (id && sourceId) {
+													window.open(`/sources/${sourceId}/${id}`, "_blank");
+												}
+											}}
+										>
+											新しいタブで開く
+										</ContextMenuItem>
+									</Show>
+
+									<ContextMenuItem
+										class="text-red-600 focus:text-red-600"
+										onSelect={() => {
+											const id = contextMenuMediaId();
+											if (id) props.onDelete?.(id);
+										}}
+									>
+										削除
+									</ContextMenuItem>
+
+									<ContextMenuSeparator />
+
+									<ContextMenuItem
+										onSelect={() => {
+											const id = contextMenuMediaId();
+											if (id) props.onCopyMove?.(id, "copy");
+										}}
+									>
+										他のソースへコピー
+									</ContextMenuItem>
+									<ContextMenuItem
+										onSelect={() => {
+											const id = contextMenuMediaId();
+											if (id) props.onCopyMove?.(id, "move");
+										}}
+									>
+										他のソースへ移動
+									</ContextMenuItem>
+
+									<ContextMenuSeparator />
+
+									<ContextMenuItem
+										onSelect={() => {
+											const id = contextMenuMediaId();
+											if (id) props.onSyncSingleMedia?.(id);
+										}}
+									>
+										メタデータを同期 (再処理)
+									</ContextMenuItem>
+								</Show>
+							</ContextMenuContent>
+						</ContextMenu>
+					</Show>
+
+					{/* Empty state */}
+					<Show when={showEmptyState() && props.state().phase === "empty"}>
+						<EmptyState
+							description="検索条件を変更して、もう一度お試しください。"
+							title="検索結果が見つかりませんでした"
+						/>
+					</Show>
+
+					{/* Load more sentinel */}
+					<div
+						aria-live="polite"
+						class="flex min-h-11 w-full items-center justify-center py-2 text-gray-500 text-sm"
+						data-testid="media-load-more-sentinel"
+						ref={props.setLoadMoreRef}
+						role="status"
+					>
 						<Show
 							fallback={
-								<ContextMenuItem disabled>No media selected</ContextMenuItem>
+								<Show when={props.hasNextPage}>
+									<p>スクロールしてさらに読み込む</p>
+								</Show>
 							}
-							when={contextMenuMediaId()}
+							when={props.isFetchingNextPage}
 						>
-							<ContextMenuItem
-								onSelect={() => {
-									const id = contextMenuMediaId();
-									if (id) props.onToggleSelect?.(id);
-								}}
-							>
-								{(() => {
-									const id = contextMenuMediaId();
-									return id &&
-										props.isBulkSelectMode?.() &&
-										props.isSelected?.(id)
-										? "選択解除"
-										: "選択";
-								})()}
-							</ContextMenuItem>
-
-							<ContextMenuSeparator />
-
-							<Show
-								when={
-									props.isBulkSelectMode?.() &&
-									(props.selectedCount?.() ?? 0) > 0
-								}
-							>
-								<ContextMenuItem
-									onSelect={() => {
-										props.onBulkAction?.();
-									}}
-								>
-									一括操作を実行 ({props.selectedCount?.()}件選択中)
-								</ContextMenuItem>
-								<ContextMenuItem
-									onSelect={() => {
-										props.onClearSelection?.();
-									}}
-								>
-									選択をクリア
-								</ContextMenuItem>
-								<ContextMenuSeparator />
-							</Show>
-
-							<Show when={showOpenInNewTab()}>
-								<ContextMenuItem
-									onSelect={() => {
-										const id = contextMenuMediaId();
-										const sourceId = props.mediaSourceId();
-										if (id && sourceId) {
-											window.open(`/sources/${sourceId}/${id}`, "_blank");
-										}
-									}}
-								>
-									新しいタブで開く
-								</ContextMenuItem>
-							</Show>
-
-							<ContextMenuItem
-								class="text-red-600 focus:text-red-600"
-								onSelect={() => {
-									const id = contextMenuMediaId();
-									if (id) props.onDelete?.(id);
-								}}
-							>
-								削除
-							</ContextMenuItem>
-
-							<ContextMenuSeparator />
-
-							<ContextMenuItem
-								onSelect={() => {
-									const id = contextMenuMediaId();
-									if (id) props.onCopyMove?.(id, "copy");
-								}}
-							>
-								他のソースへコピー
-							</ContextMenuItem>
-							<ContextMenuItem
-								onSelect={() => {
-									const id = contextMenuMediaId();
-									if (id) props.onCopyMove?.(id, "move");
-								}}
-							>
-								他のソースへ移動
-							</ContextMenuItem>
-
-							<ContextMenuSeparator />
-
-							<ContextMenuItem
-								onSelect={() => {
-									const id = contextMenuMediaId();
-									if (id) props.onSyncSingleMedia?.(id);
-								}}
-							>
-								メタデータを同期 (再処理)
-							</ContextMenuItem>
+							<p>読み込み中...</p>
 						</Show>
-					</ContextMenuContent>
-				</ContextMenu>
-			</Show>
-
-			{/* Empty state */}
-			<Show
-				when={
-					showEmptyState() &&
-					props.mediaResults().length === 0 &&
-					!props.isPending
-				}
-			>
-				<div class="py-12 text-center text-gray-500">
-					検索結果が見つかりませんでした
-				</div>
-			</Show>
-
-			{/* Load more sentinel */}
-			<div
-				class="flex h-10 w-full items-center justify-center text-gray-500"
-				ref={props.setLoadMoreRef}
-			>
-				<Show when={props.isFetchingNextPage}>
-					<div class="text-center text-gray-500">読み込み中...</div>
-				</Show>
-			</div>
+					</div>
+				</Match>
+			</Switch>
 		</div>
 	);
 }

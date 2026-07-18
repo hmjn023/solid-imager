@@ -17,17 +17,24 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
 export function searchMedia(
 	sourceId: string | undefined | null,
 	params: MediaSearchRequest,
+	signal?: AbortSignal,
 ) {
-	return orpc.media.search({
-		sourceId,
-		params,
-	});
+	return orpc.media.search(
+		{
+			sourceId,
+			params,
+		},
+		{ signal },
+	);
 }
 
-export function searchSimilar(input: {
-	anchorMediaId: string;
-	mediaSourceId?: string;
-	topK: number;
-}) {
-	return orpc.media.searchSimilar(input);
+export function searchSimilar(
+	input: {
+		anchorMediaId: string;
+		mediaSourceId?: string;
+		topK: number;
+	},
+	signal?: AbortSignal,
+) {
+	return orpc.media.searchSimilar(input, { signal });
 }

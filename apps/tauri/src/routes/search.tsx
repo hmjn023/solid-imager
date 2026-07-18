@@ -2,7 +2,6 @@ import { Button } from "@solid-imager/ui/button";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
-import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
@@ -27,15 +26,13 @@ import {
 } from "~/queries";
 
 export const Route = createFileRoute("/search")({
-	loader: async ({ context }) => {
-		await Promise.all([
-			context.queryClient.ensureQueryData(tagsQueryOptions()),
-			context.queryClient.ensureQueryData(mediaSourcesQueryOptions()),
-			context.queryClient.ensureQueryData(allProjectsQueryOptions()),
-			context.queryClient.ensureQueryData(allIpsQueryOptions()),
-			context.queryClient.ensureQueryData(allCharactersQueryOptions()),
-			context.queryClient.ensureQueryData(allAuthorsQueryOptions()),
-		]);
+	loader: ({ context }) => {
+		void context.queryClient.prefetchQuery(tagsQueryOptions());
+		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
+		void context.queryClient.prefetchQuery(allProjectsQueryOptions());
+		void context.queryClient.prefetchQuery(allIpsQueryOptions());
+		void context.queryClient.prefetchQuery(allCharactersQueryOptions());
+		void context.queryClient.prefetchQuery(allAuthorsQueryOptions());
 	},
 	component: SearchRoute,
 });
@@ -45,14 +42,11 @@ const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 const PresetClient = createPresetClient(rawPresetClient);
 
 function SearchRoute() {
-	const queryClient = useQueryClient();
-
-	useCurrentSearchPersistence("all", PresetClient);
+	const isSearchStateRestored = useCurrentSearchPersistence("all");
 
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
-		queryClient,
 		queries: {
 			tags: tagsQueryOptions,
 			sources: mediaSourcesQueryOptions,
@@ -73,12 +67,15 @@ function SearchRoute() {
 		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
+		isSearchStateRestored,
 	});
 
-	useMediaSourceEvents(() => searchState.selectedSource || undefined, {
+	useMediaSourceEvents(() => searchState.selectedSource || "*", {
 		onMediaAdded: page.refreshSearchResults,
 		onMediaDeleted: page.refreshSearchResults,
 		onMediaChanged: page.refreshSearchResults,
+		onMediaCopied: page.refreshSearchResults,
+		onMediaMoved: page.refreshSearchResults,
 		onAllJobsCompleted: page.refreshSearchResults,
 	});
 
@@ -97,7 +94,7 @@ function SearchRoute() {
 			)}
 			renderNavActions={({ openMobileFilters }) => (
 				<Button
-					class="border-white text-white hover:bg-sky-700 md:hidden"
+					class="size-11 border-input text-foreground hover:bg-accent md:hidden"
 					onClick={openMobileFilters}
 					size="icon"
 					variant="outline"

@@ -2,6 +2,7 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
+import { Link } from "@tanstack/solid-router";
 import {
 	Card,
 	CardContent,
@@ -65,33 +66,69 @@ export function SourceCard(props: SourceCardProps) {
 		props.onDelete?.(props.mediaSource);
 	};
 
+	const content = () => (
+		<>
+			<CardHeader class="min-w-0 p-4 sm:p-6">
+				<CardTitle class="break-words" data-testid="source-name">
+					{props.mediaSource.name}
+				</CardTitle>
+			</CardHeader>
+			<CardContent class="min-w-0 p-4 pt-0 sm:p-6 sm:pt-0">
+				<CardDescription class="break-words">
+					{props.mediaSource.description}
+				</CardDescription>
+				<div class="mt-4 space-y-2 text-sm">
+					<p>
+						<span class="font-semibold">Type:</span>{" "}
+						{getTypeLabel(props.mediaSource.type)}
+					</p>
+					<p class="truncate" title={getConnectionDetails(props.mediaSource)}>
+						{getConnectionDetails(props.mediaSource)}
+					</p>
+				</div>
+			</CardContent>
+		</>
+	);
+
+	const sourceLink = () => {
+		if (props.href) {
+			return (
+				<a class="block min-w-0 text-current no-underline" href={props.href}>
+					{content()}
+				</a>
+			);
+		}
+
+		if (!props.mediaSource.id) {
+			return (
+				<Link class="block min-w-0 text-current no-underline" to="/sources">
+					{content()}
+				</Link>
+			);
+		}
+
+		return (
+			<Link
+				class="block min-w-0 text-current no-underline"
+				params={{ mediaSourceId: props.mediaSource.id }}
+				to="/sources/$mediaSourceId"
+			>
+				{content()}
+			</Link>
+		);
+	};
+
 	return (
-		<a
-			class="block text-current no-underline"
-			href={props.href ?? `/sources/${props.mediaSource.id}`}
+		<Card
+			class="h-full overflow-hidden hover:bg-gray-50"
+			data-testid="source-card"
 		>
-			<Card class="relative h-full hover:bg-gray-50" data-testid="source-card">
-				<CardHeader>
-					<CardTitle data-testid="source-name">
-						{props.mediaSource.name}
-					</CardTitle>
-				</CardHeader>
-				<CardContent>
-					<CardDescription>{props.mediaSource.description}</CardDescription>
-					<div class="mt-4 space-y-2 text-sm">
-						<p>
-							<span class="font-semibold">Type:</span>{" "}
-							{getTypeLabel(props.mediaSource.type)}
-						</p>
-						<p class="truncate" title={getConnectionDetails(props.mediaSource)}>
-							{getConnectionDetails(props.mediaSource)}
-						</p>
-					</div>
-				</CardContent>
-				<div class="absolute top-2 right-2 z-10 flex gap-1">
+			{sourceLink()}
+			{(props.onSync || props.onEdit || props.onDelete) && (
+				<div class="flex flex-wrap gap-2 border-t bg-muted/30 p-3">
 					{props.onSync && (
 						<button
-							class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+							class="min-h-11 min-w-0 flex-1 rounded border bg-background px-3 font-medium text-sm shadow-sm hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							data-testid="sync-source-btn"
 							onClick={handleSyncClick}
 							type="button"
@@ -101,7 +138,7 @@ export function SourceCard(props: SourceCardProps) {
 					)}
 					{props.onEdit && (
 						<button
-							class="rounded border bg-white px-2 py-1 text-xs shadow hover:bg-gray-50"
+							class="min-h-11 min-w-0 flex-1 rounded border bg-background px-3 font-medium text-sm shadow-sm hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							data-testid="edit-source-btn"
 							onClick={handleEditClick}
 							type="button"
@@ -111,7 +148,7 @@ export function SourceCard(props: SourceCardProps) {
 					)}
 					{props.onDelete && (
 						<button
-							class="rounded bg-red-500 px-2 py-1 text-white text-xs shadow hover:bg-red-600"
+							class="min-h-11 min-w-0 flex-1 rounded bg-red-500 px-3 font-medium text-sm text-white shadow-sm hover:bg-red-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2"
 							data-testid="delete-source-btn"
 							onClick={handleDeleteClick}
 							type="button"
@@ -120,7 +157,7 @@ export function SourceCard(props: SourceCardProps) {
 						</button>
 					)}
 				</div>
-			</Card>
-		</a>
+			)}
+		</Card>
 	);
 }

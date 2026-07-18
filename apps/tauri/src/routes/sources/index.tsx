@@ -2,6 +2,7 @@ import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas
 import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
+import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
@@ -10,6 +11,7 @@ import { useLiveQuery } from "@tanstack/solid-db";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { getCollections } from "~/collections";
+import { collectionQueryKeys } from "~/collections/query-keys";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createMediaSource,
@@ -17,12 +19,8 @@ import {
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
-import { mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/")({
-	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(mediaSourcesQueryOptions());
-	},
 	component: SourcesRoute,
 });
 
@@ -37,6 +35,19 @@ function SourcesRoute() {
 	const queryClient = useQueryClient();
 	const { sources } = getCollections();
 	const mediaSources = useLiveQuery(() => sources);
+	const sourceData = () => {
+		const cachedSources = mediaSources();
+		return cachedSources.length > 0 ||
+			(mediaSources.isReady && !sources.utils.isError)
+			? cachedSources
+			: undefined;
+	};
+	const fetchStatus = () => {
+		if (sources.utils.fetchStatus.includes("paused")) {
+			return "paused" as const;
+		}
+		return sources.utils.isFetching ? ("fetching" as const) : ("idle" as const);
+	};
 
 	const page = useSourcesPage({
 		actions: {
@@ -58,21 +69,39 @@ function SourcesRoute() {
 			},
 		},
 		queryClient,
-		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
+		invalidateQueryKey: collectionQueryKeys.sources(),
 		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
-			mediaSources()
-				?.map((s) => s.id ?? s.name)
+			(sourceData() ?? [])
+				.map((s) => s.id ?? s.name)
 				.filter((id): id is string => Boolean(id)) ?? [],
 	});
 
 	return (
 		<SourcesScreen
 			page={page}
-			mediaSources={() => mediaSources()}
-			isLoading={false}
-			isError={false}
-			error={null}
+			mediaSources={sourceData}
+			onRetry={() => sources.utils.clearError()}
+			state={() =>
+				toQueryUiState(
+					{
+						data: sourceData(),
+						error:
+							sources.utils.lastError ??
+							(mediaSources.isError
+								? new Error("保存済みのソースを読み込めませんでした")
+								: undefined),
+						status:
+							mediaSources.isError || sources.utils.isError
+								? "error"
+								: sourceData() === undefined || sources.utils.isLoading
+									? "pending"
+									: "success",
+						fetchStatus: fetchStatus(),
+					},
+					{ isEmpty: (data) => data.length === 0 },
+				)
+			}
 			renderSourceCard={(source) => (
 				<SourceCard
 					href={source.id ? `#/sources/${source.id}` : "#/sources"}

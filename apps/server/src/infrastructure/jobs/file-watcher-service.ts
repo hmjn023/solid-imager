@@ -100,6 +100,7 @@ async function handleFileDeleted(
 		// Notify
 		RealtimeEventBus.publishSource(mediaSourceId, "media-deleted", {
 			filePath: media.filePath,
+			mediaId: media.id,
 			timestamp: new Date().toISOString(),
 		});
 	} catch (error) {

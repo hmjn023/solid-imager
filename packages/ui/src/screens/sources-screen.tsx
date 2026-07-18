@@ -3,16 +3,23 @@ import type {
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
 import type { JSX } from "solid-js";
-import { For, Show } from "solid-js";
+import { For, Match, Switch } from "solid-js";
+import {
+	EmptyState,
+	ErrorState,
+	OfflineState,
+	QueryStatus,
+} from "../async-state";
+import { Button } from "../button";
 import type { UseSourcesPageResult } from "../hooks/use-sources-page";
+import type { QueryUiState } from "../query-state";
+import { CardGridSkeleton, LoadingRegion } from "../skeleton";
 
 export type SourcesScreenProps = {
 	page: UseSourcesPageResult;
 	mediaSources: () => (SafeMediaSource | MediaSourceInfo)[] | undefined;
-	isLoading: boolean;
-	isError: boolean;
-	error: Error | null;
-	onRetry?: () => void;
+	state: () => QueryUiState<(SafeMediaSource | MediaSourceInfo)[]>;
+	onRetry?: () => void | Promise<void>;
 	renderSourceCard: (source: SafeMediaSource | MediaSourceInfo) => JSX.Element;
 	renderFormModal: (props: {
 		editingSource: SafeMediaSource | MediaSourceInfo | null;
@@ -30,61 +37,78 @@ export type SourcesScreenProps = {
 
 export function SourcesScreen(props: SourcesScreenProps) {
 	const page = () => props.page;
+	const errorMessage = () => {
+		const error = props.state().error;
+		return error instanceof Error ? error.message : "API接続に失敗しました";
+	};
 
 	return (
-		<div class="container mx-auto p-6">
-			<div class="mb-6 flex items-center justify-between">
-				<h1 class="font-bold text-3xl">Media Sources</h1>
-				<div class="flex items-center gap-2">
-					<button
-						class="rounded bg-green-500 px-4 py-2 text-white shadow hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50"
+		<div class="container mx-auto p-4 sm:p-6">
+			<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+				<h1 class="font-bold text-2xl sm:text-3xl">Media Sources</h1>
+				<div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+					<Button
+						class="w-full sm:w-auto"
 						disabled={page().isSyncing() || !props.mediaSources()?.length}
 						onClick={() => page().handleSyncAll(props.mediaSources())}
-						type="button"
+						variant="outline"
 					>
 						{page().isSyncing() ? "Syncing..." : "Sync All"}
-					</button>
-					<button
-						class="rounded bg-blue-500 px-4 py-2 text-white shadow hover:bg-blue-600"
+					</Button>
+					<Button
+						class="w-full sm:w-auto"
 						onClick={() => page().handleAddSource()}
-						type="button"
 					>
 						Add Source
-					</button>
+					</Button>
 				</div>
 			</div>
 
-			<div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-				<For each={props.mediaSources()}>
-					{(source) => props.renderSourceCard(source)}
-				</For>
-			</div>
+			<QueryStatus
+				class="mb-3"
+				errorLabel="同期できなかったため、保存済みのソースを表示しています"
+				fetchState={props.state().fetchState}
+				hasData={props.state().data !== undefined}
+				hasError={props.state().error !== undefined}
+				offlineLabel="オフラインのため保存済みデータを表示しています"
+				updatingLabel="ソース一覧を更新中..."
+			/>
 
-			<Show when={props.isLoading}>
-				<div class="mt-8 text-center">
-					<p class="text-muted-foreground">Loading sources...</p>
-				</div>
-			</Show>
-
-			<Show when={props.isError}>
-				<div class="mt-8 rounded-md border border-destructive/30 bg-error p-4 text-center">
-					<p class="font-medium text-error-foreground">
-						ソース一覧を読み込めませんでした
-					</p>
-					<p class="mt-1 text-muted-foreground text-sm">
-						{props.error?.message ?? "API connection failed"}
-					</p>
-					<Show when={props.onRetry}>
-						<button
-							class="mt-3 rounded border border-input bg-background px-3 py-1.5 text-sm hover:bg-accent"
-							onClick={props.onRetry}
-							type="button"
-						>
-							再試行
-						</button>
-					</Show>
-				</div>
-			</Show>
+			<Switch>
+				<Match when={props.state().phase === "pending"}>
+					<LoadingRegion label="ソースを読み込んでいます...">
+						<CardGridSkeleton />
+					</LoadingRegion>
+				</Match>
+				<Match when={props.state().phase === "error"}>
+					<ErrorState
+						description={errorMessage()}
+						onRetry={props.onRetry}
+						title="ソース一覧を読み込めませんでした"
+					/>
+				</Match>
+				<Match when={props.state().phase === "offline"}>
+					<OfflineState
+						description="接続を確認してから再試行してください。"
+						onRetry={props.onRetry}
+					/>
+				</Match>
+				<Match when={props.state().phase === "empty"}>
+					<EmptyState
+						description="画像を管理するメディアソースを追加してください。"
+						title="メディアソースがありません"
+					>
+						<Button onClick={() => page().handleAddSource()}>Add Source</Button>
+					</EmptyState>
+				</Match>
+				<Match when={props.state().phase === "data"}>
+					<div class="grid min-w-0 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+						<For each={props.mediaSources()}>
+							{(source) => props.renderSourceCard(source)}
+						</For>
+					</div>
+				</Match>
+			</Switch>
 
 			{props.renderFormModal({
 				editingSource: page().editingSource(),

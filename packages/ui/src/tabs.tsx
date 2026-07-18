@@ -26,7 +26,7 @@ const TabsList = <T extends ValidComponent = "div">(
 	return (
 		<TabsListPrimitive
 			class={cn(
-				"inline-flex h-10 items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
+				"inline-flex min-h-10 max-w-full items-center justify-center rounded-md bg-muted p-1 text-muted-foreground",
 				local.class,
 			)}
 			{...others}

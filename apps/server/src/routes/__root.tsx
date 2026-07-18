@@ -1,4 +1,5 @@
 import { AppShell } from "@solid-imager/ui/layouts/app-shell";
+import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import {
@@ -7,7 +8,7 @@ import {
 	Outlet,
 	Scripts,
 } from "@tanstack/solid-router";
-import { Suspense } from "solid-js";
+import { createSignal, onMount } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
 import { ApiActivityIndicator } from "~/components/api-activity-indicator";
@@ -37,20 +38,23 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 });
 
 function RootComponent() {
+	const [isHydrated, setIsHydrated] = createSignal(false);
+	onMount(() => {
+		setIsHydrated(true);
+	});
+
 	return (
-		<html lang="ja">
+		<html data-hydrated={isHydrated() ? "true" : "false"} lang="ja">
 			<head>
 				<HydrationScript />
 				<HeadContent />
 			</head>
 			<body>
 				<Toaster />
-				<Suspense>
-					<AppShell nav={<Nav />}>
-						<ApiActivityIndicator />
-						<Outlet />
-					</AppShell>
-				</Suspense>
+				<AppShell nav={<Nav />} statusIndicator={<RouteTransitionIndicator />}>
+					<ApiActivityIndicator />
+					<Outlet />
+				</AppShell>
 				<Scripts />
 			</body>
 		</html>

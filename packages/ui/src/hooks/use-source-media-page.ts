@@ -15,7 +15,7 @@ import {
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import type { QueryClient } from "@tanstack/solid-query";
-import { createInfiniteQuery, keepPreviousData } from "@tanstack/solid-query";
+import { createInfiniteQuery, type InfiniteData } from "@tanstack/solid-query";
 import type { Accessor, Setter } from "solid-js";
 import {
 	createEffect,
@@ -26,14 +26,20 @@ import {
 } from "solid-js";
 import { isServer } from "solid-js/web";
 import { z } from "zod";
+import {
+	buildSourceMediaResultsQueryOptions,
+	isSourceMediaResultsQueryKey,
+	removeMediaFromInfiniteQueryData,
+	sourceMediaQueryKeys,
+} from "../query-options";
+import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
 import { getRestoreImportStrategies } from "./restore-import";
-import type { PresetClientLike } from "./use-current-search-persistence";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
-const MEDIA_ITEMS_PER_PAGE = 200;
+export const SOURCE_MEDIA_ITEMS_PER_PAGE = 200;
 const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 const MEDIA_REFRESH_DEBOUNCE_MS = 300;
@@ -63,10 +69,19 @@ export type SourceMediaPageQueries = {
 	authors: Accessor<Author[] | undefined>;
 };
 
+export type SourceMediaPageQueryStates = {
+	tags: QueryUiState<TagResponse[]>;
+	projects: QueryUiState<Project[]>;
+	ips: QueryUiState<Ip[]>;
+	characters: QueryUiState<Character[]>;
+	authors: QueryUiState<Author[]>;
+};
+
 export type SourceMediaPageActions = {
 	searchMedia: (
 		sourceId: string,
 		params: MediaSearchRequest,
+		signal?: AbortSignal,
 	) => Promise<MediaSearchResponse>;
 	uploadMedia: (
 		sourceId: string,
@@ -139,12 +154,12 @@ export type SourceMediaPageActions = {
 	parseRestoreFile?: (file: File) => Promise<unknown>;
 };
 
-export type SourceMediaPagePresetClient = PresetManagerClient &
-	PresetClientLike;
+export type SourceMediaPagePresetClient = PresetManagerClient;
 
 export type UseSourceMediaPageOptions = {
 	mediaSourceId: () => string | undefined;
 	queries: SourceMediaPageQueries;
+	queryStates: () => SourceMediaPageQueryStates;
 	actions: SourceMediaPageActions;
 	queryClient: QueryClient;
 	presetClient: SourceMediaPagePresetClient;
@@ -154,13 +169,16 @@ export type UseSourceMediaPageOptions = {
 	sortOrder: () => "asc" | "desc";
 	itemsPerPage?: number;
 	onThumbnailReady?: (mediaId: string) => void;
+	isSearchStateRestored?: Accessor<boolean>;
 };
 
 export type UseSourceMediaPageResult = {
 	mediaSourceId: () => string | undefined;
 	mediaQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
 	mediaResults: () => MediaSearchResponse["media"];
+	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
 	filterData: () => SourceMediaPageFilterData;
+	filterStates: () => SourceMediaPageQueryStates;
 	handleSearch: () => void;
 	loadMoreRef: () => HTMLDivElement | undefined;
 	setLoadMoreRef: (el: HTMLDivElement) => void;
@@ -208,6 +226,7 @@ export function useSourceMediaPage(
 	const {
 		mediaSourceId,
 		queries,
+		queryStates,
 		actions,
 		queryClient,
 		presetClient,
@@ -215,8 +234,9 @@ export function useSourceMediaPage(
 		getSearchCondition,
 		sortBy,
 		sortOrder,
-		itemsPerPage = MEDIA_ITEMS_PER_PAGE,
+		itemsPerPage = SOURCE_MEDIA_ITEMS_PER_PAGE,
 		onThumbnailReady,
+		isSearchStateRestored = () => true,
 	} = options;
 
 	const id = mediaSourceId;
@@ -235,34 +255,18 @@ export function useSourceMediaPage(
 		JSON.stringify(getSearchCondition() ?? null),
 	);
 
-	const mediaQuery = createInfiniteQuery<MediaSearchResponse>(() => ({
-		queryKey: ["media", id(), searchConditionKey(), sortBy(), sortOrder()],
-		queryFn: ({ pageParam }) => {
-			const sourceId = id();
-			if (!sourceId) {
-				throw new Error("Media source ID is required");
-			}
-			return actions.searchMedia(sourceId, {
-				condition: getSearchCondition() || undefined,
-				sort: sortBy(),
-				order: sortOrder(),
-				limit: itemsPerPage,
-				offset: pageParam as number,
-			});
-		},
-		initialPageParam: 0,
-		getNextPageParam: (lastPage, allPages) => {
-			const loadedCount = allPages.reduce(
-				(sum, page) => sum + page.media.length,
-				0,
-			);
-			if (loadedCount < lastPage.total) {
-				return loadedCount;
-			}
-			return;
-		},
-		placeholderData: keepPreviousData,
-	}));
+	const mediaQuery = createInfiniteQuery(() =>
+		buildSourceMediaResultsQueryOptions({
+			sourceId: id(),
+			condition: getSearchCondition(),
+			conditionKey: searchConditionKey(),
+			sort: sortBy(),
+			order: sortOrder(),
+			limit: itemsPerPage,
+			searchMedia: actions.searchMedia,
+			enabled: !isServer && isSearchStateRestored() && !!id(),
+		}),
+	);
 
 	// --- Deduplicated results ---
 	const mediaResults = createMemo(() => {
@@ -277,6 +281,16 @@ export function useSourceMediaPage(
 			},
 		);
 	});
+	const contentState = () =>
+		toQueryUiState(
+			{
+				data: mediaQuery.data ? mediaResults() : undefined,
+				error: mediaQuery.error,
+				status: mediaQuery.status,
+				fetchStatus: mediaQuery.fetchStatus,
+			},
+			{ isEmpty: (data) => data.length === 0 },
+		);
 
 	// --- Search handler ---
 	const handleSearch = () => {
@@ -392,9 +406,6 @@ export function useSourceMediaPage(
 	// --- Refresh helpers ---
 	const refreshMediaQuery = () => {
 		void mediaQuery.refetch();
-		void queryClient.invalidateQueries({
-			queryKey: ["media", id()],
-		});
 	};
 
 	const [mediaRefreshTimer, setMediaRefreshTimer] = createSignal<ReturnType<
@@ -460,7 +471,18 @@ export function useSourceMediaPage(
 				}, DEBOUNCE_DELAY_MS),
 			);
 		},
-		onMediaDeleted: () => {
+		onMediaDeleted: (data) => {
+			const sourceId = id();
+			if (!sourceId) {
+				return;
+			}
+			queryClient.setQueriesData<InfiniteData<MediaSearchResponse>>(
+				{
+					predicate: (query) =>
+						isSourceMediaResultsQueryKey(query.queryKey, sourceId),
+				},
+				(previous) => removeMediaFromInfiniteQueryData(previous, data.mediaId),
+			);
 			scheduleMediaRefresh();
 		},
 		onMediaChanged: () => {
@@ -476,9 +498,6 @@ export function useSourceMediaPage(
 			if (onThumbnailReady) {
 				onThumbnailReady(data.mediaId);
 			}
-			queryClient.invalidateQueries({
-				queryKey: ["media", id()],
-			});
 		},
 		onAllJobsCompleted: (data) => {
 			setJobProgress(null);
@@ -911,7 +930,7 @@ export function useSourceMediaPage(
 			refreshMediaQuery();
 			if (sourceId !== targetSourceId) {
 				await queryClient.invalidateQueries({
-					queryKey: ["media", targetSourceId],
+					queryKey: sourceMediaQueryKeys.forSource(targetSourceId),
 				});
 			}
 		} catch (e) {
@@ -960,7 +979,9 @@ export function useSourceMediaPage(
 		mediaSourceId: id,
 		mediaQuery,
 		mediaResults,
+		contentState,
 		filterData,
+		filterStates: queryStates,
 		handleSearch,
 		loadMoreRef,
 		setLoadMoreRef,

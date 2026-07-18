@@ -70,7 +70,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 			onOpenChange={(open: boolean) => !open && props.onClose()}
 			open={props.isOpen}
 		>
-			<DialogContent class="max-h-[80vh] overflow-y-auto sm:max-w-[600px]">
+			<DialogContent class="sm:max-w-[600px]">
 				<DialogHeader>
 					<DialogTitle>AI Tagging Results</DialogTitle>
 					<DialogDescription>

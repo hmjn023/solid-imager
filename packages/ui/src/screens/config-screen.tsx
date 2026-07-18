@@ -1,8 +1,14 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { createForm } from "@tanstack/solid-form";
-import { Show } from "solid-js";
+import { createEffect, createSignal } from "solid-js";
+import type { z } from "zod";
 import { Button } from "../button";
+import {
+	FormError,
+	FormFieldMessage,
+	getFormErrorMessage,
+} from "../form-message";
 import { Input } from "../input";
 import { Label } from "../label";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
@@ -10,15 +16,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
 
-type DeepFormConfig<T> = T extends number
-	? number | undefined
-	: T extends Array<infer U>
-		? Array<DeepFormConfig<U>>
-		: T extends object
-			? { [K in keyof T]: DeepFormConfig<T[K]> }
-			: T;
+type AppConfigFormValues = z.input<typeof AppConfigSchema>;
 
-type FormConfig = DeepFormConfig<AppConfig>;
+function toFormValues(data: AppConfig): AppConfigFormValues {
+	return data;
+}
 
 function parseNumberInput(val: string): number | undefined {
 	const n = Number(val);
@@ -31,47 +33,94 @@ export type ConfigScreenProps = {
 };
 
 export function ConfigScreen(props: ConfigScreenProps) {
+	const [activeTab, setActiveTab] = createSignal("jobs");
+	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const form = createForm(() => ({
-		defaultValues: props.data as unknown as FormConfig,
+		defaultValues: toFormValues(props.data),
 		validators: {
-			onChange: AppConfigSchema as never,
+			onChange: AppConfigSchema,
 		},
 		onSubmit: async ({ value }) => {
+			setSubmitError(null);
 			try {
-				await props.onSubmit(value as Partial<AppConfig>);
+				const parsedValue = AppConfigSchema.parse(value);
+				await props.onSubmit(parsedValue);
+				form.reset(parsedValue);
 				props.onSubmitSuccess?.();
 				toast.success("Configuration saved successfully");
-			} catch (_error) {
+			} catch (error) {
+				setSubmitError(
+					getFormErrorMessage(error) ?? "Failed to save configuration",
+				);
 				toast.error("Failed to save configuration");
 			}
 		},
 	}));
 
-	return (
-		<>
-			<div class="mb-6 flex items-center justify-between">
-				<h1 class="font-bold text-3xl">Settings</h1>
-				<Button
-					disabled={form.state.isSubmitting}
-					onClick={() => form.handleSubmit()}
-				>
-					{form.state.isSubmitting ? "Saving..." : "Save Changes"}
-				</Button>
-			</div>
+	createEffect(() => {
+		const data = props.data;
+		if (!form.state.isDirty) {
+			form.reset(toFormValues(data));
+		}
+	});
 
-			<Tabs class="w-full" defaultValue="jobs">
-				<TabsList class="grid w-full grid-cols-6">
-					<TabsTrigger value="jobs">Jobs</TabsTrigger>
-					<TabsTrigger value="ai">AI</TabsTrigger>
-					<TabsTrigger value="downloads">Downloads</TabsTrigger>
-					<TabsTrigger value="storage">Storage</TabsTrigger>
-					<TabsTrigger value="media">Media</TabsTrigger>
-					<TabsTrigger value="logging">Logging</TabsTrigger>
+	return (
+		<div class="min-w-0 space-y-6 [&_input]:scroll-mt-28 [&_input]:text-base [&_select]:scroll-mt-28 [&_select]:text-base [&_textarea]:scroll-mt-28 [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
+			<div class="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-3 flex flex-col gap-3 border-b bg-background px-3 py-3 sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
+				<h1 class="font-bold text-2xl sm:text-3xl">Settings</h1>
+				<form.Subscribe
+					selector={(state) => ({
+						canSubmit: state.canSubmit,
+						isSubmitting: state.isSubmitting,
+					})}
+				>
+					{(state) => (
+						<Button
+							class="w-full sm:w-auto"
+							disabled={!state().canSubmit || state().isSubmitting}
+							onClick={() => {
+								void form.handleSubmit();
+							}}
+						>
+							{state().isSubmitting ? "Saving..." : "Save Changes"}
+						</Button>
+					)}
+				</form.Subscribe>
+			</div>
+			<FormError message={submitError()} />
+
+			<Tabs class="min-w-0 w-full" onChange={setActiveTab} value={activeTab()}>
+				<TabsList
+					aria-label="Settings categories"
+					class="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-md p-1 md:grid md:grid-cols-6 md:overflow-visible"
+				>
+					<TabsTrigger class="min-h-11 shrink-0" type="button" value="jobs">
+						Jobs
+					</TabsTrigger>
+					<TabsTrigger class="min-h-11 shrink-0" type="button" value="ai">
+						AI
+					</TabsTrigger>
+					<TabsTrigger
+						class="min-h-11 shrink-0"
+						type="button"
+						value="downloads"
+					>
+						Downloads
+					</TabsTrigger>
+					<TabsTrigger class="min-h-11 shrink-0" type="button" value="storage">
+						Storage
+					</TabsTrigger>
+					<TabsTrigger class="min-h-11 shrink-0" type="button" value="media">
+						Media
+					</TabsTrigger>
+					<TabsTrigger class="min-h-11 shrink-0" type="button" value="logging">
+						Logging
+					</TabsTrigger>
 				</TabsList>
 
-				<div class="mt-6 space-y-6">
+				<div class="mt-4 space-y-4 sm:mt-6 sm:space-y-6">
 					<TabsContent value="jobs">
-						<div class="space-y-4 rounded-md border p-4">
+						<div class="space-y-4 rounded-md border p-3 sm:p-4">
 							<h2 class="mb-4 font-semibold text-xl">Job Processing</h2>
 
 							<form.Field name="jobs.concurrency">
@@ -79,6 +128,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<div class="space-y-2">
 										<Label for={field().name}>Concurrency</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
@@ -87,11 +138,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={field().state.value ?? ""}
 										/>
-										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
-										</Show>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 										<div class="text-muted-foreground text-xs">
 											Number of concurrent downloads/processings.
 										</div>
@@ -104,6 +156,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<div class="space-y-2">
 										<Label for={field().name}>AI Concurrency</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
@@ -112,11 +166,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={field().state.value ?? ""}
 										/>
-										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
-										</Show>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 										<div class="text-muted-foreground text-xs">
 											Number of concurrent AI tagging jobs.
 										</div>
@@ -129,6 +184,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<div class="space-y-2">
 										<Label for={field().name}>Poll Interval (ms)</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => {
@@ -137,11 +194,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={field().state.value ?? ""}
 										/>
-										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
-										</Show>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 									</div>
 								)}
 							</form.Field>
@@ -181,7 +239,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="ai">
-						<div class="space-y-4 rounded-md border p-4">
+						<div class="space-y-4 rounded-md border p-3 sm:p-4">
 							<h2 class="mb-4 font-semibold text-xl">AI Service</h2>
 							<form.Field name="ai.baseUrl">
 								{(field) => (
@@ -190,11 +248,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											Remote AI Server URL (oRPC)
 										</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											onBlur={field().handleBlur}
 											onInput={(e) => field().handleChange(e.target.value)}
 											placeholder="http://power-machine:3000"
 											value={field().state.value ?? ""}
+										/>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
 										/>
 										<div class="text-muted-foreground text-xs">
 											外部の solid-imager サーバーの oRPC
@@ -224,7 +290,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="downloads">
-						<div class="space-y-4 rounded-md border p-4">
+						<div class="space-y-4 rounded-md border p-3 sm:p-4">
 							<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
 
 							<form.Field name="downloads.rateLimitEnabled">
@@ -248,6 +314,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<div class="space-y-2">
 										<Label for={field().name}>リクエスト間隔 (ms)</Label>
 										<Input
+											aria-describedby={`${field().name}-error`}
+											aria-invalid={field().state.meta.errors.length > 0}
 											id={field().name}
 											max="60000"
 											min="0"
@@ -258,11 +326,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											type="number"
 											value={field().state.value ?? ""}
 										/>
-										<Show when={field().state.meta.errors.length}>
-											<div class="text-red-500 text-sm">
-												{field().state.meta.errors[0]}
-											</div>
-										</Show>
+										<FormFieldMessage
+											id={`${field().name}-error`}
+											message={getFormErrorMessage(
+												field().state.meta.errors[0],
+											)}
+										/>
 									</div>
 								)}
 							</form.Field>
@@ -270,7 +339,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="storage">
-						<div class="space-y-4 rounded-md border p-4">
+						<div class="space-y-4 rounded-md border p-3 sm:p-4">
 							<h2 class="mb-4 font-semibold text-xl">Storage</h2>
 							<form.Field name="storage.thumbnailDir">
 								{(field) => (
@@ -286,7 +355,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								)}
 							</form.Field>
 
-							<div class="grid grid-cols-2 gap-4">
+							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
 								<form.Field name="storage.thumbnailSize">
 									{(field) => (
 										<div class="space-y-2">
@@ -330,10 +399,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="media">
-						<div class="space-y-4 rounded-md border p-4">
+						<div class="space-y-4 rounded-md border p-3 sm:p-4">
 							<h2 class="mb-4 font-semibold text-xl">Media Extensions</h2>
 
-							<div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+							<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 								<form.Field name="media.supportedExtensions.image">
 									{(field) => (
 										<div class="space-y-2">
@@ -471,7 +540,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="logging">
-						<div class="space-y-4 rounded-md border p-4">
+						<div class="space-y-4 rounded-md border p-3 sm:p-4">
 							<h2 class="mb-4 font-semibold text-xl">Logging</h2>
 							<form.Field name="logging.level">
 								{(field) => (
@@ -507,6 +576,6 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 				</div>
 			</Tabs>
-		</>
+		</div>
 	);
 }

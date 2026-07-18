@@ -3,14 +3,14 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type {
-	CcipVectorStatus,
-	StartCcipExtractionResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
-import type {
 	JobCompletedEvent,
 	JobFailedEvent,
 	JobProgressEvent,
 } from "@solid-imager/core/domain/sources/events";
+import type {
+	CcipVectorStatus,
+	StartCcipExtractionResponse,
+} from "@solid-imager/core/domain/tagging/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
@@ -18,6 +18,8 @@ import {
 	createSignal,
 	For,
 	type JSX,
+	on,
+	onCleanup,
 	Show,
 } from "solid-js";
 import { AssociationManager } from "./association-manager";
@@ -47,7 +49,9 @@ type MediaSidebarProps = {
 		onClose: () => void;
 	}) => JSX.Element;
 	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
-	startCcipExtraction?: (force: boolean) => Promise<StartCcipExtractionResponse>;
+	startCcipExtraction?: (
+		force: boolean,
+	) => Promise<StartCcipExtractionResponse>;
 	useCcipJobEvents?: (
 		activeJobId: () => string | null,
 		handlers: {
@@ -55,6 +59,7 @@ type MediaSidebarProps = {
 			handleJobCompleted: (event: JobCompletedEvent) => void;
 			handleJobFailed: (event: JobFailedEvent) => void;
 		},
+		options?: { subscribeImmediately?: boolean },
 	) => void;
 	onFindSimilar?: () => void;
 	onUpdate?: () => void;
@@ -69,6 +74,9 @@ type MediaSidebarProps = {
 	onCharacterRemove: (characterId: string) => void | Promise<void>;
 	onCharacterCreate: (name: string) => Promise<{ id: string }>;
 };
+
+const CCIP_STATUS_REFRESH_INTERVAL_MS = 1_000;
+const CCIP_MISSING_STATUS_LIMIT = 5;
 
 function formatBytes(bytes: number, decimals = 2) {
 	if (bytes === 0) {
@@ -90,12 +98,16 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [ccipStatus, setCcipStatus] =
 		createSignal<CcipVectorStatus["status"]>("missing");
-	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(null);
+	const [activeCcipJobId, setActiveCcipJobId] = createSignal<string | null>(
+		null,
+	);
+	const [isCcipJobPending, setIsCcipJobPending] = createSignal(false);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
-	const [ccipStatusRequestId, setCcipStatusRequestId] = createSignal(0);
+	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
 	);
+	let ccipStatusRequestId = 0;
 
 	createEffect(() => {
 		if (!isEditingDescription()) {
@@ -104,33 +116,55 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	});
 
 	const refreshCcipStatus = async () => {
-		const requestId = ccipStatusRequestId() + 1;
-		setCcipStatusRequestId(requestId);
+		const requestId = ccipStatusRequestId + 1;
+		ccipStatusRequestId = requestId;
+		const activeJobIdAtRequest = activeCcipJobId();
 		if (props.getCcipVectorStatus) {
 			try {
 				const result = await props.getCcipVectorStatus();
-				if (ccipStatusRequestId() !== requestId) {
+				if (ccipStatusRequestId !== requestId) {
 					return;
 				}
+				if (
+					result.status === "missing" &&
+					activeJobIdAtRequest &&
+					activeCcipJobId() === activeJobIdAtRequest
+				) {
+					const missingStatusCount = ccipMissingStatusCount() + 1;
+					setCcipMissingStatusCount(missingStatusCount);
+					if (missingStatusCount >= CCIP_MISSING_STATUS_LIMIT) {
+						setCcipStatus("failed");
+						setActiveCcipJobId(null);
+						setIsCcipJobPending(false);
+					}
+					return;
+				}
+				setCcipMissingStatusCount(0);
 				setCcipStatus(result.status);
 				setActiveCcipJobId(result.jobId ?? null);
+				setIsCcipJobPending(result.status === "processing");
 			} catch {
-				if (ccipStatusRequestId() !== requestId) {
+				if (ccipStatusRequestId !== requestId) {
 					return;
 				}
-				setCcipStatus("failed");
-				setActiveCcipJobId(null);
+				if (!activeCcipJobId()) {
+					setCcipStatus("failed");
+					setActiveCcipJobId(null);
+					setIsCcipJobPending(false);
+				}
 			}
 		}
 	};
 
-	createEffect(() => {
-		props.media.id;
-		props.media.mediaSourceId;
-		setCcipStatus("missing");
-		setActiveCcipJobId(null);
-		void refreshCcipStatus();
-	});
+	createEffect(
+		on([() => props.media.id, () => props.media.mediaSourceId], () => {
+			setCcipStatus("missing");
+			setActiveCcipJobId(null);
+			setIsCcipJobPending(false);
+			setCcipMissingStatusCount(0);
+			void refreshCcipStatus();
+		}),
+	);
 
 	const extractCcipVector = async () => {
 		if (!props.startCcipExtraction) return;
@@ -143,6 +177,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			if (props.media.id !== currentMediaId) return;
 			setCcipStatus("processing");
 			setActiveCcipJobId(result.jobId);
+			setIsCcipJobPending(true);
+			setCcipMissingStatusCount(0);
+			void refreshCcipStatus();
 			toast.success("CCIP vector extraction queued");
 		} catch (error) {
 			if (props.media.id !== currentMediaId) return;
@@ -152,21 +189,38 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		}
 	};
 
-	props.useCcipJobEvents?.(activeCcipJobId, {
-		handleJobProgress: () => {
-			setCcipStatus("processing");
+	props.useCcipJobEvents?.(
+		activeCcipJobId,
+		{
+			handleJobProgress: () => {
+				setCcipStatus("processing");
+				setIsCcipJobPending(true);
+				setCcipMissingStatusCount(0);
+			},
+			handleJobCompleted: () => {
+				void refreshCcipStatus();
+			},
+			handleJobFailed: (event) => {
+				setCcipStatus("failed");
+				setActiveCcipJobId(null);
+				setIsCcipJobPending(false);
+				setCcipMissingStatusCount(0);
+				if (event.error) {
+					toast.error(`Failed to extract CCIP vector: ${event.error}`);
+				}
+			},
 		},
-		handleJobCompleted: () => {
-			setActiveCcipJobId(null);
+		{ subscribeImmediately: true },
+	);
+
+	createEffect(() => {
+		if (!isCcipJobPending() || !activeCcipJobId()) {
+			return;
+		}
+		const intervalId = setInterval(() => {
 			void refreshCcipStatus();
-		},
-		handleJobFailed: (event) => {
-			setCcipStatus("failed");
-			setActiveCcipJobId(null);
-			if (event.error) {
-				toast.error(`Failed to extract CCIP vector: ${event.error}`);
-			}
-		},
+		}, CCIP_STATUS_REFRESH_INTERVAL_MS);
+		onCleanup(() => clearInterval(intervalId));
 	});
 
 	const positiveTags = createMemo(() =>
@@ -236,16 +290,16 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	return (
-		<aside class="h-full space-y-4 overflow-y-auto rounded-lg border bg-gray-50 p-4">
+		<aside class="min-w-0 space-y-4 rounded-lg border bg-gray-50 p-3 sm:p-4 lg:h-full lg:overflow-y-auto lg:overscroll-contain">
 			<div>
-				<h1 class="font-bold text-xl">{props.media.fileName}</h1>
-				<p class="text-gray-500 text-sm">{props.media.filePath}</p>
+				<h1 class="break-words font-bold text-xl">{props.media.fileName}</h1>
+				<p class="break-all text-gray-500 text-sm">{props.media.filePath}</p>
 			</div>
 
 			<Show when={props.aiTaggingModal}>
 				<div class="flex flex-col gap-2">
 					<button
-						class="flex w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
+						class="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-purple-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-purple-700"
 						onClick={() => setIsAiTaggingModalOpen(true)}
 						type="button"
 					>
@@ -255,7 +309,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 					<Show when={props.characterCropModal}>
 						<button
-							class="flex w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
+							class="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
 							onClick={() => setIsCharacterCropModalOpen(true)}
 							type="button"
 						>
@@ -265,7 +319,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					</Show>
 					<Show when={props.startCcipExtraction}>
 						<Button
-							disabled={isExtractingCcip() || ccipStatus() === "processing"}
+							disabled={isExtractingCcip() || isCcipJobPending()}
 							onClick={extractCcipVector}
 							variant="outline"
 						>
@@ -297,7 +351,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 			<div class="space-y-2">
 				<h2 class="font-semibold text-lg">Details</h2>
-				<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+				<dl class="grid grid-cols-1 gap-1 text-sm sm:grid-cols-2 sm:gap-x-4 sm:gap-y-2">
 					<dt class="font-medium text-gray-600">Resolution</dt>
 					<dd class="text-gray-800">
 						{props.media.width} x {props.media.height}
@@ -310,11 +364,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			</div>
 
 			<div class="space-y-2">
-				<div class="flex items-center justify-between">
+				<div class="flex items-start justify-between gap-2">
 					<h2 class="font-semibold text-lg">Description</h2>
 					<Show when={!isEditingDescription()}>
 						<button
-							class="text-blue-600 text-sm hover:underline"
+							class="min-h-11 px-2 text-blue-600 text-sm hover:underline"
 							onClick={() => setIsEditingDescription(true)}
 							type="button"
 						>
@@ -339,14 +393,15 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						when={isEditingDescription()}
 					>
 						<textarea
-							class="w-full rounded-md border border-gray-300 p-2 text-sm"
+							class="w-full scroll-mb-24 rounded-md border border-gray-300 p-2 text-base sm:text-sm"
 							onInput={(e) => setDescriptionValue(e.currentTarget.value)}
 							placeholder="Enter description..."
 							rows={6}
 							value={descriptionValue()}
 						/>
-						<div class="flex gap-2">
+						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-gray-50 px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
 							<Button
+								class="w-full lg:w-auto"
 								onClick={() => {
 									void handleSaveDescription();
 								}}
@@ -354,7 +409,12 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							>
 								Save
 							</Button>
-							<Button onClick={handleCancelEdit} size="sm" variant="outline">
+							<Button
+								class="w-full lg:w-auto"
+								onClick={handleCancelEdit}
+								size="sm"
+								variant="outline"
+							>
 								Cancel
 							</Button>
 						</div>
@@ -391,10 +451,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						<For each={props.media.authors}>
 							{(author) => (
 								<li>
-									<div class="flex items-center gap-2">
-										<span class="font-medium">{author.name}</span>
+									<div class="flex min-w-0 items-center gap-2">
+										<span class="break-words font-medium">{author.name}</span>
 										<Show when={author.accountId}>
-											<span class="text-gray-500 text-xs">
+											<span class="break-all text-gray-500 text-xs">
 												({author.accountId})
 											</span>
 										</Show>

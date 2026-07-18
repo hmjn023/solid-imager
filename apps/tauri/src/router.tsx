@@ -1,3 +1,12 @@
+import { isTransientApiError } from "@solid-imager/client";
+import { createAppQueryClientConfig } from "@solid-imager/ui/query-options";
+import {
+	ROUTE_PENDING_DELAY_MS,
+	ROUTE_PENDING_MIN_DURATION_MS,
+	RouteErrorScreen,
+	RoutePendingScreen,
+} from "@solid-imager/ui/router-status";
+import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createHashHistory, createRouter } from "@tanstack/solid-router";
 import { routeTree } from "./routeTree.gen";
@@ -6,13 +15,9 @@ export type AppRouterContext = {
 	queryClient: QueryClient;
 };
 
-export const queryClient = new QueryClient({
-	defaultOptions: {
-		queries: {
-			retry: false,
-		},
-	},
-});
+export const queryClient = new QueryClient(
+	createAppQueryClientConfig(isTransientApiError),
+);
 
 export function createAppRouter() {
 	return createRouter({
@@ -24,6 +29,11 @@ export function createAppRouter() {
 		scrollRestoration: true,
 		defaultPreload: "intent",
 		defaultPreloadStaleTime: 0,
+		defaultPendingComponent: RoutePendingScreen,
+		defaultErrorComponent: RouteErrorScreen,
+		defaultNotFoundComponent: NotFoundScreen,
+		defaultPendingMs: ROUTE_PENDING_DELAY_MS,
+		defaultPendingMinMs: ROUTE_PENDING_MIN_DURATION_MS,
 		Wrap: (props) => (
 			<QueryClientProvider client={queryClient}>
 				{props.children}

@@ -3,6 +3,7 @@ run="psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
 
 [env]
 _.file = '.env'
+AGENT_BROWSER_SOCKET_DIR = "/tmp/solid-imager-agent-browser"
 
 [tools]
 bun = "latest"
@@ -10,4 +11,4 @@ java = "21.0.2"
 rust = "latest"
 "npm:chrome-devtools-mcp" = "latest"
 android-sdk = "latest"
-"github:vercel-labs/agent-browser" = "latest"
+"npm:agent-browser" = "latest"

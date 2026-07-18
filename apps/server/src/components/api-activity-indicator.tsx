@@ -69,13 +69,22 @@ export function ApiActivityIndicator() {
 
 	return (
 		<Show when={isVisible()}>
-			<div class="fixed top-3 left-1/2 z-[60] -translate-x-1/2 rounded-md border border-border bg-background px-3 py-2 text-sm shadow-lg">
+			<div
+				class="fixed top-3 left-1/2 z-[60] -translate-x-1/2 rounded-md border border-border bg-background px-3 py-2 text-sm shadow-lg"
+				role="status"
+			>
 				<div class="flex items-center gap-2">
 					<Show when={isOnline()}>
-						<span class="inline-block size-2 animate-pulse rounded-full bg-warning-foreground" />
+						<span
+							aria-hidden="true"
+							class="inline-block size-2 animate-pulse rounded-full bg-warning-foreground motion-reduce:animate-none"
+						/>
 					</Show>
 					<Show when={!isOnline()}>
-						<span class="inline-block size-2 rounded-full bg-destructive" />
+						<span
+							aria-hidden="true"
+							class="inline-block size-2 rounded-full bg-destructive"
+						/>
 					</Show>
 					<span class="text-foreground">
 						{getStatusText(isOnline(), activeCount())}

@@ -21,7 +21,7 @@
     "@biomejs/biome": "^2.5.0",
     "@tanstack/cli": "^0.69.4",
     "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
-    "typescript": "rc",
+    "typescript": "^7.0.0",
     "vite-plus": "^0.1.24"
   },
   "trustedDependencies": [
@@ -30,7 +30,7 @@
     "dghs-imgutils-rs",
     "sharp"
   ],
-  "packageManager": "npm@11.11.1",
+  "packageManager": "bun@1.3.14",
   "overrides": {
     "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24",
     "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363"

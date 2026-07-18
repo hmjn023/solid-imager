@@ -38,7 +38,7 @@ function createNetworkError(error: unknown): APIError {
 	);
 }
 
-function createTimedFetch(
+export function createTimedFetch(
 	fetchImpl: (request: Request, init?: FetchInit) => Promise<Response>,
 	timeoutMs: number,
 ): (request: Request, init?: FetchInit) => Promise<Response> {

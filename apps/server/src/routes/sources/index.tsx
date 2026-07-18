@@ -2,6 +2,8 @@ import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas
 import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
+import { toQueryUiState } from "@solid-imager/ui/query-state";
+import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
@@ -18,10 +20,24 @@ import {
 } from "~/infrastructure/api-clients/sources-api";
 
 export const Route = createFileRoute("/sources/")({
+	ssr: true,
 	loader: async ({ context }) => {
-		await context.queryClient.ensureQueryData(mediaSourcesQueryOptions());
+		const mediaSources = await context.queryClient.fetchQuery(
+			mediaSourcesQueryOptions(),
+		);
+		return { mediaSources };
 	},
-	component: SourcesRoute,
+	pendingComponent: () => (
+		<RouteDataPendingScreen
+			class="p-6"
+			description="ソース一覧を準備しています..."
+			layout="cards"
+			showAction
+			title="Media Sources"
+		/>
+	),
+	pendingMinMs: 0,
+	component: SourcesRouteContent,
 });
 
 function registerSourceEvents(handler: RawEventHandler): () => void {
@@ -31,9 +47,11 @@ function registerSourceEvents(handler: RawEventHandler): () => void {
 	);
 }
 
-function SourcesRoute() {
+function SourcesRouteContent() {
 	const queryClient = useQueryClient();
-	const mediaSources = createQuery(() => mediaSourcesQueryOptions());
+	const loaderData = Route.useLoaderData();
+	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const sourceData = () => mediaSources.data ?? loaderData().mediaSources;
 
 	const page = useSourcesPage({
 		actions: {
@@ -48,20 +66,27 @@ function SourcesRoute() {
 		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
 		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
-			mediaSources.data
+			sourceData()
 				?.map((s) => s.id)
 				.filter((id): id is string => Boolean(id)) ?? [],
 	});
-
 	return (
 		<SourcesScreen
 			page={page}
-			mediaSources={() => mediaSources.data}
-			isLoading={mediaSources.isLoading}
-			isError={mediaSources.isError}
-			error={mediaSources.error ?? null}
-			onRetry={() => {
-				void mediaSources.refetch();
+			mediaSources={sourceData}
+			state={() =>
+				toQueryUiState(
+					{
+						data: sourceData(),
+						error: mediaSources.error,
+						fetchStatus: mediaSources.fetchStatus,
+						status: mediaSources.status,
+					},
+					{ isEmpty: (data) => data.length === 0 },
+				)
+			}
+			onRetry={async () => {
+				await mediaSources.refetch();
 			}}
 			renderSourceCard={(source) => (
 				<SourceCard

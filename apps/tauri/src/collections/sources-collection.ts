@@ -4,6 +4,7 @@ import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistenc
 import type { getPersistence } from "~/infrastructure/db/persistence";
 import { client } from "~/orpc-client";
 import { queryClient } from "~/router";
+import { collectionQueryKeys } from "./query-keys";
 
 type SourceResponse = Awaited<ReturnType<typeof client.sources.list>>[number];
 
@@ -16,8 +17,8 @@ export function createSourcesCollection(
 			persistence,
 			schemaVersion: 1,
 			...queryCollectionOptions({
-				queryKey: ["mediaSources"],
-				queryFn: () => client.sources.list(),
+				queryKey: collectionQueryKeys.sources(),
+				queryFn: ({ signal }) => client.sources.list(undefined, { signal }),
 				queryClient,
 				getKey: (source) => source.id ?? source.name,
 			}),
