@@ -26,6 +26,10 @@ const OTHER_SOURCE_MEDIA_ID = "66666666-6666-4666-8666-666666666666";
 
 const MODIFIED_AT = new Date("2026-07-01T00:00:00.000Z");
 const EXTRACTED_AT = new Date("2026-07-02T00:00:00.000Z");
+const READ_QUERY = {
+	model: CCIP_MODEL,
+	embeddingVersion: CCIP_EMBEDDING_VERSION,
+};
 
 function vector(first: number, second = 0): number[] {
 	return Array.from({ length: 768 }, (_, index) => {
@@ -126,9 +130,9 @@ describe("LanceDbCcipVectorStore integration", () => {
 
 		await store.upsertMany([anchor, near, far, otherSource]);
 
-		const loaded = await store.get(ANCHOR_MEDIA_ID);
+		const loaded = await store.get(ANCHOR_MEDIA_ID, READ_QUERY);
 		expect(loaded).toEqual(anchor);
-		const metadata = await store.getMetadataMany([ANCHOR_MEDIA_ID]);
+		const metadata = await store.getMetadataMany([ANCHOR_MEDIA_ID], READ_QUERY);
 		expect(metadata.get(ANCHOR_MEDIA_ID)).toEqual({
 			mediaId: anchor.mediaId,
 			mediaSourceId: anchor.mediaSourceId,
@@ -140,22 +144,33 @@ describe("LanceDbCcipVectorStore integration", () => {
 
 		const reopenedStore = new LanceDbCcipVectorStore(directory);
 		expect(
-			await reopenedStore.getMany([ANCHOR_MEDIA_ID, NEAR_MEDIA_ID]),
+			await reopenedStore.getMany([ANCHOR_MEDIA_ID, NEAR_MEDIA_ID], READ_QUERY),
 		).toEqual(
 			new Map([
 				[ANCHOR_MEDIA_ID, anchor],
 				[NEAR_MEDIA_ID, near],
 			]),
 		);
-		expect(await reopenedStore.listMediaIds(SOURCE_A_ID)).toEqual(
+		expect(
+			await reopenedStore.listMediaIds({ mediaSourceId: SOURCE_A_ID }),
+		).toEqual(
+			expect.arrayContaining([ANCHOR_MEDIA_ID, NEAR_MEDIA_ID, FAR_MEDIA_ID]),
+		);
+		const batches: CcipVectorRecord[][] = [];
+		for await (const batch of reopenedStore.listBatches(2, {
+			mediaSourceId: SOURCE_A_ID,
+		})) {
+			batches.push(batch);
+		}
+		expect(batches.every((batch) => batch.length <= 2)).toBe(true);
+		expect(batches.flat().map((record) => record.mediaId)).toEqual(
 			expect.arrayContaining([ANCHOR_MEDIA_ID, NEAR_MEDIA_ID, FAR_MEDIA_ID]),
 		);
 
-		const sourceScoped = await reopenedStore.search(
-			anchor.vector,
-			10,
-			SOURCE_A_ID,
-		);
+		const sourceScoped = await reopenedStore.search(anchor.vector, 10, {
+			mediaSourceId: SOURCE_A_ID,
+			...READ_QUERY,
+		});
 		expect(sourceScoped.map((candidate) => candidate.mediaId)).toEqual(
 			expect.arrayContaining([ANCHOR_MEDIA_ID, NEAR_MEDIA_ID, FAR_MEDIA_ID]),
 		);
@@ -174,14 +189,14 @@ describe("LanceDbCcipVectorStore integration", () => {
 		const near = createRecord(NEAR_MEDIA_ID, SOURCE_A_ID, vector(0.875, 0.125));
 
 		await writer.upsert(anchor);
-		expect(await reader.get(ANCHOR_MEDIA_ID)).toEqual(anchor);
+		expect(await reader.get(ANCHOR_MEDIA_ID, READ_QUERY)).toEqual(anchor);
 
 		// The reader's Table handle is already open at the previous version.
 		// This mirrors Vite HMR, where an older API module and the active job
 		// worker can hold separate LanceDB connections to the same directory.
 		await writer.upsert(near);
 
-		expect(await reader.get(NEAR_MEDIA_ID)).toEqual(near);
+		expect(await reader.get(NEAR_MEDIA_ID, READ_QUERY)).toEqual(near);
 	});
 
 	it("reports ready and stale status and searches candidates through the real store", async () => {

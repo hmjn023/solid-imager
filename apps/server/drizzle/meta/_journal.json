@@ -127,6 +127,13 @@
       "when": 1782830770400,
       "tag": "0017_ambitious_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1784367056664,
+      "tag": "0018_charming_korvac",
+      "breakpoints": true
     }
   ]
 }
