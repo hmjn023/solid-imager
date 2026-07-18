@@ -13,12 +13,12 @@
     "check": "biome check --fix --unsafe ./src"
   },
   "devDependencies": {
-    "@types/chrome": "^0.1.43",
+    "@types/chrome": "^0.2.2",
     "@types/node": "^26.0.0",
     "solid-js": "^1.9.13",
     "typescript": "rc",
     "vite-plugin-solid": "^2.11.12",
-    "vite-plus": "^0.1.24"
+    "vite-plus": "^0.2.5"
   },
   "dependencies": {
     "zod": "^4.4.3",
