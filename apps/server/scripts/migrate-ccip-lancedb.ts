@@ -1,4 +1,6 @@
 import type { CcipVectorRecord } from "@solid-imager/application/ports/ccip-vector-store";
+import { medias } from "@solid-imager/db/schema";
+import { inArray } from "drizzle-orm";
 import { z } from "zod";
 import { services } from "../src/application/registry";
 import { PostgresCcipVectorStore } from "../src/infrastructure/ai/postgres-ccip-vector-store";
@@ -87,6 +89,7 @@ async function main(): Promise<void> {
 	let uniqueLogicalRows = 0;
 	let collapsedDuplicates = 0;
 	let migrated = 0;
+	let skippedMissingMediaRecords = 0;
 	let current: CcipVectorRecord | null = null;
 	let pending: CcipVectorRecord[] = [];
 
@@ -94,11 +97,26 @@ async function main(): Promise<void> {
 		if (pending.length === 0) return;
 		const batch = pending;
 		pending = [];
-		if (targetStore) {
-			await targetStore.upsertMany(batch);
-			migrated += batch.length;
+		const mediaIds = [...new Set(batch.map((record) => record.mediaId))];
+		const existingMedia = await db
+			.select({ id: medias.id })
+			.from(medias)
+			.where(inArray(medias.id, mediaIds));
+		const existingMediaIds = new Set(existingMedia.map((media) => media.id));
+		const importable = batch.filter((record) =>
+			existingMediaIds.has(record.mediaId),
+		);
+		skippedMissingMediaRecords += batch.length - importable.length;
+
+		if (targetStore && importable.length > 0) {
+			await targetStore.upsertMany(importable);
+			migrated += importable.length;
 			logger.info(
-				{ migrated, batchSize: batch.length },
+				{
+					migrated,
+					batchSize: importable.length,
+					skippedMissingMediaRecords,
+				},
 				"CCIP LanceDB migration batch completed",
 			);
 		}
@@ -147,6 +165,7 @@ async function main(): Promise<void> {
 			uniqueLogicalRows,
 			collapsedDuplicates,
 			migrated,
+			skippedMissingMediaRecords,
 			batchSize: options.batchSize,
 		},
 		"CCIP LanceDB migration completed",
