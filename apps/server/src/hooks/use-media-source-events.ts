@@ -29,9 +29,11 @@ type SharedSourceTransport = {
 	cleanup: () => void;
 	handlers: Set<SourceEventHandler>;
 	idleTimer: ReturnType<typeof setTimeout> | null;
+	idleSince: number | null;
 };
 
 const SOURCE_TRANSPORT_IDLE_TIMEOUT_MS = 30_000;
+const MAX_IDLE_SOURCE_TRANSPORTS = 2;
 
 type SourceTransportGlobal = typeof globalThis & {
 	__solidImagerSharedSourceTransports?: Map<string, SharedSourceTransport>;
@@ -43,6 +45,29 @@ const sharedSourceTransports =
 	new Map<string, SharedSourceTransport>();
 sourceTransportGlobal.__solidImagerSharedSourceTransports =
 	sharedSourceTransports;
+
+function evictOldestIdleSourceTransport(): void {
+	let oldest: { id: string; transport: SharedSourceTransport } | undefined;
+	for (const [id, transport] of sharedSourceTransports) {
+		const idleSince = transport.idleSince;
+		if (
+			idleSince !== null &&
+			(!oldest ||
+				oldest.transport.idleSince === null ||
+				idleSince < oldest.transport.idleSince)
+		) {
+			oldest = { id, transport };
+		}
+	}
+	if (!oldest) {
+		return;
+	}
+	if (oldest.transport.idleTimer) {
+		clearTimeout(oldest.transport.idleTimer);
+	}
+	oldest.transport.cleanup();
+	sharedSourceTransports.delete(oldest.id);
+}
 
 export function createServerTransport(
 	mediaSourceId: Accessor<string | undefined>,
@@ -73,6 +98,13 @@ export function createServerTransport(
 
 			let shared = sharedSourceTransports.get(id);
 			if (!shared) {
+				while (
+					[...sharedSourceTransports.values()].filter(
+						(transport) => transport.idleSince !== null,
+					).length >= MAX_IDLE_SOURCE_TRANSPORTS
+				) {
+					evictOldestIdleSourceTransport();
+				}
 				const handlers = new Set<SourceEventHandler>();
 				const transport = createSourceEventTransport(
 					() => id,
@@ -90,9 +122,14 @@ export function createServerTransport(
 					idleTimer: null,
 					cleanup: transport.listen((event) => {
 						for (const listener of handlers) {
-							listener(event);
+							try {
+								listener(event);
+							} catch (err) {
+								logger.error({ err }, "Source event listener failed");
+							}
 						}
 					}),
+					idleSince: null,
 				};
 				sharedSourceTransports.set(id, shared);
 			}
@@ -101,6 +138,7 @@ export function createServerTransport(
 				clearTimeout(shared.idleTimer);
 				shared.idleTimer = null;
 			}
+			shared.idleSince = null;
 			shared.handlers.add(handler);
 			let isListening = true;
 			return () => {
@@ -110,10 +148,12 @@ export function createServerTransport(
 				isListening = false;
 				shared.handlers.delete(handler);
 				if (shared.handlers.size === 0) {
+					shared.idleSince = Date.now();
 					shared.idleTimer = setTimeout(() => {
 						if (shared.handlers.size === 0) {
 							shared.cleanup();
 							sharedSourceTransports.delete(id);
+							shared.idleSince = null;
 						}
 					}, SOURCE_TRANSPORT_IDLE_TIMEOUT_MS);
 				}
