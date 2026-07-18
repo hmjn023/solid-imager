@@ -3,6 +3,7 @@ import type { Connection, Table } from "@lancedb/lancedb";
 import type {
 	CcipVectorCandidate,
 	CcipVectorMetadata,
+	CcipVectorQuery,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "@solid-imager/application/ports/ccip-vector-store";
@@ -43,6 +44,22 @@ function escapeSqlString(value: string): string {
 	return value.replaceAll("'", "''");
 }
 
+function queryPredicates(query?: CcipVectorQuery): string[] {
+	const predicates: string[] = [];
+	if (query?.mediaSourceId) {
+		predicates.push(
+			`mediaSourceId = '${escapeSqlString(query.mediaSourceId)}'`,
+		);
+	}
+	if (query?.model) {
+		predicates.push(`model = '${escapeSqlString(query.model)}'`);
+	}
+	if (query?.embeddingVersion !== undefined) {
+		predicates.push(`embeddingVersion = ${query.embeddingVersion}`);
+	}
+	return predicates;
+}
+
 function toRecord(value: unknown): CcipVectorRecord {
 	const row = rowSchema.parse(value);
 	return {
@@ -66,7 +83,10 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 	private writeQueue: Promise<void> = Promise.resolve();
 	private writeOperationsSinceOptimize = 0;
 
-	constructor(private readonly directory: string) {}
+	constructor(
+		private readonly directory: string,
+		private readonly options: { readOnly?: boolean } = {},
+	) {}
 
 	private async connection(): Promise<Connection> {
 		if (!this.connectionPromise) {
@@ -102,7 +122,13 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		let table: Table;
 		try {
 			table = await db.openTable(TABLE_NAME);
-		} catch {
+		} catch (error) {
+			if (this.options.readOnly) {
+				throw new Error(
+					`CCIP LanceDB table ${TABLE_NAME} is unavailable in read-only mode`,
+					{ cause: error },
+				);
+			}
 			const arrow = await import("apache-arrow");
 			const schema = new arrow.Schema([
 				new arrow.Field("mediaId", new arrow.Utf8(), false),
@@ -126,7 +152,9 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 			]);
 			table = await db.createTable(TABLE_NAME, [], { schema });
 		}
-		await this.ensureMediaIdIndex(table);
+		if (!this.options.readOnly) {
+			await this.ensureMediaIdIndex(table);
+		}
 		return table;
 	}
 
@@ -143,27 +171,36 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 	}
 
 	private async serializeWrite(operation: () => Promise<void>): Promise<void> {
+		if (this.options.readOnly) {
+			throw new Error("CCIP LanceDB store is read-only");
+		}
 		const next = this.writeQueue.then(operation, operation);
 		this.writeQueue = next.catch(() => undefined);
 		await next;
 	}
 
-	async get(mediaId: string): Promise<CcipVectorRecord | null> {
-		return (await this.getMany([mediaId])).get(mediaId) ?? null;
+	async get(
+		mediaId: string,
+		query?: CcipVectorQuery,
+	): Promise<CcipVectorRecord | null> {
+		return (await this.getMany([mediaId], query)).get(mediaId) ?? null;
 	}
 
-	async getMany(mediaIds: string[]): Promise<Map<string, CcipVectorRecord>> {
+	async getMany(
+		mediaIds: string[],
+		query?: CcipVectorQuery,
+	): Promise<Map<string, CcipVectorRecord>> {
 		if (mediaIds.length === 0) {
 			return new Map();
 		}
-		const predicate = mediaIds
-			.map((mediaId) => `'${escapeSqlString(mediaId)}'`)
-			.join(", ");
+		const predicates = [
+			`mediaId IN (${mediaIds
+				.map((mediaId) => `'${escapeSqlString(mediaId)}'`)
+				.join(", ")})`,
+			...queryPredicates(query),
+		];
 		const table = await this.table();
-		const rows = await table
-			.query()
-			.where(`mediaId IN (${predicate})`)
-			.toArray();
+		const rows = await table.query().where(predicates.join(" AND ")).toArray();
 		return new Map(
 			rows.map((row) => {
 				const record = toRecord(row);
@@ -174,13 +211,17 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 
 	async getMetadataMany(
 		mediaIds: string[],
+		query?: CcipVectorQuery,
 	): Promise<Map<string, CcipVectorMetadata>> {
 		if (mediaIds.length === 0) {
 			return new Map();
 		}
-		const predicate = mediaIds
-			.map((mediaId) => `'${escapeSqlString(mediaId)}'`)
-			.join(", ");
+		const predicates = [
+			`mediaId IN (${mediaIds
+				.map((mediaId) => `'${escapeSqlString(mediaId)}'`)
+				.join(", ")})`,
+			...queryPredicates(query),
+		];
 		const table = await this.table();
 		const rows = await table
 			.query()
@@ -192,7 +233,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 				"mediaModifiedAt",
 				"extractedAt",
 			])
-			.where(`mediaId IN (${predicate})`)
+			.where(predicates.join(" AND "))
 			.toArray();
 		return new Map(
 			rows.map((row) => {
@@ -240,43 +281,46 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		});
 	}
 
-	async listMediaIds(mediaSourceId?: string): Promise<string[]> {
+	async listMediaIds(query?: CcipVectorQuery): Promise<string[]> {
 		const table = await this.table();
-		const query = table.query().select(["mediaId"]);
-		if (mediaSourceId) {
-			query.where(`mediaSourceId = '${escapeSqlString(mediaSourceId)}'`);
+		const tableQuery = table.query().select(["mediaId"]);
+		const predicates = queryPredicates(query);
+		if (predicates.length > 0) {
+			tableQuery.where(predicates.join(" AND "));
 		}
-		const rows = await query.toArray();
+		const rows = await tableQuery.toArray();
 		return rows.flatMap((row) => {
 			const result = z.object({ mediaId: z.string().uuid() }).safeParse(row);
 			return result.success ? [result.data.mediaId] : [];
 		});
 	}
 
-	async list(mediaSourceId?: string): Promise<CcipVectorRecord[]> {
+	async list(query?: CcipVectorQuery): Promise<CcipVectorRecord[]> {
 		const table = await this.table();
-		const query = table.query();
-		if (mediaSourceId) {
-			query.where(`mediaSourceId = '${escapeSqlString(mediaSourceId)}'`);
+		const tableQuery = table.query();
+		const predicates = queryPredicates(query);
+		if (predicates.length > 0) {
+			tableQuery.where(predicates.join(" AND "));
 		}
-		const rows = await query.toArray();
+		const rows = await tableQuery.toArray();
 		return rows.map(toRecord);
 	}
 
 	async search(
 		vector: number[],
 		limit: number,
-		mediaSourceId?: string,
+		query?: CcipVectorQuery,
 	): Promise<CcipVectorCandidate[]> {
 		const table = await this.table();
-		const query = table
+		const tableQuery = table
 			.vectorSearch(vector)
 			.distanceType("cosine")
 			.limit(limit);
-		if (mediaSourceId) {
-			query.where(`mediaSourceId = '${escapeSqlString(mediaSourceId)}'`);
+		const predicates = queryPredicates(query);
+		if (predicates.length > 0) {
+			tableQuery.where(predicates.join(" AND "));
 		}
-		const rows = await query.toArray();
+		const rows = await tableQuery.toArray();
 		return rows.map((value) => {
 			const row = rowSchema.parse(value);
 			return {

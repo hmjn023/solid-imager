@@ -1,11 +1,11 @@
-import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { medias } from "./src/infrastructure/db/schema";
+import { createPglite } from "./src/infrastructure/db/pglite";
 
 async function getMediaIds() {
-  let pglite: PGlite | undefined;
+  let pglite: ReturnType<typeof createPglite> | undefined;
   try {
-    pglite = new PGlite("./.data/pglite");
+    pglite = createPglite("./.data/pglite");
     const db = drizzle(pglite, { schema: { medias } });
 
     const media = await db.query.medias.findFirst();

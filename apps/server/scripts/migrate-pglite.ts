@@ -1,11 +1,12 @@
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { drizzle } from "drizzle-orm/pglite";
-import { PGlite } from "@electric-sql/pglite";
 import path from "path";
 import fs from "fs";
+import { createPglite } from "../src/infrastructure/db/pglite";
 
 async function main() {
-  const dataDir = path.join(process.cwd(), ".data", "pglite");
+	const dataDir =
+		process.env.PGLITE_DATA_DIR ?? path.join(process.cwd(), ".data", "pglite");
   console.log("Using PGlite data directory:", dataDir);
 
   // Ensure the data directory exists
@@ -13,7 +14,7 @@ async function main() {
     fs.mkdirSync(dataDir, { recursive: true });
   }
 
-  const client = new PGlite(dataDir);
+  const client = createPglite(dataDir);
   const db = drizzle(client);
 
   try {

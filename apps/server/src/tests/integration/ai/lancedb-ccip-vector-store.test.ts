@@ -147,15 +147,15 @@ describe("LanceDbCcipVectorStore integration", () => {
 				[NEAR_MEDIA_ID, near],
 			]),
 		);
-		expect(await reopenedStore.listMediaIds(SOURCE_A_ID)).toEqual(
+		expect(
+			await reopenedStore.listMediaIds({ mediaSourceId: SOURCE_A_ID }),
+		).toEqual(
 			expect.arrayContaining([ANCHOR_MEDIA_ID, NEAR_MEDIA_ID, FAR_MEDIA_ID]),
 		);
 
-		const sourceScoped = await reopenedStore.search(
-			anchor.vector,
-			10,
-			SOURCE_A_ID,
-		);
+		const sourceScoped = await reopenedStore.search(anchor.vector, 10, {
+			mediaSourceId: SOURCE_A_ID,
+		});
 		expect(sourceScoped.map((candidate) => candidate.mediaId)).toEqual(
 			expect.arrayContaining([ANCHOR_MEDIA_ID, NEAR_MEDIA_ID, FAR_MEDIA_ID]),
 		);

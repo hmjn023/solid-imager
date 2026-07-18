@@ -8,6 +8,12 @@ export type CcipVectorRecord = {
 	extractedAt: Date;
 };
 
+export type CcipVectorQuery = {
+	mediaSourceId?: string;
+	model?: string;
+	embeddingVersion?: number;
+};
+
 export type CcipVectorMetadata = Omit<CcipVectorRecord, "vector">;
 
 export type CcipVectorCandidate = CcipVectorRecord & {
@@ -15,18 +21,27 @@ export type CcipVectorCandidate = CcipVectorRecord & {
 };
 
 export interface ICcipVectorStore {
-	get(mediaId: string): Promise<CcipVectorRecord | null>;
-	getMany(mediaIds: string[]): Promise<Map<string, CcipVectorRecord>>;
-	getMetadataMany(mediaIds: string[]): Promise<Map<string, CcipVectorMetadata>>;
+	get(
+		mediaId: string,
+		query?: CcipVectorQuery,
+	): Promise<CcipVectorRecord | null>;
+	getMany(
+		mediaIds: string[],
+		query?: CcipVectorQuery,
+	): Promise<Map<string, CcipVectorRecord>>;
+	getMetadataMany(
+		mediaIds: string[],
+		query?: CcipVectorQuery,
+	): Promise<Map<string, CcipVectorMetadata>>;
 	upsert(record: CcipVectorRecord): Promise<void>;
 	upsertMany(records: CcipVectorRecord[]): Promise<void>;
 	delete(mediaId: string): Promise<void>;
 	deleteBySource(mediaSourceId: string): Promise<void>;
-	listMediaIds(mediaSourceId?: string): Promise<string[]>;
-	list(mediaSourceId?: string): Promise<CcipVectorRecord[]>;
+	listMediaIds(query?: CcipVectorQuery): Promise<string[]>;
+	list(query?: CcipVectorQuery): Promise<CcipVectorRecord[]>;
 	search(
 		vector: number[],
 		limit: number,
-		mediaSourceId?: string,
+		query?: CcipVectorQuery,
 	): Promise<CcipVectorCandidate[]>;
 }

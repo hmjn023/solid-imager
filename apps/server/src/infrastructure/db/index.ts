@@ -1,9 +1,10 @@
 import path from "node:path";
-import { PGlite } from "@electric-sql/pglite";
+import type { PGlite } from "@electric-sql/pglite";
 import { drizzle as drizzleNodePg } from "drizzle-orm/node-postgres";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { Pool } from "pg";
 import { logger } from "~/infrastructure/logger";
+import { createPglite } from "./pglite";
 import * as schema from "./schema";
 
 export type NodePgDb = ReturnType<typeof drizzleNodePg<typeof schema>>;
@@ -49,7 +50,7 @@ function initializeDb() {
 			{ path: pglitePath, absolutePath: path.resolve(pglitePath) },
 			"[DB] Using persistent PGlite database",
 		);
-		const client = new PGlite(pglitePath);
+		const client = createPglite(pglitePath);
 		_queryClient = client;
 		_db = drizzlePglite(client, { schema });
 		return _db;

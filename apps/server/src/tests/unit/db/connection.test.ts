@@ -59,7 +59,9 @@ describe("createConnection", () => {
 		expect(connection.constructor.name).toBe("PgLite");
 		// Ensure PgLite constructor was called
 		const { PGlite } = await import("@electric-sql/pglite");
-		expect(PGlite).toHaveBeenCalledWith(config.pglite.path);
+		expect(PGlite).toHaveBeenCalledWith(config.pglite.path, {
+			extensions: { vector: expect.anything() },
+		});
 	});
 
 	it("should create a postgres connection when databaseType is docker-compose-postgres", async () => {

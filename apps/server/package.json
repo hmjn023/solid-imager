@@ -17,6 +17,7 @@
     "db:drop": "drizzle-kit drop",
     "db:dump": "bun scripts/dump-db.ts",
     "db:restore": "bun scripts/restore-db.ts",
+	"ccip:migrate-from-lancedb": "bun scripts/migrate-ccip-lancedb.ts",
     "lancedb:sync-slow": "bun scripts/sync-lancedb-slow.ts",
     "measure:dev-startup": "bun scripts/measure-dev-startup.ts",
     "db:studio": "drizzle-kit studio",
@@ -35,7 +36,8 @@
     "docs:generate": "typedoc"
   },
   "dependencies": {
-    "@electric-sql/pglite": "^0.5.2",
+    "@electric-sql/pglite": "0.5.3",
+    "@electric-sql/pglite-pgvector": "0.0.4",
     "@lancedb/lancedb": "^0.30.0",
     "@orpc/client": "^1.14.4",
     "@orpc/contract": "^1.14.4",

@@ -1,6 +1,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { Pool, type PoolClient } from "pg";
 import type { DatabaseConfig } from "~/config/database";
+import { createPglite } from "./pglite";
 
 export type DbConnection = PGlite | Pool | PoolClient;
 
@@ -8,7 +9,7 @@ export async function createConnection(
 	config: DatabaseConfig,
 ): Promise<DbConnection> {
 	if (config.databaseType === "pglite") {
-		const pglite = new PGlite(config.pglite.path);
+		const pglite = createPglite(config.pglite.path);
 		await pglite.waitReady;
 		return pglite;
 	}
