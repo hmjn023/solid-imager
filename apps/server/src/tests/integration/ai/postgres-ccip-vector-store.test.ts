@@ -6,9 +6,11 @@ import {
 } from "@solid-imager/application/services/ccip-vector-service";
 import {
 	CCIP_VECTOR_DIMENSIONS,
+	mediaRegions,
 	mediaSources,
 	medias,
 } from "@solid-imager/db/schema";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterEach, describe, expect, it } from "vite-plus/test";
@@ -25,6 +27,8 @@ const OTHER_SOURCE_MEDIA_ID = "66666666-6666-4666-8666-666666666666";
 
 const MODIFIED_AT = new Date("2026-07-01T00:00:00.000Z");
 const EXTRACTED_AT = new Date("2026-07-02T00:00:00.000Z");
+const NEWER_MODIFIED_AT = new Date("2026-07-03T00:00:00.000Z");
+const NEWER_EXTRACTED_AT = new Date("2026-07-04T00:00:00.000Z");
 
 function vector(first: number, second = 0): number[] {
 	return Array.from({ length: CCIP_VECTOR_DIMENSIONS }, (_, index) => {
@@ -152,5 +156,25 @@ describe("PostgresCcipVectorStore", () => {
 		expect(candidates.map((candidate) => candidate.mediaId)).not.toContain(
 			OTHER_SOURCE_MEDIA_ID,
 		);
+
+		const newerAnchor = {
+			...anchor,
+			vector: vector(0.5, 0.5),
+			mediaModifiedAt: NEWER_MODIFIED_AT,
+			extractedAt: NEWER_EXTRACTED_AT,
+		};
+		await store.upsert(newerAnchor);
+		await store.upsert(anchor);
+		expect(
+			await store.get(ANCHOR_MEDIA_ID, {
+				model: CCIP_MODEL,
+				embeddingVersion: CCIP_EMBEDDING_VERSION,
+			}),
+		).toEqual(newerAnchor);
+		const [region] = await database
+			.select({ sourceModifiedAt: mediaRegions.sourceModifiedAt })
+			.from(mediaRegions)
+			.where(eq(mediaRegions.mediaId, ANCHOR_MEDIA_ID));
+		expect(region?.sourceModifiedAt).toEqual(NEWER_MODIFIED_AT);
 	});
 });

@@ -210,8 +210,20 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 					target: mediaRegions.mediaId,
 					targetWhere: sql`${mediaRegions.kind} = 'full'`,
 					set: {
-						sourceModifiedAt: sql`excluded.source_modified_at`,
-						updatedAt: now,
+						sourceModifiedAt: sql`
+							CASE
+								WHEN excluded.source_modified_at > ${mediaRegions.sourceModifiedAt}
+								THEN excluded.source_modified_at
+								ELSE ${mediaRegions.sourceModifiedAt}
+							END
+						`,
+						updatedAt: sql`
+							CASE
+								WHEN excluded.source_modified_at > ${mediaRegions.sourceModifiedAt}
+								THEN excluded.updated_at
+								ELSE ${mediaRegions.updatedAt}
+							END
+						`,
 					},
 				})
 				.returning();
@@ -245,10 +257,34 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 						ccipEmbeddings.embeddingVersion,
 					],
 					set: {
-						embedding: sql`excluded.embedding`,
-						mediaModifiedAt: sql`excluded.media_modified_at`,
-						extractedAt: sql`excluded.extracted_at`,
-						updatedAt: now,
+						embedding: sql`
+							CASE
+								WHEN excluded.extracted_at > ${ccipEmbeddings.extractedAt}
+								THEN excluded.embedding
+								ELSE ${ccipEmbeddings.embedding}
+							END
+						`,
+						mediaModifiedAt: sql`
+							CASE
+								WHEN excluded.extracted_at > ${ccipEmbeddings.extractedAt}
+								THEN excluded.media_modified_at
+								ELSE ${ccipEmbeddings.mediaModifiedAt}
+							END
+						`,
+						extractedAt: sql`
+							CASE
+								WHEN excluded.extracted_at > ${ccipEmbeddings.extractedAt}
+								THEN excluded.extracted_at
+								ELSE ${ccipEmbeddings.extractedAt}
+							END
+						`,
+						updatedAt: sql`
+							CASE
+								WHEN excluded.extracted_at > ${ccipEmbeddings.extractedAt}
+								THEN excluded.updated_at
+								ELSE ${ccipEmbeddings.updatedAt}
+							END
+						`,
 					},
 				});
 		});
