@@ -182,7 +182,9 @@ export function buildSearchResultsQueryOptions(
 			);
 			return loadedCount < lastPage.total ? loadedCount : undefined;
 		},
-		placeholderData: keepPreviousData,
+		// Vector result sets have a user-selected size. Keeping the previous
+		// result while changing topK makes selecting 100 look like a no-op.
+		placeholderData: input.mode === "vector" ? undefined : keepPreviousData,
 		enabled: input.enabled,
 		gcTime: input.gcTime,
 	});
