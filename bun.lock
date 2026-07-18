@@ -37,7 +37,8 @@
       "name": "@solid-imager/server",
       "version": "0.0.0",
       "dependencies": {
-        "@electric-sql/pglite": "^0.5.2",
+        "@electric-sql/pglite": "0.5.3",
+        "@electric-sql/pglite-pgvector": "0.0.4",
         "@lancedb/lancedb": "^0.30.0",
         "@orpc/client": "^1.14.4",
         "@orpc/contract": "^1.14.4",
@@ -343,6 +344,8 @@
     "@drizzle-team/brocli": ["@drizzle-team/brocli@0.10.2", "", {}, "sha512-z33Il7l5dKjUgGULTqBsQBQwckHh5AbIuxhdsIxDDiZAzBOrZO6q9ogcWC65kU382AfynTfgNumVcNIjuIua6w=="],
 
     "@electric-sql/pglite": ["@electric-sql/pglite@0.5.3", "", {}, "sha512-iTTYbA5Uesrl+N7zss0J5LopT7KE4j9aymYo+EZZh+rZbARQCUQOs+n2pay64JRUpc3fCkpfrniTNJnvYzOE+g=="],
+
+    "@electric-sql/pglite-pgvector": ["@electric-sql/pglite-pgvector@0.0.4", "", { "peerDependencies": { "@electric-sql/pglite": "0.5.3" } }, "sha512-oHOQlYMzgxmoFWRbKhhoV0UNfoNUdbTHUD/z/nujr8LrUe4HdiSAUY2+Mv+Z033hZO9UWqOuj3Be2KztwK79ow=="],
 
     "@emnapi/core": ["@emnapi/core@1.11.1", "", { "dependencies": { "@emnapi/wasi-threads": "1.2.2", "tslib": "^2.4.0" } }, "sha512-RSvbQmHzdKzNsLYa/wHrbc3KN4sYLKAdPZxqiM2HATqv/SBk2/ENSHpvXGaLOMcsAyz0poEGqkmmKYG3OWiJEQ=="],
 

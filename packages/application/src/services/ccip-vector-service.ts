@@ -33,7 +33,9 @@ export class CcipVectorService {
 		mediaId: string,
 		force = false,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
-		const existing = force ? null : await this.deps.vectorStore.get(mediaId);
+		const existing = force
+			? null
+			: await this.deps.vectorStore.get(mediaId, this.currentVectorQuery());
 		const result = await this.prepareExtraction(
 			mediaSourceId,
 			mediaId,
@@ -62,7 +64,10 @@ export class CcipVectorService {
 		}
 		const existingById = force
 			? new Map<string, CcipVectorRecord>()
-			: await this.deps.vectorStore.getMany(mediaIds);
+			: await this.deps.vectorStore.getMany(
+					mediaIds,
+					this.currentVectorQuery(),
+				);
 		const results = await asyncPool(mediaIds, concurrency, async (mediaId) => ({
 			mediaId,
 			...(await this.prepareExtraction(
@@ -115,7 +120,10 @@ export class CcipVectorService {
 		extractedAt?: Date;
 	}> {
 		const media = await this.requireImage(mediaSourceId, mediaId);
-		const record = await this.deps.vectorStore.get(mediaId);
+		const record = await this.deps.vectorStore.get(
+			mediaId,
+			this.currentVectorQuery(),
+		);
 		if (!record) return { status: "missing" };
 		return {
 			status: this.isCurrent(record, media, mediaSourceId) ? "ready" : "stale",
@@ -133,21 +141,33 @@ export class CcipVectorService {
 	}
 
 	async getMany(mediaIds: string[]): Promise<Map<string, CcipVectorRecord>> {
-		return await this.deps.vectorStore.getMany(mediaIds);
+		return await this.deps.vectorStore.getMany(
+			mediaIds,
+			this.currentVectorQuery(),
+		);
 	}
 
 	async getMetadataMany(
 		mediaIds: string[],
 	): Promise<Map<string, CcipVectorMetadata>> {
-		return await this.deps.vectorStore.getMetadataMany(mediaIds);
+		return await this.deps.vectorStore.getMetadataMany(
+			mediaIds,
+			this.currentVectorQuery(),
+		);
 	}
 
 	async listExtractedMediaIds(mediaSourceId?: string): Promise<string[]> {
-		return await this.deps.vectorStore.listMediaIds(mediaSourceId);
+		return await this.deps.vectorStore.listMediaIds({
+			...this.currentVectorQuery(),
+			mediaSourceId,
+		});
 	}
 
 	async listRecords(mediaSourceId?: string): Promise<CcipVectorRecord[]> {
-		return await this.deps.vectorStore.list(mediaSourceId);
+		return await this.deps.vectorStore.list({
+			...this.currentVectorQuery(),
+			mediaSourceId,
+		});
 	}
 
 	async searchSimilar(
@@ -157,7 +177,10 @@ export class CcipVectorService {
 	): Promise<SimilarMediaSearchResponse> {
 		const anchorMedia = await this.deps.mediaRepository.findById(anchorMediaId);
 		if (!anchorMedia) throw new Error(`Media not found: ${anchorMediaId}`);
-		const anchor = await this.deps.vectorStore.get(anchorMediaId);
+		const anchor = await this.deps.vectorStore.get(
+			anchorMediaId,
+			this.currentVectorQuery(),
+		);
 		if (
 			!anchor ||
 			!this.isCurrent(anchor, anchorMedia, anchorMedia.mediaSourceId)
@@ -170,11 +193,10 @@ export class CcipVectorService {
 			MAX_CANDIDATES,
 		);
 		const candidates = (
-			await this.deps.vectorStore.search(
-				anchor.vector,
-				candidateLimit + 1,
+			await this.deps.vectorStore.search(anchor.vector, candidateLimit + 1, {
+				...this.currentVectorQuery(),
 				mediaSourceId,
-			)
+			})
 		).filter((candidate) => candidate.mediaId !== anchorMediaId);
 		if (candidates.length === 0) {
 			return { media: [], total: 0, scores: [] };
@@ -234,6 +256,13 @@ export class CcipVectorService {
 			// the current file, regardless of LanceDB timestamp serialization.
 			record.extractedAt.getTime() >= media.modifiedAt.getTime()
 		);
+	}
+
+	private currentVectorQuery() {
+		return {
+			model: CCIP_MODEL,
+			embeddingVersion: CCIP_EMBEDDING_VERSION,
+		};
 	}
 
 	private async requireImage(

@@ -152,13 +152,13 @@ const { mockDbFactory } = vi.hoisted(() => {
 				return dbInstance;
 			}
 
-			const { PGlite } = await import("@electric-sql/pglite");
+			const { createPglite } = await import("~/infrastructure/db/pglite");
 			const { drizzle } = await import("drizzle-orm/pglite");
 			const { migrate } = await import("drizzle-orm/pglite/migrator");
 			const schema = await import("~/infrastructure/db/schema");
 			const nodePath = await import("node:path");
 
-			const client = new PGlite();
+			const client = createPglite();
 			const testDb = drizzle(client, { schema });
 			const migrationsFolder = process.cwd().endsWith("apps/server")
 				? nodePath.resolve(process.cwd(), "drizzle")

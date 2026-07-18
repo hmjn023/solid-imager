@@ -24,15 +24,15 @@ import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // We need to dynamically import these to work around Vitest's hoisting
-let _PGlite: any, drizzle: any, migrate: any, schema: any, _eq: any;
+let drizzle: any, migrate: any, schema: any, _eq: any;
 let testDb: any, db: any;
 
 vi.mock("~/infrastructure/db/index", async () => {
-	const { PGlite: PgLiteClass } = await import("@electric-sql/pglite");
+	const { createPglite } = await import("~/infrastructure/db/pglite");
 	const { drizzle: drizzleFunc } = await import("drizzle-orm/pglite");
 	const schemaModule = await import("~/infrastructure/db/schema");
 
-	const pg = new PgLiteClass();
+	const pg = createPglite();
 	const dbInstance = drizzleFunc(pg, { schema: schemaModule });
 
 	// Expose the testDb instance to the global scope for the test file
@@ -60,8 +60,6 @@ describe("getMediaDetails", () => {
 		services.registerAiClient(new RustAiClient());
 
 		// Dynamically import dependencies
-		const pgliteModule = await import("@electric-sql/pglite");
-		_PGlite = pgliteModule.PGlite;
 		const drizzleOrmModule = await import("drizzle-orm/pglite");
 		drizzle = drizzleOrmModule.drizzle;
 		const drizzleOrm = await import("drizzle-orm");

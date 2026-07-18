@@ -147,13 +147,13 @@ const { mockDbInstance } = vi.hoisted(() => {
 
 				// 統合テストの場合は新しいPGLiteインスタンスを使用
 				// schemaを動的にインポートしてホイスティングの問題を回避
-				const { PGlite } = await import("@electric-sql/pglite");
+				const { createPglite } = await import("~/infrastructure/db/pglite");
 				const { drizzle } = await import("drizzle-orm/pglite");
 				const { migrate } = await import("drizzle-orm/pglite/migrator");
 				const schema = await import("~/infrastructure/db/schema");
 				const nodePath = await import("node:path");
 
-				const client = new PGlite();
+				const client = createPglite();
 				const testDb = drizzle(client, { schema });
 				// Use absolute path to ensure it works from any CWD (monorepo root or app root)
 				const migrationsFolder = process.cwd().endsWith("apps/server")

@@ -1,11 +1,11 @@
 import { mkdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
-import { PGlite } from '@electric-sql/pglite';
 import { defaultAppConfig } from '@solid-imager/core/domain/config/config-schema';
 import { mediaGenerationInfo, medias, mediaSources } from '@solid-imager/db/schema';
 import { drizzle } from 'drizzle-orm/pglite';
 import { migrate } from 'drizzle-orm/pglite/migrator';
 import sharp from 'sharp';
+import { createPglite } from '../src/infrastructure/db/pglite';
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -73,7 +73,7 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
 		stat(similarPath),
 	]);
 	const pgliteDir = path.join(runtimeDir, 'pglite');
-	const client = new PGlite(pgliteDir);
+	const client = createPglite(pgliteDir);
 	const db = drizzle(client);
 
 	try {

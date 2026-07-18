@@ -1,11 +1,11 @@
-import { PGlite } from "@electric-sql/pglite";
 import path from "path";
+import { createPglite } from "../src/infrastructure/db/pglite";
 
 async function test() {
   const dataDir = path.join(process.cwd(), ".data", "test-pglite");
   console.log("Starting PGlite test with directory:", dataDir);
   try {
-    const db = new PGlite(dataDir);
+    const db = createPglite(dataDir);
     await db.waitReady;
     const res = await db.query("SELECT 1 as one");
     console.log("Query result:", res);

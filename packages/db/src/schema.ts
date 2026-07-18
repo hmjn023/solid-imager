@@ -4,6 +4,8 @@ import {
 	type AnyPgColumn,
 	bigint,
 	boolean,
+	check,
+	customType,
 	index,
 	integer,
 	jsonb,
@@ -19,6 +21,43 @@ import {
 	uniqueIndex,
 	uuid,
 } from "drizzle-orm/pg-core";
+
+export const CCIP_VECTOR_DIMENSIONS = 768;
+
+function isCcipVector(value: unknown): value is number[] {
+	return (
+		Array.isArray(value) &&
+		value.length === CCIP_VECTOR_DIMENSIONS &&
+		value.every((item) => typeof item === "number" && Number.isFinite(item))
+	);
+}
+
+function parseCcipVector(value: string | number[]): number[] {
+	const parsed = typeof value === "string" ? JSON.parse(value) : value;
+	if (!isCcipVector(parsed)) {
+		throw new Error(
+			`Expected a finite ${CCIP_VECTOR_DIMENSIONS}-dimension vector`,
+		);
+	}
+	return parsed;
+}
+
+/** PostgreSQL pgvector column mapped to a finite 768-dimensional JavaScript array. */
+export const ccipVector = customType<{
+	data: number[];
+	driverData: string | number[];
+}>({
+	dataType: () => `vector(${CCIP_VECTOR_DIMENSIONS})`,
+	toDriver: (value) => {
+		if (!isCcipVector(value)) {
+			throw new Error(
+				`Expected a finite ${CCIP_VECTOR_DIMENSIONS}-dimension vector`,
+			);
+		}
+		return `[${value.join(",")}]`;
+	},
+	fromDriver: parseCcipVector,
+});
 
 // 列挙型
 /**
@@ -53,6 +92,12 @@ export const mediaSyncStatusEnum = pgEnum("media_sync_status", [
  * Defines the primary content type of a media file.
  */
 export const mediaTypeEnum = pgEnum("media_type", ["image", "video", "audio"]);
+/** Region types used for full-image and cropped CCIP embeddings. */
+export const mediaRegionKindEnum = pgEnum("media_region_kind", [
+	"full",
+	"person",
+	"manual",
+]);
 /**
  * Enum for job status.
  * Defines the current state of a background job.
@@ -154,6 +199,79 @@ export const medias = pgTable(
 		fileNameIndex: index("idx_media_file_name").on(table.fileName),
 		createdAtIndex: index("idx_media_created_at").on(table.createdAt),
 		descriptionIndex: index("idx_media_description").on(table.description),
+	}),
+);
+
+/**
+ * Stable, coordinate-based regions of a media item. The initial CCIP rollout
+ * creates only one `full` region per media; crop regions are reserved for the
+ * later crop workflow.
+ */
+export const mediaRegions = pgTable(
+	"media_regions",
+	{
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		mediaId: uuid("media_id")
+			.notNull()
+			.references(() => medias.id, { onDelete: "cascade" }),
+		kind: mediaRegionKindEnum("kind").notNull(),
+		x: real("x"),
+		y: real("y"),
+		width: real("width"),
+		height: real("height"),
+		sourceModifiedAt: timestamp("source_modified_at").notNull(),
+		detector: text("detector"),
+		detectorVersion: text("detector_version"),
+		score: real("score"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => ({
+		mediaIdIndex: index("idx_media_regions_media_id").on(table.mediaId),
+		oneFullRegionPerMedia: uniqueIndex("uq_media_regions_full_media_id")
+			.on(table.mediaId)
+			.where(sql`${table.kind} = 'full'`),
+		bboxByKind: check(
+			"media_regions_bbox_by_kind",
+			sql`(
+				(${table.kind} = 'full' AND ${table.x} IS NULL AND ${table.y} IS NULL AND ${table.width} IS NULL AND ${table.height} IS NULL)
+				OR
+				(${table.kind} <> 'full' AND ${table.x} IS NOT NULL AND ${table.y} IS NOT NULL AND ${table.width} IS NOT NULL AND ${table.height} IS NOT NULL
+					AND ${table.x} >= 0 AND ${table.y} >= 0 AND ${table.width} > 0 AND ${table.height} > 0
+					AND ${table.x} + ${table.width} <= 1 AND ${table.y} + ${table.height} <= 1)
+			)`,
+		),
+		scoreRange: check(
+			"media_regions_score_range",
+			sql`${table.score} IS NULL OR (${table.score} >= 0 AND ${table.score} <= 1)`,
+		),
+	}),
+);
+
+/**
+ * Versioned CCIP embeddings stored in pgvector. Embeddings are tied to a
+ * region so full-image and future crop vectors share one data model.
+ */
+export const ccipEmbeddings = pgTable(
+	"ccip_embeddings",
+	{
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		regionId: uuid("region_id")
+			.notNull()
+			.references(() => mediaRegions.id, { onDelete: "cascade" }),
+		embedding: ccipVector("embedding").notNull(),
+		model: text("model").notNull(),
+		embeddingVersion: integer("embedding_version").notNull(),
+		mediaModifiedAt: timestamp("media_modified_at").notNull(),
+		extractedAt: timestamp("extracted_at").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => ({
+		regionModelVersionUnique: unique(
+			"uq_ccip_embeddings_region_model_version",
+		).on(table.regionId, table.model, table.embeddingVersion),
+		regionIdIndex: index("idx_ccip_embeddings_region_id").on(table.regionId),
 	}),
 );
 
@@ -1641,3 +1759,21 @@ export type MediaUrl = InferSelectModel<typeof mediaUrls>;
  * Type definition for inserting a new media url into the database.
  */
 export type NewMediaUrl = InferInsertModel<typeof mediaUrls>;
+
+/**
+ * Type definition for selecting a media region from the database.
+ */
+export type MediaRegion = InferSelectModel<typeof mediaRegions>;
+/**
+ * Type definition for inserting a media region into the database.
+ */
+export type NewMediaRegion = InferInsertModel<typeof mediaRegions>;
+
+/**
+ * Type definition for selecting a CCIP embedding from the database.
+ */
+export type CcipEmbedding = InferSelectModel<typeof ccipEmbeddings>;
+/**
+ * Type definition for inserting a CCIP embedding into the database.
+ */
+export type NewCcipEmbedding = InferInsertModel<typeof ccipEmbeddings>;

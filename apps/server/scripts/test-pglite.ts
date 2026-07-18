@@ -1,9 +1,9 @@
-import { PGlite } from "@electric-sql/pglite";
+import { createPglite } from "../src/infrastructure/db/pglite";
 
 async function test() {
   console.log("Starting PGlite test...");
   try {
-    const db = new PGlite();
+    const db = createPglite();
     await db.waitReady;
     const res = await db.query("SELECT 1 as one");
     console.log("Query result:", res);
