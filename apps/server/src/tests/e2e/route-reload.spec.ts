@@ -344,6 +344,7 @@ test("SPA intent prefetch and cache revisit do not duplicate route queries", asy
 	browserHealth,
 }) => {
 	await page.goto("/");
+	await waitForAppHydration(page);
 
 	const searchCheckpoint = browserHealth.requestCheckpoint();
 	const searchLink = page.getByRole("link", { name: "Search", exact: true });
@@ -493,5 +494,14 @@ test("SPA intent prefetch and cache revisit do not duplicate route queries", asy
 			"/api/rpc/media/search",
 		),
 	).toBeLessThanOrEqual(1);
+	const sourceEventRequestCount = browserHealth.apiRequestCountPathSince(
+		searchCheckpoint,
+		"/api/rpc/sources/events",
+	);
+	expect(sourceEventRequestCount).toBeGreaterThan(0);
+	expect(
+		sourceEventRequestCount,
+		"Source event subscriptions must be shared across cached routes",
+	).toBeLessThanOrEqual(3);
 	await expectRouteHealthy(page);
 });

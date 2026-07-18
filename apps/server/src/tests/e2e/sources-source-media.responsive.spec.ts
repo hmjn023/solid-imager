@@ -1,5 +1,11 @@
 import type { Locator, Page } from "@playwright/test";
-import { E2E_SOURCE_ID, E2E_SOURCE_NAME, sourcePath } from "./support/fixture";
+import {
+	E2E_PRIMARY_FILE_NAME,
+	E2E_SOURCE_ID,
+	E2E_SOURCE_NAME,
+	getFixtureMediaPath,
+	sourcePath,
+} from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 function usesMobileControls(projectName: string): boolean {
@@ -123,7 +129,11 @@ test("source media exposes mobile filters and touch selection", async ({
 	const addMediaButton = page.getByRole("button", { name: "Add media" });
 	await expectTouchTarget(addMediaButton);
 	await expectInsideViewport(page, addMediaButton);
+	const fileChooser = page.waitForEvent("filechooser");
 	await addMediaButton.click();
+	await (await fileChooser).setFiles(
+		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
+	);
 	const uploadDialog = page.getByRole("dialog");
 	await expect(
 		uploadDialog.getByRole("heading", {
@@ -131,20 +141,19 @@ test("source media exposes mobile filters and touch selection", async ({
 			exact: true,
 		}),
 	).toBeVisible();
-	await uploadDialog
-		.getByRole("button", { name: "アップロード", exact: true })
-		.click();
-	await expect(
-		uploadDialog.getByText("アップロードするファイルがありません。"),
-	).toBeVisible();
+	const filenameInput = uploadDialog.getByLabel("ファイル名", { exact: true });
+	await expect(filenameInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
+	await filenameInput.fill("temporary-name.png");
 	await uploadDialog
 		.getByRole("button", { name: "キャンセル", exact: true })
 		.click();
 	await expect(uploadDialog).toBeHidden();
+	const reopenedFileChooser = page.waitForEvent("filechooser");
 	await addMediaButton.click();
-	await expect(
-		uploadDialog.getByText("アップロードするファイルがありません。"),
-	).toHaveCount(0);
+	await (await reopenedFileChooser).setFiles(
+		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
+	);
+	await expect(filenameInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
 	await page.keyboard.press("Escape");
 	await expect(uploadDialog).toBeHidden();
 

@@ -228,6 +228,7 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
 });
 
 export default defineConfig({
+	root: __dirname,
 	cacheDir: viteCacheDir,
 	server: isolatedDevConfig
 		? {
