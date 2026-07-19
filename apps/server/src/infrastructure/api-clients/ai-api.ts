@@ -14,7 +14,7 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
  * @returns The tagging response containing general tags, characters, and IPs
  */
 export function fetchAiTags(params: z.infer<typeof tagImageRequestSchema>) {
-	return orpc.ai.tag(params);
+  return orpc.ai.tag(params);
 }
 
 /**
@@ -22,49 +22,37 @@ export function fetchAiTags(params: z.infer<typeof tagImageRequestSchema>) {
  * @param file - The file to tag
  */
 export function fetchAiTagsForFile(file: File) {
-	return orpc.ai.tag({ file });
+  return orpc.ai.tag({ file });
+}
+
+export function fetchOppaiOracleTags(params: z.infer<typeof tagImageRequestSchema>) {
+  return orpc.ai.tagOppaiOracle(params);
 }
 
 export function fetchCharacterCrops(mediaId: string, transparent: boolean) {
-	return orpc.ai.detectAndCropCharacters({ mediaId, transparent });
+  return orpc.ai.detectAndCropCharacters({ mediaId, transparent });
 }
 
-export function scanBatchTaggingTargets(params: {
-	force?: boolean;
-	mediaSourceId?: string;
-}) {
-	return orpc.ai.scanBatchTaggingTargets(params);
+export function scanBatchTaggingTargets(params: { force?: boolean; mediaSourceId?: string }) {
+  return orpc.ai.scanBatchTaggingTargets(params);
 }
 
-export function startBatchTagging(params: {
-	force?: boolean;
-	mediaSourceId?: string;
-}) {
-	return orpc.ai.startBatchTagging(params);
+export function startBatchTagging(params: { force?: boolean; mediaSourceId?: string }) {
+  return orpc.ai.startBatchTagging(params);
 }
 
 export function getCcipVectorStatus(mediaSourceId: string, mediaId: string) {
-	return orpc.ai.ccipVectorStatus({ mediaSourceId, mediaId });
+  return orpc.ai.ccipVectorStatus({ mediaSourceId, mediaId });
 }
 
-export function startCcipExtraction(
-	mediaSourceId: string,
-	mediaId: string,
-	force = false,
-) {
-	return orpc.ai.startCcipExtraction({ mediaSourceId, mediaId, force });
+export function startCcipExtraction(mediaSourceId: string, mediaId: string, force = false) {
+  return orpc.ai.startCcipExtraction({ mediaSourceId, mediaId, force });
 }
 
-export function scanBatchCcipTargets(params: {
-	force?: boolean;
-	mediaSourceId?: string;
-}) {
-	return orpc.ai.scanBatchCcipTargets(params);
+export function scanBatchCcipTargets(params: { force?: boolean; mediaSourceId?: string }) {
+  return orpc.ai.scanBatchCcipTargets(params);
 }
 
-export function startBatchCcipExtraction(params: {
-	force?: boolean;
-	mediaSourceId?: string;
-}) {
-	return orpc.ai.startBatchCcipExtraction(params);
+export function startBatchCcipExtraction(params: { force?: boolean; mediaSourceId?: string }) {
+  return orpc.ai.startBatchCcipExtraction(params);
 }

@@ -1,29 +1,26 @@
 import type {
-	CcipDifferenceResponse,
-	CcipFeatureResponse,
-	TaggingResponse,
+  CcipDifferenceResponse,
+  CcipFeatureResponse,
+  OppaiOracleResponse,
+  TaggingResponse,
 } from "@/domain/tagging/schemas";
 
 export type IAiClient = {
-	healthCheck(): Promise<boolean>;
+  healthCheck(): Promise<boolean>;
 
-	tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse>;
+  tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse>;
 
-	tagImageByPath(path: string): Promise<TaggingResponse>;
+  tagImageByPath(path: string): Promise<TaggingResponse>;
 
-	extractCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;
+  tagImageOppaiOracleByPath(path: string): Promise<OppaiOracleResponse>;
 
-	extractCcipFeatureByPath(path: string): Promise<CcipFeatureResponse>;
+  extractCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;
 
-	calculateCcipDifference(
-		feature1: number[],
-		feature2: number[],
-	): Promise<CcipDifferenceResponse>;
+  extractCcipFeatureByPath(path: string): Promise<CcipFeatureResponse>;
 
-	calculateCcipDistances(
-		feature: number[],
-		candidates: number[][],
-	): Promise<number[]>;
+  calculateCcipDifference(feature1: number[], feature2: number[]): Promise<CcipDifferenceResponse>;
 
-	getBaseUrl?: () => string;
+  calculateCcipDistances(feature: number[], candidates: number[][]): Promise<number[]>;
+
+  getBaseUrl?: () => string;
 };

@@ -1,84 +1,78 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
-	batchCcipExtractionRequestSchema,
-	batchTaggingRequestSchema,
-	batchTargetCountResponseSchema,
-	ccipDifferenceRequestSchema,
-	ccipDistancesRequestSchema,
-	ccipDistancesResponseSchema,
-	ccipExtractionRequestSchema,
-	ccipFeatureRequestSchema,
-	ccipVectorStatusSchema,
-	detectAndCropResponseSchema,
-	startBatchTaggingResponseSchema,
-	startCcipExtractionResponseSchema,
-	taggingResponseSchema,
-	tagImageRequestSchema,
+  batchCcipExtractionRequestSchema,
+  batchTaggingRequestSchema,
+  batchTargetCountResponseSchema,
+  ccipDifferenceRequestSchema,
+  ccipDistancesRequestSchema,
+  ccipDistancesResponseSchema,
+  ccipExtractionRequestSchema,
+  ccipFeatureRequestSchema,
+  ccipVectorStatusSchema,
+  detectAndCropResponseSchema,
+  oppaiOracleResponseSchema,
+  startBatchTaggingResponseSchema,
+  startCcipExtractionResponseSchema,
+  taggingResponseSchema,
+  tagImageRequestSchema,
 } from "../tagging/schemas";
 
 export const aiContract = {
-	tag: oc
-		.input(
-			z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
-		)
-		.output(taggingResponseSchema),
+  tag: oc
+    .input(z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]))
+    .output(taggingResponseSchema),
 
-	tagRustExperimental: oc.input(
-		z.union([
-			z.object({ mediaId: z.string().uuid() }),
-			z.object({ file: z.instanceof(File) }),
-		]),
-	),
+  tagOppaiOracle: oc
+    .input(z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]))
+    .output(oppaiOracleResponseSchema),
 
-	ccipFeature: oc.input(
-		z.union([z.object({ file: z.instanceof(File) }), ccipFeatureRequestSchema]),
-	),
+  tagRustExperimental: oc.input(
+    z.union([z.object({ mediaId: z.string().uuid() }), z.object({ file: z.instanceof(File) })]),
+  ),
 
-	ccipDifference: oc.input(ccipDifferenceRequestSchema),
+  ccipFeature: oc.input(
+    z.union([z.object({ file: z.instanceof(File) }), ccipFeatureRequestSchema]),
+  ),
 
-	ccipDistances: oc
-		.input(ccipDistancesRequestSchema)
-		.output(ccipDistancesResponseSchema),
+  ccipDifference: oc.input(ccipDifferenceRequestSchema),
 
-	ccipVectorStatus: oc
-		.input(
-			ccipExtractionRequestSchema.pick({ mediaSourceId: true, mediaId: true }),
-		)
-		.output(ccipVectorStatusSchema),
+  ccipDistances: oc.input(ccipDistancesRequestSchema).output(ccipDistancesResponseSchema),
 
-	startCcipExtraction: oc
-		.input(ccipExtractionRequestSchema)
-		.output(startCcipExtractionResponseSchema),
+  ccipVectorStatus: oc
+    .input(ccipExtractionRequestSchema.pick({ mediaSourceId: true, mediaId: true }))
+    .output(ccipVectorStatusSchema),
 
-	scanBatchCcipTargets: oc
-		.input(batchCcipExtractionRequestSchema)
-		.output(batchTargetCountResponseSchema),
+  startCcipExtraction: oc
+    .input(ccipExtractionRequestSchema)
+    .output(startCcipExtractionResponseSchema),
 
-	startBatchCcipExtraction: oc
-		.input(batchCcipExtractionRequestSchema)
-		.output(startCcipExtractionResponseSchema),
+  scanBatchCcipTargets: oc
+    .input(batchCcipExtractionRequestSchema)
+    .output(batchTargetCountResponseSchema),
 
-	scanBatchTaggingTargets: oc
-		.input(batchTaggingRequestSchema)
-		.output(batchTargetCountResponseSchema),
+  startBatchCcipExtraction: oc
+    .input(batchCcipExtractionRequestSchema)
+    .output(startCcipExtractionResponseSchema),
 
-	startBatchTagging: oc
-		.input(batchTaggingRequestSchema)
-		.output(startBatchTaggingResponseSchema),
+  scanBatchTaggingTargets: oc
+    .input(batchTaggingRequestSchema)
+    .output(batchTargetCountResponseSchema),
 
-	detectAndCropCharacters: oc
-		.input(
-			z.union([
-				z.object({
-					mediaId: z.string().uuid(),
-					transparent: z.boolean().optional().default(false),
-				}),
-				z.object({
-					file: z.instanceof(File),
-					transparent: z.boolean().optional().default(false),
-				}),
-			]),
-		)
-		.output(detectAndCropResponseSchema),
+  startBatchTagging: oc.input(batchTaggingRequestSchema).output(startBatchTaggingResponseSchema),
+
+  detectAndCropCharacters: oc
+    .input(
+      z.union([
+        z.object({
+          mediaId: z.string().uuid(),
+          transparent: z.boolean().optional().default(false),
+        }),
+        z.object({
+          file: z.instanceof(File),
+          transparent: z.boolean().optional().default(false),
+        }),
+      ]),
+    )
+    .output(detectAndCropResponseSchema),
 };
