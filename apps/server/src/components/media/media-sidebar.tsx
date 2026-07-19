@@ -396,7 +396,6 @@ export function MediaSidebar(props: MediaSidebarProps) {
         mediaId={props.media.id}
         mediaSourceId={props.media.mediaSourceId}
         onClose={() => setIsOppaiOracleModalOpen(false)}
-        onSuccess={props.onUpdate}
       />
 
       <CharacterCropModal
