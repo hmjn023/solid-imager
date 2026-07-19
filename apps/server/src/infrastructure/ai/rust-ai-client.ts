@@ -176,8 +176,8 @@ export class RustAiClient implements IAiClient {
   }
 
   async tagImageOppaiOracleByPath(filePath: string): Promise<OppaiOracleResponse> {
-    const { getOppaiOracleTags } = await import("dghs-imgutils-rs");
-    const result = await getOppaiOracleTags(filePath);
+		const { getOppaioracleTags } = await import("dghs-imgutils-rs");
+		const result = await getOppaioracleTags(filePath);
     return oppaiOracleResponseSchema.parse({
       general: result.general,
       rating: result.rating,
