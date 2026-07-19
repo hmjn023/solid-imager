@@ -4,9 +4,9 @@
 
 Tauri の一覧データは、役割を次のように分離する。TanStack DB collection は SQLite に保存した一覧の読込とリアクティブ表示を担当し、TanStack Query integration は collection の remote sync を担当する。画面 route は同じ一覧 API を loader や `createQuery()` で重複取得しない。
 
-| collection | 現在の採用状況 | 移行方針 |
-| --- | --- | --- |
-| sources | collection を表示と同期の唯一のデータ源に採用 | mutation 成功後に `utils.refetch()` で同期する。 |
+| collection                                   | 現在の採用状況                                | 移行方針                                                                            |
+| -------------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------------------- |
+| sources                                      | collection を表示と同期の唯一のデータ源に採用 | mutation 成功後に `utils.refetch()` で同期する。                                    |
 | tags / projects / characters / ips / authors | collection を永続化・同期基盤として初期化済み | 対応画面を変更する際、一覧 Query を collection の `useLiveQuery()` に段階移行する。 |
 
 画面状態は `useLiveQuery()` のローカル初期化状態と、collection `utils` の remote 状態を別々に扱う。保存済みデータがあれば remote sync の失敗時も一覧を保持して同期不能を表示する。保存済みデータがなく同期に失敗した場合だけ error state を表示する。mutation は API 呼び出しを維持し、失敗時には collection を再取得しないため、失敗した remote 変更をローカル表示へ反映しない。
@@ -26,12 +26,12 @@ SSR/SPA を切り替える方式を採ったが、UI層全体に `isServer` / `i
 
 TanStack Start (SSR) と Tauri (SPA) は**ランタイムモデルが根本的に異なる**。
 
-| 側面 | Web SSR (TanStack Start) | Tauri SPA |
-|------|--------------------------|-----------|
-| HTML生成 | Nitro がサーバー側でレンダリング | クライアントのみ |
-| ルーティング | ファイルベース + Nitro | クライアントサイドのみ |
-| API通信 | 同一プロセス内 / ローカルホスト | Tauriコマンド (IPC) |
-| サービス初期化 | Nitro 起動時 | Tauri ウィンドウ起動時 |
+| 側面           | Web SSR (TanStack Start)         | Tauri SPA              |
+| -------------- | -------------------------------- | ---------------------- |
+| HTML生成       | Nitro がサーバー側でレンダリング | クライアントのみ       |
+| ルーティング   | ファイルベース + Nitro           | クライアントサイドのみ |
+| API通信        | 同一プロセス内 / ローカルホスト  | Tauriコマンド (IPC)    |
+| サービス初期化 | Nitro 起動時                     | Tauri ウィンドウ起動時 |
 
 この2つを同じルーティングツリー・同じ `apps/server/src` で混在させると、
 `isServer` / `isTauri` チェックがコンポーネント・フック・ストア・ユーティリティ
@@ -74,14 +74,14 @@ packages/
 
 ### 選択肢
 
-| | TanStack Start SPA mode | TanStack Router のみ | 素の SolidJS |
-|---|---|---|---|
-| Nitro | **残る** | 不要 | 不要 |
-| ファイルベースルーティング | あり | **あり** | なし |
-| `createRouter` API | 同一 | **同一** | 異なる |
-| `isServer` 不要 | △ | **◎** | ◎ |
-| apps/server とのルート共用 | しやすい | **しやすい** | 難しい |
-| ビルド複雑度 | 高 | **低** | 最低 |
+|                            | TanStack Start SPA mode | TanStack Router のみ | 素の SolidJS |
+| -------------------------- | ----------------------- | -------------------- | ------------ |
+| Nitro                      | **残る**                | 不要                 | 不要         |
+| ファイルベースルーティング | あり                    | **あり**             | なし         |
+| `createRouter` API         | 同一                    | **同一**             | 異なる       |
+| `isServer` 不要            | △                       | **◎**                | ◎            |
+| apps/server とのルート共用 | しやすい                | **しやすい**         | 難しい       |
+| ビルド複雑度               | 高                      | **低**               | 最低         |
 
 ### 推奨: TanStack Router のみ (Start を外す)
 
@@ -109,7 +109,7 @@ import viteTsConfigPaths from "vite-tsconfig-paths";
 export default defineConfig({
   plugins: [
     tanstackRouter({ target: "solid", autoCodeSplitting: true }),
-    solidPlugin(),   // SSR 設定なし = 完全に SPA
+    solidPlugin(), // SSR 設定なし = 完全に SPA
     tailwindcss(),
     viteTsConfigPaths(),
   ],
@@ -127,7 +127,7 @@ export default defineConfig({
 ```tsx
 // packages/ui/src/layouts/app-shell.tsx
 export function AppShell(props: {
-  nav: JSX.Element;   // リンクはアプリ側が渡す
+  nav: JSX.Element; // リンクはアプリ側が渡す
   children: JSX.Element;
 }) {
   return (
@@ -193,19 +193,24 @@ export class NodeFileSystem implements IFileSystem {
 親 issue: #165 / 旧失敗 issue: #168 (closed) #169 (方針転換でクローズ)
 
 ### Phase 1 — 境界を整える
+
 - **#214** packages/ から isServer を除去
 - **#215** packages/ui に AppShell レイアウト抽出
 
 ### Phase 2 — 独立 SPA の土台
+
 - **#216** apps/tauri/src SPA スケルトン新設 (Vite + SolidJS + `@tanstack/solid-router`、`tanstackStart` / Nitro なし)
 - **#217** Tauri プラットフォーム実装 (`IFileSystem` / `IImageProcessor` / API client)
 - **#218** apps/tauri/src-tauri (Rust) — 旧 #169 の Rust 実装をサルベージ
 
 ### Phase 3 — ルート/画面の移植
+
 - **#219** UI ページを apps/server から apps/tauri/src/routes へ移植
 
 ### Phase 4 — 検証
+
 - **#220** Tauri for Linux 実機動作確認 (旧 #169 の本来の目的)
 
 ### 後続
+
 - **#170** Tauri for Android スタンドアロン対応

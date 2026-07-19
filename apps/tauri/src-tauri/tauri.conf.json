@@ -1,36 +1,36 @@
 {
-	"$schema": "https://schema.tauri.app/config/2",
-	"productName": "solid-imager",
-	"version": "0.0.1",
-	"identifier": "dev.hmjn.solid-imager.desktop",
-	"build": {
-		"beforeDevCommand": "bun run dev:web",
-		"beforeBuildCommand": "bun run build:web",
-		"devUrl": "http://localhost:1420",
-		"frontendDist": "../dist"
-	},
-	"app": {
-		"windows": [
-			{
-				"label": "main",
-				"title": "solid-imager",
-				"width": 1440,
-				"height": 960,
-				"minWidth": 1100,
-				"minHeight": 720,
-				"devtools": true,
-				"resizable": true
-			}
-		],
-		"security": {
-			"csp": null,
-			"assetProtocol": {
-				"enable": true,
-				"scope": ["**"]
-			}
-		}
-	},
-	"bundle": {
-		"active": false
-	}
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "solid-imager",
+  "version": "0.0.1",
+  "identifier": "dev.hmjn.solid-imager.desktop",
+  "build": {
+    "beforeDevCommand": "bun run dev:web",
+    "beforeBuildCommand": "bun run build:web",
+    "devUrl": "http://localhost:1420",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "solid-imager",
+        "width": 1440,
+        "height": 960,
+        "minWidth": 1100,
+        "minHeight": 720,
+        "devtools": true,
+        "resizable": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["**"]
+      }
+    }
+  },
+  "bundle": {
+    "active": false
+  }
 }

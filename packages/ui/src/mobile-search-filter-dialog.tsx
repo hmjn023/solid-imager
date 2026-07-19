@@ -142,9 +142,7 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 			...searchState,
 			selectedSource: props.selectedSource ?? searchState.selectedSource,
 		});
-	const [draft, setDraft] = createStore<SearchState>(
-		currentSearchState(),
-	);
+	const [draft, setDraft] = createStore<SearchState>(currentSearchState());
 	let wasOpen = false;
 
 	createEffect(() => {

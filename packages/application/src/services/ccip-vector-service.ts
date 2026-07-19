@@ -4,13 +4,13 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { ILogger } from "../ports/media-service";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import type {
 	CcipVectorMetadata,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "../ports/ccip-vector-store";
+import type { ILogger } from "../ports/media-service";
 import type { ITaggingService } from "../ports/tagging-service";
 
 export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
@@ -215,8 +215,8 @@ export class CcipVectorService {
 			{
 				durationMs:
 					Math.round((performance.now() - mediaStartedAt) * 100) / 100,
-					mediaCount: media.length,
-					candidateCount: candidates.length,
+				mediaCount: media.length,
+				candidateCount: candidates.length,
 			},
 			"CCIP similar media lookup completed",
 		);
@@ -237,7 +237,7 @@ export class CcipVectorService {
 			{
 				durationMs:
 					Math.round((performance.now() - rerankStartedAt) * 100) / 100,
-					candidateCount: currentCandidates.length,
+				candidateCount: currentCandidates.length,
 			},
 			"CCIP Rust reranking completed",
 		);

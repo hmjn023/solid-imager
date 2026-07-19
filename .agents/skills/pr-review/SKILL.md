@@ -20,6 +20,7 @@ bash .opencode/skills/pr-review/scripts/pr-comments.sh 425
 ```
 
 出力例:
+
 ```
 #425 のレビューコメント (8件)
 ================================
@@ -84,6 +85,7 @@ bash .opencode/skills/pr-review/scripts/resolve-comment.sh <NODE_ID>
 ```
 
 解決理由:
+
 - `OUTDATED` - コードが更新されたため（デフォルト）
 - `RESOLVED` - 問題が解決したため
 - `ADDRESSED` - 対応済み

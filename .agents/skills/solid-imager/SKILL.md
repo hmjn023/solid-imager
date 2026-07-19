@@ -32,11 +32,13 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 このリポジトリは Vite+ を導入しています。`vp` はグローバルに入っていないことがあるため、コマンド例では `bun x vp ...` を使います。依存関係の更新後や作業開始時は AGENTS.md の Vite+ チェックリストを優先してください。
 
 1. **依存関係のインストール:**
+
    ```bash
    bun x vp install
    ```
 
 2. **環境変数の設定:**
+
    ```bash
    cp apps/server/.env.example apps/server/.env
    ```
@@ -56,33 +58,42 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 ## Working Rules
 
 ### クリーンアーキテクチャ
+
 依存方向は原則として `apps/*` / `infrastructure` -> `packages/application` -> `packages/core` です。`packages/core` は他のプロジェクト内パッケージへ依存しません。`packages/application` は DB、server、Tauri などの実装詳細へ依存せず、`core` の port とドメイン型を使います。`packages/db` は `core` の repository port を実装します。
 
 ### パッケージ境界
+
 既存コードには deep import が多く残っていますが、新規コードでは公開 API を薄く保つ方針を優先します。内部ファイル構成に直接依存する import を増やす前に、適切な barrel、port、factory を用意できないか検討してください。
 
 ### 型安全性
+
 `any`、不要な `unknown`、`as unknown as ...`、`as any` による型のごまかしは禁止です。外部ライブラリ境界では公開型、型ガード、Zod schema、明示的 mapper を優先し、やむを得ない場合は最小スコープに限定して理由をコメントします。型定義のインポートには `import type` を使用します。
 
 ### インポートエイリアス
+
 - **Server:** `~/*` → `apps/server/src`
 - **Core Package:** `@/*` → `packages/core/src`
 - **Workspace Packages:** `@solid-imager/core`, `@solid-imager/application`, `@solid-imager/db`, `@solid-imager/ui`, `@solid-imager/client`
 
 ### Bun固有APIの活用
+
 サーバー側（`apps/server` など）の実装では Bun API を使えます。ただし、ブラウザ、Tauri、共有パッケージ（`packages/core`, `packages/application`, `packages/ui`, `packages/client` 等）では、ポータビリティを確保するため Node.js 互換 API や Web 標準 API を優先してください。
 
 ### 開発サーバー
+
 通常のコード修正では開発サーバーを起動しません。UI 実装やブラウザ検証が必要な場合のみ、既存ポートを確認して `bun x vp dev` など適切なコマンドを使います。
 
 ### コード品質
+
 コミット前には Vite+ / Biome / TypeScript のチェックを実行してください。
+
 ```bash
 bun x vp check
 bun run typecheck
 ```
 
 ### テスト
+
 ```bash
 bun x vp test
 bun run test
@@ -106,6 +117,7 @@ bun run test
 ### TypeScript コーディング規約 (Google TypeScript Style Guide 基準)
 
 **Language Features:**
+
 - `const`/`let` のみ使用。**`var` は禁止**
 - ES6モジュール使用。**`namespace` は禁止**
 - 名前付きエクスポート使用。**デフォルトエクスポートは禁止**
@@ -117,6 +129,7 @@ bun run test
 - **型アサーション (`x as SomeType`) は回避**。必要な場合は明確な正当化を記載
 
 **禁止機能:**
+
 - **`any` 型は禁止**。`unknown` か具体的な型を使用
 - `String`/`Boolean`/`Number` ラッパークラスのインスタンス化は禁止
 - **セミコロンは明示的に記述**
@@ -124,17 +137,20 @@ bun run test
 - `eval()` と `Function(...string)` は禁止
 
 **命名規則:**
+
 - `UpperCamelCase`: クラス、インターフェース、型、enum、デコレータ
 - `lowerCamelCase`: 変数、パラメータ、関数、メソッド、プロパティ
 - `CONSTANT_CASE`: グローバル定数値、enum値
 - **`_` プレフィックス/サフィックスは禁止**（プライベートプロパティ含む）
 
 **型システム:**
+
 - 簡単で明白な型は型推論に任せる。複雑な型は明示的に記述
 - オプショナルパラメータ/フィールド (`?`) を `|undefined` より優先
 - 簡単な型は `T[]`、複雑な共用型は `Array<T>` を使用
 - **`{}` 型は禁止**。`unknown`/`Record<string, unknown>`/`object` を使用
 
 **コメント:**
+
 - ドキュメントには `/** JSDoc */`、実装コメントには `//` を使用
 - `@param`/`@return` に型を記述しない（TypeScriptでは冗長）

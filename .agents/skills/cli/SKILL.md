@@ -16,6 +16,7 @@ bun run --filter @solid-imager/cli dev --help
 ```
 
 ビルド:
+
 ```bash
 cd apps/cli && bun run build
 # apps/cli/dist/imager-cli にバイナリ生成
@@ -29,23 +30,28 @@ cd apps/cli && bun run build
 ## コマンド一覧
 
 ### `ping`
+
 サーバー接続確認。`imager-cli ping [--remote <url>]`
 
 ### `media`
+
 - `media get <id>` — メタデータ取得 (`--source` 必須)
 - `media search` — 検索 (`--query`, `--limit`, `--offset`)
 - `media view <id>` — ターミナルで画像表示 (`--width`, `--height`)
 - `media download <id>` — ダウンロード (`--output`)
 
 ### `ai`
+
 - `ai tag <mediaId>` — AIタグ付け (`--mediaSourceId` 必須)
 - `ai status` — AIサービス稼働確認
 
 ### `db`
+
 - `db dump` — DBダンプ (`--format sql|json|zip`, `--output`, `--docker`)
 - `db restore <filepath>` — DB復元 (`--docker`)
 
 ### `job`
+
 - `job list` — ジョブ一覧 (`--status`, `--type`, `--limit`)
 - `job retry <id>` — 失敗ジョブ再試行
 - `job clear` — ジョブ履歴削除 (`--status completed|failed`)

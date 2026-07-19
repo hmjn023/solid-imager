@@ -24,7 +24,9 @@ describe("subscribeToEventStream", () => {
 					signal.addEventListener(
 						"abort",
 						() => reject(new Error("network error")),
-						{ once: true },
+						{
+							once: true,
+						},
 					);
 				}),
 		);

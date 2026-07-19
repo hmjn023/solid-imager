@@ -15,7 +15,7 @@ bun --filter @solid-imager/server run gen:spec
 
 ## Task Routing
 
-| ユーザーの意図 | やること |
-|---|---|
-| OpenAPI仕様更新 | `bun --filter @solid-imager/server run gen:spec` |
-| API仕様確認 | Swagger UI (`http://localhost:3000/docs/swagger`) を参照 |
+| ユーザーの意図  | やること                                                 |
+| --------------- | -------------------------------------------------------- |
+| OpenAPI仕様更新 | `bun --filter @solid-imager/server run gen:spec`         |
+| API仕様確認     | Swagger UI (`http://localhost:3000/docs/swagger`) を参照 |

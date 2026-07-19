@@ -5,9 +5,7 @@ import fs from "fs";
 import { createPglite } from "../src/infrastructure/db/pglite";
 
 async function main() {
-	const dataDir =
-		process.env.PGLITE_DATA_DIR ??
-		path.join(process.cwd(), ".data", "pglite-fresh");
+  const dataDir = process.env.PGLITE_DATA_DIR ?? path.join(process.cwd(), ".data", "pglite-fresh");
   console.log("Using PGlite data directory:", dataDir);
 
   // Ensure the data directory exists

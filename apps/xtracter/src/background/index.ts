@@ -217,9 +217,7 @@ chrome.runtime.onMessage.addListener(
 									.slice(0, DATE_STRING_LENGTH);
 								const filename = `xtracter/xtracter-${dateStr}.json`;
 								const jsonString = JSON.stringify(response, null, 2);
-								const dataUrl =
-									"data:application/json;base64," +
-									btoa(unescape(encodeURIComponent(jsonString)));
+								const dataUrl = `data:application/json;base64,${btoa(unescape(encodeURIComponent(jsonString)))}`;
 								chrome.downloads.download(
 									{
 										url: dataUrl,
@@ -275,9 +273,7 @@ chrome.runtime.onMessage.addListener(
 				.slice(0, DATE_STRING_LENGTH);
 			const filename = `xtracter/xtracter-${dateStr}.json`;
 			const jsonString = JSON.stringify(message.data, null, 2);
-			const dataUrl =
-				"data:application/json;base64," +
-				btoa(unescape(encodeURIComponent(jsonString)));
+			const dataUrl = `data:application/json;base64,${btoa(unescape(encodeURIComponent(jsonString)))}`;
 			chrome.downloads.download(
 				{
 					url: dataUrl,
