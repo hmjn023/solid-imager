@@ -36,9 +36,9 @@
     "docs:generate": "typedoc"
   },
   "dependencies": {
-    "@electric-sql/pglite": "0.5.3",
-    "@electric-sql/pglite-pgvector": "0.0.4",
-    "@lancedb/lancedb": "^0.30.0",
+    "@electric-sql/pglite": "0.5.4",
+    "@electric-sql/pglite-pgvector": "0.0.5",
+    "@lancedb/lancedb": "^0.31.0",
     "@orpc/client": "^1.14.4",
     "@orpc/contract": "^1.14.4",
     "@orpc/experimental-pino": "^1.14.4",
@@ -53,7 +53,7 @@
     "@solid-imager/ui": "workspace:*",
     "@tanstack/router-plugin": "^1.168.14",
     "@tanstack/solid-form": "^1.33.0",
-    "@tanstack/solid-query": "5.99.2",
+    "@tanstack/solid-query": "5.101.2",
     "@tanstack/solid-router": "^1.170.11",
     "@tanstack/solid-router-devtools": "^1.167.0",
     "@tanstack/solid-router-ssr-query": "^1.167.1",
@@ -82,7 +82,7 @@
     "@orpc/openapi": "^1.14.4",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.3.0",
-    "@tanstack/devtools-vite": "^0.7.0",
+    "@tanstack/devtools-vite": "^0.8.1",
     "@types/archiver": "^8.0.0",
     "@types/ffmpeg-static": "^5.1.0",
     "@types/fluent-ffmpeg": "^2.1.28",
@@ -103,10 +103,10 @@
     "tsx": "^4.22.4",
     "typedoc": "^0.28.19",
     "typescript": "rc",
-    "ultracite": "7.8.3",
+    "ultracite": "7.9.4",
     "vite-plugin-mkcert": "^2.1.0",
     "vite-plugin-solid": "^2.11.12",
-    "vite-plus": "^0.1.24",
+    "vite-plus": "^0.2.5",
     "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
   }
 }

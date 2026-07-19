@@ -22,7 +22,7 @@
     "@tanstack/cli": "^0.69.4",
     "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
     "typescript": "^7.0.0",
-    "vite-plus": "^0.1.24"
+    "vite-plus": "^0.2.5"
   },
   "overrides": {
     "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
