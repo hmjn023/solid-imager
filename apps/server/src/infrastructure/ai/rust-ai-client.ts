@@ -175,15 +175,27 @@ export class RustAiClient implements IAiClient {
     });
   }
 
-  async tagImageOppaiOracleByPath(filePath: string): Promise<OppaiOracleResponse> {
+	async tagImageOppaiOracleByPath(
+		filePath: string,
+	): Promise<OppaiOracleResponse> {
+		if (this.baseUrl) {
+			const buffer = await Bun.file(filePath).bytes();
+			const result = await this.callRemoteOrpcWithFile(
+				(c, f) => c.ai.tagOppaiOracle({ file: f }),
+				buffer,
+				path.basename(filePath),
+			);
+			return oppaiOracleResponseSchema.parse(result);
+		}
+
 		const { getOppaioracleTags } = await import("dghs-imgutils-rs");
 		const result = await getOppaioracleTags(filePath);
-    return oppaiOracleResponseSchema.parse({
-      general: result.general,
-      rating: result.rating,
-      tag: result.tag,
-    });
-  }
+		return oppaiOracleResponseSchema.parse({
+			general: result.general,
+			rating: result.rating,
+			tag: result.tag,
+		});
+	}
 
   async extractCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse> {
     if (this.baseUrl) {
