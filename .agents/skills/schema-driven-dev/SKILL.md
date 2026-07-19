@@ -29,7 +29,7 @@ export type UserData = {
 
 ## Task Routing
 
-| ユーザーの意図 | やること |
-|---|---|
+| ユーザーの意図           | やること                                                          |
+| ------------------------ | ----------------------------------------------------------------- |
 | 新しいドメインモデル定義 | `{entity}/schemas.ts` にZodスキーマを定義し、`z.infer` で型を導出 |
-| APIスキーマ定義 | `packages/core/src/domain/{entity}/schemas.ts` にスキーマを定義 |
+| APIスキーマ定義          | `packages/core/src/domain/{entity}/schemas.ts` にスキーマを定義   |

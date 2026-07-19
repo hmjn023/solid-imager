@@ -17,6 +17,7 @@ description: Node/Bun パッケージの追加・更新・削除を扱う。pack
 ## 追加手順
 
 1. 既存依存を確認する。
+
    ```bash
    bun pm ls
    sed -n '1,140p' <workspace>/package.json
@@ -31,6 +32,7 @@ description: Node/Bun パッケージの追加・更新・削除を扱う。pack
    - ドメイン/共有型: 追加前に本当に `packages/core` に必要か確認する
 
 3. `bun add` で追加する。
+
    ```bash
    bun add <package>
    bun add -d <package>
@@ -39,6 +41,7 @@ description: Node/Bun パッケージの追加・更新・削除を扱う。pack
    ```
 
    package 名や version に少しでも不確実性がある場合は、先に dry-run で registry 解決を確認する。
+
    ```bash
    bun add --dry-run <package>@<version>
    bun add --cwd <workspace> --dry-run <package>@<version>

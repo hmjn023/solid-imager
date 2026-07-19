@@ -127,7 +127,9 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 			if (this.options.readOnly) {
 				throw new Error(
 					`CCIP LanceDB table ${TABLE_NAME} is unavailable in read-only mode`,
-					{ cause: error },
+					{
+						cause: error,
+					},
 				);
 			}
 			const arrow = await import("apache-arrow");
@@ -195,9 +197,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 			return new Map();
 		}
 		const predicates = [
-			`mediaId IN (${mediaIds
-				.map((mediaId) => `'${escapeSqlString(mediaId)}'`)
-				.join(", ")})`,
+			`mediaId IN (${mediaIds.map((mediaId) => `'${escapeSqlString(mediaId)}'`).join(", ")})`,
 			...queryPredicates(query),
 		];
 		const table = await this.table();
@@ -218,9 +218,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 			return new Map();
 		}
 		const predicates = [
-			`mediaId IN (${mediaIds
-				.map((mediaId) => `'${escapeSqlString(mediaId)}'`)
-				.join(", ")})`,
+			`mediaId IN (${mediaIds.map((mediaId) => `'${escapeSqlString(mediaId)}'`).join(", ")})`,
 			...queryPredicates(query),
 		];
 		const table = await this.table();

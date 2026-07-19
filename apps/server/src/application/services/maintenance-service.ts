@@ -145,7 +145,9 @@ export class MaintenanceService {
 									source.id,
 									toUpsert,
 									"upsert",
-									{ enqueueJob: false },
+									{
+										enqueueJob: false,
+									},
 								);
 							}
 							if (toDelete.length > 0) {
@@ -153,7 +155,9 @@ export class MaintenanceService {
 									source.id,
 									toDelete,
 									"delete",
-									{ enqueueJob: false },
+									{
+										enqueueJob: false,
+									},
 								);
 							}
 						}

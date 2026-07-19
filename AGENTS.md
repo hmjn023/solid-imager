@@ -49,30 +49,30 @@
 
 スキルは `.agents/skills/` 配下に配置する。
 
-| スキル名 | 説明 | ロード条件 |
-|---|---|---|
-| `solid-imager` | プロジェクト概要、セットアップ、コーディング規約 | 全体設計や作業開始時 |
-| `logging-rules` | ロギング方針、Pino loggerの利用、アプリケーション・コア層でのILogger依存注入ルール | ログ出力の実装・変更、デバッグコードの整理時 |
-| `orpc-api` | oRPC APIエンドポイント開発ワークフロー | API実装・変更時 |
-| `database-schema` | DBスキーマ変更・マイグレーション手順 | DBスキーマ変更時 |
-| `ai-service` | Rust AIサービス連携 | AI機能実装時 |
-| `browser-extension` | apps/xtracterブラウザ拡張機能開発 | 拡張機能変更時 |
-| `api-docs` | OpenAPI仕様更新トリガー | API仕様更新時 |
-| `safe-dto` | APIレスポンスのセキュリティ（Safe DTO） | APIレスポンス実装時 |
-| `repository-rules` | リポジトリ層ルール（明示的マッピング） | リポジトリ実装時 |
-| `schema-driven-dev` | ZodによるSchema-Driven Development | スキーマ定義時 |
-| `ui-components` | solid-ui (shadcn/ui ポート) コンポーネント開発 | UIコンポーネント変更時 |
-| `package-management` | Bun/Nodeパッケージ追加・更新・削除 | package.json・bun.lock変更時 |
-| `vite-plus` | Vite+ CLI操作（既存） | Vite+関連タスク時 |
-| `cli` | imager-cli コマンド開発 | CLIコマンド追加・変更時 |
-| `git-worktree` | git worktree を用いた並列開発ワークフロー | 複数PRの同時進行時 |
-| `git-pr` | ブランチ作成→コミット→push→PR作成の標準ワークフロー | 単一PRの作成時 |
-| `issue-driven` | GitHub Issue駆動開発ワークフロー（証跡・進捗管理） | issueをベースに開発作業を始めるとき |
-| `tanstack-ssr` | TanStack Start SSR、Selective SSR、hydration、loaderの診断と回帰防止 | F5・直接アクセス・Hydration Mismatch・SSR/CSR境界変更時 |
-| `tanstack-db` | TanStack DBクライアントデータレイヤー（永続化、useLiveQuery、includes） | クライアント側データレイヤー変更時 |
-| `realtime-events` | 型付きリアルタイムイベント、oRPC Event Iterator、pub/sub、再接続 | SSE・イベント配信・購読・イベントschema変更時 |
-| `job-system` | background job、worker、dispatch、AI concurrency、batch親子進捗 | job type追加・非同期処理・batch操作変更時 |
-| `media-search` | 検索schema、shared store、session persistence、preset、類似検索 | 検索条件・mode・検索画面変更時 |
+| スキル名             | 説明                                                                               | ロード条件                                              |
+| -------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| `solid-imager`       | プロジェクト概要、セットアップ、コーディング規約                                   | 全体設計や作業開始時                                    |
+| `logging-rules`      | ロギング方針、Pino loggerの利用、アプリケーション・コア層でのILogger依存注入ルール | ログ出力の実装・変更、デバッグコードの整理時            |
+| `orpc-api`           | oRPC APIエンドポイント開発ワークフロー                                             | API実装・変更時                                         |
+| `database-schema`    | DBスキーマ変更・マイグレーション手順                                               | DBスキーマ変更時                                        |
+| `ai-service`         | Rust AIサービス連携                                                                | AI機能実装時                                            |
+| `browser-extension`  | apps/xtracterブラウザ拡張機能開発                                                  | 拡張機能変更時                                          |
+| `api-docs`           | OpenAPI仕様更新トリガー                                                            | API仕様更新時                                           |
+| `safe-dto`           | APIレスポンスのセキュリティ（Safe DTO）                                            | APIレスポンス実装時                                     |
+| `repository-rules`   | リポジトリ層ルール（明示的マッピング）                                             | リポジトリ実装時                                        |
+| `schema-driven-dev`  | ZodによるSchema-Driven Development                                                 | スキーマ定義時                                          |
+| `ui-components`      | solid-ui (shadcn/ui ポート) コンポーネント開発                                     | UIコンポーネント変更時                                  |
+| `package-management` | Bun/Nodeパッケージ追加・更新・削除                                                 | package.json・bun.lock変更時                            |
+| `vite-plus`          | Vite+ CLI操作（既存）                                                              | Vite+関連タスク時                                       |
+| `cli`                | imager-cli コマンド開発                                                            | CLIコマンド追加・変更時                                 |
+| `git-worktree`       | git worktree を用いた並列開発ワークフロー                                          | 複数PRの同時進行時                                      |
+| `git-pr`             | ブランチ作成→コミット→push→PR作成の標準ワークフロー                                | 単一PRの作成時                                          |
+| `issue-driven`       | GitHub Issue駆動開発ワークフロー（証跡・進捗管理）                                 | issueをベースに開発作業を始めるとき                     |
+| `tanstack-ssr`       | TanStack Start SSR、Selective SSR、hydration、loaderの診断と回帰防止               | F5・直接アクセス・Hydration Mismatch・SSR/CSR境界変更時 |
+| `tanstack-db`        | TanStack DBクライアントデータレイヤー（永続化、useLiveQuery、includes）            | クライアント側データレイヤー変更時                      |
+| `realtime-events`    | 型付きリアルタイムイベント、oRPC Event Iterator、pub/sub、再接続                   | SSE・イベント配信・購読・イベントschema変更時           |
+| `job-system`         | background job、worker、dispatch、AI concurrency、batch親子進捗                    | job type追加・非同期処理・batch操作変更時               |
+| `media-search`       | 検索schema、shared store、session persistence、preset、類似検索                    | 検索条件・mode・検索画面変更時                          |
 
 <!--VITE PLUS START-->
 

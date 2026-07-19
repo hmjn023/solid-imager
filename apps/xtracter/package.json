@@ -1,7 +1,7 @@
 {
   "name": "xtracter",
-  "private": true,
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vp dev",
@@ -12,6 +12,13 @@
     "format": "biome format --fix ./src",
     "check": "biome check --fix --unsafe ./src"
   },
+  "dependencies": {
+    "@orpc/client": "^1.14.4",
+    "@orpc/server": "^1.14.4",
+    "@solid-imager/client": "workspace:*",
+    "@solid-imager/core": "workspace:*",
+    "zod": "^4.4.3"
+  },
   "devDependencies": {
     "@types/chrome": "^0.1.43",
     "@types/node": "^26.0.0",
@@ -19,12 +26,5 @@
     "typescript": "rc",
     "vite-plugin-solid": "^2.11.12",
     "vite-plus": "^0.1.24"
-  },
-  "dependencies": {
-    "zod": "^4.4.3",
-    "@orpc/client": "^1.14.4",
-    "@orpc/server": "^1.14.4",
-    "@solid-imager/client": "workspace:*",
-    "@solid-imager/core": "workspace:*"
   }
 }

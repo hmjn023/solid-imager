@@ -89,7 +89,9 @@ test("preserves an open dialog, input value, and focus after an SSE reconnect re
 
 	await expect(
 		page.locator("p").filter({ hasText: /^3 件の結果$/ }),
-	).toBeVisible({ timeout: 30_000 });
+	).toBeVisible({
+		timeout: 30_000,
+	});
 	await expect(page.getByRole("dialog")).toBeVisible();
 	await expect(filenameInput).toHaveValue("draft-name.png");
 	await expect(filenameInput).toBeFocused();

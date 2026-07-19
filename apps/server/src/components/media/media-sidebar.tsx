@@ -19,6 +19,7 @@ import {
 import { AiTaggingModal } from "~/components/media/ai-tagging-modal";
 import AssociationManager from "~/components/media/association-manager";
 import CharacterCropModal from "~/components/media/character-crop-modal";
+import { OppaiOracleModal } from "~/components/media/oppai-oracle-modal";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	getCcipVectorStatus,
@@ -99,6 +100,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const navigate = useNavigate();
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
+	const [isOppaiOracleModalOpen, setIsOppaiOracleModalOpen] =
+		createSignal(false);
 
 	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
@@ -393,6 +396,14 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					Extract Tags (AI)
 				</button>
 				<button
+					class="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-orange-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-orange-700"
+					onClick={() => setIsOppaiOracleModalOpen(true)}
+					type="button"
+				>
+					<span class="i-lucide-sparkles" />
+					Extract Tags (OppaiOracle)
+				</button>
+				<button
 					class="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
 					onClick={() => setIsCharacterCropModalOpen(true)}
 					type="button"
@@ -434,6 +445,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				mediaSourceId={props.media.mediaSourceId}
 				onClose={() => setIsAiTaggingModalOpen(false)}
 				onSuccess={props.onUpdate}
+			/>
+
+			<OppaiOracleModal
+				isOpen={isOppaiOracleModalOpen()}
+				mediaId={props.media.id}
+				mediaSourceId={props.media.mediaSourceId}
+				onClose={() => setIsOppaiOracleModalOpen(false)}
 			/>
 
 			<CharacterCropModal

@@ -124,7 +124,9 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 	await expect(page).toHaveURL(/\/search$/);
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_SIMILAR_FILE_NAME) }),
-	).toBeVisible({ timeout: 30_000 });
+	).toBeVisible({
+		timeout: 30_000,
+	});
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 	).toHaveCount(0);

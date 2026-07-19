@@ -9,23 +9,23 @@ TanStack DBは、クライアント側のリアクティブデータレイヤー
 
 ## パッケージ構成
 
-| パッケージ | 用途 |
-|---|---|
-| `@tanstack/db` | コア（フレームワーク非依存） |
-| `@tanstack/solid-db` | Solid用フック (`useLiveQuery`) |
-| `@tanstack/query-db-collection` | TanStack Query統合 (`queryCollectionOptions`) |
-| `@tanstack/tauri-db-sqlite-persistence` | Tauri専用SQLite永続化 |
-| `@tanstack/browser-db-sqlite-persistence` | ブラウザSQLite永続化 (serverアプリ用) |
+| パッケージ                                | 用途                                          |
+| ----------------------------------------- | --------------------------------------------- |
+| `@tanstack/db`                            | コア（フレームワーク非依存）                  |
+| `@tanstack/solid-db`                      | Solid用フック (`useLiveQuery`)                |
+| `@tanstack/query-db-collection`           | TanStack Query統合 (`queryCollectionOptions`) |
+| `@tanstack/tauri-db-sqlite-persistence`   | Tauri専用SQLite永続化                         |
+| `@tanstack/browser-db-sqlite-persistence` | ブラウザSQLite永続化 (serverアプリ用)         |
 
 ## Task Routing
 
-| ユーザーの意図 | やること |
-|---|---|
-| 新しいコレクション追加 | `collections/{entity}-collection.ts` にファクトリ関数を定義 |
-| コンポーネントでデータ取得 | `useLiveQuery` でコレクションを参照 |
-| 永続化スキーマ変更 | `schemaVersion` をインクリメント |
-| 階層的データ投影 | `includes`（サブクエリ）を使用 |
-| serverアプリへの展開 | 永続化アダプタを `browser-db-sqlite-persistence` に差し替え |
+| ユーザーの意図             | やること                                                    |
+| -------------------------- | ----------------------------------------------------------- |
+| 新しいコレクション追加     | `collections/{entity}-collection.ts` にファクトリ関数を定義 |
+| コンポーネントでデータ取得 | `useLiveQuery` でコレクションを参照                         |
+| 永続化スキーマ変更         | `schemaVersion` をインクリメント                            |
+| 階層的データ投影           | `includes`（サブクエリ）を使用                              |
+| serverアプリへの展開       | 永続化アダプタを `browser-db-sqlite-persistence` に差し替え |
 
 ## Tauriアプリの構成
 
@@ -61,9 +61,7 @@ import type { getPersistence } from "~/infrastructure/db/persistence";
 
 type TagResponse = Awaited<ReturnType<typeof client.tags.list>>[number];
 
-export function createTagsCollection(
-  persistence: ReturnType<typeof getPersistence>,
-) {
+export function createTagsCollection(persistence: ReturnType<typeof getPersistence>) {
   return createCollection(
     persistedCollectionOptions<TagResponse, string>({
       id: "tags",
@@ -198,9 +196,7 @@ Tauri SQLプラグインはエラーを `string` で reject するが、TanStack
 import Database from "@tauri-apps/plugin-sql";
 import { createTauriSQLitePersistence } from "@tanstack/tauri-db-sqlite-persistence";
 
-function wrapDatabaseWithErrorNormalization(
-  database: InstanceType<typeof Database>,
-) {
+function wrapDatabaseWithErrorNormalization(database: InstanceType<typeof Database>) {
   return {
     path: database.path,
     execute: async (query: string, bindValues?: unknown[]) => {
@@ -243,6 +239,7 @@ const persistence = createTauriSQLitePersistence({ database });
 ```
 
 **DBファイルの場所:** Tauri SQLプラグインは `app_config_dir()` を使うため:
+
 - Linux: `~/.config/{app-identifier}/solid-imager.db`
 - macOS: `~/Library/Application Support/{app-identifier}/solid-imager.db`
 
@@ -264,12 +261,12 @@ const persistence = createBrowserWASQLitePersistence({ database });
 
 既存の `createQuery()` と `useLiveQuery()` は共存可能:
 
-| | `createQuery` (既存) | `useLiveQuery` (新規) |
-|---|---|---|
+|              | `createQuery` (既存)     | `useLiveQuery` (新規)   |
+| ------------ | ------------------------ | ----------------------- |
 | データソース | TanStack Queryキャッシュ | TanStack DBコレクション |
-| 永続化 | なし | SQLite |
-| オフライン | キャッシュのみ | 完全対応 |
-| リアクティブ | ポーリング/refetch | ファイングレイン |
+| 永続化       | なし                     | SQLite                  |
+| オフライン   | キャッシュのみ           | 完全対応                |
+| リアクティブ | ポーリング/refetch       | ファイングレイン        |
 
 **移行方針:** 段階的に `createQuery` → `useLiveQuery` に置き換え。両方同時に動作する。
 
@@ -320,15 +317,19 @@ await tags.utils.refetch();
 ## トラブルシューティング
 
 ### `sql.execute not allowed` エラー
+
 `capabilities/main.json` に `sql:allow-execute`, `sql:allow-select`, `sql:allow-load`, `sql:allow-close` を追加。
 
 ### `duplicate column name: replay_json` エラー
+
 Tauri SQLプラグインがstringでrejectするため、TanStack DBのエラーハンドリングが機能しない。`persistence.ts` の `wrapDatabaseWithErrorNormalization` でラップする。
 
 ### DBファイルが見つからない
+
 Tauri SQLプラグインは `app_config_dir()` を使う。Linuxなら `~/.config/{identifier}/` に作成される。`~/.local/share/` ではない。
 
 ### コンソールエラーが出ないがデータが空
+
 `collections/index.ts` で最初のコレクションの `refetch()` を await していない可能性。直列化を確認。
 
 ## 注意事項

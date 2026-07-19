@@ -1,6 +1,7 @@
 import type {
 	CcipDifferenceResponse,
 	CcipFeatureResponse,
+	OppaiOracleResponse,
 	TaggingResponse,
 } from "@/domain/tagging/schemas";
 
@@ -10,6 +11,8 @@ export type IAiClient = {
 	tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse>;
 
 	tagImageByPath(path: string): Promise<TaggingResponse>;
+
+	tagImageOppaiOracleByPath(path: string): Promise<OppaiOracleResponse>;
 
 	extractCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;
 

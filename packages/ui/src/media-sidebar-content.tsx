@@ -33,6 +33,10 @@ export type MediaSidebarContentProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
+	oppaiOracleModal?: (props: {
+		isOpen: boolean;
+		onClose: () => void;
+	}) => JSX.Element;
 	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
 	startCcipExtraction?: (
 		force: boolean,
@@ -120,6 +124,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 		<MediaSidebar
 			aiTaggingModal={props.aiTaggingModal}
 			characterCropModal={props.characterCropModal}
+			oppaiOracleModal={props.oppaiOracleModal}
 			getCcipVectorStatus={props.getCcipVectorStatus}
 			startCcipExtraction={props.startCcipExtraction}
 			useCcipJobEvents={props.useCcipJobEvents}

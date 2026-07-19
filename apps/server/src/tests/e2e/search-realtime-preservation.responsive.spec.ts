@@ -71,7 +71,9 @@ test("global search preserves the mobile filter dialog, input value, and focus a
 	await expect
 		.poll(
 			async () => Number.parseInt((await resultCount.textContent()) ?? "0", 10),
-			{ timeout: 30_000 },
+			{
+				timeout: 30_000,
+			},
 		)
 		.toBeGreaterThan(initialResultCount);
 	await expect(filterDialog).toBeVisible();
@@ -138,7 +140,9 @@ test("source media preserves the mobile filter draft and focus after an SSE refr
 	await expect
 		.poll(
 			async () => Number.parseInt((await resultCount.textContent()) ?? "0", 10),
-			{ timeout: 30_000 },
+			{
+				timeout: 30_000,
+			},
 		)
 		.toBeGreaterThan(initialMediaCount);
 	await expect(filterDialog).toBeVisible();

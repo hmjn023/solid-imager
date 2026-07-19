@@ -6,7 +6,9 @@ describe("getRestoreImportStrategies", () => {
 		expect(
 			getRestoreImportStrategies(
 				{ name: "source-dump.tar", type: "application/x-tar" } as File,
-				{ canImportLanceDb: true },
+				{
+					canImportLanceDb: true,
+				},
 			),
 		).toEqual(["lancedb", "tar"]);
 	});
@@ -15,7 +17,9 @@ describe("getRestoreImportStrategies", () => {
 		expect(
 			getRestoreImportStrategies(
 				{ name: "source-dump.tar", type: "application/x-tar" } as File,
-				{ canImportLanceDb: false },
+				{
+					canImportLanceDb: false,
+				},
 			),
 		).toEqual(["tar"]);
 	});

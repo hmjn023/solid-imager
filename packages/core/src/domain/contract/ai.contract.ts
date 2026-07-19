@@ -11,6 +11,7 @@ import {
 	ccipFeatureRequestSchema,
 	ccipVectorStatusSchema,
 	detectAndCropResponseSchema,
+	oppaiOracleResponseSchema,
 	startBatchTaggingResponseSchema,
 	startCcipExtractionResponseSchema,
 	taggingResponseSchema,
@@ -23,6 +24,12 @@ export const aiContract = {
 			z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
 		)
 		.output(taggingResponseSchema),
+
+	tagOppaiOracle: oc
+		.input(
+			z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
+		)
+		.output(oppaiOracleResponseSchema),
 
 	tagRustExperimental: oc.input(
 		z.union([

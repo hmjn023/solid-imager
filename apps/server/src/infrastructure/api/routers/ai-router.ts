@@ -282,6 +282,88 @@ export const aiRouter = {
 			}
 		}),
 
+	tagOppaiOracle: os
+		.input(
+			z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
+		)
+		.handler(async ({ input }) => {
+			const startedAt = Date.now();
+			logger.info(
+				{ inputType: "file" in input ? "file" : "media" },
+				"OppaiOracle tagging started",
+			);
+			try {
+				if ("file" in input) {
+					const buffer = await input.file.arrayBuffer();
+					const ext = path.extname(input.file.name) || ".png";
+					const tmpPath = path.join(
+						tmpdir(),
+						`oppai-oracle-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`,
+					);
+					await Bun.write(tmpPath, new Uint8Array(buffer));
+					try {
+						const result = await services
+							.getAiClient()
+							.tagImageOppaiOracleByPath(tmpPath);
+						logger.info(
+							{ durationMs: Date.now() - startedAt },
+							"OppaiOracle tagging completed",
+						);
+						return result;
+					} finally {
+						await Bun.file(tmpPath)
+							.delete()
+							.catch(() => {});
+					}
+				}
+
+				const { mediaSourceId, mediaId } = input;
+				if (!(mediaSourceId && mediaId)) {
+					throw new Error("mediaSourceId and mediaId are required");
+				}
+
+				const media = await services.getMediaRepository().findById(mediaId);
+				if (!media) {
+					throw new Error("Media not found");
+				}
+				const mediaSource = await services
+					.getSourceRepository()
+					.findById(media.mediaSourceId);
+				if (mediaSource?.type !== "local") {
+					throw new Error(
+						"Only local media sources are supported for OppaiOracle tagging",
+					);
+				}
+				const connectionInfo = mediaSource.connectionInfo as
+					| Record<string, unknown>
+					| null
+					| undefined;
+				if (!connectionInfo || typeof connectionInfo.path !== "string") {
+					throw new Error("Media source connection path is missing or invalid");
+				}
+				const fullPath = path.join(connectionInfo.path, media.filePath);
+
+				const result = await services
+					.getAiClient()
+					.tagImageOppaiOracleByPath(fullPath);
+				logger.info(
+					{ durationMs: Date.now() - startedAt },
+					"OppaiOracle tagging completed",
+				);
+				return result;
+			} catch (error) {
+				logger.error(
+					{ err: error, durationMs: Date.now() - startedAt },
+					"OppaiOracle tagging failed",
+				);
+				const message =
+					error instanceof Error ? error.message : "Unknown error";
+				throw new ORPCError("UNPROCESSABLE_CONTENT", {
+					message: `OppaiOracle tagging failed: ${message}`,
+				});
+			}
+		}),
+
 	ccipFeature: os
 		.input(
 			z.union([

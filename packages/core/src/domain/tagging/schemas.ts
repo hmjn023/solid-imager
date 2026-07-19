@@ -1,5 +1,13 @@
 import { z } from "zod";
 
+export const oppaiOracleResponseSchema = z.object({
+	general: z.record(z.string(), z.number()),
+	rating: z.record(z.string(), z.number()),
+	tag: z.record(z.string(), z.number()),
+});
+
+export type OppaiOracleResponse = z.infer<typeof oppaiOracleResponseSchema>;
+
 export const taggingResponseSchema = z.object({
 	general: z.record(z.string(), z.number()),
 	character: z.record(z.string(), z.number()),

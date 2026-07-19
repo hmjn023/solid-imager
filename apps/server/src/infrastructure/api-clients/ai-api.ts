@@ -25,6 +25,12 @@ export function fetchAiTagsForFile(file: File) {
 	return orpc.ai.tag({ file });
 }
 
+export function fetchOppaiOracleTags(
+	params: z.infer<typeof tagImageRequestSchema>,
+) {
+	return orpc.ai.tagOppaiOracle(params);
+}
+
 export function fetchCharacterCrops(mediaId: string, transparent: boolean) {
 	return orpc.ai.detectAndCropCharacters({ mediaId, transparent });
 }

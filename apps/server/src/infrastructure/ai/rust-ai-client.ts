@@ -7,6 +7,8 @@ import {
 	type CcipFeatureResponse,
 	ccipDifferenceResponseSchema,
 	ccipFeatureResponseSchema,
+	type OppaiOracleResponse,
+	oppaiOracleResponseSchema,
 	type TaggingResponse,
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
@@ -197,6 +199,28 @@ export class RustAiClient implements IAiClient {
 			character: result.character,
 			ips: result.ips,
 			ips_mapping: result.ipsMapping,
+		});
+	}
+
+	async tagImageOppaiOracleByPath(
+		filePath: string,
+	): Promise<OppaiOracleResponse> {
+		if (this.baseUrl) {
+			const buffer = await Bun.file(filePath).bytes();
+			const result = await this.callRemoteOrpcWithFile(
+				(c, f) => c.ai.tagOppaiOracle({ file: f }),
+				buffer,
+				path.basename(filePath),
+			);
+			return oppaiOracleResponseSchema.parse(result);
+		}
+
+		const { getOppaioracleTags } = await import("dghs-imgutils-rs");
+		const result = await getOppaioracleTags(filePath);
+		return oppaiOracleResponseSchema.parse({
+			general: result.general,
+			rating: result.rating,
+			tag: result.tag,
 		});
 	}
 

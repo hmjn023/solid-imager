@@ -110,7 +110,9 @@ describe("processCcipExtractionJob", () => {
 		});
 		expect(update).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
-			{ status: "completed" },
+			{
+				status: "completed",
+			},
 		);
 	});
 
@@ -174,7 +176,9 @@ describe("processCcipExtractionJob", () => {
 		);
 		expect(update).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
-			{ status: "failed" },
+			{
+				status: "failed",
+			},
 		);
 		expect(publishJob).toHaveBeenCalledWith("job-failed", {
 			jobId: "00000000-0000-4000-8000-000000000010",
@@ -229,7 +233,9 @@ describe("processCcipExtractionJob", () => {
 		);
 		expect(update).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000012",
-			{ status: "completed" },
+			{
+				status: "completed",
+			},
 		);
 	});
 });

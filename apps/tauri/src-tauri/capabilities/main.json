@@ -1,23 +1,23 @@
 {
-	"$schema": "../gen/schemas/desktop-schema.json",
-	"identifier": "main-capability",
-	"description": "Main window access for local media management.",
-	"windows": ["main"],
-	"permissions": [
-		"core:default",
-		"core:webview:allow-create-webview-window",
-		"core:webview:allow-webview-close",
-		"core:path:default",
-		"core:event:default",
-		"http:default",
-		{
-			"identifier": "http:allow-fetch",
-			"allow": [{ "url": "http://192.168.1.150:3000/**" }]
-		},
-		"sql:default",
-		"sql:allow-execute",
-		"sql:allow-select",
-		"sql:allow-load",
-		"sql:allow-close"
-	]
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-capability",
+  "description": "Main window access for local media management.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "core:webview:allow-create-webview-window",
+    "core:webview:allow-webview-close",
+    "core:path:default",
+    "core:event:default",
+    "http:default",
+    {
+      "identifier": "http:allow-fetch",
+      "allow": [{ "url": "http://192.168.1.150:3000/**" }]
+    },
+    "sql:default",
+    "sql:allow-execute",
+    "sql:allow-select",
+    "sql:allow-load",
+    "sql:allow-close"
+  ]
 }

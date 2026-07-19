@@ -48,6 +48,10 @@ type MediaSidebarProps = {
 		isOpen: boolean;
 		onClose: () => void;
 	}) => JSX.Element;
+	oppaiOracleModal?: (props: {
+		isOpen: boolean;
+		onClose: () => void;
+	}) => JSX.Element;
 	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
 	startCcipExtraction?: (
 		force: boolean,
@@ -92,6 +96,8 @@ function formatBytes(bytes: number, decimals = 2) {
 export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
+	const [isOppaiOracleModalOpen, setIsOppaiOracleModalOpen] =
+		createSignal(false);
 
 	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
@@ -307,6 +313,17 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						Extract Tags (AI)
 					</button>
 
+					<Show when={props.oppaiOracleModal}>
+						<button
+							class="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-orange-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-orange-700"
+							onClick={() => setIsOppaiOracleModalOpen(true)}
+							type="button"
+						>
+							<span class="i-lucide-sparkles" />
+							Extract Tags (OppaiOracle)
+						</button>
+					</Show>
+
 					<Show when={props.characterCropModal}>
 						<button
 							class="flex min-h-11 w-full items-center justify-center gap-2 rounded-md bg-teal-600 px-3 py-2 font-medium text-sm text-white transition-colors hover:bg-teal-700"
@@ -347,6 +364,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			{props.characterCropModal?.({
 				isOpen: isCharacterCropModalOpen(),
 				onClose: () => setIsCharacterCropModalOpen(false),
+			})}
+
+			{props.oppaiOracleModal?.({
+				isOpen: isOppaiOracleModalOpen(),
+				onClose: () => setIsOppaiOracleModalOpen(false),
 			})}
 
 			<div class="space-y-2">
