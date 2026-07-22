@@ -46,6 +46,9 @@ export function PendingDownloadsIndicator(
 	onMount(() => {
 		let disposed = false;
 		let cleanup: (() => void) | undefined;
+		// Events emitted before hydration cannot be replayed by the live stream.
+		// Reconcile with the durable job list when the client becomes active.
+		void refetch();
 
 		void Promise.resolve(
 			props.subscribeImportEvents(() => {
