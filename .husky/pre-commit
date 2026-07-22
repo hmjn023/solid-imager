@@ -1,4 +1,6 @@
 #!/bin/sh
+set -e
+
 . "$(dirname "$0")/_/husky.sh"
 
 # Run biome check on all staged files
