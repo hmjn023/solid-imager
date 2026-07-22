@@ -1,0 +1,34 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run biome check on all staged files
+npx lint-staged
+
+# Run tests and typecheck only for changed packages
+CHANGED_SERVER=$(git diff --cached --name-only -- apps/server/ | head -1)
+CHANGED_CORE=$(git diff --cached --name-only -- packages/core/ | head -1)
+CHANGED_UI=$(git diff --cached --name-only -- packages/ui/ | head -1)
+CHANGED_XTRACTER=$(git diff --cached --name-only -- apps/xtracter/ | head -1)
+
+if [ -n "$CHANGED_SERVER" ]; then
+  echo "→ apps/server changed, running tests + typecheck..."
+  bun run --cwd apps/server test:unit
+  bun run --cwd apps/server typecheck
+fi
+
+if [ -n "$CHANGED_CORE" ]; then
+  echo "→ packages/core changed, running tests + typecheck..."
+  bun run --cwd packages/core test
+  bun run --cwd packages/core typecheck
+fi
+
+if [ -n "$CHANGED_UI" ]; then
+  echo "→ packages/ui changed, running tests + typecheck..."
+  bun run --cwd packages/ui test
+  bun run --cwd packages/ui typecheck
+fi
+
+if [ -n "$CHANGED_XTRACTER" ]; then
+  echo "→ apps/xtracter changed, running typecheck..."
+  bun run --cwd apps/xtracter typecheck
+fi
