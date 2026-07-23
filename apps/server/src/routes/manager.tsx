@@ -36,6 +36,7 @@ import {
 	allProjectsQueryOptions,
 	mediaSourcesQueryOptions,
 } from "~/infrastructure/api-clients/queries";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 
 const managerQueryOptions = {
 	projects: allProjectsQueryOptions,
@@ -64,7 +65,7 @@ const managerActions = {
 
 export const Route = createFileRoute("/manager")({
 	ssr: true,
-	loader: async ({ context }) => {
+	loader: async ({ context }: RouteLoaderContext) => {
 		await Promise.all([
 			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
 			context.queryClient.prefetchQuery(allIpsQueryOptions()),

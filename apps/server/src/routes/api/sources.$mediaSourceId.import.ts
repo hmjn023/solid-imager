@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/solid-router";
 import { BackupService } from "~/application/services/backup-service";
 import { initServices } from "~/infrastructure/bootstrap";
+import type { ServerRouteContext } from "~/infrastructure/router/route-types";
 import { webReadableToNodeStream } from "~/infrastructure/utils/stream-utils";
 
 export const Route = createFileRoute("/api/sources/$mediaSourceId/import")({
 	server: {
 		handlers: {
-			POST: async ({ params, request }) => {
+			POST: async ({
+				params,
+				request,
+			}: ServerRouteContext<{ mediaSourceId: string }>) => {
 				initServices();
 
 				const { randomUUID } = await import("node:crypto");
