@@ -6,10 +6,11 @@ import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { configQueryOptions } from "~/infrastructure/api-clients/queries";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 
 export const Route = createFileRoute("/config")({
 	ssr: true,
-	loader: async ({ context }) => {
+	loader: async ({ context }: RouteLoaderContext) => {
 		const config = await context.queryClient.fetchQuery(configQueryOptions());
 		return { config };
 	},
