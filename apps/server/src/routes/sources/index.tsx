@@ -18,10 +18,11 @@ import {
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 
 export const Route = createFileRoute("/sources/")({
 	ssr: true,
-	loader: async ({ context }) => {
+	loader: async ({ context }: RouteLoaderContext) => {
 		const mediaSources = await context.queryClient.fetchQuery(
 			mediaSourcesQueryOptions(),
 		);
@@ -67,8 +68,8 @@ function SourcesRouteContent() {
 		registerEvents: registerSourceEvents,
 		getSourceIds: () =>
 			sourceData()
-				?.map((s) => s.id)
-				.filter((id): id is string => Boolean(id)) ?? [],
+				?.map((source: { id?: string }) => source.id)
+				.filter((id: string | undefined): id is string => Boolean(id)) ?? [],
 	});
 	return (
 		<SourcesScreen

@@ -9,7 +9,6 @@ import { createSignal, onMount, Show } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
-
 import {
 	allAuthorsQueryOptions,
 	allCharactersQueryOptions,
@@ -22,6 +21,7 @@ import {
 	searchMedia,
 	searchSimilar,
 } from "~/infrastructure/api-clients/search-api";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 import {
 	getSearchCondition,
 	searchState,
@@ -30,7 +30,7 @@ import {
 
 export const Route = createFileRoute("/search")({
 	ssr: true,
-	loader: async ({ context }) => {
+	loader: async ({ context }: RouteLoaderContext) => {
 		await Promise.all([
 			context.queryClient.prefetchQuery(tagsQueryOptions()),
 			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),

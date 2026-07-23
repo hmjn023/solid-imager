@@ -19,32 +19,33 @@ function createAppQueryClient(): QueryClient {
 }
 
 let serverLogger: typeof LoggerInstance | null = null;
-let serverInitializationPromise: Promise<void> | undefined;
 
-async function initializeServerDependencies(): Promise<void> {
-	if (!isServer) {
-		return;
-	}
-
-	if (!serverInitializationPromise) {
-		serverInitializationPromise = Promise.all([
-			import("./infrastructure/logger"),
-			import("./infrastructure/bootstrap"),
-		]).then(([{ logger }, { initServices }]) => {
+if (isServer) {
+	// TanStack Start expects getRouter to synchronously return a router. Keep
+	// initialization asynchronous so server-only dependencies remain outside the
+	// client module graph; route handlers still initialize their own services.
+	void Promise.all([
+		import("./infrastructure/logger"),
+		import("./infrastructure/bootstrap"),
+	])
+		.then(([{ logger }, { initServices }]) => {
 			serverLogger = logger;
 			initServices();
+		})
+		.catch((error: unknown) => {
+			if (serverLogger) {
+				serverLogger.error(
+					{ err: error },
+					"[Router] Failed to initialize services",
+				);
+			}
 		});
-	}
-
-	await serverInitializationPromise;
 }
 
 let clientQueryClient: QueryClient | undefined;
 
-export async function getRouter() {
+export function getRouter() {
 	try {
-		await initializeServerDependencies();
-
 		if (!isServer && !clientQueryClient) {
 			clientQueryClient = createAppQueryClient();
 		}
@@ -83,6 +84,6 @@ export async function getRouter() {
 
 declare module "@tanstack/solid-router" {
 	interface Register {
-		router: Awaited<ReturnType<typeof getRouter>>;
+		router: ReturnType<typeof getRouter>;
 	}
 }

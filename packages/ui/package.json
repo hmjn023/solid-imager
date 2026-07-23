@@ -18,7 +18,7 @@
     "@solidjs/router": "^0.16.1",
     "@tanstack/solid-form": "^1.33.0",
     "@tanstack/solid-query": "5.99.2",
-    "@tanstack/solid-router": "^1.170.11",
+    "@tanstack/solid-router": "1.170.16",
     "@tanstack/solid-virtual": "^3.13.26",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

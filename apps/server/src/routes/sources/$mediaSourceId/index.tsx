@@ -8,11 +8,12 @@ import {
 	allProjectsQueryOptions,
 	tagsQueryOptions,
 } from "~/infrastructure/api-clients/queries";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 import { SourceMediaPage } from "./components/source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	ssr: true,
-	loader: async ({ context }) => {
+	loader: async ({ context }: RouteLoaderContext) => {
 		await Promise.all([
 			context.queryClient.prefetchQuery(tagsQueryOptions()),
 			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
