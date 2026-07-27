@@ -12,6 +12,7 @@
     "./domain/repositories/*": "./src/domain/repositories/*.ts",
     "./domain/services/*": "./src/domain/services/*.ts",
     "./domain/interfaces/*": "./src/domain/interfaces/*.ts",
+    "./domain/jobs/*": "./src/domain/jobs/*.ts",
     "./domain/search/*": "./src/domain/search/*.ts",
     "./domain/sources/*": "./src/domain/sources/*.ts",
     "./domain/tagging/*": "./src/domain/tagging/*.ts",

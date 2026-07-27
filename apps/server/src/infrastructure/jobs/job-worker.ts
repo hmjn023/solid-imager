@@ -1,7 +1,16 @@
-import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
-import type { IJobRepository } from "~/domain/repositories/job-repository";
-import type { Job } from "~/infrastructure/db/schema";
-import { logger } from "~/infrastructure/logger";
+import type { AppConfig } from '@solid-imager/core/domain/config/config-schema';
+import {
+	JOB_HEARTBEAT_MS,
+	retryDelayMs,
+} from '@solid-imager/core/domain/jobs/registry';
+import type {
+	ClaimFence,
+	IJobRepository,
+	Job,
+} from '@solid-imager/core/domain/repositories/job-repository';
+import { RealtimeEventBus } from '~/infrastructure/events/realtime-event-bus';
+import { NonRetryableJobError } from '~/infrastructure/jobs/job-errors';
+import { logger } from '~/infrastructure/logger';
 
 type JsonSafeValue =
 	| string
@@ -15,9 +24,9 @@ function toJsonSafeValue(value: unknown): JsonSafeValue {
 	if (
 		value === null ||
 		value === undefined ||
-		typeof value === "string" ||
-		typeof value === "number" ||
-		typeof value === "boolean"
+		typeof value === 'string' ||
+		typeof value === 'number' ||
+		typeof value === 'boolean'
 	) {
 		return value ?? null;
 	}
@@ -27,17 +36,17 @@ function toJsonSafeValue(value: unknown): JsonSafeValue {
 	if (Array.isArray(value)) {
 		return value.map(toJsonSafeValue);
 	}
-	if (typeof value === "object") {
+	if (typeof value === 'object') {
 		const result: Record<string, JsonSafeValue> = {};
-		for (const [key, val] of Object.entries(value)) {
-			result[key] = toJsonSafeValue(val);
+		for (const [key, item] of Object.entries(value)) {
+			result[key] = toJsonSafeValue(item);
 		}
 		return result;
 	}
 	return null;
 }
 
-const StaleInProgressJobMs = 60 * 60 * 1000;
+const LEASE_RECOVERY_INTERVAL_MS = 60 * 1000;
 
 export class JobWorker {
 	private isRunning = false;
@@ -49,38 +58,37 @@ export class JobWorker {
 	private activeJobs = 0;
 	private activeAiJobs = 0;
 	private readonly activeLanceDbSyncKeys = new Set<string>();
+	private readonly workerId = `worker-${globalThis.crypto.randomUUID()}`;
 
 	private readonly jobRepo: IJobRepository;
-	private readonly processor: (job: Job) => Promise<unknown>;
+	private readonly processor: (job: Job, signal?: AbortSignal) => Promise<unknown>;
 
 	private readonly aiJobTypes = new Set([
-		"auto_tagging",
-		"extract_ccip_vector",
+		'auto_tagging',
+		'extract_ccip_vector',
 	]);
 
 	constructor(
 		jobRepo: IJobRepository,
-		processor: (job: Job) => Promise<unknown>,
+		processor: (job: Job, signal?: AbortSignal) => Promise<unknown>,
 	) {
 		this.jobRepo = jobRepo;
 		this.processor = processor;
 	}
 
-	start() {
-		if (this.isRunning) {
-			return;
-		}
+	start(): void {
+		if (this.isRunning) return;
 		this.isRunning = true;
-		logger.info("Job processing worker started");
-		void this.recoverStaleJobs();
+		logger.info({ workerId: this.workerId }, 'Job processing worker started');
+		void this.recoverExpiredLeases();
 		this.recoverStaleJobsIntervalId = setInterval(
-			() => void this.recoverStaleJobs(),
-			5 * 60 * 1000,
+			() => void this.recoverExpiredLeases(),
+			LEASE_RECOVERY_INTERVAL_MS,
 		);
-		this.poll();
+		void this.poll();
 	}
 
-	stop() {
+	stop(): void {
 		this.isRunning = false;
 		if (this.timeoutId) {
 			clearTimeout(this.timeoutId);
@@ -90,10 +98,10 @@ export class JobWorker {
 			clearInterval(this.recoverStaleJobsIntervalId);
 			this.recoverStaleJobsIntervalId = null;
 		}
-		logger.info("Job processing worker stopped");
+		logger.info({ workerId: this.workerId }, 'Job processing worker stopped');
 	}
 
-	updateConfig(config: AppConfig) {
+	updateConfig(config: AppConfig): void {
 		const oldConcurrency = this.concurrency;
 		const oldAiConcurrency = this.aiConcurrency;
 		const oldPollInterval = this.pollIntervalMs;
@@ -114,157 +122,252 @@ export class JobWorker {
 					aiConcurrency: this.aiConcurrency,
 					pollIntervalMs: this.pollIntervalMs,
 				},
-				"JobWorker config updated",
+				'JobWorker config updated',
 			);
 		}
 	}
 
-	private async poll() {
-		if (!this.isRunning) {
-			return;
-		}
+	private async poll(): Promise<void> {
+		if (!this.isRunning) return;
 
 		try {
-			// 1. Poll AI Jobs
 			if (this.activeAiJobs < this.aiConcurrency) {
 				const slots = this.aiConcurrency - this.activeAiJobs;
-				if (slots > 0) {
-					const jobs = await this.jobRepo.claimPending(slots, {
-						includeTypes: Array.from(this.aiJobTypes),
-					});
-					for (const job of jobs) {
-						void this.tryProcessJob(job);
-					}
-				}
+				const claimed = await this.jobRepo.claimPending(slots, {
+					includeTypes: [...this.aiJobTypes],
+					queueNames: ['ai'],
+					workerId: this.workerId,
+				});
+				for (const job of claimed) void this.tryProcessJob(job);
 			}
 
-			// 2. Poll Other Jobs
-			// "concurrency" is treated as the limit for NON-AI jobs in this independent pool model
 			const activeOtherJobs = this.activeJobs - this.activeAiJobs;
 			if (activeOtherJobs < this.concurrency) {
 				const slots = this.concurrency - activeOtherJobs;
-				if (slots > 0) {
-					const jobs = await this.jobRepo.claimPending(slots, {
-						excludeTypes: Array.from(this.aiJobTypes),
-						excludeLanceDbSourceIds: Array.from(this.activeLanceDbSyncKeys),
-					});
-					for (const job of jobs) {
-						void this.tryProcessJob(job);
-					}
-				}
+				const claimed = await this.jobRepo.claimPending(slots, {
+					excludeTypes: [...this.aiJobTypes],
+					queueNames: ['default'],
+					excludeLanceDbSourceIds: [...this.activeLanceDbSyncKeys],
+					workerId: this.workerId,
+				});
+				for (const job of claimed) void this.tryProcessJob(job);
 			}
 		} catch (error) {
-			logger.error({ err: error }, "Error polling for jobs");
+			logger.error({ err: error, workerId: this.workerId }, 'Error polling for jobs');
 		}
 
 		if (this.isRunning) {
-			this.timeoutId = setTimeout(() => this.poll(), this.pollIntervalMs);
+			this.timeoutId = setTimeout(() => void this.poll(), this.pollIntervalMs);
 		}
 	}
 
-	private async tryProcessJob(job: Job) {
+	private async tryProcessJob(job: Job): Promise<void> {
+		const fence = getClaimFence(job);
+		if (!fence) {
+			logger.error(
+				{ jobId: job.id, workerId: this.workerId },
+				'Claimed job is missing a claim token',
+			);
+			return;
+		}
+
 		const lanceDbSyncKey = getLanceDbSyncKey(job);
-		if (lanceDbSyncKey) {
-			if (this.activeLanceDbSyncKeys.has(lanceDbSyncKey)) {
-				logger.warn(
-					{ jobId: job.id, mediaSourceId: lanceDbSyncKey },
-					"Requeueing overlapping claimed LanceDB sync job",
-				);
-				try {
-					await this.jobRepo.update(job.id, { status: "pending" });
-				} catch (error) {
-					logger.error(
-						{ err: error, jobId: job.id },
-						"Failed to requeue overlapping job",
-					);
-				}
-				return;
-			}
-			this.activeLanceDbSyncKeys.add(lanceDbSyncKey);
+		if (lanceDbSyncKey && this.activeLanceDbSyncKeys.has(lanceDbSyncKey)) {
+			logger.warn(
+				{ jobId: job.id, mediaSourceId: lanceDbSyncKey },
+				'Releasing overlapping claimed LanceDB sync job',
+			);
+			await this.jobRepo.releaseClaim(job.id, fence);
+			return;
 		}
+		if (lanceDbSyncKey) this.activeLanceDbSyncKeys.add(lanceDbSyncKey);
 
-		void this.processJob(job, lanceDbSyncKey);
+		await this.processJob(job, fence, lanceDbSyncKey);
 	}
 
-	private async processJob(job: Job, lanceDbSyncKey?: string) {
+	private async processJob(
+		job: Job,
+		fence: ClaimFence,
+		lanceDbSyncKey?: string,
+	): Promise<void> {
 		this.activeJobs++;
 		const isAiJob = this.aiJobTypes.has(job.type);
+		if (isAiJob) this.activeAiJobs++;
 		const startedAt = Date.now();
-		if (isAiJob) {
-			this.activeAiJobs++;
-		}
+		const abortController = new AbortController();
+		let heartbeatInFlight = false;
+		let leaseLost = false;
+		const heartbeatId = setInterval(() => {
+			if (heartbeatInFlight || leaseLost) return;
+			heartbeatInFlight = true;
+			void this.jobRepo
+				.heartbeatClaim(job.id, fence)
+				.then((accepted) => {
+					if (!accepted) {
+						leaseLost = true;
+						abortController.abort();
+						logger.warn(
+							{ jobId: job.id, claimToken: fence.claimToken },
+							'Job lease was lost; discarding worker output',
+						);
+					}
+				})
+				.catch((error) => {
+					logger.error({ err: error, jobId: job.id }, 'Job heartbeat failed');
+				})
+				.finally(() => {
+					heartbeatInFlight = false;
+				});
+		}, JOB_HEARTBEAT_MS);
 
 		logger.info(
 			{
 				jobId: job.id,
 				type: job.type,
+				attemptCount: job.attemptCount,
 				mediaSourceId: job.mediaSourceId,
 				parentId: job.parentId,
-				isAiJob,
+				workerId: this.workerId,
 			},
-			"Job started",
+			'Job started',
 		);
+
 		try {
-			const result = await this.processor(job);
+			const result = await this.processor(job, abortController.signal);
+			if (leaseLost || abortController.signal.aborted) return;
 			const safeResult =
 				result !== undefined ? toJsonSafeValue(result) : { success: true };
-			await this.jobRepo.markAsCompleted(job.id, safeResult);
+			const accepted = await this.jobRepo.completeClaim(job.id, fence, safeResult);
+			if (!accepted) {
+				logger.warn(
+					{ jobId: job.id, claimToken: fence.claimToken },
+					'Completion was rejected by the job claim fence',
+				);
+				return;
+			}
+			RealtimeEventBus.publishJob('job-completed', {
+				jobId: job.id,
+				message: `${job.type} completed`,
+			});
+			await this.reconcileParent(job);
 			logger.info(
 				{
 					jobId: job.id,
 					type: job.type,
-					mediaSourceId: job.mediaSourceId,
-					parentId: job.parentId,
 					durationMs: Date.now() - startedAt,
 				},
-				"Job completed",
+				'Job completed',
 			);
 		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
+			if (leaseLost || abortController.signal.aborted) return;
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const nonRetryable = error instanceof NonRetryableJobError;
+			const failure = await this.jobRepo.failClaim(job.id, fence, {
+				error: errorMessage,
+				errorCode: nonRetryable ? error.code : 'JOB_EXECUTION_FAILED',
+				retryable: !nonRetryable,
+				retryAt: new Date(Date.now() + retryDelayMs(job.attemptCount)),
+			});
+			if (!failure) {
+				logger.warn(
+					{ jobId: job.id, claimToken: fence.claimToken },
+					'Failure was rejected by the job claim fence',
+				);
+				return;
+			}
 			logger.error(
 				{
 					err: error,
 					jobId: job.id,
 					type: job.type,
-					mediaSourceId: job.mediaSourceId,
-					parentId: job.parentId,
+					attemptCount: failure.attemptCount,
+					status: failure.status,
 					durationMs: Date.now() - startedAt,
 				},
-				"Job failed",
+				failure.status === 'pending' ? 'Job scheduled for retry' : 'Job failed',
 			);
-			await this.jobRepo.markAsFailed(job.id, errorMessage);
+			if (failure.status === 'failed') {
+				RealtimeEventBus.publishJob('job-failed', {
+					jobId: job.id,
+					error: errorMessage,
+				});
+				if (isDispatchJob(job) && job.parentId) {
+					await this.jobRepo.update(job.parentId, {
+						status: 'failed',
+						error: `Dispatch failed: ${errorMessage}`,
+						errorCode: 'DISPATCH_FAILED',
+					});
+					RealtimeEventBus.publishJob('job-failed', {
+						jobId: job.parentId,
+						error: `Dispatch failed: ${errorMessage}`,
+					});
+				} else {
+					await this.reconcileParent(job);
+				}
+			}
 		} finally {
+			clearInterval(heartbeatId);
 			this.activeJobs--;
-			if (isAiJob) {
-				this.activeAiJobs--;
-			}
-			if (lanceDbSyncKey) {
-				this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);
-			}
+			if (isAiJob) this.activeAiJobs--;
+			if (lanceDbSyncKey) this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);
 		}
 	}
-	private async recoverStaleJobs() {
-		const olderThan = new Date(Date.now() - StaleInProgressJobMs);
+
+	private async reconcileParent(job: Job): Promise<void> {
+		if (!job.parentId) return;
+		const reconciliation = await this.jobRepo.recomputeBatchProgress(job.parentId);
+		if (!reconciliation) return;
+		RealtimeEventBus.publishJob('job-progress', {
+			jobId: job.parentId,
+			processed: reconciliation.processed,
+			total: reconciliation.total,
+		});
+		if (!reconciliation.transitioned) return;
+		if (reconciliation.status === 'failed') {
+			RealtimeEventBus.publishJob('job-failed', {
+				jobId: job.parentId,
+				error: `${reconciliation.failed} child job(s) failed`,
+			});
+		} else if (reconciliation.status === 'completed') {
+			RealtimeEventBus.publishJob('job-completed', {
+				jobId: job.parentId,
+				message: 'Batch job completed',
+			});
+		}
+	}
+
+	private async recoverExpiredLeases(): Promise<void> {
 		try {
-			const count = await this.jobRepo.requeueStaleInProgress(olderThan);
+			const count = await this.jobRepo.requeueExpiredLeases();
 			if (count > 0) {
-				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
+				logger.warn({ count }, 'Recovered expired job leases');
 			}
 		} catch (error) {
-			logger.error({ err: error }, "Failed to requeue stale in-progress jobs");
+			logger.error({ err: error }, 'Failed to recover expired job leases');
 		}
 	}
+}
+
+function getClaimFence(job: Job): ClaimFence | null {
+	return job.claimToken
+		? { claimToken: job.claimToken, inputRevision: job.inputRevision }
+		: null;
 }
 
 function getLanceDbSyncKey(job: Job): string | undefined {
 	if (
 		job.mediaSourceId &&
-		["sync_lancedb", "sync_lancedb_full", "sync_lancedb_delta"].includes(
+		['sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta'].includes(
 			job.type,
 		)
 	) {
 		return job.mediaSourceId;
 	}
 	return undefined;
+}
+
+function isDispatchJob(job: Job): boolean {
+	return (
+		job.type === 'bulk_tagging_dispatch' || job.type === 'batch_ccip_dispatch'
+	);
 }

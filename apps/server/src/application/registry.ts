@@ -1,3 +1,4 @@
+import type { MediaRegionService } from "@solid-imager/application/services/media-region-service";
 import type {
 	IConfigService,
 	IFileSystem,
@@ -8,6 +9,7 @@ import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/a
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
 import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
+import type { IMediaRegionRepository } from "@solid-imager/core/domain/repositories/media-region-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
@@ -20,6 +22,8 @@ import type { JobWorker } from "~/infrastructure/jobs/job-worker";
 export class ServiceRegistry {
 	private static instance: ServiceRegistry;
 	private mediaRepository?: IMediaRepository;
+	private mediaRegionRepository?: IMediaRegionRepository;
+	private mediaRegionService?: MediaRegionService;
 	private sourceRepository?: SourceRepository;
 	private mediaStorage?: IMediaStorage;
 	private fileSystem?: IFileSystem;
@@ -47,6 +51,14 @@ export class ServiceRegistry {
 
 	registerMediaRepository(repo: IMediaRepository): void {
 		this.mediaRepository = repo;
+	}
+
+	registerMediaRegionRepository(repo: IMediaRegionRepository): void {
+		this.mediaRegionRepository = repo;
+	}
+
+	registerMediaRegionService(service: MediaRegionService): void {
+		this.mediaRegionService = service;
 	}
 
 	registerSourceRepository(repo: SourceRepository): void {
@@ -102,6 +114,20 @@ export class ServiceRegistry {
 			throw new Error("MediaRepository has not been registered.");
 		}
 		return this.mediaRepository;
+	}
+
+	getMediaRegionRepository(): IMediaRegionRepository {
+		if (!this.mediaRegionRepository) {
+			throw new Error("MediaRegionRepository has not been registered.");
+		}
+		return this.mediaRegionRepository;
+	}
+
+	getMediaRegionService(): MediaRegionService {
+		if (!this.mediaRegionService) {
+			throw new Error("MediaRegionService has not been registered.");
+		}
+		return this.mediaRegionService;
 	}
 
 	getSourceRepository(): SourceRepository {
@@ -228,6 +254,8 @@ export class ServiceRegistry {
 	// Helper for testing to reset the registry
 	async reset(): Promise<void> {
 		this.mediaRepository = undefined;
+		this.mediaRegionRepository = undefined;
+		this.mediaRegionService = undefined;
 		this.sourceRepository = undefined;
 		this.mediaStorage = undefined;
 		this.fileSystem = undefined;

@@ -1,100 +1,220 @@
 /// <reference types="bun-types" />
-import { $ } from "bun";
-import { readdir, stat } from "node:fs/promises";
+import { open, stat } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { logger } from "../src/infrastructure/logger";
 
-// Load environment variables
-const DB_USER = process.env.DB_USER || "postgres";
-const DB_DATABASE = process.env.DB_DATABASE || "solid-imager";
-const BACKUP_DIR = "backups";
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
-// Get target backup file from args or find latest
-const args = process.argv.slice(2);
-let targetFile = args[0];
+type RestoreOptions = {
+	composeFile: string;
+	service: string;
+	input: string;
+	confirmedEmptyTarget: boolean;
+};
 
-if (!targetFile) {
-  try {
-    // Check if backup directory exists
-    const dirStats = await stat(BACKUP_DIR).catch(() => null);
-    if (!dirStats || !dirStats.isDirectory()) {
-      console.error(`❌ Backup directory '${BACKUP_DIR}' not found.`);
-      process.exit(1);
-    }
-
-    const files = await readdir(BACKUP_DIR);
-    const sqlFiles = files.filter((f) => f.endsWith(".sql"));
-
-    if (sqlFiles.length === 0) {
-      console.error("❌ No backup files found in backups/ directory.");
-      process.exit(1);
-    }
-
-    // Sort by modification time desc to get the latest
-    const fileStats = await Promise.all(
-      sqlFiles.map(async (file) => {
-        const filePath = path.join(BACKUP_DIR, file);
-        const stats = await stat(filePath);
-        return { file, mtime: stats.mtime.getTime() };
-      }),
-    );
-
-    fileStats.sort((a, b) => b.mtime - a.mtime);
-    targetFile = path.join(BACKUP_DIR, fileStats[0].file);
-    console.log(`ℹ️  No file specified. Using latest backup: ${targetFile}`);
-  } catch (error) {
-    console.error("❌ Error finding backup files:", error);
-    process.exit(1);
-  }
-} else {
-  // Validate provided file exists
-  try {
-    await stat(targetFile);
-  } catch {
-    console.error(`❌ Specified backup file not found: ${targetFile}`);
-    process.exit(1);
-  }
+function valueAfter(args: string[], index: number, option: string): string {
+	const value = args[index + 1];
+	if (!value) throw new Error(`${option} requires a value`);
+	return value;
 }
 
-console.log(
-  `\n⚠️  WARNING: This will OVERWRITE the database '${DB_DATABASE}' with data from '${targetFile}'.`,
-);
-console.log("⚠️  Current data in the database will be lost/modified.");
-console.log("⏳ Starting in 5 seconds... Press Ctrl+C to cancel.");
-
-await new Promise((r) => setTimeout(r, 1000));
-process.stdout.write("5...");
-await new Promise((r) => setTimeout(r, 1000));
-process.stdout.write(" 4...");
-await new Promise((r) => setTimeout(r, 1000));
-process.stdout.write(" 3...");
-await new Promise((r) => setTimeout(r, 1000));
-process.stdout.write(" 2...");
-await new Promise((r) => setTimeout(r, 1000));
-process.stdout.write(" 1...\n");
-
-console.log("📦 Starting database restore...");
-
-try {
-  // Find container
-  const containerNameOutput = await $`docker compose ps -q db`.text();
-  const containerId = containerNameOutput.trim();
-
-  if (!containerId) {
-    console.error("❌ Could not find running database container. Is Docker Compose up?");
-    process.exit(1);
-  }
-
-  console.log(`🐳 Found database container ID: ${containerId}`);
-
-  // Execute restore
-  // We use Bun.file to read the SQL file and pipe it into the docker exec command
-  const fileInput = Bun.file(targetFile);
-
-  // Note: -i is required for docker exec to accept stdin
-  await $`docker exec -i ${containerId} psql -U ${DB_USER} -d ${DB_DATABASE} < ${fileInput}`;
-
-  console.log("✅ Restore completed successfully!");
-} catch (error) {
-  console.error("❌ Restore failed:", error);
-  process.exit(1);
+function parseOptions(args: string[]): RestoreOptions {
+	const options: RestoreOptions = {
+		composeFile: path.join(repoRoot, "compose.yml"),
+		service: "db",
+		input: "",
+		confirmedEmptyTarget: false,
+	};
+	for (let index = 0; index < args.length; index += 1) {
+		const argument = args[index];
+		if (argument === "--compose-file") {
+			options.composeFile = path.resolve(
+				valueAfter(args, index, "--compose-file"),
+			);
+			index += 1;
+		} else if (argument === "--service") {
+			options.service = valueAfter(args, index, "--service");
+			index += 1;
+		} else if (argument === "--input") {
+			options.input = path.resolve(valueAfter(args, index, "--input"));
+			index += 1;
+		} else if (argument === "--confirm-empty-target") {
+			options.confirmedEmptyTarget = true;
+		} else {
+			throw new Error(`Unknown argument: ${argument}`);
+		}
+	}
+	if (!options.input) throw new Error("--input is required");
+	if (!options.confirmedEmptyTarget) {
+		throw new Error("--confirm-empty-target is required for restore");
+	}
+	return options;
 }
+
+function composeCommand(options: RestoreOptions, command: string[]): string[] {
+	return [
+		"docker",
+		"compose",
+		"-f",
+		options.composeFile,
+		"exec",
+		"-T",
+		options.service,
+		...command,
+	];
+}
+
+async function runCapture(command: string[]): Promise<string> {
+	const processHandle = Bun.spawn(command, { stdout: "pipe", stderr: "pipe" });
+	const [stdout, stderr, exitCode] = await Promise.all([
+		new Response(processHandle.stdout).text(),
+		new Response(processHandle.stderr).text(),
+		processHandle.exited,
+	]);
+	if (exitCode !== 0) {
+		throw new Error(`${command[0]} exited with ${exitCode}: ${stderr.trim()}`);
+	}
+	return stdout.trim();
+}
+
+async function isCustomDump(filePath: string): Promise<boolean> {
+	const handle = await open(filePath, "r");
+	try {
+		const signature = Buffer.alloc(5);
+		await handle.read(signature, 0, signature.length, 0);
+		return signature.toString("ascii") === "PGDMP";
+	} finally {
+		await handle.close();
+	}
+}
+
+async function main(): Promise<void> {
+	const options = parseOptions(process.argv.slice(2));
+	const databaseUser = process.env.DB_USER ?? "postgres";
+	const databaseName = process.env.DB_DATABASE ?? "solid-imager";
+	const inputStat = await stat(options.input);
+	if (!inputStat.isFile() || inputStat.size === 0) {
+		throw new Error(`Restore input must be a non-empty file: ${options.input}`);
+	}
+
+	const objectCountOutput = await runCapture(
+		composeCommand(options, [
+			"psql",
+			"-X",
+			"--username",
+			databaseUser,
+			"--dbname",
+			databaseName,
+			"--tuples-only",
+			"--no-align",
+			"--command",
+			`WITH user_objects AS (
+				SELECT class.oid
+				FROM pg_catalog.pg_class class
+				INNER JOIN pg_catalog.pg_namespace namespace ON namespace.oid = class.relnamespace
+				WHERE class.relkind IN ('r', 'p', 'S', 'v', 'm', 'f')
+					AND namespace.nspname = 'public'
+					AND NOT EXISTS (
+						SELECT 1 FROM pg_catalog.pg_depend dependency
+						WHERE dependency.classid = 'pg_class'::regclass
+							AND dependency.objid = class.oid
+							AND dependency.deptype = 'e'
+					)
+				UNION ALL
+				SELECT type.oid
+				FROM pg_catalog.pg_type type
+				INNER JOIN pg_catalog.pg_namespace namespace ON namespace.oid = type.typnamespace
+				WHERE type.typtype IN ('e', 'd')
+					AND namespace.nspname = 'public'
+					AND NOT EXISTS (
+						SELECT 1 FROM pg_catalog.pg_depend dependency
+						WHERE dependency.classid = 'pg_type'::regclass
+							AND dependency.objid = type.oid
+							AND dependency.deptype = 'e'
+					)
+				UNION ALL
+				SELECT procedure.oid
+				FROM pg_catalog.pg_proc procedure
+				INNER JOIN pg_catalog.pg_namespace namespace ON namespace.oid = procedure.pronamespace
+				WHERE namespace.nspname = 'public'
+					AND NOT EXISTS (
+						SELECT 1 FROM pg_catalog.pg_depend dependency
+						WHERE dependency.classid = 'pg_proc'::regclass
+							AND dependency.objid = procedure.oid
+							AND dependency.deptype = 'e'
+					)
+				UNION ALL
+				SELECT namespace.oid
+				FROM pg_catalog.pg_namespace namespace
+				WHERE namespace.nspname NOT IN ('public', 'pg_catalog', 'information_schema')
+					AND namespace.nspname !~ '^pg_'
+			)
+			SELECT count(*) FROM user_objects;`,
+		]),
+	);
+	const objectCount = Number.parseInt(objectCountOutput, 10);
+	if (!Number.isSafeInteger(objectCount) || objectCount !== 0) {
+		throw new Error(
+			`Restore target is not empty (${objectCountOutput || "unknown"} user objects)`,
+		);
+	}
+
+	const custom = await isCustomDump(options.input);
+	const restoreCommand = custom
+		? [
+				"pg_restore",
+				"--exit-on-error",
+				"--clean",
+				"--if-exists",
+				"--no-owner",
+				"--no-privileges",
+				"--username",
+				databaseUser,
+				"--dbname",
+				databaseName,
+			]
+		: [
+				"psql",
+				"-X",
+				"--set=ON_ERROR_STOP=1",
+				"--username",
+				databaseUser,
+				"--dbname",
+				databaseName,
+			];
+	logger.info(
+		{
+			input: options.input,
+			format: custom ? "custom" : "plain",
+			composeFile: options.composeFile,
+			service: options.service,
+		},
+		"Starting PostgreSQL restore into verified empty target",
+	);
+	const processHandle = Bun.spawn(composeCommand(options, restoreCommand), {
+		stdin: Bun.file(options.input).stream(),
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	const [stdout, stderr, exitCode] = await Promise.all([
+		new Response(processHandle.stdout).text(),
+		new Response(processHandle.stderr).text(),
+		processHandle.exited,
+	]);
+	void stdout;
+	if (exitCode !== 0) {
+		throw new Error(
+			`${custom ? "pg_restore" : "psql"} exited with ${exitCode}: ${stderr.trim()}`,
+		);
+	}
+	logger.info(
+		{ input: options.input, bytes: inputStat.size },
+		"PostgreSQL restore completed",
+	);
+}
+
+main().catch((error: unknown) => {
+	logger.error({ err: error }, "PostgreSQL restore failed");
+	process.exitCode = 1;
+});

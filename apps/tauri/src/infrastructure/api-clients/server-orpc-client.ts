@@ -7,6 +7,8 @@ const SERVER_URL = isDev
 	? window.location.origin
 	: import.meta.env.VITE_API_URL || "http://192.168.1.150:3000";
 
+export const serverApiBaseUrl = SERVER_URL;
+
 const tauriFetchAdapter = (
 	request: Request,
 	init?: RequestInit & { redirect?: Request["redirect"] },

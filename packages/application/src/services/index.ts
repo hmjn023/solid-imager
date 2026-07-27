@@ -12,6 +12,10 @@ export { createIpService } from "./ip-service";
 export { createLanceDbDumpService } from "./lancedb-dump-service";
 export { MediaProcessingServiceImpl } from "./media-processing-service";
 export { MediaQueryService } from "./media-query-service";
+export {
+	computeMediaSourceRevision,
+	MediaRegionService,
+} from "./media-region-service";
 export { MediaServiceImpl, validateFileSignature } from "./media-service";
 export { MediaTransferService } from "./media-transfer-service";
 export { MediaUploadService } from "./media-upload-service";

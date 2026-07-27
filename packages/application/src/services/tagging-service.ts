@@ -61,8 +61,9 @@ export class TaggingServiceImpl implements ITaggingService {
 	async getTagsForMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		options?: { skipCache?: boolean },
+		options?: { skipCache?: boolean; signal?: AbortSignal },
 	): Promise<TaggingResponse | null> {
+		options?.signal?.throwIfAborted();
 		const media = await this.mediaRepo.findById(mediaId);
 		if (!media) {
 			throw new Error(`Media not found: ${mediaId}`);
@@ -160,14 +161,22 @@ export class TaggingServiceImpl implements ITaggingService {
 		const canUsePathApi = this.isAiServiceLocal();
 
 		if (canUsePathApi) {
-			response = await this.aiClient.tagImageByPath(fullPath);
+			response = await this.aiClient.tagImageByPath(fullPath, options?.signal);
 		} else {
 			const buffer = await this.readFileBuffer(fullPath);
-			response = await this.aiClient.tagImage(buffer);
+			options?.signal?.throwIfAborted();
+			response = await this.aiClient.tagImage(buffer, options?.signal);
 		}
 
 		// Save to DB
-		await this.saveTags(mediaSourceId, mediaId, media.filePath, response);
+		options?.signal?.throwIfAborted();
+		await this.saveTags(
+			mediaSourceId,
+			mediaId,
+			media.filePath,
+			response,
+			options?.signal,
+		);
 
 		return response;
 	}
@@ -177,7 +186,9 @@ export class TaggingServiceImpl implements ITaggingService {
 		mediaId: string,
 		filePath: string,
 		response: TaggingResponse,
+		signal?: AbortSignal,
 	): Promise<void> {
+		signal?.throwIfAborted();
 		// 1. Tags
 		const tagsToInsert = Object.entries(response.general).map(
 			([name, confidence]) => ({
@@ -187,6 +198,7 @@ export class TaggingServiceImpl implements ITaggingService {
 			}),
 		);
 		await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");
+		signal?.throwIfAborted();
 
 		// 2. IPs — bulk find-or-create
 		const ipNames = response.ips;
@@ -210,6 +222,7 @@ export class TaggingServiceImpl implements ITaggingService {
 		if (ipsToLink.length > 0) {
 			await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "AI");
 		}
+		signal?.throwIfAborted();
 
 		// 3. Characters
 		// ips_mapping: { charName: [ipName] }
@@ -274,11 +287,13 @@ export class TaggingServiceImpl implements ITaggingService {
 			bulkCharData,
 			"AI",
 		);
+		signal?.throwIfAborted();
 
 		// Bulk IP updates for existing characters
 		if (charsNeedingUpdate.length > 0) {
 			await this.characterRepo.updateIpsBulk(charsNeedingUpdate, "AI");
 		}
+		signal?.throwIfAborted();
 
 		// Build character link list for addToMediaBulk
 		const charsToLink: { id: string; confidence: number }[] = [];
@@ -297,6 +312,7 @@ export class TaggingServiceImpl implements ITaggingService {
 		if (charsToLink.length > 0) {
 			await this.characterRepo.addToMediaBulk(mediaId, charsToLink, "AI");
 		}
+		signal?.throwIfAborted();
 
 		// Notify clients of the update
 		this.publishSourceEvent(mediaSourceId, "media-changed", {
@@ -313,7 +329,9 @@ export class TaggingServiceImpl implements ITaggingService {
 	async getCcipFeatureForMedia(
 		mediaSourceId: string,
 		mediaId: string,
+		signal?: AbortSignal,
 	): Promise<CcipFeatureResponse> {
+		signal?.throwIfAborted();
 		const media = await this.mediaRepo.findById(mediaId);
 		if (!media) {
 			throw new Error(`Media not found: ${mediaId}`);
@@ -344,10 +362,11 @@ export class TaggingServiceImpl implements ITaggingService {
 		const canUsePathApi = this.isAiServiceLocal();
 
 		if (canUsePathApi) {
-			return await this.aiClient.extractCcipFeatureByPath(fullPath);
+			return await this.aiClient.extractCcipFeatureByPath(fullPath, signal);
 		}
 		const buffer = await this.readFileBuffer(fullPath);
-		return await this.aiClient.extractCcipFeature(buffer);
+		signal?.throwIfAborted();
+		return await this.aiClient.extractCcipFeature(buffer, signal);
 	}
 
 	async getCcipDifference(

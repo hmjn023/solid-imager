@@ -6,6 +6,7 @@ export { createCharacterRepository } from "./repositories/character-repository";
 export { createCollectionRepository } from "./repositories/collection-repository";
 export { createIpRepository } from "./repositories/ip-repository";
 export { createJobRepository } from "./repositories/job-repository";
+export { createMediaRegionRepository } from "./repositories/media-region-repository";
 export { createMediaRepository } from "./repositories/media-repository";
 export { createMediaSearchFunctions } from "./repositories/media-repository-utils";
 export { createPresetRepository } from "./repositories/preset-repository";

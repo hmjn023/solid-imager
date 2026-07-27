@@ -167,33 +167,47 @@ export class RustAiClient implements IAiClient {
 		}
 	}
 
-	async tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse> {
+	async tagImage(
+		imageBuffer: ArrayBuffer,
+		signal?: AbortSignal,
+	): Promise<TaggingResponse> {
+		signal?.throwIfAborted();
 		if (this.baseUrl) {
-			const result = await this.callRemoteOrpcWithFile(
-				(c, f) => c.ai.tag({ file: f }),
-				imageBuffer,
+			const result = await abortable(
+				this.callRemoteOrpcWithFile(
+					(c, f) => c.ai.tag({ file: f }),
+					imageBuffer,
+				),
+				signal,
 			);
 			return taggingResponseSchema.parse(result);
 		}
 
 		return this.withTempFile(imageBuffer, "rust-tag", (filePath) =>
-			this.tagImageByPath(filePath),
+			this.tagImageByPath(filePath, signal),
 		);
 	}
 
-	async tagImageByPath(filePath: string): Promise<TaggingResponse> {
+	async tagImageByPath(
+		filePath: string,
+		signal?: AbortSignal,
+	): Promise<TaggingResponse> {
+		signal?.throwIfAborted();
 		if (this.baseUrl) {
 			const buffer = await Bun.file(filePath).bytes();
-			const result = await this.callRemoteOrpcWithFile(
-				(c, f) => c.ai.tag({ file: f }),
-				buffer,
-				path.basename(filePath),
+			const result = await abortable(
+				this.callRemoteOrpcWithFile(
+					(c, f) => c.ai.tag({ file: f }),
+					buffer,
+					path.basename(filePath),
+				),
+				signal,
 			);
 			return taggingResponseSchema.parse(result);
 		}
 
 		const { getPixaiTags } = await import("dghs-imgutils-rs");
-		const result = await getPixaiTags(filePath);
+		const result = await abortable(getPixaiTags(filePath), signal);
 		return taggingResponseSchema.parse({
 			general: result.general,
 			character: result.character,
@@ -226,35 +240,45 @@ export class RustAiClient implements IAiClient {
 
 	async extractCcipFeature(
 		imageBuffer: ArrayBuffer,
+		signal?: AbortSignal,
 	): Promise<CcipFeatureResponse> {
+		signal?.throwIfAborted();
 		if (this.baseUrl) {
-			const result = await this.callRemoteOrpcWithFile(
-				(c, f) => c.ai.ccipFeature({ file: f }),
-				imageBuffer,
+			const result = await abortable(
+				this.callRemoteOrpcWithFile(
+					(c, f) => c.ai.ccipFeature({ file: f }),
+					imageBuffer,
+				),
+				signal,
 			);
 			return ccipFeatureResponseSchema.parse(result);
 		}
 
 		return this.withTempFile(imageBuffer, "rust-ccip", (filePath) =>
-			this.extractCcipFeatureByPath(filePath),
+			this.extractCcipFeatureByPath(filePath, signal),
 		);
 	}
 
 	async extractCcipFeatureByPath(
 		filePath: string,
+		signal?: AbortSignal,
 	): Promise<CcipFeatureResponse> {
+		signal?.throwIfAborted();
 		if (this.baseUrl) {
 			const buffer = await Bun.file(filePath).bytes();
-			const result = await this.callRemoteOrpcWithFile(
-				(c, f) => c.ai.ccipFeature({ file: f }),
-				buffer,
-				path.basename(filePath),
+			const result = await abortable(
+				this.callRemoteOrpcWithFile(
+					(c, f) => c.ai.ccipFeature({ file: f }),
+					buffer,
+					path.basename(filePath),
+				),
+				signal,
 			);
 			return ccipFeatureResponseSchema.parse(result);
 		}
 
 		const { ccipGetEmbedding } = await import("dghs-imgutils-rs");
-		const embedding = await ccipGetEmbedding(filePath);
+		const embedding = await abortable(ccipGetEmbedding(filePath), signal);
 		return ccipFeatureResponseSchema.parse({
 			feature: embedding,
 		});
@@ -316,4 +340,16 @@ export class RustAiClient implements IAiClient {
 			throw r.reason;
 		});
 	}
+}
+
+async function abortable<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+	if (!signal) return await promise;
+	signal.throwIfAborted();
+	return await new Promise<T>((resolve, reject) => {
+		const onAbort = () => reject(signal.reason);
+		signal.addEventListener("abort", onAbort, { once: true });
+		void promise.then(resolve, reject).finally(() => {
+			signal.removeEventListener("abort", onAbort);
+		});
+	});
 }

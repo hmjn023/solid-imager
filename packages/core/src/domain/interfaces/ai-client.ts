@@ -8,15 +8,21 @@ import type {
 export type IAiClient = {
 	healthCheck(): Promise<boolean>;
 
-	tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse>;
+	tagImage(imageBuffer: ArrayBuffer, signal?: AbortSignal): Promise<TaggingResponse>;
 
-	tagImageByPath(path: string): Promise<TaggingResponse>;
+	tagImageByPath(path: string, signal?: AbortSignal): Promise<TaggingResponse>;
 
 	tagImageOppaiOracleByPath(path: string): Promise<OppaiOracleResponse>;
 
-	extractCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;
+	extractCcipFeature(
+		imageBuffer: ArrayBuffer,
+		signal?: AbortSignal,
+	): Promise<CcipFeatureResponse>;
 
-	extractCcipFeatureByPath(path: string): Promise<CcipFeatureResponse>;
+	extractCcipFeatureByPath(
+		path: string,
+		signal?: AbortSignal,
+	): Promise<CcipFeatureResponse>;
 
 	calculateCcipDifference(
 		feature1: number[],

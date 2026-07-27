@@ -5,10 +5,11 @@ import {
 	type MediaDumpItem,
 	mediaDumpItemSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
-import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lt, or, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { LANCEDB_DUMP_VERSION } from "~/application/services/lancedb-dump-service";
 import { db } from "~/infrastructure/db";
@@ -260,10 +261,38 @@ export const BackupService = {
 					const connectionInfo = mediaSource.connectionInfo as { path: string };
 					const basePath = connectionInfo.path;
 
+					const revisionRows = await db
+						.select({
+							id: medias.id,
+							mediaSourceId: medias.mediaSourceId,
+							modifiedAt: medias.modifiedAt,
+							fileSize: medias.fileSize,
+							width: medias.width,
+							height: medias.height,
+						})
+						.from(medias)
+						.where(inArray(medias.id, mediaIds));
+					const revisionById = new Map(
+						await Promise.all(
+							revisionRows.map(async (media) => [
+								media.id,
+								await createMediaSourceRevision({
+									mediaId: media.id,
+									mediaSourceId: media.mediaSourceId,
+									modifiedAt: media.modifiedAt,
+									fileSize: media.fileSize,
+									width: media.width,
+									height: media.height,
+								}),
+							] as const),
+						),
+					);
 					for (const id of mediaIds) {
 						await jobRepo.create({
 							type: "processMedia",
 							mediaSourceId,
+							targetId: id,
+							inputRevision: revisionById.get(id) ?? null,
 							payload: {
 								mediaId: id,
 								sourcePath: basePath,
@@ -1079,6 +1108,8 @@ export const BackupService = {
 				target: [lanceDbSyncDirty.mediaSourceId, lanceDbSyncDirty.mediaId],
 				set: {
 					operation,
+					generation: sql`${lanceDbSyncDirty.generation} + 1`,
+					attempts: 0,
 					lastError: null,
 					updatedAt: now,
 				},
@@ -1199,12 +1230,17 @@ export const BackupService = {
 				itemsToUpsert: upsertItems,
 			});
 
-			await db.delete(lanceDbSyncDirty).where(
-				inArray(
-					lanceDbSyncDirty.id,
-					dirtyRows.map((row) => row.id),
+			const claimedGenerations = or(
+				...dirtyRows.map((row) =>
+					and(
+						eq(lanceDbSyncDirty.id, row.id),
+						eq(lanceDbSyncDirty.generation, row.generation),
+					),
 				),
 			);
+			if (claimedGenerations) {
+				await db.delete(lanceDbSyncDirty).where(claimedGenerations);
+			}
 
 			logger.info(
 				{
@@ -1219,19 +1255,24 @@ export const BackupService = {
 			return { mode: "delta", processed: dirtyRows.length };
 		} catch (error) {
 			const message = getErrorMessage(error);
-			await db
-				.update(lanceDbSyncDirty)
-				.set({
-					attempts: sql`${lanceDbSyncDirty.attempts} + 1`,
-					lastError: message,
-					updatedAt: new Date(),
-				})
-				.where(
-					inArray(
-						lanceDbSyncDirty.id,
-						dirtyRows.map((row) => row.id),
+			const claimedGenerations = or(
+				...dirtyRows.map((row) =>
+					and(
+						eq(lanceDbSyncDirty.id, row.id),
+						eq(lanceDbSyncDirty.generation, row.generation),
 					),
-				);
+				),
+			);
+			if (claimedGenerations) {
+				await db
+					.update(lanceDbSyncDirty)
+					.set({
+						attempts: sql`${lanceDbSyncDirty.attempts} + 1`,
+						lastError: message,
+						updatedAt: new Date(),
+					})
+					.where(claimedGenerations);
+			}
 			throw error;
 		}
 	},

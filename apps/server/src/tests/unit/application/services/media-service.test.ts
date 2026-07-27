@@ -105,9 +105,16 @@ describe("MediaService Unit Tests", () => {
 		mockJobRepository = {
 			create: vi.fn(),
 			createIfUnique: vi.fn(),
+			createParentWithDispatch: vi.fn(),
 			findById: vi.fn(),
 			findPending: vi.fn(),
 			claimPending: vi.fn(),
+			heartbeatClaim: vi.fn(),
+			completeClaim: vi.fn(),
+			failClaim: vi.fn(),
+			releaseClaim: vi.fn(),
+			recomputeBatchProgress: vi.fn(),
+			requeueExpiredLeases: vi.fn(),
 			requeueStaleInProgress: vi.fn(),
 			markAsInProgress: vi.fn(),
 			markAsCompleted: vi.fn(),
@@ -322,6 +329,7 @@ describe("MediaService Unit Tests", () => {
 			const mockMedia = {
 				id: "new-media-id",
 				...mockFileInfo,
+				fileSize: mockFileInfo.size,
 				mediaSourceId: sourceId,
 				mediaType: "image",
 			};

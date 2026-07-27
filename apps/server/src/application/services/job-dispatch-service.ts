@@ -1,18 +1,42 @@
 import type { DeferredActions } from "@solid-imager/application/ports/media-service";
+import { validateJobPayload } from "@solid-imager/core/domain/jobs/registry";
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
+import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
+import { eq } from "drizzle-orm";
 import { services } from "~/application/registry";
-import type { Job as DbJob } from "~/infrastructure/db/schema";
+import { db } from "~/infrastructure/db";
+import { medias } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
 	processAutoTaggingJob,
 	processBulkTaggingDispatchJob,
 } from "~/infrastructure/jobs/tagging-jobs";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
+import { NonRetryableJobError } from "~/infrastructure/jobs/job-errors";
 import { logger } from "~/infrastructure/logger";
 
 // Helper for unified job processing (Called by JobWorker)
-export async function processJob(job: DbJob) {
+export async function processJob(job: Job, signal?: AbortSignal) {
+	const validated = validateJobPayload(job.type, job.payload);
+	if (!validated.success) {
+		const issueSummary = validated.error.issues
+			.map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+			.join("; ");
+		throw new NonRetryableJobError(
+			validated.error.issues.some((issue) => issue.path[0] === "type")
+				? "UNKNOWN_JOB_TYPE"
+				: "INVALID_JOB_PAYLOAD",
+			`Invalid ${job.type} job: ${issueSummary}`,
+		);
+	}
+	if (signal?.aborted) return;
+	await assertCurrentInputRevision(job);
 	const mediaSourceId = job.mediaSourceId;
-	if (!mediaSourceId && job.type !== "bulk_tagging_dispatch") {
+	if (
+		!mediaSourceId &&
+		job.type !== "bulk_tagging_dispatch" &&
+		job.type !== "batch_ccip_dispatch"
+	) {
 		throw new Error(`Job ${job.id} missing mediaSourceId`);
 	}
 
@@ -27,12 +51,12 @@ export async function processJob(job: DbJob) {
 		);
 		await processDownloadJob(job);
 	} else if (job.type === "auto_tagging") {
-		await processAutoTaggingJob(job);
+		await processAutoTaggingJob(job, signal);
 	} else if (job.type === "extract_ccip_vector") {
 		const { processCcipExtractionJob } = await import(
 			"~/infrastructure/jobs/ccip-jobs"
 		);
-		await processCcipExtractionJob(job);
+		await processCcipExtractionJob(job, signal);
 	} else if (job.type === "bulk_tagging_dispatch") {
 		await processBulkTaggingDispatchJob(job);
 	} else if (job.type === "batch_ccip_dispatch") {
@@ -56,19 +80,64 @@ export async function processJob(job: DbJob) {
 			"~/application/services/backup-service"
 		);
 		const batchSize = getDeltaBatchSize(job.payload);
-		const payloadDirty = getDeltaDirtyPayload(job.payload);
-		if (payloadDirty.mediaIds.length > 0) {
-			await BackupService.queueSourceLanceDBDelta(
-				mediaSourceId,
-				payloadDirty.mediaIds,
-				payloadDirty.operation,
-				{ enqueueJob: false },
-			);
-		}
 		await BackupService.syncSourceLanceDBDeltaCache(mediaSourceId, batchSize);
 	} else {
-		logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
+		throw new NonRetryableJobError(
+			"UNKNOWN_JOB_TYPE",
+			`Unknown job type: ${job.type}`,
+		);
 	}
+	if (!signal?.aborted) await assertCurrentInputRevision(job);
+}
+
+async function assertCurrentInputRevision(job: Job): Promise<void> {
+	if (
+		!job.inputRevision ||
+		!["processMedia", "auto_tagging", "extract_ccip_vector"].includes(job.type)
+	) {
+		return;
+	}
+	const mediaId = job.targetId ?? getPayloadMediaId(job.payload);
+	if (!mediaId) return;
+	const [media] = await db
+		.select({
+			id: medias.id,
+			mediaSourceId: medias.mediaSourceId,
+			modifiedAt: medias.modifiedAt,
+			fileSize: medias.fileSize,
+			width: medias.width,
+			height: medias.height,
+		})
+		.from(medias)
+		.where(eq(medias.id, mediaId))
+		.limit(1);
+	if (!media) {
+		throw new NonRetryableJobError(
+			"TARGET_NOT_FOUND",
+			`Job target media not found: ${mediaId}`,
+		);
+	}
+	const currentRevision = await createMediaSourceRevision({
+		mediaId: media.id,
+		mediaSourceId: media.mediaSourceId,
+		modifiedAt: media.modifiedAt,
+		fileSize: media.fileSize,
+		width: media.width,
+		height: media.height,
+	});
+	if (currentRevision !== job.inputRevision) {
+		throw new NonRetryableJobError(
+			"STALE_INPUT",
+			`Job input revision is stale for media ${mediaId}`,
+		);
+	}
+}
+
+function getPayloadMediaId(payload: unknown): string | null {
+	if (!payload || typeof payload !== "object" || !("mediaId" in payload)) {
+		return null;
+	}
+	return typeof payload.mediaId === "string" ? payload.mediaId : null;
 }
 
 function getDeltaBatchSize(payload: unknown): number {
@@ -81,29 +150,6 @@ function getDeltaBatchSize(payload: unknown): number {
 		return (payload as { batchSize: number }).batchSize;
 	}
 	return 500;
-}
-
-function getDeltaDirtyPayload(payload: unknown): {
-	mediaIds: string[];
-	operation: "upsert" | "delete";
-} {
-	if (!payload || typeof payload !== "object") {
-		return { mediaIds: [], operation: "upsert" };
-	}
-	const data = payload as {
-		mediaIds?: unknown;
-		mediaId?: unknown;
-		operation?: unknown;
-	};
-	const mediaIds = Array.isArray(data.mediaIds)
-		? data.mediaIds.filter(
-				(value): value is string => typeof value === "string",
-			)
-		: typeof data.mediaId === "string"
-			? [data.mediaId]
-			: [];
-	const operation = data.operation === "delete" ? "delete" : "upsert";
-	return { mediaIds, operation };
 }
 
 export async function executeDeferredActions(actions: DeferredActions) {
@@ -129,6 +175,8 @@ export async function executeDeferredActions(actions: DeferredActions) {
 				await repo.create({
 					type: job.type,
 					mediaSourceId: item.mediaSourceId,
+					targetId: job.targetId,
+					inputRevision: job.inputRevision,
 					payload: jobPayload,
 				});
 			}

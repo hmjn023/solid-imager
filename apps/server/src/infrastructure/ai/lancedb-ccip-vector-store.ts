@@ -2,6 +2,7 @@ import * as path from "node:path";
 import type { Connection, Table } from "@lancedb/lancedb";
 import type {
 	CcipVectorCandidate,
+	CcipEmbeddingKey,
 	CcipVectorMetadata,
 	CcipVectorQuery,
 	CcipVectorReadQuery,
@@ -13,8 +14,28 @@ import { z } from "zod";
 const TABLE_NAME = "media_ccip";
 const VECTOR_DIMENSIONS = 768;
 const AUTO_OPTIMIZE_WRITE_OPERATIONS = 100;
+const LEGACY_INPUT_REVISION = "legacy-unversioned";
+const DEFAULT_PREPROCESSING_PROFILE =
+	"dghs-imgutils-rs/full-image-default/v1";
+
+export class CcipStoreReadOnlyError extends Error {
+	constructor() {
+		super("CCIP LanceDB store is read-only");
+		this.name = "CcipStoreReadOnlyError";
+	}
+}
+
+export class CcipStoreUnsupportedOperationError extends Error {
+	constructor(readonly operation: string) {
+		super(`${operation} is unavailable in legacy LanceDB mode`);
+		this.name = "CcipStoreUnsupportedOperationError";
+	}
+}
 
 const rowSchema = z.object({
+	regionKey: z.string().optional(),
+	regionId: z.string().uuid().nullable().optional(),
+	regionKind: z.enum(["full", "person", "manual"]).optional(),
 	mediaId: z.string().uuid(),
 	mediaSourceId: z.string().uuid(),
 	vector: z.preprocess((value) => {
@@ -32,6 +53,8 @@ const rowSchema = z.object({
 	model: z.string(),
 	embeddingVersion: z.number().int(),
 	mediaModifiedAt: z.coerce.date(),
+	inputRevision: z.string().min(1).optional(),
+	preprocessingProfile: z.string().min(1).optional(),
 	extractedAt: z.coerce.date(),
 	_distance: z.number().optional(),
 });
@@ -45,8 +68,17 @@ function escapeSqlString(value: string): string {
 	return value.replaceAll("'", "''");
 }
 
-function queryPredicates(query?: CcipVectorQuery): string[] {
+function queryPredicates(
+	query?: CcipVectorQuery,
+	includeVersionedColumns = true,
+): string[] {
 	const predicates: string[] = [];
+	if (includeVersionedColumns && query?.regionId) {
+		predicates.push(`regionId = '${escapeSqlString(query.regionId)}'`);
+	}
+	if (includeVersionedColumns && query?.regionKind) {
+		predicates.push(`regionKind = '${escapeSqlString(query.regionKind)}'`);
+	}
 	if (query?.mediaSourceId) {
 		predicates.push(
 			`mediaSourceId = '${escapeSqlString(query.mediaSourceId)}'`,
@@ -58,24 +90,47 @@ function queryPredicates(query?: CcipVectorQuery): string[] {
 	if (query?.embeddingVersion !== undefined) {
 		predicates.push(`embeddingVersion = ${query.embeddingVersion}`);
 	}
+	if (includeVersionedColumns && query?.preprocessingProfile) {
+		predicates.push(
+			`preprocessingProfile = '${escapeSqlString(query.preprocessingProfile)}'`,
+		);
+	}
 	return predicates;
 }
 
 function toRecord(value: unknown): CcipVectorRecord {
 	const row = rowSchema.parse(value);
 	return {
+		regionId: row.regionId ?? null,
+		regionKind: row.regionKind ?? "full",
 		mediaId: row.mediaId,
 		mediaSourceId: row.mediaSourceId,
 		vector: row.vector,
 		model: row.model,
 		embeddingVersion: row.embeddingVersion,
 		mediaModifiedAt: row.mediaModifiedAt,
+		inputRevision: row.inputRevision ?? LEGACY_INPUT_REVISION,
+		preprocessingProfile:
+			row.preprocessingProfile ?? DEFAULT_PREPROCESSING_PROFILE,
 		extractedAt: row.extractedAt,
 	};
 }
 
 function toMetadata(value: unknown): CcipVectorMetadata {
-	return metadataRowSchema.parse(value);
+	const row = metadataRowSchema.parse(value);
+	return {
+		regionId: row.regionId ?? null,
+		regionKind: row.regionKind ?? "full",
+		mediaId: row.mediaId,
+		mediaSourceId: row.mediaSourceId,
+		model: row.model,
+		embeddingVersion: row.embeddingVersion,
+		mediaModifiedAt: row.mediaModifiedAt,
+		inputRevision: row.inputRevision ?? LEGACY_INPUT_REVISION,
+		preprocessingProfile:
+			row.preprocessingProfile ?? DEFAULT_PREPROCESSING_PROFILE,
+		extractedAt: row.extractedAt,
+	};
 }
 
 export class LanceDbCcipVectorStore implements ICcipVectorStore {
@@ -86,7 +141,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 
 	constructor(
 		private readonly directory: string,
-		private readonly options: { readOnly?: boolean } = {},
+		private readonly options: { readOnly?: boolean; legacy?: boolean } = {},
 	) {}
 
 	private async connection(): Promise<Connection> {
@@ -133,7 +188,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 				);
 			}
 			const arrow = await import("apache-arrow");
-			const schema = new arrow.Schema([
+			const sharedFields = [
 				new arrow.Field("mediaId", new arrow.Utf8(), false),
 				new arrow.Field("mediaSourceId", new arrow.Utf8(), false),
 				new arrow.Field(
@@ -152,7 +207,23 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 					false,
 				),
 				new arrow.Field("extractedAt", new arrow.TimestampMillisecond(), false),
-			]);
+			];
+			const schema = new arrow.Schema(
+				this.options.legacy
+					? sharedFields
+					: [
+							new arrow.Field("regionKey", new arrow.Utf8(), false),
+							new arrow.Field("regionId", new arrow.Utf8(), true),
+							new arrow.Field("regionKind", new arrow.Utf8(), false),
+							...sharedFields,
+							new arrow.Field("inputRevision", new arrow.Utf8(), false),
+							new arrow.Field(
+								"preprocessingProfile",
+								new arrow.Utf8(),
+								false,
+							),
+						],
+			);
 			table = await db.createTable(TABLE_NAME, [], { schema });
 		}
 		if (!this.options.readOnly) {
@@ -175,7 +246,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 
 	private async serializeWrite(operation: () => Promise<void>): Promise<void> {
 		if (this.options.readOnly) {
-			throw new Error("CCIP LanceDB store is read-only");
+			throw new CcipStoreReadOnlyError();
 		}
 		const next = this.writeQueue.then(operation, operation);
 		this.writeQueue = next.catch(() => undefined);
@@ -189,6 +260,25 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		return (await this.getMany([mediaId], query)).get(mediaId) ?? null;
 	}
 
+	async getByRegion(
+		regionId: string,
+		query: CcipVectorReadQuery,
+	): Promise<CcipVectorRecord | null> {
+		if (this.options.legacy) return null;
+		const table = await this.table();
+		const rows = await table
+			.query()
+			.where(
+				[
+					`regionId = '${escapeSqlString(regionId)}'`,
+					...queryPredicates(query, true),
+				].join(" AND "),
+			)
+			.limit(1)
+			.toArray();
+		return rows[0] ? toRecord(rows[0]) : null;
+	}
+
 	async getMany(
 		mediaIds: string[],
 		query: CcipVectorReadQuery,
@@ -198,7 +288,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		}
 		const predicates = [
 			`mediaId IN (${mediaIds.map((mediaId) => `'${escapeSqlString(mediaId)}'`).join(", ")})`,
-			...queryPredicates(query),
+			...queryPredicates(query, !this.options.legacy),
 		];
 		const table = await this.table();
 		const rows = await table.query().where(predicates.join(" AND ")).toArray();
@@ -219,19 +309,28 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		}
 		const predicates = [
 			`mediaId IN (${mediaIds.map((mediaId) => `'${escapeSqlString(mediaId)}'`).join(", ")})`,
-			...queryPredicates(query),
+			...queryPredicates(query, !this.options.legacy),
 		];
 		const table = await this.table();
-		const rows = await table
-			.query()
-			.select([
+		const selectedColumns = [
 				"mediaId",
 				"mediaSourceId",
 				"model",
 				"embeddingVersion",
 				"mediaModifiedAt",
 				"extractedAt",
-			])
+			];
+		if (!this.options.legacy) {
+			selectedColumns.push(
+				"regionId",
+				"regionKind",
+				"inputRevision",
+				"preprocessingProfile",
+			);
+		}
+		const rows = await table
+			.query()
+			.select(selectedColumns)
 			.where(predicates.join(" AND "))
 			.toArray();
 		return new Map(
@@ -252,11 +351,34 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		}
 		await this.serializeWrite(async () => {
 			const table = await this.table();
+			if (this.options.legacy) {
+				await table
+					.mergeInsert("mediaId")
+					.whenMatchedUpdateAll()
+					.whenNotMatchedInsertAll()
+					.execute(
+						records.map((record) => ({
+							mediaId: record.mediaId,
+							mediaSourceId: record.mediaSourceId,
+							vector: record.vector,
+							model: record.model,
+							embeddingVersion: record.embeddingVersion,
+							mediaModifiedAt: record.mediaModifiedAt,
+							extractedAt: record.extractedAt,
+						})),
+					);
+				return;
+			}
 			await table
-				.mergeInsert("mediaId")
+				.mergeInsert("regionKey")
 				.whenMatchedUpdateAll()
 				.whenNotMatchedInsertAll()
-				.execute(records);
+				.execute(
+					records.map((record) => ({
+						...record,
+						regionKey: record.regionId ?? `full:${record.mediaId}`,
+					})),
+				);
 			this.writeOperationsSinceOptimize++;
 			if (this.writeOperationsSinceOptimize >= AUTO_OPTIMIZE_WRITE_OPERATIONS) {
 				await table.optimize();
@@ -273,6 +395,33 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 		});
 	}
 
+	async deleteRegion(regionId: string): Promise<void> {
+		if (this.options.legacy) {
+			throw new CcipStoreUnsupportedOperationError("deleteRegion");
+		}
+		await this.serializeWrite(async () => {
+			const table = await this.table();
+			await table.delete(`regionId = '${escapeSqlString(regionId)}'`);
+		});
+	}
+
+	async deleteEmbedding(key: CcipEmbeddingKey): Promise<void> {
+		if (this.options.legacy) {
+			throw new CcipStoreUnsupportedOperationError("deleteEmbedding");
+		}
+		await this.serializeWrite(async () => {
+			const table = await this.table();
+			await table.delete(
+				[
+					`regionId = '${escapeSqlString(key.regionId)}'`,
+					`model = '${escapeSqlString(key.model)}'`,
+					`embeddingVersion = ${key.embeddingVersion}`,
+					`preprocessingProfile = '${escapeSqlString(key.preprocessingProfile)}'`,
+				].join(" AND "),
+			);
+		});
+	}
+
 	async deleteBySource(mediaSourceId: string): Promise<void> {
 		await this.serializeWrite(async () => {
 			const table = await this.table();
@@ -283,7 +432,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 	async listMediaIds(query?: CcipVectorQuery): Promise<string[]> {
 		const table = await this.table();
 		const tableQuery = table.query().select(["mediaId"]);
-		const predicates = queryPredicates(query);
+		const predicates = queryPredicates(query, !this.options.legacy);
 		if (predicates.length > 0) {
 			tableQuery.where(predicates.join(" AND "));
 		}
@@ -297,7 +446,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 	async list(query?: CcipVectorQuery): Promise<CcipVectorRecord[]> {
 		const table = await this.table();
 		const tableQuery = table.query();
-		const predicates = queryPredicates(query);
+		const predicates = queryPredicates(query, !this.options.legacy);
 		if (predicates.length > 0) {
 			tableQuery.where(predicates.join(" AND "));
 		}
@@ -318,7 +467,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 			throw new Error("batchSize must be a positive integer");
 		}
 		const table = await this.table();
-		const predicates = queryPredicates(query);
+		const predicates = queryPredicates(query, !this.options.legacy);
 		let offset = 0;
 		while (true) {
 			const tableQuery = table
@@ -356,7 +505,7 @@ export class LanceDbCcipVectorStore implements ICcipVectorStore {
 			.vectorSearch(vector)
 			.distanceType("cosine")
 			.limit(limit);
-		const predicates = queryPredicates(query);
+		const predicates = queryPredicates(query, !this.options.legacy);
 		if (predicates.length > 0) {
 			tableQuery.where(predicates.join(" AND "));
 		}

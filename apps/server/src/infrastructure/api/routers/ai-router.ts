@@ -6,7 +6,8 @@ import {
 	CCIP_MODEL,
 } from "@solid-imager/application/services/ccip-vector-service";
 import { createClient } from "@solid-imager/client";
-
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
+import { getSafeJobErrorMessage } from "@solid-imager/core/domain/jobs/schemas";
 import {
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
@@ -31,6 +32,7 @@ import { services } from "~/application/registry";
 import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { taggingService } from "~/application/services/tagging-service";
 import type { appRouter } from "~/domain/shared/api-contract";
+import { createRemoteCropRequest } from "~/infrastructure/ai/remote-crop-request";
 import { db } from "~/infrastructure/db";
 import {
 	jobs,
@@ -40,6 +42,7 @@ import {
 	medias,
 	mediaTags,
 } from "~/infrastructure/db/schema";
+import { ccipJobTargetsMedia } from "~/infrastructure/jobs/ccip-job-query";
 import { logger } from "~/infrastructure/logger";
 
 function isRemoteServerLocal(url: string): boolean {
@@ -102,10 +105,12 @@ async function callRemoteCrop(
 	fileBuffer: Buffer,
 	fileName: string,
 	timeoutMs: number,
+	transparent: boolean,
 ): Promise<unknown> {
-	const file = new File([new Uint8Array(fileBuffer)], fileName);
 	const remoteOrpc = createRemoteOprcClient(remoteUrl, timeoutMs);
-	return remoteOrpc.ai.detectAndCropCharacters({ file });
+	return remoteOrpc.ai.detectAndCropCharacters(
+		createRemoteCropRequest(fileBuffer, fileName, transparent),
+	);
 }
 
 async function cropDetection(
@@ -455,29 +460,29 @@ export const aiRouter = {
 			const { mediaSourceId, force, batchSize } = input;
 			const jobRepo = services.getJobRepository();
 
-			const parentJob = await jobRepo.create({
-				type: "bulk_tagging_parent",
-				status: "in_progress",
-				mediaSourceId,
-				payload: {
-					total: 0,
-					processed: 0,
-					failed: 0,
+			const parentJob = await jobRepo.createParentWithDispatch(
+				{
+					type: "bulk_tagging_parent",
+					status: "in_progress",
 					mediaSourceId,
-					force,
+					payload: {
+						total: 0,
+						processed: 0,
+						failed: 0,
+						mediaSourceId,
+						force,
+					},
 				},
-			});
-
-			await jobRepo.create({
-				type: "bulk_tagging_dispatch",
-				mediaSourceId,
-				parentId: parentJob.id,
-				payload: {
+				{
+					type: "bulk_tagging_dispatch",
 					mediaSourceId,
-					force,
-					...(batchSize !== undefined ? { batchSize } : {}),
+					payload: {
+						mediaSourceId,
+						force,
+						...(batchSize !== undefined ? { batchSize } : {}),
+					},
 				},
-			});
+			);
 
 			logger.info(
 				{
@@ -510,7 +515,7 @@ export const aiRouter = {
 					where: and(
 						eq(jobs.type, "extract_ccip_vector"),
 						eq(jobs.mediaSourceId, input.mediaSourceId),
-						sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
+						ccipJobTargetsMedia(input.mediaId),
 					),
 					orderBy: desc(jobs.createdAt),
 				});
@@ -527,7 +532,9 @@ export const aiRouter = {
 					return {
 						status: "failed" as const,
 						jobId: latestJob.id,
-						error: latestJob.error ?? "CCIP vector extraction failed",
+						error:
+							getSafeJobErrorMessage(latestJob.errorCode) ??
+							"CCIP vector extraction failed",
 					};
 				}
 				return status;
@@ -551,9 +558,37 @@ export const aiRouter = {
 		.input(ccipExtractionRequestSchema)
 		.output(startCcipExtractionResponseSchema)
 		.handler(async ({ input }) => {
+			const [media] = await db
+				.select({
+					id: medias.id,
+					mediaSourceId: medias.mediaSourceId,
+					modifiedAt: medias.modifiedAt,
+					fileSize: medias.fileSize,
+					width: medias.width,
+					height: medias.height,
+				})
+				.from(medias)
+				.where(
+					and(
+						eq(medias.id, input.mediaId),
+						eq(medias.mediaSourceId, input.mediaSourceId),
+					),
+				)
+				.limit(1);
+			if (!media) throw new Error("Media not found");
+			const inputRevision = await createMediaSourceRevision({
+				mediaId: media.id,
+				mediaSourceId: media.mediaSourceId,
+				modifiedAt: media.modifiedAt,
+				fileSize: media.fileSize,
+				width: media.width,
+				height: media.height,
+			});
 			const job = await services.getJobRepository().create({
 				type: "extract_ccip_vector",
 				mediaSourceId: input.mediaSourceId,
+				targetId: input.mediaId,
+				inputRevision,
 				payload: { mediaId: input.mediaId, force: input.force },
 			});
 			logger.info(
@@ -617,27 +652,28 @@ export const aiRouter = {
 		.handler(async ({ input }) => {
 			const { mediaSourceId, force } = input;
 			const jobRepo = services.getJobRepository();
-			const parent = await jobRepo.create({
-				type: "batch_ccip_parent",
-				status: "in_progress",
-				mediaSourceId,
-				payload: {
-					total: 0,
-					processed: 0,
-					failed: 0,
+			const parent = await jobRepo.createParentWithDispatch(
+				{
+					type: "batch_ccip_parent",
+					status: "in_progress",
 					mediaSourceId,
-					force,
+					payload: {
+						total: 0,
+						processed: 0,
+						failed: 0,
+						mediaSourceId,
+						force,
+					},
 				},
-			});
-			await jobRepo.create({
-				type: "batch_ccip_dispatch",
-				mediaSourceId,
-				parentId: parent.id,
-				payload: {
+				{
+					type: "batch_ccip_dispatch",
 					mediaSourceId,
-					force,
+					payload: {
+						mediaSourceId,
+						force,
+					},
 				},
-			});
+			);
 			logger.info(
 				{
 					jobId: parent.id,
@@ -666,6 +702,7 @@ export const aiRouter = {
 				}),
 			]),
 		)
+		.output(detectAndCropResponseSchema)
 		.handler(async ({ input }) => {
 			const startedAt = Date.now();
 			const logContext =
@@ -710,7 +747,10 @@ export const aiRouter = {
 							},
 							"Character detection and cropping completed",
 						);
-						return { detections: resultDetections };
+						return {
+							mode: "file-preview" as const,
+							detections: resultDetections,
+						};
 					} finally {
 						await Bun.file(tmpPath)
 							.delete()
@@ -754,8 +794,24 @@ export const aiRouter = {
 							fileBuffer,
 							path.basename(fullPath),
 							config.ai.timeoutMs,
+							transparent,
 						),
 					);
+					if (result.mode !== "file-preview") {
+						throw new Error(
+							"Remote crop service returned an invalid response mode",
+						);
+					}
+					const regions = await services
+						.getMediaRegionService()
+						.persistDetections({
+							mediaId,
+							detections: result.detections.map((detection) => ({
+								bbox: detection.bbox,
+								label: detection.label,
+								score: detection.score,
+							})),
+						});
 					logger.info(
 						{
 							...logContext,
@@ -765,28 +821,26 @@ export const aiRouter = {
 						},
 						"Character detection and cropping completed",
 					);
-					return result;
+					return { mode: "media-backed" as const, regions };
 				}
 
 				const { detectPerson } = await import("dghs-imgutils-rs");
 				const detections = await detectPerson(fullPath);
 
-				const resultDetections = await Promise.all(
-					detections.map(async (det, idx) =>
-						cropDetection(fullPath, det, idx, transparent),
-					),
-				);
+				const regions = await services
+					.getMediaRegionService()
+					.persistDetections({ mediaId, detections });
 
 				logger.info(
 					{
 						...logContext,
 						execution: "local",
-						detectionCount: resultDetections.length,
+						detectionCount: regions.length,
 						durationMs: Date.now() - startedAt,
 					},
 					"Character detection and cropping completed",
 				);
-				return { detections: resultDetections };
+				return { mode: "media-backed" as const, regions };
 			} catch (error) {
 				logger.error(
 					{

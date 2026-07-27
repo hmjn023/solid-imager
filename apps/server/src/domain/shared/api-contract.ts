@@ -8,6 +8,7 @@ import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
 import { importsRouter } from "~/infrastructure/api/routers/imports-router";
 import { ipsRouter } from "~/infrastructure/api/routers/ips-router";
 import { jobsRouter } from "~/infrastructure/api/routers/jobs-router";
+import { mediaRegionsRouter } from "~/infrastructure/api/routers/media-regions-router";
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { presetsRouter } from "~/infrastructure/api/routers/presets-router";
 import { projectsRouter } from "~/infrastructure/api/routers/projects-router";
@@ -24,6 +25,7 @@ export const appRouter = {
 	sources: sourcesRouter,
 	tags: tagsRouter,
 	media: mediaRouter,
+	mediaRegions: mediaRegionsRouter,
 	categories: categoriesRouter,
 	projects: projectsRouter,
 	characters: charactersRouter,

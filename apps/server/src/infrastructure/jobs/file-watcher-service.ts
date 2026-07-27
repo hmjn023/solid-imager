@@ -5,6 +5,7 @@
  */
 
 import path from "node:path";
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
 import { services } from "~/application/registry";
 import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
@@ -148,9 +149,19 @@ async function handleFileChanged(
 
 		// Queue processMedia job for thumbnail regeneration and metadata re-extraction
 		const jobRepo = services.getJobRepository();
+		const inputRevision = await createMediaSourceRevision({
+			mediaId: media.id,
+			mediaSourceId,
+			modifiedAt: fileMetadata.modifiedAt,
+			fileSize: fileMetadata.size,
+			width: fileMetadata.width,
+			height: fileMetadata.height,
+		});
 		await jobRepo.create({
 			type: "processMedia",
 			mediaSourceId,
+			targetId: media.id,
+			inputRevision,
 			payload: {
 				mediaId: media.id,
 				sourcePath: basePath,

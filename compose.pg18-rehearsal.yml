@@ -1,0 +1,23 @@
+services:
+  db-pg18-rehearsal:
+    image: pgvector/pgvector:0.8.5-pg18-bookworm@sha256:12a379b47ad65289572ea0756efc11b7c241a6662833e8af7038cd3b73d647e0
+    restart: "no"
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_DATABASE:-solid-imager}
+    volumes:
+      - pg18-rehearsal-data:/var/lib/postgresql
+    ports:
+      - ${PG18_REHEARSAL_PORT:-55432}:5432
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pg18-rehearsal-data:
+    name: solid-imager-pg18-rehearsal-data
