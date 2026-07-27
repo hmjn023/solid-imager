@@ -15,11 +15,14 @@
     "check": "vp run check",
     "format": "vp run format",
     "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
-    "typecheck": "bun --filter '*' typecheck"
+    "typecheck": "bun --filter '*' typecheck",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@tanstack/cli": "^0.69.4",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
     "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
     "typescript": "^7.0.0",
     "vite-plus": "^0.1.24"
@@ -34,5 +37,8 @@
     "ffmpeg-static",
     "dghs-imgutils-rs",
     "sharp"
-  ]
+  ],
+  "lint-staged": {
+    "{apps,packages}/**/src/**/*.{js,jsx,json,jsonc,ts,tsx}": "biome check --write --unsafe"
+  }
 }
