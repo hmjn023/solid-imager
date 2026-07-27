@@ -6,8 +6,13 @@ import type { ITaggingService } from "@solid-imager/application/ports/tagging-se
 import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
+	CCIP_PREPROCESSING_PROFILE,
 	CcipVectorService,
 } from "@solid-imager/application/services/ccip-vector-service";
+import {
+	createCcipEmbeddingInputRevision,
+	createMediaSourceRevision,
+} from "@solid-imager/core/domain/media/revision";
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type {
@@ -15,7 +20,10 @@ import type {
 	SourceRepository,
 } from "@solid-imager/core/domain/repositories/source-repository";
 import { afterEach, describe, expect, it } from "vite-plus/test";
-import { LanceDbCcipVectorStore } from "~/infrastructure/ai/lancedb-ccip-vector-store";
+import {
+	CcipStoreUnsupportedOperationError,
+	LanceDbCcipVectorStore,
+} from "~/infrastructure/ai/lancedb-ccip-vector-store";
 
 const SOURCE_A_ID = "11111111-1111-4111-8111-111111111111";
 const SOURCE_B_ID = "22222222-2222-4222-8222-222222222222";
@@ -29,7 +37,36 @@ const EXTRACTED_AT = new Date("2026-07-02T00:00:00.000Z");
 const READ_QUERY = {
 	model: CCIP_MODEL,
 	embeddingVersion: CCIP_EMBEDDING_VERSION,
+	preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
 };
+
+const revisionByMediaId = new Map<string, string>(
+	await Promise.all(
+		[
+			[ANCHOR_MEDIA_ID, SOURCE_A_ID],
+			[NEAR_MEDIA_ID, SOURCE_A_ID],
+			[FAR_MEDIA_ID, SOURCE_A_ID],
+			[OTHER_SOURCE_MEDIA_ID, SOURCE_B_ID],
+		].map(async ([mediaId, mediaSourceId]): Promise<[string, string]> => {
+			return [
+				mediaId,
+				await createCcipEmbeddingInputRevision({
+					sourceRevision: await createMediaSourceRevision({
+						mediaId,
+						mediaSourceId,
+						modifiedAt: MODIFIED_AT,
+						fileSize: 1,
+						width: 256,
+						height: 256,
+					}),
+					model: CCIP_MODEL,
+					embeddingVersion: CCIP_EMBEDDING_VERSION,
+					preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+				}),
+			];
+		}),
+	),
+);
 
 function vector(first: number, second = 0): number[] {
 	return Array.from({ length: 768 }, (_, index) => {
@@ -74,13 +111,19 @@ function createRecord(
 	mediaSourceId: string,
 	feature: number[],
 ): CcipVectorRecord {
+	const inputRevision = revisionByMediaId.get(mediaId);
+	if (!inputRevision) throw new Error(`Missing revision fixture: ${mediaId}`);
 	return {
+		regionId: mediaId,
+		regionKind: "full",
 		mediaId,
 		mediaSourceId,
 		vector: feature,
 		model: CCIP_MODEL,
 		embeddingVersion: CCIP_EMBEDDING_VERSION,
 		mediaModifiedAt: MODIFIED_AT,
+		inputRevision,
+		preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
 		extractedAt: EXTRACTED_AT,
 	};
 }
@@ -135,10 +178,14 @@ describe("LanceDbCcipVectorStore integration", () => {
 		const metadata = await store.getMetadataMany([ANCHOR_MEDIA_ID], READ_QUERY);
 		expect(metadata.get(ANCHOR_MEDIA_ID)).toEqual({
 			mediaId: anchor.mediaId,
+			regionId: anchor.regionId,
+			regionKind: anchor.regionKind,
 			mediaSourceId: anchor.mediaSourceId,
 			model: anchor.model,
 			embeddingVersion: anchor.embeddingVersion,
 			mediaModifiedAt: anchor.mediaModifiedAt,
+			inputRevision: anchor.inputRevision,
+			preprocessingProfile: anchor.preprocessingProfile,
 			extractedAt: anchor.extractedAt,
 		});
 
@@ -269,5 +316,62 @@ describe("LanceDbCcipVectorStore integration", () => {
 			NEAR_MEDIA_ID,
 			FAR_MEDIA_ID,
 		]);
+	});
+
+	it("keeps extraction, currentness checks, and deletion compatible with the legacy schema", async () => {
+		directory = await mkdtemp(
+			path.join(tmpdir(), "solid-imager-ccip-lancedb-legacy-"),
+		);
+		const vectorStore = new LanceDbCcipVectorStore(directory, { legacy: true });
+		const media = createMedia(ANCHOR_MEDIA_ID, SOURCE_A_ID);
+		const source = createSource(SOURCE_A_ID);
+		let extractionCalls = 0;
+		const taggingService: ITaggingService = {
+			...createTaggingService(),
+			getCcipFeatureForMedia: async () => {
+				extractionCalls += 1;
+				return { feature: vector(1) };
+			},
+		};
+		const service = new CcipVectorService({
+			mediaRepository: {
+				findById: async (id: string) => (id === media.id ? media : null),
+			} as IMediaRepository,
+			sourceRepository: {
+				findById: async (id: string) => (id === source.id ? source : null),
+			} as SourceRepository,
+			taggingService,
+			vectorStore,
+		});
+
+		const extracted = await service.extract(source.id, media.id);
+		expect(extracted.skipped).toBe(false);
+		expect(extractionCalls).toBe(1);
+		const stored = await vectorStore.get(media.id, READ_QUERY);
+		expect(stored).toMatchObject({
+			regionId: null,
+			regionKind: "full",
+			mediaId: media.id,
+			inputRevision: "legacy-unversioned",
+			preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+		});
+
+		const second = await service.extract(source.id, media.id);
+		expect(second.skipped).toBe(true);
+		expect(extractionCalls).toBe(1);
+		expect(await service.getStatus(source.id, media.id)).toMatchObject({
+			status: "ready",
+		});
+		await expect(
+			vectorStore.deleteEmbedding({
+				regionId: media.id,
+				model: CCIP_MODEL,
+				embeddingVersion: CCIP_EMBEDDING_VERSION,
+				preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+			}),
+		).rejects.toBeInstanceOf(CcipStoreUnsupportedOperationError);
+
+		await service.delete(media.id);
+		expect(await vectorStore.get(media.id, READ_QUERY)).toBeNull();
 	});
 });

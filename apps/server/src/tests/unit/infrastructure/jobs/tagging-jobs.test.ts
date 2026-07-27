@@ -17,6 +17,7 @@ const jobRepository: IJobRepository = {
 	create: vi.fn(),
 	createIfUnique: (...args: Parameters<typeof createIfUnique>) =>
 		createIfUnique(...args),
+	createParentWithDispatch: vi.fn(),
 	findById: (...args: Parameters<typeof findById>) => findById(...args),
 	findPending: vi.fn(),
 	markAsInProgress: vi.fn(),
@@ -28,6 +29,12 @@ const jobRepository: IJobRepository = {
 	incrementFailedCount: (...args: Parameters<typeof incrementFailedCount>) =>
 		incrementFailedCount(...args),
 	claimPending: vi.fn(),
+	heartbeatClaim: vi.fn(),
+	completeClaim: vi.fn(),
+	failClaim: vi.fn(),
+	releaseClaim: vi.fn(),
+	recomputeBatchProgress: vi.fn(),
+	requeueExpiredLeases: vi.fn(),
 	requeueStaleInProgress: vi.fn(),
 };
 
@@ -44,9 +51,7 @@ vi.mock("~/application/services/tagging-service", () => ({
 	},
 }));
 
-vi.mock("~/infrastructure/db", () => ({
-	db: {},
-}));
+vi.mock("~/infrastructure/db", () => ({ db: {} }));
 
 vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
 	RealtimeEventBus: {
@@ -55,12 +60,24 @@ vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
 }));
 
 vi.mock("~/infrastructure/logger", () => ({
-	logger: {
-		error: vi.fn(),
-		info: vi.fn(),
-		warn: vi.fn(),
-	},
+	logger: { error: vi.fn(), info: vi.fn(), warn: vi.fn() },
 }));
+
+const childJob = {
+	id: "00000000-0000-4000-8000-000000000020",
+	type: "auto_tagging",
+	mediaSourceId: "00000000-0000-4000-8000-000000000001",
+	status: "in_progress" as const,
+	payload: {
+		mediaId: "00000000-0000-4000-8000-000000000030",
+		force: false,
+	},
+	result: null,
+	error: null,
+	createdAt: new Date(),
+	updatedAt: new Date(),
+	parentId: "00000000-0000-4000-8000-000000000010",
+};
 
 describe("processAutoTaggingJob", () => {
 	beforeEach(() => {
@@ -72,142 +89,63 @@ describe("processAutoTaggingJob", () => {
 			ips_mapping: {},
 		});
 		createIfUnique.mockResolvedValue(null);
-		incrementProgress.mockResolvedValue(null);
-		incrementFailedCount.mockResolvedValue(null);
 	});
 
-	it("does not re-publish parent progress when the child was already counted", async () => {
-		await processAutoTaggingJob({
-			id: "00000000-0000-4000-8000-000000000020",
-			type: "auto_tagging",
-			mediaSourceId: "00000000-0000-4000-8000-000000000001",
-			status: "in_progress",
-			payload: {
-				mediaId: "00000000-0000-4000-8000-000000000030",
-				force: false,
-			},
-			result: null,
-			error: null,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-			parentId: "00000000-0000-4000-8000-000000000010",
-		});
+	it("delegates parent accounting to the worker after the child is terminal", async () => {
+		await processAutoTaggingJob(childJob);
 
-		expect(incrementProgress).toHaveBeenCalledWith(
-			"00000000-0000-4000-8000-000000000010",
-			"00000000-0000-4000-8000-000000000020",
+		expect(getTagsForMedia).toHaveBeenCalledWith(
+			childJob.mediaSourceId,
+			childJob.payload.mediaId,
+			{ signal: undefined, skipCache: false },
 		);
+		expect(createIfUnique).toHaveBeenCalledWith({
+			type: "sync_lancedb_delta",
+			mediaSourceId: childJob.mediaSourceId,
+			payload: {
+				reason: "auto_tagging",
+				mediaIds: [childJob.payload.mediaId],
+			},
+		});
+		expect(incrementProgress).not.toHaveBeenCalled();
+		expect(incrementFailedCount).not.toHaveBeenCalled();
 		expect(findById).not.toHaveBeenCalled();
+		expect(update).not.toHaveBeenCalled();
 		expect(publishJob).not.toHaveBeenCalled();
 	});
 
-	it("publishes parent progress and completes the parent once", async () => {
-		incrementProgress.mockResolvedValue({
-			processed: 1,
-			failed: 0,
-			total: 1,
-		});
-
-		await processAutoTaggingJob({
-			id: "00000000-0000-4000-8000-000000000020",
-			type: "auto_tagging",
-			mediaSourceId: "00000000-0000-4000-8000-000000000001",
-			status: "in_progress",
-			payload: {
-				mediaId: "00000000-0000-4000-8000-000000000030",
-				force: false,
-			},
-			result: null,
-			error: null,
-			createdAt: new Date(),
-			updatedAt: new Date(),
-			parentId: "00000000-0000-4000-8000-000000000010",
-		});
-
-		expect(incrementProgress).toHaveBeenCalledWith(
-			"00000000-0000-4000-8000-000000000010",
-			"00000000-0000-4000-8000-000000000020",
+	it("propagates the worker abort signal into the AI operation", async () => {
+		const controller = new AbortController();
+		await processAutoTaggingJob(
+			{ ...childJob, payload: { ...childJob.payload, force: true } },
+			controller.signal,
 		);
-		expect(publishJob).toHaveBeenCalledWith("job-progress", {
-			jobId: "00000000-0000-4000-8000-000000000010",
-			processed: 1,
-			total: 1,
-		});
-		expect(update).toHaveBeenCalledWith(
-			"00000000-0000-4000-8000-000000000010",
-			{
-				status: "completed",
-			},
+
+		expect(getTagsForMedia).toHaveBeenCalledWith(
+			childJob.mediaSourceId,
+			childJob.payload.mediaId,
+			{ signal: controller.signal, skipCache: true },
 		);
-		expect(publishJob).toHaveBeenCalledWith("job-completed", {
-			jobId: "00000000-0000-4000-8000-000000000010",
-			message: "Batch tagging completed",
-		});
 	});
 
-	it("increments failed count and marks parent failed when all children are done", async () => {
+	it("rethrows failures without mutating parent progress from the child handler", async () => {
 		getTagsForMedia.mockRejectedValue(new Error("tagging error"));
-		incrementFailedCount.mockResolvedValue({
-			processed: 0,
-			failed: 1,
-			total: 1,
-		});
 
-		await expect(
-			processAutoTaggingJob({
-				id: "00000000-0000-4000-8000-000000000020",
-				type: "auto_tagging",
-				mediaSourceId: "00000000-0000-4000-8000-000000000001",
-				status: "in_progress",
-				payload: {
-					mediaId: "00000000-0000-4000-8000-000000000030",
-					force: false,
-				},
-				result: null,
-				error: null,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				parentId: "00000000-0000-4000-8000-000000000010",
-			}),
-		).rejects.toThrow("tagging error");
-
-		expect(incrementFailedCount).toHaveBeenCalledWith(
-			"00000000-0000-4000-8000-000000000010",
-			"00000000-0000-4000-8000-000000000020",
-		);
-		expect(update).toHaveBeenCalledWith(
-			"00000000-0000-4000-8000-000000000010",
-			{
-				status: "failed",
-			},
-		);
-		expect(publishJob).toHaveBeenCalledWith("job-failed", {
-			jobId: "00000000-0000-4000-8000-000000000010",
-			error: "1 child job(s) failed",
-		});
+		await expect(processAutoTaggingJob(childJob)).rejects.toThrow("tagging error");
+		expect(incrementFailedCount).not.toHaveBeenCalled();
+		expect(incrementProgress).not.toHaveBeenCalled();
+		expect(update).not.toHaveBeenCalled();
+		expect(publishJob).not.toHaveBeenCalled();
 	});
 });
 
 describe("processBulkTaggingDispatchJob", () => {
-	beforeEach(() => {
-		vi.clearAllMocks();
-	});
-
 	it("throws when parentId is missing", async () => {
 		await expect(
 			processBulkTaggingDispatchJob({
-				id: "00000000-0000-4000-8000-000000000100",
+				...childJob,
 				type: "bulk_tagging_dispatch",
-				mediaSourceId: "00000000-0000-4000-8000-000000000001",
-				status: "in_progress",
-				payload: {
-					mediaSourceId: "00000000-0000-4000-8000-000000000001",
-					force: false,
-				},
-				result: null,
-				error: null,
-				createdAt: new Date(),
-				updatedAt: new Date(),
+				payload: { mediaSourceId: childJob.mediaSourceId, force: false },
 				parentId: null,
 			}),
 		).rejects.toThrow("bulk_tagging_dispatch requires parentId");

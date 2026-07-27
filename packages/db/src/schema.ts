@@ -107,6 +107,7 @@ export const jobStatusEnum = pgEnum("job_status", [
 	"in_progress",
 	"completed",
 	"failed",
+	"cancelled",
 ]);
 /**
  * Enum for media relation types.
@@ -220,7 +221,15 @@ export const mediaRegions = pgTable(
 		width: real("width"),
 		height: real("height"),
 		sourceModifiedAt: timestamp("source_modified_at").notNull(),
+		sourceWidth: integer("source_width").notNull(),
+		sourceHeight: integer("source_height").notNull(),
+		sourceRevision: text("source_revision").notNull(),
+		regionRevision: text("region_revision").notNull(),
+		label: text("label"),
+		manualReason: text("manual_reason"),
+		detectionKey: text("detection_key"),
 		detector: text("detector"),
+		detectorModel: text("detector_model"),
 		detectorVersion: text("detector_version"),
 		score: real("score"),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -231,6 +240,9 @@ export const mediaRegions = pgTable(
 		oneFullRegionPerMedia: uniqueIndex("uq_media_regions_full_media_id")
 			.on(table.mediaId)
 			.where(sql`${table.kind} = 'full'`),
+		detectionKeyUnique: uniqueIndex("uq_media_regions_detection_key")
+			.on(table.mediaId, table.detectionKey)
+			.where(sql`${table.detectionKey} IS NOT NULL`),
 		bboxByKind: check(
 			"media_regions_bbox_by_kind",
 			sql`(
@@ -244,6 +256,10 @@ export const mediaRegions = pgTable(
 		scoreRange: check(
 			"media_regions_score_range",
 			sql`${table.score} IS NULL OR (${table.score} >= 0 AND ${table.score} <= 1)`,
+		),
+		sourceDimensionsPositive: check(
+			"media_regions_source_dimensions_positive",
+			sql`${table.sourceWidth} > 0 AND ${table.sourceHeight} > 0`,
 		),
 	}),
 );
@@ -263,6 +279,10 @@ export const ccipEmbeddings = pgTable(
 		model: text("model").notNull(),
 		embeddingVersion: integer("embedding_version").notNull(),
 		mediaModifiedAt: timestamp("media_modified_at").notNull(),
+		inputRevision: text("input_revision").notNull(),
+		preprocessingProfile: text("preprocessing_profile")
+			.notNull()
+			.default("dghs-imgutils-rs/full-image-default/v1"),
 		extractedAt: timestamp("extracted_at").notNull(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -270,11 +290,13 @@ export const ccipEmbeddings = pgTable(
 	(table) => ({
 		regionModelVersionUnique: unique(
 			"uq_ccip_embeddings_region_model_version",
-		).on(table.regionId, table.model, table.embeddingVersion),
+		).on(
+			table.regionId,
+			table.model,
+			table.embeddingVersion,
+			table.preprocessingProfile,
+		),
 		regionIdIndex: index("idx_ccip_embeddings_region_id").on(table.regionId),
-		embeddingCosineIndex: index("idx_ccip_embeddings_embedding_cosine")
-			.using("hnsw", table.embedding.op("vector_cosine_ops"))
-			.with({ m: 16, ef_construction: 64 }),
 	}),
 );
 
@@ -728,6 +750,7 @@ export const lanceDbSyncDirty = pgTable(
 			.references(() => mediaSources.id, { onDelete: "cascade" }),
 		mediaId: uuid("media_id").notNull(),
 		operation: text("operation").notNull().default("upsert"),
+		generation: integer("generation").notNull().default(0),
 		attempts: integer("attempts").notNull().default(0),
 		lastError: text("last_error"),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -830,6 +853,12 @@ export const mediaRelationsTable = pgTable(
 		orderIndex: integer("order_index"),
 		/** 追加情報（差分内容の説明等）をJSON形式で保存 */
 		metadata: jsonb("metadata"),
+		/** Region used to create this derivative, retained only while it exists. */
+		sourceRegionId: uuid("source_region_id").references(() => mediaRegions.id, {
+			onDelete: "set null",
+		}),
+		/** Stable idempotency key for materialized region derivatives. */
+		derivationKey: text("derivation_key"),
 		/** 作成日時 */
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
@@ -843,6 +872,12 @@ export const mediaRelationsTable = pgTable(
 			table.childMediaId,
 		),
 		relationTypeIndex: index("idx_media_relations_type").on(table.relationType),
+		sourceRegionIdIndex: index("idx_media_relations_source_region").on(
+			table.sourceRegionId,
+		),
+		derivationKeyUnique: uniqueIndex("uq_media_relations_derivation_key")
+			.on(table.derivationKey)
+			.where(sql`${table.derivationKey} IS NOT NULL`),
 	}),
 );
 
@@ -1028,6 +1063,26 @@ export const jobs = pgTable(
 		}),
 		/** ジョブのステータス */
 		status: jobStatusEnum("status").notNull().default("pending"),
+		/** Worker queue selected by the typed job registry. */
+		queueName: text("queue_name"),
+		/** Logical entity targeted by this job. */
+		targetId: text("target_id"),
+		/** Revision of the input that this job is allowed to publish. */
+		inputRevision: text("input_revision"),
+		/** Prevents duplicate pending/running work for the same logical request. */
+		dedupeKey: text("dedupe_key"),
+		/** Prevents conflicting work from running at the same time. */
+		concurrencyKey: text("concurrency_key"),
+		/** Earliest instant at which a worker may claim this job. */
+		availableAt: timestamp("available_at").notNull().defaultNow(),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		maxAttempts: integer("max_attempts").notNull().default(5),
+		leaseDurationMs: integer("lease_duration_ms").notNull().default(300_000),
+		claimToken: uuid("claim_token"),
+		claimedBy: text("claimed_by"),
+		claimedAt: timestamp("claimed_at"),
+		heartbeatAt: timestamp("heartbeat_at"),
+		errorCode: text("error_code"),
 		/** ジョブの入力パラメータ (JSON) */
 		payload: jsonb("payload"),
 		/** ジョブの実行結果 (JSON) */
@@ -1068,6 +1123,42 @@ export const jobs = pgTable(
 					AND ${table.type} IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
 					AND ${table.mediaSourceId} IS NOT NULL`,
 			),
+		claimIndex: index("idx_jobs_claim")
+			.on(table.queueName, table.availableAt, table.createdAt, table.id)
+			.where(sql`${table.status} = 'pending'`),
+		staleLeaseIndex: index("idx_jobs_stale_lease")
+			.on(table.heartbeatAt, table.claimedAt)
+			.where(sql`${table.status} = 'in_progress'`),
+		parentStatusIndex: index("idx_jobs_parent_status").on(
+			table.parentId,
+			table.status,
+		),
+		statusUpdatedIndex: index("idx_jobs_status_updated").on(
+			table.status,
+			table.updatedAt,
+		),
+		activeDedupeUnique: uniqueIndex("uq_jobs_active_dedupe")
+			.on(table.dedupeKey)
+			.where(
+				sql`${table.dedupeKey} IS NOT NULL AND ${table.status} IN ('pending', 'in_progress')`,
+			),
+		runningConcurrencyUnique: uniqueIndex("uq_jobs_running_concurrency")
+			.on(table.concurrencyKey)
+			.where(
+				sql`${table.concurrencyKey} IS NOT NULL AND ${table.status} = 'in_progress'`,
+			),
+		attemptCountNonnegative: check(
+			"jobs_attempt_count_nonnegative",
+			sql`${table.attemptCount} >= 0`,
+		),
+		maxAttemptsPositive: check(
+			"jobs_max_attempts_positive",
+			sql`${table.maxAttempts} > 0`,
+		),
+		leaseDurationPositive: check(
+			"jobs_lease_duration_positive",
+			sql`${table.leaseDurationMs} > 0`,
+		),
 	}),
 );
 

@@ -1,4 +1,5 @@
 import { eventIterator, os } from "@orpc/server";
+import { prepareJob } from "@solid-imager/core/domain/jobs/registry";
 import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import {
 	type ImportEvent,
@@ -108,7 +109,7 @@ export const bulkAddHandler = async ({
 		const ChunkSize = 100;
 		for (let i = 0; i < jobValues.length; i += ChunkSize) {
 			const chunk = jobValues.slice(i, i + ChunkSize);
-			await db.insert(jobs).values(chunk);
+			await db.insert(jobs).values(chunk.map(prepareJob)).onConflictDoNothing();
 		}
 		addedCount = importItems.length;
 

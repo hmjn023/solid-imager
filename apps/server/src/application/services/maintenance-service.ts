@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
@@ -308,9 +309,22 @@ export class MaintenanceService {
 					}
 
 					try {
+						const media = await this.mediaRepo.findById(item.id);
+						const inputRevision = media
+							? await createMediaSourceRevision({
+									mediaId: media.id,
+									mediaSourceId: media.mediaSourceId,
+									modifiedAt: media.modifiedAt,
+									fileSize: media.fileSize,
+									width: media.width,
+									height: media.height,
+								})
+							: null;
 						return await this.jobRepo.createIfUnique({
 							type: "processMedia",
 							mediaSourceId: item.mediaSourceId,
+							targetId: item.id,
+							inputRevision,
 							payload: {
 								mediaId: item.id,
 								sourcePath: basePath,

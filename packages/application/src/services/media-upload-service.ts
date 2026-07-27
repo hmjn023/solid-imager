@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { IMediaStorage } from "@solid-imager/core";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
 import {
 	type AddMediaRequest,
 	type Media,
@@ -133,9 +134,19 @@ export class MediaUploadService {
 			]);
 		}
 
+		const inputRevision = await createMediaSourceRevision({
+			mediaId: insertedMedia.id,
+			mediaSourceId: insertedMedia.mediaSourceId,
+			modifiedAt: insertedMedia.modifiedAt,
+			fileSize: insertedMedia.fileSize,
+			width: insertedMedia.width,
+			height: insertedMedia.height,
+		});
 		await this.jobRepo.create({
 			type: "processMedia",
 			mediaSourceId: validatedSourceId,
+			targetId: insertedMedia.id,
+			inputRevision,
 			payload: {
 				mediaId: insertedMedia.id,
 				sourcePath: basePath,
@@ -201,9 +212,21 @@ export class MediaUploadService {
 
 		if (newMediaItems.length > 0) {
 			for (const item of newMediaItems) {
+				const media = await this.mediaRepository.findById(item.id);
 				await this.jobRepo.create({
 					type: "processMedia",
 					mediaSourceId: validatedSourceId,
+					targetId: item.id,
+					inputRevision: media
+						? await createMediaSourceRevision({
+								mediaId: media.id,
+								mediaSourceId: media.mediaSourceId,
+								modifiedAt: media.modifiedAt,
+								fileSize: media.fileSize,
+								width: media.width,
+								height: media.height,
+							})
+						: null,
 					payload: {
 						mediaId: item.id,
 						sourcePath: directoryPath,

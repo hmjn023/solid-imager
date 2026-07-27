@@ -5,6 +5,11 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { prepareJob } from "@solid-imager/core/domain/jobs/registry";
+import type {
+	Job,
+	NewJob,
+} from "@solid-imager/core/domain/repositories/job-repository";
 import type {
 	AddMediaRequest,
 	DownloadItem,
@@ -17,7 +22,7 @@ import { hasStderr, isRecord } from "@solid-imager/core/utils/type-guards";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
-import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
+import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { logger } from "~/infrastructure/logger";
@@ -886,7 +891,7 @@ export async function queueDownloadJobs(
 	const BATCH_SIZE = 500;
 	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
 		const chunk = jobRows.slice(i, i + BATCH_SIZE);
-		await db.insert(jobs).values(chunk);
+		await db.insert(jobs).values(chunk.map(prepareJob)).onConflictDoNothing();
 	}
 
 	// Jobs are picked up by the worker automatically.

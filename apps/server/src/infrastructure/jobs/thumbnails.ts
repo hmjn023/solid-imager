@@ -1,12 +1,15 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import { prepareJob } from "@solid-imager/core/domain/jobs/registry";
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
+import type { NewJob } from "@solid-imager/core/domain/repositories/job-repository";
 import { services } from "~/application/registry";
 // import {
 //   selectMediaById,
 //   selectMediaBySourceId,
 // } from "~/infrastructure/db/queries/media"; // Removed
 import { db } from "~/infrastructure/db";
-import { jobs, type Media, type NewJob } from "~/infrastructure/db/schema";
+import { jobs, type Media } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository"; // Added
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
@@ -147,20 +150,31 @@ export async function generateThumbnailsForSource(
 	// Use processMedia job type for unified processing
 	const basePath = (mediaSource.connectionInfo as { path: string }).path;
 
-	const jobRows: NewJob[] = mediaItems.map((media) => ({
-		type: "processMedia",
-		mediaSourceId,
-		payload: {
-			mediaId: media.id,
-			sourcePath: basePath,
+	const jobRows: NewJob[] = await Promise.all(
+		mediaItems.map(async (media) => ({
 			type: "processMedia",
-		},
-	}));
+			mediaSourceId,
+			targetId: media.id,
+			inputRevision: await createMediaSourceRevision({
+				mediaId: media.id,
+				mediaSourceId: media.mediaSourceId,
+				modifiedAt: media.modifiedAt,
+				fileSize: media.fileSize,
+				width: media.width,
+				height: media.height,
+			}),
+			payload: {
+				mediaId: media.id,
+				sourcePath: basePath,
+				type: "processMedia",
+			},
+		})),
+	);
 	if (jobRows.length === 0) return 0;
 	const BATCH_SIZE = 500;
 	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
 		const chunk = jobRows.slice(i, i + BATCH_SIZE);
-		await db.insert(jobs).values(chunk);
+		await db.insert(jobs).values(chunk.map(prepareJob)).onConflictDoNothing();
 	}
 
 	// Jobs start automatically via worker

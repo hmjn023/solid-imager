@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { safeMediaRegionSchema } from "../media-regions/schemas";
 
 export const oppaiOracleResponseSchema = z.object({
 	general: z.record(z.string(), z.number()),
@@ -134,9 +135,20 @@ export const detectAndCropRequestSchema = z.object({
 	transparent: z.boolean().optional().default(false),
 });
 
-export const detectAndCropResponseSchema = z.object({
+export const filePreviewDetectAndCropResponseSchema = z.object({
+	mode: z.literal("file-preview"),
 	detections: z.array(characterCropSchema),
 });
+
+export const mediaBackedDetectAndCropResponseSchema = z.object({
+	mode: z.literal("media-backed"),
+	regions: z.array(safeMediaRegionSchema),
+});
+
+export const detectAndCropResponseSchema = z.discriminatedUnion("mode", [
+	filePreviewDetectAndCropResponseSchema,
+	mediaBackedDetectAndCropResponseSchema,
+]);
 
 export type DetectAndCropResponse = z.infer<typeof detectAndCropResponseSchema>;
 

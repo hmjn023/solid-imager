@@ -22,6 +22,20 @@ export class ResourceNotFoundError extends DomainError {
 
 export class ResourceConflictError extends DomainError {}
 
+export class MediaRegionRevisionConflictError extends ResourceConflictError {
+	constructor(regionId: string) {
+		super(`Media region ${regionId} was changed by another request.`);
+	}
+}
+
+export class StaleMediaRegionError extends ResourceConflictError {
+	constructor(regionId: string) {
+		super(
+			`Media region ${regionId} no longer matches the current source media revision.`,
+		);
+	}
+}
+
 export class ValidationError extends DomainError {}
 
 export class UnexpectedError extends DomainError {

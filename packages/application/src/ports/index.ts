@@ -17,6 +17,10 @@ export type {
 } from "./lancedb-dump-service";
 export type { IMediaProcessingService } from "./media-processing-service";
 export type {
+	IMediaRegionRenderer,
+	RenderedMediaRegion,
+} from "./media-region-service";
+export type {
 	DeferredActions,
 	DeferredJob,
 	DeferredJobs,

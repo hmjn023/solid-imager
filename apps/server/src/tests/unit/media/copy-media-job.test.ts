@@ -229,6 +229,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 			width: 800,
 			height: 600,
 			fileSize: 1024,
+			modifiedAt: new Date("2026-01-01T00:00:00.000Z"),
 		};
 
 		// Mock MediaRepository.findById (used by MediaService.copyMedia)

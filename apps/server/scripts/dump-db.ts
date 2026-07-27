@@ -1,49 +1,121 @@
 /// <reference types="bun-types" />
-import { $ } from "bun";
-import { mkdir } from "node:fs/promises";
+import { access, mkdir, rename, rm, stat } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
+import { logger } from "../src/infrastructure/logger";
 
-// Load environment variables
-const DB_USER = process.env.DB_USER || "postgres";
-const DB_DATABASE = process.env.DB_DATABASE || "solid-imager";
-const CONTAINER_NAME = "solid-imager-db-1"; // Assuming default naming convention, or retrieve from docker-compose
+const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 
-// Backup configuration
-const BACKUP_DIR = "backups";
-const TIMESTAMP = new Date().toISOString().replace(/[:.]/g, "-");
-const FILENAME = `backup-${TIMESTAMP}.sql`;
-const FILEPATH = path.join(BACKUP_DIR, FILENAME);
+type DumpOptions = {
+	composeFile: string;
+	service: string;
+	output: string;
+};
 
-console.log("📦 Starting database backup...");
-
-try {
-  // Ensure backup directory exists
-  await mkdir(BACKUP_DIR, { recursive: true });
-
-  // Determine container name dynamically if possible, or use a consistent name
-  // Using 'docker compose ps' to find the container name for service 'db'
-  const containerNameOutput = await $`docker compose ps -q db`.text();
-  const containerId = containerNameOutput.trim();
-
-  if (!containerId) {
-    console.error("❌ Could not find running database container. Is Docker Compose up?");
-    process.exit(1);
-  }
-
-  console.log(`🐳 Found database container ID: ${containerId}`);
-  console.log(`📂 Saving backup to: ${FILEPATH}`);
-
-  // Execute pg_dump inside the container
-  // We use Bun.spawn to pipe stdout directly to a file
-  // Note: We avoid passing password via CLI args for security, relying on .pgpass or trust in container,
-  // but standard postgres image usually allows 'postgres' user without pass locally or env var.
-  // Since we are exec-ing AS the user inside container, auth usually works.
-
-  // Using -U (user) and -d (database)
-  await $`docker exec -t ${containerId} pg_dump -U ${DB_USER} -d ${DB_DATABASE} --clean --if-exists > ${FILEPATH}`;
-
-  console.log("✅ Backup completed successfully!");
-} catch (error) {
-  console.error("❌ Backup failed:", error);
-  process.exit(1);
+function valueAfter(args: string[], index: number, option: string): string {
+	const value = args[index + 1];
+	if (!value) throw new Error(`${option} requires a value`);
+	return value;
 }
+
+function parseOptions(args: string[]): DumpOptions {
+	const timestamp = new Date().toISOString().replaceAll(/[:.]/g, "-");
+	const options: DumpOptions = {
+		composeFile: path.join(repoRoot, "compose.yml"),
+		service: "db",
+		output: path.resolve(process.cwd(), "backups", `backup-${timestamp}.dump`),
+	};
+	for (let index = 0; index < args.length; index += 1) {
+		const argument = args[index];
+		if (argument === "--compose-file") {
+			options.composeFile = path.resolve(
+				valueAfter(args, index, "--compose-file"),
+			);
+			index += 1;
+		} else if (argument === "--service") {
+			options.service = valueAfter(args, index, "--service");
+			index += 1;
+		} else if (argument === "--output") {
+			options.output = path.resolve(valueAfter(args, index, "--output"));
+			index += 1;
+		} else {
+			throw new Error(`Unknown argument: ${argument}`);
+		}
+	}
+	return options;
+}
+
+async function assertAbsent(filePath: string): Promise<void> {
+	try {
+		await access(filePath);
+		throw new Error(`Refusing to overwrite existing file: ${filePath}`);
+	} catch (error) {
+		if (error instanceof Error && "code" in error && error.code === "ENOENT") {
+			return;
+		}
+		throw error;
+	}
+}
+
+async function main(): Promise<void> {
+	const options = parseOptions(process.argv.slice(2));
+	const databaseUser = process.env.DB_USER ?? "postgres";
+	const databaseName = process.env.DB_DATABASE ?? "solid-imager";
+	const partialPath = `${options.output}.partial`;
+	await mkdir(path.dirname(options.output), { recursive: true });
+	await assertAbsent(options.output);
+	await assertAbsent(partialPath);
+
+	logger.info(
+		{
+			composeFile: options.composeFile,
+			service: options.service,
+			output: options.output,
+		},
+		"Starting custom-format PostgreSQL dump",
+	);
+	const processHandle = Bun.spawn(
+		[
+			"docker",
+			"compose",
+			"-f",
+			options.composeFile,
+			"exec",
+			"-T",
+			options.service,
+			"pg_dump",
+			"--username",
+			databaseUser,
+			"--dbname",
+			databaseName,
+			"--format=custom",
+			"--no-owner",
+			"--no-privileges",
+		],
+		{
+			stdout: Bun.file(partialPath),
+			stderr: "pipe",
+		},
+	);
+	const stderr = await new Response(processHandle.stderr).text();
+	const exitCode = await processHandle.exited;
+	if (exitCode !== 0) {
+		await rm(partialPath, { force: true });
+		throw new Error(`pg_dump exited with ${exitCode}: ${stderr.trim()}`);
+	}
+	const outputStat = await stat(partialPath);
+	if (outputStat.size === 0) {
+		await rm(partialPath, { force: true });
+		throw new Error("pg_dump produced an empty file");
+	}
+	await rename(partialPath, options.output);
+	logger.info(
+		{ output: options.output, bytes: outputStat.size },
+		"PostgreSQL dump completed",
+	);
+}
+
+main().catch((error: unknown) => {
+	logger.error({ err: error }, "PostgreSQL dump failed");
+	process.exitCode = 1;
+});

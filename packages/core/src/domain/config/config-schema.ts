@@ -155,12 +155,24 @@ export const LanceDbConfigSchema = z.object({
 	autoFullSync: z.boolean().default(true),
 	cacheDir: z.string().default(".cache/lancedb-cache"),
 	ccipVectorDir: z.string().default(".cache/lancedb-ccip"),
+	ccipRollbackDir: z.string().default(".cache/lancedb-ccip-rollback-v1"),
+	ccipStoreMode: z
+		.enum([
+			"lance",
+			"postgres",
+			"postgres-dual-write",
+			"lance-dual-write",
+			"lance-readonly",
+		])
+		.default("lance"),
 });
 
 const DEFAULT_LANCEDB_CONFIG = {
 	autoFullSync: true,
 	cacheDir: ".cache/lancedb-cache",
 	ccipVectorDir: ".cache/lancedb-ccip",
+	ccipRollbackDir: ".cache/lancedb-ccip-rollback-v1",
+	ccipStoreMode: "lance",
 } as const;
 
 export const AppConfigSchema = z.object({

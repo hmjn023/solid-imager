@@ -9,12 +9,13 @@ export interface ITaggingService {
 	getTagsForMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		options?: { skipCache?: boolean },
+		options?: { skipCache?: boolean; signal?: AbortSignal },
 	): Promise<TaggingResponse | null>;
 	getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;
 	getCcipFeatureForMedia(
 		mediaSourceId: string,
 		mediaId: string,
+		signal?: AbortSignal,
 	): Promise<CcipFeatureResponse>;
 	getCcipDifference(feature1: number[], feature2: number[]): Promise<number>;
 	getCcipDistances(

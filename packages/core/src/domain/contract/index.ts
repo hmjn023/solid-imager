@@ -9,6 +9,7 @@ export { importsContract } from "./imports.contract";
 export { ipsContract } from "./ips.contract";
 export { jobsContract } from "./jobs.contract";
 export { mediaContract } from "./media.contract";
+export { mediaRegionsContract } from "./media-regions.contract";
 export { presetsContract } from "./presets.contract";
 export { projectsContract } from "./projects.contract";
 export { sourcesContract } from "./sources.contract";
@@ -27,6 +28,7 @@ import { importsContract } from "./imports.contract";
 import { ipsContract } from "./ips.contract";
 import { jobsContract } from "./jobs.contract";
 import { mediaContract } from "./media.contract";
+import { mediaRegionsContract } from "./media-regions.contract";
 import { presetsContract } from "./presets.contract";
 import { projectsContract } from "./projects.contract";
 import { sourcesContract } from "./sources.contract";
@@ -42,6 +44,7 @@ export const appContract = {
 	sources: sourcesContract,
 	tags: tagsContract,
 	media: mediaContract,
+	mediaRegions: mediaRegionsContract,
 	categories: categoriesContract,
 	projects: projectsContract,
 	characters: charactersContract,

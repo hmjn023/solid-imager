@@ -26,6 +26,8 @@ import type {
 export type DeferredJob = {
 	mediaId?: string;
 	sourcePath?: string;
+	targetId?: string;
+	inputRevision?: string;
 	type:
 		| "processMedia"
 		| "downloadImage"

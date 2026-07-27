@@ -1,3 +1,4 @@
+import { MediaRegionService } from "@solid-imager/application/services/media-region-service";
 import { services } from "~/application/registry";
 import { configureCcipVectorService } from "~/application/services/ccip-vector-service";
 import { CharacterServiceImpl } from "~/application/services/character-service";
@@ -14,10 +15,12 @@ import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import { SharpMediaRegionRenderer } from "~/infrastructure/processing/media-region-renderer";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
 import { JobRepository } from "~/infrastructure/repositories/job-repository";
+import { DrizzleMediaRegionRepository } from "~/infrastructure/repositories/media-region-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository as ActualSourceRepo } from "~/infrastructure/repositories/source-repository";
@@ -56,6 +59,7 @@ export function initServices() {
 
 	// Register Repositories
 	services.registerMediaRepository(MediaRepository);
+	services.registerMediaRegionRepository(DrizzleMediaRegionRepository);
 	services.registerSourceRepository(ActualSourceRepo);
 	services.registerTagRepository(TagRepository);
 	services.registerAuthorRepository(AuthorRepository);
@@ -70,6 +74,16 @@ export function initServices() {
 	services.registerMediaStorage(ServerMediaStorage);
 	services.registerFileSystem(new NodeFileSystem());
 	services.registerImageProcessor(ImageProcessor);
+	services.registerMediaRegionService(
+		new MediaRegionService({
+			regionRepository: DrizzleMediaRegionRepository,
+			mediaRepository: MediaRepository,
+			sourceRepository: ActualSourceRepo,
+			transactionManager: DrizzleTransactionManager,
+			mediaStorage: ServerMediaStorage,
+			renderer: new SharpMediaRegionRenderer(ActualSourceRepo),
+		}),
+	);
 
 	// Initialize RustAiClient with config values
 	const rustAiClient = new RustAiClient(config.ai.baseUrl, config.ai.timeoutMs);

@@ -78,6 +78,7 @@ const mockMediaRepo = {
 	findIdsWithMissingGenerationInfo: vi.fn(),
 	findAllMediaIndices: vi.fn(),
 	findAllPathsBySourceId: vi.fn(),
+	findById: vi.fn(),
 };
 
 const mockJobRepo = {
@@ -97,7 +98,15 @@ function makeMedia(
 	mediaSourceId = "source-1",
 	filePath = `/media/${id}.png`,
 ) {
-	return { id, mediaSourceId, filePath };
+	return {
+		id,
+		mediaSourceId,
+		filePath,
+		modifiedAt: new Date("2026-01-01T00:00:00.000Z"),
+		fileSize: 1024,
+		width: 100,
+		height: 100,
+	};
 }
 
 /** Build a minimal local media source record for test data. */
@@ -118,6 +127,9 @@ describe("MaintenanceService", () => {
 		);
 		mockSourceRepo.findAll.mockResolvedValue([]);
 		mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([]);
+		mockMediaRepo.findById.mockImplementation((id: string) =>
+			Promise.resolve(makeMedia(id)),
+		);
 	});
 
 	afterEach(() => {

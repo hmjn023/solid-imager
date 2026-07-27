@@ -10,6 +10,7 @@ export type {
 	ILogger,
 	IMediaContextProcessor,
 	IMediaProcessingService,
+	IMediaRegionRenderer,
 	IMediaService,
 	IPresetService,
 	IProjectService,
@@ -22,6 +23,7 @@ export type {
 	IUserService,
 	MediaDumpItemWithImageData,
 	ReadOptions,
+	RenderedMediaRegion,
 	SearchOptions,
 	WriteOptions,
 } from "./ports";
@@ -38,6 +40,7 @@ export {
 	createUserService,
 	MediaProcessingServiceImpl,
 	MediaQueryService,
+	MediaRegionService,
 	MediaServiceImpl,
 	MediaTransferService,
 	MediaUploadService,

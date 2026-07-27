@@ -3,7 +3,12 @@ import type { CcipVectorRecord } from "@solid-imager/application/ports/ccip-vect
 import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
+	CCIP_PREPROCESSING_PROFILE,
 } from "@solid-imager/application/services/ccip-vector-service";
+import {
+	createCcipEmbeddingInputRevision,
+	createMediaSourceRevision,
+} from "@solid-imager/core/domain/media/revision";
 import {
 	CCIP_VECTOR_DIMENSIONS,
 	mediaRegions,
@@ -30,6 +35,21 @@ const EXTRACTED_AT = new Date("2026-07-02T00:00:00.000Z");
 const NEWER_MODIFIED_AT = new Date("2026-07-03T00:00:00.000Z");
 const NEWER_EXTRACTED_AT = new Date("2026-07-04T00:00:00.000Z");
 
+const sourceARevision = await createMediaSourceRevision({
+	mediaId: ANCHOR_MEDIA_ID,
+	mediaSourceId: SOURCE_A_ID,
+	modifiedAt: MODIFIED_AT,
+	fileSize: null,
+	width: 256,
+	height: 256,
+});
+const sourceAInputRevision = await createCcipEmbeddingInputRevision({
+	sourceRevision: sourceARevision,
+	model: CCIP_MODEL,
+	embeddingVersion: CCIP_EMBEDDING_VERSION,
+	preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+});
+
 function vector(first: number, second = 0): number[] {
 	return Array.from({ length: CCIP_VECTOR_DIMENSIONS }, (_, index) => {
 		if (index === 0) return first;
@@ -44,13 +64,43 @@ function record(
 	feature: number[],
 ): CcipVectorRecord {
 	return {
+		regionId: null,
+		regionKind: "full",
 		mediaId,
 		mediaSourceId,
 		vector: feature,
 		model: CCIP_MODEL,
 		embeddingVersion: CCIP_EMBEDDING_VERSION,
 		mediaModifiedAt: MODIFIED_AT,
+		inputRevision:
+			mediaId === ANCHOR_MEDIA_ID
+				? sourceAInputRevision
+				: "set-by-test-before-write",
+		preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
 		extractedAt: EXTRACTED_AT,
+	};
+}
+
+async function currentRecord(
+	mediaId: string,
+	mediaSourceId: string,
+	feature: number[],
+): Promise<CcipVectorRecord> {
+	return {
+		...record(mediaId, mediaSourceId, feature),
+		inputRevision: await createCcipEmbeddingInputRevision({
+			sourceRevision: await createMediaSourceRevision({
+				mediaId,
+				mediaSourceId,
+				modifiedAt: MODIFIED_AT,
+				fileSize: null,
+				width: 256,
+				height: 256,
+			}),
+			model: CCIP_MODEL,
+			embeddingVersion: CCIP_EMBEDDING_VERSION,
+			preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+		}),
 	};
 }
 
@@ -104,49 +154,58 @@ describe("PostgresCcipVectorStore", () => {
 
 		const store = new PostgresCcipVectorStore(database);
 		const anchor = record(ANCHOR_MEDIA_ID, SOURCE_A_ID, vector(1));
-		await store.upsertMany([
-			anchor,
-			{
-				...record(ANCHOR_MEDIA_ID, SOURCE_A_ID, vector(0, 1)),
+		const legacyAnchor = {
+			...record(ANCHOR_MEDIA_ID, SOURCE_A_ID, vector(0, 1)),
+			model: "ccip-legacy-model",
+			embeddingVersion: 2,
+			inputRevision: await createCcipEmbeddingInputRevision({
+				sourceRevision: sourceARevision,
 				model: "ccip-legacy-model",
 				embeddingVersion: 2,
-			},
-			record(NEAR_MEDIA_ID, SOURCE_A_ID, vector(0.875, 0.125)),
-			record(FAR_MEDIA_ID, SOURCE_A_ID, vector(0, 1)),
-			record(OTHER_SOURCE_MEDIA_ID, SOURCE_B_ID, vector(0.75, 0.25)),
+				preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+			}),
+		};
+		const records = await Promise.all([
+			currentRecord(NEAR_MEDIA_ID, SOURCE_A_ID, vector(0.875, 0.125)),
+			currentRecord(FAR_MEDIA_ID, SOURCE_A_ID, vector(0, 1)),
+			currentRecord(
+				OTHER_SOURCE_MEDIA_ID,
+				SOURCE_B_ID,
+				vector(0.75, 0.25),
+			),
+		]);
+		await store.upsertMany([
+			anchor,
+			legacyAnchor,
+			...records,
 		]);
 
-		expect(
-			await store.get(ANCHOR_MEDIA_ID, {
+		const storedAnchor = await store.get(ANCHOR_MEDIA_ID, {
 				model: CCIP_MODEL,
 				embeddingVersion: CCIP_EMBEDDING_VERSION,
-			}),
-		).toEqual(anchor);
-		expect(
-			await store.getMetadataMany([ANCHOR_MEDIA_ID], {
+				preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+			});
+		expect(storedAnchor).toEqual({
+			...anchor,
+			regionId: expect.any(String),
+		});
+		const metadata = await store.getMetadataMany([ANCHOR_MEDIA_ID], {
 				model: CCIP_MODEL,
 				embeddingVersion: CCIP_EMBEDDING_VERSION,
-			}),
-		).toEqual(
-			new Map([
-				[
-					ANCHOR_MEDIA_ID,
-					{
-						mediaId: ANCHOR_MEDIA_ID,
-						mediaSourceId: SOURCE_A_ID,
-						model: CCIP_MODEL,
-						embeddingVersion: CCIP_EMBEDDING_VERSION,
-						mediaModifiedAt: MODIFIED_AT,
-						extractedAt: EXTRACTED_AT,
-					},
-				],
-			]),
-		);
+				preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+			});
+		const { vector: omittedVector, ...anchorMetadata } = anchor;
+		void omittedVector;
+		expect(metadata.get(ANCHOR_MEDIA_ID)).toEqual({
+			...anchorMetadata,
+			regionId: expect.any(String),
+		});
 
 		const candidates = await store.search(anchor.vector, 10, {
 			mediaSourceId: SOURCE_A_ID,
 			model: CCIP_MODEL,
 			embeddingVersion: CCIP_EMBEDDING_VERSION,
+			preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
 		});
 		expect(candidates.map((candidate) => candidate.mediaId)).toEqual([
 			ANCHOR_MEDIA_ID,
@@ -157,20 +216,40 @@ describe("PostgresCcipVectorStore", () => {
 			OTHER_SOURCE_MEDIA_ID,
 		);
 
+		await database
+			.update(medias)
+			.set({ modifiedAt: NEWER_MODIFIED_AT })
+			.where(eq(medias.id, ANCHOR_MEDIA_ID));
 		const newerAnchor = {
 			...anchor,
 			vector: vector(0.5, 0.5),
 			mediaModifiedAt: NEWER_MODIFIED_AT,
+			inputRevision: await createCcipEmbeddingInputRevision({
+				sourceRevision: await createMediaSourceRevision({
+					mediaId: ANCHOR_MEDIA_ID,
+					mediaSourceId: SOURCE_A_ID,
+					modifiedAt: NEWER_MODIFIED_AT,
+					fileSize: null,
+					width: 256,
+					height: 256,
+				}),
+				model: CCIP_MODEL,
+				embeddingVersion: CCIP_EMBEDDING_VERSION,
+				preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+			}),
 			extractedAt: NEWER_EXTRACTED_AT,
 		};
 		await store.upsert(newerAnchor);
-		await store.upsert(anchor);
+		await expect(store.upsert(anchor)).rejects.toThrow(
+			"CCIP input revision changed before commit",
+		);
 		expect(
 			await store.get(ANCHOR_MEDIA_ID, {
 				model: CCIP_MODEL,
 				embeddingVersion: CCIP_EMBEDDING_VERSION,
+				preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
 			}),
-		).toEqual(newerAnchor);
+		).toEqual({ ...newerAnchor, regionId: expect.any(String) });
 		const [region] = await database
 			.select({ sourceModifiedAt: mediaRegions.sourceModifiedAt })
 			.from(mediaRegions)

@@ -4,6 +4,11 @@
  * NOTE: Migrated to use oRPC ✅
  */
 
+import type {
+	CreateManualMediaRegion,
+	SafeMediaRegion,
+	UpdateMediaRegion,
+} from "@solid-imager/core/domain/media-regions/schemas";
 import type { tagImageRequestSchema } from "@solid-imager/core/domain/tagging/schemas";
 import type { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -33,6 +38,48 @@ export function fetchOppaiOracleTags(
 
 export function fetchCharacterCrops(mediaId: string, transparent: boolean) {
 	return orpc.ai.detectAndCropCharacters({ mediaId, transparent });
+}
+
+export function fetchMediaRegions(mediaId: string) {
+	return orpc.mediaRegions.list({ mediaId });
+}
+
+export function createManualMediaRegion(input: CreateManualMediaRegion) {
+	return orpc.mediaRegions.createManual(input);
+}
+
+export function updateMediaRegion(input: UpdateMediaRegion) {
+	return orpc.mediaRegions.update(input);
+}
+
+export async function deleteMediaRegion(
+	regionId: string,
+	expectedRevision: string,
+): Promise<void> {
+	await orpc.mediaRegions.delete({ regionId, expectedRevision });
+}
+
+export function materializeMediaRegion(
+	regionId: string,
+	expectedRevision: string,
+	transparent: boolean,
+) {
+	return orpc.mediaRegions.materialize({
+		regionId,
+		expectedRevision,
+		profile: { transparent },
+	});
+}
+
+export function getMediaRegionRenderUrl(
+	region: SafeMediaRegion,
+	transparent: boolean,
+): string {
+	const query = new URLSearchParams({
+		revision: region.regionRevision,
+		transparent: String(transparent),
+	});
+	return `/api/media-regions/${encodeURIComponent(region.id)}/render?${query}`;
 }
 
 export function scanBatchTaggingTargets(params: {

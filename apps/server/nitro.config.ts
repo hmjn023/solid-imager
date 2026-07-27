@@ -28,23 +28,53 @@ export default defineNitroConfig({
         fs.existsSync(pgliteLocalPath) ? pgliteLocalPath : pgliteRootPath,
       );
       const pgliteDistPath = path.join(pglitePkgPath, "dist");
+	  const pgvectorLocalPath = path.resolve(
+		__dirname,
+		"node_modules/@electric-sql/pglite-pgvector/package.json",
+	  );
+	  const pgvectorRootPath = path.resolve(
+		__dirname,
+		"../../node_modules/@electric-sql/pglite-pgvector/package.json",
+	  );
+	  const pgvectorPkgPath = path.dirname(
+		fs.existsSync(pgvectorLocalPath) ? pgvectorLocalPath : pgvectorRootPath,
+	  );
 
-      const assetsToCopy = ["pglite.data", "pglite.wasm"];
+	  const assetsToCopy = [
+		{
+		  source: path.join(pgliteDistPath, "pglite.data"),
+		  destination: path.join(libsDir, "pglite.data"),
+		},
+		{
+		  source: path.join(pgliteDistPath, "pglite.wasm"),
+		  destination: path.join(libsDir, "pglite.wasm"),
+		},
+		{
+		  source: path.join(pgvectorPkgPath, "dist", "vector.tar.gz"),
+		  destination: path.join(libsDir, "vector.tar.gz"),
+		},
+	  ];
 
-      for (const asset of assetsToCopy) {
-        const source = path.join(pgliteDistPath, asset);
-        const destination = path.join(libsDir, asset);
-
-        if (fs.existsSync(source)) {
-          if (!fs.existsSync(libsDir)) {
-            fs.mkdirSync(libsDir, { recursive: true });
-          }
-          fs.copyFileSync(source, destination);
-          console.log(`[Nitro] Successfully copied ${asset} to ${destination}`);
-        } else {
-          console.warn(`[Nitro] Warning: ${asset} not found at ${source}`);
-        }
+	  fs.mkdirSync(libsDir, { recursive: true });
+	  for (const asset of assetsToCopy) {
+		if (!fs.existsSync(asset.source) || fs.statSync(asset.source).size === 0) {
+		  throw new Error(
+			`Required PGlite runtime asset is missing or empty: ${asset.source}`,
+		  );
+		}
+		fs.copyFileSync(asset.source, asset.destination);
+		console.log(
+		  `[Nitro] Successfully copied ${path.basename(asset.source)} to ${asset.destination}`,
+		);
       }
+
+	  const migrationsSource = path.join(__dirname, "drizzle");
+	  const migrationsDestination = path.join(serverDir, "drizzle");
+	  const journalSource = path.join(migrationsSource, "meta", "_journal.json");
+	  if (!fs.existsSync(journalSource) || fs.statSync(journalSource).size === 0) {
+		throw new Error(`Drizzle migration journal is missing or empty: ${journalSource}`);
+	  }
+	  fs.cpSync(migrationsSource, migrationsDestination, { recursive: true });
 
       // Copy yt-dlp binary for bundled youtube-dl-exec
       const ytDlpLocalPath = path.resolve(__dirname, "node_modules/youtube-dl-exec/bin/yt-dlp");

@@ -5,6 +5,7 @@ import type {
 	Media,
 	MediaMetadataContext,
 } from "@solid-imager/core/domain/media/schemas";
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
@@ -152,9 +153,19 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		}
 
 		// Step 3: Queue processMedia job
+		const inputRevision = await createMediaSourceRevision({
+			mediaId: media.id,
+			mediaSourceId: media.mediaSourceId,
+			modifiedAt: media.modifiedAt,
+			fileSize: media.fileSize,
+			width: media.width,
+			height: media.height,
+		});
 		await this.jobRepo.create({
 			type: "processMedia",
 			mediaSourceId,
+			targetId: media.id,
+			inputRevision,
 			payload: {
 				mediaId: media.id,
 				sourcePath: basePath,
@@ -206,6 +217,14 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		if (!mediaSourceId) {
 			throw new Error(`Missing mediaSourceId in job ${job.id}`);
 		}
+		const inputRevision = await createMediaSourceRevision({
+			mediaId: media.id,
+			mediaSourceId: media.mediaSourceId,
+			modifiedAt: media.modifiedAt,
+			fileSize: media.fileSize,
+			width: media.width,
+			height: media.height,
+		});
 
 		// Step 1: Metadata extraction
 		if (payload.skipMetadataExtraction !== true) {
@@ -257,6 +276,8 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				await this.jobRepo.create({
 					type: "auto_tagging",
 					mediaSourceId,
+					targetId: media.id,
+					inputRevision,
 					payload: {
 						mediaId: media.id,
 					},
@@ -274,6 +295,8 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				await this.jobRepo.createIfUnique({
 					type: "extract_ccip_vector",
 					mediaSourceId,
+					targetId: media.id,
+					inputRevision,
 					payload: {
 						mediaId: media.id,
 					},

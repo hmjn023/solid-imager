@@ -1,6 +1,7 @@
 import path from "node:path";
 import type { IMediaStorage } from "@solid-imager/core";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import { createMediaSourceRevision } from "@solid-imager/core/domain/media/revision";
 import type {
 	Transaction,
 	TransactionManager,
@@ -185,10 +186,20 @@ export class MediaTransferService {
 		}
 
 		const sourcePath = targetConnection.path;
+		const inputRevision = await createMediaSourceRevision({
+			mediaId: newMediaEntry.id,
+			mediaSourceId: newMediaEntry.mediaSourceId,
+			modifiedAt: newMediaEntry.modifiedAt,
+			fileSize: newMediaEntry.fileSize,
+			width: newMediaEntry.width,
+			height: newMediaEntry.height,
+		});
 		const deferredJob = {
 			mediaId: newMediaEntry.id,
 			sourcePath,
 			type: "processMedia" as const,
+			targetId: newMediaEntry.id,
+			inputRevision,
 			payload: {
 				mediaId: newMediaEntry.id,
 				sourcePath,
@@ -232,6 +243,8 @@ export class MediaTransferService {
 		await this.jobRepo.create({
 			type: "processMedia",
 			mediaSourceId: validatedTargetSourceId,
+			targetId: newMediaEntry.id,
+			inputRevision,
 			payload: {
 				mediaId: newMediaEntry.id,
 				sourcePath,

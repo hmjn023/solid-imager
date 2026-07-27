@@ -4,6 +4,10 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
+import {
+	createCcipEmbeddingInputRevision,
+	createMediaSourceRevision,
+} from "@solid-imager/core/domain/media/revision";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import type {
 	CcipVectorMetadata,
@@ -15,6 +19,8 @@ import type { ITaggingService } from "../ports/tagging-service";
 
 export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
 export const CCIP_EMBEDDING_VERSION = 1;
+export const CCIP_PREPROCESSING_PROFILE =
+	"dghs-imgutils-rs/full-image-default/v1";
 const MIN_CANDIDATES = 100;
 const CANDIDATE_MULTIPLIER = 5;
 const MAX_CANDIDATES = 1000;
@@ -34,7 +40,9 @@ export class CcipVectorService {
 		mediaSourceId: string,
 		mediaId: string,
 		force = false,
+		signal?: AbortSignal,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
+		signal?.throwIfAborted();
 		const existing = force
 			? null
 			: await this.deps.vectorStore.get(mediaId, this.currentVectorQuery());
@@ -42,8 +50,10 @@ export class CcipVectorService {
 			mediaSourceId,
 			mediaId,
 			existing,
+			signal,
 		);
 		if (!result.skipped) {
+			signal?.throwIfAborted();
 			await this.deps.vectorStore.upsert(result.record);
 		}
 		return result;
@@ -54,6 +64,7 @@ export class CcipVectorService {
 		mediaIds: string[],
 		force = false,
 		concurrency = 1,
+		signal?: AbortSignal,
 	): Promise<
 		PromiseSettledResult<{
 			mediaId: string;
@@ -76,6 +87,7 @@ export class CcipVectorService {
 				mediaSourceId,
 				mediaId,
 				existingById.get(mediaId) ?? null,
+				signal,
 			)),
 		}));
 		const records = results.flatMap((result) =>
@@ -83,6 +95,7 @@ export class CcipVectorService {
 				? [result.value.record]
 				: [],
 		);
+		signal?.throwIfAborted();
 		await this.deps.vectorStore.upsertMany(records);
 		return results;
 	}
@@ -91,23 +104,40 @@ export class CcipVectorService {
 		mediaSourceId: string,
 		mediaId: string,
 		existing: CcipVectorRecord | null,
+		signal?: AbortSignal,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
+		signal?.throwIfAborted();
 		const media = await this.requireImage(mediaSourceId, mediaId);
-		if (existing && this.isCurrent(existing, media, mediaSourceId)) {
+		const inputRevision = await this.inputRevision(media);
+		if (
+			existing &&
+			(await this.isCurrent(existing, media, mediaSourceId, inputRevision))
+		) {
 			return { record: existing, skipped: true };
 		}
 
 		const result = await this.deps.taggingService.getCcipFeatureForMedia(
 			mediaSourceId,
 			mediaId,
+			signal,
 		);
+		signal?.throwIfAborted();
+		const mediaAfterExtraction = await this.requireImage(mediaSourceId, mediaId);
+		const commitRevision = await this.inputRevision(mediaAfterExtraction);
+		if (commitRevision !== inputRevision) {
+			throw new Error("CCIP input changed while the vector was being extracted");
+		}
 		const record: CcipVectorRecord = {
+			regionId: null,
+			regionKind: "full",
 			mediaId,
 			mediaSourceId,
 			vector: result.feature,
 			model: CCIP_MODEL,
 			embeddingVersion: CCIP_EMBEDDING_VERSION,
 			mediaModifiedAt: media.modifiedAt,
+			inputRevision,
+			preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
 			extractedAt: new Date(),
 		};
 		return { record, skipped: false };
@@ -127,8 +157,16 @@ export class CcipVectorService {
 			this.currentVectorQuery(),
 		);
 		if (!record) return { status: "missing" };
+		const inputRevision = await this.inputRevision(media);
 		return {
-			status: this.isCurrent(record, media, mediaSourceId) ? "ready" : "stale",
+			status: (await this.isCurrent(
+				record,
+				media,
+				mediaSourceId,
+				inputRevision,
+			))
+				? "ready"
+				: "stale",
 			model: record.model,
 			extractedAt: record.extractedAt,
 		};
@@ -185,7 +223,7 @@ export class CcipVectorService {
 		);
 		if (
 			!anchor ||
-			!this.isCurrent(anchor, anchorMedia, anchorMedia.mediaSourceId)
+			!(await this.isCurrent(anchor, anchorMedia, anchorMedia.mediaSourceId))
 		) {
 			throw new Error("CCIP vector is missing or stale for the anchor media");
 		}
@@ -221,10 +259,17 @@ export class CcipVectorService {
 			"CCIP similar media lookup completed",
 		);
 		const mediaById = new Map(media.map((item) => [item.id, item]));
-		const currentCandidates = candidates.filter((candidate) => {
-			const item = mediaById.get(candidate.mediaId);
-			return item ? this.isCurrent(candidate, item, item.mediaSourceId) : false;
-		});
+		const candidateCurrent = await Promise.all(
+			candidates.map(async (candidate) => {
+				const item = mediaById.get(candidate.mediaId);
+				return item
+					? await this.isCurrent(candidate, item, item.mediaSourceId)
+					: false;
+			}),
+		);
+		const currentCandidates = candidates.filter(
+			(_candidate, index) => candidateCurrent[index],
+		);
 		if (currentCandidates.length === 0) {
 			return { media: [], total: 0, scores: [] };
 		}
@@ -268,25 +313,51 @@ export class CcipVectorService {
 		};
 	}
 
-	private isCurrent(
+	private async isCurrent(
 		record: CcipVectorRecord,
 		media: Media,
 		mediaSourceId: string,
-	): boolean {
+		knownRevision?: string,
+	): Promise<boolean> {
+		const currentRevision =
+			knownRevision ?? (await this.inputRevision(media));
 		return (
 			record.model === CCIP_MODEL &&
 			record.embeddingVersion === CCIP_EMBEDDING_VERSION &&
+			record.preprocessingProfile === CCIP_PREPROCESSING_PROFILE &&
 			record.mediaSourceId === mediaSourceId &&
-			// A vector extracted after the media's latest modification represents
-			// the current file, regardless of LanceDB timestamp serialization.
-			record.extractedAt.getTime() >= media.modifiedAt.getTime()
+			(record.inputRevision === currentRevision ||
+				(record.inputRevision === "legacy-unversioned" &&
+					record.mediaModifiedAt.getTime() === media.modifiedAt.getTime()))
 		);
+	}
+
+	private async sourceRevision(media: Media): Promise<string> {
+		return await createMediaSourceRevision({
+			mediaId: media.id,
+			mediaSourceId: media.mediaSourceId,
+			modifiedAt: media.modifiedAt,
+			fileSize: media.fileSize,
+			width: media.width,
+			height: media.height,
+		});
+	}
+
+	private async inputRevision(media: Media): Promise<string> {
+		return await createCcipEmbeddingInputRevision({
+			sourceRevision: await this.sourceRevision(media),
+			model: CCIP_MODEL,
+			embeddingVersion: CCIP_EMBEDDING_VERSION,
+			preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
+		});
 	}
 
 	private currentVectorQuery() {
 		return {
+			regionKind: "full" as const,
 			model: CCIP_MODEL,
 			embeddingVersion: CCIP_EMBEDDING_VERSION,
+			preprocessingProfile: CCIP_PREPROCESSING_PROFILE,
 		};
 	}
 
