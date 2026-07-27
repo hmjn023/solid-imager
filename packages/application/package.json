@@ -13,8 +13,8 @@
     "check": "biome check --fix --unsafe ./src",
     "typecheck": "sh -c 'tsc --noEmit'",
     "lint": "biome lint ./src",
-    "test": "vp test run",
-    "test:unit": "vp test run"
+    "test": "vitest run",
+    "test:unit": "vitest run"
   },
   "dependencies": {
     "@lancedb/lancedb": "^0.27.2",
@@ -24,8 +24,6 @@
   "devDependencies": {
     "@types/node": "^25.9.3",
     "typescript": "rc",
-    "vite-plus": "^0.1.24",
-    "vite-tsconfig-paths": "^5.1.4",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
+    "vitest": "^4.1.10"
   }
 }

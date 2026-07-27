@@ -118,7 +118,7 @@ export default defineConfig({
       stderr: "pipe",
     },
     {
-      command: `bun x vp dev --config src/tests/e2e/ui-gallery/vite.config.ts --host 127.0.0.1 --port ${galleryPort} --strictPort`,
+      command: `bun x vite dev --config src/tests/e2e/ui-gallery/vite.config.ts --host 127.0.0.1 --port ${galleryPort} --strictPort`,
       cwd: process.cwd(),
       env: getEnvironment(),
       url: `http://127.0.0.1:${galleryPort}`,

@@ -1,5 +1,5 @@
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {

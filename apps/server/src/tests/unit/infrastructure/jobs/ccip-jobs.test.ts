@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import {
 	processBatchCcipDispatchJob,

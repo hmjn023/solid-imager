@@ -1,8 +1,8 @@
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { RPCHandler } from "@orpc/server/node";
-import { defineConfig } from "vite-plus";
-import type { Plugin } from "vite-plus";
+import { defineConfig } from "vite";
+import type { Plugin } from "vite";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import solidPlugin from "vite-plugin-solid";

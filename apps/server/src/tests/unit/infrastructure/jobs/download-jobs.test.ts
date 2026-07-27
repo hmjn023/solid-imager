@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 

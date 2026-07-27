@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it } from "vitest";
 import { BackupService } from "~/application/services/backup-service";
 
 describe("BackupService Security", () => {

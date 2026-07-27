@@ -20,10 +20,10 @@ description: 画像の自動タグ付け、類似度計算、CCIP特徴量など
 
 ### ネイティブ依存のビルド
 
-- `dghs-imgutils-rs` は Rust の N-API アドオンです。`bun x vp install` 時にソースからコンパイルされます。
+- `dghs-imgutils-rs` は Rust の N-API アドオンです。`bun install` 時にソースからコンパイルされます。
 - **GPU (CUDA) を有効にするには、システムの共有 ONNX Runtime を動的リンクします。** 静的にバンドルされた prebuilt バイナリでは CUDA provider が正しくロードされないため、以下の環境変数を指定してビルドしてください:
   ```bash
-  ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun x vp install
+  ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
   ```
 - 動的リンクを使う場合、`libonnxruntime.so.1` と `libonnxruntime_providers_cuda.so` が `/usr/lib` (または `LD_LIBRARY_PATH`) で見つかる必要があります。
 - CPU のみでビルドする場合は `Cargo.toml` の `ort` features から `cuda` を削除してください。

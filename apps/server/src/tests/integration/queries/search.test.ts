@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vite-plus/test";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import {
 	mediaSources,

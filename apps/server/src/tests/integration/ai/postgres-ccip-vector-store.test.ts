@@ -13,7 +13,7 @@ import {
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it } from "vitest";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { createPglite } from "~/infrastructure/db/pglite";
 import * as schema from "~/infrastructure/db/schema";

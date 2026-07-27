@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig } from "vite-plus";
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
@@ -18,11 +18,7 @@ export default defineConfig({
       hooks: "stack",
     },
     pool: "forks",
-    poolOptions: {
-      forks: {
-        singleFork: true,
-      },
-    },
+    singleFork: true,
     env: {
       DB_HOST: "pglite",
     },
