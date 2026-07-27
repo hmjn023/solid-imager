@@ -101,7 +101,23 @@ export const Toaster = () => {
 		<Show when={Comp()}>
 			{(ToasterComp) => {
 				const C = ToasterComp();
-				return <C position="top-right" />;
+				return (
+					<C
+						class="group toaster"
+						position="top-right"
+						toastOptions={{
+							classes: {
+								actionButton:
+									"group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
+								cancelButton:
+									"group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+								description: "group-[.toast]:text-muted-foreground",
+								toast:
+									"group toast group-[.toaster]:border-border group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:shadow-lg",
+							},
+						}}
+					/>
+				);
 			}}
 		</Show>
 	);
