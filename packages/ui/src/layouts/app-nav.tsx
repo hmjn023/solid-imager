@@ -30,11 +30,17 @@ export function AppNav(props: AppNavProps) {
 	const [isMenuOpen, setIsMenuOpen] = createSignal(false);
 	const [isClient, setIsClient] = createSignal(false);
 	const isActive = (path: string) => path === location().pathname;
-	const linkClass = (path: string) =>
+	const desktopLinkClass = (path: string) =>
 		`rounded-md px-3 py-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-sky-800 ${
 			isActive(path)
 				? "bg-sky-700 text-white"
 				: "text-sky-50 hover:bg-sky-700 hover:text-white"
+		}`;
+	const mobileLinkClass = (path: string) =>
+		`rounded-md px-3 py-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+			isActive(path)
+				? "bg-accent text-accent-foreground"
+				: "text-foreground hover:bg-accent hover:text-accent-foreground"
 		}`;
 
 	const [isVisible, setIsVisible] = createSignal(true);
@@ -104,7 +110,7 @@ export function AppNav(props: AppNavProps) {
 							<li>
 								<Link
 									aria-current={isActive(item.to) ? "page" : undefined}
-									class={linkClass(item.to)}
+									class={desktopLinkClass(item.to)}
 									to={item.to}
 								>
 									{item.label}
@@ -113,7 +119,7 @@ export function AppNav(props: AppNavProps) {
 						))}
 						<li>
 							<a
-								class={linkClass("/docs")}
+								class={desktopLinkClass("/docs")}
 								href="/docs/index.html"
 								rel="noopener noreferrer"
 								target="_blank"
@@ -179,7 +185,7 @@ export function AppNav(props: AppNavProps) {
 															aria-current={
 																isActive(item.to) ? "page" : undefined
 															}
-															class={`block min-h-11 ${linkClass(item.to)}`}
+															class={`block min-h-11 ${mobileLinkClass(item.to)}`}
 															onClick={() => setIsMenuOpen(false)}
 															to={item.to}
 														>
@@ -189,7 +195,7 @@ export function AppNav(props: AppNavProps) {
 												))}
 												<li>
 													<a
-														class={`block min-h-11 ${linkClass("/docs")}`}
+														class={`block min-h-11 ${mobileLinkClass("/docs")}`}
 														href="/docs/index.html"
 														rel="noopener noreferrer"
 														target="_blank"
