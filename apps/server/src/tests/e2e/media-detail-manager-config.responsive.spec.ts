@@ -109,6 +109,9 @@ test("media detail follows the second search result after returning to search", 
 test("media detail, manager, and settings remain usable on narrow screens", async ({
 	page,
 }, testInfo) => {
+	if (testInfo.project.name === "responsive-768") {
+		await page.setViewportSize({ width: 940, height: 1036 });
+	}
 	await page.goto(mediaPath());
 	await expect(
 		page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
@@ -117,6 +120,37 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 	await expect(
 		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
 	).toBeVisible();
+	if (testInfo.project.name === "responsive-desktop") {
+		const verticalOverflow = await page.evaluate(
+			() => document.documentElement.scrollHeight - window.innerHeight,
+		);
+		expect(verticalOverflow).toBeLessThanOrEqual(1);
+		const viewer = page.locator("[data-media-viewer]");
+		const image = page.getByRole("img", {
+			name: E2E_PRIMARY_FILE_NAME,
+			exact: true,
+		});
+		const viewerState = await Promise.all([
+			viewer.evaluate((element) => getComputedStyle(element).backgroundColor),
+			viewer.evaluate((element) => element.clientHeight),
+			image.evaluate((element) => element.clientHeight),
+		]);
+		expect(viewerState[0]).toBe("rgba(0, 0, 0, 0)");
+		expect(viewerState[2]).toBe(viewerState[1]);
+	}
+	if (testInfo.project.name === "responsive-768") {
+		const viewer = page.locator("[data-media-viewer]");
+		const image = page.getByRole("img", {
+			name: E2E_PRIMARY_FILE_NAME,
+			exact: true,
+		});
+		const viewerBox = await viewer.boundingBox();
+		const imageBox = await image.boundingBox();
+		expect(viewerBox).not.toBeNull();
+		expect(imageBox).not.toBeNull();
+		expect(viewerBox?.width ?? 0).toBeGreaterThanOrEqual(900);
+		expect(imageBox?.width ?? 0).toBeGreaterThanOrEqual(900);
+	}
 	const detailsHeading = page.getByRole("heading", {
 		name: "Details",
 		exact: true,
