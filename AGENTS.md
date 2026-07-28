@@ -63,7 +63,6 @@
 | `schema-driven-dev`  | ZodによるSchema-Driven Development                                                 | スキーマ定義時                                          |
 | `ui-components`      | solid-ui (shadcn/ui ポート) コンポーネント開発                                     | UIコンポーネント変更時                                  |
 | `package-management` | Bun/Nodeパッケージ追加・更新・削除                                                 | package.json・bun.lock変更時                            |
-| `vite-plus`          | Vite+ CLI操作（既存）                                                              | Vite+関連タスク時                                       |
 | `cli`                | imager-cli コマンド開発                                                            | CLIコマンド追加・変更時                                 |
 | `git-worktree`       | git worktree を用いた並列開発ワークフロー                                          | 複数PRの同時進行時                                      |
 | `git-pr`             | ブランチ作成→コミット→push→PR作成の標準ワークフロー                                | 単一PRの作成時                                          |
@@ -74,19 +73,9 @@
 | `job-system`         | background job、worker、dispatch、AI concurrency、batch親子進捗                    | job type追加・非同期処理・batch操作変更時               |
 | `media-search`       | 検索schema、shared store、session persistence、preset、類似検索                    | 検索条件・mode・検索画面変更時                          |
 
-<!--VITE PLUS START-->
+## Web toolchain
 
-# Using Vite+, the Unified Toolchain for the Web
-
-This project is using Vite+, a unified toolchain built on top of Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt, and Vite Task. In this checkout `vp` may not be installed globally, so run it through Bun as `bun x vp`. Vite+ invokes Vite through commands such as `bun x vp dev` and `bun x vp build`. Run `bun x vp help` to print a list of commands and `bun x vp <command> --help` for information about a specific command.
-
-Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.dev/guide/.
-
-## Review Checklist
-
-- [ ] Run `bun x vp install` after pulling remote changes and before getting started.
-- [ ] Run `bun x vp check` and `bun x vp test` to format, lint, type check and test changes.
-- [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `bun x vp run <script>`.
-- [ ] If setup, runtime, or package-manager behavior looks wrong, run `bun x vp env doctor` and include its output when asking for help.
-
-<!--VITE PLUS END-->
+- Viteを開発サーバーとビルドに使用する。
+- Vitestをunit/integration testに使用する。
+- Biomeをlintとformatに使用する。Oxlint/Oxfmtは使用しない。
+- 依存取得後は `bun install`、検証時は `bun run check` と `bun run test` を実行する。

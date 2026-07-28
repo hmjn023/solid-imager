@@ -6,7 +6,7 @@ import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-re
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const MOCK_BUFFER_DATA = [1, 2, 3];
 

@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vp dev",
-    "build": "vp build",
-    "preview": "vp preview",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "typecheck": "bun x tsc --noEmit",
     "lint": "biome lint ./src",
     "format": "biome format --fix ./src",
@@ -24,7 +24,7 @@
     "@types/node": "^26.0.0",
     "solid-js": "^1.9.13",
     "typescript": "rc",
-    "vite-plugin-solid": "^2.11.12",
-    "vite-plus": "^0.1.24"
+    "vite": "^8.1.5",
+    "vite-plugin-solid": "^2.11.12"
   }
 }

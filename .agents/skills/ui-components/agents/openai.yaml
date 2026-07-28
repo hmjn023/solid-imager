@@ -1,0 +1,7 @@
+interface:
+  display_name: "Solid UI Components"
+  short_description: "Solid UI 部品を検索・選定・共有実装へ統合"
+  default_prompt: "Use $ui-components to find and reuse the best Solid UI components for this interface."
+
+policy:
+  allow_implicit_invocation: true

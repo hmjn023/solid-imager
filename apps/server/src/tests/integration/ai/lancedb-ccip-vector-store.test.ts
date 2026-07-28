@@ -14,7 +14,7 @@ import type {
 	MediaSource,
 	SourceRepository,
 } from "@solid-imager/core/domain/repositories/source-repository";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it } from "vitest";
 import { LanceDbCcipVectorStore } from "~/infrastructure/ai/lancedb-ccip-vector-store";
 
 const SOURCE_A_ID = "11111111-1111-4111-8111-111111111111";

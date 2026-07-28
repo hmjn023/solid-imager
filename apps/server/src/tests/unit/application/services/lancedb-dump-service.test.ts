@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const { mockCreateTable, mockOpenTable, mockOptimize } = vi.hoisted(() => ({
 	mockCreateTable: vi.fn(),

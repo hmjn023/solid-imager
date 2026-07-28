@@ -23,9 +23,12 @@ function getEnvironment(): Record<string, string> {
 const mode = getE2eMode();
 const runtimeDir = process.env.E2E_RUNTIME_DIR;
 const port = process.env.E2E_PORT;
+const galleryPort = process.env.E2E_GALLERY_PORT;
 
-if (!(runtimeDir && port)) {
-  throw new Error("E2E_RUNTIME_DIR and E2E_PORT must be set by the isolated E2E runner.");
+if (!(runtimeDir && port && galleryPort)) {
+  throw new Error(
+    "E2E_RUNTIME_DIR, E2E_PORT, and E2E_GALLERY_PORT must be set by the isolated E2E runner.",
+  );
 }
 
 const baseURL = `http://127.0.0.1:${port}`;
@@ -96,21 +99,34 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: "bun scripts/e2e-server.ts",
-    cwd: process.cwd(),
-    env: {
-      ...getEnvironment(),
-      E2E: "1",
-      E2E_MODE: mode,
-      E2E_PORT: port,
-      E2E_RUNTIME_DIR: runtimeDir,
+  webServer: [
+    {
+      command: "bun scripts/e2e-server.ts",
+      cwd: process.cwd(),
+      env: {
+        ...getEnvironment(),
+        E2E: "1",
+        E2E_MODE: mode,
+        E2E_PORT: port,
+        E2E_RUNTIME_DIR: runtimeDir,
+      },
+      url: baseURL,
+      timeout: mode === "production" ? 240_000 : 120_000,
+      reuseExistingServer: false,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
+      stdout: "pipe",
+      stderr: "pipe",
     },
-    url: baseURL,
-    timeout: mode === "production" ? 240_000 : 120_000,
-    reuseExistingServer: false,
-    gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
-    stdout: "pipe",
-    stderr: "pipe",
-  },
+    {
+      command: `bun x vite dev --config src/tests/e2e/ui-gallery/vite.config.ts --host 127.0.0.1 --port ${galleryPort} --strictPort`,
+      cwd: process.cwd(),
+      env: getEnvironment(),
+      url: `http://127.0.0.1:${galleryPort}`,
+      timeout: 120_000,
+      reuseExistingServer: false,
+      gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
+      stdout: "pipe",
+      stderr: "pipe",
+    },
+  ],
 });

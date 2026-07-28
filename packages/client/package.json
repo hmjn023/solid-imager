@@ -11,7 +11,7 @@
     "check": "biome check --fix --unsafe ./src",
     "typecheck": "sh -c 'tsc --noEmit'",
     "lint": "biome lint ./src",
-    "test": "vp test run"
+    "test": "vitest run"
   },
   "dependencies": {
     "@orpc/client": "^1.13.2",
@@ -19,7 +19,6 @@
   },
   "devDependencies": {
     "typescript": "rc",
-    "vite-plus": "^0.1.24",
-    "vitest": "npm:@voidzero-dev/vite-plus-test@^0.1.24"
+    "vitest": "^4.1.10"
   }
 }

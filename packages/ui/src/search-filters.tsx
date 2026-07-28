@@ -16,8 +16,8 @@ import {
 	ComboboxItemLabel,
 	VirtualComboboxContent,
 } from "./combobox";
-import { Input } from "./input";
 import { Label } from "./label";
+import { TextField, TextFieldInput, TextFieldLabel } from "./text-field";
 import { cn } from "./utils/cn";
 import { createDebouncedSignal } from "./utils/debounce";
 
@@ -153,15 +153,15 @@ export function SearchFilters(props: SearchFiltersProps) {
 
 	return (
 		<div class={cn("space-y-4", props.className)}>
-			<div class="space-y-2">
-				<Label>ファイル名検索</Label>
-				<Input
+			<TextField class="space-y-2">
+				<TextFieldLabel>ファイル名検索</TextFieldLabel>
+				<TextFieldInput
 					onInput={(e) => props.setState("searchQuery", e.currentTarget.value)}
 					placeholder="ファイル名を入力..."
 					type="text"
 					value={props.state.searchQuery}
 				/>
-			</div>
+			</TextField>
 
 			<FilterSection
 				badgeVariant="secondary"
