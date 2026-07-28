@@ -1,6 +1,5 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { Glob } from "bun";
 import { services } from "~/application/registry";
 import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
@@ -17,6 +16,35 @@ type SyncResult = {
 	added: number;
 	deleted: number;
 };
+
+async function scanFiles(basePath: string): Promise<string[]> {
+	const files: string[] = [];
+	const pendingDirectories = [""];
+
+	while (pendingDirectories.length > 0) {
+		const relativeDirectory = pendingDirectories.pop();
+		if (relativeDirectory === undefined) {
+			break;
+		}
+
+		const directoryPath = path.join(basePath, relativeDirectory);
+		const entries = await fs.readdir(directoryPath, { withFileTypes: true });
+		for (const entry of entries) {
+			if (entry.name.startsWith(".")) {
+				continue;
+			}
+
+			const relativePath = path.join(relativeDirectory, entry.name);
+			if (entry.isDirectory()) {
+				pendingDirectories.push(relativePath);
+			} else if (entry.isFile()) {
+				files.push(relativePath.split(path.sep).join("/"));
+			}
+		}
+	}
+
+	return files;
+}
 
 async function processAdditions(
 	mediaSourceId: string,
@@ -137,19 +165,8 @@ export const DirectorySyncService = {
 				dbPathMap.set(normalizedPath, record.id);
 			}
 
-			// 2. Scan actual file system using Bun.Glob
-			const glob = new Glob("**/*");
-			const fsPaths: string[] = [];
-			for await (const file of glob.scan({
-				cwd: basePath,
-				onlyFiles: true,
-			})) {
-				const parts = file.split(/[/\\]/);
-				if (parts.some((part) => part.startsWith("."))) {
-					continue;
-				}
-				fsPaths.push(file);
-			}
+			// 2. Scan the actual file system with runtime-portable Node APIs.
+			const fsPaths = await scanFiles(basePath);
 
 			const mediaExtensions = services.getConfigService().getConfig()
 				.media.supportedExtensions;

@@ -220,6 +220,9 @@ export default defineConfig({
         fs: {
           allow: [workspaceRoot, path.dirname(routeTreePath)],
         },
+        watch: {
+          ignored: ["**/.cache/**", "**/.output/**"],
+        },
       }
     : {
         hmr: {
@@ -227,6 +230,9 @@ export default defineConfig({
           host: "localhost",
           port: 3001,
           clientPort: 3001,
+        },
+        watch: {
+          ignored: ["**/.cache/**", "**/.output/**"],
         },
       },
   resolve: {
@@ -271,7 +277,7 @@ export default defineConfig({
     solidPlugin({ ssr: true }),
   ],
   optimizeDeps: {
-    exclude: ["bun", "dghs-imgutils-rs", "@lancedb/lancedb"],
+    exclude: ["dghs-imgutils-rs", "@lancedb/lancedb"],
   },
   customLogger: {
     warn(msg, options) {
@@ -291,7 +297,6 @@ export default defineConfig({
   build: {
     rollupOptions: {
       external: [
-        "bun",
         "dghs-imgutils-rs",
         "ffmpeg-static",
         "fluent-ffmpeg",
@@ -314,7 +319,6 @@ export default defineConfig({
       "@solid-primitives/.*",
     ],
     external: [
-      "bun",
       "@electric-sql/pglite",
       "ffmpeg-static",
       "ffmpeg-static-static",
