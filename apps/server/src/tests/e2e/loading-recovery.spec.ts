@@ -1,5 +1,7 @@
+import type { Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
+	E2E_SOURCE_NAME,
 	mediaPath,
 	sourcePath,
 } from "./support/fixture";
@@ -29,6 +31,29 @@ const networkFailures = [
 		consoleMessage: "net::ERR_CONNECTION_RESET",
 	},
 ] as const;
+
+async function getGridColumnCount(
+	page: Page,
+	selector: string,
+): Promise<number> {
+	return await page
+		.locator(selector)
+		.evaluate(
+			(element) =>
+				window.getComputedStyle(element).gridTemplateColumns.split(" ").length,
+		);
+}
+
+async function getVisibleSkeletonItemCount(page: Page): Promise<number> {
+	return await page
+		.locator('[data-skeleton="media-grid"] > div > [aria-hidden="true"]')
+		.evaluateAll(
+			(elements) =>
+				elements.filter(
+					(element) => window.getComputedStyle(element).display !== "none",
+				).length,
+		);
+}
 
 test.describe("loading and recovery", () => {
 	test("keeps the app shell visible while the initial search response is delayed", async ({
@@ -63,6 +88,13 @@ test.describe("loading and recovery", () => {
 				.locator('[data-skeleton="media-grid"] [aria-hidden="true"]')
 				.first(),
 		).toHaveCSS("animation-name", "none");
+		const skeletonColumnCount = await getGridColumnCount(
+			page,
+			'[data-skeleton="media-grid"] > div',
+		);
+		expect(await getVisibleSkeletonItemCount(page)).toBe(
+			skeletonColumnCount * 2,
+		);
 		await expect(
 			page.getByText("APIの応答を待っています...", { exact: true }),
 		).toBeVisible();
@@ -72,6 +104,9 @@ test.describe("loading and recovery", () => {
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();
+		expect(await getGridColumnCount(page, "[data-media-grid]")).toBe(
+			skeletonColumnCount,
+		);
 		await expect(screenSkeleton).toHaveCount(0);
 	});
 
@@ -148,7 +183,7 @@ test.describe("loading and recovery", () => {
 		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
 		await expect(
 			page.getByRole("heading", {
-				name: /Media in Source:/,
+				name: E2E_SOURCE_NAME,
 			}),
 		).toBeVisible();
 

@@ -6,6 +6,7 @@ import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
 	allProjectsQueryOptions,
+	mediaSourcesQueryOptions,
 	tagsQueryOptions,
 } from "~/infrastructure/api-clients/queries";
 import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
@@ -13,6 +14,9 @@ import { SourceMediaPage } from "./components/source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	ssr: true,
+	remountDeps: ({ params }: { params: { mediaSourceId: string } }) => [
+		params.mediaSourceId,
+	],
 	loader: async ({ context }: RouteLoaderContext) => {
 		await Promise.all([
 			context.queryClient.prefetchQuery(tagsQueryOptions()),
@@ -20,6 +24,7 @@ export const Route = createFileRoute("/sources/$mediaSourceId/")({
 			context.queryClient.prefetchQuery(allIpsQueryOptions()),
 			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
 			context.queryClient.prefetchQuery(allAuthorsQueryOptions()),
+			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
 		]);
 	},
 	pendingComponent: SourceMediaRouteFallback,
