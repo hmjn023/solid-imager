@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "bun run tauri:dev",
     "build": "bun run tauri:build",
-    "dev:web": "vp dev --host 0.0.0.0 --port 1420",
-    "build:web": "vp build",
-    "preview": "vp preview",
+    "dev:web": "vite --host 0.0.0.0 --port 1420",
+    "build:web": "vite build",
+    "preview": "vite preview",
     "tauri:dev": "WEBKIT_DISABLE_DMABUF_RENDERER=1 bun x tauri dev",
     "tauri:build": "bun run build:web",
     "lint": "biome lint ./src",
@@ -43,7 +43,7 @@
     "tailwindcss": "^4.3.0",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "rc",
-    "vite-plugin-solid": "^2.11.12",
-    "vite-plus": "^0.1.24"
+    "vite": "^8.1.5",
+    "vite-plugin-solid": "^2.11.12"
   }
 }

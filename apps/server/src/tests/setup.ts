@@ -1,6 +1,6 @@
 import path from "node:path";
 import { config } from "dotenv";
-import { beforeAll, beforeEach, vi } from "vite-plus/test";
+import { beforeAll, beforeEach, vi } from "vitest";
 
 // Mock logger module
 vi.mock("~/infrastructure/logger", () => ({

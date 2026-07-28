@@ -1,0 +1,34 @@
+{
+  "$schema": "./solid-ui.sources.schema.json",
+  "repository": "https://github.com/stefan-karger/solid-ui",
+  "commit": "21ba4fa59b775a8bf9ee8249883de34aba1cf807",
+  "registryPath": "apps/docs/public/registry",
+  "components": {
+    "alert-dialog": "src/alert-dialog.tsx",
+    "badge": "src/badge.tsx",
+    "button": "src/button.tsx",
+    "card": "src/card.tsx",
+    "checkbox": "src/checkbox.tsx",
+    "collapsible": "src/collapsible.tsx",
+    "combobox": "src/combobox.tsx",
+    "command": "src/command.tsx",
+    "context-menu": "src/context-menu.tsx",
+    "dialog": "src/dialog.tsx",
+    "label": "src/label.tsx",
+    "popover": "src/popover.tsx",
+    "progress": "src/progress.tsx",
+    "select": "src/select.tsx",
+    "skeleton": "src/skeleton.tsx",
+    "sonner": "src/toast.tsx",
+    "switch": "src/switch.tsx",
+    "tabs": "src/tabs.tsx",
+    "text-field": "src/text-field.tsx"
+  },
+  "preservedLocalBehavior": [
+    "44px touch targets",
+    "responsive dialog scrolling and sticky actions",
+    "virtualized combobox content",
+    "SSR-safe toast loading",
+    "existing public exports and variants"
+  ]
+}

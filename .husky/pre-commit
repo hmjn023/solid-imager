@@ -1,10 +1,7 @@
-#!/bin/sh
 set -e
 
-. "$(dirname "$0")/_/husky.sh"
-
 # Run biome check on all staged files
-npx lint-staged
+bunx lint-staged
 
 # Run tests and typecheck only for changed packages
 CHANGED_SERVER=$(git diff --cached --name-only -- apps/server/ | head -1)

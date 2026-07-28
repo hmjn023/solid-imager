@@ -51,12 +51,17 @@ async function createEnvironment(
       value === undefined ? [] : [[key, value]],
     ),
   );
-  const [port, hmrPort] = await Promise.all([findAvailablePort(), findAvailablePort()]);
+  const [port, hmrPort, galleryPort] = await Promise.all([
+    findAvailablePort(),
+    findAvailablePort(),
+    findAvailablePort(),
+  ]);
   return {
     ...inherited,
     E2E_MODE: mode,
     E2E_PORT: port,
     E2E_HMR_PORT: hmrPort,
+    E2E_GALLERY_PORT: galleryPort,
     E2E_RUNTIME_DIR: runtimeDir,
   };
 }

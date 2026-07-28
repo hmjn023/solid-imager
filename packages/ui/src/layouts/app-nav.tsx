@@ -30,11 +30,17 @@ export function AppNav(props: AppNavProps) {
 	const [isMenuOpen, setIsMenuOpen] = createSignal(false);
 	const [isClient, setIsClient] = createSignal(false);
 	const isActive = (path: string) => path === location().pathname;
-	const linkClass = (path: string) =>
+	const desktopLinkClass = (path: string) =>
 		`rounded-md px-3 py-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-sky-800 ${
 			isActive(path)
 				? "bg-sky-700 text-white"
 				: "text-sky-50 hover:bg-sky-700 hover:text-white"
+		}`;
+	const mobileLinkClass = (path: string) =>
+		`rounded-md px-3 py-2 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${
+			isActive(path)
+				? "bg-accent text-accent-foreground"
+				: "text-foreground hover:bg-accent hover:text-accent-foreground"
 		}`;
 
 	const [isVisible, setIsVisible] = createSignal(true);
@@ -94,7 +100,7 @@ export function AppNav(props: AppNavProps) {
 			>
 				<div class="container flex min-h-16 items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-4">
 					<Link
-						class="rounded-md px-2 py-2 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+						class="ml-13 rounded-md px-2 py-2 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:ml-0"
 						to="/"
 					>
 						Solid Imager
@@ -104,7 +110,7 @@ export function AppNav(props: AppNavProps) {
 							<li>
 								<Link
 									aria-current={isActive(item.to) ? "page" : undefined}
-									class={linkClass(item.to)}
+									class={desktopLinkClass(item.to)}
 									to={item.to}
 								>
 									{item.label}
@@ -113,7 +119,7 @@ export function AppNav(props: AppNavProps) {
 						))}
 						<li>
 							<a
-								class={linkClass("/docs")}
+								class={desktopLinkClass("/docs")}
 								href="/docs/index.html"
 								rel="noopener noreferrer"
 								target="_blank"
@@ -127,7 +133,7 @@ export function AppNav(props: AppNavProps) {
 						<DialogRoot onOpenChange={setIsMenuOpen} open={isMenuOpen()}>
 							<DialogTrigger
 								aria-label="メニューを開く"
-								class="inline-flex size-11 items-center justify-center rounded-md text-white hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:hidden"
+								class="absolute left-3 inline-flex size-11 items-center justify-center rounded-md text-white hover:bg-sky-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white sm:left-4 md:hidden"
 							>
 								<svg
 									aria-hidden="true"
@@ -144,11 +150,11 @@ export function AppNav(props: AppNavProps) {
 									<DialogOverlay class="fixed inset-0 z-[60] bg-black/50 data-[closed]:animate-out data-[expanded]:animate-in" />
 									<DialogContent
 										aria-labelledby="mobile-navigation-title"
-										class="fixed inset-y-0 right-0 z-[70] flex w-[min(20rem,calc(100vw-1rem))] flex-col bg-background pb-[env(safe-area-inset-bottom)] shadow-xl outline-none data-[closed]:animate-out data-[closed]:slide-out-to-right data-[expanded]:animate-in data-[expanded]:slide-in-from-right"
+										class="fixed inset-y-0 left-0 z-[70] flex w-[min(20rem,calc(100vw-1rem))] flex-col bg-background text-foreground pb-[env(safe-area-inset-bottom)] shadow-xl outline-none data-[closed]:animate-out data-[closed]:slide-out-to-left data-[expanded]:animate-in data-[expanded]:slide-in-from-left"
 									>
 										<div class="flex min-h-16 items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)]">
 											<DialogTitle
-												class="font-semibold text-lg"
+												class="font-semibold text-foreground text-lg"
 												id="mobile-navigation-title"
 											>
 												メニュー
@@ -179,7 +185,7 @@ export function AppNav(props: AppNavProps) {
 															aria-current={
 																isActive(item.to) ? "page" : undefined
 															}
-															class={`block min-h-11 ${linkClass(item.to)}`}
+															class={`block min-h-11 ${mobileLinkClass(item.to)}`}
 															onClick={() => setIsMenuOpen(false)}
 															to={item.to}
 														>
@@ -189,7 +195,7 @@ export function AppNav(props: AppNavProps) {
 												))}
 												<li>
 													<a
-														class={`block min-h-11 ${linkClass("/docs")}`}
+														class={`block min-h-11 ${mobileLinkClass("/docs")}`}
 														href="/docs/index.html"
 														rel="noopener noreferrer"
 														target="_blank"

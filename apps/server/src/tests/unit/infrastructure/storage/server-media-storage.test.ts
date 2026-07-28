@@ -2,14 +2,7 @@ import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
 import sharp from "sharp";
 
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // Mock definitions

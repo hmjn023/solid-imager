@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vite-plus/test";
+import { describe, expect, it, vi } from "vitest";
 import * as orpcClient from "../orpc-client";
 import { tagHandler } from "./ai";
 

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { config } from "dotenv";
-import { beforeEach, vi } from "vite-plus/test";
+import { beforeEach, vi } from "vitest";
 
 if (typeof (globalThis as any).Bun === "undefined") {
 	(globalThis as any).Bun = {

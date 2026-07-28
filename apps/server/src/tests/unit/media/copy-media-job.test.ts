@@ -1,11 +1,4 @@
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	vi,
-} from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";

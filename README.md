@@ -22,7 +22,7 @@ ORM: Drizzle ORM
 Validation: Zod
 AI/ML: dghs-imgutils-rs
 Testing: Vitest / Playwright
-Tooling: Vite+ / Biome
+Tooling: Vite / Biome
 ```
 
 ### プロジェクト構成（モノレポ）
@@ -40,7 +40,7 @@ Tooling: Vite+ / Biome
 ## セットアップ
 
 ```bash
-bun x vp install
+bun install
 cp apps/server/.env.example apps/server/.env
 sudo -E docker compose --project-directory . up -d
 bun --filter @solid-imager/server run db:migrate
@@ -52,7 +52,7 @@ bun run dev
 AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。GPU (CUDA) を有効にするには、システムにインストールされた共有 ONNX Runtime を動的リンクしてビルドしてください。
 
 ```bash
-ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun x vp install
+ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
 ```
 
 要件:
@@ -60,16 +60,16 @@ ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun x vp install
 - `/usr/lib/libonnxruntime.so.1` と `/usr/lib/libonnxruntime_providers_cuda.so` が存在すること
 - NVIDIA ドライバーと CUDA ランタイムがインストールされていること
 
-CPU のみで使用する場合は通常通り `bun x vp install` してください。
+CPU のみで使用する場合は通常通り `bun install` してください。
 
 ## 主要スクリプト
 
 | コマンド                                            | 用途                      |
 | --------------------------------------------------- | ------------------------- |
 | `bun run dev`                                       | 開発サーバー起動          |
-| `bun x vp check`                                    | format / lint / typecheck |
-| `bun x vp test`                                     | Vite+ 管理下のテスト      |
-| `bun run test`                                      | ワークスペース横断テスト  |
+| `bun run check`                                     | lint / format / typecheck |
+| `bun run test`                                      | Vitest テスト             |
+| `bun run format`                                    | Biomeによるformat         |
 | `bun run lint`                                      | lint                      |
 | `bun --filter @solid-imager/server run db:generate` | マイグレーション生成      |
 
@@ -80,7 +80,7 @@ CPU のみで使用する場合は通常通り `bun x vp install` してくだ�
 | `packages/db/src/schema.ts`        | Drizzle DBスキーマ       |
 | `apps/server/drizzle.config.ts`    | DB接続、マイグレーション |
 | `biome.json`                       | Linter/Formatter         |
-| `vitest.workspace.ts`              | Vitest workspace         |
+| `vitest.config.ts`                 | Vitest projects          |
 | `apps/server/playwright.config.ts` | E2Eテスト                |
 | `compose.yml`                      | PostgreSQL (Docker)      |
 

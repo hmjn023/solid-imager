@@ -7,7 +7,7 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { createMemo, For, Match, Show, Switch } from "solid-js";
+import { createMemo, Index, Match, Show, Switch } from "solid-js";
 import { Button } from "./button";
 import { Card, CardContent } from "./card";
 import {
@@ -145,6 +145,22 @@ function getValidOperators(target: string) {
 	return Object.keys(OPERATOR_LABELS);
 }
 
+function getSearchGroup(child: SearchCriterion | SearchGroup): SearchGroup {
+	if (child.type === "group") {
+		return child;
+	}
+	throw new Error("Expected a search group");
+}
+
+function getSearchCriterion(
+	child: SearchCriterion | SearchGroup,
+): SearchCriterion {
+	if (child.type === "criterion") {
+		return child;
+	}
+	throw new Error("Expected a search criterion");
+}
+
 function GroupBuilder(props: {
 	group: SearchGroup;
 	onChange: (value: SearchGroup) => void;
@@ -258,17 +274,17 @@ function GroupBuilder(props: {
 				</div>
 
 				<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
-					<For each={props.group.children}>
+					<Index each={props.group.children}>
 						{(child, index) =>
-							child.type === "group" ? (
+							child().type === "group" ? (
 								<GroupBuilder
 									authors={props.authors}
 									characters={props.characters}
 									depth={props.depth + 1}
-									group={child}
+									group={getSearchGroup(child())}
 									ips={props.ips}
-									onChange={(value) => updateChild(index(), value)}
-									onRemove={() => removeChild(index())}
+									onChange={(value) => updateChild(index, value)}
+									onRemove={() => removeChild(index)}
 									projects={props.projects}
 									tags={props.tags}
 								/>
@@ -276,16 +292,16 @@ function GroupBuilder(props: {
 								<CriterionBuilder
 									authors={props.authors}
 									characters={props.characters}
-									criterion={child}
+									criterion={getSearchCriterion(child())}
 									ips={props.ips}
-									onChange={(value) => updateChild(index(), value)}
-									onRemove={() => removeChild(index())}
+									onChange={(value) => updateChild(index, value)}
+									onRemove={() => removeChild(index)}
 									projects={props.projects}
 									tags={props.tags}
 								/>
 							)
 						}
-					</For>
+					</Index>
 					<Show when={props.group.children.length === 0}>
 						<div class="p-2 text-muted-foreground text-sm italic">
 							条件がありません。「+ 条件」ボタンで追加してください。

@@ -1,5 +1,5 @@
 import { sourceEventSchema } from "@solid-imager/core/domain/sources/events";
-import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 
 const cleanups: Array<() => void> = [];

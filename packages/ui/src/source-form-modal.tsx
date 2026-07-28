@@ -30,6 +30,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./select";
+import {
+	TextField,
+	TextFieldErrorMessage,
+	TextFieldInput,
+	TextFieldLabel,
+} from "./text-field";
 import { parseSelectValue } from "./utils/parse-select-value";
 
 const DEFAULT_SFTP_PORT = 22;
@@ -194,12 +200,14 @@ type SourceTextInputProps = {
 };
 
 function SourceTextInput(props: SourceTextInputProps) {
+	const errorMessage = () => getFormErrorMessage(props.errors[0]);
 	return (
-		<div class="space-y-2">
-			<Label for={props.id}>{props.label}</Label>
-			<Input
-				aria-describedby={`${props.id}-error`}
-				aria-invalid={props.errors.length > 0}
+		<TextField
+			class="space-y-2"
+			validationState={props.errors.length > 0 ? "invalid" : "valid"}
+		>
+			<TextFieldLabel>{props.label}</TextFieldLabel>
+			<TextFieldInput
 				id={props.id}
 				onBlur={props.onBlur}
 				onInput={(event) => props.onChange(event.currentTarget.value)}
@@ -207,11 +215,14 @@ function SourceTextInput(props: SourceTextInputProps) {
 				type={props.type ?? "text"}
 				value={props.value}
 			/>
-			<FormFieldMessage
-				id={`${props.id}-error`}
-				message={getFormErrorMessage(props.errors[0])}
-			/>
-		</div>
+			<Show when={errorMessage()}>
+				{(message) => (
+					<TextFieldErrorMessage aria-live="polite">
+						{message()}
+					</TextFieldErrorMessage>
+				)}
+			</Show>
+		</TextField>
 	);
 }
 
@@ -297,11 +308,14 @@ export function SourceFormModal(props: SourceFormModalProps) {
 				>
 					<form.Field name="name">
 						{(field) => (
-							<div class="space-y-2">
-								<Label for={field().name}>Name</Label>
-								<Input
-									aria-describedby={`${field().name}-error`}
-									aria-invalid={field().state.meta.errors.length > 0}
+							<TextField
+								class="space-y-2"
+								validationState={
+									field().state.meta.errors.length > 0 ? "invalid" : "valid"
+								}
+							>
+								<TextFieldLabel>Name</TextFieldLabel>
+								<TextFieldInput
 									id={field().name}
 									onBlur={field().handleBlur}
 									onInput={(event) =>
@@ -310,19 +324,22 @@ export function SourceFormModal(props: SourceFormModalProps) {
 									placeholder="My Media Source"
 									value={field().state.value}
 								/>
-								<FormFieldMessage
-									id={`${field().name}-error`}
-									message={fieldError(field().state.meta.errors)}
-								/>
-							</div>
+								<Show when={fieldError(field().state.meta.errors)}>
+									{(message) => (
+										<TextFieldErrorMessage aria-live="polite">
+											{message()}
+										</TextFieldErrorMessage>
+									)}
+								</Show>
+							</TextField>
 						)}
 					</form.Field>
 
 					<form.Field name="description">
 						{(field) => (
-							<div class="space-y-2">
-								<Label for={field().name}>Description (Optional)</Label>
-								<Input
+							<TextField class="space-y-2">
+								<TextFieldLabel>Description (Optional)</TextFieldLabel>
+								<TextFieldInput
 									id={field().name}
 									onBlur={field().handleBlur}
 									onInput={(event) =>
@@ -331,7 +348,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 									placeholder="Photos from my camera"
 									value={field().state.value}
 								/>
-							</div>
+							</TextField>
 						)}
 					</form.Field>
 

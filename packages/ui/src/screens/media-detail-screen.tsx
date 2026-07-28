@@ -86,7 +86,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	});
 
 	return (
-		<div class="container mx-auto px-3 py-4 sm:p-4">
+		<div class="mx-auto w-full px-3 py-4 sm:px-4 lg:container lg:p-4">
 			<QueryStatus
 				fetchState={state().fetchState}
 				hasData={state().data !== undefined}
@@ -97,8 +97,8 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 				<Match when={state().phase === "data"}>
 					<Show keyed when={state().data}>
 						{(details) => (
-							<div class="flex flex-col gap-4 lg:h-[calc(100dvh-5rem)] lg:flex-row">
-								<div class="aspect-[4/3] min-h-64 min-w-0 overflow-hidden rounded-lg lg:aspect-auto lg:min-h-0 lg:flex-1">
+							<div class="flex flex-col gap-4 lg:h-[calc(100dvh-7.5rem)] lg:flex-row">
+								<div class="min-h-64 min-w-0 overflow-hidden rounded-lg lg:min-h-0 lg:flex-1">
 									{props.renderMediaViewer(details, props.sourceRootPath)}
 								</div>
 								<div class="min-w-0 shrink-0 lg:w-96 lg:max-w-[40%]">

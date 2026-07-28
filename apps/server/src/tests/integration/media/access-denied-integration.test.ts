@@ -1,4 +1,4 @@
-import { beforeAll, describe, expect, it } from "vite-plus/test";
+import { beforeAll, describe, expect, it } from "vitest";
 import { services } from "~/application/registry";
 import { MediaService } from "~/application/services/media-service";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";

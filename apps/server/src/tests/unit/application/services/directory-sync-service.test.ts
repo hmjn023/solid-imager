@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vite-plus/test";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mocks
 vi.mock("~/infrastructure/logger", () => ({
@@ -13,20 +13,20 @@ vi.mock("~/infrastructure/logger", () => ({
 vi.mock("node:fs/promises", () => ({
 	default: {
 		access: vi.fn(),
-	},
-}));
-
-vi.mock("bun", () => ({
-	Glob: class {
-		scan() {
-			return {
-				async *[Symbol.asyncIterator]() {
-					yield "file1.jpg";
-					yield "sub/file2.png";
-					yield "new_file.mp3";
-				},
-			};
-		}
+		readdir: vi.fn(async (directoryPath: string) => {
+			const names = directoryPath.endsWith("/sub")
+				? [["file2.png", "file"]]
+				: [
+						["file1.jpg", "file"],
+						["sub", "directory"],
+						["new_file.mp3", "file"],
+					];
+			return names.map(([name, type]) => ({
+				name,
+				isDirectory: () => type === "directory",
+				isFile: () => type === "file",
+			}));
+		}),
 	},
 }));
 

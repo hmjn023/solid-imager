@@ -35,6 +35,7 @@ function clientOnlyQueryOptions<TData>(factory: QueryOptionFactory<TData>) {
 
 export type SourceMediaPageProps = {
 	mediaSourceId: Accessor<string>;
+	mediaSourceName?: Accessor<string | undefined>;
 	transport: MediaSourceEventTransport;
 	presetClient: SourceMediaPagePresetClient;
 	actions: SourceMediaPageActions;
@@ -131,6 +132,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	return (
 		<SourceMediaScreen
 			enableVirtualization={props.enableVirtualization}
+			mediaSourceName={props.mediaSourceName}
 			onRetryFilters={async () => {
 				await Promise.all([
 					tags.refetch(),

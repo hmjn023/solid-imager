@@ -1,7 +1,7 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { afterEach, beforeEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { services } from "~/application/registry";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { MediaService } from "~/application/services/media-service";

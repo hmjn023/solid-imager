@@ -1,6 +1,10 @@
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
-import { ClientOnly, createFileRoute } from "@tanstack/solid-router";
+import {
+	ClientOnly,
+	createFileRoute,
+	useRouterState,
+} from "@tanstack/solid-router";
 import { type Accessor, createSignal, onMount, Show } from "solid-js";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
@@ -21,6 +25,10 @@ interface MediaRouteParams {
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	ssr: true,
+	remountDeps: ({ params }: { params: MediaRouteParams }) => [
+		params.mediaSourceId,
+		params.mediaId,
+	],
 	loader: async ({ context, params }: RouteLoaderContext<MediaRouteParams>) => {
 		await Promise.all([
 			context.queryClient.prefetchQuery(
@@ -70,7 +78,13 @@ function MediaRouteFallback() {
 
 function MediaRouteContent() {
 	const routeData = Route.useLoaderData();
-	const currentParams = Route.useParams();
+	const currentParams = useRouterState({
+		select: (state) =>
+			state.matches.find(
+				(match: { routeId: string; params: MediaRouteParams }) =>
+					match.routeId === Route.id,
+			)?.params,
+	});
 	const mediaSourceId = () =>
 		currentParams()?.mediaSourceId ?? routeData().mediaSourceId;
 	const mediaId = () => currentParams()?.mediaId ?? routeData().mediaId;
