@@ -91,6 +91,45 @@ test("search keeps controls usable without horizontal overflow", async ({
 			page.getByRole("heading", { name: "検索フィルター", exact: true }),
 		).toBeVisible();
 		await expect(page.getByPlaceholder("ファイル名を入力...")).toBeVisible();
+
+		if (testInfo.project.name === "responsive-768") {
+			await page.setViewportSize({ width: 768, height: 480 });
+			const filterCard = page
+				.getByRole("heading", { name: "検索フィルター", exact: true })
+				.locator("..")
+				.locator("..");
+			const scrollState = await filterCard.evaluate((element) => {
+				element.scrollTop = element.scrollHeight;
+				const bounds = element.getBoundingClientRect();
+				return {
+					clientHeight: element.clientHeight,
+					scrollHeight: element.scrollHeight,
+					scrollTop: element.scrollTop,
+					isWithinViewport:
+						bounds.top >= 0 && bounds.bottom <= window.innerHeight,
+				};
+			});
+			expect(scrollState.scrollHeight).toBeGreaterThan(
+				scrollState.clientHeight,
+			);
+			expect(scrollState.scrollTop).toBeGreaterThan(0);
+			expect(scrollState.isWithinViewport).toBe(true);
+
+			const lastFilter = filterCard.getByPlaceholder("プロジェクトを検索...");
+			await expect(lastFilter).toBeVisible();
+			expect(
+				await lastFilter.evaluate((element) => {
+					const card = element.closest(".sticky");
+					if (!(card instanceof HTMLElement)) return false;
+					const inputBounds = element.getBoundingClientRect();
+					const cardBounds = card.getBoundingClientRect();
+					return (
+						inputBounds.top >= cardBounds.top &&
+						inputBounds.bottom <= cardBounds.bottom
+					);
+				}),
+			).toBe(true);
+		}
 	}
 
 	await expectNoHorizontalOverflow(page);

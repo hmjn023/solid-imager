@@ -3,7 +3,7 @@ import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
-import { useQueryClient } from "@tanstack/solid-query";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
 import { createSignal, onMount, Show } from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
@@ -25,6 +25,7 @@ import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
 	allProjectsQueryOptions,
+	mediaSourcesQueryOptions,
 	tagsQueryOptions,
 } from "~/infrastructure/api-clients/queries";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
@@ -47,6 +48,9 @@ export function SourceMediaPage() {
 	const mediaSourceId = () => params().mediaSourceId;
 	const queryClient = useQueryClient();
 	const [isMounted, setIsMounted] = createSignal(false);
+	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const mediaSourceName = () =>
+		mediaSources.data?.find((source) => source.id === mediaSourceId())?.name;
 
 	const transport = createServerTransport(mediaSourceId);
 
@@ -98,6 +102,7 @@ export function SourceMediaPage() {
 			<SourceMediaPageComponent
 				enableVirtualization
 				mediaSourceId={mediaSourceId}
+				mediaSourceName={mediaSourceName}
 				transport={transport}
 				presetClient={PresetClient}
 				actions={{

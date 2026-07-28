@@ -94,7 +94,7 @@ export function SearchScreen(props: SearchScreenProps) {
 			</div>
 
 			<div class="grid min-w-0 gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
+				<Card class="sticky top-20 hidden h-[calc(100dvh-13rem)] self-start overflow-y-auto overscroll-contain md:block">
 					<CardHeader>
 						<CardTitle>検索フィルター</CardTitle>
 					</CardHeader>

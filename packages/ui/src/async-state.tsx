@@ -214,51 +214,63 @@ export type QueryStatusProps = {
 	fetchState: QueryUiFetchState;
 	hasData: boolean;
 	hasError?: boolean;
+	/** Omit the empty status region instead of reserving vertical space. */
+	hideWhenIdle?: boolean;
 	offlineLabel: string;
 	updatingLabel: string;
 };
 
 export function QueryStatus(props: QueryStatusProps) {
+	const hasStatus = () =>
+		props.fetchState === "background-fetching" ||
+		(props.fetchState === "paused" && props.hasData) ||
+		Boolean(props.hasError && props.hasData);
+
 	return (
-		<div class={cn("min-h-6", props.class)} data-state-ui-slot="query-status">
-			<Switch>
-				<Match when={props.fetchState === "background-fetching"}>
-					<p
-						class="flex items-center gap-2 text-muted-foreground text-sm"
-						data-state-ui="background-fetching"
-						role="status"
-					>
-						<span
-							aria-hidden="true"
-							class="size-2 animate-pulse rounded-full bg-current motion-reduce:animate-none"
-						/>
-						{props.updatingLabel}
-					</p>
-				</Match>
-				<Match when={props.fetchState === "paused" && props.hasData}>
-					<p
-						class="flex items-center gap-2 text-muted-foreground text-sm"
-						data-state-ui="cached-offline"
-						role="status"
-					>
-						<span
-							aria-hidden="true"
-							class="size-2 rounded-full bg-warning-foreground"
-						/>
-						{props.offlineLabel}
-					</p>
-				</Match>
-				<Match when={props.hasError && props.hasData}>
-					<p
-						class="flex items-center gap-2 text-warning-foreground text-sm"
-						data-state-ui="cached-sync-error"
-						role="status"
-					>
-						<span aria-hidden="true" class="size-2 rounded-full bg-current" />
-						{props.errorLabel ?? "最新のデータを取得できませんでした"}
-					</p>
-				</Match>
-			</Switch>
-		</div>
+		<Show when={!props.hideWhenIdle || hasStatus()}>
+			<div
+				class={cn(!props.hideWhenIdle && "min-h-6", props.class)}
+				data-state-ui-slot="query-status"
+			>
+				<Switch>
+					<Match when={props.fetchState === "background-fetching"}>
+						<p
+							class="flex items-center gap-2 text-muted-foreground text-sm"
+							data-state-ui="background-fetching"
+							role="status"
+						>
+							<span
+								aria-hidden="true"
+								class="size-2 animate-pulse rounded-full bg-current motion-reduce:animate-none"
+							/>
+							{props.updatingLabel}
+						</p>
+					</Match>
+					<Match when={props.fetchState === "paused" && props.hasData}>
+						<p
+							class="flex items-center gap-2 text-muted-foreground text-sm"
+							data-state-ui="cached-offline"
+							role="status"
+						>
+							<span
+								aria-hidden="true"
+								class="size-2 rounded-full bg-warning-foreground"
+							/>
+							{props.offlineLabel}
+						</p>
+					</Match>
+					<Match when={props.hasError && props.hasData}>
+						<p
+							class="flex items-center gap-2 text-warning-foreground text-sm"
+							data-state-ui="cached-sync-error"
+							role="status"
+						>
+							<span aria-hidden="true" class="size-2 rounded-full bg-current" />
+							{props.errorLabel ?? "最新のデータを取得できませんでした"}
+						</p>
+					</Match>
+				</Switch>
+			</div>
+		</Show>
 	);
 }

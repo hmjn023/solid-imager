@@ -21,7 +21,12 @@ import {
 	ContextMenuTrigger,
 } from "./context-menu";
 import type { QueryUiState } from "./query-state";
-import { LoadingRegion, MediaGridSkeleton } from "./skeleton";
+import {
+	getMediaGridColumnCount,
+	LoadingRegion,
+	MediaGridSkeleton,
+	mediaGridClassName,
+} from "./skeleton";
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
@@ -94,9 +99,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	const columnCount = createMemo(() => {
 		const width = mediaGridWidth() || windowWidth();
-		if (width >= 1100) return 5;
-		if (width >= 640) return 3;
-		return 2;
+		return getMediaGridColumnCount(width);
 	});
 
 	const mediaItemWidth = createMemo(() => {
@@ -202,7 +205,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	const gridContent = (
 		<div
-			class="relative min-w-0 w-full"
+			class="@container relative min-w-0 w-full"
 			ref={(element) => {
 				mediaGridRef = element;
 				requestAnimationFrame(() => {
@@ -217,12 +220,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		>
 			<Show
 				fallback={
-					<div
-						class="grid gap-3"
-						style={{
-							"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
-						}}
-					>
+					<div class={mediaGridClassName} data-media-grid>
 						<For each={props.mediaResults()}>
 							{(media) =>
 								props.renderItem(media, {
@@ -245,7 +243,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						const rowMedia = () => mediaRows()[virtualRow.index] || [];
 						return (
 							<div
-								class="absolute top-0 left-0 grid gap-3"
+								class={`absolute top-0 left-0 ${mediaGridClassName}`}
 								style={{
 									"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
 									height: `${virtualRow.size}px`,

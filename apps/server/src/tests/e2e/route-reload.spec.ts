@@ -1,7 +1,6 @@
 import type { Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
-	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 	mediaPath,
 	sourcePath,
@@ -140,7 +139,7 @@ const routeCases: readonly RouteCase[] = [
 	{
 		name: "seeded source",
 		path: sourcePath(),
-		heading: `Media in Source: ${E2E_SOURCE_ID}`,
+		heading: E2E_SOURCE_NAME,
 		ssrText: "メディア一覧を準備しています...",
 		hydratedEndpoints: sourceMediaFilterEndpoints,
 		clientEndpoints: ["/api/rpc/media/search"],
@@ -413,7 +412,7 @@ test("SPA intent prefetch and cache revisit do not duplicate route queries", asy
 	await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
 	await expect(
 		page.getByRole("heading", {
-			name: `Media in Source: ${E2E_SOURCE_ID}`,
+			name: E2E_SOURCE_NAME,
 			exact: true,
 		}),
 	).toBeVisible();

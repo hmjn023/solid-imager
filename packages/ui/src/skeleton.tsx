@@ -3,6 +3,19 @@ import { For, splitProps } from "solid-js";
 import { Card, CardContent, CardHeader } from "./card";
 import { cn } from "./utils/cn";
 
+export const mediaGridClassName =
+	"grid grid-cols-2 gap-3 @[30rem]:grid-cols-3 @[40rem]:grid-cols-4 @[50rem]:grid-cols-5 @[60rem]:grid-cols-6 @[65rem]:grid-cols-7 @[70rem]:grid-cols-8";
+
+export function getMediaGridColumnCount(width: number): number {
+	if (width >= 1120) return 8;
+	if (width >= 1040) return 7;
+	if (width >= 960) return 6;
+	if (width >= 800) return 5;
+	if (width >= 640) return 4;
+	if (width >= 480) return 3;
+	return 2;
+}
+
 export type SkeletonProps = Omit<ComponentProps<"div">, "aria-hidden">;
 
 /** Decorative placeholder. Announce loading once on the containing region. */
@@ -111,15 +124,16 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 	return (
 		<div
 			aria-hidden="true"
-			class={cn(
-				"grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-5",
-				props.class,
-			)}
+			class="@container w-full"
 			data-skeleton="media-grid"
 		>
-			<For each={Array.from({ length: props.count ?? 10 })}>
-				{() => <Skeleton class="aspect-[3/4] w-full rounded-lg" />}
-			</For>
+			<div class={cn(mediaGridClassName, props.class)}>
+				<For each={Array.from({ length: props.count ?? 16 })}>
+					{() => (
+						<Skeleton class="media-grid-skeleton-item aspect-[3/4] w-full rounded-lg" />
+					)}
+				</For>
+			</div>
 		</div>
 	);
 }
@@ -133,7 +147,7 @@ export function MediaDetailSkeleton(props: MediaDetailSkeletonProps) {
 		<div
 			aria-hidden="true"
 			class={cn(
-				"flex min-h-[calc(100dvh-5rem)] flex-col gap-4 lg:flex-row",
+				"flex min-h-[calc(100dvh-7.5rem)] flex-col gap-4 lg:flex-row",
 				props.class,
 			)}
 			data-skeleton="media-detail"

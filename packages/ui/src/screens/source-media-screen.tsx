@@ -24,6 +24,7 @@ import { SourceMediaGrid } from "../source-media-grid";
 
 export type SourceMediaScreenProps = {
 	page: UseSourceMediaPageResult;
+	mediaSourceName?: () => string | undefined;
 	/** Render navigation actions without giving them ownership of filter draft state. */
 	renderActions: (props: { onOpenMobileFilters: () => void }) => JSX.Element;
 	/** Render a single media grid item. */
@@ -109,9 +110,16 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			</Show>
 
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<h1 class="min-w-0 break-all font-bold text-xl sm:text-2xl">
-					Media in Source: {page().mediaSourceId()}
-				</h1>
+				<div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
+					<h1 class="min-w-0 break-words font-bold text-xl sm:text-2xl">
+						{props.mediaSourceName?.() ?? "メディア一覧"}
+					</h1>
+					<Show when={page().mediaQuery.data?.pages[0]?.total !== undefined}>
+						<p class="shrink-0 text-gray-600 text-sm">
+							{page().mediaQuery.data?.pages[0]?.total} 件の結果
+						</p>
+					</Show>
+				</div>
 				<div class="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
 					<Show when={props.onEnterBulkSelectMode}>
 						<Button
@@ -147,7 +155,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			</Show>
 
 			<div class="grid min-w-0 gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-				<Card class="sticky top-20 hidden h-fit max-h-[calc(100vh-6rem)] overflow-y-auto md:block">
+				<Card class="sticky top-20 hidden h-[calc(100dvh-10rem)] self-start overflow-y-auto overscroll-contain md:block">
 					<CardHeader>
 						<CardTitle>検索フィルター</CardTitle>
 					</CardHeader>
@@ -168,6 +176,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 						class="mb-2"
 						fetchState={page().contentState().fetchState}
 						hasData={page().contentState().data !== undefined}
+						hideWhenIdle
 						offlineLabel="オフラインのため保存済みデータを表示しています"
 						updatingLabel="メディア一覧を更新中..."
 					/>
@@ -203,6 +212,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							setContextMenuMediaId={page().setContextMenuMediaId}
 							setLoadMoreRef={page().setLoadMoreRef}
 							showOpenInNewTab={props.showOpenInNewTab}
+							showResultCount={false}
 							state={page().contentState}
 							totalCount={page().mediaQuery.data?.pages[0]?.total}
 						/>
