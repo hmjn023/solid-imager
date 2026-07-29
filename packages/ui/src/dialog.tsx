@@ -54,6 +54,7 @@ type DialogContentProps<_T extends ValidComponent = "div"> = ComponentProps<
 > & {
 	class?: string | undefined;
 	children?: JSX.Element;
+	placement?: "center" | "right";
 };
 
 const DialogContent = <T extends ValidComponent = "div">(
@@ -62,13 +63,18 @@ const DialogContent = <T extends ValidComponent = "div">(
 	const [, rest] = splitProps(props as DialogContentProps, [
 		"class",
 		"children",
+		"placement",
 	]);
+	const placement = () => props.placement ?? "center";
 	return (
 		<DialogPortal>
 			<DialogOverlay />
 			<DialogPrimitiveContent
 				class={cn(
-					"-translate-x-1/2 -translate-y-1/2 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 data-[closed]:slide-out-to-left-1/2 data-[closed]:slide-out-to-top-[48%] data-[expanded]:slide-in-from-left-1/2 data-[expanded]:slide-in-from-top-[48%] fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg gap-4 overflow-y-auto overscroll-contain border bg-background p-6 shadow-lg duration-200 data-[closed]:animate-out data-[expanded]:animate-in sm:max-h-[calc(100dvh-4rem)] sm:rounded-lg",
+					"fixed z-50 grid overflow-y-auto overscroll-contain border bg-background shadow-lg duration-200 data-[closed]:animate-out data-[expanded]:animate-in motion-reduce:animate-none",
+					placement() === "center"
+						? "top-1/2 left-1/2 max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 p-6 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 sm:max-h-[calc(100dvh-4rem)] sm:rounded-lg"
+						: "inset-y-0 right-0 left-auto h-dvh max-h-none w-[min(28rem,calc(100%-1rem))] max-w-none translate-x-0 translate-y-0 origin-right gap-4 rounded-none border-y-0 border-r-0 p-6 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:slide-out-to-right data-[expanded]:slide-in-from-right sm:max-h-none",
 					props.class,
 				)}
 				{...rest}

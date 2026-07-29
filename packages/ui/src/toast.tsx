@@ -104,16 +104,26 @@ export const Toaster = () => {
 				return (
 					<C
 						class="group toaster"
+						closeButton
+						containerAriaLabel="Notifications"
+						duration={5000}
+						gap={10}
+						mobileOffset={{ left: 12, right: 12, top: 12 }}
+						offset={20}
 						position="top-right"
+						visibleToasts={4}
 						toastOptions={{
+							closeButtonAriaLabel: "Close notification",
 							classes: {
 								actionButton:
-									"group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
+									"group-[.toast]:bg-[#08766a] group-[.toast]:font-medium group-[.toast]:text-white hover:group-[.toast]:bg-[#06645a]",
 								cancelButton:
 									"group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+								closeButton:
+									"group-[.toast]:border-border group-[.toast]:bg-background group-[.toast]:text-muted-foreground",
 								description: "group-[.toast]:text-muted-foreground",
 								toast:
-									"group toast group-[.toaster]:border-border group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:shadow-lg",
+									"group toast group-[.toaster]:border-border group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:shadow-lg motion-reduce:transition-none",
 							},
 						}}
 					/>
