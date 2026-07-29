@@ -12,7 +12,8 @@
     "build": "bun --filter '*' build",
     "start": "bun --filter @solid-imager/server start",
     "lint": "biome lint .",
-    "check": "biome check . && bun run typecheck",
+    "check": "biome check . && bun run typecheck && bun run design:lint",
+    "design:lint": "designmd lint DESIGN.md",
     "format": "biome format --write .",
     "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
     "typecheck": "bun --filter '*' typecheck",
@@ -20,6 +21,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
+    "@google/design.md": "^0.4.0",
     "@tanstack/cli": "^0.69.4",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
