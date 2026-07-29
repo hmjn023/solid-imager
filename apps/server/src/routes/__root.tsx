@@ -55,7 +55,10 @@ function RootComponent() {
 				<Toaster />
 				<Show
 					fallback={<Outlet />}
-					when={location().pathname !== "/design-lab"}
+					when={
+						location().pathname !== "/design-lab" &&
+						!location().pathname.startsWith("/design-lab/")
+					}
 				>
 					<AppShell
 						nav={<Nav />}

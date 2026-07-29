@@ -629,7 +629,7 @@ function SidebarItem(props: {
 	return (
 		<Button
 			aria-current={props.active ? "page" : undefined}
-			aria-label={props.label}
+			aria-label={props.badge ? `${props.label}, ${props.badge}` : props.label}
 			class={`relative h-10 w-full justify-start px-3 text-[#505754] hover:bg-[#e9eeeb] hover:text-[#1d2522] ${
 				props.active ? "bg-[#e1f1ed] text-[#05695f]" : ""
 			}`}
@@ -3131,18 +3131,21 @@ function JobsScreen() {
 					</section>
 
 					<div class="mt-5 space-y-2">
-						<Show
-							fallback={
-								<Button class="w-full" variant="outline">
-									<Ban aria-hidden="true" size={15} />
-									Cancel job
-								</Button>
-							}
-							when={selectedJob().status === "failed"}
-						>
+						<Show when={selectedJob().status === "failed"}>
 							<Button class="w-full">
 								<RotateCcw aria-hidden="true" size={15} />
 								Retry job
+							</Button>
+						</Show>
+						<Show
+							when={
+								selectedJob().status === "queued" ||
+								selectedJob().status === "running"
+							}
+						>
+							<Button class="w-full" variant="outline">
+								<Ban aria-hidden="true" size={15} />
+								Cancel job
 							</Button>
 						</Show>
 					</div>
