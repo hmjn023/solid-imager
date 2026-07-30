@@ -4,11 +4,12 @@ import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { useParams } from "@tanstack/solid-router";
-import { createSignal, onMount, Show } from "solid-js";
+import { useLocation, useNavigate, useParams } from "@tanstack/solid-router";
+import { type Accessor, createSignal, onMount, Show } from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
+import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -43,9 +44,13 @@ import {
 
 const PresetClient = createPresetClient(rawPresetClient);
 
-export function SourceMediaPage() {
-	const params = useParams({ from: "/sources/$mediaSourceId/" });
-	const mediaSourceId = () => params().mediaSourceId;
+export function SourceMediaPage(
+	props: { mediaSourceId?: Accessor<string>; variant?: "default" | "v2" } = {},
+) {
+	const params = useParams({ strict: false });
+	const location = useLocation();
+	const navigate = useNavigate();
+	const mediaSourceId = () => props.mediaSourceId?.() ?? params().mediaSourceId;
 	const queryClient = useQueryClient();
 	const [isMounted, setIsMounted] = createSignal(false);
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
@@ -97,10 +102,11 @@ export function SourceMediaPage() {
 					title="メディア一覧"
 				/>
 			}
-			when={isMounted()}
+			when={props.variant === "v2" || isMounted()}
 		>
 			<SourceMediaPageComponent
 				enableVirtualization
+				variant={props.variant}
 				mediaSourceId={mediaSourceId}
 				mediaSourceName={mediaSourceName}
 				transport={transport}
@@ -138,10 +144,32 @@ export function SourceMediaPage() {
 				renderItem={(media, options) => (
 					<MediaGridItem
 						media={media}
+						routeVersion={props.variant === "v2" ? "v2" : "default"}
 						onContextMenu={options.onContextMenu}
 						isBulkSelectMode={options.isBulkSelectMode}
-						isSelected={options.isSelected}
+						isSelected={options.isSelected || options.isPreviewSelected}
+						onPreviewSelect={options.onPreviewSelect}
 						onToggleSelect={() => handleToggleSelect(media.id)}
+					/>
+				)}
+				onOpenMediaDetail={(media) => {
+					sessionStorage.setItem("v2:media-return", location().href);
+					void navigate({
+						params: {
+							mediaId: media.id,
+							mediaSourceId: media.mediaSourceId,
+						},
+						to: "/v2/sources/$mediaSourceId/$mediaId",
+					});
+				}}
+				renderMediaPreview={(media) => (
+					<ThumbnailImage
+						alt={media.fileName}
+						class="h-full w-full object-contain"
+						height={media.height}
+						loading="eager"
+						media={media}
+						width={media.width}
 					/>
 				)}
 				moveCopyDialogComponent={MoveCopyMediaDialog}

@@ -18,6 +18,7 @@ export interface MediaViewerProps {
 	fileName: string;
 	width?: number;
 	height?: number;
+	variant?: "default" | "v2";
 }
 
 export function MediaViewer(props: MediaViewerProps) {
@@ -55,7 +56,9 @@ export function MediaViewer(props: MediaViewerProps) {
 
 	return (
 		<div
-			class="flex aspect-[var(--media-aspect)] min-h-0 min-w-0 w-full items-center justify-center overflow-hidden rounded-lg lg:aspect-auto lg:h-full"
+			class={`flex aspect-[var(--media-aspect)] min-h-0 min-w-0 w-full items-center justify-center overflow-hidden lg:aspect-auto lg:h-full ${
+				props.variant === "v2" ? "bg-[var(--v2-surface)]" : "rounded-lg"
+			}`}
 			data-media-viewer
 			style={`--media-aspect: ${props.width && props.height ? `${props.width} / ${props.height}` : "4 / 3"}`}
 		>
@@ -63,14 +66,22 @@ export function MediaViewer(props: MediaViewerProps) {
 				<Match when={props.source.type === "video"}>
 					<Show
 						fallback={
-							<div class="flex h-full max-h-full w-full items-center justify-center rounded-lg bg-slate-900 text-white">
+							<div
+								class={`flex h-full max-h-full w-full items-center justify-center bg-slate-900 text-white ${
+									props.variant === "v2" ? "" : "rounded-lg"
+								}`}
+							>
 								Video preview unavailable
 							</div>
 						}
 						when={mediaUrl()}
 					>
 						{(url) => (
-							<video class="h-full max-w-full rounded-md" controls src={url()}>
+							<video
+								class={`h-full max-w-full ${props.variant === "v2" ? "" : "rounded-md"}`}
+								controls
+								src={url()}
+							>
 								<track kind="captions" />
 							</video>
 						)}
@@ -79,7 +90,9 @@ export function MediaViewer(props: MediaViewerProps) {
 				<Match when={props.source.type === "audio"}>
 					<Show
 						fallback={
-							<div class="rounded-lg bg-slate-900 px-8 py-6 text-white">
+							<div
+								class={`bg-slate-900 px-8 py-6 text-white ${props.variant === "v2" ? "" : "rounded-lg"}`}
+							>
 								Audio preview unavailable
 							</div>
 						}
@@ -96,13 +109,21 @@ export function MediaViewer(props: MediaViewerProps) {
 					<Show
 						fallback={
 							<div
-								class="flex h-full w-full items-center justify-center rounded-lg border text-white"
-								style={{
-									background:
-										"linear-gradient(135deg, rgba(15,23,42,0.18), rgba(15,23,42,0.02)), linear-gradient(135deg, #0f766e, #60a5fa)",
-								}}
+								class={`flex h-full w-full items-center justify-center ${
+									props.variant === "v2"
+										? "bg-[var(--v2-surface-muted)] text-[var(--v2-text-muted)]"
+										: "rounded-lg border text-white"
+								}`}
+								style={
+									props.variant === "v2"
+										? undefined
+										: {
+												background:
+													"linear-gradient(135deg, rgba(15,23,42,0.18), rgba(15,23,42,0.02)), linear-gradient(135deg, #0f766e, #60a5fa)",
+											}
+								}
 							>
-								<div class="rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm uppercase tracking-[0.35em]">
+								<div class="max-w-[80%] truncate rounded-md border border-current/20 px-4 py-2 text-sm">
 									{props.fileName}
 								</div>
 							</div>
@@ -112,7 +133,8 @@ export function MediaViewer(props: MediaViewerProps) {
 						{(url) => (
 							<img
 								alt={props.fileName}
-								class="h-full w-full rounded-md object-contain"
+								class={`h-full w-full object-contain ${props.variant === "v2" ? "" : "rounded-md"}`}
+								fetchpriority="high"
 								height={props.height}
 								src={url()}
 								width={props.width}

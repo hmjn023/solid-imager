@@ -76,6 +76,7 @@ export interface UseSearchPageOptions {
 	gcTime?: number;
 	refreshDebounceMs?: number;
 	isSearchStateRestored?: Accessor<boolean>;
+	scrollContainerSelector?: string;
 }
 
 export interface UseSearchPageResult {
@@ -246,6 +247,20 @@ export function useSearchPage(
 	};
 
 	const [isRestored, setIsRestored] = createSignal(false);
+	const scrollContainer = () =>
+		options.scrollContainerSelector
+			? document.querySelector<HTMLElement>(options.scrollContainerSelector)
+			: null;
+	const scrollToPosition = (top: number) => {
+		const container = scrollContainer();
+		if (container) {
+			container.scrollTo({ top });
+			return;
+		}
+		window.scrollTo(0, top);
+	};
+	const currentScrollPosition = () =>
+		scrollContainer()?.scrollTop ?? window.scrollY;
 
 	createEffect(() => {
 		if (
@@ -255,7 +270,7 @@ export function useSearchPage(
 		) {
 			if (scrollY() > 0) {
 				requestAnimationFrame(() => {
-					window.scrollTo(0, scrollY());
+					scrollToPosition(scrollY());
 				});
 			}
 			setIsRestored(true);
@@ -264,7 +279,7 @@ export function useSearchPage(
 
 	onCleanup(() => {
 		if (!isServer) {
-			setScrollY(window.scrollY);
+			setScrollY(currentScrollPosition());
 		}
 		const timer = refreshTimer();
 		if (timer) {
@@ -275,7 +290,7 @@ export function useSearchPage(
 	const handleSearch = () => {
 		setOffset(0);
 		setScrollY(0);
-		window.scrollTo(0, 0);
+		scrollToPosition(0);
 	};
 
 	const [loadMoreRef, setLoadMoreRef] = createSignal<

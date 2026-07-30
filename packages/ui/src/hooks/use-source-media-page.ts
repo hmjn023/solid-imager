@@ -170,6 +170,7 @@ export type UseSourceMediaPageOptions = {
 	itemsPerPage?: number;
 	onThumbnailReady?: (mediaId: string) => void;
 	isSearchStateRestored?: Accessor<boolean>;
+	scrollContainerSelector?: string;
 };
 
 export type UseSourceMediaPageResult = {
@@ -240,6 +241,20 @@ export function useSourceMediaPage(
 	} = options;
 
 	const id = mediaSourceId;
+	const scrollContainer = () =>
+		options.scrollContainerSelector
+			? document.querySelector<HTMLElement>(options.scrollContainerSelector)
+			: null;
+	const scrollToPosition = (top: number) => {
+		const container = scrollContainer();
+		if (container) {
+			container.scrollTo({ top });
+			return;
+		}
+		window.scrollTo(0, top);
+	};
+	const currentScrollPosition = () =>
+		scrollContainer()?.scrollTop ?? window.scrollY;
 
 	// --- Filter data queries ---
 	const filterData = (): SourceMediaPageFilterData => ({
@@ -294,7 +309,7 @@ export function useSourceMediaPage(
 
 	// --- Search handler ---
 	const handleSearch = () => {
-		window.scrollTo(0, 0);
+		scrollToPosition(0);
 	};
 
 	// --- Scroll restoration ---
@@ -324,7 +339,7 @@ export function useSourceMediaPage(
 			if (targetScrollY > 0) {
 				setTimeout(() => {
 					requestAnimationFrame(() => {
-						window.scrollTo(0, targetScrollY);
+						scrollToPosition(targetScrollY);
 						setIsScrollRestored(true);
 					});
 				}, SCROLL_RESTORE_DELAY);
@@ -340,7 +355,7 @@ export function useSourceMediaPage(
 		}
 		const sourceId = id();
 		if (sourceId) {
-			setScrollPosition(sourceId, window.scrollY);
+			setScrollPosition(sourceId, currentScrollPosition());
 		}
 	});
 
