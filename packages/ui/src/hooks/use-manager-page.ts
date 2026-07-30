@@ -110,6 +110,7 @@ export type UseManagerPageOptions = {
 	useBatchJobEvents?: (
 		activeJobId: Accessor<string | null>,
 		handlers: ManagerJobHandlers,
+		options?: { subscribeImmediately?: boolean },
 	) => void;
 	onBatchTaggingStart?: (result: StartBatchTaggingResult) => void;
 };
@@ -712,7 +713,9 @@ export function useManagerPage(
 		handleJobFailed,
 	};
 
-	useBatchJobEvents?.(activeJobId, jobHandlers);
+	// Fast children may publish parent progress before the start request returns.
+	// Buffer those events until activeJobId is known.
+	useBatchJobEvents?.(activeJobId, jobHandlers, { subscribeImmediately: true });
 
 	return {
 		activeTab,

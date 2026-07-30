@@ -1,8 +1,26 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import { createForm } from "@tanstack/solid-form";
-import { createEffect, createSignal } from "solid-js";
+// biome-ignore lint/suspicious/noDeprecatedImports: the object overload used below is current; TanStack's legacy overload annotation marks the re-export.
+import { useBlocker } from "@tanstack/solid-router";
+import Bot from "lucide-solid/icons/bot";
+import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
+import DownloadCloud from "lucide-solid/icons/cloud-download";
+import HardDrive from "lucide-solid/icons/hard-drive";
+import Image from "lucide-solid/icons/image";
+import Logs from "lucide-solid/icons/logs";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import type { z } from "zod";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../alert-dialog";
 import { Button } from "../button";
 import {
 	FormError,
@@ -15,8 +33,41 @@ import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
+import {
+	V2_CATEGORY_TABS_CLASS,
+	V2CategoryLabel,
+} from "../v2/management-layout";
 
 type AppConfigFormValues = z.input<typeof AppConfigSchema>;
+
+const SETTINGS_CATEGORIES = [
+	{
+		description: "並列数と自動処理",
+		icon: BriefcaseBusiness,
+		label: "Jobs",
+		value: "jobs",
+	},
+	{ description: "推論サービス接続", icon: Bot, label: "AI", value: "ai" },
+	{
+		description: "取得速度と制限",
+		icon: DownloadCloud,
+		label: "Downloads",
+		value: "downloads",
+	},
+	{
+		description: "サムネイルと保存先",
+		icon: HardDrive,
+		label: "Storage",
+		value: "storage",
+	},
+	{
+		description: "形式とメタデータ",
+		icon: Image,
+		label: "Media",
+		value: "media",
+	},
+	{ description: "出力レベル", icon: Logs, label: "Logging", value: "logging" },
+] as const;
 
 function toFormValues(data: AppConfig): AppConfigFormValues {
 	return data;
@@ -30,11 +81,17 @@ export type ConfigScreenProps = {
 	data: AppConfig;
 	onSubmit: (value: Partial<AppConfig>) => Promise<void>;
 	onSubmitSuccess?: () => void;
+	variant?: "default" | "v2";
 };
 
 export function ConfigScreen(props: ConfigScreenProps) {
 	const [activeTab, setActiveTab] = createSignal("jobs");
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
+	const isV2 = () => props.variant === "v2";
+	const sectionClass = () =>
+		isV2()
+			? "space-y-5 border-b border-[var(--v2-border)] pb-8"
+			: "space-y-4 rounded-md border p-3 sm:p-4";
 	const form = createForm(() => ({
 		defaultValues: toFormValues(props.data),
 		validators: {
@@ -56,6 +113,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 			}
 		},
 	}));
+	const navigationBlocker = useBlocker({
+		shouldBlockFn: () => isV2() && form.state.isDirty,
+		enableBeforeUnload: () => isV2() && form.state.isDirty,
+		withResolver: true,
+	});
 
 	createEffect(() => {
 		const data = props.data;
@@ -66,61 +128,81 @@ export function ConfigScreen(props: ConfigScreenProps) {
 
 	return (
 		<div class="min-w-0 space-y-6 [&_input]:scroll-mt-28 [&_input]:text-base [&_select]:scroll-mt-28 [&_select]:text-base [&_textarea]:scroll-mt-28 [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
-			<div class="sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-3 flex flex-col gap-3 border-b bg-background px-3 py-3 sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0">
-				<h1 class="font-bold text-2xl sm:text-3xl">Settings</h1>
-				<form.Subscribe
-					selector={(state) => ({
-						canSubmit: state.canSubmit,
-						isSubmitting: state.isSubmitting,
-					})}
+			<Show when={!isV2()}>
+				<div
+					class={
+						"sticky top-[calc(4rem+env(safe-area-inset-top))] z-20 -mx-3 flex flex-col gap-3 border-b bg-background px-3 py-3 sm:-mx-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 md:static md:mx-0 md:border-0 md:bg-transparent md:p-0"
+					}
 				>
-					{(state) => (
-						<Button
-							class="w-full sm:w-auto"
-							disabled={!state().canSubmit || state().isSubmitting}
-							onClick={() => {
-								void form.handleSubmit();
-							}}
+					<h1 class="font-bold text-2xl sm:text-3xl">Settings</h1>
+					<Show when={!isV2()}>
+						<form.Subscribe
+							selector={(state) => ({
+								canSubmit: state.canSubmit,
+								isSubmitting: state.isSubmitting,
+							})}
 						>
-							{state().isSubmitting ? "Saving..." : "Save Changes"}
-						</Button>
-					)}
-				</form.Subscribe>
-			</div>
+							{(state) => (
+								<Button
+									class="w-full sm:w-auto"
+									disabled={!state().canSubmit || state().isSubmitting}
+									onClick={() => {
+										void form.handleSubmit();
+									}}
+								>
+									{state().isSubmitting ? "Saving..." : "Save Changes"}
+								</Button>
+							)}
+						</form.Subscribe>
+					</Show>
+				</div>
+			</Show>
 			<FormError message={submitError()} />
 
-			<Tabs class="min-w-0 w-full" onChange={setActiveTab} value={activeTab()}>
+			<Tabs
+				class={
+					isV2()
+						? "grid min-w-0 w-full gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+						: "min-w-0 w-full"
+				}
+				onChange={setActiveTab}
+				value={activeTab()}
+			>
 				<TabsList
 					aria-label="Settings categories"
-					class="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-md p-1 md:grid md:grid-cols-6 md:overflow-visible"
+					class={
+						isV2()
+							? "flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
+							: "flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-md p-1 md:grid md:grid-cols-6 md:overflow-visible"
+					}
 				>
-					<TabsTrigger class="min-h-11 shrink-0" type="button" value="jobs">
-						Jobs
-					</TabsTrigger>
-					<TabsTrigger class="min-h-11 shrink-0" type="button" value="ai">
-						AI
-					</TabsTrigger>
-					<TabsTrigger
-						class="min-h-11 shrink-0"
-						type="button"
-						value="downloads"
-					>
-						Downloads
-					</TabsTrigger>
-					<TabsTrigger class="min-h-11 shrink-0" type="button" value="storage">
-						Storage
-					</TabsTrigger>
-					<TabsTrigger class="min-h-11 shrink-0" type="button" value="media">
-						Media
-					</TabsTrigger>
-					<TabsTrigger class="min-h-11 shrink-0" type="button" value="logging">
-						Logging
-					</TabsTrigger>
+					<For each={SETTINGS_CATEGORIES}>
+						{(category) => {
+							const Icon = category.icon;
+							return (
+								<TabsTrigger
+									class={V2_CATEGORY_TABS_CLASS}
+									type="button"
+									value={category.value}
+								>
+									<V2CategoryLabel
+										description={category.description}
+										icon={<Icon aria-hidden="true" size={16} />}
+										label={category.label}
+									/>
+								</TabsTrigger>
+							);
+						}}
+					</For>
 				</TabsList>
 
-				<div class="mt-4 space-y-4 sm:mt-6 sm:space-y-6">
+				<div
+					class={
+						isV2() ? "min-w-0 space-y-6" : "mt-4 space-y-4 sm:mt-6 sm:space-y-6"
+					}
+				>
 					<TabsContent value="jobs">
-						<div class="space-y-4 rounded-md border p-3 sm:p-4">
+						<div class={sectionClass()}>
 							<h2 class="mb-4 font-semibold text-xl">Job Processing</h2>
 
 							<form.Field name="jobs.concurrency">
@@ -239,8 +321,21 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="ai">
-						<div class="space-y-4 rounded-md border p-3 sm:p-4">
+						<div class={sectionClass()}>
 							<h2 class="mb-4 font-semibold text-xl">AI Service</h2>
+							<Show when={isV2()}>
+								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-3 py-2.5">
+									<div>
+										<div class="font-medium text-sm">Connection status</div>
+										<div class="text-[var(--v2-muted)] text-xs">
+											Health check API is not available yet.
+										</div>
+									</div>
+									<Button disabled size="sm" variant="outline">
+										Not checked
+									</Button>
+								</div>
+							</Show>
 							<form.Field name="ai.baseUrl">
 								{(field) => (
 									<div class="space-y-2">
@@ -290,7 +385,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="downloads">
-						<div class="space-y-4 rounded-md border p-3 sm:p-4">
+						<div class={sectionClass()}>
 							<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
 
 							<form.Field name="downloads.rateLimitEnabled">
@@ -339,7 +434,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="storage">
-						<div class="space-y-4 rounded-md border p-3 sm:p-4">
+						<div class={sectionClass()}>
 							<h2 class="mb-4 font-semibold text-xl">Storage</h2>
 							<form.Field name="storage.thumbnailDir">
 								{(field) => (
@@ -399,7 +494,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="media">
-						<div class="space-y-4 rounded-md border p-3 sm:p-4">
+						<div class={sectionClass()}>
 							<h2 class="mb-4 font-semibold text-xl">Media Extensions</h2>
 
 							<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -540,7 +635,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 
 					<TabsContent value="logging">
-						<div class="space-y-4 rounded-md border p-3 sm:p-4">
+						<div class={sectionClass()}>
 							<h2 class="mb-4 font-semibold text-xl">Logging</h2>
 							<form.Field name="logging.level">
 								{(field) => (
@@ -576,6 +671,74 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsContent>
 				</div>
 			</Tabs>
+			<Show when={isV2()}>
+				<form.Subscribe
+					selector={(state) => ({
+						canSubmit: state.canSubmit,
+						isDirty: state.isDirty,
+						isSubmitting: state.isSubmitting,
+					})}
+				>
+					{(state) => (
+						<Show when={state().isDirty}>
+							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-2 shadow-lg backdrop-blur">
+								<span class="px-2 text-[var(--v2-muted)] text-sm">
+									Unsaved changes
+								</span>
+								<Button
+									disabled={state().isSubmitting}
+									onClick={() => {
+										setSubmitError(null);
+										form.reset(toFormValues(props.data));
+									}}
+									variant="outline"
+								>
+									Discard
+								</Button>
+								<Button
+									disabled={!state().canSubmit || state().isSubmitting}
+									onClick={() => {
+										void form.handleSubmit();
+									}}
+								>
+									{state().isSubmitting ? "Saving..." : "Save Changes"}
+								</Button>
+							</div>
+						</Show>
+					)}
+				</form.Subscribe>
+			</Show>
+			<AlertDialog
+				onOpenChange={(open) => {
+					const resolver = navigationBlocker();
+					if (!open && resolver.status === "blocked") {
+						resolver.reset?.();
+					}
+				}}
+				open={navigationBlocker().status === "blocked"}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>設定変更を破棄しますか？</AlertDialogTitle>
+						<AlertDialogDescription>
+							保存されていない変更があります。このページを離れると入力内容は失われます。
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>編集を続ける</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={() => {
+								const resolver = navigationBlocker();
+								if (resolver.status !== "blocked") return;
+								form.reset(toFormValues(props.data));
+								resolver.proceed?.();
+							}}
+						>
+							破棄して移動
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</div>
 	);
 }
