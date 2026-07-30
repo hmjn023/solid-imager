@@ -2,6 +2,16 @@ import { getErrorMessage } from "@solid-imager/core/utils";
 import { createForm } from "@tanstack/solid-form";
 import { createEffect, createSignal, For, on, onCleanup, Show } from "solid-js";
 import { z } from "zod";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "./alert-dialog";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -104,6 +114,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const [lastFetchedUrl, setLastFetchedUrl] = createSignal<string | null>(null);
 	const [previewUrl, setPreviewUrl] = createSignal<string | null>(null);
 	const [asyncError, setAsyncError] = createSignal<string | null>(null);
+	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
 	let fileInputRef: HTMLInputElement | undefined;
 
 	const form = createForm(() => ({
@@ -254,6 +265,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 					sourceUrl: props.pastedUrl ?? "",
 				});
 				setAsyncError(null);
+				setShowDiscardDialog(false);
 			},
 		),
 	);
@@ -265,294 +277,336 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 		}
 	});
 
+	const requestClose = () => {
+		if (form.state.isDirty || selectedFiles().length > 0 || isFetchingUrl()) {
+			setShowDiscardDialog(true);
+			return;
+		}
+		props.onClose();
+	};
+	const discardAndClose = () => {
+		setShowDiscardDialog(false);
+		props.onClose();
+	};
+
 	return (
-		<Dialog onOpenChange={props.onClose} open={props.isOpen}>
-			<Show when={props.isOpen}>
-				<DialogContent class="sm:max-w-[560px]">
-					<DialogHeader>
-						<DialogTitle>メディアをアップロード</DialogTitle>
-						<DialogDescription>
-							アップロードするメディアの詳細を入力してください。
-						</DialogDescription>
-					</DialogHeader>
+		<>
+			<Dialog
+				onOpenChange={(open) => !open && requestClose()}
+				open={props.isOpen}
+			>
+				<Show when={props.isOpen}>
+					<DialogContent class="sm:max-w-[560px]">
+						<DialogHeader>
+							<DialogTitle>メディアをアップロード</DialogTitle>
+							<DialogDescription>
+								アップロードするメディアの詳細を入力してください。
+							</DialogDescription>
+						</DialogHeader>
 
-					<form
-						onSubmit={(event) => {
-							event.preventDefault();
-							event.stopPropagation();
-							void form.handleSubmit();
-						}}
-					>
-						<div class="grid gap-4 py-4">
-							<button
-								class={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-									isDragging() ? "border-primary bg-primary/5" : "border-muted"
-								}`}
-								onClick={() => fileInputRef?.click()}
-								onKeyDown={(event) => {
-									if (event.key === "Enter" || event.key === " ") {
+						<form
+							onSubmit={(event) => {
+								event.preventDefault();
+								event.stopPropagation();
+								void form.handleSubmit();
+							}}
+						>
+							<div class="grid gap-4 py-4">
+								<button
+									class={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+										isDragging()
+											? "border-primary bg-primary/5"
+											: "border-muted"
+									}`}
+									onClick={() => fileInputRef?.click()}
+									onKeyDown={(event) => {
+										if (event.key === "Enter" || event.key === " ") {
+											event.preventDefault();
+											fileInputRef?.click();
+										}
+									}}
+									onDragEnter={(event) => {
 										event.preventDefault();
-										fileInputRef?.click();
-									}
-								}}
-								onDragEnter={(event) => {
-									event.preventDefault();
-									setIsDragging(true);
-								}}
-								onDragLeave={(event) => {
-									event.preventDefault();
-									setIsDragging(false);
-								}}
-								onDragOver={(event) => event.preventDefault()}
-								onDrop={(event) => {
-									event.preventDefault();
-									setIsDragging(false);
-									handleDroppedFiles(event.dataTransfer?.files);
-								}}
-								type="button"
-							>
-								<p class="font-medium text-sm">ファイルをドラッグ&ドロップ</p>
-								<p class="mt-1 text-muted-foreground text-xs">
-									またはファイル選択ダイアログから追加します。
-								</p>
-								<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-									ファイルを選択
-								</span>
-							</button>
-							<input
-								class="hidden"
-								multiple
-								onChange={(event) => {
-									handleDroppedFiles(event.currentTarget.files);
-									event.currentTarget.value = "";
-								}}
-								ref={(element) => {
-									fileInputRef = element;
-								}}
-								type="file"
-							/>
+										setIsDragging(true);
+									}}
+									onDragLeave={(event) => {
+										event.preventDefault();
+										setIsDragging(false);
+									}}
+									onDragOver={(event) => event.preventDefault()}
+									onDrop={(event) => {
+										event.preventDefault();
+										setIsDragging(false);
+										handleDroppedFiles(event.dataTransfer?.files);
+									}}
+									type="button"
+								>
+									<p class="font-medium text-sm">ファイルをドラッグ&ドロップ</p>
+									<p class="mt-1 text-muted-foreground text-xs">
+										またはファイル選択ダイアログから追加します。
+									</p>
+									<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+										ファイルを選択
+									</span>
+								</button>
+								<input
+									class="hidden"
+									multiple
+									onChange={(event) => {
+										handleDroppedFiles(event.currentTarget.files);
+										event.currentTarget.value = "";
+									}}
+									ref={(element) => {
+										fileInputRef = element;
+									}}
+									type="file"
+								/>
 
-							<Show when={selectedFiles().length > 0}>
-								<div class="rounded-md border p-3">
-									<p class="mb-2 font-medium text-sm">選択中のファイル</p>
-									<ul class="space-y-2">
-										<For each={selectedFiles()}>
-											{(file) => (
-												<li class="flex items-center justify-between gap-3 text-sm">
-													<span class="truncate">{file.name}</span>
-													<span class="shrink-0 text-muted-foreground text-xs">
-														{fileSizeLabel(file)}
-													</span>
-												</li>
-											)}
-										</For>
-									</ul>
-								</div>
-							</Show>
-
-							<form.Field name="filename">
-								{(field) => (
-									<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-										<Label class="sm:text-right" for={field().name}>
-											ファイル名
-										</Label>
-										<div class="space-y-2 sm:col-span-3">
-											<Input
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												id={field().name}
-												onBlur={field().handleBlur}
-												onInput={(event) =>
-													field().handleChange(event.currentTarget.value)
-												}
-												value={field().state.value}
-											/>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="description">
-								{(field) => (
-									<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-										<Label class="sm:text-right" for={field().name}>
-											説明
-										</Label>
-										<Input
-											class="sm:col-span-3"
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(event) =>
-												field().handleChange(event.currentTarget.value)
-											}
-											value={field().state.value}
-										/>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="sourceUrl">
-								{(field) => (
-									<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
-										<Label class="sm:text-right" for={field().name}>
-											ソースURL
-										</Label>
-										<div class="relative space-y-2 sm:col-span-3">
-											<Input
-												aria-describedby={`${field().name}-error`}
-												aria-invalid={field().state.meta.errors.length > 0}
-												disabled={isFetchingUrl()}
-												id={field().name}
-												onBlur={field().handleBlur}
-												onInput={(event) =>
-													field().handleChange(event.currentTarget.value)
-												}
-												value={field().state.value}
-											/>
-											<Show when={isFetchingUrl()}>
-												<div class="-translate-y-1/2 absolute top-1/2 right-2 text-muted-foreground text-xs">
-													Loading...
-												</div>
-											</Show>
-											<FormFieldMessage
-												id={`${field().name}-error`}
-												message={getFormErrorMessage(
-													field().state.meta.errors[0],
-												)}
-											/>
-										</div>
-										<Show when={previewUrl()}>
-											<div class="mt-2 flex justify-center sm:col-span-4">
-												<img
-													alt="Fetched preview"
-													class="max-h-48 rounded-md object-contain"
-													src={previewUrl() || undefined}
-												/>
-											</div>
-										</Show>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="conflictResolution">
-								{(field) => (
-									<div class="space-y-2">
-										<Label>競合時の処理</Label>
-										<div class="grid gap-2 sm:grid-cols-3">
-											<For each={resolutionOptions}>
-												{(option) => (
-													<label class="rounded-md border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-														<div class="flex items-center gap-2">
-															<input
-																checked={field().state.value === option.value}
-																name={field().name}
-																onChange={() =>
-																	field().handleChange(option.value)
-																}
-																type="radio"
-															/>
-															<span class="font-medium">{option.label}</span>
-														</div>
-														<p class="mt-1 text-muted-foreground text-xs">
-															{option.description}
-														</p>
-													</label>
+								<Show when={selectedFiles().length > 0}>
+									<div class="rounded-md border p-3">
+										<p class="mb-2 font-medium text-sm">選択中のファイル</p>
+										<ul class="space-y-2">
+											<For each={selectedFiles()}>
+												{(file) => (
+													<li class="flex items-center justify-between gap-3 text-sm">
+														<span class="truncate">{file.name}</span>
+														<span class="shrink-0 text-muted-foreground text-xs">
+															{fileSizeLabel(file)}
+														</span>
+													</li>
 												)}
 											</For>
-										</div>
+										</ul>
 									</div>
-								)}
-							</form.Field>
+								</Show>
 
-							<Show when={(props.conflicts?.length ?? 0) > 0}>
-								<div class="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950 text-sm">
-									<p class="font-medium">同名ファイルがあります</p>
-									<ul class="mt-2 list-disc space-y-1 pl-5">
-										<For each={props.conflicts}>
-											{(conflict) => (
-												<li>
-													{conflict.filename}
-													<Show when={conflict.suggestedName}>
-														<span> → {conflict.suggestedName}</span>
-													</Show>
-												</li>
-											)}
-										</For>
-									</ul>
-								</div>
-							</Show>
-
-							<Show when={props.uploadProgress}>
-								{(progress) => (
-									<div class="rounded-md border p-3 text-sm">
-										<div class="flex justify-between gap-3">
-											<span>{progress().filename || "アップロード中"}</span>
-											<span class="text-muted-foreground">
-												{progress().status ||
-													(progress().total
-														? `${progress().current ?? 0}/${progress().total}`
-														: "処理中")}
-											</span>
+								<form.Field name="filename">
+									{(field) => (
+										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+											<Label class="sm:text-right" for={field().name}>
+												ファイル名
+											</Label>
+											<div class="space-y-2 sm:col-span-3">
+												<Input
+													aria-describedby={`${field().name}-error`}
+													aria-invalid={field().state.meta.errors.length > 0}
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(event) =>
+														field().handleChange(event.currentTarget.value)
+													}
+													value={field().state.value}
+												/>
+												<FormFieldMessage
+													id={`${field().name}-error`}
+													message={getFormErrorMessage(
+														field().state.meta.errors[0],
+													)}
+												/>
+											</div>
 										</div>
-										<div class="mt-2 h-2 overflow-hidden rounded bg-muted">
-											<div
-												class="h-full bg-primary transition-all"
-												style={{
-													width: (() => {
-														const total = progress().total;
-														return total
-															? `${Math.min(100, ((progress().current ?? 0) / total) * 100)}%`
-															: "35%";
-													})(),
-												}}
+									)}
+								</form.Field>
+
+								<form.Field name="description">
+									{(field) => (
+										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+											<Label class="sm:text-right" for={field().name}>
+												説明
+											</Label>
+											<Input
+												class="sm:col-span-3"
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(event) =>
+													field().handleChange(event.currentTarget.value)
+												}
+												value={field().state.value}
 											/>
 										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="sourceUrl">
+									{(field) => (
+										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
+											<Label class="sm:text-right" for={field().name}>
+												ソースURL
+											</Label>
+											<div class="relative space-y-2 sm:col-span-3">
+												<Input
+													aria-describedby={`${field().name}-error`}
+													aria-invalid={field().state.meta.errors.length > 0}
+													disabled={isFetchingUrl()}
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(event) =>
+														field().handleChange(event.currentTarget.value)
+													}
+													value={field().state.value}
+												/>
+												<Show when={isFetchingUrl()}>
+													<div class="-translate-y-1/2 absolute top-1/2 right-2 text-muted-foreground text-xs">
+														Loading...
+													</div>
+												</Show>
+												<FormFieldMessage
+													id={`${field().name}-error`}
+													message={getFormErrorMessage(
+														field().state.meta.errors[0],
+													)}
+												/>
+											</div>
+											<Show when={previewUrl()}>
+												<div class="mt-2 flex justify-center sm:col-span-4">
+													<img
+														alt="Fetched preview"
+														class="max-h-48 rounded-md object-contain"
+														src={previewUrl() || undefined}
+													/>
+												</div>
+											</Show>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="conflictResolution">
+									{(field) => (
+										<div class="space-y-2">
+											<Label>競合時の処理</Label>
+											<div class="grid gap-2 sm:grid-cols-3">
+												<For each={resolutionOptions}>
+													{(option) => (
+														<label class="rounded-md border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
+															<div class="flex items-center gap-2">
+																<input
+																	checked={field().state.value === option.value}
+																	name={field().name}
+																	onChange={() =>
+																		field().handleChange(option.value)
+																	}
+																	type="radio"
+																/>
+																<span class="font-medium">{option.label}</span>
+															</div>
+															<p class="mt-1 text-muted-foreground text-xs">
+																{option.description}
+															</p>
+														</label>
+													)}
+												</For>
+											</div>
+										</div>
+									)}
+								</form.Field>
+
+								<Show when={(props.conflicts?.length ?? 0) > 0}>
+									<div class="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950 text-sm">
+										<p class="font-medium">同名ファイルがあります</p>
+										<ul class="mt-2 list-disc space-y-1 pl-5">
+											<For each={props.conflicts}>
+												{(conflict) => (
+													<li>
+														{conflict.filename}
+														<Show when={conflict.suggestedName}>
+															<span> → {conflict.suggestedName}</span>
+														</Show>
+													</li>
+												)}
+											</For>
+										</ul>
 									</div>
-								)}
-							</Show>
+								</Show>
 
-							<FormError message={asyncError()} />
-							<form.Subscribe selector={(state) => state.errorMap.onSubmit}>
-								{(error) => <FormError message={getFormSubmitError(error())} />}
-							</form.Subscribe>
-						</div>
+								<Show when={props.uploadProgress}>
+									{(progress) => (
+										<div class="rounded-md border p-3 text-sm">
+											<div class="flex justify-between gap-3">
+												<span>{progress().filename || "アップロード中"}</span>
+												<span class="text-muted-foreground">
+													{progress().status ||
+														(progress().total
+															? `${progress().current ?? 0}/${progress().total}`
+															: "処理中")}
+												</span>
+											</div>
+											<div class="mt-2 h-2 overflow-hidden rounded bg-muted">
+												<div
+													class="h-full bg-primary transition-all"
+													style={{
+														width: (() => {
+															const total = progress().total;
+															return total
+																? `${Math.min(100, ((progress().current ?? 0) / total) * 100)}%`
+																: "35%";
+														})(),
+													}}
+												/>
+											</div>
+										</div>
+									)}
+								</Show>
 
-						<DialogFooter>
-							<Button onClick={props.onClose} type="button" variant="outline">
-								キャンセル
-							</Button>
-							<form.Subscribe
-								selector={(state) => ({
-									canSubmit: state.canSubmit,
-									isSubmitting: state.isSubmitting,
-								})}
-							>
-								{(state) => (
-									<Button
-										disabled={
-											!state().canSubmit ||
-											state().isSubmitting ||
-											isFetchingUrl()
-										}
-										type="submit"
-									>
-										{state().isSubmitting
-											? "アップロード中..."
-											: "アップロード"}
-									</Button>
-								)}
-							</form.Subscribe>
-						</DialogFooter>
-					</form>
-				</DialogContent>
-			</Show>
-		</Dialog>
+								<FormError message={asyncError()} />
+								<form.Subscribe selector={(state) => state.errorMap.onSubmit}>
+									{(error) => (
+										<FormError message={getFormSubmitError(error())} />
+									)}
+								</form.Subscribe>
+							</div>
+
+							<DialogFooter>
+								<Button onClick={requestClose} type="button" variant="outline">
+									キャンセル
+								</Button>
+								<form.Subscribe
+									selector={(state) => ({
+										canSubmit: state.canSubmit,
+										isSubmitting: state.isSubmitting,
+									})}
+								>
+									{(state) => (
+										<Button
+											disabled={
+												!state().canSubmit ||
+												state().isSubmitting ||
+												isFetchingUrl()
+											}
+											type="submit"
+										>
+											{state().isSubmitting
+												? "アップロード中..."
+												: "アップロード"}
+										</Button>
+									)}
+								</form.Subscribe>
+							</DialogFooter>
+						</form>
+					</DialogContent>
+				</Show>
+			</Dialog>
+			<AlertDialog
+				onOpenChange={setShowDiscardDialog}
+				open={showDiscardDialog()}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							アップロード内容を破棄しますか？
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							選択したファイルと入力内容は保存されていません。
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>編集を続ける</AlertDialogCancel>
+						<AlertDialogAction onClick={discardAndClose}>
+							破棄して閉じる
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }
 

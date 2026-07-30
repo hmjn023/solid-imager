@@ -6,8 +6,10 @@ import {
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
-export function PendingDownloadsIndicator() {
-	const props: PendingDownloadsIndicatorProps = {
+export function PendingDownloadsIndicator(
+	displayProps: { compact?: boolean; variant?: "default" | "v2" } = {},
+) {
+	const indicatorProps: PendingDownloadsIndicatorProps = {
 		listPending: async () => {
 			const jobs = await orpc.imports.listPending();
 			return jobs;
@@ -38,5 +40,7 @@ export function PendingDownloadsIndicator() {
 		},
 	};
 
-	return <SharedPendingDownloadsIndicator {...props} />;
+	return (
+		<SharedPendingDownloadsIndicator {...indicatorProps} {...displayProps} />
+	);
 }

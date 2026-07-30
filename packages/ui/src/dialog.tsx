@@ -54,7 +54,7 @@ type DialogContentProps<_T extends ValidComponent = "div"> = ComponentProps<
 > & {
 	class?: string | undefined;
 	children?: JSX.Element;
-	placement?: "center" | "right";
+	placement?: "center" | "left" | "right";
 };
 
 const DialogContent = <T extends ValidComponent = "div">(
@@ -74,7 +74,9 @@ const DialogContent = <T extends ValidComponent = "div">(
 					"fixed z-50 grid overflow-y-auto overscroll-contain border bg-background shadow-lg duration-200 data-[closed]:animate-out data-[expanded]:animate-in motion-reduce:animate-none",
 					placement() === "center"
 						? "top-1/2 left-1/2 max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 p-6 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 sm:max-h-[calc(100dvh-4rem)] sm:rounded-lg"
-						: "inset-y-0 right-0 left-auto h-dvh max-h-none w-[min(28rem,calc(100%-1rem))] max-w-none translate-x-0 translate-y-0 origin-right gap-4 rounded-none border-y-0 border-r-0 p-6 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:slide-out-to-right data-[expanded]:slide-in-from-right sm:max-h-none",
+						: placement() === "left"
+							? "inset-y-0 left-0 h-dvh max-h-none w-[min(20rem,calc(100%-1rem))] max-w-none translate-x-0 translate-y-0 origin-left gap-4 rounded-none border-y-0 border-l-0 p-4 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:slide-out-to-left data-[expanded]:slide-in-from-left sm:max-h-none"
+							: "inset-y-0 right-0 left-auto h-dvh max-h-none w-[min(28rem,calc(100%-1rem))] max-w-none translate-x-0 translate-y-0 origin-right gap-4 rounded-none border-y-0 border-r-0 p-6 data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:slide-out-to-right data-[expanded]:slide-in-from-right sm:max-h-none",
 					props.class,
 				)}
 				{...rest}

@@ -8,7 +8,6 @@ import {
 	For,
 	Show,
 } from "solid-js";
-import { Portal } from "solid-js/web";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -19,6 +18,15 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "./alert-dialog";
+import { Button } from "./button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "./dialog";
 import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
@@ -43,6 +51,7 @@ export type ImportReviewModalProps = {
 		targetSourceId: string,
 	) => Promise<{ success: boolean; processedCount: number }>;
 	cancelPending: (jobIds: string[]) => Promise<{ success: boolean }>;
+	variant?: "default" | "v2";
 };
 
 function getPreviewUrl(url?: string): string {
@@ -73,6 +82,11 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	);
 	const [selectedSourceId, setSelectedSourceId] = createSignal("");
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
+	const [isDiscardDialogOpen, setIsDiscardDialogOpen] = createSignal(false);
+	const [isDirty, setIsDirty] = createSignal(false);
+	const [activeAction, setActiveAction] = createSignal<
+		"import" | "delete" | null
+	>(null);
 
 	const [pendingJobs, { refetch: refetchJobs }] = createResource(
 		props.listPending,
@@ -81,6 +95,8 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 
 	createEffect(() => {
 		if (props.isOpen) {
+			setIsDirty(false);
+			setIsDiscardDialogOpen(false);
 			void refetchJobs();
 		}
 	});
@@ -114,6 +130,20 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			current.add(id);
 		}
 		setSelectedJobIds(current);
+		setIsDirty(true);
+	};
+	const requestClose = () => {
+		if (activeAction() !== null) return;
+		if (isDirty()) {
+			setIsDiscardDialogOpen(true);
+			return;
+		}
+		props.onClose();
+	};
+	const discardAndClose = () => {
+		setIsDirty(false);
+		setIsDiscardDialogOpen(false);
+		props.onClose();
 	};
 
 	const handleProcess = async () => {
@@ -124,150 +154,224 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		}
 
 		try {
+			setActiveAction("import");
 			await props.processPending(jobIds, sourceId);
+			setIsDirty(false);
 			props.onImportCompleted();
 			props.onClose();
 		} catch (error) {
 			toast.error(`Failed to process imports: ${getErrorMessage(error)}`);
+		} finally {
+			setActiveAction(null);
 		}
 	};
 
 	const confirmDelete = async () => {
 		try {
+			setActiveAction("delete");
 			await props.cancelPending(Array.from(selectedJobIds()));
 			await refetchJobs();
 			setSelectedJobIds(createEmptySelection());
+			setIsDirty(false);
 			toast.success("Requests deleted");
 		} catch (error) {
 			toast.error(`Failed to cancel imports: ${getErrorMessage(error)}`);
 		} finally {
+			setActiveAction(null);
 			setIsDeleteDialogOpen(false);
 		}
 	};
 
 	return (
-		<Show when={props.isOpen}>
-			<Portal>
-				<div class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-					<div class="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-lg bg-gray-900 shadow-xl">
-						<div class="flex items-center justify-between border-gray-700 border-b p-4">
-							<h2 class="font-bold text-white text-xl">
-								Review Pending Imports
-							</h2>
-							<button
-								class="text-gray-400 hover:text-white"
-								onClick={props.onClose}
-								type="button"
-							>
-								✕
-							</button>
-						</div>
-						<div class="flex-1 overflow-y-auto p-4">
-							<div class="mb-4 flex items-center justify-between">
-								<div class="flex gap-2">
-									<span class="text-gray-300">Target Source:</span>
-									<select
-										class="rounded border border-gray-600 bg-gray-800 p-1 text-white"
-										onChange={(event) =>
-											setSelectedSourceId(event.currentTarget.value)
-										}
-										value={selectedSourceId()}
-									>
-										<For each={sources()}>
-											{(source) => (
-												<option value={source.id}>
-													{source.name} ({source.type})
-												</option>
-											)}
-										</For>
-									</select>
-								</div>
-								<div class="text-gray-400 text-sm">
-									Selected: {selectedJobIds().size} /{" "}
-									{pendingJobs()?.length || 0}
-								</div>
+		<>
+			<Dialog
+				onOpenChange={(open) => {
+					if (!open) {
+						requestClose();
+					}
+				}}
+				open={props.isOpen}
+			>
+				<DialogContent
+					class={`flex max-h-[min(52rem,calc(100dvh-2rem))] max-w-5xl flex-col gap-0 overflow-hidden p-0 ${props.variant === "v2" ? "v2-theme" : ""}`}
+				>
+					<DialogHeader class="border-b px-5 py-4 pr-12">
+						<DialogTitle>Import inbox</DialogTitle>
+						<DialogDescription>
+							Review downloaded media, choose a source, then import the selected
+							items.
+						</DialogDescription>
+					</DialogHeader>
+
+					<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
+						<div class="flex flex-col gap-3 border-b bg-[var(--v2-surface-muted)] px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
+							<label class="grid min-w-0 gap-1 font-medium text-sm sm:w-80">
+								Target source
+								<select
+									class="min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									disabled={sources.loading || activeAction() !== null}
+									onChange={(event) => {
+										setSelectedSourceId(event.currentTarget.value);
+										setIsDirty(true);
+									}}
+									value={selectedSourceId()}
+								>
+									<For each={sources()}>
+										{(source) => (
+											<option value={source.id}>
+												{source.name} · {source.type}
+											</option>
+										)}
+									</For>
+								</select>
+							</label>
+							<div class="text-muted-foreground text-sm" aria-live="polite">
+								{selectedJobIds().size} of {pendingJobs()?.length ?? 0} selected
 							</div>
-							<div class="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
-								<For each={pendingJobs()}>
-									{(job) => (
-										<button
-											class={`relative flex cursor-pointer flex-col rounded border p-2 text-left ${
-												selectedJobIds().has(job.id)
-													? "border-sky-500 bg-sky-900/20"
-													: "border-gray-700 bg-gray-800"
-											}`}
-											onClick={() => toggleSelection(job.id)}
-											type="button"
-										>
-											<div class="absolute top-1 right-1">
+						</div>
+
+						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
+							<Show when={pendingJobs.loading}>
+								<div class="flex min-h-48 items-center justify-center text-muted-foreground text-sm">
+									Loading import inbox…
+								</div>
+							</Show>
+							<Show
+								when={
+									!pendingJobs.loading &&
+									!pendingJobs.error &&
+									(pendingJobs()?.length ?? 0) > 0
+								}
+							>
+								<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+									<For each={pendingJobs()}>
+										{(job) => (
+											<label
+												class={`relative min-w-0 cursor-pointer rounded-lg border p-2 transition-colors focus-within:ring-2 focus-within:ring-ring ${
+													selectedJobIds().has(job.id)
+														? "border-primary bg-primary/5"
+														: "border-border bg-card hover:bg-accent/50"
+												}`}
+											>
 												<input
 													checked={selectedJobIds().has(job.id)}
-													class="h-4 w-4"
+													class="peer sr-only"
+													disabled={activeAction() !== null}
+													onChange={() => toggleSelection(job.id)}
 													type="checkbox"
 												/>
-											</div>
-											<div class="aspect-square w-full overflow-hidden rounded bg-black">
-												<Show
-													fallback={
-														<div class="flex h-full items-center justify-center text-gray-500">
-															No Preview
-														</div>
-													}
-													when={job.item.targetUrl}
-												>
-													<img
-														alt="Preview"
-														class="h-full w-full object-cover"
-														onError={(event) => {
-															event.currentTarget.style.display = "none";
-														}}
-														src={getPreviewUrl(job.item.targetUrl)}
-													/>
-												</Show>
-											</div>
-											<div class="mt-2 truncate text-gray-400 text-xs">
-												{job.item.description ||
-													job.item.targetUrl ||
-													"No description"}
-											</div>
-											<div class="text-[10px] text-gray-500">
-												AUTH: {getPendingImportPrimaryAuthor(job.item)}
-											</div>
-										</button>
-									)}
-								</For>
-							</div>
-						</div>
-						<div class="flex justify-end gap-2 border-gray-700 border-t p-4">
-							<button
-								class="rounded px-4 py-2 text-red-400 hover:bg-red-900/20 disabled:opacity-50"
-								disabled={selectedJobIds().size === 0}
-								onClick={() => setIsDeleteDialogOpen(true)}
-								type="button"
+												<span class="absolute top-3 right-3 z-10 flex size-5 items-center justify-center rounded border border-input bg-background font-bold text-primary text-xs peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground">
+													{selectedJobIds().has(job.id) ? "✓" : ""}
+												</span>
+												<div class="aspect-[4/3] w-full overflow-hidden rounded-md bg-muted">
+													<Show
+														fallback={
+															<div class="flex h-full items-center justify-center text-muted-foreground text-xs">
+																No preview
+															</div>
+														}
+														when={job.item.targetUrl}
+													>
+														<img
+															alt="Import preview"
+															class="h-full w-full object-cover"
+															onError={(event) => {
+																event.currentTarget.style.display = "none";
+															}}
+															src={getPreviewUrl(job.item.targetUrl)}
+														/>
+													</Show>
+												</div>
+												<div class="mt-2 truncate font-medium text-sm">
+													{job.item.description ||
+														job.item.targetUrl ||
+														"Untitled import"}
+												</div>
+												<div class="truncate text-muted-foreground text-xs">
+													{getPendingImportPrimaryAuthor(job.item)}
+												</div>
+											</label>
+										)}
+									</For>
+								</div>
+							</Show>
+							<Show when={!pendingJobs.loading && pendingJobs.error}>
+								<div class="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
+									<p class="text-destructive text-sm">
+										Failed to load import inbox.
+									</p>
+									<Button onClick={() => void refetchJobs()} variant="outline">
+										Retry
+									</Button>
+								</div>
+							</Show>
+							<Show
+								when={
+									!pendingJobs.loading &&
+									!pendingJobs.error &&
+									pendingJobs()?.length === 0
+								}
 							>
-								Delete Selected
-							</button>
-							<div class="flex-1" />
-							<button
-								class="rounded border border-gray-600 px-4 py-2 text-gray-300 hover:bg-gray-800"
-								onClick={props.onClose}
-								type="button"
-							>
-								Cancel
-							</button>
-							<button
-								class="rounded bg-sky-600 px-6 py-2 font-bold text-white hover:bg-sky-500 disabled:opacity-50"
-								disabled={selectedJobIds().size === 0 || !selectedSourceId()}
-								onClick={() => void handleProcess()}
-								type="button"
-							>
-								Import{" "}
-								{selectedJobIds().size ? `(${selectedJobIds().size})` : ""}
-							</button>
+								<div class="flex min-h-48 flex-col items-center justify-center gap-1 text-center">
+									<p class="font-medium">Import inbox is empty</p>
+									<p class="text-muted-foreground text-sm">
+										New bulk-upload requests will appear here.
+									</p>
+								</div>
+							</Show>
 						</div>
 					</div>
-				</div>
-			</Portal>
+
+					<DialogFooter class="border-t px-5 py-3">
+						<Button
+							class="sm:mr-auto"
+							disabled={selectedJobIds().size === 0 || activeAction() !== null}
+							onClick={() => setIsDeleteDialogOpen(true)}
+							variant="destructive"
+						>
+							Delete selected
+						</Button>
+						<Button
+							disabled={activeAction() !== null}
+							onClick={requestClose}
+							variant="outline"
+						>
+							Close
+						</Button>
+						<Button
+							disabled={
+								selectedJobIds().size === 0 ||
+								!selectedSourceId() ||
+								activeAction() !== null
+							}
+							onClick={() => void handleProcess()}
+						>
+							{activeAction() === "import"
+								? "Importing…"
+								: `Import${selectedJobIds().size ? ` (${selectedJobIds().size})` : ""}`}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+			<AlertDialog
+				onOpenChange={setIsDiscardDialogOpen}
+				open={isDiscardDialogOpen()}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>選択内容を破棄しますか？</AlertDialogTitle>
+						<AlertDialogDescription>
+							取り込み対象と保存先の変更はまだ確定していません。
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>確認を続ける</AlertDialogCancel>
+						<AlertDialogAction onClick={discardAndClose}>
+							破棄して閉じる
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			<AlertDialog
 				onOpenChange={setIsDeleteDialogOpen}
 				open={isDeleteDialogOpen()}
@@ -283,13 +387,14 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							disabled={activeAction() === "delete"}
 							onClick={() => void confirmDelete()}
 						>
-							Delete
+							{activeAction() === "delete" ? "Deleting…" : "Delete"}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</Show>
+		</>
 	);
 }
