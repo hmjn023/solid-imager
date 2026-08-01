@@ -1,6 +1,7 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import { OpenAPIGenerator } from "@orpc/openapi";
+import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
 import type { OpenAPI } from "@orpc/contract";
 import { appRouter } from "../src/domain/shared/api-contract";
 import { openApiTags } from "../src/infrastructure/api/openapi-tags";
@@ -61,7 +62,9 @@ async function generateOpenAPISpec() {
   try {
     console.log("Generating OpenAPI specification with detailed descriptions...");
 
-    const generator = new OpenAPIGenerator();
+    const generator = new OpenAPIGenerator({
+      schemaConverters: [new ZodToJsonSchemaConverter()],
+    });
     const spec = await generator.generate(appRouter, {
       info: {
         title: "Solid Imager oRPC API",

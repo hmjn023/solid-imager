@@ -77,12 +77,6 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 			},
 			"Auto tagging completed",
 		);
-		await services.getJobRepository().createIfUnique({
-			type: "sync_lancedb_delta",
-			mediaSourceId,
-			payload: { reason: "auto_tagging", mediaIds: [mediaId] },
-		});
-
 		if (parentId) {
 			const jobRepo = services.getJobRepository();
 			const progress = await jobRepo.incrementProgress(parentId, job.id);

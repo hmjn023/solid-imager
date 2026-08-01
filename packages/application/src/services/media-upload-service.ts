@@ -142,11 +142,6 @@ export class MediaUploadService {
 				type: "processMedia",
 			},
 		});
-		await this.jobRepo.createIfUnique({
-			type: "sync_lancedb_delta",
-			mediaSourceId: validatedSourceId,
-			payload: { reason: "media_added", mediaIds: [insertedMedia.id] },
-		});
 
 		return {
 			success: true,
@@ -211,14 +206,6 @@ export class MediaUploadService {
 					},
 				});
 			}
-			await this.jobRepo.createIfUnique({
-				type: "sync_lancedb_delta",
-				mediaSourceId: validatedSourceId,
-				payload: {
-					reason: "media_added",
-					mediaIds: newMediaItems.map((item) => item.id),
-				},
-			});
 		}
 	}
 }

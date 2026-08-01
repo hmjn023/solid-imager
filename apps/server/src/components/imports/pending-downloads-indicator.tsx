@@ -10,6 +10,10 @@ export function PendingDownloadsIndicator(
 	displayProps: { compact?: boolean; variant?: "default" | "v2" } = {},
 ) {
 	const indicatorProps: PendingDownloadsIndicatorProps = {
+		countPending: async () => {
+			const result = await orpc.imports.countPending();
+			return result.count;
+		},
 		listPending: async () => {
 			const jobs = await orpc.imports.listPending();
 			return jobs;
@@ -32,10 +36,12 @@ export function PendingDownloadsIndicator(
 			const result = await orpc.imports.cancel({ jobIds });
 			return { success: result.success };
 		},
-		subscribeImportEvents: (handler) => {
+		subscribeImportEvents: (handler, onConnected) => {
 			return subscribeToEventStream(
 				(signal) => orpc.imports.events(undefined, { signal }),
 				handler,
+				undefined,
+				onConnected,
 			);
 		},
 	};

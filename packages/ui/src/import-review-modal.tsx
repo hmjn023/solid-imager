@@ -89,6 +89,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	>(null);
 
 	const [pendingJobs, { refetch: refetchJobs }] = createResource(
+		() => props.isOpen || undefined,
 		props.listPending,
 	);
 	const [sources] = createResource(props.listSources);

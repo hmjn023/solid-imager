@@ -59,4 +59,28 @@ describe("subscribeToEventStream", () => {
 		unsubscribe();
 		expect(streamSignal?.aborted).toBe(true);
 	});
+
+	it("notifies after the stream connection is ready", async () => {
+		let resolveConnected!: () => void;
+		const connected = new Promise<void>((resolve) => {
+			resolveConnected = resolve;
+		});
+		const onConnected = vi.fn(resolveConnected);
+		const openStream = vi.fn(async () => ({
+			async *[Symbol.asyncIterator]() {
+				yield* [];
+			},
+		}));
+
+		const unsubscribe = subscribeToEventStream(
+			openStream,
+			vi.fn(),
+			undefined,
+			onConnected,
+		);
+		await connected;
+
+		expect(onConnected).toHaveBeenCalledOnce();
+		unsubscribe();
+	});
 });
