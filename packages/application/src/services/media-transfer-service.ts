@@ -87,11 +87,6 @@ export class MediaTransferService {
 			return await execute(tx);
 		}
 		const updatedMedia = await this.transactionManager.transaction(execute);
-		await this.jobRepo.createIfUnique({
-			type: "sync_lancedb_delta",
-			mediaSourceId: validatedSourceId,
-			payload: { reason: "media_updated", mediaIds: [validatedMediaId] },
-		});
 		return updatedMedia;
 	}
 
@@ -195,16 +190,11 @@ export class MediaTransferService {
 				type: "processMedia",
 			},
 		};
-		const deferredSyncJob = {
-			type: "sync_lancedb_delta" as const,
-			payload: { reason: "media_added", mediaIds: [newMediaEntry.id] },
-		};
-
 		const deferredActions: DeferredActions = {
 			jobs: [
 				{
 					mediaSourceId: validatedTargetSourceId,
-					jobs: [deferredJob, deferredSyncJob],
+					jobs: [deferredJob],
 				},
 			],
 			sourceEvents: [],
@@ -237,11 +227,6 @@ export class MediaTransferService {
 				sourcePath,
 				type: "processMedia",
 			},
-		});
-		await this.jobRepo.createIfUnique({
-			type: "sync_lancedb_delta",
-			mediaSourceId: validatedTargetSourceId,
-			payload: { reason: "media_added", mediaIds: [newMediaEntry.id] },
 		});
 
 		this.eventPublisher.notifyMediaCopied(
@@ -426,36 +411,12 @@ export class MediaTransferService {
 
 		if (tx) {
 			return {
-				jobs: [
-					{
-						mediaSourceId: validatedSourceId,
-						jobs: [
-							{
-								type: "sync_lancedb_delta",
-								payload: {
-									reason: "media_deleted",
-									operation: "delete",
-									mediaIds: [validatedMediaId],
-								},
-							},
-						],
-					},
-				],
+				jobs: [],
 				sourceEvents: [sourceEvent],
 				filesToDelete,
 				thumbnailsToDelete,
 			};
 		}
-
-		await this.jobRepo.createIfUnique({
-			type: "sync_lancedb_delta",
-			mediaSourceId: validatedSourceId,
-			payload: {
-				reason: "media_deleted",
-				operation: "delete",
-				mediaIds: [validatedMediaId],
-			},
-		});
 
 		if (thumbnailsToDelete) {
 			for (const thumb of thumbnailsToDelete) {
