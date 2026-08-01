@@ -2,7 +2,6 @@ import type { ImportEvent } from "@solid-imager/core/domain/sources/events";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
-	createResource,
 	createSignal,
 	ErrorBoundary,
 	onCleanup,
@@ -16,6 +15,7 @@ import {
 import { toast } from "./toast";
 
 export type ImportEventHandler = (event: ImportEvent) => void | Promise<void>;
+export type ImportEventConnectedHandler = () => void | Promise<void>;
 
 export type PendingDownloadsIndicatorProps = {
 	countPending: () => Promise<number>;
@@ -28,6 +28,7 @@ export type PendingDownloadsIndicatorProps = {
 	cancelPending: (jobIds: string[]) => Promise<{ success: boolean }>;
 	subscribeImportEvents: (
 		handler: ImportEventHandler,
+		onConnected?: ImportEventConnectedHandler,
 	) => Promise<(() => void) | undefined> | (() => void) | undefined;
 };
 
@@ -35,16 +36,39 @@ export function PendingDownloadsIndicator(
 	props: PendingDownloadsIndicatorProps,
 ) {
 	const [isModalOpen, setIsModalOpen] = createSignal(false);
-	const [pendingCount, { mutate: setPendingCount, refetch }] = createResource(
-		async () => {
-			try {
-				return await props.countPending();
-			} catch (error) {
-				toast.error(`Failed to check inbox: ${getErrorMessage(error)}`);
-				return 0;
+	const [pendingCount, setPendingCount] = createSignal<number>();
+	let eventVersion = 0;
+	let refreshRequested = false;
+	let refreshInFlight: Promise<void> | undefined;
+
+	const refreshPendingCount = () => {
+		refreshRequested = true;
+		if (refreshInFlight) {
+			return refreshInFlight;
+		}
+
+		refreshInFlight = (async () => {
+			while (refreshRequested) {
+				refreshRequested = false;
+				const requestEventVersion = eventVersion;
+				try {
+					const count = await props.countPending();
+					if (requestEventVersion === eventVersion) {
+						setPendingCount(count);
+					} else {
+						refreshRequested = true;
+					}
+				} catch (error) {
+					toast.error(`Failed to check inbox: ${getErrorMessage(error)}`);
+				}
 			}
-		},
-	);
+		})().finally(() => {
+			refreshInFlight = undefined;
+		});
+
+		return refreshInFlight;
+	};
+
 	const hasPendingImports = () => (pendingCount() ?? 0) > 0;
 
 	onMount(() => {
@@ -52,23 +76,35 @@ export function PendingDownloadsIndicator(
 		let cleanup: (() => void) | undefined;
 
 		void Promise.resolve(
-			props.subscribeImportEvents((event) => {
-				setPendingCount((currentCount) => {
-					const count = currentCount ?? 0;
-					switch (event.event) {
-						case "import-request:created":
-							return count + event.data.count;
-						case "import-request:processed":
-							return Math.max(0, count - event.data.processedCount);
-						case "import-request:deleted":
-							return Math.max(0, count - event.data.jobIds.length);
-						default: {
-							const exhaustiveCheck: never = event;
-							return exhaustiveCheck;
+			props.subscribeImportEvents(
+				(event) => {
+					eventVersion += 1;
+					const currentCount = pendingCount();
+					if (currentCount !== undefined) {
+						switch (event.event) {
+							case "import-request:created":
+								setPendingCount(currentCount + event.data.count);
+								break;
+							case "import-request:processed":
+								setPendingCount(
+									Math.max(0, currentCount - event.data.processedCount),
+								);
+								break;
+							case "import-request:deleted":
+								setPendingCount(
+									Math.max(0, currentCount - event.data.jobIds.length),
+								);
+								break;
+							default: {
+								const exhaustiveCheck: never = event;
+								return exhaustiveCheck;
+							}
 						}
 					}
-				});
-			}),
+					void refreshPendingCount();
+				},
+				() => refreshPendingCount(),
+			),
 		)
 			.then((unsub) => {
 				if (disposed) {
@@ -129,7 +165,7 @@ export function PendingDownloadsIndicator(
 				listSources={props.listSources}
 				onClose={() => setIsModalOpen(false)}
 				onImportCompleted={() => {
-					void refetch();
+					void refreshPendingCount();
 				}}
 				processPending={props.processPending}
 			/>

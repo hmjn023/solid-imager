@@ -1,5 +1,8 @@
 import { eventIterator, os } from "@orpc/server";
-import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import {
+	downloadItemSchema,
+	pendingImportCountSchema,
+} from "@solid-imager/core/domain/media/schemas";
 import {
 	type ImportEvent,
 	importEventSchema,
@@ -151,7 +154,7 @@ export const importsRouter = {
 	/**
 	 * Count pending import requests without loading their payloads.
 	 */
-	countPending: os.handler(async () => {
+	countPending: os.output(pendingImportCountSchema).handler(async () => {
 		const [result] = await db
 			.select({ count: count() })
 			.from(jobs)

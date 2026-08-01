@@ -21,10 +21,12 @@ export function PendingDownloadsIndicator() {
 			processPending={(jobIds, targetSourceId) =>
 				processPendingImports(jobIds, targetSourceId)
 			}
-			subscribeImportEvents={(handler) => {
+			subscribeImportEvents={(handler, onConnected) => {
 				return subscribeToEventStream(
 					(signal) => orpc.imports.events(undefined, { signal }),
 					handler,
+					undefined,
+					onConnected,
 				);
 			}}
 		/>

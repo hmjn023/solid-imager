@@ -1,0 +1,1 @@
+CREATE INDEX "idx_jobs_pending_import_request" ON "jobs" USING btree ("id") WHERE "jobs"."status" = 'pending' AND "jobs"."type" = 'import_request';

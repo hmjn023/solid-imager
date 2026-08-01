@@ -536,6 +536,12 @@ export const pendingImportJobSchema = z.object({
 
 export type PendingImportJob = z.infer<typeof pendingImportJobSchema>;
 
+export const pendingImportCountSchema = z.object({
+	count: z.number().int().nonnegative(),
+});
+
+export type PendingImportCount = z.infer<typeof pendingImportCountSchema>;
+
 export const bulkDownloadRequestSchema = z.object({
 	mediaSourceId: z.uuid({ version: "v4", message: "Invalid media source ID" }),
 	items: z.array(downloadItemSchema).min(1, "At least one item is required"),
