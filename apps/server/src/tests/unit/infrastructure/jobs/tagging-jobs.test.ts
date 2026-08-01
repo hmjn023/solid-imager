@@ -98,6 +98,7 @@ describe("processAutoTaggingJob", () => {
 			"00000000-0000-4000-8000-000000000020",
 		);
 		expect(findById).not.toHaveBeenCalled();
+		expect(createIfUnique).not.toHaveBeenCalled();
 		expect(publishJob).not.toHaveBeenCalled();
 	});
 
@@ -143,6 +144,7 @@ describe("processAutoTaggingJob", () => {
 			jobId: "00000000-0000-4000-8000-000000000010",
 			message: "Batch tagging completed",
 		});
+		expect(createIfUnique).not.toHaveBeenCalled();
 	});
 
 	it("increments failed count and marks parent failed when all children are done", async () => {

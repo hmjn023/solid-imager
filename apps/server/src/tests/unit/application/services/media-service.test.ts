@@ -339,6 +339,7 @@ describe("MediaService Unit Tests", () => {
 				}),
 			);
 			expect(mockMediaRepository.upsert).toHaveBeenCalled();
+			expect(mockJobRepository.createIfUnique).not.toHaveBeenCalled();
 		});
 	});
 
