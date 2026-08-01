@@ -12,6 +12,10 @@ export function PendingDownloadsIndicator() {
 	return (
 		<SharedPendingDownloadsIndicator
 			cancelPending={cancelPendingImports}
+			countPending={async () => {
+				const result = await orpc.imports.countPending();
+				return result.count;
+			}}
 			listPending={listPendingImports}
 			listSources={fetchMediaSources}
 			processPending={(jobIds, targetSourceId) =>

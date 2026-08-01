@@ -18,6 +18,7 @@ import { toast } from "./toast";
 export type ImportEventHandler = (event: ImportEvent) => void | Promise<void>;
 
 export type PendingDownloadsIndicatorProps = {
+	countPending: () => Promise<number>;
 	listPending: () => Promise<PendingImportJob[]>;
 	listSources: () => Promise<SafeMediaSource[]>;
 	processPending: (
@@ -34,22 +35,39 @@ export function PendingDownloadsIndicator(
 	props: PendingDownloadsIndicatorProps,
 ) {
 	const [isModalOpen, setIsModalOpen] = createSignal(false);
-	const [pendingCount, { refetch }] = createResource(async () => {
-		try {
-			return (await props.listPending()).length;
-		} catch (error) {
-			toast.error(`Failed to check inbox: ${getErrorMessage(error)}`);
-			return 0;
-		}
-	});
+	const [pendingCount, { mutate: setPendingCount, refetch }] = createResource(
+		async () => {
+			try {
+				return await props.countPending();
+			} catch (error) {
+				toast.error(`Failed to check inbox: ${getErrorMessage(error)}`);
+				return 0;
+			}
+		},
+	);
+	const hasPendingImports = () => (pendingCount() ?? 0) > 0;
 
 	onMount(() => {
 		let disposed = false;
 		let cleanup: (() => void) | undefined;
 
 		void Promise.resolve(
-			props.subscribeImportEvents(() => {
-				void refetch();
+			props.subscribeImportEvents((event) => {
+				setPendingCount((currentCount) => {
+					const count = currentCount ?? 0;
+					switch (event.event) {
+						case "import-request:created":
+							return count + event.data.count;
+						case "import-request:processed":
+							return Math.max(0, count - event.data.processedCount);
+						case "import-request:deleted":
+							return Math.max(0, count - event.data.jobIds.length);
+						default: {
+							const exhaustiveCheck: never = event;
+							return exhaustiveCheck;
+						}
+					}
+				});
 			}),
 		)
 			.then((unsub) => {
@@ -84,13 +102,17 @@ export function PendingDownloadsIndicator(
 			)}
 		>
 			<button
+				aria-disabled={!hasPendingImports()}
 				class={`flex items-center gap-1 rounded px-3 py-1.5 font-bold text-xs transition-colors ${
-					(pendingCount() ?? 0) > 0
+					hasPendingImports()
 						? "bg-sky-600 text-white hover:bg-sky-500"
 						: "cursor-default bg-gray-700 text-gray-400"
 				}`}
-				disabled={(pendingCount() ?? 0) === 0}
-				onClick={() => setIsModalOpen(true)}
+				onClick={() => {
+					if (hasPendingImports()) {
+						setIsModalOpen(true);
+					}
+				}}
 				type="button"
 			>
 				<span>Inbox</span>

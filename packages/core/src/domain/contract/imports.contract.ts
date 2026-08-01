@@ -8,6 +8,8 @@ export const importsContract = {
 
 	listPending: oc.output(z.array(pendingImportJobSchema)),
 
+	countPending: oc.output(z.object({ count: z.number().int().nonnegative() })),
+
 	process: oc
 		.input(
 			z.object({

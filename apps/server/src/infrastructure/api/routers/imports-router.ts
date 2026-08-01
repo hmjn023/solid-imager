@@ -4,7 +4,7 @@ import {
 	type ImportEvent,
 	importEventSchema,
 } from "@solid-imager/core/domain/sources/events";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, count, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import type { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
@@ -146,6 +146,18 @@ export const importsRouter = {
 			item: job.payload as z.infer<typeof downloadItemSchema>,
 			createdAt: job.createdAt,
 		}));
+	}),
+
+	/**
+	 * Count pending import requests without loading their payloads.
+	 */
+	countPending: os.handler(async () => {
+		const [result] = await db
+			.select({ count: count() })
+			.from(jobs)
+			.where(and(eq(jobs.type, "import_request"), eq(jobs.status, "pending")));
+
+		return { count: result?.count ?? 0 };
 	}),
 
 	/**
