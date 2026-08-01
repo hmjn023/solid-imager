@@ -18,6 +18,7 @@ export type MediaGridLinkProps = {
 	class: string;
 	"data-media-id": string;
 	href: string;
+	"aria-pressed"?: boolean;
 	onClick?: (event: MouseEvent) => void;
 	onContextMenu: (event: MouseEvent) => void;
 };
@@ -64,6 +65,11 @@ export function MediaGridItem(props: MediaGridItemProps) {
 			)}
 			data-media-id={props.media.id}
 			href={href()}
+			aria-pressed={
+				props.isBulkSelectMode || props.variant === "v2"
+					? props.isSelected
+					: undefined
+			}
 			onClick={undefined}
 			onContextMenu={(event) => props.onContextMenu?.(event)}
 		>

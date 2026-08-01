@@ -405,7 +405,6 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 
 				<Button
 					class="min-h-11 border-[var(--v2-border-strong)] bg-white px-3 shadow-none sm:min-h-9"
-					onClick={() => setFilterOpen(true)}
 					size="sm"
 					variant="outline"
 				>

@@ -28,7 +28,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 
 test("V2 routes survive direct navigation and reload", async ({ page }) => {
 	const routes = [
-		["/v2/search", "All media"],
+		["/v2/search", "すべてのメディア"],
 		[v2SourcePath, E2E_SOURCE_NAME],
 		[v2MediaPath(E2E_PRIMARY_MEDIA_ID), E2E_PRIMARY_FILE_NAME],
 		["/v2/manager", "Manager"],

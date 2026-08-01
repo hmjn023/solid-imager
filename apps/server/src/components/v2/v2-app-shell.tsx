@@ -434,7 +434,7 @@ export function V2AppShell(props: V2AppShellProps) {
 			</div>
 
 			<Dialog onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
-				<DialogContent class="p-0" placement="left">
+				<DialogContent class="v2-theme p-0" placement="left">
 					<DialogHeader class="sr-only">
 						<DialogTitle>ナビゲーション</DialogTitle>
 						<DialogDescription>

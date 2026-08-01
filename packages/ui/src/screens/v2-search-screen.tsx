@@ -20,7 +20,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 	];
 	const sourceName = () =>
 		props.sources?.find((source) => source.id === props.selectedSource)?.name ??
-		"All media";
+		"すべてのメディア";
 	const canRenderContent = () => !props.ssrGuard || isMounted();
 	const previewMedia = () =>
 		page()
@@ -109,12 +109,16 @@ export function V2SearchScreen(props: SearchScreenProps) {
 					</div>
 					<Show when={props.renderMediaPreview}>
 						{(renderPreview) => (
-							<V2CollectionInspector
-								media={previewMedia()}
-								onOpenDetail={props.onOpenMediaDetail}
-								renderPreview={renderPreview()}
-								sourceName={previewSourceName()}
-							/>
+							<Show when={previewMedia()}>
+								{(media) => (
+									<V2CollectionInspector
+										media={media()}
+										onOpenDetail={props.onOpenMediaDetail}
+										renderPreview={renderPreview()}
+										sourceName={previewSourceName()}
+									/>
+								)}
+							</Show>
 						)}
 					</Show>
 				</div>

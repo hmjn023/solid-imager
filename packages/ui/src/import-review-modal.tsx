@@ -204,7 +204,9 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 					</DialogHeader>
 
 					<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-						<div class="flex flex-col gap-3 border-b bg-[var(--v2-surface-muted)] px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
+						<div
+							class={`flex flex-col gap-3 border-b px-5 py-3 sm:flex-row sm:items-end sm:justify-between ${props.variant === "v2" ? "bg-[var(--v2-surface-muted)]" : "bg-muted"}`}
+						>
 							<label class="grid min-w-0 gap-1 font-medium text-sm sm:w-80">
 								Target source
 								<select
@@ -357,17 +359,19 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 				onOpenChange={setIsDiscardDialogOpen}
 				open={isDiscardDialogOpen()}
 			>
-				<AlertDialogContent>
+				<AlertDialogContent
+					class={props.variant === "v2" ? "v2-theme" : undefined}
+				>
 					<AlertDialogHeader>
-						<AlertDialogTitle>選択内容を破棄しますか？</AlertDialogTitle>
+						<AlertDialogTitle>Discard selected changes?</AlertDialogTitle>
 						<AlertDialogDescription>
-							取り込み対象と保存先の変更はまだ確定していません。
+							Your selected items and target source have not been imported yet.
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>確認を続ける</AlertDialogCancel>
+						<AlertDialogCancel>Continue reviewing</AlertDialogCancel>
 						<AlertDialogAction onClick={discardAndClose}>
-							破棄して閉じる
+							Discard and close
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

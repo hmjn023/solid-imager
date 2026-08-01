@@ -746,7 +746,11 @@ function BatchToolPanel(props: {
 								</div>
 								<Progress
 									class="h-2"
-									value={(progress().processed / progress().total) * 100}
+									value={
+										progress().total > 0
+											? (progress().processed / progress().total) * 100
+											: 0
+									}
 								/>
 							</div>
 						)}

@@ -152,12 +152,16 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 					</div>
 					<Show when={props.renderMediaPreview}>
 						{(renderPreview) => (
-							<V2CollectionInspector
-								media={previewMedia()}
-								onOpenDetail={props.onOpenMediaDetail}
-								renderPreview={renderPreview()}
-								sourceName={props.mediaSourceName?.()}
-							/>
+							<Show when={previewMedia()}>
+								{(media) => (
+									<V2CollectionInspector
+										media={media()}
+										onOpenDetail={props.onOpenMediaDetail}
+										renderPreview={renderPreview()}
+										sourceName={props.mediaSourceName?.()}
+									/>
+								)}
+							</Show>
 						)}
 					</Show>
 				</div>

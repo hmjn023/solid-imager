@@ -185,7 +185,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const scroller = scrollElement();
 		setScrollMargin(
 			props.scrollMode === "element" && scroller
-				? mediaGridRef.offsetTop
+				? mediaGridRef.getBoundingClientRect().top -
+						scroller.getBoundingClientRect().top +
+						scroller.scrollTop
 				: mediaGridRef.getBoundingClientRect().top + window.scrollY,
 		);
 	};

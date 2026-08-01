@@ -432,6 +432,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		enableBeforeUnload: descriptionDirty,
 		withResolver: true,
 	});
+	const [allowBlockedNavigation, setAllowBlockedNavigation] =
+		createSignal(false);
 
 	const handleSaveDescription = async () => {
 		try {
@@ -898,6 +900,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				onOpenChange={(open) => {
 					const resolver = navigationBlocker();
 					if (!open && resolver.status === "blocked") {
+						if (allowBlockedNavigation()) {
+							setAllowBlockedNavigation(false);
+							return;
+						}
 						resolver.reset?.();
 					}
 				}}
@@ -918,6 +924,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								if (resolver.status !== "blocked") return;
 								setDescriptionValue(props.media.description ?? "");
 								setIsEditingDescription(false);
+								setAllowBlockedNavigation(true);
 								resolver.proceed?.();
 							}}
 						>

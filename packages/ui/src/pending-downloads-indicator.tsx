@@ -94,7 +94,7 @@ export function PendingDownloadsIndicator(
 			<button
 				aria-label={`Import inbox${(pendingCount() ?? 0) > 0 ? `, ${pendingCount()}件` : ""}`}
 				class={cn(
-					"flex items-center gap-2 rounded-md px-3 font-medium text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+					"relative flex items-center gap-2 rounded-md px-3 font-medium text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
 					props.variant === "v2"
 						? "h-10 w-full justify-start text-[var(--v2-text-secondary)] hover:bg-[var(--v2-surface-muted)] disabled:pointer-events-auto disabled:opacity-60"
 						: (pendingCount() ?? 0) > 0

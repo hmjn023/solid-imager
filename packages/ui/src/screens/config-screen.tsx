@@ -181,7 +181,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 							const Icon = category.icon;
 							return (
 								<TabsTrigger
-									class={V2_CATEGORY_TABS_CLASS}
+									class={isV2() ? V2_CATEGORY_TABS_CLASS : "min-h-11 shrink-0"}
 									type="button"
 									value={category.value}
 								>
@@ -327,7 +327,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-3 py-2.5">
 									<div>
 										<div class="font-medium text-sm">Connection status</div>
-										<div class="text-[var(--v2-muted)] text-xs">
+										<div class="text-[var(--v2-text-muted)] text-xs">
 											Health check API is not available yet.
 										</div>
 									</div>
@@ -682,7 +682,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					{(state) => (
 						<Show when={state().isDirty}>
 							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-2 shadow-lg backdrop-blur">
-								<span class="px-2 text-[var(--v2-muted)] text-sm">
+								<span class="px-2 text-[var(--v2-text-muted)] text-sm">
 									Unsaved changes
 								</span>
 								<Button
