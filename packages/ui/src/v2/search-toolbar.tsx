@@ -22,6 +22,7 @@ import { Label } from "../label";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
+import { SortControls } from "../sort-controls";
 import {
 	clearPresetFilters,
 	searchState,
@@ -217,6 +218,7 @@ function sortLabel(state: SearchState): string {
 export function V2SearchToolbar(props: V2SearchToolbarProps) {
 	const [draft, setDraft] = createSignal("");
 	const [filterOpen, setFilterOpen] = createSignal(false);
+	const [sortOpen, setSortOpen] = createSignal(false);
 	const tokens = createMemo(() => tokensFromState(searchState));
 	let composerInput: HTMLInputElement | undefined;
 	const submitDraft = () => {
@@ -403,15 +405,33 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 					</PopoverContent>
 				</Popover>
 
-				<Button
-					class="min-h-11 border-[var(--v2-border-strong)] bg-white px-3 shadow-none sm:min-h-9"
-					size="sm"
-					variant="outline"
+				<Popover
+					onOpenChange={setSortOpen}
+					open={sortOpen()}
+					placement="bottom-end"
 				>
-					<ArrowDownUp aria-hidden="true" size={15} />
-					<span class="hidden sm:inline">{sortLabel(searchState)}</span>
-					<ChevronDown aria-hidden="true" size={13} />
-				</Button>
+					<PopoverTrigger
+						aria-label={`並び替え、現在は${sortLabel(searchState)}`}
+						class={buttonVariants({
+							class:
+								"min-h-11 border-[var(--v2-border-strong)] bg-white px-3 shadow-none sm:min-h-9",
+							size: "sm",
+							variant: "outline",
+						})}
+					>
+						<ArrowDownUp aria-hidden="true" size={15} />
+						<span class="hidden sm:inline">{sortLabel(searchState)}</span>
+						<ChevronDown aria-hidden="true" size={13} />
+					</PopoverTrigger>
+					<PopoverContent class="v2-theme w-72 p-4 shadow-xl">
+						<SortControls
+							onSortByChange={(value) => setSearchState("sortBy", value)}
+							onSortOrderChange={(value) => setSearchState("sortOrder", value)}
+							sortBy={searchState.sortBy}
+							sortOrder={searchState.sortOrder}
+						/>
+					</PopoverContent>
+				</Popover>
 				<div class="flex rounded-md border border-[var(--v2-border-strong)] bg-white p-0.5">
 					<Button
 						aria-label="グリッド表示"
