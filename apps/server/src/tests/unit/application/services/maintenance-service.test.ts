@@ -12,30 +12,16 @@ import { MaintenanceService } from "~/application/services/maintenance-service";
 
 // ---- Module mocks ----
 
-// Mock node:fs/promises to control thumbnail directory reads and lanceDb manifest reads
+// Mock node:fs/promises to control thumbnail directory reads
 vi.mock("node:fs/promises", () => ({
 	default: {
 		readdir: vi.fn(),
-		readFile: vi.fn(),
 	},
 }));
 
 // Mock getSourceCacheDir to return a predictable path
 vi.mock("~/infrastructure/jobs/thumbnails", () => ({
 	getSourceCacheDir: vi.fn((sourceId: string) => `/cache/${sourceId}`),
-}));
-
-// Mock registry for configuration loading
-vi.mock("~/application/registry", () => ({
-	services: {
-		getConfigService: () => ({
-			getConfig: () => ({
-				lancedb: {
-					cacheDir: ".cache/lancedb-cache",
-				},
-			}),
-		}),
-	},
 }));
 
 // Silence logger output during tests
@@ -53,7 +39,6 @@ vi.mock("~/infrastructure/logger", () => ({
 const mockMediaRepo = {
 	findIdsWithMissingGenerationInfo: vi.fn(),
 	findAllMediaIndices: vi.fn(),
-	findAllPathsBySourceId: vi.fn(),
 };
 
 const mockJobRepo = {
@@ -93,7 +78,6 @@ describe("MaintenanceService", () => {
 			mockSourceRepo as any,
 		);
 		mockSourceRepo.findAll.mockResolvedValue([]);
-		mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
@@ -116,6 +100,7 @@ describe("MaintenanceService", () => {
 				mockMediaRepo.findIdsWithMissingGenerationInfo,
 			).toHaveBeenCalledOnce();
 			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenCalledOnce();
+			expect(mockSourceRepo.findAll).not.toHaveBeenCalled();
 		});
 	});
 
@@ -332,78 +317,4 @@ describe("MaintenanceService", () => {
 		});
 	});
 
-	describe("LanceDB startup behavior", () => {
-		it("should queue one full LanceDB sync job per source without a cache during startup checks", async () => {
-			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
-			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
-			mockSourceRepo.findAll.mockResolvedValue([
-				makeLocalSource("source-1", "/path-1"),
-				makeLocalSource("source-2", "/path-2"),
-			]);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
-
-			// Simulate manifest.json doesn't exist (ENOENT)
-			const err = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
-			(fs.readFile as unknown as Mock).mockRejectedValue(err);
-
-			await service.performStartupChecks();
-
-			expect(mockSourceRepo.findAll).toHaveBeenCalledOnce();
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "sync_lancedb_full",
-					mediaSourceId: "source-1",
-				}),
-			);
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "sync_lancedb_full",
-					mediaSourceId: "source-2",
-				}),
-			);
-		});
-
-		it("should not queue delta sync when a valid LanceDB cache exists", async () => {
-			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
-			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
-			mockSourceRepo.findAll.mockResolvedValue([
-				makeLocalSource("source-1", "/path-1"),
-			]);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
-
-			// Simulate a current manifest.json.
-			(fs.readFile as unknown as Mock).mockResolvedValue(
-				JSON.stringify({ version: 4 }),
-			);
-
-			await service.performStartupChecks();
-
-			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
-		});
-
-		it("should skip existing-cache comparison instead of creating delta work", async () => {
-			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
-			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
-			mockSourceRepo.findAll.mockResolvedValue([
-				makeLocalSource("source-1", "/path-1"),
-			]);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
-
-			// Simulate a current manifest.json.
-			(fs.readFile as unknown as Mock).mockResolvedValue(
-				JSON.stringify({ version: 4 }),
-			);
-
-			// The cache may be stale, but the old delta comparison must not run.
-			mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([
-				{ id: "media-1", filePath: "/media/media-1.png" },
-				{ id: "media-2", filePath: "/media/media-2.png" },
-			]);
-
-			await service.performStartupChecks();
-
-			expect(mockMediaRepo.findAllPathsBySourceId).not.toHaveBeenCalled();
-			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
-		});
-	});
 });

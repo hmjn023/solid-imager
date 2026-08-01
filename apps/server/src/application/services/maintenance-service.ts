@@ -29,7 +29,6 @@ export class MaintenanceService {
 		try {
 			await this.queueMissingMetadata();
 			await this.queueMissingThumbnails();
-			await this.queueLanceDbCacheSync();
 			logger.info("Startup checks completed.");
 		} catch (err) {
 			logger.error({ err }, "Startup checks failed");
@@ -91,59 +90,6 @@ export class MaintenanceService {
 			}
 		} catch (error) {
 			logger.error({ err: error }, "Failed to queue missing thumbnail jobs");
-		}
-	}
-
-	private async queueLanceDbCacheSync() {
-		try {
-			const sources = await this.sourceRepo.findAll();
-			let queuedCount = 0;
-
-			for (const source of sources) {
-				if (await this.hasLanceDbCache(source.id)) {
-					continue;
-				}
-
-				const created = await this.jobRepo.createIfUnique({
-					type: "sync_lancedb_full",
-					mediaSourceId: source.id,
-					payload: { reason: "startup" },
-				});
-				if (created) {
-					queuedCount++;
-				}
-			}
-
-			if (queuedCount > 0) {
-				logger.info(
-					{ count: queuedCount },
-					"Queued LanceDB cache sync jobs for startup",
-				);
-			}
-		} catch (error) {
-			logger.error({ err: error }, "Failed to queue LanceDB cache sync jobs");
-		}
-	}
-
-	private async getLanceDbCacheDir(sourceId: string): Promise<string> {
-		const { services } = await import("~/application/registry");
-		const config = services.getConfigService().getConfig();
-		const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
-		return path.resolve(process.cwd(), baseCacheDir, `source-${sourceId}`);
-	}
-
-	private async hasLanceDbCache(sourceId: string): Promise<boolean> {
-		const cacheDir = await this.getLanceDbCacheDir(sourceId);
-		const manifestPath = path.join(cacheDir, "manifest.json");
-		try {
-			const content = await fs.readFile(manifestPath, "utf-8");
-			const manifest = JSON.parse(content) as { version?: unknown };
-			const { LANCEDB_DUMP_VERSION } = await import(
-				"~/application/services/lancedb-dump-service"
-			);
-			return manifest.version === LANCEDB_DUMP_VERSION;
-		} catch {
-			return false;
 		}
 	}
 
