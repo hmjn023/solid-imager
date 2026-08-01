@@ -1,12 +1,18 @@
 import { eventIterator, oc } from "@orpc/contract";
 import { z } from "zod";
-import { downloadItemSchema, pendingImportJobSchema } from "../media/schemas";
+import {
+	downloadItemSchema,
+	pendingImportCountSchema,
+	pendingImportJobSchema,
+} from "../media/schemas";
 import { importEventSchema } from "../sources/events";
 
 export const importsContract = {
 	bulkAdd: oc.input(z.object({ items: z.array(downloadItemSchema) })),
 
 	listPending: oc.output(z.array(pendingImportJobSchema)),
+
+	countPending: oc.output(pendingImportCountSchema),
 
 	process: oc
 		.input(

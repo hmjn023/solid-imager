@@ -12,54 +12,16 @@ import { MaintenanceService } from "~/application/services/maintenance-service";
 
 // ---- Module mocks ----
 
-// Mock node:fs/promises to control thumbnail directory reads and lanceDb manifest reads
+// Mock node:fs/promises to control thumbnail directory reads
 vi.mock("node:fs/promises", () => ({
 	default: {
 		readdir: vi.fn(),
-		readFile: vi.fn(),
 	},
 }));
 
 // Mock getSourceCacheDir to return a predictable path
 vi.mock("~/infrastructure/jobs/thumbnails", () => ({
 	getSourceCacheDir: vi.fn((sourceId: string) => `/cache/${sourceId}`),
-}));
-
-// Mock registry for configuration loading
-vi.mock("~/application/registry", () => ({
-	services: {
-		getConfigService: () => ({
-			getConfig: () => ({
-				lancedb: {
-					cacheDir: ".cache/lancedb-cache",
-				},
-			}),
-		}),
-	},
-}));
-
-// Mock lancedb-dump-service
-const mockReadMediaIds = vi.fn();
-vi.mock(
-	"~/application/services/lancedb-dump-service",
-	async (importOriginal) => {
-		const actual =
-			await importOriginal<
-				typeof import("~/application/services/lancedb-dump-service")
-			>();
-		return {
-			...actual,
-			readMediaIds: mockReadMediaIds,
-		};
-	},
-);
-
-// Mock backup-service
-const mockQueueSourceLanceDBDelta = vi.fn();
-vi.mock("~/application/services/backup-service", () => ({
-	BackupService: {
-		queueSourceLanceDBDelta: mockQueueSourceLanceDBDelta,
-	},
 }));
 
 // Silence logger output during tests
@@ -77,7 +39,6 @@ vi.mock("~/infrastructure/logger", () => ({
 const mockMediaRepo = {
 	findIdsWithMissingGenerationInfo: vi.fn(),
 	findAllMediaIndices: vi.fn(),
-	findAllPathsBySourceId: vi.fn(),
 };
 
 const mockJobRepo = {
@@ -117,13 +78,10 @@ describe("MaintenanceService", () => {
 			mockSourceRepo as any,
 		);
 		mockSourceRepo.findAll.mockResolvedValue([]);
-		mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([]);
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
-		mockReadMediaIds.mockReset();
-		mockQueueSourceLanceDBDelta.mockReset();
 	});
 
 	// --------------------------------------------------------------------------
@@ -142,6 +100,7 @@ describe("MaintenanceService", () => {
 				mockMediaRepo.findIdsWithMissingGenerationInfo,
 			).toHaveBeenCalledOnce();
 			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenCalledOnce();
+			expect(mockSourceRepo.findAll).not.toHaveBeenCalled();
 		});
 	});
 
@@ -358,140 +317,4 @@ describe("MaintenanceService", () => {
 		});
 	});
 
-	describe("LanceDB startup behavior", () => {
-		it("should queue one full LanceDB sync job per source without a cache during startup checks", async () => {
-			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
-			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
-			mockSourceRepo.findAll.mockResolvedValue([
-				makeLocalSource("source-1", "/path-1"),
-				makeLocalSource("source-2", "/path-2"),
-			]);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
-
-			// Simulate manifest.json doesn't exist (ENOENT)
-			const err = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
-			(fs.readFile as unknown as Mock).mockRejectedValue(err);
-
-			await service.performStartupChecks();
-
-			expect(mockSourceRepo.findAll).toHaveBeenCalledOnce();
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "sync_lancedb_full",
-					mediaSourceId: "source-1",
-				}),
-			);
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "sync_lancedb_full",
-					mediaSourceId: "source-2",
-				}),
-			);
-		});
-
-		it("should queue delta sync job without queueing delta details if PostgreSQL and LanceDB are in sync", async () => {
-			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
-			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
-			mockSourceRepo.findAll.mockResolvedValue([
-				makeLocalSource("source-1", "/path-1"),
-			]);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
-
-			// Simulate a current manifest.json.
-			(fs.readFile as unknown as Mock).mockResolvedValue(
-				JSON.stringify({ version: 4 }),
-			);
-
-			// Both LanceDB and Postgres have media-1
-			mockReadMediaIds.mockResolvedValue(["media-1"]);
-			mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([
-				{ id: "media-1", filePath: "/media/media-1.png" },
-			]);
-
-			await service.performStartupChecks();
-
-			expect(mockQueueSourceLanceDBDelta).not.toHaveBeenCalled();
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "sync_lancedb_delta",
-					mediaSourceId: "source-1",
-				}),
-			);
-		});
-
-		it("should queue discrepancies to delta table and trigger delta sync job if discrepancies are found", async () => {
-			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
-			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
-			mockSourceRepo.findAll.mockResolvedValue([
-				makeLocalSource("source-1", "/path-1"),
-			]);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
-
-			// Simulate a current manifest.json.
-			(fs.readFile as unknown as Mock).mockResolvedValue(
-				JSON.stringify({ version: 4 }),
-			);
-
-			// Postgres: media-1, media-2
-			// LanceDB: media-2, media-3
-			// Discrepancies: upsert [media-1], delete [media-3]
-			mockReadMediaIds.mockResolvedValue(["media-2", "media-3"]);
-			mockMediaRepo.findAllPathsBySourceId.mockResolvedValue([
-				{ id: "media-1", filePath: "/media/media-1.png" },
-				{ id: "media-2", filePath: "/media/media-2.png" },
-			]);
-
-			await service.performStartupChecks();
-
-			expect(mockQueueSourceLanceDBDelta).toHaveBeenCalledTimes(2);
-			expect(mockQueueSourceLanceDBDelta).toHaveBeenNthCalledWith(
-				1,
-				"source-1",
-				["media-1"],
-				"upsert",
-				{ enqueueJob: false },
-			);
-			expect(mockQueueSourceLanceDBDelta).toHaveBeenNthCalledWith(
-				2,
-				"source-1",
-				["media-3"],
-				"delete",
-				{ enqueueJob: false },
-			);
-
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "sync_lancedb_delta",
-					mediaSourceId: "source-1",
-				}),
-			);
-		});
-
-		it("should fall back to full sync if comparison throws an error", async () => {
-			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
-			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
-			mockSourceRepo.findAll.mockResolvedValue([
-				makeLocalSource("source-1", "/path-1"),
-			]);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
-
-			// Simulate a current manifest.json.
-			(fs.readFile as unknown as Mock).mockResolvedValue(
-				JSON.stringify({ version: 4 }),
-			);
-
-			// readMediaIds throws error
-			mockReadMediaIds.mockRejectedValue(new Error("LanceDB read error"));
-
-			await service.performStartupChecks();
-
-			expect(mockQueueSourceLanceDBDelta).not.toHaveBeenCalled();
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "sync_lancedb_full",
-					mediaSourceId: "source-1",
-				}),
-			);
-		});
-	});
 });
