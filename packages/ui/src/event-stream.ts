@@ -8,6 +8,8 @@ export type EventStreamErrorHandler = (
 	delay: number,
 ) => void;
 
+export type EventStreamConnectedHandler = () => void | Promise<void>;
+
 const MAX_RETRY_DELAY = 30_000;
 const INITIAL_RETRY_DELAY = 1_000;
 
@@ -32,6 +34,7 @@ export function subscribeToEventStream<TEvent>(
 	openStream: EventStreamFactory<TEvent>,
 	onEvent: (event: TEvent) => void | Promise<void>,
 	onError?: EventStreamErrorHandler,
+	onConnected?: EventStreamConnectedHandler,
 ): () => void {
 	const abortController = new AbortController();
 	const canObservePageLifecycle = typeof window !== "undefined";
@@ -51,6 +54,7 @@ export function subscribeToEventStream<TEvent>(
 		while (!abortController.signal.aborted) {
 			try {
 				const events = await openStream(abortController.signal);
+				await onConnected?.();
 
 				for await (const event of events) {
 					if (abortController.signal.aborted) {

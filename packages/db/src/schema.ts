@@ -1044,6 +1044,11 @@ export const jobs = pgTable(
 		}),
 	},
 	(table) => ({
+		pendingImportRequestIndex: index("idx_jobs_pending_import_request")
+			.on(table.id)
+			.where(
+				sql`${table.status} = 'pending' AND ${table.type} = 'import_request'`,
+			),
 		pendingCreatedIndex: index("idx_jobs_pending_created")
 			.on(table.createdAt, table.id)
 			.where(

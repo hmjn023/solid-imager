@@ -75,15 +75,10 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 
 	const [pendingJobs, { refetch: refetchJobs }] = createResource(
+		() => props.isOpen || undefined,
 		props.listPending,
 	);
 	const [sources] = createResource(props.listSources);
-
-	createEffect(() => {
-		if (props.isOpen) {
-			void refetchJobs();
-		}
-	});
 
 	createEffect(() => {
 		const jobs = pendingJobs();

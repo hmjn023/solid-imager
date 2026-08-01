@@ -8,6 +8,10 @@ import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
 export function PendingDownloadsIndicator() {
 	const props: PendingDownloadsIndicatorProps = {
+		countPending: async () => {
+			const result = await orpc.imports.countPending();
+			return result.count;
+		},
 		listPending: async () => {
 			const jobs = await orpc.imports.listPending();
 			return jobs;
@@ -30,10 +34,12 @@ export function PendingDownloadsIndicator() {
 			const result = await orpc.imports.cancel({ jobIds });
 			return { success: result.success };
 		},
-		subscribeImportEvents: (handler) => {
+		subscribeImportEvents: (handler, onConnected) => {
 			return subscribeToEventStream(
 				(signal) => orpc.imports.events(undefined, { signal }),
 				handler,
+				undefined,
+				onConnected,
 			);
 		},
 	};
