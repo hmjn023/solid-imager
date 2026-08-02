@@ -62,6 +62,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
+import { useScrollRestoration } from "@solid-imager/ui/hooks/scroll-container";
 import { Input } from "@solid-imager/ui/input";
 import {
 	Popover,
@@ -132,6 +133,38 @@ const VIRTUAL_GRID_MEDIA = Array.from(
 );
 
 function VirtualGridGallery() {
+	const restoreGrid = new URLSearchParams(window.location.search).has(
+		"restore-grid",
+	);
+	const [loadedCount, setLoadedCount] = createSignal(
+		restoreGrid ? 200 : VIRTUAL_GRID_ITEM_COUNT,
+	);
+	const [isFetchingNextPage, setIsFetchingNextPage] = createSignal(false);
+	const mediaResults = () => VIRTUAL_GRID_MEDIA.slice(0, loadedCount());
+	const fetchNextPage = async () => {
+		if (
+			!restoreGrid ||
+			isFetchingNextPage() ||
+			loadedCount() >= VIRTUAL_GRID_ITEM_COUNT
+		) {
+			return;
+		}
+		setIsFetchingNextPage(true);
+		await new Promise((resolve) => setTimeout(resolve, 10));
+		setLoadedCount((count) => Math.min(count + 200, VIRTUAL_GRID_ITEM_COUNT));
+		setIsFetchingNextPage(false);
+	};
+	useScrollRestoration({
+		restoreKey: () => "virtual-grid",
+		getPosition: () => (restoreGrid ? 20_000 : 0),
+		setPosition: () => undefined,
+		isReady: () => mediaResults().length > 0,
+		hasNextPage: () => loadedCount() < VIRTUAL_GRID_ITEM_COUNT,
+		isFetchingNextPage,
+		fetchNextPage,
+		scrollContainerSelector: "[data-media-scroll]",
+	});
+
 	return (
 		<main class="h-dvh bg-background p-4 text-foreground">
 			<h1 class="sr-only">Virtual media grid performance fixture</h1>
@@ -143,10 +176,12 @@ function VirtualGridGallery() {
 				<SourceMediaGrid
 					disableContextMenu
 					enableVirtualization
-					isFetchingNextPage={false}
+					isFetchingNextPage={isFetchingNextPage()}
 					itemAspectRatio={4 / 3}
-					mediaResults={() => VIRTUAL_GRID_MEDIA}
-					mediaSourceId={() => VIRTUAL_GRID_MEDIA[0]?.mediaSourceId}
+					hasNextPage={loadedCount() < VIRTUAL_GRID_ITEM_COUNT}
+					mediaResults={mediaResults}
+					mediaSourceId={() => mediaResults()[0]?.mediaSourceId}
+					onLoadMore={fetchNextPage}
 					renderItem={(media, options) => (
 						// The immutable, uniquely-addressed URLs exercise the browser's real
 						// memory cache when a virtual row is unmounted and revisited.
@@ -177,7 +212,7 @@ function VirtualGridGallery() {
 					setLoadMoreRef={() => undefined}
 					showResultCount={false}
 					state={() => ({
-						data: VIRTUAL_GRID_MEDIA,
+						data: mediaResults(),
 						error: undefined,
 						fetchState: "idle",
 						phase: "data",

@@ -258,6 +258,24 @@ test("virtual media grid stays populated and DOM-bounded during fast scrolling",
 	expect(transferSummary.retransferredUrls).toEqual([]);
 });
 
+test("virtual media grid stays populated after restoring a deep scroll position", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1_280, height: 720 });
+	await page.goto(`${getGalleryUrl()}/?virtual-grid=1&restore-grid=1`);
+
+	const scroller = page.getByTestId("virtual-grid-scroller");
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollTop))
+		.toBeGreaterThan(1_000);
+	await expectVisibleImagesLoaded(scroller);
+
+	await scroller.evaluate((element) => {
+		element.scrollTop += element.clientHeight * 2;
+	});
+	await expectVisibleImagesLoaded(scroller);
+});
+
 test.describe("high-density virtual media grid", () => {
 	test.use({ deviceScaleFactor: 2 });
 

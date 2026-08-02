@@ -213,7 +213,13 @@ export function useScrollRestoration(
 		}
 
 		const cancelRestore = () => {
-			if (!isRestored()) cancelled = true;
+			if (!isRestored()) {
+				cancelled = true;
+				// User input takes ownership of the scroll position. Mark the
+				// restoration complete so cleanup persists the position they chose
+				// instead of treating it as an unfinished restore.
+				setIsRestored(true);
+			}
 		};
 		window.addEventListener("pointerdown", cancelRestore, { passive: true });
 		window.addEventListener("wheel", cancelRestore, { passive: true });

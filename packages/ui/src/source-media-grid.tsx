@@ -267,14 +267,19 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const isPrefetch = isForwardPrefetch || isBackwardPrefetch;
 
 		return {
-			enabled: isVisible || isPrefetch,
+			// The element virtualizer already bounds the DOM to the visible range
+			// plus a small directional buffer. Keep every mounted row loadable:
+			// during navigation restoration the virtualizer can report the previous
+			// range for one frame, and disabling those rows leaves the viewport blank
+			// when the user scrolls again.
+			enabled: true,
 			fetchpriority:
 				isVisible && mediaIndex < INITIAL_HIGH_PRIORITY_MEDIA
 					? "high"
 					: isPrefetch
 						? "low"
 						: undefined,
-			loading: isVisible || isPrefetch ? "eager" : "lazy",
+			loading: "eager",
 		};
 	};
 	const createElementImageLoadPolicy = (
