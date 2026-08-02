@@ -69,7 +69,7 @@ function V2SearchRoute() {
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored,
-		scrollContainerSelector: "[data-media-scroll]",
+		scrollContainerSelector: '[data-media-scroll="v2-search"]',
 	});
 
 	useMediaSourceEvents(() => searchState.selectedSource || "*", {

@@ -81,32 +81,35 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 			<Show when={props.renderJobProgress && page().jobProgress()}>
 				{props.renderJobProgress?.({ jobProgress: page().jobProgress })}
 			</Show>
+			<div class="shrink-0 px-3 pt-3 sm:px-4">
+				<Show
+					when={filterStates().some(
+						(state) => state.phase === "error" || state.phase === "offline",
+					)}
+				>
+					<FilterErrorBanner
+						class="mb-2"
+						message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
+						onRetry={props.onRetryFilters}
+					/>
+				</Show>
+				<div class="h-8">
+					<QueryStatus
+						fetchState={page().contentState().fetchState}
+						hasData={page().contentState().data !== undefined}
+						hideWhenIdle
+						offlineLabel="オフラインのため保存済みデータを表示しています"
+						updatingLabel="メディア一覧を更新中..."
+					/>
+				</div>
+			</div>
 
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
-				data-media-scroll
+				data-media-scroll={page().mediaSourceId() ?? "v2-source"}
 			>
 				<div class="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4">
 					<div class="min-w-0">
-						<Show
-							when={filterStates().some(
-								(state) => state.phase === "error" || state.phase === "offline",
-							)}
-						>
-							<FilterErrorBanner
-								class="mb-3"
-								message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
-								onRetry={props.onRetryFilters}
-							/>
-						</Show>
-						<QueryStatus
-							class="mb-2"
-							fetchState={page().contentState().fetchState}
-							hasData={page().contentState().data !== undefined}
-							hideWhenIdle
-							offlineLabel="オフラインのため保存済みデータを表示しています"
-							updatingLabel="メディア一覧を更新中..."
-						/>
 						<Show
 							fallback={
 								<LoadingRegion label="メディア一覧を読み込んでいます...">
