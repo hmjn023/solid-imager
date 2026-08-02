@@ -61,6 +61,14 @@ test("shared Solid UI gallery has no narrow viewport overflow", async ({
 test("virtual media grid stays populated and DOM-bounded during fast scrolling", async ({
 	page,
 }) => {
+	await page.route("**/virtual-thumbnail/*.svg", async (route) => {
+		await new Promise((resolve) => setTimeout(resolve, 20));
+		await route.fulfill({
+			body: `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120" viewBox="0 0 160 120"><rect width="160" height="120" fill="#dbeafe"/><path d="M0 100 45 55l30 30 22-22 63 57H0Z" fill="#93c5fd"/></svg>`,
+			contentType: "image/svg+xml",
+			headers: { "Cache-Control": "private, max-age=300" },
+		});
+	});
 	await page.setViewportSize({ width: 1_280, height: 720 });
 	await page.goto(`${getGalleryUrl()}/?virtual-grid=1`);
 	await expect(
@@ -71,9 +79,32 @@ test("virtual media grid stays populated and DOM-bounded during fast scrolling",
 
 	const scroller = page.getByTestId("virtual-grid-scroller");
 	await expect(scroller.locator("[data-media-id]").first()).toBeVisible();
+	await expect
+		.poll(() =>
+			scroller.evaluate((element) => {
+				const scrollerRect = element.getBoundingClientRect();
+				const visibleImages = [
+					...element.querySelectorAll<HTMLImageElement>("[data-media-id] img"),
+				].filter((image) => {
+					const rect = image.getBoundingClientRect();
+					return (
+						rect.bottom > scrollerRect.top && rect.top < scrollerRect.bottom
+					);
+				});
+				return (
+					visibleImages.length > 0 &&
+					visibleImages.every(
+						(image) => image.complete && image.naturalWidth > 0,
+					)
+				);
+			}),
+		)
+		.toBe(true);
 
 	const samples = await scroller.evaluate(async (element) => {
 		const sampleRows: Array<{
+			above: number;
+			below: number;
 			mounted: number;
 			visible: number;
 			loadedVisible: number;
@@ -81,10 +112,16 @@ test("virtual media grid stays populated and DOM-bounded during fast scrolling",
 		}> = [];
 		const settleFrame = () =>
 			new Promise<void>((resolve) =>
-				requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+				requestAnimationFrame(() =>
+					requestAnimationFrame(() => setTimeout(resolve, 75)),
+				),
 			);
 
-		for (let step = 0; step <= 20; step += 1) {
+		const scrollSteps = [
+			...Array.from({ length: 21 }, (_, step) => step),
+			...Array.from({ length: 20 }, (_, step) => 19 - step),
+		];
+		for (const step of scrollSteps) {
 			element.scrollTop =
 				(element.scrollHeight - element.clientHeight) * (step / 20);
 			await settleFrame();
@@ -102,6 +139,12 @@ test("virtual media grid stays populated and DOM-bounded during fast scrolling",
 				return image?.complete && image.naturalWidth > 0;
 			});
 			sampleRows.push({
+				above: mounted.filter(
+					(item) => item.getBoundingClientRect().bottom <= scrollerRect.top,
+				).length,
+				below: mounted.filter(
+					(item) => item.getBoundingClientRect().top >= scrollerRect.bottom,
+				).length,
 				mounted: mounted.length,
 				visible: visible.length,
 				loadedVisible: loadedVisible.length,
@@ -114,13 +157,20 @@ test("virtual media grid stays populated and DOM-bounded during fast scrolling",
 
 	expect(samples.every((sample) => sample.mounted > 0)).toBe(true);
 	expect(Math.max(...samples.map((sample) => sample.mounted))).toBeLessThan(
-		100,
+		160,
 	);
 	expect(samples.every((sample) => sample.visible > 0)).toBe(true);
-	expect(
-		samples.every((sample) => sample.loadedVisible === sample.visible),
-	).toBe(true);
+	const unloadedSamples = samples.flatMap((sample, index) =>
+		sample.loadedVisible === sample.visible ? [] : [{ index, ...sample }],
+	);
+	expect(unloadedSamples).toEqual([]);
 	expect(
 		new Set(samples.map((sample) => sample.firstVisibleId)).size,
 	).toBeGreaterThan(10);
+	expect(Math.max(...samples.map((sample) => sample.below))).toBeGreaterThan(
+		20,
+	);
+	expect(Math.max(...samples.map((sample) => sample.above))).toBeGreaterThan(
+		20,
+	);
 });

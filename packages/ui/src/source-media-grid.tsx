@@ -2,6 +2,8 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
 	createVirtualizer,
 	createWindowVirtualizer,
+	type Range,
+	type Virtualizer,
 } from "@tanstack/solid-virtual";
 import type { Accessor, JSX, Setter } from "solid-js";
 import {
@@ -34,9 +36,26 @@ import {
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
 const WINDOW_VIRTUAL_ROWS_OVERSCAN = 4;
-const ELEMENT_VIRTUAL_ROWS_OVERSCAN = 1;
+const ELEMENT_TRAILING_ROWS = 3;
+const ELEMENT_LEADING_ROWS = 8;
 const INITIAL_PRIORITY_ROWS = 2;
 const INITIAL_SKELETON_ROWS = 3;
+
+type ScrollDirection = "backward" | "forward" | null;
+
+function extractDirectionalRows(
+	range: Range,
+	direction: ScrollDirection,
+): number[] {
+	const rowsBefore =
+		direction === "backward" ? ELEMENT_LEADING_ROWS : ELEMENT_TRAILING_ROWS;
+	const rowsAfter =
+		direction === "backward" ? ELEMENT_TRAILING_ROWS : ELEMENT_LEADING_ROWS;
+	const start = Math.max(range.startIndex - rowsBefore, 0);
+	const end = Math.min(range.endIndex + rowsAfter, range.count - 1);
+
+	return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+}
 
 type SourceMediaGridProps = {
 	detailBasePath?: string;
@@ -158,7 +177,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		},
 	});
 
-	const elementRowVirtualizer = createVirtualizer<HTMLElement, HTMLDivElement>({
+	let elementRowVirtualizer:
+		| Virtualizer<HTMLElement, HTMLDivElement>
+		| undefined;
+	elementRowVirtualizer = createVirtualizer<HTMLElement, HTMLDivElement>({
 		get count() {
 			return rowCount();
 		},
@@ -166,14 +188,19 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		estimateSize: () => mediaItemHeight() || 320,
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
-		overscan: ELEMENT_VIRTUAL_ROWS_OVERSCAN,
+		overscan: 0,
+		rangeExtractor: (range) =>
+			extractDirectionalRows(
+				range,
+				elementRowVirtualizer?.scrollDirection ?? null,
+			),
 		get scrollMargin() {
 			return scrollMargin();
 		},
 	});
 	const mediaRowVirtualizer = () =>
 		props.scrollMode === "element"
-			? elementRowVirtualizer
+			? (elementRowVirtualizer ?? windowRowVirtualizer)
 			: windowRowVirtualizer;
 
 	const shouldVirtualize = createMemo(

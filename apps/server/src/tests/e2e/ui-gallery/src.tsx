@@ -105,8 +105,6 @@ import "../../../app.css";
 
 const OPTIONS = ["Alpha", "Beta", "Gamma"];
 const VIRTUAL_GRID_ITEM_COUNT = 1_000;
-const THUMBNAIL_DATA_URL =
-	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120' viewBox='0 0 160 120'%3E%3Crect width='160' height='120' fill='%23dbeafe'/%3E%3Cpath d='M0 100 45 55l30 30 22-22 63 57H0Z' fill='%2393c5fd'/%3E%3C/svg%3E";
 
 function createVirtualGridMedia(index: number): Media {
 	const timestamp = new Date("2026-01-01T00:00:00.000Z");
@@ -159,7 +157,7 @@ function VirtualGridGallery() {
 								alt={media.fileName}
 								class="h-full w-full object-cover"
 								loading={options.priority ? "eager" : "lazy"}
-								src={THUMBNAIL_DATA_URL}
+								src={`/virtual-thumbnail/${media.id}.svg`}
 							/>
 						</a>
 					)}
