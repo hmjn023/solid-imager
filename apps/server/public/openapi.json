@@ -1099,6 +1099,16 @@
                                     },
                                     "timestamp": {
                                       "type": "string"
+                                    },
+                                    "size": {
+                                      "anyOf": [
+                                        {
+                                          "const": 256
+                                        },
+                                        {
+                                          "const": 512
+                                        }
+                                      ]
                                     }
                                   },
                                   "required": [
@@ -4597,6 +4607,21 @@
                   "sourceId": {
                     "type": "string",
                     "format": "uuid"
+                  },
+                  "size": {
+                    "anyOf": [
+                      {
+                        "const": 256
+                      },
+                      {
+                        "const": 512
+                      }
+                    ],
+                    "default": 512
+                  },
+                  "missingOnly": {
+                    "type": "boolean",
+                    "default": false
                   }
                 },
                 "required": [
@@ -4612,11 +4637,28 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {},
-                    {
-                      "not": {}
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "message": {
+                      "type": "string"
                     }
+                  },
+                  "required": [
+                    "success",
+                    "count",
+                    "message"
                   ]
                 }
               }

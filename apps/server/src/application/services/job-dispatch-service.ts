@@ -6,7 +6,10 @@ import {
 	processAutoTaggingJob,
 	processBulkTaggingDispatchJob,
 } from "~/infrastructure/jobs/tagging-jobs";
-import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
+import {
+	deleteThumbnail,
+	processThumbnailGenerationJob,
+} from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
 // Helper for unified job processing (Called by JobWorker)
@@ -44,6 +47,8 @@ export async function processJob(job: DbJob) {
 			"~/infrastructure/jobs/ccip-jobs"
 		);
 		await processBatchCcipDispatchJob(job);
+	} else if (job.type === "generate_thumbnail") {
+		await processThumbnailGenerationJob(job);
 	} else if (job.type === "sync_lancedb" || job.type === "sync_lancedb_full") {
 		if (!mediaSourceId) {
 			throw new Error(`Job ${job.id} missing mediaSourceId`);

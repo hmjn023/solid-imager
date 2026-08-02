@@ -10,8 +10,14 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
  * Starts thumbnail generation for a media source
  * @param mediaSourceId - The ID of the media source
  */
-export function startThumbnailGeneration(mediaSourceId: string) {
-	return orpc.thumbnails.generate({ sourceId: mediaSourceId });
+export function startThumbnailGeneration(
+	mediaSourceId: string,
+	options: { size: 256 | 512; missingOnly: boolean } = {
+		size: 512,
+		missingOnly: false,
+	},
+) {
+	return orpc.thumbnails.generate({ sourceId: mediaSourceId, ...options });
 }
 
 /**
