@@ -3,6 +3,7 @@ import type { Job as DbJob } from "~/infrastructure/db/schema";
 
 const processBatchCcipDispatchJob = vi.fn();
 const processBulkTaggingDispatchJob = vi.fn();
+const processThumbnailGenerationJob = vi.fn();
 
 vi.doMock("~/infrastructure/jobs/ccip-jobs", () => ({
 	processBatchCcipDispatchJob,
@@ -11,6 +12,11 @@ vi.doMock("~/infrastructure/jobs/ccip-jobs", () => ({
 vi.doMock("~/infrastructure/jobs/tagging-jobs", () => ({
 	processBulkTaggingDispatchJob,
 	processAutoTaggingJob: vi.fn(),
+}));
+
+vi.doMock("~/infrastructure/jobs/thumbnails", () => ({
+	deleteThumbnail: vi.fn(),
+	processThumbnailGenerationJob,
 }));
 
 const { processJob } = await import(
@@ -40,6 +46,7 @@ describe("processJob", () => {
 	beforeEach(() => {
 		processBatchCcipDispatchJob.mockReset();
 		processBulkTaggingDispatchJob.mockReset();
+		processThumbnailGenerationJob.mockReset();
 	});
 
 	it("allows batch_ccip_dispatch without mediaSourceId", async () => {
@@ -64,5 +71,16 @@ describe("processJob", () => {
 		await expect(processJob(job)).rejects.toThrow("missing mediaSourceId");
 		expect(processBatchCcipDispatchJob).not.toHaveBeenCalled();
 		expect(processBulkTaggingDispatchJob).not.toHaveBeenCalled();
+	});
+
+	it("dispatches generate_thumbnail jobs", async () => {
+		const job = createJob(
+			"generate_thumbnail",
+			"22222222-2222-4222-8222-222222222222",
+		);
+		processThumbnailGenerationJob.mockResolvedValueOnce(undefined);
+
+		await expect(processJob(job)).resolves.toBeUndefined();
+		expect(processThumbnailGenerationJob).toHaveBeenCalledWith(job);
 	});
 });

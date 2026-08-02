@@ -98,6 +98,7 @@ import {
 	TextFieldLabel,
 	TextFieldTextArea,
 } from "@solid-imager/ui/text-field";
+import { ThumbnailImage } from "@solid-imager/ui/thumbnail-image";
 import { Toaster, toast } from "@solid-imager/ui/toast";
 import { createSignal } from "solid-js";
 import { render } from "solid-js/web";
@@ -114,9 +115,9 @@ function createVirtualGridMedia(index: number): Media {
 		filePath: `/fixture/${index}.webp`,
 		fileName: `fixture-${index}.webp`,
 		mediaType: "image",
-		width: 160,
-		height: 120,
-		fileSize: 1_024,
+		width: 512,
+		height: 384,
+		fileSize: 52_840,
 		description: null,
 		createdAt: timestamp,
 		modifiedAt: timestamp,
@@ -147,17 +148,28 @@ function VirtualGridGallery() {
 					mediaResults={() => VIRTUAL_GRID_MEDIA}
 					mediaSourceId={() => VIRTUAL_GRID_MEDIA[0]?.mediaSourceId}
 					renderItem={(media, options) => (
+						// The immutable, uniquely-addressed URLs exercise the browser's real
+						// memory cache when a virtual row is unmounted and revisited.
 						<a
 							class="block aspect-[4/3] overflow-hidden rounded-md bg-muted"
 							data-media-id={media.id}
 							href={`#${media.id}`}
 							onContextMenu={options.onContextMenu}
 						>
-							<img
+							<ThumbnailImage
 								alt={media.fileName}
 								class="h-full w-full object-cover"
-								loading={options.priority ? "eager" : "lazy"}
-								src={`/virtual-thumbnail/${media.id}.svg`}
+								enabled={options.imageLoadPolicy?.enabled}
+								fetchpriority={options.imageLoadPolicy?.fetchpriority}
+								height={384}
+								loading={options.imageLoadPolicy?.loading}
+								sizes="160px"
+								source={{
+									getSrcSet: () =>
+										`/virtual-thumbnail/${media.id}-256.webp 256w, /virtual-thumbnail/${media.id}-512.webp 512w`,
+									getUrl: () => `/virtual-thumbnail/${media.id}-512.webp`,
+								}}
+								width={512}
 							/>
 						</a>
 					)}
