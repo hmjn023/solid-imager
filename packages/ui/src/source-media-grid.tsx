@@ -39,6 +39,10 @@ const GRID_GAP_PX = 12;
 const WINDOW_VIRTUAL_ROWS_OVERSCAN = 4;
 const ELEMENT_PREFETCH_ROWS = 3;
 const ELEMENT_RETAIN_ROWS = 4;
+// Start the next page before the user reaches the last prefetched rows. The
+// request itself is independent of image loading, so this does not increase
+// the number of mounted grid items.
+const LOAD_MORE_ROWS_AHEAD = 12;
 const INITIAL_PRIORITY_ROWS = 2;
 const INITIAL_HIGH_PRIORITY_MEDIA = 2;
 const INITIAL_SKELETON_ROWS = 3;
@@ -340,7 +344,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const handleScroll = () => {
 			if (!props.hasNextPage || props.isFetchingNextPage) return;
 			const lastItem = mediaRowVirtualizer().getVirtualItems().at(-1);
-			if (lastItem && lastItem.index >= totalRows - 2) {
+			if (lastItem && lastItem.index >= totalRows - LOAD_MORE_ROWS_AHEAD) {
 				props.onLoadMore?.();
 			}
 		};

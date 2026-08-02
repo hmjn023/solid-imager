@@ -367,7 +367,7 @@ export function useSourceMediaPage(
 						mediaQuery.fetchNextPage();
 					}
 				},
-				{ threshold: 0.5, rootMargin: "1000px" },
+				{ threshold: 0.5, rootMargin: "2400px" },
 			);
 
 			observer.observe(el);
