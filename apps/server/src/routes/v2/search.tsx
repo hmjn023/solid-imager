@@ -23,7 +23,6 @@ import {
 	searchMedia,
 	searchSimilar,
 } from "~/infrastructure/api-clients/search-api";
-import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 import {
 	getSearchCondition,
 	searchState,
@@ -31,20 +30,12 @@ import {
 } from "~/presentation/store/search-store";
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
+const V2_SEARCH_RESULTS_PER_PAGE = 200;
 const PresetClient = createPresetClient(rawPresetClient);
 
 export const Route = createFileRoute("/v2/search")({
-	ssr: "data-only",
-	loader: async ({ context }: RouteLoaderContext) => {
-		await Promise.all([
-			context.queryClient.prefetchQuery(tagsQueryOptions()),
-			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
-			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
-			context.queryClient.prefetchQuery(allIpsQueryOptions()),
-			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
-			context.queryClient.prefetchQuery(allAuthorsQueryOptions()),
-		]);
-	},
+	ssr: false,
+	pendingComponent: () => null,
 	component: V2SearchRoute,
 });
 
@@ -67,7 +58,9 @@ function V2SearchRoute() {
 		getSearchCondition,
 		sortBy: () => searchState.sortBy,
 		sortOrder: () => searchState.sortOrder,
-		limit: () => searchState.limit,
+		// V2 can display up to eight columns. Fetch enough complete rows per page
+		// so scrolling does not stop for another request every two or three rows.
+		limit: () => Math.max(searchState.limit, V2_SEARCH_RESULTS_PER_PAGE),
 		scrollY: () => searchState.scrollY,
 		setScrollY: (value) => setSearchState("scrollY", value),
 		setOffset: (value) => setSearchState("offset", value),

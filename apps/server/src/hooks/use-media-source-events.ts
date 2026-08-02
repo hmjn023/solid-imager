@@ -80,10 +80,13 @@ export function createServerTransport(
 			return false;
 		}
 		if (id === "*") {
-			return pathname === "/search";
+			return pathname === "/search" || pathname === "/v2/search";
 		}
 		return (
-			pathname === `/sources/${id}` || pathname.startsWith(`/sources/${id}/`)
+			pathname === `/sources/${id}` ||
+			pathname.startsWith(`/sources/${id}/`) ||
+			pathname === `/v2/sources/${id}` ||
+			pathname.startsWith(`/v2/sources/${id}/`)
 		);
 	};
 

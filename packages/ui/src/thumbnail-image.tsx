@@ -26,12 +26,25 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		setError(false);
 		let cancelled = false;
 
-		const load = async () => {
+		const applyResolvedUrl = (resolved: string) => {
+			if (!cancelled) {
+				setUrl(resolved);
+			}
+		};
+
+		const load = () => {
 			try {
-				const resolved = await source.getUrl();
-				if (!cancelled) {
-					setUrl(resolved);
+				const resolved = source.getUrl();
+				if (typeof resolved === "string") {
+					applyResolvedUrl(resolved);
+					return;
 				}
+				void resolved.then(applyResolvedUrl).catch(() => {
+					if (!cancelled) {
+						setError(true);
+						source.onError?.();
+					}
+				});
 			} catch {
 				if (!cancelled) {
 					setError(true);
@@ -40,11 +53,11 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 			}
 		};
 
-		void load();
+		load();
 
 		const unsubscribe = source.subscribe?.(() => {
 			setError(false);
-			void load();
+			load();
 		});
 
 		onCleanup(() => {

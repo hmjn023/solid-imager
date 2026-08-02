@@ -28,7 +28,10 @@ export const Route = createFileRoute(
 				}
 
 				return new Response(file, {
-					headers: { "Content-Type": "image/webp" },
+					headers: {
+						"Cache-Control": "private, max-age=300",
+						"Content-Type": "image/webp",
+					},
 				});
 			},
 		},

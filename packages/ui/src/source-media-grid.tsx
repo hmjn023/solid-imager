@@ -33,7 +33,8 @@ import {
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
-const VIRTUAL_ROWS_OVERSCAN = 4;
+const WINDOW_VIRTUAL_ROWS_OVERSCAN = 4;
+const ELEMENT_VIRTUAL_ROWS_OVERSCAN = 1;
 const INITIAL_PRIORITY_ROWS = 2;
 const INITIAL_SKELETON_ROWS = 3;
 
@@ -151,7 +152,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		estimateSize: () => mediaItemHeight() || 320,
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
-		overscan: VIRTUAL_ROWS_OVERSCAN,
+		overscan: WINDOW_VIRTUAL_ROWS_OVERSCAN,
 		get scrollMargin() {
 			return scrollMargin();
 		},
@@ -165,7 +166,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		estimateSize: () => mediaItemHeight() || 320,
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
-		overscan: VIRTUAL_ROWS_OVERSCAN,
+		overscan: ELEMENT_VIRTUAL_ROWS_OVERSCAN,
 		get scrollMargin() {
 			return scrollMargin();
 		},
@@ -334,7 +335,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									{(media) =>
 										props.renderItem(media, {
 											onContextMenu: onContextMenuHandler(media.id),
-											priority: virtualRow.index < INITIAL_PRIORITY_ROWS,
+											// Native lazy loading can leave transformed rows blank in a
+											// nested scroller. Element virtualization already keeps only
+											// the visible row and one row of overscan mounted.
+											priority:
+												props.scrollMode === "element" ||
+												virtualRow.index < INITIAL_PRIORITY_ROWS,
 											get isBulkSelectMode() {
 												return props.isBulkSelectMode?.();
 											},
