@@ -10,6 +10,7 @@ import type {
 	UseSearchPageResult,
 } from "../hooks/use-search-page";
 import type { SourceMediaPagePresetClient } from "../hooks/use-source-media-page";
+import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
@@ -32,6 +33,7 @@ export type SearchScreenProps = {
 	renderMediaItem: (
 		media: Media,
 		options?: {
+			imageLoadPolicy?: MediaGridImageLoadPolicy;
 			onPreviewSelect?: () => void;
 			isPreviewSelected?: boolean;
 			priority?: boolean;

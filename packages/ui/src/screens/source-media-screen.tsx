@@ -17,6 +17,7 @@ import type {
 	UploadOptions,
 	UseSourceMediaPageResult,
 } from "../hooks/use-source-media-page";
+import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
@@ -33,6 +34,7 @@ export type SourceMediaScreenProps = {
 	renderItem: (
 		media: Media,
 		options: {
+			imageLoadPolicy?: MediaGridImageLoadPolicy;
 			onContextMenu: () => void;
 			priority?: boolean;
 			isBulkSelectMode?: boolean;

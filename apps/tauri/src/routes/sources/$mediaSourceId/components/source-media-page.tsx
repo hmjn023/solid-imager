@@ -78,8 +78,9 @@ export function SourceMediaPage() {
 			ipsQueryOptions={allIpsQueryOptions}
 			charactersQueryOptions={allCharactersQueryOptions}
 			authorsQueryOptions={allAuthorsQueryOptions}
-			renderItem={(media, { onContextMenu, priority }) => (
+			renderItem={(media, { imageLoadPolicy, onContextMenu, priority }) => (
 				<MediaGridItem
+					imageLoadPolicy={imageLoadPolicy}
 					media={media}
 					onContextMenu={onContextMenu}
 					priority={priority}

@@ -128,6 +128,12 @@ const MANAGER_CATEGORIES: ManagerCategory[] = [
 		value: "vectors",
 	},
 	{
+		description: "Warm responsive image cache",
+		group: "Tools",
+		label: "Thumbnails",
+		value: "thumbnails",
+	},
+	{
 		description: "Review matching media",
 		group: "Tools",
 		label: "Duplicates",
@@ -201,6 +207,8 @@ function ManagerCategoryIcon(props: { value: V2ManagerCategory }) {
 			return <Bot aria-hidden="true" size={16} />;
 		case "vectors":
 			return <Share2 aria-hidden="true" size={16} />;
+		case "thumbnails":
+			return <Image aria-hidden="true" size={16} />;
 		case "duplicates":
 			return <CopyCheck aria-hidden="true" size={16} />;
 		case "transfer":
@@ -717,6 +725,98 @@ function BatchToolPanel(props: {
 							: isVector()
 								? "Start extraction"
 								: "Start tagging"}
+					</Button>
+				</div>
+			</section>
+
+			<Show when={props.manager.taggingStatus() || props.manager.jobProgress()}>
+				<section
+					aria-live="polite"
+					class="space-y-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-4"
+				>
+					<div class="flex flex-wrap items-center justify-between gap-2">
+						<h3 class="font-medium text-sm">Current run</h3>
+						<Badge variant="secondary">
+							{props.manager.activeJobId() ? "Running" : "Status"}
+						</Badge>
+					</div>
+					<p class="text-xs text-[var(--v2-text-secondary)]">
+						{props.manager.taggingStatus()}
+					</p>
+					<Show when={props.manager.jobProgress()}>
+						{(progress) => (
+							<div class="space-y-2">
+								<div class="flex justify-between text-xs text-[var(--v2-text-muted)]">
+									<span>Progress</span>
+									<span>
+										{progress().processed} / {progress().total}
+									</span>
+								</div>
+								<Progress
+									class="h-2"
+									value={
+										progress().total > 0
+											? (progress().processed / progress().total) * 100
+											: 0
+									}
+								/>
+							</div>
+						)}
+					</Show>
+				</section>
+			</Show>
+		</div>
+	);
+}
+
+function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
+	const [isStarting, setIsStarting] = createSignal(false);
+	const startWarmup = async () => {
+		if (isStarting() || props.manager.activeJobId()) return;
+		setIsStarting(true);
+		try {
+			await props.manager.handleStartThumbnailWarmup();
+		} finally {
+			setIsStarting(false);
+		}
+	};
+
+	return (
+		<div class="space-y-5">
+			<div>
+				<h2 class="font-semibold text-lg text-[var(--v2-text)]">
+					Thumbnail warmup
+				</h2>
+				<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
+					Generate missing 256px grid thumbnails without replacing existing
+					512px previews.
+				</p>
+			</div>
+
+			<section class="border-[var(--v2-border)] border-y bg-[var(--v2-surface)] py-4 sm:rounded-md sm:border sm:p-4">
+				<div class="space-y-1.5">
+					<Label>Target source</Label>
+					<SourceSelect
+						manager={props.manager}
+						onChange={props.manager.setSelectedSourceId}
+						value={props.manager.selectedSourceId()}
+					/>
+					<p class="text-xs text-[var(--v2-text-muted)]">
+						Only missing 256px variants are queued. Select one source to keep
+						the operation bounded.
+					</p>
+				</div>
+				<div class="mt-4 flex justify-end border-[var(--v2-border)] border-t pt-4">
+					<Button
+						class="w-full sm:w-auto"
+						disabled={
+							isStarting() ||
+							!!props.manager.activeJobId() ||
+							!props.manager.selectedSourceId()
+						}
+						onClick={() => void startWarmup()}
+					>
+						{isStarting() ? "Submitting..." : "Warm missing thumbnails"}
 					</Button>
 				</div>
 			</section>
@@ -1571,6 +1671,9 @@ export function V2ManagerScreen(props: {
 								</Match>
 								<Match when={activeCategory() === "vectors"}>
 									<BatchToolPanel kind="vectors" manager={props.manager} />
+								</Match>
+								<Match when={activeCategory() === "thumbnails"}>
+									<ThumbnailWarmupPanel manager={props.manager} />
 								</Match>
 								<Match when={activeCategory() === "duplicates"}>
 									<DuplicateToolPanel manager={props.manager} />

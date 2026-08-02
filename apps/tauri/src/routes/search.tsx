@@ -88,6 +88,7 @@ function SearchRoute() {
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
 				<MediaGridItem
+					imageLoadPolicy={options?.imageLoadPolicy}
 					media={media}
 					priority={options?.priority}
 					sourceRootPath={page.getSourceRootPath(media.mediaSourceId)}

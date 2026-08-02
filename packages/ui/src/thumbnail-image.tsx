@@ -2,6 +2,7 @@ import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 
 export interface ThumbnailSource {
 	getUrl(): string | Promise<string>;
+	getSrcSet?(): string | undefined | Promise<string | undefined>;
 	onError?(): void;
 	onLoad?(): void;
 	subscribe?(callback: () => void): () => void;
@@ -10,19 +11,33 @@ export interface ThumbnailSource {
 export interface ThumbnailImageProps {
 	alt: string;
 	class?: string;
+	enabled?: boolean;
 	fallback?: string;
+	fetchpriority?: "high" | "low" | "auto";
 	height?: number | null;
 	loading?: "eager" | "lazy";
+	sizes?: string;
 	source: ThumbnailSource;
 	width?: number | null;
 }
 
 export function ThumbnailImage(props: ThumbnailImageProps) {
 	const [url, setUrl] = createSignal<string | null>(null);
+	const [srcSet, setSrcSet] = createSignal<string | undefined>();
 	const [error, setError] = createSignal(false);
+	let previousSource: ThumbnailSource | undefined;
 
 	createEffect(() => {
 		const source = props.source;
+		if (source !== previousSource) {
+			previousSource = source;
+			setUrl(null);
+			setSrcSet(undefined);
+			setError(false);
+		}
+		if (props.enabled === false) {
+			return;
+		}
 		setError(false);
 		let cancelled = false;
 
@@ -52,12 +67,28 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 				}
 			}
 		};
+		const loadSrcSet = () => {
+			try {
+				const resolved = source.getSrcSet?.();
+				if (typeof resolved === "string" || resolved === undefined) {
+					if (!cancelled) setSrcSet(resolved);
+					return;
+				}
+				void resolved.then((value) => {
+					if (!cancelled) setSrcSet(value);
+				});
+			} catch {
+				if (!cancelled) setSrcSet(undefined);
+			}
+		};
 
 		load();
+		loadSrcSet();
 
 		const unsubscribe = source.subscribe?.(() => {
 			setError(false);
 			load();
+			loadSrcSet();
 		});
 
 		onCleanup(() => {
@@ -101,11 +132,14 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 				<img
 					alt={props.alt}
 					class={props.class}
+					fetchpriority={props.fetchpriority}
 					height={props.height ?? undefined}
 					loading={props.loading}
 					onError={handleError}
 					onLoad={handleLoad}
+					sizes={srcSet() ? props.sizes : undefined}
 					src={resolvedUrl()}
+					srcset={srcSet()}
 					width={props.width ?? undefined}
 				/>
 			)}

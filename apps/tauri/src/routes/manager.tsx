@@ -31,6 +31,7 @@ import {
 	deleteProject,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
+import { startThumbnailWarmup } from "~/infrastructure/api-clients/thumbnails-api";
 import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
@@ -61,6 +62,7 @@ const managerActions = {
 	startBatchCcipExtraction,
 	findDuplicateMedia,
 	bulkDeleteMedia,
+	startThumbnailWarmup,
 };
 
 export const Route = createFileRoute("/manager")({

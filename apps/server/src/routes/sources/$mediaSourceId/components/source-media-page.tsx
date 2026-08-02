@@ -143,6 +143,7 @@ export function SourceMediaPage(
 				onEnterBulkSelectMode={() => setIsBulkSelectMode(true)}
 				renderItem={(media, options) => (
 					<MediaGridItem
+						imageLoadPolicy={options.imageLoadPolicy}
 						media={media}
 						priority={options.priority}
 						routeVersion={props.variant === "v2" ? "v2" : "default"}
@@ -170,6 +171,7 @@ export function SourceMediaPage(
 						height={media.height}
 						loading="eager"
 						media={media}
+						requestedSize={512}
 						width={media.width}
 					/>
 				)}

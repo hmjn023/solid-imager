@@ -90,6 +90,7 @@ function V2SearchRoute() {
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
 				<MediaGridItem
+					imageLoadPolicy={options?.imageLoadPolicy}
 					isSelected={options?.isPreviewSelected}
 					media={media}
 					onPreviewSelect={options?.onPreviewSelect}
@@ -114,6 +115,7 @@ function V2SearchRoute() {
 					height={media.height}
 					loading="eager"
 					media={media}
+					requestedSize={512}
 					width={media.width}
 				/>
 			)}

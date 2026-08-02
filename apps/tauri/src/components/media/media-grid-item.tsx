@@ -1,11 +1,15 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { MediaGridItem as SharedMediaGridItem } from "@solid-imager/ui/media-grid-item";
+import {
+	type MediaGridImageLoadPolicy,
+	MediaGridItem as SharedMediaGridItem,
+} from "@solid-imager/ui/media-grid-item";
 import { Link } from "@tanstack/solid-router";
 import { ThumbnailImage } from "./thumbnail-image";
 
 type MediaGridItemProps = {
 	linkPrefix?: string;
 	media: Media;
+	imageLoadPolicy?: MediaGridImageLoadPolicy;
 	onContextMenu?: (event: MouseEvent) => void;
 	priority?: boolean;
 	sourceRootPath?: string;
@@ -30,15 +34,19 @@ export function MediaGridItem(props: MediaGridItemProps) {
 			)}
 			linkPrefix={props.linkPrefix}
 			media={props.media}
+			imageLoadPolicy={props.imageLoadPolicy}
 			onContextMenu={props.onContextMenu}
 			priority={props.priority}
 			renderThumbnail={(thumbnailProps) => (
 				<ThumbnailImage
 					alt={thumbnailProps.alt}
 					class={thumbnailProps.class}
+					enabled={thumbnailProps.enabled}
+					fetchpriority={thumbnailProps.fetchpriority}
 					height={thumbnailProps.height}
 					loading={thumbnailProps.loading}
 					media={thumbnailProps.media}
+					sizes={thumbnailProps.sizes}
 					sourceRootPath={thumbnailProps.sourceRootPath}
 					width={thumbnailProps.width}
 				/>

@@ -22,14 +22,19 @@ export type BuildThumbnailUrlArgs = {
 	cacheKey: number;
 	mediaId: string;
 	mediaSourceId: string;
+	size?: ThumbnailRequestSize;
 };
+
+export type ThumbnailRequestSize = 256 | 512;
 
 export type CreateHttpThumbnailSourceProps = {
 	buildUrl: (args: BuildThumbnailUrlArgs) => string;
+	defaultSize?: ThumbnailRequestSize;
 	maxRetries?: number;
 	mediaId: string;
 	mediaSourceId: string;
 	modifiedAt: Date | string;
+	responsiveSizes?: readonly ThumbnailRequestSize[];
 	retryDelayMs?: number;
 };
 
@@ -108,7 +113,21 @@ export function createHttpThumbnailSource(
 				cacheKey: cacheKey(),
 				mediaId: props.mediaId,
 				mediaSourceId: props.mediaSourceId,
+				size: props.defaultSize,
 			});
+		},
+		getSrcSet() {
+			return props.responsiveSizes
+				?.map(
+					(size) =>
+						`${props.buildUrl({
+							cacheKey: cacheKey(),
+							mediaId: props.mediaId,
+							mediaSourceId: props.mediaSourceId,
+							size,
+						})} ${size}w`,
+				)
+				.join(", ");
 		},
 		onLoad() {
 			clearRetryTimer();

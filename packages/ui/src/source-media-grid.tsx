@@ -25,6 +25,7 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "./context-menu";
+import type { MediaGridImageLoadPolicy } from "./media-grid-item";
 import type { QueryUiState } from "./query-state";
 import {
 	getMediaGridColumnCount,
@@ -36,9 +37,10 @@ import {
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
 const WINDOW_VIRTUAL_ROWS_OVERSCAN = 4;
-const ELEMENT_TRAILING_ROWS = 3;
-const ELEMENT_LEADING_ROWS = 8;
+const ELEMENT_PREFETCH_ROWS = 3;
+const ELEMENT_RETAIN_ROWS = 4;
 const INITIAL_PRIORITY_ROWS = 2;
+const INITIAL_HIGH_PRIORITY_MEDIA = 2;
 const INITIAL_SKELETON_ROWS = 3;
 
 type ScrollDirection = "backward" | "forward" | null;
@@ -48,9 +50,9 @@ function extractDirectionalRows(
 	direction: ScrollDirection,
 ): number[] {
 	const rowsBefore =
-		direction === "backward" ? ELEMENT_LEADING_ROWS : ELEMENT_TRAILING_ROWS;
+		direction === "backward" ? ELEMENT_PREFETCH_ROWS : ELEMENT_RETAIN_ROWS;
 	const rowsAfter =
-		direction === "backward" ? ELEMENT_TRAILING_ROWS : ELEMENT_LEADING_ROWS;
+		direction === "backward" ? ELEMENT_RETAIN_ROWS : ELEMENT_PREFETCH_ROWS;
 	const start = Math.max(range.startIndex - rowsBefore, 0);
 	const end = Math.min(range.endIndex + rowsAfter, range.count - 1);
 
@@ -89,6 +91,7 @@ type SourceMediaGridProps = {
 	renderItem: (
 		media: Media,
 		options: {
+			imageLoadPolicy?: MediaGridImageLoadPolicy;
 			onContextMenu: () => void;
 			priority?: boolean;
 			isBulkSelectMode?: boolean;
@@ -132,6 +135,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		null,
 	);
 	const [scrollMargin, setScrollMargin] = createSignal(0);
+	const [elementLoadState, setElementLoadState] = createSignal<{
+		direction: ScrollDirection;
+		endIndex: number;
+		startIndex: number;
+	} | null>(null);
 	let mediaGridRef: HTMLDivElement | undefined;
 
 	const columnCount = createMemo(() => {
@@ -189,6 +197,18 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
 		overscan: 0,
+		onChange: (instance) => {
+			const range = instance.range;
+			setElementLoadState(
+				range
+					? {
+							direction: instance.scrollDirection,
+							endIndex: range.endIndex,
+							startIndex: range.startIndex,
+						}
+					: null,
+			);
+		},
 		rangeExtractor: (range) =>
 			extractDirectionalRows(
 				range,
@@ -218,6 +238,52 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const initialPriorityMediaCount = createMemo(() =>
 		Math.max(columnCount() * INITIAL_PRIORITY_ROWS, 1),
 	);
+	const resolveElementImageLoadPolicy = (
+		rowIndex: number,
+		mediaIndex: number,
+	): MediaGridImageLoadPolicy => {
+		const state = elementLoadState();
+		if (!state) {
+			return { enabled: false };
+		}
+
+		const isVisible =
+			rowIndex >= state.startIndex && rowIndex <= state.endIndex;
+		const isForwardPrefetch =
+			state.direction !== "backward" &&
+			rowIndex > state.endIndex &&
+			rowIndex <= state.endIndex + ELEMENT_PREFETCH_ROWS;
+		const isBackwardPrefetch =
+			state.direction === "backward" &&
+			rowIndex < state.startIndex &&
+			rowIndex >= state.startIndex - ELEMENT_PREFETCH_ROWS;
+		const isPrefetch = isForwardPrefetch || isBackwardPrefetch;
+
+		return {
+			enabled: isVisible || isPrefetch,
+			fetchpriority:
+				isVisible && mediaIndex < INITIAL_HIGH_PRIORITY_MEDIA
+					? "high"
+					: isPrefetch
+						? "low"
+						: undefined,
+			loading: isVisible || isPrefetch ? "eager" : "lazy",
+		};
+	};
+	const createElementImageLoadPolicy = (
+		rowIndex: number,
+		mediaIndex: number,
+	): MediaGridImageLoadPolicy => ({
+		get enabled() {
+			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).enabled;
+		},
+		get fetchpriority() {
+			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).fetchpriority;
+		},
+		get loading() {
+			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).loading;
+		},
+	});
 
 	const updateMediaGridMetrics = () => {
 		if (!mediaGridRef) return;
@@ -322,6 +388,20 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							<For each={props.mediaResults()}>
 								{(media, index) =>
 									props.renderItem(media, {
+										imageLoadPolicy:
+											props.scrollMode === "element"
+												? {
+														enabled: true,
+														fetchpriority:
+															index() < INITIAL_HIGH_PRIORITY_MEDIA
+																? "high"
+																: undefined,
+														loading:
+															index() < INITIAL_HIGH_PRIORITY_MEDIA
+																? "eager"
+																: "lazy",
+													}
+												: undefined,
 										onContextMenu: onContextMenuHandler(media.id),
 										priority: index() < initialPriorityMediaCount(),
 										get isBulkSelectMode() {
@@ -359,14 +439,21 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								}}
 							>
 								<For each={rowMedia()}>
-									{(media) =>
+									{(media, mediaIndexInRow) =>
 										props.renderItem(media, {
+											imageLoadPolicy:
+												props.scrollMode === "element"
+													? createElementImageLoadPolicy(
+															virtualRow.index,
+															virtualRow.index * columnCount() +
+																mediaIndexInRow(),
+														)
+													: undefined,
 											onContextMenu: onContextMenuHandler(media.id),
-											// Native lazy loading can leave transformed rows blank in a
-											// nested scroller. Element virtualization already keeps only
-											// the visible row and one row of overscan mounted.
+											// Window virtualization keeps its established native lazy-loading
+											// behavior. Element mode supplies a separate direction-aware policy.
 											priority:
-												props.scrollMode === "element" ||
+												props.scrollMode !== "element" &&
 												virtualRow.index < INITIAL_PRIORITY_ROWS,
 											get isBulkSelectMode() {
 												return props.isBulkSelectMode?.();

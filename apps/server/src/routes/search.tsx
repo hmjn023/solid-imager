@@ -120,7 +120,11 @@ function SearchRoute() {
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
-				<MediaGridItem media={media} priority={options?.priority} />
+				<MediaGridItem
+					imageLoadPolicy={options?.imageLoadPolicy}
+					media={media}
+					priority={options?.priority}
+				/>
 			)}
 			renderNavActions={({ openMobileFilters }) => (
 				<Button

@@ -36,6 +36,7 @@ import {
 	allProjectsQueryOptions,
 	mediaSourcesQueryOptions,
 } from "~/infrastructure/api-clients/queries";
+import { startThumbnailGeneration } from "~/infrastructure/api-clients/thumbnails";
 import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 
 const managerQueryOptions = {
@@ -61,6 +62,15 @@ const managerActions = {
 	startBatchCcipExtraction,
 	findDuplicateMedia,
 	bulkDeleteMedia,
+	startThumbnailWarmup: (input: {
+		mediaSourceId: string;
+		missingOnly: true;
+		size: 256;
+	}) =>
+		startThumbnailGeneration(input.mediaSourceId, {
+			missingOnly: input.missingOnly,
+			size: input.size,
+		}),
 };
 
 export const Route = createFileRoute("/manager")({

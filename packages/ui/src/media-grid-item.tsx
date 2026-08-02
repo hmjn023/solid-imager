@@ -3,12 +3,24 @@ import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import { cn } from "./utils/cn";
 
+export const V2_MEDIA_GRID_IMAGE_SIZES =
+	"(min-width: 1536px) 12vw, (min-width: 1120px) 14vw, (min-width: 960px) 17vw, (min-width: 640px) 25vw, 50vw";
+
+export type MediaGridImageLoadPolicy = {
+	enabled?: boolean;
+	fetchpriority?: "high" | "low" | "auto";
+	loading?: "eager" | "lazy";
+};
+
 export type MediaGridThumbnailProps = {
 	alt: string;
 	class: string;
+	enabled?: boolean;
+	fetchpriority?: "high" | "low" | "auto";
 	height?: number | null;
 	loading: "eager" | "lazy";
 	media: Media;
+	sizes?: string;
 	sourceRootPath?: string;
 	width?: number | null;
 };
@@ -26,6 +38,7 @@ export type MediaGridLinkProps = {
 type MediaGridItemProps = {
 	variant?: "default" | "v2";
 	media: Media;
+	imageLoadPolicy?: MediaGridImageLoadPolicy;
 	linkPrefix?: string;
 	priority?: boolean;
 	sourceRootPath?: string;
@@ -104,8 +117,20 @@ export function MediaGridItem(props: MediaGridItemProps) {
 						props.thumbnailClass,
 					),
 					height: props.media.height,
-					loading: props.priority ? "eager" : "lazy",
+					get enabled() {
+						return props.imageLoadPolicy?.enabled;
+					},
+					get fetchpriority() {
+						return props.imageLoadPolicy?.fetchpriority;
+					},
+					get loading() {
+						return (
+							props.imageLoadPolicy?.loading ??
+							(props.priority ? "eager" : "lazy")
+						);
+					},
 					media: props.media,
+					sizes: props.variant === "v2" ? V2_MEDIA_GRID_IMAGE_SIZES : undefined,
 					sourceRootPath: props.sourceRootPath,
 					width: props.media.width,
 				})}

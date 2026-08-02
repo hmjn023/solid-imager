@@ -11,11 +11,16 @@ export function buildThumbnailUrl(args: {
 	cacheKey: number;
 	mediaId: string;
 	mediaSourceId: string;
+	size?: 256 | 512;
 }): string {
 	const base = buildAbsoluteUrl(
 		`/api/sources/${args.mediaSourceId}/thumbnail/${args.mediaId}`,
 	);
-	return args.cacheKey ? `${base}?t=${args.cacheKey}` : base;
+	const query = new URLSearchParams();
+	if (args.size) query.set("size", String(args.size));
+	if (args.cacheKey) query.set("t", String(args.cacheKey));
+	const search = query.toString();
+	return search ? `${base}?${search}` : base;
 }
 
 export function buildMediaContentUrl(
