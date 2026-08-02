@@ -125,6 +125,7 @@ function V2SearchRoute() {
 				/>
 			)}
 			selectedSource={searchState.selectedSource}
+			ssrGuard
 			sources={page.sources()}
 			variant="v2"
 		/>
