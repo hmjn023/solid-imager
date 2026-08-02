@@ -177,6 +177,7 @@ export function useScrollRestoration(
 
 	const savePosition = () => {
 		if (isServer) return;
+		if (!isRestored()) return;
 		const key = activeKey;
 		if (!key) return;
 		const position = currentScrollPosition(options.scrollContainerSelector);
