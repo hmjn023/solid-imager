@@ -267,6 +267,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 			</div>
 			<div class="flex min-w-0 flex-wrap items-start gap-2">
 				<form
+					autocomplete="off"
 					class="relative min-w-[min(16rem,100%)] flex-1"
 					onSubmit={(event) => {
 						event.preventDefault();
@@ -311,6 +312,8 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						</Show>
 						<Input
 							class="h-7 min-h-7 min-w-40 flex-1 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+							autocomplete="off"
+							enterkeyhint="search"
 							id="v2-search-composer"
 							onInput={(event) => setDraft(event.currentTarget.value)}
 							placeholder="検索、または tag: / author: / ip: …"

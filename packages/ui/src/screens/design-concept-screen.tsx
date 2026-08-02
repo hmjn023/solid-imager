@@ -1144,6 +1144,7 @@ function DesignToolbar(props: {
 			</div>
 			<div class="flex min-w-0 flex-wrap items-start gap-2">
 				<form
+					autocomplete="off"
 					class="relative min-w-64 flex-1"
 					onSubmit={(event) => {
 						event.preventDefault();
@@ -1189,6 +1190,8 @@ function DesignToolbar(props: {
 						</Show>
 						<Input
 							class="h-7 min-h-7 min-w-44 flex-1 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
+							autocomplete="off"
+							enterkeyhint="search"
 							id="design-search-input"
 							onInput={(event) =>
 								props.onDraftChange(event.currentTarget.value)
