@@ -33,7 +33,7 @@ import {
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
-const VIRTUAL_ROWS_OVERSCAN = 10;
+const VIRTUAL_ROWS_OVERSCAN = 4;
 const INITIAL_PRIORITY_ROWS = 2;
 const INITIAL_SKELETON_ROWS = 3;
 
@@ -334,10 +334,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									{(media) =>
 										props.renderItem(media, {
 											onContextMenu: onContextMenuHandler(media.id),
-											// Only viewport-adjacent rows are mounted while virtualized,
-											// so load them immediately instead of relying on the browser's
-											// lazy-load distance during a fast element scroll.
-											priority: true,
+											priority: virtualRow.index < INITIAL_PRIORITY_ROWS,
 											get isBulkSelectMode() {
 												return props.isBulkSelectMode?.();
 											},
