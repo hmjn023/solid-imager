@@ -26,9 +26,11 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	const [srcSet, setSrcSet] = createSignal<string | undefined>();
 	const [error, setError] = createSignal(false);
 	let previousSource: ThumbnailSource | undefined;
+	let loadGeneration = 0;
 
 	createEffect(() => {
 		const source = props.source;
+		++loadGeneration;
 		if (source !== previousSource) {
 			previousSource = source;
 			setUrl(null);
@@ -40,45 +42,52 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		}
 		setError(false);
 		let cancelled = false;
+		const isCurrent = (generation: number) =>
+			!cancelled && generation === loadGeneration;
 
-		const applyResolvedUrl = (resolved: string) => {
-			if (!cancelled) {
+		const applyResolvedUrl = (resolved: string, generation: number) => {
+			if (isCurrent(generation)) {
 				setUrl(resolved);
 			}
 		};
 
 		const load = () => {
+			if (cancelled) return;
+			const generation = ++loadGeneration;
 			try {
 				const resolved = source.getUrl();
 				if (typeof resolved === "string") {
-					applyResolvedUrl(resolved);
+					applyResolvedUrl(resolved, generation);
 					return;
 				}
-				void resolved.then(applyResolvedUrl).catch(() => {
-					if (!cancelled) {
-						setError(true);
-						source.onError?.();
-					}
-				});
+				void resolved
+					.then((value) => applyResolvedUrl(value, generation))
+					.catch(() => {
+						if (isCurrent(generation)) {
+							setError(true);
+							source.onError?.();
+						}
+					});
 			} catch {
-				if (!cancelled) {
+				if (isCurrent(generation)) {
 					setError(true);
 					source.onError?.();
 				}
 			}
 		};
 		const loadSrcSet = () => {
+			const generation = loadGeneration;
 			try {
 				const resolved = source.getSrcSet?.();
 				if (typeof resolved === "string" || resolved === undefined) {
-					if (!cancelled) setSrcSet(resolved);
+					if (isCurrent(generation)) setSrcSet(resolved);
 					return;
 				}
 				void resolved.then((value) => {
-					if (!cancelled) setSrcSet(value);
+					if (isCurrent(generation)) setSrcSet(value);
 				});
 			} catch {
-				if (!cancelled) setSrcSet(undefined);
+				if (isCurrent(generation)) setSrcSet(undefined);
 			}
 		};
 
@@ -86,6 +95,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 		loadSrcSet();
 
 		const unsubscribe = source.subscribe?.(() => {
+			if (cancelled) return;
 			setError(false);
 			load();
 			loadSrcSet();
@@ -102,13 +112,19 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	};
 
 	const handleError = () => {
+		const source = props.source;
+		const generation = ++loadGeneration;
 		setError(true);
-		props.source.onError?.();
+		source.onError?.();
 		const currentUrl = url();
 		void (async () => {
 			try {
-				const resolved = await props.source.getUrl();
-				if (resolved === currentUrl) {
+				const resolved = await source.getUrl();
+				if (
+					generation !== loadGeneration ||
+					source !== props.source ||
+					resolved === currentUrl
+				) {
 					return;
 				}
 				setUrl(resolved);

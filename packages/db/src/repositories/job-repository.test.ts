@@ -30,6 +30,9 @@ describe("JobRepository", () => {
 			limit: vi.fn().mockResolvedValue([]),
 			set: vi.fn().mockReturnThis(),
 			where: vi.fn().mockReturnThis(),
+			insert: vi.fn().mockReturnThis(),
+			values: vi.fn().mockReturnThis(),
+			onConflictDoNothing: vi.fn().mockReturnThis(),
 			returning: vi
 				.fn()
 				.mockResolvedValue([{ id: "11111111-1111-4111-8111-111111111111" }]),
@@ -103,9 +106,7 @@ describe("JobRepository", () => {
 	});
 
 	it("deduplicates active thumbnail jobs by source, media and size", async () => {
-		mockExecutor.limit.mockResolvedValueOnce([
-			{ id: "11111111-1111-4111-8111-111111111111" },
-		]);
+		mockExecutor.returning.mockResolvedValueOnce([]);
 
 		const created = await repository.createIfUnique({
 			type: "generate_thumbnail",
@@ -117,7 +118,8 @@ describe("JobRepository", () => {
 		});
 
 		expect(created).toBeNull();
-		expect(mockExecutor.select).toHaveBeenCalledOnce();
+		expect(mockExecutor.insert).toHaveBeenCalledOnce();
+		expect(mockExecutor.onConflictDoNothing).toHaveBeenCalledOnce();
 	});
 
 	it("clears stale result and error markers when requeueing", async () => {

@@ -589,8 +589,10 @@ function EntityTablePanel(props: {
 function SourceSelect(props: {
 	manager: UseManagerPageResult;
 	onChange: (id: string | undefined) => void;
+	placeholder?: string;
 	value: string | undefined;
 }) {
+	const placeholder = () => props.placeholder ?? "All sources";
 	return (
 		<Select
 			itemComponent={(selectProps) => (
@@ -602,7 +604,7 @@ function SourceSelect(props: {
 			options={props.manager.sources()}
 			optionTextValue="name"
 			optionValue="id"
-			placeholder="All sources"
+			placeholder={placeholder()}
 			value={
 				props.value
 					? props.manager.sources().find((source) => source.id === props.value)
@@ -617,7 +619,7 @@ function SourceSelect(props: {
 							typeof selected === "object" &&
 							"name" in selected
 							? (selected as { name: string }).name
-							: "All sources";
+							: placeholder();
 					}}
 				</SelectValue>
 			</SelectTrigger>
@@ -799,6 +801,7 @@ function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 					<SourceSelect
 						manager={props.manager}
 						onChange={props.manager.setSelectedSourceId}
+						placeholder="Select source"
 						value={props.manager.selectedSourceId()}
 					/>
 					<p class="text-xs text-[var(--v2-text-muted)]">

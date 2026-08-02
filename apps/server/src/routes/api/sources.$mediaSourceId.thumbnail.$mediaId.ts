@@ -34,14 +34,14 @@ export const Route = createFileRoute(
 				const file = Bun.file(thumbnailPath);
 
 				if (!(await file.exists())) {
+					void queueThumbnailGeneration(mediaSourceId, mediaId, size).catch(
+						(error) =>
+							logger.error(
+								{ err: error, mediaId, mediaSourceId, size },
+								"Failed to queue on-demand thumbnail generation",
+							),
+					);
 					if (size === THUMBNAIL_SIZE_SMALL) {
-						void queueThumbnailGeneration(mediaSourceId, mediaId, size).catch(
-							(error) =>
-								logger.error(
-									{ err: error, mediaId, mediaSourceId, size },
-									"Failed to queue on-demand thumbnail generation",
-								),
-						);
 						const fallback = Bun.file(
 							getThumbnailPath(mediaSourceId, mediaId, THUMBNAIL_SIZE_LARGE),
 						);

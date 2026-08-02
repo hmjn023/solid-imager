@@ -1,7 +1,10 @@
 import { services } from "~/application/registry";
 import { configureCcipVectorService } from "~/application/services/ccip-vector-service";
 import { CharacterServiceImpl } from "~/application/services/character-service";
-import { processJob } from "~/application/services/job-dispatch-service";
+import {
+	configureThumbnailJobHandlers,
+	processJob,
+} from "~/application/services/job-dispatch-service";
 import { MaintenanceService } from "~/application/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import { ServerConfigService } from "~/application/services/server-config-service";
@@ -11,7 +14,11 @@ import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
-import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
+import {
+	deleteThumbnail,
+	generateThumbnail,
+	processThumbnailGenerationJob,
+} from "~/infrastructure/jobs/thumbnails";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
@@ -65,6 +72,10 @@ export function initServices() {
 
 	const jobRepo = JobRepository;
 	services.registerJobRepository(jobRepo);
+	configureThumbnailJobHandlers({
+		deleteThumbnail,
+		processThumbnailGenerationJob,
+	});
 
 	// Register Services
 	services.registerMediaStorage(ServerMediaStorage);

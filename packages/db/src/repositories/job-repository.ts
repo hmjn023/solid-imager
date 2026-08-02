@@ -70,23 +70,13 @@ export function createJobRepository(
 
 		async createIfUnique(job: NewJob): Promise<Job | null> {
 			if (job.type === "generate_thumbnail" && job.mediaSourceId) {
-				const payload = generateThumbnailJobPayloadSchema.parse(job.payload);
-				const [existing] = await db()
-					.select({ id: jobs.id })
-					.from(jobs)
-					.where(
-						and(
-							eq(jobs.type, job.type),
-							eq(jobs.mediaSourceId, job.mediaSourceId),
-							inArray(jobs.status, ["pending", "in_progress"]),
-							sql`${jobs.payload}->>'mediaId' = ${payload.mediaId}`,
-							sql`${jobs.payload}->>'size' = ${String(payload.size)}`,
-						),
-					)
-					.limit(1);
-				if (existing) {
-					return null;
-				}
+				generateThumbnailJobPayloadSchema.parse(job.payload);
+				const [created] = await db()
+					.insert(jobs)
+					.values(job)
+					.onConflictDoNothing()
+					.returning();
+				return created ? mapJob(created) : null;
 			}
 
 			if (job.type === "sync_lancedb_delta" && job.mediaSourceId) {

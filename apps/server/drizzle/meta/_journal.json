@@ -155,6 +155,13 @@
       "when": 1785608829741,
       "tag": "0021_clear_lancedb_delta_jobs",
       "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1785661239287,
+      "tag": "0022_sleepy_turbo",
+      "breakpoints": true
     }
   ]
 }

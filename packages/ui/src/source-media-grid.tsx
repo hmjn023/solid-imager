@@ -401,7 +401,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 																? "high"
 																: undefined,
 														loading:
-															index() < INITIAL_HIGH_PRIORITY_MEDIA
+															index() < initialPriorityMediaCount()
 																? "eager"
 																: "lazy",
 													}

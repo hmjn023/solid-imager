@@ -79,8 +79,11 @@ export function createServerTransport(
 		if (!id) {
 			return false;
 		}
+		if (pathname === "/search" || pathname === "/v2/search") {
+			return true;
+		}
 		if (id === "*") {
-			return pathname === "/search" || pathname === "/v2/search";
+			return false;
 		}
 		return (
 			pathname === `/sources/${id}` ||
