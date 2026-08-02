@@ -185,6 +185,19 @@ describe("useCurrentSearchPersistence", () => {
 		expect(searchState.selectedSource).toBe("saved-source");
 	});
 
+	it("preserves the current scroll position while restoring search state", async () => {
+		setSearchState("scrollY", 1840);
+		sessionStorage.setItem(
+			"current-all",
+			JSON.stringify(createPersistedSimpleState("saved query")),
+		);
+
+		mountPersistence("all");
+		await flushMicrotasks();
+
+		expect(searchState.scrollY).toBe(1840);
+	});
+
 	it("does not inherit a source for legacy vector sessions", async () => {
 		setSearchState("selectedSource", "stale-source");
 		sessionStorage.setItem(

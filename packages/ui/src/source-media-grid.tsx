@@ -248,7 +248,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	): MediaGridImageLoadPolicy => {
 		const state = elementLoadState();
 		if (!state) {
-			return { enabled: false };
+			// A virtualizer can briefly have no measured range while its scroll
+			// container is being restored. Keep mounted rows loadable so a
+			// transient range reset does not blank the entire viewport.
+			return { enabled: true, loading: "lazy" };
 		}
 
 		const isVisible =

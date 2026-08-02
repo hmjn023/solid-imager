@@ -47,9 +47,10 @@ function applyPreset(
 	if (!shouldApply()) {
 		return;
 	}
+	const preservedScrollY = searchState.scrollY;
 	resetSearchState();
 	loadPreset(preset);
-	setSearchState("selectedSource", selectedSource);
+	setSearchState({ selectedSource, scrollY: preservedScrollY });
 	if (clearActivePreset) {
 		setSearchState("activePresetId", null);
 	}
@@ -102,6 +103,7 @@ function restoreCurrentSearchState(
 		if (!shouldApply()) {
 			return;
 		}
+		const preservedScrollY = searchState.scrollY;
 		const selectedSource =
 			typeof current.selectedSource === "string" ? current.selectedSource : "";
 		resetSearchState();
@@ -116,6 +118,7 @@ function restoreCurrentSearchState(
 				current.similarityTopK === 20 || current.similarityTopK === 100
 					? current.similarityTopK
 					: 50,
+			scrollY: preservedScrollY,
 		});
 		return;
 	}
