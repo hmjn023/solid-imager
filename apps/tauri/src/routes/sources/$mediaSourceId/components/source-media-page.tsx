@@ -78,10 +78,11 @@ export function SourceMediaPage() {
 			ipsQueryOptions={allIpsQueryOptions}
 			charactersQueryOptions={allCharactersQueryOptions}
 			authorsQueryOptions={allAuthorsQueryOptions}
-			renderItem={(media, { onContextMenu }) => (
+			renderItem={(media, { onContextMenu, priority }) => (
 				<MediaGridItem
 					media={media}
 					onContextMenu={onContextMenu}
+					priority={priority}
 					sourceRootPath={sourceRootPathResolver(mediaSourceId())}
 				/>
 			)}

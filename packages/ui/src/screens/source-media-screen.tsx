@@ -34,6 +34,7 @@ export type SourceMediaScreenProps = {
 		media: Media,
 		options: {
 			onContextMenu: () => void;
+			priority?: boolean;
 			isBulkSelectMode?: boolean;
 			isSelected?: boolean;
 			onPreviewSelect?: () => void;

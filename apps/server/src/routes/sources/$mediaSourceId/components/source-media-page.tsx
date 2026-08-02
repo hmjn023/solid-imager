@@ -144,6 +144,7 @@ export function SourceMediaPage(
 				renderItem={(media, options) => (
 					<MediaGridItem
 						media={media}
+						priority={options.priority}
 						routeVersion={props.variant === "v2" ? "v2" : "default"}
 						onContextMenu={options.onContextMenu}
 						isBulkSelectMode={options.isBulkSelectMode}

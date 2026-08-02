@@ -23,6 +23,7 @@ import {
 	searchMedia,
 	searchSimilar,
 } from "~/infrastructure/api-clients/search-api";
+import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 import {
 	getSearchCondition,
 	searchState,
@@ -33,6 +34,17 @@ const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 const PresetClient = createPresetClient(rawPresetClient);
 
 export const Route = createFileRoute("/v2/search")({
+	ssr: "data-only",
+	loader: async ({ context }: RouteLoaderContext) => {
+		await Promise.all([
+			context.queryClient.prefetchQuery(tagsQueryOptions()),
+			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
+			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
+			context.queryClient.prefetchQuery(allIpsQueryOptions()),
+			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
+			context.queryClient.prefetchQuery(allAuthorsQueryOptions()),
+		]);
+	},
 	component: V2SearchRoute,
 });
 
@@ -88,6 +100,7 @@ function V2SearchRoute() {
 					isSelected={options?.isPreviewSelected}
 					media={media}
 					onPreviewSelect={options?.onPreviewSelect}
+					priority={options?.priority}
 					routeVersion="v2"
 				/>
 			)}

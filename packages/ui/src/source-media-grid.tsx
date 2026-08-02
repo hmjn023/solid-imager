@@ -34,6 +34,7 @@ import {
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
 const VIRTUAL_ROWS_OVERSCAN = 4;
+const INITIAL_PRIORITY_ROWS = 2;
 
 type SourceMediaGridProps = {
 	detailBasePath?: string;
@@ -68,6 +69,7 @@ type SourceMediaGridProps = {
 		media: Media,
 		options: {
 			onContextMenu: () => void;
+			priority?: boolean;
 			isBulkSelectMode?: boolean;
 			isSelected?: boolean;
 			onPreviewSelect?: () => void;
@@ -178,6 +180,15 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			props.mediaResults().length > VIRTUALIZATION_THRESHOLD &&
 			mediaItemWidth() > 0,
 	);
+	const virtualizationPending = createMemo(
+		() =>
+			enableVirtualization() &&
+			props.mediaResults().length > VIRTUALIZATION_THRESHOLD &&
+			mediaGridWidth() <= 0,
+	);
+	const initialPriorityMediaCount = createMemo(() =>
+		Math.max(columnCount() * INITIAL_PRIORITY_ROWS, 1),
+	);
 
 	const updateMediaGridMetrics = () => {
 		if (!mediaGridRef) return;
@@ -269,25 +280,36 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		>
 			<Show
 				fallback={
-					<div class={mediaGridClassName} data-media-grid>
-						<For each={props.mediaResults()}>
-							{(media) =>
-								props.renderItem(media, {
-									onContextMenu: onContextMenuHandler(media.id),
-									get isBulkSelectMode() {
-										return props.isBulkSelectMode?.();
-									},
-									get isSelected() {
-										return props.isSelected?.(media.id);
-									},
-									onPreviewSelect: () => props.onPreviewSelect?.(media),
-									get isPreviewSelected() {
-										return props.previewSelectedMediaId?.() === media.id;
-									},
-								})
-							}
-						</For>
-					</div>
+					<Show
+						fallback={
+							<MediaGridSkeleton
+								aspectRatio={props.itemAspectRatio === 4 / 3 ? "4/3" : "3/4"}
+								count={Math.max(initialPriorityMediaCount(), 8)}
+							/>
+						}
+						when={!virtualizationPending()}
+					>
+						<div class={mediaGridClassName} data-media-grid>
+							<For each={props.mediaResults()}>
+								{(media, index) =>
+									props.renderItem(media, {
+										onContextMenu: onContextMenuHandler(media.id),
+										priority: index() < initialPriorityMediaCount(),
+										get isBulkSelectMode() {
+											return props.isBulkSelectMode?.();
+										},
+										get isSelected() {
+											return props.isSelected?.(media.id);
+										},
+										onPreviewSelect: () => props.onPreviewSelect?.(media),
+										get isPreviewSelected() {
+											return props.previewSelectedMediaId?.() === media.id;
+										},
+									})
+								}
+							</For>
+						</div>
+					</Show>
 				}
 				when={shouldVirtualize()}
 			>
@@ -311,6 +333,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									{(media) =>
 										props.renderItem(media, {
 											onContextMenu: onContextMenuHandler(media.id),
+											priority: virtualRow.index < INITIAL_PRIORITY_ROWS,
 											get isBulkSelectMode() {
 												return props.isBulkSelectMode?.();
 											},
