@@ -326,6 +326,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				</form>
 
 				<Popover
+					forceMount
 					onOpenChange={setFilterOpen}
 					open={filterOpen()}
 					placement="bottom-end"
@@ -347,7 +348,10 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 							</span>
 						</Show>
 					</PopoverTrigger>
-					<PopoverContent class="v2-theme flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden p-0 shadow-xl">
+					<PopoverContent
+						aria-label="検索フィルター"
+						class="v2-theme flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden bg-[var(--v2-surface)] p-0 text-[var(--v2-text)] shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
+					>
 						<div class="flex items-start justify-between border-[var(--v2-border)] border-b px-4 py-3">
 							<div>
 								<h2 class="font-semibold text-sm">検索フィルター</h2>

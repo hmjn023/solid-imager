@@ -1,4 +1,3 @@
-import { Label } from "./label";
 import {
 	Select,
 	SelectContent,
@@ -40,7 +39,7 @@ export function SortControls(props: SortControlsProps) {
 	return (
 		<div class={props.className}>
 			<div class="space-y-2">
-				<Label>ソート</Label>
+				<p class="font-medium text-sm leading-none">ソート</p>
 				<div class="grid grid-cols-2 gap-2">
 					<Select
 						itemComponent={(itemProps) => (
@@ -57,7 +56,7 @@ export function SortControls(props: SortControlsProps) {
 						placeholder="項目"
 						value={props.sortBy}
 					>
-						<SelectTrigger>
+						<SelectTrigger aria-label="ソート項目">
 							<SelectValue<string>>
 								{(state) =>
 									getSortLabel(
@@ -83,7 +82,7 @@ export function SortControls(props: SortControlsProps) {
 						placeholder="順序"
 						value={props.sortOrder}
 					>
-						<SelectTrigger>
+						<SelectTrigger aria-label="ソート順">
 							<SelectValue<string>>
 								{(state) =>
 									state.selectedOption() === "asc" ? "昇順" : "降順"

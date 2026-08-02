@@ -94,3 +94,90 @@ test("V2 wide collection uses selection preview before detail navigation", async
 	await inspector.getByRole("button", { name: "詳細を開く" }).click();
 	await expect(page).toHaveURL(v2MediaPath(E2E_SIMILAR_MEDIA_ID));
 });
+
+test("V2 search filter opens without remounting media results", async ({
+	page,
+}) => {
+	await page.goto("/v2/search");
+	await waitForAppHydration(page);
+
+	const firstMedia = page.locator("[data-media-id]").first();
+	await expect(firstMedia).toBeVisible();
+	await page.evaluate(() => {
+		const state = window as Window & {
+			__v2FirstMedia?: Element;
+			__v2FilterDialog?: Element;
+			__v2SawLoadingFallback?: boolean;
+			__v2LoadingObserver?: MutationObserver;
+		};
+		state.__v2FirstMedia =
+			document.querySelector("[data-media-id]") ?? undefined;
+		state.__v2SawLoadingFallback = false;
+		state.__v2LoadingObserver = new MutationObserver(() => {
+			if (
+				document.body.textContent?.includes("画面を読み込んでいます") ||
+				document.body.textContent?.includes("検索結果を読み込んでいます")
+			) {
+				state.__v2SawLoadingFallback = true;
+			}
+		});
+		state.__v2LoadingObserver.observe(document.body, {
+			childList: true,
+			subtree: true,
+		});
+	});
+
+	const filterButton = page.getByRole("button", {
+		name: /検索フィルター、\d+件の条件/,
+	});
+	await filterButton.click();
+	const filterDialog = page.getByRole("dialog", { name: "検索フィルター" });
+	await expect(filterDialog).toBeVisible();
+	await filterDialog.evaluate((element) => {
+		(
+			window as Window & {
+				__v2FilterDialog?: Element;
+			}
+		).__v2FilterDialog = element;
+	});
+
+	const comboboxNames = await filterDialog
+		.getByRole("combobox")
+		.evaluateAll((elements) =>
+			elements.map((element) => {
+				const labelledBy = element.getAttribute("aria-labelledby");
+				return (
+					element.getAttribute("aria-label") ??
+					(labelledBy
+						? document.getElementById(labelledBy)?.textContent?.trim()
+						: "")
+				);
+			}),
+		);
+	expect(comboboxNames.length).toBeGreaterThan(0);
+	expect(comboboxNames.every(Boolean)).toBe(true);
+
+	await filterDialog.getByRole("button", { name: "閉じる" }).click();
+	await filterButton.click();
+	await expect(filterDialog).toBeVisible();
+	const renderState = await page.evaluate(() => {
+		const state = window as Window & {
+			__v2FirstMedia?: Element;
+			__v2FilterDialog?: Element;
+			__v2SawLoadingFallback?: boolean;
+			__v2LoadingObserver?: MutationObserver;
+		};
+		state.__v2LoadingObserver?.disconnect();
+		return {
+			filterNodeWasPreserved:
+				state.__v2FilterDialog ===
+				document.querySelector('[role="dialog"][aria-label="検索フィルター"]'),
+			mediaNodeWasPreserved:
+				state.__v2FirstMedia === document.querySelector("[data-media-id]"),
+			sawLoadingFallback: state.__v2SawLoadingFallback,
+		};
+	});
+	expect(renderState.filterNodeWasPreserved).toBe(true);
+	expect(renderState.mediaNodeWasPreserved).toBe(true);
+	expect(renderState.sawLoadingFallback).toBe(false);
+});
