@@ -251,7 +251,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			// A virtualizer can briefly have no measured range while its scroll
 			// container is being restored. Keep mounted rows loadable so a
 			// transient range reset does not blank the entire viewport.
-			return { enabled: true, loading: "lazy" };
+			return { enabled: true, loading: "eager" };
 		}
 
 		const isVisible =
@@ -342,6 +342,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		rowCount();
 		mediaItemHeight();
 		columnCount();
+		// The element virtualizer is created before the grid's mount callback
+		// discovers its nested scroller. Re-measure when that scroller or the
+		// content offset becomes available so the initial range is populated
+		// without requiring a user scroll event.
+		scrollElement();
+		scrollMargin();
 		mediaRowVirtualizer().measure();
 	});
 
