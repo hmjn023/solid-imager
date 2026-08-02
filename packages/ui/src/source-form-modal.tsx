@@ -4,7 +4,17 @@ import type {
 } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { createForm } from "@tanstack/solid-form";
-import { createEffect, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "./alert-dialog";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -66,6 +76,7 @@ export type SourceFormModalProps = {
 	sourceTypes?: SourceFormType[];
 	description?: string;
 	submitLabel?: string;
+	variant?: "default" | "v2";
 };
 
 const SOURCE_TYPE_OPTIONS: { value: SourceFormType; label: string }[] = [
@@ -227,6 +238,7 @@ function SourceTextInput(props: SourceTextInputProps) {
 }
 
 export function SourceFormModal(props: SourceFormModalProps) {
+	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
 	const sourceTypes = () => props.sourceTypes ?? ["local", "sftp", "s3"];
 	const defaultValues = () => {
 		const fallbackType = sourceTypes()[0] ?? "local";
@@ -264,6 +276,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 			restoreFocusElement =
 				activeElement instanceof HTMLElement ? activeElement : undefined;
 			form.reset(defaultValues());
+			setShowDiscardDialog(false);
 		}
 		wasOpen = isOpen;
 	});
@@ -273,327 +286,362 @@ export function SourceFormModal(props: SourceFormModalProps) {
 			sourceTypes().includes(option.value),
 		);
 	const fieldError = (errors: unknown[]) => getFormErrorMessage(errors[0]);
+	const requestClose = () => {
+		if (props.variant === "v2" && form.state.isDirty) {
+			setShowDiscardDialog(true);
+			return;
+		}
+		props.onClose();
+	};
+	const discardAndClose = () => {
+		form.reset(defaultValues());
+		setShowDiscardDialog(false);
+		props.onClose();
+	};
 
 	return (
-		<Dialog
-			onOpenChange={(open) => !open && props.onClose()}
-			open={props.isOpen}
-		>
-			<DialogContent
-				class="sm:max-w-[500px]"
-				onCloseAutoFocus={(event) => {
-					if (restoreFocusElement?.isConnected) {
-						event.preventDefault();
-						restoreFocusElement.focus();
-					}
-				}}
+		<>
+			<Dialog
+				onOpenChange={(open) => !open && requestClose()}
+				open={props.isOpen}
 			>
-				<DialogHeader>
-					<DialogTitle>
-						{props.editingSource ? "Edit Source" : "Add New Source"}
-					</DialogTitle>
-					<DialogDescription>
-						{props.description ??
-							"Configure the connection details for your media source."}
-					</DialogDescription>
-				</DialogHeader>
-
-				<form
-					class="space-y-4"
-					onSubmit={(event) => {
-						event.preventDefault();
-						event.stopPropagation();
-						void form.handleSubmit();
+				<DialogContent
+					class="sm:max-w-[500px]"
+					onCloseAutoFocus={(event) => {
+						if (restoreFocusElement?.isConnected) {
+							event.preventDefault();
+							restoreFocusElement.focus();
+						}
 					}}
 				>
-					<form.Field name="name">
-						{(field) => (
-							<TextField
-								class="space-y-2"
-								validationState={
-									field().state.meta.errors.length > 0 ? "invalid" : "valid"
-								}
-							>
-								<TextFieldLabel>Name</TextFieldLabel>
-								<TextFieldInput
-									id={field().name}
-									onBlur={field().handleBlur}
-									onInput={(event) =>
-										field().handleChange(event.currentTarget.value)
-									}
-									placeholder="My Media Source"
-									value={field().state.value}
-								/>
-								<Show when={fieldError(field().state.meta.errors)}>
-									{(message) => (
-										<TextFieldErrorMessage aria-live="polite">
-											{message()}
-										</TextFieldErrorMessage>
-									)}
-								</Show>
-							</TextField>
-						)}
-					</form.Field>
+					<DialogHeader>
+						<DialogTitle>
+							{props.editingSource ? "Edit Source" : "Add New Source"}
+						</DialogTitle>
+						<DialogDescription>
+							{props.description ??
+								"Configure the connection details for your media source."}
+						</DialogDescription>
+					</DialogHeader>
 
-					<form.Field name="description">
-						{(field) => (
-							<TextField class="space-y-2">
-								<TextFieldLabel>Description (Optional)</TextFieldLabel>
-								<TextFieldInput
-									id={field().name}
-									onBlur={field().handleBlur}
-									onInput={(event) =>
-										field().handleChange(event.currentTarget.value)
-									}
-									placeholder="Photos from my camera"
-									value={field().state.value}
-								/>
-							</TextField>
-						)}
-					</form.Field>
-
-					<Show when={sourceTypes().length > 1}>
-						<form.Field name="type">
+					<form
+						class="space-y-4"
+						onSubmit={(event) => {
+							event.preventDefault();
+							event.stopPropagation();
+							void form.handleSubmit();
+						}}
+					>
+						<form.Field name="name">
 							{(field) => (
-								<div class="space-y-2">
-									<Label>Type</Label>
-									<Select
-										itemComponent={(itemProps) => (
-											<SelectItem item={itemProps.item}>
-												{itemProps.item.rawValue.label}
-											</SelectItem>
-										)}
-										onChange={(value) =>
-											field().handleChange(
-												parseSelectValue(
-													value?.value,
-													SOURCE_TYPE_VALUES,
-													"local",
-												),
-											)
+								<TextField
+									class="space-y-2"
+									validationState={
+										field().state.meta.errors.length > 0 ? "invalid" : "valid"
+									}
+								>
+									<TextFieldLabel>Name</TextFieldLabel>
+									<TextFieldInput
+										id={field().name}
+										onBlur={field().handleBlur}
+										onInput={(event) =>
+											field().handleChange(event.currentTarget.value)
 										}
-										options={selectOptions()}
-										value={{
-											value: field().state.value,
-											label: getTypeLabel(field().state.value),
-										}}
-									>
-										<SelectTrigger>
-											<SelectValue<{ value: string; label: string }>>
-												{(state) => state.selectedOption().label}
-											</SelectValue>
-										</SelectTrigger>
-										<SelectContent />
-									</Select>
-								</div>
+										placeholder="My Media Source"
+										value={field().state.value}
+									/>
+									<Show when={fieldError(field().state.meta.errors)}>
+										{(message) => (
+											<TextFieldErrorMessage aria-live="polite">
+												{message()}
+											</TextFieldErrorMessage>
+										)}
+									</Show>
+								</TextField>
 							)}
 						</form.Field>
-					</Show>
 
-					<form.Subscribe selector={(state) => state.values.type}>
-						{(type) => (
-							<div class="space-y-4 rounded-md border p-4">
-								<h4 class="font-medium text-sm">Connection Details</h4>
-								<Show when={type() === "local"}>
-									<form.Field name="path">
-										{(field) => (
-											<SourceTextInput
-												errors={field().state.meta.errors}
-												id={field().name}
-												label="Directory Path"
-												onBlur={field().handleBlur}
-												onChange={field().handleChange}
-												placeholder="/mnt/data/photos"
-												value={field().state.value}
-											/>
-										)}
-									</form.Field>
-								</Show>
-								<Show when={type() === "sftp"}>
-									<div class="grid gap-4 sm:grid-cols-2">
-										<form.Field name="host">
+						<form.Field name="description">
+							{(field) => (
+								<TextField class="space-y-2">
+									<TextFieldLabel>Description (Optional)</TextFieldLabel>
+									<TextFieldInput
+										id={field().name}
+										onBlur={field().handleBlur}
+										onInput={(event) =>
+											field().handleChange(event.currentTarget.value)
+										}
+										placeholder="Photos from my camera"
+										value={field().state.value}
+									/>
+								</TextField>
+							)}
+						</form.Field>
+
+						<Show when={sourceTypes().length > 1}>
+							<form.Field name="type">
+								{(field) => (
+									<div class="space-y-2">
+										<Label>Type</Label>
+										<Select
+											itemComponent={(itemProps) => (
+												<SelectItem item={itemProps.item}>
+													{itemProps.item.rawValue.label}
+												</SelectItem>
+											)}
+											onChange={(value) =>
+												field().handleChange(
+													parseSelectValue(
+														value?.value,
+														SOURCE_TYPE_VALUES,
+														"local",
+													),
+												)
+											}
+											options={selectOptions()}
+											value={{
+												value: field().state.value,
+												label: getTypeLabel(field().state.value),
+											}}
+										>
+											<SelectTrigger>
+												<SelectValue<{ value: string; label: string }>>
+													{(state) => state.selectedOption().label}
+												</SelectValue>
+											</SelectTrigger>
+											<SelectContent />
+										</Select>
+									</div>
+								)}
+							</form.Field>
+						</Show>
+
+						<form.Subscribe selector={(state) => state.values.type}>
+							{(type) => (
+								<div class="space-y-4 rounded-md border p-4">
+									<h4 class="font-medium text-sm">Connection Details</h4>
+									<Show when={type() === "local"}>
+										<form.Field name="path">
 											{(field) => (
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Host"
+													label="Directory Path"
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
-													placeholder="192.168.1.10"
+													placeholder="/mnt/data/photos"
 													value={field().state.value}
 												/>
 											)}
 										</form.Field>
-										<form.Field name="port">
-											{(field) => (
-												<div class="space-y-2">
-													<Label for={field().name}>Port</Label>
-													<Input
-														aria-describedby={`${field().name}-error`}
-														aria-invalid={field().state.meta.errors.length > 0}
+									</Show>
+									<Show when={type() === "sftp"}>
+										<div class="grid gap-4 sm:grid-cols-2">
+											<form.Field name="host">
+												{(field) => (
+													<SourceTextInput
+														errors={field().state.meta.errors}
 														id={field().name}
-														min="1"
+														label="Host"
 														onBlur={field().handleBlur}
-														onInput={(event) =>
-															field().handleChange(
-																event.currentTarget.valueAsNumber,
-															)
-														}
-														type="number"
+														onChange={field().handleChange}
+														placeholder="192.168.1.10"
 														value={field().state.value}
 													/>
-													<FormFieldMessage
-														id={`${field().name}-error`}
-														message={fieldError(field().state.meta.errors)}
+												)}
+											</form.Field>
+											<form.Field name="port">
+												{(field) => (
+													<div class="space-y-2">
+														<Label for={field().name}>Port</Label>
+														<Input
+															aria-describedby={`${field().name}-error`}
+															aria-invalid={
+																field().state.meta.errors.length > 0
+															}
+															id={field().name}
+															min="1"
+															onBlur={field().handleBlur}
+															onInput={(event) =>
+																field().handleChange(
+																	event.currentTarget.valueAsNumber,
+																)
+															}
+															type="number"
+															value={field().state.value}
+														/>
+														<FormFieldMessage
+															id={`${field().name}-error`}
+															message={fieldError(field().state.meta.errors)}
+														/>
+													</div>
+												)}
+											</form.Field>
+										</div>
+										<form.Field name="username">
+											{(field) => (
+												<SourceTextInput
+													errors={field().state.meta.errors}
+													id={field().name}
+													label="Username"
+													onBlur={field().handleBlur}
+													onChange={field().handleChange}
+													placeholder="user"
+													value={field().state.value}
+												/>
+											)}
+										</form.Field>
+										<form.Field name="password">
+											{(field) => (
+												<SourceTextInput
+													errors={field().state.meta.errors}
+													id={field().name}
+													label="Password (Optional)"
+													onBlur={field().handleBlur}
+													onChange={field().handleChange}
+													placeholder="********"
+													type="password"
+													value={field().state.value}
+												/>
+											)}
+										</form.Field>
+										<form.Field name="remotePath">
+											{(field) => (
+												<SourceTextInput
+													errors={field().state.meta.errors}
+													id={field().name}
+													label="Remote Path"
+													onBlur={field().handleBlur}
+													onChange={field().handleChange}
+													placeholder="/home/user/photos"
+													value={field().state.value}
+												/>
+											)}
+										</form.Field>
+									</Show>
+									<Show when={type() === "s3"}>
+										<div class="grid gap-4 sm:grid-cols-2">
+											<form.Field name="bucket">
+												{(field) => (
+													<SourceTextInput
+														errors={field().state.meta.errors}
+														id={field().name}
+														label="Bucket"
+														onBlur={field().handleBlur}
+														onChange={field().handleChange}
+														placeholder="my-bucket"
+														value={field().state.value}
 													/>
-												</div>
-											)}
-										</form.Field>
-									</div>
-									<form.Field name="username">
-										{(field) => (
-											<SourceTextInput
-												errors={field().state.meta.errors}
-												id={field().name}
-												label="Username"
-												onBlur={field().handleBlur}
-												onChange={field().handleChange}
-												placeholder="user"
-												value={field().state.value}
-											/>
-										)}
-									</form.Field>
-									<form.Field name="password">
-										{(field) => (
-											<SourceTextInput
-												errors={field().state.meta.errors}
-												id={field().name}
-												label="Password (Optional)"
-												onBlur={field().handleBlur}
-												onChange={field().handleChange}
-												placeholder="********"
-												type="password"
-												value={field().state.value}
-											/>
-										)}
-									</form.Field>
-									<form.Field name="remotePath">
-										{(field) => (
-											<SourceTextInput
-												errors={field().state.meta.errors}
-												id={field().name}
-												label="Remote Path"
-												onBlur={field().handleBlur}
-												onChange={field().handleChange}
-												placeholder="/home/user/photos"
-												value={field().state.value}
-											/>
-										)}
-									</form.Field>
-								</Show>
-								<Show when={type() === "s3"}>
-									<div class="grid gap-4 sm:grid-cols-2">
-										<form.Field name="bucket">
+												)}
+											</form.Field>
+											<form.Field name="region">
+												{(field) => (
+													<SourceTextInput
+														errors={field().state.meta.errors}
+														id={field().name}
+														label="Region"
+														onBlur={field().handleBlur}
+														onChange={field().handleChange}
+														placeholder="us-east-1"
+														value={field().state.value}
+													/>
+												)}
+											</form.Field>
+										</div>
+										<form.Field name="accessKeyId">
 											{(field) => (
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Bucket"
+													label="Access Key ID"
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
-													placeholder="my-bucket"
+													placeholder="AKIA..."
 													value={field().state.value}
 												/>
 											)}
 										</form.Field>
-										<form.Field name="region">
+										<form.Field name="secretAccessKey">
 											{(field) => (
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Region"
+													label="Secret Access Key"
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
-													placeholder="us-east-1"
+													placeholder="********"
+													type="password"
 													value={field().state.value}
 												/>
 											)}
 										</form.Field>
-									</div>
-									<form.Field name="accessKeyId">
-										{(field) => (
-											<SourceTextInput
-												errors={field().state.meta.errors}
-												id={field().name}
-												label="Access Key ID"
-												onBlur={field().handleBlur}
-												onChange={field().handleChange}
-												placeholder="AKIA..."
-												value={field().state.value}
-											/>
-										)}
-									</form.Field>
-									<form.Field name="secretAccessKey">
-										{(field) => (
-											<SourceTextInput
-												errors={field().state.meta.errors}
-												id={field().name}
-												label="Secret Access Key"
-												onBlur={field().handleBlur}
-												onChange={field().handleChange}
-												placeholder="********"
-												type="password"
-												value={field().state.value}
-											/>
-										)}
-									</form.Field>
-									<form.Field name="prefix">
-										{(field) => (
-											<SourceTextInput
-												errors={field().state.meta.errors}
-												id={field().name}
-												label="Prefix (Optional)"
-												onBlur={field().handleBlur}
-												onChange={field().handleChange}
-												placeholder="photos/"
-												value={field().state.value}
-											/>
-										)}
-									</form.Field>
-								</Show>
-							</div>
-						)}
-					</form.Subscribe>
-
-					<form.Subscribe selector={(state) => state.errorMap.onSubmit}>
-						{(error) => <FormError message={getFormSubmitError(error())} />}
-					</form.Subscribe>
-
-					<DialogFooter>
-						<Button onClick={props.onClose} type="button" variant="outline">
-							Cancel
-						</Button>
-						<form.Subscribe
-							selector={(state) => ({
-								canSubmit: state.canSubmit,
-								isSubmitting: state.isSubmitting,
-							})}
-						>
-							{(state) => (
-								<Button
-									disabled={!state().canSubmit || state().isSubmitting}
-									type="submit"
-								>
-									{state().isSubmitting
-										? "Saving..."
-										: (props.submitLabel ??
-											(props.editingSource ? "Save Changes" : "Add Source"))}
-								</Button>
+										<form.Field name="prefix">
+											{(field) => (
+												<SourceTextInput
+													errors={field().state.meta.errors}
+													id={field().name}
+													label="Prefix (Optional)"
+													onBlur={field().handleBlur}
+													onChange={field().handleChange}
+													placeholder="photos/"
+													value={field().state.value}
+												/>
+											)}
+										</form.Field>
+									</Show>
+								</div>
 							)}
 						</form.Subscribe>
-					</DialogFooter>
-				</form>
-			</DialogContent>
-		</Dialog>
+
+						<form.Subscribe selector={(state) => state.errorMap.onSubmit}>
+							{(error) => <FormError message={getFormSubmitError(error())} />}
+						</form.Subscribe>
+
+						<DialogFooter>
+							<Button onClick={requestClose} type="button" variant="outline">
+								Cancel
+							</Button>
+							<form.Subscribe
+								selector={(state) => ({
+									canSubmit: state.canSubmit,
+									isSubmitting: state.isSubmitting,
+								})}
+							>
+								{(state) => (
+									<Button
+										disabled={!state().canSubmit || state().isSubmitting}
+										type="submit"
+									>
+										{state().isSubmitting
+											? "Saving..."
+											: (props.submitLabel ??
+												(props.editingSource ? "Save Changes" : "Add Source"))}
+									</Button>
+								)}
+							</form.Subscribe>
+						</DialogFooter>
+					</form>
+				</DialogContent>
+			</Dialog>
+			<AlertDialog
+				onOpenChange={setShowDiscardDialog}
+				open={showDiscardDialog()}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Discard source changes?</AlertDialogTitle>
+						<AlertDialogDescription>
+							The values entered in this form have not been saved.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>Keep editing</AlertDialogCancel>
+						<AlertDialogAction onClick={discardAndClose}>
+							Discard changes
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+		</>
 	);
 }

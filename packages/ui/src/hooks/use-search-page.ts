@@ -20,6 +20,7 @@ import {
 import { isServer } from "solid-js/web";
 import { buildSearchResultsQueryOptions } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
+import { currentScrollPosition, scrollToPosition } from "./scroll-container";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
 const DEFAULT_REFRESH_DEBOUNCE_MS = 0;
@@ -76,6 +77,7 @@ export interface UseSearchPageOptions {
 	gcTime?: number;
 	refreshDebounceMs?: number;
 	isSearchStateRestored?: Accessor<boolean>;
+	scrollContainerSelector?: string;
 }
 
 export interface UseSearchPageResult {
@@ -246,7 +248,6 @@ export function useSearchPage(
 	};
 
 	const [isRestored, setIsRestored] = createSignal(false);
-
 	createEffect(() => {
 		if (
 			!(searchResultQuery.isLoading || isRestored()) &&
@@ -255,7 +256,7 @@ export function useSearchPage(
 		) {
 			if (scrollY() > 0) {
 				requestAnimationFrame(() => {
-					window.scrollTo(0, scrollY());
+					scrollToPosition(options.scrollContainerSelector, scrollY());
 				});
 			}
 			setIsRestored(true);
@@ -264,7 +265,8 @@ export function useSearchPage(
 
 	onCleanup(() => {
 		if (!isServer) {
-			setScrollY(window.scrollY);
+			const position = currentScrollPosition(options.scrollContainerSelector);
+			if (position !== null) setScrollY(position);
 		}
 		const timer = refreshTimer();
 		if (timer) {
@@ -275,7 +277,7 @@ export function useSearchPage(
 	const handleSearch = () => {
 		setOffset(0);
 		setScrollY(0);
-		window.scrollTo(0, 0);
+		scrollToPosition(options.scrollContainerSelector, 0);
 	};
 
 	const [loadMoreRef, setLoadMoreRef] = createSignal<

@@ -7,8 +7,9 @@ import {
 	HeadContent,
 	Outlet,
 	Scripts,
+	useLocation,
 } from "@tanstack/solid-router";
-import { createSignal, onMount } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
 import { ApiActivityIndicator } from "~/components/api-activity-indicator";
@@ -39,6 +40,9 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootComponent() {
 	const [isHydrated, setIsHydrated] = createSignal(false);
+	const location = useLocation();
+	const isV2Route = () =>
+		location().pathname === "/v2" || location().pathname.startsWith("/v2/");
 	onMount(() => {
 		setIsHydrated(true);
 	});
@@ -49,12 +53,24 @@ function RootComponent() {
 				<HydrationScript />
 				<HeadContent />
 			</head>
-			<body>
+			<body classList={{ "v2-theme": isV2Route() }}>
 				<Toaster />
-				<AppShell nav={<Nav />} statusIndicator={<RouteTransitionIndicator />}>
-					<ApiActivityIndicator />
-					<Outlet />
-				</AppShell>
+				<Show
+					fallback={<Outlet />}
+					when={
+						location().pathname !== "/design-lab" &&
+						!location().pathname.startsWith("/design-lab/") &&
+						!isV2Route()
+					}
+				>
+					<AppShell
+						nav={<Nav />}
+						statusIndicator={<RouteTransitionIndicator />}
+					>
+						<ApiActivityIndicator />
+						<Outlet />
+					</AppShell>
+				</Show>
 				<Scripts />
 			</body>
 		</html>

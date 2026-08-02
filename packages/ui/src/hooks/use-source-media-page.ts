@@ -36,6 +36,7 @@ import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
 import { getRestoreImportStrategies } from "./restore-import";
+import { currentScrollPosition, scrollToPosition } from "./scroll-container";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
@@ -170,6 +171,7 @@ export type UseSourceMediaPageOptions = {
 	itemsPerPage?: number;
 	onThumbnailReady?: (mediaId: string) => void;
 	isSearchStateRestored?: Accessor<boolean>;
+	scrollContainerSelector?: string;
 };
 
 export type UseSourceMediaPageResult = {
@@ -240,7 +242,6 @@ export function useSourceMediaPage(
 	} = options;
 
 	const id = mediaSourceId;
-
 	// --- Filter data queries ---
 	const filterData = (): SourceMediaPageFilterData => ({
 		tags: queries.tags(),
@@ -294,7 +295,7 @@ export function useSourceMediaPage(
 
 	// --- Search handler ---
 	const handleSearch = () => {
-		window.scrollTo(0, 0);
+		scrollToPosition(options.scrollContainerSelector, 0);
 	};
 
 	// --- Scroll restoration ---
@@ -324,7 +325,7 @@ export function useSourceMediaPage(
 			if (targetScrollY > 0) {
 				setTimeout(() => {
 					requestAnimationFrame(() => {
-						window.scrollTo(0, targetScrollY);
+						scrollToPosition(options.scrollContainerSelector, targetScrollY);
 						setIsScrollRestored(true);
 					});
 				}, SCROLL_RESTORE_DELAY);
@@ -340,7 +341,8 @@ export function useSourceMediaPage(
 		}
 		const sourceId = id();
 		if (sourceId) {
-			setScrollPosition(sourceId, window.scrollY);
+			const position = currentScrollPosition(options.scrollContainerSelector);
+			if (position !== null) setScrollPosition(sourceId, position);
 		}
 	});
 

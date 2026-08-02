@@ -14,12 +14,14 @@ import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
+import { V2SearchScreen } from "./v2-search-screen";
 
 export type SearchScreenNavActions = {
 	openMobileFilters: () => void;
 };
 
 export type SearchScreenProps = {
+	variant?: "default" | "v2";
 	page: UseSearchPageResult;
 	filterData: SearchPageFilterData;
 	sources: SafeMediaSource[] | undefined;
@@ -27,12 +29,20 @@ export type SearchScreenProps = {
 	onSelectSource: (id: string) => void;
 	presetClient: SourceMediaPagePresetClient;
 	renderNavActions?: (actions: SearchScreenNavActions) => JSX.Element;
-	renderMediaItem: (media: Media) => JSX.Element;
+	renderMediaItem: (
+		media: Media,
+		options?: { onPreviewSelect?: () => void; isPreviewSelected?: boolean },
+	) => JSX.Element;
+	renderMediaPreview?: (media: Media) => JSX.Element;
+	onOpenMediaDetail?: (media: Media) => void;
 	ssrGuard?: boolean;
 	enableVirtualization?: boolean;
 };
 
 export function SearchScreen(props: SearchScreenProps) {
+	if (props.variant === "v2") {
+		return <V2SearchScreen {...props} />;
+	}
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
 

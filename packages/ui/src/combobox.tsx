@@ -14,8 +14,27 @@ import {
 import { cn } from "./utils/cn";
 
 const Combobox = ComboboxPrimitive.Root;
+const useComboboxContext = ComboboxPrimitive.useComboboxContext;
 const ComboboxItemLabel = ComboboxPrimitive.ItemLabel;
 const ComboboxHiddenSelect = ComboboxPrimitive.HiddenSelect;
+
+type ComboboxLabelProps<T extends ValidComponent = "label"> =
+	ComboboxPrimitive.ComboboxLabelProps<T> & { class?: string | undefined };
+
+const ComboboxLabel = <T extends ValidComponent = "label">(
+	props: PolymorphicProps<T, ComboboxLabelProps<T>>,
+) => {
+	const [local, others] = splitProps(props as ComboboxLabelProps, ["class"]);
+	return (
+		<ComboboxPrimitive.Label
+			class={cn(
+				"font-medium text-sm leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70",
+				local.class,
+			)}
+			{...others}
+		/>
+	);
+};
 
 type ComboboxItemProps<T extends ValidComponent = "li"> =
 	ComboboxPrimitive.ComboboxItemProps<T> & {
@@ -307,7 +326,9 @@ export {
 	ComboboxItem,
 	ComboboxItemIndicator,
 	ComboboxItemLabel,
+	ComboboxLabel,
 	ComboboxSection,
 	ComboboxTrigger,
+	useComboboxContext,
 	VirtualComboboxContent,
 };

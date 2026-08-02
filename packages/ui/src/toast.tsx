@@ -47,25 +47,23 @@ if (!isServer) {
 
 export const toast = {
 	error: (msg: string, opts?: ToastOptions) =>
-		toastImpl.error(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.error>[1],
-		),
+		toastImpl.error(msg, { duration: 9_000, ...opts } as unknown as Parameters<
+			typeof SonnerToast.error
+		>[1]),
 	success: (msg: string, opts?: ToastOptions) =>
-		toastImpl.success(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.success>[1],
-		),
+		toastImpl.success(msg, {
+			duration: 4_000,
+			...opts,
+		} as unknown as Parameters<typeof SonnerToast.success>[1]),
 	info: (msg: string, opts?: ToastOptions) =>
-		toastImpl.info(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.info>[1],
-		),
+		toastImpl.info(msg, { duration: 7_000, ...opts } as unknown as Parameters<
+			typeof SonnerToast.info
+		>[1]),
 	warning: (msg: string, opts?: ToastOptions) =>
-		toastImpl.warning(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.warning>[1],
-		),
+		toastImpl.warning(msg, {
+			duration: 8_000,
+			...opts,
+		} as unknown as Parameters<typeof SonnerToast.warning>[1]),
 	loading: (msg: string, opts?: ToastOptions) =>
 		toastImpl.loading(
 			msg,
@@ -82,10 +80,10 @@ export const toast = {
 			opts as unknown as Parameters<typeof SonnerToast.custom>[1],
 		),
 	message: (msg: string, opts?: ToastOptions) =>
-		toastImpl.message(
-			msg,
-			opts as unknown as Parameters<typeof SonnerToast.message>[1],
-		),
+		toastImpl.message(msg, {
+			duration: 5_000,
+			...opts,
+		} as unknown as Parameters<typeof SonnerToast.message>[1]),
 };
 
 export const Toaster = () => {
@@ -104,16 +102,26 @@ export const Toaster = () => {
 				return (
 					<C
 						class="group toaster"
+						closeButton
+						containerAriaLabel="Notifications"
+						duration={5000}
+						gap={10}
+						mobileOffset={{ left: 12, right: 12, top: 12 }}
+						offset={20}
 						position="top-right"
+						visibleToasts={4}
 						toastOptions={{
+							closeButtonAriaLabel: "Close notification",
 							classes: {
 								actionButton:
-									"group-[.toast]:bg-primary group-[.toast]:text-primary-foreground",
+									"group-[.toast]:bg-primary group-[.toast]:font-medium group-[.toast]:text-primary-foreground hover:group-[.toast]:bg-primary/90",
 								cancelButton:
 									"group-[.toast]:bg-muted group-[.toast]:text-muted-foreground",
+								closeButton:
+									"group-[.toast]:border-border group-[.toast]:bg-background group-[.toast]:text-muted-foreground",
 								description: "group-[.toast]:text-muted-foreground",
 								toast:
-									"group toast group-[.toaster]:border-border group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:shadow-lg",
+									"group toast group-[.toaster]:border-border group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:shadow-lg motion-reduce:transition-none",
 							},
 						}}
 					/>

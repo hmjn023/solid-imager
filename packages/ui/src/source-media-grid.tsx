@@ -1,5 +1,8 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { createWindowVirtualizer } from "@tanstack/solid-virtual";
+import {
+	createVirtualizer,
+	createWindowVirtualizer,
+} from "@tanstack/solid-virtual";
 import type { Accessor, JSX, Setter } from "solid-js";
 import {
 	createEffect,
@@ -30,10 +33,12 @@ import {
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
-const GRID_ITEM_ASPECT_RATIO = 4 / 3;
 const VIRTUAL_ROWS_OVERSCAN = 4;
 
 type SourceMediaGridProps = {
+	detailBasePath?: string;
+	itemAspectRatio?: number;
+	scrollMode?: "element" | "window";
 	mediaResults: Accessor<Media[]>;
 	mediaSourceId: Accessor<string | undefined>;
 	state: Accessor<QueryUiState<Media[]>>;
@@ -55,6 +60,9 @@ type SourceMediaGridProps = {
 	hasNextPage?: boolean;
 	/** Called when virtual scroll reaches near the end. */
 	onLoadMore?: () => void;
+	/** Select a media item for the wide collection inspector. */
+	onPreviewSelect?: (media: Media) => void;
+	previewSelectedMediaId?: Accessor<string | null>;
 	/** Render a single media grid item. */
 	renderItem: (
 		media: Media,
@@ -62,6 +70,8 @@ type SourceMediaGridProps = {
 			onContextMenu: () => void;
 			isBulkSelectMode?: boolean;
 			isSelected?: boolean;
+			onPreviewSelect?: () => void;
+			isPreviewSelected?: boolean;
 		},
 	) => JSX.Element;
 	/** Enable virtualization for large lists. Default: false. */
@@ -95,6 +105,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	// --- Virtual grid setup ---
 	const [windowWidth, setWindowWidth] = createSignal(0);
 	const [mediaGridWidth, setMediaGridWidth] = createSignal(0);
+	const [scrollElement, setScrollElement] = createSignal<HTMLElement | null>(
+		null,
+	);
+	const [scrollMargin, setScrollMargin] = createSignal(0);
 	let mediaGridRef: HTMLDivElement | undefined;
 
 	const columnCount = createMemo(() => {
@@ -112,7 +126,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const mediaItemHeight = createMemo(() => {
 		const width = mediaItemWidth();
 		if (width <= 0) return 0;
-		return width * GRID_ITEM_ASPECT_RATIO;
+		return width / (props.itemAspectRatio ?? 3 / 4);
 	});
 
 	const mediaRows = createMemo(() => {
@@ -127,7 +141,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	const rowCount = createMemo(() => mediaRows().length);
 
-	const mediaRowVirtualizer = createWindowVirtualizer<HTMLDivElement>({
+	const windowRowVirtualizer = createWindowVirtualizer<HTMLDivElement>({
 		get count() {
 			return rowCount();
 		},
@@ -135,8 +149,28 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
 		overscan: VIRTUAL_ROWS_OVERSCAN,
-		scrollMargin: 0,
+		get scrollMargin() {
+			return scrollMargin();
+		},
 	});
+
+	const elementRowVirtualizer = createVirtualizer<HTMLElement, HTMLDivElement>({
+		get count() {
+			return rowCount();
+		},
+		getScrollElement: () => scrollElement(),
+		estimateSize: () => mediaItemHeight() || 320,
+		gap: GRID_GAP_PX,
+		getItemKey: (index) => index,
+		overscan: VIRTUAL_ROWS_OVERSCAN,
+		get scrollMargin() {
+			return scrollMargin();
+		},
+	});
+	const mediaRowVirtualizer = () =>
+		props.scrollMode === "element"
+			? elementRowVirtualizer
+			: windowRowVirtualizer;
 
 	const shouldVirtualize = createMemo(
 		() =>
@@ -148,10 +182,23 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const updateMediaGridMetrics = () => {
 		if (!mediaGridRef) return;
 		setMediaGridWidth(mediaGridRef.getBoundingClientRect().width);
+		const scroller = scrollElement();
+		setScrollMargin(
+			props.scrollMode === "element" && scroller
+				? mediaGridRef.getBoundingClientRect().top -
+						scroller.getBoundingClientRect().top +
+						scroller.scrollTop
+				: mediaGridRef.getBoundingClientRect().top + window.scrollY,
+		);
 	};
 
 	onMount(() => {
 		setWindowWidth(window.innerWidth);
+		setScrollElement(
+			props.scrollMode === "element"
+				? (mediaGridRef?.closest("[data-media-scroll]") as HTMLElement | null)
+				: null,
+		);
 		updateMediaGridMetrics();
 
 		const handleResize = () => {
@@ -177,7 +224,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		rowCount();
 		mediaItemHeight();
 		columnCount();
-		mediaRowVirtualizer.measure();
+		mediaRowVirtualizer().measure();
 	});
 
 	// Virtual scroll-based load more: trigger when user scrolls near the end
@@ -186,13 +233,15 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const totalRows = rowCount();
 		const handleScroll = () => {
 			if (!props.hasNextPage || props.isFetchingNextPage) return;
-			const lastItem = mediaRowVirtualizer.getVirtualItems().at(-1);
+			const lastItem = mediaRowVirtualizer().getVirtualItems().at(-1);
 			if (lastItem && lastItem.index >= totalRows - 2) {
 				props.onLoadMore?.();
 			}
 		};
-		window.addEventListener("scroll", handleScroll, { passive: true });
-		onCleanup(() => window.removeEventListener("scroll", handleScroll));
+		const target = props.scrollMode === "element" ? scrollElement() : window;
+		if (!target) return;
+		target.addEventListener("scroll", handleScroll, { passive: true });
+		onCleanup(() => target.removeEventListener("scroll", handleScroll));
 	});
 
 	const contextMenuMediaId = () => props.contextMenuMediaId?.() ?? null;
@@ -214,7 +263,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			}}
 			style={{
 				height: shouldVirtualize()
-					? `${mediaRowVirtualizer.getTotalSize()}px`
+					? `${mediaRowVirtualizer().getTotalSize()}px`
 					: undefined,
 			}}
 		>
@@ -231,6 +280,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									get isSelected() {
 										return props.isSelected?.(media.id);
 									},
+									onPreviewSelect: () => props.onPreviewSelect?.(media),
+									get isPreviewSelected() {
+										return props.previewSelectedMediaId?.() === media.id;
+									},
 								})
 							}
 						</For>
@@ -238,7 +291,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				}
 				when={shouldVirtualize()}
 			>
-				<For each={mediaRowVirtualizer.getVirtualItems()}>
+				<For each={mediaRowVirtualizer().getVirtualItems()}>
 					{(virtualRow) => {
 						const rowMedia = () => mediaRows()[virtualRow.index] || [];
 						return (
@@ -247,7 +300,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								style={{
 									"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
 									height: `${virtualRow.size}px`,
-									transform: `translateY(${virtualRow.start}px)`,
+									transform: `translateY(${
+										virtualRow.start -
+										mediaRowVirtualizer().options.scrollMargin
+									}px)`,
 									width: "100%",
 								}}
 							>
@@ -260,6 +316,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											},
 											get isSelected() {
 												return props.isSelected?.(media.id);
+											},
+											onPreviewSelect: () => props.onPreviewSelect?.(media),
+											get isPreviewSelected() {
+												return props.previewSelectedMediaId?.() === media.id;
 											},
 										})
 									}
@@ -277,7 +337,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			<Switch>
 				<Match when={props.state().phase === "pending"}>
 					<LoadingRegion label="メディア一覧を読み込んでいます...">
-						<MediaGridSkeleton />
+						<MediaGridSkeleton
+							aspectRatio={props.itemAspectRatio === 4 / 3 ? "4/3" : "3/4"}
+						/>
 					</LoadingRegion>
 				</Match>
 				<Match when={props.state().phase === "error"}>
@@ -367,7 +429,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 												const id = contextMenuMediaId();
 												const sourceId = props.mediaSourceId();
 												if (id && sourceId) {
-													window.open(`/sources/${sourceId}/${id}`, "_blank");
+													window.open(
+														`${props.detailBasePath ?? "/sources"}/${sourceId}/${id}`,
+														"_blank",
+													);
 												}
 											}}
 										>
