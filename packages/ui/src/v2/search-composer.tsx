@@ -85,6 +85,14 @@ export function SearchComposer(props: SearchComposerProps) {
 	const handleKeyDown: JSX.EventHandler<HTMLInputElement, KeyboardEvent> = (
 		event,
 	) => {
+		if (event.key === "Backspace" && props.draft.length === 0) {
+			const token = props.tokens[props.tokens.length - 1];
+			if (token) {
+				event.preventDefault();
+				props.onRemoveToken(token);
+				return;
+			}
+		}
 		if (event.key === "Enter" && !(menuOpen() && suggestions().length > 0)) {
 			event.preventDefault();
 			props.onSubmit();
@@ -131,6 +139,7 @@ export function SearchComposer(props: SearchComposerProps) {
 				optionTextValue="label"
 				optionValue={(suggestion) => `${suggestion.key}:${suggestion.value}`}
 				options={suggestions()}
+				removeOnBackspace={false}
 				triggerMode="input"
 				value={selectedSuggestion()}
 			>

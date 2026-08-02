@@ -86,6 +86,12 @@ function removeToken(token: SearchToken) {
 	);
 }
 
+const SEARCH_APPLY_DEBOUNCE_MS = 250;
+
+function tokenId(token: Pick<SearchToken, "key" | "value">): string {
+	return `${token.key}\u0000${token.value}`;
+}
+
 function submitComposerDraft(rawDraft: string): boolean {
 	const parts = rawDraft.match(/(?:[^\s"]+|"[^"]*")+/g) ?? [];
 	const freeText: string[] = [];
@@ -207,18 +213,61 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 	const [pendingSuggestions, setPendingSuggestions] = createSignal<
 		SearchSuggestion[]
 	>([]);
+	const [pendingRemovals, setPendingRemovals] = createSignal<SearchToken[]>([]);
 	const [filterOpen, setFilterOpen] = createSignal(false);
 	const [sortOpen, setSortOpen] = createSignal(false);
-	const tokens = createMemo(() => [
-		...tokensFromState(searchState),
-		...pendingSuggestions().map((suggestion) => ({
-			key: suggestion.key,
-			prefix: suggestion.prefix,
-			value: suggestion.value,
-		})),
-	]);
+	const tokens = createMemo(() => {
+		const removalIds = new Set(pendingRemovals().map(tokenId));
+		return [
+			...tokensFromState(searchState).filter(
+				(token) => !removalIds.has(tokenId(token)),
+			),
+			...pendingSuggestions().map((suggestion) => ({
+				key: suggestion.key,
+				prefix: suggestion.prefix,
+				value: suggestion.value,
+			})),
+		];
+	});
 	let composerInput: HTMLInputElement | undefined;
+	let searchApplyTimer: ReturnType<typeof setTimeout> | undefined;
+	const applyPendingChanges = () => {
+		searchApplyTimer = undefined;
+		const additions = pendingSuggestions();
+		const removals = pendingRemovals();
+		if (additions.length === 0 && removals.length === 0) return;
+
+		batch(() => {
+			for (const token of removals) removeToken(token);
+			for (const suggestion of additions) {
+				setSearchState(suggestion.key, [
+					...new Set([...searchState[suggestion.key], suggestion.value]),
+				]);
+			}
+		});
+		setPendingSuggestions([]);
+		setPendingRemovals([]);
+		props.onSearch();
+	};
+	const scheduleSearchApply = () => {
+		if (searchApplyTimer) clearTimeout(searchApplyTimer);
+		searchApplyTimer = setTimeout(
+			applyPendingChanges,
+			SEARCH_APPLY_DEBOUNCE_MS,
+		);
+	};
+	onCleanup(() => {
+		if (searchApplyTimer) clearTimeout(searchApplyTimer);
+	});
 	const selectSuggestion = (suggestion: SearchSuggestion) => {
+		const suggestionId = tokenId(suggestion);
+		if (pendingRemovals().some((token) => tokenId(token) === suggestionId)) {
+			setPendingRemovals((current) =>
+				current.filter((token) => tokenId(token) !== suggestionId),
+			);
+			scheduleSearchApply();
+			return;
+		}
 		setPendingSuggestions((current) =>
 			current.some(
 				(item) =>
@@ -227,12 +276,17 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				? current
 				: [...current, suggestion],
 		);
+		scheduleSearchApply();
 	};
 	const submitDraft = () => {
-		const pending = pendingSuggestions();
-		let changed = pending.length > 0;
+		if (searchApplyTimer) clearTimeout(searchApplyTimer);
+		searchApplyTimer = undefined;
+		const additions = pendingSuggestions();
+		const removals = pendingRemovals();
+		let changed = additions.length > 0 || removals.length > 0;
 		batch(() => {
-			for (const suggestion of pending) {
+			for (const token of removals) removeToken(token);
+			for (const suggestion of additions) {
 				setSearchState(suggestion.key, [
 					...new Set([...searchState[suggestion.key], suggestion.value]),
 				]);
@@ -241,6 +295,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 		});
 		if (!changed) return;
 		setPendingSuggestions([]);
+		setPendingRemovals([]);
 		setDraft("");
 		props.onSearch();
 	};
@@ -289,22 +344,21 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 					filterData={props.filterData}
 					onDraftChange={(value) => setDraft(value)}
 					onRemoveToken={(token) => {
+						const id = tokenId(token);
 						const pending = pendingSuggestions();
-						if (
-							pending.some(
-								(item) => item.key === token.key && item.value === token.value,
-							)
-						) {
+						if (pending.some((item) => tokenId(item) === id)) {
 							setPendingSuggestions((current) =>
-								current.filter(
-									(item) =>
-										item.key !== token.key || item.value !== token.value,
-								),
+								current.filter((item) => tokenId(item) !== id),
 							);
+							scheduleSearchApply();
 							return;
 						}
-						removeToken(token);
-						props.onSearch();
+						setPendingRemovals((current) =>
+							current.some((item) => tokenId(item) === id)
+								? current
+								: [...current, token],
+						);
+						scheduleSearchApply();
 					}}
 					onSelectSuggestion={selectSuggestion}
 					onSubmit={submitDraft}
