@@ -78,6 +78,7 @@ const managerTabs: ManagerEntityType[] = [
 	"characters",
 	"tagging",
 	"vectors",
+	"thumbnails",
 	"duplicates",
 ];
 
@@ -87,6 +88,9 @@ function tabLabel(tab: ManagerEntityType) {
 	}
 	if (tab === "vectors") {
 		return "Vector Extraction";
+	}
+	if (tab === "thumbnails") {
+		return "Thumbnails";
 	}
 	if (tab === "ips") {
 		return "IPs";
@@ -356,6 +360,96 @@ export function ManagerScreen(props: ManagerScreenProps) {
 						</CardContent>
 					</Card>
 				</div>
+			</Show>
+
+			<Show
+				when={manager().activeTab() === "thumbnails" && canRenderActiveTab()}
+			>
+				<Card>
+					<CardHeader>
+						<CardTitle>Thumbnail Warmup</CardTitle>
+						<CardDescription>
+							Generate only missing 256px thumbnails used by dense media grids.
+						</CardDescription>
+					</CardHeader>
+					<CardContent class="space-y-4">
+						<div class="grid gap-2">
+							<Label>Target Media Source</Label>
+							<Select
+								itemComponent={(selectProps) => (
+									<SelectItem item={selectProps.item}>
+										{selectProps.item.rawValue.name}
+									</SelectItem>
+								)}
+								onChange={(value) => manager().setSelectedSourceId(value?.id)}
+								options={manager().sources()}
+								optionTextValue="name"
+								optionValue="id"
+								placeholder="Select source"
+								value={
+									manager().selectedSourceId()
+										? manager()
+												.sources()
+												.find(
+													(source) =>
+														source.id === manager().selectedSourceId(),
+												)
+										: null
+								}
+							>
+								<SelectTrigger>
+									<SelectValue<unknown>>
+										{(state) => {
+											const option = state.selectedOption();
+											return option &&
+												typeof option === "object" &&
+												"name" in option
+												? (option as { name: string }).name
+												: "Select source";
+										}}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent />
+							</Select>
+							<p class="text-muted-foreground text-xs">
+								Existing 512px previews are preserved. Only missing 256px
+								variants are queued.
+							</p>
+						</div>
+						<Button
+							disabled={
+								!!manager().activeJobId() || !manager().selectedSourceId()
+							}
+							onClick={() => void manager().handleStartThumbnailWarmup()}
+						>
+							Warm Missing Thumbnails
+						</Button>
+						<Show when={manager().taggingStatus()}>
+							<div class="break-words rounded bg-gray-100 p-2 text-sm">
+								{manager().taggingStatus()}
+							</div>
+						</Show>
+						<Show when={manager().jobProgress()}>
+							{(progress) => (
+								<div class="space-y-2" role="status">
+									<div class="flex justify-between text-muted-foreground text-sm">
+										<span>Batch progress</span>
+										<span>
+											{progress().processed} / {progress().total}
+										</span>
+									</div>
+									<Progress
+										value={
+											progress().total > 0
+												? (progress().processed / progress().total) * 100
+												: 0
+										}
+									/>
+								</div>
+							)}
+						</Show>
+					</CardContent>
+				</Card>
 			</Show>
 
 			<Show

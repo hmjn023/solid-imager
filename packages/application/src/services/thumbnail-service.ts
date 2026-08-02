@@ -1,10 +1,17 @@
+import type {
+	GenerateThumbnailsResponse,
+	ThumbnailSize,
+} from "@solid-imager/core/domain/thumbnails/schemas";
 import type { IFileSystem } from "@solid-imager/core/interfaces/file-system";
 import type { IThumbnailService } from "../ports/thumbnail-service";
 
 export type ThumbnailServiceDeps = {
 	fileSystem: IFileSystem;
 	thumbnailCacheDir: string;
-	generateThumbnailsForSource: (mediaSourceId: string) => Promise<number>;
+	generateThumbnailsForSource: (
+		mediaSourceId: string,
+		options: { size: ThumbnailSize; missingOnly: boolean },
+	) => Promise<{ count: number; jobId?: string }>;
 };
 
 export class ThumbnailServiceImpl implements IThumbnailService {
@@ -21,7 +28,7 @@ export class ThumbnailServiceImpl implements IThumbnailService {
 	getMediaThumbnailUrl(
 		mediaSourceId: string,
 		mediaId: string,
-		size?: number,
+		size?: ThumbnailSize,
 	): string {
 		let url = `/api/sources/${mediaSourceId}/thumbnail/${mediaId}`;
 		if (size) {
@@ -32,9 +39,21 @@ export class ThumbnailServiceImpl implements IThumbnailService {
 
 	async startThumbnailGeneration(
 		mediaSourceId: string,
-	): Promise<{ success: boolean; count: number }> {
-		const count = await this.generateThumbnailsForSource(mediaSourceId);
-		return { success: true, count };
+		options: { size: ThumbnailSize; missingOnly: boolean },
+	): Promise<GenerateThumbnailsResponse> {
+		const result = await this.generateThumbnailsForSource(
+			mediaSourceId,
+			options,
+		);
+		return {
+			success: true,
+			count: result.count,
+			jobId: result.jobId,
+			message:
+				result.count > 0
+					? `Queued ${result.count} thumbnail job(s)`
+					: "No thumbnails need generation",
+		};
 	}
 
 	async clearThumbnailCache(

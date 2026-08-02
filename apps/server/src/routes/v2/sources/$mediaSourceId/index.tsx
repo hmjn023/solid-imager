@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/solid-router";
 import { SourceMediaPage } from "~/routes/sources/$mediaSourceId/components/source-media-page";
 
 export const Route = createFileRoute("/v2/sources/$mediaSourceId/")({
+	ssr: false,
+	pendingComponent: () => null,
 	remountDeps: ({ params }: { params: { mediaSourceId: string } }) => [
 		params.mediaSourceId,
 	],

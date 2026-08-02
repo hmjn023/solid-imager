@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { thumbnailSizeSchema } from "../thumbnails/schemas";
 
 const sourceScopedEventSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),
@@ -43,6 +44,7 @@ export const thumbnailGeneratedEventSchema = z.object({
 	mediaId: z.string().uuid(),
 	filePath: z.string().optional(),
 	timestamp: z.string().optional(),
+	size: thumbnailSizeSchema.optional(),
 });
 export type ThumbnailGeneratedEvent = z.infer<
 	typeof thumbnailGeneratedEventSchema

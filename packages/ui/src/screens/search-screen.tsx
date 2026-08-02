@@ -10,6 +10,7 @@ import type {
 	UseSearchPageResult,
 } from "../hooks/use-search-page";
 import type { SourceMediaPagePresetClient } from "../hooks/use-source-media-page";
+import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
@@ -31,7 +32,12 @@ export type SearchScreenProps = {
 	renderNavActions?: (actions: SearchScreenNavActions) => JSX.Element;
 	renderMediaItem: (
 		media: Media,
-		options?: { onPreviewSelect?: () => void; isPreviewSelected?: boolean },
+		options?: {
+			imageLoadPolicy?: MediaGridImageLoadPolicy;
+			onPreviewSelect?: () => void;
+			isPreviewSelected?: boolean;
+			priority?: boolean;
+		},
 	) => JSX.Element;
 	renderMediaPreview?: (media: Media) => JSX.Element;
 	onOpenMediaDetail?: (media: Media) => void;
@@ -148,7 +154,9 @@ export function SearchScreen(props: SearchScreenProps) {
 								await page().searchResultQuery.refetch();
 							}}
 							hasNextPage={page().searchResultQuery.hasNextPage}
-							renderItem={(media, _options) => props.renderMediaItem(media)}
+							renderItem={(media, options) =>
+								props.renderMediaItem(media, options)
+							}
 							setLoadMoreRef={page().setLoadMoreRef}
 							showEmptyState
 							showResultCount

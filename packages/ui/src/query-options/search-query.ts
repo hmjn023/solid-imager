@@ -8,6 +8,8 @@ import {
 	keepPreviousData,
 } from "@tanstack/solid-query";
 
+export const MEDIA_RESULTS_STALE_TIME_MS = 1000 * 60 * 5;
+
 export type SearchResultsQueryKeyInput = {
 	mode: "simple" | "pro" | "vector";
 	sourceId: string | undefined;
@@ -187,6 +189,7 @@ export function buildSearchResultsQueryOptions(
 		placeholderData: input.mode === "vector" ? undefined : keepPreviousData,
 		enabled: input.enabled,
 		gcTime: input.gcTime,
+		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
 	});
 }
 
@@ -238,5 +241,6 @@ export function buildSourceMediaResultsQueryOptions(
 		},
 		placeholderData: keepPreviousData,
 		enabled: input.enabled,
+		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
 	});
 }

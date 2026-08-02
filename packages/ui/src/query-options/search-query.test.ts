@@ -9,6 +9,7 @@ import {
 	buildSearchResultsQueryOptions,
 	buildSourceMediaResultsQueryOptions,
 	isSourceMediaResultsQueryKey,
+	MEDIA_RESULTS_STALE_TIME_MS,
 	removeMediaFromInfiniteQueryData,
 	searchQueryKeys,
 	sourceMediaQueryKeys,
@@ -160,6 +161,7 @@ describe("buildSearchResultsQueryOptions", () => {
 		expect(options.initialPageParam).toBe(0);
 		expect(options.enabled).toBe(false);
 		expect(options.gcTime).toBe(12_345);
+		expect(options.staleTime).toBe(MEDIA_RESULTS_STALE_TIME_MS);
 
 		const queryFn = options.queryFn;
 		if (typeof queryFn !== "function") {
@@ -346,6 +348,7 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 		]);
 		expect(options.initialPageParam).toBe(0);
 		expect(options.enabled).toBe(true);
+		expect(options.staleTime).toBe(MEDIA_RESULTS_STALE_TIME_MS);
 
 		const queryFn = options.queryFn;
 		if (typeof queryFn !== "function") {

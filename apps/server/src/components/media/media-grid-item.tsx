@@ -1,5 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
+	type MediaGridImageLoadPolicy,
 	type MediaGridLinkProps,
 	MediaGridItem as SharedMediaGridItem,
 } from "@solid-imager/ui/media-grid-item";
@@ -11,6 +12,7 @@ type MediaGridItemProps = {
 	linkPrefix?: string;
 	routeVersion?: "default" | "v2";
 	media: Media;
+	imageLoadPolicy?: MediaGridImageLoadPolicy;
 	onContextMenu?: (event: MouseEvent) => void;
 	priority?: boolean;
 	sourceRootPath?: string;
@@ -84,6 +86,7 @@ export function MediaGridItem(props: MediaGridItemProps) {
 			variant={props.routeVersion === "v2" ? "v2" : "default"}
 			isBulkSelectMode={props.isBulkSelectMode}
 			isSelected={props.isSelected}
+			imageLoadPolicy={props.imageLoadPolicy}
 			linkComponent={(linkProps) => (
 				<Show fallback={detailLink(linkProps)} when={props.isBulkSelectMode}>
 					<button
@@ -109,9 +112,12 @@ export function MediaGridItem(props: MediaGridItemProps) {
 				<ThumbnailImage
 					alt={thumbnailProps.alt}
 					class={thumbnailProps.class}
+					enabled={thumbnailProps.enabled}
+					fetchpriority={thumbnailProps.fetchpriority}
 					height={thumbnailProps.height}
 					loading={thumbnailProps.loading}
 					media={thumbnailProps.media}
+					sizes={thumbnailProps.sizes}
 					sourceRootPath={thumbnailProps.sourceRootPath}
 					width={thumbnailProps.width}
 				/>

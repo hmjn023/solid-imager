@@ -25,8 +25,14 @@ describe("JobRepository", () => {
 				],
 			}),
 			update: vi.fn().mockReturnThis(),
+			select: vi.fn().mockReturnThis(),
+			from: vi.fn().mockReturnThis(),
+			limit: vi.fn().mockResolvedValue([]),
 			set: vi.fn().mockReturnThis(),
 			where: vi.fn().mockReturnThis(),
+			insert: vi.fn().mockReturnThis(),
+			values: vi.fn().mockReturnThis(),
+			onConflictDoNothing: vi.fn().mockReturnThis(),
 			returning: vi
 				.fn()
 				.mockResolvedValue([{ id: "11111111-1111-4111-8111-111111111111" }]),
@@ -88,6 +94,32 @@ describe("JobRepository", () => {
 
 		expect(count).toBe(1);
 		expect(mockExecutor.update).toHaveBeenCalledOnce();
+	});
+
+	it("does not requeue thumbnail batch parent progress records", async () => {
+		await repository.requeueStaleInProgress(
+			new Date("2026-06-23T00:00:00.000Z"),
+		);
+
+		const where = extractSqlText(mockExecutor.where.mock.calls[0]?.[0]);
+		expect(where).toContain("thumbnail_generation_parent");
+	});
+
+	it("deduplicates active thumbnail jobs by source, media and size", async () => {
+		mockExecutor.returning.mockResolvedValueOnce([]);
+
+		const created = await repository.createIfUnique({
+			type: "generate_thumbnail",
+			mediaSourceId: "22222222-2222-4222-8222-222222222222",
+			payload: {
+				mediaId: "33333333-3333-4333-8333-333333333333",
+				size: 256,
+			},
+		});
+
+		expect(created).toBeNull();
+		expect(mockExecutor.insert).toHaveBeenCalledOnce();
+		expect(mockExecutor.onConflictDoNothing).toHaveBeenCalledOnce();
 	});
 
 	it("clears stale result and error markers when requeueing", async () => {

@@ -1073,6 +1073,17 @@ export const jobs = pgTable(
 					AND ${table.type} IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
 					AND ${table.mediaSourceId} IS NOT NULL`,
 			),
+		activeThumbnailUniqueIndex: uniqueIndex("uq_jobs_active_thumbnail")
+			.on(
+				table.mediaSourceId,
+				sql`(${table.payload}->>'mediaId')`,
+				sql`(${table.payload}->>'size')`,
+			)
+			.where(
+				sql`${table.type} = 'generate_thumbnail'
+					AND ${table.status} IN ('pending', 'in_progress')
+					AND ${table.mediaSourceId} IS NOT NULL`,
+			),
 	}),
 );
 

@@ -75,6 +75,9 @@ describe("JobWorker", () => {
 		// When excluding AI types, return normal jobs
 		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
+				if (options?.includeTypes?.includes("generate_thumbnail")) {
+					return Promise.resolve([]);
+				}
 				if (options?.excludeTypes) {
 					return Promise.resolve(normalJobs.slice(0, limit));
 				}
@@ -89,7 +92,11 @@ describe("JobWorker", () => {
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({
-				excludeTypes: ["auto_tagging", "extract_ccip_vector"],
+				excludeTypes: [
+					"auto_tagging",
+					"extract_ccip_vector",
+					"generate_thumbnail",
+				],
 			}),
 		);
 		expect(processor).toHaveBeenCalledTimes(2);
@@ -115,6 +122,9 @@ describe("JobWorker", () => {
 		// Mock claimPending
 		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
+				if (options?.includeTypes?.includes("generate_thumbnail")) {
+					return Promise.resolve([]);
+				}
 				if (options?.includeTypes) {
 					return Promise.resolve(aiJobs.slice(0, limit));
 				}
@@ -163,6 +173,9 @@ describe("JobWorker", () => {
 		// Mock claimPending
 		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
+				if (options?.includeTypes?.includes("generate_thumbnail")) {
+					return Promise.resolve([]);
+				}
 				if (options?.includeTypes) {
 					// AI request
 					return Promise.resolve([aiJob].slice(0, limit));
@@ -188,7 +201,11 @@ describe("JobWorker", () => {
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			2,
 			expect.objectContaining({
-				excludeTypes: ["auto_tagging", "extract_ccip_vector"],
+				excludeTypes: [
+					"auto_tagging",
+					"extract_ccip_vector",
+					"generate_thumbnail",
+				],
 			}),
 		);
 
@@ -216,6 +233,9 @@ describe("JobWorker", () => {
 
 		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
+				if (options?.includeTypes?.includes("generate_thumbnail")) {
+					return Promise.resolve([]);
+				}
 				if (options?.excludeTypes) {
 					return Promise.resolve([customJob].slice(0, limit));
 				}
@@ -271,6 +291,9 @@ describe("JobWorker", () => {
 
 		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
+				if (options?.includeTypes?.includes("generate_thumbnail")) {
+					return Promise.resolve([]);
+				}
 				if (options?.excludeTypes) {
 					return Promise.resolve(
 						[
@@ -296,6 +319,41 @@ describe("JobWorker", () => {
 		});
 
 		resolveProcessor();
+		await vi.runOnlyPendingTimersAsync();
+	});
+
+	it("processes at most one thumbnail generation job at a time", async () => {
+		let resolveThumbnail: () => void = () => {};
+		processor = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveThumbnail = resolve;
+				}),
+		);
+		worker = new JobWorker(jobRepo, processor);
+		const thumbnailJob = {
+			id: "thumbnail-1",
+			type: "generate_thumbnail",
+			status: "pending",
+		} as Job;
+		(jobRepo.claimPending as any).mockImplementation(
+			(_limit: number, options: any) =>
+				Promise.resolve(
+					options?.includeTypes?.includes("generate_thumbnail")
+						? [thumbnailJob]
+						: [],
+				),
+		);
+
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(processor).toHaveBeenCalledTimes(1);
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(1, {
+			includeTypes: ["generate_thumbnail"],
+		});
+		resolveThumbnail();
 		await vi.runOnlyPendingTimersAsync();
 	});
 
