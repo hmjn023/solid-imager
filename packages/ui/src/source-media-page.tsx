@@ -34,6 +34,7 @@ function clientOnlyQueryOptions<TData>(factory: QueryOptionFactory<TData>) {
 }
 
 export type SourceMediaPageProps = {
+	variant?: "default" | "v2";
 	mediaSourceId: Accessor<string>;
 	mediaSourceName?: Accessor<string | undefined>;
 	transport: MediaSourceEventTransport;
@@ -52,6 +53,8 @@ export type SourceMediaPageProps = {
 	moveCopyDialogComponent: SourceMediaScreenProps["moveCopyDialogComponent"];
 	uploadModalComponent: SourceMediaScreenProps["uploadModalComponent"];
 	renderItem: SourceMediaScreenProps["renderItem"];
+	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
+	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
 	showOpenInNewTab?: boolean;
 	onToggleSelect?: (mediaId: string) => void;
 	isBulkSelectMode?: () => boolean;
@@ -119,6 +122,8 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		sortOrder: props.sortOrder,
 		onThumbnailReady: props.onThumbnailReady,
 		isSearchStateRestored,
+		scrollContainerSelector:
+			props.variant === "v2" ? "[data-media-scroll]" : undefined,
 	});
 
 	const renderActions: SourceMediaScreenProps["renderActions"] = (actions) => (
@@ -131,6 +136,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 
 	return (
 		<SourceMediaScreen
+			variant={props.variant}
 			enableVirtualization={props.enableVirtualization}
 			mediaSourceName={props.mediaSourceName}
 			onRetryFilters={async () => {
@@ -145,6 +151,8 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			page={page}
 			renderActions={renderActions}
 			renderItem={props.renderItem}
+			onOpenMediaDetail={props.onOpenMediaDetail}
+			renderMediaPreview={props.renderMediaPreview}
 			moveCopyDialogComponent={props.moveCopyDialogComponent}
 			uploadModalComponent={props.uploadModalComponent}
 			showOpenInNewTab={props.showOpenInNewTab}

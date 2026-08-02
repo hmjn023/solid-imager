@@ -21,8 +21,10 @@ import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
+import { V2SourceMediaScreen } from "./v2-source-media-screen";
 
 export type SourceMediaScreenProps = {
+	variant?: "default" | "v2";
 	page: UseSourceMediaPageResult;
 	mediaSourceName?: () => string | undefined;
 	/** Render navigation actions without giving them ownership of filter draft state. */
@@ -34,8 +36,12 @@ export type SourceMediaScreenProps = {
 			onContextMenu: () => void;
 			isBulkSelectMode?: boolean;
 			isSelected?: boolean;
+			onPreviewSelect?: () => void;
+			isPreviewSelected?: boolean;
 		},
 	) => JSX.Element;
+	renderMediaPreview?: (media: Media) => JSX.Element;
+	onOpenMediaDetail?: (media: Media) => void;
 	renderJobProgress?: (props: {
 		jobProgress: () =>
 			| import("@solid-imager/core/domain/sources/events").JobProgressEvent
@@ -71,6 +77,9 @@ export type SourceMediaScreenProps = {
 };
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
+	if (props.variant === "v2") {
+		return <V2SourceMediaScreen {...props} />;
+	}
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
 	const page = () => props.page;

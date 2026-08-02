@@ -280,7 +280,6 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				);
 			}
 		}
-
 	}
 
 	private async registerContextMetadata(

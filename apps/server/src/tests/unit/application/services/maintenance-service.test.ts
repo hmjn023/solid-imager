@@ -316,5 +316,4 @@ describe("MaintenanceService", () => {
 			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
 		});
 	});
-
 });

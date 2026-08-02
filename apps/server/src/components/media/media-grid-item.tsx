@@ -1,11 +1,15 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { MediaGridItem as SharedMediaGridItem } from "@solid-imager/ui/media-grid-item";
-import { Link } from "@tanstack/solid-router";
+import {
+	type MediaGridLinkProps,
+	MediaGridItem as SharedMediaGridItem,
+} from "@solid-imager/ui/media-grid-item";
+import { Link, useLocation } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { ThumbnailImage } from "./thumbnail-image";
 
 type MediaGridItemProps = {
 	linkPrefix?: string;
+	routeVersion?: "default" | "v2";
 	media: Media;
 	onContextMenu?: (event: MouseEvent) => void;
 	priority?: boolean;
@@ -13,32 +17,77 @@ type MediaGridItemProps = {
 	isBulkSelectMode?: boolean;
 	isSelected?: boolean;
 	onToggleSelect?: () => void;
+	onPreviewSelect?: () => void;
 };
 
 export function MediaGridItem(props: MediaGridItemProps) {
+	const location = useLocation();
+	const detailLink = (linkProps: MediaGridLinkProps) =>
+		props.routeVersion === "v2" ? (
+			<Link
+				class={linkProps.class}
+				data-media-id={linkProps["data-media-id"]}
+				onClick={(event: MouseEvent) => {
+					if (
+						props.onPreviewSelect &&
+						window.matchMedia("(min-width: 1536px)").matches
+					) {
+						event.preventDefault();
+						props.onPreviewSelect();
+						return;
+					}
+					if (
+						event.button === 0 &&
+						!event.metaKey &&
+						!event.ctrlKey &&
+						!event.shiftKey &&
+						!event.altKey
+					) {
+						sessionStorage.setItem("v2:media-return", location().href);
+					}
+				}}
+				onContextMenu={linkProps.onContextMenu}
+				params={{
+					mediaId: props.media.id,
+					mediaSourceId: props.media.mediaSourceId,
+				}}
+				to="/v2/sources/$mediaSourceId/$mediaId"
+			>
+				{linkProps.children}
+			</Link>
+		) : (
+			<Link
+				class={linkProps.class}
+				data-media-id={linkProps["data-media-id"]}
+				onClick={(event: MouseEvent) => {
+					if (
+						props.onPreviewSelect &&
+						window.matchMedia("(min-width: 1536px)").matches
+					) {
+						event.preventDefault();
+						props.onPreviewSelect();
+					}
+				}}
+				onContextMenu={linkProps.onContextMenu}
+				params={{
+					mediaId: props.media.id,
+					mediaSourceId: props.media.mediaSourceId,
+				}}
+				to="/sources/$mediaSourceId/$mediaId"
+			>
+				{linkProps.children}
+			</Link>
+		);
+
 	return (
 		<SharedMediaGridItem
+			variant={props.routeVersion === "v2" ? "v2" : "default"}
 			isBulkSelectMode={props.isBulkSelectMode}
 			isSelected={props.isSelected}
 			linkComponent={(linkProps) => (
-				<Show
-					fallback={
-						<Link
-							class={linkProps.class}
-							data-media-id={linkProps["data-media-id"]}
-							onContextMenu={linkProps.onContextMenu}
-							params={{
-								mediaId: props.media.id,
-								mediaSourceId: props.media.mediaSourceId,
-							}}
-							to="/sources/$mediaSourceId/$mediaId"
-						>
-							{linkProps.children}
-						</Link>
-					}
-					when={props.isBulkSelectMode}
-				>
+				<Show fallback={detailLink(linkProps)} when={props.isBulkSelectMode}>
 					<button
+						aria-pressed={props.isSelected}
 						type="button"
 						class={linkProps.class}
 						data-media-id={linkProps["data-media-id"]}
