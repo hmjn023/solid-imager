@@ -14,6 +14,7 @@ import {
 import { cn } from "./utils/cn";
 
 const Combobox = ComboboxPrimitive.Root;
+const useComboboxContext = ComboboxPrimitive.useComboboxContext;
 const ComboboxItemLabel = ComboboxPrimitive.ItemLabel;
 const ComboboxHiddenSelect = ComboboxPrimitive.HiddenSelect;
 
@@ -328,5 +329,6 @@ export {
 	ComboboxLabel,
 	ComboboxSection,
 	ComboboxTrigger,
+	useComboboxContext,
 	VirtualComboboxContent,
 };

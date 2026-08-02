@@ -5,20 +5,16 @@ import ChevronDown from "lucide-solid/icons/chevron-down";
 import Filter from "lucide-solid/icons/filter";
 import Grid3X3 from "lucide-solid/icons/grid-3-x-3";
 import List from "lucide-solid/icons/list";
-import Search from "lucide-solid/icons/search";
-import X from "lucide-solid/icons/x";
 import type { JSX } from "solid-js";
 import {
+	batch,
 	createMemo,
 	createSignal,
-	For,
 	onCleanup,
 	onMount,
 	Show,
 } from "solid-js";
 import { Button, buttonVariants } from "../button";
-import { Input } from "../input";
-import { Label } from "../label";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
@@ -28,21 +24,12 @@ import {
 	searchState,
 	setSearchState,
 } from "../stores/search-store";
-
-type SearchArrayKey =
-	| "excludeTags"
-	| "selectedAuthors"
-	| "selectedCharacters"
-	| "selectedIps"
-	| "selectedProjects"
-	| "selectedTags";
-
-type SearchToken = {
-	destructive?: boolean;
-	key: SearchArrayKey | "searchQuery";
-	prefix: string;
-	value: string;
-};
+import {
+	type SearchArrayKey,
+	SearchComposer,
+	type SearchSuggestion,
+	type SearchToken,
+} from "./search-composer";
 
 export type V2SearchToolbarProps = {
 	actions?: JSX.Element;
@@ -217,12 +204,43 @@ function sortLabel(state: SearchState): string {
 
 export function V2SearchToolbar(props: V2SearchToolbarProps) {
 	const [draft, setDraft] = createSignal("");
+	const [pendingSuggestions, setPendingSuggestions] = createSignal<
+		SearchSuggestion[]
+	>([]);
 	const [filterOpen, setFilterOpen] = createSignal(false);
 	const [sortOpen, setSortOpen] = createSignal(false);
-	const tokens = createMemo(() => tokensFromState(searchState));
+	const tokens = createMemo(() => [
+		...tokensFromState(searchState),
+		...pendingSuggestions().map((suggestion) => ({
+			key: suggestion.key,
+			prefix: suggestion.prefix,
+			value: suggestion.value,
+		})),
+	]);
 	let composerInput: HTMLInputElement | undefined;
+	const selectSuggestion = (suggestion: SearchSuggestion) => {
+		setPendingSuggestions((current) =>
+			current.some(
+				(item) =>
+					item.key === suggestion.key && item.value === suggestion.value,
+			)
+				? current
+				: [...current, suggestion],
+		);
+	};
 	const submitDraft = () => {
-		if (!submitComposerDraft(draft())) return;
+		const pending = pendingSuggestions();
+		let changed = pending.length > 0;
+		batch(() => {
+			for (const suggestion of pending) {
+				setSearchState(suggestion.key, [
+					...new Set([...searchState[suggestion.key], suggestion.value]),
+				]);
+			}
+			if (submitComposerDraft(draft())) changed = true;
+		});
+		if (!changed) return;
+		setPendingSuggestions([]);
 		setDraft("");
 		props.onSearch();
 	};
@@ -266,67 +284,35 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				</Show>
 			</div>
 			<div class="flex min-w-0 flex-wrap items-start gap-2">
-				<form
-					autocomplete="off"
-					class="relative min-w-[min(16rem,100%)] flex-1"
-					onSubmit={(event) => {
-						event.preventDefault();
-						submitDraft();
+				<SearchComposer
+					draft={draft()}
+					filterData={props.filterData}
+					onDraftChange={(value) => setDraft(value)}
+					onRemoveToken={(token) => {
+						const pending = pendingSuggestions();
+						if (
+							pending.some(
+								(item) => item.key === token.key && item.value === token.value,
+							)
+						) {
+							setPendingSuggestions((current) =>
+								current.filter(
+									(item) =>
+										item.key !== token.key || item.value !== token.value,
+								),
+							);
+							return;
+						}
+						removeToken(token);
+						props.onSearch();
 					}}
-				>
-					<Label class="sr-only" for="v2-search-composer">
-						メディアを検索
-					</Label>
-					<Search
-						aria-hidden="true"
-						class="absolute top-[0.7rem] left-3 z-10 text-[var(--v2-text-muted)]"
-						size={16}
-					/>
-					<div class="flex min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-[var(--v2-border-strong)] bg-white py-1 pr-8 pl-9 focus-within:ring-2 focus-within:ring-[var(--v2-focus)] focus-within:ring-offset-1 sm:min-h-9">
-						<For each={tokens().slice(0, 4)}>
-							{(token) => (
-								<span
-									class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-[11px] ${token.destructive ? "bg-red-50 text-destructive" : "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"}`}
-								>
-									<span class="truncate">
-										{token.prefix}:{token.value}
-									</span>
-									<button
-										aria-label={`${token.prefix}:${token.value}を解除`}
-										class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
-										onClick={() => {
-											removeToken(token);
-											props.onSearch();
-										}}
-										type="button"
-									>
-										<X aria-hidden="true" size={11} />
-									</button>
-								</span>
-							)}
-						</For>
-						<Show when={tokens().length > 4}>
-							<span class="inline-flex h-6 items-center rounded bg-[var(--v2-surface-muted)] px-2 font-medium text-[11px] text-[var(--v2-text-secondary)]">
-								ほか{tokens().length - 4}件
-							</span>
-						</Show>
-						<Input
-							class="h-7 min-h-7 min-w-40 flex-1 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-							autocomplete="off"
-							enterkeyhint="search"
-							id="v2-search-composer"
-							onInput={(event) => setDraft(event.currentTarget.value)}
-							placeholder="検索、または tag: / author: / ip: …"
-							ref={(element) => {
-								composerInput = element;
-							}}
-							value={draft()}
-						/>
-					</div>
-					<kbd class="absolute top-2 right-2 rounded border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-1.5 py-0.5 text-[10px] text-[var(--v2-text-muted)]">
-						/
-					</kbd>
-				</form>
+					onSelectSuggestion={selectSuggestion}
+					onSubmit={submitDraft}
+					inputRef={(element) => {
+						composerInput = element;
+					}}
+					tokens={tokens()}
+				/>
 
 				<Popover
 					forceMount
