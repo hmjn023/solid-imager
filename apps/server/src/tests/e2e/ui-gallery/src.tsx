@@ -1,3 +1,4 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -76,6 +77,7 @@ import {
 	SelectValue,
 } from "@solid-imager/ui/select";
 import { Skeleton } from "@solid-imager/ui/skeleton";
+import { SourceMediaGrid } from "@solid-imager/ui/source-media-grid";
 import {
 	Switch,
 	SwitchControl,
@@ -102,6 +104,80 @@ import { render } from "solid-js/web";
 import "../../../app.css";
 
 const OPTIONS = ["Alpha", "Beta", "Gamma"];
+const VIRTUAL_GRID_ITEM_COUNT = 1_000;
+const THUMBNAIL_DATA_URL =
+	"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='120' viewBox='0 0 160 120'%3E%3Crect width='160' height='120' fill='%23dbeafe'/%3E%3Cpath d='M0 100 45 55l30 30 22-22 63 57H0Z' fill='%2393c5fd'/%3E%3C/svg%3E";
+
+function createVirtualGridMedia(index: number): Media {
+	const timestamp = new Date("2026-01-01T00:00:00.000Z");
+	return {
+		id: `00000000-0000-4000-8000-${index.toString().padStart(12, "0")}`,
+		mediaSourceId: "00000000-0000-4000-8000-000000000001",
+		filePath: `/fixture/${index}.webp`,
+		fileName: `fixture-${index}.webp`,
+		mediaType: "image",
+		width: 160,
+		height: 120,
+		fileSize: 1_024,
+		description: null,
+		createdAt: timestamp,
+		modifiedAt: timestamp,
+		indexedAt: timestamp,
+		status: "active",
+	};
+}
+
+const VIRTUAL_GRID_MEDIA = Array.from(
+	{ length: VIRTUAL_GRID_ITEM_COUNT },
+	(_, index) => createVirtualGridMedia(index),
+);
+
+function VirtualGridGallery() {
+	return (
+		<main class="h-dvh bg-background p-4 text-foreground">
+			<h1 class="sr-only">Virtual media grid performance fixture</h1>
+			<div
+				class="h-full min-h-0 overflow-y-auto overscroll-contain"
+				data-media-scroll
+				data-testid="virtual-grid-scroller"
+			>
+				<SourceMediaGrid
+					disableContextMenu
+					enableVirtualization
+					isFetchingNextPage={false}
+					itemAspectRatio={4 / 3}
+					mediaResults={() => VIRTUAL_GRID_MEDIA}
+					mediaSourceId={() => VIRTUAL_GRID_MEDIA[0]?.mediaSourceId}
+					renderItem={(media, options) => (
+						<a
+							class="block aspect-[4/3] overflow-hidden rounded-md bg-muted"
+							data-media-id={media.id}
+							href={`#${media.id}`}
+							onContextMenu={options.onContextMenu}
+						>
+							<img
+								alt={media.fileName}
+								class="h-full w-full object-cover"
+								loading={options.priority ? "eager" : "lazy"}
+								src={THUMBNAIL_DATA_URL}
+							/>
+						</a>
+					)}
+					scrollMode="element"
+					setLoadMoreRef={() => undefined}
+					showResultCount={false}
+					state={() => ({
+						data: VIRTUAL_GRID_MEDIA,
+						error: undefined,
+						fetchState: "idle",
+						phase: "data",
+					})}
+					totalCount={VIRTUAL_GRID_ITEM_COUNT}
+				/>
+			</div>
+		</main>
+	);
+}
 
 function Gallery() {
 	const [dark, setDark] = createSignal(false);
@@ -327,4 +403,7 @@ const root = document.querySelector("#root");
 if (!(root instanceof HTMLElement)) {
 	throw new Error("Gallery root element was not found");
 }
-render(() => <Gallery />, root);
+const showVirtualGrid = new URLSearchParams(window.location.search).has(
+	"virtual-grid",
+);
+render(() => (showVirtualGrid ? <VirtualGridGallery /> : <Gallery />), root);
