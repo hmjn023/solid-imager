@@ -3,15 +3,16 @@ import type { JSX } from "solid-js";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import {
 	Combobox,
-	ComboboxContent,
 	ComboboxControl,
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
 	useComboboxContext,
+	VirtualComboboxContent,
 } from "../combobox";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 import { Label } from "../label";
+import { createDebouncedSignal } from "../utils/debounce";
 
 export type {
 	SearchArrayKey,
@@ -67,8 +68,13 @@ export function SearchComposer(props: SearchComposerProps) {
 	const [selectedSuggestion, setSelectedSuggestion] =
 		createSignal<SearchSuggestion | null>(null);
 	const [menuOpen, setMenuOpen] = createSignal(false);
+	const [suggestionDraft, setSuggestionDraft] = createDebouncedSignal("", 150);
 	const suggestions = createMemo(() =>
-		getSearchComposerSuggestions(props.draft, props.filterData, props.tokens),
+		getSearchComposerSuggestions(
+			suggestionDraft(),
+			props.filterData,
+			props.tokens,
+		),
 	);
 
 	const handleSelect = (suggestion: SearchSuggestion | null) => {
@@ -131,6 +137,7 @@ export function SearchComposer(props: SearchComposerProps) {
 				onChange={handleSelect}
 				onInputChange={(value) => {
 					props.onDraftChange(value);
+					setSuggestionDraft(value);
 					setMenuOpen(true);
 				}}
 				onOpenChange={setMenuOpen}
@@ -182,7 +189,7 @@ export function SearchComposer(props: SearchComposerProps) {
 						ref={props.inputRef}
 					/>
 				</ComboboxControl>
-				<ComboboxContent class="v2-theme w-[min(28rem,calc(100dvw-1.5rem))] p-1 shadow-xl" />
+				<VirtualComboboxContent class="v2-theme w-[min(28rem,calc(100dvw-1.5rem))] p-1 shadow-xl" />
 			</Combobox>
 			<kbd class="absolute top-2 right-2 rounded border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-1.5 py-0.5 text-[10px] text-[var(--v2-text-muted)]">
 				/
