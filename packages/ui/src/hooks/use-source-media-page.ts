@@ -36,12 +36,11 @@ import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
 import { getRestoreImportStrategies } from "./restore-import";
-import { currentScrollPosition, scrollToPosition } from "./scroll-container";
+import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
 export const SOURCE_MEDIA_ITEMS_PER_PAGE = 200;
-const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 const MEDIA_REFRESH_DEBOUNCE_MS = 300;
 
@@ -295,55 +294,21 @@ export function useSourceMediaPage(
 
 	// --- Search handler ---
 	const handleSearch = () => {
+		const sourceId = id();
+		if (sourceId) setScrollPosition(sourceId, 0);
 		scrollToPosition(options.scrollContainerSelector, 0);
 	};
 
 	// --- Scroll restoration ---
-	const [isScrollRestored, setIsScrollRestored] = createSignal(false);
-
-	onMount(() => {
-		if ("scrollRestoration" in history) {
-			history.scrollRestoration = "manual";
-		}
-	});
-
-	createEffect(() => {
-		if (isServer) {
-			return;
-		}
-		if (isScrollRestored()) {
-			return;
-		}
-
-		const sourceId = id();
-		if (!sourceId) {
-			return;
-		}
-
-		if (mediaQuery.data && !mediaQuery.isLoading) {
-			const targetScrollY = getScrollPosition(sourceId);
-			if (targetScrollY > 0) {
-				setTimeout(() => {
-					requestAnimationFrame(() => {
-						scrollToPosition(options.scrollContainerSelector, targetScrollY);
-						setIsScrollRestored(true);
-					});
-				}, SCROLL_RESTORE_DELAY);
-			} else {
-				setIsScrollRestored(true);
-			}
-		}
-	});
-
-	onCleanup(() => {
-		if (isServer) {
-			return;
-		}
-		const sourceId = id();
-		if (sourceId) {
-			const position = currentScrollPosition(options.scrollContainerSelector);
-			if (position !== null) setScrollPosition(sourceId, position);
-		}
+	useScrollRestoration({
+		restoreKey: id,
+		getPosition: (sourceId) => getScrollPosition(sourceId),
+		setPosition: (sourceId, position) => setScrollPosition(sourceId, position),
+		isReady: () => Boolean(mediaQuery.data) && !mediaQuery.isLoading,
+		hasNextPage: () => mediaQuery.hasNextPage,
+		isFetchingNextPage: () => mediaQuery.isFetchingNextPage,
+		fetchNextPage: () => mediaQuery.fetchNextPage(),
+		scrollContainerSelector: options.scrollContainerSelector,
 	});
 
 	// --- Infinite scroll ---

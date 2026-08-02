@@ -20,7 +20,7 @@ import {
 import { isServer } from "solid-js/web";
 import { buildSearchResultsQueryOptions } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
-import { currentScrollPosition, scrollToPosition } from "./scroll-container";
+import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
 const DEFAULT_REFRESH_DEBOUNCE_MS = 0;
@@ -247,27 +247,22 @@ export function useSearchPage(
 		);
 	};
 
-	const [isRestored, setIsRestored] = createSignal(false);
-	createEffect(() => {
-		if (
-			!(searchResultQuery.isLoading || isRestored()) &&
-			searchResultQuery.data &&
-			searchResultQuery.data.pages.length > 0
-		) {
-			if (scrollY() > 0) {
-				requestAnimationFrame(() => {
-					scrollToPosition(options.scrollContainerSelector, scrollY());
-				});
-			}
-			setIsRestored(true);
-		}
+	const isRestored = useScrollRestoration({
+		restoreKey: () => "search",
+		getPosition: () => scrollY(),
+		setPosition: (key, position) => {
+			void key;
+			setScrollY(position);
+		},
+		isReady: () =>
+			Boolean(searchResultQuery.data) && !searchResultQuery.isLoading,
+		hasNextPage: () => searchResultQuery.hasNextPage,
+		isFetchingNextPage: () => searchResultQuery.isFetchingNextPage,
+		fetchNextPage: () => searchResultQuery.fetchNextPage(),
+		scrollContainerSelector: options.scrollContainerSelector,
 	});
 
 	onCleanup(() => {
-		if (!isServer) {
-			const position = currentScrollPosition(options.scrollContainerSelector);
-			if (position !== null) setScrollY(position);
-		}
 		const timer = refreshTimer();
 		if (timer) {
 			clearTimeout(timer);
