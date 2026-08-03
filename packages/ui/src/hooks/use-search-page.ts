@@ -9,7 +9,12 @@ import type {
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
+import {
+	createInfiniteQuery,
+	createQuery,
+	type InfiniteData,
+	useQueryClient,
+} from "@tanstack/solid-query";
 import {
 	type Accessor,
 	createEffect,
@@ -85,6 +90,8 @@ export interface UseSearchPageResult {
 		typeof createInfiniteQuery<MediaSearchResponse>
 	>;
 	searchResults: () => MediaSearchResponse["media"];
+	hasData: () => boolean;
+	totalCount: () => number | undefined;
 	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
 	filterStates: {
 		tags: () => QueryUiState<TagResponse[]>;
@@ -157,7 +164,7 @@ export function useSearchPage(
 		JSON.stringify(getSearchCondition() ?? null),
 	);
 
-	const searchResultQuery = createInfiniteQuery(() =>
+	const searchResultQueryOptions = createMemo(() =>
 		buildSearchResultsQueryOptions({
 			mode: mode(),
 			sourceId: selectedSource() || undefined,
@@ -174,10 +181,31 @@ export function useSearchPage(
 			gcTime,
 		}),
 	);
+	const searchResultQuery = createInfiniteQuery(searchResultQueryOptions);
+	const queryClient = useQueryClient();
+	const [searchResultData, setSearchResultData] = createSignal<
+		InfiniteData<MediaSearchResponse> | undefined
+	>();
+
+	createEffect(() => {
+		// Solid Query exposes `data` as a resource-backed accessor. During an
+		// infinite-page fetch it can suspend even when previous pages are cached;
+		// keep the rendered result in a regular signal so the collection DOM stays
+		// mounted while the next page is loading.
+		const queryKey = searchResultQueryOptions().queryKey;
+		searchResultQuery.dataUpdatedAt;
+		const cachedData =
+			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
+		if (cachedData !== undefined) {
+			setSearchResultData(cachedData);
+		} else if (!searchResultQuery.isPlaceholderData) {
+			setSearchResultData(undefined);
+		}
+	});
 
 	const searchResults = createMemo(() => {
 		const seen = new Set<string>();
-		return (searchResultQuery.data?.pages.flatMap((p) => p.media) || []).filter(
+		return (searchResultData()?.pages.flatMap((p) => p.media) || []).filter(
 			(m) => {
 				if (seen.has(m.id)) {
 					return false;
@@ -190,7 +218,7 @@ export function useSearchPage(
 	const contentState = () =>
 		toQueryUiState(
 			{
-				data: searchResultQuery.data ? searchResults() : undefined,
+				data: searchResultData() ? searchResults() : undefined,
 				error: searchResultQuery.error,
 				status: searchResultQuery.status,
 				fetchStatus: searchResultQuery.fetchStatus,
@@ -254,8 +282,7 @@ export function useSearchPage(
 			void key;
 			setScrollY(position);
 		},
-		isReady: () =>
-			Boolean(searchResultQuery.data) && !searchResultQuery.isLoading,
+		isReady: () => Boolean(searchResultData()) && !searchResultQuery.isLoading,
 		hasNextPage: () => searchResultQuery.hasNextPage,
 		isFetchingNextPage: () => searchResultQuery.isFetchingNextPage,
 		fetchNextPage: () => searchResultQuery.fetchNextPage(),
@@ -306,6 +333,8 @@ export function useSearchPage(
 	return {
 		searchResultQuery,
 		searchResults,
+		hasData: () => searchResultData() !== undefined,
+		totalCount: () => searchResultData()?.pages[0]?.total,
 		contentState,
 		filterStates: {
 			tags: () => arrayState(tags),

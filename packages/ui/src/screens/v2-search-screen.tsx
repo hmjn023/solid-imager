@@ -37,7 +37,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 			<V2SearchToolbar
 				context="global"
 				filterData={props.filterData}
-				itemCount={page().searchResultQuery.data?.pages[0]?.total}
+				itemCount={page().totalCount()}
 				onSearch={page().handleSearch}
 				onSelectSource={props.onSelectSource}
 				presetClient={props.presetClient}
@@ -106,7 +106,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 								showResultCount={false}
 								scrollMode="element"
 								state={page().contentState}
-								totalCount={page().searchResultQuery.data?.pages[0]?.total}
+								totalCount={page().totalCount()}
 							/>
 						</Show>
 					</div>

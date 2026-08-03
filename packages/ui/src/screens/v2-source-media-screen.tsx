@@ -51,9 +51,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 						</Show>
 						<Button
 							class="min-h-11 sm:min-h-9"
-							disabled={
-								page().isSyncingMedia() || !page().mediaQuery.data?.pages.length
-							}
+							disabled={page().isSyncingMedia() || !page().hasData()}
 							onClick={page().handleSyncLoadedMedia}
 							size="sm"
 							variant="outline"
@@ -72,7 +70,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 				}
 				context="source"
 				filterData={page().filterData()}
-				itemCount={page().mediaQuery.data?.pages[0]?.total}
+				itemCount={page().totalCount()}
 				onSearch={page().handleSearch}
 				presetClient={page().presetClient}
 				sourceName={props.mediaSourceName?.() ?? "メディア一覧"}
@@ -149,7 +147,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 								showResultCount={false}
 								scrollMode="element"
 								state={page().contentState}
-								totalCount={page().mediaQuery.data?.pages[0]?.total}
+								totalCount={page().totalCount()}
 							/>
 						</Show>
 					</div>

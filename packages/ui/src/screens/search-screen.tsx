@@ -161,7 +161,7 @@ export function SearchScreen(props: SearchScreenProps) {
 							showEmptyState
 							showResultCount
 							state={page().contentState}
-							totalCount={page().searchResultQuery.data?.pages[0]?.total}
+							totalCount={page().totalCount()}
 						/>
 					</Show>
 				</div>

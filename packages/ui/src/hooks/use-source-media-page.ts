@@ -177,6 +177,8 @@ export type UseSourceMediaPageResult = {
 	mediaSourceId: () => string | undefined;
 	mediaQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
 	mediaResults: () => MediaSearchResponse["media"];
+	hasData: () => boolean;
+	totalCount: () => number | undefined;
 	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
 	filterData: () => SourceMediaPageFilterData;
 	filterStates: () => SourceMediaPageQueryStates;
@@ -255,7 +257,7 @@ export function useSourceMediaPage(
 		JSON.stringify(getSearchCondition() ?? null),
 	);
 
-	const mediaQuery = createInfiniteQuery(() =>
+	const mediaQueryOptions = createMemo(() =>
 		buildSourceMediaResultsQueryOptions({
 			sourceId: id(),
 			condition: getSearchCondition(),
@@ -267,11 +269,29 @@ export function useSourceMediaPage(
 			enabled: !isServer && isSearchStateRestored() && !!id(),
 		}),
 	);
+	const mediaQuery = createInfiniteQuery(mediaQueryOptions);
+	const [mediaQueryData, setMediaQueryData] = createSignal<
+		InfiniteData<MediaSearchResponse> | undefined
+	>();
+
+	createEffect(() => {
+		// Keep paginated results outside Solid Query's resource-backed `data`
+		// accessor. A page fetch must not suspend and remount the media grid.
+		const queryKey = mediaQueryOptions().queryKey;
+		mediaQuery.dataUpdatedAt;
+		const cachedData =
+			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
+		if (cachedData !== undefined) {
+			setMediaQueryData(cachedData);
+		} else if (!mediaQuery.isPlaceholderData) {
+			setMediaQueryData(undefined);
+		}
+	});
 
 	// --- Deduplicated results ---
 	const mediaResults = createMemo(() => {
 		const seen = new Set<string>();
-		return (mediaQuery.data?.pages.flatMap((page) => page.media) || []).filter(
+		return (mediaQueryData()?.pages.flatMap((page) => page.media) || []).filter(
 			(media) => {
 				if (seen.has(media.id)) {
 					return false;
@@ -284,7 +304,7 @@ export function useSourceMediaPage(
 	const contentState = () =>
 		toQueryUiState(
 			{
-				data: mediaQuery.data ? mediaResults() : undefined,
+				data: mediaQueryData() ? mediaResults() : undefined,
 				error: mediaQuery.error,
 				status: mediaQuery.status,
 				fetchStatus: mediaQuery.fetchStatus,
@@ -304,7 +324,7 @@ export function useSourceMediaPage(
 		restoreKey: id,
 		getPosition: (sourceId) => getScrollPosition(sourceId),
 		setPosition: (sourceId, position) => setScrollPosition(sourceId, position),
-		isReady: () => Boolean(mediaQuery.data) && !mediaQuery.isLoading,
+		isReady: () => Boolean(mediaQueryData()) && !mediaQuery.isLoading,
 		hasNextPage: () => mediaQuery.hasNextPage,
 		isFetchingNextPage: () => mediaQuery.isFetchingNextPage,
 		fetchNextPage: () => mediaQuery.fetchNextPage(),
@@ -908,7 +928,7 @@ export function useSourceMediaPage(
 	};
 
 	const handleSyncLoadedMedia = async () => {
-		const allPages = mediaQuery.data?.pages;
+		const allPages = mediaQueryData()?.pages;
 		if (!allPages || isSyncingMedia()) {
 			return;
 		}
@@ -946,6 +966,8 @@ export function useSourceMediaPage(
 		mediaSourceId: id,
 		mediaQuery,
 		mediaResults,
+		hasData: () => mediaQueryData() !== undefined,
+		totalCount: () => mediaQueryData()?.pages[0]?.total,
 		contentState,
 		filterData,
 		filterStates: queryStates,
