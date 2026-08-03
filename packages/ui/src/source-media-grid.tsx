@@ -363,6 +363,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			// mounted outside the viewport until another user scroll event.
 			virtualizer.scrollToOffset(element.scrollTop);
 		}
+		if (props.scrollMode === "element" && element) {
+			// Element scroll containers do not consistently emit a native scroll
+			// event when their content is replaced or clamped. Window scrolling in
+			// the v1 screen gets that notification from the browser automatically;
+			// keep the v2 virtualizer in the same state after every grid update.
+			element.dispatchEvent(new Event("scroll"));
+		}
 	});
 
 	// Virtual scroll-based load more: trigger when user scrolls near the end
