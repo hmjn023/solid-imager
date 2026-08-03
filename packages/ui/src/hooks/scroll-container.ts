@@ -90,6 +90,8 @@ export function useScrollRestoration(
 	let frameId: number | undefined;
 	let settleTimer: ReturnType<typeof setTimeout> | undefined;
 	let restoreGeneration = 0;
+	let reconcileFrameId: number | undefined;
+	let secondReconcileFrameId: number | undefined;
 
 	const requestRestore = () => {
 		if (frameId !== undefined || isServer) return;
@@ -212,13 +214,56 @@ export function useScrollRestoration(
 			history.scrollRestoration = "manual";
 		}
 
+		const notifyScrollPosition = () => {
+			if (options.scrollContainerSelector) {
+				resolveScrollContainer(options.scrollContainerSelector)?.dispatchEvent(
+					new Event("scroll"),
+				);
+				return;
+			}
+			window.dispatchEvent(new Event("scroll"));
+		};
+
+		const reconcileVirtualizerPosition = () => {
+			notifyScrollPosition();
+			if (reconcileFrameId !== undefined) {
+				cancelAnimationFrame(reconcileFrameId);
+			}
+			if (secondReconcileFrameId !== undefined) {
+				cancelAnimationFrame(secondReconcileFrameId);
+			}
+			reconcileFrameId = requestAnimationFrame(() => {
+				reconcileFrameId = undefined;
+				notifyScrollPosition();
+				secondReconcileFrameId = requestAnimationFrame(() => {
+					secondReconcileFrameId = undefined;
+					notifyScrollPosition();
+				});
+			});
+		};
+
 		const cancelRestore = () => {
 			if (!isRestored()) {
 				cancelled = true;
+				restoreGeneration += 1;
+				if (frameId !== undefined) {
+					cancelAnimationFrame(frameId);
+					frameId = undefined;
+				}
+				if (settleTimer !== undefined) {
+					clearTimeout(settleTimer);
+					settleTimer = undefined;
+				}
 				// User input takes ownership of the scroll position. Mark the
 				// restoration complete so cleanup persists the position they chose
 				// instead of treating it as an unfinished restore.
 				setIsRestored(true);
+				// The virtualizer listens to native scroll events. A user event can
+				// cancel restoration before the browser changes scrollTop, leaving
+				// its previous (restored) range mounted at the top of the container.
+				// Re-notify it now and for the next two frames so it reconciles with
+				// the actual scroll position after pending layout work settles.
+				reconcileVirtualizerPosition();
 			}
 		};
 		window.addEventListener("pointerdown", cancelRestore, { passive: true });
@@ -238,6 +283,10 @@ export function useScrollRestoration(
 		restoreGeneration += 1;
 		if (frameId !== undefined) cancelAnimationFrame(frameId);
 		if (settleTimer !== undefined) clearTimeout(settleTimer);
+		if (reconcileFrameId !== undefined) cancelAnimationFrame(reconcileFrameId);
+		if (secondReconcileFrameId !== undefined) {
+			cancelAnimationFrame(secondReconcileFrameId);
+		}
 		savePosition();
 	});
 
