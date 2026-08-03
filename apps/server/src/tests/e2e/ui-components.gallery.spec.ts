@@ -276,6 +276,58 @@ test("virtual media grid stays populated after restoring a deep scroll position"
 	await expectVisibleImagesLoaded(scroller);
 });
 
+test("virtual media grid preserves offset after a route-style remount and page update", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1_280, height: 720 });
+	await page.goto(`${getGalleryUrl()}/?virtual-grid=1&remount-grid=1`);
+
+	const scroller = page.getByTestId("virtual-grid-scroller");
+	await expect(scroller.locator("[data-media-id]").first()).toBeVisible();
+	await scroller.evaluate(async (element) => {
+		element.scrollTop = 1_500;
+		await new Promise<void>((resolve) =>
+			requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+		);
+	});
+	const beforeRemount = await scroller.evaluate((element) => element.scrollTop);
+	expect(beforeRemount).toBeGreaterThan(500);
+
+	await page.getByTestId("remount-virtual-grid").click();
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollTop))
+		.toBeGreaterThan(beforeRemount - 2);
+	await page.evaluate(() =>
+		window.dispatchEvent(new WheelEvent("wheel", { deltaY: 1 })),
+	);
+	const restoredTop = await scroller.evaluate((element) => element.scrollTop);
+	const heightBeforeAppend = await scroller.evaluate(
+		(element) => element.scrollHeight,
+	);
+	const nextTop = restoredTop + 1_800;
+
+	await page.evaluate((targetTop) => {
+		const element = document.querySelector<HTMLElement>(
+			"[data-testid=virtual-grid-scroller]",
+		);
+		if (!element) throw new Error("Virtual grid scroller was not found");
+		element.scrollTop = 0;
+		document
+			.querySelector<HTMLElement>("[data-testid=append-virtual-grid-page]")
+			?.click();
+		requestAnimationFrame(() => {
+			element.scrollTop = targetTop;
+		});
+	}, nextTop);
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollHeight))
+		.toBeGreaterThan(heightBeforeAppend);
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollTop))
+		.toBeGreaterThan(restoredTop + 100);
+	await expectVisibleImagesLoaded(scroller);
+});
+
 test.describe("high-density virtual media grid", () => {
 	test.use({ deviceScaleFactor: 2 });
 

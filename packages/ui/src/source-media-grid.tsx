@@ -351,23 +351,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const virtualizer = mediaRowVirtualizer();
 		virtualizer.measure();
 		const element = scrollElement();
-		if (
-			props.scrollMode === "element" &&
-			element &&
-			virtualizer.scrollOffset !== null &&
-			virtualizer.scrollOffset !== element.scrollTop
-		) {
-			// Query updates can clamp the real scroll position while the
-			// virtualizer still holds the previous offset. Reconcile from the
-			// element before rendering the next range instead of leaving rows
-			// mounted outside the viewport until another user scroll event.
-			virtualizer.scrollToOffset(element.scrollTop);
-		}
 		if (props.scrollMode === "element" && element) {
 			// Element scroll containers do not consistently emit a native scroll
 			// event when their content is replaced or clamped. Window scrolling in
-			// the v1 screen gets that notification from the browser automatically;
-			// keep the v2 virtualizer in the same state after every grid update.
+			// the v1 screen gets that notification from the browser automatically.
+			// Dispatching lets the virtualizer read the element's current offset
+			// without imperatively writing a possibly stale offset back to it.
 			element.dispatchEvent(new Event("scroll"));
 		}
 	});
