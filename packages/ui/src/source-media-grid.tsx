@@ -348,7 +348,21 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		// without requiring a user scroll event.
 		scrollElement();
 		scrollMargin();
-		mediaRowVirtualizer().measure();
+		const virtualizer = mediaRowVirtualizer();
+		virtualizer.measure();
+		const element = scrollElement();
+		if (
+			props.scrollMode === "element" &&
+			element &&
+			virtualizer.scrollOffset !== null &&
+			virtualizer.scrollOffset !== element.scrollTop
+		) {
+			// Query updates can clamp the real scroll position while the
+			// virtualizer still holds the previous offset. Reconcile from the
+			// element before rendering the next range instead of leaving rows
+			// mounted outside the viewport until another user scroll event.
+			virtualizer.scrollToOffset(element.scrollTop);
+		}
 	});
 
 	// Virtual scroll-based load more: trigger when user scrolls near the end
