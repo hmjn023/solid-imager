@@ -92,7 +92,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 								itemAspectRatio={4 / 3}
 								mediaResults={page().searchResults}
 								mediaSourceId={() => undefined}
-								onLoadMore={() => page().searchResultQuery.fetchNextPage()}
+								onLoadMore={page().fetchNextPage}
 								onRetry={async () => {
 									await page().searchResultQuery.refetch();
 								}}

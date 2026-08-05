@@ -149,7 +149,7 @@ export function SearchScreen(props: SearchScreenProps) {
 							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
-							onLoadMore={() => page().searchResultQuery.fetchNextPage()}
+							onLoadMore={page().fetchNextPage}
 							onRetry={async () => {
 								await page().searchResultQuery.refetch();
 							}}

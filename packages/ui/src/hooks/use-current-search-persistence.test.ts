@@ -130,6 +130,13 @@ describe("useCurrentSearchPersistence", () => {
 		expect(searchState.selectedSource).toBe("source-1");
 	});
 
+	it("persists the initial state before the debounce expires", async () => {
+		mountPersistence("all");
+		await flushMicrotasks();
+
+		expect(sessionStorage.getItem("current-all")).toContain('"mode":"simple"');
+	});
+
 	it("restores the latest source when the source accessor changes", async () => {
 		const [sourceId, setSourceId] = createSignal("source-a");
 		sessionStorage.setItem(

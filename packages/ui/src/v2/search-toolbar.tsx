@@ -369,7 +369,6 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				/>
 
 				<Popover
-					forceMount
 					onOpenChange={setFilterOpen}
 					open={filterOpen()}
 					placement="bottom-end"

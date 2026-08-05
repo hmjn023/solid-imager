@@ -152,6 +152,7 @@ export function useCurrentSearchPersistence(
 	const [isRestored, setIsRestored] = createSignal(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let restoreVersion = 0;
+	let lastPersistedPresetName: string | null = null;
 
 	const getSourceId = () =>
 		typeof sourceId === "function" ? sourceId() : sourceId;
@@ -209,28 +210,37 @@ export function useCurrentSearchPersistence(
 			return;
 		}
 
-		const condition = getSearchCondition() || {
-			type: "group" as const,
-			operator: "and" as const,
-			children: [],
-		};
-		const presetData = {
-			value: condition,
-			selectedSource: searchState.selectedSource,
-			sort: searchState.sortBy,
-			order: searchState.sortOrder,
-			mode: searchState.mode,
-			similarityAnchorMediaId: searchState.similarityAnchorMediaId,
-			similarityTopK: searchState.similarityTopK,
-		};
-
-		debounceTimer = setTimeout(() => {
+		const persistCurrentState = () => {
+			const condition = getSearchCondition() || {
+				type: "group" as const,
+				operator: "and" as const,
+				children: [],
+			};
+			const presetData = {
+				value: condition,
+				selectedSource: searchState.selectedSource,
+				sort: searchState.sortBy,
+				order: searchState.sortOrder,
+				mode: searchState.mode,
+				similarityAnchorMediaId: searchState.similarityAnchorMediaId,
+				similarityTopK: searchState.similarityTopK,
+			};
 			try {
 				sessionStorage.setItem(presetName, JSON.stringify(presetData));
+				lastPersistedPresetName = presetName;
 			} catch {
 				// Persistence errors must not disrupt the UI.
 			}
-		}, DEBOUNCE_MS);
+		};
+
+		// Persist the initial state synchronously so navigating to a media detail
+		// before the debounce expires cannot reset the list on return.
+		if (lastPersistedPresetName !== presetName) {
+			persistCurrentState();
+			return;
+		}
+
+		debounceTimer = setTimeout(persistCurrentState, DEBOUNCE_MS);
 	});
 
 	onCleanup(() => {

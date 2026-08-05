@@ -1,10 +1,53 @@
 import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import {
+	type ImportEventConnectedHandler,
+	type ImportEventHandler,
 	type PendingDownloadsIndicatorProps,
 	PendingDownloadsIndicator as SharedPendingDownloadsIndicator,
 } from "@solid-imager/ui/pending-downloads-indicator";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
+
+type ImportSubscriber = {
+	handler: ImportEventHandler;
+	onConnected?: ImportEventConnectedHandler;
+};
+
+const importSubscribers = new Set<ImportSubscriber>();
+let cleanupImportStream: (() => void) | undefined;
+
+function subscribeSharedImportEvents(
+	handler: ImportEventHandler,
+	onConnected?: ImportEventConnectedHandler,
+): () => void {
+	const subscriber = { handler, onConnected };
+	importSubscribers.add(subscriber);
+
+	if (!cleanupImportStream) {
+		cleanupImportStream = subscribeToEventStream(
+			(signal) => orpc.imports.events(undefined, { signal }),
+			(event) => {
+				for (const current of importSubscribers) {
+					void current.handler(event);
+				}
+			},
+			undefined,
+			async () => {
+				for (const current of importSubscribers) {
+					await current.onConnected?.();
+				}
+			},
+		);
+	}
+
+	return () => {
+		importSubscribers.delete(subscriber);
+		if (importSubscribers.size === 0) {
+			cleanupImportStream?.();
+			cleanupImportStream = undefined;
+		}
+	};
+}
 
 export function PendingDownloadsIndicator(
 	displayProps: { compact?: boolean; variant?: "default" | "v2" } = {},
@@ -37,12 +80,7 @@ export function PendingDownloadsIndicator(
 			return { success: result.success };
 		},
 		subscribeImportEvents: (handler, onConnected) => {
-			return subscribeToEventStream(
-				(signal) => orpc.imports.events(undefined, { signal }),
-				handler,
-				undefined,
-				onConnected,
-			);
+			return subscribeSharedImportEvents(handler, onConnected);
 		},
 	};
 

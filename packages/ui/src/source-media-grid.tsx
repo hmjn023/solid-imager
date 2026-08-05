@@ -297,10 +297,19 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		},
 	});
 
+	const resolveScrollElement = () =>
+		props.scrollMode === "element"
+			? (mediaGridRef?.closest("[data-media-scroll]") as HTMLElement | null)
+			: null;
+
 	const updateMediaGridMetrics = () => {
 		if (!mediaGridRef) return;
 		setMediaGridWidth(mediaGridRef.getBoundingClientRect().width);
-		const scroller = scrollElement();
+		const resolvedScrollElement = resolveScrollElement();
+		if (resolvedScrollElement !== scrollElement()) {
+			setScrollElement(resolvedScrollElement);
+		}
+		const scroller = resolvedScrollElement;
 		setScrollMargin(
 			props.scrollMode === "element" && scroller
 				? mediaGridRef.getBoundingClientRect().top -
@@ -312,11 +321,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	onMount(() => {
 		setWindowWidth(window.innerWidth);
-		setScrollElement(
-			props.scrollMode === "element"
-				? (mediaGridRef?.closest("[data-media-scroll]") as HTMLElement | null)
-				: null,
-		);
+		setScrollElement(resolveScrollElement());
 		updateMediaGridMetrics();
 
 		const handleResize = () => {
