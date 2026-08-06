@@ -124,7 +124,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		isSearchStateRestored,
 		scrollContainerSelector:
 			props.variant === "v2"
-				? `[data-media-scroll="${props.mediaSourceId()}"]`
+				? `[data-media-scroll="${props.mediaSourceId() ?? "v2-source"}"]`
 				: undefined,
 	});
 

@@ -265,9 +265,16 @@ test("virtual media grid stays populated after restoring a deep scroll position"
 	await page.goto(`${getGalleryUrl()}/?virtual-grid=1&restore-grid=1`);
 
 	const scroller = page.getByTestId("virtual-grid-scroller");
+	await expect(scroller.locator("[data-media-id]").first()).toBeVisible();
+	await expect
+		.poll(() => scroller.evaluate((element) => element.scrollHeight))
+		.toBeGreaterThan(1_000);
+	const maxScrollTop = await scroller.evaluate(
+		(element) => element.scrollHeight - element.clientHeight,
+	);
 	await expect
 		.poll(() => scroller.evaluate((element) => element.scrollTop))
-		.toBeGreaterThan(1_000);
+		.toBeGreaterThan(maxScrollTop * 0.9);
 	await expectVisibleImagesLoaded(scroller);
 
 	await scroller.evaluate((element) => {
@@ -324,7 +331,7 @@ test("virtual media grid preserves offset after a route-style remount and page u
 		.toBeGreaterThan(heightBeforeAppend);
 	await expect
 		.poll(() => scroller.evaluate((element) => element.scrollTop))
-		.toBeGreaterThan(restoredTop + 100);
+		.toBeGreaterThan(restoredTop + 1_700);
 	await expectVisibleImagesLoaded(scroller);
 });
 
@@ -346,7 +353,7 @@ test("virtual media grid preserves offset while fast scrolling starts a page fet
 	await page.getByTestId("remount-virtual-grid").click();
 	await expect
 		.poll(() => scroller.evaluate((element) => element.scrollTop))
-		.toBeGreaterThan(1_000);
+		.toBeGreaterThan(1_400);
 	await page.evaluate(() =>
 		window.dispatchEvent(new WheelEvent("wheel", { deltaY: 1 })),
 	);
@@ -360,7 +367,7 @@ test("virtual media grid preserves offset while fast scrolling starts a page fet
 	await expect(page.getByText("読み込み中...", { exact: true })).toHaveCount(0);
 	await expect
 		.poll(() => scroller.evaluate((element) => element.scrollTop))
-		.toBeGreaterThan(restoredTop + 100);
+		.toBeGreaterThan(restoredTop + 1_000);
 });
 
 test.describe("high-density virtual media grid", () => {

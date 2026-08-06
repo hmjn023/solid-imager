@@ -278,7 +278,7 @@ export function useSourceMediaPage(
 		// Keep paginated results outside Solid Query's resource-backed `data`
 		// accessor. A page fetch must not suspend and remount the media grid.
 		const queryKey = mediaQueryOptions().queryKey;
-		mediaQuery.dataUpdatedAt;
+		void mediaQuery.dataUpdatedAt;
 		const cachedData =
 			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
 		if (cachedData !== undefined) {
