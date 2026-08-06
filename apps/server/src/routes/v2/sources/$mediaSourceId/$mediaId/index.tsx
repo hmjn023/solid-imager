@@ -55,7 +55,7 @@ function MediaDetailHeader(props: {
 				returnPath.startsWith("/v2/sources/"))
 		) {
 			sessionStorage.removeItem("v2:media-return");
-			void navigate({ to: returnPath });
+			window.history.back();
 			return;
 		}
 		void navigate({

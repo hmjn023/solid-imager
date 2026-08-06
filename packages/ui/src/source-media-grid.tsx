@@ -2,6 +2,8 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
 	createVirtualizer,
 	createWindowVirtualizer,
+	type Range,
+	type Virtualizer,
 } from "@tanstack/solid-virtual";
 import type { Accessor, JSX, Setter } from "solid-js";
 import {
@@ -23,6 +25,7 @@ import {
 	ContextMenuSeparator,
 	ContextMenuTrigger,
 } from "./context-menu";
+import type { MediaGridImageLoadPolicy } from "./media-grid-item";
 import type { QueryUiState } from "./query-state";
 import {
 	getMediaGridColumnCount,
@@ -33,7 +36,32 @@ import {
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
-const VIRTUAL_ROWS_OVERSCAN = 4;
+const WINDOW_VIRTUAL_ROWS_OVERSCAN = 4;
+const ELEMENT_PREFETCH_ROWS = 3;
+const ELEMENT_RETAIN_ROWS = 4;
+// Start the next page before the user reaches the last prefetched rows. The
+// request itself is independent of image loading, so this does not increase
+// the number of mounted grid items.
+const LOAD_MORE_ROWS_AHEAD = 12;
+const INITIAL_PRIORITY_ROWS = 2;
+const INITIAL_HIGH_PRIORITY_MEDIA = 2;
+const INITIAL_SKELETON_ROWS = 3;
+
+type ScrollDirection = "backward" | "forward" | null;
+
+function extractDirectionalRows(
+	range: Range,
+	direction: ScrollDirection,
+): number[] {
+	const rowsBefore =
+		direction === "backward" ? ELEMENT_PREFETCH_ROWS : ELEMENT_RETAIN_ROWS;
+	const rowsAfter =
+		direction === "backward" ? ELEMENT_RETAIN_ROWS : ELEMENT_PREFETCH_ROWS;
+	const start = Math.max(range.startIndex - rowsBefore, 0);
+	const end = Math.min(range.endIndex + rowsAfter, range.count - 1);
+
+	return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+}
 
 type SourceMediaGridProps = {
 	detailBasePath?: string;
@@ -67,7 +95,9 @@ type SourceMediaGridProps = {
 	renderItem: (
 		media: Media,
 		options: {
+			imageLoadPolicy?: MediaGridImageLoadPolicy;
 			onContextMenu: () => void;
+			priority?: boolean;
 			isBulkSelectMode?: boolean;
 			isSelected?: boolean;
 			onPreviewSelect?: () => void;
@@ -109,6 +139,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		null,
 	);
 	const [scrollMargin, setScrollMargin] = createSignal(0);
+	const [elementLoadState, setElementLoadState] = createSignal<{
+		direction: ScrollDirection;
+		endIndex: number;
+		startIndex: number;
+	} | null>(null);
 	let mediaGridRef: HTMLDivElement | undefined;
 
 	const columnCount = createMemo(() => {
@@ -148,13 +183,16 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		estimateSize: () => mediaItemHeight() || 320,
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
-		overscan: VIRTUAL_ROWS_OVERSCAN,
+		overscan: WINDOW_VIRTUAL_ROWS_OVERSCAN,
 		get scrollMargin() {
 			return scrollMargin();
 		},
 	});
 
-	const elementRowVirtualizer = createVirtualizer<HTMLElement, HTMLDivElement>({
+	let elementRowVirtualizer:
+		| Virtualizer<HTMLElement, HTMLDivElement>
+		| undefined;
+	elementRowVirtualizer = createVirtualizer<HTMLElement, HTMLDivElement>({
 		get count() {
 			return rowCount();
 		},
@@ -162,14 +200,31 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		estimateSize: () => mediaItemHeight() || 320,
 		gap: GRID_GAP_PX,
 		getItemKey: (index) => index,
-		overscan: VIRTUAL_ROWS_OVERSCAN,
+		overscan: 0,
+		onChange: (instance) => {
+			const range = instance.range;
+			setElementLoadState(
+				range
+					? {
+							direction: instance.scrollDirection,
+							endIndex: range.endIndex,
+							startIndex: range.startIndex,
+						}
+					: null,
+			);
+		},
+		rangeExtractor: (range) =>
+			extractDirectionalRows(
+				range,
+				elementRowVirtualizer?.scrollDirection ?? null,
+			),
 		get scrollMargin() {
 			return scrollMargin();
 		},
 	});
 	const mediaRowVirtualizer = () =>
 		props.scrollMode === "element"
-			? elementRowVirtualizer
+			? (elementRowVirtualizer ?? windowRowVirtualizer)
 			: windowRowVirtualizer;
 
 	const shouldVirtualize = createMemo(
@@ -178,11 +233,83 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			props.mediaResults().length > VIRTUALIZATION_THRESHOLD &&
 			mediaItemWidth() > 0,
 	);
+	const virtualizationPending = createMemo(
+		() =>
+			enableVirtualization() &&
+			props.mediaResults().length > VIRTUALIZATION_THRESHOLD &&
+			mediaGridWidth() <= 0,
+	);
+	const initialPriorityMediaCount = createMemo(() =>
+		Math.max(columnCount() * INITIAL_PRIORITY_ROWS, 1),
+	);
+	const resolveElementImageLoadPolicy = (
+		rowIndex: number,
+		mediaIndex: number,
+	): MediaGridImageLoadPolicy => {
+		const state = elementLoadState();
+		if (!state) {
+			// A virtualizer can briefly have no measured range while its scroll
+			// container is being restored. Keep mounted rows loadable so a
+			// transient range reset does not blank the entire viewport.
+			return { enabled: true, loading: "eager" };
+		}
+
+		const isVisible =
+			rowIndex >= state.startIndex && rowIndex <= state.endIndex;
+		const isForwardPrefetch =
+			state.direction !== "backward" &&
+			rowIndex > state.endIndex &&
+			rowIndex <= state.endIndex + ELEMENT_PREFETCH_ROWS;
+		const isBackwardPrefetch =
+			state.direction === "backward" &&
+			rowIndex < state.startIndex &&
+			rowIndex >= state.startIndex - ELEMENT_PREFETCH_ROWS;
+		const isPrefetch = isForwardPrefetch || isBackwardPrefetch;
+
+		return {
+			// The element virtualizer already bounds the DOM to the visible range
+			// plus a small directional buffer. Keep every mounted row loadable:
+			// during navigation restoration the virtualizer can report the previous
+			// range for one frame, and disabling those rows leaves the viewport blank
+			// when the user scrolls again.
+			enabled: true,
+			fetchpriority:
+				isVisible && mediaIndex < INITIAL_HIGH_PRIORITY_MEDIA
+					? "high"
+					: isPrefetch
+						? "low"
+						: undefined,
+			loading: "eager",
+		};
+	};
+	const createElementImageLoadPolicy = (
+		rowIndex: number,
+		mediaIndex: number,
+	): MediaGridImageLoadPolicy => ({
+		get enabled() {
+			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).enabled;
+		},
+		get fetchpriority() {
+			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).fetchpriority;
+		},
+		get loading() {
+			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).loading;
+		},
+	});
+
+	const resolveScrollElement = () =>
+		props.scrollMode === "element"
+			? (mediaGridRef?.closest("[data-media-scroll]") as HTMLElement | null)
+			: null;
 
 	const updateMediaGridMetrics = () => {
 		if (!mediaGridRef) return;
 		setMediaGridWidth(mediaGridRef.getBoundingClientRect().width);
-		const scroller = scrollElement();
+		const resolvedScrollElement = resolveScrollElement();
+		if (resolvedScrollElement !== scrollElement()) {
+			setScrollElement(resolvedScrollElement);
+		}
+		const scroller = resolvedScrollElement;
 		setScrollMargin(
 			props.scrollMode === "element" && scroller
 				? mediaGridRef.getBoundingClientRect().top -
@@ -194,11 +321,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	onMount(() => {
 		setWindowWidth(window.innerWidth);
-		setScrollElement(
-			props.scrollMode === "element"
-				? (mediaGridRef?.closest("[data-media-scroll]") as HTMLElement | null)
-				: null,
-		);
+		setScrollElement(resolveScrollElement());
 		updateMediaGridMetrics();
 
 		const handleResize = () => {
@@ -224,7 +347,23 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		rowCount();
 		mediaItemHeight();
 		columnCount();
-		mediaRowVirtualizer().measure();
+		// The element virtualizer is created before the grid's mount callback
+		// discovers its nested scroller. Re-measure when that scroller or the
+		// content offset becomes available so the initial range is populated
+		// without requiring a user scroll event.
+		scrollElement();
+		scrollMargin();
+		const virtualizer = mediaRowVirtualizer();
+		virtualizer.measure();
+		const element = scrollElement();
+		if (props.scrollMode === "element" && element) {
+			// Element scroll containers do not consistently emit a native scroll
+			// event when their content is replaced or clamped. Window scrolling in
+			// the v1 screen gets that notification from the browser automatically.
+			// Dispatching lets the virtualizer read the element's current offset
+			// without imperatively writing a possibly stale offset back to it.
+			element.dispatchEvent(new Event("scroll"));
+		}
 	});
 
 	// Virtual scroll-based load more: trigger when user scrolls near the end
@@ -234,7 +373,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const handleScroll = () => {
 			if (!props.hasNextPage || props.isFetchingNextPage) return;
 			const lastItem = mediaRowVirtualizer().getVirtualItems().at(-1);
-			if (lastItem && lastItem.index >= totalRows - 2) {
+			if (lastItem && lastItem.index >= totalRows - LOAD_MORE_ROWS_AHEAD) {
 				props.onLoadMore?.();
 			}
 		};
@@ -269,25 +408,50 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		>
 			<Show
 				fallback={
-					<div class={mediaGridClassName} data-media-grid>
-						<For each={props.mediaResults()}>
-							{(media) =>
-								props.renderItem(media, {
-									onContextMenu: onContextMenuHandler(media.id),
-									get isBulkSelectMode() {
-										return props.isBulkSelectMode?.();
-									},
-									get isSelected() {
-										return props.isSelected?.(media.id);
-									},
-									onPreviewSelect: () => props.onPreviewSelect?.(media),
-									get isPreviewSelected() {
-										return props.previewSelectedMediaId?.() === media.id;
-									},
-								})
-							}
-						</For>
-					</div>
+					<Show
+						fallback={
+							<MediaGridSkeleton
+								aspectRatio={props.itemAspectRatio === 4 / 3 ? "4/3" : "3/4"}
+								count={columnCount() * INITIAL_SKELETON_ROWS}
+							/>
+						}
+						when={!virtualizationPending()}
+					>
+						<div class={mediaGridClassName} data-media-grid>
+							<For each={props.mediaResults()}>
+								{(media, index) =>
+									props.renderItem(media, {
+										imageLoadPolicy:
+											props.scrollMode === "element"
+												? {
+														enabled: true,
+														fetchpriority:
+															index() < INITIAL_HIGH_PRIORITY_MEDIA
+																? "high"
+																: undefined,
+														loading:
+															index() < initialPriorityMediaCount()
+																? "eager"
+																: "lazy",
+													}
+												: undefined,
+										onContextMenu: onContextMenuHandler(media.id),
+										priority: index() < initialPriorityMediaCount(),
+										get isBulkSelectMode() {
+											return props.isBulkSelectMode?.();
+										},
+										get isSelected() {
+											return props.isSelected?.(media.id);
+										},
+										onPreviewSelect: () => props.onPreviewSelect?.(media),
+										get isPreviewSelected() {
+											return props.previewSelectedMediaId?.() === media.id;
+										},
+									})
+								}
+							</For>
+						</div>
+					</Show>
 				}
 				when={shouldVirtualize()}
 			>
@@ -308,9 +472,22 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								}}
 							>
 								<For each={rowMedia()}>
-									{(media) =>
+									{(media, mediaIndexInRow) =>
 										props.renderItem(media, {
+											imageLoadPolicy:
+												props.scrollMode === "element"
+													? createElementImageLoadPolicy(
+															virtualRow.index,
+															virtualRow.index * columnCount() +
+																mediaIndexInRow(),
+														)
+													: undefined,
 											onContextMenu: onContextMenuHandler(media.id),
+											// Window virtualization keeps its established native lazy-loading
+											// behavior. Element mode supplies a separate direction-aware policy.
+											priority:
+												props.scrollMode !== "element" &&
+												virtualRow.index < INITIAL_PRIORITY_ROWS,
 											get isBulkSelectMode() {
 												return props.isBulkSelectMode?.();
 											},

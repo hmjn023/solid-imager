@@ -1,16 +1,35 @@
 import type { DeferredActions } from "@solid-imager/application/ports/media-service";
+import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import { services } from "~/application/registry";
-import type { Job as DbJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
 	processAutoTaggingJob,
 	processBulkTaggingDispatchJob,
 } from "~/infrastructure/jobs/tagging-jobs";
-import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
+export type ThumbnailJobHandlers = {
+	deleteThumbnail: (mediaSourceId: string, mediaId: string) => Promise<void>;
+	processThumbnailGenerationJob: (job: Job) => Promise<void>;
+};
+
+let thumbnailJobHandlers: ThumbnailJobHandlers | undefined;
+
+export function configureThumbnailJobHandlers(
+	handlers: ThumbnailJobHandlers,
+): void {
+	thumbnailJobHandlers = handlers;
+}
+
+function getThumbnailJobHandlers(): ThumbnailJobHandlers {
+	if (!thumbnailJobHandlers) {
+		throw new Error("Thumbnail job handlers have not been configured.");
+	}
+	return thumbnailJobHandlers;
+}
+
 // Helper for unified job processing (Called by JobWorker)
-export async function processJob(job: DbJob) {
+export async function processJob(job: Job) {
 	const mediaSourceId = job.mediaSourceId;
 	if (
 		!mediaSourceId &&
@@ -44,6 +63,8 @@ export async function processJob(job: DbJob) {
 			"~/infrastructure/jobs/ccip-jobs"
 		);
 		await processBatchCcipDispatchJob(job);
+	} else if (job.type === "generate_thumbnail") {
+		await getThumbnailJobHandlers().processThumbnailGenerationJob(job);
 	} else if (job.type === "sync_lancedb" || job.type === "sync_lancedb_full") {
 		if (!mediaSourceId) {
 			throw new Error(`Job ${job.id} missing mediaSourceId`);
@@ -157,6 +178,7 @@ export async function executeDeferredActions(actions: DeferredActions) {
 		}
 	}
 	if (actions.thumbnailsToDelete && actions.thumbnailsToDelete.length > 0) {
+		const { deleteThumbnail } = getThumbnailJobHandlers();
 		for (const thumb of actions.thumbnailsToDelete) {
 			try {
 				await deleteThumbnail(thumb.mediaSourceId, thumb.mediaId);

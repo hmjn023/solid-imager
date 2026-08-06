@@ -130,6 +130,13 @@ describe("useCurrentSearchPersistence", () => {
 		expect(searchState.selectedSource).toBe("source-1");
 	});
 
+	it("persists the initial state before the debounce expires", async () => {
+		mountPersistence("all");
+		await flushMicrotasks();
+
+		expect(sessionStorage.getItem("current-all")).toContain('"mode":"simple"');
+	});
+
 	it("restores the latest source when the source accessor changes", async () => {
 		const [sourceId, setSourceId] = createSignal("source-a");
 		sessionStorage.setItem(
@@ -183,6 +190,19 @@ describe("useCurrentSearchPersistence", () => {
 
 		expect(searchState.searchQuery).toBe("saved query");
 		expect(searchState.selectedSource).toBe("saved-source");
+	});
+
+	it("preserves the current scroll position while restoring search state", async () => {
+		setSearchState("scrollY", 1840);
+		sessionStorage.setItem(
+			"current-all",
+			JSON.stringify(createPersistedSimpleState("saved query")),
+		);
+
+		mountPersistence("all");
+		await flushMicrotasks();
+
+		expect(searchState.scrollY).toBe(1840);
 	});
 
 	it("does not inherit a source for legacy vector sessions", async () => {

@@ -5,6 +5,7 @@ import type {
 	NewJob,
 } from "@solid-imager/core/domain/repositories/job-repository";
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
+import { generateThumbnailJobPayloadSchema } from "@solid-imager/core/domain/thumbnails/schemas";
 import { isJobStatus } from "@solid-imager/core/utils/type-guards";
 import {
 	and,
@@ -68,6 +69,16 @@ export function createJobRepository(
 		},
 
 		async createIfUnique(job: NewJob): Promise<Job | null> {
+			if (job.type === "generate_thumbnail" && job.mediaSourceId) {
+				generateThumbnailJobPayloadSchema.parse(job.payload);
+				const [created] = await db()
+					.insert(jobs)
+					.values(job)
+					.onConflictDoNothing()
+					.returning();
+				return created ? mapJob(created) : null;
+			}
+
 			if (job.type === "sync_lancedb_delta" && job.mediaSourceId) {
 				const [pending] = await db()
 					.select()
@@ -341,7 +352,11 @@ export function createJobRepository(
 					and(
 						eq(jobs.status, "in_progress"),
 						lt(jobs.updatedAt, olderThan),
-						notInArray(jobs.type, ["batch_ccip_parent", "bulk_tagging_parent"]),
+						notInArray(jobs.type, [
+							"batch_ccip_parent",
+							"bulk_tagging_parent",
+							"thumbnail_generation_parent",
+						]),
 					),
 				)
 				.returning();

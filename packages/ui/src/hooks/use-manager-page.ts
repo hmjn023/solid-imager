@@ -27,6 +27,7 @@ export type ManagerEntityType =
 	| "characters"
 	| "tagging"
 	| "vectors"
+	| "thumbnails"
 	| "duplicates";
 export type ManagerEntity = Project | Ip | Character;
 
@@ -36,11 +37,13 @@ export type ManagerFormData = {
 	ipIds?: string[];
 };
 
-export type StartBatchTaggingResult = {
+export type StartBatchJobResult = {
 	success: boolean;
 	jobId?: string;
 	message: string;
 };
+
+export type StartBatchTaggingResult = StartBatchJobResult;
 
 export type ManagerPageQueries = {
 	projects: Accessor<Project[] | undefined>;
@@ -81,13 +84,16 @@ export type ManagerPageActions = {
 		force: boolean;
 		mediaSourceId?: string;
 	}) => Promise<StartBatchTaggingResult>;
+	startThumbnailWarmup: (input: {
+		mediaSourceId: string;
+		missingOnly: true;
+		size: 256;
+	}) => Promise<StartBatchJobResult>;
 	findDuplicateMedia: (
 		mediaSourceId?: string,
 	) => Promise<{ groups: DuplicateGroup[] }>;
 	bulkDeleteMedia: (sourceId: string, mediaIds: string[]) => Promise<unknown>;
-	invalidate: (
-		entityType: Exclude<ManagerEntityType, "tagging" | "vectors">,
-	) => void;
+	invalidate: (entityType: "projects" | "ips" | "characters") => void;
 };
 
 export type ManagerPageMutationActions = Omit<ManagerPageActions, "invalidate">;
@@ -173,6 +179,7 @@ export type UseManagerPageResult = {
 	handleScan: () => Promise<void>;
 	handleStartBatchTagging: () => Promise<void>;
 	handleStartBatchCcipExtraction: () => Promise<void>;
+	handleStartThumbnailWarmup: () => Promise<void>;
 	jobHandlers: ManagerJobHandlers;
 	// Duplicates tab
 	duplicateSourceId: Accessor<string | undefined>;
@@ -208,9 +215,13 @@ function resetForm(setFormData: Setter<ManagerFormData>) {
 
 function activeCrudTab(
 	activeTab: ManagerEntityType,
-): Exclude<ManagerEntityType, "tagging" | "vectors" | "duplicates"> | null {
+): Exclude<
+	ManagerEntityType,
+	"tagging" | "vectors" | "thumbnails" | "duplicates"
+> | null {
 	return activeTab === "tagging" ||
 		activeTab === "vectors" ||
+		activeTab === "thumbnails" ||
 		activeTab === "duplicates"
 		? null
 		: activeTab;
@@ -277,7 +288,7 @@ export function useManagerPage(
 
 	createEffect(() => {
 		const tab = activeTab();
-		if (tab !== "tagging" && tab !== "vectors") {
+		if (tab !== "tagging" && tab !== "vectors" && tab !== "thumbnails") {
 			return;
 		}
 
@@ -504,6 +515,40 @@ export function useManagerPage(
 				toast.error("Failed to start batch tagging.");
 				setTaggingStatus("Failed to start batch tagging.");
 			}
+		} catch (error) {
+			toast.error(`Error: ${getErrorMessage(error)}`);
+			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
+		}
+	};
+
+	const handleStartThumbnailWarmup = async () => {
+		const mediaSourceId = selectedSourceId();
+		if (!mediaSourceId) {
+			toast.error("Select a media source first.");
+			return;
+		}
+
+		try {
+			setTaggingStatus("Scanning for missing 256px thumbnails...");
+			setJobProgress(null);
+			const result = await actions.startThumbnailWarmup({
+				mediaSourceId,
+				missingOnly: true,
+				size: 256,
+			});
+			if (result.success && result.jobId) {
+				toast.success(result.message);
+				setTaggingStatus("Thumbnail warmup in progress...");
+				setActiveJobId(result.jobId);
+				return;
+			}
+			if (result.success) {
+				toast.success(result.message);
+				setTaggingStatus(result.message);
+				return;
+			}
+			toast.error(result.message || "Failed to start thumbnail warmup.");
+			setTaggingStatus(result.message || "Failed to start thumbnail warmup.");
 		} catch (error) {
 			toast.error(`Error: ${getErrorMessage(error)}`);
 			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
@@ -748,6 +793,7 @@ export function useManagerPage(
 		handleScan,
 		handleStartBatchTagging,
 		handleStartBatchCcipExtraction,
+		handleStartThumbnailWarmup,
 		jobHandlers,
 		// Duplicates
 		duplicateSourceId,

@@ -9,7 +9,12 @@ import type {
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
+import {
+	createInfiniteQuery,
+	createQuery,
+	type InfiniteData,
+	useQueryClient,
+} from "@tanstack/solid-query";
 import {
 	type Accessor,
 	createEffect,
@@ -20,7 +25,7 @@ import {
 import { isServer } from "solid-js/web";
 import { buildSearchResultsQueryOptions } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
-import { currentScrollPosition, scrollToPosition } from "./scroll-container";
+import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
 const DEFAULT_REFRESH_DEBOUNCE_MS = 0;
@@ -85,6 +90,9 @@ export interface UseSearchPageResult {
 		typeof createInfiniteQuery<MediaSearchResponse>
 	>;
 	searchResults: () => MediaSearchResponse["media"];
+	hasData: () => boolean;
+	totalCount: () => number | undefined;
+	fetchNextPage: () => Promise<unknown>;
 	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
 	filterStates: {
 		tags: () => QueryUiState<TagResponse[]>;
@@ -127,6 +135,13 @@ export function useSearchPage(
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored = () => true,
 	} = options;
+	const queryClient = useQueryClient();
+	const tagsQueryKey = queries.tags().queryKey;
+	const sourcesQueryKey = queries.sources().queryKey;
+	const projectsQueryKey = queries.projects().queryKey;
+	const ipsQueryKey = queries.ips().queryKey;
+	const charactersQueryKey = queries.characters().queryKey;
+	const authorsQueryKey = queries.authors().queryKey;
 
 	const tags = createQuery<TagResponse[]>(() => ({
 		...queries.tags(),
@@ -152,13 +167,52 @@ export function useSearchPage(
 		...queries.authors(),
 		enabled: !isServer,
 	}));
+	const [tagsData, setTagsData] = createSignal<TagResponse[] | undefined>();
+	const [sourcesData, setSourcesData] = createSignal<
+		SafeMediaSource[] | undefined
+	>();
+	const [projectsData, setProjectsData] = createSignal<Project[] | undefined>();
+	const [ipsData, setIpsData] = createSignal<Ip[] | undefined>();
+	const [charactersData, setCharactersData] = createSignal<
+		Character[] | undefined
+	>();
+	const [authorsData, setAuthorsData] = createSignal<Author[] | undefined>();
+
+	createEffect(() => {
+		tags.dataUpdatedAt;
+		setTagsData(queryClient.getQueryData<TagResponse[]>(tagsQueryKey));
+	});
+	createEffect(() => {
+		sources.dataUpdatedAt;
+		setSourcesData(
+			queryClient.getQueryData<SafeMediaSource[]>(sourcesQueryKey),
+		);
+	});
+	createEffect(() => {
+		allProjects.dataUpdatedAt;
+		setProjectsData(queryClient.getQueryData<Project[]>(projectsQueryKey));
+	});
+	createEffect(() => {
+		allIps.dataUpdatedAt;
+		setIpsData(queryClient.getQueryData<Ip[]>(ipsQueryKey));
+	});
+	createEffect(() => {
+		allCharacters.dataUpdatedAt;
+		setCharactersData(
+			queryClient.getQueryData<Character[]>(charactersQueryKey),
+		);
+	});
+	createEffect(() => {
+		allAuthors.dataUpdatedAt;
+		setAuthorsData(queryClient.getQueryData<Author[]>(authorsQueryKey));
+	});
 
 	const conditionKey = createMemo(() =>
 		JSON.stringify(getSearchCondition() ?? null),
 	);
 
-	const searchResultQuery = createInfiniteQuery(() =>
-		buildSearchResultsQueryOptions({
+	const searchResultQueryOptions = createMemo(() => {
+		return buildSearchResultsQueryOptions({
 			mode: mode(),
 			sourceId: selectedSource() || undefined,
 			condition: getSearchCondition(),
@@ -172,12 +226,36 @@ export function useSearchPage(
 			searchSimilar: options.searchSimilar,
 			enabled: !isServer && isSearchStateRestored(),
 			gcTime,
-		}),
-	);
+		});
+	});
+	const searchResultQuery = createInfiniteQuery(searchResultQueryOptions);
+	const fetchNextPage = () =>
+		isSearchStateRestored()
+			? searchResultQuery.fetchNextPage()
+			: Promise.resolve();
+	const [searchResultData, setSearchResultData] = createSignal<
+		InfiniteData<MediaSearchResponse> | undefined
+	>();
+
+	createEffect(() => {
+		// Solid Query exposes `data` as a resource-backed accessor. During an
+		// infinite-page fetch it can suspend even when previous pages are cached;
+		// keep the rendered result in a regular signal so the collection DOM stays
+		// mounted while the next page is loading.
+		const queryKey = searchResultQueryOptions().queryKey;
+		searchResultQuery.dataUpdatedAt;
+		const cachedData =
+			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
+		if (cachedData !== undefined) {
+			setSearchResultData(cachedData);
+		} else if (!searchResultQuery.isPlaceholderData) {
+			setSearchResultData(undefined);
+		}
+	});
 
 	const searchResults = createMemo(() => {
 		const seen = new Set<string>();
-		return (searchResultQuery.data?.pages.flatMap((p) => p.media) || []).filter(
+		return (searchResultData()?.pages.flatMap((p) => p.media) || []).filter(
 			(m) => {
 				if (seen.has(m.id)) {
 					return false;
@@ -190,19 +268,31 @@ export function useSearchPage(
 	const contentState = () =>
 		toQueryUiState(
 			{
-				data: searchResultQuery.data ? searchResults() : undefined,
+				data: searchResultData() ? searchResults() : undefined,
 				error: searchResultQuery.error,
 				status: searchResultQuery.status,
 				fetchStatus: searchResultQuery.fetchStatus,
 			},
 			{ isEmpty: (data) => data.length === 0 },
 		);
-	const arrayState = <T>(query: {
-		data: T[] | undefined;
-		error: unknown;
-		status: "pending" | "error" | "success";
-		fetchStatus: "idle" | "fetching" | "paused";
-	}) => toQueryUiState(query, { isEmpty: (data) => data.length === 0 });
+	const arrayState = <T>(
+		query: {
+			data: T[] | undefined;
+			error: unknown;
+			status: "pending" | "error" | "success";
+			fetchStatus: "idle" | "fetching" | "paused";
+		},
+		data: () => T[] | undefined,
+	) =>
+		toQueryUiState(
+			{
+				data: data(),
+				error: query.error,
+				status: query.status,
+				fetchStatus: query.fetchStatus,
+			},
+			{ isEmpty: (items) => items.length === 0 },
+		);
 	const retryFilters = async () => {
 		await Promise.all([
 			tags.refetch(),
@@ -215,7 +305,7 @@ export function useSearchPage(
 	};
 
 	const getSourceRootPath = (mediaSourceId: string) => {
-		const source = sources.data?.find((item) => item.id === mediaSourceId);
+		const source = sourcesData()?.find((item) => item.id === mediaSourceId);
 		if (source?.type !== "local") {
 			return undefined;
 		}
@@ -247,27 +337,24 @@ export function useSearchPage(
 		);
 	};
 
-	const [isRestored, setIsRestored] = createSignal(false);
-	createEffect(() => {
-		if (
-			!(searchResultQuery.isLoading || isRestored()) &&
-			searchResultQuery.data &&
-			searchResultQuery.data.pages.length > 0
-		) {
-			if (scrollY() > 0) {
-				requestAnimationFrame(() => {
-					scrollToPosition(options.scrollContainerSelector, scrollY());
-				});
-			}
-			setIsRestored(true);
-		}
+	const isRestored = useScrollRestoration({
+		restoreKey: () => "search",
+		getPosition: () => scrollY(),
+		setPosition: (key, position) => {
+			void key;
+			setScrollY(position);
+		},
+		isReady: () =>
+			isSearchStateRestored() &&
+			Boolean(searchResultData()) &&
+			!searchResultQuery.isLoading,
+		hasNextPage: () => searchResultQuery.hasNextPage,
+		isFetchingNextPage: () => searchResultQuery.isFetchingNextPage,
+		fetchNextPage,
+		scrollContainerSelector: options.scrollContainerSelector,
 	});
 
 	onCleanup(() => {
-		if (!isServer) {
-			const position = currentScrollPosition(options.scrollContainerSelector);
-			if (position !== null) setScrollY(position);
-		}
 		const timer = refreshTimer();
 		if (timer) {
 			clearTimeout(timer);
@@ -292,17 +379,17 @@ export function useSearchPage(
 		const hasNextPage = searchResultQuery.hasNextPage;
 		const isFetching = searchResultQuery.isFetching;
 
-		if (!hasNextPage || isFetching) {
+		if (!isSearchStateRestored() || !hasNextPage || isFetching) {
 			return;
 		}
 
 		const observer = new IntersectionObserver(
 			(entries) => {
-				if (entries[0].isIntersecting) {
-					searchResultQuery.fetchNextPage();
+				if (entries[0].isIntersecting && isSearchStateRestored()) {
+					fetchNextPage();
 				}
 			},
-			{ threshold: 0.5, rootMargin: "1000px" },
+			{ threshold: 0.5, rootMargin: "2400px" },
 		);
 		observer.observe(el);
 		onCleanup(() => observer.disconnect());
@@ -311,33 +398,36 @@ export function useSearchPage(
 	return {
 		searchResultQuery,
 		searchResults,
+		hasData: () => searchResultData() !== undefined,
+		totalCount: () => searchResultData()?.pages[0]?.total,
+		fetchNextPage,
 		contentState,
 		filterStates: {
-			tags: () => arrayState(tags),
-			sources: () => arrayState(sources),
-			projects: () => arrayState(allProjects),
-			ips: () => arrayState(allIps),
-			characters: () => arrayState(allCharacters),
-			authors: () => arrayState(allAuthors),
+			tags: () => arrayState(tags, tagsData),
+			sources: () => arrayState(sources, sourcesData),
+			projects: () => arrayState(allProjects, projectsData),
+			ips: () => arrayState(allIps, ipsData),
+			characters: () => arrayState(allCharacters, charactersData),
+			authors: () => arrayState(allAuthors, authorsData),
 		},
 		filterData: {
 			get tags() {
-				return tags.data;
+				return tagsData();
 			},
 			get projects() {
-				return allProjects.data;
+				return projectsData();
 			},
 			get ips() {
-				return allIps.data;
+				return ipsData();
 			},
 			get characters() {
-				return allCharacters.data;
+				return charactersData();
 			},
 			get authors() {
-				return allAuthors.data;
+				return authorsData();
 			},
 		},
-		sources: () => sources.data,
+		sources: sourcesData,
 		getSourceRootPath,
 		isRestored,
 		handleSearch,

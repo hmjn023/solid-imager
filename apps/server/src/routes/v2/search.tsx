@@ -30,9 +30,12 @@ import {
 } from "~/presentation/store/search-store";
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
+const V2_SEARCH_RESULTS_PER_PAGE = 200;
 const PresetClient = createPresetClient(rawPresetClient);
 
 export const Route = createFileRoute("/v2/search")({
+	ssr: false,
+	pendingComponent: () => null,
 	component: V2SearchRoute,
 });
 
@@ -55,7 +58,9 @@ function V2SearchRoute() {
 		getSearchCondition,
 		sortBy: () => searchState.sortBy,
 		sortOrder: () => searchState.sortOrder,
-		limit: () => searchState.limit,
+		// V2 can display up to eight columns. Fetch enough complete rows per page
+		// so scrolling does not stop for another request every two or three rows.
+		limit: () => Math.max(searchState.limit, V2_SEARCH_RESULTS_PER_PAGE),
 		scrollY: () => searchState.scrollY,
 		setScrollY: (value) => setSearchState("scrollY", value),
 		setOffset: (value) => setSearchState("offset", value),
@@ -64,7 +69,7 @@ function V2SearchRoute() {
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored,
-		scrollContainerSelector: "[data-media-scroll]",
+		scrollContainerSelector: '[data-media-scroll="v2-search"]',
 	});
 
 	useMediaSourceEvents(() => searchState.selectedSource || "*", {
@@ -85,9 +90,11 @@ function V2SearchRoute() {
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
 				<MediaGridItem
+					imageLoadPolicy={options?.imageLoadPolicy}
 					isSelected={options?.isPreviewSelected}
 					media={media}
 					onPreviewSelect={options?.onPreviewSelect}
+					priority={options?.priority}
 					routeVersion="v2"
 				/>
 			)}
@@ -108,10 +115,12 @@ function V2SearchRoute() {
 					height={media.height}
 					loading="eager"
 					media={media}
+					requestedSize={512}
 					width={media.width}
 				/>
 			)}
 			selectedSource={searchState.selectedSource}
+			ssrGuard
 			sources={page.sources()}
 			variant="v2"
 		/>

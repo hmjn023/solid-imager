@@ -48,6 +48,7 @@ export class JobWorker {
 	private aiConcurrency = 1;
 	private activeJobs = 0;
 	private activeAiJobs = 0;
+	private activeThumbnailJobs = 0;
 	private readonly activeLanceDbSyncKeys = new Set<string>();
 
 	private readonly jobRepo: IJobRepository;
@@ -57,6 +58,7 @@ export class JobWorker {
 		"auto_tagging",
 		"extract_ccip_vector",
 	]);
+	private readonly thumbnailJobTypes = new Set(["generate_thumbnail"]);
 
 	constructor(
 		jobRepo: IJobRepository,
@@ -138,14 +140,26 @@ export class JobWorker {
 				}
 			}
 
-			// 2. Poll Other Jobs
+			// 2. Keep thumbnail warming in its own single-worker pool. A burst of
+			// cache misses must not consume the general job concurrency.
+			if (this.activeThumbnailJobs < 1) {
+				const jobs = await this.jobRepo.claimPending(1, {
+					includeTypes: Array.from(this.thumbnailJobTypes),
+				});
+				for (const job of jobs) {
+					void this.tryProcessJob(job);
+				}
+			}
+
+			// 3. Poll Other Jobs
 			// "concurrency" is treated as the limit for NON-AI jobs in this independent pool model
-			const activeOtherJobs = this.activeJobs - this.activeAiJobs;
+			const activeOtherJobs =
+				this.activeJobs - this.activeAiJobs - this.activeThumbnailJobs;
 			if (activeOtherJobs < this.concurrency) {
 				const slots = this.concurrency - activeOtherJobs;
 				if (slots > 0) {
 					const jobs = await this.jobRepo.claimPending(slots, {
-						excludeTypes: Array.from(this.aiJobTypes),
+						excludeTypes: [...this.aiJobTypes, ...this.thumbnailJobTypes],
 						excludeLanceDbSourceIds: Array.from(this.activeLanceDbSyncKeys),
 					});
 					for (const job of jobs) {
@@ -189,9 +203,13 @@ export class JobWorker {
 	private async processJob(job: Job, lanceDbSyncKey?: string) {
 		this.activeJobs++;
 		const isAiJob = this.aiJobTypes.has(job.type);
+		const isThumbnailJob = this.thumbnailJobTypes.has(job.type);
 		const startedAt = Date.now();
 		if (isAiJob) {
 			this.activeAiJobs++;
+		}
+		if (isThumbnailJob) {
+			this.activeThumbnailJobs++;
 		}
 
 		logger.info(
@@ -238,6 +256,9 @@ export class JobWorker {
 			this.activeJobs--;
 			if (isAiJob) {
 				this.activeAiJobs--;
+			}
+			if (isThumbnailJob) {
+				this.activeThumbnailJobs--;
 			}
 			if (lanceDbSyncKey) {
 				this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);

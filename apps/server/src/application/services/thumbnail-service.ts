@@ -1,3 +1,4 @@
+import type { ThumbnailSize } from "@solid-imager/core/domain/thumbnails/schemas";
 import { services } from "~/application/registry";
 import {
 	generateThumbnailsForSource,
@@ -10,7 +11,7 @@ export const ThumbnailService = {
 	getMediaThumbnailUrl(
 		mediaSourceId: string,
 		mediaId: string,
-		size?: number,
+		size?: ThumbnailSize,
 	): string {
 		let url = `/api/sources/${mediaSourceId}/thumbnail/${mediaId}`;
 		if (size) {
@@ -19,9 +20,20 @@ export const ThumbnailService = {
 		return url;
 	},
 
-	async startThumbnailGeneration(mediaSourceId: string) {
-		const count = await generateThumbnailsForSource(mediaSourceId);
-		return { success: true, count };
+	async startThumbnailGeneration(
+		mediaSourceId: string,
+		options: { size: ThumbnailSize; missingOnly: boolean },
+	) {
+		const result = await generateThumbnailsForSource(mediaSourceId, options);
+		return {
+			success: true,
+			count: result.count,
+			jobId: result.jobId,
+			message:
+				result.count > 0
+					? `Queued ${result.count} thumbnail job(s)`
+					: "No thumbnails need generation",
+		};
 	},
 
 	async clearThumbnailCache(mediaSourceId: string) {

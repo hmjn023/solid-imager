@@ -17,6 +17,7 @@ import type {
 	UploadOptions,
 	UseSourceMediaPageResult,
 } from "../hooks/use-source-media-page";
+import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
@@ -33,7 +34,9 @@ export type SourceMediaScreenProps = {
 	renderItem: (
 		media: Media,
 		options: {
+			imageLoadPolicy?: MediaGridImageLoadPolicy;
 			onContextMenu: () => void;
+			priority?: boolean;
 			isBulkSelectMode?: boolean;
 			isSelected?: boolean;
 			onPreviewSelect?: () => void;
@@ -123,9 +126,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					<h1 class="min-w-0 break-words font-bold text-xl sm:text-2xl">
 						{props.mediaSourceName?.() ?? "メディア一覧"}
 					</h1>
-					<Show when={page().mediaQuery.data?.pages[0]?.total !== undefined}>
+					<Show when={page().totalCount() !== undefined}>
 						<p class="shrink-0 text-gray-600 text-sm">
-							{page().mediaQuery.data?.pages[0]?.total} 件の結果
+							{page().totalCount()} 件の結果
 						</p>
 					</Show>
 				</div>
@@ -141,9 +144,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					</Show>
 					<Button
 						class="w-full sm:w-auto"
-						disabled={
-							page().isSyncingMedia() || !page().mediaQuery.data?.pages.length
-						}
+						disabled={page().isSyncingMedia() || !page().hasData()}
 						onClick={page().handleSyncLoadedMedia}
 						variant="outline"
 					>
@@ -223,7 +224,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							showOpenInNewTab={props.showOpenInNewTab}
 							showResultCount={false}
 							state={page().contentState}
-							totalCount={page().mediaQuery.data?.pages[0]?.total}
+							totalCount={page().totalCount()}
 						/>
 					</Show>
 				</div>

@@ -32,7 +32,7 @@ type SharedSourceTransport = {
 	idleSince: number | null;
 };
 
-const SOURCE_TRANSPORT_IDLE_TIMEOUT_MS = 30_000;
+const SOURCE_TRANSPORT_IDLE_TIMEOUT_MS = 0;
 const MAX_IDLE_SOURCE_TRANSPORTS = 2;
 
 type SourceTransportGlobal = typeof globalThis & {
@@ -79,11 +79,17 @@ export function createServerTransport(
 		if (!id) {
 			return false;
 		}
+		if (id === "*" && (pathname === "/search" || pathname.startsWith("/v2/"))) {
+			return true;
+		}
 		if (id === "*") {
-			return pathname === "/search";
+			return false;
 		}
 		return (
-			pathname === `/sources/${id}` || pathname.startsWith(`/sources/${id}/`)
+			pathname === `/sources/${id}` ||
+			pathname.startsWith(`/sources/${id}/`) ||
+			pathname === `/v2/sources/${id}` ||
+			pathname.startsWith(`/v2/sources/${id}/`)
 		);
 	};
 

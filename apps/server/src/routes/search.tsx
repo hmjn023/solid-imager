@@ -119,7 +119,13 @@ function SearchRoute() {
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
 			page={page}
 			presetClient={PresetClient}
-			renderMediaItem={(media) => <MediaGridItem media={media} />}
+			renderMediaItem={(media, options) => (
+				<MediaGridItem
+					imageLoadPolicy={options?.imageLoadPolicy}
+					media={media}
+					priority={options?.priority}
+				/>
+			)}
 			renderNavActions={({ openMobileFilters }) => (
 				<Button
 					class="size-11 border-input text-foreground hover:bg-accent md:hidden"

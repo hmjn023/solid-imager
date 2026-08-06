@@ -42,6 +42,7 @@ import {
 	importSourceNdjson,
 	importSourceZip,
 } from "~/infrastructure/api-clients/sources-api";
+import { startThumbnailGeneration } from "~/infrastructure/api-clients/thumbnails";
 
 const managerQueryOptions = {
 	projects: allProjectsQueryOptions,
@@ -66,6 +67,15 @@ const managerActions = {
 	startBatchCcipExtraction,
 	findDuplicateMedia,
 	bulkDeleteMedia,
+	startThumbnailWarmup: (input: {
+		mediaSourceId: string;
+		missingOnly: true;
+		size: 256;
+	}) =>
+		startThumbnailGeneration(input.mediaSourceId, {
+			missingOnly: input.missingOnly,
+			size: input.size,
+		}),
 };
 
 function downloadBlob(blob: Blob, fileName: string): void {

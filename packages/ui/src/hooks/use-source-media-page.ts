@@ -36,12 +36,11 @@ import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
 import { getRestoreImportStrategies } from "./restore-import";
-import { currentScrollPosition, scrollToPosition } from "./scroll-container";
+import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
 export const SOURCE_MEDIA_ITEMS_PER_PAGE = 200;
-const SCROLL_RESTORE_DELAY = 100;
 const DEBOUNCE_DELAY_MS = 1000;
 const MEDIA_REFRESH_DEBOUNCE_MS = 300;
 
@@ -178,6 +177,8 @@ export type UseSourceMediaPageResult = {
 	mediaSourceId: () => string | undefined;
 	mediaQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
 	mediaResults: () => MediaSearchResponse["media"];
+	hasData: () => boolean;
+	totalCount: () => number | undefined;
 	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
 	filterData: () => SourceMediaPageFilterData;
 	filterStates: () => SourceMediaPageQueryStates;
@@ -256,7 +257,7 @@ export function useSourceMediaPage(
 		JSON.stringify(getSearchCondition() ?? null),
 	);
 
-	const mediaQuery = createInfiniteQuery(() =>
+	const mediaQueryOptions = createMemo(() =>
 		buildSourceMediaResultsQueryOptions({
 			sourceId: id(),
 			condition: getSearchCondition(),
@@ -268,11 +269,29 @@ export function useSourceMediaPage(
 			enabled: !isServer && isSearchStateRestored() && !!id(),
 		}),
 	);
+	const mediaQuery = createInfiniteQuery(mediaQueryOptions);
+	const [mediaQueryData, setMediaQueryData] = createSignal<
+		InfiniteData<MediaSearchResponse> | undefined
+	>();
+
+	createEffect(() => {
+		// Keep paginated results outside Solid Query's resource-backed `data`
+		// accessor. A page fetch must not suspend and remount the media grid.
+		const queryKey = mediaQueryOptions().queryKey;
+		void mediaQuery.dataUpdatedAt;
+		const cachedData =
+			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
+		if (cachedData !== undefined) {
+			setMediaQueryData(cachedData);
+		} else if (!mediaQuery.isPlaceholderData) {
+			setMediaQueryData(undefined);
+		}
+	});
 
 	// --- Deduplicated results ---
 	const mediaResults = createMemo(() => {
 		const seen = new Set<string>();
-		return (mediaQuery.data?.pages.flatMap((page) => page.media) || []).filter(
+		return (mediaQueryData()?.pages.flatMap((page) => page.media) || []).filter(
 			(media) => {
 				if (seen.has(media.id)) {
 					return false;
@@ -285,7 +304,7 @@ export function useSourceMediaPage(
 	const contentState = () =>
 		toQueryUiState(
 			{
-				data: mediaQuery.data ? mediaResults() : undefined,
+				data: mediaQueryData() ? mediaResults() : undefined,
 				error: mediaQuery.error,
 				status: mediaQuery.status,
 				fetchStatus: mediaQuery.fetchStatus,
@@ -295,55 +314,21 @@ export function useSourceMediaPage(
 
 	// --- Search handler ---
 	const handleSearch = () => {
+		const sourceId = id();
+		if (sourceId) setScrollPosition(sourceId, 0);
 		scrollToPosition(options.scrollContainerSelector, 0);
 	};
 
 	// --- Scroll restoration ---
-	const [isScrollRestored, setIsScrollRestored] = createSignal(false);
-
-	onMount(() => {
-		if ("scrollRestoration" in history) {
-			history.scrollRestoration = "manual";
-		}
-	});
-
-	createEffect(() => {
-		if (isServer) {
-			return;
-		}
-		if (isScrollRestored()) {
-			return;
-		}
-
-		const sourceId = id();
-		if (!sourceId) {
-			return;
-		}
-
-		if (mediaQuery.data && !mediaQuery.isLoading) {
-			const targetScrollY = getScrollPosition(sourceId);
-			if (targetScrollY > 0) {
-				setTimeout(() => {
-					requestAnimationFrame(() => {
-						scrollToPosition(options.scrollContainerSelector, targetScrollY);
-						setIsScrollRestored(true);
-					});
-				}, SCROLL_RESTORE_DELAY);
-			} else {
-				setIsScrollRestored(true);
-			}
-		}
-	});
-
-	onCleanup(() => {
-		if (isServer) {
-			return;
-		}
-		const sourceId = id();
-		if (sourceId) {
-			const position = currentScrollPosition(options.scrollContainerSelector);
-			if (position !== null) setScrollPosition(sourceId, position);
-		}
+	useScrollRestoration({
+		restoreKey: id,
+		getPosition: (sourceId) => getScrollPosition(sourceId),
+		setPosition: (sourceId, position) => setScrollPosition(sourceId, position),
+		isReady: () => Boolean(mediaQueryData()) && !mediaQuery.isLoading,
+		hasNextPage: () => mediaQuery.hasNextPage,
+		isFetchingNextPage: () => mediaQuery.isFetchingNextPage,
+		fetchNextPage: () => mediaQuery.fetchNextPage(),
+		scrollContainerSelector: options.scrollContainerSelector,
 	});
 
 	// --- Infinite scroll ---
@@ -367,7 +352,7 @@ export function useSourceMediaPage(
 						mediaQuery.fetchNextPage();
 					}
 				},
-				{ threshold: 0.5, rootMargin: "1000px" },
+				{ threshold: 0.5, rootMargin: "2400px" },
 			);
 
 			observer.observe(el);
@@ -943,7 +928,7 @@ export function useSourceMediaPage(
 	};
 
 	const handleSyncLoadedMedia = async () => {
-		const allPages = mediaQuery.data?.pages;
+		const allPages = mediaQueryData()?.pages;
 		if (!allPages || isSyncingMedia()) {
 			return;
 		}
@@ -981,6 +966,8 @@ export function useSourceMediaPage(
 		mediaSourceId: id,
 		mediaQuery,
 		mediaResults,
+		hasData: () => mediaQueryData() !== undefined,
+		totalCount: () => mediaQueryData()?.pages[0]?.total,
 		contentState,
 		filterData,
 		filterStates: queryStates,

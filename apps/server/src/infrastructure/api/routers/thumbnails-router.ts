@@ -1,4 +1,8 @@
 import { os } from "@orpc/server";
+import {
+	generateThumbnailsRequestSchema,
+	generateThumbnailsResponseSchema,
+} from "@solid-imager/core/domain/thumbnails/schemas";
 import { z } from "zod";
 import { ThumbnailService } from "~/application/services/thumbnail-service";
 
@@ -10,10 +14,14 @@ export const thumbnailsRouter = {
 	 * Generates thumbnails for all media in a source
 	 */
 	generate: os
-		.input(z.object({ sourceId: z.string().uuid() }))
+		.input(generateThumbnailsRequestSchema)
+		.output(generateThumbnailsResponseSchema)
 		.handler(
 			async ({ input }) =>
-				await ThumbnailService.startThumbnailGeneration(input.sourceId),
+				await ThumbnailService.startThumbnailGeneration(input.sourceId, {
+					size: input.size,
+					missingOnly: input.missingOnly,
+				}),
 		),
 
 	/**
