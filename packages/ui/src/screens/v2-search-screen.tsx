@@ -37,7 +37,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 			<V2SearchToolbar
 				context="global"
 				filterData={props.filterData}
-				itemCount={page().searchResultQuery.data?.pages[0]?.total}
+				itemCount={page().totalCount()}
 				onSearch={page().handleSearch}
 				onSelectSource={props.onSelectSource}
 				presetClient={props.presetClient}
@@ -45,32 +45,35 @@ export function V2SearchScreen(props: SearchScreenProps) {
 				sourceName={sourceName()}
 				sources={props.sources}
 			/>
+			<div class="shrink-0 px-3 pt-3 sm:px-4">
+				<Show
+					when={filterStates().some(
+						(state) => state.phase === "error" || state.phase === "offline",
+					)}
+				>
+					<FilterErrorBanner
+						class="mb-2"
+						message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
+						onRetry={page().retryFilters}
+					/>
+				</Show>
+				<div class="h-8">
+					<QueryStatus
+						fetchState={page().contentState().fetchState}
+						hasData={page().contentState().data !== undefined}
+						hideWhenIdle
+						offlineLabel="オフラインのため保存済みの検索結果を表示しています"
+						updatingLabel="検索結果を更新中..."
+					/>
+				</div>
+			</div>
 
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
-				data-media-scroll
+				data-media-scroll="v2-search"
 			>
 				<div class="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4">
 					<div class="min-w-0">
-						<Show
-							when={filterStates().some(
-								(state) => state.phase === "error" || state.phase === "offline",
-							)}
-						>
-							<FilterErrorBanner
-								class="mb-3"
-								message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
-								onRetry={page().retryFilters}
-							/>
-						</Show>
-						<QueryStatus
-							class="mb-2"
-							fetchState={page().contentState().fetchState}
-							hasData={page().contentState().data !== undefined}
-							hideWhenIdle
-							offlineLabel="オフラインのため保存済みの検索結果を表示しています"
-							updatingLabel="検索結果を更新中..."
-						/>
 						<Show
 							fallback={
 								<LoadingRegion label="検索結果を読み込んでいます...">
@@ -89,7 +92,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 								itemAspectRatio={4 / 3}
 								mediaResults={page().searchResults}
 								mediaSourceId={() => undefined}
-								onLoadMore={() => page().searchResultQuery.fetchNextPage()}
+								onLoadMore={page().fetchNextPage}
 								onRetry={async () => {
 									await page().searchResultQuery.refetch();
 								}}
@@ -103,7 +106,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 								showResultCount={false}
 								scrollMode="element"
 								state={page().contentState}
-								totalCount={page().searchResultQuery.data?.pages[0]?.total}
+								totalCount={page().totalCount()}
 							/>
 						</Show>
 					</div>

@@ -47,9 +47,10 @@ function applyPreset(
 	if (!shouldApply()) {
 		return;
 	}
+	const preservedScrollY = searchState.scrollY;
 	resetSearchState();
 	loadPreset(preset);
-	setSearchState("selectedSource", selectedSource);
+	setSearchState({ selectedSource, scrollY: preservedScrollY });
 	if (clearActivePreset) {
 		setSearchState("activePresetId", null);
 	}
@@ -102,6 +103,7 @@ function restoreCurrentSearchState(
 		if (!shouldApply()) {
 			return;
 		}
+		const preservedScrollY = searchState.scrollY;
 		const selectedSource =
 			typeof current.selectedSource === "string" ? current.selectedSource : "";
 		resetSearchState();
@@ -116,6 +118,7 @@ function restoreCurrentSearchState(
 				current.similarityTopK === 20 || current.similarityTopK === 100
 					? current.similarityTopK
 					: 50,
+			scrollY: preservedScrollY,
 		});
 		return;
 	}
@@ -149,6 +152,7 @@ export function useCurrentSearchPersistence(
 	const [isRestored, setIsRestored] = createSignal(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let restoreVersion = 0;
+	let lastPersistedPresetName: string | null = null;
 
 	const getSourceId = () =>
 		typeof sourceId === "function" ? sourceId() : sourceId;
@@ -206,28 +210,37 @@ export function useCurrentSearchPersistence(
 			return;
 		}
 
-		const condition = getSearchCondition() || {
-			type: "group" as const,
-			operator: "and" as const,
-			children: [],
-		};
-		const presetData = {
-			value: condition,
-			selectedSource: searchState.selectedSource,
-			sort: searchState.sortBy,
-			order: searchState.sortOrder,
-			mode: searchState.mode,
-			similarityAnchorMediaId: searchState.similarityAnchorMediaId,
-			similarityTopK: searchState.similarityTopK,
-		};
-
-		debounceTimer = setTimeout(() => {
+		const persistCurrentState = () => {
+			const condition = getSearchCondition() || {
+				type: "group" as const,
+				operator: "and" as const,
+				children: [],
+			};
+			const presetData = {
+				value: condition,
+				selectedSource: searchState.selectedSource,
+				sort: searchState.sortBy,
+				order: searchState.sortOrder,
+				mode: searchState.mode,
+				similarityAnchorMediaId: searchState.similarityAnchorMediaId,
+				similarityTopK: searchState.similarityTopK,
+			};
 			try {
 				sessionStorage.setItem(presetName, JSON.stringify(presetData));
+				lastPersistedPresetName = presetName;
 			} catch {
 				// Persistence errors must not disrupt the UI.
 			}
-		}, DEBOUNCE_MS);
+		};
+
+		// Persist the initial state synchronously so navigating to a media detail
+		// before the debounce expires cannot reset the list on return.
+		if (lastPersistedPresetName !== presetName) {
+			persistCurrentState();
+			return;
+		}
+
+		debounceTimer = setTimeout(persistCurrentState, DEBOUNCE_MS);
 	});
 
 	onCleanup(() => {

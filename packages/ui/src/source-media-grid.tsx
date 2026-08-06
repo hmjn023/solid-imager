@@ -248,7 +248,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	): MediaGridImageLoadPolicy => {
 		const state = elementLoadState();
 		if (!state) {
-			return { enabled: false };
+			// A virtualizer can briefly have no measured range while its scroll
+			// container is being restored. Keep mounted rows loadable so a
+			// transient range reset does not blank the entire viewport.
+			return { enabled: true, loading: "eager" };
 		}
 
 		const isVisible =
@@ -264,14 +267,19 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const isPrefetch = isForwardPrefetch || isBackwardPrefetch;
 
 		return {
-			enabled: isVisible || isPrefetch,
+			// The element virtualizer already bounds the DOM to the visible range
+			// plus a small directional buffer. Keep every mounted row loadable:
+			// during navigation restoration the virtualizer can report the previous
+			// range for one frame, and disabling those rows leaves the viewport blank
+			// when the user scrolls again.
+			enabled: true,
 			fetchpriority:
 				isVisible && mediaIndex < INITIAL_HIGH_PRIORITY_MEDIA
 					? "high"
 					: isPrefetch
 						? "low"
 						: undefined,
-			loading: isVisible || isPrefetch ? "eager" : "lazy",
+			loading: "eager",
 		};
 	};
 	const createElementImageLoadPolicy = (
@@ -289,10 +297,19 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		},
 	});
 
+	const resolveScrollElement = () =>
+		props.scrollMode === "element"
+			? (mediaGridRef?.closest("[data-media-scroll]") as HTMLElement | null)
+			: null;
+
 	const updateMediaGridMetrics = () => {
 		if (!mediaGridRef) return;
 		setMediaGridWidth(mediaGridRef.getBoundingClientRect().width);
-		const scroller = scrollElement();
+		const resolvedScrollElement = resolveScrollElement();
+		if (resolvedScrollElement !== scrollElement()) {
+			setScrollElement(resolvedScrollElement);
+		}
+		const scroller = resolvedScrollElement;
 		setScrollMargin(
 			props.scrollMode === "element" && scroller
 				? mediaGridRef.getBoundingClientRect().top -
@@ -304,11 +321,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	onMount(() => {
 		setWindowWidth(window.innerWidth);
-		setScrollElement(
-			props.scrollMode === "element"
-				? (mediaGridRef?.closest("[data-media-scroll]") as HTMLElement | null)
-				: null,
-		);
+		setScrollElement(resolveScrollElement());
 		updateMediaGridMetrics();
 
 		const handleResize = () => {
@@ -334,7 +347,23 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		rowCount();
 		mediaItemHeight();
 		columnCount();
-		mediaRowVirtualizer().measure();
+		// The element virtualizer is created before the grid's mount callback
+		// discovers its nested scroller. Re-measure when that scroller or the
+		// content offset becomes available so the initial range is populated
+		// without requiring a user scroll event.
+		scrollElement();
+		scrollMargin();
+		const virtualizer = mediaRowVirtualizer();
+		virtualizer.measure();
+		const element = scrollElement();
+		if (props.scrollMode === "element" && element) {
+			// Element scroll containers do not consistently emit a native scroll
+			// event when their content is replaced or clamped. Window scrolling in
+			// the v1 screen gets that notification from the browser automatically.
+			// Dispatching lets the virtualizer read the element's current offset
+			// without imperatively writing a possibly stale offset back to it.
+			element.dispatchEvent(new Event("scroll"));
+		}
 	});
 
 	// Virtual scroll-based load more: trigger when user scrolls near the end

@@ -10,6 +10,7 @@ import {
 	AlertDialogTitle,
 	AlertDialogTrigger,
 } from "@solid-imager/ui/alert-dialog";
+import { QueryStatus } from "@solid-imager/ui/async-state";
 import { Badge } from "@solid-imager/ui/badge";
 import { Button, buttonVariants } from "@solid-imager/ui/button";
 import {
@@ -62,6 +63,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
+import { useScrollRestoration } from "@solid-imager/ui/hooks/scroll-container";
 import { Input } from "@solid-imager/ui/input";
 import {
 	Popover,
@@ -100,7 +102,7 @@ import {
 } from "@solid-imager/ui/text-field";
 import { ThumbnailImage } from "@solid-imager/ui/thumbnail-image";
 import { Toaster, toast } from "@solid-imager/ui/toast";
-import { createSignal } from "solid-js";
+import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { render } from "solid-js/web";
 import "../../../app.css";
 
@@ -132,58 +134,165 @@ const VIRTUAL_GRID_MEDIA = Array.from(
 );
 
 function VirtualGridGallery() {
+	const params = new URLSearchParams(window.location.search);
+	const restoreGrid = params.has("restore-grid");
+	const remountGrid = params.has("remount-grid");
+	const pagedGrid = restoreGrid || remountGrid;
+	const fetchDelayMs = remountGrid ? 100 : 10;
+	const [loadedCount, setLoadedCount] = createSignal(
+		pagedGrid ? 200 : VIRTUAL_GRID_ITEM_COUNT,
+	);
+	const [isFetchingNextPage, setIsFetchingNextPage] = createSignal(false);
+	const [savedScrollTop, setSavedScrollTop] = createSignal(0);
+	const [showGrid, setShowGrid] = createSignal(true);
+	const [loadMoreRef, setLoadMoreRef] = createSignal<HTMLDivElement>();
+	const mediaResults = () => VIRTUAL_GRID_MEDIA.slice(0, loadedCount());
+	const fetchNextPage = async () => {
+		if (
+			!pagedGrid ||
+			isFetchingNextPage() ||
+			loadedCount() >= VIRTUAL_GRID_ITEM_COUNT
+		) {
+			return;
+		}
+		setIsFetchingNextPage(true);
+		await new Promise((resolve) => setTimeout(resolve, fetchDelayMs));
+		setLoadedCount((count) => Math.min(count + 200, VIRTUAL_GRID_ITEM_COUNT));
+		setIsFetchingNextPage(false);
+	};
+	createEffect(() => {
+		const element = loadMoreRef();
+		const hasNextPage = loadedCount() < VIRTUAL_GRID_ITEM_COUNT;
+		if (!element || !hasNextPage) return;
+		const observer = new IntersectionObserver(
+			(entries) => {
+				if (entries[0]?.isIntersecting) void fetchNextPage();
+			},
+			{ threshold: 0.5, rootMargin: "2400px" },
+		);
+		observer.observe(element);
+		onCleanup(() => observer.disconnect());
+	});
+	const saveScrollPosition = () => {
+		const scroller = document.querySelector<HTMLElement>(
+			"[data-testid=virtual-grid-scroller]",
+		);
+		if (scroller) setSavedScrollTop(scroller.scrollTop);
+	};
+	const remount = () => {
+		saveScrollPosition();
+		setShowGrid(false);
+		setTimeout(() => setShowGrid(true), 25);
+	};
+	const VirtualGridContent = () => {
+		useScrollRestoration({
+			restoreKey: () => "virtual-grid",
+			getPosition: () => savedScrollTop() || (restoreGrid ? 20_000 : 0),
+			setPosition: (_key, position) => setSavedScrollTop(position),
+			isReady: () => mediaResults().length > 0,
+			hasNextPage: () => loadedCount() < VIRTUAL_GRID_ITEM_COUNT,
+			isFetchingNextPage,
+			fetchNextPage,
+			scrollContainerSelector: "[data-media-scroll]",
+		});
+
+		return (
+			<SourceMediaGrid
+				disableContextMenu
+				enableVirtualization
+				isFetchingNextPage={isFetchingNextPage()}
+				itemAspectRatio={4 / 3}
+				hasNextPage={loadedCount() < VIRTUAL_GRID_ITEM_COUNT}
+				mediaResults={mediaResults}
+				mediaSourceId={() => mediaResults()[0]?.mediaSourceId}
+				onLoadMore={fetchNextPage}
+				renderItem={(media, options) => (
+					// The immutable, uniquely-addressed URLs exercise the browser's real
+					// memory cache when a virtual row is unmounted and revisited.
+					<a
+						class="block aspect-[4/3] overflow-hidden rounded-md bg-muted"
+						data-media-id={media.id}
+						href={`#${media.id}`}
+						onContextMenu={options.onContextMenu}
+					>
+						<ThumbnailImage
+							alt={media.fileName}
+							class="h-full w-full object-cover"
+							enabled={options.imageLoadPolicy?.enabled}
+							fetchpriority={options.imageLoadPolicy?.fetchpriority}
+							height={384}
+							loading={options.imageLoadPolicy?.loading}
+							sizes="160px"
+							source={{
+								getSrcSet: () =>
+									`/virtual-thumbnail/${media.id}-256.webp 256w, /virtual-thumbnail/${media.id}-512.webp 512w`,
+								getUrl: () => `/virtual-thumbnail/${media.id}-512.webp`,
+							}}
+							width={512}
+						/>
+					</a>
+				)}
+				scrollMode="element"
+				setLoadMoreRef={setLoadMoreRef}
+				showResultCount={false}
+				state={() => ({
+					data: mediaResults(),
+					error: undefined,
+					fetchState: "idle",
+					phase: "data",
+				})}
+				totalCount={VIRTUAL_GRID_ITEM_COUNT}
+			/>
+		);
+	};
+
 	return (
-		<main class="h-dvh bg-background p-4 text-foreground">
+		<main class="flex h-dvh min-h-0 min-w-0 flex-col bg-background p-4 text-foreground">
 			<h1 class="sr-only">Virtual media grid performance fixture</h1>
+			<Show when={remountGrid}>
+				<div class="fixed top-2 left-2 z-10 flex gap-2">
+					<button
+						data-testid="remount-virtual-grid"
+						onClick={remount}
+						type="button"
+					>
+						Remount virtual grid
+					</button>
+					<button
+						data-testid="append-virtual-grid-page"
+						onClick={() =>
+							setLoadedCount((count) =>
+								Math.min(count + 200, VIRTUAL_GRID_ITEM_COUNT),
+							)
+						}
+						type="button"
+					>
+						Append virtual grid page
+					</button>
+				</div>
+			</Show>
+			<div class="shrink-0 h-24" />
+			<div class="shrink-0 h-8">
+				<QueryStatus
+					fetchState={isFetchingNextPage() ? "background-fetching" : "idle"}
+					hasData
+					hideWhenIdle
+					offlineLabel="オフライン"
+					updatingLabel="検索結果を更新中..."
+				/>
+			</div>
 			<div
-				class="h-full min-h-0 overflow-y-auto overscroll-contain"
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain"
 				data-media-scroll
 				data-testid="virtual-grid-scroller"
 			>
-				<SourceMediaGrid
-					disableContextMenu
-					enableVirtualization
-					isFetchingNextPage={false}
-					itemAspectRatio={4 / 3}
-					mediaResults={() => VIRTUAL_GRID_MEDIA}
-					mediaSourceId={() => VIRTUAL_GRID_MEDIA[0]?.mediaSourceId}
-					renderItem={(media, options) => (
-						// The immutable, uniquely-addressed URLs exercise the browser's real
-						// memory cache when a virtual row is unmounted and revisited.
-						<a
-							class="block aspect-[4/3] overflow-hidden rounded-md bg-muted"
-							data-media-id={media.id}
-							href={`#${media.id}`}
-							onContextMenu={options.onContextMenu}
-						>
-							<ThumbnailImage
-								alt={media.fileName}
-								class="h-full w-full object-cover"
-								enabled={options.imageLoadPolicy?.enabled}
-								fetchpriority={options.imageLoadPolicy?.fetchpriority}
-								height={384}
-								loading={options.imageLoadPolicy?.loading}
-								sizes="160px"
-								source={{
-									getSrcSet: () =>
-										`/virtual-thumbnail/${media.id}-256.webp 256w, /virtual-thumbnail/${media.id}-512.webp 512w`,
-									getUrl: () => `/virtual-thumbnail/${media.id}-512.webp`,
-								}}
-								width={512}
-							/>
-						</a>
-					)}
-					scrollMode="element"
-					setLoadMoreRef={() => undefined}
-					showResultCount={false}
-					state={() => ({
-						data: VIRTUAL_GRID_MEDIA,
-						error: undefined,
-						fetchState: "idle",
-						phase: "data",
-					})}
-					totalCount={VIRTUAL_GRID_ITEM_COUNT}
-				/>
+				<div class="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4">
+					<div class="min-w-0">
+						<Show when={showGrid()}>
+							<VirtualGridContent />
+						</Show>
+					</div>
+				</div>
 			</div>
 		</main>
 	);

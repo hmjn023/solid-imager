@@ -16,7 +16,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@solid-imager/ui/dialog";
-import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import {
@@ -49,7 +48,7 @@ import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX, ParentProps } from "solid-js";
 import { createSignal, For, Show } from "solid-js";
 import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { createServerTransport } from "~/hooks/use-media-source-events";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
 import {
 	createMediaSource,
@@ -79,13 +78,6 @@ const V2_NAVIGATION_ITEMS = [
 	{ icon: Clock3, label: "Jobs", to: "/v2/jobs" },
 	{ icon: Settings, label: "Settings", to: "/v2/config" },
 ] as const;
-
-function registerSourceEvents(handler: RawEventHandler): () => void {
-	return subscribeToEventStream(
-		(signal) => orpc.sources.events({ id: "*" }, { signal }),
-		handler,
-	);
-}
 
 function sourceTypeLabel(source: SafeMediaSource): string {
 	return source.type === "local" ? "Local" : source.type.toUpperCase();
@@ -357,6 +349,9 @@ function V2Sidebar(props: V2SidebarProps) {
 export function V2AppShell(props: V2AppShellProps) {
 	const queryClient = useQueryClient();
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const sourceEventTransport = createServerTransport(() => "*");
+	const registerSourceEvents = (handler: RawEventHandler) =>
+		sourceEventTransport.listen(handler);
 	const [sidebarExpanded, setSidebarExpanded] = createSignal(true);
 	const [mobileMenuOpen, setMobileMenuOpen] = createSignal(false);
 	const sourceData = () => mediaSources.data ?? [];

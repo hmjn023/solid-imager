@@ -123,7 +123,9 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		onThumbnailReady: props.onThumbnailReady,
 		isSearchStateRestored,
 		scrollContainerSelector:
-			props.variant === "v2" ? "[data-media-scroll]" : undefined,
+			props.variant === "v2"
+				? `[data-media-scroll="${props.mediaSourceId() ?? "v2-source"}"]`
+				: undefined,
 	});
 
 	const renderActions: SourceMediaScreenProps["renderActions"] = (actions) => (

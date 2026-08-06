@@ -28,21 +28,38 @@ export default defineNitroConfig({
         fs.existsSync(pgliteLocalPath) ? pgliteLocalPath : pgliteRootPath,
       );
       const pgliteDistPath = path.join(pglitePkgPath, "dist");
+      const pgvectorLocalPath = path.resolve(
+        __dirname,
+        "node_modules/@electric-sql/pglite-pgvector/package.json",
+      );
+      const pgvectorRootPath = path.resolve(
+        __dirname,
+        "../../node_modules/@electric-sql/pglite-pgvector/package.json",
+      );
+      const pgvectorPkgPath = path.dirname(
+        fs.existsSync(pgvectorLocalPath) ? pgvectorLocalPath : pgvectorRootPath,
+      );
 
-      const assetsToCopy = ["pglite.data", "pglite.wasm"];
+      const assetsToCopy = [
+        { name: "pglite.data", source: path.join(pgliteDistPath, "pglite.data") },
+        { name: "pglite.wasm", source: path.join(pgliteDistPath, "pglite.wasm") },
+        {
+          name: "vector.tar.gz",
+          source: path.join(pgvectorPkgPath, "dist/vector.tar.gz"),
+        },
+      ];
 
       for (const asset of assetsToCopy) {
-        const source = path.join(pgliteDistPath, asset);
-        const destination = path.join(libsDir, asset);
+        const destination = path.join(libsDir, asset.name);
 
-        if (fs.existsSync(source)) {
+        if (fs.existsSync(asset.source)) {
           if (!fs.existsSync(libsDir)) {
             fs.mkdirSync(libsDir, { recursive: true });
           }
-          fs.copyFileSync(source, destination);
-          console.log(`[Nitro] Successfully copied ${asset} to ${destination}`);
+          fs.copyFileSync(asset.source, destination);
+          console.log(`[Nitro] Successfully copied ${asset.name} to ${destination}`);
         } else {
-          console.warn(`[Nitro] Warning: ${asset} not found at ${source}`);
+          console.warn(`[Nitro] Warning: ${asset.name} not found at ${asset.source}`);
         }
       }
 

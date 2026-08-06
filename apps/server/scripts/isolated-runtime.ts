@@ -1,4 +1,5 @@
-import { mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
+import { copyFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { mediaGenerationInfo, medias, mediaSources } from "@solid-imager/db/schema";
@@ -16,6 +17,7 @@ import {
 } from "../src/tests/e2e/support/fixture";
 
 const appRoot = path.resolve(import.meta.dir, "..");
+const E2E_PAGINATED_MEDIA_COUNT = 600;
 
 export type IsolatedRuntime = {
   routeTreePath: string;
@@ -42,8 +44,10 @@ function createImageSvg(accentColor: string, backgroundColor: string): Buffer {
 async function seedMediaFixtures(runtimeDir: string): Promise<void> {
   const mediaDir = path.join(runtimeDir, "media");
   const thumbnailDir = path.join(runtimeDir, "thumbnails", E2E_SOURCE_ID);
+  const smallThumbnailDir = path.join(thumbnailDir, "256");
   await mkdir(mediaDir, { recursive: true });
   await mkdir(thumbnailDir, { recursive: true });
+  await mkdir(smallThumbnailDir, { recursive: true });
 
   const primaryPath = path.join(mediaDir, E2E_PRIMARY_FILE_NAME);
   const similarPath = path.join(mediaDir, E2E_SIMILAR_FILE_NAME);
@@ -64,6 +68,39 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
   ]);
 
   const [primaryStats, similarStats] = await Promise.all([stat(primaryPath), stat(similarPath)]);
+  const paginatedMedia = Array.from({ length: E2E_PAGINATED_MEDIA_COUNT }, (_, index) => ({
+    id: randomUUID(),
+    fileName: `e2e-scroll-${String(index + 1).padStart(4, "0")}.png`,
+  }));
+  const primaryThumbnailPath = path.join(
+    thumbnailDir,
+    `${E2E_PRIMARY_MEDIA_ID}.webp`,
+  );
+  const similarThumbnailPath = path.join(
+    thumbnailDir,
+    `${E2E_SIMILAR_MEDIA_ID}.webp`,
+  );
+  await Promise.all(
+    [
+      copyFile(
+        primaryThumbnailPath,
+        path.join(smallThumbnailDir, `${E2E_PRIMARY_MEDIA_ID}.webp`),
+      ),
+      copyFile(
+        similarThumbnailPath,
+        path.join(smallThumbnailDir, `${E2E_SIMILAR_MEDIA_ID}.webp`),
+      ),
+      ...paginatedMedia.flatMap(({ id, fileName }) => [
+        copyFile(primaryPath, path.join(mediaDir, fileName)),
+        copyFile(primaryThumbnailPath, path.join(thumbnailDir, `${id}.webp`)),
+        copyFile(
+          primaryThumbnailPath,
+          path.join(smallThumbnailDir, `${id}.webp`),
+        ),
+      ]),
+    ],
+  );
+
   const pgliteDir = path.join(runtimeDir, "pglite");
   const client = createPglite(pgliteDir);
   const db = drizzle(client);
@@ -111,6 +148,24 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
         indexedAt: seededAt,
         status: "active",
       },
+      ...paginatedMedia.map(({ id, fileName }, index) => {
+        const createdAt = new Date(seededAt.getTime() - (index + 2) * 1000);
+        return {
+          id,
+          mediaSourceId: E2E_SOURCE_ID,
+          filePath: fileName,
+          fileName,
+          mediaType: "image" as const,
+          width: 256,
+          height: 256,
+          fileSize: primaryStats.size,
+          description: "Paginated browser scroll fixture media",
+          createdAt,
+          modifiedAt: createdAt,
+          indexedAt: seededAt,
+          status: "active" as const,
+        };
+      }),
     ]);
     await db.insert(mediaGenerationInfo).values([
       {
@@ -121,6 +176,10 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
         mediaId: E2E_SIMILAR_MEDIA_ID,
         metadata: { fixture: "e2e-similar" },
       },
+      ...paginatedMedia.map(({ id }) => ({
+        mediaId: id,
+        metadata: { fixture: "e2e-scroll" },
+      })),
     ]);
   } finally {
     await client.close();
