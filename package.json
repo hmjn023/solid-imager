@@ -22,7 +22,7 @@
   "devDependencies": {
     "@biomejs/biome": "^2.5.0",
     "@google/design.md": "^0.4.0",
-    "@tanstack/cli": "^0.69.4",
+    "@tanstack/cli": "^0.70.1",
     "husky": "^9.1.7",
     "lint-staged": "^16.2.7",
     "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
