@@ -148,14 +148,15 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 				<img
 					alt={props.alt}
 					class={props.class}
+					decoding="async"
 					fetchpriority={props.fetchpriority}
 					height={props.height ?? undefined}
 					loading={props.loading}
 					onError={handleError}
 					onLoad={handleLoad}
 					sizes={srcSet() ? props.sizes : undefined}
-					src={resolvedUrl()}
 					srcset={srcSet()}
+					src={resolvedUrl()}
 					width={props.width ?? undefined}
 				/>
 			)}

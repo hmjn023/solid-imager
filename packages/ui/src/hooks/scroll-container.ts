@@ -71,6 +71,7 @@ export type ScrollRestorationOptions = {
 
 const MAX_RESTORE_PAGE_FETCHES = 100;
 const RESTORE_SETTLE_DELAY_MS = 100;
+const SCROLL_SAVE_DEBOUNCE_MS = 100;
 
 /**
  * Restores a list's scroll position after its initial pages have rendered.
@@ -89,6 +90,7 @@ export function useScrollRestoration(
 	let fetchInFlight = false;
 	let frameId: number | undefined;
 	let settleTimer: ReturnType<typeof setTimeout> | undefined;
+	let scrollSaveTimer: ReturnType<typeof setTimeout> | undefined;
 	let restoreGeneration = 0;
 	let reconcileFrameId: number | undefined;
 	let secondReconcileFrameId: number | undefined;
@@ -186,6 +188,15 @@ export function useScrollRestoration(
 		if (position !== null) options.setPosition(key, position);
 	};
 
+	const scheduleSavePosition = () => {
+		if (!isRestored()) return;
+		if (scrollSaveTimer !== undefined) clearTimeout(scrollSaveTimer);
+		scrollSaveTimer = setTimeout(() => {
+			scrollSaveTimer = undefined;
+			savePosition();
+		}, SCROLL_SAVE_DEBOUNCE_MS);
+	};
+
 	createEffect(() => {
 		const key = options.restoreKey();
 		if (key !== activeKey) {
@@ -196,6 +207,10 @@ export function useScrollRestoration(
 			if (settleTimer !== undefined) {
 				clearTimeout(settleTimer);
 				settleTimer = undefined;
+			}
+			if (scrollSaveTimer !== undefined) {
+				clearTimeout(scrollSaveTimer);
+				scrollSaveTimer = undefined;
 			}
 			restoreGeneration += 1;
 			setIsRestored(false);
@@ -242,6 +257,30 @@ export function useScrollRestoration(
 			});
 		};
 
+		const scrollContainer = resolveScrollContainer(
+			options.scrollContainerSelector,
+		);
+		const handleScrollForPersistence = (event: Event) => {
+			if (scrollContainer) {
+				if (event.target !== scrollContainer) return;
+			} else if (
+				options.scrollContainerSelector &&
+				event.target !== resolveScrollContainer(options.scrollContainerSelector)
+			) {
+				return;
+			}
+			scheduleSavePosition();
+		};
+		const scrollEventTarget =
+			scrollContainer ?? (options.scrollContainerSelector ? document : window);
+		const useCapture = Boolean(
+			options.scrollContainerSelector && !scrollContainer,
+		);
+		scrollEventTarget.addEventListener("scroll", handleScrollForPersistence, {
+			capture: useCapture,
+			passive: true,
+		});
+
 		const cancelRestore = () => {
 			if (!isRestored()) {
 				cancelled = true;
@@ -271,6 +310,11 @@ export function useScrollRestoration(
 		window.addEventListener("touchstart", cancelRestore, { passive: true });
 		window.addEventListener("keydown", cancelRestore);
 		onCleanup(() => {
+			scrollEventTarget.removeEventListener(
+				"scroll",
+				handleScrollForPersistence,
+				useCapture,
+			);
 			window.removeEventListener("pointerdown", cancelRestore);
 			window.removeEventListener("wheel", cancelRestore);
 			window.removeEventListener("touchstart", cancelRestore);
@@ -281,6 +325,7 @@ export function useScrollRestoration(
 	onCleanup(() => {
 		cancelled = true;
 		restoreGeneration += 1;
+		if (scrollSaveTimer !== undefined) clearTimeout(scrollSaveTimer);
 		if (frameId !== undefined) cancelAnimationFrame(frameId);
 		if (settleTimer !== undefined) clearTimeout(settleTimer);
 		if (reconcileFrameId !== undefined) cancelAnimationFrame(reconcileFrameId);
