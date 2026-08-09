@@ -14,13 +14,14 @@ import {
 	getSearchCondition,
 	loadPreset,
 	resetSearchState,
+	type SearchPersistenceSurface,
 	searchState,
 	setSearchState,
 } from "../stores/search-store";
 
 const DEBOUNCE_MS = 1000;
 
-export type SearchPersistenceSurface = "legacy" | "v2";
+export type { SearchPersistenceSurface } from "../stores/search-store";
 
 export type SearchPersistenceOptions = {
 	surface?: SearchPersistenceSurface;

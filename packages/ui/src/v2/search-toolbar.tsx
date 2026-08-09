@@ -423,6 +423,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 								selectedSource={props.selectedSource}
 								showSearchButton={false}
 								sources={props.sources}
+								persistenceSurface="v2"
 								usePopover={false}
 							/>
 						</div>

@@ -165,7 +165,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 	});
 
 	const handleFindSimilar = () => {
-		activateVectorSearch(props.media.id);
+		activateVectorSearch(props.media.id, { surface: "v2" });
 		void navigate({ to: "/v2/search" });
 	};
 	const ccipActionLabel = () => {
