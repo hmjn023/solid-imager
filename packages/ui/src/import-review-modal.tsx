@@ -31,6 +31,7 @@ import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
 } from "./import-inbox-helpers";
+import { LegacyImportReviewModal } from "./legacy-import-review-modal";
 import { toast } from "./toast";
 
 export type PendingImportJob = {
@@ -76,6 +77,13 @@ function getPreviewUrl(url?: string): string {
 }
 
 export function ImportReviewModal(props: ImportReviewModalProps) {
+	if (props.variant !== "v2") {
+		return <LegacyImportReviewModal {...props} />;
+	}
+	return <V2ImportReviewModal {...props} />;
+}
+
+function V2ImportReviewModal(props: ImportReviewModalProps) {
 	const createEmptySelection = () => new Set<string>();
 	const [selectedJobIds, setSelectedJobIds] = createSignal(
 		createEmptySelection(),
@@ -135,7 +143,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 	};
 	const requestClose = () => {
 		if (activeAction() !== null) return;
-		if (isDirty()) {
+		if (props.variant === "v2" && isDirty()) {
 			setIsDiscardDialogOpen(true);
 			return;
 		}

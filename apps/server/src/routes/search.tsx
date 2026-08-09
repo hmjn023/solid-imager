@@ -1,5 +1,8 @@
 import { Button } from "@solid-imager/ui/button";
-import { useCurrentSearchPersistence } from "@solid-imager/ui/hooks/use-current-search-persistence";
+import {
+	persistSearchScrollPosition,
+	useCurrentSearchPersistence,
+} from "@solid-imager/ui/hooks/use-current-search-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
@@ -94,7 +97,10 @@ function SearchRoute() {
 		sortOrder: () => searchState.sortOrder,
 		limit: () => searchState.limit,
 		scrollY: () => searchState.scrollY,
-		setScrollY: (y) => setSearchState("scrollY", y),
+		setScrollY: (y) => {
+			setSearchState("scrollY", y);
+			persistSearchScrollPosition("all", y);
+		},
 		setOffset: (o) => setSearchState("offset", o),
 		mode: () => searchState.mode,
 		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,

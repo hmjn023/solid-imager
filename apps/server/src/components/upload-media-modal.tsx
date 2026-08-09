@@ -2,6 +2,7 @@ import { UploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-con
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
 type UploadMediaModalProps = {
+	confirmDiscard?: boolean;
 	isOpen: boolean;
 	onClose: () => void;
 	onUpload: (options: {
@@ -20,6 +21,7 @@ type UploadMediaModalProps = {
 export function UploadMediaModal(props: UploadMediaModalProps) {
 	return (
 		<UploadMediaModalContent
+			confirmDiscard={props.confirmDiscard}
 			initialFile={props.initialFile}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
@@ -32,4 +34,8 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 			pastedUrl={props.pastedUrl}
 		/>
 	);
+}
+
+export function V2UploadMediaModal(props: UploadMediaModalProps) {
+	return <UploadMediaModal {...props} confirmDiscard />;
 }

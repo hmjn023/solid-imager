@@ -1,12 +1,18 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
 import { V2CollectionInspector } from "../v2/collection-inspector";
 import { V2SearchToolbar } from "../v2/search-toolbar";
-import type { SearchScreenProps } from "./search-screen";
+import type { SearchWorkspaceProps } from "./search-screen.types";
 
-export function V2SearchScreen(props: SearchScreenProps) {
+export type V2SearchScreenProps = SearchWorkspaceProps & {
+	onOpenMediaDetail?: (media: Media) => void;
+	renderMediaPreview?: (media: Media) => import("solid-js").JSX.Element;
+};
+
+export function V2SearchScreen(props: V2SearchScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
 	const page = () => props.page;

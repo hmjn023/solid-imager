@@ -9,6 +9,7 @@ import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Show } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Button } from "./button";
+import { Label } from "./label";
 import { PresetManager, type PresetManagerClient } from "./preset-manager";
 import { ProSearchDialog } from "./pro-search-dialog";
 import { SearchFilters } from "./search-filters";
@@ -16,7 +17,6 @@ import {
 	Select,
 	SelectContent,
 	SelectItem,
-	SelectLabel,
 	SelectTrigger,
 	SelectValue,
 } from "./select";
@@ -85,6 +85,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 		<div class={props.class}>
 			<Show when={props.context === "global" && props.sources}>
 				<div class="mb-4 space-y-2">
+					<Label>メディアソース</Label>
 					<Select
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
@@ -106,7 +107,6 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 							...(props.sources || []),
 						].find((source) => source.id === selectedSource())}
 					>
-						<SelectLabel>メディアソース</SelectLabel>
 						<SelectTrigger>
 							<SelectValue<{ name: string }>>
 								{(state) => state.selectedOption()?.name || "ソースを選択"}
@@ -118,7 +118,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			</Show>
 
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-				<span class="font-medium text-sm">検索モード</span>
+				<Label class="font-medium text-sm">検索モード</Label>
 				<div class="flex flex-wrap gap-2">
 					<Button
 						class="min-h-11 md:min-h-9"
@@ -201,7 +201,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			<div class={currentState().mode === "vector" ? "block" : "hidden"}>
 				<div class="space-y-4">
 					<div class="space-y-2">
-						<p class="font-medium text-sm leading-none">類似元メディア</p>
+						<Label>類似元メディア</Label>
 						<div class="rounded-md border p-3 text-sm">
 							{currentState().similarityAnchorMediaId ??
 								"メディア個別画面の「Find Similar」から選択してください。"}
@@ -218,7 +218,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						</Show>
 					</div>
 					<div class="space-y-2">
-						<p class="font-medium text-sm leading-none">表示件数</p>
+						<Label>表示件数</Label>
 						<div class="flex gap-2">
 							{([20, 50, 100] as const).map((value) => (
 								<Button

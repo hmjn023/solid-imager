@@ -1,5 +1,6 @@
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
+import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { useParams } from "@tanstack/solid-router";
 import { MediaGridItem } from "~/components/media/media-grid-item";
@@ -51,6 +52,7 @@ export function SourceMediaPage() {
 	return (
 		<SourceMediaPageComponent
 			mediaSourceId={mediaSourceId}
+			screenComponent={SourceMediaScreen}
 			transport={transport}
 			presetClient={presetClient}
 			actions={{

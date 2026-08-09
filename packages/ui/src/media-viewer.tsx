@@ -123,7 +123,13 @@ export function MediaViewer(props: MediaViewerProps) {
 											}
 								}
 							>
-								<div class="max-w-[80%] truncate rounded-md border border-current/20 px-4 py-2 text-sm">
+								<div
+									class={
+										props.variant === "v2"
+											? "max-w-[80%] truncate rounded-md border border-current/20 px-4 py-2 text-sm"
+											: "rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm uppercase tracking-[0.35em]"
+									}
+								>
 									{props.fileName}
 								</div>
 							</div>
@@ -134,7 +140,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							<img
 								alt={props.fileName}
 								class={`h-full w-full object-contain ${props.variant === "v2" ? "" : "rounded-md"}`}
-								fetchpriority="high"
+								fetchpriority={props.variant === "v2" ? "high" : undefined}
 								height={props.height}
 								src={url()}
 								width={props.width}

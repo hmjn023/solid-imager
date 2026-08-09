@@ -57,6 +57,7 @@ export type UploadMediaModalSubmitOptions = {
 };
 
 export type UploadMediaModalContentProps = {
+	confirmDiscard?: boolean;
 	isOpen: boolean;
 	onClose: () => void;
 	initialFile: File | null;
@@ -278,7 +279,10 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	});
 
 	const requestClose = () => {
-		if (form.state.isDirty || selectedFiles().length > 0 || isFetchingUrl()) {
+		if (
+			props.confirmDiscard &&
+			(form.state.isDirty || selectedFiles().length > 0 || isFetchingUrl())
+		) {
 			setShowDiscardDialog(true);
 			return;
 		}

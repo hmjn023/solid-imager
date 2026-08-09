@@ -14,9 +14,9 @@ import {
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemLabel,
-	ComboboxLabel,
 	VirtualComboboxContent,
 } from "./combobox";
+import { Label } from "./label";
 import { TextField, TextFieldInput, TextFieldLabel } from "./text-field";
 import { cn } from "./utils/cn";
 import { createDebouncedSignal } from "./utils/debounce";
@@ -61,6 +61,32 @@ function FilterSection<T>(props: {
 
 	return (
 		<div class="space-y-2">
+			<Label>{props.label}</Label>
+			<div class="mb-2 flex flex-wrap gap-2">
+				<For each={props.selectedItems}>
+					{(id) => {
+						const item = props.items?.find(
+							(i) =>
+								(props.getSelectedItemValue?.(i) ?? props.getItemKey(i)) === id,
+						) as T;
+						return (
+							<Badge
+								class="cursor-pointer"
+								variant={props.badgeVariant || "default"}
+							>
+								{item ? props.getItemLabel(item) : id}
+								<button
+									class="ml-1 hover:text-red-500"
+									onClick={() => props.onRemove(id)}
+									type="button"
+								>
+									×
+								</button>
+							</Badge>
+						);
+					}}
+				</For>
+			</div>
 			<Combobox<T>
 				itemComponent={(itemProps) => (
 					<ComboboxItem item={itemProps.item}>
@@ -86,33 +112,6 @@ function FilterSection<T>(props: {
 				triggerMode="focus"
 				value={value()}
 			>
-				<ComboboxLabel>{props.label}</ComboboxLabel>
-				<div class="mb-2 flex flex-wrap gap-2">
-					<For each={props.selectedItems}>
-						{(id) => {
-							const item = props.items?.find(
-								(i) =>
-									(props.getSelectedItemValue?.(i) ?? props.getItemKey(i)) ===
-									id,
-							) as T;
-							return (
-								<Badge
-									class="cursor-pointer"
-									variant={props.badgeVariant || "default"}
-								>
-									{item ? props.getItemLabel(item) : id}
-									<button
-										class="ml-1 hover:text-red-500"
-										onClick={() => props.onRemove(id)}
-										type="button"
-									>
-										×
-									</button>
-								</Badge>
-							);
-						}}
-					</For>
-				</div>
 				<ComboboxControl>
 					<ComboboxInput />
 				</ComboboxControl>

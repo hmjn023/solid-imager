@@ -78,11 +78,7 @@ export function MediaGridItem(props: MediaGridItemProps) {
 			)}
 			data-media-id={props.media.id}
 			href={href()}
-			aria-pressed={
-				props.isBulkSelectMode || props.variant === "v2"
-					? props.isSelected
-					: undefined
-			}
+			aria-pressed={props.variant === "v2" ? props.isSelected : undefined}
 			onClick={undefined}
 			onContextMenu={(event) => props.onContextMenu?.(event)}
 		>
@@ -91,11 +87,25 @@ export function MediaGridItem(props: MediaGridItemProps) {
 					props.isBulkSelectMode || (props.variant === "v2" && props.isSelected)
 				}
 			>
-				<div
-					aria-hidden="true"
-					class="absolute top-2 right-2 z-10 flex size-6 items-center justify-center rounded-full border border-white bg-black/55 font-bold text-white text-xs shadow-sm"
-				>
-					{props.isSelected ? "✓" : ""}
+				<div class="absolute top-2 right-2 z-10 flex size-6 items-center justify-center">
+					<Show
+						fallback={
+							<input
+								checked={props.isSelected}
+								class="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								readOnly
+								type="checkbox"
+							/>
+						}
+						when={props.variant === "v2"}
+					>
+						<span
+							aria-hidden="true"
+							class="flex size-6 items-center justify-center rounded-full border border-white bg-black/55 font-bold text-white text-xs shadow-sm"
+						>
+							{props.isSelected ? "✓" : ""}
+						</span>
+					</Show>
 				</div>
 			</Show>
 
@@ -138,7 +148,10 @@ export function MediaGridItem(props: MediaGridItemProps) {
 
 			<div
 				class={cn(
-					"absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100",
+					"absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity",
+					props.variant === "v2"
+						? "group-focus-within:opacity-100 group-hover:opacity-100"
+						: "group-hover:opacity-100",
 					props.overlayClass,
 				)}
 			>

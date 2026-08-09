@@ -2,6 +2,7 @@ import type { ImportEvent } from "@solid-imager/core/domain/sources/events";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
+	type Accessor,
 	createSignal,
 	ErrorBoundary,
 	onCleanup,
@@ -34,6 +35,74 @@ export type PendingDownloadsIndicatorProps = {
 		onConnected?: ImportEventConnectedHandler,
 	) => Promise<(() => void) | undefined> | (() => void) | undefined;
 };
+
+function LegacyPendingDownloadsButton(props: {
+	onOpen: () => void;
+	pendingCount: Accessor<number | undefined>;
+}) {
+	const hasPendingImports = () => (props.pendingCount() ?? 0) > 0;
+
+	return (
+		<button
+			aria-disabled={!hasPendingImports()}
+			class={`flex items-center gap-1 rounded px-3 py-1.5 font-bold text-xs transition-colors ${
+				hasPendingImports()
+					? "bg-sky-600 text-white hover:bg-sky-500"
+					: "cursor-default bg-gray-700 text-gray-400"
+			}`}
+			onClick={() => {
+				if (hasPendingImports()) {
+					props.onOpen();
+				}
+			}}
+			type="button"
+		>
+			<span>Inbox</span>
+			<Show when={hasPendingImports()}>
+				<span class="rounded bg-white px-1.5 py-0.5 text-sky-700">
+					{props.pendingCount()}
+				</span>
+			</Show>
+		</button>
+	);
+}
+
+function V2PendingDownloadsButton(props: {
+	compact?: boolean;
+	onOpen: () => void;
+	pendingCount: Accessor<number | undefined>;
+}) {
+	const hasPendingImports = () => (props.pendingCount() ?? 0) > 0;
+
+	return (
+		<button
+			aria-disabled={!hasPendingImports()}
+			aria-label={`Import inbox${hasPendingImports() ? `, ${props.pendingCount()}件` : ""}`}
+			class={cn(
+				"relative flex h-10 w-full items-center justify-start gap-2 rounded-md px-3 font-medium text-[var(--v2-text-secondary)] text-xs transition-colors hover:bg-[var(--v2-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-auto disabled:opacity-60",
+				props.compact && "size-10 justify-center px-0",
+			)}
+			disabled={!hasPendingImports()}
+			onClick={props.onOpen}
+			type="button"
+		>
+			<span aria-hidden="true" class="text-base leading-none">
+				↓
+			</span>
+			<span class={props.compact ? "sr-only" : undefined}>Import inbox</span>
+			<Show when={hasPendingImports()}>
+				<span
+					class={cn(
+						"ml-auto rounded-full bg-[var(--v2-surface-selected)] px-1.5 py-0.5 text-[10px] text-[var(--v2-primary)]",
+						props.compact && "absolute -mt-5 ml-5",
+					)}
+				>
+					{props.pendingCount()}
+				</span>
+			</Show>
+		</button>
+	);
+}
 
 export function PendingDownloadsIndicator(
 	props: PendingDownloadsIndicatorProps,
@@ -71,8 +140,6 @@ export function PendingDownloadsIndicator(
 
 		return refreshInFlight;
 	};
-
-	const hasPendingImports = () => (pendingCount() ?? 0) > 0;
 
 	onMount(() => {
 		let disposed = false;
@@ -145,40 +212,21 @@ export function PendingDownloadsIndicator(
 				</button>
 			)}
 		>
-			<button
-				aria-label={`Import inbox${(pendingCount() ?? 0) > 0 ? `, ${pendingCount()}件` : ""}`}
-				class={cn(
-					"relative flex items-center gap-2 rounded-md px-3 font-medium text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-					props.variant === "v2"
-						? "h-10 w-full justify-start text-[var(--v2-text-secondary)] hover:bg-[var(--v2-surface-muted)] disabled:pointer-events-auto disabled:opacity-60"
-						: (pendingCount() ?? 0) > 0
-							? "bg-sky-600 py-1.5 text-white hover:bg-sky-500"
-							: "cursor-default bg-gray-700 py-1.5 text-gray-400",
-					props.compact && "size-10 justify-center px-0",
-				)}
-				aria-disabled={!hasPendingImports()}
-				disabled={(pendingCount() ?? 0) === 0}
-				onClick={() => setIsModalOpen(true)}
-				type="button"
+			<Show
+				fallback={
+					<LegacyPendingDownloadsButton
+						onOpen={() => setIsModalOpen(true)}
+						pendingCount={pendingCount}
+					/>
+				}
+				when={props.variant === "v2"}
 			>
-				<span aria-hidden="true" class="text-base leading-none">
-					↓
-				</span>
-				<span class={props.compact ? "sr-only" : undefined}>Import inbox</span>
-				<Show when={(pendingCount() ?? 0) > 0}>
-					<span
-						class={cn(
-							"rounded-full px-1.5 py-0.5 text-[10px]",
-							props.variant === "v2"
-								? "ml-auto bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"
-								: "bg-white text-sky-700",
-							props.compact && "absolute -mt-5 ml-5",
-						)}
-					>
-						{pendingCount()}
-					</span>
-				</Show>
-			</button>
+				<V2PendingDownloadsButton
+					compact={props.compact}
+					onOpen={() => setIsModalOpen(true)}
+					pendingCount={pendingCount}
+				/>
+			</Show>
 			<ImportReviewModal
 				cancelPending={props.cancelPending}
 				isOpen={isModalOpen()}

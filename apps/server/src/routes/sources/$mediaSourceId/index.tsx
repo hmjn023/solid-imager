@@ -10,7 +10,7 @@ import {
 	tagsQueryOptions,
 } from "~/infrastructure/api-clients/queries";
 import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
-import { SourceMediaPage } from "./components/source-media-page";
+import { SourceMediaPage } from "./components/legacy-source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	ssr: true,

@@ -61,15 +61,9 @@ import {
 	SelectValue,
 } from "../select";
 import { CardGridSkeleton, LoadingRegion } from "../skeleton";
-import {
-	V2ManagerScreen,
-	type V2ManagerTransferActions,
-} from "./v2-manager-screen";
 
 export type ManagerScreenProps = {
 	manager: UseManagerPageResult;
-	transferActions?: V2ManagerTransferActions;
-	variant?: "legacy" | "v2";
 };
 
 const managerTabs: ManagerEntityType[] = [
@@ -112,15 +106,6 @@ function isCrudTab(tab: ManagerEntityType) {
 const ALL_SOURCES_OPTION = { id: "__all__", name: "All Sources" };
 
 export function ManagerScreen(props: ManagerScreenProps) {
-	if (props.variant === "v2") {
-		return (
-			<V2ManagerScreen
-				manager={props.manager}
-				transferActions={props.transferActions}
-			/>
-		);
-	}
-
 	const manager = () => props.manager;
 	const activeQueryState = () => {
 		const states = manager().queryStates();

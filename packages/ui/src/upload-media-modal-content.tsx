@@ -4,6 +4,7 @@ import {
 } from "./upload-media-modal";
 
 type UploadMediaModalContentProps = {
+	confirmDiscard?: boolean;
 	isOpen: boolean;
 	onClose: () => void;
 	onUpload: (options: {
@@ -38,6 +39,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 
 	return (
 		<SharedUploadMediaModalContent
+			confirmDiscard={props.confirmDiscard}
 			initialFile={props.initialFile}
 			isOpen={props.isOpen}
 			onClose={props.onClose}

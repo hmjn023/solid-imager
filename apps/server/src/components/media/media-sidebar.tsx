@@ -591,7 +591,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			<Show when={props.variant !== "v2"}>
 				<div>
 					<h1 class="font-bold text-xl break-all">{props.media.fileName}</h1>
-					<p class="text-muted-foreground text-sm break-all">
+					<p
+						class={
+							props.variant === "v2"
+								? "text-muted-foreground text-sm break-all"
+								: "text-gray-500 text-sm break-all"
+						}
+					>
 						{props.media.filePath}
 					</p>
 				</div>
@@ -616,12 +622,32 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							: "grid grid-cols-1 gap-1 text-sm sm:grid-cols-2 sm:gap-x-4 sm:gap-y-2"
 					}
 				>
-					<dt class="font-medium text-muted-foreground">Resolution</dt>
-					<dd class="text-foreground">
+					<dt
+						class={
+							props.variant === "v2"
+								? "font-medium text-muted-foreground"
+								: "font-medium text-gray-600"
+						}
+					>
+						Resolution
+					</dt>
+					<dd
+						class={props.variant === "v2" ? "text-foreground" : "text-gray-800"}
+					>
 						{props.media.width} x {props.media.height}
 					</dd>
-					<dt class="font-medium text-muted-foreground">File Size</dt>
-					<dd class="text-foreground">
+					<dt
+						class={
+							props.variant === "v2"
+								? "font-medium text-muted-foreground"
+								: "font-medium text-gray-600"
+						}
+					>
+						File Size
+					</dt>
+					<dd
+						class={props.variant === "v2" ? "text-foreground" : "text-gray-800"}
+					>
 						{props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
 					</dd>
 					<Show when={props.variant === "v2"}>
@@ -649,7 +675,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</div>
 				<Show
 					fallback={
-						<div class="rounded-md bg-muted p-3 text-muted-foreground text-sm italic">
+						<div
+							class={
+								props.variant === "v2"
+									? "rounded-md bg-muted p-3 text-muted-foreground text-sm italic"
+									: "rounded-md bg-gray-100 p-3 text-gray-500 text-sm italic"
+							}
+						>
 							No description
 						</div>
 					}
@@ -657,20 +689,36 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				>
 					<Show
 						fallback={
-							<div class="whitespace-pre-wrap rounded-md bg-muted p-3 text-sm">
+							<div
+								class={
+									props.variant === "v2"
+										? "whitespace-pre-wrap rounded-md bg-muted p-3 text-sm"
+										: "whitespace-pre-wrap rounded-md bg-gray-100 p-3 text-sm"
+								}
+							>
 								{props.media.description}
 							</div>
 						}
 						when={isEditingDescription()}
 					>
 						<textarea
-							class="w-full scroll-mb-24 rounded-md border border-input bg-background p-2 text-base sm:text-sm"
+							class={
+								props.variant === "v2"
+									? "w-full scroll-mb-24 rounded-md border border-input bg-background p-2 text-base sm:text-sm"
+									: "w-full scroll-mb-24 rounded-md border border-gray-300 p-2 text-base sm:text-sm"
+							}
 							onInput={(e) => setDescriptionValue(e.currentTarget.value)}
 							placeholder="Enter description..."
 							rows={6}
 							value={descriptionValue()}
 						/>
-						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
+						<div
+							class={
+								props.variant === "v2"
+									? "sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0"
+									: "sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-gray-50 px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0"
+							}
+						>
 							<button
 								class="min-h-11 w-full rounded-md bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 lg:w-auto"
 								onClick={handleSaveDescription}
@@ -679,7 +727,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								Save
 							</button>
 							<button
-								class="min-h-11 w-full rounded-md border border-input bg-background px-3 py-1 text-foreground text-sm hover:bg-accent lg:w-auto"
+								class={
+									props.variant === "v2"
+										? "min-h-11 w-full rounded-md border border-input bg-background px-3 py-1 text-foreground text-sm hover:bg-accent lg:w-auto"
+										: "min-h-11 w-full rounded-md bg-gray-300 px-3 py-1 text-gray-700 text-sm hover:bg-gray-400 lg:w-auto"
+								}
 								onClick={handleCancelEdit}
 								type="button"
 							>
@@ -724,7 +776,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									<div class="flex min-w-0 items-center gap-2">
 										<span class="break-words font-medium">{author.name}</span>
 										<Show when={author.accountId}>
-											<span class="break-all text-muted-foreground text-xs">
+											<span
+												class={
+													props.variant === "v2"
+														? "break-all text-muted-foreground text-xs"
+														: "break-all text-gray-500 text-xs"
+												}
+											>
 												({author.accountId})
 											</span>
 										</Show>
@@ -849,12 +907,24 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							<Show when={genInfo()?.prompt}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
-										<span class="font-medium text-muted-foreground">
+										<span
+											class={
+												props.variant === "v2"
+													? "font-medium text-muted-foreground"
+													: "font-medium text-gray-600"
+											}
+										>
 											Prompt:
 										</span>
 										<ClipboardCopy text={genInfo()?.prompt ?? ""} />
 									</div>
-									<p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs">
+									<p
+										class={
+											props.variant === "v2"
+												? "max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs"
+												: "max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs"
+										}
+									>
 										{genInfo()?.prompt}
 									</p>
 								</div>
@@ -862,12 +932,24 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							<Show when={genInfo()?.negativePrompt}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
-										<span class="font-medium text-muted-foreground">
+										<span
+											class={
+												props.variant === "v2"
+													? "font-medium text-muted-foreground"
+													: "font-medium text-gray-600"
+											}
+										>
 											Negative Prompt:
 										</span>
 										<ClipboardCopy text={genInfo()?.negativePrompt ?? ""} />
 									</div>
-									<p class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs">
+									<p
+										class={
+											props.variant === "v2"
+												? "max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs"
+												: "max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs"
+										}
+									>
 										{genInfo()?.negativePrompt}
 									</p>
 								</div>
@@ -875,7 +957,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							<Show when={genInfo()?.workflow}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
-										<span class="font-medium text-muted-foreground">
+										<span
+											class={
+												props.variant === "v2"
+													? "font-medium text-muted-foreground"
+													: "font-medium text-gray-600"
+											}
+										>
 											Workflow:
 										</span>
 										<ClipboardCopy
@@ -886,7 +974,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 											}
 										/>
 									</div>
-									<pre class="max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs">
+									<pre
+										class={
+											props.variant === "v2"
+												? "max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-muted p-2 text-xs"
+												: "max-h-32 overflow-y-auto whitespace-pre-wrap rounded bg-gray-100 p-2 text-xs"
+										}
+									>
 										{JSON.stringify(genInfo()?.workflow, null, 2)}
 									</pre>
 								</div>

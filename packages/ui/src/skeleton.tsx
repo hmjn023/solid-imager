@@ -133,7 +133,8 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 					{() => (
 						<Skeleton
 							class={cn(
-								"media-grid-skeleton-item w-full rounded-md",
+								"media-grid-skeleton-item w-full",
+								props.aspectRatio ? "rounded-md" : "rounded-lg",
 								props.aspectRatio === "4/3" ? "aspect-[4/3]" : "aspect-[3/4]",
 							)}
 						/>

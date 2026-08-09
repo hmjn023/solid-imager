@@ -185,11 +185,13 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									type="button"
 									value={category.value}
 								>
-									<V2CategoryLabel
-										description={category.description}
-										icon={<Icon aria-hidden="true" size={16} />}
-										label={category.label}
-									/>
+									<Show fallback={category.label} when={isV2()}>
+										<V2CategoryLabel
+											description={category.description}
+											icon={<Icon aria-hidden="true" size={16} />}
+											label={category.label}
+										/>
+									</Show>
 								</TabsTrigger>
 							);
 						}}
