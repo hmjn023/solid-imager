@@ -1,4 +1,4 @@
-import { UploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-content";
+import { LegacyUploadMediaModalContent } from "@solid-imager/ui/legacy-upload-media-modal-content";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
 type UploadMediaModalProps = {
@@ -19,7 +19,7 @@ type UploadMediaModalProps = {
 
 export function UploadMediaModal(props: UploadMediaModalProps) {
 	return (
-		<UploadMediaModalContent
+		<LegacyUploadMediaModalContent
 			initialFile={props.initialFile}
 			isOpen={props.isOpen}
 			onClose={props.onClose}

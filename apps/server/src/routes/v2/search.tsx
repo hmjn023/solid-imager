@@ -1,14 +1,17 @@
-import { useCurrentSearchPersistence } from "@solid-imager/ui/hooks/use-current-search-persistence";
+import {
+	persistSearchScrollPosition,
+	useCurrentSearchPersistence,
+} from "@solid-imager/ui/hooks/use-current-search-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
+import { V2SearchScreen } from "@solid-imager/ui/screens/v2-search-screen";
 import {
 	createFileRoute,
 	useLocation,
 	useNavigate,
 } from "@tanstack/solid-router";
-import { MediaGridItem } from "~/components/media/media-grid-item";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
+import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
@@ -42,7 +45,9 @@ export const Route = createFileRoute("/v2/search")({
 function V2SearchRoute() {
 	const location = useLocation();
 	const navigate = useNavigate();
-	const isSearchStateRestored = useCurrentSearchPersistence("all");
+	const isSearchStateRestored = useCurrentSearchPersistence("all", {
+		surface: "v2",
+	});
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
@@ -62,7 +67,10 @@ function V2SearchRoute() {
 		// so scrolling does not stop for another request every two or three rows.
 		limit: () => Math.max(searchState.limit, V2_SEARCH_RESULTS_PER_PAGE),
 		scrollY: () => searchState.scrollY,
-		setScrollY: (value) => setSearchState("scrollY", value),
+		setScrollY: (value) => {
+			setSearchState("scrollY", value);
+			persistSearchScrollPosition("all", value, { surface: "v2" });
+		},
 		setOffset: (value) => setSearchState("offset", value),
 		mode: () => searchState.mode,
 		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
@@ -82,20 +90,19 @@ function V2SearchRoute() {
 	});
 
 	return (
-		<SearchScreen
+		<V2SearchScreen
 			enableVirtualization
 			filterData={page.filterData}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
-				<MediaGridItem
+				<V2MediaGridItem
 					imageLoadPolicy={options?.imageLoadPolicy}
 					isSelected={options?.isPreviewSelected}
 					media={media}
 					onPreviewSelect={options?.onPreviewSelect}
 					priority={options?.priority}
-					routeVersion="v2"
 				/>
 			)}
 			onOpenMediaDetail={(media) => {
@@ -122,7 +129,6 @@ function V2SearchRoute() {
 			selectedSource={searchState.selectedSource}
 			ssrGuard
 			sources={page.sources()}
-			variant="v2"
 		/>
 	);
 }

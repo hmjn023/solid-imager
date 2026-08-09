@@ -26,6 +26,7 @@ import {
 	ContextMenuTrigger,
 } from "./context-menu";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
+import { createMediaPreviewSelectHandler } from "./media-preview-selection";
 import type { QueryUiState } from "./query-state";
 import {
 	getMediaGridColumnCount,
@@ -411,7 +412,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					<Show
 						fallback={
 							<MediaGridSkeleton
-								aspectRatio={props.itemAspectRatio === 4 / 3 ? "4/3" : "3/4"}
+								aspectRatio={
+									props.scrollMode === "element"
+										? props.itemAspectRatio === 4 / 3
+											? "4/3"
+											: "3/4"
+										: undefined
+								}
 								count={columnCount() * INITIAL_SKELETON_ROWS}
 							/>
 						}
@@ -436,14 +443,20 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 													}
 												: undefined,
 										onContextMenu: onContextMenuHandler(media.id),
-										priority: index() < initialPriorityMediaCount(),
+										priority:
+											props.scrollMode === "element"
+												? index() < initialPriorityMediaCount()
+												: undefined,
 										get isBulkSelectMode() {
 											return props.isBulkSelectMode?.();
 										},
 										get isSelected() {
 											return props.isSelected?.(media.id);
 										},
-										onPreviewSelect: () => props.onPreviewSelect?.(media),
+										onPreviewSelect: createMediaPreviewSelectHandler(
+											media,
+											props.onPreviewSelect,
+										),
 										get isPreviewSelected() {
 											return props.previewSelectedMediaId?.() === media.id;
 										},
@@ -486,7 +499,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											// Window virtualization keeps its established native lazy-loading
 											// behavior. Element mode supplies a separate direction-aware policy.
 											priority:
-												props.scrollMode !== "element" &&
+												props.scrollMode === "element" &&
 												virtualRow.index < INITIAL_PRIORITY_ROWS,
 											get isBulkSelectMode() {
 												return props.isBulkSelectMode?.();
@@ -494,7 +507,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											get isSelected() {
 												return props.isSelected?.(media.id);
 											},
-											onPreviewSelect: () => props.onPreviewSelect?.(media),
+											onPreviewSelect: createMediaPreviewSelectHandler(
+												media,
+												props.onPreviewSelect,
+											),
 											get isPreviewSelected() {
 												return props.previewSelectedMediaId?.() === media.id;
 											},
@@ -515,7 +531,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				<Match when={props.state().phase === "pending"}>
 					<LoadingRegion label="メディア一覧を読み込んでいます...">
 						<MediaGridSkeleton
-							aspectRatio={props.itemAspectRatio === 4 / 3 ? "4/3" : "3/4"}
+							aspectRatio={
+								props.scrollMode === "element"
+									? props.itemAspectRatio === 4 / 3
+										? "4/3"
+										: "3/4"
+									: undefined
+							}
 						/>
 					</LoadingRegion>
 				</Match>

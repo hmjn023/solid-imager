@@ -1,11 +1,14 @@
 import { type Accessor, createRoot, createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+	activateVectorSearch,
 	resetSearchState,
 	searchState,
 	setSearchState,
 } from "../stores/search-store";
 import {
+	persistSearchScrollPosition,
+	type SearchPersistenceOptions,
 	type SearchPersistenceSource,
 	useCurrentSearchPersistence,
 } from "./use-current-search-persistence";
@@ -91,9 +94,10 @@ describe("useCurrentSearchPersistence", () => {
 
 	const mountPersistence = (
 		sourceId: SearchPersistenceSource,
+		options?: SearchPersistenceOptions,
 	): MountedPersistence => {
 		const mounted = createRoot((dispose) => {
-			const isRestored = useCurrentSearchPersistence(sourceId);
+			const isRestored = useCurrentSearchPersistence(sourceId, options);
 			return { dispose, initialValue: isRestored(), isRestored };
 		});
 		mountedRoots.push(mounted);
@@ -193,7 +197,7 @@ describe("useCurrentSearchPersistence", () => {
 	});
 
 	it("preserves the current scroll position while restoring search state", async () => {
-		setSearchState("scrollY", 1840);
+		sessionStorage.setItem("search-scroll:legacy:current-all", "1840");
 		sessionStorage.setItem(
 			"current-all",
 			JSON.stringify(createPersistedSimpleState("saved query")),
@@ -203,6 +207,50 @@ describe("useCurrentSearchPersistence", () => {
 		await flushMicrotasks();
 
 		expect(searchState.scrollY).toBe(1840);
+	});
+
+	it("keeps v2 scroll persistence separate from the legacy surface", async () => {
+		vi.useFakeTimers();
+		sessionStorage.setItem(
+			"v2:current-all",
+			JSON.stringify(createPersistedSimpleState("shared query")),
+		);
+		sessionStorage.setItem(
+			"current-all",
+			JSON.stringify(createPersistedSimpleState("legacy query")),
+		);
+		sessionStorage.setItem("search-scroll:legacy:current-all", "240");
+		sessionStorage.setItem("search-scroll:v2:current-all", "1840");
+
+		mountPersistence("all", { surface: "v2" });
+		await flushMicrotasks();
+
+		expect(searchState.searchQuery).toBe("shared query");
+		expect(searchState.scrollY).toBe(1840);
+
+		setSearchState("scrollY", 2200);
+		expect(searchState.scrollY).toBe(2200);
+		persistSearchScrollPosition("all", searchState.scrollY, { surface: "v2" });
+		await flushMicrotasks();
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(sessionStorage.getItem("search-scroll:v2:current-all")).toBe("2200");
+		expect(sessionStorage.getItem("search-scroll:legacy:current-all")).toBe(
+			"240",
+		);
+		expect(sessionStorage.getItem("current-all")).toContain("legacy query");
+	});
+
+	it("restores a v2 vector search activated from the detail route", async () => {
+		activateVectorSearch("media-v2", { surface: "v2" });
+
+		const mounted = mountPersistence("all", { surface: "v2" });
+		await flushMicrotasks();
+
+		expect(mounted.isRestored()).toBe(true);
+		expect(searchState.mode).toBe("vector");
+		expect(searchState.similarityAnchorMediaId).toBe("media-v2");
+		expect(sessionStorage.getItem("current-all")).toBeNull();
 	});
 
 	it("does not inherit a source for legacy vector sessions", async () => {

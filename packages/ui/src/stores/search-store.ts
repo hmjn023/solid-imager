@@ -14,6 +14,16 @@ export const [searchState, setSearchState] = createStore<SearchState>({
 	...defaultState,
 });
 
+export type SearchPersistenceSurface = "legacy" | "v2";
+
+export type SearchStorePersistenceOptions = {
+	surface?: SearchPersistenceSurface;
+};
+
+function getSearchStateStorageKey(surface: SearchPersistenceSurface): string {
+	return surface === "v2" ? "v2:current-all" : "current-all";
+}
+
 export const resetSearchState = () => {
 	setSearchState({ ...defaultState });
 };
@@ -39,7 +49,10 @@ export const setSearchMode = (mode: "simple" | "pro" | "vector") => {
 	setSearchState(nextState);
 };
 
-export const activateVectorSearch = (mediaId: string) => {
+export const activateVectorSearch = (
+	mediaId: string,
+	options: SearchStorePersistenceOptions = {},
+) => {
 	const nextState = {
 		mode: "vector" as const,
 		similarityAnchorMediaId: mediaId,
@@ -50,8 +63,9 @@ export const activateVectorSearch = (mediaId: string) => {
 	};
 	setSearchState(nextState);
 	if (typeof sessionStorage !== "undefined") {
+		const storageKey = getSearchStateStorageKey(options.surface ?? "legacy");
 		sessionStorage.setItem(
-			"current-all",
+			storageKey,
 			JSON.stringify({
 				mode: nextState.mode,
 				similarityAnchorMediaId: nextState.similarityAnchorMediaId,
@@ -61,30 +75,33 @@ export const activateVectorSearch = (mediaId: string) => {
 	}
 };
 
-export const clearVectorSearchAnchor = () => {
+export const clearVectorSearchAnchor = (
+	options: SearchStorePersistenceOptions = {},
+) => {
 	setSearchState({
 		similarityAnchorMediaId: null,
 		offset: 0,
 		scrollY: 0,
 	});
 	if (typeof sessionStorage !== "undefined") {
-		const stored = sessionStorage.getItem("current-all");
+		const storageKey = getSearchStateStorageKey(options.surface ?? "legacy");
+		const stored = sessionStorage.getItem(storageKey);
 		if (!stored) return;
 		try {
 			const current: unknown = JSON.parse(stored);
 			if (typeof current !== "object" || current === null) {
-				sessionStorage.removeItem("current-all");
+				sessionStorage.removeItem(storageKey);
 				return;
 			}
 			sessionStorage.setItem(
-				"current-all",
+				storageKey,
 				JSON.stringify({
 					...current,
 					similarityAnchorMediaId: null,
 				}),
 			);
 		} catch {
-			sessionStorage.removeItem("current-all");
+			sessionStorage.removeItem(storageKey);
 		}
 	}
 };

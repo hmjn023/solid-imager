@@ -14,7 +14,7 @@ import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
 import { V2CollectionInspector } from "../v2/collection-inspector";
 import { V2SearchToolbar } from "../v2/search-toolbar";
-import type { SourceMediaScreenProps } from "./source-media-screen";
+import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
 export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);

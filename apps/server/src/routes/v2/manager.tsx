@@ -1,6 +1,6 @@
 import { useManagerPage } from "@solid-imager/ui/hooks/use-manager-page";
-import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
-import type { V2ManagerTransferFormat } from "@solid-imager/ui/screens/v2-manager-screen";
+import type { V2ManagerTransferFormat } from "@solid-imager/ui/screens/v2-manager/types";
+import { V2ManagerScreen } from "@solid-imager/ui/screens/v2-manager-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
@@ -161,10 +161,6 @@ function V2ManagerRoute() {
 	});
 
 	return (
-		<ManagerScreen
-			manager={manager}
-			transferActions={transferActions}
-			variant="v2"
-		/>
+		<V2ManagerScreen manager={manager} transferActions={transferActions} />
 	);
 }

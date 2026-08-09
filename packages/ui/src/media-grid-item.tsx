@@ -3,9 +3,6 @@ import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import { cn } from "./utils/cn";
 
-export const V2_MEDIA_GRID_IMAGE_SIZES =
-	"(min-width: 1536px) 12vw, (min-width: 1120px) 14vw, (min-width: 960px) 17vw, (min-width: 640px) 25vw, 50vw";
-
 export type MediaGridImageLoadPolicy = {
 	enabled?: boolean;
 	fetchpriority?: "high" | "low" | "auto";
@@ -36,7 +33,6 @@ export type MediaGridLinkProps = {
 };
 
 type MediaGridItemProps = {
-	variant?: "default" | "v2";
 	media: Media;
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
 	linkPrefix?: string;
@@ -67,35 +63,22 @@ export function MediaGridItem(props: MediaGridItemProps) {
 	return (
 		<LinkComponent
 			class={cn(
-				props.variant === "v2"
-					? "group relative block aspect-[4/3] overflow-hidden rounded-md bg-[var(--v2-surface-muted)] outline-none ring-offset-2 ring-offset-[var(--v2-canvas)] transition focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
-					: "group relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
-				props.isSelected &&
-					(props.variant === "v2"
-						? "ring-2 ring-[var(--v2-focus)]"
-						: "ring-4 ring-blue-500 ring-offset-2"),
+				"group relative block aspect-[3/4] overflow-hidden rounded-lg bg-gray-100 transition-all hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+				props.isSelected && "ring-4 ring-blue-500 ring-offset-2",
 				props.class,
 			)}
 			data-media-id={props.media.id}
 			href={href()}
-			aria-pressed={
-				props.isBulkSelectMode || props.variant === "v2"
-					? props.isSelected
-					: undefined
-			}
-			onClick={undefined}
 			onContextMenu={(event) => props.onContextMenu?.(event)}
 		>
-			<Show
-				when={
-					props.isBulkSelectMode || (props.variant === "v2" && props.isSelected)
-				}
-			>
-				<div
-					aria-hidden="true"
-					class="absolute top-2 right-2 z-10 flex size-6 items-center justify-center rounded-full border border-white bg-black/55 font-bold text-white text-xs shadow-sm"
-				>
-					{props.isSelected ? "✓" : ""}
+			<Show when={props.isBulkSelectMode}>
+				<div class="absolute right-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-full border border-white bg-black/40 text-white">
+					<input
+						checked={props.isSelected}
+						class="h-4 w-4 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+						readOnly
+						type="checkbox"
+					/>
 				</div>
 			</Show>
 
@@ -110,10 +93,7 @@ export function MediaGridItem(props: MediaGridItemProps) {
 				{props.renderThumbnail({
 					alt: props.media.fileName,
 					class: cn(
-						"h-full w-full object-cover",
-						props.variant === "v2"
-							? "transition duration-200 group-hover:scale-[1.015] motion-reduce:transition-none"
-							: "transition-transform duration-300 group-hover:scale-105",
+						"h-full w-full object-cover transition-transform duration-300 group-hover:scale-105",
 						props.thumbnailClass,
 					),
 					height: props.media.height,
@@ -130,7 +110,6 @@ export function MediaGridItem(props: MediaGridItemProps) {
 						);
 					},
 					media: props.media,
-					sizes: props.variant === "v2" ? V2_MEDIA_GRID_IMAGE_SIZES : undefined,
 					sourceRootPath: props.sourceRootPath,
 					width: props.media.width,
 				})}
@@ -138,7 +117,7 @@ export function MediaGridItem(props: MediaGridItemProps) {
 
 			<div
 				class={cn(
-					"absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100",
+					"absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100",
 					props.overlayClass,
 				)}
 			>
