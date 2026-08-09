@@ -146,6 +146,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		startIndex: number;
 	} | null>(null);
 	let mediaGridRef: HTMLDivElement | undefined;
+	let mediaGridResizeObserver: ResizeObserver | undefined;
 	let metricsFrameId: number | undefined;
 
 	const columnCount = createMemo(() => {
@@ -352,6 +353,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		window.addEventListener("resize", handleResize);
 
 		const resizeObserver = new ResizeObserver(scheduleMediaGridMetrics);
+		mediaGridResizeObserver = resizeObserver;
 		if (mediaGridRef) {
 			resizeObserver.observe(mediaGridRef);
 		}
@@ -363,6 +365,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				metricsFrameId = undefined;
 			}
 			resizeObserver.disconnect();
+			if (mediaGridResizeObserver === resizeObserver) {
+				mediaGridResizeObserver = undefined;
+			}
 		});
 	});
 
@@ -418,7 +423,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		<div
 			class="@container relative min-w-0 w-full"
 			ref={(element) => {
+				if (mediaGridRef && mediaGridRef !== element) {
+					mediaGridResizeObserver?.unobserve(mediaGridRef);
+				}
 				mediaGridRef = element;
+				mediaGridResizeObserver?.observe(element);
 				scheduleMediaGridMetrics();
 			}}
 			style={{
