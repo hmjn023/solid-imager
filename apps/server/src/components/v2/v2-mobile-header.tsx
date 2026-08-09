@@ -1,6 +1,6 @@
 import { Button } from "@solid-imager/ui/button";
 import { Menu } from "@solid-imager/ui/v2/icons";
-import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
+import { V2PendingDownloadsIndicator } from "~/components/imports/v2-pending-downloads-indicator";
 
 export function V2MobileHeader(props: { onOpenMenu: () => void }) {
 	return (
@@ -17,7 +17,7 @@ export function V2MobileHeader(props: { onOpenMenu: () => void }) {
 			<strong class="min-w-0 flex-1 truncate font-semibold">
 				Solid Imager
 			</strong>
-			<PendingDownloadsIndicator compact variant="v2" />
+			<V2PendingDownloadsIndicator compact />
 		</header>
 	);
 }

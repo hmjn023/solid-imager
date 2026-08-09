@@ -9,7 +9,7 @@ import {
 } from "@solid-imager/ui/v2/icons";
 import { Link } from "@tanstack/solid-router";
 import { For, Show } from "solid-js";
-import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
+import { V2PendingDownloadsIndicator } from "~/components/imports/v2-pending-downloads-indicator";
 import { V2_NAVIGATION_ITEMS, V2NavigationItem } from "./v2-navigation";
 import { V2SourceList } from "./v2-source-list";
 
@@ -80,7 +80,7 @@ export function V2Sidebar(props: V2SidebarProps) {
 					to={V2_NAVIGATION_ITEMS[0].to}
 				/>
 				<Show when={props.expanded}>
-					<PendingDownloadsIndicator variant="v2" />
+					<V2PendingDownloadsIndicator />
 				</Show>
 			</nav>
 

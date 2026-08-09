@@ -13,7 +13,7 @@ import {
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
-import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
+import { V2SourceFormModal } from "@solid-imager/ui/v2-source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import type { JSX, ParentProps } from "solid-js";
 import { createSignal } from "solid-js";
@@ -117,14 +117,13 @@ export function V2AppShell(props: V2AppShellProps) {
 				</DialogContent>
 			</Dialog>
 
-			<SourceFormModal
+			<V2SourceFormModal
 				editingSource={
 					sourcePage.editingSource() as MediaSourceInfo | SafeMediaSource | null
 				}
 				isOpen={sourcePage.showFormModal()}
 				onClose={() => sourcePage.setShowFormModal(false)}
 				onSubmit={sourcePage.handleFormSubmit}
-				variant="v2"
 			/>
 			<SourceDeleteModal
 				isOpen={sourcePage.showDeleteModal()}

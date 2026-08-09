@@ -24,7 +24,7 @@ import {
 import type {
 	ImportReviewModalProps,
 	PendingImportJob,
-} from "./import-review-modal";
+} from "./import-review-modal.types";
 import { toast } from "./toast";
 
 function getPreviewUrl(url?: string): string {

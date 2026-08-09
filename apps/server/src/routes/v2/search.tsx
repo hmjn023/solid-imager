@@ -10,8 +10,8 @@ import {
 	useLocation,
 	useNavigate,
 } from "@tanstack/solid-router";
-import { MediaGridItem } from "~/components/media/media-grid-item";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
+import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
@@ -97,13 +97,12 @@ function V2SearchRoute() {
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
-				<MediaGridItem
+				<V2MediaGridItem
 					imageLoadPolicy={options?.imageLoadPolicy}
 					isSelected={options?.isPreviewSelected}
 					media={media}
 					onPreviewSelect={options?.onPreviewSelect}
 					priority={options?.priority}
-					routeVersion="v2"
 				/>
 			)}
 			onOpenMediaDetail={(media) => {

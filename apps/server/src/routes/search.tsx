@@ -9,7 +9,7 @@ import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createSignal, onMount, Show } from "solid-js";
-import { MediaGridItem } from "~/components/media/media-grid-item";
+import { LegacyMediaGridItem } from "~/components/media/legacy-media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import {
@@ -126,7 +126,7 @@ function SearchRoute() {
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
-				<MediaGridItem
+				<LegacyMediaGridItem
 					imageLoadPolicy={options?.imageLoadPolicy}
 					media={media}
 					priority={options?.priority}

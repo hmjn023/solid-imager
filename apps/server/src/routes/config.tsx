@@ -1,7 +1,7 @@
 import { configQueryKeys } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import { ConfigStateScreen } from "@solid-imager/ui/screens/config-state-screen";
+import { LegacyConfigStateScreen } from "@solid-imager/ui/screens/legacy-config-state-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -35,7 +35,7 @@ function ConfigPageContent() {
 	const config = () => configQuery.data ?? loaderData().config;
 
 	return (
-		<ConfigStateScreen
+		<LegacyConfigStateScreen
 			data={config()}
 			onRetry={async () => {
 				await configQuery.refetch();

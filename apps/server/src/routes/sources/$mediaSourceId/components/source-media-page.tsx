@@ -1,3 +1,4 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import type { SearchPersistenceSurface } from "@solid-imager/ui/hooks/use-current-search-persistence";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
@@ -11,11 +12,11 @@ import {
 	type Accessor,
 	type Component,
 	createSignal,
+	type JSX,
 	onMount,
 	Show,
 } from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
-import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -52,13 +53,26 @@ const PresetClient = createPresetClient(rawPresetClient);
 
 export type SourceMediaPageControllerProps = {
 	mediaSourceId?: Accessor<string>;
-	routeVersion: "default" | "v2";
 	screenComponent: Component<SourceMediaScreenProps>;
 	uploadModalComponent: SourceMediaScreenProps["uploadModalComponent"];
 	persistenceSurface: SearchPersistenceSurface;
+	renderItem: SourceMediaGridRenderer;
+	bulkActionsClass: string;
+	ssrGuard?: boolean;
+	scrollContainerSelector?: Accessor<string>;
 	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
 	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
 };
+
+type SourceMediaGridOptions = Parameters<
+	SourceMediaScreenProps["renderItem"]
+>[1];
+
+type SourceMediaGridRenderer = (
+	media: Media,
+	options: SourceMediaGridOptions,
+	onToggleSelect: () => void,
+) => JSX.Element;
 
 export function SourceMediaPageController(
 	props: SourceMediaPageControllerProps,
@@ -116,7 +130,7 @@ export function SourceMediaPageController(
 					title="メディア一覧"
 				/>
 			}
-			when={props.routeVersion === "v2" || isMounted()}
+			when={props.ssrGuard === true || isMounted()}
 		>
 			<SourceMediaPageComponent
 				enableVirtualization
@@ -156,24 +170,10 @@ export function SourceMediaPageController(
 				selectedCount={() => selectedMediaIds().length}
 				onEnterBulkSelectMode={() => setIsBulkSelectMode(true)}
 				screenComponent={props.screenComponent}
-				scrollContainerSelector={
-					props.routeVersion === "v2"
-						? `[data-media-scroll="${mediaSourceId() ?? "v2-source"}"]`
-						: undefined
+				scrollContainerSelector={props.scrollContainerSelector?.()}
+				renderItem={(media, options) =>
+					props.renderItem(media, options, () => handleToggleSelect(media.id))
 				}
-				renderItem={(media, options) => (
-					<MediaGridItem
-						imageLoadPolicy={options.imageLoadPolicy}
-						media={media}
-						priority={options.priority}
-						routeVersion={props.routeVersion}
-						onContextMenu={options.onContextMenu}
-						isBulkSelectMode={options.isBulkSelectMode}
-						isSelected={options.isSelected || options.isPreviewSelected}
-						onPreviewSelect={options.onPreviewSelect}
-						onToggleSelect={() => handleToggleSelect(media.id)}
-					/>
-				)}
 				onOpenMediaDetail={props.onOpenMediaDetail}
 				renderMediaPreview={props.renderMediaPreview}
 				moveCopyDialogComponent={MoveCopyMediaDialog}
@@ -183,14 +183,7 @@ export function SourceMediaPageController(
 
 			{/* 一括選択ツールバー */}
 			<Show when={isBulkSelectMode()}>
-				<div
-					class={
-						props.routeVersion === "v2"
-							? "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] px-3 py-3 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
-							: "fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-2xl border border-primary/20 bg-background/95 px-3 py-3 shadow-lg backdrop-blur sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-4 sm:rounded-full sm:px-6"
-					}
-					data-testid="bulk-actions-bar"
-				>
+				<div class={props.bulkActionsClass} data-testid="bulk-actions-bar">
 					<span class="w-full text-center font-medium text-sm sm:w-auto">
 						{selectedMediaIds().length} 件選択中
 					</span>

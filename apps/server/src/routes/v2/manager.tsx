@@ -1,8 +1,6 @@
 import { useManagerPage } from "@solid-imager/ui/hooks/use-manager-page";
-import {
-	V2ManagerScreen,
-	type V2ManagerTransferFormat,
-} from "@solid-imager/ui/screens/v2-manager-screen";
+import type { V2ManagerTransferFormat } from "@solid-imager/ui/screens/v2-manager/types";
+import { V2ManagerScreen } from "@solid-imager/ui/screens/v2-manager-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";

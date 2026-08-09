@@ -74,7 +74,6 @@ class ApiMediaSource implements MediaSource {
 type MediaViewerProps = {
 	media: MediaDetails;
 	sourceRootPath?: string | null;
-	variant?: "default" | "v2";
 };
 
 export function MediaViewer(props: MediaViewerProps) {
@@ -100,7 +99,6 @@ export function MediaViewer(props: MediaViewerProps) {
 			fileName={props.media.fileName}
 			height={props.media.height}
 			source={source()}
-			variant={props.variant}
 			width={props.media.width}
 		/>
 	);
