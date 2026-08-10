@@ -244,7 +244,6 @@ export const DirectorySyncService = {
 					{ mediaSourceId, basePath },
 					"Starting directory sync for source",
 				);
-
 				// 1. Get existing paths from DB
 				const existingRecords =
 					await MediaRepository.findAllPathsBySourceId(mediaSourceId);
