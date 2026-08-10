@@ -10,6 +10,7 @@ import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 export type SearchMediaItemOptions = {
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
 	isPreviewSelected?: boolean;
+	onPrepareMediaDetail?: () => void;
 	onPreviewSelect?: () => void;
 	priority?: boolean;
 };

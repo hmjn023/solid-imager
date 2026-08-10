@@ -21,6 +21,7 @@ export const projectSchema = z.object({
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 	archivedAt: z.coerce.date().nullable(),
+	mediaCount: z.number().int().nonnegative().optional(),
 });
 
 export type Project = z.infer<typeof projectSchema>;

@@ -17,6 +17,7 @@ import {
 	mediaDetailsQueryOptions,
 	mediaSourcesQueryOptions,
 } from "~/infrastructure/api-clients/queries";
+import { findV2MediaNeighbors } from "~/routes/v2/media-context";
 
 interface MediaRouteParams {
 	mediaId: string;
@@ -47,6 +48,18 @@ function MediaDetailHeader(props: {
 	sourceName: string;
 }) {
 	const navigate = useNavigate();
+	const neighbors = () => findV2MediaNeighbors(props.media.id);
+	const navigateToNeighbor = (direction: "next" | "previous") => {
+		const neighbor = neighbors()[direction];
+		if (!neighbor) return;
+		void navigate({
+			params: {
+				mediaId: neighbor.id,
+				mediaSourceId: neighbor.mediaSourceId,
+			},
+			to: "/v2/sources/$mediaSourceId/$mediaId",
+		});
+	};
 	const returnToCollection = () => {
 		const returnPath = sessionStorage.getItem("v2:media-return");
 		if (
@@ -89,21 +102,27 @@ function MediaDetailHeader(props: {
 
 				<div
 					class="flex shrink-0 items-center rounded-md border border-[var(--v2-border)] bg-white p-0.5"
-					title="一覧コンテキストがないため前後移動は利用できません"
+					title={
+						neighbors().previous || neighbors().next
+							? "一覧の前後のメディアへ移動"
+							: "一覧コンテキストがないため前後移動は利用できません"
+					}
 				>
 					<Button
-						aria-label="前のメディア（利用不可）"
+						aria-label="前のメディア"
 						class="size-9 p-0 md:size-8"
-						disabled
+						disabled={!neighbors().previous}
+						onClick={() => navigateToNeighbor("previous")}
 						size="icon"
 						variant="ghost"
 					>
 						<ChevronLeft aria-hidden="true" size={16} />
 					</Button>
 					<Button
-						aria-label="次のメディア（利用不可）"
+						aria-label="次のメディア"
 						class="size-9 p-0 md:size-8"
-						disabled
+						disabled={!neighbors().next}
+						onClick={() => navigateToNeighbor("next")}
 						size="icon"
 						variant="ghost"
 					>

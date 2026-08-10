@@ -16,6 +16,7 @@ function V2ConfigPage() {
 
 	return (
 		<V2ConfigStateScreen
+			checkAiHealth={() => orpc.ai.health()}
 			data={configQuery.data}
 			onRetry={async () => {
 				await configQuery.refetch();

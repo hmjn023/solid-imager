@@ -5,12 +5,22 @@ import {
 } from "@solid-imager/core/domain/characters/schemas";
 import { z } from "zod";
 import { CharacterService } from "~/application/services/character-service";
+import { getCharacterMediaCounts } from "./entity-media-counts";
 
 /**
  * Characters Router Implementation
  */
 export const charactersRouter = {
-	list: os.handler(() => CharacterService.getAllCharacters()),
+	list: os.handler(async () => {
+		const characters = await CharacterService.getAllCharacters();
+		const mediaCounts = await getCharacterMediaCounts(
+			characters.map((character) => character.id),
+		);
+		return characters.map((character) => ({
+			...character,
+			mediaCount: mediaCounts.get(character.id) ?? 0,
+		}));
+	}),
 
 	get: os
 		.input(z.object({ id: z.string().uuid() }))

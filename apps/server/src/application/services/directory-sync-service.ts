@@ -1,5 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { MediaSourceSyncState } from "@solid-imager/core/domain/sources/schemas";
 import { services } from "~/application/registry";
 import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { MediaProcessingService } from "~/application/services/media-processing-service";
@@ -16,6 +17,42 @@ type SyncResult = {
 	added: number;
 	deleted: number;
 };
+
+type SourceSyncStatus = {
+	message?: string;
+	status: MediaSourceSyncState;
+	updatedAt: Date;
+};
+
+const syncStateGlobal = globalThis as typeof globalThis & {
+	__SOLID_IMAGER_SOURCE_SYNC_STATES__?: Map<string, SourceSyncStatus>;
+};
+const sourceSyncStates =
+	syncStateGlobal.__SOLID_IMAGER_SOURCE_SYNC_STATES__ ??
+	new Map<string, SourceSyncStatus>();
+syncStateGlobal.__SOLID_IMAGER_SOURCE_SYNC_STATES__ = sourceSyncStates;
+
+function publishSyncStatus(
+	mediaSourceId: string,
+	status: MediaSourceSyncState,
+	message?: string,
+): void {
+	const updatedAt = new Date();
+	const state = { status, message, updatedAt } satisfies SourceSyncStatus;
+	sourceSyncStates.set(mediaSourceId, state);
+	RealtimeEventBus.publishSource(mediaSourceId, "source-sync-status", {
+		mediaSourceId,
+		status,
+		message,
+		timestamp: updatedAt.toISOString(),
+	});
+}
+
+export function getSourceSyncState(
+	mediaSourceId: string,
+): MediaSourceSyncState {
+	return sourceSyncStates.get(mediaSourceId)?.status ?? "idle";
+}
 
 async function scanFiles(basePath: string): Promise<string[]> {
 	const files: string[] = [];
@@ -128,12 +165,20 @@ export const DirectorySyncService = {
 			added: 0,
 			deleted: 0,
 		};
+		publishSyncStatus(mediaSourceId, "syncing");
 		try {
 			const source = await sourceRepo.findById(mediaSourceId);
 			if (source?.type !== "local") {
 				logger.info(
 					{ mediaSourceId },
 					"Skipping sync for non-local or missing source",
+				);
+				publishSyncStatus(
+					mediaSourceId,
+					"idle",
+					source
+						? "Source type does not support directory sync"
+						: "Source not found",
 				);
 				return result;
 			}
@@ -146,6 +191,11 @@ export const DirectorySyncService = {
 				logger.error(
 					{ mediaSourceId, basePath },
 					"Base path does not exist or is not accessible during sync",
+				);
+				publishSyncStatus(
+					mediaSourceId,
+					"error",
+					"Source path is not accessible",
 				);
 				return result;
 			}
@@ -207,11 +257,17 @@ export const DirectorySyncService = {
 				{ mediaSourceId, syncResult: result },
 				"Directory sync completed successfully",
 			);
+			publishSyncStatus(mediaSourceId, "idle");
 			return result;
 		} catch (error) {
 			logger.error(
 				{ err: error, mediaSourceId },
 				"Error during directory sync",
+			);
+			publishSyncStatus(
+				mediaSourceId,
+				"error",
+				error instanceof Error ? error.message : "Directory sync failed",
 			);
 			return result;
 		}

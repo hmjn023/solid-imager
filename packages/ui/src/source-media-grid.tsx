@@ -48,6 +48,8 @@ const INITIAL_PRIORITY_ROWS = 2;
 const INITIAL_HIGH_PRIORITY_MEDIA = 2;
 const INITIAL_SKELETON_ROWS = 3;
 
+export type SourceMediaViewMode = "grid" | "list";
+
 type ScrollDirection = "backward" | "forward" | null;
 
 function extractDirectionalRows(
@@ -102,6 +104,7 @@ type SourceMediaGridProps = {
 			isBulkSelectMode?: boolean;
 			isSelected?: boolean;
 			onPreviewSelect?: () => void;
+			onPrepareMediaDetail?: () => void;
 			isPreviewSelected?: boolean;
 		},
 	) => JSX.Element;
@@ -119,6 +122,12 @@ type SourceMediaGridProps = {
 	totalCount?: number;
 	/** Screen-specific copy for the initial error state. */
 	errorTitle?: string;
+	/** Optional collection presentation mode. */
+	viewMode?: Accessor<SourceMediaViewMode>;
+	/** Opens the media detail route from list rows. */
+	onOpenMediaDetail?: (media: Media) => void;
+	/** Saves the current collection context before a direct card navigation. */
+	onPrepareMediaDetail?: (media: Media) => void;
 };
 
 export function SourceMediaGrid(props: SourceMediaGridProps) {
@@ -128,6 +137,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const enableVirtualization = () => props.enableVirtualization ?? false;
 	const disableContextMenu = () => props.disableContextMenu ?? false;
 	const totalCount = () => props.totalCount ?? props.mediaResults().length;
+	const viewMode = () => props.viewMode?.() ?? "grid";
 	const errorMessage = () => {
 		const error = props.state().error;
 		return error instanceof Error ? error.message : "API接続に失敗しました";
@@ -472,6 +482,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 													}
 												: undefined,
 										onContextMenu: onContextMenuHandler(media.id),
+										onPrepareMediaDetail: () =>
+											props.onPrepareMediaDetail?.(media),
 										priority:
 											props.scrollMode === "element"
 												? index() < initialPriorityMediaCount()
@@ -525,6 +537,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 														)
 													: undefined,
 											onContextMenu: onContextMenuHandler(media.id),
+											onPrepareMediaDetail: () =>
+												props.onPrepareMediaDetail?.(media),
 											// Window virtualization keeps its established native lazy-loading
 											// behavior. Element mode supplies a separate direction-aware policy.
 											priority:
@@ -551,6 +565,101 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					}}
 				</For>
 			</Show>
+		</div>
+	);
+	const formatFileSize = (bytes: number | null): string => {
+		if (bytes === null) return "—";
+		if (bytes < 1024) return `${bytes} B`;
+		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+	};
+	const listContent = (
+		<div class="overflow-x-auto rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] [scrollbar-gutter:stable]">
+			<table class="w-full min-w-[52rem] border-collapse text-left text-sm">
+				<caption class="sr-only">
+					メディア一覧。{totalCount().toLocaleString()}件。
+				</caption>
+				<thead class="bg-[var(--v2-surface-muted)] text-xs text-[var(--v2-text-muted)]">
+					<tr>
+						<Show when={props.isBulkSelectMode?.()}>
+							<th class="w-10 px-3 py-2" scope="col">
+								<span class="sr-only">選択</span>
+							</th>
+						</Show>
+						<th class="px-3 py-2 font-medium" scope="col">
+							Name
+						</th>
+						<th class="px-3 py-2 font-medium" scope="col">
+							Type
+						</th>
+						<th class="px-3 py-2 font-medium" scope="col">
+							Dimensions
+						</th>
+						<th class="px-3 py-2 font-medium" scope="col">
+							Size
+						</th>
+						<th class="px-3 py-2 font-medium" scope="col">
+							Modified
+						</th>
+					</tr>
+				</thead>
+				<tbody class="divide-y divide-[var(--v2-border)]">
+					<For each={props.mediaResults()}>
+						{(media) => (
+							<tr
+								class={
+									props.isSelected?.(media.id)
+										? "bg-[var(--v2-surface-selected)]"
+										: "hover:bg-[var(--v2-surface-muted)]"
+								}
+							>
+								<Show when={props.isBulkSelectMode?.()}>
+									<td class="px-3 py-2">
+										<input
+											aria-label={`${media.fileName}を選択`}
+											checked={props.isSelected?.(media.id) ?? false}
+											onChange={() => props.onToggleSelect?.(media.id)}
+											type="checkbox"
+										/>
+									</td>
+								</Show>
+								<th class="max-w-[28rem] px-3 py-2 font-normal" scope="row">
+									<button
+										class="block min-h-10 w-full rounded px-1 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+										onClick={() => props.onOpenMediaDetail?.(media)}
+										type="button"
+									>
+										<span
+											class="block truncate font-medium text-[var(--v2-text)]"
+											title={media.fileName}
+										>
+											{media.fileName}
+										</span>
+										<span
+											class="mt-0.5 block truncate text-[var(--v2-text-muted)] text-xs"
+											title={media.filePath}
+										>
+											{media.filePath}
+										</span>
+									</button>
+								</th>
+								<td class="px-3 py-2 text-[var(--v2-text-secondary)]">
+									{media.mediaType}
+								</td>
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+									{media.width} × {media.height}
+								</td>
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+									{formatFileSize(media.fileSize)}
+								</td>
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-muted)]">
+									{media.modifiedAt.toLocaleDateString("ja-JP")}
+								</td>
+							</tr>
+						)}
+					</For>
+				</tbody>
+			</table>
 		</div>
 	);
 
@@ -595,121 +704,128 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						</div>
 					</Show>
 
-					{/* Grid with optional context menu */}
-					<Show fallback={gridContent} when={!disableContextMenu()}>
-						<ContextMenu>
-							<ContextMenuTrigger class="block min-w-0 w-full">
-								{gridContent}
-							</ContextMenuTrigger>
-							<ContextMenuContent>
-								<Show
-									fallback={
-										<ContextMenuItem disabled>
-											No media selected
-										</ContextMenuItem>
-									}
-									when={contextMenuMediaId()}
-								>
-									<ContextMenuItem
-										onSelect={() => {
-											const id = contextMenuMediaId();
-											if (id) props.onToggleSelect?.(id);
-										}}
-									>
-										{(() => {
-											const id = contextMenuMediaId();
-											return id &&
-												props.isBulkSelectMode?.() &&
-												props.isSelected?.(id)
-												? "選択解除"
-												: "選択";
-										})()}
-									</ContextMenuItem>
-
-									<ContextMenuSeparator />
-
-									<Show
-										when={
-											props.isBulkSelectMode?.() &&
-											(props.selectedCount?.() ?? 0) > 0
-										}
-									>
-										<ContextMenuItem
-											onSelect={() => {
-												props.onBulkAction?.();
-											}}
+					{/* Grid/list with optional context menu for the grid presentation */}
+					<Show
+						fallback={
+							<Show fallback={gridContent} when={!disableContextMenu()}>
+								<ContextMenu>
+									<ContextMenuTrigger class="block min-w-0 w-full">
+										{gridContent}
+									</ContextMenuTrigger>
+									<ContextMenuContent>
+										<Show
+											fallback={
+												<ContextMenuItem disabled>
+													No media selected
+												</ContextMenuItem>
+											}
+											when={contextMenuMediaId()}
 										>
-											一括操作を実行 ({props.selectedCount?.()}件選択中)
-										</ContextMenuItem>
-										<ContextMenuItem
-											onSelect={() => {
-												props.onClearSelection?.();
-											}}
-										>
-											選択をクリア
-										</ContextMenuItem>
-										<ContextMenuSeparator />
-									</Show>
+											<ContextMenuItem
+												onSelect={() => {
+													const id = contextMenuMediaId();
+													if (id) props.onToggleSelect?.(id);
+												}}
+											>
+												{(() => {
+													const id = contextMenuMediaId();
+													return id &&
+														props.isBulkSelectMode?.() &&
+														props.isSelected?.(id)
+														? "選択解除"
+														: "選択";
+												})()}
+											</ContextMenuItem>
 
-									<Show when={showOpenInNewTab()}>
-										<ContextMenuItem
-											onSelect={() => {
-												const id = contextMenuMediaId();
-												const sourceId = props.mediaSourceId();
-												if (id && sourceId) {
-													window.open(
-														`${props.detailBasePath ?? "/sources"}/${sourceId}/${id}`,
-														"_blank",
-													);
+											<ContextMenuSeparator />
+
+											<Show
+												when={
+													props.isBulkSelectMode?.() &&
+													(props.selectedCount?.() ?? 0) > 0
 												}
-											}}
-										>
-											新しいタブで開く
-										</ContextMenuItem>
-									</Show>
+											>
+												<ContextMenuItem
+													onSelect={() => {
+														props.onBulkAction?.();
+													}}
+												>
+													一括操作を実行 ({props.selectedCount?.()}件選択中)
+												</ContextMenuItem>
+												<ContextMenuItem
+													onSelect={() => {
+														props.onClearSelection?.();
+													}}
+												>
+													選択をクリア
+												</ContextMenuItem>
+												<ContextMenuSeparator />
+											</Show>
 
-									<ContextMenuItem
-										class="text-red-600 focus:text-red-600"
-										onSelect={() => {
-											const id = contextMenuMediaId();
-											if (id) props.onDelete?.(id);
-										}}
-									>
-										削除
-									</ContextMenuItem>
+											<Show when={showOpenInNewTab()}>
+												<ContextMenuItem
+													onSelect={() => {
+														const id = contextMenuMediaId();
+														const sourceId = props.mediaSourceId();
+														if (id && sourceId) {
+															window.open(
+																`${props.detailBasePath ?? "/sources"}/${sourceId}/${id}`,
+																"_blank",
+															);
+														}
+													}}
+												>
+													新しいタブで開く
+												</ContextMenuItem>
+											</Show>
 
-									<ContextMenuSeparator />
+											<ContextMenuItem
+												class="text-red-600 focus:text-red-600"
+												onSelect={() => {
+													const id = contextMenuMediaId();
+													if (id) props.onDelete?.(id);
+												}}
+											>
+												削除
+											</ContextMenuItem>
 
-									<ContextMenuItem
-										onSelect={() => {
-											const id = contextMenuMediaId();
-											if (id) props.onCopyMove?.(id, "copy");
-										}}
-									>
-										他のソースへコピー
-									</ContextMenuItem>
-									<ContextMenuItem
-										onSelect={() => {
-											const id = contextMenuMediaId();
-											if (id) props.onCopyMove?.(id, "move");
-										}}
-									>
-										他のソースへ移動
-									</ContextMenuItem>
+											<ContextMenuSeparator />
 
-									<ContextMenuSeparator />
+											<ContextMenuItem
+												onSelect={() => {
+													const id = contextMenuMediaId();
+													if (id) props.onCopyMove?.(id, "copy");
+												}}
+											>
+												他のソースへコピー
+											</ContextMenuItem>
+											<ContextMenuItem
+												onSelect={() => {
+													const id = contextMenuMediaId();
+													if (id) props.onCopyMove?.(id, "move");
+												}}
+											>
+												他のソースへ移動
+											</ContextMenuItem>
 
-									<ContextMenuItem
-										onSelect={() => {
-											const id = contextMenuMediaId();
-											if (id) props.onSyncSingleMedia?.(id);
-										}}
-									>
-										メタデータを同期 (再処理)
-									</ContextMenuItem>
-								</Show>
-							</ContextMenuContent>
-						</ContextMenu>
+											<ContextMenuSeparator />
+
+											<ContextMenuItem
+												onSelect={() => {
+													const id = contextMenuMediaId();
+													if (id) props.onSyncSingleMedia?.(id);
+												}}
+											>
+												メタデータを同期 (再処理)
+											</ContextMenuItem>
+										</Show>
+									</ContextMenuContent>
+								</ContextMenu>
+							</Show>
+						}
+						when={viewMode() === "list"}
+					>
+						{listContent}
 					</Show>
 
 					{/* Empty state */}

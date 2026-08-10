@@ -28,6 +28,7 @@ export const characterSchema = z.object({
 		.default([]),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
+	mediaCount: z.number().int().nonnegative().optional(),
 });
 
 export type Character = z.infer<typeof characterSchema>;

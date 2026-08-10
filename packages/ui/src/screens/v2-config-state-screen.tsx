@@ -1,3 +1,4 @@
+import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { Match, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { ConfigSkeleton, LoadingRegion } from "../skeleton";
@@ -6,7 +7,11 @@ import { V2ManagementHeader } from "../v2/management-layout";
 import type { ConfigStateScreenProps } from "./config-state-screen.types";
 import { V2ConfigScreen } from "./v2-config-screen";
 
-export function V2ConfigStateScreen(props: ConfigStateScreenProps) {
+export type V2ConfigStateScreenProps = ConfigStateScreenProps & {
+	checkAiHealth: () => Promise<AiHealthResponse>;
+};
+
+export function V2ConfigStateScreen(props: V2ConfigStateScreenProps) {
 	const hasData = () => props.data !== undefined;
 
 	return (
@@ -35,6 +40,7 @@ export function V2ConfigStateScreen(props: ConfigStateScreenProps) {
 					<Match when={props.data}>
 						{(data) => (
 							<V2ConfigScreen
+								checkAiHealth={props.checkAiHealth}
 								data={data()}
 								onSubmit={props.onSubmit}
 								onSubmitSuccess={props.onSubmitSuccess}

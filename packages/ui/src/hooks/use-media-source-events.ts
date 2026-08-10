@@ -15,6 +15,8 @@ import {
 	mediaDeletedEventSchema,
 	mediaMovedEventSchema,
 	type SourceEvent,
+	type SourceSyncStatusEvent,
+	sourceSyncStatusEventSchema,
 	type ThumbnailGeneratedEvent,
 	thumbnailGeneratedEventSchema,
 	type WatcherErrorEvent,
@@ -33,6 +35,7 @@ export type {
 	MediaCopiedEvent,
 	MediaDeletedEvent,
 	MediaMovedEvent,
+	SourceSyncStatusEvent,
 	ThumbnailGeneratedEvent,
 	WatcherErrorEvent,
 };
@@ -87,6 +90,7 @@ export type UseMediaSourceEventsOptions = {
 	onThumbnailGenerated?: (data: ThumbnailGeneratedEvent) => void;
 	onAllJobsCompleted?: (data: AllJobsCompletedEvent) => void;
 	onWatcherError?: (data: WatcherErrorEvent) => void;
+	onSourceSyncStatus?: (data: SourceSyncStatusEvent) => void;
 	onDownloadError?: (data: DownloadErrorEvent) => void;
 };
 
@@ -208,6 +212,14 @@ export function useMediaSourceEvents(
 						watcherErrorEventSchema,
 						data,
 						options.onWatcherError,
+						event,
+					);
+					break;
+				case "source-sync-status":
+					validateAndDispatch(
+						sourceSyncStatusEventSchema,
+						data,
+						options.onSourceSyncStatus,
 						event,
 					);
 					break;

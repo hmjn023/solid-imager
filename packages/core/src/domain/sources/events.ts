@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { thumbnailSizeSchema } from "../thumbnails/schemas";
+import { mediaSourceSyncStateSchema } from "./schemas";
 
 const sourceScopedEventSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),
@@ -62,6 +63,14 @@ export const watcherErrorEventSchema = z.object({
 	timestamp: z.string().optional(),
 });
 export type WatcherErrorEvent = z.infer<typeof watcherErrorEventSchema>;
+
+export const sourceSyncStatusEventSchema = z.object({
+	mediaSourceId: z.string().uuid(),
+	status: mediaSourceSyncStateSchema,
+	message: z.string().optional(),
+	timestamp: z.string().optional(),
+});
+export type SourceSyncStatusEvent = z.infer<typeof sourceSyncStatusEventSchema>;
 
 export const jobProgressEventSchema = z.object({
 	jobId: z.string().optional(),
@@ -132,6 +141,10 @@ export const sourceEventSchema = z.discriminatedUnion("event", [
 	z.object({
 		event: z.literal("watcher-error"),
 		data: watcherErrorEventSchema,
+	}),
+	z.object({
+		event: z.literal("source-sync-status"),
+		data: sourceSyncStatusEventSchema,
 	}),
 	z.object({
 		event: z.literal("download-error"),

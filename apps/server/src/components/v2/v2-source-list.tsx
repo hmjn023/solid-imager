@@ -35,10 +35,17 @@ function sourceTypeLabel(source: SafeMediaSource): string {
 	return source.type === "local" ? "Local" : source.type.toUpperCase();
 }
 
+function sourceStatusLabel(source: SafeMediaSource): string {
+	if (source.syncStatus === "syncing") return "同期中";
+	if (source.syncStatus === "error") return "同期エラー";
+	return sourceTypeLabel(source);
+}
+
 function V2SourceActions(props: {
 	onDelete: () => void;
 	onEdit: () => void;
 	onSync: () => void;
+	isSyncing: boolean;
 	sourceName: string;
 }) {
 	return (
@@ -52,12 +59,13 @@ function V2SourceActions(props: {
 			<PopoverContent class="w-44 space-y-1 p-1.5">
 				<Button
 					class="h-11 w-full justify-start px-2 md:h-8"
+					disabled={props.isSyncing}
 					onClick={props.onSync}
 					size="sm"
 					variant="ghost"
 				>
 					<RefreshCw aria-hidden="true" size={14} />
-					Sync
+					{props.isSyncing ? "Syncing..." : "Sync"}
 				</Button>
 				<Button
 					class="h-11 w-full justify-start px-2 md:h-8"
@@ -144,13 +152,15 @@ export function V2SourceList(props: V2SourceListProps) {
 												{source.name}
 											</span>
 											<span class="mt-0.5 block text-[10px] text-[var(--v2-text-muted)]">
-												{sourceTypeLabel(source)} · 件数未取得
+												{sourceStatusLabel(source)} ·{" "}
+												{source.mediaCount?.toLocaleString() ?? "—"}件
 											</span>
 										</Link>
 										<V2SourceActions
 											onDelete={() => props.onDeleteSource(source)}
 											onEdit={() => props.onEditSource(source)}
 											onSync={() => props.onSyncSource(source)}
+											isSyncing={source.syncStatus === "syncing"}
 											sourceName={source.name}
 										/>
 									</div>
