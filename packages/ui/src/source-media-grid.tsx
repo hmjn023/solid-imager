@@ -146,6 +146,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		startIndex: number;
 	} | null>(null);
 	let mediaGridRef: HTMLDivElement | undefined;
+	let mediaGridResizeObserver: ResizeObserver | undefined;
+	let metricsFrameId: number | undefined;
 
 	const columnCount = createMemo(() => {
 		const width = mediaGridWidth() || windowWidth();
@@ -165,17 +167,16 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		return width / (props.itemAspectRatio ?? 3 / 4);
 	});
 
-	const mediaRows = createMemo(() => {
-		const results = props.mediaResults();
+	const rowCount = createMemo(() => {
 		const columns = columnCount();
-		const rows: Media[][] = [];
-		for (let index = 0; index < results.length; index += columns) {
-			rows.push(results.slice(index, index + columns));
-		}
-		return rows;
+		return columns > 0 ? Math.ceil(props.mediaResults().length / columns) : 0;
 	});
-
-	const rowCount = createMemo(() => mediaRows().length);
+	const getRowMedia = (rowIndex: number) => {
+		const columns = columnCount();
+		if (columns <= 0) return [];
+		const results = props.mediaResults();
+		return results.slice(rowIndex * columns, (rowIndex + 1) * columns);
+	};
 
 	const windowRowVirtualizer = createWindowVirtualizer<HTMLDivElement>({
 		get count() {
@@ -204,15 +205,23 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		overscan: 0,
 		onChange: (instance) => {
 			const range = instance.range;
-			setElementLoadState(
-				range
-					? {
-							direction: instance.scrollDirection,
-							endIndex: range.endIndex,
-							startIndex: range.startIndex,
-						}
-					: null,
-			);
+			const nextState = range
+				? {
+						direction: instance.scrollDirection,
+						endIndex: range.endIndex,
+						startIndex: range.startIndex,
+					}
+				: null;
+			setElementLoadState((previous) => {
+				if (
+					previous?.direction === nextState?.direction &&
+					previous?.endIndex === nextState?.endIndex &&
+					previous?.startIndex === nextState?.startIndex
+				) {
+					return previous;
+				}
+				return nextState;
+			});
 		},
 		rangeExtractor: (range) =>
 			extractDirectionalRows(
@@ -252,7 +261,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			// A virtualizer can briefly have no measured range while its scroll
 			// container is being restored. Keep mounted rows loadable so a
 			// transient range reset does not blank the entire viewport.
-			return { enabled: true, loading: "eager" };
+			return {
+				enabled: true,
+				fetchpriority:
+					mediaIndex < INITIAL_HIGH_PRIORITY_MEDIA ? "high" : undefined,
+				loading: "eager",
+			};
 		}
 
 		const isVisible =
@@ -305,7 +319,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	const updateMediaGridMetrics = () => {
 		if (!mediaGridRef) return;
-		setMediaGridWidth(mediaGridRef.getBoundingClientRect().width);
+		const gridRect = mediaGridRef.getBoundingClientRect();
+		setMediaGridWidth(gridRect.width);
 		const resolvedScrollElement = resolveScrollElement();
 		if (resolvedScrollElement !== scrollElement()) {
 			setScrollElement(resolvedScrollElement);
@@ -313,11 +328,18 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const scroller = resolvedScrollElement;
 		setScrollMargin(
 			props.scrollMode === "element" && scroller
-				? mediaGridRef.getBoundingClientRect().top -
+				? gridRect.top -
 						scroller.getBoundingClientRect().top +
 						scroller.scrollTop
-				: mediaGridRef.getBoundingClientRect().top + window.scrollY,
+				: gridRect.top + window.scrollY,
 		);
+	};
+	const scheduleMediaGridMetrics = () => {
+		if (metricsFrameId !== undefined) return;
+		metricsFrameId = requestAnimationFrame(() => {
+			metricsFrameId = undefined;
+			updateMediaGridMetrics();
+		});
 	};
 
 	onMount(() => {
@@ -327,20 +349,25 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 		const handleResize = () => {
 			setWindowWidth(window.innerWidth);
-			updateMediaGridMetrics();
 		};
 		window.addEventListener("resize", handleResize);
 
-		const resizeObserver = new ResizeObserver(() => {
-			updateMediaGridMetrics();
-		});
+		const resizeObserver = new ResizeObserver(scheduleMediaGridMetrics);
+		mediaGridResizeObserver = resizeObserver;
 		if (mediaGridRef) {
 			resizeObserver.observe(mediaGridRef);
 		}
 
 		onCleanup(() => {
 			window.removeEventListener("resize", handleResize);
+			if (metricsFrameId !== undefined) {
+				cancelAnimationFrame(metricsFrameId);
+				metricsFrameId = undefined;
+			}
 			resizeObserver.disconnect();
+			if (mediaGridResizeObserver === resizeObserver) {
+				mediaGridResizeObserver = undefined;
+			}
 		});
 	});
 
@@ -396,10 +423,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		<div
 			class="@container relative min-w-0 w-full"
 			ref={(element) => {
+				if (mediaGridRef && mediaGridRef !== element) {
+					mediaGridResizeObserver?.unobserve(mediaGridRef);
+				}
 				mediaGridRef = element;
-				requestAnimationFrame(() => {
-					updateMediaGridMetrics();
-				});
+				mediaGridResizeObserver?.observe(element);
+				scheduleMediaGridMetrics();
 			}}
 			style={{
 				height: shouldVirtualize()
@@ -470,7 +499,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			>
 				<For each={mediaRowVirtualizer().getVirtualItems()}>
 					{(virtualRow) => {
-						const rowMedia = () => mediaRows()[virtualRow.index] || [];
+						const rowMedia = () => getRowMedia(virtualRow.index);
 						return (
 							<div
 								class={`absolute top-0 left-0 ${mediaGridClassName}`}

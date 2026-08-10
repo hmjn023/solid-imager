@@ -85,6 +85,7 @@ export function createHttpThumbnailSource(
 ): ThumbnailSource {
 	const [cacheKey, setCacheKey] = createSignal(0);
 	const [retryCount, setRetryCount] = createSignal(0);
+	const listeners = new Set<() => void>();
 	let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
 	const clearRetryTimer = () => {
@@ -105,6 +106,7 @@ export function createHttpThumbnailSource(
 
 	onCleanup(() => {
 		clearRetryTimer();
+		listeners.clear();
 	});
 
 	return {
@@ -140,7 +142,12 @@ export function createHttpThumbnailSource(
 			retryTimer = setTimeout(() => {
 				setRetryCount((prev) => prev + 1);
 				setCacheKey(Date.now());
+				for (const listener of listeners) listener();
 			}, props.retryDelayMs ?? DEFAULT_HTTP_RETRY_DELAY_MS);
+		},
+		subscribe(callback) {
+			listeners.add(callback);
+			return () => listeners.delete(callback);
 		},
 	};
 }
