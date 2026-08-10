@@ -72,6 +72,19 @@ export type IJobRepository = {
 	markAsInProgress(id: string): Promise<void>;
 	markAsCompleted(id: string, result?: unknown): Promise<void>;
 	markAsFailed(id: string, error: string): Promise<void>;
+	requestCancellation(id: string): Promise<void>;
+	markAsCancelled(id: string, reason?: string): Promise<void>;
+	isCancellationRequested(id: string): Promise<boolean>;
+	setArtifact(
+		id: string,
+		artifact: {
+			path: string;
+			fileName: string;
+			contentType: string;
+			size: number;
+			expiresAt: Date;
+		},
+	): Promise<void>;
 	update(id: string, data: Partial<Job>): Promise<void>;
 	incrementProgress(
 		id: string,

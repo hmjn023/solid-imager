@@ -97,6 +97,12 @@ export const jobFailedEventSchema = z.object({
 });
 export type JobFailedEvent = z.infer<typeof jobFailedEventSchema>;
 
+export const jobCancelledEventSchema = z.object({
+	jobId: z.string().optional(),
+	message: z.string().optional(),
+});
+export type JobCancelledEvent = z.infer<typeof jobCancelledEventSchema>;
+
 export const downloadErrorEventSchema = z.object({
 	url: z.string(),
 	error: z.string(),
@@ -183,6 +189,10 @@ export const jobEventSchema = z.discriminatedUnion("event", [
 		data: jobCompletedEventSchema,
 	}),
 	z.object({ event: z.literal("job-failed"), data: jobFailedEventSchema }),
+	z.object({
+		event: z.literal("job-cancelled"),
+		data: jobCancelledEventSchema,
+	}),
 ]);
 export type JobEvent = z.infer<typeof jobEventSchema>;
 export type JobEventName = JobEvent["event"];

@@ -6,6 +6,7 @@ import {
 	jobListResponseSchema,
 	jobStatusSchema,
 } from "@solid-imager/core/domain/jobs/schemas";
+import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import {
 	type JobEvent,
 	jobEventSchema,
@@ -15,8 +16,8 @@ import { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { JobRepository } from "~/infrastructure/repositories/job-repository";
 
-type JobRow = typeof jobs.$inferSelect;
 const PublicJobFailureMessage = "Job failed";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -53,7 +54,7 @@ function readProgress(payload: unknown) {
 	};
 }
 
-function toJobDto(job: JobRow) {
+export function toJobDto(job: Job) {
 	return {
 		id: job.id,
 		type: job.type,
@@ -63,11 +64,11 @@ function toJobDto(job: JobRow) {
 		updatedAt: job.updatedAt,
 		parentId: job.parentId,
 		error: job.error === null ? null : PublicJobFailureMessage,
-		cancelRequestedAt: job.cancelRequestedAt,
-		cancelledAt: job.cancelledAt,
-		attemptCount: job.attemptCount,
-		startedAt: job.startedAt,
-		finishedAt: job.finishedAt,
+		cancelRequestedAt: job.cancelRequestedAt ?? null,
+		cancelledAt: job.cancelledAt ?? null,
+		attemptCount: job.attemptCount ?? 0,
+		startedAt: job.startedAt ?? null,
+		finishedAt: job.finishedAt ?? null,
 		targetMediaId: readTargetMediaId(job.payload),
 		progress: readProgress(job.payload),
 		artifact:
@@ -75,7 +76,7 @@ function toJobDto(job: JobRow) {
 				? {
 						fileName: job.artifactFileName,
 						contentType: job.artifactContentType,
-						size: job.artifactSize,
+						size: job.artifactSize ?? null,
 						downloadUrl: `/api/jobs/${job.id}/artifact`,
 					}
 				: null,
@@ -130,6 +131,15 @@ export const jobsRouter = {
 					status: "pending",
 					error: null,
 					result: null,
+					cancelRequestedAt: null,
+					cancelledAt: null,
+					startedAt: null,
+					finishedAt: null,
+					artifactPath: null,
+					artifactFileName: null,
+					artifactContentType: null,
+					artifactSize: null,
+					artifactExpiresAt: null,
 					updatedAt: new Date(),
 				})
 				.where(and(eq(jobs.id, input.id), eq(jobs.status, "failed")))
@@ -152,6 +162,32 @@ export const jobsRouter = {
 			});
 			return toJobDto(requeued);
 		}),
+
+	cancel: os.input(jobIdRequestSchema).handler(async ({ input }) => {
+		const job = await JobRepository.findById(input.id);
+		if (!job) {
+			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+		}
+		if (job.status !== "pending" && job.status !== "in_progress") {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Only pending or in-progress jobs can be cancelled",
+			});
+		}
+
+		await JobRepository.requestCancellation(input.id);
+		const cancelled = await JobRepository.findById(input.id);
+		if (!cancelled) {
+			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+		}
+		RealtimeEventBus.publishJob("job-cancelled", {
+			jobId: input.id,
+			message:
+				cancelled.status === "in_progress"
+					? "Cancellation requested"
+					: "Job cancelled",
+		});
+		return toJobDto(cancelled);
+	}),
 
 	events: os.output(eventIterator(jobEventSchema)).handler(async function* ({
 		signal,

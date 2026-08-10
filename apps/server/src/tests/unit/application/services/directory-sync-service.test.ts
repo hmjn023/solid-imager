@@ -49,6 +49,7 @@ vi.mock("~/infrastructure/repositories/source-repository", () => ({
 			connectionInfo: { path: "/fake/path" },
 		}),
 		findAll: vi.fn().mockResolvedValue([]),
+		update: vi.fn().mockResolvedValue(undefined),
 	},
 }));
 vi.mock("~/application/services/media-processing-service", () => ({

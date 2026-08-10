@@ -50,6 +50,38 @@ function publishSyncStatus(
 	});
 }
 
+async function persistSyncStatus(
+	mediaSourceId: string,
+	status: MediaSourceSyncState,
+	message?: string,
+): Promise<void> {
+	const now = new Date();
+	try {
+		await sourceRepo.update(mediaSourceId, {
+			syncStatus: status,
+			...(status === "syncing"
+				? { lastSyncStartedAt: now, lastSyncError: null }
+				: status === "idle"
+					? { lastSyncCompletedAt: now, lastSyncError: null }
+					: { lastSyncError: message ?? "Directory sync failed" }),
+		});
+	} catch (error) {
+		logger.error(
+			{ err: error, mediaSourceId, status },
+			"Failed to persist media source sync status",
+		);
+	}
+}
+
+async function setSyncStatus(
+	mediaSourceId: string,
+	status: MediaSourceSyncState,
+	message?: string,
+): Promise<void> {
+	await persistSyncStatus(mediaSourceId, status, message);
+	publishSyncStatus(mediaSourceId, status, message);
+}
+
 export function getSourceSyncState(
 	mediaSourceId: string,
 ): MediaSourceSyncState {
@@ -173,7 +205,7 @@ export const DirectorySyncService = {
 				added: 0,
 				deleted: 0,
 			};
-			publishSyncStatus(mediaSourceId, "syncing");
+			await setSyncStatus(mediaSourceId, "syncing");
 			try {
 				const source = await sourceRepo.findById(mediaSourceId);
 				if (source?.type !== "local") {
@@ -181,7 +213,7 @@ export const DirectorySyncService = {
 						{ mediaSourceId },
 						"Skipping sync for non-local or missing source",
 					);
-					publishSyncStatus(
+					await setSyncStatus(
 						mediaSourceId,
 						"idle",
 						source
@@ -200,7 +232,7 @@ export const DirectorySyncService = {
 						{ mediaSourceId, basePath },
 						"Base path does not exist or is not accessible during sync",
 					);
-					publishSyncStatus(
+					await setSyncStatus(
 						mediaSourceId,
 						"error",
 						"Source path is not accessible",
@@ -268,14 +300,14 @@ export const DirectorySyncService = {
 					{ mediaSourceId, syncResult: result },
 					"Directory sync completed successfully",
 				);
-				publishSyncStatus(mediaSourceId, "idle");
+				await setSyncStatus(mediaSourceId, "idle");
 				return result;
 			} catch (error) {
 				logger.error(
 					{ err: error, mediaSourceId },
 					"Error during directory sync",
 				);
-				publishSyncStatus(
+				await setSyncStatus(
 					mediaSourceId,
 					"error",
 					PublicDirectorySyncFailureMessage,

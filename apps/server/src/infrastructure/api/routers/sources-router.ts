@@ -1,4 +1,4 @@
-import { eventIterator, os } from "@orpc/server";
+import { eventIterator, ORPCError, os } from "@orpc/server";
 import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
 import {
 	type SourceEvent,
@@ -16,13 +16,13 @@ import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { count, inArray } from "drizzle-orm";
 import { z } from "zod";
+import { services } from "~/application/registry";
 import { BackupService } from "~/application/services/backup-service";
-import {
-	DirectorySyncService,
-	getSourceSyncState,
-} from "~/application/services/directory-sync-service";
+import { DirectorySyncService } from "~/application/services/directory-sync-service";
+import { persistJobInput } from "~/application/services/job-transfer-storage";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
+import { toJobDto } from "~/infrastructure/api/routers/jobs-router";
 import { db } from "~/infrastructure/db";
 import { medias } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -104,7 +104,7 @@ function addSourceSummary(
 	return {
 		...source,
 		mediaCount: mediaCounts.get(source.id) ?? 0,
-		syncStatus: getSourceSyncState(source.id),
+		syncStatus: source.syncStatus ?? "idle",
 	};
 }
 
@@ -349,6 +349,33 @@ export const sourcesRouter = {
 				},
 			});
 		}),
+
+	enqueueExport: os
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+				includeImages: z.boolean().default(false),
+			}),
+		)
+		.handler(async ({ input }) => {
+			const [source] = await MediaSourceService.fetchSourceById(input.id);
+			if (!source) {
+				throw new ORPCError("NOT_FOUND", {
+					message: `Source not found: ${input.id}`,
+				});
+			}
+
+			const job = await services.getJobRepository().create({
+				type: "source_export",
+				mediaSourceId: input.id,
+				payload: {
+					mode: input.mode,
+					includeImages: input.includeImages,
+				},
+			});
+			return toJobDto(job);
+		}),
 	restore: os
 		.meta({
 			openapi: {
@@ -410,6 +437,43 @@ export const sourcesRouter = {
 				} catch {
 					// ignore
 				}
+			}
+		}),
+
+	enqueueImport: os
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				mode: z.enum(["json", "zip", "lancedb"]),
+				file: z.instanceof(File),
+			}),
+		)
+		.handler(async ({ input }) => {
+			const [source] = await MediaSourceService.fetchSourceById(input.id);
+			if (!source) {
+				throw new ORPCError("NOT_FOUND", {
+					message: `Source not found: ${input.id}`,
+				});
+			}
+
+			const { randomUUID } = await import("node:crypto");
+			const jobId = randomUUID();
+			const inputPath = await persistJobInput(jobId, input.mode, input.file);
+			try {
+				const job = await services.getJobRepository().create({
+					id: jobId,
+					type: "source_restore",
+					mediaSourceId: input.id,
+					payload: {
+						mode: input.mode,
+						inputPath,
+					},
+				});
+				return toJobDto(job);
+			} catch (error) {
+				const fs = await import("node:fs/promises");
+				await fs.rm(inputPath, { force: true }).catch(() => {});
+				throw error;
 			}
 		}),
 

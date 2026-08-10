@@ -582,6 +582,64 @@
         }
       }
     },
+    "/sources/enqueueExport": {
+      "post": {
+        "operationId": "sources.enqueueExport",
+        "summary": "enqueueExport",
+        "tags": [
+          "Media Sources"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "mode": {
+                    "enum": [
+                      "json",
+                      "zip",
+                      "lancedb"
+                    ],
+                    "type": "string",
+                    "default": "json"
+                  },
+                  "includeImages": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/sources/restore": {
       "post": {
         "operationId": "sources.restore",
@@ -656,6 +714,64 @@
                 },
                 "required": [
                   "id",
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sources/enqueueImport": {
+      "post": {
+        "operationId": "sources.enqueueImport",
+        "summary": "enqueueImport",
+        "tags": [
+          "Media Sources"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "mode": {
+                    "enum": [
+                      "json",
+                      "zip",
+                      "lancedb"
+                    ],
+                    "type": "string"
+                  },
+                  "file": {
+                    "not": {}
+                  }
+                },
+                "required": [
+                  "id",
+                  "mode",
                   "file"
                 ]
               }
@@ -6796,7 +6912,8 @@
                       "pending",
                       "in_progress",
                       "completed",
-                      "failed"
+                      "failed",
+                      "cancelled"
                     ],
                     "type": "string"
                   },
@@ -7267,6 +7384,48 @@
         }
       }
     },
+    "/jobs/cancel": {
+      "post": {
+        "operationId": "jobs.cancel",
+        "summary": "cancel",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/events": {
       "post": {
         "operationId": "jobs.events",
@@ -7375,6 +7534,29 @@
                                       "type": "string"
                                     },
                                     "error": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              },
+                              "required": [
+                                "event",
+                                "data"
+                              ]
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "event": {
+                                  "const": "job-cancelled"
+                                },
+                                "data": {
+                                  "type": "object",
+                                  "properties": {
+                                    "jobId": {
+                                      "type": "string"
+                                    },
+                                    "message": {
                                       "type": "string"
                                     }
                                   }

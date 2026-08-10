@@ -51,6 +51,8 @@ export function dispatchJobEvent(
 		case "job-failed":
 			handlers.handleJobFailed(event.data);
 			break;
+		case "job-cancelled":
+			break;
 		default:
 			assertNever(event);
 	}

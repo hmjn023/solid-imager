@@ -1,6 +1,7 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 
 type JsonSafeValue =
@@ -223,10 +224,25 @@ export class JobWorker {
 			"Job started",
 		);
 		try {
+			if (await this.jobRepo.isCancellationRequested(job.id)) {
+				await this.markCancelled(job);
+				return;
+			}
+
 			const result = await this.processor(job);
 			const safeResult =
 				result !== undefined ? toJsonSafeValue(result) : { success: true };
-			await this.jobRepo.markAsCompleted(job.id, safeResult);
+			if (await this.jobRepo.isCancellationRequested(job.id)) {
+				await this.markCancelled(job);
+				return;
+			} else {
+				await this.jobRepo.markAsCompleted(job.id, safeResult);
+				const latestJob = await this.jobRepo.findById(job.id);
+				if (latestJob?.cancelRequestedAt) {
+					await this.markCancelled(job);
+					return;
+				}
+			}
 			logger.info(
 				{
 					jobId: job.id,
@@ -240,6 +256,11 @@ export class JobWorker {
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
+			if (await this.jobRepo.isCancellationRequested(job.id)) {
+				await this.markCancelled(job);
+				return;
+			}
+
 			logger.error(
 				{
 					err: error,
@@ -252,6 +273,10 @@ export class JobWorker {
 				"Job failed",
 			);
 			await this.jobRepo.markAsFailed(job.id, errorMessage);
+			const latestJob = await this.jobRepo.findById(job.id);
+			if (latestJob?.cancelRequestedAt) {
+				await this.markCancelled(job);
+			}
 		} finally {
 			this.activeJobs--;
 			if (isAiJob) {
@@ -264,6 +289,23 @@ export class JobWorker {
 				this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);
 			}
 		}
+	}
+
+	private async markCancelled(job: Job): Promise<void> {
+		await this.jobRepo.markAsCancelled(job.id);
+		RealtimeEventBus.publishJob("job-cancelled", {
+			jobId: job.id,
+			message: "Job cancelled",
+		});
+		logger.info(
+			{
+				jobId: job.id,
+				type: job.type,
+				mediaSourceId: job.mediaSourceId,
+				parentId: job.parentId,
+			},
+			"Job cancelled",
+		);
 	}
 	private async recoverStaleJobs() {
 		const olderThan = new Date(Date.now() - StaleInProgressJobMs);
