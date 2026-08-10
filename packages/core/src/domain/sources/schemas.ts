@@ -116,6 +116,9 @@ export const safeMediaSourceSchema = mediaSourceInfoSchema.extend({
 	connectionInfo: safeConnectionInfoSchema,
 	mediaCount: z.number().int().nonnegative().optional(),
 	syncStatus: mediaSourceSyncStateSchema.optional(),
+	lastSyncStartedAt: z.coerce.date().nullable().optional(),
+	lastSyncCompletedAt: z.coerce.date().nullable().optional(),
+	lastSyncError: z.string().nullable().optional(),
 });
 
 export type SafeMediaSource = z.infer<typeof safeMediaSourceSchema>;

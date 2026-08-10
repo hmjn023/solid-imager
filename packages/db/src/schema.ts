@@ -1,3 +1,4 @@
+import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/job-repository";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
@@ -92,6 +93,12 @@ export const mediaSyncStatusEnum = pgEnum("media_sync_status", [
  * Defines the primary content type of a media file.
  */
 export const mediaTypeEnum = pgEnum("media_type", ["image", "video", "audio"]);
+/** Persisted lifecycle state for a media source directory synchronization. */
+export const mediaSourceSyncStatusEnum = pgEnum("media_source_sync_status", [
+	"idle",
+	"syncing",
+	"error",
+]);
 /** Region types used for full-image and cropped CCIP embeddings. */
 export const mediaRegionKindEnum = pgEnum("media_region_kind", [
 	"full",
@@ -107,6 +114,7 @@ export const jobStatusEnum = pgEnum("job_status", [
 	"in_progress",
 	"completed",
 	"failed",
+	"cancelled",
 ]);
 /**
  * Enum for media relation types.
@@ -152,6 +160,16 @@ export const mediaSources = pgTable("media_sources", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 	/** 更新日時 */
 	updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	/** 永続化されたソース同期状態 */
+	syncStatus: mediaSourceSyncStatusEnum("sync_status")
+		.notNull()
+		.default("idle"),
+	/** 同期開始日時 */
+	lastSyncStartedAt: timestamp("last_sync_started_at"),
+	/** 最後に成功した同期の完了日時 */
+	lastSyncCompletedAt: timestamp("last_sync_completed_at"),
+	/** 最後の同期エラー */
+	lastSyncError: text("last_sync_error"),
 });
 
 /**
@@ -1042,6 +1060,26 @@ export const jobs = pgTable(
 		parentId: uuid("parent_id").references((): AnyPgColumn => jobs.id, {
 			onDelete: "cascade",
 		}),
+		/** キャンセル要求日時。実行中ジョブは協調的に停止する。 */
+		cancelRequestedAt: timestamp("cancel_requested_at"),
+		/** キャンセル確定日時 */
+		cancelledAt: timestamp("cancelled_at"),
+		/** 実行回数（Retryを含む） */
+		attemptCount: integer("attempt_count").notNull().default(0),
+		/** 最後にworkerが実行を開始した日時 */
+		startedAt: timestamp("started_at"),
+		/** 最後の実行が終了した日時 */
+		finishedAt: timestamp("finished_at"),
+		/** エクスポート成果物の内部パス */
+		artifactPath: text("artifact_path"),
+		/** エクスポート成果物の表示ファイル名 */
+		artifactFileName: text("artifact_file_name"),
+		/** エクスポート成果物のContent-Type */
+		artifactContentType: text("artifact_content_type"),
+		/** エクスポート成果物のサイズ（bytes） */
+		artifactSize: bigint("artifact_size", { mode: "number" }),
+		/** 成果物の有効期限 */
+		artifactExpiresAt: timestamp("artifact_expires_at"),
 	},
 	(table) => ({
 		pendingImportRequestIndex: index("idx_jobs_pending_import_request")
@@ -1084,6 +1122,12 @@ export const jobs = pgTable(
 					AND ${table.status} IN ('pending', 'in_progress')
 					AND ${table.mediaSourceId} IS NOT NULL`,
 			),
+		cancelableJobIndex: index("idx_jobs_cancelable")
+			.on(table.status, table.updatedAt)
+			.where(sql`${table.status} IN ('pending', 'in_progress')`),
+		artifactExpiryIndex: index("idx_jobs_artifact_expiry")
+			.on(table.artifactExpiresAt)
+			.where(sql`${table.artifactPath} IS NOT NULL`),
 	}),
 );
 
@@ -1728,7 +1772,10 @@ export type NewUser = InferInsertModel<typeof users>;
 /**
  * Type definition for selecting a job from the database.
  */
-export type Job = InferSelectModel<typeof jobs>;
+/** Domain job shape used at application boundaries. */
+export type Job = DomainJob;
+/** Raw database row shape used by Drizzle queries and mappers. */
+export type DbJob = InferSelectModel<typeof jobs>;
 /**
  * Type definition for inserting a new job into the database.
  */

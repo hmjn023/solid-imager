@@ -1,4 +1,9 @@
-export type JobStatus = "pending" | "in_progress" | "completed" | "failed";
+export type JobStatus =
+	| "pending"
+	| "in_progress"
+	| "completed"
+	| "failed"
+	| "cancelled";
 
 export type Job = {
 	id: string;
@@ -11,6 +16,16 @@ export type Job = {
 	createdAt: Date;
 	updatedAt: Date;
 	parentId: string | null;
+	cancelRequestedAt?: Date | null;
+	cancelledAt?: Date | null;
+	attemptCount?: number;
+	startedAt?: Date | null;
+	finishedAt?: Date | null;
+	artifactPath?: string | null;
+	artifactFileName?: string | null;
+	artifactContentType?: string | null;
+	artifactSize?: number | null;
+	artifactExpiresAt?: Date | null;
 };
 
 export type NewJob = {
@@ -24,6 +39,16 @@ export type NewJob = {
 	createdAt?: Date;
 	updatedAt?: Date;
 	parentId?: string | null;
+	cancelRequestedAt?: Date | null;
+	cancelledAt?: Date | null;
+	attemptCount?: number;
+	startedAt?: Date | null;
+	finishedAt?: Date | null;
+	artifactPath?: string | null;
+	artifactFileName?: string | null;
+	artifactContentType?: string | null;
+	artifactSize?: number | null;
+	artifactExpiresAt?: Date | null;
 };
 
 export type BatchProgress = {

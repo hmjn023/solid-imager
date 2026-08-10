@@ -5,6 +5,7 @@ export const jobStatusSchema = z.enum([
 	"in_progress",
 	"completed",
 	"failed",
+	"cancelled",
 ]);
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
@@ -29,8 +30,21 @@ export const jobDtoSchema = z.object({
 	updatedAt: z.coerce.date(),
 	parentId: z.string().uuid().nullable(),
 	error: z.string().nullable(),
+	cancelRequestedAt: z.coerce.date().nullable(),
+	cancelledAt: z.coerce.date().nullable(),
+	attemptCount: z.number().int().nonnegative(),
+	startedAt: z.coerce.date().nullable(),
+	finishedAt: z.coerce.date().nullable(),
 	targetMediaId: z.string().uuid().nullable(),
 	progress: jobProgressSchema,
+	artifact: z
+		.object({
+			fileName: z.string(),
+			contentType: z.string(),
+			size: z.number().int().nonnegative().nullable(),
+			downloadUrl: z.string().min(1),
+		})
+		.nullable(),
 });
 export type JobDto = z.infer<typeof jobDtoSchema>;
 

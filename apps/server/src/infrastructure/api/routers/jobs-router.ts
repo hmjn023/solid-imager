@@ -63,8 +63,22 @@ function toJobDto(job: JobRow) {
 		updatedAt: job.updatedAt,
 		parentId: job.parentId,
 		error: job.error === null ? null : PublicJobFailureMessage,
+		cancelRequestedAt: job.cancelRequestedAt,
+		cancelledAt: job.cancelledAt,
+		attemptCount: job.attemptCount,
+		startedAt: job.startedAt,
+		finishedAt: job.finishedAt,
 		targetMediaId: readTargetMediaId(job.payload),
 		progress: readProgress(job.payload),
+		artifact:
+			job.artifactPath && job.artifactFileName && job.artifactContentType
+				? {
+						fileName: job.artifactFileName,
+						contentType: job.artifactContentType,
+						size: job.artifactSize,
+						downloadUrl: `/api/jobs/${job.id}/artifact`,
+					}
+				: null,
 	};
 }
 

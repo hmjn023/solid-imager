@@ -25,6 +25,10 @@ function mapToMediaSource(dbSource: DbMediaSource): MediaSource {
 		connectionInfo: connectionInfoSchema.parse(dbSource.connectionInfo),
 		createdAt: dbSource.createdAt,
 		updatedAt: dbSource.updatedAt,
+		syncStatus: dbSource.syncStatus,
+		lastSyncStartedAt: dbSource.lastSyncStartedAt,
+		lastSyncCompletedAt: dbSource.lastSyncCompletedAt,
+		lastSyncError: dbSource.lastSyncError,
 	};
 }
 

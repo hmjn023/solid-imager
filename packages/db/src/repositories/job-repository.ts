@@ -40,6 +40,16 @@ type RawClaimedJob = {
 	createdAt: unknown;
 	updatedAt: unknown;
 	parentId: unknown;
+	cancelRequestedAt: unknown;
+	cancelledAt: unknown;
+	attemptCount: unknown;
+	startedAt: unknown;
+	finishedAt: unknown;
+	artifactPath: unknown;
+	artifactFileName: unknown;
+	artifactContentType: unknown;
+	artifactSize: unknown;
+	artifactExpiresAt: unknown;
 };
 
 function mapJob(row: typeof jobs.$inferSelect): Job {
@@ -54,6 +64,16 @@ function mapJob(row: typeof jobs.$inferSelect): Job {
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 		parentId: row.parentId,
+		cancelRequestedAt: row.cancelRequestedAt,
+		cancelledAt: row.cancelledAt,
+		attemptCount: row.attemptCount,
+		startedAt: row.startedAt,
+		finishedAt: row.finishedAt,
+		artifactPath: row.artifactPath,
+		artifactFileName: row.artifactFileName,
+		artifactContentType: row.artifactContentType,
+		artifactSize: row.artifactSize,
+		artifactExpiresAt: row.artifactExpiresAt,
 	};
 }
 
@@ -461,7 +481,17 @@ function buildClaimUpdate(now: Date) {
 			error,
 			created_at AS "createdAt",
 			updated_at AS "updatedAt",
-			parent_id AS "parentId"
+			parent_id AS "parentId",
+			cancel_requested_at AS "cancelRequestedAt",
+			cancelled_at AS "cancelledAt",
+			attempt_count AS "attemptCount",
+			started_at AS "startedAt",
+			finished_at AS "finishedAt",
+			artifact_path AS "artifactPath",
+			artifact_file_name AS "artifactFileName",
+			artifact_content_type AS "artifactContentType",
+			artifact_size AS "artifactSize",
+			artifact_expires_at AS "artifactExpiresAt"
 	`;
 }
 
@@ -502,6 +532,19 @@ function mapClaimedJob(row: unknown): Job {
 		createdAt: requireDate(raw.createdAt, "createdAt"),
 		updatedAt: requireDate(raw.updatedAt, "updatedAt"),
 		parentId: nullableString(raw.parentId, "parentId"),
+		cancelRequestedAt: nullableDate(raw.cancelRequestedAt, "cancelRequestedAt"),
+		cancelledAt: nullableDate(raw.cancelledAt, "cancelledAt"),
+		attemptCount: requireNumber(raw.attemptCount, "attemptCount"),
+		startedAt: nullableDate(raw.startedAt, "startedAt"),
+		finishedAt: nullableDate(raw.finishedAt, "finishedAt"),
+		artifactPath: nullableString(raw.artifactPath, "artifactPath"),
+		artifactFileName: nullableString(raw.artifactFileName, "artifactFileName"),
+		artifactContentType: nullableString(
+			raw.artifactContentType,
+			"artifactContentType",
+		),
+		artifactSize: nullableNumber(raw.artifactSize, "artifactSize"),
+		artifactExpiresAt: nullableDate(raw.artifactExpiresAt, "artifactExpiresAt"),
 	};
 }
 
@@ -527,7 +570,8 @@ function requireJobStatus(value: unknown): Job["status"] {
 		value === "pending" ||
 		value === "in_progress" ||
 		value === "completed" ||
-		value === "failed"
+		value === "failed" ||
+		value === "cancelled"
 	) {
 		return value;
 	}
@@ -545,6 +589,27 @@ function requireDate(value: unknown, fieldName: string): Date {
 		}
 	}
 	throw new Error(`Invalid claimed job row: ${fieldName}`);
+}
+
+function nullableDate(value: unknown, fieldName: string): Date | null {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	return requireDate(value, fieldName);
+}
+
+function requireNumber(value: unknown, fieldName: string): number {
+	if (typeof value !== "number" || !Number.isFinite(value)) {
+		throw new Error(`Invalid claimed job row: ${fieldName}`);
+	}
+	return value;
+}
+
+function nullableNumber(value: unknown, fieldName: string): number | null {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	return requireNumber(value, fieldName);
 }
 
 function parseJsonColumn(value: unknown, fieldName: string): unknown {

@@ -62,6 +62,7 @@ function jobTypeLabel(type: string): string {
 
 function statusLabel(status: JobDto["status"]): string {
 	return {
+		cancelled: "Cancelled",
 		completed: "Completed",
 		failed: "Failed",
 		in_progress: "In progress",
@@ -71,6 +72,8 @@ function statusLabel(status: JobDto["status"]): string {
 
 function statusClass(status: JobDto["status"]): string {
 	return {
+		cancelled:
+			"border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300",
 		completed:
 			"border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
 		failed:
