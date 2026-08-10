@@ -21,7 +21,7 @@ export type V2ManagerTransferActions = {
 		file: File;
 		format: V2ManagerTransferFormat;
 		sourceId: string;
-	}) => Promise<{ importedCount?: number }>;
+	}) => Promise<{ importedCount?: number; jobId?: string }>;
 };
 
 export const MANAGER_CATEGORIES: ManagerCategory[] = [

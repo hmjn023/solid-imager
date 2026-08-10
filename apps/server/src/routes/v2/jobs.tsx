@@ -48,6 +48,20 @@ function V2JobsRoute() {
 					throw error;
 				}
 			}}
+			onCancel={async (jobId) => {
+				try {
+					await orpc.jobs.cancel({ id: jobId });
+					await queryClient.invalidateQueries({
+						queryKey: jobsQueryKeys.all(),
+					});
+					toast.success("Job cancellation requested");
+				} catch (error) {
+					toast.error(
+						error instanceof Error ? error.message : "Failed to cancel job",
+					);
+					throw error;
+				}
+			}}
 			state={() => toQueryUiState(jobsQuery)}
 		/>
 	);

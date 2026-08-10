@@ -35,10 +35,22 @@ function sourceTypeLabel(source: SafeMediaSource): string {
 	return source.type === "local" ? "Local" : source.type.toUpperCase();
 }
 
-function sourceStatusLabel(source: SafeMediaSource): string {
+const syncDateFormatter = new Intl.DateTimeFormat("ja-JP", {
+	dateStyle: "short",
+	timeStyle: "short",
+});
+
+function sourceSyncDetail(source: SafeMediaSource): string {
 	if (source.syncStatus === "syncing") return "同期中";
-	if (source.syncStatus === "error") return "同期エラー";
-	return sourceTypeLabel(source);
+	if (source.syncStatus === "error") {
+		return source.lastSyncError
+			? `エラー: ${source.lastSyncError}`
+			: "同期エラー";
+	}
+	if (source.lastSyncCompletedAt) {
+		return `最終同期 ${syncDateFormatter.format(source.lastSyncCompletedAt)}`;
+	}
+	return "未同期";
 }
 
 function V2SourceActions(props: {
@@ -152,8 +164,14 @@ export function V2SourceList(props: V2SourceListProps) {
 												{source.name}
 											</span>
 											<span class="mt-0.5 block text-[10px] text-[var(--v2-text-muted)]">
-												{sourceStatusLabel(source)} ·{" "}
+												{sourceTypeLabel(source)} ·{" "}
 												{source.mediaCount?.toLocaleString() ?? "—"}件
+											</span>
+											<span
+												class="mt-0.5 block truncate text-[10px] text-[var(--v2-text-muted)]"
+												title={source.lastSyncError ?? undefined}
+											>
+												{sourceSyncDetail(source)}
 											</span>
 										</Link>
 										<V2SourceActions

@@ -1,10 +1,13 @@
-import type {
-	JobDto,
-	JobListResponse,
+import {
+	isBatchParentJobType,
+	type JobDto,
+	type JobListResponse,
 } from "@solid-imager/core/domain/jobs/schemas";
+import Ban from "lucide-solid/icons/ban";
 import CircleAlert from "lucide-solid/icons/circle-alert";
 import CircleCheck from "lucide-solid/icons/circle-check";
 import Clock3 from "lucide-solid/icons/clock-3";
+import Download from "lucide-solid/icons/download";
 import RefreshCw from "lucide-solid/icons/refresh-cw";
 import RotateCcw from "lucide-solid/icons/rotate-ccw";
 import type { Accessor } from "solid-js";
@@ -42,6 +45,12 @@ const JOB_FILTERS = [
 		label: "Completed",
 		value: "completed",
 	},
+	{
+		description: "キャンセルされた処理",
+		icon: Ban,
+		label: "Cancelled",
+		value: "cancelled",
+	},
 ] as const;
 
 type JobFilter = (typeof JOB_FILTERS)[number]["value"];
@@ -51,6 +60,7 @@ export type V2JobsScreenProps = {
 	jobs: Accessor<JobDto[]>;
 	onRefresh: () => void | Promise<void>;
 	onRetry: (jobId: string) => void | Promise<void>;
+	onCancel: (jobId: string) => void | Promise<void>;
 	state: Accessor<QueryUiState<JobListResponse>>;
 };
 
@@ -209,9 +219,11 @@ function JobsTable(props: {
 function JobsInspector(props: {
 	class?: string;
 	job: JobDto | undefined;
+	onCancel: (jobId: string) => void | Promise<void>;
 	onRetry: (jobId: string) => void | Promise<void>;
 }) {
 	const [isRetrying, setIsRetrying] = createSignal(false);
+	const [isCancelling, setIsCancelling] = createSignal(false);
 
 	const retry = async () => {
 		const job = props.job;
@@ -223,6 +235,24 @@ function JobsInspector(props: {
 			// The route reports mutation failures; keep the selected job visible.
 		} finally {
 			setIsRetrying(false);
+		}
+	};
+	const cancel = async () => {
+		const job = props.job;
+		if (
+			!job ||
+			(job.status !== "pending" && job.status !== "in_progress") ||
+			isBatchParentJobType(job.type) ||
+			isCancelling()
+		)
+			return;
+		setIsCancelling(true);
+		try {
+			await props.onCancel(job.id);
+		} catch {
+			// The route reports mutation failures; keep the selected job visible.
+		} finally {
+			setIsCancelling(false);
 		}
 	};
 
@@ -285,6 +315,24 @@ function JobsInspector(props: {
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
+								<dt class="text-[var(--v2-text-muted)]">Attempts</dt>
+								<dd class="text-right text-[var(--v2-text-secondary)]">
+									{job().attemptCount}
+								</dd>
+							</div>
+							<div class="flex justify-between gap-3">
+								<dt class="text-[var(--v2-text-muted)]">Started</dt>
+								<dd class="text-right text-[var(--v2-text-secondary)]">
+									{job().startedAt ? formatDate(job().startedAt) : "—"}
+								</dd>
+							</div>
+							<div class="flex justify-between gap-3">
+								<dt class="text-[var(--v2-text-muted)]">Finished</dt>
+								<dd class="text-right text-[var(--v2-text-secondary)]">
+									{job().finishedAt ? formatDate(job().finishedAt) : "—"}
+								</dd>
+							</div>
+							<div class="flex justify-between gap-3">
 								<dt class="text-[var(--v2-text-muted)]">Target</dt>
 								<dd class="max-w-40 truncate text-right text-[var(--v2-text-secondary)]">
 									{job().targetMediaId?.slice(0, 8) ?? "—"}
@@ -324,7 +372,47 @@ function JobsInspector(props: {
 							)}
 						</Show>
 
+						<Show when={job().cancelRequestedAt}>
+							<p class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+								Cancellation requested at {formatDate(job().cancelRequestedAt)}.
+							</p>
+						</Show>
+
+						<Show when={job().artifact}>
+							{(artifact) => (
+								<a
+									class="mt-4 flex items-center gap-2 rounded-md border border-[var(--v2-border)] px-3 py-2 text-sm text-[var(--v2-primary)] hover:bg-[var(--v2-surface-muted)]"
+									download={artifact().fileName}
+									href={artifact().downloadUrl}
+								>
+									<Download aria-hidden="true" size={15} />
+									<span class="min-w-0 truncate">
+										Download {artifact().fileName}
+									</span>
+								</a>
+							)}
+						</Show>
+
 						<div class="mt-5 space-y-2">
+							<Show
+								fallback={null}
+								when={
+									(job().status === "pending" ||
+										job().status === "in_progress") &&
+									!isBatchParentJobType(job().type)
+								}
+							>
+								<Button
+									aria-busy={isCancelling()}
+									class="w-full"
+									disabled={isCancelling()}
+									onClick={() => void cancel()}
+									variant="outline"
+								>
+									<Ban aria-hidden="true" size={15} />
+									{isCancelling() ? "Cancelling..." : "Cancel job"}
+								</Button>
+							</Show>
 							<Show
 								fallback={
 									<p class="text-xs leading-5 text-[var(--v2-text-muted)]">
@@ -370,6 +458,8 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 				return jobs.filter((job) => job.status === "completed");
 			case "failed":
 				return jobs.filter((job) => job.status === "failed");
+			case "cancelled":
+				return jobs.filter((job) => job.status === "cancelled");
 			default:
 				return jobs;
 		}
@@ -493,6 +583,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 																<JobsInspector
 																	class="mt-4 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-subtle)] p-4 xl:hidden"
 																	job={job()}
+																	onCancel={props.onCancel}
 																	onRetry={props.onRetry}
 																/>
 															)}
@@ -508,7 +599,11 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 					</Tabs>
 				</div>
 
-				<JobsInspector job={selectedJob()} onRetry={props.onRetry} />
+				<JobsInspector
+					job={selectedJob()}
+					onCancel={props.onCancel}
+					onRetry={props.onRetry}
+				/>
 			</div>
 		</section>
 	);

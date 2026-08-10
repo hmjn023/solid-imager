@@ -68,6 +68,22 @@ export function syncMediaSources(ids: string[]) {
 	return orpc.sources.sync({ ids });
 }
 
+export function enqueueSourceExport(
+	id: string,
+	mode: "json" | "zip" | "lancedb",
+	includeImages: boolean,
+) {
+	return orpc.sources.enqueueExport({ id, mode, includeImages });
+}
+
+export function enqueueSourceImport(
+	id: string,
+	mode: "json" | "zip" | "lancedb",
+	file: File,
+) {
+	return orpc.sources.enqueueImport({ id, mode, file });
+}
+
 /**
  * Fetches a dump of the media source
  * @param id - Media source ID
