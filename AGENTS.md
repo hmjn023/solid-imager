@@ -67,6 +67,7 @@
 | `cli`                | imager-cli コマンド開発                                                            | CLIコマンド追加・変更時                                 |
 | `git-worktree`       | git worktree を用いた並列開発ワークフロー                                          | 複数PRの同時進行時                                      |
 | `git-pr`             | ブランチ作成→コミット→push→PR作成の標準ワークフロー                                | 単一PRの作成時                                          |
+| `gh-stack`           | GitHub CLIのgh stackによる積み上げブランチ・PRの作成、同期、rebase、状態確認          | stacked PR・依存PRの管理時                              |
 | `issue-driven`       | GitHub Issue駆動開発ワークフロー（証跡・進捗管理）                                 | issueをベースに開発作業を始めるとき                     |
 | `tanstack-ssr`       | TanStack Start SSR、Selective SSR、hydration、loaderの診断と回帰防止               | F5・直接アクセス・Hydration Mismatch・SSR/CSR境界変更時 |
 | `tanstack-db`        | TanStack DBクライアントデータレイヤー（永続化、useLiveQuery、includes）            | クライアント側データレイヤー変更時                      |
