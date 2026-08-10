@@ -75,10 +75,10 @@ export function toJobDto(job: Job) {
 		artifact:
 			job.artifactPath && job.artifactFileName && job.artifactContentType
 				? {
-						fileName: job.artifactFileName,
-						contentType: job.artifactContentType,
-						size: job.artifactSize ?? null,
-						downloadUrl: `/api/jobs/${job.id}/artifact`,
+							fileName: job.artifactFileName,
+							contentType: job.artifactContentType,
+							size: job.artifactSize ?? null,
+							downloadUrl: `/api/jobs/${job.id}/artifact`,
 					}
 				: null,
 	};
