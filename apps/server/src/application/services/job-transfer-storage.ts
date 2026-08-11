@@ -1,3 +1,4 @@
+import type { Dirent } from "node:fs";
 import { createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -98,4 +99,42 @@ export async function removeJobTransferFile(targetPath: string): Promise<void> {
 		return;
 	}
 	await fs.rm(targetPath, { force: true }).catch(() => {});
+}
+
+function isNodeErrorCode(error: unknown, code: string): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		error.code === code
+	);
+}
+
+export async function cleanupExpiredJobTransferFiles(
+	now = Date.now(),
+): Promise<void> {
+	const expirationTime = now - JobArtifactTtlMs;
+	for (const directoryName of ["inputs", "artifacts"] as const) {
+		const directoryPath = path.join(JobTransferDirectory, directoryName);
+		let entries: Dirent[];
+		try {
+			entries = await fs.readdir(directoryPath, { withFileTypes: true });
+		} catch (error) {
+			if (isNodeErrorCode(error, "ENOENT")) {
+				continue;
+			}
+			throw error;
+		}
+
+		for (const entry of entries) {
+			if (!entry.isFile()) {
+				continue;
+			}
+			const targetPath = path.join(directoryPath, entry.name);
+			const stat = await fs.stat(targetPath);
+			if (stat.mtimeMs <= expirationTime) {
+				await removeJobTransferFile(targetPath);
+			}
+		}
+	}
 }

@@ -1,4 +1,5 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { cleanupExpiredJobTransferFiles } from "~/application/services/job-transfer-storage";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -39,6 +40,8 @@ function toJsonSafeValue(value: unknown): JsonSafeValue {
 }
 
 const StaleInProgressJobMs = 60 * 60 * 1000;
+const JobHeartbeatMs = 5 * 60 * 1000;
+const PublicJobFailureMessage = "Job failed";
 
 export class JobWorker {
 	private isRunning = false;
@@ -212,6 +215,16 @@ export class JobWorker {
 		if (isThumbnailJob) {
 			this.activeThumbnailJobs++;
 		}
+		const heartbeatId = setInterval(() => {
+			void Promise.resolve(
+				this.jobRepo.update(job.id, { updatedAt: new Date() }),
+			).catch((error) => {
+				logger.error(
+					{ err: error, jobId: job.id },
+					"Failed to update job heartbeat",
+				);
+			});
+		}, JobHeartbeatMs);
 
 		logger.info(
 			{
@@ -238,10 +251,14 @@ export class JobWorker {
 			} else {
 				await this.jobRepo.markAsCompleted(job.id, safeResult);
 				const latestJob = await this.jobRepo.findById(job.id);
-				if (latestJob?.cancelRequestedAt) {
+				if (latestJob?.cancelRequestedAt || latestJob?.status === "cancelled") {
 					await this.markCancelled(job);
 					return;
 				}
+				RealtimeEventBus.publishJob("job-completed", {
+					jobId: job.id,
+					message: "Job completed",
+				});
 			}
 			logger.info(
 				{
@@ -274,10 +291,16 @@ export class JobWorker {
 			);
 			await this.jobRepo.markAsFailed(job.id, errorMessage);
 			const latestJob = await this.jobRepo.findById(job.id);
-			if (latestJob?.cancelRequestedAt) {
+			if (latestJob?.cancelRequestedAt || latestJob?.status === "cancelled") {
 				await this.markCancelled(job);
+				return;
 			}
+			RealtimeEventBus.publishJob("job-failed", {
+				jobId: job.id,
+				error: PublicJobFailureMessage,
+			});
 		} finally {
+			clearInterval(heartbeatId);
 			this.activeJobs--;
 			if (isAiJob) {
 				this.activeAiJobs--;
@@ -314,8 +337,12 @@ export class JobWorker {
 			if (count > 0) {
 				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
 			}
+			await cleanupExpiredJobTransferFiles();
 		} catch (error) {
-			logger.error({ err: error }, "Failed to requeue stale in-progress jobs");
+			logger.error(
+				{ err: error },
+				"Failed to recover stale jobs or clean up transfer files",
+			);
 		}
 	}
 }

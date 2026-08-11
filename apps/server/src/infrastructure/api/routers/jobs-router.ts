@@ -1,5 +1,6 @@
 import { eventIterator, ORPCError, os } from "@orpc/server";
 import {
+	isBatchParentJobType,
 	jobDtoSchema,
 	jobIdRequestSchema,
 	jobListRequestSchema,
@@ -163,31 +164,39 @@ export const jobsRouter = {
 			return toJobDto(requeued);
 		}),
 
-	cancel: os.input(jobIdRequestSchema).handler(async ({ input }) => {
-		const job = await JobRepository.findById(input.id);
-		if (!job) {
-			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-		}
-		if (job.status !== "pending" && job.status !== "in_progress") {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Only pending or in-progress jobs can be cancelled",
-			});
-		}
+	cancel: os
+		.input(jobIdRequestSchema)
+		.output(jobDtoSchema)
+		.handler(async ({ input }) => {
+			const job = await JobRepository.findById(input.id);
+			if (!job) {
+				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+			}
+			if (job.status !== "pending" && job.status !== "in_progress") {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Only pending or in-progress jobs can be cancelled",
+				});
+			}
+			if (isBatchParentJobType(job.type)) {
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Batch parent jobs cannot be cancelled",
+				});
+			}
 
-		await JobRepository.requestCancellation(input.id);
-		const cancelled = await JobRepository.findById(input.id);
-		if (!cancelled) {
-			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-		}
-		RealtimeEventBus.publishJob("job-cancelled", {
-			jobId: input.id,
-			message:
-				cancelled.status === "in_progress"
-					? "Cancellation requested"
-					: "Job cancelled",
-		});
-		return toJobDto(cancelled);
-	}),
+			await JobRepository.requestCancellation(input.id);
+			const cancelled = await JobRepository.findById(input.id);
+			if (!cancelled) {
+				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+			}
+			RealtimeEventBus.publishJob("job-cancelled", {
+				jobId: input.id,
+				message:
+					cancelled.status === "in_progress"
+						? "Cancellation requested"
+						: "Job cancelled",
+			});
+			return toJobDto(cancelled);
+		}),
 
 	events: os.output(eventIterator(jobEventSchema)).handler(async function* ({
 		signal,

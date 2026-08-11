@@ -52,24 +52,33 @@ export async function processSourceRestoreJob(job: Job): Promise<unknown> {
 		throw new Error("Invalid source restore input path");
 	}
 
+	let completed = false;
 	try {
 		if (payload.mode === "json") {
-			return await BackupService.importSourceNdjson(
+			const result = await BackupService.importSourceNdjson(
 				job.mediaSourceId,
 				payload.inputPath,
 			);
+			completed = true;
+			return result;
 		}
 		if (payload.mode === "lancedb") {
-			return await BackupService.importLanceDB(
+			const result = await BackupService.importLanceDB(
 				job.mediaSourceId,
 				payload.inputPath,
 			);
+			completed = true;
+			return result;
 		}
-		return await BackupService.importSourceTar(
+		const result = await BackupService.importSourceTar(
 			job.mediaSourceId,
 			payload.inputPath,
 		);
+		completed = true;
+		return result;
 	} finally {
-		await removeJobTransferFile(payload.inputPath);
+		if (completed) {
+			await removeJobTransferFile(payload.inputPath);
+		}
 	}
 }

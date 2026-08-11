@@ -1,3 +1,4 @@
+import { batchParentJobTypes } from "@solid-imager/core/domain/jobs/schemas";
 import type {
 	BatchProgress,
 	IJobRepository,
@@ -488,11 +489,7 @@ export function createJobRepository(
 			const staleBaseCondition = and(
 				eq(jobs.status, "in_progress"),
 				lt(jobs.updatedAt, olderThan),
-				notInArray(jobs.type, [
-					"batch_ccip_parent",
-					"bulk_tagging_parent",
-					"thumbnail_generation_parent",
-				]),
+				notInArray(jobs.type, [...batchParentJobTypes]),
 			);
 			const cancelledRows = await db()
 				.update(jobs)

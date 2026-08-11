@@ -9,6 +9,16 @@ export const jobStatusSchema = z.enum([
 ]);
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
+export const batchParentJobTypes = [
+	"batch_ccip_parent",
+	"bulk_tagging_parent",
+	"thumbnail_generation_parent",
+] as const;
+
+export function isBatchParentJobType(type: string): boolean {
+	return batchParentJobTypes.some((parentType) => parentType === type);
+}
+
 export const jobProgressSchema = z
 	.object({
 		processed: z.number().int().nonnegative(),

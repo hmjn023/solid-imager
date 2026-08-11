@@ -1,4 +1,5 @@
 import { eventIterator, ORPCError, os } from "@orpc/server";
+import { jobDtoSchema } from "@solid-imager/core/domain/jobs/schemas";
 import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
 import {
 	type SourceEvent,
@@ -358,6 +359,7 @@ export const sourcesRouter = {
 				includeImages: z.boolean().default(false),
 			}),
 		)
+		.output(jobDtoSchema)
 		.handler(async ({ input }) => {
 			const [source] = await MediaSourceService.fetchSourceById(input.id);
 			if (!source) {
@@ -448,6 +450,7 @@ export const sourcesRouter = {
 				file: z.instanceof(File),
 			}),
 		)
+		.output(jobDtoSchema)
 		.handler(async ({ input }) => {
 			const [source] = await MediaSourceService.fetchSourceById(input.id);
 			if (!source) {
