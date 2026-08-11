@@ -85,6 +85,12 @@ export const jobCompletedEventSchema = z.object({
 });
 export type JobCompletedEvent = z.infer<typeof jobCompletedEventSchema>;
 
+export const jobRetriedEventSchema = z.object({
+	jobId: z.string().optional(),
+	message: z.string().optional(),
+});
+export type JobRetriedEvent = z.infer<typeof jobRetriedEventSchema>;
+
 export const jobFailedEventSchema = z.object({
 	jobId: z.string().optional(),
 	error: z.string().optional(),
@@ -171,6 +177,7 @@ export type SourceEventCommand = {
 
 export const jobEventSchema = z.discriminatedUnion("event", [
 	z.object({ event: z.literal("job-progress"), data: jobProgressEventSchema }),
+	z.object({ event: z.literal("job-retried"), data: jobRetriedEventSchema }),
 	z.object({
 		event: z.literal("job-completed"),
 		data: jobCompletedEventSchema,

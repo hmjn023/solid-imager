@@ -53,7 +53,7 @@ git config remote.pushDefault origin     # if multiple remotes exist (skips remo
 **All `gh stack` commands must be run non-interactively.** Every command invocation must include the flags and positional arguments needed to avoid prompts, TUIs, and interactive menus. If a command would prompt for input, it will hang indefinitely.
 
 1. **Always supply branch names as positional arguments** to `init`, `add`, and `checkout`. Running these commands without arguments triggers interactive prompts. Branch names are used exactly as given — a name is never prefixed or transformed, so `gh stack add refactor/foo` creates a branch named `refactor/foo`.
-2. **Always use `--auto` with `gh stack submit`** to auto-generate PR titles. Without `--auto`, `submit` prompts for a title for each new PR.
+2. **Always use `--auto` with `gh stack submit`** to skip the full-screen editor. Without `--auto`, `submit` opens the editor for each PR's title, body, and draft/ready status.
 3. **Always use `--json` with `gh stack view`.** Without `--json`, the command launches an interactive TUI that cannot be operated by agents. There is no other appropriate flag — always pass `--json`.
 4. **Handle multiple remotes.** If more than one remote is configured, pre-configure `git config remote.pushDefault origin`, or pass `--remote <name>` to the commands that accept it: `push`, `submit`, `sync`, `rebase`, and `link`. `checkout`, `modify`, and `trunk` resolve a remote but have **no `--remote` flag** — they rely on `remote.pushDefault`. With multiple remotes and no configured default, these commands exit with an error in non-interactive mode.
 5. **Avoid branches shared across multiple stacks.** If a branch belongs to multiple stacks, commands exit with code 6. Check out a non-shared branch first.
@@ -319,7 +319,7 @@ gh stack sync --prune
 
 > **Note for agents:** In non-interactive environments, the prune prompt is not shown. Use `--prune` explicitly to delete local branches for merged PRs.
 
-> **Note for agents:** `sync` also mirrors the stack on GitHub locally. If PRs were added to the stack on github.com, their branches are pulled down and appended to the local stack automatically. If the local and remote stacks have **diverged** (you changed the local stack while the remote stack changed differently), sync can only prompt to resolve it in an interactive terminal — in non-interactive environments it aborts the sync (nothing is pushed or updated) and exits successfully with `ℹ Sync aborted`. Resolve a divergence by unstacking and recreating the stack.
+> **Note for agents:** `sync` also mirrors the stack on GitHub locally. If PRs were added to the stack on github.com, their branches are pulled down and appended to the local stack automatically. If the local and remote stacks have **diverged** (you changed the local stack while the remote stack changed differently), sync can only prompt to resolve it in an interactive terminal — in non-interactive environments it aborts the sync (nothing is pushed or updated) and exits successfully with `ℹ Sync aborted`. Automation must inspect stderr for that message and stop instead of treating the exit code as success. For a flow that continues, validate the current stack with `gh stack view --json`; resolve the divergence by unstacking and recreating the stack.
 
 ### Squash-merge recovery
 

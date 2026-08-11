@@ -1,7 +1,9 @@
 import { eventIterator, ORPCError, os } from "@orpc/server";
 import {
+	jobDtoSchema,
 	jobIdRequestSchema,
 	jobListRequestSchema,
+	jobListResponseSchema,
 	jobStatusSchema,
 } from "@solid-imager/core/domain/jobs/schemas";
 import {
@@ -15,6 +17,7 @@ import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 
 type JobRow = typeof jobs.$inferSelect;
+const PublicJobFailureMessage = "Job failed";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -59,7 +62,7 @@ function toJobDto(job: JobRow) {
 		createdAt: job.createdAt,
 		updatedAt: job.updatedAt,
 		parentId: job.parentId,
-		error: job.error,
+		error: job.error === null ? null : PublicJobFailureMessage,
 		targetMediaId: readTargetMediaId(job.payload),
 		progress: readProgress(job.payload),
 	};
@@ -70,59 +73,71 @@ function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
 }
 
 export const jobsRouter = {
-	list: os.input(jobListRequestSchema).handler(async ({ input }) => {
-		const where = jobWhere(input.status);
-		const [rows, totalRows] = await Promise.all([
-			db
-				.select()
-				.from(jobs)
-				.where(where)
-				.orderBy(desc(jobs.createdAt), desc(jobs.id))
-				.limit(input.limit)
-				.offset(input.offset),
-			db.select({ total: count() }).from(jobs).where(where),
-		]);
+	list: os
+		.input(jobListRequestSchema)
+		.output(jobListResponseSchema)
+		.handler(async ({ input }) => {
+			const where = jobWhere(input.status);
+			const [rows, totalRows] = await Promise.all([
+				db
+					.select()
+					.from(jobs)
+					.where(where)
+					.orderBy(desc(jobs.createdAt), desc(jobs.id))
+					.limit(input.limit)
+					.offset(input.offset),
+				db.select({ total: count() }).from(jobs).where(where),
+			]);
 
-		return {
-			items: rows.map(toJobDto),
-			total: Number(totalRows[0]?.total ?? 0),
-		};
-	}),
+			return {
+				items: rows.map(toJobDto),
+				total: Number(totalRows[0]?.total ?? 0),
+			};
+		}),
 
-	get: os.input(jobIdRequestSchema).handler(async ({ input }) => {
-		const [job] = await db.select().from(jobs).where(eq(jobs.id, input.id));
-		if (!job) {
-			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-		}
-		return toJobDto(job);
-	}),
+	get: os
+		.input(jobIdRequestSchema)
+		.output(jobDtoSchema)
+		.handler(async ({ input }) => {
+			const [job] = await db.select().from(jobs).where(eq(jobs.id, input.id));
+			if (!job) {
+				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+			}
+			return toJobDto(job);
+		}),
 
-	retry: os.input(jobIdRequestSchema).handler(async ({ input }) => {
-		const [job] = await db.select().from(jobs).where(eq(jobs.id, input.id));
-		if (!job) {
-			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-		}
-		if (job.status !== "failed") {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Only failed jobs can be retried",
+	retry: os
+		.input(jobIdRequestSchema)
+		.output(jobDtoSchema)
+		.handler(async ({ input }) => {
+			const [requeued] = await db
+				.update(jobs)
+				.set({
+					status: "pending",
+					error: null,
+					result: null,
+					updatedAt: new Date(),
+				})
+				.where(and(eq(jobs.id, input.id), eq(jobs.status, "failed")))
+				.returning();
+			if (!requeued) {
+				const [current] = await db
+					.select({ id: jobs.id })
+					.from(jobs)
+					.where(eq(jobs.id, input.id));
+				if (!current) {
+					throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+				}
+				throw new ORPCError("BAD_REQUEST", {
+					message: "Only failed jobs can be retried",
+				});
+			}
+			RealtimeEventBus.publishJob("job-retried", {
+				jobId: requeued.id,
+				message: "Job queued for retry",
 			});
-		}
-
-		const [requeued] = await db
-			.update(jobs)
-			.set({
-				status: "pending",
-				error: null,
-				result: null,
-				updatedAt: new Date(),
-			})
-			.where(eq(jobs.id, input.id))
-			.returning();
-		if (!requeued) {
-			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-		}
-		return toJobDto(requeued);
-	}),
+			return toJobDto(requeued);
+		}),
 
 	events: os.output(eventIterator(jobEventSchema)).handler(async function* ({
 		signal,

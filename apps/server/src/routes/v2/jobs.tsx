@@ -19,7 +19,10 @@ function V2JobsRoute() {
 
 	useJobEvents(
 		(signal) => orpc.jobs.events(undefined, { signal }),
-		() => {
+		(event) => {
+			if (event.event === "job-progress") {
+				return;
+			}
 			void queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
 		},
 	);

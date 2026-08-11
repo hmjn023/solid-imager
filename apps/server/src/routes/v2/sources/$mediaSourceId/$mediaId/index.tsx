@@ -57,6 +57,7 @@ function MediaDetailHeader(props: {
 				mediaId: neighbor.id,
 				mediaSourceId: neighbor.mediaSourceId,
 			},
+			replace: true,
 			to: "/v2/sources/$mediaSourceId/$mediaId",
 		});
 	};

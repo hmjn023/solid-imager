@@ -84,7 +84,9 @@ vi.mock("~/application/registry", () => ({
 }));
 
 import { MediaProcessingService } from "~/application/services/media-processing-service";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 
 describe("DirectorySyncService", () => {
 	beforeEach(() => {
@@ -118,6 +120,71 @@ describe("DirectorySyncService", () => {
 			// Verify deletion
 			expect(MediaRepository.delete).toHaveBeenCalledTimes(1);
 			expect(MediaRepository.delete).toHaveBeenCalledWith("id3");
+		});
+
+		it("coalesces concurrent syncs for the same source", async () => {
+			const mediaSourceId = "source-1";
+			const { DirectorySyncService } = await import(
+				"~/application/services/directory-sync-service"
+			);
+			let resolveProcessing: (() => void) | undefined;
+			let resolveStarted: (() => void) | undefined;
+			const started = new Promise<void>((resolve) => {
+				resolveStarted = resolve;
+			});
+			const processing = new Promise<void>((resolve) => {
+				resolveProcessing = resolve;
+			});
+			vi.mocked(
+				MediaProcessingService.registerAndProcess,
+			).mockImplementationOnce(async () => {
+				resolveStarted?.();
+				await processing;
+				const now = new Date();
+				return {
+					id: "media-new",
+					mediaSourceId,
+					filePath: "new_file.mp3",
+					fileName: "new_file.mp3",
+					mediaType: "audio",
+					width: 0,
+					height: 0,
+					fileSize: null,
+					description: null,
+					createdAt: now,
+					modifiedAt: now,
+					indexedAt: now,
+					status: "active",
+				};
+			});
+
+			const first = DirectorySyncService.syncMediaSource(mediaSourceId);
+			await started;
+			const second = DirectorySyncService.syncMediaSource(mediaSourceId);
+
+			expect(DrizzleSourceRepository.findById).toHaveBeenCalledTimes(1);
+			resolveProcessing?.();
+			await expect(Promise.all([first, second])).resolves.toHaveLength(2);
+		});
+
+		it("publishes a safe message when sync fails", async () => {
+			const { DirectorySyncService } = await import(
+				"~/application/services/directory-sync-service"
+			);
+			vi.mocked(MediaRepository.findAllPathsBySourceId).mockRejectedValueOnce(
+				new Error("/secret/source-path and password=secret"),
+			);
+
+			await DirectorySyncService.syncMediaSource("source-1");
+
+			expect(RealtimeEventBus.publishSource).toHaveBeenCalledWith(
+				"source-1",
+				"source-sync-status",
+				expect.objectContaining({
+					message: "Directory sync failed",
+					status: "error",
+				}),
+			);
 		});
 	});
 });

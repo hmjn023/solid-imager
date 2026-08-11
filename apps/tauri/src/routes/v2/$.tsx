@@ -2,6 +2,14 @@ import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
 import { createFileRoute, Navigate, useLocation } from "@tanstack/solid-router";
 import { Match, Switch } from "solid-js";
 
+function decodeSegment(segment: string): string {
+	try {
+		return decodeURIComponent(segment);
+	} catch {
+		return segment;
+	}
+}
+
 export const Route = createFileRoute("/v2/$")({
 	component: V2RouteAdapter,
 });
@@ -13,7 +21,7 @@ function V2RouteAdapter() {
 			.pathname.replace(/^\/v2\/?/, "")
 			.split("/")
 			.filter(Boolean)
-			.map((segment) => decodeURIComponent(segment));
+			.map(decodeSegment);
 	const first = () => segments()[0];
 
 	return (

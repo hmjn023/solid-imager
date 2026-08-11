@@ -40,12 +40,19 @@ export function singularLabel(value: ManagerEntityType): string {
 	}
 }
 
-export function formatDate(value: Date | string): string {
-	return new Date(value).toLocaleDateString("ja-JP", {
-		year: "numeric",
-		month: "short",
-		day: "numeric",
-	});
+export function formatDate(
+	value: Date | string | null | undefined,
+	options?: { includeTime?: boolean },
+): string {
+	if (value == null) {
+		return "—";
+	}
+	return new Intl.DateTimeFormat(
+		"ja-JP",
+		options?.includeTime
+			? { dateStyle: "medium", timeStyle: "short" }
+			: { year: "numeric", month: "short", day: "numeric" },
+	).format(value instanceof Date ? value : new Date(value));
 }
 
 export function formatBytes(bytes: number | null | undefined): string {

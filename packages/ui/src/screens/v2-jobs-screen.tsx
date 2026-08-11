@@ -20,6 +20,7 @@ import {
 	V2CategoryLabel,
 	V2ManagementHeader,
 } from "../v2/management-layout";
+import { formatDate } from "./v2-manager/utils";
 
 const JOB_FILTERS = [
 	{ description: "すべての処理", icon: Clock3, label: "All", value: "all" },
@@ -52,15 +53,6 @@ export type V2JobsScreenProps = {
 	onRetry: (jobId: string) => void | Promise<void>;
 	state: Accessor<QueryUiState<JobListResponse>>;
 };
-
-const dateFormatter = new Intl.DateTimeFormat("ja-JP", {
-	dateStyle: "medium",
-	timeStyle: "short",
-});
-
-function formatDate(value: Date): string {
-	return dateFormatter.format(value);
-}
 
 function jobTypeLabel(type: string): string {
 	return type
@@ -149,12 +141,23 @@ function JobsTable(props: {
 		<div class="overflow-hidden rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)]">
 			<div class="overflow-x-auto">
 				<table class="w-full min-w-[48rem] text-left text-sm">
+					<caption class="sr-only">
+						ジョブの一覧。{props.jobs.length}件。
+					</caption>
 					<thead class="border-[var(--v2-border)] border-b bg-[var(--v2-surface-muted)] text-xs uppercase tracking-wide">
 						<tr>
-							<th class="px-4 py-3 font-medium">Type</th>
-							<th class="px-4 py-3 font-medium">Status</th>
-							<th class="px-4 py-3 font-medium">Progress</th>
-							<th class="px-4 py-3 font-medium">Updated</th>
+							<th class="px-4 py-3 font-medium" scope="col">
+								Type
+							</th>
+							<th class="px-4 py-3 font-medium" scope="col">
+								Status
+							</th>
+							<th class="px-4 py-3 font-medium" scope="col">
+								Progress
+							</th>
+							<th class="px-4 py-3 font-medium" scope="col">
+								Updated
+							</th>
 						</tr>
 					</thead>
 					<tbody class="divide-y divide-[var(--v2-border)]">
@@ -170,6 +173,7 @@ function JobsTable(props: {
 								>
 									<td class="px-2 py-2">
 										<button
+											aria-pressed={props.selectedJobId === job.id}
 											class="w-full rounded px-2 py-2 text-left font-medium text-[var(--v2-text)] hover:bg-[var(--v2-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-primary)]"
 											onClick={() => props.onSelect(job)}
 											type="button"
@@ -187,7 +191,7 @@ function JobsTable(props: {
 										<JobProgress progress={job.progress} />
 									</td>
 									<td class="px-4 py-3 whitespace-nowrap text-[var(--v2-text-secondary)]">
-										{formatDate(job.updatedAt)}
+										{formatDate(job.updatedAt, { includeTime: true })}
 									</td>
 								</tr>
 							)}
@@ -268,13 +272,13 @@ function JobsInspector(props: {
 							<div class="flex justify-between gap-3">
 								<dt class="text-[var(--v2-text-muted)]">Created</dt>
 								<dd class="text-right text-[var(--v2-text-secondary)]">
-									{formatDate(job().createdAt)}
+									{formatDate(job().createdAt, { includeTime: true })}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
 								<dt class="text-[var(--v2-text-muted)]">Updated</dt>
 								<dd class="text-right text-[var(--v2-text-secondary)]">
-									{formatDate(job().updatedAt)}
+									{formatDate(job().updatedAt, { includeTime: true })}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
