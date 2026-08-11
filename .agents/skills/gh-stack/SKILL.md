@@ -14,7 +14,7 @@ name: gh-stack
 
 `gh stack` is a [GitHub CLI](https://cli.github.com/) extension for managing **stacked branches and pull requests**. A stack is an ordered list of branches where each branch builds on the one below it, rooted on a trunk branch (typically the repo's default branch). Each branch maps to one PR whose base is the branch below it, so reviewers see only the diff for that layer.
 
-```
+```text
 main (trunk)
  └── auth-layer     → PR #1 (base: main)            - bottom (closest to trunk)
   └── api-endpoints → PR #2 (base: auth-layer)
@@ -81,7 +81,7 @@ Stacked branches form a dependency chain: each branch builds on the one below it
 
 **Plan your layers before writing code.** For example, a full-stack feature might be structured like this (use branch names relevant to your actual task, not these generic ones):
 
-```
+```text
 main (trunk)
  └── data-models    ← shared types, database schema
   └── api-endpoints ← API routes that use the models
@@ -318,8 +318,7 @@ gh stack sync --prune
 ```
 
 > **Note for agents:** In non-interactive environments, the prune prompt is not shown. Use `--prune` explicitly to delete local branches for merged PRs.
-
-> **Note for agents:** `sync` also mirrors the stack on GitHub locally. If PRs were added to the stack on github.com, their branches are pulled down and appended to the local stack automatically. If the local and remote stacks have **diverged** (you changed the local stack while the remote stack changed differently), sync can only prompt to resolve it in an interactive terminal — in non-interactive environments it aborts the sync (nothing is pushed or updated) and exits successfully with `ℹ Sync aborted`. Automation must inspect stderr for that message and stop instead of treating the exit code as success. For a flow that continues, validate the current stack with `gh stack view --json`; resolve the divergence by unstacking and recreating the stack.
+> **Note for agents:** `sync` also mirrors the stack on GitHub locally. If PRs were added to the stack on GitHub, their branches are pulled down and appended to the local stack automatically. If the local and remote stacks have **diverged** (you changed the local stack while the remote stack changed differently), sync can only prompt to resolve it in an interactive terminal — in non-interactive environments it aborts the sync (nothing is pushed or updated) and exits successfully with `ℹ Sync aborted`. Automation must inspect stderr for that message and stop instead of treating the exit code as success. For a flow that continues, validate the current stack with `gh stack view --json`; resolve the divergence by unstacking and recreating the stack. Before running `gh stack init` again, confirm that the GitHub stack has disappeared. If any PR is queued or has auto-merge enabled, `unstack` may leave the GitHub stack and local tracking in place; if all PRs are affected it can return HTTP 422. Remove the PRs from the merge queue or disable auto-merge, rerun `gh stack unstack`, and only then initialize the stack.
 
 ### Squash-merge recovery
 
@@ -413,7 +412,7 @@ gh stack init --base main new-branch-1 new-branch-2 new-branch-3
 
 Creates a new stack. **Always provide at least one branch name as a positional argument** — running without branch arguments triggers interactive prompts that agents cannot use.
 
-```
+```text
 gh stack init [flags] <branches...>
 ```
 
@@ -450,7 +449,7 @@ gh stack init branch-a branch-b branch-c
 
 Add a new branch on top of the current stack. Must be run while on the topmost branch (or the trunk if the stack has no branches yet). **Always provide a branch name** — running without one triggers an interactive prompt.
 
-```
+```text
 gh stack add [flags] <branch>
 ```
 
@@ -499,7 +498,7 @@ gh stack add -um "Fix auth bug" auth-fix
 
 Push active stack branches to the remote.
 
-```
+```text
 gh stack push [flags]
 ```
 
@@ -572,7 +571,7 @@ gh stack submit --auto --open
 
 Link PRs into a stack on GitHub without creating any local tracking state. This is the recommended approach if you are managing stacked branches with other tools (jj, Sapling, git-town) and want to simply create GitHub Stacked PRs via an API.
 
-```
+```text
 gh stack link [flags] <stack-number | branch-or-pr> <branch-or-pr> [...]
 ```
 
@@ -626,7 +625,7 @@ When the first argument is a stack number, the remaining arguments are appended 
 
 Fetch, rebase, push, and sync PR state in a single command. This is the recommended command for routine synchronization.
 
-```
+```text
 gh stack sync [flags]
 ```
 
@@ -667,7 +666,7 @@ gh stack sync [flags]
 
 Pull from remote and cascade-rebase stack branches. Use this when `sync` reports a conflict or when you need finer control (e.g., rebase only part of the stack).
 
-```
+```text
 gh stack rebase [flags] [branch]
 ```
 
@@ -800,7 +799,7 @@ Navigation clamps to stack bounds. Merged branches are skipped when navigating f
 
 Check out a stack by stack number, pull request number, PR URL, or branch name. **Always provide an argument** — running `gh stack checkout` without arguments triggers an interactive selection menu.
 
-```
+```text
 gh stack checkout <stack-number | pr-number | pr-url | branch>
 ```
 
@@ -834,9 +833,9 @@ Unstacking only removes the stack grouping (on GitHub and/or locally); it never 
 
 With no argument, the command targets the active stack — the one containing the currently checked out branch — unstacking it on GitHub and removing local tracking.
 
-Provide a stack number to unstack a specific stack on GitHub. This works from anywhere in the repository, whether or not the stack is checked out locally — the number is unstacked directly through the GitHub API (like `gh stack link`, no local tracking required). If the stack is also tracked locally, its local tracking is removed as well.
+Provide a stack number to unstack a specific stack on GitHub. This works from anywhere in the repository, whether the stack is checked out locally or not — the number is unstacked directly through the GitHub API (like `gh stack link`, no local tracking required). If the stack is also tracked locally, its local tracking is removed as well.
 
-```
+```text
 gh stack unstack [<stack-number>] [flags]
 ```
 
@@ -857,6 +856,7 @@ gh stack unstack --local
 | `--local` | Only remove the stack locally (keep it on GitHub); never contacts GitHub |
 
 > **Note for agents:** `gh stack unstack <number>` is a remote-first API wrapper — it unstacks on GitHub by number from anywhere in the repo, tracked locally or not, and is safe for non-interactive use. `--local` never contacts GitHub; combining `--local` with a number that isn't tracked locally is an error. An unknown stack number returns a "not found on GitHub" error (exit code 2).
+> **Stopping condition:** If any PR in the stack is queued or has auto-merge enabled, `gh stack unstack` may leave the GitHub stack and local tracking in place. If all PRs are affected, the API can return HTTP 422. Do not run `gh stack init` until the GitHub stack has disappeared; remove the PRs from the merge queue or disable auto-merge, then rerun `gh stack unstack`.
 
 ---
 
@@ -870,9 +870,9 @@ gh stack unstack --local
 
 | Code | Meaning | Agent action |
 |------|---------|-------------|
-| 0 | Success | Proceed normally |
+| 0 | Command succeeded; `gh stack sync` may still print `Sync aborted` and make no changes | Inspect stderr for `Sync aborted` before continuing; if present, stop and inspect the stack |
 | 1 | Generic error | Read stderr for details; may indicate commit/push failure |
-| 2 | Not in a stack | Run `gh stack init` to create a stack first |
+| 2 | Command-specific: not in a stack, or the specified stack was not found | For an unknown `gh stack unstack <number>`, report the missing stack and do not run `gh stack init`; otherwise initialize with explicit branch arguments only when local stack membership is required |
 | 3 | Rebase conflict | Parse stderr for conflicted file paths, resolve conflicts, run `gh stack rebase --continue` |
 | 4 | GitHub API failure | Check `gh auth status`, retry the command |
 | 5 | Invalid arguments | Fix the command invocation (check flags and arguments) |

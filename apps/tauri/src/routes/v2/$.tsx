@@ -26,16 +26,16 @@ function V2RouteAdapter() {
 
 	return (
 		<Switch fallback={<NotFoundScreen />}>
-			<Match when={first() === "search"}>
+			<Match when={first() === "search" && segments().length === 1}>
 				<Navigate replace to="/search" />
 			</Match>
-			<Match when={first() === "manager"}>
+			<Match when={first() === "manager" && segments().length === 1}>
 				<Navigate replace to="/manager" />
 			</Match>
-			<Match when={first() === "config"}>
+			<Match when={first() === "config" && segments().length === 1}>
 				<Navigate replace to="/config" />
 			</Match>
-			<Match when={first() === "about"}>
+			<Match when={first() === "about" && segments().length === 1}>
 				<Navigate replace to="/about" />
 			</Match>
 			<Match when={first() === "sources" && segments().length === 1}>
@@ -48,7 +48,7 @@ function V2RouteAdapter() {
 					to="/sources/$mediaSourceId"
 				/>
 			</Match>
-			<Match when={first() === "sources" && segments().length >= 3}>
+			<Match when={first() === "sources" && segments().length === 3}>
 				<Navigate
 					params={{
 						mediaId: segments()[2] ?? "",
