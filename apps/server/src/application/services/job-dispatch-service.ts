@@ -1,6 +1,10 @@
 import type { DeferredActions } from "@solid-imager/application/ports/media-service";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import { services } from "~/application/registry";
+import {
+	processSourceExportJob,
+	processSourceRestoreJob,
+} from "~/application/services/source-transfer-job-service";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
 	processAutoTaggingJob,
@@ -65,6 +69,10 @@ export async function processJob(job: Job) {
 		await processBatchCcipDispatchJob(job);
 	} else if (job.type === "generate_thumbnail") {
 		await getThumbnailJobHandlers().processThumbnailGenerationJob(job);
+	} else if (job.type === "source_export") {
+		await processSourceExportJob(job);
+	} else if (job.type === "source_restore") {
+		return processSourceRestoreJob(job);
 	} else if (job.type === "sync_lancedb" || job.type === "sync_lancedb_full") {
 		if (!mediaSourceId) {
 			throw new Error(`Job ${job.id} missing mediaSourceId`);

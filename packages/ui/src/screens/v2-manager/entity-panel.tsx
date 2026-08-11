@@ -88,6 +88,12 @@ function EntityInspector(props: {
 						</dd>
 					</div>
 				</Show>
+				<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
+					<dt class="text-[var(--v2-text-muted)]">Media</dt>
+					<dd class="text-[var(--v2-text)]">
+						{props.item.mediaCount?.toLocaleString() ?? "—"}
+					</dd>
+				</div>
 			</dl>
 			<div class="mt-4 grid grid-cols-2 gap-2">
 				<Button
@@ -212,6 +218,9 @@ export function EntityTablePanel(props: {
 													: "Status"}
 										</th>
 										<th class="px-3 py-2 font-medium" scope="col">
+											Media
+										</th>
+										<th class="px-3 py-2 font-medium" scope="col">
 											Updated
 										</th>
 										<th class="px-3 py-2 text-right font-medium" scope="col">
@@ -254,6 +263,9 @@ export function EntityTablePanel(props: {
 																? "Active"
 																: relationSummary(item)}
 														</span>
+													</td>
+													<td class="whitespace-nowrap px-3 py-2 text-xs text-[var(--v2-text-secondary)]">
+														{item.mediaCount?.toLocaleString() ?? "—"}
 													</td>
 													<td class="whitespace-nowrap px-3 py-2 text-xs text-[var(--v2-text-muted)]">
 														{formatDate(item.updatedAt)}

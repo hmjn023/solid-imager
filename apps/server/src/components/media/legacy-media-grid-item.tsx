@@ -18,6 +18,7 @@ export type ServerMediaGridItemProps = {
 	isBulkSelectMode?: boolean;
 	isSelected?: boolean;
 	onToggleSelect?: () => void;
+	onPrepareMediaDetail?: () => void;
 	onPreviewSelect?: () => void;
 };
 

@@ -1,4 +1,5 @@
-import { eventIterator, os } from "@orpc/server";
+import { eventIterator, ORPCError, os } from "@orpc/server";
+import { jobDtoSchema } from "@solid-imager/core/domain/jobs/schemas";
 import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
 import {
 	type SourceEvent,
@@ -14,11 +15,17 @@ import {
 } from "@solid-imager/core/domain/sources/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
+import { count, inArray } from "drizzle-orm";
 import { z } from "zod";
+import { services } from "~/application/registry";
 import { BackupService } from "~/application/services/backup-service";
 import { DirectorySyncService } from "~/application/services/directory-sync-service";
+import { persistJobInput } from "~/application/services/job-transfer-storage";
 import { MediaService } from "~/application/services/media-service";
 import { MediaSourceService } from "~/application/services/media-source-service";
+import { toJobDto } from "~/infrastructure/api/routers/jobs-router";
+import { db } from "~/infrastructure/db";
+import { medias } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import {
@@ -70,6 +77,38 @@ function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 	throw new Error(`Unsupported source type: ${source.type}`);
 }
 
+async function getMediaCounts(
+	sourceIds: string[],
+): Promise<Map<string, number>> {
+	if (sourceIds.length === 0) {
+		return new Map();
+	}
+
+	const rows = await db
+		.select({ mediaCount: count(), sourceId: medias.mediaSourceId })
+		.from(medias)
+		.where(inArray(medias.mediaSourceId, sourceIds))
+		.groupBy(medias.mediaSourceId);
+
+	return new Map(
+		rows.map((row) => [row.sourceId, Number(row.mediaCount)] as const),
+	);
+}
+
+function addSourceSummary(
+	source: SafeMediaSource,
+	mediaCounts: Map<string, number>,
+): SafeMediaSource {
+	if (!source.id) {
+		return source;
+	}
+	return {
+		...source,
+		mediaCount: mediaCounts.get(source.id) ?? 0,
+		syncStatus: source.syncStatus ?? "idle",
+	};
+}
+
 /**
  * Media Sources Router Implementation
  */
@@ -85,7 +124,12 @@ export const sourcesRouter = {
 		})
 		.handler(async () => {
 			const sources = await MediaSourceService.fetchSources();
-			return sources.map(toSafeMediaSource);
+			const mediaCounts = await getMediaCounts(
+				sources.map((source) => source.id),
+			);
+			return sources.map((source) =>
+				addSourceSummary(toSafeMediaSource(source), mediaCounts),
+			);
 		}),
 
 	get: os
@@ -106,7 +150,8 @@ export const sourcesRouter = {
 			if (!source) {
 				throw new Error(`Source not found: ${input.id}`);
 			}
-			return toSafeMediaSource(source);
+			const mediaCounts = await getMediaCounts([source.id]);
+			return addSourceSummary(toSafeMediaSource(source), mediaCounts);
 		}),
 
 	create: os
@@ -149,7 +194,8 @@ export const sourcesRouter = {
 					});
 			}
 
-			return toSafeMediaSource(createdSource);
+			const mediaCounts = await getMediaCounts([createdSource.id]);
+			return addSourceSummary(toSafeMediaSource(createdSource), mediaCounts);
 		}),
 
 	update: os
@@ -171,7 +217,8 @@ export const sourcesRouter = {
 				input.id,
 				input.data,
 			);
-			return toSafeMediaSource(result[0]);
+			const mediaCounts = await getMediaCounts([result[0].id]);
+			return addSourceSummary(toSafeMediaSource(result[0]), mediaCounts);
 		}),
 
 	/**
@@ -303,6 +350,34 @@ export const sourcesRouter = {
 				},
 			});
 		}),
+
+	enqueueExport: os
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+				includeImages: z.boolean().default(false),
+			}),
+		)
+		.output(jobDtoSchema)
+		.handler(async ({ input }) => {
+			const [source] = await MediaSourceService.fetchSourceById(input.id);
+			if (!source) {
+				throw new ORPCError("NOT_FOUND", {
+					message: `Source not found: ${input.id}`,
+				});
+			}
+
+			const job = await services.getJobRepository().create({
+				type: "source_export",
+				mediaSourceId: input.id,
+				payload: {
+					mode: input.mode,
+					includeImages: input.includeImages,
+				},
+			});
+			return toJobDto(job);
+		}),
 	restore: os
 		.meta({
 			openapi: {
@@ -364,6 +439,44 @@ export const sourcesRouter = {
 				} catch {
 					// ignore
 				}
+			}
+		}),
+
+	enqueueImport: os
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				mode: z.enum(["json", "zip", "lancedb"]),
+				file: z.instanceof(File),
+			}),
+		)
+		.output(jobDtoSchema)
+		.handler(async ({ input }) => {
+			const [source] = await MediaSourceService.fetchSourceById(input.id);
+			if (!source) {
+				throw new ORPCError("NOT_FOUND", {
+					message: `Source not found: ${input.id}`,
+				});
+			}
+
+			const { randomUUID } = await import("node:crypto");
+			const jobId = randomUUID();
+			const inputPath = await persistJobInput(jobId, input.mode, input.file);
+			try {
+				const job = await services.getJobRepository().create({
+					id: jobId,
+					type: "source_restore",
+					mediaSourceId: input.id,
+					payload: {
+						mode: input.mode,
+						inputPath,
+					},
+				});
+				return toJobDto(job);
+			} catch (error) {
+				const fs = await import("node:fs/promises");
+				await fs.rm(inputPath, { force: true }).catch(() => {});
+				throw error;
 			}
 		}),
 

@@ -31,6 +31,7 @@ import {
 	searchState,
 	setSearchState,
 } from "~/presentation/store/search-store";
+import { saveV2MediaContext } from "./media-context";
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 const V2_SEARCH_RESULTS_PER_PAGE = 200;
@@ -103,10 +104,16 @@ function V2SearchRoute() {
 					media={media}
 					onPreviewSelect={options?.onPreviewSelect}
 					priority={options?.priority}
+					onPrepareMediaDetail={options?.onPrepareMediaDetail}
 				/>
 			)}
-			onOpenMediaDetail={(media) => {
+			onPrepareMediaDetail={(media, context) => {
 				sessionStorage.setItem("v2:media-return", location().href);
+				saveV2MediaContext(location().href, context ?? [media]);
+			}}
+			onOpenMediaDetail={(media, context) => {
+				sessionStorage.setItem("v2:media-return", location().href);
+				saveV2MediaContext(location().href, context ?? [media]);
 				void navigate({
 					params: {
 						mediaId: media.id,

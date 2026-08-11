@@ -1,5 +1,6 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
+import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { createForm } from "@tanstack/solid-form";
 // biome-ignore lint/suspicious/noDeprecatedImports: the object overload used below is current; TanStack's legacy overload annotation marks the re-export.
 import { useBlocker } from "@tanstack/solid-router";
@@ -78,6 +79,7 @@ function parseNumberInput(val: string): number | undefined {
 	return val === "" || Number.isNaN(n) ? undefined : n;
 }
 export type V2ConfigScreenProps = {
+	checkAiHealth: () => Promise<AiHealthResponse>;
 	data: AppConfig;
 	onSubmit: (value: Partial<AppConfig>) => Promise<void>;
 	onSubmitSuccess?: () => void;
@@ -85,6 +87,9 @@ export type V2ConfigScreenProps = {
 
 export function V2ConfigScreen(props: V2ConfigScreenProps) {
 	const [activeTab, setActiveTab] = createSignal("jobs");
+	const [aiHealth, setAiHealth] = createSignal<AiHealthResponse | null>(null);
+	const [aiHealthError, setAiHealthError] = createSignal<string | null>(null);
+	const [isCheckingAiHealth, setIsCheckingAiHealth] = createSignal(false);
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const sectionClass = "space-y-5 border-b border-[var(--v2-border)] pb-8";
 	const form = createForm(() => ({
@@ -113,6 +118,21 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 		enableBeforeUnload: () => form.state.isDirty,
 		withResolver: true,
 	});
+	const checkAiHealth = async () => {
+		if (isCheckingAiHealth()) return;
+		setIsCheckingAiHealth(true);
+		setAiHealthError(null);
+		try {
+			setAiHealth(await props.checkAiHealth());
+		} catch (error) {
+			setAiHealth(null);
+			setAiHealthError(
+				error instanceof Error ? error.message : "Health check failed",
+			);
+		} finally {
+			setIsCheckingAiHealth(false);
+		}
+	};
 
 	createEffect(() => {
 		const data = props.data;
@@ -280,12 +300,43 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 							<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-3 py-2.5">
 								<div>
 									<div class="font-medium text-sm">Connection status</div>
-									<div class="text-[var(--v2-text-muted)] text-xs">
-										Health check API is not available yet.
-									</div>
+									<Show
+										fallback={
+											<div class="text-[var(--v2-text-muted)] text-xs">
+												{aiHealthError() ?? "Not checked yet."}
+											</div>
+										}
+										when={aiHealth()}
+									>
+										{(health) => (
+											<div
+												class={
+													health().status === "available"
+														? "text-emerald-700 text-xs dark:text-emerald-300"
+														: "text-red-700 text-xs dark:text-red-300"
+												}
+												role="status"
+											>
+												{health().status === "available"
+													? `${health().mode === "remote" ? "Remote" : "Local"} service available`
+													: (health().message ?? "AI service unavailable")}
+												<Show when={health().latencyMs !== null}>
+													<span class="ml-2 text-[var(--v2-text-muted)]">
+														{health().latencyMs} ms
+													</span>
+												</Show>
+											</div>
+										)}
+									</Show>
 								</div>
-								<Button disabled size="sm" variant="outline">
-									Not checked
+								<Button
+									aria-busy={isCheckingAiHealth()}
+									disabled={isCheckingAiHealth()}
+									onClick={() => void checkAiHealth()}
+									size="sm"
+									variant="outline"
+								>
+									{isCheckingAiHealth() ? "Checking..." : "Check now"}
 								</Button>
 							</div>
 							<form.Field name="ai.baseUrl">

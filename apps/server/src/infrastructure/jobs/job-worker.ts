@@ -1,6 +1,8 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { cleanupExpiredJobTransferFiles } from "~/application/services/job-transfer-storage";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 
 type JsonSafeValue =
@@ -38,6 +40,8 @@ function toJsonSafeValue(value: unknown): JsonSafeValue {
 }
 
 const StaleInProgressJobMs = 60 * 60 * 1000;
+const JobHeartbeatMs = 5 * 60 * 1000;
+const PublicJobFailureMessage = "Job failed";
 
 export class JobWorker {
 	private isRunning = false;
@@ -211,6 +215,16 @@ export class JobWorker {
 		if (isThumbnailJob) {
 			this.activeThumbnailJobs++;
 		}
+		const heartbeatId = setInterval(() => {
+			void Promise.resolve(
+				this.jobRepo.update(job.id, { updatedAt: new Date() }),
+			).catch((error) => {
+				logger.error(
+					{ err: error, jobId: job.id },
+					"Failed to update job heartbeat",
+				);
+			});
+		}, JobHeartbeatMs);
 
 		logger.info(
 			{
@@ -223,10 +237,29 @@ export class JobWorker {
 			"Job started",
 		);
 		try {
+			if (await this.jobRepo.isCancellationRequested(job.id)) {
+				await this.markCancelled(job);
+				return;
+			}
+
 			const result = await this.processor(job);
 			const safeResult =
 				result !== undefined ? toJsonSafeValue(result) : { success: true };
-			await this.jobRepo.markAsCompleted(job.id, safeResult);
+			if (await this.jobRepo.isCancellationRequested(job.id)) {
+				await this.markCancelled(job);
+				return;
+			} else {
+				await this.jobRepo.markAsCompleted(job.id, safeResult);
+				const latestJob = await this.jobRepo.findById(job.id);
+				if (latestJob?.cancelRequestedAt || latestJob?.status === "cancelled") {
+					await this.markCancelled(job);
+					return;
+				}
+				RealtimeEventBus.publishJob("job-completed", {
+					jobId: job.id,
+					message: "Job completed",
+				});
+			}
 			logger.info(
 				{
 					jobId: job.id,
@@ -240,6 +273,11 @@ export class JobWorker {
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
+			if (await this.jobRepo.isCancellationRequested(job.id)) {
+				await this.markCancelled(job);
+				return;
+			}
+
 			logger.error(
 				{
 					err: error,
@@ -252,7 +290,17 @@ export class JobWorker {
 				"Job failed",
 			);
 			await this.jobRepo.markAsFailed(job.id, errorMessage);
+			const latestJob = await this.jobRepo.findById(job.id);
+			if (latestJob?.cancelRequestedAt || latestJob?.status === "cancelled") {
+				await this.markCancelled(job);
+				return;
+			}
+			RealtimeEventBus.publishJob("job-failed", {
+				jobId: job.id,
+				error: PublicJobFailureMessage,
+			});
 		} finally {
+			clearInterval(heartbeatId);
 			this.activeJobs--;
 			if (isAiJob) {
 				this.activeAiJobs--;
@@ -265,6 +313,23 @@ export class JobWorker {
 			}
 		}
 	}
+
+	private async markCancelled(job: Job): Promise<void> {
+		await this.jobRepo.markAsCancelled(job.id);
+		RealtimeEventBus.publishJob("job-cancelled", {
+			jobId: job.id,
+			message: "Job cancelled",
+		});
+		logger.info(
+			{
+				jobId: job.id,
+				type: job.type,
+				mediaSourceId: job.mediaSourceId,
+				parentId: job.parentId,
+			},
+			"Job cancelled",
+		);
+	}
 	private async recoverStaleJobs() {
 		const olderThan = new Date(Date.now() - StaleInProgressJobMs);
 		try {
@@ -272,8 +337,12 @@ export class JobWorker {
 			if (count > 0) {
 				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
 			}
+			await cleanupExpiredJobTransferFiles();
 		} catch (error) {
-			logger.error({ err: error }, "Failed to requeue stale in-progress jobs");
+			logger.error(
+				{ err: error },
+				"Failed to recover stale jobs or clean up transfer files",
+			);
 		}
 	}
 }

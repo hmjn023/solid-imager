@@ -1,6 +1,7 @@
 import {
 	allJobsCompletedEventSchema,
 	type SourceEvent,
+	sourceSyncStatusEventSchema,
 	watcherErrorEventSchema,
 } from "@solid-imager/core/domain/sources/events";
 import type { QueryClient, QueryKey } from "@tanstack/solid-query";
@@ -55,6 +56,14 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 					});
 					break;
 				}
+				case "media-added":
+				case "media-deleted":
+				case "media-copied":
+				case "media-moved":
+					void options.queryClient.invalidateQueries({
+						queryKey: options.queryKey,
+					});
+					break;
 				case "watcher-error": {
 					const result = watcherErrorEventSchema.safeParse(event.data);
 					if (!result.success) {
@@ -73,6 +82,29 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 					toast.error(
 						`Watcher Error for ${result.data.mediaSourceId?.slice(0, 4) ?? "unknown"}...: ${result.data.error || "Unknown error"}`,
 					);
+					break;
+				}
+				case "source-sync-status": {
+					const result = sourceSyncStatusEventSchema.safeParse(event.data);
+					if (!result.success) {
+						console.warn(
+							"[useSourcesEvents] Invalid source-sync-status payload:",
+							result.error,
+						);
+						return;
+					}
+					if (!activeSourceIds.has(result.data.mediaSourceId)) {
+						return;
+					}
+					void options.queryClient.invalidateQueries({
+						queryKey: options.queryKey,
+					});
+					if (result.data.status === "error") {
+						toast.error(
+							result.data.message ??
+								`Source sync failed for ${result.data.mediaSourceId.slice(0, 8)}`,
+						);
+					}
 					break;
 				}
 				default:

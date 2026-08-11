@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+export const aiHealthResponseSchema = z.object({
+	status: z.enum(["available", "unavailable"]),
+	mode: z.enum(["local", "remote"]),
+	latencyMs: z.number().int().nonnegative().nullable(),
+	message: z.string().nullable(),
+	checkedAt: z.coerce.date(),
+});
+export type AiHealthResponse = z.infer<typeof aiHealthResponseSchema>;
+
 export const oppaiOracleResponseSchema = z.object({
 	general: z.record(z.string(), z.number()),
 	rating: z.record(z.string(), z.number()),

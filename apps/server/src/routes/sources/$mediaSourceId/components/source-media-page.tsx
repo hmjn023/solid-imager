@@ -61,6 +61,7 @@ export type SourceMediaPageControllerProps = {
 	ssrGuard?: boolean;
 	scrollContainerSelector?: Accessor<string>;
 	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
+	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
 	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
 };
 
@@ -175,6 +176,7 @@ export function SourceMediaPageController(
 					props.renderItem(media, options, () => handleToggleSelect(media.id))
 				}
 				onOpenMediaDetail={props.onOpenMediaDetail}
+				onPrepareMediaDetail={props.onPrepareMediaDetail}
 				renderMediaPreview={props.renderMediaPreview}
 				moveCopyDialogComponent={MoveCopyMediaDialog}
 				uploadModalComponent={props.uploadModalComponent}

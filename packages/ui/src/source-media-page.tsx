@@ -54,6 +54,7 @@ export type SourceMediaPageProps = {
 	renderItem: SourceMediaScreenProps["renderItem"];
 	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
 	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
+	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
 	showOpenInNewTab?: boolean;
 	onToggleSelect?: (mediaId: string) => void;
 	isBulkSelectMode?: () => boolean;
@@ -155,6 +156,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			renderActions={renderActions}
 			renderItem={props.renderItem}
 			onOpenMediaDetail={props.onOpenMediaDetail}
+			onPrepareMediaDetail={props.onPrepareMediaDetail}
 			renderMediaPreview={props.renderMediaPreview}
 			moveCopyDialogComponent={props.moveCopyDialogComponent}
 			uploadModalComponent={props.uploadModalComponent}

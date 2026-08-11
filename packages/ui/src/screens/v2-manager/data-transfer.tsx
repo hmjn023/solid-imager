@@ -162,7 +162,7 @@ export function DataTransferPanel(props: {
 							disabled={!sourceId() || pending() !== null}
 							onClick={() => void runExport()}
 						>
-							{pending() === "export" ? "Preparing..." : "Download dump"}
+							{pending() === "export" ? "Queueing..." : "Queue export"}
 						</Button>
 					</div>
 				</section>
@@ -218,14 +218,14 @@ export function DataTransferPanel(props: {
 							onClick={() => fileInput?.click()}
 							variant="outline"
 						>
-							{pending() === "import" ? "Restoring..." : "Choose dump file"}
+							{pending() === "import" ? "Queueing..." : "Choose dump file"}
 						</Button>
 					</div>
 				</section>
 			</div>
 			<p class="text-xs text-[var(--v2-text-muted)]">
-				Exports and restores run immediately. Job history and cancellation are
-				not yet available for these operations.
+				Transfers are queued as background jobs. Open Jobs to monitor, cancel,
+				or download completed exports.
 			</p>
 		</div>
 	);

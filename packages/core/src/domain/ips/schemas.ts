@@ -25,6 +25,7 @@ export const ipSchema = z.object({
 	source: z.string(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
+	mediaCount: z.number().int().nonnegative().optional(),
 });
 
 export type Ip = z.infer<typeof ipSchema>;

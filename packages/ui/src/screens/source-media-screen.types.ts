@@ -22,7 +22,8 @@ export type SourceMediaScreenProps = {
 	onBulkAction?: () => void;
 	onClearSelection?: () => void;
 	onEnterBulkSelectMode?: () => void;
-	onOpenMediaDetail?: (media: Media) => void;
+	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
+	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onRetryFilters: () => void | Promise<void>;
 	onToggleSelect?: (mediaId: string) => void;
 	page: UseSourceMediaPageResult;
@@ -35,6 +36,7 @@ export type SourceMediaScreenProps = {
 			isPreviewSelected?: boolean;
 			isSelected?: boolean;
 			onContextMenu: () => void;
+			onPrepareMediaDetail?: () => void;
 			onPreviewSelect?: () => void;
 			priority?: boolean;
 		},

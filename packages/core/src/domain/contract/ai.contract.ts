@@ -1,6 +1,7 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
+	aiHealthResponseSchema,
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
 	batchTargetCountResponseSchema,
@@ -19,6 +20,7 @@ import {
 } from "../tagging/schemas";
 
 export const aiContract = {
+	health: oc.output(aiHealthResponseSchema),
 	tag: oc
 		.input(
 			z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),

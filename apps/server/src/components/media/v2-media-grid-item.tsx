@@ -37,6 +37,7 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 					!event.shiftKey &&
 					!event.altKey
 				) {
+					props.onPrepareMediaDetail?.();
 					sessionStorage.setItem("v2:media-return", location().href);
 				}
 			}}
