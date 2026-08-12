@@ -246,6 +246,8 @@ function JobsInspector(props: {
 		setIsDownloading(true);
 		try {
 			await props.onDownload(job);
+		} catch {
+			// The route reports download failures; keep the selected job visible.
 		} finally {
 			setIsDownloading(false);
 		}
@@ -599,10 +601,10 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 															{(job) => (
 																<JobsInspector
 																	class="mt-4 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-subtle)] p-4 xl:hidden"
-											job={job()}
-											onCancel={props.onCancel}
-											onDownload={props.onDownload}
-											onRetry={props.onRetry}
+																	job={job()}
+																	onCancel={props.onCancel}
+																	onDownload={props.onDownload}
+																	onRetry={props.onRetry}
 																/>
 															)}
 														</Show>

@@ -13,7 +13,7 @@ export const jobsContract = {
 	get: oc.input(jobIdRequestSchema).output(jobDtoSchema),
 	downloadArtifact: oc
 		.input(jobIdRequestSchema)
-		.output(z.instanceof(ReadableStream)),
+		.output(z.file().mime("application/octet-stream")),
 	retry: oc.input(jobIdRequestSchema).output(jobDtoSchema),
 	cancel: oc.input(jobIdRequestSchema).output(jobDtoSchema),
 	events: oc.output(eventIterator(jobEventSchema)),

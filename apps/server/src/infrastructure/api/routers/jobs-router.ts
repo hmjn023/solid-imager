@@ -16,11 +16,11 @@ import {
 } from "@solid-imager/core/domain/sources/events";
 import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { isJobTransferPath } from "~/application/services/job-transfer-storage";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { JobRepository } from "~/infrastructure/repositories/job-repository";
-import { isJobTransferPath } from "~/application/services/job-transfer-storage";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
 const PublicJobFailureMessage = "Job failed";
@@ -129,13 +129,19 @@ export const jobsRouter = {
 		}),
 
 	downloadArtifact: os
+		.meta({
+			openapi: {
+				tags: ["Jobs"],
+				summary: "Download job artifact",
+				description: "Stream a completed job artifact",
+			},
+		})
 		.input(jobIdRequestSchema)
 		.output(z.instanceof(ReadableStream))
 		.handler(async ({ input }) => {
 			const job = await JobRepository.findById(input.id);
 			if (
-				!job ||
-				job.status !== "completed" ||
+				job?.status !== "completed" ||
 				!job.artifactPath ||
 				!job.artifactFileName ||
 				!job.artifactContentType ||

@@ -35,7 +35,10 @@ describe("Sources API Client Extensions", () => {
 		});
 		((orpc.jobs as any).get as any).mockResolvedValue({
 			status: "completed",
-			artifact: { fileName: "dump.ndjson" },
+			artifact: {
+				fileName: "dump.ndjson",
+				contentType: "application/x-ndjson",
+			},
 		});
 		((orpc.jobs as any).downloadArtifact as any).mockResolvedValue(
 			new Blob([mockBlob]).stream(),
@@ -48,10 +51,16 @@ describe("Sources API Client Extensions", () => {
 			mode: "json",
 			includeImages: false,
 		});
-		expect((orpc.jobs as any).get).toHaveBeenCalledWith({ id: "export-job-id" });
-		expect((orpc.jobs as any).downloadArtifact).toHaveBeenCalledWith({
-			id: "export-job-id",
-		});
+		expect((orpc.jobs as any).get).toHaveBeenCalledWith(
+			{ id: "export-job-id" },
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
+		expect((orpc.jobs as any).downloadArtifact).toHaveBeenCalledWith(
+			{
+				id: "export-job-id",
+			},
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
 		expect(await result.text()).toBe("dump");
 	});
 
@@ -63,7 +72,7 @@ describe("Sources API Client Extensions", () => {
 		});
 		((orpc.jobs as any).get as any).mockResolvedValue({
 			status: "completed",
-			artifact: { fileName: "dump.tar" },
+			artifact: { fileName: "dump.tar", contentType: "application/x-tar" },
 		});
 		((orpc.jobs as any).downloadArtifact as any).mockResolvedValue(
 			new Blob([mockBlob]).stream(),

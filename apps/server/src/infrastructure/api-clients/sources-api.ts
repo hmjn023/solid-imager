@@ -2,27 +2,13 @@
  * Media Sources API Client
  * Handles all API calls related to media sources
  *
- * Source operations use oRPC. Binary export artifacts are fetched from the
- * dedicated artifact download route after the export job completes.
+ * Source operations use oRPC, including binary export artifacts.
  */
 
-import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import type { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
-
-async function waitForExport(jobId: string): Promise<JobDto> {
-	for (;;) {
-		const job = await orpc.jobs.get({ id: jobId });
-		if (job.status === "completed") {
-			return job;
-		}
-		if (job.status === "failed" || job.status === "cancelled") {
-			throw new Error(job.error ?? `Export job ${job.status}`);
-		}
-		await new Promise((resolve) => setTimeout(resolve, 500));
-	}
-}
 
 /**
  * Fetches all media sources
@@ -116,12 +102,7 @@ export async function fetchSourceDump(
 		mode,
 		includeImages,
 	});
-	const completedJob = await waitForExport(job.id);
-	if (!completedJob.artifact) {
-		throw new Error("Export completed without an artifact");
-	}
-	const stream = await orpc.jobs.downloadArtifact({ id: completedJob.id });
-	return new Response(stream).blob();
+	return downloadCompletedJobArtifact(orpc.jobs, job.id);
 }
 
 export function restoreSource(id: string, data: unknown) {

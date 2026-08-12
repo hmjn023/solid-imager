@@ -7,21 +7,8 @@ export {
 	updateMediaSource,
 } from "~/api/sources-api";
 
-import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import { client } from "~/orpc-client";
-
-async function waitForExport(jobId: string): Promise<JobDto> {
-	for (;;) {
-		const job = await client.jobs.get({ id: jobId });
-		if (job.status === "completed") {
-			return job;
-		}
-		if (job.status === "failed" || job.status === "cancelled") {
-			throw new Error(job.error ?? `Export job ${job.status}`);
-		}
-		await new Promise((resolve) => setTimeout(resolve, 500));
-	}
-}
 
 export async function fetchSourceDump(
 	id: string,
@@ -30,12 +17,7 @@ export async function fetchSourceDump(
 ): Promise<Blob> {
 	const includeImages = opts?.includeImages ?? false;
 	const job = await client.sources.enqueueExport({ id, mode, includeImages });
-	const completedJob = await waitForExport(job.id);
-	if (!completedJob.artifact) {
-		throw new Error("Export completed without an artifact");
-	}
-	const stream = await client.jobs.downloadArtifact({ id: completedJob.id });
-	return new Response(stream).blob();
+	return downloadCompletedJobArtifact(client.jobs, job.id);
 }
 
 export async function restoreSource(

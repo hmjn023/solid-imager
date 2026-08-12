@@ -66,17 +66,17 @@ function V2JobsRoute() {
 				if (!job.artifact) return;
 				try {
 					const stream = await orpc.jobs.downloadArtifact({ id: job.id });
-					const blob = await new Response(stream).blob();
-					const url = URL.createObjectURL(
-						new Blob([blob], { type: job.artifact.contentType }),
-					);
+					const blob = await new Response(stream, {
+						headers: { "content-type": job.artifact.contentType },
+					}).blob();
+					const url = URL.createObjectURL(blob);
 					const anchor = document.createElement("a");
 					anchor.href = url;
 					anchor.download = job.artifact.fileName;
 					document.body.appendChild(anchor);
 					anchor.click();
 					anchor.remove();
-					URL.revokeObjectURL(url);
+					setTimeout(() => URL.revokeObjectURL(url), 0);
 				} catch (error) {
 					toast.error(
 						error instanceof Error
