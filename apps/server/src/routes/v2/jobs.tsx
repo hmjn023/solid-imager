@@ -62,6 +62,30 @@ function V2JobsRoute() {
 					throw error;
 				}
 			}}
+			onDownload={async (job) => {
+				if (!job.artifact) return;
+				try {
+					const stream = await orpc.jobs.downloadArtifact({ id: job.id });
+					const blob = await new Response(stream).blob();
+					const url = URL.createObjectURL(
+						new Blob([blob], { type: job.artifact.contentType }),
+					);
+					const anchor = document.createElement("a");
+					anchor.href = url;
+					anchor.download = job.artifact.fileName;
+					document.body.appendChild(anchor);
+					anchor.click();
+					anchor.remove();
+					URL.revokeObjectURL(url);
+				} catch (error) {
+					toast.error(
+						error instanceof Error
+							? error.message
+							: "Failed to download artifact",
+					);
+					throw error;
+				}
+			}}
 			state={() => toQueryUiState(jobsQuery)}
 		/>
 	);

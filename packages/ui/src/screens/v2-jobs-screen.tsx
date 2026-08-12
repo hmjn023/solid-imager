@@ -61,6 +61,7 @@ export type V2JobsScreenProps = {
 	onRefresh: () => void | Promise<void>;
 	onRetry: (jobId: string) => void | Promise<void>;
 	onCancel: (jobId: string) => void | Promise<void>;
+	onDownload: (job: JobDto) => void | Promise<void>;
 	state: Accessor<QueryUiState<JobListResponse>>;
 };
 
@@ -220,10 +221,12 @@ function JobsInspector(props: {
 	class?: string;
 	job: JobDto | undefined;
 	onCancel: (jobId: string) => void | Promise<void>;
+	onDownload: (job: JobDto) => void | Promise<void>;
 	onRetry: (jobId: string) => void | Promise<void>;
 }) {
 	const [isRetrying, setIsRetrying] = createSignal(false);
 	const [isCancelling, setIsCancelling] = createSignal(false);
+	const [isDownloading, setIsDownloading] = createSignal(false);
 
 	const retry = async () => {
 		const job = props.job;
@@ -235,6 +238,16 @@ function JobsInspector(props: {
 			// The route reports mutation failures; keep the selected job visible.
 		} finally {
 			setIsRetrying(false);
+		}
+	};
+	const download = async () => {
+		const job = props.job;
+		if (!job?.artifact || isDownloading()) return;
+		setIsDownloading(true);
+		try {
+			await props.onDownload(job);
+		} finally {
+			setIsDownloading(false);
 		}
 	};
 	const cancel = async () => {
@@ -380,16 +393,20 @@ function JobsInspector(props: {
 
 						<Show when={job().artifact}>
 							{(artifact) => (
-								<a
-									class="mt-4 flex items-center gap-2 rounded-md border border-[var(--v2-border)] px-3 py-2 text-sm text-[var(--v2-primary)] hover:bg-[var(--v2-surface-muted)]"
-									download={artifact().fileName}
-									href={artifact().downloadUrl}
+								<button
+									aria-busy={isDownloading()}
+									class="mt-4 flex w-full items-center gap-2 rounded-md border border-[var(--v2-border)] px-3 py-2 text-left text-sm text-[var(--v2-primary)] hover:bg-[var(--v2-surface-muted)]"
+									disabled={isDownloading()}
+									onClick={() => void download()}
+									type="button"
 								>
 									<Download aria-hidden="true" size={15} />
 									<span class="min-w-0 truncate">
-										Download {artifact().fileName}
+										{isDownloading()
+											? "Downloading..."
+											: `Download ${artifact().fileName}`}
 									</span>
-								</a>
+								</button>
 							)}
 						</Show>
 
@@ -582,9 +599,10 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 															{(job) => (
 																<JobsInspector
 																	class="mt-4 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-subtle)] p-4 xl:hidden"
-																	job={job()}
-																	onCancel={props.onCancel}
-																	onRetry={props.onRetry}
+											job={job()}
+											onCancel={props.onCancel}
+											onDownload={props.onDownload}
+											onRetry={props.onRetry}
 																/>
 															)}
 														</Show>
@@ -602,6 +620,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 				<JobsInspector
 					job={selectedJob()}
 					onCancel={props.onCancel}
+					onDownload={props.onDownload}
 					onRetry={props.onRetry}
 				/>
 			</div>

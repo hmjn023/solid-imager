@@ -7,15 +7,21 @@ export {
 	updateMediaSource,
 } from "~/api/sources-api";
 
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import { client } from "~/orpc-client";
 
-const isDev = import.meta.env.DEV;
-const API_BASE = isDev
-	? window.location.origin
-	: import.meta.env.VITE_API_URL || "http://192.168.1.150:3000";
-
-const apiFetch = isDev ? fetch : tauriFetch;
+async function waitForExport(jobId: string): Promise<JobDto> {
+	for (;;) {
+		const job = await client.jobs.get({ id: jobId });
+		if (job.status === "completed") {
+			return job;
+		}
+		if (job.status === "failed" || job.status === "cancelled") {
+			throw new Error(job.error ?? `Export job ${job.status}`);
+		}
+		await new Promise((resolve) => setTimeout(resolve, 500));
+	}
+}
 
 export async function fetchSourceDump(
 	id: string,
@@ -23,12 +29,13 @@ export async function fetchSourceDump(
 	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
 	const includeImages = opts?.includeImages ?? false;
-	const url = `${API_BASE}/api/sources/${id}/dump?mode=${mode}&includeImages=${includeImages}`;
-	const response = await apiFetch(url, { method: "GET" });
-	if (!response.ok) {
-		throw new Error(`Failed to download dump: ${response.status}`);
+	const job = await client.sources.enqueueExport({ id, mode, includeImages });
+	const completedJob = await waitForExport(job.id);
+	if (!completedJob.artifact) {
+		throw new Error("Export completed without an artifact");
 	}
-	return response.blob();
+	const stream = await client.jobs.downloadArtifact({ id: completedJob.id });
+	return new Response(stream).blob();
 }
 
 export async function restoreSource(
@@ -46,15 +53,7 @@ export async function restoreSource(
 }
 
 export async function importSourceZip(id: string, file: File) {
-	const url = `${API_BASE}/api/sources/${id}/import`;
-	const response = await apiFetch(url, {
-		method: "POST",
-		body: file,
-	});
-	if (!response.ok) {
-		throw new Error(`Failed to import ZIP: ${response.status}`);
-	}
-	return await response.json();
+	return client.sources.importZip({ id, file });
 }
 
 export async function importSourceNdjson(id: string, file: File) {
@@ -65,15 +64,7 @@ export async function importSourceNdjson(id: string, file: File) {
 }
 
 export async function importSourceLanceDB(id: string, file: File) {
-	const url = `${API_BASE}/api/sources/${id}/import-lancedb`;
-	const response = await apiFetch(url, {
-		method: "POST",
-		body: file,
-	});
-	if (!response.ok) {
-		throw new Error(`Failed to import LanceDB: ${response.status}`);
-	}
-	return await response.json();
+	return client.sources.importLanceDB({ id, file });
 }
 
 export function parseRestoreFile(file: File): Promise<unknown[]> {

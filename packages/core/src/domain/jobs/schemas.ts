@@ -52,7 +52,6 @@ export const jobDtoSchema = z.object({
 			fileName: z.string(),
 			contentType: z.string(),
 			size: z.number().int().nonnegative().nullable(),
-			downloadUrl: z.string().min(1),
 		})
 		.nullable(),
 });
