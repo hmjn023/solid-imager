@@ -263,9 +263,13 @@ export function createJobRepository(
 				.where(eq(jobs.id, id));
 		},
 
-		async markAsCompleted(id: string, result?: unknown): Promise<void> {
+		async markAsCompleted(
+			id: string,
+			result: unknown,
+			attemptCount: number,
+		): Promise<boolean> {
 			const now = new Date();
-			await db()
+			const rows = await db()
 				.update(jobs)
 				.set({
 					status: "completed",
@@ -277,14 +281,21 @@ export function createJobRepository(
 					and(
 						eq(jobs.id, id),
 						eq(jobs.status, "in_progress"),
+						eq(jobs.attemptCount, attemptCount),
 						isNull(jobs.cancelRequestedAt),
 					),
-				);
+				)
+				.returning();
+			return rows.length > 0;
 		},
 
-		async markAsFailed(id: string, error: string): Promise<void> {
+		async markAsFailed(
+			id: string,
+			error: string,
+			attemptCount: number,
+		): Promise<boolean> {
 			const now = new Date();
-			await db()
+			const rows = await db()
 				.update(jobs)
 				.set({
 					status: "failed",
@@ -296,9 +307,12 @@ export function createJobRepository(
 					and(
 						eq(jobs.id, id),
 						eq(jobs.status, "in_progress"),
+						eq(jobs.attemptCount, attemptCount),
 						isNull(jobs.cancelRequestedAt),
 					),
-				);
+				)
+				.returning();
+			return rows.length > 0;
 		},
 
 		async requestCancellation(id: string): Promise<void> {
@@ -310,6 +324,11 @@ export function createJobRepository(
 					cancelRequestedAt: now,
 					cancelledAt: now,
 					finishedAt: now,
+					artifactPath: null,
+					artifactFileName: null,
+					artifactContentType: null,
+					artifactSize: null,
+					artifactExpiresAt: null,
 					updatedAt: now,
 				})
 				.where(and(eq(jobs.id, id), eq(jobs.status, "pending")))
@@ -334,7 +353,11 @@ export function createJobRepository(
 				);
 		},
 
-		async markAsCancelled(id: string, reason?: string): Promise<void> {
+		async markAsCancelled(
+			id: string,
+			reason: string | undefined,
+			attemptCount: number,
+		): Promise<boolean> {
 			const now = new Date();
 			const updates: Partial<typeof jobs.$inferInsert> = {
 				status: "cancelled",
@@ -346,16 +369,24 @@ export function createJobRepository(
 			if (reason) {
 				updates.error = reason;
 			}
+			updates.artifactPath = null;
+			updates.artifactFileName = null;
+			updates.artifactContentType = null;
+			updates.artifactSize = null;
+			updates.artifactExpiresAt = null;
 
-			await db()
+			const rows = await db()
 				.update(jobs)
 				.set(updates)
 				.where(
 					and(
 						eq(jobs.id, id),
-						inArray(jobs.status, ["pending", "in_progress"]),
+						eq(jobs.status, "in_progress"),
+						eq(jobs.attemptCount, attemptCount),
 					),
-				);
+				)
+				.returning();
+			return rows.length > 0;
 		},
 
 		async isCancellationRequested(id: string): Promise<boolean> {
@@ -497,6 +528,11 @@ export function createJobRepository(
 					status: "cancelled",
 					cancelledAt: new Date(),
 					finishedAt: new Date(),
+					artifactPath: null,
+					artifactFileName: null,
+					artifactContentType: null,
+					artifactSize: null,
+					artifactExpiresAt: null,
 					updatedAt: new Date(),
 				})
 				.where(and(staleBaseCondition, isNotNull(jobs.cancelRequestedAt)))
@@ -738,10 +774,16 @@ function nullableDate(value: unknown, fieldName: string): Date | null {
 }
 
 function requireNumber(value: unknown, fieldName: string): number {
-	if (typeof value !== "number" || !Number.isFinite(value)) {
+	const numberValue =
+		typeof value === "number"
+			? value
+			: typeof value === "string" && value.trim() !== ""
+				? Number(value)
+				: null;
+	if (numberValue === null || !Number.isFinite(numberValue)) {
 		throw new Error(`Invalid claimed job row: ${fieldName}`);
 	}
-	return value;
+	return numberValue;
 }
 
 function nullableNumber(value: unknown, fieldName: string): number | null {

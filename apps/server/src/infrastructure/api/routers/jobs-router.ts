@@ -73,7 +73,10 @@ export function toJobDto(job: Job) {
 		targetMediaId: readTargetMediaId(job.payload),
 		progress: readProgress(job.payload),
 		artifact:
-			job.artifactPath && job.artifactFileName && job.artifactContentType
+			job.status === "completed" &&
+			job.artifactPath &&
+			job.artifactFileName &&
+			job.artifactContentType
 				? {
 						fileName: job.artifactFileName,
 						contentType: job.artifactContentType,

@@ -37,10 +37,10 @@ describe("JobWorker", () => {
 			claimPending: vi.fn().mockResolvedValue([]),
 			requeueStaleInProgress: vi.fn().mockResolvedValue(0),
 			markAsInProgress: vi.fn().mockResolvedValue(undefined),
-			markAsCompleted: vi.fn().mockResolvedValue(undefined),
-			markAsFailed: vi.fn().mockResolvedValue(undefined),
+			markAsCompleted: vi.fn().mockResolvedValue(true),
+			markAsFailed: vi.fn().mockResolvedValue(true),
 			requestCancellation: vi.fn().mockResolvedValue(undefined),
-			markAsCancelled: vi.fn().mockResolvedValue(undefined),
+			markAsCancelled: vi.fn().mockResolvedValue(true),
 			isCancellationRequested: vi.fn().mockResolvedValue(false),
 			setArtifact: vi.fn().mockResolvedValue(undefined),
 			update: vi.fn(),
@@ -251,10 +251,14 @@ describe("JobWorker", () => {
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
 		expect(processor).toHaveBeenCalledWith(customJob);
-		expect(jobRepo.markAsCompleted).toHaveBeenCalledWith("custom-1", {
-			success: true,
-			parentProcessed: true,
-		});
+		expect(jobRepo.markAsCompleted).toHaveBeenCalledWith(
+			"custom-1",
+			{
+				success: true,
+				parentProcessed: true,
+			},
+			0,
+		);
 	});
 
 	it("should requeue overlapping claimed LanceDB sync jobs per media source", async () => {

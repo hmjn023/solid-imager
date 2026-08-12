@@ -1,5 +1,8 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
-import { cleanupExpiredJobTransferFiles } from "~/application/services/job-transfer-storage";
+import {
+	cleanupExpiredJobTransferFiles,
+	removeJobTransferFile,
+} from "~/application/services/job-transfer-storage";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -205,6 +208,7 @@ export class JobWorker {
 	}
 
 	private async processJob(job: Job, lanceDbSyncKey?: string) {
+		const attemptCount = job.attemptCount ?? 0;
 		this.activeJobs++;
 		const isAiJob = this.aiJobTypes.has(job.type);
 		const isThumbnailJob = this.thumbnailJobTypes.has(job.type);
@@ -249,10 +253,16 @@ export class JobWorker {
 				await this.markCancelled(job);
 				return;
 			} else {
-				await this.jobRepo.markAsCompleted(job.id, safeResult);
-				const latestJob = await this.jobRepo.findById(job.id);
-				if (latestJob?.cancelRequestedAt || latestJob?.status === "cancelled") {
-					await this.markCancelled(job);
+				const completed = await this.jobRepo.markAsCompleted(
+					job.id,
+					safeResult,
+					attemptCount,
+				);
+				if (!completed) {
+					logger.warn(
+						{ jobId: job.id, attemptCount },
+						"Discarded completion for stale job attempt",
+					);
 					return;
 				}
 				RealtimeEventBus.publishJob("job-completed", {
@@ -289,10 +299,16 @@ export class JobWorker {
 				},
 				"Job failed",
 			);
-			await this.jobRepo.markAsFailed(job.id, errorMessage);
-			const latestJob = await this.jobRepo.findById(job.id);
-			if (latestJob?.cancelRequestedAt || latestJob?.status === "cancelled") {
-				await this.markCancelled(job);
+			const failed = await this.jobRepo.markAsFailed(
+				job.id,
+				errorMessage,
+				attemptCount,
+			);
+			if (!failed) {
+				logger.warn(
+					{ jobId: job.id, attemptCount },
+					"Discarded failure for stale job attempt",
+				);
 				return;
 			}
 			RealtimeEventBus.publishJob("job-failed", {
@@ -315,7 +331,21 @@ export class JobWorker {
 	}
 
 	private async markCancelled(job: Job): Promise<void> {
-		await this.jobRepo.markAsCancelled(job.id);
+		const cancelled = await this.jobRepo.markAsCancelled(
+			job.id,
+			undefined,
+			job.attemptCount ?? 0,
+		);
+		if (!cancelled) {
+			logger.warn(
+				{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
+				"Discarded cancellation for stale job attempt",
+			);
+			return;
+		}
+		if (job.artifactPath) {
+			await removeJobTransferFile(job.artifactPath);
+		}
 		RealtimeEventBus.publishJob("job-cancelled", {
 			jobId: job.id,
 			message: "Job cancelled",

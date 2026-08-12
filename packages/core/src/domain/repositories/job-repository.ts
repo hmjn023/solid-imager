@@ -70,10 +70,22 @@ export type IJobRepository = {
 		},
 	): Promise<Job[]>;
 	markAsInProgress(id: string): Promise<void>;
-	markAsCompleted(id: string, result?: unknown): Promise<void>;
-	markAsFailed(id: string, error: string): Promise<void>;
+	markAsCompleted(
+		id: string,
+		result: unknown,
+		attemptCount: number,
+	): Promise<boolean>;
+	markAsFailed(
+		id: string,
+		error: string,
+		attemptCount: number,
+	): Promise<boolean>;
 	requestCancellation(id: string): Promise<void>;
-	markAsCancelled(id: string, reason?: string): Promise<void>;
+	markAsCancelled(
+		id: string,
+		reason: string | undefined,
+		attemptCount: number,
+	): Promise<boolean>;
 	isCancellationRequested(id: string): Promise<boolean>;
 	setArtifact(
 		id: string,

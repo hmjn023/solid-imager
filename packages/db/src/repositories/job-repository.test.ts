@@ -29,7 +29,7 @@ describe("JobRepository", () => {
 						artifactPath: null,
 						artifactFileName: null,
 						artifactContentType: null,
-						artifactSize: null,
+						artifactSize: "1048576",
 						artifactExpiresAt: null,
 					},
 				],
@@ -64,6 +64,7 @@ describe("JobRepository", () => {
 				payload: { mediaId: "media-1", sourcePath: "/media" },
 				createdAt: new Date("2026-06-23T00:00:00.000Z"),
 				updatedAt: new Date("2026-06-23T00:00:01.000Z"),
+				artifactSize: 1048576,
 			}),
 		]);
 		expect(mockExecutor.execute).toHaveBeenCalledOnce();
