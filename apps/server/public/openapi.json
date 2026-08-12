@@ -806,17 +806,12 @@
                                   "type": "null"
                                 }
                               ]
-                            },
-                            "downloadUrl": {
-                              "type": "string",
-                              "minLength": 1
                             }
                           },
                           "required": [
                             "fileName",
                             "contentType",
-                            "size",
-                            "downloadUrl"
+                            "size"
                           ]
                         },
                         {
@@ -1173,17 +1168,12 @@
                                   "type": "null"
                                 }
                               ]
-                            },
-                            "downloadUrl": {
-                              "type": "string",
-                              "minLength": 1
                             }
                           },
                           "required": [
                             "fileName",
                             "contentType",
-                            "size",
-                            "downloadUrl"
+                            "size"
                           ]
                         },
                         {
@@ -7320,6 +7310,9 @@
       "post": {
         "operationId": "jobs.list",
         "summary": "list",
+        "tags": [
+          "Jobs"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -7544,17 +7537,12 @@
                                         "type": "null"
                                       }
                                     ]
-                                  },
-                                  "downloadUrl": {
-                                    "type": "string",
-                                    "minLength": 1
                                   }
                                 },
                                 "required": [
                                   "fileName",
                                   "contentType",
-                                  "size",
-                                  "downloadUrl"
+                                  "size"
                                 ]
                               },
                               {
@@ -7604,6 +7592,9 @@
       "post": {
         "operationId": "jobs.get",
         "summary": "get",
+        "tags": [
+          "Jobs"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -7808,17 +7799,12 @@
                                   "type": "null"
                                 }
                               ]
-                            },
-                            "downloadUrl": {
-                              "type": "string",
-                              "minLength": 1
                             }
                           },
                           "required": [
                             "fileName",
                             "contentType",
-                            "size",
-                            "downloadUrl"
+                            "size"
                           ]
                         },
                         {
@@ -7852,10 +7838,54 @@
         }
       }
     },
+    "/jobs/downloadArtifact": {
+      "post": {
+        "operationId": "jobs.downloadArtifact",
+        "summary": "downloadArtifact",
+        "tags": [
+          "Jobs"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/retry": {
       "post": {
         "operationId": "jobs.retry",
         "summary": "retry",
+        "tags": [
+          "Jobs"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -8060,17 +8090,12 @@
                                   "type": "null"
                                 }
                               ]
-                            },
-                            "downloadUrl": {
-                              "type": "string",
-                              "minLength": 1
                             }
                           },
                           "required": [
                             "fileName",
                             "contentType",
-                            "size",
-                            "downloadUrl"
+                            "size"
                           ]
                         },
                         {
@@ -8108,6 +8133,9 @@
       "post": {
         "operationId": "jobs.cancel",
         "summary": "cancel",
+        "tags": [
+          "Jobs"
+        ],
         "requestBody": {
           "required": true,
           "content": {
@@ -8312,17 +8340,12 @@
                                   "type": "null"
                                 }
                               ]
-                            },
-                            "downloadUrl": {
-                              "type": "string",
-                              "minLength": 1
                             }
                           },
                           "required": [
                             "fileName",
                             "contentType",
-                            "size",
-                            "downloadUrl"
+                            "size"
                           ]
                         },
                         {
@@ -8360,6 +8383,9 @@
       "post": {
         "operationId": "jobs.events",
         "summary": "events",
+        "tags": [
+          "Jobs"
+        ],
         "responses": {
           "200": {
             "description": "OK",

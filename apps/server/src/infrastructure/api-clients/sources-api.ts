@@ -2,9 +2,10 @@
  * Media Sources API Client
  * Handles all API calls related to media sources
  *
- * NOTE: Most operations use oRPC, but dump/import still use dedicated HTTP routes.
+ * Source operations use oRPC, including binary export artifacts.
  */
 
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import type { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -96,17 +97,12 @@ export async function fetchSourceDump(
 	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
 	const includeImages = opts?.includeImages ?? false;
-	const url = `/api/sources/${id}/dump?mode=${mode}&includeImages=${includeImages}`;
-	const response = await fetch(url, {
-		method: "GET",
+	const job = await orpc.sources.enqueueExport({
+		id,
+		mode,
+		includeImages,
 	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to download dump: ${response.status} ${errorText}`);
-	}
-
-	return response.blob();
+	return downloadCompletedJobArtifact(orpc.jobs, job.id);
 }
 
 export function restoreSource(id: string, data: unknown) {
@@ -123,21 +119,7 @@ export function restoreSource(id: string, data: unknown) {
  * @returns Import result
  */
 export async function importSourceZip(id: string, file: File) {
-	const url = `/api/sources/${id}/import`;
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/zip",
-		},
-		body: file,
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to import ZIP: ${response.status} ${errorText}`);
-	}
-
-	return await response.json();
+	return orpc.sources.importZip({ id, file });
 }
 
 export async function importSourceNdjson(id: string, file: File) {
@@ -148,18 +130,5 @@ export async function importSourceNdjson(id: string, file: File) {
 }
 
 export async function importSourceLanceDB(id: string, file: File) {
-	const url = `/api/sources/${id}/import-lancedb`;
-	const response = await fetch(url, {
-		method: "POST",
-		body: file,
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(
-			`Failed to import LanceDB: ${response.status} ${errorText}`,
-		);
-	}
-
-	return await response.json();
+	return orpc.sources.importLanceDB({ id, file });
 }

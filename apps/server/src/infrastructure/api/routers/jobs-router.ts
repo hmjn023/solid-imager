@@ -1,3 +1,5 @@
+import { createReadStream } from "node:fs";
+import fs from "node:fs/promises";
 import { eventIterator, ORPCError, os } from "@orpc/server";
 import {
 	isBatchParentJobType,
@@ -14,10 +16,12 @@ import {
 } from "@solid-imager/core/domain/sources/events";
 import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { isJobTransferPath } from "~/application/services/job-transfer-storage";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { JobRepository } from "~/infrastructure/repositories/job-repository";
+import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
 const PublicJobFailureMessage = "Job failed";
 
@@ -81,7 +85,6 @@ export function toJobDto(job: Job) {
 						fileName: job.artifactFileName,
 						contentType: job.artifactContentType,
 						size: job.artifactSize ?? null,
-						downloadUrl: `/api/jobs/${job.id}/artifact`,
 					}
 				: null,
 	};
@@ -123,6 +126,54 @@ export const jobsRouter = {
 				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
 			}
 			return toJobDto(job);
+		}),
+
+	downloadArtifact: os
+		.meta({
+			openapi: {
+				tags: ["Jobs"],
+				summary: "Download job artifact",
+				description: "Stream a completed job artifact",
+			},
+		})
+		.input(jobIdRequestSchema)
+		.output(z.instanceof(ReadableStream))
+		.handler(async ({ input }) => {
+			const job = await JobRepository.findById(input.id);
+			if (
+				job?.status !== "completed" ||
+				!job.artifactPath ||
+				!job.artifactFileName ||
+				!job.artifactContentType ||
+				!isJobTransferPath(job.id, job.artifactPath)
+			) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Artifact not found",
+				});
+			}
+
+			if (job.artifactExpiresAt && job.artifactExpiresAt <= new Date()) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Artifact not found",
+				});
+			}
+
+			let stat: Awaited<ReturnType<typeof fs.stat>>;
+			try {
+				stat = await fs.stat(job.artifactPath);
+			} catch {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Artifact not found",
+				});
+			}
+
+			if (!stat.isFile()) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Artifact not found",
+				});
+			}
+
+			return nodeStreamToWebReadable(createReadStream(job.artifactPath));
 		}),
 
 	retry: os
