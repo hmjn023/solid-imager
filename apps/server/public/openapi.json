@@ -545,8 +545,7 @@
                   "mode": {
                     "enum": [
                       "json",
-                      "zip",
-                      "lancedb"
+                      "zip"
                     ],
                     "type": "string",
                     "default": "json"
@@ -603,8 +602,7 @@
                   "mode": {
                     "enum": [
                       "json",
-                      "zip",
-                      "lancedb"
+                      "zip"
                     ],
                     "type": "string",
                     "default": "json"
@@ -965,8 +963,7 @@
                   "mode": {
                     "enum": [
                       "json",
-                      "zip",
-                      "lancedb"
+                      "zip"
                     ],
                     "type": "string"
                   },
@@ -1211,55 +1208,6 @@
       "post": {
         "operationId": "sources.importNdjson",
         "summary": "importNdjson",
-        "tags": [
-          "Media Sources"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "file": {
-                    "not": {}
-                  }
-                },
-                "required": [
-                  "id",
-                  "file"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {},
-                    {
-                      "not": {}
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/sources/importLanceDB": {
-      "post": {
-        "operationId": "sources.importLanceDB",
-        "summary": "importLanceDB",
         "tags": [
           "Media Sources"
         ],
@@ -8871,28 +8819,6 @@
                       "default": {
                         "level": "info"
                       }
-                    },
-                    "lancedb": {
-                      "type": "object",
-                      "properties": {
-                        "autoFullSync": {
-                          "type": "boolean",
-                          "default": true
-                        },
-                        "cacheDir": {
-                          "type": "string",
-                          "default": ".cache/lancedb-cache"
-                        },
-                        "ccipVectorDir": {
-                          "type": "string",
-                          "default": ".cache/lancedb-ccip"
-                        }
-                      },
-                      "default": {
-                        "autoFullSync": true,
-                        "cacheDir": ".cache/lancedb-cache",
-                        "ccipVectorDir": ".cache/lancedb-ccip"
-                      }
                     }
                   }
                 }
@@ -9191,28 +9117,6 @@
                     "default": {
                       "level": "info"
                     }
-                  },
-                  "lancedb": {
-                    "type": "object",
-                    "properties": {
-                      "autoFullSync": {
-                        "type": "boolean",
-                        "default": true
-                      },
-                      "cacheDir": {
-                        "type": "string",
-                        "default": ".cache/lancedb-cache"
-                      },
-                      "ccipVectorDir": {
-                        "type": "string",
-                        "default": ".cache/lancedb-ccip"
-                      }
-                    },
-                    "default": {
-                      "autoFullSync": true,
-                      "cacheDir": ".cache/lancedb-cache",
-                      "ccipVectorDir": ".cache/lancedb-ccip"
-                    }
                   }
                 }
               }
@@ -9504,28 +9408,6 @@
                       },
                       "default": {
                         "level": "info"
-                      }
-                    },
-                    "lancedb": {
-                      "type": "object",
-                      "properties": {
-                        "autoFullSync": {
-                          "type": "boolean",
-                          "default": true
-                        },
-                        "cacheDir": {
-                          "type": "string",
-                          "default": ".cache/lancedb-cache"
-                        },
-                        "ccipVectorDir": {
-                          "type": "string",
-                          "default": ".cache/lancedb-ccip"
-                        }
-                      },
-                      "default": {
-                        "autoFullSync": true,
-                        "cacheDir": ".cache/lancedb-cache",
-                        "ccipVectorDir": ".cache/lancedb-ccip"
                       }
                     }
                   }

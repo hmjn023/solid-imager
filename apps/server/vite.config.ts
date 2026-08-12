@@ -277,7 +277,7 @@ export default defineConfig({
     solidPlugin({ ssr: true }),
   ],
   optimizeDeps: {
-    exclude: ["dghs-imgutils-rs", "@lancedb/lancedb"],
+		exclude: ["dghs-imgutils-rs"],
   },
   customLogger: {
     warn(msg, options) {
@@ -302,8 +302,6 @@ export default defineConfig({
         "fluent-ffmpeg",
         "@electric-sql/pglite",
         "archiver",
-        "@lancedb/lancedb",
-        "apache-arrow",
         "sharp",
       ],
     },
@@ -324,8 +322,6 @@ export default defineConfig({
       "ffmpeg-static-static",
       "fluent-ffmpeg",
       "archiver",
-      "@lancedb/lancedb",
-      "apache-arrow",
       "dghs-imgutils-rs",
       "sharp",
     ],

@@ -106,10 +106,9 @@ export type SourceMediaPageActions = {
 	) => Promise<unknown>;
 	fetchSourceDump: (
 		sourceId: string,
-		mode: "json" | "zip" | "lancedb",
+		mode: "json" | "zip",
 		opts?: { includeImages?: boolean },
 	) => Promise<Blob>;
-	lanceDBDump?: (sourceId: string, includeMedia: boolean) => Promise<Blob>;
 	restoreSource: (
 		sourceId: string,
 		data: unknown,
@@ -140,16 +139,6 @@ export type SourceMediaPageActions = {
 		importedCount: number;
 		skippedCount: number;
 		errors: string[];
-	}>;
-	importSourceLanceDB?: (
-		sourceId: string,
-		file: File,
-	) => Promise<{
-		success: boolean;
-		importedCount: number;
-		skippedCount: number;
-		errors: string[];
-		message: string;
 	}>;
 	parseRestoreFile?: (file: File) => Promise<unknown>;
 };
@@ -206,7 +195,6 @@ export type UseSourceMediaPageResult = {
 	handleUpload: (options: UploadOptions) => Promise<void>;
 	handleFileSelect: (e: Event) => Promise<void>;
 	handleDumpDownload: (mode?: "json" | "zip") => Promise<void>;
-	handleLanceDBDump: (includeMedia: boolean) => Promise<void>;
 	handleRestoreSelect: (e: Event) => Promise<void>;
 	handleAddButtonClick: () => void;
 	handleDrop: (e: DragEvent) => void;
@@ -632,32 +620,6 @@ export function useSourceMediaPage(
 		}
 	};
 
-	const handleLanceDBDump = async (includeMedia: boolean) => {
-		const sourceId = id();
-		if (!sourceId) {
-			return;
-		}
-
-		try {
-			const blob = actions.lanceDBDump
-				? await actions.lanceDBDump(sourceId, includeMedia)
-				: await actions.fetchSourceDump(sourceId, "lancedb", {
-						includeImages: includeMedia,
-					});
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = url;
-			a.download = `source-${sourceId}-dump-lancedb.tar`;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(url);
-			document.body.removeChild(a);
-			toast.success("LanceDB dump downloaded successfully");
-		} catch (_error) {
-			toast.error("Failed to download LanceDB dump");
-		}
-	};
-
 	let restoreAbortController: AbortController | null = null;
 
 	const handleRestoreSelect = async (e: Event) => {
@@ -677,29 +639,11 @@ export function useSourceMediaPage(
 		try {
 			const strategies = getRestoreImportStrategies(file, {
 				canImportNdjson: !!actions.importSourceNdjson,
-				canImportLanceDb: !!actions.importSourceLanceDB,
 			});
 
 			if (strategies.includes("tar")) {
-				let result:
-					| Awaited<ReturnType<typeof actions.importSourceZip>>
-					| Awaited<NonNullable<SourceMediaPageActions["importSourceLanceDB"]>>;
-				if (strategies[0] === "lancedb" && actions.importSourceLanceDB) {
-					try {
-						toast.loading("Importing archive as LanceDB dump...", {
-							id: "restore-toast",
-						});
-						result = await actions.importSourceLanceDB(sourceId, file);
-					} catch {
-						toast.loading("Importing archive as TAR dump...", {
-							id: "restore-toast",
-						});
-						result = await actions.importSourceZip(sourceId, file);
-					}
-				} else {
-					toast.loading("Importing TAR dump...", { id: "restore-toast" });
-					result = await actions.importSourceZip(sourceId, file);
-				}
+				toast.loading("Importing TAR dump...", { id: "restore-toast" });
+				const result = await actions.importSourceZip(sourceId, file);
 				toast.success(
 					`Import complete: ${result.importedCount} items imported.`,
 					{
@@ -993,7 +937,6 @@ export function useSourceMediaPage(
 		handleUpload,
 		handleFileSelect,
 		handleDumpDownload,
-		handleLanceDBDump,
 		handleRestoreSelect,
 		handleAddButtonClick,
 		handleDrop,

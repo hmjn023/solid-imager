@@ -2412,7 +2412,7 @@ function ManagerBatchToolPanel(props: {
 	);
 }
 
-type TransferFormat = "archive" | "lancedb" | "metadata";
+type TransferFormat = "archive" | "metadata";
 
 function DataTransferToolPanel() {
 	const [format, setFormat] = createSignal<TransferFormat>("metadata");
@@ -2430,11 +2430,6 @@ function DataTransferToolPanel() {
 			description: "メディアファイルを含む完全な書き出し",
 			label: "Archive (TAR)",
 			value: "archive",
-		},
-		{
-			description: "特徴量を含む移行用パッケージ",
-			label: "LanceDB package",
-			value: "lancedb",
 		},
 	];
 
@@ -2521,7 +2516,7 @@ function DataTransferToolPanel() {
 							Import a previous export
 						</h3>
 						<p class="mt-1 text-[#626a66] text-xs leading-5">
-							NDJSON・TAR・LanceDBを自動判別し、選択したソースへ復元します。
+							NDJSON・TARを自動判別し、選択したソースへ復元します。
 						</p>
 					</div>
 

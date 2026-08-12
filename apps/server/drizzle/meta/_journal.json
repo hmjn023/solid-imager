@@ -169,6 +169,20 @@
       "when": 1786346055028,
       "tag": "0023_fast_edwin_jarvis",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786567462190,
+      "tag": "0024_damp_ser_duncan",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1786574384357,
+      "tag": "0025_left_doctor_octopus",
+      "breakpoints": true
     }
   ]
 }

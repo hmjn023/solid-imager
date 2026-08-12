@@ -86,7 +86,7 @@ describe("CcipVectorService", () => {
 		]);
 	});
 
-	it("reranks LanceDB candidates using CCIP distance", async () => {
+	it("reranks vector candidates using CCIP distance", async () => {
 		const anchorVector = Array.from({ length: 768 }, () => 0);
 		const candidateA = {
 			...media,

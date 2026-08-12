@@ -9,7 +9,7 @@ export type ManagerCategory = {
 	value: V2ManagerCategory;
 };
 
-export type V2ManagerTransferFormat = "ndjson" | "tar" | "lancedb";
+export type V2ManagerTransferFormat = "ndjson" | "tar";
 
 export type V2ManagerTransferActions = {
 	exportSource: (input: {

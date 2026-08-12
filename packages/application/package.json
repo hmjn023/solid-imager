@@ -17,9 +17,7 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@lancedb/lancedb": "^0.27.2",
-    "@solid-imager/core": "workspace:*",
-    "apache-arrow": "^21.1.0"
+    "@solid-imager/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^25.9.3",

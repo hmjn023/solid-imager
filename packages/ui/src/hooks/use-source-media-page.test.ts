@@ -2,24 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getRestoreImportStrategies } from "./restore-import";
 
 describe("getRestoreImportStrategies", () => {
-	it("prefers LanceDB then TAR for tar archives when LanceDB import is available", () => {
+	it("detects tar archives", () => {
 		expect(
 			getRestoreImportStrategies(
 				{ name: "source-dump.tar", type: "application/x-tar" } as File,
-				{
-					canImportLanceDb: true,
-				},
-			),
-		).toEqual(["lancedb", "tar"]);
-	});
-
-	it("falls back to TAR only when LanceDB import is unavailable", () => {
-		expect(
-			getRestoreImportStrategies(
-				{ name: "source-dump.tar", type: "application/x-tar" } as File,
-				{
-					canImportLanceDb: false,
-				},
+				{},
 			),
 		).toEqual(["tar"]);
 	});

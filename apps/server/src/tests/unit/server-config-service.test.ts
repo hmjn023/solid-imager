@@ -68,7 +68,6 @@ describe("ConfigService", () => {
 		).toEqual({
 			...legacyConfig,
 			downloads: defaultAppConfig.downloads,
-			lancedb: defaultAppConfig.lancedb,
 		});
 	});
 

@@ -56,7 +56,6 @@ export class JobWorker {
 	private activeJobs = 0;
 	private activeAiJobs = 0;
 	private activeThumbnailJobs = 0;
-	private readonly activeLanceDbSyncKeys = new Set<string>();
 
 	private readonly jobRepo: IJobRepository;
 	private readonly processor: (job: Job) => Promise<unknown>;
@@ -167,7 +166,6 @@ export class JobWorker {
 				if (slots > 0) {
 					const jobs = await this.jobRepo.claimPending(slots, {
 						excludeTypes: [...this.aiJobTypes, ...this.thumbnailJobTypes],
-						excludeLanceDbSourceIds: Array.from(this.activeLanceDbSyncKeys),
 					});
 					for (const job of jobs) {
 						void this.tryProcessJob(job);
@@ -184,30 +182,10 @@ export class JobWorker {
 	}
 
 	private async tryProcessJob(job: Job) {
-		const lanceDbSyncKey = getLanceDbSyncKey(job);
-		if (lanceDbSyncKey) {
-			if (this.activeLanceDbSyncKeys.has(lanceDbSyncKey)) {
-				logger.warn(
-					{ jobId: job.id, mediaSourceId: lanceDbSyncKey },
-					"Requeueing overlapping claimed LanceDB sync job",
-				);
-				try {
-					await this.jobRepo.update(job.id, { status: "pending" });
-				} catch (error) {
-					logger.error(
-						{ err: error, jobId: job.id },
-						"Failed to requeue overlapping job",
-					);
-				}
-				return;
-			}
-			this.activeLanceDbSyncKeys.add(lanceDbSyncKey);
-		}
-
-		void this.processJob(job, lanceDbSyncKey);
+		void this.processJob(job);
 	}
 
-	private async processJob(job: Job, lanceDbSyncKey?: string) {
+	private async processJob(job: Job) {
 		const attemptCount = job.attemptCount ?? 0;
 		this.activeJobs++;
 		const isAiJob = this.aiJobTypes.has(job.type);
@@ -324,9 +302,6 @@ export class JobWorker {
 			if (isThumbnailJob) {
 				this.activeThumbnailJobs--;
 			}
-			if (lanceDbSyncKey) {
-				this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);
-			}
 		}
 	}
 
@@ -375,16 +350,4 @@ export class JobWorker {
 			);
 		}
 	}
-}
-
-function getLanceDbSyncKey(job: Job): string | undefined {
-	if (
-		job.mediaSourceId &&
-		["sync_lancedb", "sync_lancedb_full", "sync_lancedb_delta"].includes(
-			job.type,
-		)
-	) {
-		return job.mediaSourceId;
-	}
-	return undefined;
 }
