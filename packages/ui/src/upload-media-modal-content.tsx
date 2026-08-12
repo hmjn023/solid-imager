@@ -1,24 +1,8 @@
 import {
-	UploadMediaModalContent as SharedUploadMediaModalContent,
+	LegacyUploadMediaModalContent as SharedUploadMediaModalContent,
 	type UploadMediaModalSubmitOptions,
-} from "./upload-media-modal";
-
-type UploadMediaModalContentProps = {
-	isOpen: boolean;
-	onClose: () => void;
-	onUpload: (options: {
-		file: File;
-		filename: string;
-		description: string;
-		sourceUrl?: string;
-		overwrite: boolean;
-		autoIncrement: boolean;
-	}) => Promise<void>;
-	initialFile: File | null;
-	onUrlFetch: (file: File) => void;
-	pastedUrl: string | null;
-	onFetchUrl: (url: string) => Promise<File>;
-};
+} from "./legacy-upload-media-modal";
+import type { UploadMediaModalContentProps } from "./upload-media-modal-content.types";
 
 export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const handleUploadStart = async (options: UploadMediaModalSubmitOptions) => {

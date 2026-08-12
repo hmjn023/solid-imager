@@ -19,6 +19,11 @@ export {
 	ipsQueryKeys,
 } from "./ips-query";
 export {
+	buildJobsQueryOptions,
+	defaultJobsQueryConfig,
+	jobsQueryKeys,
+} from "./jobs-query";
+export {
 	buildMediaDetailsQueryOptions,
 	defaultMediaDetailsQueryConfig,
 	mediaDetailsQueryKeys,

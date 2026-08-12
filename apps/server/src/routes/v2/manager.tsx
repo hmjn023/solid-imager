@@ -1,6 +1,7 @@
 import { useManagerPage } from "@solid-imager/ui/hooks/use-manager-page";
-import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
-import type { V2ManagerTransferFormat } from "@solid-imager/ui/screens/v2-manager-screen";
+import { jobsQueryKeys } from "@solid-imager/ui/query-options";
+import type { V2ManagerTransferFormat } from "@solid-imager/ui/screens/v2-manager/types";
+import { V2ManagerScreen } from "@solid-imager/ui/screens/v2-manager-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
@@ -37,10 +38,8 @@ import {
 	mediaSourcesQueryOptions,
 } from "~/infrastructure/api-clients/queries";
 import {
-	fetchSourceDump,
-	importSourceLanceDB,
-	importSourceNdjson,
-	importSourceZip,
+	enqueueSourceExport,
+	enqueueSourceImport,
 } from "~/infrastructure/api-clients/sources-api";
 import { startThumbnailGeneration } from "~/infrastructure/api-clients/thumbnails";
 
@@ -78,74 +77,59 @@ const managerActions = {
 		}),
 };
 
-function downloadBlob(blob: Blob, fileName: string): void {
-	const url = URL.createObjectURL(blob);
-	const anchor = document.createElement("a");
-	anchor.href = url;
-	anchor.download = fileName;
-	document.body.append(anchor);
-	anchor.click();
-	anchor.remove();
-	URL.revokeObjectURL(url);
+function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
+	return {
+		exportSource: async (input: {
+			format: V2ManagerTransferFormat;
+			includeImages: boolean;
+			sourceId: string;
+		}) => {
+			try {
+				const mode =
+					input.format === "ndjson"
+						? "json"
+						: input.format === "tar"
+							? "zip"
+							: "lancedb";
+				const job = await enqueueSourceExport(
+					input.sourceId,
+					mode,
+					input.format === "lancedb" && input.includeImages,
+				);
+				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+				toast.success(
+					`Export queued (${job.id.slice(0, 8)}). Check Jobs to download it.`,
+				);
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Export failed");
+				throw error;
+			}
+		},
+		importSource: async (input: {
+			file: File;
+			format: V2ManagerTransferFormat;
+			sourceId: string;
+		}) => {
+			try {
+				const mode =
+					input.format === "ndjson"
+						? "json"
+						: input.format === "tar"
+							? "zip"
+							: "lancedb";
+				const job = await enqueueSourceImport(input.sourceId, mode, input.file);
+				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+				toast.success(
+					`Restore queued (${job.id.slice(0, 8)}). Track it in Jobs.`,
+				);
+				return { jobId: job.id };
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Restore failed");
+				throw error;
+			}
+		},
+	};
 }
-
-function dumpFileName(
-	sourceId: string,
-	format: V2ManagerTransferFormat,
-): string {
-	switch (format) {
-		case "ndjson":
-			return `source-${sourceId}-dump.ndjson`;
-		case "tar":
-			return `source-${sourceId}-dump.tar`;
-		case "lancedb":
-			return `source-${sourceId}-dump-lancedb.tar`;
-	}
-}
-
-const transferActions = {
-	exportSource: async (input: {
-		format: V2ManagerTransferFormat;
-		includeImages: boolean;
-		sourceId: string;
-	}) => {
-		try {
-			const mode =
-				input.format === "ndjson"
-					? "json"
-					: input.format === "tar"
-						? "zip"
-						: "lancedb";
-			const blob = await fetchSourceDump(input.sourceId, mode, {
-				includeImages: input.format === "lancedb" && input.includeImages,
-			});
-			downloadBlob(blob, dumpFileName(input.sourceId, input.format));
-			toast.success("Source dump downloaded");
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Export failed");
-			throw error;
-		}
-	},
-	importSource: async (input: {
-		file: File;
-		format: V2ManagerTransferFormat;
-		sourceId: string;
-	}) => {
-		try {
-			const result =
-				input.format === "ndjson"
-					? await importSourceNdjson(input.sourceId, input.file)
-					: input.format === "tar"
-						? await importSourceZip(input.sourceId, input.file)
-						: await importSourceLanceDB(input.sourceId, input.file);
-			toast.success(`Restore complete: ${result.importedCount} items imported`);
-			return { importedCount: result.importedCount };
-		} catch (error) {
-			toast.error(error instanceof Error ? error.message : "Restore failed");
-			throw error;
-		}
-	},
-};
 
 export const Route = createFileRoute("/v2/manager")({
 	component: V2ManagerRoute,
@@ -161,10 +145,9 @@ function V2ManagerRoute() {
 	});
 
 	return (
-		<ManagerScreen
+		<V2ManagerScreen
 			manager={manager}
-			transferActions={transferActions}
-			variant="v2"
+			transferActions={createTransferActions(queryClient)}
 		/>
 	);
 }

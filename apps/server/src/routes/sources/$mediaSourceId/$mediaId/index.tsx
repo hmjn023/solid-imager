@@ -1,12 +1,12 @@
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import { LegacyMediaDetailScreen } from "@solid-imager/ui/screens/legacy-media-detail-screen";
 import {
 	ClientOnly,
 	createFileRoute,
 	useRouterState,
 } from "@tanstack/solid-router";
 import { type Accessor, createSignal, onMount, Show } from "solid-js";
-import { MediaSidebar } from "~/components/media/media-sidebar";
+import { LegacyMediaSidebar } from "~/components/media/legacy-media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import {
@@ -100,12 +100,12 @@ function MediaContent(props: {
 	mediaSourceId: Accessor<string>;
 }) {
 	return (
-		<MediaDetailScreen
+		<LegacyMediaDetailScreen
 			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
 			mediaId={props.mediaId}
 			mediaSourceId={props.mediaSourceId}
 			renderMediaSidebar={(media, isUpdating, onUpdate) => (
-				<MediaSidebar
+				<LegacyMediaSidebar
 					isUpdating={isUpdating}
 					media={media}
 					onUpdate={onUpdate}

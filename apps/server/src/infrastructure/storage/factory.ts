@@ -4,9 +4,13 @@
  */
 
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
-import type { MediaSource } from "~/infrastructure/db/schema";
 import { LocalDriver } from "./local";
 import type { MediaSourceDriver } from "./schema";
+
+type DriverSource = {
+	type: "local" | "sftp" | "s3";
+	connectionInfo: unknown;
+};
 
 /**
  * Returns a driver instance for the specified media source.
@@ -14,7 +18,7 @@ import type { MediaSourceDriver } from "./schema";
  * @returns {MediaSourceDriver} An instance of a class implementing the MediaSourceDriver interface.
  * @throws {Error} If the media source type is unknown or connection information is invalid.
  */
-export function getDriver(source: MediaSource): MediaSourceDriver {
+export function getDriver(source: DriverSource): MediaSourceDriver {
 	switch (source.type) {
 		case "local": {
 			const connectionInfo = localConnectionSchema.parse(source.connectionInfo);

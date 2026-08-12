@@ -21,6 +21,16 @@ describe("JobRepository", () => {
 						createdAt: "2026-06-23T00:00:00.000Z",
 						updatedAt: "2026-06-23T00:00:01.000Z",
 						parentId: null,
+						cancelRequestedAt: null,
+						cancelledAt: null,
+						attemptCount: 1,
+						startedAt: "2026-06-23T00:00:01.000Z",
+						finishedAt: null,
+						artifactPath: null,
+						artifactFileName: null,
+						artifactContentType: null,
+						artifactSize: "1048576",
+						artifactExpiresAt: null,
 					},
 				],
 			}),
@@ -54,6 +64,7 @@ describe("JobRepository", () => {
 				payload: { mediaId: "media-1", sourcePath: "/media" },
 				createdAt: new Date("2026-06-23T00:00:00.000Z"),
 				updatedAt: new Date("2026-06-23T00:00:01.000Z"),
+				artifactSize: 1048576,
 			}),
 		]);
 		expect(mockExecutor.execute).toHaveBeenCalledOnce();
@@ -88,12 +99,13 @@ describe("JobRepository", () => {
 	});
 
 	it("returns the number of stale jobs requeued", async () => {
+		mockExecutor.returning.mockResolvedValueOnce([]);
 		const count = await repository.requeueStaleInProgress(
 			new Date("2026-06-23T00:00:00.000Z"),
 		);
 
 		expect(count).toBe(1);
-		expect(mockExecutor.update).toHaveBeenCalledOnce();
+		expect(mockExecutor.update).toHaveBeenCalledTimes(2);
 	});
 
 	it("does not requeue thumbnail batch parent progress records", async () => {
@@ -123,15 +135,17 @@ describe("JobRepository", () => {
 	});
 
 	it("clears stale result and error markers when requeueing", async () => {
+		mockExecutor.returning.mockResolvedValueOnce([]);
 		await repository.requeueStaleInProgress(
 			new Date("2026-06-23T00:00:00.000Z"),
 		);
 
-		expect(mockExecutor.set).toHaveBeenCalledOnce();
-		expect(mockExecutor.set).toHaveBeenCalledWith({
+		expect(mockExecutor.set).toHaveBeenCalledTimes(2);
+		expect(mockExecutor.set).toHaveBeenLastCalledWith({
 			status: "pending",
 			result: null,
 			error: null,
+			startedAt: null,
 			updatedAt: expect.any(Date),
 		});
 	});

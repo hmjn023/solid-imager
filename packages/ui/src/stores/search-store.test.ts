@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+	activateVectorSearch,
 	clearVectorSearchAnchor,
 	searchState,
 	setSearchState,
@@ -32,6 +33,36 @@ class MemoryStorage implements Storage {
 		this.values.set(key, value);
 	}
 }
+
+describe("activateVectorSearch", () => {
+	beforeEach(() => {
+		Object.defineProperty(globalThis, "sessionStorage", {
+			configurable: true,
+			value: new MemoryStorage(),
+		});
+		setSearchState({
+			mode: "simple",
+			similarityAnchorMediaId: null,
+			offset: 0,
+			scrollY: 0,
+		});
+	});
+
+	it("persists v2 activation without writing the legacy state key", () => {
+		activateVectorSearch("media-v2", { surface: "v2" });
+
+		expect(searchState.mode).toBe("vector");
+		expect(searchState.similarityAnchorMediaId).toBe("media-v2");
+		expect(
+			JSON.parse(sessionStorage.getItem("v2:current-all") ?? "{}"),
+		).toEqual({
+			mode: "vector",
+			similarityAnchorMediaId: "media-v2",
+			similarityTopK: 50,
+		});
+		expect(sessionStorage.getItem("current-all")).toBeNull();
+	});
+});
 
 describe("clearVectorSearchAnchor", () => {
 	beforeEach(() => {
@@ -75,5 +106,33 @@ describe("clearVectorSearchAnchor", () => {
 		clearVectorSearchAnchor();
 
 		expect(sessionStorage.getItem("current-all")).toBeNull();
+	});
+
+	it("clears the v2 persisted anchor without touching the legacy key", () => {
+		sessionStorage.setItem(
+			"current-all",
+			JSON.stringify({ similarityAnchorMediaId: "legacy-media" }),
+		);
+		sessionStorage.setItem(
+			"v2:current-all",
+			JSON.stringify({
+				mode: "vector",
+				similarityAnchorMediaId: "media-v2",
+				similarityTopK: 50,
+			}),
+		);
+
+		clearVectorSearchAnchor({ surface: "v2" });
+
+		expect(
+			JSON.parse(sessionStorage.getItem("v2:current-all") ?? "{}"),
+		).toEqual({
+			mode: "vector",
+			similarityAnchorMediaId: null,
+			similarityTopK: 50,
+		});
+		expect(JSON.parse(sessionStorage.getItem("current-all") ?? "{}")).toEqual({
+			similarityAnchorMediaId: "legacy-media",
+		});
 	});
 });

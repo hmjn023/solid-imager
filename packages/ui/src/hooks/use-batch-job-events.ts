@@ -43,11 +43,15 @@ export function dispatchJobEvent(
 		case "job-progress":
 			handlers.handleJobProgress(event.data);
 			break;
+		case "job-retried":
+			break;
 		case "job-completed":
 			handlers.handleJobCompleted(event.data);
 			break;
 		case "job-failed":
 			handlers.handleJobFailed(event.data);
+			break;
+		case "job-cancelled":
 			break;
 		default:
 			assertNever(event);

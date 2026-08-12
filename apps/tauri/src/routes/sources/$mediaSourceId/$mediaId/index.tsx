@@ -1,7 +1,7 @@
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { projectsQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import { LegacyMediaDetailScreen } from "@solid-imager/ui/screens/legacy-media-detail-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useRouterState } from "@tanstack/solid-router";
 import { MediaSidebar } from "~/components/media/media-sidebar";
@@ -45,7 +45,7 @@ function MediaDetailRoute() {
 	const sourceRootPathResolver = useSourceRootPath(mediaSourcesQueryOptions);
 
 	return (
-		<MediaDetailScreen
+		<LegacyMediaDetailScreen
 			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
 			mediaId={mediaId}
 			mediaSourceId={mediaSourceId}

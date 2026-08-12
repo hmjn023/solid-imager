@@ -7,11 +7,13 @@ import {
 	defaultCharactersQueryConfig,
 	defaultConfigQueryConfig,
 	defaultIpsQueryConfig,
+	defaultJobsQueryConfig,
 	defaultMediaDetailsQueryConfig,
 	defaultProjectsQueryConfig,
 	defaultSourcesQueryConfig,
 	defaultTagsQueryConfig,
 	ipsQueryKeys,
+	jobsQueryKeys,
 	mediaDetailsQueryKeys,
 	projectsQueryKeys,
 	sourcesQueryKeys,
@@ -45,6 +47,11 @@ export const allIpsQueryOptions = () => ({
 	...utils.ips.list.queryOptions(),
 	queryKey: ipsQueryKeys.all(),
 	...defaultIpsQueryConfig,
+});
+export const jobsQueryOptions = (input = { limit: 200, offset: 0 }) => ({
+	...utils.jobs.list.queryOptions({ input }),
+	queryKey: jobsQueryKeys.list(input),
+	...defaultJobsQueryConfig,
 });
 export const allAuthorsQueryOptions = () => ({
 	...utils.authors.list.queryOptions(),

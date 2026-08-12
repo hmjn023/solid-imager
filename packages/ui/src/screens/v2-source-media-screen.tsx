@@ -11,14 +11,18 @@ import {
 	DialogTitle,
 } from "../dialog";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
-import { SourceMediaGrid } from "../source-media-grid";
+import {
+	SourceMediaGrid,
+	type SourceMediaViewMode,
+} from "../source-media-grid";
 import { V2CollectionInspector } from "../v2/collection-inspector";
 import { V2SearchToolbar } from "../v2/search-toolbar";
-import type { SourceMediaScreenProps } from "./source-media-screen";
+import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
 export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
+	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
 	const filterStates = () => Object.values(page().filterStates());
 	const shouldRenderGrid = () => !props.enableVirtualization || isMounted();
@@ -26,6 +30,12 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 		page()
 			.mediaResults()
 			.find((media) => media.id === previewMediaId());
+	const openMediaDetail = (
+		media: import("@solid-imager/core/domain/media/schemas").Media,
+	) => props.onOpenMediaDetail?.(media, page().mediaResults());
+	const prepareMediaDetail = (
+		media: import("@solid-imager/core/domain/media/schemas").Media,
+	) => props.onPrepareMediaDetail?.(media, page().mediaResults());
 
 	onMount(() => setIsMounted(true));
 
@@ -74,6 +84,8 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 				onSearch={page().handleSearch}
 				presetClient={page().presetClient}
 				sourceName={props.mediaSourceName?.() ?? "メディア一覧"}
+				onViewModeChange={setViewMode}
+				viewMode={viewMode()}
 			/>
 
 			<Show when={props.renderJobProgress && page().jobProgress()}>
@@ -127,6 +139,8 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 								isSelected={props.isSelected}
 								mediaResults={page().mediaResults}
 								mediaSourceId={page().mediaSourceId}
+								onOpenMediaDetail={openMediaDetail}
+								onPrepareMediaDetail={prepareMediaDetail}
 								onBulkAction={props.onBulkAction}
 								onClearSelection={props.onClearSelection}
 								onCopyMove={page().handleCopyMove}
@@ -148,6 +162,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 								scrollMode="element"
 								state={page().contentState}
 								totalCount={page().totalCount()}
+								viewMode={viewMode}
 							/>
 						</Show>
 					</div>
@@ -157,7 +172,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 								{(media) => (
 									<V2CollectionInspector
 										media={media()}
-										onOpenDetail={props.onOpenMediaDetail}
+										onOpenDetail={openMediaDetail}
 										renderPreview={renderPreview()}
 										sourceName={props.mediaSourceName?.()}
 									/>

@@ -1,4 +1,9 @@
-export type JobStatus = "pending" | "in_progress" | "completed" | "failed";
+export type JobStatus =
+	| "pending"
+	| "in_progress"
+	| "completed"
+	| "failed"
+	| "cancelled";
 
 export type Job = {
 	id: string;
@@ -11,6 +16,16 @@ export type Job = {
 	createdAt: Date;
 	updatedAt: Date;
 	parentId: string | null;
+	cancelRequestedAt?: Date | null;
+	cancelledAt?: Date | null;
+	attemptCount?: number;
+	startedAt?: Date | null;
+	finishedAt?: Date | null;
+	artifactPath?: string | null;
+	artifactFileName?: string | null;
+	artifactContentType?: string | null;
+	artifactSize?: number | null;
+	artifactExpiresAt?: Date | null;
 };
 
 export type NewJob = {
@@ -24,6 +39,16 @@ export type NewJob = {
 	createdAt?: Date;
 	updatedAt?: Date;
 	parentId?: string | null;
+	cancelRequestedAt?: Date | null;
+	cancelledAt?: Date | null;
+	attemptCount?: number;
+	startedAt?: Date | null;
+	finishedAt?: Date | null;
+	artifactPath?: string | null;
+	artifactFileName?: string | null;
+	artifactContentType?: string | null;
+	artifactSize?: number | null;
+	artifactExpiresAt?: Date | null;
 };
 
 export type BatchProgress = {
@@ -45,8 +70,33 @@ export type IJobRepository = {
 		},
 	): Promise<Job[]>;
 	markAsInProgress(id: string): Promise<void>;
-	markAsCompleted(id: string, result?: unknown): Promise<void>;
-	markAsFailed(id: string, error: string): Promise<void>;
+	markAsCompleted(
+		id: string,
+		result: unknown,
+		attemptCount: number,
+	): Promise<boolean>;
+	markAsFailed(
+		id: string,
+		error: string,
+		attemptCount: number,
+	): Promise<boolean>;
+	requestCancellation(id: string): Promise<void>;
+	markAsCancelled(
+		id: string,
+		reason: string | undefined,
+		attemptCount: number,
+	): Promise<boolean>;
+	isCancellationRequested(id: string): Promise<boolean>;
+	setArtifact(
+		id: string,
+		artifact: {
+			path: string;
+			fileName: string;
+			contentType: string;
+			size: number;
+			expiresAt: Date;
+		},
+	): Promise<void>;
 	update(id: string, data: Partial<Job>): Promise<void>;
 	incrementProgress(
 		id: string,

@@ -5,12 +5,22 @@ import {
 } from "@solid-imager/core/domain/projects/schemas";
 import { z } from "zod";
 import { ProjectService } from "~/application/services/project-service";
+import { getProjectMediaCounts } from "./entity-media-counts";
 
 /**
  * Projects Router Implementation
  */
 export const projectsRouter = {
-	list: os.handler(() => ProjectService.getAllProjects()),
+	list: os.handler(async () => {
+		const projects = await ProjectService.getAllProjects();
+		const mediaCounts = await getProjectMediaCounts(
+			projects.map((project) => project.id),
+		);
+		return projects.map((project) => ({
+			...project,
+			mediaCount: mediaCounts.get(project.id) ?? 0,
+		}));
+	}),
 
 	get: os
 		.input(z.object({ id: z.string().uuid() }))

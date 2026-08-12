@@ -1,3 +1,4 @@
+import { batchParentJobTypes } from "@solid-imager/core/domain/jobs/schemas";
 import type {
 	BatchProgress,
 	IJobRepository,
@@ -13,6 +14,7 @@ import {
 	eq,
 	inArray,
 	isNotNull,
+	isNull,
 	lt,
 	ne,
 	not,
@@ -40,6 +42,16 @@ type RawClaimedJob = {
 	createdAt: unknown;
 	updatedAt: unknown;
 	parentId: unknown;
+	cancelRequestedAt: unknown;
+	cancelledAt: unknown;
+	attemptCount: unknown;
+	startedAt: unknown;
+	finishedAt: unknown;
+	artifactPath: unknown;
+	artifactFileName: unknown;
+	artifactContentType: unknown;
+	artifactSize: unknown;
+	artifactExpiresAt: unknown;
 };
 
 function mapJob(row: typeof jobs.$inferSelect): Job {
@@ -54,6 +66,16 @@ function mapJob(row: typeof jobs.$inferSelect): Job {
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 		parentId: row.parentId,
+		cancelRequestedAt: row.cancelRequestedAt,
+		cancelledAt: row.cancelledAt,
+		attemptCount: row.attemptCount,
+		startedAt: row.startedAt,
+		finishedAt: row.finishedAt,
+		artifactPath: row.artifactPath,
+		artifactFileName: row.artifactFileName,
+		artifactContentType: row.artifactContentType,
+		artifactSize: row.artifactSize,
+		artifactExpiresAt: row.artifactExpiresAt,
 	};
 }
 
@@ -226,32 +248,169 @@ export function createJobRepository(
 		},
 
 		async markAsInProgress(id: string): Promise<void> {
+			const now = new Date();
 			await db()
 				.update(jobs)
 				.set({
 					status: "in_progress",
-					updatedAt: new Date(),
+					attemptCount: sql`${jobs.attemptCount} + 1`,
+					startedAt: now,
+					finishedAt: null,
+					cancelRequestedAt: null,
+					cancelledAt: null,
+					updatedAt: now,
 				})
 				.where(eq(jobs.id, id));
 		},
 
-		async markAsCompleted(id: string, result?: unknown): Promise<void> {
-			await db()
+		async markAsCompleted(
+			id: string,
+			result: unknown,
+			attemptCount: number,
+		): Promise<boolean> {
+			const now = new Date();
+			const rows = await db()
 				.update(jobs)
 				.set({
 					status: "completed",
 					result: result ?? null,
-					updatedAt: new Date(),
+					finishedAt: now,
+					updatedAt: now,
 				})
-				.where(eq(jobs.id, id));
+				.where(
+					and(
+						eq(jobs.id, id),
+						eq(jobs.status, "in_progress"),
+						eq(jobs.attemptCount, attemptCount),
+						isNull(jobs.cancelRequestedAt),
+					),
+				)
+				.returning();
+			return rows.length > 0;
 		},
 
-		async markAsFailed(id: string, error: string): Promise<void> {
-			await db()
+		async markAsFailed(
+			id: string,
+			error: string,
+			attemptCount: number,
+		): Promise<boolean> {
+			const now = new Date();
+			const rows = await db()
 				.update(jobs)
 				.set({
 					status: "failed",
 					error,
+					finishedAt: now,
+					updatedAt: now,
+				})
+				.where(
+					and(
+						eq(jobs.id, id),
+						eq(jobs.status, "in_progress"),
+						eq(jobs.attemptCount, attemptCount),
+						isNull(jobs.cancelRequestedAt),
+					),
+				)
+				.returning();
+			return rows.length > 0;
+		},
+
+		async requestCancellation(id: string): Promise<void> {
+			const now = new Date();
+			const cancelledPending = await db()
+				.update(jobs)
+				.set({
+					status: "cancelled",
+					cancelRequestedAt: now,
+					cancelledAt: now,
+					finishedAt: now,
+					artifactPath: null,
+					artifactFileName: null,
+					artifactContentType: null,
+					artifactSize: null,
+					artifactExpiresAt: null,
+					updatedAt: now,
+				})
+				.where(and(eq(jobs.id, id), eq(jobs.status, "pending")))
+				.returning();
+
+			if (cancelledPending.length > 0) {
+				return;
+			}
+
+			await db()
+				.update(jobs)
+				.set({
+					cancelRequestedAt: now,
+					updatedAt: now,
+				})
+				.where(
+					and(
+						eq(jobs.id, id),
+						eq(jobs.status, "in_progress"),
+						isNull(jobs.cancelRequestedAt),
+					),
+				);
+		},
+
+		async markAsCancelled(
+			id: string,
+			reason: string | undefined,
+			attemptCount: number,
+		): Promise<boolean> {
+			const now = new Date();
+			const updates: Partial<typeof jobs.$inferInsert> = {
+				status: "cancelled",
+				cancelRequestedAt: now,
+				cancelledAt: now,
+				finishedAt: now,
+				updatedAt: now,
+			};
+			if (reason) {
+				updates.error = reason;
+			}
+			updates.artifactPath = null;
+			updates.artifactFileName = null;
+			updates.artifactContentType = null;
+			updates.artifactSize = null;
+			updates.artifactExpiresAt = null;
+
+			const rows = await db()
+				.update(jobs)
+				.set(updates)
+				.where(
+					and(
+						eq(jobs.id, id),
+						eq(jobs.status, "in_progress"),
+						eq(jobs.attemptCount, attemptCount),
+					),
+				)
+				.returning();
+			return rows.length > 0;
+		},
+
+		async isCancellationRequested(id: string): Promise<boolean> {
+			const [job] = await db()
+				.select({
+					status: jobs.status,
+					cancelRequestedAt: jobs.cancelRequestedAt,
+				})
+				.from(jobs)
+				.where(eq(jobs.id, id));
+			return Boolean(
+				job && (job.status === "cancelled" || job.cancelRequestedAt !== null),
+			);
+		},
+
+		async setArtifact(id, artifact): Promise<void> {
+			await db()
+				.update(jobs)
+				.set({
+					artifactPath: artifact.path,
+					artifactFileName: artifact.fileName,
+					artifactContentType: artifact.contentType,
+					artifactSize: artifact.size,
+					artifactExpiresAt: artifact.expiresAt,
 					updatedAt: new Date(),
 				})
 				.where(eq(jobs.id, id));
@@ -267,6 +426,24 @@ export function createJobRepository(
 			if (data.result !== undefined) updates.result = data.result;
 			if (data.error !== undefined) updates.error = data.error;
 			if (data.parentId !== undefined) updates.parentId = data.parentId;
+			if (data.cancelRequestedAt !== undefined)
+				updates.cancelRequestedAt = data.cancelRequestedAt;
+			if (data.cancelledAt !== undefined)
+				updates.cancelledAt = data.cancelledAt;
+			if (data.attemptCount !== undefined)
+				updates.attemptCount = data.attemptCount;
+			if (data.startedAt !== undefined) updates.startedAt = data.startedAt;
+			if (data.finishedAt !== undefined) updates.finishedAt = data.finishedAt;
+			if (data.artifactPath !== undefined)
+				updates.artifactPath = data.artifactPath;
+			if (data.artifactFileName !== undefined)
+				updates.artifactFileName = data.artifactFileName;
+			if (data.artifactContentType !== undefined)
+				updates.artifactContentType = data.artifactContentType;
+			if (data.artifactSize !== undefined)
+				updates.artifactSize = data.artifactSize;
+			if (data.artifactExpiresAt !== undefined)
+				updates.artifactExpiresAt = data.artifactExpiresAt;
 			updates.updatedAt = new Date();
 
 			await db().update(jobs).set(updates).where(eq(jobs.id, id));
@@ -340,28 +517,40 @@ export function createJobRepository(
 		},
 
 		async requeueStaleInProgress(olderThan: Date): Promise<number> {
+			const staleBaseCondition = and(
+				eq(jobs.status, "in_progress"),
+				lt(jobs.updatedAt, olderThan),
+				notInArray(jobs.type, [...batchParentJobTypes]),
+			);
+			const cancelledRows = await db()
+				.update(jobs)
+				.set({
+					status: "cancelled",
+					cancelledAt: new Date(),
+					finishedAt: new Date(),
+					artifactPath: null,
+					artifactFileName: null,
+					artifactContentType: null,
+					artifactSize: null,
+					artifactExpiresAt: null,
+					updatedAt: new Date(),
+				})
+				.where(and(staleBaseCondition, isNotNull(jobs.cancelRequestedAt)))
+				.returning();
+
 			const rows = await db()
 				.update(jobs)
 				.set({
 					status: "pending",
 					result: null,
 					error: null,
+					startedAt: null,
 					updatedAt: new Date(),
 				})
-				.where(
-					and(
-						eq(jobs.status, "in_progress"),
-						lt(jobs.updatedAt, olderThan),
-						notInArray(jobs.type, [
-							"batch_ccip_parent",
-							"bulk_tagging_parent",
-							"thumbnail_generation_parent",
-						]),
-					),
-				)
+				.where(and(staleBaseCondition, isNull(jobs.cancelRequestedAt)))
 				.returning();
 
-			return rows.length;
+			return rows.length + cancelledRows.length;
 		},
 	};
 }
@@ -449,19 +638,35 @@ function buildSerializedClaimQuery(
 function buildClaimUpdate(now: Date) {
 	return sql`
 		UPDATE jobs
-		SET status = 'in_progress', updated_at = ${now}
+		SET status = 'in_progress',
+			attempt_count = attempt_count + 1,
+			started_at = ${now},
+			finished_at = NULL,
+			cancel_requested_at = NULL,
+			cancelled_at = NULL,
+			updated_at = ${now}
 		WHERE id IN (SELECT id FROM next_jobs)
 		RETURNING
 			id,
 			type,
 			source_id AS "mediaSourceId",
-			status,
-			payload,
+					status,
+					payload,
 			result,
 			error,
 			created_at AS "createdAt",
 			updated_at AS "updatedAt",
-			parent_id AS "parentId"
+					parent_id AS "parentId",
+			cancel_requested_at AS "cancelRequestedAt",
+			cancelled_at AS "cancelledAt",
+			attempt_count AS "attemptCount",
+			started_at AS "startedAt",
+			finished_at AS "finishedAt",
+			artifact_path AS "artifactPath",
+			artifact_file_name AS "artifactFileName",
+			artifact_content_type AS "artifactContentType",
+			artifact_size AS "artifactSize",
+			artifact_expires_at AS "artifactExpiresAt"
 	`;
 }
 
@@ -502,6 +707,19 @@ function mapClaimedJob(row: unknown): Job {
 		createdAt: requireDate(raw.createdAt, "createdAt"),
 		updatedAt: requireDate(raw.updatedAt, "updatedAt"),
 		parentId: nullableString(raw.parentId, "parentId"),
+		cancelRequestedAt: nullableDate(raw.cancelRequestedAt, "cancelRequestedAt"),
+		cancelledAt: nullableDate(raw.cancelledAt, "cancelledAt"),
+		attemptCount: nullableNumber(raw.attemptCount, "attemptCount") ?? 0,
+		startedAt: nullableDate(raw.startedAt, "startedAt"),
+		finishedAt: nullableDate(raw.finishedAt, "finishedAt"),
+		artifactPath: nullableString(raw.artifactPath, "artifactPath"),
+		artifactFileName: nullableString(raw.artifactFileName, "artifactFileName"),
+		artifactContentType: nullableString(
+			raw.artifactContentType,
+			"artifactContentType",
+		),
+		artifactSize: nullableNumber(raw.artifactSize, "artifactSize"),
+		artifactExpiresAt: nullableDate(raw.artifactExpiresAt, "artifactExpiresAt"),
 	};
 }
 
@@ -527,7 +745,8 @@ function requireJobStatus(value: unknown): Job["status"] {
 		value === "pending" ||
 		value === "in_progress" ||
 		value === "completed" ||
-		value === "failed"
+		value === "failed" ||
+		value === "cancelled"
 	) {
 		return value;
 	}
@@ -545,6 +764,33 @@ function requireDate(value: unknown, fieldName: string): Date {
 		}
 	}
 	throw new Error(`Invalid claimed job row: ${fieldName}`);
+}
+
+function nullableDate(value: unknown, fieldName: string): Date | null {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	return requireDate(value, fieldName);
+}
+
+function requireNumber(value: unknown, fieldName: string): number {
+	const numberValue =
+		typeof value === "number"
+			? value
+			: typeof value === "string" && value.trim() !== ""
+				? Number(value)
+				: null;
+	if (numberValue === null || !Number.isFinite(numberValue)) {
+		throw new Error(`Invalid claimed job row: ${fieldName}`);
+	}
+	return numberValue;
+}
+
+function nullableNumber(value: unknown, fieldName: string): number | null {
+	if (value === null || value === undefined) {
+		return null;
+	}
+	return requireNumber(value, fieldName);
 }
 
 function parseJsonColumn(value: unknown, fieldName: string): unknown {

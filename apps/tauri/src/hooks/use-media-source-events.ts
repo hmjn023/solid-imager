@@ -15,6 +15,7 @@ export type {
 	MediaCopiedEvent,
 	MediaDeletedEvent,
 	MediaMovedEvent,
+	SourceSyncStatusEvent,
 	ThumbnailGeneratedEvent,
 	WatcherErrorEvent,
 } from "@solid-imager/ui/hooks/use-media-source-events";

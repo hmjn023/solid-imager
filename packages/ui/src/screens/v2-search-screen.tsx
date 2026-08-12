@@ -1,14 +1,25 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
-import { SourceMediaGrid } from "../source-media-grid";
+import {
+	SourceMediaGrid,
+	type SourceMediaViewMode,
+} from "../source-media-grid";
 import { V2CollectionInspector } from "../v2/collection-inspector";
 import { V2SearchToolbar } from "../v2/search-toolbar";
-import type { SearchScreenProps } from "./search-screen";
+import type { SearchWorkspaceProps } from "./search-screen.types";
 
-export function V2SearchScreen(props: SearchScreenProps) {
+export type V2SearchScreenProps = SearchWorkspaceProps & {
+	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
+	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
+	renderMediaPreview?: (media: Media) => import("solid-js").JSX.Element;
+};
+
+export function V2SearchScreen(props: V2SearchScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
+	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
 	const filterStates = () => [
 		page().filterStates.tags(),
@@ -29,6 +40,8 @@ export function V2SearchScreen(props: SearchScreenProps) {
 	const previewSourceName = () =>
 		props.sources?.find((source) => source.id === previewMedia()?.mediaSourceId)
 			?.name;
+	const openMediaDetail = (media: Media) =>
+		props.onOpenMediaDetail?.(media, page().searchResults());
 
 	onMount(() => setIsMounted(true));
 
@@ -44,6 +57,8 @@ export function V2SearchScreen(props: SearchScreenProps) {
 				selectedSource={props.selectedSource ?? undefined}
 				sourceName={sourceName()}
 				sources={props.sources}
+				onViewModeChange={setViewMode}
+				viewMode={viewMode()}
 			/>
 			<div class="shrink-0 px-3 pt-3 sm:px-4">
 				<Show
@@ -92,6 +107,10 @@ export function V2SearchScreen(props: SearchScreenProps) {
 								itemAspectRatio={4 / 3}
 								mediaResults={page().searchResults}
 								mediaSourceId={() => undefined}
+								onOpenMediaDetail={openMediaDetail}
+								onPrepareMediaDetail={(media) =>
+									props.onPrepareMediaDetail?.(media, page().searchResults())
+								}
 								onLoadMore={page().fetchNextPage}
 								onRetry={async () => {
 									await page().searchResultQuery.refetch();
@@ -107,6 +126,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 								scrollMode="element"
 								state={page().contentState}
 								totalCount={page().totalCount()}
+								viewMode={viewMode}
 							/>
 						</Show>
 					</div>
@@ -116,7 +136,7 @@ export function V2SearchScreen(props: SearchScreenProps) {
 								{(media) => (
 									<V2CollectionInspector
 										media={media()}
-										onOpenDetail={props.onOpenMediaDetail}
+										onOpenDetail={openMediaDetail}
 										renderPreview={renderPreview()}
 										sourceName={previewSourceName()}
 									/>

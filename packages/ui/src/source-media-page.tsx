@@ -7,9 +7,12 @@ import type {
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import type { Accessor, JSX } from "solid-js";
+import type { Accessor, Component, JSX } from "solid-js";
 import { isServer } from "solid-js/web";
-import { useCurrentSearchPersistence } from "./hooks/use-current-search-persistence";
+import {
+	type SearchPersistenceSurface,
+	useCurrentSearchPersistence,
+} from "./hooks/use-current-search-persistence";
 import type { MediaSourceEventTransport } from "./hooks/use-media-source-events";
 import {
 	type SourceMediaPageActions,
@@ -18,10 +21,7 @@ import {
 } from "./hooks/use-source-media-page";
 import { MediaListActions } from "./media-list-actions";
 import { toQueryUiState } from "./query-state";
-import {
-	SourceMediaScreen,
-	type SourceMediaScreenProps,
-} from "./screens/source-media-screen";
+import type { SourceMediaScreenProps } from "./screens/source-media-screen.types";
 
 // biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 type QueryOptionFactory<_TData> = () => any;
@@ -34,7 +34,6 @@ function clientOnlyQueryOptions<TData>(factory: QueryOptionFactory<TData>) {
 }
 
 export type SourceMediaPageProps = {
-	variant?: "default" | "v2";
 	mediaSourceId: Accessor<string>;
 	mediaSourceName?: Accessor<string | undefined>;
 	transport: MediaSourceEventTransport;
@@ -55,6 +54,7 @@ export type SourceMediaPageProps = {
 	renderItem: SourceMediaScreenProps["renderItem"];
 	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
 	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
+	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
 	showOpenInNewTab?: boolean;
 	onToggleSelect?: (mediaId: string) => void;
 	isBulkSelectMode?: () => boolean;
@@ -63,12 +63,17 @@ export type SourceMediaPageProps = {
 	onClearSelection?: () => void;
 	selectedCount?: () => number;
 	onEnterBulkSelectMode?: () => void;
+	persistenceSurface?: SearchPersistenceSurface;
+	/** The route owns the presentation surface (legacy, v2, or another host). */
+	screenComponent: Component<SourceMediaScreenProps>;
+	scrollContainerSelector?: string;
 };
 
 export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	const queryClient = useQueryClient();
 	const isSearchStateRestored = useCurrentSearchPersistence(
 		props.mediaSourceId,
+		{ surface: props.persistenceSurface },
 	);
 
 	const tags = createQuery<TagResponse[]>(
@@ -122,10 +127,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		sortOrder: props.sortOrder,
 		onThumbnailReady: props.onThumbnailReady,
 		isSearchStateRestored,
-		scrollContainerSelector:
-			props.variant === "v2"
-				? `[data-media-scroll="${props.mediaSourceId() ?? "v2-source"}"]`
-				: undefined,
+		scrollContainerSelector: props.scrollContainerSelector,
 	});
 
 	const renderActions: SourceMediaScreenProps["renderActions"] = (actions) => (
@@ -135,10 +137,10 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			onOpenMobileFilters={actions.onOpenMobileFilters}
 		/>
 	);
+	const Screen = props.screenComponent;
 
 	return (
-		<SourceMediaScreen
-			variant={props.variant}
+		<Screen
 			enableVirtualization={props.enableVirtualization}
 			mediaSourceName={props.mediaSourceName}
 			onRetryFilters={async () => {
@@ -154,6 +156,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			renderActions={renderActions}
 			renderItem={props.renderItem}
 			onOpenMediaDetail={props.onOpenMediaDetail}
+			onPrepareMediaDetail={props.onPrepareMediaDetail}
 			renderMediaPreview={props.renderMediaPreview}
 			moveCopyDialogComponent={props.moveCopyDialogComponent}
 			uploadModalComponent={props.uploadModalComponent}

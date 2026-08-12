@@ -54,7 +54,13 @@ const MEDIA_STATUSES = ["active", "archived", "deleted"] as const;
 const MEDIA_TYPES = ["image", "video", "audio"] as const;
 const MEDIA_SOURCE_TYPES = ["local", "sftp", "s3"] as const;
 const TAG_TYPES = ["positive", "negative"] as const;
-const JOB_STATUSES = ["pending", "in_progress", "completed", "failed"] as const;
+const JOB_STATUSES = [
+	"pending",
+	"in_progress",
+	"completed",
+	"failed",
+	"cancelled",
+] as const;
 
 export function isMediaStatus(
 	value: string,
@@ -82,6 +88,6 @@ export function isTagType(value: string): value is "positive" | "negative" {
 
 export function isJobStatus(
 	value: string,
-): value is "pending" | "in_progress" | "completed" | "failed" {
+): value is "pending" | "in_progress" | "completed" | "failed" | "cancelled" {
 	return JOB_STATUSES.includes(value as (typeof JOB_STATUSES)[number]);
 }

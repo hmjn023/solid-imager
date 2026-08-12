@@ -22,6 +22,10 @@ const jobRepository: IJobRepository = {
 	markAsInProgress: vi.fn(),
 	markAsCompleted: vi.fn(),
 	markAsFailed: vi.fn(),
+	requestCancellation: vi.fn(),
+	markAsCancelled: vi.fn(),
+	isCancellationRequested: vi.fn(),
+	setArtifact: vi.fn(),
 	update: (...args: Parameters<typeof update>) => update(...args),
 	incrementProgress: (...args: Parameters<typeof incrementProgress>) =>
 		incrementProgress(...args),

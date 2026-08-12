@@ -8,6 +8,7 @@ import {
 import { createClient } from "@solid-imager/client";
 
 import {
+	aiHealthResponseSchema,
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
 	batchTargetCountResponseSchema,
@@ -170,6 +171,26 @@ async function cropDetection(
 }
 
 export const aiRouter = {
+	health: os.output(aiHealthResponseSchema).handler(async () => {
+		const config = services.getConfigService().getConfig();
+		const mode = config.ai.baseUrl?.trim() ? "remote" : "local";
+		const startedAt = performance.now();
+		let available = false;
+
+		try {
+			available = await services.getAiClient().healthCheck();
+		} catch {
+			available = false;
+		}
+
+		return {
+			status: available ? "available" : "unavailable",
+			mode,
+			latencyMs: Math.max(0, Math.round(performance.now() - startedAt)),
+			message: available ? null : "AI service is unavailable",
+			checkedAt: new Date(),
+		};
+	}),
 	tag: os
 		.input(
 			z.union([

@@ -133,7 +133,8 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 					{() => (
 						<Skeleton
 							class={cn(
-								"media-grid-skeleton-item w-full rounded-md",
+								"media-grid-skeleton-item w-full",
+								props.aspectRatio ? "rounded-md" : "rounded-lg",
 								props.aspectRatio === "4/3" ? "aspect-[4/3]" : "aspect-[3/4]",
 							)}
 						/>
@@ -144,61 +145,8 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 	);
 }
 
-export type MediaDetailSkeletonProps = {
-	class?: string;
-	variant?: "default" | "v2";
-};
-
-export function MediaDetailSkeleton(props: MediaDetailSkeletonProps) {
-	if (props.variant === "v2") {
-		return (
-			<div
-				aria-hidden="true"
-				class={cn("flex h-full min-h-0 flex-col", props.class)}
-				data-skeleton="media-detail"
-			>
-				<div class="flex min-h-14 shrink-0 items-center gap-3 border-b px-4">
-					<Skeleton class="size-9" />
-					<div class="min-w-0 flex-1 space-y-2">
-						<Skeleton class="h-4 w-56 max-w-full" />
-						<Skeleton class="h-3 w-32 max-w-full" />
-					</div>
-					<Skeleton class="h-9 w-28" />
-				</div>
-				<div class="min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem]">
-					<div class="flex min-h-[55dvh] items-center justify-center p-4 lg:min-h-0">
-						<Skeleton class="h-full max-h-full w-full rounded-none" />
-					</div>
-					<div class="space-y-4 border-t p-4 lg:border-t-0 lg:border-l">
-						<Skeleton class="h-6 w-2/3" />
-						<Skeleton class="h-20 w-full" />
-						<Skeleton class="h-28 w-full" />
-						<Skeleton class="h-10 w-full" />
-					</div>
-				</div>
-			</div>
-		);
-	}
-	return (
-		<div
-			aria-hidden="true"
-			class={cn(
-				"flex min-h-[calc(100dvh-7.5rem)] flex-col gap-4 lg:flex-row",
-				props.class,
-			)}
-			data-skeleton="media-detail"
-		>
-			<Skeleton class="min-h-80 flex-1 rounded-lg lg:min-h-0" />
-			<div class="w-full shrink-0 space-y-4 rounded-lg border p-4 lg:w-96">
-				<Skeleton class="h-7 w-3/4" />
-				<Skeleton class="h-4 w-1/2" />
-				<Skeleton class="h-24 w-full" />
-				<Skeleton class="h-10 w-full" />
-				<Skeleton class="h-10 w-full" />
-			</div>
-		</div>
-	);
-}
+/** Legacy compatibility export. New screens should import an explicit surface. */
+export { LegacyMediaDetailSkeleton as MediaDetailSkeleton } from "./legacy-media-detail-skeleton";
 
 export type ConfigSkeletonProps = {
 	class?: string;

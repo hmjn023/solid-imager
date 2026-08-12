@@ -1,6 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { ClientOnly } from "@tanstack/solid-router";
-import type { Component, JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
@@ -13,76 +11,15 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../dialog";
-import type {
-	UploadOptions,
-	UseSourceMediaPageResult,
-} from "../hooks/use-source-media-page";
-import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
-import { V2SourceMediaScreen } from "./v2-source-media-screen";
+import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
-export type SourceMediaScreenProps = {
-	variant?: "default" | "v2";
-	page: UseSourceMediaPageResult;
-	mediaSourceName?: () => string | undefined;
-	/** Render navigation actions without giving them ownership of filter draft state. */
-	renderActions: (props: { onOpenMobileFilters: () => void }) => JSX.Element;
-	/** Render a single media grid item. */
-	renderItem: (
-		media: Media,
-		options: {
-			imageLoadPolicy?: MediaGridImageLoadPolicy;
-			onContextMenu: () => void;
-			priority?: boolean;
-			isBulkSelectMode?: boolean;
-			isSelected?: boolean;
-			onPreviewSelect?: () => void;
-			isPreviewSelected?: boolean;
-		},
-	) => JSX.Element;
-	renderMediaPreview?: (media: Media) => JSX.Element;
-	onOpenMediaDetail?: (media: Media) => void;
-	renderJobProgress?: (props: {
-		jobProgress: () =>
-			| import("@solid-imager/core/domain/sources/events").JobProgressEvent
-			| null;
-	}) => JSX.Element;
-	uploadModalComponent: Component<{
-		isOpen: boolean;
-		onClose: () => void;
-		onUpload: (options: UploadOptions) => Promise<void>;
-		initialFile: File | null;
-		onUrlFetch: (file: File) => void;
-		pastedUrl: string | null;
-	}>;
-	moveCopyDialogComponent: Component<{
-		open: boolean;
-		onOpenChange: (open: boolean) => void;
-		mode: "copy" | "move";
-		onConfirm: (targetSourceId: string) => void;
-		currentSourceId: string;
-	}>;
-	/** Enable virtualization for large lists. Default: false. */
-	enableVirtualization?: boolean;
-	/** Show "Open in New Tab" context menu item. Default: false. */
-	showOpenInNewTab?: boolean;
-	onToggleSelect?: (mediaId: string) => void;
-	isBulkSelectMode?: () => boolean;
-	isSelected?: (mediaId: string) => boolean;
-	onBulkAction?: () => void;
-	onClearSelection?: () => void;
-	selectedCount?: () => number;
-	onEnterBulkSelectMode?: () => void;
-	onRetryFilters: () => void | Promise<void>;
-};
+export type { SourceMediaScreenProps } from "./source-media-screen.types";
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
-	if (props.variant === "v2") {
-		return <V2SourceMediaScreen {...props} />;
-	}
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
 	const page = () => props.page;

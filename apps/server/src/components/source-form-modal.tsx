@@ -1,7 +1,7 @@
 import {
-	SourceFormModal as SharedSourceFormModal,
+	LegacySourceFormModal as SharedSourceFormModal,
 	type SourceFormModalProps,
-} from "@solid-imager/ui/source-form-modal";
+} from "@solid-imager/ui/legacy-source-form-modal";
 
 export default function SourceFormModal(props: SourceFormModalProps) {
 	return <SharedSourceFormModal {...props} />;

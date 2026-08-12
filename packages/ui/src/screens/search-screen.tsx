@@ -1,54 +1,23 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { ClientOnly } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
-import type {
-	SearchPageFilterData,
-	UseSearchPageResult,
-} from "../hooks/use-search-page";
-import type { SourceMediaPagePresetClient } from "../hooks/use-source-media-page";
-import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
 import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { SourceMediaGrid } from "../source-media-grid";
-import { V2SearchScreen } from "./v2-search-screen";
+import type { SearchWorkspaceProps } from "./search-screen.types";
 
 export type SearchScreenNavActions = {
 	openMobileFilters: () => void;
 };
 
-export type SearchScreenProps = {
-	variant?: "default" | "v2";
-	page: UseSearchPageResult;
-	filterData: SearchPageFilterData;
-	sources: SafeMediaSource[] | undefined;
-	selectedSource: string | null;
-	onSelectSource: (id: string) => void;
-	presetClient: SourceMediaPagePresetClient;
+export type SearchScreenProps = SearchWorkspaceProps & {
 	renderNavActions?: (actions: SearchScreenNavActions) => JSX.Element;
-	renderMediaItem: (
-		media: Media,
-		options?: {
-			imageLoadPolicy?: MediaGridImageLoadPolicy;
-			onPreviewSelect?: () => void;
-			isPreviewSelected?: boolean;
-			priority?: boolean;
-		},
-	) => JSX.Element;
-	renderMediaPreview?: (media: Media) => JSX.Element;
-	onOpenMediaDetail?: (media: Media) => void;
-	ssrGuard?: boolean;
-	enableVirtualization?: boolean;
 };
 
 export function SearchScreen(props: SearchScreenProps) {
-	if (props.variant === "v2") {
-		return <V2SearchScreen {...props} />;
-	}
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
 

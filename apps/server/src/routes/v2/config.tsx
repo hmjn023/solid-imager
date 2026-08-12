@@ -1,6 +1,6 @@
 import { configQueryKeys } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { ConfigStateScreen } from "@solid-imager/ui/screens/config-state-screen";
+import { V2ConfigStateScreen } from "@solid-imager/ui/screens/v2-config-state-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -15,7 +15,8 @@ function V2ConfigPage() {
 	const queryClient = useQueryClient();
 
 	return (
-		<ConfigStateScreen
+		<V2ConfigStateScreen
+			checkAiHealth={() => orpc.ai.health()}
 			data={configQuery.data}
 			onRetry={async () => {
 				await configQuery.refetch();
@@ -27,7 +28,6 @@ function V2ConfigPage() {
 				});
 			}}
 			state={toQueryUiState(configQuery)}
-			variant="v2"
 		/>
 	);
 }

@@ -1,10 +1,10 @@
 import { Match, Show, Switch } from "solid-js";
+import { LegacyMediaDetailSkeleton } from "./legacy-media-detail-skeleton";
 import {
 	CardGridSkeleton,
 	CardSkeleton,
 	ConfigSkeleton,
 	ManagerSkeleton,
-	MediaDetailSkeleton,
 	MediaGridSkeleton,
 	Skeleton,
 } from "./skeleton";
@@ -90,7 +90,7 @@ export function ScreenSkeleton(props: ScreenSkeletonProps) {
 						</div>
 					</Match>
 					<Match when={props.layout === "media-detail"}>
-						<MediaDetailSkeleton />
+						<LegacyMediaDetailSkeleton />
 					</Match>
 					<Match when={props.layout === "config"}>
 						<ConfigSkeleton />

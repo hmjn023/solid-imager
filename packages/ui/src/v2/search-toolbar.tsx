@@ -19,6 +19,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
 import { SortControls } from "../sort-controls";
+import type { SourceMediaViewMode } from "../source-media-grid";
 import {
 	clearPresetFilters,
 	searchState,
@@ -56,6 +57,8 @@ export type V2SearchToolbarProps = {
 	selectedSource?: string;
 	sourceName: string;
 	sources?: SafeMediaSource[];
+	viewMode?: SourceMediaViewMode;
+	onViewModeChange?: (mode: SourceMediaViewMode) => void;
 };
 
 function parseValues(value: string): string[] {
@@ -423,6 +426,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 								selectedSource={props.selectedSource}
 								showSearchButton={false}
 								sources={props.sources}
+								persistenceSurface="v2"
 								usePopover={false}
 							/>
 						</div>
@@ -481,18 +485,27 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				<div class="flex rounded-md border border-[var(--v2-border-strong)] bg-white p-0.5">
 					<Button
 						aria-label="グリッド表示"
-						aria-pressed="true"
-						class="size-11 bg-[var(--v2-primary)] p-0 text-white hover:bg-[var(--v2-primary-hover)] sm:size-8"
+						aria-pressed={(props.viewMode ?? "grid") === "grid"}
+						class={
+							(props.viewMode ?? "grid") === "grid"
+								? "size-11 bg-[var(--v2-primary)] p-0 text-white hover:bg-[var(--v2-primary-hover)] sm:size-8"
+								: "size-11 p-0 sm:size-8"
+						}
+						onClick={() => props.onViewModeChange?.("grid")}
 						size="icon"
 					>
 						<Grid3X3 aria-hidden="true" size={15} />
 					</Button>
 					<Button
-						aria-label="リスト表示（未実装）"
-						class="size-11 p-0 sm:size-8"
-						disabled
+						aria-label="リスト表示"
+						aria-pressed={(props.viewMode ?? "grid") === "list"}
+						class={
+							(props.viewMode ?? "grid") === "list"
+								? "size-11 bg-[var(--v2-primary)] p-0 text-white hover:bg-[var(--v2-primary-hover)] sm:size-8"
+								: "size-11 p-0 sm:size-8"
+						}
+						onClick={() => props.onViewModeChange?.("list")}
 						size="icon"
-						title="リスト表示は今後実装予定です"
 						variant="ghost"
 					>
 						<List aria-hidden="true" size={15} />

@@ -1,12 +1,20 @@
 import { os } from "@orpc/server";
 import { z } from "zod";
 import { IpService } from "~/application/services/ip-service";
+import { getIpMediaCounts } from "./entity-media-counts";
 
 /**
  * IPs Router Implementation
  */
 export const ipsRouter = {
-	list: os.handler(() => IpService.getAllIps()),
+	list: os.handler(async () => {
+		const ips = await IpService.getAllIps();
+		const mediaCounts = await getIpMediaCounts(ips.map((ip) => ip.id));
+		return ips.map((ip) => ({
+			...ip,
+			mediaCount: mediaCounts.get(ip.id) ?? 0,
+		}));
+	}),
 
 	get: os
 		.input(z.object({ id: z.string().uuid() }))

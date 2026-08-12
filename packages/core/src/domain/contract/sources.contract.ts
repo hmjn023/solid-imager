@@ -1,5 +1,6 @@
 import { eventIterator, oc } from "@orpc/contract";
 import { z } from "zod";
+import { jobDtoSchema } from "../jobs/schemas";
 import { sourceEventSchema } from "../sources/events";
 import {
 	mediaSourceInfoSchema,
@@ -63,6 +64,16 @@ export const sourcesContract = {
 		}),
 	),
 
+	enqueueExport: oc
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+				includeImages: z.boolean().default(false),
+			}),
+		)
+		.output(jobDtoSchema),
+
 	restore: oc
 		.input(
 			z.object({
@@ -105,6 +116,16 @@ export const sourcesContract = {
 			}),
 		)
 		.output(importResultSchema),
+
+	enqueueImport: oc
+		.input(
+			z.object({
+				id: z.string().uuid(),
+				mode: z.enum(["json", "zip", "lancedb"]),
+				file: z.instanceof(File),
+			}),
+		)
+		.output(jobDtoSchema),
 
 	status: oc
 		.input(z.object({ id: z.string().uuid() }))

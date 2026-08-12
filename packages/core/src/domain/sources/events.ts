@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { thumbnailSizeSchema } from "../thumbnails/schemas";
+import { mediaSourceSyncStateSchema } from "./schemas";
 
 const sourceScopedEventSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),
@@ -63,6 +64,14 @@ export const watcherErrorEventSchema = z.object({
 });
 export type WatcherErrorEvent = z.infer<typeof watcherErrorEventSchema>;
 
+export const sourceSyncStatusEventSchema = z.object({
+	mediaSourceId: z.string().uuid(),
+	status: mediaSourceSyncStateSchema,
+	message: z.string().optional(),
+	timestamp: z.string().optional(),
+});
+export type SourceSyncStatusEvent = z.infer<typeof sourceSyncStatusEventSchema>;
+
 export const jobProgressEventSchema = z.object({
 	jobId: z.string().optional(),
 	processed: z.number(),
@@ -76,11 +85,23 @@ export const jobCompletedEventSchema = z.object({
 });
 export type JobCompletedEvent = z.infer<typeof jobCompletedEventSchema>;
 
+export const jobRetriedEventSchema = z.object({
+	jobId: z.string().optional(),
+	message: z.string().optional(),
+});
+export type JobRetriedEvent = z.infer<typeof jobRetriedEventSchema>;
+
 export const jobFailedEventSchema = z.object({
 	jobId: z.string().optional(),
 	error: z.string().optional(),
 });
 export type JobFailedEvent = z.infer<typeof jobFailedEventSchema>;
+
+export const jobCancelledEventSchema = z.object({
+	jobId: z.string().optional(),
+	message: z.string().optional(),
+});
+export type JobCancelledEvent = z.infer<typeof jobCancelledEventSchema>;
 
 export const downloadErrorEventSchema = z.object({
 	url: z.string(),
@@ -134,6 +155,10 @@ export const sourceEventSchema = z.discriminatedUnion("event", [
 		data: watcherErrorEventSchema,
 	}),
 	z.object({
+		event: z.literal("source-sync-status"),
+		data: sourceSyncStatusEventSchema,
+	}),
+	z.object({
 		event: z.literal("download-error"),
 		data: downloadErrorEventSchema,
 	}),
@@ -158,11 +183,16 @@ export type SourceEventCommand = {
 
 export const jobEventSchema = z.discriminatedUnion("event", [
 	z.object({ event: z.literal("job-progress"), data: jobProgressEventSchema }),
+	z.object({ event: z.literal("job-retried"), data: jobRetriedEventSchema }),
 	z.object({
 		event: z.literal("job-completed"),
 		data: jobCompletedEventSchema,
 	}),
 	z.object({ event: z.literal("job-failed"), data: jobFailedEventSchema }),
+	z.object({
+		event: z.literal("job-cancelled"),
+		data: jobCancelledEventSchema,
+	}),
 ]);
 export type JobEvent = z.infer<typeof jobEventSchema>;
 export type JobEventName = JobEvent["event"];

@@ -45,6 +45,9 @@ export type ConnectionInfo = z.infer<typeof connectionInfoSchema>;
 export const mediaSourceTypeEnumSchema = z.enum(["local", "sftp", "s3"]);
 export type MediaSourceTypeEnum = z.infer<typeof mediaSourceTypeEnumSchema>;
 
+export const mediaSourceSyncStateSchema = z.enum(["idle", "syncing", "error"]);
+export type MediaSourceSyncState = z.infer<typeof mediaSourceSyncStateSchema>;
+
 export const mediaSourceInfoSchema = z.object({
 	id: z.uuid({ version: "v4" }).optional(),
 	name: z.string(),
@@ -111,6 +114,11 @@ export const safeConnectionInfoSchema = z.union([
 
 export const safeMediaSourceSchema = mediaSourceInfoSchema.extend({
 	connectionInfo: safeConnectionInfoSchema,
+	mediaCount: z.number().int().nonnegative().optional(),
+	syncStatus: mediaSourceSyncStateSchema.optional(),
+	lastSyncStartedAt: z.coerce.date().nullable().optional(),
+	lastSyncCompletedAt: z.coerce.date().nullable().optional(),
+	lastSyncError: z.string().nullable().optional(),
 });
 
 export type SafeMediaSource = z.infer<typeof safeMediaSourceSchema>;

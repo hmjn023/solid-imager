@@ -1,6 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
-import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import { V2MediaDetailScreen } from "@solid-imager/ui/screens/v2-media-detail-screen";
 import {
 	ArrowLeft,
 	ChevronLeft,
@@ -9,13 +9,15 @@ import {
 import { createQuery } from "@tanstack/solid-query";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
-import { MediaActions, MediaSidebar } from "~/components/media/media-sidebar";
-import { MediaViewer } from "~/components/media/media-viewer";
+import { V2MediaActions } from "~/components/media/v2-media-actions";
+import { V2MediaSidebar } from "~/components/media/v2-media-sidebar";
+import { V2MediaViewer } from "~/components/media/v2-media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import {
 	mediaDetailsQueryOptions,
 	mediaSourcesQueryOptions,
 } from "~/infrastructure/api-clients/queries";
+import { findV2MediaNeighbors } from "~/routes/v2/media-context";
 
 interface MediaRouteParams {
 	mediaId: string;
@@ -46,6 +48,19 @@ function MediaDetailHeader(props: {
 	sourceName: string;
 }) {
 	const navigate = useNavigate();
+	const neighbors = () => findV2MediaNeighbors(props.media.id);
+	const navigateToNeighbor = (direction: "next" | "previous") => {
+		const neighbor = neighbors()[direction];
+		if (!neighbor) return;
+		void navigate({
+			params: {
+				mediaId: neighbor.id,
+				mediaSourceId: neighbor.mediaSourceId,
+			},
+			replace: true,
+			to: "/v2/sources/$mediaSourceId/$mediaId",
+		});
+	};
 	const returnToCollection = () => {
 		const returnPath = sessionStorage.getItem("v2:media-return");
 		if (
@@ -88,21 +103,27 @@ function MediaDetailHeader(props: {
 
 				<div
 					class="flex shrink-0 items-center rounded-md border border-[var(--v2-border)] bg-white p-0.5"
-					title="一覧コンテキストがないため前後移動は利用できません"
+					title={
+						neighbors().previous || neighbors().next
+							? "一覧の前後のメディアへ移動"
+							: "一覧コンテキストがないため前後移動は利用できません"
+					}
 				>
 					<Button
-						aria-label="前のメディア（利用不可）"
+						aria-label="前のメディア"
 						class="size-9 p-0 md:size-8"
-						disabled
+						disabled={!neighbors().previous}
+						onClick={() => navigateToNeighbor("previous")}
 						size="icon"
 						variant="ghost"
 					>
 						<ChevronLeft aria-hidden="true" size={16} />
 					</Button>
 					<Button
-						aria-label="次のメディア（利用不可）"
+						aria-label="次のメディア"
 						class="size-9 p-0 md:size-8"
-						disabled
+						disabled={!neighbors().next}
+						onClick={() => navigateToNeighbor("next")}
 						size="icon"
 						variant="ghost"
 					>
@@ -111,11 +132,7 @@ function MediaDetailHeader(props: {
 				</div>
 
 				<div class="order-last mt-1 w-full md:order-none md:mt-0 md:w-auto">
-					<MediaActions
-						media={props.media}
-						onUpdate={props.onUpdate}
-						variant="v2"
-					/>
+					<V2MediaActions media={props.media} onUpdate={props.onUpdate} />
 				</div>
 			</div>
 		</header>
@@ -132,7 +149,7 @@ function MediaContent(props: {
 			?.name ?? "Media source";
 
 	return (
-		<MediaDetailScreen
+		<V2MediaDetailScreen
 			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
 			mediaId={props.mediaId}
 			mediaSourceId={props.mediaSourceId}
@@ -144,16 +161,14 @@ function MediaContent(props: {
 				/>
 			)}
 			renderMediaSidebar={(media, isUpdating, onUpdate) => (
-				<MediaSidebar
+				<V2MediaSidebar
 					isUpdating={isUpdating}
 					media={media}
 					onUpdate={onUpdate}
-					variant="v2"
 				/>
 			)}
-			renderMediaViewer={(media) => <MediaViewer media={media} variant="v2" />}
+			renderMediaViewer={(media) => <V2MediaViewer media={media} />}
 			transport={createServerTransport(props.mediaSourceId)}
-			variant="v2"
 		/>
 	);
 }
