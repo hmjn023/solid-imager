@@ -76,7 +76,7 @@ export const jobIdRequestSchema = z.object({
 export type JobIdRequest = z.infer<typeof jobIdRequestSchema>;
 
 export const sourceExportJobPayloadSchema = z.object({
-	mode: z.enum(["json", "zip", "lancedb"]),
+	mode: z.enum(["json", "zip"]),
 	includeImages: z.boolean(),
 });
 export type SourceExportJobPayload = z.infer<
@@ -84,7 +84,7 @@ export type SourceExportJobPayload = z.infer<
 >;
 
 export const sourceRestoreJobPayloadSchema = z.object({
-	mode: z.enum(["json", "zip", "lancedb"]),
+	mode: z.enum(["json", "zip"]),
 	inputPath: z.string().min(1),
 });
 export type SourceRestoreJobPayload = z.infer<

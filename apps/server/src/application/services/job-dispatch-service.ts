@@ -73,70 +73,9 @@ export async function processJob(job: Job) {
 		await processSourceExportJob(job);
 	} else if (job.type === "source_restore") {
 		return processSourceRestoreJob(job);
-	} else if (job.type === "sync_lancedb" || job.type === "sync_lancedb_full") {
-		if (!mediaSourceId) {
-			throw new Error(`Job ${job.id} missing mediaSourceId`);
-		}
-		const { BackupService } = await import(
-			"~/application/services/backup-service"
-		);
-		await BackupService.syncSourceLanceDBCache(mediaSourceId);
-	} else if (job.type === "sync_lancedb_delta") {
-		if (!mediaSourceId) {
-			throw new Error(`Job ${job.id} missing mediaSourceId`);
-		}
-		const { BackupService } = await import(
-			"~/application/services/backup-service"
-		);
-		const batchSize = getDeltaBatchSize(job.payload);
-		const payloadDirty = getDeltaDirtyPayload(job.payload);
-		if (payloadDirty.mediaIds.length > 0) {
-			await BackupService.queueSourceLanceDBDelta(
-				mediaSourceId,
-				payloadDirty.mediaIds,
-				payloadDirty.operation,
-				{ enqueueJob: false },
-			);
-		}
-		await BackupService.syncSourceLanceDBDeltaCache(mediaSourceId, batchSize);
 	} else {
 		logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
 	}
-}
-
-function getDeltaBatchSize(payload: unknown): number {
-	if (
-		payload &&
-		typeof payload === "object" &&
-		"batchSize" in payload &&
-		typeof (payload as { batchSize: unknown }).batchSize === "number"
-	) {
-		return (payload as { batchSize: number }).batchSize;
-	}
-	return 500;
-}
-
-function getDeltaDirtyPayload(payload: unknown): {
-	mediaIds: string[];
-	operation: "upsert" | "delete";
-} {
-	if (!payload || typeof payload !== "object") {
-		return { mediaIds: [], operation: "upsert" };
-	}
-	const data = payload as {
-		mediaIds?: unknown;
-		mediaId?: unknown;
-		operation?: unknown;
-	};
-	const mediaIds = Array.isArray(data.mediaIds)
-		? data.mediaIds.filter(
-				(value): value is string => typeof value === "string",
-			)
-		: typeof data.mediaId === "string"
-			? [data.mediaId]
-			: [];
-	const operation = data.operation === "delete" ? "delete" : "upsert";
-	return { mediaIds, operation };
 }
 
 export async function executeDeferredActions(actions: DeferredActions) {
@@ -151,14 +90,6 @@ export async function executeDeferredActions(actions: DeferredActions) {
 					mediaId: job.mediaId,
 					sourcePath: job.sourcePath,
 				};
-				if (job.type === "sync_lancedb" || job.type === "sync_lancedb_delta") {
-					await repo.createIfUnique({
-						type: job.type,
-						mediaSourceId: item.mediaSourceId,
-						payload: jobPayload,
-					});
-					continue;
-				}
 				await repo.create({
 					type: job.type,
 					mediaSourceId: item.mediaSourceId,

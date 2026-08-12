@@ -62,14 +62,6 @@ export async function processSourceRestoreJob(job: Job): Promise<unknown> {
 			completed = true;
 			return result;
 		}
-		if (payload.mode === "lancedb") {
-			const result = await BackupService.importLanceDB(
-				job.mediaSourceId,
-				payload.inputPath,
-			);
-			completed = true;
-			return result;
-		}
 		const result = await BackupService.importSourceTar(
 			job.mediaSourceId,
 			payload.inputPath,

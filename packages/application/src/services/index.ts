@@ -9,7 +9,6 @@ export {
 export { CharacterServiceImpl } from "./character-service";
 export { createCollectionService } from "./collection-service";
 export { createIpService } from "./ip-service";
-export { createLanceDbDumpService } from "./lancedb-dump-service";
 export { MediaProcessingServiceImpl } from "./media-processing-service";
 export { MediaQueryService } from "./media-query-service";
 export { MediaServiceImpl, validateFileSignature } from "./media-service";

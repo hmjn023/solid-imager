@@ -62,7 +62,7 @@ describe("PostgresCcipVectorStore", () => {
 		client = undefined;
 	});
 
-	it("persists and searches CCIP vectors with pgvector without LanceDB", async () => {
+	it("persists and searches CCIP vectors with pgvector", async () => {
 		client = createPglite();
 		const database = drizzle(client, { schema });
 		const migrationsFolder = process.cwd().endsWith("apps/server")

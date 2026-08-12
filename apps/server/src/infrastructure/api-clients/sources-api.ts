@@ -71,7 +71,7 @@ export function syncMediaSources(ids: string[]) {
 
 export function enqueueSourceExport(
 	id: string,
-	mode: "json" | "zip" | "lancedb",
+	mode: "json" | "zip",
 	includeImages: boolean,
 ) {
 	return orpc.sources.enqueueExport({ id, mode, includeImages });
@@ -79,7 +79,7 @@ export function enqueueSourceExport(
 
 export function enqueueSourceImport(
 	id: string,
-	mode: "json" | "zip" | "lancedb",
+	mode: "json" | "zip",
 	file: File,
 ) {
 	return orpc.sources.enqueueImport({ id, mode, file });
@@ -88,12 +88,12 @@ export function enqueueSourceImport(
 /**
  * Fetches a dump of the media source
  * @param id - Media source ID
- * @param mode - The dump mode (ndjson, tar, or lancedb tar)
+ * @param mode - The dump mode (ndjson or tar)
  * @returns Blob containing the dump
  */
 export async function fetchSourceDump(
 	id: string,
-	mode: "json" | "zip" | "lancedb" = "json",
+	mode: "json" | "zip" = "json",
 	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
 	const includeImages = opts?.includeImages ?? false;
@@ -127,8 +127,4 @@ export async function importSourceNdjson(id: string, file: File) {
 		id,
 		file,
 	});
-}
-
-export async function importSourceLanceDB(id: string, file: File) {
-	return orpc.sources.importLanceDB({ id, file });
 }

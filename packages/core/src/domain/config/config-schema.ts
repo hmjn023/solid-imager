@@ -151,18 +151,6 @@ const DEFAULT_LOGGING_CONFIG = {
 	level: "info",
 } as const;
 
-export const LanceDbConfigSchema = z.object({
-	autoFullSync: z.boolean().default(true),
-	cacheDir: z.string().default(".cache/lancedb-cache"),
-	ccipVectorDir: z.string().default(".cache/lancedb-ccip"),
-});
-
-const DEFAULT_LANCEDB_CONFIG = {
-	autoFullSync: true,
-	cacheDir: ".cache/lancedb-cache",
-	ccipVectorDir: ".cache/lancedb-ccip",
-} as const;
-
 export const AppConfigSchema = z.object({
 	version: z.string().default("1.0.0"),
 	jobs: JobsConfigSchema.default(DEFAULT_JOBS_CONFIG),
@@ -171,7 +159,6 @@ export const AppConfigSchema = z.object({
 	storage: StorageConfigSchema.default(DEFAULT_STORAGE_CONFIG),
 	media: MediaConfigSchema.default(DEFAULT_MEDIA_CONFIG),
 	logging: LoggingConfigSchema.default(DEFAULT_LOGGING_CONFIG),
-	lancedb: LanceDbConfigSchema.default(DEFAULT_LANCEDB_CONFIG),
 });
 
 export type AppConfig = z.infer<typeof AppConfigSchema>;

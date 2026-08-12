@@ -1,11 +1,11 @@
 ---
 name: e2e-testing
-description: Isolated Solid Imager web E2E testing with Playwright, including dev and fresh-production servers, direct URL/F5 SSR checks, loading/error/offline recovery, CCIP/LanceDB jobs, SSE reconnects, browser health assertions, and responsive viewports. Use when adding, debugging, or validating web E2E coverage.
+description: Isolated Solid Imager web E2E testing with Playwright, including dev and fresh-production servers, direct URL/F5 SSR checks, loading/error/offline recovery, CCIP jobs, SSE reconnects, browser health assertions, and responsive viewports. Use when adding, debugging, or validating web E2E coverage.
 ---
 
 # Solid Imager E2E Testing
 
-Use the isolated harness for all browser regression work. It creates a temporary PGlite database, media directory, thumbnails, LanceDB directories, route-tree placeholder, dynamic HTTP/HMR ports, and (for production) a temporary Nitro output. Never point E2E at the user's configured database or media directory.
+Use the isolated harness for all browser regression work. It creates a temporary PGlite database, media directory, thumbnails, route-tree placeholder, dynamic HTTP/HMR ports, and (for production) a temporary Nitro output. Never point E2E at the user's configured database or media directory.
 
 ## Commands
 
@@ -48,14 +48,12 @@ For CCIP changes, `ccip-flow.spec.ts` must exercise real extraction, completion 
 - Keep job event handling through `useBatchJobEvents` and `subscribeToEventStream`; do not add direct `EventSource` or custom polling streams.
 - Source events are not replayed. In reconnect tests, wait for the second SSE connection before triggering the source sync.
 - Playwright `page.route()` can alter browser networking behavior (including cache), so use it only for deliberate delay/failure injection. Back the bug with a server/integration test when the failure involves persistence or multiple server module generations.
-- Dev HMR can leave worker and API code holding separate LanceDB Table handles. `LanceDbCcipVectorStore` must use strong read consistency (`readConsistencyInterval: 0`) when a completed write must be immediately visible to another reader.
-- Add a real LanceDB integration test with two open store instances: open the reader, write through the writer, then assert the reader sees the new vector.
 
 ## Debugging workflow
 
 1. Reproduce in dev and production separately; then distinguish SPA navigation, direct URL, and F5.
 2. Inspect browser console, page errors, network method/status/body, and the post-hydration accessibility tree. With `agent-browser`, use `open`, `snapshot -i`, `network requests`, and `screenshot`; close the session afterward.
-3. Check whether the failure is client state, SSE delivery, job completion, or persistence visibility. Do not classify a stale-vector error as an SSR issue without checking the LanceDB reader snapshot.
+3. Check whether the failure is client state, SSE delivery, job completion, or persistence visibility. Do not classify a stale-vector error as an SSR issue without checking the pgvector query and transaction state.
 4. Add a deterministic regression test before changing timing thresholds. Prefer a real isolated fixture over sleeps.
 5. Run the focused E2E, relevant unit/integration tests, typecheck, Biome, and production E2E before the full local gate.
 

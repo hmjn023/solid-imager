@@ -210,12 +210,6 @@ export async function prepareIsolatedRuntime(runtimeDir: string): Promise<Isolat
       ...defaultAppConfig.storage,
       thumbnailDir: path.join(runtimeDir, "thumbnails"),
     },
-    lancedb: {
-      ...defaultAppConfig.lancedb,
-      autoFullSync: false,
-      cacheDir: path.join(runtimeDir, "lancedb-cache"),
-      ccipVectorDir: path.join(runtimeDir, "lancedb-ccip"),
-    },
   };
   await writeFile(path.join(runtimeDir, "config.json"), JSON.stringify(config, null, 2));
   await seedMediaFixtures(runtimeDir);

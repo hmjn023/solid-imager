@@ -12,7 +12,7 @@ import { client } from "~/orpc-client";
 
 export async function fetchSourceDump(
 	id: string,
-	mode: "json" | "zip" | "lancedb" = "json",
+	mode: "json" | "zip" = "json",
 	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
 	const includeImages = opts?.includeImages ?? false;
@@ -44,11 +44,6 @@ export async function importSourceNdjson(id: string, file: File) {
 		file,
 	});
 }
-
-export async function importSourceLanceDB(id: string, file: File) {
-	return client.sources.importLanceDB({ id, file });
-}
-
 export function parseRestoreFile(file: File): Promise<unknown[]> {
 	return file.text().then((text) => JSON.parse(text));
 }

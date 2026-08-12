@@ -12,7 +12,7 @@ const JobTransferDirectory = path.resolve(
 );
 const JobArtifactTtlMs = 24 * 60 * 60 * 1000;
 
-export type JobTransferMode = "json" | "zip" | "lancedb";
+export type JobTransferMode = "json" | "zip";
 
 export type JobArtifact = {
 	path: string;
@@ -71,10 +71,7 @@ export function getArtifactMetadata(
 
 	return {
 		path: getArtifactPath(jobId, mode),
-		fileName:
-			mode === "lancedb"
-				? `source-${mediaSourceId}-dump-lancedb.tar`
-				: `source-${mediaSourceId}-dump.tar`,
+		fileName: `source-${mediaSourceId}-dump.tar`,
 		contentType: "application/x-tar",
 		expiresAt: new Date(Date.now() + JobArtifactTtlMs),
 	};

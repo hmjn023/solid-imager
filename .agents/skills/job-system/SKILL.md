@@ -18,7 +18,7 @@ description: solid-imagerのbackground job、JobWorker、job dispatch、AI concu
 - dispatchへ明示的な分岐を追加する。未知jobは警告後に完了扱いになるため、登録漏れを残さない。
 - AI推論を行うjobは`JobWorker.aiJobTypes`へ追加し、`jobs.aiConcurrency`の対象にする。
 - payload schema、成功・失敗、claim pool、stale recoveryのunit testを追加する。
-- source単位で直列化が必要なjobはLanceDB syncと同様にclaim条件とactive keyを実装する。
+- source単位で直列化が必要なjobはclaim条件とactive keyを実装する。
 - media lifecycleから投入する場合はupload、watcher、copy/move、delete、bulk操作を監査する。
 
 ## Batch Job

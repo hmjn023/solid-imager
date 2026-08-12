@@ -6,7 +6,6 @@ import {
 	Dialog,
 	DialogContent,
 	DialogDescription,
-	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 	DialogTrigger,
@@ -15,24 +14,17 @@ import {
 export type MediaListActionsProps = {
 	onDumpDownload: (mode: "json" | "zip") => void;
 	onOpenMobileFilters: () => void;
-	onLanceDBDump?: (includeMedia: boolean) => void;
 };
 
 const navButtonClass = "border-white text-white hover:bg-sky-700";
 
 export function MediaListActions(props: MediaListActionsProps) {
-	const [isLanceDBDialogOpen, setIsLanceDBDialogOpen] = createSignal(false);
 	const [isMobileActionsOpen, setIsMobileActionsOpen] = createSignal(false);
 	const [navActions, setNavActions] = createSignal<HTMLElement | null>(null);
 
 	const handleRestore = () => {
 		document.getElementById("restore-input")?.click();
 	};
-	const openLanceDBDialog = () => {
-		setIsMobileActionsOpen(false);
-		setIsLanceDBDialogOpen(true);
-	};
-
 	onMount(() => {
 		setNavActions(document.getElementById("nav-actions"));
 	});
@@ -94,32 +86,6 @@ export function MediaListActions(props: MediaListActionsProps) {
 									<rect height="5" rx="1" width="20" x="2" y="3" />
 									<path d="M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8" />
 									<path d="M10 12h4" />
-								</svg>
-							</Button>
-							<Button
-								aria-label="Download LanceDB dump"
-								class={navButtonClass}
-								onClick={() => setIsLanceDBDialogOpen(true)}
-								size="icon"
-								title="Download LanceDB Dump"
-								variant="outline"
-							>
-								<svg
-									aria-hidden="true"
-									class="lucide lucide-database"
-									fill="none"
-									height="20"
-									stroke="currentColor"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-									stroke-width="2"
-									viewBox="0 0 24 24"
-									width="20"
-									xmlns="http://www.w3.org/2000/svg"
-								>
-									<ellipse cx="12" cy="5" rx="9" ry="3" />
-									<path d="M3 5V19A9 3 0 0 0 21 19V5" />
-									<path d="M3 12A9 3 0 0 0 21 12" />
 								</svg>
 							</Button>
 							<Button
@@ -197,13 +163,6 @@ export function MediaListActions(props: MediaListActionsProps) {
 									</Button>
 									<Button
 										class="justify-start"
-										onClick={openLanceDBDialog}
-										variant="outline"
-									>
-										LanceDB を書き出す
-									</Button>
-									<Button
-										class="justify-start"
 										onClick={() => {
 											setIsMobileActionsOpen(false);
 											handleRestore();
@@ -240,41 +199,6 @@ export function MediaListActions(props: MediaListActionsProps) {
 								<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
 							</svg>
 						</Button>
-						<Dialog
-							onOpenChange={setIsLanceDBDialogOpen}
-							open={isLanceDBDialogOpen()}
-						>
-							<DialogContent>
-								<DialogHeader>
-									<DialogTitle>LanceDB Dump</DialogTitle>
-									<DialogDescription>
-										Include media file data in the LanceDB dump? Media files
-										will be stored as binary data within the LanceDB table.
-										Excluding them will produce a smaller dump containing only
-										metadata.
-									</DialogDescription>
-								</DialogHeader>
-								<DialogFooter>
-									<Button
-										onClick={() => {
-											props.onLanceDBDump?.(false);
-											setIsLanceDBDialogOpen(false);
-										}}
-										variant="outline"
-									>
-										Metadata only
-									</Button>
-									<Button
-										onClick={() => {
-											props.onLanceDBDump?.(true);
-											setIsLanceDBDialogOpen(false);
-										}}
-									>
-										Include media files
-									</Button>
-								</DialogFooter>
-							</DialogContent>
-						</Dialog>
 					</Portal>
 				)}
 			</Show>

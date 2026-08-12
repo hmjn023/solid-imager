@@ -133,7 +133,6 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	const renderActions: SourceMediaScreenProps["renderActions"] = (actions) => (
 		<MediaListActions
 			onDumpDownload={page.handleDumpDownload}
-			onLanceDBDump={page.handleLanceDBDump}
 			onOpenMobileFilters={actions.onOpenMobileFilters}
 		/>
 	);

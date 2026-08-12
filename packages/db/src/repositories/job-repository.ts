@@ -17,19 +17,12 @@ import {
 	isNull,
 	lt,
 	ne,
-	not,
 	notInArray,
 	type SQL,
 	sql,
 } from "drizzle-orm";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
-
-const LanceDbJobTypes = [
-	"sync_lancedb",
-	"sync_lancedb_full",
-	"sync_lancedb_delta",
-] as const;
 
 type RawClaimedJob = {
 	id: unknown;
@@ -101,65 +94,6 @@ export function createJobRepository(
 				return created ? mapJob(created) : null;
 			}
 
-			if (job.type === "sync_lancedb_delta" && job.mediaSourceId) {
-				const [pending] = await db()
-					.select()
-					.from(jobs)
-					.where(
-						and(
-							eq(jobs.type, job.type),
-							eq(jobs.mediaSourceId, job.mediaSourceId),
-							eq(jobs.status, "pending"),
-						),
-					)
-					.limit(1);
-
-				if (pending) {
-					await db()
-						.update(jobs)
-						.set({
-							payload: mergeDeltaPayload(pending.payload, job.payload),
-							updatedAt: new Date(),
-						})
-						.where(eq(jobs.id, pending.id));
-					return null;
-				}
-
-				const [created] = await db().insert(jobs).values(job).returning();
-				return mapJob(created);
-			}
-
-			if (
-				["sync_lancedb", "sync_lancedb_full", "sync_lancedb_delta"].includes(
-					job.type,
-				) &&
-				job.mediaSourceId
-			) {
-				const [existing] = await db()
-					.select({ id: jobs.id })
-					.from(jobs)
-					.where(
-						and(
-							inArray(
-								jobs.type,
-								job.type === "sync_lancedb_delta"
-									? ["sync_lancedb_delta"]
-									: ["sync_lancedb", "sync_lancedb_full"],
-							),
-							eq(jobs.mediaSourceId, job.mediaSourceId),
-							inArray(jobs.status, ["pending", "in_progress"]),
-						),
-					)
-					.limit(1);
-
-				if (existing) {
-					return null;
-				}
-
-				const [created] = await db().insert(jobs).values(job).returning();
-				return mapJob(created);
-			}
-
 			const payload = job.payload;
 			let mediaId: string | undefined;
 
@@ -195,7 +129,6 @@ export function createJobRepository(
 			options?: {
 				excludeTypes?: string[];
 				includeTypes?: string[];
-				excludeLanceDbSourceIds?: string[];
 			},
 		): Promise<Job[]> {
 			if (options?.excludeTypes?.length && options?.includeTypes?.length) {
@@ -215,27 +148,6 @@ export function createJobRepository(
 
 			if (options?.includeTypes?.length) {
 				conditions.push(inArray(jobs.type, options.includeTypes));
-			}
-
-			if (
-				options?.excludeLanceDbSourceIds &&
-				options.excludeLanceDbSourceIds.length > 0
-			) {
-				const innerCond = and(
-					inArray(jobs.type, [
-						"sync_lancedb",
-						"sync_lancedb_full",
-						"sync_lancedb_delta",
-					]),
-					isNotNull(jobs.mediaSourceId),
-					inArray(jobs.mediaSourceId, options.excludeLanceDbSourceIds),
-				);
-				if (innerCond) {
-					const excludeCond = not(innerCond);
-					if (excludeCond) {
-						conditions.push(excludeCond);
-					}
-				}
 			}
 
 			const rows = await db()
@@ -470,7 +382,6 @@ export function createJobRepository(
 			options?: {
 				excludeTypes?: string[];
 				includeTypes?: string[];
-				excludeLanceDbSourceIds?: string[];
 			},
 		): Promise<Job[]> {
 			if (limit <= 0) {
@@ -496,21 +407,8 @@ export function createJobRepository(
 				conditions.push(sql`type IN ${sqlTuple(options.includeTypes)}`);
 			}
 
-			if (
-				options?.excludeLanceDbSourceIds &&
-				options.excludeLanceDbSourceIds.length > 0
-			) {
-				conditions.push(
-					sql`NOT (type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta') AND source_id IS NOT NULL AND source_id IN ${sqlTuple(
-						options.excludeLanceDbSourceIds,
-					)})`,
-				);
-			}
-
 			const now = new Date();
-			const query = canIncludeLanceDbJobs(options)
-				? buildSerializedClaimQuery(conditions, limit, now)
-				: buildSimpleClaimQuery(conditions, limit, now);
+			const query = buildSimpleClaimQuery(conditions, limit, now);
 			const result: unknown = await db().execute(query);
 
 			return extractRows(result).map(mapClaimedJob);
@@ -555,25 +453,6 @@ export function createJobRepository(
 	};
 }
 
-function canIncludeLanceDbJobs(options?: {
-	excludeTypes?: string[];
-	includeTypes?: string[];
-}): boolean {
-	if (options?.includeTypes?.length) {
-		return options.includeTypes.some((type) =>
-			LanceDbJobTypes.some((lanceDbType) => lanceDbType === type),
-		);
-	}
-
-	if (options?.excludeTypes?.length) {
-		return LanceDbJobTypes.some(
-			(type) => !options.excludeTypes?.includes(type),
-		);
-	}
-
-	return true;
-}
-
 function buildSimpleClaimQuery(conditions: SQL[], limit: number, now: Date) {
 	return sql`
 		WITH next_jobs AS (
@@ -583,53 +462,6 @@ function buildSimpleClaimQuery(conditions: SQL[], limit: number, now: Date) {
 			ORDER BY created_at ASC, id ASC
 			LIMIT ${limit}
 			FOR UPDATE SKIP LOCKED
-		)
-		${buildClaimUpdate(now)}
-	`;
-}
-
-function buildSerializedClaimQuery(
-	conditions: SQL[],
-	limit: number,
-	now: Date,
-) {
-	return sql`
-		WITH eligible_jobs AS (
-			SELECT id, created_at
-			FROM jobs candidate
-			WHERE ${sql.join(conditions, sql` AND `)}
-				AND (
-					type NOT IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
-					OR source_id IS NULL
-				)
-			UNION ALL
-			(
-				SELECT DISTINCT ON (source_id) id, created_at
-				FROM jobs candidate
-				WHERE ${sql.join(conditions, sql` AND `)}
-					AND type IN ('sync_lancedb', 'sync_lancedb_full', 'sync_lancedb_delta')
-					AND source_id IS NOT NULL
-					AND NOT EXISTS (
-						SELECT 1
-						FROM jobs active
-						WHERE active.status = 'in_progress'
-							AND active.type IN (
-								'sync_lancedb',
-								'sync_lancedb_full',
-								'sync_lancedb_delta'
-							)
-							AND active.source_id = candidate.source_id
-					)
-				ORDER BY source_id, created_at ASC, id ASC
-			)
-		),
-		next_jobs AS (
-			SELECT jobs.id
-			FROM jobs
-			INNER JOIN eligible_jobs ON eligible_jobs.id = jobs.id
-			ORDER BY eligible_jobs.created_at ASC, jobs.id ASC
-			LIMIT ${limit}
-			FOR UPDATE OF jobs SKIP LOCKED
 		)
 		${buildClaimUpdate(now)}
 	`;
@@ -802,41 +634,6 @@ function parseJsonColumn(value: unknown, fieldName: string): unknown {
 	} catch {
 		throw new Error(`Invalid claimed job row: ${fieldName}`);
 	}
-}
-
-function mergeDeltaPayload(
-	existing: unknown,
-	next: unknown,
-): Record<string, unknown> {
-	const existingRecord = isRecord(existing) ? existing : {};
-	const nextRecord = isRecord(next) ? next : {};
-	const mediaIds = [
-		...extractStringArrayOrSingle(existingRecord.mediaId),
-		...extractStringArray(existingRecord.mediaIds),
-		...extractStringArrayOrSingle(nextRecord.mediaId),
-		...extractStringArray(nextRecord.mediaIds),
-	];
-	const merged: Record<string, unknown> = {
-		...existingRecord,
-		...nextRecord,
-		mediaIds: [...new Set(mediaIds)],
-	};
-	delete merged.mediaId;
-	return merged;
-}
-
-function extractStringArray(value: unknown): string[] {
-	return Array.isArray(value)
-		? value.filter((item): item is string => typeof item === "string")
-		: [];
-}
-
-function extractStringArrayOrSingle(value: unknown): string[] {
-	return typeof value === "string" ? [value] : [];
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function normalizedPayloadExpression() {

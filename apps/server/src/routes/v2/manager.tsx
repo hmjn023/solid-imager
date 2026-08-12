@@ -85,16 +85,11 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 			sourceId: string;
 		}) => {
 			try {
-				const mode =
-					input.format === "ndjson"
-						? "json"
-						: input.format === "tar"
-							? "zip"
-							: "lancedb";
+				const mode = input.format === "ndjson" ? "json" : "zip";
 				const job = await enqueueSourceExport(
 					input.sourceId,
 					mode,
-					input.format === "lancedb" && input.includeImages,
+					input.format === "tar" && input.includeImages,
 				);
 				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
 				toast.success(
@@ -111,12 +106,7 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 			sourceId: string;
 		}) => {
 			try {
-				const mode =
-					input.format === "ndjson"
-						? "json"
-						: input.format === "tar"
-							? "zip"
-							: "lancedb";
+				const mode = input.format === "ndjson" ? "json" : "zip";
 				const job = await enqueueSourceImport(input.sourceId, mode, input.file);
 				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
 				toast.success(
