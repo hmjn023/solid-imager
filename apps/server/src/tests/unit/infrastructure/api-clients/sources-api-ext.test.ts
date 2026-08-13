@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	fetchSourceDump,
+	importSourceNdjson,
 	importSourceZip,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
@@ -10,7 +11,7 @@ vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
 	orpc: {
 		sources: {
 			enqueueExport: vi.fn(),
-			importZip: vi.fn(),
+			enqueueImport: vi.fn(),
 			restore: vi.fn(),
 		},
 		jobs: { downloadArtifact: vi.fn(), get: vi.fn() },
@@ -88,18 +89,41 @@ describe("Sources API Client Extensions", () => {
 		expect(await result.text()).toBe("zip content");
 	});
 
-	it("should upload imports through oRPC", async () => {
+	it("should enqueue TAR imports through oRPC", async () => {
 		const id = "test-source-id";
 		const mockFile = new File(["zip content"], "test.zip", {
 			type: "application/zip",
 		});
-		const mockResponse = { importedCount: 1 };
-		((orpc.sources as any).importZip as any).mockResolvedValue(mockResponse);
+		const mockResponse = { id: "restore-job-id" };
+		((orpc.sources as any).enqueueImport as any).mockResolvedValue(
+			mockResponse,
+		);
 
 		const result = await importSourceZip(id, mockFile);
 
-		expect((orpc.sources as any).importZip).toHaveBeenCalledWith({
+		expect((orpc.sources as any).enqueueImport).toHaveBeenCalledWith({
 			id,
+			mode: "zip",
+			file: mockFile,
+		});
+		expect(result).toEqual(mockResponse);
+	});
+
+	it("should enqueue NDJSON imports through oRPC", async () => {
+		const id = "test-source-id";
+		const mockFile = new File(["{}\n"], "test.ndjson", {
+			type: "application/x-ndjson",
+		});
+		const mockResponse = { id: "restore-job-id" };
+		((orpc.sources as any).enqueueImport as any).mockResolvedValue(
+			mockResponse,
+		);
+
+		const result = await importSourceNdjson(id, mockFile);
+
+		expect((orpc.sources as any).enqueueImport).toHaveBeenCalledWith({
+			id,
+			mode: "json",
 			file: mockFile,
 		});
 		expect(result).toEqual(mockResponse);

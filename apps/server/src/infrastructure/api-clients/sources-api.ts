@@ -119,12 +119,9 @@ export function restoreSource(id: string, data: unknown) {
  * @returns Import result
  */
 export async function importSourceZip(id: string, file: File) {
-	return orpc.sources.importZip({ id, file });
+	return orpc.sources.enqueueImport({ id, mode: "zip", file });
 }
 
 export async function importSourceNdjson(id: string, file: File) {
-	return await orpc.sources.importNdjson({
-		id,
-		file,
-	});
+	return orpc.sources.enqueueImport({ id, mode: "json", file });
 }
