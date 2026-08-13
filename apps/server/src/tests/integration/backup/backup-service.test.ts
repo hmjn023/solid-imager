@@ -1,4 +1,5 @@
-import { eq } from "drizzle-orm";
+import fs from "node:fs/promises";
+import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
@@ -8,6 +9,7 @@ import {
 	characterIps,
 	characters,
 	ips,
+	jobs,
 	mediaAuthors,
 	mediaCharacters,
 	mediaIps,
@@ -37,6 +39,7 @@ describe("BackupService Integration", () => {
 
 	beforeEach(async () => {
 		// Clean DB
+		await db.delete(jobs);
 		await db.delete(mediaProjects);
 		await db.delete(mediaCharacters);
 		await db.delete(mediaIps);
@@ -56,6 +59,39 @@ describe("BackupService Integration", () => {
 			type: "local",
 			connectionInfo: { path: "/test" },
 		});
+	});
+
+	it("does not enqueue per-media processing jobs during local restore", async () => {
+		const accessSpy = vi.spyOn(fs, "access").mockResolvedValue(undefined);
+
+		try {
+			const result = await BackupService.restoreSource(testSourceId, [
+				{
+					filePath: "local-restore.png",
+					fileName: "local-restore.png",
+					mediaType: "image",
+					width: 100,
+					height: 100,
+					fileSize: 1024,
+				},
+			]);
+
+			expect(result.processed).toBe(1);
+			expect(accessSpy).toHaveBeenCalledTimes(1);
+		} finally {
+			accessSpy.mockRestore();
+		}
+
+		const processMediaJobs = await db
+			.select({ id: jobs.id })
+			.from(jobs)
+			.where(
+				and(
+					eq(jobs.mediaSourceId, testSourceId),
+					eq(jobs.type, "processMedia"),
+				),
+			);
+		expect(processMediaJobs).toHaveLength(0);
 	});
 
 	afterEach(() => {

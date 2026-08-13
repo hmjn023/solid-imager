@@ -222,9 +222,7 @@ export const BackupService = {
 			const { tagMap, authorMap, projectMap, ipMap, charMap } =
 				await this._restoreMasterData(validItems, c);
 
-			await this._restoreMediaRecords(mediaSourceId, validItems, c);
-
-			mediaPathToId = await this._mapMediaPathsToIds(
+			mediaPathToId = await this._restoreMediaRecords(
 				mediaSourceId,
 				validItems,
 				c,
@@ -244,39 +242,10 @@ export const BackupService = {
 			);
 		});
 
-		// Trigger thumbnail generation (skip metadata extraction to preserve restored data)
-		if (mediaSource.type === "local") {
-			const mediaIds = Array.from(mediaPathToId.values());
-
-			if (mediaIds.length > 0) {
-				try {
-					const { services } = await import("~/application/registry");
-					const jobRepo = services.getJobRepository();
-
-					const connectionInfo = mediaSource.connectionInfo as { path: string };
-					const basePath = connectionInfo.path;
-
-					for (const id of mediaIds) {
-						await jobRepo.create({
-							type: "processMedia",
-							mediaSourceId,
-							payload: {
-								mediaId: id,
-								sourcePath: basePath,
-								type: "processMedia", // optional
-								skipMetadataExtraction: true,
-							},
-						});
-					}
-					// Worker handles it automatically
-				} catch (e) {
-					logger.warn(
-						{ err: e },
-						"Failed to queue thumbnail generation jobs after restore (non-critical)",
-					);
-				}
-			}
-		}
+		// Thumbnail generation is intentionally not part of restore. Restoring a
+		// large dump must not start one processMedia job per item while the import
+		// transaction is still competing for CPU, disk, and the jobs table. Callers
+		// can use the dedicated thumbnail-generation workflow after the import.
 
 		return {
 			processed: validItems.length,
@@ -486,7 +455,7 @@ export const BackupService = {
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
 		_tx?: BackupDbClient,
-	) {
+	): Promise<Map<string, string>> {
 		const d = _tx ?? db;
 		const mediaValues = validItems.map((item) => ({
 			mediaSourceId,
@@ -508,9 +477,10 @@ export const BackupService = {
 		// Batch insert is limited by parameter count, so we might need chunking if validItems is huge
 		// Assuming reasonable size or caller handles chunking. For safety, let's chunk.
 		const ChunkSize = 1000;
+		const mediaPathToId = new Map<string, string>();
 		for (let i = 0; i < mediaValues.length; i += ChunkSize) {
 			const chunk = mediaValues.slice(i, i + ChunkSize);
-			await d
+			const restoredRows = await d
 				.insert(medias)
 				.values(chunk)
 				.onConflictDoUpdate({
@@ -523,47 +493,22 @@ export const BackupService = {
 						height: sql`excluded.height`,
 						fileSize: sql`excluded.file_size`,
 					},
-				});
-		}
-	},
+				})
+				.returning();
 
-	async _mapMediaPathsToIds(
-		mediaSourceId: string,
-		validItems: MediaDumpItem[],
-		_tx?: BackupDbClient,
-	) {
-		const d = _tx ?? db;
-		const ChunkSize = 1_000;
-		const storedMedias: { id: string; filePath: string }[] = [];
-
-		for (let i = 0; i < validItems.length; i += ChunkSize) {
-			const chunk = validItems.slice(i, i + ChunkSize);
-			const filePaths = chunk.flatMap((item) =>
-				item.filePath ? [item.filePath] : [],
-			);
-
-			if (filePaths.length === 0) {
-				continue;
+			for (const row of restoredRows) {
+				mediaPathToId.set(row.filePath, row.id);
 			}
-
-			const chunkResults = await d.query.medias.findMany({
-				where: and(
-					eq(medias.mediaSourceId, mediaSourceId),
-					inArray(medias.filePath, filePaths),
-				),
-				columns: { id: true, filePath: true },
-			});
-			storedMedias.push(...chunkResults);
 		}
 
-		if (validItems.length > 0 && storedMedias.length === 0) {
+		if (validItems.length > 0 && mediaPathToId.size === 0) {
 			logger.warn(
 				{ mediaSourceId, validItemCount: validItems.length },
-				"_mapMediaPathsToIds returned no results — relations will be skipped",
+				"_restoreMediaRecords returned no rows — relations will be skipped",
 			);
 		}
 
-		return new Map(storedMedias.map((m) => [m.filePath, m.id]));
+		return mediaPathToId;
 	},
 
 	async _restoreRelations(
