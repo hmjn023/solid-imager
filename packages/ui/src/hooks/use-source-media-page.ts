@@ -1,5 +1,6 @@
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import type {
 	Author,
 	DownloadItem,
@@ -122,24 +123,8 @@ export type SourceMediaPageActions = {
 		errors: string[];
 		cancelled?: boolean;
 	}>;
-	importSourceZip: (
-		sourceId: string,
-		file: File,
-	) => Promise<{
-		success: boolean;
-		importedCount: number;
-		skippedCount: number;
-		errors: string[];
-		message: string;
-	}>;
-	importSourceNdjson?: (
-		sourceId: string,
-		file: File,
-	) => Promise<{
-		importedCount: number;
-		skippedCount: number;
-		errors: string[];
-	}>;
+	importSourceZip: (sourceId: string, file: File) => Promise<JobDto>;
+	importSourceNdjson?: (sourceId: string, file: File) => Promise<JobDto>;
 	parseRestoreFile?: (file: File) => Promise<unknown>;
 };
 
@@ -642,28 +627,26 @@ export function useSourceMediaPage(
 			});
 
 			if (strategies.includes("tar")) {
-				toast.loading("Importing TAR dump...", { id: "restore-toast" });
-				const result = await actions.importSourceZip(sourceId, file);
+				toast.loading("Queueing TAR restore...", { id: "restore-toast" });
+				const job = await actions.importSourceZip(sourceId, file);
 				toast.success(
-					`Import complete: ${result.importedCount} items imported.`,
+					`TAR restore queued (${job.id.slice(0, 8)}). Track it in Jobs.`,
 					{
 						id: "restore-toast",
 					},
 				);
-				refreshMediaQuery();
 				return;
 			}
 
 			if (strategies[0] === "ndjson" && actions.importSourceNdjson) {
-				toast.loading("Importing NDJSON dump...", { id: "restore-toast" });
-				const result = await actions.importSourceNdjson(sourceId, file);
+				toast.loading("Queueing NDJSON restore...", { id: "restore-toast" });
+				const job = await actions.importSourceNdjson(sourceId, file);
 				toast.success(
-					`Import complete: ${result.importedCount} items imported.`,
+					`NDJSON restore queued (${job.id.slice(0, 8)}). Track it in Jobs.`,
 					{
 						id: "restore-toast",
 					},
 				);
-				refreshMediaQuery();
 				return;
 			}
 

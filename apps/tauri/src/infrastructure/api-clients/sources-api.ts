@@ -35,14 +35,11 @@ export async function restoreSource(
 }
 
 export async function importSourceZip(id: string, file: File) {
-	return client.sources.importZip({ id, file });
+	return client.sources.enqueueImport({ id, mode: "zip", file });
 }
 
 export async function importSourceNdjson(id: string, file: File) {
-	return client.sources.importNdjson({
-		id,
-		file,
-	});
+	return client.sources.enqueueImport({ id, mode: "json", file });
 }
 export function parseRestoreFile(file: File): Promise<unknown[]> {
 	return file.text().then((text) => JSON.parse(text));
