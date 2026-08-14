@@ -22,8 +22,9 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 ## 主要ドキュメント
 
 - **開発ルール:** `AGENTS.md`
-- **API設計:** `docs/design/api-design.md`
-- **Tauri SPA 設計:** `docs/design/tauri-spa-architecture.md`
+- **API仕様:** `apps/server/public/openapi.json`、Swagger UIのソースは `apps/server/public/api-docs.html`
+- **Tauri SPA:** `apps/tauri/src/`、Rust側は `apps/tauri/src-tauri/`
+- **V2移行状況:** `REPORT.md`
 - **DBスキーマ:** `packages/db/src/schema.ts` (`apps/server/src/infrastructure/db/schema.ts` は再 export)
 - **OpenAPI出力:** `apps/server/public/openapi.json`
 
@@ -51,8 +52,7 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
      ```
    - PGlite:
      ```bash
-     # apps/server/.env で DB_HOST=pglite を設定
-     bun --filter @solid-imager/server run db:migrate:pglite
+     DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
      ```
 
 ## Working Rules

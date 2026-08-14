@@ -13,10 +13,10 @@ PRレビューコメントの取得・返信・解決のワークフロー。
 
 ```bash
 # 現在のPRのコメント取得
-bash .opencode/skills/pr-review/scripts/pr-comments.sh
+bash .agents/skills/pr-review/scripts/pr-comments.sh
 
 # PR番号を指定
-bash .opencode/skills/pr-review/scripts/pr-comments.sh 425
+bash .agents/skills/pr-review/scripts/pr-comments.sh 425
 ```
 
 出力例:
@@ -79,7 +79,7 @@ mutation {
 
 ```bash
 # node_id を指定して解決
-bash .opencode/skills/pr-review/scripts/resolve-comment.sh <NODE_ID>
+bash .agents/skills/pr-review/scripts/resolve-comment.sh <NODE_ID>
 
 # pr-comments.sh の出力から node_id をコピーして使用
 ```
