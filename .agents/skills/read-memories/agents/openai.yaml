@@ -1,0 +1,4 @@
+interface:
+  display_name: "Read Memories"
+  short_description: "過去セッションの決定事項・未解決作業を検索する手順"
+  default_prompt: "Use $read-memories when prior project decisions or unfinished work may be relevant."

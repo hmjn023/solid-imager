@@ -1,0 +1,4 @@
+interface:
+  display_name: "Package Management"
+  short_description: "Bun workspace依存関係の追加・更新・削除"
+  default_prompt: "Use $package-management when adding, updating, or removing workspace dependencies."

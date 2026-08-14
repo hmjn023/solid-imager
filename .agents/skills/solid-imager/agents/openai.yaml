@@ -1,0 +1,4 @@
+interface:
+  display_name: "Solid Imager"
+  short_description: "モノレポ構成・Clean Architecture・共通設計規約"
+  default_prompt: "Use $solid-imager for repository architecture, package boundaries, and shared conventions."

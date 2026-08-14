@@ -71,6 +71,10 @@
 | `realtime-events`    | 型付きリアルタイムイベント、oRPC Event Iterator、pub/sub、再接続                   | SSE・イベント配信・購読・イベントschema変更時           |
 | `job-system`         | background job、worker、dispatch、AI concurrency、batch親子進捗                    | job type追加・非同期処理・batch操作変更時               |
 | `media-search`       | 検索schema、shared store、session persistence、preset、類似検索                    | 検索条件・mode・検索画面変更時                          |
+| `e2e-testing`        | 隔離された Playwright による dev/production E2E と SSR・非同期フロー検証          | Web E2E の追加・修正・検証時                            |
+| `run-scripts`        | サーバー等の管理スクリプト実行と Bun/TypeScript のパス解決                       | スクリプト追加・実行時                                  |
+| `pr-review`          | GitHub PR レビューコメントの取得・返信・解決                                   | PRレビュー対応時                                        |
+| `read-memories`      | 過去セッションログからプロジェクトの決定事項・未解決事項を検索                   | 過去の作業内容を確認する必要がある時                     |
 
 ## Web toolchain
 

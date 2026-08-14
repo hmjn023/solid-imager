@@ -1,0 +1,4 @@
+interface:
+  display_name: "oRPC API"
+  short_description: "contract・router・schemaのAPI開発"
+  default_prompt: "Use $orpc-api when changing oRPC contracts, routers, schemas, or clients."

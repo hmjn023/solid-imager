@@ -1,0 +1,4 @@
+interface:
+  display_name: "Run Scripts"
+  short_description: "Bun/TypeScript管理スクリプトの実行・パス解決"
+  default_prompt: "Use $run-scripts when adding or running repository utility scripts."

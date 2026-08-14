@@ -1,0 +1,4 @@
+interface:
+  display_name: "API Documentation"
+  short_description: "OpenAPI仕様とSwagger UIをAPI contractと同期"
+  default_prompt: "Use $api-docs to keep OpenAPI artifacts aligned with API contracts and routers."

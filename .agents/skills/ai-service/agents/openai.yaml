@@ -1,0 +1,4 @@
+interface:
+  display_name: "AI Service"
+  short_description: "AIタグ付け・CCIP・Rust AIサービス連携の実装"
+  default_prompt: "Use $ai-service when changing AI tagging, CCIP, or Rust AI service integration."
