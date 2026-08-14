@@ -175,9 +175,15 @@ type JobTransferCleanupResult = {
 
 const TransferFileNamePattern =
 	/^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.(?:ndjson|tar)$/i;
+const TarStagingDirectoryNamePattern =
+	/^([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})-export-/i;
 
 function readTransferJobId(fileName: string): string | null {
 	return TransferFileNamePattern.exec(fileName)?.[1] ?? null;
+}
+
+function readTarStagingJobId(directoryName: string): string | null {
+	return TarStagingDirectoryNamePattern.exec(directoryName)?.[1] ?? null;
 }
 
 function readRestoreInputPath(payload: unknown): string | null {
@@ -242,6 +248,7 @@ async function latestModificationTime(targetPath: string): Promise<number> {
 
 async function cleanupOrphanedTarStaging(
 	expirationTime: number,
+	findJob: JobLookup,
 ): Promise<JobTransferCleanupResult> {
 	const stagingDirectory = path.join(JobTransferDirectory, "..", "tar-staging");
 	let entries: Dirent[];
@@ -261,6 +268,13 @@ async function cleanupOrphanedTarStaging(
 			continue;
 		}
 		const targetPath = path.join(stagingDirectory, entry.name);
+		const jobId = readTarStagingJobId(entry.name);
+		if (jobId) {
+			const job = await findJob(jobId);
+			if (job?.status === "pending" || job?.status === "in_progress") {
+				continue;
+			}
+		}
 		if ((await latestModificationTime(targetPath)) > expirationTime) {
 			continue;
 		}
@@ -334,7 +348,10 @@ export async function cleanupOrphanedJobTransferFiles(
 		}
 	}
 
-	const stagingCleanup = await cleanupOrphanedTarStaging(expirationTime);
+	const stagingCleanup = await cleanupOrphanedTarStaging(
+		expirationTime,
+		findJob,
+	);
 	return {
 		removedFiles: removedFiles + stagingCleanup.removedFiles,
 		removedBytes: removedBytes + stagingCleanup.removedBytes,

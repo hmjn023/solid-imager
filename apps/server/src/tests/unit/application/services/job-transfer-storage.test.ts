@@ -38,6 +38,12 @@ async function writeOldFile(targetPath: string): Promise<void> {
 	await fs.utimes(targetPath, oldTime, oldTime);
 }
 
+async function writeOldDirectory(targetPath: string): Promise<void> {
+	await writeOldFile(path.join(targetPath, "dump.ndjson"));
+	const oldTime = (Date.now() - 2 * 60 * 60 * 1000) / 1000;
+	await fs.utimes(targetPath, oldTime, oldTime);
+}
+
 describe("job transfer storage cleanup", () => {
 	beforeEach(async () => {
 		runtimeDirectory = await fs.mkdtemp(
@@ -112,5 +118,25 @@ describe("job transfer storage cleanup", () => {
 		expect(result.removedFiles).toBe(1);
 		expect(findJob).not.toHaveBeenCalled();
 		expect(await fs.stat(targetPath).catch(() => null)).toBeNull();
+	});
+
+	it("keeps staging for an active export job", async () => {
+		const jobId = randomUUID();
+		const stagingDirectory = path.join(
+			storage.getJobTransferRoot(),
+			"..",
+			"tar-staging",
+			`${jobId}-export-stale`,
+		);
+		await writeOldDirectory(stagingDirectory);
+
+		const result = await storage.cleanupOrphanedJobTransferFiles(async (id) =>
+			id === jobId ? createJob({ id, status: "in_progress" }) : null,
+		);
+
+		expect(result.removedFiles).toBe(0);
+		expect(
+			(await fs.stat(path.join(stagingDirectory, "dump.ndjson"))).isFile(),
+		).toBe(true);
 	});
 });

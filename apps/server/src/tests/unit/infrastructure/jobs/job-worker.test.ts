@@ -4,6 +4,13 @@ import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 
+const { mockCleanupExpired, mockCleanupOrphaned } = vi.hoisted(() => ({
+	mockCleanupExpired: vi.fn().mockResolvedValue(undefined),
+	mockCleanupOrphaned: vi
+		.fn()
+		.mockResolvedValue({ removedFiles: 0, removedBytes: 0 }),
+}));
+
 // Mock logger to avoid noise
 vi.mock("~/infrastructure/logger", () => ({
 	logger: {
@@ -18,10 +25,8 @@ vi.mock("~/infrastructure/logger", () => ({
 }));
 
 vi.mock("~/application/services/job-transfer-storage", () => ({
-	cleanupExpiredJobTransferFiles: vi.fn().mockResolvedValue(undefined),
-	cleanupOrphanedJobTransferFiles: vi
-		.fn()
-		.mockResolvedValue({ removedFiles: 0, removedBytes: 0 }),
+	cleanupExpiredJobTransferFiles: mockCleanupExpired,
+	cleanupOrphanedJobTransferFiles: mockCleanupOrphaned,
 	removeJobTransferFile: vi.fn(),
 }));
 
@@ -35,6 +40,10 @@ describe("JobWorker", () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
+		mockCleanupExpired.mockReset().mockResolvedValue(undefined);
+		mockCleanupOrphaned
+			.mockReset()
+			.mockResolvedValue({ removedFiles: 0, removedBytes: 0 });
 
 		// Mock Repository
 		jobRepo = {
@@ -346,5 +355,15 @@ describe("JobWorker", () => {
 
 		resolveExport();
 		await vi.runOnlyPendingTimersAsync();
+	});
+
+	it("still expires transfer files when orphan cleanup fails", async () => {
+		mockCleanupOrphaned.mockRejectedValueOnce(new Error("cleanup failed"));
+
+		await (
+			worker as unknown as { recoverStaleJobs: () => Promise<void> }
+		).recoverStaleJobs();
+
+		expect(mockCleanupExpired).toHaveBeenCalledTimes(1);
 	});
 });

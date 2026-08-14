@@ -28,6 +28,7 @@ export async function processSourceExportJob(job: Job): Promise<void> {
 	const payload = sourceExportJobPayloadSchema.parse(job.payload);
 	const dump = await BackupService.createDump(job.mediaSourceId, payload.mode, {
 		includeImages: payload.includeImages,
+		jobId: job.id,
 	});
 	const artifact = getArtifactMetadata(job.id, job.mediaSourceId, payload.mode);
 	const partialPath = getArtifactPartialPath(job.id, payload.mode);

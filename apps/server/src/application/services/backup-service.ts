@@ -245,15 +245,28 @@ async function writeNdjsonDump(
 	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
 ): Promise<void> {
 	const output = createWriteStream(outputPath);
+	let streamError: Error | undefined;
+	const onOutputError = (error: Error) => {
+		streamError ??= error;
+	};
+	output.on("error", onOutputError);
 	try {
 		for await (const item of iterateMediaDumpItems(mediaSourceId, transform)) {
+			if (streamError) {
+				throw streamError;
+			}
 			await writeWithBackpressure(output, `${JSON.stringify(item)}\n`);
+		}
+		if (streamError) {
+			throw streamError;
 		}
 		output.end();
 		await finished(output);
 	} catch (error) {
 		output.destroy();
 		throw error;
+	} finally {
+		output.removeListener("error", onOutputError);
 	}
 }
 
@@ -279,11 +292,17 @@ async function* iterateNdjsonDumpItems(
 	}
 }
 
+function normalizeArchiveEntryName(name: string): string {
+	return name.replaceAll("\\", "/").replace(/\/+/g, "/");
+}
+
 function appendTarEntry(
 	archive: TarArchive,
 	source: import("node:stream").Readable,
 	data: TarEntryData,
 ): Promise<void> {
+	const normalizedName = normalizeArchiveEntryName(data.name);
+	const normalizedData = { ...data, name: normalizedName };
 	return new Promise((resolve, reject) => {
 		const cleanup = () => {
 			archive.removeListener("entry", onEntry);
@@ -291,7 +310,7 @@ function appendTarEntry(
 			source.removeListener("error", onSourceError);
 		};
 		const onEntry = (entry: TarEntryData) => {
-			if (entry.name !== data.name) {
+			if (entry.name !== normalizedName) {
 				return;
 			}
 			cleanup();
@@ -310,7 +329,7 @@ function appendTarEntry(
 		archive.once("error", onArchiveError);
 		source.once("error", onSourceError);
 		try {
-			archive.append(source, data);
+			archive.append(source, normalizedData);
 		} catch (error) {
 			onArchiveError(error instanceof Error ? error : new Error(String(error)));
 		}
@@ -1079,7 +1098,7 @@ export const BackupService = {
 	async createDump(
 		mediaSourceId: string,
 		mode: "json" | "zip" | "ndjson" | "tar" = "ndjson",
-		options?: { includeImages: boolean },
+		options?: { includeImages: boolean; jobId?: string },
 	) {
 		// 1. Fetch Media Source Info (needed for Driver)
 		const mediaSource = await db.query.mediaSources.findFirst({
@@ -1139,8 +1158,11 @@ export const BackupService = {
 				let stagingDirectory: string | undefined;
 				try {
 					await fs.mkdir(TarStagingDirectory, { recursive: true });
+					const stagingPrefix = options?.jobId
+						? `${options.jobId}-export-`
+						: "export-";
 					stagingDirectory = await fs.mkdtemp(
-						path.join(TarStagingDirectory, "export-"),
+						path.join(TarStagingDirectory, stagingPrefix),
 					);
 					const ndjsonPath = path.join(stagingDirectory, "dump.ndjson");
 					await writeNdjsonDump(

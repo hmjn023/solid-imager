@@ -371,16 +371,23 @@ export class JobWorker {
 			if (count > 0) {
 				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
 			}
-			const orphaned = await cleanupOrphanedJobTransferFiles(
-				this.jobRepo.findById.bind(this.jobRepo),
-			);
-			if (orphaned.removedFiles > 0) {
-				logger.info(
-					{
-						removedFiles: orphaned.removedFiles,
-						removedBytes: orphaned.removedBytes,
-					},
-					"Removed orphaned job transfer files",
+			try {
+				const orphaned = await cleanupOrphanedJobTransferFiles(
+					this.jobRepo.findById.bind(this.jobRepo),
+				);
+				if (orphaned.removedFiles > 0) {
+					logger.info(
+						{
+							removedFiles: orphaned.removedFiles,
+							removedBytes: orphaned.removedBytes,
+						},
+						"Removed orphaned job transfer files",
+					);
+				}
+			} catch (error) {
+				logger.error(
+					{ err: error },
+					"Failed to clean up orphaned transfer files",
 				);
 			}
 			await cleanupExpiredJobTransferFiles();
