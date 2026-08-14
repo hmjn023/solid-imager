@@ -407,12 +407,14 @@ test("SPA intent prefetch and cache revisit do not duplicate route queries", asy
 		sourcesCheckpoint,
 	);
 	expect(sourcesNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
+	// Re-subscribing to an idle source-event transport may refresh the source
+	// snapshot once so changes during the idle window are not missed.
 	expect(
 		browserHealth.apiRequestCountPathSince(
 			sourcesCheckpoint,
 			"/api/rpc/sources/list",
 		),
-	).toBe(0);
+	).toBeLessThanOrEqual(1);
 	await expectRouteHealthy(page);
 
 	const sourceMediaCheckpoint = browserHealth.requestCheckpoint();

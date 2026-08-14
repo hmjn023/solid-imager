@@ -45,7 +45,12 @@ function SourcesRouteContent() {
 	const loaderData = Route.useLoaderData();
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
 	const sourceData = () => mediaSources.data ?? loaderData().mediaSources;
-	const sourceEventsTransport = createServerTransport(() => "*");
+	const mediaSourcesQueryKey = mediaSourcesQueryOptions().queryKey;
+	const sourceEventsTransport = createServerTransport(() => "*", {
+		onResumeFromIdle: () => {
+			void queryClient.refetchQueries({ queryKey: mediaSourcesQueryKey });
+		},
+	});
 
 	const page = useSourcesPage({
 		actions: {
@@ -57,7 +62,7 @@ function SourcesRouteContent() {
 			syncMediaSources,
 		},
 		queryClient,
-		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
+		invalidateQueryKey: mediaSourcesQueryKey,
 		registerEvents: (handler: RawEventHandler) =>
 			sourceEventsTransport.listen(handler),
 		getSourceIds: () =>

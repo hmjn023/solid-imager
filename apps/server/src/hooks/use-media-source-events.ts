@@ -33,6 +33,10 @@ type SharedSourceTransport = {
 	idleSince: number | null;
 };
 
+type ServerTransportOptions = {
+	onResumeFromIdle?: () => void;
+};
+
 // Keep recently unused streams alive briefly so route transitions can reuse
 // them instead of opening another long-lived browser connection.
 const SOURCE_TRANSPORT_IDLE_TIMEOUT_MS = 30_000;
@@ -74,6 +78,7 @@ function evictOldestIdleSourceTransport(): void {
 
 export function createServerTransport(
 	mediaSourceId: Accessor<string | undefined>,
+	options: ServerTransportOptions = {},
 ): MediaSourceEventTransport {
 	const location = useLocation();
 	const isActiveRoute = () => {
@@ -148,12 +153,16 @@ export function createServerTransport(
 				sharedSourceTransports.set(id, shared);
 			}
 
+			const isResumingFromIdle = shared.idleSince !== null;
 			if (shared.idleTimer) {
 				clearTimeout(shared.idleTimer);
 				shared.idleTimer = null;
 			}
 			shared.idleSince = null;
 			shared.handlers.add(handler);
+			if (isResumingFromIdle) {
+				options.onResumeFromIdle?.();
+			}
 			let isListening = true;
 			return () => {
 				if (!isListening) {

@@ -33,6 +33,14 @@ const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 const V2_SEARCH_RESULTS_PER_PAGE = 200;
 const PresetClient = createPresetClient(rawPresetClient);
 
+function rememberReturnPath(href: string): void {
+	try {
+		sessionStorage.setItem("v2:media-return", href);
+	} catch {
+		// Session storage is optional; media detail navigation must continue.
+	}
+}
+
 export default function V2SearchContent() {
 	const location = useLocation();
 	const navigate = useNavigate();
@@ -99,11 +107,11 @@ export default function V2SearchContent() {
 				/>
 			)}
 			onPrepareMediaDetail={(media, context) => {
-				sessionStorage.setItem("v2:media-return", location().href);
+				rememberReturnPath(location().href);
 				saveV2MediaContext(location().href, context ?? [media]);
 			}}
 			onOpenMediaDetail={(media, context) => {
-				sessionStorage.setItem("v2:media-return", location().href);
+				rememberReturnPath(location().href);
 				saveV2MediaContext(location().href, context ?? [media]);
 				void navigate({
 					params: {
