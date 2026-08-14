@@ -4,7 +4,7 @@ AI生成画像などのメディアを管理する包括的なメディア管理
 
 ## 機能
 
-- 複数メディアソース対ース対応（ローカル/SFTP/S3）
+- 複数メディアソース対応（ローカル/SFTP/S3）
 - メタデータ管理（プロンプト、タグ、キャラクター、IP）
 - 検索・ソート・サムネイル生成
 - リアルタイム更新 (SSE)
@@ -47,6 +47,12 @@ bun --filter @solid-imager/server run db:migrate
 bun run dev
 ```
 
+PostgreSQLを使わずPGliteで動かす場合は、DB_HOSTを上書きしてマイグレーションを実行します。
+
+```bash
+DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
+```
+
 ### AI ネイティブ依存（GPU 対応）
 
 AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。GPU (CUDA) を有効にするには、システムにインストールされた共有 ONNX Runtime を動的リンクしてビルドしてください。
@@ -86,7 +92,8 @@ CPU のみで使用する場合は通常通り `bun install` してください�
 
 ## 詳細
 
-- **API設計**: [docs/design/api-design.md](./docs/design/api-design.md)
-- **Tauri SPA設計**: [docs/design/tauri-spa-architecture.md](./docs/design/tauri-spa-architecture.md)
+- **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Swagger UI](./apps/server/public/api-docs.html)
+- **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
+- **V2移行状況**: [REPORT.md](./REPORT.md)
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **開発ルール**: [AGENTS.md](./AGENTS.md)

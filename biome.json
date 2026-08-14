@@ -27,16 +27,10 @@
 			"packages/**/src/**",
 			"!**/node_modules",
 			"!**/dist",
-			"!**/.vinxi",
 			"!**/.output",
 			"!**/db-data",
 			"!**/.worktree",
-			"!**/routeTree.gen.ts",
-			"!apps/server/src/app.css",
-			"!apps/server/public/docs",
-			"!apps/server/scripts",
-			"!apps/server/playwright.config.ts",
-			"!apps/server/get-media-ids.ts"
+			"!**/routeTree.gen.ts"
 		]
 	},
 	"overrides": [
