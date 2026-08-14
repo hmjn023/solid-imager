@@ -96,7 +96,7 @@ export async function fetchSourceDump(
 	mode: "json" | "zip" = "json",
 	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
-	const includeImages = opts?.includeImages ?? false;
+	const includeImages = opts?.includeImages ?? mode === "zip";
 	const job = await orpc.sources.enqueueExport({
 		id,
 		mode,

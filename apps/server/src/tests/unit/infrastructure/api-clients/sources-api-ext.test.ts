@@ -65,7 +65,7 @@ describe("Sources API Client Extensions", () => {
 		expect(await result.text()).toBe("dump");
 	});
 
-	it("should pass the selected mode to export jobs", async () => {
+	it("should include images by default for TAR exports", async () => {
 		const id = "test-source-id";
 		const mockBlob = new Blob(["zip content"], { type: "application/zip" });
 		((orpc.sources as any).enqueueExport as any).mockResolvedValue({
@@ -84,7 +84,7 @@ describe("Sources API Client Extensions", () => {
 		expect((orpc.sources as any).enqueueExport).toHaveBeenCalledWith({
 			id,
 			mode: "zip",
-			includeImages: false,
+			includeImages: true,
 		});
 		expect(await result.text()).toBe("zip content");
 	});
