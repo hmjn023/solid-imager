@@ -5,9 +5,9 @@ export {
 	fetchMediaDetails,
 	findDuplicateMedia,
 	moveMedia,
-	searchMedia,
 	syncMediaItems,
 } from "~/api/media-api";
+export { searchMedia } from "./search-api";
 
 import type {
 	DownloadItem,

@@ -1,5 +1,5 @@
+import { Counter } from "@solid-imager/ui/counter";
 import { createFileRoute, Link } from "@tanstack/solid-router";
-import Counter from "~/components/counter";
 
 export const Route = createFileRoute("/about")({
 	component: About,

@@ -183,6 +183,33 @@ budget を緩和する場合は、遅くなった endpoint と navigation 区間
 6. Full data SSR route は hydration 完了後に form、tab、dialog などの代表操作が成功する。
 
 ```bash
+# 隔離PGlite・メディア・ポートを用意し、dev と fresh production を順に実行する。
+bun run --cwd apps/server test:e2e
+# 片方のモードだけ実行する場合。
 bun run --cwd apps/server test:e2e:dev -- route-reload.spec.ts
 bun run --cwd apps/server test:e2e:production -- route-reload.spec.ts
+```
+
+E2E は `apps/server/scripts/run-e2e.ts` がモードごとに一時ランタイムを作成し、
+`e2e-server.ts` が隔離PGliteとfixtureを準備してからPlaywrightを起動する。
+失敗時は診断用にランタイムを残し、成功時は自動削除する。`test:e2e:playwright` を
+直接実行する場合は、次の環境変数を呼び出し側で用意すること。
+
+| 環境変数 | 値 |
+| --- | --- |
+| `E2E_MODE` | `dev` または `production` |
+| `E2E_PORT` | アプリサーバー用の未使用ポート |
+| `E2E_HMR_PORT` | Vite HMR用の未使用ポート |
+| `E2E_GALLERY_PORT` | UI gallery用の未使用ポート |
+| `E2E_RUNTIME_DIR` | `/tmp/solid-imager-e2e` 配下の一時ディレクトリ |
+
+例えばdevのfocused testは次のように実行できる。
+
+```bash
+E2E_MODE=dev \
+E2E_PORT=4173 \
+E2E_HMR_PORT=4174 \
+E2E_GALLERY_PORT=4175 \
+E2E_RUNTIME_DIR=/tmp/solid-imager-e2e/direct-dev \
+bun run --cwd apps/server test:e2e:playwright -- route-reload.spec.ts
 ```
