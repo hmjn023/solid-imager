@@ -1,5 +1,8 @@
+import { createReadStream, createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { Writable } from "node:stream";
+import { finished } from "node:stream/promises";
 import {
 	type AuthorPlatform,
 	type MediaDumpItem,
@@ -10,6 +13,7 @@ import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
+import { getJobTransferRoot } from "~/application/services/job-transfer-storage";
 import { db } from "~/infrastructure/db";
 import {
 	authorAccounts,
@@ -127,6 +131,15 @@ type BackupDbClient = Pick<
 	"delete" | "insert" | "query" | "select" | "update"
 >;
 
+type TarArchive = import("archiver").Archiver;
+type TarEntryData = import("archiver").TarEntryData;
+
+const TarStagingDirectory = path.resolve(
+	getJobTransferRoot(),
+	"..",
+	"tar-staging",
+);
+
 // const _IMAGES_PREFIX = /^images\//;
 
 /**
@@ -148,6 +161,160 @@ function validateArchiveEntries(entries: string[]): void {
 	for (const entry of entries) {
 		validateRelativePath(entry);
 	}
+}
+
+async function writeWithBackpressure(
+	stream: Writable,
+	chunk: string,
+): Promise<void> {
+	if (stream.write(chunk)) {
+		return;
+	}
+
+	await new Promise<void>((resolve, reject) => {
+		const cleanup = () => {
+			stream.removeListener("drain", onDrain);
+			stream.removeListener("error", onError);
+			stream.removeListener("close", onClose);
+		};
+		const onDrain = () => {
+			cleanup();
+			resolve();
+		};
+		const onError = (error: Error) => {
+			cleanup();
+			reject(error);
+		};
+		const onClose = () => {
+			cleanup();
+			reject(new Error("Dump stream closed before it drained"));
+		};
+
+		stream.once("drain", onDrain);
+		stream.once("error", onError);
+		stream.once("close", onClose);
+	});
+}
+
+async function* iterateMediaDumpItems(
+	mediaSourceId: string,
+	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
+): AsyncGenerator<MediaDumpItem> {
+	const limit = 1000;
+	let lastId: string | null = null;
+	let hasMore = true;
+
+	while (hasMore) {
+		const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
+			where: lastId
+				? and(eq(medias.mediaSourceId, mediaSourceId), gt(medias.id, lastId))
+				: eq(medias.mediaSourceId, mediaSourceId),
+			limit,
+			with: {
+				generationInfo: true,
+				urls: true,
+				tags: { with: { tag: true } },
+				authors: {
+					with: { author: { with: { accounts: true } } },
+				},
+				characters: {
+					with: {
+						character: { with: { ips: { with: { ip: true } } } },
+					},
+				},
+				ips: { with: { ip: true } },
+				projects: { with: { project: true } },
+			},
+			orderBy: medias.id,
+		});
+
+		if (mediaList.length < limit) {
+			hasMore = false;
+		}
+		lastId = mediaList.at(-1)?.id ?? lastId;
+
+		if (mediaList.length > 0) {
+			yield* transform(mediaList);
+		}
+	}
+}
+
+async function writeNdjsonDump(
+	mediaSourceId: string,
+	outputPath: string,
+	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
+): Promise<void> {
+	const output = createWriteStream(outputPath);
+	try {
+		for await (const item of iterateMediaDumpItems(mediaSourceId, transform)) {
+			await writeWithBackpressure(output, `${JSON.stringify(item)}\n`);
+		}
+		output.end();
+		await finished(output);
+	} catch (error) {
+		output.destroy();
+		throw error;
+	}
+}
+
+async function* iterateNdjsonDumpItems(
+	inputPath: string,
+): AsyncGenerator<MediaDumpItem> {
+	const readline = await import("node:readline");
+	const input = createReadStream(inputPath);
+	const lines = readline.createInterface({
+		input,
+		crlfDelay: Infinity,
+	});
+
+	try {
+		for await (const line of lines) {
+			if (line.trim()) {
+				yield mediaDumpItemSchema.parse(JSON.parse(line));
+			}
+		}
+	} finally {
+		lines.close();
+		input.destroy();
+	}
+}
+
+function appendTarEntry(
+	archive: TarArchive,
+	source: import("node:stream").Readable,
+	data: TarEntryData,
+): Promise<void> {
+	return new Promise((resolve, reject) => {
+		const cleanup = () => {
+			archive.removeListener("entry", onEntry);
+			archive.removeListener("error", onArchiveError);
+			source.removeListener("error", onSourceError);
+		};
+		const onEntry = (entry: TarEntryData) => {
+			if (entry.name !== data.name) {
+				return;
+			}
+			cleanup();
+			resolve();
+		};
+		const onArchiveError = (error: Error) => {
+			cleanup();
+			reject(error);
+		};
+		const onSourceError = (error: Error) => {
+			cleanup();
+			reject(error);
+		};
+
+		archive.on("entry", onEntry);
+		archive.once("error", onArchiveError);
+		source.once("error", onSourceError);
+		try {
+			archive.append(source, data);
+		} catch (error) {
+			onArchiveError(error instanceof Error ? error : new Error(String(error)));
+		}
+	});
 }
 
 /**
@@ -931,51 +1098,16 @@ export const BackupService = {
 			const { PassThrough } = await import("node:stream");
 			const passThrough = new PassThrough();
 
-			(async () => {
+			void (async () => {
 				try {
-					const limit = 1000;
-					let lastId: string | null = null;
-					let hasMore = true;
-
-					while (hasMore) {
-						const mediaList: MediaListQueryItem[] =
-							await db.query.medias.findMany({
-								where: lastId
-									? and(
-											eq(medias.mediaSourceId, mediaSourceId),
-											gt(medias.id, lastId),
-										)
-									: eq(medias.mediaSourceId, mediaSourceId),
-								limit,
-								with: {
-									generationInfo: true,
-									urls: true,
-									tags: { with: { tag: true } },
-									authors: {
-										with: { author: { with: { accounts: true } } },
-									},
-									characters: {
-										with: {
-											character: { with: { ips: { with: { ip: true } } } },
-										},
-									},
-									ips: { with: { ip: true } },
-									projects: { with: { project: true } },
-								},
-								orderBy: medias.id,
-							});
-
-						if (mediaList.length < limit) {
-							hasMore = false;
-						}
-						lastId = mediaList.at(-1)?.id ?? lastId;
-
-						if (mediaList.length > 0) {
-							const transformedItems = this._transformMediaList(mediaList);
-							for (const item of transformedItems) {
-								passThrough.write(`${JSON.stringify(item)}\n`);
-							}
-						}
+					for await (const item of iterateMediaDumpItems(
+						mediaSourceId,
+						this._transformMediaList,
+					)) {
+						await writeWithBackpressure(
+							passThrough,
+							`${JSON.stringify(item)}\n`,
+						);
 					}
 					passThrough.end();
 				} catch (err) {
@@ -995,76 +1127,68 @@ export const BackupService = {
 			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
-			const ndjsonStream = new PassThrough();
 			const archive = new archiverMod.TarArchive();
 			archive.pipe(passThrough);
-			archive.append(ndjsonStream, { name: "dump.ndjson" });
+			archive.on("error", (error) => {
+				if (!passThrough.destroyed) {
+					passThrough.destroy(error);
+				}
+			});
 
-			(async () => {
+			void (async () => {
+				let stagingDirectory: string | undefined;
 				try {
-					const limit = 1000;
-					let lastId: string | null = null;
-					let hasMore = true;
+					await fs.mkdir(TarStagingDirectory, { recursive: true });
+					stagingDirectory = await fs.mkdtemp(
+						path.join(TarStagingDirectory, "export-"),
+					);
+					const ndjsonPath = path.join(stagingDirectory, "dump.ndjson");
+					await writeNdjsonDump(
+						mediaSourceId,
+						ndjsonPath,
+						this._transformMediaList,
+					);
 
-					while (hasMore) {
-						const mediaList: MediaListQueryItem[] =
-							await db.query.medias.findMany({
-								where: lastId
-									? and(
-											eq(medias.mediaSourceId, mediaSourceId),
-											gt(medias.id, lastId),
-										)
-									: eq(medias.mediaSourceId, mediaSourceId),
-								limit,
-								with: {
-									generationInfo: true,
-									urls: true,
-									tags: { with: { tag: true } },
-									authors: {
-										with: { author: { with: { accounts: true } } },
-									},
-									characters: {
-										with: {
-											character: { with: { ips: { with: { ip: true } } } },
-										},
-									},
-									ips: { with: { ip: true } },
-									projects: { with: { project: true } },
-								},
-								orderBy: medias.id,
-							});
+					const ndjsonStats = await fs.stat(ndjsonPath);
+					await appendTarEntry(archive, createReadStream(ndjsonPath), {
+						name: "dump.ndjson",
+						stats: ndjsonStats,
+					});
 
-						if (mediaList.length < limit) {
-							hasMore = false;
-						}
-						lastId = mediaList.at(-1)?.id ?? lastId;
-
-						if (mediaList.length > 0) {
-							const transformedItems = this._transformMediaList(mediaList);
-							const includeImages = options?.includeImages ?? true;
-							for (const item of transformedItems) {
-								ndjsonStream.write(`${JSON.stringify(item)}\n`);
-
-								if (includeImages && item.filePath) {
-									try {
-										const buffer = await driver.get(item.filePath);
-										archive.append(buffer, { name: `images/${item.filePath}` });
-									} catch {
-										// ignore missing files
-									}
-								}
+					const includeImages = options?.includeImages ?? true;
+					if (includeImages) {
+						for await (const item of iterateNdjsonDumpItems(ndjsonPath)) {
+							if (!item.filePath) {
+								continue;
 							}
+
+							let file: Awaited<ReturnType<typeof driver.getStream>>;
+							try {
+								file = await driver.getStream(item.filePath);
+							} catch {
+								// Ignore missing files, matching the previous export behavior.
+								continue;
+							}
+
+							await appendTarEntry(archive, file.stream, {
+								name: `images/${item.filePath}`,
+								stats: file.stats,
+							});
 						}
 					}
 
-					ndjsonStream.end();
 					await archive.finalize();
 				} catch (err) {
 					logger.error({ err }, "Error generating TAR dump");
-					ndjsonStream.destroy(
-						err instanceof Error ? err : new Error(String(err)),
-					);
+					const error = err instanceof Error ? err : new Error(String(err));
 					archive.abort();
+					passThrough.destroy(error);
+				} finally {
+					if (stagingDirectory) {
+						await fs
+							.rm(stagingDirectory, { recursive: true, force: true })
+							.catch(() => {});
+					}
 				}
 			})();
 

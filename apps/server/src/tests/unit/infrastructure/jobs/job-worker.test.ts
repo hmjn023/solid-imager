@@ -17,6 +17,14 @@ vi.mock("~/infrastructure/logger", () => ({
 	updateLogLevel: vi.fn(),
 }));
 
+vi.mock("~/application/services/job-transfer-storage", () => ({
+	cleanupExpiredJobTransferFiles: vi.fn().mockResolvedValue(undefined),
+	cleanupOrphanedJobTransferFiles: vi
+		.fn()
+		.mockResolvedValue({ removedFiles: 0, removedBytes: 0 }),
+	removeJobTransferFile: vi.fn(),
+}));
+
 describe("JobWorker", () => {
 	let jobRepo: IJobRepository;
 	let processor: (job: Job) => Promise<void>;
@@ -100,6 +108,7 @@ describe("JobWorker", () => {
 					"auto_tagging",
 					"extract_ccip_vector",
 					"generate_thumbnail",
+					"source_export",
 				],
 			}),
 		);
@@ -127,6 +136,9 @@ describe("JobWorker", () => {
 		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.includeTypes?.includes("generate_thumbnail")) {
+					return Promise.resolve([]);
+				}
+				if (options?.includeTypes?.includes("source_export")) {
 					return Promise.resolve([]);
 				}
 				if (options?.includeTypes) {
@@ -180,6 +192,9 @@ describe("JobWorker", () => {
 				if (options?.includeTypes?.includes("generate_thumbnail")) {
 					return Promise.resolve([]);
 				}
+				if (options?.includeTypes?.includes("source_export")) {
+					return Promise.resolve([]);
+				}
 				if (options?.includeTypes) {
 					// AI request
 					return Promise.resolve([aiJob].slice(0, limit));
@@ -209,6 +224,7 @@ describe("JobWorker", () => {
 					"auto_tagging",
 					"extract_ccip_vector",
 					"generate_thumbnail",
+					"source_export",
 				],
 			}),
 		);
@@ -293,6 +309,42 @@ describe("JobWorker", () => {
 			includeTypes: ["generate_thumbnail"],
 		});
 		resolveThumbnail();
+		await vi.runOnlyPendingTimersAsync();
+	});
+
+	it("processes at most one source export job at a time", async () => {
+		let resolveExport: () => void = () => {};
+		processor = vi.fn(
+			() =>
+				new Promise<void>((resolve) => {
+					resolveExport = resolve;
+				}),
+		);
+		worker = new JobWorker(jobRepo, processor);
+		const exportJob = {
+			id: "export-1",
+			type: "source_export",
+			status: "pending",
+		} as Job;
+		(jobRepo.claimPending as any).mockImplementation(
+			(limit: number, options: any) =>
+				Promise.resolve(
+					options?.includeTypes?.includes("source_export")
+						? [exportJob].slice(0, limit)
+						: [],
+				),
+		);
+
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+		await vi.advanceTimersByTimeAsync(1000);
+
+		expect(processor).toHaveBeenCalledTimes(1);
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(1, {
+			includeTypes: ["source_export"],
+		});
+
+		resolveExport();
 		await vi.runOnlyPendingTimersAsync();
 	});
 });

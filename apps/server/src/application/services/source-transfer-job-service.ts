@@ -11,6 +11,7 @@ import { services } from "~/application/registry";
 import { BackupService } from "~/application/services/backup-service";
 import {
 	getArtifactMetadata,
+	getArtifactPartialPath,
 	isJobTransferPath,
 	removeJobTransferFile,
 } from "~/application/services/job-transfer-storage";
@@ -29,17 +30,33 @@ export async function processSourceExportJob(job: Job): Promise<void> {
 		includeImages: payload.includeImages,
 	});
 	const artifact = getArtifactMetadata(job.id, job.mediaSourceId, payload.mode);
+	const partialPath = getArtifactPartialPath(job.id, payload.mode);
+	let artifactCommitted = false;
 
 	await fs.mkdir(path.dirname(artifact.path), { recursive: true });
-	await pipeline(
-		webReadableToNodeStream(asDumpStream(dump)),
-		createWriteStream(artifact.path),
-	);
-	const stat = await fs.stat(artifact.path);
-	await services.getJobRepository().setArtifact(job.id, {
-		...artifact,
-		size: stat.size,
-	});
+	await removeJobTransferFile(artifact.path);
+	await removeJobTransferFile(partialPath);
+	try {
+		await pipeline(
+			webReadableToNodeStream(asDumpStream(dump)),
+			createWriteStream(partialPath),
+		);
+		await fs.rename(partialPath, artifact.path);
+		artifactCommitted = true;
+
+		const stat = await fs.stat(artifact.path);
+		await services.getJobRepository().setArtifact(job.id, {
+			...artifact,
+			size: stat.size,
+		});
+	} catch (error) {
+		if (artifactCommitted) {
+			await removeJobTransferFile(artifact.path);
+		}
+		throw error;
+	} finally {
+		await removeJobTransferFile(partialPath);
+	}
 }
 
 export async function processSourceRestoreJob(job: Job): Promise<unknown> {
