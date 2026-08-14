@@ -7,8 +7,9 @@
 ## 主要ドキュメント
 
 - **UIデザインシステム:** [./DESIGN.md](./DESIGN.md)（実装前に参照し、`bun run design:lint` で検証）
-- **API設計:** [./docs/design/api-design.md](./docs/design/api-design.md) (詳細はSwagger UIを参照)
-- **Tauri SPA設計:** [./docs/design/tauri-spa-architecture.md](./docs/design/tauri-spa-architecture.md)
+- **API仕様:** [`./apps/server/public/openapi.json`](./apps/server/public/openapi.json)、Swagger UIのソースは [`./apps/server/public/api-docs.html`](./apps/server/public/api-docs.html)
+- **Tauri SPA:** [`./apps/tauri/src/`](./apps/tauri/src/)、Rust側は [`./apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
+- **V2移行状況:** [`./REPORT.md`](./REPORT.md)
 - **DBスキーマ:** `packages/db/src/schema.ts` (`apps/server/src/infrastructure/db/schema.ts` は再 export)
 
 ## 開発ルール & 内部構成

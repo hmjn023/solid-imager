@@ -253,8 +253,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 		// If the job type is wrong ("thumbnail"), the processor will skip it.
 
 		// 4. Manually trigger the processor
-		// Since we don't capture processor via startJobQueue anymore, we must call executeProcessMediaJob directly
-		// or rely on the fact that MediaService calls jobRepo.create.
+		// The test invokes the processor directly instead of starting a worker.
+		// MediaService has already persisted the job through jobRepo.create.
 		// The test logic wants to verify that "If the job type is correct, generateThumbnail is called".
 		// So we can manually invoke MediaProcessingService.executeProcessMediaJob(job)
 
