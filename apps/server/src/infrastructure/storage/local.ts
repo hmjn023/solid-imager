@@ -3,6 +3,7 @@
  * Extracted from src/lib/drivers/local.ts
  */
 
+import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { LocalConnection } from "@solid-imager/core/domain/sources/schemas";
@@ -90,6 +91,18 @@ export class LocalDriver implements MediaSourceDriver {
 		const absolutePath = this.getAbsolutePath(p);
 		const bytes = await Bun.file(absolutePath).bytes();
 		return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+	}
+
+	async getStream(p: string) {
+		const absolutePath = this.getAbsolutePath(p);
+		const stats = await fs.stat(absolutePath);
+		if (!stats.isFile()) {
+			throw new Error(`Not a regular file: ${p}`);
+		}
+		return {
+			stream: createReadStream(absolutePath),
+			stats,
+		};
 	}
 
 	/**

@@ -18,6 +18,10 @@ import type {
 	V2ManagerTransferFormat,
 } from "./types";
 
+function formatOptionLabel(format: V2ManagerTransferFormat): string {
+	return format === "ndjson" ? "NDJSON metadata" : "TAR archive";
+}
+
 export function DataTransferPanel(props: {
 	actions: V2ManagerTransferActions;
 	manager: UseManagerPageResult;
@@ -127,6 +131,11 @@ export function DataTransferPanel(props: {
 						<div class="space-y-1.5">
 							<Label>Format</Label>
 							<Select
+								itemComponent={(selectProps) => (
+									<SelectItem item={selectProps.item}>
+										{formatOptionLabel(selectProps.item.rawValue)}
+									</SelectItem>
+								)}
 								onChange={(value) => value && setExportFormat(value)}
 								options={["ndjson", "tar"] as const}
 								value={exportFormat()}
@@ -181,6 +190,11 @@ export function DataTransferPanel(props: {
 						<div class="space-y-1.5">
 							<Label>Format</Label>
 							<Select
+								itemComponent={(selectProps) => (
+									<SelectItem item={selectProps.item}>
+										{formatOptionLabel(selectProps.item.rawValue)}
+									</SelectItem>
+								)}
 								onChange={(value) => value && setImportFormat(value)}
 								options={["ndjson", "tar"] as const}
 								value={importFormat()}

@@ -1,6 +1,7 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import {
 	cleanupExpiredJobTransferFiles,
+	cleanupOrphanedJobTransferFiles,
 	removeJobTransferFile,
 } from "~/application/services/job-transfer-storage";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
@@ -56,6 +57,7 @@ export class JobWorker {
 	private activeJobs = 0;
 	private activeAiJobs = 0;
 	private activeThumbnailJobs = 0;
+	private activeExportJobs = 0;
 
 	private readonly jobRepo: IJobRepository;
 	private readonly processor: (job: Job) => Promise<unknown>;
@@ -65,6 +67,7 @@ export class JobWorker {
 		"extract_ccip_vector",
 	]);
 	private readonly thumbnailJobTypes = new Set(["generate_thumbnail"]);
+	private readonly exportJobTypes = new Set(["source_export"]);
 
 	constructor(
 		jobRepo: IJobRepository,
@@ -157,15 +160,34 @@ export class JobWorker {
 				}
 			}
 
-			// 3. Poll Other Jobs
+			// 3. Keep source exports in a single-worker pool. A TAR export is
+			// disk-backed, but concurrent archives still multiply stream buffers and
+			// database page memory.
+			if (this.activeExportJobs < 1) {
+				const jobs = await this.jobRepo.claimPending(1, {
+					includeTypes: Array.from(this.exportJobTypes),
+				});
+				for (const job of jobs) {
+					void this.tryProcessJob(job);
+				}
+			}
+
+			// 4. Poll Other Jobs
 			// "concurrency" is treated as the limit for NON-AI jobs in this independent pool model
 			const activeOtherJobs =
-				this.activeJobs - this.activeAiJobs - this.activeThumbnailJobs;
+				this.activeJobs -
+				this.activeAiJobs -
+				this.activeThumbnailJobs -
+				this.activeExportJobs;
 			if (activeOtherJobs < this.concurrency) {
 				const slots = this.concurrency - activeOtherJobs;
 				if (slots > 0) {
 					const jobs = await this.jobRepo.claimPending(slots, {
-						excludeTypes: [...this.aiJobTypes, ...this.thumbnailJobTypes],
+						excludeTypes: [
+							...this.aiJobTypes,
+							...this.thumbnailJobTypes,
+							...this.exportJobTypes,
+						],
 					});
 					for (const job of jobs) {
 						void this.tryProcessJob(job);
@@ -190,12 +212,16 @@ export class JobWorker {
 		this.activeJobs++;
 		const isAiJob = this.aiJobTypes.has(job.type);
 		const isThumbnailJob = this.thumbnailJobTypes.has(job.type);
+		const isExportJob = this.exportJobTypes.has(job.type);
 		const startedAt = Date.now();
 		if (isAiJob) {
 			this.activeAiJobs++;
 		}
 		if (isThumbnailJob) {
 			this.activeThumbnailJobs++;
+		}
+		if (isExportJob) {
+			this.activeExportJobs++;
 		}
 		const heartbeatId = setInterval(() => {
 			void Promise.resolve(
@@ -302,6 +328,9 @@ export class JobWorker {
 			if (isThumbnailJob) {
 				this.activeThumbnailJobs--;
 			}
+			if (isExportJob) {
+				this.activeExportJobs--;
+			}
 		}
 	}
 
@@ -341,6 +370,25 @@ export class JobWorker {
 			const count = await this.jobRepo.requeueStaleInProgress(olderThan);
 			if (count > 0) {
 				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
+			}
+			try {
+				const orphaned = await cleanupOrphanedJobTransferFiles(
+					this.jobRepo.findById.bind(this.jobRepo),
+				);
+				if (orphaned.removedFiles > 0) {
+					logger.info(
+						{
+							removedFiles: orphaned.removedFiles,
+							removedBytes: orphaned.removedBytes,
+						},
+						"Removed orphaned job transfer files",
+					);
+				}
+			} catch (error) {
+				logger.error(
+					{ err: error },
+					"Failed to clean up orphaned transfer files",
+				);
 			}
 			await cleanupExpiredJobTransferFiles();
 		} catch (error) {

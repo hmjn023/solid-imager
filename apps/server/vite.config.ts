@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { RPCHandler } from "@orpc/server/node";
+import { ResponseHeadersPlugin } from "@orpc/server/plugins";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import tailwindcss from "@tailwindcss/vite";
@@ -103,7 +104,7 @@ const bypassSecFetchDestPlugin = (): Plugin => ({
 });
 
 const loadDevRpcHandler = async () => {
-  const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }] = await Promise.all([
+  const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }, { createRpcResponseHeaders }] = await Promise.all([
     runtimeImport<typeof import("./src/domain/shared/api-contract")>(
       serverModuleUrl("src/domain/shared/api-contract.ts"),
     ),
@@ -113,10 +114,16 @@ const loadDevRpcHandler = async () => {
     runtimeImport<typeof import("./src/infrastructure/logger")>(
       serverModuleUrl("src/infrastructure/logger.ts"),
     ),
+    runtimeImport<typeof import("./src/infrastructure/api/rpc-response-headers")>(
+      serverModuleUrl("src/infrastructure/api/rpc-response-headers.ts"),
+    ),
   ]);
 
   return {
-    handler: new RPCHandler(appRouter),
+    handler: new RPCHandler(appRouter, {
+      plugins: [new ResponseHeadersPlugin()],
+    }),
+    createRpcResponseHeaders,
     initServices,
     startBackgroundWorker,
     logger,
@@ -165,7 +172,7 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
       try {
         const devRpcHandler = await getDevRpcHandler();
         logger = devRpcHandler.logger;
-        const { handler, initServices } = devRpcHandler;
+        const { handler, initServices, createRpcResponseHeaders } = devRpcHandler;
         startBackgroundWorker = devRpcHandler.startBackgroundWorker;
         initServices();
 
@@ -181,7 +188,7 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
 
         const result = await handler.handle(req, res, {
           prefix: "/api/rpc",
-          context: {},
+          context: { resHeaders: createRpcResponseHeaders(req.url ?? "/") },
         });
         matched = result.matched;
         if (matched && responseFinished && res.statusCode >= 200 && res.statusCode < 300) {
