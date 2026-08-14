@@ -4,7 +4,7 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "allowJs": true,
-    "types": ["vitest/globals"],
+    "types": ["bun-types", "vitest/globals"],
     "isolatedModules": true,
     "paths": {
       "#route-tree": ["./src/routeTree.gen.ts"],
@@ -15,6 +15,6 @@
       "@/*": ["../../packages/core/src/*"]
     }
   },
-  "include": ["src", "src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
+    "include": ["src", "src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],
   "exclude": ["node_modules", ".vinxi", ".output", "dist"]
 }

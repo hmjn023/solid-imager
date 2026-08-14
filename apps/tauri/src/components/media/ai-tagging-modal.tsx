@@ -1,5 +1,5 @@
 import { AiTaggingModal as SharedAiTaggingModal } from "@solid-imager/ui/ai-tagging-modal";
-import { serverOrpc } from "~/infrastructure/api-clients/server-orpc-client";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 type AiTaggingModalProps = {
 	isOpen: boolean;
@@ -14,7 +14,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 			description={`Tags extracted from ${props.fileName} using the AI service.`}
 			fetchTags={async () => {
 				const file = await props.loadFile();
-				return serverOrpc.ai.tag({ file });
+				return orpc.ai.tag({ file });
 			}}
 			isOpen={props.isOpen}
 			onClose={props.onClose}

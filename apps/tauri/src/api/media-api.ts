@@ -4,18 +4,6 @@ export function fetchMediaDetails(sourceId: string, mediaId: string) {
 	return client.media.getDetails({ sourceId, mediaId });
 }
 
-export function searchMedia(
-	sourceId: string | null | undefined,
-	params: {
-		offset?: number;
-		limit?: number;
-		sort?: "date" | "name" | "size" | "rating" | "viewCount";
-		order?: "asc" | "desc";
-	},
-) {
-	return client.media.search({ sourceId, params });
-}
-
 export function deleteMedia(sourceId: string, mediaId: string) {
 	return client.media.delete({ sourceId, mediaId });
 }

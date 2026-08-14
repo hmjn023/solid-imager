@@ -183,6 +183,14 @@ budget を緩和する場合は、遅くなった endpoint と navigation 区間
 6. Full data SSR route は hydration 完了後に form、tab、dialog などの代表操作が成功する。
 
 ```bash
+# 隔離PGlite・メディア・ポートを用意し、dev と fresh production を順に実行する。
+bun run --cwd apps/server test:e2e
+# 片方のモードだけ実行する場合。
 bun run --cwd apps/server test:e2e:dev -- route-reload.spec.ts
 bun run --cwd apps/server test:e2e:production -- route-reload.spec.ts
 ```
+
+E2E は `apps/server/scripts/run-e2e.ts` がモードごとに一時ランタイムを作成し、
+`e2e-server.ts` が隔離PGliteとfixtureを準備してからPlaywrightを起動する。
+失敗時は診断用にランタイムを残し、成功時は自動削除する。`test:e2e:playwright` を
+直接実行する場合は、これらの環境変数を呼び出し側で用意すること。
