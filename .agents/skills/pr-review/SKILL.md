@@ -9,7 +9,7 @@ PRレビューコメントの取得・返信・解決のワークフロー。
 
 ## コメント取得
 
-`scripts/pr-comments.sh` でPRのレビューコメント一覧を取得する。
+`.agents/skills/pr-review/scripts/pr-comments.sh` でPRのレビューコメント一覧を取得する。
 
 ```bash
 # 現在のPRのコメント取得
@@ -75,7 +75,7 @@ mutation {
 
 ### コメントの最小化（スパム等に使用）
 
-`scripts/resolve-comment.sh` でコメントを minimized にする。スパム・オフトピック等に使用。
+`.agents/skills/pr-review/scripts/resolve-comment.sh` でコメントを minimized にする。スパム・オフトピック等に使用。
 
 ```bash
 # node_id を指定して解決
