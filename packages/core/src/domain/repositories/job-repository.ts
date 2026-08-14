@@ -66,7 +66,6 @@ export type IJobRepository = {
 		options?: {
 			excludeTypes?: string[];
 			includeTypes?: string[];
-			excludeLanceDbSourceIds?: string[];
 		},
 	): Promise<Job[]>;
 	markAsInProgress(id: string): Promise<void>;
@@ -113,7 +112,6 @@ export type IJobRepository = {
 		options?: {
 			excludeTypes?: string[];
 			includeTypes?: string[];
-			excludeLanceDbSourceIds?: string[];
 		},
 	): Promise<Job[]>;
 	requeueStaleInProgress(olderThan: Date): Promise<number>;

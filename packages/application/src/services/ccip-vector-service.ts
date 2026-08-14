@@ -278,7 +278,7 @@ export class CcipVectorService {
 			record.embeddingVersion === CCIP_EMBEDDING_VERSION &&
 			record.mediaSourceId === mediaSourceId &&
 			// A vector extracted after the media's latest modification represents
-			// the current file, regardless of LanceDB timestamp serialization.
+			// the current file, regardless of timestamp serialization.
 			record.extractedAt.getTime() >= media.modifiedAt.getTime()
 		);
 	}

@@ -62,6 +62,16 @@ function V2JobsRoute() {
 					throw error;
 				}
 			}}
+			onDownload={(job) => {
+				if (!job.artifact) return;
+				const anchor = document.createElement("a");
+				anchor.href = `/api/jobs/${encodeURIComponent(job.id)}/artifact`;
+				anchor.download = job.artifact.fileName;
+				anchor.rel = "noopener";
+				document.body.appendChild(anchor);
+				anchor.click();
+				anchor.remove();
+			}}
 			state={() => toQueryUiState(jobsQuery)}
 		/>
 	);

@@ -2,9 +2,10 @@
  * Media Sources API Client
  * Handles all API calls related to media sources
  *
- * NOTE: Most operations use oRPC, but dump/import still use dedicated HTTP routes.
+ * Source operations use oRPC, including binary export artifacts.
  */
 
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import type { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -70,7 +71,7 @@ export function syncMediaSources(ids: string[]) {
 
 export function enqueueSourceExport(
 	id: string,
-	mode: "json" | "zip" | "lancedb",
+	mode: "json" | "zip",
 	includeImages: boolean,
 ) {
 	return orpc.sources.enqueueExport({ id, mode, includeImages });
@@ -78,7 +79,7 @@ export function enqueueSourceExport(
 
 export function enqueueSourceImport(
 	id: string,
-	mode: "json" | "zip" | "lancedb",
+	mode: "json" | "zip",
 	file: File,
 ) {
 	return orpc.sources.enqueueImport({ id, mode, file });
@@ -87,26 +88,21 @@ export function enqueueSourceImport(
 /**
  * Fetches a dump of the media source
  * @param id - Media source ID
- * @param mode - The dump mode (ndjson, tar, or lancedb tar)
+ * @param mode - The dump mode (ndjson or tar)
  * @returns Blob containing the dump
  */
 export async function fetchSourceDump(
 	id: string,
-	mode: "json" | "zip" | "lancedb" = "json",
+	mode: "json" | "zip" = "json",
 	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
-	const includeImages = opts?.includeImages ?? false;
-	const url = `/api/sources/${id}/dump?mode=${mode}&includeImages=${includeImages}`;
-	const response = await fetch(url, {
-		method: "GET",
+	const includeImages = opts?.includeImages ?? mode === "zip";
+	const job = await orpc.sources.enqueueExport({
+		id,
+		mode,
+		includeImages,
 	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to download dump: ${response.status} ${errorText}`);
-	}
-
-	return response.blob();
+	return downloadCompletedJobArtifact(orpc.jobs, job.id);
 }
 
 export function restoreSource(id: string, data: unknown) {
@@ -123,43 +119,9 @@ export function restoreSource(id: string, data: unknown) {
  * @returns Import result
  */
 export async function importSourceZip(id: string, file: File) {
-	const url = `/api/sources/${id}/import`;
-	const response = await fetch(url, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/zip",
-		},
-		body: file,
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(`Failed to import ZIP: ${response.status} ${errorText}`);
-	}
-
-	return await response.json();
+	return orpc.sources.enqueueImport({ id, mode: "zip", file });
 }
 
 export async function importSourceNdjson(id: string, file: File) {
-	return await orpc.sources.importNdjson({
-		id,
-		file,
-	});
-}
-
-export async function importSourceLanceDB(id: string, file: File) {
-	const url = `/api/sources/${id}/import-lancedb`;
-	const response = await fetch(url, {
-		method: "POST",
-		body: file,
-	});
-
-	if (!response.ok) {
-		const errorText = await response.text();
-		throw new Error(
-			`Failed to import LanceDB: ${response.status} ${errorText}`,
-		);
-	}
-
-	return await response.json();
+	return orpc.sources.enqueueImport({ id, mode: "json", file });
 }

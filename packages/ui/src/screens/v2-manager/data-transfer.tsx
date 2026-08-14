@@ -18,6 +18,10 @@ import type {
 	V2ManagerTransferFormat,
 } from "./types";
 
+function formatOptionLabel(format: V2ManagerTransferFormat): string {
+	return format === "ndjson" ? "NDJSON metadata" : "TAR archive";
+}
+
 export function DataTransferPanel(props: {
 	actions: V2ManagerTransferActions;
 	manager: UseManagerPageResult;
@@ -39,8 +43,6 @@ export function DataTransferPanel(props: {
 				return ".ndjson,application/x-ndjson";
 			case "tar":
 				return ".tar,.zip,application/x-tar,application/zip";
-			case "lancedb":
-				return ".tar,application/x-tar";
 		}
 	};
 	const runExport = async () => {
@@ -121,7 +123,7 @@ export function DataTransferPanel(props: {
 						<div>
 							<h3 class="font-medium text-sm text-[var(--v2-text)]">Export</h3>
 							<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
-								Download metadata, media archive, or LanceDB data.
+								Download metadata or a media archive.
 							</p>
 						</div>
 					</div>
@@ -129,8 +131,13 @@ export function DataTransferPanel(props: {
 						<div class="space-y-1.5">
 							<Label>Format</Label>
 							<Select
+								itemComponent={(selectProps) => (
+									<SelectItem item={selectProps.item}>
+										{formatOptionLabel(selectProps.item.rawValue)}
+									</SelectItem>
+								)}
 								onChange={(value) => value && setExportFormat(value)}
-								options={["ndjson", "tar", "lancedb"] as const}
+								options={["ndjson", "tar"] as const}
 								value={exportFormat()}
 							>
 								<SelectTrigger class="w-full">
@@ -140,14 +147,14 @@ export function DataTransferPanel(props: {
 												? "NDJSON metadata"
 												: state.selectedOption() === "tar"
 													? "TAR archive"
-													: "LanceDB TAR"
+													: "TAR archive"
 										}
 									</SelectValue>
 								</SelectTrigger>
 								<SelectContent />
 							</Select>
 						</div>
-						<Show when={exportFormat() === "lancedb"}>
+						<Show when={exportFormat() === "tar"}>
 							<Checkbox
 								checked={includeImages()}
 								class="flex min-h-9 items-center gap-2"
@@ -183,8 +190,13 @@ export function DataTransferPanel(props: {
 						<div class="space-y-1.5">
 							<Label>Format</Label>
 							<Select
+								itemComponent={(selectProps) => (
+									<SelectItem item={selectProps.item}>
+										{formatOptionLabel(selectProps.item.rawValue)}
+									</SelectItem>
+								)}
 								onChange={(value) => value && setImportFormat(value)}
-								options={["ndjson", "tar", "lancedb"] as const}
+								options={["ndjson", "tar"] as const}
 								value={importFormat()}
 							>
 								<SelectTrigger class="w-full">
@@ -194,7 +206,7 @@ export function DataTransferPanel(props: {
 												? "NDJSON metadata"
 												: state.selectedOption() === "tar"
 													? "TAR archive"
-													: "LanceDB TAR"
+													: "TAR archive"
 										}
 									</SelectValue>
 								</SelectTrigger>

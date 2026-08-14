@@ -315,7 +315,7 @@ export const sourcesRouter = {
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+				mode: z.enum(["json", "zip"]).default("json"),
 				includeImages: z.boolean().optional().default(false),
 			}),
 		)
@@ -333,15 +333,6 @@ export const sourcesRouter = {
 				});
 			}
 
-			if (input.mode === "lancedb") {
-				return new Response(asDumpStream(result), {
-					headers: {
-						"Content-Type": "application/x-tar",
-						"Content-Disposition": `attachment; filename="source-${input.id}-dump-lancedb.tar"`,
-					},
-				});
-			}
-
 			// Mode json -> return as streaming NDJSON Response
 			return new Response(asDumpStream(result), {
 				headers: {
@@ -355,7 +346,7 @@ export const sourcesRouter = {
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+				mode: z.enum(["json", "zip"]).default("json"),
 				includeImages: z.boolean().default(false),
 			}),
 		)
@@ -446,7 +437,7 @@ export const sourcesRouter = {
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				mode: z.enum(["json", "zip", "lancedb"]),
+				mode: z.enum(["json", "zip"]),
 				file: z.instanceof(File),
 			}),
 		)
@@ -521,53 +512,6 @@ export const sourcesRouter = {
 			} finally {
 				try {
 					await fs.promises.unlink(tempFilePath);
-				} catch {
-					// ignore
-				}
-			}
-		}),
-
-	/**
-	 * Imports a media source from a LanceDB tar archive
-	 */
-	importLanceDB: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Import media source from LanceDB archive",
-				description: "Import media source data from a LanceDB tar archive",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				file: z.instanceof(File),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const { randomUUID } = await import("node:crypto");
-			const pathMod = await import("node:path");
-			const fsSync = await import("node:fs");
-			const { pipeline } = await import("node:stream/promises");
-
-			const tempDir = pathMod.join(process.cwd(), ".cache", "lancedb-restore");
-			await fsSync.promises.mkdir(tempDir, { recursive: true });
-			const tempFilePath = pathMod.join(
-				tempDir,
-				`import-lancedb-${randomUUID()}.tar`,
-			);
-
-			try {
-				const fileStream = input.file.stream();
-				await pipeline(
-					webReadableToNodeStream(fileStream),
-					fsSync.createWriteStream(tempFilePath),
-				);
-
-				return await BackupService.importLanceDB(input.id, tempFilePath);
-			} finally {
-				try {
-					await fsSync.promises.unlink(tempFilePath);
 				} catch {
 					// ignore
 				}

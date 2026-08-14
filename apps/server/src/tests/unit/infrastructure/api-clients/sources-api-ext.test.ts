@@ -1,6 +1,7 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	fetchSourceDump,
+	importSourceNdjson,
 	importSourceZip,
 	restoreSource,
 } from "~/infrastructure/api-clients/sources-api";
@@ -9,9 +10,11 @@ import {
 vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
 	orpc: {
 		sources: {
-			dump: vi.fn(),
+			enqueueExport: vi.fn(),
+			enqueueImport: vi.fn(),
 			restore: vi.fn(),
 		},
+		jobs: { downloadArtifact: vi.fn(), get: vi.fn() },
 	},
 	getBaseUrl: vi.fn(() => "/api/rpc"),
 }));
@@ -19,80 +22,109 @@ vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 describe("Sources API Client Extensions", () => {
-	const originalFetch = global.fetch;
-
-	beforeEach(() => {
-		global.fetch = vi.fn() as any;
-	});
-
 	afterEach(() => {
-		global.fetch = originalFetch;
 		vi.clearAllMocks();
 	});
 
-	it("should call direct endpoint for json mode", async () => {
+	it("should enqueue and download a completed json export", async () => {
 		const id = "test-source-id";
-		const mockDumpData = { defined: true };
-		const mockBlob = new Blob([JSON.stringify(mockDumpData)], {
+		const mockBlob = new Blob(["dump"], {
 			type: "application/json",
 		});
-
-		(global.fetch as any).mockResolvedValue({
-			ok: true,
-			blob: () => Promise.resolve(mockBlob),
+		((orpc.sources as any).enqueueExport as any).mockResolvedValue({
+			id: "export-job-id",
 		});
+		((orpc.jobs as any).get as any).mockResolvedValue({
+			status: "completed",
+			artifact: {
+				fileName: "dump.ndjson",
+				contentType: "application/x-ndjson",
+			},
+		});
+		((orpc.jobs as any).downloadArtifact as any).mockResolvedValue(
+			new Blob([mockBlob]).stream(),
+		);
 
 		const result = await fetchSourceDump(id, "json");
 
-		expect(global.fetch).toHaveBeenCalledWith(
-			`/api/sources/${id}/dump?mode=json&includeImages=false`,
-			{
-				method: "GET",
-			},
+		expect((orpc.sources as any).enqueueExport).toHaveBeenCalledWith({
+			id,
+			mode: "json",
+			includeImages: false,
+		});
+		expect((orpc.jobs as any).get).toHaveBeenCalledWith(
+			{ id: "export-job-id" },
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
 		);
-		expect(result).toBe(mockBlob);
+		expect((orpc.jobs as any).downloadArtifact).toHaveBeenCalledWith(
+			{
+				id: "export-job-id",
+			},
+			expect.objectContaining({ signal: expect.any(AbortSignal) }),
+		);
+		expect(await result.text()).toBe("dump");
 	});
 
-	it("should call direct endpoint for zip mode", async () => {
+	it("should include images by default for TAR exports", async () => {
 		const id = "test-source-id";
 		const mockBlob = new Blob(["zip content"], { type: "application/zip" });
-
-		(global.fetch as any).mockResolvedValue({
-			ok: true,
-			blob: () => Promise.resolve(mockBlob),
+		((orpc.sources as any).enqueueExport as any).mockResolvedValue({
+			id: "export-job-id",
 		});
+		((orpc.jobs as any).get as any).mockResolvedValue({
+			status: "completed",
+			artifact: { fileName: "dump.tar", contentType: "application/x-tar" },
+		});
+		((orpc.jobs as any).downloadArtifact as any).mockResolvedValue(
+			new Blob([mockBlob]).stream(),
+		);
 
 		const result = await fetchSourceDump(id, "zip");
 
-		expect(global.fetch).toHaveBeenCalledWith(
-			`/api/sources/${id}/dump?mode=zip&includeImages=false`,
-			{
-				method: "GET",
-			},
-		);
-		expect(result).toBe(mockBlob);
+		expect((orpc.sources as any).enqueueExport).toHaveBeenCalledWith({
+			id,
+			mode: "zip",
+			includeImages: true,
+		});
+		expect(await result.text()).toBe("zip content");
 	});
 
-	it("should call import endpoint with binary body", async () => {
+	it("should enqueue TAR imports through oRPC", async () => {
 		const id = "test-source-id";
 		const mockFile = new File(["zip content"], "test.zip", {
 			type: "application/zip",
 		});
-		const mockResponse = { success: true };
-
-		(global.fetch as any).mockResolvedValue({
-			ok: true,
-			json: () => Promise.resolve(mockResponse),
-		});
+		const mockResponse = { id: "restore-job-id" };
+		((orpc.sources as any).enqueueImport as any).mockResolvedValue(
+			mockResponse,
+		);
 
 		const result = await importSourceZip(id, mockFile);
 
-		expect(global.fetch).toHaveBeenCalledWith(`/api/sources/${id}/import`, {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/zip",
-			},
-			body: mockFile,
+		expect((orpc.sources as any).enqueueImport).toHaveBeenCalledWith({
+			id,
+			mode: "zip",
+			file: mockFile,
+		});
+		expect(result).toEqual(mockResponse);
+	});
+
+	it("should enqueue NDJSON imports through oRPC", async () => {
+		const id = "test-source-id";
+		const mockFile = new File(["{}\n"], "test.ndjson", {
+			type: "application/x-ndjson",
+		});
+		const mockResponse = { id: "restore-job-id" };
+		((orpc.sources as any).enqueueImport as any).mockResolvedValue(
+			mockResponse,
+		);
+
+		const result = await importSourceNdjson(id, mockFile);
+
+		expect((orpc.sources as any).enqueueImport).toHaveBeenCalledWith({
+			id,
+			mode: "json",
+			file: mockFile,
 		});
 		expect(result).toEqual(mockResponse);
 	});

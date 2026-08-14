@@ -1,6 +1,7 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import {
 	cleanupExpiredJobTransferFiles,
+	cleanupOrphanedJobTransferFiles,
 	removeJobTransferFile,
 } from "~/application/services/job-transfer-storage";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
@@ -56,7 +57,7 @@ export class JobWorker {
 	private activeJobs = 0;
 	private activeAiJobs = 0;
 	private activeThumbnailJobs = 0;
-	private readonly activeLanceDbSyncKeys = new Set<string>();
+	private activeExportJobs = 0;
 
 	private readonly jobRepo: IJobRepository;
 	private readonly processor: (job: Job) => Promise<unknown>;
@@ -66,6 +67,7 @@ export class JobWorker {
 		"extract_ccip_vector",
 	]);
 	private readonly thumbnailJobTypes = new Set(["generate_thumbnail"]);
+	private readonly exportJobTypes = new Set(["source_export"]);
 
 	constructor(
 		jobRepo: IJobRepository,
@@ -158,16 +160,34 @@ export class JobWorker {
 				}
 			}
 
-			// 3. Poll Other Jobs
+			// 3. Keep source exports in a single-worker pool. A TAR export is
+			// disk-backed, but concurrent archives still multiply stream buffers and
+			// database page memory.
+			if (this.activeExportJobs < 1) {
+				const jobs = await this.jobRepo.claimPending(1, {
+					includeTypes: Array.from(this.exportJobTypes),
+				});
+				for (const job of jobs) {
+					void this.tryProcessJob(job);
+				}
+			}
+
+			// 4. Poll Other Jobs
 			// "concurrency" is treated as the limit for NON-AI jobs in this independent pool model
 			const activeOtherJobs =
-				this.activeJobs - this.activeAiJobs - this.activeThumbnailJobs;
+				this.activeJobs -
+				this.activeAiJobs -
+				this.activeThumbnailJobs -
+				this.activeExportJobs;
 			if (activeOtherJobs < this.concurrency) {
 				const slots = this.concurrency - activeOtherJobs;
 				if (slots > 0) {
 					const jobs = await this.jobRepo.claimPending(slots, {
-						excludeTypes: [...this.aiJobTypes, ...this.thumbnailJobTypes],
-						excludeLanceDbSourceIds: Array.from(this.activeLanceDbSyncKeys),
+						excludeTypes: [
+							...this.aiJobTypes,
+							...this.thumbnailJobTypes,
+							...this.exportJobTypes,
+						],
 					});
 					for (const job of jobs) {
 						void this.tryProcessJob(job);
@@ -184,40 +204,24 @@ export class JobWorker {
 	}
 
 	private async tryProcessJob(job: Job) {
-		const lanceDbSyncKey = getLanceDbSyncKey(job);
-		if (lanceDbSyncKey) {
-			if (this.activeLanceDbSyncKeys.has(lanceDbSyncKey)) {
-				logger.warn(
-					{ jobId: job.id, mediaSourceId: lanceDbSyncKey },
-					"Requeueing overlapping claimed LanceDB sync job",
-				);
-				try {
-					await this.jobRepo.update(job.id, { status: "pending" });
-				} catch (error) {
-					logger.error(
-						{ err: error, jobId: job.id },
-						"Failed to requeue overlapping job",
-					);
-				}
-				return;
-			}
-			this.activeLanceDbSyncKeys.add(lanceDbSyncKey);
-		}
-
-		void this.processJob(job, lanceDbSyncKey);
+		void this.processJob(job);
 	}
 
-	private async processJob(job: Job, lanceDbSyncKey?: string) {
+	private async processJob(job: Job) {
 		const attemptCount = job.attemptCount ?? 0;
 		this.activeJobs++;
 		const isAiJob = this.aiJobTypes.has(job.type);
 		const isThumbnailJob = this.thumbnailJobTypes.has(job.type);
+		const isExportJob = this.exportJobTypes.has(job.type);
 		const startedAt = Date.now();
 		if (isAiJob) {
 			this.activeAiJobs++;
 		}
 		if (isThumbnailJob) {
 			this.activeThumbnailJobs++;
+		}
+		if (isExportJob) {
+			this.activeExportJobs++;
 		}
 		const heartbeatId = setInterval(() => {
 			void Promise.resolve(
@@ -324,8 +328,8 @@ export class JobWorker {
 			if (isThumbnailJob) {
 				this.activeThumbnailJobs--;
 			}
-			if (lanceDbSyncKey) {
-				this.activeLanceDbSyncKeys.delete(lanceDbSyncKey);
+			if (isExportJob) {
+				this.activeExportJobs--;
 			}
 		}
 	}
@@ -367,6 +371,25 @@ export class JobWorker {
 			if (count > 0) {
 				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
 			}
+			try {
+				const orphaned = await cleanupOrphanedJobTransferFiles(
+					this.jobRepo.findById.bind(this.jobRepo),
+				);
+				if (orphaned.removedFiles > 0) {
+					logger.info(
+						{
+							removedFiles: orphaned.removedFiles,
+							removedBytes: orphaned.removedBytes,
+						},
+						"Removed orphaned job transfer files",
+					);
+				}
+			} catch (error) {
+				logger.error(
+					{ err: error },
+					"Failed to clean up orphaned transfer files",
+				);
+			}
 			await cleanupExpiredJobTransferFiles();
 		} catch (error) {
 			logger.error(
@@ -375,16 +398,4 @@ export class JobWorker {
 			);
 		}
 	}
-}
-
-function getLanceDbSyncKey(job: Job): string | undefined {
-	if (
-		job.mediaSourceId &&
-		["sync_lancedb", "sync_lancedb_full", "sync_lancedb_delta"].includes(
-			job.type,
-		)
-	) {
-		return job.mediaSourceId;
-	}
-	return undefined;
 }

@@ -1,15 +1,9 @@
-export type RestoreImportStrategy =
-	| "lancedb"
-	| "tar"
-	| "ndjson"
-	| "json"
-	| "unsupported";
+export type RestoreImportStrategy = "tar" | "ndjson" | "json" | "unsupported";
 
 export function getRestoreImportStrategies(
 	file: Pick<File, "name" | "type">,
 	options?: {
 		canImportNdjson?: boolean;
-		canImportLanceDb?: boolean;
 	},
 ): RestoreImportStrategy[] {
 	const lowerName = file.name.toLowerCase();
@@ -23,7 +17,7 @@ export function getRestoreImportStrategies(
 		lowerName.endsWith(".json") || file.type === "application/json";
 
 	if (isTarArchive) {
-		return options?.canImportLanceDb ? ["lancedb", "tar"] : ["tar"];
+		return ["tar"];
 	}
 	if (isNdjsonFile) {
 		return options?.canImportNdjson ? ["ndjson"] : ["unsupported"];

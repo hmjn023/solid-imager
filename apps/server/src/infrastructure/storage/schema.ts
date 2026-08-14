@@ -1,3 +1,5 @@
+import type { Stats } from "node:fs";
+import type { Readable } from "node:stream";
 import type {
 	LocalConnection,
 	S3Connection,
@@ -44,6 +46,12 @@ export type MediaSourceDriver = {
 	 * Retrieves the content of a file from the media source.
 	 */
 	get(path: string): Promise<Buffer>;
+
+	/**
+	 * Opens a file as a stream and returns its metadata without buffering its
+	 * contents in memory.
+	 */
+	getStream(path: string): Promise<{ stream: Readable; stats: Stats }>;
 
 	/**
 	 * Writes content to a file within the media source.

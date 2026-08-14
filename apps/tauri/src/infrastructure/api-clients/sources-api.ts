@@ -7,28 +7,17 @@ export {
 	updateMediaSource,
 } from "~/api/sources-api";
 
-import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import { client } from "~/orpc-client";
-
-const isDev = import.meta.env.DEV;
-const API_BASE = isDev
-	? window.location.origin
-	: import.meta.env.VITE_API_URL || "http://192.168.1.150:3000";
-
-const apiFetch = isDev ? fetch : tauriFetch;
 
 export async function fetchSourceDump(
 	id: string,
-	mode: "json" | "zip" | "lancedb" = "json",
+	mode: "json" | "zip" = "json",
 	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
-	const includeImages = opts?.includeImages ?? false;
-	const url = `${API_BASE}/api/sources/${id}/dump?mode=${mode}&includeImages=${includeImages}`;
-	const response = await apiFetch(url, { method: "GET" });
-	if (!response.ok) {
-		throw new Error(`Failed to download dump: ${response.status}`);
-	}
-	return response.blob();
+	const includeImages = opts?.includeImages ?? mode === "zip";
+	const job = await client.sources.enqueueExport({ id, mode, includeImages });
+	return downloadCompletedJobArtifact(client.jobs, job.id);
 }
 
 export async function restoreSource(
@@ -46,36 +35,12 @@ export async function restoreSource(
 }
 
 export async function importSourceZip(id: string, file: File) {
-	const url = `${API_BASE}/api/sources/${id}/import`;
-	const response = await apiFetch(url, {
-		method: "POST",
-		body: file,
-	});
-	if (!response.ok) {
-		throw new Error(`Failed to import ZIP: ${response.status}`);
-	}
-	return await response.json();
+	return client.sources.enqueueImport({ id, mode: "zip", file });
 }
 
 export async function importSourceNdjson(id: string, file: File) {
-	return client.sources.importNdjson({
-		id,
-		file,
-	});
+	return client.sources.enqueueImport({ id, mode: "json", file });
 }
-
-export async function importSourceLanceDB(id: string, file: File) {
-	const url = `${API_BASE}/api/sources/${id}/import-lancedb`;
-	const response = await apiFetch(url, {
-		method: "POST",
-		body: file,
-	});
-	if (!response.ok) {
-		throw new Error(`Failed to import LanceDB: ${response.status}`);
-	}
-	return await response.json();
-}
-
 export function parseRestoreFile(file: File): Promise<unknown[]> {
 	return file.text().then((text) => JSON.parse(text));
 }

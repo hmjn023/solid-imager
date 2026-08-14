@@ -62,7 +62,7 @@ WITH (m = 16, ef_construction = 64);
 
 各メッセージの `durationMs` を、ウォームアップ分を除いて p50 / p95 に集計する。
 結果には `candidateLimit`、実候補数、再ランキング件数、`ef_search`、DB の CPU/メモリ、
-結果一致率または再現率を併記する。LanceDB との比較では同じアンカー、topK、候補数、
-モデル・embedding version を使用する。
+結果一致率または再現率を併記し、同じアンカー、topK、候補数、モデル・embedding version
+を使用する。
 
 このリポジトリでは本番相当の約 88k vectors と DB 接続を持たないため、実測値は記録していない。

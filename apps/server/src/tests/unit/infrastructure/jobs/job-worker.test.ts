@@ -4,6 +4,13 @@ import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 
+const { mockCleanupExpired, mockCleanupOrphaned } = vi.hoisted(() => ({
+	mockCleanupExpired: vi.fn().mockResolvedValue(undefined),
+	mockCleanupOrphaned: vi
+		.fn()
+		.mockResolvedValue({ removedFiles: 0, removedBytes: 0 }),
+}));
+
 // Mock logger to avoid noise
 vi.mock("~/infrastructure/logger", () => ({
 	logger: {
@@ -17,6 +24,12 @@ vi.mock("~/infrastructure/logger", () => ({
 	updateLogLevel: vi.fn(),
 }));
 
+vi.mock("~/application/services/job-transfer-storage", () => ({
+	cleanupExpiredJobTransferFiles: mockCleanupExpired,
+	cleanupOrphanedJobTransferFiles: mockCleanupOrphaned,
+	removeJobTransferFile: vi.fn(),
+}));
+
 describe("JobWorker", () => {
 	let jobRepo: IJobRepository;
 	let processor: (job: Job) => Promise<void>;
@@ -27,6 +40,10 @@ describe("JobWorker", () => {
 
 	beforeEach(() => {
 		vi.useFakeTimers();
+		mockCleanupExpired.mockReset().mockResolvedValue(undefined);
+		mockCleanupOrphaned
+			.mockReset()
+			.mockResolvedValue({ removedFiles: 0, removedBytes: 0 });
 
 		// Mock Repository
 		jobRepo = {
@@ -100,6 +117,7 @@ describe("JobWorker", () => {
 					"auto_tagging",
 					"extract_ccip_vector",
 					"generate_thumbnail",
+					"source_export",
 				],
 			}),
 		);
@@ -127,6 +145,9 @@ describe("JobWorker", () => {
 		(jobRepo.claimPending as any).mockImplementation(
 			(limit: number, options: any) => {
 				if (options?.includeTypes?.includes("generate_thumbnail")) {
+					return Promise.resolve([]);
+				}
+				if (options?.includeTypes?.includes("source_export")) {
 					return Promise.resolve([]);
 				}
 				if (options?.includeTypes) {
@@ -180,6 +201,9 @@ describe("JobWorker", () => {
 				if (options?.includeTypes?.includes("generate_thumbnail")) {
 					return Promise.resolve([]);
 				}
+				if (options?.includeTypes?.includes("source_export")) {
+					return Promise.resolve([]);
+				}
 				if (options?.includeTypes) {
 					// AI request
 					return Promise.resolve([aiJob].slice(0, limit));
@@ -209,6 +233,7 @@ describe("JobWorker", () => {
 					"auto_tagging",
 					"extract_ccip_vector",
 					"generate_thumbnail",
+					"source_export",
 				],
 			}),
 		);
@@ -261,75 +286,6 @@ describe("JobWorker", () => {
 		);
 	});
 
-	it("should requeue overlapping claimed LanceDB sync jobs per media source", async () => {
-		worker.updateConfig({
-			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
-		} as AppConfig);
-
-		let resolveProcessor: () => void = () => {};
-		processor = vi.fn(
-			() =>
-				new Promise<void>((resolve) => {
-					resolveProcessor = resolve;
-				}),
-		);
-		worker = new JobWorker(jobRepo, processor);
-		worker.updateConfig({
-			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
-		} as AppConfig);
-
-		const fullSyncJob = {
-			id: "lancedb-full-1",
-			type: "sync_lancedb_full",
-			mediaSourceId: "source-1",
-			status: "pending",
-		} as Job;
-		const deltaSyncSameSourceJob = {
-			id: "lancedb-delta-1",
-			type: "sync_lancedb_delta",
-			mediaSourceId: "source-1",
-			status: "pending",
-		} as Job;
-		const deltaSyncOtherSourceJob = {
-			id: "lancedb-delta-2",
-			type: "sync_lancedb_delta",
-			mediaSourceId: "source-2",
-			status: "pending",
-		} as Job;
-
-		(jobRepo.claimPending as any).mockImplementation(
-			(limit: number, options: any) => {
-				if (options?.includeTypes?.includes("generate_thumbnail")) {
-					return Promise.resolve([]);
-				}
-				if (options?.excludeTypes) {
-					return Promise.resolve(
-						[
-							fullSyncJob,
-							deltaSyncSameSourceJob,
-							deltaSyncOtherSourceJob,
-						].slice(0, limit),
-					);
-				}
-				return Promise.resolve([]);
-			},
-		);
-
-		worker.start();
-		await vi.advanceTimersByTimeAsync(TimerDelay);
-
-		expect(processor).toHaveBeenCalledTimes(2);
-		expect(processor).toHaveBeenCalledWith(fullSyncJob);
-		expect(processor).not.toHaveBeenCalledWith(deltaSyncSameSourceJob);
-		expect(processor).toHaveBeenCalledWith(deltaSyncOtherSourceJob);
-		expect(jobRepo.update).toHaveBeenCalledWith(deltaSyncSameSourceJob.id, {
-			status: "pending",
-		});
-
-		resolveProcessor();
-		await vi.runOnlyPendingTimersAsync();
-	});
-
 	it("processes at most one thumbnail generation job at a time", async () => {
 		let resolveThumbnail: () => void = () => {};
 		processor = vi.fn(
@@ -365,61 +321,49 @@ describe("JobWorker", () => {
 		await vi.runOnlyPendingTimersAsync();
 	});
 
-	it("should pass active LanceDB sync source IDs to claimPending for exclusion", async () => {
-		worker.updateConfig({
-			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
-		} as AppConfig);
-
-		const syncJob = {
-			id: "lancedb-sync-1",
-			type: "sync_lancedb",
-			mediaSourceId: "source-active",
-			status: "pending",
-		} as Job;
-
-		let resolveProcessor: () => void = () => {};
+	it("processes at most one source export job at a time", async () => {
+		let resolveExport: () => void = () => {};
 		processor = vi.fn(
 			() =>
 				new Promise<void>((resolve) => {
-					resolveProcessor = resolve;
+					resolveExport = resolve;
 				}),
 		);
 		worker = new JobWorker(jobRepo, processor);
-		worker.updateConfig({
-			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
-		} as AppConfig);
-
-		// First call: returns the sync job, making it active
-		(jobRepo.claimPending as any).mockImplementationOnce(() => {
-			return Promise.resolve([syncJob]);
-		});
-
-		// Second call: should include "source-active" in excludeLanceDbSourceIds
-		(jobRepo.claimPending as any).mockImplementationOnce(
-			(_limit: number, options: any) => {
-				expect(options?.excludeLanceDbSourceIds).toContain("source-active");
-				return Promise.resolve([]);
-			},
+		const exportJob = {
+			id: "export-1",
+			type: "source_export",
+			status: "pending",
+		} as Job;
+		(jobRepo.claimPending as any).mockImplementation(
+			(limit: number, options: any) =>
+				Promise.resolve(
+					options?.includeTypes?.includes("source_export")
+						? [exportJob].slice(0, limit)
+						: [],
+				),
 		);
 
 		worker.start();
-		// Advance to trigger first poll and start processing syncJob
 		await vi.advanceTimersByTimeAsync(TimerDelay);
-
-		expect(processor).toHaveBeenCalledTimes(1);
-		expect(processor).toHaveBeenCalledWith(syncJob);
-
-		// Advance to trigger second poll while syncJob is still active
 		await vi.advanceTimersByTimeAsync(1000);
 
-		expect(jobRepo.claimPending).toHaveBeenLastCalledWith(
-			2, // 3 slots total - 1 active job = 2 slots remaining
-			expect.objectContaining({
-				excludeLanceDbSourceIds: ["source-active"],
-			}),
-		);
+		expect(processor).toHaveBeenCalledTimes(1);
+		expect(jobRepo.claimPending).toHaveBeenCalledWith(1, {
+			includeTypes: ["source_export"],
+		});
 
-		resolveProcessor();
+		resolveExport();
 		await vi.runOnlyPendingTimersAsync();
+	});
+
+	it("still expires transfer files when orphan cleanup fails", async () => {
+		mockCleanupOrphaned.mockRejectedValueOnce(new Error("cleanup failed"));
+
+		await (
+			worker as unknown as { recoverStaleJobs: () => Promise<void> }
+		).recoverStaleJobs();
+
+		expect(mockCleanupExpired).toHaveBeenCalledTimes(1);
 	});
 });

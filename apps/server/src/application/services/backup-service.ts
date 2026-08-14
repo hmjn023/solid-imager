@@ -1,5 +1,8 @@
+import { createReadStream, createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { Writable } from "node:stream";
+import { finished } from "node:stream/promises";
 import {
 	type AuthorPlatform,
 	type MediaDumpItem,
@@ -8,16 +11,15 @@ import {
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
-import { and, asc, eq, gt, inArray, lt, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
-import { LANCEDB_DUMP_VERSION } from "~/application/services/lancedb-dump-service";
+import { getJobTransferRoot } from "~/application/services/job-transfer-storage";
 import { db } from "~/infrastructure/db";
 import {
 	authorAccounts,
 	characterIps,
 	characters,
 	ips,
-	lanceDbSyncDirty,
 	mediaAuthors,
 	mediaCharacters,
 	mediaGenerationInfo,
@@ -55,8 +57,6 @@ type JsonValue =
 	| null
 	| JsonValue[]
 	| { [key: string]: JsonValue };
-
-const LanceDbDirtyMaxAttempts = 5;
 
 function authorRestoreKey(author: {
 	name: string;
@@ -131,6 +131,15 @@ type BackupDbClient = Pick<
 	"delete" | "insert" | "query" | "select" | "update"
 >;
 
+type TarArchive = import("archiver").Archiver;
+type TarEntryData = import("archiver").TarEntryData;
+
+const TarStagingDirectory = path.resolve(
+	getJobTransferRoot(),
+	"..",
+	"tar-staging",
+);
+
 // const _IMAGES_PREFIX = /^images\//;
 
 /**
@@ -152,6 +161,179 @@ function validateArchiveEntries(entries: string[]): void {
 	for (const entry of entries) {
 		validateRelativePath(entry);
 	}
+}
+
+async function writeWithBackpressure(
+	stream: Writable,
+	chunk: string,
+): Promise<void> {
+	if (stream.write(chunk)) {
+		return;
+	}
+
+	await new Promise<void>((resolve, reject) => {
+		const cleanup = () => {
+			stream.removeListener("drain", onDrain);
+			stream.removeListener("error", onError);
+			stream.removeListener("close", onClose);
+		};
+		const onDrain = () => {
+			cleanup();
+			resolve();
+		};
+		const onError = (error: Error) => {
+			cleanup();
+			reject(error);
+		};
+		const onClose = () => {
+			cleanup();
+			reject(new Error("Dump stream closed before it drained"));
+		};
+
+		stream.once("drain", onDrain);
+		stream.once("error", onError);
+		stream.once("close", onClose);
+	});
+}
+
+async function* iterateMediaDumpItems(
+	mediaSourceId: string,
+	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
+): AsyncGenerator<MediaDumpItem> {
+	const limit = 1000;
+	let lastId: string | null = null;
+	let hasMore = true;
+
+	while (hasMore) {
+		const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
+			where: lastId
+				? and(eq(medias.mediaSourceId, mediaSourceId), gt(medias.id, lastId))
+				: eq(medias.mediaSourceId, mediaSourceId),
+			limit,
+			with: {
+				generationInfo: true,
+				urls: true,
+				tags: { with: { tag: true } },
+				authors: {
+					with: { author: { with: { accounts: true } } },
+				},
+				characters: {
+					with: {
+						character: { with: { ips: { with: { ip: true } } } },
+					},
+				},
+				ips: { with: { ip: true } },
+				projects: { with: { project: true } },
+			},
+			orderBy: medias.id,
+		});
+
+		if (mediaList.length < limit) {
+			hasMore = false;
+		}
+		lastId = mediaList.at(-1)?.id ?? lastId;
+
+		if (mediaList.length > 0) {
+			yield* transform(mediaList);
+		}
+	}
+}
+
+async function writeNdjsonDump(
+	mediaSourceId: string,
+	outputPath: string,
+	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
+): Promise<void> {
+	const output = createWriteStream(outputPath);
+	let streamError: Error | undefined;
+	const onOutputError = (error: Error) => {
+		streamError ??= error;
+	};
+	output.on("error", onOutputError);
+	try {
+		for await (const item of iterateMediaDumpItems(mediaSourceId, transform)) {
+			if (streamError) {
+				throw streamError;
+			}
+			await writeWithBackpressure(output, `${JSON.stringify(item)}\n`);
+		}
+		if (streamError) {
+			throw streamError;
+		}
+		output.end();
+		await finished(output);
+	} catch (error) {
+		output.destroy();
+		throw error;
+	} finally {
+		output.removeListener("error", onOutputError);
+	}
+}
+
+async function* iterateNdjsonDumpItems(
+	inputPath: string,
+): AsyncGenerator<MediaDumpItem> {
+	const readline = await import("node:readline");
+	const input = createReadStream(inputPath);
+	const lines = readline.createInterface({
+		input,
+		crlfDelay: Infinity,
+	});
+
+	try {
+		for await (const line of lines) {
+			if (line.trim()) {
+				yield mediaDumpItemSchema.parse(JSON.parse(line));
+			}
+		}
+	} finally {
+		lines.close();
+		input.destroy();
+	}
+}
+
+function normalizeArchiveEntryName(name: string): string {
+	return name.replaceAll("\\", "/").replace(/\/+/g, "/");
+}
+
+function appendTarEntry(
+	archive: TarArchive,
+	source: import("node:stream").Readable,
+	data: TarEntryData,
+): Promise<void> {
+	const normalizedName = normalizeArchiveEntryName(data.name);
+	const normalizedData = { ...data, name: normalizedName };
+	return new Promise((resolve, reject) => {
+		const cleanup = () => {
+			archive.removeListener("entry", onEntry);
+			archive.removeListener("error", onArchiveError);
+			source.removeListener("error", onSourceError);
+		};
+		const onEntry = (entry: TarEntryData) => {
+			if (entry.name !== normalizedName) {
+				return;
+			}
+			cleanup();
+			resolve();
+		};
+		const onArchiveError = (error: Error) => {
+			cleanup();
+			reject(error);
+		};
+		const onSourceError = (error: Error) => {
+			cleanup();
+			reject(error);
+		};
+
+		archive.on("entry", onEntry);
+		archive.once("error", onArchiveError);
+		source.once("error", onSourceError);
+		try {
+			archive.append(source, normalizedData);
+		} catch (error) {
+			onArchiveError(error instanceof Error ? error : new Error(String(error)));
+		}
+	});
 }
 
 /**
@@ -226,9 +408,7 @@ export const BackupService = {
 			const { tagMap, authorMap, projectMap, ipMap, charMap } =
 				await this._restoreMasterData(validItems, c);
 
-			await this._restoreMediaRecords(mediaSourceId, validItems, c);
-
-			mediaPathToId = await this._mapMediaPathsToIds(
+			mediaPathToId = await this._restoreMediaRecords(
 				mediaSourceId,
 				validItems,
 				c,
@@ -248,39 +428,10 @@ export const BackupService = {
 			);
 		});
 
-		// Trigger thumbnail generation (skip metadata extraction to preserve restored data)
-		if (mediaSource.type === "local") {
-			const mediaIds = Array.from(mediaPathToId.values());
-
-			if (mediaIds.length > 0) {
-				try {
-					const { services } = await import("~/application/registry");
-					const jobRepo = services.getJobRepository();
-
-					const connectionInfo = mediaSource.connectionInfo as { path: string };
-					const basePath = connectionInfo.path;
-
-					for (const id of mediaIds) {
-						await jobRepo.create({
-							type: "processMedia",
-							mediaSourceId,
-							payload: {
-								mediaId: id,
-								sourcePath: basePath,
-								type: "processMedia", // optional
-								skipMetadataExtraction: true,
-							},
-						});
-					}
-					// Worker handles it automatically
-				} catch (e) {
-					logger.warn(
-						{ err: e },
-						"Failed to queue thumbnail generation jobs after restore (non-critical)",
-					);
-				}
-			}
-		}
+		// Thumbnail generation is intentionally not part of restore. Restoring a
+		// large dump must not start one processMedia job per item while the import
+		// transaction is still competing for CPU, disk, and the jobs table. Callers
+		// can use the dedicated thumbnail-generation workflow after the import.
 
 		return {
 			processed: validItems.length,
@@ -490,7 +641,7 @@ export const BackupService = {
 		mediaSourceId: string,
 		validItems: MediaDumpItem[],
 		_tx?: BackupDbClient,
-	) {
+	): Promise<Map<string, string>> {
 		const d = _tx ?? db;
 		const mediaValues = validItems.map((item) => ({
 			mediaSourceId,
@@ -512,9 +663,10 @@ export const BackupService = {
 		// Batch insert is limited by parameter count, so we might need chunking if validItems is huge
 		// Assuming reasonable size or caller handles chunking. For safety, let's chunk.
 		const ChunkSize = 1000;
+		const mediaPathToId = new Map<string, string>();
 		for (let i = 0; i < mediaValues.length; i += ChunkSize) {
 			const chunk = mediaValues.slice(i, i + ChunkSize);
-			await d
+			const restoredRows = await d
 				.insert(medias)
 				.values(chunk)
 				.onConflictDoUpdate({
@@ -527,47 +679,22 @@ export const BackupService = {
 						height: sql`excluded.height`,
 						fileSize: sql`excluded.file_size`,
 					},
-				});
-		}
-	},
+				})
+				.returning();
 
-	async _mapMediaPathsToIds(
-		mediaSourceId: string,
-		validItems: MediaDumpItem[],
-		_tx?: BackupDbClient,
-	) {
-		const d = _tx ?? db;
-		const ChunkSize = 1_000;
-		const storedMedias: { id: string; filePath: string }[] = [];
-
-		for (let i = 0; i < validItems.length; i += ChunkSize) {
-			const chunk = validItems.slice(i, i + ChunkSize);
-			const filePaths = chunk.flatMap((item) =>
-				item.filePath ? [item.filePath] : [],
-			);
-
-			if (filePaths.length === 0) {
-				continue;
+			for (const row of restoredRows) {
+				mediaPathToId.set(row.filePath, row.id);
 			}
-
-			const chunkResults = await d.query.medias.findMany({
-				where: and(
-					eq(medias.mediaSourceId, mediaSourceId),
-					inArray(medias.filePath, filePaths),
-				),
-				columns: { id: true, filePath: true },
-			});
-			storedMedias.push(...chunkResults);
 		}
 
-		if (validItems.length > 0 && storedMedias.length === 0) {
+		if (validItems.length > 0 && mediaPathToId.size === 0) {
 			logger.warn(
 				{ mediaSourceId, validItemCount: validItems.length },
-				"_mapMediaPathsToIds returned no results — relations will be skipped",
+				"_restoreMediaRecords returned no rows — relations will be skipped",
 			);
 		}
 
-		return new Map(storedMedias.map((m) => [m.filePath, m.id]));
+		return mediaPathToId;
 	},
 
 	async _restoreRelations(
@@ -964,374 +1091,14 @@ export const BackupService = {
 		}
 	},
 
-	async importLanceDB(
-		mediaSourceId: string,
-		tarPath: string,
-		options?: { extractImages?: boolean },
-	) {
-		const mediaSource = await db.query.mediaSources.findFirst({
-			where: eq(mediaSources.id, mediaSourceId),
-		});
-
-		if (!mediaSource) {
-			throw new Error("Media source not found");
-		}
-
-		const { readFromLanceDB, cleanupLanceDBDir } = await import(
-			"~/application/services/lancedb-dump-service"
-		);
-		const { execSync } = await import("node:child_process");
-		const pathMod = await import("node:path");
-
-		const extractDir = pathMod.join(
-			process.cwd(),
-			".cache",
-			"lancedb-restore",
-			`restore-${Date.now()}`,
-		);
-		await fs.mkdir(extractDir, { recursive: true });
-
-		const extractImages = options?.extractImages ?? true;
-
-		try {
-			const listOutput = execSync(`tar -tf "${tarPath}"`, {
-				encoding: "utf-8",
-			});
-			const entries = listOutput.split("\n").filter(Boolean);
-			for (const entry of entries) {
-				const normalized = pathMod.normalize(entry);
-				if (
-					pathMod.isAbsolute(entry) ||
-					entry.startsWith("/") ||
-					normalized.includes("..")
-				) {
-					throw new Error(
-						`Invalid path in archive: ${entry}. Path traversal detected.`,
-					);
-				}
-			}
-
-			execSync(
-				`tar -xf "${tarPath}" -C "${extractDir}" --no-same-owner --no-same-permissions`,
-				{
-					stdio: "ignore",
-				},
-			);
-
-			const driver = getDriver(mediaSource);
-
-			let totalProcessed = 0;
-			let totalSkipped = 0;
-			const allErrors: string[] = [];
-
-			// Process each chunk: restore metadata first, then images
-			// This prevents race condition with file watcher
-			await readFromLanceDB(extractDir, {
-				extractImages,
-				saveImageBuffer: extractImages
-					? async (filePath: string, buffer: Buffer) => {
-							await driver.put(filePath, buffer);
-						}
-					: undefined,
-				onChunk: async (chunk) => {
-					const result = await this.restoreSource(mediaSourceId, chunk);
-					totalProcessed += result.processed;
-					totalSkipped += result.skipped;
-					allErrors.push(...result.errors);
-				},
-			});
-
-			return {
-				success: true,
-				importedCount: totalProcessed,
-				skippedCount: totalSkipped,
-				errors: allErrors,
-				message: `Successfully imported ${totalProcessed} items (Skipped: ${totalSkipped})`,
-			};
-		} finally {
-			await cleanupLanceDBDir(extractDir);
-		}
-	},
-
-	async queueSourceLanceDBDelta(
-		mediaSourceId: string,
-		mediaIds: string[],
-		operation: "upsert" | "delete" = "upsert",
-		options: { enqueueJob?: boolean } = {},
-	) {
-		const uniqueMediaIds = [...new Set(mediaIds)].filter(Boolean);
-		if (uniqueMediaIds.length === 0) {
-			return { queued: 0 };
-		}
-
-		const now = new Date();
-		const rows = uniqueMediaIds.map((mediaId) => ({
-			mediaSourceId,
-			mediaId,
-			operation,
-			updatedAt: now,
-		}));
-
-		await db
-			.insert(lanceDbSyncDirty)
-			.values(rows)
-			.onConflictDoUpdate({
-				target: [lanceDbSyncDirty.mediaSourceId, lanceDbSyncDirty.mediaId],
-				set: {
-					operation,
-					lastError: null,
-					updatedAt: now,
-				},
-			});
-
-		if (options.enqueueJob !== false) {
-			const { services } = await import("~/application/registry");
-			await services.getJobRepository().createIfUnique({
-				type: "sync_lancedb_delta",
-				mediaSourceId,
-				payload: { reason: "dirty", batchSize: 500 },
-			});
-		}
-
-		return { queued: uniqueMediaIds.length };
-	},
-
-	async syncSourceLanceDBDeltaCache(mediaSourceId: string, batchSize = 500) {
-		const mediaSource = await db.query.mediaSources.findFirst({
-			where: eq(mediaSources.id, mediaSourceId),
-		});
-
-		if (!mediaSource) {
-			throw new Error("Media source not found");
-		}
-
-		const { services } = await import("~/application/registry");
-		const config = services.getConfigService().getConfig();
-		const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
-		const cacheDir = path.resolve(
-			process.cwd(),
-			baseCacheDir,
-			`source-${mediaSourceId}`,
-		);
-
-		const manifestPath = path.join(cacheDir, "manifest.json");
-		try {
-			const content = await fs.readFile(manifestPath, "utf-8");
-			const manifest = JSON.parse(content) as { version?: unknown };
-			if (manifest.version !== LANCEDB_DUMP_VERSION) {
-				if (!config.lancedb?.autoFullSync) {
-					logger.warn(
-						{ mediaSourceId },
-						"LanceDB auto full sync is disabled because manifest version is invalid. Skipping auto sync.",
-					);
-					return { mode: "delta", processed: 0 };
-				}
-				await this.syncSourceLanceDBCache(mediaSourceId);
-				return { mode: "full", processed: 0 };
-			}
-		} catch {
-			if (!config.lancedb?.autoFullSync) {
-				logger.warn(
-					{ mediaSourceId },
-					"LanceDB auto full sync is disabled because manifest.json is missing. Skipping auto sync.",
-				);
-				return { mode: "delta", processed: 0 };
-			}
-			await this.syncSourceLanceDBCache(mediaSourceId);
-			return { mode: "full", processed: 0 };
-		}
-
-		const dirtyRows = await db
-			.select()
-			.from(lanceDbSyncDirty)
-			.where(
-				and(
-					eq(lanceDbSyncDirty.mediaSourceId, mediaSourceId),
-					lt(lanceDbSyncDirty.attempts, LanceDbDirtyMaxAttempts),
-				),
-			)
-			.orderBy(asc(lanceDbSyncDirty.updatedAt))
-			.limit(batchSize);
-
-		if (dirtyRows.length === 0) {
-			return { mode: "delta", processed: 0 };
-		}
-
-		const deleteIds = dirtyRows
-			.filter((row) => row.operation === "delete")
-			.map((row) => row.mediaId);
-		const upsertIds = dirtyRows
-			.filter((row) => row.operation !== "delete")
-			.map((row) => row.mediaId);
-
-		try {
-			let upsertItems: MediaDumpItem[] = [];
-			if (upsertIds.length > 0) {
-				const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
-					where: and(
-						eq(medias.mediaSourceId, mediaSourceId),
-						inArray(medias.id, upsertIds),
-					),
-					with: {
-						generationInfo: true,
-						urls: true,
-						tags: { with: { tag: true } },
-						authors: { with: { author: { with: { accounts: true } } } },
-						characters: {
-							with: {
-								character: {
-									with: { ips: { with: { ip: true } } },
-								},
-							},
-						},
-						ips: { with: { ip: true } },
-						projects: { with: { project: true } },
-					},
-				});
-				upsertItems = this._transformMediaList(mediaList);
-			}
-
-			const { syncLanceDBDelta } = await import(
-				"~/application/services/lancedb-dump-service"
-			);
-			await syncLanceDBDelta(cacheDir, {
-				mediaIdsToDelete: [...deleteIds, ...upsertIds],
-				itemsToUpsert: upsertItems,
-			});
-
-			await db.delete(lanceDbSyncDirty).where(
-				inArray(
-					lanceDbSyncDirty.id,
-					dirtyRows.map((row) => row.id),
-				),
-			);
-
-			logger.info(
-				{
-					mediaSourceId,
-					processed: dirtyRows.length,
-					upserted: upsertItems.length,
-					deleted: deleteIds.length,
-				},
-				"syncSourceLanceDBDeltaCache completed successfully",
-			);
-
-			return { mode: "delta", processed: dirtyRows.length };
-		} catch (error) {
-			const message = getErrorMessage(error);
-			await db
-				.update(lanceDbSyncDirty)
-				.set({
-					attempts: sql`${lanceDbSyncDirty.attempts} + 1`,
-					lastError: message,
-					updatedAt: new Date(),
-				})
-				.where(
-					inArray(
-						lanceDbSyncDirty.id,
-						dirtyRows.map((row) => row.id),
-					),
-				);
-			throw error;
-		}
-	},
-
-	/**
-	 * Generates a dump of the media source.
-	 * Returns a JSON object or a ReadableStream for ZIP download.
-	 */
-	async syncSourceLanceDBCache(
-		mediaSourceId: string,
-		options?: { batchSize?: number; delayMs?: number },
-	) {
-		const mediaSource = await db.query.mediaSources.findFirst({
-			where: eq(mediaSources.id, mediaSourceId),
-		});
-
-		if (!mediaSource) {
-			throw new Error("Media source not found");
-		}
-
-		const { services } = await import("~/application/registry");
-		const config = services.getConfigService().getConfig();
-		const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
-		const cacheDir = path.resolve(
-			process.cwd(),
-			baseCacheDir,
-			`source-${mediaSourceId}`,
-		);
-		await fs.mkdir(cacheDir, { recursive: true });
-
-		const { syncLanceDBPages } = await import(
-			"~/application/services/lancedb-dump-service"
-		);
-
-		const limit = options?.batchSize ?? 1000;
-		const delayMs = options?.delayMs ?? 0;
-		const self = this;
-
-		async function* loadPages(): AsyncIterable<MediaDumpItem[]> {
-			let lastId: string | null = null;
-
-			while (true) {
-				const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
-					where: lastId
-						? and(
-								eq(medias.mediaSourceId, mediaSourceId),
-								gt(medias.id, lastId),
-							)
-						: eq(medias.mediaSourceId, mediaSourceId),
-					limit,
-					with: {
-						generationInfo: true,
-						urls: true,
-						tags: { with: { tag: true } },
-						authors: { with: { author: { with: { accounts: true } } } },
-						characters: {
-							with: { character: { with: { ips: { with: { ip: true } } } } },
-						},
-						ips: { with: { ip: true } },
-						projects: { with: { project: true } },
-					},
-					orderBy: medias.id,
-				});
-
-				if (mediaList.length === 0) {
-					break;
-				}
-
-				yield self._transformMediaList(mediaList);
-
-				if (mediaList.length < limit) {
-					break;
-				}
-				lastId = mediaList.at(-1)?.id ?? lastId;
-
-				if (delayMs > 0) {
-					await new Promise((resolve) => setTimeout(resolve, delayMs));
-				}
-			}
-		}
-
-		const syncedCount = await syncLanceDBPages(cacheDir, loadPages());
-		await db
-			.delete(lanceDbSyncDirty)
-			.where(eq(lanceDbSyncDirty.mediaSourceId, mediaSourceId));
-
-		logger.info(
-			{ mediaSourceId, upserted: syncedCount },
-			"syncSourceLanceDBCache completed successfully",
-		);
-	},
-
 	/**
 	 * Generates a dump of the media source.
 	 * Returns a JSON object or a ReadableStream for ZIP download.
 	 */
 	async createDump(
 		mediaSourceId: string,
-		mode: "json" | "zip" | "ndjson" | "tar" | "lancedb" = "ndjson",
-		options?: { includeImages: boolean },
+		mode: "json" | "zip" | "ndjson" | "tar" = "ndjson",
+		options?: { includeImages: boolean; jobId?: string },
 	) {
 		// 1. Fetch Media Source Info (needed for Driver)
 		const mediaSource = await db.query.mediaSources.findFirst({
@@ -1350,51 +1117,16 @@ export const BackupService = {
 			const { PassThrough } = await import("node:stream");
 			const passThrough = new PassThrough();
 
-			(async () => {
+			void (async () => {
 				try {
-					const limit = 1000;
-					let lastId: string | null = null;
-					let hasMore = true;
-
-					while (hasMore) {
-						const mediaList: MediaListQueryItem[] =
-							await db.query.medias.findMany({
-								where: lastId
-									? and(
-											eq(medias.mediaSourceId, mediaSourceId),
-											gt(medias.id, lastId),
-										)
-									: eq(medias.mediaSourceId, mediaSourceId),
-								limit,
-								with: {
-									generationInfo: true,
-									urls: true,
-									tags: { with: { tag: true } },
-									authors: {
-										with: { author: { with: { accounts: true } } },
-									},
-									characters: {
-										with: {
-											character: { with: { ips: { with: { ip: true } } } },
-										},
-									},
-									ips: { with: { ip: true } },
-									projects: { with: { project: true } },
-								},
-								orderBy: medias.id,
-							});
-
-						if (mediaList.length < limit) {
-							hasMore = false;
-						}
-						lastId = mediaList.at(-1)?.id ?? lastId;
-
-						if (mediaList.length > 0) {
-							const transformedItems = this._transformMediaList(mediaList);
-							for (const item of transformedItems) {
-								passThrough.write(`${JSON.stringify(item)}\n`);
-							}
-						}
+					for await (const item of iterateMediaDumpItems(
+						mediaSourceId,
+						this._transformMediaList,
+					)) {
+						await writeWithBackpressure(
+							passThrough,
+							`${JSON.stringify(item)}\n`,
+						);
 					}
 					passThrough.end();
 				} catch (err) {
@@ -1414,241 +1146,77 @@ export const BackupService = {
 			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
-			const ndjsonStream = new PassThrough();
 			const archive = new archiverMod.TarArchive();
 			archive.pipe(passThrough);
-			archive.append(ndjsonStream, { name: "dump.ndjson" });
+			archive.on("error", (error) => {
+				if (!passThrough.destroyed) {
+					passThrough.destroy(error);
+				}
+			});
 
-			(async () => {
+			void (async () => {
+				let stagingDirectory: string | undefined;
 				try {
-					const limit = 1000;
-					let lastId: string | null = null;
-					let hasMore = true;
+					await fs.mkdir(TarStagingDirectory, { recursive: true });
+					const stagingPrefix = options?.jobId
+						? `${options.jobId}-export-`
+						: "export-";
+					stagingDirectory = await fs.mkdtemp(
+						path.join(TarStagingDirectory, stagingPrefix),
+					);
+					const ndjsonPath = path.join(stagingDirectory, "dump.ndjson");
+					await writeNdjsonDump(
+						mediaSourceId,
+						ndjsonPath,
+						this._transformMediaList,
+					);
 
-					while (hasMore) {
-						const mediaList: MediaListQueryItem[] =
-							await db.query.medias.findMany({
-								where: lastId
-									? and(
-											eq(medias.mediaSourceId, mediaSourceId),
-											gt(medias.id, lastId),
-										)
-									: eq(medias.mediaSourceId, mediaSourceId),
-								limit,
-								with: {
-									generationInfo: true,
-									urls: true,
-									tags: { with: { tag: true } },
-									authors: {
-										with: { author: { with: { accounts: true } } },
-									},
-									characters: {
-										with: {
-											character: { with: { ips: { with: { ip: true } } } },
-										},
-									},
-									ips: { with: { ip: true } },
-									projects: { with: { project: true } },
-								},
-								orderBy: medias.id,
-							});
+					const ndjsonStats = await fs.stat(ndjsonPath);
+					await appendTarEntry(archive, createReadStream(ndjsonPath), {
+						name: "dump.ndjson",
+						stats: ndjsonStats,
+					});
 
-						if (mediaList.length < limit) {
-							hasMore = false;
-						}
-						lastId = mediaList.at(-1)?.id ?? lastId;
-
-						if (mediaList.length > 0) {
-							const transformedItems = this._transformMediaList(mediaList);
-							const includeImages = options?.includeImages ?? true;
-							for (const item of transformedItems) {
-								ndjsonStream.write(`${JSON.stringify(item)}\n`);
-
-								if (includeImages && item.filePath) {
-									try {
-										const buffer = await driver.get(item.filePath);
-										archive.append(buffer, { name: `images/${item.filePath}` });
-									} catch {
-										// ignore missing files
-									}
-								}
+					const includeImages = options?.includeImages ?? true;
+					if (includeImages) {
+						for await (const item of iterateNdjsonDumpItems(ndjsonPath)) {
+							if (!item.filePath) {
+								continue;
 							}
+
+							let file: Awaited<ReturnType<typeof driver.getStream>>;
+							try {
+								file = await driver.getStream(item.filePath);
+							} catch {
+								// Ignore missing files, matching the previous export behavior.
+								continue;
+							}
+
+							await appendTarEntry(archive, file.stream, {
+								name: `images/${item.filePath}`,
+								stats: file.stats,
+							});
 						}
 					}
 
-					ndjsonStream.end();
 					await archive.finalize();
 				} catch (err) {
 					logger.error({ err }, "Error generating TAR dump");
-					ndjsonStream.destroy(
-						err instanceof Error ? err : new Error(String(err)),
-					);
+					const error = err instanceof Error ? err : new Error(String(err));
 					archive.abort();
-				}
-			})();
-
-			return nodeStreamToWebReadable(passThrough);
-		}
-
-		if (targetMode === "lancedb") {
-			const { services } = await import("~/application/registry");
-			const config = services.getConfigService().getConfig();
-			const baseCacheDir = config.lancedb?.cacheDir ?? ".cache/lancedb-cache";
-			const cacheDir = path.resolve(
-				process.cwd(),
-				baseCacheDir,
-				`source-${mediaSourceId}`,
-			);
-
-			const includeImages = options?.includeImages ?? true;
-			const archiverMod = await importArchiverModule();
-			const { PassThrough } = await import("node:stream");
-
-			let cacheValid = false;
-			try {
-				await fs.access(path.join(cacheDir, "manifest.json"));
-				cacheValid = true;
-			} catch {
-				// cache or manifest does not exist
-			}
-
-			if (cacheValid) {
-				try {
-					const driver = getDriver(mediaSource);
-					const { readMediaFilePaths } = await import(
-						"~/application/services/lancedb-dump-service"
-					);
-					const mediaFilePaths = includeImages
-						? await readMediaFilePaths(cacheDir)
-						: [];
-					const passThrough = new PassThrough();
-					const archive = new archiverMod.TarArchive();
-					archive.pipe(passThrough);
-
-					(async () => {
-						try {
-							archive.directory(cacheDir, false);
-
-							if (includeImages) {
-								await Promise.all(
-									mediaFilePaths.map(async (item) => {
-										if (!item.filePath) return;
-										try {
-											const buffer = await driver.get(item.filePath);
-											archive.append(buffer, {
-												name: `images/${item.filePath}`,
-											});
-										} catch {
-											// ignore missing files
-										}
-									}),
-								);
-							}
-
-							await archive.finalize();
-						} catch (err) {
-							logger.error(
-								{ err },
-								"Error generating LanceDB TAR dump from cache",
-							);
-							archive.abort();
-						}
-					})();
-
-					return nodeStreamToWebReadable(passThrough);
-				} catch (err) {
-					logger.warn(
-						{ err },
-						"Failed to read LanceDB cache, falling back to DB rebuild",
-					);
-				}
-			}
-
-			// Fallback: rebuild from DB when cache is unavailable
-			const { writeToLanceDB, cleanupLanceDBDir } = await import(
-				"~/application/services/lancedb-dump-service"
-			);
-			const tempBaseDir = path.join(
-				process.cwd(),
-				".cache",
-				"lancedb-dump",
-				`source-${mediaSourceId}`,
-			);
-			const dumpedItems: MediaDumpItem[] = [];
-			const limit = 1000;
-			let lastId: string | null = null;
-
-			while (true) {
-				const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
-					where: lastId
-						? and(
-								eq(medias.mediaSourceId, mediaSourceId),
-								gt(medias.id, lastId),
-							)
-						: eq(medias.mediaSourceId, mediaSourceId),
-					limit,
-					with: {
-						generationInfo: true,
-						urls: true,
-						tags: { with: { tag: true } },
-						authors: { with: { author: { with: { accounts: true } } } },
-						characters: {
-							with: {
-								character: { with: { ips: { with: { ip: true } } } },
-							},
-						},
-						ips: { with: { ip: true } },
-						projects: { with: { project: true } },
-					},
-					orderBy: medias.id,
-				});
-
-				if (mediaList.length === 0) break;
-				dumpedItems.push(...this._transformMediaList(mediaList));
-				lastId = mediaList.at(-1)?.id ?? lastId;
-				if (mediaList.length < limit) break;
-			}
-
-			const lanceDbDir = await writeToLanceDB(dumpedItems, {
-				includeImages,
-				tempDir: tempBaseDir,
-			});
-			const driver = getDriver(mediaSource);
-
-			const passThrough = new PassThrough();
-			const archive = new archiverMod.TarArchive();
-			archive.pipe(passThrough);
-
-			(async () => {
-				try {
-					archive.directory(lanceDbDir, false);
-
-					if (includeImages) {
-						for (const item of dumpedItems) {
-							if (!item.filePath) continue;
-							try {
-								const buffer = await driver.get(item.filePath);
-								archive.append(buffer, { name: `images/${item.filePath}` });
-							} catch {
-								// ignore missing files
-							}
-						}
+					passThrough.destroy(error);
+				} finally {
+					if (stagingDirectory) {
+						await fs
+							.rm(stagingDirectory, { recursive: true, force: true })
+							.catch(() => {});
 					}
-
-					await archive.finalize();
-					await cleanupLanceDBDir(lanceDbDir);
-				} catch (err) {
-					logger.error(
-						{ err },
-						"Error generating LanceDB TAR dump with images",
-					);
-					archive.abort();
-					await cleanupLanceDBDir(lanceDbDir).catch(() => {});
 				}
 			})();
 
 			return nodeStreamToWebReadable(passThrough);
 		}
+
 		throw new Error(`Unsupported dump mode: ${mode}`);
 	},
 

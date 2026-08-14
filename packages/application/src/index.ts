@@ -6,7 +6,6 @@ export type {
 	ICollectionService,
 	IDeferredActionExecutor,
 	IIpService,
-	ILanceDbDumpService,
 	ILogger,
 	IMediaContextProcessor,
 	IMediaProcessingService,
@@ -20,10 +19,7 @@ export type {
 	IThumbnailManager,
 	IThumbnailService,
 	IUserService,
-	MediaDumpItemWithImageData,
-	ReadOptions,
 	SearchOptions,
-	WriteOptions,
 } from "./ports";
 export {
 	CharacterServiceImpl,
@@ -31,7 +27,6 @@ export {
 	createCategoryService,
 	createCollectionService,
 	createIpService,
-	createLanceDbDumpService,
 	createPresetService,
 	createProjectService,
 	createTagService,

@@ -59,7 +59,7 @@ export const sourcesContract = {
 	dump: oc.input(
 		z.object({
 			id: z.string().uuid(),
-			mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+			mode: z.enum(["json", "zip"]).default("json"),
 			includeImages: z.boolean().optional().default(false),
 		}),
 	),
@@ -68,7 +68,7 @@ export const sourcesContract = {
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				mode: z.enum(["json", "zip", "lancedb"]).default("json"),
+				mode: z.enum(["json", "zip"]).default("json"),
 				includeImages: z.boolean().default(false),
 			}),
 		)
@@ -108,20 +108,11 @@ export const sourcesContract = {
 		)
 		.output(importNdjsonResultSchema),
 
-	importLanceDB: oc
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				file: z.instanceof(File),
-			}),
-		)
-		.output(importResultSchema),
-
 	enqueueImport: oc
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				mode: z.enum(["json", "zip", "lancedb"]),
+				mode: z.enum(["json", "zip"]),
 				file: z.instanceof(File),
 			}),
 		)

@@ -16,6 +16,78 @@ export type ClientOptions = {
 	timeoutMs?: number;
 };
 
+type JobArtifactInput = { id: string };
+type JobArtifactOptions = { signal?: AbortSignal };
+
+// The server intentionally returns this root-level artifact as a raw stream.
+// The regular oRPC JSON decoder cannot deserialize a stream body, so this one
+// procedure must be fetched directly while the other procedures use RPCLink.
+async function downloadJobArtifact(
+	url: URL,
+	fetchImpl: (request: Request, init?: FetchInit) => Promise<Response>,
+	input: JobArtifactInput,
+	options?: JobArtifactOptions,
+): Promise<ReadableStream<Uint8Array>> {
+	const response = await fetchImpl(
+		new Request(url, {
+			method: "POST",
+			headers: {
+				accept: "application/octet-stream",
+				"content-type": "application/json",
+			},
+			body: JSON.stringify({ json: input }),
+			signal: options?.signal,
+		}),
+		{ signal: options?.signal },
+	);
+
+	if (!response.ok) {
+		const body = await response.text().catch(() => "");
+		throw new APIError(
+			body || `Artifact download failed with status ${response.status}`,
+			"SERVER_ERROR",
+		);
+	}
+	if (!response.body) {
+		throw new APIError(
+			"Artifact download returned an empty body",
+			"SERVER_ERROR",
+		);
+	}
+
+	return response.body;
+}
+
+function withStreamingJobArtifactDownload<C extends AnyContractRouter>(
+	client: ContractRouterClient<C>,
+	artifactUrl: URL,
+	fetchImpl: (request: Request, init?: FetchInit) => Promise<Response>,
+): ContractRouterClient<C> {
+	return new Proxy(client as object, {
+		get(target, property, receiver) {
+			if (property !== "jobs") {
+				return Reflect.get(target, property, receiver);
+			}
+
+			const jobs = Reflect.get(target, property, receiver);
+			if (typeof jobs !== "function") {
+				return jobs;
+			}
+
+			return new Proxy(jobs, {
+				get(jobsTarget, jobsProperty, jobsReceiver) {
+					if (jobsProperty !== "downloadArtifact") {
+						return Reflect.get(jobsTarget, jobsProperty, jobsReceiver);
+					}
+
+					return (input: JobArtifactInput, options?: JobArtifactOptions) =>
+						downloadJobArtifact(artifactUrl, fetchImpl, input, options);
+				},
+			});
+		},
+	}) as ContractRouterClient<C>;
+}
+
 function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === "AbortError";
 }
@@ -84,5 +156,7 @@ export function createClient<C extends AnyContractRouter>(
 		fetch: fetchImpl,
 	});
 
-	return createORPCClient(link) as ContractRouterClient<C>;
+	const client = createORPCClient(link) as ContractRouterClient<C>;
+	const artifactUrl = new URL("jobs/downloadArtifact", rpcUrl);
+	return withStreamingJobArtifactDownload(client, artifactUrl, fetchImpl);
 }

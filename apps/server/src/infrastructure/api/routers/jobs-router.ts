@@ -14,6 +14,7 @@ import {
 } from "@solid-imager/core/domain/sources/events";
 import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
+import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -81,7 +82,6 @@ export function toJobDto(job: Job) {
 						fileName: job.artifactFileName,
 						contentType: job.artifactContentType,
 						size: job.artifactSize ?? null,
-						downloadUrl: `/api/jobs/${job.id}/artifact`,
 					}
 				: null,
 	};
@@ -123,6 +123,27 @@ export const jobsRouter = {
 				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
 			}
 			return toJobDto(job);
+		}),
+
+	downloadArtifact: os
+		.meta({
+			openapi: {
+				tags: ["Jobs"],
+				summary: "Download job artifact",
+				description: "Stream a completed job artifact",
+			},
+		})
+		.input(jobIdRequestSchema)
+		.output(z.instanceof(ReadableStream))
+		.handler(async ({ input }) => {
+			const artifact = await resolveJobArtifact(input.id);
+			if (!artifact) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "Artifact not found",
+				});
+			}
+
+			return artifact.stream;
 		}),
 
 	retry: os

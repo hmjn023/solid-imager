@@ -8,13 +8,6 @@ export type {
 export type { ICharacterService } from "./character-service";
 export type { ICollectionService } from "./collection-service";
 export type { IIpService } from "./ip-service";
-export type {
-	ILanceDbDumpService,
-	MediaDumpItemWithImageData,
-	ReadOptions,
-	SyncOptions,
-	WriteOptions,
-} from "./lancedb-dump-service";
 export type { IMediaProcessingService } from "./media-processing-service";
 export type {
 	DeferredActions,

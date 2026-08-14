@@ -55,6 +55,7 @@ const routerTagMap: Record<string, string> = {
   downloads: "Downloads",
   directories: "Directories",
   ai: "AI",
+  jobs: "Jobs",
   utils: "Utilities",
 };
 
@@ -96,6 +97,17 @@ async function generateOpenAPISpec() {
             } else {
               // デフォルトの概要（operationIdを綺麗にする）
               operation.summary = opId.split(".").pop() || opId;
+            }
+
+            if (opId === "jobs.downloadArtifact" && operation.responses?.[200]) {
+              operation.responses[200] = {
+                description: "OK",
+                content: {
+                  "application/octet-stream": {
+                    schema: { type: "string", format: "binary" },
+                  },
+                },
+              };
             }
           }
         }
