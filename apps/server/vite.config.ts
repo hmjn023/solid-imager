@@ -88,6 +88,18 @@ function serverModuleUrl(relativePath: string): string {
   return pathToFileURL(path.resolve(__dirname, relativePath)).href;
 }
 
+function resolveSafeMediaPath(basePath: string, targetPath: string): string {
+  const resolvedPath = path.resolve(basePath, targetPath);
+  const absoluteBase = path.resolve(basePath);
+  if (
+    resolvedPath !== absoluteBase &&
+    !resolvedPath.startsWith(`${absoluteBase}${path.sep}`)
+  ) {
+    throw new Error(`Invalid path: ${targetPath}`);
+  }
+  return resolvedPath;
+}
+
 const bypassSecFetchDestPlugin = (): Plugin => ({
   name: "bypass-sec-fetch-dest",
   configureServer(server) {
@@ -137,6 +149,99 @@ function getDevRpcHandler(): ReturnType<typeof loadDevRpcHandler> {
   devRpcHandlerPromise ??= loadDevRpcHandler();
   return devRpcHandlerPromise;
 }
+
+const loadDevMediaFileHandler = async () => {
+  const [
+    { services },
+    { initServices },
+    { getContentTypeFromExtension },
+    { localConnectionSchema },
+  ] = await Promise.all([
+    runtimeImport<typeof import("./src/application/registry")>(
+      serverModuleUrl("src/application/registry.ts"),
+    ),
+    runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
+      serverModuleUrl("src/infrastructure/bootstrap.ts"),
+    ),
+    runtimeImport<
+      typeof import("../../packages/core/src/domain/media/utils/media-type-utils")
+    >(
+      serverModuleUrl(
+        "../../packages/core/src/domain/media/utils/media-type-utils.ts",
+      ),
+    ),
+    runtimeImport<
+      typeof import("../../packages/core/src/domain/sources/schemas")
+    >(
+      serverModuleUrl("../../packages/core/src/domain/sources/schemas.ts"),
+    ),
+  ]);
+
+  return async (mediaSourceId: string, mediaId: string): Promise<Response> => {
+    initServices();
+    const media = await services.getMediaRepository().findById(mediaId);
+    if (!media || media.mediaSourceId !== mediaSourceId) {
+      return new Response("Media not found", { status: 404 });
+    }
+
+    const mediaSource = await services
+      .getSourceRepository()
+      .findById(mediaSourceId);
+    if (mediaSource?.type !== "local") {
+      return new Response("Invalid media source", { status: 400 });
+    }
+
+    const connectionInfo = localConnectionSchema.parse(mediaSource.connectionInfo);
+    const fullPath = resolveSafeMediaPath(connectionInfo.path, media.filePath);
+    const file = Bun.file(fullPath);
+    if (!(await file.exists())) {
+      return new Response("File not found on disk", { status: 404 });
+    }
+
+    return new Response(file, {
+      headers: {
+        "Cache-Control": "no-store",
+        "Content-Type": getContentTypeFromExtension(media.fileName),
+      },
+    });
+  };
+};
+
+let devMediaFileHandlerPromise: ReturnType<typeof loadDevMediaFileHandler> | undefined;
+
+function getDevMediaFileHandler(): ReturnType<typeof loadDevMediaFileHandler> {
+  devMediaFileHandlerPromise ??= loadDevMediaFileHandler();
+  return devMediaFileHandlerPromise;
+}
+
+const devMediaFileMiddlewarePlugin = (): Plugin => ({
+  name: "dev-media-file-middleware",
+  apply: "serve",
+  configureServer(server) {
+    if (!isE2e) return;
+    server.middlewares.use(async (req, res, next) => {
+      const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+      const match =
+        /^\/api\/sources\/([^/]+)\/([^/]+)$/.exec(pathname);
+      if (!match) {
+        next();
+        return;
+      }
+
+      try {
+        const response = await (
+          await getDevMediaFileHandler()
+        )(match[1], match[2]);
+        res.statusCode = response.status;
+        response.headers.forEach((value, key) => res.setHeader(key, value));
+        res.end(Buffer.from(await response.arrayBuffer()));
+      } catch (error) {
+        res.statusCode = 500;
+        res.end(error instanceof Error ? error.message : "Media request failed");
+      }
+    });
+  },
+});
 
 const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
   name: "dev-orpc-node-middleware",
@@ -205,7 +310,74 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
         next(error);
       }
     });
-  },
+	},
+});
+
+const e2eReadinessPlugin = (): Plugin => ({
+	name: "e2e-readiness",
+	apply: "serve",
+	configureServer(server) {
+		if (!isE2e) return;
+	server.middlewares.use("/__e2e_ready", async (_req, res) => {
+			try {
+				const devRpcHandler = await getDevRpcHandler();
+				devRpcHandler.initServices();
+				devRpcHandler.startBackgroundWorker();
+
+				const probeUrl = `http://127.0.0.1:${isolatedDevConfig?.port}/api/rpc/sources/list`;
+				let lastProbeFailure = "SSR readiness probe did not return a successful response";
+				for (let attempt = 0; attempt < 120; attempt += 1) {
+					const controller = new AbortController();
+					const timeout = setTimeout(() => controller.abort(), 5_000);
+					try {
+						const probeResponse = await fetch(probeUrl, {
+							body: "{}",
+							headers: { "content-type": "application/json" },
+							method: "POST",
+							signal: controller.signal,
+						});
+						await probeResponse.text();
+						if (probeResponse.ok) {
+							res.statusCode = 200;
+							res.end("ok");
+							return;
+						}
+						lastProbeFailure = `SSR readiness probe returned ${probeResponse.status}`;
+					} catch (error) {
+						lastProbeFailure = error instanceof Error ? error.message : String(error);
+					} finally {
+						clearTimeout(timeout);
+					}
+					await new Promise((resolve) => setTimeout(resolve, 250));
+				}
+
+				res.statusCode = 503;
+				res.end(lastProbeFailure);
+				return;
+			} catch (error) {
+				res.statusCode = 503;
+				res.end(error instanceof Error ? error.message : "E2E server is not ready");
+			}
+		});
+	},
+});
+
+const e2eServerTimeoutPlugin = (): Plugin => ({
+	name: "e2e-server-timeout",
+	apply: "serve",
+	configureServer(server) {
+		if (!isE2e || !server.httpServer) return;
+
+		// Vite's Bun HTTP adapter defaults to a 10-second idle timeout. SSR can
+		// exceed that while the isolated database and route graph are warming.
+		server.httpServer.setTimeout(255_000);
+		server.httpServer.requestTimeout = 255_000;
+		server.httpServer.headersTimeout = 255_000;
+		const bunServer = server.httpServer as typeof server.httpServer & {
+			idleTimeout?: number;
+		};
+		bunServer.idleTimeout = 255;
+	},
 });
 
 export default defineConfig({
@@ -216,13 +388,12 @@ export default defineConfig({
         host: "127.0.0.1",
         port: isolatedDevConfig.port,
         strictPort: true,
-        // Keep the dev-only transform and HMR client active while isolating
-        // measurement and E2E runs from the developer server's sockets.
         hmr: {
           protocol: shouldUseMkcert ? "wss" : "ws",
           host: "127.0.0.1",
           port: isolatedDevConfig.hmrPort,
           clientPort: isolatedDevConfig.hmrPort,
+          overlay: false,
         },
         fs: {
           allow: [workspaceRoot, path.dirname(routeTreePath)],
@@ -255,6 +426,9 @@ export default defineConfig({
     ...(shouldUseMkcert ? [mkcert()] : []),
     bypassSecFetchDestPlugin(),
     devOrpcNodeMiddlewarePlugin(),
+    devMediaFileMiddlewarePlugin(),
+    e2eServerTimeoutPlugin(),
+    e2eReadinessPlugin(),
     ...(shouldUseDevtools
       ? [
           devtools({

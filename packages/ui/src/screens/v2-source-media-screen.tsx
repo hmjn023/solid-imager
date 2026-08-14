@@ -145,7 +145,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 								onClearSelection={props.onClearSelection}
 								onCopyMove={page().handleCopyMove}
 								onDelete={page().handleDelete}
-								onLoadMore={() => page().mediaQuery.fetchNextPage()}
+								onLoadMore={() => page().fetchNextPage()}
 								onPreviewSelect={(media) => setPreviewMediaId(media.id)}
 								onRetry={async () => {
 									await page().mediaQuery.refetch();

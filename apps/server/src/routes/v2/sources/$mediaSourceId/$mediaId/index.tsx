@@ -8,7 +8,7 @@ import {
 } from "@solid-imager/ui/v2/icons";
 import { createQuery } from "@tanstack/solid-query";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
-import type { Accessor } from "solid-js";
+import { type Accessor, Show } from "solid-js";
 import { V2MediaActions } from "~/components/media/v2-media-actions";
 import { V2MediaSidebar } from "~/components/media/v2-media-sidebar";
 import { V2MediaViewer } from "~/components/media/v2-media-viewer";
@@ -36,10 +36,21 @@ export const Route = createFileRoute("/v2/sources/$mediaSourceId/$mediaId/")({
 
 function MediaRoute() {
 	const params = Route.useParams();
-	const mediaSourceId = () => params().mediaSourceId;
-	const mediaId = () => params().mediaId;
+	const routeKey = () => `${params().mediaSourceId}:${params().mediaId}`;
 
-	return <MediaContent mediaId={mediaId} mediaSourceId={mediaSourceId} />;
+	return (
+		<Show keyed when={routeKey()}>
+			{(key) => {
+				const [mediaSourceId, mediaId] = key.split(":");
+				return (
+					<MediaContent
+						mediaId={() => mediaId}
+						mediaSourceId={() => mediaSourceId}
+					/>
+				);
+			}}
+		</Show>
+	);
 }
 
 function MediaDetailHeader(props: {
@@ -63,12 +74,12 @@ function MediaDetailHeader(props: {
 	};
 	const returnToCollection = () => {
 		const returnPath = sessionStorage.getItem("v2:media-return");
-		if (
+		const isValidReturnPath =
 			typeof returnPath === "string" &&
 			(returnPath === "/v2/search" ||
 				returnPath.startsWith("/v2/search?") ||
-				returnPath.startsWith("/v2/sources/"))
-		) {
+				returnPath.startsWith("/v2/sources/"));
+		if (isValidReturnPath) {
 			sessionStorage.removeItem("v2:media-return");
 			window.history.back();
 			return;

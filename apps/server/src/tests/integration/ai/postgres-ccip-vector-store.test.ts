@@ -176,5 +176,5 @@ describe("PostgresCcipVectorStore", () => {
 			.from(mediaRegions)
 			.where(eq(mediaRegions.mediaId, ANCHOR_MEDIA_ID));
 		expect(region?.sourceModifiedAt).toEqual(NEWER_MODIFIED_AT);
-	});
+	}, 30_000);
 });

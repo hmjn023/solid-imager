@@ -33,7 +33,9 @@ type SharedSourceTransport = {
 	idleSince: number | null;
 };
 
-const SOURCE_TRANSPORT_IDLE_TIMEOUT_MS = 0;
+// Keep recently unused streams alive briefly so route transitions can reuse
+// them instead of opening another long-lived browser connection.
+const SOURCE_TRANSPORT_IDLE_TIMEOUT_MS = 30_000;
 const MAX_IDLE_SOURCE_TRANSPORTS = 2;
 
 type SourceTransportGlobal = typeof globalThis & {
@@ -80,7 +82,12 @@ export function createServerTransport(
 		if (!id) {
 			return false;
 		}
-		if (id === "*" && (pathname === "/search" || pathname.startsWith("/v2/"))) {
+		if (
+			id === "*" &&
+			(pathname === "/search" ||
+				pathname === "/sources" ||
+				pathname.startsWith("/v2/"))
+		) {
 			return true;
 		}
 		if (id === "*") {

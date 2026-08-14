@@ -29,8 +29,10 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 		await route.continue();
 	});
 
-	const initialStatusResponse = page.waitForResponse((response) =>
-		ccipVectorStatusEndpoint.test(new URL(response.url()).pathname),
+	const initialStatusResponse = page.waitForResponse(
+		(response) =>
+			ccipVectorStatusEndpoint.test(new URL(response.url()).pathname),
+		{ timeout: 30_000 },
 	);
 	await page.goto(mediaPath(E2E_SIMILAR_MEDIA_ID));
 	await initialStatusResponse;

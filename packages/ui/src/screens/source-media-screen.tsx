@@ -143,7 +143,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							mediaSourceId={page().mediaSourceId}
 							onCopyMove={page().handleCopyMove}
 							onDelete={page().handleDelete}
-							onLoadMore={() => page().mediaQuery.fetchNextPage()}
+							onLoadMore={() => page().fetchNextPage()}
 							onRetry={async () => {
 								await page().mediaQuery.refetch();
 							}}
