@@ -113,6 +113,7 @@ export function AppNav(props: AppNavProps) {
 								<Link
 									aria-current={isActive(item.to) ? "page" : undefined}
 									class={desktopLinkClass(item.to)}
+									preload={item.to === "/search" ? "intent" : false}
 									to={item.to}
 								>
 									{item.label}

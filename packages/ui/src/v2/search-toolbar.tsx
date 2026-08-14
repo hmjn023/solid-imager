@@ -372,6 +372,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				/>
 
 				<Popover
+					forceMount
 					onOpenChange={setFilterOpen}
 					open={filterOpen()}
 					placement="bottom-end"
@@ -395,7 +396,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 					</PopoverTrigger>
 					<PopoverContent
 						aria-label="検索フィルター"
-						class="v2-theme flex max-h-[min(42rem,calc(100dvh-2rem))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden bg-[var(--v2-surface)] p-0 text-[var(--v2-text)] shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
+						class="v2-theme relative flex min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden bg-[var(--v2-surface)] p-0 text-[var(--v2-text)] shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
 					>
 						<div class="flex items-start justify-between border-[var(--v2-border)] border-b px-4 py-3">
 							<div>
@@ -416,7 +417,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 								すべて解除
 							</Button>
 						</div>
-						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
+						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-20">
 							<SearchControlPanel
 								context={props.context}
 								filterData={props.filterData}
@@ -430,7 +431,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 								usePopover={false}
 							/>
 						</div>
-						<div class="flex shrink-0 justify-end gap-2 border-[var(--v2-border)] border-t bg-white p-3">
+						<div class="absolute right-0 bottom-0 left-0 z-[60] flex justify-end gap-2 border-[var(--v2-border)] border-t bg-white p-3 pointer-events-auto">
 							<Button
 								onClick={() => setFilterOpen(false)}
 								size="sm"

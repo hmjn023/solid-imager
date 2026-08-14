@@ -12,7 +12,7 @@ export function LegacyMediaDetailSkeleton(
 		<div
 			aria-hidden="true"
 			class={cn(
-				"flex min-h-[calc(100dvh-7.5rem)] flex-col gap-4 lg:flex-row",
+				"flex min-h-[calc(100dvh-8rem)] flex-col gap-4 lg:flex-row",
 				props.class,
 			)}
 			data-skeleton="media-detail"

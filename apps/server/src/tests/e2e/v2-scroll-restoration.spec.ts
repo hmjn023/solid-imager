@@ -4,6 +4,11 @@ import { expect, test, waitForAppHydration } from "./support/test";
 
 const searchEndpoint = "**/api/rpc/media/search**";
 
+function getSearchOffset(postData: string | null): number | undefined {
+	const offset = postData?.match(/"offset"\s*:\s*(\d+)/)?.[1];
+	return offset === undefined ? undefined : Number(offset);
+}
+
 async function verifyRestoredScrollerDuringFastPageFetch(
 	page: Page,
 	entryPath: string,
@@ -14,18 +19,46 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	await page.setViewportSize({ width: 1280, height: 633 });
 
 	let delaySearchRequests = false;
+	let highestRequestedOffset = 0;
 	let delayedNextPageRequestCount = 0;
+	let delayedNextPageRequestHeld = false;
+	let releaseDelayedNextPageRequest: () => void = () => {};
+	const delayedNextPageRequest = new Promise<void>((resolve) => {
+		releaseDelayedNextPageRequest = resolve;
+	});
 	await page.addInitScript(() => {
 		sessionStorage.removeItem("current-all");
 		sessionStorage.removeItem("solid-imager-scroll-positions");
 		sessionStorage.removeItem("v2:media-return");
 	});
 	await page.route(searchEndpoint, async (route) => {
-		if (delaySearchRequests && route.request().method() === "POST") {
-			if ((route.request().postData() ?? "").includes('"offset":200')) {
-				delayedNextPageRequestCount += 1;
+		if (route.request().method() === "POST") {
+			const offset = getSearchOffset(route.request().postData());
+			const isBeyondLoadedPages =
+				offset !== undefined && offset > highestRequestedOffset;
+			if (offset !== undefined) {
+				highestRequestedOffset = Math.max(highestRequestedOffset, offset);
 			}
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			const shouldHoldRequest =
+				isBeyondLoadedPages &&
+				delaySearchRequests &&
+				!delayedNextPageRequestHeld;
+			if (shouldHoldRequest) {
+				delayedNextPageRequestHeld = true;
+				delayedNextPageRequestCount += 1;
+				const response = await route.fetch();
+				const responseBody = await response.body();
+				const responseHeaders = response.headers();
+				const responseStatus = response.status();
+				await delayedNextPageRequest;
+				await new Promise((resolve) => setTimeout(resolve, 1000));
+				await route.fulfill({
+					body: responseBody,
+					headers: responseHeaders,
+					status: responseStatus,
+				});
+				return;
+			}
 		}
 		await route.continue();
 	});
@@ -73,6 +106,8 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 		page.getByRole("heading", { name: mediaFileName, exact: true }),
 	).toBeVisible();
 
+	const loadedOffsetBeforeReturn = highestRequestedOffset;
+	delaySearchRequests = true;
 	if (returnMethod === "browser") {
 		await page.goBack();
 	} else {
@@ -131,12 +166,15 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	const nextPageResponsePromise = page.waitForResponse(
 		(response) =>
 			response.url().includes("/api/rpc/media/search") &&
-			(response.request().postData() ?? "").includes('"offset":200'),
-		{ timeout: 10_000 },
+			(getSearchOffset(response.request().postData()) ?? 0) >
+				loadedOffsetBeforeReturn,
+		{ timeout: 30_000 },
 	);
-	delaySearchRequests = true;
 	await scroller.hover();
-	await page.mouse.wheel(0, 1800);
+	await scroller.evaluate((element) => {
+		element.scrollTop = element.scrollHeight;
+		element.dispatchEvent(new Event("scroll"));
+	});
 	await expect.poll(() => delayedNextPageRequestCount).toBeGreaterThan(0);
 	await page.waitForTimeout(100);
 
@@ -173,6 +211,7 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	expect(probeDuringFetch.minObservedScrollTop).toBeGreaterThan(0);
 	expect(probeDuringFetch.finalScrollTop).toBeGreaterThan(1000);
 
+	releaseDelayedNextPageRequest();
 	const nextPageResponse = await nextPageResponsePromise;
 	expect(nextPageResponse.status()).toBe(200);
 	await expect

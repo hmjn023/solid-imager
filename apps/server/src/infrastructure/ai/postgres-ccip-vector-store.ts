@@ -38,20 +38,6 @@ const rawCandidateRowSchema = recordRowSchema.extend({
 	cosineDistance: z.coerce.number().finite(),
 });
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function extractRows(value: unknown): unknown[] {
-	if (Array.isArray(value)) {
-		return value;
-	}
-	if (isRecord(value) && Array.isArray(value.rows)) {
-		return value.rows;
-	}
-	return [];
-}
-
 function parseVector(value: string | number[]): number[] {
 	const parsed = typeof value === "string" ? JSON.parse(value) : value;
 	if (
@@ -359,24 +345,24 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 			await transaction.execute(
 				sql`SET LOCAL hnsw.iterative_scan = 'relaxed_order'`,
 			);
-			const raw = await transaction.execute(sql`
-			SELECT
-				${medias.id} AS "mediaId",
-				${medias.mediaSourceId} AS "mediaSourceId",
-				${ccipEmbeddings.embedding}::text AS "vector",
-				${ccipEmbeddings.model} AS "model",
-				${ccipEmbeddings.embeddingVersion} AS "embeddingVersion",
-				${ccipEmbeddings.mediaModifiedAt} AS "mediaModifiedAt",
-				${ccipEmbeddings.extractedAt} AS "extractedAt",
-				(${ccipEmbeddings.embedding} <=> ${literal}::vector) AS "cosineDistance"
-			FROM ${ccipEmbeddings}
-			INNER JOIN ${mediaRegions} ON ${ccipEmbeddings.regionId} = ${mediaRegions.id}
-			INNER JOIN ${medias} ON ${mediaRegions.mediaId} = ${medias.id}
-			WHERE ${sql.join(filters, sql` AND `)}
-			ORDER BY ${ccipEmbeddings.embedding} <=> ${literal}::vector
-			LIMIT ${limit}
-			`);
-			return extractRows(raw).map((row) => rawCandidateRowSchema.parse(row));
+			const rows = await transaction
+				.select({
+					mediaId: medias.id,
+					mediaSourceId: medias.mediaSourceId,
+					vector: sql<string>`${ccipEmbeddings.embedding}::text`,
+					model: ccipEmbeddings.model,
+					embeddingVersion: ccipEmbeddings.embeddingVersion,
+					mediaModifiedAt: ccipEmbeddings.mediaModifiedAt,
+					extractedAt: ccipEmbeddings.extractedAt,
+					cosineDistance: sql<number>`${ccipEmbeddings.embedding} <=> ${literal}::vector`,
+				})
+				.from(ccipEmbeddings)
+				.innerJoin(mediaRegions, eq(ccipEmbeddings.regionId, mediaRegions.id))
+				.innerJoin(medias, eq(mediaRegions.mediaId, medias.id))
+				.where(and(...filters))
+				.orderBy(sql`${ccipEmbeddings.embedding} <=> ${literal}::vector`)
+				.limit(limit);
+			return rows.map((row) => rawCandidateRowSchema.parse(row));
 		});
 		this.logger?.info(
 			{

@@ -24,6 +24,9 @@
     "test:e2e": "bun scripts/run-e2e.ts --mode=all",
     "test:e2e:dev": "bun scripts/run-e2e.ts --mode=dev",
     "test:e2e:production": "bun scripts/run-e2e.ts --mode=production",
+    "test:e2e:quick": "bun scripts/run-e2e.ts --mode=all --project=desktop --project=responsive-375 --project=responsive-768",
+    "test:e2e:quick:dev": "bun scripts/run-e2e.ts --mode=dev --project=desktop --project=responsive-375 --project=responsive-768",
+    "test:e2e:quick:production": "bun scripts/run-e2e.ts --mode=production --project=desktop --project=responsive-375 --project=responsive-768",
     "test:e2e:playwright": "playwright test",
     "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'",
     "docs:generate": "typedoc"

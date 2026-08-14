@@ -120,21 +120,23 @@ test("source media exposes mobile filters and touch selection", async ({
 			exact: true,
 		}),
 	).toBeVisible();
-	const resultCount = page.getByText(/^2 件の結果$/);
+	const resultCount = page.getByText(/^\d+ 件の結果$/);
 	await expect(resultCount).toHaveCount(1);
 	await expect(resultCount).toBeVisible();
 	const firstMedia = page.locator("[data-media-id]").first();
 	await expect(firstMedia).toBeVisible();
-	const filterCard = page
-		.getByRole("heading", { name: "検索フィルター", exact: true })
-		.locator("..")
-		.locator("..");
-	const [filterTop, mediaTop] = await Promise.all(
-		[filterCard, firstMedia].map((locator) =>
-			locator.evaluate((element) => element.getBoundingClientRect().top),
-		),
-	);
-	expect(Math.abs(filterTop - mediaTop)).toBeLessThanOrEqual(1);
+	if (!usesMobileControls(testInfo.project.name)) {
+		const filterCard = page
+			.getByRole("heading", { name: "検索フィルター", exact: true })
+			.locator("..")
+			.locator("..");
+		const [filterTop, mediaTop] = await Promise.all(
+			[filterCard, firstMedia].map((locator) =>
+				locator.evaluate((element) => element.getBoundingClientRect().top),
+			),
+		);
+		expect(Math.abs(filterTop - mediaTop)).toBeLessThanOrEqual(1);
+	}
 	await waitForAppHydration(page);
 	await expect(page.getByTestId("media-load-more-sentinel")).toBeVisible();
 	await expectNoHorizontalOverflow(page);

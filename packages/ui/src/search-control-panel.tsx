@@ -177,7 +177,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				/>
 			</div>
 
-			<div class={currentState().mode === "pro" ? "block" : "hidden"}>
+			<Show when={currentState().mode === "pro"}>
 				<div class="space-y-4">
 					<PresetManager
 						class="w-full flex-col items-stretch"
@@ -198,7 +198,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						value={currentState().advancedCondition || null}
 					/>
 				</div>
-			</div>
+			</Show>
 
 			<div class={currentState().mode === "vector" ? "block" : "hidden"}>
 				<div class="space-y-4">

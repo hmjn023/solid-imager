@@ -82,6 +82,7 @@ export interface UseSearchPageOptions {
 	gcTime?: number;
 	refreshDebounceMs?: number;
 	isSearchStateRestored?: Accessor<boolean>;
+	enableVirtualization?: boolean;
 	scrollContainerSelector?: string;
 }
 
@@ -134,6 +135,7 @@ export function useSearchPage(
 		gcTime = DEFAULT_GC_TIME,
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored = () => true,
+		enableVirtualization = false,
 	} = options;
 	const queryClient = useQueryClient();
 	const tagsQueryKey = queries.tags().queryKey;
@@ -372,6 +374,9 @@ export function useSearchPage(
 	>(undefined);
 
 	createEffect(() => {
+		if (enableVirtualization) {
+			return;
+		}
 		const el = loadMoreRef();
 		if (!el) {
 			return;

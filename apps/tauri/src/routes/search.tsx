@@ -72,6 +72,7 @@ function SearchRoute() {
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored,
+		enableVirtualization: true,
 	});
 
 	useMediaSourceEvents(() => searchState.selectedSource || "*", {

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { copyFile, mkdir, rm, stat, writeFile } from "node:fs/promises";
+import { copyFile, link, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { mediaGenerationInfo, medias, mediaSources } from "@solid-imager/db/schema";
@@ -17,6 +17,8 @@ import {
 } from "../src/tests/e2e/support/fixture";
 
 const appRoot = path.resolve(import.meta.dir, "..");
+// Three pages cover restored scrolling and the next-page fetch while avoiding
+// the I/O cost of the oversized fixture used by older runs.
 const E2E_PAGINATED_MEDIA_COUNT = 600;
 
 export type IsolatedRuntime = {
@@ -39,6 +41,16 @@ function createImageSvg(accentColor: string, backgroundColor: string): Buffer {
 			<path d="M48 184 L104 120 L144 160 L184 96 L224 184 Z" fill="#ffffff" fill-opacity="0.85" />
 		</svg>
 	`);
+}
+
+async function linkFixture(sourcePath: string, targetPath: string): Promise<void> {
+  try {
+    await link(sourcePath, targetPath);
+  } catch {
+    // Hard links are cheap on the local E2E filesystem. Keep a copy fallback
+    // for filesystems that do not support them.
+    await copyFile(sourcePath, targetPath);
+  }
 }
 
 async function seedMediaFixtures(runtimeDir: string): Promise<void> {
@@ -82,18 +94,18 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
   );
   await Promise.all(
     [
-      copyFile(
+      linkFixture(
         primaryThumbnailPath,
         path.join(smallThumbnailDir, `${E2E_PRIMARY_MEDIA_ID}.webp`),
       ),
-      copyFile(
+      linkFixture(
         similarThumbnailPath,
         path.join(smallThumbnailDir, `${E2E_SIMILAR_MEDIA_ID}.webp`),
       ),
       ...paginatedMedia.flatMap(({ id, fileName }) => [
-        copyFile(primaryPath, path.join(mediaDir, fileName)),
-        copyFile(primaryThumbnailPath, path.join(thumbnailDir, `${id}.webp`)),
-        copyFile(
+        linkFixture(primaryPath, path.join(mediaDir, fileName)),
+        linkFixture(primaryThumbnailPath, path.join(thumbnailDir, `${id}.webp`)),
+        linkFixture(
           primaryThumbnailPath,
           path.join(smallThumbnailDir, `${id}.webp`),
         ),
