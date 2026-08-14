@@ -1,0 +1,4 @@
+interface:
+  display_name: "Safe DTO"
+  short_description: "APIレスポンスの機密情報を保護するSafe DTO設計"
+  default_prompt: "Use $safe-dto when exposing entities or response DTOs through an API."

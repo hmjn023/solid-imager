@@ -1,0 +1,4 @@
+interface:
+  display_name: "Schema-Driven Development"
+  short_description: "Zodスキーマを正とするAPI・ドメイン型の設計規約"
+  default_prompt: "Use $schema-driven-dev when adding or changing shared Zod schemas and types."

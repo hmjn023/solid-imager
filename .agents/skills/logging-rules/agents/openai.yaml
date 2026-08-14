@@ -1,0 +1,4 @@
+interface:
+  display_name: "Logging Rules"
+  short_description: "Pino・ILogger・層別ロギングの実装と運用規約"
+  default_prompt: "Use $logging-rules when adding, changing, or cleaning up logs."

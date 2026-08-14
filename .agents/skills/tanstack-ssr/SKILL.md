@@ -12,8 +12,9 @@ TanStack Startのサーバー実行経路とクライアントhydrationを分け
 TanStack Startは変更が速いため、実装前にContext7で現行仕様を確認する。
 
 ```sh
-ctx7 library tanstack-start "Selective SSR hydration loader pendingComponent Solid"
-ctx7 docs /websites/tanstack_start "ssr false pendingComponent hydration loader shellComponent"
+npx ctx7@latest library "TanStack Start" "Selective SSR hydration loader pendingComponent Solid"
+# library の結果から最適な /org/project ID を選び、同じ ID で docs を取得する
+npx ctx7@latest docs <library-id> "ssr false pendingComponent hydration loader shellComponent"
 ```
 
 React向けドキュメントしか見つからない場合は、そのままSolidへ適用しない。インストール済みの`@tanstack/solid-router`と`@tanstack/solid-start`のバージョン、および`Match.js`/`Matches.js`のSelective SSR分岐も確認する。

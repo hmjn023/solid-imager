@@ -15,7 +15,7 @@ description: 画像の自動タグ付け、類似度計算、CCIP特徴量など
 
 ### AI サービス連携ルール
 
-- AI機能への呼び出しは `apps/server/src/application/services/tagging-service.ts` を経由します
+- AI機能の主実装は `packages/application/src/services/tagging-service.ts` に置き、server adapter (`apps/server/src/application/services/tagging-service.ts`) 経由で利用します
 - AIサービスへの呼び出しはサービス層経由を基本にする。リトライ、エラー変換、ロギング、テスト差し替えの入口を一箇所に保つため。
 
 ### ネイティブ依存のビルド
@@ -32,7 +32,7 @@ description: 画像の自動タグ付け、類似度計算、CCIP特徴量など
 
 | ユーザーの意図     | やること                                                  |
 | ------------------ | --------------------------------------------------------- |
-| タグ付け機能の実装 | `tagging-service.ts` を経由して `RustAiClient` を呼び出し |
+| タグ付け機能の実装 | `packages/application/src/services/tagging-service.ts` を経由して AI client を呼び出し |
 | 類似度計算         | CCIP特徴量を使用したサービス層の実装                      |
 
 CCIP抽出をjob化する場合は`job-system`、検索画面へ統合する場合は`media-search`も参照する。

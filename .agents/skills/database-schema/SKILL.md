@@ -17,8 +17,8 @@ description: Drizzle ORMを用いたデータベーススキーマの定義と�
 3. マイグレーションを適用:
    ```bash
    bun --filter @solid-imager/server run db:migrate
-   # または
-   bun --filter @solid-imager/server run db:migrate:pglite
+   # PGliteを使う場合
+   DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
    ```
 4. データベースの内容を確認:
    ```bash
@@ -36,4 +36,4 @@ description: Drizzle ORMを用いたデータベーススキーマの定義と�
 | ----------------------------- | --------------------------------------------------------------- |
 | テーブル追加・変更            | `packages/db/src/schema.ts` 編集 → `db:generate` → `db:migrate` |
 | DB内容の確認                  | `db:studio`                                                     |
-| マイグレーション適用 (PGlite) | `db:migrate:pglite`                                             |
+| マイグレーション適用 (PGlite) | `DB_HOST=pglite bun --filter @solid-imager/server run db:migrate` |

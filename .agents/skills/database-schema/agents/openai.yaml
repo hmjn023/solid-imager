@@ -1,0 +1,4 @@
+interface:
+  display_name: "Database Schema"
+  short_description: "Drizzleスキーマ・マイグレーション・DB運用"
+  default_prompt: "Use $database-schema when changing database tables, indexes, or migrations."

@@ -1,6 +1,6 @@
 ---
 name: tanstack-db
-description: TanStack DBを用いたクライアント側データレイヤーの実装。コレクション定義、永続化設定、useLiveQuery、includes による階層的データ投影、Tauri/ブラウザのローカルDB同期を扱う時に使用する。
+description: TanStack DBを用いたTauriクライアント側データレイヤーの実装。コレクション定義、SQLite永続化、useLiveQuery、includes による階層的データ投影を扱う時に使用する。
 ---
 
 # TanStack DB Skill
@@ -15,7 +15,6 @@ TanStack DBは、クライアント側のリアクティブデータレイヤー
 | `@tanstack/solid-db`                      | Solid用フック (`useLiveQuery`)                |
 | `@tanstack/query-db-collection`           | TanStack Query統合 (`queryCollectionOptions`) |
 | `@tanstack/tauri-db-sqlite-persistence`   | Tauri専用SQLite永続化                         |
-| `@tanstack/browser-db-sqlite-persistence` | ブラウザSQLite永続化 (serverアプリ用)         |
 
 ## Task Routing
 
@@ -25,7 +24,7 @@ TanStack DBは、クライアント側のリアクティブデータレイヤー
 | コンポーネントでデータ取得 | `useLiveQuery` でコレクションを参照                         |
 | 永続化スキーマ変更         | `schemaVersion` をインクリメント                            |
 | 階層的データ投影           | `includes`（サブクエリ）を使用                              |
-| serverアプリへの展開       | 永続化アダプタを `browser-db-sqlite-persistence` に差し替え |
+| serverアプリへの展開       | 現在は未導入。永続化アダプタを流用せず、server側の要件と保存先を別途設計 |
 
 ## Tauriアプリの構成
 
@@ -243,20 +242,6 @@ const persistence = createTauriSQLitePersistence({ database });
 - Linux: `~/.config/{app-identifier}/solid-imager.db`
 - macOS: `~/Library/Application Support/{app-identifier}/solid-imager.db`
 
-### ブラウザ (`@tanstack/browser-db-sqlite-persistence`) — serverアプリ用
-
-```typescript
-import {
-  createBrowserWASQLitePersistence,
-  openBrowserWASQLiteOPFSDatabase,
-} from "@tanstack/browser-db-sqlite-persistence";
-
-const database = await openBrowserWASQLiteOPFSDatabase({
-  databaseName: "solid-imager.db",
-});
-const persistence = createBrowserWASQLitePersistence({ database });
-```
-
 ## TanStack Queryとの共存
 
 既存の `createQuery()` と `useLiveQuery()` は共存可能:
@@ -303,7 +288,7 @@ actions: {
 
 ## mutation の扱い
 
-コレクションはデータ取得と永続化を担当。mutation（作成・更新・削除）は既存のAPI層 (`~/api/`) を引き続き使用:
+コレクションはデータ取得と永続化を担当。mutation（作成・更新・削除）は既存の API client 層（Tauri では `apps/tauri/src/api/` または `apps/tauri/src/infrastructure/api-clients/`）を引き続き使用:
 
 ```typescript
 // 既存のAPI呼び出しはそのまま

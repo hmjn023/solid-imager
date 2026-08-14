@@ -1,0 +1,4 @@
+interface:
+  display_name: "Browser Extension"
+  short_description: "xtracterブラウザ拡張機能の開発・ビルド・検証"
+  default_prompt: "Use $browser-extension when changing the xtracter browser extension."

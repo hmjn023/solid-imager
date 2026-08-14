@@ -1,0 +1,4 @@
+interface:
+  display_name: "PR Review"
+  short_description: "GitHub PRレビューコメントの取得・返信・解決"
+  default_prompt: "Use $pr-review to inspect, reply to, and resolve GitHub PR review comments."
