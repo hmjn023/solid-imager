@@ -23,7 +23,7 @@ description: oRPC API の contract、router、Zod schema、Safe DTO、OpenAPI �
 3. server 実装を `apps/server/src/infrastructure/api/routers/{entity}-router.ts` に追加・変更する。
 4. 新しい router/contract を追加した場合は、対応する `index.ts` / `api-contract.ts` の集約へ登録する。
 5. レスポンスに機密情報が入り得る場合は `safe-dto` スキルの方針で Safe DTO へマッピングする。
-6. API 仕様が変わった場合は `api-docs` スキルも参照し、OpenAPI を再生成する。
+6. API 仕様が変わった場合は `api-docs` スキルも参照し、`apps/server/public/openapi.json` との同期を確認する。
 
 ## 実装判断
 
@@ -36,5 +36,5 @@ description: oRPC API の contract、router、Zod schema、Safe DTO、OpenAPI �
 
 - API 型変更: `bun run typecheck`
 - server 周辺: `bun --filter @solid-imager/server run typecheck`
-- OpenAPI 変更: `bun --filter @solid-imager/server run gen:spec`
+- OpenAPI 変更: `apps/server/public/openapi.json` と contract/router の差分を確認する（現行 `apps/server/package.json` に `gen:spec` script はない）
 - router の振る舞い: 既存の `apps/server/src/tests/api/` または関連する unit/integration test に合わせて追加する。

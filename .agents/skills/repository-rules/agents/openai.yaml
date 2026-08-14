@@ -1,0 +1,4 @@
+interface:
+  display_name: "Repository Rules"
+  short_description: "DB行からドメイン型への明示的マッピング実装の規約"
+  default_prompt: "Use $repository-rules when changing database repositories or mappers."

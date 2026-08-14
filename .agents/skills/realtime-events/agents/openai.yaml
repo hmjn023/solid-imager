@@ -1,0 +1,4 @@
+interface:
+  display_name: "Realtime Events"
+  short_description: "SSE・イベントバス・再接続の型付き実装と運用規約"
+  default_prompt: "Use $realtime-events when changing SSE, event buses, or realtime subscriptions."

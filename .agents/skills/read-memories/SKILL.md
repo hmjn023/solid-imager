@@ -1,10 +1,6 @@
 ---
 name: read-memories
-description: >
-  Search past Claude Code session logs to recall prior decisions, patterns, or unresolved work.
-  Use when user says "do you remember", "what did we do", references past conversations, or you need context from prior sessions.
-argument-hint: <keyword> [--here]
-allowed-tools: Bash
+description: Search past coding-agent session logs to recall prior decisions, patterns, or unresolved work. Use when the user asks what was done before, refers to a past conversation, or prior project context is needed.
 ---
 
 Search past session logs silently — do NOT narrate the process. Absorb the results and continue with enriched context.

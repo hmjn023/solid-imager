@@ -1,0 +1,4 @@
+interface:
+  display_name: "Imager CLI"
+  short_description: "imager-cliコマンドとサーバー通信の開発・テスト"
+  default_prompt: "Use $cli when adding or changing imager-cli commands."

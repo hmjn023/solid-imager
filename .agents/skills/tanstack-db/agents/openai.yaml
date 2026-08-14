@@ -1,0 +1,4 @@
+interface:
+  display_name: "TanStack DB"
+  short_description: "TauriのTanStack DBコレクションとSQLite永続化"
+  default_prompt: "Use $tanstack-db when changing TanStack DB collections, persistence, or live queries."

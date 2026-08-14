@@ -9,14 +9,14 @@ PRレビューコメントの取得・返信・解決のワークフロー。
 
 ## コメント取得
 
-`scripts/pr-comments.sh` でPRのレビューコメント一覧を取得する。
+`.agents/skills/pr-review/scripts/pr-comments.sh` でPRのレビューコメント一覧を取得する。
 
 ```bash
 # 現在のPRのコメント取得
-bash .opencode/skills/pr-review/scripts/pr-comments.sh
+bash .agents/skills/pr-review/scripts/pr-comments.sh
 
 # PR番号を指定
-bash .opencode/skills/pr-review/scripts/pr-comments.sh 425
+bash .agents/skills/pr-review/scripts/pr-comments.sh 425
 ```
 
 出力例:
@@ -75,11 +75,11 @@ mutation {
 
 ### コメントの最小化（スパム等に使用）
 
-`scripts/resolve-comment.sh` でコメントを minimized にする。スパム・オフトピック等に使用。
+`.agents/skills/pr-review/scripts/resolve-comment.sh` でコメントを minimized にする。スパム・オフトピック等に使用。
 
 ```bash
 # node_id を指定して解決
-bash .opencode/skills/pr-review/scripts/resolve-comment.sh <NODE_ID>
+bash .agents/skills/pr-review/scripts/resolve-comment.sh <NODE_ID>
 
 # pr-comments.sh の出力から node_id をコピーして使用
 ```

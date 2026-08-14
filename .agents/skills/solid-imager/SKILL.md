@@ -52,7 +52,7 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
    - PGlite:
      ```bash
      # apps/server/.env で DB_HOST=pglite を設定
-     bun --filter @solid-imager/server run db:migrate:pglite
+     DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
      ```
 
 ## Working Rules

@@ -40,20 +40,17 @@ error: Cannot find module '~/application/registry' from '/path/to/bootstrap.ts'
 
 ### 原因と対策
 
-これは `bun` ランタイムが `tsconfig.json` の `paths` エエイリアス（`~/*` 等）を解決する際に、設定が不十分であることが原因です。
+エイリアス解決に失敗した場合は、まず `apps/server` をカレントディレクトリにして実行し、`apps/server/tsconfig.json` の `paths` と `include` を確認します。現行設定では `~/*` は `./src/*` を指し、`scripts/**/*.ts` も include 対象です。`baseUrl` は現在の設定に存在しないため、スクリプト実行のためだけに追加せず、実際のエラーと Bun/TypeScript の解決規則を確認してから変更します。
 
-1. **`baseUrl` の設定**
-   - `tsconfig.json` の `compilerOptions` に `"baseUrl": "."` が明示的に設定されている必要があります。これが欠けていると、Bun や他のツールでパス解決が機能しない場合があります。
-   - ルートの `tsconfig.json` および `apps/server/tsconfig.json` の両方に `"baseUrl": "."` を含めてください。
+1. **`paths` と実行ディレクトリの設定**
+   - ルートの `tsconfig.json` と `apps/server/tsconfig.json` の継承関係、および `apps/server` を cwd にした実行かを確認します。
 
 2. **`include` の設定**
-   - 実行するスクリプトが置かれているディレクトリ（例: `scripts/**/*.ts`）が、`tsconfig.json` の `include` 対象に含まれている必要があります。
-   - 対象外のファイルを直接実行した場合、Bun は `tsconfig.json` のパスエイリアス設定を適用せず、標準の相対インポートとして扱ってしまいます。
+   - 実行するスクリプトが置かれているディレクトリ（例: `scripts/**/*.ts`）が、`tsconfig.json` の `include` 対象に含まれていることを確認します。
    ```json
    // apps/server/tsconfig.json
    {
      "compilerOptions": {
-       "baseUrl": ".",
        "paths": {
          "~/*": ["./src/*"]
        }
