@@ -128,7 +128,7 @@ function FilterSection<T>(props: {
 				value={value()}
 			>
 				<ComboboxControl>
-					<ComboboxInput />
+					<ComboboxInput aria-label={props.label} />
 				</ComboboxControl>
 				<VirtualComboboxContent class="max-h-[300px]" />
 			</Combobox>

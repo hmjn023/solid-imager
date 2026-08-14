@@ -33,7 +33,21 @@ import {
 
 export const Route = createFileRoute("/search")({
 	ssr: true,
-	loader: async ({ context }: RouteLoaderContext) => {
+	loader: async ({ context, preload }: RouteLoaderContext) => {
+		if (preload && typeof window !== "undefined") {
+			void Promise.allSettled([
+				context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
+				context.queryClient.prefetchQuery(allProjectsQueryOptions()),
+				context.queryClient.prefetchQuery(allIpsQueryOptions()),
+				context.queryClient.prefetchQuery(allCharactersQueryOptions()),
+				context.queryClient.prefetchQuery(allAuthorsQueryOptions()),
+			]);
+			await context.queryClient.prefetchQuery(tagsQueryOptions());
+			return;
+		}
+		if (typeof window !== "undefined" && !preload) {
+			return;
+		}
 		await Promise.all([
 			context.queryClient.prefetchQuery(tagsQueryOptions()),
 			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
@@ -107,6 +121,7 @@ function SearchRoute() {
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored,
+		enableVirtualization: true,
 	});
 
 	useMediaSourceEvents(() => searchState.selectedSource || "*", {

@@ -127,6 +127,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		sortOrder: props.sortOrder,
 		onThumbnailReady: props.onThumbnailReady,
 		isSearchStateRestored,
+		enableVirtualization: props.enableVirtualization,
 		scrollContainerSelector: props.scrollContainerSelector,
 	});
 

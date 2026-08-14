@@ -59,9 +59,8 @@ export function getRouter() {
 			routeTree,
 			context: { queryClient },
 			scrollRestoration: true,
-			// Loader-heavy routes prefetch several queries in parallel. Disabling
-			// intent preloading avoids a stale-match race when navigation starts
-			// before an aborted preload has finished.
+			// Loader-heavy routes opt into intent preloading individually. Keeping the
+			// global default disabled avoids stale matches from aborted preloads.
 			defaultPreload: false,
 			defaultPreloadStaleTime: 0,
 			// A route with `ssr: false` renders its pending component on the server,

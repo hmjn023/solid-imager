@@ -20,6 +20,29 @@ export type TransactionClient = NodePgDb | PgLiteDb;
 let _db: DbInstance | null = null;
 let _queryClient: Pool | PGlite | null = null;
 
+type SharedDbState = {
+	db: DbInstance;
+	queryClient: Pool | PGlite;
+};
+
+const sharedDbGlobal = globalThis as typeof globalThis & {
+	__SOLID_IMAGER_DB__?: SharedDbState;
+};
+const sharedDbProcess = process as typeof process & {
+	__SOLID_IMAGER_DB__?: SharedDbState;
+};
+
+function getSharedDbState(): SharedDbState | undefined {
+	return (
+		sharedDbGlobal.__SOLID_IMAGER_DB__ ?? sharedDbProcess.__SOLID_IMAGER_DB__
+	);
+}
+
+function setSharedDbState(state: SharedDbState): void {
+	sharedDbGlobal.__SOLID_IMAGER_DB__ = state;
+	sharedDbProcess.__SOLID_IMAGER_DB__ = state;
+}
+
 /**
  * Initializes and returns the Drizzle ORM database instance.
  * This function ensures that the database connection is established only once.
@@ -29,6 +52,13 @@ let _queryClient: Pool | PGlite | null = null;
  */
 function initializeDb() {
 	if (_db) {
+		return _db;
+	}
+
+	const sharedDb = getSharedDbState();
+	if (sharedDb) {
+		_db = sharedDb.db;
+		_queryClient = sharedDb.queryClient;
 		return _db;
 	}
 
@@ -53,6 +83,10 @@ function initializeDb() {
 		const client = createPglite(pglitePath);
 		_queryClient = client;
 		_db = drizzlePglite(client, { schema });
+		setSharedDbState({
+			db: _db,
+			queryClient: client,
+		});
 		return _db;
 	}
 
@@ -71,6 +105,10 @@ function initializeDb() {
 	const client = new Pool({ connectionString });
 	_queryClient = client;
 	_db = drizzleNodePg(client, { schema });
+	setSharedDbState({
+		db: _db,
+		queryClient: client,
+	});
 	return _db;
 }
 

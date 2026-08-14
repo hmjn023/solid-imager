@@ -1,14 +1,9 @@
+import type { MediaSearchRequest } from "@solid-imager/core/domain/media/schemas";
 import { client } from "~/orpc-client";
 
 export function searchMedia(
 	sourceId: string | null | undefined,
-	params: {
-		offset?: number;
-		limit?: number;
-		sort?: "date" | "name" | "size" | "rating" | "viewCount";
-		order?: "asc" | "desc";
-		condition?: unknown;
-	},
+	params: MediaSearchRequest,
 	signal?: AbortSignal,
 ) {
 	return client.media.search({ sourceId, params }, { signal });

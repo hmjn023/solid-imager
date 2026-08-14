@@ -9,7 +9,7 @@ export function LegacyMediaDetailScreen(props: MediaDetailScreenProps) {
 			<MediaDetailScreenController
 				{...props}
 				renderData={({ details, isUpdating, onUpdate, sourceRootPath }) => (
-					<div class="flex flex-col gap-4 lg:h-[calc(100dvh-7.5rem)] lg:flex-row">
+					<div class="flex flex-col gap-4 lg:h-[calc(100dvh-8rem)] lg:flex-row">
 						<div class="min-h-64 min-w-0 overflow-hidden rounded-lg lg:min-h-0 lg:flex-1">
 							{props.renderMediaViewer(details, sourceRootPath)}
 						</div>

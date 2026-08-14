@@ -8,6 +8,7 @@ type E2eMode = "dev" | "production";
 
 const appRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const allowedRuntimeRoot = path.join(tmpdir(), "solid-imager-e2e");
+const bunPreloadPath = path.join(appRoot, "scripts/e2e-bun-preload.ts");
 
 function getMode(): E2eMode {
   const mode = process.env.E2E_MODE;
@@ -34,6 +35,12 @@ function serverEnvironment(runtimeDir: string, routeTreePath: string): Record<st
       return [[key, value]];
     }),
   );
+  const runtimeNodePath = [
+    path.join(appRoot, "node_modules"),
+    inherited.NODE_PATH,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(path.delimiter);
   const port = getPort();
   return {
     ...inherited,
@@ -49,6 +56,7 @@ function serverEnvironment(runtimeDir: string, routeTreePath: string): Record<st
     NITRO_HOST: "127.0.0.1",
     NITRO_PORT: port,
     PORT: port,
+    NODE_PATH: runtimeNodePath,
   };
 }
 
@@ -77,8 +85,8 @@ async function startServer(mode: E2eMode, environment: Record<string, string>): 
 
   const childProcess = Bun.spawn(
     mode === "dev"
-      ? [process.execPath, "run", "dev"]
-      : [process.execPath, path.join(outputDir, "server", "index.mjs")],
+      ? [process.execPath, "--bun", `--preload=${bunPreloadPath}`, "run", "vite", "dev"]
+      : [process.execPath, `--preload=${bunPreloadPath}`, path.join(outputDir, "server", "index.mjs")],
     {
       cwd: appRoot,
       env: environment,
@@ -87,7 +95,7 @@ async function startServer(mode: E2eMode, environment: Record<string, string>): 
       stdin: "inherit",
     },
   );
-  let shutdownRequested = false;
+	let shutdownRequested = false;
   const stop = () => {
     shutdownRequested = true;
     childProcess.kill();

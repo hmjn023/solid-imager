@@ -110,7 +110,7 @@ export default defineConfig({
         E2E_PORT: port,
         E2E_RUNTIME_DIR: runtimeDir,
       },
-      url: baseURL,
+      url: mode === "dev" ? `${baseURL}/__e2e_ready` : baseURL,
       timeout: mode === "production" ? 240_000 : 120_000,
       reuseExistingServer: false,
       gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },

@@ -1,5 +1,4 @@
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
-import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { LegacySourceFormModal } from "@solid-imager/ui/legacy-source-form-modal";
@@ -10,7 +9,7 @@ import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { createServerTransport } from "~/hooks/use-media-source-events";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
 import {
 	createMediaSource,
@@ -41,18 +40,17 @@ export const Route = createFileRoute("/sources/")({
 	component: SourcesRouteContent,
 });
 
-function registerSourceEvents(handler: RawEventHandler): () => void {
-	return subscribeToEventStream(
-		(signal) => orpc.sources.events({ id: "*" }, { signal }),
-		handler,
-	);
-}
-
 function SourcesRouteContent() {
 	const queryClient = useQueryClient();
 	const loaderData = Route.useLoaderData();
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
 	const sourceData = () => mediaSources.data ?? loaderData().mediaSources;
+	const mediaSourcesQueryKey = mediaSourcesQueryOptions().queryKey;
+	const sourceEventsTransport = createServerTransport(() => "*", {
+		onResumeFromIdle: () => {
+			void queryClient.refetchQueries({ queryKey: mediaSourcesQueryKey });
+		},
+	});
 
 	const page = useSourcesPage({
 		actions: {
@@ -64,8 +62,9 @@ function SourcesRouteContent() {
 			syncMediaSources,
 		},
 		queryClient,
-		invalidateQueryKey: mediaSourcesQueryOptions().queryKey,
-		registerEvents: registerSourceEvents,
+		invalidateQueryKey: mediaSourcesQueryKey,
+		registerEvents: (handler: RawEventHandler) =>
+			sourceEventsTransport.listen(handler),
 		getSourceIds: () =>
 			sourceData()
 				?.map((source: { id?: string }) => source.id)

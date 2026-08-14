@@ -33,7 +33,13 @@ type SharedSourceTransport = {
 	idleSince: number | null;
 };
 
-const SOURCE_TRANSPORT_IDLE_TIMEOUT_MS = 0;
+type ServerTransportOptions = {
+	onResumeFromIdle?: () => void;
+};
+
+// Keep recently unused streams alive briefly so route transitions can reuse
+// them instead of opening another long-lived browser connection.
+const SOURCE_TRANSPORT_IDLE_TIMEOUT_MS = 30_000;
 const MAX_IDLE_SOURCE_TRANSPORTS = 2;
 
 type SourceTransportGlobal = typeof globalThis & {
@@ -72,6 +78,7 @@ function evictOldestIdleSourceTransport(): void {
 
 export function createServerTransport(
 	mediaSourceId: Accessor<string | undefined>,
+	options: ServerTransportOptions = {},
 ): MediaSourceEventTransport {
 	const location = useLocation();
 	const isActiveRoute = () => {
@@ -80,7 +87,12 @@ export function createServerTransport(
 		if (!id) {
 			return false;
 		}
-		if (id === "*" && (pathname === "/search" || pathname.startsWith("/v2/"))) {
+		if (
+			id === "*" &&
+			(pathname === "/search" ||
+				pathname === "/sources" ||
+				pathname.startsWith("/v2/"))
+		) {
 			return true;
 		}
 		if (id === "*") {
@@ -141,12 +153,16 @@ export function createServerTransport(
 				sharedSourceTransports.set(id, shared);
 			}
 
+			const isResumingFromIdle = shared.idleSince !== null;
 			if (shared.idleTimer) {
 				clearTimeout(shared.idleTimer);
 				shared.idleTimer = null;
 			}
 			shared.idleSince = null;
 			shared.handlers.add(handler);
+			if (isResumingFromIdle) {
+				options.onResumeFromIdle?.();
+			}
 			let isListening = true;
 			return () => {
 				if (!isListening) {

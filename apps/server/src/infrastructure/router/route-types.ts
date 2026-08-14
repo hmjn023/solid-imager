@@ -6,6 +6,8 @@ export interface RouteLoaderContext<TParams = Record<string, never>> {
 		queryClient: QueryClient;
 	};
 	params: TParams;
+	/** True when the router is warming the route before navigation. */
+	preload?: boolean;
 }
 
 /** Web-standard request context passed to API route handlers. */

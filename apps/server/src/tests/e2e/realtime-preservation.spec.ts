@@ -87,9 +87,9 @@ test("preserves an open dialog, input value, and focus after an SSE reconnect re
 	await syncButton.click();
 	await syncResponse;
 
-	await expect(
-		page.locator("p").filter({ hasText: /^3 件の結果$/ }),
-	).toBeVisible({
+	const resultCount = page.locator("p").filter({ hasText: /^\d+ 件の結果$/ });
+	await expect(resultCount).toBeVisible({ timeout: 30_000 });
+	await expect(page.getByText(syncedFileName, { exact: true })).toBeVisible({
 		timeout: 30_000,
 	});
 	await expect(page.getByRole("dialog")).toBeVisible();

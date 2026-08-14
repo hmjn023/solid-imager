@@ -1,6 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { CharacterCropModal as SharedCharacterCropModal } from "@solid-imager/ui/character-crop-modal";
-import { serverOrpc } from "~/infrastructure/api-clients/server-orpc-client";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 type CharacterCropModalProps = {
 	isOpen: boolean;
@@ -12,7 +12,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 	return (
 		<SharedCharacterCropModal
 			fetchCrops={async (mediaId: string, transparent: boolean) => {
-				return serverOrpc.ai.detectAndCropCharacters({
+				return orpc.ai.detectAndCropCharacters({
 					mediaId,
 					transparent,
 				});

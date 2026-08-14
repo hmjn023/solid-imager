@@ -144,6 +144,7 @@ export type UseSourceMediaPageOptions = {
 	itemsPerPage?: number;
 	onThumbnailReady?: (mediaId: string) => void;
 	isSearchStateRestored?: Accessor<boolean>;
+	enableVirtualization?: boolean;
 	scrollContainerSelector?: string;
 };
 
@@ -151,6 +152,7 @@ export type UseSourceMediaPageResult = {
 	mediaSourceId: () => string | undefined;
 	mediaQuery: ReturnType<typeof createInfiniteQuery<MediaSearchResponse>>;
 	mediaResults: () => MediaSearchResponse["media"];
+	fetchNextPage: () => Promise<unknown>;
 	hasData: () => boolean;
 	totalCount: () => number | undefined;
 	contentState: () => QueryUiState<MediaSearchResponse["media"]>;
@@ -213,6 +215,7 @@ export function useSourceMediaPage(
 		itemsPerPage = SOURCE_MEDIA_ITEMS_PER_PAGE,
 		onThumbnailReady,
 		isSearchStateRestored = () => true,
+		enableVirtualization = false,
 	} = options;
 
 	const id = mediaSourceId;
@@ -292,6 +295,23 @@ export function useSourceMediaPage(
 		scrollToPosition(options.scrollContainerSelector, 0);
 	};
 
+	let nextPageFetchInFlight = false;
+	const fetchNextPage = async (): Promise<unknown> => {
+		if (
+			nextPageFetchInFlight ||
+			!mediaQuery.hasNextPage ||
+			mediaQuery.isFetchingNextPage
+		) {
+			return;
+		}
+		nextPageFetchInFlight = true;
+		try {
+			return await mediaQuery.fetchNextPage();
+		} finally {
+			nextPageFetchInFlight = false;
+		}
+	};
+
 	// --- Scroll restoration ---
 	useScrollRestoration({
 		restoreKey: id,
@@ -300,16 +320,22 @@ export function useSourceMediaPage(
 		isReady: () => Boolean(mediaQueryData()) && !mediaQuery.isLoading,
 		hasNextPage: () => mediaQuery.hasNextPage,
 		isFetchingNextPage: () => mediaQuery.isFetchingNextPage,
-		fetchNextPage: () => mediaQuery.fetchNextPage(),
+		fetchNextPage,
 		scrollContainerSelector: options.scrollContainerSelector,
 	});
 
 	// --- Infinite scroll ---
+	// Virtualized grids own their load-more threshold. Their sentinel is mounted
+	// before the first layout measurement and would otherwise look visible at
+	// the top of the page, causing an eager second-page request on navigation.
 	const [loadMoreRef, setLoadMoreRef] = createSignal<
 		HTMLDivElement | undefined
 	>(undefined);
 
 	onMount(() => {
+		if (enableVirtualization) {
+			return;
+		}
 		createEffect(() => {
 			const el = loadMoreRef();
 			if (!el) {
@@ -321,8 +347,12 @@ export function useSourceMediaPage(
 
 			const observer = new IntersectionObserver(
 				(entries) => {
-					if (entries[0].isIntersecting && mediaQuery.hasNextPage) {
-						mediaQuery.fetchNextPage();
+					if (
+						entries[0].isIntersecting &&
+						mediaQuery.hasNextPage &&
+						!mediaQuery.isFetchingNextPage
+					) {
+						void fetchNextPage();
 					}
 				},
 				{ threshold: 0.5, rootMargin: "2400px" },
@@ -893,6 +923,7 @@ export function useSourceMediaPage(
 		mediaSourceId: id,
 		mediaQuery,
 		mediaResults,
+		fetchNextPage,
 		hasData: () => mediaQueryData() !== undefined,
 		totalCount: () => mediaQueryData()?.pages[0]?.total,
 		contentState,

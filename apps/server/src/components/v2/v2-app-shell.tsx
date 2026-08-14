@@ -35,7 +35,13 @@ type V2AppShellProps = ParentProps<{
 export function V2AppShell(props: V2AppShellProps) {
 	const queryClient = useQueryClient();
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
-	const sourceEventTransport = createServerTransport(() => "*");
+	const sourceEventTransport = createServerTransport(() => "*", {
+		onResumeFromIdle: () => {
+			void queryClient.refetchQueries({
+				queryKey: mediaSourcesQueryOptions().queryKey,
+			});
+		},
+	});
 	const registerSourceEvents = (handler: RawEventHandler) =>
 		sourceEventTransport.listen(handler);
 	const [sidebarExpanded, setSidebarExpanded] = createSignal(true);
