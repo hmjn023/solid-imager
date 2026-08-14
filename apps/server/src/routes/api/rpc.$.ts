@@ -1,11 +1,15 @@
 import { RPCHandler } from "@orpc/server/fetch";
+import { ResponseHeadersPlugin } from "@orpc/server/plugins";
 import { createFileRoute } from "@tanstack/solid-router";
 import { appRouter } from "~/domain/shared/api-contract";
+import { createRpcResponseHeaders } from "~/infrastructure/api/rpc-response-headers";
 import { logger } from "~/infrastructure/logger";
 import type { ServerRouteContext } from "~/infrastructure/router/route-types";
 import { bootstrapServerRoute } from "~/infrastructure/server-route-bootstrap";
 
-const handler = new RPCHandler(appRouter);
+const handler = new RPCHandler(appRouter, {
+	plugins: [new ResponseHeadersPlugin()],
+});
 
 export const Route = createFileRoute("/api/rpc/$")({
 	server: {
@@ -14,7 +18,7 @@ export const Route = createFileRoute("/api/rpc/$")({
 				bootstrapServerRoute();
 				const { response } = await handler.handle(request, {
 					prefix: "/api/rpc",
-					context: {},
+					context: { resHeaders: createRpcResponseHeaders(request.url) },
 				});
 				if (response) {
 					return response;
