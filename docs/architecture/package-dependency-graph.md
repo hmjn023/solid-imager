@@ -26,20 +26,20 @@ flowchart LR
 
   server -->|24 imports| application
   server -->|4 imports| client
-  server -->|120 imports| core
+  server -->|138 imports| core
   server -->|16 imports| db
-  server -->|90 imports| ui
+  server -->|89 imports| ui
 
   tauri -->|2 imports| client
-  tauri -->|10 imports| core
-  tauri -->|46 imports| ui
+  tauri -->|11 imports| core
+  tauri -->|45 imports| ui
 
   xtracter -->|1 import| client
   xtracter -->|1 import| core
 
   application -->|24 imports| core
   db -->|6 imports| core
-  ui -->|97 imports| core
+  ui -->|99 imports| core
 
   classDef app fill:#e8f1ff,stroke:#4f76a8,color:#132238;
   classDef pkg fill:#eef8ee,stroke:#5b8a5a,color:#173117;
