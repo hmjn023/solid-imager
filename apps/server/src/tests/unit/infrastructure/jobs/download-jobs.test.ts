@@ -62,7 +62,7 @@ vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
 		publishSource: vi.fn(),
 	},
 }));
-vi.mock("~/application/services/media-processing-service", () => ({
+vi.mock("~/infrastructure/services/media-processing-service", () => ({
 	MediaProcessingService: {
 		registerAndProcess: mockMediaRegisterAndProcess,
 		addContextMetadataToExistingMedia: mockMediaAddContextMetadata,
@@ -170,7 +170,7 @@ describe("processDownloadJob", () => {
 			updatedAt: new Date(),
 		});
 
-		const { services } = await import("~/application/registry");
+		const { services } = await import("~/infrastructure/service-registry");
 		services.getJobRepository = vi.fn().mockReturnValue({
 			create: vi.fn(),
 		});
@@ -178,7 +178,7 @@ describe("processDownloadJob", () => {
 
 	it("should process a direct image download via MediaProcessingService", async () => {
 		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
+			"~/infrastructure/services/media-processing-service"
 		);
 
 		const item = {
@@ -219,7 +219,7 @@ describe("processDownloadJob", () => {
 
 	it("should use description if provided", async () => {
 		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
+			"~/infrastructure/services/media-processing-service"
 		);
 
 		const item = {
@@ -246,7 +246,7 @@ describe("processDownloadJob", () => {
 
 	it("should update existing media metadata if file already exists", async () => {
 		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
+			"~/infrastructure/services/media-processing-service"
 		);
 
 		// Simulate file existing -> registerAndProcess throws -> catch block searches media -> updates

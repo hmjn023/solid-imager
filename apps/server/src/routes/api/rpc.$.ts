@@ -1,7 +1,7 @@
 import { RPCHandler } from "@orpc/server/fetch";
 import { ResponseHeadersPlugin } from "@orpc/server/plugins";
 import { createFileRoute } from "@tanstack/solid-router";
-import { appRouter } from "~/domain/shared/api-contract";
+import { appRouter } from "~/infrastructure/api/app-router";
 import { createRpcResponseHeaders } from "~/infrastructure/api/rpc-response-headers";
 import { logger } from "~/infrastructure/logger";
 import type { ServerRouteContext } from "~/infrastructure/router/route-types";

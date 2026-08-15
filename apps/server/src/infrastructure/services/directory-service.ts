@@ -1,4 +1,4 @@
-import { MediaSourceService } from "~/application/services/media-source-service";
+import { MediaSourceService } from "~/infrastructure/services/media-source-service";
 import { getDriver } from "~/infrastructure/storage/factory";
 
 /**

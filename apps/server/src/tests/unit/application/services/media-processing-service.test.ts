@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
+import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
 
 // Mock Repositories
 const mockMediaRepo = {

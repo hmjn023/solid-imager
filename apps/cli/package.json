@@ -17,7 +17,6 @@
     "@orpc/client": "^1.14.4",
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
-    "@solid-imager/server": "workspace:*",
     "incur": "^0.4.8",
     "zod": "^4.4.3"
   },

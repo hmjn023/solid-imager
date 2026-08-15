@@ -4,7 +4,7 @@
  */
 
 import { SearchServiceImpl } from "@solid-imager/application/services/search-service";
-import { services } from "~/application/registry";
+import { services } from "~/infrastructure/service-registry";
 
 let _searchService: SearchServiceImpl | null = null;
 

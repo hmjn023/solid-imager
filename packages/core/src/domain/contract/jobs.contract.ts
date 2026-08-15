@@ -12,8 +12,15 @@ export const jobsContract = {
 	list: oc.input(jobListRequestSchema).output(jobListResponseSchema),
 	get: oc.input(jobIdRequestSchema).output(jobDtoSchema),
 	downloadArtifact: oc
+		.meta({
+			openapi: {
+				tags: ["Jobs"],
+				summary: "Download job artifact",
+				description: "Stream a completed job artifact",
+			},
+		})
 		.input(jobIdRequestSchema)
-		.output(z.file().mime("application/octet-stream")),
+		.output(z.instanceof(ReadableStream)),
 	retry: oc.input(jobIdRequestSchema).output(jobDtoSchema),
 	cancel: oc.input(jobIdRequestSchema).output(jobDtoSchema),
 	events: oc.output(eventIterator(jobEventSchema)),

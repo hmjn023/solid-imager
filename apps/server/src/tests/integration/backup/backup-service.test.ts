@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import { and, eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
 	authorAccounts,
@@ -21,6 +20,7 @@ import {
 	projects,
 	tags,
 } from "~/infrastructure/db/schema";
+import { BackupService } from "~/infrastructure/services/backup-service";
 
 // Mock external modules if necessary (e.g. storage driver, archiver)
 vi.mock("~/infrastructure/storage/factory", () => ({

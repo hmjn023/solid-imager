@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { services } from "~/application/registry";
-import { MediaService } from "~/application/services/media-service";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { services } from "~/infrastructure/service-registry";
+import { MediaService } from "~/infrastructure/services/media-service";
 
 // Helper to capture jobs and processor
 let capturedJobs: any[] = [];
@@ -181,7 +181,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 
 		// Instantiate and Register MediaProcessingService
 		const { MediaProcessingServiceImpl } = await import(
-			"~/application/services/media-processing-service"
+			"~/infrastructure/services/media-processing-service"
 		);
 		const mediaProcessingService = new MediaProcessingServiceImpl({
 			sourceRepo: mockSourceRepository as any,
@@ -261,7 +261,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 		// But failing to see MediaProcessingService being used?
 		// MediaService.copyMedia calls jobRepo.create.
 		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
+			"~/infrastructure/services/media-processing-service"
 		);
 		await MediaProcessingService.executeProcessMediaJob(job);
 

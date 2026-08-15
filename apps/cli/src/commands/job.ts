@@ -1,9 +1,8 @@
 import { Cli, z } from "incur";
 import { globalOptions } from "../utils.ts";
 
-// Since solid-imager does not currently expose a generic job router via oRPC,
-// we will output a NOT_IMPLEMENTED error for now, but keep the structure fully typed
-// using a placeholder approach or generic catch.
+// The server exposes jobs through the shared API contract. The CLI commands
+// remain placeholders until the CLI client wiring is added.
 
 export const jobCmd = Cli.create("job", {
 	description: "Background job management",
@@ -20,10 +19,9 @@ export const jobCmd = Cli.create("job", {
 			type: z.string().optional().describe("Filter by job type"),
 		}),
 		async run(c) {
-			// NOTE: solid-imager API doesn't have a public job router exposed via appRouter yet.
 			return c.error({
 				code: "NOT_IMPLEMENTED",
-				message: "Job API is not exposed via oRPC yet on the server.",
+				message: "Job API is not wired into the CLI yet.",
 			});
 		},
 	})
@@ -34,7 +32,7 @@ export const jobCmd = Cli.create("job", {
 		async run(c) {
 			return c.error({
 				code: "NOT_IMPLEMENTED",
-				message: "Job retry API is not exposed via oRPC yet on the server.",
+				message: "Job retry API is not wired into the CLI yet.",
 			});
 		},
 	})
@@ -46,7 +44,7 @@ export const jobCmd = Cli.create("job", {
 		async run(c) {
 			return c.error({
 				code: "NOT_IMPLEMENTED",
-				message: "Job clear API is not exposed via oRPC yet on the server.",
+				message: "Job clear API is not wired into the CLI yet.",
 			});
 		},
 	});

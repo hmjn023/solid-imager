@@ -1,15 +1,17 @@
-import { os } from "@orpc/server";
-import { bulkDownloadRequestSchema } from "@solid-imager/core/domain/media/schemas";
+import { implement } from "@orpc/server";
+import { downloadsContract } from "@solid-imager/core/domain/contract/downloads.contract";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
 
 /**
  * Downloads Router Implementation
  */
-export const downloadsRouter = {
+const os = implement(downloadsContract);
+
+export const downloadsRouter = os.router({
 	/**
 	 * Starts bulk download jobs
 	 */
-	start: os.input(bulkDownloadRequestSchema).handler(async ({ input }) => {
+	start: os.start.handler(async ({ input }) => {
 		const result = await queueDownloadJobs(input.mediaSourceId, input.items);
 		const msg =
 			result.skippedCount > 0
@@ -22,4 +24,4 @@ export const downloadsRouter = {
 			message: msg,
 		};
 	}),
-};
+});

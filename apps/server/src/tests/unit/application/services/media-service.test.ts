@@ -13,10 +13,10 @@ import type { SourceRepository } from "@solid-imager/core/domain/repositories/so
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
-import { MediaServiceImpl } from "~/application/services/media-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
+import { MediaServiceImpl } from "~/infrastructure/services/media-service";
 
-vi.mock("~/application/registry", () => {
+vi.mock("~/infrastructure/service-registry", () => {
 	const mockServices = {
 		getJobRepository: vi.fn(),
 		registerMediaRepository: vi.fn(),
@@ -60,7 +60,7 @@ const globalMockMediaProcessingService = {
 	addContextMetadataToExistingMedia: vi.fn(),
 };
 
-vi.mock("~/application/services/media-processing-service", () => ({
+vi.mock("~/infrastructure/services/media-processing-service", () => ({
 	MediaProcessingServiceImpl: vi.fn(),
 	MediaProcessingService: globalMockMediaProcessingService,
 }));
@@ -94,7 +94,7 @@ describe("MediaService Unit Tests", () => {
 		);
 
 		// Mock registry
-		const { services } = await import("~/application/registry");
+		const { services } = await import("~/infrastructure/service-registry");
 		mockJobRepository = {
 			create: vi.fn(),
 			createIfUnique: vi.fn(),

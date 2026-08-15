@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ServiceRegistry } from "~/application/registry";
+import { ServiceRegistry } from "~/infrastructure/service-registry";
 
 describe("ServiceRegistry Unit Tests", () => {
 	let registry: ServiceRegistry;

@@ -1,12 +1,12 @@
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
 	mediaCharacters,
 	mediaIps,
 	mediaTags,
 } from "~/infrastructure/db/schema";
+import { BackupService } from "~/infrastructure/services/backup-service";
 
 const { mockValues, mockDelete, mockFindMany, mockTxDelete } = vi.hoisted(
 	() => {
