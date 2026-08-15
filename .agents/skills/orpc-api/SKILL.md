@@ -12,7 +12,7 @@ description: oRPC API の contract、router、Zod schema、Safe DTO、OpenAPI �
 - Contract: `packages/core/src/domain/contract/*.contract.ts`
 - Contract 集約: `packages/core/src/domain/contract/index.ts`
 - Server router: `apps/server/src/infrastructure/api/routers/*-router.ts`
-- Server router 集約: `apps/server/src/domain/shared/api-contract.ts`
+- Server router 集約: `apps/server/src/infrastructure/api/app-router.ts`
 - Client: `packages/client` と各 app の `infrastructure/api-clients/`
 - OpenAPI 出力: `apps/server/public/openapi.json`
 
@@ -21,13 +21,14 @@ description: oRPC API の contract、router、Zod schema、Safe DTO、OpenAPI �
 1. 入出力に必要な Zod schema を `packages/core/src/domain/{entity}/schemas.ts` へ置く。
 2. API 境界を `packages/core/src/domain/contract/{entity}.contract.ts` に追加・変更する。
 3. server 実装を `apps/server/src/infrastructure/api/routers/{entity}-router.ts` に追加・変更する。
-4. 新しい router/contract を追加した場合は、対応する `index.ts` / `api-contract.ts` の集約へ登録する。
+4. 新しい router/contract を追加した場合は、Core側の `index.ts` と Server側の `infrastructure/api/app-router.ts` の集約へ登録する。
 5. レスポンスに機密情報が入り得る場合は `safe-dto` スキルの方針で Safe DTO へマッピングする。
 6. API 仕様が変わった場合は `api-docs` スキルも参照し、`apps/server/public/openapi.json` との同期を確認する。
 
 ## 実装判断
 
 - Router は HTTP/RPC の薄い入口に寄せる。認可、DB 操作、ファイル操作、ジョブ投入などのまとまった処理は application/service 側へ逃がすとテストと再利用がしやすい。
+- Server router は対応する Core contract を `implement(<entity>Contract)` で実装し、入力・出力 schema を router 側で重複定義しない。Server の `app-router.ts` は実装の集約であり、API の Source of Truth は `packages/core/src/domain/contract/` とする。
 - 入力 schema は contract と router で意味がずれないよう、共通 schema を参照する。router 内で一回限りの schema を直接書く場合は、その API だけの transport 形状かどうかを確認する。
 - oRPC は JSON 境界なので、画像・動画などのバイナリ本体は専用 REST route や URL 返却を優先する。Base64 返却はサイズ増とメモリ使用量が大きくなりやすい。
 - エラーは `packages/core/src/domain/errors/` の既存エラーを優先する。呼び出し側がリカバリできる情報を型・code・message に残す。

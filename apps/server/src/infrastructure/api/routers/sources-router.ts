@@ -1,5 +1,8 @@
 import { implement, ORPCError } from "@orpc/server";
-import { sourcesContract } from "@solid-imager/core/domain/contract/sources.contract";
+import {
+	type SourceSyncResult,
+	sourcesContract,
+} from "@solid-imager/core/domain/contract/sources.contract";
 import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
 import type { SourceEvent } from "@solid-imager/core/domain/sources/events";
 import {
@@ -10,7 +13,6 @@ import {
 	sftpConnectionSchema,
 } from "@solid-imager/core/domain/sources/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { count, inArray } from "drizzle-orm";
 import { toJobDto } from "~/infrastructure/api/routers/jobs-router";
 import { db } from "~/infrastructure/db";
@@ -200,11 +202,7 @@ export const sourcesRouter = os.router({
 	 * Syncs one or more media sources
 	 */
 	sync: os.sync.handler(async ({ input }) => {
-		const results: Array<{
-			id: string;
-			success: boolean;
-			error?: string;
-		}> = [];
+		const results: SourceSyncResult[] = [];
 		const poolResults = await asyncPool(input.ids, 3, (id: string) =>
 			DirectorySyncService.syncMediaSource(id),
 		);
@@ -214,7 +212,7 @@ export const sourcesRouter = os.router({
 				results.push({
 					id,
 					success: true,
-					...(isRecord(pr.value) ? pr.value : {}),
+					...pr.value,
 				});
 			} else {
 				logger.error(

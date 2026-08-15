@@ -22,6 +22,23 @@ const importNdjsonResultSchema = z.object({
 	errors: z.array(z.string()),
 });
 
+const sourceSyncResultSchema = z.discriminatedUnion("success", [
+	z.object({
+		id: z.string().uuid(),
+		success: z.literal(true),
+		sourceId: z.string().uuid(),
+		added: z.number().int().nonnegative(),
+		deleted: z.number().int().nonnegative(),
+	}),
+	z.object({
+		id: z.string().uuid(),
+		success: z.literal(false),
+		error: z.string(),
+	}),
+]);
+
+export type SourceSyncResult = z.infer<typeof sourceSyncResultSchema>;
+
 export const sourcesContract = {
 	list: oc
 		.meta({
@@ -94,13 +111,7 @@ export const sourcesContract = {
 		.input(z.object({ ids: z.array(z.string().uuid()) }))
 		.output(
 			z.object({
-				results: z.array(
-					z.object({
-						id: z.string(),
-						success: z.boolean(),
-						error: z.string().optional(),
-					}),
-				),
+				results: z.array(sourceSyncResultSchema),
 			}),
 		),
 
