@@ -1,9 +1,9 @@
 import type { ILogger } from "@solid-imager/application/ports/media-service";
 import { CcipVectorService } from "@solid-imager/application/services/ccip-vector-service";
-import { services } from "~/application/registry";
-import { taggingService } from "~/application/services/tagging-service";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { db } from "~/infrastructure/db";
+import { services } from "~/infrastructure/service-registry";
+import { taggingService } from "~/infrastructure/services/tagging-service";
 
 let service: CcipVectorService | null = null;
 let configuredLogger: ILogger | undefined;

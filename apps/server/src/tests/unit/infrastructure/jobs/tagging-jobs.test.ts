@@ -35,13 +35,13 @@ const jobRepository: IJobRepository = {
 	requeueStaleInProgress: vi.fn(),
 };
 
-vi.mock("~/application/registry", () => ({
+vi.mock("~/infrastructure/service-registry", () => ({
 	services: {
 		getJobRepository: () => jobRepository,
 	},
 }));
 
-vi.mock("~/application/services/tagging-service", () => ({
+vi.mock("~/infrastructure/services/tagging-service", () => ({
 	taggingService: {
 		getTagsForMedia: (...args: Parameters<typeof getTagsForMedia>) =>
 			getTagsForMedia(...args),

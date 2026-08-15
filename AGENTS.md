@@ -8,6 +8,7 @@
 
 - **UIデザインシステム:** [./DESIGN.md](./DESIGN.md)（実装前に参照し、`bun run design:lint` で検証）
 - **API仕様:** [`./apps/server/public/openapi.json`](./apps/server/public/openapi.json)、Swagger UIのソースは [`./apps/server/public/api-docs.html`](./apps/server/public/api-docs.html)
+- **API契約:** `packages/core/src/domain/contract/`（Server実装の集約は `apps/server/src/infrastructure/api/app-router.ts`）
 - **Tauri SPA:** [`./apps/tauri/src/`](./apps/tauri/src/)、Rust側は [`./apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **V2移行状況:** [`./REPORT.md`](./REPORT.md)
 - **DBスキーマ:** `packages/db/src/schema.ts` (`apps/server/src/infrastructure/db/schema.ts` は再 export)
@@ -28,10 +29,11 @@
 
 ### サーバー内部構成 (`apps/server/src/`)
 
-- `application/`: アプリケーションサービス、ユースケース、レジストリ。
-- `infrastructure/`: API実装, File System, AI連携, Job Queue, server固有のDB wiring。
+- `infrastructure/`: API実装・router集約・ServiceRegistry、File System、AI連携、Job Queue、server固有のDB wiring。
 - `presentation/`: ルート定義, グローバルストア。
 - `components/`, `routes/`, `hooks/`: UIおよびルーティング関連。
+
+共通のユースケース・ポートは `packages/application/` に置き、server固有のサービス実装は `apps/server/src/infrastructure/services/` に置く。
 
 ### コア内部構成 (`packages/core/src/domain/`)
 

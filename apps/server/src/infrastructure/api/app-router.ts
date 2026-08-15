@@ -1,3 +1,5 @@
+import { implement } from "@orpc/server";
+import { appContract } from "@solid-imager/core/domain/contract";
 import { aiRouter } from "~/infrastructure/api/routers/ai-router";
 import { authorsRouter } from "~/infrastructure/api/routers/authors-router";
 import { categoriesRouter } from "~/infrastructure/api/routers/categories-router";
@@ -16,11 +18,15 @@ import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
 import { thumbnailsRouter } from "~/infrastructure/api/routers/thumbnails-router";
 import { utilsRouter } from "~/infrastructure/api/routers/utils-router";
 
+const appRouterImplementer = implement(appContract);
+
 /**
- * API Router Definition
- * フロントエンドとバックエンドで共有される型定義
+ * Server implementation of the shared API contract.
+ *
+ * Keeping the contract on the implementer makes every server procedure
+ * compile against the same contract consumed by Tauri, CLI, and xtracter.
  */
-export const appRouter = {
+export const appRouter = appRouterImplementer.router({
 	sources: sourcesRouter,
 	tags: tagsRouter,
 	media: mediaRouter,
@@ -28,16 +34,16 @@ export const appRouter = {
 	projects: projectsRouter,
 	characters: charactersRouter,
 	ips: ipsRouter,
+	authors: authorsRouter,
 	thumbnails: thumbnailsRouter,
 	downloads: downloadsRouter,
 	directories: directoriesRouter,
 	ai: aiRouter,
-	authors: authorsRouter,
-	utils: utilsRouter,
 	imports: importsRouter,
 	jobs: jobsRouter,
+	utils: utilsRouter,
 	config: configRouter,
 	presets: presetsRouter,
-};
+});
 
 export type AppRouter = typeof appRouter;

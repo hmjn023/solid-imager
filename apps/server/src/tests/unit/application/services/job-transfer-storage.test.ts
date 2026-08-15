@@ -6,7 +6,7 @@ import type { Job } from "@solid-imager/core/domain/repositories/job-repository"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 type JobTransferStorage =
-	typeof import("~/application/services/job-transfer-storage");
+	typeof import("~/infrastructure/services/job-transfer-storage");
 
 let runtimeDirectory: string;
 let storage: JobTransferStorage;
@@ -54,7 +54,7 @@ describe("job transfer storage cleanup", () => {
 			path.join(runtimeDirectory, "job-transfers"),
 		);
 		vi.resetModules();
-		storage = await import("~/application/services/job-transfer-storage");
+		storage = await import("~/infrastructure/services/job-transfer-storage");
 	});
 
 	afterEach(async () => {

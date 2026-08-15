@@ -1,62 +1,41 @@
-import { os } from "@orpc/server";
-import {
-	newTagSchema,
-	updateTagSchema,
-} from "@solid-imager/core/domain/tags/schemas";
-import { z } from "zod";
-import { TagService } from "~/application/services/tag-service";
+import { implement } from "@orpc/server";
+import { tagsContract } from "@solid-imager/core/domain/contract/tags.contract";
+import { TagService } from "~/infrastructure/services/tag-service";
 
 /**
  * Tags Router Implementation
  */
-export const tagsRouter = {
-	list: os.handler(async () => await TagService.getAllTags()),
+const os = implement(tagsContract);
 
-	get: os
-		.input(
-			z.object({
-				id: z.string().uuid(),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const tag = await TagService.getTagById(input.id);
-			if (!tag) {
-				throw new Error(`Tag not found: ${input.id}`);
-			}
-			return tag;
-		}),
+export const tagsRouter = os.router({
+	list: os.list.handler(async () => await TagService.getAllTags()),
 
-	create: os
-		.input(newTagSchema)
-		.handler(async ({ input }) => await TagService.createTag(input)),
+	get: os.get.handler(async ({ input }) => {
+		const tag = await TagService.getTagById(input.id);
+		if (!tag) {
+			throw new Error(`Tag not found: ${input.id}`);
+		}
+		return tag;
+	}),
 
-	update: os
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				data: updateTagSchema,
-			}),
-		)
-		.handler(async ({ input }) => {
-			const updatedTag = await TagService.updateTag(input.id, input.data);
-			if (!updatedTag) {
-				throw new Error(`Tag not found: ${input.id}`);
-			}
-			return updatedTag;
-		}),
+	create: os.create.handler(
+		async ({ input }) => await TagService.createTag(input),
+	),
 
-	delete: os
-		.input(
-			z.object({
-				id: z.string().uuid(),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const tag = await TagService.getTagById(input.id);
-			if (!tag) {
-				throw new Error(`Tag not found: ${input.id}`);
-			}
-			await TagService.deleteTag(input.id);
-			return { success: true };
-		}),
-};
+	update: os.update.handler(async ({ input }) => {
+		const updatedTag = await TagService.updateTag(input.id, input.data);
+		if (!updatedTag) {
+			throw new Error(`Tag not found: ${input.id}`);
+		}
+		return updatedTag;
+	}),
+
+	delete: os.delete.handler(async ({ input }) => {
+		const tag = await TagService.getTagById(input.id);
+		if (!tag) {
+			throw new Error(`Tag not found: ${input.id}`);
+		}
+		await TagService.deleteTag(input.id);
+		return { success: true };
+	}),
+});

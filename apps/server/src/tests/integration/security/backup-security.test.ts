@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { BackupService } from "~/application/services/backup-service";
+import { BackupService } from "~/infrastructure/services/backup-service";
 
 describe("BackupService Security", () => {
 	describe("_filterValidItems", () => {

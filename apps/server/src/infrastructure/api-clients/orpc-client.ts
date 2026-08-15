@@ -1,8 +1,9 @@
 import { createRouterClient } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
+import type { AppContract } from "@solid-imager/core/domain/contract";
 import { createIsomorphicFn } from "@tanstack/solid-start";
 import { getRequestHeaders } from "@tanstack/solid-start/server";
-import { appRouter } from "~/domain/shared/api-contract";
+import { appRouter } from "~/infrastructure/api/app-router";
 
 const getORPCClient = createIsomorphicFn()
 	.server(() => {
@@ -11,7 +12,7 @@ const getORPCClient = createIsomorphicFn()
 			if (!port) {
 				throw new Error("E2E_PORT must be set for the dev E2E RPC client");
 			}
-			return createClient<typeof appRouter>({
+			return createClient<AppContract>({
 				url: `http://127.0.0.1:${port}`,
 			});
 		}
@@ -22,7 +23,7 @@ const getORPCClient = createIsomorphicFn()
 		});
 	})
 	.client(() => {
-		return createClient<typeof appRouter>({ url: window.location.origin });
+		return createClient<AppContract>({ url: window.location.origin });
 	});
 
 export const client = getORPCClient();

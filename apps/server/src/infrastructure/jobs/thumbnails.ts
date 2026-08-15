@@ -5,12 +5,12 @@ import {
 	generateThumbnailJobPayloadSchema,
 	type ThumbnailSize,
 } from "@solid-imager/core/domain/thumbnails/schemas";
-import { services } from "~/application/registry";
 import type { Job, Media } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { services } from "~/infrastructure/service-registry";
 
 const sourceRepo = DrizzleSourceRepository;
 

@@ -1,33 +1,7 @@
-import type {
-	Preset,
-	SearchGroup,
-} from "@solid-imager/core/domain/media/schemas";
+import type { PresetOrpcLike } from "@solid-imager/core/domain/contract/presets-client";
+import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
 
-export interface PresetOrpcLike {
-	presets: {
-		list(): Promise<Preset[]>;
-		get(input: { id: number }): Promise<Preset>;
-		getByName(input: { name: string }): Promise<Preset | null | undefined>;
-		create(data: {
-			name: string;
-			value: SearchGroup;
-			sort?: "name" | "date" | "rating" | "viewCount" | "size";
-			order?: "asc" | "desc";
-			mode?: "simple" | "pro";
-		}): Promise<Preset>;
-		update(input: {
-			id: number;
-			data: {
-				name?: string;
-				value?: SearchGroup;
-				sort?: "name" | "date" | "rating" | "viewCount" | "size";
-				order?: "asc" | "desc";
-				mode?: "simple" | "pro";
-			};
-		}): Promise<Preset>;
-		delete(input: { id: number }): Promise<unknown>;
-	};
-}
+export type { PresetOrpcLike } from "@solid-imager/core/domain/contract/presets-client";
 
 export function createPresetClient(orpc: PresetOrpcLike) {
 	return {

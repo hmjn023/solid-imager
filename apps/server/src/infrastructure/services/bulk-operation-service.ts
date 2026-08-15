@@ -1,7 +1,7 @@
 import { updateMediaRequestSchema } from "@solid-imager/core/domain/media/schemas";
-import { services } from "~/application/registry";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
 
 /**
  * BulkOperationService - バルク操作機能
@@ -225,7 +225,7 @@ export const BulkOperationService = {
 	) {
 		const mediaRepo = services.getMediaRepository();
 		const { MediaService } = await import(
-			"~/application/services/media-service"
+			"~/infrastructure/services/media-service"
 		);
 
 		// 一括取得してセキュリティチェック
@@ -267,7 +267,7 @@ export const BulkOperationService = {
 	) {
 		const mediaRepo = services.getMediaRepository();
 		const { MediaService } = await import(
-			"~/application/services/media-service"
+			"~/infrastructure/services/media-service"
 		);
 
 		// 一括取得してセキュリティチェック

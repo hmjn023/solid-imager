@@ -20,7 +20,7 @@ vi.doMock("~/infrastructure/jobs/thumbnails", () => ({
 }));
 
 const { configureThumbnailJobHandlers, processJob } = await import(
-	"~/application/services/job-dispatch-service"
+	"~/infrastructure/services/job-dispatch-service"
 );
 
 configureThumbnailJobHandlers({

@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@orpc/client": "^1.14.4",
-    "@orpc/server": "^1.14.4",
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
     "zod": "^4.4.3"

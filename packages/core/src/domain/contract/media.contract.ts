@@ -1,7 +1,12 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
+	bulkCopyToSourceMediaRequestSchema,
 	bulkDeleteMediaRequestSchema,
+	bulkEditMediaRequestSchema,
+	bulkMoveMediaRequestSchema,
+	bulkMoveToSourceMediaRequestSchema,
+	bulkTagMediaRequestSchema,
 	findDuplicatesRequestSchema,
 	findDuplicatesResponseSchema,
 	mediaDetailsSchema,
@@ -76,6 +81,13 @@ export const mediaContract = {
 		.output(mediaSchema),
 
 	sync: oc
+		.meta({
+			openapi: {
+				tags: ["Media"],
+				summary: "Sync (reprocess) media metadata",
+				description: "Re-extract metadata and tags for specified media items",
+			},
+		})
 		.input(
 			z.object({
 				sourceId: z.string().uuid(),
@@ -141,5 +153,25 @@ export const mediaContract = {
 
 	bulkDelete: oc
 		.input(bulkDeleteMediaRequestSchema)
+		.output(z.object({ success: z.boolean() })),
+
+	bulkEdit: oc
+		.input(bulkEditMediaRequestSchema)
+		.output(z.object({ success: z.boolean() })),
+
+	bulkMove: oc
+		.input(bulkMoveMediaRequestSchema)
+		.output(z.object({ success: z.boolean() })),
+
+	bulkTag: oc
+		.input(bulkTagMediaRequestSchema)
+		.output(z.object({ success: z.boolean() })),
+
+	bulkCopyToSource: oc
+		.input(bulkCopyToSourceMediaRequestSchema)
+		.output(z.object({ success: z.boolean() })),
+
+	bulkMoveToSource: oc
+		.input(bulkMoveToSourceMediaRequestSchema)
 		.output(z.object({ success: z.boolean() })),
 };

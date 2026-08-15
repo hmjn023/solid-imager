@@ -7,8 +7,6 @@ import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/sche
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { and, asc, eq, gt, notExists, or, sql } from "drizzle-orm";
 import { z } from "zod";
-import { services } from "~/application/registry";
-import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { db } from "~/infrastructure/db";
 import {
 	type Job,
@@ -19,6 +17,8 @@ import {
 } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
+import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 
 const singleExtractionPayloadSchema = z.object({
 	mediaId: z.string().uuid(),

@@ -1,4 +1,8 @@
 import type {
+	ICharacterService,
+	IMediaProcessingService,
+} from "@solid-imager/application";
+import type {
 	IConfigService,
 	IFileSystem,
 	IMediaStorage,
@@ -13,8 +17,6 @@ import type { IProjectRepository } from "@solid-imager/core/domain/repositories/
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type { CharacterServiceImpl } from "~/application/services/character-service";
-import type { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
 
 export class ServiceRegistry {
@@ -32,8 +34,8 @@ export class ServiceRegistry {
 	private ipRepository?: IIpRepository;
 	private jobRepository?: IJobRepository;
 	private jobWorker?: JobWorker;
-	private mediaProcessingService?: MediaProcessingServiceImpl;
-	private characterService?: CharacterServiceImpl;
+	private mediaProcessingService?: IMediaProcessingService;
+	private characterService?: ICharacterService;
 	private configService?: IConfigService;
 
 	private constructor() {}
@@ -188,22 +190,22 @@ export class ServiceRegistry {
 		return this.jobWorker;
 	}
 
-	registerMediaProcessingService(service: MediaProcessingServiceImpl): void {
+	registerMediaProcessingService(service: IMediaProcessingService): void {
 		this.mediaProcessingService = service;
 	}
 
-	getMediaProcessingService(): MediaProcessingServiceImpl {
+	getMediaProcessingService(): IMediaProcessingService {
 		if (!this.mediaProcessingService) {
 			throw new Error("MediaProcessingService has not been registered.");
 		}
 		return this.mediaProcessingService;
 	}
 
-	registerCharacterService(service: CharacterServiceImpl): void {
+	registerCharacterService(service: ICharacterService): void {
 		this.characterService = service;
 	}
 
-	getCharacterService(): CharacterServiceImpl {
+	getCharacterService(): ICharacterService {
 		if (!this.characterService) {
 			throw new Error("CharacterService has not been registered.");
 		}
@@ -219,10 +221,6 @@ export class ServiceRegistry {
 			throw new Error("ConfigService has not been registered.");
 		}
 		return this.configService;
-	}
-
-	getLogger() {
-		return console; // Or return a real logger if available in other services
 	}
 
 	// Helper for testing to reset the registry

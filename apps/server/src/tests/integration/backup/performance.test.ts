@@ -1,6 +1,5 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { BackupService } from "~/application/services/backup-service";
 import { db } from "~/infrastructure/db";
 import {
 	authors,
@@ -15,6 +14,7 @@ import {
 	projects,
 	tags,
 } from "~/infrastructure/db/schema";
+import { BackupService } from "~/infrastructure/services/backup-service";
 
 describe("BackupService Performance", () => {
 	const testSourceId = "dce7b2a1-93ba-4c49-b1eb-f25dafb12949";

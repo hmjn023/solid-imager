@@ -1,8 +1,8 @@
 import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
 import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
-import { services } from "~/application/registry";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
 
 export { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
 

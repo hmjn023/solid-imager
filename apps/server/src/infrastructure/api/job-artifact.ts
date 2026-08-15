@@ -1,8 +1,8 @@
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
-import { isJobTransferPath } from "~/application/services/job-transfer-storage";
 import { JobRepository } from "~/infrastructure/repositories/job-repository";
+import { isJobTransferPath } from "~/infrastructure/services/job-transfer-storage";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
 export type ResolvedJobArtifact = {
