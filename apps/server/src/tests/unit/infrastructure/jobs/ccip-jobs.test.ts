@@ -34,13 +34,13 @@ const jobRepository: IJobRepository = {
 	requeueStaleInProgress: vi.fn(),
 };
 
-vi.mock("~/application/registry", () => ({
+vi.mock("~/infrastructure/service-registry", () => ({
 	services: {
 		getJobRepository: () => jobRepository,
 	},
 }));
 
-vi.mock("~/application/services/ccip-vector-service", () => ({
+vi.mock("~/infrastructure/services/ccip-vector-service", () => ({
 	ccipVectorService: {
 		extract: (...args: Parameters<typeof extract>) => extract(...args),
 		extractBatch: (...args: Parameters<typeof extractBatch>) =>

@@ -19,12 +19,12 @@ import {
 import { MediaTransferService } from "@solid-imager/application/services/media-transfer-service";
 import { MediaUploadService } from "@solid-imager/application/services/media-upload-service";
 import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import { services } from "~/application/registry";
-import { executeDeferredActions } from "~/application/services/job-dispatch-service";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
+import { executeDeferredActions } from "~/infrastructure/services/job-dispatch-service";
 
 // Re-export for backward compatibility
 export { MediaServiceImpl, validateFileSignature };

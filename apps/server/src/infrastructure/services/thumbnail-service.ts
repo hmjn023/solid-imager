@@ -1,9 +1,9 @@
 import type { ThumbnailSize } from "@solid-imager/core/domain/thumbnails/schemas";
-import { services } from "~/application/registry";
 import {
 	generateThumbnailsForSource,
 	getSourceCacheDir,
 } from "~/infrastructure/jobs/thumbnails";
+import { services } from "~/infrastructure/service-registry";
 
 export { ThumbnailServiceImpl } from "@solid-imager/application/services/thumbnail-service";
 

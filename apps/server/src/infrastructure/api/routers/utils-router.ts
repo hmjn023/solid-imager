@@ -1,21 +1,21 @@
-import { os } from "@orpc/server";
-import { z } from "zod";
+import { implement } from "@orpc/server";
+import { utilsContract } from "@solid-imager/core/domain/contract/utils.contract";
 
 /**
  * Utils Router Implementation
  * Handles utility-like functions: fetchUrl, AI tagging, etc.
  */
-export const utilsRouter = {
+const os = implement(utilsContract);
+
+export const utilsRouter = os.router({
 	/**
 	 * Fetches content from an external URL (Proxy)
 	 */
-	fetchUrl: os
-		.input(z.object({ url: z.string().url() }))
-		.handler(async ({ input }) => {
-			const response = await fetch(input.url);
-			if (!response.ok) {
-				throw new Error(`Failed to fetch URL: ${response.statusText}`);
-			}
-			return await response.blob();
-		}),
-};
+	fetchUrl: os.fetchUrl.handler(async ({ input }) => {
+		const response = await fetch(input.url);
+		if (!response.ok) {
+			throw new Error(`Failed to fetch URL: ${response.statusText}`);
+		}
+		return await response.blob();
+	}),
+});

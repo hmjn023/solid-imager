@@ -1,8 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { ZodError } from "zod";
-import { services } from "~/application/registry";
-import { MediaService } from "~/application/services/media-service";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
@@ -15,6 +13,8 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { services } from "~/infrastructure/service-registry";
+import { MediaService } from "~/infrastructure/services/media-service";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 const MEDIA_NOT_FOUND_PATTERN = /Media.*not found/;

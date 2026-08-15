@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createClient } from "@solid-imager/client";
+import type { AppContract } from "@solid-imager/core/domain/contract";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import {
 	type CcipDifferenceResponse,
@@ -13,10 +14,9 @@ import {
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
-import type { appRouter } from "~/domain/shared/api-contract";
 
 function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
-	return createClient<typeof appRouter>({
+	return createClient<AppContract>({
 		url: remoteUrl,
 		fetch: (request: Request, init?: RequestInit) => {
 			const timeoutSignal = AbortSignal.timeout(timeoutMs);

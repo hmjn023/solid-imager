@@ -1,14 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { MediaSourceSyncState } from "@solid-imager/core/domain/sources/schemas";
-import { services } from "~/application/registry";
-import { ccipVectorService } from "~/application/services/ccip-vector-service";
-import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { services } from "~/infrastructure/service-registry";
+import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
+import { MediaProcessingService } from "~/infrastructure/services/media-processing-service";
 
 const sourceRepo = DrizzleSourceRepository;
 

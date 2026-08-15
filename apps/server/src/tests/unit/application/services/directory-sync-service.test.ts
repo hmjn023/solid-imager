@@ -52,7 +52,7 @@ vi.mock("~/infrastructure/repositories/source-repository", () => ({
 		update: vi.fn().mockResolvedValue(undefined),
 	},
 }));
-vi.mock("~/application/services/media-processing-service", () => ({
+vi.mock("~/infrastructure/services/media-processing-service", () => ({
 	MediaProcessingService: {
 		registerAndProcess: vi.fn(),
 	},
@@ -68,7 +68,7 @@ vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
 	},
 }));
 
-vi.mock("~/application/registry", () => ({
+vi.mock("~/infrastructure/service-registry", () => ({
 	services: {
 		getConfigService: vi.fn().mockReturnValue({
 			getConfig: vi.fn().mockReturnValue({
@@ -84,10 +84,10 @@ vi.mock("~/application/registry", () => ({
 	},
 }));
 
-import { MediaProcessingService } from "~/application/services/media-processing-service";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { MediaProcessingService } from "~/infrastructure/services/media-processing-service";
 
 describe("DirectorySyncService", () => {
 	beforeEach(() => {
@@ -99,7 +99,7 @@ describe("DirectorySyncService", () => {
 			const mediaSourceId = "source-1";
 
 			const { DirectorySyncService } = await import(
-				"~/application/services/directory-sync-service"
+				"~/infrastructure/services/directory-sync-service"
 			);
 
 			// Execute
@@ -126,7 +126,7 @@ describe("DirectorySyncService", () => {
 		it("coalesces concurrent syncs for the same source", async () => {
 			const mediaSourceId = "source-1";
 			const { DirectorySyncService } = await import(
-				"~/application/services/directory-sync-service"
+				"~/infrastructure/services/directory-sync-service"
 			);
 			let resolveProcessing: (() => void) | undefined;
 			let resolveStarted: (() => void) | undefined;
@@ -170,7 +170,7 @@ describe("DirectorySyncService", () => {
 
 		it("publishes a safe message when sync fails", async () => {
 			const { DirectorySyncService } = await import(
-				"~/application/services/directory-sync-service"
+				"~/infrastructure/services/directory-sync-service"
 			);
 			vi.mocked(MediaRepository.findAllPathsBySourceId).mockRejectedValueOnce(
 				new Error("/secret/source-path and password=secret"),

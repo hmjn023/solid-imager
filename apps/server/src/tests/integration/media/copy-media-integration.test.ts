@@ -1,9 +1,5 @@
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { services } from "~/application/registry";
-import { CharacterServiceImpl } from "~/application/services/character-service";
-import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
-import { MediaService } from "~/application/services/media-service";
 import { db } from "~/infrastructure/db/index";
 import {
 	authors,
@@ -28,6 +24,10 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { services } from "~/infrastructure/service-registry";
+import { CharacterServiceImpl } from "~/infrastructure/services/character-service";
+import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
+import { MediaService } from "~/infrastructure/services/media-service";
 
 // Mocks
 const mockStorageService = {

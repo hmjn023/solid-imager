@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
-    "./api-contract": "./src/domain/shared/api-contract.ts"
+    "./app-router": "./src/infrastructure/api/app-router.ts"
   },
   "scripts": {
     "dev": "bun --bun run vite dev",

@@ -8,7 +8,7 @@ import {
 	type Mock,
 	vi,
 } from "vitest";
-import { MaintenanceService } from "~/application/services/maintenance-service";
+import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
 
 // ---- Module mocks ----
 

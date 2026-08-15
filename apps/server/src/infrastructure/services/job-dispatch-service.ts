@@ -1,16 +1,16 @@
 import type { DeferredActions } from "@solid-imager/application/ports/media-service";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
-import { services } from "~/application/registry";
-import {
-	processSourceExportJob,
-	processSourceRestoreJob,
-} from "~/application/services/source-transfer-job-service";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
 	processAutoTaggingJob,
 	processBulkTaggingDispatchJob,
 } from "~/infrastructure/jobs/tagging-jobs";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
+import {
+	processSourceExportJob,
+	processSourceRestoreJob,
+} from "~/infrastructure/services/source-transfer-job-service";
 
 export type ThumbnailJobHandlers = {
 	deleteThumbnail: (mediaSourceId: string, mediaId: string) => Promise<void>;
@@ -45,7 +45,7 @@ export async function processJob(job: Job) {
 
 	if (job.type === "processMedia") {
 		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
+			"~/infrastructure/services/media-processing-service"
 		);
 		await MediaProcessingService.executeProcessMediaJob(job);
 	} else if (job.type === "downloadImage") {

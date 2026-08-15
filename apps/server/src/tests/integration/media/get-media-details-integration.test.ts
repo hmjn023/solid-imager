@@ -10,8 +10,6 @@ import {
 	it,
 	vi,
 } from "vitest";
-import { services } from "~/application/registry";
-import { MediaService } from "~/application/services/media-service";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
@@ -21,6 +19,8 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { services } from "~/infrastructure/service-registry";
+import { MediaService } from "~/infrastructure/services/media-service";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // We need to dynamically import these to work around Vitest's hoisting

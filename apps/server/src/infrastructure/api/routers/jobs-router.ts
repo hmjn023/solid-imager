@@ -1,17 +1,11 @@
-import { eventIterator, ORPCError, os } from "@orpc/server";
+import { implement, ORPCError } from "@orpc/server";
+import { jobsContract } from "@solid-imager/core/domain/contract/jobs.contract";
 import {
 	isBatchParentJobType,
-	jobDtoSchema,
-	jobIdRequestSchema,
-	jobListRequestSchema,
-	jobListResponseSchema,
 	jobStatusSchema,
 } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
-import {
-	type JobEvent,
-	jobEventSchema,
-} from "@solid-imager/core/domain/sources/events";
+import type { JobEvent } from "@solid-imager/core/domain/sources/events";
 import { and, count, desc, eq } from "drizzle-orm";
 import { z } from "zod";
 import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
@@ -91,140 +85,118 @@ function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
 	return status ? and(eq(jobs.status, status)) : undefined;
 }
 
-export const jobsRouter = {
-	list: os
-		.input(jobListRequestSchema)
-		.output(jobListResponseSchema)
-		.handler(async ({ input }) => {
-			const where = jobWhere(input.status);
-			const [rows, totalRows] = await Promise.all([
-				db
-					.select()
-					.from(jobs)
-					.where(where)
-					.orderBy(desc(jobs.createdAt), desc(jobs.id))
-					.limit(input.limit)
-					.offset(input.offset),
-				db.select({ total: count() }).from(jobs).where(where),
-			]);
+const os = implement(jobsContract);
 
-			return {
-				items: rows.map(toJobDto),
-				total: Number(totalRows[0]?.total ?? 0),
-			};
-		}),
+export const jobsRouter = os.router({
+	list: os.list.handler(async ({ input }) => {
+		const where = jobWhere(input.status);
+		const [rows, totalRows] = await Promise.all([
+			db
+				.select()
+				.from(jobs)
+				.where(where)
+				.orderBy(desc(jobs.createdAt), desc(jobs.id))
+				.limit(input.limit)
+				.offset(input.offset),
+			db.select({ total: count() }).from(jobs).where(where),
+		]);
 
-	get: os
-		.input(jobIdRequestSchema)
-		.output(jobDtoSchema)
-		.handler(async ({ input }) => {
-			const [job] = await db.select().from(jobs).where(eq(jobs.id, input.id));
-			if (!job) {
-				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-			}
-			return toJobDto(job);
-		}),
+		return {
+			items: rows.map(toJobDto),
+			total: Number(totalRows[0]?.total ?? 0),
+		};
+	}),
 
-	downloadArtifact: os
-		.meta({
-			openapi: {
-				tags: ["Jobs"],
-				summary: "Download job artifact",
-				description: "Stream a completed job artifact",
-			},
-		})
-		.input(jobIdRequestSchema)
-		.output(z.instanceof(ReadableStream))
-		.handler(async ({ input }) => {
-			const artifact = await resolveJobArtifact(input.id);
-			if (!artifact) {
-				throw new ORPCError("NOT_FOUND", {
-					message: "Artifact not found",
-				});
-			}
+	get: os.get.handler(async ({ input }) => {
+		const [job] = await db.select().from(jobs).where(eq(jobs.id, input.id));
+		if (!job) {
+			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+		}
+		return toJobDto(job);
+	}),
 
-			return artifact.stream;
-		}),
-
-	retry: os
-		.input(jobIdRequestSchema)
-		.output(jobDtoSchema)
-		.handler(async ({ input }) => {
-			const [requeued] = await db
-				.update(jobs)
-				.set({
-					status: "pending",
-					error: null,
-					result: null,
-					cancelRequestedAt: null,
-					cancelledAt: null,
-					startedAt: null,
-					finishedAt: null,
-					artifactPath: null,
-					artifactFileName: null,
-					artifactContentType: null,
-					artifactSize: null,
-					artifactExpiresAt: null,
-					updatedAt: new Date(),
-				})
-				.where(and(eq(jobs.id, input.id), eq(jobs.status, "failed")))
-				.returning();
-			if (!requeued) {
-				const [current] = await db
-					.select({ id: jobs.id })
-					.from(jobs)
-					.where(eq(jobs.id, input.id));
-				if (!current) {
-					throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-				}
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Only failed jobs can be retried",
-				});
-			}
-			RealtimeEventBus.publishJob("job-retried", {
-				jobId: requeued.id,
-				message: "Job queued for retry",
+	downloadArtifact: os.downloadArtifact.handler(async ({ input }) => {
+		const artifact = await resolveJobArtifact(input.id);
+		if (!artifact) {
+			throw new ORPCError("NOT_FOUND", {
+				message: "Artifact not found",
 			});
-			return toJobDto(requeued);
-		}),
+		}
 
-	cancel: os
-		.input(jobIdRequestSchema)
-		.output(jobDtoSchema)
-		.handler(async ({ input }) => {
-			const job = await JobRepository.findById(input.id);
-			if (!job) {
+		return artifact.stream;
+	}),
+
+	retry: os.retry.handler(async ({ input }) => {
+		const [requeued] = await db
+			.update(jobs)
+			.set({
+				status: "pending",
+				error: null,
+				result: null,
+				cancelRequestedAt: null,
+				cancelledAt: null,
+				startedAt: null,
+				finishedAt: null,
+				artifactPath: null,
+				artifactFileName: null,
+				artifactContentType: null,
+				artifactSize: null,
+				artifactExpiresAt: null,
+				updatedAt: new Date(),
+			})
+			.where(and(eq(jobs.id, input.id), eq(jobs.status, "failed")))
+			.returning();
+		if (!requeued) {
+			const [current] = await db
+				.select({ id: jobs.id })
+				.from(jobs)
+				.where(eq(jobs.id, input.id));
+			if (!current) {
 				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
 			}
-			if (job.status !== "pending" && job.status !== "in_progress") {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Only pending or in-progress jobs can be cancelled",
-				});
-			}
-			if (isBatchParentJobType(job.type)) {
-				throw new ORPCError("BAD_REQUEST", {
-					message: "Batch parent jobs cannot be cancelled",
-				});
-			}
-
-			await JobRepository.requestCancellation(input.id);
-			const cancelled = await JobRepository.findById(input.id);
-			if (!cancelled) {
-				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-			}
-			RealtimeEventBus.publishJob("job-cancelled", {
-				jobId: input.id,
-				message:
-					cancelled.status === "in_progress"
-						? "Cancellation requested"
-						: "Job cancelled",
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Only failed jobs can be retried",
 			});
-			return toJobDto(cancelled);
-		}),
+		}
+		RealtimeEventBus.publishJob("job-retried", {
+			jobId: requeued.id,
+			message: "Job queued for retry",
+		});
+		return toJobDto(requeued);
+	}),
 
-	events: os.output(eventIterator(jobEventSchema)).handler(async function* ({
-		signal,
-	}) {
+	cancel: os.cancel.handler(async ({ input }) => {
+		const job = await JobRepository.findById(input.id);
+		if (!job) {
+			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+		}
+		if (job.status !== "pending" && job.status !== "in_progress") {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Only pending or in-progress jobs can be cancelled",
+			});
+		}
+		if (isBatchParentJobType(job.type)) {
+			throw new ORPCError("BAD_REQUEST", {
+				message: "Batch parent jobs cannot be cancelled",
+			});
+		}
+
+		await JobRepository.requestCancellation(input.id);
+		const cancelled = await JobRepository.findById(input.id);
+		if (!cancelled) {
+			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+		}
+		RealtimeEventBus.publishJob("job-cancelled", {
+			jobId: input.id,
+			message:
+				cancelled.status === "in_progress"
+					? "Cancellation requested"
+					: "Job cancelled",
+		});
+		return toJobDto(cancelled);
+	}),
+
+	events: os.events.handler(async function* ({ signal }) {
 		const queue: JobEvent[] = [];
 		let resolve: (() => void) | null = null;
 
@@ -267,4 +239,4 @@ export const jobsRouter = {
 			unsubscribe();
 		}
 	}),
-};
+});

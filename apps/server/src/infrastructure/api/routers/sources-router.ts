@@ -1,33 +1,30 @@
-import { eventIterator, ORPCError, os } from "@orpc/server";
-import { jobDtoSchema } from "@solid-imager/core/domain/jobs/schemas";
-import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
+import { implement, ORPCError } from "@orpc/server";
 import {
-	type SourceEvent,
-	sourceEventSchema,
-} from "@solid-imager/core/domain/sources/events";
+	type SourceSyncResult,
+	sourcesContract,
+} from "@solid-imager/core/domain/contract/sources.contract";
+import type { MediaSource } from "@solid-imager/core/domain/repositories/source-repository";
+import type { SourceEvent } from "@solid-imager/core/domain/sources/events";
 import {
 	localConnectionSchema,
-	mediaSourceInfoSchema,
 	mediaSourceStatusSchema,
 	type SafeMediaSource,
 	s3ConnectionSchema,
 	sftpConnectionSchema,
 } from "@solid-imager/core/domain/sources/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { count, inArray } from "drizzle-orm";
-import { z } from "zod";
-import { services } from "~/application/registry";
-import { BackupService } from "~/application/services/backup-service";
-import { DirectorySyncService } from "~/application/services/directory-sync-service";
-import { persistJobInput } from "~/application/services/job-transfer-storage";
-import { MediaService } from "~/application/services/media-service";
-import { MediaSourceService } from "~/application/services/media-source-service";
 import { toJobDto } from "~/infrastructure/api/routers/jobs-router";
 import { db } from "~/infrastructure/db";
 import { medias } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
+import { BackupService } from "~/infrastructure/services/backup-service";
+import { DirectorySyncService } from "~/infrastructure/services/directory-sync-service";
+import { persistJobInput } from "~/infrastructure/services/job-transfer-storage";
+import { MediaService } from "~/infrastructure/services/media-service";
+import { MediaSourceService } from "~/infrastructure/services/media-source-service";
 import {
 	asDumpStream,
 	webReadableToNodeStream,
@@ -112,491 +109,322 @@ function addSourceSummary(
 /**
  * Media Sources Router Implementation
  */
-export const sourcesRouter = {
-	list: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "List all media sources",
-				description:
-					"Retrieve a list of all registered media sources with sensitive information removed",
-			},
-		})
-		.handler(async () => {
-			const sources = await MediaSourceService.fetchSources();
-			const mediaCounts = await getMediaCounts(
-				sources.map((source) => source.id),
+const os = implement(sourcesContract);
+
+export const sourcesRouter = os.router({
+	list: os.list.handler(async () => {
+		const sources = await MediaSourceService.fetchSources();
+		const mediaCounts = await getMediaCounts(
+			sources.map((source) => source.id),
+		);
+		return sources.map((source) =>
+			addSourceSummary(toSafeMediaSource(source), mediaCounts),
+		);
+	}),
+
+	get: os.get.handler(async ({ input }) => {
+		const [source] = await MediaSourceService.fetchSourceById(input.id);
+		if (!source) {
+			throw new Error(`Source not found: ${input.id}`);
+		}
+		const mediaCounts = await getMediaCounts([source.id]);
+		return addSourceSummary(toSafeMediaSource(source), mediaCounts);
+	}),
+
+	create: os.create.handler(async ({ input }) => {
+		const result = await MediaSourceService.createSource(input);
+		const createdSource = result[0];
+
+		// ローカルソースの場合、バックグラウンド処理を開始
+		if (createdSource && createdSource.type === "local") {
+			MediaService.registerExistingMedia(
+				createdSource.id,
+				(createdSource.connectionInfo as { path: string }).path,
 			);
-			return sources.map((source) =>
-				addSourceSummary(toSafeMediaSource(source), mediaCounts),
-			);
-		}),
 
-	get: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Get media source by ID",
-				description: "Retrieve a specific media source by its UUID",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const [source] = await MediaSourceService.fetchSourceById(input.id);
-			if (!source) {
-				throw new Error(`Source not found: ${input.id}`);
-			}
-			const mediaCounts = await getMediaCounts([source.id]);
-			return addSourceSummary(toSafeMediaSource(source), mediaCounts);
-		}),
+			// ファイル監視の開始
+			import("~/infrastructure/jobs/file-watcher-service")
+				.then((module) => {
+					module.FileWatcherService.startMonitoring(createdSource.id).catch(
+						(error) => {
+							logger.error(
+								{ err: error, sourceId: createdSource.id },
+								"Failed to start file watcher",
+							);
+						},
+					);
+				})
+				.catch((error) => {
+					logger.error(
+						{ err: error, sourceId: createdSource.id },
+						"Failed to load file watcher service",
+					);
+				});
+		}
 
-	create: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Create a new media source",
-				description: "Register a new media source (local, SFTP, S3, etc.)",
-			},
-		})
-		.input(mediaSourceInfoSchema)
-		.handler(async ({ input }) => {
-			const result = await MediaSourceService.createSource(input);
-			const createdSource = result[0];
+		const mediaCounts = await getMediaCounts([createdSource.id]);
+		return addSourceSummary(toSafeMediaSource(createdSource), mediaCounts);
+	}),
 
-			// ローカルソースの場合、バックグラウンド処理を開始
-			if (createdSource && createdSource.type === "local") {
-				MediaService.registerExistingMedia(
-					createdSource.id,
-					(createdSource.connectionInfo as { path: string }).path,
-				);
-
-				// ファイル監視の開始
-				import("~/infrastructure/jobs/file-watcher-service")
-					.then((module) => {
-						module.FileWatcherService.startMonitoring(createdSource.id).catch(
-							(error) => {
-								logger.error(
-									{ err: error, sourceId: createdSource.id },
-									"Failed to start file watcher",
-								);
-							},
-						);
-					})
-					.catch((error) => {
-						logger.error(
-							{ err: error, sourceId: createdSource.id },
-							"Failed to load file watcher service",
-						);
-					});
-			}
-
-			const mediaCounts = await getMediaCounts([createdSource.id]);
-			return addSourceSummary(toSafeMediaSource(createdSource), mediaCounts);
-		}),
-
-	update: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Update media source",
-				description: "Update an existing media source's configuration",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				data: mediaSourceInfoSchema.partial(),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const result = await MediaSourceService.updateSource(
-				input.id,
-				input.data,
-			);
-			const mediaCounts = await getMediaCounts([result[0].id]);
-			return addSourceSummary(toSafeMediaSource(result[0]), mediaCounts);
-		}),
+	update: os.update.handler(async ({ input }) => {
+		const result = await MediaSourceService.updateSource(input.id, input.data);
+		const mediaCounts = await getMediaCounts([result[0].id]);
+		return addSourceSummary(toSafeMediaSource(result[0]), mediaCounts);
+	}),
 
 	/**
 	 * Deletes a media source
 	 */
-	delete: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Delete media source",
-				description: "Remove a media source and stop its file monitoring",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-			}),
-		)
-		.handler(async ({ input }) => {
-			await MediaSourceService.deleteSource(input.id);
+	delete: os.delete.handler(async ({ input }) => {
+		await MediaSourceService.deleteSource(input.id);
 
-			// ファイル監視の停止
-			import("~/infrastructure/jobs/file-watcher-service")
-				.then((module) => {
-					module.FileWatcherService.stopMonitoring(input.id).catch((error) => {
-						logger.error(
-							{ err: error, sourceId: input.id },
-							"Failed to stop file watcher",
-						);
-					});
-				})
-				.catch((error) => {
+		// ファイル監視の停止
+		import("~/infrastructure/jobs/file-watcher-service")
+			.then((module) => {
+				module.FileWatcherService.stopMonitoring(input.id).catch((error) => {
 					logger.error(
 						{ err: error, sourceId: input.id },
-						"Failed to load file watcher service",
+						"Failed to stop file watcher",
 					);
 				});
+			})
+			.catch((error) => {
+				logger.error(
+					{ err: error, sourceId: input.id },
+					"Failed to load file watcher service",
+				);
+			});
 
-			return { success: true };
-		}),
+		return { success: true };
+	}),
 
 	/**
 	 * Syncs one or more media sources
 	 */
-	sync: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Sync media sources",
-				description: "Synchronize local media source directory with database",
-			},
-		})
-		.input(
-			z.object({
-				ids: z.array(z.string().uuid()),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const results: Record<string, unknown>[] = [];
-			const poolResults = await asyncPool(input.ids, 3, (id: string) =>
-				DirectorySyncService.syncMediaSource(id),
-			);
-			for (const [index, pr] of poolResults.entries()) {
-				const id = input.ids[index];
-				if (pr.status === "fulfilled") {
-					results.push({
-						id,
-						success: true,
-						...(isRecord(pr.value) ? pr.value : {}),
-					});
-				} else {
-					logger.error(
-						{ err: pr.reason, sourceId: id },
-						"Failed to sync media source",
-					);
-					results.push({ id, success: false, error: String(pr.reason) });
-				}
+	sync: os.sync.handler(async ({ input }) => {
+		const results: SourceSyncResult[] = [];
+		const poolResults = await asyncPool(input.ids, 3, (id: string) =>
+			DirectorySyncService.syncMediaSource(id),
+		);
+		for (const [index, pr] of poolResults.entries()) {
+			const id = input.ids[index];
+			if (pr.status === "fulfilled") {
+				results.push({
+					id,
+					success: true,
+					...pr.value,
+				});
+			} else {
+				logger.error(
+					{ err: pr.reason, sourceId: id },
+					"Failed to sync media source",
+				);
+				results.push({ id, success: false, error: String(pr.reason) });
 			}
-			return { results };
-		}),
+		}
+		return { results };
+	}),
 
 	/**
 	 * Dumps a media source
 	 */
-	dump: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Export media source",
-				description:
-					"Export media source data as NDJSON or uncompressed TAR archive",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				mode: z.enum(["json", "zip"]).default("json"),
-				includeImages: z.boolean().optional().default(false),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const result = await BackupService.createDump(input.id, input.mode, {
-				includeImages: input.includeImages,
-			});
+	dump: os.dump.handler(async ({ input }) => {
+		const result = await BackupService.createDump(input.id, input.mode, {
+			includeImages: input.includeImages,
+		});
 
-			if (input.mode === "zip") {
-				return new Response(asDumpStream(result), {
-					headers: {
-						"Content-Type": "application/x-tar",
-						"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar"`,
-					},
-				});
-			}
-
-			// Mode json -> return as streaming NDJSON Response
+		if (input.mode === "zip") {
 			return new Response(asDumpStream(result), {
 				headers: {
-					"Content-Type": "application/x-ndjson",
-					"Content-Disposition": `attachment; filename="source-${input.id}-dump.ndjson"`,
+					"Content-Type": "application/x-tar",
+					"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar"`,
 				},
 			});
-		}),
+		}
 
-	enqueueExport: os
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				mode: z.enum(["json", "zip"]).default("json"),
-				includeImages: z.boolean().default(false),
-			}),
-		)
-		.output(jobDtoSchema)
-		.handler(async ({ input }) => {
-			const [source] = await MediaSourceService.fetchSourceById(input.id);
-			if (!source) {
-				throw new ORPCError("NOT_FOUND", {
-					message: `Source not found: ${input.id}`,
-				});
-			}
-
-			const job = await services.getJobRepository().create({
-				type: "source_export",
-				mediaSourceId: input.id,
-				payload: {
-					mode: input.mode,
-					includeImages: input.includeImages,
-				},
-			});
-			return toJobDto(job);
-		}),
-	restore: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Restore media source",
-				description:
-					"Restore media source from exported JSON data (legacy array)",
+		// Mode json -> return as streaming NDJSON Response
+		return new Response(asDumpStream(result), {
+			headers: {
+				"Content-Type": "application/x-ndjson",
+				"Content-Disposition": `attachment; filename="source-${input.id}-dump.ndjson"`,
 			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				data: z.array(z.unknown()),
-			}),
-		)
-		.handler(
-			async ({ input }) =>
-				await BackupService.restoreSource(input.id, input.data),
-		),
+		});
+	}),
+
+	enqueueExport: os.enqueueExport.handler(async ({ input }) => {
+		const [source] = await MediaSourceService.fetchSourceById(input.id);
+		if (!source) {
+			throw new ORPCError("NOT_FOUND", {
+				message: `Source not found: ${input.id}`,
+			});
+		}
+
+		const job = await services.getJobRepository().create({
+			type: "source_export",
+			mediaSourceId: input.id,
+			payload: {
+				mode: input.mode,
+				includeImages: input.includeImages,
+			},
+		});
+		return toJobDto(job);
+	}),
+	restore: os.restore.handler(
+		async ({ input }) =>
+			await BackupService.restoreSource(input.id, input.data),
+	),
 
 	/**
 	 * Imports a media source from a Tar file
 	 */
-	importZip: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Import media source from TAR",
-				description: "Import media source data from a TAR archive",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				file: z.instanceof(File),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const { randomUUID } = await import("node:crypto");
-			const path = await import("node:path");
-			const fs = await import("node:fs");
-			const { pipeline } = await import("node:stream/promises");
+	importZip: os.importZip.handler(async ({ input }) => {
+		const { randomUUID } = await import("node:crypto");
+		const path = await import("node:path");
+		const fs = await import("node:fs");
+		const { pipeline } = await import("node:stream/promises");
 
-			const tempDir = path.join(process.cwd(), ".cache", "import");
-			await fs.promises.mkdir(tempDir, { recursive: true });
-			const tempFilePath = path.join(tempDir, `import-rpc-${randomUUID()}.tar`);
+		const tempDir = path.join(process.cwd(), ".cache", "import");
+		await fs.promises.mkdir(tempDir, { recursive: true });
+		const tempFilePath = path.join(tempDir, `import-rpc-${randomUUID()}.tar`);
 
+		try {
+			const fileStream = input.file.stream();
+			await pipeline(
+				webReadableToNodeStream(fileStream),
+				fs.createWriteStream(tempFilePath),
+			);
+
+			return await BackupService.importSourceTar(input.id, tempFilePath);
+		} finally {
 			try {
-				const fileStream = input.file.stream();
-				await pipeline(
-					webReadableToNodeStream(fileStream),
-					fs.createWriteStream(tempFilePath),
-				);
-
-				return await BackupService.importSourceTar(input.id, tempFilePath);
-			} finally {
-				try {
-					await fs.promises.unlink(tempFilePath);
-				} catch {
-					// ignore
-				}
+				await fs.promises.unlink(tempFilePath);
+			} catch {
+				// ignore
 			}
-		}),
+		}
+	}),
 
-	enqueueImport: os
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				mode: z.enum(["json", "zip"]),
-				file: z.instanceof(File),
-			}),
-		)
-		.output(jobDtoSchema)
-		.handler(async ({ input }) => {
-			const [source] = await MediaSourceService.fetchSourceById(input.id);
-			if (!source) {
-				throw new ORPCError("NOT_FOUND", {
-					message: `Source not found: ${input.id}`,
-				});
-			}
+	enqueueImport: os.enqueueImport.handler(async ({ input }) => {
+		const [source] = await MediaSourceService.fetchSourceById(input.id);
+		if (!source) {
+			throw new ORPCError("NOT_FOUND", {
+				message: `Source not found: ${input.id}`,
+			});
+		}
 
-			const { randomUUID } = await import("node:crypto");
-			const jobId = randomUUID();
-			const inputPath = await persistJobInput(jobId, input.mode, input.file);
-			try {
-				const job = await services.getJobRepository().create({
-					id: jobId,
-					type: "source_restore",
-					mediaSourceId: input.id,
-					payload: {
-						mode: input.mode,
-						inputPath,
-					},
-				});
-				return toJobDto(job);
-			} catch (error) {
-				const fs = await import("node:fs/promises");
-				await fs.rm(inputPath, { force: true }).catch(() => {});
-				throw error;
-			}
-		}),
+		const { randomUUID } = await import("node:crypto");
+		const jobId = randomUUID();
+		const inputPath = await persistJobInput(jobId, input.mode, input.file);
+		try {
+			const job = await services.getJobRepository().create({
+				id: jobId,
+				type: "source_restore",
+				mediaSourceId: input.id,
+				payload: {
+					mode: input.mode,
+					inputPath,
+				},
+			});
+			return toJobDto(job);
+		} catch (error) {
+			const fs = await import("node:fs/promises");
+			await fs.rm(inputPath, { force: true }).catch(() => {});
+			throw error;
+		}
+	}),
 
 	/**
 	 * Imports a media source from a streaming NDJSON file
 	 */
-	importNdjson: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Import media source from NDJSON file",
-				description: "Import media source metadata from an NDJSON file",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				file: z.instanceof(File),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const { randomUUID } = await import("node:crypto");
-			const path = await import("node:path");
-			const fs = await import("node:fs");
-			const { pipeline } = await import("node:stream/promises");
+	importNdjson: os.importNdjson.handler(async ({ input }) => {
+		const { randomUUID } = await import("node:crypto");
+		const path = await import("node:path");
+		const fs = await import("node:fs");
+		const { pipeline } = await import("node:stream/promises");
 
-			const tempDir = path.join(process.cwd(), ".cache", "import");
-			await fs.promises.mkdir(tempDir, { recursive: true });
-			const tempFilePath = path.join(
-				tempDir,
-				`import-rpc-${randomUUID()}.ndjson`,
+		const tempDir = path.join(process.cwd(), ".cache", "import");
+		await fs.promises.mkdir(tempDir, { recursive: true });
+		const tempFilePath = path.join(
+			tempDir,
+			`import-rpc-${randomUUID()}.ndjson`,
+		);
+
+		try {
+			const fileStream = input.file.stream();
+			await pipeline(
+				webReadableToNodeStream(fileStream),
+				fs.createWriteStream(tempFilePath),
 			);
 
+			return await BackupService.importSourceNdjson(input.id, tempFilePath);
+		} finally {
 			try {
-				const fileStream = input.file.stream();
-				await pipeline(
-					webReadableToNodeStream(fileStream),
-					fs.createWriteStream(tempFilePath),
-				);
-
-				return await BackupService.importSourceNdjson(input.id, tempFilePath);
-			} finally {
-				try {
-					await fs.promises.unlink(tempFilePath);
-				} catch {
-					// ignore
-				}
+				await fs.promises.unlink(tempFilePath);
+			} catch {
+				// ignore
 			}
-		}),
+		}
+	}),
 
 	/**
 	 * Get status of a media source
 	 */
-	status: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Get media source status",
-				description: "Retrieve current status and statistics of a media source",
-			},
-		})
-		.input(z.object({ id: z.string().uuid() }))
-		.output(mediaSourceStatusSchema)
-		.handler(async ({ input }) => {
-			const status = await MediaSourceService.getStatus(input.id);
-			return status as z.infer<typeof mediaSourceStatusSchema>;
-		}),
+	status: os.status.handler(async ({ input }) => {
+		return mediaSourceStatusSchema.parse(
+			await MediaSourceService.getStatus(input.id),
+		);
+	}),
 
 	/**
 	 * Real-time events stream for a media source
 	 */
-	events: os
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Subscribe to media source events",
-				description:
-					"Real-time Server-Sent Events stream for media source updates",
-			},
-		})
-		.input(z.object({ id: z.string().uuid().or(z.literal("*")) }))
-		.output(eventIterator(sourceEventSchema))
-		.handler(async function* ({ input, signal }) {
-			// Queue for events — use pointer index instead of shift()
-			const queue: SourceEvent[] = [];
-			let head = 0;
-			let resolve: (() => void) | null = null;
+	events: os.events.handler(async function* ({ input, signal }) {
+		// Queue for events — use pointer index instead of shift()
+		const queue: SourceEvent[] = [];
+		let head = 0;
+		let resolve: (() => void) | null = null;
 
-			const onEvent = (payload: SourceEvent) => {
-				queue.push(payload);
-				if (resolve) {
-					resolve();
-					resolve = null;
-				}
-			};
-
-			const unsubscribe = RealtimeEventBus.subscribeToSource(input.id, onEvent);
-
-			try {
-				while (!signal?.aborted) {
-					if (head >= queue.length) {
-						await new Promise<void>((r) => {
-							const onAbort = () => {
-								r();
-							};
-							if (signal) {
-								signal.addEventListener("abort", onAbort, { once: true });
-							}
-							resolve = () => {
-								if (signal) {
-									signal.removeEventListener("abort", onAbort);
-								}
-								r();
-							};
-						});
-					}
-
-					while (head < queue.length) {
-						yield queue[head++];
-					}
-
-					// Periodically trim stale entries to prevent memory leak
-					if (head > 1000) {
-						queue.splice(0, head);
-						head = 0;
-					}
-				}
-			} finally {
-				unsubscribe();
+		const onEvent = (payload: SourceEvent) => {
+			queue.push(payload);
+			if (resolve) {
+				resolve();
+				resolve = null;
 			}
-		}),
-};
+		};
+
+		const unsubscribe = RealtimeEventBus.subscribeToSource(input.id, onEvent);
+
+		try {
+			while (!signal?.aborted) {
+				if (head >= queue.length) {
+					await new Promise<void>((r) => {
+						const onAbort = () => {
+							r();
+						};
+						if (signal) {
+							signal.addEventListener("abort", onAbort, { once: true });
+						}
+						resolve = () => {
+							if (signal) {
+								signal.removeEventListener("abort", onAbort);
+							}
+							r();
+						};
+					});
+				}
+
+				while (head < queue.length) {
+					yield queue[head++];
+				}
+
+				// Periodically trim stale entries to prevent memory leak
+				if (head > 1000) {
+					queue.splice(0, head);
+					head = 0;
+				}
+			}
+		} finally {
+			unsubscribe();
+		}
+	}),
+});

@@ -33,13 +33,6 @@ export const aiContract = {
 		)
 		.output(oppaiOracleResponseSchema),
 
-	tagRustExperimental: oc.input(
-		z.union([
-			z.object({ mediaId: z.string().uuid() }),
-			z.object({ file: z.instanceof(File) }),
-		]),
-	),
-
 	ccipFeature: oc.input(
 		z.union([z.object({ file: z.instanceof(File) }), ccipFeatureRequestSchema]),
 	),

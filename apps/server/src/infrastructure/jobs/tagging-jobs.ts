@@ -1,8 +1,6 @@
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { and, asc, eq, gt, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
-import { services } from "~/application/registry";
-import { taggingService } from "~/application/services/tagging-service";
 import { db } from "~/infrastructure/db";
 import {
 	type Job,
@@ -15,6 +13,8 @@ import {
 } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
+import { taggingService } from "~/infrastructure/services/tagging-service";
 
 const autoTaggingPayloadSchema = z.object({
 	mediaId: z.string(),

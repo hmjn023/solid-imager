@@ -2,9 +2,9 @@ import type {
 	MediaSource,
 	NewMediaSource,
 } from "@solid-imager/core/domain/repositories/source-repository";
-import { ccipVectorService } from "~/application/services/ccip-vector-service";
 import { logger } from "~/infrastructure/logger";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 
 /**
  * Custom error class for fetch operations.

@@ -1,13 +1,3 @@
-import { services } from "~/application/registry";
-import { configureCcipVectorService } from "~/application/services/ccip-vector-service";
-import { CharacterServiceImpl } from "~/application/services/character-service";
-import {
-	configureThumbnailJobHandlers,
-	processJob,
-} from "~/application/services/job-dispatch-service";
-import { MaintenanceService } from "~/application/services/maintenance-service";
-import { MediaProcessingServiceImpl } from "~/application/services/media-processing-service";
-import { ServerConfigService } from "~/application/services/server-config-service";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -29,6 +19,16 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository as ActualSourceRepo } from "~/infrastructure/repositories/source-repository";
 import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { services } from "~/infrastructure/service-registry";
+import { configureCcipVectorService } from "~/infrastructure/services/ccip-vector-service";
+import { CharacterServiceImpl } from "~/infrastructure/services/character-service";
+import {
+	configureThumbnailJobHandlers,
+	processJob,
+} from "~/infrastructure/services/job-dispatch-service";
+import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
+import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
+import { ServerConfigService } from "~/infrastructure/services/server-config-service";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 export let isBootstrapped = false;

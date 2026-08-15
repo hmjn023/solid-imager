@@ -1,69 +1,40 @@
-import { os } from "@orpc/server";
-import { z } from "zod";
-import { DirectoryService } from "~/application/services/directory-service";
+import { implement } from "@orpc/server";
+import { directoriesContract } from "@solid-imager/core/domain/contract/directories.contract";
+import { DirectoryService } from "~/infrastructure/services/directory-service";
 
-export const directoriesRouter = {
-	list: os
-		.input(
-			z.object({
-				sourceId: z.string().uuid(),
-				path: z.string().default(""),
-			}),
-		)
-		.handler(
-			async ({ input }) =>
-				await DirectoryService.listMediaInSubdirectory(
-					input.sourceId,
-					input.path,
-				),
-		),
+const os = implement(directoriesContract);
 
-	create: os
-		.input(
-			z.object({
-				sourceId: z.string().uuid(),
-				path: z.string(),
-				name: z.string(),
-			}),
-		)
-		.handler(
-			async ({ input }) =>
-				await DirectoryService.createDirectory(input.sourceId, {
-					path: input.path,
-					name: input.name,
-				}),
-		),
+export const directoriesRouter = os.router({
+	list: os.list.handler(
+		async ({ input }) =>
+			await DirectoryService.listMediaInSubdirectory(
+				input.sourceId,
+				input.path,
+			),
+	),
 
-	delete: os
-		.input(
-			z.object({
-				sourceId: z.string().uuid(),
-				path: z.string(),
-				force: z.boolean().optional(),
+	create: os.create.handler(
+		async ({ input }) =>
+			await DirectoryService.createDirectory(input.sourceId, {
+				path: input.path,
+				name: input.name,
 			}),
-		)
-		.handler(
-			async ({ input }) =>
-				await DirectoryService.deleteDirectory(
-					input.sourceId,
-					input.path,
-					input.force,
-				),
-		),
+	),
 
-	rename: os
-		.input(
-			z.object({
-				sourceId: z.string().uuid(),
-				oldPath: z.string(),
-				newPath: z.string(),
+	delete: os.delete.handler(
+		async ({ input }) =>
+			await DirectoryService.deleteDirectory(
+				input.sourceId,
+				input.path,
+				input.force,
+			),
+	),
+
+	rename: os.rename.handler(
+		async ({ input }) =>
+			await DirectoryService.updateDirectory(input.sourceId, {
+				oldPath: input.oldPath,
+				newPath: input.newPath,
 			}),
-		)
-		.handler(
-			async ({ input }) =>
-				await DirectoryService.updateDirectory(input.sourceId, {
-					oldPath: input.oldPath,
-					newPath: input.newPath,
-				}),
-		),
-};
+	),
+});

@@ -2,5 +2,7 @@ import { oc } from "@orpc/contract";
 import { z } from "zod";
 
 export const utilsContract = {
-	fetchUrl: oc.input(z.object({ url: z.string().url() })),
+	fetchUrl: oc
+		.input(z.object({ url: z.string().url() }))
+		.output(z.instanceof(Blob)),
 };

@@ -10,6 +10,7 @@ export { ipsContract } from "./ips.contract";
 export { jobsContract } from "./jobs.contract";
 export { mediaContract } from "./media.contract";
 export { presetsContract } from "./presets.contract";
+export type { PresetOrpcLike } from "./presets-client";
 export { projectsContract } from "./projects.contract";
 export { sourcesContract } from "./sources.contract";
 export { tagsContract } from "./tags.contract";

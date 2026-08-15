@@ -1,17 +1,14 @@
-import { os } from "@orpc/server";
-import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
-import { services } from "~/application/registry";
+import { implement } from "@orpc/server";
+import { configContract } from "@solid-imager/core/domain/contract/config.contract";
+import { services } from "~/infrastructure/service-registry";
 
-export const configRouter = {
-	get: os
-		.output(AppConfigSchema)
-		.handler(async () => services.getConfigService().getConfig()),
+const os = implement(configContract);
 
-	update: os
-		.input(AppConfigSchema.partial())
-		.output(AppConfigSchema)
-		.handler(async ({ input }) => {
-			await services.getConfigService().updateConfig(input);
-			return services.getConfigService().getConfig();
-		}),
-};
+export const configRouter = os.router({
+	get: os.get.handler(async () => services.getConfigService().getConfig()),
+
+	update: os.update.handler(async ({ input }) => {
+		await services.getConfigService().updateConfig(input);
+		return services.getConfigService().getConfig();
+	}),
+});
