@@ -12,7 +12,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	PresetService,
 	setPresetRepository,
-} from "~/application/services/preset-service";
+} from "~/infrastructure/services/preset-service";
 
 const NON_EXISTENT_ID = 999;
 

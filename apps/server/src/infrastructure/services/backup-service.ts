@@ -13,7 +13,6 @@ import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import type { Table } from "drizzle-orm";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
-import { getJobTransferRoot } from "~/application/services/job-transfer-storage";
 import { db } from "~/infrastructure/db";
 import {
 	authorAccounts,
@@ -33,6 +32,7 @@ import {
 	tags,
 } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
+import { getJobTransferRoot } from "~/infrastructure/services/job-transfer-storage";
 import { getDriver } from "~/infrastructure/storage/factory";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
@@ -567,7 +567,7 @@ export const BackupService = {
 		const validAuthorInputs = authorInputs.filter(
 			(input) => input.name.trim().length > 0,
 		);
-		const { services } = await import("~/application/registry");
+		const { services } = await import("~/infrastructure/service-registry");
 		const restoredAuthors = await services
 			.getAuthorRepository()
 			.findOrCreateBulk(validAuthorInputs, _tx);

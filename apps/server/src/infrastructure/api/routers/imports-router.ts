@@ -1,19 +1,14 @@
-import { eventIterator, os } from "@orpc/server";
-import {
-	downloadItemSchema,
-	pendingImportCountSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import {
-	type ImportEvent,
-	importEventSchema,
-} from "@solid-imager/core/domain/sources/events";
+import { implement } from "@orpc/server";
+import { importsContract } from "@solid-imager/core/domain/contract/imports.contract";
+import type { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import type { ImportEvent } from "@solid-imager/core/domain/sources/events";
 import { and, count, eq, inArray } from "drizzle-orm";
-import { z } from "zod";
-import type { BackupService } from "~/application/services/backup-service";
+import type { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
+import type { BackupService } from "~/infrastructure/services/backup-service";
 
 /**
  * Helper to classify items into Restore (file exists) and Import (URL available)
@@ -76,7 +71,7 @@ export const bulkAddHandler = async ({
 	}
 
 	const { BackupService } = await import(
-		"~/application/services/backup-service"
+		"~/infrastructure/services/backup-service"
 	);
 
 	const classification = await classifyBulkAddItems(items, BackupService);
@@ -126,19 +121,19 @@ export const bulkAddHandler = async ({
 /**
  * Imports Router Implementation
  */
-export const importsRouter = {
+const os = implement(importsContract);
+
+export const importsRouter = os.router({
 	/**
 	 * Bulk add items from Xtracter.
 	 * Checks for duplicates and creates import_request jobs.
 	 */
-	bulkAdd: os
-		.input(z.object({ items: z.array(downloadItemSchema) }))
-		.handler(bulkAddHandler),
+	bulkAdd: os.bulkAdd.handler(bulkAddHandler),
 
 	/**
 	 * List pending import requests.
 	 */
-	listPending: os.handler(async () => {
+	listPending: os.listPending.handler(async () => {
 		const pendingJobs = await db.query.jobs.findMany({
 			where: and(eq(jobs.type, "import_request"), eq(jobs.status, "pending")),
 			orderBy: (fields, { desc }) => [desc(fields.createdAt)],
@@ -154,7 +149,7 @@ export const importsRouter = {
 	/**
 	 * Count pending import requests without loading their payloads.
 	 */
-	countPending: os.output(pendingImportCountSchema).handler(async () => {
+	countPending: os.countPending.handler(async () => {
 		const [result] = await db
 			.select({ count: count() })
 			.from(jobs)
@@ -166,75 +161,60 @@ export const importsRouter = {
 	/**
 	 * Process selected import requests (Queue downloads).
 	 */
-	process: os
-		.input(
-			z.object({
-				jobIds: z.array(z.string().uuid()),
-				targetSourceId: z.string().uuid(),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const { jobIds, targetSourceId } = input;
+	process: os.process.handler(async ({ input }) => {
+		const { jobIds, targetSourceId } = input;
 
-			// Detect if jobIds is empty
-			if (jobIds.length === 0) {
-				return { success: true, processedCount: 0 };
-			}
+		// Detect if jobIds is empty
+		if (jobIds.length === 0) {
+			return { success: true, processedCount: 0 };
+		}
 
-			// Fetch jobs
-			const importJobs = await db.query.jobs.findMany({
-				where: and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")),
-			});
+		// Fetch jobs
+		const importJobs = await db.query.jobs.findMany({
+			where: and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")),
+		});
 
-			const itemsToDownload = importJobs.map(
-				(job) => job.payload as z.infer<typeof downloadItemSchema>,
-			);
+		const itemsToDownload = importJobs.map(
+			(job) => job.payload as z.infer<typeof downloadItemSchema>,
+		);
 
-			if (itemsToDownload.length > 0) {
-				await queueDownloadJobs(targetSourceId, itemsToDownload);
-			}
+		if (itemsToDownload.length > 0) {
+			await queueDownloadJobs(targetSourceId, itemsToDownload);
+		}
 
-			// Update jobs to completed
-			await db
-				.update(jobs)
-				.set({ status: "completed", updatedAt: new Date() })
-				.where(inArray(jobs.id, jobIds));
+		// Update jobs to completed
+		await db
+			.update(jobs)
+			.set({ status: "completed", updatedAt: new Date() })
+			.where(inArray(jobs.id, jobIds));
 
-			RealtimeEventBus.publishImport("import-request:processed", {
-				processedCount: itemsToDownload.length,
-			});
+		RealtimeEventBus.publishImport("import-request:processed", {
+			processedCount: itemsToDownload.length,
+		});
 
-			return { success: true, processedCount: itemsToDownload.length };
-		}),
+		return { success: true, processedCount: itemsToDownload.length };
+	}),
 
 	/**
 	 * Cancel/Delete import requests.
 	 */
-	cancel: os
-		.input(
-			z.object({
-				jobIds: z.array(z.string().uuid()),
-			}),
-		)
-		.handler(async ({ input }) => {
-			const { jobIds } = input;
-			if (jobIds.length === 0) {
-				return { success: true };
-			}
-
-			await db.delete(jobs).where(inArray(jobs.id, jobIds));
-			RealtimeEventBus.publishImport("import-request:deleted", {
-				jobIds,
-			});
+	cancel: os.cancel.handler(async ({ input }) => {
+		const { jobIds } = input;
+		if (jobIds.length === 0) {
 			return { success: true };
-		}),
+		}
+
+		await db.delete(jobs).where(inArray(jobs.id, jobIds));
+		RealtimeEventBus.publishImport("import-request:deleted", {
+			jobIds,
+		});
+		return { success: true };
+	}),
 
 	/**
 	 * Real-time events stream for imports
 	 */
-	events: os.output(eventIterator(importEventSchema)).handler(async function* ({
-		signal,
-	}) {
+	events: os.events.handler(async function* ({ signal }) {
 		// Queue for events
 		const queue: ImportEvent[] = [];
 		let resolve: (() => void) | null = null;
@@ -279,4 +259,4 @@ export const importsRouter = {
 			unsubscribe();
 		}
 	}),
-};
+});

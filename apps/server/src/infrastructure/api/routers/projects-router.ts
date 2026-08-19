@@ -1,17 +1,15 @@
-import { os } from "@orpc/server";
-import {
-	newProjectSchema,
-	updateProjectSchema,
-} from "@solid-imager/core/domain/projects/schemas";
-import { z } from "zod";
-import { ProjectService } from "~/application/services/project-service";
+import { implement } from "@orpc/server";
+import { projectsContract } from "@solid-imager/core/domain/contract/projects.contract";
+import { ProjectService } from "~/infrastructure/services/project-service";
 import { getProjectMediaCounts } from "./entity-media-counts";
 
 /**
  * Projects Router Implementation
  */
-export const projectsRouter = {
-	list: os.handler(async () => {
+const os = implement(projectsContract);
+
+export const projectsRouter = os.router({
+	list: os.list.handler(async () => {
 		const projects = await ProjectService.getAllProjects();
 		const mediaCounts = await getProjectMediaCounts(
 			projects.map((project) => project.id),
@@ -22,63 +20,38 @@ export const projectsRouter = {
 		}));
 	}),
 
-	get: os
-		.input(z.object({ id: z.string().uuid() }))
-		.handler(async ({ input }) => {
-			const project = await ProjectService.getProjectDetails(input.id);
-			if (!project) {
-				throw new Error(`Project not found: ${input.id}`);
-			}
-			return project;
-		}),
+	get: os.get.handler(async ({ input }) => {
+		const project = await ProjectService.getProjectDetails(input.id);
+		if (!project) {
+			throw new Error(`Project not found: ${input.id}`);
+		}
+		return project;
+	}),
 
-	create: os
-		.input(newProjectSchema)
-		.handler(({ input }) => ProjectService.createProject(input)),
+	create: os.create.handler(({ input }) => ProjectService.createProject(input)),
 
-	update: os
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				data: updateProjectSchema,
-			}),
-		)
-		.handler(async ({ input }) => {
-			const updated = await ProjectService.updateProject(input.id, input.data);
-			if (!updated) {
-				throw new Error(`Project not found: ${input.id}`);
-			}
-			return updated;
-		}),
+	update: os.update.handler(async ({ input }) => {
+		const updated = await ProjectService.updateProject(input.id, input.data);
+		if (!updated) {
+			throw new Error(`Project not found: ${input.id}`);
+		}
+		return updated;
+	}),
 
-	delete: os
-		.input(z.object({ id: z.string().uuid() }))
-		.handler(({ input }) => ProjectService.deleteProject(input.id)),
+	delete: os.delete.handler(({ input }) =>
+		ProjectService.deleteProject(input.id),
+	),
 
 	// Media association
-	listForMedia: os
-		.input(z.object({ mediaId: z.string().uuid() }))
-		.handler(({ input }) => ProjectService.getProjectsForMedia(input.mediaId)),
+	listForMedia: os.listForMedia.handler(({ input }) =>
+		ProjectService.getProjectsForMedia(input.mediaId),
+	),
 
-	addToMedia: os
-		.input(
-			z.object({
-				mediaId: z.string().uuid(),
-				projectId: z.string().uuid(),
-			}),
-		)
-		.handler(({ input }) =>
-			ProjectService.addProjectToMedia(input.mediaId, input.projectId),
-		),
+	addToMedia: os.addToMedia.handler(({ input }) =>
+		ProjectService.addProjectToMedia(input.mediaId, input.projectId),
+	),
 
-	removeFromMedia: os
-		.input(
-			z.object({
-				mediaId: z.string().uuid(),
-				projectId: z.string().uuid(),
-			}),
-		)
-		.handler(({ input }) =>
-			ProjectService.removeProjectFromMedia(input.mediaId, input.projectId),
-		),
-};
+	removeFromMedia: os.removeFromMedia.handler(({ input }) =>
+		ProjectService.removeProjectFromMedia(input.mediaId, input.projectId),
+	),
+});

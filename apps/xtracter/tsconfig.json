@@ -19,12 +19,9 @@
     "types": ["@types/chrome"],
     "paths": {
       "@ext/*": ["./src/*"],
-      "~/*": ["../../apps/server/src/*"],
       "@/*": ["../../packages/core/src/*"],
       "@solid-imager/core/*": ["../../packages/core/src/*"],
-      "@solid-imager/server/*": ["../../apps/server/src/*"],
-      "@core/*": ["../../packages/core/src/*"],
-      "@server/*": ["../../apps/server/src/*"]
+      "@core/*": ["../../packages/core/src/*"]
     }
   },
   "include": ["src"]

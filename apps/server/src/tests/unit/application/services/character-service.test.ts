@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { services } from "~/application/registry";
+import { services } from "~/infrastructure/service-registry";
 import {
 	CharacterService,
 	CharacterServiceImpl,
-} from "~/application/services/character-service";
+} from "~/infrastructure/services/character-service";
 
 // Mock Repositories
 const mockCharacterRepo = {

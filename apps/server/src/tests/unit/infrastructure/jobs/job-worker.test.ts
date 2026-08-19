@@ -24,7 +24,7 @@ vi.mock("~/infrastructure/logger", () => ({
 	updateLogLevel: vi.fn(),
 }));
 
-vi.mock("~/application/services/job-transfer-storage", () => ({
+vi.mock("~/infrastructure/services/job-transfer-storage", () => ({
 	cleanupExpiredJobTransferFiles: mockCleanupExpired,
 	cleanupOrphanedJobTransferFiles: mockCleanupOrphaned,
 	removeJobTransferFile: vi.fn(),

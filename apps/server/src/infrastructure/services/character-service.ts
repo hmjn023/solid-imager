@@ -2,7 +2,7 @@ import type {
 	NewCharacter,
 	UpdateCharacter,
 } from "@solid-imager/core/domain/characters/schemas";
-import { services } from "~/application/registry";
+import { services } from "~/infrastructure/service-registry";
 
 export { CharacterServiceImpl } from "@solid-imager/application/services/character-service";
 

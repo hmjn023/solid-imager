@@ -2,9 +2,9 @@ import path from "node:path";
 import { getContentTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { createFileRoute } from "@tanstack/solid-router";
-import { services } from "~/application/registry";
 import type { ServerRouteContext } from "~/infrastructure/router/route-types";
 import { bootstrapServerRoute } from "~/infrastructure/server-route-bootstrap";
+import { services } from "~/infrastructure/service-registry";
 
 interface MediaParams {
 	mediaId: string;

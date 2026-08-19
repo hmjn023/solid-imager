@@ -14,8 +14,8 @@ import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schem
 import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
-import { services } from "~/application/registry";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
 import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
 
 const RANDOM_STRING_RADIX = 36;

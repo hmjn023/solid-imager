@@ -117,8 +117,8 @@ const bypassSecFetchDestPlugin = (): Plugin => ({
 
 const loadDevRpcHandler = async () => {
   const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }, { createRpcResponseHeaders }] = await Promise.all([
-    runtimeImport<typeof import("./src/domain/shared/api-contract")>(
-      serverModuleUrl("src/domain/shared/api-contract.ts"),
+    runtimeImport<typeof import("./src/infrastructure/api/app-router")>(
+      serverModuleUrl("src/infrastructure/api/app-router.ts"),
     ),
     runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
       serverModuleUrl("src/infrastructure/bootstrap.ts"),
@@ -157,8 +157,8 @@ const loadDevMediaFileHandler = async () => {
     { getContentTypeFromExtension },
     { localConnectionSchema },
   ] = await Promise.all([
-    runtimeImport<typeof import("./src/application/registry")>(
-      serverModuleUrl("src/application/registry.ts"),
+    runtimeImport<typeof import("./src/infrastructure/service-registry")>(
+      serverModuleUrl("src/infrastructure/service-registry.ts"),
     ),
     runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
       serverModuleUrl("src/infrastructure/bootstrap.ts"),

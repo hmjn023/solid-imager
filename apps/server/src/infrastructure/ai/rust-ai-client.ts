@@ -2,6 +2,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createClient } from "@solid-imager/client";
 import type { AiConfig } from "@solid-imager/core/domain/config/config-schema";
+import type { AppContract } from "@solid-imager/core/domain/contract";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import {
 	type CcipDifferenceResponse,
@@ -15,7 +16,6 @@ import {
 } from "@solid-imager/core/domain/tagging/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
-import type { appRouter } from "~/domain/shared/api-contract";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 
 type RustAiClientConfig = Pick<
@@ -24,7 +24,7 @@ type RustAiClientConfig = Pick<
 >;
 
 function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
-	return createClient<typeof appRouter>({
+	return createClient<AppContract>({
 		url: remoteUrl,
 		fetch: (request: Request, init?: RequestInit) => {
 			const timeoutSignal = AbortSignal.timeout(timeoutMs);

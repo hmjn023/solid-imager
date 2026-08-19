@@ -745,7 +745,7 @@ async function updateExistingMediaWithMetadata(
 	item: DownloadItem,
 ): Promise<void> {
 	const { MediaProcessingService } = await import(
-		"~/application/services/media-processing-service"
+		"~/infrastructure/services/media-processing-service"
 	);
 
 	await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
@@ -782,7 +782,7 @@ async function registerMedia(
 	try {
 		// Use MediaProcessingService for unified registration and processing
 		const { MediaProcessingService } = await import(
-			"~/application/services/media-processing-service"
+			"~/infrastructure/services/media-processing-service"
 		);
 
 		const insertedMedia = await MediaProcessingService.registerAndProcess(

@@ -1,62 +1,49 @@
-import { os } from "@orpc/server";
-import {
-	createPresetRequestSchema,
-	updatePresetRequestSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import { z } from "zod";
-import { PresetService } from "~/application/services/preset-service";
+import { implement } from "@orpc/server";
+import { presetsContract } from "@solid-imager/core/domain/contract/presets.contract";
+import { PresetService } from "~/infrastructure/services/preset-service";
 
 /**
  * Presets Router Implementation
  */
-export const presetsRouter = {
+const os = implement(presetsContract);
+
+export const presetsRouter = os.router({
 	/**
 	 * List all presets
 	 */
-	list: os.handler(async () => await PresetService.list()),
+	list: os.list.handler(async () => await PresetService.list()),
 
 	/**
 	 * Get a specific preset
 	 */
-	get: os
-		.input(z.object({ id: z.number().int() }))
-		.handler(async ({ input }) => await PresetService.get(input.id)),
+	get: os.get.handler(async ({ input }) => await PresetService.get(input.id)),
 
 	/**
 	 * Get a preset by name
 	 */
-	getByName: os
-		.input(z.object({ name: z.string() }))
-		.handler(async ({ input }) => await PresetService.getByName(input.name)),
+	getByName: os.getByName.handler(
+		async ({ input }) => await PresetService.getByName(input.name),
+	),
 
 	/**
 	 * Create a new preset
 	 */
-	create: os
-		.input(createPresetRequestSchema)
-		.handler(async ({ input }) => await PresetService.create(input)),
+	create: os.create.handler(
+		async ({ input }) => await PresetService.create(input),
+	),
 
 	/**
 	 * Update a preset
 	 */
-	update: os
-		.input(
-			z.object({
-				id: z.number().int(),
-				data: updatePresetRequestSchema,
-			}),
-		)
-		.handler(
-			async ({ input }) => await PresetService.update(input.id, input.data),
-		),
+	update: os.update.handler(
+		async ({ input }) => await PresetService.update(input.id, input.data),
+	),
 
 	/**
 	 * Delete a preset
 	 */
-	delete: os
-		.input(z.object({ id: z.number().int() }))
-		.handler(async ({ input }) => {
-			await PresetService.delete(input.id);
-			return { success: true };
-		}),
-};
+	delete: os.delete.handler(async ({ input }) => {
+		await PresetService.delete(input.id);
+		return { success: true };
+	}),
+});

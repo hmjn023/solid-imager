@@ -7,14 +7,14 @@ import {
 	sourceRestoreJobPayloadSchema,
 } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
-import { services } from "~/application/registry";
-import { BackupService } from "~/application/services/backup-service";
+import { services } from "~/infrastructure/service-registry";
+import { BackupService } from "~/infrastructure/services/backup-service";
 import {
 	getArtifactMetadata,
 	getArtifactPartialPath,
 	isJobTransferPath,
 	removeJobTransferFile,
-} from "~/application/services/job-transfer-storage";
+} from "~/infrastructure/services/job-transfer-storage";
 import {
 	asDumpStream,
 	webReadableToNodeStream,

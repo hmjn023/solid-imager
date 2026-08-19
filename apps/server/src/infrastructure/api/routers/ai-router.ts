@@ -1,38 +1,21 @@
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { ORPCError, os } from "@orpc/server";
+import { implement, ORPCError } from "@orpc/server";
 import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
 } from "@solid-imager/application/services/ccip-vector-service";
 import { createClient } from "@solid-imager/client";
-
+import type { AppContract } from "@solid-imager/core/domain/contract";
+import { aiContract } from "@solid-imager/core/domain/contract/ai.contract";
 import {
-	aiHealthResponseSchema,
-	batchCcipExtractionRequestSchema,
-	batchTaggingRequestSchema,
-	batchTargetCountResponseSchema,
-	ccipDifferenceRequestSchema,
-	ccipDistancesRequestSchema,
-	ccipDistancesResponseSchema,
-	ccipExtractionRequestSchema,
-	ccipFeatureRequestSchema,
-	ccipVectorStatusSchema,
 	detectAndCropResponseSchema,
 	type NapiBBox,
-	startBatchTaggingResponseSchema,
-	startCcipExtractionResponseSchema,
 	taggingResponseSchema,
-	tagImageRequestSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import sharp from "sharp";
-import { z } from "zod";
-import { services } from "~/application/registry";
-import { ccipVectorService } from "~/application/services/ccip-vector-service";
-import { taggingService } from "~/application/services/tagging-service";
-import type { appRouter } from "~/domain/shared/api-contract";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { db } from "~/infrastructure/db";
 import {
@@ -44,6 +27,9 @@ import {
 	mediaTags,
 } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
+import { services } from "~/infrastructure/service-registry";
+import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
+import { taggingService } from "~/infrastructure/services/tagging-service";
 
 function isRemoteServerLocal(url: string): boolean {
 	try {
@@ -72,7 +58,7 @@ async function readFileBuffer(filePath: string): Promise<Buffer> {
 }
 
 function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
-	return createClient<typeof appRouter>({
+	return createClient<AppContract>({
 		url: remoteUrl,
 		fetch: async (request: Request, init?: RequestInit) => {
 			const controller = new AbortController();
@@ -175,8 +161,10 @@ async function cropDetection(
 	};
 }
 
-export const aiRouter = {
-	health: os.output(aiHealthResponseSchema).handler(async () => {
+const os = implement(aiContract);
+
+export const aiRouter = os.router({
+	health: os.health.handler(async () => {
 		const config = services.getConfigService().getConfig();
 		const mode = config.ai.baseUrl?.trim() ? "remote" : "local";
 		const startedAt = performance.now();
@@ -196,158 +184,39 @@ export const aiRouter = {
 			checkedAt: new Date(),
 		};
 	}),
-	tag: os
-		.input(
-			z.union([
-				z.object({ file: z.instanceof(File) }),
-				tagImageRequestSchema, // mediaSourceId + mediaId
-			]),
-		)
-		.handler(async ({ input }) => {
-			const startedAt = Date.now();
-			const logContext =
-				"file" in input
-					? {
-							inputType: "file",
-							fileSize: input.file.size,
-						}
-					: {
-							inputType: "media",
-							mediaSourceId: input.mediaSourceId,
-							mediaId: input.mediaId,
-						};
-			logger.info(logContext, "AI tagging started");
-			try {
-				if ("file" in input) {
-					const buffer = await input.file.arrayBuffer();
-					const result = await taggingService.getTags(buffer);
-					logger.info(
-						{ ...logContext, durationMs: Date.now() - startedAt },
-						"AI tagging completed",
-					);
-					return result;
-				}
-
-				const { mediaSourceId, mediaId } = input;
-				if (!(mediaSourceId && mediaId)) {
-					throw new Error("mediaSourceId and mediaId are required");
-				}
-
-				const remoteUrl = getRemoteServerUrl();
-				const config = services.getConfigService().getConfig();
-				if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
-					const media = await services.getMediaRepository().findById(mediaId);
-					if (!media) {
-						throw new Error("Media not found");
+	tag: os.tag.handler(async ({ input }) => {
+		const startedAt = Date.now();
+		const logContext =
+			"file" in input
+				? {
+						inputType: "file",
+						fileSize: input.file.size,
 					}
-					const mediaSource = await services
-						.getSourceRepository()
-						.findById(media.mediaSourceId);
-					if (mediaSource?.type !== "local") {
-						throw new Error(
-							"Only local media sources are supported for remote tagging",
-						);
-					}
-					const connectionInfo = mediaSource.connectionInfo as
-						| Record<string, unknown>
-						| null
-						| undefined;
-					if (!connectionInfo || typeof connectionInfo.path !== "string") {
-						throw new Error(
-							"Media source connection path is missing or invalid",
-						);
-					}
-					const fullPath = path.join(connectionInfo.path, media.filePath);
-					const fileBuffer = await readFileBuffer(fullPath);
-					const result = taggingResponseSchema.parse(
-						await callRemoteTagging(
-							remoteUrl,
-							fileBuffer,
-							path.basename(fullPath),
-							config.ai.timeoutMs,
-						),
-					);
-					logger.info(
-						{
-							...logContext,
-							execution: "remote",
-							durationMs: Date.now() - startedAt,
-						},
-						"AI tagging completed",
-					);
-					return result;
-				}
-
-				const result = await taggingService.getTagsForMedia(
-					mediaSourceId,
-					mediaId,
-				);
+				: {
+						inputType: "media",
+						mediaSourceId: input.mediaSourceId,
+						mediaId: input.mediaId,
+					};
+		logger.info(logContext, "AI tagging started");
+		try {
+			if ("file" in input) {
+				const buffer = await input.file.arrayBuffer();
+				const result = await taggingService.getTags(buffer);
 				logger.info(
-					{
-						...logContext,
-						execution: "local",
-						durationMs: Date.now() - startedAt,
-					},
+					{ ...logContext, durationMs: Date.now() - startedAt },
 					"AI tagging completed",
 				);
 				return result;
-			} catch (error) {
-				logger.error(
-					{
-						err: error,
-						...logContext,
-						durationMs: Date.now() - startedAt,
-					},
-					"AI tagging failed",
-				);
-				const message =
-					error instanceof Error ? error.message : "Unknown error";
-				throw new ORPCError("UNPROCESSABLE_CONTENT", {
-					message: `AI tagging failed: ${message}`,
-				});
 			}
-		}),
 
-	tagOppaiOracle: os
-		.input(
-			z.union([z.object({ file: z.instanceof(File) }), tagImageRequestSchema]),
-		)
-		.handler(async ({ input }) => {
-			const startedAt = Date.now();
-			logger.info(
-				{ inputType: "file" in input ? "file" : "media" },
-				"OppaiOracle tagging started",
-			);
-			try {
-				if ("file" in input) {
-					const buffer = await input.file.arrayBuffer();
-					const ext = path.extname(input.file.name) || ".png";
-					const tmpPath = path.join(
-						tmpdir(),
-						`oppai-oracle-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`,
-					);
-					await Bun.write(tmpPath, new Uint8Array(buffer));
-					try {
-						const result = await services
-							.getAiClient()
-							.tagImageOppaiOracleByPath(tmpPath);
-						logger.info(
-							{ durationMs: Date.now() - startedAt },
-							"OppaiOracle tagging completed",
-						);
-						return result;
-					} finally {
-						await Bun.file(tmpPath)
-							.delete()
-							.catch(() => {});
-					}
-				}
+			const { mediaSourceId, mediaId } = input;
+			if (!(mediaSourceId && mediaId)) {
+				throw new Error("mediaSourceId and mediaId are required");
+			}
 
-				const { mediaSourceId, mediaId } = input;
-				if (!(mediaSourceId && mediaId)) {
-					throw new Error("mediaSourceId and mediaId are required");
-				}
-
+			const remoteUrl = getRemoteServerUrl();
+			const config = services.getConfigService().getConfig();
+			if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
 				const media = await services.getMediaRepository().findById(mediaId);
 				if (!media) {
 					throw new Error("Media not found");
@@ -357,7 +226,7 @@ export const aiRouter = {
 					.findById(media.mediaSourceId);
 				if (mediaSource?.type !== "local") {
 					throw new Error(
-						"Only local media sources are supported for OppaiOracle tagging",
+						"Only local media sources are supported for remote tagging",
 					);
 				}
 				const connectionInfo = mediaSource.connectionInfo as
@@ -368,39 +237,87 @@ export const aiRouter = {
 					throw new Error("Media source connection path is missing or invalid");
 				}
 				const fullPath = path.join(connectionInfo.path, media.filePath);
-
-				const result = await services
-					.getAiClient()
-					.tagImageOppaiOracleByPath(fullPath);
+				const fileBuffer = await readFileBuffer(fullPath);
+				const result = taggingResponseSchema.parse(
+					await callRemoteTagging(
+						remoteUrl,
+						fileBuffer,
+						path.basename(fullPath),
+						config.ai.timeoutMs,
+					),
+				);
 				logger.info(
-					{ durationMs: Date.now() - startedAt },
-					"OppaiOracle tagging completed",
+					{
+						...logContext,
+						execution: "remote",
+						durationMs: Date.now() - startedAt,
+					},
+					"AI tagging completed",
 				);
 				return result;
-			} catch (error) {
-				logger.error(
-					{ err: error, durationMs: Date.now() - startedAt },
-					"OppaiOracle tagging failed",
-				);
-				const message =
-					error instanceof Error ? error.message : "Unknown error";
-				throw new ORPCError("UNPROCESSABLE_CONTENT", {
-					message: `OppaiOracle tagging failed: ${message}`,
-				});
 			}
-		}),
 
-	ccipFeature: os
-		.input(
-			z.union([
-				z.object({ file: z.instanceof(File) }),
-				ccipFeatureRequestSchema,
-			]),
-		)
-		.handler(async ({ input }) => {
+			const result = await taggingService.getTagsForMedia(
+				mediaSourceId,
+				mediaId,
+			);
+			if (!result) {
+				throw new Error("AI tagging is unavailable for this media source");
+			}
+			logger.info(
+				{
+					...logContext,
+					execution: "local",
+					durationMs: Date.now() - startedAt,
+				},
+				"AI tagging completed",
+			);
+			return result;
+		} catch (error) {
+			logger.error(
+				{
+					err: error,
+					...logContext,
+					durationMs: Date.now() - startedAt,
+				},
+				"AI tagging failed",
+			);
+			const message = error instanceof Error ? error.message : "Unknown error";
+			throw new ORPCError("UNPROCESSABLE_CONTENT", {
+				message: `AI tagging failed: ${message}`,
+			});
+		}
+	}),
+
+	tagOppaiOracle: os.tagOppaiOracle.handler(async ({ input }) => {
+		const startedAt = Date.now();
+		logger.info(
+			{ inputType: "file" in input ? "file" : "media" },
+			"OppaiOracle tagging started",
+		);
+		try {
 			if ("file" in input) {
 				const buffer = await input.file.arrayBuffer();
-				return await taggingService.getCcipFeature(buffer);
+				const ext = path.extname(input.file.name) || ".png";
+				const tmpPath = path.join(
+					tmpdir(),
+					`oppai-oracle-${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`,
+				);
+				await Bun.write(tmpPath, new Uint8Array(buffer));
+				try {
+					const result = await services
+						.getAiClient()
+						.tagImageOppaiOracleByPath(tmpPath);
+					logger.info(
+						{ durationMs: Date.now() - startedAt },
+						"OppaiOracle tagging completed",
+					);
+					return result;
+				} finally {
+					await Bun.file(tmpPath)
+						.delete()
+						.catch(() => {});
+				}
 			}
 
 			const { mediaSourceId, mediaId } = input;
@@ -408,33 +325,75 @@ export const aiRouter = {
 				throw new Error("mediaSourceId and mediaId are required");
 			}
 
-			return await taggingService.getCcipFeatureForMedia(
-				mediaSourceId,
-				mediaId,
+			const media = await services.getMediaRepository().findById(mediaId);
+			if (!media) {
+				throw new Error("Media not found");
+			}
+			const mediaSource = await services
+				.getSourceRepository()
+				.findById(media.mediaSourceId);
+			if (mediaSource?.type !== "local") {
+				throw new Error(
+					"Only local media sources are supported for OppaiOracle tagging",
+				);
+			}
+			const connectionInfo = mediaSource.connectionInfo as
+				| Record<string, unknown>
+				| null
+				| undefined;
+			if (!connectionInfo || typeof connectionInfo.path !== "string") {
+				throw new Error("Media source connection path is missing or invalid");
+			}
+			const fullPath = path.join(connectionInfo.path, media.filePath);
+
+			const result = await services
+				.getAiClient()
+				.tagImageOppaiOracleByPath(fullPath);
+			logger.info(
+				{ durationMs: Date.now() - startedAt },
+				"OppaiOracle tagging completed",
 			);
-		}),
+			return result;
+		} catch (error) {
+			logger.error(
+				{ err: error, durationMs: Date.now() - startedAt },
+				"OppaiOracle tagging failed",
+			);
+			const message = error instanceof Error ? error.message : "Unknown error";
+			throw new ORPCError("UNPROCESSABLE_CONTENT", {
+				message: `OppaiOracle tagging failed: ${message}`,
+			});
+		}
+	}),
 
-	ccipDifference: os
-		.input(ccipDifferenceRequestSchema)
-		.handler(
-			async ({ input }) =>
-				await taggingService.getCcipDifference(input.feature1, input.feature2),
+	ccipFeature: os.ccipFeature.handler(async ({ input }) => {
+		if ("file" in input) {
+			const buffer = await input.file.arrayBuffer();
+			return await taggingService.getCcipFeature(buffer);
+		}
+
+		const { mediaSourceId, mediaId } = input;
+		if (!(mediaSourceId && mediaId)) {
+			throw new Error("mediaSourceId and mediaId are required");
+		}
+
+		return await taggingService.getCcipFeatureForMedia(mediaSourceId, mediaId);
+	}),
+
+	ccipDifference: os.ccipDifference.handler(
+		async ({ input }) =>
+			await taggingService.getCcipDifference(input.feature1, input.feature2),
+	),
+
+	ccipDistances: os.ccipDistances.handler(async ({ input }) => ({
+		distances: await taggingService.getCcipDistances(
+			input.feature,
+			input.candidates,
 		),
+	})),
 
-	ccipDistances: os
-		.input(ccipDistancesRequestSchema)
-		.output(ccipDistancesResponseSchema)
-		.handler(async ({ input }) => ({
-			distances: await taggingService.getCcipDistances(
-				input.feature,
-				input.candidates,
-			),
-		})),
-
-	scanBatchTaggingTargets: os
-		.input(batchTaggingRequestSchema)
-		.output(batchTargetCountResponseSchema)
-		.handler(async ({ input }) => {
+	scanBatchTaggingTargets: os.scanBatchTaggingTargets.handler(
+		async ({ input }) => {
 			const { mediaSourceId, force } = input;
 
 			const [{ count: rawCount }] = await db
@@ -472,175 +431,160 @@ export const aiRouter = {
 				);
 
 			return { count: Number(rawCount ?? 0) };
-		}),
+		},
+	),
 
-	startBatchTagging: os
-		.input(batchTaggingRequestSchema)
-		.output(startBatchTaggingResponseSchema)
-		.handler(async ({ input }) => {
-			const { mediaSourceId, force, batchSize } = input;
-			const jobRepo = services.getJobRepository();
+	startBatchTagging: os.startBatchTagging.handler(async ({ input }) => {
+		const { mediaSourceId, force, batchSize } = input;
+		const jobRepo = services.getJobRepository();
 
-			const parentJob = await jobRepo.create({
-				type: "bulk_tagging_parent",
-				status: "in_progress",
+		const parentJob = await jobRepo.create({
+			type: "bulk_tagging_parent",
+			status: "in_progress",
+			mediaSourceId,
+			payload: {
+				total: 0,
+				processed: 0,
+				failed: 0,
 				mediaSourceId,
-				payload: {
-					total: 0,
-					processed: 0,
-					failed: 0,
-					mediaSourceId,
-					force,
-				},
-			});
+				force,
+			},
+		});
 
-			await jobRepo.create({
-				type: "bulk_tagging_dispatch",
+		await jobRepo.create({
+			type: "bulk_tagging_dispatch",
+			mediaSourceId,
+			parentId: parentJob.id,
+			payload: {
 				mediaSourceId,
-				parentId: parentJob.id,
-				payload: {
-					mediaSourceId,
-					force,
-					...(batchSize !== undefined ? { batchSize } : {}),
-				},
-			});
+				force,
+				...(batchSize !== undefined ? { batchSize } : {}),
+			},
+		});
 
-			logger.info(
-				{
-					jobId: parentJob.id,
-					mediaSourceId,
-					force: force ?? false,
-				},
-				"Batch tagging dispatch queued",
-			);
-
-			return {
-				success: true,
-				message: "Batch tagging dispatch queued",
+		logger.info(
+			{
 				jobId: parentJob.id,
-			};
-		}),
+				mediaSourceId,
+				force: force ?? false,
+			},
+			"Batch tagging dispatch queued",
+		);
 
-	ccipVectorStatus: os
-		.input(
-			ccipExtractionRequestSchema.pick({ mediaSourceId: true, mediaId: true }),
-		)
-		.output(ccipVectorStatusSchema)
-		.handler(async ({ input }) => {
-			try {
-				const status = await ccipVectorService.getStatus(
-					input.mediaSourceId,
-					input.mediaId,
-				);
-				const latestJob = await db.query.jobs.findFirst({
-					where: and(
-						eq(jobs.type, "extract_ccip_vector"),
-						eq(jobs.mediaSourceId, input.mediaSourceId),
-						sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
-					),
-					orderBy: desc(jobs.createdAt),
-				});
-				if (status.status === "ready" || status.status === "stale") {
-					return status;
-				}
-				if (
-					latestJob?.status === "pending" ||
-					latestJob?.status === "in_progress"
-				) {
-					return { status: "processing" as const, jobId: latestJob.id };
-				}
-				if (latestJob?.status === "failed") {
-					return {
-						status: "failed" as const,
-						jobId: latestJob.id,
-						error: latestJob.error ?? "CCIP vector extraction failed",
-					};
-				}
-				return status;
-			} catch (error) {
-				const isError = error instanceof Error;
-				logger.error(
-					{
-						errorName: isError ? error.name : typeof error,
-						errorMessage: isError ? error.message : String(error),
-						errorStack: isError ? error.stack : undefined,
-						mediaSourceId: input.mediaSourceId,
-						mediaId: input.mediaId,
-					},
-					"CCIP vector status lookup failed",
-				);
-				throw error;
-			}
-		}),
+		return {
+			success: true,
+			message: "Batch tagging dispatch queued",
+			jobId: parentJob.id,
+		};
+	}),
 
-	startCcipExtraction: os
-		.input(ccipExtractionRequestSchema)
-		.output(startCcipExtractionResponseSchema)
-		.handler(async ({ input }) => {
-			const job = await services.getJobRepository().create({
-				type: "extract_ccip_vector",
-				mediaSourceId: input.mediaSourceId,
-				payload: { mediaId: input.mediaId, force: input.force },
+	ccipVectorStatus: os.ccipVectorStatus.handler(async ({ input }) => {
+		try {
+			const status = await ccipVectorService.getStatus(
+				input.mediaSourceId,
+				input.mediaId,
+			);
+			const latestJob = await db.query.jobs.findFirst({
+				where: and(
+					eq(jobs.type, "extract_ccip_vector"),
+					eq(jobs.mediaSourceId, input.mediaSourceId),
+					sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
+				),
+				orderBy: desc(jobs.createdAt),
 			});
-			logger.info(
+			if (status.status === "ready" || status.status === "stale") {
+				return status;
+			}
+			if (
+				latestJob?.status === "pending" ||
+				latestJob?.status === "in_progress"
+			) {
+				return { status: "processing" as const, jobId: latestJob.id };
+			}
+			if (latestJob?.status === "failed") {
+				return {
+					status: "failed" as const,
+					jobId: latestJob.id,
+					error: latestJob.error ?? "CCIP vector extraction failed",
+				};
+			}
+			return status;
+		} catch (error) {
+			const isError = error instanceof Error;
+			logger.error(
 				{
-					jobId: job.id,
+					errorName: isError ? error.name : typeof error,
+					errorMessage: isError ? error.message : String(error),
+					errorStack: isError ? error.stack : undefined,
 					mediaSourceId: input.mediaSourceId,
 					mediaId: input.mediaId,
-					force: input.force,
 				},
-				"CCIP vector extraction queued",
+				"CCIP vector status lookup failed",
 			);
-			return {
-				success: true,
-				message: "CCIP vector extraction queued",
+			throw error;
+		}
+	}),
+
+	startCcipExtraction: os.startCcipExtraction.handler(async ({ input }) => {
+		const job = await services.getJobRepository().create({
+			type: "extract_ccip_vector",
+			mediaSourceId: input.mediaSourceId,
+			payload: { mediaId: input.mediaId, force: input.force },
+		});
+		logger.info(
+			{
 				jobId: job.id,
-			};
-		}),
+				mediaSourceId: input.mediaSourceId,
+				mediaId: input.mediaId,
+				force: input.force,
+			},
+			"CCIP vector extraction queued",
+		);
+		return {
+			success: true,
+			message: "CCIP vector extraction queued",
+			jobId: job.id,
+		};
+	}),
 
-	scanBatchCcipTargets: os
-		.input(batchCcipExtractionRequestSchema)
-		.output(batchTargetCountResponseSchema)
-		.handler(async ({ input }) => {
-			const rows = await db
-				.select({
-					id: medias.id,
-					modifiedAt: medias.modifiedAt,
-				})
-				.from(medias)
-				.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
-				.where(
-					and(
-						eq(medias.mediaType, "image"),
-						eq(mediaSources.type, "local"),
-						input.mediaSourceId
-							? eq(medias.mediaSourceId, input.mediaSourceId)
-							: undefined,
-					),
-				)
-				.orderBy(asc(medias.id));
-			if (input.force) return { count: rows.length };
-			const records = new Map(
-				(await ccipVectorService.listRecords(input.mediaSourceId)).map(
-					(record) => [record.mediaId, record],
+	scanBatchCcipTargets: os.scanBatchCcipTargets.handler(async ({ input }) => {
+		const rows = await db
+			.select({
+				id: medias.id,
+				modifiedAt: medias.modifiedAt,
+			})
+			.from(medias)
+			.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
+			.where(
+				and(
+					eq(medias.mediaType, "image"),
+					eq(mediaSources.type, "local"),
+					input.mediaSourceId
+						? eq(medias.mediaSourceId, input.mediaSourceId)
+						: undefined,
 				),
+			)
+			.orderBy(asc(medias.id));
+		if (input.force) return { count: rows.length };
+		const records = new Map(
+			(await ccipVectorService.listRecords(input.mediaSourceId)).map(
+				(record) => [record.mediaId, record],
+			),
+		);
+		const count = rows.filter((row) => {
+			const record = records.get(row.id);
+			return (
+				!record ||
+				record.model !== CCIP_MODEL ||
+				record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
+				record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
 			);
-			const count = rows.filter((row) => {
-				const record = records.get(row.id);
-				return (
-					!record ||
-					record.model !== CCIP_MODEL ||
-					record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
-					record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
-				);
-			}).length;
-			return { count };
-		}),
+		}).length;
+		return { count };
+	}),
 
-	startBatchCcipExtraction: os
-		.input(batchCcipExtractionRequestSchema)
-		.output(startCcipExtractionResponseSchema)
-		.handler(async ({ input }) => {
+	startBatchCcipExtraction: os.startBatchCcipExtraction.handler(
+		async ({ input }) => {
 			const { mediaSourceId, force } = input;
 			const jobRepo = services.getJobRepository();
 			const parent = await jobRepo.create({
@@ -677,22 +621,11 @@ export const aiRouter = {
 				message: "Batch CCIP dispatch queued",
 				jobId: parent.id,
 			};
-		}),
+		},
+	),
 
-	detectAndCropCharacters: os
-		.input(
-			z.union([
-				z.object({
-					mediaId: z.string().uuid(),
-					transparent: z.boolean().optional().default(false),
-				}),
-				z.object({
-					file: z.instanceof(File),
-					transparent: z.boolean().optional().default(false),
-				}),
-			]),
-		)
-		.handler(async ({ input }) => {
+	detectAndCropCharacters: os.detectAndCropCharacters.handler(
+		async ({ input }) => {
 			const startedAt = Date.now();
 			const logContext =
 				"file" in input
@@ -846,5 +779,6 @@ export const aiRouter = {
 					message: `Character detection and cropping failed: ${message}`,
 				});
 			}
-		}),
-};
+		},
+	),
+});
