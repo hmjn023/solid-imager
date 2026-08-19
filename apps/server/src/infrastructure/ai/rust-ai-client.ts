@@ -1,6 +1,7 @@
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createClient } from "@solid-imager/client";
+import type { AiConfig } from "@solid-imager/core/domain/config/config-schema";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import {
 	type CcipDifferenceResponse,
@@ -13,7 +14,14 @@ import {
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
+import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import type { appRouter } from "~/domain/shared/api-contract";
+import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
+
+type RustAiClientConfig = Pick<
+	AiConfig,
+	"baseUrl" | "timeoutMs" | "provider" | "device"
+>;
 
 function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
 	return createClient<typeof appRouter>({
@@ -46,17 +54,23 @@ function hasCcipDistances(value: unknown): value is {
 export class RustAiClient implements IAiClient {
 	private baseUrl: string;
 	private timeoutMs: number;
+	private inferenceOptions: NapiInferenceOptions;
 	private client: ReturnType<typeof createRemoteOrpcClient> | null = null;
 
-	constructor(baseUrl = "", timeoutMs = 30_000) {
-		this.baseUrl = baseUrl;
-		this.timeoutMs = timeoutMs;
+	constructor(config: Partial<RustAiClientConfig> = {}) {
+		this.baseUrl = config.baseUrl ?? "";
+		this.timeoutMs = config.timeoutMs ?? 30_000;
+		this.inferenceOptions = createNativeInferenceOptions({
+			provider: config.provider ?? "auto",
+			device: config.device,
+		});
 		this.refreshClient();
 	}
 
-	updateConfig(config: { baseUrl: string; timeoutMs: number }) {
+	updateConfig(config: RustAiClientConfig) {
 		this.baseUrl = config.baseUrl;
 		this.timeoutMs = config.timeoutMs;
+		this.inferenceOptions = createNativeInferenceOptions(config);
 		this.refreshClient();
 	}
 
@@ -193,7 +207,12 @@ export class RustAiClient implements IAiClient {
 		}
 
 		const { getPixaiTags } = await import("dghs-imgutils-rs");
-		const result = await getPixaiTags(filePath);
+		const result = await getPixaiTags(
+			filePath,
+			undefined,
+			undefined,
+			this.inferenceOptions,
+		);
 		return taggingResponseSchema.parse({
 			general: result.general,
 			character: result.character,
@@ -216,7 +235,13 @@ export class RustAiClient implements IAiClient {
 		}
 
 		const { getOppaioracleTags } = await import("dghs-imgutils-rs");
-		const result = await getOppaioracleTags(filePath);
+		const result = await getOppaioracleTags(
+			filePath,
+			undefined,
+			undefined,
+			undefined,
+			this.inferenceOptions,
+		);
 		return oppaiOracleResponseSchema.parse({
 			general: result.general,
 			rating: result.rating,
@@ -254,7 +279,11 @@ export class RustAiClient implements IAiClient {
 		}
 
 		const { ccipGetEmbedding } = await import("dghs-imgutils-rs");
-		const embedding = await ccipGetEmbedding(filePath);
+		const embedding = await ccipGetEmbedding(
+			filePath,
+			undefined,
+			this.inferenceOptions,
+		);
 		return ccipFeatureResponseSchema.parse({
 			feature: embedding,
 		});
