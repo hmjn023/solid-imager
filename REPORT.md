@@ -14,6 +14,6 @@
 | AI接続状態・latency | 実装済み | `ai.health` contract/router と V2 Config画面 |
 | リロード後の前後メディア移動 | 実装済み | `apps/server/src/routes/v2/media-context.ts` と sessionStorage |
 | Collectionのgrid / list表示 | 実装済み | `packages/ui/src/source-media-grid.tsx` と V2 Search / Source画面 |
-| Tauriの `/v2/*` route adapter | 対応済み（Jobsを除く） | `apps/tauri/src/routes/v2/`。既存Tauri画面へ検索、Manager、Config、About、Sourcesを接続 |
+| Tauriの `/v2/*` route adapter | 実装済み | `apps/tauri/src/routes/v2/` と `apps/tauri/src/routes/jobs.tsx`。既存Tauri画面へ検索、Manager、Jobs、Config、About、Sourcesを接続 |
 
 未対応の画面やAPIを追加する場合は、loading / error / offline / retryとリアルタイム更新まで同じ画面内で接続します。

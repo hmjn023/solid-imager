@@ -8591,11 +8591,32 @@
                           "type": "number",
                           "minimum": 1000,
                           "default": 120000
+                        },
+                        "provider": {
+                          "enum": [
+                            "auto",
+                            "cpu",
+                            "cuda",
+                            "tensorrt",
+                            "directml",
+                            "intel_gpu",
+                            "intel_npu",
+                            "amd_gpu",
+                            "amd_npu",
+                            "openvino"
+                          ],
+                          "type": "string",
+                          "default": "auto"
+                        },
+                        "device": {
+                          "type": "string",
+                          "maxLength": 64
                         }
                       },
                       "default": {
                         "baseUrl": "",
-                        "timeoutMs": 120000
+                        "timeoutMs": 120000,
+                        "provider": "auto"
                       }
                     },
                     "downloads": {
@@ -8889,11 +8910,32 @@
                         "type": "number",
                         "minimum": 1000,
                         "default": 120000
+                      },
+                      "provider": {
+                        "enum": [
+                          "auto",
+                          "cpu",
+                          "cuda",
+                          "tensorrt",
+                          "directml",
+                          "intel_gpu",
+                          "intel_npu",
+                          "amd_gpu",
+                          "amd_npu",
+                          "openvino"
+                        ],
+                        "type": "string",
+                        "default": "auto"
+                      },
+                      "device": {
+                        "type": "string",
+                        "maxLength": 64
                       }
                     },
                     "default": {
                       "baseUrl": "",
-                      "timeoutMs": 120000
+                      "timeoutMs": 120000,
+                      "provider": "auto"
                     }
                   },
                   "downloads": {
