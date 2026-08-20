@@ -33,14 +33,37 @@ const DEFAULT_AI_BASE_URL = "";
 const DEFAULT_AI_TIMEOUT = 120_000;
 const MIN_AI_TIMEOUT = 1000;
 
+export const AI_PROVIDER_VALUES = [
+	"auto",
+	"cpu",
+	"cuda",
+	"tensorrt",
+	"directml",
+	"intel_gpu",
+	"intel_npu",
+	"amd_gpu",
+	"amd_npu",
+	"openvino",
+] as const;
+
+export const AiProviderSchema = z.enum(AI_PROVIDER_VALUES);
+export type AiProvider = z.infer<typeof AiProviderSchema>;
+
+const DEFAULT_AI_PROVIDER: AiProvider = "auto";
+
 export const AiConfigSchema = z.object({
 	baseUrl: z.string().default(DEFAULT_AI_BASE_URL),
 	timeoutMs: z.number().min(MIN_AI_TIMEOUT).default(DEFAULT_AI_TIMEOUT),
+	provider: AiProviderSchema.default(DEFAULT_AI_PROVIDER),
+	device: z.string().trim().max(64).optional(),
 });
+
+export type AiConfig = z.infer<typeof AiConfigSchema>;
 
 const DEFAULT_AI_CONFIG = {
 	baseUrl: DEFAULT_AI_BASE_URL,
 	timeoutMs: DEFAULT_AI_TIMEOUT,
+	provider: DEFAULT_AI_PROVIDER,
 } as const;
 
 const DEFAULT_DOWNLOAD_RATE_LIMIT_ENABLED = true;
