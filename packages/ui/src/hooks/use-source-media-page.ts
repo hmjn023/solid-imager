@@ -144,6 +144,8 @@ export type UseSourceMediaPageOptions = {
 	itemsPerPage?: number;
 	onThumbnailReady?: (mediaId: string) => void;
 	isSearchStateRestored?: Accessor<boolean>;
+	commitSearchHistory?: () => void;
+	historyEntryKey?: Accessor<string | undefined>;
 	enableVirtualization?: boolean;
 	scrollContainerSelector?: string;
 };
@@ -215,6 +217,8 @@ export function useSourceMediaPage(
 		itemsPerPage = SOURCE_MEDIA_ITEMS_PER_PAGE,
 		onThumbnailReady,
 		isSearchStateRestored = () => true,
+		commitSearchHistory,
+		historyEntryKey,
 		enableVirtualization = false,
 	} = options;
 
@@ -291,8 +295,9 @@ export function useSourceMediaPage(
 	// --- Search handler ---
 	const handleSearch = () => {
 		const sourceId = id();
-		if (sourceId) setScrollPosition(sourceId, 0);
+		if (sourceId) setScrollPosition(sourceId, 0, historyEntryKey?.());
 		scrollToPosition(options.scrollContainerSelector, 0);
+		commitSearchHistory?.();
 	};
 
 	let nextPageFetchInFlight = false;
@@ -314,9 +319,17 @@ export function useSourceMediaPage(
 
 	// --- Scroll restoration ---
 	useScrollRestoration({
-		restoreKey: id,
-		getPosition: (sourceId) => getScrollPosition(sourceId),
-		setPosition: (sourceId, position) => setScrollPosition(sourceId, position),
+		restoreKey: () => historyEntryKey?.() ?? id(),
+		getPosition: () => {
+			const sourceId = id();
+			return sourceId ? getScrollPosition(sourceId, historyEntryKey?.()) : 0;
+		},
+		setPosition: (_key, position) => {
+			const sourceId = id();
+			if (sourceId) {
+				setScrollPosition(sourceId, position, historyEntryKey?.());
+			}
+		},
 		isReady: () => Boolean(mediaQueryData()) && !mediaQuery.isLoading,
 		hasNextPage: () => mediaQuery.hasNextPage,
 		isFetchingNextPage: () => mediaQuery.isFetchingNextPage,

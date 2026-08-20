@@ -24,6 +24,7 @@ export type {
 export type { IPresetService } from "./preset-service";
 export type { IProjectService } from "./project-service";
 export type { ISearchService, SearchOptions } from "./search-service";
+export type { ISearchSnapshotService } from "./search-snapshot-service";
 export type { ITagService } from "./tag-service";
 export type { ITaggingService } from "./tagging-service";
 export type { IThumbnailService } from "./thumbnail-service";

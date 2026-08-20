@@ -38,13 +38,33 @@ const persistToStorage = () => {
 	sessionStorage.setItem(STORAGE_KEY, data);
 };
 
-export const getScrollPosition = (mediaSourceId: string) => {
-	const position = sourcesState.scrollPositions[mediaSourceId] || 0;
+function getScrollKey(mediaSourceId: string, historyEntryKey?: string): string {
+	return historyEntryKey
+		? `${mediaSourceId}::history:${historyEntryKey}`
+		: mediaSourceId;
+}
+
+export const getScrollPosition = (
+	mediaSourceId: string,
+	historyEntryKey?: string,
+) => {
+	const position =
+		sourcesState.scrollPositions[
+			getScrollKey(mediaSourceId, historyEntryKey)
+		] || 0;
 	return position;
 };
 
-export const setScrollPosition = (mediaSourceId: string, scrollY: number) => {
-	setSourcesState("scrollPositions", mediaSourceId, scrollY);
+export const setScrollPosition = (
+	mediaSourceId: string,
+	scrollY: number,
+	historyEntryKey?: string,
+) => {
+	setSourcesState(
+		"scrollPositions",
+		getScrollKey(mediaSourceId, historyEntryKey),
+		scrollY,
+	);
 	// Persist immediately after updating
 	persistToStorage();
 };

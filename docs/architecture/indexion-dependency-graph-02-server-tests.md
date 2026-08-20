@@ -126,46 +126,51 @@ graph LR
   N121[npm:@solid-imager/core/domain/interfaces/ai-client]
   N122[unit/application/services/job-dispatch-service.test.ts]
   N123[unit/application/services/job-transfer-storage.test.ts]
-  N124[unit/config/database.test.ts]
-  N125[unit/db/connection.test.ts]
-  N126[unit/domain/media/schemas.test.ts]
-  N127[unit/domain/media/utils/hash-utils.test.ts]
-  N128[apps/server/node_modules/@solid-imager/application/src/index.ts]
-  N129[unit/domain/media/utils/metadata-utils.test.ts]
-  N130[npm:@solid-imager/core/domain/media/utils/metadata-utils]
-  N131[unit/domain/search-mode-transition.test.ts]
-  N132[npm:@solid-imager/core/domain/search/logic]
-  N133[unit/infrastructure/api-clients/ai-api.test.ts]
-  N134[npm:~/infrastructure/api-clients/ai-api]
-  N135[unit/infrastructure/api-clients/downloads-api.test.ts]
-  N136[npm:~/infrastructure/api-clients/downloads-api]
-  N137[unit/infrastructure/api-clients/sources-api-ext.test.ts]
-  N138[unit/infrastructure/file-system/node-file-system.test.ts]
-  N139[npm:~/infrastructure/file-system/node-file-system]
-  N140[unit/infrastructure/jobs/download-jobs.test.ts]
-  N141[npm:~/infrastructure/jobs/download-jobs]
-  N142[unit/infrastructure/jobs/download-rate-limiter.test.ts]
-  N143[unit/infrastructure/jobs/job-worker.test.ts]
-  N144[npm:@solid-imager/core/domain/config/config-schema]
-  N145[npm:~/domain/repositories/job-repository]
-  N146[npm:~/infrastructure/jobs/job-worker]
-  N147[unit/infrastructure/jobs/ccip-jobs.test.ts]
-  N148[unit/infrastructure/jobs/tagging-jobs.test.ts]
-  N149[unit/infrastructure/storage/server-media-storage.test.ts]
-  N150[apps/server/node_modules/fluent-ffmpeg/index.js]
-  N151[unit/infrastructure/events/realtime-event-bus.test.ts]
-  N152[npm:@solid-imager/core/domain/sources/events]
-  N153[npm:~/infrastructure/events/realtime-event-bus]
-  N154[unit/infrastructure/api/rpc-response-headers.test.ts]
-  N155[apps/server/node_modules/@orpc/server/dist/index.d.mts]
-  N156[npm:@orpc/server/fetch]
-  N157[npm:@orpc/server/plugins]
-  N158[npm:~/infrastructure/api/rpc-response-headers]
-  N159[unit/media/copy-media-job.test.ts]
-  N160[npm:~/infrastructure/jobs/thumbnails]
-  N161[unit/security/file-validation.test.ts]
-  N162[unit/server-config-service.test.ts]
-  N163[npm:~/infrastructure/services/server-config-service]
+  N124[unit/application/services/search-snapshot-service.test.ts]
+  N125[npm:@solid-imager/core/domain/errors]
+  N126[npm:@solid-imager/core/domain/repositories/search-snapshot-repository]
+  N127[unit/config/database.test.ts]
+  N128[unit/db/connection.test.ts]
+  N129[unit/domain/media/schemas.test.ts]
+  N130[unit/domain/media/utils/hash-utils.test.ts]
+  N131[apps/server/node_modules/@solid-imager/application/src/index.ts]
+  N132[unit/domain/media/utils/metadata-utils.test.ts]
+  N133[npm:@solid-imager/core/domain/media/utils/metadata-utils]
+  N134[unit/domain/search-mode-transition.test.ts]
+  N135[npm:@solid-imager/core/domain/search/logic]
+  N136[unit/infrastructure/api-clients/ai-api.test.ts]
+  N137[npm:~/infrastructure/api-clients/ai-api]
+  N138[unit/infrastructure/api-clients/downloads-api.test.ts]
+  N139[npm:~/infrastructure/api-clients/downloads-api]
+  N140[unit/infrastructure/api-clients/sources-api-ext.test.ts]
+  N141[unit/infrastructure/file-system/node-file-system.test.ts]
+  N142[npm:~/infrastructure/file-system/node-file-system]
+  N143[unit/infrastructure/jobs/download-jobs.test.ts]
+  N144[npm:~/infrastructure/jobs/download-jobs]
+  N145[unit/infrastructure/jobs/download-rate-limiter.test.ts]
+  N146[unit/infrastructure/jobs/job-worker.test.ts]
+  N147[npm:@solid-imager/core/domain/config/config-schema]
+  N148[npm:~/domain/repositories/job-repository]
+  N149[npm:~/infrastructure/jobs/job-worker]
+  N150[unit/infrastructure/jobs/ccip-jobs.test.ts]
+  N151[unit/infrastructure/jobs/tagging-jobs.test.ts]
+  N152[unit/infrastructure/storage/server-media-storage.test.ts]
+  N153[apps/server/node_modules/fluent-ffmpeg/index.js]
+  N154[unit/infrastructure/events/realtime-event-bus.test.ts]
+  N155[npm:@solid-imager/core/domain/sources/events]
+  N156[npm:~/infrastructure/events/realtime-event-bus]
+  N157[unit/infrastructure/api/rpc-response-headers.test.ts]
+  N158[apps/server/node_modules/@orpc/server/dist/index.d.mts]
+  N159[npm:@orpc/server/fetch]
+  N160[npm:@orpc/server/plugins]
+  N161[npm:~/infrastructure/api/rpc-response-headers]
+  N162[unit/infrastructure/ai/inference-options.test.ts]
+  N163[npm:~/infrastructure/ai/inference-options]
+  N164[unit/media/copy-media-job.test.ts]
+  N165[npm:~/infrastructure/jobs/thumbnails]
+  N166[unit/security/file-validation.test.ts]
+  N167[unit/server-config-service.test.ts]
+  N168[npm:~/infrastructure/services/server-config-service]
   N0 --> N1
   N0 --> N2
   N3 --> N1
@@ -428,71 +433,75 @@ graph LR
   N123 --> N23
   N123 --> N107
   N123 --> N1
-  N124 --> N53
-  N124 --> N23
-  N124 --> N1
-  N124 --> N57
-  N125 --> N1
-  N125 --> N57
-  N126 --> N7
-  N126 --> N1
-  N127 --> N21
+  N124 --> N125
+  N124 --> N126
   N127 --> N53
-  N127 --> N54
   N127 --> N23
-  N127 --> N128
   N127 --> N1
-  N129 --> N130
+  N127 --> N57
+  N128 --> N1
+  N128 --> N57
+  N129 --> N7
   N129 --> N1
-  N131 --> N7
-  N131 --> N132
-  N133 --> N1
-  N133 --> N134
-  N135 --> N1
-  N135 --> N136
-  N137 --> N1
-  N138 --> N22
-  N138 --> N54
-  N138 --> N23
+  N130 --> N21
+  N130 --> N53
+  N130 --> N54
+  N130 --> N23
+  N130 --> N131
+  N130 --> N1
+  N132 --> N133
+  N132 --> N1
+  N134 --> N7
+  N134 --> N135
+  N136 --> N1
+  N136 --> N137
   N138 --> N1
   N138 --> N139
   N140 --> N1
-  N140 --> N141
-  N140 --> N64
-  N142 --> N1
-  N143 --> N144
+  N141 --> N22
+  N141 --> N54
+  N141 --> N23
+  N141 --> N1
+  N141 --> N142
   N143 --> N1
-  N143 --> N145
-  N143 --> N2
-  N143 --> N146
-  N147 --> N1
-  N147 --> N145
-  N148 --> N1
-  N148 --> N145
-  N149 --> N22
-  N149 --> N150
-  N149 --> N43
-  N149 --> N1
-  N149 --> N70
-  N151 --> N152
+  N143 --> N144
+  N143 --> N64
+  N145 --> N1
+  N146 --> N147
+  N146 --> N1
+  N146 --> N148
+  N146 --> N2
+  N146 --> N149
+  N150 --> N1
+  N150 --> N148
   N151 --> N1
-  N151 --> N153
+  N151 --> N148
+  N152 --> N22
+  N152 --> N153
+  N152 --> N43
+  N152 --> N1
+  N152 --> N70
   N154 --> N155
-  N154 --> N156
-  N154 --> N157
   N154 --> N1
-  N154 --> N8
-  N154 --> N158
-  N159 --> N1
-  N159 --> N160
-  N159 --> N64
-  N159 --> N68
-  N159 --> N69
-  N161 --> N1
-  N161 --> N69
-  N162 --> N53
-  N162 --> N22
-  N162 --> N144
+  N154 --> N156
+  N157 --> N158
+  N157 --> N159
+  N157 --> N160
+  N157 --> N1
+  N157 --> N8
+  N157 --> N161
   N162 --> N1
   N162 --> N163
+  N164 --> N1
+  N164 --> N165
+  N164 --> N64
+  N164 --> N68
+  N164 --> N69
+  N166 --> N1
+  N166 --> N69
+  N167 --> N53
+  N167 --> N22
+  N167 --> N147
+  N167 --> N1
+  N167 --> N168
 ```

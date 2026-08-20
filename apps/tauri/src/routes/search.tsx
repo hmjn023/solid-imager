@@ -1,13 +1,16 @@
 import { Button } from "@solid-imager/ui/button";
 import { persistSearchScrollPosition } from "@solid-imager/ui/hooks/use-current-search-persistence";
+import { useSearchHistoryPersistence } from "@solid-imager/ui/hooks/use-search-history-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
+import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
+import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { createFileRoute } from "@tanstack/solid-router";
 import { MediaGridItem } from "~/components/media/media-grid-item";
-import { useCurrentSearchPersistence } from "~/hooks/use-current-search-persistence";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
+import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
 import {
 	searchMedia,
 	searchSimilar,
@@ -27,6 +30,7 @@ import {
 } from "~/queries";
 
 export const Route = createFileRoute("/search")({
+	validateSearch: searchHistoryQuerySchema,
 	loader: ({ context }) => {
 		void context.queryClient.prefetchQuery(tagsQueryOptions());
 		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
@@ -41,9 +45,12 @@ export const Route = createFileRoute("/search")({
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 
 const PresetClient = createPresetClient(rawPresetClient);
+const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
 function SearchRoute() {
-	const isSearchStateRestored = useCurrentSearchPersistence("all");
+	const searchHistory = useSearchHistoryPersistence("all", {
+		client: SearchHistoryClient,
+	});
 
 	const page = useSearchPage({
 		searchMedia,
@@ -64,14 +71,18 @@ function SearchRoute() {
 		scrollY: () => searchState.scrollY,
 		setScrollY: (y) => {
 			setSearchState("scrollY", y);
-			persistSearchScrollPosition("all", y);
+			persistSearchScrollPosition("all", y, {
+				historyEntryKey: searchHistory.historyEntryKey,
+			});
 		},
 		setOffset: (o) => setSearchState("offset", o),
 		mode: () => searchState.mode,
 		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
 		similarityTopK: () => searchState.similarityTopK,
 		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
-		isSearchStateRestored,
+		isSearchStateRestored: searchHistory.isRestored,
+		commitSearchHistory: searchHistory.commitNow,
+		historyEntryKey: searchHistory.historyEntryKey,
 		enableVirtualization: true,
 	});
 

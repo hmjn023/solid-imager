@@ -1,4 +1,5 @@
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
+import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createSignal, onMount, Show } from "solid-js";
 import {
@@ -13,6 +14,7 @@ import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
 import { SourceMediaPage } from "./components/legacy-source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
+	validateSearch: searchHistoryQuerySchema,
 	ssr: true,
 	remountDeps: ({ params }: { params: { mediaSourceId: string } }) => [
 		params.mediaSourceId,

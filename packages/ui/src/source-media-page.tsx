@@ -9,11 +9,9 @@ import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import type { Accessor, Component, JSX } from "solid-js";
 import { isServer } from "solid-js/web";
-import {
-	type SearchPersistenceSurface,
-	useCurrentSearchPersistence,
-} from "./hooks/use-current-search-persistence";
+import type { SearchPersistenceSurface } from "./hooks/use-current-search-persistence";
 import type { MediaSourceEventTransport } from "./hooks/use-media-source-events";
+import { useSearchHistoryPersistence } from "./hooks/use-search-history-persistence";
 import {
 	type SourceMediaPageActions,
 	type SourceMediaPagePresetClient,
@@ -22,6 +20,7 @@ import {
 import { MediaListActions } from "./media-list-actions";
 import { toQueryUiState } from "./query-state";
 import type { SourceMediaScreenProps } from "./screens/source-media-screen.types";
+import type { SearchHistoryClient } from "./search-history-client";
 
 // biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
 type QueryOptionFactory<_TData> = () => any;
@@ -64,6 +63,7 @@ export type SourceMediaPageProps = {
 	selectedCount?: () => number;
 	onEnterBulkSelectMode?: () => void;
 	persistenceSurface?: SearchPersistenceSurface;
+	searchHistoryClient: SearchHistoryClient;
 	/** The route owns the presentation surface (legacy, v2, or another host). */
 	screenComponent: Component<SourceMediaScreenProps>;
 	scrollContainerSelector?: string;
@@ -71,10 +71,11 @@ export type SourceMediaPageProps = {
 
 export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	const queryClient = useQueryClient();
-	const isSearchStateRestored = useCurrentSearchPersistence(
-		props.mediaSourceId,
-		{ surface: props.persistenceSurface },
-	);
+	const searchHistory = useSearchHistoryPersistence(props.mediaSourceId, {
+		client: props.searchHistoryClient,
+		surface: props.persistenceSurface,
+	});
+	const isSearchStateRestored = searchHistory.isRestored;
 
 	const tags = createQuery<TagResponse[]>(
 		clientOnlyQueryOptions(props.tagsQueryOptions),
@@ -127,8 +128,10 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		sortOrder: props.sortOrder,
 		onThumbnailReady: props.onThumbnailReady,
 		isSearchStateRestored,
+		commitSearchHistory: searchHistory.commitNow,
 		enableVirtualization: props.enableVirtualization,
 		scrollContainerSelector: props.scrollContainerSelector,
+		historyEntryKey: searchHistory.historyEntryKey,
 	});
 
 	const renderActions: SourceMediaScreenProps["renderActions"] = (actions) => (
