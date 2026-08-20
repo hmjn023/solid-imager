@@ -17,6 +17,7 @@ export { MediaUploadService } from "./media-upload-service";
 export { createPresetService } from "./preset-service";
 export { createProjectService } from "./project-service";
 export { SearchServiceImpl } from "./search-service";
+export { createSearchSnapshotService } from "./search-snapshot-service";
 export { createTagService } from "./tag-service";
 export { TaggingServiceImpl } from "./tagging-service";
 export { ThumbnailServiceImpl } from "./thumbnail-service";

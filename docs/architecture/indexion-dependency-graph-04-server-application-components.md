@@ -76,38 +76,35 @@ graph LR
   N71[npm:node:fs]
   N72[npm:node:path]
   N73[apps/server/node_modules/zod/index.d.cts]
-  N74[app.css]
-  N75[url:]
-  N76[router.tsx]
-  N77[apps/server/node_modules/@solid-imager/client/src/index.ts]
-  N78[npm:@solid-imager/ui/query-options]
-  N79[routeTree.gen.ts]
-  N80[apps/server/src/routes/__root.tsx]
-  N81[apps/server/src/routes/search.tsx]
-  N82[apps/server/src/routes/manager.tsx]
-  N83[apps/server/src/routes/design-lab.tsx]
-  N84[apps/server/src/routes/config.tsx]
-  N85[apps/server/src/routes/about.tsx]
-  N86[apps/server/src/routes/$.tsx]
-  N87[apps/server/src/routes/v2/route.tsx]
-  N88[apps/server/src/routes/index.tsx]
-  N89[apps/server/src/routes/v2/index.tsx]
-  N90[apps/server/src/routes/sources/index.tsx]
-  N91[apps/server/src/routes/v2/search.tsx]
-  N92[apps/server/src/routes/v2/manager.tsx]
-  N93[apps/server/src/routes/v2/jobs.tsx]
-  N94[apps/server/src/routes/v2/config.tsx]
-  N95[apps/server/src/routes/v2/about.tsx]
-  N96[apps/server/src/routes/v2/$.tsx]
-  N97[apps/server/src/routes/sources/$mediaSourceId/index.tsx]
-  N98[apps/server/src/routes/docs/swagger/index.tsx]
-  N99[apps/server/src/routes/api/rpc.$.ts]
-  N100[apps/server/src/routes/v2/sources/$mediaSourceId/index.tsx]
-  N101[apps/server/src/routes/sources/$mediaSourceId/$mediaId/index.tsx]
-  N102[apps/server/src/routes/api/sources.$mediaSourceId.$mediaId.ts]
-  N103[apps/server/src/routes/api/jobs.$jobId.artifact.ts]
-  N104[apps/server/src/routes/v2/sources/$mediaSourceId/$mediaId/index.tsx]
-  N105[apps/server/src/routes/api/sources.$mediaSourceId.thumbnail.$mediaId.ts]
+  N74[routeTree.gen.ts]
+  N75[apps/server/src/routes/__root.tsx]
+  N76[apps/server/src/routes/search.tsx]
+  N77[apps/server/src/routes/manager.tsx]
+  N78[apps/server/src/routes/design-lab.tsx]
+  N79[apps/server/src/routes/config.tsx]
+  N80[apps/server/src/routes/about.tsx]
+  N81[apps/server/src/routes/$.tsx]
+  N82[apps/server/src/routes/v2/route.tsx]
+  N83[apps/server/src/routes/index.tsx]
+  N84[apps/server/src/routes/v2/index.tsx]
+  N85[apps/server/src/routes/sources/index.tsx]
+  N86[apps/server/src/routes/v2/search.tsx]
+  N87[apps/server/src/routes/v2/manager.tsx]
+  N88[apps/server/src/routes/v2/jobs.tsx]
+  N89[apps/server/src/routes/v2/config.tsx]
+  N90[apps/server/src/routes/v2/about.tsx]
+  N91[apps/server/src/routes/v2/$.tsx]
+  N92[apps/server/src/routes/sources/$mediaSourceId/index.tsx]
+  N93[apps/server/src/routes/docs/swagger/index.tsx]
+  N94[apps/server/src/routes/api/rpc.$.ts]
+  N95[apps/server/src/routes/v2/sources/$mediaSourceId/index.tsx]
+  N96[apps/server/src/routes/sources/$mediaSourceId/$mediaId/index.tsx]
+  N97[apps/server/src/routes/api/sources.$mediaSourceId.$mediaId.ts]
+  N98[apps/server/src/routes/api/jobs.$jobId.artifact.ts]
+  N99[apps/server/src/routes/v2/sources/$mediaSourceId/$mediaId/index.tsx]
+  N100[apps/server/src/routes/api/sources.$mediaSourceId.thumbnail.$mediaId.ts]
+  N101[app.css]
+  N102[url:]
   N0 --> N1
   N0 --> N2
   N2 --> N3
@@ -199,32 +196,30 @@ graph LR
   N70 --> N72
   N70 --> N73
   N74 --> N75
-  N76 --> N77
-  N76 --> N78
-  N79 --> N80
-  N79 --> N81
-  N79 --> N82
-  N79 --> N83
-  N79 --> N84
-  N79 --> N85
-  N79 --> N86
-  N79 --> N87
-  N79 --> N88
-  N79 --> N89
-  N79 --> N90
-  N79 --> N91
-  N79 --> N92
-  N79 --> N93
-  N79 --> N94
-  N79 --> N95
-  N79 --> N96
-  N79 --> N97
-  N79 --> N98
-  N79 --> N99
-  N79 --> N100
-  N79 --> N101
-  N79 --> N102
-  N79 --> N103
-  N79 --> N104
-  N79 --> N105
+  N74 --> N76
+  N74 --> N77
+  N74 --> N78
+  N74 --> N79
+  N74 --> N80
+  N74 --> N81
+  N74 --> N82
+  N74 --> N83
+  N74 --> N84
+  N74 --> N85
+  N74 --> N86
+  N74 --> N87
+  N74 --> N88
+  N74 --> N89
+  N74 --> N90
+  N74 --> N91
+  N74 --> N92
+  N74 --> N93
+  N74 --> N94
+  N74 --> N95
+  N74 --> N96
+  N74 --> N97
+  N74 --> N98
+  N74 --> N99
+  N74 --> N100
+  N101 --> N102
 ```

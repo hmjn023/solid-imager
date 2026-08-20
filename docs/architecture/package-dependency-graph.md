@@ -1,5 +1,7 @@
 # solid-imager package dependencies
 
+The edge labels are cross-package import counts from the scoped indexion graph; package-local and external dependency edges are omitted.
+
 ```mermaid
 flowchart LR
   %% Aggregated from indexion's source dependency graph.
@@ -24,22 +26,22 @@ flowchart LR
   cli -->|1 import| client
   cli -->|1 import| core
 
-  server -->|24 imports| application
-  server -->|4 imports| client
-  server -->|138 imports| core
-  server -->|16 imports| db
-  server -->|89 imports| ui
+  server -->|26 imports| application
+  server -->|3 imports| client
+  server -->|146 imports| core
+  server -->|17 imports| db
+  server -->|108 imports| ui
 
-  tauri -->|2 imports| client
-  tauri -->|11 imports| core
-  tauri -->|45 imports| ui
+  tauri -->|3 imports| client
+  tauri -->|12 imports| core
+  tauri -->|50 imports| ui
 
   xtracter -->|1 import| client
   xtracter -->|1 import| core
 
-  application -->|24 imports| core
-  db -->|6 imports| core
-  ui -->|99 imports| core
+  application -->|23 imports| core
+  db -->|7 imports| core
+  ui -->|100 imports| core
 
   classDef app fill:#e8f1ff,stroke:#4f76a8,color:#132238;
   classDef pkg fill:#eef8ee,stroke:#5b8a5a,color:#173117;

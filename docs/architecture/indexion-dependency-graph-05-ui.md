@@ -214,6 +214,9 @@ graph LR
   N209[v2-upload-media-modal-content.tsx]
   N210[upload-media-modal-content.types.ts]
   N211[v2-upload-media-modal.tsx]
+  N212[search-history-client.ts]
+  N213[npm:@solid-imager/core/domain/contract/search-snapshots-client]
+  N214[search-history-route.ts]
   N0 --> N1
   N0 --> N2
   N0 --> N3
@@ -627,4 +630,6 @@ graph LR
   N211 --> N85
   N211 --> N2
   N211 --> N86
+  N212 --> N213
+  N214 --> N86
 ```

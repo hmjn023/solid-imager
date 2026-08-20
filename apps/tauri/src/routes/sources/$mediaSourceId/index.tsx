@@ -1,3 +1,4 @@
+import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { createFileRoute } from "@tanstack/solid-router";
 import {
 	allAuthorsQueryOptions,
@@ -10,6 +11,7 @@ import {
 import { SourceMediaPage } from "./components/source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
+	validateSearch: searchHistoryQuerySchema,
 	loader: ({ context }) => {
 		void context.queryClient.prefetchQuery(tagsQueryOptions());
 		void context.queryClient.prefetchQuery(allProjectsQueryOptions());

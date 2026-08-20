@@ -13,6 +13,11 @@ export const openApiTags = [
 		description: "Operations for managing media files and their metadata",
 	},
 	{
+		name: "Search Snapshots",
+		description:
+			"Operations for storing and restoring immutable search states used by browser history",
+	},
+	{
 		name: "Tags",
 		description: "Operations for managing tags and tag associations",
 	},

@@ -5,6 +5,7 @@ import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import type { SourceMediaScreenProps } from "@solid-imager/ui/screens/source-media-screen.types";
+import type { SearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
@@ -49,12 +50,12 @@ import {
 } from "~/presentation/store/search-store";
 
 const PresetClient = createPresetClient(rawPresetClient);
-
 export type SourceMediaPageControllerProps = {
 	mediaSourceId?: Accessor<string>;
 	screenComponent: Component<SourceMediaScreenProps>;
 	uploadModalComponent: SourceMediaScreenProps["uploadModalComponent"];
 	persistenceSurface: SearchPersistenceSurface;
+	searchHistoryClient: SearchHistoryClient;
 	renderItem: SourceMediaGridRenderer;
 	bulkActionsClass: string;
 	ssrGuard?: boolean;
@@ -137,6 +138,7 @@ export function SourceMediaPageController(
 				mediaSourceId={mediaSourceId}
 				mediaSourceName={mediaSourceName}
 				persistenceSurface={props.persistenceSurface}
+				searchHistoryClient={props.searchHistoryClient}
 				transport={transport}
 				presetClient={PresetClient}
 				actions={{
