@@ -1,5 +1,6 @@
 import { getClient } from "@ext/api";
 import type { MediaSource, TweetMetadata } from "@ext/schema";
+import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { render } from "solid-js/web";
 
@@ -17,17 +18,19 @@ function Popup() {
 	const [exportStatus, setExportStatus] = createSignal("");
 	const [uploadStatus, setUploadStatus] = createSignal("");
 
+	let selectRef: HTMLSelectElement | undefined;
+	let fetchSeq = 0;
+
 	const loadSettings = async () => {
 		const settings: { apiUrl?: string; selectedSourceId?: string } =
 			await chrome.storage.local.get(["selectedSourceId", "apiUrl"]);
 		if (settings.apiUrl) setApiUrl(settings.apiUrl);
-		if (settings.selectedSourceId)
-			setSelectedSourceId(settings.selectedSourceId);
 
-		await fetchSources();
+		await fetchSources(settings.selectedSourceId);
 	};
 
-	const fetchSources = async () => {
+	const fetchSources = async (preferredId?: string) => {
+		const seq = ++fetchSeq;
 		setIsLoading(true);
 		setStatus("Loading sources...");
 		setStatusType("info");
@@ -36,24 +39,25 @@ function Popup() {
 			const resp: MediaSource[] = await chrome.runtime.sendMessage({
 				type: "GET_SOURCES",
 			});
+			if (seq !== fetchSeq) return;
 			setSources(resp || []);
 
-			const hasSelectedSource = resp?.some((s) => s.id === selectedSourceId());
-			if (
-				resp &&
-				resp.length > 0 &&
-				(!selectedSourceId() || !hasSelectedSource)
-			) {
-				const firstId = resp[0].id;
-				setSelectedSourceId(firstId);
-				await chrome.storage.local.set({ selectedSourceId: firstId });
+			const previousId = preferredId ?? selectedSourceId();
+			const resolved = resolveEffectiveSourceId(resp ?? [], previousId);
+			if (resolved) {
+				setSelectedSourceId(resolved.id);
+				if (selectRef) selectRef.value = resolved.id;
+				if (resolved.id !== previousId) {
+					await chrome.storage.local.set({ selectedSourceId: resolved.id });
+				}
 			}
 			setStatus("");
 		} catch (_err) {
+			if (seq !== fetchSeq) return;
 			setStatus("Failed to load sources. Check API URL.");
 			setStatusType("error");
 		} finally {
-			setIsLoading(false);
+			if (seq === fetchSeq) setIsLoading(false);
 		}
 	};
 
@@ -160,6 +164,7 @@ function Popup() {
 				</label>
 				<select
 					id="source-select"
+					ref={(el) => (selectRef = el)}
 					value={selectedSourceId()}
 					onChange={async (e) => {
 						const id = e.currentTarget.value;
