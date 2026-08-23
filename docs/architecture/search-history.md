@@ -49,7 +49,7 @@ sequenceDiagram
 | Operation | Input | Output | 用途 |
 | --- | --- | --- | --- |
 | `searchSnapshots.capture` | `SearchSnapshotState` | `{ id }` | state を fingerprint 付きで保存し、同じ検索を再利用する |
-| `searchSnapshots.get` | UUID | `SearchSnapshot` | 直接 URL、リロード、履歴復元から state を取得する |
+| `searchSnapshots.get` | UUID | `SafeSearchSnapshot` | 直接 URL、リロード、履歴復元から公開対象の state を取得する |
 
 保存先は `packages/db/src/schema.ts` の `search_snapshots` テーブルで、`fingerprint` は一意、`state` は JSON、`created_at` には index を持つ。fingerprint は version と state をキー順に安定シリアライズして SHA-256 化するため、保存順に依存しない。
 
