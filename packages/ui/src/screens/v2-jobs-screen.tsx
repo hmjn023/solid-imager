@@ -4,6 +4,8 @@ import {
 	type JobListResponse,
 } from "@solid-imager/core/domain/jobs/schemas";
 import Ban from "lucide-solid/icons/ban";
+import ChevronLeft from "lucide-solid/icons/chevron-left";
+import ChevronRight from "lucide-solid/icons/chevron-right";
 import CircleAlert from "lucide-solid/icons/circle-alert";
 import CircleCheck from "lucide-solid/icons/circle-check";
 import Clock3 from "lucide-solid/icons/clock-3";
@@ -55,6 +57,15 @@ const JOB_FILTERS = [
 
 type JobFilter = (typeof JOB_FILTERS)[number]["value"];
 
+export type V2JobsPagination = {
+	canNext: boolean;
+	canPrevious: boolean;
+	current: number;
+	onNext: () => void;
+	onPrevious: () => void;
+	total: number;
+};
+
 export type V2JobsScreenProps = {
 	isRefreshing: Accessor<boolean>;
 	jobs: Accessor<JobDto[]>;
@@ -62,6 +73,7 @@ export type V2JobsScreenProps = {
 	onRetry: (jobId: string) => void | Promise<void>;
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
+	page: Accessor<V2JobsPagination>;
 	state: Accessor<QueryUiState<JobListResponse>>;
 };
 
@@ -608,6 +620,53 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 																/>
 															)}
 														</Show>
+													</Show>
+													<Show when={props.page().total > 1}>
+														<nav
+															aria-label="Job pages"
+															class="mt-4 flex items-center justify-between gap-3"
+														>
+															<Button
+																aria-label="Previous page"
+																disabled={
+																	!props.page().canPrevious ||
+																	props.isRefreshing()
+																}
+																onClick={() => {
+																	if (props.page().canPrevious) {
+																		props.page().onPrevious();
+																	}
+																}}
+																size="sm"
+																variant="outline"
+															>
+																<ChevronLeft aria-hidden="true" size={14} />
+																<span class="hidden sm:inline">Previous</span>
+															</Button>
+															<span
+																aria-live="polite"
+																class="text-sm text-[var(--v2-text-muted)]"
+															>
+																Page {props.page().current} of{" "}
+																{props.page().total}
+															</span>
+															<Button
+																aria-label="Next page"
+																disabled={
+																	!props.page().canNext || props.isRefreshing()
+																}
+																onClick={() => {
+																	if (props.page().canNext) {
+																		props.page().onNext();
+																	}
+																}}
+																size="sm"
+																variant="outline"
+															>
+																<span class="hidden sm:inline">Next</span>
+																<ChevronRight aria-hidden="true" size={14} />
+															</Button>
+														</nav>
 													</Show>
 												</Match>
 											</Switch>
