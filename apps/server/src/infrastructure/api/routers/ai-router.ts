@@ -13,8 +13,10 @@ import {
 	type NapiBBox,
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
+import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import sharp from "sharp";
+import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { db } from "~/infrastructure/db";
 import {
 	jobs,
@@ -100,6 +102,7 @@ async function cropDetection(
 	det: { bbox: NapiBBox; label: string; score: number },
 	idx: number,
 	transparent: boolean,
+	inferenceOptions: NapiInferenceOptions,
 ) {
 	const { x1, y1, x2, y2 } = det.bbox;
 	const w = Math.round(x2 - x1);
@@ -124,7 +127,9 @@ async function cropDetection(
 			.toFile(cropPath);
 		try {
 			const { segmentRgbaWithIsnetis } = await import("dghs-imgutils-rs");
-			cropBuffer = Buffer.from(await segmentRgbaWithIsnetis(cropPath));
+			cropBuffer = Buffer.from(
+				await segmentRgbaWithIsnetis(cropPath, undefined, inferenceOptions),
+			);
 			_format = "png";
 		} finally {
 			await Bun.file(cropPath)
@@ -641,6 +646,9 @@ export const aiRouter = os.router({
 
 				if ("file" in input) {
 					const buffer = Buffer.from(await input.file.arrayBuffer());
+					const inferenceOptions = createNativeInferenceOptions(
+						services.getConfigService().getConfig().ai,
+					);
 					const tmpPath = path.join(
 						tmpdir(),
 						`crop-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -648,11 +656,18 @@ export const aiRouter = os.router({
 					await Bun.write(tmpPath, buffer);
 					try {
 						const { detectPerson } = await import("dghs-imgutils-rs");
-						const detections = await detectPerson(tmpPath);
+						const detections = await detectPerson(
+							tmpPath,
+							undefined,
+							undefined,
+							undefined,
+							undefined,
+							inferenceOptions,
+						);
 
 						const resultDetections = await Promise.all(
 							detections.map(async (det, idx) =>
-								cropDetection(tmpPath, det, idx, transparent),
+								cropDetection(tmpPath, det, idx, transparent, inferenceOptions),
 							),
 						);
 
@@ -723,11 +738,19 @@ export const aiRouter = os.router({
 				}
 
 				const { detectPerson } = await import("dghs-imgutils-rs");
-				const detections = await detectPerson(fullPath);
+				const inferenceOptions = createNativeInferenceOptions(config.ai);
+				const detections = await detectPerson(
+					fullPath,
+					undefined,
+					undefined,
+					undefined,
+					undefined,
+					inferenceOptions,
+				);
 
 				const resultDetections = await Promise.all(
 					detections.map(async (det, idx) =>
-						cropDetection(fullPath, det, idx, transparent),
+						cropDetection(fullPath, det, idx, transparent, inferenceOptions),
 					),
 				);
 

@@ -20,8 +20,11 @@ export {
 } from "./ips-query";
 export {
 	buildJobsQueryOptions,
+	DEFAULT_JOBS_PAGE_SIZE,
 	defaultJobsQueryConfig,
+	defaultJobsQueryInput,
 	jobsQueryKeys,
+	updateJobProgress,
 } from "./jobs-query";
 export {
 	buildMediaDetailsQueryOptions,

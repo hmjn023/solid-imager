@@ -13,6 +13,7 @@ import { jobsRouter } from "~/infrastructure/api/routers/jobs-router";
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { presetsRouter } from "~/infrastructure/api/routers/presets-router";
 import { projectsRouter } from "~/infrastructure/api/routers/projects-router";
+import { searchSnapshotsRouter } from "~/infrastructure/api/routers/search-snapshots-router";
 import { sourcesRouter } from "~/infrastructure/api/routers/sources-router";
 import { tagsRouter } from "~/infrastructure/api/routers/tags-router";
 import { thumbnailsRouter } from "~/infrastructure/api/routers/thumbnails-router";
@@ -44,6 +45,7 @@ export const appRouter = appRouterImplementer.router({
 	utils: utilsRouter,
 	config: configRouter,
 	presets: presetsRouter,
+	searchSnapshots: searchSnapshotsRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -1,4 +1,5 @@
 import { createORPCSolidQueryUtils } from "@orpc/solid-query";
+import type { JobListRequest } from "@solid-imager/core/domain/jobs/schemas";
 import {
 	authorsQueryKeys,
 	charactersQueryKeys,
@@ -7,11 +8,14 @@ import {
 	defaultCharactersQueryConfig,
 	defaultConfigQueryConfig,
 	defaultIpsQueryConfig,
+	defaultJobsQueryConfig,
+	defaultJobsQueryInput,
 	defaultMediaDetailsQueryConfig,
 	defaultProjectsQueryConfig,
 	defaultSourcesQueryConfig,
 	defaultTagsQueryConfig,
 	ipsQueryKeys,
+	jobsQueryKeys,
 	mediaDetailsQueryKeys,
 	projectsQueryKeys,
 	sourcesQueryKeys,
@@ -45,6 +49,13 @@ export const allIpsQueryOptions = () => ({
 	...utils.ips.list.queryOptions(),
 	queryKey: ipsQueryKeys.all(),
 	...defaultIpsQueryConfig,
+});
+export const jobsQueryOptions = (
+	input: JobListRequest = defaultJobsQueryInput,
+) => ({
+	...utils.jobs.list.queryOptions({ input }),
+	queryKey: jobsQueryKeys.list(input),
+	...defaultJobsQueryConfig,
 });
 export const allAuthorsQueryOptions = () => ({
 	...utils.authors.list.queryOptions(),

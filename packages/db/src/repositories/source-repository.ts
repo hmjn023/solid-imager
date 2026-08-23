@@ -38,7 +38,10 @@ export function createSourceRepository(
 	return {
 		async findAll(): Promise<MediaSource[]> {
 			try {
-				const results = await getExecutor().select().from(mediaSources);
+				const results = await getExecutor()
+					.select()
+					.from(mediaSources)
+					.orderBy(mediaSources.name);
 				return results.map(mapToMediaSource);
 			} catch (error) {
 				throw new UnexpectedError("Failed to select media sources", error);

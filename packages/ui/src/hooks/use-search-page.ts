@@ -82,6 +82,8 @@ export interface UseSearchPageOptions {
 	gcTime?: number;
 	refreshDebounceMs?: number;
 	isSearchStateRestored?: Accessor<boolean>;
+	commitSearchHistory?: () => void;
+	historyEntryKey?: Accessor<string | undefined>;
 	enableVirtualization?: boolean;
 	scrollContainerSelector?: string;
 }
@@ -135,6 +137,8 @@ export function useSearchPage(
 		gcTime = DEFAULT_GC_TIME,
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored = () => true,
+		commitSearchHistory,
+		historyEntryKey,
 		enableVirtualization = false,
 	} = options;
 	const queryClient = useQueryClient();
@@ -340,7 +344,7 @@ export function useSearchPage(
 	};
 
 	const isRestored = useScrollRestoration({
-		restoreKey: () => "search",
+		restoreKey: () => historyEntryKey?.() ?? "search",
 		getPosition: () => scrollY(),
 		setPosition: (key, position) => {
 			void key;
@@ -367,6 +371,7 @@ export function useSearchPage(
 		setOffset(0);
 		setScrollY(0);
 		scrollToPosition(options.scrollContainerSelector, 0);
+		commitSearchHistory?.();
 	};
 
 	const [loadMoreRef, setLoadMoreRef] = createSignal<

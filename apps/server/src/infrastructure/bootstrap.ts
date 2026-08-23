@@ -83,7 +83,7 @@ export function initServices() {
 	services.registerImageProcessor(ImageProcessor);
 
 	// Initialize RustAiClient with config values
-	const rustAiClient = new RustAiClient(config.ai.baseUrl, config.ai.timeoutMs);
+	const rustAiClient = new RustAiClient(config.ai);
 	services.registerAiClient(rustAiClient);
 	configService.onChange((newConfig) =>
 		rustAiClient.updateConfig(newConfig.ai),

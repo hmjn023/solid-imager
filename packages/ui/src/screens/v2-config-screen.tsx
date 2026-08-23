@@ -28,6 +28,7 @@ import {
 	FormFieldMessage,
 	getFormErrorMessage,
 } from "../form-message";
+import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
 import { Label } from "../label";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
@@ -382,6 +383,31 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 											value={field().state.value ?? ""}
 										/>
 									</div>
+								)}
+							</form.Field>
+							<form.Field name="ai.provider">
+								{(providerField) => (
+									<form.Field name="ai.device">
+										{(deviceField) => (
+											<InferenceDeviceFields
+												device={deviceField().state.value}
+												deviceError={getFormErrorMessage(
+													deviceField().state.meta.errors[0],
+												)}
+												onDeviceChange={(device) =>
+													deviceField().handleChange(device || undefined)
+												}
+												onProviderChange={(provider) =>
+													providerField().handleChange(provider)
+												}
+												provider={providerField().state.value ?? "auto"}
+												providerError={getFormErrorMessage(
+													providerField().state.meta.errors[0],
+												)}
+												idPrefix="v2-ai-inference"
+											/>
+										)}
+									</form.Field>
 								)}
 							</form.Field>
 						</div>

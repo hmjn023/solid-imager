@@ -9,6 +9,7 @@ import type {
 	PostDownloadMessage,
 	TweetMetadata,
 } from "@ext/schema";
+import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
 
 const DATE_STRING_LENGTH = 19; // "YYYY-MM-DDTHH-mm-ss"
 
@@ -77,29 +78,33 @@ async function getMediaSources(): Promise<SafeMediaSource[]> {
 	}
 }
 
-// Determine which source ID to use
 async function getTargetSourceId(): Promise<string | null> {
-	// 1. Check local storage for user selection
 	const result: { selectedSourceId?: string } = await chrome.storage.local.get([
 		"selectedSourceId",
 	]);
-	if (result.selectedSourceId) {
-		return result.selectedSourceId;
-	}
 
-	// 2. Fallback
 	const sources = await getMediaSources();
-	const twitterSource = sources.find((s) => s.name === "twitter");
-	if (twitterSource?.id) {
-		await chrome.storage.local.set({ selectedSourceId: twitterSource.id });
-		return twitterSource.id;
-	}
-	if (sources.length > 0 && sources[0].id) {
-		await chrome.storage.local.set({ selectedSourceId: sources[0].id });
-		return sources[0].id;
+	if (sources.length === 0) {
+		return result.selectedSourceId ?? null;
 	}
 
-	return null;
+	const selectableSources = sources.filter(
+		(source): source is SafeMediaSource & { id: string } =>
+			typeof source.id === "string",
+	);
+	const resolved = resolveEffectiveSourceId(
+		selectableSources,
+		result.selectedSourceId,
+		"twitter",
+	);
+	if (!resolved?.id) {
+		return result.selectedSourceId ?? null;
+	}
+
+	if (resolved.id !== result.selectedSourceId) {
+		await chrome.storage.local.set({ selectedSourceId: resolved.id });
+	}
+	return resolved.id;
 }
 
 async function postDownloads(items: TweetMetadata[]) {

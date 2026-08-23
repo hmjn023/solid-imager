@@ -20,6 +20,10 @@
       "description": "Operations for managing media files and their metadata"
     },
     {
+      "name": "Search Snapshots",
+      "description": "Operations for storing and restoring immutable search states used by browser history"
+    },
+    {
       "name": "Tags",
       "description": "Operations for managing tags and tag associations"
     },
@@ -8591,11 +8595,32 @@
                           "type": "number",
                           "minimum": 1000,
                           "default": 120000
+                        },
+                        "provider": {
+                          "enum": [
+                            "auto",
+                            "cpu",
+                            "cuda",
+                            "tensorrt",
+                            "directml",
+                            "intel_gpu",
+                            "intel_npu",
+                            "amd_gpu",
+                            "amd_npu",
+                            "openvino"
+                          ],
+                          "type": "string",
+                          "default": "auto"
+                        },
+                        "device": {
+                          "type": "string",
+                          "maxLength": 64
                         }
                       },
                       "default": {
                         "baseUrl": "",
-                        "timeoutMs": 120000
+                        "timeoutMs": 120000,
+                        "provider": "auto"
                       }
                     },
                     "downloads": {
@@ -8889,11 +8914,32 @@
                         "type": "number",
                         "minimum": 1000,
                         "default": 120000
+                      },
+                      "provider": {
+                        "enum": [
+                          "auto",
+                          "cpu",
+                          "cuda",
+                          "tensorrt",
+                          "directml",
+                          "intel_gpu",
+                          "intel_npu",
+                          "amd_gpu",
+                          "amd_npu",
+                          "openvino"
+                        ],
+                        "type": "string",
+                        "default": "auto"
+                      },
+                      "device": {
+                        "type": "string",
+                        "maxLength": 64
                       }
                     },
                     "default": {
                       "baseUrl": "",
-                      "timeoutMs": 120000
+                      "timeoutMs": 120000,
+                      "provider": "auto"
                     }
                   },
                   "downloads": {
@@ -10196,6 +10242,254 @@
             }
           }
         }
+      }
+    },
+    "/searchSnapshots/capture": {
+      "post": {
+        "operationId": "searchSnapshots.capture",
+        "summary": "検索状態を履歴スナップショットとして保存",
+        "description": "ブラウザ履歴から復元できる検索条件を保存し、スナップショットIDを返します。",
+        "tags": [
+          "Search Snapshots"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "$ref": "#/components/schemas/SearchSnapshotState"
+                  }
+                },
+                "required": [
+                  "state"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/searchSnapshots/get": {
+      "post": {
+        "operationId": "searchSnapshots.get",
+        "summary": "検索履歴スナップショット取得",
+        "description": "スナップショットIDから保存済みの検索条件を取得します。",
+        "tags": [
+          "Search Snapshots"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SafeSearchSnapshot"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "SearchSnapshotState": {
+        "type": "object",
+        "description": "検索結果を再現するための条件。ページング、スクロール位置、ユーザープリセットIDは含みません。",
+        "properties": {
+          "mode": {
+            "enum": [
+              "simple",
+              "pro",
+              "vector"
+            ],
+            "type": "string"
+          },
+          "searchQuery": {
+            "type": "string"
+          },
+          "selectedTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "excludeTags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "tagMode": {
+            "enum": [
+              "and",
+              "or"
+            ],
+            "type": "string"
+          },
+          "selectedSource": {
+            "type": "string"
+          },
+          "selectedProjects": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "selectedIps": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "selectedCharacters": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "selectedAuthors": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "advancedCondition": {
+            "anyOf": [
+              {
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "similarityAnchorMediaId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "similarityTopK": {
+            "enum": [
+              20,
+              50,
+              100
+            ],
+            "type": "integer"
+          },
+          "limit": {
+            "type": "number"
+          },
+          "sortBy": {
+            "enum": [
+              "date",
+              "name",
+              "size",
+              "rating",
+              "viewCount"
+            ],
+            "type": "string"
+          },
+          "sortOrder": {
+            "enum": [
+              "asc",
+              "desc"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "mode",
+          "searchQuery",
+          "selectedTags",
+          "excludeTags",
+          "tagMode",
+          "selectedSource",
+          "selectedProjects",
+          "selectedIps",
+          "selectedCharacters",
+          "selectedAuthors",
+          "advancedCondition",
+          "similarityAnchorMediaId",
+          "similarityTopK",
+          "limit",
+          "sortBy",
+          "sortOrder"
+        ]
+      },
+      "SafeSearchSnapshotState": {
+        "$ref": "#/components/schemas/SearchSnapshotState"
+      },
+      "SafeSearchSnapshot": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "version": {
+            "const": 1,
+            "type": "integer"
+          },
+          "state": {
+            "$ref": "#/components/schemas/SafeSearchSnapshotState"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "state"
+        ]
       }
     }
   }

@@ -10,6 +10,7 @@ export { createMediaRepository } from "./repositories/media-repository";
 export { createMediaSearchFunctions } from "./repositories/media-repository-utils";
 export { createPresetRepository } from "./repositories/preset-repository";
 export { createProjectRepository } from "./repositories/project-repository";
+export { createSearchSnapshotRepository } from "./repositories/search-snapshot-repository";
 export { createSourceRepository } from "./repositories/source-repository";
 export { createTagRepository } from "./repositories/tag-repository";
 export { createUserRepository } from "./repositories/user-repository";

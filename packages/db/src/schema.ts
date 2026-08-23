@@ -1119,6 +1119,26 @@ export const presets = pgTable("presets", {
 	createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+/**
+ * Immutable server-side search states referenced by browser history URLs.
+ * User-facing presets remain separate from automatically captured searches.
+ */
+export const searchSnapshots = pgTable(
+	"search_snapshots",
+	{
+		id: uuid("id").primaryKey().default(sql`gen_random_uuid()`),
+		version: integer("version").notNull().default(1),
+		fingerprint: text("fingerprint").notNull().unique(),
+		state: jsonb("state").notNull(),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+	},
+	(table) => ({
+		createdAtIndex: index("idx_search_snapshots_created_at").on(
+			table.createdAt,
+		),
+	}),
+);
+
 // リレーション
 /**
  * Defines the relations for the media_sources table.
@@ -1735,6 +1755,10 @@ export type Preset = InferSelectModel<typeof presets>;
  * Type definition for inserting a new preset into the database.
  */
 export type NewPreset = InferInsertModel<typeof presets>;
+
+export type SearchSnapshotRow = InferSelectModel<typeof searchSnapshots>;
+
+export type NewSearchSnapshotRow = InferInsertModel<typeof searchSnapshots>;
 
 /**
  * Type definition for selecting a media relation from the database.
