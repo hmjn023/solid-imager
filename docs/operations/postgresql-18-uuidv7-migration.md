@@ -2,7 +2,7 @@
 
 本手順は、PostgreSQL 17 + `pgvector` から PostgreSQL 18 へ移行し、既存のUUIDv4をUUIDv7へ変換する際に使用する。
 
-今回の移行では、メディアの `created_at` など既存の時刻情報を元にUUIDv7を生成する。旧IDと新IDの対応は `uuidv7_migration_map` に保持され、ジョブ・検索履歴・プリセットなどのID参照を含むJSONBも移行対象となる。
+今回の移行では、メディアの `created_at` など既存の時刻情報を元にUUIDv7を生成する。メディアの `created_at` がUnix epochを未知値として使っている場合は `modified_at` をフォールバックにする。旧IDと新IDの対応は `uuidv7_migration_map` に保持され、ジョブ・検索履歴・プリセットなどのID参照を含むJSONBも移行対象となる。
 
 ## 事前確認
 

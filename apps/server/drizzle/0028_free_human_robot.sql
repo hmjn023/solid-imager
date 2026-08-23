@@ -24,8 +24,19 @@ FROM media_sources;
 --> statement-breakpoint
 INSERT INTO "uuidv7_migration_map" ("entity", "old_id", "new_id", "source_timestamp")
 SELECT 'media', id,
-	uuidv7(created_at - (transaction_timestamp() AT TIME ZONE 'UTC')),
-	created_at
+	uuidv7(
+		COALESCE(
+			NULLIF(created_at, TIMESTAMP '1970-01-01 00:00:00'),
+			NULLIF(modified_at, TIMESTAMP '1970-01-01 00:00:00'),
+			transaction_timestamp() AT TIME ZONE 'UTC'
+		)
+		- (transaction_timestamp() AT TIME ZONE 'UTC')
+	),
+	COALESCE(
+		NULLIF(created_at, TIMESTAMP '1970-01-01 00:00:00'),
+		NULLIF(modified_at, TIMESTAMP '1970-01-01 00:00:00'),
+		transaction_timestamp() AT TIME ZONE 'UTC'
+	)
 FROM media;
 --> statement-breakpoint
 INSERT INTO "uuidv7_migration_map" ("entity", "old_id", "new_id", "source_timestamp")
