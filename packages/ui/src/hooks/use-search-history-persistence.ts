@@ -64,8 +64,8 @@ function parseHistoryEntry(value: unknown): HistorySnapshotEntry | null {
 	};
 }
 
-function readSnapshotState(): SearchSnapshotState {
-	return searchSnapshotStateSchema.parse({
+function readSnapshotState(): SearchSnapshotState | null {
+	const parsed = searchSnapshotStateSchema.safeParse({
 		mode: searchState.mode,
 		searchQuery: searchState.searchQuery,
 		selectedTags: [...searchState.selectedTags],
@@ -83,6 +83,7 @@ function readSnapshotState(): SearchSnapshotState {
 		sortBy: searchState.sortBy,
 		sortOrder: searchState.sortOrder,
 	});
+	return parsed.success ? parsed.data : null;
 }
 
 function stateKey(state: SearchSnapshotState): string {
@@ -260,6 +261,10 @@ export function useSearchHistoryPersistence(
 			}
 
 			const state = readSnapshotState();
+			if (!state) {
+				setHistoryRestored(true);
+				return;
+			}
 			skipNextCommitState = stateKey(state);
 			const entry: HistorySnapshotEntry = {
 				version: HISTORY_VERSION,
@@ -282,6 +287,7 @@ export function useSearchHistoryPersistence(
 			return;
 		}
 		const state = readSnapshotState();
+		if (!state) return;
 		const key = stateKey(state);
 		if (skipNextCommitState === key) {
 			skipNextCommitState = null;
@@ -343,6 +349,7 @@ export function useSearchHistoryPersistence(
 	createEffect(() => {
 		if (isServer || !isRestored()) return;
 		const state = readSnapshotState();
+		if (!state) return;
 		const key = stateKey(state);
 		if (skipNextCommitState === key) {
 			skipNextCommitState = null;
