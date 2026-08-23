@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type {
 	Author,
@@ -161,7 +160,6 @@ async function findOrCreateAuthorsBulk(
 			: new Set<string>();
 
 	const accountsToInsert: (typeof authorAccounts.$inferInsert)[] = [];
-	const authorsToInsert: (typeof authors.$inferInsert)[] = [];
 	const newlyCreatedAuthorByKey = new Map<string, string>();
 	for (const [key, input] of unresolved) {
 		const legacyByMatchingAccount = input.accountId
@@ -174,22 +172,21 @@ async function findOrCreateAuthorsBulk(
 		const canReuseLegacy =
 			legacy && (!input.platform || !linkedLegacyAuthorIds.has(legacy.id));
 
-		const author =
-			canReuseLegacy && legacy
-				? legacy
-				: {
-						id: randomUUID(),
-						name: input.name,
-						accountId: input.accountId ?? null,
-						createdAt: new Date(),
-						updatedAt: new Date(),
-					};
-		if (!canReuseLegacy) {
-			authorsToInsert.push({
-				id: author.id,
-				name: author.name,
-				accountId: author.accountId,
-			});
+		let author: typeof authors.$inferSelect;
+		if (canReuseLegacy && legacy) {
+			author = legacy;
+		} else {
+			const [createdAuthor] = await client
+				.insert(authors)
+				.values({
+					name: input.name,
+					accountId: input.accountId ?? null,
+				})
+				.returning();
+			if (!createdAuthor) {
+				throw new Error(`Failed to create author for ${input.name}`);
+			}
+			author = createdAuthor;
 			newlyCreatedAuthorByKey.set(key, author.id);
 		}
 		resolved.set(key, author);
@@ -203,9 +200,6 @@ async function findOrCreateAuthorsBulk(
 		}
 	}
 
-	if (authorsToInsert.length > 0) {
-		await client.insert(authors).values(authorsToInsert);
-	}
 	if (accountsToInsert.length > 0) {
 		const insertedAccounts = await client
 			.insert(authorAccounts)

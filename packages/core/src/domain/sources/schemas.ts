@@ -6,7 +6,6 @@
 import { z } from "zod";
 
 export const mediaSourceIdSchema = z.uuid({
-	version: "v4",
 	message: "Invalid source ID format",
 });
 export type MedioaSourceId = z.infer<typeof mediaSourceIdSchema>;
@@ -49,7 +48,7 @@ export const mediaSourceSyncStateSchema = z.enum(["idle", "syncing", "error"]);
 export type MediaSourceSyncState = z.infer<typeof mediaSourceSyncStateSchema>;
 
 export const mediaSourceInfoSchema = z.object({
-	id: z.uuid({ version: "v4" }).optional(),
+	id: z.uuid().optional(),
 	name: z.string(),
 	description: z.string().nullable(),
 	type: mediaSourceTypeEnumSchema,

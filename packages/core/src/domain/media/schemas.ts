@@ -24,7 +24,7 @@ export type AuthorPlatform = z.infer<typeof authorPlatformSchema>;
  * Ensures all required fields for new media are present and correctly formatted.
  */
 export const addMediaRequestSchema = z.object({
-	mediaSourceId: z.uuid({ version: "v4", message: "Invalid source ID format" }),
+	mediaSourceId: z.uuid({ message: "Invalid source ID format" }),
 	filePath: z.string().min(1, "File path is required"),
 	fileName: z.string().min(1, "File name is required"),
 	fileSize: z.number().int().positive("File size must be a positive integer"),
@@ -106,7 +106,6 @@ export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
  * Ensures the ID is a valid UUID format.
  */
 export const mediaIdSchema = z.uuid({
-	version: "v4",
 	message: "Invalid media ID format",
 });
 export type MediaId = z.infer<typeof mediaIdSchema>;
@@ -116,7 +115,6 @@ export type MediaId = z.infer<typeof mediaIdSchema>;
  * Ensures the ID is a valid UUID format.
  */
 export const mediaSourceIdSchema = z.uuid({
-	version: "v4",
 	message: "Invalid source ID format",
 });
 export type SourceId = z.infer<typeof mediaSourceIdSchema>;
@@ -145,8 +143,8 @@ export type ExtractedData = z.infer<typeof extractedDataSchema>;
 
 // Base schemas mirroring database tables
 export const mediaSchema = z.object({
-	id: z.uuid({ version: "v4" }),
-	mediaSourceId: z.uuid({ version: "v4" }),
+	id: z.uuid(),
+	mediaSourceId: z.uuid(),
 	filePath: z.string(),
 	fileName: z.string(),
 	mediaType: mediaTypeSchema,
@@ -179,7 +177,7 @@ export const mediaSafeSchema = mediaSchema.pick({
 export type MediaSafe = z.infer<typeof mediaSafeSchema>;
 
 export const authorSchema = z.object({
-	id: z.uuid({ version: "v4" }),
+	id: z.uuid(),
 	name: z.string(),
 	accountId: z.string().nullable(),
 	createdAt: z.coerce.date(),
@@ -197,8 +195,8 @@ export const newAuthorSchema = z.object({
 export type NewAuthor = z.infer<typeof newAuthorSchema>;
 
 export const mediaUrlSchema = z.object({
-	id: z.uuid({ version: "v4" }),
-	mediaId: z.uuid({ version: "v4" }),
+	id: z.uuid(),
+	mediaId: z.uuid(),
 	url: z.string().url(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
@@ -248,7 +246,7 @@ export const ipSchema = z.object({
 export type MediaIp = z.infer<typeof ipSchema>;
 
 export const mediaGenerationInfoSchema = z.object({
-	mediaId: z.uuid({ version: "v4" }),
+	mediaId: z.uuid(),
 	metadata: z.any().nullable(),
 	prompt: z.string().nullable(),
 	negativePrompt: z.string().nullable(),
@@ -543,7 +541,7 @@ export const pendingImportCountSchema = z.object({
 export type PendingImportCount = z.infer<typeof pendingImportCountSchema>;
 
 export const bulkDownloadRequestSchema = z.object({
-	mediaSourceId: z.uuid({ version: "v4", message: "Invalid media source ID" }),
+	mediaSourceId: z.uuid({ message: "Invalid media source ID" }),
 	items: z.array(downloadItemSchema).min(1, "At least one item is required"),
 });
 
@@ -568,7 +566,6 @@ export {
 
 export const copyMediaRequestSchema = z.object({
 	targetSourceId: z.uuid({
-		version: "v4",
 		message: "Invalid target source ID",
 	}),
 });
@@ -622,8 +619,8 @@ export const duplicateReasonSchema = z.enum(["sourceUrl"]);
 export type DuplicateReason = z.infer<typeof duplicateReasonSchema>;
 
 export const duplicateMediaItemSchema = z.object({
-	id: z.uuid({ version: "v4" }),
-	mediaSourceId: z.uuid({ version: "v4" }),
+	id: z.uuid(),
+	mediaSourceId: z.uuid(),
 	fileName: z.string(),
 	filePath: z.string(),
 	fileSize: z.number().nullable(),
@@ -651,7 +648,7 @@ export type FindDuplicatesResponse = z.infer<
 >;
 
 export const findDuplicatesRequestSchema = z.object({
-	mediaSourceId: z.uuid({ version: "v4" }).optional(),
+	mediaSourceId: z.uuid().optional(),
 });
 export type FindDuplicatesRequest = z.infer<typeof findDuplicatesRequestSchema>;
 

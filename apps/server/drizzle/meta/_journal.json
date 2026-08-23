@@ -190,6 +190,20 @@
       "when": 1787235852419,
       "tag": "0026_nebulous_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1787481127595,
+      "tag": "0027_acoustic_impossible_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1787481426956,
+      "tag": "0028_free_human_robot",
+      "breakpoints": true
     }
   ]
 }
