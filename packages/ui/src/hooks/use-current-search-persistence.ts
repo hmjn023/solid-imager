@@ -25,6 +25,7 @@ export type { SearchPersistenceSurface } from "../stores/search-store";
 
 export type SearchPersistenceOptions = {
 	surface?: SearchPersistenceSurface;
+	historyEntryKey?: string | Accessor<string | undefined>;
 };
 
 export type SearchPersistenceSource =
@@ -44,8 +45,11 @@ function getCurrentPresetName(sourceId: string | null | undefined) {
 function getScrollStorageKey(
 	presetName: string,
 	surface: SearchPersistenceSurface,
+	historyEntryKey?: string,
 ): string {
-	return `search-scroll:${surface}:${presetName}`;
+	return historyEntryKey
+		? `search-scroll:${surface}:history:${historyEntryKey}`
+		: `search-scroll:${surface}:${presetName}`;
 }
 
 function getStateStorageKey(
@@ -97,12 +101,46 @@ export function persistSearchScrollPosition(
 	}
 
 	try {
+		const historyEntryKey =
+			typeof options.historyEntryKey === "function"
+				? options.historyEntryKey()
+				: options.historyEntryKey;
 		sessionStorage.setItem(
-			getScrollStorageKey(presetName, options.surface ?? "legacy"),
+			getScrollStorageKey(
+				presetName,
+				options.surface ?? "legacy",
+				historyEntryKey,
+			),
 			String(normalizeScrollPosition(position)),
 		);
 	} catch {
 		// Persistence errors must not disrupt the UI.
+	}
+}
+
+export function readPersistedSearchScrollPosition(
+	sourceId: SearchPersistenceSource = "current",
+	options: SearchPersistenceOptions = {},
+): number {
+	if (isServer) return 0;
+	const resolvedSourceId =
+		typeof sourceId === "function" ? sourceId() : sourceId;
+	const presetName = getCurrentPresetName(resolvedSourceId);
+	if (!presetName) return 0;
+	const historyEntryKey =
+		typeof options.historyEntryKey === "function"
+			? options.historyEntryKey()
+			: options.historyEntryKey;
+	try {
+		return readScrollPosition(
+			getScrollStorageKey(
+				presetName,
+				options.surface ?? "legacy",
+				historyEntryKey,
+			),
+		);
+	} catch {
+		return 0;
 	}
 }
 

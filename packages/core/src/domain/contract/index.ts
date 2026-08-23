@@ -12,6 +12,8 @@ export { mediaContract } from "./media.contract";
 export { presetsContract } from "./presets.contract";
 export type { PresetOrpcLike } from "./presets-client";
 export { projectsContract } from "./projects.contract";
+export { searchSnapshotsContract } from "./search-snapshots.contract";
+export type { SearchSnapshotsOrpcLike } from "./search-snapshots-client";
 export { sourcesContract } from "./sources.contract";
 export { tagsContract } from "./tags.contract";
 export { thumbnailsContract } from "./thumbnails.contract";
@@ -30,6 +32,7 @@ import { jobsContract } from "./jobs.contract";
 import { mediaContract } from "./media.contract";
 import { presetsContract } from "./presets.contract";
 import { projectsContract } from "./projects.contract";
+import { searchSnapshotsContract } from "./search-snapshots.contract";
 import { sourcesContract } from "./sources.contract";
 import { tagsContract } from "./tags.contract";
 import { thumbnailsContract } from "./thumbnails.contract";
@@ -57,6 +60,7 @@ export const appContract = {
 	utils: utilsContract,
 	config: configContract,
 	presets: presetsContract,
+	searchSnapshots: searchSnapshotsContract,
 };
 
 export type AppContract = typeof appContract;
