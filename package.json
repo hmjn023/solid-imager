@@ -15,7 +15,7 @@
     "check": "biome check . && bun run typecheck && bun run design:lint",
     "design:lint": "designmd lint DESIGN.md",
     "format": "biome format --write .",
-    "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
+    "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd apps/xtracter test && bun run --cwd packages/core test && bun run --cwd packages/ui test",
     "typecheck": "bun --filter '*' typecheck",
     "prepare": "husky"
   },
