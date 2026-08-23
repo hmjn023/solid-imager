@@ -20,7 +20,7 @@ function mapToEntity(row: SearchSnapshotRow): SearchSnapshot {
 }
 
 export function createSearchSnapshotRepository(
-	getExecutor: (tx?: unknown) => DrizzleExecutor,
+	getExecutor: () => DrizzleExecutor,
 ): SearchSnapshotRepository {
 	const getBy = async (
 		column: typeof searchSnapshots.id | typeof searchSnapshots.fingerprint,

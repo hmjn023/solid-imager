@@ -1,8 +1,9 @@
 import type {
-	SearchSnapshot,
+	SafeSearchSnapshot,
 	SearchSnapshotState,
 } from "@solid-imager/core/domain/search/history";
 import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
+import type { HistoryLocation } from "@tanstack/solid-router";
 import { useLocation, useRouter } from "@tanstack/solid-router";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
@@ -26,6 +27,12 @@ type HistorySnapshotEntry = {
 	version: typeof HISTORY_VERSION;
 	id?: string;
 	state: SearchSnapshotState;
+};
+
+type NavigationBlockerArgs = {
+	currentLocation: Pick<HistoryLocation, "pathname">;
+	nextLocation: Pick<HistoryLocation, "pathname" | "href" | "state">;
+	action: "PUSH" | "REPLACE" | "FORWARD" | "BACK" | "GO";
 };
 
 type SearchHistoryOptions = SearchPersistenceOptions & {
@@ -122,6 +129,12 @@ function mergeHistoryEntry(
 	};
 }
 
+function removeSearchSnapshot(state: unknown): Record<string, unknown> {
+	const nextState = { ...getRecord(state) };
+	delete nextState.searchSnapshot;
+	return nextState;
+}
+
 /**
  * Restores a search state from the URL/history entry and captures settled
  * result-changing state as browser history entries.
@@ -144,6 +157,8 @@ export function useSearchHistoryPersistence(
 
 	const currentHref = () => router.history.location.href;
 	const currentHistoryState = () => router.history.location.state;
+	const routePathname = new URL(currentHref(), "http://solid-imager.invalid")
+		.pathname;
 	const currentEntryKey = () =>
 		readHistoryEntryKey(currentHistoryState(), currentHref());
 
@@ -151,6 +166,7 @@ export function useSearchHistoryPersistence(
 		router.history.replace(
 			createPathWithoutSnapshot(currentHref()),
 			mergeHistoryEntry(currentHistoryState(), entry),
+			{ ignoreBlocker: true },
 		);
 		router.history.flush();
 		return currentEntryKey();
@@ -162,7 +178,13 @@ export function useSearchHistoryPersistence(
 	) => {
 		try {
 			const response = await options.client.capture(state);
-			if (currentEntryKey() !== entryKey) return;
+			if (
+				new URL(currentHref(), "http://solid-imager.invalid").pathname !==
+					routePathname ||
+				currentEntryKey() !== entryKey
+			) {
+				return;
+			}
 			const currentEntry = parseHistoryEntry(currentHistoryState());
 			const nextEntry: HistorySnapshotEntry = {
 				version: HISTORY_VERSION,
@@ -173,6 +195,7 @@ export function useSearchHistoryPersistence(
 			router.history.replace(
 				path,
 				mergeHistoryEntry(currentHistoryState(), nextEntry),
+				{ ignoreBlocker: true },
 			);
 			router.history.flush();
 		} catch {
@@ -200,7 +223,8 @@ export function useSearchHistoryPersistence(
 				snapshotState = localEntry.state;
 			} else if (queryId) {
 				try {
-					const snapshot: SearchSnapshot = await options.client.get(queryId);
+					const snapshot: SafeSearchSnapshot =
+						await options.client.get(queryId);
 					if (generation !== restoreGeneration) return;
 					snapshotState = snapshot.state;
 				} catch {
@@ -209,6 +233,7 @@ export function useSearchHistoryPersistence(
 					router.history.replace(
 						createPathWithoutSnapshot(href),
 						getRecord(currentHistoryState()),
+						{ ignoreBlocker: true },
 					);
 					router.history.flush();
 				}
@@ -249,7 +274,13 @@ export function useSearchHistoryPersistence(
 	});
 
 	const commitCurrentState = () => {
-		if (!isRestored()) return;
+		if (
+			!isRestored() ||
+			new URL(currentHref(), "http://solid-imager.invalid").pathname !==
+				routePathname
+		) {
+			return;
+		}
 		const state = readSnapshotState();
 		const key = stateKey(state);
 		if (skipNextCommitState === key) {
@@ -263,11 +294,51 @@ export function useSearchHistoryPersistence(
 		router.history.push(
 			createPathWithoutSnapshot(currentHref()),
 			mergeHistoryEntry(currentHistoryState(), entry),
+			{ ignoreBlocker: true },
 		);
 		router.history.flush();
 		const pushedKey = currentEntryKey();
 		void captureForCurrentEntry(pushedKey, state);
 	};
+
+	let navigationCommitTriggered = false;
+	const disposeNavigationBlocker = isServer
+		? undefined
+		: router.history.block({
+				enableBeforeUnload: false,
+				blockerFn: ({
+					currentLocation,
+					nextLocation,
+					action,
+				}: NavigationBlockerArgs) => {
+					if (
+						(action !== "PUSH" && action !== "REPLACE") ||
+						currentLocation.pathname !== routePathname ||
+						nextLocation.pathname === routePathname
+					) {
+						return false;
+					}
+					navigationCommitTriggered = true;
+					commitCurrentState();
+					if (action === "REPLACE") {
+						router.history.replace(
+							nextLocation.href,
+							removeSearchSnapshot(nextLocation.state),
+							{
+								ignoreBlocker: true,
+							},
+						);
+					} else {
+						router.history.push(
+							nextLocation.href,
+							removeSearchSnapshot(nextLocation.state),
+							{ ignoreBlocker: true },
+						);
+					}
+					router.history.flush();
+					return true;
+				},
+			});
 
 	createEffect(() => {
 		if (isServer || !isRestored()) return;
@@ -285,6 +356,8 @@ export function useSearchHistoryPersistence(
 	});
 
 	onCleanup(() => {
+		disposeNavigationBlocker?.();
+		if (!navigationCommitTriggered) commitCurrentState();
 		if (commitTimer) clearTimeout(commitTimer);
 	});
 

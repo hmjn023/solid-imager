@@ -3,12 +3,14 @@ import {
 	captureSearchSnapshotRequestSchema,
 	captureSearchSnapshotResponseSchema,
 	getSearchSnapshotRequestSchema,
-	searchSnapshotSchema,
+	safeSearchSnapshotSchema,
 } from "../search/history";
 
 export const searchSnapshotsContract = {
 	capture: oc
 		.input(captureSearchSnapshotRequestSchema)
 		.output(captureSearchSnapshotResponseSchema),
-	get: oc.input(getSearchSnapshotRequestSchema).output(searchSnapshotSchema),
+	get: oc
+		.input(getSearchSnapshotRequestSchema)
+		.output(safeSearchSnapshotSchema),
 };

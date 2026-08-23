@@ -294,10 +294,10 @@ export function useSourceMediaPage(
 
 	// --- Search handler ---
 	const handleSearch = () => {
+		commitSearchHistory?.();
 		const sourceId = id();
 		if (sourceId) setScrollPosition(sourceId, 0, historyEntryKey?.());
 		scrollToPosition(options.scrollContainerSelector, 0);
-		commitSearchHistory?.();
 	};
 
 	let nextPageFetchInFlight = false;

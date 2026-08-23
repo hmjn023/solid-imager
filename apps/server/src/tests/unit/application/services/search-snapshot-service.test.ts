@@ -1,3 +1,4 @@
+import { fingerprintState } from "@solid-imager/application/services/search-snapshot-service";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type { SearchSnapshotRepository } from "@solid-imager/core/domain/repositories/search-snapshot-repository";
 import {
@@ -60,6 +61,32 @@ describe("SearchSnapshotService", () => {
 			.fingerprint;
 
 		expect(secondFingerprint).toBe(firstFingerprint);
+	});
+
+	it("generates the same fingerprint when state keys are inserted in a different order", () => {
+		const reorderedState = {
+			sortOrder: snapshotState.sortOrder,
+			sortBy: snapshotState.sortBy,
+			limit: snapshotState.limit,
+			similarityTopK: snapshotState.similarityTopK,
+			similarityAnchorMediaId: snapshotState.similarityAnchorMediaId,
+			advancedCondition: snapshotState.advancedCondition,
+			selectedAuthors: snapshotState.selectedAuthors,
+			selectedCharacters: snapshotState.selectedCharacters,
+			selectedIps: snapshotState.selectedIps,
+			selectedProjects: snapshotState.selectedProjects,
+			selectedSource: snapshotState.selectedSource,
+			tagMode: snapshotState.tagMode,
+			excludeTags: snapshotState.excludeTags,
+			selectedTags: snapshotState.selectedTags,
+			searchQuery: snapshotState.searchQuery,
+			mode: snapshotState.mode,
+		} satisfies typeof snapshotState;
+
+		expect(Object.keys(reorderedState)).not.toEqual(Object.keys(snapshotState));
+		expect(fingerprintState(reorderedState)).toBe(
+			fingerprintState(snapshotState),
+		);
 	});
 
 	it("throws a typed not-found error", async () => {

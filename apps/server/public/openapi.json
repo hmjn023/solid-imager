@@ -10326,7 +10326,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/SearchSnapshot"
+                  "$ref": "#/components/schemas/SafeSearchSnapshot"
                 }
               }
             }
@@ -10467,7 +10467,10 @@
           "sortOrder"
         ]
       },
-      "SearchSnapshot": {
+      "SafeSearchSnapshotState": {
+        "$ref": "#/components/schemas/SearchSnapshotState"
+      },
+      "SafeSearchSnapshot": {
         "type": "object",
         "properties": {
           "id": {
@@ -10478,23 +10481,14 @@
             "const": 1,
             "type": "integer"
           },
-          "fingerprint": {
-            "type": "string"
-          },
           "state": {
-            "$ref": "#/components/schemas/SearchSnapshotState"
-          },
-          "createdAt": {
-            "type": "string",
-            "format": "date-time"
+            "$ref": "#/components/schemas/SafeSearchSnapshotState"
           }
         },
         "required": [
           "id",
           "version",
-          "fingerprint",
-          "state",
-          "createdAt"
+          "state"
         ]
       }
     }

@@ -63,4 +63,4 @@ sequenceDiagram
 
 ## 検証
 
-`apps/server/src/tests/e2e/search-history.spec.ts` は、通常検索と類似検索を別々の履歴エントリにした後、詳細画面から `goBack()` を複数回実行し、各検索結果と direct URL reload が復元されることを確認する。
+`apps/server/src/tests/e2e/search-history.spec.ts` は、2つのファイル名検索を別々の履歴エントリにした後、詳細画面から `goBack()` を複数回実行し、各検索結果と direct URL reload が復元されることを確認する。

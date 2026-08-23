@@ -75,3 +75,36 @@ test("search results remain traversable across detail navigation", async ({
 		page.getByRole("link", { name: new RegExp(E2E_SIMILAR_FILE_NAME) }),
 	).toBeVisible();
 });
+
+test("flushes pending search state before immediate navigation", async ({
+	page,
+}) => {
+	await page.goto("/search");
+	await expect(
+		page.getByRole("heading", { name: "メディア検索", exact: true }),
+	).toBeVisible();
+	await waitForAppHydration(page);
+
+	const fileNameInput = page.getByPlaceholder("ファイル名を入力...");
+	const searchButton = page.getByRole("button", { name: "検索", exact: true });
+	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
+	await searchButton.click();
+	await expect(page).toHaveURL(snapshotUrl);
+
+	const primaryResult = page.getByRole("link", {
+		name: new RegExp(E2E_PRIMARY_FILE_NAME),
+	});
+	await expect(primaryResult).toBeVisible();
+
+	// Leave the current search before the debounce timer can commit the edit.
+	await fileNameInput.fill(E2E_SIMILAR_FILE_NAME);
+	await page.getByRole("link", { name: "Home", exact: true }).click();
+	await expect(page).toHaveURL(/\/$/);
+
+	await page.goBack();
+	await waitForAppHydration(page);
+	await expect(page).toHaveURL(/\/search(?:\?search=[0-9a-f-]{36})?$/);
+	await expect(page.getByPlaceholder("ファイル名を入力...")).toHaveValue(
+		E2E_SIMILAR_FILE_NAME,
+	);
+});

@@ -1,12 +1,12 @@
 import type { SearchSnapshotsOrpcLike } from "@solid-imager/core/domain/contract/search-snapshots-client";
 import type {
-	SearchSnapshot,
+	SafeSearchSnapshot,
 	SearchSnapshotState,
 } from "@solid-imager/core/domain/search/history";
 
 export type SearchHistoryClient = {
 	capture: (state: SearchSnapshotState) => Promise<{ id: string }>;
-	get: (id: string) => Promise<SearchSnapshot>;
+	get: (id: string) => Promise<SafeSearchSnapshot>;
 };
 
 export function createSearchHistoryClient(
