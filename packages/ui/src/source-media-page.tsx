@@ -7,9 +7,15 @@ import type {
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import type { Accessor, Component, JSX } from "solid-js";
+import {
+	type Accessor,
+	type Component,
+	createEffect,
+	type JSX,
+} from "solid-js";
 import { isServer } from "solid-js/web";
 import type { SearchPersistenceSurface } from "./hooks/use-current-search-persistence";
+import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaSourceEventTransport } from "./hooks/use-media-source-events";
 import { useSearchHistoryPersistence } from "./hooks/use-search-history-persistence";
 import {
@@ -56,6 +62,8 @@ export type SourceMediaPageProps = {
 	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
 	showOpenInNewTab?: boolean;
 	onToggleSelect?: (mediaId: string) => void;
+	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
+	onVisibleMediaIdsChange?: (mediaIds: readonly string[]) => void;
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
 	onBulkAction?: () => void;
@@ -141,6 +149,11 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		/>
 	);
 	const Screen = props.screenComponent;
+	createEffect(() => {
+		props.onVisibleMediaIdsChange?.(
+			page.mediaResults().map((media) => media.id),
+		);
+	});
 
 	return (
 		<Screen
@@ -165,6 +178,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			uploadModalComponent={props.uploadModalComponent}
 			showOpenInNewTab={props.showOpenInNewTab}
 			onToggleSelect={props.onToggleSelect}
+			onSelectMedia={props.onSelectMedia}
 			isBulkSelectMode={props.isBulkSelectMode}
 			isSelected={props.isSelected}
 			onBulkAction={props.onBulkAction}

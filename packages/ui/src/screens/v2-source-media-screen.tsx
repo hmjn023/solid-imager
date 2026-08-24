@@ -1,5 +1,5 @@
 import Upload from "lucide-solid/icons/upload";
-import { createSignal, onMount, Show } from "solid-js";
+import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import {
@@ -16,12 +16,16 @@ import {
 	type SourceMediaViewMode,
 } from "../source-media-grid";
 import { V2CollectionInspector } from "../v2/collection-inspector";
+import { reconcileCollectionPreviewId } from "../v2/collection-navigation";
 import { V2SearchToolbar } from "../v2/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
+
+const V2_SOURCE_VIEW_MODE_KEY = "solid-imager:v2:source-media:view-mode";
 
 export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
+	const [isInspectorVisible, setIsInspectorVisible] = createSignal(true);
 	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
 	const filterStates = () => Object.values(page().filterStates());
@@ -36,8 +40,39 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 	const prepareMediaDetail = (
 		media: import("@solid-imager/core/domain/media/schemas").Media,
 	) => props.onPrepareMediaDetail?.(media, page().mediaResults());
+	const selectPreviewMedia = (
+		media: import("@solid-imager/core/domain/media/schemas").Media,
+	) => {
+		setPreviewMediaId(media.id);
+		setIsInspectorVisible(true);
+	};
+	const updateViewMode = (mode: SourceMediaViewMode) => {
+		setViewMode(mode);
+		try {
+			localStorage.setItem(V2_SOURCE_VIEW_MODE_KEY, mode);
+		} catch {
+			// Storage can be unavailable in hardened browser contexts.
+		}
+	};
 
-	onMount(() => setIsMounted(true));
+	createEffect(() => {
+		const nextId = props.renderMediaPreview
+			? reconcileCollectionPreviewId(page().mediaResults(), previewMediaId())
+			: null;
+		if (nextId !== previewMediaId()) setPreviewMediaId(nextId);
+	});
+
+	onMount(() => {
+		setIsMounted(true);
+		try {
+			const storedMode = localStorage.getItem(V2_SOURCE_VIEW_MODE_KEY);
+			if (storedMode === "grid" || storedMode === "list") {
+				setViewMode(storedMode);
+			}
+		} catch {
+			// Keep the SSR-safe default when storage cannot be read.
+		}
+	});
 
 	return (
 		<section
@@ -84,7 +119,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 				onSearch={page().handleSearch}
 				presetClient={page().presetClient}
 				sourceName={props.mediaSourceName?.() ?? "メディア一覧"}
-				onViewModeChange={setViewMode}
+				onViewModeChange={updateViewMode}
 				viewMode={viewMode()}
 			/>
 
@@ -118,7 +153,13 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
 				data-media-scroll={page().mediaSourceId() ?? "v2-source"}
 			>
-				<div class="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4">
+				<div
+					class={
+						props.renderMediaPreview && isInspectorVisible()
+							? "2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4"
+							: "2xl:grid 2xl:grid-cols-[minmax(0,1fr)] 2xl:items-start"
+					}
+				>
 					<div class="min-w-0">
 						<Show
 							fallback={
@@ -139,21 +180,28 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 								isSelected={props.isSelected}
 								mediaResults={page().mediaResults}
 								mediaSourceId={page().mediaSourceId}
-								onOpenMediaDetail={openMediaDetail}
+								onOpenMediaDetail={
+									props.onOpenMediaDetail ? openMediaDetail : undefined
+								}
 								onPrepareMediaDetail={prepareMediaDetail}
 								onBulkAction={props.onBulkAction}
 								onClearSelection={props.onClearSelection}
 								onCopyMove={page().handleCopyMove}
 								onDelete={page().handleDelete}
 								onLoadMore={() => page().fetchNextPage()}
-								onPreviewSelect={(media) => setPreviewMediaId(media.id)}
+								onPreviewSelect={
+									props.renderMediaPreview ? selectPreviewMedia : undefined
+								}
 								onRetry={async () => {
 									await page().mediaQuery.refetch();
 								}}
+								onSelectMedia={props.onSelectMedia}
 								onSyncSingleMedia={page().handleSyncSingleMedia}
 								onToggleSelect={props.onToggleSelect}
 								renderItem={props.renderItem}
-								previewSelectedMediaId={previewMediaId}
+								previewSelectedMediaId={
+									props.renderMediaPreview ? previewMediaId : undefined
+								}
 								selectedCount={props.selectedCount}
 								setContextMenuMediaId={page().setContextMenuMediaId}
 								setLoadMoreRef={page().setLoadMoreRef}
@@ -168,15 +216,16 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 					</div>
 					<Show when={props.renderMediaPreview}>
 						{(renderPreview) => (
-							<Show when={previewMedia()}>
-								{(media) => (
-									<V2CollectionInspector
-										media={media()}
-										onOpenDetail={openMediaDetail}
-										renderPreview={renderPreview()}
-										sourceName={props.mediaSourceName?.()}
-									/>
-								)}
+							<Show when={isInspectorVisible()}>
+								<V2CollectionInspector
+									media={previewMedia()}
+									onClose={() => setIsInspectorVisible(false)}
+									onOpenDetail={
+										props.onOpenMediaDetail ? openMediaDetail : undefined
+									}
+									renderPreview={renderPreview()}
+									sourceName={props.mediaSourceName?.()}
+								/>
 							</Show>
 						)}
 					</Show>

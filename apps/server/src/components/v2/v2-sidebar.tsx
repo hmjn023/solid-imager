@@ -1,11 +1,13 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { Button } from "@solid-imager/ui/button";
+import { ShortcutKbd } from "@solid-imager/ui/shortcuts/index";
 import {
 	CircleHelp,
 	FileText,
 	Image,
 	PanelLeftClose,
 	PanelLeftOpen,
+	Search,
 } from "@solid-imager/ui/v2/icons";
 import { Link } from "@tanstack/solid-router";
 import { For, Show } from "solid-js";
@@ -21,6 +23,7 @@ export type V2SidebarProps = {
 	onDeleteSource: (source: SafeMediaSource) => void;
 	onEditSource: (source: SafeMediaSource) => void;
 	onNavigate?: () => void;
+	onOpenCommandPalette?: () => void;
 	onSyncSource: (source: SafeMediaSource) => void;
 };
 
@@ -71,6 +74,29 @@ export function V2Sidebar(props: V2SidebarProps) {
 				</Show>
 			</div>
 
+			<Show when={props.onOpenCommandPalette}>
+				{(onOpenCommandPalette) => (
+					<Button
+						aria-label="Quick actions"
+						class="mb-2 h-10 w-full justify-start gap-2 border border-[var(--v2-border)] bg-[var(--v2-surface)] px-3 text-[var(--v2-text-secondary)] shadow-none hover:bg-[var(--v2-surface-muted)]"
+						onClick={onOpenCommandPalette()}
+						title="Quick actions"
+						variant="outline"
+					>
+						<Search aria-hidden="true" class="shrink-0" size={16} />
+						<Show when={props.expanded}>
+							<span class="min-w-0 flex-1 truncate text-left">
+								Quick actions
+							</span>
+							<ShortcutKbd
+								class="min-h-5 text-[10px]"
+								shortcutId="commandPalette"
+							/>
+						</Show>
+					</Button>
+				)}
+			</Show>
+
 			<nav aria-label="主要ナビゲーション" class="space-y-1">
 				<V2NavigationItem
 					expanded={props.expanded}
@@ -78,10 +104,13 @@ export function V2Sidebar(props: V2SidebarProps) {
 					label={V2_NAVIGATION_ITEMS[0].label}
 					onClick={props.onNavigate}
 					to={V2_NAVIGATION_ITEMS[0].to}
-				/>
-				<Show when={props.expanded}>
-					<V2PendingDownloadsIndicator />
-				</Show>
+				>
+					<ShortcutKbd
+						class="min-h-5 text-[10px]"
+						shortcutId={V2_NAVIGATION_ITEMS[0].shortcutId}
+					/>
+				</V2NavigationItem>
+				<V2PendingDownloadsIndicator compact={!props.expanded} />
 			</nav>
 
 			<V2SourceList
@@ -104,7 +133,12 @@ export function V2Sidebar(props: V2SidebarProps) {
 							label={item.label}
 							onClick={props.onNavigate}
 							to={item.to}
-						/>
+						>
+							<ShortcutKbd
+								class="min-h-5 text-[10px]"
+								shortcutId={item.shortcutId}
+							/>
+						</V2NavigationItem>
 					)}
 				</For>
 			</nav>

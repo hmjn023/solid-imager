@@ -9,6 +9,7 @@ import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
 import DownloadCloud from "lucide-solid/icons/cloud-download";
 import HardDrive from "lucide-solid/icons/hard-drive";
 import Image from "lucide-solid/icons/image";
+import Keyboard from "lucide-solid/icons/keyboard";
 import Logs from "lucide-solid/icons/logs";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import type { z } from "zod";
@@ -31,6 +32,7 @@ import {
 import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
 import { Label } from "../label";
+import { ShortcutSettingsPanel } from "../shortcuts/shortcut-settings-panel";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
@@ -67,6 +69,12 @@ const SETTINGS_CATEGORIES = [
 		icon: Image,
 		label: "Media",
 		value: "media",
+	},
+	{
+		description: "この端末のキー操作",
+		icon: Keyboard,
+		label: "Shortcuts",
+		value: "shortcuts",
 	},
 	{ description: "出力レベル", icon: Logs, label: "Logging", value: "logging" },
 ] as const;
@@ -697,6 +705,13 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 								)}
 							</form.Field>
 						</div>
+					</TabsContent>
+
+					<TabsContent value="shortcuts">
+						<ShortcutSettingsPanel
+							description="Record a new key combination, disable an action, or restore defaults. Changes are saved immediately in this browser or desktop app and are not part of the server configuration."
+							title="Keyboard shortcuts"
+						/>
 					</TabsContent>
 				</div>
 			</Tabs>

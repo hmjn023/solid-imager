@@ -81,6 +81,12 @@ export const Database = icon(() => (
 		<path d="M3 12a9 3 0 0 0 18 0" />
 	</>
 ));
+export const Download = icon(() => (
+	<>
+		<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+		<path d="m7 10 5 5 5-5M12 15V3" />
+	</>
+));
 export const Ellipsis = icon(() => (
 	<>
 		<circle cx="5" cy="12" r="1" />
@@ -107,6 +113,12 @@ export const Library = icon(() => (
 	</>
 ));
 export const Menu = icon(() => <path d="M4 5h16M4 12h16M4 19h16" />);
+export const Maximize2 = icon(() => (
+	<>
+		<path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+	</>
+));
+export const Minus = icon(() => <path d="M5 12h14" />);
 export const PanelLeftClose = icon(() => (
 	<>
 		<rect height="18" rx="2" width="18" x="3" y="3" />
@@ -125,6 +137,12 @@ export const RefreshCw = icon(() => (
 		<path d="M3 12a9 9 0 0 1 15.7-6.3L21 8" />
 		<path d="M21 3v5h-5M21 12a9 9 0 0 1-15.7 6.3L3 16" />
 		<path d="M8 16H3v5" />
+	</>
+));
+export const RotateCcw = icon(() => (
+	<>
+		<path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+		<path d="M3 3v5h5" />
 	</>
 ));
 export const Scan = icon(() => (
@@ -155,5 +173,11 @@ export const Settings = icon(() => (
 export const Sparkles = icon(() => (
 	<>
 		<path d="m12 3-1.5 4.5L6 9l4.5 1.5L12 15l1.5-4.5L18 9l-4.5-1.5zM5 17l-.75 2.25L2 20l2.25.75L5 23l.75-2.25L8 20l-2.25-.75zM19 15l-.75 2.25L16 18l2.25.75L19 21l.75-2.25L22 18l-2.25-.75z" />
+	</>
+));
+export const Trash2 = icon(() => (
+	<>
+		<path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+		<path d="M10 11v6M14 11v6" />
 	</>
 ));

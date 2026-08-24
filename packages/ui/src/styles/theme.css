@@ -130,61 +130,6 @@
 }
 
 @layer utilities {
-	.media-grid-skeleton-item:nth-child(n + 5) {
-		display: none;
-	}
-
-	@container (min-width: 30rem) {
-		.media-grid-skeleton-item:nth-child(n + 5) {
-			display: block;
-		}
-		.media-grid-skeleton-item:nth-child(n + 7) {
-			display: none;
-		}
-	}
-
-	@container (min-width: 40rem) {
-		.media-grid-skeleton-item:nth-child(n + 7) {
-			display: block;
-		}
-		.media-grid-skeleton-item:nth-child(n + 9) {
-			display: none;
-		}
-	}
-
-	@container (min-width: 50rem) {
-		.media-grid-skeleton-item:nth-child(n + 9) {
-			display: block;
-		}
-		.media-grid-skeleton-item:nth-child(n + 11) {
-			display: none;
-		}
-	}
-
-	@container (min-width: 60rem) {
-		.media-grid-skeleton-item:nth-child(n + 11) {
-			display: block;
-		}
-		.media-grid-skeleton-item:nth-child(n + 13) {
-			display: none;
-		}
-	}
-
-	@container (min-width: 65rem) {
-		.media-grid-skeleton-item:nth-child(n + 13) {
-			display: block;
-		}
-		.media-grid-skeleton-item:nth-child(n + 15) {
-			display: none;
-		}
-	}
-
-	@container (min-width: 70rem) {
-		.media-grid-skeleton-item:nth-child(n + 15) {
-			display: block;
-		}
-	}
-
 	.step {
 		counter-increment: step;
 	}
