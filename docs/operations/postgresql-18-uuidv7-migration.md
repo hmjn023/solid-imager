@@ -77,10 +77,10 @@ services:
   db:
     image: pgvector/pgvector:pg18
     volumes:
-      - ./db-data-pg18:/var/lib/postgresql/data
+      - ./db-data-pg18:/var/lib/postgresql
 ```
 
-mount先の `/var/lib/postgresql/data` はPG17と同じだが、ホスト側のデータディレクトリは新規でなければならない。`docker compose down -v` や旧ディレクトリの削除は行わない。既存環境から移行する場合は、pull後にComposeが `db-data-pg18/` を参照していることを確認する。
+PostgreSQL 18ではmount先も `/var/lib/postgresql` に変更されている。データ実体はコンテナ内の `/var/lib/postgresql/18/docker` に作成されるため、ホスト側では `db-data-pg18/18/docker/` がPG18のデータディレクトリになる。`docker compose down -v` や旧ディレクトリの削除は行わない。既存環境から移行する場合は、pull後にComposeが `db-data-pg18/` を `/var/lib/postgresql` にmountしていることを確認する。
 
 ### 4. PostgreSQL 18だけを起動する
 
