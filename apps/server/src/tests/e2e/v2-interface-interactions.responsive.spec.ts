@@ -147,7 +147,8 @@ test("V2 fine-pointer collection separates selection from opening detail", async
 	);
 	await similarMedia.click();
 	await expect(page).toHaveURL(/\/v2\/search(?:\?.*)?$/);
-	await expect(similarMedia).toHaveAttribute("aria-pressed", "true");
+	await expect(similarMedia).toHaveAttribute("aria-current", "true");
+	await expect(similarMedia).toHaveAttribute("aria-pressed", "false");
 	const inspector = page.getByRole("complementary", {
 		name: "選択中のメディア",
 	});
@@ -156,9 +157,7 @@ test("V2 fine-pointer collection separates selection from opening detail", async
 	await similarMedia.dblclick();
 	await expect(page).toHaveURL(v2MediaPath(E2E_SIMILAR_MEDIA_ID));
 	await expect(
-		page.locator(
-			`[data-media-viewer] img[alt="${E2E_SIMILAR_FILE_NAME}"]`,
-		),
+		page.locator(`[data-media-viewer] img[alt="${E2E_SIMILAR_FILE_NAME}"]`),
 	).toBeVisible();
 
 	await page.goBack();

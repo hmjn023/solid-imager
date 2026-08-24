@@ -189,7 +189,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const [internalContextMenuMedia, setInternalContextMenuMedia] =
 		createSignal<Media>();
 	let collectionRootRef: HTMLDivElement | undefined;
-	let mediaGridRef: HTMLDivElement | undefined;
+	let mediaGridRef: HTMLElement | undefined;
 	let mediaGridResizeObserver: ResizeObserver | undefined;
 	let metricsFrameId: number | undefined;
 	let focusFrameId: number | undefined;
@@ -595,7 +595,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		return Math.max(Math.floor(viewportHeight / rowHeight), 1);
 	};
 
-	const handleGridKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (
+	const handleGridKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (
 		event,
 	) => {
 		if (!isCollectionNavigationKey(event.key)) return;
@@ -644,10 +644,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	};
 
 	const gridContent = (
-		<div
+		<section
 			class="@container relative min-w-0 w-full"
 			aria-label="メディア一覧"
-			role="grid"
 			onFocusIn={(event) => {
 				const media = findMediaFromEventTarget(event.target);
 				if (media) setActiveMediaId(media.id);
@@ -715,13 +714,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										get isBulkSelectMode() {
 											return props.isBulkSelectMode?.();
 										},
-						get isSelected() {
-							return props.isSelected?.(media.id);
-						},
-						onToggleSelect: props.onToggleSelect
-							? () => props.onToggleSelect?.(media.id)
-							: undefined,
-						onPreviewSelect: createMediaPreviewSelectHandler(
+										get isSelected() {
+											return props.isSelected?.(media.id);
+										},
+										onToggleSelect: props.onToggleSelect
+											? () => props.onToggleSelect?.(media.id)
+											: undefined,
+										onPreviewSelect: createMediaPreviewSelectHandler(
 											media,
 											props.onPreviewSelect,
 										),
@@ -780,13 +779,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											get isBulkSelectMode() {
 												return props.isBulkSelectMode?.();
 											},
-							get isSelected() {
-								return props.isSelected?.(media.id);
-							},
-							onToggleSelect: props.onToggleSelect
-								? () => props.onToggleSelect?.(media.id)
-								: undefined,
-							onPreviewSelect: createMediaPreviewSelectHandler(
+											get isSelected() {
+												return props.isSelected?.(media.id);
+											},
+											onToggleSelect: props.onToggleSelect
+												? () => props.onToggleSelect?.(media.id)
+												: undefined,
+											onPreviewSelect: createMediaPreviewSelectHandler(
 												media,
 												props.onPreviewSelect,
 											),
@@ -804,7 +803,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					}}
 				</For>
 			</Show>
-		</div>
+		</section>
 	);
 	const formatFileSize = (bytes: number | null): string => {
 		if (bytes === null) return "—";
@@ -1047,17 +1046,16 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							<ContextMenuTrigger
 								class="block min-w-0 w-full"
 								onPointerDown={(event) => {
-									if (event.button === 2 || event.pointerType !== "mouse") {
+									if (event.button === 2) {
 										setContextMenuTarget(
 											findMediaFromEventTarget(event.target),
 										);
 									}
 								}}
 							>
-								<div
+								<section
 									class="min-w-0 w-full"
 									aria-label="メディア一覧の操作対象"
-									role="region"
 									onContextMenu={(event) => {
 										const media = findMediaFromEventTarget(event.target);
 										setContextMenuTarget(media);
@@ -1068,7 +1066,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									}}
 								>
 									{collectionContent}
-								</div>
+								</section>
 							</ContextMenuTrigger>
 							<ContextMenuContent class="v2-theme min-w-56 max-w-80">
 								<Show

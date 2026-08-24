@@ -31,6 +31,7 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 
 	const detailLink = (linkProps: MediaGridLinkProps) => (
 		<Link
+			aria-current={linkProps["aria-current"]}
 			aria-pressed={linkProps["aria-pressed"]}
 			class={linkProps.class}
 			data-media-id={linkProps["data-media-id"]}
@@ -112,10 +113,7 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 						data-media-id={linkProps["data-media-id"]}
 						onClick={(event) => {
 							event.preventDefault();
-							if (
-								props.onSelectGesture &&
-								isModifiedSelectionClick(event)
-							) {
+							if (props.onSelectGesture && isModifiedSelectionClick(event)) {
 								props.onSelectGesture(event);
 								return;
 							}

@@ -50,6 +50,12 @@ type PaletteAction = {
 	shortcutId?: ShortcutId;
 };
 
+type PaletteActionGroup = {
+	actions: PaletteAction[];
+	group: PaletteAction["group"];
+	startIndex: number;
+};
+
 export function V2CommandCenter(props: V2CommandCenterProps) {
 	const navigate = useNavigate();
 	const listId = createUniqueId();
@@ -120,6 +126,22 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 				.toLocaleLowerCase()
 				.includes(normalizedQuery),
 		);
+	});
+	const groupedActions = createMemo<PaletteActionGroup[]>(() => {
+		const groups: PaletteActionGroup[] = [];
+		for (const [index, action] of filteredActions().entries()) {
+			const lastGroup = groups[groups.length - 1];
+			if (!lastGroup || lastGroup.group !== action.group) {
+				groups.push({
+					actions: [action],
+					group: action.group,
+					startIndex: index,
+				});
+				continue;
+			}
+			lastGroup.actions.push(action);
+		}
+		return groups;
 	});
 	const itemId = (index: number) => `${listId}-option-${index}`;
 	const runAction = (action: PaletteAction) => {
@@ -210,48 +232,57 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 							}
 							when={filteredActions().length > 0}
 						>
-							<For each={filteredActions()}>
-								{(action, index) => {
-									const Icon = action.icon;
-									return (
-										<>
-											<Show
-												when={
-													index() === 0 ||
-													filteredActions()[index() - 1]?.group !== action.group
-												}
-											>
-												<p class="px-2 pt-2 pb-1 font-semibold text-[var(--v2-text-muted)] text-[11px] uppercase tracking-wide">
-													{action.group}
-												</p>
-											</Show>
-											<button
-												aria-selected={activeIndex() === index()}
-												class={`flex min-h-10 w-full items-center gap-3 rounded-md px-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] ${
-													activeIndex() === index()
-														? "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"
-														: "hover:bg-[var(--v2-surface-muted)]"
-												}`}
-												id={itemId(index())}
-												onClick={() => runAction(action)}
-												onPointerMove={() => setActiveIndex(index())}
-												role="option"
-												tabIndex={-1}
-												type="button"
-											>
-												<Icon aria-hidden="true" class="shrink-0" size={17} />
-												<span class="min-w-0 flex-1 truncate">
-													{action.label}
-												</span>
-												<Show when={action.shortcutId}>
-													{(shortcutId) => (
-														<ShortcutKbd shortcutId={shortcutId()} />
-													)}
-												</Show>
-											</button>
-										</>
-									);
-								}}
+							<For each={groupedActions()}>
+								{(actionGroup) => (
+									<fieldset
+										aria-label={actionGroup.group}
+										class="m-0 min-w-0 border-0 p-0"
+									>
+										<p
+											aria-hidden="true"
+											class="px-2 pt-2 pb-1 font-semibold text-[var(--v2-text-muted)] text-[11px] uppercase tracking-wide"
+										>
+											{actionGroup.group}
+										</p>
+										<For each={actionGroup.actions}>
+											{(action, index) => {
+												const Icon = action.icon;
+												const flatIndex = () =>
+													actionGroup.startIndex + index();
+												return (
+													<button
+														aria-selected={activeIndex() === flatIndex()}
+														class={`flex min-h-10 w-full items-center gap-3 rounded-md px-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] ${
+															activeIndex() === flatIndex()
+																? "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"
+																: "hover:bg-[var(--v2-surface-muted)]"
+														}`}
+														id={itemId(flatIndex())}
+														onClick={() => runAction(action)}
+														onPointerMove={() => setActiveIndex(flatIndex())}
+														role="option"
+														tabIndex={-1}
+														type="button"
+													>
+														<Icon
+															aria-hidden="true"
+															class="shrink-0"
+															size={17}
+														/>
+														<span class="min-w-0 flex-1 truncate">
+															{action.label}
+														</span>
+														<Show when={action.shortcutId}>
+															{(shortcutId) => (
+																<ShortcutKbd shortcutId={shortcutId()} />
+															)}
+														</Show>
+													</button>
+												);
+											}}
+										</For>
+									</fieldset>
+								)}
 							</For>
 						</Show>
 					</div>

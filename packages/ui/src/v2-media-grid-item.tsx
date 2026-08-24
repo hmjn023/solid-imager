@@ -30,6 +30,14 @@ export type MediaGridLinkProps = {
 	class: string;
 	"data-media-id": string;
 	href: string;
+	"aria-current"?:
+		| "date"
+		| "false"
+		| "location"
+		| "page"
+		| "step"
+		| "time"
+		| "true";
 	"aria-pressed"?: boolean;
 	onClick?: (event: MouseEvent) => void;
 	onContextMenu: (event: MouseEvent) => void;
@@ -74,7 +82,8 @@ export function V2MediaGridItem(props: MediaGridItemProps) {
 			)}
 			data-media-id={props.media.id}
 			href={href()}
-			aria-pressed={props.isSelected || props.isPreviewSelected}
+			aria-current={props.isPreviewSelected ? "true" : undefined}
+			aria-pressed={props.isSelected}
 			onClick={undefined}
 			onContextMenu={(event) => props.onContextMenu?.(event)}
 		>

@@ -2,7 +2,6 @@ import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	AlertDialog,
-	AlertDialogAction,
 	AlertDialogCancel,
 	AlertDialogContent,
 	AlertDialogDescription,
@@ -345,15 +344,13 @@ export function V2MediaActions(props: MediaActionsProps) {
 						<AlertDialogCancel disabled={isDeleting()}>
 							Cancel
 						</AlertDialogCancel>
-						<AlertDialogAction
+						<Button
 							disabled={isDeleting()}
-							onClick={(event) => {
-								event.preventDefault();
-								void handleDelete();
-							}}
+							onClick={() => void handleDelete()}
+							variant="destructive"
 						>
 							{isDeleting() ? "Deleting…" : "Delete"}
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

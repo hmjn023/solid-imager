@@ -143,9 +143,9 @@ export default function V2SearchContent() {
 					media={media}
 					onOpenMediaDetail={options?.onOpenMediaDetail}
 					onPreviewSelect={options?.onPreviewSelect}
-						onSelectGesture={options?.onSelectGesture}
-						onToggleSelect={options?.onToggleSelect}
-						priority={options?.priority}
+					onSelectGesture={options?.onSelectGesture}
+					onToggleSelect={options?.onToggleSelect}
+					priority={options?.priority}
 					onPrepareMediaDetail={options?.onPrepareMediaDetail}
 				/>
 			)}
