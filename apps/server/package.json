@@ -13,6 +13,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:reconcile-uuidv7-paths": "bun scripts/reconcile-uuidv7-paths.ts",
+    "db:migrate:pglite": "bun scripts/migrate-pglite.ts",
     "db:push": "drizzle-kit push",
     "db:drop": "drizzle-kit drop",
     "db:studio": "drizzle-kit studio",
