@@ -96,4 +96,5 @@ CPU のみで使用する場合は通常通り `bun install` してください�
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **V2移行状況**: [REPORT.md](./REPORT.md)
 - **DBスキーマ**: `packages/db/src/schema.ts`
+- **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)

@@ -453,6 +453,28 @@ export function createJobRepository(
 	};
 }
 
+/**
+ * Allocates a UUIDv7 using the database function before a job row exists.
+ * Import uploads need the job ID to determine the input file path first.
+ */
+export async function allocateJobId(
+	getExecutor: (tx?: unknown) => DrizzleExecutor,
+): Promise<string> {
+	const rows = extractRows(
+		await getExecutor().execute(sql`SELECT uuidv7()::text AS id`),
+	);
+	const row = rows[0];
+	if (
+		!row ||
+		typeof row !== "object" ||
+		!("id" in row) ||
+		typeof row.id !== "string"
+	) {
+		throw new Error("Failed to allocate a job ID");
+	}
+	return row.id;
+}
+
 function buildSimpleClaimQuery(conditions: SQL[], limit: number, now: Date) {
 	return sql`
 		WITH next_jobs AS (

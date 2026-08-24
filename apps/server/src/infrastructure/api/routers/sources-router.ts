@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { implement, ORPCError } from "@orpc/server";
 import {
 	type SourceSyncResult,
@@ -19,6 +20,7 @@ import { db } from "~/infrastructure/db";
 import { medias } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
+import { allocateJobId } from "~/infrastructure/repositories/job-repository";
 import { services } from "~/infrastructure/service-registry";
 import { BackupService } from "~/infrastructure/services/backup-service";
 import { DirectorySyncService } from "~/infrastructure/services/directory-sync-service";
@@ -278,7 +280,6 @@ export const sourcesRouter = os.router({
 	 * Imports a media source from a Tar file
 	 */
 	importZip: os.importZip.handler(async ({ input }) => {
-		const { randomUUID } = await import("node:crypto");
 		const path = await import("node:path");
 		const fs = await import("node:fs");
 		const { pipeline } = await import("node:stream/promises");
@@ -312,8 +313,7 @@ export const sourcesRouter = os.router({
 			});
 		}
 
-		const { randomUUID } = await import("node:crypto");
-		const jobId = randomUUID();
+		const jobId = await allocateJobId();
 		const inputPath = await persistJobInput(jobId, input.mode, input.file);
 		try {
 			const job = await services.getJobRepository().create({
@@ -337,7 +337,6 @@ export const sourcesRouter = os.router({
 	 * Imports a media source from a streaming NDJSON file
 	 */
 	importNdjson: os.importNdjson.handler(async ({ input }) => {
-		const { randomUUID } = await import("node:crypto");
 		const path = await import("node:path");
 		const fs = await import("node:fs");
 		const { pipeline } = await import("node:stream/promises");

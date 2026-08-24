@@ -20,7 +20,7 @@ export type SearchSnapshotState = z.infer<typeof searchSnapshotStateSchema>;
 export const searchSnapshotVersionSchema = z.literal(1);
 
 export const searchSnapshotSchema = z.object({
-	id: z.uuid({ version: "v4" }),
+	id: z.uuid(),
 	version: searchSnapshotVersionSchema,
 	fingerprint: z.string().min(1),
 	state: searchSnapshotStateSchema,
@@ -59,7 +59,7 @@ export type SafeSearchSnapshotState = z.infer<
 >;
 
 export const safeSearchSnapshotSchema = z.object({
-	id: z.uuid({ version: "v4" }),
+	id: z.uuid(),
 	version: searchSnapshotVersionSchema,
 	state: safeSearchSnapshotStateSchema,
 });
@@ -75,7 +75,7 @@ export type CaptureSearchSnapshotRequest = z.infer<
 >;
 
 export const captureSearchSnapshotResponseSchema = z.object({
-	id: z.uuid({ version: "v4" }),
+	id: z.uuid(),
 });
 
 export type CaptureSearchSnapshotResponse = z.infer<
@@ -83,7 +83,7 @@ export type CaptureSearchSnapshotResponse = z.infer<
 >;
 
 export const getSearchSnapshotRequestSchema = z.object({
-	id: z.uuid({ version: "v4" }),
+	id: z.uuid(),
 });
 
 export type GetSearchSnapshotRequest = z.infer<
