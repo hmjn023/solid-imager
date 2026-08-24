@@ -1,0 +1,19 @@
+ALTER TABLE "author_accounts" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "authors" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "categories" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "ccip_embeddings" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "characters" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "collections" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "ips" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "jobs" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "media_regions" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "media_relations" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "media_sources" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "media_urls" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "media" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "projects" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "search_snapshots" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "similar_media" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "tags" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "users" ALTER COLUMN "id" SET DEFAULT uuidv7();--> statement-breakpoint
+ALTER TABLE "view_history" ALTER COLUMN "id" SET DEFAULT uuidv7();

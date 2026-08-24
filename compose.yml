@@ -1,6 +1,6 @@
 services:
   db:
-    image: pgvector/pgvector:pg17
+    image: pgvector/pgvector:pg18
     shm_size: 256mb
     restart: always
     environment:
@@ -8,6 +8,6 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_DATABASE}
     volumes:
-      - ./db-data:/var/lib/postgresql/data
+      - ./db-data-pg18:/var/lib/postgresql
     ports:
       - ${DB_PORT}:5432

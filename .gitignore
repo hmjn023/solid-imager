@@ -26,7 +26,8 @@ backups/**
 
 # Temp
 gitignores
-db-data/
+db-data*/
+backup/
 
 # System Files
 .DS_Store
