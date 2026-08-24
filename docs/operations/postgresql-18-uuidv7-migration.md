@@ -16,11 +16,14 @@
 
 ### 1. メンテナンス状態にする
 
-新規登録、インポート、ジョブ実行が発生しないようにする。少なくとも `app` と `nginx` を停止し、移行中はworkerを起動しない。
+新規登録、インポート、ジョブ実行が発生しないようにする。現行Composeではworkerは `app` プロセス内で起動するため、`app` を停止するとworkerも停止する。別Composeや外部systemdでworkerを起動している場合は、それも停止する。
 
 ```bash
 docker compose stop app nginx
+docker compose ps --all
 ```
+
+`app`、`nginx`、workerなどの書き込み元が停止していることを確認してから、バックアップへ進む。
 
 ### 2. PostgreSQL 17のバックアップを取得する
 
@@ -40,6 +43,10 @@ docker compose exec -T db sh -c \
 pg_restore --list backup/solid-imager-pre-pg18.dump \
   > backup/solid-imager-pre-pg18.list
 sha256sum backup/solid-imager-pre-pg18.dump
+
+if [ -d .cache ]; then
+  tar -C . -czf backup/solid-imager-pre-pg18-runtime.tar.gz .cache
+fi
 ```
 
 `pg_dump` のcustom formatを使用しているため、リストアには `pg_restore` を使用する。追加ロールがある場合はglobalsも復元する。
@@ -55,10 +62,17 @@ DB以外に、次のデータもバックアップする。
 
 PostgreSQLのmajor version間ではデータディレクトリを直接共有できない。既存の `db-data/` をPG18にmountして起動してはいけない。
 
-現在の `db-data/` を `db-data-pg17/` などへ温存し、新しい空ディレクトリをPG18に割り当てる。
+まずDBコンテナを停止し、停止を確認してから現在の `db-data/` を `db-data-pg17/` などへ温存する。新しい空ディレクトリをPG18に割り当てる。
+
+```bash
+docker compose stop db
+docker compose ps --all
+```
+
+`db` が停止していることを確認してから、データディレクトリを移動する。
 
 ```yaml
-# compose.yml
+# compose.yml（このPR適用後の既定値）
 services:
   db:
     image: pgvector/pgvector:pg18
@@ -66,7 +80,7 @@ services:
       - ./db-data-pg18:/var/lib/postgresql/data
 ```
 
-mount先の `/var/lib/postgresql/data` はPG17と同じだが、ホスト側のデータディレクトリは新規でなければならない。`docker compose down -v` や旧ディレクトリの削除は行わない。
+mount先の `/var/lib/postgresql/data` はPG17と同じだが、ホスト側のデータディレクトリは新規でなければならない。`docker compose down -v` や旧ディレクトリの削除は行わない。既存環境から移行する場合は、pull後にComposeが `db-data-pg18/` を参照していることを確認する。
 
 ### 4. PostgreSQL 18だけを起動する
 
@@ -142,6 +156,19 @@ docker compose exec -T db sh -c \
 
 ## ロールバック
 
-移行後の新PG18 DBをUUIDv4へ戻すSQLは用意しない。問題があればapp/nginxを停止し、旧アプリケーション、`pgvector/pg17`、温存したPG17のデータディレクトリを使って復旧する。
+移行後の新PG18 DBをUUIDv4へ戻すSQLは用意しない。問題があればapp/nginxを停止し、別workerがあればそれも停止する。新UUIDパスへ変更済みのキャッシュを旧アプリケーションが参照する前に、移行前に取得したファイルツリーを復元する。
+
+```bash
+docker compose stop app nginx
+
+# 別workerを運用している場合は、それも停止する。
+# 現在の失敗環境のキャッシュを退避してから移行前snapshotを戻す。
+if [ -d .cache ]; then
+  mv .cache .cache-pg18-failed
+fi
+tar -C . -xzf backup/solid-imager-pre-pg18-runtime.tar.gz
+```
+
+その後、旧アプリケーションのコミット、`pgvector/pg17`、温存したPG17のデータディレクトリを使って復旧する。外部メディアmountや設定ファイルを変更していた場合は、それらも移行前のsnapshotへ戻してから旧アプリケーションを起動する。
 
 新環境での動作確認が完了するまで、旧データディレクトリ、dump、メディア、キャッシュを削除しない。

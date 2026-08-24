@@ -425,6 +425,26 @@ SET media_id = mapping.new_id
 FROM "_uuidv7_id_map" AS mapping
 WHERE mapping.entity = 'media' AND target.media_id = mapping.old_id;
 --> statement-breakpoint
+UPDATE tags AS target
+SET author_id = mapping.new_id
+FROM "_uuidv7_id_map" AS mapping
+WHERE mapping.entity = 'authors' AND target.author_id = mapping.old_id;
+--> statement-breakpoint
+UPDATE similar_media AS target
+SET media1_id = mapping.new_id
+FROM "_uuidv7_id_map" AS mapping
+WHERE mapping.entity = 'media' AND target.media1_id = mapping.old_id;
+--> statement-breakpoint
+UPDATE similar_media AS target
+SET media2_id = mapping.new_id
+FROM "_uuidv7_id_map" AS mapping
+WHERE mapping.entity = 'media' AND target.media2_id = mapping.old_id;
+--> statement-breakpoint
+UPDATE view_history AS target
+SET media_id = mapping.new_id
+FROM "_uuidv7_id_map" AS mapping
+WHERE mapping.entity = 'media' AND target.media_id = mapping.old_id;
+--> statement-breakpoint
 CREATE OR REPLACE FUNCTION pg_temp.uuidv7_map_text(p_entity text, p_value text)
 RETURNS text
 LANGUAGE plpgsql
