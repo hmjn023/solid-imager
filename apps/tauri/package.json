@@ -22,7 +22,7 @@
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
     "@solid-imager/ui": "workspace:*",
-    "@tanstack/db": "^0.6.8",
+    "@tanstack/db": "^0.7.2",
     "@tanstack/query-db-collection": "^1.0.40",
     "@tanstack/solid-db": "^0.2.22",
     "@tanstack/solid-query": "5.99.2",

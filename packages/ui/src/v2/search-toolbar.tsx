@@ -6,18 +6,12 @@ import Filter from "lucide-solid/icons/filter";
 import Grid3X3 from "lucide-solid/icons/grid-3-x-3";
 import List from "lucide-solid/icons/list";
 import type { JSX } from "solid-js";
-import {
-	batch,
-	createMemo,
-	createSignal,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
+import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
 import { Button, buttonVariants } from "../button";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
+import { createAppShortcut } from "../shortcuts/create-app-shortcut";
 import { SortControls } from "../sort-controls";
 import type { SourceMediaViewMode } from "../source-media-grid";
 import {
@@ -303,27 +297,17 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 		props.onSearch();
 	};
 
-	onMount(() => {
-		const focusComposer = (event: KeyboardEvent) => {
-			const target = event.target;
-			const isEditing =
-				target instanceof HTMLElement &&
-				(target.matches("input, textarea, select") || target.isContentEditable);
-			if (
-				event.key !== "/" ||
-				event.metaKey ||
-				event.ctrlKey ||
-				event.altKey ||
-				isEditing
-			) {
-				return;
-			}
-			event.preventDefault();
-			composerInput?.focus();
-		};
-		window.addEventListener("keydown", focusComposer);
-		onCleanup(() => window.removeEventListener("keydown", focusComposer));
-	});
+	createAppShortcut("focusSearch", () => composerInput?.focus());
+	createAppShortcut(
+		"viewGrid",
+		() => props.onViewModeChange?.("grid"),
+		() => ({ enabled: props.onViewModeChange !== undefined }),
+	);
+	createAppShortcut(
+		"viewList",
+		() => props.onViewModeChange?.("list"),
+		() => ({ enabled: props.onViewModeChange !== undefined }),
+	);
 
 	return (
 		<header class="shrink-0 border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-3 py-3 sm:px-4">

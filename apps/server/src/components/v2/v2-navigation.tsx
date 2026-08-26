@@ -9,10 +9,25 @@ import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 
 export const V2_NAVIGATION_ITEMS = [
-	{ icon: Library, label: "Library", to: "/v2/search" },
-	{ icon: BriefcaseBusiness, label: "Manager", to: "/v2/manager" },
-	{ icon: Clock3, label: "Jobs", to: "/v2/jobs" },
-	{ icon: Settings, label: "Settings", to: "/v2/config" },
+	{
+		icon: Library,
+		label: "Library",
+		shortcutId: "goLibrary",
+		to: "/v2/search",
+	},
+	{
+		icon: BriefcaseBusiness,
+		label: "Manager",
+		shortcutId: "goManager",
+		to: "/v2/manager",
+	},
+	{ icon: Clock3, label: "Jobs", shortcutId: "goJobs", to: "/v2/jobs" },
+	{
+		icon: Settings,
+		label: "Settings",
+		shortcutId: "goSettings",
+		to: "/v2/config",
+	},
 ] as const;
 
 export function V2NavigationItem(props: {

@@ -21,10 +21,13 @@ import { EmptyState, ErrorState, OfflineState } from "./async-state";
 import {
 	ContextMenu,
 	ContextMenuContent,
+	ContextMenuGroupLabel,
 	ContextMenuItem,
 	ContextMenuSeparator,
+	ContextMenuShortcut,
 	ContextMenuTrigger,
 } from "./context-menu";
+import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
 import { createMediaPreviewSelectHandler } from "./media-preview-selection";
 import type { QueryUiState } from "./query-state";
@@ -34,6 +37,12 @@ import {
 	MediaGridSkeleton,
 	mediaGridClassName,
 } from "./skeleton";
+import {
+	findCollectionItemById,
+	getCollectionNavigationIndex,
+	isCollectionNavigationKey,
+	isCollectionScrollNearEnd,
+} from "./v2/collection-navigation";
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
@@ -47,6 +56,8 @@ const LOAD_MORE_ROWS_AHEAD = 12;
 const INITIAL_PRIORITY_ROWS = 2;
 const INITIAL_HIGH_PRIORITY_MEDIA = 2;
 const INITIAL_SKELETON_ROWS = 3;
+const LIST_LOAD_MORE_THRESHOLD_PX = 480;
+const FOCUS_RESTORE_FRAME_LIMIT = 6;
 
 export type SourceMediaViewMode = "grid" | "list";
 
@@ -93,6 +104,8 @@ type SourceMediaGridProps = {
 	onLoadMore?: () => void;
 	/** Select a media item for the wide collection inspector. */
 	onPreviewSelect?: (media: Media) => void;
+	/** Applies plain, additive, and range selection gestures. */
+	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
 	previewSelectedMediaId?: Accessor<string | null>;
 	/** Render a single media grid item. */
 	renderItem: (
@@ -100,10 +113,13 @@ type SourceMediaGridProps = {
 		options: {
 			imageLoadPolicy?: MediaGridImageLoadPolicy;
 			onContextMenu: () => void;
+			onOpenMediaDetail?: () => void;
 			priority?: boolean;
 			isBulkSelectMode?: boolean;
 			isSelected?: boolean;
 			onPreviewSelect?: () => void;
+			onSelectGesture?: (event: MouseEvent | KeyboardEvent) => void;
+			onToggleSelect?: () => void;
 			onPrepareMediaDetail?: () => void;
 			isPreviewSelected?: boolean;
 		},
@@ -137,6 +153,20 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const enableVirtualization = () => props.enableVirtualization ?? false;
 	const disableContextMenu = () => props.disableContextMenu ?? false;
 	const totalCount = () => props.totalCount ?? props.mediaResults().length;
+	const selectionModeFromEvent = (
+		event: MouseEvent | KeyboardEvent,
+	): MediaCollectionSelectionMode => {
+		const additive = event.metaKey || event.ctrlKey;
+		if (event.shiftKey) return additive ? "additive-range" : "range";
+		return additive ? "toggle" : "replace";
+	};
+	const selectFromGesture = (
+		media: Media,
+		event: MouseEvent | KeyboardEvent,
+	) => {
+		props.onSelectMedia?.(media.id, selectionModeFromEvent(event));
+		props.onPreviewSelect?.(media);
+	};
 	const viewMode = () => props.viewMode?.() ?? "grid";
 	const errorMessage = () => {
 		const error = props.state().error;
@@ -155,9 +185,17 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		endIndex: number;
 		startIndex: number;
 	} | null>(null);
-	let mediaGridRef: HTMLDivElement | undefined;
+	const [activeMediaId, setActiveMediaId] = createSignal<string | null>(null);
+	const [internalContextMenuMedia, setInternalContextMenuMedia] =
+		createSignal<Media>();
+	let collectionRootRef: HTMLDivElement | undefined;
+	let mediaGridRef: HTMLElement | undefined;
 	let mediaGridResizeObserver: ResizeObserver | undefined;
 	let metricsFrameId: number | undefined;
+	let focusFrameId: number | undefined;
+	let listLoadRequestPending = false;
+	let listLoadRequestCount = -1;
+	let listLoadWasFetching = false;
 
 	const columnCount = createMemo(() => {
 		const width = mediaGridWidth() || windowWidth();
@@ -322,10 +360,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		},
 	});
 
-	const resolveScrollElement = () =>
-		props.scrollMode === "element"
-			? (mediaGridRef?.closest("[data-media-scroll]") as HTMLElement | null)
-			: null;
+	const resolveScrollElement = () => {
+		if (props.scrollMode !== "element") return null;
+		const element = collectionRootRef?.closest("[data-media-scroll]");
+		return element instanceof HTMLElement ? element : null;
+	};
 
 	const updateMediaGridMetrics = () => {
 		if (!mediaGridRef) return;
@@ -374,6 +413,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				cancelAnimationFrame(metricsFrameId);
 				metricsFrameId = undefined;
 			}
+			if (focusFrameId !== undefined) {
+				cancelAnimationFrame(focusFrameId);
+				focusFrameId = undefined;
+			}
 			resizeObserver.disconnect();
 			if (mediaGridResizeObserver === resizeObserver) {
 				mediaGridResizeObserver = undefined;
@@ -406,7 +449,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	// Virtual scroll-based load more: trigger when user scrolls near the end
 	createEffect(() => {
-		if (!shouldVirtualize()) return;
+		if (!shouldVirtualize() || viewMode() !== "grid") return;
 		const totalRows = rowCount();
 		const handleScroll = () => {
 			if (!props.hasNextPage || props.isFetchingNextPage) return;
@@ -421,17 +464,194 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		onCleanup(() => target.removeEventListener("scroll", handleScroll));
 	});
 
-	const contextMenuMediaId = () => props.contextMenuMediaId?.() ?? null;
+	createEffect(() => {
+		const fetching = props.isFetchingNextPage;
+		const resultCount = props.mediaResults().length;
+		if (fetching) {
+			listLoadWasFetching = true;
+			return;
+		}
+		if (listLoadWasFetching || resultCount !== listLoadRequestCount) {
+			listLoadRequestPending = false;
+			listLoadWasFetching = false;
+		}
+	});
 
-	const onContextMenuHandler = (mediaId: string) => {
+	createEffect(() => {
+		if (viewMode() !== "list") return;
+		const target = props.scrollMode === "element" ? scrollElement() : window;
+		if (!target) return;
+
+		const handleScroll = () => {
+			if (
+				!props.hasNextPage ||
+				props.isFetchingNextPage ||
+				!props.onLoadMore ||
+				listLoadRequestPending
+			) {
+				return;
+			}
+
+			const metrics =
+				target instanceof HTMLElement
+					? {
+							contentSize: target.scrollHeight,
+							scrollOffset: target.scrollTop,
+							viewportSize: target.clientHeight,
+						}
+					: {
+							contentSize: document.documentElement.scrollHeight,
+							scrollOffset: window.scrollY,
+							viewportSize: window.innerHeight,
+						};
+			if (
+				!isCollectionScrollNearEnd({
+					...metrics,
+					threshold: LIST_LOAD_MORE_THRESHOLD_PX,
+				})
+			) {
+				return;
+			}
+
+			listLoadRequestPending = true;
+			listLoadRequestCount = props.mediaResults().length;
+			props.onLoadMore();
+		};
+
+		target.addEventListener("scroll", handleScroll, { passive: true });
+		const frameId = requestAnimationFrame(handleScroll);
+		onCleanup(() => {
+			cancelAnimationFrame(frameId);
+			target.removeEventListener("scroll", handleScroll);
+		});
+	});
+
+	const contextMenuMedia = () => {
+		const mediaId =
+			internalContextMenuMedia()?.id ?? props.contextMenuMediaId?.() ?? null;
+		return findCollectionItemById(props.mediaResults(), mediaId);
+	};
+
+	const clearContextMenuTarget = () => {
+		setInternalContextMenuMedia(undefined);
+		props.setContextMenuMediaId?.(null);
+	};
+
+	const setContextMenuTarget = (media: Media | undefined) => {
+		if (!media) {
+			clearContextMenuTarget();
+			return;
+		}
+		const shouldNotifyPreview = internalContextMenuMedia()?.id !== media.id;
+		setInternalContextMenuMedia(media);
+		props.setContextMenuMediaId?.(media.id);
+		setActiveMediaId(media.id);
+		if (shouldNotifyPreview) {
+			props.onPreviewSelect?.(media);
+		}
+	};
+
+	const onContextMenuHandler = (media: Media) => {
 		return () => {
-			props.setContextMenuMediaId?.(mediaId);
+			setContextMenuTarget(media);
 		};
 	};
 
+	const findMediaFromEventTarget = (target: EventTarget | null) => {
+		if (!(target instanceof Element)) return undefined;
+		const mediaId =
+			target.closest<HTMLElement>("[data-media-id]")?.dataset.mediaId;
+		return findCollectionItemById(props.mediaResults(), mediaId);
+	};
+
+	const findRenderedMediaElement = (mediaId: string) =>
+		Array.from(
+			mediaGridRef?.querySelectorAll<HTMLElement>("[data-media-id]") ?? [],
+		).find((element) => element.dataset.mediaId === mediaId);
+
+	const focusRenderedMedia = (mediaId: string, attempt = 0) => {
+		const element = findRenderedMediaElement(mediaId);
+		if (element) {
+			focusFrameId = undefined;
+			element.focus({ preventScroll: true });
+			return;
+		}
+		if (attempt >= FOCUS_RESTORE_FRAME_LIMIT) {
+			focusFrameId = undefined;
+			return;
+		}
+		focusFrameId = requestAnimationFrame(() => {
+			focusRenderedMedia(mediaId, attempt + 1);
+		});
+	};
+
+	const visiblePageRowCount = () => {
+		const viewportHeight =
+			props.scrollMode === "element"
+				? scrollElement()?.clientHeight
+				: window.innerHeight;
+		const rowHeight = mediaItemHeight() + GRID_GAP_PX;
+		if (!viewportHeight || rowHeight <= 0) return 1;
+		return Math.max(Math.floor(viewportHeight / rowHeight), 1);
+	};
+
+	const handleGridKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (
+		event,
+	) => {
+		if (!isCollectionNavigationKey(event.key)) return;
+		if (
+			event.target instanceof HTMLInputElement ||
+			event.target instanceof HTMLTextAreaElement ||
+			event.target instanceof HTMLSelectElement
+		) {
+			return;
+		}
+
+		const results = props.mediaResults();
+		if (results.length === 0) return;
+		const focusedMedia = findMediaFromEventTarget(event.target);
+		const currentMediaId =
+			focusedMedia?.id ??
+			activeMediaId() ??
+			props.previewSelectedMediaId?.() ??
+			results[0]?.id;
+		const currentIndex = Math.max(
+			results.findIndex((media) => media.id === currentMediaId),
+			0,
+		);
+		const nextIndex = getCollectionNavigationIndex({
+			columnCount: columnCount(),
+			currentIndex,
+			itemCount: results.length,
+			key: event.key,
+			pageRowCount: visiblePageRowCount(),
+		});
+		if (nextIndex === null) return;
+		const nextMedia = results[nextIndex];
+		if (!nextMedia) return;
+
+		event.preventDefault();
+		setActiveMediaId(nextMedia.id);
+		props.onPreviewSelect?.(nextMedia);
+		if (shouldVirtualize()) {
+			mediaRowVirtualizer().scrollToIndex(
+				Math.floor(nextIndex / Math.max(columnCount(), 1)),
+				{ align: "auto" },
+			);
+		}
+		if (focusFrameId !== undefined) cancelAnimationFrame(focusFrameId);
+		focusRenderedMedia(nextMedia.id);
+	};
+
 	const gridContent = (
-		<div
+		<section
 			class="@container relative min-w-0 w-full"
+			aria-label="メディア一覧"
+			onFocusIn={(event) => {
+				const media = findMediaFromEventTarget(event.target);
+				if (media) setActiveMediaId(media.id);
+			}}
+			onKeyDown={handleGridKeyDown}
 			ref={(element) => {
 				if (mediaGridRef && mediaGridRef !== element) {
 					mediaGridResizeObserver?.unobserve(mediaGridRef);
@@ -481,7 +701,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 																: "lazy",
 													}
 												: undefined,
-										onContextMenu: onContextMenuHandler(media.id),
+										onContextMenu: onContextMenuHandler(media),
+										onOpenMediaDetail: props.onOpenMediaDetail
+											? () => props.onOpenMediaDetail?.(media)
+											: undefined,
 										onPrepareMediaDetail: () =>
 											props.onPrepareMediaDetail?.(media),
 										priority:
@@ -494,10 +717,16 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										get isSelected() {
 											return props.isSelected?.(media.id);
 										},
+										onToggleSelect: props.onToggleSelect
+											? () => props.onToggleSelect?.(media.id)
+											: undefined,
 										onPreviewSelect: createMediaPreviewSelectHandler(
 											media,
 											props.onPreviewSelect,
 										),
+										onSelectGesture: props.onSelectMedia
+											? (event) => selectFromGesture(media, event)
+											: undefined,
 										get isPreviewSelected() {
 											return props.previewSelectedMediaId?.() === media.id;
 										},
@@ -536,7 +765,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 																mediaIndexInRow(),
 														)
 													: undefined,
-											onContextMenu: onContextMenuHandler(media.id),
+											onContextMenu: onContextMenuHandler(media),
+											onOpenMediaDetail: props.onOpenMediaDetail
+												? () => props.onOpenMediaDetail?.(media)
+												: undefined,
 											onPrepareMediaDetail: () =>
 												props.onPrepareMediaDetail?.(media),
 											// Window virtualization keeps its established native lazy-loading
@@ -550,10 +782,16 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											get isSelected() {
 												return props.isSelected?.(media.id);
 											},
+											onToggleSelect: props.onToggleSelect
+												? () => props.onToggleSelect?.(media.id)
+												: undefined,
 											onPreviewSelect: createMediaPreviewSelectHandler(
 												media,
 												props.onPreviewSelect,
 											),
+											onSelectGesture: props.onSelectMedia
+												? (event) => selectFromGesture(media, event)
+												: undefined,
 											get isPreviewSelected() {
 												return props.previewSelectedMediaId?.() === media.id;
 											},
@@ -565,7 +803,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					}}
 				</For>
 			</Show>
-		</div>
+		</section>
 	);
 	const formatFileSize = (bytes: number | null): string => {
 		if (bytes === null) return "—";
@@ -607,10 +845,75 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					<For each={props.mediaResults()}>
 						{(media) => (
 							<tr
-								class={
-									props.isSelected?.(media.id)
+								aria-selected={props.previewSelectedMediaId?.() === media.id}
+								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--v2-focus)] ${
+									props.isSelected?.(media.id) ||
+									props.previewSelectedMediaId?.() === media.id
 										? "bg-[var(--v2-surface-selected)]"
 										: "hover:bg-[var(--v2-surface-muted)]"
+								}`}
+								data-media-id={media.id}
+								onClick={(event) => {
+									if (
+										event.target instanceof Element &&
+										event.target.closest("[data-collection-row-control]")
+									) {
+										return;
+									}
+									setActiveMediaId(media.id);
+									if (
+										props.onSelectMedia &&
+										(event.metaKey || event.ctrlKey || event.shiftKey)
+									) {
+										event.preventDefault();
+										selectFromGesture(media, event);
+									} else {
+										props.onPreviewSelect?.(media);
+									}
+									event.currentTarget.focus({ preventScroll: true });
+								}}
+								onContextMenu={onContextMenuHandler(media)}
+								onDblClick={(event) => {
+									if (
+										event.target instanceof Element &&
+										event.target.closest("[data-collection-row-control]")
+									) {
+										return;
+									}
+									props.onOpenMediaDetail?.(media);
+								}}
+								onKeyDown={(event) => {
+									if (event.target !== event.currentTarget) return;
+									if (event.key === "Enter" && props.onOpenMediaDetail) {
+										event.preventDefault();
+										props.onOpenMediaDetail(media);
+									}
+									if (event.key === " ") event.preventDefault();
+								}}
+								onKeyUp={(event) => {
+									if (
+										event.target !== event.currentTarget ||
+										event.key !== " "
+									) {
+										return;
+									}
+									event.preventDefault();
+									if (props.onSelectMedia) {
+										props.onSelectMedia(media.id, "toggle");
+										props.onPreviewSelect?.(media);
+									} else if (props.onToggleSelect) {
+										props.onToggleSelect(media.id);
+									} else {
+										props.onPreviewSelect?.(media);
+									}
+								}}
+								tabIndex={
+									props.onPreviewSelect ||
+									props.onOpenMediaDetail ||
+									props.onToggleSelect ||
+									props.onSelectMedia
+										? 0
+										: undefined
 								}
 							>
 								<Show when={props.isBulkSelectMode?.()}>
@@ -618,17 +921,15 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										<input
 											aria-label={`${media.fileName}を選択`}
 											checked={props.isSelected?.(media.id) ?? false}
+											data-collection-row-control
 											onChange={() => props.onToggleSelect?.(media.id)}
+											onClick={(event) => event.stopPropagation()}
 											type="checkbox"
 										/>
 									</td>
 								</Show>
 								<th class="max-w-[28rem] px-3 py-2 font-normal" scope="row">
-									<button
-										class="block min-h-10 w-full rounded px-1 py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
-										onClick={() => props.onOpenMediaDetail?.(media)}
-										type="button"
-									>
+									<div class="min-h-10 w-full px-1 py-1 text-left">
 										<span
 											class="block truncate font-medium text-[var(--v2-text)]"
 											title={media.fileName}
@@ -641,7 +942,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										>
 											{media.filePath}
 										</span>
-									</button>
+									</div>
 								</th>
 								<td class="px-3 py-2 text-[var(--v2-text-secondary)]">
 									{media.mediaType}
@@ -662,9 +963,40 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			</table>
 		</div>
 	);
+	const hasContextMenuActions = () =>
+		Boolean(
+			props.onOpenMediaDetail ||
+				props.onToggleSelect ||
+				props.onBulkAction ||
+				props.onClearSelection ||
+				props.onDelete ||
+				props.onCopyMove ||
+				props.onSyncSingleMedia,
+		);
+	const openMediaInNewTab = (media: Media) => {
+		window.open(
+			`${props.detailBasePath ?? "/sources"}/${media.mediaSourceId}/${media.id}`,
+			"_blank",
+			"noopener,noreferrer",
+		);
+	};
+	const collectionContent = (
+		<Show fallback={gridContent} when={viewMode() === "list"}>
+			{listContent}
+		</Show>
+	);
 
 	return (
-		<div class="min-h-0 min-w-0 space-y-4">
+		<div
+			class="min-h-0 min-w-0 space-y-4"
+			ref={(element) => {
+				collectionRootRef = element;
+				const resolvedScrollElement = resolveScrollElement();
+				if (resolvedScrollElement !== scrollElement()) {
+					setScrollElement(resolvedScrollElement);
+				}
+			}}
+		>
 			<Switch>
 				<Match when={props.state().phase === "pending"}>
 					<LoadingRegion label="メディア一覧を読み込んでいます...">
@@ -704,128 +1036,148 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						</div>
 					</Show>
 
-					{/* Grid/list with optional context menu for the grid presentation */}
-					<Show
-						fallback={
-							<Show fallback={gridContent} when={!disableContextMenu()}>
-								<ContextMenu>
-									<ContextMenuTrigger class="block min-w-0 w-full">
-										{gridContent}
-									</ContextMenuTrigger>
-									<ContextMenuContent>
-										<Show
-											fallback={
-												<ContextMenuItem disabled>
-													No media selected
-												</ContextMenuItem>
-											}
-											when={contextMenuMediaId()}
-										>
-											<ContextMenuItem
-												onSelect={() => {
-													const id = contextMenuMediaId();
-													if (id) props.onToggleSelect?.(id);
-												}}
+					{/* Grid and list share the same target-safe context menu. */}
+					<Show fallback={collectionContent} when={!disableContextMenu()}>
+						<ContextMenu
+							onOpenChange={(open) => {
+								if (!open) clearContextMenuTarget();
+							}}
+						>
+							<ContextMenuTrigger
+								class="block min-w-0 w-full"
+								onPointerDown={(event) => {
+									if (event.button === 2) {
+										setContextMenuTarget(
+											findMediaFromEventTarget(event.target),
+										);
+									}
+								}}
+							>
+								<section
+									class="min-w-0 w-full"
+									aria-label="メディア一覧の操作対象"
+									onContextMenu={(event) => {
+										const media = findMediaFromEventTarget(event.target);
+										setContextMenuTarget(media);
+										if (!media) {
+											event.preventDefault();
+											event.stopPropagation();
+										}
+									}}
+								>
+									{collectionContent}
+								</section>
+							</ContextMenuTrigger>
+							<ContextMenuContent class="v2-theme min-w-56 max-w-80">
+								<Show
+									keyed
+									fallback={
+										<ContextMenuItem disabled>
+											メディアを選択してください
+										</ContextMenuItem>
+									}
+									when={contextMenuMedia()}
+								>
+									{(media) => (
+										<>
+											<ContextMenuGroupLabel
+												class="max-w-72 truncate text-[var(--v2-text-muted)]"
+												title={media.fileName}
 											>
-												{(() => {
-													const id = contextMenuMediaId();
-													return id &&
-														props.isBulkSelectMode?.() &&
-														props.isSelected?.(id)
-														? "選択解除"
-														: "選択";
-												})()}
-											</ContextMenuItem>
-
+												{media.fileName}
+											</ContextMenuGroupLabel>
 											<ContextMenuSeparator />
-
+											<Show when={!hasContextMenuActions()}>
+												<ContextMenuItem disabled>
+													利用できる操作はありません
+												</ContextMenuItem>
+											</Show>
+											<Show when={props.onOpenMediaDetail}>
+												<ContextMenuItem
+													onSelect={() => props.onOpenMediaDetail?.(media)}
+												>
+													詳細を開く
+													<ContextMenuShortcut>Enter</ContextMenuShortcut>
+												</ContextMenuItem>
+											</Show>
 											<Show
-												when={
-													props.isBulkSelectMode?.() &&
-													(props.selectedCount?.() ?? 0) > 0
-												}
+												when={showOpenInNewTab() && props.onOpenMediaDetail}
 											>
 												<ContextMenuItem
-													onSelect={() => {
-														props.onBulkAction?.();
-													}}
-												>
-													一括操作を実行 ({props.selectedCount?.()}件選択中)
-												</ContextMenuItem>
-												<ContextMenuItem
-													onSelect={() => {
-														props.onClearSelection?.();
-													}}
-												>
-													選択をクリア
-												</ContextMenuItem>
-												<ContextMenuSeparator />
-											</Show>
-
-											<Show when={showOpenInNewTab()}>
-												<ContextMenuItem
-													onSelect={() => {
-														const id = contextMenuMediaId();
-														const sourceId = props.mediaSourceId();
-														if (id && sourceId) {
-															window.open(
-																`${props.detailBasePath ?? "/sources"}/${sourceId}/${id}`,
-																"_blank",
-															);
-														}
-													}}
+													onSelect={() => openMediaInNewTab(media)}
 												>
 													新しいタブで開く
 												</ContextMenuItem>
 											</Show>
-
-											<ContextMenuItem
-												class="text-red-600 focus:text-red-600"
-												onSelect={() => {
-													const id = contextMenuMediaId();
-													if (id) props.onDelete?.(id);
-												}}
+											<Show when={props.onToggleSelect}>
+												<ContextMenuItem
+													onSelect={() => props.onToggleSelect?.(media.id)}
+												>
+													{props.isBulkSelectMode?.() &&
+													props.isSelected?.(media.id)
+														? "選択解除"
+														: "選択"}
+													<ContextMenuShortcut>Space</ContextMenuShortcut>
+												</ContextMenuItem>
+											</Show>
+											<Show
+												when={
+													props.isBulkSelectMode?.() &&
+													(props.selectedCount?.() ?? 0) > 0 &&
+													(props.onBulkAction || props.onClearSelection)
+												}
 											>
-												削除
-											</ContextMenuItem>
-
-											<ContextMenuSeparator />
-
-											<ContextMenuItem
-												onSelect={() => {
-													const id = contextMenuMediaId();
-													if (id) props.onCopyMove?.(id, "copy");
-												}}
-											>
-												他のソースへコピー
-											</ContextMenuItem>
-											<ContextMenuItem
-												onSelect={() => {
-													const id = contextMenuMediaId();
-													if (id) props.onCopyMove?.(id, "move");
-												}}
-											>
-												他のソースへ移動
-											</ContextMenuItem>
-
-											<ContextMenuSeparator />
-
-											<ContextMenuItem
-												onSelect={() => {
-													const id = contextMenuMediaId();
-													if (id) props.onSyncSingleMedia?.(id);
-												}}
-											>
-												メタデータを同期 (再処理)
-											</ContextMenuItem>
-										</Show>
-									</ContextMenuContent>
-								</ContextMenu>
-							</Show>
-						}
-						when={viewMode() === "list"}
-					>
-						{listContent}
+												<Show when={props.onBulkAction}>
+													<ContextMenuItem
+														onSelect={() => props.onBulkAction?.()}
+													>
+														一括操作を実行 ({props.selectedCount?.()}件選択中)
+													</ContextMenuItem>
+												</Show>
+												<Show when={props.onClearSelection}>
+													<ContextMenuItem
+														onSelect={() => props.onClearSelection?.()}
+													>
+														選択をクリア
+													</ContextMenuItem>
+												</Show>
+											</Show>
+											<Show when={props.onDelete}>
+												<ContextMenuSeparator />
+												<ContextMenuItem
+													class="text-destructive focus:text-destructive"
+													onSelect={() => props.onDelete?.(media.id)}
+												>
+													削除
+													<ContextMenuShortcut>Delete</ContextMenuShortcut>
+												</ContextMenuItem>
+											</Show>
+											<Show when={props.onCopyMove}>
+												<ContextMenuSeparator />
+												<ContextMenuItem
+													onSelect={() => props.onCopyMove?.(media.id, "copy")}
+												>
+													他のソースへコピー
+												</ContextMenuItem>
+												<ContextMenuItem
+													onSelect={() => props.onCopyMove?.(media.id, "move")}
+												>
+													他のソースへ移動
+												</ContextMenuItem>
+											</Show>
+											<Show when={props.onSyncSingleMedia}>
+												<ContextMenuSeparator />
+												<ContextMenuItem
+													onSelect={() => props.onSyncSingleMedia?.(media.id)}
+												>
+													メタデータを同期 (再処理)
+												</ContextMenuItem>
+											</Show>
+										</>
+									)}
+								</Show>
+							</ContextMenuContent>
+						</ContextMenu>
 					</Show>
 
 					{/* Empty state */}

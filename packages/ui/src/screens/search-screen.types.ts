@@ -9,9 +9,14 @@ import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 
 export type SearchMediaItemOptions = {
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
+	isBulkSelectMode?: boolean;
+	isSelected?: boolean;
 	isPreviewSelected?: boolean;
+	onOpenMediaDetail?: () => void;
 	onPrepareMediaDetail?: () => void;
 	onPreviewSelect?: () => void;
+	onSelectGesture?: (event: MouseEvent | KeyboardEvent) => void;
+	onToggleSelect?: () => void;
 	priority?: boolean;
 };
 

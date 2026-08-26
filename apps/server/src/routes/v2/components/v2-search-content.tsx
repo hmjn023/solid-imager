@@ -1,10 +1,15 @@
 import { persistSearchScrollPosition } from "@solid-imager/ui/hooks/use-current-search-persistence";
+import {
+	type MediaCollectionSelectionMode,
+	useMediaCollectionSelection,
+} from "@solid-imager/ui/hooks/use-media-collection-selection";
 import { useSearchHistoryPersistence } from "@solid-imager/ui/hooks/use-search-history-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { V2SearchScreen } from "@solid-imager/ui/screens/v2-search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
+import { createSignal } from "solid-js";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -45,6 +50,22 @@ function rememberReturnPath(href: string): void {
 export default function V2SearchContent() {
 	const location = useLocation();
 	const navigate = useNavigate();
+	const [visibleMediaIds, setVisibleMediaIds] = createSignal<readonly string[]>(
+		[],
+	);
+	const selection = useMediaCollectionSelection(visibleMediaIds);
+	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
+	const handleSelection = (
+		mediaId: string,
+		mode: MediaCollectionSelectionMode,
+	) => {
+		setIsBulkSelectMode(true);
+		selection.select(mediaId, mode);
+	};
+	const clearSelection = () => {
+		setIsBulkSelectMode(false);
+		selection.clear();
+	};
 	const searchHistory = useSearchHistoryPersistence("all", {
 		client: SearchHistoryClient,
 		surface: "v2",
@@ -100,15 +121,30 @@ export default function V2SearchContent() {
 		<V2SearchScreen
 			enableVirtualization
 			filterData={page.filterData}
+			isBulkSelectMode={isBulkSelectMode}
+			isSelected={selection.isSelected}
+			onClearSelection={clearSelection}
+			onSelectAll={() => {
+				setIsBulkSelectMode(true);
+				selection.selectAll();
+			}}
+			onSelectMedia={handleSelection}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
+			onToggleSelect={(mediaId) => handleSelection(mediaId, "toggle")}
+			onVisibleMediaIdsChange={setVisibleMediaIds}
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
 				<V2MediaGridItem
 					imageLoadPolicy={options?.imageLoadPolicy}
-					isSelected={options?.isPreviewSelected}
+					isBulkSelectMode={options?.isBulkSelectMode}
+					isSelected={options?.isSelected}
+					isPreviewSelected={options?.isPreviewSelected}
 					media={media}
+					onOpenMediaDetail={options?.onOpenMediaDetail}
 					onPreviewSelect={options?.onPreviewSelect}
+					onSelectGesture={options?.onSelectGesture}
+					onToggleSelect={options?.onToggleSelect}
 					priority={options?.priority}
 					onPrepareMediaDetail={options?.onPrepareMediaDetail}
 				/>
@@ -140,6 +176,7 @@ export default function V2SearchContent() {
 				/>
 			)}
 			selectedSource={searchState.selectedSource}
+			selectedCount={() => selection.selectedIds().size}
 			ssrGuard
 			sources={page.sources()}
 		/>

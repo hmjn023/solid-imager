@@ -7,7 +7,12 @@ import type {
 	VoidProps,
 } from "solid-js";
 import { splitProps } from "solid-js";
-import { Dialog, DialogContent } from "./dialog";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogTitle,
+} from "./dialog";
 import { cn } from "./utils/cn";
 
 const Command: Component<ParentProps<CommandPrimitive.CommandRootProps>> = (
@@ -26,12 +31,29 @@ const Command: Component<ParentProps<CommandPrimitive.CommandRootProps>> = (
 	);
 };
 
-const CommandDialog: Component<ParentProps<DialogRootProps>> = (props) => {
-	const [local, others] = splitProps(props, ["children"]);
+type CommandDialogProps = ParentProps<
+	DialogRootProps & {
+		description?: string;
+		title?: string;
+	}
+>;
+
+const CommandDialog: Component<CommandDialogProps> = (props) => {
+	const [local, others] = splitProps(props, [
+		"children",
+		"description",
+		"title",
+	]);
 
 	return (
 		<Dialog {...others}>
 			<DialogContent class="overflow-hidden p-0">
+				<DialogTitle class="sr-only">
+					{local.title ?? "Choose an action"}
+				</DialogTitle>
+				<DialogDescription class="sr-only">
+					{local.description ?? "Type to filter the available actions."}
+				</DialogDescription>
 				<Command class="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:size-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:size-5">
 					{local.children}
 				</Command>

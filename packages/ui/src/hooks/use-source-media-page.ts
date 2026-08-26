@@ -798,8 +798,12 @@ export function useSourceMediaPage(
 				item.getAsString((str) => resolve(str));
 			});
 
-			if (text && z.string().url().safeParse(text).success) {
-				setPastedUrl(text);
+			const normalizedText = text?.trim();
+			if (
+				normalizedText &&
+				z.string().url().safeParse(normalizedText).success
+			) {
+				setPastedUrl(normalizedText);
 				setShowUploadModal(true);
 				e.preventDefault();
 				return true;
@@ -828,6 +832,15 @@ export function useSourceMediaPage(
 	};
 
 	const handlePaste = async (e: ClipboardEvent) => {
+		const target = e.target;
+		if (
+			e.defaultPrevented ||
+			(target instanceof Element &&
+				(target.closest("input, textarea, select, [contenteditable]") ||
+					target.closest("[role='textbox']")))
+		) {
+			return;
+		}
 		if (!e.clipboardData?.items) {
 			return;
 		}

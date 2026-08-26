@@ -12,6 +12,7 @@ import {
 } from "../combobox";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 import { Label } from "../label";
+import { ShortcutKbd } from "../shortcuts/shortcut-kbd";
 import { createDebouncedSignal } from "../utils/debounce";
 
 export type {
@@ -191,9 +192,10 @@ export function SearchComposer(props: SearchComposerProps) {
 				</ComboboxControl>
 				<VirtualComboboxContent class="v2-theme w-[min(28rem,calc(100dvw-1.5rem))] p-1 shadow-xl" />
 			</Combobox>
-			<kbd class="absolute top-2 right-2 rounded border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-1.5 py-0.5 text-[10px] text-[var(--v2-text-muted)]">
-				/
-			</kbd>
+			<ShortcutKbd
+				class="pointer-events-none absolute top-2 right-2 min-h-5 border-[var(--v2-border)] px-1.5 py-0.5 text-[10px] text-[var(--v2-text-muted)] shadow-none"
+				shortcutId="focusSearch"
+			/>
 		</form>
 	);
 }

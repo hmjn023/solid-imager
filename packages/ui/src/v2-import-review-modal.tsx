@@ -111,6 +111,17 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 		setSelectedJobIds(current);
 		setIsDirty(true);
 	};
+	const selectAll = () => {
+		const jobs = pendingJobs() ?? [];
+		if (jobs.length === 0 || selectedJobIds().size === jobs.length) return;
+		setSelectedJobIds(new Set(jobs.map((job) => job.id)));
+		setIsDirty(true);
+	};
+	const clearSelection = () => {
+		if (selectedJobIds().size === 0) return;
+		setSelectedJobIds(createEmptySelection());
+		setIsDirty(true);
+	};
 	const requestClose = () => {
 		if (activeAction() !== null) return;
 		if (isDirty()) {
@@ -202,8 +213,37 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 									</For>
 								</select>
 							</label>
-							<div class="text-muted-foreground text-sm" aria-live="polite">
-								{selectedJobIds().size} of {pendingJobs()?.length ?? 0} selected
+							<div class="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
+								<div class="text-muted-foreground text-sm" aria-live="polite">
+									{selectedJobIds().size} of {pendingJobs()?.length ?? 0}{" "}
+									selected
+								</div>
+								<div class="flex items-center gap-1">
+									<Button
+										class="h-8 px-2 text-xs"
+										disabled={
+											activeAction() !== null ||
+											(pendingJobs()?.length ?? 0) === 0 ||
+											selectedJobIds().size === (pendingJobs()?.length ?? 0)
+										}
+										onClick={selectAll}
+										size="sm"
+										variant="ghost"
+									>
+										Select all
+									</Button>
+									<Button
+										class="h-8 px-2 text-xs"
+										disabled={
+											activeAction() !== null || selectedJobIds().size === 0
+										}
+										onClick={clearSelection}
+										size="sm"
+										variant="ghost"
+									>
+										Clear
+									</Button>
+								</div>
 							</div>
 						</div>
 

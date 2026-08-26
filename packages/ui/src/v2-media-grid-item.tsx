@@ -30,6 +30,14 @@ export type MediaGridLinkProps = {
 	class: string;
 	"data-media-id": string;
 	href: string;
+	"aria-current"?:
+		| "date"
+		| "false"
+		| "location"
+		| "page"
+		| "step"
+		| "time"
+		| "true";
 	"aria-pressed"?: boolean;
 	onClick?: (event: MouseEvent) => void;
 	onContextMenu: (event: MouseEvent) => void;
@@ -49,6 +57,7 @@ type MediaGridItemProps = {
 	thumbnailClass?: string;
 	overlayClass?: string;
 	isBulkSelectMode?: boolean;
+	isPreviewSelected?: boolean;
 	isSelected?: boolean;
 };
 
@@ -67,11 +76,13 @@ export function V2MediaGridItem(props: MediaGridItemProps) {
 		<LinkComponent
 			class={cn(
 				"group relative block aspect-[4/3] overflow-hidden rounded-md bg-[var(--v2-surface-muted)] outline-none ring-offset-2 ring-offset-[var(--v2-canvas)] transition focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]",
-				props.isSelected && "ring-2 ring-[var(--v2-focus)]",
+				(props.isSelected || props.isPreviewSelected) &&
+					"ring-2 ring-[var(--v2-focus)]",
 				props.class,
 			)}
 			data-media-id={props.media.id}
 			href={href()}
+			aria-current={props.isPreviewSelected ? "true" : undefined}
 			aria-pressed={props.isSelected}
 			onClick={undefined}
 			onContextMenu={(event) => props.onContextMenu?.(event)}
