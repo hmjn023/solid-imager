@@ -55,7 +55,7 @@ DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
 
 ### AI ネイティブ依存（GPU 対応）
 
-AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。GPU (CUDA) を有効にするには、システムにインストールされた共有 ONNX Runtime を動的リンクしてビルドしてください。
+AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。GPU (CUDA) を有効にする場合も、アプリケーションをビルドするホスト側のランタイムを使用します。コンテナ内で Python、Rust toolchain、ONNX Runtime、アプリケーション依存関係をセットアップする必要はありません。
 
 ```bash
 ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
@@ -67,6 +67,26 @@ ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
 - NVIDIA ドライバーと CUDA ランタイムがインストールされていること
 
 CPU のみで使用する場合は通常通り `bun install` してください。
+
+### 本番コンテナ
+
+本番の `app` コンテナは `oven/bun:debian` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。コンテナ内で `docker build` や `bun install` は実行しません。
+
+ビルドホストで一度だけ実行します。
+
+```bash
+bun install --frozen-lockfile
+bun run --cwd apps/server build
+```
+
+デプロイホストからその成果物が見える状態にして、`APP_ARTIFACT_DIR` にプロジェクトルートを指定します。
+
+```bash
+APP_ARTIFACT_DIR=/srv/solid-imager \
+  docker compose -f compose.yml -f compose.production.yml -f compose.production.override.yml up -d
+```
+
+`APP_ARTIFACT_DIR` には `node_modules/` と `apps/server/.output/` を含む、ビルドホストのプロジェクトディレクトリを指定してください。
 
 ## 主要スクリプト
 

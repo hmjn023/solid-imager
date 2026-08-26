@@ -40,6 +40,7 @@ requirements/.obsidian/**
 .claude/
 .serena/
 .specify/
+.indexion/
 CALUDE.md
 GEMINI.md
 playwright-report/
@@ -69,3 +70,5 @@ apps/server/src/routeTree.gen.ts
 # Systemd & Certbot & Nginx (for production deployment, not committed)
 /nginx.conf
 /compose.production.override.yml
+
+.indexion/

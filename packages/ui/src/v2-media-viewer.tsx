@@ -128,6 +128,11 @@ export function V2MediaViewer(props: MediaViewerProps) {
 		lastPointer = undefined;
 		setIsPanning(false);
 	};
+	const handleDragStart = (event: DragEvent) => {
+		if (props.source.type === "image") {
+			event.preventDefault();
+		}
+	};
 	const toggleFullscreen = async () => {
 		if (!viewer) return;
 		try {
@@ -198,6 +203,7 @@ export function V2MediaViewer(props: MediaViewerProps) {
 				if (zoom() > 1) resetView();
 				else setZoomAroundPoint(2);
 			}}
+			onDragStart={handleDragStart}
 			onKeyDown={(event) => {
 				if (props.source.type !== "image") return;
 				if (event.key === "+" || event.key === "=") {
