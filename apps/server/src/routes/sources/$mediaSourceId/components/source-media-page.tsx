@@ -1,6 +1,10 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import type { SearchPersistenceSurface } from "@solid-imager/ui/hooks/use-current-search-persistence";
+import {
+	type MediaCollectionSelectionMode,
+	useMediaCollectionSelection,
+} from "@solid-imager/ui/hooks/use-media-collection-selection";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
@@ -82,6 +86,9 @@ export function SourceMediaPageController(
 	const mediaSourceId = () => props.mediaSourceId?.() ?? params().mediaSourceId;
 	const queryClient = useQueryClient();
 	const [isMounted, setIsMounted] = createSignal(false);
+	const [visibleMediaIds, setVisibleMediaIds] = createSignal<readonly string[]>(
+		[],
+	);
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
 	const mediaSourceName = () =>
 		mediaSources.data?.find((source) => source.id === mediaSourceId())?.name;
@@ -90,23 +97,27 @@ export function SourceMediaPageController(
 
 	// 一括選択用シグナル
 	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
-	const [selectedMediaIds, setSelectedMediaIds] = createSignal<string[]>([]);
+	const selection = useMediaCollectionSelection(visibleMediaIds);
+	const selectedMediaIds = () => [...selection.selectedIds()];
 	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
 
 	const handleToggleSelect = (mediaId: string) => {
 		setIsBulkSelectMode(true);
-		setSelectedMediaIds((prev) => {
-			return prev.includes(mediaId)
-				? prev.filter((id) => id !== mediaId)
-				: [...prev, mediaId];
-		});
+		selection.select(mediaId, "toggle");
+	};
+	const handleSelectionGesture = (
+		mediaId: string,
+		mode: MediaCollectionSelectionMode,
+	) => {
+		setIsBulkSelectMode(true);
+		selection.select(mediaId, mode);
 	};
 
-	const isSelected = (mediaId: string) => selectedMediaIds().includes(mediaId);
+	const isSelected = selection.isSelected;
 
 	const handleCancelSelect = () => {
 		setIsBulkSelectMode(false);
-		setSelectedMediaIds([]);
+		selection.clear();
 	};
 
 	// 一括操作成功時のコールバック
@@ -164,6 +175,8 @@ export function SourceMediaPageController(
 				charactersQueryOptions={allCharactersQueryOptions}
 				authorsQueryOptions={allAuthorsQueryOptions}
 				onToggleSelect={handleToggleSelect}
+				onSelectMedia={handleSelectionGesture}
+				onVisibleMediaIdsChange={setVisibleMediaIds}
 				isBulkSelectMode={isBulkSelectMode}
 				isSelected={isSelected}
 				onBulkAction={() => setIsBulkActionOpen(true)}
@@ -189,6 +202,17 @@ export function SourceMediaPageController(
 					<span class="w-full text-center font-medium text-sm sm:w-auto">
 						{selectedMediaIds().length} 件選択中
 					</span>
+					<Button
+						class="flex-1 sm:flex-none"
+						disabled={
+							visibleMediaIds().length === 0 ||
+							selectedMediaIds().length === visibleMediaIds().length
+						}
+						onClick={() => selection.selectAll()}
+						variant="outline"
+					>
+						表示分をすべて選択
+					</Button>
 					<Button
 						class="flex-1 sm:flex-none"
 						disabled={selectedMediaIds().length === 0}

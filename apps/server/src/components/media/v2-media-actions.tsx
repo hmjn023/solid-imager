@@ -1,5 +1,14 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "@solid-imager/ui/alert-dialog";
 import { Button } from "@solid-imager/ui/button";
 import {
 	Popover,
@@ -11,9 +20,11 @@ import { toast } from "@solid-imager/ui/toast";
 import {
 	Binary,
 	ChevronDown,
+	Download,
 	Scan,
 	ScanSearch,
 	Sparkles,
+	Trash2,
 } from "@solid-imager/ui/v2/icons";
 import { useNavigate } from "@tanstack/solid-router";
 import { createEffect, createSignal, on, onCleanup } from "solid-js";
@@ -25,6 +36,7 @@ import {
 	getCcipVectorStatus,
 	startCcipExtraction,
 } from "~/infrastructure/api-clients/ai-api";
+import { deleteMedia } from "~/infrastructure/api-clients/media-api";
 
 type MediaActionsProps = {
 	media: MediaDetails;
@@ -41,6 +53,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 		createSignal(false);
 	const [isCharacterCropModalOpen, setIsCharacterCropModalOpen] =
 		createSignal(false);
+	const [moreActionsOpen, setMoreActionsOpen] = createSignal(false);
 	const [ccipStatus, setCcipStatus] = createSignal<
 		"missing" | "processing" | "ready" | "stale" | "failed"
 	>("missing");
@@ -49,6 +62,8 @@ export function V2MediaActions(props: MediaActionsProps) {
 	);
 	const [isCcipJobPending, setIsCcipJobPending] = createSignal(false);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
+	const [isDeleting, setIsDeleting] = createSignal(false);
 	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
 	let ccipStatusRequestId = 0;
 
@@ -101,6 +116,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 	);
 
 	const handleCcipExtraction = async () => {
+		setMoreActionsOpen(false);
 		setIsExtractingCcip(true);
 		const currentMediaId = props.media.id;
 		const currentMediaSourceId = props.media.mediaSourceId;
@@ -168,6 +184,31 @@ export function V2MediaActions(props: MediaActionsProps) {
 		activateVectorSearch(props.media.id, { surface: "v2" });
 		void navigate({ to: "/v2/search" });
 	};
+	const handleDownload = () => {
+		setMoreActionsOpen(false);
+		const anchor = document.createElement("a");
+		anchor.href = `/api/sources/${encodeURIComponent(props.media.mediaSourceId)}/${encodeURIComponent(props.media.id)}`;
+		anchor.download = props.media.fileName;
+		anchor.click();
+	};
+	const handleDelete = async () => {
+		if (isDeleting()) return;
+		setIsDeleting(true);
+		try {
+			await deleteMedia(props.media.mediaSourceId, props.media.id);
+			setIsDeleteDialogOpen(false);
+			toast.success("Media deleted");
+			await navigate({
+				params: { mediaSourceId: props.media.mediaSourceId },
+				replace: true,
+				to: "/v2/sources/$mediaSourceId",
+			});
+		} catch (error) {
+			toast.error(`Failed to delete media: ${getErrorMessage(error)}`);
+		} finally {
+			setIsDeleting(false);
+		}
+	};
 	const ccipActionLabel = () => {
 		if (ccipStatus() === "ready" || ccipStatus() === "stale") {
 			return "Re-extract CCIP vector";
@@ -202,7 +243,11 @@ export function V2MediaActions(props: MediaActionsProps) {
 					<ScanSearch aria-hidden="true" size={15} />
 					Find similar
 				</Button>
-				<Popover placement="bottom-end">
+				<Popover
+					onOpenChange={setMoreActionsOpen}
+					open={moreActionsOpen()}
+					placement="bottom-end"
+				>
 					<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-white px-3 font-medium text-xs outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:h-9 md:flex-none">
 						More actions
 						<ChevronDown aria-hidden="true" size={14} />
@@ -242,6 +287,25 @@ export function V2MediaActions(props: MediaActionsProps) {
 						>
 							CCIP status: {ccipStatus()}
 						</p>
+						<div class="my-1 border-[var(--v2-border)] border-t" />
+						<Button
+							class="h-9 w-full justify-start px-2"
+							onClick={handleDownload}
+							size="sm"
+							variant="ghost"
+						>
+							<Download aria-hidden="true" size={14} />
+							Download original
+						</Button>
+						<Button
+							class="h-9 w-full justify-start px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+							onClick={() => setIsDeleteDialogOpen(true)}
+							size="sm"
+							variant="ghost"
+						>
+							<Trash2 aria-hidden="true" size={14} />
+							Delete media…
+						</Button>
 					</PopoverContent>
 				</Popover>
 			</div>
@@ -264,6 +328,32 @@ export function V2MediaActions(props: MediaActionsProps) {
 				media={props.media}
 				onClose={() => setIsCharacterCropModalOpen(false)}
 			/>
+			<AlertDialog
+				onOpenChange={setIsDeleteDialogOpen}
+				open={isDeleteDialogOpen()}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete this media?</AlertDialogTitle>
+						<AlertDialogDescription>
+							{props.media.fileName} will be permanently removed from its
+							source. This action cannot be undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isDeleting()}>
+							Cancel
+						</AlertDialogCancel>
+						<Button
+							disabled={isDeleting()}
+							onClick={() => void handleDelete()}
+							variant="destructive"
+						>
+							{isDeleting() ? "Deleting…" : "Delete"}
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 		</>
 	);
 }

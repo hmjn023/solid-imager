@@ -14,13 +14,21 @@ import {
 
 const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
+function rememberReturnPath(href: string): void {
+	try {
+		sessionStorage.setItem("v2:media-return", href);
+	} catch {
+		// Session storage is optional; media detail navigation must continue.
+	}
+}
+
 export function V2SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 	const location = useLocation();
 	const navigate = useNavigate();
 
 	const onOpenMediaDetail: SourceMediaPageControllerProps["onOpenMediaDetail"] =
 		(media, context) => {
-			sessionStorage.setItem("v2:media-return", location().href);
+			rememberReturnPath(location().href);
 			saveV2MediaContext(location().href, context ?? [media]);
 			void navigate({
 				params: {
@@ -32,7 +40,7 @@ export function V2SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 		};
 	const onPrepareMediaDetail: SourceMediaPageControllerProps["onPrepareMediaDetail"] =
 		(media, context) => {
-			sessionStorage.setItem("v2:media-return", location().href);
+			rememberReturnPath(location().href);
 			saveV2MediaContext(location().href, context ?? [media]);
 		};
 
@@ -48,11 +56,14 @@ export function V2SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 				<V2MediaGridItem
 					imageLoadPolicy={options.imageLoadPolicy}
 					isBulkSelectMode={options.isBulkSelectMode}
-					isSelected={options.isSelected || options.isPreviewSelected}
+					isPreviewSelected={options.isPreviewSelected}
+					isSelected={options.isSelected}
 					media={media}
 					onContextMenu={options.onContextMenu}
+					onOpenMediaDetail={options.onOpenMediaDetail}
 					onPrepareMediaDetail={options.onPrepareMediaDetail}
 					onPreviewSelect={options.onPreviewSelect}
+					onSelectGesture={options.onSelectGesture}
 					onToggleSelect={onToggleSelect}
 					priority={options.priority}
 				/>

@@ -12,11 +12,13 @@ import {
 } from "@solid-imager/ui/dialog";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
+import { createAppShortcut } from "@solid-imager/ui/shortcuts/index";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
 import { V2SourceFormModal } from "@solid-imager/ui/v2-source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useNavigate } from "@tanstack/solid-router";
 import type { JSX, ParentProps } from "solid-js";
-import { createSignal } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
 import {
@@ -25,6 +27,7 @@ import {
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
+import { V2CommandCenter } from "./v2-command-center";
 import { V2MobileHeader } from "./v2-mobile-header";
 import { V2Sidebar, type V2SidebarProps } from "./v2-sidebar";
 
@@ -32,8 +35,11 @@ type V2AppShellProps = ParentProps<{
 	statusIndicator?: JSX.Element;
 }>;
 
+const SIDEBAR_PREFERENCE_KEY = "solid-imager:v2-sidebar-expanded";
+
 export function V2AppShell(props: V2AppShellProps) {
 	const queryClient = useQueryClient();
+	const navigate = useNavigate();
 	const mediaSources = createQuery(mediaSourcesQueryOptions);
 	const sourceEventTransport = createServerTransport(() => "*", {
 		onResumeFromIdle: () => {
@@ -45,7 +51,32 @@ export function V2AppShell(props: V2AppShellProps) {
 	const registerSourceEvents = (handler: RawEventHandler) =>
 		sourceEventTransport.listen(handler);
 	const [sidebarExpanded, setSidebarExpanded] = createSignal(true);
+	const [sidebarPreferenceReady, setSidebarPreferenceReady] =
+		createSignal(false);
 	const [mobileMenuOpen, setMobileMenuOpen] = createSignal(false);
+	const [commandPaletteOpen, setCommandPaletteOpen] = createSignal(false);
+	const [shortcutHelpOpen, setShortcutHelpOpen] = createSignal(false);
+	let commandPaletteReturnFocus: HTMLElement | null = null;
+	let focusRestoreFrame: number | undefined;
+	const updateCommandPaletteOpen = (open: boolean) => {
+		if (open && !commandPaletteOpen()) {
+			commandPaletteReturnFocus =
+				document.activeElement instanceof HTMLElement
+					? document.activeElement
+					: null;
+		}
+		setCommandPaletteOpen(open);
+		if (open || !commandPaletteReturnFocus) return;
+		const returnFocus = commandPaletteReturnFocus;
+		commandPaletteReturnFocus = null;
+		if (focusRestoreFrame !== undefined) {
+			cancelAnimationFrame(focusRestoreFrame);
+		}
+		focusRestoreFrame = requestAnimationFrame(() => {
+			focusRestoreFrame = undefined;
+			if (returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
+		});
+	};
 	const sourceData = () => mediaSources.data ?? [];
 	const sourcePage = useSourcesPage({
 		actions: {
@@ -69,7 +100,44 @@ export function V2AppShell(props: V2AppShellProps) {
 		onCollapseToggle: () => setSidebarExpanded((expanded) => !expanded),
 		onDeleteSource: sourcePage.handleDeleteSource,
 		onEditSource: sourcePage.handleEditSource,
+		onOpenCommandPalette: () => updateCommandPaletteOpen(true),
 		onSyncSource: (source) => void sourcePage.handleSyncSource(source),
+	});
+	createAppShortcut(
+		"commandPalette",
+		() => updateCommandPaletteOpen(!commandPaletteOpen()),
+		{ ignoreInputs: false },
+	);
+	createAppShortcut("shortcutHelp", () => setShortcutHelpOpen(true));
+	createAppShortcut("toggleSidebar", () =>
+		setSidebarExpanded((expanded) => !expanded),
+	);
+	createAppShortcut("goLibrary", () => {
+		void navigate({ to: "/v2/search" });
+	});
+	createAppShortcut("goManager", () => {
+		void navigate({ to: "/v2/manager" });
+	});
+	createAppShortcut("goJobs", () => {
+		void navigate({ to: "/v2/jobs" });
+	});
+	createAppShortcut("goSettings", () => {
+		void navigate({ to: "/v2/config" });
+	});
+	onMount(() => {
+		const storedPreference = localStorage.getItem(SIDEBAR_PREFERENCE_KEY);
+		if (storedPreference === "false") setSidebarExpanded(false);
+		if (storedPreference === "true") setSidebarExpanded(true);
+		setSidebarPreferenceReady(true);
+	});
+	onCleanup(() => {
+		if (focusRestoreFrame !== undefined) {
+			cancelAnimationFrame(focusRestoreFrame);
+		}
+	});
+	createEffect(() => {
+		if (!sidebarPreferenceReady()) return;
+		localStorage.setItem(SIDEBAR_PREFERENCE_KEY, String(sidebarExpanded()));
 	});
 
 	return (
@@ -95,7 +163,10 @@ export function V2AppShell(props: V2AppShellProps) {
 			</aside>
 
 			<div class="flex min-h-0 min-w-0 flex-col">
-				<V2MobileHeader onOpenMenu={() => setMobileMenuOpen(true)} />
+				<V2MobileHeader
+					onOpenCommandPalette={() => updateCommandPaletteOpen(true)}
+					onOpenMenu={() => setMobileMenuOpen(true)}
+				/>
 				{props.statusIndicator}
 				<main
 					class="min-h-0 min-w-0 flex-1 overflow-hidden"
@@ -136,6 +207,14 @@ export function V2AppShell(props: V2AppShellProps) {
 				onClose={() => sourcePage.setShowDeleteModal(false)}
 				onConfirm={sourcePage.handleDeleteConfirm}
 				sourceToDelete={sourcePage.deletingSource()}
+			/>
+			<V2CommandCenter
+				helpOpen={shortcutHelpOpen()}
+				onAddSource={sourcePage.handleAddSource}
+				onHelpOpenChange={setShortcutHelpOpen}
+				onPaletteOpenChange={updateCommandPaletteOpen}
+				onToggleSidebar={() => setSidebarExpanded((expanded) => !expanded)}
+				paletteOpen={commandPaletteOpen()}
 			/>
 		</div>
 	);

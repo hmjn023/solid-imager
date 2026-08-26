@@ -3,7 +3,7 @@ import {
 	type MediaGridLinkProps,
 	V2MediaGridItem as SharedV2MediaGridItem,
 } from "@solid-imager/ui/v2-media-grid-item";
-import { Link, useLocation } from "@tanstack/solid-router";
+import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import type { ServerMediaGridItemProps } from "./legacy-media-grid-item";
 import { ThumbnailImage } from "./thumbnail-image";
@@ -13,35 +13,82 @@ export type V2ServerMediaGridItemProps = Omit<
 	"imageLoadPolicy"
 > & {
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
+	onOpenMediaDetail?: () => void;
 };
 
 export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
-	const location = useLocation();
+	const isPlainPrimaryClick = (event: MouseEvent) =>
+		event.button === 0 &&
+		!event.metaKey &&
+		!event.ctrlKey &&
+		!event.shiftKey &&
+		!event.altKey;
+	const hasFinePointer = () => window.matchMedia("(pointer: fine)").matches;
+	const isModifiedSelectionClick = (event: MouseEvent) =>
+		event.button === 0 &&
+		!event.altKey &&
+		(event.metaKey || event.ctrlKey || event.shiftKey);
+
 	const detailLink = (linkProps: MediaGridLinkProps) => (
 		<Link
+			aria-current={linkProps["aria-current"]}
+			aria-pressed={linkProps["aria-pressed"]}
 			class={linkProps.class}
 			data-media-id={linkProps["data-media-id"]}
 			onClick={(event: MouseEvent) => {
 				if (
-					props.onPreviewSelect &&
-					window.matchMedia("(min-width: 1536px)").matches
+					props.onSelectGesture &&
+					hasFinePointer() &&
+					isModifiedSelectionClick(event)
 				) {
+					event.preventDefault();
+					props.onSelectGesture(event);
+					return;
+				}
+				if (!isPlainPrimaryClick(event)) return;
+
+				if (props.onPreviewSelect && hasFinePointer()) {
 					event.preventDefault();
 					props.onPreviewSelect();
 					return;
 				}
+
+				props.onPrepareMediaDetail?.();
+			}}
+			onContextMenu={linkProps.onContextMenu}
+			onDblClick={(event: MouseEvent) => {
 				if (
-					event.button === 0 &&
+					!isPlainPrimaryClick(event) ||
+					!hasFinePointer() ||
+					!props.onOpenMediaDetail
+				) {
+					return;
+				}
+
+				event.preventDefault();
+				props.onPrepareMediaDetail?.();
+				props.onOpenMediaDetail();
+			}}
+			onKeyDown={(event: KeyboardEvent) => {
+				if (
+					event.key === "Enter" &&
 					!event.metaKey &&
 					!event.ctrlKey &&
 					!event.shiftKey &&
-					!event.altKey
+					!event.altKey &&
+					props.onOpenMediaDetail
 				) {
+					event.preventDefault();
 					props.onPrepareMediaDetail?.();
-					sessionStorage.setItem("v2:media-return", location().href);
+					props.onOpenMediaDetail();
+					return;
+				}
+
+				if (event.key === " " && props.onPreviewSelect) {
+					event.preventDefault();
+					props.onPreviewSelect();
 				}
 			}}
-			onContextMenu={linkProps.onContextMenu}
 			params={{
 				mediaId: props.media.id,
 				mediaSourceId: props.media.mediaSourceId,
@@ -55,6 +102,7 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 	return (
 		<SharedV2MediaGridItem
 			isBulkSelectMode={props.isBulkSelectMode}
+			isPreviewSelected={props.isPreviewSelected}
 			isSelected={props.isSelected}
 			imageLoadPolicy={props.imageLoadPolicy}
 			linkComponent={(linkProps) => (
@@ -65,6 +113,10 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 						data-media-id={linkProps["data-media-id"]}
 						onClick={(event) => {
 							event.preventDefault();
+							if (props.onSelectGesture && isModifiedSelectionClick(event)) {
+								props.onSelectGesture(event);
+								return;
+							}
 							props.onToggleSelect?.();
 						}}
 						onContextMenu={linkProps.onContextMenu}

@@ -1,5 +1,6 @@
 import { AppShell } from "@solid-imager/ui/layouts/app-shell";
 import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
+import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts/index";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import {
@@ -54,23 +55,25 @@ function RootComponent() {
 				<HeadContent />
 			</head>
 			<body classList={{ "v2-theme": isV2Route() }}>
-				<Toaster />
-				<Show
-					fallback={<Outlet />}
-					when={
-						location().pathname !== "/design-lab" &&
-						!location().pathname.startsWith("/design-lab/") &&
-						!isV2Route()
-					}
-				>
-					<AppShell
-						nav={<Nav />}
-						statusIndicator={<RouteTransitionIndicator />}
+				<ShortcutPreferencesProvider>
+					<Toaster />
+					<Show
+						fallback={<Outlet />}
+						when={
+							location().pathname !== "/design-lab" &&
+							!location().pathname.startsWith("/design-lab/") &&
+							!isV2Route()
+						}
 					>
-						<ApiActivityIndicator />
-						<Outlet />
-					</AppShell>
-				</Show>
+						<AppShell
+							nav={<Nav />}
+							statusIndicator={<RouteTransitionIndicator />}
+						>
+							<ApiActivityIndicator />
+							<Outlet />
+						</AppShell>
+					</Show>
+				</ShortcutPreferencesProvider>
 				<Scripts />
 			</body>
 		</html>

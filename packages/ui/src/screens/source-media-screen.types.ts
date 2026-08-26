@@ -1,5 +1,6 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Component, JSX } from "solid-js";
+import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
 import type {
 	UploadOptions,
 	UseSourceMediaPageResult,
@@ -25,6 +26,7 @@ export type SourceMediaScreenProps = {
 	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
 	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onRetryFilters: () => void | Promise<void>;
+	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
 	onToggleSelect?: (mediaId: string) => void;
 	page: UseSourceMediaPageResult;
 	renderActions: (props: { onOpenMobileFilters: () => void }) => JSX.Element;
@@ -36,8 +38,10 @@ export type SourceMediaScreenProps = {
 			isPreviewSelected?: boolean;
 			isSelected?: boolean;
 			onContextMenu: () => void;
+			onOpenMediaDetail?: () => void;
 			onPrepareMediaDetail?: () => void;
 			onPreviewSelect?: () => void;
+			onSelectGesture?: (event: MouseEvent | KeyboardEvent) => void;
 			priority?: boolean;
 		},
 	) => JSX.Element;

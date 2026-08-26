@@ -16,10 +16,12 @@ export type ServerMediaGridItemProps = {
 	priority?: boolean;
 	sourceRootPath?: string;
 	isBulkSelectMode?: boolean;
+	isPreviewSelected?: boolean;
 	isSelected?: boolean;
 	onToggleSelect?: () => void;
 	onPrepareMediaDetail?: () => void;
 	onPreviewSelect?: () => void;
+	onSelectGesture?: (event: MouseEvent | KeyboardEvent) => void;
 };
 
 export function LegacyMediaGridItem(props: ServerMediaGridItemProps) {

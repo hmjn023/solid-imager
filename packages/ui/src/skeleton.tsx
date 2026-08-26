@@ -129,7 +129,7 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 			data-skeleton="media-grid"
 		>
 			<div class={cn(mediaGridClassName, props.class)}>
-				<For each={Array.from({ length: props.count ?? 16 })}>
+				<For each={Array.from({ length: props.count ?? 32 })}>
 					{() => (
 						<Skeleton
 							class={cn(

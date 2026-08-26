@@ -222,6 +222,7 @@
         "@solid-imager/core": "workspace:*",
         "@solidjs/router": "^0.16.1",
         "@tanstack/solid-form": "^1.33.0",
+        "@tanstack/solid-hotkeys": "0.10.0",
         "@tanstack/solid-query": "5.99.2",
         "@tanstack/solid-router": "1.170.16",
         "@tanstack/solid-virtual": "^3.13.26",
@@ -761,6 +762,8 @@
 
     "@tanstack/history": ["@tanstack/history@1.162.0", "", {}, "sha512-79pf/RkhteYZTRgcR4F9kbk84P2N8rugQJswxfIqovlbRiT3yI7eBE+5QorIrZaOKktsgzRlXh1l/du/xpl4iA=="],
 
+    "@tanstack/hotkeys": ["@tanstack/hotkeys@0.8.0", "", { "dependencies": { "@tanstack/store": "^0.11.0" } }, "sha512-vqH7X9nb0MTJ/O08++dB5bP9jgj4+BIPOUu/U+6myG86lDsirZSVSobpq5UQpE7nBuk62i8eIYeOhd+OMl/UrA=="],
+
     "@tanstack/pacer-lite": ["@tanstack/pacer-lite@0.2.2", "", {}, "sha512-eQ1MyLKCHyXiH7NbdmB80W77OhiMgGBUb+qDx/8WMGbwg5Lf/NlfD0TfNYAqY77i8V3AxoDoYdICrQE5ADw4Yw=="],
 
     "@tanstack/query-core": ["@tanstack/query-core@5.99.2", "", {}, "sha512-1HunU0bXVsR1ZJMZbcOPE6VtaBJxsW809RE9xPe4Gz7MlB0GWwQvuTPhMoEmQ/hIzFKJ/DWAuttIe7BOaWx0tA=="],
@@ -782,6 +785,8 @@
     "@tanstack/solid-db": ["@tanstack/solid-db@0.2.23", "", { "dependencies": { "@solid-primitives/map": "^0.7.2", "@tanstack/db": "0.6.9" }, "peerDependencies": { "solid-js": ">=1.9.0" } }, "sha512-Bu1XAPBdPUsdNuNa+tfOT14DacFXO8uIdgsh8mX7t//TC1JQ9I86TlDEO9XF0+u+/Z0TdNNg/VlqNucC3Zowrw=="],
 
     "@tanstack/solid-form": ["@tanstack/solid-form@1.33.0", "", { "dependencies": { "@tanstack/form-core": "1.33.0", "@tanstack/solid-store": "^0.11.0" }, "peerDependencies": { "solid-js": ">=1.9.9" } }, "sha512-+KXp+T/fD+nO5JarDj1W5GctEm4aFuz13DkHVJrdIHGo0evMXlFNWJT57n+TOyvoLoKehknKjM1o41rrKClSTQ=="],
+
+    "@tanstack/solid-hotkeys": ["@tanstack/solid-hotkeys@0.10.0", "", { "dependencies": { "@tanstack/hotkeys": "0.8.0", "@tanstack/solid-store": "^0.11.0" }, "peerDependencies": { "solid-js": ">=1.7.0" } }, "sha512-jThxkZMt1ShaQ/ynvyzHfwdbl15gTxJWXnQtbHuRHrzYFvuBB5fx4+D0jKQJ3sSq6XN3HwB3f9cVI0na5rN+Bw=="],
 
     "@tanstack/solid-query": ["@tanstack/solid-query@5.99.2", "", { "dependencies": { "@tanstack/query-core": "5.99.2" }, "peerDependencies": { "solid-js": "^1.6.0" } }, "sha512-0jvYCCedwLI/r3Gd2T/uIFrosvw9UoO0M7d81IVqNBtn8dTMu3obSqcJuOH436za3MDxodPSs45jC2qKXrbsqQ=="],
 
