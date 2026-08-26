@@ -70,3 +70,5 @@ apps/server/src/routeTree.gen.ts
 # Systemd & Certbot & Nginx (for production deployment, not committed)
 /nginx.conf
 /compose.production.override.yml
+
+.indexion/
