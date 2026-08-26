@@ -35,8 +35,8 @@
     "docs:generate": "typedoc"
   },
   "dependencies": {
-    "@electric-sql/pglite": "0.5.3",
-    "@electric-sql/pglite-pgvector": "0.0.4",
+    "@electric-sql/pglite": "0.5.5",
+    "@electric-sql/pglite-pgvector": "0.0.6",
     "@orpc/client": "^1.14.4",
     "@orpc/contract": "^1.14.4",
     "@orpc/experimental-pino": "^1.14.4",
@@ -79,7 +79,7 @@
     "@orpc/openapi": "^1.14.4",
     "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.3.0",
-    "@tanstack/devtools-vite": "^0.7.0",
+    "@tanstack/devtools-vite": "^0.8.3",
     "@types/archiver": "^8.0.0",
     "@types/ffmpeg-static": "^5.1.0",
     "@types/fluent-ffmpeg": "^2.1.28",
