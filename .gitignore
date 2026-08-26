@@ -40,6 +40,7 @@ requirements/.obsidian/**
 .claude/
 .serena/
 .specify/
+.indexion/
 CALUDE.md
 GEMINI.md
 playwright-report/
