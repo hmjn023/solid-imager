@@ -22,6 +22,7 @@ export type {
 } from "./search-composer-utils";
 export {
 	getSearchComposerTokens,
+	parseSimilarityAnchor,
 	parseSimilarityTopK,
 } from "./search-composer-utils";
 

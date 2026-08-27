@@ -1,3 +1,4 @@
+import { mediaIdSchema } from "@solid-imager/core/domain/media/schemas";
 import type { SearchState } from "@solid-imager/core/domain/search/schema";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 
@@ -94,6 +95,11 @@ export function parseSimilarityTopK(value: string): number | undefined {
 	return Number.isInteger(parsed) && parsed >= 1 && parsed <= 100
 		? parsed
 		: undefined;
+}
+
+export function parseSimilarityAnchor(value: string): string | undefined {
+	const parsed = mediaIdSchema.safeParse(value);
+	return parsed.success ? parsed.data : undefined;
 }
 
 type SuggestionSource = keyof SearchPageFilterData;

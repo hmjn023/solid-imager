@@ -4,6 +4,7 @@ import type { SearchPageFilterData } from "../hooks/use-search-page";
 import {
 	getSearchComposerSuggestions,
 	getSearchComposerTokens,
+	parseSimilarityAnchor,
 	parseSimilarityTopK,
 	type SearchToken,
 } from "./search-composer-utils";
@@ -63,6 +64,18 @@ describe("getSearchComposerSuggestions", () => {
 		expect(
 			getSearchComposerSuggestions("tag:blue,red", filterData, []),
 		).toEqual([]);
+	});
+});
+
+describe("parseSimilarityAnchor", () => {
+	it("accepts UUID media IDs", () => {
+		expect(parseSimilarityAnchor("11111111-1111-4111-8111-111111111111")).toBe(
+			"11111111-1111-4111-8111-111111111111",
+		);
+	});
+
+	it("rejects non-UUID values", () => {
+		expect(parseSimilarityAnchor("not-a-media-id")).toBeUndefined();
 	});
 });
 

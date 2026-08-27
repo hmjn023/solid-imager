@@ -24,6 +24,7 @@ import {
 	type SearchArrayKey,
 	SearchComposer,
 	getSearchComposerTokens,
+	parseSimilarityAnchor,
 	parseSimilarityTopK,
 	type SearchSuggestion,
 	type SearchToken,
@@ -118,6 +119,18 @@ function submitComposerDraft(rawDraft: string): boolean {
 		if (!value) continue;
 
 		switch (prefix) {
+			case "similar": {
+				const anchorMediaId = parseSimilarityAnchor(value);
+				if (!anchorMediaId) {
+					freeText.push(part);
+					break;
+				}
+				if (searchState.similarityAnchorMediaId !== anchorMediaId) {
+					setSearchState("similarityAnchorMediaId", anchorMediaId);
+					changed = true;
+				}
+				break;
+			}
 			case "name":
 				setSearchState("searchQuery", value);
 				changed = true;
