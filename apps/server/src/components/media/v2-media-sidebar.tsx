@@ -16,7 +16,7 @@ import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
 import { toast } from "@solid-imager/ui/toast";
 import { ChevronDown } from "@solid-imager/ui/v2/icons";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-// biome-ignore lint/suspicious/noDeprecatedImports: the object overload used below is current; TanStack's legacy overload annotation marks the re-export.
+// biome-ignore lint/suspicious/noDeprecatedImports: TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import AssociationManager from "~/components/media/association-manager";

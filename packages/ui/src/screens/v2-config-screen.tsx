@@ -2,7 +2,7 @@ import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { createForm } from "@tanstack/solid-form";
-// biome-ignore lint/suspicious/noDeprecatedImports: the object overload used below is current; TanStack's legacy overload annotation marks the re-export.
+// biome-ignore lint/suspicious/noDeprecatedImports: TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
 import Bot from "lucide-solid/icons/bot";
 import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
