@@ -1,8 +1,8 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
+import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
-import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
@@ -20,10 +20,7 @@ export type V2SearchScreenProps = SearchWorkspaceProps & {
 	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
 	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onSelectAll?: () => void;
-	onSelectMedia?: (
-		mediaId: string,
-		mode: MediaCollectionSelectionMode,
-	) => void;
+	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
 	onToggleSelect?: (mediaId: string) => void;
 	onVisibleMediaIdsChange?: (mediaIds: readonly string[]) => void;
 	renderMediaPreview?: (media: Media) => import("solid-js").JSX.Element;
@@ -73,7 +70,9 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 	};
 	createEffect(() => {
 		props.onVisibleMediaIdsChange?.(
-			page().searchResults().map((media) => media.id),
+			page()
+				.searchResults()
+				.map((media) => media.id),
 		);
 	});
 

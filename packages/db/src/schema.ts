@@ -12,7 +12,7 @@ import {
 	jsonb,
 	pgEnum,
 	pgTable,
-	// biome-ignore lint/suspicious/noDeprecatedImports: Drizzle primaryKey overload triggers false positive
+	// biome-ignore lint/suspicious/noDeprecatedImports: Drizzle's object-form primaryKey API is current, but the package marks the export as deprecated.
 	primaryKey,
 	real,
 	serial,
