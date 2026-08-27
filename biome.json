@@ -61,6 +61,145 @@
 			}
 		},
 		{
+			"includes": ["packages/core/src/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@solid-imager/application",
+											"@solid-imager/application/**",
+											"@solid-imager/client",
+											"@solid-imager/client/**",
+											"@solid-imager/db",
+											"@solid-imager/db/**",
+											"@solid-imager/ui",
+											"@solid-imager/ui/**",
+											"~/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["packages/application/src/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@solid-imager/client",
+											"@solid-imager/client/**",
+											"@solid-imager/db",
+											"@solid-imager/db/**",
+											"@solid-imager/ui",
+											"@solid-imager/ui/**",
+											"~/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["packages/db/src/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@solid-imager/application",
+											"@solid-imager/application/**",
+											"@solid-imager/client",
+											"@solid-imager/client/**",
+											"@solid-imager/ui",
+											"@solid-imager/ui/**",
+											"~/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["packages/ui/src/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@solid-imager/application",
+											"@solid-imager/application/**",
+											"@solid-imager/client",
+											"@solid-imager/client/**",
+											"@solid-imager/db",
+											"@solid-imager/db/**",
+											"~/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
+			"includes": ["packages/client/src/**"],
+			"linter": {
+				"rules": {
+					"style": {
+						"noRestrictedImports": {
+							"level": "error",
+							"options": {
+								"patterns": [
+									{
+										"group": [
+											"@solid-imager/application",
+											"@solid-imager/application/**",
+											"@solid-imager/core",
+											"@solid-imager/core/**",
+											"@solid-imager/db",
+											"@solid-imager/db/**",
+											"@solid-imager/ui",
+											"@solid-imager/ui/**",
+											"~/**"
+										]
+									}
+								]
+							}
+						}
+					}
+				}
+			}
+		},
+		{
 			"includes": [
 				"**/*.test.ts",
 				"**/*.test.tsx",
