@@ -20,6 +20,10 @@ export type {
 	SearchSuggestion,
 	SearchToken,
 } from "./search-composer-utils";
+export {
+	getSearchComposerTokens,
+	parseSimilarityTopK,
+} from "./search-composer-utils";
 
 import {
 	getSearchComposerSuggestions,
@@ -93,7 +97,9 @@ export function SearchComposer(props: SearchComposerProps) {
 		event,
 	) => {
 		if (event.key === "Backspace" && props.draft.length === 0) {
-			const token = props.tokens[props.tokens.length - 1];
+			const token = props.tokens
+				.filter((item) => item.removable !== false)
+				.at(-1);
 			if (token) {
 				event.preventDefault();
 				props.onRemoveToken(token);
@@ -163,14 +169,16 @@ export function SearchComposer(props: SearchComposerProps) {
 								<span class="truncate">
 									{token.prefix}:{token.value}
 								</span>
-								<button
-									aria-label={`${token.prefix}:${token.value}を解除`}
-									class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
-									onClick={() => props.onRemoveToken(token)}
-									type="button"
-								>
-									×
-								</button>
+								<Show when={token.removable !== false}>
+									<button
+										aria-label={`${token.prefix}:${token.value}を解除`}
+										class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+										onClick={() => props.onRemoveToken(token)}
+										type="button"
+									>
+										×
+									</button>
+								</Show>
 							</span>
 						)}
 					</For>
@@ -186,7 +194,7 @@ export function SearchComposer(props: SearchComposerProps) {
 							if (suggestions().length > 0) setMenuOpen(true);
 						}}
 						onKeyDown={handleKeyDown}
-						placeholder="検索、または tag: / author: / ip: …"
+						placeholder="検索、または tag: / author: / similar: / limit:100 …"
 						ref={props.inputRef}
 					/>
 				</ComboboxControl>

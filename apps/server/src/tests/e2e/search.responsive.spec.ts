@@ -68,23 +68,16 @@ test("search keeps controls usable without horizontal overflow", async ({
 		await expect(filterDialog).toBeVisible();
 		fileNameInput = filterDialog.getByPlaceholder("ファイル名を入力...");
 		await expect(fileNameInput).toHaveValue("");
-		const applyButton = filterDialog.getByRole("button", {
-			name: "適用",
-			exact: true,
-		});
-		await filterDialog
-			.getByRole("button", { name: "ベクトル類似", exact: true })
-			.click();
-		await expect(applyButton).toBeDisabled();
 		await filterDialog
 			.getByRole("button", { name: "条件をクリア", exact: true })
 			.click();
-		await expect(applyButton).toBeEnabled();
 		await expect(fileNameInput).toHaveValue("");
 		await expect(conditionSummary).toContainText("条件は指定されていません。");
 
 		await fileNameInput.fill("e2e");
-		await applyButton.click();
+		await filterDialog
+			.getByRole("button", { name: "適用", exact: true })
+			.click();
 		await expect(filterDialog).toBeHidden();
 	} else {
 		await expect(

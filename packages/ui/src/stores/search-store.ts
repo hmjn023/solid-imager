@@ -44,65 +44,71 @@ export const loadPreset = (preset: Preset) => {
 	setSearchState(nextState);
 };
 
-export const setSearchMode = (mode: "simple" | "pro" | "vector") => {
+export const setSearchMode = (mode: "simple" | "pro") => {
 	const nextState = calculateNextModeState(searchState, mode);
 	setSearchState(nextState);
 };
 
-export const activateVectorSearch = (
+function persistSearchState(
+	state: SearchState,
+	surface: SearchPersistenceSurface,
+): void {
+	if (typeof sessionStorage === "undefined") return;
+
+	const condition = getSearchConditionFromState(state) ?? {
+		type: "group" as const,
+		operator: "and" as const,
+		children: [],
+	};
+	const storageKey = getSearchStateStorageKey(surface);
+	sessionStorage.setItem(
+		storageKey,
+		JSON.stringify({
+			value: condition,
+			selectedSource: state.selectedSource,
+			sort: state.sortBy,
+			order: state.sortOrder,
+			mode: state.mode,
+			similarityAnchorMediaId: state.similarityAnchorMediaId,
+			similarityTopK: state.similarityTopK,
+		}),
+	);
+}
+
+export const activateSimilaritySearch = (
 	mediaId: string,
 	options: SearchStorePersistenceOptions = {},
 ) => {
-	const nextState = {
-		mode: "vector" as const,
+	const nextState: SearchState = {
+		...searchState,
 		similarityAnchorMediaId: mediaId,
-		similarityTopK: 50 as const,
+		similarityTopK: 50,
 		selectedSource: "",
 		offset: 0,
 		scrollY: 0,
 	};
 	setSearchState(nextState);
-	if (typeof sessionStorage !== "undefined") {
-		const storageKey = getSearchStateStorageKey(options.surface ?? "legacy");
-		sessionStorage.setItem(
-			storageKey,
-			JSON.stringify({
-				mode: nextState.mode,
-				similarityAnchorMediaId: nextState.similarityAnchorMediaId,
-				similarityTopK: nextState.similarityTopK,
-			}),
-		);
+	try {
+		persistSearchState(nextState, options.surface ?? "legacy");
+	} catch {
+		// Persistence errors must not disrupt opening similarity ordering.
 	}
 };
 
-export const clearVectorSearchAnchor = (
+export const clearSimilaritySearch = (
 	options: SearchStorePersistenceOptions = {},
 ) => {
-	setSearchState({
+	const nextState: SearchState = {
+		...searchState,
 		similarityAnchorMediaId: null,
 		offset: 0,
 		scrollY: 0,
-	});
-	if (typeof sessionStorage !== "undefined") {
-		const storageKey = getSearchStateStorageKey(options.surface ?? "legacy");
-		const stored = sessionStorage.getItem(storageKey);
-		if (!stored) return;
-		try {
-			const current: unknown = JSON.parse(stored);
-			if (typeof current !== "object" || current === null) {
-				sessionStorage.removeItem(storageKey);
-				return;
-			}
-			sessionStorage.setItem(
-				storageKey,
-				JSON.stringify({
-					...current,
-					similarityAnchorMediaId: null,
-				}),
-			);
-		} catch {
-			sessionStorage.removeItem(storageKey);
-		}
+	};
+	setSearchState(nextState);
+	try {
+		persistSearchState(nextState, options.surface ?? "legacy");
+	} catch {
+		// Persistence errors must not disrupt clearing similarity ordering.
 	}
 };
 

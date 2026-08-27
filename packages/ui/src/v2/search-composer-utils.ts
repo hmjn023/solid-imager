@@ -1,3 +1,4 @@
+import type { SearchState } from "@solid-imager/core/domain/search/schema";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 
 export type SearchArrayKey =
@@ -10,9 +11,14 @@ export type SearchArrayKey =
 
 export type SearchToken = {
 	destructive?: boolean;
-	key: SearchArrayKey | "searchQuery";
+	key:
+		| SearchArrayKey
+		| "searchQuery"
+		| "similarityAnchorMediaId"
+		| "similarityTopK";
 	prefix: string;
 	value: string;
+	removable?: boolean;
 };
 
 export type SearchSuggestion = {
@@ -21,6 +27,74 @@ export type SearchSuggestion = {
 	prefix: string;
 	value: string;
 };
+
+export function getSearchComposerTokens(state: SearchState): SearchToken[] {
+	const similarityTokens: SearchToken[] = state.similarityAnchorMediaId
+		? [
+				{
+					key: "similarityAnchorMediaId",
+					prefix: "similar",
+					value: state.similarityAnchorMediaId,
+				},
+				{
+					key: "similarityTopK",
+					prefix: "limit",
+					value: String(state.similarityTopK),
+					removable: false,
+				},
+			]
+		: [];
+	const normalTokens: SearchToken[] = [
+		...(state.searchQuery
+			? [
+					{
+						key: "searchQuery" as const,
+						prefix: "name",
+						value: state.searchQuery,
+					},
+				]
+			: []),
+		...state.selectedTags.map((value) => ({
+			key: "selectedTags" as const,
+			prefix: "tag",
+			value,
+		})),
+		...state.excludeTags.map((value) => ({
+			destructive: true,
+			key: "excludeTags" as const,
+			prefix: "-tag",
+			value,
+		})),
+		...state.selectedCharacters.map((value) => ({
+			key: "selectedCharacters" as const,
+			prefix: "character",
+			value,
+		})),
+		...state.selectedIps.map((value) => ({
+			key: "selectedIps" as const,
+			prefix: "ip",
+			value,
+		})),
+		...state.selectedAuthors.map((value) => ({
+			key: "selectedAuthors" as const,
+			prefix: "author",
+			value,
+		})),
+		...state.selectedProjects.map((value) => ({
+			key: "selectedProjects" as const,
+			prefix: "project",
+			value,
+		})),
+	];
+	return [...similarityTokens, ...normalTokens];
+}
+
+export function parseSimilarityTopK(value: string): number | undefined {
+	const parsed = Number(value);
+	return Number.isInteger(parsed) && parsed >= 1 && parsed <= 100
+		? parsed
+		: undefined;
+}
 
 type SuggestionSource = keyof SearchPageFilterData;
 

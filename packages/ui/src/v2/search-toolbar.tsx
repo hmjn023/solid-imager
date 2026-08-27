@@ -16,12 +16,15 @@ import { SortControls } from "../sort-controls";
 import type { SourceMediaViewMode } from "../source-media-grid";
 import {
 	clearPresetFilters,
+	clearSimilaritySearch,
 	searchState,
 	setSearchState,
 } from "../stores/search-store";
 import {
 	type SearchArrayKey,
 	SearchComposer,
+	getSearchComposerTokens,
+	parseSimilarityTopK,
 	type SearchSuggestion,
 	type SearchToken,
 } from "./search-composer";
@@ -75,6 +78,13 @@ function appendValues(key: SearchArrayKey, rawValue: string) {
 function removeToken(token: SearchToken) {
 	if (token.key === "searchQuery") {
 		setSearchState("searchQuery", "");
+		return;
+	}
+	if (token.key === "similarityAnchorMediaId") {
+		clearSimilaritySearch({ surface: "v2" });
+		return;
+	}
+	if (token.key === "similarityTopK") {
 		return;
 	}
 	setSearchState(
@@ -136,6 +146,18 @@ function submitComposerDraft(rawDraft: string): boolean {
 				appendValues("selectedProjects", value);
 				changed = true;
 				break;
+			case "limit": {
+				const topK = parseSimilarityTopK(value);
+				if (searchState.similarityAnchorMediaId && topK !== undefined) {
+					if (searchState.similarityTopK !== topK) {
+						setSearchState("similarityTopK", topK);
+						changed = true;
+					}
+				} else {
+					freeText.push(part);
+				}
+				break;
+			}
 			default:
 				freeText.push(part);
 		}
@@ -148,52 +170,10 @@ function submitComposerDraft(rawDraft: string): boolean {
 	return changed;
 }
 
-function tokensFromState(state: SearchState): SearchToken[] {
-	return [
-		...(state.searchQuery
-			? [
-					{
-						key: "searchQuery" as const,
-						prefix: "name",
-						value: state.searchQuery,
-					},
-				]
-			: []),
-		...state.selectedTags.map((value) => ({
-			key: "selectedTags" as const,
-			prefix: "tag",
-			value,
-		})),
-		...state.excludeTags.map((value) => ({
-			destructive: true,
-			key: "excludeTags" as const,
-			prefix: "-tag",
-			value,
-		})),
-		...state.selectedCharacters.map((value) => ({
-			key: "selectedCharacters" as const,
-			prefix: "character",
-			value,
-		})),
-		...state.selectedIps.map((value) => ({
-			key: "selectedIps" as const,
-			prefix: "ip",
-			value,
-		})),
-		...state.selectedAuthors.map((value) => ({
-			key: "selectedAuthors" as const,
-			prefix: "author",
-			value,
-		})),
-		...state.selectedProjects.map((value) => ({
-			key: "selectedProjects" as const,
-			prefix: "project",
-			value,
-		})),
-	];
-}
-
 function sortLabel(state: SearchState): string {
+	if (state.similarityAnchorMediaId) {
+		return `類似度順・${state.similarityTopK}件`;
+	}
 	const labels: Record<SearchState["sortBy"], string> = {
 		date: "作成日",
 		name: "名前",
@@ -216,7 +196,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 	const tokens = createMemo(() => {
 		const removalIds = new Set(pendingRemovals().map(tokenId));
 		return [
-			...tokensFromState(searchState).filter(
+			...getSearchComposerTokens(searchState).filter(
 				(token) => !removalIds.has(tokenId(token)),
 			),
 			...pendingSuggestions().map((suggestion) => ({
@@ -331,6 +311,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 					filterData={props.filterData}
 					onDraftChange={(value) => setDraft(value)}
 					onRemoveToken={(token) => {
+						if (token.removable === false) return;
 						const id = tokenId(token);
 						const pending = pendingSuggestions();
 						if (pending.some((item) => tokenId(item) === id)) {
@@ -424,10 +405,6 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 								閉じる
 							</Button>
 							<Button
-								disabled={
-									searchState.mode === "vector" &&
-									!searchState.similarityAnchorMediaId
-								}
 								onClick={() => {
 									props.onSearch();
 									setFilterOpen(false);
@@ -460,8 +437,15 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 					</PopoverTrigger>
 					<PopoverContent class="v2-theme w-72 p-4 shadow-xl">
 						<SortControls
+							onClearSimilarity={() => clearSimilaritySearch({ surface: "v2" })}
 							onSortByChange={(value) => setSearchState("sortBy", value)}
 							onSortOrderChange={(value) => setSearchState("sortOrder", value)}
+							onSimilarityTopKChange={(value) =>
+								setSearchState("similarityTopK", value)
+							}
+							similarityAnchorMediaId={searchState.similarityAnchorMediaId}
+							similarityLimitId="v2-sort-similarity-limit"
+							similarityTopK={searchState.similarityTopK}
 							sortBy={searchState.sortBy}
 							sortOrder={searchState.sortOrder}
 						/>

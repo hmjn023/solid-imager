@@ -226,7 +226,7 @@ describe("buildSearchResultsQueryOptions", () => {
 		).toBeUndefined();
 	});
 
-	it("forwards vector search input and disables pagination", async () => {
+	it("forwards similarity ordering input and disables pagination", async () => {
 		const response = { media: [TEST_MEDIA], total: 10 };
 		const searchMedia = vi.fn(
 			async (): Promise<MediaSearchResponse> => EMPTY_RESPONSE,
@@ -235,7 +235,7 @@ describe("buildSearchResultsQueryOptions", () => {
 			async (): Promise<MediaSearchResponse> => response,
 		);
 		const options = buildSearchResultsQueryOptions({
-			mode: "vector",
+			mode: "simple",
 			sourceId: "source-2",
 			condition: TEST_CONDITION,
 			conditionKey: "vector-condition",
@@ -281,19 +281,19 @@ describe("buildSearchResultsQueryOptions", () => {
 		expect(options.placeholderData).toBeUndefined();
 	});
 
-	it("returns an empty result when vector search requirements are absent", async () => {
+	it("returns an empty result when the similarity client is unavailable", async () => {
 		const searchMedia = vi.fn(
 			async (): Promise<MediaSearchResponse> => EMPTY_RESPONSE,
 		);
 		const options = buildSearchResultsQueryOptions({
-			mode: "vector",
+			mode: "simple",
 			sourceId: undefined,
 			condition: undefined,
 			conditionKey: "null",
 			sort: undefined,
 			order: "desc",
 			limit: 100,
-			similarityAnchorMediaId: null,
+			similarityAnchorMediaId: "anchor-media",
 			similarityTopK: 50,
 			searchMedia,
 			searchSimilar: undefined,

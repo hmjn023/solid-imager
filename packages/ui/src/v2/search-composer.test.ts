@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { defaultState } from "@solid-imager/core/domain/search/schema";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 import {
 	getSearchComposerSuggestions,
+	getSearchComposerTokens,
+	parseSimilarityTopK,
 	type SearchToken,
 } from "./search-composer-utils";
 
@@ -60,5 +63,48 @@ describe("getSearchComposerSuggestions", () => {
 		expect(
 			getSearchComposerSuggestions("tag:blue,red", filterData, []),
 		).toEqual([]);
+	});
+});
+
+describe("getSearchComposerTokens", () => {
+	it("exposes similarity ordering as similarity and limit tokens", () => {
+		const state = {
+			...defaultState,
+			similarityAnchorMediaId: "11111111-1111-4111-8111-111111111111",
+			similarityTopK: 37,
+		};
+
+		expect(getSearchComposerTokens(state)).toEqual([
+			{
+				key: "similarityAnchorMediaId",
+				prefix: "similar",
+				value: "11111111-1111-4111-8111-111111111111",
+			},
+			{
+				key: "similarityTopK",
+				prefix: "limit",
+				value: "37",
+				removable: false,
+			},
+		]);
+	});
+
+	it("does not expose similarity options when no anchor is set", () => {
+		expect(getSearchComposerTokens(defaultState)).toEqual([]);
+	});
+});
+
+describe("parseSimilarityTopK", () => {
+	it("accepts arbitrary supported result sizes", () => {
+		expect(parseSimilarityTopK("20")).toBe(20);
+		expect(parseSimilarityTopK("50")).toBe(50);
+		expect(parseSimilarityTopK("100")).toBe(100);
+		expect(parseSimilarityTopK("37")).toBe(37);
+	});
+
+	it("rejects unsupported result sizes", () => {
+		expect(parseSimilarityTopK("0")).toBeUndefined();
+		expect(parseSimilarityTopK("200")).toBeUndefined();
+		expect(parseSimilarityTopK("abc")).toBeUndefined();
 	});
 });

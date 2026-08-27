@@ -10344,8 +10344,7 @@
           "mode": {
             "enum": [
               "simple",
-              "pro",
-              "vector"
+              "pro"
             ],
             "type": "string"
           },
@@ -10420,11 +10419,8 @@
             ]
           },
           "similarityTopK": {
-            "enum": [
-              20,
-              50,
-              100
-            ],
+            "maximum": 100,
+            "minimum": 1,
             "type": "integer"
           },
           "limit": {

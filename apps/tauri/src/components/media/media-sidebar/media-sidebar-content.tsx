@@ -1,6 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
-import { activateVectorSearch } from "@solid-imager/ui/stores/search-store";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { useNavigate } from "@tanstack/solid-router";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
@@ -98,7 +98,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				})
 			}
 			onFindSimilar={() => {
-				activateVectorSearch(props.media.id);
+				activateSimilaritySearch(props.media.id);
 				void navigate({ to: "/search" });
 			}}
 			updateMediaDescription={(mediaSourceId, mediaId, description) =>

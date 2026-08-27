@@ -1,7 +1,7 @@
 import { type Accessor, createRoot, createSignal } from "solid-js";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	activateVectorSearch,
+	activateSimilaritySearch,
 	resetSearchState,
 	searchState,
 	setSearchState,
@@ -241,19 +241,19 @@ describe("useCurrentSearchPersistence", () => {
 		expect(sessionStorage.getItem("current-all")).toContain("legacy query");
 	});
 
-	it("restores a v2 vector search activated from the detail route", async () => {
-		activateVectorSearch("media-v2", { surface: "v2" });
+	it("restores v2 similarity ordering activated from the detail route", async () => {
+		activateSimilaritySearch("media-v2", { surface: "v2" });
 
 		const mounted = mountPersistence("all", { surface: "v2" });
 		await flushMicrotasks();
 
 		expect(mounted.isRestored()).toBe(true);
-		expect(searchState.mode).toBe("vector");
+		expect(searchState.mode).toBe("simple");
 		expect(searchState.similarityAnchorMediaId).toBe("media-v2");
 		expect(sessionStorage.getItem("current-all")).toBeNull();
 	});
 
-	it("does not inherit a source for legacy vector sessions", async () => {
+	it("migrates legacy similarity sessions without inheriting a source", async () => {
 		setSearchState("selectedSource", "stale-source");
 		sessionStorage.setItem(
 			"current-all",
@@ -267,7 +267,7 @@ describe("useCurrentSearchPersistence", () => {
 		mountPersistence("all");
 		await flushMicrotasks();
 
-		expect(searchState.mode).toBe("vector");
+		expect(searchState.mode).toBe("simple");
 		expect(searchState.selectedSource).toBe("");
 		expect(searchState.similarityTopK).toBe(100);
 	});
