@@ -3,7 +3,7 @@ import { getErrorMessage } from "@solid-imager/core/utils";
 import { Badge } from "@solid-imager/ui/badge";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
-import { activateVectorSearch } from "@solid-imager/ui/stores/search-store";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
@@ -428,7 +428,7 @@ export function LegacyMediaSidebar(props: MediaSidebarProps) {
 					<button
 						class="flex min-h-11 w-full items-center justify-center gap-2 rounded-md border px-3 py-2 font-medium text-sm transition-colors hover:bg-gray-100"
 						onClick={() => {
-							activateVectorSearch(props.media.id);
+							activateSimilaritySearch(props.media.id);
 							void navigate({ to: "/search" });
 						}}
 						type="button"

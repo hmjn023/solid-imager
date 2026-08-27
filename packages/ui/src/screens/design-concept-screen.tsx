@@ -937,7 +937,7 @@ function MediaTile(props: {
 	);
 }
 
-type SearchMode = "simple" | "pro" | "vector";
+type SearchMode = "simple" | "pro";
 
 function parseFilterValues(value: string) {
 	return [
@@ -1041,13 +1041,12 @@ function DesignFilterPopover(props: {
 						<legend class="mb-2 font-medium text-[#555c58] text-xs">
 							検索モード
 						</legend>
-						<div class="grid grid-cols-3 rounded-md border border-[#d9dfdb] bg-white p-0.5">
+						<div class="grid grid-cols-2 rounded-md border border-[#d9dfdb] bg-white p-0.5">
 							<For
 								each={
 									[
 										["simple", "簡易"],
 										["pro", "詳細"],
-										["vector", "類似"],
 									] as const
 								}
 							>
@@ -1075,7 +1074,7 @@ function DesignFilterPopover(props: {
 							<div class="mt-4 rounded-md border border-[#dfe4e1] bg-white p-4 text-[#6d7470] text-xs leading-5">
 								{props.mode === "pro"
 									? "詳細検索は条件ビルダーを別パネルで開き、この一覧レイアウトは維持します。"
-									: "類似元メディアと表示件数をここで確認し、通常のソートは適用しません。"}
+									: "検索条件をここで確認し、一覧の並べ替えは維持します。"}
 							</div>
 						}
 						when={props.mode === "simple"}

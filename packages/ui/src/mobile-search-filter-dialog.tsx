@@ -35,9 +35,7 @@ function copySearchState(state: SearchState): SearchState {
 function createClearedSearchState(state: SearchState): SearchState {
 	return {
 		...defaultState,
-		// A cleared vector search has no valid anchor, so return to a mode that
-		// can be applied instead of leaving the dialog permanently disabled.
-		mode: state.mode === "vector" ? "simple" : state.mode,
+		mode: state.mode,
 		selectedSource: state.selectedSource,
 		sortBy: state.sortBy,
 		sortOrder: state.sortOrder,
@@ -56,6 +54,9 @@ function getActiveConditionLabels(
 			(item) => item.id === state.selectedSource,
 		);
 		labels.push(`ソース: ${source?.name ?? "選択済み"}`);
+	}
+	if (state.similarityAnchorMediaId) {
+		labels.push(`類似度順: ${state.similarityTopK}件`);
 	}
 
 	if (state.mode === "simple") {
@@ -90,9 +91,6 @@ function getActiveConditionLabels(
 		return labels;
 	}
 
-	if (state.similarityAnchorMediaId) {
-		labels.push("類似元メディアを設定済み");
-	}
 	return labels;
 }
 
@@ -162,9 +160,6 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 	const handleClear = () => {
 		setDraft(createClearedSearchState(draft));
 	};
-	const isApplyDisabled = () =>
-		draft.mode === "vector" && !draft.similarityAnchorMediaId;
-
 	return (
 		<Dialog onOpenChange={props.onOpenChange} open={props.open}>
 			<DialogContent class="max-w-lg gap-4 p-4 sm:p-6">
@@ -197,11 +192,7 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 					<Button onClick={handleClear} type="button" variant="outline">
 						条件をクリア
 					</Button>
-					<Button
-						disabled={isApplyDisabled()}
-						onClick={handleApply}
-						type="button"
-					>
+					<Button onClick={handleApply} type="button">
 						適用
 					</Button>
 				</DialogFooter>
