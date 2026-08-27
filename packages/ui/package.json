@@ -16,7 +16,7 @@
   "dependencies": {
     "@kobalte/core": "^0.13.11",
     "@solid-imager/core": "workspace:*",
-    "@solidjs/router": "^0.16.1",
+    "@solidjs/router": "^1.0.0",
     "@tanstack/solid-form": "^1.33.0",
     "@tanstack/solid-hotkeys": "0.10.0",
     "@tanstack/solid-query": "5.99.2",
