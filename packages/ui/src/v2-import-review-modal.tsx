@@ -29,6 +29,11 @@ import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
 } from "./import-inbox-helpers";
+import {
+	getRememberedImportSourceId,
+	isImportSourceRemembered,
+	setImportSourcePreference,
+} from "./import-source-preference";
 import type { ImportReviewModalProps } from "./import-review-modal.types";
 import { toast } from "./toast";
 
@@ -59,6 +64,9 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 		createEmptySelection(),
 	);
 	const [selectedSourceId, setSelectedSourceId] = createSignal("");
+	const [rememberSource, setRememberSource] = createSignal(
+		isImportSourceRemembered(),
+	);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [isDiscardDialogOpen, setIsDiscardDialogOpen] = createSignal(false);
 	const [isDirty, setIsDirty] = createSignal(false);
@@ -90,14 +98,20 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 	});
 
 	createEffect(() => {
+		if (!props.isOpen) return;
 		const sourceList = sources();
 		if (!sourceList?.length) {
 			setSelectedSourceId("");
 			return;
 		}
 
-		if (!selectedSourceId()) {
-			setSelectedSourceId(getPreferredImportSourceId(sourceList));
+		const rememberedSourceId = rememberSource()
+			? getRememberedImportSourceId(sourceList)
+			: null;
+		const nextSourceId = rememberedSourceId ?? getPreferredImportSourceId(sourceList);
+		setSelectedSourceId(nextSourceId);
+		if (rememberSource() && nextSourceId !== rememberedSourceId) {
+			setImportSourcePreference(true, nextSourceId);
 		}
 	});
 
@@ -156,6 +170,11 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 		}
 	};
 
+	const handleRememberSourceChange = (remember: boolean) => {
+		setRememberSource(remember);
+		setImportSourcePreference(remember, remember ? selectedSourceId() : undefined);
+	};
+
 	const confirmDelete = async () => {
 		try {
 			setActiveAction("delete");
@@ -199,7 +218,11 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 									class="min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									disabled={sources.loading || activeAction() !== null}
 									onChange={(event) => {
-										setSelectedSourceId(event.currentTarget.value);
+										const sourceId = event.currentTarget.value;
+										setSelectedSourceId(sourceId);
+										if (rememberSource()) {
+											setImportSourcePreference(true, sourceId);
+										}
 										setIsDirty(true);
 									}}
 									value={selectedSourceId()}
@@ -212,6 +235,18 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 										)}
 									</For>
 								</select>
+								<label class="flex items-center gap-2 text-muted-foreground text-sm">
+									<input
+										checked={rememberSource()}
+										class="size-4 accent-primary"
+										disabled={sources.loading || activeAction() !== null}
+										onChange={(event) =>
+											handleRememberSourceChange(event.currentTarget.checked)
+										}
+										type="checkbox"
+									/>
+									Remember this source
+								</label>
 							</label>
 							<div class="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
 								<div class="text-muted-foreground text-sm" aria-live="polite">

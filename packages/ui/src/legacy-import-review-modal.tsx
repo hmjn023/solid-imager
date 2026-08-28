@@ -21,6 +21,11 @@ import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
 } from "./import-inbox-helpers";
+import {
+	getRememberedImportSourceId,
+	isImportSourceRemembered,
+	setImportSourcePreference,
+} from "./import-source-preference";
 import type {
 	ImportReviewModalProps,
 	PendingImportJob,
@@ -51,6 +56,9 @@ export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 		createEmptySelection(),
 	);
 	const [selectedSourceId, setSelectedSourceId] = createSignal("");
+	const [rememberSource, setRememberSource] = createSignal(
+		isImportSourceRemembered(),
+	);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 
 	const [pendingJobs, { refetch: refetchJobs }] = createResource(
@@ -69,13 +77,19 @@ export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 	});
 
 	createEffect(() => {
+		if (!props.isOpen) return;
 		const sourceList = sources();
 		if (!sourceList?.length) {
 			setSelectedSourceId("");
 			return;
 		}
-		if (!selectedSourceId()) {
-			setSelectedSourceId(getPreferredImportSourceId(sourceList));
+		const rememberedSourceId = rememberSource()
+			? getRememberedImportSourceId(sourceList)
+			: null;
+		const nextSourceId = rememberedSourceId ?? getPreferredImportSourceId(sourceList);
+		setSelectedSourceId(nextSourceId);
+		if (rememberSource() && nextSourceId !== rememberedSourceId) {
+			setImportSourcePreference(true, nextSourceId);
 		}
 	});
 
@@ -97,6 +111,11 @@ export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 		} catch (error) {
 			toast.error(`Failed to process imports: ${getErrorMessage(error)}`);
 		}
+	};
+
+	const handleRememberSourceChange = (remember: boolean) => {
+		setRememberSource(remember);
+		setImportSourcePreference(remember, remember ? selectedSourceId() : undefined);
 	};
 
 	const confirmDelete = async () => {
@@ -135,8 +154,12 @@ export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 									<span class="text-gray-300">Target Source:</span>
 									<select
 										class="rounded border border-gray-600 bg-gray-800 p-1 text-white"
-										onChange={(event) =>
-											setSelectedSourceId(event.currentTarget.value)
+											 onChange={(event) =>
+											setSelectedSourceId(event.currentTarget.value);
+											if (rememberSource()) {
+												setImportSourcePreference(true, event.currentTarget.value);
+											}
+										}
 										}
 										value={selectedSourceId()}
 									>
@@ -148,6 +171,17 @@ export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 											)}
 										</For>
 									</select>
+									<label class="flex items-center gap-2 text-gray-400 text-sm">
+										<input
+											checked={rememberSource()}
+											class="h-4 w-4 accent-sky-600"
+											onChange={(event) =>
+												handleRememberSourceChange(event.currentTarget.checked)
+											}
+											type="checkbox"
+										/>
+										Remember this source
+									</label>
 								</div>
 								<div class="text-gray-400 text-sm">
 									Selected: {selectedJobIds().size} /{" "}
