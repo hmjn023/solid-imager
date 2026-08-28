@@ -29,7 +29,7 @@ export type V2SidebarProps = {
 
 export function V2Sidebar(props: V2SidebarProps) {
 	return (
-		<div class="flex min-h-0 h-full flex-col bg-[var(--v2-surface-subtle)] p-2">
+		<div class="flex min-h-0 h-full flex-col overflow-y-auto overscroll-contain bg-[var(--v2-surface-subtle)] p-2 [scrollbar-gutter:stable]">
 			<div class="group mb-3 flex h-12 items-center gap-2 px-2">
 				<Link
 					aria-label="Solid Imager Library"
