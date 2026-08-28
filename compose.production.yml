@@ -1,6 +1,9 @@
 services:
   app:
-    image: ${APP_RUNTIME_IMAGE:-oven/bun:debian}
+    build:
+      context: .
+      dockerfile: Dockerfile.runtime
+    image: ${APP_RUNTIME_IMAGE:-solid-imager-runtime:python3}
     container_name: solid-imager-app
     restart: always
     working_dir: /app
