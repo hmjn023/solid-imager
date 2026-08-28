@@ -22,15 +22,15 @@ import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
 } from "./import-inbox-helpers";
+import type {
+	ImportReviewModalProps,
+	PendingImportJob,
+} from "./import-review-modal.types";
 import {
 	getRememberedImportSourceId,
 	isImportSourceRemembered,
 	setImportSourcePreference,
 } from "./import-source-preference";
-import type {
-	ImportReviewModalProps,
-	PendingImportJob,
-} from "./import-review-modal.types";
 import { toast } from "./toast";
 
 function getPreviewUrl(url?: string): string {
