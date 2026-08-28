@@ -22,7 +22,7 @@ import {
 } from "./select";
 import { SortControls } from "./sort-controls";
 import {
-	clearVectorSearchAnchor,
+	clearSimilaritySearch,
 	type SearchPersistenceSurface,
 	searchState,
 	setSearchState,
@@ -68,12 +68,12 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 		}
 		props.onSelectSource?.(id);
 	};
-	const handleSetMode = (mode: "simple" | "pro" | "vector") => {
+	const handleSetMode = (mode: "simple" | "pro") => {
 		updateState(calculateNextModeState(currentState(), mode));
 	};
 	const clearSimilarityAnchor = () => {
 		if (!props.setState) {
-			clearVectorSearchAnchor({ surface: props.persistenceSurface });
+			clearSimilaritySearch({ surface: props.persistenceSurface });
 			return;
 		}
 		props.setState({
@@ -138,26 +138,25 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					>
 						詳細
 					</Button>
-					<Button
-						class="min-h-11 md:min-h-9"
-						onClick={() => handleSetMode("vector")}
-						size="sm"
-						variant={currentState().mode === "vector" ? "default" : "outline"}
-					>
-						ベクトル類似
-					</Button>
 				</div>
 			</div>
 
-			<Show when={currentState().mode !== "vector"}>
-				<SortControls
-					className="mb-4"
-					onSortByChange={(value) => updateState("sortBy", value)}
-					onSortOrderChange={(value) => updateState("sortOrder", value)}
-					sortBy={currentState().sortBy}
-					sortOrder={currentState().sortOrder}
-				/>
-			</Show>
+			<SortControls
+				className="mb-4"
+				onClearSimilarity={clearSimilarityAnchor}
+				onSimilarityTopKChange={(value) => updateState("similarityTopK", value)}
+				onSortByChange={(value) => updateState("sortBy", value)}
+				onSortOrderChange={(value) => updateState("sortOrder", value)}
+				similarityAnchorMediaId={currentState().similarityAnchorMediaId}
+				similarityLimitId={
+					props.setState
+						? "mobile-search-panel-similarity-limit"
+						: "search-panel-similarity-limit"
+				}
+				similarityTopK={currentState().similarityTopK}
+				sortBy={currentState().sortBy}
+				sortOrder={currentState().sortOrder}
+			/>
 
 			<div class="my-4 h-px bg-border" />
 
@@ -199,58 +198,6 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					/>
 				</div>
 			</Show>
-
-			<div class={currentState().mode === "vector" ? "block" : "hidden"}>
-				<div class="space-y-4">
-					<div class="space-y-2">
-						<Label>類似元メディア</Label>
-						<div class="rounded-md border p-3 text-sm">
-							{currentState().similarityAnchorMediaId ??
-								"メディア個別画面の「Find Similar」から選択してください。"}
-						</div>
-						<Show when={currentState().similarityAnchorMediaId}>
-							<Button
-								class="w-full"
-								onClick={clearSimilarityAnchor}
-								size="sm"
-								variant="outline"
-							>
-								類似元を解除
-							</Button>
-						</Show>
-					</div>
-					<div class="space-y-2">
-						<Label>表示件数</Label>
-						<div class="flex gap-2">
-							{([20, 50, 100] as const).map((value) => (
-								<Button
-									class="min-h-11 md:min-h-9"
-									onClick={() => updateState("similarityTopK", value)}
-									size="sm"
-									variant={
-										currentState().similarityTopK === value
-											? "default"
-											: "outline"
-									}
-								>
-									{value}
-								</Button>
-							))}
-						</div>
-					</div>
-					<Show when={props.showSearchButton !== false}>
-						<Button
-							disabled={!currentState().similarityAnchorMediaId}
-							onClick={props.onSearch}
-						>
-							類似メディアを検索
-						</Button>
-					</Show>
-					<p class="text-muted-foreground text-xs">
-						CCIPによるキャラクター類似検索です。一般的な画像重複検索とは異なります。
-					</p>
-				</div>
-			</div>
 		</div>
 	);
 }

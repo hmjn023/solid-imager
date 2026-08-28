@@ -52,7 +52,7 @@ function useDelayedPending(isPending: () => boolean) {
 
 export function RouteTransitionIndicator() {
 	const isRoutePending = useRouterState({
-		select: (state) => state.isLoading || state.isTransitioning,
+		select: (state) => state.isLoading,
 	});
 	const isVisible = useDelayedPending(isRoutePending);
 

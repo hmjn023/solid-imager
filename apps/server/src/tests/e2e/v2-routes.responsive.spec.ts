@@ -53,6 +53,29 @@ test("V2 routes survive direct navigation and reload", async ({ page }) => {
 	}
 });
 
+test("V2 sidebar keeps navigation items separated in a short viewport", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 1440, height: 480 });
+	await page.goto("/v2/search");
+	await waitForAppHydration(page);
+
+	const sidebar = page.getByRole("complementary", {
+		name: "アプリケーションサイドバー",
+	});
+	await expect(sidebar).toBeVisible();
+
+	const verticalGaps = await sidebar.evaluate((element) => {
+		const links = Array.from(element.querySelectorAll("a"))
+			.map((link) => link.getBoundingClientRect())
+			.filter((rect) => rect.height > 0)
+			.sort((first, second) => first.top - second.top);
+		return links.slice(1).map((rect, index) => rect.top - links[index].bottom);
+	});
+
+	expect(Math.min(...verticalGaps)).toBeGreaterThanOrEqual(0);
+});
+
 test("V2 detail changes after returning to a collection", async ({ page }) => {
 	await page.goto(v2SourcePath);
 	await waitForAppHydration(page);

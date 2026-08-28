@@ -31,7 +31,7 @@ export function V2MediaViewer(props: MediaViewerProps) {
 	const [isPanning, setIsPanning] = createSignal(false);
 	const [isFullscreen, setIsFullscreen] = createSignal(false);
 	const pointers = new Map<number, { x: number; y: number }>();
-	let viewer: HTMLDivElement | undefined;
+	let viewer: HTMLElement | undefined;
 	let lastPointer: { x: number; y: number } | undefined;
 	let pinchStart:
 		| { distance: number; pan: { x: number; y: number }; zoom: number }
@@ -187,13 +187,12 @@ export function V2MediaViewer(props: MediaViewerProps) {
 	});
 
 	return (
-		<div
+		<section
 			aria-label={
 				props.source.type === "image"
 					? `${props.fileName} viewer. Use plus and minus to zoom, and drag to pan.`
 					: undefined
 			}
-			role="region"
 			class={`group/viewer relative flex aspect-[var(--media-aspect)] min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-[var(--v2-surface)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--v2-focus)] lg:aspect-auto lg:h-full ${
 				isPanning() ? "cursor-grabbing" : zoom() > 1 ? "cursor-grab" : ""
 			}`}
@@ -350,6 +349,6 @@ export function V2MediaViewer(props: MediaViewerProps) {
 					Zoom {zoomPercent()} percent
 				</span>
 			</Show>
-		</div>
+		</section>
 	);
 }

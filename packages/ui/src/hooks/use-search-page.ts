@@ -76,7 +76,7 @@ export interface UseSearchPageOptions {
 	scrollY: () => number;
 	setScrollY: (y: number) => void;
 	setOffset: (o: number) => void;
-	mode?: () => "simple" | "pro" | "vector";
+	mode?: () => "simple" | "pro";
 	similarityAnchorMediaId?: () => string | null;
 	similarityTopK?: () => number;
 	gcTime?: number;

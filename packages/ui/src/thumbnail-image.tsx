@@ -149,9 +149,11 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 					alt={props.alt}
 					class={props.class}
 					decoding="async"
+					draggable={false}
 					fetchpriority={props.fetchpriority}
 					height={props.height ?? undefined}
 					loading={props.loading}
+					onDragStart={(event) => event.preventDefault()}
 					onError={handleError}
 					onLoad={handleLoad}
 					sizes={srcSet() ? props.sizes : undefined}

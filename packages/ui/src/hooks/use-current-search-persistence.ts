@@ -78,6 +78,15 @@ function normalizeScrollPosition(value: number): number {
 	return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
+function normalizeSimilarityTopK(value: unknown): number {
+	return typeof value === "number" &&
+		Number.isInteger(value) &&
+		value >= 1 &&
+		value <= 100
+		? value
+		: 50;
+}
+
 /**
  * Persist the scroll owner explicitly when a route owns a non-window
  * collection scroller.  The reactive persistence effect remains the
@@ -227,16 +236,14 @@ function restoreCurrentSearchState(
 			typeof current.selectedSource === "string" ? current.selectedSource : "";
 		resetSearchState();
 		setSearchState({
-			mode: "vector",
+			// Migrate sessions written before similarity became an ordering option.
+			mode: "simple",
 			selectedSource,
 			similarityAnchorMediaId:
 				typeof current.similarityAnchorMediaId === "string"
 					? current.similarityAnchorMediaId
 					: null,
-			similarityTopK:
-				current.similarityTopK === 20 || current.similarityTopK === 100
-					? current.similarityTopK
-					: 50,
+			similarityTopK: normalizeSimilarityTopK(current.similarityTopK),
 			scrollY: preservedScrollY,
 		});
 		return;
@@ -263,6 +270,15 @@ function restoreCurrentSearchState(
 			: searchState.selectedSource;
 
 	applyPreset(localPresetResult.data, shouldApply, true, selectedSource);
+	if (shouldApply()) {
+		setSearchState({
+			similarityAnchorMediaId:
+				typeof current.similarityAnchorMediaId === "string"
+					? current.similarityAnchorMediaId
+					: null,
+			similarityTopK: normalizeSimilarityTopK(current.similarityTopK),
+		});
+	}
 }
 
 export function useCurrentSearchPersistence(

@@ -15,7 +15,7 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "@solid-imager/ui/popover";
-import { activateVectorSearch } from "@solid-imager/ui/stores/search-store";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { toast } from "@solid-imager/ui/toast";
 import {
 	Binary,
@@ -181,7 +181,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 	});
 
 	const handleFindSimilar = () => {
-		activateVectorSearch(props.media.id, { surface: "v2" });
+		activateSimilaritySearch(props.media.id, { surface: "v2" });
 		void navigate({ to: "/v2/search" });
 	};
 	const handleDownload = () => {

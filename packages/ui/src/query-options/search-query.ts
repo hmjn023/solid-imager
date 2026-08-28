@@ -11,7 +11,7 @@ import {
 export const MEDIA_RESULTS_STALE_TIME_MS = 1000 * 60 * 5;
 
 export type SearchResultsQueryKeyInput = {
-	mode: "simple" | "pro" | "vector";
+	mode: "simple" | "pro";
 	sourceId: string | undefined;
 	conditionKey: string;
 	sort: string | undefined;
@@ -117,7 +117,7 @@ type SearchSimilar = (
 ) => Promise<MediaSearchResponse>;
 
 export type SearchResultsQueryOptionsInput = {
-	mode: "simple" | "pro" | "vector";
+	mode: "simple" | "pro";
 	sourceId: string | undefined;
 	condition: MediaSearchRequest["condition"];
 	conditionKey: string;
@@ -147,8 +147,8 @@ export function buildSearchResultsQueryOptions(
 			similarityTopK: input.similarityTopK,
 		}),
 		queryFn: async ({ pageParam, signal }): Promise<MediaSearchResponse> => {
-			if (input.mode === "vector") {
-				if (!(input.similarityAnchorMediaId && input.searchSimilar)) {
+			if (input.similarityAnchorMediaId) {
+				if (!input.searchSimilar) {
 					return { media: [], total: 0 };
 				}
 				return await input.searchSimilar(
@@ -175,7 +175,7 @@ export function buildSearchResultsQueryOptions(
 		},
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, allPages) => {
-			if (input.mode === "vector") {
+			if (input.similarityAnchorMediaId) {
 				return;
 			}
 			const loadedCount = allPages.reduce(
@@ -184,9 +184,11 @@ export function buildSearchResultsQueryOptions(
 			);
 			return loadedCount < lastPage.total ? loadedCount : undefined;
 		},
-		// Vector result sets have a user-selected size. Keeping the previous
+		// Similarity result sets have a user-selected size. Keeping the previous
 		// result while changing topK makes selecting 100 look like a no-op.
-		placeholderData: input.mode === "vector" ? undefined : keepPreviousData,
+		placeholderData: input.similarityAnchorMediaId
+			? undefined
+			: keepPreviousData,
 		enabled: input.enabled,
 		gcTime: input.gcTime,
 		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
