@@ -21,11 +21,11 @@ import {
 	setSearchState,
 } from "../stores/search-store";
 import {
-	type SearchArrayKey,
-	SearchComposer,
 	getSearchComposerTokens,
 	parseSimilarityAnchor,
 	parseSimilarityTopK,
+	type SearchArrayKey,
+	SearchComposer,
 	type SearchSuggestion,
 	type SearchToken,
 } from "./search-composer";

@@ -563,13 +563,19 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			target.closest<HTMLElement>("[data-media-id]")?.dataset.mediaId;
 		return findCollectionItemById(props.mediaResults(), mediaId);
 	};
-	const handleMediaDragStart: JSX.EventHandler<HTMLElement, DragEvent> = (
-		event,
-	) => {
+	const handleMediaDragStart = (event: DragEvent) => {
 		if (findMediaFromEventTarget(event.target)) {
 			event.preventDefault();
 		}
 	};
+
+	onMount(() => {
+		const element = collectionRootRef;
+		element?.addEventListener("dragstart", handleMediaDragStart);
+		onCleanup(() => {
+			element?.removeEventListener("dragstart", handleMediaDragStart);
+		});
+	});
 
 	const findRenderedMediaElement = (mediaId: string) =>
 		Array.from(
@@ -996,7 +1002,6 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	return (
 		<div
 			class="min-h-0 min-w-0 space-y-4"
-			onDragStart={handleMediaDragStart}
 			ref={(element) => {
 				collectionRootRef = element;
 				const resolvedScrollElement = resolveScrollElement();
