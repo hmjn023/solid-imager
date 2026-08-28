@@ -7,6 +7,10 @@ type StoredImportSourcePreference = {
 	sourceId?: string;
 };
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}
+
 function getStorage(): Storage | null {
 	if (typeof window === "undefined") {
 		return null;
@@ -32,18 +36,14 @@ function readPreference(): StoredImportSourcePreference {
 		}
 
 		const parsed: unknown = JSON.parse(value);
-		if (
-			typeof parsed !== "object" ||
-			parsed === null ||
-			typeof (parsed as Record<string, unknown>).remember !== "boolean"
-		) {
+		if (!isRecord(parsed) || typeof parsed.remember !== "boolean") {
 			return { remember: false };
 		}
 
-		const record = parsed as Record<string, unknown>;
 		return {
-			remember: record.remember,
-			sourceId: typeof record.sourceId === "string" ? record.sourceId : undefined,
+			remember: parsed.remember,
+			sourceId:
+				typeof parsed.sourceId === "string" ? parsed.sourceId : undefined,
 		};
 	} catch {
 		return { remember: false };

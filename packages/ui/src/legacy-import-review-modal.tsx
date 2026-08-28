@@ -5,6 +5,7 @@ import {
 	createSignal,
 	For,
 	Show,
+	untrack,
 } from "solid-js";
 import { Portal } from "solid-js/web";
 import {
@@ -21,15 +22,15 @@ import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
 } from "./import-inbox-helpers";
+import type {
+	ImportReviewModalProps,
+	PendingImportJob,
+} from "./import-review-modal.types";
 import {
 	getRememberedImportSourceId,
 	isImportSourceRemembered,
 	setImportSourcePreference,
 } from "./import-source-preference";
-import type {
-	ImportReviewModalProps,
-	PendingImportJob,
-} from "./import-review-modal.types";
 import { toast } from "./toast";
 
 function getPreviewUrl(url?: string): string {
@@ -83,12 +84,14 @@ export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 			setSelectedSourceId("");
 			return;
 		}
-		const rememberedSourceId = rememberSource()
+		const shouldRememberSource = untrack(rememberSource);
+		const rememberedSourceId = shouldRememberSource
 			? getRememberedImportSourceId(sourceList)
 			: null;
-		const nextSourceId = rememberedSourceId ?? getPreferredImportSourceId(sourceList);
+		const nextSourceId =
+			rememberedSourceId ?? getPreferredImportSourceId(sourceList);
 		setSelectedSourceId(nextSourceId);
-		if (rememberSource() && nextSourceId !== rememberedSourceId) {
+		if (shouldRememberSource && nextSourceId !== rememberedSourceId) {
 			setImportSourcePreference(true, nextSourceId);
 		}
 	});
@@ -115,7 +118,10 @@ export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 
 	const handleRememberSourceChange = (remember: boolean) => {
 		setRememberSource(remember);
-		setImportSourcePreference(remember, remember ? selectedSourceId() : undefined);
+		setImportSourcePreference(
+			remember,
+			remember ? selectedSourceId() : undefined,
+		);
 	};
 
 	const confirmDelete = async () => {
@@ -154,13 +160,13 @@ export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 									<span class="text-gray-300">Target Source:</span>
 									<select
 										class="rounded border border-gray-600 bg-gray-800 p-1 text-white"
-											 onChange={(event) =>
-											setSelectedSourceId(event.currentTarget.value);
+										onChange={(event) => {
+											const sourceId = event.currentTarget.value;
+											setSelectedSourceId(sourceId);
 											if (rememberSource()) {
-												setImportSourcePreference(true, event.currentTarget.value);
+												setImportSourcePreference(true, sourceId);
 											}
-										}
-										}
+										}}
 										value={selectedSourceId()}
 									>
 										<For each={sources()}>

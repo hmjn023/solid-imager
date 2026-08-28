@@ -5,6 +5,7 @@ import {
 	createSignal,
 	For,
 	Show,
+	untrack,
 } from "solid-js";
 import {
 	AlertDialog,
@@ -29,12 +30,12 @@ import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
 } from "./import-inbox-helpers";
+import type { ImportReviewModalProps } from "./import-review-modal.types";
 import {
 	getRememberedImportSourceId,
 	isImportSourceRemembered,
 	setImportSourcePreference,
 } from "./import-source-preference";
-import type { ImportReviewModalProps } from "./import-review-modal.types";
 import { toast } from "./toast";
 
 function getPreviewUrl(url?: string): string {
@@ -105,12 +106,14 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 			return;
 		}
 
-		const rememberedSourceId = rememberSource()
+		const shouldRememberSource = untrack(rememberSource);
+		const rememberedSourceId = shouldRememberSource
 			? getRememberedImportSourceId(sourceList)
 			: null;
-		const nextSourceId = rememberedSourceId ?? getPreferredImportSourceId(sourceList);
+		const nextSourceId =
+			rememberedSourceId ?? getPreferredImportSourceId(sourceList);
 		setSelectedSourceId(nextSourceId);
-		if (rememberSource() && nextSourceId !== rememberedSourceId) {
+		if (shouldRememberSource && nextSourceId !== rememberedSourceId) {
 			setImportSourcePreference(true, nextSourceId);
 		}
 	});
@@ -172,7 +175,10 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 
 	const handleRememberSourceChange = (remember: boolean) => {
 		setRememberSource(remember);
-		setImportSourcePreference(remember, remember ? selectedSourceId() : undefined);
+		setImportSourcePreference(
+			remember,
+			remember ? selectedSourceId() : undefined,
+		);
 	};
 
 	const confirmDelete = async () => {
@@ -212,29 +218,31 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 
 					<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
 						<div class="flex flex-col gap-3 border-[var(--v2-border)] border-b bg-[var(--v2-surface-muted)] px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
-							<label class="grid min-w-0 gap-1 font-medium text-sm sm:w-80">
-								Target source
-								<select
-									class="min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-									disabled={sources.loading || activeAction() !== null}
-									onChange={(event) => {
-										const sourceId = event.currentTarget.value;
-										setSelectedSourceId(sourceId);
-										if (rememberSource()) {
-											setImportSourcePreference(true, sourceId);
-										}
-										setIsDirty(true);
-									}}
-									value={selectedSourceId()}
-								>
-									<For each={sources()}>
-										{(source) => (
-											<option value={source.id}>
-												{source.name} · {source.type}
-											</option>
-										)}
-									</For>
-								</select>
+							<div class="grid min-w-0 gap-2 sm:w-80">
+								<label class="grid gap-1 font-medium text-sm">
+									Target source
+									<select
+										class="min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										disabled={sources.loading || activeAction() !== null}
+										onChange={(event) => {
+											const sourceId = event.currentTarget.value;
+											setSelectedSourceId(sourceId);
+											if (rememberSource()) {
+												setImportSourcePreference(true, sourceId);
+											}
+											setIsDirty(true);
+										}}
+										value={selectedSourceId()}
+									>
+										<For each={sources()}>
+											{(source) => (
+												<option value={source.id}>
+													{source.name} · {source.type}
+												</option>
+											)}
+										</For>
+									</select>
+								</label>
 								<label class="flex items-center gap-2 text-muted-foreground text-sm">
 									<input
 										checked={rememberSource()}
@@ -247,7 +255,7 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 									/>
 									Remember this source
 								</label>
-							</label>
+							</div>
 							<div class="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
 								<div class="text-muted-foreground text-sm" aria-live="polite">
 									{selectedJobIds().size} of {pendingJobs()?.length ?? 0}{" "}
