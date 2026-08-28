@@ -70,7 +70,7 @@ CPU のみで使用する場合は通常通り `bun install` してください�
 
 ### 本番コンテナ
 
-本番の `app` コンテナは `oven/bun:debian` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。コンテナ内で `docker build` や `bun install` は実行しません。
+本番の `app` コンテナは Python 3 を追加した `Dockerfile.runtime` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。`youtube-dl-exec` が同梱する `yt-dlp` は Python zipapp のため、Python 3 が必要です。アプリケーション依存関係の `bun install` はコンテナ内で実行しません。
 
 ビルドホストで一度だけ実行します。
 
@@ -82,11 +82,13 @@ bun run --cwd apps/server build
 デプロイホストからその成果物が見える状態にして、`APP_ARTIFACT_DIR` にプロジェクトルートを指定します。
 
 ```bash
+docker compose -f compose.yml -f compose.production.yml build app
 APP_ARTIFACT_DIR=/srv/solid-imager \
   docker compose -f compose.yml -f compose.production.yml -f compose.production.override.yml up -d
 ```
 
 `APP_ARTIFACT_DIR` には `node_modules/` と `apps/server/.output/` を含む、ビルドホストのプロジェクトディレクトリを指定してください。
+`APP_RUNTIME_IMAGE` を指定した場合は、Python 3 がインストール済みの互換イメージを使用してください。
 
 ## 主要スクリプト
 

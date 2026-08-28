@@ -1,0 +1,8 @@
+.git
+.output
+apps/*/.output
+db-data
+db-data-*
+node_modules
+**/node_modules
+*.log
