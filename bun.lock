@@ -207,12 +207,14 @@
       "version": "0.0.0",
       "dependencies": {
         "@solid-imager/core": "workspace:*",
-        "drizzle-orm": "^0.45.2",
       },
       "devDependencies": {
         "@types/node": "^26.2.0",
         "typescript": "rc",
         "vitest": "^4.1.10",
+      },
+      "peerDependencies": {
+        "drizzle-orm": "^0.45.2",
       },
     },
     "packages/ui": {

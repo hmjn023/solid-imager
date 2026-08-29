@@ -47,6 +47,17 @@ bun --filter @solid-imager/server run db:migrate
 bun run dev
 ```
 
+Aubeを使う場合は、依存関係のインストールとスクリプト実行を次のように置き換えられます。
+
+```bash
+aube i
+aube -F @solid-imager/server run db:migrate
+aube dev
+# 本番ビルド済み成果物の起動: aube start
+```
+
+Aube用の `aube-lock.yaml` と、Bun用の `bun.lock` を併存させています。Bunで依存関係を更新した場合はAube側でも `aube i` を実行し、Aubeで依存関係を更新した場合はBun側でも `bun install` を実行して、それぞれのlockfileを同期してください。
+
 PostgreSQLを使わずPGliteで動かす場合は、DB_HOSTを上書きしてマイグレーションを実行します。
 
 ```bash
@@ -59,6 +70,12 @@ AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アド
 
 ```bash
 ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
+```
+
+Aubeを使う場合も同じ環境変数を付けて実行します。
+
+```bash
+ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib aube i
 ```
 
 要件:
@@ -100,6 +117,8 @@ fi
 | コマンド                                            | 用途                      |
 | --------------------------------------------------- | ------------------------- |
 | `bun run dev`                                       | 開発サーバー起動          |
+| `aube dev`                                          | Aube経由の開発サーバー起動 |
+| `aube start`                                        | Aube経由の本番サーバー起動 |
 | `bun run check`                                     | lint / format / typecheck |
 | `bun run test`                                      | Vitest テスト             |
 | `bun run format`                                    | Biomeによるformat         |
