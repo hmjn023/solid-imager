@@ -475,7 +475,7 @@ export default defineConfig({
     solidPlugin({ ssr: true }),
   ],
   optimizeDeps: {
-		exclude: ["dghs-imgutils-rs"],
+		exclude: ["bun", "dghs-imgutils-rs"],
   },
   customLogger: {
     warn(msg, options) {
@@ -495,6 +495,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       external: [
+        "bun",
         "dghs-imgutils-rs",
         "ffmpeg-static",
         "fluent-ffmpeg",
@@ -515,6 +516,7 @@ export default defineConfig({
       "@solid-primitives/.*",
     ],
     external: [
+      "bun",
       "@electric-sql/pglite",
       "ffmpeg-static",
       "ffmpeg-static-static",

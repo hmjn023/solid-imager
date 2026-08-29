@@ -13,6 +13,7 @@ services:
       DB_DATABASE: ${DB_DATABASE}
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
+      DB_POSTGRES_DRIVER: ${DB_POSTGRES_DRIVER:-bun-sql}
       NITRO_HOST: 0.0.0.0
       PORT: 3000
     volumes:

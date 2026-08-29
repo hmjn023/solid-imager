@@ -1,9 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DatabaseConfig } from "~/config/database";
 import {
 	closeConnection,
 	createConnection,
 } from "~/infrastructure/db/connection";
+import { resolvePostgresDriver } from "~/infrastructure/db/postgres-driver";
 
 // Mock PGlite and postgres
 
@@ -45,6 +46,20 @@ vi.mock("pg", () => {
 	};
 });
 describe("createConnection", () => {
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
+
+	it("defaults PostgreSQL connections to Bun.SQL", () => {
+		expect(resolvePostgresDriver(undefined)).toBe("bun-sql");
+	});
+
+	it("rejects unknown PostgreSQL drivers", () => {
+		expect(() => resolvePostgresDriver("unknown")).toThrow(
+			"Invalid DB_POSTGRES_DRIVER",
+		);
+	});
+
 	it("should create a PGlite connection when databaseType is pglite", async () => {
 		const config: DatabaseConfig = {
 			databaseType: "pglite",
@@ -65,6 +80,7 @@ describe("createConnection", () => {
 	});
 
 	it("should create a postgres connection when databaseType is docker-compose-postgres", async () => {
+		vi.stubEnv("DB_POSTGRES_DRIVER", "node-postgres");
 		const config: DatabaseConfig = {
 			databaseType: "docker-compose-postgres",
 			dockerComposePostgres: {
@@ -89,6 +105,24 @@ describe("createConnection", () => {
 		});
 		// Check if SELECT 1 was executed by checking the query method on the returned connection
 		// expect((connection as any).query).toHaveBeenCalledWith("SELECT 1");
+	});
+
+	it("should create a Bun.SQL connection when selected", async () => {
+		vi.stubEnv("DB_POSTGRES_DRIVER", "bun-sql");
+		const config: DatabaseConfig = {
+			databaseType: "docker-compose-postgres",
+			dockerComposePostgres: {
+				host: "localhost",
+				port: 5432,
+				user: "testuser",
+				password: "testpassword",
+				database: "testdb",
+			},
+		};
+
+		const connection = await createConnection(config);
+
+		expect(connection.constructor.name).toBe("SQL");
 	});
 
 	it("should throw an error for unsupported database type", async () => {
@@ -116,6 +150,7 @@ describe("closeConnection", () => {
 	});
 
 	it("should close postgres connection", async () => {
+		vi.stubEnv("DB_POSTGRES_DRIVER", "node-postgres");
 		const config: DatabaseConfig = {
 			databaseType: "docker-compose-postgres",
 			dockerComposePostgres: {

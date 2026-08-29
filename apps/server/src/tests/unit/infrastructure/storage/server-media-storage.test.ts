@@ -1,14 +1,14 @@
 import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
-import sharp from "sharp";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { openBunImage } from "~/infrastructure/processing/bun-image";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // Mock definitions
 vi.mock("node:fs/promises");
-vi.mock("sharp");
 vi.mock("fluent-ffmpeg");
+vi.mock("~/infrastructure/processing/bun-image");
 
 describe("ServerMediaStorage Unit Tests", () => {
 	const basePath = "/tmp/test-storage";
@@ -20,14 +20,15 @@ describe("ServerMediaStorage Unit Tests", () => {
 		// Setup default mocks using vi.mocked checks for type safety if needed,
 		// or just casting for convenience in this simple test file.
 
-		// Mock sharp to return an object with metadata method
-		const mockSharpInstance = {
+		// Mock Bun.Image to return an object with metadata method
+		const mockBunImage = {
 			metadata: vi
 				.fn()
 				.mockResolvedValue({ width: ExpectedWidth, height: 600 }),
 		};
-		// @ts-expect-error - Mocking default export function behavior
-		vi.mocked(sharp).mockReturnValue(mockSharpInstance);
+		vi.mocked(openBunImage).mockReturnValue(
+			mockBunImage as unknown as ReturnType<typeof openBunImage>,
+		);
 
 		// Mock fluent-ffmpeg
 		// fluent-ffmpeg default export is a function that returns an object (command)
@@ -72,11 +73,11 @@ describe("ServerMediaStorage Unit Tests", () => {
 			// Verify
 			expect(result).toBeDefined();
 			expect(ffmpeg.ffprobe).toHaveBeenCalled();
-			// Sharp should NOT be called for video files
-			expect(sharp).not.toHaveBeenCalled();
+			// Bun.Image should NOT be called for video files
+			expect(openBunImage).not.toHaveBeenCalled();
 		});
 
-		it("should succeed for image files using sharp", async () => {
+		it("should succeed for image files using Bun.Image", async () => {
 			// Setup
 			const sourcePath = "/source/image.png";
 			const targetPath = basePath;
@@ -102,7 +103,7 @@ describe("ServerMediaStorage Unit Tests", () => {
 
 			// Verify
 			expect(result).toBeDefined();
-			expect(sharp).toHaveBeenCalled();
+			expect(openBunImage).toHaveBeenCalledWith("/tmp/test-storage/image.png");
 			expect(result.width).toBe(ExpectedWidth);
 		});
 	});
@@ -131,7 +132,7 @@ describe("ServerMediaStorage Unit Tests", () => {
 
 			expect(result).toBeDefined();
 			expect(ffmpeg.ffprobe).toHaveBeenCalled();
-			expect(sharp).not.toHaveBeenCalled();
+			expect(openBunImage).not.toHaveBeenCalled();
 		});
 	});
 });
