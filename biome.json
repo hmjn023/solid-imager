@@ -27,6 +27,7 @@
 			"packages/**/src/**",
 			"!**/node_modules",
 			"!**/dist",
+			"!**/gen",
 			"!**/.output",
 			"!**/db-data",
 			"!**/.worktree",
