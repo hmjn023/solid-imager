@@ -380,6 +380,22 @@ const e2eServerTimeoutPlugin = (): Plugin => ({
 	},
 });
 
+const nitroSsrCodeSplittingPlugin = (): Plugin => ({
+	name: "nitro-ssr-code-splitting",
+	configEnvironment(name) {
+		if (name !== "nitro") return;
+		return {
+			build: {
+				rolldownOptions: {
+					output: {
+						codeSplitting: false,
+					},
+				},
+			},
+		};
+	},
+});
+
 export default defineConfig({
   root: __dirname,
   cacheDir: viteCacheDir,
@@ -429,6 +445,7 @@ export default defineConfig({
     devMediaFileMiddlewarePlugin(),
     e2eServerTimeoutPlugin(),
     e2eReadinessPlugin(),
+    nitroSsrCodeSplittingPlugin(),
     ...(shouldUseDevtools
       ? [
           devtools({
