@@ -5,3 +5,5 @@ FROM oven/bun:debian
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes python3 ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+USER bun

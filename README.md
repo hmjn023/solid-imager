@@ -82,13 +82,18 @@ bun run --cwd apps/server build
 デプロイホストからその成果物が見える状態にして、`APP_ARTIFACT_DIR` にプロジェクトルートを指定します。
 
 ```bash
-docker compose -f compose.yml -f compose.production.yml build app
-APP_ARTIFACT_DIR=/srv/solid-imager \
-  docker compose -f compose.yml -f compose.production.yml -f compose.production.override.yml up -d
+if [ -n "${APP_RUNTIME_IMAGE:-}" ]; then
+  APP_ARTIFACT_DIR=/srv/solid-imager \
+    docker compose -f compose.yml -f compose.production.yml -f compose.production.override.yml up -d --no-build
+else
+  docker compose -f compose.yml -f compose.production.yml build app
+  APP_ARTIFACT_DIR=/srv/solid-imager \
+    docker compose -f compose.yml -f compose.production.yml -f compose.production.override.yml up -d
+fi
 ```
 
 `APP_ARTIFACT_DIR` には `node_modules/` と `apps/server/.output/` を含む、ビルドホストのプロジェクトディレクトリを指定してください。
-`APP_RUNTIME_IMAGE` を指定した場合は、Python 3 がインストール済みの互換イメージを使用してください。
+`APP_RUNTIME_IMAGE` を指定した場合は、Python 3 がインストール済みの互換イメージを使用してください。この場合、`app` はローカルビルドせず、指定イメージをそのまま使用します。
 
 ## 主要スクリプト
 
