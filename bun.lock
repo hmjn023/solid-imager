@@ -62,7 +62,7 @@
         "@tanstack/solid-start": "^1.168.19",
         "archiver": "^8.0.0",
         "chokidar": "^5.0.0",
-        "dghs-imgutils-rs": "github:hmjn023/dghs-imgutils-rs#457553648518c8df370391391443b6302e19b05a",
+        "dghs-imgutils-rs": "github:hmjn023/dghs-imgutils-rs#v0.5.2",
         "drizzle-orm": "^0.45.2",
         "ffmpeg-static": "^5.3.0",
         "fluent-ffmpeg": "^2.1.3",
@@ -1101,7 +1101,7 @@
 
     "devlop": ["devlop@1.1.0", "", { "dependencies": { "dequal": "^2.0.0" } }, "sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA=="],
 
-    "dghs-imgutils-rs": ["dghs-imgutils-rs@github:hmjn023/dghs-imgutils-rs#4575536", { "dependencies": { "@napi-rs/cli": "^2.18.4" } }, "hmjn023-dghs-imgutils-rs-4575536", "sha512-sfqEBeXc7J71AeTa9EnBrurDh1mgt1EUf9BhOIZNemDHPPbtn9zhsLFV5yPH2QVn2b3kWyK5Adu9eKN48RyBVw=="],
+    "dghs-imgutils-rs": ["dghs-imgutils-rs@github:hmjn023/dghs-imgutils-rs#62519d0", { "dependencies": { "@napi-rs/cli": "^2.18.4" } }, "hmjn023-dghs-imgutils-rs-62519d0", "sha512-y13VRia7cju8a4l0tOmGh9zUTc6/IJbtgHRTC7+IOYsQCyKuUYNQrYPByrGEkb/ztuXg0arojh845t+TqGfxpA=="],
 
     "diff": ["diff@7.0.0", "", {}, "sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw=="],
 

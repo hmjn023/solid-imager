@@ -20,6 +20,8 @@ export type OppaiOracleResponse = z.infer<typeof oppaiOracleResponseSchema>;
 export const taggingResponseSchema = z.object({
 	general: z.record(z.string(), z.number()),
 	character: z.record(z.string(), z.number()),
+	/** Maps each detected tag name to its model-provided category. */
+	attributes: z.record(z.string(), z.string()).default({}),
 	ips: z.array(z.string()),
 	ips_mapping: z.record(z.string(), z.array(z.string())),
 });
