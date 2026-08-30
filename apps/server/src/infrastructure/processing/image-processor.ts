@@ -17,7 +17,7 @@ import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";
-import { openBunImage } from "./bun-image";
+import { getImageMetadata, writeWebpThumbnail } from "./bun-image";
 
 const RANDOM_STRING_RADIX = 36;
 let isFfmpegAvailable: boolean | undefined;
@@ -89,11 +89,8 @@ export class LocalImageProcessor implements IImageProcessor {
 						.on("error", (err) => reject(err));
 				});
 
-				// Use Bun.Image for the conversion path (convert to webp).
-				await openBunImage(tempScreenshot)
-					.resize(size, size, { fit: "inside", withoutEnlargement: true })
-					.webp({ quality })
-					.write(outputPath);
+				// Use Bun.Image with a sharp fallback for the conversion path.
+				await writeWebpThumbnail(tempScreenshot, outputPath, size, quality);
 
 				logger.info(
 					{ outputPath },
@@ -116,10 +113,7 @@ export class LocalImageProcessor implements IImageProcessor {
 
 		// Default image processing
 		try {
-			await openBunImage(mediaPath)
-				.resize(size, size, { fit: "inside", withoutEnlargement: true })
-				.webp({ quality })
-				.write(outputPath);
+			await writeWebpThumbnail(mediaPath, outputPath, size, quality);
 		} catch (error) {
 			logger.error(
 				{ err: error, mediaPath },
@@ -263,7 +257,7 @@ export class LocalImageProcessor implements IImageProcessor {
 			});
 		}
 
-		const metadata = await openBunImage(mediaPath).metadata();
+		const metadata = await getImageMetadata(mediaPath);
 		if (metadata.width === undefined || metadata.height === undefined) {
 			throw new Error(`Failed to get dimensions for image: ${mediaPath}`);
 		}

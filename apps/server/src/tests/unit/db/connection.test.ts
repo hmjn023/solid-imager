@@ -45,11 +45,12 @@ vi.mock("pg", () => {
 		Pool: MockPool,
 	};
 });
-describe("createConnection", () => {
-	afterEach(() => {
-		vi.unstubAllEnvs();
-	});
 
+afterEach(() => {
+	vi.unstubAllEnvs();
+});
+
+describe("createConnection", () => {
 	it("defaults PostgreSQL connections to Bun.SQL", () => {
 		expect(resolvePostgresDriver(undefined)).toBe("bun-sql");
 	});

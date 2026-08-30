@@ -7,7 +7,7 @@ import type {
 } from "@solid-imager/core";
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import type { z } from "zod";
-import { openBunImage } from "~/infrastructure/processing/bun-image";
+import { getImageMetadata } from "~/infrastructure/processing/bun-image";
 
 /**
  * Resolves a path safely, ensuring it remains within the base path.
@@ -220,9 +220,9 @@ export const ServerMediaStorage: IMediaStorage = {
 			};
 		}
 
-		// Image formats (try Bun.Image first, fall back to ffprobe for misidentified videos)
+		// Image formats (try Bun.Image, then sharp, then ffprobe for misidentified videos)
 		try {
-			const metadata = await openBunImage(fullPath).metadata();
+			const metadata = await getImageMetadata(fullPath);
 
 			if (metadata.width && metadata.height) {
 				return {
@@ -234,7 +234,7 @@ export const ServerMediaStorage: IMediaStorage = {
 				};
 			}
 		} catch {
-			// Bun.Image failed — possibly a video with an image extension, fall through to ffprobe
+			// Both image decoders failed — possibly a video with an image extension, fall through to ffprobe
 		}
 
 		// Fallback: try ffprobe for video files that were misidentified as images

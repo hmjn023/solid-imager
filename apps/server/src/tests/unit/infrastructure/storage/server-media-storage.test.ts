@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import ffmpeg from "fluent-ffmpeg";
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { openBunImage } from "~/infrastructure/processing/bun-image";
+import { getImageMetadata } from "~/infrastructure/processing/bun-image";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 // Mock definitions
@@ -20,15 +20,10 @@ describe("ServerMediaStorage Unit Tests", () => {
 		// Setup default mocks using vi.mocked checks for type safety if needed,
 		// or just casting for convenience in this simple test file.
 
-		// Mock Bun.Image to return an object with metadata method
-		const mockBunImage = {
-			metadata: vi
-				.fn()
-				.mockResolvedValue({ width: ExpectedWidth, height: 600 }),
-		};
-		vi.mocked(openBunImage).mockReturnValue(
-			mockBunImage as unknown as ReturnType<typeof openBunImage>,
-		);
+		vi.mocked(getImageMetadata).mockResolvedValue({
+			width: ExpectedWidth,
+			height: 600,
+		});
 
 		// Mock fluent-ffmpeg
 		// fluent-ffmpeg default export is a function that returns an object (command)
@@ -73,8 +68,8 @@ describe("ServerMediaStorage Unit Tests", () => {
 			// Verify
 			expect(result).toBeDefined();
 			expect(ffmpeg.ffprobe).toHaveBeenCalled();
-			// Bun.Image should NOT be called for video files
-			expect(openBunImage).not.toHaveBeenCalled();
+			// Image metadata should NOT be read for video files
+			expect(getImageMetadata).not.toHaveBeenCalled();
 		});
 
 		it("should succeed for image files using Bun.Image", async () => {
@@ -103,7 +98,9 @@ describe("ServerMediaStorage Unit Tests", () => {
 
 			// Verify
 			expect(result).toBeDefined();
-			expect(openBunImage).toHaveBeenCalledWith("/tmp/test-storage/image.png");
+			expect(getImageMetadata).toHaveBeenCalledWith(
+				"/tmp/test-storage/image.png",
+			);
 			expect(result.width).toBe(ExpectedWidth);
 		});
 	});
@@ -132,7 +129,7 @@ describe("ServerMediaStorage Unit Tests", () => {
 
 			expect(result).toBeDefined();
 			expect(ffmpeg.ffprobe).toHaveBeenCalled();
-			expect(openBunImage).not.toHaveBeenCalled();
+			expect(getImageMetadata).not.toHaveBeenCalled();
 		});
 	});
 });
