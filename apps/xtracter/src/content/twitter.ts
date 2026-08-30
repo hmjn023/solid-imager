@@ -263,7 +263,8 @@ export function extractFromArticle(article: HTMLElement) {
 	const timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";
 
 	const timeLink = timeNode?.closest<HTMLAnchorElement>("a");
-	const tweetUrl = timeLink && isTwitterStatusUrl(timeLink.href) ? timeLink.href : "";
+	const tweetUrl =
+		timeLink && isTwitterStatusUrl(timeLink.href) ? timeLink.href : "";
 
 	const userNameNode = article.querySelector('div[data-testid="User-Name"]');
 	const authorName = userNameNode?.querySelector("span")?.innerText || "";

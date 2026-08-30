@@ -34,13 +34,13 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@orpc/contract": "^1.14.4",
-    "zod": "^4.4.3"
+    "@orpc/contract": "^1.15.0",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/node": "^26.2.0",
+    "@types/node": "^26.4.0",
     "typescript": "rc",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "solid-js": "^1.9.13"
