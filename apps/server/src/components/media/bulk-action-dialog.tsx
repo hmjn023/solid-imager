@@ -21,8 +21,9 @@ import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 type BulkActionDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
-	mediaSourceId: string;
+	mediaSourceId?: string;
 	mediaIds: string[];
+	mediaItems?: Array<{ mediaId: string; mediaSourceId: string }>;
 	onSuccess: () => void;
 };
 
@@ -43,46 +44,72 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 		{ initialValue: [] },
 	);
 
+	const selectedItems = () => {
+		const sourceId = props.mediaSourceId;
+		return (
+			props.mediaItems ??
+			(sourceId
+				? props.mediaIds.map((mediaId) => ({
+						mediaId,
+						mediaSourceId: sourceId,
+					}))
+				: [])
+		);
+	};
+
+	const selectedSourceIds = () =>
+		new Set(selectedItems().map((item) => item.mediaSourceId));
+
+	const groupedMediaIds = () => {
+		const groups = new Map<string, string[]>();
+		for (const item of selectedItems()) {
+			const mediaIds = groups.get(item.mediaSourceId) ?? [];
+			mediaIds.push(item.mediaId);
+			groups.set(item.mediaSourceId, mediaIds);
+		}
+		return groups;
+	};
+
 	const usableSources = () =>
 		(sources() ?? []).filter(
 			(s): s is SafeMediaSource & { id: string } =>
-				!!s.id && s.id !== props.mediaSourceId,
+				!!s.id && !selectedSourceIds().has(s.id),
 		);
 
 	const handleConfirm = async () => {
 		setIsSubmitting(true);
 		setErrorMsg("");
 		try {
+			const groups = groupedMediaIds();
+			if (groups.size === 0) {
+				throw new Error("No media items are selected.");
+			}
 			const currentAction = action();
 			if (currentAction === "copy-source") {
 				if (!targetSourceId()) {
 					throw new Error("Target source is required.");
 				}
-				await bulkCopyToSource(
-					props.mediaSourceId,
-					props.mediaIds,
-					targetSourceId(),
-				);
+				for (const [sourceId, mediaIds] of groups) {
+					await bulkCopyToSource(sourceId, mediaIds, targetSourceId());
+				}
 			} else if (currentAction === "move-source") {
 				if (!targetSourceId()) {
 					throw new Error("Target source is required.");
 				}
-				await bulkMoveToSource(
-					props.mediaSourceId,
-					props.mediaIds,
-					targetSourceId(),
-				);
+				for (const [sourceId, mediaIds] of groups) {
+					await bulkMoveToSource(sourceId, mediaIds, targetSourceId());
+				}
 			} else if (currentAction === "move-folder") {
 				if (!destinationPath().trim()) {
 					throw new Error("Destination path is required.");
 				}
-				await bulkMoveMedia(
-					props.mediaSourceId,
-					props.mediaIds,
-					destinationPath(),
-				);
+				for (const [sourceId, mediaIds] of groups) {
+					await bulkMoveMedia(sourceId, mediaIds, destinationPath());
+				}
 			} else if (currentAction === "delete") {
-				await bulkDeleteMedia(props.mediaSourceId, props.mediaIds);
+				for (const [sourceId, mediaIds] of groups) {
+					await bulkDeleteMedia(sourceId, mediaIds);
+				}
 			}
 			props.onSuccess();
 			props.onOpenChange(false);
@@ -99,7 +126,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 				<DialogHeader>
 					<DialogTitle>一括操作を実行</DialogTitle>
 					<DialogDescription>
-						選択された {props.mediaIds.length}{" "}
+						選択された {selectedItems().length}{" "}
 						件のメディアに対して一括操作を実行します。
 					</DialogDescription>
 				</DialogHeader>
