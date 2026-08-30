@@ -198,8 +198,10 @@ export default function V2SearchContent() {
 			setIsMoveCopyDialogOpen(false);
 		}
 	};
-	const handleBulkSuccess = () => {
-		clearSelection();
+	const handleBulkSuccess = (partial = false) => {
+		if (!partial) {
+			clearSelection();
+		}
 		page.refreshSearchResults();
 	};
 

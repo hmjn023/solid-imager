@@ -122,8 +122,13 @@ function initializeDb() {
 		queryClient = client;
 		database = drizzleBunSql({ client, schema });
 	} else {
-		const connectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
-		const client = new Pool({ connectionString });
+		const client = new Pool({
+			host: dbHost,
+			port: Number(dbPort),
+			user: dbUser,
+			password: dbPassword,
+			database: dbName,
+		});
 		queryClient = client;
 		database = drizzleNodePg(client, { schema });
 	}

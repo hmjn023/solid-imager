@@ -25,7 +25,7 @@ type BulkActionDialogProps = {
 	mediaSourceId?: string;
 	mediaIds: string[];
 	mediaItems?: Array<{ mediaId: string; mediaSourceId: string }>;
-	onSuccess: () => void;
+	onSuccess: (partial: boolean) => void;
 };
 
 type ActionType = "copy-source" | "move-source" | "move-folder" | "delete";
@@ -135,14 +135,14 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 					toast.error(
 						`一部の操作に失敗しました（成功 ${succeededMediaCount} 件、失敗 ${failedMediaCount} 件）。`,
 					);
-					props.onSuccess();
+					props.onSuccess(true);
 					props.onOpenChange(false);
 					return;
 				}
 				throw new Error(failures[0]?.message ?? "An error occurred.");
 			}
 
-			props.onSuccess();
+			props.onSuccess(false);
 			props.onOpenChange(false);
 		} catch (e) {
 			setErrorMsg(e instanceof Error ? e.message : "An error occurred.");

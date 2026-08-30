@@ -56,7 +56,7 @@ aube dev
 # 本番ビルド済み成果物の起動: aube start
 ```
 
-Aube用の `aube-lock.yaml` と、Bun用の `bun.lock` を併存させています。Bunで依存関係を更新した場合はAube側でも `aube i` を実行し、Aubeで依存関係を更新した場合はBun側でも `bun install` を実行して、それぞれのlockfileを同期してください。
+Aubeを使う場合も、Bunと同じく既存の `bun.lock` を唯一のlockfileとして使用します。依存関係を更新したときは `bun install` または `aube i` を実行し、別のlockfileを作成したり手動で同期したりしないでください。
 
 PostgreSQLを使わずPGliteで動かす場合は、DB_HOSTを上書きしてマイグレーションを実行します。
 

@@ -92,8 +92,22 @@ export interface BasicContext<
 > {
 	agent: boolean;
 	args: TArgs;
-	error: (options: { code: string; message: string }) => never;
-	ok: (data: unknown) => unknown;
+	displayName: string;
+	env: Record<string, unknown>;
+	error: (options: {
+		code: string;
+		cta?: unknown;
+		exitCode?: number;
+		message: string;
+		retryable?: boolean;
+	}) => never;
+	format: string;
+	formatExplicit: boolean;
+	name: string;
+	// Keep the success payload type visible to standalone handlers. The actual
+	// incur implementation does not return from this helper, but the generic
+	// return type preserves each handler's inferred result for its CLI contract.
+	ok: <TData>(data: TData, meta?: { cta?: unknown }) => TData;
 	options: TOptions;
 }
 

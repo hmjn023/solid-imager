@@ -27,7 +27,8 @@ import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storag
 import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
-const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
+const TWITTER_URL_REGEX =
+	/(twitter|x)\.com\/(?:\w+\/status|i\/web\/status)\/\d+/;
 const IMAGE_EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
 	"image/avif": ".avif",
 	"image/bmp": ".bmp",
@@ -514,8 +515,8 @@ function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	return headers;
 }
 
-function getDirectImageExtension(contentType: string): string {
-	return IMAGE_EXTENSION_BY_CONTENT_TYPE[contentType] ?? ".png";
+function getDirectImageExtension(contentType: string): string | null {
+	return IMAGE_EXTENSION_BY_CONTENT_TYPE[contentType] ?? null;
 }
 
 /**
@@ -571,6 +572,9 @@ async function handleDirectImageDownload(
 
 		// Use the response MIME type when a CDN URL has no file extension.
 		const extension = getDirectImageExtension(contentType);
+		if (!extension) {
+			throw new Error(`Unsupported image content type: ${contentType}`);
+		}
 		const filename = generateMediaFilename(item, extension);
 
 		const arrayBuffer = await response.arrayBuffer();

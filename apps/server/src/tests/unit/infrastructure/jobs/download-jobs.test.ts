@@ -252,11 +252,6 @@ describe("processDownloadJob", () => {
 			contentType: "image/jpeg",
 			expectedExtension: /\.jpg$/,
 		},
-		{
-			targetUrl: "https://example.com/page.html",
-			contentType: "image/x-custom",
-			expectedExtension: /\.png$/,
-		},
 	])(
 		"should derive the direct download extension from the response MIME type ($targetUrl, $contentType)",
 		async ({ targetUrl, contentType, expectedExtension }) => {
@@ -282,6 +277,27 @@ describe("processDownloadJob", () => {
 			);
 		},
 	);
+
+	it("should reject unsupported image MIME types", async () => {
+		fetchMock.mockResolvedValueOnce({
+			ok: true,
+			headers: new Headers({ "content-type": "image/x-custom" }),
+			arrayBuffer: async () => new ArrayBuffer(10),
+		});
+
+		const job = {
+			id: "job-unsupported-image",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: { targetUrl: "https://example.com/page.html" },
+		} as any;
+
+		await expect(processDownloadJob(job)).rejects.toThrow(
+			"Unsupported image content type: image/x-custom",
+		);
+		expect(mockSaveFile).not.toHaveBeenCalled();
+		expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
+	});
 
 	it("should use description if provided", async () => {
 		const { MediaProcessingService } = await import(

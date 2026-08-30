@@ -5,3 +5,5 @@ FROM oven/bun:1.4.0-debian
 RUN apt-get update \
     && apt-get install --no-install-recommends --yes python3 ffmpeg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+USER bun
