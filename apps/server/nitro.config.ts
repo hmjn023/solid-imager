@@ -41,20 +41,31 @@ export default defineNitroConfig({
       );
 
       const assetsToCopy = [
-        { name: "pglite.data", source: path.join(pgliteDistPath, "pglite.data") },
-        { name: "pglite.wasm", source: path.join(pgliteDistPath, "pglite.wasm") },
+        {
+          name: "pglite.data",
+          source: path.join(pgliteDistPath, "pglite.data"),
+          outputDir: libsDir,
+        },
+        {
+          name: "pglite.wasm",
+          source: path.join(pgliteDistPath, "pglite.wasm"),
+          outputDir: libsDir,
+        },
         {
           name: "vector.tar.gz",
           source: path.join(pgvectorPkgPath, "dist/vector.tar.gz"),
+          // pgvector is bundled into server/index.mjs, so its import.meta.url
+          // resolves relative to the server output root rather than _libs.
+          outputDir: serverDir,
         },
       ];
 
       for (const asset of assetsToCopy) {
-        const destination = path.join(libsDir, asset.name);
+        const destination = path.join(asset.outputDir, asset.name);
 
         if (fs.existsSync(asset.source)) {
-          if (!fs.existsSync(libsDir)) {
-            fs.mkdirSync(libsDir, { recursive: true });
+          if (!fs.existsSync(asset.outputDir)) {
+            fs.mkdirSync(asset.outputDir, { recursive: true });
           }
           fs.copyFileSync(asset.source, destination);
           console.log(`[Nitro] Successfully copied ${asset.name} to ${destination}`);

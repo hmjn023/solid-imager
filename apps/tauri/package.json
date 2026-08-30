@@ -17,33 +17,33 @@
     "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'"
   },
   "dependencies": {
-    "@orpc/client": "^1.14.4",
-    "@orpc/solid-query": "^1.14.4",
+    "@orpc/client": "^1.15.0",
+    "@orpc/solid-query": "^1.15.0",
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
     "@solid-imager/ui": "workspace:*",
     "@tanstack/db": "0.8.6",
-    "@tanstack/query-db-collection": "^1.0.40",
-    "@tanstack/solid-db": "^0.2.22",
+    "@tanstack/query-db-collection": "^1.2.11",
+    "@tanstack/solid-db": "^0.2.41",
     "@tanstack/solid-query": "5.102.0",
     "@tanstack/solid-router": "latest",
-    "@tanstack/tauri-db-sqlite-persistence": "^0.2.0",
-    "@tauri-apps/api": "^2.11.0",
+    "@tanstack/tauri-db-sqlite-persistence": "^0.2.19",
+    "@tauri-apps/api": "^2.11.1",
     "@tauri-apps/plugin-http": "^2.5.9",
     "@tauri-apps/plugin-sql": "^2.4.0",
-    "solid-js": "^1.9.13",
-    "zod": "^4.4.3"
+    "solid-js": "^1.9.15",
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
-    "@tailwindcss/vite": "^4.3.0",
+    "@biomejs/biome": "^2.5.11",
+    "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-plugin": "latest",
-    "@tauri-apps/cli": "^2.11.2",
-    "@types/node": "^26.0.0",
-    "tailwindcss": "^4.3.0",
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^26.4.0",
+    "tailwindcss": "^4.3.3",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "rc",
-    "vite": "^8.1.5",
-    "vite-plugin-solid": "^2.11.12"
+    "vite": "^8.2.2",
+    "vite-plugin-solid": "^2.11.14"
   }
 }

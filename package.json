@@ -11,6 +11,7 @@
     "dev": "bun --filter @solid-imager/server dev",
     "build": "bun --filter '*' build",
     "start": "bun --filter @solid-imager/server start",
+    "deps:update:aube": "aube update -r",
     "lint": "biome lint .",
     "check": "biome check --write --unsafe && bun run typecheck && bun run design:lint",
     "design:lint": "designmd lint DESIGN.md",

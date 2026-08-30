@@ -27,9 +27,7 @@ describe("extractTwitterAuthorIdFromStatusUrl", () => {
 		"https://x.com/i/web/status/1234567890",
 	])("recognizes handle-less status URL %s", (url) => {
 		expect(isTwitterStatusUrl(url)).toBe(true);
-		expect(
-			extractTwitterAuthorIdFromStatusUrl(url),
-		).toBe("");
+		expect(extractTwitterAuthorIdFromStatusUrl(url)).toBe("");
 	});
 
 	it("does not interpret display-name mentions as account IDs", () => {
@@ -65,6 +63,9 @@ describe("extractTwitterAuthorIdFromStatusUrl", () => {
 			],
 		} as unknown as HTMLElement;
 
-		expect(extractFromArticle(article)).toMatchObject({ tweetUrl: "", authorId: "" });
+		expect(extractFromArticle(article)).toMatchObject({
+			tweetUrl: "",
+			authorId: "",
+		});
 	});
 });

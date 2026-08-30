@@ -14,28 +14,28 @@
     "typecheck": "sh -c 'tsc --noEmit'"
   },
   "dependencies": {
-    "@kobalte/core": "^0.13.11",
+    "@kobalte/core": "^0.13.13",
     "@solid-imager/core": "workspace:*",
     "@solidjs/router": "^1.0.0",
-    "@tanstack/solid-form": "^1.33.0",
+    "@tanstack/solid-form": "^1.33.5",
     "@tanstack/solid-hotkeys": "0.10.0",
     "@tanstack/solid-query": "5.102.0",
     "@tanstack/solid-router": "1.170.30",
-    "@tanstack/solid-virtual": "^3.13.26",
+    "@tanstack/solid-virtual": "^3.13.37",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cmdk-solid": "^1.1.2",
-    "lucide-solid": "^1.17.0",
-    "solid-js": "^1.9.13",
-    "solid-sonner": "^0.3.1",
+    "cmdk-solid": "^1.2.0",
+    "lucide-solid": "^1.37.0",
+    "solid-js": "^1.9.15",
+    "solid-sonner": "^0.3.2",
     "tailwind-merge": "^3.6.0",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^4.4.3"
+    "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.16",
+    "@biomejs/biome": "^2.5.11",
     "typescript": "rc",
-    "vite": "^8.1.5",
-    "vitest": "^4.1.10"
+    "vite": "^8.2.2",
+    "vitest": "^4.1.11"
   }
 }
