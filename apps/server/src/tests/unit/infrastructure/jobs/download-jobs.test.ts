@@ -95,6 +95,7 @@ describe("processDownloadJob", () => {
 		vi.resetAllMocks();
 		fetchMock.mockResolvedValue({
 			ok: true,
+			headers: new Headers({ "content-type": "image/jpeg" }),
 			arrayBuffer: async () => new ArrayBuffer(10),
 		});
 
@@ -216,6 +217,71 @@ describe("processDownloadJob", () => {
 			}),
 		);
 	});
+
+	it("should reject non-image direct download responses", async () => {
+		fetchMock.mockResolvedValueOnce({
+			ok: true,
+			headers: new Headers({ "content-type": "text/html" }),
+			arrayBuffer: async () => new ArrayBuffer(10),
+		});
+
+		const job = {
+			id: "job-non-image",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: {
+				targetUrl: "https://x.com/home",
+			},
+		} as any;
+
+		await expect(processDownloadJob(job)).rejects.toThrow(
+			"non-image response: text/html",
+		);
+		expect(mockSaveFile).not.toHaveBeenCalled();
+		expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		{
+			targetUrl: "https://example.com/page.html",
+			contentType: "image/jpeg",
+			expectedExtension: /\.jpg$/,
+		},
+		{
+			targetUrl: "https://example.com/image?format=html",
+			contentType: "image/jpeg",
+			expectedExtension: /\.jpg$/,
+		},
+		{
+			targetUrl: "https://example.com/page.html",
+			contentType: "image/x-custom",
+			expectedExtension: /\.png$/,
+		},
+	])(
+		"should derive the direct download extension from the response MIME type ($targetUrl, $contentType)",
+		async ({ targetUrl, contentType, expectedExtension }) => {
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				headers: new Headers({ "content-type": contentType }),
+				arrayBuffer: async () => new ArrayBuffer(10),
+			});
+
+			const job = {
+				id: "job-extension",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload: { targetUrl },
+			} as any;
+
+			await processDownloadJob(job);
+
+			expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+				"source-1",
+				expect.stringMatching(expectedExtension),
+				expect.anything(),
+			);
+		},
+	);
 
 	it("should use description if provided", async () => {
 		const { MediaProcessingService } = await import(
