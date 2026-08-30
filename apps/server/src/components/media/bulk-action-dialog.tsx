@@ -9,6 +9,7 @@ import {
 	DialogTitle,
 } from "@solid-imager/ui/dialog";
 import { Input } from "@solid-imager/ui/input";
+import { toast } from "@solid-imager/ui/toast";
 import { createResource, createSignal, For, Show } from "solid-js";
 import {
 	bulkCopyToSource,
@@ -85,32 +86,62 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 				throw new Error("No media items are selected.");
 			}
 			const currentAction = action();
+			const failures: Array<{ mediaCount: number; message: string }> = [];
+			let succeededMediaCount = 0;
+			const runGroup = async (sourceId: string, mediaIds: string[]) => {
+				if (currentAction === "copy-source") {
+					await bulkCopyToSource(sourceId, mediaIds, targetSourceId());
+				} else if (currentAction === "move-source") {
+					await bulkMoveToSource(sourceId, mediaIds, targetSourceId());
+				} else if (currentAction === "move-folder") {
+					await bulkMoveMedia(sourceId, mediaIds, destinationPath());
+				} else {
+					await bulkDeleteMedia(sourceId, mediaIds);
+				}
+			};
 			if (currentAction === "copy-source") {
 				if (!targetSourceId()) {
 					throw new Error("Target source is required.");
-				}
-				for (const [sourceId, mediaIds] of groups) {
-					await bulkCopyToSource(sourceId, mediaIds, targetSourceId());
 				}
 			} else if (currentAction === "move-source") {
 				if (!targetSourceId()) {
 					throw new Error("Target source is required.");
 				}
-				for (const [sourceId, mediaIds] of groups) {
-					await bulkMoveToSource(sourceId, mediaIds, targetSourceId());
-				}
 			} else if (currentAction === "move-folder") {
 				if (!destinationPath().trim()) {
 					throw new Error("Destination path is required.");
 				}
-				for (const [sourceId, mediaIds] of groups) {
-					await bulkMoveMedia(sourceId, mediaIds, destinationPath());
-				}
-			} else if (currentAction === "delete") {
-				for (const [sourceId, mediaIds] of groups) {
-					await bulkDeleteMedia(sourceId, mediaIds);
+			}
+
+			for (const [sourceId, mediaIds] of groups) {
+				try {
+					await runGroup(sourceId, mediaIds);
+					succeededMediaCount += mediaIds.length;
+				} catch (error) {
+					failures.push({
+						mediaCount: mediaIds.length,
+						message:
+							error instanceof Error ? error.message : "An error occurred.",
+					});
 				}
 			}
+
+			if (failures.length > 0) {
+				const failedMediaCount = failures.reduce(
+					(total, failure) => total + failure.mediaCount,
+					0,
+				);
+				if (succeededMediaCount > 0) {
+					toast.error(
+						`一部の操作に失敗しました（成功 ${succeededMediaCount} 件、失敗 ${failedMediaCount} 件）。`,
+					);
+					props.onSuccess();
+					props.onOpenChange(false);
+					return;
+				}
+				throw new Error(failures[0]?.message ?? "An error occurred.");
+			}
+
 			props.onSuccess();
 			props.onOpenChange(false);
 		} catch (e) {

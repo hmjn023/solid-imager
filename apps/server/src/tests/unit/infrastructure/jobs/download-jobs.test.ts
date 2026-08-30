@@ -241,6 +241,48 @@ describe("processDownloadJob", () => {
 		expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
 	});
 
+	it.each([
+		{
+			targetUrl: "https://example.com/page.html",
+			contentType: "image/jpeg",
+			expectedExtension: /\.jpg$/,
+		},
+		{
+			targetUrl: "https://example.com/image?format=html",
+			contentType: "image/jpeg",
+			expectedExtension: /\.jpg$/,
+		},
+		{
+			targetUrl: "https://example.com/page.html",
+			contentType: "image/x-custom",
+			expectedExtension: /\.png$/,
+		},
+	])(
+		"should derive the direct download extension from the response MIME type ($targetUrl, $contentType)",
+		async ({ targetUrl, contentType, expectedExtension }) => {
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				headers: new Headers({ "content-type": contentType }),
+				arrayBuffer: async () => new ArrayBuffer(10),
+			});
+
+			const job = {
+				id: "job-extension",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload: { targetUrl },
+			} as any;
+
+			await processDownloadJob(job);
+
+			expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+				"source-1",
+				expect.stringMatching(expectedExtension),
+				expect.anything(),
+			);
+		},
+	);
+
 	it("should use description if provided", async () => {
 		const { MediaProcessingService } = await import(
 			"~/infrastructure/services/media-processing-service"

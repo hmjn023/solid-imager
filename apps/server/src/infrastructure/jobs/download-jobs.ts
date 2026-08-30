@@ -514,17 +514,7 @@ function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	return headers;
 }
 
-function getDirectImageExtension(url: URL, contentType: string): string {
-	const pathnameExtension = path.extname(url.pathname).toLowerCase();
-	if (pathnameExtension) {
-		return pathnameExtension;
-	}
-
-	const format = url.searchParams.get("format")?.trim().toLowerCase();
-	if (format && /^[a-z0-9]+$/.test(format)) {
-		return `.${format}`;
-	}
-
+function getDirectImageExtension(contentType: string): string {
 	return IMAGE_EXTENSION_BY_CONTENT_TYPE[contentType] ?? ".png";
 }
 
@@ -580,8 +570,7 @@ async function handleDirectImageDownload(
 		}
 
 		// Use the response MIME type when a CDN URL has no file extension.
-		const targetUrl = new URL(item.targetUrl);
-		const extension = getDirectImageExtension(targetUrl, contentType);
+		const extension = getDirectImageExtension(contentType);
 		const filename = generateMediaFilename(item, extension);
 
 		const arrayBuffer = await response.arrayBuffer();
