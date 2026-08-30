@@ -21,6 +21,7 @@ import { EmptyState, ErrorState, OfflineState } from "./async-state";
 import {
 	ContextMenu,
 	ContextMenuContent,
+	ContextMenuGroup,
 	ContextMenuGroupLabel,
 	ContextMenuItem,
 	ContextMenuSeparator,
@@ -1093,99 +1094,105 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								>
 									{(media) => (
 										<>
-											<ContextMenuGroupLabel
-												class="max-w-72 truncate text-[var(--v2-text-muted)]"
-												title={media.fileName}
-											>
-												{media.fileName}
-											</ContextMenuGroupLabel>
-											<ContextMenuSeparator />
-											<Show when={!hasContextMenuActions()}>
-												<ContextMenuItem disabled>
-													利用できる操作はありません
-												</ContextMenuItem>
-											</Show>
-											<Show when={props.onOpenMediaDetail}>
-												<ContextMenuItem
-													onSelect={() => props.onOpenMediaDetail?.(media)}
+											<ContextMenuGroup>
+												<ContextMenuGroupLabel
+													class="max-w-72 truncate text-[var(--v2-text-muted)]"
+													title={media.fileName}
 												>
-													詳細を開く
-													<ContextMenuShortcut>Enter</ContextMenuShortcut>
-												</ContextMenuItem>
-											</Show>
-											<Show
-												when={showOpenInNewTab() && props.onOpenMediaDetail}
-											>
-												<ContextMenuItem
-													onSelect={() => openMediaInNewTab(media)}
-												>
-													新しいタブで開く
-												</ContextMenuItem>
-											</Show>
-											<Show when={props.onToggleSelect}>
-												<ContextMenuItem
-													onSelect={() => props.onToggleSelect?.(media.id)}
-												>
-													{props.isBulkSelectMode?.() &&
-													props.isSelected?.(media.id)
-														? "選択解除"
-														: "選択"}
-													<ContextMenuShortcut>Space</ContextMenuShortcut>
-												</ContextMenuItem>
-											</Show>
-											<Show
-												when={
-													props.isBulkSelectMode?.() &&
-													(props.selectedCount?.() ?? 0) > 0 &&
-													(props.onBulkAction || props.onClearSelection)
-												}
-											>
-												<Show when={props.onBulkAction}>
-													<ContextMenuItem
-														onSelect={() => props.onBulkAction?.()}
-													>
-														一括操作を実行 ({props.selectedCount?.()}件選択中)
+													{media.fileName}
+												</ContextMenuGroupLabel>
+												<ContextMenuSeparator />
+												<Show when={!hasContextMenuActions()}>
+													<ContextMenuItem disabled>
+														利用できる操作はありません
 													</ContextMenuItem>
 												</Show>
-												<Show when={props.onClearSelection}>
+												<Show when={props.onOpenMediaDetail}>
 													<ContextMenuItem
-														onSelect={() => props.onClearSelection?.()}
+														onSelect={() => props.onOpenMediaDetail?.(media)}
 													>
-														選択をクリア
+														詳細を開く
+														<ContextMenuShortcut>Enter</ContextMenuShortcut>
 													</ContextMenuItem>
 												</Show>
-											</Show>
-											<Show when={props.onDelete}>
-												<ContextMenuSeparator />
-												<ContextMenuItem
-													class="text-destructive focus:text-destructive"
-													onSelect={() => props.onDelete?.(media.id)}
+												<Show
+													when={showOpenInNewTab() && props.onOpenMediaDetail}
 												>
-													削除
-													<ContextMenuShortcut>Delete</ContextMenuShortcut>
-												</ContextMenuItem>
-											</Show>
-											<Show when={props.onCopyMove}>
-												<ContextMenuSeparator />
-												<ContextMenuItem
-													onSelect={() => props.onCopyMove?.(media.id, "copy")}
+													<ContextMenuItem
+														onSelect={() => openMediaInNewTab(media)}
+													>
+														新しいタブで開く
+													</ContextMenuItem>
+												</Show>
+												<Show when={props.onToggleSelect}>
+													<ContextMenuItem
+														onSelect={() => props.onToggleSelect?.(media.id)}
+													>
+														{props.isBulkSelectMode?.() &&
+														props.isSelected?.(media.id)
+															? "選択解除"
+															: "選択"}
+														<ContextMenuShortcut>Space</ContextMenuShortcut>
+													</ContextMenuItem>
+												</Show>
+												<Show
+													when={
+														props.isBulkSelectMode?.() &&
+														(props.selectedCount?.() ?? 0) > 0 &&
+														(props.onBulkAction || props.onClearSelection)
+													}
 												>
-													他のソースへコピー
-												</ContextMenuItem>
-												<ContextMenuItem
-													onSelect={() => props.onCopyMove?.(media.id, "move")}
-												>
-													他のソースへ移動
-												</ContextMenuItem>
-											</Show>
-											<Show when={props.onSyncSingleMedia}>
-												<ContextMenuSeparator />
-												<ContextMenuItem
-													onSelect={() => props.onSyncSingleMedia?.(media.id)}
-												>
-													メタデータを同期 (再処理)
-												</ContextMenuItem>
-											</Show>
+													<Show when={props.onBulkAction}>
+														<ContextMenuItem
+															onSelect={() => props.onBulkAction?.()}
+														>
+															一括操作を実行 ({props.selectedCount?.()}件選択中)
+														</ContextMenuItem>
+													</Show>
+													<Show when={props.onClearSelection}>
+														<ContextMenuItem
+															onSelect={() => props.onClearSelection?.()}
+														>
+															選択をクリア
+														</ContextMenuItem>
+													</Show>
+												</Show>
+												<Show when={props.onDelete}>
+													<ContextMenuSeparator />
+													<ContextMenuItem
+														class="text-destructive focus:text-destructive"
+														onSelect={() => props.onDelete?.(media.id)}
+													>
+														削除
+														<ContextMenuShortcut>Delete</ContextMenuShortcut>
+													</ContextMenuItem>
+												</Show>
+												<Show when={props.onCopyMove}>
+													<ContextMenuSeparator />
+													<ContextMenuItem
+														onSelect={() =>
+															props.onCopyMove?.(media.id, "copy")
+														}
+													>
+														他のソースへコピー
+													</ContextMenuItem>
+													<ContextMenuItem
+														onSelect={() =>
+															props.onCopyMove?.(media.id, "move")
+														}
+													>
+														他のソースへ移動
+													</ContextMenuItem>
+												</Show>
+												<Show when={props.onSyncSingleMedia}>
+													<ContextMenuSeparator />
+													<ContextMenuItem
+														onSelect={() => props.onSyncSingleMedia?.(media.id)}
+													>
+														メタデータを同期 (再処理)
+													</ContextMenuItem>
+												</Show>
+											</ContextMenuGroup>
 										</>
 									)}
 								</Show>
