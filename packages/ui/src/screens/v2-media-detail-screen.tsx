@@ -6,7 +6,7 @@ import { MediaDetailScreenController } from "./media-detail-screen-core";
 export type V2MediaDetailScreenProps = MediaDetailScreenProps & {
 	renderHeader?: (
 		media: Parameters<MediaDetailScreenProps["renderMediaViewer"]>[0],
-		isUpdating: boolean,
+		isUpdating: import("solid-js").Accessor<boolean>,
 		onUpdate: () => void,
 		sourceRootPath?: string,
 	) => import("solid-js").JSX.Element;
