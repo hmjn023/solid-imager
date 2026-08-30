@@ -30,6 +30,7 @@
 			"!**/gen",
 			"!**/.output",
 			"!**/db-data",
+			"!**/db-data*",
 			"!**/.worktree",
 			"!**/routeTree.gen.ts"
 		]
