@@ -92,10 +92,7 @@ export interface BasicContext<
 > {
 	agent: boolean;
 	args: TArgs;
-	error: (options: {
-		code: string;
-		message: string;
-	}) => never;
+	error: (options: { code: string; message: string }) => never;
 	ok: (data: unknown) => unknown;
 	options: TOptions;
 }
@@ -260,9 +257,7 @@ export const downloadHandler = async (
 		await finished(
 			Readable.fromWeb(
 				res.body as unknown as import("node:stream/web").ReadableStream,
-			).pipe(
-				fileStream,
-			),
+			).pipe(fileStream),
 		);
 
 		return c.ok({ message: `Downloaded to ${filename}` });
