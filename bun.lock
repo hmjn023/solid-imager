@@ -5,14 +5,14 @@
     "": {
       "name": "solid-imager-monorepo",
       "devDependencies": {
-        "@biomejs/biome": "^2.5.0",
+        "@biomejs/biome": "^2.5.11",
         "@google/design.md": "^0.4.0",
         "@tanstack/cli": "^0.70.2",
         "husky": "^9.1.7",
-        "lint-staged": "^17.3.0",
+        "lint-staged": "^17.4.1",
         "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
-        "typescript": "^7.0.0",
-        "vitest": "^4.1.10",
+        "typescript": "^7.0.2",
+        "vitest": "^4.1.11",
       },
     },
     "apps/cli": {
@@ -30,6 +30,7 @@
       },
       "devDependencies": {
         "@types/bun": "1.4.0",
+        "@types/node": "^26.4.0",
         "typescript": "rc",
         "vitest": "^4.1.10",
       },

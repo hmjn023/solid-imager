@@ -92,22 +92,12 @@ export interface BasicContext<
 > {
 	agent: boolean;
 	args: TArgs;
-	displayName: string;
-	env: Record<string, unknown>;
 	error: (options: {
 		code: string;
-		cta?: unknown;
-		exitCode?: number;
 		message: string;
-		retryable?: boolean;
 	}) => never;
-	format: string;
-	formatExplicit: boolean;
-	name: string;
-	ok: (data: unknown, meta?: { cta?: unknown }) => never;
+	ok: (data: unknown) => unknown;
 	options: TOptions;
-	var: Record<string, unknown>;
-	version?: string;
 }
 
 export const getHandler = async (
@@ -268,7 +258,9 @@ export const downloadHandler = async (
 		const fileStream = createWriteStream(filename);
 
 		await finished(
-			Readable.fromWeb(res.body as import("stream/web").ReadableStream).pipe(
+			Readable.fromWeb(
+				res.body as unknown as import("node:stream/web").ReadableStream,
+			).pipe(
 				fileStream,
 			),
 		);

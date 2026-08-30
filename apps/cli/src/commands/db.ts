@@ -33,7 +33,7 @@ async function runDatabaseCommand(
 ): Promise<void> {
 	const { docker, outputFile, inputFile, agent } = options;
 
-	let spawnCmd = command;
+	let spawnCmd: string = command;
 	let spawnArgs = args;
 
 	if (docker) {

@@ -10,6 +10,7 @@
     "dev": "bun run src/index.ts",
     "build": "bun build ./src/index.ts --compile --outfile dist/imager-cli",
     "start": "bun run dist/imager-cli",
+    "typecheck": "sh -c 'tsc --noEmit'",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -22,6 +23,7 @@
   },
   "devDependencies": {
     "@types/bun": "1.4.0",
+    "@types/node": "^26.4.0",
     "typescript": "rc",
     "vitest": "^4.1.10"
   }
