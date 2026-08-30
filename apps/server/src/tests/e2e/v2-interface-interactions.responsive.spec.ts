@@ -132,6 +132,59 @@ test("V2 global search keeps collection selection independent from preview", asy
 	await expect(bulkActions).toContainText("2 件選択中");
 });
 
+test("V2 global search exposes media and bulk actions", async ({
+	page,
+}, testInfo) => {
+	test.skip(
+		testInfo.project.name !== "responsive-desktop",
+		"Context-menu and modifier selection actions are exercised on desktop.",
+	);
+	await page.setViewportSize({ width: 1600, height: 900 });
+	await openV2Search(page);
+
+	const mediaItem = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
+	await mediaItem.click({ button: "right" });
+	await expect(
+		page.getByRole("menuitem", { name: "削除", exact: true }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("menuitem", { name: "他のソースへコピー", exact: true }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("menuitem", { name: "他のソースへ移動", exact: true }),
+	).toBeVisible();
+
+	await page
+		.getByRole("menuitem", { name: "他のソースへ移動", exact: true })
+		.click();
+	const moveDialog = page.getByRole("dialog");
+	await expect(moveDialog).toContainText("Move Media");
+	await moveDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+
+	await mediaItem.click({ button: "right" });
+	await page.getByRole("menuitem", { name: "削除", exact: true }).click();
+	const deleteDialog = page.getByRole("dialog");
+	await expect(deleteDialog).toContainText(E2E_PRIMARY_FILE_NAME);
+	await deleteDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
+
+	const bulkActions = page.getByTestId("search-bulk-actions-bar");
+	await mediaItem.click({ modifiers: ["Control"] });
+	await expect(bulkActions).toContainText("1 件選択中");
+	const bulkActionButton = bulkActions.getByRole("button", {
+		name: "一括操作を実行",
+		exact: true,
+	});
+	await expect(bulkActionButton).toBeEnabled();
+	await bulkActionButton.click();
+	const bulkDialog = page.getByRole("dialog");
+	await expect(bulkDialog).toContainText("一括削除");
+	await bulkDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
+});
+
 test("V2 fine-pointer collection separates selection from opening detail", async ({
 	page,
 }, testInfo) => {

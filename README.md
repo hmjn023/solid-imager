@@ -47,10 +47,33 @@ bun --filter @solid-imager/server run db:migrate
 bun run dev
 ```
 
+Aubeを使う場合は、依存関係のインストールとスクリプト実行を次のように置き換えられます。
+
+```bash
+aube i
+aube -F @solid-imager/server run db:migrate
+aube dev
+# 本番ビルド済み成果物の起動: aube start
+```
+
+Aubeを使う場合も、Bunと同じく既存の `bun.lock` を唯一のlockfileとして使用します。依存関係を更新したときは `bun install` または `aube i` を実行し、別のlockfileを作成したり手動で同期したりしないでください。
+
 PostgreSQLを使わずPGliteで動かす場合は、DB_HOSTを上書きしてマイグレーションを実行します。
 
 ```bash
 DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
+```
+
+PostgreSQL接続はBun.SQLを既定で使用します。`COPY`、`LISTEN/NOTIFY`、PostGISなどBun.SQLで未対応の機能が必要な環境では、`DB_POSTGRES_DRIVER=node-postgres` を設定すると従来の `pg` 経路へ切り替えられます。
+
+画像処理はサムネイル変換と寸法取得を Bun.Image に寄せ、EXIF/コメント抽出と AI 用 crop は互換性のため sharp を継続利用します。
+
+Bunランタイムの画像変換とPostgreSQL接続を個別に確認するスモークテストも用意しています。
+
+```bash
+bun run --cwd apps/server validate:bun-image
+BUN_SQL_TEST_DATABASE_URL=postgres://user:password@localhost:5432/solid_imager \
+  bun run --cwd apps/server validate:bun-sql
 ```
 
 ### AI ネイティブ依存（GPU 対応）
@@ -59,6 +82,12 @@ AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アド
 
 ```bash
 ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
+```
+
+Aubeを使う場合も同じ環境変数を付けて実行します。
+
+```bash
+ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib aube i
 ```
 
 要件:
@@ -100,6 +129,8 @@ fi
 | コマンド                                            | 用途                      |
 | --------------------------------------------------- | ------------------------- |
 | `bun run dev`                                       | 開発サーバー起動          |
+| `aube dev`                                          | Aube経由の開発サーバー起動 |
+| `aube start`                                        | Aube経由の本番サーバー起動 |
 | `bun run check`                                     | lint / format / typecheck |
 | `bun run test`                                      | Vitest テスト             |
 | `bun run format`                                    | Biomeによるformat         |

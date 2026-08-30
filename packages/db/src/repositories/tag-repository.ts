@@ -213,6 +213,7 @@ export function createTagRepository(
 				name: string;
 				type: "positive" | "negative";
 				confidence?: number;
+				attribute?: string;
 			}[],
 			source = "manual",
 			tx?: unknown,
@@ -226,10 +227,25 @@ export function createTagRepository(
 						return;
 					}
 
+					const tagAttributes = new Map(
+						tagsToInsert.map((tag) => [tag.name, tag.attribute ?? null]),
+					);
+
 					await exec
 						.insert(tags)
-						.values(uniqueTagNames.map((name) => ({ name, source })))
-						.onConflictDoNothing();
+						.values(
+							uniqueTagNames.map((name) => ({
+								name,
+								source,
+								attribute: tagAttributes.get(name) ?? null,
+							})),
+						)
+						.onConflictDoUpdate({
+							target: tags.name,
+							set: {
+								attribute: sql`COALESCE(${tags.attribute}, excluded.attribute)`,
+							},
+						});
 
 					const allTags = await exec
 						.select()

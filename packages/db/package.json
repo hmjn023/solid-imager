@@ -19,7 +19,9 @@
     "test:unit": "vitest run"
   },
   "dependencies": {
-    "@solid-imager/core": "workspace:*",
+    "@solid-imager/core": "workspace:*"
+  },
+  "peerDependencies": {
     "drizzle-orm": "^0.45.2"
   },
   "devDependencies": {

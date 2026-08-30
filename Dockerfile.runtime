@@ -1,9 +1,9 @@
-FROM oven/bun:debian
+FROM oven/bun:1.4.0-debian
 
 # youtube-dl-exec bundles yt-dlp as a Python zipapp.  The application artifact
 # is mounted at runtime, so only the runtime dependency belongs in this image.
 RUN apt-get update \
-    && apt-get install --no-install-recommends --yes python3 ca-certificates \
+    && apt-get install --no-install-recommends --yes python3 ffmpeg ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
 USER bun

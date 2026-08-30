@@ -16,7 +16,10 @@ import type { SearchWorkspaceProps } from "./search-screen.types";
 export type V2SearchScreenProps = SearchWorkspaceProps & {
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
+	onBulkAction?: () => void;
 	onClearSelection?: () => void;
+	onCopyMove?: (mediaId: string, mode: "copy" | "move") => void;
+	onDelete?: (mediaId: string) => void;
 	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
 	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onSelectAll?: () => void;
@@ -164,7 +167,10 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 								isSelected={props.isSelected}
 								mediaResults={page().searchResults}
 								mediaSourceId={() => undefined}
+								onBulkAction={props.onBulkAction}
 								onClearSelection={props.onClearSelection}
+								onCopyMove={props.onCopyMove}
+								onDelete={props.onDelete}
 								onOpenMediaDetail={
 									props.onOpenMediaDetail ? openMediaDetail : undefined
 								}
@@ -233,6 +239,15 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 					>
 						表示分をすべて選択
 					</Button>
+					<Show when={props.onBulkAction}>
+						<Button
+							class="flex-1 sm:flex-none"
+							disabled={(props.selectedCount?.() ?? 0) === 0}
+							onClick={props.onBulkAction}
+						>
+							一括操作を実行
+						</Button>
+					</Show>
 					<Button
 						class="flex-1 sm:flex-none"
 						onClick={props.onClearSelection}

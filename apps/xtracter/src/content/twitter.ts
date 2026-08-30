@@ -5,7 +5,7 @@ const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
 const PROCESSED_VIDEO_CLASS = "xtracter-video-processed";
 const TWITTER_HANDLE_REGEX = /^[A-Za-z0-9_]{1,15}$/;
 
-export function extractTwitterAuthorIdFromStatusUrl(urlValue: string): string {
+function getTwitterStatusPath(urlValue: string): string[] | null {
 	try {
 		const url = new URL(urlValue);
 		const isTwitterHost =
@@ -13,21 +13,36 @@ export function extractTwitterAuthorIdFromStatusUrl(urlValue: string): string {
 			url.hostname === "www.x.com" ||
 			url.hostname === "twitter.com" ||
 			url.hostname === "www.twitter.com";
-		if (!isTwitterHost) {
-			return "";
-		}
-		const pathParts = url.pathname.split("/").filter(Boolean);
-		if (
-			pathParts.length < 3 ||
-			pathParts[1] !== "status" ||
-			!TWITTER_HANDLE_REGEX.test(pathParts[0] ?? "")
-		) {
-			return "";
-		}
-		return `@${pathParts[0]}`;
+		return isTwitterHost ? url.pathname.split("/").filter(Boolean) : null;
 	} catch {
+		return null;
+	}
+}
+
+export function isTwitterStatusUrl(urlValue: string): boolean {
+	const pathParts = getTwitterStatusPath(urlValue);
+	return (
+		!!pathParts &&
+		((pathParts.length >= 3 && pathParts[1] === "status") ||
+			(pathParts.length >= 4 &&
+				pathParts[0] === "i" &&
+				pathParts[1] === "web" &&
+				pathParts[2] === "status"))
+	);
+}
+
+export function extractTwitterAuthorIdFromStatusUrl(urlValue: string): string {
+	const pathParts = getTwitterStatusPath(urlValue);
+	if (
+		!pathParts ||
+		pathParts.length < 3 ||
+		pathParts[1] !== "status" ||
+		pathParts[0] === "i" ||
+		!TWITTER_HANDLE_REGEX.test(pathParts[0] ?? "")
+	) {
 		return "";
 	}
+	return `@${pathParts[0]}`;
 }
 
 export function processTwitterMedia(
@@ -101,6 +116,11 @@ function processVideos(
 
 		const tweetArticle = findTweetArticle(videoComponent);
 		const metadata = extractMetadata(tweetArticle, container, "VIDEO");
+		if (!metadata.targetUrl) {
+			// A video can only be downloaded through its post URL. Do not
+			// enqueue the current timeline URL (for example /home) as a video.
+			continue;
+		}
 
 		// Store metadata for bulk export
 		if (metadata.targetUrl && !processedMetadata.has(metadata.targetUrl)) {
@@ -147,9 +167,12 @@ function findTweetArticle(element: HTMLElement): HTMLElement | null {
 }
 
 function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
+	const tweetUrl = window.location.href;
+	const authorId = extractTwitterAuthorIdFromStatusUrl(tweetUrl);
+
 	return {
-		authorId: extractTwitterAuthorIdFromStatusUrl(window.location.href),
-		tweetUrl: window.location.href,
+		authorId,
+		tweetUrl: isTwitterStatusUrl(tweetUrl) ? tweetUrl : "",
 	};
 }
 
@@ -160,7 +183,7 @@ function extractMetadata(
 ): TweetMetadata {
 	let tweetText = "";
 	let timestamp = "";
-	let tweetUrl = window.location.href;
+	let tweetUrl = "";
 	let authorName = "";
 	let authorId = "";
 
@@ -173,10 +196,10 @@ function extractMetadata(
 		authorId = extracted.authorId;
 	}
 
-	if (!(authorId && tweetUrl) || tweetUrl === window.location.href) {
+	if (!tweetUrl) {
 		const urlMetadata = extractMetadataFromUrl();
 		authorId = authorId || urlMetadata.authorId;
-		tweetUrl = urlMetadata.tweetUrl || tweetUrl;
+		tweetUrl = urlMetadata.tweetUrl;
 	}
 
 	const targetUrl = determineTargetUrl(element, mediaType, tweetUrl);
@@ -190,7 +213,7 @@ function extractMetadata(
 		});
 	}
 
-	const sourceUrls = [tweetUrl];
+	const sourceUrls = tweetUrl ? [tweetUrl] : [];
 	if (mediaType === "IMAGE") {
 		sourceUrls.unshift(targetUrl);
 	}
@@ -211,7 +234,7 @@ function determineTargetUrl(
 	tweetUrl: string,
 ): string {
 	if (mediaType === "VIDEO") {
-		return tweetUrl;
+		return isTwitterStatusUrl(tweetUrl) ? tweetUrl : "";
 	}
 
 	try {
@@ -229,7 +252,7 @@ function determineTargetUrl(
 	}
 }
 
-function extractFromArticle(article: HTMLElement) {
+export function extractFromArticle(article: HTMLElement) {
 	const tweetTextNode = querySelectorTyped<HTMLElement>(
 		article,
 		'div[data-testid="tweetText"]',
@@ -239,11 +262,8 @@ function extractFromArticle(article: HTMLElement) {
 	const timeNode = article.querySelector("time");
 	const timestamp = timeNode ? timeNode.getAttribute("datetime") || "" : "";
 
-	let tweetUrl = window.location.href;
-	const timeLink = timeNode?.closest("a");
-	if (timeLink) {
-		tweetUrl = timeLink.href;
-	}
+	const timeLink = timeNode?.closest<HTMLAnchorElement>("a");
+	const tweetUrl = timeLink && isTwitterStatusUrl(timeLink.href) ? timeLink.href : "";
 
 	const userNameNode = article.querySelector('div[data-testid="User-Name"]');
 	const authorName = userNameNode?.querySelector("span")?.innerText || "";

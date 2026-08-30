@@ -74,6 +74,7 @@ export class TaggingServiceImpl implements ITaggingService {
 			return {
 				general: {},
 				character: {},
+				attributes: {},
 				ips: [],
 				ips_mapping: {},
 			};
@@ -96,6 +97,7 @@ export class TaggingServiceImpl implements ITaggingService {
 				const response: TaggingResponse = {
 					general: {},
 					character: {},
+					attributes: {},
 					ips: aiIps.map((i) => i.name),
 					ips_mapping: {},
 				};
@@ -103,10 +105,14 @@ export class TaggingServiceImpl implements ITaggingService {
 				for (const tag of aiTags) {
 					response.general[tag.name] =
 						tag.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
+					if (tag.attribute) {
+						response.attributes[tag.name] = tag.attribute;
+					}
 				}
 				for (const char of aiCharacters) {
 					response.character[char.name] =
 						char.confidence ?? DEFAULT_MANUAL_CONFIDENCE;
+					response.attributes[char.name] = "character";
 				}
 
 				// ips_mapping: We need to know which IP a character belongs to.
@@ -184,6 +190,7 @@ export class TaggingServiceImpl implements ITaggingService {
 				name,
 				type: "positive" as const,
 				confidence,
+				attribute: response.attributes?.[name],
 			}),
 		);
 		await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");

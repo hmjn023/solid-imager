@@ -1,3 +1,14 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
+import { getErrorMessage } from "@solid-imager/core/utils";
+import { Button } from "@solid-imager/ui/button";
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@solid-imager/ui/dialog";
 import { persistSearchScrollPosition } from "@solid-imager/ui/hooks/use-current-search-persistence";
 import {
 	type MediaCollectionSelectionMode,
@@ -8,13 +19,21 @@ import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { V2SearchScreen } from "@solid-imager/ui/screens/v2-search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
+import { toast } from "@solid-imager/ui/toast";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
+import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
+import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
+import {
+	copyMedia,
+	deleteMedia,
+	moveMedia,
+} from "~/infrastructure/api-clients/media-api";
 import {
 	allAuthorsQueryOptions,
 	allCharactersQueryOptions,
@@ -66,6 +85,13 @@ export default function V2SearchContent() {
 		setIsBulkSelectMode(false);
 		selection.clear();
 	};
+	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
+	const [deleteTarget, setDeleteTarget] = createSignal<Media | null>(null);
+	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
+	const [isDeleteSubmitting, setIsDeleteSubmitting] = createSignal(false);
+	const [moveCopyTarget, setMoveCopyTarget] = createSignal<Media | null>(null);
+	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
+	const [isMoveCopyDialogOpen, setIsMoveCopyDialogOpen] = createSignal(false);
 	const searchHistory = useSearchHistoryPersistence("all", {
 		client: SearchHistoryClient,
 		surface: "v2",
@@ -107,6 +133,77 @@ export default function V2SearchContent() {
 		enableVirtualization: true,
 		scrollContainerSelector: '[data-media-scroll="v2-search"]',
 	});
+	const selectedMediaItems = () =>
+		page
+			.searchResults()
+			.filter((media) => selection.isSelected(media.id))
+			.map((media) => ({
+				mediaId: media.id,
+				mediaSourceId: media.mediaSourceId,
+			}));
+	const findSearchMedia = (mediaId: string) =>
+		page.searchResults().find((media) => media.id === mediaId);
+	const handleDelete = (mediaId: string) => {
+		const media = findSearchMedia(mediaId);
+		if (!media) return;
+		setDeleteTarget(media);
+		setIsDeleteSubmitting(false);
+		setIsDeleteDialogOpen(true);
+	};
+	const handleCopyMove = (mediaId: string, mode: "copy" | "move") => {
+		const media = findSearchMedia(mediaId);
+		if (!media) return;
+		setMoveCopyTarget(media);
+		setMoveCopyMode(mode);
+		setIsMoveCopyDialogOpen(true);
+	};
+	const forgetSelectedMedia = (mediaId: string) => {
+		if (selection.isSelected(mediaId)) {
+			selection.select(mediaId, "toggle");
+		}
+		if (selection.selectedIds().size === 0) {
+			setIsBulkSelectMode(false);
+		}
+	};
+	const confirmDelete = async () => {
+		const media = deleteTarget();
+		if (!media || isDeleteSubmitting()) return;
+		setIsDeleteSubmitting(true);
+		try {
+			await deleteMedia(media.mediaSourceId, media.id);
+			forgetSelectedMedia(media.id);
+			toast.success("Media deleted");
+			page.refreshSearchResults();
+		} catch (error) {
+			toast.error(`Failed to delete media: ${getErrorMessage(error)}`);
+		} finally {
+			setIsDeleteSubmitting(false);
+			setIsDeleteDialogOpen(false);
+			setDeleteTarget(null);
+		}
+	};
+	const handleConfirmCopyMove = async (targetSourceId: string) => {
+		const media = moveCopyTarget();
+		if (!media) return;
+		const mode = moveCopyMode();
+		const action = mode === "copy" ? copyMedia : moveMedia;
+		try {
+			await action(media.mediaSourceId, media.id, targetSourceId);
+			toast.success(`Media ${mode === "copy" ? "copied" : "moved"}`);
+			page.refreshSearchResults();
+		} catch (error) {
+			toast.error(`Failed to ${mode} media: ${getErrorMessage(error)}`);
+		} finally {
+			setMoveCopyTarget(null);
+			setIsMoveCopyDialogOpen(false);
+		}
+	};
+	const handleBulkSuccess = (partial = false) => {
+		if (!partial) {
+			clearSelection();
+		}
+		page.refreshSearchResults();
+	};
 
 	useMediaSourceEvents(() => searchState.selectedSource || "*", {
 		onMediaAdded: page.refreshSearchResults,
@@ -118,67 +215,122 @@ export default function V2SearchContent() {
 	});
 
 	return (
-		<V2SearchScreen
-			enableVirtualization
-			filterData={page.filterData}
-			isBulkSelectMode={isBulkSelectMode}
-			isSelected={selection.isSelected}
-			onClearSelection={clearSelection}
-			onSelectAll={() => {
-				setIsBulkSelectMode(true);
-				selection.selectAll();
-			}}
-			onSelectMedia={handleSelection}
-			onSelectSource={(id) => setSearchState("selectedSource", id)}
-			onToggleSelect={(mediaId) => handleSelection(mediaId, "toggle")}
-			onVisibleMediaIdsChange={setVisibleMediaIds}
-			page={page}
-			presetClient={PresetClient}
-			renderMediaItem={(media, options) => (
-				<V2MediaGridItem
-					imageLoadPolicy={options?.imageLoadPolicy}
-					isBulkSelectMode={options?.isBulkSelectMode}
-					isSelected={options?.isSelected}
-					isPreviewSelected={options?.isPreviewSelected}
-					media={media}
-					onOpenMediaDetail={options?.onOpenMediaDetail}
-					onPreviewSelect={options?.onPreviewSelect}
-					onSelectGesture={options?.onSelectGesture}
-					onToggleSelect={options?.onToggleSelect}
-					priority={options?.priority}
-					onPrepareMediaDetail={options?.onPrepareMediaDetail}
-				/>
-			)}
-			onPrepareMediaDetail={(media, context) => {
-				rememberReturnPath(location().href);
-				saveV2MediaContext(location().href, context ?? [media]);
-			}}
-			onOpenMediaDetail={(media, context) => {
-				rememberReturnPath(location().href);
-				saveV2MediaContext(location().href, context ?? [media]);
-				void navigate({
-					params: {
-						mediaId: media.id,
-						mediaSourceId: media.mediaSourceId,
-					},
-					to: "/v2/sources/$mediaSourceId/$mediaId",
-				});
-			}}
-			renderMediaPreview={(media) => (
-				<ThumbnailImage
-					alt={media.fileName}
-					class="h-full w-full object-contain"
-					height={media.height}
-					loading="eager"
-					media={media}
-					requestedSize={512}
-					width={media.width}
-				/>
-			)}
-			selectedSource={searchState.selectedSource}
-			selectedCount={() => selection.selectedIds().size}
-			ssrGuard
-			sources={page.sources()}
-		/>
+		<>
+			<V2SearchScreen
+				enableVirtualization
+				filterData={page.filterData}
+				isBulkSelectMode={isBulkSelectMode}
+				isSelected={selection.isSelected}
+				onBulkAction={() => setIsBulkActionOpen(true)}
+				onClearSelection={clearSelection}
+				onCopyMove={handleCopyMove}
+				onDelete={handleDelete}
+				onSelectAll={() => {
+					setIsBulkSelectMode(true);
+					selection.selectAll();
+				}}
+				onSelectMedia={handleSelection}
+				onSelectSource={(id) => setSearchState("selectedSource", id)}
+				onToggleSelect={(mediaId) => handleSelection(mediaId, "toggle")}
+				onVisibleMediaIdsChange={setVisibleMediaIds}
+				page={page}
+				presetClient={PresetClient}
+				renderMediaItem={(media, options) => (
+					<V2MediaGridItem
+						imageLoadPolicy={options?.imageLoadPolicy}
+						isBulkSelectMode={options?.isBulkSelectMode}
+						isSelected={options?.isSelected}
+						isPreviewSelected={options?.isPreviewSelected}
+						media={media}
+						onOpenMediaDetail={options?.onOpenMediaDetail}
+						onPreviewSelect={options?.onPreviewSelect}
+						onSelectGesture={options?.onSelectGesture}
+						onToggleSelect={options?.onToggleSelect}
+						priority={options?.priority}
+						onPrepareMediaDetail={options?.onPrepareMediaDetail}
+					/>
+				)}
+				onPrepareMediaDetail={(media, context) => {
+					rememberReturnPath(location().href);
+					saveV2MediaContext(location().href, context ?? [media]);
+				}}
+				onOpenMediaDetail={(media, context) => {
+					rememberReturnPath(location().href);
+					saveV2MediaContext(location().href, context ?? [media]);
+					void navigate({
+						params: {
+							mediaId: media.id,
+							mediaSourceId: media.mediaSourceId,
+						},
+						to: "/v2/sources/$mediaSourceId/$mediaId",
+					});
+				}}
+				renderMediaPreview={(media) => (
+					<ThumbnailImage
+						alt={media.fileName}
+						class="h-full w-full object-contain"
+						height={media.height}
+						loading="eager"
+						media={media}
+						requestedSize={512}
+						width={media.width}
+					/>
+				)}
+				selectedSource={searchState.selectedSource}
+				selectedCount={() => selection.selectedIds().size}
+				ssrGuard
+				sources={page.sources()}
+			/>
+			<Dialog
+				onOpenChange={(open) => {
+					setIsDeleteDialogOpen(open);
+					if (!open && !isDeleteSubmitting()) setDeleteTarget(null);
+				}}
+				open={isDeleteDialogOpen()}
+			>
+				<DialogContent class="v2-theme">
+					<DialogHeader>
+						<DialogTitle>メディアを削除</DialogTitle>
+						<DialogDescription>
+							この操作は取り消せません。
+							{deleteTarget()?.fileName ?? "選択したメディア"}を削除しますか？
+						</DialogDescription>
+					</DialogHeader>
+					<DialogFooter>
+						<Button
+							disabled={isDeleteSubmitting()}
+							onClick={() => setIsDeleteDialogOpen(false)}
+							variant="outline"
+						>
+							キャンセル
+						</Button>
+						<Button
+							disabled={isDeleteSubmitting()}
+							onClick={confirmDelete}
+							variant="destructive"
+						>
+							{isDeleteSubmitting() ? "削除中..." : "削除"}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+			<MoveCopyMediaDialog
+				currentSourceId={moveCopyTarget()?.mediaSourceId ?? ""}
+				mode={moveCopyMode()}
+				onConfirm={handleConfirmCopyMove}
+				onOpenChange={(open) => {
+					setIsMoveCopyDialogOpen(open);
+					if (!open) setMoveCopyTarget(null);
+				}}
+				open={isMoveCopyDialogOpen()}
+			/>
+			<BulkActionDialog
+				mediaIds={selectedMediaItems().map((item) => item.mediaId)}
+				mediaItems={selectedMediaItems()}
+				onOpenChange={setIsBulkActionOpen}
+				onSuccess={handleBulkSuccess}
+				open={isBulkActionOpen()}
+			/>
+		</>
 	);
 }

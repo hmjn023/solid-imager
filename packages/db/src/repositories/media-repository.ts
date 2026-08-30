@@ -48,7 +48,9 @@ import {
 	type SQL,
 	sql,
 } from "drizzle-orm";
+import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type { PgliteDatabase } from "drizzle-orm/pglite";
 import {
 	authors,
 	characters,
@@ -99,7 +101,12 @@ const DEFAULT_OFFSET = 0;
 
 function getRelationalClient(client: DrizzleExecutor) {
 	// DrizzleExecutor union type doesn't expose .query correctly in TS
-	return (client as NodePgDatabase<typeof import("../schema")>).query;
+	return (
+		client as
+			| BunSQLDatabase<typeof import("../schema")>
+			| NodePgDatabase<typeof import("../schema")>
+			| PgliteDatabase<typeof import("../schema")>
+	).query;
 }
 
 // ============================================================================

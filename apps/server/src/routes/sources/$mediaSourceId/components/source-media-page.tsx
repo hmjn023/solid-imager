@@ -121,8 +121,10 @@ export function SourceMediaPageController(
 	};
 
 	// 一括操作成功時のコールバック
-	const handleBulkSuccess = () => {
-		handleCancelSelect();
+	const handleBulkSuccess = (partial = false) => {
+		if (!partial) {
+			handleCancelSelect();
+		}
 		queryClient.invalidateQueries({
 			queryKey: sourceMediaQueryKeys.forSource(mediaSourceId()),
 		});

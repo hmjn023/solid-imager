@@ -1,28 +1,32 @@
 import path from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
+import { SQL } from "bun";
+import { drizzle as drizzleBunSql } from "drizzle-orm/bun-sql";
 import { drizzle as drizzleNodePg } from "drizzle-orm/node-postgres";
 import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { Pool } from "pg";
 import { logger } from "~/infrastructure/logger";
 import { createPglite } from "./pglite";
+import { resolvePostgresDriver } from "./postgres-driver";
 import * as schema from "./schema";
 
+export type BunSqlDb = ReturnType<typeof drizzleBunSql<typeof schema>>;
 export type NodePgDb = ReturnType<typeof drizzleNodePg<typeof schema>>;
 export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
-export type DbInstance = NodePgDb | PgLiteDb;
+export type DbInstance = BunSqlDb | NodePgDb | PgLiteDb;
 
 /**
  * Type representing either a database instance or a transaction client.
  * In Drizzle, both share the same common interface for queries.
  */
-export type TransactionClient = NodePgDb | PgLiteDb;
+export type TransactionClient = BunSqlDb | NodePgDb | PgLiteDb;
 
 let _db: DbInstance | null = null;
-let _queryClient: Pool | PGlite | null = null;
+let _queryClient: SQL | Pool | PGlite | null = null;
 
 type SharedDbState = {
 	db: DbInstance;
-	queryClient: Pool | PGlite;
+	queryClient: SQL | Pool | PGlite;
 };
 
 const sharedDbGlobal = globalThis as typeof globalThis & {
@@ -47,7 +51,7 @@ function setSharedDbState(state: SharedDbState): void {
  * Initializes and returns the Drizzle ORM database instance.
  * This function ensures that the database connection is established only once.
  * It reads database connection details from environment variables.
- * @returns {NodePgDb | PgLiteDb} The initialized Drizzle ORM database instance.
+ * @returns {BunSqlDb | NodePgDb | PgLiteDb} The initialized Drizzle ORM database instance.
  * @throws {Error} If required database environment variables are not set.
  */
 function initializeDb() {
@@ -101,25 +105,57 @@ function initializeDb() {
 		);
 	}
 
-	const connectionString = `postgres://${dbUser}:${dbPassword}@${dbHost}:${dbPort}/${dbName}`;
-	const client = new Pool({ connectionString });
-	_queryClient = client;
-	_db = drizzleNodePg(client, { schema });
+	const postgresDriver = resolvePostgresDriver();
+	logger.info({ postgresDriver }, "[DB] Using PostgreSQL driver");
+
+	let queryClient: SQL | Pool;
+	let database: BunSqlDb | NodePgDb;
+	if (postgresDriver === "bun-sql") {
+		const client = new SQL({
+			adapter: "postgres",
+			hostname: dbHost,
+			port: dbPort,
+			username: dbUser,
+			password: dbPassword,
+			database: dbName,
+		});
+		queryClient = client;
+		database = drizzleBunSql({ client, schema });
+	} else {
+		const client = new Pool({
+			host: dbHost,
+			port: Number(dbPort),
+			user: dbUser,
+			password: dbPassword,
+			database: dbName,
+		});
+		queryClient = client;
+		database = drizzleNodePg(client, { schema });
+	}
+	_queryClient = queryClient;
+	_db = database;
 	setSharedDbState({
-		db: _db,
-		queryClient: client,
+		db: database,
+		queryClient,
 	});
-	return _db;
+	return database;
 }
 
 /**
  * A proxy object for the Drizzle ORM database instance.
  * It ensures that the database is initialized lazily upon first access.
  */
-export const db = new Proxy({} as NodePgDb | PgLiteDb, {
+export const db = new Proxy({} as DbInstance, {
 	get(_target, prop) {
 		const instance = initializeDb();
 		const value = instance[prop as keyof typeof instance];
-		return typeof value === "function" ? value.bind(instance) : value;
+		// Bun.SQL is itself a callable object and is exposed by Drizzle as the
+		// own `$client` property. Bind prototype methods, but preserve callable
+		// client properties so their `unsafe`, `begin`, and `close` methods stay
+		// available to diagnostics and shutdown code.
+		if (typeof value === "function" && !Object.hasOwn(instance, prop)) {
+			return value.bind(instance);
+		}
+		return value;
 	},
 });

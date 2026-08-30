@@ -2,10 +2,52 @@ import path from "node:path";
 import { config } from "dotenv";
 import { beforeAll, beforeEach, vi } from "vitest";
 
+function createBunImageMock(input: string) {
+	const operations: Array<(pipeline: any) => any> = [];
+	const image = {
+		resize(width: number, height?: number, options?: unknown) {
+			operations.push((pipeline) => pipeline.resize(width, height, options));
+			return image;
+		},
+		webp(options?: unknown) {
+			operations.push((pipeline) => pipeline.webp(options));
+			return image;
+		},
+		async metadata() {
+			const { default: sharp } = await import("sharp");
+			let pipeline = sharp(input, { failOn: "none" });
+			for (const operation of operations) {
+				pipeline = operation(pipeline);
+			}
+			return pipeline.metadata();
+		},
+		async bytes() {
+			const { default: sharp } = await import("sharp");
+			let pipeline = sharp(input, { failOn: "none" });
+			for (const operation of operations) {
+				pipeline = operation(pipeline);
+			}
+			const buffer = await pipeline.toBuffer();
+			return new Uint8Array(buffer);
+		},
+		async write(destination: string) {
+			const { default: sharp } = await import("sharp");
+			let pipeline = sharp(input, { failOn: "none" });
+			for (const operation of operations) {
+				pipeline = operation(pipeline);
+			}
+			const result = await pipeline.toFile(destination);
+			return result.size;
+		},
+	};
+	return image;
+}
+
 if (typeof (globalThis as any).Bun === "undefined") {
 	(globalThis as any).Bun = {
 		file: (path: string) => {
 			return {
+				image: () => createBunImageMock(path),
 				exists: () =>
 					import("node:fs/promises").then((fs) => {
 						const res = fs.access?.(path);
@@ -92,7 +134,16 @@ if (typeof (globalThis as any).Bun === "undefined") {
 // Mock the "bun" module so "import { Glob, SQL } from 'bun'" works on Node.js
 vi.mock("bun", () => {
 	return {
-		SQL: class {},
+		SQL: class {
+			async connect() {
+				return this;
+			}
+			async unsafe() {
+				return [];
+			}
+			async close() {}
+			async end() {}
+		},
 		Glob: class {
 			private pattern: string;
 			constructor(pattern: string) {

@@ -24,6 +24,7 @@ export type TagRepository = {
 			name: string;
 			type: "positive" | "negative";
 			confidence?: number;
+			attribute?: string;
 		}[],
 		source?: string,
 		tx?: Transaction,

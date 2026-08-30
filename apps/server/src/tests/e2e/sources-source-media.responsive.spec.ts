@@ -1,11 +1,17 @@
 import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
+	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 	getFixtureMediaPath,
 	sourcePath,
 } from "./support/fixture";
-import { expect, test, waitForAppHydration } from "./support/test";
+import {
+	expect,
+	expectRouteHealthy,
+	test,
+	waitForAppHydration,
+} from "./support/test";
 
 function usesMobileControls(projectName: string): boolean {
 	return ["responsive-320", "responsive-375"].includes(projectName);
@@ -244,3 +250,20 @@ test("source media exposes mobile filters and touch selection", async ({
 
 	await expectNoHorizontalOverflow(page);
 });
+
+for (const route of [
+	{ name: "v1", path: sourcePath() },
+	{ name: "v2", path: `/v2/sources/${E2E_SOURCE_ID}` },
+]) {
+	test(`${route.name} media grid opens its context menu`, async ({ page }) => {
+		await page.goto(route.path);
+		await waitForAppHydration(page);
+
+		const firstMedia = page.locator("[data-media-id]").first();
+		await expect(firstMedia).toBeVisible();
+		await firstMedia.click({ button: "right" });
+
+		await expectRouteHealthy(page);
+		await expect(page.getByRole("menu")).toBeVisible();
+	});
+}

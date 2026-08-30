@@ -27,8 +27,10 @@
 			"packages/**/src/**",
 			"!**/node_modules",
 			"!**/dist",
+			"!**/gen",
 			"!**/.output",
 			"!**/db-data",
+			"!**/db-data*",
 			"!**/.worktree",
 			"!**/routeTree.gen.ts"
 		]

@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - packages/client
+  - packages/*
+
+allowBuilds:
+  dghs-imgutils-rs@https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/49f435e51577ad26cb5e818aaa973a58902e1b1b: true

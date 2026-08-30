@@ -380,6 +380,22 @@ const e2eServerTimeoutPlugin = (): Plugin => ({
 	},
 });
 
+const nitroSsrCodeSplittingPlugin = (): Plugin => ({
+	name: "nitro-ssr-code-splitting",
+	configEnvironment(name) {
+		if (name !== "nitro") return;
+		return {
+			build: {
+				rolldownOptions: {
+					output: {
+						codeSplitting: false,
+					},
+				},
+			},
+		};
+	},
+});
+
 export default defineConfig({
   root: __dirname,
   cacheDir: viteCacheDir,
@@ -429,6 +445,7 @@ export default defineConfig({
     devMediaFileMiddlewarePlugin(),
     e2eServerTimeoutPlugin(),
     e2eReadinessPlugin(),
+    nitroSsrCodeSplittingPlugin(),
     ...(shouldUseDevtools
       ? [
           devtools({
@@ -458,7 +475,7 @@ export default defineConfig({
     solidPlugin({ ssr: true }),
   ],
   optimizeDeps: {
-		exclude: ["dghs-imgutils-rs"],
+		exclude: ["bun", "dghs-imgutils-rs"],
   },
   customLogger: {
     warn(msg, options) {
@@ -478,6 +495,7 @@ export default defineConfig({
   build: {
     rollupOptions: {
       external: [
+        "bun",
         "dghs-imgutils-rs",
         "ffmpeg-static",
         "fluent-ffmpeg",
@@ -498,6 +516,7 @@ export default defineConfig({
       "@solid-primitives/.*",
     ],
     external: [
+      "bun",
       "@electric-sql/pglite",
       "ffmpeg-static",
       "ffmpeg-static-static",

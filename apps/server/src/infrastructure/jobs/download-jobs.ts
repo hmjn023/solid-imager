@@ -27,7 +27,19 @@ import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storag
 import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
-const TWITTER_URL_REGEX = /(twitter|x)\.com\/\w+\/status\/\d+/;
+const TWITTER_URL_REGEX =
+	/(twitter|x)\.com\/(?:\w+\/status|i\/web\/status)\/\d+/;
+const IMAGE_EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
+	"image/avif": ".avif",
+	"image/bmp": ".bmp",
+	"image/gif": ".gif",
+	"image/jpeg": ".jpg",
+	"image/jpg": ".jpg",
+	"image/png": ".png",
+	"image/svg+xml": ".svg",
+	"image/tiff": ".tiff",
+	"image/webp": ".webp",
+};
 
 let ytDlpPathCache: string | null = null;
 let ytDlpResolvePromise: Promise<string> | null = null;
@@ -503,6 +515,10 @@ function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	return headers;
 }
 
+function getDirectImageExtension(contentType: string): string | null {
+	return IMAGE_EXTENSION_BY_CONTENT_TYPE[contentType] ?? null;
+}
+
 /**
  * Handles direct image download (non-twitter)
  */
@@ -519,11 +535,6 @@ async function handleDirectImageDownload(
 		{ url: item.targetUrl },
 		"[DownloadJob] Using direct image download method",
 	);
-
-	// Generate unified filename
-	const urlPath = new URL(item.targetUrl).pathname;
-	const extension = path.extname(urlPath) || ".png";
-	const filename = generateMediaFilename(item, extension);
 
 	try {
 		// Download the image
@@ -547,6 +558,24 @@ async function handleDirectImageDownload(
 				`Failed to download image: ${response.status} ${response.statusText}`,
 			);
 		}
+
+		const contentType = response.headers
+			.get("content-type")
+			?.split(";", 1)[0]
+			.trim()
+			.toLowerCase();
+		if (!contentType?.startsWith("image/")) {
+			throw new Error(
+				`Direct image URL returned a non-image response: ${contentType ?? "unknown content type"}`,
+			);
+		}
+
+		// Use the response MIME type when a CDN URL has no file extension.
+		const extension = getDirectImageExtension(contentType);
+		if (!extension) {
+			throw new Error(`Unsupported image content type: ${contentType}`);
+		}
+		const filename = generateMediaFilename(item, extension);
 
 		const arrayBuffer = await response.arrayBuffer();
 

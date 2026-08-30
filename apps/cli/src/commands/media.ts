@@ -92,22 +92,12 @@ export interface BasicContext<
 > {
 	agent: boolean;
 	args: TArgs;
-	displayName: string;
-	env: Record<string, unknown>;
-	error: (options: {
-		code: string;
-		cta?: unknown;
-		exitCode?: number;
-		message: string;
-		retryable?: boolean;
-	}) => never;
-	format: string;
-	formatExplicit: boolean;
-	name: string;
-	ok: (data: unknown, meta?: { cta?: unknown }) => never;
+	error: (options: { code: string; message: string }) => never;
+	// Keep the success payload type visible to standalone handlers. The actual
+	// incur implementation does not return from this helper, but the generic
+	// return type preserves each handler's inferred result for its CLI contract.
+	ok: <TData>(data: TData, meta?: { cta?: unknown }) => TData;
 	options: TOptions;
-	var: Record<string, unknown>;
-	version?: string;
 }
 
 export const getHandler = async (
@@ -254,6 +244,7 @@ export const downloadHandler = async (
 				message: "Response body is empty",
 			});
 		}
+		const responseBody = res.body;
 
 		const contentType = res.headers.get("Content-Type");
 		const defaultFilename = ensureExtension(
@@ -266,12 +257,22 @@ export const downloadHandler = async (
 			c.agent,
 		);
 		const fileStream = createWriteStream(filename);
-
-		await finished(
-			Readable.fromWeb(res.body as import("stream/web").ReadableStream).pipe(
-				fileStream,
-			),
+		const nodeStream = Readable.from(
+			(async function* () {
+				const reader = responseBody.getReader();
+				try {
+					while (true) {
+						const chunk = await reader.read();
+						if (chunk.done) break;
+						yield chunk.value;
+					}
+				} finally {
+					reader.releaseLock();
+				}
+			})(),
 		);
+
+		await finished(nodeStream.pipe(fileStream));
 
 		return c.ok({ message: `Downloaded to ${filename}` });
 	} catch (e) {
