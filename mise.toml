@@ -6,7 +6,7 @@ _.file = '.env'
 AGENT_BROWSER_SOCKET_DIR = "/tmp/solid-imager-agent-browser"
 
 [tools]
-bun = "latest"
+bun = "1.4.0"
 java = "21.0.2"
 rust = "latest"
 "npm:chrome-devtools-mcp" = "latest"
