@@ -213,9 +213,11 @@ export class RustAiClient implements IAiClient {
 			undefined,
 			this.inferenceOptions,
 		);
+		const attributes = "attributes" in result ? result.attributes : {};
 		return taggingResponseSchema.parse({
 			general: result.general,
 			character: result.character,
+			attributes,
 			ips: result.ips,
 			ips_mapping: result.ipsMapping,
 		});

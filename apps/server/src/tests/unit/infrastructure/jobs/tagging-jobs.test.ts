@@ -72,6 +72,7 @@ describe("processAutoTaggingJob", () => {
 		getTagsForMedia.mockResolvedValue({
 			general: {},
 			character: {},
+			attributes: {},
 			ips: [],
 			ips_mapping: {},
 		});

@@ -22,6 +22,7 @@ describe("AI API Client", () => {
 		const mockResponse = {
 			general: { tag1: 0.9 },
 			character: { char1: 0.8 },
+			attributes: { tag1: "general", char1: "character" },
 			ips: ["ip1"],
 
 			ips_mapping: { ip1: ["tag1"] },

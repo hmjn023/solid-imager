@@ -120,6 +120,7 @@ describe("TaggingServiceImpl", () => {
 		// Setup AI response with character -> ip mapping
 		(mockAiClient.tagImage as any).mockResolvedValue({
 			general: { "1girl": 0.9 },
+			attributes: { "1girl": "general" },
 
 			character: { HatsuneMiku: 0.95 },
 			ips: ["Vocaloid"],
@@ -133,6 +134,7 @@ describe("TaggingServiceImpl", () => {
 
 		(mockAiClient.tagImageByPath as any).mockResolvedValue({
 			general: { "1girl": 0.9 },
+			attributes: { "1girl": "general" },
 
 			character: { HatsuneMiku: 0.95 },
 			ips: ["Vocaloid"],
@@ -143,6 +145,19 @@ describe("TaggingServiceImpl", () => {
 		});
 
 		await taggingService.getTagsForMedia("source-1", "media-1");
+
+		expect(mockTagRepo.addTagsToMedia).toHaveBeenCalledWith(
+			"media-1",
+			[
+				{
+					name: "1girl",
+					type: "positive",
+					confidence: 0.9,
+					attribute: "general",
+				},
+			],
+			"AI",
+		);
 
 		// Verify IPs were bulk-created via findOrCreateBulk
 		expect(mockIpRepo.findOrCreateBulk).toHaveBeenCalledWith(
