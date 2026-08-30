@@ -18,7 +18,7 @@ import { ChevronDown } from "@solid-imager/ui/v2/icons";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 // biome-ignore lint/suspicious/noDeprecatedImports: TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import { type Accessor, createMemo, createSignal, For, Show } from "solid-js";
 import AssociationManager from "~/components/media/association-manager";
 import {
 	addCharacterToMedia,
@@ -45,7 +45,7 @@ import {
 
 export type V2MediaSidebarProps = {
 	media: MediaDetails;
-	isUpdating?: boolean;
+	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
 };
 
@@ -352,7 +352,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 				<h2 class="font-semibold text-lg">Relations</h2>
 				<AssociationManager
 					availableItems={allProjects.data || []}
-					isLoading={projects.isLoading || props.isUpdating}
+					isLoading={projects.isLoading || props.isUpdating?.()}
 					items={projects.data || []}
 					onAdd={handleAddProject}
 					onCreate={handleCreateProject}
@@ -362,7 +362,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 
 				<AssociationManager
 					availableItems={allIps.data || []}
-					isLoading={props.isUpdating}
+					isLoading={props.isUpdating?.()}
 					items={props.media.ips || []}
 					onAdd={handleAddIp}
 					onCreate={handleCreateIp}
@@ -372,7 +372,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 
 				<AssociationManager
 					availableItems={availableCharacters()}
-					isLoading={props.isUpdating}
+					isLoading={props.isUpdating?.()}
 					items={props.media.characters || []}
 					onAdd={handleAddCharacter}
 					onCreate={handleCreateCharacter}

@@ -278,10 +278,10 @@ export function V2MediaViewer(props: MediaViewerProps) {
 				<DialogContent class="h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-[calc(100dvw-2rem)] max-w-none overflow-hidden border-[var(--v2-border)] bg-[var(--v2-surface)] p-0 sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100dvw-4rem)] [&>button]:z-20">
 					<DialogTitle class="sr-only">{props.fileName}</DialogTitle>
 					<DialogDescription class="sr-only">
-						Use plus and minus to zoom, and drag to pan.
+						Use the zoom controls to zoom, and drag to pan.
 					</DialogDescription>
 					<section
-						aria-label={`${props.fileName} viewer. Use plus and minus to zoom, and drag to pan.`}
+						aria-label={`${props.fileName} viewer. Use the zoom controls to zoom, and drag to pan.`}
 						class={`relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-[var(--v2-surface)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--v2-focus)] ${
 							isPanning()
 								? "cursor-grabbing"

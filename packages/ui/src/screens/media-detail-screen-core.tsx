@@ -110,7 +110,7 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 								? renderOwned(() =>
 										props.renderData({
 											details,
-											isUpdating: mediaDetails.isRefetching,
+											isUpdating: () => mediaDetails.isRefetching,
 											onUpdate: handleUpdate,
 											sourceRootPath: props.sourceRootPath,
 										}),
