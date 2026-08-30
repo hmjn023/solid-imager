@@ -61,11 +61,7 @@ describe.each([".svg", ".tiff"] as const)(
 			const sourcePath = await createFixture(fileName, sourceDirectory);
 			const file = new File([await fs.readFile(sourcePath)], fileName);
 
-			const result = await ServerMediaStorage.saveFile(
-				tempDirectory,
-				file,
-				{},
-			);
+			const result = await ServerMediaStorage.saveFile(tempDirectory, file, {});
 
 			expect(result.width).toBe(IMAGE_WIDTH);
 			expect(result.height).toBe(IMAGE_HEIGHT);
