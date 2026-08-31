@@ -7,6 +7,12 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export default defineNitroConfig({
   preset: "bun",
+  // Nitro's default development runner is a Node worker. The server uses
+  // Bun-only APIs such as Bun.SQL and Bun.Image, so keep the dev environment
+  // on Bun even when the package manager invokes Vite through Node.
+  devServer: {
+    runner: "bun-process",
+  },
   rollupConfig: {
 		external: ["dghs-imgutils-rs"],
   },
