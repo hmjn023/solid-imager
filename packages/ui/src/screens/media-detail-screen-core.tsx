@@ -97,6 +97,7 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 					class="mb-2"
 					fetchState={state().fetchState}
 					hasData
+					hideWhenIdle
 					offlineLabel="オフラインのため保存済みデータを表示しています"
 					updatingLabel="メディア情報を更新中..."
 				/>
