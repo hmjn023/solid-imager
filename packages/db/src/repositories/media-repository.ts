@@ -624,19 +624,6 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 			params.sort ?? "",
 		);
 
-		let query = client
-			.select({
-				media: medias,
-				totalCount: sql<number>`count(*) over()`,
-			})
-			.from(medias)
-			.$dynamic();
-
-		if (needsDetailsJoin) {
-			// Drizzle's conditional .leftJoin() changes the query type in a way TS can't track
-			query = query.leftJoin(mediaDetails, eq(mediaDetails.mediaId, medias.id));
-		}
-
 		const orderBy = getOrderByClause(params.sort, params.order);
 		const isSimpleDateSearch =
 			!params.condition &&
@@ -644,7 +631,9 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 			(!params.sort || params.sort === "date");
 
 		if (isSimpleDateSearch) {
-			const mediaResult = await query
+			const mediaResult = await client
+				.select({ media: medias })
+				.from(medias)
 				.where(whereClause)
 				.limit(params.limit ?? DEFAULT_LIMIT)
 				.offset(params.offset ?? DEFAULT_OFFSET)
@@ -658,6 +647,19 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 				media: mediaResult.map((row) => mapToMedia(row.media)),
 				total: Number(count ?? 0),
 			});
+		}
+
+		let query = client
+			.select({
+				media: medias,
+				totalCount: sql<number>`count(*) over()`,
+			})
+			.from(medias)
+			.$dynamic();
+
+		if (needsDetailsJoin) {
+			// Drizzle's conditional .leftJoin() changes the query type in a way TS can't track
+			query = query.leftJoin(mediaDetails, eq(mediaDetails.mediaId, medias.id));
 		}
 
 		const result = await query
