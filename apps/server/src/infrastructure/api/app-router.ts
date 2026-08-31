@@ -1,3 +1,5 @@
+import "zod/compile";
+
 import { implement } from "@orpc/server";
 import { appContract } from "@solid-imager/core/domain/contract";
 import { aiRouter } from "~/infrastructure/api/routers/ai-router";
