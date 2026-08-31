@@ -100,7 +100,7 @@ export function AppNav(props: AppNavProps) {
 					isVisible() ? "translate-y-0" : "-translate-y-full"
 				}`}
 			>
-				<div class="container flex min-h-16 items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-4">
+				<div class="container flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-4">
 					<Link
 						class="ml-13 rounded-md px-2 py-2 font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white md:ml-0"
 						to="/"
@@ -166,7 +166,7 @@ export function AppNav(props: AppNavProps) {
 										aria-labelledby="mobile-navigation-title"
 										class="fixed inset-y-0 left-0 z-[70] flex w-[min(20rem,calc(100vw-1rem))] flex-col bg-background text-foreground pb-[env(safe-area-inset-bottom)] shadow-xl outline-none data-[closed]:animate-out data-[closed]:slide-out-to-left data-[expanded]:animate-in data-[expanded]:slide-in-from-left"
 									>
-										<div class="flex min-h-16 items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)]">
+										<div class="flex min-h-[calc(4rem+env(safe-area-inset-top))] items-center justify-between border-b px-4 pt-[env(safe-area-inset-top)]">
 											<DialogTitle
 												class="font-semibold text-foreground text-lg"
 												id="mobile-navigation-title"

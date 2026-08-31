@@ -29,6 +29,17 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
 	const filterStates = () => Object.values(page().filterStates());
+	const hasFilterError = () =>
+		filterStates().some(
+			(state) => state.phase === "error" || state.phase === "offline",
+		);
+	const hasContentStatus = () => {
+		const state = page().contentState();
+		return (
+			state.fetchState === "background-fetching" ||
+			(state.fetchState === "paused" && state.data !== undefined)
+		);
+	};
 	const shouldRenderGrid = () => !props.enableVirtualization || isMounted();
 	const previewMedia = () =>
 		page()
@@ -126,19 +137,15 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 			<Show when={props.renderJobProgress && page().jobProgress()}>
 				{props.renderJobProgress?.({ jobProgress: page().jobProgress })}
 			</Show>
-			<div class="shrink-0 px-3 pt-3 sm:px-4">
-				<Show
-					when={filterStates().some(
-						(state) => state.phase === "error" || state.phase === "offline",
-					)}
-				>
-					<FilterErrorBanner
-						class="mb-2"
-						message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
-						onRetry={props.onRetryFilters}
-					/>
-				</Show>
-				<div class="h-8">
+			<Show when={hasFilterError() || hasContentStatus()}>
+				<div class="shrink-0 px-3 pt-3 sm:px-4">
+					<Show when={hasFilterError()}>
+						<FilterErrorBanner
+							class="mb-2"
+							message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
+							onRetry={props.onRetryFilters}
+						/>
+					</Show>
 					<QueryStatus
 						fetchState={page().contentState().fetchState}
 						hasData={page().contentState().data !== undefined}
@@ -147,7 +154,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 						updatingLabel="メディア一覧を更新中..."
 					/>
 				</div>
-			</div>
+			</Show>
 
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"

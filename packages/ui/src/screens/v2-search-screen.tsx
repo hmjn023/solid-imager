@@ -46,6 +46,17 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 		page().filterStates.characters(),
 		page().filterStates.authors(),
 	];
+	const hasFilterError = () =>
+		filterStates().some(
+			(state) => state.phase === "error" || state.phase === "offline",
+		);
+	const hasContentStatus = () => {
+		const state = page().contentState();
+		return (
+			state.fetchState === "background-fetching" ||
+			(state.fetchState === "paused" && state.data !== undefined)
+		);
+	};
 	const sourceName = () =>
 		props.sources?.find((source) => source.id === props.selectedSource)?.name ??
 		"すべてのメディア";
@@ -113,19 +124,15 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 				onViewModeChange={updateViewMode}
 				viewMode={viewMode()}
 			/>
-			<div class="shrink-0 px-3 pt-3 sm:px-4">
-				<Show
-					when={filterStates().some(
-						(state) => state.phase === "error" || state.phase === "offline",
-					)}
-				>
-					<FilterErrorBanner
-						class="mb-2"
-						message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
-						onRetry={page().retryFilters}
-					/>
-				</Show>
-				<div class="h-8">
+			<Show when={hasFilterError() || hasContentStatus()}>
+				<div class="shrink-0 px-3 pt-3 sm:px-4">
+					<Show when={hasFilterError()}>
+						<FilterErrorBanner
+							class="mb-2"
+							message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
+							onRetry={page().retryFilters}
+						/>
+					</Show>
 					<QueryStatus
 						fetchState={page().contentState().fetchState}
 						hasData={page().contentState().data !== undefined}
@@ -134,7 +141,7 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 						updatingLabel="検索結果を更新中..."
 					/>
 				</div>
-			</div>
+			</Show>
 
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
