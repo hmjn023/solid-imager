@@ -300,13 +300,18 @@ describe("JobWorker", () => {
 			type: "generate_thumbnail",
 			status: "pending",
 		} as Job;
+		let thumbnailClaimed = false;
 		(jobRepo.claimPending as any).mockImplementation(
-			(_limit: number, options: any) =>
-				Promise.resolve(
-					options?.includeTypes?.includes("generate_thumbnail")
-						? [thumbnailJob]
-						: [],
-				),
+			(_limit: number, options: any) => {
+				if (!options?.includeTypes?.includes("generate_thumbnail")) {
+					return Promise.resolve([]);
+				}
+				if (thumbnailClaimed) {
+					return Promise.resolve([]);
+				}
+				thumbnailClaimed = true;
+				return Promise.resolve([thumbnailJob]);
+			},
 		);
 
 		worker.start();
@@ -319,6 +324,45 @@ describe("JobWorker", () => {
 		});
 		resolveThumbnail();
 		await vi.runOnlyPendingTimersAsync();
+	});
+
+	it("wakes the thumbnail pool immediately after a job completes", async () => {
+		const thumbnailJobs = [
+			{
+				id: "thumbnail-1",
+				type: "generate_thumbnail",
+				status: "pending",
+			} as Job,
+			{
+				id: "thumbnail-2",
+				type: "generate_thumbnail",
+				status: "pending",
+			} as Job,
+		];
+		(jobRepo.claimPending as any).mockImplementation(
+			(_limit: number, options: any) =>
+				Promise.resolve(
+					options?.includeTypes?.includes("generate_thumbnail")
+						? thumbnailJobs.splice(0, 1)
+						: [],
+				),
+		);
+
+		worker.updateConfig({
+			jobs: { concurrency: 1, aiConcurrency: 1, pollIntervalMs: 1000 },
+		} as AppConfig);
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+
+		expect(processor).toHaveBeenCalledTimes(2);
+		expect(processor).toHaveBeenNthCalledWith(
+			1,
+			expect.objectContaining({ id: "thumbnail-1" }),
+		);
+		expect(processor).toHaveBeenNthCalledWith(
+			2,
+			expect.objectContaining({ id: "thumbnail-2" }),
+		);
 	});
 
 	it("processes at most one source export job at a time", async () => {

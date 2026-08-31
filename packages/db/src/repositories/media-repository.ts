@@ -638,6 +638,27 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 		}
 
 		const orderBy = getOrderByClause(params.sort, params.order);
+		const isSimpleDateSearch =
+			!params.condition &&
+			!needsDetailsJoin &&
+			(!params.sort || params.sort === "date");
+
+		if (isSimpleDateSearch) {
+			const mediaResult = await query
+				.where(whereClause)
+				.limit(params.limit ?? DEFAULT_LIMIT)
+				.offset(params.offset ?? DEFAULT_OFFSET)
+				.orderBy(orderBy);
+			const [{ count }] = await client
+				.select({ count: sql<number>`count(*)` })
+				.from(medias)
+				.where(whereClause);
+
+			return mediaSearchResponseSchema.parse({
+				media: mediaResult.map((row) => mapToMedia(row.media)),
+				total: Number(count ?? 0),
+			});
+		}
 
 		const result = await query
 			.where(whereClause)

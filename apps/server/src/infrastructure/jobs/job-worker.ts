@@ -50,6 +50,8 @@ const PublicJobFailureMessage = "Job failed";
 export class JobWorker {
 	private isRunning = false;
 	private timeoutId: NodeJS.Timeout | null = null;
+	private isPolling = false;
+	private pollRequested = false;
 	private recoverStaleJobsIntervalId: NodeJS.Timeout | null = null;
 	private pollIntervalMs = 1000;
 	private concurrency = 3;
@@ -88,7 +90,7 @@ export class JobWorker {
 			() => void this.recoverStaleJobs(),
 			5 * 60 * 1000,
 		);
-		this.poll();
+		void this.poll();
 	}
 
 	stop() {
@@ -97,6 +99,7 @@ export class JobWorker {
 			clearTimeout(this.timeoutId);
 			this.timeoutId = null;
 		}
+		this.pollRequested = false;
 		if (this.recoverStaleJobsIntervalId) {
 			clearInterval(this.recoverStaleJobsIntervalId);
 			this.recoverStaleJobsIntervalId = null;
@@ -131,9 +134,11 @@ export class JobWorker {
 	}
 
 	private async poll() {
-		if (!this.isRunning) {
+		if (!this.isRunning || this.isPolling) {
 			return;
 		}
+		this.isPolling = true;
+		this.pollRequested = false;
 
 		try {
 			// 1. Poll AI Jobs
@@ -196,10 +201,40 @@ export class JobWorker {
 			}
 		} catch (error) {
 			logger.error({ err: error }, "Error polling for jobs");
+		} finally {
+			this.isPolling = false;
+			if (this.isRunning) {
+				const nextDelay = this.pollRequested ? 0 : this.pollIntervalMs;
+				this.pollRequested = false;
+				this.schedulePoll(nextDelay);
+			}
 		}
+	}
 
-		if (this.isRunning) {
-			this.timeoutId = setTimeout(() => this.poll(), this.pollIntervalMs);
+	private schedulePoll(delayMs: number): void {
+		if (!this.isRunning) {
+			return;
+		}
+		if (this.timeoutId) {
+			if (delayMs !== 0) {
+				return;
+			}
+			clearTimeout(this.timeoutId);
+			this.timeoutId = null;
+		}
+		this.timeoutId = setTimeout(() => {
+			this.timeoutId = null;
+			void this.poll();
+		}, delayMs);
+	}
+
+	private requestPoll(): void {
+		if (!this.isRunning) {
+			return;
+		}
+		this.pollRequested = true;
+		if (!this.isPolling) {
+			this.schedulePoll(0);
 		}
 	}
 
@@ -330,6 +365,9 @@ export class JobWorker {
 			}
 			if (isExportJob) {
 				this.activeExportJobs--;
+			}
+			if (isThumbnailJob) {
+				this.requestPoll();
 			}
 		}
 	}

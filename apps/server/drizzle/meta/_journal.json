@@ -204,6 +204,13 @@
       "when": 1787481426956,
       "tag": "0028_free_human_robot",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1788102469884,
+      "tag": "0029_clumsy_raider",
+      "breakpoints": true
     }
   ]
 }

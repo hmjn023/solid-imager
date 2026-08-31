@@ -212,7 +212,15 @@ export const medias = pgTable(
 			table.mediaSourceId,
 			table.filePath,
 		),
-		mediaSourceIdIndex: index("idx_media_source_id").on(table.mediaSourceId),
+		mediaSourceIdIndex: index("idx_media_source_id").on(
+			table.mediaSourceId,
+			table.id,
+		),
+		mediaSourceCreatedAtIdIndex: index("idx_media_source_created_at_id").on(
+			table.mediaSourceId,
+			table.createdAt,
+			table.id,
+		),
 		fileSizeIndex: index("idx_media_file_size").on(table.fileSize),
 		fileNameIndex: index("idx_media_file_name").on(table.fileName),
 		createdAtIndex: index("idx_media_created_at").on(table.createdAt),
@@ -1084,6 +1092,9 @@ export const jobs = pgTable(
 		artifactExpiryIndex: index("idx_jobs_artifact_expiry")
 			.on(table.artifactExpiresAt)
 			.where(sql`${table.artifactPath} IS NOT NULL`),
+		parentTypeIndex: index("idx_jobs_parent_type")
+			.on(table.parentId, table.type)
+			.where(sql`${table.parentId} IS NOT NULL`),
 	}),
 );
 
