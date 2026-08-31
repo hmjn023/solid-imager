@@ -5,7 +5,7 @@ import {
 } from "@solid-imager/application/services/ccip-vector-service";
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { and, asc, eq, gt, notExists, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
 import {
@@ -41,8 +41,34 @@ const batchCcipDispatchPayloadSchema = z.object({
 	mediaSourceId: z.string().uuid().optional(),
 });
 
+const dispatchedChildPayloadSchema = z.union([
+	z.object({ mediaId: z.string().uuid() }),
+	z.object({ mediaIds: z.array(z.string().uuid()) }),
+]);
+
 const EXTRACTION_JOB_BATCH_SIZE = 25;
 const CHILD_INSERT_CHUNK = 500;
+
+function extractDispatchedMediaIds(payload: unknown): string[] {
+	let normalizedPayload = payload;
+	if (typeof normalizedPayload === "string") {
+		try {
+			normalizedPayload = JSON.parse(normalizedPayload);
+		} catch {
+			return [];
+		}
+	}
+
+	const parsedPayload =
+		dispatchedChildPayloadSchema.safeParse(normalizedPayload);
+	if (!parsedPayload.success) {
+		return [];
+	}
+
+	return "mediaId" in parsedPayload.data
+		? [parsedPayload.data.mediaId]
+		: parsedPayload.data.mediaIds;
+}
 
 async function finalizeBatchParent(
 	parentId: string,
@@ -79,25 +105,26 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 		"Starting batch CCIP dispatch job",
 	);
 
+	// Resume support only needs the media IDs already dispatched for this
+	// parent. Loading them once avoids re-scanning the entire jobs table for
+	// every 1,000-media page, which becomes very expensive for large batches.
+	const existingChildren = await db
+		.select({ payload: jobs.payload })
+		.from(jobs)
+		.where(
+			and(eq(jobs.parentId, parentId), eq(jobs.type, "extract_ccip_vector")),
+		);
+	const dispatchedMediaIds = new Set(
+		existingChildren.flatMap(({ payload }) =>
+			extractDispatchedMediaIds(payload),
+		),
+	);
+
 	const baseWhere = and(
 		eq(medias.mediaType, "image"),
 		eq(mediaSources.type, "local"),
 		mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
 	);
-
-	const existingChild = db
-		.select({ id: jobs.id })
-		.from(jobs)
-		.where(
-			and(
-				eq(jobs.parentId, parentId),
-				eq(jobs.type, "extract_ccip_vector"),
-				or(
-					sql`${jobs.payload}->>'mediaId' = ${medias.id}::text`,
-					sql`(${jobs.payload}->'mediaIds') ? ${medias.id}::text`,
-				),
-			),
-		);
 
 	let lastSeenId: string | null = null;
 	let dispatchedCount = 0;
@@ -111,13 +138,7 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			})
 			.from(medias)
 			.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
-			.where(
-				and(
-					baseWhere,
-					notExists(existingChild),
-					lastSeenId ? gt(medias.id, lastSeenId) : undefined,
-				),
-			)
+			.where(and(baseWhere, lastSeenId ? gt(medias.id, lastSeenId) : undefined))
 			.orderBy(asc(medias.id))
 			.limit(batchSize);
 
@@ -136,15 +157,17 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			? new Map<string, CcipVectorMetadata>()
 			: await ccipVectorService.getMetadataMany(mediaIds);
 
-		const targetRows = rows.filter((row) => {
-			const record = existingById.get(row.id);
-			return (
-				!record ||
-				record.model !== CCIP_MODEL ||
-				record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
-				record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
-			);
-		});
+		const targetRows = rows
+			.filter((row) => !dispatchedMediaIds.has(row.id))
+			.filter((row) => {
+				const record = existingById.get(row.id);
+				return (
+					!record ||
+					record.model !== CCIP_MODEL ||
+					record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
+					record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
+				);
+			});
 
 		const rowsBySource = new Map<string, typeof targetRows>();
 		for (const row of targetRows) {
@@ -175,6 +198,9 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 		for (let i = 0; i < jobRows.length; i += CHILD_INSERT_CHUNK) {
 			const chunk = jobRows.slice(i, i + CHILD_INSERT_CHUNK);
 			await db.insert(jobs).values(chunk);
+		}
+		for (const row of targetRows) {
+			dispatchedMediaIds.add(row.id);
 		}
 
 		dispatchedCount += targetRows.length;
