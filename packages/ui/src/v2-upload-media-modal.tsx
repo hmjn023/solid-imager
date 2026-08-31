@@ -501,7 +501,7 @@ export function V2UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								</form.Field>
 
 								<Show when={(props.conflicts?.length ?? 0) > 0}>
-									<div class="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950 text-sm">
+									<div class="rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-warning-surface)] p-3 text-[var(--v2-warning)] text-sm">
 										<p class="font-medium">同名ファイルがあります</p>
 										<ul class="mt-2 list-disc space-y-1 pl-5">
 											<For each={props.conflicts}>

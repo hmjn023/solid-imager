@@ -160,12 +160,12 @@ export function SearchComposer(props: SearchComposerProps) {
 			>
 				<ComboboxControl<SearchSuggestion>
 					aria-label="メディアを検索"
-					class="flex h-auto min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-[var(--v2-border-strong)] bg-white py-1 pr-8 pl-9 focus-within:ring-2 focus-within:ring-[var(--v2-focus)] focus-within:ring-offset-1 sm:min-h-9"
+					class="flex h-auto min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface)] py-1 pr-8 pl-9 focus-within:ring-2 focus-within:ring-[var(--v2-focus)] focus-within:ring-offset-1 sm:min-h-9"
 				>
 					<For each={props.tokens.slice(0, 4)}>
 						{(token) => (
 							<span
-								class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-[11px] ${token.destructive ? "bg-red-50 text-destructive" : "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"}`}
+								class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-[11px] ${token.destructive ? "bg-[var(--v2-surface-muted)] text-[var(--v2-destructive)]" : "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"}`}
 							>
 								<span class="truncate">
 									{token.prefix}:{token.value}

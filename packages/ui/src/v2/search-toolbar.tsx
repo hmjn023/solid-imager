@@ -359,7 +359,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						aria-label={`検索フィルター、${tokens().length}件の条件`}
 						class={buttonVariants({
 							class:
-								"min-h-11 border-[var(--v2-border-strong)] bg-white px-3 shadow-none sm:min-h-9",
+								"min-h-11 border-[var(--v2-border-strong)] bg-[var(--v2-surface)] px-3 shadow-none sm:min-h-9",
 							size: "sm",
 							variant: "outline",
 						})}
@@ -409,7 +409,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 								usePopover={false}
 							/>
 						</div>
-						<div class="absolute right-0 bottom-0 left-0 z-[60] flex justify-end gap-2 border-[var(--v2-border)] border-t bg-white p-3 pointer-events-auto">
+						<div class="absolute right-0 bottom-0 left-0 z-[60] flex justify-end gap-2 border-[var(--v2-border)] border-t bg-[var(--v2-surface)] p-3 pointer-events-auto">
 							<Button
 								onClick={() => setFilterOpen(false)}
 								size="sm"
@@ -439,7 +439,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						aria-label={`並び替え、現在は${sortLabel(searchState)}`}
 						class={buttonVariants({
 							class:
-								"min-h-11 border-[var(--v2-border-strong)] bg-white px-3 shadow-none sm:min-h-9",
+								"min-h-11 border-[var(--v2-border-strong)] bg-[var(--v2-surface)] px-3 shadow-none sm:min-h-9",
 							size: "sm",
 							variant: "outline",
 						})}
@@ -464,7 +464,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						/>
 					</PopoverContent>
 				</Popover>
-				<div class="flex rounded-md border border-[var(--v2-border-strong)] bg-white p-0.5">
+				<div class="flex rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface)] p-0.5">
 					<Button
 						aria-label="グリッド表示"
 						aria-pressed={(props.viewMode ?? "grid") === "grid"}
