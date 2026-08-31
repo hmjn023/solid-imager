@@ -206,7 +206,7 @@ export function V2MediaViewer(props: MediaViewerProps) {
 					<Match when={props.source.type === "video"}>
 						<Show
 							fallback={
-								<div class="flex h-full max-h-full w-full items-center justify-center bg-slate-900 text-white">
+								<div class="flex h-full max-h-full w-full items-center justify-center bg-[var(--v2-text)] text-[var(--v2-surface)]">
 									Video preview unavailable
 								</div>
 							}
@@ -222,7 +222,7 @@ export function V2MediaViewer(props: MediaViewerProps) {
 					<Match when={props.source.type === "audio"}>
 						<Show
 							fallback={
-								<div class="bg-slate-900 px-8 py-6 text-white">
+								<div class="bg-[var(--v2-text)] px-8 py-6 text-[var(--v2-surface)]">
 									Audio preview unavailable
 								</div>
 							}

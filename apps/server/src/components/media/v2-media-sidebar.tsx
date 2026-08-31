@@ -226,32 +226,14 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 	};
 
 	return (
-		<aside class="min-w-0 divide-y divide-[var(--v2-border)] bg-[var(--v2-surface-subtle)] px-4 pb-6 lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 [scrollbar-gutter:stable]">
-			<div class="space-y-2">
-				<h2 class="font-semibold text-lg">File information</h2>
-				<dl class="grid grid-cols-[minmax(0,1fr)_auto] gap-x-4 gap-y-2 text-sm">
-					<dt class="font-medium text-muted-foreground">Resolution</dt>
-					<dd class="text-foreground">
-						{props.media.width} x {props.media.height}
-					</dd>
-					<dt class="font-medium text-muted-foreground">File Size</dt>
-					<dd class="text-foreground">
-						{props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
-					</dd>
-					<dt class="font-medium text-muted-foreground">Path</dt>
-					<dd class="min-w-0 max-w-52 break-all text-right text-foreground text-xs">
-						{props.media.filePath}
-					</dd>
-				</dl>
-			</div>
-
+		<aside class="min-w-0 divide-y divide-[var(--v2-border)] bg-[var(--v2-surface-subtle)] px-4 pb-6 text-[var(--v2-text)] lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 [scrollbar-gutter:stable]">
 			{/* Description Section */}
 			<div class="space-y-2">
 				<div class="flex items-start justify-between gap-2">
-					<h2 class="font-semibold text-lg">Description</h2>
+					<h2 class="font-semibold text-sm">Description</h2>
 					<Show when={!isEditingDescription()}>
 						<button
-							class="min-h-11 px-2 text-blue-600 text-sm hover:underline"
+							class="min-h-11 px-2 text-[var(--v2-primary)] text-sm hover:underline"
 							onClick={() => setIsEditingDescription(true)}
 							type="button"
 						>
@@ -284,7 +266,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 						/>
 						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
 							<button
-								class="min-h-11 w-full rounded-md bg-blue-600 px-3 py-1 text-sm text-white hover:bg-blue-700 lg:w-auto"
+								class="min-h-11 w-full rounded-md bg-[var(--v2-primary)] px-3 py-1 text-sm text-white hover:bg-[var(--v2-primary-hover)] lg:w-auto"
 								onClick={handleSaveDescription}
 								type="button"
 							>
@@ -305,13 +287,13 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 			{/* Source URLs Section */}
 			<Show when={props.media.urls?.length > 0}>
 				<div class="space-y-2">
-					<h2 class="font-semibold text-lg">Source URLs</h2>
+					<h2 class="font-semibold text-sm">Source URLs</h2>
 					<ul class="space-y-1">
 						<For each={props.media.urls}>
 							{(url) => (
 								<li>
 									<a
-										class="block break-all text-blue-600 text-sm hover:underline"
+										class="block break-all text-[var(--v2-primary)] text-sm hover:underline"
 										href={url.url}
 										rel="noopener noreferrer"
 										target="_blank"
@@ -328,7 +310,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 			{/* Authors Section */}
 			<Show when={props.media.authors?.length > 0}>
 				<div class="space-y-2">
-					<h2 class="font-semibold text-lg">Authors</h2>
+					<h2 class="font-semibold text-sm">Authors</h2>
 					<ul class="space-y-1">
 						<For each={props.media.authors}>
 							{(author) => (
@@ -349,7 +331,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 			</Show>
 
 			<div class="space-y-4">
-				<h2 class="font-semibold text-lg">Relations</h2>
+				<h2 class="font-semibold text-sm">Relations</h2>
 				<AssociationManager
 					availableItems={allProjects.data || []}
 					isLoading={projects.isLoading || props.isUpdating?.()}
@@ -383,17 +365,17 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 
 			<Show when={positiveTags().length > 0}>
 				<div class="space-y-2">
-					<h2 class="font-semibold text-lg">Positive Tags</h2>
+					<h2 class="font-semibold text-sm">Positive Tags</h2>
 					<div class="flex flex-wrap gap-2">
 						<For each={positiveTags()}>
 							{(tag) => {
 								let badgeClass = "";
 								if (tag.source === "AI") {
 									badgeClass =
-										"bg-blue-100 text-blue-800 hover:bg-blue-200 border-blue-200";
+										"border-[var(--v2-border-strong)] bg-[var(--v2-info-surface)] text-[var(--v2-info)]";
 								} else if (tag.source === "comfyui_workflow") {
 									badgeClass =
-										"bg-green-100 text-green-800 hover:bg-green-200 border-green-200";
+										"border-[var(--v2-border-strong)] bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]";
 								}
 								return (
 									<Badge class={badgeClass} title={`Source: ${tag.source}`}>
@@ -413,17 +395,17 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 
 			<Show when={negativeTags().length > 0}>
 				<div class="space-y-2">
-					<h2 class="font-semibold text-lg">Negative Tags</h2>
+					<h2 class="font-semibold text-sm">Negative Tags</h2>
 					<div class="flex flex-wrap gap-2">
 						<For each={negativeTags()}>
 							{(tag) => {
 								let badgeClass = "";
 								if (tag.source === "AI") {
 									badgeClass =
-										"bg-blue-50 text-blue-800 hover:bg-blue-100 border-blue-200 border";
+										"border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-destructive)]";
 								} else if (tag.source === "comfyui_workflow") {
 									badgeClass =
-										"bg-green-50 text-green-800 hover:bg-green-100 border-green-200 border";
+										"border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-destructive)]";
 								}
 								return (
 									<Badge
@@ -448,7 +430,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 			<Show when={genInfo()}>
 				<div class="space-y-2">
 					<Collapsible.Root>
-						<Collapsible.Trigger class="flex w-full items-center justify-between font-semibold text-lg">
+						<Collapsible.Trigger class="flex w-full items-center justify-between font-semibold text-sm">
 							Generation Info
 							<ChevronDown
 								class="ui-expanded:rotate-180 transition-transform"
@@ -505,6 +487,24 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 					</Collapsible.Root>
 				</div>
 			</Show>
+
+			<div class="space-y-2">
+				<h2 class="font-semibold text-sm">File information</h2>
+				<dl class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
+					<dt class="font-medium text-[var(--v2-text-muted)]">Resolution</dt>
+					<dd class="text-right text-[var(--v2-text)]">
+						{props.media.width} × {props.media.height}
+					</dd>
+					<dt class="font-medium text-[var(--v2-text-muted)]">File Size</dt>
+					<dd class="text-right text-[var(--v2-text)]">
+						{props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
+					</dd>
+					<dt class="font-medium text-[var(--v2-text-muted)]">Path</dt>
+					<dd class="min-w-0 break-all text-right text-[var(--v2-text)] text-xs">
+						{props.media.filePath}
+					</dd>
+				</dl>
+			</div>
 
 			<AlertDialog
 				onOpenChange={(open) => {

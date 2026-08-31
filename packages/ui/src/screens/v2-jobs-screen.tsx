@@ -96,15 +96,15 @@ function statusLabel(status: JobDto["status"]): string {
 function statusClass(status: JobDto["status"]): string {
 	return {
 		cancelled:
-			"border-slate-200 bg-slate-50 text-slate-700 dark:border-slate-700 dark:bg-slate-900/40 dark:text-slate-300",
+			"border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-text-muted)]",
 		completed:
-			"border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300",
+			"border-[var(--v2-border-strong)] bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]",
 		failed:
-			"border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300",
+			"border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-destructive)]",
 		in_progress:
-			"border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-300",
+			"border-[var(--v2-border-strong)] bg-[var(--v2-info-surface)] text-[var(--v2-info)]",
 		pending:
-			"border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+			"border-[var(--v2-border-strong)] bg-[var(--v2-warning-surface)] text-[var(--v2-warning)]",
 	}[status];
 }
 
@@ -386,7 +386,7 @@ function JobsInspector(props: {
 
 						<Show when={job().error}>
 							{(error) => (
-								<div class="mt-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+								<div class="mt-4 rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] p-3 text-[var(--v2-destructive)] text-sm">
 									<div class="flex items-start gap-2">
 										<CircleAlert
 											aria-hidden="true"
@@ -400,7 +400,7 @@ function JobsInspector(props: {
 						</Show>
 
 						<Show when={job().cancelRequestedAt}>
-							<p class="mt-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+							<p class="mt-4 rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-warning-surface)] p-3 text-[var(--v2-warning)] text-xs">
 								Cancellation requested at {formatDate(job().cancelRequestedAt)}.
 							</p>
 						</Show>
