@@ -57,14 +57,7 @@ function RootComponent() {
 			<body classList={{ "v2-theme": isV2Route() }}>
 				<ShortcutPreferencesProvider>
 					<Toaster />
-					<Show
-						fallback={<Outlet />}
-						when={
-							location().pathname !== "/design-lab" &&
-							!location().pathname.startsWith("/design-lab/") &&
-							!isV2Route()
-						}
-					>
+					<Show fallback={<Outlet />} when={!isV2Route()}>
 						<AppShell
 							nav={<Nav />}
 							statusIndicator={<RouteTransitionIndicator />}

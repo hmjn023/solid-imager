@@ -80,7 +80,6 @@ graph LR
   N75[apps/server/src/routes/__root.tsx]
   N76[apps/server/src/routes/search.tsx]
   N77[apps/server/src/routes/manager.tsx]
-  N78[apps/server/src/routes/design-lab.tsx]
   N79[apps/server/src/routes/config.tsx]
   N80[apps/server/src/routes/about.tsx]
   N81[apps/server/src/routes/$.tsx]
@@ -198,7 +197,6 @@ graph LR
   N74 --> N75
   N74 --> N76
   N74 --> N77
-  N74 --> N78
   N74 --> N79
   N74 --> N80
   N74 --> N81

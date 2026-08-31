@@ -152,18 +152,19 @@ Solid Imager is a workbench, not a marketing site. Its visual character is calm,
 compact, and media-first: the image collection receives the available area while
 navigation and metadata remain immediately reachable without competing with it.
 
-Three sources define the system, in this order:
+This file defines the system in two layers:
 
 1. The tokens in this file are the normative visual values.
 2. The guidance below defines why and when those values are used.
-3. `/design-lab` is the executable reference for layout and interaction behavior.
+
+The `/v2/*` routes are the executable reference for layout and interaction
+behavior.
 
 Use the shared components in `packages/ui` and continue to source primitives from
-Solid UI. The design lab may compose those primitives, but must not create a
-parallel component library. The lab is a migration reference; it is not evidence
-that a mocked concept such as accounts or a dedicated route must exist in the
-product. Controls that only demonstrate a visual state in the lab are not an API or
-feature contract until the corresponding product behavior is implemented.
+Solid UI. Keep the V2 screens on those shared primitives instead of creating a
+parallel component library. A visual state or control shown in design references
+is not an API or feature contract until the corresponding product behavior is
+implemented.
 
 The governing principles are:
 
@@ -204,10 +205,9 @@ black-to-transparent gradient is allowed only as a thumbnail text scrim. Do not 
 a gray frame behind a full-size media preview; the preview itself should use the
 available surface.
 
-The current production theme and design-lab prototype predate this canonical
-palette: the theme still contains a zinc/black primary while parts of the lab use
-nearby colors inline. During migration, map the tokens above to shared CSS variables
-first. Do not copy the lab's one-off hex values into production components.
+The legacy production theme predates this canonical palette: it still contains a
+zinc/black primary. During migration, map the tokens above to shared CSS variables
+first. Do not introduce one-off hex values into production components.
 
 ## Typography
 
@@ -221,12 +221,13 @@ weight and spacing, not dramatic size jumps.
 - Form labels and secondary table data use `label` (12px).
 - Badges, counts, file extensions, and compact status text use `metadata` (11px).
 
-Prefer sentence case. Use all caps only for very small design-lab taxonomy labels,
+Prefer sentence case. Use all caps only for very small taxonomy labels,
 never for ordinary navigation or actions. Filenames and identifiers may wrap or
 truncate according to context, but they must expose the full value through the
 detail view or an accessible name. A production control group uses one active
 locale; do not mix Japanese and English labels inside the same workflow. Explanatory
-copy in the design lab may remain Japanese while product localization is undecided.
+copy in design documentation may remain Japanese while product localization is
+undecided.
 
 ## Layout
 
@@ -423,8 +424,8 @@ browser Back must render the same item or source.
 
 ### Do
 
-- Consult this file before changing shared UI, then compare the result in
-  `/design-lab` at wide and narrow viewports.
+- Consult this file before changing shared UI, then compare the implemented
+  `/v2/*` routes at wide and narrow viewports.
 - Reuse Solid UI primitives and promote recurring compositions into `packages/ui`.
 - Give each region one scroll owner and verify direct navigation, reload, and Back.
 - Use the shared spacing, radius, type, and color values instead of introducing a
