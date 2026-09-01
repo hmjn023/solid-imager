@@ -49,12 +49,14 @@ export type V2SearchToolbarProps = {
 			| undefined;
 	};
 	itemCount?: number;
+	isUpdating?: boolean;
 	onSearch: () => void;
 	onSelectSource?: (id: string) => void;
 	presetClient: PresetManagerClient;
 	selectedSource?: string;
 	sourceName: string;
 	sources?: SafeMediaSource[];
+	updatingLabel?: string;
 	viewMode?: SourceMediaViewMode;
 	onViewModeChange?: (mode: SourceMediaViewMode) => void;
 };
@@ -312,7 +314,20 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				<strong class="min-w-0 truncate font-semibold">
 					{props.sourceName}
 				</strong>
-				<Show when={props.itemCount !== undefined}>
+				<Show when={props.isUpdating}>
+					<p
+						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-[var(--v2-text-muted)]"
+						data-state-ui="background-fetching"
+						role="status"
+					>
+						<span
+							aria-hidden="true"
+							class="size-2 shrink-0 animate-pulse rounded-full bg-current motion-reduce:animate-none"
+						/>
+						<span class="truncate">{props.updatingLabel ?? "更新中..."}</span>
+					</p>
+				</Show>
+				<Show when={!props.isUpdating && props.itemCount !== undefined}>
 					<span class="ml-auto shrink-0 text-xs text-[var(--v2-text-muted)]">
 						{props.itemCount?.toLocaleString()} items
 					</span>
