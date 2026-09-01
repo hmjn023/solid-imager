@@ -50,12 +50,9 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 		filterStates().some(
 			(state) => state.phase === "error" || state.phase === "offline",
 		);
-	const hasContentStatus = () => {
+	const hasOfflineStatus = () => {
 		const state = page().contentState();
-		return (
-			state.fetchState === "background-fetching" ||
-			(state.fetchState === "paused" && state.data !== undefined)
-		);
+		return state.fetchState === "paused" && state.data !== undefined;
 	};
 	const sourceName = () =>
 		props.sources?.find((source) => source.id === props.selectedSource)?.name ??
@@ -115,16 +112,18 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 				context="global"
 				filterData={props.filterData}
 				itemCount={page().totalCount()}
+				isUpdating={page().contentState().fetchState === "background-fetching"}
 				onSearch={page().handleSearch}
 				onSelectSource={props.onSelectSource}
 				presetClient={props.presetClient}
 				selectedSource={props.selectedSource ?? undefined}
 				sourceName={sourceName()}
 				sources={props.sources}
+				updatingLabel="検索結果を更新中..."
 				onViewModeChange={updateViewMode}
 				viewMode={viewMode()}
 			/>
-			<Show when={hasFilterError() || hasContentStatus()}>
+			<Show when={hasFilterError() || hasOfflineStatus()}>
 				<div class="shrink-0 px-3 pt-3 sm:px-4">
 					<Show when={hasFilterError()}>
 						<FilterErrorBanner
@@ -133,13 +132,15 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 							onRetry={page().retryFilters}
 						/>
 					</Show>
-					<QueryStatus
-						fetchState={page().contentState().fetchState}
-						hasData={page().contentState().data !== undefined}
-						hideWhenIdle
-						offlineLabel="オフラインのため保存済みの検索結果を表示しています"
-						updatingLabel="検索結果を更新中..."
-					/>
+					<Show when={hasOfflineStatus()}>
+						<QueryStatus
+							fetchState={page().contentState().fetchState}
+							hasData={page().contentState().data !== undefined}
+							hideWhenIdle
+							offlineLabel="オフラインのため保存済みの検索結果を表示しています"
+							updatingLabel="検索結果を更新中..."
+						/>
+					</Show>
 				</div>
 			</Show>
 
