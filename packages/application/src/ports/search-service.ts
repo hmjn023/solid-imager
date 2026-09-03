@@ -1,8 +1,11 @@
-import type { MediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
+import type {
+	MediaSearchRequest,
+	MediaSearchResponse,
+} from "@solid-imager/core/domain/media/schemas";
 
 export type SearchOptions = {
 	tags?: string[];
-	sortBy?: string;
+	sortBy?: MediaSearchRequest["sort"];
 	order?: "asc" | "desc";
 	page?: number;
 	limit?: number;

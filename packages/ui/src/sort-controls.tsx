@@ -1,3 +1,4 @@
+import type { MediaSort } from "@solid-imager/core/domain/media/schemas";
 import { Show } from "solid-js";
 import { Button } from "./button";
 import { Input } from "./input";
@@ -11,9 +12,18 @@ import {
 } from "./select";
 import { parseSelectValue } from "./utils/parse-select-value";
 
-const SORT_OPTIONS = ["date", "name", "size", "rating", "viewCount"] as const;
+export const SORT_OPTIONS = [
+	"date",
+	"modifiedAt",
+	"indexedAt",
+	"size",
+	"resolution",
+	"name",
+	"rating",
+	"viewCount",
+] as const satisfies readonly MediaSort[];
 
-export type SortOption = "date" | "name" | "size" | "rating" | "viewCount";
+export type SortOption = (typeof SORT_OPTIONS)[number];
 
 type SortControlsProps = {
 	sortBy: SortOption;
@@ -28,15 +38,24 @@ type SortControlsProps = {
 	className?: string;
 };
 
-function getSortLabel(value: SortOption) {
+export function getSortLabel(value: SortOption) {
 	if (value === "date") {
-		return "作成日";
+		return "ファイル作成日時";
+	}
+	if (value === "modifiedAt") {
+		return "更新日時";
+	}
+	if (value === "indexedAt") {
+		return "登録日時";
 	}
 	if (value === "name") {
-		return "ファイル名";
+		return "名前";
 	}
 	if (value === "size") {
-		return "サイズ";
+		return "ファイルサイズ";
+	}
+	if (value === "resolution") {
+		return "解像度";
 	}
 	if (value === "rating") {
 		return "評価";
@@ -54,7 +73,13 @@ export function SortControls(props: SortControlsProps) {
 						disabled={Boolean(props.similarityAnchorMediaId)}
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
-								{getSortLabel(itemProps.item.rawValue as SortOption)}
+								{getSortLabel(
+									parseSelectValue(
+										itemProps.item.rawValue,
+										SORT_OPTIONS,
+										"date",
+									),
+								)}
 							</SelectItem>
 						)}
 						onChange={(value) =>
@@ -62,7 +87,7 @@ export function SortControls(props: SortControlsProps) {
 								parseSelectValue(value, SORT_OPTIONS, "date"),
 							)
 						}
-						options={["date", "name", "size", "rating", "viewCount"]}
+						options={[...SORT_OPTIONS]}
 						placeholder="項目"
 						value={props.sortBy}
 					>

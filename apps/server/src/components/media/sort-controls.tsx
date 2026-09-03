@@ -6,11 +6,13 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@solid-imager/ui/select";
+import {
+	getSortLabel,
+	SORT_OPTIONS,
+	type SortOption,
+} from "@solid-imager/ui/sort-controls";
 import { parseSelectValue } from "@solid-imager/ui/utils";
 import { cn } from "@solid-imager/ui/utils/cn";
-
-const SORT_OPTIONS = ["date", "name", "size", "rating", "viewCount"] as const;
-type SortOption = (typeof SORT_OPTIONS)[number];
 
 type SortControlsProps = {
 	sortBy: SortOption;
@@ -27,24 +29,15 @@ export function SortControls(props: SortControlsProps) {
 			<div class="grid grid-cols-2 gap-2">
 				<Select
 					itemComponent={(itemProps) => {
-						const getSortLabel = (value: string) => {
-							if (value === "date") {
-								return "作成日";
-							}
-							if (value === "name") {
-								return "ファイル名";
-							}
-							if (value === "rating") {
-								return "評価";
-							}
-							if (value === "viewCount") {
-								return "閲覧数";
-							}
-							return "サイズ";
-						};
 						return (
 							<SelectItem item={itemProps.item}>
-								{getSortLabel(itemProps.item.rawValue)}
+								{getSortLabel(
+									parseSelectValue(
+										itemProps.item.rawValue,
+										SORT_OPTIONS,
+										"date",
+									),
+								)}
 							</SelectItem>
 						);
 					}}
@@ -57,22 +50,15 @@ export function SortControls(props: SortControlsProps) {
 				>
 					<SelectTrigger>
 						<SelectValue<string>>
-							{(state) => {
-								const value = state.selectedOption();
-								if (value === "date") {
-									return "作成日";
-								}
-								if (value === "name") {
-									return "ファイル名";
-								}
-								if (value === "rating") {
-									return "評価";
-								}
-								if (value === "viewCount") {
-									return "閲覧数";
-								}
-								return "サイズ";
-							}}
+							{(state) =>
+								getSortLabel(
+									parseSelectValue(
+										state.selectedOption(),
+										SORT_OPTIONS,
+										"date",
+									),
+								)
+							}
 						</SelectValue>
 					</SelectTrigger>
 					<SelectContent />

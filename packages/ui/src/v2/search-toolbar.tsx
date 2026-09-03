@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
-import { SortControls } from "../sort-controls";
+import { getSortLabel, SortControls } from "../sort-controls";
 import type { SourceMediaViewMode } from "../source-media-grid";
 import {
 	clearPresetFilters,
@@ -187,14 +187,7 @@ function sortLabel(state: SearchState): string {
 	if (state.similarityAnchorMediaId) {
 		return `類似度順・${state.similarityTopK}件`;
 	}
-	const labels: Record<SearchState["sortBy"], string> = {
-		date: "作成日",
-		name: "名前",
-		rating: "評価",
-		size: "サイズ",
-		viewCount: "閲覧数",
-	};
-	const field = labels[state.sortBy];
+	const field = getSortLabel(state.sortBy);
 	return `${field}・${state.sortOrder === "desc" ? "降順" : "昇順"}`;
 }
 
