@@ -18,6 +18,8 @@ import { createSignal } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { jobsQueryOptions } from "~/queries";
 
+const BULK_RETRY_CONCURRENCY = 8;
+
 export const Route = createFileRoute("/jobs")({
 	loader: ({ context }) => {
 		void context.queryClient.prefetchQuery(jobsQueryOptions());
@@ -103,6 +105,41 @@ function JobsRoute() {
 						);
 						throw error;
 					}
+				}}
+				onRetryMany={async (jobIds) => {
+					let failedCount = 0;
+					let firstError: unknown;
+					for (
+						let index = 0;
+						index < jobIds.length;
+						index += BULK_RETRY_CONCURRENCY
+					) {
+						const results = await Promise.allSettled(
+							jobIds
+								.slice(index, index + BULK_RETRY_CONCURRENCY)
+								.map((jobId) => orpc.jobs.retry({ id: jobId })),
+						);
+						for (const result of results) {
+							if (result.status === "rejected") {
+								failedCount += 1;
+								if (firstError === undefined) {
+									firstError = result.reason;
+								}
+							}
+						}
+					}
+					await queryClient.invalidateQueries({
+						queryKey: jobsQueryKeys.all(),
+					});
+					if (failedCount > 0) {
+						toast.error(
+							`${failedCount} of ${jobIds.length} jobs failed to queue for retry`,
+						);
+						throw firstError instanceof Error
+							? firstError
+							: new Error("Failed to retry some jobs");
+					}
+					toast.success(`${jobIds.length} jobs queued for retry`);
 				}}
 				onCancel={async (jobId) => {
 					try {
