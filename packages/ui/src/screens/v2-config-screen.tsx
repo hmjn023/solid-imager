@@ -100,7 +100,8 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 	const [aiHealthError, setAiHealthError] = createSignal<string | null>(null);
 	const [isCheckingAiHealth, setIsCheckingAiHealth] = createSignal(false);
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
-	const sectionClass = "space-y-5 border-b border-[var(--v2-border)] pb-8";
+	const sectionClass =
+		"min-w-0 space-y-5 border-b border-[var(--v2-border)] pb-8";
 	const form = createForm(() => ({
 		defaultValues: toFormValues(props.data),
 		validators: {
@@ -154,6 +155,13 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 		<div class="min-w-0 space-y-6 [&_input]:scroll-mt-28 [&_input]:text-base [&_select]:scroll-mt-28 [&_select]:text-base [&_textarea]:scroll-mt-28 [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
 			<FormError message={submitError()} />
 
+			<form
+				class="min-w-0 space-y-6"
+				onSubmit={(event) => {
+					event.preventDefault();
+					void form.handleSubmit();
+				}}
+			>
 			<Tabs
 				class="grid min-w-0 w-full gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
 				onChange={setActiveTab}
@@ -185,8 +193,10 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 
 				<div class="min-w-0 space-y-6">
 					<TabsContent value="jobs">
-						<div class={sectionClass}>
-							<h2 class="mb-4 font-semibold text-xl">Job Processing</h2>
+						<fieldset class={sectionClass}>
+							<legend class="mb-4 block font-semibold text-xl">
+								Job Processing
+							</legend>
 
 							<form.Field name="jobs.concurrency">
 								{(field) => (
@@ -300,12 +310,14 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 									</div>
 								)}
 							</form.Field>
-						</div>
+						</fieldset>
 					</TabsContent>
 
 					<TabsContent value="ai">
-						<div class={sectionClass}>
-							<h2 class="mb-4 font-semibold text-xl">AI Service</h2>
+						<fieldset class={sectionClass}>
+							<legend class="mb-4 block font-semibold text-xl">
+								AI Service
+							</legend>
 							<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-3 py-2.5">
 								<div>
 									<div class="font-medium text-sm">Connection status</div>
@@ -321,8 +333,8 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 											<div
 												class={
 													health().status === "available"
-														? "text-emerald-700 text-xs dark:text-emerald-300"
-														: "text-red-700 text-xs dark:text-red-300"
+														? "text-[var(--v2-primary)] text-xs"
+														: "text-[var(--v2-destructive)] text-xs"
 												}
 												role="status"
 											>
@@ -418,12 +430,14 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 									</form.Field>
 								)}
 							</form.Field>
-						</div>
+						</fieldset>
 					</TabsContent>
 
 					<TabsContent value="downloads">
-						<div class={sectionClass}>
-							<h2 class="mb-4 font-semibold text-xl">Downloads</h2>
+						<fieldset class={sectionClass}>
+							<legend class="mb-4 block font-semibold text-xl">
+								Downloads
+							</legend>
 
 							<form.Field name="downloads.rateLimitEnabled">
 								{(field) => (
@@ -467,12 +481,14 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 									</div>
 								)}
 							</form.Field>
-						</div>
+						</fieldset>
 					</TabsContent>
 
 					<TabsContent value="storage">
-						<div class={sectionClass}>
-							<h2 class="mb-4 font-semibold text-xl">Storage</h2>
+						<fieldset class={sectionClass}>
+							<legend class="mb-4 block font-semibold text-xl">
+								Storage
+							</legend>
 							<form.Field name="storage.thumbnailDir">
 								{(field) => (
 									<div class="space-y-2">
@@ -527,12 +543,14 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 									)}
 								</form.Field>
 							</div>
-						</div>
+						</fieldset>
 					</TabsContent>
 
 					<TabsContent value="media">
-						<div class={sectionClass}>
-							<h2 class="mb-4 font-semibold text-xl">Media Extensions</h2>
+						<fieldset class={sectionClass}>
+							<legend class="mb-4 block font-semibold text-xl">
+								Media Extensions
+							</legend>
 
 							<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 								<form.Field name="media.supportedExtensions.image">
@@ -668,12 +686,14 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 									</div>
 								)}
 							</form.Field>
-						</div>
+						</fieldset>
 					</TabsContent>
 
 					<TabsContent value="logging">
-						<div class={sectionClass}>
-							<h2 class="mb-4 font-semibold text-xl">Logging</h2>
+						<fieldset class={sectionClass}>
+							<legend class="mb-4 block font-semibold text-xl">
+								Logging
+							</legend>
 							<form.Field name="logging.level">
 								{(field) => (
 									<div class="space-y-2">
@@ -704,7 +724,7 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 									</div>
 								)}
 							</form.Field>
-						</div>
+						</fieldset>
 					</TabsContent>
 
 					<TabsContent value="shortcuts">
@@ -734,22 +754,22 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 									setSubmitError(null);
 									form.reset(toFormValues(props.data));
 								}}
+								type="button"
 								variant="outline"
 							>
 								Discard
 							</Button>
 							<Button
 								disabled={!state().canSubmit || state().isSubmitting}
-								onClick={() => {
-									void form.handleSubmit();
-								}}
+								type="submit"
 							>
 								{state().isSubmitting ? "Saving..." : "Save Changes"}
 							</Button>
 						</div>
 					</Show>
 				)}
-			</form.Subscribe>
+				</form.Subscribe>
+			</form>
 			<AlertDialog
 				onOpenChange={(open) => {
 					const resolver = navigationBlocker();

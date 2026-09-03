@@ -46,6 +46,14 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 		page().filterStates.characters(),
 		page().filterStates.authors(),
 	];
+	const hasFilterError = () =>
+		filterStates().some(
+			(state) => state.phase === "error" || state.phase === "offline",
+		);
+	const hasOfflineStatus = () => {
+		const state = page().contentState();
+		return state.fetchState === "paused" && state.data !== undefined;
+	};
 	const sourceName = () =>
 		props.sources?.find((source) => source.id === props.selectedSource)?.name ??
 		"すべてのメディア";
@@ -104,37 +112,37 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 				context="global"
 				filterData={props.filterData}
 				itemCount={page().totalCount()}
+				isUpdating={page().contentState().fetchState === "background-fetching"}
 				onSearch={page().handleSearch}
 				onSelectSource={props.onSelectSource}
 				presetClient={props.presetClient}
 				selectedSource={props.selectedSource ?? undefined}
 				sourceName={sourceName()}
 				sources={props.sources}
+				updatingLabel="検索結果を更新中..."
 				onViewModeChange={updateViewMode}
 				viewMode={viewMode()}
 			/>
-			<div class="shrink-0 px-3 pt-3 sm:px-4">
-				<Show
-					when={filterStates().some(
-						(state) => state.phase === "error" || state.phase === "offline",
-					)}
-				>
-					<FilterErrorBanner
-						class="mb-2"
-						message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
-						onRetry={page().retryFilters}
-					/>
-				</Show>
-				<div class="h-8">
-					<QueryStatus
-						fetchState={page().contentState().fetchState}
-						hasData={page().contentState().data !== undefined}
-						hideWhenIdle
-						offlineLabel="オフラインのため保存済みの検索結果を表示しています"
-						updatingLabel="検索結果を更新中..."
-					/>
+			<Show when={hasFilterError() || hasOfflineStatus()}>
+				<div class="shrink-0 px-3 pt-3 sm:px-4">
+					<Show when={hasFilterError()}>
+						<FilterErrorBanner
+							class="mb-2"
+							message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
+							onRetry={page().retryFilters}
+						/>
+					</Show>
+					<Show when={hasOfflineStatus()}>
+						<QueryStatus
+							fetchState={page().contentState().fetchState}
+							hasData={page().contentState().data !== undefined}
+							hideWhenIdle
+							offlineLabel="オフラインのため保存済みの検索結果を表示しています"
+							updatingLabel="検索結果を更新中..."
+						/>
+					</Show>
 				</div>
-			</div>
+			</Show>
 
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"

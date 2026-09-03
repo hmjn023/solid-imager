@@ -31,6 +31,9 @@ describe("listMedia Integration", () => {
 			width: 800,
 			height: 600,
 			description: "",
+			createdAt: new Date("2026-01-01T00:00:00.000Z"),
+			modifiedAt: new Date("2026-02-01T00:00:00.000Z"),
+			indexedAt: new Date("2026-03-01T00:00:00.000Z"),
 		},
 		{
 			mediaSourceId,
@@ -41,6 +44,9 @@ describe("listMedia Integration", () => {
 			width: 1024,
 			height: 768,
 			description: "",
+			createdAt: new Date("2026-02-01T00:00:00.000Z"),
+			modifiedAt: new Date("2026-01-01T00:00:00.000Z"),
+			indexedAt: new Date("2026-04-01T00:00:00.000Z"),
 		},
 		{
 			mediaSourceId: "a0000000-0000-4000-8000-000000000000", // 別のmediaSourceId
@@ -118,6 +124,22 @@ describe("listMedia Integration", () => {
 			{},
 		);
 		expect(result.length).toBe(0);
+	});
+
+	it.each([
+		{ expected: ["image1.png", "image2.png"], sort: "date" },
+		{ expected: ["image2.png", "image1.png"], sort: "modifiedAt" },
+		{ expected: ["image1.png", "image2.png"], sort: "indexedAt" },
+		{ expected: ["image1.png", "image2.png"], sort: "size" },
+		{ expected: ["image1.png", "image2.png"], sort: "resolution" },
+	] as const)("should sort media by $sort", async ({ expected, sort }) => {
+		const result = await MediaService.searchMedia(mediaSourceId, {
+			sort,
+			order: "asc",
+			limit: 10,
+		});
+
+		expect(result.media.map((media) => media.fileName)).toEqual(expected);
 	});
 
 	it("should throw a ZodError if directoryPath is empty", async () => {

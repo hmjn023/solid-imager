@@ -1,5 +1,8 @@
 import type { PresetOrpcLike } from "@solid-imager/core/domain/contract/presets-client";
-import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
+import type {
+	MediaSort,
+	SearchGroup,
+} from "@solid-imager/core/domain/media/schemas";
 
 export type { PresetOrpcLike } from "@solid-imager/core/domain/contract/presets-client";
 
@@ -11,7 +14,7 @@ export function createPresetClient(orpc: PresetOrpcLike) {
 		create: async (data: {
 			name: string;
 			value: SearchGroup;
-			sort?: "name" | "date" | "rating" | "viewCount" | "size";
+			sort?: MediaSort;
 			order?: "asc" | "desc";
 			mode?: "simple" | "pro";
 		}) => await orpc.presets.create(data),
@@ -20,7 +23,7 @@ export function createPresetClient(orpc: PresetOrpcLike) {
 			data: {
 				name?: string;
 				value?: SearchGroup;
-				sort?: "name" | "date" | "rating" | "viewCount" | "size";
+				sort?: MediaSort;
 				order?: "asc" | "desc";
 				mode?: "simple" | "pro";
 			},

@@ -5,7 +5,15 @@ import type {
 	ThumbnailGeneratedEvent,
 } from "@solid-imager/core/domain/sources/events";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { getOwner, Match, runWithOwner, Show, Switch } from "solid-js";
+import {
+	createComputed,
+	getOwner,
+	Match,
+	runWithOwner,
+	Show,
+	Switch,
+} from "solid-js";
+import { createStore, reconcile } from "solid-js/store";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { useMediaSourceEvents } from "../hooks/use-media-source-events";
 import { toQueryUiState } from "../query-state";
@@ -31,6 +39,15 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 		props.mediaDetailsQueryOptions(props.mediaSourceId(), props.mediaId()),
 	);
 	const state = () => toQueryUiState(mediaDetails);
+	const [detailState, setDetailState] = createStore<{
+		details?: MediaDetails;
+	}>({});
+	createComputed(() => {
+		const details = state().data;
+		if (details) {
+			setDetailState("details", reconcile(details));
+		}
+	});
 	const errorMessage = () => {
 		const error = state().error;
 		return error instanceof Error
@@ -80,23 +97,27 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 					class="mb-2"
 					fetchState={state().fetchState}
 					hasData
+					hideWhenIdle
 					offlineLabel="オフラインのため保存済みデータを表示しています"
 					updatingLabel="メディア情報を更新中..."
 				/>
 			</Show>
 			<Switch>
 				<Match when={state().phase === "data"}>
-					<Show keyed when={state().data}>
-						{(details) =>
-							renderOwned(() =>
-								props.renderData({
-									details,
-									isUpdating: mediaDetails.isRefetching,
-									onUpdate: handleUpdate,
-									sourceRootPath: props.sourceRootPath,
-								}),
-							)
-						}
+					<Show keyed when={detailState.details?.id}>
+						{(mediaId) => {
+							const details = detailState.details;
+							return details?.id === mediaId
+								? renderOwned(() =>
+										props.renderData({
+											details,
+											isUpdating: () => mediaDetails.isRefetching,
+											onUpdate: handleUpdate,
+											sourceRootPath: props.sourceRootPath,
+										}),
+									)
+								: null;
+						}}
 					</Show>
 				</Match>
 				<Match when={state().phase === "offline"}>

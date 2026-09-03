@@ -2289,8 +2289,11 @@
                       "sort": {
                         "enum": [
                           "date",
+                          "modifiedAt",
+                          "indexedAt",
                           "name",
                           "size",
+                          "resolution",
                           "rating",
                           "viewCount"
                         ],
@@ -9834,8 +9837,11 @@
                   "sort": {
                     "enum": [
                       "date",
+                      "modifiedAt",
+                      "indexedAt",
                       "name",
                       "size",
+                      "resolution",
                       "rating",
                       "viewCount"
                     ],
@@ -10150,8 +10156,11 @@
                       "sort": {
                         "enum": [
                           "date",
+                          "modifiedAt",
+                          "indexedAt",
                           "name",
                           "size",
+                          "resolution",
                           "rating",
                           "viewCount"
                         ],

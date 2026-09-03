@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
-import { SortControls } from "../sort-controls";
+import { getSortLabel, SortControls } from "../sort-controls";
 import type { SourceMediaViewMode } from "../source-media-grid";
 import {
 	clearPresetFilters,
@@ -49,12 +49,14 @@ export type V2SearchToolbarProps = {
 			| undefined;
 	};
 	itemCount?: number;
+	isUpdating?: boolean;
 	onSearch: () => void;
 	onSelectSource?: (id: string) => void;
 	presetClient: PresetManagerClient;
 	selectedSource?: string;
 	sourceName: string;
 	sources?: SafeMediaSource[];
+	updatingLabel?: string;
 	viewMode?: SourceMediaViewMode;
 	onViewModeChange?: (mode: SourceMediaViewMode) => void;
 };
@@ -187,14 +189,7 @@ function sortLabel(state: SearchState): string {
 	if (state.similarityAnchorMediaId) {
 		return `類似度順・${state.similarityTopK}件`;
 	}
-	const labels: Record<SearchState["sortBy"], string> = {
-		date: "作成日",
-		name: "名前",
-		rating: "評価",
-		size: "サイズ",
-		viewCount: "閲覧数",
-	};
-	const field = labels[state.sortBy];
+	const field = getSortLabel(state.sortBy);
 	return `${field}・${state.sortOrder === "desc" ? "降順" : "昇順"}`;
 }
 
@@ -312,7 +307,20 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				<strong class="min-w-0 truncate font-semibold">
 					{props.sourceName}
 				</strong>
-				<Show when={props.itemCount !== undefined}>
+				<Show when={props.isUpdating}>
+					<p
+						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-[var(--v2-text-muted)]"
+						data-state-ui="background-fetching"
+						role="status"
+					>
+						<span
+							aria-hidden="true"
+							class="size-2 shrink-0 animate-pulse rounded-full bg-current motion-reduce:animate-none"
+						/>
+						<span class="truncate">{props.updatingLabel ?? "更新中..."}</span>
+					</p>
+				</Show>
+				<Show when={!props.isUpdating && props.itemCount !== undefined}>
 					<span class="ml-auto shrink-0 text-xs text-[var(--v2-text-muted)]">
 						{props.itemCount?.toLocaleString()} items
 					</span>
@@ -359,7 +367,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						aria-label={`検索フィルター、${tokens().length}件の条件`}
 						class={buttonVariants({
 							class:
-								"min-h-11 border-[var(--v2-border-strong)] bg-white px-3 shadow-none sm:min-h-9",
+								"min-h-11 border-[var(--v2-border-strong)] bg-[var(--v2-surface)] px-3 shadow-none sm:min-h-9",
 							size: "sm",
 							variant: "outline",
 						})}
@@ -409,7 +417,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 								usePopover={false}
 							/>
 						</div>
-						<div class="absolute right-0 bottom-0 left-0 z-[60] flex justify-end gap-2 border-[var(--v2-border)] border-t bg-white p-3 pointer-events-auto">
+						<div class="absolute right-0 bottom-0 left-0 z-[60] flex justify-end gap-2 border-[var(--v2-border)] border-t bg-[var(--v2-surface)] p-3 pointer-events-auto">
 							<Button
 								onClick={() => setFilterOpen(false)}
 								size="sm"
@@ -439,7 +447,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						aria-label={`並び替え、現在は${sortLabel(searchState)}`}
 						class={buttonVariants({
 							class:
-								"min-h-11 border-[var(--v2-border-strong)] bg-white px-3 shadow-none sm:min-h-9",
+								"min-h-11 border-[var(--v2-border-strong)] bg-[var(--v2-surface)] px-3 shadow-none sm:min-h-9",
 							size: "sm",
 							variant: "outline",
 						})}
@@ -464,7 +472,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						/>
 					</PopoverContent>
 				</Popover>
-				<div class="flex rounded-md border border-[var(--v2-border-strong)] bg-white p-0.5">
+				<div class="flex rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface)] p-0.5">
 					<Button
 						aria-label="グリッド表示"
 						aria-pressed={(props.viewMode ?? "grid") === "grid"}

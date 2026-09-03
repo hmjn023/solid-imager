@@ -22,7 +22,7 @@ import {
 
 export type MediaSidebarContentProps = {
 	media: MediaDetails;
-	isUpdating?: boolean;
+	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
 	aiTaggingModal: (props: {
 		isOpen: boolean;

@@ -248,7 +248,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 					open={moreActionsOpen()}
 					placement="bottom-end"
 				>
-					<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-white px-3 font-medium text-xs outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:h-9 md:flex-none">
+					<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface)] px-3 font-medium text-[var(--v2-text)] text-xs outline-none hover:bg-[var(--v2-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:h-9 md:flex-none">
 						More actions
 						<ChevronDown aria-hidden="true" size={14} />
 					</PopoverTrigger>
@@ -298,7 +298,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 							Download original
 						</Button>
 						<Button
-							class="h-9 w-full justify-start px-2 text-destructive hover:bg-destructive/10 hover:text-destructive"
+							class="h-9 w-full justify-start px-2 text-[var(--v2-destructive)] hover:bg-[var(--v2-surface-muted)] hover:text-[var(--v2-destructive-hover)]"
 							onClick={() => setIsDeleteDialogOpen(true)}
 							size="sm"
 							variant="ghost"

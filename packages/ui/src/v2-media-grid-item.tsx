@@ -100,7 +100,7 @@ export function V2MediaGridItem(props: MediaGridItemProps) {
 
 			<Show
 				fallback={
-					<div class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
+					<div class="flex h-full w-full items-center justify-center bg-[var(--v2-surface-muted)] text-[var(--v2-text-muted)]">
 						{props.media.mediaType}
 					</div>
 				}

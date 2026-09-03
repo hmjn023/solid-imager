@@ -56,7 +56,18 @@ aube dev
 # 本番ビルド済み成果物の起動: aube start
 ```
 
-Aubeを使う場合も、Bunと同じく既存の `bun.lock` を唯一のlockfileとして使用します。依存関係を更新したときは `bun install` または `aube i` を実行し、別のlockfileを作成したり手動で同期したりしないでください。
+Aubeで全workspaceの依存関係を更新する場合は、root packageだけを対象にする
+`aube upgrade` を直接実行せず、次のコマンドを使用してください。
+
+```bash
+bun run deps:update:aube
+# equivalent: aube update -r
+```
+
+`-r` を省略すると、Aube 2.2.0では共有 `aube-lock.yaml` からworkspaceの
+importerが削除され、依存関係を解決できなくなります。通常のインストールは
+引き続き `aube i` を使用します。Bun側の依存関係を更新した場合は
+`bun.lock` も合わせて更新してください。
 
 PostgreSQLを使わずPGliteで動かす場合は、DB_HOSTを上書きしてマイグレーションを実行します。
 

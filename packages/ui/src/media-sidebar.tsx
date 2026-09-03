@@ -13,6 +13,7 @@ import type {
 } from "@solid-imager/core/domain/tagging/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
+	type Accessor,
 	createEffect,
 	createMemo,
 	createSignal,
@@ -31,7 +32,7 @@ import { toast } from "./toast";
 
 type MediaSidebarProps = {
 	media: MediaDetails;
-	isUpdating?: boolean;
+	isUpdating?: Accessor<boolean>;
 	projects: Project[];
 	allProjects: Project[];
 	allIps: Ip[];
@@ -491,7 +492,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			<div class="space-y-4">
 				<AssociationManager
 					availableItems={props.allProjects}
-					isLoading={props.isProjectsLoading || props.isUpdating}
+					isLoading={props.isProjectsLoading || props.isUpdating?.()}
 					items={props.projects}
 					onAdd={props.onProjectAdd}
 					onCreate={handleCreateProject}
@@ -501,7 +502,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 				<AssociationManager
 					availableItems={props.allIps}
-					isLoading={props.isAllIpsLoading || props.isUpdating}
+					isLoading={props.isAllIpsLoading || props.isUpdating?.()}
 					items={props.media.ips || []}
 					onAdd={props.onIpAdd}
 					onCreate={handleCreateIp}
@@ -511,7 +512,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 				<AssociationManager
 					availableItems={availableCharacters()}
-					isLoading={props.isAllCharactersLoading || props.isUpdating}
+					isLoading={props.isAllCharactersLoading || props.isUpdating?.()}
 					items={props.media.characters || []}
 					onAdd={handleAddCharacter}
 					onCreate={handleCreateCharacter}

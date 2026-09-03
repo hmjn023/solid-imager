@@ -18,6 +18,7 @@ import {
 	type MediaGenerationInfo,
 	type MediaSearchRequest,
 	type MediaSearchResponse,
+	type MediaSort,
 	type MediaTag,
 	type MediaUrl,
 	mediaSearchResponseSchema,
@@ -572,7 +573,7 @@ function makeBuildSearchQuery(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 	return buildSearchQueryInner;
 }
 
-function getOrderByClause(sort: string | undefined, order: "asc" | "desc") {
+function getOrderByClause(sort: MediaSort | undefined, order: "asc" | "desc") {
 	const direction = order === "asc" ? asc : desc;
 
 	if (!sort) {
@@ -580,10 +581,16 @@ function getOrderByClause(sort: string | undefined, order: "asc" | "desc") {
 	}
 
 	switch (sort) {
+		case "modifiedAt":
+			return direction(medias.modifiedAt);
+		case "indexedAt":
+			return direction(medias.indexedAt);
 		case "name":
 			return direction(medias.fileName);
 		case "size":
 			return direction(medias.fileSize);
+		case "resolution":
+			return direction(sql`(${medias.width} * ${medias.height})`);
 		case "date":
 			return direction(medias.createdAt);
 		case "rating":
@@ -624,6 +631,31 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 			params.sort ?? "",
 		);
 
+		const orderBy = getOrderByClause(params.sort, params.order);
+		const isSimpleDateSearch =
+			!params.condition &&
+			!needsDetailsJoin &&
+			(!params.sort || params.sort === "date");
+
+		if (isSimpleDateSearch) {
+			const mediaResult = await client
+				.select({ media: medias })
+				.from(medias)
+				.where(whereClause)
+				.limit(params.limit ?? DEFAULT_LIMIT)
+				.offset(params.offset ?? DEFAULT_OFFSET)
+				.orderBy(orderBy);
+			const [{ count }] = await client
+				.select({ count: sql<number>`count(*)` })
+				.from(medias)
+				.where(whereClause);
+
+			return mediaSearchResponseSchema.parse({
+				media: mediaResult.map((row) => mapToMedia(row.media)),
+				total: Number(count ?? 0),
+			});
+		}
+
 		let query = client
 			.select({
 				media: medias,
@@ -636,8 +668,6 @@ function makeExecuteSearch(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 			// Drizzle's conditional .leftJoin() changes the query type in a way TS can't track
 			query = query.leftJoin(mediaDetails, eq(mediaDetails.mediaId, medias.id));
 		}
-
-		const orderBy = getOrderByClause(params.sort, params.order);
 
 		const result = await query
 			.where(whereClause)

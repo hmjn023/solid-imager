@@ -266,6 +266,11 @@ test("V2 settings exposes device-local shortcut configuration", async ({
 	await page.goto("/v2/config");
 	await waitForAppHydration(page);
 
+	await expect(page.locator("form")).toHaveCount(1);
+	await expect(
+		page.getByRole("group", { name: "Job Processing", exact: true }),
+	).toBeVisible();
+
 	await page.getByRole("tab", { name: /^Shortcuts\b/ }).click();
 	await expect(
 		page.getByRole("heading", { name: "Keyboard shortcuts", exact: true }),

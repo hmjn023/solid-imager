@@ -38,6 +38,7 @@ import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
 import { getRestoreImportStrategies } from "./restore-import";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
+import { createStableMediaResults } from "./stable-media-results";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
@@ -268,19 +269,10 @@ export function useSourceMediaPage(
 		}
 	});
 
-	// --- Deduplicated results ---
-	const mediaResults = createMemo(() => {
-		const seen = new Set<string>();
-		return (mediaQueryData()?.pages.flatMap((page) => page.media) || []).filter(
-			(media) => {
-				if (seen.has(media.id)) {
-					return false;
-				}
-				seen.add(media.id);
-				return true;
-			},
-		);
-	});
+	// Preserve existing media cards across background refetches. New query
+	// objects are reconciled by media ID so only genuinely added or removed
+	// cards mount and unmount.
+	const mediaResults = createStableMediaResults(mediaQueryData);
 	const contentState = () =>
 		toQueryUiState(
 			{

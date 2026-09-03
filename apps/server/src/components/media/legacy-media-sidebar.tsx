@@ -8,6 +8,7 @@ import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
 import {
+	type Accessor,
 	createEffect,
 	createMemo,
 	createSignal,
@@ -50,7 +51,7 @@ import {
 
 type MediaSidebarProps = {
 	media: MediaDetails;
-	isUpdating?: boolean;
+	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
 };
 
@@ -580,7 +581,7 @@ export function LegacyMediaSidebar(props: MediaSidebarProps) {
 			<div class="space-y-4">
 				<AssociationManager
 					availableItems={allProjects.data || []}
-					isLoading={projects.isLoading || props.isUpdating}
+					isLoading={projects.isLoading || props.isUpdating?.()}
 					items={projects.data || []}
 					onAdd={handleAddProject}
 					onCreate={handleCreateProject}
@@ -590,7 +591,7 @@ export function LegacyMediaSidebar(props: MediaSidebarProps) {
 
 				<AssociationManager
 					availableItems={allIps.data || []}
-					isLoading={props.isUpdating}
+					isLoading={props.isUpdating?.()}
 					items={props.media.ips || []}
 					onAdd={handleAddIp}
 					onCreate={handleCreateIp}
@@ -600,7 +601,7 @@ export function LegacyMediaSidebar(props: MediaSidebarProps) {
 
 				<AssociationManager
 					availableItems={availableCharacters()}
-					isLoading={props.isUpdating}
+					isLoading={props.isUpdating?.()}
 					items={props.media.characters || []}
 					onAdd={handleAddCharacter}
 					onCreate={handleCreateCharacter}

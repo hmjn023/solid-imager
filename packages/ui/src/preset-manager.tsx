@@ -1,4 +1,5 @@
 import {
+	type MediaSort,
 	type Preset,
 	type SearchGroup,
 	searchGroupSchema,
@@ -52,7 +53,7 @@ export interface PresetManagerClient {
 	create(data: {
 		name: string;
 		value: SearchGroup;
-		sort?: "name" | "date" | "rating" | "viewCount" | "size";
+		sort?: MediaSort;
 		order?: "asc" | "desc";
 		mode?: "simple" | "pro";
 	}): Promise<unknown>;

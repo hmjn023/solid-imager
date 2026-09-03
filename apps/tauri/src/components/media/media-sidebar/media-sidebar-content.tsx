@@ -2,6 +2,7 @@ import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { useNavigate } from "@tanstack/solid-router";
+import type { Accessor } from "solid-js";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	addCharacterToMedia,
@@ -33,7 +34,7 @@ import { CharacterCropModal } from "../character-crop-modal";
 
 type MediaSidebarProps = {
 	media: MediaDetails;
-	isUpdating?: boolean;
+	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
 	sourceRootPath?: string;
 };

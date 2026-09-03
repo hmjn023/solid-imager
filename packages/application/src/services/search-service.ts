@@ -20,10 +20,16 @@ export class SearchServiceImpl {
 		const limit = searchOptions.limit || DEFAULT_PAGE_LIMIT;
 		const offset = searchOptions.page ? (searchOptions.page - 1) * limit : 0;
 
-		let sort: "date" | "name" | "size";
+		let sort: NonNullable<MediaSearchRequest["sort"]>;
 		switch (searchOptions.sortBy) {
+			case "date":
 			case "name":
 			case "size":
+			case "modifiedAt":
+			case "indexedAt":
+			case "resolution":
+			case "rating":
+			case "viewCount":
 				sort = searchOptions.sortBy;
 				break;
 			default:

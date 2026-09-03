@@ -21,7 +21,7 @@ export type MediaDetailScreenProps = {
 	) => JSX.Element;
 	renderMediaSidebar: (
 		media: MediaDetails,
-		isUpdating: boolean,
+		isUpdating: Accessor<boolean>,
 		onUpdate: () => void,
 		sourceRootPath?: string,
 	) => JSX.Element;
@@ -29,7 +29,7 @@ export type MediaDetailScreenProps = {
 
 export type MediaDetailDataRenderProps = {
 	details: MediaDetails;
-	isUpdating: boolean;
+	isUpdating: Accessor<boolean>;
 	onUpdate: () => Promise<void>;
 	sourceRootPath?: string;
 };
