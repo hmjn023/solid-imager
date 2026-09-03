@@ -17,7 +17,15 @@ import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
 import type { QueryUiState } from "../query-state";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../select";
 import { LoadingRegion } from "../skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import {
@@ -25,6 +33,11 @@ import {
 	V2CategoryLabel,
 	V2ManagementHeader,
 } from "../v2/management-layout";
+import {
+	getRetryableJobIds,
+	toggleAllJobSelection,
+	toggleJobSelection,
+} from "./v2-jobs-selection";
 import { formatDate } from "./v2-manager/utils";
 
 const JOB_FILTERS = [
@@ -71,11 +84,19 @@ export type V2JobsScreenProps = {
 	jobs: Accessor<JobDto[]>;
 	onRefresh: () => void | Promise<void>;
 	onRetry: (jobId: string) => void | Promise<void>;
+	onRetryMany: (jobIds: string[]) => void | Promise<void>;
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
 	page: Accessor<V2JobsPagination>;
 	state: Accessor<QueryUiState<JobListResponse>>;
 };
+
+const JOB_BULK_ACTIONS = ["retry"] as const;
+type JobBulkAction = (typeof JOB_BULK_ACTIONS)[number];
+
+function jobBulkActionLabel(action: JobBulkAction): string {
+	return action === "retry" ? "Retry failed jobs" : action;
+}
 
 function jobTypeLabel(type: string): string {
 	return type
@@ -161,17 +182,22 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 function JobsTable(props: {
 	jobs: JobDto[];
 	onSelect: (job: JobDto) => void;
+	onToggleSelect: (jobId: string) => void;
 	selectedJobId: string | null;
+	selectedJobIds: ReadonlySet<string>;
 }) {
 	return (
 		<div class="overflow-hidden rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)]">
 			<div class="overflow-x-auto">
-				<table class="w-full min-w-[48rem] text-left text-sm">
+				<table class="w-full min-w-[50rem] text-left text-sm">
 					<caption class="sr-only">
 						ジョブの一覧。{props.jobs.length}件。
 					</caption>
 					<thead class="border-[var(--v2-border)] border-b bg-[var(--v2-surface-muted)] text-xs uppercase tracking-wide">
 						<tr>
+							<th class="w-12 px-2 py-3 font-medium" scope="col">
+								<span class="sr-only">Select</span>
+							</th>
 							<th class="px-4 py-3 font-medium" scope="col">
 								Type
 							</th>
@@ -197,6 +223,30 @@ function JobsTable(props: {
 									}
 									data-selected={props.selectedJobId === job.id}
 								>
+									<td class="px-2 py-2">
+										<Show
+											fallback={
+												<span
+													aria-hidden="true"
+													class="block text-center text-[var(--v2-text-muted)]"
+												>
+													—
+												</span>
+											}
+											when={job.status === "failed"}
+										>
+											<Checkbox
+												checked={props.selectedJobIds.has(job.id)}
+												class="flex min-h-11 items-center justify-center sm:min-h-9"
+												onChange={() => props.onToggleSelect(job.id)}
+											>
+												<CheckboxControl class="border-[var(--v2-border-strong)] bg-[var(--v2-surface)] data-[checked]:border-[var(--v2-primary)] data-[checked]:bg-[var(--v2-primary)]" />
+												<CheckboxLabel class="sr-only">
+													Select {jobTypeLabel(job.type)} job
+												</CheckboxLabel>
+											</Checkbox>
+										</Show>
+									</td>
 									<td class="px-2 py-2">
 										<button
 											aria-pressed={props.selectedJobId === job.id}
@@ -224,6 +274,81 @@ function JobsTable(props: {
 						</For>
 					</tbody>
 				</table>
+			</div>
+		</div>
+	);
+}
+
+function JobsBulkActions(props: {
+	action: JobBulkAction | null;
+	allSelected: boolean;
+	hasSelection: boolean;
+	isApplying: boolean;
+	onActionChange: (action: JobBulkAction | null) => void;
+	onApply: () => void | Promise<void>;
+	onToggleAll: () => void;
+	selectableCount: number;
+	selectedCount: number;
+}) {
+	return (
+		<div class="mb-3 flex flex-col gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-3 sm:flex-row sm:items-center sm:justify-between">
+			<div class="flex flex-wrap items-center gap-3">
+				<Checkbox
+					checked={props.allSelected}
+					class="flex min-h-11 items-center gap-2 sm:min-h-9"
+					indeterminate={props.hasSelection && !props.allSelected}
+					onChange={props.onToggleAll}
+				>
+					<CheckboxControl class="border-[var(--v2-border-strong)] bg-[var(--v2-surface)] data-[checked]:border-[var(--v2-primary)] data-[checked]:bg-[var(--v2-primary)]" />
+					<CheckboxLabel class="font-medium text-xs text-[var(--v2-text-secondary)]">
+						{props.allSelected
+							? "Clear failed selection"
+							: "Select all failed jobs"}
+					</CheckboxLabel>
+				</Checkbox>
+				<span aria-live="polite" class="text-xs text-[var(--v2-text-muted)]">
+					{props.selectedCount.toLocaleString()} of{" "}
+					{props.selectableCount.toLocaleString()} failed jobs selected
+				</span>
+			</div>
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+				<Select<JobBulkAction>
+					itemComponent={(selectProps) => (
+						<SelectItem item={selectProps.item}>
+							{jobBulkActionLabel(selectProps.item.rawValue)}
+						</SelectItem>
+					)}
+					onChange={props.onActionChange}
+					options={[...JOB_BULK_ACTIONS]}
+					placeholder="Choose action"
+					value={props.action}
+				>
+					<SelectTrigger
+						aria-label="Bulk job action"
+						class="w-full bg-[var(--v2-surface)] sm:min-h-9 sm:w-52"
+						disabled={props.isApplying || !props.hasSelection}
+					>
+						<SelectValue<JobBulkAction>>
+							{(state) => {
+								const action = state.selectedOption();
+								return action ? jobBulkActionLabel(action) : "Choose action";
+							}}
+						</SelectValue>
+					</SelectTrigger>
+					<SelectContent />
+				</Select>
+				<Button
+					aria-busy={props.isApplying}
+					class="min-h-11 sm:min-h-9"
+					disabled={
+						props.isApplying || !props.hasSelection || props.action === null
+					}
+					onClick={() => void props.onApply()}
+					size="sm"
+				>
+					<RotateCcw aria-hidden="true" size={14} />
+					{props.isApplying ? "Retrying..." : "Apply"}
+				</Button>
 			</div>
 		</div>
 	);
@@ -474,6 +599,11 @@ function JobsInspector(props: {
 export function V2JobsScreen(props: V2JobsScreenProps) {
 	const [activeFilter, setActiveFilter] = createSignal<JobFilter>("all");
 	const [selectedJobId, setSelectedJobId] = createSignal<string | null>(null);
+	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
+		new Set(),
+	);
+	const [bulkAction, setBulkAction] = createSignal<JobBulkAction | null>(null);
+	const [isApplyingBulkAction, setIsApplyingBulkAction] = createSignal(false);
 
 	const selectedJob = createMemo(() =>
 		props.jobs().find((job) => job.id === selectedJobId()),
@@ -495,6 +625,38 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 				return jobs;
 		}
 	});
+	const retryableJobIds = createMemo(() => getRetryableJobIds(filteredJobs()));
+	const selectedRetryableJobIds = createMemo(() =>
+		retryableJobIds().filter((jobId) => selectedJobIds().has(jobId)),
+	);
+	const clearBulkSelection = () => {
+		setSelectedJobIds(new Set<string>());
+		setBulkAction(null);
+	};
+	const toggleJob = (jobId: string) => {
+		setSelectedJobIds((current) => toggleJobSelection(current, jobId));
+	};
+	const toggleAllJobs = () => {
+		setSelectedJobIds((current) =>
+			toggleAllJobSelection(current, retryableJobIds()),
+		);
+	};
+	const applyBulkAction = async () => {
+		const action = bulkAction();
+		const jobIds = selectedRetryableJobIds();
+		if (action !== "retry" || jobIds.length === 0 || isApplyingBulkAction()) {
+			return;
+		}
+		setIsApplyingBulkAction(true);
+		try {
+			await props.onRetryMany(jobIds);
+			clearBulkSelection();
+		} catch {
+			// The route reports mutation failures; keep any remaining selection visible.
+		} finally {
+			setIsApplyingBulkAction(false);
+		}
+	};
 	const refresh = async () => {
 		await props.onRefresh();
 	};
@@ -530,7 +692,10 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 			<div class="grid min-h-0 flex-1 xl:grid-cols-[minmax(0,1fr)_22rem]">
 				<div class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 [scrollbar-gutter:stable]">
 					<Tabs
-						onChange={(value) => setActiveFilter(value as JobFilter)}
+						onChange={(value) => {
+							setActiveFilter(value as JobFilter);
+							clearBulkSelection();
+						}}
 						value={activeFilter()}
 					>
 						<div class="grid gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8">
@@ -595,10 +760,30 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 														}
 														when={filteredJobs().length > 0}
 													>
+														<Show when={retryableJobIds().length > 0}>
+															<JobsBulkActions
+																action={bulkAction()}
+																allSelected={
+																	selectedRetryableJobIds().length ===
+																	retryableJobIds().length
+																}
+																hasSelection={
+																	selectedRetryableJobIds().length > 0
+																}
+																isApplying={isApplyingBulkAction()}
+																onActionChange={setBulkAction}
+																onApply={applyBulkAction}
+																onToggleAll={toggleAllJobs}
+																selectableCount={retryableJobIds().length}
+																selectedCount={selectedRetryableJobIds().length}
+															/>
+														</Show>
 														<JobsTable
 															jobs={filteredJobs()}
 															onSelect={(job) => setSelectedJobId(job.id)}
+															onToggleSelect={toggleJob}
 															selectedJobId={selectedJobId()}
+															selectedJobIds={selectedJobIds()}
 														/>
 														<Show when={props.state().data?.total}>
 															{(total) => (
@@ -634,6 +819,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 																}
 																onClick={() => {
 																	if (props.page().canPrevious) {
+																		clearBulkSelection();
 																		props.page().onPrevious();
 																	}
 																}}
@@ -657,6 +843,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 																}
 																onClick={() => {
 																	if (props.page().canNext) {
+																		clearBulkSelection();
 																		props.page().onNext();
 																	}
 																}}
