@@ -12,6 +12,19 @@ import { z } from "zod";
 export const mediaTypeSchema = z.enum(["image", "video", "audio"]);
 export type MediaType = z.infer<typeof mediaTypeSchema>;
 
+/** Sort keys supported by media collections and saved search presets. */
+export const mediaSortSchema = z.enum([
+	"date",
+	"modifiedAt",
+	"indexedAt",
+	"name",
+	"size",
+	"resolution",
+	"rating",
+	"viewCount",
+]);
+export type MediaSort = z.infer<typeof mediaSortSchema>;
+
 export const authorPlatformSchema = z.enum([
 	"twitter",
 	"pixiv-fanbox",
@@ -343,7 +356,7 @@ export const searchGroupSchema: z.ZodType<SearchGroup> = z.lazy(() =>
 
 export const mediaSearchRequestSchema = z.object({
 	condition: searchGroupSchema.optional(),
-	sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+	sort: mediaSortSchema.optional(),
 	order: z.enum(["asc", "desc"]).default("desc"),
 	limit: z.coerce.number().int().positive().optional(),
 	offset: z.coerce.number().int().nonnegative().default(0),
@@ -583,7 +596,7 @@ export const presetSchema = z.object({
 	// Note: searchGroupSchema is lazy, so we use it directly.
 	// The database stores JSONB, so we validate it against the structure.
 	value: searchGroupSchema,
-	sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+	sort: mediaSortSchema.optional(),
 	order: z.enum(["asc", "desc"]).optional(),
 	mode: z.enum(["simple", "pro"]).optional(),
 	createdAt: z.coerce.date(),
@@ -594,7 +607,7 @@ export type Preset = z.infer<typeof presetSchema>;
 export const createPresetRequestSchema = z.object({
 	name: z.string().min(1, "Name is required"),
 	value: searchGroupSchema,
-	sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+	sort: mediaSortSchema.optional(),
 	order: z.enum(["asc", "desc"]).optional(),
 	mode: z.enum(["simple", "pro"]).optional(),
 });
@@ -604,7 +617,7 @@ export type CreatePresetRequest = z.infer<typeof createPresetRequestSchema>;
 export const updatePresetRequestSchema = z.object({
 	name: z.string().min(1, "Name is required").optional(),
 	value: searchGroupSchema.optional(),
-	sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+	sort: mediaSortSchema.optional(),
 	order: z.enum(["asc", "desc"]).optional(),
 	mode: z.enum(["simple", "pro"]).optional(),
 });

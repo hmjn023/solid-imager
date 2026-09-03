@@ -1,4 +1,5 @@
 import { UnexpectedError } from "@solid-imager/core/domain/errors";
+import type { MediaSort } from "@solid-imager/core/domain/media/schemas";
 import {
 	and,
 	asc,
@@ -36,7 +37,7 @@ type SearchOptions = {
 	projects?: string[];
 	ips?: string[];
 	characters?: string[];
-	sort?: "date" | "name" | "size";
+	sort?: Exclude<MediaSort, "rating" | "viewCount">;
 	order?: "asc" | "desc";
 	limit?: number;
 	offset?: number;
@@ -97,17 +98,27 @@ function buildWhereClause(
 }
 
 function buildOrderByClause(
-	sort?: "date" | "name" | "size",
+	sort?: Exclude<MediaSort, "rating" | "viewCount">,
 	order: "asc" | "desc" = "desc",
 ): SQL {
 	if (sort === "date") {
 		return order === "asc" ? asc(medias.createdAt) : desc(medias.createdAt);
+	}
+	if (sort === "modifiedAt") {
+		return order === "asc" ? asc(medias.modifiedAt) : desc(medias.modifiedAt);
+	}
+	if (sort === "indexedAt") {
+		return order === "asc" ? asc(medias.indexedAt) : desc(medias.indexedAt);
 	}
 	if (sort === "name") {
 		return order === "asc" ? asc(medias.fileName) : desc(medias.fileName);
 	}
 	if (sort === "size") {
 		return order === "asc" ? asc(medias.fileSize) : desc(medias.fileSize);
+	}
+	if (sort === "resolution") {
+		const resolution = sql`(${medias.width} * ${medias.height})`;
+		return order === "asc" ? asc(resolution) : desc(resolution);
 	}
 	return desc(medias.createdAt);
 }

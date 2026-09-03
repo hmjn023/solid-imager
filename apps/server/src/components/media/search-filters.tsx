@@ -1,6 +1,7 @@
 import type { Author } from "@solid-imager/core/domain/authors/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { MediaSort } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Badge } from "@solid-imager/ui/badge";
@@ -28,7 +29,7 @@ export type SearchFilterState = {
 	selectedIps: string[];
 	selectedCharacters: string[];
 	selectedAuthors: string[];
-	sortBy: "date" | "name" | "size" | "rating" | "viewCount";
+	sortBy: MediaSort;
 	sortOrder: "asc" | "desc";
 };
 

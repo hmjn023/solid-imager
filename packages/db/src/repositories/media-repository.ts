@@ -18,6 +18,7 @@ import {
 	type MediaGenerationInfo,
 	type MediaSearchRequest,
 	type MediaSearchResponse,
+	type MediaSort,
 	type MediaTag,
 	type MediaUrl,
 	mediaSearchResponseSchema,
@@ -572,7 +573,7 @@ function makeBuildSearchQuery(getExecutor: (tx?: unknown) => DrizzleExecutor) {
 	return buildSearchQueryInner;
 }
 
-function getOrderByClause(sort: string | undefined, order: "asc" | "desc") {
+function getOrderByClause(sort: MediaSort | undefined, order: "asc" | "desc") {
 	const direction = order === "asc" ? asc : desc;
 
 	if (!sort) {
@@ -580,10 +581,16 @@ function getOrderByClause(sort: string | undefined, order: "asc" | "desc") {
 	}
 
 	switch (sort) {
+		case "modifiedAt":
+			return direction(medias.modifiedAt);
+		case "indexedAt":
+			return direction(medias.indexedAt);
 		case "name":
 			return direction(medias.fileName);
 		case "size":
 			return direction(medias.fileSize);
+		case "resolution":
+			return direction(sql`(${medias.width} * ${medias.height})`);
 		case "date":
 			return direction(medias.createdAt);
 		case "rating":
