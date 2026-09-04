@@ -11,6 +11,7 @@ import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
+import { buildThumbnailUrl } from "~/components/media/thumbnail-image";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { jobsQueryOptions } from "~/infrastructure/api-clients/queries";
 
@@ -57,6 +58,7 @@ function V2JobsRoute() {
 
 	return (
 		<V2JobsScreen
+			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
 			jobs={() => jobsQuery.data?.items ?? []}
 			onRefresh={async () => {
