@@ -37,8 +37,8 @@
     "docs:generate": "typedoc"
   },
   "dependencies": {
-    "@electric-sql/pglite": "0.5.7",
-    "@electric-sql/pglite-pgvector": "0.0.8",
+    "@electric-sql/pglite": "0.5.8",
+    "@electric-sql/pglite-pgvector": "0.0.9",
     "@orpc/client": "^1.15.0",
     "@orpc/contract": "^1.15.0",
     "@orpc/experimental-pino": "^1.15.0",
@@ -51,10 +51,10 @@
     "@solid-imager/core": "workspace:*",
     "@solid-imager/db": "workspace:*",
     "@solid-imager/ui": "workspace:*",
-    "@tanstack/query-core": "5.102.0",
+    "@tanstack/query-core": "5.102.8",
     "@tanstack/router-plugin": "^1.168.35",
     "@tanstack/solid-form": "^1.33.5",
-    "@tanstack/solid-query": "5.102.0",
+    "@tanstack/solid-query": "5.102.8",
     "@tanstack/solid-router": "1.170.30",
     "@tanstack/solid-router-devtools": "^1.167.1",
     "@tanstack/solid-router-ssr-query": "^1.167.2",
