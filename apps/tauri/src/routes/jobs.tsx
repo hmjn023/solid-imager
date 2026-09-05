@@ -16,6 +16,7 @@ import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { buildThumbnailUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { jobsQueryOptions } from "~/queries";
 
 const BULK_RETRY_CONCURRENCY = 8;
@@ -87,6 +88,7 @@ function JobsRoute() {
 	return (
 		<div class="v2-theme min-h-[calc(100vh-4rem)]">
 			<V2JobsScreen
+				buildThumbnailUrl={buildThumbnailUrl}
 				isRefreshing={() => jobsQuery.isFetching}
 				jobs={() => jobsQuery.data?.items ?? []}
 				onRefresh={async () => {

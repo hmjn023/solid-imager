@@ -19,6 +19,7 @@ const jobList: JobListResponse = {
 			startedAt: new Date("2026-01-01T00:00:01.000Z"),
 			status: "in_progress",
 			targetMediaId: null,
+			targetMediaModifiedAt: null,
 			type: "batch_tagging_parent",
 			updatedAt: new Date("2026-01-01T00:00:02.000Z"),
 		},

@@ -754,6 +754,18 @@
                         }
                       ]
                     },
+                    "targetMediaModifiedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "x-native-type": "date"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "progress": {
                       "anyOf": [
                         {
@@ -837,6 +849,7 @@
                     "startedAt",
                     "finishedAt",
                     "targetMediaId",
+                    "targetMediaModifiedAt",
                     "progress",
                     "artifact"
                   ]

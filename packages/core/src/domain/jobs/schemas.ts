@@ -46,6 +46,7 @@ export const jobDtoSchema = z.object({
 	startedAt: z.coerce.date().nullable(),
 	finishedAt: z.coerce.date().nullable(),
 	targetMediaId: z.string().uuid().nullable(),
+	targetMediaModifiedAt: z.coerce.date().nullable(),
 	progress: jobProgressSchema,
 	artifact: z
 		.object({
