@@ -198,14 +198,17 @@ function JobThumbnail(props: {
 	const source = createMemo(() => {
 		const targetMediaId = props.job.targetMediaId;
 		const mediaSourceId = props.job.mediaSourceId;
-		if (!targetMediaId || !mediaSourceId) return undefined;
+		const targetMediaModifiedAt = props.job.targetMediaModifiedAt;
+		if (!targetMediaId || !mediaSourceId || !targetMediaModifiedAt) {
+			return undefined;
+		}
 
 		return createHttpThumbnailSource({
 			buildUrl: props.buildUrl,
 			defaultSize: props.requestedSize ?? 256,
 			mediaId: targetMediaId,
 			mediaSourceId,
-			modifiedAt: props.job.updatedAt,
+			modifiedAt: targetMediaModifiedAt,
 		});
 	});
 
@@ -509,7 +512,17 @@ function JobsInspector(props: {
 						<p class="mt-3 font-medium text-sm text-[var(--v2-text)]">
 							{jobTypeLabel(job().type)}
 						</p>
-						<Show when={job().targetMediaId && job().mediaSourceId}>
+						<Show
+							fallback={
+								<div
+									aria-hidden="true"
+									class="mt-4 flex h-24 items-center justify-center rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] text-[var(--v2-text-muted)]"
+								>
+									—
+								</div>
+							}
+							when={job().targetMediaId && job().mediaSourceId}
+						>
 							<div class="mt-4 overflow-hidden rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)]">
 								<JobThumbnail
 									alt={`Target media for ${jobTypeLabel(job().type)} job`}
