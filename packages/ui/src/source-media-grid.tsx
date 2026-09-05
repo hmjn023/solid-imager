@@ -92,6 +92,7 @@ type SourceMediaGridProps = {
 	onDelete?: (mediaId: string) => void;
 	onCopyMove?: (mediaId: string, mode: "copy" | "move") => void;
 	onSyncSingleMedia?: (mediaId: string) => void;
+	onFindSimilar?: (media: Media) => void;
 	onToggleSelect?: (mediaId: string) => void;
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
@@ -173,6 +174,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const error = props.state().error;
 		return error instanceof Error ? error.message : "API接続に失敗しました";
 	};
+	const canFindSimilar = (media: Media) =>
+		props.onFindSimilar !== undefined && media.mediaType === "image";
 
 	// --- Virtual grid setup ---
 	const [windowWidth, setWindowWidth] = createSignal(0);
@@ -977,9 +980,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			</table>
 		</div>
 	);
-	const hasContextMenuActions = () =>
+	const hasContextMenuActions = (media: Media) =>
 		Boolean(
 			props.onOpenMediaDetail ||
+				canFindSimilar(media) ||
 				props.onToggleSelect ||
 				props.onBulkAction ||
 				props.onClearSelection ||
@@ -1102,7 +1106,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 													{media.fileName}
 												</ContextMenuGroupLabel>
 												<ContextMenuSeparator />
-												<Show when={!hasContextMenuActions()}>
+												<Show when={!hasContextMenuActions(media)}>
 													<ContextMenuItem disabled>
 														利用できる操作はありません
 													</ContextMenuItem>
@@ -1122,6 +1126,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 														onSelect={() => openMediaInNewTab(media)}
 													>
 														新しいタブで開く
+													</ContextMenuItem>
+												</Show>
+												<Show when={canFindSimilar(media)}>
+													<ContextMenuItem
+														onSelect={() => props.onFindSimilar?.(media)}
+													>
+														類似度検索
 													</ContextMenuItem>
 												</Show>
 												<Show when={props.onToggleSelect}>

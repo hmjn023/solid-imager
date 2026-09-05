@@ -66,6 +66,7 @@ export type SourceMediaPageControllerProps = {
 	scrollContainerSelector?: Accessor<string>;
 	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
 	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
+	onFindSimilar?: SourceMediaScreenProps["onFindSimilar"];
 	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
 };
 
@@ -192,6 +193,7 @@ export function SourceMediaPageController(
 				}
 				onOpenMediaDetail={props.onOpenMediaDetail}
 				onPrepareMediaDetail={props.onPrepareMediaDetail}
+				onFindSimilar={props.onFindSimilar}
 				renderMediaPreview={props.renderMediaPreview}
 				moveCopyDialogComponent={MoveCopyMediaDialog}
 				uploadModalComponent={props.uploadModalComponent}

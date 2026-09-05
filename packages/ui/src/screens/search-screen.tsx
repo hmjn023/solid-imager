@@ -112,13 +112,14 @@ export function SearchScreen(props: SearchScreenProps) {
 						when={canRenderContent()}
 					>
 						<SourceMediaGrid
-							disableContextMenu
+							disableContextMenu={!props.onFindSimilar}
 							enableVirtualization={props.enableVirtualization}
 							errorTitle="検索結果を取得できませんでした"
 							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
 							mediaResults={page().searchResults}
 							mediaSourceId={() => undefined}
 							onLoadMore={page().fetchNextPage}
+							onFindSimilar={props.onFindSimilar}
 							onRetry={async () => {
 								await page().searchResultQuery.refetch();
 							}}

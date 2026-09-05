@@ -1,5 +1,6 @@
 import { V2SourceMediaScreen } from "@solid-imager/ui/screens/v2-source-media-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
@@ -43,10 +44,17 @@ export function V2SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 			rememberReturnPath(location().href);
 			saveV2MediaContext(location().href, context ?? [media]);
 		};
+	const onFindSimilar: SourceMediaPageControllerProps["onFindSimilar"] = (
+		media,
+	) => {
+		activateSimilaritySearch(media.id, { surface: "v2" });
+		void navigate({ to: "/v2/search" });
+	};
 
 	return (
 		<SourceMediaPageController
 			mediaSourceId={props.mediaSourceId}
+			onFindSimilar={onFindSimilar}
 			onOpenMediaDetail={onOpenMediaDetail}
 			onPrepareMediaDetail={onPrepareMediaDetail}
 			persistenceSurface="v2"

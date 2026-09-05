@@ -3,7 +3,8 @@ import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
-import { useParams } from "@tanstack/solid-router";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
+import { useNavigate, useParams } from "@tanstack/solid-router";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
@@ -45,6 +46,7 @@ const searchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
 export function SourceMediaPage() {
 	const params = useParams({ from: "/sources/$mediaSourceId/" });
+	const navigate = useNavigate();
 	const mediaSourceId = () => params().mediaSourceId;
 
 	const sourceRootPathResolver = useSourceRootPath(mediaSourcesQueryOptions);
@@ -74,6 +76,10 @@ export function SourceMediaPage() {
 				parseRestoreFile,
 			}}
 			getSearchCondition={getSearchCondition}
+			onFindSimilar={(media) => {
+				activateSimilaritySearch(media.id);
+				void navigate({ to: "/search" });
+			}}
 			sortBy={() => searchState.sortBy}
 			sortOrder={() => searchState.sortOrder}
 			onThumbnailReady={notifyThumbnailReady}

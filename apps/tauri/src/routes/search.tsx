@@ -6,6 +6,7 @@ import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { createFileRoute } from "@tanstack/solid-router";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
@@ -99,6 +100,7 @@ function SearchRoute() {
 		<SearchScreen
 			enableVirtualization
 			filterData={page.filterData}
+			onFindSimilar={(media) => activateSimilaritySearch(media.id)}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
 			page={page}
 			presetClient={PresetClient}

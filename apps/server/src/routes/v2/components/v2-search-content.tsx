@@ -19,6 +19,7 @@ import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
 import { V2SearchScreen } from "@solid-imager/ui/screens/v2-search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { toast } from "@solid-imager/ui/toast";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
@@ -225,6 +226,9 @@ export default function V2SearchContent() {
 				onClearSelection={clearSelection}
 				onCopyMove={handleCopyMove}
 				onDelete={handleDelete}
+				onFindSimilar={(media) =>
+					activateSimilaritySearch(media.id, { surface: "v2" })
+				}
 				onSelectAll={() => {
 					setIsBulkSelectMode(true);
 					selection.selectAll();
