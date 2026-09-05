@@ -724,8 +724,6 @@ graph LR
   N719[npm:~/routes/v2/media-context]
   N720[apps/server/src/routes/sources/$mediaSourceId/index.tsx]
   N721[apps/server/src/routes/sources/index.tsx]
-  N722[apps/server/src/routes/design-lab.tsx]
-  N723[npm:@solid-imager/ui/screens/design-concept-screen]
   N724[apps/server/src/components/imports/pending-downloads-indicator.tsx]
   N725[apps/server/src/components/imports/pending-downloads-indicator-data.ts]
   N726[apps/server/src/components/imports/v2-pending-downloads-indicator.tsx]
@@ -861,7 +859,6 @@ graph LR
   N856[packages/ui/src/screens/source-media-screen.tsx]
   N857[packages/ui/src/screens/config-state-screen.types.ts]
   N858[packages/ui/src/query-state.ts]
-  N859[packages/ui/src/screens/design-concept-screen.tsx]
   N860[npm:lucide-solid/icons/arrow-down-up]
   N861[npm:lucide-solid/icons/arrow-left]
   N862[npm:lucide-solid/icons/ban]
@@ -2251,8 +2248,6 @@ graph LR
   N721 --> N666
   N721 --> N118
   N721 --> N678
-  N722 --> N723
-  N722 --> N666
   N724 --> N49
   N724 --> N725
   N725 --> N48
@@ -2346,7 +2341,6 @@ graph LR
   N771 --> N667
   N771 --> N710
   N771 --> N708
-  N771 --> N722
   N771 --> N677
   N771 --> N668
   N771 --> N665
@@ -2520,41 +2514,6 @@ graph LR
   N856 --> N780
   N857 --> N426
   N857 --> N858
-  N859 --> N860
-  N859 --> N861
-  N859 --> N862
-  N859 --> N863
-  N859 --> N864
-  N859 --> N865
-  N859 --> N866
-  N859 --> N867
-  N859 --> N868
-  N859 --> N869
-  N859 --> N870
-  N859 --> N871
-  N859 --> N872
-  N859 --> N873
-  N859 --> N874
-  N859 --> N875
-  N859 --> N876
-  N859 --> N877
-  N859 --> N878
-  N859 --> N879
-  N859 --> N880
-  N859 --> N881
-  N859 --> N882
-  N859 --> N883
-  N859 --> N884
-  N859 --> N885
-  N859 --> N886
-  N859 --> N887
-  N859 --> N888
-  N859 --> N889
-  N859 --> N890
-  N859 --> N891
-  N859 --> N892
-  N859 --> N893
-  N859 --> N894
   N895 --> N774
   N895 --> N850
   N895 --> N853

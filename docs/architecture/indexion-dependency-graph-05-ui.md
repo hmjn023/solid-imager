@@ -101,7 +101,6 @@ graph LR
   N96[screens/source-media-screen.tsx]
   N97[screens/config-state-screen.types.ts]
   N98[query-state.ts]
-  N99[screens/design-concept-screen.tsx]
   N100[npm:lucide-solid/icons/arrow-down-up]
   N101[npm:lucide-solid/icons/arrow-left]
   N102[npm:lucide-solid/icons/ban]
@@ -367,41 +366,6 @@ graph LR
   N96 --> N9
   N97 --> N74
   N97 --> N98
-  N99 --> N100
-  N99 --> N101
-  N99 --> N102
-  N99 --> N103
-  N99 --> N104
-  N99 --> N105
-  N99 --> N106
-  N99 --> N107
-  N99 --> N108
-  N99 --> N109
-  N99 --> N110
-  N99 --> N111
-  N99 --> N112
-  N99 --> N113
-  N99 --> N114
-  N99 --> N115
-  N99 --> N116
-  N99 --> N117
-  N99 --> N118
-  N99 --> N119
-  N99 --> N120
-  N99 --> N121
-  N99 --> N122
-  N99 --> N123
-  N99 --> N124
-  N99 --> N125
-  N99 --> N126
-  N99 --> N127
-  N99 --> N128
-  N99 --> N129
-  N99 --> N130
-  N99 --> N131
-  N99 --> N132
-  N99 --> N133
-  N99 --> N134
   N135 --> N2
   N135 --> N90
   N135 --> N93

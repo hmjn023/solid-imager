@@ -14,7 +14,6 @@ import { isServer } from "solid-js/web";
 
 type AppNavProps = {
 	pendingDownloadsIndicator?: JSX.Element;
-	showDesignLab?: boolean;
 };
 
 const navigationItems = [
@@ -120,17 +119,6 @@ export function AppNav(props: AppNavProps) {
 								</Link>
 							</li>
 						))}
-						<Show when={props.showDesignLab}>
-							<li>
-								<a
-									aria-current={isActive("/design-lab") ? "page" : undefined}
-									class={desktopLinkClass("/design-lab")}
-									href="/design-lab"
-								>
-									Design Lab
-								</a>
-							</li>
-						</Show>
 						<li>
 							<a
 								class={desktopLinkClass("/docs")}
@@ -207,19 +195,6 @@ export function AppNav(props: AppNavProps) {
 														</Link>
 													</li>
 												))}
-												<Show when={props.showDesignLab}>
-													<li>
-														<a
-															aria-current={
-																isActive("/design-lab") ? "page" : undefined
-															}
-															class={`block min-h-11 ${mobileLinkClass("/design-lab")}`}
-															href="/design-lab"
-														>
-															Design Lab
-														</a>
-													</li>
-												</Show>
 												<li>
 													<a
 														class={`block min-h-11 ${mobileLinkClass("/docs")}`}

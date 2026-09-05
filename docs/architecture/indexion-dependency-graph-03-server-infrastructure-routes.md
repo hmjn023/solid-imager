@@ -373,8 +373,6 @@ graph LR
   N368[npm:@solid-imager/ui/screens/sources-screen]
   N369[npm:@solid-imager/ui/source-card]
   N370[npm:@solid-imager/ui/source-delete-modal]
-  N371[routes/design-lab.tsx]
-  N372[npm:@solid-imager/ui/screens/design-concept-screen]
   N0 --> N1
   N0 --> N2
   N0 --> N3
@@ -887,6 +885,4 @@ graph LR
   N364 --> N282
   N364 --> N341
   N364 --> N303
-  N371 --> N372
-  N371 --> N282
 ```
