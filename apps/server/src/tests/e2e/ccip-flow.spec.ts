@@ -4,8 +4,9 @@ import {
 	E2E_SIMILAR_FILE_NAME,
 	E2E_SIMILAR_MEDIA_ID,
 	mediaPath,
+	sourcePath,
 } from "./support/fixture";
-import { expect, test } from "./support/test";
+import { expect, test, waitForAppHydration } from "./support/test";
 
 const startCcipExtractionEndpoint =
 	/\/api\/rpc\/ai\/startCcipExtraction(?:\?|$)/;
@@ -132,4 +133,25 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 	).toHaveCount(0);
+
+	await page.goto(sourcePath());
+	await waitForAppHydration(page);
+	await expect(page.getByText(/^\d+ 件の結果$/)).toBeVisible();
+	const primaryMedia = page.locator(
+		`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`,
+	);
+	await expect(primaryMedia).toBeVisible();
+	await primaryMedia.click({ button: "right" });
+	const directSearchResponse = page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname === "/api/rpc/media/searchSimilar" &&
+			response.status() === 200,
+		{ timeout: 30_000 },
+	);
+	await page.getByRole("menuitem", { name: "類似度検索", exact: true }).click();
+	await directSearchResponse;
+	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+	await expect(
+		page.getByRole("link", { name: new RegExp(E2E_SIMILAR_FILE_NAME) }),
+	).toBeVisible({ timeout: 30_000 });
 });
