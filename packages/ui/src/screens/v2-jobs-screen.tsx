@@ -28,6 +28,12 @@ import {
 } from "../select";
 import { LoadingRegion } from "../skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
+import { ThumbnailImage } from "../thumbnail-image";
+import {
+	type BuildThumbnailUrlArgs,
+	createHttpThumbnailSource,
+	type ThumbnailRequestSize,
+} from "../thumbnail-source";
 import {
 	V2_CATEGORY_TABS_CLASS,
 	V2CategoryLabel,
@@ -80,6 +86,7 @@ export type V2JobsPagination = {
 };
 
 export type V2JobsScreenProps = {
+	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	isRefreshing: Accessor<boolean>;
 	jobs: Accessor<JobDto[]>;
 	onRefresh: () => void | Promise<void>;
@@ -179,10 +186,60 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 	);
 }
 
+function JobThumbnail(props: {
+	alt: string;
+	buildUrl: (args: BuildThumbnailUrlArgs) => string;
+	class: string;
+	height: number;
+	job: JobDto;
+	requestedSize?: ThumbnailRequestSize;
+	width: number;
+}) {
+	const source = createMemo(() => {
+		const targetMediaId = props.job.targetMediaId;
+		const mediaSourceId = props.job.mediaSourceId;
+		const targetMediaModifiedAt = props.job.targetMediaModifiedAt;
+		if (!targetMediaId || !mediaSourceId || !targetMediaModifiedAt) {
+			return undefined;
+		}
+
+		return createHttpThumbnailSource({
+			buildUrl: props.buildUrl,
+			defaultSize: props.requestedSize ?? 256,
+			mediaId: targetMediaId,
+			mediaSourceId,
+			modifiedAt: targetMediaModifiedAt,
+		});
+	});
+
+	return (
+		<Show
+			fallback={
+				<span aria-hidden="true" class="text-[var(--v2-text-muted)]">
+					—
+				</span>
+			}
+			when={source()}
+		>
+			{(resolvedSource) => (
+				<ThumbnailImage
+					alt={props.alt}
+					class={props.class}
+					height={props.height}
+					loading="lazy"
+					source={resolvedSource()}
+					width={props.width}
+				/>
+			)}
+		</Show>
+	);
+}
+
 function JobsTable(props: {
 	jobs: JobDto[];
 	onSelect: (job: JobDto) => void;
 	onToggleSelect: (jobId: string) => void;
+	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	selectedJobId: string | null;
 	selectedJobIds: ReadonlySet<string>;
 }) {
@@ -197,6 +254,9 @@ function JobsTable(props: {
 						<tr>
 							<th class="w-12 px-2 py-3 font-medium" scope="col">
 								<span class="sr-only">Select</span>
+							</th>
+							<th class="w-20 px-2 py-3 font-medium" scope="col">
+								Target
 							</th>
 							<th class="px-4 py-3 font-medium" scope="col">
 								Type
@@ -246,6 +306,16 @@ function JobsTable(props: {
 												</CheckboxLabel>
 											</Checkbox>
 										</Show>
+									</td>
+									<td class="px-2 py-2">
+										<JobThumbnail
+											alt={`Target media for ${jobTypeLabel(job.type)} job`}
+											buildUrl={props.buildThumbnailUrl}
+											class="size-12 shrink-0 rounded-sm object-cover"
+											height={48}
+											job={job}
+											width={48}
+										/>
 									</td>
 									<td class="px-2 py-2">
 										<button
@@ -355,6 +425,7 @@ function JobsBulkActions(props: {
 }
 
 function JobsInspector(props: {
+	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	class?: string;
 	job: JobDto | undefined;
 	onCancel: (jobId: string) => void | Promise<void>;
@@ -441,6 +512,32 @@ function JobsInspector(props: {
 						<p class="mt-3 font-medium text-sm text-[var(--v2-text)]">
 							{jobTypeLabel(job().type)}
 						</p>
+						<Show
+							fallback={
+								<div
+									aria-hidden="true"
+									class="mt-4 flex h-24 items-center justify-center rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] text-[var(--v2-text-muted)]"
+								>
+									—
+								</div>
+							}
+							when={job().targetMediaId && job().mediaSourceId}
+						>
+							<div class="mt-4 overflow-hidden rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)]">
+								<JobThumbnail
+									alt={`Target media for ${jobTypeLabel(job().type)} job`}
+									buildUrl={props.buildThumbnailUrl}
+									class="aspect-[4/3] w-full object-cover"
+									height={192}
+									job={job()}
+									requestedSize={512}
+									width={256}
+								/>
+								<p class="border-[var(--v2-border)] border-t px-3 py-2 text-xs text-[var(--v2-text-muted)]">
+									Target media
+								</p>
+							</div>
+						</Show>
 						<dl class="mt-5 space-y-3 border-[var(--v2-border)] border-y py-4 text-xs">
 							<div class="flex justify-between gap-3">
 								<dt class="text-[var(--v2-text-muted)]">Status</dt>
@@ -779,6 +876,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 															/>
 														</Show>
 														<JobsTable
+															buildThumbnailUrl={props.buildThumbnailUrl}
 															jobs={filteredJobs()}
 															onSelect={(job) => setSelectedJobId(job.id)}
 															onToggleSelect={toggleJob}
@@ -797,6 +895,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 														<Show when={selectedJob()}>
 															{(job) => (
 																<JobsInspector
+																	buildThumbnailUrl={props.buildThumbnailUrl}
 																	class="mt-4 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-subtle)] p-4 xl:hidden"
 																	job={job()}
 																	onCancel={props.onCancel}
@@ -866,6 +965,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 				</div>
 
 				<JobsInspector
+					buildThumbnailUrl={props.buildThumbnailUrl}
 					job={selectedJob()}
 					onCancel={props.onCancel}
 					onDownload={props.onDownload}

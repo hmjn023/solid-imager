@@ -265,5 +265,8 @@ for (const route of [
 
 		await expectRouteHealthy(page);
 		await expect(page.getByRole("menu")).toBeVisible();
+		await expect(
+			page.getByRole("menuitem", { name: "類似度検索", exact: true }),
+		).toBeVisible();
 	});
 }

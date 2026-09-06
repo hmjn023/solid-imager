@@ -23,6 +23,7 @@ export type SourceMediaScreenProps = {
 	onBulkAction?: () => void;
 	onClearSelection?: () => void;
 	onEnterBulkSelectMode?: () => void;
+	onFindSimilar?: (media: Media) => void;
 	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
 	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onRetryFilters: () => void | Promise<void>;

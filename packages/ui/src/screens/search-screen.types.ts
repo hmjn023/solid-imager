@@ -24,6 +24,7 @@ export type SearchMediaItemOptions = {
 export type SearchWorkspaceProps = {
 	enableVirtualization?: boolean;
 	filterData: SearchPageFilterData;
+	onFindSimilar?: (media: Media) => void;
 	onSelectSource: (id: string) => void;
 	page: UseSearchPageResult;
 	presetClient: SourceMediaPagePresetClient;

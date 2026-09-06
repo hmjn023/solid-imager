@@ -13,6 +13,7 @@ import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { JobRepository } from "~/infrastructure/repositories/job-repository";
+import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 const PublicJobFailureMessage = "Job failed";
 
@@ -50,7 +51,44 @@ function readProgress(payload: unknown) {
 	};
 }
 
-export function toJobDto(job: Job) {
+async function findTargetMediaModifiedAt(
+	job: Pick<Job, "payload">,
+): Promise<Date | null> {
+	const targetMediaId = readTargetMediaId(job.payload);
+	if (!targetMediaId) return null;
+
+	const media = await MediaRepository.findById(targetMediaId);
+	return media?.modifiedAt ?? null;
+}
+
+async function findTargetMediaModifiedAtById(
+	jobs: ReadonlyArray<Pick<Job, "payload">>,
+): Promise<ReadonlyMap<string, Date>> {
+	const targetMediaIds = [
+		...new Set(
+			jobs.flatMap((job) => {
+				const targetMediaId = readTargetMediaId(job.payload);
+				return targetMediaId ? [targetMediaId] : [];
+			}),
+		),
+	];
+	if (targetMediaIds.length === 0) return new Map<string, Date>();
+
+	const media = await MediaRepository.findByIds(targetMediaIds);
+	return new Map(media.map((item) => [item.id, item.modifiedAt]));
+}
+
+function getTargetMediaModifiedAt(
+	job: Pick<Job, "payload">,
+	targetMediaModifiedAtById: ReadonlyMap<string, Date>,
+): Date | null {
+	const targetMediaId = readTargetMediaId(job.payload);
+	return targetMediaId
+		? (targetMediaModifiedAtById.get(targetMediaId) ?? null)
+		: null;
+}
+
+export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
 	return {
 		id: job.id,
 		type: job.type,
@@ -66,6 +104,7 @@ export function toJobDto(job: Job) {
 		startedAt: job.startedAt ?? null,
 		finishedAt: job.finishedAt ?? null,
 		targetMediaId: readTargetMediaId(job.payload),
+		targetMediaModifiedAt,
 		progress: readProgress(job.payload),
 		artifact:
 			job.status === "completed" &&
@@ -101,8 +140,12 @@ export const jobsRouter = os.router({
 			db.select({ total: count() }).from(jobs).where(where),
 		]);
 
+		const targetMediaModifiedAtById = await findTargetMediaModifiedAtById(rows);
+
 		return {
-			items: rows.map(toJobDto),
+			items: rows.map((job) =>
+				toJobDto(job, getTargetMediaModifiedAt(job, targetMediaModifiedAtById)),
+			),
 			total: Number(totalRows[0]?.total ?? 0),
 		};
 	}),
@@ -112,7 +155,7 @@ export const jobsRouter = os.router({
 		if (!job) {
 			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
 		}
-		return toJobDto(job);
+		return toJobDto(job, await findTargetMediaModifiedAt(job));
 	}),
 
 	downloadArtifact: os.downloadArtifact.handler(async ({ input }) => {
@@ -162,7 +205,7 @@ export const jobsRouter = os.router({
 			jobId: requeued.id,
 			message: "Job queued for retry",
 		});
-		return toJobDto(requeued);
+		return toJobDto(requeued, await findTargetMediaModifiedAt(requeued));
 	}),
 
 	cancel: os.cancel.handler(async ({ input }) => {
@@ -193,7 +236,7 @@ export const jobsRouter = os.router({
 					? "Cancellation requested"
 					: "Job cancelled",
 		});
-		return toJobDto(cancelled);
+		return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
 	}),
 
 	events: os.events.handler(async function* ({ signal }) {

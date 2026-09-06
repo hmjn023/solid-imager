@@ -2,6 +2,7 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type {
 	Author,
+	Media,
 	MediaSearchRequest,
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
@@ -60,6 +61,7 @@ export type SourceMediaPageProps = {
 	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
 	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
 	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
+	onFindSimilar?: (media: Media) => void;
 	showOpenInNewTab?: boolean;
 	onToggleSelect?: (mediaId: string) => void;
 	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
@@ -173,6 +175,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			renderItem={props.renderItem}
 			onOpenMediaDetail={props.onOpenMediaDetail}
 			onPrepareMediaDetail={props.onPrepareMediaDetail}
+			onFindSimilar={props.onFindSimilar}
 			renderMediaPreview={props.renderMediaPreview}
 			moveCopyDialogComponent={props.moveCopyDialogComponent}
 			uploadModalComponent={props.uploadModalComponent}

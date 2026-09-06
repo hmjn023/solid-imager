@@ -195,6 +195,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 								onClearSelection={props.onClearSelection}
 								onCopyMove={page().handleCopyMove}
 								onDelete={page().handleDelete}
+								onFindSimilar={props.onFindSimilar}
 								onLoadMore={() => page().fetchNextPage()}
 								onPreviewSelect={
 									props.renderMediaPreview ? selectPreviewMedia : undefined

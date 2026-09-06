@@ -179,6 +179,7 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 								onClearSelection={props.onClearSelection}
 								onCopyMove={props.onCopyMove}
 								onDelete={props.onDelete}
+								onFindSimilar={props.onFindSimilar}
 								onOpenMediaDetail={
 									props.onOpenMediaDetail ? openMediaDetail : undefined
 								}
