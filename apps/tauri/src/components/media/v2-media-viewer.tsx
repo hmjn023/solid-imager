@@ -1,9 +1,9 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import {
 	type MediaSource,
-	MediaViewer as SharedMediaViewer,
-} from "@solid-imager/ui/media-viewer";
-import { createMemo } from "solid-js";
+	V2MediaViewer as SharedV2MediaViewer,
+} from "@solid-imager/ui/v2-media-viewer";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 
@@ -29,11 +29,11 @@ function resolveMimeType(fileName: string) {
 	);
 }
 
-class ApiMediaSource implements MediaSource {
+class TauriMediaSource implements MediaSource {
 	type: "image" | "video" | "audio";
 	private urls: string[] = [];
 
-	constructor(private media: MediaDetails) {
+	constructor(private readonly media: MediaDetails) {
 		this.type =
 			media.mediaType === "video"
 				? "video"
@@ -58,24 +58,34 @@ class ApiMediaSource implements MediaSource {
 	}
 
 	revokeUrl(url: string) {
-		const idx = this.urls.indexOf(url);
-		if (idx !== -1) {
-			URL.revokeObjectURL(url);
-			this.urls.splice(idx, 1);
-		}
+		const index = this.urls.indexOf(url);
+		if (index === -1) return;
+		URL.revokeObjectURL(url);
+		this.urls.splice(index, 1);
+	}
+
+	cleanup() {
+		for (const url of this.urls) URL.revokeObjectURL(url);
+		this.urls = [];
 	}
 }
 
-type MediaViewerProps = {
-	media: MediaDetails;
-	sourceRootPath?: string | null;
-};
+export function V2MediaViewer(props: { media: MediaDetails }) {
+	const [source, setSource] = createSignal<TauriMediaSource>(
+		new TauriMediaSource(props.media),
+	);
 
-export function MediaViewer(props: MediaViewerProps) {
-	const source = createMemo(() => new ApiMediaSource(props.media));
+	createEffect((previous: TauriMediaSource | undefined) => {
+		previous?.cleanup();
+		const next = new TauriMediaSource(props.media);
+		setSource(next);
+		return next;
+	});
+
+	onCleanup(() => source().cleanup());
 
 	return (
-		<SharedMediaViewer
+		<SharedV2MediaViewer
 			fileName={props.media.fileName}
 			height={props.media.height}
 			source={source()}

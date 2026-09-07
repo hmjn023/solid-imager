@@ -1,4 +1,4 @@
-import { UploadMediaModalContent as SharedUploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-content";
+import { V2UploadMediaModalContent } from "@solid-imager/ui/v2-upload-media-modal";
 
 type UploadMediaModalProps = {
 	isOpen: boolean;
@@ -33,13 +33,24 @@ async function fetchFileFromUrl(url: string) {
 
 export function UploadMediaModalContent(props: UploadMediaModalProps) {
 	return (
-		<SharedUploadMediaModalContent
+		<V2UploadMediaModalContent
 			initialFile={props.initialFile}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
 			onFetchUrl={fetchFileFromUrl}
-			onUrlFetch={props.onUrlFetch}
-			onUpload={props.onUpload}
+			onFilesSelected={() => undefined}
+			onUploadStart={async (options) => {
+				for (const file of options.files) {
+					await props.onUpload({
+						autoIncrement: options.autoIncrement,
+						description: options.description,
+						file,
+						filename: options.filename || file.name,
+						overwrite: options.overwrite,
+						sourceUrl: options.sourceUrl,
+					});
+				}
+			}}
 			pastedUrl={props.pastedUrl}
 		/>
 	);

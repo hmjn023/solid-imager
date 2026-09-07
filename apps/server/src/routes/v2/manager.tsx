@@ -125,7 +125,7 @@ export const Route = createFileRoute("/v2/manager")({
 	component: V2ManagerRoute,
 });
 
-function V2ManagerRoute() {
+export function V2ManagerRoute() {
 	const queryClient = useQueryClient();
 	const manager = useManagerPage({
 		queryClient,

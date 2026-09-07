@@ -2,34 +2,74 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
 	type MediaGridImageLoadPolicy,
 	type MediaGridLinkProps,
-	MediaGridItem as SharedMediaGridItem,
-} from "@solid-imager/ui/media-grid-item";
+	V2MediaGridItem as SharedV2MediaGridItem,
+} from "@solid-imager/ui/v2-media-grid-item";
 import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { ThumbnailImage } from "./thumbnail-image";
 
-export type ServerMediaGridItemProps = {
-	linkPrefix?: string;
+export type TauriV2MediaGridItemProps = {
 	media: Media;
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
-	onContextMenu?: (event: MouseEvent) => void;
-	priority?: boolean;
-	sourceRootPath?: string;
 	isBulkSelectMode?: boolean;
 	isPreviewSelected?: boolean;
 	isSelected?: boolean;
-	onToggleSelect?: () => void;
+	onContextMenu?: (event: MouseEvent) => void;
+	onOpenMediaDetail?: () => void;
 	onPrepareMediaDetail?: () => void;
 	onPreviewSelect?: () => void;
-	onSelectGesture?: (event: MouseEvent | KeyboardEvent) => void;
+	onSelectGesture?: (event: MouseEvent) => void;
+	onToggleSelect?: () => void;
+	priority?: boolean;
+	sourceRootPath?: string;
 };
 
-export function LegacyMediaGridItem(props: ServerMediaGridItemProps) {
+export function V2MediaGridItem(props: TauriV2MediaGridItemProps) {
+	const isPlainPrimaryClick = (event: MouseEvent) =>
+		event.button === 0 &&
+		!event.metaKey &&
+		!event.ctrlKey &&
+		!event.shiftKey &&
+		!event.altKey;
+	const isModifiedSelectionClick = (event: MouseEvent) =>
+		event.button === 0 &&
+		!event.altKey &&
+		(event.metaKey || event.ctrlKey || event.shiftKey);
+
 	const detailLink = (linkProps: MediaGridLinkProps) => (
 		<Link
+			aria-current={linkProps["aria-current"]}
+			aria-pressed={linkProps["aria-pressed"]}
 			class={linkProps.class}
 			data-media-id={linkProps["data-media-id"]}
+			onClick={(event) => {
+				if (props.onSelectGesture && isModifiedSelectionClick(event)) {
+					event.preventDefault();
+					props.onSelectGesture(event);
+					return;
+				}
+				if (!isPlainPrimaryClick(event)) return;
+				if (props.onPreviewSelect) {
+					event.preventDefault();
+					props.onPreviewSelect();
+					return;
+				}
+				props.onPrepareMediaDetail?.();
+			}}
 			onContextMenu={linkProps.onContextMenu}
+			onDblClick={(event) => {
+				if (!isPlainPrimaryClick(event) || !props.onOpenMediaDetail) return;
+				event.preventDefault();
+				props.onPrepareMediaDetail?.();
+				props.onOpenMediaDetail();
+			}}
+			onKeyDown={(event) => {
+				if (event.key === "Enter" && props.onOpenMediaDetail) {
+					event.preventDefault();
+					props.onPrepareMediaDetail?.();
+					props.onOpenMediaDetail();
+				}
+			}}
 			params={{
 				mediaId: props.media.id,
 				mediaSourceId: props.media.mediaSourceId,
@@ -41,10 +81,11 @@ export function LegacyMediaGridItem(props: ServerMediaGridItemProps) {
 	);
 
 	return (
-		<SharedMediaGridItem
-			isBulkSelectMode={props.isBulkSelectMode}
-			isSelected={props.isSelected}
+		<SharedV2MediaGridItem
 			imageLoadPolicy={props.imageLoadPolicy}
+			isBulkSelectMode={props.isBulkSelectMode}
+			isPreviewSelected={props.isPreviewSelected}
+			isSelected={props.isSelected}
 			linkComponent={(linkProps) => (
 				<Show fallback={detailLink(linkProps)} when={props.isBulkSelectMode}>
 					<button
@@ -53,6 +94,10 @@ export function LegacyMediaGridItem(props: ServerMediaGridItemProps) {
 						data-media-id={linkProps["data-media-id"]}
 						onClick={(event) => {
 							event.preventDefault();
+							if (props.onSelectGesture && isModifiedSelectionClick(event)) {
+								props.onSelectGesture(event);
+								return;
+							}
 							props.onToggleSelect?.();
 						}}
 						onContextMenu={linkProps.onContextMenu}
@@ -62,7 +107,7 @@ export function LegacyMediaGridItem(props: ServerMediaGridItemProps) {
 					</button>
 				</Show>
 			)}
-			linkPrefix={props.linkPrefix}
+			linkPrefix={undefined}
 			media={props.media}
 			onContextMenu={props.onContextMenu}
 			priority={props.priority}

@@ -26,7 +26,7 @@ function V2NotFoundRoute() {
 					URLを確認するか、ライブラリへ戻ってください。
 				</p>
 			</div>
-			<Button as={Link} to="/v2/search">
+			<Button as={Link} to="/search">
 				ライブラリへ戻る
 			</Button>
 		</section>

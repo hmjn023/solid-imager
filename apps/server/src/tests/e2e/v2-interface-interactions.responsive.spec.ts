@@ -8,12 +8,12 @@ import {
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-const v2SearchPath = "/v2/search";
-const v2SourcePath = `/v2/sources/${E2E_SOURCE_ID}`;
-const v2MediaPath = (mediaId: string) => `${v2SourcePath}/${mediaId}`;
+const searchPath = "/search";
+const sourcePath = `/sources/${E2E_SOURCE_ID}`;
+const mediaPath = (mediaId: string) => `${sourcePath}/${mediaId}`;
 
 async function openV2Search(page: Page): Promise<void> {
-	await page.goto(v2SearchPath);
+	await page.goto(searchPath);
 	await waitForAppHydration(page);
 	await expect(page.locator("[data-media-id]").first()).toBeVisible();
 }
@@ -67,7 +67,7 @@ test("V2 slash shortcut focuses search without swallowing slash input", async ({
 test("V2 source search keeps URL paste in the input context", async ({
 	page,
 }) => {
-	await page.goto(v2SourcePath);
+	await page.goto(sourcePath);
 	await waitForAppHydration(page);
 
 	const searchInput = page.getByRole("combobox", {
@@ -97,7 +97,7 @@ test("V2 source collection supports additive and range selection gestures", asyn
 		"Modifier-key collection selection is exercised with a desktop keyboard.",
 	);
 	await page.setViewportSize({ width: 1600, height: 900 });
-	await page.goto(v2SourcePath);
+	await page.goto(sourcePath);
 	await waitForAppHydration(page);
 
 	const mediaItems = page.locator("[data-media-id]");
@@ -199,7 +199,7 @@ test("V2 fine-pointer collection separates selection from opening detail", async
 		`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
 	);
 	await similarMedia.click();
-	await expect(page).toHaveURL(/\/v2\/search(?:\?.*)?$/);
+	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 	await expect(similarMedia).toHaveAttribute("aria-current", "true");
 	await expect(similarMedia).toHaveAttribute("aria-pressed", "false");
 	const inspector = page.getByRole("complementary", {
@@ -208,26 +208,26 @@ test("V2 fine-pointer collection separates selection from opening detail", async
 	await expect(inspector).toContainText(E2E_SIMILAR_FILE_NAME);
 
 	await similarMedia.dblclick();
-	await expect(page).toHaveURL(v2MediaPath(E2E_SIMILAR_MEDIA_ID));
+	await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
 	await expect(
 		page.locator(`[data-media-viewer] img[alt="${E2E_SIMILAR_FILE_NAME}"]`),
 	).toBeVisible();
 
 	await page.goBack();
-	await expect(page).toHaveURL(/\/v2\/search(?:\?.*)?$/);
+	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 	const primaryMedia = page.locator(
 		`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`,
 	);
 	await expect(primaryMedia).toBeVisible();
 	await primaryMedia.focus();
 	await page.keyboard.press("Enter");
-	await expect(page).toHaveURL(v2MediaPath(E2E_PRIMARY_MEDIA_ID));
+	await expect(page).toHaveURL(mediaPath(E2E_PRIMARY_MEDIA_ID));
 });
 
 test("V2 detail exposes zoom controls and non-destructive action choices", async ({
 	page,
 }) => {
-	await page.goto(v2MediaPath(E2E_PRIMARY_MEDIA_ID));
+	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
 	await waitForAppHydration(page);
 	await expect(
 		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
@@ -263,7 +263,7 @@ test("V2 detail exposes zoom controls and non-destructive action choices", async
 test("V2 settings exposes device-local shortcut configuration", async ({
 	page,
 }) => {
-	await page.goto("/v2/config");
+	await page.goto("/config");
 	await waitForAppHydration(page);
 
 	await expect(page.locator("form")).toHaveCount(1);

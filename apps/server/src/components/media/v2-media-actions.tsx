@@ -182,7 +182,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 
 	const handleFindSimilar = () => {
 		activateSimilaritySearch(props.media.id, { surface: "v2" });
-		void navigate({ to: "/v2/search" });
+		void navigate({ to: "/search" });
 	};
 	const handleDownload = () => {
 		setMoreActionsOpen(false);
@@ -201,7 +201,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 			await navigate({
 				params: { mediaSourceId: props.media.mediaSourceId },
 				replace: true,
-				to: "/v2/sources/$mediaSourceId",
+				to: "/sources/$mediaSourceId",
 			});
 		} catch (error) {
 			toast.error(`Failed to delete media: ${getErrorMessage(error)}`);

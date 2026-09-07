@@ -1,12 +1,12 @@
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
-import { LegacySourceFormModal } from "@solid-imager/ui/legacy-source-form-modal";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
+import { V2SourceFormModal } from "@solid-imager/ui/v2-source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createServerTransport } from "~/hooks/use-media-source-events";
@@ -97,7 +97,7 @@ function SourcesRouteContent() {
 				/>
 			)}
 			renderFormModal={(props) => (
-				<LegacySourceFormModal
+				<V2SourceFormModal
 					editingSource={props.editingSource}
 					isOpen={props.isOpen}
 					onClose={props.onClose}

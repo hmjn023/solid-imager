@@ -1,9 +1,5 @@
-import { AppShell } from "@solid-imager/ui/layouts/app-shell";
-import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
-import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts/index";
-import { Toaster } from "@solid-imager/ui/toast";
 import { createRootRouteWithContext, Outlet } from "@tanstack/solid-router";
-import { Nav } from "~/components/nav";
+import { TauriV2AppShell } from "~/components/v2-app-shell";
 import type { AppRouterContext } from "~/router";
 
 export const Route = createRootRouteWithContext<AppRouterContext>()({
@@ -12,11 +8,8 @@ export const Route = createRootRouteWithContext<AppRouterContext>()({
 
 function RootRouteComponent() {
 	return (
-		<ShortcutPreferencesProvider>
-			<Toaster />
-			<AppShell nav={<Nav />} statusIndicator={<RouteTransitionIndicator />}>
-				<Outlet />
-			</AppShell>
-		</ShortcutPreferencesProvider>
+		<TauriV2AppShell>
+			<Outlet />
+		</TauriV2AppShell>
 	);
 }

@@ -1,41 +1,6 @@
-import { Counter } from "@solid-imager/ui/counter";
-import { createFileRoute, Link } from "@tanstack/solid-router";
+import { createFileRoute } from "@tanstack/solid-router";
+import { V2AboutRoute } from "./v2/about";
 
 export const Route = createFileRoute("/about")({
-	component: About,
+	component: V2AboutRoute,
 });
-
-/**
- * The About page component.
- * Displays information about the application and includes a counter component.
- * @returns {JSX.Element} The rendered About page.
- */
-function About() {
-	return (
-		<main class="mx-auto p-4 text-center text-gray-700">
-			<h1 class="max-6-xs my-16 font-thin text-6xl text-sky-700 uppercase">
-				About Page
-			</h1>
-			<Counter />
-			<p class="mt-8">
-				Visit{" "}
-				<a
-					class="text-sky-600 hover:underline"
-					href="https://solidjs.com"
-					rel="noopener"
-					target="_blank"
-				>
-					solidjs.com
-				</a>{" "}
-				to learn how to build Solid apps.
-			</p>
-			<p class="my-4">
-				<Link class="text-sky-600 hover:underline" to="/">
-					Home
-				</Link>
-				{" - "}
-				<span>About Page</span>
-			</p>
-		</main>
-	);
-}

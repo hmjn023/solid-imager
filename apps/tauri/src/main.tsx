@@ -1,4 +1,3 @@
-import { AppShell } from "@solid-imager/ui/layouts/app-shell";
 import { BootstrapStatusScreen } from "@solid-imager/ui/router-status";
 import { RouterProvider } from "@tanstack/solid-router";
 import { createSignal, Match, onMount, Switch } from "solid-js";
@@ -26,11 +25,14 @@ function toError(error: unknown): Error {
 		: new Error("Unknown collection initialization error");
 }
 
-function BootstrapNav() {
+function BootstrapShell(props: { children: import("solid-js").JSX.Element }) {
 	return (
-		<header class="border-border border-b bg-background px-4 py-3">
-			<span class="font-semibold">Solid Imager</span>
-		</header>
+		<div class="v2-theme flex min-h-screen min-h-[100dvh] flex-col bg-[var(--v2-canvas)] text-[var(--v2-text)]">
+			<header class="flex h-13 shrink-0 items-center border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-4">
+				<strong class="font-semibold">Solid Imager</strong>
+			</header>
+			<main class="flex-1">{props.children}</main>
+		</div>
 	);
 }
 
@@ -71,17 +73,17 @@ function App() {
 				<RouterProvider router={router} />
 			</Match>
 			<Match when={state().status === "error"}>
-				<AppShell nav={<BootstrapNav />}>
+				<BootstrapShell>
 					<BootstrapStatusScreen
 						error={bootstrapError()}
 						onRetry={initialize}
 					/>
-				</AppShell>
+				</BootstrapShell>
 			</Match>
 			<Match when={state().status === "loading"}>
-				<AppShell nav={<BootstrapNav />}>
+				<BootstrapShell>
 					<BootstrapStatusScreen onRetry={initialize} />
-				</AppShell>
+				</BootstrapShell>
 			</Match>
 		</Switch>
 	);

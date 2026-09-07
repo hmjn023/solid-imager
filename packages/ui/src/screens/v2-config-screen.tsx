@@ -162,353 +162,49 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 					void form.handleSubmit();
 				}}
 			>
-			<Tabs
-				class="grid min-w-0 w-full gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
-				onChange={setActiveTab}
-				value={activeTab()}
-			>
-				<TabsList
-					aria-label="Settings categories"
-					class="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
+				<Tabs
+					class="grid min-w-0 w-full gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+					onChange={setActiveTab}
+					value={activeTab()}
 				>
-					<For each={SETTINGS_CATEGORIES}>
-						{(category) => {
-							const Icon = category.icon;
-							return (
-								<TabsTrigger
-									class={V2_CATEGORY_TABS_CLASS}
-									type="button"
-									value={category.value}
-								>
-									<V2CategoryLabel
-										description={category.description}
-										icon={<Icon aria-hidden="true" size={16} />}
-										label={category.label}
-									/>
-								</TabsTrigger>
-							);
-						}}
-					</For>
-				</TabsList>
-
-				<div class="min-w-0 space-y-6">
-					<TabsContent value="jobs">
-						<fieldset class={sectionClass}>
-							<legend class="mb-4 block font-semibold text-xl">
-								Job Processing
-							</legend>
-
-							<form.Field name="jobs.concurrency">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>Concurrency</Label>
-										<Input
-											aria-describedby={`${field().name}-error`}
-											aria-invalid={field().state.meta.errors.length > 0}
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => {
-												field().handleChange(parseNumberInput(e.target.value));
-											}}
-											type="number"
-											value={field().state.value ?? ""}
-										/>
-										<FormFieldMessage
-											id={`${field().name}-error`}
-											message={getFormErrorMessage(
-												field().state.meta.errors[0],
-											)}
-										/>
-										<div class="text-muted-foreground text-xs">
-											Number of concurrent downloads/processings.
-										</div>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="jobs.aiConcurrency">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>AI Concurrency</Label>
-										<Input
-											aria-describedby={`${field().name}-error`}
-											aria-invalid={field().state.meta.errors.length > 0}
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => {
-												field().handleChange(parseNumberInput(e.target.value));
-											}}
-											type="number"
-											value={field().state.value ?? ""}
-										/>
-										<FormFieldMessage
-											id={`${field().name}-error`}
-											message={getFormErrorMessage(
-												field().state.meta.errors[0],
-											)}
-										/>
-										<div class="text-muted-foreground text-xs">
-											Number of concurrent AI tagging jobs.
-										</div>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="jobs.pollIntervalMs">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>Poll Interval (ms)</Label>
-										<Input
-											aria-describedby={`${field().name}-error`}
-											aria-invalid={field().state.meta.errors.length > 0}
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => {
-												field().handleChange(parseNumberInput(e.target.value));
-											}}
-											type="number"
-											value={field().state.value ?? ""}
-										/>
-										<FormFieldMessage
-											id={`${field().name}-error`}
-											message={getFormErrorMessage(
-												field().state.meta.errors[0],
-											)}
-										/>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="jobs.enableAutoTagging">
-								{(field) => (
-									<div class="flex items-center space-x-2">
-										<Switch
-											checked={field().state.value ?? false}
-											onChange={field().handleChange}
-										>
-											<SwitchControl>
-												<SwitchThumb />
-											</SwitchControl>
-											<SwitchLabel>Enable Auto Tagging</SwitchLabel>
-										</Switch>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="jobs.enableAutoCcipExtraction">
-								{(field) => (
-									<div class="flex items-center space-x-2">
-										<Switch
-											checked={field().state.value ?? false}
-											onChange={field().handleChange}
-										>
-											<SwitchControl>
-												<SwitchThumb />
-											</SwitchControl>
-											<SwitchLabel>Enable Auto CCIP Extraction</SwitchLabel>
-										</Switch>
-									</div>
-								)}
-							</form.Field>
-						</fieldset>
-					</TabsContent>
-
-					<TabsContent value="ai">
-						<fieldset class={sectionClass}>
-							<legend class="mb-4 block font-semibold text-xl">
-								AI Service
-							</legend>
-							<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-3 py-2.5">
-								<div>
-									<div class="font-medium text-sm">Connection status</div>
-									<Show
-										fallback={
-											<div class="text-[var(--v2-text-muted)] text-xs">
-												{aiHealthError() ?? "Not checked yet."}
-											</div>
-										}
-										when={aiHealth()}
+					<TabsList
+						aria-label="Settings categories"
+						class="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
+					>
+						<For each={SETTINGS_CATEGORIES}>
+							{(category) => {
+								const Icon = category.icon;
+								return (
+									<TabsTrigger
+										class={V2_CATEGORY_TABS_CLASS}
+										type="button"
+										value={category.value}
 									>
-										{(health) => (
-											<div
-												class={
-													health().status === "available"
-														? "text-[var(--v2-primary)] text-xs"
-														: "text-[var(--v2-destructive)] text-xs"
-												}
-												role="status"
-											>
-												{health().status === "available"
-													? `${health().mode === "remote" ? "Remote" : "Local"} service available`
-													: (health().message ?? "AI service unavailable")}
-												<Show when={health().latencyMs !== null}>
-													<span class="ml-2 text-[var(--v2-text-muted)]">
-														{health().latencyMs} ms
-													</span>
-												</Show>
-											</div>
-										)}
-									</Show>
-								</div>
-								<Button
-									aria-busy={isCheckingAiHealth()}
-									disabled={isCheckingAiHealth()}
-									onClick={() => void checkAiHealth()}
-									size="sm"
-									variant="outline"
-								>
-									{isCheckingAiHealth() ? "Checking..." : "Check now"}
-								</Button>
-							</div>
-							<form.Field name="ai.baseUrl">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>
-											Remote AI Server URL (oRPC)
-										</Label>
-										<Input
-											aria-describedby={`${field().name}-error`}
-											aria-invalid={field().state.meta.errors.length > 0}
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => field().handleChange(e.target.value)}
-											placeholder="http://power-machine:3000"
-											value={field().state.value ?? ""}
+										<V2CategoryLabel
+											description={category.description}
+											icon={<Icon aria-hidden="true" size={16} />}
+											label={category.label}
 										/>
-										<FormFieldMessage
-											id={`${field().name}-error`}
-											message={getFormErrorMessage(
-												field().state.meta.errors[0],
-											)}
-										/>
-										<div class="text-muted-foreground text-xs">
-											外部の solid-imager サーバーの oRPC
-											エンドポイントを指定。AI
-											処理をリモートに委託します。空欄の場合はローカルで処理します。
-										</div>
-									</div>
-								)}
-							</form.Field>
-							<form.Field name="ai.timeoutMs">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>Timeout (ms)</Label>
-										<Input
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => {
-												field().handleChange(parseNumberInput(e.target.value));
-											}}
-											type="number"
-											value={field().state.value ?? ""}
-										/>
-									</div>
-								)}
-							</form.Field>
-							<form.Field name="ai.provider">
-								{(providerField) => (
-									<form.Field name="ai.device">
-										{(deviceField) => (
-											<InferenceDeviceFields
-												device={deviceField().state.value}
-												deviceError={getFormErrorMessage(
-													deviceField().state.meta.errors[0],
-												)}
-												onDeviceChange={(device) =>
-													deviceField().handleChange(device || undefined)
-												}
-												onProviderChange={(provider) =>
-													providerField().handleChange(provider)
-												}
-												provider={providerField().state.value ?? "auto"}
-												providerError={getFormErrorMessage(
-													providerField().state.meta.errors[0],
-												)}
-												idPrefix="v2-ai-inference"
-											/>
-										)}
-									</form.Field>
-								)}
-							</form.Field>
-						</fieldset>
-					</TabsContent>
+									</TabsTrigger>
+								);
+							}}
+						</For>
+					</TabsList>
 
-					<TabsContent value="downloads">
-						<fieldset class={sectionClass}>
-							<legend class="mb-4 block font-semibold text-xl">
-								Downloads
-							</legend>
+					<div class="min-w-0 space-y-6">
+						<TabsContent value="jobs">
+							<fieldset class={sectionClass}>
+								<legend class="mb-4 block font-semibold text-xl">
+									Job Processing
+								</legend>
 
-							<form.Field name="downloads.rateLimitEnabled">
-								{(field) => (
-									<div class="flex items-center space-x-2">
-										<Switch
-											checked={field().state.value ?? false}
-											onChange={field().handleChange}
-										>
-											<SwitchControl>
-												<SwitchThumb />
-											</SwitchControl>
-											<SwitchLabel>レートリミット有効</SwitchLabel>
-										</Switch>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="downloads.requestIntervalMs">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>リクエスト間隔 (ms)</Label>
-										<Input
-											aria-describedby={`${field().name}-error`}
-											aria-invalid={field().state.meta.errors.length > 0}
-											id={field().name}
-											max="60000"
-											min="0"
-											onBlur={field().handleBlur}
-											onInput={(e) => {
-												field().handleChange(parseNumberInput(e.target.value));
-											}}
-											type="number"
-											value={field().state.value ?? ""}
-										/>
-										<FormFieldMessage
-											id={`${field().name}-error`}
-											message={getFormErrorMessage(
-												field().state.meta.errors[0],
-											)}
-										/>
-									</div>
-								)}
-							</form.Field>
-						</fieldset>
-					</TabsContent>
-
-					<TabsContent value="storage">
-						<fieldset class={sectionClass}>
-							<legend class="mb-4 block font-semibold text-xl">
-								Storage
-							</legend>
-							<form.Field name="storage.thumbnailDir">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>Thumbnail Directory</Label>
-										<Input
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => field().handleChange(e.target.value)}
-											value={field().state.value ?? ""}
-										/>
-									</div>
-								)}
-							</form.Field>
-
-							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-								<form.Field name="storage.thumbnailSize">
+								<form.Field name="jobs.concurrency">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Thumbnail Size (px)</Label>
+											<Label for={field().name}>Concurrency</Label>
 											<Input
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => {
@@ -519,15 +215,190 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 												type="number"
 												value={field().state.value ?? ""}
 											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
+											/>
+											<div class="text-muted-foreground text-xs">
+												Number of concurrent downloads/processings.
+											</div>
 										</div>
 									)}
 								</form.Field>
-								<form.Field name="storage.thumbnailQuality">
+
+								<form.Field name="jobs.aiConcurrency">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>AI Concurrency</Label>
+											<Input
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(e) => {
+													field().handleChange(
+														parseNumberInput(e.target.value),
+													);
+												}}
+												type="number"
+												value={field().state.value ?? ""}
+											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
+											/>
+											<div class="text-muted-foreground text-xs">
+												Number of concurrent AI tagging jobs.
+											</div>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="jobs.pollIntervalMs">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Poll Interval (ms)</Label>
+											<Input
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(e) => {
+													field().handleChange(
+														parseNumberInput(e.target.value),
+													);
+												}}
+												type="number"
+												value={field().state.value ?? ""}
+											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
+											/>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="jobs.enableAutoTagging">
+									{(field) => (
+										<div class="flex items-center space-x-2">
+											<Switch
+												checked={field().state.value ?? false}
+												onChange={field().handleChange}
+											>
+												<SwitchControl>
+													<SwitchThumb />
+												</SwitchControl>
+												<SwitchLabel>Enable Auto Tagging</SwitchLabel>
+											</Switch>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="jobs.enableAutoCcipExtraction">
+									{(field) => (
+										<div class="flex items-center space-x-2">
+											<Switch
+												checked={field().state.value ?? false}
+												onChange={field().handleChange}
+											>
+												<SwitchControl>
+													<SwitchThumb />
+												</SwitchControl>
+												<SwitchLabel>Enable Auto CCIP Extraction</SwitchLabel>
+											</Switch>
+										</div>
+									)}
+								</form.Field>
+							</fieldset>
+						</TabsContent>
+
+						<TabsContent value="ai">
+							<fieldset class={sectionClass}>
+								<legend class="mb-4 block font-semibold text-xl">
+									AI Service
+								</legend>
+								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-3 py-2.5">
+									<div>
+										<div class="font-medium text-sm">Connection status</div>
+										<Show
+											fallback={
+												<div class="text-[var(--v2-text-muted)] text-xs">
+													{aiHealthError() ?? "Not checked yet."}
+												</div>
+											}
+											when={aiHealth()}
+										>
+											{(health) => (
+												<div
+													class={
+														health().status === "available"
+															? "text-[var(--v2-primary)] text-xs"
+															: "text-[var(--v2-destructive)] text-xs"
+													}
+													role="status"
+												>
+													{health().status === "available"
+														? `${health().mode === "remote" ? "Remote" : "Local"} service available`
+														: (health().message ?? "AI service unavailable")}
+													<Show when={health().latencyMs !== null}>
+														<span class="ml-2 text-[var(--v2-text-muted)]">
+															{health().latencyMs} ms
+														</span>
+													</Show>
+												</div>
+											)}
+										</Show>
+									</div>
+									<Button
+										aria-busy={isCheckingAiHealth()}
+										disabled={isCheckingAiHealth()}
+										onClick={() => void checkAiHealth()}
+										size="sm"
+										variant="outline"
+									>
+										{isCheckingAiHealth() ? "Checking..." : "Check now"}
+									</Button>
+								</div>
+								<form.Field name="ai.baseUrl">
 									{(field) => (
 										<div class="space-y-2">
 											<Label for={field().name}>
-												Thumbnail Quality (1-100)
+												Remote AI Server URL (oRPC)
 											</Label>
+											<Input
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(e) => field().handleChange(e.target.value)}
+												placeholder="http://power-machine:3000"
+												value={field().state.value ?? ""}
+											/>
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
+											/>
+											<div class="text-muted-foreground text-xs">
+												外部の solid-imager サーバーの oRPC
+												エンドポイントを指定。AI
+												処理をリモートに委託します。空欄の場合はローカルで処理します。
+											</div>
+										</div>
+									)}
+								</form.Field>
+								<form.Field name="ai.timeoutMs">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Timeout (ms)</Label>
 											<Input
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -542,45 +413,231 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 										</div>
 									)}
 								</form.Field>
-							</div>
-						</fieldset>
-					</TabsContent>
+								<form.Field name="ai.provider">
+									{(providerField) => (
+										<form.Field name="ai.device">
+											{(deviceField) => (
+												<InferenceDeviceFields
+													device={deviceField().state.value}
+													deviceError={getFormErrorMessage(
+														deviceField().state.meta.errors[0],
+													)}
+													onDeviceChange={(device) =>
+														deviceField().handleChange(device || undefined)
+													}
+													onProviderChange={(provider) =>
+														providerField().handleChange(provider)
+													}
+													provider={providerField().state.value ?? "auto"}
+													providerError={getFormErrorMessage(
+														providerField().state.meta.errors[0],
+													)}
+													idPrefix="v2-ai-inference"
+												/>
+											)}
+										</form.Field>
+									)}
+								</form.Field>
+							</fieldset>
+						</TabsContent>
 
-					<TabsContent value="media">
-						<fieldset class={sectionClass}>
-							<legend class="mb-4 block font-semibold text-xl">
-								Media Extensions
-							</legend>
+						<TabsContent value="downloads">
+							<fieldset class={sectionClass}>
+								<legend class="mb-4 block font-semibold text-xl">
+									Downloads
+								</legend>
 
-							<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
-								<form.Field name="media.supportedExtensions.image">
+								<form.Field name="downloads.rateLimitEnabled">
+									{(field) => (
+										<div class="flex items-center space-x-2">
+											<Switch
+												checked={field().state.value ?? false}
+												onChange={field().handleChange}
+											>
+												<SwitchControl>
+													<SwitchThumb />
+												</SwitchControl>
+												<SwitchLabel>レートリミット有効</SwitchLabel>
+											</Switch>
+										</div>
+									)}
+								</form.Field>
+
+								<form.Field name="downloads.requestIntervalMs">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Image Extensions</Label>
-											<Textarea
+											<Label for={field().name}>リクエスト間隔 (ms)</Label>
+											<Input
+												aria-describedby={`${field().name}-error`}
+												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
+												max="60000"
+												min="0"
 												onBlur={field().handleBlur}
 												onInput={(e) => {
-													const val = e.target.value;
-													const list = val
-														.split(",")
-														.map((s) => s.trim())
-														.filter(Boolean);
-													field().handleChange(list);
+													field().handleChange(
+														parseNumberInput(e.target.value),
+													);
 												}}
-												placeholder=".jpg, .png"
-												value={field().state.value?.join(", ") ?? ""}
+												type="number"
+												value={field().state.value ?? ""}
 											/>
-											<div class="text-muted-foreground text-xs">
-												Comma separated
+											<FormFieldMessage
+												id={`${field().name}-error`}
+												message={getFormErrorMessage(
+													field().state.meta.errors[0],
+												)}
+											/>
+										</div>
+									)}
+								</form.Field>
+							</fieldset>
+						</TabsContent>
+
+						<TabsContent value="storage">
+							<fieldset class={sectionClass}>
+								<legend class="mb-4 block font-semibold text-xl">
+									Storage
+								</legend>
+								<form.Field name="storage.thumbnailDir">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Thumbnail Directory</Label>
+											<Input
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(e) => field().handleChange(e.target.value)}
+												value={field().state.value ?? ""}
+											/>
+										</div>
+									)}
+								</form.Field>
+
+								<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+									<form.Field name="storage.thumbnailSize">
+										{(field) => (
+											<div class="space-y-2">
+												<Label for={field().name}>Thumbnail Size (px)</Label>
+												<Input
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(e) => {
+														field().handleChange(
+															parseNumberInput(e.target.value),
+														);
+													}}
+													type="number"
+													value={field().state.value ?? ""}
+												/>
 											</div>
-										</div>
-									)}
-								</form.Field>
-								<form.Field name="media.supportedExtensions.video">
+										)}
+									</form.Field>
+									<form.Field name="storage.thumbnailQuality">
+										{(field) => (
+											<div class="space-y-2">
+												<Label for={field().name}>
+													Thumbnail Quality (1-100)
+												</Label>
+												<Input
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(e) => {
+														field().handleChange(
+															parseNumberInput(e.target.value),
+														);
+													}}
+													type="number"
+													value={field().state.value ?? ""}
+												/>
+											</div>
+										)}
+									</form.Field>
+								</div>
+							</fieldset>
+						</TabsContent>
+
+						<TabsContent value="media">
+							<fieldset class={sectionClass}>
+								<legend class="mb-4 block font-semibold text-xl">
+									Media Extensions
+								</legend>
+
+								<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+									<form.Field name="media.supportedExtensions.image">
+										{(field) => (
+											<div class="space-y-2">
+												<Label for={field().name}>Image Extensions</Label>
+												<Textarea
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(e) => {
+														const val = e.target.value;
+														const list = val
+															.split(",")
+															.map((s) => s.trim())
+															.filter(Boolean);
+														field().handleChange(list);
+													}}
+													placeholder=".jpg, .png"
+													value={field().state.value?.join(", ") ?? ""}
+												/>
+												<div class="text-muted-foreground text-xs">
+													Comma separated
+												</div>
+											</div>
+										)}
+									</form.Field>
+									<form.Field name="media.supportedExtensions.video">
+										{(field) => (
+											<div class="space-y-2">
+												<Label for={field().name}>Video Extensions</Label>
+												<Textarea
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(e) => {
+														const val = e.target.value;
+														const list = val
+															.split(",")
+															.map((s) => s.trim())
+															.filter(Boolean);
+														field().handleChange(list);
+													}}
+													placeholder=".mp4, .webm"
+													value={field().state.value?.join(", ") ?? ""}
+												/>
+											</div>
+										)}
+									</form.Field>
+									<form.Field name="media.supportedExtensions.audio">
+										{(field) => (
+											<div class="space-y-2">
+												<Label for={field().name}>Audio Extensions</Label>
+												<Textarea
+													id={field().name}
+													onBlur={field().handleBlur}
+													onInput={(e) => {
+														const val = e.target.value;
+														const list = val
+															.split(",")
+															.map((s) => s.trim())
+															.filter(Boolean);
+														field().handleChange(list);
+													}}
+													placeholder=".mp3, .wav"
+													value={field().state.value?.join(", ") ?? ""}
+												/>
+											</div>
+										)}
+									</form.Field>
+								</div>
+
+								<h3 class="mt-6 mb-2 font-semibold text-lg">
+									Tag Extraction (ComfyUI)
+								</h3>
+								<form.Field name="media.tagExtraction.comfyui.positiveNodeTypes">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Video Extensions</Label>
+											<Label for={field().name}>Positive Node Types</Label>
 											<Textarea
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -592,16 +649,16 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 														.filter(Boolean);
 													field().handleChange(list);
 												}}
-												placeholder=".mp4, .webm"
 												value={field().state.value?.join(", ") ?? ""}
 											/>
 										</div>
 									)}
 								</form.Field>
-								<form.Field name="media.supportedExtensions.audio">
+
+								<form.Field name="media.tagExtraction.comfyui.negativeKeywords">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Audio Extensions</Label>
+											<Label for={field().name}>Negative Keywords</Label>
 											<Textarea
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -613,161 +670,114 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 														.filter(Boolean);
 													field().handleChange(list);
 												}}
-												placeholder=".mp3, .wav"
 												value={field().state.value?.join(", ") ?? ""}
 											/>
 										</div>
 									)}
 								</form.Field>
+
+								<form.Field name="media.tagExtraction.comfyui.negativeTags">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Negative Tags</Label>
+											<Textarea
+												id={field().name}
+												onBlur={field().handleBlur}
+												onInput={(e) => {
+													const val = e.target.value;
+													const list = val
+														.split(",")
+														.map((s) => s.trim())
+														.filter(Boolean);
+													field().handleChange(list);
+												}}
+												value={field().state.value?.join(", ") ?? ""}
+											/>
+										</div>
+									)}
+								</form.Field>
+							</fieldset>
+						</TabsContent>
+
+						<TabsContent value="logging">
+							<fieldset class={sectionClass}>
+								<legend class="mb-4 block font-semibold text-xl">
+									Logging
+								</legend>
+								<form.Field name="logging.level">
+									{(field) => (
+										<div class="space-y-2">
+											<Label for={field().name}>Log Level</Label>
+											<select
+												class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+												id={field().name}
+												onInput={(e) =>
+													field().handleChange(
+														e.target.value as
+															| "trace"
+															| "debug"
+															| "info"
+															| "warn"
+															| "error"
+															| "fatal",
+													)
+												}
+												value={field().state.value ?? ""}
+											>
+												<option value="trace">Trace</option>
+												<option value="debug">Debug</option>
+												<option value="info">Info</option>
+												<option value="warn">Warn</option>
+												<option value="error">Error</option>
+												<option value="fatal">Fatal</option>
+											</select>
+										</div>
+									)}
+								</form.Field>
+							</fieldset>
+						</TabsContent>
+
+						<TabsContent value="shortcuts">
+							<ShortcutSettingsPanel
+								description="Record a new key combination, disable an action, or restore defaults. Changes are saved immediately in this browser or desktop app and are not part of the server configuration."
+								title="Keyboard shortcuts"
+							/>
+						</TabsContent>
+					</div>
+				</Tabs>
+				<form.Subscribe
+					selector={(state) => ({
+						canSubmit: state.canSubmit,
+						isDirty: state.isDirty,
+						isSubmitting: state.isSubmitting,
+					})}
+				>
+					{(state) => (
+						<Show when={state().isDirty}>
+							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-2 shadow-lg backdrop-blur">
+								<span class="px-2 text-[var(--v2-text-muted)] text-sm">
+									Unsaved changes
+								</span>
+								<Button
+									disabled={state().isSubmitting}
+									onClick={() => {
+										setSubmitError(null);
+										form.reset(toFormValues(props.data));
+									}}
+									type="button"
+									variant="outline"
+								>
+									Discard
+								</Button>
+								<Button
+									disabled={!state().canSubmit || state().isSubmitting}
+									type="submit"
+								>
+									{state().isSubmitting ? "Saving..." : "Save Changes"}
+								</Button>
 							</div>
-
-							<h3 class="mt-6 mb-2 font-semibold text-lg">
-								Tag Extraction (ComfyUI)
-							</h3>
-							<form.Field name="media.tagExtraction.comfyui.positiveNodeTypes">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>Positive Node Types</Label>
-										<Textarea
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => {
-												const val = e.target.value;
-												const list = val
-													.split(",")
-													.map((s) => s.trim())
-													.filter(Boolean);
-												field().handleChange(list);
-											}}
-											value={field().state.value?.join(", ") ?? ""}
-										/>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="media.tagExtraction.comfyui.negativeKeywords">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>Negative Keywords</Label>
-										<Textarea
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => {
-												const val = e.target.value;
-												const list = val
-													.split(",")
-													.map((s) => s.trim())
-													.filter(Boolean);
-												field().handleChange(list);
-											}}
-											value={field().state.value?.join(", ") ?? ""}
-										/>
-									</div>
-								)}
-							</form.Field>
-
-							<form.Field name="media.tagExtraction.comfyui.negativeTags">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>Negative Tags</Label>
-										<Textarea
-											id={field().name}
-											onBlur={field().handleBlur}
-											onInput={(e) => {
-												const val = e.target.value;
-												const list = val
-													.split(",")
-													.map((s) => s.trim())
-													.filter(Boolean);
-												field().handleChange(list);
-											}}
-											value={field().state.value?.join(", ") ?? ""}
-										/>
-									</div>
-								)}
-							</form.Field>
-						</fieldset>
-					</TabsContent>
-
-					<TabsContent value="logging">
-						<fieldset class={sectionClass}>
-							<legend class="mb-4 block font-semibold text-xl">
-								Logging
-							</legend>
-							<form.Field name="logging.level">
-								{(field) => (
-									<div class="space-y-2">
-										<Label for={field().name}>Log Level</Label>
-										<select
-											class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-											id={field().name}
-											onInput={(e) =>
-												field().handleChange(
-													e.target.value as
-														| "trace"
-														| "debug"
-														| "info"
-														| "warn"
-														| "error"
-														| "fatal",
-												)
-											}
-											value={field().state.value ?? ""}
-										>
-											<option value="trace">Trace</option>
-											<option value="debug">Debug</option>
-											<option value="info">Info</option>
-											<option value="warn">Warn</option>
-											<option value="error">Error</option>
-											<option value="fatal">Fatal</option>
-										</select>
-									</div>
-								)}
-							</form.Field>
-						</fieldset>
-					</TabsContent>
-
-					<TabsContent value="shortcuts">
-						<ShortcutSettingsPanel
-							description="Record a new key combination, disable an action, or restore defaults. Changes are saved immediately in this browser or desktop app and are not part of the server configuration."
-							title="Keyboard shortcuts"
-						/>
-					</TabsContent>
-				</div>
-			</Tabs>
-			<form.Subscribe
-				selector={(state) => ({
-					canSubmit: state.canSubmit,
-					isDirty: state.isDirty,
-					isSubmitting: state.isSubmitting,
-				})}
-			>
-				{(state) => (
-					<Show when={state().isDirty}>
-						<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-2 shadow-lg backdrop-blur">
-							<span class="px-2 text-[var(--v2-text-muted)] text-sm">
-								Unsaved changes
-							</span>
-							<Button
-								disabled={state().isSubmitting}
-								onClick={() => {
-									setSubmitError(null);
-									form.reset(toFormValues(props.data));
-								}}
-								type="button"
-								variant="outline"
-							>
-								Discard
-							</Button>
-							<Button
-								disabled={!state().canSubmit || state().isSubmitting}
-								type="submit"
-							>
-								{state().isSubmitting ? "Saving..." : "Save Changes"}
-							</Button>
-						</div>
-					</Show>
-				)}
+						</Show>
+					)}
 				</form.Subscribe>
 			</form>
 			<AlertDialog

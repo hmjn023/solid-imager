@@ -5,5 +5,5 @@ export const Route = createFileRoute("/v2/")({
 });
 
 function V2Index() {
-	return <Navigate replace to="/v2/search" />;
+	return <Navigate replace to="/search" />;
 }

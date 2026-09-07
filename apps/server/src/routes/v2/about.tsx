@@ -12,7 +12,7 @@ export const Route = createFileRoute("/v2/about")({
 	component: V2AboutRoute,
 });
 
-function V2AboutRoute() {
+export function V2AboutRoute() {
 	return (
 		<section class="h-full min-h-0 overflow-y-auto overscroll-contain bg-[var(--v2-canvas)] [scrollbar-gutter:stable]">
 			<header class="border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-4 py-4 sm:px-6">
@@ -29,7 +29,7 @@ function V2AboutRoute() {
 						class="border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-text-secondary)]"
 						variant="outline"
 					>
-						V2 preview
+						Current workspace
 					</Badge>
 				</div>
 			</header>
@@ -46,7 +46,7 @@ function V2AboutRoute() {
 							AI補助処理やインポートは、閲覧作業を妨げないバックグラウンドジョブとして実行されます。
 						</p>
 						<p class="mt-3">
-							このV2画面は新しい情報設計への移行検証中です。既存APIで提供できない操作は、実装されるまで明示的に無効化します。
+							検索、ソース管理、ジョブ、設定、AI補助処理を同じワークスペースから操作できます。各画面は実データとリアルタイム更新に接続されています。
 						</p>
 					</CardContent>
 				</Card>

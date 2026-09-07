@@ -1,4 +1,4 @@
-import { Show } from "solid-js";
+import { createSignal, onMount, Show } from "solid-js";
 import type { PendingDownloadsIndicatorProps } from "./pending-downloads-indicator.types";
 import { PendingDownloadsIndicatorCore } from "./pending-downloads-indicator-core";
 import { cn } from "./utils/cn";
@@ -12,6 +12,9 @@ export type V2PendingDownloadsIndicatorProps =
 export function V2PendingDownloadsIndicator(
 	props: V2PendingDownloadsIndicatorProps,
 ) {
+	const [isMounted, setIsMounted] = createSignal(false);
+	onMount(() => setIsMounted(true));
+
 	return (
 		<PendingDownloadsIndicatorCore
 			{...props}
@@ -58,13 +61,15 @@ export function V2PendingDownloadsIndicator(
 				</button>
 			)}
 			renderModal={(modalProps) => (
-				<V2ImportReviewModal
-					{...modalProps}
-					cancelPending={props.cancelPending}
-					listPending={props.listPending}
-					listSources={props.listSources}
-					processPending={props.processPending}
-				/>
+				<Show when={isMounted()}>
+					<V2ImportReviewModal
+						{...modalProps}
+						cancelPending={props.cancelPending}
+						listPending={props.listPending}
+						listSources={props.listSources}
+						processPending={props.processPending}
+					/>
+				</Show>
 			)}
 		/>
 	);

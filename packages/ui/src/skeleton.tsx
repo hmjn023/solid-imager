@@ -145,8 +145,7 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 	);
 }
 
-/** Legacy compatibility export. New screens should import an explicit surface. */
-export { LegacyMediaDetailSkeleton as MediaDetailSkeleton } from "./legacy-media-detail-skeleton";
+export { V2MediaDetailSkeleton as MediaDetailSkeleton } from "./v2-media-detail-skeleton";
 
 export type ConfigSkeletonProps = {
 	class?: string;

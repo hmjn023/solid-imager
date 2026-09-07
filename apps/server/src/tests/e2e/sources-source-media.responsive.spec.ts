@@ -1,7 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
-	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 	getFixtureMediaPath,
 	sourcePath,
@@ -251,10 +250,7 @@ test("source media exposes mobile filters and touch selection", async ({
 	await expectNoHorizontalOverflow(page);
 });
 
-for (const route of [
-	{ name: "v1", path: sourcePath() },
-	{ name: "v2", path: `/v2/sources/${E2E_SOURCE_ID}` },
-]) {
+for (const route of [{ name: "current", path: sourcePath() }]) {
 	test(`${route.name} media grid opens its context menu`, async ({ page }) => {
 		await page.goto(route.path);
 		await waitForAppHydration(page);

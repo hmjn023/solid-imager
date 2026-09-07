@@ -18,7 +18,7 @@ import { V2SourceFormModal } from "@solid-imager/ui/v2-source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
 import type { JSX, ParentProps } from "solid-js";
-import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
+import { createEffect, createSignal, onCleanup, onMount, Show } from "solid-js";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { mediaSourcesQueryOptions } from "~/infrastructure/api-clients/queries";
 import {
@@ -40,7 +40,7 @@ const SIDEBAR_PREFERENCE_KEY = "solid-imager:v2-sidebar-expanded";
 export function V2AppShell(props: V2AppShellProps) {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
-	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const [mediaSources, setMediaSources] = createSignal<SafeMediaSource[]>([]);
 	const sourceEventTransport = createServerTransport(() => "*", {
 		onResumeFromIdle: () => {
 			void queryClient.refetchQueries({
@@ -77,7 +77,7 @@ export function V2AppShell(props: V2AppShellProps) {
 			if (returnFocus.isConnected) returnFocus.focus({ preventScroll: true });
 		});
 	};
-	const sourceData = () => mediaSources.data ?? [];
+	const sourceData = mediaSources;
 	const sourcePage = useSourcesPage({
 		actions: {
 			createMediaSource: (data: unknown) =>
@@ -103,28 +103,28 @@ export function V2AppShell(props: V2AppShellProps) {
 		onOpenCommandPalette: () => updateCommandPaletteOpen(true),
 		onSyncSource: (source) => void sourcePage.handleSyncSource(source),
 	});
-	createAppShortcut(
-		"commandPalette",
-		() => updateCommandPaletteOpen(!commandPaletteOpen()),
-		{ ignoreInputs: false },
-	);
-	createAppShortcut("shortcutHelp", () => setShortcutHelpOpen(true));
-	createAppShortcut("toggleSidebar", () =>
-		setSidebarExpanded((expanded) => !expanded),
-	);
-	createAppShortcut("goLibrary", () => {
-		void navigate({ to: "/v2/search" });
-	});
-	createAppShortcut("goManager", () => {
-		void navigate({ to: "/v2/manager" });
-	});
-	createAppShortcut("goJobs", () => {
-		void navigate({ to: "/v2/jobs" });
-	});
-	createAppShortcut("goSettings", () => {
-		void navigate({ to: "/v2/config" });
-	});
 	onMount(() => {
+		createAppShortcut(
+			"commandPalette",
+			() => updateCommandPaletteOpen(!commandPaletteOpen()),
+			{ ignoreInputs: false },
+		);
+		createAppShortcut("shortcutHelp", () => setShortcutHelpOpen(true));
+		createAppShortcut("toggleSidebar", () =>
+			setSidebarExpanded((expanded) => !expanded),
+		);
+		createAppShortcut("goLibrary", () => {
+			void navigate({ to: "/search" });
+		});
+		createAppShortcut("goManager", () => {
+			void navigate({ to: "/manager" });
+		});
+		createAppShortcut("goJobs", () => {
+			void navigate({ to: "/jobs" });
+		});
+		createAppShortcut("goSettings", () => {
+			void navigate({ to: "/config" });
+		});
 		const storedPreference = localStorage.getItem(SIDEBAR_PREFERENCE_KEY);
 		if (storedPreference === "false") setSidebarExpanded(false);
 		if (storedPreference === "true") setSidebarExpanded(true);
@@ -177,45 +177,63 @@ export function V2AppShell(props: V2AppShellProps) {
 				</main>
 			</div>
 
-			<Dialog onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
-				<DialogContent class="v2-theme p-0" placement="left">
-					<DialogHeader class="sr-only">
-						<DialogTitle>ナビゲーション</DialogTitle>
-						<DialogDescription>
-							画面とメディアソースを選択します。
-						</DialogDescription>
-					</DialogHeader>
-					<V2Sidebar
-						{...sidebarProps()}
-						expanded
-						onCollapseToggle={undefined}
-						onNavigate={() => setMobileMenuOpen(false)}
-					/>
-				</DialogContent>
-			</Dialog>
+			<Show when={sidebarPreferenceReady()}>
+				<V2MediaSourcesLoader onData={setMediaSources} />
+				<Dialog onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
+					<DialogContent class="v2-theme p-0" placement="left">
+						<DialogHeader class="sr-only">
+							<DialogTitle>ナビゲーション</DialogTitle>
+							<DialogDescription>
+								画面とメディアソースを選択します。
+							</DialogDescription>
+						</DialogHeader>
+						<V2Sidebar
+							{...sidebarProps()}
+							expanded
+							onCollapseToggle={undefined}
+							onNavigate={() => setMobileMenuOpen(false)}
+						/>
+					</DialogContent>
+				</Dialog>
 
-			<V2SourceFormModal
-				editingSource={
-					sourcePage.editingSource() as MediaSourceInfo | SafeMediaSource | null
-				}
-				isOpen={sourcePage.showFormModal()}
-				onClose={() => sourcePage.setShowFormModal(false)}
-				onSubmit={sourcePage.handleFormSubmit}
-			/>
-			<SourceDeleteModal
-				isOpen={sourcePage.showDeleteModal()}
-				onClose={() => sourcePage.setShowDeleteModal(false)}
-				onConfirm={sourcePage.handleDeleteConfirm}
-				sourceToDelete={sourcePage.deletingSource()}
-			/>
-			<V2CommandCenter
-				helpOpen={shortcutHelpOpen()}
-				onAddSource={sourcePage.handleAddSource}
-				onHelpOpenChange={setShortcutHelpOpen}
-				onPaletteOpenChange={updateCommandPaletteOpen}
-				onToggleSidebar={() => setSidebarExpanded((expanded) => !expanded)}
-				paletteOpen={commandPaletteOpen()}
-			/>
+				<V2SourceFormModal
+					editingSource={
+						sourcePage.editingSource() as
+							| MediaSourceInfo
+							| SafeMediaSource
+							| null
+					}
+					isOpen={sourcePage.showFormModal()}
+					onClose={() => sourcePage.setShowFormModal(false)}
+					onSubmit={sourcePage.handleFormSubmit}
+				/>
+				<SourceDeleteModal
+					isOpen={sourcePage.showDeleteModal()}
+					onClose={() => sourcePage.setShowDeleteModal(false)}
+					onConfirm={sourcePage.handleDeleteConfirm}
+					sourceToDelete={sourcePage.deletingSource()}
+				/>
+				<V2CommandCenter
+					helpOpen={shortcutHelpOpen()}
+					onAddSource={sourcePage.handleAddSource}
+					onHelpOpenChange={setShortcutHelpOpen}
+					onPaletteOpenChange={updateCommandPaletteOpen}
+					onToggleSidebar={() => setSidebarExpanded((expanded) => !expanded)}
+					paletteOpen={commandPaletteOpen()}
+				/>
+			</Show>
 		</div>
 	);
+}
+
+function V2MediaSourcesLoader(props: {
+	onData: (sources: SafeMediaSource[]) => void;
+}) {
+	const mediaSources = createQuery(mediaSourcesQueryOptions);
+
+	createEffect(() => {
+		props.onData(mediaSources.data ?? []);
+	});
+
+	return null;
 }

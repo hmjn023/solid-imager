@@ -5,15 +5,23 @@ import {
 } from "@solid-imager/ui/v2-media-grid-item";
 import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
-import type { ServerMediaGridItemProps } from "./legacy-media-grid-item";
 import { ThumbnailImage } from "./thumbnail-image";
 
-export type V2ServerMediaGridItemProps = Omit<
-	ServerMediaGridItemProps,
-	"imageLoadPolicy"
-> & {
+export type V2ServerMediaGridItemProps = {
+	linkPrefix?: string;
+	media: import("@solid-imager/core/domain/media/schemas").Media;
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
+	isBulkSelectMode?: boolean;
+	isPreviewSelected?: boolean;
+	isSelected?: boolean;
+	onContextMenu?: (event: MouseEvent) => void;
 	onOpenMediaDetail?: () => void;
+	onPrepareMediaDetail?: () => void;
+	onPreviewSelect?: () => void;
+	onSelectGesture?: (event: MouseEvent | KeyboardEvent) => void;
+	onToggleSelect?: () => void;
+	priority?: boolean;
+	sourceRootPath?: string;
 };
 
 export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
@@ -23,7 +31,9 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 		!event.ctrlKey &&
 		!event.shiftKey &&
 		!event.altKey;
-	const hasFinePointer = () => window.matchMedia("(pointer: fine)").matches;
+	const hasFinePointer = () =>
+		window.matchMedia("(pointer: fine)").matches ||
+		window.matchMedia("(min-width: 1536px)").matches;
 	const isModifiedSelectionClick = (event: MouseEvent) =>
 		event.button === 0 &&
 		!event.altKey &&
@@ -93,7 +103,7 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 				mediaId: props.media.id,
 				mediaSourceId: props.media.mediaSourceId,
 			}}
-			to="/v2/sources/$mediaSourceId/$mediaId"
+			to="/sources/$mediaSourceId/$mediaId"
 		>
 			{linkProps.children}
 		</Link>

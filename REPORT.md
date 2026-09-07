@@ -1,6 +1,6 @@
 # V2 UI migration report
 
-`/v2/*` は `DESIGN.md` と Design Lab を基準にした移行用フロントエンドです。検索、ソース操作、メディア管理、AI操作、設定、インポート、データ転送は実データへ接続し、未対応機能は推測データを表示せず無効化しています。
+V2 UIを通常のアプリケーションシェルとして採用しました。検索、ソース操作、メディア管理、AI操作、設定、インポート、データ転送は実データへ接続し、未対応機能は推測データを表示せず無効化しています。旧 `/v2/*` URLは互換ルートとして同じV2画面へ接続し、Tauriでは通常URLへリダイレクトします。
 
 ## Current implementation status
 
@@ -12,8 +12,8 @@
 | Managerの利用件数 | 実装済み | `entity-media-counts.ts` と Project / IP / Character router |
 | Export / Restore | 実装済み | `apps/server/src/routes/v2/manager.tsx` から転送Jobをキューへ登録し、Jobs画面で追跡・ダウンロード |
 | AI接続状態・latency | 実装済み | `ai.health` contract/router と V2 Config画面 |
-| リロード後の前後メディア移動 | 実装済み | `apps/server/src/routes/v2/media-context.ts` と sessionStorage |
+| リロード後の前後メディア移動 | 実装済み | `apps/server/src/components/v2/v2-media-context.ts` と sessionStorage |
 | Collectionのgrid / list表示 | 実装済み | `packages/ui/src/source-media-grid.tsx` と V2 Search / Source画面 |
-| Tauriの `/v2/*` route adapter | 実装済み | `apps/tauri/src/routes/v2/` と `apps/tauri/src/routes/jobs.tsx`。既存Tauri画面へ検索、Manager、Jobs、Config、About、Sourcesを接続 |
+| Tauriの旧 `/v2/*` route adapter | 実装済み | `apps/tauri/src/routes/v2/` と `apps/tauri/src/routes/jobs.tsx`。通常URLへリダイレクトし、検索、Manager、Jobs、Config、About、Sources、メディア詳細をV2シェルへ接続 |
 
 未対応の画面やAPIを追加する場合は、loading / error / offline / retryとリアルタイム更新まで同じ画面内で接続します。

@@ -178,7 +178,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 						>
 							<SourceMediaGrid
 								contextMenuMediaId={page().contextMenuMediaId}
-								detailBasePath="/v2/sources"
+								detailBasePath="/sources"
 								enableVirtualization={props.enableVirtualization}
 								hasNextPage={page().mediaQuery.hasNextPage}
 								isBulkSelectMode={props.isBulkSelectMode}

@@ -12,12 +12,12 @@ import { type Accessor, Show } from "solid-js";
 import { V2MediaActions } from "~/components/media/v2-media-actions";
 import { V2MediaSidebar } from "~/components/media/v2-media-sidebar";
 import { V2MediaViewer } from "~/components/media/v2-media-viewer";
+import { findV2MediaNeighbors } from "~/components/v2/v2-media-context";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import {
 	mediaDetailsQueryOptions,
 	mediaSourcesQueryOptions,
 } from "~/infrastructure/api-clients/queries";
-import { findV2MediaNeighbors } from "~/routes/v2/media-context";
 
 interface MediaRouteParams {
 	mediaId: string;
@@ -43,7 +43,7 @@ function MediaRoute() {
 			{(key) => {
 				const [mediaSourceId, mediaId] = key.split(":");
 				return (
-					<MediaContent
+					<V2MediaDetailContent
 						mediaId={() => mediaId}
 						mediaSourceId={() => mediaSourceId}
 					/>
@@ -69,23 +69,23 @@ function MediaDetailHeader(props: {
 				mediaSourceId: neighbor.mediaSourceId,
 			},
 			replace: true,
-			to: "/v2/sources/$mediaSourceId/$mediaId",
+			to: "/sources/$mediaSourceId/$mediaId",
 		});
 	};
 	const returnToCollection = () => {
 		const returnPath = sessionStorage.getItem("v2:media-return");
 		const isValidReturnPath =
 			typeof returnPath === "string" &&
-			(returnPath === "/v2/search" ||
-				returnPath.startsWith("/v2/search?") ||
-				returnPath.startsWith("/v2/sources/"));
+			(returnPath === "/search" ||
+				returnPath.startsWith("/search?") ||
+				returnPath.startsWith("/sources/"));
 		if (isValidReturnPath) {
 			sessionStorage.removeItem("v2:media-return");
 			window.history.back();
 			return;
 		}
 		void navigate({
-			to: "/v2/sources/$mediaSourceId",
+			to: "/sources/$mediaSourceId",
 			params: { mediaSourceId: props.media.mediaSourceId },
 		});
 	};
@@ -150,7 +150,7 @@ function MediaDetailHeader(props: {
 	);
 }
 
-function MediaContent(props: {
+export function V2MediaDetailContent(props: {
 	mediaId: Accessor<string>;
 	mediaSourceId: Accessor<string>;
 }) {

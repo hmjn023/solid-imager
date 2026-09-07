@@ -1,14 +1,13 @@
-import { Button } from "@solid-imager/ui/button";
 import { persistSearchScrollPosition } from "@solid-imager/ui/hooks/use-current-search-persistence";
 import { useSearchHistoryPersistence } from "@solid-imager/ui/hooks/use-search-history-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
+import { V2SearchScreen } from "@solid-imager/ui/screens/v2-search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
-import { createFileRoute } from "@tanstack/solid-router";
-import { MediaGridItem } from "~/components/media/media-grid-item";
+import { createFileRoute, useNavigate } from "@tanstack/solid-router";
+import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
@@ -49,6 +48,7 @@ const PresetClient = createPresetClient(rawPresetClient);
 const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
 function SearchRoute() {
+	const navigate = useNavigate();
 	const searchHistory = useSearchHistoryPersistence("all", {
 		client: SearchHistoryClient,
 	});
@@ -97,45 +97,40 @@ function SearchRoute() {
 	});
 
 	return (
-		<SearchScreen
+		<V2SearchScreen
 			enableVirtualization
 			filterData={page.filterData}
-			onFindSimilar={(media) => activateSimilaritySearch(media.id)}
+			onFindSimilar={(media) =>
+				activateSimilaritySearch(media.id, { surface: "v2" })
+			}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
-				<MediaGridItem
+				<V2MediaGridItem
 					imageLoadPolicy={options?.imageLoadPolicy}
+					isBulkSelectMode={options?.isBulkSelectMode}
+					isPreviewSelected={options?.isPreviewSelected}
+					isSelected={options?.isSelected}
 					media={media}
+					onOpenMediaDetail={options?.onOpenMediaDetail}
+					onPrepareMediaDetail={options?.onPrepareMediaDetail}
+					onPreviewSelect={options?.onPreviewSelect}
+					onSelectGesture={options?.onSelectGesture}
+					onToggleSelect={options?.onToggleSelect}
 					priority={options?.priority}
 					sourceRootPath={page.getSourceRootPath(media.mediaSourceId)}
 				/>
 			)}
-			renderNavActions={({ openMobileFilters }) => (
-				<Button
-					class="size-11 border-input text-foreground hover:bg-accent md:hidden"
-					onClick={openMobileFilters}
-					size="icon"
-					variant="outline"
-				>
-					<svg
-						class="lucide lucide-filter"
-						fill="none"
-						height="24"
-						stroke="currentColor"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-						stroke-width="2"
-						viewBox="0 0 24 24"
-						width="24"
-						xmlns="http://www.w3.org/2000/svg"
-					>
-						<title>Filter results</title>
-						<polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-					</svg>
-				</Button>
-			)}
+			onOpenMediaDetail={(media) =>
+				void navigate({
+					params: {
+						mediaId: media.id,
+						mediaSourceId: media.mediaSourceId,
+					},
+					to: "/sources/$mediaSourceId/$mediaId",
+				})
+			}
 			selectedSource={searchState.selectedSource}
 			sources={page.sources()}
 		/>

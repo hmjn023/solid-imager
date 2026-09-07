@@ -10,7 +10,7 @@ export const Route = createFileRoute("/v2/config")({
 	component: V2ConfigPage,
 });
 
-function V2ConfigPage() {
+export function V2ConfigPage() {
 	const configQuery = createQuery(configQueryOptions);
 	const queryClient = useQueryClient();
 

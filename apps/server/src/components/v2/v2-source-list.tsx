@@ -18,7 +18,7 @@ import {
 	RefreshCw,
 } from "@solid-imager/ui/v2/icons";
 import { Link, useLocation } from "@tanstack/solid-router";
-import { createSignal, For, Show } from "solid-js";
+import { createSignal, For, onMount, Show } from "solid-js";
 
 type V2SourceListProps = {
 	expanded: boolean;
@@ -60,6 +60,9 @@ function V2SourceActions(props: {
 	isSyncing: boolean;
 	sourceName: string;
 }) {
+	const [isMounted, setIsMounted] = createSignal(false);
+	onMount(() => setIsMounted(true));
+
 	return (
 		<Popover placement="right-start">
 			<PopoverTrigger
@@ -68,34 +71,36 @@ function V2SourceActions(props: {
 			>
 				<Ellipsis aria-hidden="true" size={14} />
 			</PopoverTrigger>
-			<PopoverContent class="w-44 space-y-1 p-1.5">
-				<Button
-					class="h-11 w-full justify-start px-2 md:h-8"
-					disabled={props.isSyncing}
-					onClick={props.onSync}
-					size="sm"
-					variant="ghost"
-				>
-					<RefreshCw aria-hidden="true" size={14} />
-					{props.isSyncing ? "Syncing..." : "Sync"}
-				</Button>
-				<Button
-					class="h-11 w-full justify-start px-2 md:h-8"
-					onClick={props.onEdit}
-					size="sm"
-					variant="ghost"
-				>
-					Edit
-				</Button>
-				<Button
-					class="h-11 w-full justify-start px-2 text-destructive md:h-8"
-					onClick={props.onDelete}
-					size="sm"
-					variant="ghost"
-				>
-					Delete
-				</Button>
-			</PopoverContent>
+			<Show when={isMounted()}>
+				<PopoverContent class="w-44 space-y-1 p-1.5">
+					<Button
+						class="h-11 w-full justify-start px-2 md:h-8"
+						disabled={props.isSyncing}
+						onClick={props.onSync}
+						size="sm"
+						variant="ghost"
+					>
+						<RefreshCw aria-hidden="true" size={14} />
+						{props.isSyncing ? "Syncing..." : "Sync"}
+					</Button>
+					<Button
+						class="h-11 w-full justify-start px-2 md:h-8"
+						onClick={props.onEdit}
+						size="sm"
+						variant="ghost"
+					>
+						Edit
+					</Button>
+					<Button
+						class="h-11 w-full justify-start px-2 text-destructive md:h-8"
+						onClick={props.onDelete}
+						size="sm"
+						variant="ghost"
+					>
+						Delete
+					</Button>
+				</PopoverContent>
+			</Show>
 		</Popover>
 	);
 }
@@ -104,13 +109,13 @@ export function V2SourceList(props: V2SourceListProps) {
 	const location = useLocation();
 	const [sourcesOpen, setSourcesOpen] = createSignal(true);
 	const currentSourceId = () => {
-		const match = /^\/v2\/sources\/([^/]+)/.exec(location().pathname);
+		const match = /^\/sources\/([^/]+)/.exec(location().pathname);
 		return match?.[1] ? decodeURIComponent(match[1]) : undefined;
 	};
 
 	return (
 		<CollapsibleRoot.Root
-			class="mt-1 min-h-0"
+			class="mt-1 min-h-0 shrink-0"
 			onOpenChange={setSourcesOpen}
 			open={sourcesOpen()}
 		>
@@ -158,7 +163,7 @@ export function V2SourceList(props: V2SourceListProps) {
 											class="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
 											onClick={props.onNavigate}
 											params={{ mediaSourceId: source.id ?? "" }}
-											to="/v2/sources/$mediaSourceId"
+											to="/sources/$mediaSourceId"
 										>
 											<span class="block truncate font-medium text-xs text-[var(--v2-text)]">
 												{source.name}

@@ -35,7 +35,7 @@ export function V2Sidebar(props: V2SidebarProps) {
 					aria-label="Solid Imager Library"
 					class="flex min-w-0 flex-1 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
 					onClick={props.onNavigate}
-					to="/v2/search"
+					to="/search"
 				>
 					<span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--v2-primary)] text-white">
 						<Image aria-hidden="true" size={17} />
@@ -149,7 +149,7 @@ export function V2Sidebar(props: V2SidebarProps) {
 					icon={CircleHelp}
 					label="About"
 					onClick={props.onNavigate}
-					to="/v2/about"
+					to="/about"
 				/>
 				<a
 					aria-label="API Docs"

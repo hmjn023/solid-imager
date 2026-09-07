@@ -1,4 +1,3 @@
-import { AppShell } from "@solid-imager/ui/layouts/app-shell";
 import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
 import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts/index";
 import { Toaster } from "@solid-imager/ui/toast";
@@ -8,13 +7,11 @@ import {
 	HeadContent,
 	Outlet,
 	Scripts,
-	useLocation,
 } from "@tanstack/solid-router";
-import { createSignal, onMount, Show } from "solid-js";
+import { createSignal, onMount } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
-import { ApiActivityIndicator } from "~/components/api-activity-indicator";
-import Nav from "~/components/nav";
+import { V2AppShell } from "~/components/v2/v2-app-shell";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -41,11 +38,8 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 
 function RootComponent() {
 	const [isHydrated, setIsHydrated] = createSignal(false);
-	const location = useLocation();
-	const isV2Route = () =>
-		location().pathname === "/v2" || location().pathname.startsWith("/v2/");
 	onMount(() => {
-		setIsHydrated(true);
+		queueMicrotask(() => setIsHydrated(true));
 	});
 
 	return (
@@ -54,26 +48,32 @@ function RootComponent() {
 				<HydrationScript />
 				<HeadContent />
 			</head>
-			<body classList={{ "v2-theme": isV2Route() }}>
+			<body class="v2-theme">
 				<ShortcutPreferencesProvider>
 					<Toaster />
-					<Show
-						fallback={<Outlet />}
-						when={
-							location().pathname !== "/design-lab" &&
-							!location().pathname.startsWith("/design-lab/") &&
-							!isV2Route()
-						}
-					>
-						<AppShell
-							nav={<Nav />}
-							statusIndicator={<RouteTransitionIndicator />}
-						>
-							<ApiActivityIndicator />
-							<Outlet />
-						</AppShell>
-					</Show>
+					<V2AppShell statusIndicator={<RouteTransitionIndicator />}>
+						<Outlet />
+					</V2AppShell>
 				</ShortcutPreferencesProvider>
+				<script>
+					{`if (typeof window !== "undefined") {
+						let currentTsr;
+						Object.defineProperty(window, "$_TSR", {
+							configurable: true,
+							get: () => currentTsr,
+							set: (value) => {
+								if (value && typeof value.e === "function") {
+									const endStream = value.e.bind(value);
+									value.e = () => {
+										value.streamEnded = true;
+										if (value.hydrated) endStream();
+									};
+								}
+								currentTsr = value;
+							},
+						});
+					}`}
+				</script>
 				<Scripts />
 			</body>
 		</html>

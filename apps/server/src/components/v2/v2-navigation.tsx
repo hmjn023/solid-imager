@@ -13,20 +13,20 @@ export const V2_NAVIGATION_ITEMS = [
 		icon: Library,
 		label: "Library",
 		shortcutId: "goLibrary",
-		to: "/v2/search",
+		to: "/search",
 	},
 	{
 		icon: BriefcaseBusiness,
 		label: "Manager",
 		shortcutId: "goManager",
-		to: "/v2/manager",
+		to: "/manager",
 	},
-	{ icon: Clock3, label: "Jobs", shortcutId: "goJobs", to: "/v2/jobs" },
+	{ icon: Clock3, label: "Jobs", shortcutId: "goJobs", to: "/jobs" },
 	{
 		icon: Settings,
 		label: "Settings",
 		shortcutId: "goSettings",
-		to: "/v2/config",
+		to: "/config",
 	},
 ] as const;
 
@@ -41,8 +41,7 @@ export function V2NavigationItem(props: {
 	const location = useLocation();
 	const active = () =>
 		location().pathname === props.to ||
-		(props.to !== "/v2/search" &&
-			location().pathname.startsWith(`${props.to}/`));
+		(props.to !== "/search" && location().pathname.startsWith(`${props.to}/`));
 	const Icon = props.icon;
 
 	return (

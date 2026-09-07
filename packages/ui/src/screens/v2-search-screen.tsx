@@ -165,7 +165,7 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 							when={canRenderContent()}
 						>
 							<SourceMediaGrid
-								detailBasePath="/v2/sources"
+								detailBasePath="/sources"
 								enableVirtualization={props.enableVirtualization}
 								errorTitle="検索結果を取得できませんでした"
 								hasNextPage={page().searchResultQuery.hasNextPage}

@@ -3,7 +3,7 @@ import type {
 	ImportEventConnectedHandler,
 	ImportEventHandler,
 	PendingDownloadsIndicatorProps,
-} from "@solid-imager/ui/pending-downloads-indicator";
+} from "@solid-imager/ui/pending-downloads-indicator.types";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 

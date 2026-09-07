@@ -101,7 +101,7 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 		throw new Error("The visible media item has no file name");
 
 	await page.locator(`[data-media-id="${mediaId}"]`).click();
-	await expect(page).toHaveURL(/\/v2\/sources\/[^/]+\/[^/]+$/);
+	await expect(page).toHaveURL(/\/sources\/[^/]+\/[^/]+$/);
 	await expect(
 		page.getByRole("heading", { name: mediaFileName, exact: true }),
 	).toBeVisible();
@@ -247,14 +247,14 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 
 const restorationCases = [
 	{
-		name: "v2 search",
-		entryPath: "/v2/search",
+		name: "search",
+		entryPath: "/search",
 		heading: "すべてのメディア",
 		scrollerSelector: '[data-media-scroll="v2-search"]',
 	},
 	{
-		name: "v2 source media",
-		entryPath: `/v2/sources/${E2E_SOURCE_ID}`,
+		name: "source media",
+		entryPath: `/sources/${E2E_SOURCE_ID}`,
 		heading: E2E_SOURCE_NAME,
 		scrollerSelector: `[data-media-scroll="${E2E_SOURCE_ID}"]`,
 	},

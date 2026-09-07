@@ -152,6 +152,59 @@ export function V2MediaViewer(props: MediaViewerProps) {
 			// Fullscreen can be denied by browser policy; the viewer remains usable.
 		}
 	};
+	const renderZoomControls = (showFullscreen: boolean) => (
+		<div
+			aria-label="Image zoom controls"
+			class="flex items-center gap-0.5 rounded-lg border border-[var(--v2-border)] bg-[var(--v2-surface-subtle)]/95 p-1 shadow-lg backdrop-blur"
+			data-media-viewer-controls
+			role="toolbar"
+		>
+			<Button
+				aria-label="Zoom out"
+				class="size-8 p-0"
+				disabled={zoom() <= 1}
+				onClick={() => setZoomAroundPoint(zoom() / 1.25)}
+				size="icon"
+				variant="ghost"
+			>
+				<Minus aria-hidden="true" size={15} />
+			</Button>
+			<button
+				aria-label="Reset zoom to fit"
+				class="flex h-8 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-[11px] tabular-nums hover:bg-[var(--v2-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+				onClick={resetView}
+				type="button"
+			>
+				<RotateCcw aria-hidden="true" size={12} />
+				{zoomPercent()}%
+			</button>
+			<Button
+				aria-label="Zoom in"
+				class="size-8 p-0"
+				disabled={zoom() >= 8}
+				onClick={() => setZoomAroundPoint(zoom() * 1.25)}
+				size="icon"
+				variant="ghost"
+			>
+				<Plus aria-hidden="true" size={15} />
+			</Button>
+			<Show when={showFullscreen}>
+				<span
+					aria-hidden="true"
+					class="mx-0.5 h-5 w-px bg-[var(--v2-border)]"
+				/>
+				<Button
+					aria-label={isFullscreen() ? "Exit fullscreen" : "Enter fullscreen"}
+					class="size-8 p-0"
+					onClick={() => void toggleFullscreen()}
+					size="icon"
+					variant="ghost"
+				>
+					<Maximize2 aria-hidden="true" size={15} />
+				</Button>
+			</Show>
+		</div>
+	);
 
 	createEffect(() => {
 		const source = props.source;
@@ -260,6 +313,10 @@ export function V2MediaViewer(props: MediaViewerProps) {
 										fetchpriority="high"
 										height={props.height}
 										src={url()}
+										style={{
+											transform: `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
+											"transition-duration": isPanning() ? "0ms" : "150ms",
+										}}
 										width={props.width}
 									/>
 								</button>
@@ -267,6 +324,13 @@ export function V2MediaViewer(props: MediaViewerProps) {
 						</Show>
 					</Match>
 				</Switch>
+				<Show
+					when={props.source.type === "image" && mediaUrl() && !isViewerOpen()}
+				>
+					<div class="absolute right-3 bottom-3">
+						{renderZoomControls(false)}
+					</div>
+				</Show>
 			</section>
 			<Dialog
 				onOpenChange={(open) => {
@@ -329,56 +393,8 @@ export function V2MediaViewer(props: MediaViewerProps) {
 								/>
 							)}
 						</Show>
-						<div
-							aria-label="Image zoom controls"
-							class="absolute right-3 bottom-3 flex items-center gap-0.5 rounded-lg border border-[var(--v2-border)] bg-[var(--v2-surface-subtle)]/95 p-1 shadow-lg backdrop-blur"
-							data-media-viewer-controls
-							role="toolbar"
-						>
-							<Button
-								aria-label="Zoom out"
-								class="size-8 p-0"
-								disabled={zoom() <= 1}
-								onClick={() => setZoomAroundPoint(zoom() / 1.25)}
-								size="icon"
-								variant="ghost"
-							>
-								<Minus aria-hidden="true" size={15} />
-							</Button>
-							<button
-								aria-label="Reset zoom to fit"
-								class="flex h-8 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-[11px] tabular-nums hover:bg-[var(--v2-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
-								onClick={resetView}
-								type="button"
-							>
-								<RotateCcw aria-hidden="true" size={12} />
-								{zoomPercent()}%
-							</button>
-							<Button
-								aria-label="Zoom in"
-								class="size-8 p-0"
-								disabled={zoom() >= 8}
-								onClick={() => setZoomAroundPoint(zoom() * 1.25)}
-								size="icon"
-								variant="ghost"
-							>
-								<Plus aria-hidden="true" size={15} />
-							</Button>
-							<span
-								aria-hidden="true"
-								class="mx-0.5 h-5 w-px bg-[var(--v2-border)]"
-							/>
-							<Button
-								aria-label={
-									isFullscreen() ? "Exit fullscreen" : "Enter fullscreen"
-								}
-								class="size-8 p-0"
-								onClick={() => void toggleFullscreen()}
-								size="icon"
-								variant="ghost"
-							>
-								<Maximize2 aria-hidden="true" size={15} />
-							</Button>
+						<div class="absolute right-3 bottom-3">
+							{renderZoomControls(true)}
 						</div>
 						<span aria-live="polite" class="sr-only">
 							Zoom {zoomPercent()} percent
