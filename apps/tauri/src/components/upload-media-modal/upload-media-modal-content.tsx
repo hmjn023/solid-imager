@@ -1,4 +1,4 @@
-import { V2UploadMediaModalContent } from "@solid-imager/ui/v2-upload-media-modal";
+import { V2UploadMediaModalContent } from "@solid-imager/ui/upload-media-modal";
 
 type UploadMediaModalProps = {
 	isOpen: boolean;

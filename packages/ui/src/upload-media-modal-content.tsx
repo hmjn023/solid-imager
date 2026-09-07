@@ -1,8 +1,8 @@
-import type { UploadMediaModalContentProps } from "./upload-media-modal-content.types";
 import {
 	V2UploadMediaModalContent as SharedUploadMediaModalContent,
 	type UploadMediaModalSubmitOptions,
-} from "./v2-upload-media-modal";
+} from "./upload-media-modal";
+import type { UploadMediaModalContentProps } from "./upload-media-modal-content.types";
 
 export function V2UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const handleUploadStart = async (options: UploadMediaModalSubmitOptions) => {

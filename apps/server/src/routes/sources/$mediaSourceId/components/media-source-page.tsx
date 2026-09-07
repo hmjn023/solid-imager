@@ -1,12 +1,12 @@
-import { V2SourceMediaScreen } from "@solid-imager/ui/screens/v2-source-media-screen";
+import { V2SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
+import { V2MediaGridItem } from "~/components/media/media-grid-item";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
-import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
-import { saveV2MediaContext } from "~/components/v2/v2-media-context";
-import { V2UploadMediaModal } from "~/components/v2-upload-media-modal";
+import { V2UploadMediaModal } from "~/components/upload-media-modal";
+import { saveV2MediaContext } from "~/components/v2/media-context";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
 import {
 	SourceMediaPageController,

@@ -1,12 +1,12 @@
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { V2SourceMediaScreen } from "@solid-imager/ui/screens/v2-source-media-screen";
+import { V2SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { useNavigate, useParams } from "@tanstack/solid-router";
+import { V2MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";

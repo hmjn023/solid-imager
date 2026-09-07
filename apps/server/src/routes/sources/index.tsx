@@ -6,7 +6,7 @@ import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
-import { V2SourceFormModal } from "@solid-imager/ui/v2-source-form-modal";
+import { V2SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createServerTransport } from "~/hooks/use-media-source-events";

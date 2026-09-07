@@ -1,6 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
-import { V2MediaDetailScreen } from "@solid-imager/ui/screens/v2-media-detail-screen";
+import { V2MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import {
 	ArrowLeft,
 	ChevronLeft,
@@ -9,10 +9,10 @@ import {
 import { createQuery } from "@tanstack/solid-query";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { type Accessor, Show } from "solid-js";
-import { V2MediaActions } from "~/components/media/v2-media-actions";
-import { V2MediaSidebar } from "~/components/media/v2-media-sidebar";
-import { V2MediaViewer } from "~/components/media/v2-media-viewer";
-import { findV2MediaNeighbors } from "~/components/v2/v2-media-context";
+import { V2MediaActions } from "~/components/media/media-actions";
+import { V2MediaSidebar } from "~/components/media/media-sidebar";
+import { V2MediaViewer } from "~/components/media/media-viewer";
+import { findV2MediaNeighbors } from "~/components/v2/media-context";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import {
 	mediaDetailsQueryOptions,

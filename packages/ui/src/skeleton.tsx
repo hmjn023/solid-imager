@@ -145,7 +145,7 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 	);
 }
 
-export { V2MediaDetailSkeleton as MediaDetailSkeleton } from "./v2-media-detail-skeleton";
+export { V2MediaDetailSkeleton as MediaDetailSkeleton } from "./media-detail-skeleton";
 
 export type ConfigSkeletonProps = {
 	class?: string;

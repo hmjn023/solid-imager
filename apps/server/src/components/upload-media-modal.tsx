@@ -1,4 +1,4 @@
-import { V2UploadMediaModalContent } from "@solid-imager/ui/v2-upload-media-modal-content";
+import { V2UploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-content";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
 type V2UploadMediaModalProps = {

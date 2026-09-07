@@ -2,10 +2,8 @@ import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import {
 	type MediaSource,
 	V2MediaViewer as SharedV2MediaViewer,
-} from "@solid-imager/ui/v2-media-viewer";
+} from "@solid-imager/ui/media-viewer";
 import { createEffect, createSignal, onCleanup } from "solid-js";
-import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
-import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 
 const MIME_BY_EXTENSION: Record<string, string> = {
 	mp4: "video/mp4",
@@ -29,11 +27,11 @@ function resolveMimeType(fileName: string) {
 	);
 }
 
-class TauriMediaSource implements MediaSource {
+class ApiMediaSource implements MediaSource {
 	type: "image" | "video" | "audio";
 	private urls: string[] = [];
 
-	constructor(private readonly media: MediaDetails) {
+	constructor(private media: MediaDetails) {
 		this.type =
 			media.mediaType === "video"
 				? "video"
@@ -43,8 +41,8 @@ class TauriMediaSource implements MediaSource {
 	}
 
 	async getUrl() {
-		const url = buildMediaContentUrl(this.media.mediaSourceId, this.media.id);
-		const response = await getApiFetch()(url, { cache: "no-store" });
+		const url = `/api/sources/${this.media.mediaSourceId}/${this.media.id}`;
+		const response = await fetch(url, { cache: "no-store" });
 		if (!response.ok) {
 			throw new Error(`Failed to fetch media: ${response.status}`);
 		}
@@ -58,10 +56,11 @@ class TauriMediaSource implements MediaSource {
 	}
 
 	revokeUrl(url: string) {
-		const index = this.urls.indexOf(url);
-		if (index === -1) return;
-		URL.revokeObjectURL(url);
-		this.urls.splice(index, 1);
+		const idx = this.urls.indexOf(url);
+		if (idx !== -1) {
+			URL.revokeObjectURL(url);
+			this.urls.splice(idx, 1);
+		}
 	}
 
 	cleanup() {
@@ -71,13 +70,13 @@ class TauriMediaSource implements MediaSource {
 }
 
 export function V2MediaViewer(props: { media: MediaDetails }) {
-	const [source, setSource] = createSignal<TauriMediaSource>(
-		new TauriMediaSource(props.media),
+	const [source, setSource] = createSignal<ApiMediaSource>(
+		new ApiMediaSource(props.media),
 	);
 
-	createEffect((previous: TauriMediaSource | undefined) => {
-		previous?.cleanup();
-		const next = new TauriMediaSource(props.media);
+	createEffect((prev: ApiMediaSource | undefined) => {
+		prev?.cleanup();
+		const next = new ApiMediaSource(props.media);
 		setSource(next);
 		return next;
 	});

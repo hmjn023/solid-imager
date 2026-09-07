@@ -43,8 +43,8 @@ import {
 	getRetryableJobIds,
 	toggleAllJobSelection,
 	toggleJobSelection,
-} from "./v2-jobs-selection";
-import { formatDate } from "./v2-manager/utils";
+} from "./jobs-selection";
+import { formatDate } from "./manager/utils";
 
 const JOB_FILTERS = [
 	{ description: "すべての処理", icon: Clock3, label: "All", value: "all" },

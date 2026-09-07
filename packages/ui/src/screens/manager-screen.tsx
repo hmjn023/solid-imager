@@ -9,30 +9,23 @@ import {
 import { Button } from "../button";
 import type { UseManagerPageResult } from "../hooks/use-manager-page";
 import { V2ManagementHeader } from "../v2/management-layout";
-import { BatchToolPanel } from "./v2-manager/batch-tools";
-import { DataTransferPanel } from "./v2-manager/data-transfer";
-import { ManagerDialogs } from "./v2-manager/dialogs";
-import { DuplicateToolPanel } from "./v2-manager/duplicates";
-import {
-	EntityTablePanel,
-	ManagerTableSkeleton,
-} from "./v2-manager/entity-panel";
-import { ManagerCategoryNavigation } from "./v2-manager/navigation";
-import { ThumbnailWarmupPanel } from "./v2-manager/thumbnail";
+import { BatchToolPanel } from "./manager/batch-tools";
+import { DataTransferPanel } from "./manager/data-transfer";
+import { ManagerDialogs } from "./manager/dialogs";
+import { DuplicateToolPanel } from "./manager/duplicates";
+import { EntityTablePanel, ManagerTableSkeleton } from "./manager/entity-panel";
+import { ManagerCategoryNavigation } from "./manager/navigation";
+import { ThumbnailWarmupPanel } from "./manager/thumbnail";
 import type {
 	V2ManagerCategory,
 	V2ManagerTransferActions,
-} from "./v2-manager/types";
-import {
-	categoryLabel,
-	isCrudCategory,
-	singularLabel,
-} from "./v2-manager/utils";
+} from "./manager/types";
+import { categoryLabel, isCrudCategory, singularLabel } from "./manager/utils";
 
 export type {
 	V2ManagerTransferActions,
 	V2ManagerTransferFormat,
-} from "./v2-manager/types";
+} from "./manager/types";
 
 export function V2ManagerScreen(props: {
 	manager: UseManagerPageResult;

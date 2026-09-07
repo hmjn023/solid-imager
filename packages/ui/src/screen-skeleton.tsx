@@ -1,4 +1,5 @@
 import { Match, Show, Switch } from "solid-js";
+import { V2MediaDetailSkeleton } from "./media-detail-skeleton";
 import {
 	CardGridSkeleton,
 	CardSkeleton,
@@ -8,7 +9,6 @@ import {
 	Skeleton,
 } from "./skeleton";
 import { cn } from "./utils/cn";
-import { V2MediaDetailSkeleton } from "./v2-media-detail-skeleton";
 
 export type ScreenSkeletonLayout =
 	| "cards"

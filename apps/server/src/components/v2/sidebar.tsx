@@ -11,9 +11,9 @@ import {
 } from "@solid-imager/ui/v2/icons";
 import { Link } from "@tanstack/solid-router";
 import { For, Show } from "solid-js";
-import { V2PendingDownloadsIndicator } from "~/components/imports/v2-pending-downloads-indicator";
-import { V2_NAVIGATION_ITEMS, V2NavigationItem } from "./v2-navigation";
-import { V2SourceList } from "./v2-source-list";
+import { V2PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
+import { V2_NAVIGATION_ITEMS, V2NavigationItem } from "./navigation";
+import { V2SourceList } from "./source-list";
 
 export type V2SidebarProps = {
 	expanded: boolean;

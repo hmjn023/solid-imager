@@ -1,6 +1,6 @@
 import { Button } from "@solid-imager/ui/button";
 import { Menu, Search } from "@solid-imager/ui/v2/icons";
-import { V2PendingDownloadsIndicator } from "~/components/imports/v2-pending-downloads-indicator";
+import { V2PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
 
 export function V2MobileHeader(props: {
 	onOpenCommandPalette?: () => void;

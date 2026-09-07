@@ -2,7 +2,7 @@ import { Button } from "@solid-imager/ui/button";
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { projectsQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import { V2MediaDetailScreen } from "@solid-imager/ui/screens/v2-media-detail-screen";
+import { V2MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { ArrowLeft } from "@solid-imager/ui/v2/icons";
 import { useQueryClient } from "@tanstack/solid-query";
 import {
@@ -10,8 +10,8 @@ import {
 	useNavigate,
 	useRouterState,
 } from "@tanstack/solid-router";
-import { TauriV2MediaSidebar } from "~/components/media/v2-media-sidebar";
-import { V2MediaViewer } from "~/components/media/v2-media-viewer";
+import { TauriV2MediaSidebar } from "~/components/media/media-sidebar";
+import { V2MediaViewer } from "~/components/media/media-viewer";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { mediaDetailsQueryOptions, mediaSourcesQueryOptions } from "~/queries";
 

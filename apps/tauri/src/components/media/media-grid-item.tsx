@@ -3,7 +3,7 @@ import {
 	type MediaGridImageLoadPolicy,
 	type MediaGridLinkProps,
 	V2MediaGridItem as SharedV2MediaGridItem,
-} from "@solid-imager/ui/v2-media-grid-item";
+} from "@solid-imager/ui/media-grid-item";
 import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { ThumbnailImage } from "./thumbnail-image";

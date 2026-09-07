@@ -11,7 +11,7 @@ import {
 import { createSignal, onMount } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
-import { V2AppShell } from "~/components/v2/v2-app-shell";
+import { V2AppShell } from "~/components/v2/app-shell";
 
 interface MyRouterContext {
 	queryClient: QueryClient;

@@ -1,8 +1,8 @@
 import { createSignal, onMount, Show } from "solid-js";
+import { V2ImportReviewModal } from "./import-review-modal";
 import type { PendingDownloadsIndicatorProps } from "./pending-downloads-indicator.types";
 import { PendingDownloadsIndicatorCore } from "./pending-downloads-indicator-core";
 import { cn } from "./utils/cn";
-import { V2ImportReviewModal } from "./v2-import-review-modal";
 
 export type V2PendingDownloadsIndicatorProps =
 	PendingDownloadsIndicatorProps & {

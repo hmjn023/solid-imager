@@ -14,7 +14,7 @@ import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events"
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { createAppShortcut } from "@solid-imager/ui/shortcuts/index";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
-import { V2SourceFormModal } from "@solid-imager/ui/v2-source-form-modal";
+import { V2SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
 import type { JSX, ParentProps } from "solid-js";
@@ -27,9 +27,9 @@ import {
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
-import { V2CommandCenter } from "./v2-command-center";
-import { V2MobileHeader } from "./v2-mobile-header";
-import { V2Sidebar, type V2SidebarProps } from "./v2-sidebar";
+import { V2CommandCenter } from "./command-center";
+import { V2MobileHeader } from "./mobile-header";
+import { V2Sidebar, type V2SidebarProps } from "./sidebar";
 
 type V2AppShellProps = ParentProps<{
 	statusIndicator?: JSX.Element;

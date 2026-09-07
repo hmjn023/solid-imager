@@ -6,7 +6,7 @@ import {
 	updateJobProgress,
 } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { V2JobsScreen } from "@solid-imager/ui/screens/v2-jobs-screen";
+import { V2JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal } from "solid-js";

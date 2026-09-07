@@ -4,8 +4,8 @@ import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { ConfigSkeleton, LoadingRegion } from "../skeleton";
 import { cn } from "../utils/cn";
 import { V2ManagementHeader } from "../v2/management-layout";
+import { V2ConfigScreen } from "./config-screen";
 import type { ConfigStateScreenProps } from "./config-state-screen.types";
-import { V2ConfigScreen } from "./v2-config-screen";
 
 export type V2ConfigStateScreenProps = ConfigStateScreenProps & {
 	checkAiHealth: () => Promise<AiHealthResponse>;

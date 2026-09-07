@@ -2,12 +2,12 @@ import { persistSearchScrollPosition } from "@solid-imager/ui/hooks/use-current-
 import { useSearchHistoryPersistence } from "@solid-imager/ui/hooks/use-search-history-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { V2SearchScreen } from "@solid-imager/ui/screens/v2-search-screen";
+import { V2SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
-import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
+import { V2MediaGridItem } from "~/components/media/media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";

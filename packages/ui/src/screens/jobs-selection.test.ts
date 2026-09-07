@@ -4,7 +4,7 @@ import {
 	getRetryableJobIds,
 	toggleAllJobSelection,
 	toggleJobSelection,
-} from "./v2-jobs-selection";
+} from "./jobs-selection";
 
 const jobs: Pick<JobDto, "id" | "status">[] = [
 	{
