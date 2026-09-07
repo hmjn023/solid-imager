@@ -12,8 +12,12 @@
     "http:default",
     {
       "identifier": "http:allow-fetch",
-      "allow": [{ "url": "http://192.168.1.150:3000/**" }]
+      "allow": [
+        { "url": "http://*" },
+        { "url": "https://*" }
+      ]
     },
+    "store:default",
     "sql:default",
     "sql:allow-execute",
     "sql:allow-select",

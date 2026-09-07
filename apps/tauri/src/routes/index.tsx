@@ -37,6 +37,13 @@ const dashboardLinks = [
 		count: `${mockProjects.length + mockCharacters.length} entities`,
 	},
 	{
+		title: "Servers",
+		description:
+			"Add, edit, and switch the remote server used by this Tauri app.",
+		to: "/servers",
+		count: "Local settings",
+	},
+	{
 		title: "Settings",
 		description:
 			"Edit configuration tabs and save changes through the local backend.",

@@ -38,6 +38,9 @@ function V2RouteAdapter() {
 			<Match when={first() === "config" && segments().length === 1}>
 				<Navigate replace to="/config" />
 			</Match>
+			<Match when={first() === "servers" && segments().length === 1}>
+				<Navigate replace to="/servers" />
+			</Match>
 			<Match when={first() === "about" && segments().length === 1}>
 				<Navigate replace to="/about" />
 			</Match>
