@@ -32,15 +32,12 @@ import {
 import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
 import { Label } from "../label";
+import { V2_CATEGORY_TABS_CLASS, V2CategoryLabel } from "../management-layout";
 import { ShortcutSettingsPanel } from "../shortcuts/shortcut-settings-panel";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
-import {
-	V2_CATEGORY_TABS_CLASS,
-	V2CategoryLabel,
-} from "../v2/management-layout";
 
 type AppConfigFormValues = z.input<typeof AppConfigSchema>;
 

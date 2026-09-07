@@ -1,5 +1,3 @@
-import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts/index";
-import { Toaster } from "@solid-imager/ui/toast";
 import {
 	BriefcaseBusiness,
 	CircleHelp,
@@ -9,7 +7,9 @@ import {
 	Image,
 	Library,
 	Settings,
-} from "@solid-imager/ui/v2/icons";
+} from "@solid-imager/ui/icons";
+import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts/index";
+import { Toaster } from "@solid-imager/ui/toast";
 import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX, ParentProps } from "solid-js";
 import { For } from "solid-js";

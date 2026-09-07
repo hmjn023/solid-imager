@@ -2,15 +2,15 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
+import { V2CollectionInspector } from "../collection-inspector";
+import { reconcileCollectionPreviewId } from "../collection-navigation";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
+import { V2SearchToolbar } from "../search-toolbar";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
 	type SourceMediaViewMode,
 } from "../source-media-grid";
-import { V2CollectionInspector } from "../v2/collection-inspector";
-import { reconcileCollectionPreviewId } from "../v2/collection-navigation";
-import { V2SearchToolbar } from "../v2/search-toolbar";
 import type { SearchWorkspaceProps } from "./search-screen.types";
 
 export type V2SearchScreenProps = SearchWorkspaceProps & {

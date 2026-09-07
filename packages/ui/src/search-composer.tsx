@@ -9,11 +9,11 @@ import {
 	ComboboxItemLabel,
 	useComboboxContext,
 	VirtualComboboxContent,
-} from "../combobox";
-import type { SearchPageFilterData } from "../hooks/use-search-page";
-import { Label } from "../label";
-import { ShortcutKbd } from "../shortcuts/shortcut-kbd";
-import { createDebouncedSignal } from "../utils/debounce";
+} from "./combobox";
+import type { SearchPageFilterData } from "./hooks/use-search-page";
+import { Label } from "./label";
+import { ShortcutKbd } from "./shortcuts/shortcut-kbd";
+import { createDebouncedSignal } from "./utils/debounce";
 
 export type {
 	SearchArrayKey,

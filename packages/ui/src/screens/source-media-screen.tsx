@@ -2,6 +2,8 @@ import Upload from "lucide-solid/icons/upload";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
+import { V2CollectionInspector } from "../collection-inspector";
+import { reconcileCollectionPreviewId } from "../collection-navigation";
 import {
 	Dialog,
 	DialogContent,
@@ -10,14 +12,12 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../dialog";
+import { V2SearchToolbar } from "../search-toolbar";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
 	type SourceMediaViewMode,
 } from "../source-media-grid";
-import { V2CollectionInspector } from "../v2/collection-inspector";
-import { reconcileCollectionPreviewId } from "../v2/collection-navigation";
-import { V2SearchToolbar } from "../v2/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
 const V2_SOURCE_VIEW_MODE_KEY = "solid-imager:v2:source-media:view-mode";

@@ -6,17 +6,17 @@ import {
 	CollapsibleTrigger,
 } from "@solid-imager/ui/collapsible";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@solid-imager/ui/popover";
-import {
 	ChevronDown,
 	Database,
 	Ellipsis,
 	Plus,
 	RefreshCw,
-} from "@solid-imager/ui/v2/icons";
+} from "@solid-imager/ui/icons";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@solid-imager/ui/popover";
 import { Link, useLocation } from "@tanstack/solid-router";
 import { createSignal, For, onMount, Show } from "solid-js";
 

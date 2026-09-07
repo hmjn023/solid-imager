@@ -8,7 +8,7 @@ import { Button } from "../../button";
 import {
 	V2CategoryLabel,
 	v2CategoryButtonClass,
-} from "../../v2/management-layout";
+} from "../../management-layout";
 import { MANAGER_CATEGORIES, type V2ManagerCategory } from "./types";
 
 function ManagerCategoryIcon(props: { value: V2ManagerCategory }) {

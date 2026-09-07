@@ -15,7 +15,7 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "./dialog";
-import { Maximize2, Minus, Plus, RotateCcw } from "./v2/icons";
+import { Maximize2, Minus, Plus, RotateCcw } from "./icons";
 
 export interface MediaSource {
 	type: "image" | "video" | "audio";

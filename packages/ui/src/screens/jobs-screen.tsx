@@ -18,6 +18,11 @@ import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
+import {
+	V2_CATEGORY_TABS_CLASS,
+	V2CategoryLabel,
+	V2ManagementHeader,
+} from "../management-layout";
 import type { QueryUiState } from "../query-state";
 import {
 	Select,
@@ -34,11 +39,6 @@ import {
 	createHttpThumbnailSource,
 	type ThumbnailRequestSize,
 } from "../thumbnail-source";
-import {
-	V2_CATEGORY_TABS_CLASS,
-	V2CategoryLabel,
-	V2ManagementHeader,
-} from "../v2/management-layout";
 import {
 	getRetryableJobIds,
 	toggleAllJobSelection,

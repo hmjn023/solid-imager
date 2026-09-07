@@ -3,7 +3,7 @@ import {
 	Clock3,
 	Library,
 	Settings,
-} from "@solid-imager/ui/v2/icons";
+} from "@solid-imager/ui/icons";
 import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";

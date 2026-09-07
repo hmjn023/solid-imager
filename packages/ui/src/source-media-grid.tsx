@@ -19,6 +19,12 @@ import {
 } from "solid-js";
 import { EmptyState, ErrorState, OfflineState } from "./async-state";
 import {
+	findCollectionItemById,
+	getCollectionNavigationIndex,
+	isCollectionNavigationKey,
+	isCollectionScrollNearEnd,
+} from "./collection-navigation";
+import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuGroup,
@@ -38,12 +44,6 @@ import {
 	MediaGridSkeleton,
 	mediaGridClassName,
 } from "./skeleton";
-import {
-	findCollectionItemById,
-	getCollectionNavigationIndex,
-	isCollectionNavigationKey,
-	isCollectionScrollNearEnd,
-} from "./v2/collection-navigation";
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;

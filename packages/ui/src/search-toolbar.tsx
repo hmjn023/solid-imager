@@ -7,19 +7,8 @@ import Grid3X3 from "lucide-solid/icons/grid-3-x-3";
 import List from "lucide-solid/icons/list";
 import type { JSX } from "solid-js";
 import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
-import { Button, buttonVariants } from "../button";
-import { Popover, PopoverContent, PopoverTrigger } from "../popover";
-import type { PresetManagerClient } from "../search-control-panel";
-import { SearchControlPanel } from "../search-control-panel";
-import { createAppShortcut } from "../shortcuts/create-app-shortcut";
-import { getSortLabel, SortControls } from "../sort-controls";
-import type { SourceMediaViewMode } from "../source-media-grid";
-import {
-	clearPresetFilters,
-	clearSimilaritySearch,
-	searchState,
-	setSearchState,
-} from "../stores/search-store";
+import { Button, buttonVariants } from "./button";
+import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import {
 	getSearchComposerTokens,
 	parseSimilarityAnchor,
@@ -29,6 +18,17 @@ import {
 	type SearchSuggestion,
 	type SearchToken,
 } from "./search-composer";
+import type { PresetManagerClient } from "./search-control-panel";
+import { SearchControlPanel } from "./search-control-panel";
+import { createAppShortcut } from "./shortcuts/create-app-shortcut";
+import { getSortLabel, SortControls } from "./sort-controls";
+import type { SourceMediaViewMode } from "./source-media-grid";
+import {
+	clearPresetFilters,
+	clearSimilaritySearch,
+	searchState,
+	setSearchState,
+} from "./stores/search-store";
 
 export type V2SearchToolbarProps = {
 	actions?: JSX.Element;

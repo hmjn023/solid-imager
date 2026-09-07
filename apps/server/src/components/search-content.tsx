@@ -27,7 +27,7 @@ import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { V2MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
-import { saveV2MediaContext } from "~/components/v2/media-context";
+import { saveV2MediaContext } from "~/components/media-context";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
@@ -55,7 +55,7 @@ import {
 } from "~/presentation/store/search-store";
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
-const V2_SEARCH_RESULTS_PER_PAGE = 200;
+const SEARCH_RESULTS_PER_PAGE = 200;
 const PresetClient = createPresetClient(rawPresetClient);
 const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
@@ -67,7 +67,7 @@ function rememberReturnPath(href: string): void {
 	}
 }
 
-export default function V2SearchContent() {
+export default function SearchContent() {
 	const location = useLocation();
 	const navigate = useNavigate();
 	const [visibleMediaIds, setVisibleMediaIds] = createSignal<readonly string[]>(
@@ -114,7 +114,7 @@ export default function V2SearchContent() {
 		sortOrder: () => searchState.sortOrder,
 		// V2 can display up to eight columns. Fetch enough complete rows per page
 		// so scrolling does not stop for another request every two or three rows.
-		limit: () => Math.max(searchState.limit, V2_SEARCH_RESULTS_PER_PAGE),
+		limit: () => Math.max(searchState.limit, SEARCH_RESULTS_PER_PAGE),
 		scrollY: () => searchState.scrollY,
 		setScrollY: (value) => {
 			setSearchState("scrollY", value);

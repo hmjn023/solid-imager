@@ -13,8 +13,8 @@ import {
 import { Badge } from "@solid-imager/ui/badge";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
+import { ChevronDown } from "@solid-imager/ui/icons";
 import { toast } from "@solid-imager/ui/toast";
-import { ChevronDown } from "@solid-imager/ui/v2/icons";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 // biome-ignore lint/suspicious/noDeprecatedImports: TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";

@@ -1,9 +1,9 @@
 import { Button } from "@solid-imager/ui/button";
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
+import { ArrowLeft } from "@solid-imager/ui/icons";
 import { projectsQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { V2MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
-import { ArrowLeft } from "@solid-imager/ui/v2/icons";
 import { useQueryClient } from "@tanstack/solid-query";
 import {
 	createFileRoute,

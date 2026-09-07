@@ -1,6 +1,6 @@
 import { defaultState } from "@solid-imager/core/domain/search/schema";
 import { describe, expect, it } from "vitest";
-import type { SearchPageFilterData } from "../hooks/use-search-page";
+import type { SearchPageFilterData } from "./hooks/use-search-page";
 import {
 	getSearchComposerSuggestions,
 	getSearchComposerTokens,

@@ -1,5 +1,5 @@
 import { Button } from "@solid-imager/ui/button";
-import { Menu, Search } from "@solid-imager/ui/v2/icons";
+import { Menu, Search } from "@solid-imager/ui/icons";
 import { V2PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
 
 export function V2MobileHeader(props: {

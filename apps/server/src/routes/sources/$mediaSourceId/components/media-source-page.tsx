@@ -5,8 +5,8 @@ import { useLocation, useNavigate } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
 import { V2MediaGridItem } from "~/components/media/media-grid-item";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
+import { saveV2MediaContext } from "~/components/media-context";
 import { V2UploadMediaModal } from "~/components/upload-media-modal";
-import { saveV2MediaContext } from "~/components/v2/media-context";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
 import {
 	SourceMediaPageController,

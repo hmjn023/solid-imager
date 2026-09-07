@@ -8,7 +8,7 @@ import {
 } from "../async-state";
 import { Button } from "../button";
 import type { UseManagerPageResult } from "../hooks/use-manager-page";
-import { V2ManagementHeader } from "../v2/management-layout";
+import { V2ManagementHeader } from "../management-layout";
 import { BatchToolPanel } from "./manager/batch-tools";
 import { DataTransferPanel } from "./manager/data-transfer";
 import { ManagerDialogs } from "./manager/dialogs";

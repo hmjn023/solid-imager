@@ -11,13 +11,6 @@ import {
 } from "@solid-imager/ui/alert-dialog";
 import { Button } from "@solid-imager/ui/button";
 import {
-	Popover,
-	PopoverContent,
-	PopoverTrigger,
-} from "@solid-imager/ui/popover";
-import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
-import { toast } from "@solid-imager/ui/toast";
-import {
 	Binary,
 	ChevronDown,
 	Download,
@@ -25,7 +18,14 @@ import {
 	ScanSearch,
 	Sparkles,
 	Trash2,
-} from "@solid-imager/ui/v2/icons";
+} from "@solid-imager/ui/icons";
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from "@solid-imager/ui/popover";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
+import { toast } from "@solid-imager/ui/toast";
 import { useNavigate } from "@tanstack/solid-router";
 import { createEffect, createSignal, on, onCleanup } from "solid-js";
 import { AiTaggingModal } from "~/components/media/ai-tagging-modal";

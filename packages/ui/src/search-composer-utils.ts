@@ -1,6 +1,6 @@
 import { mediaIdSchema } from "@solid-imager/core/domain/media/schemas";
 import type { SearchState } from "@solid-imager/core/domain/search/schema";
-import type { SearchPageFilterData } from "../hooks/use-search-page";
+import type { SearchPageFilterData } from "./hooks/use-search-page";
 
 export type SearchArrayKey =
 	| "excludeTags"

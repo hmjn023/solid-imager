@@ -5,15 +5,15 @@ import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
 import { ClipboardCopy } from "@solid-imager/ui/clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "@solid-imager/ui/collapsible";
-import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
-import { toast } from "@solid-imager/ui/toast";
 import {
 	Binary,
 	ChevronDown,
 	Scan,
 	ScanSearch,
 	Sparkles,
-} from "@solid-imager/ui/v2/icons";
+} from "@solid-imager/ui/icons";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
+import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
 import {

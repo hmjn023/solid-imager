@@ -1,9 +1,9 @@
 import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { Match, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
+import { V2ManagementHeader } from "../management-layout";
 import { ConfigSkeleton, LoadingRegion } from "../skeleton";
 import { cn } from "../utils/cn";
-import { V2ManagementHeader } from "../v2/management-layout";
 import { V2ConfigScreen } from "./config-screen";
 import type { ConfigStateScreenProps } from "./config-state-screen.types";
 

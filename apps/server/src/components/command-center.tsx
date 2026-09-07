@@ -6,12 +6,6 @@ import {
 	DialogTitle,
 } from "@solid-imager/ui/dialog";
 import {
-	getShortcutDefinitionsForGroup,
-	SHORTCUT_GROUPS,
-	type ShortcutId,
-	ShortcutKbd,
-} from "@solid-imager/ui/shortcuts/index";
-import {
 	BriefcaseBusiness,
 	CircleHelp,
 	Clock3,
@@ -20,7 +14,13 @@ import {
 	Plus,
 	Search,
 	Settings,
-} from "@solid-imager/ui/v2/icons";
+} from "@solid-imager/ui/icons";
+import {
+	getShortcutDefinitionsForGroup,
+	SHORTCUT_GROUPS,
+	type ShortcutId,
+	ShortcutKbd,
+} from "@solid-imager/ui/shortcuts/index";
 import { useNavigate } from "@tanstack/solid-router";
 import {
 	type Component,

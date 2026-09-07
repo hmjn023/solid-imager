@@ -1,6 +1,5 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { Button } from "@solid-imager/ui/button";
-import { ShortcutKbd } from "@solid-imager/ui/shortcuts/index";
 import {
 	CircleHelp,
 	FileText,
@@ -8,7 +7,8 @@ import {
 	PanelLeftClose,
 	PanelLeftOpen,
 	Search,
-} from "@solid-imager/ui/v2/icons";
+} from "@solid-imager/ui/icons";
+import { ShortcutKbd } from "@solid-imager/ui/shortcuts/index";
 import { Link } from "@tanstack/solid-router";
 import { For, Show } from "solid-js";
 import { V2PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
