@@ -4,10 +4,10 @@ import type {
 	ManagerEntity,
 	ManagerEntityType,
 } from "../../hooks/use-manager-page";
-import { MANAGER_CATEGORIES, type V2ManagerCategory } from "./types";
+import { MANAGER_CATEGORIES, type ManagerCategory } from "./types";
 
 export function isCrudCategory(
-	value: V2ManagerCategory,
+	value: ManagerCategory,
 ): value is ManagerEntityType {
 	return value === "projects" || value === "ips" || value === "characters";
 }
@@ -20,7 +20,7 @@ export function isIp(item: ManagerEntity): item is Ip {
 	return "source" in item;
 }
 
-export function categoryLabel(value: V2ManagerCategory): string {
+export function categoryLabel(value: ManagerCategory): string {
 	return (
 		MANAGER_CATEGORIES.find((category) => category.value === value)?.label ??
 		value

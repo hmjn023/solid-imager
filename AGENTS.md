@@ -10,7 +10,7 @@
 - **API仕様:** [`./apps/server/public/openapi.json`](./apps/server/public/openapi.json)、Swagger UIのソースは [`./apps/server/public/api-docs.html`](./apps/server/public/api-docs.html)
 - **API契約:** `packages/core/src/domain/contract/`（Server実装の集約は `apps/server/src/infrastructure/api/app-router.ts`）
 - **Tauri SPA:** [`./apps/tauri/src/`](./apps/tauri/src/)、Rust側は [`./apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
-- **V2移行状況:** [`./REPORT.md`](./REPORT.md)
+- **UI実装状況:** [`./REPORT.md`](./REPORT.md)
 - **DBスキーマ:** `packages/db/src/schema.ts` (`apps/server/src/infrastructure/db/schema.ts` は再 export)
 
 ## 開発ルール & 内部構成

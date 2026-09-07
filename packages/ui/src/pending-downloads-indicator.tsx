@@ -1,16 +1,16 @@
 import { createSignal, onMount, Show } from "solid-js";
-import { V2ImportReviewModal } from "./import-review-modal";
-import type { PendingDownloadsIndicatorProps } from "./pending-downloads-indicator.types";
+import { ImportReviewModal } from "./import-review-modal";
+import type { PendingDownloadsIndicatorProps as CorePendingDownloadsIndicatorProps } from "./pending-downloads-indicator.types";
 import { PendingDownloadsIndicatorCore } from "./pending-downloads-indicator-core";
 import { cn } from "./utils/cn";
 
-export type V2PendingDownloadsIndicatorProps =
-	PendingDownloadsIndicatorProps & {
+export type PendingDownloadsIndicatorProps =
+	CorePendingDownloadsIndicatorProps & {
 		compact?: boolean;
 	};
 
-export function V2PendingDownloadsIndicator(
-	props: V2PendingDownloadsIndicatorProps,
+export function PendingDownloadsIndicator(
+	props: PendingDownloadsIndicatorProps,
 ) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	onMount(() => setIsMounted(true));
@@ -25,7 +25,7 @@ export function V2PendingDownloadsIndicator(
 						aria-disabled={!hasPendingImports()}
 						aria-label={`Import inbox${hasPendingImports() ? `, ${pendingCount()}件` : ""}`}
 						class={cn(
-							"relative flex h-10 w-full items-center justify-start gap-2 rounded-md px-3 font-medium text-[var(--v2-text-secondary)] text-xs transition-colors hover:bg-[var(--v2-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-auto disabled:opacity-60",
+							"relative flex h-10 w-full items-center justify-start gap-2 rounded-md px-3 font-medium text-[var(--app-text-secondary)] text-xs transition-colors hover:bg-[var(--app-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-auto disabled:opacity-60",
 							props.compact && "size-10 justify-center px-0",
 						)}
 						disabled={!hasPendingImports()}
@@ -41,7 +41,7 @@ export function V2PendingDownloadsIndicator(
 						<Show when={hasPendingImports()}>
 							<span
 								class={cn(
-									"ml-auto rounded-full bg-[var(--v2-surface-selected)] px-1.5 py-0.5 text-[10px] text-[var(--v2-primary)]",
+									"ml-auto rounded-full bg-[var(--app-surface-selected)] px-1.5 py-0.5 text-[10px] text-[var(--app-primary)]",
 									props.compact && "absolute -mt-5 ml-5",
 								)}
 							>
@@ -53,7 +53,7 @@ export function V2PendingDownloadsIndicator(
 			}}
 			renderFallback={() => (
 				<button
-					class="h-10 w-full cursor-default rounded bg-transparent font-bold text-[var(--v2-text-muted)] text-xs"
+					class="h-10 w-full cursor-default rounded bg-transparent font-bold text-[var(--app-text-muted)] text-xs"
 					disabled
 					type="button"
 				>
@@ -62,7 +62,7 @@ export function V2PendingDownloadsIndicator(
 			)}
 			renderModal={(modalProps) => (
 				<Show when={isMounted()}>
-					<V2ImportReviewModal
+					<ImportReviewModal
 						{...modalProps}
 						cancelPending={props.cancelPending}
 						listPending={props.listPending}

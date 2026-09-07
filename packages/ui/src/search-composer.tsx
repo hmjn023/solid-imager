@@ -60,7 +60,7 @@ function ComposerInput(props: {
 			aria-label="メディアを検索"
 			class="h-7 min-h-7 min-w-40 flex-1 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
 			enterkeyhint="search"
-			id="v2-search-composer"
+			id="search-composer"
 			onFocus={props.onFocus}
 			onInput={(event) => props.onDraftChange(event.currentTarget.value)}
 			onKeyDown={props.onKeyDown}
@@ -122,12 +122,12 @@ export function SearchComposer(props: SearchComposerProps) {
 				props.onSubmit();
 			}}
 		>
-			<Label class="sr-only" for="v2-search-composer">
+			<Label class="sr-only" for="search-composer">
 				メディアを検索
 			</Label>
 			<Search
 				aria-hidden="true"
-				class="absolute top-[0.7rem] left-3 z-10 text-[var(--v2-text-muted)]"
+				class="absolute top-[0.7rem] left-3 z-10 text-[var(--app-text-muted)]"
 				size={16}
 			/>
 			<Combobox<SearchSuggestion>
@@ -160,12 +160,12 @@ export function SearchComposer(props: SearchComposerProps) {
 			>
 				<ComboboxControl<SearchSuggestion>
 					aria-label="メディアを検索"
-					class="flex h-auto min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface)] py-1 pr-8 pl-9 focus-within:ring-2 focus-within:ring-[var(--v2-focus)] focus-within:ring-offset-1 sm:min-h-9"
+					class="flex h-auto min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface)] py-1 pr-8 pl-9 focus-within:ring-2 focus-within:ring-[var(--app-focus)] focus-within:ring-offset-1 sm:min-h-9"
 				>
 					<For each={props.tokens.slice(0, 4)}>
 						{(token) => (
 							<span
-								class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-[11px] ${token.destructive ? "bg-[var(--v2-surface-muted)] text-[var(--v2-destructive)]" : "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"}`}
+								class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-[11px] ${token.destructive ? "bg-[var(--app-surface-muted)] text-[var(--app-destructive)]" : "bg-[var(--app-surface-selected)] text-[var(--app-primary)]"}`}
 							>
 								<span class="truncate">
 									{token.prefix}:{token.value}
@@ -173,7 +173,7 @@ export function SearchComposer(props: SearchComposerProps) {
 								<Show when={token.removable !== false}>
 									<button
 										aria-label={`${token.prefix}:${token.value}を解除`}
-										class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+										class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
 										onClick={() => props.onRemoveToken(token)}
 										type="button"
 									>
@@ -184,7 +184,7 @@ export function SearchComposer(props: SearchComposerProps) {
 						)}
 					</For>
 					<Show when={props.tokens.length > 4}>
-						<span class="inline-flex h-6 items-center rounded bg-[var(--v2-surface-muted)] px-2 font-medium text-[11px] text-[var(--v2-text-secondary)]">
+						<span class="inline-flex h-6 items-center rounded bg-[var(--app-surface-muted)] px-2 font-medium text-[11px] text-[var(--app-text-secondary)]">
 							ほか{props.tokens.length - 4}件
 						</span>
 					</Show>
@@ -199,10 +199,10 @@ export function SearchComposer(props: SearchComposerProps) {
 						ref={props.inputRef}
 					/>
 				</ComboboxControl>
-				<VirtualComboboxContent class="v2-theme w-[min(28rem,calc(100dvw-1.5rem))] p-1 shadow-xl" />
+				<VirtualComboboxContent class="app-theme w-[min(28rem,calc(100dvw-1.5rem))] p-1 shadow-xl" />
 			</Combobox>
 			<ShortcutKbd
-				class="pointer-events-none absolute top-2 right-2 min-h-5 border-[var(--v2-border)] px-1.5 py-0.5 text-[10px] text-[var(--v2-text-muted)] shadow-none"
+				class="pointer-events-none absolute top-2 right-2 min-h-5 border-[var(--app-border)] px-1.5 py-0.5 text-[10px] text-[var(--app-text-muted)] shadow-none"
 				shortcutId="focusSearch"
 			/>
 		</form>

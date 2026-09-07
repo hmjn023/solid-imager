@@ -35,10 +35,10 @@ function NavigationItem(props: {
 	return (
 		<Link
 			aria-current={active() ? "page" : undefined}
-			class={`flex h-11 w-full items-center gap-2 rounded-md px-3 font-medium text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:h-10 ${
+			class={`flex h-11 w-full items-center gap-2 rounded-md px-3 font-medium text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--app-focus)] md:h-10 ${
 				active()
-					? "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"
-					: "text-[var(--v2-text-secondary)] hover:bg-[var(--v2-surface-muted)] hover:text-[var(--v2-text)]"
+					? "bg-[var(--app-surface-selected)] text-[var(--app-primary)]"
+					: "text-[var(--app-text-secondary)] hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]"
 			}`}
 			to={props.to}
 		>
@@ -48,31 +48,28 @@ function NavigationItem(props: {
 	);
 }
 
-export function TauriV2AppShell(props: ParentProps): JSX.Element {
+export function TauriAppShell(props: ParentProps): JSX.Element {
 	return (
 		<ShortcutPreferencesProvider>
 			<Toaster />
-			<div
-				class="v2-theme grid h-dvh min-h-0 overflow-hidden bg-[var(--v2-canvas)] text-[var(--v2-text)] md:grid-cols-[216px_minmax(0,1fr)]"
-				data-design-version="v2"
-			>
+			<div class="app-theme grid h-dvh min-h-0 overflow-hidden bg-[var(--app-canvas)] text-[var(--app-text)] md:grid-cols-[216px_minmax(0,1fr)]">
 				<a
-					class="sr-only fixed top-2 left-2 z-[80] rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-[var(--v2-focus)]"
-					href="#v2-main-content"
+					class="sr-only fixed top-2 left-2 z-[80] rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-[var(--app-focus)]"
+					href="#main-content"
 				>
 					メインコンテンツへ移動
 				</a>
 				<aside
 					aria-label="アプリケーションサイドバー"
-					class="hidden min-h-0 border-[var(--v2-border)] border-r md:block"
+					class="hidden min-h-0 border-[var(--app-border)] border-r md:block"
 				>
-					<div class="flex h-full flex-col overflow-y-auto bg-[var(--v2-surface-subtle)] p-2">
+					<div class="flex h-full flex-col overflow-y-auto bg-[var(--app-surface-subtle)] p-2">
 						<Link
 							aria-label="Solid Imager Library"
-							class="mb-4 flex h-12 items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+							class="mb-4 flex h-12 items-center gap-2 rounded-md px-2 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
 							to="/search"
 						>
-							<span class="flex size-8 items-center justify-center rounded-md bg-[var(--v2-primary)] text-white">
+							<span class="flex size-8 items-center justify-center rounded-md bg-[var(--app-primary)] text-white">
 								<Image aria-hidden="true" size={17} />
 							</span>
 							<strong class="truncate font-semibold text-base">
@@ -84,13 +81,13 @@ export function TauriV2AppShell(props: ParentProps): JSX.Element {
 								{(item) => <NavigationItem {...item} />}
 							</For>
 						</nav>
-						<div class="mt-3 border-[var(--v2-border)] border-t pt-2">
+						<div class="mt-3 border-[var(--app-border)] border-t pt-2">
 							<NavigationItem icon={Database} label="Sources" to="/sources" />
 						</div>
-						<div class="mt-auto border-[var(--v2-border)] border-t pt-2">
+						<div class="mt-auto border-[var(--app-border)] border-t pt-2">
 							<NavigationItem icon={CircleHelp} label="About" to="/about" />
 							<a
-								class="flex h-10 items-center gap-2 rounded-md px-3 text-[var(--v2-text-muted)] outline-none hover:bg-[var(--v2-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+								class="flex h-10 items-center gap-2 rounded-md px-3 text-[var(--app-text-muted)] outline-none hover:bg-[var(--app-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
 								href="/docs/swagger"
 								rel="noopener noreferrer"
 								target="_blank"
@@ -103,12 +100,12 @@ export function TauriV2AppShell(props: ParentProps): JSX.Element {
 				</aside>
 
 				<div class="flex min-h-0 min-w-0 flex-col">
-					<header class="flex h-13 shrink-0 items-center border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-4 md:hidden">
+					<header class="flex h-13 shrink-0 items-center border-[var(--app-border)] border-b bg-[var(--app-surface-subtle)] px-4 md:hidden">
 						<strong class="truncate font-semibold">Solid Imager</strong>
 					</header>
 					<main
 						class="min-h-0 min-w-0 flex-1 overflow-hidden"
-						id="v2-main-content"
+						id="main-content"
 						tabIndex={-1}
 					>
 						{props.children}

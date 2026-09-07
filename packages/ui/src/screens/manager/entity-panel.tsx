@@ -22,14 +22,14 @@ import {
 export function ManagerTableSkeleton() {
 	return (
 		<LoadingRegion label="管理データを読み込んでいます...">
-			<div class="overflow-hidden rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)]">
-				<div class="h-9 animate-pulse bg-[var(--v2-surface-muted)] motion-reduce:animate-none" />
+			<div class="overflow-hidden rounded-md border border-[var(--app-border)] bg-[var(--app-surface)]">
+				<div class="h-9 animate-pulse bg-[var(--app-surface-muted)] motion-reduce:animate-none" />
 				<For each={[1, 2, 3, 4, 5]}>
 					{() => (
-						<div class="grid h-14 grid-cols-[2fr_3fr_1fr] gap-4 border-[var(--v2-border)] border-t px-4 py-3">
-							<span class="rounded bg-[var(--v2-surface-muted)]" />
-							<span class="rounded bg-[var(--v2-surface-muted)]" />
-							<span class="rounded bg-[var(--v2-surface-muted)]" />
+						<div class="grid h-14 grid-cols-[2fr_3fr_1fr] gap-4 border-[var(--app-border)] border-t px-4 py-3">
+							<span class="rounded bg-[var(--app-surface-muted)]" />
+							<span class="rounded bg-[var(--app-surface-muted)]" />
+							<span class="rounded bg-[var(--app-surface-muted)]" />
 						</div>
 					)}
 				</For>
@@ -56,41 +56,41 @@ function EntityInspector(props: {
 	return (
 		<aside
 			aria-label="選択中の項目"
-			class="hidden self-start rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-4 2xl:block"
+			class="hidden self-start rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4 2xl:block"
 		>
-			<p class="text-xs text-[var(--v2-text-muted)]">
+			<p class="text-xs text-[var(--app-text-muted)]">
 				Selected {singularLabel(active())}
 			</p>
-			<h3 class="mt-1 break-words font-semibold text-base text-[var(--v2-text)]">
+			<h3 class="mt-1 break-words font-semibold text-base text-[var(--app-text)]">
 				{props.item.name}
 			</h3>
-			<p class="mt-2 text-xs leading-5 text-[var(--v2-text-secondary)]">
+			<p class="mt-2 text-xs leading-5 text-[var(--app-text-secondary)]">
 				{props.item.description || "No description"}
 			</p>
-			<dl class="mt-4 space-y-3 border-[var(--v2-border)] border-y py-4 text-xs">
+			<dl class="mt-4 space-y-3 border-[var(--app-border)] border-y py-4 text-xs">
 				<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
-					<dt class="text-[var(--v2-text-muted)]">ID</dt>
-					<dd class="break-all text-[var(--v2-text)]">{props.item.id}</dd>
+					<dt class="text-[var(--app-text-muted)]">ID</dt>
+					<dd class="break-all text-[var(--app-text)]">{props.item.id}</dd>
 				</div>
 				<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
-					<dt class="text-[var(--v2-text-muted)]">Updated</dt>
-					<dd class="text-[var(--v2-text)]">
+					<dt class="text-[var(--app-text-muted)]">Updated</dt>
+					<dd class="text-[var(--app-text)]">
 						{formatDate(props.item.updatedAt)}
 					</dd>
 				</div>
 				<Show when={isCharacter(props.item) || isIp(props.item)}>
 					<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
-						<dt class="text-[var(--v2-text-muted)]">
+						<dt class="text-[var(--app-text-muted)]">
 							{isCharacter(props.item) ? "IPs" : "Source"}
 						</dt>
-						<dd class="break-words text-[var(--v2-text)]">
+						<dd class="break-words text-[var(--app-text)]">
 							{relationSummary(props.item)}
 						</dd>
 					</div>
 				</Show>
 				<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
-					<dt class="text-[var(--v2-text-muted)]">Media</dt>
-					<dd class="text-[var(--v2-text)]">
+					<dt class="text-[var(--app-text-muted)]">Media</dt>
+					<dd class="text-[var(--app-text)]">
 						{props.item.mediaCount?.toLocaleString() ?? "—"}
 					</dd>
 				</div>
@@ -147,10 +147,10 @@ export function EntityTablePanel(props: {
 		<div class="min-w-0">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<h2 class="font-semibold text-lg text-[var(--v2-text)]">
+					<h2 class="font-semibold text-lg text-[var(--app-text)]">
 						{categoryLabel(active())}
 					</h2>
-					<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
+					<p class="mt-0.5 text-xs text-[var(--app-text-muted)]">
 						Create, review, and maintain {categoryLabel(active()).toLowerCase()}
 						.
 					</p>
@@ -169,12 +169,12 @@ export function EntityTablePanel(props: {
 					<div class="relative mb-3">
 						<Search
 							aria-hidden="true"
-							class="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--v2-text-muted)]"
+							class="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--app-text-muted)]"
 							size={15}
 						/>
 						<Input
 							aria-label={`${categoryLabel(active())}を検索`}
-							class="h-9 bg-[var(--v2-surface)] pl-9 shadow-none"
+							class="h-9 bg-[var(--app-surface)] pl-9 shadow-none"
 							onInput={(event) =>
 								props.onQueryChange(event.currentTarget.value)
 							}
@@ -197,12 +197,12 @@ export function EntityTablePanel(props: {
 						}
 						when={items().length > 0}
 					>
-						<div class="overflow-x-auto rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] [scrollbar-gutter:stable]">
+						<div class="overflow-x-auto rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] [scrollbar-gutter:stable]">
 							<table class="w-full min-w-[46rem] border-collapse text-left text-sm">
 								<caption class="sr-only">
 									{categoryLabel(active())}の一覧。{items().length}件。
 								</caption>
-								<thead class="bg-[var(--v2-surface-muted)] text-xs text-[var(--v2-text-muted)]">
+								<thead class="bg-[var(--app-surface-muted)] text-xs text-[var(--app-text-muted)]">
 									<tr>
 										<th class="px-3 py-2 font-medium" scope="col">
 											Name
@@ -228,7 +228,7 @@ export function EntityTablePanel(props: {
 										</th>
 									</tr>
 								</thead>
-								<tbody class="divide-y divide-[var(--v2-border)]">
+								<tbody class="divide-y divide-[var(--app-border)]">
 									<For each={items()}>
 										{(item) => {
 											const selected = () => selectedItem()?.id === item.id;
@@ -236,14 +236,14 @@ export function EntityTablePanel(props: {
 												<tr
 													class={
 														selected()
-															? "bg-[var(--v2-surface-selected)]"
-															: "hover:bg-[var(--v2-surface-muted)]"
+															? "bg-[var(--app-surface-selected)]"
+															: "hover:bg-[var(--app-surface-muted)]"
 													}
 												>
 													<th class="p-0 font-normal" scope="row">
 														<button
 															aria-pressed={selected()}
-															class="block min-h-12 w-full px-3 py-2 text-left font-medium text-[var(--v2-text)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--v2-focus)]"
+															class="block min-h-12 w-full px-3 py-2 text-left font-medium text-[var(--app-text)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-focus)]"
 															onClick={() => props.onSelect(item.id)}
 															type="button"
 														>
@@ -252,22 +252,22 @@ export function EntityTablePanel(props: {
 															</span>
 														</button>
 													</th>
-													<td class="max-w-[28rem] px-3 py-2 text-xs text-[var(--v2-text-secondary)]">
+													<td class="max-w-[28rem] px-3 py-2 text-xs text-[var(--app-text-secondary)]">
 														<span class="line-clamp-2">
 															{item.description || "No description"}
 														</span>
 													</td>
-													<td class="max-w-52 px-3 py-2 text-xs text-[var(--v2-text-secondary)]">
+													<td class="max-w-52 px-3 py-2 text-xs text-[var(--app-text-secondary)]">
 														<span class="block truncate">
 															{active() === "projects"
 																? "Active"
 																: relationSummary(item)}
 														</span>
 													</td>
-													<td class="whitespace-nowrap px-3 py-2 text-xs text-[var(--v2-text-secondary)]">
+													<td class="whitespace-nowrap px-3 py-2 text-xs text-[var(--app-text-secondary)]">
 														{item.mediaCount?.toLocaleString() ?? "—"}
 													</td>
-													<td class="whitespace-nowrap px-3 py-2 text-xs text-[var(--v2-text-muted)]">
+													<td class="whitespace-nowrap px-3 py-2 text-xs text-[var(--app-text-muted)]">
 														{formatDate(item.updatedAt)}
 													</td>
 													<td class="px-3 py-2">
@@ -305,7 +305,7 @@ export function EntityTablePanel(props: {
 							</table>
 						</div>
 						<p
-							class="mt-2 text-xs text-[var(--v2-text-muted)]"
+							class="mt-2 text-xs text-[var(--app-text-muted)]"
 							aria-live="polite"
 						>
 							{items().length} items

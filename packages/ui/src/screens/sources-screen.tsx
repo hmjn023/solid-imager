@@ -43,17 +43,17 @@ export function SourcesScreen(props: SourcesScreenProps) {
 	};
 
 	return (
-		<div class="flex h-full min-h-0 flex-col overflow-y-auto bg-[var(--v2-canvas)] p-4 text-[var(--v2-text)] sm:p-6">
+		<div class="flex h-full min-h-0 flex-col overflow-y-auto bg-[var(--app-canvas)] p-4 text-[var(--app-text)] sm:p-6">
 			<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
 				<div>
 					<h1 class="font-semibold text-xl sm:text-2xl">Sources</h1>
-					<p class="mt-1 text-sm text-[var(--v2-text-secondary)]">
+					<p class="mt-1 text-sm text-[var(--app-text-secondary)]">
 						メディアソースを追加、同期、管理します。
 					</p>
 				</div>
 				<div class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
 					<Button
-						class="w-full border-[var(--v2-border)] bg-[var(--v2-surface)] text-[var(--v2-text)] sm:w-auto"
+						class="w-full border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] sm:w-auto"
 						disabled={page().isSyncing() || !props.mediaSources()?.length}
 						onClick={() => page().handleSyncAll(props.mediaSources())}
 						variant="outline"

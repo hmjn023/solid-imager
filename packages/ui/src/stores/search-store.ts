@@ -14,15 +14,7 @@ export const [searchState, setSearchState] = createStore<SearchState>({
 	...defaultState,
 });
 
-export type SearchPersistenceSurface = "legacy" | "v2";
-
-export type SearchStorePersistenceOptions = {
-	surface?: SearchPersistenceSurface;
-};
-
-function getSearchStateStorageKey(surface: SearchPersistenceSurface): string {
-	return surface === "v2" ? "v2:current-all" : "current-all";
-}
+const SEARCH_STATE_STORAGE_KEY = "current-all";
 
 export const resetSearchState = () => {
 	setSearchState({ ...defaultState });
@@ -49,10 +41,7 @@ export const setSearchMode = (mode: "simple" | "pro") => {
 	setSearchState(nextState);
 };
 
-function persistSearchState(
-	state: SearchState,
-	surface: SearchPersistenceSurface,
-): void {
+function persistSearchState(state: SearchState): void {
 	if (typeof sessionStorage === "undefined") return;
 
 	const condition = getSearchConditionFromState(state) ?? {
@@ -60,9 +49,8 @@ function persistSearchState(
 		operator: "and" as const,
 		children: [],
 	};
-	const storageKey = getSearchStateStorageKey(surface);
 	sessionStorage.setItem(
-		storageKey,
+		SEARCH_STATE_STORAGE_KEY,
 		JSON.stringify({
 			value: condition,
 			selectedSource: state.selectedSource,
@@ -75,10 +63,7 @@ function persistSearchState(
 	);
 }
 
-export const activateSimilaritySearch = (
-	mediaId: string,
-	options: SearchStorePersistenceOptions = {},
-) => {
+export const activateSimilaritySearch = (mediaId: string) => {
 	const nextState: SearchState = {
 		...searchState,
 		similarityAnchorMediaId: mediaId,
@@ -89,15 +74,13 @@ export const activateSimilaritySearch = (
 	};
 	setSearchState(nextState);
 	try {
-		persistSearchState(nextState, options.surface ?? "legacy");
+		persistSearchState(nextState);
 	} catch {
 		// Persistence errors must not disrupt opening similarity ordering.
 	}
 };
 
-export const clearSimilaritySearch = (
-	options: SearchStorePersistenceOptions = {},
-) => {
+export const clearSimilaritySearch = () => {
 	const nextState: SearchState = {
 		...searchState,
 		similarityAnchorMediaId: null,
@@ -106,7 +89,7 @@ export const clearSimilaritySearch = (
 	};
 	setSearchState(nextState);
 	try {
-		persistSearchState(nextState, options.surface ?? "legacy");
+		persistSearchState(nextState);
 	} catch {
 		// Persistence errors must not disrupt clearing similarity ordering.
 	}

@@ -1,7 +1,7 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import {
 	type MediaSource,
-	V2MediaViewer as SharedV2MediaViewer,
+	MediaViewer as SharedMediaViewer,
 } from "@solid-imager/ui/media-viewer";
 import { createEffect, createSignal, onCleanup } from "solid-js";
 
@@ -69,7 +69,7 @@ class ApiMediaSource implements MediaSource {
 	}
 }
 
-export function V2MediaViewer(props: { media: MediaDetails }) {
+export function MediaViewer(props: { media: MediaDetails }) {
 	const [source, setSource] = createSignal<ApiMediaSource>(
 		new ApiMediaSource(props.media),
 	);
@@ -84,7 +84,7 @@ export function V2MediaViewer(props: { media: MediaDetails }) {
 	onCleanup(() => source().cleanup());
 
 	return (
-		<SharedV2MediaViewer
+		<SharedMediaViewer
 			fileName={props.media.fileName}
 			height={props.media.height}
 			source={source()}

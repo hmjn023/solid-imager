@@ -1,13 +1,13 @@
 import {
 	type MediaGridImageLoadPolicy,
 	type MediaGridLinkProps,
-	V2MediaGridItem as SharedV2MediaGridItem,
+	MediaGridItem as SharedMediaGridItem,
 } from "@solid-imager/ui/media-grid-item";
 import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { ThumbnailImage } from "./thumbnail-image";
 
-export type V2ServerMediaGridItemProps = {
+export type ServerMediaGridItemProps = {
 	linkPrefix?: string;
 	media: import("@solid-imager/core/domain/media/schemas").Media;
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
@@ -24,7 +24,7 @@ export type V2ServerMediaGridItemProps = {
 	sourceRootPath?: string;
 };
 
-export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
+export function MediaGridItem(props: ServerMediaGridItemProps) {
 	const isPlainPrimaryClick = (event: MouseEvent) =>
 		event.button === 0 &&
 		!event.metaKey &&
@@ -110,7 +110,7 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 	);
 
 	return (
-		<SharedV2MediaGridItem
+		<SharedMediaGridItem
 			isBulkSelectMode={props.isBulkSelectMode}
 			isPreviewSelected={props.isPreviewSelected}
 			isSelected={props.isSelected}

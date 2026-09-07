@@ -40,10 +40,10 @@ export function BatchToolPanel(props: {
 	return (
 		<div class="space-y-5">
 			<div>
-				<h2 class="font-semibold text-lg text-[var(--v2-text)]">
+				<h2 class="font-semibold text-lg text-[var(--app-text)]">
 					{isVector() ? "Vector extraction" : "Batch tagging"}
 				</h2>
-				<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
+				<p class="mt-0.5 text-xs text-[var(--app-text-muted)]">
 					{isVector()
 						? "Create CCIP character embeddings for similarity search."
 						: "Analyze media and submit AI tagging jobs."}
@@ -52,7 +52,7 @@ export function BatchToolPanel(props: {
 
 			<section
 				aria-labelledby={`${props.kind}-options-title`}
-				class="border-[var(--v2-border)] border-y bg-[var(--v2-surface)] py-4 sm:rounded-md sm:border sm:p-4"
+				class="border-[var(--app-border)] border-y bg-[var(--app-surface)] py-4 sm:rounded-md sm:border sm:p-4"
 			>
 				<h3 class="sr-only" id={`${props.kind}-options-title`}>
 					Job options
@@ -65,7 +65,7 @@ export function BatchToolPanel(props: {
 							onChange={props.manager.setSelectedSourceId}
 							value={props.manager.selectedSourceId()}
 						/>
-						<p class="text-xs text-[var(--v2-text-muted)]">
+						<p class="text-xs text-[var(--app-text-muted)]">
 							Leave empty to process all sources.
 						</p>
 					</div>
@@ -81,12 +81,12 @@ export function BatchToolPanel(props: {
 								{isVector() ? "Force re-extraction" : "Force re-tagging"}
 							</CheckboxLabel>
 						</Checkbox>
-						<p class="text-xs text-[var(--v2-text-muted)]">
+						<p class="text-xs text-[var(--app-text-muted)]">
 							When disabled, processed media is skipped.
 						</p>
 					</div>
 				</div>
-				<div class="mt-4 flex flex-col justify-end gap-2 border-[var(--v2-border)] border-t pt-4 sm:flex-row">
+				<div class="mt-4 flex flex-col justify-end gap-2 border-[var(--app-border)] border-t pt-4 sm:flex-row">
 					<Button
 						class="w-full sm:w-auto"
 						disabled={pendingAction() !== null || !!props.manager.activeJobId()}

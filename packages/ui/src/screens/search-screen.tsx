@@ -2,10 +2,10 @@ import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
-import { V2CollectionInspector } from "../collection-inspector";
+import { CollectionInspector } from "../collection-inspector";
 import { reconcileCollectionPreviewId } from "../collection-navigation";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
-import { V2SearchToolbar } from "../search-toolbar";
+import { SearchToolbar } from "../search-toolbar";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
@@ -13,7 +13,7 @@ import {
 } from "../source-media-grid";
 import type { SearchWorkspaceProps } from "./search-screen.types";
 
-export type V2SearchScreenProps = SearchWorkspaceProps & {
+export type SearchScreenProps = SearchWorkspaceProps & {
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
 	onBulkAction?: () => void;
@@ -30,9 +30,9 @@ export type V2SearchScreenProps = SearchWorkspaceProps & {
 	selectedCount?: () => number;
 };
 
-const V2_SEARCH_VIEW_MODE_KEY = "solid-imager:v2:search:view-mode";
+const SEARCH_VIEW_MODE_KEY = "solid-imager:search:view-mode";
 
-export function V2SearchScreen(props: V2SearchScreenProps) {
+export function SearchScreen(props: SearchScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
 	const [isInspectorVisible, setIsInspectorVisible] = createSignal(true);
@@ -74,7 +74,7 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 	const updateViewMode = (mode: SourceMediaViewMode) => {
 		setViewMode(mode);
 		try {
-			localStorage.setItem(V2_SEARCH_VIEW_MODE_KEY, mode);
+			localStorage.setItem(SEARCH_VIEW_MODE_KEY, mode);
 		} catch {
 			// Storage can be unavailable in hardened browser contexts.
 		}
@@ -97,7 +97,7 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 	onMount(() => {
 		setIsMounted(true);
 		try {
-			const storedMode = localStorage.getItem(V2_SEARCH_VIEW_MODE_KEY);
+			const storedMode = localStorage.getItem(SEARCH_VIEW_MODE_KEY);
 			if (storedMode === "grid" || storedMode === "list") {
 				setViewMode(storedMode);
 			}
@@ -107,8 +107,8 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 	});
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--v2-canvas)]">
-			<V2SearchToolbar
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--app-canvas)]">
+			<SearchToolbar
 				context="global"
 				filterData={props.filterData}
 				itemCount={page().totalCount()}
@@ -146,7 +146,7 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
-				data-media-scroll="v2-search"
+				data-media-scroll="search"
 			>
 				<div
 					class={
@@ -215,7 +215,7 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 					<Show when={props.renderMediaPreview}>
 						{(renderPreview) => (
 							<Show when={isInspectorVisible()}>
-								<V2CollectionInspector
+								<CollectionInspector
 									media={previewMedia()}
 									onClose={() => setIsInspectorVisible(false)}
 									onOpenDetail={
@@ -231,7 +231,7 @@ export function V2SearchScreen(props: V2SearchScreenProps) {
 			</div>
 			<Show when={props.isBulkSelectMode?.()}>
 				<div
-					class="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] px-3 py-3 shadow-lg sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
+					class="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] px-3 py-3 shadow-lg sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
 					data-testid="search-bulk-actions-bar"
 				>
 					<span class="w-full text-center font-medium text-sm sm:w-auto">

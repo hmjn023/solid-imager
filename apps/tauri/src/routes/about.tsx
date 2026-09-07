@@ -14,33 +14,33 @@ export const Route = createFileRoute("/about")({
 
 function AboutRoute() {
 	return (
-		<section class="h-full min-h-0 overflow-y-auto bg-[var(--v2-canvas)] p-4 text-[var(--v2-text)] sm:p-6">
-			<header class="mb-4 flex flex-wrap items-start justify-between gap-3 border-[var(--v2-border)] border-b pb-4">
+		<section class="h-full min-h-0 overflow-y-auto bg-[var(--app-canvas)] p-4 text-[var(--app-text)] sm:p-6">
+			<header class="mb-4 flex flex-wrap items-start justify-between gap-3 border-[var(--app-border)] border-b pb-4">
 				<div>
 					<h1 class="font-semibold text-xl">About Solid Imager</h1>
-					<p class="mt-1 text-sm text-[var(--v2-text-secondary)]">
+					<p class="mt-1 text-sm text-[var(--app-text-secondary)]">
 						メディアを整理・検索し、関連情報とバックグラウンド処理を管理します。
 					</p>
 				</div>
 				<Badge
-					class="border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-text-secondary)]"
+					class="border-[var(--app-border-strong)] bg-[var(--app-surface-muted)] text-[var(--app-text-secondary)]"
 					variant="outline"
 				>
-					V2
+					Current UI
 				</Badge>
 			</header>
 			<div class="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
-				<Card class="border-[var(--v2-border)] bg-[var(--v2-surface)] shadow-none">
+				<Card class="border-[var(--app-border)] bg-[var(--app-surface)] shadow-none">
 					<CardHeader class="p-5 pb-3">
 						<CardTitle class="text-base">Media-first workspace</CardTitle>
 					</CardHeader>
-					<CardContent class="px-5 pb-5 text-sm leading-6 text-[var(--v2-text-secondary)]">
+					<CardContent class="px-5 pb-5 text-sm leading-6 text-[var(--app-text-secondary)]">
 						<p>
 							複数のメディアソース、検索条件、タグ・作品・キャラクターなどの関連情報を一か所で扱います。
 						</p>
 					</CardContent>
 				</Card>
-				<Card class="border-[var(--v2-border)] bg-[var(--v2-surface)] shadow-none">
+				<Card class="border-[var(--app-border)] bg-[var(--app-surface)] shadow-none">
 					<CardHeader class="p-5 pb-3">
 						<CardTitle class="text-base">Documentation</CardTitle>
 					</CardHeader>

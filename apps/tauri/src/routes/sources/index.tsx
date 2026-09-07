@@ -6,7 +6,7 @@ import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
 import { SourceCard } from "@solid-imager/ui/source-card";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
-import { V2SourceFormModal } from "@solid-imager/ui/source-form-modal";
+import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { useLiveQuery } from "@tanstack/solid-db";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
@@ -112,7 +112,7 @@ function SourcesRoute() {
 				/>
 			)}
 			renderFormModal={(props) => (
-				<V2SourceFormModal
+				<SourceFormModal
 					editingSource={props.editingSource}
 					isOpen={props.isOpen}
 					onClose={props.onClose}

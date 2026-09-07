@@ -43,7 +43,7 @@ import {
 	projectsForMediaQueryOptions,
 } from "~/infrastructure/api-clients/queries";
 
-export type V2MediaSidebarProps = {
+export type MediaSidebarProps = {
 	media: MediaDetails;
 	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
@@ -60,7 +60,7 @@ function formatBytes(bytes: number, decimals = 2) {
 	return `${Number.parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
 }
 
-export function V2MediaSidebar(props: V2MediaSidebarProps) {
+export function MediaSidebar(props: MediaSidebarProps) {
 	const queryClient = useQueryClient();
 	const tags = createMemo(() => props.media.tags || []);
 
@@ -226,14 +226,14 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 	};
 
 	return (
-		<aside class="min-w-0 divide-y divide-[var(--v2-border)] bg-[var(--v2-surface-subtle)] px-4 pb-6 text-[var(--v2-text)] lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 [scrollbar-gutter:stable]">
+		<aside class="min-w-0 divide-y divide-[var(--app-border)] bg-[var(--app-surface-subtle)] px-4 pb-6 text-[var(--app-text)] lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 [scrollbar-gutter:stable]">
 			{/* Description Section */}
 			<div class="space-y-2">
 				<div class="flex items-start justify-between gap-2">
 					<h2 class="font-semibold text-sm">Description</h2>
 					<Show when={!isEditingDescription()}>
 						<button
-							class="min-h-11 px-2 text-[var(--v2-primary)] text-sm hover:underline"
+							class="min-h-11 px-2 text-[var(--app-primary)] text-sm hover:underline"
 							onClick={() => setIsEditingDescription(true)}
 							type="button"
 						>
@@ -266,7 +266,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 						/>
 						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
 							<button
-								class="min-h-11 w-full rounded-md bg-[var(--v2-primary)] px-3 py-1 text-sm text-white hover:bg-[var(--v2-primary-hover)] lg:w-auto"
+								class="min-h-11 w-full rounded-md bg-[var(--app-primary)] px-3 py-1 text-sm text-white hover:bg-[var(--app-primary-hover)] lg:w-auto"
 								onClick={handleSaveDescription}
 								type="button"
 							>
@@ -293,7 +293,7 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 							{(url) => (
 								<li>
 									<a
-										class="block break-all text-[var(--v2-primary)] text-sm hover:underline"
+										class="block break-all text-[var(--app-primary)] text-sm hover:underline"
 										href={url.url}
 										rel="noopener noreferrer"
 										target="_blank"
@@ -372,10 +372,10 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 								let badgeClass = "";
 								if (tag.source === "AI") {
 									badgeClass =
-										"border-[var(--v2-border-strong)] bg-[var(--v2-info-surface)] text-[var(--v2-info)]";
+										"border-[var(--app-border-strong)] bg-[var(--app-info-surface)] text-[var(--app-info)]";
 								} else if (tag.source === "comfyui_workflow") {
 									badgeClass =
-										"border-[var(--v2-border-strong)] bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]";
+										"border-[var(--app-border-strong)] bg-[var(--app-surface-selected)] text-[var(--app-primary)]";
 								}
 								return (
 									<Badge class={badgeClass} title={`Source: ${tag.source}`}>
@@ -402,10 +402,10 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 								let badgeClass = "";
 								if (tag.source === "AI") {
 									badgeClass =
-										"border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-destructive)]";
+										"border-[var(--app-border-strong)] bg-[var(--app-surface-muted)] text-[var(--app-destructive)]";
 								} else if (tag.source === "comfyui_workflow") {
 									badgeClass =
-										"border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-destructive)]";
+										"border-[var(--app-border-strong)] bg-[var(--app-surface-muted)] text-[var(--app-destructive)]";
 								}
 								return (
 									<Badge
@@ -491,16 +491,16 @@ export function V2MediaSidebar(props: V2MediaSidebarProps) {
 			<div class="space-y-2">
 				<h2 class="font-semibold text-sm">File information</h2>
 				<dl class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
-					<dt class="font-medium text-[var(--v2-text-muted)]">Resolution</dt>
-					<dd class="text-right text-[var(--v2-text)]">
+					<dt class="font-medium text-[var(--app-text-muted)]">Resolution</dt>
+					<dd class="text-right text-[var(--app-text)]">
 						{props.media.width} × {props.media.height}
 					</dd>
-					<dt class="font-medium text-[var(--v2-text-muted)]">File Size</dt>
-					<dd class="text-right text-[var(--v2-text)]">
+					<dt class="font-medium text-[var(--app-text-muted)]">File Size</dt>
+					<dd class="text-right text-[var(--app-text)]">
 						{props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
 					</dd>
-					<dt class="font-medium text-[var(--v2-text-muted)]">Path</dt>
-					<dd class="min-w-0 break-all text-right text-[var(--v2-text)] text-xs">
+					<dt class="font-medium text-[var(--app-text-muted)]">Path</dt>
+					<dd class="min-w-0 break-all text-right text-[var(--app-text)] text-xs">
 						{props.media.filePath}
 					</dd>
 				</dl>

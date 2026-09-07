@@ -1,5 +1,5 @@
 import { createRootRouteWithContext, Outlet } from "@tanstack/solid-router";
-import { TauriV2AppShell } from "~/components/app-shell";
+import { TauriAppShell } from "~/components/app-shell";
 import type { AppRouterContext } from "~/router";
 
 export const Route = createRootRouteWithContext<AppRouterContext>()({
@@ -8,8 +8,8 @@ export const Route = createRootRouteWithContext<AppRouterContext>()({
 
 function RootRouteComponent() {
 	return (
-		<TauriV2AppShell>
+		<TauriAppShell>
 			<Outlet />
-		</TauriV2AppShell>
+		</TauriAppShell>
 	);
 }

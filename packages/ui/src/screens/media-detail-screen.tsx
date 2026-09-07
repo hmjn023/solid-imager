@@ -1,20 +1,20 @@
-import { V2MediaDetailSkeleton } from "../media-detail-skeleton";
+import { MediaDetailSkeleton } from "../media-detail-skeleton";
 import { LoadingRegion } from "../skeleton";
-import type { MediaDetailScreenProps } from "./media-detail-screen.types";
+import type { MediaDetailScreenProps as BaseMediaDetailScreenProps } from "./media-detail-screen.types";
 import { MediaDetailScreenController } from "./media-detail-screen-core";
 
-export type V2MediaDetailScreenProps = MediaDetailScreenProps & {
+export type MediaDetailScreenProps = BaseMediaDetailScreenProps & {
 	renderHeader?: (
-		media: Parameters<MediaDetailScreenProps["renderMediaViewer"]>[0],
+		media: Parameters<BaseMediaDetailScreenProps["renderMediaViewer"]>[0],
 		isUpdating: import("solid-js").Accessor<boolean>,
 		onUpdate: () => void,
 		sourceRootPath?: string,
 	) => import("solid-js").JSX.Element;
 };
 
-export function V2MediaDetailScreen(props: V2MediaDetailScreenProps) {
+export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	return (
-		<div class="flex h-full min-h-0 w-full flex-col bg-[var(--v2-canvas)]">
+		<div class="flex h-full min-h-0 w-full flex-col bg-[var(--app-canvas)]">
 			<MediaDetailScreenController
 				{...props}
 				renderData={({ details, isUpdating, onUpdate, sourceRootPath }) => (
@@ -29,7 +29,7 @@ export function V2MediaDetailScreen(props: V2MediaDetailScreenProps) {
 							<div class="min-w-0 lg:min-h-0 lg:overflow-hidden">
 								{props.renderMediaViewer(details, sourceRootPath)}
 							</div>
-							<div class="min-w-0 border-[var(--v2-border)] border-t lg:min-h-0 lg:border-t-0 lg:border-l">
+							<div class="min-w-0 border-[var(--app-border)] border-t lg:min-h-0 lg:border-t-0 lg:border-l">
 								{props.renderMediaSidebar(
 									details,
 									isUpdating,
@@ -45,7 +45,7 @@ export function V2MediaDetailScreen(props: V2MediaDetailScreenProps) {
 						class="h-full min-h-0"
 						label="メディア情報を読み込んでいます..."
 					>
-						<V2MediaDetailSkeleton />
+						<MediaDetailSkeleton />
 					</LoadingRegion>
 				)}
 			/>

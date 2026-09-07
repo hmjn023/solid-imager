@@ -1,11 +1,11 @@
 import { Skeleton } from "./skeleton";
 import { cn } from "./utils/cn";
 
-export type V2MediaDetailSkeletonProps = {
+export type MediaDetailSkeletonProps = {
 	class?: string;
 };
 
-export function V2MediaDetailSkeleton(props: V2MediaDetailSkeletonProps) {
+export function MediaDetailSkeleton(props: MediaDetailSkeletonProps) {
 	return (
 		<div
 			aria-hidden="true"

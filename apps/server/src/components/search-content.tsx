@@ -17,17 +17,17 @@ import {
 import { useSearchHistoryPersistence } from "@solid-imager/ui/hooks/use-search-history-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { V2SearchScreen } from "@solid-imager/ui/screens/search-screen";
+import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { toast } from "@solid-imager/ui/toast";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
-import { V2MediaGridItem } from "~/components/media/media-grid-item";
+import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
-import { saveV2MediaContext } from "~/components/media-context";
+import { saveMediaContext } from "~/components/media-context";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
@@ -61,7 +61,7 @@ const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
 function rememberReturnPath(href: string): void {
 	try {
-		sessionStorage.setItem("v2:media-return", href);
+		sessionStorage.setItem("media-return", href);
 	} catch {
 		// Session storage is optional; media detail navigation must continue.
 	}
@@ -95,7 +95,6 @@ export default function SearchContent() {
 	const [isMoveCopyDialogOpen, setIsMoveCopyDialogOpen] = createSignal(false);
 	const searchHistory = useSearchHistoryPersistence("all", {
 		client: SearchHistoryClient,
-		surface: "v2",
 	});
 	const page = useSearchPage({
 		searchMedia,
@@ -112,14 +111,13 @@ export default function SearchContent() {
 		getSearchCondition,
 		sortBy: () => searchState.sortBy,
 		sortOrder: () => searchState.sortOrder,
-		// V2 can display up to eight columns. Fetch enough complete rows per page
+		// Search can display up to eight columns. Fetch enough complete rows per page
 		// so scrolling does not stop for another request every two or three rows.
 		limit: () => Math.max(searchState.limit, SEARCH_RESULTS_PER_PAGE),
 		scrollY: () => searchState.scrollY,
 		setScrollY: (value) => {
 			setSearchState("scrollY", value);
 			persistSearchScrollPosition("all", value, {
-				surface: "v2",
 				historyEntryKey: searchHistory.historyEntryKey,
 			});
 		},
@@ -132,7 +130,7 @@ export default function SearchContent() {
 		commitSearchHistory: searchHistory.commitNow,
 		historyEntryKey: searchHistory.historyEntryKey,
 		enableVirtualization: true,
-		scrollContainerSelector: '[data-media-scroll="v2-search"]',
+		scrollContainerSelector: '[data-media-scroll="search"]',
 	});
 	const selectedMediaItems = () =>
 		page
@@ -217,7 +215,7 @@ export default function SearchContent() {
 
 	return (
 		<>
-			<V2SearchScreen
+			<SearchScreen
 				enableVirtualization
 				filterData={page.filterData}
 				isBulkSelectMode={isBulkSelectMode}
@@ -226,9 +224,7 @@ export default function SearchContent() {
 				onClearSelection={clearSelection}
 				onCopyMove={handleCopyMove}
 				onDelete={handleDelete}
-				onFindSimilar={(media) =>
-					activateSimilaritySearch(media.id, { surface: "v2" })
-				}
+				onFindSimilar={(media) => activateSimilaritySearch(media.id)}
 				onSelectAll={() => {
 					setIsBulkSelectMode(true);
 					selection.selectAll();
@@ -240,7 +236,7 @@ export default function SearchContent() {
 				page={page}
 				presetClient={PresetClient}
 				renderMediaItem={(media, options) => (
-					<V2MediaGridItem
+					<MediaGridItem
 						imageLoadPolicy={options?.imageLoadPolicy}
 						isBulkSelectMode={options?.isBulkSelectMode}
 						isSelected={options?.isSelected}
@@ -256,11 +252,11 @@ export default function SearchContent() {
 				)}
 				onPrepareMediaDetail={(media, context) => {
 					rememberReturnPath(location().href);
-					saveV2MediaContext(location().href, context ?? [media]);
+					saveMediaContext(location().href, context ?? [media]);
 				}}
 				onOpenMediaDetail={(media, context) => {
 					rememberReturnPath(location().href);
-					saveV2MediaContext(location().href, context ?? [media]);
+					saveMediaContext(location().href, context ?? [media]);
 					void navigate({
 						params: {
 							mediaId: media.id,
@@ -292,7 +288,7 @@ export default function SearchContent() {
 				}}
 				open={isDeleteDialogOpen()}
 			>
-				<DialogContent class="v2-theme">
+				<DialogContent class="app-theme">
 					<DialogHeader>
 						<DialogTitle>メディアを削除</DialogTitle>
 						<DialogDescription>

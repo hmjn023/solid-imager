@@ -28,15 +28,15 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 	return (
 		<div class="space-y-5">
 			<div>
-				<h2 class="font-semibold text-lg text-[var(--v2-text)]">
+				<h2 class="font-semibold text-lg text-[var(--app-text)]">
 					Duplicate detection
 				</h2>
-				<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
+				<p class="mt-0.5 text-xs text-[var(--app-text-muted)]">
 					Find matching media and choose one item to keep in each group.
 				</p>
 			</div>
 
-			<section class="border-[var(--v2-border)] border-y bg-[var(--v2-surface)] py-4 sm:rounded-md sm:border sm:p-4">
+			<section class="border-[var(--app-border)] border-y bg-[var(--app-surface)] py-4 sm:rounded-md sm:border sm:p-4">
 				<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
 					<div class="space-y-1.5">
 						<Label>Target source</Label>
@@ -65,7 +65,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 									: ALL_SOURCES_OPTION
 							}
 						>
-							<SelectTrigger class="w-full bg-[var(--v2-surface)]">
+							<SelectTrigger class="w-full bg-[var(--app-surface)]">
 								<SelectValue<unknown>>
 									{(state) => {
 										const selected = state.selectedOption();
@@ -91,7 +91,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 				<Show when={props.manager.duplicateStatus()}>
 					<p
 						aria-live="polite"
-						class="mt-3 text-xs text-[var(--v2-text-secondary)]"
+						class="mt-3 text-xs text-[var(--app-text-secondary)]"
 					>
 						{props.manager.duplicateStatus()}
 					</p>
@@ -99,7 +99,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 			</section>
 
 			<Show when={props.manager.duplicateGroups().length > 0}>
-				<div class="flex flex-col gap-3 border-[var(--v2-border)] border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
+				<div class="flex flex-col gap-3 border-[var(--app-border)] border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
 					<p class="font-medium text-sm">
 						{props.manager.duplicateGroups().length} duplicate groups
 					</p>
@@ -132,12 +132,12 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 				<div class="space-y-4">
 					<For each={props.manager.duplicateGroups()}>
 						{(group, index) => (
-							<div class="overflow-x-auto rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] [scrollbar-gutter:stable]">
+							<div class="overflow-x-auto rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] [scrollbar-gutter:stable]">
 								<table class="w-full min-w-[42rem] border-collapse text-left text-xs">
-									<caption class="px-3 py-2 text-left font-medium text-sm text-[var(--v2-text)]">
+									<caption class="px-3 py-2 text-left font-medium text-sm text-[var(--app-text)]">
 										Group {index() + 1} · {group.media.length} items
 									</caption>
-									<thead class="border-[var(--v2-border)] border-t bg-[var(--v2-surface-muted)] text-[var(--v2-text-muted)]">
+									<thead class="border-[var(--app-border)] border-t bg-[var(--app-surface-muted)] text-[var(--app-text-muted)]">
 										<tr>
 											<th class="px-3 py-2 font-medium" scope="col">
 												Preview
@@ -159,7 +159,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 											</th>
 										</tr>
 									</thead>
-									<tbody class="divide-y divide-[var(--v2-border)]">
+									<tbody class="divide-y divide-[var(--app-border)]">
 										<For each={group.media}>
 											{(item) => {
 												const keep = () => props.manager.keepIds().has(item.id);
@@ -169,7 +169,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 													<tr
 														class={
 															keep()
-																? "bg-[var(--v2-surface-selected)]"
+																? "bg-[var(--app-surface-selected)]"
 																: undefined
 														}
 													>
@@ -192,13 +192,13 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 																{item.fileName}
 															</span>
 														</th>
-														<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+														<td class="whitespace-nowrap px-3 py-2 text-[var(--app-text-secondary)]">
 															{item.width} × {item.height}
 														</td>
-														<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+														<td class="whitespace-nowrap px-3 py-2 text-[var(--app-text-secondary)]">
 															{formatBytes(item.fileSize)}
 														</td>
-														<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+														<td class="whitespace-nowrap px-3 py-2 text-[var(--app-text-secondary)]">
 															{formatDate(item.createdAt)}
 														</td>
 														<td class="px-3 py-2 text-right">

@@ -8,7 +8,7 @@ import {
 } from "../async-state";
 import { Button } from "../button";
 import type { UseManagerPageResult } from "../hooks/use-manager-page";
-import { V2ManagementHeader } from "../management-layout";
+import { ManagementHeader } from "../management-layout";
 import { BatchToolPanel } from "./manager/batch-tools";
 import { DataTransferPanel } from "./manager/data-transfer";
 import { ManagerDialogs } from "./manager/dialogs";
@@ -16,25 +16,22 @@ import { DuplicateToolPanel } from "./manager/duplicates";
 import { EntityTablePanel, ManagerTableSkeleton } from "./manager/entity-panel";
 import { ManagerCategoryNavigation } from "./manager/navigation";
 import { ThumbnailWarmupPanel } from "./manager/thumbnail";
-import type {
-	V2ManagerCategory,
-	V2ManagerTransferActions,
-} from "./manager/types";
+import type { ManagerCategory, ManagerTransferActions } from "./manager/types";
 import { categoryLabel, isCrudCategory, singularLabel } from "./manager/utils";
 
 export type {
-	V2ManagerTransferActions,
-	V2ManagerTransferFormat,
+	ManagerTransferActions,
+	ManagerTransferFormat,
 } from "./manager/types";
 
-export function V2ManagerScreen(props: {
+export function ManagerScreen(props: {
 	manager: UseManagerPageResult;
-	transferActions?: V2ManagerTransferActions;
+	transferActions?: ManagerTransferActions;
 }) {
 	const [query, setQuery] = createSignal("");
 	const [selectedId, setSelectedId] = createSignal<string | null>(null);
 	const [activeCategory, setActiveCategory] =
-		createSignal<V2ManagerCategory>("projects");
+		createSignal<ManagerCategory>("projects");
 	const activeQueryState = () => {
 		const states = props.manager.queryStates();
 		switch (activeCategory()) {
@@ -51,7 +48,7 @@ export function V2ManagerScreen(props: {
 	const canRenderContent = () =>
 		activeQueryState().phase === "data" ||
 		(activeQueryState().phase === "empty" && !isCrudCategory(activeCategory()));
-	const changeCategory = (value: V2ManagerCategory) => {
+	const changeCategory = (value: ManagerCategory) => {
 		setQuery("");
 		setSelectedId(null);
 		setActiveCategory(value);
@@ -59,8 +56,8 @@ export function V2ManagerScreen(props: {
 	};
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--v2-canvas)]">
-			<V2ManagementHeader
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--app-canvas)]">
+			<ManagementHeader
 				description="分類データの管理とバッチ処理の投入を行います。"
 				title="Manager"
 			/>
@@ -148,7 +145,7 @@ export function V2ManagerScreen(props: {
 										}
 									>
 										<div class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3">
-											<p class="text-xs text-[var(--v2-text-secondary)]">
+											<p class="text-xs text-[var(--app-text-secondary)]">
 												IP候補を取得できませんでした。Characters一覧は引き続き利用できます。
 											</p>
 											<RetryButton

@@ -48,23 +48,20 @@ describe("activateSimilaritySearch", () => {
 		});
 	});
 
-	it("persists v2 activation without writing the legacy state key", () => {
-		activateSimilaritySearch("media-v2", { surface: "v2" });
+	it("persists activation in the shared state key", () => {
+		activateSimilaritySearch("media-1");
 
 		expect(searchState.mode).toBe("simple");
-		expect(searchState.similarityAnchorMediaId).toBe("media-v2");
-		expect(
-			JSON.parse(sessionStorage.getItem("v2:current-all") ?? "{}"),
-		).toEqual({
+		expect(searchState.similarityAnchorMediaId).toBe("media-1");
+		expect(JSON.parse(sessionStorage.getItem("current-all") ?? "{}")).toEqual({
 			value: { type: "group", operator: "and", children: [] },
 			selectedSource: "",
 			sort: "date",
 			order: "desc",
 			mode: "simple",
-			similarityAnchorMediaId: "media-v2",
+			similarityAnchorMediaId: "media-1",
 			similarityTopK: 50,
 		});
-		expect(sessionStorage.getItem("current-all")).toBeNull();
 	});
 });
 
@@ -120,29 +117,23 @@ describe("clearSimilaritySearch", () => {
 		expect(sessionStorage.getItem("current-all")).toContain('"mode":"simple"');
 	});
 
-	it("clears the v2 persisted anchor without touching the legacy key", () => {
+	it("clears the persisted anchor in the shared state key", () => {
 		sessionStorage.setItem(
 			"current-all",
-			JSON.stringify({ similarityAnchorMediaId: "legacy-media" }),
-		);
-		sessionStorage.setItem(
-			"v2:current-all",
 			JSON.stringify({
 				value: { type: "group", operator: "and", children: [] },
 				selectedSource: "",
 				sort: "date",
 				order: "desc",
 				mode: "simple",
-				similarityAnchorMediaId: "media-v2",
+				similarityAnchorMediaId: "media-1",
 				similarityTopK: 50,
 			}),
 		);
 
-		clearSimilaritySearch({ surface: "v2" });
+		clearSimilaritySearch();
 
-		expect(
-			JSON.parse(sessionStorage.getItem("v2:current-all") ?? "{}"),
-		).toEqual({
+		expect(JSON.parse(sessionStorage.getItem("current-all") ?? "{}")).toEqual({
 			value: { type: "group", operator: "and", children: [] },
 			selectedSource: "",
 			sort: "date",
@@ -150,9 +141,6 @@ describe("clearSimilaritySearch", () => {
 			mode: "simple",
 			similarityAnchorMediaId: null,
 			similarityTopK: 50,
-		});
-		expect(JSON.parse(sessionStorage.getItem("current-all") ?? "{}")).toEqual({
-			similarityAnchorMediaId: "legacy-media",
 		});
 	});
 });
@@ -173,7 +161,7 @@ describe("clearSimilaritySearch preserves the selected mode", () => {
 
 	it("clears the anchor without changing the selected mode", () => {
 		sessionStorage.setItem(
-			"v2:current-all",
+			"current-all",
 			JSON.stringify({
 				value: { type: "group", operator: "and", children: [] },
 				selectedSource: "",
@@ -185,15 +173,13 @@ describe("clearSimilaritySearch preserves the selected mode", () => {
 			}),
 		);
 
-		clearSimilaritySearch({ surface: "v2" });
+		clearSimilaritySearch();
 
 		expect(searchState.mode).toBe("pro");
 		expect(searchState.similarityAnchorMediaId).toBeNull();
 		expect(searchState.offset).toBe(0);
 		expect(searchState.scrollY).toBe(0);
-		expect(
-			JSON.parse(sessionStorage.getItem("v2:current-all") ?? "{}"),
-		).toEqual({
+		expect(JSON.parse(sessionStorage.getItem("current-all") ?? "{}")).toEqual({
 			value: {
 				type: "group",
 				operator: "and",

@@ -26,7 +26,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test("V2 routes survive direct navigation and reload", async ({ page }) => {
+test("routes survive direct navigation and reload", async ({ page }) => {
 	const routes = [
 		["/search", "すべてのメディア"],
 		[sourcePath, E2E_SOURCE_NAME],
@@ -53,7 +53,7 @@ test("V2 routes survive direct navigation and reload", async ({ page }) => {
 	}
 });
 
-test("V2 sidebar keeps navigation items separated in a short viewport", async ({
+test("sidebar keeps navigation items separated in a short viewport", async ({
 	page,
 }) => {
 	await page.setViewportSize({ width: 1440, height: 480 });
@@ -76,7 +76,7 @@ test("V2 sidebar keeps navigation items separated in a short viewport", async ({
 	expect(Math.min(...verticalGaps)).toBeGreaterThanOrEqual(0);
 });
 
-test("V2 detail changes after returning to a collection", async ({ page }) => {
+test("detail changes after returning to a collection", async ({ page }) => {
 	await page.goto(sourcePath);
 	await waitForAppHydration(page);
 
@@ -97,7 +97,7 @@ test("V2 detail changes after returning to a collection", async ({ page }) => {
 	).toBeVisible();
 });
 
-test("V2 wide collection uses selection preview before detail navigation", async ({
+test("wide collection uses selection preview before detail navigation", async ({
 	page,
 }) => {
 	await page.setViewportSize({ width: 1600, height: 900 });
@@ -124,7 +124,7 @@ test("V2 wide collection uses selection preview before detail navigation", async
 	await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
 });
 
-test("V2 restore exposes and selects the TAR format", async ({ page }) => {
+test("restore exposes and selects the TAR format", async ({ page }) => {
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 
@@ -160,7 +160,7 @@ test("V2 restore exposes and selects the TAR format", async ({ page }) => {
 	);
 });
 
-test("V2 completed export starts a native streaming download", async ({
+test("completed export starts a native streaming download", async ({
 	page,
 }) => {
 	await page.goto("/manager");
@@ -197,7 +197,7 @@ test("V2 completed export starts a native streaming download", async ({
 	expect((await download).suggestedFilename()).toMatch(/\.tar$/);
 });
 
-test("V2 search filter opens without remounting media results", async ({
+test("search filter opens without remounting media results", async ({
 	page,
 }) => {
 	await page.goto("/search");
@@ -207,23 +207,23 @@ test("V2 search filter opens without remounting media results", async ({
 	await expect(firstMedia).toBeVisible();
 	await page.evaluate(() => {
 		const state = window as Window & {
-			__v2FirstMedia?: Element;
-			__v2FilterDialog?: Element;
-			__v2SawLoadingFallback?: boolean;
-			__v2LoadingObserver?: MutationObserver;
+			__searchFirstMedia?: Element;
+			__searchFilterDialog?: Element;
+			__searchSawLoadingFallback?: boolean;
+			__searchLoadingObserver?: MutationObserver;
 		};
-		state.__v2FirstMedia =
+		state.__searchFirstMedia =
 			document.querySelector("[data-media-id]") ?? undefined;
-		state.__v2SawLoadingFallback = false;
-		state.__v2LoadingObserver = new MutationObserver(() => {
+		state.__searchSawLoadingFallback = false;
+		state.__searchLoadingObserver = new MutationObserver(() => {
 			if (
 				document.body.textContent?.includes("画面を読み込んでいます") ||
 				document.body.textContent?.includes("検索結果を読み込んでいます")
 			) {
-				state.__v2SawLoadingFallback = true;
+				state.__searchSawLoadingFallback = true;
 			}
 		});
-		state.__v2LoadingObserver.observe(document.body, {
+		state.__searchLoadingObserver.observe(document.body, {
 			childList: true,
 			subtree: true,
 		});
@@ -238,9 +238,9 @@ test("V2 search filter opens without remounting media results", async ({
 	await filterDialog.evaluate((element) => {
 		(
 			window as Window & {
-				__v2FilterDialog?: Element;
+				__searchFilterDialog?: Element;
 			}
-		).__v2FilterDialog = element;
+		).__searchFilterDialog = element;
 	});
 
 	const comboboxNames = await filterDialog
@@ -264,19 +264,19 @@ test("V2 search filter opens without remounting media results", async ({
 	await expect(filterDialog).toBeVisible();
 	const renderState = await page.evaluate(() => {
 		const state = window as Window & {
-			__v2FirstMedia?: Element;
-			__v2FilterDialog?: Element;
-			__v2SawLoadingFallback?: boolean;
-			__v2LoadingObserver?: MutationObserver;
+			__searchFirstMedia?: Element;
+			__searchFilterDialog?: Element;
+			__searchSawLoadingFallback?: boolean;
+			__searchLoadingObserver?: MutationObserver;
 		};
-		state.__v2LoadingObserver?.disconnect();
+		state.__searchLoadingObserver?.disconnect();
 		return {
 			filterNodeWasPreserved:
-				state.__v2FilterDialog ===
+				state.__searchFilterDialog ===
 				document.querySelector('[role="dialog"][aria-label="検索フィルター"]'),
 			mediaNodeWasPreserved:
-				state.__v2FirstMedia === document.querySelector("[data-media-id]"),
-			sawLoadingFallback: state.__v2SawLoadingFallback,
+				state.__searchFirstMedia === document.querySelector("[data-media-id]"),
+			sawLoadingFallback: state.__searchSawLoadingFallback,
 		};
 	});
 	expect(renderState.filterNodeWasPreserved).toBe(true);

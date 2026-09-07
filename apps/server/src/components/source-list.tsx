@@ -20,7 +20,7 @@ import {
 import { Link, useLocation } from "@tanstack/solid-router";
 import { createSignal, For, onMount, Show } from "solid-js";
 
-type V2SourceListProps = {
+type SourceListProps = {
 	expanded: boolean;
 	mediaSources: SafeMediaSource[];
 	onAddSource: () => void;
@@ -53,7 +53,7 @@ function sourceSyncDetail(source: SafeMediaSource): string {
 	return "未同期";
 }
 
-function V2SourceActions(props: {
+function SourceActions(props: {
 	onDelete: () => void;
 	onEdit: () => void;
 	onSync: () => void;
@@ -67,7 +67,7 @@ function V2SourceActions(props: {
 		<Popover placement="right-start">
 			<PopoverTrigger
 				aria-label={`${props.sourceName}の操作`}
-				class="flex size-11 shrink-0 items-center justify-center rounded-md text-[var(--v2-text-muted)] outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:size-7"
+				class="flex size-11 shrink-0 items-center justify-center rounded-md text-[var(--app-text-muted)] outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-[var(--app-focus)] md:size-7"
 			>
 				<Ellipsis aria-hidden="true" size={14} />
 			</PopoverTrigger>
@@ -105,7 +105,7 @@ function V2SourceActions(props: {
 	);
 }
 
-export function V2SourceList(props: V2SourceListProps) {
+export function SourceList(props: SourceListProps) {
 	const location = useLocation();
 	const [sourcesOpen, setSourcesOpen] = createSignal(true);
 	const currentSourceId = () => {
@@ -121,7 +121,7 @@ export function V2SourceList(props: V2SourceListProps) {
 		>
 			<CollapsibleTrigger
 				aria-label="Sources"
-				class="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left font-medium text-sm text-[var(--v2-text-secondary)] outline-none hover:bg-[var(--v2-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:h-10"
+				class="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left font-medium text-sm text-[var(--app-text-secondary)] outline-none hover:bg-[var(--app-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--app-focus)] md:h-10"
 				onClick={() => {
 					if (!props.expanded) props.onExpandSidebar?.();
 				}}
@@ -138,10 +138,10 @@ export function V2SourceList(props: V2SourceListProps) {
 			</CollapsibleTrigger>
 			<Show when={props.expanded}>
 				<CollapsibleContent>
-					<div class="ml-4 max-h-[min(36dvh,22rem)] overflow-y-auto overscroll-contain border-[var(--v2-border)] border-l py-1 pl-2 [scrollbar-gutter:stable]">
+					<div class="ml-4 max-h-[min(36dvh,22rem)] overflow-y-auto overscroll-contain border-[var(--app-border)] border-l py-1 pl-2 [scrollbar-gutter:stable]">
 						<Show
 							fallback={
-								<p class="px-2 py-3 text-xs text-[var(--v2-text-muted)]">
+								<p class="px-2 py-3 text-xs text-[var(--app-text-muted)]">
 									ソースはまだありません
 								</p>
 							}
@@ -152,34 +152,34 @@ export function V2SourceList(props: V2SourceListProps) {
 									<div
 										class={`group/source flex min-h-11 items-center rounded-md pr-1 ${
 											currentSourceId() === source.id
-												? "bg-[var(--v2-surface-selected)]"
-												: "hover:bg-[var(--v2-surface-muted)]"
+												? "bg-[var(--app-surface-selected)]"
+												: "hover:bg-[var(--app-surface-muted)]"
 										}`}
 									>
 										<Link
 											aria-current={
 												currentSourceId() === source.id ? "page" : undefined
 											}
-											class="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+											class="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
 											onClick={props.onNavigate}
 											params={{ mediaSourceId: source.id ?? "" }}
 											to="/sources/$mediaSourceId"
 										>
-											<span class="block truncate font-medium text-xs text-[var(--v2-text)]">
+											<span class="block truncate font-medium text-xs text-[var(--app-text)]">
 												{source.name}
 											</span>
-											<span class="mt-0.5 block text-[10px] text-[var(--v2-text-muted)]">
+											<span class="mt-0.5 block text-[10px] text-[var(--app-text-muted)]">
 												{sourceTypeLabel(source)} ·{" "}
 												{source.mediaCount?.toLocaleString() ?? "—"}件
 											</span>
 											<span
-												class="mt-0.5 block truncate text-[10px] text-[var(--v2-text-muted)]"
+												class="mt-0.5 block truncate text-[10px] text-[var(--app-text-muted)]"
 												title={source.lastSyncError ?? undefined}
 											>
 												{sourceSyncDetail(source)}
 											</span>
 										</Link>
-										<V2SourceActions
+										<SourceActions
 											onDelete={() => props.onDeleteSource(source)}
 											onEdit={() => props.onEditSource(source)}
 											onSync={() => props.onSyncSource(source)}

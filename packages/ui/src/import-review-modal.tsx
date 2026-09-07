@@ -59,7 +59,7 @@ function getPreviewUrl(url?: string): string {
 	return url;
 }
 
-export function V2ImportReviewModal(props: ImportReviewModalProps) {
+export function ImportReviewModal(props: ImportReviewModalProps) {
 	const createEmptySelection = () => new Set<string>();
 	const [selectedJobIds, setSelectedJobIds] = createSignal(
 		createEmptySelection(),
@@ -207,7 +207,7 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 				}}
 				open={props.isOpen}
 			>
-				<DialogContent class="v2-theme flex max-h-[min(52rem,calc(100dvh-2rem))] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+				<DialogContent class="app-theme flex max-h-[min(52rem,calc(100dvh-2rem))] max-w-5xl flex-col gap-0 overflow-hidden p-0">
 					<DialogHeader class="border-b px-5 py-4 pr-12">
 						<DialogTitle>Import inbox</DialogTitle>
 						<DialogDescription>
@@ -217,7 +217,7 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 					</DialogHeader>
 
 					<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-						<div class="flex flex-col gap-3 border-[var(--v2-border)] border-b bg-[var(--v2-surface-muted)] px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
+						<div class="flex flex-col gap-3 border-[var(--app-border)] border-b bg-[var(--app-surface-muted)] px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
 							<div class="grid min-w-0 gap-2 sm:w-80">
 								<label class="grid gap-1 font-medium text-sm">
 									Target source
@@ -417,7 +417,7 @@ export function V2ImportReviewModal(props: ImportReviewModalProps) {
 				onOpenChange={setIsDiscardDialogOpen}
 				open={isDiscardDialogOpen()}
 			>
-				<AlertDialogContent class="v2-theme">
+				<AlertDialogContent class="app-theme">
 					<AlertDialogHeader>
 						<AlertDialogTitle>Discard selected changes?</AlertDialogTitle>
 						<AlertDialogDescription>

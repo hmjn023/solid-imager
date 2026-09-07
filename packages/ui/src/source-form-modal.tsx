@@ -67,7 +67,7 @@ export type SourceFormSubmitData = Omit<
 	connectionInfo: Record<string, string | number | undefined>;
 };
 
-export type V2SourceFormModalProps = {
+export type SourceFormModalProps = {
 	isOpen: boolean;
 	onClose: () => void;
 	onSubmit: (data: SourceFormSubmitData) => void | Promise<void>;
@@ -236,7 +236,7 @@ function SourceTextInput(props: SourceTextInputProps) {
 	);
 }
 
-export function V2SourceFormModal(props: V2SourceFormModalProps) {
+export function SourceFormModal(props: SourceFormModalProps) {
 	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
 	const sourceTypes = () => props.sourceTypes ?? ["local", "sftp", "s3"];
 	const defaultValues = () => {

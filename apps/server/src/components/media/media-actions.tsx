@@ -46,7 +46,7 @@ type MediaActionsProps = {
 const CCIP_STATUS_REFRESH_INTERVAL_MS = 1_000;
 const CCIP_MISSING_STATUS_LIMIT = 5;
 
-export function V2MediaActions(props: MediaActionsProps) {
+export function MediaActions(props: MediaActionsProps) {
 	const navigate = useNavigate();
 	const [isAiTaggingModalOpen, setIsAiTaggingModalOpen] = createSignal(false);
 	const [isOppaiOracleModalOpen, setIsOppaiOracleModalOpen] =
@@ -181,7 +181,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 	});
 
 	const handleFindSimilar = () => {
-		activateSimilaritySearch(props.media.id, { surface: "v2" });
+		activateSimilaritySearch(props.media.id);
 		void navigate({ to: "/search" });
 	};
 	const handleDownload = () => {
@@ -248,11 +248,11 @@ export function V2MediaActions(props: MediaActionsProps) {
 					open={moreActionsOpen()}
 					placement="bottom-end"
 				>
-					<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface)] px-3 font-medium text-[var(--v2-text)] text-xs outline-none hover:bg-[var(--v2-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:h-9 md:flex-none">
+					<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface)] px-3 font-medium text-[var(--app-text)] text-xs outline-none hover:bg-[var(--app-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--app-focus)] md:h-9 md:flex-none">
 						More actions
 						<ChevronDown aria-hidden="true" size={14} />
 					</PopoverTrigger>
-					<PopoverContent class="v2-theme w-64 space-y-1 p-1.5 shadow-xl">
+					<PopoverContent class="app-theme w-64 space-y-1 p-1.5 shadow-xl">
 						<Button
 							class="h-9 w-full justify-start px-2"
 							onClick={() => setIsOppaiOracleModalOpen(true)}
@@ -283,11 +283,11 @@ export function V2MediaActions(props: MediaActionsProps) {
 						</Button>
 						<p
 							aria-live="polite"
-							class="px-2 py-1 text-[11px] text-[var(--v2-text-muted)]"
+							class="px-2 py-1 text-[11px] text-[var(--app-text-muted)]"
 						>
 							CCIP status: {ccipStatus()}
 						</p>
-						<div class="my-1 border-[var(--v2-border)] border-t" />
+						<div class="my-1 border-[var(--app-border)] border-t" />
 						<Button
 							class="h-9 w-full justify-start px-2"
 							onClick={handleDownload}
@@ -298,7 +298,7 @@ export function V2MediaActions(props: MediaActionsProps) {
 							Download original
 						</Button>
 						<Button
-							class="h-9 w-full justify-start px-2 text-[var(--v2-destructive)] hover:bg-[var(--v2-surface-muted)] hover:text-[var(--v2-destructive-hover)]"
+							class="h-9 w-full justify-start px-2 text-[var(--app-destructive)] hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-destructive-hover)]"
 							onClick={() => setIsDeleteDialogOpen(true)}
 							size="sm"
 							variant="ghost"

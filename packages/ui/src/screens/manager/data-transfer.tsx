@@ -13,24 +13,21 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../select";
-import type {
-	V2ManagerTransferActions,
-	V2ManagerTransferFormat,
-} from "./types";
+import type { ManagerTransferActions, ManagerTransferFormat } from "./types";
 
-function formatOptionLabel(format: V2ManagerTransferFormat): string {
+function formatOptionLabel(format: ManagerTransferFormat): string {
 	return format === "ndjson" ? "NDJSON metadata" : "TAR archive";
 }
 
 export function DataTransferPanel(props: {
-	actions: V2ManagerTransferActions;
+	actions: ManagerTransferActions;
 	manager: UseManagerPageResult;
 }) {
 	const [sourceId, setSourceId] = createSignal<string>();
 	const [exportFormat, setExportFormat] =
-		createSignal<V2ManagerTransferFormat>("ndjson");
+		createSignal<ManagerTransferFormat>("ndjson");
 	const [importFormat, setImportFormat] =
-		createSignal<V2ManagerTransferFormat>("ndjson");
+		createSignal<ManagerTransferFormat>("ndjson");
 	const [includeImages, setIncludeImages] = createSignal(false);
 	const [pending, setPending] = createSignal<"export" | "import" | null>(null);
 	let fileInput: HTMLInputElement | undefined;
@@ -78,15 +75,15 @@ export function DataTransferPanel(props: {
 	return (
 		<div class="space-y-5">
 			<div>
-				<h2 class="font-semibold text-lg text-[var(--v2-text)]">
+				<h2 class="font-semibold text-lg text-[var(--app-text)]">
 					Data transfer
 				</h2>
-				<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
+				<p class="mt-0.5 text-xs text-[var(--app-text-muted)]">
 					Export a portable source dump or restore one into an existing source.
 				</p>
 			</div>
 
-			<section class="space-y-1.5 border-[var(--v2-border)] border-y bg-[var(--v2-surface)] py-4 sm:rounded-md sm:border sm:p-4">
+			<section class="space-y-1.5 border-[var(--app-border)] border-y bg-[var(--app-surface)] py-4 sm:rounded-md sm:border sm:p-4">
 				<Label>Target source</Label>
 				<Select
 					itemComponent={(selectProps) => (
@@ -101,28 +98,28 @@ export function DataTransferPanel(props: {
 					placeholder="Choose a source"
 					value={selectedSource() ?? null}
 				>
-					<SelectTrigger class="w-full bg-[var(--v2-surface)] sm:max-w-xl">
+					<SelectTrigger class="w-full bg-[var(--app-surface)] sm:max-w-xl">
 						<SelectValue<unknown>>
 							{() => selectedSource()?.name ?? "Choose a source"}
 						</SelectValue>
 					</SelectTrigger>
 					<SelectContent />
 				</Select>
-				<p class="text-xs text-[var(--v2-text-muted)]">
+				<p class="text-xs text-[var(--app-text-muted)]">
 					Restore writes into the selected source. Existing source configuration
 					is not replaced.
 				</p>
 			</section>
 
 			<div class="grid gap-4 xl:grid-cols-2">
-				<section class="rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-4">
+				<section class="rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
 					<div class="flex items-start gap-3">
-						<span class="rounded-md bg-[var(--v2-surface-muted)] p-2 text-[var(--v2-primary)]">
+						<span class="rounded-md bg-[var(--app-surface-muted)] p-2 text-[var(--app-primary)]">
 							<Download aria-hidden="true" size={17} />
 						</span>
 						<div>
-							<h3 class="font-medium text-sm text-[var(--v2-text)]">Export</h3>
-							<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
+							<h3 class="font-medium text-sm text-[var(--app-text)]">Export</h3>
+							<p class="mt-0.5 text-xs text-[var(--app-text-muted)]">
 								Download metadata or a media archive.
 							</p>
 						</div>
@@ -174,14 +171,16 @@ export function DataTransferPanel(props: {
 					</div>
 				</section>
 
-				<section class="rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-4">
+				<section class="rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-4">
 					<div class="flex items-start gap-3">
-						<span class="rounded-md bg-[var(--v2-surface-muted)] p-2 text-[var(--v2-primary)]">
+						<span class="rounded-md bg-[var(--app-surface-muted)] p-2 text-[var(--app-primary)]">
 							<Upload aria-hidden="true" size={17} />
 						</span>
 						<div>
-							<h3 class="font-medium text-sm text-[var(--v2-text)]">Restore</h3>
-							<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
+							<h3 class="font-medium text-sm text-[var(--app-text)]">
+								Restore
+							</h3>
+							<p class="mt-0.5 text-xs text-[var(--app-text-muted)]">
 								Choose the dump type before selecting its file.
 							</p>
 						</div>
@@ -235,7 +234,7 @@ export function DataTransferPanel(props: {
 					</div>
 				</section>
 			</div>
-			<p class="text-xs text-[var(--v2-text-muted)]">
+			<p class="text-xs text-[var(--app-text-muted)]">
 				Transfers are queued as background jobs. Open Jobs to monitor, cancel,
 				or download completed exports.
 			</p>

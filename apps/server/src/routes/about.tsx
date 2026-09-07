@@ -14,19 +14,19 @@ export const Route = createFileRoute("/about")({
 
 export function AboutRoute() {
 	return (
-		<section class="h-full min-h-0 overflow-y-auto overscroll-contain bg-[var(--v2-canvas)] [scrollbar-gutter:stable]">
-			<header class="border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-4 py-4 sm:px-6">
+		<section class="h-full min-h-0 overflow-y-auto overscroll-contain bg-[var(--app-canvas)] [scrollbar-gutter:stable]">
+			<header class="border-[var(--app-border)] border-b bg-[var(--app-surface-subtle)] px-4 py-4 sm:px-6">
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<h1 class="font-semibold text-xl text-[var(--v2-text)]">
+						<h1 class="font-semibold text-xl text-[var(--app-text)]">
 							About Solid Imager
 						</h1>
-						<p class="mt-1 text-sm text-[var(--v2-text-secondary)]">
+						<p class="mt-1 text-sm text-[var(--app-text-secondary)]">
 							メディアを整理・検索し、関連情報とバックグラウンド処理を一か所で管理するワークベンチです。
 						</p>
 					</div>
 					<Badge
-						class="border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-text-secondary)]"
+						class="border-[var(--app-border-strong)] bg-[var(--app-surface-muted)] text-[var(--app-text-secondary)]"
 						variant="outline"
 					>
 						Current workspace
@@ -35,11 +35,11 @@ export function AboutRoute() {
 			</header>
 
 			<div class="grid gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
-				<Card class="border-[var(--v2-border)] bg-[var(--v2-surface)] shadow-none">
+				<Card class="border-[var(--app-border)] bg-[var(--app-surface)] shadow-none">
 					<CardHeader class="p-5 pb-3">
 						<CardTitle class="text-base">Media-first workspace</CardTitle>
 					</CardHeader>
-					<CardContent class="px-5 pb-5 text-sm leading-6 text-[var(--v2-text-secondary)]">
+					<CardContent class="px-5 pb-5 text-sm leading-6 text-[var(--app-text-secondary)]">
 						<p>
 							Solid
 							Imagerは、複数のメディアソース、検索条件、タグ・作品・キャラクターなどの関連情報をまとめて扱います。
@@ -51,7 +51,7 @@ export function AboutRoute() {
 					</CardContent>
 				</Card>
 
-				<Card class="border-[var(--v2-border)] bg-[var(--v2-surface)] shadow-none">
+				<Card class="border-[var(--app-border)] bg-[var(--app-surface)] shadow-none">
 					<CardHeader class="p-5 pb-3">
 						<CardTitle class="text-base">Documentation</CardTitle>
 					</CardHeader>

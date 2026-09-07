@@ -15,7 +15,6 @@ import {
 	type JSX,
 } from "solid-js";
 import { isServer } from "solid-js/web";
-import type { SearchPersistenceSurface } from "./hooks/use-current-search-persistence";
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaSourceEventTransport } from "./hooks/use-media-source-events";
 import { useSearchHistoryPersistence } from "./hooks/use-search-history-persistence";
@@ -72,9 +71,7 @@ export type SourceMediaPageProps = {
 	onClearSelection?: () => void;
 	selectedCount?: () => number;
 	onEnterBulkSelectMode?: () => void;
-	persistenceSurface?: SearchPersistenceSurface;
 	searchHistoryClient: SearchHistoryClient;
-	/** The route owns the presentation surface (legacy, v2, or another host). */
 	screenComponent: Component<SourceMediaScreenProps>;
 	scrollContainerSelector?: string;
 };
@@ -83,7 +80,6 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	const queryClient = useQueryClient();
 	const searchHistory = useSearchHistoryPersistence(props.mediaSourceId, {
 		client: props.searchHistoryClient,
-		surface: props.persistenceSurface,
 	});
 	const isSearchStateRestored = searchHistory.isRestored;
 

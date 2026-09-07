@@ -29,7 +29,7 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	await page.addInitScript(() => {
 		sessionStorage.removeItem("current-all");
 		sessionStorage.removeItem("solid-imager-scroll-positions");
-		sessionStorage.removeItem("v2:media-return");
+		sessionStorage.removeItem("media-return");
 	});
 	await page.route(searchEndpoint, async (route) => {
 		if (route.request().method() === "POST") {
@@ -127,10 +127,10 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	);
 
 	await page.evaluate((selector) => {
-		const main = document.querySelector("#v2-main-content");
+		const main = document.querySelector("#main-content");
 		const initialScroller = document.querySelector<HTMLElement>(selector);
 		if (!main || !initialScroller) {
-			throw new Error("v2 media scroll containers were not found");
+			throw new Error("Media scroll containers were not found");
 		}
 
 		const probe = {
@@ -157,7 +157,7 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 			},
 			true,
 		);
-		Object.assign(window, { __v2ScrollProbe: probe });
+		Object.assign(window, { __searchScrollProbe: probe });
 	}, scrollerSelector);
 
 	const heightBeforeFetch = await scroller.evaluate(
@@ -181,20 +181,20 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	const probeDuringFetch = await page.evaluate((selector) => {
 		const probe = (
 			window as Window & {
-				__v2ScrollProbe?: {
+				__searchScrollProbe?: {
 					initialMain: Element;
 					initialScroller: Element;
 					removedSections: number;
 					scrollTops: number[];
 				};
 			}
-		).__v2ScrollProbe;
+		).__searchScrollProbe;
 		const currentScroller = document.querySelector(selector);
 		return {
 			scrollEventCount: probe?.scrollTops.length ?? 0,
 			removedSections: probe?.removedSections ?? -1,
 			mainWasReplaced:
-				probe?.initialMain !== document.querySelector("#v2-main-content"),
+				probe?.initialMain !== document.querySelector("#main-content"),
 			scrollerWasReplaced: probe?.initialScroller !== currentScroller,
 			minObservedScrollTop: probe?.scrollTops.length
 				? Math.min(...probe.scrollTops)
@@ -222,18 +222,18 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	const probeAfterFetch = await page.evaluate((selector) => {
 		const probe = (
 			window as Window & {
-				__v2ScrollProbe?: {
+				__searchScrollProbe?: {
 					initialMain: Element;
 					initialScroller: Element;
 					removedSections: number;
 				};
 			}
-		).__v2ScrollProbe;
+		).__searchScrollProbe;
 		const currentScroller = document.querySelector(selector);
 		return {
 			removedSections: probe?.removedSections ?? -1,
 			mainWasReplaced:
-				probe?.initialMain !== document.querySelector("#v2-main-content"),
+				probe?.initialMain !== document.querySelector("#main-content"),
 			scrollerWasReplaced: probe?.initialScroller !== currentScroller,
 			finalScrollTop:
 				currentScroller instanceof HTMLElement ? currentScroller.scrollTop : -1,
@@ -250,7 +250,7 @@ const restorationCases = [
 		name: "search",
 		entryPath: "/search",
 		heading: "すべてのメディア",
-		scrollerSelector: '[data-media-scroll="v2-search"]',
+		scrollerSelector: '[data-media-scroll="search"]',
 	},
 	{
 		name: "source media",

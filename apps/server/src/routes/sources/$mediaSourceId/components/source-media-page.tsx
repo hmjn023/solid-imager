@@ -1,6 +1,5 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
-import type { SearchPersistenceSurface } from "@solid-imager/ui/hooks/use-current-search-persistence";
 import {
 	type MediaCollectionSelectionMode,
 	useMediaCollectionSelection,
@@ -58,7 +57,6 @@ export type SourceMediaPageControllerProps = {
 	mediaSourceId?: Accessor<string>;
 	screenComponent: Component<SourceMediaScreenProps>;
 	uploadModalComponent: SourceMediaScreenProps["uploadModalComponent"];
-	persistenceSurface: SearchPersistenceSurface;
 	searchHistoryClient: SearchHistoryClient;
 	renderItem: SourceMediaGridRenderer;
 	bulkActionsClass: string;
@@ -151,7 +149,6 @@ export function SourceMediaPageController(
 				enableVirtualization
 				mediaSourceId={mediaSourceId}
 				mediaSourceName={mediaSourceName}
-				persistenceSurface={props.persistenceSurface}
 				searchHistoryClient={props.searchHistoryClient}
 				transport={transport}
 				presetClient={PresetClient}

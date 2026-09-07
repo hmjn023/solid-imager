@@ -1,10 +1,10 @@
 import {
-	V2UploadMediaModalContent as SharedUploadMediaModalContent,
+	UploadMediaModalContent as SharedUploadMediaModalContent,
 	type UploadMediaModalSubmitOptions,
 } from "./upload-media-modal";
 import type { UploadMediaModalContentProps } from "./upload-media-modal-content.types";
 
-export function V2UploadMediaModalContent(props: UploadMediaModalContentProps) {
+export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const handleUploadStart = async (options: UploadMediaModalSubmitOptions) => {
 		await Promise.all(
 			options.files.map((file, index) =>

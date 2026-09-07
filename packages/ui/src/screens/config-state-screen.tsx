@@ -1,22 +1,22 @@
 import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { Match, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
-import { V2ManagementHeader } from "../management-layout";
+import { ManagementHeader } from "../management-layout";
 import { ConfigSkeleton, LoadingRegion } from "../skeleton";
 import { cn } from "../utils/cn";
-import { V2ConfigScreen } from "./config-screen";
-import type { ConfigStateScreenProps } from "./config-state-screen.types";
+import { ConfigScreen } from "./config-screen";
+import type { ConfigStateScreenProps as BaseConfigStateScreenProps } from "./config-state-screen.types";
 
-export type V2ConfigStateScreenProps = ConfigStateScreenProps & {
+export type ConfigStateScreenProps = BaseConfigStateScreenProps & {
 	checkAiHealth: () => Promise<AiHealthResponse>;
 };
 
-export function V2ConfigStateScreen(props: V2ConfigStateScreenProps) {
+export function ConfigStateScreen(props: ConfigStateScreenProps) {
 	const hasData = () => props.data !== undefined;
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--v2-canvas)]">
-			<V2ManagementHeader
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--app-canvas)]">
+			<ManagementHeader
 				description="アプリケーション全体の動作と接続先を管理します。"
 				title="Settings"
 			/>
@@ -39,7 +39,7 @@ export function V2ConfigStateScreen(props: V2ConfigStateScreenProps) {
 				<Switch>
 					<Match when={props.data}>
 						{(data) => (
-							<V2ConfigScreen
+							<ConfigScreen
 								checkAiHealth={props.checkAiHealth}
 								data={data()}
 								onSubmit={props.onSubmit}

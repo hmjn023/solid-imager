@@ -59,7 +59,7 @@ import {
 } from "~/queries";
 import { OppaiOracleModal } from "./oppai-oracle-modal";
 
-export type TauriV2MediaSidebarProps = {
+export type TauriMediaSidebarProps = {
 	media: MediaDetails;
 	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
@@ -72,7 +72,7 @@ function formatBytes(bytes: number, decimals = 2) {
 	return `${Number.parseFloat((bytes / 1024 ** index).toFixed(Math.max(0, decimals)))} ${units[index]}`;
 }
 
-export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
+export function TauriMediaSidebar(props: TauriMediaSidebarProps) {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
 	const [description, setDescription] = createSignal(
@@ -215,7 +215,7 @@ export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
 	};
 
 	return (
-		<aside class="min-w-0 divide-y divide-[var(--v2-border)] bg-[var(--v2-surface-subtle)] px-4 pb-6 text-[var(--v2-text)] lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 [scrollbar-gutter:stable]">
+		<aside class="min-w-0 divide-y divide-[var(--app-border)] bg-[var(--app-surface-subtle)] px-4 pb-6 text-[var(--app-text)] lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 [scrollbar-gutter:stable]">
 			<div class="space-y-2">
 				<h2 class="font-semibold text-sm">Actions</h2>
 				<div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-1">
@@ -239,7 +239,7 @@ export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
 					<Button
 						disabled={ccipStatus() !== "ready"}
 						onClick={() => {
-							activateSimilaritySearch(props.media.id, { surface: "v2" });
+							activateSimilaritySearch(props.media.id);
 							void navigate({ to: "/search" });
 						}}
 						variant="outline"
@@ -254,7 +254,7 @@ export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
 					<h2 class="font-semibold text-sm">Description</h2>
 					<Show when={!editingDescription()}>
 						<button
-							class="min-h-11 px-2 text-[var(--v2-primary)] text-sm hover:underline"
+							class="min-h-11 px-2 text-[var(--app-primary)] text-sm hover:underline"
 							onClick={() => setEditingDescription(true)}
 							type="button"
 						>
@@ -264,7 +264,7 @@ export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
 				</div>
 				<Show
 					fallback={
-						<div class="rounded-md bg-[var(--v2-surface-muted)] p-3 text-[var(--v2-text-muted)] text-sm italic">
+						<div class="rounded-md bg-[var(--app-surface-muted)] p-3 text-[var(--app-text-muted)] text-sm italic">
 							No description
 						</div>
 					}
@@ -272,14 +272,14 @@ export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
 				>
 					<Show
 						fallback={
-							<div class="whitespace-pre-wrap rounded-md bg-[var(--v2-surface-muted)] p-3 text-sm">
+							<div class="whitespace-pre-wrap rounded-md bg-[var(--app-surface-muted)] p-3 text-sm">
 								{props.media.description}
 							</div>
 						}
 						when={editingDescription()}
 					>
 						<textarea
-							class="w-full rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface)] p-2 text-base sm:text-sm"
+							class="w-full rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface)] p-2 text-base sm:text-sm"
 							onInput={(event) => setDescription(event.currentTarget.value)}
 							rows={5}
 							value={description()}
@@ -309,7 +309,7 @@ export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
 					<For each={props.media.urls}>
 						{(url) => (
 							<a
-								class="block break-all text-[var(--v2-primary)] text-sm hover:underline"
+								class="block break-all text-[var(--app-primary)] text-sm hover:underline"
 								href={url.url}
 								rel="noopener noreferrer"
 								target="_blank"
@@ -427,12 +427,12 @@ export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
 						</Collapsible.Trigger>
 						<Collapsible.Content class="space-y-2 text-sm">
 							<Show when={props.media.generationInfo?.prompt}>
-								<p class="whitespace-pre-wrap rounded bg-[var(--v2-surface-muted)] p-2 text-xs">
+								<p class="whitespace-pre-wrap rounded bg-[var(--app-surface-muted)] p-2 text-xs">
 									{props.media.generationInfo?.prompt}
 								</p>
 							</Show>
 							<Show when={props.media.generationInfo?.negativePrompt}>
-								<p class="whitespace-pre-wrap rounded bg-[var(--v2-surface-muted)] p-2 text-xs">
+								<p class="whitespace-pre-wrap rounded bg-[var(--app-surface-muted)] p-2 text-xs">
 									{props.media.generationInfo?.negativePrompt}
 								</p>
 							</Show>
@@ -444,15 +444,15 @@ export function TauriV2MediaSidebar(props: TauriV2MediaSidebarProps) {
 			<div class="space-y-2">
 				<h2 class="font-semibold text-sm">File information</h2>
 				<dl class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
-					<dt class="text-[var(--v2-text-muted)]">Resolution</dt>
+					<dt class="text-[var(--app-text-muted)]">Resolution</dt>
 					<dd class="text-right">
 						{props.media.width} × {props.media.height}
 					</dd>
-					<dt class="text-[var(--v2-text-muted)]">File Size</dt>
+					<dt class="text-[var(--app-text-muted)]">File Size</dt>
 					<dd class="text-right">
 						{props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
 					</dd>
-					<dt class="text-[var(--v2-text-muted)]">Path</dt>
+					<dt class="text-[var(--app-text-muted)]">Path</dt>
 					<dd class="min-w-0 break-all text-right text-xs">
 						{props.media.filePath}
 					</dd>

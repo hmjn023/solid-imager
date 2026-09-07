@@ -8,7 +8,7 @@ import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 
-export const V2_NAVIGATION_ITEMS = [
+export const NAVIGATION_ITEMS = [
 	{
 		icon: Library,
 		label: "Library",
@@ -30,7 +30,7 @@ export const V2_NAVIGATION_ITEMS = [
 	},
 ] as const;
 
-export function V2NavigationItem(props: {
+export function NavigationItem(props: {
 	children?: JSX.Element;
 	expanded: boolean;
 	icon: typeof Library;
@@ -48,10 +48,10 @@ export function V2NavigationItem(props: {
 		<Link
 			aria-current={active() ? "page" : undefined}
 			aria-label={props.label}
-			class={`flex h-11 w-full items-center gap-2 rounded-md px-3 font-medium text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:h-10 ${
+			class={`flex h-11 w-full items-center gap-2 rounded-md px-3 font-medium text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--app-focus)] md:h-10 ${
 				active()
-					? "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"
-					: "text-[var(--v2-text-secondary)] hover:bg-[var(--v2-surface-muted)] hover:text-[var(--v2-text)]"
+					? "bg-[var(--app-surface-selected)] text-[var(--app-primary)]"
+					: "text-[var(--app-text-secondary)] hover:bg-[var(--app-surface-muted)] hover:text-[var(--app-text)]"
 			}`}
 			onClick={props.onClick}
 			to={props.to}

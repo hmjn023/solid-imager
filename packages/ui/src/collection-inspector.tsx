@@ -5,7 +5,7 @@ import type { JSX } from "solid-js";
 import { getOwner, runWithOwner, Show } from "solid-js";
 import { Button } from "./button";
 
-type V2CollectionInspectorProps = {
+type CollectionInspectorProps = {
 	media: Media | undefined;
 	sourceName?: string;
 	onClose?: () => void;
@@ -32,7 +32,7 @@ function formatDate(date: Date) {
 	}).format(date);
 }
 
-export function V2CollectionInspector(props: V2CollectionInspectorProps) {
+export function CollectionInspector(props: CollectionInspectorProps) {
 	const owner = getOwner();
 	const renderOwned = (render: () => JSX.Element) =>
 		owner ? runWithOwner(owner, render) : render();
@@ -40,16 +40,16 @@ export function V2CollectionInspector(props: V2CollectionInspectorProps) {
 	return (
 		<aside
 			aria-label="選択中のメディア"
-			class="sticky top-0 hidden max-h-[calc(100dvh-8rem)] min-h-0 min-w-0 overflow-hidden rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] 2xl:flex 2xl:flex-col"
+			class="sticky top-0 hidden max-h-[calc(100dvh-8rem)] min-h-0 min-w-0 overflow-hidden rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] 2xl:flex 2xl:flex-col"
 		>
-			<header class="z-10 flex h-12 shrink-0 items-center border-[var(--v2-border)] border-b bg-[var(--v2-surface)]/95 px-4 backdrop-blur-sm">
-				<h2 class="min-w-0 flex-1 truncate font-semibold text-[var(--v2-text)] text-sm">
+			<header class="z-10 flex h-12 shrink-0 items-center border-[var(--app-border)] border-b bg-[var(--app-surface)]/95 px-4 backdrop-blur-sm">
+				<h2 class="min-w-0 flex-1 truncate font-semibold text-[var(--app-text)] text-sm">
 					選択中のメディア
 				</h2>
 				<Show when={props.onClose}>
 					<Button
 						aria-label="インスペクターを閉じる"
-						class="size-8 shrink-0 p-0 text-[var(--v2-text-muted)]"
+						class="size-8 shrink-0 p-0 text-[var(--app-text-muted)]"
 						onClick={() => props.onClose?.()}
 						size="icon"
 						variant="ghost"
@@ -64,10 +64,10 @@ export function V2CollectionInspector(props: V2CollectionInspectorProps) {
 					keyed
 					fallback={
 						<div class="space-y-4">
-							<div class="flex aspect-[4/3] items-center justify-center rounded-md bg-[var(--v2-surface-muted)] px-6 text-center text-[var(--v2-text-muted)] text-sm">
+							<div class="flex aspect-[4/3] items-center justify-center rounded-md bg-[var(--app-surface-muted)] px-6 text-center text-[var(--app-text-muted)] text-sm">
 								メディアを選択するとプレビューを表示します
 							</div>
-							<p class="text-center text-[var(--v2-text-muted)] text-xs leading-5">
+							<p class="text-center text-[var(--app-text-muted)] text-xs leading-5">
 								一覧からメディアを選択してください
 							</p>
 						</div>
@@ -76,42 +76,42 @@ export function V2CollectionInspector(props: V2CollectionInspectorProps) {
 				>
 					{(media) => (
 						<div>
-							<div class="aspect-[4/3] overflow-hidden rounded-md bg-[var(--v2-surface-muted)]">
+							<div class="aspect-[4/3] overflow-hidden rounded-md bg-[var(--app-surface-muted)]">
 								{renderOwned(() => props.renderPreview(media))}
 							</div>
-							<section class="border-[var(--v2-border)] border-b py-4">
+							<section class="border-[var(--app-border)] border-b py-4">
 								<h3
-									class="break-words font-semibold text-[var(--v2-text)] text-sm"
+									class="break-words font-semibold text-[var(--app-text)] text-sm"
 									title={media.fileName}
 								>
 									{media.fileName}
 								</h3>
-								<p class="mt-2 whitespace-pre-wrap break-words text-[var(--v2-text-secondary)] text-xs leading-5">
+								<p class="mt-2 whitespace-pre-wrap break-words text-[var(--app-text-secondary)] text-xs leading-5">
 									{media.description?.trim() || "説明はありません"}
 								</p>
 							</section>
-							<dl class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 border-[var(--v2-border)] border-b py-4 text-xs">
-								<dt class="text-[var(--v2-text-muted)]">解像度</dt>
-								<dd class="text-right text-[var(--v2-text)]">
+							<dl class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 border-[var(--app-border)] border-b py-4 text-xs">
+								<dt class="text-[var(--app-text-muted)]">解像度</dt>
+								<dd class="text-right text-[var(--app-text)]">
 									{media.width} × {media.height}
 								</dd>
-								<dt class="text-[var(--v2-text-muted)]">サイズ</dt>
-								<dd class="text-right text-[var(--v2-text)]">
+								<dt class="text-[var(--app-text-muted)]">サイズ</dt>
+								<dd class="text-right text-[var(--app-text)]">
 									{formatFileSize(media.fileSize)}
 								</dd>
-								<dt class="text-[var(--v2-text-muted)]">ソース</dt>
+								<dt class="text-[var(--app-text-muted)]">ソース</dt>
 								<dd
-									class="truncate text-right text-[var(--v2-text)]"
+									class="truncate text-right text-[var(--app-text)]"
 									title={props.sourceName}
 								>
 									{props.sourceName ?? "—"}
 								</dd>
-								<dt class="text-[var(--v2-text-muted)]">作成日</dt>
-								<dd class="text-right text-[var(--v2-text)]">
+								<dt class="text-[var(--app-text-muted)]">作成日</dt>
+								<dd class="text-right text-[var(--app-text)]">
 									{formatDate(media.createdAt)}
 								</dd>
-								<dt class="text-[var(--v2-text-muted)]">更新日</dt>
-								<dd class="text-right text-[var(--v2-text)]">
+								<dt class="text-[var(--app-text-muted)]">更新日</dt>
+								<dd class="text-right text-[var(--app-text)]">
 									{formatDate(media.modifiedAt)}
 								</dd>
 							</dl>

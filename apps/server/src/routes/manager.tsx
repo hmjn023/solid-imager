@@ -1,7 +1,7 @@
 import { useManagerPage } from "@solid-imager/ui/hooks/use-manager-page";
 import { jobsQueryKeys } from "@solid-imager/ui/query-options";
-import type { V2ManagerTransferFormat } from "@solid-imager/ui/screens/manager/types";
-import { V2ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
+import type { ManagerTransferFormat } from "@solid-imager/ui/screens/manager/types";
+import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
@@ -80,7 +80,7 @@ const managerActions = {
 function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 	return {
 		exportSource: async (input: {
-			format: V2ManagerTransferFormat;
+			format: ManagerTransferFormat;
 			includeImages: boolean;
 			sourceId: string;
 		}) => {
@@ -102,7 +102,7 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 		},
 		importSource: async (input: {
 			file: File;
-			format: V2ManagerTransferFormat;
+			format: ManagerTransferFormat;
 			sourceId: string;
 		}) => {
 			try {
@@ -135,7 +135,7 @@ export function ManagerRoute() {
 	});
 
 	return (
-		<V2ManagerScreen
+		<ManagerScreen
 			manager={manager}
 			transferActions={createTransferActions(queryClient)}
 		/>

@@ -1,11 +1,11 @@
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { V2SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
+import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { useNavigate, useParams } from "@tanstack/solid-router";
-import { V2MediaGridItem } from "~/components/media/media-grid-item";
+import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
@@ -56,9 +56,8 @@ export function SourceMediaPage() {
 	return (
 		<SourceMediaPageComponent
 			mediaSourceId={mediaSourceId}
-			screenComponent={V2SourceMediaScreen}
+			screenComponent={SourceMediaScreen}
 			enableVirtualization
-			persistenceSurface="v2"
 			transport={transport}
 			presetClient={presetClient}
 			searchHistoryClient={searchHistoryClient}
@@ -79,7 +78,7 @@ export function SourceMediaPage() {
 			}}
 			getSearchCondition={getSearchCondition}
 			onFindSimilar={(media) => {
-				activateSimilaritySearch(media.id, { surface: "v2" });
+				activateSimilaritySearch(media.id);
 				void navigate({ to: "/search" });
 			}}
 			sortBy={() => searchState.sortBy}
@@ -90,8 +89,9 @@ export function SourceMediaPage() {
 			ipsQueryOptions={allIpsQueryOptions}
 			charactersQueryOptions={allCharactersQueryOptions}
 			authorsQueryOptions={allAuthorsQueryOptions}
+			scrollContainerSelector={`[data-media-scroll="${mediaSourceId()}"]`}
 			renderItem={(media, options) => (
-				<V2MediaGridItem
+				<MediaGridItem
 					imageLoadPolicy={options.imageLoadPolicy}
 					onOpenMediaDetail={options.onOpenMediaDetail}
 					media={media}

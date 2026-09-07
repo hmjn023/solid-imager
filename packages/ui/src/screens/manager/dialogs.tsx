@@ -103,9 +103,9 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 					</DialogHeader>
 					<div class="grid gap-4 py-2">
 						<div class="space-y-1.5">
-							<Label for="v2-manager-entity-name">Name</Label>
+							<Label for="manager-entity-name">Name</Label>
 							<Input
-								id="v2-manager-entity-name"
+								id="manager-entity-name"
 								onInput={(event) =>
 									props.manager.setFormData({
 										...props.manager.formData(),
@@ -116,9 +116,9 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 							/>
 						</div>
 						<div class="space-y-1.5">
-							<Label for="v2-manager-entity-description">Description</Label>
+							<Label for="manager-entity-description">Description</Label>
 							<Input
-								id="v2-manager-entity-description"
+								id="manager-entity-description"
 								onInput={(event) =>
 									props.manager.setFormData({
 										...props.manager.formData(),
@@ -130,7 +130,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						</div>
 						<Show when={props.manager.activeTab() === "characters"}>
 							<div class="space-y-1.5">
-								<Label for="v2-manager-entity-ips">IPs</Label>
+								<Label for="manager-entity-ips">IPs</Label>
 								<Combobox<Ip>
 									itemComponent={(comboboxProps) => (
 										<ComboboxItem item={comboboxProps.item}>
@@ -159,7 +159,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 								>
 									<ComboboxControl>
 										<ComboboxInput
-											id="v2-manager-entity-ips"
+											id="manager-entity-ips"
 											placeholder="Select IPs..."
 										/>
 										<ComboboxTrigger />
@@ -247,7 +247,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 					<div class="max-h-48 overflow-y-auto overscroll-contain text-sm">
 						<For each={props.manager.duplicatesToDelete()}>
 							{(item) => (
-								<div class="truncate border-[var(--v2-border)] border-b py-1 text-[var(--v2-text-secondary)]">
+								<div class="truncate border-[var(--app-border)] border-b py-1 text-[var(--app-text-secondary)]">
 									{item.fileName}
 								</div>
 							)}

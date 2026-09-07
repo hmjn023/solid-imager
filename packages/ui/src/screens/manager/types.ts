@@ -1,30 +1,30 @@
 import type { ManagerEntityType } from "../../hooks/use-manager-page";
 
-export type V2ManagerCategory = ManagerEntityType | "transfer";
+export type ManagerCategory = ManagerEntityType | "transfer";
 
-export type ManagerCategory = {
+export type ManagerCategoryItem = {
 	description: string;
 	group: "Entities" | "Tools";
 	label: string;
-	value: V2ManagerCategory;
+	value: ManagerCategory;
 };
 
-export type V2ManagerTransferFormat = "ndjson" | "tar";
+export type ManagerTransferFormat = "ndjson" | "tar";
 
-export type V2ManagerTransferActions = {
+export type ManagerTransferActions = {
 	exportSource: (input: {
-		format: V2ManagerTransferFormat;
+		format: ManagerTransferFormat;
 		includeImages: boolean;
 		sourceId: string;
 	}) => Promise<void>;
 	importSource: (input: {
 		file: File;
-		format: V2ManagerTransferFormat;
+		format: ManagerTransferFormat;
 		sourceId: string;
 	}) => Promise<{ importedCount?: number; jobId?: string }>;
 };
 
-export const MANAGER_CATEGORIES: ManagerCategory[] = [
+export const MANAGER_CATEGORIES: ManagerCategoryItem[] = [
 	{
 		description: "Collections and work",
 		group: "Entities",

@@ -11,7 +11,7 @@ import {
 import { createSignal, onMount } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
-import { V2AppShell } from "~/components/app-shell";
+import { AppShell } from "~/components/app-shell";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -48,12 +48,12 @@ function RootComponent() {
 				<HydrationScript />
 				<HeadContent />
 			</head>
-			<body class="v2-theme">
+			<body class="app-theme">
 				<ShortcutPreferencesProvider>
 					<Toaster />
-					<V2AppShell statusIndicator={<RouteTransitionIndicator />}>
+					<AppShell statusIndicator={<RouteTransitionIndicator />}>
 						<Outlet />
-					</V2AppShell>
+					</AppShell>
 				</ShortcutPreferencesProvider>
 				<script>
 					{`if (typeof window !== "undefined") {

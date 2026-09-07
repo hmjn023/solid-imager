@@ -107,7 +107,7 @@ function fileSizeLabel(file: File) {
 	return `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-export function V2UploadMediaModalContent(props: UploadMediaModalContentProps) {
+export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const [selectedFiles, setSelectedFiles] = createSignal<File[]>([]);
 	const [isDragging, setIsDragging] = createSignal(false);
 	const [isFetchingUrl, setIsFetchingUrl] = createSignal(false);
@@ -501,7 +501,7 @@ export function V2UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								</form.Field>
 
 								<Show when={(props.conflicts?.length ?? 0) > 0}>
-									<div class="rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-warning-surface)] p-3 text-[var(--v2-warning)] text-sm">
+									<div class="rounded-md border border-[var(--app-border-strong)] bg-[var(--app-warning-surface)] p-3 text-[var(--app-warning)] text-sm">
 										<p class="font-medium">同名ファイルがあります</p>
 										<ul class="mt-2 list-disc space-y-1 pl-5">
 											<For each={props.conflicts}>
@@ -610,4 +610,4 @@ export function V2UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	);
 }
 
-export { V2UploadMediaModalContent as V2UploadMediaModal };
+export { UploadMediaModalContent as UploadMediaModal };

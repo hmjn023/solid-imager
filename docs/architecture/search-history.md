@@ -55,8 +55,8 @@ sequenceDiagram
 
 ## 適用範囲とフォールバック
 
-- Web と Tauri の global search、source search、legacy、v2 route は `searchHistoryQuerySchema` で `search` query を検証する。
-- 共通の復元処理は `packages/ui/src/hooks/use-search-history-persistence.ts` に置き、route 側は API client と surface を渡すだけにする。
+- Web と Tauri の global search、source search は `searchHistoryQuerySchema` で `search` query を検証する。
+- 共通の復元処理は `packages/ui/src/hooks/use-search-history-persistence.ts` に置き、route 側は API client と共通設定を渡すだけにする。
 - API が利用できない場合は `history.state` のローカルエントリをそのまま利用する。
 - UUID が削除済み・不正な場合は query を除去し、現在の session state に戻す。履歴操作自体は失敗させない。
 - user preset には自動保存した検索を混ぜない。preset は検索 state の復元元として別に扱う。

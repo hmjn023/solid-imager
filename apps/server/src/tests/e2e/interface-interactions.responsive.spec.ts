@@ -12,16 +12,16 @@ const searchPath = "/search";
 const sourcePath = `/sources/${E2E_SOURCE_ID}`;
 const mediaPath = (mediaId: string) => `${sourcePath}/${mediaId}`;
 
-async function openV2Search(page: Page): Promise<void> {
+async function openSearch(page: Page): Promise<void> {
 	await page.goto(searchPath);
 	await waitForAppHydration(page);
 	await expect(page.locator("[data-media-id]").first()).toBeVisible();
 }
 
-test("V2 command palette opens from the keyboard and restores focus", async ({
+test("command palette opens from the keyboard and restores focus", async ({
 	page,
 }) => {
-	await openV2Search(page);
+	await openSearch(page);
 
 	const origin = page.getByRole("button", {
 		name: "Quick actions",
@@ -41,10 +41,10 @@ test("V2 command palette opens from the keyboard and restores focus", async ({
 	await expect(origin).toBeFocused();
 });
 
-test("V2 slash shortcut focuses search without swallowing slash input", async ({
+test("slash shortcut focuses search without swallowing slash input", async ({
 	page,
 }) => {
-	await openV2Search(page);
+	await openSearch(page);
 
 	const searchInput = page.getByRole("combobox", {
 		name: "メディアを検索",
@@ -64,9 +64,7 @@ test("V2 slash shortcut focuses search without swallowing slash input", async ({
 	await expect(searchInput).toHaveValue("e2e/");
 });
 
-test("V2 source search keeps URL paste in the input context", async ({
-	page,
-}) => {
+test("source search keeps URL paste in the input context", async ({ page }) => {
 	await page.goto(sourcePath);
 	await waitForAppHydration(page);
 
@@ -89,7 +87,7 @@ test("V2 source search keeps URL paste in the input context", async ({
 	).toHaveCount(0);
 });
 
-test("V2 source collection supports additive and range selection gestures", async ({
+test("source collection supports additive and range selection gestures", async ({
 	page,
 }, testInfo) => {
 	test.skip(
@@ -112,7 +110,7 @@ test("V2 source collection supports additive and range selection gestures", asyn
 	await expect(bulkActions).toContainText("3 件選択中");
 });
 
-test("V2 global search keeps collection selection independent from preview", async ({
+test("global search keeps collection selection independent from preview", async ({
 	page,
 }, testInfo) => {
 	test.skip(
@@ -120,7 +118,7 @@ test("V2 global search keeps collection selection independent from preview", asy
 		"Modifier-key collection selection is exercised with a desktop keyboard.",
 	);
 	await page.setViewportSize({ width: 1600, height: 900 });
-	await openV2Search(page);
+	await openSearch(page);
 
 	const mediaItems = page.locator("[data-media-id]");
 	await expect(mediaItems.nth(1)).toBeVisible();
@@ -132,7 +130,7 @@ test("V2 global search keeps collection selection independent from preview", asy
 	await expect(bulkActions).toContainText("2 件選択中");
 });
 
-test("V2 global search exposes media and bulk actions", async ({
+test("global search exposes media and bulk actions", async ({
 	page,
 }, testInfo) => {
 	test.skip(
@@ -140,7 +138,7 @@ test("V2 global search exposes media and bulk actions", async ({
 		"Context-menu and modifier selection actions are exercised on desktop.",
 	);
 	await page.setViewportSize({ width: 1600, height: 900 });
-	await openV2Search(page);
+	await openSearch(page);
 
 	const mediaItem = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 	await mediaItem.click({ button: "right" });
@@ -185,7 +183,7 @@ test("V2 global search exposes media and bulk actions", async ({
 		.click();
 });
 
-test("V2 fine-pointer collection separates selection from opening detail", async ({
+test("fine-pointer collection separates selection from opening detail", async ({
 	page,
 }, testInfo) => {
 	test.skip(
@@ -193,7 +191,7 @@ test("V2 fine-pointer collection separates selection from opening detail", async
 		"The selection-preview contract is specific to a desktop fine pointer.",
 	);
 	await page.setViewportSize({ width: 1600, height: 900 });
-	await openV2Search(page);
+	await openSearch(page);
 
 	const similarMedia = page.locator(
 		`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
@@ -224,7 +222,7 @@ test("V2 fine-pointer collection separates selection from opening detail", async
 	await expect(page).toHaveURL(mediaPath(E2E_PRIMARY_MEDIA_ID));
 });
 
-test("V2 detail exposes zoom controls and non-destructive action choices", async ({
+test("detail exposes zoom controls and non-destructive action choices", async ({
 	page,
 }) => {
 	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
@@ -260,7 +258,7 @@ test("V2 detail exposes zoom controls and non-destructive action choices", async
 	).toBeVisible();
 });
 
-test("V2 settings exposes device-local shortcut configuration", async ({
+test("settings exposes device-local shortcut configuration", async ({
 	page,
 }) => {
 	await page.goto("/config");

@@ -27,8 +27,8 @@ function toError(error: unknown): Error {
 
 function BootstrapShell(props: { children: import("solid-js").JSX.Element }) {
 	return (
-		<div class="v2-theme flex min-h-screen min-h-[100dvh] flex-col bg-[var(--v2-canvas)] text-[var(--v2-text)]">
-			<header class="flex h-13 shrink-0 items-center border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-4">
+		<div class="app-theme flex min-h-screen min-h-[100dvh] flex-col bg-[var(--app-canvas)] text-[var(--app-text)]">
+			<header class="flex h-13 shrink-0 items-center border-[var(--app-border)] border-b bg-[var(--app-surface-subtle)] px-4">
 				<strong class="font-semibold">Solid Imager</strong>
 			</header>
 			<main class="flex-1">{props.children}</main>

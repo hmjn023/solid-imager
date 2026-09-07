@@ -1,13 +1,13 @@
 import { Button } from "@solid-imager/ui/button";
 import { Menu, Search } from "@solid-imager/ui/icons";
-import { V2PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
+import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
 
-export function V2MobileHeader(props: {
+export function MobileHeader(props: {
 	onOpenCommandPalette?: () => void;
 	onOpenMenu: () => void;
 }) {
 	return (
-		<header class="flex h-13 shrink-0 items-center gap-3 border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-3 md:hidden">
+		<header class="flex h-13 shrink-0 items-center gap-3 border-[var(--app-border)] border-b bg-[var(--app-surface-subtle)] px-3 md:hidden">
 			<Button
 				aria-label="メニューを開く"
 				class="size-10 p-0"
@@ -31,7 +31,7 @@ export function V2MobileHeader(props: {
 					<Search aria-hidden="true" size={18} />
 				</Button>
 			) : null}
-			<V2PendingDownloadsIndicator compact />
+			<PendingDownloadsIndicator compact />
 		</header>
 	);
 }

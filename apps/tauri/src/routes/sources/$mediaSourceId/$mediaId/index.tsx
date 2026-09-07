@@ -3,15 +3,15 @@ import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { ArrowLeft } from "@solid-imager/ui/icons";
 import { projectsQueryKeys } from "@solid-imager/ui/query-options";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import { V2MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import {
 	createFileRoute,
 	useNavigate,
 	useRouterState,
 } from "@tanstack/solid-router";
-import { TauriV2MediaSidebar } from "~/components/media/media-sidebar";
-import { V2MediaViewer } from "~/components/media/media-viewer";
+import { TauriMediaSidebar } from "~/components/media/media-sidebar";
+import { MediaViewer } from "~/components/media/media-viewer";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { mediaDetailsQueryOptions, mediaSourcesQueryOptions } from "~/queries";
 
@@ -52,7 +52,7 @@ function MediaDetailRoute() {
 	const sourceRootPathResolver = useSourceRootPath(mediaSourcesQueryOptions);
 
 	return (
-		<V2MediaDetailScreen
+		<MediaDetailScreen
 			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
 			mediaId={mediaId}
 			mediaSourceId={mediaSourceId}
@@ -62,7 +62,7 @@ function MediaDetailRoute() {
 				});
 			}}
 			renderHeader={(media, _isUpdating, _onUpdate) => (
-				<header class="shrink-0 border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-3 py-2 sm:px-4">
+				<header class="shrink-0 border-[var(--app-border)] border-b bg-[var(--app-surface-subtle)] px-3 py-2 sm:px-4">
 					<div class="flex min-w-0 items-center gap-2">
 						<Button
 							aria-label="一覧に戻る"
@@ -79,10 +79,10 @@ function MediaDetailRoute() {
 							<ArrowLeft aria-hidden="true" size={17} />
 						</Button>
 						<div class="min-w-0">
-							<h1 class="truncate font-semibold text-sm text-[var(--v2-text)]">
+							<h1 class="truncate font-semibold text-sm text-[var(--app-text)]">
 								{media.fileName}
 							</h1>
-							<p class="truncate text-[11px] text-[var(--v2-text-muted)]">
+							<p class="truncate text-[11px] text-[var(--app-text-muted)]">
 								Media detail
 							</p>
 						</div>
@@ -90,13 +90,13 @@ function MediaDetailRoute() {
 				</header>
 			)}
 			renderMediaSidebar={(media, isUpdating, onUpdate) => (
-				<TauriV2MediaSidebar
+				<TauriMediaSidebar
 					isUpdating={isUpdating}
 					media={media}
 					onUpdate={onUpdate}
 				/>
 			)}
-			renderMediaViewer={(media) => <V2MediaViewer media={media} />}
+			renderMediaViewer={(media) => <MediaViewer media={media} />}
 			sourceRootPath={sourceRootPathResolver(mediaSourceId())}
 			transport={createTauriTransport(mediaSourceId)}
 		/>

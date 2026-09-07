@@ -443,8 +443,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const element = scrollElement();
 		if (props.scrollMode === "element" && element) {
 			// Element scroll containers do not consistently emit a native scroll
-			// event when their content is replaced or clamped. Window scrolling in
-			// the v1 screen gets that notification from the browser automatically.
+			// event when their content is replaced or clamped. Window scrolling gets
+			// that notification from the browser automatically.
 			// Dispatching lets the virtualizer read the element's current offset
 			// without imperatively writing a possibly stale offset back to it.
 			element.dispatchEvent(new Event("scroll"));
@@ -829,12 +829,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	};
 	const listContent = (
-		<div class="overflow-x-auto rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] [scrollbar-gutter:stable]">
+		<div class="overflow-x-auto rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] [scrollbar-gutter:stable]">
 			<table class="w-full min-w-[52rem] border-collapse text-left text-sm">
 				<caption class="sr-only">
 					メディア一覧。{totalCount().toLocaleString()}件。
 				</caption>
-				<thead class="bg-[var(--v2-surface-muted)] text-xs text-[var(--v2-text-muted)]">
+				<thead class="bg-[var(--app-surface-muted)] text-xs text-[var(--app-text-muted)]">
 					<tr>
 						<Show when={props.isBulkSelectMode?.()}>
 							<th class="w-10 px-3 py-2" scope="col">
@@ -858,16 +858,16 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-[var(--v2-border)]">
+				<tbody class="divide-y divide-[var(--app-border)]">
 					<For each={props.mediaResults()}>
 						{(media) => (
 							<tr
 								aria-selected={props.previewSelectedMediaId?.() === media.id}
-								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--v2-focus)] ${
+								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--app-focus)] ${
 									props.isSelected?.(media.id) ||
 									props.previewSelectedMediaId?.() === media.id
-										? "bg-[var(--v2-surface-selected)]"
-										: "hover:bg-[var(--v2-surface-muted)]"
+										? "bg-[var(--app-surface-selected)]"
+										: "hover:bg-[var(--app-surface-muted)]"
 								}`}
 								data-media-id={media.id}
 								onClick={(event) => {
@@ -948,29 +948,29 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								<th class="max-w-[28rem] px-3 py-2 font-normal" scope="row">
 									<div class="min-h-10 w-full px-1 py-1 text-left">
 										<span
-											class="block truncate font-medium text-[var(--v2-text)]"
+											class="block truncate font-medium text-[var(--app-text)]"
 											title={media.fileName}
 										>
 											{media.fileName}
 										</span>
 										<span
-											class="mt-0.5 block truncate text-[var(--v2-text-muted)] text-xs"
+											class="mt-0.5 block truncate text-[var(--app-text-muted)] text-xs"
 											title={media.filePath}
 										>
 											{media.filePath}
 										</span>
 									</div>
 								</th>
-								<td class="px-3 py-2 text-[var(--v2-text-secondary)]">
+								<td class="px-3 py-2 text-[var(--app-text-secondary)]">
 									{media.mediaType}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--app-text-secondary)]">
 									{media.width} × {media.height}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--app-text-secondary)]">
 									{formatFileSize(media.fileSize)}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-muted)]">
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--app-text-muted)]">
 									{media.modifiedAt.toLocaleDateString("ja-JP")}
 								</td>
 							</tr>
@@ -1086,7 +1086,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									{collectionContent}
 								</section>
 							</ContextMenuTrigger>
-							<ContextMenuContent class="v2-theme min-w-56 max-w-80">
+							<ContextMenuContent class="app-theme min-w-56 max-w-80">
 								<Show
 									keyed
 									fallback={
@@ -1100,7 +1100,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										<>
 											<ContextMenuGroup>
 												<ContextMenuGroupLabel
-													class="max-w-72 truncate text-[var(--v2-text-muted)]"
+													class="max-w-72 truncate text-[var(--app-text-muted)]"
 													title={media.fileName}
 												>
 													{media.fileName}

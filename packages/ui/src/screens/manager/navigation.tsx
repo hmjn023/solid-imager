@@ -5,13 +5,10 @@ import Image from "lucide-solid/icons/image";
 import Share2 from "lucide-solid/icons/share-2";
 import { For } from "solid-js";
 import { Button } from "../../button";
-import {
-	V2CategoryLabel,
-	v2CategoryButtonClass,
-} from "../../management-layout";
-import { MANAGER_CATEGORIES, type V2ManagerCategory } from "./types";
+import { CategoryButtonClass, CategoryLabel } from "../../management-layout";
+import { MANAGER_CATEGORIES, type ManagerCategory } from "./types";
 
-function ManagerCategoryIcon(props: { value: V2ManagerCategory }) {
+function ManagerCategoryIcon(props: { value: ManagerCategory }) {
 	switch (props.value) {
 		case "projects":
 			return <Folder aria-hidden="true" size={16} />;
@@ -33,15 +30,15 @@ function ManagerCategoryIcon(props: { value: V2ManagerCategory }) {
 }
 
 export function ManagerCategoryNavigation(props: {
-	active: V2ManagerCategory;
+	active: ManagerCategory;
 	compact?: boolean;
-	onChange: (value: V2ManagerCategory) => void;
+	onChange: (value: ManagerCategory) => void;
 }) {
 	if (props.compact) {
 		return (
 			<nav
 				aria-label="Manager categories"
-				class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-[var(--v2-border)] border-b bg-[var(--v2-canvas)]/95 px-3 py-2 backdrop-blur lg:hidden"
+				class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-[var(--app-border)] border-b bg-[var(--app-canvas)]/95 px-3 py-2 backdrop-blur lg:hidden"
 			>
 				<For each={MANAGER_CATEGORIES}>
 					{(category) => (
@@ -51,13 +48,13 @@ export function ManagerCategoryNavigation(props: {
 							}
 							class={`min-h-11 shrink-0 gap-2.5 px-2.5 ${
 								props.active === category.value
-									? "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"
-									: "text-[var(--v2-text-secondary)]"
+									? "bg-[var(--app-surface-selected)] text-[var(--app-primary)]"
+									: "text-[var(--app-text-secondary)]"
 							}`}
 							onClick={() => props.onChange(category.value)}
 							variant="ghost"
 						>
-							<V2CategoryLabel
+							<CategoryLabel
 								description={category.description}
 								icon={<ManagerCategoryIcon value={category.value} />}
 								label={category.label}
@@ -75,7 +72,7 @@ export function ManagerCategoryNavigation(props: {
 				<For each={["Entities", "Tools"] as const}>
 					{(group) => (
 						<div>
-							<p class="mb-1 px-2.5 font-medium text-[10px] uppercase tracking-[0.12em] text-[var(--v2-text-muted)]">
+							<p class="mb-1 px-2.5 font-medium text-[10px] uppercase tracking-[0.12em] text-[var(--app-text-muted)]">
 								{group}
 							</p>
 							<div class="space-y-0.5">
@@ -89,13 +86,13 @@ export function ManagerCategoryNavigation(props: {
 											aria-current={
 												props.active === category.value ? "page" : undefined
 											}
-											class={v2CategoryButtonClass(
+											class={CategoryButtonClass(
 												props.active === category.value,
 											)}
 											onClick={() => props.onChange(category.value)}
 											type="button"
 										>
-											<V2CategoryLabel
+											<CategoryLabel
 												description={category.description}
 												icon={<ManagerCategoryIcon value={category.value} />}
 												label={category.label}

@@ -19,9 +19,9 @@ import { Badge } from "../badge";
 import { Button } from "../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
 import {
-	V2_CATEGORY_TABS_CLASS,
-	V2CategoryLabel,
-	V2ManagementHeader,
+	CATEGORY_TABS_CLASS,
+	CategoryLabel,
+	ManagementHeader,
 } from "../management-layout";
 import type { QueryUiState } from "../query-state";
 import {
@@ -76,7 +76,7 @@ const JOB_FILTERS = [
 
 type JobFilter = (typeof JOB_FILTERS)[number]["value"];
 
-export type V2JobsPagination = {
+export type JobsPagination = {
 	canNext: boolean;
 	canPrevious: boolean;
 	current: number;
@@ -85,7 +85,7 @@ export type V2JobsPagination = {
 	total: number;
 };
 
-export type V2JobsScreenProps = {
+export type JobsScreenProps = {
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	isRefreshing: Accessor<boolean>;
 	jobs: Accessor<JobDto[]>;
@@ -94,7 +94,7 @@ export type V2JobsScreenProps = {
 	onRetryMany: (jobIds: string[]) => void | Promise<void>;
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
-	page: Accessor<V2JobsPagination>;
+	page: Accessor<JobsPagination>;
 	state: Accessor<QueryUiState<JobListResponse>>;
 };
 
@@ -124,15 +124,15 @@ function statusLabel(status: JobDto["status"]): string {
 function statusClass(status: JobDto["status"]): string {
 	return {
 		cancelled:
-			"border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-text-muted)]",
+			"border-[var(--app-border-strong)] bg-[var(--app-surface-muted)] text-[var(--app-text-muted)]",
 		completed:
-			"border-[var(--v2-border-strong)] bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]",
+			"border-[var(--app-border-strong)] bg-[var(--app-surface-selected)] text-[var(--app-primary)]",
 		failed:
-			"border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] text-[var(--v2-destructive)]",
+			"border-[var(--app-border-strong)] bg-[var(--app-surface-muted)] text-[var(--app-destructive)]",
 		in_progress:
-			"border-[var(--v2-border-strong)] bg-[var(--v2-info-surface)] text-[var(--v2-info)]",
+			"border-[var(--app-border-strong)] bg-[var(--app-info-surface)] text-[var(--app-info)]",
 		pending:
-			"border-[var(--v2-border-strong)] bg-[var(--v2-warning-surface)] text-[var(--v2-warning)]",
+			"border-[var(--app-border-strong)] bg-[var(--app-warning-surface)] text-[var(--app-warning)]",
 	}[status];
 }
 
@@ -155,14 +155,14 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 
 	return (
 		<Show
-			fallback={<span class="text-[var(--v2-text-muted)]">—</span>}
+			fallback={<span class="text-[var(--app-text-muted)]">—</span>}
 			when={props.progress}
 		>
 			{(progress) => (
 				<div class="min-w-28 space-y-1">
 					<div class="flex items-center justify-between gap-2 text-xs">
 						<span>{percent()}%</span>
-						<span class="text-[var(--v2-text-muted)]">
+						<span class="text-[var(--app-text-muted)]">
 							{progress().processed.toLocaleString()}/
 							{progress().total.toLocaleString()}
 						</span>
@@ -172,11 +172,11 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 						aria-valuemax="100"
 						aria-valuemin="0"
 						aria-valuenow={percent()}
-						class="h-1.5 overflow-hidden rounded-full bg-[var(--v2-border)]"
+						class="h-1.5 overflow-hidden rounded-full bg-[var(--app-border)]"
 						role="progressbar"
 					>
 						<div
-							class="h-full rounded-full bg-[var(--v2-primary)] transition-[width]"
+							class="h-full rounded-full bg-[var(--app-primary)] transition-[width]"
 							style={{ width: `${percent()}%` }}
 						/>
 					</div>
@@ -215,7 +215,7 @@ function JobThumbnail(props: {
 	return (
 		<Show
 			fallback={
-				<span aria-hidden="true" class="text-[var(--v2-text-muted)]">
+				<span aria-hidden="true" class="text-[var(--app-text-muted)]">
 					—
 				</span>
 			}
@@ -244,13 +244,13 @@ function JobsTable(props: {
 	selectedJobIds: ReadonlySet<string>;
 }) {
 	return (
-		<div class="overflow-hidden rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)]">
+		<div class="overflow-hidden rounded-md border border-[var(--app-border)] bg-[var(--app-surface)]">
 			<div class="overflow-x-auto">
 				<table class="w-full min-w-[50rem] text-left text-sm">
 					<caption class="sr-only">
 						ジョブの一覧。{props.jobs.length}件。
 					</caption>
-					<thead class="border-[var(--v2-border)] border-b bg-[var(--v2-surface-muted)] text-xs uppercase tracking-wide">
+					<thead class="border-[var(--app-border)] border-b bg-[var(--app-surface-muted)] text-xs uppercase tracking-wide">
 						<tr>
 							<th class="w-12 px-2 py-3 font-medium" scope="col">
 								<span class="sr-only">Select</span>
@@ -272,13 +272,13 @@ function JobsTable(props: {
 							</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-[var(--v2-border)]">
+					<tbody class="divide-y divide-[var(--app-border)]">
 						<For each={props.jobs}>
 							{(job) => (
 								<tr
 									class={
 										props.selectedJobId === job.id
-											? "bg-[var(--v2-primary-soft)]"
+											? "bg-[var(--app-primary-soft)]"
 											: ""
 									}
 									data-selected={props.selectedJobId === job.id}
@@ -288,7 +288,7 @@ function JobsTable(props: {
 											fallback={
 												<span
 													aria-hidden="true"
-													class="block text-center text-[var(--v2-text-muted)]"
+													class="block text-center text-[var(--app-text-muted)]"
 												>
 													—
 												</span>
@@ -300,7 +300,7 @@ function JobsTable(props: {
 												class="flex min-h-11 items-center justify-center sm:min-h-9"
 												onChange={() => props.onToggleSelect(job.id)}
 											>
-												<CheckboxControl class="border-[var(--v2-border-strong)] bg-[var(--v2-surface)] data-[checked]:border-[var(--v2-primary)] data-[checked]:bg-[var(--v2-primary)]" />
+												<CheckboxControl class="border-[var(--app-border-strong)] bg-[var(--app-surface)] data-[checked]:border-[var(--app-primary)] data-[checked]:bg-[var(--app-primary)]" />
 												<CheckboxLabel class="sr-only">
 													Select {jobTypeLabel(job.type)} job
 												</CheckboxLabel>
@@ -320,12 +320,12 @@ function JobsTable(props: {
 									<td class="px-2 py-2">
 										<button
 											aria-pressed={props.selectedJobId === job.id}
-											class="w-full rounded px-2 py-2 text-left font-medium text-[var(--v2-text)] hover:bg-[var(--v2-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-primary)]"
+											class="w-full rounded px-2 py-2 text-left font-medium text-[var(--app-text)] hover:bg-[var(--app-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-primary)]"
 											onClick={() => props.onSelect(job)}
 											type="button"
 										>
 											<div>{jobTypeLabel(job.type)}</div>
-											<div class="mt-0.5 font-normal text-[var(--v2-text-muted)] text-xs">
+											<div class="mt-0.5 font-normal text-[var(--app-text-muted)] text-xs">
 												{job.id.slice(0, 8)}
 											</div>
 										</button>
@@ -336,7 +336,7 @@ function JobsTable(props: {
 									<td class="px-4 py-3">
 										<JobProgress progress={job.progress} />
 									</td>
-									<td class="px-4 py-3 whitespace-nowrap text-[var(--v2-text-secondary)]">
+									<td class="px-4 py-3 whitespace-nowrap text-[var(--app-text-secondary)]">
 										{formatDate(job.updatedAt, { includeTime: true })}
 									</td>
 								</tr>
@@ -361,7 +361,7 @@ function JobsBulkActions(props: {
 	selectedCount: number;
 }) {
 	return (
-		<div class="mb-3 flex flex-col gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-3 sm:flex-row sm:items-center sm:justify-between">
+		<div class="mb-3 flex flex-col gap-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-3 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex flex-wrap items-center gap-3">
 				<Checkbox
 					checked={props.allSelected}
@@ -369,14 +369,14 @@ function JobsBulkActions(props: {
 					indeterminate={props.hasSelection && !props.allSelected}
 					onChange={props.onToggleAll}
 				>
-					<CheckboxControl class="border-[var(--v2-border-strong)] bg-[var(--v2-surface)] data-[checked]:border-[var(--v2-primary)] data-[checked]:bg-[var(--v2-primary)]" />
-					<CheckboxLabel class="font-medium text-xs text-[var(--v2-text-secondary)]">
+					<CheckboxControl class="border-[var(--app-border-strong)] bg-[var(--app-surface)] data-[checked]:border-[var(--app-primary)] data-[checked]:bg-[var(--app-primary)]" />
+					<CheckboxLabel class="font-medium text-xs text-[var(--app-text-secondary)]">
 						{props.allSelected
 							? "Clear failed selection"
 							: "Select all failed jobs"}
 					</CheckboxLabel>
 				</Checkbox>
-				<span aria-live="polite" class="text-xs text-[var(--v2-text-muted)]">
+				<span aria-live="polite" class="text-xs text-[var(--app-text-muted)]">
 					{props.selectedCount.toLocaleString()} of{" "}
 					{props.selectableCount.toLocaleString()} failed jobs selected
 				</span>
@@ -395,7 +395,7 @@ function JobsBulkActions(props: {
 				>
 					<SelectTrigger
 						aria-label="Bulk job action"
-						class="w-full bg-[var(--v2-surface)] sm:min-h-9 sm:w-52"
+						class="w-full bg-[var(--app-surface)] sm:min-h-9 sm:w-52"
 						disabled={props.isApplying || !props.hasSelection}
 					>
 						<SelectValue<JobBulkAction>>
@@ -484,13 +484,13 @@ function JobsInspector(props: {
 			aria-label="Job details"
 			class={
 				props.class ??
-				"hidden min-h-0 overflow-y-auto overscroll-contain border-[var(--v2-border)] border-l bg-[var(--v2-surface-subtle)] p-5 [scrollbar-gutter:stable] xl:block"
+				"hidden min-h-0 overflow-y-auto overscroll-contain border-[var(--app-border)] border-l bg-[var(--app-surface-subtle)] p-5 [scrollbar-gutter:stable] xl:block"
 			}
 		>
 			<div class="flex items-start justify-between gap-3">
 				<div>
-					<p class="text-xs text-[var(--v2-text-muted)]">Inspector</p>
-					<h2 class="mt-1 font-semibold text-base text-[var(--v2-text)]">
+					<p class="text-xs text-[var(--app-text-muted)]">Inspector</p>
+					<h2 class="mt-1 font-semibold text-base text-[var(--app-text)]">
 						Job details
 					</h2>
 				</div>
@@ -501,7 +501,7 @@ function JobsInspector(props: {
 
 			<Show
 				fallback={
-					<p class="mt-3 text-sm leading-6 text-[var(--v2-text-secondary)]">
+					<p class="mt-3 text-sm leading-6 text-[var(--app-text-secondary)]">
 						一覧からジョブを選択すると、対象と実行状態を表示します。
 					</p>
 				}
@@ -509,21 +509,21 @@ function JobsInspector(props: {
 			>
 				{(job) => (
 					<>
-						<p class="mt-3 font-medium text-sm text-[var(--v2-text)]">
+						<p class="mt-3 font-medium text-sm text-[var(--app-text)]">
 							{jobTypeLabel(job().type)}
 						</p>
 						<Show
 							fallback={
 								<div
 									aria-hidden="true"
-									class="mt-4 flex h-24 items-center justify-center rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] text-[var(--v2-text-muted)]"
+									class="mt-4 flex h-24 items-center justify-center rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text-muted)]"
 								>
 									—
 								</div>
 							}
 							when={job().targetMediaId && job().mediaSourceId}
 						>
-							<div class="mt-4 overflow-hidden rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)]">
+							<div class="mt-4 overflow-hidden rounded-md border border-[var(--app-border)] bg-[var(--app-surface)]">
 								<JobThumbnail
 									alt={`Target media for ${jobTypeLabel(job().type)} job`}
 									buildUrl={props.buildThumbnailUrl}
@@ -533,63 +533,63 @@ function JobsInspector(props: {
 									requestedSize={512}
 									width={256}
 								/>
-								<p class="border-[var(--v2-border)] border-t px-3 py-2 text-xs text-[var(--v2-text-muted)]">
+								<p class="border-[var(--app-border)] border-t px-3 py-2 text-xs text-[var(--app-text-muted)]">
 									Target media
 								</p>
 							</div>
 						</Show>
-						<dl class="mt-5 space-y-3 border-[var(--v2-border)] border-y py-4 text-xs">
+						<dl class="mt-5 space-y-3 border-[var(--app-border)] border-y py-4 text-xs">
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Status</dt>
-								<dd class="text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Status</dt>
+								<dd class="text-right text-[var(--app-text-secondary)]">
 									{statusLabel(job().status)}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Source</dt>
-								<dd class="max-w-40 truncate text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Source</dt>
+								<dd class="max-w-40 truncate text-right text-[var(--app-text-secondary)]">
 									{job().mediaSourceId?.slice(0, 8) ?? "—"}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Created</dt>
-								<dd class="text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Created</dt>
+								<dd class="text-right text-[var(--app-text-secondary)]">
 									{formatDate(job().createdAt, { includeTime: true })}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Updated</dt>
-								<dd class="text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Updated</dt>
+								<dd class="text-right text-[var(--app-text-secondary)]">
 									{formatDate(job().updatedAt, { includeTime: true })}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Attempts</dt>
-								<dd class="text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Attempts</dt>
+								<dd class="text-right text-[var(--app-text-secondary)]">
 									{job().attemptCount}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Started</dt>
-								<dd class="text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Started</dt>
+								<dd class="text-right text-[var(--app-text-secondary)]">
 									{job().startedAt ? formatDate(job().startedAt) : "—"}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Finished</dt>
-								<dd class="text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Finished</dt>
+								<dd class="text-right text-[var(--app-text-secondary)]">
 									{job().finishedAt ? formatDate(job().finishedAt) : "—"}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Target</dt>
-								<dd class="max-w-40 truncate text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Target</dt>
+								<dd class="max-w-40 truncate text-right text-[var(--app-text-secondary)]">
 									{job().targetMediaId?.slice(0, 8) ?? "—"}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--v2-text-muted)]">Job ID</dt>
-								<dd class="max-w-40 truncate text-right text-[var(--v2-text-secondary)]">
+								<dt class="text-[var(--app-text-muted)]">Job ID</dt>
+								<dd class="max-w-40 truncate text-right text-[var(--app-text-secondary)]">
 									{job().id}
 								</dd>
 							</div>
@@ -598,7 +598,7 @@ function JobsInspector(props: {
 						<Show when={job().progress}>
 							{(progress) => (
 								<div class="mt-4">
-									<p class="mb-2 text-xs text-[var(--v2-text-muted)]">
+									<p class="mb-2 text-xs text-[var(--app-text-muted)]">
 										Progress
 									</p>
 									<JobProgress progress={progress()} />
@@ -608,7 +608,7 @@ function JobsInspector(props: {
 
 						<Show when={job().error}>
 							{(error) => (
-								<div class="mt-4 rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface-muted)] p-3 text-[var(--v2-destructive)] text-sm">
+								<div class="mt-4 rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface-muted)] p-3 text-[var(--app-destructive)] text-sm">
 									<div class="flex items-start gap-2">
 										<CircleAlert
 											aria-hidden="true"
@@ -622,7 +622,7 @@ function JobsInspector(props: {
 						</Show>
 
 						<Show when={job().cancelRequestedAt}>
-							<p class="mt-4 rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-warning-surface)] p-3 text-[var(--v2-warning)] text-xs">
+							<p class="mt-4 rounded-md border border-[var(--app-border-strong)] bg-[var(--app-warning-surface)] p-3 text-[var(--app-warning)] text-xs">
 								Cancellation requested at {formatDate(job().cancelRequestedAt)}.
 							</p>
 						</Show>
@@ -631,7 +631,7 @@ function JobsInspector(props: {
 							{(artifact) => (
 								<button
 									aria-busy={isDownloading()}
-									class="mt-4 flex w-full items-center gap-2 rounded-md border border-[var(--v2-border)] px-3 py-2 text-left text-sm text-[var(--v2-primary)] hover:bg-[var(--v2-surface-muted)]"
+									class="mt-4 flex w-full items-center gap-2 rounded-md border border-[var(--app-border)] px-3 py-2 text-left text-sm text-[var(--app-primary)] hover:bg-[var(--app-surface-muted)]"
 									disabled={isDownloading()}
 									onClick={() => void download()}
 									type="button"
@@ -668,7 +668,7 @@ function JobsInspector(props: {
 							</Show>
 							<Show
 								fallback={
-									<p class="text-xs leading-5 text-[var(--v2-text-muted)]">
+									<p class="text-xs leading-5 text-[var(--app-text-muted)]">
 										再実行できるのは失敗したジョブのみです。
 									</p>
 								}
@@ -693,7 +693,7 @@ function JobsInspector(props: {
 	);
 }
 
-export function V2JobsScreen(props: V2JobsScreenProps) {
+export function JobsScreen(props: JobsScreenProps) {
 	const [activeFilter, setActiveFilter] = createSignal<JobFilter>("all");
 	const [selectedJobId, setSelectedJobId] = createSignal<string | null>(null);
 	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
@@ -759,13 +759,13 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 	};
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--v2-canvas)]">
-			<V2ManagementHeader
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--app-canvas)]">
+			<ManagementHeader
 				actions={
 					<div class="flex items-center gap-2">
 						<Show when={props.state().data}>
 							{(data) => (
-								<span class="hidden text-xs text-[var(--v2-text-muted)] sm:inline">
+								<span class="hidden text-xs text-[var(--app-text-muted)] sm:inline">
 									{data().total.toLocaleString()} jobs
 								</span>
 							)}
@@ -805,11 +805,11 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 										const Icon = filter.icon;
 										return (
 											<TabsTrigger
-												class={V2_CATEGORY_TABS_CLASS}
+												class={CATEGORY_TABS_CLASS}
 												type="button"
 												value={filter.value}
 											>
-												<V2CategoryLabel
+												<CategoryLabel
 													description={filter.description}
 													icon={<Icon aria-hidden="true" size={16} />}
 													label={filter.label}
@@ -826,7 +826,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 											<Switch>
 												<Match when={props.state().phase === "pending"}>
 													<LoadingRegion label="ジョブ一覧を読み込んでいます...">
-														<div class="h-64 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)]" />
+														<div class="h-64 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)]" />
 													</LoadingRegion>
 												</Match>
 												<Match when={props.state().phase === "error"}>
@@ -885,7 +885,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 														/>
 														<Show when={props.state().data?.total}>
 															{(total) => (
-																<p class="mt-3 text-xs text-[var(--v2-text-muted)]">
+																<p class="mt-3 text-xs text-[var(--app-text-muted)]">
 																	Showing{" "}
 																	{filteredJobs().length.toLocaleString()} of{" "}
 																	{total().toLocaleString()} jobs
@@ -896,7 +896,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 															{(job) => (
 																<JobsInspector
 																	buildThumbnailUrl={props.buildThumbnailUrl}
-																	class="mt-4 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-subtle)] p-4 xl:hidden"
+																	class="mt-4 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-subtle)] p-4 xl:hidden"
 																	job={job()}
 																	onCancel={props.onCancel}
 																	onDownload={props.onDownload}
@@ -930,7 +930,7 @@ export function V2JobsScreen(props: V2JobsScreenProps) {
 															</Button>
 															<span
 																aria-live="polite"
-																class="text-sm text-[var(--v2-text-muted)]"
+																class="text-sm text-[var(--app-text-muted)]"
 															>
 																Page {props.page().current} of{" "}
 																{props.page().total}

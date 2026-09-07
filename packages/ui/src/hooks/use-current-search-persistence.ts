@@ -14,17 +14,13 @@ import {
 	getSearchCondition,
 	loadPreset,
 	resetSearchState,
-	type SearchPersistenceSurface,
 	searchState,
 	setSearchState,
 } from "../stores/search-store";
 
 const DEBOUNCE_MS = 1000;
 
-export type { SearchPersistenceSurface } from "../stores/search-store";
-
 export type SearchPersistenceOptions = {
-	surface?: SearchPersistenceSurface;
 	historyEntryKey?: string | Accessor<string | undefined>;
 };
 
@@ -44,19 +40,15 @@ function getCurrentPresetName(sourceId: string | null | undefined) {
 
 function getScrollStorageKey(
 	presetName: string,
-	surface: SearchPersistenceSurface,
 	historyEntryKey?: string,
 ): string {
 	return historyEntryKey
-		? `search-scroll:${surface}:history:${historyEntryKey}`
-		: `search-scroll:${surface}:${presetName}`;
+		? `search-scroll:history:${historyEntryKey}`
+		: `search-scroll:${presetName}`;
 }
 
-function getStateStorageKey(
-	presetName: string,
-	surface: SearchPersistenceSurface,
-): string {
-	return surface === "v2" ? `v2:${presetName}` : presetName;
+function getStateStorageKey(presetName: string): string {
+	return presetName;
 }
 
 function readScrollPosition(storageKey: string): number {
@@ -90,8 +82,8 @@ function normalizeSimilarityTopK(value: unknown): number {
 /**
  * Persist the scroll owner explicitly when a route owns a non-window
  * collection scroller.  The reactive persistence effect remains the
- * fallback, while route callbacks can use this helper to avoid sharing the
- * legacy and v2 session keys during rapid scroll updates.
+ * fallback, while route callbacks can use this helper to persist the same
+ * key that the reactive persistence effect uses during rapid scroll updates.
  */
 export function persistSearchScrollPosition(
 	sourceId: SearchPersistenceSource = "current",
@@ -115,11 +107,7 @@ export function persistSearchScrollPosition(
 				? options.historyEntryKey()
 				: options.historyEntryKey;
 		sessionStorage.setItem(
-			getScrollStorageKey(
-				presetName,
-				options.surface ?? "legacy",
-				historyEntryKey,
-			),
+			getScrollStorageKey(presetName, historyEntryKey),
 			String(normalizeScrollPosition(position)),
 		);
 	} catch {
@@ -141,13 +129,7 @@ export function readPersistedSearchScrollPosition(
 			? options.historyEntryKey()
 			: options.historyEntryKey;
 	try {
-		return readScrollPosition(
-			getScrollStorageKey(
-				presetName,
-				options.surface ?? "legacy",
-				historyEntryKey,
-			),
-		);
+		return readScrollPosition(getScrollStorageKey(presetName, historyEntryKey));
 	} catch {
 		return 0;
 	}
@@ -184,7 +166,6 @@ function applyPreset(
 function restoreCurrentSearchState(
 	sourceId: string | null | undefined,
 	shouldApply: () => boolean,
-	surface: SearchPersistenceSurface,
 ) {
 	const presetName = getCurrentPresetName(sourceId);
 	if (!presetName || typeof sessionStorage === "undefined") {
@@ -193,9 +174,7 @@ function restoreCurrentSearchState(
 
 	let sessionDataStr: string | null;
 	try {
-		sessionDataStr = sessionStorage.getItem(
-			getStateStorageKey(presetName, surface),
-		);
+		sessionDataStr = sessionStorage.getItem(getStateStorageKey(presetName));
 	} catch {
 		if (shouldApply()) {
 			resetSearchStatePreservingScroll();
@@ -283,7 +262,7 @@ function restoreCurrentSearchState(
 
 export function useCurrentSearchPersistence(
 	sourceId: SearchPersistenceSource = "current",
-	options: SearchPersistenceOptions = {},
+	_options: SearchPersistenceOptions = {},
 ): Accessor<boolean> {
 	const [isRestored, setIsRestored] = createSignal(false);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -295,7 +274,6 @@ export function useCurrentSearchPersistence(
 	const getSourceId = () =>
 		typeof sourceId === "function" ? sourceId() : sourceId;
 	const resolvePresetName = () => getCurrentPresetName(getSourceId());
-	const surface = options.surface ?? "legacy";
 	const persistPendingScrollPosition = () => {
 		if (!pendingScrollKey || isServer) {
 			return;
@@ -326,9 +304,9 @@ export function useCurrentSearchPersistence(
 		untrack(() => {
 			setSearchState(
 				"scrollY",
-				readScrollPosition(getScrollStorageKey(presetName, surface)),
+				readScrollPosition(getScrollStorageKey(presetName)),
 			);
-			restoreCurrentSearchState(currentSourceId, shouldApply, surface);
+			restoreCurrentSearchState(currentSourceId, shouldApply);
 		});
 		if (shouldApply()) {
 			setIsRestored(true);
@@ -365,7 +343,7 @@ export function useCurrentSearchPersistence(
 		if (!isRestored() || !presetName || isServer) {
 			return;
 		}
-		const nextScrollKey = getScrollStorageKey(presetName, surface);
+		const nextScrollKey = getScrollStorageKey(presetName);
 		if (pendingScrollKey && pendingScrollKey !== nextScrollKey) {
 			persistPendingScrollPosition();
 		}
@@ -389,7 +367,7 @@ export function useCurrentSearchPersistence(
 			};
 			try {
 				sessionStorage.setItem(
-					getStateStorageKey(presetName, surface),
+					getStateStorageKey(presetName),
 					JSON.stringify(presetData),
 				);
 				lastPersistedPresetName = presetName;

@@ -14,7 +14,7 @@ import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events"
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { createAppShortcut } from "@solid-imager/ui/shortcuts/index";
 import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
-import { V2SourceFormModal } from "@solid-imager/ui/source-form-modal";
+import { SourceFormModal } from "@solid-imager/ui/source-form-modal";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
 import type { JSX, ParentProps } from "solid-js";
@@ -27,17 +27,17 @@ import {
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
-import { V2CommandCenter } from "./command-center";
-import { V2MobileHeader } from "./mobile-header";
-import { V2Sidebar, type V2SidebarProps } from "./sidebar";
+import { CommandCenter } from "./command-center";
+import { MobileHeader } from "./mobile-header";
+import { Sidebar, type SidebarProps } from "./sidebar";
 
-type V2AppShellProps = ParentProps<{
+type AppShellProps = ParentProps<{
 	statusIndicator?: JSX.Element;
 }>;
 
-const SIDEBAR_PREFERENCE_KEY = "solid-imager:v2-sidebar-expanded";
+const SIDEBAR_PREFERENCE_KEY = "solid-imager:sidebar-expanded";
 
-export function V2AppShell(props: V2AppShellProps) {
+export function AppShell(props: AppShellProps) {
 	const queryClient = useQueryClient();
 	const navigate = useNavigate();
 	const [mediaSources, setMediaSources] = createSignal<SafeMediaSource[]>([]);
@@ -93,7 +93,7 @@ export function V2AppShell(props: V2AppShellProps) {
 		getSourceIds: () =>
 			sourceData().flatMap((source) => (source.id ? [source.id] : [])),
 	});
-	const sidebarProps = (): V2SidebarProps => ({
+	const sidebarProps = (): SidebarProps => ({
 		expanded: sidebarExpanded(),
 		mediaSources: sourceData(),
 		onAddSource: sourcePage.handleAddSource,
@@ -142,35 +142,34 @@ export function V2AppShell(props: V2AppShellProps) {
 
 	return (
 		<div
-			class={`v2-theme grid h-dvh min-h-0 overflow-hidden bg-[var(--v2-canvas)] text-[var(--v2-text)] ${
+			class={`app-theme grid h-dvh min-h-0 overflow-hidden bg-[var(--app-canvas)] text-[var(--app-text)] ${
 				sidebarExpanded()
 					? "md:grid-cols-[216px_minmax(0,1fr)]"
 					: "md:grid-cols-[64px_minmax(0,1fr)]"
 			}`}
-			data-design-version="v2"
 		>
 			<a
-				class="sr-only fixed top-2 left-2 z-[80] rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-[var(--v2-focus)]"
-				href="#v2-main-content"
+				class="sr-only fixed top-2 left-2 z-[80] rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-[var(--app-focus)]"
+				href="#main-content"
 			>
 				メインコンテンツへ移動
 			</a>
 			<aside
 				aria-label="アプリケーションサイドバー"
-				class="hidden min-h-0 border-[var(--v2-border)] border-r md:block"
+				class="hidden min-h-0 border-[var(--app-border)] border-r md:block"
 			>
-				<V2Sidebar {...sidebarProps()} />
+				<Sidebar {...sidebarProps()} />
 			</aside>
 
 			<div class="flex min-h-0 min-w-0 flex-col">
-				<V2MobileHeader
+				<MobileHeader
 					onOpenCommandPalette={() => updateCommandPaletteOpen(true)}
 					onOpenMenu={() => setMobileMenuOpen(true)}
 				/>
 				{props.statusIndicator}
 				<main
 					class="min-h-0 min-w-0 flex-1 overflow-hidden"
-					id="v2-main-content"
+					id="main-content"
 					tabIndex={-1}
 				>
 					{props.children}
@@ -178,16 +177,16 @@ export function V2AppShell(props: V2AppShellProps) {
 			</div>
 
 			<Show when={sidebarPreferenceReady()}>
-				<V2MediaSourcesLoader onData={setMediaSources} />
+				<MediaSourcesLoader onData={setMediaSources} />
 				<Dialog onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
-					<DialogContent class="v2-theme p-0" placement="left">
+					<DialogContent class="app-theme p-0" placement="left">
 						<DialogHeader class="sr-only">
 							<DialogTitle>ナビゲーション</DialogTitle>
 							<DialogDescription>
 								画面とメディアソースを選択します。
 							</DialogDescription>
 						</DialogHeader>
-						<V2Sidebar
+						<Sidebar
 							{...sidebarProps()}
 							expanded
 							onCollapseToggle={undefined}
@@ -196,7 +195,7 @@ export function V2AppShell(props: V2AppShellProps) {
 					</DialogContent>
 				</Dialog>
 
-				<V2SourceFormModal
+				<SourceFormModal
 					editingSource={
 						sourcePage.editingSource() as
 							| MediaSourceInfo
@@ -213,7 +212,7 @@ export function V2AppShell(props: V2AppShellProps) {
 					onConfirm={sourcePage.handleDeleteConfirm}
 					sourceToDelete={sourcePage.deletingSource()}
 				/>
-				<V2CommandCenter
+				<CommandCenter
 					helpOpen={shortcutHelpOpen()}
 					onAddSource={sourcePage.handleAddSource}
 					onHelpOpenChange={setShortcutHelpOpen}
@@ -226,7 +225,7 @@ export function V2AppShell(props: V2AppShellProps) {
 	);
 }
 
-function V2MediaSourcesLoader(props: {
+function MediaSourcesLoader(props: {
 	onData: (sources: SafeMediaSource[]) => void;
 }) {
 	const mediaSources = createQuery(mediaSourcesQueryOptions);

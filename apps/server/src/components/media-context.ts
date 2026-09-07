@@ -4,13 +4,13 @@ import {
 	mediaSourceIdSchema,
 } from "@solid-imager/core/domain/media/schemas";
 
-const STORAGE_KEY = "v2:media-context";
+const STORAGE_KEY = "media-context";
 const MAX_CONTEXT_ITEMS = 500;
 
-export type V2MediaContextItem = Pick<Media, "id" | "mediaSourceId">;
+export type MediaContextItem = Pick<Media, "id" | "mediaSourceId">;
 
 type StoredMediaContext = {
-	items: V2MediaContextItem[];
+	items: MediaContextItem[];
 	returnPath: string;
 	updatedAt: number;
 };
@@ -23,14 +23,14 @@ function getStorage(): Storage | null {
 	}
 }
 
-export function saveV2MediaContext(
+export function saveMediaContext(
 	returnPath: string,
-	items: readonly V2MediaContextItem[],
+	items: readonly MediaContextItem[],
 ): void {
 	const storage = getStorage();
 	if (!storage) return;
 
-	const uniqueItems = new Map<string, V2MediaContextItem>();
+	const uniqueItems = new Map<string, MediaContextItem>();
 	for (const item of items) {
 		if (
 			mediaIdSchema.safeParse(item.id).success &&
@@ -58,7 +58,7 @@ export function saveV2MediaContext(
 	}
 }
 
-export function readV2MediaContext(): StoredMediaContext | null {
+export function readMediaContext(): StoredMediaContext | null {
 	const storage = getStorage();
 	if (!storage) return null;
 
@@ -88,11 +88,11 @@ export function readV2MediaContext(): StoredMediaContext | null {
 	}
 }
 
-export function findV2MediaNeighbors(mediaId: string): {
-	next: V2MediaContextItem | undefined;
-	previous: V2MediaContextItem | undefined;
+export function findMediaNeighbors(mediaId: string): {
+	next: MediaContextItem | undefined;
+	previous: MediaContextItem | undefined;
 } {
-	const context = readV2MediaContext();
+	const context = readMediaContext();
 	if (!context) return { next: undefined, previous: undefined };
 	const index = context.items.findIndex((item) => item.id === mediaId);
 	if (index < 0) return { next: undefined, previous: undefined };

@@ -11,11 +11,11 @@ import {
 import { ShortcutKbd } from "@solid-imager/ui/shortcuts/index";
 import { Link } from "@tanstack/solid-router";
 import { For, Show } from "solid-js";
-import { V2PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
-import { V2_NAVIGATION_ITEMS, V2NavigationItem } from "./navigation";
-import { V2SourceList } from "./source-list";
+import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
+import { NAVIGATION_ITEMS, NavigationItem } from "./navigation";
+import { SourceList } from "./source-list";
 
-export type V2SidebarProps = {
+export type SidebarProps = {
 	expanded: boolean;
 	mediaSources: SafeMediaSource[];
 	onAddSource: () => void;
@@ -27,21 +27,21 @@ export type V2SidebarProps = {
 	onSyncSource: (source: SafeMediaSource) => void;
 };
 
-export function V2Sidebar(props: V2SidebarProps) {
+export function Sidebar(props: SidebarProps) {
 	return (
-		<div class="flex min-h-0 h-full flex-col overflow-y-auto overscroll-contain bg-[var(--v2-surface-subtle)] p-2 [scrollbar-gutter:stable]">
+		<div class="flex min-h-0 h-full flex-col overflow-y-auto overscroll-contain bg-[var(--app-surface-subtle)] p-2 [scrollbar-gutter:stable]">
 			<div class="group mb-3 flex h-12 items-center gap-2 px-2">
 				<Link
 					aria-label="Solid Imager Library"
-					class="flex min-w-0 flex-1 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+					class="flex min-w-0 flex-1 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
 					onClick={props.onNavigate}
 					to="/search"
 				>
-					<span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--v2-primary)] text-white">
+					<span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--app-primary)] text-white">
 						<Image aria-hidden="true" size={17} />
 					</span>
 					<Show when={props.expanded}>
-						<strong class="min-w-0 flex-1 truncate font-semibold text-base text-[var(--v2-text)]">
+						<strong class="min-w-0 flex-1 truncate font-semibold text-base text-[var(--app-text)]">
 							Solid Imager
 						</strong>
 					</Show>
@@ -54,7 +54,7 @@ export function V2Sidebar(props: V2SidebarProps) {
 									? "サイドバーを折りたたむ"
 									: "サイドバーを展開する"
 							}
-							class={`size-11 shrink-0 p-0 text-[var(--v2-text-muted)] md:size-8 ${
+							class={`size-11 shrink-0 p-0 text-[var(--app-text-muted)] md:size-8 ${
 								props.expanded
 									? "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
 									: "opacity-100"
@@ -78,7 +78,7 @@ export function V2Sidebar(props: V2SidebarProps) {
 				{(onOpenCommandPalette) => (
 					<Button
 						aria-label="Quick actions"
-						class="mb-2 h-10 w-full justify-start gap-2 border border-[var(--v2-border)] bg-[var(--v2-surface)] px-3 text-[var(--v2-text-secondary)] shadow-none hover:bg-[var(--v2-surface-muted)]"
+						class="mb-2 h-10 w-full justify-start gap-2 border border-[var(--app-border)] bg-[var(--app-surface)] px-3 text-[var(--app-text-secondary)] shadow-none hover:bg-[var(--app-surface-muted)]"
 						onClick={onOpenCommandPalette()}
 						title="Quick actions"
 						variant="outline"
@@ -98,22 +98,22 @@ export function V2Sidebar(props: V2SidebarProps) {
 			</Show>
 
 			<nav aria-label="主要ナビゲーション" class="space-y-1">
-				<V2NavigationItem
+				<NavigationItem
 					expanded={props.expanded}
-					icon={V2_NAVIGATION_ITEMS[0].icon}
-					label={V2_NAVIGATION_ITEMS[0].label}
+					icon={NAVIGATION_ITEMS[0].icon}
+					label={NAVIGATION_ITEMS[0].label}
 					onClick={props.onNavigate}
-					to={V2_NAVIGATION_ITEMS[0].to}
+					to={NAVIGATION_ITEMS[0].to}
 				>
 					<ShortcutKbd
 						class="min-h-5 text-[10px]"
-						shortcutId={V2_NAVIGATION_ITEMS[0].shortcutId}
+						shortcutId={NAVIGATION_ITEMS[0].shortcutId}
 					/>
-				</V2NavigationItem>
-				<V2PendingDownloadsIndicator compact={!props.expanded} />
+				</NavigationItem>
+				<PendingDownloadsIndicator compact={!props.expanded} />
 			</nav>
 
-			<V2SourceList
+			<SourceList
 				expanded={props.expanded}
 				mediaSources={props.mediaSources}
 				onAddSource={props.onAddSource}
@@ -125,9 +125,9 @@ export function V2Sidebar(props: V2SidebarProps) {
 			/>
 
 			<nav aria-label="管理ナビゲーション" class="mt-1 space-y-1">
-				<For each={V2_NAVIGATION_ITEMS.slice(1)}>
+				<For each={NAVIGATION_ITEMS.slice(1)}>
 					{(item) => (
-						<V2NavigationItem
+						<NavigationItem
 							expanded={props.expanded}
 							icon={item.icon}
 							label={item.label}
@@ -138,13 +138,13 @@ export function V2Sidebar(props: V2SidebarProps) {
 								class="min-h-5 text-[10px]"
 								shortcutId={item.shortcutId}
 							/>
-						</V2NavigationItem>
+						</NavigationItem>
 					)}
 				</For>
 			</nav>
 
-			<div class="mt-auto border-[var(--v2-border)] border-t pt-2">
-				<V2NavigationItem
+			<div class="mt-auto border-[var(--app-border)] border-t pt-2">
+				<NavigationItem
 					expanded={props.expanded}
 					icon={CircleHelp}
 					label="About"
@@ -153,7 +153,7 @@ export function V2Sidebar(props: V2SidebarProps) {
 				/>
 				<a
 					aria-label="API Docs"
-					class="flex h-11 items-center gap-2 rounded-md px-3 font-medium text-sm text-[var(--v2-text-muted)] outline-none hover:bg-[var(--v2-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] md:h-10"
+					class="flex h-11 items-center gap-2 rounded-md px-3 font-medium text-sm text-[var(--app-text-muted)] outline-none hover:bg-[var(--app-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--app-focus)] md:h-10"
 					href="/docs/swagger"
 					rel="noopener noreferrer"
 					target="_blank"

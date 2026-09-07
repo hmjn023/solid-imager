@@ -6,7 +6,7 @@ import {
 	updateJobProgress,
 } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { V2JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
+import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal } from "solid-js";
@@ -16,7 +16,7 @@ import { jobsQueryOptions } from "~/infrastructure/api-clients/queries";
 
 const BULK_RETRY_CONCURRENCY = 8;
 
-export function V2JobsRoute() {
+export function JobsRoute() {
 	const [pageIndex, setPageIndex] = createSignal(0);
 	const jobsQuery = createQuery<JobListResponse>(() =>
 		jobsQueryOptions({
@@ -52,7 +52,7 @@ export function V2JobsRoute() {
 	);
 
 	return (
-		<V2JobsScreen
+		<JobsScreen
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
 			jobs={() => jobsQuery.data?.items ?? []}

@@ -32,7 +32,7 @@ import {
 import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
 import { Label } from "../label";
-import { V2_CATEGORY_TABS_CLASS, V2CategoryLabel } from "../management-layout";
+import { CATEGORY_TABS_CLASS, CategoryLabel } from "../management-layout";
 import { ShortcutSettingsPanel } from "../shortcuts/shortcut-settings-panel";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
@@ -84,21 +84,21 @@ function parseNumberInput(val: string): number | undefined {
 	const n = Number(val);
 	return val === "" || Number.isNaN(n) ? undefined : n;
 }
-export type V2ConfigScreenProps = {
+export type ConfigScreenProps = {
 	checkAiHealth: () => Promise<AiHealthResponse>;
 	data: AppConfig;
 	onSubmit: (value: Partial<AppConfig>) => Promise<void>;
 	onSubmitSuccess?: () => void;
 };
 
-export function V2ConfigScreen(props: V2ConfigScreenProps) {
+export function ConfigScreen(props: ConfigScreenProps) {
 	const [activeTab, setActiveTab] = createSignal("jobs");
 	const [aiHealth, setAiHealth] = createSignal<AiHealthResponse | null>(null);
 	const [aiHealthError, setAiHealthError] = createSignal<string | null>(null);
 	const [isCheckingAiHealth, setIsCheckingAiHealth] = createSignal(false);
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const sectionClass =
-		"min-w-0 space-y-5 border-b border-[var(--v2-border)] pb-8";
+		"min-w-0 space-y-5 border-b border-[var(--app-border)] pb-8";
 	const form = createForm(() => ({
 		defaultValues: toFormValues(props.data),
 		validators: {
@@ -173,11 +173,11 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 								const Icon = category.icon;
 								return (
 									<TabsTrigger
-										class={V2_CATEGORY_TABS_CLASS}
+										class={CATEGORY_TABS_CLASS}
 										type="button"
 										value={category.value}
 									>
-										<V2CategoryLabel
+										<CategoryLabel
 											description={category.description}
 											icon={<Icon aria-hidden="true" size={16} />}
 											label={category.label}
@@ -321,12 +321,12 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 								<legend class="mb-4 block font-semibold text-xl">
 									AI Service
 								</legend>
-								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface-muted)] px-3 py-2.5">
+								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--app-border)] bg-[var(--app-surface-muted)] px-3 py-2.5">
 									<div>
 										<div class="font-medium text-sm">Connection status</div>
 										<Show
 											fallback={
-												<div class="text-[var(--v2-text-muted)] text-xs">
+												<div class="text-[var(--app-text-muted)] text-xs">
 													{aiHealthError() ?? "Not checked yet."}
 												</div>
 											}
@@ -336,8 +336,8 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 												<div
 													class={
 														health().status === "available"
-															? "text-[var(--v2-primary)] text-xs"
-															: "text-[var(--v2-destructive)] text-xs"
+															? "text-[var(--app-primary)] text-xs"
+															: "text-[var(--app-destructive)] text-xs"
 													}
 													role="status"
 												>
@@ -345,7 +345,7 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 														? `${health().mode === "remote" ? "Remote" : "Local"} service available`
 														: (health().message ?? "AI service unavailable")}
 													<Show when={health().latencyMs !== null}>
-														<span class="ml-2 text-[var(--v2-text-muted)]">
+														<span class="ml-2 text-[var(--app-text-muted)]">
 															{health().latencyMs} ms
 														</span>
 													</Show>
@@ -429,7 +429,7 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 													providerError={getFormErrorMessage(
 														providerField().state.meta.errors[0],
 													)}
-													idPrefix="v2-ai-inference"
+													idPrefix="ai-inference"
 												/>
 											)}
 										</form.Field>
@@ -751,8 +751,8 @@ export function V2ConfigScreen(props: V2ConfigScreenProps) {
 				>
 					{(state) => (
 						<Show when={state().isDirty}>
-							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] p-2 shadow-lg backdrop-blur">
-								<span class="px-2 text-[var(--v2-text-muted)] text-sm">
+							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-[var(--app-border)] bg-[var(--app-surface)] p-2 shadow-lg backdrop-blur">
+								<span class="px-2 text-[var(--app-text-muted)] text-sm">
 									Unsaved changes
 								</span>
 								<Button

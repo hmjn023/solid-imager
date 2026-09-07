@@ -30,7 +30,7 @@ import {
 	setSearchState,
 } from "./stores/search-store";
 
-export type V2SearchToolbarProps = {
+export type SearchToolbarProps = {
 	actions?: JSX.Element;
 	context: "global" | "source";
 	filterData: {
@@ -84,7 +84,7 @@ function removeToken(token: SearchToken) {
 		return;
 	}
 	if (token.key === "similarityAnchorMediaId") {
-		clearSimilaritySearch({ surface: "v2" });
+		clearSimilaritySearch();
 		return;
 	}
 	if (token.key === "similarityTopK") {
@@ -193,7 +193,7 @@ function sortLabel(state: SearchState): string {
 	return `${field}・${state.sortOrder === "desc" ? "降順" : "昇順"}`;
 }
 
-export function V2SearchToolbar(props: V2SearchToolbarProps) {
+export function SearchToolbar(props: SearchToolbarProps) {
 	const [draft, setDraft] = createSignal("");
 	const [pendingSuggestions, setPendingSuggestions] = createSignal<
 		SearchSuggestion[]
@@ -298,10 +298,10 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 	);
 
 	return (
-		<header class="shrink-0 border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-3 py-3 sm:px-4">
+		<header class="shrink-0 border-[var(--app-border)] border-b bg-[var(--app-surface-subtle)] px-3 py-3 sm:px-4">
 			<div class="mb-2 flex min-h-6 items-center gap-2 text-sm">
-				<span class="text-[var(--v2-text-secondary)]">Library</span>
-				<span aria-hidden="true" class="text-[var(--v2-border-strong)]">
+				<span class="text-[var(--app-text-secondary)]">Library</span>
+				<span aria-hidden="true" class="text-[var(--app-border-strong)]">
 					/
 				</span>
 				<strong class="min-w-0 truncate font-semibold">
@@ -309,7 +309,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 				</strong>
 				<Show when={props.isUpdating}>
 					<p
-						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-[var(--v2-text-muted)]"
+						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-[var(--app-text-muted)]"
 						data-state-ui="background-fetching"
 						role="status"
 					>
@@ -321,7 +321,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 					</p>
 				</Show>
 				<Show when={!props.isUpdating && props.itemCount !== undefined}>
-					<span class="ml-auto shrink-0 text-xs text-[var(--v2-text-muted)]">
+					<span class="ml-auto shrink-0 text-xs text-[var(--app-text-muted)]">
 						{props.itemCount?.toLocaleString()} items
 					</span>
 				</Show>
@@ -367,7 +367,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						aria-label={`検索フィルター、${tokens().length}件の条件`}
 						class={buttonVariants({
 							class:
-								"min-h-11 border-[var(--v2-border-strong)] bg-[var(--v2-surface)] px-3 shadow-none sm:min-h-9",
+								"min-h-11 border-[var(--app-border-strong)] bg-[var(--app-surface)] px-3 shadow-none sm:min-h-9",
 							size: "sm",
 							variant: "outline",
 						})}
@@ -375,19 +375,19 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						<Filter aria-hidden="true" size={15} />
 						フィルター
 						<Show when={tokens().length > 0}>
-							<span class="flex min-w-5 items-center justify-center rounded-full bg-[var(--v2-primary)] px-1.5 py-0.5 text-[10px] text-white">
+							<span class="flex min-w-5 items-center justify-center rounded-full bg-[var(--app-primary)] px-1.5 py-0.5 text-[10px] text-white">
 								{tokens().length}
 							</span>
 						</Show>
 					</PopoverTrigger>
 					<PopoverContent
 						aria-label="検索フィルター"
-						class="v2-theme relative flex min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden bg-[var(--v2-surface)] p-0 text-[var(--v2-text)] shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
+						class="app-theme relative flex min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden bg-[var(--app-surface)] p-0 text-[var(--app-text)] shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
 					>
-						<div class="flex items-start justify-between border-[var(--v2-border)] border-b px-4 py-3">
+						<div class="flex items-start justify-between border-[var(--app-border)] border-b px-4 py-3">
 							<div>
 								<h2 class="font-semibold text-sm">検索フィルター</h2>
-								<p class="mt-0.5 text-[11px] text-[var(--v2-text-muted)]">
+								<p class="mt-0.5 text-[11px] text-[var(--app-text-muted)]">
 									検索バーと同じ条件を編集します
 								</p>
 							</div>
@@ -413,11 +413,10 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 								selectedSource={props.selectedSource}
 								showSearchButton={false}
 								sources={props.sources}
-								persistenceSurface="v2"
 								usePopover={false}
 							/>
 						</div>
-						<div class="absolute right-0 bottom-0 left-0 z-[60] flex justify-end gap-2 border-[var(--v2-border)] border-t bg-[var(--v2-surface)] p-3 pointer-events-auto">
+						<div class="absolute right-0 bottom-0 left-0 z-[60] flex justify-end gap-2 border-[var(--app-border)] border-t bg-[var(--app-surface)] p-3 pointer-events-auto">
 							<Button
 								onClick={() => setFilterOpen(false)}
 								size="sm"
@@ -447,7 +446,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						aria-label={`並び替え、現在は${sortLabel(searchState)}`}
 						class={buttonVariants({
 							class:
-								"min-h-11 border-[var(--v2-border-strong)] bg-[var(--v2-surface)] px-3 shadow-none sm:min-h-9",
+								"min-h-11 border-[var(--app-border-strong)] bg-[var(--app-surface)] px-3 shadow-none sm:min-h-9",
 							size: "sm",
 							variant: "outline",
 						})}
@@ -456,29 +455,29 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						<span class="hidden sm:inline">{sortLabel(searchState)}</span>
 						<ChevronDown aria-hidden="true" size={13} />
 					</PopoverTrigger>
-					<PopoverContent class="v2-theme w-72 p-4 shadow-xl">
+					<PopoverContent class="app-theme w-72 p-4 shadow-xl">
 						<SortControls
-							onClearSimilarity={() => clearSimilaritySearch({ surface: "v2" })}
+							onClearSimilarity={clearSimilaritySearch}
 							onSortByChange={(value) => setSearchState("sortBy", value)}
 							onSortOrderChange={(value) => setSearchState("sortOrder", value)}
 							onSimilarityTopKChange={(value) =>
 								setSearchState("similarityTopK", value)
 							}
 							similarityAnchorMediaId={searchState.similarityAnchorMediaId}
-							similarityLimitId="v2-sort-similarity-limit"
+							similarityLimitId="sort-similarity-limit"
 							similarityTopK={searchState.similarityTopK}
 							sortBy={searchState.sortBy}
 							sortOrder={searchState.sortOrder}
 						/>
 					</PopoverContent>
 				</Popover>
-				<div class="flex rounded-md border border-[var(--v2-border-strong)] bg-[var(--v2-surface)] p-0.5">
+				<div class="flex rounded-md border border-[var(--app-border-strong)] bg-[var(--app-surface)] p-0.5">
 					<Button
 						aria-label="グリッド表示"
 						aria-pressed={(props.viewMode ?? "grid") === "grid"}
 						class={
 							(props.viewMode ?? "grid") === "grid"
-								? "size-11 bg-[var(--v2-primary)] p-0 text-white hover:bg-[var(--v2-primary-hover)] sm:size-8"
+								? "size-11 bg-[var(--app-primary)] p-0 text-white hover:bg-[var(--app-primary-hover)] sm:size-8"
 								: "size-11 p-0 sm:size-8"
 						}
 						onClick={() => props.onViewModeChange?.("grid")}
@@ -491,7 +490,7 @@ export function V2SearchToolbar(props: V2SearchToolbarProps) {
 						aria-pressed={(props.viewMode ?? "grid") === "list"}
 						class={
 							(props.viewMode ?? "grid") === "list"
-								? "size-11 bg-[var(--v2-primary)] p-0 text-white hover:bg-[var(--v2-primary-hover)] sm:size-8"
+								? "size-11 bg-[var(--app-primary)] p-0 text-white hover:bg-[var(--app-primary-hover)] sm:size-8"
 								: "size-11 p-0 sm:size-8"
 						}
 						onClick={() => props.onViewModeChange?.("list")}

@@ -120,15 +120,15 @@ export function SourceCard(props: SourceCardProps) {
 
 	return (
 		<Card
-			class="h-full overflow-hidden border-[var(--v2-border)] bg-[var(--v2-surface)] text-[var(--v2-text)] shadow-none hover:border-[var(--v2-border-strong)]"
+			class="h-full overflow-hidden border-[var(--app-border)] bg-[var(--app-surface)] text-[var(--app-text)] shadow-none hover:border-[var(--app-border-strong)]"
 			data-testid="source-card"
 		>
 			{sourceLink()}
 			{(props.onSync || props.onEdit || props.onDelete) && (
-				<div class="flex flex-wrap gap-2 border-[var(--v2-border)] border-t bg-[var(--v2-surface-subtle)] p-3">
+				<div class="flex flex-wrap gap-2 border-[var(--app-border)] border-t bg-[var(--app-surface-subtle)] p-3">
 					{props.onSync && (
 						<button
-							class="min-h-11 min-w-0 flex-1 rounded border border-[var(--v2-border)] bg-[var(--v2-surface)] px-3 font-medium text-sm shadow-sm hover:bg-[var(--v2-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+							class="min-h-11 min-w-0 flex-1 rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-3 font-medium text-sm shadow-sm hover:bg-[var(--app-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
 							data-testid="sync-source-btn"
 							onClick={handleSyncClick}
 							type="button"
@@ -138,7 +138,7 @@ export function SourceCard(props: SourceCardProps) {
 					)}
 					{props.onEdit && (
 						<button
-							class="min-h-11 min-w-0 flex-1 rounded border border-[var(--v2-border)] bg-[var(--v2-surface)] px-3 font-medium text-sm shadow-sm hover:bg-[var(--v2-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
+							class="min-h-11 min-w-0 flex-1 rounded border border-[var(--app-border)] bg-[var(--app-surface)] px-3 font-medium text-sm shadow-sm hover:bg-[var(--app-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]"
 							data-testid="edit-source-btn"
 							onClick={handleEditClick}
 							type="button"

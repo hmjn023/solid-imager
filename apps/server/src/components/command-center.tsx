@@ -32,7 +32,7 @@ import {
 	Show,
 } from "solid-js";
 
-export type V2CommandCenterProps = {
+export type CommandCenterProps = {
 	helpOpen: boolean;
 	onAddSource: () => void;
 	onHelpOpenChange: (open: boolean) => void;
@@ -56,7 +56,7 @@ type PaletteActionGroup = {
 	startIndex: number;
 };
 
-export function V2CommandCenter(props: V2CommandCenterProps) {
+export function CommandCenter(props: CommandCenterProps) {
 	const navigate = useNavigate();
 	const listId = createUniqueId();
 	const [query, setQuery] = createSignal("");
@@ -168,17 +168,17 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 	return (
 		<>
 			<Dialog onOpenChange={setPaletteOpen} open={props.paletteOpen}>
-				<DialogContent class="v2-theme max-w-xl overflow-hidden p-0">
+				<DialogContent class="app-theme max-w-xl overflow-hidden p-0">
 					<DialogHeader class="sr-only">
 						<DialogTitle>Quick actions</DialogTitle>
 						<DialogDescription>
 							Search navigation and application actions.
 						</DialogDescription>
 					</DialogHeader>
-					<div class="flex h-12 items-center gap-2 border-[var(--v2-border)] border-b px-4 pr-12">
+					<div class="flex h-12 items-center gap-2 border-[var(--app-border)] border-b px-4 pr-12">
 						<Search
 							aria-hidden="true"
-							class="shrink-0 text-[var(--v2-text-muted)]"
+							class="shrink-0 text-[var(--app-text-muted)]"
 							size={18}
 						/>
 						<input
@@ -191,7 +191,7 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 							aria-label="Search quick actions"
 							autocomplete="off"
 							autofocus
-							class="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--v2-text-muted)]"
+							class="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--app-text-muted)]"
 							onInput={(event) => setQuery(event.currentTarget.value)}
 							onKeyDown={(event) => {
 								if (event.key === "ArrowDown") {
@@ -226,7 +226,7 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 					>
 						<Show
 							fallback={
-								<p class="px-3 py-8 text-center text-[var(--v2-text-muted)] text-sm">
+								<p class="px-3 py-8 text-center text-[var(--app-text-muted)] text-sm">
 									No matching action.
 								</p>
 							}
@@ -240,7 +240,7 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 									>
 										<p
 											aria-hidden="true"
-											class="px-2 pt-2 pb-1 font-semibold text-[var(--v2-text-muted)] text-[11px] uppercase tracking-wide"
+											class="px-2 pt-2 pb-1 font-semibold text-[var(--app-text-muted)] text-[11px] uppercase tracking-wide"
 										>
 											{actionGroup.group}
 										</p>
@@ -252,10 +252,10 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 												return (
 													<button
 														aria-selected={activeIndex() === flatIndex()}
-														class={`flex min-h-10 w-full items-center gap-3 rounded-md px-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)] ${
+														class={`flex min-h-10 w-full items-center gap-3 rounded-md px-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--app-focus)] ${
 															activeIndex() === flatIndex()
-																? "bg-[var(--v2-surface-selected)] text-[var(--v2-primary)]"
-																: "hover:bg-[var(--v2-surface-muted)]"
+																? "bg-[var(--app-surface-selected)] text-[var(--app-primary)]"
+																: "hover:bg-[var(--app-surface-muted)]"
 														}`}
 														id={itemId(flatIndex())}
 														onClick={() => runAction(action)}
@@ -290,8 +290,8 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 			</Dialog>
 
 			<Dialog onOpenChange={props.onHelpOpenChange} open={props.helpOpen}>
-				<DialogContent class="v2-theme max-w-2xl overflow-hidden p-0">
-					<DialogHeader class="border-[var(--v2-border)] border-b px-5 py-4 pr-12">
+				<DialogContent class="app-theme max-w-2xl overflow-hidden p-0">
+					<DialogHeader class="border-[var(--app-border)] border-b px-5 py-4 pr-12">
 						<DialogTitle>Keyboard shortcuts</DialogTitle>
 						<DialogDescription>
 							Use these commands anywhere they apply. Customize them in Settings
@@ -302,10 +302,10 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 						<For each={SHORTCUT_GROUPS}>
 							{(group) => (
 								<section class="pt-5">
-									<h3 class="mb-2 font-semibold text-[var(--v2-text-muted)] text-xs uppercase tracking-wide">
+									<h3 class="mb-2 font-semibold text-[var(--app-text-muted)] text-xs uppercase tracking-wide">
 										{group}
 									</h3>
-									<ul class="divide-y divide-[var(--v2-border)] rounded-lg border border-[var(--v2-border)] bg-[var(--v2-surface-subtle)]">
+									<ul class="divide-y divide-[var(--app-border)] rounded-lg border border-[var(--app-border)] bg-[var(--app-surface-subtle)]">
 										<For each={getShortcutDefinitionsForGroup(group)}>
 											{(definition) => (
 												<li class="flex min-w-0 items-center gap-4 px-3 py-2.5">
@@ -313,7 +313,7 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 														<div class="font-medium text-sm">
 															{definition.label}
 														</div>
-														<p class="truncate text-[var(--v2-text-muted)] text-xs">
+														<p class="truncate text-[var(--app-text-muted)] text-xs">
 															{definition.description}
 														</p>
 													</div>

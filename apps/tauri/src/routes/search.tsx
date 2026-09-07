@@ -2,12 +2,12 @@ import { persistSearchScrollPosition } from "@solid-imager/ui/hooks/use-current-
 import { useSearchHistoryPersistence } from "@solid-imager/ui/hooks/use-search-history-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { V2SearchScreen } from "@solid-imager/ui/screens/search-screen";
+import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
-import { V2MediaGridItem } from "~/components/media/media-grid-item";
+import { MediaGridItem } from "~/components/media/media-grid-item";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
@@ -85,6 +85,7 @@ function SearchRoute() {
 		commitSearchHistory: searchHistory.commitNow,
 		historyEntryKey: searchHistory.historyEntryKey,
 		enableVirtualization: true,
+		scrollContainerSelector: '[data-media-scroll="search"]',
 	});
 
 	useMediaSourceEvents(() => searchState.selectedSource || "*", {
@@ -97,17 +98,15 @@ function SearchRoute() {
 	});
 
 	return (
-		<V2SearchScreen
+		<SearchScreen
 			enableVirtualization
 			filterData={page.filterData}
-			onFindSimilar={(media) =>
-				activateSimilaritySearch(media.id, { surface: "v2" })
-			}
+			onFindSimilar={(media) => activateSimilaritySearch(media.id)}
 			onSelectSource={(id) => setSearchState("selectedSource", id)}
 			page={page}
 			presetClient={PresetClient}
 			renderMediaItem={(media, options) => (
-				<V2MediaGridItem
+				<MediaGridItem
 					imageLoadPolicy={options?.imageLoadPolicy}
 					isBulkSelectMode={options?.isBulkSelectMode}
 					isPreviewSelected={options?.isPreviewSelected}

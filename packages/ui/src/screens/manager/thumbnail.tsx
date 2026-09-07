@@ -20,16 +20,16 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 	return (
 		<div class="space-y-5">
 			<div>
-				<h2 class="font-semibold text-lg text-[var(--v2-text)]">
+				<h2 class="font-semibold text-lg text-[var(--app-text)]">
 					Thumbnail warmup
 				</h2>
-				<p class="mt-0.5 text-xs text-[var(--v2-text-muted)]">
+				<p class="mt-0.5 text-xs text-[var(--app-text-muted)]">
 					Generate missing 256px grid thumbnails without replacing existing
 					512px previews.
 				</p>
 			</div>
 
-			<section class="border-[var(--v2-border)] border-y bg-[var(--v2-surface)] py-4 sm:rounded-md sm:border sm:p-4">
+			<section class="border-[var(--app-border)] border-y bg-[var(--app-surface)] py-4 sm:rounded-md sm:border sm:p-4">
 				<div class="space-y-1.5">
 					<Label>Target source</Label>
 					<SourceSelect
@@ -38,12 +38,12 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 						placeholder="Select source"
 						value={props.manager.selectedSourceId()}
 					/>
-					<p class="text-xs text-[var(--v2-text-muted)]">
+					<p class="text-xs text-[var(--app-text-muted)]">
 						Only missing 256px variants are queued. Select one source to keep
 						the operation bounded.
 					</p>
 				</div>
-				<div class="mt-4 flex justify-end border-[var(--v2-border)] border-t pt-4">
+				<div class="mt-4 flex justify-end border-[var(--app-border)] border-t pt-4">
 					<Button
 						class="w-full sm:w-auto"
 						disabled={

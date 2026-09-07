@@ -1,14 +1,14 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "@solid-imager/ui/icons";
-import { V2MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { createQuery } from "@tanstack/solid-query";
 import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { type Accessor, Show } from "solid-js";
-import { V2MediaActions } from "~/components/media/media-actions";
-import { V2MediaSidebar } from "~/components/media/media-sidebar";
-import { V2MediaViewer } from "~/components/media/media-viewer";
-import { findV2MediaNeighbors } from "~/components/media-context";
+import { MediaActions } from "~/components/media/media-actions";
+import { MediaSidebar } from "~/components/media/media-sidebar";
+import { MediaViewer } from "~/components/media/media-viewer";
+import { findMediaNeighbors } from "~/components/media-context";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import {
 	mediaDetailsQueryOptions,
@@ -55,7 +55,7 @@ function MediaDetailHeader(props: {
 	sourceName: string;
 }) {
 	const navigate = useNavigate();
-	const neighbors = () => findV2MediaNeighbors(props.media.id);
+	const neighbors = () => findMediaNeighbors(props.media.id);
 	const navigateToNeighbor = (direction: "next" | "previous") => {
 		const neighbor = neighbors()[direction];
 		if (!neighbor) return;
@@ -69,14 +69,14 @@ function MediaDetailHeader(props: {
 		});
 	};
 	const returnToCollection = () => {
-		const returnPath = sessionStorage.getItem("v2:media-return");
+		const returnPath = sessionStorage.getItem("media-return");
 		const isValidReturnPath =
 			typeof returnPath === "string" &&
 			(returnPath === "/search" ||
 				returnPath.startsWith("/search?") ||
 				returnPath.startsWith("/sources/"));
 		if (isValidReturnPath) {
-			sessionStorage.removeItem("v2:media-return");
+			sessionStorage.removeItem("media-return");
 			window.history.back();
 			return;
 		}
@@ -87,7 +87,7 @@ function MediaDetailHeader(props: {
 	};
 
 	return (
-		<header class="z-10 shrink-0 border-[var(--v2-border)] border-b bg-[var(--v2-surface-subtle)] px-3 py-2 sm:px-4">
+		<header class="z-10 shrink-0 border-[var(--app-border)] border-b bg-[var(--app-surface-subtle)] px-3 py-2 sm:px-4">
 			<div class="flex min-w-0 flex-wrap items-center gap-2">
 				<Button
 					aria-label="一覧に戻る"
@@ -100,16 +100,16 @@ function MediaDetailHeader(props: {
 				</Button>
 
 				<div class="min-w-0 flex-1">
-					<h1 class="truncate font-semibold text-sm text-[var(--v2-text)]">
+					<h1 class="truncate font-semibold text-sm text-[var(--app-text)]">
 						{props.media.fileName}
 					</h1>
-					<p class="truncate text-[11px] text-[var(--v2-text-muted)]">
+					<p class="truncate text-[11px] text-[var(--app-text-muted)]">
 						{props.sourceName}
 					</p>
 				</div>
 
 				<div
-					class="flex shrink-0 items-center rounded-md border border-[var(--v2-border)] bg-white p-0.5"
+					class="flex shrink-0 items-center rounded-md border border-[var(--app-border)] bg-white p-0.5"
 					title={
 						neighbors().previous || neighbors().next
 							? "一覧の前後のメディアへ移動"
@@ -139,7 +139,7 @@ function MediaDetailHeader(props: {
 				</div>
 
 				<div class="order-last mt-1 w-full md:order-none md:mt-0 md:w-auto">
-					<V2MediaActions media={props.media} onUpdate={props.onUpdate} />
+					<MediaActions media={props.media} onUpdate={props.onUpdate} />
 				</div>
 			</div>
 		</header>
@@ -156,7 +156,7 @@ export function MediaDetailContent(props: {
 			?.name ?? "Media source";
 
 	return (
-		<V2MediaDetailScreen
+		<MediaDetailScreen
 			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
 			mediaId={props.mediaId}
 			mediaSourceId={props.mediaSourceId}
@@ -168,13 +168,13 @@ export function MediaDetailContent(props: {
 				/>
 			)}
 			renderMediaSidebar={(media, isUpdating, onUpdate) => (
-				<V2MediaSidebar
+				<MediaSidebar
 					isUpdating={isUpdating}
 					media={media}
 					onUpdate={onUpdate}
 				/>
 			)}
-			renderMediaViewer={(media) => <V2MediaViewer media={media} />}
+			renderMediaViewer={(media) => <MediaViewer media={media} />}
 			transport={createServerTransport(props.mediaSourceId)}
 		/>
 	);

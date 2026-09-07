@@ -2,7 +2,7 @@ import Upload from "lucide-solid/icons/upload";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
-import { V2CollectionInspector } from "../collection-inspector";
+import { CollectionInspector } from "../collection-inspector";
 import { reconcileCollectionPreviewId } from "../collection-navigation";
 import {
 	Dialog,
@@ -12,7 +12,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../dialog";
-import { V2SearchToolbar } from "../search-toolbar";
+import { SearchToolbar } from "../search-toolbar";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
@@ -20,9 +20,9 @@ import {
 } from "../source-media-grid";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
-const V2_SOURCE_VIEW_MODE_KEY = "solid-imager:v2:source-media:view-mode";
+const SOURCE_VIEW_MODE_KEY = "solid-imager:source-media:view-mode";
 
-export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
+export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
 	const [isInspectorVisible, setIsInspectorVisible] = createSignal(true);
@@ -60,7 +60,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 	const updateViewMode = (mode: SourceMediaViewMode) => {
 		setViewMode(mode);
 		try {
-			localStorage.setItem(V2_SOURCE_VIEW_MODE_KEY, mode);
+			localStorage.setItem(SOURCE_VIEW_MODE_KEY, mode);
 		} catch {
 			// Storage can be unavailable in hardened browser contexts.
 		}
@@ -76,7 +76,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 	onMount(() => {
 		setIsMounted(true);
 		try {
-			const storedMode = localStorage.getItem(V2_SOURCE_VIEW_MODE_KEY);
+			const storedMode = localStorage.getItem(SOURCE_VIEW_MODE_KEY);
 			if (storedMode === "grid" || storedMode === "list") {
 				setViewMode(storedMode);
 			}
@@ -88,11 +88,11 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 	return (
 		<section
 			aria-label="Media upload area"
-			class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--v2-canvas)]"
+			class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--app-canvas)]"
 			onDragOver={page().handleDragOver}
 			onDrop={page().handleDrop}
 		>
-			<V2SearchToolbar
+			<SearchToolbar
 				actions={
 					<div class="flex flex-wrap gap-2">
 						<Show when={props.onEnterBulkSelectMode}>
@@ -158,7 +158,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 
 			<div
 				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
-				data-media-scroll={page().mediaSourceId() ?? "v2-source"}
+				data-media-scroll={page().mediaSourceId() ?? "source"}
 			>
 				<div
 					class={
@@ -225,7 +225,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 					<Show when={props.renderMediaPreview}>
 						{(renderPreview) => (
 							<Show when={isInspectorVisible()}>
-								<V2CollectionInspector
+								<CollectionInspector
 									media={previewMedia()}
 									onClose={() => setIsInspectorVisible(false)}
 									onOpenDetail={
@@ -243,7 +243,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 			<input
 				accept=".json,.ndjson,.tar"
 				class="hidden"
-				id="v2-restore-input"
+				id="restore-input"
 				onChange={page().handleRestoreSelect}
 				ref={page().setRestoreInputRef}
 				type="file"
@@ -278,7 +278,7 @@ export function V2SourceMediaScreen(props: SourceMediaScreenProps) {
 				onOpenChange={page().setDeleteDialogOpen}
 				open={page().deleteDialogOpen()}
 			>
-				<DialogContent class="v2-theme">
+				<DialogContent class="app-theme">
 					<DialogHeader>
 						<DialogTitle>メディアを削除</DialogTitle>
 						<DialogDescription>

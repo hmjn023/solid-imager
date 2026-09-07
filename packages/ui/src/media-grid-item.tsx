@@ -3,7 +3,7 @@ import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import { cn } from "./utils/cn";
 
-export const V2_MEDIA_GRID_IMAGE_SIZES =
+export const MEDIA_GRID_IMAGE_SIZES =
 	"(min-width: 1536px) 12vw, (min-width: 1120px) 14vw, (min-width: 960px) 17vw, (min-width: 640px) 25vw, 50vw";
 
 export type MediaGridImageLoadPolicy = {
@@ -61,7 +61,7 @@ type MediaGridItemProps = {
 	isSelected?: boolean;
 };
 
-export function V2MediaGridItem(props: MediaGridItemProps) {
+export function MediaGridItem(props: MediaGridItemProps) {
 	const href = () =>
 		props.linkPrefix
 			? `${props.linkPrefix}/${props.media.id}`
@@ -75,9 +75,9 @@ export function V2MediaGridItem(props: MediaGridItemProps) {
 	return (
 		<LinkComponent
 			class={cn(
-				"group relative block aspect-[4/3] overflow-hidden rounded-md bg-[var(--v2-surface-muted)] outline-none ring-offset-2 ring-offset-[var(--v2-canvas)] transition focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]",
+				"group relative block aspect-[4/3] overflow-hidden rounded-md bg-[var(--app-surface-muted)] outline-none ring-offset-2 ring-offset-[var(--app-canvas)] transition focus-visible:ring-2 focus-visible:ring-[var(--app-focus)]",
 				(props.isSelected || props.isPreviewSelected) &&
-					"ring-2 ring-[var(--v2-focus)]",
+					"ring-2 ring-[var(--app-focus)]",
 				props.class,
 			)}
 			data-media-id={props.media.id}
@@ -100,7 +100,7 @@ export function V2MediaGridItem(props: MediaGridItemProps) {
 
 			<Show
 				fallback={
-					<div class="flex h-full w-full items-center justify-center bg-[var(--v2-surface-muted)] text-[var(--v2-text-muted)]">
+					<div class="flex h-full w-full items-center justify-center bg-[var(--app-surface-muted)] text-[var(--app-text-muted)]">
 						{props.media.mediaType}
 					</div>
 				}
@@ -127,7 +127,7 @@ export function V2MediaGridItem(props: MediaGridItemProps) {
 						);
 					},
 					media: props.media,
-					sizes: V2_MEDIA_GRID_IMAGE_SIZES,
+					sizes: MEDIA_GRID_IMAGE_SIZES,
 					sourceRootPath: props.sourceRootPath,
 					width: props.media.width,
 				})}

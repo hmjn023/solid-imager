@@ -1,7 +1,7 @@
-import { V2UploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-content";
+import { UploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-content";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
-type V2UploadMediaModalProps = {
+type UploadMediaModalProps = {
 	isOpen: boolean;
 	onClose: () => void;
 	onUpload: (options: {
@@ -17,9 +17,9 @@ type V2UploadMediaModalProps = {
 	pastedUrl: string | null;
 };
 
-export function V2UploadMediaModal(props: V2UploadMediaModalProps) {
+export function UploadMediaModal(props: UploadMediaModalProps) {
 	return (
-		<V2UploadMediaModalContent
+		<UploadMediaModalContent
 			initialFile={props.initialFile}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
