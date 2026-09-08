@@ -1,4 +1,3 @@
-import Upload from "lucide-solid/icons/upload";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
@@ -12,6 +11,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../dialog";
+import { Upload } from "../icons";
 import { SearchToolbar } from "../search-toolbar";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {

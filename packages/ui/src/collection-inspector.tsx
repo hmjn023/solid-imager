@@ -1,9 +1,8 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
-import ExternalLink from "lucide-solid/icons/external-link";
-import X from "lucide-solid/icons/x";
 import type { JSX } from "solid-js";
 import { getOwner, runWithOwner, Show } from "solid-js";
 import { Button } from "./button";
+import { ExternalLink, X } from "./icons";
 
 type CollectionInspectorProps = {
 	media: Media | undefined;

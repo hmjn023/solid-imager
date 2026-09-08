@@ -4,13 +4,6 @@ import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas
 import { createForm } from "@tanstack/solid-form";
 // biome-ignore lint/suspicious/noDeprecatedImports: TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
-import Bot from "lucide-solid/icons/bot";
-import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
-import DownloadCloud from "lucide-solid/icons/cloud-download";
-import HardDrive from "lucide-solid/icons/hard-drive";
-import Image from "lucide-solid/icons/image";
-import Keyboard from "lucide-solid/icons/keyboard";
-import Logs from "lucide-solid/icons/logs";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import type { z } from "zod";
 import {
@@ -29,6 +22,15 @@ import {
 	FormFieldMessage,
 	getFormErrorMessage,
 } from "../form-message";
+import {
+	Bot,
+	BriefcaseBusiness,
+	DownloadCloud,
+	HardDrive,
+	Image,
+	Keyboard,
+	Logs,
+} from "../icons";
 import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
 import { Label } from "../label";

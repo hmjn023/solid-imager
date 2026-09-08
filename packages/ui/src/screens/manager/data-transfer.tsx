@@ -1,9 +1,8 @@
-import Download from "lucide-solid/icons/download";
-import Upload from "lucide-solid/icons/upload";
 import { createSignal, Show } from "solid-js";
 import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
+import { Download, Upload } from "../../icons";
 import { Input } from "../../input";
 import { Label } from "../../label";
 import {

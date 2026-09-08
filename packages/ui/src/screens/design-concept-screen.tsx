@@ -1,38 +1,3 @@
-import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
-import ArrowLeft from "lucide-solid/icons/arrow-left";
-import Ban from "lucide-solid/icons/ban";
-import Bot from "lucide-solid/icons/bot";
-import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
-import ChevronDown from "lucide-solid/icons/chevron-down";
-import ChevronLeft from "lucide-solid/icons/chevron-left";
-import ChevronRight from "lucide-solid/icons/chevron-right";
-import CircleAlert from "lucide-solid/icons/circle-alert";
-import CircleCheck from "lucide-solid/icons/circle-check";
-import Clock3 from "lucide-solid/icons/clock-3";
-import DownloadCloud from "lucide-solid/icons/cloud-download";
-import Database from "lucide-solid/icons/database";
-import Download from "lucide-solid/icons/download";
-import ExternalLink from "lucide-solid/icons/external-link";
-import Filter from "lucide-solid/icons/filter";
-import Folder from "lucide-solid/icons/folder";
-import Grid3X3 from "lucide-solid/icons/grid-3-x-3";
-import HardDrive from "lucide-solid/icons/hard-drive";
-import Image from "lucide-solid/icons/image";
-import Inbox from "lucide-solid/icons/inbox";
-import Library from "lucide-solid/icons/library";
-import List from "lucide-solid/icons/list";
-import Logs from "lucide-solid/icons/logs";
-import PanelLeftClose from "lucide-solid/icons/panel-left-close";
-import PanelLeftOpen from "lucide-solid/icons/panel-left-open";
-import PanelsTopLeft from "lucide-solid/icons/panels-top-left";
-import Plus from "lucide-solid/icons/plus";
-import RefreshCw from "lucide-solid/icons/refresh-cw";
-import RotateCcw from "lucide-solid/icons/rotate-ccw";
-import Search from "lucide-solid/icons/search";
-import Settings from "lucide-solid/icons/settings";
-import Share2 from "lucide-solid/icons/share-2";
-import Trash2 from "lucide-solid/icons/trash-2";
-import X from "lucide-solid/icons/x";
 import {
 	createEffect,
 	createMemo,
@@ -69,6 +34,43 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "../dialog";
+import {
+	ArrowDownUp,
+	ArrowLeft,
+	Ban,
+	Bot,
+	BriefcaseBusiness,
+	ChevronDown,
+	ChevronLeft,
+	ChevronRight,
+	CircleAlert,
+	CircleCheck,
+	Clock3,
+	Database,
+	Download,
+	DownloadCloud,
+	ExternalLink,
+	Filter,
+	Folder,
+	Grid3X3,
+	HardDrive,
+	Image,
+	Inbox,
+	Library,
+	List,
+	Logs,
+	PanelLeftClose,
+	PanelLeftOpen,
+	PanelsTopLeft,
+	Plus,
+	RefreshCw,
+	RotateCcw,
+	Search,
+	Settings,
+	Share2,
+	Trash2,
+	X,
+} from "../icons";
 import { Input } from "../input";
 import { Label } from "../label";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";

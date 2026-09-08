@@ -1,7 +1,3 @@
-import Pencil from "lucide-solid/icons/pencil";
-import Plus from "lucide-solid/icons/plus";
-import Search from "lucide-solid/icons/search";
-import Trash2 from "lucide-solid/icons/trash-2";
 import { createMemo, For, Show } from "solid-js";
 import { EmptyState } from "../../async-state";
 import { Button } from "../../button";
@@ -9,6 +5,7 @@ import type {
 	ManagerEntity,
 	UseManagerPageResult,
 } from "../../hooks/use-manager-page";
+import { Pencil, Plus, Search, Trash2 } from "../../icons";
 import { Input } from "../../input";
 import { LoadingRegion } from "../../skeleton";
 import {

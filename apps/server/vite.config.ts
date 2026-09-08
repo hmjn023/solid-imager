@@ -430,6 +430,7 @@ export default defineConfig({
         },
       },
   resolve: {
+    conditions: ["solid", "module", "browser"],
     alias: {
       "#route-tree": routeTreePath,
       "@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
@@ -506,11 +507,16 @@ export default defineConfig({
     },
   },
   ssr: {
+    resolve: {
+      conditions: ["solid", "module", "node"],
+    },
     noExternal: [
       "@tanstack/solid-router",
       "@tanstack/solid-query",
       "@tanstack/solid-start",
       "@kobalte/core",
+      "@kobalte/core/.*",
+      "cmdk-solid",
       "solid-sonner",
       "corvu",
       "@solid-primitives/.*",

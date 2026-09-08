@@ -1,10 +1,6 @@
-import Bot from "lucide-solid/icons/bot";
-import CopyCheck from "lucide-solid/icons/copy-check";
-import Folder from "lucide-solid/icons/folder";
-import Image from "lucide-solid/icons/image";
-import Share2 from "lucide-solid/icons/share-2";
 import { For } from "solid-js";
 import { Button } from "../../button";
+import { Bot, CopyCheck, Folder, Image, Share2 } from "../../icons";
 import { CategoryButtonClass, CategoryLabel } from "../../management-layout";
 import { MANAGER_CATEGORIES, type ManagerCategory } from "./types";
 

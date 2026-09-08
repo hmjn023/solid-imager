@@ -1,4 +1,3 @@
-import Search from "lucide-solid/icons/search";
 import type { JSX } from "solid-js";
 import { createEffect, createMemo, createSignal, For, Show } from "solid-js";
 import {
@@ -11,6 +10,7 @@ import {
 	VirtualComboboxContent,
 } from "./combobox";
 import type { SearchPageFilterData } from "./hooks/use-search-page";
+import { Search } from "./icons";
 import { Label } from "./label";
 import { ShortcutKbd } from "./shortcuts/shortcut-kbd";
 import { createDebouncedSignal } from "./utils/debounce";

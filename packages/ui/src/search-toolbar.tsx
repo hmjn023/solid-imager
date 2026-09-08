@@ -1,13 +1,9 @@
 import type { SearchState } from "@solid-imager/core/domain/search/schema";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
-import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
-import ChevronDown from "lucide-solid/icons/chevron-down";
-import Filter from "lucide-solid/icons/filter";
-import Grid3X3 from "lucide-solid/icons/grid-3-x-3";
-import List from "lucide-solid/icons/list";
 import type { JSX } from "solid-js";
 import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
 import { Button, buttonVariants } from "./button";
+import { ArrowDownUp, ChevronDown, Filter, Grid3X3, List } from "./icons";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import {
 	getSearchComposerTokens,

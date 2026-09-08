@@ -3,21 +3,23 @@ import {
 	type JobDto,
 	type JobListResponse,
 } from "@solid-imager/core/domain/jobs/schemas";
-import Ban from "lucide-solid/icons/ban";
-import ChevronLeft from "lucide-solid/icons/chevron-left";
-import ChevronRight from "lucide-solid/icons/chevron-right";
-import CircleAlert from "lucide-solid/icons/circle-alert";
-import CircleCheck from "lucide-solid/icons/circle-check";
-import Clock3 from "lucide-solid/icons/clock-3";
-import Download from "lucide-solid/icons/download";
-import RefreshCw from "lucide-solid/icons/refresh-cw";
-import RotateCcw from "lucide-solid/icons/rotate-ccw";
 import type { Accessor } from "solid-js";
 import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
+import {
+	Ban,
+	ChevronLeft,
+	ChevronRight,
+	CircleAlert,
+	CircleCheck,
+	Clock3,
+	Download,
+	RefreshCw,
+	RotateCcw,
+} from "../icons";
 import {
 	CATEGORY_TABS_CLASS,
 	CategoryLabel,
