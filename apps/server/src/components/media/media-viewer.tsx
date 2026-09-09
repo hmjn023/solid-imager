@@ -64,35 +64,24 @@ class ApiMediaSource implements MediaSource {
 	}
 
 	cleanup() {
-		for (const url of this.urls) {
-			URL.revokeObjectURL(url);
-		}
+		for (const url of this.urls) URL.revokeObjectURL(url);
 		this.urls = [];
 	}
 }
 
-type MediaViewerProps = {
-	media: MediaDetails;
-	sourceRootPath?: string | null;
-};
-
-export function MediaViewer(props: MediaViewerProps) {
+export function MediaViewer(props: { media: MediaDetails }) {
 	const [source, setSource] = createSignal<ApiMediaSource>(
 		new ApiMediaSource(props.media),
 	);
 
 	createEffect((prev: ApiMediaSource | undefined) => {
-		if (prev) {
-			prev.cleanup();
-		}
-		const s = new ApiMediaSource(props.media);
-		setSource(s);
-		return s;
+		prev?.cleanup();
+		const next = new ApiMediaSource(props.media);
+		setSource(next);
+		return next;
 	});
 
-	onCleanup(() => {
-		source().cleanup();
-	});
+	onCleanup(() => source().cleanup());
 
 	return (
 		<SharedMediaViewer

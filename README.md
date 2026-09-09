@@ -163,7 +163,7 @@ fi
 
 - **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Swagger UI](./apps/server/public/api-docs.html)
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
-- **V2移行状況**: [REPORT.md](./REPORT.md)
+- **Web UI実装状況**: [REPORT.md](./REPORT.md)（通常routeと `/v2/*` 互換転送の対応状況）
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)

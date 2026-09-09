@@ -1,30 +1,42 @@
-import { ClientOnly } from "@tanstack/solid-router";
-import type { JSX } from "solid-js";
-import { createSignal, onMount, Show } from "solid-js";
+import type { Media } from "@solid-imager/core/domain/media/schemas";
+import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
-import { Card, CardContent, CardHeader, CardTitle } from "../card";
-import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
-import { SearchControlPanel } from "../search-control-panel";
+import { Button } from "../button";
+import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
-import { SourceMediaGrid } from "../source-media-grid";
+import {
+	SourceMediaGrid,
+	type SourceMediaViewMode,
+} from "../source-media-grid";
+import { CollectionInspector } from "../workspace/collection-inspector";
+import { reconcileCollectionPreviewId } from "../workspace/collection-navigation";
+import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SearchWorkspaceProps } from "./search-screen.types";
 
-export type SearchScreenNavActions = {
-	openMobileFilters: () => void;
+export type SearchScreenProps = SearchWorkspaceProps & {
+	isBulkSelectMode?: () => boolean;
+	isSelected?: (mediaId: string) => boolean;
+	onBulkAction?: () => void;
+	onClearSelection?: () => void;
+	onCopyMove?: (mediaId: string, mode: "copy" | "move") => void;
+	onDelete?: (mediaId: string) => void;
+	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
+	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
+	onSelectAll?: () => void;
+	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
+	onToggleSelect?: (mediaId: string) => void;
+	onVisibleMediaIdsChange?: (mediaIds: readonly string[]) => void;
+	renderMediaPreview?: (media: Media) => import("solid-js").JSX.Element;
+	selectedCount?: () => number;
 };
 
-export type SearchScreenProps = SearchWorkspaceProps & {
-	renderNavActions?: (actions: SearchScreenNavActions) => JSX.Element;
-};
+const SEARCH_VIEW_MODE_KEY = "solid-imager:v2:search:view-mode";
 
 export function SearchScreen(props: SearchScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
-	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
-
-	onMount(() => {
-		setIsMounted(true);
-	});
-
+	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
+	const [isInspectorVisible, setIsInspectorVisible] = createSignal(true);
+	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
 	const filterStates = () => [
 		page().filterStates.tags(),
@@ -34,108 +46,226 @@ export function SearchScreen(props: SearchScreenProps) {
 		page().filterStates.characters(),
 		page().filterStates.authors(),
 	];
-	const openMobileFilters = () => setIsMobileFilterOpen(true);
-
-	const renderPanel = () => (
-		<SearchControlPanel
-			context="global"
-			filterData={props.filterData}
-			onSearch={page().handleSearch}
-			onSelectSource={props.onSelectSource}
-			presetClient={props.presetClient}
-			selectedSource={props.selectedSource ?? undefined}
-			sources={props.sources}
-			usePopover={false}
-		/>
-	);
-
+	const hasFilterError = () =>
+		filterStates().some(
+			(state) => state.phase === "error" || state.phase === "offline",
+		);
+	const hasOfflineStatus = () => {
+		const state = page().contentState();
+		return state.fetchState === "paused" && state.data !== undefined;
+	};
+	const sourceName = () =>
+		props.sources?.find((source) => source.id === props.selectedSource)?.name ??
+		"すべてのメディア";
 	const canRenderContent = () => !props.ssrGuard || isMounted();
+	const previewMedia = () =>
+		page()
+			.searchResults()
+			.find((media) => media.id === previewMediaId());
+	const previewSourceName = () =>
+		props.sources?.find((source) => source.id === previewMedia()?.mediaSourceId)
+			?.name;
+	const openMediaDetail = (media: Media) =>
+		props.onOpenMediaDetail?.(media, page().searchResults());
+	const selectPreviewMedia = (media: Media) => {
+		setPreviewMediaId(media.id);
+		setIsInspectorVisible(true);
+	};
+	const updateViewMode = (mode: SourceMediaViewMode) => {
+		setViewMode(mode);
+		try {
+			localStorage.setItem(SEARCH_VIEW_MODE_KEY, mode);
+		} catch {
+			// Storage can be unavailable in hardened browser contexts.
+		}
+	};
+	createEffect(() => {
+		props.onVisibleMediaIdsChange?.(
+			page()
+				.searchResults()
+				.map((media) => media.id),
+		);
+	});
+
+	createEffect(() => {
+		const nextId = props.renderMediaPreview
+			? reconcileCollectionPreviewId(page().searchResults(), previewMediaId())
+			: null;
+		if (nextId !== previewMediaId()) setPreviewMediaId(nextId);
+	});
+
+	onMount(() => {
+		setIsMounted(true);
+		try {
+			const storedMode = localStorage.getItem(SEARCH_VIEW_MODE_KEY);
+			if (storedMode === "grid" || storedMode === "list") {
+				setViewMode(storedMode);
+			}
+		} catch {
+			// Keep the SSR-safe default when storage cannot be read.
+		}
+	});
 
 	return (
-		<div class="container mx-auto p-4">
-			<div class="mb-4 flex justify-end">
-				{props.renderNavActions?.({ openMobileFilters })}
-			</div>
-			<ClientOnly>
-				<MobileSearchFilterDialog
-					context="global"
-					filterData={props.filterData}
-					onSearch={page().handleSearch}
-					onSelectSource={props.onSelectSource}
-					open={isMobileFilterOpen()}
-					onOpenChange={setIsMobileFilterOpen}
-					presetClient={props.presetClient}
-					selectedSource={props.selectedSource ?? undefined}
-					sources={props.sources}
-					usePopover={false}
-				/>
-			</ClientOnly>
-
-			<div class="mb-6 sm:mb-8">
-				<div>
-					<h1 class="mb-2 font-bold text-2xl sm:text-3xl">メディア検索</h1>
-					<p class="text-gray-600">タグやファイル名でメディアを検索できます</p>
-				</div>
-			</div>
-
-			<div class="grid min-w-0 gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-				<Card class="sticky top-20 hidden h-[calc(100dvh-13rem)] self-start overflow-y-auto overscroll-contain md:block">
-					<CardHeader>
-						<CardTitle>検索フィルター</CardTitle>
-					</CardHeader>
-					<CardContent class="space-y-4">{renderPanel()}</CardContent>
-				</Card>
-
-				<div class="min-w-0 space-y-4">
-					<Show
-						when={filterStates().some(
-							(state) => state.phase === "error" || state.phase === "offline",
-						)}
-					>
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--workspace-canvas)]">
+			<SearchToolbar
+				context="global"
+				filterData={props.filterData}
+				itemCount={page().totalCount()}
+				isUpdating={page().contentState().fetchState === "background-fetching"}
+				onSearch={page().handleSearch}
+				onSelectSource={props.onSelectSource}
+				presetClient={props.presetClient}
+				selectedSource={props.selectedSource ?? undefined}
+				sourceName={sourceName()}
+				sources={props.sources}
+				updatingLabel="検索結果を更新中..."
+				onViewModeChange={updateViewMode}
+				viewMode={viewMode()}
+			/>
+			<Show when={hasFilterError() || hasOfflineStatus()}>
+				<div class="shrink-0 px-3 pt-3 sm:px-4">
+					<Show when={hasFilterError()}>
 						<FilterErrorBanner
+							class="mb-2"
 							message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
 							onRetry={page().retryFilters}
 						/>
 					</Show>
-					<QueryStatus
-						fetchState={page().contentState().fetchState}
-						hasData={page().contentState().data !== undefined}
-						offlineLabel="オフラインのため保存済みの検索結果を表示しています"
-						updatingLabel="検索結果を更新中..."
-					/>
-					<Show
-						fallback={
-							<LoadingRegion label="検索結果を読み込んでいます...">
-								<MediaGridSkeleton />
-							</LoadingRegion>
-						}
-						when={canRenderContent()}
-					>
-						<SourceMediaGrid
-							disableContextMenu={!props.onFindSimilar}
-							enableVirtualization={props.enableVirtualization}
-							errorTitle="検索結果を取得できませんでした"
-							isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
-							mediaResults={page().searchResults}
-							mediaSourceId={() => undefined}
-							onLoadMore={page().fetchNextPage}
-							onFindSimilar={props.onFindSimilar}
-							onRetry={async () => {
-								await page().searchResultQuery.refetch();
-							}}
-							hasNextPage={page().searchResultQuery.hasNextPage}
-							renderItem={(media, options) =>
-								props.renderMediaItem(media, options)
-							}
-							setLoadMoreRef={page().setLoadMoreRef}
-							showEmptyState
-							showResultCount
-							state={page().contentState}
-							totalCount={page().totalCount()}
+					<Show when={hasOfflineStatus()}>
+						<QueryStatus
+							fetchState={page().contentState().fetchState}
+							hasData={page().contentState().data !== undefined}
+							hideWhenIdle
+							offlineLabel="オフラインのため保存済みの検索結果を表示しています"
+							updatingLabel="検索結果を更新中..."
 						/>
 					</Show>
 				</div>
+			</Show>
+
+			<div
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
+				data-media-scroll="search"
+			>
+				<div
+					class={
+						props.renderMediaPreview && isInspectorVisible()
+							? "2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4"
+							: "2xl:grid 2xl:grid-cols-[minmax(0,1fr)] 2xl:items-start"
+					}
+				>
+					<div class="min-w-0">
+						<Show
+							fallback={
+								<LoadingRegion label="検索結果を読み込んでいます...">
+									<MediaGridSkeleton aspectRatio="4/3" />
+								</LoadingRegion>
+							}
+							when={canRenderContent()}
+						>
+							<SourceMediaGrid
+								detailBasePath="/sources"
+								enableVirtualization={props.enableVirtualization}
+								errorTitle="検索結果を取得できませんでした"
+								hasNextPage={page().searchResultQuery.hasNextPage}
+								isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
+								itemAspectRatio={4 / 3}
+								isBulkSelectMode={props.isBulkSelectMode}
+								isSelected={props.isSelected}
+								mediaResults={page().searchResults}
+								mediaSourceId={() => undefined}
+								onBulkAction={props.onBulkAction}
+								onClearSelection={props.onClearSelection}
+								onCopyMove={props.onCopyMove}
+								onDelete={props.onDelete}
+								onFindSimilar={props.onFindSimilar}
+								onOpenMediaDetail={
+									props.onOpenMediaDetail ? openMediaDetail : undefined
+								}
+								onPrepareMediaDetail={(media) =>
+									props.onPrepareMediaDetail?.(media, page().searchResults())
+								}
+								onLoadMore={page().fetchNextPage}
+								onRetry={async () => {
+									await page().searchResultQuery.refetch();
+								}}
+								onSelectMedia={props.onSelectMedia}
+								onToggleSelect={props.onToggleSelect}
+								selectedCount={props.selectedCount}
+								onPreviewSelect={
+									props.renderMediaPreview ? selectPreviewMedia : undefined
+								}
+								previewSelectedMediaId={
+									props.renderMediaPreview ? previewMediaId : undefined
+								}
+								renderItem={(media, options) =>
+									props.renderMediaItem(media, options)
+								}
+								setLoadMoreRef={page().setLoadMoreRef}
+								showEmptyState
+								showResultCount={false}
+								scrollMode="element"
+								state={page().contentState}
+								totalCount={page().totalCount()}
+								viewMode={viewMode}
+							/>
+						</Show>
+					</div>
+					<Show when={props.renderMediaPreview}>
+						{(renderPreview) => (
+							<Show when={isInspectorVisible()}>
+								<CollectionInspector
+									media={previewMedia()}
+									onClose={() => setIsInspectorVisible(false)}
+									onOpenDetail={
+										props.onOpenMediaDetail ? openMediaDetail : undefined
+									}
+									renderPreview={renderPreview()}
+									sourceName={previewSourceName()}
+								/>
+							</Show>
+						)}
+					</Show>
+				</div>
 			</div>
-		</div>
+			<Show when={props.isBulkSelectMode?.()}>
+				<div
+					class="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] px-3 py-3 shadow-lg sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
+					data-testid="search-bulk-actions-bar"
+				>
+					<span class="w-full text-center font-medium text-sm sm:w-auto">
+						{props.selectedCount?.() ?? 0} 件選択中
+					</span>
+					<Button
+						class="flex-1 sm:flex-none"
+						disabled={
+							page().searchResults().length === 0 ||
+							(props.selectedCount?.() ?? 0) === page().searchResults().length
+						}
+						onClick={props.onSelectAll}
+						variant="outline"
+					>
+						表示分をすべて選択
+					</Button>
+					<Show when={props.onBulkAction}>
+						<Button
+							class="flex-1 sm:flex-none"
+							disabled={(props.selectedCount?.() ?? 0) === 0}
+							onClick={props.onBulkAction}
+						>
+							一括操作を実行
+						</Button>
+					</Show>
+					<Button
+						class="flex-1 sm:flex-none"
+						onClick={props.onClearSelection}
+						variant="outline"
+					>
+						解除
+					</Button>
+				</div>
+			</Show>
+		</section>
 	);
 }

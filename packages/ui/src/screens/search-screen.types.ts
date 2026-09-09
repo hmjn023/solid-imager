@@ -20,7 +20,7 @@ export type SearchMediaItemOptions = {
 	priority?: boolean;
 };
 
-/** Data and actions shared by the legacy and v2 search presentations. */
+/** Data and actions shared by the legacy and workspace search presentations. */
 export type SearchWorkspaceProps = {
 	enableVirtualization?: boolean;
 	filterData: SearchPageFilterData;

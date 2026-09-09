@@ -1,247 +1,98 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { Button } from "@solid-imager/ui/button";
-import type { SearchPersistenceSurface } from "@solid-imager/ui/hooks/use-current-search-persistence";
+import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
+import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
+import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
+import { useLocation, useNavigate } from "@tanstack/solid-router";
+import type { Accessor } from "solid-js";
+import { saveMediaContext } from "~/components/media/media-context";
+import { MediaGridItem } from "~/components/media/media-grid-item";
+import { ThumbnailImage } from "~/components/media/thumbnail-image";
+import { UploadMediaModal } from "~/components/upload-media-modal";
+import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
 import {
-	type MediaCollectionSelectionMode,
-	useMediaCollectionSelection,
-} from "@solid-imager/ui/hooks/use-media-collection-selection";
-import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
-import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import type { SourceMediaScreenProps } from "@solid-imager/ui/screens/source-media-screen.types";
-import type { SearchHistoryClient } from "@solid-imager/ui/search-history-client";
-import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { useParams } from "@tanstack/solid-router";
-import {
-	type Accessor,
-	type Component,
-	createSignal,
-	type JSX,
-	onMount,
-	Show,
-} from "solid-js";
-import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
-import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
-import { createServerTransport } from "~/hooks/use-media-source-events";
-import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
-import { startDownloadJobs } from "~/infrastructure/api-clients/downloads-api";
-import {
-	copyMedia,
-	deleteMedia,
-	moveMedia,
-	syncMediaItems,
-	uploadMedia,
-} from "~/infrastructure/api-clients/media-api";
-import {
-	allAuthorsQueryOptions,
-	allCharactersQueryOptions,
-	allIpsQueryOptions,
-	allProjectsQueryOptions,
-	mediaSourcesQueryOptions,
-	tagsQueryOptions,
-} from "~/infrastructure/api-clients/queries";
-import { searchMedia } from "~/infrastructure/api-clients/search-api";
-import {
-	fetchSourceDump,
-	importSourceNdjson,
-	importSourceZip,
-	restoreSource,
-} from "~/infrastructure/api-clients/sources-api";
-import {
-	getSearchCondition,
-	searchState,
-} from "~/presentation/store/search-store";
+	SourceMediaPageController,
+	type SourceMediaPageControllerProps,
+} from "./source-media-controller";
 
-const PresetClient = createPresetClient(rawPresetClient);
-export type SourceMediaPageControllerProps = {
-	mediaSourceId?: Accessor<string>;
-	screenComponent: Component<SourceMediaScreenProps>;
-	uploadModalComponent: SourceMediaScreenProps["uploadModalComponent"];
-	persistenceSurface: SearchPersistenceSurface;
-	searchHistoryClient: SearchHistoryClient;
-	renderItem: SourceMediaGridRenderer;
-	bulkActionsClass: string;
-	ssrGuard?: boolean;
-	scrollContainerSelector?: Accessor<string>;
-	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
-	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
-	onFindSimilar?: SourceMediaScreenProps["onFindSimilar"];
-	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
-};
+const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
-type SourceMediaGridOptions = Parameters<
-	SourceMediaScreenProps["renderItem"]
->[1];
+function rememberReturnPath(href: string): void {
+	try {
+		sessionStorage.setItem("v2:media-return", href);
+	} catch {
+		// Session storage is optional; media detail navigation must continue.
+	}
+}
 
-type SourceMediaGridRenderer = (
-	media: Media,
-	options: SourceMediaGridOptions,
-	onToggleSelect: () => void,
-) => JSX.Element;
+export function SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
+	const location = useLocation();
+	const navigate = useNavigate();
 
-export function SourceMediaPageController(
-	props: SourceMediaPageControllerProps,
-) {
-	const params = useParams({ strict: false });
-	const mediaSourceId = () => props.mediaSourceId?.() ?? params().mediaSourceId;
-	const queryClient = useQueryClient();
-	const [isMounted, setIsMounted] = createSignal(false);
-	const [visibleMediaIds, setVisibleMediaIds] = createSignal<readonly string[]>(
-		[],
-	);
-	const mediaSources = createQuery(mediaSourcesQueryOptions);
-	const mediaSourceName = () =>
-		mediaSources.data?.find((source) => source.id === mediaSourceId())?.name;
-
-	const transport = createServerTransport(mediaSourceId);
-
-	// 一括選択用シグナル
-	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
-	const selection = useMediaCollectionSelection(visibleMediaIds);
-	const selectedMediaIds = () => [...selection.selectedIds()];
-	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
-
-	const handleToggleSelect = (mediaId: string) => {
-		setIsBulkSelectMode(true);
-		selection.select(mediaId, "toggle");
-	};
-	const handleSelectionGesture = (
-		mediaId: string,
-		mode: MediaCollectionSelectionMode,
+	const onOpenMediaDetail: SourceMediaPageControllerProps["onOpenMediaDetail"] =
+		(media, context) => {
+			rememberReturnPath(location().href);
+			saveMediaContext(location().href, context ?? [media]);
+			void navigate({
+				params: {
+					mediaId: media.id,
+					mediaSourceId: media.mediaSourceId,
+				},
+				to: "/sources/$mediaSourceId/$mediaId",
+			});
+		};
+	const onPrepareMediaDetail: SourceMediaPageControllerProps["onPrepareMediaDetail"] =
+		(media, context) => {
+			rememberReturnPath(location().href);
+			saveMediaContext(location().href, context ?? [media]);
+		};
+	const onFindSimilar: SourceMediaPageControllerProps["onFindSimilar"] = (
+		media,
 	) => {
-		setIsBulkSelectMode(true);
-		selection.select(mediaId, mode);
+		activateSimilaritySearch(media.id, { surface: "workspace" });
+		void navigate({ to: "/search" });
 	};
-
-	const isSelected = selection.isSelected;
-
-	const handleCancelSelect = () => {
-		setIsBulkSelectMode(false);
-		selection.clear();
-	};
-
-	// 一括操作成功時のコールバック
-	const handleBulkSuccess = (partial = false) => {
-		if (!partial) {
-			handleCancelSelect();
-		}
-		queryClient.invalidateQueries({
-			queryKey: sourceMediaQueryKeys.forSource(mediaSourceId()),
-		});
-	};
-
-	onMount(() => {
-		setIsMounted(true);
-	});
 
 	return (
-		<Show
-			fallback={
-				<RouteDataPendingScreen
-					description="メディア一覧を読み込んでいます..."
-					layout="media-grid"
-					showAction
-					title="メディア一覧"
+		<SourceMediaPageController
+			mediaSourceId={props.mediaSourceId}
+			onFindSimilar={onFindSimilar}
+			onOpenMediaDetail={onOpenMediaDetail}
+			onPrepareMediaDetail={onPrepareMediaDetail}
+			persistenceSurface="workspace"
+			searchHistoryClient={SearchHistoryClient}
+			bulkActionsClass="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] px-3 py-3 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
+			renderItem={(media, options, onToggleSelect) => (
+				<MediaGridItem
+					imageLoadPolicy={options.imageLoadPolicy}
+					isBulkSelectMode={options.isBulkSelectMode}
+					isPreviewSelected={options.isPreviewSelected}
+					isSelected={options.isSelected}
+					media={media}
+					onContextMenu={options.onContextMenu}
+					onOpenMediaDetail={options.onOpenMediaDetail}
+					onPrepareMediaDetail={options.onPrepareMediaDetail}
+					onPreviewSelect={options.onPreviewSelect}
+					onSelectGesture={options.onSelectGesture}
+					onToggleSelect={onToggleSelect}
+					priority={options.priority}
 				/>
+			)}
+			renderMediaPreview={(media) => (
+				<ThumbnailImage
+					alt={media.fileName}
+					class="h-full w-full object-contain"
+					height={media.height}
+					loading="eager"
+					media={media}
+					requestedSize={512}
+					width={media.width}
+				/>
+			)}
+			scrollContainerSelector={() =>
+				`[data-media-scroll="${props.mediaSourceId?.() ?? "source-media"}"]`
 			}
-			when={props.ssrGuard === true || isMounted()}
-		>
-			<SourceMediaPageComponent
-				enableVirtualization
-				mediaSourceId={mediaSourceId}
-				mediaSourceName={mediaSourceName}
-				persistenceSurface={props.persistenceSurface}
-				searchHistoryClient={props.searchHistoryClient}
-				transport={transport}
-				presetClient={PresetClient}
-				actions={{
-					searchMedia,
-					uploadMedia: (sourceId, file, opts) =>
-						uploadMedia(sourceId, file, opts),
-					deleteMedia,
-					copyMedia,
-					moveMedia,
-					syncMediaItems,
-					startDownloadJobs,
-					fetchSourceDump,
-					restoreSource,
-					importSourceZip,
-					importSourceNdjson,
-				}}
-				getSearchCondition={getSearchCondition}
-				sortBy={() => searchState.sortBy}
-				sortOrder={() => searchState.sortOrder}
-				tagsQueryOptions={tagsQueryOptions}
-				projectsQueryOptions={allProjectsQueryOptions}
-				ipsQueryOptions={allIpsQueryOptions}
-				charactersQueryOptions={allCharactersQueryOptions}
-				authorsQueryOptions={allAuthorsQueryOptions}
-				onToggleSelect={handleToggleSelect}
-				onSelectMedia={handleSelectionGesture}
-				onVisibleMediaIdsChange={setVisibleMediaIds}
-				isBulkSelectMode={isBulkSelectMode}
-				isSelected={isSelected}
-				onBulkAction={() => setIsBulkActionOpen(true)}
-				onClearSelection={handleCancelSelect}
-				selectedCount={() => selectedMediaIds().length}
-				onEnterBulkSelectMode={() => setIsBulkSelectMode(true)}
-				screenComponent={props.screenComponent}
-				scrollContainerSelector={props.scrollContainerSelector?.()}
-				renderItem={(media, options) =>
-					props.renderItem(media, options, () => handleToggleSelect(media.id))
-				}
-				onOpenMediaDetail={props.onOpenMediaDetail}
-				onPrepareMediaDetail={props.onPrepareMediaDetail}
-				onFindSimilar={props.onFindSimilar}
-				renderMediaPreview={props.renderMediaPreview}
-				moveCopyDialogComponent={MoveCopyMediaDialog}
-				uploadModalComponent={props.uploadModalComponent}
-				showOpenInNewTab
-			/>
-
-			{/* 一括選択ツールバー */}
-			<Show when={isBulkSelectMode()}>
-				<div class={props.bulkActionsClass} data-testid="bulk-actions-bar">
-					<span class="w-full text-center font-medium text-sm sm:w-auto">
-						{selectedMediaIds().length} 件選択中
-					</span>
-					<Button
-						class="flex-1 sm:flex-none"
-						disabled={
-							visibleMediaIds().length === 0 ||
-							selectedMediaIds().length === visibleMediaIds().length
-						}
-						onClick={() => selection.selectAll()}
-						variant="outline"
-					>
-						表示分をすべて選択
-					</Button>
-					<Button
-						class="flex-1 sm:flex-none"
-						disabled={selectedMediaIds().length === 0}
-						onClick={() => setIsBulkActionOpen(true)}
-					>
-						一括操作を実行
-					</Button>
-					<Button
-						class="flex-1 sm:flex-none"
-						onClick={handleCancelSelect}
-						variant="outline"
-					>
-						解除
-					</Button>
-				</div>
-			</Show>
-
-			{/* 一括操作ダイアログ */}
-			<BulkActionDialog
-				open={isBulkActionOpen()}
-				onOpenChange={setIsBulkActionOpen}
-				mediaSourceId={mediaSourceId()}
-				mediaIds={selectedMediaIds()}
-				onSuccess={handleBulkSuccess}
-			/>
-		</Show>
+			ssrGuard
+			screenComponent={SourceMediaScreen}
+			uploadModalComponent={UploadMediaModal}
+		/>
 	);
 }

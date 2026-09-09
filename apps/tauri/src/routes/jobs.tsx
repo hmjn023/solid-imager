@@ -10,7 +10,7 @@ import {
 	updateJobProgress,
 } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { V2JobsScreen } from "@solid-imager/ui/screens/v2-jobs-screen";
+import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
@@ -86,8 +86,8 @@ function JobsRoute() {
 	);
 
 	return (
-		<div class="v2-theme min-h-[calc(100vh-4rem)]">
-			<V2JobsScreen
+		<div class="workspace-theme min-h-[calc(100vh-4rem)]">
+			<JobsScreen
 				buildThumbnailUrl={buildThumbnailUrl}
 				isRefreshing={() => jobsQuery.isFetching}
 				jobs={() => jobsQuery.data?.items ?? []}

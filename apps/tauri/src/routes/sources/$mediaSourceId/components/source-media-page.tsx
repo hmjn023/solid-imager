@@ -1,6 +1,6 @@
 import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
+import { SourceMediaScreen } from "@solid-imager/ui/screens/legacy-source-media-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";

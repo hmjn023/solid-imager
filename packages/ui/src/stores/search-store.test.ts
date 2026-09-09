@@ -48,8 +48,8 @@ describe("activateSimilaritySearch", () => {
 		});
 	});
 
-	it("persists v2 activation without writing the legacy state key", () => {
-		activateSimilaritySearch("media-v2", { surface: "v2" });
+	it("persists workspace activation without writing the legacy state key", () => {
+		activateSimilaritySearch("media-v2", { surface: "workspace" });
 
 		expect(searchState.mode).toBe("simple");
 		expect(searchState.similarityAnchorMediaId).toBe("media-v2");
@@ -120,7 +120,7 @@ describe("clearSimilaritySearch", () => {
 		expect(sessionStorage.getItem("current-all")).toContain('"mode":"simple"');
 	});
 
-	it("clears the v2 persisted anchor without touching the legacy key", () => {
+	it("clears the workspace persisted anchor without touching the legacy key", () => {
 		sessionStorage.setItem(
 			"current-all",
 			JSON.stringify({ similarityAnchorMediaId: "legacy-media" }),
@@ -138,7 +138,7 @@ describe("clearSimilaritySearch", () => {
 			}),
 		);
 
-		clearSimilaritySearch({ surface: "v2" });
+		clearSimilaritySearch({ surface: "workspace" });
 
 		expect(
 			JSON.parse(sessionStorage.getItem("v2:current-all") ?? "{}"),
@@ -185,7 +185,7 @@ describe("clearSimilaritySearch preserves the selected mode", () => {
 			}),
 		);
 
-		clearSimilaritySearch({ surface: "v2" });
+		clearSimilaritySearch({ surface: "workspace" });
 
 		expect(searchState.mode).toBe("pro");
 		expect(searchState.similarityAnchorMediaId).toBeNull();

@@ -209,7 +209,7 @@ describe("useCurrentSearchPersistence", () => {
 		expect(searchState.scrollY).toBe(1840);
 	});
 
-	it("keeps v2 scroll persistence separate from the legacy surface", async () => {
+	it("keeps workspace scroll persistence separate from the legacy surface", async () => {
 		vi.useFakeTimers();
 		sessionStorage.setItem(
 			"v2:current-all",
@@ -222,7 +222,7 @@ describe("useCurrentSearchPersistence", () => {
 		sessionStorage.setItem("search-scroll:legacy:current-all", "240");
 		sessionStorage.setItem("search-scroll:v2:current-all", "1840");
 
-		mountPersistence("all", { surface: "v2" });
+		mountPersistence("all", { surface: "workspace" });
 		await flushMicrotasks();
 
 		expect(searchState.searchQuery).toBe("shared query");
@@ -230,7 +230,9 @@ describe("useCurrentSearchPersistence", () => {
 
 		setSearchState("scrollY", 2200);
 		expect(searchState.scrollY).toBe(2200);
-		persistSearchScrollPosition("all", searchState.scrollY, { surface: "v2" });
+		persistSearchScrollPosition("all", searchState.scrollY, {
+			surface: "workspace",
+		});
 		await flushMicrotasks();
 		await vi.advanceTimersByTimeAsync(1000);
 
@@ -241,10 +243,10 @@ describe("useCurrentSearchPersistence", () => {
 		expect(sessionStorage.getItem("current-all")).toContain("legacy query");
 	});
 
-	it("restores v2 similarity ordering activated from the detail route", async () => {
-		activateSimilaritySearch("media-v2", { surface: "v2" });
+	it("restores workspace similarity ordering activated from the detail route", async () => {
+		activateSimilaritySearch("media-v2", { surface: "workspace" });
 
-		const mounted = mountPersistence("all", { surface: "v2" });
+		const mounted = mountPersistence("all", { surface: "workspace" });
 		await flushMicrotasks();
 
 		expect(mounted.isRestored()).toBe(true);
