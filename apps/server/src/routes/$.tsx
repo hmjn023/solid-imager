@@ -1,6 +1,6 @@
-import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
 import { createFileRoute } from "@tanstack/solid-router";
+import { V2NotFoundRoute } from "~/components/v2/v2-not-found";
 
 export const Route = createFileRoute("/$")({
-	component: NotFoundScreen,
+	component: V2NotFoundRoute,
 });

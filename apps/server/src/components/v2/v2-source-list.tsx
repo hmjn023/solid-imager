@@ -104,7 +104,7 @@ export function V2SourceList(props: V2SourceListProps) {
 	const location = useLocation();
 	const [sourcesOpen, setSourcesOpen] = createSignal(true);
 	const currentSourceId = () => {
-		const match = /^\/v2\/sources\/([^/]+)/.exec(location().pathname);
+		const match = /^\/sources\/([^/]+)/.exec(location().pathname);
 		return match?.[1] ? decodeURIComponent(match[1]) : undefined;
 	};
 
@@ -158,7 +158,7 @@ export function V2SourceList(props: V2SourceListProps) {
 											class="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--v2-focus)]"
 											onClick={props.onNavigate}
 											params={{ mediaSourceId: source.id ?? "" }}
-											to="/v2/sources/$mediaSourceId"
+											to="/sources/$mediaSourceId"
 										>
 											<span class="block truncate font-medium text-xs text-[var(--v2-text)]">
 												{source.name}

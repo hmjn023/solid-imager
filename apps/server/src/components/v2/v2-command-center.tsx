@@ -67,7 +67,7 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 			icon: Library,
 			keywords: "media images search browse",
 			label: "Library",
-			run: () => void navigate({ to: "/v2/search" }),
+			run: () => void navigate({ to: "/search" }),
 			shortcutId: "goLibrary",
 		},
 		{
@@ -75,7 +75,7 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 			icon: BriefcaseBusiness,
 			keywords: "projects characters ips bulk organize",
 			label: "Manager",
-			run: () => void navigate({ to: "/v2/manager" }),
+			run: () => void navigate({ to: "/manager" }),
 			shortcutId: "goManager",
 		},
 		{
@@ -83,7 +83,7 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 			icon: Clock3,
 			keywords: "background activity downloads queue",
 			label: "Jobs",
-			run: () => void navigate({ to: "/v2/jobs" }),
+			run: () => void navigate({ to: "/jobs" }),
 			shortcutId: "goJobs",
 		},
 		{
@@ -91,7 +91,7 @@ export function V2CommandCenter(props: V2CommandCenterProps) {
 			icon: Settings,
 			keywords: "preferences keyboard key bindings",
 			label: "Settings",
-			run: () => void navigate({ to: "/v2/config" }),
+			run: () => void navigate({ to: "/config" }),
 			shortcutId: "goSettings",
 		},
 		{

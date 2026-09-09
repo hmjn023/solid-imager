@@ -1,22 +1,5 @@
-import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import { LegacyMediaDetailScreen } from "@solid-imager/ui/screens/legacy-media-detail-screen";
-import {
-	ClientOnly,
-	createFileRoute,
-	useRouterState,
-} from "@tanstack/solid-router";
-import { type Accessor, createSignal, onMount, Show } from "solid-js";
-import { LegacyMediaSidebar } from "~/components/media/legacy-media-sidebar";
-import { MediaViewer } from "~/components/media/media-viewer";
-import { createServerTransport } from "~/hooks/use-media-source-events";
-import {
-	allCharactersQueryOptions,
-	allIpsQueryOptions,
-	allProjectsQueryOptions,
-	mediaDetailsQueryOptions,
-	projectsForMediaQueryOptions,
-} from "~/infrastructure/api-clients/queries";
-import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
+import { createFileRoute } from "@tanstack/solid-router";
+import { V2MediaDetailPage } from "~/components/v2/v2-media-detail-page";
 
 interface MediaRouteParams {
 	mediaId: string;
@@ -24,95 +7,21 @@ interface MediaRouteParams {
 }
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
-	ssr: true,
+	ssr: false,
 	remountDeps: ({ params }: { params: MediaRouteParams }) => [
 		params.mediaSourceId,
 		params.mediaId,
 	],
-	loader: async ({ context, params }: RouteLoaderContext<MediaRouteParams>) => {
-		await Promise.all([
-			context.queryClient.prefetchQuery(
-				mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
-			),
-			context.queryClient.prefetchQuery(
-				projectsForMediaQueryOptions(params.mediaSourceId, params.mediaId),
-			),
-			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
-			context.queryClient.prefetchQuery(allIpsQueryOptions()),
-			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
-		]);
-		return {
-			mediaId: params.mediaId,
-			mediaSourceId: params.mediaSourceId,
-		};
-	},
-	pendingComponent: MediaRouteFallback,
-	pendingMinMs: 0,
-	component: Media,
+	pendingComponent: () => null,
+	component: MediaRoute,
 });
 
-function Media() {
-	const [isMounted, setIsMounted] = createSignal(false);
-
-	onMount(() => {
-		setIsMounted(true);
-	});
-
+function MediaRoute() {
+	const params = Route.useParams();
 	return (
-		<Show fallback={<MediaRouteFallback />} when={isMounted()}>
-			{(_mounted) => <MediaRouteContent />}
-		</Show>
-	);
-}
-
-function MediaRouteFallback() {
-	return (
-		<RouteDataPendingScreen
-			description="メディア詳細を準備しています..."
-			layout="media-detail"
-			showDescription
-			title="メディア詳細"
-		/>
-	);
-}
-
-function MediaRouteContent() {
-	const routeData = Route.useLoaderData();
-	const currentParams = useRouterState({
-		select: (state) =>
-			state.matches.find(
-				(match: { routeId: string; params: MediaRouteParams }) =>
-					match.routeId === Route.id,
-			)?.params,
-	});
-	const mediaSourceId = () =>
-		currentParams()?.mediaSourceId ?? routeData().mediaSourceId;
-	const mediaId = () => currentParams()?.mediaId ?? routeData().mediaId;
-	return (
-		<ClientOnly fallback={<MediaRouteFallback />}>
-			<MediaContent mediaId={mediaId} mediaSourceId={mediaSourceId} />
-		</ClientOnly>
-	);
-}
-
-function MediaContent(props: {
-	mediaId: Accessor<string>;
-	mediaSourceId: Accessor<string>;
-}) {
-	return (
-		<LegacyMediaDetailScreen
-			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
-			mediaId={props.mediaId}
-			mediaSourceId={props.mediaSourceId}
-			renderMediaSidebar={(media, isUpdating, onUpdate) => (
-				<LegacyMediaSidebar
-					isUpdating={isUpdating}
-					media={media}
-					onUpdate={onUpdate}
-				/>
-			)}
-			renderMediaViewer={(media) => <MediaViewer media={media} />}
-			transport={createServerTransport(props.mediaSourceId)}
+		<V2MediaDetailPage
+			mediaId={() => params().mediaId}
+			mediaSourceId={() => params().mediaSourceId}
 		/>
 	);
 }

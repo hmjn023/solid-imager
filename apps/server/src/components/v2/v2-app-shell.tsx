@@ -113,16 +113,16 @@ export function V2AppShell(props: V2AppShellProps) {
 		setSidebarExpanded((expanded) => !expanded),
 	);
 	createAppShortcut("goLibrary", () => {
-		void navigate({ to: "/v2/search" });
+		void navigate({ to: "/search" });
 	});
 	createAppShortcut("goManager", () => {
-		void navigate({ to: "/v2/manager" });
+		void navigate({ to: "/manager" });
 	});
 	createAppShortcut("goJobs", () => {
-		void navigate({ to: "/v2/jobs" });
+		void navigate({ to: "/jobs" });
 	});
 	createAppShortcut("goSettings", () => {
-		void navigate({ to: "/v2/config" });
+		void navigate({ to: "/config" });
 	});
 	onMount(() => {
 		const storedPreference = localStorage.getItem(SIDEBAR_PREFERENCE_KEY);

@@ -27,6 +27,7 @@ import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { V2MediaGridItem } from "~/components/media/v2-media-grid-item";
+import { saveV2MediaContext } from "~/components/v2/v2-media-context";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
@@ -52,7 +53,6 @@ import {
 	searchState,
 	setSearchState,
 } from "~/presentation/store/search-store";
-import { saveV2MediaContext } from "../media-context";
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 const V2_SEARCH_RESULTS_PER_PAGE = 200;
@@ -266,7 +266,7 @@ export default function V2SearchContent() {
 							mediaId: media.id,
 							mediaSourceId: media.mediaSourceId,
 						},
-						to: "/v2/sources/$mediaSourceId/$mediaId",
+						to: "/sources/$mediaSourceId/$mediaId",
 					});
 				}}
 				renderMediaPreview={(media) => (

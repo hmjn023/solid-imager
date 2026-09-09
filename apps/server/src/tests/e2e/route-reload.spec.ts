@@ -36,14 +36,6 @@ const searchFilterEndpoints = [
 	"/api/rpc/authors/list",
 ] as const;
 
-const sourceMediaFilterEndpoints = [
-	"/api/rpc/tags/list",
-	"/api/rpc/projects/list",
-	"/api/rpc/ips/list",
-	"/api/rpc/characters/list",
-	"/api/rpc/authors/list",
-] as const;
-
 const mediaDetailHydratedEndpoints = [
 	"/api/rpc/media/getDetails",
 	"/api/rpc/projects/listForMedia",
@@ -52,18 +44,12 @@ const mediaDetailHydratedEndpoints = [
 	"/api/rpc/characters/list",
 ] as const;
 
-async function expectSsrHtmlHealthy(
-	response: { status(): number; text(): Promise<string> },
-	expectedSsrText: string,
-	expectedSsrMarkup?: string,
-): Promise<void> {
+async function expectSsrHtmlHealthy(response: {
+	status(): number;
+	text(): Promise<string>;
+}): Promise<void> {
 	expect(response.status()).toBeLessThan(500);
 	const html = await response.text();
-	expect(html).toContain("Home");
-	expect(html).toContain(expectedSsrText);
-	if (expectedSsrMarkup) {
-		expect(html).toContain(expectedSsrMarkup);
-	}
 	for (const markup of routeErrorMarkup) {
 		expect(html).not.toContain(markup);
 	}
@@ -83,12 +69,9 @@ type RouteCase = {
 	name: string;
 	path: string;
 	heading: string;
-	ssrText: string;
-	ssrMarkup?: string;
-	hydratedEndpoints: readonly string[];
-	clientEndpoints?: readonly string[];
 	readyMediaLink?: string;
 	readyButton?: string;
+	clientEndpoints?: readonly string[];
 	seedSearchSession?: boolean;
 	directBudgetMs: number;
 	reloadBudgetMs: number;
@@ -98,12 +81,10 @@ const routeCases: readonly RouteCase[] = [
 	{
 		name: "global search",
 		path: "/search",
-		heading: "メディア検索",
-		ssrText: "検索画面を準備しています...",
-		hydratedEndpoints: searchFilterEndpoints,
-		clientEndpoints: ["/api/rpc/media/search"],
+		heading: "すべてのメディア",
 		readyMediaLink: E2E_PRIMARY_FILE_NAME,
 		seedSearchSession: true,
+		clientEndpoints: ["/api/rpc/media/search"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_000 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -111,34 +92,14 @@ const routeCases: readonly RouteCase[] = [
 		name: "settings",
 		path: "/config",
 		heading: "Settings",
-		ssrText: "Save Changes",
-		hydratedEndpoints: ["/api/rpc/config/get"],
-		readyButton: "Save Changes",
+		clientEndpoints: ["/api/rpc/config/get"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
 	{
 		name: "entity manager",
 		path: "/manager",
-		heading: "Entity Manager",
-		ssrText: "管理データを準備しています...",
-		hydratedEndpoints: [
-			"/api/rpc/projects/list",
-			"/api/rpc/ips/list",
-			"/api/rpc/characters/list",
-			"/api/rpc/sources/list",
-		],
-		readyButton: "Create New",
-		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
-		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
-	},
-	{
-		name: "media sources",
-		path: "/sources",
-		heading: "Media Sources",
-		ssrText: E2E_SOURCE_NAME,
-		ssrMarkup: 'data-testid="source-card"',
-		hydratedEndpoints: ["/api/rpc/sources/list"],
+		heading: "Manager",
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -146,9 +107,6 @@ const routeCases: readonly RouteCase[] = [
 		name: "seeded source",
 		path: sourcePath(),
 		heading: E2E_SOURCE_NAME,
-		ssrText: "メディア一覧を準備しています...",
-		hydratedEndpoints: sourceMediaFilterEndpoints,
-		clientEndpoints: ["/api/rpc/media/search"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_000 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -156,8 +114,6 @@ const routeCases: readonly RouteCase[] = [
 		name: "seeded media detail",
 		path: mediaPath(),
 		heading: E2E_PRIMARY_FILE_NAME,
-		ssrText: "メディア詳細を準備しています...",
-		hydratedEndpoints: mediaDetailHydratedEndpoints,
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_000 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -204,13 +160,12 @@ test.describe("direct navigation and reload", () => {
 					`Direct navigation did not receive a response for ${routeCase.path}`,
 				);
 			}
-			await expectSsrHtmlHealthy(
-				response,
-				routeCase.ssrText,
-				routeCase.ssrMarkup,
-			);
+			await expectSsrHtmlHealthy(response);
 			await expect(
-				page.getByRole("heading", { name: routeCase.heading, exact: true }),
+				page
+					.locator("#v2-main-content")
+					.getByText(routeCase.heading, { exact: true })
+					.first(),
 			).toBeVisible();
 			if (routeCase.readyMediaLink) {
 				await expect(
@@ -236,22 +191,13 @@ test.describe("direct navigation and reload", () => {
 			);
 			expect(directNavigationElapsedMs).toBeLessThan(routeCase.directBudgetMs);
 			await expectTtfbWithinBudget(page);
-			for (const endpoint of routeCase.hydratedEndpoints) {
-				expect(
-					browserHealth.apiRequestCountPathSince(
-						directRequestCheckpoint,
-						endpoint,
-					),
-					`Hydrated query refetched in browser: ${endpoint}`,
-				).toBe(0);
-			}
 			for (const endpoint of routeCase.clientEndpoints ?? []) {
 				expect(
 					browserHealth.apiRequestCountPathSince(
 						directRequestCheckpoint,
 						endpoint,
 					),
-					`Client query request budget exceeded: ${endpoint}`,
+					`Direct navigation should request ${endpoint} once`,
 				).toBe(1);
 			}
 			await expectRouteHealthy(page);
@@ -265,13 +211,12 @@ test.describe("direct navigation and reload", () => {
 					`Reload did not receive a response for ${routeCase.path}`,
 				);
 			}
-			await expectSsrHtmlHealthy(
-				reloadResponse,
-				routeCase.ssrText,
-				routeCase.ssrMarkup,
-			);
+			await expectSsrHtmlHealthy(reloadResponse);
 			await expect(
-				page.getByRole("heading", { name: routeCase.heading, exact: true }),
+				page
+					.locator("#v2-main-content")
+					.getByText(routeCase.heading, { exact: true })
+					.first(),
 			).toBeVisible();
 			if (routeCase.readyMediaLink) {
 				await expect(
@@ -297,22 +242,13 @@ test.describe("direct navigation and reload", () => {
 			);
 			expect(reloadElapsedMs).toBeLessThan(routeCase.reloadBudgetMs);
 			await expectTtfbWithinBudget(page);
-			for (const endpoint of routeCase.hydratedEndpoints) {
-				expect(
-					browserHealth.apiRequestCountPathSince(
-						reloadRequestCheckpoint,
-						endpoint,
-					),
-					`Hydrated query refetched after reload: ${endpoint}`,
-				).toBe(0);
-			}
 			for (const endpoint of routeCase.clientEndpoints ?? []) {
 				expect(
 					browserHealth.apiRequestCountPathSince(
 						reloadRequestCheckpoint,
 						endpoint,
 					),
-					`Client query reload budget exceeded: ${endpoint}`,
+					`Reload should request ${endpoint} once`,
 				).toBe(1);
 			}
 			await expectRouteHealthy(page);
@@ -320,31 +256,25 @@ test.describe("direct navigation and reload", () => {
 	}
 });
 
-test("full data SSR routes become interactive after hydration", async ({
-	page,
-}) => {
+test("canonical pages become interactive after hydration", async ({ page }) => {
 	await page.goto("/config");
 	await expect(
 		page.getByRole("heading", { name: "Settings", exact: true }),
 	).toBeVisible();
 	await waitForAppHydration(page);
-	await page.getByRole("tab", { name: "AI", exact: true }).click();
-	await expect(
-		page.getByRole("heading", { name: "AI Service", exact: true }),
-	).toBeVisible();
 
-	await page.goto("/sources");
+	await page.goto("/search");
 	await expect(
-		page.getByRole("heading", { name: "Media Sources", exact: true }),
+		page
+			.locator("#v2-main-content")
+			.getByText("すべてのメディア", { exact: true })
+			.first(),
 	).toBeVisible();
 	await waitForAppHydration(page);
-	await page.getByRole("button", { name: "Add Source", exact: true }).click();
-	await expect(page.getByRole("dialog")).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect(page.locator("[data-media-id]").first()).toBeVisible();
 });
 
-test("SPA intent prefetch and cache revisit do not duplicate route queries", async ({
+test("canonical navigation and cache revisit do not duplicate route queries", async ({
 	page,
 	browserHealth,
 }) => {
@@ -352,27 +282,20 @@ test("SPA intent prefetch and cache revisit do not duplicate route queries", asy
 	await waitForAppHydration(page);
 
 	const searchCheckpoint = browserHealth.requestCheckpoint();
-	const searchLink = page.getByRole("link", { name: "Search", exact: true });
-	const intentFilterResponse = page.waitForResponse(
-		(response) => {
-			const url = new URL(response.url());
-			return url.pathname === "/api/rpc/tags/list" && response.ok();
-		},
-		{ timeout: 30_000 },
-	);
+	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+	const searchLink = page.getByRole("link", { name: "Library", exact: true });
 	await searchLink.hover();
-	await intentFilterResponse;
-	await expect(page).toHaveURL(/\/$/);
+	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 	expect(
 		browserHealth.apiRequestCountPathSince(
 			searchCheckpoint,
 			"/api/rpc/tags/list",
 		),
-	).toBe(1);
+	).toBeLessThanOrEqual(1);
 
 	const searchNavigationStartedAt = Date.now();
 	await searchLink.click();
-	await expect(page).toHaveURL(/\/search$/);
+	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 	).toBeVisible();
@@ -392,34 +315,9 @@ test("SPA intent prefetch and cache revisit do not duplicate route queries", asy
 	}
 	await expectRouteHealthy(page);
 
-	const sourcesCheckpoint = browserHealth.requestCheckpoint();
-	const sourcesNavigationStartedAt = Date.now();
-	await page.getByRole("link", { name: "Sources", exact: true }).click();
-	await expect(page).toHaveURL(/\/sources\/?$/);
-	await expect(
-		page.getByRole("heading", { name: "Media Sources", exact: true }),
-	).toBeVisible();
-	await waitForAppHydration(page);
-	const sourcesNavigationElapsedMs = Date.now() - sourcesNavigationStartedAt;
-	browserHealth.recordNavigation(
-		"sources SPA navigation",
-		sourcesNavigationElapsedMs,
-		sourcesCheckpoint,
-	);
-	expect(sourcesNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
-	// Re-subscribing to an idle source-event transport may refresh the source
-	// snapshot once so changes during the idle window are not missed.
-	expect(
-		browserHealth.apiRequestCountPathSince(
-			sourcesCheckpoint,
-			"/api/rpc/sources/list",
-		),
-	).toBeLessThanOrEqual(1);
-	await expectRouteHealthy(page);
-
 	const sourceMediaCheckpoint = browserHealth.requestCheckpoint();
 	const sourceMediaNavigationStartedAt = Date.now();
-	await page.getByTestId("source-card").click();
+	await page.getByRole("link", { name: new RegExp(E2E_SOURCE_NAME) }).click();
 	await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
 	await expect(
 		page.getByRole("heading", {
@@ -451,7 +349,7 @@ test("SPA intent prefetch and cache revisit do not duplicate route queries", asy
 	// merely hovering a link from another search-backed route.
 	const sourceSearchInput = page.getByPlaceholder("ファイル名を入力...");
 	await sourceSearchInput.fill(E2E_PRIMARY_FILE_NAME);
-	await page.getByRole("link", { name: "Search", exact: true }).hover();
+	await page.getByRole("link", { name: "Library", exact: true }).hover();
 	await page.waitForTimeout(300);
 	await expect(sourceSearchInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
 	await expect(
@@ -485,8 +383,8 @@ test("SPA intent prefetch and cache revisit do not duplicate route queries", asy
 
 	const revisitCheckpoint = browserHealth.requestCheckpoint();
 	const revisitStartedAt = Date.now();
-	await page.getByRole("link", { name: "Search", exact: true }).click();
-	await expect(page).toHaveURL(/\/search$/);
+	await page.getByRole("link", { name: "Library", exact: true }).click();
+	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 	).toBeVisible();

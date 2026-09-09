@@ -1,60 +1,18 @@
-import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createSignal, onMount, Show } from "solid-js";
-import {
-	allAuthorsQueryOptions,
-	allCharactersQueryOptions,
-	allIpsQueryOptions,
-	allProjectsQueryOptions,
-	mediaSourcesQueryOptions,
-	tagsQueryOptions,
-} from "~/infrastructure/api-clients/queries";
-import type { RouteLoaderContext } from "~/infrastructure/router/route-types";
-import { SourceMediaPage } from "./components/legacy-source-media-page";
+import { V2SourceMediaPage } from "./components/v2-source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	validateSearch: searchHistoryQuerySchema,
-	ssr: true,
+	ssr: false,
+	pendingComponent: () => null,
 	remountDeps: ({ params }: { params: { mediaSourceId: string } }) => [
 		params.mediaSourceId,
 	],
-	loader: async ({ context }: RouteLoaderContext) => {
-		await Promise.all([
-			context.queryClient.prefetchQuery(tagsQueryOptions()),
-			context.queryClient.prefetchQuery(allProjectsQueryOptions()),
-			context.queryClient.prefetchQuery(allIpsQueryOptions()),
-			context.queryClient.prefetchQuery(allCharactersQueryOptions()),
-			context.queryClient.prefetchQuery(allAuthorsQueryOptions()),
-			context.queryClient.prefetchQuery(mediaSourcesQueryOptions()),
-		]);
-	},
-	pendingComponent: SourceMediaRouteFallback,
-	pendingMinMs: 0,
 	component: SourceMediaRoute,
 });
 
-function SourceMediaRouteFallback() {
-	return (
-		<RouteDataPendingScreen
-			description="メディア一覧を準備しています..."
-			layout="media-grid"
-			showAction
-			title="メディア一覧"
-		/>
-	);
-}
-
 function SourceMediaRoute() {
-	const [isMounted, setIsMounted] = createSignal(false);
-
-	onMount(() => {
-		setIsMounted(true);
-	});
-
-	return (
-		<Show fallback={<SourceMediaRouteFallback />} when={isMounted()}>
-			{(_mounted) => <SourceMediaPage />}
-		</Show>
-	);
+	const params = Route.useParams();
+	return <V2SourceMediaPage mediaSourceId={() => params().mediaSourceId} />;
 }

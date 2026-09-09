@@ -1,3 +1,4 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
 	type MediaGridImageLoadPolicy,
 	type MediaGridLinkProps,
@@ -5,14 +6,22 @@ import {
 } from "@solid-imager/ui/v2-media-grid-item";
 import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
-import type { ServerMediaGridItemProps } from "./legacy-media-grid-item";
 import { ThumbnailImage } from "./thumbnail-image";
 
-export type V2ServerMediaGridItemProps = Omit<
-	ServerMediaGridItemProps,
-	"imageLoadPolicy"
-> & {
+export type V2ServerMediaGridItemProps = {
+	linkPrefix?: string;
+	media: Media;
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
+	onContextMenu?: (event: MouseEvent) => void;
+	priority?: boolean;
+	sourceRootPath?: string;
+	isBulkSelectMode?: boolean;
+	isPreviewSelected?: boolean;
+	isSelected?: boolean;
+	onToggleSelect?: () => void;
+	onPrepareMediaDetail?: () => void;
+	onPreviewSelect?: () => void;
+	onSelectGesture?: (event: MouseEvent | KeyboardEvent) => void;
 	onOpenMediaDetail?: () => void;
 };
 
@@ -93,7 +102,7 @@ export function V2MediaGridItem(props: V2ServerMediaGridItemProps) {
 				mediaId: props.media.id,
 				mediaSourceId: props.media.mediaSourceId,
 			}}
-			to="/v2/sources/$mediaSourceId/$mediaId"
+			to="/sources/$mediaSourceId/$mediaId"
 		>
 			{linkProps.children}
 		</Link>

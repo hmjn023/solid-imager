@@ -14,8 +14,8 @@ import {
 	waitForAppHydration,
 } from "./support/test";
 
-const v2SourcePath = `/v2/sources/${E2E_SOURCE_ID}`;
-const v2MediaPath = (mediaId: string) => `${v2SourcePath}/${mediaId}`;
+const sourcePath = `/sources/${E2E_SOURCE_ID}`;
+const mediaPath = (mediaId: string) => `${sourcePath}/${mediaId}`;
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	const overflow = await page.evaluate(
@@ -28,25 +28,31 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 
 test("V2 routes survive direct navigation and reload", async ({ page }) => {
 	const routes = [
-		["/v2/search", "すべてのメディア"],
-		[v2SourcePath, E2E_SOURCE_NAME],
-		[v2MediaPath(E2E_PRIMARY_MEDIA_ID), E2E_PRIMARY_FILE_NAME],
-		["/v2/manager", "Manager"],
-		["/v2/jobs", "Jobs"],
-		["/v2/config", "Settings"],
-		["/v2/about", "About Solid Imager"],
+		["/search", "すべてのメディア"],
+		[sourcePath, E2E_SOURCE_NAME],
+		[mediaPath(E2E_PRIMARY_MEDIA_ID), E2E_PRIMARY_FILE_NAME],
+		["/manager", "Manager"],
+		["/jobs", "Jobs"],
+		["/config", "Settings"],
+		["/about", "About Solid Imager"],
 	] as const;
 
 	for (const [path, visibleText] of routes) {
 		await page.goto(path);
 		await waitForAppHydration(page);
 		await expect(
-			page.getByText(visibleText, { exact: true }).last(),
+			page
+				.locator("#v2-main-content")
+				.getByText(visibleText, { exact: true })
+				.first(),
 		).toBeVisible();
 		await page.reload();
 		await waitForAppHydration(page);
 		await expect(
-			page.getByText(visibleText, { exact: true }).last(),
+			page
+				.locator("#v2-main-content")
+				.getByText(visibleText, { exact: true })
+				.first(),
 		).toBeVisible();
 		await expectRouteHealthy(page);
 		await expectNoHorizontalOverflow(page);
@@ -57,7 +63,7 @@ test("V2 sidebar keeps navigation items separated in a short viewport", async ({
 	page,
 }) => {
 	await page.setViewportSize({ width: 1440, height: 480 });
-	await page.goto("/v2/search");
+	await page.goto("/search");
 	await waitForAppHydration(page);
 
 	const sidebar = page.getByRole("complementary", {
@@ -77,19 +83,27 @@ test("V2 sidebar keeps navigation items separated in a short viewport", async ({
 });
 
 test("V2 detail changes after returning to a collection", async ({ page }) => {
-	await page.goto(v2SourcePath);
+	await page.goto(sourcePath);
 	await waitForAppHydration(page);
 
-	await page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`).click();
-	await expect(page).toHaveURL(v2MediaPath(E2E_PRIMARY_MEDIA_ID));
+	await page
+		.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`)
+		.press("Enter");
+	await expect(page).toHaveURL(
+		new RegExp(`${mediaPath(E2E_PRIMARY_MEDIA_ID)}(?:\\?[^#]*)?$`),
+	);
 	await expect(
 		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
 	).toBeVisible();
 
 	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
-	await expect(page).toHaveURL(v2SourcePath);
-	await page.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`).click();
-	await expect(page).toHaveURL(v2MediaPath(E2E_SIMILAR_MEDIA_ID));
+	await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
+	await page
+		.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`)
+		.press("Enter");
+	await expect(page).toHaveURL(
+		new RegExp(`${mediaPath(E2E_SIMILAR_MEDIA_ID)}(?:\\?[^#]*)?$`),
+	);
 	await expect(
 		page.getByRole("img", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
 	).toBeVisible();
@@ -99,27 +113,29 @@ test("V2 wide collection uses selection preview before detail navigation", async
 	page,
 }) => {
 	await page.setViewportSize({ width: 1600, height: 900 });
-	await page.goto(v2SourcePath);
+	await page.goto(sourcePath);
 	await waitForAppHydration(page);
 
 	await page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`).click();
-	await expect(page).toHaveURL(v2SourcePath);
+	await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
 	const inspector = page.getByRole("complementary", {
 		name: "選択中のメディア",
 	});
 	await expect(inspector).toContainText(E2E_PRIMARY_FILE_NAME);
 	await page.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`).click();
-	await expect(page).toHaveURL(v2SourcePath);
+	await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
 	await expect(inspector).toContainText(E2E_SIMILAR_FILE_NAME);
 	await expect(
 		inspector.getByRole("img", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
 	).toBeVisible();
 	await inspector.getByRole("button", { name: "詳細を開く" }).click();
-	await expect(page).toHaveURL(v2MediaPath(E2E_SIMILAR_MEDIA_ID));
+	await expect(page).toHaveURL(
+		new RegExp(`${mediaPath(E2E_SIMILAR_MEDIA_ID)}(?:\\?[^#]*)?$`),
+	);
 });
 
 test("V2 restore exposes and selects the TAR format", async ({ page }) => {
-	await page.goto("/v2/manager");
+	await page.goto("/manager");
 	await waitForAppHydration(page);
 
 	const categoryNavigation = page.locator(
@@ -157,7 +173,7 @@ test("V2 restore exposes and selects the TAR format", async ({ page }) => {
 test("V2 completed export starts a native streaming download", async ({
 	page,
 }) => {
-	await page.goto("/v2/manager");
+	await page.goto("/manager");
 	await waitForAppHydration(page);
 
 	const categoryNavigation = page.locator(
@@ -178,7 +194,7 @@ test("V2 completed export starts a native streaming download", async ({
 	await page.getByRole("button", { name: "Queue export", exact: true }).click();
 	await expect(page.getByText(/Export queued/)).toBeVisible();
 
-	await page.goto("/v2/jobs");
+	await page.goto("/jobs");
 	await waitForAppHydration(page);
 	const exportJob = page.getByRole("button", { name: /Source Export/ }).first();
 	await expect(exportJob).toBeVisible({ timeout: 30_000 });
@@ -194,7 +210,7 @@ test("V2 completed export starts a native streaming download", async ({
 test("V2 search filter opens without remounting media results", async ({
 	page,
 }) => {
-	await page.goto("/v2/search");
+	await page.goto("/search");
 	await waitForAppHydration(page);
 
 	const firstMedia = page.locator("[data-media-id]").first();
