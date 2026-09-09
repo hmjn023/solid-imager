@@ -11,7 +11,7 @@ import {
 import { createSignal, onMount, Show } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
-import { V2Layout } from "~/components/v2/v2-layout";
+import { AppLayout } from "~/components/layout/layout";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -58,12 +58,12 @@ function RootComponent() {
 				<HydrationScript />
 				<HeadContent />
 			</head>
-			<body classList={{ "v2-theme": !isStandaloneRoute() }}>
+			<body classList={{ "workspace-theme": !isStandaloneRoute() }}>
 				<ShortcutPreferencesProvider>
 					<Toaster />
 					<Show fallback={<Outlet />} when={!isStandaloneRoute()}>
 						<Show fallback={null} when={isHydrated()}>
-							<V2Layout />
+							<AppLayout />
 						</Show>
 					</Show>
 				</ShortcutPreferencesProvider>

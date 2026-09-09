@@ -1,8 +1,7 @@
-import { ClientOnly } from "@tanstack/solid-router";
-import { createSignal, onMount, Show } from "solid-js";
+import Upload from "lucide-solid/icons/upload";
+import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
-import { Card, CardContent, CardHeader, CardTitle } from "../card";
 import {
 	Dialog,
 	DialogContent,
@@ -11,164 +10,236 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../dialog";
-import { MobileSearchFilterDialog } from "../mobile-search-filter-dialog";
-import { SearchControlPanel } from "../search-control-panel";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
-import { SourceMediaGrid } from "../source-media-grid";
+import {
+	SourceMediaGrid,
+	type SourceMediaViewMode,
+} from "../source-media-grid";
+import { CollectionInspector } from "../workspace/collection-inspector";
+import { reconcileCollectionPreviewId } from "../workspace/collection-navigation";
+import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
-export type { SourceMediaScreenProps } from "./source-media-screen.types";
+const SOURCE_VIEW_MODE_KEY = "solid-imager:v2:source-media:view-mode";
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
-	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
+	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
+	const [isInspectorVisible, setIsInspectorVisible] = createSignal(true);
+	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
 	const filterStates = () => Object.values(page().filterStates());
+	const hasFilterError = () =>
+		filterStates().some(
+			(state) => state.phase === "error" || state.phase === "offline",
+		);
+	const hasContentStatus = () => {
+		const state = page().contentState();
+		return (
+			state.fetchState === "background-fetching" ||
+			(state.fetchState === "paused" && state.data !== undefined)
+		);
+	};
 	const shouldRenderGrid = () => !props.enableVirtualization || isMounted();
+	const previewMedia = () =>
+		page()
+			.mediaResults()
+			.find((media) => media.id === previewMediaId());
+	const openMediaDetail = (
+		media: import("@solid-imager/core/domain/media/schemas").Media,
+	) => props.onOpenMediaDetail?.(media, page().mediaResults());
+	const prepareMediaDetail = (
+		media: import("@solid-imager/core/domain/media/schemas").Media,
+	) => props.onPrepareMediaDetail?.(media, page().mediaResults());
+	const selectPreviewMedia = (
+		media: import("@solid-imager/core/domain/media/schemas").Media,
+	) => {
+		setPreviewMediaId(media.id);
+		setIsInspectorVisible(true);
+	};
+	const updateViewMode = (mode: SourceMediaViewMode) => {
+		setViewMode(mode);
+		try {
+			localStorage.setItem(SOURCE_VIEW_MODE_KEY, mode);
+		} catch {
+			// Storage can be unavailable in hardened browser contexts.
+		}
+	};
+
+	createEffect(() => {
+		const nextId = props.renderMediaPreview
+			? reconcileCollectionPreviewId(page().mediaResults(), previewMediaId())
+			: null;
+		if (nextId !== previewMediaId()) setPreviewMediaId(nextId);
+	});
 
 	onMount(() => {
 		setIsMounted(true);
+		try {
+			const storedMode = localStorage.getItem(SOURCE_VIEW_MODE_KEY);
+			if (storedMode === "grid" || storedMode === "list") {
+				setViewMode(storedMode);
+			}
+		} catch {
+			// Keep the SSR-safe default when storage cannot be read.
+		}
 	});
 
 	return (
 		<section
 			aria-label="Media upload area"
-			class="container mx-auto min-h-[calc(100dvh-2rem)] p-4 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:p-6 sm:pb-[calc(7rem+env(safe-area-inset-bottom))]"
+			class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--workspace-canvas)]"
 			onDragOver={page().handleDragOver}
 			onDrop={page().handleDrop}
 		>
-			{props.renderActions({
-				onOpenMobileFilters: () => setIsMobileFilterOpen(true),
-			})}
-			<ClientOnly>
-				<MobileSearchFilterDialog
-					context="source"
-					filterData={page().filterData()}
-					onOpenChange={setIsMobileFilterOpen}
-					onSearch={page().handleSearch}
-					open={isMobileFilterOpen()}
-					presetClient={page().presetClient}
-					usePopover={false}
-				/>
-			</ClientOnly>
-
-			<Show when={props.renderJobProgress && page().jobProgress()}>
-				{props.renderJobProgress?.({
-					jobProgress: page().jobProgress,
-				})}
-			</Show>
-
-			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-				<div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-1">
-					<h1 class="min-w-0 break-words font-bold text-xl sm:text-2xl">
-						{props.mediaSourceName?.() ?? "メディア一覧"}
-					</h1>
-					<Show when={page().totalCount() !== undefined}>
-						<p class="shrink-0 text-gray-600 text-sm">
-							{page().totalCount()} 件の結果
-						</p>
-					</Show>
-				</div>
-				<div class="grid w-full grid-cols-1 gap-2 sm:flex sm:w-auto sm:flex-wrap">
-					<Show when={props.onEnterBulkSelectMode}>
+			<SearchToolbar
+				actions={
+					<div class="flex flex-wrap gap-2">
+						<Show when={props.onEnterBulkSelectMode}>
+							<Button
+								class="min-h-11 sm:min-h-9"
+								onClick={() => props.onEnterBulkSelectMode?.()}
+								size="sm"
+								variant="outline"
+							>
+								複数選択
+							</Button>
+						</Show>
 						<Button
-							class="w-full sm:w-auto"
-							onClick={() => props.onEnterBulkSelectMode?.()}
+							class="min-h-11 sm:min-h-9"
+							disabled={page().isSyncingMedia() || !page().hasData()}
+							onClick={page().handleSyncLoadedMedia}
+							size="sm"
 							variant="outline"
 						>
-							複数選択
+							{page().isSyncingMedia() ? "同期中..." : "表示分を同期"}
 						</Button>
-					</Show>
-					<Button
-						class="w-full sm:w-auto"
-						disabled={page().isSyncingMedia() || !page().hasData()}
-						onClick={page().handleSyncLoadedMedia}
-						variant="outline"
-					>
-						{page().isSyncingMedia() ? "Syncing..." : "Sync Loaded Media"}
-					</Button>
-				</div>
-			</div>
-			<Show
-				when={filterStates().some(
-					(state) => state.phase === "error" || state.phase === "offline",
-				)}
-			>
-				<FilterErrorBanner
-					class="mb-3"
-					message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
-					onRetry={props.onRetryFilters}
-				/>
+						<Button
+							class="min-h-11 sm:min-h-9"
+							onClick={page().handleAddButtonClick}
+							size="sm"
+						>
+							<Upload aria-hidden="true" size={15} />
+							追加
+						</Button>
+					</div>
+				}
+				context="source"
+				filterData={page().filterData()}
+				itemCount={page().totalCount()}
+				onSearch={page().handleSearch}
+				presetClient={page().presetClient}
+				sourceName={props.mediaSourceName?.() ?? "メディア一覧"}
+				onViewModeChange={updateViewMode}
+				viewMode={viewMode()}
+			/>
+
+			<Show when={props.renderJobProgress && page().jobProgress()}>
+				{props.renderJobProgress?.({ jobProgress: page().jobProgress })}
 			</Show>
-
-			<div class="grid min-w-0 gap-6 md:grid-cols-[minmax(0,300px)_minmax(0,1fr)]">
-				<Card class="sticky top-20 hidden h-[calc(100dvh-10rem)] self-start overflow-y-auto overscroll-contain md:block">
-					<CardHeader>
-						<CardTitle>検索フィルター</CardTitle>
-					</CardHeader>
-					<CardContent class="space-y-4">
-						<SearchControlPanel
-							class="w-full"
-							context="source"
-							filterData={page().filterData()}
-							onSearch={page().handleSearch}
-							presetClient={page().presetClient}
-							usePopover={false}
+			<Show when={hasFilterError() || hasContentStatus()}>
+				<div class="shrink-0 px-3 pt-3 sm:px-4">
+					<Show when={hasFilterError()}>
+						<FilterErrorBanner
+							class="mb-2"
+							message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
+							onRetry={props.onRetryFilters}
 						/>
-					</CardContent>
-				</Card>
-
-				<div class="min-w-0">
+					</Show>
 					<QueryStatus
-						class="mb-2"
 						fetchState={page().contentState().fetchState}
 						hasData={page().contentState().data !== undefined}
 						hideWhenIdle
 						offlineLabel="オフラインのため保存済みデータを表示しています"
 						updatingLabel="メディア一覧を更新中..."
 					/>
-					<Show
-						fallback={
-							<LoadingRegion label="メディア一覧を読み込んでいます...">
-								<MediaGridSkeleton />
-							</LoadingRegion>
-						}
-						when={shouldRenderGrid()}
-					>
-						<SourceMediaGrid
-							contextMenuMediaId={page().contextMenuMediaId}
-							enableVirtualization={props.enableVirtualization}
-							isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
-							mediaResults={page().mediaResults}
-							mediaSourceId={page().mediaSourceId}
-							onCopyMove={page().handleCopyMove}
-							onDelete={page().handleDelete}
-							onFindSimilar={props.onFindSimilar}
-							onLoadMore={() => page().fetchNextPage()}
-							onRetry={async () => {
-								await page().mediaQuery.refetch();
-							}}
-							onSyncSingleMedia={page().handleSyncSingleMedia}
-							onToggleSelect={props.onToggleSelect}
-							isBulkSelectMode={props.isBulkSelectMode}
-							isSelected={props.isSelected}
-							onBulkAction={props.onBulkAction}
-							onClearSelection={props.onClearSelection}
-							selectedCount={props.selectedCount}
-							hasNextPage={page().mediaQuery.hasNextPage}
-							renderItem={props.renderItem}
-							setContextMenuMediaId={page().setContextMenuMediaId}
-							setLoadMoreRef={page().setLoadMoreRef}
-							showOpenInNewTab={props.showOpenInNewTab}
-							showResultCount={false}
-							state={page().contentState}
-							totalCount={page().totalCount()}
-						/>
+				</div>
+			</Show>
+
+			<div
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
+				data-media-scroll={page().mediaSourceId() ?? "source-media"}
+			>
+				<div
+					class={
+						props.renderMediaPreview && isInspectorVisible()
+							? "2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4"
+							: "2xl:grid 2xl:grid-cols-[minmax(0,1fr)] 2xl:items-start"
+					}
+				>
+					<div class="min-w-0">
+						<Show
+							fallback={
+								<LoadingRegion label="メディア一覧を読み込んでいます...">
+									<MediaGridSkeleton aspectRatio="4/3" />
+								</LoadingRegion>
+							}
+							when={shouldRenderGrid()}
+						>
+							<SourceMediaGrid
+								contextMenuMediaId={page().contextMenuMediaId}
+								detailBasePath="/sources"
+								enableVirtualization={props.enableVirtualization}
+								hasNextPage={page().mediaQuery.hasNextPage}
+								isBulkSelectMode={props.isBulkSelectMode}
+								isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
+								itemAspectRatio={4 / 3}
+								isSelected={props.isSelected}
+								mediaResults={page().mediaResults}
+								mediaSourceId={page().mediaSourceId}
+								onOpenMediaDetail={
+									props.onOpenMediaDetail ? openMediaDetail : undefined
+								}
+								onPrepareMediaDetail={prepareMediaDetail}
+								onBulkAction={props.onBulkAction}
+								onClearSelection={props.onClearSelection}
+								onCopyMove={page().handleCopyMove}
+								onDelete={page().handleDelete}
+								onFindSimilar={props.onFindSimilar}
+								onLoadMore={() => page().fetchNextPage()}
+								onPreviewSelect={
+									props.renderMediaPreview ? selectPreviewMedia : undefined
+								}
+								onRetry={async () => {
+									await page().mediaQuery.refetch();
+								}}
+								onSelectMedia={props.onSelectMedia}
+								onSyncSingleMedia={page().handleSyncSingleMedia}
+								onToggleSelect={props.onToggleSelect}
+								renderItem={props.renderItem}
+								previewSelectedMediaId={
+									props.renderMediaPreview ? previewMediaId : undefined
+								}
+								selectedCount={props.selectedCount}
+								setContextMenuMediaId={page().setContextMenuMediaId}
+								setLoadMoreRef={page().setLoadMoreRef}
+								showOpenInNewTab={props.showOpenInNewTab}
+								showResultCount={false}
+								scrollMode="element"
+								state={page().contentState}
+								totalCount={page().totalCount()}
+								viewMode={viewMode}
+							/>
+						</Show>
+					</div>
+					<Show when={props.renderMediaPreview}>
+						{(renderPreview) => (
+							<Show when={isInspectorVisible()}>
+								<CollectionInspector
+									media={previewMedia()}
+									onClose={() => setIsInspectorVisible(false)}
+									onOpenDetail={
+										props.onOpenMediaDetail ? openMediaDetail : undefined
+									}
+									renderPreview={renderPreview()}
+									sourceName={props.mediaSourceName?.()}
+								/>
+							</Show>
+						)}
 					</Show>
 				</div>
 			</div>
 
-			{/* Hidden file inputs */}
 			<input
 				accept=".json,.ndjson,.tar"
 				class="hidden"
@@ -184,18 +255,6 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				ref={page().setFileInputRef}
 				type="file"
 			/>
-
-			{/* Floating add button */}
-			<Show when={!props.isBulkSelectMode?.()}>
-				<button
-					aria-label="Add media"
-					class="fixed right-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-40 flex h-14 w-14 items-center justify-center rounded-full bg-blue-600 text-white shadow-lg transition-all hover:bg-blue-700 hover:shadow-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:right-8 sm:bottom-[calc(2rem+env(safe-area-inset-bottom))]"
-					onClick={page().handleAddButtonClick}
-					type="button"
-				>
-					<span class="text-3xl leading-none">＋</span>
-				</button>
-			</Show>
 
 			{(() => {
 				const UploadModal = props.uploadModalComponent;
@@ -219,12 +278,11 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				onOpenChange={page().setDeleteDialogOpen}
 				open={page().deleteDialogOpen()}
 			>
-				<DialogContent>
+				<DialogContent class="workspace-theme">
 					<DialogHeader>
-						<DialogTitle>Delete Media</DialogTitle>
+						<DialogTitle>メディアを削除</DialogTitle>
 						<DialogDescription>
-							Are you sure you want to delete this media? This action cannot be
-							undone.
+							この操作は取り消せません。選択したメディアを削除しますか？
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -232,10 +290,10 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							onClick={() => page().setDeleteDialogOpen(false)}
 							variant="outline"
 						>
-							Cancel
+							キャンセル
 						</Button>
 						<Button onClick={page().confirmDelete} variant="destructive">
-							Delete
+							削除
 						</Button>
 					</DialogFooter>
 				</DialogContent>

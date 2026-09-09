@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { V2NotFoundRoute } from "~/components/v2/v2-not-found";
+import { LegacyRouteRedirect } from "~/components/route-compat";
 
 export const Route = createFileRoute("/$")({
-	component: V2NotFoundRoute,
+	component: LegacyRouteRedirect,
 });

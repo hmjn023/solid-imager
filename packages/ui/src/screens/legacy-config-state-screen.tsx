@@ -2,8 +2,8 @@ import { Match, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { ConfigSkeleton, LoadingRegion, Skeleton } from "../skeleton";
 import { cn } from "../utils/cn";
-import { ConfigScreen } from "./config-screen";
 import type { ConfigStateScreenProps } from "./config-state-screen.types";
+import { ConfigScreen } from "./legacy-config-screen";
 
 export function LegacyConfigStateScreen(props: ConfigStateScreenProps) {
 	const hasData = () => props.data !== undefined;

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { V2MediaDetailPage } from "~/components/v2/v2-media-detail-page";
+import { MediaDetailPage } from "~/components/pages/media-detail-page";
 
 interface MediaRouteParams {
 	mediaId: string;
@@ -19,7 +19,7 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 function MediaRoute() {
 	const params = Route.useParams();
 	return (
-		<V2MediaDetailPage
+		<MediaDetailPage
 			mediaId={() => params().mediaId}
 			mediaSourceId={() => params().mediaSourceId}
 		/>

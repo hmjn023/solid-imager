@@ -1,0 +1,68 @@
+import type { JSX } from "solid-js";
+import { Show } from "solid-js";
+
+type ManagementHeaderProps = {
+	actions?: JSX.Element;
+	description: string;
+	eyebrow?: string;
+	title: string;
+};
+
+export function ManagementHeader(props: ManagementHeaderProps) {
+	return (
+		<header class="shrink-0 border-[var(--workspace-border)] border-b bg-[var(--workspace-surface)] px-4 py-3 sm:px-6">
+			<div class="flex flex-wrap items-start justify-between gap-3">
+				<div class="min-w-0">
+					<p class="font-medium text-xs text-[var(--workspace-primary)]">
+						{props.eyebrow ?? "Workspace"}
+					</p>
+					<h1 class="mt-0.5 font-semibold text-xl text-[var(--workspace-text)]">
+						{props.title}
+					</h1>
+					<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+						{props.description}
+					</p>
+				</div>
+				<Show when={props.actions}>
+					<div class="shrink-0">{props.actions}</div>
+				</Show>
+			</div>
+		</header>
+	);
+}
+
+export const CATEGORY_TABS_CLASS =
+	"min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-[var(--workspace-text-secondary)] shadow-none data-[selected]:bg-[var(--workspace-surface-selected)] data-[selected]:text-[var(--workspace-primary)] lg:min-h-10 lg:w-full lg:justify-start";
+
+export function categoryButtonClass(active: boolean): string {
+	return `flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)] ${
+		active
+			? "bg-[var(--workspace-surface-selected)] text-[var(--workspace-primary)]"
+			: "text-[var(--workspace-text-secondary)] hover:bg-[var(--workspace-surface-muted)]"
+	}`;
+}
+
+export function CategoryLabel(props: {
+	description: string;
+	icon: JSX.Element;
+	label: string;
+	responsiveDescription?: "lg" | "md";
+}) {
+	const descriptionBreakpoint = () =>
+		props.responsiveDescription === "md" ? "md:block" : "lg:block";
+	return (
+		<>
+			<span class="shrink-0">{props.icon}</span>
+			<span class="min-w-0 text-left">
+				<strong class="block truncate font-medium text-sm">
+					{props.label}
+				</strong>
+				<span
+					class={`hidden truncate text-[11px] text-[var(--workspace-text-muted)] ${descriptionBreakpoint()}`}
+				>
+					{props.description}
+				</span>
+			</span>
+		</>
+	);
+}

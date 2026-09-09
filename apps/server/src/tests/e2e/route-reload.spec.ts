@@ -163,7 +163,7 @@ test.describe("direct navigation and reload", () => {
 			await expectSsrHtmlHealthy(response);
 			await expect(
 				page
-					.locator("#v2-main-content")
+					.locator("#main-content")
 					.getByText(routeCase.heading, { exact: true })
 					.first(),
 			).toBeVisible();
@@ -214,7 +214,7 @@ test.describe("direct navigation and reload", () => {
 			await expectSsrHtmlHealthy(reloadResponse);
 			await expect(
 				page
-					.locator("#v2-main-content")
+					.locator("#main-content")
 					.getByText(routeCase.heading, { exact: true })
 					.first(),
 			).toBeVisible();
@@ -266,7 +266,7 @@ test("canonical pages become interactive after hydration", async ({ page }) => {
 	await page.goto("/search");
 	await expect(
 		page
-			.locator("#v2-main-content")
+			.locator("#main-content")
 			.getByText("すべてのメディア", { exact: true })
 			.first(),
 	).toBeVisible();

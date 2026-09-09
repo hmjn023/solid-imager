@@ -1,6 +1,6 @@
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { createFileRoute } from "@tanstack/solid-router";
-import { V2SourceMediaPage } from "./components/v2-source-media-page";
+import { SourceMediaPage } from "./components/source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	validateSearch: searchHistoryQuerySchema,
@@ -14,5 +14,5 @@ export const Route = createFileRoute("/sources/$mediaSourceId/")({
 
 function SourceMediaRoute() {
 	const params = Route.useParams();
-	return <V2SourceMediaPage mediaSourceId={() => params().mediaSourceId} />;
+	return <SourceMediaPage mediaSourceId={() => params().mediaSourceId} />;
 }

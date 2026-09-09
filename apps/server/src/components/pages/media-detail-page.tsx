@@ -1,0 +1,174 @@
+import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import { Button } from "@solid-imager/ui/button";
+import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import {
+	ArrowLeft,
+	ChevronLeft,
+	ChevronRight,
+} from "@solid-imager/ui/workspace/icons";
+import { createQuery } from "@tanstack/solid-query";
+import { useNavigate } from "@tanstack/solid-router";
+import { type Accessor, Show } from "solid-js";
+import { MediaActions } from "~/components/media/media-actions";
+import { findMediaNeighbors } from "~/components/media/media-context";
+import { MediaSidebar } from "~/components/media/media-sidebar";
+import { MediaViewer } from "~/components/media/media-viewer";
+import { createServerTransport } from "~/hooks/use-media-source-events";
+import {
+	mediaDetailsQueryOptions,
+	mediaSourcesQueryOptions,
+} from "~/infrastructure/api-clients/queries";
+
+export function MediaDetailPage(props: {
+	mediaId: Accessor<string>;
+	mediaSourceId: Accessor<string>;
+}) {
+	const routeKey = () => `${props.mediaSourceId()}:${props.mediaId()}`;
+	return (
+		<Show keyed when={routeKey()}>
+			{(key) => {
+				const [mediaSourceId, mediaId] = key.split(":");
+				return (
+					<MediaContent
+						mediaId={() => mediaId}
+						mediaSourceId={() => mediaSourceId}
+					/>
+				);
+			}}
+		</Show>
+	);
+}
+
+function MediaDetailHeader(props: {
+	media: MediaDetails;
+	onUpdate: () => void;
+	sourceName: string;
+}) {
+	const navigate = useNavigate();
+	const neighbors = () => findMediaNeighbors(props.media.id);
+	const navigateToNeighbor = (direction: "next" | "previous") => {
+		const neighbor = neighbors()[direction];
+		if (!neighbor) return;
+		void navigate({
+			params: {
+				mediaId: neighbor.id,
+				mediaSourceId: neighbor.mediaSourceId,
+			},
+			replace: true,
+			to: "/sources/$mediaSourceId/$mediaId",
+		});
+	};
+	const returnToCollection = () => {
+		const returnPath = sessionStorage.getItem("v2:media-return");
+		const isValidReturnPath =
+			typeof returnPath === "string" &&
+			(returnPath === "/search" ||
+				returnPath.startsWith("/search?") ||
+				returnPath.startsWith("/sources/") ||
+				returnPath === "/v2/search" ||
+				returnPath.startsWith("/v2/search?") ||
+				returnPath.startsWith("/v2/sources/"));
+		if (isValidReturnPath) {
+			sessionStorage.removeItem("v2:media-return");
+			window.history.back();
+			return;
+		}
+		void navigate({
+			to: "/sources/$mediaSourceId",
+			params: { mediaSourceId: props.media.mediaSourceId },
+		});
+	};
+
+	return (
+		<header class="z-10 shrink-0 border-[var(--workspace-border)] border-b bg-[var(--workspace-surface-subtle)] px-3 py-2 sm:px-4">
+			<div class="flex min-w-0 flex-wrap items-center gap-2">
+				<Button
+					aria-label="一覧に戻る"
+					class="size-10 shrink-0 p-0 md:size-9"
+					onClick={returnToCollection}
+					size="icon"
+					variant="ghost"
+				>
+					<ArrowLeft aria-hidden="true" size={17} />
+				</Button>
+
+				<div class="min-w-0 flex-1">
+					<h1 class="truncate font-semibold text-sm text-[var(--workspace-text)]">
+						{props.media.fileName}
+					</h1>
+					<p class="truncate text-[11px] text-[var(--workspace-text-muted)]">
+						{props.sourceName}
+					</p>
+				</div>
+
+				<div
+					class="flex shrink-0 items-center rounded-md border border-[var(--workspace-border)] bg-white p-0.5"
+					title={
+						neighbors().previous || neighbors().next
+							? "一覧の前後のメディアへ移動"
+							: "一覧コンテキストがないため前後移動は利用できません"
+					}
+				>
+					<Button
+						aria-label="前のメディア"
+						class="size-9 p-0 md:size-8"
+						disabled={!neighbors().previous}
+						onClick={() => navigateToNeighbor("previous")}
+						size="icon"
+						variant="ghost"
+					>
+						<ChevronLeft aria-hidden="true" size={16} />
+					</Button>
+					<Button
+						aria-label="次のメディア"
+						class="size-9 p-0 md:size-8"
+						disabled={!neighbors().next}
+						onClick={() => navigateToNeighbor("next")}
+						size="icon"
+						variant="ghost"
+					>
+						<ChevronRight aria-hidden="true" size={16} />
+					</Button>
+				</div>
+
+				<div class="order-last mt-1 w-full md:order-none md:mt-0 md:w-auto">
+					<MediaActions media={props.media} onUpdate={props.onUpdate} />
+				</div>
+			</div>
+		</header>
+	);
+}
+
+function MediaContent(props: {
+	mediaId: Accessor<string>;
+	mediaSourceId: Accessor<string>;
+}) {
+	const mediaSources = createQuery(mediaSourcesQueryOptions);
+	const sourceName = () =>
+		mediaSources.data?.find((source) => source.id === props.mediaSourceId())
+			?.name ?? "Media source";
+
+	return (
+		<MediaDetailScreen
+			mediaDetailsQueryOptions={mediaDetailsQueryOptions}
+			mediaId={props.mediaId}
+			mediaSourceId={props.mediaSourceId}
+			renderHeader={(media, _isUpdating, onUpdate) => (
+				<MediaDetailHeader
+					media={media}
+					onUpdate={() => void onUpdate()}
+					sourceName={sourceName()}
+				/>
+			)}
+			renderMediaSidebar={(media, isUpdating, onUpdate) => (
+				<MediaSidebar
+					isUpdating={isUpdating}
+					media={media}
+					onUpdate={onUpdate}
+				/>
+			)}
+			renderMediaViewer={(media) => <MediaViewer media={media} />}
+			transport={createServerTransport(props.mediaSourceId)}
+		/>
+	);
+}

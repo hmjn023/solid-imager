@@ -1,0 +1,245 @@
+import Download from "lucide-solid/icons/download";
+import Upload from "lucide-solid/icons/upload";
+import { createSignal, Show } from "solid-js";
+import { Button } from "../../button";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
+import type { UseManagerPageResult } from "../../hooks/use-manager-page";
+import { Input } from "../../input";
+import { Label } from "../../label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../../select";
+import type { ManagerTransferActions, ManagerTransferFormat } from "./types";
+
+function formatOptionLabel(format: ManagerTransferFormat): string {
+	return format === "ndjson" ? "NDJSON metadata" : "TAR archive";
+}
+
+export function DataTransferPanel(props: {
+	actions: ManagerTransferActions;
+	manager: UseManagerPageResult;
+}) {
+	const [sourceId, setSourceId] = createSignal<string>();
+	const [exportFormat, setExportFormat] =
+		createSignal<ManagerTransferFormat>("ndjson");
+	const [importFormat, setImportFormat] =
+		createSignal<ManagerTransferFormat>("ndjson");
+	const [includeImages, setIncludeImages] = createSignal(false);
+	const [pending, setPending] = createSignal<"export" | "import" | null>(null);
+	let fileInput: HTMLInputElement | undefined;
+
+	const selectedSource = () =>
+		props.manager.sources().find((source) => source.id === sourceId());
+	const accept = () => {
+		switch (importFormat()) {
+			case "ndjson":
+				return ".ndjson,application/x-ndjson";
+			case "tar":
+				return ".tar,.zip,application/x-tar,application/zip";
+		}
+	};
+	const runExport = async () => {
+		const selectedId = sourceId();
+		if (!selectedId || pending()) return;
+		setPending("export");
+		try {
+			await props.actions.exportSource({
+				format: exportFormat(),
+				includeImages: includeImages(),
+				sourceId: selectedId,
+			});
+		} finally {
+			setPending(null);
+		}
+	};
+	const importFile = async (file: File) => {
+		const selectedId = sourceId();
+		if (!selectedId || pending()) return;
+		setPending("import");
+		try {
+			await props.actions.importSource({
+				file,
+				format: importFormat(),
+				sourceId: selectedId,
+			});
+		} finally {
+			setPending(null);
+			if (fileInput) fileInput.value = "";
+		}
+	};
+
+	return (
+		<div class="space-y-5">
+			<div>
+				<h2 class="font-semibold text-lg text-[var(--workspace-text)]">
+					Data transfer
+				</h2>
+				<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+					Export a portable source dump or restore one into an existing source.
+				</p>
+			</div>
+
+			<section class="space-y-1.5 border-[var(--workspace-border)] border-y bg-[var(--workspace-surface)] py-4 sm:rounded-md sm:border sm:p-4">
+				<Label>Target source</Label>
+				<Select
+					itemComponent={(selectProps) => (
+						<SelectItem item={selectProps.item}>
+							{selectProps.item.rawValue.name}
+						</SelectItem>
+					)}
+					onChange={(source) => setSourceId(source?.id)}
+					options={props.manager.sources()}
+					optionTextValue="name"
+					optionValue="id"
+					placeholder="Choose a source"
+					value={selectedSource() ?? null}
+				>
+					<SelectTrigger class="w-full bg-[var(--workspace-surface)] sm:max-w-xl">
+						<SelectValue<unknown>>
+							{() => selectedSource()?.name ?? "Choose a source"}
+						</SelectValue>
+					</SelectTrigger>
+					<SelectContent />
+				</Select>
+				<p class="text-xs text-[var(--workspace-text-muted)]">
+					Restore writes into the selected source. Existing source configuration
+					is not replaced.
+				</p>
+			</section>
+
+			<div class="grid gap-4 xl:grid-cols-2">
+				<section class="rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-4">
+					<div class="flex items-start gap-3">
+						<span class="rounded-md bg-[var(--workspace-surface-muted)] p-2 text-[var(--workspace-primary)]">
+							<Download aria-hidden="true" size={17} />
+						</span>
+						<div>
+							<h3 class="font-medium text-sm text-[var(--workspace-text)]">
+								Export
+							</h3>
+							<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+								Download metadata or a media archive.
+							</p>
+						</div>
+					</div>
+					<div class="mt-4 space-y-4">
+						<div class="space-y-1.5">
+							<Label>Format</Label>
+							<Select
+								itemComponent={(selectProps) => (
+									<SelectItem item={selectProps.item}>
+										{formatOptionLabel(selectProps.item.rawValue)}
+									</SelectItem>
+								)}
+								onChange={(value) => value && setExportFormat(value)}
+								options={["ndjson", "tar"] as const}
+								value={exportFormat()}
+							>
+								<SelectTrigger class="w-full">
+									<SelectValue<string>>
+										{(state) =>
+											state.selectedOption() === "ndjson"
+												? "NDJSON metadata"
+												: state.selectedOption() === "tar"
+													? "TAR archive"
+													: "TAR archive"
+										}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent />
+							</Select>
+						</div>
+						<Show when={exportFormat() === "tar"}>
+							<Checkbox
+								checked={includeImages()}
+								class="flex min-h-9 items-center gap-2"
+								onChange={setIncludeImages}
+							>
+								<CheckboxControl />
+								<CheckboxLabel>Include original media</CheckboxLabel>
+							</Checkbox>
+						</Show>
+						<Button
+							class="w-full sm:w-auto"
+							disabled={!sourceId() || pending() !== null}
+							onClick={() => void runExport()}
+						>
+							{pending() === "export" ? "Queueing..." : "Queue export"}
+						</Button>
+					</div>
+				</section>
+
+				<section class="rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-4">
+					<div class="flex items-start gap-3">
+						<span class="rounded-md bg-[var(--workspace-surface-muted)] p-2 text-[var(--workspace-primary)]">
+							<Upload aria-hidden="true" size={17} />
+						</span>
+						<div>
+							<h3 class="font-medium text-sm text-[var(--workspace-text)]">
+								Restore
+							</h3>
+							<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+								Choose the dump type before selecting its file.
+							</p>
+						</div>
+					</div>
+					<div class="mt-4 space-y-4">
+						<div class="space-y-1.5">
+							<Label>Format</Label>
+							<Select
+								itemComponent={(selectProps) => (
+									<SelectItem item={selectProps.item}>
+										{formatOptionLabel(selectProps.item.rawValue)}
+									</SelectItem>
+								)}
+								onChange={(value) => value && setImportFormat(value)}
+								options={["ndjson", "tar"] as const}
+								value={importFormat()}
+							>
+								<SelectTrigger class="w-full">
+									<SelectValue<string>>
+										{(state) =>
+											state.selectedOption() === "ndjson"
+												? "NDJSON metadata"
+												: state.selectedOption() === "tar"
+													? "TAR archive"
+													: "TAR archive"
+										}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent />
+							</Select>
+						</div>
+						<Input
+							accept={accept()}
+							aria-label="復元するダンプファイル"
+							class="sr-only"
+							onChange={(event) => {
+								const file = event.currentTarget.files?.[0];
+								if (file) void importFile(file);
+							}}
+							ref={fileInput}
+							type="file"
+						/>
+						<Button
+							class="w-full sm:w-auto"
+							disabled={!sourceId() || pending() !== null}
+							onClick={() => fileInput?.click()}
+							variant="outline"
+						>
+							{pending() === "import" ? "Queueing..." : "Choose dump file"}
+						</Button>
+					</div>
+				</section>
+			</div>
+			<p class="text-xs text-[var(--workspace-text-muted)]">
+				Transfers are queued as background jobs. Open Jobs to monitor, cancel,
+				or download completed exports.
+			</p>
+		</div>
+	);
+}

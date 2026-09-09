@@ -64,27 +64,27 @@
 		--radius: 0.5rem;
 	}
 
-	.v2-theme {
+	.workspace-theme {
 		color-scheme: light;
-		--v2-canvas: #fafbf9;
-		--v2-surface: #ffffff;
-		--v2-surface-subtle: #fbfcfa;
-		--v2-surface-muted: #f1f4f2;
-		--v2-surface-selected: #e1f1ed;
-		--v2-border: #e1e5e2;
-		--v2-border-strong: #d9dfdb;
-		--v2-text: #202624;
-		--v2-text-secondary: #59615d;
-		--v2-text-muted: #68706c;
-		--v2-primary: #08766a;
-		--v2-primary-hover: #06645a;
-		--v2-focus: #0b8f80;
-		--v2-destructive: #b43a32;
-		--v2-destructive-hover: #982f29;
-		--v2-warning: #795313;
-		--v2-warning-surface: #fff8e8;
-		--v2-info: #426d86;
-		--v2-info-surface: #eef6fa;
+		--workspace-canvas: #fafbf9;
+		--workspace-surface: #ffffff;
+		--workspace-surface-subtle: #fbfcfa;
+		--workspace-surface-muted: #f1f4f2;
+		--workspace-surface-selected: #e1f1ed;
+		--workspace-border: #e1e5e2;
+		--workspace-border-strong: #d9dfdb;
+		--workspace-text: #202624;
+		--workspace-text-secondary: #59615d;
+		--workspace-text-muted: #68706c;
+		--workspace-primary: #08766a;
+		--workspace-primary-hover: #06645a;
+		--workspace-focus: #0b8f80;
+		--workspace-destructive: #b43a32;
+		--workspace-destructive-hover: #982f29;
+		--workspace-warning: #795313;
+		--workspace-warning-surface: #fff8e8;
+		--workspace-info: #426d86;
+		--workspace-info-surface: #eef6fa;
 		--background: 90 20% 98%;
 		--foreground: 160 8.6% 13.7%;
 		--muted: 140 12% 95.1%;

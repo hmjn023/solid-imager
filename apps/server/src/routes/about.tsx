@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { V2AboutPage } from "~/components/v2/v2-about-page";
+import { AboutPage } from "~/components/pages/about-page";
 
 export const Route = createFileRoute("/about")({
 	ssr: false,
 	pendingComponent: () => null,
-	component: V2AboutPage,
+	component: AboutPage,
 });
