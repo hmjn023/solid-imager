@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
+	E2E_PRIMARY_MEDIA_ID,
 	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 	getFixtureMediaPath,
@@ -50,70 +51,34 @@ async function expectInsideViewport(
 	expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
 }
 
-test("sources actions stay operable without horizontal overflow", async ({
+test("library entry points redirect to canonical search", async ({ page }) => {
+	for (const path of ["/", "/sources", "/v2", "/v2/search"]) {
+		await page.goto(path);
+		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+		await waitForAppHydration(page);
+		await expect(
+			page.getByText("すべてのメディア", { exact: true }).last(),
+		).toBeVisible();
+		await expectRouteHealthy(page);
+	}
+});
+
+test("legacy detail routes preserve query and hash during redirect", async ({
 	page,
 }) => {
-	await page.goto("/sources");
-	await expect(
-		page.getByRole("heading", { name: "Media Sources", exact: true }),
-	).toBeVisible();
-	const sourceCard = page
-		.getByTestId("source-card")
-		.filter({ hasText: E2E_SOURCE_NAME });
-	await expect(sourceCard).toBeVisible();
-	await waitForAppHydration(page);
-	await expectNoHorizontalOverflow(page);
-
-	const addSourceButton = page.getByRole("button", {
-		name: "Add Source",
-		exact: true,
-	});
-	const syncAllButton = page.getByRole("button", {
-		name: "Sync All",
-		exact: true,
-	});
-	await expectTouchTarget(addSourceButton);
-	await expectTouchTarget(syncAllButton);
-	await expectTouchTarget(sourceCard.getByTestId("sync-source-btn"));
-	await expectTouchTarget(sourceCard.getByTestId("edit-source-btn"));
-	await expectTouchTarget(sourceCard.getByTestId("delete-source-btn"));
-
-	await addSourceButton.click();
-	const addSourceDialog = page.getByRole("dialog");
-	await expect(addSourceDialog).toBeVisible();
-	await addSourceDialog.getByLabel("Name", { exact: true }).fill("temporary");
-	await addSourceDialog
-		.getByLabel("Directory Path", { exact: true })
-		.fill("/tmp/temporary");
-	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
-	await expect(addSourceButton).toBeFocused();
-
-	await addSourceButton.click();
-	await expect(addSourceDialog.getByLabel("Name", { exact: true })).toHaveValue(
-		"",
+	await page.goto(
+		`/v2/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}?migration=1#details`,
 	);
+	await expect(page).toHaveURL(
+		new RegExp(
+			`/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}\\?migration=1#details$`,
+		),
+	);
+	await waitForAppHydration(page);
 	await expect(
-		addSourceDialog.getByLabel("Directory Path", { exact: true }),
-	).toHaveValue("");
-	await addSourceDialog
-		.getByRole("button", { name: "Add Source", exact: true })
-		.click();
-	await expect(addSourceDialog.getByText("Name is required")).toBeVisible();
-	await expect(addSourceDialog.getByText("Path is required")).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(addSourceDialog).toBeHidden();
-
-	await sourceCard.getByTestId("edit-source-btn").click();
-	await expect(page.getByRole("dialog")).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
-
-	await sourceCard.getByTestId("delete-source-btn").click();
-	await expect(page.getByRole("dialog")).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
-	await expectNoHorizontalOverflow(page);
+		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+	).toBeVisible();
+	await expectRouteHealthy(page);
 });
 
 test("source media exposes mobile filters and touch selection", async ({
@@ -251,22 +216,17 @@ test("source media exposes mobile filters and touch selection", async ({
 	await expectNoHorizontalOverflow(page);
 });
 
-for (const route of [
-	{ name: "v1", path: sourcePath() },
-	{ name: "v2", path: `/v2/sources/${E2E_SOURCE_ID}` },
-]) {
-	test(`${route.name} media grid opens its context menu`, async ({ page }) => {
-		await page.goto(route.path);
-		await waitForAppHydration(page);
+test("canonical media grid opens its context menu", async ({ page }) => {
+	await page.goto(sourcePath());
+	await waitForAppHydration(page);
 
-		const firstMedia = page.locator("[data-media-id]").first();
-		await expect(firstMedia).toBeVisible();
-		await firstMedia.click({ button: "right" });
+	const firstMedia = page.locator("[data-media-id]").first();
+	await expect(firstMedia).toBeVisible();
+	await firstMedia.click({ button: "right" });
 
-		await expectRouteHealthy(page);
-		await expect(page.getByRole("menu")).toBeVisible();
-		await expect(
-			page.getByRole("menuitem", { name: "類似度検索", exact: true }),
-		).toBeVisible();
-	});
-}
+	await expectRouteHealthy(page);
+	await expect(page.getByRole("menu")).toBeVisible();
+	await expect(
+		page.getByRole("menuitem", { name: "類似度検索", exact: true }),
+	).toBeVisible();
+});

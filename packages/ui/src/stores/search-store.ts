@@ -14,14 +14,15 @@ export const [searchState, setSearchState] = createStore<SearchState>({
 	...defaultState,
 });
 
-export type SearchPersistenceSurface = "legacy" | "v2";
+export type SearchPersistenceSurface = "legacy" | "workspace";
 
 export type SearchStorePersistenceOptions = {
 	surface?: SearchPersistenceSurface;
 };
 
 function getSearchStateStorageKey(surface: SearchPersistenceSurface): string {
-	return surface === "v2" ? "v2:current-all" : "current-all";
+	// Keep the historical key so saved workspace search state survives the rename.
+	return surface === "workspace" ? "v2:current-all" : "current-all";
 }
 
 export const resetSearchState = () => {

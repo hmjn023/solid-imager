@@ -25,7 +25,6 @@ const navigationItems = [
 	{ label: "Manager", to: "/manager" },
 	{ label: "About", to: "/about" },
 	{ label: "Settings", to: "/config" },
-	{ label: "V2", to: "/v2" },
 ] as const;
 
 export function AppNav(props: AppNavProps) {
@@ -234,15 +233,16 @@ export function AppNav(props: AppNavProps) {
 												</Show>
 												<Show when={props.showServerConnections}>
 													<li>
-														<a
+														<Link
 															aria-current={
 																isActive("/servers") ? "page" : undefined
 															}
 															class={`block min-h-11 ${mobileLinkClass("/servers")}`}
-															href="#/servers"
+															onClick={() => setIsMenuOpen(false)}
+															to="/servers"
 														>
 															Servers
-														</a>
+														</Link>
 													</li>
 												</Show>
 												<li>

@@ -178,18 +178,14 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 		try {
 			const currentEditingId = editingId();
 			if (currentEditingId) {
-				await updateServerConnection({
+				const wasActive = localSettings().activeServerId === currentEditingId;
+				const updatedServer = await updateServerConnection({
 					baseUrl: baseUrl().trim(),
 					id: currentEditingId,
 					name: trimmedName,
 				});
-				if (localSettings().activeServerId === currentEditingId) {
-					const updatedServer = getServerSettings().servers.find(
-						(server) => server.id === currentEditingId,
-					);
-					if (updatedServer) {
-						await props.onActivate?.(updatedServer);
-					}
+				if (wasActive) {
+					await props.onActivate?.(updatedServer);
 				}
 			} else {
 				const server = await addServerConnection({

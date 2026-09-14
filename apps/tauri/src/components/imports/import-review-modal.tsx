@@ -1,4 +1,4 @@
-import { ImportReviewModal as SharedImportReviewModal } from "@solid-imager/ui/import-review-modal";
+import { LegacyImportReviewModal as SharedImportReviewModal } from "@solid-imager/ui/legacy-import-review-modal";
 import {
 	cancelPendingImports,
 	listPendingImports,

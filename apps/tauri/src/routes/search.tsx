@@ -3,7 +3,7 @@ import { persistSearchScrollPosition } from "@solid-imager/ui/hooks/use-current-
 import { useSearchHistoryPersistence } from "@solid-imager/ui/hooks/use-search-history-persistence";
 import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
+import { SearchScreen } from "@solid-imager/ui/screens/legacy-search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";

@@ -2,7 +2,7 @@ import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import {
 	type MediaSource,
 	MediaViewer as SharedMediaViewer,
-} from "@solid-imager/ui/media-viewer";
+} from "@solid-imager/ui/legacy-media-viewer";
 import { createMemo } from "solid-js";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";

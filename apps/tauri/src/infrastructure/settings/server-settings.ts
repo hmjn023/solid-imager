@@ -197,20 +197,39 @@ export async function removeServerConnection(id: string): Promise<void> {
 
 export async function updateServerConnection(
 	server: ServerConnection,
-): Promise<void> {
+): Promise<ServerConnection> {
 	const current = getServerSettings();
-	await saveServerSettings({
+	const existing = current.servers.find((item) => item.id === server.id);
+	if (!existing) {
+		throw new Error("The selected server does not exist.");
+	}
+
+	const normalizedBaseUrl = normalizeUrl(server.baseUrl);
+	const updatedServer = serverConnectionSchema.parse({
+		...server,
+		// A URL change points this profile at a different server. Give it a new
+		// cache scope so the next initialization cannot reuse the old server's
+		// SQLite data. Name-only edits keep the existing profile/cache identity.
+		id: existing.baseUrl === normalizedBaseUrl ? existing.id : createId(),
+		baseUrl: normalizedBaseUrl,
+		name: server.name.trim(),
+	});
+	const activeServerId =
+		current.activeServerId === existing.id
+			? updatedServer.id
+			: current.activeServerId;
+	const nextSettings = await saveServerSettings({
 		...current,
+		activeServerId,
 		servers: current.servers.map((item) =>
-			item.id === server.id
-				? serverConnectionSchema.parse({
-						...server,
-						baseUrl: normalizeUrl(server.baseUrl),
-						name: server.name.trim(),
-					})
-				: item,
+			item.id === existing.id ? updatedServer : item,
 		),
 	});
+
+	return (
+		nextSettings.servers.find((item) => item.id === updatedServer.id) ??
+		updatedServer
+	);
 }
 
 export async function activateServer(id: string): Promise<ServerConnection> {
