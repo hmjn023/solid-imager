@@ -14,6 +14,7 @@ import { isServer } from "solid-js/web";
 
 type AppNavProps = {
 	pendingDownloadsIndicator?: JSX.Element;
+	showServerConnections?: boolean;
 	showDesignLab?: boolean;
 };
 
@@ -130,6 +131,17 @@ export function AppNav(props: AppNavProps) {
 								</a>
 							</li>
 						</Show>
+						<Show when={props.showServerConnections}>
+							<li>
+								<a
+									aria-current={isActive("/servers") ? "page" : undefined}
+									class={desktopLinkClass("/servers")}
+									href="#/servers"
+								>
+									Servers
+								</a>
+							</li>
+						</Show>
 						<li>
 							<a
 								class={desktopLinkClass("/docs")}
@@ -217,6 +229,20 @@ export function AppNav(props: AppNavProps) {
 														>
 															Design Lab
 														</a>
+													</li>
+												</Show>
+												<Show when={props.showServerConnections}>
+													<li>
+														<Link
+															aria-current={
+																isActive("/servers") ? "page" : undefined
+															}
+															class={`block min-h-11 ${mobileLinkClass("/servers")}`}
+															onClick={() => setIsMenuOpen(false)}
+															to="/servers"
+														>
+															Servers
+														</Link>
 													</li>
 												</Show>
 												<li>

@@ -1,5 +1,6 @@
 import { createTauriSQLitePersistence } from "@tanstack/tauri-db-sqlite-persistence";
 import Database from "@tauri-apps/plugin-sql";
+import { getActiveServer } from "~/infrastructure/settings/server-settings";
 
 /**
  * Tauri SQLプラグインはエラーをstringでrejectするが、
@@ -43,7 +44,15 @@ export async function initializePersistence() {
 	if (persistenceInstance) {
 		return persistenceInstance;
 	}
-	const rawDatabase = await Database.load("sqlite:solid-imager.db");
+	const activeServer = getActiveServer();
+	const databaseName =
+		activeServer?.id === "default"
+			? "solid-imager.db"
+			: `solid-imager-${(activeServer?.id ?? "default").replace(
+					/[^a-zA-Z0-9_-]/g,
+					"_",
+				)}.db`;
+	const rawDatabase = await Database.load(`sqlite:${databaseName}`);
 	const database = wrapDatabaseWithErrorNormalization(rawDatabase);
 	persistenceInstance = createTauriSQLitePersistence({ database });
 	return persistenceInstance;
