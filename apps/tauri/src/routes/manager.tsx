@@ -2,7 +2,7 @@ import {
 	prefetchManagerPageQueries,
 	useManagerPage,
 } from "@solid-imager/ui/hooks/use-manager-page";
-import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
+import { ManagerScreen } from "@solid-imager/ui/screens/legacy-manager-screen";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";

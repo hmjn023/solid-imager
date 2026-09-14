@@ -47,16 +47,19 @@ function getScrollStorageKey(
 	surface: SearchPersistenceSurface,
 	historyEntryKey?: string,
 ): string {
+	// Keep the historical namespace so existing scroll positions remain usable.
+	const storageSurface = surface === "workspace" ? "v2" : "legacy";
 	return historyEntryKey
-		? `search-scroll:${surface}:history:${historyEntryKey}`
-		: `search-scroll:${surface}:${presetName}`;
+		? `search-scroll:${storageSurface}:history:${historyEntryKey}`
+		: `search-scroll:${storageSurface}:${presetName}`;
 }
 
 function getStateStorageKey(
 	presetName: string,
 	surface: SearchPersistenceSurface,
 ): string {
-	return surface === "v2" ? `v2:${presetName}` : presetName;
+	// Keep the historical key so saved workspace search state survives the rename.
+	return surface === "workspace" ? `v2:${presetName}` : presetName;
 }
 
 function readScrollPosition(storageKey: string): number {
@@ -91,7 +94,7 @@ function normalizeSimilarityTopK(value: unknown): number {
  * Persist the scroll owner explicitly when a route owns a non-window
  * collection scroller.  The reactive persistence effect remains the
  * fallback, while route callbacks can use this helper to avoid sharing the
- * legacy and v2 session keys during rapid scroll updates.
+ * legacy and workspace session keys during rapid scroll updates.
  */
 export function persistSearchScrollPosition(
 	sourceId: SearchPersistenceSource = "current",

@@ -24,7 +24,6 @@ const navigationItems = [
 	{ label: "Manager", to: "/manager" },
 	{ label: "About", to: "/about" },
 	{ label: "Settings", to: "/config" },
-	{ label: "V2", to: "/v2" },
 ] as const;
 
 export function AppNav(props: AppNavProps) {

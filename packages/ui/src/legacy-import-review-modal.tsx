@@ -50,7 +50,7 @@ function getPreviewUrl(url?: string): string {
 	return url;
 }
 
-/** The pre-v2 import inbox renderer, kept isolated from the v2 dialog. */
+/** The legacy import inbox renderer, kept isolated from the workspace dialog. */
 export function LegacyImportReviewModal(props: ImportReviewModalProps) {
 	const createEmptySelection = () => new Set<string>();
 	const [selectedJobIds, setSelectedJobIds] = createSignal(
