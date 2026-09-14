@@ -1,7 +1,12 @@
 import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
-import { BriefcaseBusiness, Clock3, Library, Settings } from "../v2/icons";
+import {
+	BriefcaseBusiness,
+	Clock3,
+	Library,
+	Settings,
+} from "../workspace/icons";
 
 export const NAVIGATION_ITEMS = [
 	{

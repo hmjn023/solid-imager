@@ -1,6 +1,6 @@
 import type { JSX } from "solid-js";
 import { Button } from "../button";
-import { Menu, Search } from "../v2/icons";
+import { Menu, Search } from "../workspace/icons";
 
 export function MobileHeader(props: {
 	onOpenCommandPalette?: () => void;

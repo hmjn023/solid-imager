@@ -30,7 +30,7 @@ import {
 	Plus,
 	Search,
 	Settings,
-} from "../v2/icons";
+} from "../workspace/icons";
 
 export type CommandCenterProps = {
 	helpOpen: boolean;

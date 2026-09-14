@@ -8,7 +8,13 @@ import {
 	CollapsibleTrigger,
 } from "../collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
-import { ChevronDown, Database, Ellipsis, Plus, RefreshCw } from "../v2/icons";
+import {
+	ChevronDown,
+	Database,
+	Ellipsis,
+	Plus,
+	RefreshCw,
+} from "../workspace/icons";
 
 export type SourceListProps = {
 	expanded: boolean;

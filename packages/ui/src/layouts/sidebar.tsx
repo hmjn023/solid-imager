@@ -10,7 +10,7 @@ import {
 	PanelLeftClose,
 	PanelLeftOpen,
 	Search,
-} from "../v2/icons";
+} from "../workspace/icons";
 import { NAVIGATION_ITEMS, NavigationItem } from "./navigation";
 import { SourceList } from "./source-list";
 
