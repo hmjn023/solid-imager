@@ -19,7 +19,7 @@ import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
 export type { SourceMediaScreenProps } from "./source-media-screen.types";
 
-export function SourceMediaScreen(props: SourceMediaScreenProps) {
+export function TauriSourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
 	const page = () => props.page;

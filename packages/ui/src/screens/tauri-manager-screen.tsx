@@ -105,7 +105,7 @@ function isCrudTab(tab: ManagerEntityType) {
 
 const ALL_SOURCES_OPTION = { id: "__all__", name: "All Sources" };
 
-export function ManagerScreen(props: ManagerScreenProps) {
+export function TauriManagerScreen(props: ManagerScreenProps) {
 	const manager = () => props.manager;
 	const activeQueryState = () => {
 		const states = manager().queryStates();

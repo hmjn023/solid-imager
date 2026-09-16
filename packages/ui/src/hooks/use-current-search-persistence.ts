@@ -21,6 +21,12 @@ import {
 
 const DEBOUNCE_MS = 1000;
 
+// These namespaces and prefixes are historical storage values. Keep them
+// stable so sessions survive the presentation naming cleanup.
+const TAURI_SEARCH_STORAGE_NAMESPACE = "legacy";
+const WORKSPACE_SEARCH_STORAGE_NAMESPACE = "v2";
+const WORKSPACE_SEARCH_STATE_STORAGE_PREFIX = "v2:";
+
 export type { SearchPersistenceSurface } from "../stores/search-store";
 
 export type SearchPersistenceOptions = {
@@ -47,8 +53,10 @@ function getScrollStorageKey(
 	surface: SearchPersistenceSurface,
 	historyEntryKey?: string,
 ): string {
-	// Keep the historical namespace so existing scroll positions remain usable.
-	const storageSurface = surface === "workspace" ? "v2" : "legacy";
+	const storageSurface =
+		surface === "workspace"
+			? WORKSPACE_SEARCH_STORAGE_NAMESPACE
+			: TAURI_SEARCH_STORAGE_NAMESPACE;
 	return historyEntryKey
 		? `search-scroll:${storageSurface}:history:${historyEntryKey}`
 		: `search-scroll:${storageSurface}:${presetName}`;
@@ -58,8 +66,9 @@ function getStateStorageKey(
 	presetName: string,
 	surface: SearchPersistenceSurface,
 ): string {
-	// Keep the historical key so saved workspace search state survives the rename.
-	return surface === "workspace" ? `v2:${presetName}` : presetName;
+	return surface === "workspace"
+		? `${WORKSPACE_SEARCH_STATE_STORAGE_PREFIX}${presetName}`
+		: presetName;
 }
 
 function readScrollPosition(storageKey: string): number {
@@ -94,7 +103,7 @@ function normalizeSimilarityTopK(value: unknown): number {
  * Persist the scroll owner explicitly when a route owns a non-window
  * collection scroller.  The reactive persistence effect remains the
  * fallback, while route callbacks can use this helper to avoid sharing the
- * legacy and workspace session keys during rapid scroll updates.
+ * Tauri and workspace session keys during rapid scroll updates.
  */
 export function persistSearchScrollPosition(
 	sourceId: SearchPersistenceSource = "current",
@@ -120,7 +129,7 @@ export function persistSearchScrollPosition(
 		sessionStorage.setItem(
 			getScrollStorageKey(
 				presetName,
-				options.surface ?? "legacy",
+				options.surface ?? "tauri",
 				historyEntryKey,
 			),
 			String(normalizeScrollPosition(position)),
@@ -147,7 +156,7 @@ export function readPersistedSearchScrollPosition(
 		return readScrollPosition(
 			getScrollStorageKey(
 				presetName,
-				options.surface ?? "legacy",
+				options.surface ?? "tauri",
 				historyEntryKey,
 			),
 		);
@@ -298,7 +307,7 @@ export function useCurrentSearchPersistence(
 	const getSourceId = () =>
 		typeof sourceId === "function" ? sourceId() : sourceId;
 	const resolvePresetName = () => getCurrentPresetName(getSourceId());
-	const surface = options.surface ?? "legacy";
+	const surface = options.surface ?? "tauri";
 	const persistPendingScrollPosition = () => {
 		if (!pendingScrollKey || isServer) {
 			return;

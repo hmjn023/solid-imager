@@ -17,3 +17,9 @@ Web UIの通常routeは `DESIGN.md` と Design Lab を基準にした現行ワ�
 | Tauriの `/v2/*` route adapter | 実装済み | `apps/tauri/src/routes/$.tsx` と `apps/tauri/src/routes/jobs.tsx`。既存Tauri画面へ検索、Manager、Jobs、Config、About、Sourcesを接続 |
 
 未対応の画面やAPIを追加する場合は、loading / error / offline / retryとリアルタイム更新まで同じ画面内で接続します。
+
+## UIの命名と互換性
+
+- Webの現行画面にはバージョン名を付けず、機能名と `workspace` のデザイン名を使います。
+- Tauriは独自の画面構成を使用しています。Webの旧UI廃止はTauriの画面移行を意味しません。部品名は利用先やレイアウトを表し、`legacy` で分類しません。
+- `/v2/*` の転送元URLと、ブラウザーに保存済みの `v2`／`legacy` を含むキーは互換性のため維持します。これらの文字列は現行UIの名前ではありません。

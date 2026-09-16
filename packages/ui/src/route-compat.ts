@@ -1,13 +1,13 @@
 const ROUTER_ORIGIN = "http://solid-imager.invalid";
 
 /**
- * Maps the retired, versioned UI paths to their canonical routes.
+ * Maps the retired versioned paths to their canonical routes.
  *
- * This helper intentionally recognizes only the routes that existed in the
- * retired UI. Unknown paths return null so the caller can render its normal
+ * This helper intentionally recognizes only the routes that existed before the
+ * current routes. Unknown paths return null so the caller can render its normal
  * not-found surface. Query strings and hashes are kept intact for redirects.
  */
-export function toCanonicalLegacyHref(href: string): string | null {
+export function toCanonicalRouteHref(href: string): string | null {
 	const url = new URL(href, ROUTER_ORIGIN);
 	const path = url.pathname.replace(/\/+$/, "") || "/";
 	if (path === "/v2") {

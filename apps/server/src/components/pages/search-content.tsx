@@ -24,7 +24,10 @@ import { toast } from "@solid-imager/ui/toast";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
-import { saveMediaContext } from "~/components/media/media-context";
+import {
+	MEDIA_RETURN_STORAGE_KEY,
+	saveMediaContext,
+} from "~/components/media/media-context";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
@@ -61,7 +64,7 @@ const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
 function rememberReturnPath(href: string): void {
 	try {
-		sessionStorage.setItem("v2:media-return", href);
+		sessionStorage.setItem(MEDIA_RETURN_STORAGE_KEY, href);
 	} catch {
 		// Session storage is optional; media detail navigation must continue.
 	}

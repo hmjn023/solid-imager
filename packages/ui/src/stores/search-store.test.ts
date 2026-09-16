@@ -48,11 +48,11 @@ describe("activateSimilaritySearch", () => {
 		});
 	});
 
-	it("persists workspace activation without writing the legacy state key", () => {
-		activateSimilaritySearch("media-v2", { surface: "workspace" });
+	it("persists workspace activation without writing the Tauri state key", () => {
+		activateSimilaritySearch("media-workspace", { surface: "workspace" });
 
 		expect(searchState.mode).toBe("simple");
-		expect(searchState.similarityAnchorMediaId).toBe("media-v2");
+		expect(searchState.similarityAnchorMediaId).toBe("media-workspace");
 		expect(
 			JSON.parse(sessionStorage.getItem("v2:current-all") ?? "{}"),
 		).toEqual({
@@ -61,7 +61,7 @@ describe("activateSimilaritySearch", () => {
 			sort: "date",
 			order: "desc",
 			mode: "simple",
-			similarityAnchorMediaId: "media-v2",
+			similarityAnchorMediaId: "media-workspace",
 			similarityTopK: 50,
 		});
 		expect(sessionStorage.getItem("current-all")).toBeNull();
@@ -120,10 +120,10 @@ describe("clearSimilaritySearch", () => {
 		expect(sessionStorage.getItem("current-all")).toContain('"mode":"simple"');
 	});
 
-	it("clears the workspace persisted anchor without touching the legacy key", () => {
+	it("clears the workspace persisted anchor without touching the Tauri key", () => {
 		sessionStorage.setItem(
 			"current-all",
-			JSON.stringify({ similarityAnchorMediaId: "legacy-media" }),
+			JSON.stringify({ similarityAnchorMediaId: "tauri-media" }),
 		);
 		sessionStorage.setItem(
 			"v2:current-all",
@@ -133,7 +133,7 @@ describe("clearSimilaritySearch", () => {
 				sort: "date",
 				order: "desc",
 				mode: "simple",
-				similarityAnchorMediaId: "media-v2",
+				similarityAnchorMediaId: "media-workspace",
 				similarityTopK: 50,
 			}),
 		);
@@ -152,7 +152,7 @@ describe("clearSimilaritySearch", () => {
 			similarityTopK: 50,
 		});
 		expect(JSON.parse(sessionStorage.getItem("current-all") ?? "{}")).toEqual({
-			similarityAnchorMediaId: "legacy-media",
+			similarityAnchorMediaId: "tauri-media",
 		});
 	});
 });

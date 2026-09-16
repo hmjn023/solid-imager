@@ -10,7 +10,10 @@ import { createQuery } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
 import { type Accessor, Show } from "solid-js";
 import { MediaActions } from "~/components/media/media-actions";
-import { findMediaNeighbors } from "~/components/media/media-context";
+import {
+	findMediaNeighbors,
+	MEDIA_RETURN_STORAGE_KEY,
+} from "~/components/media/media-context";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
@@ -59,7 +62,7 @@ function MediaDetailHeader(props: {
 		});
 	};
 	const returnToCollection = () => {
-		const returnPath = sessionStorage.getItem("v2:media-return");
+		const returnPath = sessionStorage.getItem(MEDIA_RETURN_STORAGE_KEY);
 		const isValidReturnPath =
 			typeof returnPath === "string" &&
 			(returnPath === "/search" ||
@@ -69,7 +72,7 @@ function MediaDetailHeader(props: {
 				returnPath.startsWith("/v2/search?") ||
 				returnPath.startsWith("/v2/sources/"));
 		if (isValidReturnPath) {
-			sessionStorage.removeItem("v2:media-return");
+			sessionStorage.removeItem(MEDIA_RETURN_STORAGE_KEY);
 			window.history.back();
 			return;
 		}

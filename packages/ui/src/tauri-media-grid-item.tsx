@@ -49,7 +49,7 @@ type MediaGridItemProps = {
 	isSelected?: boolean;
 };
 
-export function MediaGridItem(props: MediaGridItemProps) {
+export function TauriMediaGridItem(props: MediaGridItemProps) {
 	const href = () =>
 		props.linkPrefix
 			? `${props.linkPrefix}/${props.media.id}`

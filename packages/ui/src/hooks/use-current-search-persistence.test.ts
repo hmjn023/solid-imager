@@ -209,7 +209,7 @@ describe("useCurrentSearchPersistence", () => {
 		expect(searchState.scrollY).toBe(1840);
 	});
 
-	it("keeps workspace scroll persistence separate from the legacy surface", async () => {
+	it("keeps workspace scroll persistence separate from the Tauri surface", async () => {
 		vi.useFakeTimers();
 		sessionStorage.setItem(
 			"v2:current-all",
@@ -217,7 +217,7 @@ describe("useCurrentSearchPersistence", () => {
 		);
 		sessionStorage.setItem(
 			"current-all",
-			JSON.stringify(createPersistedSimpleState("legacy query")),
+			JSON.stringify(createPersistedSimpleState("Tauri query")),
 		);
 		sessionStorage.setItem("search-scroll:legacy:current-all", "240");
 		sessionStorage.setItem("search-scroll:v2:current-all", "1840");
@@ -240,22 +240,22 @@ describe("useCurrentSearchPersistence", () => {
 		expect(sessionStorage.getItem("search-scroll:legacy:current-all")).toBe(
 			"240",
 		);
-		expect(sessionStorage.getItem("current-all")).toContain("legacy query");
+		expect(sessionStorage.getItem("current-all")).toContain("Tauri query");
 	});
 
 	it("restores workspace similarity ordering activated from the detail route", async () => {
-		activateSimilaritySearch("media-v2", { surface: "workspace" });
+		activateSimilaritySearch("media-workspace", { surface: "workspace" });
 
 		const mounted = mountPersistence("all", { surface: "workspace" });
 		await flushMicrotasks();
 
 		expect(mounted.isRestored()).toBe(true);
 		expect(searchState.mode).toBe("simple");
-		expect(searchState.similarityAnchorMediaId).toBe("media-v2");
+		expect(searchState.similarityAnchorMediaId).toBe("media-workspace");
 		expect(sessionStorage.getItem("current-all")).toBeNull();
 	});
 
-	it("migrates legacy similarity sessions without inheriting a source", async () => {
+	it("migrates Tauri similarity sessions without inheriting a source", async () => {
 		setSearchState("selectedSource", "stale-source");
 		sessionStorage.setItem(
 			"current-all",

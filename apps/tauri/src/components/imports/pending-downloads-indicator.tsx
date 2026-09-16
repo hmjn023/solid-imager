@@ -1,5 +1,5 @@
 import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
-import { PendingDownloadsIndicator as SharedPendingDownloadsIndicator } from "@solid-imager/ui/legacy-pending-downloads-indicator";
+import { TauriPendingDownloadsIndicator as SharedPendingDownloadsIndicator } from "@solid-imager/ui/tauri-pending-downloads-indicator";
 import {
 	cancelPendingImports,
 	listPendingImports,

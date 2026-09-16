@@ -35,8 +35,8 @@ type AppShellProps = ParentProps<{
 	statusIndicator?: JSX.Element;
 }>;
 
-// Keep the historical key so existing sidebar preferences survive the rename.
-const SIDEBAR_PREFERENCE_KEY = "solid-imager:v2-sidebar-expanded";
+// Historical key retained so existing sidebar preferences survive the rename.
+const SIDEBAR_EXPANDED_STORAGE_KEY = "solid-imager:v2-sidebar-expanded";
 
 export function AppShell(props: AppShellProps) {
 	const queryClient = useQueryClient();
@@ -126,7 +126,7 @@ export function AppShell(props: AppShellProps) {
 		void navigate({ to: "/config" });
 	});
 	onMount(() => {
-		const storedPreference = localStorage.getItem(SIDEBAR_PREFERENCE_KEY);
+		const storedPreference = localStorage.getItem(SIDEBAR_EXPANDED_STORAGE_KEY);
 		if (storedPreference === "false") setSidebarExpanded(false);
 		if (storedPreference === "true") setSidebarExpanded(true);
 		setSidebarPreferenceReady(true);
@@ -138,7 +138,10 @@ export function AppShell(props: AppShellProps) {
 	});
 	createEffect(() => {
 		if (!sidebarPreferenceReady()) return;
-		localStorage.setItem(SIDEBAR_PREFERENCE_KEY, String(sidebarExpanded()));
+		localStorage.setItem(
+			SIDEBAR_EXPANDED_STORAGE_KEY,
+			String(sidebarExpanded()),
+		);
 	});
 
 	return (

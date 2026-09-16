@@ -1,8 +1,8 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
 	type MediaGridImageLoadPolicy,
-	MediaGridItem as SharedMediaGridItem,
-} from "@solid-imager/ui/legacy-media-grid-item";
+	TauriMediaGridItem as SharedMediaGridItem,
+} from "@solid-imager/ui/tauri-media-grid-item";
 import { Link } from "@tanstack/solid-router";
 import { ThumbnailImage } from "./thumbnail-image";
 

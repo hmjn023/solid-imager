@@ -20,7 +20,8 @@ import { reconcileCollectionPreviewId } from "../workspace/collection-navigation
 import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
-const SOURCE_VIEW_MODE_KEY = "solid-imager:v2:source-media:view-mode";
+// Historical key retained so the source view preference survives the rename.
+const SOURCE_VIEW_MODE_STORAGE_KEY = "solid-imager:v2:source-media:view-mode";
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
@@ -60,7 +61,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const updateViewMode = (mode: SourceMediaViewMode) => {
 		setViewMode(mode);
 		try {
-			localStorage.setItem(SOURCE_VIEW_MODE_KEY, mode);
+			localStorage.setItem(SOURCE_VIEW_MODE_STORAGE_KEY, mode);
 		} catch {
 			// Storage can be unavailable in hardened browser contexts.
 		}
@@ -76,7 +77,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	onMount(() => {
 		setIsMounted(true);
 		try {
-			const storedMode = localStorage.getItem(SOURCE_VIEW_MODE_KEY);
+			const storedMode = localStorage.getItem(SOURCE_VIEW_MODE_STORAGE_KEY);
 			if (storedMode === "grid" || storedMode === "list") {
 				setViewMode(storedMode);
 			}

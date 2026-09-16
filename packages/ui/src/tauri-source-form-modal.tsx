@@ -226,7 +226,7 @@ function SourceTextInput(props: SourceTextInputProps) {
 	);
 }
 
-export function LegacySourceFormModal(props: SourceFormModalProps) {
+export function TauriSourceFormModal(props: SourceFormModalProps) {
 	const sourceTypes = () => props.sourceTypes ?? ["local", "sftp", "s3"];
 	const defaultValues = () => {
 		const fallbackType = sourceTypes()[0] ?? "local";

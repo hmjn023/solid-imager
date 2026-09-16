@@ -4,7 +4,9 @@ import {
 	mediaSourceIdSchema,
 } from "@solid-imager/core/domain/media/schemas";
 
-const STORAGE_KEY = "v2:media-context";
+// Historical session keys remain stable so navigation context survives releases.
+export const MEDIA_CONTEXT_STORAGE_KEY = "v2:media-context";
+export const MEDIA_RETURN_STORAGE_KEY = "v2:media-return";
 const MAX_CONTEXT_ITEMS = 500;
 
 export type MediaContextItem = Pick<Media, "id" | "mediaSourceId">;
@@ -46,7 +48,7 @@ export function saveMediaContext(
 
 	try {
 		storage.setItem(
-			STORAGE_KEY,
+			MEDIA_CONTEXT_STORAGE_KEY,
 			JSON.stringify({
 				items: [...uniqueItems.values()],
 				returnPath,
@@ -63,7 +65,7 @@ export function readMediaContext(): StoredMediaContext | null {
 	if (!storage) return null;
 
 	try {
-		const raw = storage.getItem(STORAGE_KEY);
+		const raw = storage.getItem(MEDIA_CONTEXT_STORAGE_KEY);
 		if (!raw) return null;
 		const value: unknown = JSON.parse(raw);
 		if (!isRecord(value) || typeof value.returnPath !== "string") return null;

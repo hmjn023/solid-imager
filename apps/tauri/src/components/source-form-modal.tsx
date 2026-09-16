@@ -2,7 +2,7 @@ import type {
 	MediaSourceInfo,
 	SafeMediaSource,
 } from "@solid-imager/core/domain/sources/schemas";
-import { LegacySourceFormModal as SharedSourceFormModal } from "@solid-imager/ui/legacy-source-form-modal";
+import { TauriSourceFormModal as SharedSourceFormModal } from "@solid-imager/ui/tauri-source-form-modal";
 
 type SourceFormModalProps = {
 	isOpen: boolean;

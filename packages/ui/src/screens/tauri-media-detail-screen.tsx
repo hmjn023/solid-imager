@@ -1,9 +1,9 @@
-import { LegacyMediaDetailSkeleton } from "../legacy-media-detail-skeleton";
+import { MediaDetailLayoutSkeleton } from "../media-detail-layout-skeleton";
 import { LoadingRegion } from "../skeleton";
 import type { MediaDetailScreenProps } from "./media-detail-screen.types";
 import { MediaDetailScreenController } from "./media-detail-screen-core";
 
-export function LegacyMediaDetailScreen(props: MediaDetailScreenProps) {
+export function TauriMediaDetailScreen(props: MediaDetailScreenProps) {
 	return (
 		<div class="mx-auto w-full px-3 py-4 sm:px-4 lg:container lg:p-4">
 			<MediaDetailScreenController
@@ -25,7 +25,7 @@ export function LegacyMediaDetailScreen(props: MediaDetailScreenProps) {
 				)}
 				renderPending={() => (
 					<LoadingRegion label="メディア情報を読み込んでいます...">
-						<LegacyMediaDetailSkeleton />
+						<MediaDetailLayoutSkeleton />
 					</LoadingRegion>
 				)}
 			/>

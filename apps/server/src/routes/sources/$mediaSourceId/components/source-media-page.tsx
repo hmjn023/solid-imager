@@ -3,7 +3,10 @@ import { createSearchHistoryClient } from "@solid-imager/ui/search-history-clien
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
-import { saveMediaContext } from "~/components/media/media-context";
+import {
+	MEDIA_RETURN_STORAGE_KEY,
+	saveMediaContext,
+} from "~/components/media/media-context";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { UploadMediaModal } from "~/components/upload-media-modal";
@@ -17,7 +20,7 @@ const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
 function rememberReturnPath(href: string): void {
 	try {
-		sessionStorage.setItem("v2:media-return", href);
+		sessionStorage.setItem(MEDIA_RETURN_STORAGE_KEY, href);
 	} catch {
 		// Session storage is optional; media detail navigation must continue.
 	}

@@ -50,8 +50,8 @@ function getPreviewUrl(url?: string): string {
 	return url;
 }
 
-/** The legacy import inbox renderer, kept isolated from the workspace dialog. */
-export function LegacyImportReviewModal(props: ImportReviewModalProps) {
+/** The Tauri import inbox renderer, kept isolated from the workspace dialog. */
+export function TauriImportReviewModal(props: ImportReviewModalProps) {
 	const createEmptySelection = () => new Set<string>();
 	const [selectedJobIds, setSelectedJobIds] = createSignal(
 		createEmptySelection(),

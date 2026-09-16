@@ -1,8 +1,8 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import {
-	type MediaSource,
-	MediaViewer as SharedMediaViewer,
-} from "@solid-imager/ui/legacy-media-viewer";
+	TauriMediaViewer as SharedMediaViewer,
+	type TauriMediaSource,
+} from "@solid-imager/ui/tauri-media-viewer";
 import { createMemo } from "solid-js";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
@@ -29,7 +29,7 @@ function resolveMimeType(fileName: string) {
 	);
 }
 
-class ApiMediaSource implements MediaSource {
+class ApiMediaSource implements TauriMediaSource {
 	type: "image" | "video" | "audio";
 	private urls: string[] = [];
 

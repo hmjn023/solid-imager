@@ -3,9 +3,9 @@ import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { ConfigSkeleton, LoadingRegion, Skeleton } from "../skeleton";
 import { cn } from "../utils/cn";
 import type { ConfigStateScreenProps } from "./config-state-screen.types";
-import { ConfigScreen } from "./legacy-config-screen";
+import { TauriConfigScreen } from "./tauri-config-screen";
 
-export function LegacyConfigStateScreen(props: ConfigStateScreenProps) {
+export function TauriConfigStateScreen(props: ConfigStateScreenProps) {
 	const hasData = () => props.data !== undefined;
 
 	return (
@@ -23,7 +23,7 @@ export function LegacyConfigStateScreen(props: ConfigStateScreenProps) {
 			<Switch>
 				<Match when={props.data}>
 					{(data) => (
-						<ConfigScreen
+						<TauriConfigScreen
 							data={data()}
 							onSubmit={props.onSubmit}
 							onSubmitSuccess={props.onSubmitSuccess}

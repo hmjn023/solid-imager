@@ -14,15 +14,21 @@ export const [searchState, setSearchState] = createStore<SearchState>({
 	...defaultState,
 });
 
-export type SearchPersistenceSurface = "legacy" | "workspace";
+export type SearchPersistenceSurface = "tauri" | "workspace";
+
+// Keep these historical keys so existing Tauri and workspace sessions survive
+// the presentation naming cleanup.
+const TAURI_SEARCH_STATE_STORAGE_KEY = "current-all";
+const WORKSPACE_SEARCH_STATE_STORAGE_KEY = "v2:current-all";
 
 export type SearchStorePersistenceOptions = {
 	surface?: SearchPersistenceSurface;
 };
 
 function getSearchStateStorageKey(surface: SearchPersistenceSurface): string {
-	// Keep the historical key so saved workspace search state survives the rename.
-	return surface === "workspace" ? "v2:current-all" : "current-all";
+	return surface === "workspace"
+		? WORKSPACE_SEARCH_STATE_STORAGE_KEY
+		: TAURI_SEARCH_STATE_STORAGE_KEY;
 }
 
 export const resetSearchState = () => {
@@ -90,7 +96,7 @@ export const activateSimilaritySearch = (
 	};
 	setSearchState(nextState);
 	try {
-		persistSearchState(nextState, options.surface ?? "legacy");
+		persistSearchState(nextState, options.surface ?? "tauri");
 	} catch {
 		// Persistence errors must not disrupt opening similarity ordering.
 	}
@@ -107,7 +113,7 @@ export const clearSimilaritySearch = (
 	};
 	setSearchState(nextState);
 	try {
-		persistSearchState(nextState, options.surface ?? "legacy");
+		persistSearchState(nextState, options.surface ?? "tauri");
 	} catch {
 		// Persistence errors must not disrupt clearing similarity ordering.
 	}

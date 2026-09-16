@@ -74,7 +74,7 @@ export type SourceMediaPageProps = {
 	onEnterBulkSelectMode?: () => void;
 	persistenceSurface?: SearchPersistenceSurface;
 	searchHistoryClient: SearchHistoryClient;
-	/** The route owns the presentation surface (legacy, workspace, or another host). */
+	/** The route owns the presentation surface (Tauri, workspace, or another host). */
 	screenComponent: Component<SourceMediaScreenProps>;
 	scrollContainerSelector?: string;
 };

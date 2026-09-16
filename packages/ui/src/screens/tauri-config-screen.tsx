@@ -33,7 +33,7 @@ export type ConfigScreenProps = {
 	onSubmitSuccess?: () => void;
 };
 
-export function ConfigScreen(props: ConfigScreenProps) {
+export function TauriConfigScreen(props: ConfigScreenProps) {
 	const [activeTab, setActiveTab] = createSignal("jobs");
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const form = createForm(() => ({
@@ -306,7 +306,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												providerError={getFormErrorMessage(
 													providerField().state.meta.errors[0],
 												)}
-												idPrefix="legacy-ai-inference"
+												idPrefix="tauri-ai-inference"
 											/>
 										)}
 									</form.Field>

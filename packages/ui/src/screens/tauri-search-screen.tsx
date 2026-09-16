@@ -17,7 +17,7 @@ export type SearchScreenProps = SearchWorkspaceProps & {
 	renderNavActions?: (actions: SearchScreenNavActions) => JSX.Element;
 };
 
-export function SearchScreen(props: SearchScreenProps) {
+export function TauriSearchScreen(props: SearchScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [isMobileFilterOpen, setIsMobileFilterOpen] = createSignal(false);
 

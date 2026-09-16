@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
-import { LegacyImportReviewModal } from "./legacy-import-review-modal";
 import type { PendingDownloadsIndicatorProps } from "./pending-downloads-indicator.types";
 import { PendingDownloadsIndicatorCore } from "./pending-downloads-indicator-core";
+import { TauriImportReviewModal } from "./tauri-import-review-modal";
 
 export type {
 	ImportEventConnectedHandler,
@@ -9,7 +9,7 @@ export type {
 	PendingDownloadsIndicatorProps,
 } from "./pending-downloads-indicator.types";
 
-export function PendingDownloadsIndicator(
+export function TauriPendingDownloadsIndicator(
 	props: PendingDownloadsIndicatorProps,
 ) {
 	return (
@@ -49,7 +49,7 @@ export function PendingDownloadsIndicator(
 				</button>
 			)}
 			renderModal={(modalProps) => (
-				<LegacyImportReviewModal
+				<TauriImportReviewModal
 					{...modalProps}
 					cancelPending={props.cancelPending}
 					listPending={props.listPending}

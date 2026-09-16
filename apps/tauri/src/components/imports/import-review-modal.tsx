@@ -1,4 +1,4 @@
-import { LegacyImportReviewModal as SharedImportReviewModal } from "@solid-imager/ui/legacy-import-review-modal";
+import { TauriImportReviewModal as SharedImportReviewModal } from "@solid-imager/ui/tauri-import-review-modal";
 import {
 	cancelPendingImports,
 	listPendingImports,

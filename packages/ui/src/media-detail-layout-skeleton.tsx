@@ -1,12 +1,12 @@
 import { Skeleton } from "./skeleton";
 import { cn } from "./utils/cn";
 
-export type LegacyMediaDetailSkeletonProps = {
+export type MediaDetailLayoutSkeletonProps = {
 	class?: string;
 };
 
-export function LegacyMediaDetailSkeleton(
-	props: LegacyMediaDetailSkeletonProps,
+export function MediaDetailLayoutSkeleton(
+	props: MediaDetailLayoutSkeletonProps,
 ) {
 	return (
 		<div

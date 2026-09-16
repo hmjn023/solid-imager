@@ -7,20 +7,20 @@ import {
 	Switch,
 } from "solid-js";
 
-export interface MediaSource {
+export interface TauriMediaSource {
 	type: "image" | "video" | "audio";
 	getUrl(): string | Promise<string>;
 	revokeUrl?(url: string): void;
 }
 
-export interface MediaViewerProps {
-	source: MediaSource;
+export interface TauriMediaViewerProps {
+	source: TauriMediaSource;
 	fileName: string;
 	width?: number;
 	height?: number;
 }
 
-export function MediaViewer(props: MediaViewerProps) {
+export function TauriMediaViewer(props: TauriMediaViewerProps) {
 	const [mediaUrl, setMediaUrl] = createSignal<string | null>(null);
 
 	createEffect(() => {
