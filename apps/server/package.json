@@ -106,6 +106,6 @@
     "vite": "^8.2.2",
     "vite-plugin-mkcert": "^2.1.0",
     "vite-plugin-solid": "^2.11.14",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.1"
   }
 }
