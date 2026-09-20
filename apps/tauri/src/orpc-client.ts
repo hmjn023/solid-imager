@@ -23,12 +23,19 @@ function rewriteRequestUrl(request: Request): Request {
 	return new Request(requestUrl, request);
 }
 
-const dynamicFetch = (
+const dynamicFetch = async (
 	request: Request,
 	init?: FetchInit,
 ): Promise<Response> => {
 	const rewrittenRequest = rewriteRequestUrl(request);
 	if (isDevelopmentProxy()) {
+		if (rewrittenRequest.body) {
+			// Chromium's HTTP/1 proxy rejects the ReadableStream body produced by
+			// Request cloning. Materialize it before forwarding so POST requests
+			// use a concrete body while preserving the caller's other init fields.
+			const body = await rewrittenRequest.arrayBuffer();
+			return fetch(rewrittenRequest, { ...init, body });
+		}
 		return fetch(rewrittenRequest, init);
 	}
 	return tauriFetch(rewrittenRequest, init);

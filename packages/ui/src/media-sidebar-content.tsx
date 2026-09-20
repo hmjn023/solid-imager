@@ -2,17 +2,12 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import type {
-	JobCompletedEvent,
-	JobFailedEvent,
-	JobProgressEvent,
-} from "@solid-imager/core/domain/sources/events";
-import type {
-	CcipVectorStatus,
-	StartCcipExtractionResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import type { Accessor, JSX } from "solid-js";
+import {
+	createQuery,
+	type QueryFunctionContext,
+	useQueryClient,
+} from "@tanstack/solid-query";
+import type { Accessor } from "solid-js";
 import { MediaSidebar } from "./media-sidebar";
 import {
 	charactersQueryKeys,
@@ -20,44 +15,23 @@ import {
 	projectsQueryKeys,
 } from "./query-options";
 
+type QueryOptions<TData> = {
+	queryKey: readonly unknown[];
+	queryFn: (context: QueryFunctionContext) => Promise<TData>;
+};
+type QueryOptionsFactory<TData> = () => QueryOptions<TData>;
+
 export type MediaSidebarContentProps = {
 	media: MediaDetails;
 	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
-	aiTaggingModal: (props: {
-		isOpen: boolean;
-		onClose: () => void;
-	}) => JSX.Element;
-
-	characterCropModal?: (props: {
-		isOpen: boolean;
-		onClose: () => void;
-	}) => JSX.Element;
-	oppaiOracleModal?: (props: {
-		isOpen: boolean;
-		onClose: () => void;
-	}) => JSX.Element;
-	getCcipVectorStatus?: () => Promise<CcipVectorStatus>;
-	startCcipExtraction?: (
-		force: boolean,
-	) => Promise<StartCcipExtractionResponse>;
-	useCcipJobEvents?: (
-		activeJobId: Accessor<string | null>,
-		handlers: {
-			handleJobProgress: (event: JobProgressEvent) => void;
-			handleJobCompleted: (event: JobCompletedEvent) => void;
-			handleJobFailed: (event: JobFailedEvent) => void;
-		},
-	) => void;
-	onFindSimilar?: () => void;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
-	projectsForMediaQueryOptions: (mediaSourceId: string, mediaId: string) => any;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
-	allProjectsQueryOptions: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
-	allIpsQueryOptions: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
-	allCharactersQueryOptions: () => any;
+	projectsForMediaQueryOptions: (
+		mediaSourceId: string,
+		mediaId: string,
+	) => QueryOptions<Project[]>;
+	allProjectsQueryOptions: QueryOptionsFactory<Project[]>;
+	allIpsQueryOptions: QueryOptionsFactory<Ip[]>;
+	allCharactersQueryOptions: QueryOptionsFactory<Character[]>;
 	addProjectToMedia: (
 		mediaSourceId: string,
 		mediaId: string,
@@ -101,19 +75,25 @@ export type MediaSidebarContentProps = {
 export function MediaSidebarContent(props: MediaSidebarContentProps) {
 	const queryClient = useQueryClient();
 
-	const projects = createQuery<Project[]>(() =>
-		props.projectsForMediaQueryOptions(
+	const projects = createQuery<Project[]>(() => {
+		const options = props.projectsForMediaQueryOptions(
 			props.media.mediaSourceId,
 			props.media.id,
-		),
-	);
-	const allProjects = createQuery<Project[]>(() =>
-		props.allProjectsQueryOptions(),
-	);
-	const allIps = createQuery<Ip[]>(() => props.allIpsQueryOptions());
-	const allCharacters = createQuery<Character[]>(() =>
-		props.allCharactersQueryOptions(),
-	);
+		);
+		return options;
+	});
+	const allProjects = createQuery<Project[]>(() => {
+		const options = props.allProjectsQueryOptions();
+		return options;
+	});
+	const allIps = createQuery<Ip[]>(() => {
+		const options = props.allIpsQueryOptions();
+		return options;
+	});
+	const allCharacters = createQuery<Character[]>(() => {
+		const options = props.allCharactersQueryOptions();
+		return options;
+	});
 
 	const invalidateProjectsForMedia = () =>
 		queryClient.invalidateQueries({
@@ -122,13 +102,6 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 
 	return (
 		<MediaSidebar
-			aiTaggingModal={props.aiTaggingModal}
-			characterCropModal={props.characterCropModal}
-			oppaiOracleModal={props.oppaiOracleModal}
-			getCcipVectorStatus={props.getCcipVectorStatus}
-			startCcipExtraction={props.startCcipExtraction}
-			useCcipJobEvents={props.useCcipJobEvents}
-			onFindSimilar={props.onFindSimilar}
 			allCharacters={allCharacters.data || []}
 			allIps={allIps.data || []}
 			allProjects={allProjects.data || []}
@@ -194,6 +167,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					projectId,
 				);
 				await invalidateProjectsForMedia();
+				props.onUpdate?.();
 			}}
 			onProjectCreate={async (name) => {
 				const project = await props.createProject({ name });
@@ -209,6 +183,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					projectId,
 				);
 				await invalidateProjectsForMedia();
+				props.onUpdate?.();
 			}}
 			onUpdate={props.onUpdate}
 			projects={projects.data || []}

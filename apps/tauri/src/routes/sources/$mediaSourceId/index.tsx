@@ -8,7 +8,7 @@ import {
 	mediaSourcesQueryOptions,
 	tagsQueryOptions,
 } from "~/queries";
-import { SourceMediaPage } from "./components/source-media-page";
+import { SourceMediaPage } from "./components/-source-media-page";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	validateSearch: searchHistoryQuerySchema,

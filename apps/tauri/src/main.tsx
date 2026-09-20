@@ -1,4 +1,4 @@
-import { AppShell } from "@solid-imager/ui/layouts/app-shell";
+import { WorkspaceSetupFrame } from "@solid-imager/ui/layouts/app-shell";
 import { BootstrapStatusScreen } from "@solid-imager/ui/router-status";
 import { RouterProvider } from "@tanstack/solid-router";
 import { createSignal, Match, onMount, Switch } from "solid-js";
@@ -47,14 +47,6 @@ function getStoredSettings(): ServerSettings | null {
 	}
 }
 
-function BootstrapNav() {
-	return (
-		<header class="border-border border-b bg-background px-4 py-3">
-			<span class="font-semibold">Solid Imager</span>
-		</header>
-	);
-}
-
 function App() {
 	const [state, setState] = createSignal<BootstrapState>({
 		status: "loading",
@@ -101,7 +93,7 @@ function App() {
 				<RouterProvider router={router} />
 			</Match>
 			<Match when={state().status === "error"}>
-				<AppShell nav={<BootstrapNav />}>
+				<WorkspaceSetupFrame>
 					<div class="grid gap-6">
 						<BootstrapStatusScreen
 							error={bootstrapError()}
@@ -122,10 +114,10 @@ function App() {
 							)}
 						</Match>
 					</div>
-				</AppShell>
+				</WorkspaceSetupFrame>
 			</Match>
 			<Match when={state().status === "needs-server"}>
-				<AppShell nav={<BootstrapNav />}>
+				<WorkspaceSetupFrame>
 					<Match when={getSetupSettings(state())}>
 						{(settings) => (
 							<ServerSettingsScreen
@@ -138,12 +130,12 @@ function App() {
 							/>
 						)}
 					</Match>
-				</AppShell>
+				</WorkspaceSetupFrame>
 			</Match>
 			<Match when={state().status === "loading"}>
-				<AppShell nav={<BootstrapNav />}>
+				<WorkspaceSetupFrame>
 					<BootstrapStatusScreen onRetry={initialize} />
-				</AppShell>
+				</WorkspaceSetupFrame>
 			</Match>
 		</Switch>
 	);

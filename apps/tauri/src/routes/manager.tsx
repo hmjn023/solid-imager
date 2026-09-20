@@ -2,7 +2,10 @@ import {
 	prefetchManagerPageQueries,
 	useManagerPage,
 } from "@solid-imager/ui/hooks/use-manager-page";
-import { TauriManagerScreen } from "@solid-imager/ui/screens/tauri-manager-screen";
+import { jobsQueryKeys } from "@solid-imager/ui/query-options";
+import type { ManagerTransferFormat } from "@solid-imager/ui/screens/manager/types";
+import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
+import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
@@ -31,6 +34,10 @@ import {
 	deleteProject,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
+import {
+	enqueueSourceExport,
+	enqueueSourceImport,
+} from "~/infrastructure/api-clients/sources-api";
 import { startThumbnailWarmup } from "~/infrastructure/api-clients/thumbnails-api";
 import {
 	allCharactersQueryOptions,
@@ -65,6 +72,50 @@ const managerActions = {
 	startThumbnailWarmup,
 };
 
+function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
+	return {
+		exportSource: async (input: {
+			format: ManagerTransferFormat;
+			includeImages: boolean;
+			sourceId: string;
+		}) => {
+			try {
+				const mode = input.format === "ndjson" ? "json" : "zip";
+				const job = await enqueueSourceExport(
+					input.sourceId,
+					mode,
+					input.format === "tar" && input.includeImages,
+				);
+				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+				toast.success(
+					`Export queued (${job.id.slice(0, 8)}). Check Jobs to download it.`,
+				);
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Export failed");
+				throw error;
+			}
+		},
+		importSource: async (input: {
+			file: File;
+			format: ManagerTransferFormat;
+			sourceId: string;
+		}) => {
+			try {
+				const mode = input.format === "ndjson" ? "json" : "zip";
+				const job = await enqueueSourceImport(input.sourceId, mode, input.file);
+				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+				toast.success(
+					`Restore queued (${job.id.slice(0, 8)}). Track it in Jobs.`,
+				);
+				return { jobId: job.id };
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Restore failed");
+				throw error;
+			}
+		},
+	};
+}
+
 export const Route = createFileRoute("/manager")({
 	loader: ({ context }) => {
 		prefetchManagerPageQueries(context.queryClient, managerQueryOptions);
@@ -82,5 +133,10 @@ function ManagerPage() {
 		useBatchJobEvents,
 	});
 
-	return <TauriManagerScreen manager={manager} />;
+	return (
+		<ManagerScreen
+			manager={manager}
+			transferActions={createTransferActions(queryClient)}
+		/>
+	);
 }

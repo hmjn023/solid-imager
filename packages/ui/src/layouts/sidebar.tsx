@@ -5,6 +5,7 @@ import { Button } from "../button";
 import { ShortcutKbd } from "../shortcuts/index";
 import {
 	CircleHelp,
+	Database,
 	FileText,
 	Image,
 	PanelLeftClose,
@@ -16,6 +17,7 @@ import { SourceList } from "./source-list";
 
 export type SidebarProps = {
 	apiDocsHref?: string;
+	serverConnectionsHref?: string;
 	expanded: boolean;
 	mediaSources: SafeMediaSource[];
 	onAddSource: () => void;
@@ -147,6 +149,17 @@ export function Sidebar(props: SidebarProps) {
 			</nav>
 
 			<div class="mt-auto border-[var(--workspace-border)] border-t pt-2">
+				<Show when={props.serverConnectionsHref}>
+					{(href) => (
+						<NavigationItem
+							expanded={props.expanded}
+							icon={Database}
+							label="Server connections"
+							onClick={props.onNavigate}
+							to={href()}
+						/>
+					)}
+				</Show>
 				<NavigationItem
 					expanded={props.expanded}
 					icon={CircleHelp}

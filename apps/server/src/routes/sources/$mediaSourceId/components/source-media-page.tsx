@@ -1,12 +1,8 @@
-import { SourceMediaScreen } from "@solid-imager/ui/screens/source-media-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { useLocation, useNavigate } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
-import {
-	MEDIA_RETURN_STORAGE_KEY,
-	saveMediaContext,
-} from "~/components/media/media-context";
+import { saveMediaContext } from "~/components/media/media-context";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { UploadMediaModal } from "~/components/upload-media-modal";
@@ -18,22 +14,18 @@ import {
 
 const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
-function rememberReturnPath(href: string): void {
-	try {
-		sessionStorage.setItem(MEDIA_RETURN_STORAGE_KEY, href);
-	} catch {
-		// Session storage is optional; media detail navigation must continue.
-	}
-}
-
 export function SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 	const location = useLocation();
 	const navigate = useNavigate();
+	const currentReturnPath = () => {
+		const current = location();
+		return `${current.pathname}${current.searchStr}${current.hash}`;
+	};
 
 	const onOpenMediaDetail: SourceMediaPageControllerProps["onOpenMediaDetail"] =
 		(media, context) => {
-			rememberReturnPath(location().href);
-			saveMediaContext(location().href, context ?? [media]);
+			const returnPath = currentReturnPath();
+			saveMediaContext(returnPath, context ?? [media]);
 			void navigate({
 				params: {
 					mediaId: media.id,
@@ -44,13 +36,13 @@ export function SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 		};
 	const onPrepareMediaDetail: SourceMediaPageControllerProps["onPrepareMediaDetail"] =
 		(media, context) => {
-			rememberReturnPath(location().href);
-			saveMediaContext(location().href, context ?? [media]);
+			const returnPath = currentReturnPath();
+			saveMediaContext(returnPath, context ?? [media]);
 		};
 	const onFindSimilar: SourceMediaPageControllerProps["onFindSimilar"] = (
 		media,
 	) => {
-		activateSimilaritySearch(media.id, { surface: "workspace" });
+		activateSimilaritySearch(media.id);
 		void navigate({ to: "/search" });
 	};
 
@@ -60,7 +52,6 @@ export function SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 			onFindSimilar={onFindSimilar}
 			onOpenMediaDetail={onOpenMediaDetail}
 			onPrepareMediaDetail={onPrepareMediaDetail}
-			persistenceSurface="workspace"
 			searchHistoryClient={SearchHistoryClient}
 			bulkActionsClass="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] px-3 py-3 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
 			renderItem={(media, options, onToggleSelect) => (
@@ -94,7 +85,6 @@ export function SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 				`[data-media-scroll="${props.mediaSourceId?.() ?? "source-media"}"]`
 			}
 			ssrGuard
-			screenComponent={SourceMediaScreen}
 			uploadModalComponent={UploadMediaModal}
 		/>
 	);

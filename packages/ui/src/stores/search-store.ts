@@ -9,26 +9,18 @@ import {
 	type SearchState,
 } from "@solid-imager/core/domain/search/schema";
 import { createStore } from "solid-js/store";
+import { getSearchStateStorageKey } from "../ui-storage";
 
 export const [searchState, setSearchState] = createStore<SearchState>({
 	...defaultState,
 });
 
-export type SearchPersistenceSurface = "tauri" | "workspace";
-
-// Keep these historical keys so existing Tauri and workspace sessions survive
-// the presentation naming cleanup.
-const TAURI_SEARCH_STATE_STORAGE_KEY = "current-all";
-const WORKSPACE_SEARCH_STATE_STORAGE_KEY = "v2:current-all";
-
-export type SearchStorePersistenceOptions = {
-	surface?: SearchPersistenceSurface;
-};
-
-function getSearchStateStorageKey(surface: SearchPersistenceSurface): string {
-	return surface === "workspace"
-		? WORKSPACE_SEARCH_STATE_STORAGE_KEY
-		: TAURI_SEARCH_STATE_STORAGE_KEY;
+function getSessionStorage(): Storage | null {
+	try {
+		return typeof sessionStorage === "undefined" ? null : sessionStorage;
+	} catch {
+		return null;
+	}
 }
 
 export const resetSearchState = () => {
@@ -56,19 +48,17 @@ export const setSearchMode = (mode: "simple" | "pro") => {
 	setSearchState(nextState);
 };
 
-function persistSearchState(
-	state: SearchState,
-	surface: SearchPersistenceSurface,
-): void {
-	if (typeof sessionStorage === "undefined") return;
+function persistSearchState(state: SearchState): void {
+	const storage = getSessionStorage();
+	if (!storage) return;
 
 	const condition = getSearchConditionFromState(state) ?? {
 		type: "group" as const,
 		operator: "and" as const,
 		children: [],
 	};
-	const storageKey = getSearchStateStorageKey(surface);
-	sessionStorage.setItem(
+	const storageKey = getSearchStateStorageKey("current-all");
+	storage.setItem(
 		storageKey,
 		JSON.stringify({
 			value: condition,
@@ -82,10 +72,7 @@ function persistSearchState(
 	);
 }
 
-export const activateSimilaritySearch = (
-	mediaId: string,
-	options: SearchStorePersistenceOptions = {},
-) => {
+export const activateSimilaritySearch = (mediaId: string) => {
 	const nextState: SearchState = {
 		...searchState,
 		similarityAnchorMediaId: mediaId,
@@ -96,15 +83,13 @@ export const activateSimilaritySearch = (
 	};
 	setSearchState(nextState);
 	try {
-		persistSearchState(nextState, options.surface ?? "tauri");
+		persistSearchState(nextState);
 	} catch {
 		// Persistence errors must not disrupt opening similarity ordering.
 	}
 };
 
-export const clearSimilaritySearch = (
-	options: SearchStorePersistenceOptions = {},
-) => {
+export const clearSimilaritySearch = () => {
 	const nextState: SearchState = {
 		...searchState,
 		similarityAnchorMediaId: null,
@@ -113,7 +98,7 @@ export const clearSimilaritySearch = (
 	};
 	setSearchState(nextState);
 	try {
-		persistSearchState(nextState, options.surface ?? "tauri");
+		persistSearchState(nextState);
 	} catch {
 		// Persistence errors must not disrupt clearing similarity ordering.
 	}

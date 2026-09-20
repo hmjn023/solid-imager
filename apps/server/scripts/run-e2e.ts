@@ -51,19 +51,23 @@ async function createEnvironment(
       value === undefined ? [] : [[key, value]],
     ),
   );
-  const [port, hmrPort, galleryPort] = await Promise.all([
-    findAvailablePort(),
-    findAvailablePort(),
-    findAvailablePort(),
-  ]);
+	const [port, hmrPort, galleryPort, tauriPort, tauriHmrPort] = await Promise.all([
+		findAvailablePort(),
+		findAvailablePort(),
+		findAvailablePort(),
+		findAvailablePort(),
+		findAvailablePort(),
+	]);
   return {
     ...inherited,
     E2E_MODE: mode,
     E2E_PORT: port,
-    E2E_HMR_PORT: hmrPort,
-    E2E_GALLERY_PORT: galleryPort,
-    E2E_RUNTIME_DIR: runtimeDir,
-  };
+		E2E_HMR_PORT: hmrPort,
+		E2E_GALLERY_PORT: galleryPort,
+		E2E_TAURI_PORT: tauriPort,
+		E2E_TAURI_HMR_PORT: tauriHmrPort,
+		E2E_RUNTIME_DIR: runtimeDir,
+	};
 }
 
 async function runMode(mode: E2eMode): Promise<void> {

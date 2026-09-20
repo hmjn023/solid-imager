@@ -1,39 +1,41 @@
 # solid-imager detail 02 - server tests
 
+## Diagram 1
+
 ```mermaid
 graph LR
-  N0["api/categories/category-id-test.ts"]
+  N0["apps/server/src/tests/api/categories/category-id-test.ts"]
   N1["node_modules/vitest/dist/index.js"]
   N2["npm:~/infrastructure/db/schema"]
-  N3["api/categories/index.test.ts"]
-  N4["api/characters/character-id-test.ts"]
-  N5["api/ips/ip-id-test.ts"]
-  N6["api/media/add-media.test.ts"]
+  N3["apps/server/src/tests/api/categories/index.test.ts"]
+  N4["apps/server/src/tests/api/characters/character-id-test.ts"]
+  N5["apps/server/src/tests/api/ips/ip-id-test.ts"]
+  N6["apps/server/src/tests/api/media/add-media.test.ts"]
   N7["npm:@solid-imager/core/domain/media/schemas"]
   N8["node_modules/zod/index.d.cts"]
-  N9["api/media/delete-media.test.ts"]
+  N9["apps/server/src/tests/api/media/delete-media.test.ts"]
   N10["npm:@solid-imager/core/domain/sources/schemas"]
-  N11["api/media/get-media.test.ts"]
-  N12["api/media/list-media.test.ts"]
-  N13["api/tags/index.test.ts"]
-  N14["api/tags/tag-id-test.ts"]
-  N15["e2e/app-nav.responsive.spec.ts"]
+  N11["apps/server/src/tests/api/media/get-media.test.ts"]
+  N12["apps/server/src/tests/api/media/list-media.test.ts"]
+  N13["apps/server/src/tests/api/tags/index.test.ts"]
+  N14["apps/server/src/tests/api/tags/tag-id-test.ts"]
+  N15["apps/server/src/tests/e2e/app-nav.responsive.spec.ts"]
   N16["node_modules/@playwright/test/index.d.ts"]
-  N17["e2e/support/test.ts"]
-  N18["e2e/loading-recovery.spec.ts"]
-  N19["e2e/media-detail-manager-config.responsive.spec.ts"]
-  N20["e2e/realtime-preservation.spec.ts"]
+  N17["apps/server/src/tests/e2e/support/test.ts"]
+  N18["apps/server/src/tests/e2e/loading-recovery.spec.ts"]
+  N19["apps/server/src/tests/e2e/media-detail-manager-config.responsive.spec.ts"]
+  N20["apps/server/src/tests/e2e/realtime-preservation.spec.ts"]
   N21["npm:node:crypto"]
   N22["npm:node:fs/promises"]
   N23["npm:node:path"]
-  N24["e2e/route-reload.spec.ts"]
-  N25["e2e/search-pro-dialog.responsive.spec.ts"]
-  N26["e2e/search-realtime-preservation.responsive.spec.ts"]
-  N27["e2e/search.responsive.spec.ts"]
-  N28["e2e/support/fixture.ts"]
-  N29["e2e/sources-source-media.responsive.spec.ts"]
-  N30["e2e/ui-components.gallery.spec.ts"]
-  N31["e2e/ui-gallery/index.html"]
+  N24["apps/server/src/tests/e2e/route-reload.spec.ts"]
+  N25["apps/server/src/tests/e2e/search-pro-dialog.responsive.spec.ts"]
+  N26["apps/server/src/tests/e2e/search-realtime-preservation.responsive.spec.ts"]
+  N27["apps/server/src/tests/e2e/search.responsive.spec.ts"]
+  N28["apps/server/src/tests/e2e/support/fixture.ts"]
+  N29["apps/server/src/tests/e2e/sources-source-media.responsive.spec.ts"]
+  N30["apps/server/src/tests/e2e/ui-components.gallery.spec.ts"]
+  N31["apps/server/src/tests/e2e/ui-gallery/index.html"]
   N32["url:ja"]
   N33["url:UTF-8"]
   N34["url:viewport"]
@@ -41,141 +43,147 @@ graph LR
   N36["url:root"]
   N37["url:module"]
   N38["url:src.tsx"]
-  N39["e2e/ui-gallery/src.tsx"]
-  N40["e2e/ui-gallery/vite.config.ts"]
+  N39["apps/server/src/tests/e2e/ui-gallery/src.tsx"]
+  N40["apps/server/src/tests/e2e/ui-gallery/vite.config.ts"]
   N41["npm:node:url"]
   N42["node_modules/@tailwindcss/vite/dist/index.d.mts"]
   N43["node_modules/sharp/dist/index.cjs"]
   N44["node_modules/vite/dist/node/index.js"]
   N45["node_modules/vite-plugin-solid/dist/cjs/index.cjs"]
-  N46["e2e/interface-interactions.responsive.spec.ts"]
-  N47["e2e/routes.responsive.spec.ts"]
-  N48["e2e/scroll-restoration.spec.ts"]
-  N49["integration/backup/backup-service.test.ts"]
-  N50["node_modules/drizzle-orm/index.d.ts"]
-  N51["npm:~/infrastructure/db"]
-  N52["integration/backup/performance.test.ts"]
-  N53["integration/backup/zip-backup.test.ts"]
-  N54["npm:node:fs"]
-  N55["npm:node:os"]
-  N56["npm:node:stream/promises"]
-  N57["integration/db/pglite-parity.test.ts"]
-  N58["npm:~/config/database"]
-  N59["integration/media/access-denied-integration.test.ts"]
-  N60["npm:~/infrastructure/ai/rust-ai-client"]
-  N61["npm:~/infrastructure/processing/image-processor"]
-  N62["npm:~/infrastructure/repositories/author-repository"]
-  N63["npm:~/infrastructure/repositories/character-repository"]
-  N64["npm:~/infrastructure/repositories/ip-repository"]
-  N65["npm:~/infrastructure/repositories/media-repository"]
-  N66["npm:~/infrastructure/repositories/project-repository"]
-  N67["npm:~/infrastructure/repositories/source-repository"]
-  N68["npm:~/infrastructure/repositories/tag-repository"]
-  N69["npm:~/infrastructure/service-registry"]
-  N70["npm:~/infrastructure/services/media-service"]
-  N71["npm:~/infrastructure/storage/server-media-storage"]
-  N72["integration/media/add-media-integration.test.ts"]
-  N73["npm:~/infrastructure/db/index"]
-  N74["integration/media/copy-media-integration.test.ts"]
-  N75["integration/media/delete-media-integration.test.ts"]
-  N76["integration/media/get-media-details-integration.test.ts"]
-  N77["integration/media/get-media-integration.test.ts"]
-  N78["integration/media/list-media-integration.test.ts"]
-  N79["integration/media/media-type-handling.test.ts"]
-  N80["integration/media/register-media-integration.test.ts"]
-  N81["integration/media/update-media-integration.test.ts"]
-  N82["integration/queries/search.test.ts"]
-  N83["integration/repository/author-dedupe.test.ts"]
-  N84["node_modules/drizzle-orm/pglite/migrator.d.ts"]
-  N85["integration/repository/character-repository.test.ts"]
-  N86["integration/security/backup-security.test.ts"]
-  N87["npm:~/infrastructure/services/backup-service"]
-  N88["integration/security/path-traversal.test.ts"]
-  N89["integration/ai/postgres-ccip-vector-store.test.ts"]
-  N90["npm:@solid-imager/application/ports/ccip-vector-store"]
-  N91["monorepo-migration.test.ts"]
-  N92["setup-integration.ts"]
-  N93["node_modules/dotenv/lib/main.d.ts"]
-  N94["setup-unit.ts"]
-  N95["setup.ts"]
-  N96["unit/application/registry.test.ts"]
-  N97["unit/application/services/backup-service.test.ts"]
-  N98["unit/application/services/character-service.test.ts"]
-  N99["unit/application/services/directory-sync-service.test.ts"]
-  N100["unit/application/services/media-service.test.ts"]
-  N101["npm:@solid-imager/application/services/media-query-service"]
-  N102["npm:@solid-imager/application/services/media-transfer-service"]
-  N103["npm:@solid-imager/application/services/media-upload-service"]
-  N104["apps/server/node_modules/@solid-imager/core/src/index.ts"]
-  N105["npm:@solid-imager/core/domain/repositories/author-repository"]
-  N106["npm:@solid-imager/core/domain/repositories/character-repository"]
-  N107["npm:@solid-imager/core/domain/repositories/ip-repository"]
-  N108["npm:@solid-imager/core/domain/repositories/job-repository"]
-  N109["npm:@solid-imager/core/domain/repositories/media-repository"]
-  N110["npm:@solid-imager/core/domain/repositories/project-repository"]
-  N111["npm:@solid-imager/core/domain/repositories/source-repository"]
-  N112["npm:@solid-imager/core/domain/repositories/tag-repository"]
-  N113["npm:@solid-imager/core/domain/services/image-processor"]
-  N114["npm:~/infrastructure/db/transaction-manager"]
-  N115["unit/application/services/ccip-vector-service.test.ts"]
-  N116["npm:@solid-imager/application/services/ccip-vector-service"]
-  N117["unit/application/services/maintenance-service.test.ts"]
-  N118["unit/application/services/media-processing-service.test.ts"]
-  N119["npm:~/infrastructure/services/media-processing-service"]
-  N120["unit/application/services/tagging-service.test.ts"]
-  N121["npm:@solid-imager/application/services/tagging-service"]
-  N122["npm:@solid-imager/core/domain/interfaces/ai-client"]
-  N123["unit/application/services/job-dispatch-service.test.ts"]
-  N124["unit/application/services/job-transfer-storage.test.ts"]
-  N125["unit/application/services/search-snapshot-service.test.ts"]
-  N126["npm:@solid-imager/application/services/search-snapshot-service"]
-  N127["npm:@solid-imager/core/domain/errors"]
-  N128["npm:@solid-imager/core/domain/repositories/search-snapshot-repository"]
-  N129["unit/config/database.test.ts"]
-  N130["unit/db/connection.test.ts"]
-  N131["unit/domain/media/schemas.test.ts"]
-  N132["unit/domain/media/utils/hash-utils.test.ts"]
-  N133["apps/server/node_modules/@solid-imager/application/src/index.ts"]
-  N134["unit/domain/media/utils/metadata-utils.test.ts"]
-  N135["npm:@solid-imager/core/domain/media/utils/metadata-utils"]
-  N136["unit/domain/search-mode-transition.test.ts"]
-  N137["npm:@solid-imager/core/domain/search/logic"]
-  N138["unit/infrastructure/api-clients/ai-api.test.ts"]
-  N139["npm:~/infrastructure/api-clients/ai-api"]
-  N140["unit/infrastructure/api-clients/downloads-api.test.ts"]
-  N141["npm:~/infrastructure/api-clients/downloads-api"]
-  N142["unit/infrastructure/api-clients/sources-api-ext.test.ts"]
-  N143["unit/infrastructure/file-system/node-file-system.test.ts"]
-  N144["npm:~/infrastructure/file-system/node-file-system"]
-  N145["unit/infrastructure/jobs/download-jobs.test.ts"]
-  N146["npm:~/infrastructure/jobs/download-jobs"]
-  N147["unit/infrastructure/jobs/download-rate-limiter.test.ts"]
-  N148["unit/infrastructure/jobs/job-worker.test.ts"]
-  N149["npm:@solid-imager/core/domain/config/config-schema"]
-  N150["npm:~/domain/repositories/job-repository"]
-  N151["npm:~/infrastructure/jobs/job-worker"]
-  N152["unit/infrastructure/jobs/ccip-jobs.test.ts"]
-  N153["unit/infrastructure/jobs/tagging-jobs.test.ts"]
-  N154["unit/infrastructure/storage/server-media-storage.test.ts"]
-  N155["node_modules/fluent-ffmpeg/index.js"]
-  N156["npm:~/infrastructure/processing/bun-image"]
-  N157["unit/infrastructure/storage/server-media-storage-formats.test.ts"]
-  N158["unit/infrastructure/events/realtime-event-bus.test.ts"]
-  N159["npm:@solid-imager/core/domain/sources/events"]
-  N160["npm:~/infrastructure/events/realtime-event-bus"]
-  N161["unit/infrastructure/api/rpc-response-headers.test.ts"]
-  N162["node_modules/@orpc/server/dist/index.d.mts"]
-  N163["npm:@orpc/server/fetch"]
-  N164["npm:@orpc/server/plugins"]
-  N165["npm:~/infrastructure/api/rpc-response-headers"]
-  N166["unit/infrastructure/ai/inference-options.test.ts"]
-  N167["npm:~/infrastructure/ai/inference-options"]
-  N168["unit/infrastructure/processing/image-processor.test.ts"]
-  N169["unit/media/copy-media-job.test.ts"]
-  N170["npm:~/infrastructure/jobs/thumbnails"]
-  N171["unit/security/file-validation.test.ts"]
-  N172["unit/server-config-service.test.ts"]
-  N173["npm:~/infrastructure/services/server-config-service"]
+  N46["apps/server/src/tests/e2e/interface-interactions.responsive.spec.ts"]
+  N47["apps/server/src/tests/e2e/tauri-app/adapters/persistence.ts"]
+  N48["node_modules/@tanstack/db/dist/cjs/index.cjs"]
+  N49["apps/server/src/tests/e2e/tauri-app/vite.config.ts"]
+  N50["npm:node:fs"]
+  N51["npm:@tanstack/router-plugin/vite"]
+  N52["apps/server/src/tests/e2e/tauri-app/serve-production.ts"]
+  N53["apps/server/src/tests/e2e/routes.responsive.spec.ts"]
+  N54["apps/server/src/tests/e2e/scroll-restoration.spec.ts"]
+  N55["apps/server/src/tests/e2e/tauri-migration.spec.ts"]
+  N56["npm:node:os"]
+  N57["apps/server/src/tests/integration/backup/backup-service.test.ts"]
+  N58["node_modules/drizzle-orm/index.d.ts"]
+  N59["npm:~/infrastructure/db"]
+  N60["apps/server/src/tests/integration/backup/performance.test.ts"]
+  N61["apps/server/src/tests/integration/backup/zip-backup.test.ts"]
+  N62["npm:node:stream/promises"]
+  N63["apps/server/src/tests/integration/db/pglite-parity.test.ts"]
+  N64["npm:~/config/database"]
+  N65["apps/server/src/tests/integration/media/access-denied-integration.test.ts"]
+  N66["npm:~/infrastructure/ai/rust-ai-client"]
+  N67["npm:~/infrastructure/processing/image-processor"]
+  N68["npm:~/infrastructure/repositories/author-repository"]
+  N69["npm:~/infrastructure/repositories/character-repository"]
+  N70["npm:~/infrastructure/repositories/ip-repository"]
+  N71["npm:~/infrastructure/repositories/media-repository"]
+  N72["npm:~/infrastructure/repositories/project-repository"]
+  N73["npm:~/infrastructure/repositories/source-repository"]
+  N74["npm:~/infrastructure/repositories/tag-repository"]
+  N75["npm:~/infrastructure/service-registry"]
+  N76["npm:~/infrastructure/services/media-service"]
+  N77["npm:~/infrastructure/storage/server-media-storage"]
+  N78["apps/server/src/tests/integration/media/add-media-integration.test.ts"]
+  N79["npm:~/infrastructure/db/index"]
+  N80["apps/server/src/tests/integration/media/copy-media-integration.test.ts"]
+  N81["apps/server/src/tests/integration/media/delete-media-integration.test.ts"]
+  N82["apps/server/src/tests/integration/media/get-media-details-integration.test.ts"]
+  N83["apps/server/src/tests/integration/media/get-media-integration.test.ts"]
+  N84["apps/server/src/tests/integration/media/list-media-integration.test.ts"]
+  N85["apps/server/src/tests/integration/media/media-type-handling.test.ts"]
+  N86["apps/server/src/tests/integration/media/register-media-integration.test.ts"]
+  N87["apps/server/src/tests/integration/media/update-media-integration.test.ts"]
+  N88["apps/server/src/tests/integration/queries/search.test.ts"]
+  N89["apps/server/src/tests/integration/repository/author-dedupe.test.ts"]
+  N90["node_modules/drizzle-orm/pglite/migrator.d.ts"]
+  N91["apps/server/src/tests/integration/repository/character-repository.test.ts"]
+  N92["apps/server/src/tests/integration/security/backup-security.test.ts"]
+  N93["npm:~/infrastructure/services/backup-service"]
+  N94["apps/server/src/tests/integration/security/path-traversal.test.ts"]
+  N95["apps/server/src/tests/integration/ai/postgres-ccip-vector-store.test.ts"]
+  N96["npm:@solid-imager/application/ports/ccip-vector-store"]
+  N97["apps/server/src/tests/monorepo-migration.test.ts"]
+  N98["apps/server/src/tests/setup-integration.ts"]
+  N99["node_modules/dotenv/lib/main.d.ts"]
+  N100["apps/server/src/tests/setup-unit.ts"]
+  N101["apps/server/src/tests/setup.ts"]
+  N102["apps/server/src/tests/unit/application/registry.test.ts"]
+  N103["apps/server/src/tests/unit/application/services/backup-service.test.ts"]
+  N104["apps/server/src/tests/unit/application/services/character-service.test.ts"]
+  N105["apps/server/src/tests/unit/application/services/directory-sync-service.test.ts"]
+  N106["apps/server/src/tests/unit/application/services/media-service.test.ts"]
+  N107["npm:@solid-imager/application/services/media-query-service"]
+  N108["npm:@solid-imager/application/services/media-transfer-service"]
+  N109["npm:@solid-imager/application/services/media-upload-service"]
+  N110["apps/server/node_modules/@solid-imager/core/src/index.ts"]
+  N111["npm:@solid-imager/core/domain/repositories/author-repository"]
+  N112["npm:@solid-imager/core/domain/repositories/character-repository"]
+  N113["npm:@solid-imager/core/domain/repositories/ip-repository"]
+  N114["npm:@solid-imager/core/domain/repositories/job-repository"]
+  N115["npm:@solid-imager/core/domain/repositories/media-repository"]
+  N116["npm:@solid-imager/core/domain/repositories/project-repository"]
+  N117["npm:@solid-imager/core/domain/repositories/source-repository"]
+  N118["npm:@solid-imager/core/domain/repositories/tag-repository"]
+  N119["npm:@solid-imager/core/domain/services/image-processor"]
+  N120["npm:~/infrastructure/db/transaction-manager"]
+  N121["apps/server/src/tests/unit/application/services/ccip-vector-service.test.ts"]
+  N122["npm:@solid-imager/application/services/ccip-vector-service"]
+  N123["apps/server/src/tests/unit/application/services/maintenance-service.test.ts"]
+  N124["apps/server/src/tests/unit/application/services/media-processing-service.test.ts"]
+  N125["npm:~/infrastructure/services/media-processing-service"]
+  N126["apps/server/src/tests/unit/application/services/tagging-service.test.ts"]
+  N127["npm:@solid-imager/application/services/tagging-service"]
+  N128["npm:@solid-imager/core/domain/interfaces/ai-client"]
+  N129["apps/server/src/tests/unit/application/services/job-dispatch-service.test.ts"]
+  N130["apps/server/src/tests/unit/application/services/job-transfer-storage.test.ts"]
+  N131["apps/server/src/tests/unit/application/services/search-snapshot-service.test.ts"]
+  N132["npm:@solid-imager/application/services/search-snapshot-service"]
+  N133["npm:@solid-imager/core/domain/errors"]
+  N134["npm:@solid-imager/core/domain/repositories/search-snapshot-repository"]
+  N135["apps/server/src/tests/unit/config/database.test.ts"]
+  N136["apps/server/src/tests/unit/db/connection.test.ts"]
+  N137["apps/server/src/tests/unit/domain/media/schemas.test.ts"]
+  N138["apps/server/src/tests/unit/domain/media/utils/hash-utils.test.ts"]
+  N139["apps/server/node_modules/@solid-imager/application/src/index.ts"]
+  N140["apps/server/src/tests/unit/domain/media/utils/metadata-utils.test.ts"]
+  N141["npm:@solid-imager/core/domain/media/utils/metadata-utils"]
+  N142["apps/server/src/tests/unit/domain/search-mode-transition.test.ts"]
+  N143["npm:@solid-imager/core/domain/search/logic"]
+  N144["apps/server/src/tests/unit/infrastructure/api-clients/ai-api.test.ts"]
+  N145["npm:~/infrastructure/api-clients/ai-api"]
+  N146["apps/server/src/tests/unit/infrastructure/api-clients/downloads-api.test.ts"]
+  N147["npm:~/infrastructure/api-clients/downloads-api"]
+  N148["apps/server/src/tests/unit/infrastructure/api-clients/sources-api-ext.test.ts"]
+  N149["apps/server/src/tests/unit/infrastructure/file-system/node-file-system.test.ts"]
+  N150["npm:~/infrastructure/file-system/node-file-system"]
+  N151["apps/server/src/tests/unit/infrastructure/jobs/download-jobs.test.ts"]
+  N152["npm:~/infrastructure/jobs/download-jobs"]
+  N153["apps/server/src/tests/unit/infrastructure/jobs/download-rate-limiter.test.ts"]
+  N154["apps/server/src/tests/unit/infrastructure/jobs/job-worker.test.ts"]
+  N155["npm:@solid-imager/core/domain/config/config-schema"]
+  N156["npm:~/domain/repositories/job-repository"]
+  N157["npm:~/infrastructure/jobs/job-worker"]
+  N158["apps/server/src/tests/unit/infrastructure/jobs/ccip-jobs.test.ts"]
+  N159["apps/server/src/tests/unit/infrastructure/jobs/tagging-jobs.test.ts"]
+  N160["apps/server/src/tests/unit/infrastructure/storage/server-media-storage.test.ts"]
+  N161["node_modules/fluent-ffmpeg/index.js"]
+  N162["npm:~/infrastructure/processing/bun-image"]
+  N163["apps/server/src/tests/unit/infrastructure/storage/server-media-storage-formats.test.ts"]
+  N164["apps/server/src/tests/unit/infrastructure/events/realtime-event-bus.test.ts"]
+  N165["npm:@solid-imager/core/domain/sources/events"]
+  N166["npm:~/infrastructure/events/realtime-event-bus"]
+  N167["apps/server/src/tests/unit/infrastructure/api/rpc-response-headers.test.ts"]
+  N168["node_modules/@orpc/server/dist/index.d.mts"]
+  N169["npm:@orpc/server/fetch"]
+  N170["npm:@orpc/server/plugins"]
+  N171["npm:~/infrastructure/api/rpc-response-headers"]
+  N172["apps/server/src/tests/unit/infrastructure/ai/inference-options.test.ts"]
+  N173["npm:~/infrastructure/ai/inference-options"]
+  N174["apps/server/src/tests/unit/infrastructure/processing/image-processor.test.ts"]
+  N175["apps/server/src/tests/unit/media/copy-media-job.test.ts"]
+  N176["npm:~/infrastructure/jobs/thumbnails"]
+  N177["apps/server/src/tests/unit/security/file-validation.test.ts"]
+  N178["apps/server/src/tests/unit/server-config-service.test.ts"]
+  N179["npm:~/infrastructure/services/server-config-service"]
   N0 --> N1
   N0 --> N2
   N3 --> N1
@@ -241,286 +249,300 @@ graph LR
   N40 --> N44
   N40 --> N45
   N46 --> N16
-  N47 --> N16
-  N48 --> N16
-  N48 --> N28
-  N48 --> N17
-  N49 --> N22
+  N47 --> N48
   N49 --> N50
-  N49 --> N1
+  N49 --> N23
+  N49 --> N41
+  N49 --> N42
   N49 --> N51
-  N52 --> N50
-  N52 --> N1
-  N52 --> N51
-  N53 --> N54
-  N53 --> N22
-  N53 --> N55
-  N53 --> N23
-  N53 --> N56
-  N53 --> N50
-  N53 --> N1
-  N53 --> N51
-  N57 --> N54
-  N57 --> N23
-  N57 --> N1
+  N49 --> N44
+  N49 --> N45
+  N52 --> N23
+  N52 --> N41
+  N53 --> N16
+  N54 --> N16
+  N54 --> N28
+  N54 --> N17
+  N55 --> N22
+  N55 --> N56
+  N55 --> N23
+  N55 --> N16
+  N57 --> N22
   N57 --> N58
-  N59 --> N1
-  N59 --> N60
-  N59 --> N61
-  N59 --> N62
-  N59 --> N63
-  N59 --> N64
-  N59 --> N65
-  N59 --> N66
-  N59 --> N67
-  N59 --> N68
-  N59 --> N69
-  N59 --> N70
-  N59 --> N71
-  N72 --> N50
-  N72 --> N1
-  N72 --> N73
-  N72 --> N2
-  N72 --> N65
-  N74 --> N50
-  N74 --> N1
-  N74 --> N73
-  N75 --> N50
-  N75 --> N1
-  N75 --> N8
-  N75 --> N60
-  N75 --> N73
-  N75 --> N2
-  N75 --> N61
-  N75 --> N62
-  N75 --> N63
-  N75 --> N64
-  N75 --> N65
-  N75 --> N66
-  N75 --> N67
-  N75 --> N68
-  N75 --> N69
-  N75 --> N70
-  N75 --> N71
-  N76 --> N22
-  N76 --> N23
-  N77 --> N1
-  N77 --> N8
-  N77 --> N60
-  N77 --> N73
-  N77 --> N2
-  N77 --> N61
-  N77 --> N62
-  N77 --> N63
-  N77 --> N64
-  N77 --> N65
-  N77 --> N66
-  N77 --> N67
-  N77 --> N68
-  N77 --> N69
-  N77 --> N70
-  N77 --> N71
+  N57 --> N1
+  N57 --> N59
+  N60 --> N58
+  N60 --> N1
+  N60 --> N59
+  N61 --> N50
+  N61 --> N22
+  N61 --> N56
+  N61 --> N23
+  N61 --> N62
+  N61 --> N58
+  N61 --> N1
+  N61 --> N59
+  N63 --> N50
+  N63 --> N23
+  N63 --> N1
+  N63 --> N64
+  N65 --> N1
+  N65 --> N66
+  N65 --> N67
+  N65 --> N68
+  N65 --> N69
+  N65 --> N70
+  N65 --> N71
+  N65 --> N72
+  N65 --> N73
+  N65 --> N74
+  N65 --> N75
+  N65 --> N76
+  N65 --> N77
+  N78 --> N58
   N78 --> N1
-  N78 --> N8
-  N78 --> N60
-  N78 --> N73
+  N78 --> N79
   N78 --> N2
-  N78 --> N61
-  N78 --> N62
-  N78 --> N63
-  N78 --> N64
-  N78 --> N65
-  N78 --> N66
-  N78 --> N67
-  N78 --> N68
-  N78 --> N69
-  N78 --> N70
   N78 --> N71
-  N79 --> N22
-  N79 --> N23
-  N80 --> N22
-  N80 --> N23
+  N80 --> N58
   N80 --> N1
-  N80 --> N73
-  N81 --> N50
+  N80 --> N79
+  N81 --> N58
   N81 --> N1
   N81 --> N8
-  N81 --> N60
-  N81 --> N73
-  N81 --> N2
-  N81 --> N61
-  N81 --> N62
-  N81 --> N63
-  N81 --> N64
-  N81 --> N65
   N81 --> N66
+  N81 --> N79
+  N81 --> N2
   N81 --> N67
   N81 --> N68
   N81 --> N69
   N81 --> N70
   N81 --> N71
-  N82 --> N1
-  N82 --> N51
-  N83 --> N50
-  N83 --> N84
+  N81 --> N72
+  N81 --> N73
+  N81 --> N74
+  N81 --> N75
+  N81 --> N76
+  N81 --> N77
+  N82 --> N22
+  N82 --> N23
   N83 --> N1
-  N83 --> N51
+  N83 --> N8
+  N83 --> N66
+  N83 --> N79
   N83 --> N2
-  N83 --> N62
-  N85 --> N50
-  N85 --> N84
-  N85 --> N1
-  N85 --> N51
-  N85 --> N2
-  N85 --> N63
+  N83 --> N67
+  N83 --> N68
+  N83 --> N69
+  N83 --> N70
+  N83 --> N71
+  N83 --> N72
+  N83 --> N73
+  N83 --> N74
+  N83 --> N75
+  N83 --> N76
+  N83 --> N77
+  N84 --> N1
+  N84 --> N8
+  N84 --> N66
+  N84 --> N79
+  N84 --> N2
+  N84 --> N67
+  N84 --> N68
+  N84 --> N69
+  N84 --> N70
+  N84 --> N71
+  N84 --> N72
+  N84 --> N73
+  N84 --> N74
+  N84 --> N75
+  N84 --> N76
+  N84 --> N77
+  N85 --> N22
+  N85 --> N23
+  N86 --> N22
+  N86 --> N23
   N86 --> N1
-  N86 --> N87
-  N88 --> N22
-  N88 --> N23
+  N86 --> N79
+  N87 --> N58
+  N87 --> N1
+  N87 --> N8
+  N87 --> N66
+  N87 --> N79
+  N87 --> N2
+  N87 --> N67
+  N87 --> N68
+  N87 --> N69
+  N87 --> N70
+  N87 --> N71
+  N87 --> N72
+  N87 --> N73
+  N87 --> N74
+  N87 --> N75
+  N87 --> N76
+  N87 --> N77
   N88 --> N1
-  N88 --> N71
-  N89 --> N23
+  N88 --> N59
+  N89 --> N58
   N89 --> N90
-  N91 --> N54
-  N91 --> N23
+  N89 --> N1
+  N89 --> N59
+  N89 --> N2
+  N89 --> N68
+  N91 --> N58
+  N91 --> N90
   N91 --> N1
-  N92 --> N23
-  N92 --> N93
+  N91 --> N59
+  N91 --> N2
+  N91 --> N69
   N92 --> N1
+  N92 --> N93
+  N94 --> N22
   N94 --> N23
-  N94 --> N93
   N94 --> N1
+  N94 --> N77
   N95 --> N23
-  N95 --> N93
-  N95 --> N1
-  N96 --> N1
-  N96 --> N69
-  N97 --> N7
+  N95 --> N96
+  N97 --> N50
+  N97 --> N23
   N97 --> N1
-  N97 --> N51
+  N98 --> N23
+  N98 --> N99
   N98 --> N1
-  N98 --> N69
-  N99 --> N1
-  N100 --> N101
-  N100 --> N102
-  N100 --> N103
-  N100 --> N104
-  N100 --> N7
-  N100 --> N105
-  N100 --> N106
-  N100 --> N107
-  N100 --> N108
-  N100 --> N109
-  N100 --> N110
-  N100 --> N111
-  N100 --> N112
-  N100 --> N113
+  N100 --> N23
+  N100 --> N99
   N100 --> N1
-  N100 --> N114
-  N100 --> N70
-  N115 --> N116
-  N115 --> N1
-  N117 --> N22
-  N118 --> N1
-  N118 --> N119
-  N120 --> N121
-  N120 --> N122
-  N120 --> N106
-  N120 --> N107
-  N120 --> N109
-  N120 --> N111
-  N120 --> N112
-  N120 --> N1
-  N123 --> N1
-  N123 --> N2
-  N124 --> N21
-  N124 --> N22
-  N124 --> N55
-  N124 --> N23
-  N124 --> N108
+  N101 --> N23
+  N101 --> N99
+  N101 --> N1
+  N102 --> N1
+  N102 --> N75
+  N103 --> N7
+  N103 --> N1
+  N103 --> N59
+  N104 --> N1
+  N104 --> N75
+  N105 --> N1
+  N106 --> N107
+  N106 --> N108
+  N106 --> N109
+  N106 --> N110
+  N106 --> N7
+  N106 --> N111
+  N106 --> N112
+  N106 --> N113
+  N106 --> N114
+  N106 --> N115
+  N106 --> N116
+  N106 --> N117
+  N106 --> N118
+  N106 --> N119
+  N106 --> N1
+  N106 --> N120
+  N106 --> N76
+  N121 --> N122
+  N121 --> N1
+  N123 --> N22
   N124 --> N1
-  N125 --> N126
-  N125 --> N127
-  N125 --> N128
-  N129 --> N54
-  N129 --> N23
+  N124 --> N125
+  N126 --> N127
+  N126 --> N128
+  N126 --> N112
+  N126 --> N113
+  N126 --> N115
+  N126 --> N117
+  N126 --> N118
+  N126 --> N1
   N129 --> N1
-  N129 --> N58
+  N129 --> N2
+  N130 --> N21
+  N130 --> N22
+  N130 --> N56
+  N130 --> N23
+  N130 --> N114
   N130 --> N1
-  N130 --> N58
-  N131 --> N7
-  N131 --> N1
-  N132 --> N21
-  N132 --> N54
-  N132 --> N55
-  N132 --> N23
-  N132 --> N133
-  N132 --> N1
-  N134 --> N135
-  N134 --> N1
-  N136 --> N7
-  N136 --> N137
-  N138 --> N1
+  N131 --> N132
+  N131 --> N133
+  N131 --> N134
+  N135 --> N50
+  N135 --> N23
+  N135 --> N1
+  N135 --> N64
+  N136 --> N1
+  N136 --> N64
+  N137 --> N7
+  N137 --> N1
+  N138 --> N21
+  N138 --> N50
+  N138 --> N56
+  N138 --> N23
   N138 --> N139
-  N140 --> N1
+  N138 --> N1
   N140 --> N141
-  N142 --> N1
-  N143 --> N22
-  N143 --> N55
-  N143 --> N23
-  N143 --> N1
-  N143 --> N144
-  N145 --> N1
-  N145 --> N146
-  N145 --> N65
-  N147 --> N1
-  N148 --> N149
+  N140 --> N1
+  N142 --> N7
+  N142 --> N143
+  N144 --> N1
+  N144 --> N145
+  N146 --> N1
+  N146 --> N147
   N148 --> N1
-  N148 --> N150
-  N148 --> N2
-  N148 --> N151
-  N152 --> N1
-  N152 --> N150
+  N149 --> N22
+  N149 --> N56
+  N149 --> N23
+  N149 --> N1
+  N149 --> N150
+  N151 --> N1
+  N151 --> N152
+  N151 --> N71
   N153 --> N1
-  N153 --> N150
-  N154 --> N22
   N154 --> N155
   N154 --> N1
   N154 --> N156
-  N154 --> N71
-  N157 --> N22
-  N157 --> N55
-  N157 --> N23
-  N157 --> N43
-  N157 --> N1
-  N157 --> N71
-  N158 --> N159
+  N154 --> N2
+  N154 --> N157
   N158 --> N1
-  N158 --> N160
-  N161 --> N162
-  N161 --> N163
-  N161 --> N164
-  N161 --> N1
-  N161 --> N8
-  N161 --> N165
-  N166 --> N1
-  N166 --> N167
-  N168 --> N22
-  N168 --> N55
-  N168 --> N23
-  N168 --> N43
-  N168 --> N1
-  N168 --> N61
-  N169 --> N1
-  N169 --> N170
-  N169 --> N65
-  N169 --> N69
-  N169 --> N70
-  N171 --> N1
-  N171 --> N70
-  N172 --> N54
-  N172 --> N22
-  N172 --> N149
+  N158 --> N156
+  N159 --> N1
+  N159 --> N156
+  N160 --> N22
+  N160 --> N161
+  N160 --> N1
+  N160 --> N162
+  N160 --> N77
+  N163 --> N22
+  N163 --> N56
+  N163 --> N23
+  N163 --> N43
+  N163 --> N1
+  N163 --> N77
+  N164 --> N165
+  N164 --> N1
+  N164 --> N166
+  N167 --> N168
+  N167 --> N169
+  N167 --> N170
+  N167 --> N1
+  N167 --> N8
+  N167 --> N171
   N172 --> N1
   N172 --> N173
+  N174 --> N22
+  N174 --> N56
+  N174 --> N23
+  N174 --> N43
+  N174 --> N1
+  N174 --> N67
+  N175 --> N1
+  N175 --> N176
+  N175 --> N71
+  N175 --> N75
+  N175 --> N76
+  N177 --> N1
+  N177 --> N76
+  N178 --> N50
+  N178 --> N22
+  N178 --> N155
+  N178 --> N1
+  N178 --> N179
 ```

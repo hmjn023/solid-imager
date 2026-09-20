@@ -128,7 +128,7 @@ test.describe("direct navigation and reload", () => {
 			if (routeCase.seedSearchSession) {
 				await page.addInitScript((fileName) => {
 					sessionStorage.setItem(
-						"current-all",
+						"solid-imager:search-state:current-all",
 						JSON.stringify({
 							mode: "simple",
 							selectedSource: "",
@@ -320,10 +320,10 @@ test("canonical navigation and cache revisit do not duplicate route queries", as
 	await page.getByRole("link", { name: new RegExp(E2E_SOURCE_NAME) }).click();
 	await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
 	await expect(
-		page.getByRole("heading", {
-			name: E2E_SOURCE_NAME,
-			exact: true,
-		}),
+		page
+			.locator("#main-content")
+			.getByText(E2E_SOURCE_NAME, { exact: true })
+			.first(),
 	).toBeVisible();
 	await expect(
 		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
@@ -347,7 +347,10 @@ test("canonical navigation and cache revisit do not duplicate route queries", as
 
 	// Intent loaders must not mutate the shared search store while the user is
 	// merely hovering a link from another search-backed route.
-	const sourceSearchInput = page.getByPlaceholder("ファイル名を入力...");
+	const sourceSearchInput = page.getByRole("combobox", {
+		name: "メディアを検索",
+		exact: true,
+	});
 	await sourceSearchInput.fill(E2E_PRIMARY_FILE_NAME);
 	await page.getByRole("link", { name: "Library", exact: true }).hover();
 	await page.waitForTimeout(300);
@@ -358,9 +361,13 @@ test("canonical navigation and cache revisit do not duplicate route queries", as
 
 	const detailCheckpoint = browserHealth.requestCheckpoint();
 	const detailNavigationStartedAt = Date.now();
-	await page
-		.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) })
-		.click();
+	const primaryResult = page.getByRole("link", {
+		name: new RegExp(E2E_PRIMARY_FILE_NAME),
+	});
+	await primaryResult.click();
+	await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
+	await expect(primaryResult).toHaveAttribute("aria-current", "true");
+	await primaryResult.dblclick();
 	await expect(page).toHaveURL(new RegExp(`${mediaPath()}/?$`));
 	await expect(
 		page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),

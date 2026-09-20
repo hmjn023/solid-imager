@@ -12,6 +12,7 @@ export type SearchMediaItemOptions = {
 	isBulkSelectMode?: boolean;
 	isSelected?: boolean;
 	isPreviewSelected?: boolean;
+	onContextMenu?: () => void;
 	onOpenMediaDetail?: () => void;
 	onPrepareMediaDetail?: () => void;
 	onPreviewSelect?: () => void;
@@ -20,8 +21,9 @@ export type SearchMediaItemOptions = {
 	priority?: boolean;
 };
 
-/** Data and actions shared by the Tauri and workspace search presentations. */
+/** Data and actions shared by the current search workspace. */
 export type SearchWorkspaceProps = {
+	detailBasePath?: string;
 	enableVirtualization?: boolean;
 	filterData: SearchPageFilterData;
 	onFindSimilar?: (media: Media) => void;

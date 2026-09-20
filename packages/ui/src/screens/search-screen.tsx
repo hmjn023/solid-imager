@@ -8,6 +8,7 @@ import {
 	SourceMediaGrid,
 	type SourceMediaViewMode,
 } from "../source-media-grid";
+import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
 import { CollectionInspector } from "../workspace/collection-inspector";
 import { reconcileCollectionPreviewId } from "../workspace/collection-navigation";
 import { SearchToolbar } from "../workspace/search-toolbar";
@@ -29,9 +30,6 @@ export type SearchScreenProps = SearchWorkspaceProps & {
 	renderMediaPreview?: (media: Media) => import("solid-js").JSX.Element;
 	selectedCount?: () => number;
 };
-
-// Historical key retained so the search view preference survives the rename.
-const SEARCH_VIEW_MODE_STORAGE_KEY = "solid-imager:v2:search:view-mode";
 
 export function SearchScreen(props: SearchScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
@@ -75,7 +73,7 @@ export function SearchScreen(props: SearchScreenProps) {
 	const updateViewMode = (mode: SourceMediaViewMode) => {
 		setViewMode(mode);
 		try {
-			localStorage.setItem(SEARCH_VIEW_MODE_STORAGE_KEY, mode);
+			localStorage.setItem(UI_STORAGE_KEYS.searchViewMode, mode);
 		} catch {
 			// Storage can be unavailable in hardened browser contexts.
 		}
@@ -98,7 +96,10 @@ export function SearchScreen(props: SearchScreenProps) {
 	onMount(() => {
 		setIsMounted(true);
 		try {
-			const storedMode = localStorage.getItem(SEARCH_VIEW_MODE_STORAGE_KEY);
+			const storedMode = readUiStorageValue(
+				localStorage,
+				UI_STORAGE_KEYS.searchViewMode,
+			);
 			if (storedMode === "grid" || storedMode === "list") {
 				setViewMode(storedMode);
 			}
@@ -166,7 +167,7 @@ export function SearchScreen(props: SearchScreenProps) {
 							when={canRenderContent()}
 						>
 							<SourceMediaGrid
-								detailBasePath="/sources"
+								detailBasePath={props.detailBasePath}
 								enableVirtualization={props.enableVirtualization}
 								errorTitle="検索結果を取得できませんでした"
 								hasNextPage={page().searchResultQuery.hasNextPage}

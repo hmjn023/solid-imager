@@ -11,6 +11,7 @@ import { expect, test, waitForAppHydration } from "./support/test";
 const startCcipExtractionEndpoint =
 	/\/api\/rpc\/ai\/startCcipExtraction(?:\?|$)/;
 const ccipVectorStatusEndpoint = /\/api\/rpc\/ai\/ccipVectorStatus(?:\?|$)/;
+const jobEventsEndpoint = /\/api\/rpc\/jobs\/events(?:\?|$)/;
 
 test("extracts real CCIP vectors and finds a similar seeded image", async ({
 	page,
@@ -30,6 +31,12 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 		await route.continue();
 	});
 
+	const jobEventsConnected = page.waitForResponse(
+		(response) =>
+			jobEventsEndpoint.test(new URL(response.url()).pathname) &&
+			response.status() === 200,
+		{ timeout: 30_000 },
+	);
 	const initialStatusResponse = page.waitForResponse(
 		(response) =>
 			ccipVectorStatusEndpoint.test(new URL(response.url()).pathname),
@@ -37,6 +44,7 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 	);
 	await page.goto(mediaPath(E2E_SIMILAR_MEDIA_ID));
 	await initialStatusResponse;
+	await jobEventsConnected;
 
 	let releaseStatusRequest: () => void = () => {};
 	const statusRequestGate = new Promise<void>((resolve) => {
@@ -52,27 +60,27 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 		await route.continue();
 	});
 
+	const moreActions = page.getByRole("button", {
+		name: "More actions",
+		exact: true,
+	});
+	await moreActions.click();
 	await page
-		.getByRole("button", { name: "Extract CCIP Vector", exact: true })
+		.getByRole("button", { name: "Extract CCIP vector", exact: true })
 		.click();
-	await expect(
-		page.getByRole("button", {
-			name: "Extract CCIP Vector",
-			exact: true,
-		}),
-	).toBeDisabled();
 	releaseStartRequest();
 	await postSubmitStatusRequest;
+	await moreActions.click();
 	await expect(
 		page.getByRole("button", {
-			name: "Extracting CCIP Vector...",
+			name: "Extracting CCIP vector…",
 			exact: true,
 		}),
 	).toBeDisabled();
 	releaseStatusRequest();
 	await expect(
 		page.getByRole("button", {
-			name: "Re-extract CCIP Vector",
+			name: "Re-extract CCIP vector",
 			exact: true,
 		}),
 	).toBeEnabled({ timeout: 90_000 });
@@ -99,29 +107,31 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 	});
 
 	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
+	await moreActions.click();
 	await page
-		.getByRole("button", { name: "Extract CCIP Vector", exact: true })
+		.getByRole("button", { name: "Extract CCIP vector", exact: true })
 		.click();
 	await queuedExtraction;
 	const reload = page.reload();
 	abortPendingBrowserRequest();
 	await reload;
+	await moreActions.click();
 	await expect(
 		page.getByRole("button", {
-			name: "Re-extract CCIP Vector",
+			name: "Re-extract CCIP vector",
 			exact: true,
 		}),
 	).toBeEnabled({ timeout: 90_000 });
 	await expect(
-		page.getByRole("button", { name: "Find Similar", exact: true }),
-	).toBeVisible();
+		page.getByRole("button", { name: "Find similar", exact: true }),
+	).toBeEnabled();
 
 	const similarityResponse = page.waitForResponse(
 		(response) =>
 			new URL(response.url()).pathname === "/api/rpc/media/searchSimilar" &&
 			response.status() === 200,
 	);
-	await page.getByRole("button", { name: "Find Similar", exact: true }).click();
+	await page.getByRole("button", { name: "Find similar", exact: true }).click();
 	await similarityResponse;
 
 	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
@@ -136,7 +146,7 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 
 	await page.goto(sourcePath());
 	await waitForAppHydration(page);
-	await expect(page.getByText(/^\d+ 件の結果$/)).toBeVisible();
+	await expect(page.getByText(/^\d+ items$/)).toBeVisible();
 	const primaryMedia = page.locator(
 		`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`,
 	);

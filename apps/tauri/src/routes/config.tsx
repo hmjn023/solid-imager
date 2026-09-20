@@ -1,6 +1,6 @@
 import { configQueryKeys } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { TauriConfigStateScreen } from "@solid-imager/ui/screens/tauri-config-state-screen";
+import { ConfigStateScreen } from "@solid-imager/ui/screens/config-state-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -19,8 +19,9 @@ function ConfigPage() {
 	const state = () => toQueryUiState(configQuery);
 
 	return (
-		<TauriConfigStateScreen
+		<ConfigStateScreen
 			data={state().data}
+			checkAiHealth={() => orpc.ai.health()}
 			onRetry={async () => {
 				await configQuery.refetch();
 			}}

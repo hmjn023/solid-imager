@@ -130,7 +130,9 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 						return;
 					}
 					const text = message.text();
-					if (!matches(text, allowedConsole)) {
+					const isLifecycleNetworkChange =
+						isNavigating && text.includes("ERR_NETWORK_CHANGED");
+					if (!isLifecycleNetworkChange && !matches(text, allowedConsole)) {
 						failures.push(`console ${message.type()}: ${text}`);
 					}
 				});
@@ -158,7 +160,9 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 					// streams and ordinary in-flight fetches. Keep aborts during an
 					// otherwise stable page as a test failure.
 					const isLifecycleRequestAbort =
-						errorText?.includes("ERR_ABORTED") && (isNavigating || isClosing);
+						(isNavigating || isClosing) &&
+						(errorText?.includes("ERR_ABORTED") ||
+							errorText?.includes("ERR_NETWORK_CHANGED"));
 					if (
 						!isLifecycleRequestAbort &&
 						!matches(request.url(), allowedRequestFailures)

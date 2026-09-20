@@ -14,23 +14,27 @@ import {
 	getSearchCondition,
 	loadPreset,
 	resetSearchState,
-	type SearchPersistenceSurface,
 	searchState,
 	setSearchState,
 } from "../stores/search-store";
+import {
+	getSearchScrollStorageKey,
+	getSearchStateStorageKey,
+	readSearchScrollStorageValue,
+	readSearchStateStorageValue,
+} from "../ui-storage";
 
 const DEBOUNCE_MS = 1000;
 
-// These namespaces and prefixes are historical storage values. Keep them
-// stable so sessions survive the presentation naming cleanup.
-const TAURI_SEARCH_STORAGE_NAMESPACE = "legacy";
-const WORKSPACE_SEARCH_STORAGE_NAMESPACE = "v2";
-const WORKSPACE_SEARCH_STATE_STORAGE_PREFIX = "v2:";
-
-export type { SearchPersistenceSurface } from "../stores/search-store";
+function getSessionStorage(): Storage | null {
+	try {
+		return typeof sessionStorage === "undefined" ? null : sessionStorage;
+	} catch {
+		return null;
+	}
+}
 
 export type SearchPersistenceOptions = {
-	surface?: SearchPersistenceSurface;
 	historyEntryKey?: string | Accessor<string | undefined>;
 };
 
@@ -48,32 +52,18 @@ function getCurrentPresetName(sourceId: string | null | undefined) {
 	return sourceId ? `current-${sourceId}` : null;
 }
 
-function getScrollStorageKey(
+function readScrollPosition(
 	presetName: string,
-	surface: SearchPersistenceSurface,
 	historyEntryKey?: string,
-): string {
-	const storageSurface =
-		surface === "workspace"
-			? WORKSPACE_SEARCH_STORAGE_NAMESPACE
-			: TAURI_SEARCH_STORAGE_NAMESPACE;
-	return historyEntryKey
-		? `search-scroll:${storageSurface}:history:${historyEntryKey}`
-		: `search-scroll:${storageSurface}:${presetName}`;
-}
-
-function getStateStorageKey(
-	presetName: string,
-	surface: SearchPersistenceSurface,
-): string {
-	return surface === "workspace"
-		? `${WORKSPACE_SEARCH_STATE_STORAGE_PREFIX}${presetName}`
-		: presetName;
-}
-
-function readScrollPosition(storageKey: string): number {
+): number {
+	const storage = getSessionStorage();
+	if (!storage) return 0;
 	try {
-		const storedValue = sessionStorage.getItem(storageKey);
+		const storedValue = readSearchScrollStorageValue(
+			storage,
+			presetName,
+			historyEntryKey,
+		);
 		if (storedValue === null) {
 			return 0;
 		}
@@ -101,9 +91,8 @@ function normalizeSimilarityTopK(value: unknown): number {
 
 /**
  * Persist the scroll owner explicitly when a route owns a non-window
- * collection scroller.  The reactive persistence effect remains the
- * fallback, while route callbacks can use this helper to avoid sharing the
- * Tauri and workspace session keys during rapid scroll updates.
+ * collection scroller. The reactive persistence effect remains the fallback,
+ * while route callbacks can use this helper during rapid scroll updates.
  */
 export function persistSearchScrollPosition(
 	sourceId: SearchPersistenceSource = "current",
@@ -122,16 +111,14 @@ export function persistSearchScrollPosition(
 	}
 
 	try {
+		const storage = getSessionStorage();
+		if (!storage) return;
 		const historyEntryKey =
 			typeof options.historyEntryKey === "function"
 				? options.historyEntryKey()
 				: options.historyEntryKey;
-		sessionStorage.setItem(
-			getScrollStorageKey(
-				presetName,
-				options.surface ?? "tauri",
-				historyEntryKey,
-			),
+		storage.setItem(
+			getSearchScrollStorageKey(presetName, historyEntryKey),
 			String(normalizeScrollPosition(position)),
 		);
 	} catch {
@@ -153,13 +140,7 @@ export function readPersistedSearchScrollPosition(
 			? options.historyEntryKey()
 			: options.historyEntryKey;
 	try {
-		return readScrollPosition(
-			getScrollStorageKey(
-				presetName,
-				options.surface ?? "tauri",
-				historyEntryKey,
-			),
-		);
+		return readScrollPosition(presetName, historyEntryKey);
 	} catch {
 		return 0;
 	}
@@ -196,18 +177,16 @@ function applyPreset(
 function restoreCurrentSearchState(
 	sourceId: string | null | undefined,
 	shouldApply: () => boolean,
-	surface: SearchPersistenceSurface,
 ) {
 	const presetName = getCurrentPresetName(sourceId);
-	if (!presetName || typeof sessionStorage === "undefined") {
+	const storage = getSessionStorage();
+	if (!presetName || !storage) {
 		return;
 	}
 
 	let sessionDataStr: string | null;
 	try {
-		sessionDataStr = sessionStorage.getItem(
-			getStateStorageKey(presetName, surface),
-		);
+		sessionDataStr = readSearchStateStorageValue(storage, presetName);
 	} catch {
 		if (shouldApply()) {
 			resetSearchStatePreservingScroll();
@@ -307,13 +286,18 @@ export function useCurrentSearchPersistence(
 	const getSourceId = () =>
 		typeof sourceId === "function" ? sourceId() : sourceId;
 	const resolvePresetName = () => getCurrentPresetName(getSourceId());
-	const surface = options.surface ?? "tauri";
+	const resolveHistoryEntryKey = () =>
+		typeof options.historyEntryKey === "function"
+			? options.historyEntryKey()
+			: options.historyEntryKey;
 	const persistPendingScrollPosition = () => {
 		if (!pendingScrollKey || isServer) {
 			return;
 		}
 		try {
-			sessionStorage.setItem(pendingScrollKey, String(pendingScrollPosition));
+			const storage = getSessionStorage();
+			if (!storage) return;
+			storage.setItem(pendingScrollKey, String(pendingScrollPosition));
 		} catch {
 			// Persistence errors must not disrupt the UI.
 		}
@@ -338,9 +322,9 @@ export function useCurrentSearchPersistence(
 		untrack(() => {
 			setSearchState(
 				"scrollY",
-				readScrollPosition(getScrollStorageKey(presetName, surface)),
+				readScrollPosition(presetName, resolveHistoryEntryKey()),
 			);
-			restoreCurrentSearchState(currentSourceId, shouldApply, surface);
+			restoreCurrentSearchState(currentSourceId, shouldApply);
 		});
 		if (shouldApply()) {
 			setIsRestored(true);
@@ -377,7 +361,10 @@ export function useCurrentSearchPersistence(
 		if (!isRestored() || !presetName || isServer) {
 			return;
 		}
-		const nextScrollKey = getScrollStorageKey(presetName, surface);
+		const nextScrollKey = getSearchScrollStorageKey(
+			presetName,
+			resolveHistoryEntryKey(),
+		);
 		if (pendingScrollKey && pendingScrollKey !== nextScrollKey) {
 			persistPendingScrollPosition();
 		}
@@ -400,8 +387,10 @@ export function useCurrentSearchPersistence(
 				similarityTopK: searchState.similarityTopK,
 			};
 			try {
-				sessionStorage.setItem(
-					getStateStorageKey(presetName, surface),
+				const storage = getSessionStorage();
+				if (!storage) return;
+				storage.setItem(
+					getSearchStateStorageKey(presetName),
 					JSON.stringify(presetData),
 				);
 				lastPersistedPresetName = presetName;

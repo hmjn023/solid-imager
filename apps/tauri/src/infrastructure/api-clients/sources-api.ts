@@ -7,6 +7,22 @@ export {
 	updateMediaSource,
 } from "~/api/sources-api";
 
+export function enqueueSourceExport(
+	id: string,
+	mode: "json" | "zip",
+	includeImages: boolean,
+) {
+	return client.sources.enqueueExport({ id, mode, includeImages });
+}
+
+export function enqueueSourceImport(
+	id: string,
+	mode: "json" | "zip",
+	file: File,
+) {
+	return client.sources.enqueueImport({ id, mode, file });
+}
+
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import { client } from "~/orpc-client";
 
