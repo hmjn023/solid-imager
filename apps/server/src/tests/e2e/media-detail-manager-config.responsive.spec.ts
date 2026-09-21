@@ -137,6 +137,26 @@ test("media detail returns to its saved collection URL after direct navigation",
 		.toBe(savedReturnPath);
 });
 
+test("media detail list back does not re-enter detail on browser back", async ({
+	page,
+}) => {
+	await page.goto("/search");
+	await waitForAppHydration(page);
+	await expect(
+		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+	).toBeVisible();
+
+	await openMediaDetail(page, E2E_PRIMARY_MEDIA_ID, "/search");
+	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+	await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
+
+	await page.goBack();
+	await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
+	await expect(
+		page.getByRole("button", { name: "一覧に戻る", exact: true }),
+	).toHaveCount(0);
+});
+
 test("media detail, manager, and settings remain usable on narrow screens", async ({
 	page,
 }, testInfo) => {

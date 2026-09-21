@@ -49,7 +49,7 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 		const returnPath = readMediaReturnPath();
 		if (returnPath && isCollectionRoute(returnPath)) {
 			clearMediaReturnPath();
-			void navigate({ href: returnPath });
+			void navigate({ href: returnPath, replace: true });
 			return;
 		}
 		void navigate({

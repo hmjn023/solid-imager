@@ -1,6 +1,6 @@
 import { createTauriSQLitePersistence } from "@tanstack/tauri-db-sqlite-persistence";
 import Database from "@tauri-apps/plugin-sql";
-import { getActiveServer } from "~/infrastructure/settings/server-settings";
+import { getDatabaseName } from "./database-files";
 
 /**
  * Tauri SQLプラグインはエラーをstringでrejectするが、
@@ -39,23 +39,28 @@ function wrapDatabaseWithErrorNormalization(
 let persistenceInstance: ReturnType<
 	typeof createTauriSQLitePersistence
 > | null = null;
+let rawDatabase: InstanceType<typeof Database> | null = null;
 
-export async function initializePersistence() {
+export async function initializePersistence(serverId?: string | null) {
 	if (persistenceInstance) {
 		return persistenceInstance;
 	}
-	const activeServer = getActiveServer();
-	const databaseName =
-		activeServer?.id === "default"
-			? "solid-imager.db"
-			: `solid-imager-${(activeServer?.id ?? "default").replace(
-					/[^a-zA-Z0-9_-]/g,
-					"_",
-				)}.db`;
-	const rawDatabase = await Database.load(`sqlite:${databaseName}`);
-	const database = wrapDatabaseWithErrorNormalization(rawDatabase);
-	persistenceInstance = createTauriSQLitePersistence({ database });
+	const database = await Database.load(`sqlite:${getDatabaseName(serverId)}`);
+	rawDatabase = database;
+	const normalizedDatabase = wrapDatabaseWithErrorNormalization(database);
+	persistenceInstance = createTauriSQLitePersistence({
+		database: normalizedDatabase,
+	});
 	return persistenceInstance;
+}
+
+export async function closePersistence(): Promise<void> {
+	const database = rawDatabase;
+	rawDatabase = null;
+	persistenceInstance = null;
+	if (database?.close) {
+		await database.close();
+	}
 }
 
 export function getPersistence() {

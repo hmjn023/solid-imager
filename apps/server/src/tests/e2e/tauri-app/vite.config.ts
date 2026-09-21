@@ -140,6 +140,7 @@ export default defineConfig({
 			"@": path.join(workspaceRoot, "packages/core/src"),
 			"~": path.join(tauriRoot, "src"),
 			"@tauri-apps/plugin-http": path.join(adapterDirectory, "http.ts"),
+			"@tauri-apps/api/core": path.join(adapterDirectory, "core.ts"),
 			"@tauri-apps/plugin-sql": path.join(adapterDirectory, "sql.ts"),
 			"@tauri-apps/plugin-store": path.join(adapterDirectory, "store.ts"),
 			"@tanstack/tauri-db-sqlite-persistence": path.join(
