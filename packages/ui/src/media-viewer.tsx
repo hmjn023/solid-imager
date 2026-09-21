@@ -15,7 +15,13 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "./dialog";
-import { Maximize2, Minus, Plus, RotateCcw } from "./workspace/icons";
+import {
+	Maximize2,
+	Minus,
+	Plus,
+	RefreshCw,
+	RotateCcw,
+} from "./workspace/icons";
 
 export interface MediaSource {
 	type: "image" | "video" | "audio";
@@ -37,6 +43,7 @@ export function MediaViewer(props: MediaViewerProps) {
 	const [isPanning, setIsPanning] = createSignal(false);
 	const [isFullscreen, setIsFullscreen] = createSignal(false);
 	const [isViewerOpen, setIsViewerOpen] = createSignal(false);
+	const [isVideoLooping, setIsVideoLooping] = createSignal(true);
 	const pointers = new Map<number, { x: number; y: number }>();
 	let viewer: HTMLElement | undefined;
 	let lastPointer: { x: number; y: number } | undefined;
@@ -159,6 +166,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		let disposed = false;
 		setMediaUrl(null);
 		resetView();
+		setIsVideoLooping(true);
 
 		void (async () => {
 			try {
@@ -213,9 +221,32 @@ export function MediaViewer(props: MediaViewerProps) {
 							when={mediaUrl()}
 						>
 							{(url) => (
-								<video class="h-full max-w-full" controls src={url()}>
-									<track kind="captions" />
-								</video>
+								<>
+									<video
+										class="h-full max-w-full"
+										controls
+										loop={isVideoLooping()}
+										src={url()}
+									>
+										<track kind="captions" />
+									</video>
+									<Button
+										aria-label={
+											isVideoLooping()
+												? "Disable video loop"
+												: "Enable video loop"
+										}
+										aria-pressed={isVideoLooping()}
+										class="absolute top-3 right-3 z-10 gap-1.5 border border-[var(--workspace-border)] bg-[var(--workspace-surface-subtle)]/95 px-2.5 text-xs shadow-lg backdrop-blur hover:bg-[var(--workspace-surface-muted)]"
+										data-media-viewer-controls
+										onClick={() => setIsVideoLooping((current) => !current)}
+										size="sm"
+										variant="ghost"
+									>
+										<RefreshCw aria-hidden="true" size={14} />
+										{isVideoLooping() ? "Loop on" : "Loop off"}
+									</Button>
+								</>
 							)}
 						</Show>
 					</Match>
