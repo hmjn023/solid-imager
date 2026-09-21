@@ -260,6 +260,35 @@ test("Workspace detail exposes zoom controls and non-destructive action choices"
 	).toBeVisible();
 });
 
+test("Workspace detail closes More actions before opening a modal", async ({
+	page,
+}) => {
+	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
+	await waitForAppHydration(page);
+
+	await page.getByRole("button", { name: "More actions", exact: true }).click();
+	await page
+		.getByRole("button", { name: "Delete media…", exact: true })
+		.click();
+	await expect(
+		page.getByRole("button", { name: "Download original", exact: true }),
+	).toBeHidden();
+	const deleteDialog = page.getByRole("alertdialog");
+	await expect(deleteDialog).toBeVisible();
+	await expect(
+		deleteDialog.getByRole("heading", { name: "Delete this media?" }),
+	).toBeVisible();
+	await expect
+		.poll(() =>
+			page.evaluate(
+				() => document.activeElement?.closest('[role="alertdialog"]') !== null,
+			),
+		)
+		.toBe(true);
+	await page.keyboard.press("Escape");
+	await expect(deleteDialog).toBeHidden();
+});
+
 test("Workspace settings exposes device-local shortcut configuration", async ({
 	page,
 }) => {

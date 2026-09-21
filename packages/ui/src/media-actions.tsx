@@ -208,6 +208,11 @@ export function MediaActions(props: MediaActionsProps) {
 		}
 	};
 
+	const openModalFromMoreActions = (openModal: () => void) => {
+		setMoreActionsOpen(false);
+		queueMicrotask(openModal);
+	};
+
 	const handleDelete = async () => {
 		if (!props.onDelete || isDeleting()) return;
 		setIsDeleting(true);
@@ -286,7 +291,11 @@ export function MediaActions(props: MediaActionsProps) {
 							<ShowAction when={props.oppaiOracleModal}>
 								<Button
 									class="h-9 w-full justify-start px-2"
-									onClick={() => setIsOppaiOracleModalOpen(true)}
+									onClick={() =>
+										openModalFromMoreActions(() =>
+											setIsOppaiOracleModalOpen(true),
+										)
+									}
 									size="sm"
 									variant="ghost"
 								>
@@ -297,7 +306,11 @@ export function MediaActions(props: MediaActionsProps) {
 							<ShowAction when={props.characterCropModal}>
 								<Button
 									class="h-9 w-full justify-start px-2"
-									onClick={() => setIsCharacterCropModalOpen(true)}
+									onClick={() =>
+										openModalFromMoreActions(() =>
+											setIsCharacterCropModalOpen(true),
+										)
+									}
 									size="sm"
 									variant="ghost"
 								>
@@ -340,7 +353,9 @@ export function MediaActions(props: MediaActionsProps) {
 							<ShowAction when={props.onDelete}>
 								<Button
 									class="h-9 w-full justify-start px-2 text-[var(--workspace-destructive)] hover:bg-[var(--workspace-surface-muted)] hover:text-[var(--workspace-destructive-hover)]"
-									onClick={() => setIsDeleteDialogOpen(true)}
+									onClick={() =>
+										openModalFromMoreActions(() => setIsDeleteDialogOpen(true))
+									}
 									size="sm"
 									variant="ghost"
 								>

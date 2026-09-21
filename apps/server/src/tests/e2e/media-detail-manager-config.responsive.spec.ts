@@ -118,6 +118,25 @@ test("media detail follows the second search result after returning to search", 
 	expect(similarPixel).not.toEqual(primaryPixel);
 });
 
+test("media detail returns to its saved collection URL after direct navigation", async ({
+	page,
+}) => {
+	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
+	await waitForAppHydration(page);
+	const savedReturnPath = "/search#results";
+	await page.evaluate((returnPath) => {
+		sessionStorage.setItem("solid-imager:media-return", returnPath);
+	}, savedReturnPath);
+
+	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+	await expect
+		.poll(() => {
+			const url = new URL(page.url());
+			return `${url.pathname}${url.search}${url.hash}`;
+		})
+		.toBe(savedReturnPath);
+});
+
 test("media detail, manager, and settings remain usable on narrow screens", async ({
 	page,
 }, testInfo) => {

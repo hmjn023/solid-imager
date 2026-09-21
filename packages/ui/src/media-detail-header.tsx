@@ -49,7 +49,7 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 		const returnPath = readMediaReturnPath();
 		if (returnPath && isCollectionRoute(returnPath)) {
 			clearMediaReturnPath();
-			window.history.back();
+			void navigate({ href: returnPath });
 			return;
 		}
 		void navigate({
@@ -81,7 +81,7 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 				</div>
 
 				<div
-					class="flex shrink-0 items-center rounded-md border border-[var(--workspace-border)] bg-white p-0.5"
+					class="flex shrink-0 items-center rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-0.5"
 					title={
 						neighbors().previous || neighbors().next
 							? "一覧の前後のメディアへ移動"
