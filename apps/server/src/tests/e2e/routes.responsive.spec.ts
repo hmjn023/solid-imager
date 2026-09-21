@@ -176,9 +176,7 @@ test("Workspace restore exposes and selects the TAR format", async ({
 	);
 });
 
-test("Workspace completed export starts a native streaming download", async ({
-	page,
-}) => {
+test("Workspace Manager export downloads its artifact", async ({ page }) => {
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 
@@ -197,20 +195,37 @@ test("Workspace completed export starts a native streaming download", async ({
 		.click();
 	await selectTriggers.nth(1).click();
 	await page.getByRole("option", { name: "TAR archive", exact: true }).click();
-	await page.getByRole("button", { name: "Queue export", exact: true }).click();
-	await expect(page.getByText(/Export queued/)).toBeVisible();
-
-	await page.goto("/jobs");
-	await waitForAppHydration(page);
-	const exportJob = page.getByRole("button", { name: /Source Export/ }).first();
-	await expect(exportJob).toBeVisible({ timeout: 30_000 });
-	await exportJob.click();
-	const inspector = page.getByRole("complementary", { name: "Job details" });
-	await expect(inspector).toContainText("Completed", { timeout: 30_000 });
-
 	const download = page.waitForEvent("download");
-	await inspector.getByRole("button", { name: /Download source-/ }).click();
+	await page
+		.getByRole("button", { name: "Generate & download", exact: true })
+		.click();
 	expect((await download).suggestedFilename()).toMatch(/\.tar$/);
+});
+
+test("Workspace Manager NDJSON export downloads its artifact", async ({
+	page,
+}) => {
+	await page.goto("/manager");
+	await waitForAppHydration(page);
+
+	const categoryNavigation = page.locator(
+		'nav[aria-label="Manager categories"]:visible',
+	);
+	await categoryNavigation
+		.getByRole("button", { name: /Data transfer/ })
+		.first()
+		.click();
+
+	const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
+	await selectTriggers.nth(0).click();
+	await page
+		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
+		.click();
+	const download = page.waitForEvent("download");
+	await page
+		.getByRole("button", { name: "Generate & download", exact: true })
+		.click();
+	expect((await download).suggestedFilename()).toMatch(/\.ndjson$/);
 });
 
 test("Workspace search filter opens without remounting media results", async ({

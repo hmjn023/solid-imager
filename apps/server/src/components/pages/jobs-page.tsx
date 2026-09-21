@@ -1,3 +1,4 @@
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import type { JobListResponse } from "@solid-imager/core/domain/jobs/schemas";
 import { useJobEvents } from "@solid-imager/ui/hooks/use-job-events";
 import {
@@ -123,14 +124,29 @@ export function JobsPage() {
 				}
 			}}
 			onDownload={(job) => {
-				if (!job.artifact) return;
-				const anchor = document.createElement("a");
-				anchor.href = `/api/jobs/${encodeURIComponent(job.id)}/artifact`;
-				anchor.download = job.artifact.fileName;
-				anchor.rel = "noopener";
-				document.body.appendChild(anchor);
-				anchor.click();
-				anchor.remove();
+				const artifact = job.artifact;
+				if (!artifact) return;
+				return (async () => {
+					try {
+						const blob = await downloadCompletedJobArtifact(orpc.jobs, job.id);
+						const url = URL.createObjectURL(blob);
+						const anchor = document.createElement("a");
+						anchor.href = url;
+						anchor.download = artifact.fileName;
+						document.body.appendChild(anchor);
+						anchor.click();
+						anchor.remove();
+						setTimeout(() => URL.revokeObjectURL(url), 0);
+						toast.success(`Downloaded ${artifact.fileName}`);
+					} catch (error) {
+						toast.error(
+							error instanceof Error
+								? error.message
+								: "Failed to download artifact",
+						);
+						throw error;
+					}
+				})();
 			}}
 			page={pagination}
 			state={() => toQueryUiState(jobsQuery)}

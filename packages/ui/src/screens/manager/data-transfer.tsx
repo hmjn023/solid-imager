@@ -47,11 +47,12 @@ export function DataTransferPanel(props: {
 		if (!selectedId || pending()) return;
 		setPending("export");
 		try {
-			await props.actions.exportSource({
+			const exportJob = await props.actions.exportSource({
 				format: exportFormat(),
 				includeImages: includeImages(),
 				sourceId: selectedId,
 			});
+			await props.actions.downloadExport(exportJob);
 		} finally {
 			setPending(null);
 		}
@@ -122,7 +123,7 @@ export function DataTransferPanel(props: {
 								Export
 							</h3>
 							<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
-								Download metadata or a media archive.
+								Generate and download metadata or a media archive.
 							</p>
 						</div>
 					</div>
@@ -168,7 +169,7 @@ export function DataTransferPanel(props: {
 							disabled={!sourceId() || pending() !== null}
 							onClick={() => void runExport()}
 						>
-							{pending() === "export" ? "Queueing..." : "Queue export"}
+							{pending() === "export" ? "Generating..." : "Generate & download"}
 						</Button>
 					</div>
 				</section>
@@ -237,8 +238,8 @@ export function DataTransferPanel(props: {
 				</section>
 			</div>
 			<p class="text-xs text-[var(--workspace-text-muted)]">
-				Transfers are queued as background jobs. Open Jobs to monitor, cancel,
-				or download completed exports.
+				Exports run as background jobs and download automatically when complete.
+				Open Jobs for history or to download them again.
 			</p>
 		</div>
 	);
