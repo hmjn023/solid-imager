@@ -1,3 +1,4 @@
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import {
 	prefetchManagerPageQueries,
 	useManagerPage,
@@ -39,6 +40,7 @@ import {
 	enqueueSourceImport,
 } from "~/infrastructure/api-clients/sources-api";
 import { startThumbnailWarmup } from "~/infrastructure/api-clients/thumbnails-api";
+import { orpc } from "~/orpc-client";
 import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
@@ -87,9 +89,15 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 					input.format === "tar" && input.includeImages,
 				);
 				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
-				toast.success(
-					`Export queued (${job.id.slice(0, 8)}). Check Jobs to download it.`,
+				toast.info(
+					`Export started (${job.id.slice(0, 8)}). Downloading when ready.`,
 				);
+				return {
+					fileName: `source-${input.sourceId}-dump.${
+						input.format === "ndjson" ? "ndjson" : "tar"
+					}`,
+					jobId: job.id,
+				};
 			} catch (error) {
 				toast.error(error instanceof Error ? error.message : "Export failed");
 				throw error;
@@ -110,6 +118,25 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 				return { jobId: job.id };
 			} catch (error) {
 				toast.error(error instanceof Error ? error.message : "Restore failed");
+				throw error;
+			}
+		},
+		downloadExport: async (input: { fileName: string; jobId: string }) => {
+			try {
+				const blob = await downloadCompletedJobArtifact(orpc.jobs, input.jobId);
+				const url = URL.createObjectURL(blob);
+				const anchor = document.createElement("a");
+				anchor.href = url;
+				anchor.download = input.fileName;
+				document.body.appendChild(anchor);
+				anchor.click();
+				anchor.remove();
+				setTimeout(() => URL.revokeObjectURL(url), 0);
+				toast.success(`Downloaded ${input.fileName}`);
+			} catch (error) {
+				toast.error(
+					error instanceof Error ? error.message : "Failed to download export",
+				);
 				throw error;
 			}
 		},

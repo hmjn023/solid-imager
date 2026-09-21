@@ -16,7 +16,8 @@ export type ManagerTransferActions = {
 		format: ManagerTransferFormat;
 		includeImages: boolean;
 		sourceId: string;
-	}) => Promise<void>;
+	}) => Promise<{ fileName: string; jobId: string }>;
+	downloadExport: (input: { fileName: string; jobId: string }) => Promise<void>;
 	importSource: (input: {
 		file: File;
 		format: ManagerTransferFormat;
