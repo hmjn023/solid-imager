@@ -8,14 +8,8 @@ import type {
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import {
-	type Accessor,
-	type Component,
-	createEffect,
-	type JSX,
-} from "solid-js";
+import { type Accessor, createEffect, type JSX } from "solid-js";
 import { isServer } from "solid-js/web";
-import type { SearchPersistenceSurface } from "./hooks/use-current-search-persistence";
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaSourceEventTransport } from "./hooks/use-media-source-events";
 import { useSearchHistoryPersistence } from "./hooks/use-search-history-persistence";
@@ -24,8 +18,8 @@ import {
 	type SourceMediaPagePresetClient,
 	useSourceMediaPage,
 } from "./hooks/use-source-media-page";
-import { MediaListActions } from "./media-list-actions";
 import { toQueryUiState } from "./query-state";
+import { SourceMediaScreen } from "./screens/source-media-screen";
 import type { SourceMediaScreenProps } from "./screens/source-media-screen.types";
 import type { SearchHistoryClient } from "./search-history-client";
 
@@ -40,6 +34,7 @@ function clientOnlyQueryOptions<TData>(factory: QueryOptionFactory<TData>) {
 }
 
 export type SourceMediaPageProps = {
+	detailBasePath?: string;
 	mediaSourceId: Accessor<string>;
 	mediaSourceName?: Accessor<string | undefined>;
 	transport: MediaSourceEventTransport;
@@ -72,10 +67,7 @@ export type SourceMediaPageProps = {
 	onClearSelection?: () => void;
 	selectedCount?: () => number;
 	onEnterBulkSelectMode?: () => void;
-	persistenceSurface?: SearchPersistenceSurface;
 	searchHistoryClient: SearchHistoryClient;
-	/** The route owns the presentation surface (legacy, workspace, or another host). */
-	screenComponent: Component<SourceMediaScreenProps>;
 	scrollContainerSelector?: string;
 };
 
@@ -83,7 +75,6 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	const queryClient = useQueryClient();
 	const searchHistory = useSearchHistoryPersistence(props.mediaSourceId, {
 		client: props.searchHistoryClient,
-		surface: props.persistenceSurface,
 	});
 	const isSearchStateRestored = searchHistory.isRestored;
 
@@ -144,13 +135,6 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 		historyEntryKey: searchHistory.historyEntryKey,
 	});
 
-	const renderActions: SourceMediaScreenProps["renderActions"] = (actions) => (
-		<MediaListActions
-			onDumpDownload={page.handleDumpDownload}
-			onOpenMobileFilters={actions.onOpenMobileFilters}
-		/>
-	);
-	const Screen = props.screenComponent;
 	createEffect(() => {
 		props.onVisibleMediaIdsChange?.(
 			page.mediaResults().map((media) => media.id),
@@ -158,7 +142,8 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 	});
 
 	return (
-		<Screen
+		<SourceMediaScreen
+			detailBasePath={props.detailBasePath}
 			enableVirtualization={props.enableVirtualization}
 			mediaSourceName={props.mediaSourceName}
 			onRetryFilters={async () => {
@@ -171,7 +156,6 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 				]);
 			}}
 			page={page}
-			renderActions={renderActions}
 			renderItem={props.renderItem}
 			onOpenMediaDetail={props.onOpenMediaDetail}
 			onPrepareMediaDetail={props.onPrepareMediaDetail}

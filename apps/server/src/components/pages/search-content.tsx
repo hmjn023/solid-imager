@@ -59,14 +59,6 @@ const SEARCH_RESULTS_PER_PAGE = 200;
 const PresetClient = createPresetClient(rawPresetClient);
 const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
-function rememberReturnPath(href: string): void {
-	try {
-		sessionStorage.setItem("v2:media-return", href);
-	} catch {
-		// Session storage is optional; media detail navigation must continue.
-	}
-}
-
 export default function SearchContent() {
 	const location = useLocation();
 	const navigate = useNavigate();
@@ -95,8 +87,11 @@ export default function SearchContent() {
 	const [isMoveCopyDialogOpen, setIsMoveCopyDialogOpen] = createSignal(false);
 	const searchHistory = useSearchHistoryPersistence("all", {
 		client: SearchHistoryClient,
-		surface: "workspace",
 	});
+	const currentReturnPath = () => {
+		const current = location();
+		return `${current.pathname}${current.searchStr}${current.hash}`;
+	};
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
@@ -119,7 +114,6 @@ export default function SearchContent() {
 		setScrollY: (value) => {
 			setSearchState("scrollY", value);
 			persistSearchScrollPosition("all", value, {
-				surface: "workspace",
 				historyEntryKey: searchHistory.historyEntryKey,
 			});
 		},
@@ -189,7 +183,7 @@ export default function SearchContent() {
 		const mode = moveCopyMode();
 		const action = mode === "copy" ? copyMedia : moveMedia;
 		try {
-			await action(media.mediaSourceId, media.id, targetSourceId);
+			await action(media.id, targetSourceId);
 			toast.success(`Media ${mode === "copy" ? "copied" : "moved"}`);
 			page.refreshSearchResults();
 		} catch (error) {
@@ -226,9 +220,7 @@ export default function SearchContent() {
 				onClearSelection={clearSelection}
 				onCopyMove={handleCopyMove}
 				onDelete={handleDelete}
-				onFindSimilar={(media) =>
-					activateSimilaritySearch(media.id, { surface: "workspace" })
-				}
+				onFindSimilar={(media) => activateSimilaritySearch(media.id)}
 				onSelectAll={() => {
 					setIsBulkSelectMode(true);
 					selection.selectAll();
@@ -246,6 +238,7 @@ export default function SearchContent() {
 						isSelected={options?.isSelected}
 						isPreviewSelected={options?.isPreviewSelected}
 						media={media}
+						onContextMenu={options?.onContextMenu}
 						onOpenMediaDetail={options?.onOpenMediaDetail}
 						onPreviewSelect={options?.onPreviewSelect}
 						onSelectGesture={options?.onSelectGesture}
@@ -255,12 +248,12 @@ export default function SearchContent() {
 					/>
 				)}
 				onPrepareMediaDetail={(media, context) => {
-					rememberReturnPath(location().href);
-					saveMediaContext(location().href, context ?? [media]);
+					const returnPath = currentReturnPath();
+					saveMediaContext(returnPath, context ?? [media]);
 				}}
 				onOpenMediaDetail={(media, context) => {
-					rememberReturnPath(location().href);
-					saveMediaContext(location().href, context ?? [media]);
+					const returnPath = currentReturnPath();
+					saveMediaContext(returnPath, context ?? [media]);
 					void navigate({
 						params: {
 							mediaId: media.id,

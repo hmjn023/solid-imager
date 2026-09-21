@@ -24,6 +24,7 @@ const mode = getE2eMode();
 const runtimeDir = process.env.E2E_RUNTIME_DIR;
 const port = process.env.E2E_PORT;
 const galleryPort = process.env.E2E_GALLERY_PORT;
+const tauriPort = process.env.E2E_TAURI_PORT;
 
 if (!(runtimeDir && port && galleryPort)) {
   throw new Error(
@@ -32,6 +33,28 @@ if (!(runtimeDir && port && galleryPort)) {
 }
 
 const baseURL = `http://127.0.0.1:${port}`;
+const tauriBaseURL = tauriPort ? `http://127.0.0.1:${tauriPort}` : undefined;
+const resolvedTauriBaseURL = tauriBaseURL ?? baseURL;
+const playwrightArguments = process.argv.slice(2);
+const requestedProjects = playwrightArguments.flatMap((value, index) => {
+	if (value.startsWith("--project=")) {
+		return [value.slice("--project=".length)];
+	}
+	if (value === "--project") {
+		const project = playwrightArguments[index + 1];
+		return project ? [project] : [];
+	}
+	return [];
+});
+const shouldStartTauriFixture =
+	requestedProjects.includes("tauri") ||
+	playwrightArguments.some((value) => value.includes("tauri-migration.spec.ts")) ||
+	(requestedProjects.length === 0 &&
+		!playwrightArguments.some((value) => /\.(?:spec|test)\.[cm]?[jt]sx?$/.test(value)));
+
+if (shouldStartTauriFixture && !tauriBaseURL) {
+	throw new Error("E2E_TAURI_PORT must be set when running the Tauri E2E fixture.");
+}
 
 export default defineConfig({
   testDir: "./src/tests/e2e",
@@ -54,8 +77,17 @@ export default defineConfig({
   },
   projects: [
     {
+      name: "tauri",
+      testMatch: "**/tauri-migration.spec.ts",
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: resolvedTauriBaseURL,
+        viewport: { width: 1600, height: 900 },
+      },
+    },
+    {
       name: "desktop",
-      testIgnore: "**/*.responsive.spec.ts",
+      testIgnore: ["**/*.responsive.spec.ts", "**/tauri-migration.spec.ts"],
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1440, height: 900 },
@@ -128,5 +160,29 @@ export default defineConfig({
       stdout: "pipe",
       stderr: "pipe",
     },
+    ...(shouldStartTauriFixture
+      ? [
+          {
+            command:
+              mode === "dev"
+                ? `bun x vite dev --config src/tests/e2e/tauri-app/vite.config.ts --host 127.0.0.1 --port ${tauriPort} --strictPort`
+                : "bun src/tests/e2e/tauri-app/serve-production.ts",
+            cwd: process.cwd(),
+            env: {
+              ...getEnvironment(),
+              E2E: "1",
+              E2E_MODE: mode,
+              E2E_PORT: port,
+              E2E_RUNTIME_DIR: runtimeDir,
+            },
+            url: resolvedTauriBaseURL,
+            timeout: mode === "production" ? 240_000 : 120_000,
+            reuseExistingServer: false,
+            gracefulShutdown: { signal: "SIGTERM", timeout: 10_000 },
+            stdout: "pipe" as const,
+            stderr: "pipe" as const,
+          },
+        ]
+      : []),
   ],
 });

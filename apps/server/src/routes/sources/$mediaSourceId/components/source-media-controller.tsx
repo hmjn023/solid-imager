@@ -1,6 +1,5 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import { Button } from "@solid-imager/ui/button";
-import type { SearchPersistenceSurface } from "@solid-imager/ui/hooks/use-current-search-persistence";
 import {
 	type MediaCollectionSelectionMode,
 	useMediaCollectionSelection,
@@ -13,14 +12,7 @@ import type { SearchHistoryClient } from "@solid-imager/ui/search-history-client
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
-import {
-	type Accessor,
-	type Component,
-	createSignal,
-	type JSX,
-	onMount,
-	Show,
-} from "solid-js";
+import { type Accessor, createSignal, type JSX, onMount, Show } from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { createServerTransport } from "~/hooks/use-media-source-events";
@@ -43,12 +35,6 @@ import {
 } from "~/infrastructure/api-clients/queries";
 import { searchMedia } from "~/infrastructure/api-clients/search-api";
 import {
-	fetchSourceDump,
-	importSourceNdjson,
-	importSourceZip,
-	restoreSource,
-} from "~/infrastructure/api-clients/sources-api";
-import {
 	getSearchCondition,
 	searchState,
 } from "~/presentation/store/search-store";
@@ -56,9 +42,7 @@ import {
 const PresetClient = createPresetClient(rawPresetClient);
 export type SourceMediaPageControllerProps = {
 	mediaSourceId?: Accessor<string>;
-	screenComponent: Component<SourceMediaScreenProps>;
 	uploadModalComponent: SourceMediaScreenProps["uploadModalComponent"];
-	persistenceSurface: SearchPersistenceSurface;
 	searchHistoryClient: SearchHistoryClient;
 	renderItem: SourceMediaGridRenderer;
 	bulkActionsClass: string;
@@ -151,7 +135,6 @@ export function SourceMediaPageController(
 				enableVirtualization
 				mediaSourceId={mediaSourceId}
 				mediaSourceName={mediaSourceName}
-				persistenceSurface={props.persistenceSurface}
 				searchHistoryClient={props.searchHistoryClient}
 				transport={transport}
 				presetClient={PresetClient}
@@ -164,10 +147,6 @@ export function SourceMediaPageController(
 					moveMedia,
 					syncMediaItems,
 					startDownloadJobs,
-					fetchSourceDump,
-					restoreSource,
-					importSourceZip,
-					importSourceNdjson,
 				}}
 				getSearchCondition={getSearchCondition}
 				sortBy={() => searchState.sortBy}
@@ -186,7 +165,6 @@ export function SourceMediaPageController(
 				onClearSelection={handleCancelSelect}
 				selectedCount={() => selectedMediaIds().length}
 				onEnterBulkSelectMode={() => setIsBulkSelectMode(true)}
-				screenComponent={props.screenComponent}
 				scrollContainerSelector={props.scrollContainerSelector?.()}
 				renderItem={(media, options) =>
 					props.renderItem(media, options, () => handleToggleSelect(media.id))

@@ -25,6 +25,7 @@ type ServerSettingsScreenProps = {
 	initialSettings: ServerSettings;
 	onActivate?: (server: ServerConnection) => Promise<void>;
 	onNoActiveServer?: () => Promise<void>;
+	showHeader?: boolean;
 };
 
 type HealthCheckState =
@@ -255,19 +256,21 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 
 	return (
 		<section class="grid gap-6">
-			<div class="grid gap-2">
-				<Badge class="w-fit" variant="outline">
-					Connection
-				</Badge>
-				<h1 class="font-semibold text-4xl tracking-tight">
-					Server connections
-				</h1>
-				<p class="max-w-3xl text-lg text-muted-foreground">
-					Choose which solid-imager server the Tauri app uses. These connections
-					are stored locally on this device and are independent of server-side
-					settings.
-				</p>
-			</div>
+			<Show when={props.showHeader !== false}>
+				<div class="grid gap-2">
+					<Badge class="w-fit" variant="outline">
+						Connection
+					</Badge>
+					<h1 class="font-semibold text-4xl tracking-tight">
+						Server connections
+					</h1>
+					<p class="max-w-3xl text-lg text-muted-foreground">
+						Choose which solid-imager server the Tauri app uses. These
+						connections are stored locally on this device and are independent of
+						server-side settings.
+					</p>
+				</div>
+			</Show>
 
 			<Show when={error()}>
 				{(message) => (

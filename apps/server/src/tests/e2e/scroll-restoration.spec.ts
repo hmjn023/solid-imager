@@ -27,9 +27,9 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 		releaseDelayedNextPageRequest = resolve;
 	});
 	await page.addInitScript(() => {
-		sessionStorage.removeItem("current-all");
-		sessionStorage.removeItem("solid-imager-scroll-positions");
-		sessionStorage.removeItem("v2:media-return");
+		sessionStorage.removeItem("solid-imager:search-state:current-all");
+		sessionStorage.removeItem("solid-imager:search-scroll:current-all");
+		sessionStorage.removeItem("solid-imager:media-return");
 	});
 	await page.route(searchEndpoint, async (route) => {
 		if (route.request().method() === "POST") {
@@ -100,7 +100,11 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 	if (!mediaFileName)
 		throw new Error("The visible media item has no file name");
 
-	await page.locator(`[data-media-id="${mediaId}"]`).click();
+	const mediaLink = page.locator(`[data-media-id="${mediaId}"]`);
+	await mediaLink.click();
+	await expect.poll(() => new URL(page.url()).pathname).toBe(entryPath);
+	await expect(mediaLink).toHaveAttribute("aria-current", "true");
+	await mediaLink.dblclick();
 	await expect(page).toHaveURL(/\/sources\/[^/]+\/[^/]+$/);
 	await expect(
 		page.getByRole("heading", { name: mediaFileName, exact: true }),

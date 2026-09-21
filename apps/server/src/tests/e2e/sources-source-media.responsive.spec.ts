@@ -63,7 +63,7 @@ test("library entry points redirect to canonical search", async ({ page }) => {
 	}
 });
 
-test("legacy detail routes preserve query and hash during redirect", async ({
+test("versioned detail routes preserve query and hash during redirect", async ({
 	page,
 }) => {
 	await page.goto(

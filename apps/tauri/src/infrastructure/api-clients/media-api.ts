@@ -1,5 +1,8 @@
 export {
+	bulkCopyToSource,
 	bulkDeleteMedia,
+	bulkMoveMedia,
+	bulkMoveToSource,
 	copyMedia,
 	deleteMedia,
 	fetchMediaDetails,

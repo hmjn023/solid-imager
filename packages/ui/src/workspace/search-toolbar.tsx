@@ -84,7 +84,7 @@ function removeToken(token: SearchToken) {
 		return;
 	}
 	if (token.key === "similarityAnchorMediaId") {
-		clearSimilaritySearch({ surface: "workspace" });
+		clearSimilaritySearch();
 		return;
 	}
 	if (token.key === "similarityTopK") {
@@ -358,7 +358,6 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				/>
 
 				<Popover
-					forceMount
 					onOpenChange={setFilterOpen}
 					open={filterOpen()}
 					placement="bottom-end"
@@ -413,7 +412,6 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								selectedSource={props.selectedSource}
 								showSearchButton={false}
 								sources={props.sources}
-								persistenceSurface="workspace"
 								usePopover={false}
 							/>
 						</div>
@@ -458,9 +456,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					</PopoverTrigger>
 					<PopoverContent class="workspace-theme w-72 p-4 shadow-xl">
 						<SortControls
-							onClearSimilarity={() =>
-								clearSimilaritySearch({ surface: "workspace" })
-							}
+							onClearSimilarity={() => clearSimilaritySearch()}
 							onSortByChange={(value) => setSearchState("sortBy", value)}
 							onSortOrderChange={(value) => setSearchState("sortOrder", value)}
 							onSimilarityTopKChange={(value) =>

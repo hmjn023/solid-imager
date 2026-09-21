@@ -1,306 +1,300 @@
 # solid-imager detail 01 - apps and core
 
+## Diagram 1
+
 ```mermaid
 graph LR
-  N0[apps/cli/src/commands/ai.test.ts]
-  N1[apps/cli/node_modules/vitest/dist/index.js]
-  N2[apps/cli/src/orpc-client.ts]
-  N3[apps/cli/src/commands/ai.ts]
-  N4[apps/cli/node_modules/incur/dist/index.d.ts]
-  N5[apps/cli/src/utils.ts]
-  N6[apps/cli/src/commands/media.ts]
-  N7[apps/cli/src/commands/db.ts]
-  N8[npm:node:child_process]
-  N9[npm:node:fs]
-  N10[npm:node:path]
-  N11[apps/cli/src/commands/job.ts]
-  N12[apps/cli/src/commands/media.test.ts]
-  N13[npm:node:stream]
-  N14[npm:node:stream/promises]
-  N15[apps/cli/src/index.ts]
-  N16[apps/cli/node_modules/@solid-imager/client/src/index.ts]
-  N17[npm:@solid-imager/core/utils]
-  N18[apps/tauri/src/api/entities-api.ts]
-  N19[npm:~/orpc-client]
-  N20[apps/tauri/src/api/media-api.ts]
-  N21[apps/tauri/src/api/sources-api.ts]
-  N22[npm:@solid-imager/core/domain/sources/schemas]
-  N23[apps/tauri/node_modules/zod/index.d.cts]
-  N24[apps/tauri/src/main.tsx]
-  N25[npm:@solid-imager/ui/layouts/app-shell]
-  N26[npm:@solid-imager/ui/router-status]
-  N27[apps/tauri/node_modules/@tanstack/solid-router/dist/cjs/index.cjs]
-  N28[apps/tauri/node_modules/solid-js/types/index.d.ts]
-  N29[apps/tauri/node_modules/solid-js/web/types/index.d.ts]
-  N30[apps/tauri/src/index.css]
-  N31[apps/tauri/src/collections/index.ts]
-  N32[apps/tauri/src/router.tsx]
-  N33[apps/tauri/src/collections/authors-collection.ts]
-  N34[apps/tauri/node_modules/@tanstack/db/dist/cjs/index.cjs]
-  N35[apps/tauri/node_modules/@tanstack/query-db-collection/dist/cjs/index.cjs]
-  N36[apps/tauri/node_modules/@tanstack/tauri-db-sqlite-persistence/dist/cjs/index.cjs]
-  N37[npm:~/infrastructure/db/persistence]
-  N38[npm:~/router]
-  N39[apps/tauri/src/collections/query-keys.ts]
-  N40[apps/tauri/src/collections/characters-collection.ts]
-  N41[apps/tauri/src/collections/ips-collection.ts]
-  N42[apps/tauri/src/collections/projects-collection.ts]
-  N43[apps/tauri/src/collections/sources-collection.ts]
-  N44[apps/tauri/src/collections/tags-collection.ts]
-  N45[apps/tauri/src/components/imports/import-review-modal.tsx]
-  N46[npm:@solid-imager/ui/import-review-modal]
-  N47[apps/tauri/src/components/imports/pending-downloads-indicator.tsx]
-  N48[npm:@solid-imager/ui/event-stream]
-  N49[npm:@solid-imager/ui/pending-downloads-indicator]
-  N50[apps/tauri/src/components/media/ai-tagging-modal.tsx]
-  N51[npm:@solid-imager/ui/ai-tagging-modal]
-  N52[npm:~/infrastructure/api-clients/orpc-client]
-  N53[apps/tauri/src/components/media/character-crop-modal.tsx]
-  N54[npm:@solid-imager/core/domain/media/schemas]
-  N55[npm:@solid-imager/ui/character-crop-modal]
-  N56[apps/tauri/src/components/media/media-grid-item.tsx]
-  N57[apps/tauri/src/components/media/media-sidebar/media-sidebar-content.tsx]
-  N58[npm:@solid-imager/ui/media-sidebar-content]
-  N59[npm:@solid-imager/ui/stores/search-store]
-  N60[npm:~/hooks/use-batch-job-events]
-  N61[apps/tauri/src/components/media/media-viewer.tsx]
-  N62[apps/tauri/src/components/media/move-copy-media-dialog.tsx]
-  N63[npm:@solid-imager/ui/move-copy-media-dialog]
-  N64[npm:~/infrastructure/api-clients/sources-api]
-  N65[apps/tauri/src/components/media/thumbnail-image.tsx]
-  N66[apps/tauri/src/components/nav.tsx]
-  N67[npm:@solid-imager/ui/layouts/app-nav]
-  N68[apps/tauri/src/components/upload-media-modal/upload-media-modal-content.tsx]
-  N69[npm:@solid-imager/ui/upload-media-modal-content]
-  N70[url:]
-  N71[apps/tauri/src/infrastructure/api-clients/ai-api.ts]
-  N72[apps/tauri/src/infrastructure/api-clients/characters-api.ts]
-  N73[apps/tauri/src/infrastructure/api-clients/imports-api.ts]
-  N74[apps/tauri/src/infrastructure/api-clients/ips-api.ts]
-  N75[apps/tauri/src/infrastructure/api-clients/projects-api.ts]
-  N76[apps/tauri/src/infrastructure/api-clients/search-api.ts]
-  N77[apps/tauri/src/infrastructure/api-clients/thumbnails-api.ts]
-  N78[apps/tauri/src/infrastructure/api/clients/preset-client.ts]
-  N79[npm:@solid-imager/core/domain/contract/presets-client]
-  N80[apps/tauri/src/infrastructure/api/clients/search-history-client.ts]
-  N81[npm:@solid-imager/core/domain/contract/search-snapshots-client]
-  N82[apps/tauri/src/infrastructure/db/persistence.ts]
-  N83[apps/tauri/node_modules/@tauri-apps/plugin-sql/dist-js/index.cjs]
-  N84[apps/tauri/src/infrastructure/media/thumbnail-runtime.ts]
-  N85[npm:~/infrastructure/tauri-fetch-helpers]
-  N86[apps/tauri/src/infrastructure/tauri-fetch-helpers.ts]
-  N87[apps/tauri/node_modules/@tauri-apps/plugin-http/dist-js/index.cjs]
-  N88[apps/tauri/src/infrastructure/api-base.ts]
-  N89[apps/tauri/src/orpc-client.ts]
-  N90[apps/tauri/node_modules/@solid-imager/client/src/index.ts]
-  N91[npm:@solid-imager/core/domain/contract]
-  N92[apps/tauri/src/queries/index.ts]
-  N93[apps/tauri/node_modules/@orpc/solid-query/dist/index.d.mts]
-  N94[npm:@solid-imager/ui/query-options]
-  N95[apps/tauri/src/routes/$.tsx]
-  N96[npm:@solid-imager/ui/screens/not-found-screen]
-  N97[apps/tauri/src/routes/__root.tsx]
-  N98[npm:@solid-imager/ui/toast]
-  N99[npm:~/components/nav]
-  N100[apps/tauri/src/routes/about.tsx]
-  N101[npm:@solid-imager/ui/badge]
-  N102[apps/tauri/src/routes/config.tsx]
-  N103[npm:@solid-imager/ui/query-state]
-  N104[npm:@solid-imager/ui/screens/legacy-config-state-screen]
-  N105[apps/tauri/node_modules/@tanstack/solid-query/build/index.cjs]
-  N106[npm:~/queries]
-  N107[apps/tauri/src/routes/index.tsx]
-  N108[npm:@solid-imager/ui/button]
-  N109[apps/tauri/src/routes/search.tsx]
-  N110[npm:@solid-imager/ui/hooks/use-current-search-persistence]
-  N111[npm:@solid-imager/ui/hooks/use-search-history-persistence]
-  N112[npm:@solid-imager/ui/hooks/use-search-page]
-  N113[npm:@solid-imager/ui/preset-client]
-  N114[npm:@solid-imager/ui/screens/search-screen]
-  N115[npm:@solid-imager/ui/search-history-client]
-  N116[npm:@solid-imager/ui/search-history-route]
-  N117[npm:~/components/media/media-grid-item]
-  N118[npm:~/hooks/use-media-source-events]
-  N119[npm:~/infrastructure/api/clients/preset-client]
-  N120[npm:~/infrastructure/api/clients/search-history-client]
-  N121[apps/tauri/src/routes/sources/$mediaSourceId/$mediaId/index.tsx]
-  N122[npm:@solid-imager/ui/hooks/use-source-root-path]
-  N123[npm:@solid-imager/ui/screens/legacy-media-detail-screen]
-  N124[npm:~/components/media/media-sidebar]
-  N125[npm:~/components/media/media-viewer]
-  N126[apps/tauri/src/routes/sources/$mediaSourceId/components/source-media-page.tsx]
-  N127[npm:@solid-imager/ui/screens/source-media-screen]
-  N128[npm:@solid-imager/ui/source-media-page]
-  N129[npm:~/components/media/move-copy-media-dialog]
-  N130[npm:~/components/upload-media-modal]
-  N131[apps/tauri/src/routes/sources/$mediaSourceId/index.tsx]
-  N132[apps/tauri/src/routes/sources/index.tsx]
-  N133[npm:@solid-imager/ui/hooks/use-sources-events]
-  N134[npm:@solid-imager/ui/hooks/use-sources-page]
-  N135[npm:@solid-imager/ui/legacy-source-form-modal]
-  N136[npm:@solid-imager/ui/screens/sources-screen]
-  N137[npm:@solid-imager/ui/source-card]
-  N138[npm:@solid-imager/ui/source-delete-modal]
-  N139[apps/tauri/node_modules/@tanstack/solid-db/dist/esm/index.js]
-  N140[npm:~/collections]
-  N141[npm:~/collections/query-keys]
-  N142[apps/tauri/src/routes/$.tsx]
-  N143[apps/tauri/src/routes/jobs.tsx]
-  N144[apps/tauri/src/routeTree.gen.ts]
-  N145[apps/tauri/src/routes/manager.tsx]
-  N146[apps/tauri/src/routes/$.tsx]
-  N147[apps/xtracter/src/api.ts]
-  N148[apps/xtracter/node_modules/@solid-imager/client/src/index.ts]
-  N149[apps/xtracter/src/background/index.ts]
-  N150[npm:@core/domain/media/utils/filename-utils]
-  N151[npm:@core/domain/sources/schemas]
-  N152[npm:@ext/api]
-  N153[apps/xtracter/src/content/danbooru.ts]
-  N154[npm:@ext/schema]
-  N155[apps/xtracter/src/utils/dom-utils.ts]
-  N156[apps/xtracter/src/content/index.ts]
-  N157[apps/xtracter/src/content/fanbox.ts]
-  N158[apps/xtracter/src/content/twitter.ts]
-  N159[apps/xtracter/src/content/twitter.test.ts]
-  N160[node_modules/vitest/dist/index.js]
-  N161[apps/xtracter/src/popup/index.html]
-  N162[url:en]
-  N163[url:UTF-8]
-  N164[url:viewport]
-  N165[url:width=device-width, initial-scale=1.0]
-  N166[url:root]
-  N167[url:module]
-  N168[url:index.tsx]
-  N169[apps/xtracter/src/popup/index.tsx]
-  N170[apps/xtracter/node_modules/solid-js/types/index.d.ts]
-  N171[apps/xtracter/node_modules/solid-js/web/types/index.d.ts]
-  N172[apps/xtracter/src/schema.ts]
-  N173[apps/xtracter/node_modules/zod/index.d.cts]
-  N174[packages/application/src/ports/media-service.ts]
-  N175[npm:@solid-imager/core/domain/interfaces/transaction-manager]
-  N176[packages/application/src/ports/media-processing-service.ts]
-  N177[packages/application/src/ports/search-service.ts]
-  N178[packages/application/src/services/ip-service.ts]
-  N179[npm:@solid-imager/core/domain/ips/schemas]
-  N180[npm:@solid-imager/core/domain/repositories/ip-repository]
-  N181[packages/application/src/ports/ip-service.ts]
-  N182[packages/application/src/services/media-processing-service.ts]
-  N183[npm:@solid-imager/core/domain/characters/schemas]
-  N184[packages/application/src/services/media-query-service.ts]
-  N185[packages/application/node_modules/@solid-imager/core/src/index.ts]
-  N186[npm:@solid-imager/core/domain/errors]
-  N187[packages/application/src/services/media-service.ts]
-  N188[packages/application/src/services/media-transfer-service.ts]
-  N189[packages/application/src/services/media-upload-service.ts]
-  N190[packages/application/src/services/tagging-service.ts]
-  N191[npm:@solid-imager/core/domain/interfaces/ai-client]
-  N192[npm:@solid-imager/core/domain/repositories/character-repository]
-  N193[npm:@solid-imager/core/domain/repositories/media-repository]
-  N194[npm:@solid-imager/core/domain/repositories/source-repository]
-  N195[npm:@solid-imager/core/domain/repositories/tag-repository]
-  N196[npm:@solid-imager/core/domain/sources/events]
-  N197[npm:@solid-imager/core/domain/tagging/constants]
-  N198[packages/application/src/services/user-service.ts]
-  N199[npm:@solid-imager/core/domain/repositories/user-repository]
-  N200[packages/application/src/services/search-snapshot-service.ts]
-  N201[npm:node:crypto]
-  N202[npm:@solid-imager/core/domain/repositories/search-snapshot-repository]
-  N203[packages/application/src/utils/hash-utils.ts]
-  N204[packages/client/src/create-client.ts]
-  N205[packages/client/node_modules/@orpc/client/dist/index.d.mts]
-  N206[npm:@orpc/client/fetch]
-  N207[packages/client/node_modules/@orpc/contract/dist/index.d.mts]
-  N208[packages/client/src/api-error.ts]
-  N209[packages/client/src/api-error.test.ts]
-  N210[packages/client/node_modules/vitest/dist/index.js]
-  N211[packages/client/src/create-client.test.ts]
-  N212[packages/core/src/domain/authors/schemas.ts]
-  N213[packages/core/node_modules/zod/index.d.cts]
-  N214[packages/core/src/domain/media/schemas.ts]
-  N215[packages/core/src/domain/categories/schemas.ts]
-  N216[packages/core/src/domain/characters/schemas.ts]
-  N217[packages/core/src/domain/collections/schemas.ts]
-  N218[packages/core/src/domain/config/config-schema.ts]
-  N219[packages/core/src/domain/contract/ai.contract.ts]
-  N220[packages/core/node_modules/@orpc/contract/dist/index.d.mts]
-  N221[packages/core/src/domain/contract/authors.contract.ts]
-  N222[packages/core/src/domain/contract/categories.contract.ts]
-  N223[packages/core/src/domain/contract/characters.contract.ts]
-  N224[packages/core/src/domain/contract/config.contract.ts]
-  N225[packages/core/src/domain/contract/directories.contract.ts]
-  N226[packages/core/src/domain/contract/downloads.contract.ts]
-  N227[packages/core/src/domain/contract/imports.contract.ts]
-  N228[packages/core/src/domain/contract/index.ts]
-  N229[packages/core/src/domain/contract/ips.contract.ts]
-  N230[packages/core/src/domain/contract/jobs.contract.ts]
-  N231[packages/core/src/domain/contract/media.contract.ts]
-  N232[packages/core/src/domain/contract/presets.contract.ts]
-  N233[packages/core/src/domain/contract/projects.contract.ts]
-  N234[packages/core/src/domain/contract/search-snapshots.contract.ts]
-  N235[packages/core/src/domain/contract/sources.contract.ts]
-  N236[packages/core/src/domain/contract/tags.contract.ts]
-  N237[packages/core/src/domain/contract/thumbnails.contract.ts]
-  N238[packages/core/src/domain/contract/utils.contract.ts]
-  N239[packages/core/src/domain/ips/schemas.ts]
-  N240[packages/core/src/domain/jobs/schemas.ts]
-  N241[packages/core/src/domain/sources/events.ts]
-  N242[packages/core/src/domain/contract/presets-client.ts]
-  N243[packages/core/src/domain/contract/search-snapshots-client.ts]
-  N244[packages/core/src/domain/events/media-source-events.ts]
-  N245[packages/core/src/domain/media/upload-schemas.ts]
-  N246[packages/core/src/domain/media/utils/filename-utils.ts]
-  N247[packages/core/src/domain/media/utils/metadata-utils.ts]
-  N248[npm:@/domain/media/schemas]
-  N249[packages/core/src/domain/projects/schemas.ts]
-  N250[packages/core/src/domain/repositories/author-repository.ts]
-  N251[npm:@/domain/interfaces/transaction-manager]
-  N252[packages/core/src/domain/repositories/authors-repository.ts]
-  N253[npm:@/domain/authors/schemas]
-  N254[packages/core/src/domain/repositories/category-repository.ts]
-  N255[npm:@/domain/categories/schemas]
-  N256[packages/core/src/domain/repositories/ip-repository.ts]
-  N257[npm:@/domain/ips/schemas]
-  N258[packages/core/src/domain/repositories/media-repository.ts]
-  N259[packages/core/src/domain/repositories/project-repository.ts]
-  N260[packages/core/src/domain/repositories/source-repository.ts]
-  N261[packages/core/src/domain/repositories/tag-repository.ts]
-  N262[npm:@/domain/tags/schemas]
-  N263[packages/core/src/domain/repositories/user-repository.ts]
-  N264[npm:@/domain/users/schemas]
-  N265[packages/core/src/domain/search/schema.ts]
-  N266[packages/core/src/domain/search/history.ts]
-  N267[packages/core/src/domain/services/storage-service.ts]
-  N268[npm:@/domain/media/upload-schemas]
-  N269[packages/core/src/domain/shared/schemas.ts]
-  N270[packages/core/src/domain/thumbnails/schemas.ts]
-  N271[packages/core/src/domain/sources/schemas.ts]
-  N272[packages/core/src/domain/sources/store.ts]
-  N273[packages/core/node_modules/solid-js/store/types/index.d.ts]
-  N274[packages/core/src/domain/tagging/schemas.ts]
-  N275[packages/core/src/domain/tags/extractor.ts]
-  N276[packages/core/src/utils/type-guards.ts]
-  N277[packages/core/src/domain/tags/schemas.ts]
-  N278[packages/core/src/domain/users/schemas.ts]
-  N279[packages/core/src/interfaces/config-service.ts]
-  N280[npm:@/domain/config/config-schema]
-  N281[packages/core/src/interfaces/media-storage.ts]
-  N282[packages/core/src/utils/deep-equal.ts]
-  N283[packages/db/src/repositories/author-repository.ts]
-  N284[packages/db/src/repositories/authors-repository.ts]
-  N285[npm:@solid-imager/core/domain/authors/schemas]
-  N286[packages/db/src/repositories/job-repository.ts]
-  N287[npm:@solid-imager/core/domain/jobs/schemas]
-  N288[packages/db/src/repositories/media-repository-utils.ts]
-  N289[packages/db/src/repositories/project-repository.ts]
-  N290[packages/db/src/repositories/job-repository.test.ts]
-  N291[packages/db/node_modules/vitest/dist/index.js]
-  N292[packages/db/src/types.ts]
-  N293[packages/db/src/repositories/search-snapshot-repository.ts]
-  N294[packages/db/src/schema.ts]
-  N295[npm:@solid-imager/core/domain/repositories/job-repository]
-  N296[packages/db/node_modules/drizzle-orm/index.d.ts]
-  N297[packages/db/node_modules/drizzle-orm/node-postgres/index.d.ts]
-  N298[packages/db/node_modules/drizzle-orm/pglite/index.d.ts]
+  N0["apps/cli/src/commands/ai.test.ts"]
+  N1["node_modules/vitest/dist/index.js"]
+  N2["apps/cli/src/orpc-client.ts"]
+  N3["apps/cli/src/commands/ai.ts"]
+  N4["node_modules/incur/dist/index.d.ts"]
+  N5["apps/cli/src/utils.ts"]
+  N6["apps/cli/src/commands/media.ts"]
+  N7["apps/cli/src/commands/db.ts"]
+  N8["npm:node:child_process"]
+  N9["npm:node:fs"]
+  N10["npm:node:path"]
+  N11["apps/cli/src/commands/job.ts"]
+  N12["apps/cli/src/commands/media.test.ts"]
+  N13["npm:node:stream"]
+  N14["npm:node:stream/promises"]
+  N15["apps/cli/src/index.ts"]
+  N16["apps/cli/node_modules/@solid-imager/client/src/index.ts"]
+  N17["npm:@solid-imager/core/domain/contract"]
+  N18["npm:@solid-imager/core/utils"]
+  N19["apps/tauri/src/api/entities-api.ts"]
+  N20["npm:~/orpc-client"]
+  N21["apps/tauri/src/api/media-api.ts"]
+  N22["apps/tauri/src/api/sources-api.ts"]
+  N23["npm:@solid-imager/core/domain/sources/schemas"]
+  N24["node_modules/zod/index.d.cts"]
+  N25["apps/tauri/src/main.tsx"]
+  N26["npm:@solid-imager/ui/layouts/app-shell"]
+  N27["npm:@solid-imager/ui/router-status"]
+  N28["apps/tauri/node_modules/@tanstack/solid-router/dist/cjs/index.cjs"]
+  N29["node_modules/solid-js/types/index.d.ts"]
+  N30["node_modules/solid-js/web/types/index.d.ts"]
+  N31["apps/tauri/src/index.css"]
+  N32["apps/tauri/src/collections/index.ts"]
+  N33["apps/tauri/src/components/server-settings-screen.tsx"]
+  N34["apps/tauri/src/collections/authors-collection.ts"]
+  N35["node_modules/@tanstack/db/dist/cjs/index.cjs"]
+  N36["node_modules/@tanstack/query-db-collection/dist/cjs/index.cjs"]
+  N37["node_modules/@tanstack/tauri-db-sqlite-persistence/dist/cjs/index.cjs"]
+  N38["npm:~/infrastructure/db/persistence"]
+  N39["npm:~/query-client"]
+  N40["apps/tauri/src/collections/query-keys.ts"]
+  N41["apps/tauri/src/collections/characters-collection.ts"]
+  N42["apps/tauri/src/collections/ips-collection.ts"]
+  N43["apps/tauri/src/collections/projects-collection.ts"]
+  N44["apps/tauri/src/collections/sources-collection.ts"]
+  N45["apps/tauri/src/collections/tags-collection.ts"]
+  N46["apps/tauri/src/components/imports/import-review-modal.tsx"]
+  N47["npm:@solid-imager/ui/import-review-modal"]
+  N48["apps/tauri/src/components/imports/pending-downloads-indicator.tsx"]
+  N49["npm:@solid-imager/ui/event-stream"]
+  N50["npm:@solid-imager/ui/pending-downloads-indicator"]
+  N51["apps/tauri/src/components/media/ai-tagging-modal.tsx"]
+  N52["npm:@solid-imager/ui/ai-tagging-modal"]
+  N53["npm:~/infrastructure/api-clients/orpc-client"]
+  N54["apps/tauri/src/components/media/character-crop-modal.tsx"]
+  N55["npm:@solid-imager/core/domain/media/schemas"]
+  N56["npm:@solid-imager/ui/character-crop-modal"]
+  N57["apps/tauri/src/components/media/media-grid-item.tsx"]
+  N58["apps/tauri/src/components/media/media-sidebar/media-sidebar-content.tsx"]
+  N59["npm:@solid-imager/ui/media-sidebar-content"]
+  N60["apps/tauri/src/components/media/media-viewer.tsx"]
+  N61["apps/tauri/src/components/media/media-actions.tsx"]
+  N62["npm:@solid-imager/ui/media-actions"]
+  N63["npm:@solid-imager/ui/oppai-oracle-modal"]
+  N64["npm:@solid-imager/ui/stores/search-store"]
+  N65["npm:~/components/media/ai-tagging-modal"]
+  N66["npm:~/components/media/character-crop-modal"]
+  N67["npm:~/hooks/use-batch-job-events"]
+  N68["npm:~/infrastructure/api-clients/media-api"]
+  N69["npm:~/infrastructure/media/thumbnail-runtime"]
+  N70["npm:~/infrastructure/tauri-fetch-helpers"]
+  N71["apps/tauri/src/components/media/move-copy-media-dialog.tsx"]
+  N72["npm:@solid-imager/ui/move-copy-media-dialog"]
+  N73["npm:~/infrastructure/api-clients/sources-api"]
+  N74["apps/tauri/src/components/media/thumbnail-image.tsx"]
+  N75["apps/tauri/src/components/upload-media-modal/upload-media-modal-content.tsx"]
+  N76["npm:@solid-imager/ui/upload-media-modal-content"]
+  N77["npm:@solid-imager/ui/badge"]
+  N78["npm:@solid-imager/ui/button"]
+  N79["url:"]
+  N80["apps/tauri/src/infrastructure/api-clients/ai-api.ts"]
+  N81["apps/tauri/src/infrastructure/api-clients/characters-api.ts"]
+  N82["apps/tauri/src/infrastructure/api-clients/imports-api.ts"]
+  N83["apps/tauri/src/infrastructure/api-clients/ips-api.ts"]
+  N84["apps/tauri/src/infrastructure/api-clients/projects-api.ts"]
+  N85["apps/tauri/src/infrastructure/api-clients/search-api.ts"]
+  N86["apps/tauri/src/infrastructure/api-clients/thumbnails-api.ts"]
+  N87["apps/tauri/src/infrastructure/api/clients/preset-client.ts"]
+  N88["npm:@solid-imager/core/domain/contract/presets-client"]
+  N89["apps/tauri/src/infrastructure/api/clients/search-history-client.ts"]
+  N90["npm:@solid-imager/core/domain/contract/search-snapshots-client"]
+  N91["apps/tauri/src/infrastructure/db/persistence.ts"]
+  N92["node_modules/@tauri-apps/plugin-sql/dist-js/index.cjs"]
+  N93["npm:~/infrastructure/settings/server-settings"]
+  N94["apps/tauri/src/infrastructure/media/thumbnail-runtime.ts"]
+  N95["apps/tauri/src/infrastructure/tauri-fetch-helpers.ts"]
+  N96["node_modules/@tauri-apps/plugin-http/dist-js/index.cjs"]
+  N97["apps/tauri/src/infrastructure/api-base.ts"]
+  N98["apps/tauri/src/infrastructure/settings/server-health.ts"]
+  N99["apps/tauri/src/infrastructure/settings/server-settings.ts"]
+  N100["node_modules/@tauri-apps/plugin-store/dist-js/index.cjs"]
+  N101["npm:~/infrastructure/api-base"]
+  N102["apps/tauri/src/orpc-client.ts"]
+  N103["apps/tauri/node_modules/@solid-imager/client/src/index.ts"]
+  N104["apps/tauri/src/queries/index.ts"]
+  N105["node_modules/@orpc/solid-query/dist/index.d.mts"]
+  N106["npm:@solid-imager/core/domain/jobs/schemas"]
+  N107["apps/tauri/src/routes/$.tsx"]
+  N108["npm:@solid-imager/ui/route-compat"]
+  N109["npm:@solid-imager/ui/screens/not-found-screen"]
+  N110["apps/tauri/src/routes/__root.tsx"]
+  N111["npm:@solid-imager/ui/hooks/use-sources-page"]
+  N112["npm:@solid-imager/ui/shortcuts/index"]
+  N113["npm:@solid-imager/ui/toast"]
+  N114["node_modules/@tanstack/solid-db/dist/esm/index.js"]
+  N115["node_modules/@tanstack/solid-query/build/index.cjs"]
+  N116["apps/tauri/src/routes/about.tsx"]
+  N117["npm:@solid-imager/ui/screens/about-screen"]
+  N118["apps/tauri/src/routes/config.tsx"]
+  N119["npm:@solid-imager/ui/query-options"]
+  N120["npm:@solid-imager/ui/query-state"]
+  N121["npm:@solid-imager/ui/screens/config-state-screen"]
+  N122["npm:~/queries"]
+  N123["apps/tauri/src/routes/index.tsx"]
+  N124["apps/tauri/src/routes/jobs.tsx"]
+  N125["apps/tauri/src/routes/search.tsx"]
+  N126["npm:@solid-imager/ui/bulk-action-dialog"]
+  N127["apps/tauri/src/routes/sources/$mediaSourceId/$mediaId/index.tsx"]
+  N128["npm:@solid-imager/ui/hooks/use-source-root-path"]
+  N129["npm:@solid-imager/ui/media-detail-header"]
+  N130["npm:@solid-imager/ui/screens/media-detail-screen"]
+  N131["npm:~/components/media/media-actions"]
+  N132["npm:~/components/media/media-sidebar"]
+  N133["npm:~/components/media/media-viewer"]
+  N134["npm:~/hooks/use-media-source-events"]
+  N135["apps/tauri/src/routes/sources/$mediaSourceId/components/source-media-page.tsx"]
+  N136["apps/tauri/src/routes/sources/$mediaSourceId/index.tsx"]
+  N137["npm:@solid-imager/ui/search-history-route"]
+  N138["apps/tauri/src/routes/sources/index.tsx"]
+  N139["apps/tauri/src/routes/servers.tsx"]
+  N140["npm:@solid-imager/ui/workspace/management-layout"]
+  N141["npm:~/components/server-settings-screen"]
+  N142["apps/tauri/src/routeTree.gen.ts"]
+  N143["apps/tauri/src/routes/manager.tsx"]
+  N144["apps/tauri/src/query-client.ts"]
+  N145["apps/xtracter/src/api.ts"]
+  N146["apps/xtracter/node_modules/@solid-imager/client/src/index.ts"]
+  N147["apps/xtracter/src/background/index.ts"]
+  N148["npm:@core/domain/media/utils/filename-utils"]
+  N149["npm:@core/domain/sources/schemas"]
+  N150["npm:@ext/api"]
+  N151["apps/xtracter/src/content/danbooru.ts"]
+  N152["npm:@ext/schema"]
+  N153["apps/xtracter/src/utils/dom-utils.ts"]
+  N154["apps/xtracter/src/content/index.ts"]
+  N155["apps/xtracter/src/content/fanbox.ts"]
+  N156["apps/xtracter/src/content/twitter.ts"]
+  N157["apps/xtracter/src/content/twitter.test.ts"]
+  N158["apps/xtracter/src/popup/index.html"]
+  N159["url:en"]
+  N160["url:UTF-8"]
+  N161["url:viewport"]
+  N162["url:width=device-width, initial-scale=1.0"]
+  N163["url:root"]
+  N164["url:module"]
+  N165["url:index.tsx"]
+  N166["apps/xtracter/src/popup/index.tsx"]
+  N167["npm:@ext/utils/source-selection"]
+  N168["apps/xtracter/src/schema.ts"]
+  N169["apps/xtracter/src/utils/source-selection.test.ts"]
+  N170["apps/xtracter/src/utils/source-selection.ts"]
+  N171["packages/application/src/ports/media-service.ts"]
+  N172["npm:@solid-imager/core/domain/interfaces/transaction-manager"]
+  N173["packages/application/src/ports/media-processing-service.ts"]
+  N174["packages/application/src/services/ip-service.ts"]
+  N175["npm:@solid-imager/core/domain/ips/schemas"]
+  N176["npm:@solid-imager/core/domain/repositories/ip-repository"]
+  N177["packages/application/src/ports/ip-service.ts"]
+  N178["packages/application/src/services/media-processing-service.ts"]
+  N179["npm:@solid-imager/core/domain/characters/schemas"]
+  N180["packages/application/src/services/media-query-service.ts"]
+  N181["packages/application/node_modules/@solid-imager/core/src/index.ts"]
+  N182["npm:@solid-imager/core/domain/errors"]
+  N183["packages/application/src/services/media-service.ts"]
+  N184["packages/application/src/services/media-transfer-service.ts"]
+  N185["packages/application/src/services/media-upload-service.ts"]
+  N186["packages/application/src/services/tagging-service.ts"]
+  N187["npm:@solid-imager/core/domain/interfaces/ai-client"]
+  N188["npm:@solid-imager/core/domain/repositories/character-repository"]
+  N189["npm:@solid-imager/core/domain/repositories/media-repository"]
+  N190["npm:@solid-imager/core/domain/repositories/source-repository"]
+  N191["npm:@solid-imager/core/domain/repositories/tag-repository"]
+  N192["npm:@solid-imager/core/domain/sources/events"]
+  N193["npm:@solid-imager/core/domain/tagging/constants"]
+  N194["packages/application/src/services/user-service.ts"]
+  N195["npm:@solid-imager/core/domain/repositories/user-repository"]
+  N196["packages/application/src/services/search-snapshot-service.ts"]
+  N197["npm:node:crypto"]
+  N198["npm:@solid-imager/core/domain/repositories/search-snapshot-repository"]
+  N199["packages/application/src/utils/hash-utils.ts"]
+  N200["packages/client/src/create-client.ts"]
+  N201["node_modules/@orpc/client/dist/index.d.mts"]
+  N202["npm:@orpc/client/fetch"]
+  N203["node_modules/@orpc/contract/dist/index.d.mts"]
+  N204["packages/client/src/api-error.ts"]
+  N205["packages/client/src/api-error.test.ts"]
+  N206["packages/client/src/create-client.test.ts"]
+  N207["packages/core/src/domain/authors/schemas.ts"]
+  N208["packages/core/src/domain/media/schemas.ts"]
+  N209["packages/core/src/domain/categories/schemas.ts"]
+  N210["packages/core/src/domain/characters/schemas.ts"]
+  N211["packages/core/src/domain/collections/schemas.ts"]
+  N212["packages/core/src/domain/config/config-schema.ts"]
+  N213["packages/core/src/domain/contract/ai.contract.ts"]
+  N214["packages/core/src/domain/contract/authors.contract.ts"]
+  N215["packages/core/src/domain/contract/categories.contract.ts"]
+  N216["packages/core/src/domain/contract/characters.contract.ts"]
+  N217["packages/core/src/domain/contract/config.contract.ts"]
+  N218["packages/core/src/domain/contract/directories.contract.ts"]
+  N219["packages/core/src/domain/contract/downloads.contract.ts"]
+  N220["packages/core/src/domain/contract/imports.contract.ts"]
+  N221["packages/core/src/domain/contract/index.ts"]
+  N222["packages/core/src/domain/contract/ips.contract.ts"]
+  N223["packages/core/src/domain/contract/jobs.contract.ts"]
+  N224["packages/core/src/domain/contract/media.contract.ts"]
+  N225["packages/core/src/domain/contract/presets.contract.ts"]
+  N226["packages/core/src/domain/contract/projects.contract.ts"]
+  N227["packages/core/src/domain/contract/search-snapshots.contract.ts"]
+  N228["packages/core/src/domain/contract/sources.contract.ts"]
+  N229["packages/core/src/domain/contract/tags.contract.ts"]
+  N230["packages/core/src/domain/contract/thumbnails.contract.ts"]
+  N231["packages/core/src/domain/contract/utils.contract.ts"]
+  N232["packages/core/src/domain/ips/schemas.ts"]
+  N233["packages/core/src/domain/jobs/schemas.ts"]
+  N234["packages/core/src/domain/sources/events.ts"]
+  N235["packages/core/src/domain/contract/presets-client.ts"]
+  N236["packages/core/src/domain/contract/search-snapshots-client.ts"]
+  N237["packages/core/src/domain/events/media-source-events.ts"]
+  N238["packages/core/src/domain/media/upload-schemas.ts"]
+  N239["packages/core/src/domain/media/utils/filename-utils.ts"]
+  N240["packages/core/src/domain/media/utils/metadata-utils.ts"]
+  N241["npm:@/domain/media/schemas"]
+  N242["packages/core/src/domain/projects/schemas.ts"]
+  N243["packages/core/src/domain/repositories/author-repository.ts"]
+  N244["npm:@/domain/interfaces/transaction-manager"]
+  N245["packages/core/src/domain/repositories/authors-repository.ts"]
+  N246["npm:@/domain/authors/schemas"]
+  N247["packages/core/src/domain/repositories/category-repository.ts"]
+  N248["npm:@/domain/categories/schemas"]
+  N249["packages/core/src/domain/repositories/ip-repository.ts"]
+  N250["npm:@/domain/ips/schemas"]
+  N251["packages/core/src/domain/repositories/media-repository.ts"]
+  N252["packages/core/src/domain/repositories/project-repository.ts"]
+  N253["packages/core/src/domain/repositories/source-repository.ts"]
+  N254["packages/core/src/domain/repositories/tag-repository.ts"]
+  N255["npm:@/domain/tags/schemas"]
+  N256["packages/core/src/domain/repositories/user-repository.ts"]
+  N257["npm:@/domain/users/schemas"]
+  N258["packages/core/src/domain/search/schema.ts"]
+  N259["packages/core/src/domain/search/history.ts"]
+  N260["packages/core/src/domain/services/storage-service.ts"]
+  N261["npm:@/domain/media/upload-schemas"]
+  N262["packages/core/src/domain/shared/schemas.ts"]
+  N263["packages/core/src/domain/thumbnails/schemas.ts"]
+  N264["packages/core/src/domain/sources/schemas.ts"]
+  N265["packages/core/src/domain/sources/store.ts"]
+  N266["node_modules/solid-js/store/types/index.d.ts"]
+  N267["packages/core/src/domain/tagging/schemas.ts"]
+  N268["packages/core/src/domain/tags/extractor.ts"]
+  N269["packages/core/src/utils/type-guards.ts"]
+  N270["packages/core/src/domain/tags/schemas.ts"]
+  N271["packages/core/src/domain/users/schemas.ts"]
+  N272["packages/core/src/interfaces/config-service.ts"]
+  N273["npm:@/domain/config/config-schema"]
+  N274["packages/core/src/interfaces/media-storage.ts"]
+  N275["packages/core/src/utils/deep-equal.ts"]
+  N276["packages/db/src/repositories/author-repository.ts"]
+  N277["packages/db/src/repositories/authors-repository.ts"]
+  N278["npm:@solid-imager/core/domain/authors/schemas"]
+  N279["packages/db/src/repositories/job-repository.ts"]
+  N280["packages/db/src/repositories/media-repository-utils.ts"]
+  N281["packages/db/src/repositories/project-repository.ts"]
+  N282["packages/db/src/repositories/job-repository.test.ts"]
+  N283["packages/db/src/types.ts"]
+  N284["packages/db/src/repositories/search-snapshot-repository.ts"]
+  N285["packages/db/src/schema.ts"]
+  N286["npm:@solid-imager/core/domain/repositories/job-repository"]
+  N287["node_modules/drizzle-orm/index.d.ts"]
+  N288["node_modules/drizzle-orm/bun-sql/index.d.ts"]
+  N289["node_modules/drizzle-orm/node-postgres/index.d.ts"]
+  N290["node_modules/drizzle-orm/pglite/index.d.ts"]
   N0 --> N1
   N0 --> N2
   N0 --> N3
@@ -333,403 +327,399 @@ graph LR
   N15 --> N2
   N15 --> N5
   N2 --> N16
-  N5 --> N17
+  N2 --> N17
+  N5 --> N18
   N5 --> N4
-  N18 --> N19
-  N20 --> N19
-  N21 --> N22
-  N21 --> N23
-  N21 --> N19
-  N24 --> N25
-  N24 --> N26
-  N24 --> N27
-  N24 --> N28
-  N24 --> N29
-  N24 --> N30
-  N24 --> N31
-  N24 --> N32
-  N33 --> N34
-  N33 --> N35
-  N33 --> N36
-  N33 --> N37
-  N33 --> N19
-  N33 --> N38
-  N33 --> N39
-  N40 --> N34
-  N40 --> N35
-  N40 --> N36
-  N40 --> N37
-  N40 --> N19
-  N40 --> N38
-  N40 --> N39
-  N31 --> N37
-  N31 --> N33
-  N31 --> N40
-  N31 --> N41
-  N31 --> N42
-  N31 --> N43
-  N31 --> N44
-  N41 --> N34
+  N19 --> N20
+  N21 --> N20
+  N22 --> N23
+  N22 --> N24
+  N22 --> N20
+  N25 --> N26
+  N25 --> N27
+  N25 --> N28
+  N25 --> N29
+  N25 --> N30
+  N25 --> N31
+  N25 --> N32
+  N25 --> N33
+  N34 --> N35
+  N34 --> N36
+  N34 --> N37
+  N34 --> N38
+  N34 --> N20
+  N34 --> N39
+  N34 --> N40
   N41 --> N35
   N41 --> N36
   N41 --> N37
-  N41 --> N19
   N41 --> N38
+  N41 --> N20
   N41 --> N39
-  N42 --> N34
+  N41 --> N40
+  N32 --> N38
+  N32 --> N34
+  N32 --> N41
+  N32 --> N42
+  N32 --> N43
+  N32 --> N44
+  N32 --> N45
   N42 --> N35
   N42 --> N36
   N42 --> N37
-  N42 --> N19
   N42 --> N38
+  N42 --> N20
   N42 --> N39
-  N43 --> N34
+  N42 --> N40
   N43 --> N35
   N43 --> N36
   N43 --> N37
-  N43 --> N19
   N43 --> N38
+  N43 --> N20
   N43 --> N39
-  N44 --> N34
+  N43 --> N40
   N44 --> N35
   N44 --> N36
   N44 --> N37
-  N44 --> N19
   N44 --> N38
+  N44 --> N20
   N44 --> N39
-  N45 --> N46
-  N47 --> N48
-  N47 --> N49
-  N50 --> N51
-  N50 --> N52
-  N53 --> N54
-  N53 --> N55
-  N53 --> N52
-  N56 --> N54
-  N57 --> N54
-  N57 --> N58
-  N57 --> N59
-  N57 --> N27
-  N57 --> N60
-  N61 --> N54
-  N62 --> N22
-  N62 --> N63
-  N62 --> N28
-  N62 --> N64
-  N65 --> N54
-  N66 --> N67
-  N66 --> N47
-  N68 --> N69
-  N30 --> N70
-  N71 --> N19
-  N72 --> N19
-  N73 --> N19
-  N74 --> N19
-  N75 --> N19
-  N76 --> N54
-  N76 --> N19
-  N77 --> N52
-  N78 --> N79
-  N78 --> N19
-  N80 --> N81
-  N80 --> N19
-  N82 --> N36
-  N82 --> N83
-  N84 --> N85
-  N86 --> N87
-  N86 --> N88
+  N44 --> N40
+  N45 --> N35
+  N45 --> N36
+  N45 --> N37
+  N45 --> N38
+  N45 --> N20
+  N45 --> N39
+  N45 --> N40
+  N46 --> N47
+  N48 --> N49
+  N48 --> N50
+  N51 --> N52
+  N51 --> N53
+  N54 --> N55
+  N54 --> N56
+  N54 --> N53
+  N57 --> N55
+  N58 --> N55
+  N58 --> N59
+  N58 --> N29
+  N60 --> N55
+  N61 --> N55
+  N61 --> N62
+  N61 --> N63
+  N61 --> N64
+  N61 --> N28
+  N61 --> N65
+  N61 --> N66
+  N61 --> N67
+  N61 --> N68
+  N61 --> N69
+  N61 --> N70
+  N61 --> N20
+  N71 --> N23
+  N71 --> N72
+  N71 --> N29
+  N71 --> N73
+  N74 --> N55
+  N75 --> N76
+  N33 --> N77
+  N33 --> N78
+  N31 --> N79
+  N80 --> N20
+  N81 --> N20
+  N82 --> N20
+  N83 --> N20
+  N84 --> N20
+  N85 --> N55
+  N85 --> N20
+  N86 --> N53
+  N87 --> N88
+  N87 --> N20
   N89 --> N90
-  N89 --> N91
-  N89 --> N87
-  N92 --> N93
-  N32 --> N90
-  N32 --> N94
+  N89 --> N20
+  N91 --> N37
+  N91 --> N92
+  N91 --> N93
+  N94 --> N70
   N95 --> N96
-  N95 --> N27
-  N97 --> N25
-  N97 --> N26
-  N97 --> N98
-  N97 --> N27
-  N97 --> N99
-  N97 --> N38
-  N100 --> N101
-  N102 --> N94
+  N95 --> N97
+  N98 --> N96
+  N99 --> N100
+  N99 --> N24
+  N99 --> N101
   N102 --> N103
-  N102 --> N104
-  N102 --> N105
-  N102 --> N27
-  N102 --> N52
-  N102 --> N106
-  N107 --> N101
+  N102 --> N17
+  N102 --> N96
+  N104 --> N105
+  N104 --> N106
   N107 --> N108
-  N109 --> N108
-  N109 --> N110
-  N109 --> N111
-  N109 --> N112
-  N109 --> N113
-  N109 --> N114
-  N109 --> N115
-  N109 --> N116
-  N109 --> N27
-  N109 --> N117
-  N109 --> N118
-  N109 --> N119
-  N109 --> N120
-  N121 --> N122
-  N121 --> N94
-  N121 --> N26
-  N121 --> N123
-  N121 --> N105
-  N121 --> N27
-  N121 --> N124
-  N121 --> N125
-  N121 --> N118
-  N121 --> N106
-  N126 --> N122
-  N126 --> N113
-  N126 --> N127
-  N126 --> N115
-  N126 --> N128
-  N126 --> N27
-  N126 --> N117
-  N126 --> N129
-  N126 --> N130
-  N126 --> N118
-  N126 --> N119
-  N126 --> N120
-  N131 --> N116
-  N131 --> N27
-  N132 --> N22
-  N132 --> N48
-  N132 --> N133
-  N132 --> N134
-  N132 --> N135
-  N132 --> N103
-  N132 --> N136
-  N132 --> N137
-  N132 --> N138
-  N132 --> N139
-  N132 --> N105
-  N132 --> N27
-  N132 --> N140
-  N132 --> N141
-  N132 --> N52
-  N142 --> N96
-  N142 --> N27
-  N142 --> N28
-  N143 --> N90
-  N144 --> N97
-  N144 --> N107
-  N144 --> N95
-  N144 --> N100
-  N144 --> N102
-  N144 --> N143
-  N144 --> N145
-  N144 --> N109
-  N144 --> N146
-  N144 --> N132
-  N144 --> N142
-  N144 --> N131
-  N144 --> N121
+  N107 --> N109
+  N107 --> N28
+  N107 --> N29
+  N110 --> N23
+  N110 --> N49
+  N110 --> N111
+  N110 --> N26
+  N110 --> N27
+  N110 --> N112
+  N110 --> N113
+  N110 --> N114
+  N110 --> N115
+  N116 --> N117
+  N116 --> N28
+  N116 --> N101
+  N118 --> N119
+  N118 --> N120
+  N118 --> N121
+  N118 --> N115
+  N118 --> N28
+  N118 --> N53
+  N118 --> N122
+  N123 --> N28
+  N124 --> N103
+  N125 --> N55
+  N125 --> N18
+  N125 --> N126
+  N125 --> N78
+  N127 --> N128
+  N127 --> N129
+  N127 --> N119
+  N127 --> N27
+  N127 --> N130
+  N127 --> N115
+  N127 --> N28
+  N127 --> N29
+  N127 --> N131
+  N127 --> N132
+  N127 --> N133
+  N127 --> N134
+  N127 --> N122
+  N135 --> N55
+  N135 --> N126
+  N136 --> N137
+  N136 --> N28
+  N138 --> N28
+  N139 --> N140
+  N139 --> N28
+  N139 --> N141
+  N139 --> N93
+  N142 --> N110
+  N142 --> N123
+  N142 --> N107
+  N142 --> N116
+  N142 --> N118
+  N142 --> N124
+  N142 --> N143
+  N142 --> N125
+  N142 --> N139
+  N142 --> N138
+  N142 --> N136
+  N142 --> N127
+  N144 --> N103
+  N144 --> N119
+  N144 --> N115
+  N145 --> N146
+  N145 --> N17
   N147 --> N148
-  N147 --> N91
-  N149 --> N150
-  N149 --> N151
-  N149 --> N152
-  N153 --> N154
-  N153 --> N155
-  N156 --> N154
+  N147 --> N149
+  N147 --> N150
+  N151 --> N152
+  N151 --> N153
+  N154 --> N152
+  N154 --> N151
+  N154 --> N155
+  N154 --> N156
+  N156 --> N152
   N156 --> N153
-  N156 --> N157
-  N156 --> N158
-  N158 --> N154
-  N158 --> N155
-  N157 --> N154
-  N157 --> N155
-  N159 --> N160
-  N159 --> N158
-  N161 --> N162
-  N161 --> N163
-  N161 --> N164
-  N161 --> N165
-  N161 --> N166
-  N161 --> N167
-  N161 --> N168
-  N169 --> N152
-  N169 --> N154
+  N155 --> N152
+  N155 --> N153
+  N157 --> N1
+  N158 --> N159
+  N158 --> N160
+  N158 --> N161
+  N158 --> N162
+  N158 --> N163
+  N158 --> N164
+  N158 --> N165
+  N166 --> N150
+  N166 --> N152
+  N166 --> N167
+  N166 --> N29
+  N166 --> N30
+  N168 --> N24
+  N169 --> N1
   N169 --> N170
-  N169 --> N171
-  N172 --> N173
+  N171 --> N172
+  N173 --> N172
   N174 --> N175
-  N176 --> N175
-  N177 --> N54
+  N174 --> N176
+  N174 --> N177
+  N178 --> N10
   N178 --> N179
-  N178 --> N180
-  N178 --> N181
-  N182 --> N10
-  N182 --> N183
-  N182 --> N175
+  N178 --> N172
+  N180 --> N10
+  N180 --> N181
+  N180 --> N182
+  N183 --> N172
   N184 --> N10
-  N184 --> N185
-  N184 --> N186
-  N187 --> N175
-  N188 --> N10
-  N188 --> N185
-  N188 --> N186
-  N189 --> N10
-  N189 --> N185
-  N189 --> N186
-  N190 --> N10
-  N190 --> N191
-  N190 --> N192
-  N190 --> N180
-  N190 --> N193
-  N190 --> N194
-  N190 --> N195
-  N190 --> N196
-  N190 --> N22
-  N190 --> N197
-  N198 --> N199
+  N184 --> N181
+  N184 --> N182
+  N185 --> N10
+  N185 --> N181
+  N185 --> N182
+  N186 --> N10
+  N186 --> N187
+  N186 --> N188
+  N186 --> N176
+  N186 --> N189
+  N186 --> N190
+  N186 --> N191
+  N186 --> N192
+  N186 --> N23
+  N186 --> N193
+  N194 --> N195
+  N196 --> N197
+  N196 --> N182
+  N196 --> N198
+  N199 --> N197
+  N199 --> N9
+  N199 --> N14
   N200 --> N201
-  N200 --> N186
   N200 --> N202
-  N203 --> N201
-  N203 --> N9
-  N203 --> N14
-  N204 --> N205
-  N204 --> N206
-  N204 --> N207
-  N204 --> N208
-  N209 --> N210
-  N209 --> N208
-  N211 --> N210
-  N211 --> N208
-  N211 --> N204
-  N212 --> N213
-  N212 --> N214
-  N215 --> N213
-  N216 --> N213
-  N217 --> N213
-  N218 --> N213
-  N219 --> N220
-  N219 --> N213
+  N200 --> N203
+  N200 --> N204
+  N205 --> N1
+  N205 --> N204
+  N206 --> N1
+  N206 --> N204
+  N206 --> N200
+  N207 --> N24
+  N207 --> N208
+  N209 --> N24
+  N210 --> N24
+  N211 --> N24
+  N212 --> N24
+  N213 --> N203
+  N213 --> N24
+  N214 --> N203
+  N214 --> N207
+  N215 --> N203
+  N215 --> N24
+  N215 --> N209
+  N216 --> N203
+  N216 --> N24
+  N217 --> N203
+  N217 --> N212
+  N218 --> N203
+  N218 --> N24
+  N219 --> N203
+  N219 --> N24
+  N219 --> N208
+  N220 --> N203
+  N220 --> N24
+  N221 --> N213
+  N221 --> N214
+  N221 --> N215
+  N221 --> N216
+  N221 --> N217
+  N221 --> N218
+  N221 --> N219
   N221 --> N220
-  N221 --> N212
-  N222 --> N220
-  N222 --> N213
-  N222 --> N215
-  N223 --> N220
-  N223 --> N213
-  N224 --> N220
-  N224 --> N218
-  N225 --> N220
-  N225 --> N213
-  N226 --> N220
-  N226 --> N213
-  N226 --> N214
-  N227 --> N220
-  N227 --> N213
-  N228 --> N219
-  N228 --> N221
-  N228 --> N222
-  N228 --> N223
-  N228 --> N224
-  N228 --> N225
-  N228 --> N226
-  N228 --> N227
-  N228 --> N229
-  N228 --> N230
-  N228 --> N231
-  N228 --> N232
+  N221 --> N222
+  N221 --> N223
+  N221 --> N224
+  N221 --> N225
+  N221 --> N226
+  N221 --> N227
+  N221 --> N228
+  N221 --> N229
+  N221 --> N230
+  N221 --> N231
+  N222 --> N203
+  N222 --> N24
+  N222 --> N232
+  N224 --> N203
+  N224 --> N24
+  N225 --> N203
+  N225 --> N24
+  N226 --> N203
+  N226 --> N24
+  N228 --> N203
+  N228 --> N24
   N228 --> N233
   N228 --> N234
-  N228 --> N235
-  N228 --> N236
-  N228 --> N237
-  N228 --> N238
-  N229 --> N220
-  N229 --> N213
-  N229 --> N239
-  N231 --> N220
-  N231 --> N213
-  N232 --> N220
-  N232 --> N213
-  N233 --> N220
-  N233 --> N213
-  N235 --> N220
-  N235 --> N213
-  N235 --> N240
-  N235 --> N241
-  N236 --> N220
-  N236 --> N213
-  N237 --> N220
-  N237 --> N213
-  N238 --> N220
-  N238 --> N213
-  N230 --> N220
-  N230 --> N213
-  N242 --> N220
-  N242 --> N232
-  N234 --> N220
-  N243 --> N220
-  N243 --> N234
-  N244 --> N213
-  N239 --> N213
-  N214 --> N213
-  N245 --> N213
-  N246 --> N214
+  N229 --> N203
+  N229 --> N24
+  N230 --> N203
+  N230 --> N24
+  N231 --> N203
+  N231 --> N24
+  N223 --> N203
+  N223 --> N24
+  N235 --> N203
+  N235 --> N225
+  N236 --> N203
+  N236 --> N227
+  N227 --> N203
+  N237 --> N24
+  N232 --> N24
+  N208 --> N24
+  N238 --> N24
+  N239 --> N208
+  N240 --> N241
+  N242 --> N24
+  N243 --> N244
+  N243 --> N241
+  N245 --> N246
   N247 --> N248
-  N249 --> N213
-  N250 --> N251
-  N250 --> N248
-  N252 --> N253
+  N247 --> N244
+  N249 --> N244
+  N249 --> N250
+  N251 --> N244
+  N252 --> N244
+  N253 --> N244
+  N254 --> N244
+  N254 --> N241
   N254 --> N255
-  N254 --> N251
-  N256 --> N251
   N256 --> N257
-  N258 --> N251
-  N259 --> N251
-  N260 --> N251
-  N261 --> N251
-  N261 --> N248
-  N261 --> N262
-  N263 --> N264
-  N265 --> N213
-  N265 --> N248
-  N266 --> N213
-  N266 --> N265
-  N267 --> N213
-  N267 --> N268
-  N269 --> N213
-  N241 --> N213
-  N241 --> N270
-  N241 --> N271
-  N271 --> N213
+  N258 --> N24
+  N258 --> N241
+  N259 --> N24
+  N259 --> N258
+  N260 --> N24
+  N260 --> N261
+  N262 --> N24
+  N234 --> N24
+  N234 --> N263
+  N234 --> N264
+  N264 --> N24
+  N265 --> N266
+  N267 --> N24
+  N268 --> N269
+  N268 --> N270
+  N270 --> N24
+  N271 --> N24
+  N233 --> N24
+  N263 --> N24
   N272 --> N273
-  N274 --> N213
-  N275 --> N276
-  N275 --> N277
-  N277 --> N213
-  N278 --> N213
-  N240 --> N213
-  N270 --> N213
-  N279 --> N280
-  N281 --> N213
-  N281 --> N268
-  N282 --> N276
-  N283 --> N201
-  N283 --> N186
-  N284 --> N285
-  N286 --> N287
-  N288 --> N186
-  N289 --> N186
-  N290 --> N291
-  N290 --> N292
-  N290 --> N286
-  N293 --> N202
-  N294 --> N295
-  N294 --> N296
-  N292 --> N297
-  N292 --> N298
-  N292 --> N294
+  N274 --> N24
+  N274 --> N261
+  N275 --> N269
+  N276 --> N182
+  N277 --> N278
+  N279 --> N106
+  N280 --> N182
+  N280 --> N55
+  N281 --> N182
+  N282 --> N1
+  N282 --> N283
+  N282 --> N279
+  N284 --> N198
+  N285 --> N286
+  N285 --> N287
+  N283 --> N288
+  N283 --> N289
+  N283 --> N290
+  N283 --> N285
 ```

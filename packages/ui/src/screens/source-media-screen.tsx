@@ -15,12 +15,11 @@ import {
 	SourceMediaGrid,
 	type SourceMediaViewMode,
 } from "../source-media-grid";
+import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
 import { CollectionInspector } from "../workspace/collection-inspector";
 import { reconcileCollectionPreviewId } from "../workspace/collection-navigation";
 import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
-
-const SOURCE_VIEW_MODE_KEY = "solid-imager:v2:source-media:view-mode";
 
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
@@ -60,7 +59,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const updateViewMode = (mode: SourceMediaViewMode) => {
 		setViewMode(mode);
 		try {
-			localStorage.setItem(SOURCE_VIEW_MODE_KEY, mode);
+			localStorage.setItem(UI_STORAGE_KEYS.sourceViewMode, mode);
 		} catch {
 			// Storage can be unavailable in hardened browser contexts.
 		}
@@ -76,7 +75,10 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	onMount(() => {
 		setIsMounted(true);
 		try {
-			const storedMode = localStorage.getItem(SOURCE_VIEW_MODE_KEY);
+			const storedMode = readUiStorageValue(
+				localStorage,
+				UI_STORAGE_KEYS.sourceViewMode,
+			);
 			if (storedMode === "grid" || storedMode === "list") {
 				setViewMode(storedMode);
 			}
@@ -178,7 +180,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 						>
 							<SourceMediaGrid
 								contextMenuMediaId={page().contextMenuMediaId}
-								detailBasePath="/sources"
+								detailBasePath={props.detailBasePath}
 								enableVirtualization={props.enableVirtualization}
 								hasNextPage={page().mediaQuery.hasNextPage}
 								isBulkSelectMode={props.isBulkSelectMode}
@@ -240,14 +242,6 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				</div>
 			</div>
 
-			<input
-				accept=".json,.ndjson,.tar"
-				class="hidden"
-				id="restore-input"
-				onChange={page().handleRestoreSelect}
-				ref={page().setRestoreInputRef}
-				type="file"
-			/>
 			<input
 				accept="image/*,.json"
 				class="hidden"

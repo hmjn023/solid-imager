@@ -190,9 +190,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		startIndex: number;
 	} | null>(null);
 	const [activeMediaId, setActiveMediaId] = createSignal<string | null>(null);
+	const [collectionRoot, setCollectionRoot] = createSignal<HTMLDivElement>();
 	const [internalContextMenuMedia, setInternalContextMenuMedia] =
 		createSignal<Media>();
-	let collectionRootRef: HTMLDivElement | undefined;
 	let mediaGridRef: HTMLElement | undefined;
 	let mediaGridResizeObserver: ResizeObserver | undefined;
 	let metricsFrameId: number | undefined;
@@ -288,12 +288,14 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		props.scrollMode === "element"
 			? (elementRowVirtualizer ?? windowRowVirtualizer)
 			: windowRowVirtualizer;
+	const measuredVirtualRows = () => mediaRowVirtualizer().getVirtualItems();
 
 	const shouldVirtualize = createMemo(
 		() =>
 			enableVirtualization() &&
 			props.mediaResults().length > VIRTUALIZATION_THRESHOLD &&
-			mediaItemWidth() > 0,
+			mediaItemWidth() > 0 &&
+			measuredVirtualRows().length > 0,
 	);
 	const virtualizationPending = createMemo(
 		() =>
@@ -366,7 +368,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	const resolveScrollElement = () => {
 		if (props.scrollMode !== "element") return null;
-		const element = collectionRootRef?.closest("[data-media-scroll]");
+		const element = collectionRoot()?.closest("[data-media-scroll]");
 		return element instanceof HTMLElement ? element : null;
 	};
 
@@ -574,7 +576,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	};
 
 	onMount(() => {
-		const element = collectionRootRef;
+		const element = collectionRoot();
 		element?.addEventListener("dragstart", handleMediaDragStart);
 		onCleanup(() => {
 			element?.removeEventListener("dragstart", handleMediaDragStart);
@@ -755,7 +757,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				}
 				when={shouldVirtualize()}
 			>
-				<For each={mediaRowVirtualizer().getVirtualItems()}>
+				<For each={measuredVirtualRows()}>
 					{(virtualRow) => {
 						const rowMedia = () => getRowMedia(virtualRow.index);
 						return (
@@ -897,13 +899,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									) {
 										return;
 									}
-									props.onOpenMediaDetail?.(media);
+									prepareAndOpenMediaDetail(media);
 								}}
 								onKeyDown={(event) => {
 									if (event.target !== event.currentTarget) return;
 									if (event.key === "Enter" && props.onOpenMediaDetail) {
 										event.preventDefault();
-										props.onOpenMediaDetail(media);
+										prepareAndOpenMediaDetail(media);
 									}
 									if (event.key === " ") event.preventDefault();
 								}}
@@ -991,9 +993,18 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				props.onCopyMove ||
 				props.onSyncSingleMedia,
 		);
+	const prepareAndOpenMediaDetail = (media: Media) => {
+		props.onPrepareMediaDetail?.(media);
+		props.onOpenMediaDetail?.(media);
+	};
 	const openMediaInNewTab = (media: Media) => {
+		props.onPrepareMediaDetail?.(media);
+		const detailBasePath = (props.detailBasePath ?? "/sources").replace(
+			/\/$/,
+			"",
+		);
 		window.open(
-			`${props.detailBasePath ?? "/sources"}/${media.mediaSourceId}/${media.id}`,
+			`${detailBasePath}/${media.mediaSourceId}/${media.id}`,
 			"_blank",
 			"noopener,noreferrer",
 		);
@@ -1008,7 +1019,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		<div
 			class="min-h-0 min-w-0 space-y-4"
 			ref={(element) => {
-				collectionRootRef = element;
+				setCollectionRoot(element);
 				const resolvedScrollElement = resolveScrollElement();
 				if (resolvedScrollElement !== scrollElement()) {
 					setScrollElement(resolvedScrollElement);
@@ -1055,7 +1066,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					</Show>
 
 					{/* Grid and list share the same target-safe context menu. */}
-					<Show fallback={collectionContent} when={!disableContextMenu()}>
+					<Show
+						fallback={collectionContent}
+						when={!disableContextMenu() && Boolean(collectionRoot())}
+					>
 						<ContextMenu
 							onOpenChange={(open) => {
 								if (!open) clearContextMenuTarget();
@@ -1113,7 +1127,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 												</Show>
 												<Show when={props.onOpenMediaDetail}>
 													<ContextMenuItem
-														onSelect={() => props.onOpenMediaDetail?.(media)}
+														onSelect={() => prepareAndOpenMediaDetail(media)}
 													>
 														詳細を開く
 														<ContextMenuShortcut>Enter</ContextMenuShortcut>

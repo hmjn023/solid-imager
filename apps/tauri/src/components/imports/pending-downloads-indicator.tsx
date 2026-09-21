@@ -1,5 +1,5 @@
 import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
-import { PendingDownloadsIndicator as SharedPendingDownloadsIndicator } from "@solid-imager/ui/legacy-pending-downloads-indicator";
+import { PendingDownloadsIndicator as SharedPendingDownloadsIndicator } from "@solid-imager/ui/pending-downloads-indicator";
 import {
 	cancelPendingImports,
 	listPendingImports,
@@ -8,10 +8,11 @@ import {
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
-export function PendingDownloadsIndicator() {
+export function PendingDownloadsIndicator(props: { compact?: boolean }) {
 	return (
 		<SharedPendingDownloadsIndicator
 			cancelPending={cancelPendingImports}
+			compact={props.compact}
 			countPending={async () => {
 				const result = await orpc.imports.countPending();
 				return result.count;

@@ -16,6 +16,7 @@ import {
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import sharp from "sharp";
+import { loadDghsImgutils } from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { db } from "~/infrastructure/db";
 import {
@@ -126,7 +127,7 @@ async function cropDetection(
 			.png()
 			.toFile(cropPath);
 		try {
-			const { segmentRgbaWithIsnetis } = await import("dghs-imgutils-rs");
+			const { segmentRgbaWithIsnetis } = loadDghsImgutils();
 			cropBuffer = Buffer.from(
 				await segmentRgbaWithIsnetis(cropPath, undefined, inferenceOptions),
 			);
@@ -655,7 +656,7 @@ export const aiRouter = os.router({
 					);
 					await Bun.write(tmpPath, buffer);
 					try {
-						const { detectPerson } = await import("dghs-imgutils-rs");
+						const { detectPerson } = loadDghsImgutils();
 						const detections = await detectPerson(
 							tmpPath,
 							undefined,
@@ -737,7 +738,7 @@ export const aiRouter = os.router({
 					return result;
 				}
 
-				const { detectPerson } = await import("dghs-imgutils-rs");
+				const { detectPerson } = loadDghsImgutils();
 				const inferenceOptions = createNativeInferenceOptions(config.ai);
 				const detections = await detectPerson(
 					fullPath,
