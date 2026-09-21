@@ -117,29 +117,19 @@ export function deleteMedia(sourceId: string, mediaId: string) {
 
 /**
  * Copies a media item to another source
- * @param sourceId - Current Media source ID (Legacy param, kept for signature compatibility)
  * @param mediaId - Media ID
  * @param targetSourceId - Target Media source ID
  */
-export function copyMedia(
-	_sourceId: string,
-	mediaId: string,
-	targetSourceId: string,
-) {
+export function copyMedia(mediaId: string, targetSourceId: string) {
 	return orpc.media.copy({ mediaId, targetSourceId });
 }
 
 /**
  * Moves a media item to another source
- * @param sourceId - Current Media source ID (Legacy param, kept for signature compatibility)
  * @param mediaId - Media ID
  * @param targetSourceId - Target Media source ID
  */
-export function moveMedia(
-	_sourceId: string,
-	mediaId: string,
-	targetSourceId: string,
-) {
+export function moveMedia(mediaId: string, targetSourceId: string) {
 	return orpc.media.move({ mediaId, targetSourceId });
 }
 

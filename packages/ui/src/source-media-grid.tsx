@@ -43,7 +43,7 @@ import {
 	getCollectionNavigationIndex,
 	isCollectionNavigationKey,
 	isCollectionScrollNearEnd,
-} from "./v2/collection-navigation";
+} from "./workspace/collection-navigation";
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
@@ -190,9 +190,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		startIndex: number;
 	} | null>(null);
 	const [activeMediaId, setActiveMediaId] = createSignal<string | null>(null);
+	const [collectionRoot, setCollectionRoot] = createSignal<HTMLDivElement>();
 	const [internalContextMenuMedia, setInternalContextMenuMedia] =
 		createSignal<Media>();
-	let collectionRootRef: HTMLDivElement | undefined;
 	let mediaGridRef: HTMLElement | undefined;
 	let mediaGridResizeObserver: ResizeObserver | undefined;
 	let metricsFrameId: number | undefined;
@@ -288,12 +288,14 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		props.scrollMode === "element"
 			? (elementRowVirtualizer ?? windowRowVirtualizer)
 			: windowRowVirtualizer;
+	const measuredVirtualRows = () => mediaRowVirtualizer().getVirtualItems();
 
 	const shouldVirtualize = createMemo(
 		() =>
 			enableVirtualization() &&
 			props.mediaResults().length > VIRTUALIZATION_THRESHOLD &&
-			mediaItemWidth() > 0,
+			mediaItemWidth() > 0 &&
+			measuredVirtualRows().length > 0,
 	);
 	const virtualizationPending = createMemo(
 		() =>
@@ -366,7 +368,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 	const resolveScrollElement = () => {
 		if (props.scrollMode !== "element") return null;
-		const element = collectionRootRef?.closest("[data-media-scroll]");
+		const element = collectionRoot()?.closest("[data-media-scroll]");
 		return element instanceof HTMLElement ? element : null;
 	};
 
@@ -574,7 +576,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	};
 
 	onMount(() => {
-		const element = collectionRootRef;
+		const element = collectionRoot();
 		element?.addEventListener("dragstart", handleMediaDragStart);
 		onCleanup(() => {
 			element?.removeEventListener("dragstart", handleMediaDragStart);
@@ -755,7 +757,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				}
 				when={shouldVirtualize()}
 			>
-				<For each={mediaRowVirtualizer().getVirtualItems()}>
+				<For each={measuredVirtualRows()}>
 					{(virtualRow) => {
 						const rowMedia = () => getRowMedia(virtualRow.index);
 						return (
@@ -829,12 +831,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	};
 	const listContent = (
-		<div class="overflow-x-auto rounded-md border border-[var(--v2-border)] bg-[var(--v2-surface)] [scrollbar-gutter:stable]">
+		<div class="overflow-x-auto rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] [scrollbar-gutter:stable]">
 			<table class="w-full min-w-[52rem] border-collapse text-left text-sm">
 				<caption class="sr-only">
 					メディア一覧。{totalCount().toLocaleString()}件。
 				</caption>
-				<thead class="bg-[var(--v2-surface-muted)] text-xs text-[var(--v2-text-muted)]">
+				<thead class="bg-[var(--workspace-surface-muted)] text-xs text-[var(--workspace-text-muted)]">
 					<tr>
 						<Show when={props.isBulkSelectMode?.()}>
 							<th class="w-10 px-3 py-2" scope="col">
@@ -858,16 +860,16 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-[var(--v2-border)]">
+				<tbody class="divide-y divide-[var(--workspace-border)]">
 					<For each={props.mediaResults()}>
 						{(media) => (
 							<tr
 								aria-selected={props.previewSelectedMediaId?.() === media.id}
-								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--v2-focus)] ${
+								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-focus)] ${
 									props.isSelected?.(media.id) ||
 									props.previewSelectedMediaId?.() === media.id
-										? "bg-[var(--v2-surface-selected)]"
-										: "hover:bg-[var(--v2-surface-muted)]"
+										? "bg-[var(--workspace-surface-selected)]"
+										: "hover:bg-[var(--workspace-surface-muted)]"
 								}`}
 								data-media-id={media.id}
 								onClick={(event) => {
@@ -897,13 +899,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									) {
 										return;
 									}
-									props.onOpenMediaDetail?.(media);
+									prepareAndOpenMediaDetail(media);
 								}}
 								onKeyDown={(event) => {
 									if (event.target !== event.currentTarget) return;
 									if (event.key === "Enter" && props.onOpenMediaDetail) {
 										event.preventDefault();
-										props.onOpenMediaDetail(media);
+										prepareAndOpenMediaDetail(media);
 									}
 									if (event.key === " ") event.preventDefault();
 								}}
@@ -948,29 +950,29 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								<th class="max-w-[28rem] px-3 py-2 font-normal" scope="row">
 									<div class="min-h-10 w-full px-1 py-1 text-left">
 										<span
-											class="block truncate font-medium text-[var(--v2-text)]"
+											class="block truncate font-medium text-[var(--workspace-text)]"
 											title={media.fileName}
 										>
 											{media.fileName}
 										</span>
 										<span
-											class="mt-0.5 block truncate text-[var(--v2-text-muted)] text-xs"
+											class="mt-0.5 block truncate text-[var(--workspace-text-muted)] text-xs"
 											title={media.filePath}
 										>
 											{media.filePath}
 										</span>
 									</div>
 								</th>
-								<td class="px-3 py-2 text-[var(--v2-text-secondary)]">
+								<td class="px-3 py-2 text-[var(--workspace-text-secondary)]">
 									{media.mediaType}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--workspace-text-secondary)]">
 									{media.width} × {media.height}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-secondary)]">
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--workspace-text-secondary)]">
 									{formatFileSize(media.fileSize)}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--v2-text-muted)]">
+								<td class="whitespace-nowrap px-3 py-2 text-[var(--workspace-text-muted)]">
 									{media.modifiedAt.toLocaleDateString("ja-JP")}
 								</td>
 							</tr>
@@ -991,9 +993,18 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				props.onCopyMove ||
 				props.onSyncSingleMedia,
 		);
+	const prepareAndOpenMediaDetail = (media: Media) => {
+		props.onPrepareMediaDetail?.(media);
+		props.onOpenMediaDetail?.(media);
+	};
 	const openMediaInNewTab = (media: Media) => {
+		props.onPrepareMediaDetail?.(media);
+		const detailBasePath = (props.detailBasePath ?? "/sources").replace(
+			/\/$/,
+			"",
+		);
 		window.open(
-			`${props.detailBasePath ?? "/sources"}/${media.mediaSourceId}/${media.id}`,
+			`${detailBasePath}/${media.mediaSourceId}/${media.id}`,
 			"_blank",
 			"noopener,noreferrer",
 		);
@@ -1008,7 +1019,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		<div
 			class="min-h-0 min-w-0 space-y-4"
 			ref={(element) => {
-				collectionRootRef = element;
+				setCollectionRoot(element);
 				const resolvedScrollElement = resolveScrollElement();
 				if (resolvedScrollElement !== scrollElement()) {
 					setScrollElement(resolvedScrollElement);
@@ -1055,7 +1066,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					</Show>
 
 					{/* Grid and list share the same target-safe context menu. */}
-					<Show fallback={collectionContent} when={!disableContextMenu()}>
+					<Show
+						fallback={collectionContent}
+						when={!disableContextMenu() && Boolean(collectionRoot())}
+					>
 						<ContextMenu
 							onOpenChange={(open) => {
 								if (!open) clearContextMenuTarget();
@@ -1086,7 +1100,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									{collectionContent}
 								</section>
 							</ContextMenuTrigger>
-							<ContextMenuContent class="v2-theme min-w-56 max-w-80">
+							<ContextMenuContent class="workspace-theme min-w-56 max-w-80">
 								<Show
 									keyed
 									fallback={
@@ -1100,7 +1114,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										<>
 											<ContextMenuGroup>
 												<ContextMenuGroupLabel
-													class="max-w-72 truncate text-[var(--v2-text-muted)]"
+													class="max-w-72 truncate text-[var(--workspace-text-muted)]"
 													title={media.fileName}
 												>
 													{media.fileName}
@@ -1113,7 +1127,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 												</Show>
 												<Show when={props.onOpenMediaDetail}>
 													<ContextMenuItem
-														onSelect={() => props.onOpenMediaDetail?.(media)}
+														onSelect={() => prepareAndOpenMediaDetail(media)}
 													>
 														詳細を開く
 														<ContextMenuShortcut>Enter</ContextMenuShortcut>

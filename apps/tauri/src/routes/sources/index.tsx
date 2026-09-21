@@ -1,132 +1,14 @@
-import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
-import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
-import type { RawEventHandler } from "@solid-imager/ui/hooks/use-sources-events";
-import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
-import { LegacySourceFormModal } from "@solid-imager/ui/legacy-source-form-modal";
-import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { SourcesScreen } from "@solid-imager/ui/screens/sources-screen";
-import { SourceCard } from "@solid-imager/ui/source-card";
-import { SourceDeleteModal } from "@solid-imager/ui/source-delete-modal";
-import { useLiveQuery } from "@tanstack/solid-db";
-import { useQueryClient } from "@tanstack/solid-query";
-import { createFileRoute } from "@tanstack/solid-router";
-import { getCollections } from "~/collections";
-import { collectionQueryKeys } from "~/collections/query-keys";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
-import {
-	createMediaSource,
-	deleteMediaSource,
-	syncMediaSources,
-	updateMediaSource,
-} from "~/infrastructure/api-clients/sources-api";
+import { createFileRoute, Navigate, useLocation } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/sources/")({
 	component: SourcesRoute,
 });
 
-function registerSourceEvents(handler: RawEventHandler): () => void {
-	return subscribeToEventStream(
-		(signal) => orpc.sources.events({ id: "*" }, { signal }),
-		handler,
-	);
-}
-
 function SourcesRoute() {
-	const queryClient = useQueryClient();
-	const { sources } = getCollections();
-	const mediaSources = useLiveQuery(() => sources);
-	const sourceData = () => {
-		const cachedSources = mediaSources();
-		return cachedSources.length > 0 ||
-			(mediaSources.isReady && !sources.utils.isError)
-			? cachedSources
-			: undefined;
+	const location = useLocation();
+	const searchHref = () => {
+		const url = new URL(location().href, "http://solid-imager.invalid");
+		return `/search${url.search}${url.hash}`;
 	};
-	const fetchStatus = () => {
-		if (sources.utils.fetchStatus.includes("paused")) {
-			return "paused" as const;
-		}
-		return sources.utils.isFetching ? ("fetching" as const) : ("idle" as const);
-	};
-
-	const page = useSourcesPage({
-		actions: {
-			createMediaSource: async (data: unknown) => {
-				await createMediaSource(mediaSourceInfoSchema.parse(data));
-				await sources.utils.refetch();
-			},
-			updateMediaSource: async (id: string, data: unknown) => {
-				await updateMediaSource(id, mediaSourceInfoSchema.parse(data));
-				await sources.utils.refetch();
-			},
-			deleteMediaSource: async (id: string) => {
-				await deleteMediaSource(id);
-				await sources.utils.refetch();
-			},
-			syncMediaSources: async (ids: string[]) => {
-				await syncMediaSources(ids);
-				await sources.utils.refetch();
-			},
-		},
-		queryClient,
-		invalidateQueryKey: collectionQueryKeys.sources(),
-		registerEvents: registerSourceEvents,
-		getSourceIds: () =>
-			(sourceData() ?? [])
-				.map((s) => s.id ?? s.name)
-				.filter((id): id is string => Boolean(id)) ?? [],
-	});
-
-	return (
-		<SourcesScreen
-			page={page}
-			mediaSources={sourceData}
-			onRetry={() => sources.utils.clearError()}
-			state={() =>
-				toQueryUiState(
-					{
-						data: sourceData(),
-						error:
-							sources.utils.lastError ??
-							(mediaSources.isError
-								? new Error("保存済みのソースを読み込めませんでした")
-								: undefined),
-						status:
-							mediaSources.isError || sources.utils.isError
-								? "error"
-								: sourceData() === undefined || sources.utils.isLoading
-									? "pending"
-									: "success",
-						fetchStatus: fetchStatus(),
-					},
-					{ isEmpty: (data) => data.length === 0 },
-				)
-			}
-			renderSourceCard={(source) => (
-				<SourceCard
-					href={source.id ? `#/sources/${source.id}` : "#/sources"}
-					mediaSource={source}
-					onDelete={page.handleDeleteSource}
-					onEdit={page.handleEditSource}
-					onSync={page.handleSyncSource}
-				/>
-			)}
-			renderFormModal={(props) => (
-				<LegacySourceFormModal
-					editingSource={props.editingSource}
-					isOpen={props.isOpen}
-					onClose={props.onClose}
-					onSubmit={props.onSubmit}
-				/>
-			)}
-			renderDeleteModal={(props) => (
-				<SourceDeleteModal
-					isOpen={props.isOpen}
-					onClose={props.onClose}
-					onConfirm={props.onConfirm}
-					sourceToDelete={props.sourceToDelete}
-				/>
-			)}
-		/>
-	);
+	return <Navigate replace to={searchHref()} />;
 }

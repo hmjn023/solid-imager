@@ -19,7 +19,14 @@ export default defineConfig({
       "@": path.resolve(__dirname, "../../packages/core/src"),
       "~": path.resolve(__dirname, "./src"),
     },
-    dedupe: ["zod", "solid-js", "solid-js/web"],
+    dedupe: [
+      "@tanstack/query-core",
+      "@tanstack/solid-query",
+      "@tanstack/solid-router",
+      "solid-js",
+      "solid-js/web",
+      "zod",
+    ],
   },
   server: {
     proxy: {

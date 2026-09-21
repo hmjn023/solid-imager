@@ -1,6 +1,6 @@
-import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
 import { createFileRoute } from "@tanstack/solid-router";
+import { RouteCompatibilityRedirect } from "~/components/route-compat";
 
 export const Route = createFileRoute("/$")({
-	component: NotFoundScreen,
+	component: RouteCompatibilityRedirect,
 });

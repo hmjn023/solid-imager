@@ -1,7 +1,7 @@
 import {
-	LegacyUploadMediaModalContent as SharedUploadMediaModalContent,
+	UploadMediaModalContent as SharedUploadMediaModalContent,
 	type UploadMediaModalSubmitOptions,
-} from "./legacy-upload-media-modal";
+} from "./upload-media-modal";
 import type { UploadMediaModalContentProps } from "./upload-media-modal-content.types";
 
 export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
@@ -28,9 +28,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			onFetchUrl={props.onFetchUrl}
 			onFilesSelected={(files) => {
 				const firstFile = files[0];
-				if (firstFile) {
-					props.onUrlFetch(firstFile);
-				}
+				if (firstFile) props.onUrlFetch(firstFile);
 			}}
 			onUploadStart={handleUploadStart}
 			pastedUrl={props.pastedUrl}
@@ -38,4 +36,4 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	);
 }
 
-export { UploadMediaModalContent as UploadMediaModal };
+export type { UploadMediaModalContentProps } from "./upload-media-modal-content.types";

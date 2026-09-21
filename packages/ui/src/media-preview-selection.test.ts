@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createMediaPreviewSelectHandler } from "./media-preview-selection";
 
 describe("createMediaPreviewSelectHandler", () => {
-	it("keeps preview selection absent for legacy collections", () => {
+	it("keeps preview selection absent for collections without an inspector", () => {
 		expect(createMediaPreviewSelectHandler({ id: "media-1" })).toBeUndefined();
 	});
 

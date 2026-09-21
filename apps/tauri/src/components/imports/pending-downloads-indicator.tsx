@@ -8,10 +8,11 @@ import {
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
-export function PendingDownloadsIndicator() {
+export function PendingDownloadsIndicator(props: { compact?: boolean }) {
 	return (
 		<SharedPendingDownloadsIndicator
 			cancelPending={cancelPendingImports}
+			compact={props.compact}
 			countPending={async () => {
 				const result = await orpc.imports.countPending();
 				return result.count;

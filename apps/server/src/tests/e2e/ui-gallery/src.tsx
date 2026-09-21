@@ -339,7 +339,7 @@ function Gallery() {
 							</CardHeader>
 							<CardContent class="space-y-4">
 								<Input
-									aria-label="Legacy input"
+									aria-label="Example input"
 									placeholder="Compatibility input"
 								/>
 								<Progress aria-label="Import progress" value={60}>

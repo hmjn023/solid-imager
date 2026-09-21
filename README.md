@@ -28,7 +28,7 @@ Tooling: Vite / Biome
 ### プロジェクト構成（モノレポ）
 
 - `apps/server/`: メインサーバー (TanStack Start + oRPC)。バックエンドAPIとWeb UIを統合。
-- `apps/tauri/`: Tauri アプリ。`src/` は独立 SPA、`src-tauri/` は Rust 実装。
+- `apps/tauri/`: Tauri アプリ。`src/` はWebと共通のワークスペース部品を使う独立 SPA、`src-tauri/` は Rust 実装。
 - `apps/cli/`: メディア管理・同期用CLIツール。
 - `apps/xtracter/`: メディア収集用ブラウザ拡張機能。
 - `packages/core/`: ドメインモデル、Zodスキーマ、contract、各種 port。
@@ -163,7 +163,7 @@ fi
 
 - **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Swagger UI](./apps/server/public/api-docs.html)
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
-- **V2移行状況**: [REPORT.md](./REPORT.md)
+- **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面と `/v2/*` 互換転送の対応状況）
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)

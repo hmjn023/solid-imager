@@ -1,0 +1,152 @@
+import type { Media } from "@solid-imager/core/domain/media/schemas";
+import {
+	mediaIdSchema,
+	mediaSourceIdSchema,
+} from "@solid-imager/core/domain/media/schemas";
+import {
+	readUiStorageValue,
+	removeUiStorageValue,
+	UI_STORAGE_KEYS,
+} from "./ui-storage";
+
+/**
+ * Session keys used by the detail page context. These aliases are retained for
+ * adapters that imported the old names; their values are the current keys.
+ */
+export const MEDIA_CONTEXT_STORAGE_KEY = UI_STORAGE_KEYS.mediaContext;
+export const MEDIA_RETURN_STORAGE_KEY = UI_STORAGE_KEYS.mediaReturn;
+
+const MAX_CONTEXT_ITEMS = 500;
+
+export type MediaContextItem = Pick<Media, "id" | "mediaSourceId">;
+
+export type StoredMediaContext = {
+	items: MediaContextItem[];
+	returnPath: string;
+	updatedAt: number;
+};
+
+function getStorage(): Storage | null {
+	try {
+		return typeof sessionStorage === "undefined" ? null : sessionStorage;
+	} catch {
+		return null;
+	}
+}
+
+function writeStorageValue(
+	storage: Storage,
+	key: string,
+	value: string,
+): boolean {
+	try {
+		storage.setItem(key, value);
+		return storage.getItem(key) === value;
+	} catch {
+		return false;
+	}
+}
+
+export function saveMediaContext(
+	returnPath: string,
+	items: readonly MediaContextItem[],
+): void {
+	const storage = getStorage();
+	if (!storage) return;
+
+	const uniqueItems = new Map<string, MediaContextItem>();
+	for (const item of items) {
+		if (
+			mediaIdSchema.safeParse(item.id).success &&
+			mediaSourceIdSchema.safeParse(item.mediaSourceId).success
+		) {
+			uniqueItems.set(item.id, {
+				id: item.id,
+				mediaSourceId: item.mediaSourceId,
+			});
+		}
+		if (uniqueItems.size >= MAX_CONTEXT_ITEMS) break;
+	}
+
+	const context: StoredMediaContext = {
+		items: [...uniqueItems.values()],
+		returnPath,
+		updatedAt: Date.now(),
+	};
+	const serialized = JSON.stringify(context);
+
+	// Each write is independent. A full session store should not prevent the
+	// other value from being retained or make detail navigation throw.
+	writeStorageValue(storage, MEDIA_CONTEXT_STORAGE_KEY, serialized);
+	writeStorageValue(storage, MEDIA_RETURN_STORAGE_KEY, returnPath);
+}
+
+export function readMediaContext(): StoredMediaContext | null {
+	const storage = getStorage();
+	if (!storage) return null;
+
+	try {
+		const raw = readUiStorageValue(storage, UI_STORAGE_KEYS.mediaContext);
+		if (!raw) return null;
+		const value: unknown = JSON.parse(raw);
+		if (!isRecord(value) || !Array.isArray(value.items)) return null;
+
+		const items = value.items.flatMap((item) => {
+			if (!isRecord(item)) return [];
+			const mediaId = mediaIdSchema.safeParse(item.id);
+			const mediaSourceId = mediaSourceIdSchema.safeParse(item.mediaSourceId);
+			return mediaId.success && mediaSourceId.success
+				? [{ id: mediaId.data, mediaSourceId: mediaSourceId.data }]
+				: [];
+		});
+		const migratedReturnPath = readUiStorageValue(
+			storage,
+			UI_STORAGE_KEYS.mediaReturn,
+		);
+		const returnPath =
+			typeof value.returnPath === "string"
+				? value.returnPath
+				: migratedReturnPath;
+		if (typeof returnPath !== "string") return null;
+
+		return {
+			items,
+			returnPath,
+			updatedAt:
+				typeof value.updatedAt === "number" ? value.updatedAt : Date.now(),
+		};
+	} catch {
+		return null;
+	}
+}
+
+export function readMediaReturnPath(): string | null {
+	const storage = getStorage();
+	return storage
+		? readUiStorageValue(storage, UI_STORAGE_KEYS.mediaReturn)
+		: null;
+}
+
+export function clearMediaReturnPath(): void {
+	const storage = getStorage();
+	if (!storage) return;
+	removeUiStorageValue(storage, UI_STORAGE_KEYS.mediaReturn);
+}
+
+export function findMediaNeighbors(mediaId: string): {
+	next: MediaContextItem | undefined;
+	previous: MediaContextItem | undefined;
+} {
+	const context = readMediaContext();
+	if (!context) return { next: undefined, previous: undefined };
+	const index = context.items.findIndex((item) => item.id === mediaId);
+	if (index < 0) return { next: undefined, previous: undefined };
+	return {
+		next: context.items[index + 1],
+		previous: index > 0 ? context.items[index - 1] : undefined,
+	};
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null;
+}

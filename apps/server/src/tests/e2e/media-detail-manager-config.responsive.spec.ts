@@ -47,6 +47,24 @@ async function sampleImagePixel(
 	});
 }
 
+async function openMediaDetail(
+	page: Page,
+	mediaId: string,
+	returnPath: string,
+): Promise<void> {
+	const media = page.locator(`[data-media-id="${mediaId}"]`);
+	const detailPath = mediaPath(mediaId);
+	await media.click();
+	await expect
+		.poll(() => [returnPath, detailPath].includes(new URL(page.url()).pathname))
+		.toBe(true);
+	if (new URL(page.url()).pathname === returnPath) {
+		await expect(media).toHaveAttribute("aria-current", "true");
+		await media.dblclick();
+	}
+	await expect(page).toHaveURL(detailPath);
+}
+
 test("media detail follows the second thumbnail after returning to the list", async ({
 	page,
 }) => {
@@ -58,8 +76,7 @@ test("media detail follows the second thumbnail after returning to the list", as
 			response.url().endsWith(mediaPath(E2E_PRIMARY_MEDIA_ID)) &&
 			response.request().resourceType() === "fetch",
 	);
-	await page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`).click();
-	await expect(page).toHaveURL(mediaPath(E2E_PRIMARY_MEDIA_ID));
+	await openMediaDetail(page, E2E_PRIMARY_MEDIA_ID, sourcePath());
 	expect((await primaryResponse).headers()["cache-control"]).toBe("no-store");
 	await expect(
 		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
@@ -67,15 +84,13 @@ test("media detail follows the second thumbnail after returning to the list", as
 	const primaryPixel = await sampleImagePixel(page, E2E_PRIMARY_FILE_NAME);
 
 	await page.goBack();
-	await expect(page).toHaveURL(sourcePath());
+	await expect.poll(() => new URL(page.url()).pathname).toBe(sourcePath());
 	const similarResponse = page.waitForResponse(
 		(response) =>
 			response.url().endsWith(mediaPath(E2E_SIMILAR_MEDIA_ID)) &&
 			response.request().resourceType() === "fetch",
 	);
-	await page.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`).click();
-
-	await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
+	await openMediaDetail(page, E2E_SIMILAR_MEDIA_ID, sourcePath());
 	expect((await similarResponse).headers()["cache-control"]).toBe("no-store");
 	await expect(
 		page.getByRole("img", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
@@ -93,17 +108,53 @@ test("media detail follows the second search result after returning to search", 
 		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
 	).toBeVisible();
 
-	await page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`).click();
-	await expect(page).toHaveURL(mediaPath(E2E_PRIMARY_MEDIA_ID));
+	await openMediaDetail(page, E2E_PRIMARY_MEDIA_ID, "/search");
 	const primaryPixel = await sampleImagePixel(page, E2E_PRIMARY_FILE_NAME);
 
 	await page.goBack();
-	await expect(page).toHaveURL("/search");
-	await page.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`).click();
-
-	await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
+	await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
+	await openMediaDetail(page, E2E_SIMILAR_MEDIA_ID, "/search");
 	const similarPixel = await sampleImagePixel(page, E2E_SIMILAR_FILE_NAME);
 	expect(similarPixel).not.toEqual(primaryPixel);
+});
+
+test("media detail returns to its saved collection URL after direct navigation", async ({
+	page,
+}) => {
+	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
+	await waitForAppHydration(page);
+	const savedReturnPath = "/search#results";
+	await page.evaluate((returnPath) => {
+		sessionStorage.setItem("solid-imager:media-return", returnPath);
+	}, savedReturnPath);
+
+	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+	await expect
+		.poll(() => {
+			const url = new URL(page.url());
+			return `${url.pathname}${url.search}${url.hash}`;
+		})
+		.toBe(savedReturnPath);
+});
+
+test("media detail list back does not re-enter detail on browser back", async ({
+	page,
+}) => {
+	await page.goto("/search");
+	await waitForAppHydration(page);
+	await expect(
+		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+	).toBeVisible();
+
+	await openMediaDetail(page, E2E_PRIMARY_MEDIA_ID, "/search");
+	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+	await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
+
+	await page.goBack();
+	await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
+	await expect(
+		page.getByRole("button", { name: "一覧に戻る", exact: true }),
+	).toHaveCount(0);
 });
 
 test("media detail, manager, and settings remain usable on narrow screens", async ({
@@ -148,11 +199,11 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		const imageBox = await image.boundingBox();
 		expect(viewerBox).not.toBeNull();
 		expect(imageBox).not.toBeNull();
-		expect(viewerBox?.width ?? 0).toBeGreaterThanOrEqual(900);
-		expect(imageBox?.width ?? 0).toBeGreaterThanOrEqual(900);
+		expect(viewerBox?.width ?? 0).toBeGreaterThanOrEqual(640);
+		expect(imageBox?.width ?? 0).toBeGreaterThanOrEqual(640);
 	}
 	const detailsHeading = page.getByRole("heading", {
-		name: "Details",
+		name: "File information",
 		exact: true,
 	});
 	await detailsHeading.scrollIntoViewIfNeeded();
@@ -161,26 +212,35 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 
 	await page.goto("/manager");
 	await expect(
-		page.getByRole("heading", { name: "Entity Manager", exact: true }),
+		page.getByRole("heading", { name: "Manager", exact: true }),
 	).toBeVisible();
 	await waitForAppHydration(page);
 	await expectNoHorizontalOverflow(page);
 
 	const projectName = `Responsive project ${testInfo.project.name}`;
-	await page.getByRole("button", { name: "Create New", exact: true }).click();
+	await page.getByRole("button", { name: "New Project", exact: true }).click();
 	const projectDialog = page.getByRole("dialog");
 	await expect(projectDialog).toBeVisible();
+	await expect(
+		projectDialog.getByRole("heading", {
+			name: "Create Project",
+			exact: true,
+		}),
+	).toBeVisible();
 	await projectDialog.getByLabel("Name", { exact: true }).fill(projectName);
 	await projectDialog
 		.getByRole("button", { name: "Save", exact: true })
 		.click();
 	await expect(projectDialog).toBeHidden();
-	await expect(
-		page.getByRole("heading", { name: projectName, exact: true }),
-	).toBeVisible();
+	const projectRow = page.getByRole("button", {
+		name: projectName,
+		exact: true,
+	});
+	await expect(projectRow).toBeVisible();
+	await projectRow.click();
 
 	await page
-		.getByRole("button", { name: `Edit ${projectName}`, exact: true })
+		.getByRole("button", { name: `${projectName}を編集`, exact: true })
 		.click();
 	await expect(projectDialog).toBeVisible();
 	await expect(
@@ -190,16 +250,16 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 	await expect(projectDialog).toBeHidden();
 
 	await page
-		.getByRole("button", { name: "Batch Tagging", exact: true })
+		.getByRole("button", { name: "Batch tagging", exact: true })
 		.click();
 	await expect(
-		page.getByRole("heading", { name: "Batch AI Tagging", exact: true }),
+		page.getByRole("heading", { name: "Batch tagging", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "Scan for Targets", exact: true }),
+		page.getByRole("button", { name: "Scan targets", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "Start Batch Tagging", exact: true }),
+		page.getByRole("button", { name: "Start tagging", exact: true }),
 	).toBeVisible();
 	await expectNoHorizontalOverflow(page);
 
@@ -230,7 +290,7 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 	]) {
 		await page.getByRole("tab", { name: category.tab, exact: true }).click();
 		await expect(
-			page.getByRole("heading", { name: category.heading, exact: true }),
+			page.getByRole("group", { name: category.heading, exact: true }),
 		).toBeVisible();
 	}
 

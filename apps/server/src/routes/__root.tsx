@@ -1,5 +1,3 @@
-import { AppShell } from "@solid-imager/ui/layouts/app-shell";
-import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
 import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts/index";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
@@ -13,8 +11,7 @@ import {
 import { createSignal, onMount, Show } from "solid-js";
 import { HydrationScript } from "solid-js/web";
 import styleCss from "~/app.css?url";
-import { ApiActivityIndicator } from "~/components/api-activity-indicator";
-import Nav from "~/components/nav";
+import { AppLayout } from "~/components/layout/layout";
 
 interface MyRouterContext {
 	queryClient: QueryClient;
@@ -42,8 +39,15 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 function RootComponent() {
 	const [isHydrated, setIsHydrated] = createSignal(false);
 	const location = useLocation();
-	const isV2Route = () =>
-		location().pathname === "/v2" || location().pathname.startsWith("/v2/");
+	const isStandaloneRoute = () => {
+		const pathname = location().pathname;
+		return (
+			pathname === "/design-lab" ||
+			pathname.startsWith("/design-lab/") ||
+			pathname === "/docs/swagger" ||
+			pathname.startsWith("/docs/swagger/")
+		);
+	};
 	onMount(() => {
 		setIsHydrated(true);
 	});
@@ -54,24 +58,13 @@ function RootComponent() {
 				<HydrationScript />
 				<HeadContent />
 			</head>
-			<body classList={{ "v2-theme": isV2Route() }}>
+			<body classList={{ "workspace-theme": !isStandaloneRoute() }}>
 				<ShortcutPreferencesProvider>
 					<Toaster />
-					<Show
-						fallback={<Outlet />}
-						when={
-							location().pathname !== "/design-lab" &&
-							!location().pathname.startsWith("/design-lab/") &&
-							!isV2Route()
-						}
-					>
-						<AppShell
-							nav={<Nav />}
-							statusIndicator={<RouteTransitionIndicator />}
-						>
-							<ApiActivityIndicator />
-							<Outlet />
-						</AppShell>
+					<Show fallback={<Outlet />} when={!isStandaloneRoute()}>
+						<Show fallback={null} when={isHydrated()}>
+							<AppLayout />
+						</Show>
 					</Show>
 				</ShortcutPreferencesProvider>
 				<Scripts />

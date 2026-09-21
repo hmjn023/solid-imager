@@ -16,6 +16,10 @@ import {
 } from "@solid-imager/core/domain/tagging/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
+import {
+	type DghsImgutilsModule,
+	loadDghsImgutils,
+} from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 
 type RustAiClientConfig = Pick<
@@ -36,13 +40,17 @@ function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
 	});
 }
 
-function hasCcipDistances(value: unknown): value is {
+type DghsImgutilsWithCcipDistances = DghsImgutilsModule & {
 	ccipDistances(
 		feature: number[],
 		candidates: number[][],
 		modelName?: string,
 	): number[] | Promise<number[]>;
-} {
+};
+
+function hasCcipDistances(
+	value: DghsImgutilsModule,
+): value is DghsImgutilsWithCcipDistances {
 	return (
 		typeof value === "object" &&
 		value !== null &&
@@ -103,7 +111,7 @@ export class RustAiClient implements IAiClient {
 		}
 
 		try {
-			const { getVersion } = await import("dghs-imgutils-rs");
+			const { getVersion } = loadDghsImgutils();
 			return typeof getVersion() === "string";
 		} catch {
 			return false;
@@ -206,7 +214,7 @@ export class RustAiClient implements IAiClient {
 			return taggingResponseSchema.parse(result);
 		}
 
-		const { getPixaiTags } = await import("dghs-imgutils-rs");
+		const { getPixaiTags } = loadDghsImgutils();
 		const result = await getPixaiTags(
 			filePath,
 			undefined,
@@ -236,7 +244,7 @@ export class RustAiClient implements IAiClient {
 			return oppaiOracleResponseSchema.parse(result);
 		}
 
-		const { getOppaioracleTags } = await import("dghs-imgutils-rs");
+		const { getOppaioracleTags } = loadDghsImgutils();
 		const result = await getOppaioracleTags(
 			filePath,
 			undefined,
@@ -280,7 +288,7 @@ export class RustAiClient implements IAiClient {
 			return ccipFeatureResponseSchema.parse(result);
 		}
 
-		const { ccipGetEmbedding } = await import("dghs-imgutils-rs");
+		const { ccipGetEmbedding } = loadDghsImgutils();
 		const embedding = await ccipGetEmbedding(
 			filePath,
 			undefined,
@@ -306,7 +314,7 @@ export class RustAiClient implements IAiClient {
 			return ccipDifferenceResponseSchema.parse(result);
 		}
 
-		const { ccipDistance } = await import("dghs-imgutils-rs");
+		const { ccipDistance } = loadDghsImgutils();
 		const distance = await ccipDistance(feature1, feature2);
 		return ccipDifferenceResponseSchema.parse({
 			difference: distance,
@@ -329,7 +337,7 @@ export class RustAiClient implements IAiClient {
 		}
 
 		if (!this.baseUrl) {
-			const nativeModule: unknown = await import("dghs-imgutils-rs");
+			const nativeModule = loadDghsImgutils();
 			if (hasCcipDistances(nativeModule)) {
 				return await nativeModule.ccipDistances(feature, candidates);
 			}

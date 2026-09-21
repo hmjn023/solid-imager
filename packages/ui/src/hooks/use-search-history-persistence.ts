@@ -247,7 +247,6 @@ export function useSearchHistoryPersistence(
 				applySnapshotState(
 					snapshotState,
 					readPersistedSearchScrollPosition(sourceId, {
-						surface: options.surface,
 						historyEntryKey: entryKey,
 					}),
 				);
