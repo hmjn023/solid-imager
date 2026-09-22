@@ -1,4 +1,5 @@
-import { expect, type Locator, test } from "@playwright/test";
+import type { Locator } from "@playwright/test";
+import { expect, test } from "./support/test";
 
 function getGalleryUrl(): string {
 	const port = process.env.E2E_GALLERY_PORT;

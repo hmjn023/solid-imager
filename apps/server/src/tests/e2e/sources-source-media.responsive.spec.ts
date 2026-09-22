@@ -51,7 +51,9 @@ async function expectInsideViewport(
 	expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
 }
 
-test("library entry points redirect to canonical search", async ({ page }) => {
+test("library entry points redirect to canonical search", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	for (const path of ["/", "/sources", "/v2", "/v2/search"]) {
 		await page.goto(path);
 		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
@@ -63,9 +65,9 @@ test("library entry points redirect to canonical search", async ({ page }) => {
 	}
 });
 
-test("versioned detail routes preserve query and hash during redirect", async ({
-	page,
-}) => {
+test("versioned detail routes preserve query and hash during redirect", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto(
 		`/v2/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}?migration=1#details`,
 	);
@@ -216,7 +218,9 @@ test("source media exposes mobile filters and touch selection", async ({
 	await expectNoHorizontalOverflow(page);
 });
 
-test("canonical media grid opens its context menu", async ({ page }) => {
+test("canonical media grid opens its context menu", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto(sourcePath());
 	await waitForAppHydration(page);
 

@@ -78,6 +78,14 @@ type RouteCase = {
 };
 
 const routeCases: readonly RouteCase[] = [
+	...[
+		{ name: "jobs", path: "/jobs", heading: "Jobs" },
+		{ name: "about", path: "/about", heading: "About Solid Imager" },
+	].map((route) => ({
+		...route,
+		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
+		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
+	})),
 	{
 		name: "global search",
 		path: "/search",
@@ -254,24 +262,6 @@ test.describe("direct navigation and reload", () => {
 			await expectRouteHealthy(page);
 		});
 	}
-});
-
-test("canonical pages become interactive after hydration", async ({ page }) => {
-	await page.goto("/config");
-	await expect(
-		page.getByRole("heading", { name: "Settings", exact: true }),
-	).toBeVisible();
-	await waitForAppHydration(page);
-
-	await page.goto("/search");
-	await expect(
-		page
-			.locator("#main-content")
-			.getByText("すべてのメディア", { exact: true })
-			.first(),
-	).toBeVisible();
-	await waitForAppHydration(page);
-	await expect(page.locator("[data-media-id]").first()).toBeVisible();
 });
 
 test("canonical navigation and cache revisit do not duplicate route queries", async ({

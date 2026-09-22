@@ -12,15 +12,9 @@ import { expect, test, waitForAppHydration } from "./support/test";
 
 const sourceEventsEndpoint = /\/api\/rpc\/sources\/events(?:\?|$)/;
 
-test("global search preserves the mobile filter dialog, input value, and focus after an SSE refresh", async ({
-	context,
-	page,
-}, testInfo) => {
-	test.skip(
-		!["responsive-320", "responsive-375"].includes(testInfo.project.name),
-		"The mobile filter dialog is only rendered below the md breakpoint.",
-	);
-
+test("global search preserves the mobile filter dialog, input value, and focus after an SSE refresh", {
+	tag: "@mobile-only",
+}, async ({ context, page }) => {
 	const sourceEventsConnected = page.waitForResponse(
 		(response) =>
 			sourceEventsEndpoint.test(new URL(response.url()).pathname) &&
@@ -81,15 +75,9 @@ test("global search preserves the mobile filter dialog, input value, and focus a
 	await expect(fileNameInput).toBeFocused();
 });
 
-test("source media preserves the mobile filter draft and focus after an SSE refresh", async ({
-	context,
-	page,
-}, testInfo) => {
-	test.skip(
-		!["responsive-320", "responsive-375"].includes(testInfo.project.name),
-		"The mobile filter dialog is only rendered below the md breakpoint.",
-	);
-
+test("source media preserves the mobile filter draft and focus after an SSE refresh", {
+	tag: "@mobile-only",
+}, async ({ context, page }) => {
 	const sourceEventsConnected = page.waitForResponse(
 		(response) =>
 			sourceEventsEndpoint.test(new URL(response.url()).pathname) &&

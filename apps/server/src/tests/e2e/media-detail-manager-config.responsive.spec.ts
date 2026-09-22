@@ -118,9 +118,9 @@ test("media detail follows the second search result after returning to search", 
 	expect(similarPixel).not.toEqual(primaryPixel);
 });
 
-test("media detail returns to its saved collection URL after direct navigation", async ({
-	page,
-}) => {
+test("media detail returns to its saved collection URL after direct navigation", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
 	await waitForAppHydration(page);
 	const savedReturnPath = "/search#results";
@@ -137,9 +137,9 @@ test("media detail returns to its saved collection URL after direct navigation",
 		.toBe(savedReturnPath);
 });
 
-test("media detail list back does not re-enter detail on browser back", async ({
-	page,
-}) => {
+test("media detail list back does not re-enter detail on browser back", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto("/search");
 	await waitForAppHydration(page);
 	await expect(
