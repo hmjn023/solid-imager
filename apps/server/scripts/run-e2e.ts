@@ -12,9 +12,23 @@ const appRoot = path.resolve(
 	"..",
 );
 const runtimeRoot = path.join(tmpdir(), "solid-imager-e2e");
+const fullDevRun = process.argv.includes("--full-dev");
 const playwrightArguments = process.argv
 	.slice(2)
-	.filter((value) => !value.startsWith("--mode="));
+	.filter((value) => !value.startsWith("--mode=") && value !== "--full-dev");
+const hasExplicitSpec = playwrightArguments.some((value) =>
+	/\.spec\.[cm]?[jt]sx?$/.test(value),
+);
+
+// Production runs every browser scenario. In the default combined gate, dev
+// exercises the distinct Vite, SSR, Tauri, native job and SSE startup paths.
+// Use --full-dev when a change warrants the complete suite in both runtimes.
+const devSmokeSpecs = [
+	"route-reload.spec.ts",
+	"tauri-migration.spec.ts",
+	"ccip-flow.spec.ts",
+	"realtime-preservation.spec.ts",
+] as const;
 
 function getRequestedMode(): E2eMode | "all" {
 	const argument = process.argv.find((value) => value.startsWith("--mode="));
@@ -81,7 +95,7 @@ async function createEnvironment(
 	};
 }
 
-async function runMode(mode: E2eMode): Promise<void> {
+async function runMode(mode: E2eMode, devSmoke: boolean): Promise<void> {
 	const runtimeDir = path.join(runtimeRoot, `${mode}-${randomUUID()}`);
 	const environment = await createEnvironment(mode, runtimeDir);
 	const childProcess = Bun.spawn(
@@ -93,6 +107,7 @@ async function runMode(mode: E2eMode): Promise<void> {
 			...(mode === "components"
 				? ["--config=playwright.components.config.ts"]
 				: []),
+			...(devSmoke ? devSmokeSpecs : []),
 			...playwrightArguments,
 		],
 		{
@@ -121,7 +136,10 @@ const modes: E2eMode[] =
 	requestedMode === "all" ? ["dev", "production"] : [requestedMode];
 
 for (const mode of modes) {
-	await runMode(mode);
+	await runMode(
+		mode,
+		requestedMode === "all" && mode === "dev" && !fullDevRun && !hasExplicitSpec,
+	);
 	if (process.exitCode) {
 		break;
 	}
