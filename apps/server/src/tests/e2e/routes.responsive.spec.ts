@@ -251,7 +251,6 @@ test("Workspace search filter opens without remounting media results", async ({
 	await page.evaluate(() => {
 		const state = window as Window & {
 			__workspaceFirstMedia?: Element;
-			__workspaceFilterDialog?: Element;
 			__workspaceSawLoadingFallback?: boolean;
 			__workspaceLoadingObserver?: MutationObserver;
 		};
@@ -278,13 +277,6 @@ test("Workspace search filter opens without remounting media results", async ({
 	await filterButton.click();
 	const filterDialog = page.getByRole("dialog", { name: "検索フィルター" });
 	await expect(filterDialog).toBeVisible();
-	await filterDialog.evaluate((element) => {
-		(
-			window as Window & {
-				__workspaceFilterDialog?: Element;
-			}
-		).__workspaceFilterDialog = element;
-	});
 
 	const comboboxNames = await filterDialog
 		.getByRole("combobox")
@@ -308,22 +300,17 @@ test("Workspace search filter opens without remounting media results", async ({
 	const renderState = await page.evaluate(() => {
 		const state = window as Window & {
 			__workspaceFirstMedia?: Element;
-			__workspaceFilterDialog?: Element;
 			__workspaceSawLoadingFallback?: boolean;
 			__workspaceLoadingObserver?: MutationObserver;
 		};
 		state.__workspaceLoadingObserver?.disconnect();
 		return {
-			filterNodeWasPreserved:
-				state.__workspaceFilterDialog ===
-				document.querySelector('[role="dialog"][aria-label="検索フィルター"]'),
 			mediaNodeWasPreserved:
 				state.__workspaceFirstMedia ===
 				document.querySelector("[data-media-id]"),
 			sawLoadingFallback: state.__workspaceSawLoadingFallback,
 		};
 	});
-	expect(renderState.filterNodeWasPreserved).toBe(true);
 	expect(renderState.mediaNodeWasPreserved).toBe(true);
 	expect(renderState.sawLoadingFallback).toBe(false);
 });

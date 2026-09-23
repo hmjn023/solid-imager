@@ -108,7 +108,7 @@ async function runMode(mode: E2eMode): Promise<void> {
 		console.error(
 			mode === "components"
 				? "Component tests failed. See test-results/components and playwright-report/components."
-				: `E2E ${mode} failed. Runtime data kept at ${runtimeDir}`,
+				: `E2E ${mode} failed. Runtime data kept at ${runtimeDir}\nServer/build log: ${path.join(runtimeDir, "server.log")}`,
 		);
 		process.exitCode = exitCode;
 		return;

@@ -91,6 +91,15 @@ test("shared Solid UI gallery has no narrow viewport overflow", async ({
 }) => {
 	await page.setViewportSize({ width: 320, height: 720 });
 	await page.goto(getGalleryUrl());
+	await page.evaluate(async () => {
+		await document.fonts.ready;
+		if (
+			!getComputedStyle(document.body).fontFamily.startsWith('"Noto Sans"') ||
+			!document.fonts.check('400 16px "Noto Sans"')
+		) {
+			throw new Error("The gallery fixture font did not load");
+		}
+	});
 	const overflow = await page.evaluate(
 		() =>
 			document.documentElement.scrollWidth -

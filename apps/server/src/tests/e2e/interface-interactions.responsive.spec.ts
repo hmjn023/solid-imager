@@ -133,7 +133,7 @@ test("Workspace global search exposes media and bulk actions", {
 	const mediaItem = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 	await mediaItem.click({ button: "right" });
 	await expect(
-		page.getByRole("menuitem", { name: "削除", exact: true }),
+		page.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true }),
 	).toBeVisible();
 	await expect(
 		page.getByRole("menuitem", { name: "他のソースへコピー", exact: true }),
@@ -150,7 +150,9 @@ test("Workspace global search exposes media and bulk actions", {
 	await moveDialog.getByRole("button", { name: "Cancel", exact: true }).click();
 
 	await mediaItem.click({ button: "right" });
-	await page.getByRole("menuitem", { name: "削除", exact: true }).click();
+	await page
+		.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
+		.click();
 	const deleteDialog = page.getByRole("dialog");
 	await expect(deleteDialog).toContainText(E2E_PRIMARY_FILE_NAME);
 	await deleteDialog
@@ -217,6 +219,12 @@ test("Workspace detail exposes zoom controls and non-destructive action choices"
 		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
 	).toBeVisible();
 
+	await page
+		.getByRole("button", {
+			name: `Open ${E2E_PRIMARY_FILE_NAME} image viewer`,
+			exact: true,
+		})
+		.click();
 	const zoomControls = page.getByRole("toolbar", {
 		name: "Image zoom controls",
 	});
@@ -230,6 +238,7 @@ test("Workspace detail exposes zoom controls and non-destructive action choices"
 	await resetZoom.click();
 	await expect(resetZoom).toContainText("100%");
 
+	await page.keyboard.press("Escape");
 	const moreActions = page.getByRole("button", {
 		name: "More actions",
 		exact: true,

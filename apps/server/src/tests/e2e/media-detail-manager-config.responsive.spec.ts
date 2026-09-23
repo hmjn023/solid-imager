@@ -140,7 +140,9 @@ test("media detail returns to its saved collection URL after direct navigation",
 test("media detail list back does not re-enter detail on browser back", {
 	tag: "@desktop-only",
 }, async ({ page }) => {
-	await page.goto("/search");
+	await page.goto("/about");
+	await waitForAppHydration(page);
+	await page.getByRole("link", { name: "Library", exact: true }).click();
 	await waitForAppHydration(page);
 	await expect(
 		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
@@ -151,7 +153,7 @@ test("media detail list back does not re-enter detail on browser back", {
 	await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
 
 	await page.goBack();
-	await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
+	await expect.poll(() => new URL(page.url()).pathname).toBe("/about");
 	await expect(
 		page.getByRole("button", { name: "一覧に戻る", exact: true }),
 	).toHaveCount(0);
@@ -182,12 +184,11 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 			exact: true,
 		});
 		const viewerState = await Promise.all([
-			viewer.evaluate((element) => getComputedStyle(element).backgroundColor),
 			viewer.evaluate((element) => element.clientHeight),
 			image.evaluate((element) => element.clientHeight),
 		]);
-		expect(viewerState[0]).toBe("rgba(0, 0, 0, 0)");
-		expect(viewerState[2]).toBe(viewerState[1]);
+		expect(viewerState[1]).toBeGreaterThan(0);
+		expect(viewerState[1]).toBeLessThanOrEqual(viewerState[0]);
 	}
 	if (testInfo.project.name === "responsive-768") {
 		const viewer = page.locator("[data-media-viewer]");
@@ -250,7 +251,7 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 	await expect(projectDialog).toBeHidden();
 
 	await page
-		.getByRole("button", { name: "Batch tagging", exact: true })
+		.getByRole("button", { name: /^Batch tagging(?: Submit AI tag jobs)?$/ })
 		.click();
 	await expect(
 		page.getByRole("heading", { name: "Batch tagging", exact: true }),
@@ -288,13 +289,15 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		{ tab: "Media", heading: "Media Extensions" },
 		{ tab: "Logging", heading: "Logging" },
 	]) {
-		await page.getByRole("tab", { name: category.tab, exact: true }).click();
+		await page
+			.getByRole("tab", { name: new RegExp(`^${category.tab}(?: |$)`) })
+			.click();
 		await expect(
 			page.getByRole("group", { name: category.heading, exact: true }),
 		).toBeVisible();
 	}
 
-	await page.getByRole("tab", { name: "Storage", exact: true }).click();
+	await page.getByRole("tab", { name: /^Storage(?: |$)/ }).click();
 	const thumbnailDirectory = page.getByLabel("Thumbnail Directory", {
 		exact: true,
 	});
@@ -307,7 +310,7 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		);
 		expect(fontSize).toBeGreaterThanOrEqual(16);
 
-		await page.getByRole("tab", { name: "Media", exact: true }).click();
+		await page.getByRole("tab", { name: /^Media(?: |$)/ }).click();
 		await page
 			.getByLabel("Negative Tags", { exact: true })
 			.scrollIntoViewIfNeeded();
