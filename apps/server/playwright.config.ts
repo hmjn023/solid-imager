@@ -46,14 +46,14 @@ const requestedProjects = playwrightArguments.flatMap((value, index) => {
 	return [];
 });
 const shouldStartTauriFixture =
-	requestedProjects.includes("tauri") ||
-	playwrightArguments.some((value) =>
-		value.includes("tauri-migration.spec.ts"),
-	) ||
-	(requestedProjects.length === 0 &&
-		!playwrightArguments.some((value) =>
-			/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(value),
-		));
+	requestedProjects.length > 0
+		? requestedProjects.includes("tauri")
+		: playwrightArguments.some((value) =>
+				value.includes("tauri-migration.spec.ts"),
+			) ||
+			!playwrightArguments.some((value) =>
+				/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(value),
+			);
 
 if (shouldStartTauriFixture && !tauriBaseURL) {
 	throw new Error(

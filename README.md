@@ -145,7 +145,8 @@ fi
 | `bun run check`                                     | lint / format / typecheck |
 | `bun run test`                                      | Vitest テスト             |
 | `bun run --cwd apps/server test:e2e:components`       | DB不要のコンポーネント検証 |
-| `bun run --cwd apps/server test:e2e`                  | dev・本番のアプリE2E      |
+| `bun run --cwd apps/server test:e2e`                  | dev代表14件＋本番全97件のアプリE2E |
+| `bun run --cwd apps/server test:e2e:full`             | dev・本番とも全件のアプリE2E |
 | `bun run format`                                    | Biomeによるformat         |
 | `bun run lint`                                      | lint                      |
 | `bun --filter @solid-imager/server run db:generate` | マイグレーション生成      |

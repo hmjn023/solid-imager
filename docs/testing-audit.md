@@ -16,7 +16,7 @@
 
 Playwrightの `--list --reporter=json` による収集数。成功数やカバレッジ率ではない。
 
-| 対象 | 変更前 | 変更後 |
+| 対象 | 棚卸し前 | 棚卸し後（両モード全件） |
 | --- | ---: | ---: |
 | アプリE2E（1モード、旧構成はgalleryを含む） | 165 | 97 |
 | アプリdev + production | 330 | 194 |
@@ -108,12 +108,17 @@ bun run test
 # ブラウザー内のコンポーネント。DB・native AIは不要
 bun run --cwd apps/server test:e2e:components
 
-# アプリE2E（galleryを除く）。dev / fresh production
+# アプリE2E（galleryを除く）。通常はdevの代表14件＋fresh production全97件
 bun run --cwd apps/server test:e2e
+
+# dev / fresh productionを両方とも全件実行
+bun run --cwd apps/server test:e2e:full
+
+# 各モード単独では全件を実行
 bun run --cwd apps/server test:e2e:dev
 bun run --cwd apps/server test:e2e:production
 
-# serverのunit/integration + components + dev/production E2E
+# serverのunit/integration + components + 通常のアプリE2E
 bun run --cwd apps/server test
 
 # 全projectを起動せず、対象だけ確認
@@ -121,7 +126,9 @@ bun run --cwd apps/server test:e2e:dev -- routes.responsive.spec.ts --project=re
 bun run --cwd apps/server test:e2e:dev -- --list
 ```
 
-`test:e2e:quick` はdesktop・responsive-desktop・375・768を選ぶ。従来はresponsive-desktopを含まず、desktop限定の選択・pro入力テストまで抜けていたため追加した。320とTauri、独立componentsはquickに含まれない。完全なゲートの代わりにはしない。
+通常の `test:e2e` はdevで `route-reload`（直接URL/F5とhydration）、`tauri-migration`（独立SPA）、`ccip-flow`（実推論とジョブ）、`realtime-preservation`（実イベントとSSE再接続）の14件を実行し、fresh productionでは97件すべてを実行する。前回の全件実測ではdev 5.1分、production 3.9分かかった。production固有の画像処理停止を実際に検出したため、本番側は全件を維持し、同じ画面操作をdevでもう一度行う時間を減らす。ブラウザー内コンポーネント7件は約10秒だったため、Vitest Browser Modeへの移行より重複実行の削減を優先した。
+
+dev固有の問題を調べるときは `test:e2e:dev`、両runtimeの全件が必要な変更やリリース前の検証には `test:e2e:full` を使う。`test:e2e` にspecファイルを明示した場合は、そのファイルだけを両runtimeで実行する。`test:e2e:quick` はdesktop・responsive-desktop・375・768を選ぶ。320とTauri、独立componentsはquickに含まれない。完全なゲートの代わりにはしない。
 
 `@desktop-only` / `@mobile-only` はprojectの `grepInvert` で収集時に振り分ける。画面幅に依存しない検証はdesktop、レイアウト・touch・breakpoint依存の検証は該当幅に置く。対応する画面幅を増やす際はタグの適用条件も確認する。
 
@@ -135,7 +142,8 @@ bun run --cwd apps/server test:e2e:dev -- --list
 - `bun run check`: Biome、全workspaceのtypecheck、design lint成功。
 - components: 固定フォントでbaselineを目視確認した後、更新オプションなしで7件成功、10.3秒。変更前の6成功・画像比較1失敗（14.5秒）との単純な速度比較には使わない。
 - 変更前のdev全体: 165件収集、Tauri 4件成功後にWeb 3件失敗、86.3秒で打ち切り。残る158件を成功扱いしない。
-- `bun run --cwd apps/server test:e2e`: dev 97件成功（5.1分）、fresh production 97件成功（3.9分）。skip・flaky・unexpectedはいずれも0。galleryはこのコマンドに含まれず、上記の独立7件を1回実行する。
+- 棚卸し後の全件ベースライン: dev 97件成功（5.1分）、fresh production 97件成功（3.9分）。skip・flaky・unexpectedはいずれも0。galleryは上記の独立7件を1回実行する。
+- 今回の通常ゲート: dev代表14件成功（1.4分）、fresh production全97件成功（4.2分）。両モード全件のベースライン約9.0分に対し約5.6分で、約3.4分短縮。production実行中に通常テストも並行したため、厳密な同一負荷ベンチマークではない。
 
 ### 次に適正化する順序
 
