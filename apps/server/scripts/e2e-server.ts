@@ -153,19 +153,24 @@ async function startServer(
 const mode = getMode();
 const runtimeDir = getE2eRuntimeDir();
 assertSafeRuntimeDir(runtimeDir, allowedRuntimeRoot);
-mkdirSync(runtimeDir, { recursive: true });
 const serverLogPath = path.join(runtimeDir, "server.log");
-appendFileSync(
-	serverLogPath,
-	`Preparing isolated ${mode} runtime at ${new Date().toISOString()}\n`,
-);
 try {
+	const preparationStartedAt = new Date().toISOString();
 	const { routeTreePath } = await prepareIsolatedRuntime(runtimeDir);
-	await startServer(mode, serverEnvironment(runtimeDir, routeTreePath));
-} catch (error) {
 	appendFileSync(
 		serverLogPath,
-		`${error instanceof Error ? error.stack : String(error)}\n`,
+		`Prepared isolated ${mode} runtime (started ${preparationStartedAt})\n`,
 	);
+	await startServer(mode, serverEnvironment(runtimeDir, routeTreePath));
+} catch (error) {
+	try {
+		mkdirSync(runtimeDir, { recursive: true });
+		appendFileSync(
+			serverLogPath,
+			`${error instanceof Error ? error.stack : String(error)}\n`,
+		);
+	} catch {
+		// Logging must not hide the original startup failure.
+	}
 	throw error;
 }
