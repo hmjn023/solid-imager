@@ -105,6 +105,11 @@ import { Toaster, toast } from "@solid-imager/ui/toast";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { render } from "solid-js/web";
 import "../../../app.css";
+import "@fontsource/noto-sans/latin-400.css";
+import "@fontsource/noto-sans/latin-500.css";
+import "@fontsource/noto-sans/latin-600.css";
+import "@fontsource/noto-sans/latin-700.css";
+import "./gallery.css";
 
 const OPTIONS = ["Alpha", "Beta", "Gamma"];
 const VIRTUAL_GRID_ITEM_COUNT = 1_000;

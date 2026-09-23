@@ -34,7 +34,7 @@ export type SidebarProps = {
 
 export function Sidebar(props: SidebarProps) {
 	return (
-		<div class="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain bg-[var(--workspace-surface-subtle)] p-2 [scrollbar-gutter:stable]">
+		<div class="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain bg-[var(--workspace-surface-subtle)] p-2 [scrollbar-gutter:stable] *:shrink-0">
 			<div class="group mb-3 flex h-12 items-center gap-2 px-2">
 				<Link
 					aria-label="Solid Imager Library"

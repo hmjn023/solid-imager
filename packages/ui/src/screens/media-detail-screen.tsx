@@ -1,3 +1,4 @@
+import { Suspense } from "solid-js";
 import { MediaDetailSkeleton } from "../media-detail-skeleton";
 import { LoadingRegion } from "../skeleton";
 import type { MediaDetailScreenProps as MediaDetailScreenBaseProps } from "./media-detail-screen.types";
@@ -13,42 +14,45 @@ export type MediaDetailScreenProps = MediaDetailScreenBaseProps & {
 };
 
 export function MediaDetailScreen(props: MediaDetailScreenProps) {
+	const renderPending = () => (
+		<LoadingRegion
+			class="h-full min-h-0"
+			label="メディア情報を読み込んでいます..."
+		>
+			<MediaDetailSkeleton />
+		</LoadingRegion>
+	);
 	return (
 		<div class="flex h-full min-h-0 w-full flex-col bg-[var(--workspace-canvas)]">
-			<MediaDetailScreenController
-				{...props}
-				renderData={({ details, isUpdating, onUpdate, sourceRootPath }) => (
-					<div class="flex min-h-0 flex-1 flex-col">
-						{props.renderHeader?.(
-							details,
-							isUpdating,
-							() => void onUpdate(),
-							sourceRootPath,
-						)}
-						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:overflow-hidden [scrollbar-gutter:stable]">
-							<div class="min-w-0 lg:min-h-0 lg:overflow-hidden">
-								{props.renderMediaViewer(details, sourceRootPath)}
-							</div>
-							<div class="min-w-0 border-[var(--workspace-border)] border-t lg:min-h-0 lg:border-t-0 lg:border-l">
-								{props.renderMediaSidebar(
-									details,
-									isUpdating,
-									() => void onUpdate(),
-									sourceRootPath,
-								)}
+			<Suspense fallback={renderPending()}>
+				<MediaDetailScreenController
+					{...props}
+					renderData={({ details, isUpdating, onUpdate, sourceRootPath }) => (
+						<div class="flex min-h-0 flex-1 flex-col">
+							{props.renderHeader?.(
+								details,
+								isUpdating,
+								() => void onUpdate(),
+								sourceRootPath,
+							)}
+							<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:overflow-hidden [scrollbar-gutter:stable]">
+								<div class="min-w-0 lg:min-h-0 lg:overflow-hidden">
+									{props.renderMediaViewer(details, sourceRootPath)}
+								</div>
+								<div class="min-w-0 border-[var(--workspace-border)] border-t lg:min-h-0 lg:border-t-0 lg:border-l">
+									{props.renderMediaSidebar(
+										details,
+										isUpdating,
+										() => void onUpdate(),
+										sourceRootPath,
+									)}
+								</div>
 							</div>
 						</div>
-					</div>
-				)}
-				renderPending={() => (
-					<LoadingRegion
-						class="h-full min-h-0"
-						label="メディア情報を読み込んでいます..."
-					>
-						<MediaDetailSkeleton />
-					</LoadingRegion>
-				)}
-			/>
+					)}
+					renderPending={renderPending}
+				/>
+			</Suspense>
 		</div>
 	);
 }

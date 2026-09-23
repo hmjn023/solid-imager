@@ -18,9 +18,9 @@ async function openSearch(page: Page): Promise<void> {
 	await expect(page.locator("[data-media-id]").first()).toBeVisible();
 }
 
-test("Workspace command palette opens from the keyboard and restores focus", async ({
-	page,
-}) => {
+test("Workspace command palette opens from the keyboard and restores focus", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await openSearch(page);
 
 	const origin = page.getByRole("button", {
@@ -41,9 +41,9 @@ test("Workspace command palette opens from the keyboard and restores focus", asy
 	await expect(origin).toBeFocused();
 });
 
-test("Workspace slash shortcut focuses search without swallowing slash input", async ({
-	page,
-}) => {
+test("Workspace slash shortcut focuses search without swallowing slash input", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await openSearch(page);
 
 	const searchInput = page.getByRole("combobox", {
@@ -64,9 +64,9 @@ test("Workspace slash shortcut focuses search without swallowing slash input", a
 	await expect(searchInput).toHaveValue("e2e/");
 });
 
-test("Workspace source search keeps URL paste in the input context", async ({
-	page,
-}) => {
+test("Workspace source search keeps URL paste in the input context", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto(sourcePath);
 	await waitForAppHydration(page);
 
@@ -89,13 +89,9 @@ test("Workspace source search keeps URL paste in the input context", async ({
 	).toHaveCount(0);
 });
 
-test("Workspace source collection supports additive and range selection gestures", async ({
-	page,
-}, testInfo) => {
-	test.skip(
-		testInfo.project.name !== "responsive-desktop",
-		"Modifier-key collection selection is exercised with a desktop keyboard.",
-	);
+test("Workspace source collection supports additive and range selection gestures", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.setViewportSize({ width: 1600, height: 900 });
 	await page.goto(sourcePath);
 	await waitForAppHydration(page);
@@ -112,13 +108,9 @@ test("Workspace source collection supports additive and range selection gestures
 	await expect(bulkActions).toContainText("3 件選択中");
 });
 
-test("Workspace global search keeps collection selection independent from preview", async ({
-	page,
-}, testInfo) => {
-	test.skip(
-		testInfo.project.name !== "responsive-desktop",
-		"Modifier-key collection selection is exercised with a desktop keyboard.",
-	);
+test("Workspace global search keeps collection selection independent from preview", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.setViewportSize({ width: 1600, height: 900 });
 	await openSearch(page);
 
@@ -132,20 +124,16 @@ test("Workspace global search keeps collection selection independent from previe
 	await expect(bulkActions).toContainText("2 件選択中");
 });
 
-test("Workspace global search exposes media and bulk actions", async ({
-	page,
-}, testInfo) => {
-	test.skip(
-		testInfo.project.name !== "responsive-desktop",
-		"Context-menu and modifier selection actions are exercised on desktop.",
-	);
+test("Workspace global search exposes media and bulk actions", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.setViewportSize({ width: 1600, height: 900 });
 	await openSearch(page);
 
 	const mediaItem = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 	await mediaItem.click({ button: "right" });
 	await expect(
-		page.getByRole("menuitem", { name: "削除", exact: true }),
+		page.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true }),
 	).toBeVisible();
 	await expect(
 		page.getByRole("menuitem", { name: "他のソースへコピー", exact: true }),
@@ -162,7 +150,9 @@ test("Workspace global search exposes media and bulk actions", async ({
 	await moveDialog.getByRole("button", { name: "Cancel", exact: true }).click();
 
 	await mediaItem.click({ button: "right" });
-	await page.getByRole("menuitem", { name: "削除", exact: true }).click();
+	await page
+		.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
+		.click();
 	const deleteDialog = page.getByRole("dialog");
 	await expect(deleteDialog).toContainText(E2E_PRIMARY_FILE_NAME);
 	await deleteDialog
@@ -185,13 +175,9 @@ test("Workspace global search exposes media and bulk actions", async ({
 		.click();
 });
 
-test("Workspace fine-pointer collection separates selection from opening detail", async ({
-	page,
-}, testInfo) => {
-	test.skip(
-		testInfo.project.name !== "responsive-desktop",
-		"The selection-preview contract is specific to a desktop fine pointer.",
-	);
+test("Workspace fine-pointer collection separates selection from opening detail", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.setViewportSize({ width: 1600, height: 900 });
 	await openSearch(page);
 
@@ -233,6 +219,12 @@ test("Workspace detail exposes zoom controls and non-destructive action choices"
 		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
 	).toBeVisible();
 
+	await page
+		.getByRole("button", {
+			name: `Open ${E2E_PRIMARY_FILE_NAME} image viewer`,
+			exact: true,
+		})
+		.click();
 	const zoomControls = page.getByRole("toolbar", {
 		name: "Image zoom controls",
 	});
@@ -246,6 +238,7 @@ test("Workspace detail exposes zoom controls and non-destructive action choices"
 	await resetZoom.click();
 	await expect(resetZoom).toContainText("100%");
 
+	await page.keyboard.press("Escape");
 	const moreActions = page.getByRole("button", {
 		name: "More actions",
 		exact: true,
