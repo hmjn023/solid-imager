@@ -165,7 +165,7 @@ describe("BackupService Integration", () => {
 		// 2. Execute Dump
 		const dumpStream = (await BackupService.createDump(
 			testSourceId,
-			"json",
+			"ndjson",
 		)) as ReadableStream;
 
 		// 3. Verify

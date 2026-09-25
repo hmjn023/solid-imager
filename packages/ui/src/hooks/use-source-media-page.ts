@@ -483,56 +483,9 @@ export function useSourceMediaPage(
 				items = jsonContent;
 			} else if (jsonContent.items && Array.isArray(jsonContent.items)) {
 				items = jsonContent.items;
-			} else if (jsonContent.images && Array.isArray(jsonContent.images)) {
-				items = jsonContent.images.flatMap((image: Record<string, unknown>) => {
-					const imageUrl =
-						(typeof image.originalUrl === "string" && image.originalUrl) ||
-						(typeof image.displayUrl === "string" && image.displayUrl);
-					if (!imageUrl) {
-						return [];
-					}
-
-					const metadata =
-						typeof image.metadata === "object" && image.metadata
-							? (image.metadata as Record<string, unknown>)
-							: undefined;
-					const postId =
-						metadata && typeof metadata.postId === "string"
-							? metadata.postId
-							: undefined;
-					const tweetUrl =
-						image.source === "twitter" && postId
-							? `https://twitter.com/i/web/status/${postId}`
-							: undefined;
-					const author =
-						metadata && typeof metadata.author === "string"
-							? metadata.author
-							: undefined;
-					const timestamp =
-						metadata && typeof metadata.timestamp === "string"
-							? metadata.timestamp
-							: typeof image.date === "string"
-								? image.date
-								: undefined;
-
-					return [
-						{
-							targetUrl: imageUrl,
-							description:
-								(metadata && typeof metadata.title === "string"
-									? metadata.title
-									: typeof image.title === "string"
-										? image.title
-										: undefined) ?? undefined,
-							sourceUrls: tweetUrl ? [tweetUrl] : undefined,
-							authors: author ? [{ name: author }] : undefined,
-							createdAt: timestamp,
-						},
-					];
-				});
 			} else {
 				throw new Error(
-					"JSONファイルはアイテムの配列であるか、'items'または'images'キーを含むオブジェクトである必要があります。",
+					"JSONファイルはアイテムの配列であるか、'items'キーを含むオブジェクトである必要があります。",
 				);
 			}
 

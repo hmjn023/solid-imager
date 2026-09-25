@@ -1,4 +1,4 @@
-import type { Author, TweetMetadata } from "@ext/schema";
+import type { Author, DownloadItem } from "@ext/schema";
 import { querySelectorAllTyped, querySelectorTyped } from "../utils/dom-utils";
 
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
@@ -46,9 +46,9 @@ export function extractTwitterAuthorIdFromStatusUrl(urlValue: string): string {
 }
 
 export function processTwitterMedia(
-	processedMetadata: Map<string, TweetMetadata>,
+	processedMetadata: Map<string, DownloadItem>,
 	createButtonContainer: (
-		metadata: TweetMetadata,
+		metadata: DownloadItem,
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
@@ -57,9 +57,9 @@ export function processTwitterMedia(
 }
 
 function processImages(
-	processedMetadata: Map<string, TweetMetadata>,
+	processedMetadata: Map<string, DownloadItem>,
 	createButtonContainer: (
-		metadata: TweetMetadata,
+		metadata: DownloadItem,
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
@@ -95,9 +95,9 @@ function processImages(
 }
 
 function processVideos(
-	processedMetadata: Map<string, TweetMetadata>,
+	processedMetadata: Map<string, DownloadItem>,
 	createButtonContainer: (
-		metadata: TweetMetadata,
+		metadata: DownloadItem,
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
@@ -180,7 +180,7 @@ function extractMetadata(
 	article: HTMLElement | null,
 	element: HTMLElement,
 	mediaType: "IMAGE" | "VIDEO" = "IMAGE",
-): TweetMetadata {
+): DownloadItem {
 	let tweetText = "";
 	let timestamp = "";
 	let tweetUrl = "";

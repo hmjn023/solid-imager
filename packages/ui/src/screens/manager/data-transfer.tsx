@@ -39,7 +39,7 @@ export function DataTransferPanel(props: {
 			case "ndjson":
 				return ".ndjson,application/x-ndjson";
 			case "tar":
-				return ".tar,.zip,application/x-tar,application/zip";
+				return ".tar,application/x-tar,application/tar";
 		}
 	};
 	const runExport = async () => {

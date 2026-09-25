@@ -238,23 +238,6 @@ export async function deleteThumbnail(
 }
 
 /**
- * @deprecated Use MediaProcessingService.executeProcessMediaJob instead.
- * Processes a single media job (thumbnail generation, metadata extraction).
- * This function is kept for backwards compatibility but will be removed.
- * @param {Job} job - The job to process.
- * @param {string} mediaSourceId - The ID of the media source.
- */
-export function processMediaJob(
-	_job: unknown, // or Job from schema
-	_mediaSourceId: string,
-): Promise<void> {
-	// This function is deprecated and should probably be removed or updated to use DB Job context if called directly.
-	// For now, since it was used by job-manager callback, and we removed it, we can arguably remove this function.
-	// But if it's imported elsewhere, we keep signature.
-	return Promise.resolve();
-}
-
-/**
  * Queues all media items from a specified source for processing.
  * Uses the unified processMedia job type.
  * @param {string} mediaSourceId - The ID of the media source.

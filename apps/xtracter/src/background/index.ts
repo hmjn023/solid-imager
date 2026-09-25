@@ -3,11 +3,11 @@ import type { SafeMediaSource } from "@core/domain/sources/schemas";
 import { APIError, getClient } from "@ext/api";
 import type {
 	DownloadBulkMessage,
+	DownloadItem,
 	DownloadMessage,
 	ExtendedMessage,
 	PostBulkMessage,
 	PostDownloadMessage,
-	TweetMetadata,
 } from "@ext/schema";
 import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
 
@@ -107,7 +107,7 @@ async function getTargetSourceId(): Promise<string | null> {
 	return resolved.id;
 }
 
-async function postDownloads(items: TweetMetadata[]) {
+async function postDownloads(items: DownloadItem[]) {
 	const mediaSourceId = await getTargetSourceId();
 	if (!mediaSourceId) {
 		chrome.notifications.create({

@@ -29,22 +29,16 @@ describe("shortcut preference storage", () => {
 		expect(bindings.goJobs).toBe(DEFAULT_SHORTCUT_BINDINGS.goJobs);
 	});
 
-	it("migrates v0 shortcuts and unversioned binding records", () => {
-		const versionZero = parseShortcutPreferencesPayload(
-			{
+	it("uses defaults for unsupported stored formats", () => {
+		expect(
+			parseShortcutPreferencesPayload({
 				version: 0,
 				shortcuts: { toggleSidebar: "Control+Shift+B" },
-			},
-			"windows",
+			}),
+		).toEqual(DEFAULT_SHORTCUT_BINDINGS);
+		expect(parseShortcutPreferencesPayload({ viewGrid: "G" })).toEqual(
+			DEFAULT_SHORTCUT_BINDINGS,
 		);
-		const unversioned = parseShortcutPreferencesPayload(
-			{ viewGrid: "G" },
-			"linux",
-		);
-
-		expect(versionZero.toggleSidebar).toBe("Mod+Shift+B");
-		expect(unversioned.viewGrid).toBe("G");
-		expect(unversioned.viewList).toBe(DEFAULT_SHORTCUT_BINDINGS.viewList);
 	});
 
 	it("falls back to defaults for malformed payloads and invalid bindings", () => {

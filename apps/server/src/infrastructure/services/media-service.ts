@@ -12,10 +12,7 @@ import type {
 	IThumbnailManager,
 } from "@solid-imager/application/ports/media-service";
 import { MediaQueryService } from "@solid-imager/application/services/media-query-service";
-import {
-	MediaServiceImpl,
-	validateFileSignature,
-} from "@solid-imager/application/services/media-service";
+import { MediaServiceImpl } from "@solid-imager/application/services/media-service";
 import { MediaTransferService } from "@solid-imager/application/services/media-transfer-service";
 import { MediaUploadService } from "@solid-imager/application/services/media-upload-service";
 import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
@@ -25,9 +22,6 @@ import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { executeDeferredActions } from "~/infrastructure/services/job-dispatch-service";
-
-// Re-export for backward compatibility
-export { MediaServiceImpl, validateFileSignature };
 
 // Infrastructure adapters that wrap server-specific implementations
 const eventPublisher: ISourceEventPublisher = {
@@ -63,7 +57,7 @@ const deferredActionExecutor: IDeferredActionExecutor = {
 	},
 };
 
-// For backward compatibility and deferred initialization
+// Defer construction until the service registry is initialized.
 let _mediaService: MediaServiceImpl | null = null;
 
 export const resetMediaService = () => {

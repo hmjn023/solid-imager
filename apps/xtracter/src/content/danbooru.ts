@@ -1,4 +1,4 @@
-import type { Author, TweetMetadata } from "@ext/schema";
+import type { Author, DownloadItem } from "@ext/schema";
 import { querySelectorTyped } from "../utils/dom-utils";
 
 const PROCESSED_IMAGE_CLASS = "xtracter-image-processed";
@@ -59,11 +59,11 @@ function isExcludedTwitterUser(username: string): boolean {
 
 export function processDanbooruMedia(
 	createButtonContainer: (
-		metadata: TweetMetadata,
+		metadata: DownloadItem,
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 	createAsyncButtonContainer: (
-		fetchMetadata: () => Promise<TweetMetadata | null>,
+		fetchMetadata: () => Promise<DownloadItem | null>,
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
@@ -170,7 +170,7 @@ function parseTagsFromApiString(tagString: string | undefined): string[] {
 function parseDanbooruApiMetadata(
 	data: DanbooruApiResponse,
 	postId: string,
-): TweetMetadata | null {
+): DownloadItem | null {
 	const targetUrl = data.file_url;
 	if (!targetUrl) {
 		return null;
@@ -250,7 +250,7 @@ function extractTargetUrl(container: HTMLElement): string | null {
 	return targetUrl || null;
 }
 
-function extractDanbooruMetadata(container: HTMLElement): TweetMetadata | null {
+function extractDanbooruMetadata(container: HTMLElement): DownloadItem | null {
 	const targetUrl = extractTargetUrl(container);
 	if (!targetUrl) {
 		return null;

@@ -9,13 +9,6 @@ import {
 	UI_STORAGE_KEYS,
 } from "./ui-storage";
 
-/**
- * Session keys used by the detail page context. These aliases are retained for
- * adapters that imported the old names; their values are the current keys.
- */
-export const MEDIA_CONTEXT_STORAGE_KEY = UI_STORAGE_KEYS.mediaContext;
-export const MEDIA_RETURN_STORAGE_KEY = UI_STORAGE_KEYS.mediaReturn;
-
 const MAX_CONTEXT_ITEMS = 500;
 
 export type MediaContextItem = Pick<Media, "id" | "mediaSourceId">;
@@ -87,8 +80,8 @@ export function saveMediaContext(
 
 	// Each write is independent. A full session store should not prevent the
 	// other value from being retained or make detail navigation throw.
-	writeStorageValue(storage, MEDIA_CONTEXT_STORAGE_KEY, serialized);
-	writeStorageValue(storage, MEDIA_RETURN_STORAGE_KEY, returnPath);
+	writeStorageValue(storage, UI_STORAGE_KEYS.mediaContext, serialized);
+	writeStorageValue(storage, UI_STORAGE_KEYS.mediaReturn, returnPath);
 }
 
 export function readMediaContext(): StoredMediaContext | null {
@@ -109,19 +102,11 @@ export function readMediaContext(): StoredMediaContext | null {
 				? [{ id: mediaId.data, mediaSourceId: mediaSourceId.data }]
 				: [];
 		});
-		const migratedReturnPath = readUiStorageValue(
-			storage,
-			UI_STORAGE_KEYS.mediaReturn,
-		);
-		const returnPath =
-			typeof value.returnPath === "string"
-				? value.returnPath
-				: migratedReturnPath;
-		if (typeof returnPath !== "string") return null;
+		if (typeof value.returnPath !== "string") return null;
 
 		return {
 			items,
-			returnPath,
+			returnPath: value.returnPath,
 			...(typeof value.returnHistoryIndex === "number" &&
 			Number.isInteger(value.returnHistoryIndex) &&
 			value.returnHistoryIndex >= 0

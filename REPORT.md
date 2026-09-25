@@ -1,6 +1,6 @@
 # UI implementation report
 
-WebとTauriは `DESIGN.md` と Design Lab を基準にした共有ワークスペースを使用します。`/search`、`/sources/:sourceId`、`/manager`、`/jobs`、`/config`、`/about` は検索、ソース操作、メディア管理、AI操作、設定、インポート、データ転送を実データへ接続しています。既存の `/v2/*` URLは対応する通常routeへ転送し、保存済みリンクとの互換性を保ちます。未対応機能は推測データを表示せず無効化しています。
+WebとTauriは `DESIGN.md` と Design Lab を基準にした共有ワークスペースを使用します。`/search`、`/sources/:sourceId`、`/manager`、`/jobs`、`/config`、`/about` は検索、ソース操作、メディア管理、AI操作、設定、インポート、データ転送を実データへ接続しています。未対応機能は推測データを表示せず無効化しています。
 
 ## Current implementation status
 
@@ -19,11 +19,10 @@ WebとTauriは `DESIGN.md` と Design Lab を基準にした共有ワークス�
 
 未対応の画面やAPIを追加する場合は、loading / error / offline / retryとリアルタイム更新まで同じ画面内で接続します。
 
-## UIの命名と互換性
+## UIの命名とルーティング
 
 - 現行画面にはバージョン名を付けず、機能名と `workspace` のデザイン名を使います。Web / Tauriで画面の実装を分けません。
-- Tauriの仮ホーム画面や旧ナビゲーション・旧画面部品は廃止し、`/` と `/sources/` は現行の `/search` へ転送します。ソース管理は共有サイドバー、Export / RestoreはManagerから操作します。
-- `/v2/*` の転送元URLは互換性のため維持します。保存済みの旧キーは `packages/ui/src/ui-storage.ts` で正規キーへ移行し、新しい書き込みはバージョン名やUI種別で分岐しません。コピーに失敗した場合は元の保存データを残します。
+- Tauriの仮ホーム画面や旧ナビゲーション・旧画面部品は廃止し、`/` は `/search` へ転送します。ソース管理は共有サイドバー、Export / RestoreはManagerから操作します。
 
 ## ブラウザー検証
 

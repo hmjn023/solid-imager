@@ -528,63 +528,6 @@
         }
       }
     },
-    "/sources/dump": {
-      "post": {
-        "operationId": "sources.dump",
-        "summary": "dump",
-        "tags": [
-          "Media Sources"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "mode": {
-                    "enum": [
-                      "json",
-                      "zip"
-                    ],
-                    "type": "string",
-                    "default": "json"
-                  },
-                  "includeImages": {
-                    "type": "boolean",
-                    "default": false
-                  }
-                },
-                "required": [
-                  "id"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {},
-                    {
-                      "not": {}
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/sources/enqueueExport": {
       "post": {
         "operationId": "sources.enqueueExport",
@@ -605,11 +548,11 @@
                   },
                   "mode": {
                     "enum": [
-                      "json",
-                      "zip"
+                      "ndjson",
+                      "tar"
                     ],
                     "type": "string",
-                    "default": "json"
+                    "default": "ndjson"
                   },
                   "includeImages": {
                     "type": "boolean",
@@ -860,105 +803,6 @@
         }
       }
     },
-    "/sources/restore": {
-      "post": {
-        "operationId": "sources.restore",
-        "summary": "restore",
-        "tags": [
-          "Media Sources"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "data": {
-                    "type": "array",
-                    "items": {}
-                  }
-                },
-                "required": [
-                  "id",
-                  "data"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {},
-                    {
-                      "not": {}
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/sources/importZip": {
-      "post": {
-        "operationId": "sources.importZip",
-        "summary": "importZip",
-        "tags": [
-          "Media Sources"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "file": {
-                    "not": {}
-                  }
-                },
-                "required": [
-                  "id",
-                  "file"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {},
-                    {
-                      "not": {}
-                    }
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
     "/sources/enqueueImport": {
       "post": {
         "operationId": "sources.enqueueImport",
@@ -979,8 +823,8 @@
                   },
                   "mode": {
                     "enum": [
-                      "json",
-                      "zip"
+                      "ndjson",
+                      "tar"
                     ],
                     "type": "string"
                   },
@@ -1213,55 +1057,6 @@
                     "targetMediaId",
                     "progress",
                     "artifact"
-                  ]
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/sources/importNdjson": {
-      "post": {
-        "operationId": "sources.importNdjson",
-        "summary": "importNdjson",
-        "tags": [
-          "Media Sources"
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "id": {
-                    "type": "string",
-                    "format": "uuid"
-                  },
-                  "file": {
-                    "not": {}
-                  }
-                },
-                "required": [
-                  "id",
-                  "file"
-                ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "anyOf": [
-                    {},
-                    {
-                      "not": {}
-                    }
                   ]
                 }
               }

@@ -8,7 +8,6 @@ import {
 	readMediaContext,
 	readMediaReturnPath,
 } from "./media-context";
-import { toCanonicalRouteHref } from "./route-compat";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "./workspace/icons";
 
 export type MediaDetailHeaderProps = {
@@ -19,9 +18,8 @@ export type MediaDetailHeaderProps = {
 };
 
 function isCollectionRoute(path: string): boolean {
-	const canonicalPath = toCanonicalRouteHref(path) ?? path;
 	try {
-		const url = new URL(canonicalPath, "http://solid-imager.invalid");
+		const url = new URL(path, "http://solid-imager.invalid");
 		return url.pathname === "/search" || url.pathname.startsWith("/sources/");
 	} catch {
 		return false;

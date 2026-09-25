@@ -154,7 +154,6 @@ async function handleFileChanged(
 			payload: {
 				mediaId: media.id,
 				sourcePath: basePath,
-				type: "processMedia",
 			},
 		});
 
