@@ -1243,7 +1243,11 @@ export const BackupService = {
 
 			// Extract authors
 			const simpleAuthors = (media.authors || []).map((ma) => {
-				const account = ma.author?.accounts?.[0];
+				const accounts = ma.author?.accounts ?? [];
+				const accountId = ma.author?.accountId;
+				const account =
+					accounts.find((candidate) => candidate.accountId === accountId) ??
+					(accounts.length === 1 ? accounts[0] : undefined);
 				return {
 					name: ma.author?.name || "",
 					accountId: account?.accountId ?? null,

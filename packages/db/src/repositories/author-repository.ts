@@ -118,15 +118,41 @@ async function findOrCreateAuthorsBulk(
 	const authorByName = new Map(
 		nameOnlyAuthors.map((author) => [author.name, author] as const),
 	);
+	const linkedNameOnlyAuthors =
+		nameOnlyAuthors.length > 0
+			? await client
+					.select({ authorId: authorAccounts.authorId })
+					.from(authorAccounts)
+					.where(
+						inArray(
+							authorAccounts.authorId,
+							nameOnlyAuthors.map((author) => author.id),
+						),
+					)
+			: [];
+	const authorsWithLinkedAccounts = new Set(
+		linkedNameOnlyAuthors.map((account) => account.authorId),
+	);
+	const unlinkedAuthorByName = new Map(
+		nameOnlyAuthors
+			.filter((author) => !authorsWithLinkedAccounts.has(author.id))
+			.map((author) => [author.name, author] as const),
+	);
 
 	const accountsToInsert: (typeof authorAccounts.$inferInsert)[] = [];
 	const newlyCreatedAuthorByKey = new Map<string, string>();
 	for (const [key, input] of unresolved) {
-		const existingNameOnlyAuthor = authorByName.get(input.name);
+		const hasAccountIdentity = Boolean(input.platform && input.accountId);
+		const existingNameOnlyAuthor = hasAccountIdentity
+			? unlinkedAuthorByName.get(input.name)
+			: authorByName.get(input.name);
 
 		let author: typeof authors.$inferSelect;
 		if (existingNameOnlyAuthor) {
 			author = existingNameOnlyAuthor;
+			if (hasAccountIdentity) {
+				unlinkedAuthorByName.delete(input.name);
+			}
 		} else {
 			const [createdAuthor] = await client
 				.insert(authors)

@@ -88,13 +88,13 @@ describe("search storage keys", () => {
 			"web-state",
 		);
 		expect(readSearchStateStorageValue(storage, "current-source-1")).toBe(
-			"tauri-state",
+			"source-state",
 		);
 		expect(storage.getItem(getSearchStateStorageKey("current-all"))).toBe(
 			"web-state",
 		);
 		expect(storage.getItem(getSearchStateStorageKey("current-source-1"))).toBe(
-			"tauri-state",
+			"source-state",
 		);
 	});
 

@@ -685,7 +685,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 
 	if (!item.targetUrl) {
 		logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
-		return;
+		throw new Error("Download job payload missing targetUrl");
 	}
 
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");

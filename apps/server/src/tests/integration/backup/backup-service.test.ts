@@ -207,18 +207,22 @@ describe("BackupService Integration", () => {
 		expect(item.sourceUrls[0]).toBe("https://example.com/source");
 	});
 
-	it("exports a sole platform account when the legacy account ID is absent", () => {
+	it("exports the account matching the author account ID regardless of relation order", () => {
 		const [item] = BackupService._transformMediaList([
 			{
 				authors: [
 					{
 						author: {
-							name: "Account-only Author",
-							accountId: null,
+							name: "Multi-account Author",
+							accountId: "account-a",
 							accounts: [
 								{
+									platform: "twitter",
+									accountId: "account-b",
+								},
+								{
 									platform: "pixiv-fanbox",
-									accountId: "account-only",
+									accountId: "account-a",
 								},
 							],
 						},
@@ -229,8 +233,8 @@ describe("BackupService Integration", () => {
 
 		expect(item?.authors).toEqual([
 			{
-				name: "Account-only Author",
-				accountId: "account-only",
+				name: "Multi-account Author",
+				accountId: "account-a",
 				platform: "pixiv-fanbox",
 			},
 		]);
