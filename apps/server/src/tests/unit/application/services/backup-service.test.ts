@@ -1,3 +1,7 @@
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import { Readable } from "node:stream";
 import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db";
@@ -8,24 +12,31 @@ import {
 } from "~/infrastructure/db/schema";
 import { BackupService } from "~/infrastructure/services/backup-service";
 
-const { mockValues, mockDelete, mockFindMany, mockTxDelete } = vi.hoisted(
-	() => {
-		const mkTxDelete = vi.fn(() => ({
+const {
+	mockValues,
+	mockDelete,
+	mockFindMany,
+	mockFindSource,
+	mockGetStream,
+	mockTxDelete,
+} = vi.hoisted(() => {
+	const mkTxDelete = vi.fn(() => ({
+		where: vi.fn(),
+	}));
+	return {
+		mockValues: vi.fn(() => ({
+			onConflictDoNothing: vi.fn(),
+			onConflictDoUpdate: vi.fn(),
+		})),
+		mockDelete: vi.fn(() => ({
 			where: vi.fn(),
-		}));
-		return {
-			mockValues: vi.fn(() => ({
-				onConflictDoNothing: vi.fn(),
-				onConflictDoUpdate: vi.fn(),
-			})),
-			mockDelete: vi.fn(() => ({
-				where: vi.fn(),
-			})),
-			mockFindMany: vi.fn(),
-			mockTxDelete: mkTxDelete,
-		};
-	},
-);
+		})),
+		mockFindMany: vi.fn(),
+		mockFindSource: vi.fn(),
+		mockGetStream: vi.fn(),
+		mockTxDelete: mkTxDelete,
+	};
+});
 
 vi.mock("~/infrastructure/db", () => ({
 	db: {
@@ -35,7 +46,7 @@ vi.mock("~/infrastructure/db", () => ({
 				findFirst: vi.fn(),
 			},
 			mediaSources: {
-				findFirst: vi.fn(),
+				findFirst: mockFindSource,
 			},
 		},
 		insert: vi.fn(() => ({
@@ -73,9 +84,78 @@ vi.mock("~/infrastructure/db", () => ({
 	},
 }));
 
+vi.mock("~/infrastructure/storage/factory", () => ({
+	getDriver: () => ({ getStream: mockGetStream }),
+}));
+
+function readTarEntry(archive: Buffer, entryName: string): string {
+	let offset = 0;
+	while (offset + 512 <= archive.length) {
+		const header = archive.subarray(offset, offset + 512);
+		const name = header.toString("utf8", 0, 100).replace(/\0.*$/, "");
+		if (!name) {
+			break;
+		}
+		const size = Number.parseInt(
+			header.toString("ascii", 124, 136).replace(/\0.*$/, "").trim(),
+			8,
+		);
+		const bodyStart = offset + 512;
+		if (name === entryName) {
+			return archive.toString("utf8", bodyStart, bodyStart + size);
+		}
+		offset = bodyStart + Math.ceil(size / 512) * 512;
+	}
+	throw new Error(`Missing TAR entry: ${entryName}`);
+}
+
 describe("BackupService", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+	});
+
+	it("exports the metadata and image paths in a TAR dump", async () => {
+		const fixtureDirectory = await fs.mkdtemp(
+			path.join(os.tmpdir(), "backup-tar-test-"),
+		);
+		try {
+			const imagePath = path.join(fixtureDirectory, "image.jpg");
+			await fs.writeFile(imagePath, "image bytes");
+			const imageStats = await fs.stat(imagePath);
+			const filePath = "folder/image.jpg";
+			mockFindSource.mockResolvedValue({ id: "source-1" });
+			mockFindMany.mockResolvedValueOnce([
+				{
+					id: "media-1",
+					filePath,
+					fileName: "image.jpg",
+					description: "a long prompt with a newline\n".repeat(4000),
+				},
+			]);
+			mockGetStream.mockResolvedValue({
+				stream: Readable.from(["image bytes"]),
+				stats: imageStats,
+			});
+
+			const dump = await BackupService.createDump("source-1", "tar", {
+				includeImages: true,
+			});
+			if (!(dump instanceof ReadableStream)) {
+				throw new Error("Expected TAR stream");
+			}
+			const archive = Buffer.from(await new Response(dump).arrayBuffer());
+			const metadata = readTarEntry(archive, "dump.ndjson");
+			const image = readTarEntry(archive, `images/${filePath}`);
+
+			expect(JSON.parse(metadata.trim())).toMatchObject({
+				filePath,
+				fileName: "image.jpg",
+			});
+			expect(image).toBe("image bytes");
+			expect(mockGetStream).toHaveBeenCalledWith(filePath);
+		} finally {
+			await fs.rm(fixtureDirectory, { recursive: true, force: true });
+		}
 	});
 
 	describe("_transformMediaList", () => {
