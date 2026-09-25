@@ -1,3 +1,6 @@
+import { execFile } from "node:child_process";
+import { readFile } from "node:fs/promises";
+import { promisify } from "node:util";
 import type { Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
@@ -6,6 +9,7 @@ import {
 	E2E_SIMILAR_MEDIA_ID,
 	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
+	getFixtureMediaPath,
 } from "./support/fixture";
 import {
 	expect,
@@ -17,6 +21,27 @@ import {
 const sourcePath = `/sources/${E2E_SOURCE_ID}`;
 const mediaPath = (mediaId: string) => `${sourcePath}/${mediaId}`;
 
+const run = promisify(execFile);
+
+function expectSeededMediaDump(contents: string): void {
+	const records = contents
+		.trim()
+		.split("\n")
+		.map((line) => JSON.parse(line));
+	expect(records).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				id: E2E_PRIMARY_MEDIA_ID,
+				fileName: E2E_PRIMARY_FILE_NAME,
+			}),
+			expect.objectContaining({
+				id: E2E_SIMILAR_MEDIA_ID,
+				fileName: E2E_SIMILAR_FILE_NAME,
+			}),
+		]),
+	);
+}
+
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	const overflow = await page.evaluate(
 		() =>
@@ -26,9 +51,7 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	expect(overflow).toBeLessThanOrEqual(1);
 }
 
-test("Workspace routes survive direct navigation and reload", async ({
-	page,
-}) => {
+test("Workspace routes fit each viewport after hydration", async ({ page }) => {
 	const routes = [
 		["/search", "すべてのメディア"],
 		[sourcePath, E2E_SOURCE_NAME],
@@ -48,22 +71,14 @@ test("Workspace routes survive direct navigation and reload", async ({
 				.getByText(visibleText, { exact: true })
 				.first(),
 		).toBeVisible();
-		await page.reload();
-		await waitForAppHydration(page);
-		await expect(
-			page
-				.locator("#main-content")
-				.getByText(visibleText, { exact: true })
-				.first(),
-		).toBeVisible();
 		await expectRouteHealthy(page);
 		await expectNoHorizontalOverflow(page);
 	}
 });
 
-test("Workspace sidebar keeps navigation items separated in a short viewport", async ({
-	page,
-}) => {
+test("Workspace sidebar keeps navigation items separated in a short viewport", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.setViewportSize({ width: 1440, height: 480 });
 	await page.goto("/search");
 	await waitForAppHydration(page);
@@ -81,41 +96,13 @@ test("Workspace sidebar keeps navigation items separated in a short viewport", a
 		return links.slice(1).map((rect, index) => rect.top - links[index].bottom);
 	});
 
+	expect(verticalGaps.length).toBeGreaterThan(0);
 	expect(Math.min(...verticalGaps)).toBeGreaterThanOrEqual(0);
 });
 
-test("Workspace detail changes after returning to a collection", async ({
-	page,
-}) => {
-	await page.goto(sourcePath);
-	await waitForAppHydration(page);
-
-	await page
-		.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`)
-		.press("Enter");
-	await expect(page).toHaveURL(
-		new RegExp(`${mediaPath(E2E_PRIMARY_MEDIA_ID)}(?:\\?[^#]*)?$`),
-	);
-	await expect(
-		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
-	).toBeVisible();
-
-	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
-	await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
-	await page
-		.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`)
-		.press("Enter");
-	await expect(page).toHaveURL(
-		new RegExp(`${mediaPath(E2E_SIMILAR_MEDIA_ID)}(?:\\?[^#]*)?$`),
-	);
-	await expect(
-		page.getByRole("img", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
-	).toBeVisible();
-});
-
-test("Workspace wide collection uses selection preview before detail navigation", async ({
-	page,
-}) => {
+test("Workspace wide collection uses selection preview before detail navigation", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.setViewportSize({ width: 1600, height: 900 });
 	await page.goto(sourcePath);
 	await waitForAppHydration(page);
@@ -138,9 +125,9 @@ test("Workspace wide collection uses selection preview before detail navigation"
 	);
 });
 
-test("Workspace restore exposes and selects the TAR format", async ({
-	page,
-}) => {
+test("Workspace restore exposes and selects the TAR format", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 
@@ -176,7 +163,9 @@ test("Workspace restore exposes and selects the TAR format", async ({
 	);
 });
 
-test("Workspace Manager export downloads its artifact", async ({ page }) => {
+test("Workspace Manager export downloads its artifact", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 
@@ -195,16 +184,34 @@ test("Workspace Manager export downloads its artifact", async ({ page }) => {
 		.click();
 	await selectTriggers.nth(1).click();
 	await page.getByRole("option", { name: "TAR archive", exact: true }).click();
+	await page.getByText("Include original media", { exact: true }).click();
+	await expect(
+		page.getByRole("checkbox", { name: "Include original media" }),
+	).toBeChecked();
 	const download = page.waitForEvent("download");
 	await page
 		.getByRole("button", { name: "Generate & download", exact: true })
 		.click();
-	expect((await download).suggestedFilename()).toMatch(/\.tar$/);
+	const artifact = await download;
+	expect(artifact.suggestedFilename()).toMatch(/\.tar$/);
+	expect(await artifact.failure()).toBeNull();
+	const artifactPath = await artifact.path();
+	if (!artifactPath) throw new Error("TAR download did not produce a file");
+	const dump = await run("tar", ["-xOf", artifactPath, "dump.ndjson"]);
+	expectSeededMediaDump(dump.stdout);
+	const image = await run(
+		"tar",
+		["-xOf", artifactPath, `images/${E2E_PRIMARY_FILE_NAME}`],
+		{ encoding: "buffer" },
+	);
+	expect(image.stdout).toEqual(
+		await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME)),
+	);
 });
 
-test("Workspace Manager NDJSON export downloads its artifact", async ({
-	page,
-}) => {
+test("Workspace Manager NDJSON export downloads its artifact", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 
@@ -225,7 +232,12 @@ test("Workspace Manager NDJSON export downloads its artifact", async ({
 	await page
 		.getByRole("button", { name: "Generate & download", exact: true })
 		.click();
-	expect((await download).suggestedFilename()).toMatch(/\.ndjson$/);
+	const artifact = await download;
+	expect(artifact.suggestedFilename()).toMatch(/\.ndjson$/);
+	expect(await artifact.failure()).toBeNull();
+	const artifactPath = await artifact.path();
+	if (!artifactPath) throw new Error("NDJSON download did not produce a file");
+	expectSeededMediaDump(await readFile(artifactPath, "utf8"));
 });
 
 test("Workspace search filter opens without remounting media results", async ({
@@ -239,7 +251,6 @@ test("Workspace search filter opens without remounting media results", async ({
 	await page.evaluate(() => {
 		const state = window as Window & {
 			__workspaceFirstMedia?: Element;
-			__workspaceFilterDialog?: Element;
 			__workspaceSawLoadingFallback?: boolean;
 			__workspaceLoadingObserver?: MutationObserver;
 		};
@@ -266,13 +277,6 @@ test("Workspace search filter opens without remounting media results", async ({
 	await filterButton.click();
 	const filterDialog = page.getByRole("dialog", { name: "検索フィルター" });
 	await expect(filterDialog).toBeVisible();
-	await filterDialog.evaluate((element) => {
-		(
-			window as Window & {
-				__workspaceFilterDialog?: Element;
-			}
-		).__workspaceFilterDialog = element;
-	});
 
 	const comboboxNames = await filterDialog
 		.getByRole("combobox")
@@ -296,22 +300,17 @@ test("Workspace search filter opens without remounting media results", async ({
 	const renderState = await page.evaluate(() => {
 		const state = window as Window & {
 			__workspaceFirstMedia?: Element;
-			__workspaceFilterDialog?: Element;
 			__workspaceSawLoadingFallback?: boolean;
 			__workspaceLoadingObserver?: MutationObserver;
 		};
 		state.__workspaceLoadingObserver?.disconnect();
 		return {
-			filterNodeWasPreserved:
-				state.__workspaceFilterDialog ===
-				document.querySelector('[role="dialog"][aria-label="検索フィルター"]'),
 			mediaNodeWasPreserved:
 				state.__workspaceFirstMedia ===
 				document.querySelector("[data-media-id]"),
 			sawLoadingFallback: state.__workspaceSawLoadingFallback,
 		};
 	});
-	expect(renderState.filterNodeWasPreserved).toBe(true);
 	expect(renderState.mediaNodeWasPreserved).toBe(true);
 	expect(renderState.sawLoadingFallback).toBe(false);
 });

@@ -23,6 +23,7 @@ export type MediaContextItem = Pick<Media, "id" | "mediaSourceId">;
 export type StoredMediaContext = {
 	items: MediaContextItem[];
 	returnPath: string;
+	returnHistoryIndex?: number;
 	updatedAt: number;
 };
 
@@ -68,9 +69,18 @@ export function saveMediaContext(
 		if (uniqueItems.size >= MAX_CONTEXT_ITEMS) break;
 	}
 
+	const historyState: unknown =
+		typeof window === "undefined" ? undefined : window.history.state;
+	const returnHistoryIndex =
+		isRecord(historyState) && Number.isInteger(historyState.__TSR_index)
+			? historyState.__TSR_index
+			: undefined;
 	const context: StoredMediaContext = {
 		items: [...uniqueItems.values()],
 		returnPath,
+		...(typeof returnHistoryIndex === "number" && returnHistoryIndex >= 0
+			? { returnHistoryIndex }
+			: {}),
 		updatedAt: Date.now(),
 	};
 	const serialized = JSON.stringify(context);
@@ -112,6 +122,11 @@ export function readMediaContext(): StoredMediaContext | null {
 		return {
 			items,
 			returnPath,
+			...(typeof value.returnHistoryIndex === "number" &&
+			Number.isInteger(value.returnHistoryIndex) &&
+			value.returnHistoryIndex >= 0
+				? { returnHistoryIndex: value.returnHistoryIndex }
+				: {}),
 			updatedAt:
 				typeof value.updatedAt === "number" ? value.updatedAt : Date.now(),
 		};

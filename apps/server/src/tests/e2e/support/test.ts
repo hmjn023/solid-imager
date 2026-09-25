@@ -61,6 +61,11 @@ function matches(value: string, matchers: UrlMatcher[]): boolean {
 }
 
 export async function expectRouteHealthy(page: Page): Promise<void> {
+	// TanStack's default boundary can appear before our localized route boundary.
+	expect(
+		await page.getByText("Something went wrong!", { exact: true }).count(),
+		"The default route error boundary must not be rendered",
+	).toBe(0);
 	await expect(
 		page.getByText("画面を表示できませんでした", { exact: true }),
 	).toHaveCount(0);

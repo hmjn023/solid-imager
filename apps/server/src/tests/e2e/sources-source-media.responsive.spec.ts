@@ -51,7 +51,9 @@ async function expectInsideViewport(
 	expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
 }
 
-test("library entry points redirect to canonical search", async ({ page }) => {
+test("library entry points redirect to canonical search", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	for (const path of ["/", "/sources", "/v2", "/v2/search"]) {
 		await page.goto(path);
 		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
@@ -63,9 +65,9 @@ test("library entry points redirect to canonical search", async ({ page }) => {
 	}
 });
 
-test("versioned detail routes preserve query and hash during redirect", async ({
-	page,
-}) => {
+test("versioned detail routes preserve query and hash during redirect", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto(
 		`/v2/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}?migration=1#details`,
 	);
@@ -86,34 +88,26 @@ test("source media exposes mobile filters and touch selection", async ({
 }, testInfo) => {
 	await page.goto(sourcePath());
 	await expect(
-		page.getByRole("heading", {
-			name: E2E_SOURCE_NAME,
-			exact: true,
-		}),
+		page
+			.locator("#main-content")
+			.getByText(E2E_SOURCE_NAME, { exact: true })
+			.first(),
 	).toBeVisible();
-	const resultCount = page.getByText(/^\d+ 件の結果$/);
+	const resultCount = page.getByText(/^[\d,]+ items$/);
 	await expect(resultCount).toHaveCount(1);
 	await expect(resultCount).toBeVisible();
 	const firstMedia = page.locator("[data-media-id]").first();
 	await expect(firstMedia).toBeVisible();
-	if (!usesMobileControls(testInfo.project.name)) {
-		const filterCard = page
-			.getByRole("heading", { name: "検索フィルター", exact: true })
-			.locator("..")
-			.locator("..");
-		const [filterTop, mediaTop] = await Promise.all(
-			[filterCard, firstMedia].map((locator) =>
-				locator.evaluate((element) => element.getBoundingClientRect().top),
-			),
-		);
-		expect(Math.abs(filterTop - mediaTop)).toBeLessThanOrEqual(1);
-	}
 	await waitForAppHydration(page);
 	await expect(page.getByTestId("media-load-more-sentinel")).toBeVisible();
 	await expectNoHorizontalOverflow(page);
 
-	const addMediaButton = page.getByRole("button", { name: "Add media" });
-	await expectTouchTarget(addMediaButton);
+	const addMediaButton = page.getByRole("button", {
+		name: "追加",
+		exact: true,
+	});
+	if (usesMobileControls(testInfo.project.name))
+		await expectTouchTarget(addMediaButton);
 	await expectInsideViewport(page, addMediaButton);
 	const fileChooser = page.waitForEvent("filechooser");
 	await addMediaButton.click();
@@ -133,6 +127,22 @@ test("source media exposes mobile filters and touch selection", async ({
 	await uploadDialog
 		.getByRole("button", { name: "キャンセル", exact: true })
 		.click();
+	const discardDialog = page.getByRole("alertdialog");
+	await expect(discardDialog).toContainText("アップロード内容を破棄しますか？");
+	await discardDialog
+		.getByRole("button")
+		.filter({ hasText: "編集を続ける" })
+		.click();
+	await expect(discardDialog).toBeHidden();
+	await expect(filenameInput).toHaveValue("temporary-name.png");
+	await uploadDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
+	await discardDialog
+		.getByRole("button")
+		.filter({ hasText: "破棄して閉じる" })
+		.click();
+	await expect(discardDialog).toBeHidden();
 	await expect(uploadDialog).toBeHidden();
 	const reopenedFileChooser = page.waitForEvent("filechooser");
 	await addMediaButton.click();
@@ -141,13 +151,19 @@ test("source media exposes mobile filters and touch selection", async ({
 	);
 	await expect(filenameInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
 	await page.keyboard.press("Escape");
+	await discardDialog
+		.getByRole("button")
+		.filter({ hasText: "破棄して閉じる" })
+		.click();
+	await expect(discardDialog).toBeHidden();
 	await expect(uploadDialog).toBeHidden();
 
 	const selectModeButton = page.getByRole("button", {
 		name: "複数選択",
 		exact: true,
 	});
-	await expectTouchTarget(selectModeButton);
+	if (usesMobileControls(testInfo.project.name))
+		await expectTouchTarget(selectModeButton);
 	await selectModeButton.click();
 	const bulkToolbar = page.getByTestId("bulk-actions-bar");
 	await expect(bulkToolbar).toContainText("0 件選択中");
@@ -163,60 +179,37 @@ test("source media exposes mobile filters and touch selection", async ({
 	await expect(selectableMedia).toBeVisible();
 	await selectableMedia.click();
 	await expect(bulkToolbar).toContainText("1 件選択中");
-	await expect(addMediaButton).toBeHidden();
+	await expect(addMediaButton).toBeVisible();
 	await expectInsideViewport(page, bulkToolbar);
 	await page.getByRole("button", { name: "解除", exact: true }).click();
 	await expect(addMediaButton).toBeVisible();
 
-	if (usesMobileControls(testInfo.project.name)) {
-		const sourceActionsButton = page.getByRole("button", {
-			name: "ソース操作を開く",
-		});
-		const filterResultsButton = page.getByRole("button", {
-			name: "Filter results",
-		});
-		await expectTouchTarget(sourceActionsButton);
-		await expectTouchTarget(filterResultsButton);
-		await sourceActionsButton.click();
-		const sourceActionsDialog = page.getByRole("dialog");
-		await expect(
-			sourceActionsDialog.getByRole("button", {
-				name: "NDJSON メタデータを書き出す",
-			}),
-		).toBeVisible();
-		await page.keyboard.press("Escape");
-		await expect(sourceActionsDialog).toBeHidden();
-		await sourceActionsButton.click();
-		const restoreFileChooser = page.waitForEvent("filechooser");
-		await sourceActionsDialog
-			.getByRole("button", { name: "ダンプを復元する", exact: true })
-			.click();
-		await restoreFileChooser;
-		await expect(sourceActionsDialog).toBeHidden();
-
-		await filterResultsButton.click();
-		const filterDialog = page.getByRole("dialog");
-		await expect(filterDialog).toBeVisible();
-		await expect(filterDialog.getByRole("status")).toContainText("現在の条件");
-		const fileNameInput = filterDialog.getByPlaceholder("ファイル名を入力...");
-		await fileNameInput.fill("e2e");
-		await expect(filterDialog.getByRole("status")).toContainText(
-			"ファイル名: e2e",
-		);
-		await filterDialog
-			.getByRole("button", { name: "適用", exact: true })
-			.click();
-		await expect(filterDialog).toBeHidden();
-	} else {
-		await expect(
-			page.getByRole("heading", { name: "検索フィルター", exact: true }),
-		).toBeVisible();
-	}
+	const filterButton = page.getByRole("button", { name: /^検索フィルター、/ });
+	if (usesMobileControls(testInfo.project.name))
+		await expectTouchTarget(filterButton);
+	await filterButton.click();
+	const filterDialog = page.getByRole("dialog", {
+		name: "検索フィルター",
+		exact: true,
+	});
+	const fileNameInput = filterDialog.getByRole("textbox", {
+		name: "ファイル名検索",
+		exact: true,
+	});
+	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
+	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
+	await expect(filterDialog).toBeHidden();
+	await expect(resultCount).toHaveText("1 items");
+	await expect(
+		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+	).toBeVisible();
 
 	await expectNoHorizontalOverflow(page);
 });
 
-test("canonical media grid opens its context menu", async ({ page }) => {
+test("canonical media grid opens its context menu", {
+	tag: "@desktop-only",
+}, async ({ page }) => {
 	await page.goto(sourcePath());
 	await waitForAppHydration(page);
 

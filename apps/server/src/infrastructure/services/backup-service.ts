@@ -242,52 +242,61 @@ async function* iterateMediaDumpItems(
 async function writeNdjsonDump(
 	mediaSourceId: string,
 	outputPath: string,
+	imagePathsPath: string,
 	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
 ): Promise<void> {
 	const output = createWriteStream(outputPath);
+	const imagePaths = createWriteStream(imagePathsPath);
 	let streamError: Error | undefined;
 	const onOutputError = (error: Error) => {
 		streamError ??= error;
 	};
 	output.on("error", onOutputError);
+	imagePaths.on("error", onOutputError);
 	try {
 		for await (const item of iterateMediaDumpItems(mediaSourceId, transform)) {
 			if (streamError) {
 				throw streamError;
 			}
 			await writeWithBackpressure(output, `${JSON.stringify(item)}\n`);
+			if (item.filePath) {
+				await writeWithBackpressure(imagePaths, `${item.filePath}\0`);
+			}
 		}
 		if (streamError) {
 			throw streamError;
 		}
 		output.end();
-		await finished(output);
+		imagePaths.end();
+		await Promise.all([finished(output), finished(imagePaths)]);
 	} catch (error) {
 		output.destroy();
+		imagePaths.destroy();
 		throw error;
 	} finally {
 		output.removeListener("error", onOutputError);
+		imagePaths.removeListener("error", onOutputError);
 	}
 }
 
-async function* iterateNdjsonDumpItems(
-	inputPath: string,
-): AsyncGenerator<MediaDumpItem> {
-	const readline = await import("node:readline");
-	const input = createReadStream(inputPath);
-	const lines = readline.createInterface({
-		input,
-		crlfDelay: Infinity,
-	});
+async function* iterateImagePaths(inputPath: string): AsyncGenerator<string> {
+	const input = createReadStream(inputPath, { encoding: "utf8" });
+	let pending = "";
 
 	try {
-		for await (const line of lines) {
-			if (line.trim()) {
-				yield mediaDumpItemSchema.parse(JSON.parse(line));
+		for await (const chunk of input) {
+			pending += chunk;
+			let delimiterIndex = pending.indexOf("\0");
+			while (delimiterIndex !== -1) {
+				yield pending.slice(0, delimiterIndex);
+				pending = pending.slice(delimiterIndex + 1);
+				delimiterIndex = pending.indexOf("\0");
 			}
 		}
+		if (pending) {
+			throw new Error("Incomplete image path manifest");
+		}
 	} finally {
-		lines.close();
 		input.destroy();
 	}
 }
@@ -1165,9 +1174,11 @@ export const BackupService = {
 						path.join(TarStagingDirectory, stagingPrefix),
 					);
 					const ndjsonPath = path.join(stagingDirectory, "dump.ndjson");
+					const imagePathsPath = path.join(stagingDirectory, "image-paths");
 					await writeNdjsonDump(
 						mediaSourceId,
 						ndjsonPath,
+						imagePathsPath,
 						this._transformMediaList,
 					);
 
@@ -1179,21 +1190,17 @@ export const BackupService = {
 
 					const includeImages = options?.includeImages ?? true;
 					if (includeImages) {
-						for await (const item of iterateNdjsonDumpItems(ndjsonPath)) {
-							if (!item.filePath) {
-								continue;
-							}
-
+						for await (const filePath of iterateImagePaths(imagePathsPath)) {
 							let file: Awaited<ReturnType<typeof driver.getStream>>;
 							try {
-								file = await driver.getStream(item.filePath);
+								file = await driver.getStream(filePath);
 							} catch {
 								// Ignore missing files, matching the previous export behavior.
 								continue;
 							}
 
 							await appendTarEntry(archive, file.stream, {
-								name: `images/${item.filePath}`,
+								name: `images/${filePath}`,
 								stats: file.stats,
 							});
 						}

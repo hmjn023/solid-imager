@@ -381,9 +381,9 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					</PopoverTrigger>
 					<PopoverContent
 						aria-label="検索フィルター"
-						class="workspace-theme relative flex min-h-0 max-h-[min(42rem,calc(100dvh-2rem))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden bg-[var(--workspace-surface)] p-0 text-[var(--workspace-text)] shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
+						class="workspace-theme relative flex min-h-0 max-h-[min(42rem,var(--kb-popper-content-available-height,calc(100dvh-2rem)))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden bg-[var(--workspace-surface)] p-0 text-[var(--workspace-text)] shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
 					>
-						<div class="flex items-start justify-between border-[var(--workspace-border)] border-b px-4 py-3">
+						<div class="flex shrink-0 items-start justify-between border-[var(--workspace-border)] border-b px-4 py-3">
 							<div>
 								<h2 class="font-semibold text-sm">検索フィルター</h2>
 								<p class="mt-0.5 text-[11px] text-[var(--workspace-text-muted)]">
@@ -402,7 +402,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								すべて解除
 							</Button>
 						</div>
-						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-20">
+						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
 							<SearchControlPanel
 								context={props.context}
 								filterData={props.filterData}
@@ -415,7 +415,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								usePopover={false}
 							/>
 						</div>
-						<div class="absolute right-0 bottom-0 left-0 z-[60] flex justify-end gap-2 border-[var(--workspace-border)] border-t bg-[var(--workspace-surface)] p-3 pointer-events-auto">
+						<div class="flex shrink-0 justify-end gap-2 border-[var(--workspace-border)] border-t bg-[var(--workspace-surface)] p-3">
 							<Button
 								onClick={() => setFilterOpen(false)}
 								size="sm"

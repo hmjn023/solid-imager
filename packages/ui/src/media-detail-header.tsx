@@ -1,10 +1,11 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
-import { useNavigate } from "@tanstack/solid-router";
+import { useNavigate, useRouter } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { Button } from "./button";
 import {
 	clearMediaReturnPath,
 	findMediaNeighbors,
+	readMediaContext,
 	readMediaReturnPath,
 } from "./media-context";
 import { toCanonicalRouteHref } from "./route-compat";
@@ -30,6 +31,7 @@ function isCollectionRoute(path: string): boolean {
 /** The current detail header shared by Web and Tauri route adapters. */
 export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 	const navigate = useNavigate();
+	const router = useRouter();
 	const neighbors = () => findMediaNeighbors(props.media.id);
 
 	const navigateToNeighbor = (direction: "next" | "previous") => {
@@ -48,7 +50,19 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 	const returnToCollection = () => {
 		const returnPath = readMediaReturnPath();
 		if (returnPath && isCollectionRoute(returnPath)) {
+			const context = readMediaContext();
 			clearMediaReturnPath();
+			// Reuse the collection history entry so its search and scroll state
+			// survive. Direct links have no preceding collection and use the fallback.
+			if (
+				context?.returnPath === returnPath &&
+				context.returnHistoryIndex !== undefined &&
+				router.history.location.state.__TSR_index ===
+					context.returnHistoryIndex + 1
+			) {
+				router.history.back();
+				return;
+			}
 			void navigate({ href: returnPath, replace: true });
 			return;
 		}

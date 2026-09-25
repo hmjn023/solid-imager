@@ -144,6 +144,9 @@ fi
 | `aube start`                                        | Aube経由の本番サーバー起動 |
 | `bun run check`                                     | lint / format / typecheck |
 | `bun run test`                                      | Vitest テスト             |
+| `bun run --cwd apps/server test:e2e:components`       | DB不要のコンポーネント検証 |
+| `bun run --cwd apps/server test:e2e`                  | dev代表14件＋本番全97件のアプリE2E |
+| `bun run --cwd apps/server test:e2e:full`             | dev・本番とも全件のアプリE2E |
 | `bun run format`                                    | Biomeによるformat         |
 | `bun run lint`                                      | lint                      |
 | `bun --filter @solid-imager/server run db:generate` | マイグレーション生成      |
@@ -161,6 +164,7 @@ fi
 
 ## 詳細
 
+- **テストの棚卸し・実行方針**: [テスト棚卸し](./docs/testing-audit.md)
 - **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Swagger UI](./apps/server/public/api-docs.html)
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面と `/v2/*` 互換転送の対応状況）
