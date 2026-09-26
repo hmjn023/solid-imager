@@ -91,7 +91,7 @@ function RootRouteComponent() {
 		<ShortcutPreferencesProvider>
 			<Toaster />
 			<AppShell
-				apiDocsHref={`${getApiBaseUrl()}/docs/swagger`}
+				apiDocsHref={`${getApiBaseUrl()}/docs/scalar`}
 				mediaSources={sourceData}
 				onNavigate={(to) => void navigate({ to })}
 				renderPendingDownloadsIndicator={(compact) => (
