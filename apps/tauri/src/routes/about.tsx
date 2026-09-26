@@ -7,5 +7,5 @@ export const Route = createFileRoute("/about")({
 });
 
 function AboutRoute() {
-	return <AboutScreen docsHref={`${getApiBaseUrl()}/docs/swagger`} />;
+	return <AboutScreen docsHref={`${getApiBaseUrl()}/docs/scalar`} />;
 }

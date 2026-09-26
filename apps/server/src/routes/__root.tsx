@@ -44,6 +44,8 @@ function RootComponent() {
 		return (
 			pathname === "/design-lab" ||
 			pathname.startsWith("/design-lab/") ||
+			pathname === "/docs/scalar" ||
+			pathname.startsWith("/docs/scalar/") ||
 			pathname === "/docs/swagger" ||
 			pathname.startsWith("/docs/swagger/")
 		);

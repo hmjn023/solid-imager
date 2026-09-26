@@ -50,7 +50,7 @@ export function AppShell(props: AppShellProps) {
 
 	return (
 		<SharedAppShell
-			apiDocsHref="/docs/swagger"
+			apiDocsHref="/docs/scalar"
 			mediaSources={() => mediaSources.data ?? []}
 			onNavigate={(to) => void navigate({ to })}
 			renderPendingDownloadsIndicator={(compact) => (

@@ -1,62 +1,85 @@
-/**
- * OpenAPI Tags Configuration
- * Shared between static generation and runtime endpoint
- */
+/** OpenAPI tag descriptions used when generating the API specification. */
 export const openApiTags = [
 	{
 		name: "Media Sources",
 		description:
-			"Operations for managing media sources (local directories, SFTP, S3, etc.)",
+			"ローカル、SFTP、S3などのメディアソースの登録、設定、同期、エクスポート、インポートを行います。",
 	},
 	{
 		name: "Media",
-		description: "Operations for managing media files and their metadata",
+		description:
+			"メディアの検索、詳細取得、アップロード、編集、削除、および一括操作を行います。",
 	},
 	{
 		name: "Search Snapshots",
 		description:
-			"Operations for storing and restoring immutable search states used by browser history",
+			"ブラウザ履歴から検索状態を復元するためのスナップショットを保存、取得します。",
 	},
 	{
 		name: "Tags",
-		description: "Operations for managing tags and tag associations",
+		description:
+			"タグの一覧取得、作成、編集、削除を行います。メディアとの関連付けはMedia操作から行います。",
 	},
 	{
 		name: "Categories",
-		description: "Operations for managing categories",
+		description: "メディアのカテゴリを作成、編集、削除します。",
 	},
 	{
 		name: "Projects",
-		description: "Operations for managing projects and project associations",
+		description: "プロジェクトを管理し、メディアとの関連付けを行います。",
 	},
 	{
 		name: "Characters",
-		description:
-			"Operations for managing characters and character associations",
+		description: "キャラクターを管理し、メディアとの関連付けを行います。",
 	},
 	{
 		name: "IPs",
 		description:
-			"Operations for managing intellectual properties (IPs) and their associations",
+			"作品やシリーズなどのIPを管理し、メディアとの関連付けを行います。",
 	},
 	{
 		name: "Thumbnails",
-		description: "Operations for generating and managing thumbnails",
+		description: "メディアのサムネイル生成とキャッシュ削除を行います。",
 	},
 	{
 		name: "Downloads",
-		description: "Operations for managing download jobs",
+		description:
+			"外部からのメディアダウンロードをバックグラウンドジョブとして開始します。",
 	},
 	{
 		name: "Directories",
-		description: "Operations for managing directories within media sources",
+		description:
+			"メディアソース内のディレクトリ一覧取得、作成、削除、名前変更を行います。",
 	},
 	{
 		name: "AI",
-		description: "AI-powered operations for tagging and image similarity",
+		description: "画像のAIタグ付け、特徴量抽出、類似検索、一括解析を行います。",
 	},
 	{
 		name: "Utilities",
-		description: "Utility operations such as URL fetching",
+		description:
+			"URLの内容取得など、アプリケーション共通の補助操作を提供します。",
+	},
+	{
+		name: "Authors",
+		description: "メディアから抽出された作者情報を取得します。",
+	},
+	{
+		name: "Configuration",
+		description: "アプリケーション設定を取得、更新します。",
+	},
+	{
+		name: "Imports",
+		description:
+			"インポート待ち項目の登録、処理、キャンセルと進捗購読を行います。",
+	},
+	{
+		name: "Jobs",
+		description:
+			"バックグラウンドジョブの一覧、状態確認、再実行、キャンセル、成果物取得を行います。",
+	},
+	{
+		name: "Presets",
+		description: "検索条件を保存したプリセットを作成、取得、更新、削除します。",
 	},
 ];
