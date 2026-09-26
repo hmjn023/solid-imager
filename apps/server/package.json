@@ -20,6 +20,7 @@
     "validate:native": "bun scripts/validate-native-runtime.ts",
     "validate:bun-image": "bun scripts/validate-bun-image.ts",
     "validate:bun-sql": "bun scripts/validate-bun-sql.ts",
+    "openapi:generate": "bun scripts/generate-openapi.ts",
     "lint": "biome lint ./src",
     "format": "biome format --fix ./src",
     "check": "biome check --fix --unsafe ./src",
