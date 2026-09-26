@@ -10,7 +10,7 @@ import type { MediaSourceEventTransport } from "../hooks/use-media-source-events
 export type MediaDetailScreenProps = {
 	mediaSourceId: Accessor<string>;
 	mediaId: Accessor<string>;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	// oxlint-disable-next-line typescript/no-explicit-any -- library type mismatch between oRPC and solid-query
 	mediaDetailsQueryOptions: (mediaSourceId: string, mediaId: string) => any;
 	sourceRootPath?: string;
 	onAdditionalInvalidate?: () => Promise<void>;

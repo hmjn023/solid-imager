@@ -1,0 +1,206 @@
+{
+	"$schema": "./node_modules/oxlint/configuration_schema.json",
+	"plugins": ["typescript", "oxc", "jsx-a11y"],
+	"rules": {
+		"no-unused-vars": [
+			"error",
+			{
+				"argsIgnorePattern": "^_",
+				"varsIgnorePattern": "^_",
+				"caughtErrors": "none",
+				"ignoreRestSiblings": true
+			}
+		],
+		"no-restricted-imports": "error",
+		"typescript/no-explicit-any": "error",
+		"typescript/no-deprecated": "warn",
+		"typescript/no-floating-promises": "warn",
+		"typescript/no-misused-promises": "warn",
+		"typescript/no-unsafe-argument": "warn",
+		"typescript/no-unsafe-assignment": "warn",
+		"typescript/no-unsafe-call": "warn",
+		"typescript/no-unsafe-member-access": "warn",
+		"typescript/no-unsafe-return": "warn",
+		"typescript/no-non-null-assertion": "warn",
+		"oxc/no-barrel-file": "off",
+		"jsx-a11y/no-redundant-roles": "error",
+		"jsx-a11y/label-has-associated-control": "warn",
+		"jsx-a11y/prefer-tag-over-role": "warn",
+		"shadcn/no-arbitrary-values": "warn",
+		"shadcn/no-raw-colors": "warn",
+		"shadcn/no-inline-styles": "warn",
+		"shadcn/no-unknown-classes": "warn",
+		"shadcn/no-restyle": ["warn", { "allow": ["layout"] }],
+		"shadcn/require-static-classes": "warn"
+	},
+	"options": {
+		"typeAware": true
+	},
+	"ignorePatterns": [
+		"**/node_modules",
+		"**/dist",
+		"**/gen",
+		"**/.output",
+		"**/db-data",
+		"**/db-data*",
+		"**/.worktree",
+		"**/routeTree.gen.ts"
+	],
+	"jsPlugins": ["@shadcn/lint"],
+	"settings": {
+		"shadcn": {
+			"ui": "@solid-imager/ui",
+			"componentImports": ["^@solid-imager/ui(?:/|$)"],
+			"note": "Follow DESIGN.md and prefer the existing Tailwind theme tokens and shared UI components."
+		}
+	},
+	"overrides": [
+		{
+			"files": ["apps/xtracter/src/**/*.ts", "apps/xtracter/src/**/*.tsx"],
+			"env": { "browser": true, "webextensions": true },
+			"globals": { "chrome": "readonly" }
+		},
+		{
+			"files": [
+				"**/*.test.ts",
+				"**/*.test.tsx",
+				"**/tests/**/*.ts",
+				"**/tests/**/*.tsx"
+			],
+			"env": { "vitest": true },
+			"rules": { "typescript/no-explicit-any": "off" }
+		},
+		{
+			"files": ["**/routeTree.gen.ts"],
+			"rules": { "typescript/no-explicit-any": "off" }
+		},
+		{
+			"files": ["packages/ui/src/**"],
+			"rules": { "shadcn/no-restyle": "off" }
+		},
+		{
+			"files": ["packages/core/src/**"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{
+								"group": [
+									"@solid-imager/application",
+									"@solid-imager/application/**",
+									"@solid-imager/client",
+									"@solid-imager/client/**",
+									"@solid-imager/db",
+									"@solid-imager/db/**",
+									"@solid-imager/ui",
+									"@solid-imager/ui/**",
+									"~/**"
+								],
+								"message": "Keep core independent from application and infrastructure packages."
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"files": ["packages/application/src/**"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{
+								"group": [
+									"@solid-imager/client",
+									"@solid-imager/client/**",
+									"@solid-imager/db",
+									"@solid-imager/db/**",
+									"@solid-imager/ui",
+									"@solid-imager/ui/**",
+									"~/**"
+								],
+								"message": "Keep application code independent from client, database, and UI packages."
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"files": ["packages/db/src/**"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{
+								"group": [
+									"@solid-imager/application",
+									"@solid-imager/application/**",
+									"@solid-imager/client",
+									"@solid-imager/client/**",
+									"@solid-imager/ui",
+									"@solid-imager/ui/**",
+									"~/**"
+								],
+								"message": "Keep database infrastructure independent from application, client, and UI packages."
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"files": ["packages/ui/src/**"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{
+								"group": [
+									"@solid-imager/application",
+									"@solid-imager/application/**",
+									"@solid-imager/client",
+									"@solid-imager/client/**",
+									"@solid-imager/db",
+									"@solid-imager/db/**",
+									"~/**"
+								],
+								"message": "Keep shared UI independent from application, client, and database packages."
+							}
+						]
+					}
+				]
+			}
+		},
+		{
+			"files": ["packages/client/src/**"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{
+								"group": [
+									"@solid-imager/application",
+									"@solid-imager/application/**",
+									"@solid-imager/core",
+									"@solid-imager/core/**",
+									"@solid-imager/db",
+									"@solid-imager/db/**",
+									"@solid-imager/ui",
+									"@solid-imager/ui/**",
+									"~/**"
+								],
+								"message": "Keep the API client independent from application, domain, database, and UI packages."
+							}
+						]
+					}
+				]
+			}
+		}
+	]
+}

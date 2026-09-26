@@ -44,28 +44,24 @@ export async function processJob(job: Job) {
 	}
 
 	if (job.type === "processMedia") {
-		const { MediaProcessingService } = await import(
-			"~/infrastructure/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/infrastructure/services/media-processing-service");
 		await MediaProcessingService.executeProcessMediaJob(job);
 	} else if (job.type === "downloadImage") {
-		const { processDownloadJob } = await import(
-			"~/infrastructure/jobs/download-jobs"
-		);
+		const { processDownloadJob } =
+			await import("~/infrastructure/jobs/download-jobs");
 		await processDownloadJob(job);
 	} else if (job.type === "auto_tagging") {
 		await processAutoTaggingJob(job);
 	} else if (job.type === "extract_ccip_vector") {
-		const { processCcipExtractionJob } = await import(
-			"~/infrastructure/jobs/ccip-jobs"
-		);
+		const { processCcipExtractionJob } =
+			await import("~/infrastructure/jobs/ccip-jobs");
 		await processCcipExtractionJob(job);
 	} else if (job.type === "bulk_tagging_dispatch") {
 		await processBulkTaggingDispatchJob(job);
 	} else if (job.type === "batch_ccip_dispatch") {
-		const { processBatchCcipDispatchJob } = await import(
-			"~/infrastructure/jobs/ccip-jobs"
-		);
+		const { processBatchCcipDispatchJob } =
+			await import("~/infrastructure/jobs/ccip-jobs");
 		await processBatchCcipDispatchJob(job);
 	} else if (job.type === "generate_thumbnail") {
 		await getThumbnailJobHandlers().processThumbnailGenerationJob(job);

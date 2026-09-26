@@ -99,13 +99,13 @@ export type ManagerPageActions = {
 export type ManagerPageMutationActions = Omit<ManagerPageActions, "invalidate">;
 
 export type ManagerPageQueryOptions = {
-	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
+	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
 	projects: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
+	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
 	ips: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
+	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
 	characters: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
+	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
 	sources: () => any;
 };
 

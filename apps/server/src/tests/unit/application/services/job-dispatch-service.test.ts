@@ -19,9 +19,8 @@ vi.doMock("~/infrastructure/jobs/thumbnails", () => ({
 	processThumbnailGenerationJob,
 }));
 
-const { configureThumbnailJobHandlers, processJob } = await import(
-	"~/infrastructure/services/job-dispatch-service"
-);
+const { configureThumbnailJobHandlers, processJob } =
+	await import("~/infrastructure/services/job-dispatch-service");
 
 configureThumbnailJobHandlers({
 	deleteThumbnail: vi.fn(),

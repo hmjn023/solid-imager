@@ -12,7 +12,7 @@ import {
 	jsonb,
 	pgEnum,
 	pgTable,
-	// biome-ignore lint/suspicious/noDeprecatedImports: Drizzle's object-form primaryKey API is current, but the package marks the export as deprecated.
+	// oxlint-disable-next-line typescript/no-deprecated -- Drizzle's object-form primaryKey API is current, but the package marks the export as deprecated.
 	primaryKey,
 	real,
 	serial,
@@ -147,7 +147,9 @@ export const authorPlatformEnum = pgEnum("author_platform", [
  * Stores information about different media sources configured in the system.
  */
 export const mediaSources = pgTable("media_sources", {
-	id: uuid("id").primaryKey().default(sql`uuidv7()`),
+	id: uuid("id")
+		.primaryKey()
+		.default(sql`uuidv7()`),
 	/** 表示されるメディアソースの名前 */
 	name: text("name").notNull(),
 	/** メディアソースの説明 */
@@ -179,7 +181,9 @@ export const mediaSources = pgTable("media_sources", {
 export const medias = pgTable(
 	"media",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** どのメディアソースに属しているか */
 		mediaSourceId: uuid("source_id")
 			.notNull()
@@ -236,7 +240,9 @@ export const medias = pgTable(
 export const mediaRegions = pgTable(
 	"media_regions",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		mediaId: uuid("media_id")
 			.notNull()
 			.references(() => medias.id, { onDelete: "cascade" }),
@@ -281,7 +287,9 @@ export const mediaRegions = pgTable(
 export const ccipEmbeddings = pgTable(
 	"ccip_embeddings",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		regionId: uuid("region_id")
 			.notNull()
 			.references(() => mediaRegions.id, { onDelete: "cascade" }),
@@ -311,7 +319,9 @@ export const ccipEmbeddings = pgTable(
 export const tags = pgTable(
 	"tags",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** タグの名前 (例: "blue eyes") */
 		name: text("name").notNull(),
 		/** タグの詳細な説明 */
@@ -454,7 +464,9 @@ export const mediaGenerationInfo = pgTable(
 export const categories = pgTable(
 	"categories",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** カテゴリ名 */
 		name: text("name").notNull(),
 		/** カテゴリの説明 */
@@ -482,7 +494,9 @@ export const categories = pgTable(
 export const projects = pgTable(
 	"projects",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** プロジェクト名 */
 		name: text("name").notNull(),
 		/** プロジェクトの説明 */
@@ -507,7 +521,9 @@ export const projects = pgTable(
 export const ips = pgTable(
 	"ips",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** IP(作品)名 */
 		name: text("name").notNull(),
 		/** IP(作品)の説明 */
@@ -531,7 +547,9 @@ export const ips = pgTable(
 export const characters = pgTable(
 	"characters",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** キャラクター名 */
 		name: text("name").notNull(),
 		/** キャラクターの説明 */
@@ -732,7 +750,9 @@ export const mediaSync = pgTable("media_sync", {
 	/** 同期ステータス */
 	syncStatus: mediaSyncStatusEnum("sync_status").default("synced"),
 	/** バックアップURL */
-	backupUrls: text("backup_urls").array().default(sql`'{}'`),
+	backupUrls: text("backup_urls")
+		.array()
+		.default(sql`'{}'`),
 	/** 最後の同期日時 */
 	lastSyncedAt: timestamp("last_synced_at"),
 	/** 同期試行回数 */
@@ -746,7 +766,9 @@ export const mediaSync = pgTable("media_sync", {
  * Records user views of media items for analytics and personalized recommendations.
  */
 export const viewHistory = pgTable("view_history", {
-	id: uuid("id").primaryKey().default(sql`uuidv7()`),
+	id: uuid("id")
+		.primaryKey()
+		.default(sql`uuidv7()`),
 	/** メディアID */
 	mediaId: uuid("media_id")
 		.notNull()
@@ -766,7 +788,9 @@ export const viewHistory = pgTable("view_history", {
 export const similarMedia = pgTable(
 	"similar_media",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** メディア1のID */
 		media1Id: uuid("media1_id")
 			.notNull()
@@ -811,7 +835,9 @@ export const similarMedia = pgTable(
 export const mediaRelationsTable = pgTable(
 	"media_relations",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** 親メディアID */
 		parentMediaId: uuid("parent_media_id")
 			.notNull()
@@ -849,7 +875,9 @@ export const mediaRelationsTable = pgTable(
 export const authors = pgTable(
 	"authors",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** 表示名 */
 		name: text("name").notNull(),
 		/** 外部ID (例: Twitter ID, Pixiv ID) */
@@ -872,7 +900,9 @@ export const authors = pgTable(
 export const authorAccounts = pgTable(
 	"author_accounts",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		authorId: uuid("author_id")
 			.notNull()
 			.references(() => authors.id, { onDelete: "cascade" }),
@@ -920,7 +950,9 @@ export const mediaAuthors = pgTable(
 export const mediaUrls = pgTable(
 	"media_urls",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		mediaId: uuid("media_id")
 			.notNull()
 			.references(() => medias.id, { onDelete: "cascade" }),
@@ -946,7 +978,9 @@ export const users = pgTable(
 	"users",
 	{
 		/** ユーザーID */
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** ユーザー名 */
 		name: text("name").notNull(),
 		/** メールアドレス */
@@ -968,7 +1002,9 @@ export const users = pgTable(
  * Stores user-created collections of media items.
  */
 export const collections = pgTable("collections", {
-	id: uuid("id").primaryKey().default(sql`uuidv7()`),
+	id: uuid("id")
+		.primaryKey()
+		.default(sql`uuidv7()`),
 	/** どのユーザーのコレクションか (ユーザー管理を導入する場合) */
 	userId: uuid("user_id")
 		.notNull()
@@ -1015,7 +1051,9 @@ export const mediaCollections = pgTable(
 export const jobs = pgTable(
 	"jobs",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		/** ジョブの種類 (例: "thumbnail_generation", "metadata_extraction", "auto_tagging") */
 		type: text("type").notNull(),
 		/** 関連するメディアソースID (オプショナル) */
@@ -1137,7 +1175,9 @@ export const presets = pgTable("presets", {
 export const searchSnapshots = pgTable(
 	"search_snapshots",
 	{
-		id: uuid("id").primaryKey().default(sql`uuidv7()`),
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
 		version: integer("version").notNull().default(1),
 		fingerprint: text("fingerprint").notNull().unique(),
 		state: jsonb("state").notNull(),

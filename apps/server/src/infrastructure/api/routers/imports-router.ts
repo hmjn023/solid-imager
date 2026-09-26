@@ -70,9 +70,8 @@ export const bulkAddHandler = async ({
 		return { addedCount: 0, skippedCount: 0, restoredCount: 0 };
 	}
 
-	const { BackupService } = await import(
-		"~/infrastructure/services/backup-service"
-	);
+	const { BackupService } =
+		await import("~/infrastructure/services/backup-service");
 
 	const classification = await classifyBulkAddItems(items, BackupService);
 	const { restoreGroups, importItems } = classification;

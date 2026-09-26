@@ -118,46 +118,54 @@ test("media detail follows the second search result after returning to search", 
 	expect(similarPixel).not.toEqual(primaryPixel);
 });
 
-test("media detail returns to its saved collection URL after direct navigation", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
-	await waitForAppHydration(page);
-	const savedReturnPath = "/search#results";
-	await page.evaluate((returnPath) => {
-		sessionStorage.setItem("solid-imager:media-return", returnPath);
-	}, savedReturnPath);
+test(
+	"media detail returns to its saved collection URL after direct navigation",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
+		await waitForAppHydration(page);
+		const savedReturnPath = "/search#results";
+		await page.evaluate((returnPath) => {
+			sessionStorage.setItem("solid-imager:media-return", returnPath);
+		}, savedReturnPath);
 
-	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
-	await expect
-		.poll(() => {
-			const url = new URL(page.url());
-			return `${url.pathname}${url.search}${url.hash}`;
-		})
-		.toBe(savedReturnPath);
-});
+		await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+		await expect
+			.poll(() => {
+				const url = new URL(page.url());
+				return `${url.pathname}${url.search}${url.hash}`;
+			})
+			.toBe(savedReturnPath);
+	},
+);
 
-test("media detail list back does not re-enter detail on browser back", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto("/about");
-	await waitForAppHydration(page);
-	await page.getByRole("link", { name: "Library", exact: true }).click();
-	await waitForAppHydration(page);
-	await expect(
-		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
-	).toBeVisible();
+test(
+	"media detail list back does not re-enter detail on browser back",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto("/about");
+		await waitForAppHydration(page);
+		await page.getByRole("link", { name: "Library", exact: true }).click();
+		await waitForAppHydration(page);
+		await expect(
+			page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+		).toBeVisible();
 
-	await openMediaDetail(page, E2E_PRIMARY_MEDIA_ID, "/search");
-	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
-	await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
+		await openMediaDetail(page, E2E_PRIMARY_MEDIA_ID, "/search");
+		await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+		await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
 
-	await page.goBack();
-	await expect.poll(() => new URL(page.url()).pathname).toBe("/about");
-	await expect(
-		page.getByRole("button", { name: "一覧に戻る", exact: true }),
-	).toHaveCount(0);
-});
+		await page.goBack();
+		await expect.poll(() => new URL(page.url()).pathname).toBe("/about");
+		await expect(
+			page.getByRole("button", { name: "一覧に戻る", exact: true }),
+		).toHaveCount(0);
+	},
+);
 
 test("media detail, manager, and settings remain usable on narrow screens", async ({
 	page,

@@ -82,5 +82,5 @@
 
 - Viteを開発サーバーとビルドに使用する。
 - Vitestをunit/integration testに使用する。
-- Biomeをlintとformatに使用する。Oxlint/Oxfmtは使用しない。
+- Oxlintをlint、Oxfmtをformatに使用する。Oxlintのtype-awareルールと`@shadcn/lint`を有効化する。
 - 依存取得後は `bun install`、検証時は `bun run check` と `bun run test` を実行する。

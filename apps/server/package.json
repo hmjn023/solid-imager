@@ -21,9 +21,9 @@
     "validate:bun-image": "bun scripts/validate-bun-image.ts",
     "validate:bun-sql": "bun scripts/validate-bun-sql.ts",
     "openapi:generate": "bun scripts/generate-openapi.ts",
-    "lint": "biome lint ./src",
-    "format": "biome format --fix ./src",
-    "check": "biome check --fix --unsafe ./src",
+    "lint": "oxlint ./src",
+    "format": "oxfmt --write ./src",
+    "check": "oxlint --fix ./src && oxfmt --write ./src",
     "test": "bun run test:unit && bun run test:integration && bun run test:e2e:components && bun run test:e2e",
     "test:unit": "vitest run -c vitest.unit.config.ts",
     "test:integration": "vitest run -c vitest.integration.config.ts",
@@ -80,7 +80,6 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.11",
     "@fontsource/noto-sans": "5.3.0",
     "@orpc/openapi": "^1.15.0",
     "@playwright/test": "^1.62.1",

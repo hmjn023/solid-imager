@@ -239,9 +239,8 @@ export const ServerMediaStorage: IMediaStorage = {
 
 		// Fallback: try ffprobe for video files that were misidentified as images
 		try {
-			const { getFfmpeg, resolveFfmpegPath } = await import(
-				"~/infrastructure/utils/ffmpeg"
-			);
+			const { getFfmpeg, resolveFfmpegPath } =
+				await import("~/infrastructure/utils/ffmpeg");
 			await resolveFfmpegPath();
 			const ffmpeg = getFfmpeg();
 

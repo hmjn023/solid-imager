@@ -985,13 +985,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const hasContextMenuActions = (media: Media) =>
 		Boolean(
 			props.onOpenMediaDetail ||
-				canFindSimilar(media) ||
-				props.onToggleSelect ||
-				props.onBulkAction ||
-				props.onClearSelection ||
-				props.onDelete ||
-				props.onCopyMove ||
-				props.onSyncSingleMedia,
+			canFindSimilar(media) ||
+			props.onToggleSelect ||
+			props.onBulkAction ||
+			props.onClearSelection ||
+			props.onDelete ||
+			props.onCopyMove ||
+			props.onSyncSingleMedia,
 		);
 	const prepareAndOpenMediaDetail = (media: Media) => {
 		props.onPrepareMediaDetail?.(media);

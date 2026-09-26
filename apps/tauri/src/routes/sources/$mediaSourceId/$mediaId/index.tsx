@@ -68,7 +68,7 @@ function MediaDetailRoute() {
 					renderHeader={(media, _isUpdating, onUpdate) => (
 						<MediaDetailHeader
 							media={media}
-							onUpdate={() => void onUpdate()}
+							onUpdate={() => onUpdate()}
 							renderActions={(actionMedia, actionOnUpdate) => (
 								<MediaActions media={actionMedia} onUpdate={actionOnUpdate} />
 							)}

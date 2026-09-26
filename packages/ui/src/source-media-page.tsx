@@ -23,7 +23,7 @@ import { SourceMediaScreen } from "./screens/source-media-screen";
 import type { SourceMediaScreenProps } from "./screens/source-media-screen.types";
 import type { SearchHistoryClient } from "./search-history-client";
 
-// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
+// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
 type QueryOptionFactory<_TData> = () => any;
 
 function clientOnlyQueryOptions<TData>(factory: QueryOptionFactory<TData>) {

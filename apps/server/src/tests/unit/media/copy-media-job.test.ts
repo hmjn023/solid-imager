@@ -180,9 +180,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 		services.registerConfigService(mockConfigService as any);
 
 		// Instantiate and Register MediaProcessingService
-		const { MediaProcessingServiceImpl } = await import(
-			"~/infrastructure/services/media-processing-service"
-		);
+		const { MediaProcessingServiceImpl } =
+			await import("~/infrastructure/services/media-processing-service");
 		const mediaProcessingService = new MediaProcessingServiceImpl({
 			sourceRepo: mockSourceRepository as any,
 			mediaRepo: MediaRepository as any,
@@ -260,9 +259,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 
 		// But failing to see MediaProcessingService being used?
 		// MediaService.copyMedia calls jobRepo.create.
-		const { MediaProcessingService } = await import(
-			"~/infrastructure/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/infrastructure/services/media-processing-service");
 		await MediaProcessingService.executeProcessMediaJob(job);
 
 		// 5. Assert generateThumbnail was called

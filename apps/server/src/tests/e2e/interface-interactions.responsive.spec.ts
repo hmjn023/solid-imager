@@ -18,197 +18,229 @@ async function openSearch(page: Page): Promise<void> {
 	await expect(page.locator("[data-media-id]").first()).toBeVisible();
 }
 
-test("Workspace command palette opens from the keyboard and restores focus", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await openSearch(page);
+test(
+	"Workspace command palette opens from the keyboard and restores focus",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await openSearch(page);
 
-	const origin = page.getByRole("button", {
-		name: "Quick actions",
-		exact: true,
-	});
-	await expect(origin).toBeVisible();
-	await origin.focus();
-	await expect(origin).toBeFocused();
+		const origin = page.getByRole("button", {
+			name: "Quick actions",
+			exact: true,
+		});
+		await expect(origin).toBeVisible();
+		await origin.focus();
+		await expect(origin).toBeFocused();
 
-	await page.keyboard.press("ControlOrMeta+KeyK");
-	const palette = page.getByRole("dialog", { name: "Quick actions" });
-	await expect(palette).toBeVisible();
-	await expect(palette.getByPlaceholder("Search actions…")).toBeFocused();
+		await page.keyboard.press("ControlOrMeta+KeyK");
+		const palette = page.getByRole("dialog", { name: "Quick actions" });
+		await expect(palette).toBeVisible();
+		await expect(palette.getByPlaceholder("Search actions…")).toBeFocused();
 
-	await page.keyboard.press("Escape");
-	await expect(palette).toBeHidden();
-	await expect(origin).toBeFocused();
-});
+		await page.keyboard.press("Escape");
+		await expect(palette).toBeHidden();
+		await expect(origin).toBeFocused();
+	},
+);
 
-test("Workspace slash shortcut focuses search without swallowing slash input", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await openSearch(page);
+test(
+	"Workspace slash shortcut focuses search without swallowing slash input",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await openSearch(page);
 
-	const searchInput = page.getByRole("combobox", {
-		name: "メディアを検索",
-		exact: true,
-	});
-	const filterButton = page.getByRole("button", {
-		name: /検索フィルター、\d+件の条件/,
-	});
-	await filterButton.focus();
-	await expect(filterButton).toBeFocused();
+		const searchInput = page.getByRole("combobox", {
+			name: "メディアを検索",
+			exact: true,
+		});
+		const filterButton = page.getByRole("button", {
+			name: /検索フィルター、\d+件の条件/,
+		});
+		await filterButton.focus();
+		await expect(filterButton).toBeFocused();
 
-	await page.keyboard.press("/");
-	await expect(searchInput).toBeFocused();
+		await page.keyboard.press("/");
+		await expect(searchInput).toBeFocused();
 
-	await page.keyboard.type("e2e");
-	await page.keyboard.press("/");
-	await expect(searchInput).toHaveValue("e2e/");
-});
+		await page.keyboard.type("e2e");
+		await page.keyboard.press("/");
+		await expect(searchInput).toHaveValue("e2e/");
+	},
+);
 
-test("Workspace source search keeps URL paste in the input context", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto(sourcePath);
-	await waitForAppHydration(page);
+test(
+	"Workspace source search keeps URL paste in the input context",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto(sourcePath);
+		await waitForAppHydration(page);
 
-	const searchInput = page.getByRole("combobox", {
-		name: "メディアを検索",
-		exact: true,
-	});
-	await searchInput.focus();
-	const pastedUrl = "https://fixture.invalid/reference.png";
-	await page.context().grantPermissions(["clipboard-read", "clipboard-write"], {
-		origin: new URL(page.url()).origin,
-	});
-	await page.evaluate((url) => navigator.clipboard.writeText(url), pastedUrl);
-	await searchInput.press("ControlOrMeta+KeyV");
+		const searchInput = page.getByRole("combobox", {
+			name: "メディアを検索",
+			exact: true,
+		});
+		await searchInput.focus();
+		const pastedUrl = "https://fixture.invalid/reference.png";
+		await page
+			.context()
+			.grantPermissions(["clipboard-read", "clipboard-write"], {
+				origin: new URL(page.url()).origin,
+			});
+		await page.evaluate((url) => navigator.clipboard.writeText(url), pastedUrl);
+		await searchInput.press("ControlOrMeta+KeyV");
 
-	await expect(searchInput).toBeFocused();
-	await expect(searchInput).toHaveValue(pastedUrl);
-	await expect(
-		page.getByRole("dialog", { name: "メディアをアップロード" }),
-	).toHaveCount(0);
-});
+		await expect(searchInput).toBeFocused();
+		await expect(searchInput).toHaveValue(pastedUrl);
+		await expect(
+			page.getByRole("dialog", { name: "メディアをアップロード" }),
+		).toHaveCount(0);
+	},
+);
 
-test("Workspace source collection supports additive and range selection gestures", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.setViewportSize({ width: 1600, height: 900 });
-	await page.goto(sourcePath);
-	await waitForAppHydration(page);
+test(
+	"Workspace source collection supports additive and range selection gestures",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.setViewportSize({ width: 1600, height: 900 });
+		await page.goto(sourcePath);
+		await waitForAppHydration(page);
 
-	const mediaItems = page.locator("[data-media-id]");
-	await expect(mediaItems.nth(4)).toBeVisible();
-	const bulkActions = page.getByTestId("bulk-actions-bar");
+		const mediaItems = page.locator("[data-media-id]");
+		await expect(mediaItems.nth(4)).toBeVisible();
+		const bulkActions = page.getByTestId("bulk-actions-bar");
 
-	await mediaItems.nth(0).click({ modifiers: ["Control"] });
-	await expect(bulkActions).toContainText("1 件選択中");
-	await mediaItems.nth(2).click({ modifiers: ["Control"] });
-	await expect(bulkActions).toContainText("2 件選択中");
-	await mediaItems.nth(4).click({ modifiers: ["Shift"] });
-	await expect(bulkActions).toContainText("3 件選択中");
-});
+		await mediaItems.nth(0).click({ modifiers: ["Control"] });
+		await expect(bulkActions).toContainText("1 件選択中");
+		await mediaItems.nth(2).click({ modifiers: ["Control"] });
+		await expect(bulkActions).toContainText("2 件選択中");
+		await mediaItems.nth(4).click({ modifiers: ["Shift"] });
+		await expect(bulkActions).toContainText("3 件選択中");
+	},
+);
 
-test("Workspace global search keeps collection selection independent from preview", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.setViewportSize({ width: 1600, height: 900 });
-	await openSearch(page);
+test(
+	"Workspace global search keeps collection selection independent from preview",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.setViewportSize({ width: 1600, height: 900 });
+		await openSearch(page);
 
-	const mediaItems = page.locator("[data-media-id]");
-	await expect(mediaItems.nth(1)).toBeVisible();
-	const bulkActions = page.getByTestId("search-bulk-actions-bar");
+		const mediaItems = page.locator("[data-media-id]");
+		await expect(mediaItems.nth(1)).toBeVisible();
+		const bulkActions = page.getByTestId("search-bulk-actions-bar");
 
-	await mediaItems.nth(0).click({ modifiers: ["Control"] });
-	await expect(bulkActions).toContainText("1 件選択中");
-	await mediaItems.nth(1).click({ modifiers: ["Shift"] });
-	await expect(bulkActions).toContainText("2 件選択中");
-});
+		await mediaItems.nth(0).click({ modifiers: ["Control"] });
+		await expect(bulkActions).toContainText("1 件選択中");
+		await mediaItems.nth(1).click({ modifiers: ["Shift"] });
+		await expect(bulkActions).toContainText("2 件選択中");
+	},
+);
 
-test("Workspace global search exposes media and bulk actions", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.setViewportSize({ width: 1600, height: 900 });
-	await openSearch(page);
+test(
+	"Workspace global search exposes media and bulk actions",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.setViewportSize({ width: 1600, height: 900 });
+		await openSearch(page);
 
-	const mediaItem = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
-	await mediaItem.click({ button: "right" });
-	await expect(
-		page.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true }),
-	).toBeVisible();
-	await expect(
-		page.getByRole("menuitem", { name: "他のソースへコピー", exact: true }),
-	).toBeVisible();
-	await expect(
-		page.getByRole("menuitem", { name: "他のソースへ移動", exact: true }),
-	).toBeVisible();
+		const mediaItem = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
+		await mediaItem.click({ button: "right" });
+		await expect(
+			page.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("menuitem", { name: "他のソースへコピー", exact: true }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("menuitem", { name: "他のソースへ移動", exact: true }),
+		).toBeVisible();
 
-	await page
-		.getByRole("menuitem", { name: "他のソースへ移動", exact: true })
-		.click();
-	const moveDialog = page.getByRole("dialog");
-	await expect(moveDialog).toContainText("Move Media");
-	await moveDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+		await page
+			.getByRole("menuitem", { name: "他のソースへ移動", exact: true })
+			.click();
+		const moveDialog = page.getByRole("dialog");
+		await expect(moveDialog).toContainText("Move Media");
+		await moveDialog
+			.getByRole("button", { name: "Cancel", exact: true })
+			.click();
 
-	await mediaItem.click({ button: "right" });
-	await page
-		.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
-		.click();
-	const deleteDialog = page.getByRole("dialog");
-	await expect(deleteDialog).toContainText(E2E_PRIMARY_FILE_NAME);
-	await deleteDialog
-		.getByRole("button", { name: "キャンセル", exact: true })
-		.click();
+		await mediaItem.click({ button: "right" });
+		await page
+			.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
+			.click();
+		const deleteDialog = page.getByRole("dialog");
+		await expect(deleteDialog).toContainText(E2E_PRIMARY_FILE_NAME);
+		await deleteDialog
+			.getByRole("button", { name: "キャンセル", exact: true })
+			.click();
 
-	const bulkActions = page.getByTestId("search-bulk-actions-bar");
-	await mediaItem.click({ modifiers: ["Control"] });
-	await expect(bulkActions).toContainText("1 件選択中");
-	const bulkActionButton = bulkActions.getByRole("button", {
-		name: "一括操作を実行",
-		exact: true,
-	});
-	await expect(bulkActionButton).toBeEnabled();
-	await bulkActionButton.click();
-	const bulkDialog = page.getByRole("dialog");
-	await expect(bulkDialog).toContainText("一括削除");
-	await bulkDialog
-		.getByRole("button", { name: "キャンセル", exact: true })
-		.click();
-});
+		const bulkActions = page.getByTestId("search-bulk-actions-bar");
+		await mediaItem.click({ modifiers: ["Control"] });
+		await expect(bulkActions).toContainText("1 件選択中");
+		const bulkActionButton = bulkActions.getByRole("button", {
+			name: "一括操作を実行",
+			exact: true,
+		});
+		await expect(bulkActionButton).toBeEnabled();
+		await bulkActionButton.click();
+		const bulkDialog = page.getByRole("dialog");
+		await expect(bulkDialog).toContainText("一括削除");
+		await bulkDialog
+			.getByRole("button", { name: "キャンセル", exact: true })
+			.click();
+	},
+);
 
-test("Workspace fine-pointer collection separates selection from opening detail", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.setViewportSize({ width: 1600, height: 900 });
-	await openSearch(page);
+test(
+	"Workspace fine-pointer collection separates selection from opening detail",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.setViewportSize({ width: 1600, height: 900 });
+		await openSearch(page);
 
-	const similarMedia = page.locator(
-		`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
-	);
-	await similarMedia.click();
-	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
-	await expect(similarMedia).toHaveAttribute("aria-current", "true");
-	await expect(similarMedia).toHaveAttribute("aria-pressed", "false");
-	const inspector = page.getByRole("complementary", {
-		name: "選択中のメディア",
-	});
-	await expect(inspector).toContainText(E2E_SIMILAR_FILE_NAME);
+		const similarMedia = page.locator(
+			`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
+		);
+		await similarMedia.click();
+		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+		await expect(similarMedia).toHaveAttribute("aria-current", "true");
+		await expect(similarMedia).toHaveAttribute("aria-pressed", "false");
+		const inspector = page.getByRole("complementary", {
+			name: "選択中のメディア",
+		});
+		await expect(inspector).toContainText(E2E_SIMILAR_FILE_NAME);
 
-	await similarMedia.dblclick();
-	await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
-	await expect(
-		page.locator(`[data-media-viewer] img[alt="${E2E_SIMILAR_FILE_NAME}"]`),
-	).toBeVisible();
+		await similarMedia.dblclick();
+		await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
+		await expect(
+			page.locator(`[data-media-viewer] img[alt="${E2E_SIMILAR_FILE_NAME}"]`),
+		).toBeVisible();
 
-	await page.goBack();
-	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
-	const primaryMedia = page.locator(
-		`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`,
-	);
-	await expect(primaryMedia).toBeVisible();
-	await primaryMedia.focus();
-	await page.keyboard.press("Enter");
-	await expect(page).toHaveURL(mediaPath(E2E_PRIMARY_MEDIA_ID));
-});
+		await page.goBack();
+		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+		const primaryMedia = page.locator(
+			`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`,
+		);
+		await expect(primaryMedia).toBeVisible();
+		await primaryMedia.focus();
+		await page.keyboard.press("Enter");
+		await expect(page).toHaveURL(mediaPath(E2E_PRIMARY_MEDIA_ID));
+	},
+);
 
 test("Workspace detail exposes zoom controls and non-destructive action choices", async ({
 	page,

@@ -5,9 +5,9 @@ export default defineConfig({
 	test: {
 		name: "server-unit",
 		alias: {
-			"~": path.resolve(__dirname, "./src"),
-			"@": path.resolve(__dirname, "../../packages/core/src"),
-			"@solid-imager/ui": path.resolve(__dirname, "../../packages/ui/src"),
+			"~": path.resolve(import.meta.dirname, "./src"),
+			"@": path.resolve(import.meta.dirname, "../../packages/core/src"),
+			"@solid-imager/ui": path.resolve(import.meta.dirname, "../../packages/ui/src"),
 		},
 		environment: "node",
 		globals: true,

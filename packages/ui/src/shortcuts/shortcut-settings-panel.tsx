@@ -278,7 +278,7 @@ export function ShortcutSettingsPanel(
 							>
 								{group}
 							</h3>
-							{/* biome-ignore lint/a11y/noRedundantRoles: Tailwind removes list markers, so Safari needs the explicit list role. */}
+							{/* oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Tailwind removes list markers, so Safari needs the explicit list role. */}
 							<ul class="divide-y divide-border" role="list">
 								<For each={getShortcutDefinitionsForGroup(group)}>
 									{(definition) => {
