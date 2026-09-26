@@ -86,7 +86,7 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 			sourceId: string;
 		}) => {
 			try {
-				const mode = input.format === "ndjson" ? "json" : "zip";
+				const mode = input.format;
 				const job = await enqueueSourceExport(
 					input.sourceId,
 					mode,
@@ -113,7 +113,7 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 			sourceId: string;
 		}) => {
 			try {
-				const mode = input.format === "ndjson" ? "json" : "zip";
+				const mode = input.format;
 				const job = await enqueueSourceImport(input.sourceId, mode, input.file);
 				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
 				toast.success(

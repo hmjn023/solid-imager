@@ -18,7 +18,7 @@ const JobTransferDirectory = path.resolve(
 const JobArtifactTtlMs = 24 * 60 * 60 * 1000;
 const JobTransferStaleFileTtlMs = 60 * 60 * 1000;
 
-export type JobTransferMode = "json" | "zip";
+export type JobTransferMode = "ndjson" | "tar";
 
 export type JobArtifact = {
 	path: string;
@@ -33,7 +33,7 @@ export function getJobTransferRoot(): string {
 }
 
 function getModeExtension(mode: JobTransferMode): string {
-	return mode === "json" ? "ndjson" : "tar";
+	return mode;
 }
 
 export function getInputPath(jobId: string, mode: JobTransferMode): string {
@@ -80,7 +80,7 @@ export function getArtifactMetadata(
 	mediaSourceId: string,
 	mode: JobTransferMode,
 ): Omit<JobArtifact, "size"> {
-	if (mode === "json") {
+	if (mode === "ndjson") {
 		return {
 			path: getArtifactPath(jobId, mode),
 			fileName: `source-${mediaSourceId}-dump.ndjson`,

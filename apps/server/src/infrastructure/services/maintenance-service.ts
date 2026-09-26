@@ -192,7 +192,6 @@ export class MaintenanceService {
 							payload: {
 								mediaId: item.id,
 								sourcePath: basePath,
-								type: "processMedia", // Legacy payload requirement
 								...options,
 							},
 						});

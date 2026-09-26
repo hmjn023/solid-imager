@@ -4,7 +4,7 @@ import type {
 	NewAuthor,
 } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import { and, eq, inArray, or, type SQL, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, type SQL, sql } from "drizzle-orm";
 import { authorAccounts, authors, mediaAuthors } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -48,10 +48,6 @@ function authorIdentityKey(
 			? normalizedAccountId.replace(/^@/, "")
 			: normalizedAccountId;
 	return `${platform}:${identity}`;
-}
-
-function normalizeLegacyAccountId(accountId: string): string {
-	return accountId.replace(/^@/, "").toLowerCase();
 }
 
 function authorInputKey(author: NewAuthor): string {
@@ -104,77 +100,59 @@ async function findOrCreateAuthorsBulk(
 	const unresolved = [...uniqueInputs.entries()].filter(
 		([key]) => !resolved.has(key),
 	);
-	const accountIds = [
-		...new Set(
-			unresolved.flatMap(([, input]) =>
-				input.accountId ? [input.accountId] : [],
-			),
-		),
-	];
-	const names = [...new Set(unresolved.map(([, input]) => input.name))];
-	const legacyConditions: SQL[] = [];
-	if (accountIds.length > 0) {
-		const allVariants = [
-			...new Set(accountIds.flatMap((id) => [id, `@${id}`])),
-		];
-		legacyConditions.push(inArray(authors.accountId, allVariants));
-	}
-	if (names.length > 0) {
-		legacyConditions.push(inArray(authors.name, names));
-	}
-
-	const legacyAuthors =
-		legacyConditions.length > 0
+	const nameOnlyInputs = unresolved
+		.map(([, input]) => input.name)
+		.filter((name, index, allNames) => allNames.indexOf(name) === index);
+	const nameOnlyAuthors =
+		nameOnlyInputs.length > 0
 			? await client
 					.select()
 					.from(authors)
-					.where(or(...legacyConditions))
+					.where(
+						and(
+							inArray(authors.name, nameOnlyInputs),
+							isNull(authors.accountId),
+						),
+					)
 			: [];
-	const legacyByAccount = new Map(
-		legacyAuthors.flatMap((author) => {
-			if (!author.accountId) return [];
-			const normalized = normalizeLegacyAccountId(author.accountId);
-			const entries: [string, typeof authors.$inferSelect][] = [
-				[normalized, author],
-			];
-			if (normalized !== author.accountId) {
-				entries.push([author.accountId, author]);
-			}
-			return entries;
-		}),
+	const authorByName = new Map(
+		nameOnlyAuthors.map((author) => [author.name, author] as const),
 	);
-	const legacyByName = new Map(
-		legacyAuthors.map((author) => [author.name, author] as const),
+	const linkedNameOnlyAuthors =
+		nameOnlyAuthors.length > 0
+			? await client
+					.select({ authorId: authorAccounts.authorId })
+					.from(authorAccounts)
+					.where(
+						inArray(
+							authorAccounts.authorId,
+							nameOnlyAuthors.map((author) => author.id),
+						),
+					)
+			: [];
+	const authorsWithLinkedAccounts = new Set(
+		linkedNameOnlyAuthors.map((account) => account.authorId),
 	);
-	const legacyAuthorIds = legacyAuthors.map((author) => author.id);
-	const linkedLegacyAuthorIds =
-		legacyAuthorIds.length > 0
-			? new Set(
-					(
-						await client
-							.select({ authorId: authorAccounts.authorId })
-							.from(authorAccounts)
-							.where(inArray(authorAccounts.authorId, legacyAuthorIds))
-					).map((account) => account.authorId),
-				)
-			: new Set<string>();
+	const unlinkedAuthorByName = new Map(
+		nameOnlyAuthors
+			.filter((author) => !authorsWithLinkedAccounts.has(author.id))
+			.map((author) => [author.name, author] as const),
+	);
 
 	const accountsToInsert: (typeof authorAccounts.$inferInsert)[] = [];
 	const newlyCreatedAuthorByKey = new Map<string, string>();
 	for (const [key, input] of unresolved) {
-		const legacyByMatchingAccount = input.accountId
-			? legacyByAccount.get(input.accountId)
-			: undefined;
-		const legacyByMatchingName = legacyByName.get(input.name);
-		const legacy =
-			legacyByMatchingAccount ??
-			(legacyByMatchingName?.accountId ? undefined : legacyByMatchingName);
-		const canReuseLegacy =
-			legacy && (!input.platform || !linkedLegacyAuthorIds.has(legacy.id));
+		const hasAccountIdentity = Boolean(input.platform && input.accountId);
+		const existingNameOnlyAuthor = hasAccountIdentity
+			? unlinkedAuthorByName.get(input.name)
+			: authorByName.get(input.name);
 
 		let author: typeof authors.$inferSelect;
-		if (canReuseLegacy && legacy) {
-			author = legacy;
+		if (existingNameOnlyAuthor) {
+			author = existingNameOnlyAuthor;
+			if (hasAccountIdentity) {
+				unlinkedAuthorByName.delete(input.name);
+			}
 		} else {
 			const [createdAuthor] = await client
 				.insert(authors)

@@ -13,7 +13,7 @@ import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
-import { hasStderr, isRecord } from "@solid-imager/core/utils/type-guards";
+import { hasStderr } from "@solid-imager/core/utils/type-guards";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
@@ -669,37 +669,9 @@ async function handleDirectImageDownload(
 	}
 }
 
-/**
- * Extracts and normalizes a DownloadItem from a job payload.
- * Handles backward compatibility mapping.
- */
+/** Extracts a DownloadItem from a job payload. */
 function getDownloadItemFromJob(job: Job): DownloadItem {
-	if (!isRecord(job.payload)) {
-		throw new Error("Invalid job payload: expected DownloadItem");
-	}
-	const payload = job.payload;
-	const normalized: Record<string, unknown> = { ...payload };
-
-	if (
-		typeof normalized.targetUrl !== "string" &&
-		typeof payload.imageUrl === "string"
-	) {
-		normalized.targetUrl = payload.imageUrl;
-	}
-
-	if (
-		typeof normalized.description !== "string" &&
-		typeof payload.description === "string"
-	) {
-		normalized.description = payload.description;
-	}
-
-	if (!Array.isArray(normalized.sourceUrls)) {
-		normalized.sourceUrls =
-			typeof payload.sourceUrl === "string" ? [payload.sourceUrl] : [];
-	}
-
-	return downloadItemSchema.parse(normalized);
+	return downloadItemSchema.parse(job.payload);
 }
 
 export async function processDownloadJob(job: Job): Promise<void> {
@@ -708,12 +680,12 @@ export async function processDownloadJob(job: Job): Promise<void> {
 		logger.error({ jobId: job.id }, "Missing mediaSourceId in download job");
 		return;
 	}
-	// Extract item directly from job payload (new schema) or fallbacks (backward compatibility)
+	// Extract the normalized item from the job payload.
 	const item = getDownloadItemFromJob(job);
 
 	if (!item.targetUrl) {
 		logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
-		return;
+		throw new Error("Download job payload missing targetUrl");
 	}
 
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
@@ -904,9 +876,6 @@ export async function queueDownloadJobs(
 		mediaSourceId,
 		payload: {
 			...item,
-			// Backward compatibility fields
-			imageUrl: item.targetUrl,
-			sourceUrl: item.targetUrl,
 			description: item.description ?? formatMetadataAsMarkdown(item),
 			createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
 		},

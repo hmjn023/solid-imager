@@ -184,8 +184,8 @@ beforeAll(async () => {
 	await mockDbFactory();
 
 	// 2. Then bootstrap the application
-	const { bootstrap } = await import("~/infrastructure/bootstrap");
-	bootstrap();
+	const { startBackgroundWorker } = await import("~/infrastructure/bootstrap");
+	startBackgroundWorker();
 });
 
 config({ path: path.resolve(process.cwd(), ".env") });

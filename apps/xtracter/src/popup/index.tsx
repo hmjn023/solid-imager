@@ -1,5 +1,5 @@
 import { getClient } from "@ext/api";
-import type { MediaSource, TweetMetadata } from "@ext/schema";
+import type { DownloadItem, MediaSource } from "@ext/schema";
 import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { render } from "solid-js/web";
@@ -82,7 +82,7 @@ function Popup() {
 			const activeTabId = tabs[0]?.id;
 			if (!activeTabId) throw new Error("No active tab");
 
-			const metadata = await new Promise<TweetMetadata[]>((resolve, reject) => {
+			const metadata = await new Promise<DownloadItem[]>((resolve, reject) => {
 				chrome.tabs.sendMessage(
 					activeTabId,
 					{ type: "GET_METADATA" },

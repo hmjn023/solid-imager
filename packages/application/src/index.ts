@@ -41,6 +41,5 @@ export {
 	SearchServiceImpl,
 	TaggingServiceImpl,
 	ThumbnailServiceImpl,
-	validateFileSignature,
 } from "./services";
 export { HashUtils } from "./utils/hash-utils";

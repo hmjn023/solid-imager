@@ -1,4 +1,4 @@
-import type { TweetMetadata } from "@ext/schema";
+import type { DownloadItem } from "@ext/schema";
 import { processDanbooruMedia } from "./danbooru";
 import { processFanboxMedia } from "./fanbox";
 import { processTwitterMedia } from "./twitter";
@@ -7,7 +7,7 @@ const OBSERVER_CONFIG = { childList: true, subtree: true };
 const ERROR_TIMEOUT_MS = 2000;
 
 function createButtonContainer(
-	metadata: TweetMetadata,
+	metadata: DownloadItem,
 	type: "IMAGE" | "VIDEO" = "IMAGE",
 ): HTMLDivElement {
 	const container = document.createElement("div");
@@ -37,7 +37,7 @@ function createButtonContainer(
 }
 
 export function createAsyncButtonContainer(
-	fetchMetadata: () => Promise<TweetMetadata | null>,
+	fetchMetadata: () => Promise<DownloadItem | null>,
 	type: "IMAGE" | "VIDEO" = "IMAGE",
 ): HTMLDivElement {
 	const container = document.createElement("div");
@@ -144,7 +144,7 @@ function createButton(
 }
 
 function handleAction(
-	metadata: TweetMetadata,
+	metadata: DownloadItem,
 	type: "DOWNLOAD" | "POST_DOWNLOAD",
 	mediaType: "IMAGE" | "VIDEO",
 ) {
@@ -168,7 +168,7 @@ function handleAction(
 	}
 }
 
-const processedMetadata = new Map<string, TweetMetadata>();
+const processedMetadata = new Map<string, DownloadItem>();
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 	if (message.type === "GET_METADATA") {

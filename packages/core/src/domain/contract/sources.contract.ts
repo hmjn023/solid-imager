@@ -8,20 +8,6 @@ import {
 	safeMediaSourceSchema,
 } from "../sources/schemas";
 
-const importResultSchema = z.object({
-	success: z.boolean(),
-	importedCount: z.number(),
-	skippedCount: z.number(),
-	errors: z.array(z.string()),
-	message: z.string(),
-});
-
-const importNdjsonResultSchema = z.object({
-	importedCount: z.number(),
-	skippedCount: z.number(),
-	errors: z.array(z.string()),
-});
-
 const sourceSyncResultSchema = z.discriminatedUnion("success", [
 	z.object({
 		id: z.string().uuid(),
@@ -115,94 +101,21 @@ export const sourcesContract = {
 			}),
 		),
 
-	dump: oc
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Export media source",
-				description:
-					"Export media source data as NDJSON or uncompressed TAR archive",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				mode: z.enum(["json", "zip"]).default("json"),
-				includeImages: z.boolean().optional().default(false),
-			}),
-		),
-
 	enqueueExport: oc
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				mode: z.enum(["json", "zip"]).default("json"),
+				mode: z.enum(["ndjson", "tar"]).default("ndjson"),
 				includeImages: z.boolean().default(false),
 			}),
 		)
 		.output(jobDtoSchema),
 
-	restore: oc
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Restore media source",
-				description:
-					"Restore media source from exported JSON data (legacy array)",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				data: z.array(z.any()),
-			}),
-		)
-		.output(
-			z.object({
-				processed: z.number(),
-				skipped: z.number(),
-				errors: z.array(z.string()),
-				cancelled: z.boolean().optional(),
-			}),
-		),
-
-	importZip: oc
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Import media source from TAR",
-				description: "Import media source data from a TAR archive",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				file: z.instanceof(File),
-			}),
-		)
-		.output(importResultSchema),
-
-	importNdjson: oc
-		.meta({
-			openapi: {
-				tags: ["Media Sources"],
-				summary: "Import media source from NDJSON file",
-				description: "Import media source metadata from an NDJSON file",
-			},
-		})
-		.input(
-			z.object({
-				id: z.string().uuid(),
-				file: z.instanceof(File),
-			}),
-		)
-		.output(importNdjsonResultSchema),
-
 	enqueueImport: oc
 		.input(
 			z.object({
 				id: z.string().uuid(),
-				mode: z.enum(["json", "zip"]),
+				mode: z.enum(["ndjson", "tar"]),
 				file: z.instanceof(File),
 			}),
 		)

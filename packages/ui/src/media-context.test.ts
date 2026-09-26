@@ -55,9 +55,9 @@ describe("media detail context", () => {
 		Reflect.deleteProperty(globalThis, "sessionStorage");
 	});
 
-	it("migrates former context and return keys into the shared path", () => {
+	it("reads the current context and return values", () => {
 		storage.setItem(
-			"v2:media-context",
+			UI_STORAGE_KEYS.mediaContext,
 			JSON.stringify({
 				items: [
 					{ id: firstMediaId, mediaSourceId: sourceId },
@@ -67,7 +67,7 @@ describe("media detail context", () => {
 				updatedAt: 1,
 			}),
 		);
-		storage.setItem("v2:media-return", "/search?mode=grid#results");
+		storage.setItem(UI_STORAGE_KEYS.mediaReturn, "/search?mode=grid#results");
 
 		expect(readMediaContext()?.items).toEqual([
 			{ id: firstMediaId, mediaSourceId: sourceId },
@@ -82,8 +82,6 @@ describe("media detail context", () => {
 		expect(storage.getItem(UI_STORAGE_KEYS.mediaReturn)).toBe(
 			"/search?mode=grid#results",
 		);
-		expect(storage.getItem("v2:media-context")).toBeNull();
-		expect(storage.getItem("v2:media-return")).toBeNull();
 	});
 
 	it("keeps canonical context and return values authoritative", () => {
@@ -95,25 +93,19 @@ describe("media detail context", () => {
 				updatedAt: 2,
 			}),
 		);
-		storage.setItem("v2:media-context", "invalid legacy context");
 		storage.setItem(UI_STORAGE_KEYS.mediaReturn, "/search#current");
-		storage.setItem("v2:media-return", "/sources/stale");
 
 		expect(readMediaContext()?.returnPath).toBe("/sources/current");
 		expect(readMediaReturnPath()).toBe("/search#current");
-		expect(storage.getItem("v2:media-context")).toBe("invalid legacy context");
-		expect(storage.getItem("v2:media-return")).toBe("/sources/stale");
 	});
 
-	it("does not resurrect a former return path after clear", () => {
+	it("clears the current return path", () => {
 		storage.setItem(UI_STORAGE_KEYS.mediaReturn, "/search#current");
-		storage.setItem("v2:media-return", "/sources/stale");
 
 		clearMediaReturnPath();
 
 		expect(readMediaReturnPath()).toBeNull();
 		expect(storage.getItem(UI_STORAGE_KEYS.mediaReturn)).toBeNull();
-		expect(storage.getItem("v2:media-return")).toBeNull();
 	});
 
 	it("writes the canonical context and independent return value", () => {

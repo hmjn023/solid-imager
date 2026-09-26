@@ -167,7 +167,7 @@ fi
 - **テストの棚卸し・実行方針**: [テスト棚卸し](./docs/testing-audit.md)
 - **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Swagger UI](./apps/server/public/api-docs.html)
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
-- **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面と `/v2/*` 互換転送の対応状況）
+- **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面）
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)

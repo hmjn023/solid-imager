@@ -1106,7 +1106,7 @@ export const BackupService = {
 	 */
 	async createDump(
 		mediaSourceId: string,
-		mode: "json" | "zip" | "ndjson" | "tar" = "ndjson",
+		mode: "ndjson" | "tar" = "ndjson",
 		options?: { includeImages: boolean; jobId?: string },
 	) {
 		// 1. Fetch Media Source Info (needed for Driver)
@@ -1118,11 +1118,7 @@ export const BackupService = {
 			throw new Error("Media Source not found");
 		}
 
-		// Map legacy modes to new modes
-		const targetMode =
-			mode === "json" ? "ndjson" : mode === "zip" ? "tar" : mode;
-
-		if (targetMode === "ndjson") {
+		if (mode === "ndjson") {
 			const { PassThrough } = await import("node:stream");
 			const passThrough = new PassThrough();
 
@@ -1149,7 +1145,7 @@ export const BackupService = {
 			return nodeStreamToWebReadable(passThrough);
 		}
 
-		if (targetMode === "tar") {
+		if (mode === "tar") {
 			const driver = getDriver(mediaSource);
 			const archiverMod = await importArchiverModule();
 			const { PassThrough } = await import("node:stream");
@@ -1247,17 +1243,14 @@ export const BackupService = {
 
 			// Extract authors
 			const simpleAuthors = (media.authors || []).map((ma) => {
-				const legacyAccount = ma.author?.accounts?.find(
-					(account) => account.accountId === ma.author?.accountId,
-				);
+				const accounts = ma.author?.accounts ?? [];
+				const accountId = ma.author?.accountId;
 				const account =
-					legacyAccount ??
-					(ma.author?.accounts?.length === 1
-						? ma.author.accounts[0]
-						: undefined);
+					accounts.find((candidate) => candidate.accountId === accountId) ??
+					(accounts.length === 1 ? accounts[0] : undefined);
 				return {
 					name: ma.author?.name || "",
-					accountId: account?.accountId ?? ma.author?.accountId ?? null,
+					accountId: account?.accountId ?? null,
 					platform: account?.platform,
 				};
 			});

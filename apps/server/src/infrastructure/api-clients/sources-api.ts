@@ -71,7 +71,7 @@ export function syncMediaSources(ids: string[]) {
 
 export function enqueueSourceExport(
 	id: string,
-	mode: "json" | "zip",
+	mode: "ndjson" | "tar",
 	includeImages: boolean,
 ) {
 	return orpc.sources.enqueueExport({ id, mode, includeImages });
@@ -79,7 +79,7 @@ export function enqueueSourceExport(
 
 export function enqueueSourceImport(
 	id: string,
-	mode: "json" | "zip",
+	mode: "ndjson" | "tar",
 	file: File,
 ) {
 	return orpc.sources.enqueueImport({ id, mode, file });
@@ -88,15 +88,15 @@ export function enqueueSourceImport(
 /**
  * Fetches a dump of the media source
  * @param id - Media source ID
- * @param mode - The dump mode (ndjson or tar)
+ * @param mode - The dump format
  * @returns Blob containing the dump
  */
 export async function fetchSourceDump(
 	id: string,
-	mode: "json" | "zip" = "json",
+	mode: "ndjson" | "tar" = "ndjson",
 	opts?: { includeImages?: boolean },
 ): Promise<Blob> {
-	const includeImages = opts?.includeImages ?? mode === "zip";
+	const includeImages = opts?.includeImages ?? mode === "tar";
 	const job = await orpc.sources.enqueueExport({
 		id,
 		mode,
@@ -105,23 +105,16 @@ export async function fetchSourceDump(
 	return downloadCompletedJobArtifact(orpc.jobs, job.id);
 }
 
-export function restoreSource(id: string, data: unknown) {
-	if (!Array.isArray(data)) {
-		throw new Error("Invalid restore data: expected an array");
-	}
-	return orpc.sources.restore({ id, data });
-}
-
 /**
  * Imports a media source from a TAR file
  * @param id - Media source ID
  * @param file - The TAR file to import
  * @returns Import result
  */
-export async function importSourceZip(id: string, file: File) {
-	return orpc.sources.enqueueImport({ id, mode: "zip", file });
+export async function importSourceTar(id: string, file: File) {
+	return orpc.sources.enqueueImport({ id, mode: "tar", file });
 }
 
 export async function importSourceNdjson(id: string, file: File) {
-	return orpc.sources.enqueueImport({ id, mode: "json", file });
+	return orpc.sources.enqueueImport({ id, mode: "ndjson", file });
 }

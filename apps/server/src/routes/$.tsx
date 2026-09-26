@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { RouteCompatibilityRedirect } from "~/components/route-compat";
+import { NotFoundRoute } from "~/components/not-found";
 
 export const Route = createFileRoute("/$")({
-	component: RouteCompatibilityRedirect,
+	component: NotFoundRoute,
 });

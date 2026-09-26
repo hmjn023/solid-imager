@@ -2,7 +2,6 @@ import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
-	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 	getFixtureMediaPath,
 	sourcePath,
@@ -51,34 +50,14 @@ async function expectInsideViewport(
 	expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
 }
 
-test("library entry points redirect to canonical search", {
+test("the root entry point redirects to canonical search", {
 	tag: "@desktop-only",
 }, async ({ page }) => {
-	for (const path of ["/", "/sources", "/v2", "/v2/search"]) {
-		await page.goto(path);
-		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
-		await waitForAppHydration(page);
-		await expect(
-			page.getByText("すべてのメディア", { exact: true }).last(),
-		).toBeVisible();
-		await expectRouteHealthy(page);
-	}
-});
-
-test("versioned detail routes preserve query and hash during redirect", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto(
-		`/v2/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}?migration=1#details`,
-	);
-	await expect(page).toHaveURL(
-		new RegExp(
-			`/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}\\?migration=1#details$`,
-		),
-	);
+	await page.goto("/");
+	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 	await waitForAppHydration(page);
 	await expect(
-		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+		page.getByText("すべてのメディア", { exact: true }).last(),
 	).toBeVisible();
 	await expectRouteHealthy(page);
 });

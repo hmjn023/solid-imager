@@ -58,9 +58,6 @@ export const downloadItemSchema = z.object({
 
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 
-// Alias for backward compatibility
-export type TweetMetadata = DownloadItem;
-
 export const downloadMessageSchema = z.object({
 	type: z.literal("DOWNLOAD"),
 	data: downloadItemSchema,

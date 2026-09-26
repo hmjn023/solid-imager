@@ -18,7 +18,7 @@ function createJob(overrides: Partial<Job>): Job {
 		type: "source_export",
 		mediaSourceId: randomUUID(),
 		status: "in_progress",
-		payload: { mode: "zip", includeImages: false },
+		payload: { mode: "tar", includeImages: false },
 		result: null,
 		error: null,
 		createdAt: now,
@@ -64,7 +64,7 @@ describe("job transfer storage cleanup", () => {
 
 	it("removes stale files for a known non-completed job", async () => {
 		const jobId = randomUUID();
-		const targetPath = storage.getArtifactPath(jobId, "zip");
+		const targetPath = storage.getArtifactPath(jobId, "tar");
 		await writeOldFile(targetPath);
 
 		const result = await storage.cleanupOrphanedJobTransferFiles(async (id) =>
@@ -77,7 +77,7 @@ describe("job transfer storage cleanup", () => {
 
 	it("keeps a valid completed artifact", async () => {
 		const jobId = randomUUID();
-		const targetPath = storage.getArtifactPath(jobId, "zip");
+		const targetPath = storage.getArtifactPath(jobId, "tar");
 		await writeOldFile(targetPath);
 		const job = createJob({
 			id: jobId,
@@ -96,7 +96,7 @@ describe("job transfer storage cleanup", () => {
 
 	it("keeps a file whose job is unknown until TTL expiry", async () => {
 		const jobId = randomUUID();
-		const targetPath = storage.getArtifactPath(jobId, "zip");
+		const targetPath = storage.getArtifactPath(jobId, "tar");
 		await writeOldFile(targetPath);
 
 		const result = await storage.cleanupOrphanedJobTransferFiles(
@@ -109,7 +109,7 @@ describe("job transfer storage cleanup", () => {
 
 	it("removes stale partial output without a database lookup", async () => {
 		const jobId = randomUUID();
-		const targetPath = storage.getArtifactPartialPath(jobId, "zip");
+		const targetPath = storage.getArtifactPartialPath(jobId, "tar");
 		await writeOldFile(targetPath);
 		const findJob = vi.fn(async () => null);
 

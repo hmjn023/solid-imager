@@ -1,4 +1,4 @@
-import { bootstrap, initServices } from "./bootstrap";
+import { initServices, startBackgroundWorker } from "./bootstrap";
 
 /**
  * Initializes dependencies used by file-route server handlers.
@@ -13,5 +13,5 @@ export function bootstrapServerRoute(): void {
 		initServices();
 		return;
 	}
-	bootstrap();
+	startBackgroundWorker();
 }

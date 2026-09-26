@@ -58,10 +58,6 @@ function createBuildTimeServerId(baseUrl: string): string {
 	return `buildtime-${hash.toString(16)}`;
 }
 
-function isBuildTimeServerId(id: string): boolean {
-	return id.startsWith("buildtime-");
-}
-
 function createInitialSettings(): ServerSettings {
 	const baseUrl = normalizeUrl(getBuildTimeServerUrl());
 	const server: ServerConnection = {
@@ -73,48 +69,6 @@ function createInitialSettings(): ServerSettings {
 		activeServerId: server.id,
 		schemaVersion: SETTINGS_VERSION,
 		servers: [server],
-	};
-}
-
-function migrateBuildTimeServer(value: ServerSettings): {
-	settings: ServerSettings;
-	legacyId: string | null;
-} {
-	const legacyBaseUrl =
-		import.meta.env.DEV && typeof window !== "undefined"
-			? normalizeUrl(window.location.origin)
-			: normalizeUrl(getBuildTimeServerUrl());
-	const legacyServer = value.servers.find(
-		(server) =>
-			(server.id === "default" && server.baseUrl === legacyBaseUrl) ||
-			isBuildTimeServerId(server.id),
-	);
-	if (!legacyServer) {
-		return { legacyId: null, settings: value };
-	}
-
-	const baseUrl = normalizeUrl(getBuildTimeServerUrl());
-	const targetId = createBuildTimeServerId(baseUrl);
-	if (legacyServer.id === targetId && legacyServer.baseUrl === baseUrl) {
-		return { legacyId: null, settings: value };
-	}
-	const migratedServer: ServerConnection = {
-		...legacyServer,
-		baseUrl,
-		id: targetId,
-	};
-	return {
-		legacyId: legacyServer.id,
-		settings: {
-			...value,
-			activeServerId:
-				value.activeServerId === legacyServer.id
-					? migratedServer.id
-					: value.activeServerId,
-			servers: value.servers.map((server) =>
-				server.id === legacyServer.id ? migratedServer : server,
-			),
-		},
 	};
 }
 
@@ -175,24 +129,11 @@ export async function initializeServerSettings(): Promise<ServerSettings> {
 	const parsed = serverSettingsSchema.safeParse(stored);
 	let shouldPersist = !parsed.success;
 	if (parsed.success) {
-		let migrated: ReturnType<typeof migrateBuildTimeServer> | null = null;
 		try {
-			migrated = migrateBuildTimeServer(normalizeSettings(parsed.data));
+			settings = normalizeSettings(parsed.data);
 		} catch {
 			settings = createInitialSettings();
 			shouldPersist = true;
-		}
-		if (migrated) {
-			settings = migrated.settings;
-			if (migrated.legacyId) {
-				try {
-					await removeDatabaseFile(migrated.legacyId);
-				} catch (error) {
-					settings = null;
-					throw error;
-				}
-				shouldPersist = true;
-			}
 		}
 	} else {
 		settings = createInitialSettings();

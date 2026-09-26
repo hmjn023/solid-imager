@@ -54,23 +54,7 @@ function getStoredBindingSource(
 	if (payload.version === SHORTCUT_PREFERENCES_VERSION) {
 		return isRecord(payload.bindings) ? payload.bindings : null;
 	}
-
-	if (payload.version === 0) {
-		if (isRecord(payload.shortcuts)) {
-			return payload.shortcuts;
-		}
-		return isRecord(payload.bindings) ? payload.bindings : null;
-	}
-
-	if (Object.hasOwn(payload, "version")) {
-		return null;
-	}
-
-	if (isRecord(payload.bindings)) {
-		return payload.bindings;
-	}
-
-	return payload;
+	return null;
 }
 
 export function normalizeShortcutBinding(

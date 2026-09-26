@@ -1,4 +1,4 @@
-import type { Author, TweetMetadata } from "@ext/schema";
+import type { Author, DownloadItem } from "@ext/schema";
 import { querySelectorAllTyped } from "../utils/dom-utils";
 
 const PROCESSED_IMAGE_CLASS = "xtracter-fanbox-image-processed";
@@ -6,9 +6,9 @@ const FANBOX_IMAGE_HOSTNAME = "downloads.fanbox.cc";
 const FANBOX_POST_PATH = /^\/posts\/(\d+)/;
 
 export function processFanboxMedia(
-	processedMetadata: Map<string, TweetMetadata>,
+	processedMetadata: Map<string, DownloadItem>,
 	createButtonContainer: (
-		metadata: TweetMetadata,
+		metadata: DownloadItem,
 		type: "IMAGE" | "VIDEO",
 	) => HTMLDivElement,
 ) {
@@ -76,7 +76,7 @@ function getFanboxImageUrl(
 	return null;
 }
 
-function extractMetadata(targetUrl: string, postUrl: string): TweetMetadata {
+function extractMetadata(targetUrl: string, postUrl: string): DownloadItem {
 	const hostname = window.location.hostname;
 	const creatorId =
 		hostname.endsWith(".fanbox.cc") && !hostname.startsWith("www.")
