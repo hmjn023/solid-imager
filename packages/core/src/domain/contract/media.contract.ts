@@ -215,7 +215,7 @@ export const mediaContract = {
 			tags: ["Media"],
 			summary: "重複メディア検索",
 			description:
-				"ファイル名パターンや取得元URLを使って重複候補のメディアを検索します。",
+				"任意のmediaSourceIdで対象ソースの画像を絞り込み、取得元URLの集合が完全一致するメディアを重複候補としてグループ化します。",
 		})
 		.input(findDuplicatesRequestSchema.optional())
 		.output(findDuplicatesResponseSchema),
