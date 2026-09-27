@@ -170,6 +170,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			}
 		},
 	}));
+	const sourceUrl = form.useSelector((state) => state.values.sourceUrl);
 
 	const setFiles = (files: File[]) => {
 		const previousAutoName = selectedFiles()[0]?.name;
@@ -220,12 +221,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 
 	createEffect(
 		on(
-			() =>
-				[
-					form.state.values.sourceUrl,
-					isFetchingUrl(),
-					lastFetchedUrl(),
-				] as const,
+			() => [sourceUrl(), isFetchingUrl(), lastFetchedUrl()] as const,
 			([url, fetching, lastUrl]) => {
 				if (
 					!(url && props.onFetchUrl && z.url().safeParse(url).success) ||
