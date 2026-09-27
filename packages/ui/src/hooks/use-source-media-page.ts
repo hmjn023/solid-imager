@@ -555,9 +555,18 @@ export function useSourceMediaPage(
 		if (item.type.indexOf("image") !== -1) {
 			const blob = item.getAsFile();
 			if (blob) {
-				const file = new File([blob], `pasted-image-${Date.now()}.png`, {
-					type: blob.type,
-				});
+				const subtype = blob.type.split("/")[1]?.split(";")[0];
+				const extension =
+					blob.type === "image/jpeg"
+						? "jpg"
+						: subtype?.replace(/[^a-z0-9]/gi, "") || "png";
+				const file = new File(
+					[blob],
+					`pasted-image-${Date.now()}.${extension}`,
+					{
+						type: blob.type,
+					},
+				);
 				setFileToUpload(file);
 				setShowUploadModal(true);
 				e.preventDefault();
