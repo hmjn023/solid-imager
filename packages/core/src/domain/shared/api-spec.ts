@@ -574,3 +574,5 @@
  *           type: string
  *           description: The new color for UI display of the tag.
  */
+
+export {};
