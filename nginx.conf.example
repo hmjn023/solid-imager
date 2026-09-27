@@ -6,6 +6,9 @@ http {
     include       /etc/nginx/mime.types;
     default_type  application/octet-stream;
 
+    # Media uploads are sent as multipart request bodies.
+    client_max_body_size 100m;
+
     # アクセスログとエラーログ
     access_log /var/log/nginx/access.log;
     error_log  /var/log/nginx/error.log;

@@ -312,59 +312,55 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 							}}
 						>
 							<div class="grid gap-4 py-4">
-								<button
-									class={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
-										isDragging()
-											? "border-primary bg-primary/5"
-											: "border-muted"
-									}`}
-									onClick={() => fileInputRef?.click()}
-									onKeyDown={(event) => {
-										if (event.key === "Enter" || event.key === " ") {
-											event.preventDefault();
-											fileInputRef?.click();
-										}
-									}}
-									onDragEnter={(event) => {
-										event.preventDefault();
-										setIsDragging(true);
-									}}
-									onDragLeave={(event) => {
-										event.preventDefault();
-										setIsDragging(false);
-									}}
-									onDragOver={(event) => event.preventDefault()}
-									onDrop={(event) => {
-										event.preventDefault();
-										setIsDragging(false);
-										handleDroppedFiles(event.dataTransfer?.files);
-									}}
-									type="button"
+								<Show
+									when={selectedFiles().length > 0}
+									fallback={
+										<button
+											class={`rounded-lg border-2 border-dashed p-6 text-center transition-colors ${
+												isDragging()
+													? "border-primary bg-primary/5"
+													: "border-muted"
+											}`}
+											onClick={() => fileInputRef?.click()}
+											onDragEnter={(event) => {
+												event.preventDefault();
+												setIsDragging(true);
+											}}
+											onDragLeave={(event) => {
+												event.preventDefault();
+												setIsDragging(false);
+											}}
+											onDragOver={(event) => event.preventDefault()}
+											onDrop={(event) => {
+												event.preventDefault();
+												setIsDragging(false);
+												handleDroppedFiles(event.dataTransfer?.files);
+											}}
+											type="button"
+										>
+											<p class="font-medium text-sm">
+												ファイルをドラッグ&ドロップ
+											</p>
+											<p class="mt-1 text-muted-foreground text-xs">
+												またはファイル選択ダイアログから追加します。
+											</p>
+											<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
+												ファイルを選択
+											</span>
+										</button>
+									}
 								>
-									<p class="font-medium text-sm">ファイルをドラッグ&ドロップ</p>
-									<p class="mt-1 text-muted-foreground text-xs">
-										またはファイル選択ダイアログから追加します。
-									</p>
-									<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-										ファイルを選択
-									</span>
-								</button>
-								<input
-									class="hidden"
-									multiple
-									onChange={(event) => {
-										handleDroppedFiles(event.currentTarget.files);
-										event.currentTarget.value = "";
-									}}
-									ref={(element) => {
-										fileInputRef = element;
-									}}
-									type="file"
-								/>
-
-								<Show when={selectedFiles().length > 0}>
 									<div class="rounded-md border p-3">
-										<p class="mb-2 font-medium text-sm">選択中のファイル</p>
+										<div class="mb-2 flex items-center justify-between gap-3">
+											<p class="font-medium text-sm">選択したファイル</p>
+											<Button
+												onClick={() => fileInputRef?.click()}
+												type="button"
+												variant="outline"
+											>
+												ファイルを変更
+											</Button>
+										</div>
 										<ul class="space-y-2">
 											<For each={selectedFiles()}>
 												{(file) => (
@@ -379,7 +375,18 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 										</ul>
 									</div>
 								</Show>
-
+								<input
+									class="hidden"
+									multiple
+									onChange={(event) => {
+										handleDroppedFiles(event.currentTarget.files);
+										event.currentTarget.value = "";
+									}}
+									ref={(element) => {
+										fileInputRef = element;
+									}}
+									type="file"
+								/>
 								<form.Field name="filename">
 									{(field) => (
 										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
