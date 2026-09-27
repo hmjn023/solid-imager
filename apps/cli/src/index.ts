@@ -33,4 +33,4 @@ cli.command(jobCmd);
 cli.command(aiCmd);
 cli.command(dbCmd);
 
-cli.serve();
+await cli.serve();

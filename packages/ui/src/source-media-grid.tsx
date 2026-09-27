@@ -665,6 +665,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const gridContent = (
 		<section
 			class="@container relative min-w-0 w-full"
+			classList={{ "virtualized-media-grid": shouldVirtualize() }}
 			aria-label="メディア一覧"
 			onFocusIn={(event) => {
 				const media = findMediaFromEventTarget(event.target);
@@ -680,7 +681,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				scheduleMediaGridMetrics();
 			}}
 			style={{
-				height: shouldVirtualize()
+				"--media-grid-height": shouldVirtualize()
 					? `${mediaRowVirtualizer().getTotalSize()}px`
 					: undefined,
 			}}
@@ -762,15 +763,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						const rowMedia = () => getRowMedia(virtualRow.index);
 						return (
 							<div
-								class={`absolute top-0 left-0 ${mediaGridClassName}`}
+								class={`absolute top-0 left-0 w-full ${mediaGridClassName} virtualized-media-row`}
 								style={{
-									"grid-template-columns": `repeat(${columnCount()}, minmax(0, 1fr))`,
-									height: `${virtualRow.size}px`,
-									transform: `translateY(${
-										virtualRow.start -
-										mediaRowVirtualizer().options.scrollMargin
-									}px)`,
-									width: "100%",
+									"--media-grid-columns": columnCount(),
+									"--media-grid-row-height": `${virtualRow.size}px`,
+									"--media-grid-row-offset": `${virtualRow.start - mediaRowVirtualizer().options.scrollMargin}px`,
 								}}
 							>
 								<For each={rowMedia()}>
@@ -831,12 +828,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 	};
 	const listContent = (
-		<div class="overflow-x-auto rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] [scrollbar-gutter:stable]">
-			<table class="w-full min-w-[52rem] border-collapse text-left text-sm">
+		<div class="overflow-x-auto rounded-md border border-border bg-card scrollbar-stable">
+			<table class="w-full min-w-table-extra-wide border-collapse text-left text-sm">
 				<caption class="sr-only">
 					メディア一覧。{totalCount().toLocaleString()}件。
 				</caption>
-				<thead class="bg-[var(--workspace-surface-muted)] text-xs text-[var(--workspace-text-muted)]">
+				<thead class="bg-muted text-xs text-muted-foreground">
 					<tr>
 						<Show when={props.isBulkSelectMode?.()}>
 							<th class="w-10 px-3 py-2" scope="col">
@@ -860,16 +857,17 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						</th>
 					</tr>
 				</thead>
-				<tbody class="divide-y divide-[var(--workspace-border)]">
+				<tbody class="divide-y divide-border">
 					<For each={props.mediaResults()}>
 						{(media) => (
 							<tr
+								aria-label={`${media.fileName}, ${media.filePath}`}
 								aria-selected={props.previewSelectedMediaId?.() === media.id}
-								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-focus)] ${
+								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
 									props.isSelected?.(media.id) ||
 									props.previewSelectedMediaId?.() === media.id
-										? "bg-[var(--workspace-surface-selected)]"
-										: "hover:bg-[var(--workspace-surface-muted)]"
+										? "bg-accent"
+										: "hover:bg-muted"
 								}`}
 								data-media-id={media.id}
 								onClick={(event) => {
@@ -947,32 +945,36 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										/>
 									</td>
 								</Show>
-								<th class="max-w-[28rem] px-3 py-2 font-normal" scope="row">
+								<th
+									aria-label={`${media.fileName}, ${media.filePath}`}
+									class="max-w-dialog-reading px-3 py-2 font-normal"
+									scope="row"
+								>
 									<div class="min-h-10 w-full px-1 py-1 text-left">
 										<span
-											class="block truncate font-medium text-[var(--workspace-text)]"
+											class="block truncate font-medium text-foreground"
 											title={media.fileName}
 										>
 											{media.fileName}
 										</span>
 										<span
-											class="mt-0.5 block truncate text-[var(--workspace-text-muted)] text-xs"
+											class="mt-0.5 block truncate text-muted-foreground text-xs"
 											title={media.filePath}
 										>
 											{media.filePath}
 										</span>
 									</div>
 								</th>
-								<td class="px-3 py-2 text-[var(--workspace-text-secondary)]">
+								<td class="px-3 py-2 text-muted-foreground">
 									{media.mediaType}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--workspace-text-secondary)]">
+								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{media.width} × {media.height}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--workspace-text-secondary)]">
+								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{formatFileSize(media.fileSize)}
 								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-[var(--workspace-text-muted)]">
+								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{media.modifiedAt.toLocaleDateString("ja-JP")}
 								</td>
 							</tr>
@@ -1061,7 +1063,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					{/* Result count */}
 					<Show when={showResultCount() && props.mediaResults().length > 0}>
 						<div class="mb-4 flex min-w-0 items-center justify-between gap-3">
-							<p class="text-gray-600 text-sm">{totalCount()} 件の結果</p>
+							<p class="text-muted-foreground text-sm">
+								{totalCount()} 件の結果
+							</p>
 						</div>
 					</Show>
 
@@ -1114,7 +1118,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										<>
 											<ContextMenuGroup>
 												<ContextMenuGroupLabel
-													class="max-w-72 truncate text-[var(--workspace-text-muted)]"
+													class="max-w-72 truncate text-muted-foreground"
 													title={media.fileName}
 												>
 													{media.fileName}
@@ -1235,11 +1239,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 					{/* Load more sentinel */}
 					<div
+						aria-atomic="true"
 						aria-live="polite"
-						class="flex min-h-11 w-full items-center justify-center py-2 text-gray-500 text-sm"
+						class="flex min-h-11 w-full items-center justify-center py-2 text-muted-foreground text-sm"
 						data-testid="media-load-more-sentinel"
 						ref={props.setLoadMoreRef}
-						role="status"
 					>
 						<Show
 							fallback={

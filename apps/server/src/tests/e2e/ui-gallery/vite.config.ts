@@ -48,31 +48,34 @@ function virtualThumbnailPlugin(): Plugin {
 	return {
 		name: "solid-imager-e2e-virtual-thumbnails",
 		configureServer(server) {
-			server.middlewares.use(async (request, response, next) => {
-				const match = request.url?.match(
-					/^\/virtual-thumbnail\/[0-9a-f-]+-(256|512)\.webp(?:\?.*)?$/,
-				);
-				if (!match) {
-					next();
-					return;
-				}
+			server.middlewares.use((request, response, next) => {
+				const serveThumbnail = async () => {
+					const match = request.url?.match(
+						/^\/virtual-thumbnail\/[0-9a-f-]+-(256|512)\.webp(?:\?.*)?$/,
+					);
+					if (!match) {
+						next();
+						return;
+					}
 
-				const width = Number(match[1]) as 256 | 512;
-				const thumbnail = await thumbnailBuffers.get(width);
-				if (!thumbnail) {
-					response.statusCode = 404;
-					response.end();
-					return;
-				}
+					const width = Number(match[1]) as 256 | 512;
+					const thumbnail = await thumbnailBuffers.get(width);
+					if (!thumbnail) {
+						response.statusCode = 404;
+						response.end();
+						return;
+					}
 
-				response.statusCode = 200;
-				response.setHeader(
-					"Cache-Control",
-					"public, max-age=31536000, immutable",
-				);
-				response.setHeader("Content-Length", thumbnail.byteLength);
-				response.setHeader("Content-Type", "image/webp");
-				response.end(thumbnail);
+					response.statusCode = 200;
+					response.setHeader(
+						"Cache-Control",
+						"public, max-age=31536000, immutable",
+					);
+					response.setHeader("Content-Length", thumbnail.byteLength);
+					response.setHeader("Content-Type", "image/webp");
+					response.end(thumbnail);
+				};
+				void serveThumbnail().catch((error: unknown) => next(error));
 			});
 		},
 	};

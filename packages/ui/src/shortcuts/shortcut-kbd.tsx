@@ -51,7 +51,7 @@ export function ShortcutKbd(props: ShortcutKbdProps): JSX.Element {
 		<kbd
 			aria-label={accessibleValue()}
 			class={cn(
-				"inline-flex min-h-6 min-w-6 items-center justify-center rounded border border-border bg-muted px-1.5 font-medium font-mono text-[0.6875rem] text-muted-foreground shadow-sm",
+				"inline-flex min-h-6 min-w-6 items-center justify-center rounded border border-border bg-muted px-1.5 font-medium font-mono text-label-sm text-muted-foreground shadow-sm",
 				props.class,
 			)}
 		>

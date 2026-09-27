@@ -208,7 +208,9 @@ function GroupBuilder(props: {
 		<Card
 			class={cn(
 				"border-l-2",
-				props.depth % 2 === 0 ? "border-l-blue-500" : "border-l-green-500",
+				props.depth % 2 === 0
+					? "border-l-info-foreground"
+					: "border-l-success-foreground",
 			)}
 		>
 			<CardContent class="space-y-4 p-2 sm:p-4">
@@ -262,7 +264,7 @@ function GroupBuilder(props: {
 						</div>
 						<Show when={!props.isRoot}>
 							<Button
-								class="w-full text-red-500"
+								class="w-full text-destructive"
 								onClick={props.onRemove}
 								size="sm"
 								variant="ghost"
@@ -516,7 +518,7 @@ function CriterionBuilder(props: {
 						<ComboboxControl>
 							<ComboboxInput />
 						</ComboboxControl>
-						<VirtualComboboxContent class="max-h-[300px]" />
+						<VirtualComboboxContent class="max-h-72" />
 					</Combobox>
 				</Match>
 
@@ -602,7 +604,7 @@ function CriterionBuilder(props: {
 			</Switch>
 
 			<Button
-				class="w-full text-red-500"
+				class="w-full text-destructive"
 				onClick={props.onRemove}
 				variant="ghost"
 			>

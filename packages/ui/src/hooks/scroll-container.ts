@@ -65,7 +65,7 @@ export type ScrollRestorationOptions = {
 	isReady: Accessor<boolean>;
 	hasNextPage: Accessor<boolean>;
 	isFetchingNextPage: Accessor<boolean>;
-	fetchNextPage: () => Promise<unknown> | unknown;
+	fetchNextPage: () => Promise<unknown>;
 	scrollContainerSelector?: string;
 };
 

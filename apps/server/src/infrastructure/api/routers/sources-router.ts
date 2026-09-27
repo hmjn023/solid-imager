@@ -67,7 +67,7 @@ function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 			},
 		};
 	}
-	throw new Error(`Unsupported source type: ${source.type}`);
+	throw new Error(`Unsupported source type: ${String(source.type)}`);
 }
 
 async function getMediaCounts(
@@ -133,7 +133,7 @@ export const sourcesRouter = os.router({
 
 		// ローカルソースの場合、バックグラウンド処理を開始
 		if (createdSource && createdSource.type === "local") {
-			MediaService.registerExistingMedia(
+			void MediaService.registerExistingMedia(
 				createdSource.id,
 				(createdSource.connectionInfo as { path: string }).path,
 			);

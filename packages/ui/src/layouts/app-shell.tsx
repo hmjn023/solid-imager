@@ -30,7 +30,7 @@ export type AppShellProps = ParentProps<{
 /** Workspace-themed frame used while a client is loading or configuring. */
 export function WorkspaceSetupFrame(props: ParentProps) {
 	return (
-		<div class="workspace-theme flex h-dvh min-h-0 flex-col overflow-hidden bg-[var(--workspace-canvas)] text-[var(--workspace-text)]">
+		<div class="workspace-theme flex h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
 			<main
 				class="min-h-0 min-w-0 flex-1 overflow-auto"
 				id="main-content"
@@ -130,15 +130,15 @@ export function AppShell(props: AppShellProps) {
 
 		return (
 			<div
-				class={`workspace-theme grid h-dvh min-h-0 overflow-hidden bg-[var(--workspace-canvas)] text-[var(--workspace-text)] ${
+				class={`workspace-theme grid h-dvh min-h-0 overflow-hidden bg-background text-foreground ${
 					sidebarExpanded()
-						? "md:grid-cols-[216px_minmax(0,1fr)]"
-						: "md:grid-cols-[64px_minmax(0,1fr)]"
+						? "md:grid-cols-app-sidebar"
+						: "md:grid-cols-app-sidebar-collapsed"
 				}`}
 				data-design="workspace"
 			>
 				<button
-					class="sr-only fixed top-2 left-2 z-[80] rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-[var(--workspace-focus)]"
+					class="sr-only fixed top-2 left-2 z-app-overlay rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-ring"
 					onClick={(event) => {
 						event.preventDefault();
 						const mainContent = document.getElementById("main-content");
@@ -150,7 +150,7 @@ export function AppShell(props: AppShellProps) {
 				</button>
 				<aside
 					aria-label="アプリケーションサイドバー"
-					class="hidden min-h-0 border-[var(--workspace-border)] border-r md:block"
+					class="hidden min-h-0 border-border border-r md:block"
 				>
 					<Sidebar
 						apiDocsHref={props.apiDocsHref}
@@ -240,7 +240,9 @@ export function AppShell(props: AppShellProps) {
 				<SourceDeleteModal
 					isOpen={sourcePage.showDeleteModal()}
 					onClose={() => sourcePage.setShowDeleteModal(false)}
-					onConfirm={sourcePage.handleDeleteConfirm}
+					onConfirm={(event) => {
+						void sourcePage.handleDeleteConfirm(event);
+					}}
 					sourceToDelete={sourcePage.deletingSource()}
 				/>
 				<CommandCenter

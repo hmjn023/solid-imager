@@ -236,7 +236,7 @@ export function ShortcutSettingsPanel(
 					<h2 class="font-semibold text-base" id={headingId}>
 						{props.title ?? "Keyboard shortcuts"}
 					</h2>
-					<p class="max-w-[80ch] text-muted-foreground text-sm">
+					<p class="max-w-text-reading text-muted-foreground text-sm">
 						{props.description ??
 							"Customize keyboard controls for this device. These preferences are stored locally."}
 					</p>
@@ -253,7 +253,7 @@ export function ShortcutSettingsPanel(
 				>
 					Reset all
 				</Button>
-				<p
+				<output
 					aria-atomic="true"
 					class={cn(
 						"basis-full text-sm",
@@ -262,10 +262,9 @@ export function ShortcutSettingsPanel(
 						feedback()?.tone === "info" && "text-muted-foreground",
 					)}
 					id={statusId}
-					role="status"
 				>
 					{feedback()?.message ?? ""}
-				</p>
+				</output>
 			</header>
 
 			<div class="divide-y divide-border">
@@ -289,7 +288,7 @@ export function ShortcutSettingsPanel(
 											recorder.isRecording();
 
 										return (
-											<li class="grid gap-3 px-4 py-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+											<li class="grid gap-3 px-4 py-3 md:grid-cols-content-action md:items-center">
 												<div class="min-w-0">
 													<label
 														class="font-medium text-sm"
@@ -298,7 +297,7 @@ export function ShortcutSettingsPanel(
 														{definition.label}
 													</label>
 													<p
-														class="mt-0.5 max-w-[80ch] text-muted-foreground text-xs"
+														class="mt-0.5 max-w-text-reading text-muted-foreground text-xs"
 														id={descriptionId(definition.id)}
 													>
 														{definition.description}

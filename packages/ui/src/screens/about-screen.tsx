@@ -8,19 +8,19 @@ export type AboutScreenProps = {
 
 export function AboutScreen(props: AboutScreenProps) {
 	return (
-		<section class="h-full min-h-0 overflow-y-auto overscroll-contain bg-[var(--workspace-canvas)] [scrollbar-gutter:stable]">
-			<header class="border-[var(--workspace-border)] border-b bg-[var(--workspace-surface-subtle)] px-4 py-4 sm:px-6">
+		<section class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background scrollbar-stable">
+			<header class="border-border border-b bg-background px-4 py-4 sm:px-6">
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<h1 class="font-semibold text-xl text-[var(--workspace-text)]">
+						<h1 class="font-semibold text-xl text-foreground">
 							About Solid Imager
 						</h1>
-						<p class="mt-1 text-sm text-[var(--workspace-text-secondary)]">
+						<p class="mt-1 text-sm text-muted-foreground">
 							メディアを整理・検索し、関連情報とバックグラウンド処理を一か所で管理するワークベンチです。
 						</p>
 					</div>
 					<Badge
-						class="border-[var(--workspace-border-strong)] bg-[var(--workspace-surface-muted)] text-[var(--workspace-text-secondary)]"
+						class="border-input bg-muted text-muted-foreground"
 						variant="outline"
 					>
 						Current workspace
@@ -28,12 +28,12 @@ export function AboutScreen(props: AboutScreenProps) {
 				</div>
 			</header>
 
-			<div class="grid gap-4 p-4 sm:p-6 lg:grid-cols-[minmax(0,1.4fr)_minmax(18rem,0.6fr)]">
-				<Card class="border-[var(--workspace-border)] bg-[var(--workspace-surface)] shadow-none">
+			<div class="grid gap-4 p-4 sm:p-6 lg:grid-cols-about-layout">
+				<Card class="border-border bg-card shadow-none">
 					<CardHeader class="p-5 pb-3">
 						<CardTitle class="text-base">Media-first workspace</CardTitle>
 					</CardHeader>
-					<CardContent class="px-5 pb-5 text-sm leading-6 text-[var(--workspace-text-secondary)]">
+					<CardContent class="px-5 pb-5 text-sm leading-6 text-muted-foreground">
 						<p>
 							Solid
 							Imagerは、複数のメディアソース、検索条件、タグ・作品・キャラクターなどの関連情報をまとめて扱います。
@@ -45,7 +45,7 @@ export function AboutScreen(props: AboutScreenProps) {
 					</CardContent>
 				</Card>
 
-				<Card class="border-[var(--workspace-border)] bg-[var(--workspace-surface)] shadow-none">
+				<Card class="border-border bg-card shadow-none">
 					<CardHeader class="p-5 pb-3">
 						<CardTitle class="text-base">Documentation</CardTitle>
 					</CardHeader>

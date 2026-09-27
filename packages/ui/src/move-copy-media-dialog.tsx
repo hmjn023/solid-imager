@@ -68,7 +68,7 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 						<p class="text-muted-foreground text-sm">Loading sources...</p>
 					</Show>
 					<Show when={props.error}>
-						<p class="text-red-500 text-sm">{props.error}</p>
+						<p class="text-destructive text-sm">{props.error}</p>
 					</Show>
 					<Show when={!(props.isLoading || props.error)}>
 						<Select<{ value: string; label: string }>

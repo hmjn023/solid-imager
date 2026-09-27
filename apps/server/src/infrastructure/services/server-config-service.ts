@@ -2,6 +2,7 @@ import fs from "node:fs";
 import fsPromises from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
+import { z } from "zod";
 import type { IConfigService } from "@solid-imager/core";
 import {
 	type AppConfig,
@@ -88,13 +89,12 @@ export class ServerConfigService implements IConfigService {
 			if (result.success) {
 				this.config = result.data;
 			} else {
+				const errors = z.treeifyError(result.error);
 				logger.error(
-					{ errors: result.error.format() },
+					{ errors },
 					"Invalid configuration detected. Using fallback/defaults where possible.",
 				);
-				throw new Error(
-					`Invalid configuration: ${JSON.stringify(result.error.format())}`,
-				);
+				throw new Error(`Invalid configuration: ${JSON.stringify(errors)}`);
 			}
 
 			logger.debug({ config: this.config }, "Configuration loaded");
@@ -113,8 +113,9 @@ export class ServerConfigService implements IConfigService {
 
 		const result = AppConfigSchema.safeParse(merged);
 		if (!result.success) {
+			const errors = z.treeifyError(result.error);
 			throw new Error(
-				`Invalid configuration update: ${JSON.stringify(result.error.format())}`,
+				`Invalid configuration update: ${JSON.stringify(errors)}`,
 			);
 		}
 

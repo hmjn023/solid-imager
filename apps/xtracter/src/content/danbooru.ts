@@ -129,7 +129,7 @@ export function processDanbooruMedia(
 					return null;
 				}
 
-				const data = await response.json();
+				const data: unknown = await response.json();
 				return parseDanbooruApiMetadata(data, postId);
 			} catch {
 				return null;
@@ -168,9 +168,12 @@ function parseTagsFromApiString(tagString: string | undefined): string[] {
 }
 
 function parseDanbooruApiMetadata(
-	data: DanbooruApiResponse,
+	data: unknown,
 	postId: string,
 ): DownloadItem | null {
+	if (!isDanbooruApiResponse(data)) {
+		return null;
+	}
 	const targetUrl = data.file_url;
 	if (!targetUrl) {
 		return null;
@@ -228,6 +231,25 @@ function parseDanbooruApiMetadata(
 		ips,
 		userAgent: navigator.userAgent,
 	};
+}
+
+function isDanbooruApiResponse(value: unknown): value is DanbooruApiResponse {
+	if (typeof value !== "object" || value === null) {
+		return false;
+	}
+	const record = value as Record<string, unknown>;
+	return [
+		"file_url",
+		"source",
+		"tag_string_artist",
+		"tag_string_copyright",
+		"tag_string_character",
+		"tag_string_general",
+		"tag_string_meta",
+		"created_at",
+	].every(
+		(key) => record[key] === undefined || typeof record[key] === "string",
+	);
 }
 
 function extractTargetUrl(container: HTMLElement): string | null {

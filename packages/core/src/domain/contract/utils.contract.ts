@@ -8,6 +8,6 @@ export const utilsContract = {
 			summary: "URLの内容取得",
 			description: "指定URLの内容をサーバーから取得し、Blobとして返します。",
 		})
-		.input(z.object({ url: z.string().url() }))
+		.input(z.object({ url: z.url() }))
 		.output(z.instanceof(Blob)),
 };

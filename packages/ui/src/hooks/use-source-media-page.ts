@@ -6,6 +6,7 @@ import type {
 	MediaSearchRequest,
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
+import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
 import {
@@ -476,18 +477,28 @@ export function useSourceMediaPage(
 	const handleJsonFileUpload = async (file: File) => {
 		try {
 			const text = await file.text();
-			const jsonContent = JSON.parse(text);
-			let items: DownloadItem[] = [];
-
-			if (Array.isArray(jsonContent)) {
-				items = jsonContent;
-			} else if (jsonContent.items && Array.isArray(jsonContent.items)) {
-				items = jsonContent.items;
-			} else {
+			const jsonContent: unknown = JSON.parse(text);
+			const record =
+				typeof jsonContent === "object" &&
+				jsonContent !== null &&
+				!Array.isArray(jsonContent)
+					? jsonContent
+					: null;
+			const candidateItems = Array.isArray(jsonContent)
+				? jsonContent
+				: record && "items" in record && Array.isArray(record.items)
+					? record.items
+					: null;
+			if (!candidateItems) {
 				throw new Error(
 					"JSONファイルはアイテムの配列であるか、'items'キーを含むオブジェクトである必要があります。",
 				);
 			}
+			const parsedItems = z.array(downloadItemSchema).safeParse(candidateItems);
+			if (!parsedItems.success) {
+				throw new Error("JSONファイルのダウンロードデータが不正です。");
+			}
+			const items: DownloadItem[] = parsedItems.data;
 
 			if (items.length === 0) {
 				throw new Error(
@@ -566,10 +577,7 @@ export function useSourceMediaPage(
 			});
 
 			const normalizedText = text?.trim();
-			if (
-				normalizedText &&
-				z.string().url().safeParse(normalizedText).success
-			) {
+			if (normalizedText && z.url().safeParse(normalizedText).success) {
 				setPastedUrl(normalizedText);
 				setShowUploadModal(true);
 				e.preventDefault();
@@ -613,11 +621,14 @@ export function useSourceMediaPage(
 		}
 		await processClipboardItems(e.clipboardData.items, e);
 	};
+	const handlePasteListener = (event: ClipboardEvent) => {
+		void handlePaste(event);
+	};
 
 	onMount(() => {
-		document.addEventListener("paste", handlePaste);
+		document.addEventListener("paste", handlePasteListener);
 		onCleanup(() => {
-			document.removeEventListener("paste", handlePaste);
+			document.removeEventListener("paste", handlePasteListener);
 		});
 	});
 

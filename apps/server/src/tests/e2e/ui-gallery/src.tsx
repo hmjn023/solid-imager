@@ -12,7 +12,7 @@ import {
 } from "@solid-imager/ui/alert-dialog";
 import { QueryStatus } from "@solid-imager/ui/async-state";
 import { Badge } from "@solid-imager/ui/badge";
-import { Button, buttonVariants } from "@solid-imager/ui/button";
+import { Button } from "@solid-imager/ui/button";
 import {
 	Card,
 	CardContent,
@@ -210,12 +210,14 @@ function VirtualGridGallery() {
 				hasNextPage={loadedCount() < VIRTUAL_GRID_ITEM_COUNT}
 				mediaResults={mediaResults}
 				mediaSourceId={() => mediaResults()[0]?.mediaSourceId}
-				onLoadMore={fetchNextPage}
+				onLoadMore={() => {
+					void fetchNextPage();
+				}}
 				renderItem={(media, options) => (
 					// The immutable, uniquely-addressed URLs exercise the browser's real
 					// memory cache when a virtual row is unmounted and revisited.
 					<a
-						class="block aspect-[4/3] overflow-hidden rounded-md bg-muted"
+						class="block aspect-landscape overflow-hidden rounded-md bg-muted"
 						data-media-id={media.id}
 						href={`#${media.id}`}
 						onContextMenu={options.onContextMenu}
@@ -291,7 +293,7 @@ function VirtualGridGallery() {
 				data-media-scroll
 				data-testid="virtual-grid-scroller"
 			>
-				<div class="2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4">
+				<div class="2xl:grid 2xl:grid-cols-workspace-sidebar 2xl:items-start 2xl:gap-4">
 					<div class="min-w-0">
 						<Show when={showGrid()}>
 							<VirtualGridContent />
@@ -342,15 +344,17 @@ function Gallery() {
 								<CardTitle>Card title</CardTitle>
 								<CardDescription>Shared Solid UI card.</CardDescription>
 							</CardHeader>
-							<CardContent class="space-y-4">
-								<Input
-									aria-label="Example input"
-									placeholder="Compatibility input"
-								/>
-								<Progress aria-label="Import progress" value={60}>
-									<ProgressLabel>Import progress</ProgressLabel>
-								</Progress>
-								<Skeleton class="h-8 w-full" />
+							<CardContent>
+								<div class="space-y-4">
+									<Input
+										aria-label="Example input"
+										placeholder="Compatibility input"
+									/>
+									<Progress aria-label="Import progress" value={60}>
+										<ProgressLabel>Import progress</ProgressLabel>
+									</Progress>
+									<Skeleton class="h-8 w-full" />
+								</div>
 							</CardContent>
 							<CardFooter>Footer</CardFooter>
 						</Card>
@@ -375,16 +379,20 @@ function Gallery() {
 							<TextFieldTextArea value="Invalid value" />
 							<TextFieldErrorMessage>Review this value.</TextFieldErrorMessage>
 						</TextField>
-						<Checkbox class="flex items-center gap-2" defaultChecked>
-							<CheckboxControl />
-							<CheckboxLabel>Enable indexing</CheckboxLabel>
-						</Checkbox>
-						<Switch class="flex items-center gap-2" defaultChecked>
-							<SwitchControl>
-								<SwitchThumb />
-							</SwitchControl>
-							<SwitchLabel>Automatic tagging</SwitchLabel>
-						</Switch>
+						<div class="flex items-center gap-2">
+							<Checkbox defaultChecked>
+								<CheckboxControl />
+								<CheckboxLabel>Enable indexing</CheckboxLabel>
+							</Checkbox>
+						</div>
+						<div class="flex items-center gap-2">
+							<Switch defaultChecked>
+								<SwitchControl>
+									<SwitchThumb />
+								</SwitchControl>
+								<SwitchLabel>Automatic tagging</SwitchLabel>
+							</Switch>
+						</div>
 					</section>
 
 					<section
@@ -441,25 +449,25 @@ function Gallery() {
 							<TabsContent value="second">Second panel</TabsContent>
 						</Tabs>
 						<CollapsibleRoot.Root>
-							<CollapsibleTrigger
-								class={buttonVariants({ variant: "outline" })}
-							>
+							<CollapsibleTrigger as={Button} variant="outline">
 								Toggle details
 							</CollapsibleTrigger>
-							<CollapsibleContent class="pt-2">
-								Collapsible content
+							<CollapsibleContent>
+								<div class="pt-2">Collapsible content</div>
 							</CollapsibleContent>
 						</CollapsibleRoot.Root>
-						<Command class="max-w-md border">
-							<CommandInput placeholder="Search commands" />
-							<CommandList>
-								<CommandEmpty>No commands.</CommandEmpty>
-								<CommandGroup heading="Actions">
-									<CommandItem>Open</CommandItem>
-									<CommandItem>Save</CommandItem>
-								</CommandGroup>
-							</CommandList>
-						</Command>
+						<div class="max-w-md rounded-md border">
+							<Command>
+								<CommandInput placeholder="Search commands" />
+								<CommandList>
+									<CommandEmpty>No commands.</CommandEmpty>
+									<CommandGroup heading="Actions">
+										<CommandItem>Open</CommandItem>
+										<CommandItem>Save</CommandItem>
+									</CommandGroup>
+								</CommandList>
+							</Command>
+						</div>
 					</section>
 
 					<section
@@ -470,9 +478,7 @@ function Gallery() {
 							Overlays
 						</h2>
 						<Dialog>
-							<DialogTrigger class={buttonVariants()}>
-								Open dialog
-							</DialogTrigger>
+							<DialogTrigger as={Button}>Open dialog</DialogTrigger>
 							<DialogContent>
 								<DialogHeader>
 									<DialogTitle>Example dialog</DialogTitle>
@@ -484,9 +490,7 @@ function Gallery() {
 							</DialogContent>
 						</Dialog>
 						<AlertDialog>
-							<AlertDialogTrigger
-								class={buttonVariants({ variant: "destructive" })}
-							>
+							<AlertDialogTrigger as={Button} variant="destructive">
 								Open alert dialog
 							</AlertDialogTrigger>
 							<AlertDialogContent>
@@ -503,14 +507,14 @@ function Gallery() {
 							</AlertDialogContent>
 						</AlertDialog>
 						<Popover>
-							<PopoverTrigger class={buttonVariants({ variant: "outline" })}>
+							<PopoverTrigger as={Button} variant="outline">
 								Open popover
 							</PopoverTrigger>
 							<PopoverContent>Popover content</PopoverContent>
 						</Popover>
 						<ContextMenu>
-							<ContextMenuTrigger class="rounded-md border p-3">
-								Right-click target
+							<ContextMenuTrigger>
+								<span class="rounded-md border p-3">Right-click target</span>
 							</ContextMenuTrigger>
 							<ContextMenuContent>
 								<ContextMenuItem>Context action</ContextMenuItem>

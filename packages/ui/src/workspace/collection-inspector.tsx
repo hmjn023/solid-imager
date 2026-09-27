@@ -40,16 +40,16 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 	return (
 		<aside
 			aria-label="選択中のメディア"
-			class="sticky top-0 hidden max-h-[calc(100dvh-8rem)] min-h-0 min-w-0 overflow-hidden rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] 2xl:flex 2xl:flex-col"
+			class="sticky top-0 hidden max-h-dialog-screen-compact min-h-0 min-w-0 overflow-hidden rounded-md border border-border bg-card 2xl:flex 2xl:flex-col"
 		>
-			<header class="z-10 flex h-12 shrink-0 items-center border-[var(--workspace-border)] border-b bg-[var(--workspace-surface)]/95 px-4 backdrop-blur-sm">
-				<h2 class="min-w-0 flex-1 truncate font-semibold text-[var(--workspace-text)] text-sm">
+			<header class="z-10 flex h-12 shrink-0 items-center border-border border-b bg-card/95 px-4 backdrop-blur-sm">
+				<h2 class="min-w-0 flex-1 truncate font-semibold text-foreground text-sm">
 					選択中のメディア
 				</h2>
 				<Show when={props.onClose}>
 					<Button
 						aria-label="インスペクターを閉じる"
-						class="size-8 shrink-0 p-0 text-[var(--workspace-text-muted)]"
+						class="size-8 shrink-0 p-0 text-muted-foreground"
 						onClick={() => props.onClose?.()}
 						size="icon"
 						variant="ghost"
@@ -59,15 +59,15 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 				</Show>
 			</header>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 [scrollbar-gutter:stable]">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 scrollbar-stable">
 				<Show
 					keyed
 					fallback={
 						<div class="space-y-4">
-							<div class="flex aspect-[4/3] items-center justify-center rounded-md bg-[var(--workspace-surface-muted)] px-6 text-center text-[var(--workspace-text-muted)] text-sm">
+							<div class="flex aspect-landscape items-center justify-center rounded-md bg-muted px-6 text-center text-muted-foreground text-sm">
 								メディアを選択するとプレビューを表示します
 							</div>
-							<p class="text-center text-[var(--workspace-text-muted)] text-xs leading-5">
+							<p class="text-center text-muted-foreground text-xs leading-5">
 								一覧からメディアを選択してください
 							</p>
 						</div>
@@ -76,42 +76,42 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 				>
 					{(media) => (
 						<div>
-							<div class="aspect-[4/3] overflow-hidden rounded-md bg-[var(--workspace-surface-muted)]">
+							<div class="aspect-landscape overflow-hidden rounded-md bg-muted">
 								{renderOwned(() => props.renderPreview(media))}
 							</div>
-							<section class="border-[var(--workspace-border)] border-b py-4">
+							<section class="border-border border-b py-4">
 								<h3
-									class="break-words font-semibold text-[var(--workspace-text)] text-sm"
+									class="break-words font-semibold text-foreground text-sm"
 									title={media.fileName}
 								>
 									{media.fileName}
 								</h3>
-								<p class="mt-2 whitespace-pre-wrap break-words text-[var(--workspace-text-secondary)] text-xs leading-5">
+								<p class="mt-2 whitespace-pre-wrap break-words text-muted-foreground text-xs leading-5">
 									{media.description?.trim() || "説明はありません"}
 								</p>
 							</section>
-							<dl class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-2.5 border-[var(--workspace-border)] border-b py-4 text-xs">
-								<dt class="text-[var(--workspace-text-muted)]">解像度</dt>
-								<dd class="text-right text-[var(--workspace-text)]">
+							<dl class="grid grid-cols-label-field gap-x-3 gap-y-2.5 border-border border-b py-4 text-xs">
+								<dt class="text-muted-foreground">解像度</dt>
+								<dd class="text-right text-foreground">
 									{media.width} × {media.height}
 								</dd>
-								<dt class="text-[var(--workspace-text-muted)]">サイズ</dt>
-								<dd class="text-right text-[var(--workspace-text)]">
+								<dt class="text-muted-foreground">サイズ</dt>
+								<dd class="text-right text-foreground">
 									{formatFileSize(media.fileSize)}
 								</dd>
-								<dt class="text-[var(--workspace-text-muted)]">ソース</dt>
+								<dt class="text-muted-foreground">ソース</dt>
 								<dd
-									class="truncate text-right text-[var(--workspace-text)]"
+									class="truncate text-right text-foreground"
 									title={props.sourceName}
 								>
 									{props.sourceName ?? "—"}
 								</dd>
-								<dt class="text-[var(--workspace-text-muted)]">作成日</dt>
-								<dd class="text-right text-[var(--workspace-text)]">
+								<dt class="text-muted-foreground">作成日</dt>
+								<dd class="text-right text-foreground">
 									{formatDate(media.createdAt)}
 								</dd>
-								<dt class="text-[var(--workspace-text-muted)]">更新日</dt>
-								<dd class="text-right text-[var(--workspace-text)]">
+								<dt class="text-muted-foreground">更新日</dt>
+								<dd class="text-right text-foreground">
 									{formatDate(media.modifiedAt)}
 								</dd>
 							</dl>

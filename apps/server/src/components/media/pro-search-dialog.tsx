@@ -36,7 +36,7 @@ export function ProSearchDialog(props: Props) {
 			<DialogTrigger as={Button} class="w-full" variant="outline">
 				詳細条件を編集
 			</DialogTrigger>
-			<DialogContent class="flex max-h-[90vh] max-w-5xl flex-col">
+			<DialogContent class="flex max-w-5xl flex-col">
 				<DialogHeader>
 					<DialogTitle>詳細検索条件の編集</DialogTitle>
 				</DialogHeader>

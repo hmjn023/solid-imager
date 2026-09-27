@@ -72,7 +72,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 		_capturedProcessor = null;
 
 		// Reset registry and register services
-		services.reset();
+		await services.reset();
 		// Define Mocks
 		const mockTagRepo = { addTagsToMedia: vi.fn() } as any;
 		const mockAuthorRepo = {

@@ -285,7 +285,7 @@ export default function SearchContent() {
 				}}
 				open={isDeleteDialogOpen()}
 			>
-				<DialogContent class="workspace-theme">
+				<DialogContent data-workspace-theme="">
 					<DialogHeader>
 						<DialogTitle>メディアを削除</DialogTitle>
 						<DialogDescription>
@@ -303,7 +303,9 @@ export default function SearchContent() {
 						</Button>
 						<Button
 							disabled={isDeleteSubmitting()}
-							onClick={confirmDelete}
+							onClick={() => {
+								void confirmDelete();
+							}}
 							variant="destructive"
 						>
 							{isDeleteSubmitting() ? "削除中..." : "削除"}
@@ -314,7 +316,9 @@ export default function SearchContent() {
 			<MoveCopyMediaDialog
 				currentSourceId={moveCopyTarget()?.mediaSourceId ?? ""}
 				mode={moveCopyMode()}
-				onConfirm={handleConfirmCopyMove}
+				onConfirm={(event) => {
+					void handleConfirmCopyMove(event);
+				}}
 				onOpenChange={(open) => {
 					setIsMoveCopyDialogOpen(open);
 					if (!open) setMoveCopyTarget(null);

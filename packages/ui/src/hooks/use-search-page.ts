@@ -13,6 +13,7 @@ import {
 	createInfiniteQuery,
 	createQuery,
 	type InfiniteData,
+	type QueryOptions,
 	useQueryClient,
 } from "@tanstack/solid-query";
 import {
@@ -38,19 +39,17 @@ export type SearchPageFilterData = {
 	authors: Author[] | undefined;
 };
 
+type QueryOptionsFor<TData> = QueryOptions<TData> & {
+	initialData?: undefined;
+};
+
 export type SearchPageQueryOptions = {
-	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
-	tags: () => any;
-	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
-	sources: () => any;
-	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
-	projects: () => any;
-	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
-	ips: () => any;
-	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
-	characters: () => any;
-	// oxlint-disable-next-line typescript/no-explicit-any -- oRPC query option factories do not satisfy Solid Query's overloaded public type
-	authors: () => any;
+	tags: () => QueryOptionsFor<TagResponse[]>;
+	sources: () => QueryOptionsFor<SafeMediaSource[]>;
+	projects: () => QueryOptionsFor<Project[]>;
+	ips: () => QueryOptionsFor<Ip[]>;
+	characters: () => QueryOptionsFor<Character[]>;
+	authors: () => QueryOptionsFor<Author[]>;
 };
 
 export interface UseSearchPageOptions {
@@ -185,31 +184,31 @@ export function useSearchPage(
 	const [authorsData, setAuthorsData] = createSignal<Author[] | undefined>();
 
 	createEffect(() => {
-		tags.dataUpdatedAt;
+		void tags.dataUpdatedAt;
 		setTagsData(queryClient.getQueryData<TagResponse[]>(tagsQueryKey));
 	});
 	createEffect(() => {
-		sources.dataUpdatedAt;
+		void sources.dataUpdatedAt;
 		setSourcesData(
 			queryClient.getQueryData<SafeMediaSource[]>(sourcesQueryKey),
 		);
 	});
 	createEffect(() => {
-		allProjects.dataUpdatedAt;
+		void allProjects.dataUpdatedAt;
 		setProjectsData(queryClient.getQueryData<Project[]>(projectsQueryKey));
 	});
 	createEffect(() => {
-		allIps.dataUpdatedAt;
+		void allIps.dataUpdatedAt;
 		setIpsData(queryClient.getQueryData<Ip[]>(ipsQueryKey));
 	});
 	createEffect(() => {
-		allCharacters.dataUpdatedAt;
+		void allCharacters.dataUpdatedAt;
 		setCharactersData(
 			queryClient.getQueryData<Character[]>(charactersQueryKey),
 		);
 	});
 	createEffect(() => {
-		allAuthors.dataUpdatedAt;
+		void allAuthors.dataUpdatedAt;
 		setAuthorsData(queryClient.getQueryData<Author[]>(authorsQueryKey));
 	});
 
@@ -249,7 +248,7 @@ export function useSearchPage(
 		// keep the rendered result in a regular signal so the collection DOM stays
 		// mounted while the next page is loading.
 		const queryKey = searchResultQueryOptions().queryKey;
-		searchResultQuery.dataUpdatedAt;
+		void searchResultQuery.dataUpdatedAt;
 		const cachedData =
 			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
 		if (cachedData !== undefined) {
@@ -396,7 +395,7 @@ export function useSearchPage(
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0].isIntersecting && isSearchStateRestored()) {
-					fetchNextPage();
+					void fetchNextPage();
 				}
 			},
 			{ threshold: 0.5, rootMargin: "2400px" },

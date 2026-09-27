@@ -247,7 +247,8 @@ function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
 			.filter((line) => line.trim().length > 0);
 		outputs = lines.reduce<YtDlpOutput[]>((acc, line) => {
 			try {
-				acc.push(JSON.parse(line));
+				const parsed: unknown = JSON.parse(line);
+				acc.push(ytDlpOutputSchema.parse(parsed));
 			} catch (e) {
 				logger.warn({ err: e, line }, "Failed to parse yt-dlp JSON line");
 			}
@@ -859,9 +860,13 @@ export async function queueDownloadJobs(
 
 	const newItems: DownloadItem[] = [];
 	let skippedCount = 0;
-	for (const result of poolResults) {
+	for (const [index, result] of poolResults.entries()) {
 		if (result.status === "rejected") {
-			newItems.push(result.reason.item);
+			logger.warn(
+				{ err: result.reason, item: items[index] },
+				"Failed to check duplicate download item; keeping it in the batch",
+			);
+			newItems.push(items[index]);
 		} else if (result.value.skip) {
 			skippedCount++;
 		} else {

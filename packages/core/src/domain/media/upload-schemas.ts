@@ -10,7 +10,7 @@ export type Conflict = z.infer<typeof conflictSchema>;
 const baseUploadFields = {
 	description: z.string().optional(),
 	// Allow valid URL or empty string (which acts as "no URL")
-	sourceUrl: z.string().url("Invalid URL format").or(z.literal("")).optional(),
+	sourceUrl: z.url("Invalid URL format").or(z.literal("")).optional(),
 };
 
 // Schema for Frontend UI Form
@@ -18,7 +18,7 @@ const baseUploadFields = {
 export const uploadMediaFormSchema = z.object({
 	description: z.string(),
 	// Allow valid URL or empty string (which acts as "no URL")
-	sourceUrl: z.string().url("Invalid URL format").or(z.literal("")),
+	sourceUrl: z.url("Invalid URL format").or(z.literal("")),
 	filename: z.string().min(1, "Filename is required"),
 	overwrite: z.boolean(),
 	autoIncrement: z.boolean(),

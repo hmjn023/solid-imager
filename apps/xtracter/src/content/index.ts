@@ -156,26 +156,33 @@ function handleAction(
 	if (mediaType === "VIDEO") {
 		chrome.runtime.sendMessage(
 			{ type: "GET_COOKIES", url: tweetUrl },
-			(cookies) => {
-				if (cookies) {
+			(cookies: unknown) => {
+				if (Array.isArray(cookies)) {
 					metadata.cookies = cookies;
 				}
-				chrome.runtime.sendMessage({ type, data: metadata });
+				void chrome.runtime.sendMessage({ type, data: metadata });
 			},
 		);
 	} else {
-		chrome.runtime.sendMessage({ type, data: metadata });
+		void chrome.runtime.sendMessage({ type, data: metadata });
 	}
 }
 
 const processedMetadata = new Map<string, DownloadItem>();
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-	if (message.type === "GET_METADATA") {
-		const allMetadata = Array.from(processedMetadata.values());
-		sendResponse(allMetadata);
-	}
-});
+chrome.runtime.onMessage.addListener(
+	(message: unknown, _sender, sendResponse) => {
+		if (
+			typeof message === "object" &&
+			message !== null &&
+			"type" in message &&
+			message.type === "GET_METADATA"
+		) {
+			const allMetadata = Array.from(processedMetadata.values());
+			sendResponse(allMetadata);
+		}
+	},
+);
 
 function processMedia() {
 	const hostname = window.location.hostname;

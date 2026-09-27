@@ -43,7 +43,9 @@ export const ThumbnailService = {
 			await fs.rm(cacheDir, { recursive: true, force: true });
 			return { success: true };
 		} catch (error) {
-			throw new Error(`Failed to clear thumbnail cache: ${error}`);
+			throw new Error(
+				`Failed to clear thumbnail cache: ${error instanceof Error ? error.message : String(error)}`,
+			);
 		}
 	},
 };

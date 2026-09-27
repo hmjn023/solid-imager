@@ -19,6 +19,14 @@ export type ClientOptions = {
 type JobArtifactInput = { id: string };
 type JobArtifactOptions = { signal?: AbortSignal };
 
+function readProperty(
+	target: object,
+	property: PropertyKey,
+	receiver: unknown,
+): unknown {
+	return Reflect.get(target, property, receiver);
+}
+
 // The server intentionally returns this root-level artifact as a raw stream.
 // The regular oRPC JSON decoder cannot deserialize a stream body, so this one
 // procedure must be fetched directly while the other procedures use RPCLink.
@@ -66,10 +74,10 @@ function withStreamingJobArtifactDownload<C extends AnyContractRouter>(
 	return new Proxy(client as object, {
 		get(target, property, receiver) {
 			if (property !== "jobs") {
-				return Reflect.get(target, property, receiver);
+				return readProperty(target, property, receiver);
 			}
 
-			const jobs = Reflect.get(target, property, receiver);
+			const jobs = readProperty(target, property, receiver);
 			if (typeof jobs !== "function") {
 				return jobs;
 			}
@@ -77,7 +85,7 @@ function withStreamingJobArtifactDownload<C extends AnyContractRouter>(
 			return new Proxy(jobs, {
 				get(jobsTarget, jobsProperty, jobsReceiver) {
 					if (jobsProperty !== "downloadArtifact") {
-						return Reflect.get(jobsTarget, jobsProperty, jobsReceiver);
+						return readProperty(jobsTarget, jobsProperty, jobsReceiver);
 					}
 
 					return (input: JobArtifactInput, options?: JobArtifactOptions) =>

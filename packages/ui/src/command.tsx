@@ -101,7 +101,7 @@ const CommandList: Component<ParentProps<CommandPrimitive.CommandListProps>> = (
 
 	return (
 		<CommandPrimitive.CommandList
-			class={cn("max-h-[300px] overflow-y-auto overflow-x-hidden", local.class)}
+			class={cn("max-h-72 overflow-y-auto overflow-x-hidden", local.class)}
 			{...others}
 		/>
 	);

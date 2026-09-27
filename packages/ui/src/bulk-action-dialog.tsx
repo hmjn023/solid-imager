@@ -173,7 +173,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 
 	return (
 		<Dialog open={props.open} onOpenChange={props.onOpenChange}>
-			<DialogContent class="workspace-theme sm:max-w-[425px]">
+			<DialogContent class="workspace-theme sm:max-w-dialog-xs">
 				<DialogHeader>
 					<DialogTitle>一括操作を実行</DialogTitle>
 					<DialogDescription>
@@ -183,10 +183,8 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 				</DialogHeader>
 
 				<div class="grid gap-4 py-4">
-					<div class="flex flex-col gap-2">
-						<label class="font-medium text-sm" for="bulk-action-type">
-							操作を選択
-						</label>
+					<label class="flex flex-col gap-2 font-medium text-sm">
+						操作を選択
 						<select
 							id="bulk-action-type"
 							class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -201,13 +199,11 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 							<option value="move-folder">フォルダ移動 (同一ソース内)</option>
 							<option value="delete">一括削除</option>
 						</select>
-					</div>
+					</label>
 
 					<Show when={action() === "copy-source" || action() === "move-source"}>
-						<div class="flex flex-col gap-2">
-							<label class="font-medium text-sm" for="target-source-id">
-								コピー/移動先のソース
-							</label>
+						<label class="flex flex-col gap-2 font-medium text-sm">
+							コピー/移動先のソース
 							<select
 								id="target-source-id"
 								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -221,15 +217,14 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 									{(source) => <option value={source.id}>{source.name}</option>}
 								</For>
 							</select>
-						</div>
+						</label>
 					</Show>
 
 					<Show when={action() === "move-folder"}>
-						<div class="flex flex-col gap-2">
-							<label class="font-medium text-sm" for="destination-path">
-								移動先フォルダパス
-							</label>
+						<div class="flex flex-col gap-2 font-medium text-sm">
+							<span id="destination-path-label">移動先フォルダパス</span>
 							<Input
+								aria-labelledby="destination-path-label"
 								id="destination-path"
 								placeholder="e.g. subfolder/new-dir"
 								value={destinationPath()}
@@ -247,7 +242,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 					</Show>
 
 					<Show when={errorMsg()}>
-						<div class="font-medium text-red-500 text-sm">{errorMsg()}</div>
+						<div class="font-medium text-destructive text-sm">{errorMsg()}</div>
 					</Show>
 				</div>
 
@@ -265,7 +260,9 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 							(sources.loading &&
 								(action() === "copy-source" || action() === "move-source"))
 						}
-						onClick={handleConfirm}
+						onClick={() => {
+							void handleConfirm();
+						}}
 						variant={action() === "delete" ? "destructive" : "default"}
 					>
 						{isSubmitting() ? "処理中..." : "確定"}

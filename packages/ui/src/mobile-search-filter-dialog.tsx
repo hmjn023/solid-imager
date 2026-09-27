@@ -103,10 +103,10 @@ function CurrentSearchConditions(props: {
 
 	return (
 		<div
+			aria-atomic="true"
 			aria-live="polite"
 			class="rounded-md border bg-muted/40 p-3 text-sm"
 			data-testid="current-search-conditions"
-			role="status"
 		>
 			<div class="flex items-center justify-between gap-3">
 				<span class="font-medium">現在の条件</span>

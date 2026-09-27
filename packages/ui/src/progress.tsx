@@ -10,9 +10,12 @@ import { splitProps } from "solid-js";
 
 import { cn } from "./utils/cn";
 
-const ProgressRoot: Component<ComponentProps<typeof ProgressPrimitiveRoot>> = (
-	props,
-) => {
+type ProgressRootProps = Omit<
+	ComponentProps<typeof ProgressPrimitiveRoot>,
+	"class"
+> & { class?: string | undefined };
+
+const ProgressRoot: Component<ProgressRootProps> = (props) => {
 	const [, rest] = splitProps(props, ["children", "class"]);
 	return (
 		<ProgressPrimitiveRoot

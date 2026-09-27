@@ -1,5 +1,7 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { DetectAndCropResponse } from "@solid-imager/core/domain/tagging/schemas";
+import Scan from "lucide-solid/icons/scan";
+import ScanFace from "lucide-solid/icons/scan-face";
 import { createEffect, createSignal, For, Show, untrack } from "solid-js";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import {
@@ -30,7 +32,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 
 	createEffect(() => {
 		if (props.isOpen) {
-			detectAndCrop();
+			void detectAndCrop();
 		} else {
 			setResult(null);
 			setError(null);
@@ -54,7 +56,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 	const handleTransparentToggle = () => {
 		setTransparent((prev) => !prev);
 		if (result() !== null) {
-			detectAndCrop();
+			void detectAndCrop();
 		}
 	};
 
@@ -63,10 +65,10 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 			onOpenChange={(open) => !open && props.onClose()}
 			open={props.isOpen}
 		>
-			<DialogContent class="sm:max-w-[900px]">
+			<DialogContent class="sm:max-w-dialog-xl">
 				<DialogHeader>
 					<DialogTitle class="flex items-center gap-2">
-						<span class="i-lucide-scan text-indigo-600" />
+						<Scan class="size-4 text-info-foreground" />
 						Detect &amp; Crop Characters (Experimental)
 					</DialogTitle>
 					<DialogDescription>
@@ -77,7 +79,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 
 				<div class="flex items-center gap-2 py-2">
 					<Checkbox checked={transparent()} onChange={handleTransparentToggle}>
-						<CheckboxControl class="h-4 w-4 rounded border-gray-300 bg-white text-primary shadow-sm" />
+						<CheckboxControl class="h-4 w-4 rounded border-input bg-white text-primary shadow-sm" />
 						<CheckboxLabel class="cursor-pointer text-sm">
 							Transparent background (ISNetIS segmentation, slower)
 						</CheckboxLabel>
@@ -87,8 +89,8 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 				<div class="py-2">
 					<Show when={isLoading()}>
 						<div class="flex flex-col items-center justify-center py-12">
-							<div class="h-10 w-10 animate-spin rounded-full border-4 border-indigo-500 border-t-transparent" />
-							<span class="mt-4 font-medium text-gray-600 text-sm">
+							<div class="h-10 w-10 animate-spin rounded-full border-4 border-info-foreground border-t-transparent" />
+							<span class="mt-4 font-medium text-muted-foreground text-sm">
 								{transparent()
 									? "Running person detection & segmentation..."
 									: "Running person detection and cropping..."}
@@ -97,7 +99,7 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 					</Show>
 
 					<Show when={error()}>
-						<div class="rounded-md border border-red-200 bg-red-50 p-4 text-red-700">
+						<div class="rounded-md border border-error bg-error p-4 text-destructive">
 							<h4 class="font-semibold">Detection Error</h4>
 							<p class="mt-1 text-sm">{error()}</p>
 						</div>
@@ -106,8 +108,8 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 					<Show when={result()}>
 						<Show
 							fallback={
-								<div class="py-8 text-center text-gray-500">
-									<span class="i-lucide-scan-face inline-block h-12 w-12" />
+								<div class="py-8 text-center text-muted-foreground">
+									<ScanFace class="inline-block size-12" />
 									<p class="mt-2">No persons detected in this image.</p>
 								</div>
 							}
@@ -116,9 +118,9 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 							<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
 								<For each={result()?.detections ?? []}>
 									{(det) => (
-										<div class="overflow-hidden rounded-lg border bg-gray-50">
+										<div class="overflow-hidden rounded-lg border bg-background">
 											<div
-												class="relative bg-gray-100"
+												class="relative bg-muted"
 												classList={{
 													"bg-[url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAAMklEQVQ4T2NkYPj/n4EBCxg5ODgYqIIxMTAwMDAwMDAzMDIwsDAwMDIwsDAwMDBQJ8AAAP//AwBpuQYZjU6F0AAAAABJRU5ErkJggg==)]":
 														transparent(),
@@ -135,14 +137,14 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 											</div>
 											<div class="space-y-1 p-3 text-sm">
 												<div class="flex items-center justify-between">
-													<span class="font-medium capitalize text-gray-800">
+													<span class="font-medium capitalize text-foreground">
 														{det.label}
 													</span>
-													<span class="rounded bg-indigo-100 px-1.5 py-0.5 font-semibold text-indigo-700 text-xs">
+													<span class="rounded bg-info px-1.5 py-0.5 font-semibold text-info-foreground text-xs">
 														{(det.score * PERCENTAGE_MULTIPLIER).toFixed(1)}%
 													</span>
 												</div>
-												<div class="text-gray-500 text-xs">
+												<div class="text-muted-foreground text-xs">
 													{det.width} x {det.height}
 												</div>
 											</div>

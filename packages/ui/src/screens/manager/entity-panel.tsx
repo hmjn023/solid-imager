@@ -22,14 +22,14 @@ import {
 export function ManagerTableSkeleton() {
 	return (
 		<LoadingRegion label="管理データを読み込んでいます...">
-			<div class="overflow-hidden rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)]">
-				<div class="h-9 animate-pulse bg-[var(--workspace-surface-muted)] motion-reduce:animate-none" />
+			<div class="overflow-hidden rounded-md border border-border bg-card">
+				<div class="h-9 animate-pulse bg-muted motion-reduce:animate-none" />
 				<For each={[1, 2, 3, 4, 5]}>
 					{() => (
-						<div class="grid h-14 grid-cols-[2fr_3fr_1fr] gap-4 border-[var(--workspace-border)] border-t px-4 py-3">
-							<span class="rounded bg-[var(--workspace-surface-muted)]" />
-							<span class="rounded bg-[var(--workspace-surface-muted)]" />
-							<span class="rounded bg-[var(--workspace-surface-muted)]" />
+						<div class="grid h-14 grid-cols-entity-summary gap-4 border-border border-t px-4 py-3">
+							<span class="rounded bg-muted" />
+							<span class="rounded bg-muted" />
+							<span class="rounded bg-muted" />
 						</div>
 					)}
 				</For>
@@ -56,43 +56,39 @@ function EntityInspector(props: {
 	return (
 		<aside
 			aria-label="選択中の項目"
-			class="hidden self-start rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-4 2xl:block"
+			class="hidden self-start rounded-md border border-border bg-card p-4 2xl:block"
 		>
-			<p class="text-xs text-[var(--workspace-text-muted)]">
+			<p class="text-xs text-muted-foreground">
 				Selected {singularLabel(active())}
 			</p>
-			<h3 class="mt-1 break-words font-semibold text-base text-[var(--workspace-text)]">
+			<h3 class="mt-1 break-words font-semibold text-base text-foreground">
 				{props.item.name}
 			</h3>
-			<p class="mt-2 text-xs leading-5 text-[var(--workspace-text-secondary)]">
+			<p class="mt-2 text-xs leading-5 text-muted-foreground">
 				{props.item.description || "No description"}
 			</p>
-			<dl class="mt-4 space-y-3 border-[var(--workspace-border)] border-y py-4 text-xs">
-				<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
-					<dt class="text-[var(--workspace-text-muted)]">ID</dt>
-					<dd class="break-all text-[var(--workspace-text)]">
-						{props.item.id}
-					</dd>
+			<dl class="mt-4 space-y-3 border-border border-y py-4 text-xs">
+				<div class="grid grid-cols-label-field gap-3">
+					<dt class="text-muted-foreground">ID</dt>
+					<dd class="break-all text-foreground">{props.item.id}</dd>
 				</div>
-				<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
-					<dt class="text-[var(--workspace-text-muted)]">Updated</dt>
-					<dd class="text-[var(--workspace-text)]">
-						{formatDate(props.item.updatedAt)}
-					</dd>
+				<div class="grid grid-cols-label-field gap-3">
+					<dt class="text-muted-foreground">Updated</dt>
+					<dd class="text-foreground">{formatDate(props.item.updatedAt)}</dd>
 				</div>
 				<Show when={isCharacter(props.item) || isIp(props.item)}>
-					<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
-						<dt class="text-[var(--workspace-text-muted)]">
+					<div class="grid grid-cols-label-field gap-3">
+						<dt class="text-muted-foreground">
 							{isCharacter(props.item) ? "IPs" : "Source"}
 						</dt>
-						<dd class="break-words text-[var(--workspace-text)]">
+						<dd class="break-words text-foreground">
 							{relationSummary(props.item)}
 						</dd>
 					</div>
 				</Show>
-				<div class="grid grid-cols-[5rem_minmax(0,1fr)] gap-3">
-					<dt class="text-[var(--workspace-text-muted)]">Media</dt>
-					<dd class="text-[var(--workspace-text)]">
+				<div class="grid grid-cols-label-field gap-3">
+					<dt class="text-muted-foreground">Media</dt>
+					<dd class="text-foreground">
 						{props.item.mediaCount?.toLocaleString() ?? "—"}
 					</dd>
 				</div>
@@ -149,10 +145,10 @@ export function EntityTablePanel(props: {
 		<div class="min-w-0">
 			<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 				<div>
-					<h2 class="font-semibold text-lg text-[var(--workspace-text)]">
+					<h2 class="font-semibold text-lg text-foreground">
 						{categoryLabel(active())}
 					</h2>
-					<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+					<p class="mt-0.5 text-xs text-muted-foreground">
 						Create, review, and maintain {categoryLabel(active()).toLowerCase()}
 						.
 					</p>
@@ -166,17 +162,17 @@ export function EntityTablePanel(props: {
 				</Button>
 			</div>
 
-			<div class="grid min-w-0 gap-4 2xl:grid-cols-[minmax(0,1fr)_20rem]">
+			<div class="grid min-w-0 gap-4 2xl:grid-cols-manager-sidebar">
 				<div class="min-w-0">
 					<div class="relative mb-3">
 						<Search
 							aria-hidden="true"
-							class="absolute top-1/2 left-3 -translate-y-1/2 text-[var(--workspace-text-muted)]"
+							class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
 							size={15}
 						/>
 						<Input
 							aria-label={`${categoryLabel(active())}を検索`}
-							class="h-9 bg-[var(--workspace-surface)] pl-9 shadow-none"
+							class="h-9 bg-card pl-9 shadow-none"
 							onInput={(event) =>
 								props.onQueryChange(event.currentTarget.value)
 							}
@@ -199,12 +195,12 @@ export function EntityTablePanel(props: {
 						}
 						when={items().length > 0}
 					>
-						<div class="overflow-x-auto rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] [scrollbar-gutter:stable]">
-							<table class="w-full min-w-[46rem] border-collapse text-left text-sm">
+						<div class="overflow-x-auto rounded-md border border-border bg-card scrollbar-stable">
+							<table class="w-full min-w-table-standard border-collapse text-left text-sm">
 								<caption class="sr-only">
 									{categoryLabel(active())}の一覧。{items().length}件。
 								</caption>
-								<thead class="bg-[var(--workspace-surface-muted)] text-xs text-[var(--workspace-text-muted)]">
+								<thead class="bg-muted text-xs text-muted-foreground">
 									<tr>
 										<th class="px-3 py-2 font-medium" scope="col">
 											Name
@@ -230,22 +226,17 @@ export function EntityTablePanel(props: {
 										</th>
 									</tr>
 								</thead>
-								<tbody class="divide-y divide-[var(--workspace-border)]">
+								<tbody class="divide-y divide-border">
 									<For each={items()}>
 										{(item) => {
 											const selected = () => selectedItem()?.id === item.id;
 											return (
-												<tr
-													class={
-														selected()
-															? "bg-[var(--workspace-surface-selected)]"
-															: "hover:bg-[var(--workspace-surface-muted)]"
-													}
-												>
+												<tr class={selected() ? "bg-accent" : "hover:bg-muted"}>
 													<th class="p-0 font-normal" scope="row">
 														<button
+															aria-label={item.name}
 															aria-pressed={selected()}
-															class="block min-h-12 w-full px-3 py-2 text-left font-medium text-[var(--workspace-text)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-focus)]"
+															class="block min-h-12 w-full px-3 py-2 text-left font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 															onClick={() => props.onSelect(item.id)}
 															type="button"
 														>
@@ -254,22 +245,22 @@ export function EntityTablePanel(props: {
 															</span>
 														</button>
 													</th>
-													<td class="max-w-[28rem] px-3 py-2 text-xs text-[var(--workspace-text-secondary)]">
+													<td class="max-w-dialog-reading px-3 py-2 text-xs text-muted-foreground">
 														<span class="line-clamp-2">
 															{item.description || "No description"}
 														</span>
 													</td>
-													<td class="max-w-52 px-3 py-2 text-xs text-[var(--workspace-text-secondary)]">
+													<td class="max-w-52 px-3 py-2 text-xs text-muted-foreground">
 														<span class="block truncate">
 															{active() === "projects"
 																? "Active"
 																: relationSummary(item)}
 														</span>
 													</td>
-													<td class="whitespace-nowrap px-3 py-2 text-xs text-[var(--workspace-text-secondary)]">
+													<td class="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
 														{item.mediaCount?.toLocaleString() ?? "—"}
 													</td>
-													<td class="whitespace-nowrap px-3 py-2 text-xs text-[var(--workspace-text-muted)]">
+													<td class="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
 														{formatDate(item.updatedAt)}
 													</td>
 													<td class="px-3 py-2">
@@ -306,10 +297,7 @@ export function EntityTablePanel(props: {
 								</tbody>
 							</table>
 						</div>
-						<p
-							class="mt-2 text-xs text-[var(--workspace-text-muted)]"
-							aria-live="polite"
-						>
+						<p class="mt-2 text-xs text-muted-foreground" aria-live="polite">
 							{items().length} items
 						</p>
 					</Show>

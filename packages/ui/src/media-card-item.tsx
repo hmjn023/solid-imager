@@ -81,12 +81,14 @@ export function MediaCardItem(props: MediaCardItemProps) {
 			<div class="group relative">
 				<div
 					class={cn(
-						"flex aspect-video w-full items-center justify-center overflow-hidden bg-gray-100",
+						"flex aspect-video w-full items-center justify-center overflow-hidden bg-muted",
 						props.thumbnailContainerClass,
 					)}
 				>
 					<Show
-						fallback={<div class="text-gray-400">{props.media.mediaType}</div>}
+						fallback={
+							<div class="text-muted-foreground">{props.media.mediaType}</div>
+						}
 						when={canRenderThumbnail()}
 					>
 						{props.renderThumbnail({
@@ -116,7 +118,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 							onClick={(event) => event.stopPropagation()}
 							onChange={() => props.onSelect?.(props.media.id)}
 						>
-							<CheckboxControl class="h-5 w-5 rounded border-gray-300 bg-white text-primary shadow-sm focus:ring-primary" />
+							<CheckboxControl class="h-5 w-5 rounded border-input bg-white text-primary shadow-sm focus:ring-primary" />
 							<CheckboxLabel class="sr-only">Select media</CheckboxLabel>
 						</Checkbox>
 					</div>

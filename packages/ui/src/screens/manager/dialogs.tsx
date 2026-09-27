@@ -175,7 +175,9 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						</Button>
 						<Button
 							disabled={!props.manager.formData().name.trim()}
-							onClick={props.manager.handleSave}
+							onClick={() => {
+								void props.manager.handleSave();
+							}}
 						>
 							Save
 						</Button>
@@ -224,7 +226,9 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							onClick={props.manager.handleConfirmDelete}
+							onClick={() => {
+								void props.manager.handleConfirmDelete();
+							}}
 						>
 							Delete
 						</AlertDialogAction>
@@ -247,7 +251,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 					<div class="max-h-48 overflow-y-auto overscroll-contain text-sm">
 						<For each={props.manager.duplicatesToDelete()}>
 							{(item) => (
-								<div class="truncate border-[var(--workspace-border)] border-b py-1 text-[var(--workspace-text-secondary)]">
+								<div class="truncate border-border border-b py-1 text-muted-foreground">
 									{item.fileName}
 								</div>
 							)}
@@ -257,7 +261,9 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							onClick={props.manager.handleConfirmDeleteDuplicates}
+							onClick={() => {
+								void props.manager.handleConfirmDeleteDuplicates();
+							}}
 						>
 							Delete {props.manager.duplicatesToDelete().length}
 						</AlertDialogAction>

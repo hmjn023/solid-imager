@@ -23,7 +23,10 @@ const BULK_RETRY_CONCURRENCY = 8;
 
 export const Route = createFileRoute("/jobs")({
 	loader: ({ context }) => {
-		void context.queryClient.prefetchQuery(jobsQueryOptions());
+		void context.queryClient.query(jobsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
 	},
 	component: JobsRoute,
 });

@@ -21,7 +21,7 @@ export const projectsContract = {
 			summary: "プロジェクト取得",
 			description: "UUIDで指定したプロジェクトの情報を取得します。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(projectSchema),
 
 	create: oc
@@ -41,7 +41,7 @@ export const projectsContract = {
 		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				data: updateProjectSchema,
 			}),
 		)
@@ -53,7 +53,7 @@ export const projectsContract = {
 			summary: "プロジェクト削除",
 			description: "UUIDで指定したプロジェクトを削除します。",
 		})
-		.input(z.object({ id: z.string().uuid() })),
+		.input(z.object({ id: z.uuid() })),
 
 	listForMedia: oc
 		.route({
@@ -62,7 +62,7 @@ export const projectsContract = {
 			description:
 				"指定したメディアに関連付けられているプロジェクトを一覧で取得します。",
 		})
-		.input(z.object({ mediaId: z.string().uuid() }))
+		.input(z.object({ mediaId: z.uuid() }))
 		.output(z.array(projectSchema)),
 
 	addToMedia: oc
@@ -73,8 +73,8 @@ export const projectsContract = {
 		})
 		.input(
 			z.object({
-				mediaId: z.string().uuid(),
-				projectId: z.string().uuid(),
+				mediaId: z.uuid(),
+				projectId: z.uuid(),
 			}),
 		),
 
@@ -86,8 +86,8 @@ export const projectsContract = {
 		})
 		.input(
 			z.object({
-				mediaId: z.string().uuid(),
-				projectId: z.string().uuid(),
+				mediaId: z.uuid(),
+				projectId: z.uuid(),
 			}),
 		),
 };

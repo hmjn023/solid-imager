@@ -207,7 +207,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	createEffect(() => {
 		const url = form.state.values.sourceUrl;
 		if (
-			!(url && props.onFetchUrl && z.string().url().safeParse(url).success) ||
+			!(url && props.onFetchUrl && z.url().safeParse(url).success) ||
 			url === lastFetchedUrl()
 		) {
 			return;
@@ -296,7 +296,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 				open={props.isOpen}
 			>
 				<Show when={props.isOpen}>
-					<DialogContent class="sm:max-w-[560px]">
+					<DialogContent class="sm:max-w-dialog-md">
 						<DialogHeader>
 							<DialogTitle>メディアをアップロード</DialogTitle>
 							<DialogDescription>
@@ -501,7 +501,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								</form.Field>
 
 								<Show when={(props.conflicts?.length ?? 0) > 0}>
-									<div class="rounded-md border border-[var(--workspace-border-strong)] bg-[var(--workspace-warning-surface)] p-3 text-[var(--workspace-warning)] text-sm">
+									<div class="rounded-md border border-input bg-warning p-3 text-warning-foreground text-sm">
 										<p class="font-medium">同名ファイルがあります</p>
 										<ul class="mt-2 list-disc space-y-1 pl-5">
 											<For each={props.conflicts}>
@@ -532,9 +532,9 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 											</div>
 											<div class="mt-2 h-2 overflow-hidden rounded bg-muted">
 												<div
-													class="h-full bg-primary transition-all"
+													class="upload-progress-fill h-full bg-primary transition-all"
 													style={{
-														width: (() => {
+														"--upload-progress-width": (() => {
 															const total = progress().total;
 															return total
 																? `${Math.min(100, ((progress().current ?? 0) / total) * 100)}%`

@@ -305,7 +305,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 				open={props.isOpen}
 			>
 				<DialogContent
-					class="sm:max-w-[500px]"
+					class="sm:max-w-dialog-sm"
 					onCloseAutoFocus={(event) => {
 						if (restoreFocusElement?.isConnected) {
 							event.preventDefault();

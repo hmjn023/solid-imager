@@ -32,20 +32,20 @@ export const jobProgressSchema = z
  * because job payloads may contain local paths or other implementation data.
  */
 export const jobDtoSchema = z.object({
-	id: z.string().uuid(),
+	id: z.uuid(),
 	type: z.string(),
-	mediaSourceId: z.string().uuid().nullable(),
+	mediaSourceId: z.uuid().nullable(),
 	status: jobStatusSchema,
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
-	parentId: z.string().uuid().nullable(),
+	parentId: z.uuid().nullable(),
 	error: z.string().nullable(),
 	cancelRequestedAt: z.coerce.date().nullable(),
 	cancelledAt: z.coerce.date().nullable(),
 	attemptCount: z.number().int().nonnegative(),
 	startedAt: z.coerce.date().nullable(),
 	finishedAt: z.coerce.date().nullable(),
-	targetMediaId: z.string().uuid().nullable(),
+	targetMediaId: z.uuid().nullable(),
 	targetMediaModifiedAt: z.coerce.date().nullable(),
 	progress: jobProgressSchema,
 	artifact: z
@@ -72,7 +72,7 @@ export const jobListResponseSchema = z.object({
 export type JobListResponse = z.infer<typeof jobListResponseSchema>;
 
 export const jobIdRequestSchema = z.object({
-	id: z.string().uuid(),
+	id: z.uuid(),
 });
 export type JobIdRequest = z.infer<typeof jobIdRequestSchema>;
 

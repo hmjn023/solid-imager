@@ -23,7 +23,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 		</LoadingRegion>
 	);
 	return (
-		<div class="flex h-full min-h-0 w-full flex-col bg-[var(--workspace-canvas)]">
+		<div class="flex h-full min-h-0 w-full flex-col bg-background">
 			<Suspense fallback={renderPending()}>
 				<MediaDetailScreenController
 					{...props}
@@ -35,11 +35,11 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 								() => void onUpdate(),
 								sourceRootPath,
 							)}
-							<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:overflow-hidden [scrollbar-gutter:stable]">
+							<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden scrollbar-stable">
 								<div class="min-w-0 lg:min-h-0 lg:overflow-hidden">
 									{props.renderMediaViewer(details, sourceRootPath)}
 								</div>
-								<div class="min-w-0 border-[var(--workspace-border)] border-t lg:min-h-0 lg:border-t-0 lg:border-l">
+								<div class="min-w-0 border-border border-t lg:min-h-0 lg:border-t-0 lg:border-l">
 									{props.renderMediaSidebar(
 										details,
 										isUpdating,

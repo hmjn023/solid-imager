@@ -17,7 +17,7 @@ export const ipsContract = {
 			summary: "IP取得",
 			description: "UUIDで指定したIPの情報を取得します。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(ipSchema),
 
 	create: oc
@@ -42,7 +42,7 @@ export const ipsContract = {
 		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				data: z.object({
 					name: z.string().optional(),
 					description: z.string().optional(),
@@ -57,7 +57,7 @@ export const ipsContract = {
 			summary: "IP削除",
 			description: "UUIDで指定したIPを削除します。",
 		})
-		.input(z.object({ id: z.string().uuid() })),
+		.input(z.object({ id: z.uuid() })),
 
 	listForMedia: oc
 		.route({
@@ -65,7 +65,7 @@ export const ipsContract = {
 			summary: "メディアのIP一覧取得",
 			description: "指定したメディアに関連付けられているIPを一覧で取得します。",
 		})
-		.input(z.object({ mediaId: z.string().uuid() }))
+		.input(z.object({ mediaId: z.uuid() }))
 		.output(z.array(ipSchema)),
 
 	addToMedia: oc
@@ -76,8 +76,8 @@ export const ipsContract = {
 		})
 		.input(
 			z.object({
-				mediaId: z.string().uuid(),
-				ipId: z.string().uuid(),
+				mediaId: z.uuid(),
+				ipId: z.uuid(),
 			}),
 		),
 
@@ -89,8 +89,8 @@ export const ipsContract = {
 		})
 		.input(
 			z.object({
-				mediaId: z.string().uuid(),
-				ipId: z.string().uuid(),
+				mediaId: z.uuid(),
+				ipId: z.uuid(),
 			}),
 		),
 };

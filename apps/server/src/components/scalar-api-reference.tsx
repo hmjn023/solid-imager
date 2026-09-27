@@ -18,5 +18,12 @@ export function ScalarApiReference() {
 		onCleanup(() => reference.destroy());
 	});
 
-	return <div class="min-h-screen" ref={referenceElement} />;
+	return (
+		<div
+			class="min-h-screen"
+			ref={(element) => {
+				referenceElement = element;
+			}}
+		/>
+	);
 }

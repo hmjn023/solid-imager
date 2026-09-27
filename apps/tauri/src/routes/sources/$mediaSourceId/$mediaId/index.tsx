@@ -14,10 +14,16 @@ import { mediaDetailsQueryOptions, mediaSourcesQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: ({ context, params }) => {
-		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
-		void context.queryClient.prefetchQuery(
-			mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId),
+		void context.queryClient.query(mediaSourcesQueryOptions()).then(
+			() => undefined,
+			() => undefined,
 		);
+		void context.queryClient
+			.query(mediaDetailsQueryOptions(params.mediaSourceId, params.mediaId))
+			.then(
+				() => undefined,
+				() => undefined,
+			);
 		return {
 			mediaId: params.mediaId,
 			mediaSourceId: params.mediaSourceId,

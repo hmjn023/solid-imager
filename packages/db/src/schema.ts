@@ -34,7 +34,7 @@ function isCcipVector(value: unknown): value is number[] {
 }
 
 function parseCcipVector(value: string | number[]): number[] {
-	const parsed = typeof value === "string" ? JSON.parse(value) : value;
+	const parsed: unknown = typeof value === "string" ? JSON.parse(value) : value;
 	if (!isCcipVector(parsed)) {
 		throw new Error(
 			`Expected a finite ${CCIP_VECTOR_DIMENSIONS}-dimension vector`,
@@ -211,25 +211,22 @@ export const medias = pgTable(
 		/** メディアの状態 */
 		status: mediaOrganizationStatusEnum("status").notNull().default("active"),
 	},
-	(table) => ({
-		mediaSourceIdFilePathUnique: unique("source_id_file_path_unique").on(
+	(table) => [
+		unique("source_id_file_path_unique").on(
 			table.mediaSourceId,
 			table.filePath,
 		),
-		mediaSourceIdIndex: index("idx_media_source_id").on(
-			table.mediaSourceId,
-			table.id,
-		),
-		mediaSourceCreatedAtIdIndex: index("idx_media_source_created_at_id").on(
+		index("idx_media_source_id").on(table.mediaSourceId, table.id),
+		index("idx_media_source_created_at_id").on(
 			table.mediaSourceId,
 			table.createdAt,
 			table.id,
 		),
-		fileSizeIndex: index("idx_media_file_size").on(table.fileSize),
-		fileNameIndex: index("idx_media_file_name").on(table.fileName),
-		createdAtIndex: index("idx_media_created_at").on(table.createdAt),
-		descriptionIndex: index("idx_media_description").on(table.description),
-	}),
+		index("idx_media_file_size").on(table.fileSize),
+		index("idx_media_file_name").on(table.fileName),
+		index("idx_media_created_at").on(table.createdAt),
+		index("idx_media_description").on(table.description),
+	],
 );
 
 /**
@@ -258,12 +255,12 @@ export const mediaRegions = pgTable(
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		mediaIdIndex: index("idx_media_regions_media_id").on(table.mediaId),
-		oneFullRegionPerMedia: uniqueIndex("uq_media_regions_full_media_id")
+	(table) => [
+		index("idx_media_regions_media_id").on(table.mediaId),
+		uniqueIndex("uq_media_regions_full_media_id")
 			.on(table.mediaId)
 			.where(sql`${table.kind} = 'full'`),
-		bboxByKind: check(
+		check(
 			"media_regions_bbox_by_kind",
 			sql`(
 				(${table.kind} = 'full' AND ${table.x} IS NULL AND ${table.y} IS NULL AND ${table.width} IS NULL AND ${table.height} IS NULL)
@@ -273,11 +270,11 @@ export const mediaRegions = pgTable(
 					AND ${table.x} + ${table.width} <= 1 AND ${table.y} + ${table.height} <= 1)
 			)`,
 		),
-		scoreRange: check(
+		check(
 			"media_regions_score_range",
 			sql`${table.score} IS NULL OR (${table.score} >= 0 AND ${table.score} <= 1)`,
 		),
-	}),
+	],
 );
 
 /**
@@ -301,15 +298,17 @@ export const ccipEmbeddings = pgTable(
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		regionModelVersionUnique: unique(
-			"uq_ccip_embeddings_region_model_version",
-		).on(table.regionId, table.model, table.embeddingVersion),
-		regionIdIndex: index("idx_ccip_embeddings_region_id").on(table.regionId),
-		embeddingCosineIndex: index("idx_ccip_embeddings_embedding_cosine")
+	(table) => [
+		unique("uq_ccip_embeddings_region_model_version").on(
+			table.regionId,
+			table.model,
+			table.embeddingVersion,
+		),
+		index("idx_ccip_embeddings_region_id").on(table.regionId),
+		index("idx_ccip_embeddings_embedding_cosine")
 			.using("hnsw", table.embedding.op("vector_cosine_ops"))
 			.with({ m: 16, ef_construction: 64 }),
-	}),
+	],
 );
 
 /**
@@ -341,10 +340,10 @@ export const tags = pgTable(
 		/** 更新日時 */
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		nameUnique: unique("tags_name_unique").on(table.name),
-		authorIdIndex: index("idx_tags_author_id").on(table.authorId),
-	}),
+	(table) => [
+		unique("tags_name_unique").on(table.name),
+		index("idx_tags_author_id").on(table.authorId),
+	],
 );
 
 /**
@@ -369,12 +368,14 @@ export const mediaTags = pgTable(
 		/** メディアへのタグ付与の起源 (manual, comfyui_workflow, tagger_program_Aなど) */
 		source: text("source").notNull().default("manual"),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.mediaId, table.tagId, table.tagType] }),
-		tagIdTagTypeMediaIdIndex: index(
-			"idx_media_tags_tag_id_tag_type_media_id",
-		).on(table.tagId, table.tagType, table.mediaId),
-	}),
+	(table) => [
+		primaryKey({ columns: [table.mediaId, table.tagId, table.tagType] }),
+		index("idx_media_tags_tag_id_tag_type_media_id").on(
+			table.tagId,
+			table.tagType,
+			table.mediaId,
+		),
+	],
 );
 
 /**
@@ -399,11 +400,11 @@ export const mediaDetails = pgTable(
 			sql`'1970-01-01 00:00:00'`,
 		),
 	},
-	(table) => ({
-		ratingIndex: index("idx_media_details_rating").on(table.rating),
-		favoriteIndex: index("idx_media_details_favorite").on(table.favorite),
-		viewCountIndex: index("idx_media_details_view_count").on(table.viewCount),
-	}),
+	(table) => [
+		index("idx_media_details_rating").on(table.rating),
+		index("idx_media_details_favorite").on(table.favorite),
+		index("idx_media_details_view_count").on(table.viewCount),
+	],
 );
 
 /**
@@ -444,17 +445,11 @@ export const mediaGenerationInfo = pgTable(
 		/** ステップ数 */
 		steps: integer("steps").default(0),
 	},
-	(table) => ({
-		metadataIndex: index("idx_media_generation_info_metadata").on(
-			table.metadata,
-		),
-		aiGeneratedIndex: index("idx_media_generation_info_ai_generated").on(
-			table.aiGenerated,
-		),
-		modelNameIndex: index("idx_media_generation_info_model_name").on(
-			table.modelName,
-		),
-	}),
+	(table) => [
+		index("idx_media_generation_info_metadata").on(table.metadata),
+		index("idx_media_generation_info_ai_generated").on(table.aiGenerated),
+		index("idx_media_generation_info_model_name").on(table.modelName),
+	],
 );
 
 /**
@@ -482,9 +477,7 @@ export const categories = pgTable(
 		/** 更新日時 */
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		nameUnique: unique("categories_name_unique").on(table.name),
-	}),
+	(table) => [unique("categories_name_unique").on(table.name)],
 );
 
 /**
@@ -508,10 +501,10 @@ export const projects = pgTable(
 		/** アーカイブ日時 */
 		archivedAt: timestamp("archived_at"),
 	},
-	(table) => ({
-		nameIndex: index("idx_projects_name").on(table.name),
-		nameUnique: unique("projects_name_unique").on(table.name),
-	}),
+	(table) => [
+		index("idx_projects_name").on(table.name),
+		unique("projects_name_unique").on(table.name),
+	],
 );
 
 /**
@@ -535,9 +528,7 @@ export const ips = pgTable(
 		/** 更新日時 */
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		nameUnique: unique("ips_name_unique").on(table.name),
-	}),
+	(table) => [unique("ips_name_unique").on(table.name)],
 );
 
 /**
@@ -563,9 +554,7 @@ export const characters = pgTable(
 		/** 更新日時 */
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		nameUnique: unique("characters_name_unique").on(table.name),
-	}),
+	(table) => [unique("characters_name_unique").on(table.name)],
 );
 
 /**
@@ -586,13 +575,13 @@ export const characterIps = pgTable(
 		/** 起源 (manual, ai_generatedなど) */
 		source: text("source").notNull().default("manual"),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.characterId, table.ipId] }),
-		ipIdCharacterIdIndex: index("idx_character_ips_ip_id_character_id").on(
+	(table) => [
+		primaryKey({ columns: [table.characterId, table.ipId] }),
+		index("idx_character_ips_ip_id_character_id").on(
 			table.ipId,
 			table.characterId,
 		),
-	}),
+	],
 );
 
 /**
@@ -615,12 +604,13 @@ export const mediaCharacters = pgTable(
 		/** メディアへのキャラクター付与の起源 (manual, ai_generatedなど) */
 		source: text("source").notNull().default("manual"),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.mediaId, table.characterId] }),
-		characterIdMediaIdIndex: index(
-			"idx_media_characters_character_id_media_id",
-		).on(table.characterId, table.mediaId),
-	}),
+	(table) => [
+		primaryKey({ columns: [table.mediaId, table.characterId] }),
+		index("idx_media_characters_character_id_media_id").on(
+			table.characterId,
+			table.mediaId,
+		),
+	],
 );
 
 /**
@@ -639,12 +629,13 @@ export const mediaCategories = pgTable(
 			.notNull()
 			.references(() => categories.id, { onDelete: "cascade" }),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.mediaId, table.categoryId] }),
-		categoryIdMediaIdIndex: index(
-			"idx_media_categories_category_id_media_id",
-		).on(table.categoryId, table.mediaId),
-	}),
+	(table) => [
+		primaryKey({ columns: [table.mediaId, table.categoryId] }),
+		index("idx_media_categories_category_id_media_id").on(
+			table.categoryId,
+			table.mediaId,
+		),
+	],
 );
 
 /**
@@ -663,13 +654,13 @@ export const mediaProjects = pgTable(
 			.notNull()
 			.references(() => projects.id, { onDelete: "cascade" }),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.mediaId, table.projectId] }),
-		projectIdMediaIdIndex: index("idx_media_projects_project_id_media_id").on(
+	(table) => [
+		primaryKey({ columns: [table.mediaId, table.projectId] }),
+		index("idx_media_projects_project_id_media_id").on(
 			table.projectId,
 			table.mediaId,
 		),
-	}),
+	],
 );
 
 /**
@@ -692,13 +683,10 @@ export const mediaIps = pgTable(
 		/** メディアへのIP付与の起源 (manual, ai_generatedなど) */
 		source: text("source").notNull().default("manual"),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.mediaId, table.ipId] }),
-		ipIdMediaIdIndex: index("idx_media_ips_ip_id_media_id").on(
-			table.ipId,
-			table.mediaId,
-		),
-	}),
+	(table) => [
+		primaryKey({ columns: [table.mediaId, table.ipId] }),
+		index("idx_media_ips_ip_id_media_id").on(table.ipId, table.mediaId),
+	],
 );
 
 /**
@@ -733,9 +721,7 @@ export const mediaTechnicalInfo = pgTable(
 		/** 音声コーデック (例: AAC) */
 		audioCodec: text("audio_codec"),
 	},
-	(table) => ({
-		hashMd5Index: index("idx_media_technical_info_hash_md5").on(table.hashMd5),
-	}),
+	(table) => [index("idx_media_technical_info_hash_md5").on(table.hashMd5)],
 );
 
 /**
@@ -806,14 +792,14 @@ export const similarMedia = pgTable(
 		/** 作成日時 */
 		createdAt: timestamp("created_at").defaultNow(),
 	},
-	(table) => ({
-		media1IdMedia2IdAlgorithmUnique: unique(
-			"media1Id_media2Id_algorithm_unique",
-		).on(table.media1Id, table.media2Id, table.algorithm),
-		similarityScoreIndex: index("idx_similar_media_score").on(
-			table.similarityScore,
+	(table) => [
+		unique("media1Id_media2Id_algorithm_unique").on(
+			table.media1Id,
+			table.media2Id,
+			table.algorithm,
 		),
-	}),
+		index("idx_similar_media_score").on(table.similarityScore),
+	],
 );
 
 /**
@@ -855,17 +841,15 @@ export const mediaRelationsTable = pgTable(
 		/** 作成日時 */
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		parentChildTypeUnique: unique("parent_child_type_unique").on(
+	(table) => [
+		unique("parent_child_type_unique").on(
 			table.parentMediaId,
 			table.childMediaId,
 			table.relationType,
 		),
-		childMediaIdIndex: index("idx_media_relations_child").on(
-			table.childMediaId,
-		),
-		relationTypeIndex: index("idx_media_relations_type").on(table.relationType),
-	}),
+		index("idx_media_relations_child").on(table.childMediaId),
+		index("idx_media_relations_type").on(table.relationType),
+	],
 );
 
 /**
@@ -887,10 +871,10 @@ export const authors = pgTable(
 		/** 更新日時 */
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		accountIdIndex: index("idx_authors_account_id").on(table.accountId),
-		nameIndex: index("idx_authors_name").on(table.name),
-	}),
+	(table) => [
+		index("idx_authors_account_id").on(table.accountId),
+		index("idx_authors_name").on(table.name),
+	],
 );
 
 /**
@@ -912,12 +896,13 @@ export const authorAccounts = pgTable(
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		authorIdIndex: index("idx_author_accounts_author_id").on(table.authorId),
-		platformAccountUnique: uniqueIndex(
-			"idx_author_accounts_platform_account_unique",
-		).on(table.platform, table.accountId),
-	}),
+	(table) => [
+		index("idx_author_accounts_author_id").on(table.authorId),
+		uniqueIndex("idx_author_accounts_platform_account_unique").on(
+			table.platform,
+			table.accountId,
+		),
+	],
 );
 
 /**
@@ -934,13 +919,13 @@ export const mediaAuthors = pgTable(
 			.notNull()
 			.references(() => authors.id, { onDelete: "cascade" }),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.mediaId, table.authorId] }),
-		authorIdMediaIdIndex: index("idx_media_authors_author_id_media_id").on(
+	(table) => [
+		primaryKey({ columns: [table.mediaId, table.authorId] }),
+		index("idx_media_authors_author_id_media_id").on(
 			table.authorId,
 			table.mediaId,
 		),
-	}),
+	],
 );
 
 /**
@@ -960,14 +945,14 @@ export const mediaUrls = pgTable(
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		mediaIdIndex: index("idx_media_urls_media_id").on(table.mediaId),
-		urlIndex: index("idx_media_urls_url").on(table.url),
-		mediaIdUrlUnique: uniqueIndex("idx_media_urls_media_id_url_unique").on(
+	(table) => [
+		index("idx_media_urls_media_id").on(table.mediaId),
+		index("idx_media_urls_url").on(table.url),
+		uniqueIndex("idx_media_urls_media_id_url_unique").on(
 			table.mediaId,
 			table.url,
 		),
-	}),
+	],
 );
 
 /**
@@ -992,9 +977,7 @@ export const users = pgTable(
 		/** 更新日時 */
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		emailUnique: unique("users_email_unique").on(table.email),
-	}),
+	(table) => [unique("users_email_unique").on(table.email)],
 );
 
 /**
@@ -1037,10 +1020,10 @@ export const mediaCollections = pgTable(
 		/** コレクション内での表示順序 */
 		displayOrder: integer("display_order"),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.collectionId, table.mediaId] }),
-		mediaIdIndex: index("idx_media_collections_media_id").on(table.mediaId),
-	}),
+	(table) => [
+		primaryKey({ columns: [table.collectionId, table.mediaId] }),
+		index("idx_media_collections_media_id").on(table.mediaId),
+	],
 );
 
 /**
@@ -1097,23 +1080,23 @@ export const jobs = pgTable(
 		/** 成果物の有効期限 */
 		artifactExpiresAt: timestamp("artifact_expires_at"),
 	},
-	(table) => ({
-		pendingImportRequestIndex: index("idx_jobs_pending_import_request")
+	(table) => [
+		index("idx_jobs_pending_import_request")
 			.on(table.id)
 			.where(
 				sql`${table.status} = 'pending' AND ${table.type} = 'import_request'`,
 			),
-		pendingCreatedIndex: index("idx_jobs_pending_created")
+		index("idx_jobs_pending_created")
 			.on(table.createdAt, table.id)
 			.where(
 				sql`${table.status} = 'pending' AND ${table.type} <> 'import_request'`,
 			),
-		pendingTypeCreatedIndex: index("idx_jobs_pending_type_created")
+		index("idx_jobs_pending_type_created")
 			.on(table.type, table.createdAt, table.id)
 			.where(
 				sql`${table.status} = 'pending' AND ${table.type} <> 'import_request'`,
 			),
-		activeThumbnailUniqueIndex: uniqueIndex("uq_jobs_active_thumbnail")
+		uniqueIndex("uq_jobs_active_thumbnail")
 			.on(
 				table.mediaSourceId,
 				sql`(${table.payload}->>'mediaId')`,
@@ -1124,16 +1107,16 @@ export const jobs = pgTable(
 					AND ${table.status} IN ('pending', 'in_progress')
 					AND ${table.mediaSourceId} IS NOT NULL`,
 			),
-		cancelableJobIndex: index("idx_jobs_cancelable")
+		index("idx_jobs_cancelable")
 			.on(table.status, table.updatedAt)
 			.where(sql`${table.status} IN ('pending', 'in_progress')`),
-		artifactExpiryIndex: index("idx_jobs_artifact_expiry")
+		index("idx_jobs_artifact_expiry")
 			.on(table.artifactExpiresAt)
 			.where(sql`${table.artifactPath} IS NOT NULL`),
-		parentTypeIndex: index("idx_jobs_parent_type")
+		index("idx_jobs_parent_type")
 			.on(table.parentId, table.type)
 			.where(sql`${table.parentId} IS NOT NULL`),
-	}),
+	],
 );
 
 /**
@@ -1183,11 +1166,7 @@ export const searchSnapshots = pgTable(
 		state: jsonb("state").notNull(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		createdAtIndex: index("idx_search_snapshots_created_at").on(
-			table.createdAt,
-		),
-	}),
+	(table) => [index("idx_search_snapshots_created_at").on(table.createdAt)],
 );
 
 /**
@@ -1203,13 +1182,13 @@ export const uuidv7MigrationMap = pgTable(
 		sourceTimestamp: timestamp("source_timestamp"),
 		migratedAt: timestamp("migrated_at").notNull().defaultNow(),
 	},
-	(table) => ({
-		pk: primaryKey({ columns: [table.entity, table.oldId] }),
-		entityNewIdUnique: unique("uuidv7_migration_map_entity_new_id_unique").on(
+	(table) => [
+		primaryKey({ columns: [table.entity, table.oldId] }),
+		unique("uuidv7_migration_map_entity_new_id_unique").on(
 			table.entity,
 			table.newId,
 		),
-	}),
+	],
 );
 
 // リレーション

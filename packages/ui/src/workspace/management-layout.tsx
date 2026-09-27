@@ -10,16 +10,16 @@ type ManagementHeaderProps = {
 
 export function ManagementHeader(props: ManagementHeaderProps) {
 	return (
-		<header class="shrink-0 border-[var(--workspace-border)] border-b bg-[var(--workspace-surface)] px-4 py-3 sm:px-6">
+		<header class="shrink-0 border-border border-b bg-card px-4 py-3 sm:px-6">
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div class="min-w-0">
-					<p class="font-medium text-xs text-[var(--workspace-primary)]">
+					<p class="font-medium text-xs text-primary">
 						{props.eyebrow ?? "Workspace"}
 					</p>
-					<h1 class="mt-0.5 font-semibold text-xl text-[var(--workspace-text)]">
+					<h1 class="mt-0.5 font-semibold text-xl text-foreground">
 						{props.title}
 					</h1>
-					<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+					<p class="mt-0.5 text-xs text-muted-foreground">
 						{props.description}
 					</p>
 				</div>
@@ -32,13 +32,11 @@ export function ManagementHeader(props: ManagementHeaderProps) {
 }
 
 export const CATEGORY_TABS_CLASS =
-	"min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-[var(--workspace-text-secondary)] shadow-none data-[selected]:bg-[var(--workspace-surface-selected)] data-[selected]:text-[var(--workspace-primary)] lg:min-h-10 lg:w-full lg:justify-start";
+	"min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start";
 
 export function categoryButtonClass(active: boolean): string {
-	return `flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)] ${
-		active
-			? "bg-[var(--workspace-surface-selected)] text-[var(--workspace-primary)]"
-			: "text-[var(--workspace-text-secondary)] hover:bg-[var(--workspace-surface-muted)]"
+	return `flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${
+		active ? "bg-accent text-primary" : "text-muted-foreground hover:bg-muted"
 	}`;
 }
 
@@ -58,7 +56,7 @@ export function CategoryLabel(props: {
 					{props.label}
 				</strong>
 				<span
-					class={`hidden truncate text-[11px] text-[var(--workspace-text-muted)] ${descriptionBreakpoint()}`}
+					class={`hidden truncate text-label-sm text-muted-foreground ${descriptionBreakpoint()}`}
 				>
 					{props.description}
 				</span>

@@ -630,8 +630,8 @@ function SidebarItem(props: {
 		<Button
 			aria-current={props.active ? "page" : undefined}
 			aria-label={props.badge ? `${props.label}, ${props.badge}` : props.label}
-			class={`relative h-10 w-full justify-start px-3 text-[#505754] hover:bg-[#e9eeeb] hover:text-[#1d2522] ${
-				props.active ? "bg-[#e1f1ed] text-[#05695f]" : ""
+			class={`relative h-10 w-full justify-start px-3 text-muted-foreground hover:bg-muted hover:text-foreground ${
+				props.active ? "bg-muted text-primary" : ""
 			}`}
 			onClick={props.onClick}
 			title={props.expanded ? undefined : props.label}
@@ -639,7 +639,7 @@ function SidebarItem(props: {
 		>
 			<span class="shrink-0">{props.children}</span>
 			<Show when={!props.expanded && props.badge}>
-				<span class="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-[#0b8f80] font-semibold text-[9px] text-white ring-2 ring-[#f6f7f5]">
+				<span class="absolute top-1 right-1 flex size-4 items-center justify-center rounded-full bg-primary font-semibold text-micro text-white ring-2 ring-background">
 					{props.badge}
 				</span>
 			</Show>
@@ -648,7 +648,7 @@ function SidebarItem(props: {
 					{props.label}
 				</span>
 				<Show when={props.badge}>
-					<span class="hidden min-w-5 items-center justify-center rounded-full bg-[#dceae6] px-1.5 font-semibold text-[#086f64] text-[10px] xl:flex">
+					<span class="hidden min-w-5 items-center justify-center rounded-full bg-muted-foreground px-1.5 font-semibold text-primary text-label-xs xl:flex">
 						{props.badge}
 					</span>
 				</Show>
@@ -669,7 +669,7 @@ function DesignSourcesNavigation(props: {
 		<CollapsibleRoot.Root class="min-h-0" onOpenChange={setOpen} open={open()}>
 			<CollapsibleTrigger
 				aria-label="Sources"
-				class="flex h-10 w-full items-center gap-2 rounded-md px-3 text-left font-medium text-[#505754] text-sm outline-none hover:bg-[#e9eeeb] hover:text-[#1d2522] focus-visible:ring-2 focus-visible:ring-[#08766a]"
+				class="flex h-10 w-full items-center gap-2 rounded-md px-3 text-left font-medium text-muted-foreground text-sm outline-none hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
 				onClick={() => {
 					if (!props.expanded) props.onExpandedChange(true);
 				}}
@@ -687,28 +687,28 @@ function DesignSourcesNavigation(props: {
 				</Show>
 			</CollapsibleTrigger>
 			<CollapsibleContent class="hidden min-h-0 xl:block">
-				<div class="ml-4 max-h-[min(34dvh,18rem)] overflow-y-auto overscroll-contain border-[#dce2de] border-l py-1 pl-2">
+				<div class="ml-4 max-h-menu-compact overflow-y-auto overscroll-contain border-border border-l py-1 pl-2">
 					<button
 						aria-pressed={props.selectedId === "all"}
-						class={`flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-xs outline-none focus-visible:ring-2 focus-visible:ring-[#08766a] ${
+						class={`flex min-h-9 w-full items-center gap-2 rounded-md px-2 text-left text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 							props.selectedId === "all"
-								? "bg-[#e1f1ed] font-medium text-[#05695f]"
-								: "text-[#555d59] hover:bg-[#e9eeeb]"
+								? "bg-muted font-medium text-primary"
+								: "text-muted-foreground hover:bg-muted"
 						}`}
 						onClick={() => props.onSelect("all")}
 						type="button"
 					>
 						<span class="min-w-0 flex-1 truncate">All media</span>
-						<span class="text-[#626a66] text-[10px]">1,248</span>
+						<span class="text-muted-foreground text-label-xs">1,248</span>
 					</button>
 					<For each={MOCK_SOURCES}>
 						{(source) => (
 							<button
 								aria-pressed={props.selectedId === source.id}
-								class={`group/source min-h-11 w-full rounded-md px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#08766a] ${
+								class={`group/source min-h-11 w-full rounded-md px-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 									props.selectedId === source.id
-										? "bg-[#e1f1ed] text-[#05695f]"
-										: "text-[#555d59] hover:bg-[#e9eeeb]"
+										? "bg-muted text-primary"
+										: "text-muted-foreground hover:bg-muted"
 								}`}
 								onClick={() => props.onSelect(source.id)}
 								type="button"
@@ -718,8 +718,8 @@ function DesignSourcesNavigation(props: {
 										aria-hidden="true"
 										class={`size-1.5 shrink-0 rounded-full ${
 											source.status === "online"
-												? "bg-[#20a276]"
-												: "animate-pulse bg-[#d99431] motion-reduce:animate-none"
+												? "bg-primary"
+												: "animate-pulse bg-warning-foreground motion-reduce:animate-none"
 										}`}
 									/>
 									<span class="sr-only">
@@ -728,9 +728,11 @@ function DesignSourcesNavigation(props: {
 									<span class="min-w-0 flex-1 truncate font-medium">
 										{source.name}
 									</span>
-									<span class="text-[#626a66] text-[10px]">{source.count}</span>
+									<span class="text-muted-foreground text-label-xs">
+										{source.count}
+									</span>
 								</span>
-								<span class="mt-0.5 block pl-3.5 text-[#626a66] text-[10px]">
+								<span class="mt-0.5 block pl-3.5 text-muted-foreground text-label-xs">
 									{source.type}
 									{source.status === "syncing" ? " · Syncing" : ""}
 								</span>
@@ -738,7 +740,7 @@ function DesignSourcesNavigation(props: {
 						)}
 					</For>
 				</div>
-				<div class="mt-1 grid grid-cols-[1fr_auto] gap-1 px-2 pl-6">
+				<div class="mt-1 grid grid-cols-content-action gap-1 px-2 pl-6">
 					<Button
 						class="h-8 justify-start px-2 text-xs"
 						size="sm"
@@ -749,7 +751,7 @@ function DesignSourcesNavigation(props: {
 					</Button>
 					<Button
 						aria-label="すべてのソースを同期"
-						class="size-8 p-0 text-[#626a66]"
+						class="size-8 p-0 text-muted-foreground"
 						size="icon"
 						variant="ghost"
 					>
@@ -774,14 +776,14 @@ function DesignSidebar(props: {
 	return (
 		<aside
 			aria-label="アプリケーションサイドバー"
-			class="flex min-h-0 flex-col border-[#e1e5e2] border-r bg-[#f6f7f5] p-2"
+			class="flex min-h-0 flex-col border-border border-r bg-muted p-2"
 		>
 			<div class="group mb-5 flex h-12 items-center gap-2 px-2">
-				<div class="flex size-8 shrink-0 items-center justify-center rounded-md bg-[#0b8f80] text-white">
+				<div class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white">
 					<Image aria-hidden="true" size={17} />
 				</div>
 				<Show when={props.expanded}>
-					<strong class="min-w-0 flex-1 truncate font-semibold text-[#17201d] text-base">
+					<strong class="min-w-0 flex-1 truncate font-semibold text-primary text-base">
 						Solid Imager
 					</strong>
 				</Show>
@@ -789,7 +791,7 @@ function DesignSidebar(props: {
 					aria-label={
 						props.expanded ? "サイドバーを折りたたむ" : "サイドバーを展開する"
 					}
-					class={`size-8 shrink-0 p-0 text-[#6d7471] hover:bg-[#e4e8e5] ${
+					class={`size-8 shrink-0 p-0 text-muted-foreground hover:bg-muted-foreground ${
 						props.expanded
 							? "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
 							: "opacity-100"
@@ -905,31 +907,29 @@ function MediaTile(props: {
 		<button
 			aria-label={`${props.media.name}を選択`}
 			aria-pressed={props.selected}
-			class={`group relative aspect-[4/3] min-w-0 overflow-hidden rounded-md bg-[#e7eae7] text-left outline-none ring-offset-2 ring-offset-[#fafbf9] transition focus-visible:ring-2 focus-visible:ring-[#0b8f80] ${
-				props.selected
-					? "ring-2 ring-[#0b8f80]"
-					: "hover:ring-1 hover:ring-[#aeb7b2]"
+			class={`group relative aspect-landscape min-w-0 overflow-hidden rounded-md bg-muted text-left outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring ${
+				props.selected ? "ring-2 ring-ring" : "hover:ring-1 hover:ring-border"
 			}`}
 			onClick={props.onSelect}
 			type="button"
 		>
 			<img
 				alt=""
-				class="size-full object-cover transition duration-200 group-hover:scale-[1.015]"
+				class="size-full object-cover transition duration-200 group-hover:scale-105"
 				loading="lazy"
 				referrerpolicy="no-referrer"
 				src={props.media.src}
 			/>
 			<div class="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/50 to-transparent px-2 pt-8 pb-2 opacity-0 transition-opacity group-focus-within:opacity-100 group-hover:opacity-100">
-				<span class="truncate pr-2 font-medium text-[11px] text-white">
+				<span class="truncate pr-2 font-medium text-label-sm text-white">
 					{props.media.name}
 				</span>
-				<span class="rounded bg-black/65 px-1.5 py-0.5 font-medium text-[10px] text-white">
+				<span class="rounded bg-black/65 px-1.5 py-0.5 font-medium text-label-xs text-white">
 					{props.media.extension}
 				</span>
 			</div>
 			<Show when={props.selected}>
-				<span class="absolute top-2 left-2 flex size-6 items-center justify-center rounded-full bg-[#0b8f80] font-bold text-white text-xs shadow-sm">
+				<span class="absolute top-2 left-2 flex size-6 items-center justify-center rounded-full bg-primary font-bold text-white text-xs shadow-sm">
 					✓
 				</span>
 			</Show>
@@ -968,11 +968,11 @@ function DesignFilterField(props: {
 
 	return (
 		<div class="space-y-1.5 sm:space-y-1">
-			<Label class="font-medium text-[#454c49] text-xs" for={inputId()}>
+			<Label class="font-medium text-foreground text-xs" for={inputId()}>
 				{props.field.label}
 			</Label>
 			<Input
-				class="h-9 min-h-9 border-[#d9dfdb] bg-white shadow-none focus-visible:ring-[#0b8f80]"
+				class="h-9 min-h-9 border-border bg-white shadow-none focus-visible:ring-ring"
 				id={inputId()}
 				name={inputId()}
 				onBlur={() => setDraft(props.state[props.field.key].join(", "))}
@@ -1003,31 +1003,31 @@ function DesignFilterPopover(props: {
 		<Popover placement="bottom-end">
 			<PopoverTrigger
 				aria-label={`検索フィルター、${props.filterCount}件の条件`}
-				class={buttonVariants({
-					class:
-						"h-9 border-[#d9dfdb] bg-white px-3 text-[#434a47] shadow-none",
-					size: "sm",
-					variant: "outline",
-				})}
+				as={Button}
+				class="h-9 border-border bg-white px-3 text-foreground shadow-none"
+				size="sm"
+				variant="outline"
 			>
 				<Filter aria-hidden="true" size={15} />
 				フィルター
 				<Show when={props.filterCount > 0}>
-					<span class="flex min-w-5 items-center justify-center rounded-full bg-[#05695f] px-1.5 py-0.5 text-[10px] text-white">
+					<span class="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-label-xs text-white">
 						{props.filterCount}
 					</span>
 				</Show>
 			</PopoverTrigger>
-			<PopoverContent class="w-[min(24rem,calc(100dvw-2rem))] border-[#dfe4e1] bg-[#fbfcfa] p-0 shadow-xl">
-				<div class="flex items-start justify-between border-[#e1e5e2] border-b px-4 py-3">
+			<PopoverContent class="w-popover-wide border-border bg-background p-0 shadow-xl">
+				<div class="flex items-start justify-between border-border border-b px-4 py-3">
 					<div>
-						<h2 class="font-semibold text-[#202624] text-sm">検索フィルター</h2>
-						<p class="mt-0.5 text-[#7a817d] text-[11px]">
+						<h2 class="font-semibold text-foreground text-sm">
+							検索フィルター
+						</h2>
+						<p class="mt-0.5 text-muted-foreground text-label-sm">
 							検索バーと同じ条件を編集します
 						</p>
 					</div>
 					<Button
-						class="h-7 px-2 text-[#6e7571] text-xs"
+						class="h-7 px-2 text-muted-foreground text-xs"
 						onClick={props.onClear}
 						size="sm"
 						variant="ghost"
@@ -1038,10 +1038,10 @@ function DesignFilterPopover(props: {
 
 				<div class="p-4">
 					<fieldset>
-						<legend class="mb-2 font-medium text-[#555c58] text-xs">
+						<legend class="mb-2 font-medium text-muted-foreground text-xs">
 							検索モード
 						</legend>
-						<div class="grid grid-cols-2 rounded-md border border-[#d9dfdb] bg-white p-0.5">
+						<div class="grid grid-cols-2 rounded-md border border-border bg-white p-0.5">
 							<For
 								each={
 									[
@@ -1055,8 +1055,8 @@ function DesignFilterPopover(props: {
 										aria-pressed={props.mode === value}
 										class={`h-8 px-2 ${
 											props.mode === value
-												? "bg-[#e1f1ed] text-[#087d70] hover:bg-[#d8ebe6]"
-												: "text-[#656c68]"
+												? "bg-muted text-primary hover:bg-muted-foreground"
+												: "text-muted-foreground"
 										}`}
 										onClick={() => props.onModeChange(value)}
 										size="sm"
@@ -1071,7 +1071,7 @@ function DesignFilterPopover(props: {
 
 					<Show
 						fallback={
-							<div class="mt-4 rounded-md border border-[#dfe4e1] bg-white p-4 text-[#6d7470] text-xs leading-5">
+							<div class="mt-4 rounded-md border border-border bg-white p-4 text-muted-foreground text-xs leading-5">
 								{props.mode === "pro"
 									? "詳細検索は条件ビルダーを別パネルで開き、この一覧レイアウトは維持します。"
 									: "検索条件をここで確認し、一覧の並べ替えは維持します。"}
@@ -1081,7 +1081,9 @@ function DesignFilterPopover(props: {
 					>
 						<div class="mt-4 space-y-4">
 							<div class="space-y-3">
-								<h3 class="font-medium text-[#555c58] text-xs">よく使う条件</h3>
+								<h3 class="font-medium text-muted-foreground text-xs">
+									よく使う条件
+								</h3>
 								<div class="space-y-3">
 									<For each={FILTER_FIELDS.filter((field) => field.primary)}>
 										{(field) => (
@@ -1095,8 +1097,8 @@ function DesignFilterPopover(props: {
 								</div>
 							</div>
 
-							<div class="border-[#e3e7e4] border-t pt-4">
-								<h3 class="mb-3 font-medium text-[#555c58] text-xs">
+							<div class="border-border border-t pt-4">
+								<h3 class="mb-3 font-medium text-muted-foreground text-xs">
 									追加条件
 								</h3>
 								<div class="space-y-3">
@@ -1133,11 +1135,11 @@ function DesignToolbar(props: {
 	sourceName: string;
 }) {
 	return (
-		<header class="border-[#e1e5e2] border-b bg-[#fbfcfa] px-4 py-3">
+		<header class="border-border border-b bg-background px-4 py-3">
 			<div class="mb-3 flex h-7 items-center gap-2 text-sm">
-				<span class="text-[#5f6763]">Library</span>
-				<span class="text-[#adb3af]">/</span>
-				<strong class="min-w-0 truncate font-semibold text-[#222826]">
+				<span class="text-muted-foreground">Library</span>
+				<span class="text-muted-foreground">/</span>
+				<strong class="min-w-0 truncate font-semibold text-foreground">
 					{props.sourceName}
 				</strong>
 			</div>
@@ -1155,17 +1157,17 @@ function DesignToolbar(props: {
 					</Label>
 					<Search
 						aria-hidden="true"
-						class="absolute top-[1.1rem] left-3 text-[#7b827e]"
+						class="absolute top-4 left-3 text-muted-foreground"
 						size={17}
 					/>
-					<div class="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-[#d9dfdb] bg-white py-1 pr-9 pl-9 shadow-none focus-within:ring-2 focus-within:ring-[#0b8f80] focus-within:ring-offset-1">
+					<div class="flex min-h-9 flex-wrap items-center gap-1.5 rounded-md border border-border bg-white py-1 pr-9 pl-9 shadow-none focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1">
 						<For each={props.filterTokens.slice(0, 4)}>
 							{(token) => (
 								<span
-									class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-[11px] ${
+									class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-label-sm ${
 										token.destructive
-											? "bg-[#fbeceb] text-[#a1453d]"
-											: "bg-[#e8f2ef] text-[#267268]"
+											? "bg-muted text-destructive"
+											: "bg-muted text-primary"
 									}`}
 								>
 									<span class="truncate">
@@ -1173,7 +1175,7 @@ function DesignToolbar(props: {
 									</span>
 									<button
 										aria-label={`${token.prefix}:${token.value}を解除`}
-										class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b8f80]"
+										class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										onClick={() => props.onRemoveToken(token)}
 										type="button"
 									>
@@ -1183,7 +1185,7 @@ function DesignToolbar(props: {
 							)}
 						</For>
 						<Show when={props.filterTokens.length > 4}>
-							<span class="inline-flex h-6 items-center rounded bg-[#eef0ee] px-2 font-medium text-[#686f6b] text-[11px]">
+							<span class="inline-flex h-6 items-center rounded bg-muted px-2 font-medium text-muted-foreground text-label-sm">
 								ほか{props.filterTokens.length - 4}件
 							</span>
 						</Show>
@@ -1199,7 +1201,7 @@ function DesignToolbar(props: {
 							value={props.draft}
 						/>
 					</div>
-					<kbd class="absolute top-2 right-2 rounded border border-[#e1e5e2] bg-[#f4f5f3] px-1.5 py-0.5 text-[#858c88] text-[10px]">
+					<kbd class="absolute top-2 right-2 rounded border border-border bg-muted px-1.5 py-0.5 text-muted-foreground text-label-xs">
 						/
 					</kbd>
 				</form>
@@ -1212,7 +1214,7 @@ function DesignToolbar(props: {
 					state={props.filters}
 				/>
 				<Button
-					class="h-9 border-[#dde2df] bg-white px-3 shadow-none"
+					class="h-9 border-border bg-white px-3 shadow-none"
 					size="sm"
 					variant="outline"
 				>
@@ -1220,17 +1222,17 @@ function DesignToolbar(props: {
 					作成日・降順
 					<ChevronDown aria-hidden="true" size={13} />
 				</Button>
-				<div class="flex rounded-md border border-[#dde2df] bg-white p-0.5">
+				<div class="flex rounded-md border border-border bg-white p-0.5">
 					<Button
 						aria-label="グリッド表示"
-						class="size-8 bg-[#0b8f80] p-0 text-white hover:bg-[#087c70]"
+						class="size-8 bg-primary p-0 text-white hover:bg-primary"
 						size="icon"
 					>
 						<Grid3X3 aria-hidden="true" size={15} />
 					</Button>
 					<Button
 						aria-label="リスト表示"
-						class="size-8 p-0 text-[#707773]"
+						class="size-8 p-0 text-muted-foreground"
 						size="icon"
 						variant="ghost"
 					>
@@ -1249,7 +1251,7 @@ function InspectorAction(props: {
 }) {
 	return (
 		<Button
-			class={`h-8 w-full justify-start px-1 font-normal ${props.destructive ? "text-red-600 hover:text-red-700" : "text-[#505754]"}`}
+			class={`h-8 w-full justify-start px-1 font-normal ${props.destructive ? "text-destructive hover:text-destructive" : "text-muted-foreground"}`}
 			size="sm"
 			variant="ghost"
 		>
@@ -1266,15 +1268,15 @@ function DesignInspector(props: {
 	return (
 		<aside
 			aria-label="メディア情報"
-			class="min-h-0 overflow-y-auto overscroll-contain border-[#e1e5e2] border-l bg-[#fbfcfa]"
+			class="min-h-0 overflow-y-auto overscroll-contain border-border border-l bg-background"
 		>
-			<div class="sticky top-0 z-10 flex h-12 items-center border-[#e1e5e2] border-b bg-[#fbfcfa]/95 px-4 backdrop-blur-sm">
-				<h2 class="flex-1 font-semibold text-[#303633] text-sm">
+			<div class="sticky top-0 z-10 flex h-12 items-center border-border border-b bg-background/95 px-4 backdrop-blur-sm">
+				<h2 class="flex-1 font-semibold text-foreground text-sm">
 					選択中のメディア
 				</h2>
 				<Button
 					aria-label="インスペクターを閉じる"
-					class="size-8 p-0 text-[#6e7571]"
+					class="size-8 p-0 text-muted-foreground"
 					size="icon"
 					variant="ghost"
 				>
@@ -1285,33 +1287,33 @@ function DesignInspector(props: {
 			<div class="p-4">
 				<img
 					alt={props.media.name}
-					class="aspect-[4/3] w-full rounded-md bg-[#e7eae7] object-contain"
+					class="aspect-landscape w-full rounded-md bg-muted object-contain"
 					referrerpolicy="no-referrer"
 					src={props.media.src}
 				/>
-				<div class="border-[#e1e5e2] border-b py-4">
-					<h1 class="break-words font-semibold text-[#202624] text-sm">
+				<div class="border-border border-b py-4">
+					<h1 class="break-words font-semibold text-foreground text-sm">
 						{props.media.name}
 					</h1>
-					<p class="mt-1 text-[#5f6763] text-xs">
+					<p class="mt-1 text-muted-foreground text-xs">
 						{props.media.extension} ・ {props.media.size} ・{" "}
 						{props.media.resolution}
 					</p>
 				</div>
 
-				<dl class="grid grid-cols-[72px_1fr] gap-x-3 gap-y-2.5 border-[#e1e5e2] border-b py-4 text-xs">
-					<dt class="text-[#626a66]">Source</dt>
-					<dd class="flex min-w-0 items-center gap-2 text-[#444b48]">
+				<dl class="grid grid-cols-thumbnail-content gap-x-3 gap-y-2.5 border-border border-b py-4 text-xs">
+					<dt class="text-muted-foreground">Source</dt>
+					<dd class="flex min-w-0 items-center gap-2 text-foreground">
 						<Folder aria-hidden="true" size={14} />
 						<span class="truncate">File System / Assets</span>
 					</dd>
-					<dt class="text-[#626a66]">Created</dt>
-					<dd class="text-[#444b48]">May 10, 2026</dd>
+					<dt class="text-muted-foreground">Created</dt>
+					<dd class="text-foreground">May 10, 2026</dd>
 				</dl>
 
-				<section class="border-[#e1e5e2] border-b py-4">
+				<section class="border-border border-b py-4">
 					<div class="mb-2 flex items-center justify-between">
-						<h2 class="font-medium text-[#505754] text-xs">Tags</h2>
+						<h2 class="font-medium text-muted-foreground text-xs">Tags</h2>
 						<Button
 							aria-label="タグを追加"
 							class="size-7 p-0"
@@ -1325,7 +1327,7 @@ function DesignInspector(props: {
 						<For each={props.media.tags}>
 							{(tag) => (
 								<Badge
-									class="border-0 bg-[#eef0ee] px-2 py-1 font-normal text-[#555c58]"
+									class="border-0 bg-muted px-2 py-1 font-normal text-muted-foreground"
 									variant="secondary"
 								>
 									{tag}
@@ -1335,9 +1337,9 @@ function DesignInspector(props: {
 					</div>
 				</section>
 
-				<section class="border-[#e1e5e2] border-b py-4">
+				<section class="border-border border-b py-4">
 					<div class="mb-2 flex items-center justify-between">
-						<h2 class="font-medium text-[#505754] text-xs">Relations</h2>
+						<h2 class="font-medium text-muted-foreground text-xs">Relations</h2>
 						<Button
 							aria-label="関連付けを編集"
 							class="size-7 p-0"
@@ -1349,20 +1351,14 @@ function DesignInspector(props: {
 					</div>
 					<div class="space-y-2 text-xs">
 						<div class="flex items-center justify-between gap-3">
-							<span class="text-[#626a66]">Character</span>
-							<Badge
-								class="border-0 bg-[#eef0ee] font-normal"
-								variant="secondary"
-							>
+							<span class="text-muted-foreground">Character</span>
+							<Badge class="border-0 bg-muted font-normal" variant="secondary">
 								Hanami Ume
 							</Badge>
 						</div>
 						<div class="flex items-center justify-between gap-3">
-							<span class="text-[#626a66]">Project</span>
-							<Badge
-								class="border-0 bg-[#eef0ee] font-normal"
-								variant="secondary"
-							>
+							<span class="text-muted-foreground">Project</span>
+							<Badge class="border-0 bg-muted font-normal" variant="secondary">
 								Summer Visuals
 							</Badge>
 						</div>
@@ -1371,7 +1367,7 @@ function DesignInspector(props: {
 
 				<section class="py-4">
 					<Button
-						class="mb-3 h-9 w-full bg-[#0b8f80] hover:bg-[#087c70]"
+						class="mb-3 h-9 w-full bg-primary hover:bg-primary"
 						onClick={props.onOpenDetail}
 						size="sm"
 					>
@@ -1379,7 +1375,7 @@ function DesignInspector(props: {
 						個別画面を開く
 					</Button>
 					<details class="group">
-						<summary class="flex min-h-9 cursor-pointer list-none items-center justify-between rounded-md px-2 font-medium text-[#606763] text-xs hover:bg-[#eef1ef] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#0b8f80]">
+						<summary class="flex min-h-9 cursor-pointer list-none items-center justify-between rounded-md px-2 font-medium text-muted-foreground text-xs hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
 							その他の操作
 							<ChevronDown
 								aria-hidden="true"
@@ -1417,9 +1413,9 @@ function DetailMetadataSection(props: {
 	title: string;
 }) {
 	return (
-		<section class="border-[#e1e5e2] border-b py-4">
+		<section class="border-border border-b py-4">
 			<div class="mb-2 flex items-center justify-between gap-3">
-				<h2 class="font-medium text-[#39413d] text-sm">{props.title}</h2>
+				<h2 class="font-medium text-foreground text-sm">{props.title}</h2>
 				<Show when={props.onAdd}>
 					<Button
 						aria-label={`${props.title}を編集`}
@@ -1445,7 +1441,7 @@ function DesignMediaDetailScreen(props: {
 }) {
 	return (
 		<section class="flex min-h-0 min-w-0 flex-col bg-white">
-			<header class="z-10 border-[#e1e5e2] border-b bg-[#fbfcfa] px-3 py-2 sm:px-4">
+			<header class="z-10 border-border border-b bg-background px-3 py-2 sm:px-4">
 				<div class="flex min-w-0 items-center gap-2">
 					<Button
 						aria-label="一覧に戻る"
@@ -1457,15 +1453,15 @@ function DesignMediaDetailScreen(props: {
 						<ArrowLeft aria-hidden="true" size={17} />
 					</Button>
 					<div class="min-w-0 flex-1">
-						<h1 class="truncate font-semibold text-[#29312d] text-sm">
+						<h1 class="truncate font-semibold text-foreground text-sm">
 							{props.media.name}
 						</h1>
-						<p class="truncate text-[#626a66] text-[11px]">
+						<p class="truncate text-muted-foreground text-label-sm">
 							File System / Assets
 						</p>
 					</div>
 
-					<div class="flex shrink-0 items-center rounded-md border border-[#dce2de] bg-white p-0.5">
+					<div class="flex shrink-0 items-center rounded-md border border-border bg-white p-0.5">
 						<Button
 							aria-label="前のメディア"
 							class="size-8 p-0"
@@ -1506,7 +1502,7 @@ function DesignMediaDetailScreen(props: {
 									size={14}
 								/>
 							</summary>
-							<div class="absolute top-11 right-0 z-20 w-56 rounded-md border border-[#dce2de] bg-white p-1 shadow-lg">
+							<div class="absolute top-11 right-0 z-20 w-56 rounded-md border border-border bg-white p-1 shadow-lg">
 								<InspectorAction icon={<Bot aria-hidden="true" size={14} />}>
 									Extract tags (OppaiOracle)
 								</InspectorAction>
@@ -1538,7 +1534,7 @@ function DesignMediaDetailScreen(props: {
 				</div>
 			</header>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[minmax(0,1fr)_22rem] lg:overflow-hidden">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden">
 				<figure class="flex min-w-0 items-center justify-center bg-white lg:min-h-0">
 					<img
 						alt={props.media.name}
@@ -1556,13 +1552,13 @@ function DesignMediaDetailScreen(props: {
 
 				<aside
 					aria-label="メディア詳細"
-					class="border-[#e1e5e2] border-t bg-[#fbfcfa] px-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:border-t-0 lg:border-l [scrollbar-gutter:stable]"
+					class="border-border border-t bg-background px-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:border-t-0 lg:border-l scrollbar-stable"
 				>
-					<div class="border-[#e1e5e2] border-b py-4">
-						<h2 class="break-words font-semibold text-[#252c28] text-base">
+					<div class="border-border border-b py-4">
+						<h2 class="break-words font-semibold text-foreground text-base">
 							{props.media.name}
 						</h2>
-						<p class="mt-1 text-[#59615d] text-xs">
+						<p class="mt-1 text-muted-foreground text-xs">
 							{props.media.extension} · {props.media.size} ·{" "}
 							{props.media.resolution}
 						</p>
@@ -1570,7 +1566,7 @@ function DesignMediaDetailScreen(props: {
 
 					<DetailMetadataSection title="Description">
 						<div class="flex items-start justify-between gap-3">
-							<p class="text-[#626a66] text-xs italic leading-5">
+							<p class="text-muted-foreground text-xs italic leading-5">
 								No description
 							</p>
 							<Button class="h-7 px-2 text-xs" variant="ghost">
@@ -1582,19 +1578,19 @@ function DesignMediaDetailScreen(props: {
 					<DetailMetadataSection onAdd={() => undefined} title="Relations">
 						<dl class="space-y-3 text-xs">
 							<div class="flex items-start justify-between gap-3">
-								<dt class="text-[#626a66]">Project</dt>
+								<dt class="text-muted-foreground">Project</dt>
 								<dd>
 									<Badge variant="secondary">Summer Visuals</Badge>
 								</dd>
 							</div>
 							<div class="flex items-start justify-between gap-3">
-								<dt class="text-[#626a66]">IP</dt>
+								<dt class="text-muted-foreground">IP</dt>
 								<dd>
 									<Badge variant="secondary">学園アイドルマスター</Badge>
 								</dd>
 							</div>
 							<div class="flex items-start justify-between gap-3">
-								<dt class="text-[#626a66]">Character</dt>
+								<dt class="text-muted-foreground">Character</dt>
 								<dd>
 									<Badge variant="secondary">花海咲季</Badge>
 								</dd>
@@ -1613,18 +1609,18 @@ function DesignMediaDetailScreen(props: {
 					</DetailMetadataSection>
 
 					<DetailMetadataSection title="File information">
-						<dl class="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-2 text-xs">
-							<dt class="text-[#626a66]">Source</dt>
-							<dd class="truncate text-[#3e4743]">Local assets</dd>
-							<dt class="text-[#626a66]">Created</dt>
-							<dd class="text-[#3e4743]">May 10, 2026</dd>
-							<dt class="text-[#626a66]">Modified</dt>
-							<dd class="text-[#3e4743]">Today, 14:32</dd>
+						<dl class="grid grid-cols-icon-content gap-x-3 gap-y-2 text-xs">
+							<dt class="text-muted-foreground">Source</dt>
+							<dd class="truncate text-foreground">Local assets</dd>
+							<dt class="text-muted-foreground">Created</dt>
+							<dd class="text-foreground">May 10, 2026</dd>
+							<dt class="text-muted-foreground">Modified</dt>
+							<dd class="text-foreground">Today, 14:32</dd>
 						</dl>
 					</DetailMetadataSection>
 
 					<details class="group py-3 md:hidden">
-						<summary class="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-2 font-medium text-[#4f5753] text-sm outline-none hover:bg-[#edf1ef] focus-visible:ring-2 focus-visible:ring-[#08766a]">
+						<summary class="flex min-h-11 cursor-pointer list-none items-center justify-between rounded-md px-2 font-medium text-muted-foreground text-sm outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring">
 							More actions
 							<ChevronDown
 								aria-hidden="true"
@@ -1698,17 +1694,17 @@ function ImportInboxDialog(props: {
 
 	return (
 		<Dialog onOpenChange={props.onOpenChange} open={props.open}>
-			<DialogContent class="grid max-w-5xl grid-rows-[auto_auto_minmax(0,1fr)_auto] gap-0 overflow-hidden p-0">
-				<DialogHeader class="border-[#e1e5e2] border-b px-5 py-4 pr-12 sm:px-6 sm:py-5 sm:pr-12">
+			<DialogContent class="grid max-w-5xl grid-rows-dialog-layout gap-0 overflow-hidden p-0">
+				<DialogHeader class="border-border border-b px-5 py-4 pr-12 sm:px-6 sm:py-5 sm:pr-12">
 					<DialogTitle>Import inbox</DialogTitle>
 					<DialogDescription>
 						ブラウザ拡張から届いた投稿を確認し、取り込むメディアを選択します。
 					</DialogDescription>
 				</DialogHeader>
 
-				<div class="flex flex-col gap-3 border-[#e1e5e2] border-b bg-[#f8faf8] px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+				<div class="flex flex-col gap-3 border-border border-b bg-muted px-5 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6">
 					<div class="flex items-center gap-2">
-						<span class="text-[#59615d] text-xs">Import to</span>
+						<span class="text-muted-foreground text-xs">Import to</span>
 						<Button
 							class="h-9 min-w-44 justify-between bg-white"
 							variant="outline"
@@ -1718,7 +1714,7 @@ function ImportInboxDialog(props: {
 						</Button>
 					</div>
 					<div class="flex items-center justify-between gap-3 sm:justify-end">
-						<p class="text-[#59615d] text-xs">
+						<p class="text-muted-foreground text-xs">
 							{selectedIds().size} of {MOCK_IMPORT_POSTS.length} selected
 						</p>
 						<Button
@@ -1734,25 +1730,26 @@ function ImportInboxDialog(props: {
 					</div>
 				</div>
 
-				<div class="overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 [scrollbar-gutter:stable]">
+				<div class="overflow-y-auto overscroll-contain px-5 py-4 sm:px-6 scrollbar-stable">
 					<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
 						<For each={MOCK_IMPORT_POSTS}>
 							{(post) => (
 								<li>
 									<button
+										aria-label={`Select post ${post.id}`}
 										aria-pressed={selectedIds().has(post.id)}
-										class={`group relative w-full overflow-hidden rounded-md border bg-white text-left outline-none focus-visible:ring-2 focus-visible:ring-[#08766a] focus-visible:ring-offset-2 ${
+										class={`group relative w-full overflow-hidden rounded-md border bg-white text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ${
 											selectedIds().has(post.id)
-												? "border-[#0b8f80] ring-1 ring-[#0b8f80]"
-												: "border-[#dce2de] hover:border-[#aeb8b2]"
+												? "border-primary ring-1 ring-ring"
+												: "border-border hover:border-border"
 										}`}
 										onClick={() => togglePost(post.id)}
 										type="button"
 									>
-										<div class="relative aspect-square overflow-hidden bg-[#edf0ed]">
+										<div class="relative aspect-square overflow-hidden bg-muted">
 											<img
 												alt=""
-												class="size-full object-cover transition-transform duration-200 group-hover:scale-[1.02] motion-reduce:transition-none"
+												class="size-full object-cover transition-transform duration-200 group-hover:scale-105 motion-reduce:transition-none"
 												height="320"
 												loading="lazy"
 												referrerpolicy="no-referrer"
@@ -1762,7 +1759,7 @@ function ImportInboxDialog(props: {
 											<span
 												class={`absolute top-2 right-2 flex size-6 items-center justify-center rounded-full border shadow-sm ${
 													selectedIds().has(post.id)
-														? "border-[#0b8f80] bg-[#0b8f80] text-white"
+														? "border-primary bg-primary text-white"
 														: "border-white/80 bg-white/90 text-transparent"
 												}`}
 											>
@@ -1770,10 +1767,10 @@ function ImportInboxDialog(props: {
 											</span>
 										</div>
 										<div class="p-3">
-											<strong class="block truncate font-medium text-[#303935] text-sm">
+											<strong class="block truncate font-medium text-foreground text-sm">
 												{post.author}
 											</strong>
-											<span class="mt-0.5 block truncate text-[#59615d] text-xs">
+											<span class="mt-0.5 block truncate text-muted-foreground text-xs">
 												{post.source} · {post.media.name}
 											</span>
 										</div>
@@ -1784,9 +1781,9 @@ function ImportInboxDialog(props: {
 					</ul>
 				</div>
 
-				<DialogFooter class="border-[#e1e5e2] border-t px-5 py-4 sm:px-6">
+				<DialogFooter class="border-border border-t px-5 py-4 sm:px-6">
 					<Button
-						class="mr-auto text-[#a13f38]"
+						class="mr-auto text-destructive"
 						disabled={selectedIds().size === 0}
 						variant="ghost"
 					>
@@ -1815,16 +1812,18 @@ function PatternCard(props: {
 	title: string;
 }) {
 	return (
-		<article class="flex min-h-64 flex-col rounded-lg border border-[#dde3df] bg-white p-5 shadow-[0_1px_2px_rgba(25,35,31,0.04)]">
+		<article class="flex min-h-64 flex-col rounded-lg border border-border bg-white p-5 shadow-sm">
 			<div class="mb-5">
 				<Badge
-					class="mb-3 border-0 bg-[#edf1ef] font-medium text-[#59615d] text-[10px]"
+					class="mb-3 border-0 bg-muted font-medium text-muted-foreground text-label-xs"
 					variant="secondary"
 				>
 					{props.label}
 				</Badge>
-				<h2 class="font-semibold text-[#252b28] text-base">{props.title}</h2>
-				<p class="mt-2 text-[#626a66] text-xs leading-5">{props.description}</p>
+				<h2 class="font-semibold text-foreground text-base">{props.title}</h2>
+				<p class="mt-2 text-muted-foreground text-xs leading-5">
+					{props.description}
+				</p>
 			</div>
 			<div class="mt-auto">{props.children}</div>
 		</article>
@@ -1856,38 +1855,38 @@ const PREVIEW_ROWS = Array.from({ length: 6 }, (_, index) => index);
 function CollectionLayoutPreview() {
 	return (
 		<div class="flex size-full min-h-0 flex-col" aria-hidden="true">
-			<div class="flex h-14 shrink-0 items-center gap-3 border-[#dfe4e1] border-b px-4">
-				<div class="h-8 min-w-0 flex-1 rounded-md border border-[#d7ddda] bg-white" />
-				<div class="h-8 w-24 rounded-md bg-[#08766a]" />
+			<div class="flex h-14 shrink-0 items-center gap-3 border-border border-b px-4">
+				<div class="h-8 min-w-0 flex-1 rounded-md border border-border bg-white" />
+				<div class="h-8 w-24 rounded-md bg-primary" />
 			</div>
-			<div class="flex h-10 shrink-0 items-center justify-between border-[#e6e9e7] border-b px-4">
-				<div class="h-2.5 w-20 rounded-full bg-[#aeb7b2]" />
+			<div class="flex h-10 shrink-0 items-center justify-between border-border border-b px-4">
+				<div class="h-2.5 w-20 rounded-full bg-muted-foreground" />
 				<div class="flex gap-2">
-					<div class="size-6 rounded bg-[#dfe5e1]" />
-					<div class="size-6 rounded bg-[#edf0ee]" />
+					<div class="size-6 rounded bg-muted-foreground" />
+					<div class="size-6 rounded bg-muted" />
 				</div>
 			</div>
-			<div class="grid min-h-0 flex-1 grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)]">
+			<div class="grid min-h-0 flex-1 grid-cols-1 2xl:grid-cols-workspace-sidebar">
 				<div class="grid min-h-0 grid-cols-3 content-start gap-2 overflow-hidden p-3 sm:grid-cols-4">
 					<For each={PREVIEW_ITEMS}>
 						{(index) => (
 							<div
-								class={`aspect-[4/3] rounded ${
+								class={`aspect-landscape rounded ${
 									index === 0
-										? "bg-[#9bcfc6] ring-2 ring-[#08766a]"
-										: "bg-[#dfe5e1]"
+										? "bg-accent ring-2 ring-ring"
+										: "bg-muted-foreground"
 								}`}
 							/>
 						)}
 					</For>
 				</div>
-				<div class="hidden border-[#dfe4e1] border-l bg-white p-4 2xl:block">
-					<div class="aspect-[4/3] w-full rounded bg-[#d5ded9]" />
-					<div class="mt-4 h-3 w-4/5 rounded-full bg-[#87948e]" />
-					<div class="mt-2 h-2 w-3/5 rounded-full bg-[#d2d8d5]" />
+				<div class="hidden border-border border-l bg-white p-4 2xl:block">
+					<div class="aspect-landscape w-full rounded bg-muted-foreground" />
+					<div class="mt-4 h-3 w-4/5 rounded-full bg-foreground" />
+					<div class="mt-2 h-2 w-3/5 rounded-full bg-muted-foreground" />
 					<div class="mt-5 space-y-2">
-						<div class="h-7 rounded bg-[#edf1ef]" />
-						<div class="h-7 rounded bg-[#edf1ef]" />
+						<div class="h-7 rounded bg-muted" />
+						<div class="h-7 rounded bg-muted" />
 					</div>
 				</div>
 			</div>
@@ -1898,27 +1897,27 @@ function CollectionLayoutPreview() {
 function DetailLayoutPreview() {
 	return (
 		<div class="flex size-full min-h-0 flex-col" aria-hidden="true">
-			<div class="flex h-14 shrink-0 items-center justify-between border-[#dfe4e1] border-b px-4">
+			<div class="flex h-14 shrink-0 items-center justify-between border-border border-b px-4">
 				<div class="flex items-center gap-3">
-					<div class="size-7 rounded bg-[#e5e9e7]" />
-					<div class="h-3 w-36 rounded-full bg-[#8c9892]" />
+					<div class="size-7 rounded bg-muted" />
+					<div class="h-3 w-36 rounded-full bg-foreground" />
 				</div>
-				<div class="h-8 w-20 rounded-md border border-[#d7ddda] bg-white" />
+				<div class="h-8 w-20 rounded-md border border-border bg-white" />
 			</div>
-			<div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_15rem]">
-				<div class="flex min-h-72 items-center justify-center bg-[#f2f4f2] p-6">
-					<div class="aspect-[4/3] max-h-full w-full max-w-xl rounded-sm bg-[#b9d8d2] shadow-sm" />
+			<div class="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-compact-sidebar">
+				<div class="flex min-h-72 items-center justify-center bg-muted p-6">
+					<div class="aspect-landscape max-h-full w-full max-w-xl rounded-sm bg-muted-foreground shadow-sm" />
 				</div>
-				<div class="hidden overflow-hidden border-[#dfe4e1] border-l bg-white p-4 lg:block">
-					<div class="h-3 w-4/5 rounded-full bg-[#87948e]" />
-					<div class="mt-2 h-2 w-2/5 rounded-full bg-[#d2d8d5]" />
+				<div class="hidden overflow-hidden border-border border-l bg-white p-4 lg:block">
+					<div class="h-3 w-4/5 rounded-full bg-foreground" />
+					<div class="mt-2 h-2 w-2/5 rounded-full bg-muted-foreground" />
 					<div class="mt-5 grid gap-2">
-						<div class="h-8 rounded bg-[#08766a]" />
-						<div class="h-8 rounded border border-[#dce1de]" />
+						<div class="h-8 rounded bg-primary" />
+						<div class="h-8 rounded border border-border" />
 					</div>
-					<div class="mt-6 space-y-3 border-[#e3e7e4] border-t pt-4">
+					<div class="mt-6 space-y-3 border-border border-t pt-4">
 						<For each={PREVIEW_ROWS.slice(0, 4)}>
-							{() => <div class="h-7 rounded bg-[#edf1ef]" />}
+							{() => <div class="h-7 rounded bg-muted" />}
 						</For>
 					</div>
 				</div>
@@ -1930,38 +1929,38 @@ function DetailLayoutPreview() {
 function ManagementLayoutPreview() {
 	return (
 		<div class="flex size-full min-h-0 flex-col" aria-hidden="true">
-			<div class="flex min-h-16 shrink-0 items-center justify-between gap-4 border-[#dfe4e1] border-b px-4">
+			<div class="flex min-h-16 shrink-0 items-center justify-between gap-4 border-border border-b px-4">
 				<div>
-					<div class="h-3 w-28 rounded-full bg-[#7f8c86]" />
-					<div class="mt-2 h-2 w-44 rounded-full bg-[#d1d7d4]" />
+					<div class="h-3 w-28 rounded-full bg-foreground" />
+					<div class="mt-2 h-2 w-44 rounded-full bg-muted-foreground" />
 				</div>
-				<div class="h-8 w-24 rounded-md bg-[#08766a]" />
+				<div class="h-8 w-24 rounded-md bg-primary" />
 			</div>
-			<div class="flex h-11 shrink-0 items-center gap-2 border-[#e5e8e6] border-b px-4">
-				<div class="h-7 w-44 rounded border border-[#d9dfdb] bg-white" />
-				<div class="h-7 w-20 rounded border border-[#d9dfdb] bg-white" />
+			<div class="flex h-11 shrink-0 items-center gap-2 border-border border-b px-4">
+				<div class="h-7 w-44 rounded border border-border bg-white" />
+				<div class="h-7 w-20 rounded border border-border bg-white" />
 			</div>
 			<div class="min-h-0 flex-1 overflow-hidden p-4">
-				<div class="overflow-hidden rounded-md border border-[#dfe4e1] bg-white">
-					<div class="grid h-9 grid-cols-[2fr_1fr_1fr_5rem] items-center gap-3 bg-[#f0f3f1] px-3">
+				<div class="overflow-hidden rounded-md border border-border bg-white">
+					<div class="grid h-9 grid-cols-media-table items-center gap-3 bg-muted px-3">
 						<For each={PREVIEW_ROWS.slice(0, 4)}>
 							{(_, index) => (
 								<div
-									class={`h-2 rounded-full bg-[#adb7b2] ${index() === 0 ? "w-16" : "w-10"}`}
+									class={`h-2 rounded-full bg-muted-foreground ${index() === 0 ? "w-16" : "w-10"}`}
 								/>
 							)}
 						</For>
 					</div>
 					<For each={PREVIEW_ROWS}>
 						{(_, _index) => (
-							<div class="grid h-12 grid-cols-[2fr_1fr_1fr_5rem] items-center gap-3 border-[#edf0ee] border-t px-3">
+							<div class="grid h-12 grid-cols-media-table items-center gap-3 border-border border-t px-3">
 								<div class="flex items-center gap-2">
-									<div class="size-7 rounded bg-[#d7e1dd]" />
-									<div class="h-2.5 w-24 rounded-full bg-[#9ba6a1]" />
+									<div class="size-7 rounded bg-muted-foreground" />
+									<div class="h-2.5 w-24 rounded-full bg-foreground" />
 								</div>
-								<div class="h-2 w-12 rounded-full bg-[#d1d7d4]" />
-								<div class="h-5 w-14 rounded-full bg-[#e4f0ed]" />
-								<div class="ml-auto h-6 w-8 rounded bg-[#edf0ee]" />
+								<div class="h-2 w-12 rounded-full bg-muted-foreground" />
+								<div class="h-5 w-14 rounded-full bg-muted" />
+								<div class="ml-auto h-6 w-8 rounded bg-muted" />
 							</div>
 						)}
 					</For>
@@ -1974,23 +1973,23 @@ function ManagementLayoutPreview() {
 function SettingsLayoutPreview() {
 	return (
 		<div class="flex size-full min-h-0 flex-col" aria-hidden="true">
-			<div class="flex min-h-16 shrink-0 items-center justify-between border-[#dfe4e1] border-b px-4">
+			<div class="flex min-h-16 shrink-0 items-center justify-between border-border border-b px-4">
 				<div>
-					<div class="h-3 w-24 rounded-full bg-[#7f8c86]" />
-					<div class="mt-2 h-2 w-40 rounded-full bg-[#d1d7d4]" />
+					<div class="h-3 w-24 rounded-full bg-foreground" />
+					<div class="mt-2 h-2 w-40 rounded-full bg-muted-foreground" />
 				</div>
-				<div class="h-8 w-20 rounded-md bg-[#08766a]" />
+				<div class="h-8 w-20 rounded-md bg-primary" />
 			</div>
 			<div class="min-h-0 flex-1 overflow-hidden px-5 py-5">
 				<div class="space-y-4">
 					<For each={PREVIEW_ROWS.slice(0, 3)}>
 						{(_, index) => (
-							<div class="rounded-md border border-[#dfe4e1] bg-white p-4">
-								<div class="h-3 w-28 rounded-full bg-[#8d9993]" />
-								<div class="mt-2 h-2 w-3/5 rounded-full bg-[#d2d8d5]" />
-								<div class="mt-4 h-9 rounded border border-[#d9dfdb] bg-[#fbfcfb]" />
+							<div class="rounded-md border border-border bg-white p-4">
+								<div class="h-3 w-28 rounded-full bg-foreground" />
+								<div class="mt-2 h-2 w-3/5 rounded-full bg-muted-foreground" />
+								<div class="mt-4 h-9 rounded border border-border bg-background" />
 								<Show when={index() === 1}>
-									<div class="mt-3 h-9 rounded border border-[#d9dfdb] bg-[#fbfcfb]" />
+									<div class="mt-3 h-9 rounded border border-border bg-background" />
 								</Show>
 							</div>
 						)}
@@ -2010,18 +2009,20 @@ function ScreenLayoutsScreen() {
 	);
 
 	return (
-		<section class="flex min-h-0 min-w-0 flex-col bg-[#fafbf9]">
-			<header class="border-[#e1e5e2] border-b bg-[#fbfcfa] px-6 py-5">
-				<p class="mb-1 font-medium text-[#08766a] text-xs">
+		<section class="flex min-h-0 min-w-0 flex-col bg-background">
+			<header class="border-border border-b bg-background px-6 py-5">
+				<p class="mb-1 font-medium text-primary text-xs">
 					Design lab / Screen layouts
 				</p>
-				<h1 class="font-semibold text-[#202624] text-xl">画面レイアウトの型</h1>
-				<p class="mt-2 max-w-2xl text-[#626a66] text-sm leading-6">
+				<h1 class="font-semibold text-foreground text-xl">
+					画面レイアウトの型
+				</h1>
+				<p class="mt-2 max-w-2xl text-muted-foreground text-sm leading-6">
 					既存画面を4種類の骨格へ整理します。選択して、情報量とスクロール領域を比較できます。
 				</p>
 			</header>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 [scrollbar-gutter:stable]">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 scrollbar-stable">
 				<div class="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
 					<For each={SCREEN_LAYOUT_OPTIONS}>
 						{(option) => (
@@ -2029,8 +2030,8 @@ function ScreenLayoutsScreen() {
 								aria-pressed={layout() === option.value}
 								class={`h-auto min-h-16 items-start justify-start px-4 py-3 text-left ${
 									layout() === option.value
-										? "border-[#87bdb4] bg-[#e8f4f1] text-[#075f56] hover:bg-[#e1f0ec]"
-										: "border-[#dce2de] bg-white text-[#303734] hover:bg-[#f2f5f3]"
+										? "border-primary bg-muted text-primary hover:bg-muted"
+										: "border-border bg-white text-foreground hover:bg-muted"
 								}`}
 								onClick={() => setLayout(option.value)}
 								variant="outline"
@@ -2042,8 +2043,8 @@ function ScreenLayoutsScreen() {
 									<span
 										class={`mt-1 block font-normal text-xs ${
 											layout() === option.value
-												? "text-[#356d65]"
-												: "text-[#68706c]"
+												? "text-primary"
+												: "text-muted-foreground"
 										}`}
 									>
 										{option.description}
@@ -2054,24 +2055,24 @@ function ScreenLayoutsScreen() {
 					</For>
 				</div>
 
-				<section class="mt-4 overflow-hidden rounded-lg border border-[#dce2de] bg-[#fbfcfa] shadow-[0_1px_2px_rgba(25,35,31,0.04)]">
-					<div class="flex items-center justify-between border-[#e1e5e2] border-b bg-white px-4 py-3">
+				<section class="mt-4 overflow-hidden rounded-lg border border-border bg-background shadow-sm">
+					<div class="flex items-center justify-between border-border border-b bg-white px-4 py-3">
 						<div>
-							<h2 class="font-semibold text-[#29302d] text-sm">
+							<h2 class="font-semibold text-foreground text-sm">
 								{selected().label}
 							</h2>
-							<p class="mt-0.5 text-[#68706c] text-xs">
+							<p class="mt-0.5 text-muted-foreground text-xs">
 								{selected().description}
 							</p>
 						</div>
 						<Badge
-							class="min-w-14 whitespace-nowrap border-[#cbd7d2] bg-[#f4f7f5] text-[#50605a]"
+							class="min-w-14 whitespace-nowrap border-border bg-muted text-muted-foreground"
 							variant="outline"
 						>
 							LIVE SKELETON
 						</Badge>
 					</div>
-					<div class="h-[min(32rem,60dvh)] min-h-96 bg-[#f8faf8]">
+					<div class="h-viewer-stage min-h-96 bg-muted">
 						<Show when={layout() === "collection"}>
 							<CollectionLayoutPreview />
 						</Show>
@@ -2137,69 +2138,68 @@ function InteractionPatternsScreen() {
 	}
 
 	return (
-		<section class="flex min-h-0 min-w-0 flex-col bg-[#fafbf9]">
-			<header class="border-[#e1e5e2] border-b bg-[#fbfcfa] px-6 py-5">
-				<p class="mb-1 font-medium text-[#08766a] text-xs">
+		<section class="flex min-h-0 min-w-0 flex-col bg-background">
+			<header class="border-border border-b bg-background px-6 py-5">
+				<p class="mb-1 font-medium text-primary text-xs">
 					Design lab / Interactions
 				</p>
-				<h1 class="font-semibold text-[#202624] text-xl">操作とスクロール</h1>
-				<p class="mt-2 max-w-2xl text-[#626a66] text-sm leading-6">
+				<h1 class="font-semibold text-foreground text-xl">操作とスクロール</h1>
+				<p class="mt-2 max-w-2xl text-muted-foreground text-sm leading-6">
 					押した後の反応と、画面遷移後に何を保つかを共通化します。
 				</p>
 			</header>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 [scrollbar-gutter:stable]">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 scrollbar-stable">
 				<div class="grid gap-4 lg:grid-cols-2">
-					<section class="rounded-lg border border-[#dce2de] bg-white p-5">
+					<section class="rounded-lg border border-border bg-white p-5">
 						<Badge
-							class="mb-3 border-0 bg-[#edf1ef] text-[#59615d] text-[10px]"
+							class="mb-3 border-0 bg-muted text-muted-foreground text-label-xs"
 							variant="secondary"
 						>
 							ASYNC ACTION
 						</Badge>
-						<h2 class="font-semibold text-[#29302d] text-base">保存の反応</h2>
-						<p class="mt-2 text-[#626a66] text-xs leading-5">
+						<h2 class="font-semibold text-foreground text-base">保存の反応</h2>
+						<p class="mt-2 text-muted-foreground text-xs leading-5">
 							処理中は無効化して連打を防ぎ、ボタンの外でも結果を通知します。
 						</p>
 						<div class="mt-6 flex items-center gap-4">
 							<Button
-								class="w-36 bg-[#08766a] hover:bg-[#06645a]"
+								class="w-36 bg-primary hover:bg-primary"
 								disabled={saveState() === "pending"}
 								onClick={demonstrateSave}
 							>
 								{saveState() === "pending" ? "保存中…" : "変更を保存"}
 							</Button>
-							<p
+							<output
 								aria-live="polite"
 								class={`text-xs ${
 									saveState() === "success"
-										? "text-[#08766a]"
-										: "text-[#68706c]"
+										? "text-primary"
+										: "text-muted-foreground"
 								}`}
-								role="status"
 							>
 								{saveState() === "idle" && "待機中"}
 								{saveState() === "pending" && "保存処理を実行しています"}
 								{saveState() === "success" && "保存しました"}
-							</p>
+							</output>
 						</div>
 					</section>
 
-					<section class="rounded-lg border border-[#dce2de] bg-white p-5">
+					<section class="rounded-lg border border-border bg-white p-5">
 						<Badge
-							class="mb-3 border-0 bg-[#edf1ef] text-[#59615d] text-[10px]"
+							class="mb-3 border-0 bg-muted text-muted-foreground text-label-xs"
 							variant="secondary"
 						>
 							SELECTION
 						</Badge>
-						<h2 class="font-semibold text-[#29302d] text-base">
+						<h2 class="font-semibold text-foreground text-base">
 							選択と移動を分ける
 						</h2>
-						<p class="mt-2 text-[#626a66] text-xs leading-5">
+						<p class="mt-2 text-muted-foreground text-xs leading-5">
 							単クリックは選択だけ。詳細表示には明示されたボタンを使います。
 						</p>
-						<div class="mt-5 flex items-center justify-between rounded-md bg-[#f2f5f3] px-3 py-2">
-							<span class="truncate text-[#4c5551] text-xs">
+						<div class="mt-5 flex items-center justify-between rounded-md bg-muted px-3 py-2">
+							<span class="truncate text-muted-foreground text-xs">
 								{INTERACTION_ROWS.find((row) => row.id === selectedRow())?.name}
 							</span>
 							<Button onClick={openSelectedDetail} size="sm" variant="outline">
@@ -2209,18 +2209,18 @@ function InteractionPatternsScreen() {
 					</section>
 				</div>
 
-				<section class="mt-4 overflow-hidden rounded-lg border border-[#dce2de] bg-white">
-					<div class="flex items-center justify-between border-[#e1e5e2] border-b px-5 py-4">
+				<section class="mt-4 overflow-hidden rounded-lg border border-border bg-white">
+					<div class="flex items-center justify-between border-border border-b px-5 py-4">
 						<div>
-							<h2 class="font-semibold text-[#29302d] text-sm">
+							<h2 class="font-semibold text-foreground text-sm">
 								スクロール位置の復元
 							</h2>
-							<p class="mt-1 text-[#68706c] text-xs">
+							<p class="mt-1 text-muted-foreground text-xs">
 								一覧をスクロールしてから詳細を開き、戻るを試せます。
 							</p>
 						</div>
 						<Badge
-							class="border-[#cbd7d2] bg-[#f4f7f5] text-[#50605a]"
+							class="border-border bg-muted text-muted-foreground"
 							variant="outline"
 						>
 							{Math.round(scrollPosition())} px
@@ -2229,12 +2229,12 @@ function InteractionPatternsScreen() {
 
 					<Show
 						fallback={
-							<div class="flex h-80 flex-col bg-[#f7f9f7]">
-								<div class="flex h-12 shrink-0 items-center gap-3 border-[#e1e5e2] border-b bg-white px-4">
+							<div class="flex h-80 flex-col bg-muted">
+								<div class="flex h-12 shrink-0 items-center gap-3 border-border border-b bg-white px-4">
 									<Button onClick={returnToList} size="sm" variant="ghost">
 										← 一覧へ戻る
 									</Button>
-									<span class="truncate font-medium text-[#38403c] text-xs">
+									<span class="truncate font-medium text-foreground text-xs">
 										{
 											INTERACTION_ROWS.find((row) => row.id === selectedRow())
 												?.name
@@ -2242,14 +2242,14 @@ function InteractionPatternsScreen() {
 									</span>
 								</div>
 								<div class="flex min-h-0 flex-1 items-center justify-center p-8">
-									<div class="aspect-[4/3] h-full max-w-full rounded-md bg-[#c6ded9]" />
+									<div class="aspect-landscape h-full max-w-full rounded-md bg-muted-foreground" />
 								</div>
 							</div>
 						}
 						when={pane() === "list"}
 					>
 						<div
-							class="h-80 overflow-y-auto overscroll-contain bg-[#fafbf9] [scrollbar-gutter:stable]"
+							class="h-80 overflow-y-auto overscroll-contain bg-background scrollbar-stable"
 							onScroll={(event) =>
 								setScrollPosition(event.currentTarget.scrollTop)
 							}
@@ -2257,30 +2257,34 @@ function InteractionPatternsScreen() {
 								scrollRegion = element;
 							}}
 						>
-							<div class="sticky top-0 z-10 flex h-10 items-center justify-between border-[#e1e5e2] border-b bg-[#fbfcfa]/95 px-4 backdrop-blur-sm">
-								<span class="font-medium text-[#59615d] text-xs">18 items</span>
-								<span class="text-[#59615d] text-[11px]">
+							<div class="sticky top-0 z-10 flex h-10 items-center justify-between border-border border-b bg-background/95 px-4 backdrop-blur-sm">
+								<span class="font-medium text-muted-foreground text-xs">
+									18 items
+								</span>
+								<span class="text-muted-foreground text-label-sm">
 									この領域だけスクロール
 								</span>
 							</div>
-							<div class="divide-y divide-[#e8ebe9]">
+							<div class="divide-y divide-border">
 								<For each={INTERACTION_ROWS}>
 									{(row) => (
 										<button
 											aria-pressed={selectedRow() === row.id}
-											class={`flex h-14 w-full items-center gap-3 px-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#08766a] ${
+											class={`flex h-14 w-full items-center gap-3 px-4 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
 												selectedRow() === row.id
-													? "bg-[#e5f2ef]"
-													: "bg-white hover:bg-[#f3f6f4]"
+													? "bg-muted"
+													: "bg-white hover:bg-muted"
 											}`}
 											onClick={() => setSelectedRow(row.id)}
 											type="button"
 										>
-											<span class="size-8 shrink-0 rounded bg-[#d7e3df]" />
-											<span class="min-w-0 flex-1 truncate text-[#3f4844] text-xs">
+											<span class="size-8 shrink-0 rounded bg-muted-foreground" />
+											<span class="min-w-0 flex-1 truncate text-foreground text-xs">
 												{row.name}
 											</span>
-											<span class="text-[#59615d] text-[11px]">PNG</span>
+											<span class="text-muted-foreground text-label-sm">
+												PNG
+											</span>
 										</button>
 									)}
 								</For>
@@ -2348,56 +2352,61 @@ function ManagerBatchToolPanel(props: {
 	return (
 		<div class="space-y-4">
 			<div>
-				<h2 class="font-semibold text-[#29322e] text-lg">{content().title}</h2>
-				<p class="mt-0.5 text-[#626a66] text-xs">{content().description}</p>
+				<h2 class="font-semibold text-foreground text-lg">{content().title}</h2>
+				<p class="mt-0.5 text-muted-foreground text-xs">
+					{content().description}
+				</p>
 			</div>
 
-			<section class="rounded-md border border-[#dce2de] bg-white p-4">
+			<section class="rounded-md border border-border bg-white p-4">
 				<div class="grid gap-4 lg:grid-cols-2">
 					<div class="space-y-1.5">
-						<Label class="text-[#3f4743] text-sm">Target source</Label>
+						<Label class="text-foreground text-sm">Target source</Label>
 						<Button class="w-full justify-between" variant="outline">
 							All sources
 							<ChevronDown aria-hidden="true" size={15} />
 						</Button>
-						<p class="text-[#68706c] text-xs">
+						<p class="text-muted-foreground text-xs">
 							対象を限定しない場合はすべてのソースを走査します。
 						</p>
 					</div>
 					<div class="space-y-1.5">
-						<Label class="text-[#3f4743] text-sm">Existing results</Label>
+						<Label class="text-foreground text-sm">Existing results</Label>
 						<Button class="w-full justify-between" variant="outline">
 							Skip processed media
 							<ChevronDown aria-hidden="true" size={15} />
 						</Button>
-						<p class="text-[#68706c] text-xs">
+						<p class="text-muted-foreground text-xs">
 							既存結果を保持し、未処理のメディアだけを対象にします。
 						</p>
 					</div>
 				</div>
-				<div class="mt-4 flex justify-end border-[#e4e8e5] border-t pt-4">
+				<div class="mt-4 flex justify-end border-border border-t pt-4">
 					<Button class="w-full sm:w-auto">{content().action}</Button>
 				</div>
 			</section>
 
 			<section aria-labelledby="recent-runs-title">
 				<div class="mb-2 flex items-center justify-between">
-					<h3 class="font-medium text-[#343c38] text-sm" id="recent-runs-title">
+					<h3
+						class="font-medium text-foreground text-sm"
+						id="recent-runs-title"
+					>
 						Recent runs
 					</h3>
 					<Button class="h-8 px-2 text-xs" variant="ghost">
 						View all jobs
 					</Button>
 				</div>
-				<div class="divide-y divide-[#e4e8e5] overflow-hidden rounded-md border border-[#dce2de] bg-white">
+				<div class="divide-y divide-border overflow-hidden rounded-md border border-border bg-white">
 					<For each={MOCK_JOBS.slice(0, 3)}>
 						{(job) => (
 							<div class="flex min-h-14 items-center gap-3 px-4 py-2">
 								<span class="min-w-0 flex-1">
-									<strong class="block truncate font-medium text-[#343c38] text-sm">
+									<strong class="block truncate font-medium text-foreground text-sm">
 										{job.name}
 									</strong>
-									<span class="block text-[#68706c] text-xs">
+									<span class="block text-muted-foreground text-xs">
 										{job.source} · {job.started}
 									</span>
 								</span>
@@ -2435,26 +2444,26 @@ function DataTransferToolPanel() {
 	return (
 		<div class="space-y-4">
 			<div>
-				<h2 class="font-semibold text-[#29322e] text-lg">Data transfer</h2>
-				<p class="mt-0.5 text-[#626a66] text-xs">
+				<h2 class="font-semibold text-foreground text-lg">Data transfer</h2>
+				<p class="mt-0.5 text-muted-foreground text-xs">
 					ソース単位の書き出しと復元を、同じ場所から実行します。
 				</p>
 			</div>
 
 			<div class="grid gap-4 xl:grid-cols-2">
-				<section class="flex flex-col rounded-md border border-[#dce2de] bg-white p-4">
+				<section class="flex flex-col rounded-md border border-border bg-white p-4">
 					<div>
-						<p class="font-medium text-[#08766a] text-xs">Export</p>
-						<h3 class="mt-1 font-semibold text-[#303935] text-base">
+						<p class="font-medium text-primary text-xs">Export</p>
+						<h3 class="mt-1 font-semibold text-foreground text-base">
 							Create a portable copy
 						</h3>
-						<p class="mt-1 text-[#626a66] text-xs leading-5">
+						<p class="mt-1 text-muted-foreground text-xs leading-5">
 							形式を選び、バックグラウンドジョブとして書き出します。
 						</p>
 					</div>
 
 					<div class="mt-4 space-y-1.5">
-						<Label class="text-[#3f4743] text-sm">Source</Label>
+						<Label class="text-foreground text-sm">Source</Label>
 						<Button class="w-full justify-between" variant="outline">
 							Local assets
 							<ChevronDown aria-hidden="true" size={15} />
@@ -2462,18 +2471,19 @@ function DataTransferToolPanel() {
 					</div>
 
 					<fieldset class="mt-4">
-						<legend class="mb-1.5 font-medium text-[#3f4743] text-sm">
+						<legend class="mb-1.5 font-medium text-foreground text-sm">
 							Format
 						</legend>
 						<div class="space-y-1.5">
 							<For each={formats}>
 								{(item) => (
 									<button
+										aria-label={`${item.label}: ${item.description}`}
 										aria-pressed={format() === item.value}
-										class={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#08766a] ${
+										class={`flex min-h-14 w-full items-center gap-3 rounded-md border px-3 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 											format() === item.value
-												? "border-[#0b8f80] bg-[#eff8f5]"
-												: "border-[#dce2de] hover:bg-[#f5f7f5]"
+												? "border-primary bg-muted"
+												: "border-border hover:bg-muted"
 										}`}
 										onClick={() => setFormat(item.value)}
 										type="button"
@@ -2482,15 +2492,15 @@ function DataTransferToolPanel() {
 											aria-hidden="true"
 											class={`size-3 shrink-0 rounded-full border ${
 												format() === item.value
-													? "border-[#0b8f80] bg-[#0b8f80] ring-2 ring-white"
-													: "border-[#9ca5a0]"
+													? "border-primary bg-primary ring-2 ring-white"
+													: "border-border"
 											}`}
 										/>
 										<span class="min-w-0">
-											<strong class="block font-medium text-[#343c38] text-sm">
+											<strong class="block font-medium text-foreground text-sm">
 												{item.label}
 											</strong>
-											<span class="block text-[#59615d] text-xs">
+											<span class="block text-muted-foreground text-xs">
 												{item.description}
 											</span>
 										</span>
@@ -2508,19 +2518,19 @@ function DataTransferToolPanel() {
 					</div>
 				</section>
 
-				<section class="flex flex-col rounded-md border border-[#dce2de] bg-white p-4">
+				<section class="flex flex-col rounded-md border border-border bg-white p-4">
 					<div>
-						<p class="font-medium text-[#08766a] text-xs">Restore</p>
-						<h3 class="mt-1 font-semibold text-[#303935] text-base">
+						<p class="font-medium text-primary text-xs">Restore</p>
+						<h3 class="mt-1 font-semibold text-foreground text-base">
 							Import a previous export
 						</h3>
-						<p class="mt-1 text-[#626a66] text-xs leading-5">
+						<p class="mt-1 text-muted-foreground text-xs leading-5">
 							NDJSON・TARを自動判別し、選択したソースへ復元します。
 						</p>
 					</div>
 
 					<div class="mt-4 space-y-1.5">
-						<Label class="text-[#3f4743] text-sm">Destination</Label>
+						<Label class="text-foreground text-sm">Destination</Label>
 						<Button class="w-full justify-between" variant="outline">
 							Local assets
 							<ChevronDown aria-hidden="true" size={15} />
@@ -2528,30 +2538,30 @@ function DataTransferToolPanel() {
 					</div>
 
 					<button
-						class="mt-4 flex min-h-48 w-full flex-col items-center justify-center rounded-md border border-[#aeb8b2] border-dashed bg-[#f8faf8] px-5 text-center outline-none hover:bg-[#f1f5f2] focus-visible:ring-2 focus-visible:ring-[#08766a]"
+						class="mt-4 flex min-h-48 w-full flex-col items-center justify-center rounded-md border border-border border-dashed bg-muted px-5 text-center outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
 						type="button"
 					>
 						<DownloadCloud
 							aria-hidden="true"
-							class="rotate-180 text-[#08766a]"
+							class="rotate-180 text-primary"
 							size={22}
 						/>
-						<strong class="mt-3 font-medium text-[#343c38] text-sm">
+						<strong class="mt-3 font-medium text-foreground text-sm">
 							Choose an export file
 						</strong>
-						<span class="mt-1 text-[#59615d] text-xs">
+						<span class="mt-1 text-muted-foreground text-xs">
 							.ndjson, .tar · drag and drop supported
 						</span>
 					</button>
 
-					<p class="mt-3 flex items-start gap-2 rounded-md bg-[#f1f4f2] px-3 py-2 text-[#59615d] text-xs leading-5">
+					<p class="mt-3 flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-muted-foreground text-xs leading-5">
 						<CircleAlert aria-hidden="true" class="mt-0.5 shrink-0" size={14} />
 						復元は既存データへ追加・更新されます。実行前に内容を検証します。
 					</p>
 				</section>
 			</div>
 
-			<p class="text-[#59615d] text-xs">
+			<p class="text-muted-foreground text-xs">
 				作成・復元の進捗と失敗内容はJobsで確認できます。
 			</p>
 		</div>
@@ -2594,19 +2604,19 @@ function DesignManagerScreen() {
 	};
 
 	return (
-		<section class="flex min-h-0 min-w-0 flex-col bg-[#fafbf9]">
-			<header class="border-[#e1e5e2] border-b bg-[#fbfcfa] px-5 py-4 sm:px-6">
-				<p class="font-medium text-[#08766a] text-xs">Workspace</p>
-				<h1 class="mt-1 font-semibold text-[#242927] text-xl">Manager</h1>
-				<p class="mt-1 text-[#626a66] text-sm">
+		<section class="flex min-h-0 min-w-0 flex-col bg-background">
+			<header class="border-border border-b bg-background px-5 py-4 sm:px-6">
+				<p class="font-medium text-primary text-xs">Workspace</p>
+				<h1 class="mt-1 font-semibold text-foreground text-xl">Manager</h1>
+				<p class="mt-1 text-muted-foreground text-sm">
 					分類データの編集と、一括処理の起点をまとめます。
 				</p>
 			</header>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-stable">
 				<nav
 					aria-label="Manager categories"
-					class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-[#e1e5e2] border-b bg-[#fafbf9]/95 px-4 py-2 backdrop-blur lg:hidden"
+					class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-border border-b bg-background/95 px-4 py-2 backdrop-blur lg:hidden"
 				>
 					<For each={MANAGER_AREAS}>
 						{(item) => (
@@ -2614,8 +2624,8 @@ function DesignManagerScreen() {
 								aria-current={area() === item.value ? "page" : undefined}
 								class={`h-12 shrink-0 px-3 text-xs sm:h-9 ${
 									area() === item.value
-										? "bg-[#e1f1ed] text-[#05695f]"
-										: "text-[#59615d]"
+										? "bg-muted text-primary"
+										: "text-muted-foreground"
 								}`}
 								onClick={() => changeArea(item.value)}
 								variant="ghost"
@@ -2626,13 +2636,13 @@ function DesignManagerScreen() {
 					</For>
 				</nav>
 
-				<div class="grid w-full gap-6 px-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-8 lg:px-6 xl:px-8">
+				<div class="grid w-full gap-6 px-4 py-5 lg:grid-cols-settings-sidebar lg:gap-8 lg:px-6 xl:px-8">
 					<nav aria-label="Manager categories" class="hidden lg:block">
 						<div class="sticky top-5 space-y-5">
 							<For each={["Entities", "Tools"] as const}>
 								{(group) => (
 									<div>
-										<p class="mb-1 px-2.5 font-medium text-[#59615d] text-[10px] uppercase tracking-[0.12em]">
+										<p class="mb-1 px-2.5 font-medium text-muted-foreground text-label-xs uppercase tracking-wider">
 											{group}
 										</p>
 										<div class="space-y-0.5">
@@ -2646,10 +2656,10 @@ function DesignManagerScreen() {
 														aria-current={
 															area() === item.value ? "page" : undefined
 														}
-														class={`flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#08766a] ${
+														class={`flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 															area() === item.value
-																? "bg-[#e1f1ed] text-[#05695f]"
-																: "text-[#555d59] hover:bg-[#edf0ed]"
+																? "bg-muted text-primary"
+																: "text-muted-foreground hover:bg-muted"
 														}`}
 														onClick={() => changeArea(item.value)}
 														type="button"
@@ -2661,7 +2671,7 @@ function DesignManagerScreen() {
 															<strong class="block truncate font-medium text-sm">
 																{item.label}
 															</strong>
-															<span class="block truncate text-[#626a66] text-[11px]">
+															<span class="block truncate text-muted-foreground text-label-sm">
 																{item.description}
 															</span>
 														</span>
@@ -2698,10 +2708,10 @@ function DesignManagerScreen() {
 						<div class="min-w-0">
 							<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
 								<div>
-									<h2 class="font-semibold text-[#29322e] text-lg">
+									<h2 class="font-semibold text-foreground text-lg">
 										{activeArea().label}
 									</h2>
-									<p class="mt-0.5 text-[#626a66] text-xs">
+									<p class="mt-0.5 text-muted-foreground text-xs">
 										{activeArea().description}を管理します。
 									</p>
 								</div>
@@ -2711,26 +2721,26 @@ function DesignManagerScreen() {
 								</Button>
 							</div>
 
-							<div class="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_20rem]">
+							<div class="grid min-w-0 gap-4 xl:grid-cols-manager-sidebar">
 								<div class="min-w-0">
 									<div class="relative mb-3">
 										<Search
 											aria-hidden="true"
-											class="absolute top-1/2 left-3 -translate-y-1/2 text-[#727a76]"
+											class="absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
 											size={15}
 										/>
 										<Input
 											aria-label={`${activeArea().label}を検索`}
-											class="h-9 border-[#d9dfdb] bg-white pl-9 shadow-none focus-visible:ring-[#0b8f80]"
+											class="h-9 border-border bg-white pl-9 shadow-none focus-visible:ring-ring"
 											onInput={(event) => setQuery(event.currentTarget.value)}
 											placeholder={`Search ${activeArea().label.toLocaleLowerCase()}...`}
 											value={query()}
 										/>
 									</div>
 
-									<div class="overflow-x-auto rounded-md border border-[#dce2de] bg-white">
+									<div class="overflow-x-auto rounded-md border border-border bg-white">
 										<table class="w-full border-collapse text-left text-sm">
-											<thead class="bg-[#f4f6f4] text-[#68706c] text-xs">
+											<thead class="bg-muted text-muted-foreground text-xs">
 												<tr>
 													<th class="px-4 py-2 font-medium" scope="col">
 														Name
@@ -2755,38 +2765,39 @@ function DesignManagerScreen() {
 													</th>
 												</tr>
 											</thead>
-											<tbody class="divide-y divide-[#e5e9e6]">
+											<tbody class="divide-y divide-border">
 												<For each={entities()}>
 													{(item) => (
 														<tr
 															class={
 																selectedId() === item.id
-																	? "bg-[#f0f7f5]"
-																	: "hover:bg-[#f6f8f6]"
+																	? "bg-muted"
+																	: "hover:bg-muted"
 															}
 														>
 															<th class="p-0 font-normal" scope="row">
 																<button
+																	aria-label={item.name}
 																	aria-pressed={selectedId() === item.id}
-																	class="block min-h-14 w-full px-4 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#08766a]"
+																	class="block min-h-14 w-full px-4 py-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 																	onClick={() => setSelectedId(item.id)}
 																	type="button"
 																>
-																	<strong class="block truncate font-medium text-[#303935] text-sm">
+																	<strong class="block truncate font-medium text-foreground text-sm">
 																		{item.name}
 																	</strong>
-																	<span class="block max-w-[42ch] truncate text-[#59615d] text-xs">
+																	<span class="block max-w-text-compact truncate text-muted-foreground text-xs">
 																		{item.description}
 																	</span>
 																</button>
 															</th>
-															<td class="hidden max-w-48 truncate px-4 py-2 text-[#626a66] text-xs md:table-cell">
+															<td class="hidden max-w-48 truncate px-4 py-2 text-muted-foreground text-xs md:table-cell">
 																{item.relations.join(", ")}
 															</td>
-															<td class="px-4 py-2 text-right font-medium text-[#3e4743] text-xs">
+															<td class="px-4 py-2 text-right font-medium text-foreground text-xs">
 																{item.mediaCount}
 															</td>
-															<td class="hidden px-4 py-2 text-right text-[#59615d] text-xs sm:table-cell">
+															<td class="hidden px-4 py-2 text-right text-muted-foreground text-xs sm:table-cell">
 																{item.modified}
 															</td>
 														</tr>
@@ -2795,7 +2806,7 @@ function DesignManagerScreen() {
 											</tbody>
 										</table>
 									</div>
-									<p class="mt-2 text-[#59615d] text-xs">
+									<p class="mt-2 text-muted-foreground text-xs">
 										{entities().length} items
 									</p>
 								</div>
@@ -2804,31 +2815,31 @@ function DesignManagerScreen() {
 									{(item) => (
 										<aside
 											aria-label="選択中の項目"
-											class="hidden self-start rounded-md border border-[#dce2de] bg-white p-4 xl:block"
+											class="hidden self-start rounded-md border border-border bg-white p-4 xl:block"
 										>
-											<p class="text-[#59615d] text-xs">
+											<p class="text-muted-foreground text-xs">
 												Selected {activeArea().label.replace(/s$/, "")}
 											</p>
-											<h3 class="mt-1 break-words font-semibold text-[#29322e] text-base">
+											<h3 class="mt-1 break-words font-semibold text-foreground text-base">
 												{item().name}
 											</h3>
-											<p class="mt-2 text-[#626a66] text-xs leading-5">
+											<p class="mt-2 text-muted-foreground text-xs leading-5">
 												{item().description}
 											</p>
-											<dl class="mt-4 space-y-3 border-[#e4e8e5] border-y py-4 text-xs">
+											<dl class="mt-4 space-y-3 border-border border-y py-4 text-xs">
 												<div class="flex justify-between gap-3">
-													<dt class="text-[#59615d]">Media</dt>
-													<dd class="font-medium text-[#343c38]">
+													<dt class="text-muted-foreground">Media</dt>
+													<dd class="font-medium text-foreground">
 														{item().mediaCount}
 													</dd>
 												</div>
 												<div class="flex justify-between gap-3">
-													<dt class="text-[#59615d]">Modified</dt>
-													<dd class="text-[#343c38]">{item().modified}</dd>
+													<dt class="text-muted-foreground">Modified</dt>
+													<dd class="text-foreground">{item().modified}</dd>
 												</div>
 											</dl>
 											<div class="mt-4">
-												<p class="mb-2 font-medium text-[#343c38] text-xs">
+												<p class="mb-2 font-medium text-foreground text-xs">
 													Relations
 												</p>
 												<div class="flex flex-wrap gap-1.5">
@@ -2841,7 +2852,7 @@ function DesignManagerScreen() {
 											</div>
 											<div class="mt-5 grid grid-cols-2 gap-2">
 												<Button variant="outline">Edit</Button>
-												<Button class="text-[#a13f38]" variant="outline">
+												<Button class="text-destructive" variant="outline">
 													Delete
 												</Button>
 											</div>
@@ -2875,14 +2886,14 @@ function jobStatusLabel(status: MockJob["status"]) {
 function JobStatus(props: { status: MockJob["status"] }) {
 	return (
 		<span
-			class={`inline-flex h-6 items-center gap-1.5 rounded-full px-2 font-medium text-[11px] ${
+			class={`inline-flex h-6 items-center gap-1.5 rounded-full px-2 font-medium text-label-sm ${
 				props.status === "running"
-					? "bg-[#e2f2ed] text-[#087367]"
+					? "bg-muted text-primary"
 					: props.status === "queued"
-						? "bg-[#edf0ee] text-[#59615d]"
+						? "bg-muted text-muted-foreground"
 						: props.status === "failed"
-							? "bg-[#f9e8e6] text-[#a03e37]"
-							: "bg-[#e9f0ea] text-[#3d6848]"
+							? "bg-muted text-destructive"
+							: "bg-muted text-muted-foreground"
 			}`}
 		>
 			<Show when={props.status === "running"}>
@@ -2937,27 +2948,27 @@ function JobsScreen() {
 	};
 
 	return (
-		<section class="flex min-h-0 min-w-0 flex-col bg-[#fafbf9]">
-			<header class="border-[#e1e5e2] border-b bg-[#fbfcfa] px-6 py-5">
+		<section class="flex min-h-0 min-w-0 flex-col bg-background">
+			<header class="border-border border-b bg-background px-6 py-5">
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
-						<p class="font-medium text-[#08766a] text-xs">Workspace</p>
-						<h1 class="mt-1 font-semibold text-[#242927] text-xl">Jobs</h1>
-						<p class="mt-1 text-[#626a66] text-sm">
+						<p class="font-medium text-primary text-xs">Workspace</p>
+						<h1 class="mt-1 font-semibold text-foreground text-xl">Jobs</h1>
+						<p class="mt-1 text-muted-foreground text-sm">
 							バックグラウンド処理の進捗、失敗、履歴を確認します。
 						</p>
 					</div>
-					<div class="flex items-center gap-2 rounded-md border border-[#dce2de] bg-white px-3 py-2 text-[#59615d] text-xs">
-						<span class="size-2 animate-pulse rounded-full bg-[#20a276] motion-reduce:animate-none" />
+					<div class="flex items-center gap-2 rounded-md border border-border bg-white px-3 py-2 text-muted-foreground text-xs">
+						<span class="size-2 animate-pulse rounded-full bg-primary motion-reduce:animate-none" />
 						Live updates
 					</div>
 				</div>
 			</header>
 
-			<div class="grid min-h-0 flex-1 xl:grid-cols-[minmax(0,1fr)_22rem]">
-				<div class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 [scrollbar-gutter:stable]">
+			<div class="grid min-h-0 flex-1 xl:grid-cols-detail-sidebar">
+				<div class="min-h-0 overflow-y-auto overscroll-contain p-4 sm:p-6 scrollbar-stable">
 					<div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-						<div class="flex flex-wrap gap-1 rounded-md bg-[#eef1ee] p-1">
+						<div class="flex flex-wrap gap-1 rounded-md bg-muted p-1">
 							<For
 								each={
 									[
@@ -2973,8 +2984,8 @@ function JobsScreen() {
 										aria-pressed={filter() === option.value}
 										class={`h-8 px-3 text-xs shadow-none ${
 											filter() === option.value
-												? "bg-white text-[#26302c]"
-												: "text-[#626a66]"
+												? "bg-white text-foreground"
+												: "text-muted-foreground"
 										}`}
 										onClick={() => changeFilter(option.value)}
 										size="sm"
@@ -2985,31 +2996,33 @@ function JobsScreen() {
 								)}
 							</For>
 						</div>
-						<p class="text-[#68706c] text-xs">{filteredJobs().length} jobs</p>
+						<p class="text-muted-foreground text-xs">
+							{filteredJobs().length} jobs
+						</p>
 					</div>
 
-					<div class="overflow-hidden rounded-lg border border-[#dce2de] bg-white">
+					<div class="overflow-hidden rounded-lg border border-border bg-white">
 						<For each={filteredJobs()}>
 							{(job) => (
 								<article
-									class={`border-[#e3e7e4] border-b p-4 last:border-b-0 ${
-										selectedId() === job.id ? "bg-[#f4f9f7]" : ""
+									class={`border-border border-b p-4 last:border-b-0 ${
+										selectedId() === job.id ? "bg-muted" : ""
 									}`}
 								>
 									<div class="flex min-w-0 items-start gap-3">
 										<button
 											aria-pressed={selectedId() === job.id}
-											class="min-w-0 flex-1 rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-[#08766a] focus-visible:ring-offset-2"
+											class="min-w-0 flex-1 rounded text-left outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 											onClick={() => setSelectedId(job.id)}
 											type="button"
 										>
 											<span class="flex flex-wrap items-center gap-2">
-												<strong class="min-w-0 truncate font-medium text-[#28312d] text-sm">
+												<strong class="min-w-0 truncate font-medium text-foreground text-sm">
 													{job.name}
 												</strong>
 												<JobStatus status={job.status} />
 											</span>
-											<span class="mt-1 block text-[#68706c] text-xs">
+											<span class="mt-1 block text-muted-foreground text-xs">
 												{job.source} · {job.type} · {job.started}
 											</span>
 										</button>
@@ -3021,8 +3034,8 @@ function JobsScreen() {
 										</Show>
 									</div>
 									<Show when={job.status === "running"}>
-										<div class="mt-3" role="status">
-											<div class="mb-1.5 flex justify-between text-[#59615d] text-[11px]">
+										<div aria-atomic="true" aria-live="polite" class="mt-3">
+											<div class="mb-1.5 flex justify-between text-muted-foreground text-label-sm">
 												<span>{progress(job)}%</span>
 												<span>
 													{job.completed} / {job.total}
@@ -3030,13 +3043,13 @@ function JobsScreen() {
 											</div>
 											<Progress
 												aria-label={`${job.name}の進捗`}
-												class="h-1.5 bg-[#dfe7e3] [&>div>div]:bg-[#0b8f80] [&>div]:bg-[#dfe7e3]"
+												class="h-1.5 bg-muted-foreground [&>div>div]:bg-primary [&>div]:bg-muted-foreground"
 												value={progress(job)}
 											/>
 										</div>
 									</Show>
 									<Show when={job.error}>
-										<p class="mt-3 flex items-start gap-2 rounded-md bg-[#fdf4f2] px-3 py-2 text-[#934139] text-xs">
+										<p class="mt-3 flex items-start gap-2 rounded-md bg-muted px-3 py-2 text-destructive text-xs">
 											<CircleAlert
 												aria-hidden="true"
 												class="mt-0.5 shrink-0"
@@ -3053,76 +3066,80 @@ function JobsScreen() {
 
 				<aside
 					aria-label="選択中のジョブ"
-					class="hidden min-h-0 overflow-y-auto overscroll-contain border-[#e1e5e2] border-l bg-[#fbfcfa] p-5 xl:block"
+					class="hidden min-h-0 overflow-y-auto overscroll-contain border-border border-l bg-background p-5 xl:block"
 				>
 					<div class="flex items-start justify-between gap-3">
 						<div class="min-w-0">
-							<p class="text-[#68706c] text-xs">選択中のジョブ</p>
-							<h2 class="mt-1 truncate font-semibold text-[#252b28] text-base">
+							<p class="text-muted-foreground text-xs">選択中のジョブ</p>
+							<h2 class="mt-1 truncate font-semibold text-foreground text-base">
 								{selectedJob().name}
 							</h2>
 						</div>
 						<JobStatus status={selectedJob().status} />
 					</div>
 
-					<dl class="mt-5 space-y-3 border-[#e1e5e2] border-y py-4 text-xs">
+					<dl class="mt-5 space-y-3 border-border border-y py-4 text-xs">
 						<div class="flex justify-between gap-3">
-							<dt class="text-[#68706c]">Source</dt>
-							<dd class="text-right font-medium text-[#343c38]">
+							<dt class="text-muted-foreground">Source</dt>
+							<dd class="text-right font-medium text-foreground">
 								{selectedJob().source}
 							</dd>
 						</div>
 						<div class="flex justify-between gap-3">
-							<dt class="text-[#68706c]">Type</dt>
-							<dd class="text-right text-[#343c38]">{selectedJob().type}</dd>
+							<dt class="text-muted-foreground">Type</dt>
+							<dd class="text-right text-foreground">{selectedJob().type}</dd>
 						</div>
 						<div class="flex justify-between gap-3">
-							<dt class="text-[#68706c]">Started</dt>
-							<dd class="text-right text-[#343c38]">{selectedJob().started}</dd>
+							<dt class="text-muted-foreground">Started</dt>
+							<dd class="text-right text-foreground">
+								{selectedJob().started}
+							</dd>
 						</div>
 						<div class="flex justify-between gap-3">
-							<dt class="text-[#68706c]">Job ID</dt>
-							<dd class="truncate text-right font-mono text-[#343c38]">
+							<dt class="text-muted-foreground">Job ID</dt>
+							<dd class="truncate text-right font-mono text-foreground">
 								{selectedJob().id}
 							</dd>
 						</div>
 					</dl>
 
 					<section class="mt-5">
-						<h3 class="font-medium text-[#343c38] text-sm">Batch progress</h3>
+						<h3 class="font-medium text-foreground text-sm">Batch progress</h3>
 						<div class="mt-3 grid grid-cols-3 gap-2 text-center">
-							<div class="rounded-md bg-[#edf5f2] p-3">
+							<div class="rounded-md bg-muted p-3">
 								<CircleCheck
 									aria-hidden="true"
-									class="mx-auto text-[#218269]"
+									class="mx-auto text-primary"
 									size={16}
 								/>
-								<strong class="mt-1 block text-[#2f3935] text-sm">
+								<strong class="mt-1 block text-foreground text-sm">
 									{selectedJob().completed}
 								</strong>
-								<span class="text-[#626a66] text-[10px]">Done</span>
+								<span class="text-muted-foreground text-label-xs">Done</span>
 							</div>
-							<div class="rounded-md bg-[#f2f3f1] p-3">
+							<div class="rounded-md bg-muted p-3">
 								<Clock3
 									aria-hidden="true"
-									class="mx-auto text-[#68706c]"
+									class="mx-auto text-muted-foreground"
 									size={16}
 								/>
-								<strong class="mt-1 block text-[#2f3935] text-sm">
+								<strong class="mt-1 block text-foreground text-sm">
 									{Math.max(selectedJob().total - selectedJob().completed, 0)}
 								</strong>
-								<span class="text-[#626a66] text-[10px]">Remaining</span>
+								<span class="text-muted-foreground text-label-xs">
+									Remaining
+								</span>
 							</div>
-							<div class="rounded-md bg-[#f9ece9] p-3">
+							<div class="rounded-md bg-muted p-3">
 								<CircleAlert
 									aria-hidden="true"
-									class="mx-auto text-[#a34a42]"
+									class="mx-auto text-destructive"
 									size={16}
 								/>
-								<strong class="mt-1 block text-[#2f3935] text-sm">
+								<strong class="mt-1 block text-foreground text-sm">
 									{selectedJob().status === "failed" ? 1 : 0}
 								</strong>
-								<span class="text-[#626a66] text-[10px]">Failed</span>
+								<span class="text-muted-foreground text-label-xs">Failed</span>
 							</div>
 						</div>
 					</section>
@@ -3218,12 +3235,12 @@ function SettingsInput(props: {
 	const descriptionId = () => `${props.id}-description`;
 	return (
 		<div class="space-y-1.5">
-			<Label class="text-[#3f4743] text-sm" for={props.id}>
+			<Label class="text-foreground text-sm" for={props.id}>
 				{props.label}
 			</Label>
 			<Input
 				aria-describedby={props.description ? descriptionId() : undefined}
-				class="min-h-12 border-[#d9dfdb] bg-white text-base shadow-none focus-visible:ring-[#0b8f80] sm:min-h-9 sm:text-sm"
+				class="min-h-12 border-border bg-white text-base shadow-none focus-visible:ring-ring sm:min-h-9 sm:text-sm"
 				id={props.id}
 				name={props.id}
 				onInput={(event) => props.onInput(event.currentTarget.value)}
@@ -3233,7 +3250,7 @@ function SettingsInput(props: {
 			/>
 			<Show when={props.description}>
 				<p
-					class="text-[#68706c] text-xs leading-5 sm:leading-4"
+					class="text-muted-foreground text-xs leading-5 sm:leading-4"
 					id={descriptionId()}
 				>
 					{props.description}
@@ -3256,12 +3273,12 @@ function SettingsToggle(props: {
 			onChange={props.onChange}
 		>
 			<div class="min-w-0">
-				<SwitchLabel class="text-[#38413d] text-sm">{props.label}</SwitchLabel>
-				<p class="mt-1 text-[#68706c] text-xs leading-5 sm:mt-0.5 sm:leading-4">
+				<SwitchLabel class="text-foreground text-sm">{props.label}</SwitchLabel>
+				<p class="mt-1 text-muted-foreground text-xs leading-5 sm:mt-0.5 sm:leading-4">
 					{props.description}
 				</p>
 			</div>
-			<SwitchControl class="data-[checked]:bg-[#0b8f80]">
+			<SwitchControl class="data-[checked]:bg-primary">
 				<SwitchThumb />
 			</SwitchControl>
 		</Switch>
@@ -3274,11 +3291,11 @@ function SettingsSection(props: {
 	title: string;
 }) {
 	return (
-		<fieldset class="rounded-md border border-[#dce2de] bg-white p-4 sm:px-4 sm:py-3">
-			<legend class="px-1 font-semibold text-[#29322e] text-sm">
+		<fieldset class="rounded-md border border-border bg-white p-4 sm:px-4 sm:py-3">
+			<legend class="px-1 font-semibold text-foreground text-sm">
 				{props.title}
 			</legend>
-			<p class="mb-4 text-[#68706c] text-xs leading-5 sm:mb-3 sm:leading-4">
+			<p class="mb-4 text-muted-foreground text-xs leading-5 sm:mb-3 sm:leading-4">
 				{props.description}
 			</p>
 			<div class="space-y-4 sm:space-y-3">{props.children}</div>
@@ -3321,30 +3338,27 @@ function SettingsScreen() {
 		SETTINGS_CATEGORIES[0];
 
 	return (
-		<section class="flex min-h-0 min-w-0 flex-col bg-[#fafbf9]">
-			<header class="border-[#e1e5e2] border-b bg-[#fbfcfa] px-5 py-4 sm:px-6">
+		<section class="flex min-h-0 min-w-0 flex-col bg-background">
+			<header class="border-border border-b bg-background px-5 py-4 sm:px-6">
 				<div class="flex items-start justify-between gap-4">
 					<div>
-						<p class="font-medium text-[#08766a] text-xs">Workspace</p>
-						<h1 class="mt-1 font-semibold text-[#242927] text-xl">Settings</h1>
-						<p class="mt-1 text-[#626a66] text-sm">
+						<p class="font-medium text-primary text-xs">Workspace</p>
+						<h1 class="mt-1 font-semibold text-foreground text-xl">Settings</h1>
+						<p class="mt-1 text-muted-foreground text-sm">
 							アプリケーション全体の動作と接続先を管理します。
 						</p>
 					</div>
 					<Show when={saved()}>
-						<p
-							class="flex items-center gap-1.5 text-[#28745e] text-xs"
-							role="status"
-						>
+						<output class="flex items-center gap-1.5 text-primary text-xs">
 							<CircleCheck aria-hidden="true" size={15} />
 							Saved
-						</p>
+						</output>
 					</Show>
 				</div>
 			</header>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
-				<div class="sticky top-0 z-10 border-[#e1e5e2] border-b bg-[#fafbf9]/95 px-4 py-2 backdrop-blur lg:hidden">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-stable">
+				<div class="sticky top-0 z-10 border-border border-b bg-background/95 px-4 py-2 backdrop-blur lg:hidden">
 					<nav
 						aria-label="設定カテゴリ"
 						class="flex gap-1 overflow-x-auto overscroll-x-contain"
@@ -3355,8 +3369,8 @@ function SettingsScreen() {
 									aria-current={category() === item.value ? "page" : undefined}
 									class={`h-12 shrink-0 px-3 text-xs sm:h-9 ${
 										category() === item.value
-											? "bg-[#e1f1ed] text-[#05695f]"
-											: "text-[#59615d]"
+											? "bg-muted text-primary"
+											: "text-muted-foreground"
 									}`}
 									onClick={() => setCategory(item.value)}
 									size="sm"
@@ -3369,7 +3383,7 @@ function SettingsScreen() {
 					</nav>
 				</div>
 
-				<div class="grid w-full gap-6 px-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)] lg:gap-8 lg:px-6 lg:py-5 xl:px-8">
+				<div class="grid w-full gap-6 px-4 py-5 lg:grid-cols-settings-sidebar lg:gap-8 lg:px-6 lg:py-5 xl:px-8">
 					<nav aria-label="設定カテゴリ" class="hidden lg:block">
 						<div class="sticky top-5 space-y-0.5">
 							<For each={SETTINGS_CATEGORIES}>
@@ -3378,10 +3392,10 @@ function SettingsScreen() {
 										aria-current={
 											category() === item.value ? "page" : undefined
 										}
-										class={`flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-[#08766a] ${
+										class={`flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 											category() === item.value
-												? "bg-[#e1f1ed] text-[#05695f]"
-												: "text-[#555d59] hover:bg-[#edf0ed]"
+												? "bg-muted text-primary"
+												: "text-muted-foreground hover:bg-muted"
 										}`}
 										onClick={() => setCategory(item.value)}
 										type="button"
@@ -3393,7 +3407,7 @@ function SettingsScreen() {
 											<strong class="block font-medium text-sm">
 												{item.label}
 											</strong>
-											<span class="block truncate text-[#626a66] text-[11px]">
+											<span class="block truncate text-muted-foreground text-label-sm">
 												{item.description}
 											</span>
 										</span>
@@ -3412,10 +3426,10 @@ function SettingsScreen() {
 						}}
 					>
 						<div>
-							<h2 class="font-semibold text-[#29322e] text-lg">
+							<h2 class="font-semibold text-foreground text-lg">
 								{activeCategory().label}
 							</h2>
-							<p class="mt-0.5 text-[#68706c] text-xs">
+							<p class="mt-0.5 text-muted-foreground text-xs">
 								{activeCategory().description}
 							</p>
 						</div>
@@ -3450,7 +3464,7 @@ function SettingsScreen() {
 								description="メディア追加時に自動で投入するジョブを選びます。"
 								title="Automatic processing"
 							>
-								<div class="divide-y divide-[#e3e7e4]">
+								<div class="divide-y divide-border">
 									<SettingsToggle
 										checked={autoTagging()}
 										description="新しい画像へAIタグを自動付与します。"
@@ -3489,9 +3503,9 @@ function SettingsScreen() {
 									type="number"
 									value={settingsDraft.aiTimeout}
 								/>
-								<div class="flex items-center justify-between rounded-md bg-[#edf5f2] px-3 py-2 text-xs">
-									<span class="text-[#4d5954]">Connection status</span>
-									<span class="flex items-center gap-1.5 font-medium text-[#17745f]">
+								<div class="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-xs">
+									<span class="text-muted-foreground">Connection status</span>
+									<span class="flex items-center gap-1.5 font-medium text-primary">
 										<span class="size-1.5 rounded-full bg-current" />
 										Connected · 18 ms
 									</span>
@@ -3583,7 +3597,7 @@ function SettingsScreen() {
 								<div class="space-y-1.5">
 									<Label for="settings-log-level">Log level</Label>
 									<select
-										class="flex min-h-12 w-full rounded-md border border-[#d9dfdb] bg-white px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-[#0b8f80] sm:min-h-9 sm:text-sm"
+										class="flex min-h-12 w-full rounded-md border border-border bg-white px-3 text-base outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9 sm:text-sm"
 										id="settings-log-level"
 										name="settings-log-level"
 										onInput={(event) =>
@@ -3602,8 +3616,10 @@ function SettingsScreen() {
 						</Show>
 
 						<Show when={dirty()}>
-							<div class="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-md border border-[#cfd8d3] bg-white/95 p-3 shadow-lg backdrop-blur">
-								<p class="text-[#505a55] text-xs">未保存の変更があります</p>
+							<div class="sticky bottom-3 z-20 flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-white/95 p-3 shadow-lg backdrop-blur">
+								<p class="text-muted-foreground text-xs">
+									未保存の変更があります
+								</p>
 								<div class="flex gap-2">
 									<Button
 										class="h-9"
@@ -3748,18 +3764,20 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 	}
 
 	return (
-		<section class="flex min-h-0 min-w-0 flex-col bg-[#fafbf9]">
-			<header class="border-[#e1e5e2] border-b bg-[#fbfcfa] px-6 py-5">
-				<p class="mb-1 font-medium text-[#08766a] text-xs">
+		<section class="flex min-h-0 min-w-0 flex-col bg-background">
+			<header class="border-border border-b bg-background px-6 py-5">
+				<p class="mb-1 font-medium text-primary text-xs">
 					Design lab / Overlays
 				</p>
-				<h1 class="font-semibold text-[#202624] text-xl">重なって表示するUI</h1>
-				<p class="mt-2 max-w-2xl text-[#626a66] text-sm leading-6">
+				<h1 class="font-semibold text-foreground text-xl">
+					重なって表示するUI
+				</h1>
+				<p class="mt-2 max-w-2xl text-muted-foreground text-sm leading-6">
 					操作の重さと編集量で使い分けます。同じ用途を複数の形式で実装しません。
 				</p>
 			</header>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 [scrollbar-gutter:stable]">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-6 scrollbar-stable">
 				<div class="grid gap-4 lg:grid-cols-3">
 					<PatternCard
 						description="並び順や表示密度など、その場で完了する軽い設定。背面の内容は操作可能なままです。"
@@ -3768,17 +3786,16 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 					>
 						<Popover placement="bottom-start">
 							<PopoverTrigger
-								class={buttonVariants({
-									class: "w-full border-[#d6dcd8] bg-white shadow-none",
-									variant: "outline",
-								})}
+								as={Button}
+								class="w-full border-border bg-white shadow-none"
+								variant="outline"
 							>
 								表示設定を開く
 								<ChevronDown aria-hidden="true" size={14} />
 							</PopoverTrigger>
-							<PopoverContent class="w-72 border-[#dfe4e1] bg-[#fbfcfa] shadow-xl">
-								<h3 class="font-semibold text-[#2d3431] text-sm">表示設定</h3>
-								<p class="mt-1 text-[#68706c] text-xs">
+							<PopoverContent class="w-72 border-border bg-background shadow-xl">
+								<h3 class="font-semibold text-foreground text-sm">表示設定</h3>
+								<p class="mt-1 text-muted-foreground text-xs">
 									変更はすぐ一覧へ反映します。
 								</p>
 								<div class="mt-4 space-y-2">
@@ -3788,7 +3805,7 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 										variant="ghost"
 									>
 										サムネイルを大きく
-										<span class="text-[#08766a]">選択中</span>
+										<span class="text-primary">選択中</span>
 									</Button>
 									<Button
 										class="w-full justify-between"
@@ -3796,7 +3813,7 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 										variant="ghost"
 									>
 										ファイル名を表示
-										<span class="text-[#68706c]">オフ</span>
+										<span class="text-muted-foreground">オフ</span>
 									</Button>
 								</div>
 							</PopoverContent>
@@ -3809,15 +3826,11 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 						title="Modal"
 					>
 						<Dialog onOpenChange={handleModalOpenChange} open={modalOpen()}>
-							<DialogTrigger
-								class={buttonVariants({
-									class: "w-full bg-[#08766a] hover:bg-[#06645a]",
-								})}
-							>
+							<DialogTrigger as={Button} class="w-full hover:bg-primary">
 								一括編集を開く
 							</DialogTrigger>
 							<DialogContent
-								class="border-[#dce2de] bg-[#fbfcfa] motion-reduce:animate-none"
+								class="border-border bg-background motion-reduce:animate-none"
 								onEscapeKeyDown={(event) => {
 									if (!isModalDirty()) return;
 									event.preventDefault();
@@ -3849,7 +3862,7 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 										キャンセル
 									</Button>
 									<Button
-										class="bg-[#08766a] hover:bg-[#06645a]"
+										class="bg-primary hover:bg-primary"
 										onClick={closeModal}
 									>
 										12件に適用
@@ -3866,15 +3879,14 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 					>
 						<Dialog onOpenChange={handleDrawerOpenChange} open={drawerOpen()}>
 							<DialogTrigger
-								class={buttonVariants({
-									class: "w-full border-[#d6dcd8] bg-white shadow-none",
-									variant: "outline",
-								})}
+								as={Button}
+								class="w-full border-border bg-white shadow-none"
+								variant="outline"
 							>
 								詳細編集を開く
 							</DialogTrigger>
 							<DialogContent
-								class="gap-0 bg-[#fbfcfa] p-0"
+								class="gap-0 bg-background p-0"
 								onEscapeKeyDown={(event) => {
 									if (!isDrawerDirty()) return;
 									event.preventDefault();
@@ -3887,14 +3899,14 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 								}}
 								placement="right"
 							>
-								<DialogHeader class="border-[#e1e5e2] border-b px-5 py-4 pr-12">
+								<DialogHeader class="border-border border-b px-5 py-4 pr-12">
 									<div class="flex items-center gap-2">
 										<DialogTitle class="text-base">
 											メディア情報を編集
 										</DialogTitle>
 										<Show when={isDrawerDirty()}>
 											<Badge
-												class="border-[#f2d08c] bg-[#fff8e8] text-[#795313]"
+												class="border-warning-foreground bg-muted text-warning-foreground"
 												variant="outline"
 											>
 												未保存
@@ -3910,7 +3922,7 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 										<div class="space-y-2">
 											<Label for="pattern-description">Description</Label>
 											<textarea
-												class="min-h-28 w-full resize-y rounded-md border border-[#d9dfdb] bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[#0b8f80]"
+												class="min-h-28 w-full resize-y rounded-md border border-border bg-white px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
 												id="pattern-description"
 												onInput={(event) =>
 													updateDrawerDraft(
@@ -3924,7 +3936,7 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 										</div>
 										<For each={DRAWER_FIELDS}>
 											{(field) => (
-												<div class="space-y-2 border-[#e4e8e5] border-t pt-5">
+												<div class="space-y-2 border-border border-t pt-5">
 													<Label for={`pattern-${field.key}`}>
 														{field.label}
 													</Label>
@@ -3944,12 +3956,12 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 										</For>
 									</div>
 								</div>
-								<DialogFooter class="border-[#e1e5e2] border-t px-5 py-4">
+								<DialogFooter class="border-border border-t px-5 py-4">
 									<Button onClick={requestDrawerClose} variant="outline">
 										キャンセル
 									</Button>
 									<Button
-										class="bg-[#08766a] hover:bg-[#06645a]"
+										class="bg-primary hover:bg-primary"
 										onClick={closeDrawer}
 									>
 										変更を保存
@@ -3963,7 +3975,7 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 							}}
 							open={discardTarget() !== undefined}
 						>
-							<AlertDialogContent class="border-[#dce2de] bg-[#fbfcfa]">
+							<AlertDialogContent class="border-border bg-background">
 								<AlertDialogHeader>
 									<AlertDialogTitle>変更を破棄しますか？</AlertDialogTitle>
 									<AlertDialogDescription>
@@ -3976,7 +3988,7 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 									</AlertDialogCancel>
 									<AlertDialogAction
 										aria-label="変更を破棄"
-										class="bg-[#b43a32] text-white hover:bg-[#982f29]"
+										class="bg-destructive text-white hover:bg-destructive"
 										onClick={discardPendingChanges}
 									>
 										変更を破棄
@@ -3987,32 +3999,32 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 					</PatternCard>
 				</div>
 
-				<section class="mt-6 rounded-lg border border-[#dde3df] bg-white">
-					<div class="flex flex-wrap items-start justify-between gap-3 border-[#e1e5e2] border-b px-5 py-4">
+				<section class="mt-6 rounded-lg border border-border bg-white">
+					<div class="flex flex-wrap items-start justify-between gap-3 border-border border-b px-5 py-4">
 						<div>
-							<p class="font-medium text-[#08766a] text-[11px] tracking-wide">
+							<p class="font-medium text-primary text-label-sm tracking-wide">
 								STATUS / NON-MODAL
 							</p>
-							<h2 class="mt-1 font-semibold text-[#2a302d] text-sm">Toast</h2>
-							<p class="mt-1 max-w-2xl text-[#68706c] text-xs leading-5">
+							<h2 class="mt-1 font-semibold text-foreground text-sm">Toast</h2>
+							<p class="mt-1 max-w-2xl text-muted-foreground text-xs leading-5">
 								作業を止めずに結果を知らせます。次の操作が必要な時だけ、短いアクションを1つ添えます。
 							</p>
 						</div>
-						<span class="rounded-full bg-[#f1f4f2] px-2.5 py-1 text-[#66706b] text-[11px]">
+						<span class="rounded-full bg-muted px-2.5 py-1 text-muted-foreground text-label-sm">
 							右上に最大4件
 						</span>
 					</div>
-					<div class="grid gap-px bg-[#e6eae7] sm:grid-cols-2 xl:grid-cols-4">
+					<div class="grid gap-px bg-muted sm:grid-cols-2 xl:grid-cols-4">
 						<div class="flex min-w-0 flex-col gap-3 bg-white p-4">
 							<div class="flex items-start gap-3">
 								<CircleCheck
 									aria-hidden="true"
-									class="mt-0.5 shrink-0 text-[#08766a]"
+									class="mt-0.5 shrink-0 text-primary"
 									size={16}
 								/>
 								<div>
-									<h3 class="font-medium text-[#343b37] text-xs">成功</h3>
-									<p class="mt-1 text-[#68706c] text-xs leading-5">
+									<h3 class="font-medium text-foreground text-xs">成功</h3>
+									<p class="mt-1 text-muted-foreground text-xs leading-5">
 										確認だけでよい結果。4秒で閉じます。
 									</p>
 								</div>
@@ -4030,12 +4042,12 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 							<div class="flex items-start gap-3">
 								<Clock3
 									aria-hidden="true"
-									class="mt-0.5 shrink-0 text-[#426d86]"
+									class="mt-0.5 shrink-0 text-info-foreground"
 									size={16}
 								/>
 								<div>
-									<h3 class="font-medium text-[#343b37] text-xs">Job投入</h3>
-									<p class="mt-1 text-[#68706c] text-xs leading-5">
+									<h3 class="font-medium text-foreground text-xs">Job投入</h3>
+									<p class="mt-1 text-muted-foreground text-xs leading-5">
 										処理先への導線を1つだけ表示します。
 									</p>
 								</div>
@@ -4053,12 +4065,12 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 							<div class="flex items-start gap-3">
 								<CircleAlert
 									aria-hidden="true"
-									class="mt-0.5 shrink-0 text-[#a66b12]"
+									class="mt-0.5 shrink-0 text-warning-foreground"
 									size={16}
 								/>
 								<div>
-									<h3 class="font-medium text-[#343b37] text-xs">警告</h3>
-									<p class="mt-1 text-[#68706c] text-xs leading-5">
+									<h3 class="font-medium text-foreground text-xs">警告</h3>
+									<p class="mt-1 text-muted-foreground text-xs leading-5">
 										継続可能な問題と復旧操作を示します。
 									</p>
 								</div>
@@ -4076,12 +4088,12 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 							<div class="flex items-start gap-3">
 								<Ban
 									aria-hidden="true"
-									class="mt-0.5 shrink-0 text-[#b43a32]"
+									class="mt-0.5 shrink-0 text-destructive"
 									size={16}
 								/>
 								<div>
-									<h3 class="font-medium text-[#343b37] text-xs">失敗</h3>
-									<p class="mt-1 text-[#68706c] text-xs leading-5">
+									<h3 class="font-medium text-foreground text-xs">失敗</h3>
+									<p class="mt-1 text-muted-foreground text-xs leading-5">
 										原因と再試行を示し、少し長く残します。
 									</p>
 								</div>
@@ -4098,26 +4110,26 @@ function OverlayPatternsScreen(props: { onOpenJobs: () => void }) {
 					</div>
 				</section>
 
-				<section class="mt-6 rounded-lg border border-[#dde3df] bg-white">
-					<div class="border-[#e1e5e2] border-b px-5 py-4">
-						<h2 class="font-semibold text-[#2a302d] text-sm">共通の閉じ方</h2>
+				<section class="mt-6 rounded-lg border border-border bg-white">
+					<div class="border-border border-b px-5 py-4">
+						<h2 class="font-semibold text-foreground text-sm">共通の閉じ方</h2>
 					</div>
-					<dl class="grid gap-px bg-[#e6eae7] sm:grid-cols-3">
+					<dl class="grid gap-px bg-muted sm:grid-cols-3">
 						<div class="bg-white p-4">
-							<dt class="font-medium text-[#38403c] text-xs">Escape</dt>
-							<dd class="mt-1 text-[#68706c] text-xs leading-5">
+							<dt class="font-medium text-foreground text-xs">Escape</dt>
+							<dd class="mt-1 text-muted-foreground text-xs leading-5">
 								未変更なら閉じる・変更済みなら破棄確認
 							</dd>
 						</div>
 						<div class="bg-white p-4">
-							<dt class="font-medium text-[#38403c] text-xs">外側クリック</dt>
-							<dd class="mt-1 text-[#68706c] text-xs leading-5">
+							<dt class="font-medium text-foreground text-xs">外側クリック</dt>
+							<dd class="mt-1 text-muted-foreground text-xs leading-5">
 								未変更なら閉じる・変更済みなら破棄確認
 							</dd>
 						</div>
 						<div class="bg-white p-4">
-							<dt class="font-medium text-[#38403c] text-xs">フォーカス</dt>
-							<dd class="mt-1 text-[#68706c] text-xs leading-5">
+							<dt class="font-medium text-foreground text-xs">フォーカス</dt>
+							<dd class="mt-1 text-muted-foreground text-xs leading-5">
 								閉じたら起点のボタンへ戻す
 							</dd>
 						</div>
@@ -4274,7 +4286,7 @@ export function DesignConceptScreen() {
 
 	return (
 		<main
-			class={`grid h-[100dvh] overflow-hidden bg-[#fafbf9] font-sans text-[#242927] transition-[grid-template-columns] duration-150 motion-reduce:transition-none ${shellGridColumns()}`}
+			class={`grid h-dvh overflow-hidden bg-background font-sans text-foreground transition-grid duration-150 motion-reduce:transition-none ${shellGridColumns()}`}
 			data-design-lab
 		>
 			<DesignSidebar
@@ -4313,7 +4325,7 @@ export function DesignConceptScreen() {
 				}
 				when={activeView() === "library"}
 			>
-				<section class="flex min-h-0 min-w-0 flex-col bg-[#fafbf9]">
+				<section class="flex min-h-0 min-w-0 flex-col bg-background">
 					<DesignToolbar
 						draft={draft()}
 						filterTokens={filterTokens()}
@@ -4328,14 +4340,14 @@ export function DesignConceptScreen() {
 						sourceName={selectedSourceName()}
 					/>
 					<div class="flex items-center justify-between px-4 pt-3 pb-2 text-xs">
-						<p class="text-[#5f6763]">
+						<p class="text-muted-foreground">
 							{selectedSourceCount().toLocaleString()} items
 						</p>
-						<p class="hidden text-[#68706c] sm:block">
+						<p class="hidden text-muted-foreground sm:block">
 							Design lab ・ mock data
 						</p>
 					</div>
-					<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 [scrollbar-gutter:stable]">
+					<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4 scrollbar-stable">
 						<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
 							<For each={MOCK_MEDIA}>
 								{(media) => (

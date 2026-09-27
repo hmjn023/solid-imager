@@ -211,7 +211,7 @@ const ComboboxContent = <T extends ValidComponent = "div">(
 		<ComboboxPrimitive.Portal>
 			<ComboboxPrimitive.Content
 				class={cn(
-					"fade-in-80 relative z-50 max-h-[min(24rem,calc(100dvh-2rem))] min-w-32 max-w-[calc(100dvw-2rem)] animate-in overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
+					"fade-in-80 relative z-50 max-h-popover-fit min-w-32 max-w-viewport-gutter animate-in overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
 					local.class,
 				)}
 				{...others}
@@ -242,13 +242,13 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 		<ComboboxPrimitive.Portal>
 			<ComboboxPrimitive.Content
 				class={cn(
-					"fade-in-80 relative z-50 max-h-[min(24rem,calc(100dvh-2rem))] min-w-32 max-w-[calc(100dvw-2rem)] animate-in overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
+					"fade-in-80 relative z-50 max-h-popover-fit min-w-32 max-w-viewport-gutter animate-in overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
 					local.class,
 				)}
 				{...others}
 			>
 				<ComboboxPrimitive.Listbox
-					class="m-0 p-1"
+					class="m-0 overflow-auto p-1"
 					ref={(el: Element) => {
 						setScrollEl(el as HTMLUListElement);
 					}}
@@ -257,7 +257,6 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 						const idx = items.findIndex((v) => v.key === key);
 						if (idx >= 0) virtualizer.scrollToIndex(idx);
 					}}
-					style={{ overflow: "auto" }}
 				>
 					{(items) => {
 						const asArray = createMemo(() => [...items()]);
@@ -275,10 +274,9 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 
 						return (
 							<div
+								class="relative w-full virtualized-combobox-list"
 								style={{
-									height: `${virtualizer.getTotalSize()}px`,
-									width: "100%",
-									position: "relative",
+									"--combobox-list-height": `${virtualizer.getTotalSize()}px`,
 								}}
 							>
 								<For each={virtualItems()}>
@@ -287,13 +285,10 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 										if (!item) return null;
 										return (
 											<div
+												class="absolute top-0 left-0 w-full virtualized-combobox-row"
 												style={{
-													position: "absolute",
-													top: 0,
-													left: 0,
-													width: "100%",
-													height: `${virtualRow.size}px`,
-													transform: `translateY(${virtualRow.start}px)`,
+													"--combobox-row-height": `${virtualRow.size}px`,
+													"--combobox-row-offset": `${virtualRow.start}px`,
 												}}
 											>
 												<ComboboxPrimitive.Item

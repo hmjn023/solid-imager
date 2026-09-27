@@ -10,14 +10,14 @@ import {
 
 const sourceSyncResultSchema = z.discriminatedUnion("success", [
 	z.object({
-		id: z.string().uuid(),
+		id: z.uuid(),
 		success: z.literal(true),
-		sourceId: z.string().uuid(),
+		sourceId: z.uuid(),
 		added: z.number().int().nonnegative(),
 		deleted: z.number().int().nonnegative(),
 	}),
 	z.object({
-		id: z.string().uuid(),
+		id: z.uuid(),
 		success: z.literal(false),
 		error: z.string(),
 	}),
@@ -42,7 +42,7 @@ export const sourcesContract = {
 			description:
 				"UUIDで指定したメディアソースの情報を取得します。機密情報はレスポンスから除外されます。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(safeMediaSourceSchema),
 
 	create: oc
@@ -63,7 +63,7 @@ export const sourcesContract = {
 		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				data: mediaSourceInfoSchema.partial(),
 			}),
 		)
@@ -76,7 +76,7 @@ export const sourcesContract = {
 			description:
 				"メディアソースを登録から削除し、そのソースのファイル監視を停止します。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(z.object({ success: z.boolean() })),
 
 	sync: oc
@@ -86,7 +86,7 @@ export const sourcesContract = {
 			description:
 				"指定したメディアソースを走査し、ファイルシステムとデータベースの登録内容を同期します。追加・削除された項目ごとの結果を返します。",
 		})
-		.input(z.object({ ids: z.array(z.string().uuid()) }))
+		.input(z.object({ ids: z.array(z.uuid()) }))
 		.output(
 			z.object({
 				results: z.array(sourceSyncResultSchema),
@@ -102,7 +102,7 @@ export const sourcesContract = {
 		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				mode: z.enum(["ndjson", "tar"]).default("ndjson"),
 				includeImages: z.boolean().default(false),
 			}),
@@ -118,7 +118,7 @@ export const sourcesContract = {
 		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				mode: z.enum(["ndjson", "tar"]),
 				file: z.instanceof(File),
 			}),
@@ -132,7 +132,7 @@ export const sourcesContract = {
 			description:
 				"メディアソースの走査状態、進捗、ファイル数などの統計情報を取得します。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(mediaSourceStatusSchema),
 
 	events: oc
@@ -142,6 +142,6 @@ export const sourcesContract = {
 			description:
 				"指定したメディアソース、または全ソースの状態変化をリアルタイムに受け取るイベントストリームを開始します。",
 		})
-		.input(z.object({ id: z.string().uuid().or(z.literal("*")) }))
+		.input(z.object({ id: z.uuid().or(z.literal("*")) }))
 		.output(eventIterator(sourceEventSchema)),
 };

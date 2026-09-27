@@ -20,7 +20,7 @@ export type UseBatchJobEventsOptions = {
 const BUFFERED_JOB_EVENT_LIMIT = 20;
 
 function assertNever(value: never): never {
-	throw new Error(`Unhandled job event: ${value}`);
+	throw new Error(`Unhandled job event: ${String(value)}`);
 }
 
 export function shouldSubscribeToJobEvents(

@@ -119,7 +119,7 @@ export const RealtimeEventBus = {
 	},
 
 	subscribeToSource(
-		mediaSourceId: string | "*",
+		mediaSourceId: string,
 		listener: (event: SourceEvent) => void,
 	): () => void {
 		return subscribe(

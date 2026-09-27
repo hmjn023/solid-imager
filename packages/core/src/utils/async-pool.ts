@@ -7,7 +7,7 @@ export async function asyncPool<T, R = void>(
 	limit: number,
 	fn: (item: T) => Promise<R>,
 ): Promise<PromiseSettledResult<R>[]> {
-	const results: PromiseSettledResult<R>[] = new Array(items.length);
+	const results = new Array<PromiseSettledResult<R>>(items.length);
 	let index = 0;
 
 	async function worker() {

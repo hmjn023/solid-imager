@@ -4,6 +4,7 @@ import {
 	type SearchGroup,
 	searchGroupSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import Trash2 from "lucide-solid/icons/trash-2";
 import {
 	getSearchConditionFromState,
 	preparePresetState,
@@ -90,7 +91,7 @@ function createClearedSearchState(state: SearchState): SearchState {
 }
 
 export function PresetManager(props: PresetManagerProps) {
-	const [data, { refetch }] = createResource(props.presetClient.list);
+	const [data, { refetch }] = createResource(() => props.presetClient.list());
 	const currentState = () => props.state ?? searchState;
 	const updateState = props.setState ?? setSearchState;
 
@@ -154,7 +155,7 @@ export function PresetManager(props: PresetManagerProps) {
 			});
 			setIsSaveDialogOpen(false);
 			setNewPresetName("");
-			refetch();
+			void refetch();
 			toast.success("プリセットを保存しました");
 			props.onAction?.();
 		} catch {
@@ -178,7 +179,7 @@ export function PresetManager(props: PresetManagerProps) {
 			if (selectedPresetId() === String(id)) {
 				setSelectedPresetId(null);
 			}
-			refetch();
+			void refetch();
 		} catch {
 			toast.error("プリセットの削除に失敗しました");
 		} finally {
@@ -221,8 +222,10 @@ export function PresetManager(props: PresetManagerProps) {
 					<AlertDialogFooter>
 						<AlertDialogCancel>キャンセル</AlertDialogCancel>
 						<AlertDialogAction
-							class="bg-red-500 hover:bg-red-600"
-							onClick={executeDelete}
+							class="bg-error0 hover:bg-destructive"
+							onClick={() => {
+								void executeDelete();
+							}}
 						>
 							削除する
 						</AlertDialogAction>
@@ -281,7 +284,7 @@ export function PresetManager(props: PresetManagerProps) {
 						variant="ghost"
 					>
 						<svg
-							class="lucide lucide-x"
+							class="size-4"
 							fill="none"
 							height="16"
 							stroke="currentColor"
@@ -334,20 +337,26 @@ export function PresetManager(props: PresetManagerProps) {
 							</div>
 						</div>
 						<DialogFooter>
-							<Button onClick={handleSave}>保存する</Button>
+							<Button
+								onClick={(event) => {
+									void handleSave(event);
+								}}
+							>
+								保存する
+							</Button>
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>
 
 				<Show when={selectedPresetId()}>
 					<Button
-						class="hover:border-red-200 hover:bg-red-50"
+						class="hover:border-error hover:bg-error"
 						onClick={() => confirmDelete(Number(selectedPresetId()))}
 						size="icon"
 						title="プリセット削除"
 						variant="outline"
 					>
-						<span class="i-lucide-trash-2 h-4 w-4 text-red-500" />
+						<Trash2 class="size-4 text-destructive" />
 					</Button>
 				</Show>
 			</div>
