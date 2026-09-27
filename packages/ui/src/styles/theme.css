@@ -64,7 +64,8 @@
 		--radius: 0.5rem;
 	}
 
-	.workspace-theme {
+	.workspace-theme,
+	[data-workspace-theme] {
 		color-scheme: light;
 		--workspace-canvas: #fafbf9;
 		--workspace-surface: #ffffff;

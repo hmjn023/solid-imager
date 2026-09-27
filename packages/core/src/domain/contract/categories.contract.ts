@@ -15,7 +15,7 @@ export const categoriesContract = {
 			summary: "カテゴリ取得",
 			description: "UUIDで指定したカテゴリの情報を取得します。",
 		})
-		.input(z.object({ id: z.string().uuid() })),
+		.input(z.object({ id: z.uuid() })),
 
 	create: oc
 		.route({
@@ -33,7 +33,7 @@ export const categoriesContract = {
 		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				data: updateCategorySchema,
 			}),
 		),
@@ -44,6 +44,6 @@ export const categoriesContract = {
 			summary: "カテゴリ削除",
 			description: "UUIDで指定したカテゴリを削除します。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(z.object({ success: z.boolean() })),
 };

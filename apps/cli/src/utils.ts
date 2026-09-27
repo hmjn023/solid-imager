@@ -11,5 +11,5 @@ export const globalOptions = z.object({
 		.string()
 		.default("http://localhost:3000")
 		.describe("Remote server URL"),
-	source: z.string().uuid().optional().describe("Media source ID (UUID)"),
+	source: z.uuid().optional().describe("Media source ID (UUID)"),
 });

@@ -34,19 +34,19 @@ export type SidebarProps = {
 
 export function Sidebar(props: SidebarProps) {
 	return (
-		<div class="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain bg-[var(--workspace-surface-subtle)] p-2 [scrollbar-gutter:stable] *:shrink-0">
+		<div class="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain bg-background p-2 scrollbar-stable *:shrink-0">
 			<div class="group mb-3 flex h-12 items-center gap-2 px-2">
 				<Link
 					aria-label="Solid Imager Library"
-					class="flex min-w-0 flex-1 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)]"
+					class="flex min-w-0 flex-1 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					onClick={props.onNavigate}
 					to="/search"
 				>
-					<span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-[var(--workspace-primary)] text-white">
+					<span class="flex size-8 shrink-0 items-center justify-center rounded-md bg-primary text-white">
 						<Image aria-hidden="true" size={17} />
 					</span>
 					<Show when={props.expanded}>
-						<strong class="min-w-0 flex-1 truncate font-semibold text-base text-[var(--workspace-text)]">
+						<strong class="min-w-0 flex-1 truncate font-semibold text-base text-foreground">
 							Solid Imager
 						</strong>
 					</Show>
@@ -59,7 +59,7 @@ export function Sidebar(props: SidebarProps) {
 									? "サイドバーを折りたたむ"
 									: "サイドバーを展開する"
 							}
-							class={`size-11 shrink-0 p-0 text-[var(--workspace-text-muted)] md:size-8 ${
+							class={`size-11 shrink-0 p-0 text-muted-foreground md:size-8 ${
 								props.expanded
 									? "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100"
 									: "opacity-100"
@@ -83,7 +83,7 @@ export function Sidebar(props: SidebarProps) {
 				{(onOpenCommandPalette) => (
 					<Button
 						aria-label="Quick actions"
-						class="mb-2 h-10 w-full justify-start gap-2 border border-[var(--workspace-border)] bg-[var(--workspace-surface)] px-3 text-[var(--workspace-text-secondary)] shadow-none hover:bg-[var(--workspace-surface-muted)]"
+						class="mb-2 h-10 w-full justify-start gap-2 border border-border bg-card px-3 text-muted-foreground shadow-none hover:bg-muted"
 						onClick={onOpenCommandPalette()}
 						title="Quick actions"
 						variant="outline"
@@ -94,7 +94,7 @@ export function Sidebar(props: SidebarProps) {
 								Quick actions
 							</span>
 							<ShortcutKbd
-								class="min-h-5 text-[10px]"
+								class="min-h-5 text-label-xs"
 								shortcutId="commandPalette"
 							/>
 						</Show>
@@ -111,7 +111,7 @@ export function Sidebar(props: SidebarProps) {
 					to={NAVIGATION_ITEMS[0].to}
 				>
 					<ShortcutKbd
-						class="min-h-5 text-[10px]"
+						class="min-h-5 text-label-xs"
 						shortcutId={NAVIGATION_ITEMS[0].shortcutId}
 					/>
 				</NavigationItem>
@@ -140,7 +140,7 @@ export function Sidebar(props: SidebarProps) {
 							to={item.to}
 						>
 							<ShortcutKbd
-								class="min-h-5 text-[10px]"
+								class="min-h-5 text-label-xs"
 								shortcutId={item.shortcutId}
 							/>
 						</NavigationItem>
@@ -148,7 +148,7 @@ export function Sidebar(props: SidebarProps) {
 				</For>
 			</nav>
 
-			<div class="mt-auto border-[var(--workspace-border)] border-t pt-2">
+			<div class="mt-auto border-border border-t pt-2">
 				<Show when={props.serverConnectionsHref}>
 					{(href) => (
 						<NavigationItem
@@ -171,7 +171,7 @@ export function Sidebar(props: SidebarProps) {
 					{(apiDocsHref) => (
 						<a
 							aria-label="API Docs"
-							class="flex h-11 items-center gap-2 rounded-md px-3 font-medium text-sm text-[var(--workspace-text-muted)] outline-none hover:bg-[var(--workspace-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)] md:h-10"
+							class="flex h-11 items-center gap-2 rounded-md px-3 font-medium text-sm text-muted-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-10"
 							href={apiDocsHref()}
 							rel="noopener noreferrer"
 							target="_blank"

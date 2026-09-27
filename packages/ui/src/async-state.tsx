@@ -47,7 +47,8 @@ type StatePanelProps = ParentProps<{
 	description?: JSX.Element;
 	headingLevel?: 1 | 2;
 	icon: JSX.Element;
-	role?: "alert" | "status";
+	announce?: boolean;
+	role?: "alert";
 	state: "empty" | "error" | "offline";
 	title: string;
 }>;
@@ -77,7 +78,12 @@ function StatePanel(props: StatePanelProps) {
 			>
 				{props.icon}
 			</div>
-			<div class="max-w-lg space-y-2" role={props.role}>
+			<div
+				aria-atomic={props.announce ? "true" : undefined}
+				aria-live={props.announce ? "polite" : undefined}
+				class="max-w-lg space-y-2"
+				role={props.role}
+			>
 				<Dynamic
 					class="font-semibold text-lg"
 					component={props.headingLevel === 1 ? "h1" : "h2"}
@@ -165,7 +171,7 @@ export function OfflineState(props: OfflineStateProps) {
 			description={props.description}
 			headingLevel={props.headingLevel}
 			icon="×"
-			role="status"
+			announce
 			state="offline"
 			title={props.title ?? "オフラインです"}
 		>
@@ -196,9 +202,7 @@ export function FilterErrorBanner(props: FilterErrorBannerProps) {
 			)}
 			data-state-ui="filter-error"
 		>
-			<p class="text-muted-foreground text-sm" role="status">
-				{props.message}
-			</p>
+			<output class="text-muted-foreground text-sm">{props.message}</output>
 			<RetryButton
 				class="h-8 px-3 text-xs"
 				label={props.retryLabel ?? "フィルターを再取得"}
@@ -234,40 +238,37 @@ export function QueryStatus(props: QueryStatusProps) {
 			>
 				<Switch>
 					<Match when={props.fetchState === "background-fetching"}>
-						<p
+						<output
 							class="flex items-center gap-2 text-muted-foreground text-sm"
 							data-state-ui="background-fetching"
-							role="status"
 						>
 							<span
 								aria-hidden="true"
 								class="size-2 animate-pulse rounded-full bg-current motion-reduce:animate-none"
 							/>
 							{props.updatingLabel}
-						</p>
+						</output>
 					</Match>
 					<Match when={props.fetchState === "paused" && props.hasData}>
-						<p
+						<output
 							class="flex items-center gap-2 text-muted-foreground text-sm"
 							data-state-ui="cached-offline"
-							role="status"
 						>
 							<span
 								aria-hidden="true"
 								class="size-2 rounded-full bg-warning-foreground"
 							/>
 							{props.offlineLabel}
-						</p>
+						</output>
 					</Match>
 					<Match when={props.hasError && props.hasData}>
-						<p
+						<output
 							class="flex items-center gap-2 text-warning-foreground text-sm"
 							data-state-ui="cached-sync-error"
-							role="status"
 						>
 							<span aria-hidden="true" class="size-2 rounded-full bg-current" />
 							{props.errorLabel ?? "最新のデータを取得できませんでした"}
-						</p>
+						</output>
 					</Match>
 				</Switch>
 			</div>

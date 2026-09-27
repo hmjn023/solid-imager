@@ -22,7 +22,7 @@ ORM: Drizzle ORM
 Validation: Zod
 AI/ML: dghs-imgutils-rs
 Testing: Vitest / Playwright
-Tooling: Vite / Biome
+Tooling: Vite / Oxlint / Oxfmt
 ```
 
 ### プロジェクト構成（モノレポ）
@@ -147,7 +147,7 @@ fi
 | `bun run --cwd apps/server test:e2e:components`       | DB不要のコンポーネント検証 |
 | `bun run --cwd apps/server test:e2e`                  | dev代表14件＋本番全97件のアプリE2E |
 | `bun run --cwd apps/server test:e2e:full`             | dev・本番とも全件のアプリE2E |
-| `bun run format`                                    | Biomeによるformat         |
+| `bun run format`                                    | Oxfmtによるformat         |
 | `bun run lint`                                      | lint                      |
 | `bun --filter @solid-imager/server run db:generate` | マイグレーション生成      |
 
@@ -157,7 +157,7 @@ fi
 | ---------------------------------- | ------------------------ |
 | `packages/db/src/schema.ts`        | Drizzle DBスキーマ       |
 | `apps/server/drizzle.config.ts`    | DB接続、マイグレーション |
-| `biome.json`                       | Linter/Formatter         |
+| `.oxlintrc.json` / `.oxfmtrc.json` | Linter/Formatter         |
 | `vitest.config.ts`                 | Vitest projects          |
 | `apps/server/playwright.config.ts` | E2Eテスト                |
 | `compose.yml`                      | PostgreSQL (Docker)      |

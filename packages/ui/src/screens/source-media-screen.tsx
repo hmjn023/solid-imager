@@ -90,7 +90,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	return (
 		<section
 			aria-label="Media upload area"
-			class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--workspace-canvas)]"
+			class="flex h-full min-h-0 min-w-0 flex-col bg-background"
 			onDragOver={page().handleDragOver}
 			onDrop={page().handleDrop}
 		>
@@ -110,7 +110,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 						<Button
 							class="min-h-11 sm:min-h-9"
 							disabled={page().isSyncingMedia() || !page().hasData()}
-							onClick={page().handleSyncLoadedMedia}
+							onClick={() => {
+								void page().handleSyncLoadedMedia();
+							}}
 							size="sm"
 							variant="outline"
 						>
@@ -159,14 +161,14 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			</Show>
 
 			<div
-				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 scrollbar-stable"
 				data-media-scroll={page().mediaSourceId() ?? "source-media"}
 			>
 				<div
 					class={
 						props.renderMediaPreview && isInspectorVisible()
-							? "2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4"
-							: "2xl:grid 2xl:grid-cols-[minmax(0,1fr)] 2xl:items-start"
+							? "2xl:grid 2xl:grid-cols-workspace-sidebar 2xl:items-start 2xl:gap-4"
+							: "2xl:grid 2xl:grid-cols-1 2xl:items-start"
 					}
 				>
 					<div class="min-w-0">
@@ -198,7 +200,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 								onCopyMove={page().handleCopyMove}
 								onDelete={page().handleDelete}
 								onFindSimilar={props.onFindSimilar}
-								onLoadMore={() => page().fetchNextPage()}
+								onLoadMore={() => {
+									void page().fetchNextPage();
+								}}
 								onPreviewSelect={
 									props.renderMediaPreview ? selectPreviewMedia : undefined
 								}
@@ -206,7 +210,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 									await page().mediaQuery.refetch();
 								}}
 								onSelectMedia={props.onSelectMedia}
-								onSyncSingleMedia={page().handleSyncSingleMedia}
+								onSyncSingleMedia={(mediaId) => {
+									void page().handleSyncSingleMedia(mediaId);
+								}}
 								onToggleSelect={props.onToggleSelect}
 								renderItem={props.renderItem}
 								previewSelectedMediaId={
@@ -245,7 +251,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			<input
 				accept="image/*,.json"
 				class="hidden"
-				onChange={page().handleFileSelect}
+				onChange={(event) => {
+					void page().handleFileSelect(event);
+				}}
 				ref={page().setFileInputRef}
 				type="file"
 			/>
@@ -286,7 +294,12 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 						>
 							キャンセル
 						</Button>
-						<Button onClick={page().confirmDelete} variant="destructive">
+						<Button
+							onClick={() => {
+								void page().confirmDelete();
+							}}
+							variant="destructive"
+						>
 							削除
 						</Button>
 					</DialogFooter>
@@ -299,7 +312,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					<MoveCopyDialog
 						currentSourceId={page().mediaSourceId() || ""}
 						mode={page().moveCopyMode()}
-						onConfirm={page().handleConfirmCopyMove}
+						onConfirm={(event) => {
+							void page().handleConfirmCopyMove(event);
+						}}
 						onOpenChange={page().setMoveCopyDialogOpen}
 						open={page().moveCopyDialogOpen()}
 					/>

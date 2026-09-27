@@ -52,9 +52,9 @@ test("preserves an open dialog, input value, and focus after an SSE reconnect re
 
 	const fileChooser = page.waitForEvent("filechooser");
 	await page.getByRole("button", { name: "追加", exact: true }).click();
-	await (await fileChooser).setFiles(
-		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
-	);
+	await (
+		await fileChooser
+	).setFiles(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
 
 	const filenameInput = page.getByLabel("ファイル名", { exact: true });
 	await expect(page.getByRole("dialog")).toBeVisible();

@@ -59,19 +59,19 @@ export function ManagerScreen(props: {
 	};
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--workspace-canvas)]">
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<ManagementHeader
 				description="分類データの管理とバッチ処理の投入を行います。"
 				title="Manager"
 			/>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
+			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-stable">
 				<ManagerCategoryNavigation
 					active={activeCategory()}
 					compact
 					onChange={changeCategory}
 				/>
-				<div class="grid w-full gap-6 px-3 py-4 sm:px-4 lg:grid-cols-[12rem_minmax(0,1fr)] lg:px-6 lg:py-5 xl:gap-8 xl:px-8">
+				<div class="grid w-full gap-6 px-3 py-4 sm:px-4 lg:grid-cols-settings-sidebar lg:px-6 lg:py-5 xl:gap-8 xl:px-8">
 					<ManagerCategoryNavigation
 						active={activeCategory()}
 						onChange={changeCategory}
@@ -148,7 +148,7 @@ export function ManagerScreen(props: {
 										}
 									>
 										<div class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3">
-											<p class="text-xs text-[var(--workspace-text-secondary)]">
+											<p class="text-xs text-muted-foreground">
 												IP候補を取得できませんでした。Characters一覧は引き続き利用できます。
 											</p>
 											<RetryButton

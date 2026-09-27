@@ -13,12 +13,30 @@ import { SourceMediaPage } from "./components/-source-media-page";
 export const Route = createFileRoute("/sources/$mediaSourceId/")({
 	validateSearch: searchHistoryQuerySchema,
 	loader: ({ context }) => {
-		void context.queryClient.prefetchQuery(tagsQueryOptions());
-		void context.queryClient.prefetchQuery(allProjectsQueryOptions());
-		void context.queryClient.prefetchQuery(allIpsQueryOptions());
-		void context.queryClient.prefetchQuery(allCharactersQueryOptions());
-		void context.queryClient.prefetchQuery(allAuthorsQueryOptions());
-		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
+		void context.queryClient.query(tagsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(allProjectsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(allIpsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(allCharactersQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(allAuthorsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(mediaSourcesQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
 	},
 	component: SourceMediaPage,
 });

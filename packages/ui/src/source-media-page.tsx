@@ -7,7 +7,11 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import {
+	createQuery,
+	useQueryClient,
+	type QueryOptions,
+} from "@tanstack/solid-query";
 import { type Accessor, createEffect, type JSX } from "solid-js";
 import { isServer } from "solid-js/web";
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
@@ -23,8 +27,9 @@ import { SourceMediaScreen } from "./screens/source-media-screen";
 import type { SourceMediaScreenProps } from "./screens/source-media-screen.types";
 import type { SearchHistoryClient } from "./search-history-client";
 
-// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
-type QueryOptionFactory<_TData> = () => any;
+type QueryOptionFactory<TData> = () => QueryOptions<TData> & {
+	initialData?: undefined;
+};
 
 function clientOnlyQueryOptions<TData>(factory: QueryOptionFactory<TData>) {
 	return () => ({

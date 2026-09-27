@@ -60,7 +60,7 @@ function SourceActions(props: {
 		<Popover placement="right-start">
 			<PopoverTrigger
 				aria-label={`${props.sourceName}の操作`}
-				class="flex size-11 shrink-0 items-center justify-center rounded-md text-[var(--workspace-text-muted)] outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)] md:size-7"
+				class="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-ring md:size-7"
 			>
 				<Ellipsis aria-hidden="true" size={14} />
 			</PopoverTrigger>
@@ -112,7 +112,7 @@ export function SourceList(props: SourceListProps) {
 		>
 			<CollapsibleTrigger
 				aria-label="Sources"
-				class="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left font-medium text-sm text-[var(--workspace-text-secondary)] outline-none hover:bg-[var(--workspace-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)] md:h-10"
+				class="flex h-11 w-full items-center gap-2 rounded-md px-3 text-left font-medium text-sm text-muted-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-10"
 				onClick={() => {
 					if (!props.expanded) props.onExpandSidebar?.();
 				}}
@@ -129,10 +129,10 @@ export function SourceList(props: SourceListProps) {
 			</CollapsibleTrigger>
 			<Show when={props.expanded}>
 				<CollapsibleContent>
-					<div class="ml-4 max-h-[min(36dvh,22rem)] overflow-y-auto overscroll-contain border-[var(--workspace-border)] border-l py-1 pl-2 [scrollbar-gutter:stable]">
+					<div class="ml-4 max-h-menu-source overflow-y-auto overscroll-contain border-border border-l py-1 pl-2 scrollbar-stable">
 						<Show
 							fallback={
-								<p class="px-2 py-3 text-xs text-[var(--workspace-text-muted)]">
+								<p class="px-2 py-3 text-xs text-muted-foreground">
 									ソースはまだありません
 								</p>
 							}
@@ -143,28 +143,28 @@ export function SourceList(props: SourceListProps) {
 									<div
 										class={`group/source flex min-h-11 items-center rounded-md pr-1 ${
 											currentSourceId() === source.id
-												? "bg-[var(--workspace-surface-selected)]"
-												: "hover:bg-[var(--workspace-surface-muted)]"
+												? "bg-accent"
+												: "hover:bg-muted"
 										}`}
 									>
 										<Link
 											aria-current={
 												currentSourceId() === source.id ? "page" : undefined
 											}
-											class="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)]"
+											class="min-w-0 flex-1 rounded-md px-2 py-1.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											onClick={props.onNavigate}
 											params={{ mediaSourceId: source.id ?? "" }}
 											to="/sources/$mediaSourceId"
 										>
-											<span class="block truncate font-medium text-xs text-[var(--workspace-text)]">
+											<span class="block truncate font-medium text-xs text-foreground">
 												{source.name}
 											</span>
-											<span class="mt-0.5 block text-[10px] text-[var(--workspace-text-muted)]">
+											<span class="mt-0.5 block text-label-xs text-muted-foreground">
 												{sourceTypeLabel(source)} ·{" "}
 												{source.mediaCount?.toLocaleString() ?? "—"}件
 											</span>
 											<span
-												class="mt-0.5 block truncate text-[10px] text-[var(--workspace-text-muted)]"
+												class="mt-0.5 block truncate text-label-xs text-muted-foreground"
 												title={source.lastSyncError ?? undefined}
 											>
 												{sourceSyncDetail(source)}

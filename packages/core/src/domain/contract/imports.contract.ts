@@ -42,8 +42,8 @@ export const importsContract = {
 		})
 		.input(
 			z.object({
-				jobIds: z.array(z.string().uuid()),
-				targetSourceId: z.string().uuid(),
+				jobIds: z.array(z.uuid()),
+				targetSourceId: z.uuid(),
 			}),
 		)
 		.output(z.object({ success: z.boolean(), processedCount: z.number() })),
@@ -54,7 +54,7 @@ export const importsContract = {
 			summary: "インポート処理のキャンセル",
 			description: "指定したインポートジョブをキャンセルします。",
 		})
-		.input(z.object({ jobIds: z.array(z.string().uuid()) }))
+		.input(z.object({ jobIds: z.array(z.uuid()) }))
 		.output(z.object({ success: z.boolean() })),
 
 	events: oc

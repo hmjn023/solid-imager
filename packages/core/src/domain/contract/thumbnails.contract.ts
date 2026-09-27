@@ -22,5 +22,5 @@ export const thumbnailsContract = {
 			summary: "サムネイルキャッシュ削除",
 			description: "指定したメディアソースのサムネイルキャッシュを削除します。",
 		})
-		.input(z.object({ sourceId: z.string().uuid() })),
+		.input(z.object({ sourceId: z.uuid() })),
 };

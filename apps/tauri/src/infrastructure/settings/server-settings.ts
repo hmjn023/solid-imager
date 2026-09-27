@@ -14,7 +14,7 @@ const serverConnectionSchema = z.object({
 	baseUrl: z
 		.string()
 		.trim()
-		.url()
+		.pipe(z.url())
 		.refine(
 			(value) => {
 				const parsed = new URL(value);

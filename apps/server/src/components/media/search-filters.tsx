@@ -92,7 +92,7 @@ function FilterSection<T>(props: {
 							>
 								{item ? props.getItemLabel(item) : id}
 								<button
-									class="ml-1 hover:text-red-500"
+									class="ml-1 hover:text-destructive"
 									onClick={() => props.onRemove(id)}
 									type="button"
 								>
@@ -131,7 +131,7 @@ function FilterSection<T>(props: {
 				<ComboboxControl>
 					<ComboboxInput aria-label={props.label} />
 				</ComboboxControl>
-				<VirtualComboboxContent class="max-h-[300px]" />
+				<VirtualComboboxContent class="max-h-72" />
 			</Combobox>
 		</div>
 	);

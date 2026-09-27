@@ -54,7 +54,7 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 				}
 			};
 
-			fetchTags();
+			void fetchTags();
 
 			onCleanup(() => {
 				isCancelled = true;
@@ -71,7 +71,7 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 			onOpenChange={(open: boolean) => !open && props.onClose()}
 			open={props.isOpen}
 		>
-			<DialogContent class="sm:max-w-[600px]">
+			<DialogContent class="sm:max-w-dialog-lg">
 				<DialogHeader>
 					<DialogTitle>OppaiOracle Tagging Results</DialogTitle>
 					<DialogDescription>
@@ -82,13 +82,13 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 				<div class="py-4">
 					<Show when={isLoading()}>
 						<div class="flex items-center justify-center py-8">
-							<div class="h-8 w-8 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
-							<span class="ml-2 text-gray-600">Analyzing image...</span>
+							<div class="h-8 w-8 animate-spin rounded-full border-4 border-warning-foreground border-t-transparent" />
+							<span class="ml-2 text-muted-foreground">Analyzing image...</span>
 						</div>
 					</Show>
 
 					<Show when={error()}>
-						<div class="rounded-md bg-red-50 p-4 text-red-600">
+						<div class="rounded-md bg-error p-4 text-destructive">
 							Error: {error()}
 						</div>
 					</Show>
@@ -124,7 +124,7 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 										>
 											{([name, score]) => (
 												<Badge
-													class="flex gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
+													class="flex gap-1 bg-muted text-foreground hover:bg-muted"
 													variant="default"
 												>
 													<span>{name}</span>
@@ -141,7 +141,7 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 											MAX_GENERAL_TAGS_DISPLAY
 										}
 									>
-										<p class="mt-2 text-gray-500 text-sm">
+										<p class="mt-2 text-muted-foreground text-sm">
 											Showing top {MAX_GENERAL_TAGS_DISPLAY} of{" "}
 											{Object.keys(res().general).length} tags
 										</p>

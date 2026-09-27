@@ -1,0 +1,5 @@
+{
+	"$schema": "https://shadcn.com/schema.json",
+	"tailwind": { "css": "src/index.css" },
+	"aliases": { "ui": "../../packages/ui/src" }
+}

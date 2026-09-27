@@ -167,7 +167,7 @@ export const aiContract = {
 		.input(
 			z.union([
 				z.object({
-					mediaId: z.string().uuid(),
+					mediaId: z.uuid(),
 					transparent: z.boolean().optional().default(false),
 				}),
 				z.object({

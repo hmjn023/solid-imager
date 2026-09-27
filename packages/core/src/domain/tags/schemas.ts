@@ -31,14 +31,14 @@ export const workflowNodeSchema = z
 		inputs: z.record(z.string(), z.any()).optional(),
 		title: z.string().optional(),
 	})
-	.passthrough();
+	.loose();
 export type WorkflowNode = z.infer<typeof workflowNodeSchema>;
 
 export const workflowSchema = z
 	.object({
 		nodes: z.array(workflowNodeSchema).optional(),
 	})
-	.passthrough();
+	.loose();
 export type Workflow = z.infer<typeof workflowSchema>;
 
 export const newTagSchema = tagDataSchema.extend({
@@ -54,13 +54,13 @@ export type UpdateTag = z.infer<typeof updateTagSchema>;
  * Used for validating tag data returned from the API
  */
 export const tagResponseSchema = z.object({
-	id: z.string().uuid(),
+	id: z.uuid(),
 	name: z.string(),
 	description: z.string().nullable(),
 	attribute: z.string().nullable(),
 	color: z.string().nullable(),
 	source: z.string(),
-	authorId: z.string().uuid().nullable(),
+	authorId: z.uuid().nullable(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 });

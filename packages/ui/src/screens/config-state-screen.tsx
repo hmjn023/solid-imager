@@ -15,14 +15,14 @@ export function ConfigStateScreen(props: ConfigStateScreenProps) {
 	const hasData = () => props.data !== undefined;
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--workspace-canvas)]">
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<ManagementHeader
 				description="アプリケーション全体の動作と接続先を管理します。"
 				title="Settings"
 			/>
 			<div
 				class={cn(
-					"min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 [scrollbar-gutter:stable]",
+					"min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable",
 					props.class,
 				)}
 			>

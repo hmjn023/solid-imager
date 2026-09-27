@@ -7,6 +7,7 @@ import type {
 } from "@solid-imager/core";
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import type { z } from "zod";
+import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
 import { getImageMetadata } from "~/infrastructure/processing/bun-image";
 
 /**
@@ -177,7 +178,7 @@ export const ServerMediaStorage: IMediaStorage = {
 						if (err) {
 							reject(
 								new Error(
-									`Could not extract video metadata for ${fullPath}: ${err.message}`,
+									`Could not extract video metadata for ${fullPath}: ${getErrorMessage(err)}`,
 								),
 							);
 							return;
@@ -239,9 +240,8 @@ export const ServerMediaStorage: IMediaStorage = {
 
 		// Fallback: try ffprobe for video files that were misidentified as images
 		try {
-			const { getFfmpeg, resolveFfmpegPath } = await import(
-				"~/infrastructure/utils/ffmpeg"
-			);
+			const { getFfmpeg, resolveFfmpegPath } =
+				await import("~/infrastructure/utils/ffmpeg");
 			await resolveFfmpegPath();
 			const ffmpeg = getFfmpeg();
 
@@ -250,7 +250,7 @@ export const ServerMediaStorage: IMediaStorage = {
 					if (err) {
 						reject(
 							new Error(
-								`Could not extract media metadata for ${fullPath}: ${err.message}`,
+								`Could not extract media metadata for ${fullPath}: ${getErrorMessage(err)}`,
 							),
 						);
 						return;

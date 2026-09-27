@@ -109,7 +109,7 @@ export function SearchScreen(props: SearchScreenProps) {
 	});
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--workspace-canvas)]">
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<SearchToolbar
 				context="global"
 				filterData={props.filterData}
@@ -147,14 +147,14 @@ export function SearchScreen(props: SearchScreenProps) {
 			</Show>
 
 			<div
-				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 [scrollbar-gutter:stable]"
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 sm:px-4 scrollbar-stable"
 				data-media-scroll="search"
 			>
 				<div
 					class={
 						props.renderMediaPreview && isInspectorVisible()
-							? "2xl:grid 2xl:grid-cols-[minmax(0,1fr)_clamp(20rem,26vw,26rem)] 2xl:items-start 2xl:gap-4"
-							: "2xl:grid 2xl:grid-cols-[minmax(0,1fr)] 2xl:items-start"
+							? "2xl:grid 2xl:grid-cols-workspace-sidebar 2xl:items-start 2xl:gap-4"
+							: "2xl:grid 2xl:grid-cols-1 2xl:items-start"
 					}
 				>
 					<div class="min-w-0">
@@ -188,7 +188,9 @@ export function SearchScreen(props: SearchScreenProps) {
 								onPrepareMediaDetail={(media) =>
 									props.onPrepareMediaDetail?.(media, page().searchResults())
 								}
-								onLoadMore={page().fetchNextPage}
+								onLoadMore={() => {
+									void page().fetchNextPage();
+								}}
 								onRetry={async () => {
 									await page().searchResultQuery.refetch();
 								}}
@@ -233,7 +235,7 @@ export function SearchScreen(props: SearchScreenProps) {
 			</div>
 			<Show when={props.isBulkSelectMode?.()}>
 				<div
-					class="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-40 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] px-3 py-3 shadow-lg sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
+					class="fixed bottom-safe left-1/2 z-40 flex w-dialog-inset max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-3 shadow-lg sm:bottom-safe-sm sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
 					data-testid="search-bulk-actions-bar"
 				>
 					<span class="w-full text-center font-medium text-sm sm:w-auto">

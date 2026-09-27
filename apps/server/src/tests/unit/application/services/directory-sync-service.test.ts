@@ -98,9 +98,8 @@ describe("DirectorySyncService", () => {
 		it("should process additions and deletions correctly", async () => {
 			const mediaSourceId = "source-1";
 
-			const { DirectorySyncService } = await import(
-				"~/infrastructure/services/directory-sync-service"
-			);
+			const { DirectorySyncService } =
+				await import("~/infrastructure/services/directory-sync-service");
 
 			// Execute
 			const result = await DirectorySyncService.syncMediaSource(mediaSourceId);
@@ -125,9 +124,8 @@ describe("DirectorySyncService", () => {
 
 		it("coalesces concurrent syncs for the same source", async () => {
 			const mediaSourceId = "source-1";
-			const { DirectorySyncService } = await import(
-				"~/infrastructure/services/directory-sync-service"
-			);
+			const { DirectorySyncService } =
+				await import("~/infrastructure/services/directory-sync-service");
 			let resolveProcessing: (() => void) | undefined;
 			let resolveStarted: (() => void) | undefined;
 			const started = new Promise<void>((resolve) => {
@@ -169,9 +167,8 @@ describe("DirectorySyncService", () => {
 		});
 
 		it("publishes a safe message when sync fails", async () => {
-			const { DirectorySyncService } = await import(
-				"~/infrastructure/services/directory-sync-service"
-			);
+			const { DirectorySyncService } =
+				await import("~/infrastructure/services/directory-sync-service");
 			vi.mocked(MediaRepository.findAllPathsBySourceId).mockRejectedValueOnce(
 				new Error("/secret/source-path and password=secret"),
 			);

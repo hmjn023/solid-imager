@@ -2,7 +2,7 @@ import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
 import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { createForm } from "@tanstack/solid-form";
-// biome-ignore lint/suspicious/noDeprecatedImports: TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
+// oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
 import Bot from "lucide-solid/icons/bot";
 import BriefcaseBusiness from "lucide-solid/icons/briefcase-business";
@@ -37,10 +37,7 @@ import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
-import {
-	CATEGORY_TABS_CLASS,
-	CategoryLabel,
-} from "../workspace/management-layout";
+import { CategoryLabel } from "../workspace/management-layout";
 
 type AppConfigFormValues = z.input<typeof AppConfigSchema>;
 
@@ -100,8 +97,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 	const [aiHealthError, setAiHealthError] = createSignal<string | null>(null);
 	const [isCheckingAiHealth, setIsCheckingAiHealth] = createSignal(false);
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
-	const sectionClass =
-		"min-w-0 space-y-5 border-b border-[var(--workspace-border)] pb-8";
+	const sectionClass = "min-w-0 space-y-5 border-b border-border pb-8";
 	const form = createForm(() => ({
 		defaultValues: toFormValues(props.data),
 		validators: {
@@ -163,7 +159,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				}}
 			>
 				<Tabs
-					class="grid min-w-0 w-full gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8"
+					class="grid min-w-0 w-full gap-6 lg:grid-cols-settings-sidebar xl:gap-8"
 					onChange={setActiveTab}
 					value={activeTab()}
 				>
@@ -176,7 +172,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								const Icon = category.icon;
 								return (
 									<TabsTrigger
-										class={CATEGORY_TABS_CLASS}
+										class="min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start"
 										type="button"
 										value={category.value}
 									>
@@ -324,12 +320,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<legend class="mb-4 block font-semibold text-xl">
 									AI Service
 								</legend>
-								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface-muted)] px-3 py-2.5">
+								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted px-3 py-2.5">
 									<div>
 										<div class="font-medium text-sm">Connection status</div>
 										<Show
 											fallback={
-												<div class="text-[var(--workspace-text-muted)] text-xs">
+												<div class="text-muted-foreground text-xs">
 													{aiHealthError() ?? "Not checked yet."}
 												</div>
 											}
@@ -337,18 +333,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										>
 											{(health) => (
 												<div
+													aria-atomic="true"
+													aria-live="polite"
 													class={
 														health().status === "available"
-															? "text-[var(--workspace-primary)] text-xs"
-															: "text-[var(--workspace-destructive)] text-xs"
+															? "text-primary text-xs"
+															: "text-destructive text-xs"
 													}
-													role="status"
 												>
 													{health().status === "available"
 														? `${health().mode === "remote" ? "Remote" : "Local"} service available`
 														: (health().message ?? "AI service unavailable")}
 													<Show when={health().latencyMs !== null}>
-														<span class="ml-2 text-[var(--workspace-text-muted)]">
+														<span class="ml-2 text-muted-foreground">
 															{health().latencyMs} ms
 														</span>
 													</Show>
@@ -754,8 +751,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				>
 					{(state) => (
 						<Show when={state().isDirty}>
-							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-2 shadow-lg backdrop-blur">
-								<span class="px-2 text-[var(--workspace-text-muted)] text-sm">
+							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-border bg-card p-2 shadow-lg backdrop-blur">
+								<span class="px-2 text-muted-foreground text-sm">
 									Unsaved changes
 								</span>
 								<Button

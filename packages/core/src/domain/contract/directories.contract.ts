@@ -11,7 +11,7 @@ export const directoriesContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
+				sourceId: z.uuid(),
 				path: z.string().default(""),
 			}),
 		),
@@ -25,7 +25,7 @@ export const directoriesContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
+				sourceId: z.uuid(),
 				path: z.string(),
 				name: z.string(),
 			}),
@@ -40,7 +40,7 @@ export const directoriesContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
+				sourceId: z.uuid(),
 				path: z.string(),
 				force: z.boolean().optional(),
 			}),
@@ -55,7 +55,7 @@ export const directoriesContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
+				sourceId: z.uuid(),
 				oldPath: z.string(),
 				newPath: z.string(),
 			}),

@@ -35,7 +35,6 @@ import {
 	type ThumbnailRequestSize,
 } from "../thumbnail-source";
 import {
-	CATEGORY_TABS_CLASS,
 	CategoryLabel,
 	ManagementHeader,
 } from "../workspace/management-layout";
@@ -121,24 +120,23 @@ function statusLabel(status: JobDto["status"]): string {
 	}[status];
 }
 
-function statusClass(status: JobDto["status"]): string {
-	return {
-		cancelled:
-			"border-[var(--workspace-border-strong)] bg-[var(--workspace-surface-muted)] text-[var(--workspace-text-muted)]",
-		completed:
-			"border-[var(--workspace-border-strong)] bg-[var(--workspace-surface-selected)] text-[var(--workspace-primary)]",
-		failed:
-			"border-[var(--workspace-border-strong)] bg-[var(--workspace-surface-muted)] text-[var(--workspace-destructive)]",
-		in_progress:
-			"border-[var(--workspace-border-strong)] bg-[var(--workspace-info-surface)] text-[var(--workspace-info)]",
-		pending:
-			"border-[var(--workspace-border-strong)] bg-[var(--workspace-warning-surface)] text-[var(--workspace-warning)]",
-	}[status];
-}
-
 function JobStatusBadge(props: { status: JobDto["status"] }) {
 	return (
-		<Badge class={statusClass(props.status)} variant="outline">
+		<Badge
+			classList={{
+				"border-input": true,
+				"bg-muted": props.status === "cancelled" || props.status === "failed",
+				"text-muted-foreground": props.status === "cancelled",
+				"text-destructive": props.status === "failed",
+				"bg-accent": props.status === "completed",
+				"text-primary": props.status === "completed",
+				"bg-info": props.status === "in_progress",
+				"text-info-foreground": props.status === "in_progress",
+				"bg-warning": props.status === "pending",
+				"text-warning-foreground": props.status === "pending",
+			}}
+			variant="outline"
+		>
 			{statusLabel(props.status)}
 		</Badge>
 	);
@@ -155,14 +153,14 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 
 	return (
 		<Show
-			fallback={<span class="text-[var(--workspace-text-muted)]">—</span>}
+			fallback={<span class="text-muted-foreground">—</span>}
 			when={props.progress}
 		>
 			{(progress) => (
 				<div class="min-w-28 space-y-1">
 					<div class="flex items-center justify-between gap-2 text-xs">
 						<span>{percent()}%</span>
-						<span class="text-[var(--workspace-text-muted)]">
+						<span class="text-muted-foreground">
 							{progress().processed.toLocaleString()}/
 							{progress().total.toLocaleString()}
 						</span>
@@ -172,12 +170,12 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 						aria-valuemax="100"
 						aria-valuemin="0"
 						aria-valuenow={percent()}
-						class="h-1.5 overflow-hidden rounded-full bg-[var(--workspace-border)]"
+						class="h-1.5 overflow-hidden rounded-full bg-border"
 						role="progressbar"
 					>
 						<div
-							class="h-full rounded-full bg-[var(--workspace-primary)] transition-[width]"
-							style={{ width: `${percent()}%` }}
+							class="job-progress-fill h-full rounded-full bg-primary transition-width"
+							style={{ "--job-progress-width": `${percent()}%` }}
 						/>
 					</div>
 				</div>
@@ -215,7 +213,7 @@ function JobThumbnail(props: {
 	return (
 		<Show
 			fallback={
-				<span aria-hidden="true" class="text-[var(--workspace-text-muted)]">
+				<span aria-hidden="true" class="text-muted-foreground">
 					—
 				</span>
 			}
@@ -244,13 +242,13 @@ function JobsTable(props: {
 	selectedJobIds: ReadonlySet<string>;
 }) {
 	return (
-		<div class="overflow-hidden rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)]">
+		<div class="overflow-hidden rounded-md border border-border bg-card">
 			<div class="overflow-x-auto">
-				<table class="w-full min-w-[50rem] text-left text-sm">
+				<table class="w-full min-w-table-wide text-left text-sm">
 					<caption class="sr-only">
 						ジョブの一覧。{props.jobs.length}件。
 					</caption>
-					<thead class="border-[var(--workspace-border)] border-b bg-[var(--workspace-surface-muted)] text-xs uppercase tracking-wide">
+					<thead class="border-border border-b bg-muted text-xs uppercase tracking-wide">
 						<tr>
 							<th class="w-12 px-2 py-3 font-medium" scope="col">
 								<span class="sr-only">Select</span>
@@ -272,15 +270,11 @@ function JobsTable(props: {
 							</th>
 						</tr>
 					</thead>
-					<tbody class="divide-y divide-[var(--workspace-border)]">
+					<tbody class="divide-y divide-border">
 						<For each={props.jobs}>
 							{(job) => (
 								<tr
-									class={
-										props.selectedJobId === job.id
-											? "bg-[var(--workspace-primary-soft)]"
-											: ""
-									}
+									class={props.selectedJobId === job.id ? "bg-accent" : ""}
 									data-selected={props.selectedJobId === job.id}
 								>
 									<td class="px-2 py-2">
@@ -288,7 +282,7 @@ function JobsTable(props: {
 											fallback={
 												<span
 													aria-hidden="true"
-													class="block text-center text-[var(--workspace-text-muted)]"
+													class="block text-center text-muted-foreground"
 												>
 													—
 												</span>
@@ -296,11 +290,12 @@ function JobsTable(props: {
 											when={job.status === "failed"}
 										>
 											<Checkbox
+												aria-label={`Select ${jobTypeLabel(job.type)} job`}
 												checked={props.selectedJobIds.has(job.id)}
 												class="flex min-h-11 items-center justify-center sm:min-h-9"
 												onChange={() => props.onToggleSelect(job.id)}
 											>
-												<CheckboxControl class="border-[var(--workspace-border-strong)] bg-[var(--workspace-surface)] data-[checked]:border-[var(--workspace-primary)] data-[checked]:bg-[var(--workspace-primary)]" />
+												<CheckboxControl class="border-input bg-card data-[checked]:border-primary data-[checked]:bg-primary" />
 												<CheckboxLabel class="sr-only">
 													Select {jobTypeLabel(job.type)} job
 												</CheckboxLabel>
@@ -319,13 +314,14 @@ function JobsTable(props: {
 									</td>
 									<td class="px-2 py-2">
 										<button
+											aria-label={`${jobTypeLabel(job.type)} job ${job.id.slice(0, 8)}`}
 											aria-pressed={props.selectedJobId === job.id}
-											class="w-full rounded px-2 py-2 text-left font-medium text-[var(--workspace-text)] hover:bg-[var(--workspace-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-primary)]"
+											class="w-full rounded px-2 py-2 text-left font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											onClick={() => props.onSelect(job)}
 											type="button"
 										>
 											<div>{jobTypeLabel(job.type)}</div>
-											<div class="mt-0.5 font-normal text-[var(--workspace-text-muted)] text-xs">
+											<div class="mt-0.5 font-normal text-muted-foreground text-xs">
 												{job.id.slice(0, 8)}
 											</div>
 										</button>
@@ -336,7 +332,7 @@ function JobsTable(props: {
 									<td class="px-4 py-3">
 										<JobProgress progress={job.progress} />
 									</td>
-									<td class="px-4 py-3 whitespace-nowrap text-[var(--workspace-text-secondary)]">
+									<td class="px-4 py-3 whitespace-nowrap text-muted-foreground">
 										{formatDate(job.updatedAt, { includeTime: true })}
 									</td>
 								</tr>
@@ -361,7 +357,7 @@ function JobsBulkActions(props: {
 	selectedCount: number;
 }) {
 	return (
-		<div class="mb-3 flex flex-col gap-3 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-3 sm:flex-row sm:items-center sm:justify-between">
+		<div class="mb-3 flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
 			<div class="flex flex-wrap items-center gap-3">
 				<Checkbox
 					checked={props.allSelected}
@@ -369,17 +365,14 @@ function JobsBulkActions(props: {
 					indeterminate={props.hasSelection && !props.allSelected}
 					onChange={props.onToggleAll}
 				>
-					<CheckboxControl class="border-[var(--workspace-border-strong)] bg-[var(--workspace-surface)] data-[checked]:border-[var(--workspace-primary)] data-[checked]:bg-[var(--workspace-primary)]" />
-					<CheckboxLabel class="font-medium text-xs text-[var(--workspace-text-secondary)]">
+					<CheckboxControl class="border-input bg-card data-[checked]:border-primary data-[checked]:bg-primary" />
+					<CheckboxLabel class="font-medium text-xs text-muted-foreground">
 						{props.allSelected
 							? "Clear failed selection"
 							: "Select all failed jobs"}
 					</CheckboxLabel>
 				</Checkbox>
-				<span
-					aria-live="polite"
-					class="text-xs text-[var(--workspace-text-muted)]"
-				>
+				<span aria-live="polite" class="text-xs text-muted-foreground">
 					{props.selectedCount.toLocaleString()} of{" "}
 					{props.selectableCount.toLocaleString()} failed jobs selected
 				</span>
@@ -398,7 +391,7 @@ function JobsBulkActions(props: {
 				>
 					<SelectTrigger
 						aria-label="Bulk job action"
-						class="w-full bg-[var(--workspace-surface)] sm:min-h-9 sm:w-52"
+						class="w-full bg-card sm:min-h-9 sm:w-52"
 						disabled={props.isApplying || !props.hasSelection}
 					>
 						<SelectValue<JobBulkAction>>
@@ -487,13 +480,13 @@ function JobsInspector(props: {
 			aria-label="Job details"
 			class={
 				props.class ??
-				"hidden min-h-0 overflow-y-auto overscroll-contain border-[var(--workspace-border)] border-l bg-[var(--workspace-surface-subtle)] p-5 [scrollbar-gutter:stable] xl:block"
+				"hidden min-h-0 overflow-y-auto overscroll-contain border-border border-l bg-background p-5 scrollbar-stable xl:block"
 			}
 		>
 			<div class="flex items-start justify-between gap-3">
 				<div>
-					<p class="text-xs text-[var(--workspace-text-muted)]">Inspector</p>
-					<h2 class="mt-1 font-semibold text-base text-[var(--workspace-text)]">
+					<p class="text-xs text-muted-foreground">Inspector</p>
+					<h2 class="mt-1 font-semibold text-base text-foreground">
 						Job details
 					</h2>
 				</div>
@@ -504,7 +497,7 @@ function JobsInspector(props: {
 
 			<Show
 				fallback={
-					<p class="mt-3 text-sm leading-6 text-[var(--workspace-text-secondary)]">
+					<p class="mt-3 text-sm leading-6 text-muted-foreground">
 						一覧からジョブを選択すると、対象と実行状態を表示します。
 					</p>
 				}
@@ -512,87 +505,87 @@ function JobsInspector(props: {
 			>
 				{(job) => (
 					<>
-						<p class="mt-3 font-medium text-sm text-[var(--workspace-text)]">
+						<p class="mt-3 font-medium text-sm text-foreground">
 							{jobTypeLabel(job().type)}
 						</p>
 						<Show
 							fallback={
 								<div
 									aria-hidden="true"
-									class="mt-4 flex h-24 items-center justify-center rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] text-[var(--workspace-text-muted)]"
+									class="mt-4 flex h-24 items-center justify-center rounded-md border border-border bg-card text-muted-foreground"
 								>
 									—
 								</div>
 							}
 							when={job().targetMediaId && job().mediaSourceId}
 						>
-							<div class="mt-4 overflow-hidden rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)]">
+							<div class="mt-4 overflow-hidden rounded-md border border-border bg-card">
 								<JobThumbnail
 									alt={`Target media for ${jobTypeLabel(job().type)} job`}
 									buildUrl={props.buildThumbnailUrl}
-									class="aspect-[4/3] w-full object-cover"
+									class="aspect-landscape w-full object-cover"
 									height={192}
 									job={job()}
 									requestedSize={512}
 									width={256}
 								/>
-								<p class="border-[var(--workspace-border)] border-t px-3 py-2 text-xs text-[var(--workspace-text-muted)]">
+								<p class="border-border border-t px-3 py-2 text-xs text-muted-foreground">
 									Target media
 								</p>
 							</div>
 						</Show>
-						<dl class="mt-5 space-y-3 border-[var(--workspace-border)] border-y py-4 text-xs">
+						<dl class="mt-5 space-y-3 border-border border-y py-4 text-xs">
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Status</dt>
-								<dd class="text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Status</dt>
+								<dd class="text-right text-muted-foreground">
 									{statusLabel(job().status)}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Source</dt>
-								<dd class="max-w-40 truncate text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Source</dt>
+								<dd class="max-w-40 truncate text-right text-muted-foreground">
 									{job().mediaSourceId?.slice(0, 8) ?? "—"}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Created</dt>
-								<dd class="text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Created</dt>
+								<dd class="text-right text-muted-foreground">
 									{formatDate(job().createdAt, { includeTime: true })}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Updated</dt>
-								<dd class="text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Updated</dt>
+								<dd class="text-right text-muted-foreground">
 									{formatDate(job().updatedAt, { includeTime: true })}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Attempts</dt>
-								<dd class="text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Attempts</dt>
+								<dd class="text-right text-muted-foreground">
 									{job().attemptCount}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Started</dt>
-								<dd class="text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Started</dt>
+								<dd class="text-right text-muted-foreground">
 									{job().startedAt ? formatDate(job().startedAt) : "—"}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Finished</dt>
-								<dd class="text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Finished</dt>
+								<dd class="text-right text-muted-foreground">
 									{job().finishedAt ? formatDate(job().finishedAt) : "—"}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Target</dt>
-								<dd class="max-w-40 truncate text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Target</dt>
+								<dd class="max-w-40 truncate text-right text-muted-foreground">
 									{job().targetMediaId?.slice(0, 8) ?? "—"}
 								</dd>
 							</div>
 							<div class="flex justify-between gap-3">
-								<dt class="text-[var(--workspace-text-muted)]">Job ID</dt>
-								<dd class="max-w-40 truncate text-right text-[var(--workspace-text-secondary)]">
+								<dt class="text-muted-foreground">Job ID</dt>
+								<dd class="max-w-40 truncate text-right text-muted-foreground">
 									{job().id}
 								</dd>
 							</div>
@@ -601,9 +594,7 @@ function JobsInspector(props: {
 						<Show when={job().progress}>
 							{(progress) => (
 								<div class="mt-4">
-									<p class="mb-2 text-xs text-[var(--workspace-text-muted)]">
-										Progress
-									</p>
+									<p class="mb-2 text-xs text-muted-foreground">Progress</p>
 									<JobProgress progress={progress()} />
 								</div>
 							)}
@@ -611,7 +602,7 @@ function JobsInspector(props: {
 
 						<Show when={job().error}>
 							{(error) => (
-								<div class="mt-4 rounded-md border border-[var(--workspace-border-strong)] bg-[var(--workspace-surface-muted)] p-3 text-[var(--workspace-destructive)] text-sm">
+								<div class="mt-4 rounded-md border border-input bg-muted p-3 text-destructive text-sm">
 									<div class="flex items-start gap-2">
 										<CircleAlert
 											aria-hidden="true"
@@ -625,7 +616,7 @@ function JobsInspector(props: {
 						</Show>
 
 						<Show when={job().cancelRequestedAt}>
-							<p class="mt-4 rounded-md border border-[var(--workspace-border-strong)] bg-[var(--workspace-warning-surface)] p-3 text-[var(--workspace-warning)] text-xs">
+							<p class="mt-4 rounded-md border border-input bg-warning p-3 text-warning-foreground text-xs">
 								Cancellation requested at {formatDate(job().cancelRequestedAt)}.
 							</p>
 						</Show>
@@ -634,7 +625,7 @@ function JobsInspector(props: {
 							{(artifact) => (
 								<button
 									aria-busy={isDownloading()}
-									class="mt-4 flex w-full items-center gap-2 rounded-md border border-[var(--workspace-border)] px-3 py-2 text-left text-sm text-[var(--workspace-primary)] hover:bg-[var(--workspace-surface-muted)]"
+									class="mt-4 flex w-full items-center gap-2 rounded-md border border-border px-3 py-2 text-left text-sm text-primary hover:bg-muted"
 									disabled={isDownloading()}
 									onClick={() => void download()}
 									type="button"
@@ -671,7 +662,7 @@ function JobsInspector(props: {
 							</Show>
 							<Show
 								fallback={
-									<p class="text-xs leading-5 text-[var(--workspace-text-muted)]">
+									<p class="text-xs leading-5 text-muted-foreground">
 										再実行できるのは失敗したジョブのみです。
 									</p>
 								}
@@ -762,13 +753,13 @@ export function JobsScreen(props: JobsScreenProps) {
 	};
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-[var(--workspace-canvas)]">
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<ManagementHeader
 				actions={
 					<div class="flex items-center gap-2">
 						<Show when={props.state().data}>
 							{(data) => (
-								<span class="hidden text-xs text-[var(--workspace-text-muted)] sm:inline">
+								<span class="hidden text-xs text-muted-foreground sm:inline">
 									{data().total.toLocaleString()} jobs
 								</span>
 							)}
@@ -789,8 +780,8 @@ export function JobsScreen(props: JobsScreenProps) {
 				title="Jobs"
 			/>
 
-			<div class="grid min-h-0 flex-1 xl:grid-cols-[minmax(0,1fr)_22rem]">
-				<div class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 [scrollbar-gutter:stable]">
+			<div class="grid min-h-0 flex-1 xl:grid-cols-detail-sidebar">
+				<div class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable">
 					<Tabs
 						onChange={(value) => {
 							setActiveFilter(value as JobFilter);
@@ -798,7 +789,7 @@ export function JobsScreen(props: JobsScreenProps) {
 						}}
 						value={activeFilter()}
 					>
-						<div class="grid gap-6 lg:grid-cols-[12rem_minmax(0,1fr)] xl:gap-8">
+						<div class="grid gap-6 lg:grid-cols-settings-sidebar xl:gap-8">
 							<TabsList
 								aria-label="Job status filter"
 								class="flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
@@ -808,7 +799,7 @@ export function JobsScreen(props: JobsScreenProps) {
 										const Icon = filter.icon;
 										return (
 											<TabsTrigger
-												class={CATEGORY_TABS_CLASS}
+												class="min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start"
 												type="button"
 												value={filter.value}
 											>
@@ -829,7 +820,7 @@ export function JobsScreen(props: JobsScreenProps) {
 											<Switch>
 												<Match when={props.state().phase === "pending"}>
 													<LoadingRegion label="ジョブ一覧を読み込んでいます...">
-														<div class="h-64 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)]" />
+														<div class="h-64 rounded-md border border-border bg-card" />
 													</LoadingRegion>
 												</Match>
 												<Match when={props.state().phase === "error"}>
@@ -888,7 +879,7 @@ export function JobsScreen(props: JobsScreenProps) {
 														/>
 														<Show when={props.state().data?.total}>
 															{(total) => (
-																<p class="mt-3 text-xs text-[var(--workspace-text-muted)]">
+																<p class="mt-3 text-xs text-muted-foreground">
 																	Showing{" "}
 																	{filteredJobs().length.toLocaleString()} of{" "}
 																	{total().toLocaleString()} jobs
@@ -899,7 +890,7 @@ export function JobsScreen(props: JobsScreenProps) {
 															{(job) => (
 																<JobsInspector
 																	buildThumbnailUrl={props.buildThumbnailUrl}
-																	class="mt-4 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface-subtle)] p-4 xl:hidden"
+																	class="mt-4 rounded-md border border-border bg-background p-4 xl:hidden"
 																	job={job()}
 																	onCancel={props.onCancel}
 																	onDownload={props.onDownload}
@@ -933,7 +924,7 @@ export function JobsScreen(props: JobsScreenProps) {
 															</Button>
 															<span
 																aria-live="polite"
-																class="text-sm text-[var(--workspace-text-muted)]"
+																class="text-sm text-muted-foreground"
 															>
 																Page {props.page().current} of{" "}
 																{props.page().total}

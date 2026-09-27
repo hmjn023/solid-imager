@@ -32,7 +32,7 @@ export function SourceSelect(props: {
 					: null
 			}
 		>
-			<SelectTrigger class="w-full bg-[var(--workspace-surface)]">
+			<SelectTrigger class="w-full bg-card">
 				<SelectValue<unknown>>
 					{(state) => {
 						const selected = state.selectedOption();

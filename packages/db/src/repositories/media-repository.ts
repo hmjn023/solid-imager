@@ -1008,23 +1008,21 @@ export function createMediaRepository(
 				.from(mediaTags)
 				.innerJoin(tags, eq(mediaTags.tagId, tags.id))
 				.where(eq(mediaTags.mediaId, mediaId));
-			return rows.map(
-				(r): MediaTag => ({
-					id: r.tags.id,
-					name: r.tags.name,
-					description: r.tags.description,
-					attribute: r.tags.attribute,
-					color: r.tags.color,
-					source: r.tags.source,
-					authorId: r.tags.authorId,
-					createdAt: r.tags.createdAt,
-					updatedAt: r.tags.updatedAt,
-					type: isTagType(r.media_tags.tagType)
-						? r.media_tags.tagType
-						: "positive",
-					confidence: r.media_tags.confidence,
-				}),
-			);
+			return rows.map((r): MediaTag => ({
+				id: r.tags.id,
+				name: r.tags.name,
+				description: r.tags.description,
+				attribute: r.tags.attribute,
+				color: r.tags.color,
+				source: r.tags.source,
+				authorId: r.tags.authorId,
+				createdAt: r.tags.createdAt,
+				updatedAt: r.tags.updatedAt,
+				type: isTagType(r.media_tags.tagType)
+					? r.media_tags.tagType
+					: "positive",
+				confidence: r.media_tags.confidence,
+			}));
 		},
 
 		async getGenerationInfo(
@@ -1377,7 +1375,7 @@ export function createMediaRepository(
 				for (const [, ids] of byUrlSet) {
 					if (ids.length < 2) continue;
 					const group = ids.map((id) => {
-						// biome-ignore lint/style/noNonNullAssertion: ID mapped from mediaRows
+						// oxlint-disable-next-line typescript/no-non-null-assertion -- ID mapped from mediaRows
 						const row = mediaMap.get(id)!;
 						return {
 							id: row.id,

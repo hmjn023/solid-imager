@@ -103,7 +103,8 @@ function processWorkflowNode({
 	if (typeof nodeType === "string" && positiveNodeTypes.includes(nodeType)) {
 		const valuesToProcess: unknown[] = [];
 		if (Array.isArray(node.widgets_values)) {
-			valuesToProcess.push(...node.widgets_values);
+			const widgetValues: unknown[] = node.widgets_values;
+			valuesToProcess.push(...widgetValues);
 		}
 		if (isRecord(node.inputs)) {
 			valuesToProcess.push(...Object.values(node.inputs));

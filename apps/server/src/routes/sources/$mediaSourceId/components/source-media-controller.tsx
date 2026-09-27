@@ -110,7 +110,7 @@ export function SourceMediaPageController(
 		if (!partial) {
 			handleCancelSelect();
 		}
-		queryClient.invalidateQueries({
+		void queryClient.invalidateQueries({
 			queryKey: sourceMediaQueryKeys.forSource(mediaSourceId()),
 		});
 	};

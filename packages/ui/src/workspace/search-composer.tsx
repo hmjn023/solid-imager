@@ -62,7 +62,13 @@ function ComposerInput(props: {
 			enterkeyhint="search"
 			id="search-composer"
 			onFocus={props.onFocus}
-			onInput={(event) => props.onDraftChange(event.currentTarget.value)}
+			onInput={
+				((event: InputEvent & { currentTarget: HTMLInputElement }) =>
+					props.onDraftChange(event.currentTarget.value)) as JSX.EventHandler<
+					HTMLInputElement,
+					InputEvent
+				>
+			}
 			onKeyDown={props.onKeyDown}
 			placeholder={props.placeholder}
 			ref={props.ref}
@@ -116,7 +122,7 @@ export function SearchComposer(props: SearchComposerProps) {
 	return (
 		<form
 			autocomplete="off"
-			class="relative min-w-[min(16rem,100%)] flex-1"
+			class="relative min-w-popover-input flex-1"
 			onSubmit={(event) => {
 				event.preventDefault();
 				props.onSubmit();
@@ -127,7 +133,7 @@ export function SearchComposer(props: SearchComposerProps) {
 			</Label>
 			<Search
 				aria-hidden="true"
-				class="absolute top-[0.7rem] left-3 z-10 text-[var(--workspace-text-muted)]"
+				class="absolute top-3 left-3 z-10 text-muted-foreground"
 				size={16}
 			/>
 			<Combobox<SearchSuggestion>
@@ -160,12 +166,12 @@ export function SearchComposer(props: SearchComposerProps) {
 			>
 				<ComboboxControl<SearchSuggestion>
 					aria-label="メディアを検索"
-					class="flex h-auto min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-[var(--workspace-border-strong)] bg-[var(--workspace-surface)] py-1 pr-8 pl-9 focus-within:ring-2 focus-within:ring-[var(--workspace-focus)] focus-within:ring-offset-1 sm:min-h-9"
+					class="flex h-auto min-h-11 flex-wrap items-center gap-1.5 rounded-md border border-input bg-card py-1 pr-8 pl-9 focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1 sm:min-h-9"
 				>
 					<For each={props.tokens.slice(0, 4)}>
 						{(token) => (
 							<span
-								class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-[11px] ${token.destructive ? "bg-[var(--workspace-surface-muted)] text-[var(--workspace-destructive)]" : "bg-[var(--workspace-surface-selected)] text-[var(--workspace-primary)]"}`}
+								class={`inline-flex h-6 max-w-52 items-center gap-1 rounded px-1.5 font-medium text-label-sm ${token.destructive ? "bg-muted text-destructive" : "bg-accent text-primary"}`}
 							>
 								<span class="truncate">
 									{token.prefix}:{token.value}
@@ -173,7 +179,7 @@ export function SearchComposer(props: SearchComposerProps) {
 								<Show when={token.removable !== false}>
 									<button
 										aria-label={`${token.prefix}:${token.value}を解除`}
-										class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)]"
+										class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 										onClick={() => props.onRemoveToken(token)}
 										type="button"
 									>
@@ -184,7 +190,7 @@ export function SearchComposer(props: SearchComposerProps) {
 						)}
 					</For>
 					<Show when={props.tokens.length > 4}>
-						<span class="inline-flex h-6 items-center rounded bg-[var(--workspace-surface-muted)] px-2 font-medium text-[11px] text-[var(--workspace-text-secondary)]">
+						<span class="inline-flex h-6 items-center rounded bg-muted px-2 font-medium text-label-sm text-muted-foreground">
 							ほか{props.tokens.length - 4}件
 						</span>
 					</Show>
@@ -199,10 +205,10 @@ export function SearchComposer(props: SearchComposerProps) {
 						ref={props.inputRef}
 					/>
 				</ComboboxControl>
-				<VirtualComboboxContent class="workspace-theme w-[min(28rem,calc(100dvw-1.5rem))] p-1 shadow-xl" />
+				<VirtualComboboxContent class="workspace-theme w-popover-large p-1 shadow-xl" />
 			</Combobox>
 			<ShortcutKbd
-				class="pointer-events-none absolute top-2 right-2 min-h-5 border-[var(--workspace-border)] px-1.5 py-0.5 text-[10px] text-[var(--workspace-text-muted)] shadow-none"
+				class="pointer-events-none absolute top-2 right-2 min-h-5 border-border px-1.5 py-0.5 text-label-xs text-muted-foreground shadow-none"
 				shortcutId="focusSearch"
 			/>
 		</form>

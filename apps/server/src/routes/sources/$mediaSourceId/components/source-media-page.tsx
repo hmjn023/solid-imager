@@ -53,7 +53,7 @@ export function SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 			onOpenMediaDetail={onOpenMediaDetail}
 			onPrepareMediaDetail={onPrepareMediaDetail}
 			searchHistoryClient={SearchHistoryClient}
-			bulkActionsClass="fixed bottom-[calc(1rem+env(safe-area-inset-bottom))] left-1/2 z-50 flex w-[calc(100%-2rem)] max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] px-3 py-3 sm:bottom-[calc(1.5rem+env(safe-area-inset-bottom))] sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
+			bulkActionsClass="fixed bottom-safe left-1/2 z-50 flex w-dialog-inset max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-3 sm:bottom-safe-sm sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
 			renderItem={(media, options, onToggleSelect) => (
 				<MediaGridItem
 					imageLoadPolicy={options.imageLoadPolicy}

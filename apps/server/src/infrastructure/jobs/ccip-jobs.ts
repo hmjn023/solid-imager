@@ -21,12 +21,12 @@ import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 
 const singleExtractionPayloadSchema = z.object({
-	mediaId: z.string().uuid(),
+	mediaId: z.uuid(),
 	force: z.boolean().default(false),
 });
 
 const batchExtractionPayloadSchema = z.object({
-	mediaIds: z.array(z.string().uuid()).min(1).max(25),
+	mediaIds: z.array(z.uuid()).min(1).max(25),
 	force: z.boolean().default(false),
 });
 
@@ -38,12 +38,12 @@ const extractionPayloadSchema = z.union([
 const batchCcipDispatchPayloadSchema = z.object({
 	force: z.boolean().default(false),
 	batchSize: z.number().int().min(1).max(5000).optional(),
-	mediaSourceId: z.string().uuid().optional(),
+	mediaSourceId: z.uuid().optional(),
 });
 
 const dispatchedChildPayloadSchema = z.union([
-	z.object({ mediaId: z.string().uuid() }),
-	z.object({ mediaIds: z.array(z.string().uuid()) }),
+	z.object({ mediaId: z.uuid() }),
+	z.object({ mediaIds: z.array(z.uuid()) }),
 ]);
 
 const EXTRACTION_JOB_BATCH_SIZE = 25;

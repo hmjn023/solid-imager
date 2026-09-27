@@ -21,7 +21,7 @@ export const tagsContract = {
 			summary: "タグ取得",
 			description: "UUIDで指定したタグの情報を取得します。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(tagResponseSchema),
 
 	create: oc
@@ -41,7 +41,7 @@ export const tagsContract = {
 		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				data: updateTagSchema,
 			}),
 		)
@@ -53,6 +53,6 @@ export const tagsContract = {
 			summary: "タグ削除",
 			description: "UUIDで指定したタグを削除します。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(z.object({ success: z.boolean() })),
 };

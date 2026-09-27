@@ -21,7 +21,7 @@ export const charactersContract = {
 			summary: "キャラクター取得",
 			description: "UUIDで指定したキャラクターの情報を取得します。",
 		})
-		.input(z.object({ id: z.string().uuid() }))
+		.input(z.object({ id: z.uuid() }))
 		.output(characterSchema),
 
 	create: oc
@@ -41,7 +41,7 @@ export const charactersContract = {
 		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				data: updateCharacterSchema,
 			}),
 		)
@@ -53,7 +53,7 @@ export const charactersContract = {
 			summary: "キャラクター削除",
 			description: "UUIDで指定したキャラクターを削除します。",
 		})
-		.input(z.object({ id: z.string().uuid() })),
+		.input(z.object({ id: z.uuid() })),
 
 	listForMedia: oc
 		.route({
@@ -62,7 +62,7 @@ export const charactersContract = {
 			description:
 				"指定したメディアに関連付けられているキャラクターを一覧で取得します。",
 		})
-		.input(z.object({ mediaId: z.string().uuid() }))
+		.input(z.object({ mediaId: z.uuid() }))
 		.output(z.array(characterSchema)),
 
 	addToMedia: oc
@@ -73,8 +73,8 @@ export const charactersContract = {
 		})
 		.input(
 			z.object({
-				mediaId: z.string().uuid(),
-				characterId: z.string().uuid(),
+				mediaId: z.uuid(),
+				characterId: z.uuid(),
 			}),
 		)
 		.output(z.object({ success: z.boolean() })),
@@ -87,8 +87,8 @@ export const charactersContract = {
 		})
 		.input(
 			z.object({
-				mediaId: z.string().uuid(),
-				characterId: z.string().uuid(),
+				mediaId: z.uuid(),
+				characterId: z.uuid(),
 			}),
 		)
 		.output(z.object({ success: z.boolean() })),

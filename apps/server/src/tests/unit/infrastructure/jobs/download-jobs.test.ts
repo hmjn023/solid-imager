@@ -178,9 +178,8 @@ describe("processDownloadJob", () => {
 	});
 
 	it("should process a direct image download via MediaProcessingService", async () => {
-		const { MediaProcessingService } = await import(
-			"~/infrastructure/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/infrastructure/services/media-processing-service");
 
 		const item = {
 			targetUrl: "https://example.com/image.jpg",
@@ -300,9 +299,8 @@ describe("processDownloadJob", () => {
 	});
 
 	it("should use description if provided", async () => {
-		const { MediaProcessingService } = await import(
-			"~/infrastructure/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/infrastructure/services/media-processing-service");
 
 		const item = {
 			targetUrl: "https://example.com/image.png",
@@ -327,9 +325,8 @@ describe("processDownloadJob", () => {
 	});
 
 	it("should update existing media metadata if file already exists", async () => {
-		const { MediaProcessingService } = await import(
-			"~/infrastructure/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/infrastructure/services/media-processing-service");
 
 		// Simulate file existing -> registerAndProcess throws -> catch block searches media -> updates
 		const error = new Error("File already exists");

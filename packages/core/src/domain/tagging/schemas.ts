@@ -69,7 +69,7 @@ export const ccipDistancesResponseSchema = z.object({
 
 export const ccipVectorStatusSchema = z.object({
 	status: z.enum(["missing", "processing", "ready", "stale", "failed"]),
-	jobId: z.string().uuid().optional(),
+	jobId: z.uuid().optional(),
 	model: z.string().optional(),
 	extractedAt: z.coerce.date().optional(),
 	error: z.string().optional(),
@@ -78,20 +78,20 @@ export const ccipVectorStatusSchema = z.object({
 export type CcipVectorStatus = z.infer<typeof ccipVectorStatusSchema>;
 
 export const ccipExtractionRequestSchema = z.object({
-	mediaSourceId: z.string().uuid(),
-	mediaId: z.string().uuid(),
+	mediaSourceId: z.uuid(),
+	mediaId: z.uuid(),
 	force: z.boolean().default(false),
 });
 
 export const batchCcipExtractionRequestSchema = z.object({
 	force: z.boolean().default(false),
-	mediaSourceId: z.string().uuid().optional(),
+	mediaSourceId: z.uuid().optional(),
 });
 
 export const startCcipExtractionResponseSchema = z.object({
 	success: z.boolean(),
 	message: z.string(),
-	jobId: z.string().uuid(),
+	jobId: z.uuid(),
 });
 
 export type StartCcipExtractionResponse = z.infer<
@@ -99,13 +99,13 @@ export type StartCcipExtractionResponse = z.infer<
 >;
 
 export const similarMediaRequestSchema = z.object({
-	anchorMediaId: z.string().uuid(),
-	mediaSourceId: z.string().uuid().optional(),
+	anchorMediaId: z.uuid(),
+	mediaSourceId: z.uuid().optional(),
 	topK: z.number().int().min(1).max(100).default(50),
 });
 
 export const similarMediaScoreSchema = z.object({
-	mediaId: z.string().uuid(),
+	mediaId: z.uuid(),
 	cosineDistance: z.number(),
 	ccipDistance: z.number(),
 });
@@ -141,7 +141,7 @@ export const characterCropSchema = z.object({
 export type CharacterCrop = z.infer<typeof characterCropSchema>;
 
 export const detectAndCropRequestSchema = z.object({
-	mediaId: z.string().uuid(),
+	mediaId: z.uuid(),
 	transparent: z.boolean().optional().default(false),
 });
 
@@ -154,7 +154,7 @@ export type DetectAndCropResponse = z.infer<typeof detectAndCropResponseSchema>;
 export const startBatchTaggingResponseSchema = z.object({
 	success: z.boolean(),
 	message: z.string(),
-	jobId: z.string().uuid(),
+	jobId: z.uuid(),
 });
 
 export type StartBatchTaggingResponse = z.infer<

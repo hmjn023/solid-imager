@@ -40,7 +40,7 @@ const mockToast = {
 let toastImpl: typeof SonnerToast = mockToast;
 
 if (!isServer) {
-	import("solid-sonner").then((m) => {
+	void import("solid-sonner").then((m) => {
 		toastImpl = m.toast;
 	});
 }
@@ -92,7 +92,7 @@ export const Toaster = () => {
 	const [Comp, setComp] = createSignal<typeof SonnerToaster | null>(null);
 
 	onMount(() => {
-		import("solid-sonner").then((m) => {
+		void import("solid-sonner").then((m) => {
 			setComp(() => m.Toaster);
 		});
 	});
@@ -103,7 +103,8 @@ export const Toaster = () => {
 				const C = ToasterComp();
 				return (
 					<C
-						class="group toaster"
+						class="group"
+						data-toast-container=""
 						closeButton
 						containerAriaLabel="Notifications"
 						duration={5000}
@@ -123,7 +124,7 @@ export const Toaster = () => {
 									"group-[.toast]:border-border group-[.toast]:bg-background group-[.toast]:text-muted-foreground",
 								description: "group-[.toast]:text-muted-foreground",
 								toast:
-									"group toast group-[.toaster]:border-border group-[.toaster]:bg-background group-[.toaster]:text-foreground group-[.toaster]:shadow-lg motion-reduce:transition-none",
+									"group toast group-data-[toast-container]:border-border group-data-[toast-container]:bg-background group-data-[toast-container]:text-foreground group-data-[toast-container]:shadow-lg motion-reduce:transition-none",
 							},
 						}}
 					/>

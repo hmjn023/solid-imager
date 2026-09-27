@@ -53,7 +53,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 				}
 			};
 
-			fetchTags();
+			void fetchTags();
 
 			onCleanup(() => {
 				isCancelled = true;
@@ -70,7 +70,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 			onOpenChange={(open: boolean) => !open && props.onClose()}
 			open={props.isOpen}
 		>
-			<DialogContent class="sm:max-w-[600px]">
+			<DialogContent class="sm:max-w-dialog-lg">
 				<DialogHeader>
 					<DialogTitle>AI Tagging Results</DialogTitle>
 					<DialogDescription>
@@ -81,13 +81,13 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 				<div class="py-4">
 					<Show when={isLoading()}>
 						<div class="flex items-center justify-center py-8">
-							<div class="h-8 w-8 animate-spin rounded-full border-4 border-blue-500 border-t-transparent" />
-							<span class="ml-2 text-gray-600">Analyzing image...</span>
+							<div class="h-8 w-8 animate-spin rounded-full border-4 border-info-foreground border-t-transparent" />
+							<span class="ml-2 text-muted-foreground">Analyzing image...</span>
 						</div>
 					</Show>
 
 					<Show when={error()}>
-						<div class="rounded-md bg-red-50 p-4 text-red-600">
+						<div class="rounded-md bg-error p-4 text-destructive">
 							Error: {error()}
 						</div>
 					</Show>
@@ -99,7 +99,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 									<h3 class="mb-2 font-semibold text-lg">Characters</h3>
 									<Show
 										fallback={
-											<p class="text-gray-500 text-sm">
+											<p class="text-muted-foreground text-sm">
 												No characters detected.
 											</p>
 										}
@@ -124,7 +124,9 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 									<h3 class="mb-2 font-semibold text-lg">IPs (Series)</h3>
 									<Show
 										fallback={
-											<p class="text-gray-500 text-sm">No IPs detected.</p>
+											<p class="text-muted-foreground text-sm">
+												No IPs detected.
+											</p>
 										}
 										when={res().ips.length > 0}
 									>
@@ -142,7 +144,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 										<For each={Object.entries(res().general)}>
 											{([name, score]) => (
 												<Badge
-													class="flex gap-1 bg-gray-100 text-gray-800 hover:bg-gray-200"
+													class="flex gap-1 bg-muted text-foreground hover:bg-muted"
 													variant="default"
 												>
 													<span>{name}</span>

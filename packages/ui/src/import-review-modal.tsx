@@ -207,7 +207,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 				}}
 				open={props.isOpen}
 			>
-				<DialogContent class="workspace-theme flex max-h-[min(52rem,calc(100dvh-2rem))] max-w-5xl flex-col gap-0 overflow-hidden p-0">
+				<DialogContent class="workspace-theme flex max-h-dialog-fit max-w-5xl flex-col gap-0 overflow-hidden p-0">
 					<DialogHeader class="border-b px-5 py-4 pr-12">
 						<DialogTitle>Import inbox</DialogTitle>
 						<DialogDescription>
@@ -217,7 +217,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 					</DialogHeader>
 
 					<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
-						<div class="flex flex-col gap-3 border-[var(--workspace-border)] border-b bg-[var(--workspace-surface-muted)] px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
+						<div class="flex flex-col gap-3 border-border border-b bg-muted px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
 							<div class="grid min-w-0 gap-2 sm:w-80">
 								<label class="grid gap-1 font-medium text-sm">
 									Target source
@@ -323,7 +323,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 												<span class="absolute top-3 right-3 z-10 flex size-5 items-center justify-center rounded border border-input bg-background font-bold text-primary text-xs peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground">
 													{selectedJobIds().has(job.id) ? "✓" : ""}
 												</span>
-												<div class="aspect-[4/3] w-full overflow-hidden rounded-md bg-muted">
+												<div class="aspect-landscape w-full overflow-hidden rounded-md bg-muted">
 													<Show
 														fallback={
 															<div class="flex h-full items-center justify-center text-muted-foreground text-xs">

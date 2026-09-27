@@ -8,7 +8,10 @@ import { configQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/config")({
 	loader: ({ context }) => {
-		void context.queryClient.prefetchQuery(configQueryOptions());
+		void context.queryClient.query(configQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
 	},
 	component: ConfigPage,
 });

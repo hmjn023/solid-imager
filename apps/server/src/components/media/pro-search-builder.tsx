@@ -194,114 +194,120 @@ function GroupBuilder(props: {
 	};
 
 	return (
-		<Card
+		<div
 			class={cn(
-				"border-l-2", // Reduce border width
-				props.depth % 2 === 0 ? "border-l-blue-500" : "border-l-green-500",
+				"border-l-2",
+				props.depth % 2 === 0
+					? "border-l-info-foreground"
+					: "border-l-success-foreground",
 			)}
 		>
-			<CardContent class="space-y-4 p-2 sm:p-4">
-				<div class="flex flex-col gap-2">
-					<div class="flex flex-wrap items-center gap-2">
-						<Select
-							itemComponent={(itemProps) => (
-								<SelectItem item={itemProps.item}>
-									{itemProps.item.rawValue.toUpperCase()}
-								</SelectItem>
+			<Card>
+				<CardContent>
+					<div class="-m-6 space-y-4 p-2 sm:p-4">
+						<div class="flex flex-col gap-2">
+							<div class="flex flex-wrap items-center gap-2">
+								<Select
+									itemComponent={(itemProps) => (
+										<SelectItem item={itemProps.item}>
+											{itemProps.item.rawValue.toUpperCase()}
+										</SelectItem>
+									)}
+									onChange={(val) => {
+										if (val) {
+											props.onChange({
+												...props.group,
+												operator: parseSelectValue(val, GROUP_OPERATORS, "and"),
+											});
+										}
+									}}
+									options={[...GROUP_OPERATORS]}
+									value={props.group.operator}
+								>
+									<SelectTrigger class="w-20 sm:w-24">
+										<SelectValue<string>>
+											{(state) => state.selectedOption().toUpperCase()}
+										</SelectValue>
+									</SelectTrigger>
+									<SelectContent />
+								</Select>
+								<span class="text-muted-foreground text-sm">条件グループ</span>
+							</div>
+
+							<div class="flex w-full flex-col gap-2">
+								<div class="flex flex-wrap gap-2">
+									<Button
+										class="flex-1 whitespace-nowrap"
+										onClick={() => addChild("criterion")}
+										size="sm"
+										variant="outline"
+									>
+										+ 条件
+									</Button>
+									<Button
+										class="flex-1 whitespace-nowrap"
+										onClick={() => addChild("group")}
+										size="sm"
+										variant="outline"
+									>
+										+ グループ
+									</Button>
+								</div>
+								{!props.isRoot && (
+									<Button
+										class="w-full"
+										onClick={props.onRemove}
+										size="sm"
+										variant="destructive"
+									>
+										削除
+									</Button>
+								)}
+							</div>
+						</div>
+
+						<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
+							<For each={props.group.children}>
+								{(child, index) => (
+									<Show
+										fallback={
+											<CriterionBuilder
+												authors={props.authors}
+												characters={props.characters}
+												criterion={child as SearchCriterion}
+												ips={props.ips}
+												onChange={(c) => updateChild(index(), c)}
+												onRemove={() => removeChild(index())}
+												projects={props.projects}
+												tags={props.tags}
+											/>
+										}
+										when={isSearchGroup(child)}
+									>
+										<GroupBuilder
+											authors={props.authors}
+											characters={props.characters}
+											depth={props.depth + 1}
+											group={child as SearchGroup}
+											ips={props.ips}
+											onChange={(g) => updateChild(index(), g)}
+											onRemove={() => removeChild(index())}
+											projects={props.projects}
+											tags={props.tags}
+										/>
+									</Show>
+								)}
+							</For>
+							{props.group.children.length === 0 && (
+								<div class="p-2 text-muted-foreground text-sm italic">
+									条件がありません。「+ 条件」ボタンで追加してください。
+								</div>
 							)}
-							onChange={(val) => {
-								if (val) {
-									props.onChange({
-										...props.group,
-										operator: parseSelectValue(val, GROUP_OPERATORS, "and"),
-									});
-								}
-							}}
-							options={[...GROUP_OPERATORS]}
-							value={props.group.operator}
-						>
-							<SelectTrigger class="w-20 sm:w-24">
-								<SelectValue<string>>
-									{(state) => state.selectedOption().toUpperCase()}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent />
-						</Select>
-						<span class="text-muted-foreground text-sm">条件グループ</span>
-					</div>
-
-					<div class="flex w-full flex-col gap-2">
-						<div class="flex flex-wrap gap-2">
-							<Button
-								class="flex-1 whitespace-nowrap"
-								onClick={() => addChild("criterion")}
-								size="sm"
-								variant="outline"
-							>
-								+ 条件
-							</Button>
-							<Button
-								class="flex-1 whitespace-nowrap"
-								onClick={() => addChild("group")}
-								size="sm"
-								variant="outline"
-							>
-								+ グループ
-							</Button>
 						</div>
-						{!props.isRoot && (
-							<Button
-								class="w-full text-red-500"
-								onClick={props.onRemove}
-								size="sm"
-								variant="ghost"
-							>
-								削除
-							</Button>
-						)}
 					</div>
-				</div>
-
-				<div class="space-y-2 border-border border-l pl-2 sm:pl-4">
-					<For each={props.group.children}>
-						{(child, index) => (
-							<Show
-								fallback={
-									<CriterionBuilder
-										authors={props.authors}
-										characters={props.characters}
-										criterion={child as SearchCriterion}
-										ips={props.ips}
-										onChange={(c) => updateChild(index(), c)}
-										onRemove={() => removeChild(index())}
-										projects={props.projects}
-										tags={props.tags}
-									/>
-								}
-								when={isSearchGroup(child)}
-							>
-								<GroupBuilder
-									authors={props.authors}
-									characters={props.characters}
-									depth={props.depth + 1}
-									group={child as SearchGroup}
-									ips={props.ips}
-									onChange={(g) => updateChild(index(), g)}
-									onRemove={() => removeChild(index())}
-									projects={props.projects}
-									tags={props.tags}
-								/>
-							</Show>
-						)}
-					</For>
-					{props.group.children.length === 0 && (
-						<div class="p-2 text-muted-foreground text-sm italic">
-							条件がありません。「+ 条件」ボタンで追加してください。
-						</div>
-					)}
-				</div>
-			</CardContent>
-		</Card>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
 
@@ -506,7 +512,7 @@ function CriterionBuilder(props: {
 						<ComboboxControl>
 							<ComboboxInput />
 						</ComboboxControl>
-						<VirtualComboboxContent class="max-h-[300px]" />
+						<VirtualComboboxContent class="max-h-72" />
 					</Combobox>
 				</Match>
 
@@ -566,11 +572,7 @@ function CriterionBuilder(props: {
 				</Match>
 			</Switch>
 
-			<Button
-				class="w-full text-red-500"
-				onClick={props.onRemove}
-				variant="ghost"
-			>
+			<Button class="w-full" onClick={props.onRemove} variant="destructive">
 				削除
 			</Button>
 		</div>

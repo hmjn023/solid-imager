@@ -13,6 +13,8 @@ import { splitProps } from "solid-js";
 import { buttonVariants } from "./button";
 import { cn } from "./utils/cn";
 
+type ClassProps<T> = Omit<T, "class"> & { class?: string | undefined };
+
 const AlertDialog = AlertDialogPrimitiveRoot;
 const AlertDialogTrigger = AlertDialogPrimitiveTrigger;
 
@@ -30,7 +32,7 @@ const AlertDialogPortal: Component<
 };
 
 const AlertDialogOverlay: Component<
-	ComponentProps<typeof AlertDialogPrimitiveOverlay>
+	ClassProps<ComponentProps<typeof AlertDialogPrimitiveOverlay>>
 > = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
@@ -45,7 +47,7 @@ const AlertDialogOverlay: Component<
 };
 
 const AlertDialogContent: Component<
-	ComponentProps<typeof AlertDialogPrimitiveContent>
+	ClassProps<ComponentProps<typeof AlertDialogPrimitiveContent>>
 > = (props) => {
 	const [, rest] = splitProps(props, ["class", "children"]);
 	return (
@@ -53,7 +55,7 @@ const AlertDialogContent: Component<
 			<AlertDialogOverlay />
 			<AlertDialogPrimitiveContent
 				class={cn(
-					"fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem-env(safe-area-inset-top)-env(safe-area-inset-bottom))] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 overflow-y-auto overscroll-contain border bg-background p-6 shadow-lg duration-200 data-[closed]:animate-out data-[expanded]:animate-in data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 motion-reduce:animate-none sm:max-h-[calc(100dvh-4rem)] sm:rounded-lg",
+					"fixed top-1/2 left-1/2 z-50 grid max-h-dialog-safe w-dialog-inset max-w-lg -translate-x-1/2 -translate-y-1/2 origin-center gap-4 overflow-y-auto overscroll-contain border bg-background p-6 shadow-lg duration-200 data-[closed]:animate-out data-[expanded]:animate-in data-[closed]:fade-out-0 data-[expanded]:fade-in-0 data-[closed]:zoom-out-95 data-[expanded]:zoom-in-95 motion-reduce:animate-none sm:max-h-dialog-screen-sm sm:rounded-lg",
 					props.class,
 				)}
 				{...rest}
@@ -91,7 +93,7 @@ const AlertDialogFooter: Component<ComponentProps<"div">> = (props) => {
 };
 
 const AlertDialogTitle: Component<
-	ComponentProps<typeof AlertDialogPrimitiveTitle>
+	ClassProps<ComponentProps<typeof AlertDialogPrimitiveTitle>>
 > = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
@@ -103,7 +105,7 @@ const AlertDialogTitle: Component<
 };
 
 const AlertDialogDescription: Component<
-	ComponentProps<typeof AlertDialogPrimitiveDescription>
+	ClassProps<ComponentProps<typeof AlertDialogPrimitiveDescription>>
 > = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
@@ -115,7 +117,7 @@ const AlertDialogDescription: Component<
 };
 
 const AlertDialogAction: Component<
-	ComponentProps<typeof AlertDialogPrimitiveCloseButton>
+	ClassProps<ComponentProps<typeof AlertDialogPrimitiveCloseButton>>
 > = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (
@@ -127,7 +129,7 @@ const AlertDialogAction: Component<
 };
 
 const AlertDialogCancel: Component<
-	ComponentProps<typeof AlertDialogPrimitiveCloseButton>
+	ClassProps<ComponentProps<typeof AlertDialogPrimitiveCloseButton>>
 > = (props) => {
 	const [, rest] = splitProps(props, ["class"]);
 	return (

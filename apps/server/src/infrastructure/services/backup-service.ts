@@ -995,7 +995,7 @@ export const BackupService = {
 		for await (const line of rl) {
 			if (!line.trim()) continue;
 			try {
-				const item = JSON.parse(line);
+				const item: unknown = JSON.parse(line);
 				batch.push(item);
 				if (batch.length >= 2000) {
 					await flushBatch();
@@ -1126,7 +1126,7 @@ export const BackupService = {
 				try {
 					for await (const item of iterateMediaDumpItems(
 						mediaSourceId,
-						this._transformMediaList,
+						(item) => this._transformMediaList(item),
 					)) {
 						await writeWithBackpressure(
 							passThrough,
@@ -1175,7 +1175,7 @@ export const BackupService = {
 						mediaSourceId,
 						ndjsonPath,
 						imagePathsPath,
-						this._transformMediaList,
+						(item) => this._transformMediaList(item),
 					);
 
 					const ndjsonStats = await fs.stat(ndjsonPath);
@@ -1220,7 +1220,7 @@ export const BackupService = {
 			return nodeStreamToWebReadable(passThrough);
 		}
 
-		throw new Error(`Unsupported dump mode: ${mode}`);
+		throw new Error(`Unsupported dump mode: ${String(mode)}`);
 	},
 
 	// Helper to transform media list to dump format

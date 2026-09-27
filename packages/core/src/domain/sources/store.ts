@@ -1,4 +1,5 @@
 import { createStore } from "solid-js/store";
+import { z } from "zod";
 
 export type SourcesState = {
 	// Map of mediaSourceId to scrollY position
@@ -8,6 +9,10 @@ export type SourcesState = {
 const defaultState: SourcesState = {
 	scrollPositions: {},
 };
+
+const sourcesStateSchema = z.object({
+	scrollPositions: z.record(z.string(), z.number()),
+});
 
 const STORAGE_KEY = "solid-imager-scroll-positions";
 const canUseSessionStorage = typeof sessionStorage !== "undefined";
@@ -19,15 +24,14 @@ const getInitialState = (): SourcesState => {
 	}
 	try {
 		const stored = sessionStorage.getItem(STORAGE_KEY);
-		return stored ? JSON.parse(stored) : defaultState;
+		return stored ? sourcesStateSchema.parse(JSON.parse(stored)) : defaultState;
 	} catch {
 		return defaultState;
 	}
 };
 
-export const [sourcesState, setSourcesState] = createStore<SourcesState>(
-	getInitialState(),
-);
+export const [sourcesState, setSourcesState] =
+	createStore<SourcesState>(getInitialState());
 
 // Helper to persist to sessionStorage
 const persistToStorage = () => {

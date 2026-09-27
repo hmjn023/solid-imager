@@ -30,7 +30,7 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid().nullish(),
+				sourceId: z.uuid().nullish(),
 				params: mediaSearchRequestSchema,
 			}),
 		)
@@ -55,8 +55,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
-				mediaId: z.string().uuid(),
+				sourceId: z.uuid(),
+				mediaId: z.uuid(),
 			}),
 		)
 		.output(mediaSchema),
@@ -70,8 +70,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
-				mediaId: z.string().uuid(),
+				sourceId: z.uuid(),
+				mediaId: z.uuid(),
 			}),
 		)
 		.output(mediaDetailsSchema),
@@ -85,8 +85,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
-				mediaId: z.string().uuid(),
+				sourceId: z.uuid(),
+				mediaId: z.uuid(),
 			}),
 		)
 		.output(z.never()),
@@ -100,8 +100,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
-				mediaId: z.string().uuid(),
+				sourceId: z.uuid(),
+				mediaId: z.uuid(),
 			}),
 		)
 		.output(z.array(tagSchema)),
@@ -115,8 +115,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
-				mediaId: z.string().uuid(),
+				sourceId: z.uuid(),
+				mediaId: z.uuid(),
 				data: updateMediaRequestSchema,
 			}),
 		)
@@ -131,8 +131,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
-				mediaIds: z.array(z.string().uuid()),
+				sourceId: z.uuid(),
+				mediaIds: z.array(z.uuid()),
 			}),
 		)
 		.output(
@@ -156,8 +156,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
-				mediaId: z.string().uuid(),
+				sourceId: z.uuid(),
+				mediaId: z.uuid(),
 			}),
 		)
 		.output(z.object({ success: z.boolean() })),
@@ -170,8 +170,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				mediaId: z.string().uuid(),
-				targetSourceId: z.string().uuid(),
+				mediaId: z.uuid(),
+				targetSourceId: z.uuid(),
 			}),
 		)
 		.output(z.object({ success: z.boolean() })),
@@ -184,8 +184,8 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				mediaId: z.string().uuid(),
-				targetSourceId: z.string().uuid(),
+				mediaId: z.uuid(),
+				targetSourceId: z.uuid(),
 			}),
 		)
 		.output(z.object({ success: z.boolean() })),
@@ -199,7 +199,7 @@ export const mediaContract = {
 		})
 		.input(
 			z.object({
-				sourceId: z.string().uuid(),
+				sourceId: z.uuid(),
 				file: z.instanceof(File),
 				filename: z.string().optional(),
 				description: z.string().optional(),

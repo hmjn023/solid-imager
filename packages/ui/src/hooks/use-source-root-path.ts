@@ -6,7 +6,7 @@ export type SourceRootPathResolver = (
 ) => string | undefined;
 
 export function useSourceRootPath(
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
+	// oxlint-disable-next-line typescript/no-explicit-any -- library type mismatch between oRPC and solid-query
 	sourcesQueryOptions: () => any,
 ): SourceRootPathResolver {
 	const sources = createQuery<SafeMediaSource[]>(sourcesQueryOptions);

@@ -3,7 +3,7 @@ import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
-// biome-ignore lint/suspicious/noDeprecatedImports: TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
+// oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
 import {
 	type Accessor,
@@ -145,7 +145,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			const ipsToAdd = character.ips.filter(
 				(charIp) => !currentIpIds.has(charIp.id),
 			);
-			await Promise.all(ipsToAdd.map((charIp) => props.onIpAdd(charIp.id)));
+			await Promise.all(
+				ipsToAdd.map(async (charIp) => {
+					await props.onIpAdd(charIp.id);
+				}),
+			);
 		}
 	};
 
@@ -155,13 +159,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	return (
-		<aside class="min-w-0 divide-y divide-[var(--workspace-border)] bg-[var(--workspace-surface-subtle)] px-4 pb-6 text-[var(--workspace-text)] lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 [scrollbar-gutter:stable]">
+		<aside class="min-w-0 divide-y divide-border bg-background px-4 pb-6 text-foreground lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 scrollbar-stable">
 			<div class="space-y-2">
 				<div class="flex items-start justify-between gap-2">
 					<h2 class="font-semibold text-sm">Description</h2>
 					<Show when={!isEditingDescription()}>
 						<button
-							class="min-h-11 px-2 text-[var(--workspace-primary)] text-sm hover:underline"
+							class="min-h-11 px-2 text-primary text-sm hover:underline"
 							onClick={() => setIsEditingDescription(true)}
 							type="button"
 						>
@@ -223,7 +227,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							{(url) => (
 								<li>
 									<a
-										class="block break-all text-[var(--workspace-primary)] text-sm hover:underline"
+										class="block break-all text-primary text-sm hover:underline"
 										href={url.url}
 										rel="noopener noreferrer"
 										target="_blank"
@@ -297,26 +301,26 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<h2 class="font-semibold text-sm">Positive Tags</h2>
 					<div class="flex flex-wrap gap-2">
 						<For each={positiveTags()}>
-							{(tag) => {
-								let badgeClass = "";
-								if (tag.source === "AI") {
-									badgeClass =
-										"border-[var(--workspace-border-strong)] bg-[var(--workspace-info-surface)] text-[var(--workspace-info)]";
-								} else if (tag.source === "comfyui_workflow") {
-									badgeClass =
-										"border-[var(--workspace-border-strong)] bg-[var(--workspace-surface-selected)] text-[var(--workspace-primary)]";
-								}
-								return (
-									<Badge class={badgeClass} title={`Source: ${tag.source}`}>
-										{tag.name}
-										<ClipboardCopy
-											class="ml-1.5 p-0.5"
-											iconSize={12}
-											text={tag.name}
-										/>
-									</Badge>
-								);
-							}}
+							{(tag) => (
+								<Badge
+									classList={{
+										"border-input":
+											tag.source === "AI" || tag.source === "comfyui_workflow",
+										"bg-info": tag.source === "AI",
+										"text-info-foreground": tag.source === "AI",
+										"bg-accent": tag.source === "comfyui_workflow",
+										"text-primary": tag.source === "comfyui_workflow",
+									}}
+									title={`Source: ${tag.source}`}
+								>
+									{tag.name}
+									<ClipboardCopy
+										class="ml-1.5 p-0.5"
+										iconSize={12}
+										text={tag.name}
+									/>
+								</Badge>
+							)}
 						</For>
 					</div>
 				</div>
@@ -327,30 +331,27 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<h2 class="font-semibold text-sm">Negative Tags</h2>
 					<div class="flex flex-wrap gap-2">
 						<For each={negativeTags()}>
-							{(tag) => {
-								let badgeClass = "";
-								if (tag.source === "AI") {
-									badgeClass =
-										"border-[var(--workspace-border-strong)] bg-[var(--workspace-surface-muted)] text-[var(--workspace-destructive)]";
-								} else if (tag.source === "comfyui_workflow") {
-									badgeClass =
-										"border-[var(--workspace-border-strong)] bg-[var(--workspace-surface-muted)] text-[var(--workspace-destructive)]";
-								}
-								return (
-									<Badge
-										class={badgeClass}
-										title={`Source: ${tag.source}`}
-										variant="destructive"
-									>
-										{tag.name}
-										<ClipboardCopy
-											class="ml-1.5 p-0.5"
-											iconSize={12}
-											text={tag.name}
-										/>
-									</Badge>
-								);
-							}}
+							{(tag) => (
+								<Badge
+									classList={{
+										"border-input":
+											tag.source === "AI" || tag.source === "comfyui_workflow",
+										"bg-muted":
+											tag.source === "AI" || tag.source === "comfyui_workflow",
+										"text-destructive":
+											tag.source === "AI" || tag.source === "comfyui_workflow",
+									}}
+									title={`Source: ${tag.source}`}
+									variant="destructive"
+								>
+									{tag.name}
+									<ClipboardCopy
+										class="ml-1.5 p-0.5"
+										iconSize={12}
+										text={tag.name}
+									/>
+								</Badge>
+							)}
 						</For>
 					</div>
 				</div>
@@ -362,7 +363,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						<Collapsible.Trigger class="flex w-full items-center justify-between font-semibold text-sm">
 							Generation Info
 							<ChevronDown
-								class="ui-expanded:rotate-180 transition-transform"
+								class="data-[expanded]:rotate-180 transition-transform"
 								size={14}
 							/>
 						</Collapsible.Trigger>
@@ -419,21 +420,17 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 			<div class="space-y-2">
 				<h2 class="font-semibold text-sm">File information</h2>
-				<dl class="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-4 gap-y-2 text-sm">
-					<dt class="font-medium text-[var(--workspace-text-muted)]">
-						Resolution
-					</dt>
-					<dd class="text-right text-[var(--workspace-text)]">
+				<dl class="grid grid-cols-label-field gap-x-4 gap-y-2 text-sm">
+					<dt class="font-medium text-muted-foreground">Resolution</dt>
+					<dd class="text-right text-foreground">
 						{props.media.width} × {props.media.height}
 					</dd>
-					<dt class="font-medium text-[var(--workspace-text-muted)]">
-						File Size
-					</dt>
-					<dd class="text-right text-[var(--workspace-text)]">
+					<dt class="font-medium text-muted-foreground">File Size</dt>
+					<dd class="text-right text-foreground">
 						{props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
 					</dd>
-					<dt class="font-medium text-[var(--workspace-text-muted)]">Path</dt>
-					<dd class="min-w-0 break-all text-right text-[var(--workspace-text)] text-xs">
+					<dt class="font-medium text-muted-foreground">Path</dt>
+					<dd class="min-w-0 break-all text-right text-foreground text-xs">
 						{props.media.filePath}
 					</dd>
 				</dl>

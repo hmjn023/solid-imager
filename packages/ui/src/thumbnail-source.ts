@@ -276,26 +276,30 @@ export function createLocalThumbnailSource(
 				revokeOnLoad = null;
 			}
 		},
-		async onError() {
-			setUrl(null);
-			const currentThumbnailFilePath = thumbnailFilePath();
-			const rootPath = props.sourceRootPath;
-
-			if (currentThumbnailFilePath) {
-				try {
-					const bytes = await props.readFile(currentThumbnailFilePath);
-					setBlobFallbackUrl(
-						props.objectUrl.create(bytes, THUMBNAIL_MIME_TYPE),
-					);
-					clearRetryTimer();
-				} catch {
-					setThumbnailFilePath(null);
-					await handleOriginalFallback(rootPath);
-				}
-				return;
-			}
-
-			await handleOriginalFallback(rootPath);
+		onError() {
+			void handleImageError().catch(() => {
+				setUrl(null);
+			});
 		},
 	};
+
+	async function handleImageError() {
+		setUrl(null);
+		const currentThumbnailFilePath = thumbnailFilePath();
+		const rootPath = props.sourceRootPath;
+
+		if (currentThumbnailFilePath) {
+			try {
+				const bytes = await props.readFile(currentThumbnailFilePath);
+				setBlobFallbackUrl(props.objectUrl.create(bytes, THUMBNAIL_MIME_TYPE));
+				clearRetryTimer();
+			} catch {
+				setThumbnailFilePath(null);
+				await handleOriginalFallback(rootPath);
+			}
+			return;
+		}
+
+		await handleOriginalFallback(rootPath);
+	}
 }

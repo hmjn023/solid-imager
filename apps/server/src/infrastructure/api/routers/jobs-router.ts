@@ -31,7 +31,7 @@ function readTargetMediaId(payload: unknown): string | null {
 	if (!isRecord(payload)) {
 		return null;
 	}
-	const result = z.string().uuid().safeParse(payload.mediaId);
+	const result = z.uuid().safeParse(payload.mediaId);
 	return result.success ? result.data : null;
 }
 
