@@ -2,19 +2,36 @@ import { UploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-con
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
 function getFetchedFilename(url: string, type: string) {
-	const pathname = new URL(url).pathname;
-	const filename = pathname.split("/").pop();
+	const parsedUrl = new URL(url);
+	const pathFilename = parsedUrl.pathname.split("/").pop();
+	let filename = pathFilename;
 	if (filename) {
 		try {
-			return decodeURIComponent(filename);
+			filename = decodeURIComponent(filename);
 		} catch {
-			return filename;
+			// Keep the encoded name if it is not valid percent encoding.
 		}
 	}
-	const subtype = type.split("/")[1]?.split(";")[0];
-	const extension =
-		type === "image/jpeg" ? "jpg" : subtype?.replace(/[^a-z0-9]/gi, "");
-	return extension ? `download.${extension}` : "download";
+
+	const normalizedType = type.split(";")[0]?.toLowerCase();
+	const [typeGroup, rawSubtype] = normalizedType?.split("/") ?? [];
+	const subtype = rawSubtype?.split("+")[0];
+	const extensionFromType =
+		normalizedType === "image/jpeg"
+			? "jpg"
+			: typeGroup === "image" || typeGroup === "video" || typeGroup === "audio"
+				? subtype?.replace(/[^a-z0-9]/gi, "")
+				: undefined;
+	const extensionFromUrl = parsedUrl.searchParams
+		.get("format")
+		?.replace(/[^a-z0-9]/gi, "");
+	const extension = extensionFromType || extensionFromUrl;
+	if (!filename) {
+		return extension ? `download.${extension}` : "download";
+	}
+	return /\.[^./\\]+$/.test(filename) || !extension
+		? filename
+		: `${filename}.${extension}`;
 }
 
 type UploadMediaModalProps = {

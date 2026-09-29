@@ -22,6 +22,12 @@ export class ResourceNotFoundError extends DomainError {
 
 export class ResourceConflictError extends DomainError {}
 
+export class MediaFileConflictError extends DomainError {
+	constructor(readonly filePath: string) {
+		super(`Media file already exists: ${filePath}`);
+	}
+}
+
 export class ValidationError extends DomainError {}
 
 export class UnexpectedError extends DomainError {

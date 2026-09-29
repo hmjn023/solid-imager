@@ -113,6 +113,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const [isFetchingUrl, setIsFetchingUrl] = createSignal(false);
 	const [lastFetchedUrl, setLastFetchedUrl] = createSignal<string | null>(null);
 	const [previewUrl, setPreviewUrl] = createSignal<string | null>(null);
+	const [previewFile, setPreviewFile] = createSignal<File | null>(null);
 	const [asyncError, setAsyncError] = createSignal<string | null>(null);
 	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
 	let fileInputRef: HTMLInputElement | undefined;
@@ -183,11 +184,15 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	};
 
 	const updatePreview = (file: File | null) => {
+		if (previewFile() === file) {
+			return;
+		}
 		const currentPreview = previewUrl();
 		if (currentPreview) {
 			URL.revokeObjectURL(currentPreview);
 			setPreviewUrl(null);
 		}
+		setPreviewFile(file);
 		if (file) {
 			setPreviewUrl(URL.createObjectURL(file));
 		}

@@ -5,6 +5,7 @@ import type {
 	MediaMetadata,
 	MediaStorageResult,
 } from "@solid-imager/core";
+import { MediaFileConflictError } from "@solid-imager/core/domain/errors";
 import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
 import type { z } from "zod";
 import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
@@ -57,11 +58,7 @@ export const ServerMediaStorage: IMediaStorage = {
 			}
 
 			if (!uploadRequest.autoIncrement) {
-				conflict = {
-					existingFile: relativeFilePath,
-					suggestedName: "",
-				};
-				throw new Error("File already exists and overwrite is not allowed.");
+				throw new MediaFileConflictError(relativeFilePath);
 			}
 
 			counter++;
