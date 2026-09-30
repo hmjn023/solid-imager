@@ -1,5 +1,8 @@
+import fs from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 
 // Hoisted mocks
@@ -16,6 +19,8 @@ const {
 	mockAuthorCreate,
 	mockAuthorAddMedia,
 	mockSaveFile,
+	mockYtDlpExec,
+	mockYtDlp,
 } = vi.hoisted(() => ({
 	mockFindById: vi.fn(),
 	mockGetFileMetadata: vi.fn(),
@@ -28,9 +33,23 @@ const {
 	mockAuthorCreate: vi.fn(),
 	mockAuthorAddMedia: vi.fn(),
 	mockSaveFile: vi.fn(),
+	mockYtDlpExec: vi.fn(),
+	mockYtDlp: vi.fn(),
 }));
 
 // Mocks
+vi.mock("youtube-dl-exec", () => ({
+	create: () => Object.assign(mockYtDlp, { exec: mockYtDlpExec }),
+}));
+vi.mock("~/infrastructure/utils/ffmpeg", () => ({
+	resolveFfmpegPath: vi.fn().mockResolvedValue("/usr/bin/ffmpeg"),
+}));
+vi.mock("~/infrastructure/jobs/download-rate-limiter", () => ({
+	waitForDownloadRateLimit: vi.fn(),
+}));
+vi.mock("~/infrastructure/logger", () => ({
+	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}));
 vi.mock("~/infrastructure/repositories/source-repository", () => ({
 	DrizzleSourceRepository: {
 		findById: mockFindById,
@@ -75,6 +94,8 @@ vi.mock("node:fs/promises", () => ({
 		mkdir: vi.fn(),
 		writeFile: vi.fn(),
 		unlink: vi.fn(),
+		access: vi.fn(),
+		rename: vi.fn(),
 	},
 }));
 vi.mock("node:child_process", () => ({
@@ -93,6 +114,7 @@ const DOWNLOAD_FILENAME_PATTERN = /^user_twitter_123_image\.jpg$/;
 describe("processDownloadJob", () => {
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		vi.mocked(fs.access).mockRejectedValue(new Error("ENOENT"));
 		fetchMock.mockResolvedValue({
 			ok: true,
 			headers: new Headers({ "content-type": "image/jpeg" }),
@@ -175,6 +197,174 @@ describe("processDownloadJob", () => {
 		services.getJobRepository = vi.fn().mockReturnValue({
 			create: vi.fn(),
 		});
+	});
+
+	it.each([
+		{
+			error: Object.assign(new Error(""), {
+				stderr: "ERROR: HTTP Error 403",
+				exitCode: 1,
+			}),
+			message: "yt-dlp failed (exit code 1): ERROR: HTTP Error 403",
+		},
+		{
+			error: Object.assign(new Error(""), { stderr: "", exitCode: 1 }),
+			message: "yt-dlp failed (exit code 1): process failed without stderr",
+		},
+		{
+			error: Object.assign(new Error(""), {
+				stderr: "",
+				exitCode: null,
+				signalCode: "SIGKILL",
+			}),
+			message: "yt-dlp failed (signal SIGKILL): process failed without stderr",
+		},
+		{
+			error: Object.assign(new Error("spawn yt-dlp ENOENT"), {
+				code: "ENOENT",
+			}),
+			message: "yt-dlp failed (code ENOENT): process failed without stderr",
+		},
+		{
+			error: new Error(""),
+			message: "yt-dlp failed: unknown execution error (no diagnostic output)",
+		},
+	])(
+		"should preserve yt-dlp failure diagnostics: $message",
+		async ({ error, message }) => {
+			mockYtDlpExec.mockRejectedValueOnce(error);
+			const job = {
+				id: "job-ytdlp-error",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload: { targetUrl: "https://x.com/user/status/123" },
+			} as any;
+
+			await expect(processDownloadJob(job)).rejects.toMatchObject({
+				message,
+				cause: error,
+			});
+			expect(logger.error).toHaveBeenCalledWith(
+				{ err: expect.objectContaining({ message, cause: error }) },
+				"yt-dlp execution failed",
+			);
+			expect(RealtimeEventBus.publishSource).toHaveBeenCalledWith(
+				"source-1",
+				"download-error",
+				{ url: job.payload.targetUrl, error: message },
+			);
+			expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
+		},
+	);
+
+	it("should process raw yt-dlp JSON output without using the error-reparsing wrapper", async () => {
+		mockYtDlpExec.mockResolvedValueOnce({
+			stdout: JSON.stringify({
+				id: "123",
+				title: "Video",
+				description: "Video description",
+				ext: "mp4",
+				filename: "/tmp/downloads/123.mp4",
+			}),
+			stderr: "",
+			exitCode: 0,
+		});
+		const job = {
+			id: "job-ytdlp-success",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: { targetUrl: "https://x.com/user/status/123" },
+		} as any;
+
+		await processDownloadJob(job);
+		expect(mockYtDlpExec).toHaveBeenCalledWith(
+			job.payload.targetUrl,
+			expect.objectContaining({ printJson: true, simulate: false }),
+		);
+		expect(mockYtDlp).not.toHaveBeenCalled();
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+			"source-1",
+			expect.stringMatching(/\.mp4$/),
+			expect.objectContaining({ description: "Video description" }),
+		);
+	});
+
+	it("should fail the job when yt-dlp returns no valid media metadata", async () => {
+		mockYtDlpExec.mockResolvedValueOnce({
+			stdout: "not JSON",
+			stderr: "",
+			exitCode: 0,
+		});
+		const job = {
+			id: "job-ytdlp-invalid-json",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: { targetUrl: "https://x.com/user/status/123" },
+		} as any;
+
+		await expect(processDownloadJob(job)).rejects.toThrow(
+			"yt-dlp returned no valid media metadata",
+		);
+		expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
+	});
+
+	it("should register every media item in newline-delimited yt-dlp output", async () => {
+		const stdout = ["123", "456"]
+			.map((id) =>
+				JSON.stringify({
+					id,
+					title: "Video",
+					description: "Video description",
+					ext: "mp4",
+					filename: `/tmp/downloads/${id}.mp4`,
+				}),
+			)
+			.join("\n");
+		mockYtDlpExec.mockResolvedValueOnce({ stdout, stderr: "", exitCode: 0 });
+		const job = {
+			id: "job-ytdlp-multiple",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: { targetUrl: "https://x.com/user/status/123" },
+		} as any;
+
+		await processDownloadJob(job);
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledTimes(2);
+	});
+
+	it("should resolve a direct image timestamp from raw yt-dlp metadata", async () => {
+		mockYtDlpExec.mockResolvedValueOnce({
+			stdout: JSON.stringify({
+				id: "123",
+				title: "Post",
+				description: "Description",
+				ext: "jpg",
+				filename: "image.jpg",
+				upload_date: "20260930",
+			}),
+			stderr: "",
+			exitCode: 0,
+		});
+		const job = {
+			id: "job-ytdlp-metadata",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: {
+				targetUrl: "https://example.com/image.jpg",
+				sourceUrls: ["https://x.com/user/status/123"],
+			},
+		} as any;
+
+		await processDownloadJob(job);
+		expect(mockYtDlpExec).toHaveBeenCalledWith(
+			"https://x.com/user/status/123",
+			expect.objectContaining({ dumpSingleJson: true, skipDownload: true }),
+		);
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+			"source-1",
+			expect.any(String),
+			expect.objectContaining({ createdAt: new Date("2026-09-30") }),
+		);
 	});
 
 	it("should process a direct image download via MediaProcessingService", async () => {

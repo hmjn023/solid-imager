@@ -13,7 +13,7 @@ import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
-import { hasStderr } from "@solid-imager/core/utils/type-guards";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
@@ -179,9 +179,44 @@ async function createNetscapeCookieFile(
 	}
 }
 
-/**
- * Downloads video/media using yt-dlp via youtube-dl-exec
- */
+function createYtDlpError(error: unknown): Error {
+	const details = isRecord(error) ? error : {};
+	const stderr =
+		typeof details.stderr === "string" ? details.stderr.trim() : "";
+	const exitCode =
+		typeof details.exitCode === "number" ? details.exitCode : undefined;
+	const signal =
+		typeof details.signalCode === "string"
+			? details.signalCode
+			: typeof details.signal === "string"
+				? details.signal
+				: undefined;
+	const code = typeof details.code === "string" ? details.code : undefined;
+	const status = [
+		exitCode !== undefined ? `exit code ${exitCode}` : undefined,
+		signal ? `signal ${signal}` : undefined,
+		code ? `code ${code}` : undefined,
+	]
+		.filter(Boolean)
+		.join(", ");
+	// tinyspawn's message embeds the full command; use its termination details instead.
+	const reason =
+		stderr ||
+		(status
+			? "process failed without stderr"
+			: error instanceof Error
+				? error.message.trim()
+				: String(error).trim()) ||
+		"unknown execution error (no diagnostic output)";
+	return Object.assign(
+		new Error(`yt-dlp failed${status ? ` (${status})` : ""}: ${reason}`, {
+			cause: error,
+		}),
+		{ stderr, exitCode, signal, code },
+	);
+}
+
+/** Downloads video/media using yt-dlp via youtube-dl-exec. */
 async function downloadWithYtDlp(
 	url: string,
 	outputDir: string,
@@ -208,10 +243,15 @@ async function downloadWithYtDlp(
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		};
-		const result = await ytdlp(url, flags);
+		// Use the raw subprocess API: the wrapper reparses rejected errors and can
+		// replace spawn/JSON errors with an empty stderr-based message.
+		const result = await ytdlp.exec(url, flags);
 
 		// output handling
-		const outputs = parseYtDlpOutput(result);
+		const outputs = parseYtDlpOutput(result.stdout);
+		if (outputs.length === 0) {
+			throw new Error("yt-dlp returned no valid media metadata");
+		}
 
 		return outputs.map((metadata) => {
 			let finalPath = metadata.filename || metadata._filename || "";
@@ -221,14 +261,9 @@ async function downloadWithYtDlp(
 			return { filePath: finalPath, metadata };
 		});
 	} catch (error) {
-		// youtube-dl-exec errors include stderr
-		if (hasStderr(error)) {
-			logger.error({ stderr: error.stderr }, "yt-dlp execution failed");
-		} else {
-			logger.error({ err: error }, "yt-dlp execution failed");
-		}
-		const msg = error instanceof Error ? error.message : String(error);
-		throw new Error(`yt-dlp failed: ${msg}`);
+		const executionError = createYtDlpError(error);
+		logger.error({ err: executionError }, "yt-dlp execution failed");
+		throw executionError;
 	} finally {
 		if (cookieFilePath) {
 			fs.unlink(cookieFilePath).catch((err) =>
@@ -289,11 +324,14 @@ async function fetchMetadataWithYtDlp(
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		};
-		const result = await ytdlp(url, flags);
+		const result = await ytdlp.exec(url, flags);
 
-		return ytDlpOutputSchema.parse(result);
+		return ytDlpOutputSchema.parse(JSON.parse(result.stdout));
 	} catch (error) {
-		logger.warn({ err: error, url }, "Failed to fetch metadata with yt-dlp");
+		logger.warn(
+			{ err: createYtDlpError(error), url },
+			"Failed to fetch metadata with yt-dlp",
+		);
 		return null;
 	} finally {
 		if (cookieFilePath) {
