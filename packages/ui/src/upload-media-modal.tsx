@@ -113,6 +113,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const [isFetchingUrl, setIsFetchingUrl] = createSignal(false);
 	const [lastFetchedUrl, setLastFetchedUrl] = createSignal<string | null>(null);
 	const [previewUrl, setPreviewUrl] = createSignal<string | null>(null);
+	const [previewFile, setPreviewFile] = createSignal<File | null>(null);
 	const [asyncError, setAsyncError] = createSignal<string | null>(null);
 	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
 	let fileInputRef: HTMLInputElement | undefined;
@@ -121,7 +122,20 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 		defaultValues: EMPTY_UPLOAD_FORM,
 		validators: { onSubmit: uploadFormSchema },
 		onSubmit: async ({ value }) => {
-			const files = selectedFiles();
+			let files = selectedFiles();
+			let filename = value.filename;
+			if (files.length === 0 && value.sourceUrl && props.onFetchUrl) {
+				try {
+					const file = await props.onFetchUrl(value.sourceUrl);
+					files = [file];
+					filename ||= file.name;
+					setFiles(files);
+					updatePreview(file);
+				} catch (fetchError) {
+					setAsyncError(getErrorMessage(fetchError));
+					return;
+				}
+			}
 			if (files.length === 0) {
 				form.setErrorMap({
 					onSubmit: {
@@ -131,6 +145,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 				});
 				return;
 			}
+			filename ||= files[0]?.name ?? "";
 
 			form.setErrorMap({ onSubmit: undefined });
 			setAsyncError(null);
@@ -138,7 +153,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 				const resolution = value.conflictResolution;
 				await props.onUploadStart({
 					files,
-					filename: value.filename,
+					filename,
 					description: value.description,
 					sourceUrl: value.sourceUrl || undefined,
 					conflictResolution: resolution,
@@ -156,6 +171,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			}
 		},
 	}));
+	const sourceUrl = form.useSelector((state) => state.values.sourceUrl);
 
 	const setFiles = (files: File[]) => {
 		const previousAutoName = selectedFiles()[0]?.name;
@@ -168,11 +184,15 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	};
 
 	const updatePreview = (file: File | null) => {
+		if (previewFile() === file) {
+			return;
+		}
 		const currentPreview = previewUrl();
 		if (currentPreview) {
 			URL.revokeObjectURL(currentPreview);
 			setPreviewUrl(null);
 		}
+		setPreviewFile(file);
 		if (file) {
 			setPreviewUrl(URL.createObjectURL(file));
 		}
@@ -204,16 +224,21 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 		),
 	);
 
-	createEffect(() => {
-		const url = form.state.values.sourceUrl;
-		if (
-			!(url && props.onFetchUrl && z.url().safeParse(url).success) ||
-			url === lastFetchedUrl()
-		) {
-			return;
-		}
-		void handleUrlFetch(url);
-	});
+	createEffect(
+		on(
+			() => [sourceUrl(), isFetchingUrl(), lastFetchedUrl()] as const,
+			([url, fetching, lastUrl]) => {
+				if (
+					!(url && props.onFetchUrl && z.url().safeParse(url).success) ||
+					url === lastUrl ||
+					fetching
+				) {
+					return;
+				}
+				void handleUrlFetch(url);
+			},
+		),
+	);
 
 	const handleUrlFetch = async (url: string) => {
 		if (isFetchingUrl()) {

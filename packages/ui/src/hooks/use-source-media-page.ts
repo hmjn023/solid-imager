@@ -7,6 +7,7 @@ import type {
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
 import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import type { UploadResponse } from "@solid-imager/core/domain/media/upload-schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
 import {
@@ -88,7 +89,7 @@ export type SourceMediaPageActions = {
 		sourceId: string,
 		file: File,
 		opts: Omit<UploadOptions, "file">,
-	) => Promise<unknown>;
+	) => Promise<UploadResponse>;
 	deleteMedia: (sourceId: string, mediaId: string) => Promise<unknown>;
 	copyMedia: (mediaId: string, targetId: string) => Promise<unknown>;
 	moveMedia: (mediaId: string, targetId: string) => Promise<unknown>;
@@ -463,13 +464,19 @@ export function useSourceMediaPage(
 
 	// --- Handlers ---
 	const handleUpload = async (options: UploadOptions) => {
-		await actions.uploadMedia(id() || "", options.file, {
+		const result = await actions.uploadMedia(id() || "", options.file, {
 			filename: options.filename,
 			description: options.description,
 			sourceUrl: options.sourceUrl,
 			overwrite: options.overwrite,
 			autoIncrement: options.autoIncrement,
 		});
+		if (!result.success) {
+			toast.info(
+				`${result.conflict?.existingFile ?? options.filename} は既に存在するためスキップしました。`,
+			);
+			return;
+		}
 		toast.success("Media uploaded successfully");
 		refreshMediaQuery();
 	};
