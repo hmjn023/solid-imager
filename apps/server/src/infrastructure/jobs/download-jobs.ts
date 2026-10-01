@@ -250,7 +250,10 @@ async function downloadWithYtDlp(
 		// output handling
 		const outputs = parseYtDlpOutput(result.stdout);
 		if (outputs.length === 0) {
-			throw new Error("yt-dlp returned no valid media metadata");
+			const stderr = result.stderr.trim();
+			throw new Error(
+				`yt-dlp returned no valid media metadata${stderr ? `: ${stderr}` : ""}`,
+			);
 		}
 
 		return outputs.map((metadata) => {

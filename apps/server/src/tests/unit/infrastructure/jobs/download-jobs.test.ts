@@ -292,7 +292,7 @@ describe("processDownloadJob", () => {
 	it("should fail the job when yt-dlp returns no valid media metadata", async () => {
 		mockYtDlpExec.mockResolvedValueOnce({
 			stdout: "not JSON",
-			stderr: "",
+			stderr: "  extractor reported no metadata\n",
 			exitCode: 0,
 		});
 		const job = {
@@ -303,7 +303,7 @@ describe("processDownloadJob", () => {
 		} as any;
 
 		await expect(processDownloadJob(job)).rejects.toThrow(
-			"yt-dlp returned no valid media metadata",
+			"yt-dlp returned no valid media metadata: extractor reported no metadata",
 		);
 		expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
 	});
