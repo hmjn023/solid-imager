@@ -211,9 +211,9 @@ export function extractMetadata(
 			authorName = "";
 			tweetText = "";
 			timestamp = "";
+			tweetUrl = mediaLink.href;
+			authorId = extractTwitterAuthorIdFromStatusUrl(tweetUrl);
 		}
-		tweetUrl = mediaLink.href;
-		authorId = extractTwitterAuthorIdFromStatusUrl(tweetUrl);
 	}
 
 	if (!tweetUrl) {

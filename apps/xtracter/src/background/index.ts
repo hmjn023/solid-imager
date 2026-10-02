@@ -216,10 +216,7 @@ chrome.runtime.onMessage.addListener(
 				senderUrl.pathname
 					.replace(/^\//, "")
 					.replace(/\/$/, "")
-					.toLowerCase() !== parsed.data.profile.username.toLowerCase() ||
-				new URLSearchParams(senderUrl.hash.slice(1)).get(
-					"solid-imager-account-verification",
-				) !== parsed.data.verificationId
+					.toLowerCase() !== parsed.data.profile.username.toLowerCase()
 			) {
 				sendResponse({ success: false });
 				return;

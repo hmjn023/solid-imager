@@ -74,27 +74,31 @@ describe("X profile verification transport", () => {
 			},
 		},
 	});
-	it("passes the exact requested profile from MAIN to the extension once", async () => {
-		const verificationId = "12345678-1234-4123-8123-123456789abc";
-		const { observe, sendMessage } = await setup(
-			`#solid-imager-account-verification=${verificationId}`,
-		);
-		await observe(profile("another_user"));
-		await observe(profile("current_name"));
-		await vi.waitFor(() =>
-			expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
-				type: "SUBMIT_ACCOUNT_VERIFICATION",
-				verificationId,
-				profile: {
-					remoteId: "18446744073709551615",
-					username: "current_name",
-					displayName: "Current display",
-				},
-			}),
-		);
-		await observe(profile("current_name"));
-		expect(sendMessage).toHaveBeenCalledTimes(1);
-	});
+	it.each(["", "#changed"])(
+		"passes the captured token once after the page hash changes to %s",
+		async (hash) => {
+			const verificationId = "12345678-1234-4123-8123-123456789abc";
+			const { observe, sendMessage, fakeWindow } = await setup(
+				`#solid-imager-account-verification=${verificationId}`,
+			);
+			fakeWindow.location.hash = hash;
+			await observe(profile("another_user"));
+			await observe(profile("current_name"));
+			await vi.waitFor(() =>
+				expect(sendMessage).toHaveBeenCalledExactlyOnceWith({
+					type: "SUBMIT_ACCOUNT_VERIFICATION",
+					verificationId,
+					profile: {
+						remoteId: "18446744073709551615",
+						username: "current_name",
+						displayName: "Current display",
+					},
+				}),
+			);
+			await observe(profile("current_name"));
+			expect(sendMessage).toHaveBeenCalledTimes(1);
+		},
+	);
 	it("does not submit normally browsed profiles without a Manager verification token", async () => {
 		const { observe, sendMessage, fakeWindow } = await setup("");
 		await observe(profile("current_name"));
