@@ -475,6 +475,29 @@ export default defineConfig({
     solidPlugin({ ssr: true }),
   ],
   optimizeDeps: {
+    // Workspace and dynamically split routes expose these after the initial scan.
+    // Pre-bundle them so cold navigation does not invalidate in-flight shared chunks.
+    include: [
+      "@floating-ui/dom",
+      "@internationalized/number",
+      "@kobalte/utils",
+      "@solid-primitives/props",
+      "@solid-primitives/refs",
+      "@solid-primitives/resize-observer",
+      "@tanstack/form-core",
+      "@tanstack/history",
+      "@tanstack/query-core",
+      "@tanstack/router-core",
+      "@tanstack/router-core/isServer",
+      "@tanstack/router-core/scroll-restoration-script",
+      "@tanstack/router-core/ssr/client",
+      "@tanstack/router-core/ssr/server",
+      "@tanstack/router-ssr-query-core",
+      "@tanstack/solid-store",
+      "h3-v2",
+      "isbot",
+      "seroval",
+    ],
 		exclude: ["bun", "dghs-imgutils-rs"],
   },
   customLogger: {

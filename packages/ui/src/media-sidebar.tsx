@@ -250,12 +250,21 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								<li>
 									<div class="flex min-w-0 items-center gap-2">
 										<span class="break-words font-medium">{author.name}</span>
-										<Show when={author.accountId}>
+										<Show when={!author.accounts?.length && author.accountId}>
 											<span class="break-all text-muted-foreground text-xs">
 												({author.accountId})
 											</span>
 										</Show>
 									</div>
+									<For each={author.accounts ?? []}>
+										{(account) => (
+											<p class="break-words text-xs text-muted-foreground">
+												{account.platform ?? "不明"}:{" "}
+												{account.displayName ?? author.name} (
+												{account.accountId})
+											</p>
+										)}
+									</For>
 								</li>
 							)}
 						</For>

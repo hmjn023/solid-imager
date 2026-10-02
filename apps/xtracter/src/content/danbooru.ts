@@ -14,7 +14,10 @@ function getTwitterIdFromUrl(url: string): string | null {
 	return null;
 }
 
-function extractSourceUrls(baseUrls: string[]): {
+function extractSourceUrls(
+	baseUrls: string[],
+	includeDomSources = false,
+): {
 	sourceUrls: string[];
 	twitterAccountId: string | null;
 } {
@@ -30,9 +33,9 @@ function extractSourceUrls(baseUrls: string[]): {
 	}
 
 	// Then add DOM sources if we are on a post page
-	const sourceLinks = document.querySelectorAll<HTMLAnchorElement>(
-		"#post-info-source a",
-	);
+	const sourceLinks = includeDomSources
+		? document.querySelectorAll<HTMLAnchorElement>("#post-info-source a")
+		: [];
 	for (const link of sourceLinks) {
 		const href = link.href;
 		if (href && !sourceUrls.includes(href)) {
@@ -167,7 +170,7 @@ function parseTagsFromApiString(tagString: string | undefined): string[] {
 	return result;
 }
 
-function parseDanbooruApiMetadata(
+export function parseDanbooruApiMetadata(
 	data: unknown,
 	postId: string,
 ): DownloadItem | null {
@@ -193,11 +196,13 @@ function parseDanbooruApiMetadata(
 	const ips: { name: string; source: "danbooru" }[] = [];
 
 	// Parse artists
-	for (const name of parseTagsFromApiString(data.tag_string_artist)) {
+	const artistNames = parseTagsFromApiString(data.tag_string_artist);
+	for (const name of artistNames) {
 		authors.push({
 			name,
-			accountId: twitterAccountId ?? name,
-			platform: twitterAccountId ? "twitter" : "danbooru",
+			accountId: artistNames.length === 1 ? (twitterAccountId ?? name) : name,
+			platform:
+				artistNames.length === 1 && twitterAccountId ? "twitter" : "danbooru",
 		});
 	}
 
@@ -279,7 +284,7 @@ function extractDanbooruMetadata(container: HTMLElement): DownloadItem | null {
 	}
 
 	const baseUrls = [targetUrl, window.location.href];
-	const { sourceUrls, twitterAccountId } = extractSourceUrls(baseUrls);
+	const { sourceUrls, twitterAccountId } = extractSourceUrls(baseUrls, true);
 
 	const authors: Author[] = [];
 	const tags: { name: string; type: "positive"; source: "danbooru" }[] = [];
@@ -288,7 +293,7 @@ function extractDanbooruMetadata(container: HTMLElement): DownloadItem | null {
 
 	extractTags(authors, ips, characters, tags);
 
-	if (twitterAccountId) {
+	if (twitterAccountId && authors.length === 1) {
 		for (const author of authors) {
 			if (!author.accountId) {
 				author.accountId = twitterAccountId;

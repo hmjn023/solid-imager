@@ -1,3 +1,4 @@
+import type { NewAuthor } from "@solid-imager/core/domain/authors/schemas";
 import { createReadStream, createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -15,7 +16,6 @@ import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
 import {
-	authorAccounts,
 	characterIps,
 	characters,
 	ips,
@@ -58,14 +58,16 @@ type JsonValue =
 	| JsonValue[]
 	| { [key: string]: JsonValue };
 
-function authorRestoreKey(author: {
-	name: string;
-	platform?: AuthorPlatform;
-	accountId?: string | null;
-}): string {
-	return author.platform && author.accountId
-		? `${author.platform}:${author.accountId}`
-		: `name:${author.name}`;
+function authorRestoreKey(author: NewAuthor): string {
+	const primary = author.accounts?.[0];
+	const platform = primary?.platform ?? author.platform;
+	const remoteId = primary?.remoteId ?? author.remoteId;
+	const accountId = primary?.accountId ?? author.accountId;
+	return platform && remoteId
+		? `${platform}:id:${remoteId}`
+		: accountId
+			? `${platform ?? "unknown"}:handle:${platform === "twitter" ? accountId.replace(/^@/, "").toLowerCase() : accountId}`
+			: `name:${author.name}`;
 }
 
 interface MediaListQueryItem {
@@ -100,10 +102,14 @@ interface MediaListQueryItem {
 	authors: {
 		author: {
 			name: string;
-			accountId: string | null;
+			accountId?: string | null;
 			accounts?: {
-				platform: AuthorPlatform;
+				platform: AuthorPlatform | null;
 				accountId: string;
+				remoteId?: string | null;
+				displayName?: string | null;
+				profileUrl?: string | null;
+				observedAt?: Date | null;
 			}[];
 		};
 	}[];
@@ -504,14 +510,7 @@ export const BackupService = {
 
 	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: BackupDbClient) {
 		const tagNames = new Set<string>();
-		const authorData = new Map<
-			string,
-			{
-				name: string;
-				accountId?: string | null;
-				platform?: AuthorPlatform;
-			}
-		>();
+		const authorData = new Map<string, NewAuthor>();
 		const projectNames = new Set<string>();
 		const charNames = new Set<string>();
 		const ipNames = new Set<string>();
@@ -587,33 +586,6 @@ export const BackupService = {
 			if (!authorMap.has(`name:${input.name}`)) {
 				authorMap.set(`name:${input.name}`, authorId);
 			}
-		}
-		const restoredAuthorAccounts = new Map<
-			string,
-			{
-				authorId: string;
-				platform: AuthorPlatform;
-				accountId: string;
-			}
-		>();
-		for (const item of validItems) {
-			for (const author of item.authors ?? []) {
-				if (!(author.platform && author.accountId)) continue;
-				const authorId = authorMap.get(authorRestoreKey(author));
-				if (!authorId) continue;
-				const key = `${author.platform}:${author.accountId}`;
-				restoredAuthorAccounts.set(key, {
-					authorId,
-					platform: author.platform,
-					accountId: author.accountId,
-				});
-			}
-		}
-		if (restoredAuthorAccounts.size > 0) {
-			await (_tx ?? db)
-				.insert(authorAccounts)
-				.values([...restoredAuthorAccounts.values()])
-				.onConflictDoNothing();
 		}
 		const projectMap = await this._ensureMasterData(
 			projects,
@@ -1244,14 +1216,22 @@ export const BackupService = {
 			// Extract authors
 			const simpleAuthors = (media.authors || []).map((ma) => {
 				const accounts = ma.author?.accounts ?? [];
-				const accountId = ma.author?.accountId;
-				const account =
-					accounts.find((candidate) => candidate.accountId === accountId) ??
-					(accounts.length === 1 ? accounts[0] : undefined);
+				const account = accounts[0];
 				return {
 					name: ma.author?.name || "",
 					accountId: account?.accountId ?? null,
-					platform: account?.platform,
+					platform: account?.platform ?? undefined,
+					remoteId: account?.remoteId,
+					profileUrl: account?.profileUrl,
+					observedAt: account?.observedAt ?? undefined,
+					accounts: accounts.map((external) => ({
+						platform: external.platform,
+						accountId: external.accountId,
+						remoteId: external.remoteId ?? null,
+						displayName: external.displayName ?? null,
+						profileUrl: external.profileUrl ?? null,
+						observedAt: external.observedAt ?? null,
+					})),
 				};
 			});
 

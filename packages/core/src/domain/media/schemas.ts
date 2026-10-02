@@ -4,6 +4,13 @@
  */
 
 import { z } from "zod";
+import { authorSchema, newAuthorSchema } from "../authors/schemas";
+export {
+	authorSchema,
+	authorPlatformSchema,
+	newAuthorSchema,
+} from "../authors/schemas";
+export type { Author, NewAuthor, AuthorPlatform } from "../authors/schemas";
 import { workflowSchema } from "../tags/schemas";
 
 /**
@@ -25,13 +32,6 @@ export const mediaSortSchema = z.enum([
 	"viewCount",
 ]);
 export type MediaSort = z.infer<typeof mediaSortSchema>;
-
-export const authorPlatformSchema = z.enum([
-	"twitter",
-	"pixiv-fanbox",
-	"danbooru",
-]);
-export type AuthorPlatform = z.infer<typeof authorPlatformSchema>;
 
 /**
  * Zod schema for validating the request body when adding new media.
@@ -87,15 +87,7 @@ export const updateMediaRequestSchema = z.object({
 		.optional(),
 	description: z.string().nullable().optional(),
 	sourceUrls: z.array(z.url("Invalid URL format")).optional(),
-	authors: z
-		.array(
-			z.object({
-				name: z.string(),
-				accountId: z.string().optional().nullable(),
-				platform: authorPlatformSchema.optional(),
-			}),
-		)
-		.optional(),
+	authors: z.array(newAuthorSchema).optional(),
 	characters: z
 		.array(
 			z.object({
@@ -189,24 +181,6 @@ export const mediaSafeSchema = mediaSchema.pick({
 	status: true,
 });
 export type MediaSafe = z.infer<typeof mediaSafeSchema>;
-
-export const authorSchema = z.object({
-	id: z.uuid(),
-	name: z.string(),
-	accountId: z.string().nullable(),
-	createdAt: z.coerce.date(),
-	updatedAt: z.coerce.date(),
-});
-
-export type Author = z.infer<typeof authorSchema>;
-
-export const newAuthorSchema = z.object({
-	name: z.string(),
-	accountId: z.string().nullable().optional(),
-	platform: authorPlatformSchema.optional(),
-});
-
-export type NewAuthor = z.infer<typeof newAuthorSchema>;
 
 export const mediaUrlSchema = z.object({
 	id: z.uuid(),
@@ -428,15 +402,7 @@ export const mediaMetadataContextSchema = z.object({
 			z.array(z.url()),
 		)
 		.optional(),
-	authors: z
-		.array(
-			z.object({
-				name: z.string(),
-				accountId: z.string().nullable().optional(),
-				platform: authorPlatformSchema.optional(),
-			}),
-		)
-		.optional(),
+	authors: z.array(newAuthorSchema).optional(),
 	tags: z
 		.array(
 			z.object({

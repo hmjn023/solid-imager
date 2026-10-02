@@ -17,6 +17,7 @@ function ManagerCategoryIcon(props: { value: ManagerCategoryValue }) {
 			return <Folder aria-hidden="true" size={16} />;
 		case "ips":
 			return <CopyCheck aria-hidden="true" size={16} />;
+		case "authors":
 		case "characters":
 			return <Image aria-hidden="true" size={16} />;
 		case "tagging":

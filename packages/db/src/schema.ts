@@ -864,17 +864,12 @@ export const authors = pgTable(
 			.default(sql`uuidv7()`),
 		/** 表示名 */
 		name: text("name").notNull(),
-		/** 外部ID (例: Twitter ID, Pixiv ID) */
-		accountId: text("account_id"),
 		/** 作成日時 */
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		/** 更新日時 */
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
-	(table) => [
-		index("idx_authors_account_id").on(table.accountId),
-		index("idx_authors_name").on(table.name),
-	],
+	(table) => [index("idx_authors_name").on(table.name)],
 );
 
 /**
@@ -890,18 +885,25 @@ export const authorAccounts = pgTable(
 		authorId: uuid("author_id")
 			.notNull()
 			.references(() => authors.id, { onDelete: "cascade" }),
-		platform: authorPlatformEnum("platform").notNull(),
+		platform: authorPlatformEnum("platform"),
 		accountId: text("account_id").notNull(),
+		/** Immutable platform user ID. Never inferred from a Twitter handle. */
+		remoteId: text("remote_id"),
+		displayName: text("display_name"),
+		observedAt: timestamp("observed_at"),
 		profileUrl: text("profile_url"),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
 	},
 	(table) => [
 		index("idx_author_accounts_author_id").on(table.authorId),
-		uniqueIndex("idx_author_accounts_platform_account_unique").on(
-			table.platform,
-			table.accountId,
-		),
+		uniqueIndex("idx_author_accounts_remote_identity")
+			.on(table.platform, table.remoteId)
+			.where(sql`${table.remoteId} IS NOT NULL`),
+		uniqueIndex("idx_author_accounts_unresolved_identity")
+			.on(table.platform, table.accountId)
+			.where(sql`${table.remoteId} IS NULL`),
+		index("idx_author_accounts_handle").on(table.platform, table.accountId),
 	],
 );
 
