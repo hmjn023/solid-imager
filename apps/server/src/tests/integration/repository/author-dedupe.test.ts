@@ -1,4 +1,5 @@
-import { and, eq } from "drizzle-orm";
+import type { AuthorAccountInput } from "@solid-imager/core/domain/authors/schemas";
+import { and, count, eq, sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import {
@@ -7,6 +8,7 @@ import {
 	mediaSources,
 	medias,
 	mediaUrls,
+	mediaAuthors,
 	tags,
 } from "~/infrastructure/db/schema";
 import { AuthorService } from "~/infrastructure/services/author-service";
@@ -261,6 +263,66 @@ describe("AuthorRepository Deduplication", () => {
 		expect(repeated.id).toBe(author.id);
 		expect(repeated.accounts).toHaveLength(2);
 	});
+	it.each(["first", "secondary"])(
+		"refreshes the %s restored account without rolling back profiles or management names",
+		async (position) => {
+			const author = await AuthorRepository.create({
+				name: "Old profile",
+				platform: "twitter",
+				accountId: "old",
+				remoteId: "123",
+				observedAt: new Date("2026-01-01"),
+			});
+			await AuthorRepository.update(author.id, { name: "My local label" });
+			const legacy: AuthorAccountInput = {
+				platform: null,
+				accountId: "legacy",
+				remoteId: null,
+				displayName: "Legacy profile",
+				profileUrl: null,
+				observedAt: null,
+			};
+			const profile: AuthorAccountInput = {
+				platform: "twitter",
+				accountId: "@Current",
+				remoteId: "123",
+				displayName: "Current profile",
+				profileUrl: "https://x.com/current",
+				observedAt: new Date("2026-02-01"),
+			};
+			const restore = (account: AuthorAccountInput) =>
+				AuthorRepository.create({
+					name: "Dump management label",
+					accounts:
+						position === "first" ? [account, legacy] : [legacy, account],
+				});
+			const refreshed = await restore(profile);
+			expect(refreshed.id).toBe(author.id);
+			expect(refreshed.name).toBe("My local label");
+			expect(refreshed.accounts).toHaveLength(2);
+			const current = refreshed.accounts?.find(
+				(account) => account.remoteId === "123",
+			);
+			expect(current).toMatchObject({
+				...profile,
+				accountId: "current",
+			});
+			for (const observedAt of [new Date("2026-01-01"), null]) {
+				const restored = await restore({
+					...profile,
+					accountId: "stale",
+					displayName: "Stale profile",
+					profileUrl: "https://x.com/stale",
+					observedAt,
+				});
+				expect(restored.name).toBe("My local label");
+				expect(
+					restored.accounts?.find((account) => account.remoteId === "123"),
+				).toEqual(current);
+			}
+		},
+	);
+
 	async function fixture() {
 		const [source] = await db
 			.insert(mediaSources)
@@ -383,4 +445,34 @@ describe("AuthorRepository Deduplication", () => {
 			).toEqual([correct.id, coauthor.id].sort());
 		expect((await db.select().from(tags))[0].authorId).toBe(correct.id);
 	});
+	it("merges 32768 media without exceeding the PostgreSQL parameter limit", async () => {
+		const { source, wrong, correct, coauthor } = await fixture();
+		await db.execute(sql`
+			INSERT INTO ${medias} ("source_id", "file_name", "file_path", "media_type", "width", "height")
+			SELECT ${source.id}::uuid, 'bulk-' || item || '.png', 'bulk-' || item || '.png', 'image', 100, 100
+			FROM generate_series(1, 32766) AS item
+		`);
+		await db.execute(sql`
+			INSERT INTO ${mediaAuthors} ("media_id", "author_id")
+			SELECT ${medias.id}, ${wrong.id}::uuid FROM ${medias}
+			WHERE ${medias.mediaSourceId} = ${source.id}
+			ON CONFLICT DO NOTHING
+		`);
+		expect(
+			await AuthorService.merge({
+				sourceAuthorId: wrong.id,
+				targetAuthorId: correct.id,
+			}),
+		).toBe(32768);
+		const totalFor = async (authorId: string) => {
+			const [total] = await db
+				.select({ value: count() })
+				.from(mediaAuthors)
+				.where(eq(mediaAuthors.authorId, authorId));
+			return total.value;
+		};
+		expect(await totalFor(correct.id)).toBe(32768);
+		expect(await totalFor(coauthor.id)).toBe(2);
+		expect(await AuthorRepository.findById(wrong.id)).toBeNull();
+	}, 20000);
 });

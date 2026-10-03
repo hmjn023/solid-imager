@@ -131,6 +131,35 @@ async function findAccount(client: DrizzleExecutor, input: NewAuthor) {
 	return matches[0];
 }
 
+function isFreshProfile(
+	account: typeof authorAccounts.$inferSelect,
+	observedAt: Date | undefined,
+): boolean {
+	return (
+		!account.observedAt ||
+		Boolean(observedAt && observedAt >= account.observedAt)
+	);
+}
+
+async function refreshAccount(
+	client: DrizzleExecutor,
+	account: typeof authorAccounts.$inferSelect,
+	input: NewAuthor,
+	displayName: string,
+): Promise<void> {
+	if (!isFreshProfile(account, input.observedAt)) return;
+	await client
+		.update(authorAccounts)
+		.set({
+			accountId: input.accountId ?? account.accountId,
+			displayName,
+			profileUrl: input.profileUrl ?? account.profileUrl,
+			observedAt: input.observedAt ?? account.observedAt,
+			updatedAt: new Date(),
+		})
+		.where(eq(authorAccounts.id, account.id));
+}
+
 async function resolveAuthors(
 	client: DrizzleExecutor,
 	rawInputs: NewAuthor[],
@@ -225,10 +254,7 @@ async function resolveAuthors(
 		}
 		if (!author) throw new Error("Failed to create author");
 		const profileName = input.accounts?.[0]?.displayName ?? input.name;
-		const fresh =
-			!account?.observedAt ||
-			Boolean(input.observedAt && input.observedAt >= account.observedAt);
-		if (account && fresh) {
+		if (account && isFreshProfile(account, input.observedAt)) {
 			// Keep a deliberately edited local author name; update platform profile independently.
 			if (
 				!input.accounts &&
@@ -242,16 +268,7 @@ async function resolveAuthors(
 					.returning();
 				if (updated) author = updated;
 			}
-			await client
-				.update(authorAccounts)
-				.set({
-					accountId: input.accountId ?? account.accountId,
-					displayName: profileName,
-					profileUrl: input.profileUrl ?? account.profileUrl,
-					observedAt: input.observedAt ?? account.observedAt,
-					updatedAt: new Date(),
-				})
-				.where(eq(authorAccounts.id, account.id));
+			await refreshAccount(client, account, input, profileName);
 		} else if (!account && input.accountId) {
 			await client.insert(authorAccounts).values({
 				authorId: author.id,
@@ -276,12 +293,20 @@ async function resolveAuthors(
 				throw new ResourceConflictError(
 					"外部アカウントが別の作者に紐づいています。作者管理で確認して統合してください。",
 				);
-			if (!existing)
+			if (existing) {
+				await refreshAccount(
+					client,
+					existing,
+					normalized,
+					extra.displayName ?? input.name,
+				);
+			} else {
 				await client.insert(authorAccounts).values({
 					...extra,
 					accountId: normalized.accountId ?? extra.accountId,
 					authorId: author.id,
 				});
+			}
 		}
 		resolvedRows.push(author);
 	}
@@ -686,20 +711,25 @@ export function createAuthorRepository(
 				.orderBy(asc(authors.id))
 				.for("update");
 			if (locked.length !== 2) throw new ResourceNotFoundError("Author");
-			const links = await client
-				.select()
+			const [total] = await client
+				.select({ value: count() })
 				.from(mediaAuthors)
 				.where(eq(mediaAuthors.authorId, input.sourceAuthorId));
-			if (links.length)
-				await client
-					.insert(mediaAuthors)
-					.values(
-						links.map((link) => ({
-							mediaId: link.mediaId,
-							authorId: input.targetAuthorId,
-						})),
-					)
-					.onConflictDoNothing();
+			// Copy within the database so the parameter count is independent of library size.
+			await client
+				.insert(mediaAuthors)
+				.select(
+					client
+						.select({
+							mediaId: mediaAuthors.mediaId,
+							authorId: sql<string>`${input.targetAuthorId}::uuid`.as(
+								"author_id",
+							),
+						})
+						.from(mediaAuthors)
+						.where(eq(mediaAuthors.authorId, input.sourceAuthorId)),
+				)
+				.onConflictDoNothing();
 			await client
 				.update(authorAccounts)
 				.set({ authorId: input.targetAuthorId, updatedAt: new Date() })
@@ -709,7 +739,7 @@ export function createAuthorRepository(
 				.set({ authorId: input.targetAuthorId })
 				.where(eq(tags.authorId, input.sourceAuthorId));
 			await client.delete(authors).where(eq(authors.id, input.sourceAuthorId));
-			return links.length;
+			return total?.value ?? 0;
 		},
 	};
 }
