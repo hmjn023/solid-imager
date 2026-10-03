@@ -1,5 +1,9 @@
 import { getClient } from "@ext/api";
-import type { MediaSource, TweetMetadata } from "@ext/schema";
+import {
+	downloadItemSchema,
+	type DownloadItem,
+	type MediaSource,
+} from "@ext/schema";
 import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { render } from "solid-js/web";
@@ -82,13 +86,13 @@ function Popup() {
 			const activeTabId = tabs[0]?.id;
 			if (!activeTabId) throw new Error("No active tab");
 
-			const metadata = await new Promise<TweetMetadata[]>((resolve, reject) => {
+			const metadata = await new Promise<DownloadItem[]>((resolve, reject) => {
 				chrome.tabs.sendMessage(
 					activeTabId,
 					{ type: "GET_METADATA" },
-					(resp) => {
+					(resp: unknown) => {
 						if (chrome.runtime.lastError) reject(chrome.runtime.lastError);
-						else resolve(resp || []);
+						else resolve(downloadItemSchema.array().parse(resp ?? []));
 					},
 				);
 			});
@@ -112,151 +116,109 @@ function Popup() {
 		}
 	};
 
-	onMount(loadSettings);
+	onMount(() => {
+		void loadSettings().catch(() => {
+			setStatus("Failed to load settings.");
+			setStatusType("error");
+		});
+	});
 
 	return (
-		<div
-			style={{ width: "300px", padding: "16px", "font-family": "sans-serif" }}
-		>
-			<h2 style={{ "margin-top": "0", "font-size": "16px" }}>Settings</h2>
+		<div class="popup">
+			<h2 class="popup-title">Settings</h2>
 
-			<div style={{ "margin-bottom": "16px" }}>
-				<label
-					for="api-url"
-					style={{
-						display: "block",
-						"margin-bottom": "8px",
-						"font-size": "14px",
-					}}
-				>
+			<div class="popup-field">
+				<label class="popup-label">
 					API URL
+					<input
+						id="api-url"
+						type="text"
+						value={apiUrl()}
+						onChange={(e) => {
+							const url = e.currentTarget.value;
+							setApiUrl(url);
+							void chrome.storage.local
+								.set({ apiUrl: url })
+								.then(() => fetchSources())
+								.catch(() => {
+									setStatus("Failed to save API URL.");
+									setStatusType("error");
+								});
+						}}
+						class="popup-control"
+					/>
 				</label>
-				<input
-					id="api-url"
-					type="text"
-					value={apiUrl()}
-					onChange={async (e) => {
-						const url = e.currentTarget.value;
-						setApiUrl(url);
-						await chrome.storage.local.set({ apiUrl: url });
-						await fetchSources();
-					}}
-					style={{
-						width: "100%",
-						padding: "8px",
-						border: "1px solid #ccc",
-						"border-radius": "4px",
-						"box-sizing": "border-box",
-					}}
-				/>
 			</div>
 
-			<div style={{ "margin-bottom": "16px" }}>
-				<label
-					for="source-select"
-					style={{
-						display: "block",
-						"margin-bottom": "8px",
-						"font-size": "14px",
-					}}
-				>
+			<div class="popup-field">
+				<label class="popup-label">
 					Target Media Source
+					<select
+						id="source-select"
+						ref={(el) => (selectRef = el)}
+						value={selectedSourceId()}
+						onChange={(e) => {
+							const id = e.currentTarget.value;
+							setSelectedSourceId(id);
+							void chrome.storage.local
+								.set({ selectedSourceId: id })
+								.catch(() => {
+									setStatus("Failed to save source selection.");
+									setStatusType("error");
+								});
+						}}
+						disabled={isLoading() || sources().length === 0}
+						class="popup-control"
+					>
+						<Show when={sources().length === 0}>
+							<option value="">No sources found</option>
+						</Show>
+						<For each={sources()}>
+							{(source) => (
+								<option value={source.id}>
+									{source.name} ({source.type})
+								</option>
+							)}
+						</For>
+					</select>
 				</label>
-				<select
-					id="source-select"
-					ref={(el) => (selectRef = el)}
-					value={selectedSourceId()}
-					onChange={async (e) => {
-						const id = e.currentTarget.value;
-						setSelectedSourceId(id);
-						await chrome.storage.local.set({ selectedSourceId: id });
-					}}
-					disabled={isLoading() || sources().length === 0}
-					style={{
-						width: "100%",
-						padding: "8px",
-						border: "1px solid #ccc",
-						"border-radius": "4px",
-					}}
-				>
-					<Show when={sources().length === 0}>
-						<option value="">No sources found</option>
-					</Show>
-					<For each={sources()}>
-						{(source) => (
-							<option value={source.id}>
-								{source.name} ({source.type})
-							</option>
-						)}
-					</For>
-				</select>
 			</div>
 
 			<div
-				style={{
-					"margin-top": "8px",
-					"font-size": "12px",
-					"text-align": "center",
-					color:
-						statusType() === "error"
-							? "red"
-							: statusType() === "success"
-								? "green"
-								: "inherit",
+				class="popup-status"
+				classList={{
+					"popup-status-error": statusType() === "error",
+					"popup-status-success": statusType() === "success",
 				}}
 			>
 				{status()}
 			</div>
 
-			<hr
-				style={{
-					margin: "16px 0",
-					border: "0",
-					"border-top": "1px solid #eee",
-				}}
-			/>
+			<hr class="popup-divider" />
 
 			<button
 				type="button"
-				onClick={handleExport}
-				style={{
-					width: "100%",
-					padding: "8px",
-					"background-color": "#0f1419",
-					color: "white",
-					border: "none",
-					"border-radius": "4px",
-					cursor: "pointer",
-					"margin-bottom": "4px",
+				onClick={() => {
+					void handleExport();
 				}}
+				class="popup-button popup-button-export"
 			>
 				Export Collected JSON
 			</button>
-			<div style={{ "font-size": "12px", "text-align": "center" }}>
-				{exportStatus()}
-			</div>
+			<div class="popup-result">{exportStatus()}</div>
 
-			<div style={{ height: "10px" }}></div>
+			<div class="popup-spacer"></div>
 
 			<button
 				type="button"
-				onClick={handleBulkUpload}
-				style={{
-					width: "100%",
-					padding: "8px",
-					"background-color": "#00ba7c",
-					color: "white",
-					border: "none",
-					"border-radius": "4px",
-					cursor: "pointer",
-					"margin-bottom": "4px",
+				onClick={() => {
+					void handleBulkUpload();
 				}}
+				class="popup-button popup-button-upload"
 			>
 				Bulk Upload to Solid Imager
 			</button>
-			<div style={{ "font-size": "12px", "text-align": "center" }}>
-				{uploadStatus()}
-			</div>
+			<div class="popup-result">{uploadStatus()}</div>
 		</div>
 	);
 }

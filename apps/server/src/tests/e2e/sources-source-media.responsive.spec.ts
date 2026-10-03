@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
-	E2E_SOURCE_ID,
+	E2E_PRIMARY_MEDIA_ID,
 	E2E_SOURCE_NAME,
 	getFixtureMediaPath,
 	sourcePath,
@@ -50,111 +50,53 @@ async function expectInsideViewport(
 	expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
 }
 
-test("sources actions stay operable without horizontal overflow", async ({
-	page,
-}) => {
-	await page.goto("/sources");
-	await expect(
-		page.getByRole("heading", { name: "Media Sources", exact: true }),
-	).toBeVisible();
-	const sourceCard = page
-		.getByTestId("source-card")
-		.filter({ hasText: E2E_SOURCE_NAME });
-	await expect(sourceCard).toBeVisible();
-	await waitForAppHydration(page);
-	await expectNoHorizontalOverflow(page);
-
-	const addSourceButton = page.getByRole("button", {
-		name: "Add Source",
-		exact: true,
-	});
-	const syncAllButton = page.getByRole("button", {
-		name: "Sync All",
-		exact: true,
-	});
-	await expectTouchTarget(addSourceButton);
-	await expectTouchTarget(syncAllButton);
-	await expectTouchTarget(sourceCard.getByTestId("sync-source-btn"));
-	await expectTouchTarget(sourceCard.getByTestId("edit-source-btn"));
-	await expectTouchTarget(sourceCard.getByTestId("delete-source-btn"));
-
-	await addSourceButton.click();
-	const addSourceDialog = page.getByRole("dialog");
-	await expect(addSourceDialog).toBeVisible();
-	await addSourceDialog.getByLabel("Name", { exact: true }).fill("temporary");
-	await addSourceDialog
-		.getByLabel("Directory Path", { exact: true })
-		.fill("/tmp/temporary");
-	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
-	await expect(addSourceButton).toBeFocused();
-
-	await addSourceButton.click();
-	await expect(addSourceDialog.getByLabel("Name", { exact: true })).toHaveValue(
-		"",
-	);
-	await expect(
-		addSourceDialog.getByLabel("Directory Path", { exact: true }),
-	).toHaveValue("");
-	await addSourceDialog
-		.getByRole("button", { name: "Add Source", exact: true })
-		.click();
-	await expect(addSourceDialog.getByText("Name is required")).toBeVisible();
-	await expect(addSourceDialog.getByText("Path is required")).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(addSourceDialog).toBeHidden();
-
-	await sourceCard.getByTestId("edit-source-btn").click();
-	await expect(page.getByRole("dialog")).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
-
-	await sourceCard.getByTestId("delete-source-btn").click();
-	await expect(page.getByRole("dialog")).toBeVisible();
-	await page.keyboard.press("Escape");
-	await expect(page.getByRole("dialog")).toHaveCount(0);
-	await expectNoHorizontalOverflow(page);
-});
+test(
+	"the root entry point redirects to canonical search",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto("/");
+		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+		await waitForAppHydration(page);
+		await expect(
+			page.getByText("すべてのメディア", { exact: true }).last(),
+		).toBeVisible();
+		await expectRouteHealthy(page);
+	},
+);
 
 test("source media exposes mobile filters and touch selection", async ({
 	page,
 }, testInfo) => {
 	await page.goto(sourcePath());
 	await expect(
-		page.getByRole("heading", {
-			name: E2E_SOURCE_NAME,
-			exact: true,
-		}),
+		page
+			.locator("#main-content")
+			.getByText(E2E_SOURCE_NAME, { exact: true })
+			.first(),
 	).toBeVisible();
-	const resultCount = page.getByText(/^\d+ 件の結果$/);
+	const resultCount = page.getByText(/^[\d,]+ items$/);
 	await expect(resultCount).toHaveCount(1);
 	await expect(resultCount).toBeVisible();
 	const firstMedia = page.locator("[data-media-id]").first();
 	await expect(firstMedia).toBeVisible();
-	if (!usesMobileControls(testInfo.project.name)) {
-		const filterCard = page
-			.getByRole("heading", { name: "検索フィルター", exact: true })
-			.locator("..")
-			.locator("..");
-		const [filterTop, mediaTop] = await Promise.all(
-			[filterCard, firstMedia].map((locator) =>
-				locator.evaluate((element) => element.getBoundingClientRect().top),
-			),
-		);
-		expect(Math.abs(filterTop - mediaTop)).toBeLessThanOrEqual(1);
-	}
 	await waitForAppHydration(page);
 	await expect(page.getByTestId("media-load-more-sentinel")).toBeVisible();
 	await expectNoHorizontalOverflow(page);
 
-	const addMediaButton = page.getByRole("button", { name: "Add media" });
-	await expectTouchTarget(addMediaButton);
+	const addMediaButton = page.getByRole("button", {
+		name: "追加",
+		exact: true,
+	});
+	if (usesMobileControls(testInfo.project.name))
+		await expectTouchTarget(addMediaButton);
 	await expectInsideViewport(page, addMediaButton);
 	const fileChooser = page.waitForEvent("filechooser");
 	await addMediaButton.click();
-	await (await fileChooser).setFiles(
-		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
-	);
+	await (
+		await fileChooser
+	).setFiles(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
 	const uploadDialog = page.getByRole("dialog");
 	await expect(
 		uploadDialog.getByRole("heading", {
@@ -168,21 +110,43 @@ test("source media exposes mobile filters and touch selection", async ({
 	await uploadDialog
 		.getByRole("button", { name: "キャンセル", exact: true })
 		.click();
+	const discardDialog = page.getByRole("alertdialog");
+	await expect(discardDialog).toContainText("アップロード内容を破棄しますか？");
+	await discardDialog
+		.getByRole("button")
+		.filter({ hasText: "編集を続ける" })
+		.click();
+	await expect(discardDialog).toBeHidden();
+	await expect(filenameInput).toHaveValue("temporary-name.png");
+	await uploadDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
+	await discardDialog
+		.getByRole("button")
+		.filter({ hasText: "破棄して閉じる" })
+		.click();
+	await expect(discardDialog).toBeHidden();
 	await expect(uploadDialog).toBeHidden();
 	const reopenedFileChooser = page.waitForEvent("filechooser");
 	await addMediaButton.click();
-	await (await reopenedFileChooser).setFiles(
-		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
-	);
+	await (
+		await reopenedFileChooser
+	).setFiles(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
 	await expect(filenameInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
 	await page.keyboard.press("Escape");
+	await discardDialog
+		.getByRole("button")
+		.filter({ hasText: "破棄して閉じる" })
+		.click();
+	await expect(discardDialog).toBeHidden();
 	await expect(uploadDialog).toBeHidden();
 
 	const selectModeButton = page.getByRole("button", {
 		name: "複数選択",
 		exact: true,
 	});
-	await expectTouchTarget(selectModeButton);
+	if (usesMobileControls(testInfo.project.name))
+		await expectTouchTarget(selectModeButton);
 	await selectModeButton.click();
 	const bulkToolbar = page.getByTestId("bulk-actions-bar");
 	await expect(bulkToolbar).toContainText("0 件選択中");
@@ -198,65 +162,41 @@ test("source media exposes mobile filters and touch selection", async ({
 	await expect(selectableMedia).toBeVisible();
 	await selectableMedia.click();
 	await expect(bulkToolbar).toContainText("1 件選択中");
-	await expect(addMediaButton).toBeHidden();
+	await expect(addMediaButton).toBeVisible();
 	await expectInsideViewport(page, bulkToolbar);
 	await page.getByRole("button", { name: "解除", exact: true }).click();
 	await expect(addMediaButton).toBeVisible();
 
-	if (usesMobileControls(testInfo.project.name)) {
-		const sourceActionsButton = page.getByRole("button", {
-			name: "ソース操作を開く",
-		});
-		const filterResultsButton = page.getByRole("button", {
-			name: "Filter results",
-		});
-		await expectTouchTarget(sourceActionsButton);
-		await expectTouchTarget(filterResultsButton);
-		await sourceActionsButton.click();
-		const sourceActionsDialog = page.getByRole("dialog");
-		await expect(
-			sourceActionsDialog.getByRole("button", {
-				name: "NDJSON メタデータを書き出す",
-			}),
-		).toBeVisible();
-		await page.keyboard.press("Escape");
-		await expect(sourceActionsDialog).toBeHidden();
-		await sourceActionsButton.click();
-		const restoreFileChooser = page.waitForEvent("filechooser");
-		await sourceActionsDialog
-			.getByRole("button", { name: "ダンプを復元する", exact: true })
-			.click();
-		await restoreFileChooser;
-		await expect(sourceActionsDialog).toBeHidden();
-
-		await filterResultsButton.click();
-		const filterDialog = page.getByRole("dialog");
-		await expect(filterDialog).toBeVisible();
-		await expect(filterDialog.getByRole("status")).toContainText("現在の条件");
-		const fileNameInput = filterDialog.getByPlaceholder("ファイル名を入力...");
-		await fileNameInput.fill("e2e");
-		await expect(filterDialog.getByRole("status")).toContainText(
-			"ファイル名: e2e",
-		);
-		await filterDialog
-			.getByRole("button", { name: "適用", exact: true })
-			.click();
-		await expect(filterDialog).toBeHidden();
-	} else {
-		await expect(
-			page.getByRole("heading", { name: "検索フィルター", exact: true }),
-		).toBeVisible();
-	}
+	const filterButton = page.getByRole("button", { name: /^検索フィルター、/ });
+	if (usesMobileControls(testInfo.project.name))
+		await expectTouchTarget(filterButton);
+	await filterButton.click();
+	const filterDialog = page.getByRole("dialog", {
+		name: "検索フィルター",
+		exact: true,
+	});
+	const fileNameInput = filterDialog.getByRole("textbox", {
+		name: "ファイル名検索",
+		exact: true,
+	});
+	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
+	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
+	await expect(filterDialog).toBeHidden();
+	await expect(resultCount).toHaveText("1 items");
+	await expect(
+		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+	).toBeVisible();
 
 	await expectNoHorizontalOverflow(page);
 });
 
-for (const route of [
-	{ name: "v1", path: sourcePath() },
-	{ name: "v2", path: `/v2/sources/${E2E_SOURCE_ID}` },
-]) {
-	test(`${route.name} media grid opens its context menu`, async ({ page }) => {
-		await page.goto(route.path);
+test(
+	"canonical media grid opens its context menu",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto(sourcePath());
 		await waitForAppHydration(page);
 
 		const firstMedia = page.locator("[data-media-id]").first();
@@ -265,5 +205,8 @@ for (const route of [
 
 		await expectRouteHealthy(page);
 		await expect(page.getByRole("menu")).toBeVisible();
-	});
-}
+		await expect(
+			page.getByRole("menuitem", { name: "類似度検索", exact: true }),
+		).toBeVisible();
+	},
+);

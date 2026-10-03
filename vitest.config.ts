@@ -1,14 +1,16 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
-  test: {
-    projects: [
-      "apps/cli/vitest.config.ts",
-      "apps/server/vitest.unit.config.ts",
-      "apps/server/vitest.integration.config.ts",
-      "apps/xtracter/vitest.config.ts",
-      "packages/core/vitest.config.ts",
-      "packages/ui/vitest.config.ts",
-    ],
-  },
+	test: {
+		projects: [
+			"apps/cli/vitest.config.ts",
+			"apps/server/vitest.unit.config.ts",
+			"apps/server/vitest.integration.config.ts",
+			"apps/xtracter/vitest.config.ts",
+			"packages/core/vitest.config.ts",
+			"packages/client/vitest.config.ts",
+			"packages/db/vitest.config.ts",
+			"packages/ui/vitest.config.ts",
+		],
+	},
 });

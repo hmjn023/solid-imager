@@ -1,4 +1,5 @@
 import { MediaQueryService } from "@solid-imager/application/services/media-query-service";
+import { MediaServiceImpl } from "@solid-imager/application/services/media-service";
 import { MediaTransferService } from "@solid-imager/application/services/media-transfer-service";
 import { MediaUploadService } from "@solid-imager/application/services/media-upload-service";
 import type { IMediaStorage } from "@solid-imager/core";
@@ -14,7 +15,6 @@ import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-r
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
-import { MediaServiceImpl } from "~/infrastructure/services/media-service";
 
 vi.mock("~/infrastructure/service-registry", () => {
 	const mockServices = {

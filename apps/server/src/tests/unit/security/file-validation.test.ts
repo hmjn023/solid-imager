@@ -1,5 +1,5 @@
+import { validateFileSignature } from "@solid-imager/application/services/media-upload-service";
 import { describe, expect, it } from "vitest";
-import { validateFileSignature } from "~/infrastructure/services/media-service";
 
 const PNG_SIGNATURE = Buffer.from("89504e470d0a1a0a0000000d", "hex");
 const INVALID_ZEROS = Buffer.from("00000000", "hex");

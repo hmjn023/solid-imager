@@ -1,5 +1,8 @@
 export {
+	bulkCopyToSource,
 	bulkDeleteMedia,
+	bulkMoveMedia,
+	bulkMoveToSource,
 	copyMedia,
 	deleteMedia,
 	fetchMediaDetails,
@@ -26,7 +29,13 @@ export function updateMedia(
 export function uploadMedia(
 	sourceId: string,
 	file: File,
-	options?: { filename?: string; description?: string; sourceUrl?: string },
+	options?: {
+		filename?: string;
+		description?: string;
+		sourceUrl?: string;
+		overwrite?: boolean;
+		autoIncrement?: boolean;
+	},
 ) {
 	return client.media.upload({
 		sourceId,
@@ -34,6 +43,12 @@ export function uploadMedia(
 		filename: options?.filename,
 		description: options?.description,
 		sourceUrl: options?.sourceUrl,
+		overwrite:
+			options?.overwrite !== undefined ? String(options.overwrite) : undefined,
+		autoIncrement:
+			options?.autoIncrement !== undefined
+				? String(options.autoIncrement)
+				: undefined,
 	});
 }
 

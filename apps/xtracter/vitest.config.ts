@@ -4,10 +4,10 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	resolve: {
 		alias: {
-			"@ext": path.resolve(__dirname, "./src"),
-			"@": path.resolve(__dirname, "../../packages/core/src"),
-			"@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
-			"@core": path.resolve(__dirname, "../../packages/core/src"),
+			"@ext": path.resolve(import.meta.dirname, "./src"),
+			"@": path.resolve(import.meta.dirname, "../../packages/core/src"),
+			"@solid-imager/core": path.resolve(import.meta.dirname, "../../packages/core/src"),
+			"@core": path.resolve(import.meta.dirname, "../../packages/core/src"),
 		},
 	},
 	test: {

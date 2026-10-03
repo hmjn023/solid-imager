@@ -27,7 +27,7 @@ export const appConfigSchema = z
 			})
 			.optional(),
 	})
-	.passthrough(); // Allow for future expansion
+	.loose(); // Allow for future expansion
 export type AppConfig = z.infer<typeof appConfigSchema>;
 
 export const searchOptionsSchema = z
@@ -41,7 +41,7 @@ export const searchOptionsSchema = z
 			})
 			.optional(),
 	})
-	.passthrough(); // Allow for future expansion
+	.loose(); // Allow for future expansion
 export type SearchOptions = z.infer<typeof searchOptionsSchema>;
 
 export const importDataSchema = z.object({
@@ -53,7 +53,7 @@ export type ImportData = z.infer<typeof importDataSchema>;
 
 export const userDataSchema = z.object({
 	name: z.string(),
-	email: z.string().email(),
+	email: z.email(),
 	password: z.string().optional(),
 });
 export type UserData = z.infer<typeof userDataSchema>;

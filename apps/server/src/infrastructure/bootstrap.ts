@@ -196,12 +196,3 @@ export function startBackgroundWorker() {
 		globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
 	}
 }
-
-/**
- * Main bootstrap function for backward compatibility.
- * In TanStack Start SSR, avoid calling this and call initServices instead.
- */
-export function bootstrap() {
-	initServices();
-	startBackgroundWorker();
-}

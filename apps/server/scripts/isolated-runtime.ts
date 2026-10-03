@@ -2,12 +2,13 @@ import { randomUUID } from "node:crypto";
 import { copyFile, link, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
-import { mediaGenerationInfo, medias, mediaSources } from "@solid-imager/db/schema";
+import { authorAccounts, authors, mediaAuthors, mediaUrls, mediaGenerationInfo, medias, mediaSources } from "@solid-imager/db/schema";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import sharp from "sharp";
 import { createPglite } from "../src/infrastructure/db/pglite";
 import {
+  E2E_WRONG_AUTHOR_ID, E2E_CORRECT_AUTHOR_ID, E2E_COAUTHOR_ID,
   E2E_PRIMARY_FILE_NAME,
   E2E_PRIMARY_MEDIA_ID,
   E2E_SIMILAR_FILE_NAME,
@@ -179,6 +180,20 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
         };
       }),
     ]);
+    await db.insert(authors).values([
+      { id: E2E_WRONG_AUTHOR_ID, name: "E2E incorrect author" },
+      { id: E2E_CORRECT_AUTHOR_ID, name: "E2E correct author" },
+      { id: E2E_COAUTHOR_ID, name: "E2E coauthor" },
+    ]);
+    await db.insert(authorAccounts).values([
+      { authorId: E2E_WRONG_AUTHOR_ID, platform: "twitter", accountId: "legacy_wrong" },
+      { authorId: E2E_CORRECT_AUTHOR_ID, platform: "twitter", accountId: "actual_creator", remoteId: "1234567890123456789", displayName: "E2E current profile" },
+    ]);
+    await db.insert(mediaAuthors).values([
+      { mediaId: E2E_PRIMARY_MEDIA_ID, authorId: E2E_WRONG_AUTHOR_ID },
+      { mediaId: E2E_PRIMARY_MEDIA_ID, authorId: E2E_COAUTHOR_ID },
+    ]);
+    await db.insert(mediaUrls).values({ mediaId: E2E_PRIMARY_MEDIA_ID, url: "https://x.com/actual_creator/status/1234567890123456789" });
     await db.insert(mediaGenerationInfo).values([
       {
         mediaId: E2E_PRIMARY_MEDIA_ID,

@@ -14,7 +14,7 @@ export default defineNitroConfig({
     runner: "bun-process",
   },
   rollupConfig: {
-		external: ["dghs-imgutils-rs"],
+    external: ["dghs-imgutils-rs"],
   },
   hooks: {
     compiled: (nitro) => {
@@ -79,6 +79,44 @@ export default defineNitroConfig({
           console.warn(`[Nitro] Warning: ${asset.name} not found at ${asset.source}`);
         }
       }
+
+      const dghsLocalPath = path.resolve(__dirname, "node_modules/dghs-imgutils-rs");
+      const dghsRootPath = path.resolve(
+        __dirname,
+        "../../node_modules/dghs-imgutils-rs",
+      );
+      const dghsPackagePath = fs.existsSync(path.join(dghsLocalPath, "package.json"))
+        ? dghsLocalPath
+        : dghsRootPath;
+      const dghsRequiredFiles = ["package.json", "index.js"];
+      const missingDghsFiles = dghsRequiredFiles.filter(
+        (fileName) => !fs.existsSync(path.join(dghsPackagePath, fileName)),
+      );
+      const dghsNativeFiles = fs
+        .readdirSync(dghsPackagePath)
+        .filter((fileName) => fileName.endsWith(".node"));
+      if (missingDghsFiles.length > 0 || dghsNativeFiles.length === 0) {
+        throw new Error(
+          `[Nitro] dghs-imgutils-rs runtime files are incomplete at ${dghsPackagePath}: ` +
+            `missing=${missingDghsFiles.join(",") || "none"}, ` +
+            `native=${dghsNativeFiles.join(",") || "none"}`,
+        );
+      }
+      const dghsOutputPath = path.join(
+        serverDir,
+        "_libs",
+        "dghs-imgutils-rs",
+      );
+      fs.mkdirSync(dghsOutputPath, { recursive: true });
+      for (const fileName of [...dghsRequiredFiles, ...dghsNativeFiles]) {
+        fs.copyFileSync(
+          path.join(dghsPackagePath, fileName),
+          path.join(dghsOutputPath, fileName),
+        );
+      }
+      console.log(
+        `[Nitro] Successfully copied dghs-imgutils-rs runtime files to ${dghsOutputPath}`,
+      );
 
       // Copy yt-dlp binary for bundled youtube-dl-exec
       const ytDlpLocalPath = path.resolve(__dirname, "node_modules/youtube-dl-exec/bin/yt-dlp");

@@ -15,115 +15,73 @@ test("search keeps controls usable without horizontal overflow", async ({
 	page,
 }, testInfo) => {
 	await page.goto("/search");
+	const primaryResult = page.getByRole("link", {
+		name: new RegExp(E2E_PRIMARY_FILE_NAME),
+	});
+	await expect(primaryResult).toBeVisible();
 	await expect(
-		page.getByRole("heading", { name: "メディア検索", exact: true }),
-	).toBeVisible();
-	await expect(
-		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		page.getByRole("combobox", { name: "メディアを検索", exact: true }),
 	).toBeVisible();
 	await expectNoHorizontalOverflow(page);
 
-	const usesMobileFilterDialog = ["responsive-320", "responsive-375"].includes(
-		testInfo.project.name,
-	);
-	if (usesMobileFilterDialog) {
-		await page.getByRole("button", { name: "Filter results" }).click();
-		const filterDialog = page.getByRole("dialog");
-		await expect(filterDialog).toBeVisible();
-		await expect(
-			filterDialog.getByRole("heading", {
-				name: "検索フィルター",
-				exact: true,
-			}),
-		).toBeVisible();
-		await expect(
-			filterDialog.getByRole("button", { name: "簡易", exact: true }),
-		).toBeVisible();
-		const conditionSummary = filterDialog.getByRole("status");
-		await expect(conditionSummary).toContainText("現在の条件");
-		const resultCount = page.getByText(/^\d+ 件の結果$/);
-		const initialResultCount = await resultCount.textContent();
-
-		let fileNameInput = filterDialog.getByPlaceholder("ファイル名を入力...");
-		await fileNameInput.fill("e2e");
-		await expect(conditionSummary).toContainText("ファイル名: e2e");
-		await page.keyboard.press("Escape");
-		await expect(filterDialog).toBeHidden();
-		await expect(resultCount).toHaveText(initialResultCount ?? "");
-
-		await page.getByRole("button", { name: "Filter results" }).click();
-		await expect(filterDialog).toBeVisible();
-		fileNameInput = filterDialog.getByPlaceholder("ファイル名を入力...");
-		await expect(fileNameInput).toHaveValue("");
-		await expect(filterDialog.getByRole("status")).not.toContainText(
-			"ファイル名:",
-		);
-
-		await fileNameInput.fill("e2e");
-		await filterDialog.getByRole("button", { name: "Dismiss" }).click();
-		await expect(filterDialog).toBeHidden();
-		await expect(resultCount).toHaveText(initialResultCount ?? "");
-
-		await page.getByRole("button", { name: "Filter results" }).click();
-		await expect(filterDialog).toBeVisible();
-		fileNameInput = filterDialog.getByPlaceholder("ファイル名を入力...");
-		await expect(fileNameInput).toHaveValue("");
-		await filterDialog
-			.getByRole("button", { name: "条件をクリア", exact: true })
-			.click();
-		await expect(fileNameInput).toHaveValue("");
-		await expect(conditionSummary).toContainText("条件は指定されていません。");
-
-		await fileNameInput.fill("e2e");
-		await filterDialog
-			.getByRole("button", { name: "適用", exact: true })
-			.click();
-		await expect(filterDialog).toBeHidden();
-	} else {
-		await expect(
-			page.getByRole("heading", { name: "検索フィルター", exact: true }),
-		).toBeVisible();
-		await expect(page.getByPlaceholder("ファイル名を入力...")).toBeVisible();
-
-		if (testInfo.project.name === "responsive-768") {
-			await page.setViewportSize({ width: 768, height: 480 });
-			const filterCard = page
-				.getByRole("heading", { name: "検索フィルター", exact: true })
-				.locator("..")
-				.locator("..");
-			const scrollState = await filterCard.evaluate((element) => {
-				element.scrollTop = element.scrollHeight;
-				const bounds = element.getBoundingClientRect();
-				return {
-					clientHeight: element.clientHeight,
-					scrollHeight: element.scrollHeight,
-					scrollTop: element.scrollTop,
-					isWithinViewport:
-						bounds.top >= 0 && bounds.bottom <= window.innerHeight,
-				};
-			});
-			expect(scrollState.scrollHeight).toBeGreaterThan(
-				scrollState.clientHeight,
-			);
-			expect(scrollState.scrollTop).toBeGreaterThan(0);
-			expect(scrollState.isWithinViewport).toBe(true);
-
-			const lastFilter = filterCard.getByPlaceholder("プロジェクトを検索...");
-			await expect(lastFilter).toBeVisible();
-			expect(
-				await lastFilter.evaluate((element) => {
-					const card = element.closest(".sticky");
-					if (!(card instanceof HTMLElement)) return false;
-					const inputBounds = element.getBoundingClientRect();
-					const cardBounds = card.getBoundingClientRect();
-					return (
-						inputBounds.top >= cardBounds.top &&
-						inputBounds.bottom <= cardBounds.bottom
-					);
-				}),
-			).toBe(true);
-		}
+	if (testInfo.project.name === "responsive-768") {
+		await page.setViewportSize({ width: 768, height: 480 });
 	}
+	const filterButton = page.getByRole("button", { name: /^検索フィルター、/ });
+	await filterButton.click();
+	const filterDialog = page.getByRole("dialog", {
+		name: "検索フィルター",
+		exact: true,
+	});
+	await expect(filterDialog).toBeVisible();
+	const fileNameInput = filterDialog.getByRole("textbox", {
+		name: "ファイル名検索",
+		exact: true,
+	});
+	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
+	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
+	await expect(filterDialog).toBeHidden();
+	await expect(page.getByText("1 items", { exact: true })).toBeVisible();
+	await expect(primaryResult).toBeVisible();
 
+	// Filters share state with the search bar. Closing preserves the applied condition.
+	await filterButton.click();
+	await expect(fileNameInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
+	await page.keyboard.press("Escape");
+	await expect(filterDialog).toBeHidden();
+	await expect(filterButton).toBeFocused();
+	await filterButton.click();
+	await expect(fileNameInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
+	await filterDialog
+		.getByRole("button", { name: "すべて解除", exact: true })
+		.click();
+	await expect(fileNameInput).toHaveValue("");
+
+	const lastFilter = filterDialog.getByRole("combobox", {
+		name: "プロジェクト",
+		exact: true,
+	});
+	await lastFilter.scrollIntoViewIfNeeded();
+	await expect(lastFilter).toBeInViewport();
+	await lastFilter.focus();
+	await expect(lastFilter).toBeFocused();
+	// Leave the combobox's suggestions before activating the footer.
+	await lastFilter.press("Tab");
+	const apply = filterDialog.getByRole("button", { name: "適用", exact: true });
+	await expect(apply).toBeInViewport();
+	await expectNoHorizontalOverflow(page);
+	await apply.click();
+	await expect(filterDialog).toBeHidden();
+	await expect
+		.poll(async () =>
+			Number(
+				(await page.getByText(/^[\d,]+ items$/).textContent())?.replace(
+					/[^\d]/g,
+					"",
+				),
+			),
+		)
+		.toBeGreaterThan(1);
+	await expect(primaryResult).toBeVisible();
 	await expectNoHorizontalOverflow(page);
 });

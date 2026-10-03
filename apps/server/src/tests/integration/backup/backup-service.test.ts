@@ -138,7 +138,7 @@ describe("BackupService Integration", () => {
 			.values({ characterId: character.id, ipId: ip.id, source: "manual" });
 		const [author] = await db
 			.insert(authors)
-			.values({ name: "Dump Author", accountId: "dump-author" })
+			.values({ name: "Dump Author" })
 			.returning();
 		await db.insert(authorAccounts).values({
 			authorId: author.id,
@@ -165,7 +165,7 @@ describe("BackupService Integration", () => {
 		// 2. Execute Dump
 		const dumpStream = (await BackupService.createDump(
 			testSourceId,
-			"json",
+			"ndjson",
 		)) as ReadableStream;
 
 		// 3. Verify
@@ -207,18 +207,22 @@ describe("BackupService Integration", () => {
 		expect(item.sourceUrls[0]).toBe("https://example.com/source");
 	});
 
-	it("exports a sole platform account when the legacy account ID is absent", () => {
+	it("exports every external identity belonging to an author", () => {
 		const [item] = BackupService._transformMediaList([
 			{
 				authors: [
 					{
 						author: {
-							name: "Account-only Author",
-							accountId: null,
+							name: "Multi-account Author",
+							accountId: "account-a",
 							accounts: [
 								{
+									platform: "twitter",
+									accountId: "account-b",
+								},
+								{
 									platform: "pixiv-fanbox",
-									accountId: "account-only",
+									accountId: "account-a",
 								},
 							],
 						},
@@ -228,12 +232,89 @@ describe("BackupService Integration", () => {
 		]);
 
 		expect(item?.authors).toEqual([
+			expect.objectContaining({
+				name: "Multi-account Author",
+				accounts: expect.arrayContaining([
+					expect.objectContaining({
+						platform: "pixiv-fanbox",
+						accountId: "account-a",
+					}),
+					expect.objectContaining({
+						platform: "twitter",
+						accountId: "account-b",
+					}),
+				]),
+			}),
+		]);
+	});
+
+	it("restores multiple account profiles and a separate management name through a JSON dump", async () => {
+		await db
+			.update(mediaSources)
+			.set({ type: "s3" })
+			.where(eq(mediaSources.id, testSourceId));
+		const [item] = BackupService._transformMediaList([
 			{
-				name: "Account-only Author",
-				accountId: "account-only",
-				platform: "pixiv-fanbox",
+				filePath: "profiles.png",
+				fileName: "profiles.png",
+				mediaType: "image",
+				width: 100,
+				height: 100,
+				fileSize: 100,
+				authors: [
+					{
+						author: {
+							name: "My management label",
+							accounts: [
+								{
+									platform: "twitter",
+									accountId: "renamed",
+									remoteId: "18446744073709551615",
+									displayName: "External display",
+									profileUrl: "https://x.com/renamed",
+									observedAt: new Date("2026-02-01"),
+								},
+								{
+									platform: "pixiv-fanbox",
+									accountId: "fanbox-creator",
+									remoteId: "789",
+									displayName: "Other profile",
+									profileUrl: "https://fanbox-creator.fanbox.cc",
+									observedAt: new Date("2026-01-01"),
+								},
+							],
+						},
+					},
+				],
 			},
 		]);
+		const result = await BackupService.restoreSource(testSourceId, [
+			JSON.parse(JSON.stringify(item)),
+		]);
+		expect(result.errors).toEqual([]);
+		expect(result.processed).toBe(1);
+		const restored = await db.query.authors.findFirst({
+			with: { accounts: true },
+		});
+		expect(restored?.name).toBe("My management label");
+		expect(restored?.accounts).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					platform: "twitter",
+					accountId: "renamed",
+					remoteId: "18446744073709551615",
+					displayName: "External display",
+					observedAt: new Date("2026-02-01"),
+				}),
+				expect.objectContaining({
+					platform: "pixiv-fanbox",
+					accountId: "fanbox-creator",
+					remoteId: "789",
+					displayName: "Other profile",
+				}),
+			]),
+		);
+		expect(restored?.accounts).toHaveLength(2);
 	});
 
 	it("should restore projects, characters, ips, authors, and sourceUrls from dump item", async () => {
@@ -305,7 +386,9 @@ describe("BackupService Integration", () => {
 
 		expect(restoredMedia?.authors).toHaveLength(1);
 		expect(restoredMedia?.authors[0].author.name).toBe("Restore Author");
-		expect(restoredMedia?.authors[0].author.accountId).toBe("test_account_123");
+		expect(restoredMedia?.authors[0].author.accounts[0]?.accountId).toBe(
+			"test_account_123",
+		);
 		expect(restoredMedia?.authors[0].author.accounts).toEqual([
 			expect.objectContaining({
 				platform: "pixiv-fanbox",

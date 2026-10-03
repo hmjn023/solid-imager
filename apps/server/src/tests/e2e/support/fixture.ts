@@ -31,3 +31,7 @@ export function sourcePath(): string {
 export function mediaPath(mediaId = E2E_PRIMARY_MEDIA_ID): string {
 	return `/sources/${E2E_SOURCE_ID}/${mediaId}`;
 }
+
+export const E2E_WRONG_AUTHOR_ID = "44444444-4444-4444-8444-444444444444";
+export const E2E_CORRECT_AUTHOR_ID = "55555555-5555-4555-8555-555555555555";
+export const E2E_COAUTHOR_ID = "66666666-6666-4666-8666-666666666666";

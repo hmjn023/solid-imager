@@ -42,10 +42,15 @@ describe("createAppQueryClientConfig", () => {
 		);
 
 		await expect(
-			queryClient.prefetchQuery({
-				queryKey: ["auxiliary"],
-				queryFn: () => Promise.reject(new Error("unavailable")),
-			}),
+			queryClient
+				.query({
+					queryKey: ["auxiliary"],
+					queryFn: () => Promise.reject(new Error("unavailable")),
+				})
+				.then(
+					() => undefined,
+					() => undefined,
+				),
 		).resolves.toBeUndefined();
 	});
 });

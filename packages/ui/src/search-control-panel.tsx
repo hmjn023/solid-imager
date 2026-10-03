@@ -23,7 +23,6 @@ import {
 import { SortControls } from "./sort-controls";
 import {
 	clearSimilaritySearch,
-	type SearchPersistenceSurface,
 	searchState,
 	setSearchState,
 } from "./stores/search-store";
@@ -49,7 +48,6 @@ export type SearchControlPanelProps = {
 	setState?: SetStoreFunction<SearchState>;
 	/** Hide inline submit controls when an enclosing surface supplies Apply. */
 	showSearchButton?: boolean;
-	persistenceSurface?: SearchPersistenceSurface;
 	class?: string;
 	usePopover?: boolean;
 };
@@ -73,7 +71,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 	};
 	const clearSimilarityAnchor = () => {
 		if (!props.setState) {
-			clearSimilaritySearch({ surface: props.persistenceSurface });
+			clearSimilaritySearch();
 			return;
 		}
 		props.setState({

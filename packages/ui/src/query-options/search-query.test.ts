@@ -168,14 +168,14 @@ describe("buildSearchResultsQueryOptions", () => {
 			throw new Error("queryFn must be a function");
 		}
 		const signal = new AbortController().signal;
+		// The query function only reads pageParam and signal; direction is deprecated.
 		await queryFn({
 			client: new QueryClient(),
 			queryKey: options.queryKey,
 			signal,
 			meta: undefined,
 			pageParam: 80,
-			direction: "forward",
-		});
+		} as unknown as Parameters<typeof queryFn>[0]);
 
 		expect(searchMedia).toHaveBeenCalledOnce();
 		expect(searchMedia).toHaveBeenCalledWith(
@@ -260,8 +260,7 @@ describe("buildSearchResultsQueryOptions", () => {
 				signal,
 				meta: undefined,
 				pageParam: 200,
-				direction: "forward",
-			}),
+			} as unknown as Parameters<typeof queryFn>[0]),
 		).resolves.toEqual(response);
 		expect(searchSimilar).toHaveBeenCalledWith(
 			{
@@ -311,8 +310,7 @@ describe("buildSearchResultsQueryOptions", () => {
 				signal: new AbortController().signal,
 				meta: undefined,
 				pageParam: 0,
-				direction: "forward",
-			}),
+			} as unknown as Parameters<typeof queryFn>[0]),
 		).resolves.toEqual(EMPTY_RESPONSE);
 		expect(options.enabled).toBe(false);
 		expect(searchMedia).not.toHaveBeenCalled();
@@ -361,8 +359,7 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 			signal,
 			meta: undefined,
 			pageParam: 400,
-			direction: "forward",
-		});
+		} as unknown as Parameters<typeof queryFn>[0]);
 
 		expect(searchMedia).toHaveBeenCalledWith(
 			"source-3",
@@ -426,8 +423,7 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 				signal: new AbortController().signal,
 				meta: undefined,
 				pageParam: 0,
-				direction: "forward",
-			}),
+			} as unknown as Parameters<typeof queryFn>[0]),
 		).rejects.toThrow("Media source ID is required");
 		expect(options.enabled).toBe(false);
 		expect(searchMedia).not.toHaveBeenCalled();

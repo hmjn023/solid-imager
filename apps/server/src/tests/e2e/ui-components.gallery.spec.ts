@@ -1,4 +1,5 @@
-import { expect, type Locator, test } from "@playwright/test";
+import type { Locator } from "@playwright/test";
+import { expect, test } from "./support/test";
 
 function getGalleryUrl(): string {
 	const port = process.env.E2E_GALLERY_PORT;
@@ -90,6 +91,20 @@ test("shared Solid UI gallery has no narrow viewport overflow", async ({
 }) => {
 	await page.setViewportSize({ width: 320, height: 720 });
 	await page.goto(getGalleryUrl());
+	await page.evaluate(async () => {
+		const loadedFaces = await document.fonts.load('400 16px "Noto Sans"');
+		await document.fonts.ready;
+		if (
+			!getComputedStyle(document.body).fontFamily.startsWith('"Noto Sans"') ||
+			!loadedFaces.some(
+				(face) =>
+					face.family.replaceAll('"', "") === "Noto Sans" &&
+					face.status === "loaded",
+			)
+		) {
+			throw new Error("The gallery fixture font did not load");
+		}
+	});
 	const overflow = await page.evaluate(
 		() =>
 			document.documentElement.scrollWidth -

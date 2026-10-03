@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-open-x-verification-profile"
+description = "Opens only Manager X account verification links in the default browser."
+commands.allow = ["open_x_verification_profile"]

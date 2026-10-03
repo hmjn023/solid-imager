@@ -1,5 +1,5 @@
 import { Match, Show, Switch } from "solid-js";
-import { LegacyMediaDetailSkeleton } from "./legacy-media-detail-skeleton";
+import { MediaDetailSkeleton } from "./media-detail-skeleton";
 import {
 	CardGridSkeleton,
 	CardSkeleton,
@@ -35,9 +35,7 @@ export function ScreenSkeleton(props: ScreenSkeletonProps) {
 			data-screen-skeleton={props.layout}
 			data-state-ui="pending"
 		>
-			<p class="sr-only" role="status">
-				{props.loadingLabel}
-			</p>
+			<output class="sr-only">{props.loadingLabel}</output>
 			<div aria-busy="true">
 				<div
 					class={cn(
@@ -84,13 +82,13 @@ export function ScreenSkeleton(props: ScreenSkeletonProps) {
 						<ManagerSkeleton />
 					</Match>
 					<Match when={props.layout === "media-grid"}>
-						<div class="grid gap-6 md:grid-cols-[300px_1fr]">
+						<div class="grid gap-6 md:grid-cols-sidebar-main">
 							<CardSkeleton class="hidden min-h-96 md:block" />
 							<MediaGridSkeleton />
 						</div>
 					</Match>
 					<Match when={props.layout === "media-detail"}>
-						<LegacyMediaDetailSkeleton />
+						<MediaDetailSkeleton />
 					</Match>
 					<Match when={props.layout === "config"}>
 						<ConfigSkeleton />

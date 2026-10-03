@@ -1,422 +1,564 @@
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type {
 	Author,
+	AuthorAccount,
 	NewAuthor,
-} from "@solid-imager/core/domain/media/schemas";
+	AuthorMediaPage,
+	CorrectMediaAuthorsInput,
+	MergeAuthorsInput,
+} from "@solid-imager/core/domain/authors/schemas";
+import {
+	ResourceConflictError,
+	ResourceNotFoundError,
+} from "@solid-imager/core/domain/errors";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import { and, eq, inArray, or, type SQL, sql } from "drizzle-orm";
-import { authorAccounts, authors, mediaAuthors } from "../schema";
+import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import {
+	authorAccounts,
+	authors,
+	mediaAuthors,
+	medias,
+	mediaUrls,
+	tags,
+} from "../schema";
+import { createTransactionManager } from "../transaction-manager";
 import type { DrizzleExecutor } from "../types";
 
-type AuthorRepositoryOptions = {
-	orderByName?: boolean;
-};
-
-function mapAuthor(row: typeof authors.$inferSelect): Author {
+function mapAccount(row: typeof authorAccounts.$inferSelect): AuthorAccount {
 	return {
 		id: row.id,
-		name: row.name,
+		authorId: row.authorId,
+		platform: row.platform,
 		accountId: row.accountId,
+		remoteId: row.remoteId,
+		displayName: row.displayName,
+		profileUrl: row.profileUrl,
+		observedAt: row.observedAt,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 	};
 }
 
-function normalizeAccountId(
-	platform: NonNullable<NewAuthor["platform"]>,
-	accountId: string,
-): string {
-	if (platform !== "twitter") return accountId;
-	return accountId.replace(/^@/, "").toLowerCase();
-}
-
-function normalizeAuthorInput(author: NewAuthor): NewAuthor {
-	if (!(author.platform && author.accountId)) return author;
+export function mapAuthor(
+	row: typeof authors.$inferSelect,
+	accountRows: (typeof authorAccounts.$inferSelect)[],
+): Author {
+	const accounts = [...accountRows]
+		.sort(
+			(left, right) =>
+				left.createdAt.getTime() - right.createdAt.getTime() ||
+				left.id.localeCompare(right.id),
+		)
+		.map(mapAccount);
 	return {
-		...author,
-		accountId: normalizeAccountId(author.platform, author.accountId),
+		id: row.id,
+		name: row.name,
+		accountId: accounts[0]?.accountId ?? null,
+		accounts,
+		createdAt: row.createdAt,
+		updatedAt: row.updatedAt,
 	};
 }
 
-function authorIdentityKey(
-	platform: NonNullable<NewAuthor["platform"]>,
-	accountId: string,
-): string {
-	const normalizedAccountId = normalizeAccountId(platform, accountId);
-	const identity =
-		platform === "twitter"
-			? normalizedAccountId.replace(/^@/, "")
-			: normalizedAccountId;
-	return `${platform}:${identity}`;
-}
-
-function normalizeLegacyAccountId(accountId: string): string {
-	return accountId.replace(/^@/, "").toLowerCase();
-}
-
-function authorInputKey(author: NewAuthor): string {
-	return author.platform && author.accountId
-		? authorIdentityKey(author.platform, author.accountId)
-		: `name:${author.name}`;
-}
-
-async function findOrCreateAuthorsBulk(
+export async function mapAuthors(
 	client: DrizzleExecutor,
-	inputs: NewAuthor[],
+	rows: (typeof authors.$inferSelect)[],
 ): Promise<Author[]> {
-	const uniqueInputs = new Map<string, NewAuthor>();
-	for (const rawInput of inputs) {
-		const input = normalizeAuthorInput(rawInput);
-		if (input.name.trim().length > 0) {
-			uniqueInputs.set(authorInputKey(input), input);
-		}
+	if (rows.length === 0) return [];
+	const accounts = await client
+		.select()
+		.from(authorAccounts)
+		.where(
+			inArray(
+				authorAccounts.authorId,
+				rows.map((row) => row.id),
+			),
+		)
+		.orderBy(asc(authorAccounts.createdAt), asc(authorAccounts.id));
+	const byAuthor = new Map<string, (typeof authorAccounts.$inferSelect)[]>();
+	for (const account of accounts) {
+		const list = byAuthor.get(account.authorId) ?? [];
+		list.push(account);
+		byAuthor.set(account.authorId, list);
 	}
-	if (uniqueInputs.size === 0) return [];
+	return rows.map((row) => mapAuthor(row, byAuthor.get(row.id) ?? []));
+}
 
-	const identityConditions: SQL[] = [];
-	for (const input of uniqueInputs.values()) {
-		if (input.platform && input.accountId) {
-			const condition = and(
-				eq(authorAccounts.platform, input.platform),
+function normalize(input: NewAuthor): NewAuthor {
+	const accountId = input.accountId?.trim();
+	return {
+		...input,
+		name: input.name.trim(),
+		accountId:
+			accountId && input.platform === "twitter"
+				? accountId.replace(/^@/, "").toLowerCase()
+				: accountId || null,
+	};
+}
+
+function identityKey(input: NewAuthor): string {
+	if (input.remoteId && input.platform)
+		return `${input.platform}:id:${input.remoteId}`;
+	if (input.accountId)
+		return `${input.platform ?? "unknown"}:handle:${input.accountId}`;
+	return `name:${input.name}`;
+}
+
+function accountIdentity(input: NewAuthor) {
+	const platform = input.platform
+		? eq(authorAccounts.platform, input.platform)
+		: isNull(authorAccounts.platform);
+	return input.remoteId
+		? and(platform, eq(authorAccounts.remoteId, input.remoteId))
+		: and(
+				platform,
+				isNull(authorAccounts.remoteId),
 				input.platform === "twitter"
-					? sql`lower(regexp_replace(${authorAccounts.accountId}, '^@', '')) = ${input.accountId.replace(/^@/, "")}`
-					: eq(authorAccounts.accountId, input.accountId),
+					? sql`lower(regexp_replace(${authorAccounts.accountId}, '^@', '')) = ${input.accountId}`
+					: eq(authorAccounts.accountId, input.accountId ?? ""),
 			);
-			if (condition) identityConditions.push(condition);
-		}
-	}
+}
 
-	const resolved = new Map<string, typeof authors.$inferSelect>();
-	if (identityConditions.length > 0) {
-		const existingIdentities = await client
-			.select({ account: authorAccounts, author: authors })
-			.from(authorAccounts)
-			.innerJoin(authors, eq(authorAccounts.authorId, authors.id))
-			.where(or(...identityConditions));
-		for (const row of existingIdentities) {
-			resolved.set(
-				authorIdentityKey(row.account.platform, row.account.accountId),
-				row.author,
-			);
-		}
-	}
+async function findAccount(client: DrizzleExecutor, input: NewAuthor) {
+	const matches = await client
+		.select()
+		.from(authorAccounts)
+		.where(accountIdentity(input))
+		.limit(2);
+	if (matches.length > 1)
+		throw new ResourceConflictError(
+			"外部アカウントの候補が複数あります。作者管理で確認して統合してください。",
+		);
+	return matches[0];
+}
 
-	const unresolved = [...uniqueInputs.entries()].filter(
-		([key]) => !resolved.has(key),
+function isFreshProfile(
+	account: typeof authorAccounts.$inferSelect,
+	observedAt: Date | undefined,
+): boolean {
+	return (
+		!account.observedAt ||
+		Boolean(observedAt && observedAt >= account.observedAt)
 	);
-	const accountIds = [
-		...new Set(
-			unresolved.flatMap(([, input]) =>
-				input.accountId ? [input.accountId] : [],
+}
+
+async function refreshAccount(
+	client: DrizzleExecutor,
+	account: typeof authorAccounts.$inferSelect,
+	input: NewAuthor,
+	displayName: string,
+): Promise<void> {
+	if (!isFreshProfile(account, input.observedAt)) return;
+	await client
+		.update(authorAccounts)
+		.set({
+			accountId: input.accountId ?? account.accountId,
+			displayName,
+			profileUrl: input.profileUrl ?? account.profileUrl,
+			observedAt: input.observedAt ?? account.observedAt,
+			updatedAt: new Date(),
+		})
+		.where(eq(authorAccounts.id, account.id));
+}
+
+async function resolveAuthors(
+	client: DrizzleExecutor,
+	rawInputs: NewAuthor[],
+): Promise<Author[]> {
+	const inputs = rawInputs
+		.map((raw) => {
+			const primary = raw.accounts?.[0];
+			return normalize(
+				primary
+					? {
+							...raw,
+							accountId: primary.accountId,
+							platform: primary.platform ?? undefined,
+							remoteId: primary.remoteId,
+							observedAt: primary.observedAt ?? undefined,
+							profileUrl: primary.profileUrl,
+						}
+					: raw,
+			);
+		})
+		.filter((input) => input.name.length > 0);
+	// Sorted transaction locks serialize find/create and avoid duplicate name-only authors.
+	const identityKeys = inputs.flatMap((input) => [
+		identityKey(input),
+		...(input.accounts?.slice(1) ?? []).map((account) =>
+			identityKey(
+				normalize({
+					...account,
+					platform: account.platform ?? undefined,
+					observedAt: account.observedAt ?? undefined,
+					name: input.name,
+				}),
 			),
 		),
-	];
-	const names = [...new Set(unresolved.map(([, input]) => input.name))];
-	const legacyConditions: SQL[] = [];
-	if (accountIds.length > 0) {
-		const allVariants = [
-			...new Set(accountIds.flatMap((id) => [id, `@${id}`])),
-		];
-		legacyConditions.push(inArray(authors.accountId, allVariants));
+	]);
+	for (const key of [...new Set(identityKeys)].sort()) {
+		await client.execute(
+			sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`,
+		);
 	}
-	if (names.length > 0) {
-		legacyConditions.push(inArray(authors.name, names));
-	}
-
-	const legacyAuthors =
-		legacyConditions.length > 0
-			? await client
-					.select()
-					.from(authors)
-					.where(or(...legacyConditions))
-			: [];
-	const legacyByAccount = new Map(
-		legacyAuthors.flatMap((author) => {
-			if (!author.accountId) return [];
-			const normalized = normalizeLegacyAccountId(author.accountId);
-			const entries: [string, typeof authors.$inferSelect][] = [
-				[normalized, author],
-			];
-			if (normalized !== author.accountId) {
-				entries.push([author.accountId, author]);
-			}
-			return entries;
-		}),
-	);
-	const legacyByName = new Map(
-		legacyAuthors.map((author) => [author.name, author] as const),
-	);
-	const legacyAuthorIds = legacyAuthors.map((author) => author.id);
-	const linkedLegacyAuthorIds =
-		legacyAuthorIds.length > 0
-			? new Set(
-					(
-						await client
-							.select({ authorId: authorAccounts.authorId })
-							.from(authorAccounts)
-							.where(inArray(authorAccounts.authorId, legacyAuthorIds))
-					).map((account) => account.authorId),
-				)
-			: new Set<string>();
-
-	const accountsToInsert: (typeof authorAccounts.$inferInsert)[] = [];
-	const newlyCreatedAuthorByKey = new Map<string, string>();
-	for (const [key, input] of unresolved) {
-		const legacyByMatchingAccount = input.accountId
-			? legacyByAccount.get(input.accountId)
-			: undefined;
-		const legacyByMatchingName = legacyByName.get(input.name);
-		const legacy =
-			legacyByMatchingAccount ??
-			(legacyByMatchingName?.accountId ? undefined : legacyByMatchingName);
-		const canReuseLegacy =
-			legacy && (!input.platform || !linkedLegacyAuthorIds.has(legacy.id));
-
-		let author: typeof authors.$inferSelect;
-		if (canReuseLegacy && legacy) {
-			author = legacy;
-		} else {
-			const [createdAuthor] = await client
-				.insert(authors)
-				.values({
+	const resolvedRows: (typeof authors.$inferSelect)[] = [];
+	for (const input of inputs) {
+		let account: typeof authorAccounts.$inferSelect | undefined;
+		if (input.accountId) {
+			// A mutable handle must never be used to merge into a verified identity.
+			account = await findAccount(client, input);
+		}
+		// Any account in a backup may be the existing anchor, regardless of array order.
+		const existingAuthorIds = new Set(account ? [account.authorId] : []);
+		for (const extra of input.accounts?.slice(1) ?? []) {
+			const existing = await findAccount(
+				client,
+				normalize({
+					...extra,
+					platform: extra.platform ?? undefined,
+					observedAt: extra.observedAt ?? undefined,
 					name: input.name,
-					accountId: input.accountId ?? null,
-				})
+				}),
+			);
+			if (existing) existingAuthorIds.add(existing.authorId);
+		}
+		if (existingAuthorIds.size > 1)
+			throw new ResourceConflictError(
+				"外部アカウントが別の作者に紐づいています。作者管理で確認して統合してください。",
+			);
+		const existingAuthorId = existingAuthorIds.values().next().value;
+		let author: typeof authors.$inferSelect | undefined;
+		if (existingAuthorId) {
+			[author] = await client
+				.select()
+				.from(authors)
+				.where(eq(authors.id, existingAuthorId))
+				.limit(1);
+		} else if (!input.accountId) {
+			// Names only resolve unlinked, name-only authors; identical names are not identity evidence.
+			[author] = await client
+				.select()
+				.from(authors)
+				.where(
+					and(
+						eq(authors.name, input.name),
+						sql`NOT EXISTS (SELECT 1 FROM ${authorAccounts} WHERE ${authorAccounts.authorId} = ${authors.id})`,
+					),
+				)
+				.limit(1);
+		}
+		if (!author) {
+			[author] = await client
+				.insert(authors)
+				.values({ name: input.name })
 				.returning();
-			if (!createdAuthor) {
-				throw new Error(`Failed to create author for ${input.name}`);
-			}
-			author = createdAuthor;
-			newlyCreatedAuthorByKey.set(key, author.id);
 		}
-		resolved.set(key, author);
-
-		if (input.platform && input.accountId) {
-			accountsToInsert.push({
+		if (!author) throw new Error("Failed to create author");
+		const profileName = input.accounts?.[0]?.displayName ?? input.name;
+		if (account && isFreshProfile(account, input.observedAt)) {
+			// Keep a deliberately edited local author name; update platform profile independently.
+			if (
+				!input.accounts &&
+				author.name === (account.displayName ?? author.name) &&
+				input.name !== author.name
+			) {
+				const [updated] = await client
+					.update(authors)
+					.set({ name: input.name, updatedAt: new Date() })
+					.where(eq(authors.id, author.id))
+					.returning();
+				if (updated) author = updated;
+			}
+			await refreshAccount(client, account, input, profileName);
+		} else if (!account && input.accountId) {
+			await client.insert(authorAccounts).values({
 				authorId: author.id,
-				platform: input.platform,
+				platform: input.platform ?? null,
 				accountId: input.accountId,
+				remoteId: input.remoteId ?? null,
+				displayName: profileName,
+				profileUrl: input.profileUrl ?? null,
+				observedAt: input.observedAt ?? null,
 			});
 		}
-	}
-
-	if (accountsToInsert.length > 0) {
-		const insertedAccounts = await client
-			.insert(authorAccounts)
-			.values(accountsToInsert)
-			.onConflictDoNothing()
-			.returning();
-		const insertedKeys = new Set(
-			insertedAccounts.map((account) =>
-				authorIdentityKey(account.platform, account.accountId),
-			),
-		);
-		const attemptedKeys = new Set(
-			accountsToInsert.map((account) =>
-				authorIdentityKey(account.platform, account.accountId),
-			),
-		);
-		const conflicted = [...uniqueInputs.entries()].filter(
-			([key, input]) =>
-				input.platform &&
-				input.accountId &&
-				attemptedKeys.has(key) &&
-				!insertedKeys.has(key),
-		);
-		if (conflicted.length > 0) {
-			const conditions = conflicted.flatMap(([, input]) => {
-				if (!(input.platform && input.accountId)) return [];
-				const condition = and(
-					eq(authorAccounts.platform, input.platform),
-					eq(authorAccounts.accountId, input.accountId),
-				);
-				return condition ? [condition] : [];
+		// A restore can explicitly carry several accounts belonging to this author.
+		for (const extra of input.accounts?.slice(1) ?? []) {
+			const normalized = normalize({
+				...extra,
+				platform: extra.platform ?? undefined,
+				observedAt: extra.observedAt ?? undefined,
+				name: input.name,
 			});
-			const canonicalAccounts = await client
-				.select({ account: authorAccounts, author: authors })
-				.from(authorAccounts)
-				.innerJoin(authors, eq(authorAccounts.authorId, authors.id))
-				.where(or(...conditions));
-			for (const row of canonicalAccounts) {
-				const key = authorIdentityKey(
-					row.account.platform,
-					row.account.accountId,
+			const existing = await findAccount(client, normalized);
+			if (existing && existing.authorId !== author.id)
+				throw new ResourceConflictError(
+					"外部アカウントが別の作者に紐づいています。作者管理で確認して統合してください。",
 				);
-				resolved.set(key, row.author);
-			}
-			const orphanIds = conflicted.flatMap(([key]) => {
-				const id = newlyCreatedAuthorByKey.get(key);
-				return id ? [id] : [];
-			});
-			if (orphanIds.length > 0) {
-				await client.delete(authors).where(inArray(authors.id, orphanIds));
+			if (existing) {
+				await refreshAccount(
+					client,
+					existing,
+					normalized,
+					extra.displayName ?? input.name,
+				);
+			} else {
+				await client.insert(authorAccounts).values({
+					...extra,
+					accountId: normalized.accountId ?? extra.accountId,
+					authorId: author.id,
+				});
 			}
 		}
+		resolvedRows.push(author);
 	}
-
-	const desiredNames = new Map<string, string>();
-	for (const [key, input] of uniqueInputs) {
-		const author = resolved.get(key);
-		if (
-			author &&
-			input.platform &&
-			input.accountId &&
-			author.name !== input.name
-		) {
-			desiredNames.set(author.id, input.name);
-		}
-	}
-
-	const refreshedAuthors = new Map<string, typeof authors.$inferSelect>();
-	if (desiredNames.size > 0) {
-		const ids = [...desiredNames.keys()];
-		const cases = ids.map(
-			(id) =>
-				sql`WHEN ${authors.id} = ${id}::uuid THEN ${desiredNames.get(id)}`,
-		);
-		await client
-			.update(authors)
-			.set({
-				name: sql`CASE ${sql.join(cases, sql` `)} END`,
-				updatedAt: new Date(),
-			})
-			.where(inArray(authors.id, ids));
-
-		const updatedRows = await client
-			.select()
-			.from(authors)
-			.where(inArray(authors.id, ids));
-		for (const row of updatedRows) {
-			refreshedAuthors.set(row.id, row);
-		}
-	}
-
-	for (const [key, author] of resolved) {
-		const refreshed = refreshedAuthors.get(author.id);
-		if (refreshed) resolved.set(key, refreshed);
-	}
-
-	return [...uniqueInputs.keys()].flatMap((key) => {
-		const author = resolved.get(key);
-		return author ? [mapAuthor(author)] : [];
+	// Reload once so repeated inputs in a bulk request expose the final profile state.
+	const rows = resolvedRows.length
+		? await client
+				.select()
+				.from(authors)
+				.where(
+					inArray(
+						authors.id,
+						resolvedRows.map((row) => row.id),
+					),
+				)
+		: [];
+	const byId = new Map(
+		(await mapAuthors(client, rows)).map((author) => [author.id, author]),
+	);
+	return resolvedRows.flatMap((row) => {
+		const author = byId.get(row.id);
+		return author ? [author] : [];
 	});
 }
 
 export function createAuthorRepository(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
-	_options?: AuthorRepositoryOptions,
 ): IAuthorRepository {
+	const transactions = createTransactionManager(() => getExecutor());
+	const resolve = (inputs: NewAuthor[], tx?: unknown) =>
+		tx
+			? resolveAuthors(getExecutor(tx), inputs)
+			: transactions.transaction((transaction) =>
+					resolveAuthors(getExecutor(transaction), inputs),
+				);
+	const findById = async (id: string, tx?: unknown): Promise<Author | null> => {
+		const client = getExecutor(tx);
+		const rows = await client
+			.select()
+			.from(authors)
+			.where(eq(authors.id, id))
+			.limit(1);
+		return (await mapAuthors(client, rows))[0] ?? null;
+	};
+	const findByMediaId = async (
+		mediaId: string,
+		tx?: unknown,
+	): Promise<Author[]> => {
+		const client = getExecutor(tx);
+		const rows = await client
+			.select({ author: authors })
+			.from(mediaAuthors)
+			.innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
+			.where(eq(mediaAuthors.mediaId, mediaId));
+		return mapAuthors(
+			client,
+			rows.map((row) => row.author),
+		);
+	};
 	return {
-		async findAll(): Promise<Author[]> {
-			const rows = await getExecutor().select().from(authors);
-			return rows.map(mapAuthor);
-		},
-
-		async findById(id: string): Promise<Author | null> {
-			const rows = await getExecutor()
+		async confirmAccount(input, tx) {
+			const client = getExecutor(tx);
+			// Lock both the old identity and the new fixed ID in the import lock order.
+			// Otherwise an in-flight handle-only import could overwrite a promoted account.
+			const [previous] = input.accountId
+				? await client
+						.select()
+						.from(authorAccounts)
+						.where(eq(authorAccounts.id, input.accountId))
+				: [];
+			const keys = [`twitter:id:${input.profile.remoteId}`];
+			if (previous)
+				keys.push(
+					identityKey(
+						normalize({
+							name: "",
+							platform: previous.platform ?? undefined,
+							accountId: previous.accountId,
+							remoteId: previous.remoteId,
+						}),
+					),
+				);
+			for (const key of [...new Set(keys)].sort())
+				await client.execute(
+					sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`,
+				);
+			const [author] = await client
 				.select()
 				.from(authors)
-				.where(eq(authors.id, id))
-				.limit(1);
-			return rows[0] ? mapAuthor(rows[0]) : null;
+				.where(eq(authors.id, input.authorId))
+				.for("update");
+			const [account] = input.accountId
+				? await client
+						.select()
+						.from(authorAccounts)
+						.where(
+							and(
+								eq(authorAccounts.id, input.accountId),
+								eq(authorAccounts.authorId, input.authorId),
+							),
+						)
+						.for("update")
+				: [];
+			if (!author || (input.accountId && !account))
+				throw new ResourceNotFoundError(
+					"Author account",
+					input.accountId ?? input.authorId,
+				);
+			if (!input.accountId) {
+				const [existing] = await client
+					.select({ id: authorAccounts.id })
+					.from(authorAccounts)
+					.where(eq(authorAccounts.authorId, input.authorId))
+					.limit(1);
+				if (existing)
+					throw new ResourceConflictError(
+						"アカウント情報が変更されています。再取得して確認してください。",
+					);
+			}
+			if (
+				(account?.updatedAt ?? author.updatedAt).getTime() !==
+				input.expectedUpdatedAt.getTime()
+			)
+				throw new ResourceConflictError(
+					"アカウント情報が変更されています。再取得して確認してください。",
+				);
+			if (
+				(account?.platform && account.platform !== "twitter") ||
+				(account?.remoteId && account.remoteId !== input.profile.remoteId)
+			)
+				throw new ResourceConflictError(
+					"登録済みの固定IDと異なります。作者の付け替え・統合で修正してください。",
+				);
+			const [owner] = await client
+				.select()
+				.from(authorAccounts)
+				.where(
+					and(
+						eq(authorAccounts.platform, "twitter"),
+						eq(authorAccounts.remoteId, input.profile.remoteId),
+					),
+				);
+			if (owner && owner.id !== account?.id)
+				throw new ResourceConflictError(
+					"この固定IDは別のアカウントに登録されています。同一人物と確認して作者を統合してください。",
+				);
+			const now = new Date();
+			const values = {
+				platform: "twitter" as const,
+				accountId: input.profile.username.toLowerCase(),
+				remoteId: input.profile.remoteId,
+				displayName: input.profile.displayName,
+				profileUrl: `https://x.com/${input.profile.username}`,
+				observedAt: input.observedAt,
+				updatedAt: now,
+			};
+			if (account)
+				await client
+					.update(authorAccounts)
+					.set(values)
+					.where(eq(authorAccounts.id, account.id));
+			else
+				await client
+					.insert(authorAccounts)
+					.values({ ...values, authorId: author.id });
+			// Keep deliberately edited management names; otherwise follow the profile.
+			await client
+				.update(authors)
+				.set({
+					name:
+						account?.displayName && author.name === account.displayName
+							? input.profile.displayName
+							: author.name,
+					updatedAt: now,
+				})
+				.where(eq(authors.id, author.id));
+			const result = await findById(author.id, tx);
+			if (!result) throw new ResourceNotFoundError("Author", author.id);
+			return result;
 		},
-
-		async findByName(name: string, tx?: unknown): Promise<Author | null> {
-			const rows = await getExecutor(tx)
+		async findAll() {
+			const client = getExecutor();
+			return mapAuthors(
+				client,
+				await client
+					.select()
+					.from(authors)
+					.orderBy(asc(authors.name), asc(authors.id)),
+			);
+		},
+		findById,
+		async findByName(name, tx) {
+			const client = getExecutor(tx);
+			const rows = await client
 				.select()
 				.from(authors)
 				.where(eq(authors.name, name))
 				.limit(1);
-			return rows[0] ? mapAuthor(rows[0]) : null;
+			return (await mapAuthors(client, rows))[0] ?? null;
 		},
-
-		async findByNames(names: string[], tx?: unknown): Promise<Author[]> {
-			if (names.length === 0) return [];
-			const executor = getExecutor(tx);
-			const rows = await executor
-				.select()
-				.from(authors)
-				.where(inArray(authors.name, names));
-			return rows.map(mapAuthor);
-		},
-
-		async create(author: NewAuthor, tx?: unknown): Promise<Author> {
-			if (author.name.trim().length === 0) {
-				throw new Error("Author name cannot be empty");
-			}
-			const result = await findOrCreateAuthorsBulk(getExecutor(tx), [author]);
-			const created = result[0];
-			if (!created) {
-				throw new Error("Failed to create author");
-			}
-			return created;
-		},
-
-		async update(
-			id: string,
-			updates: Partial<NewAuthor>,
-			tx?: unknown,
-		): Promise<Author> {
+		async findByNames(names, tx) {
+			if (!names.length) return [];
 			const client = getExecutor(tx);
-			const result = await client
+			return mapAuthors(
+				client,
+				await client.select().from(authors).where(inArray(authors.name, names)),
+			);
+		},
+		async create(input, tx) {
+			if (!input.name.trim()) throw new Error("Author name cannot be empty");
+			const [author] = await resolve([input], tx);
+			if (!author) throw new Error("Failed to create author");
+			return author;
+		},
+		async update(id, updates, tx) {
+			// Profile edits belong to the account, not the local author record.
+			if (
+				updates.accountId !== undefined ||
+				updates.remoteId !== undefined ||
+				updates.platform !== undefined ||
+				updates.accounts !== undefined ||
+				updates.profileUrl !== undefined ||
+				updates.observedAt !== undefined
+			) {
+				throw new Error(
+					"Edit external identities through verified imports or explicit author merging",
+				);
+			}
+			const client = getExecutor(tx);
+			const [row] = await client
 				.update(authors)
 				.set({
 					...(updates.name !== undefined ? { name: updates.name } : {}),
-					...(updates.accountId !== undefined
-						? { accountId: updates.accountId }
-						: {}),
 					updatedAt: new Date(),
 				})
 				.where(eq(authors.id, id))
 				.returning();
-
-			if (!result[0]) {
-				throw new ResourceNotFoundError("Author", id);
-			}
-			return mapAuthor(result[0]);
+			if (!row) throw new ResourceNotFoundError("Author", id);
+			const [author] = await mapAuthors(client, [row]);
+			if (!author) throw new ResourceNotFoundError("Author", id);
+			return author;
 		},
-
-		async delete(id: string, tx?: unknown): Promise<void> {
+		async delete(id, tx) {
 			await getExecutor(tx).delete(authors).where(eq(authors.id, id));
 		},
-
-		async findByMediaId(mediaId: string, tx?: unknown): Promise<Author[]> {
-			const rows = await getExecutor(tx)
-				.select({
-					id: authors.id,
-					name: authors.name,
-					accountId: authors.accountId,
-					createdAt: authors.createdAt,
-					updatedAt: authors.updatedAt,
-				})
-				.from(mediaAuthors)
-				.innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
-				.where(eq(mediaAuthors.mediaId, mediaId));
-			return rows.map((r) => ({
-				id: r.id,
-				name: r.name,
-				accountId: r.accountId,
-				createdAt: r.createdAt,
-				updatedAt: r.updatedAt,
-			}));
-		},
-
-		async addMedia(
-			mediaId: string,
-			authorId: string,
-			tx?: unknown,
-		): Promise<void> {
+		findByMediaId,
+		async addMedia(mediaId, authorId, tx) {
 			await getExecutor(tx)
 				.insert(mediaAuthors)
 				.values({ mediaId, authorId })
 				.onConflictDoNothing();
 		},
-
-		async removeMedia(
-			mediaId: string,
-			authorId: string,
-			tx?: unknown,
-		): Promise<void> {
+		async removeMedia(mediaId, authorId, tx) {
 			await getExecutor(tx)
 				.delete(mediaAuthors)
 				.where(
@@ -426,24 +568,178 @@ export function createAuthorRepository(
 					),
 				);
 		},
-
-		async addMediaBulk(
-			mediaId: string,
-			authorIds: string[],
-			tx?: unknown,
-		): Promise<void> {
-			if (authorIds.length === 0) return;
-			await getExecutor(tx)
-				.insert(mediaAuthors)
-				.values(authorIds.map((authorId) => ({ mediaId, authorId })))
-				.onConflictDoNothing();
+		async addMediaBulk(mediaId, authorIds, tx) {
+			if (authorIds.length)
+				await getExecutor(tx)
+					.insert(mediaAuthors)
+					.values(authorIds.map((authorId) => ({ mediaId, authorId })))
+					.onConflictDoNothing();
 		},
-
-		async findOrCreateBulk(
-			inputs: NewAuthor[],
-			tx?: unknown,
-		): Promise<Author[]> {
-			return findOrCreateAuthorsBulk(getExecutor(tx), inputs);
+		findOrCreateBulk: resolve,
+		async listMedia(input): Promise<AuthorMediaPage> {
+			const client = getExecutor();
+			const filter = and(
+				eq(mediaAuthors.authorId, input.authorId),
+				input.mediaSourceId
+					? eq(medias.mediaSourceId, input.mediaSourceId)
+					: undefined,
+			);
+			const [total] = await client
+				.select({ value: count() })
+				.from(mediaAuthors)
+				.innerJoin(medias, eq(medias.id, mediaAuthors.mediaId))
+				.where(filter);
+			const rows = await client
+				.select({ media: medias })
+				.from(mediaAuthors)
+				.innerJoin(medias, eq(medias.id, mediaAuthors.mediaId))
+				.where(filter)
+				.orderBy(asc(medias.id))
+				.limit(input.limit)
+				.offset(input.offset);
+			const ids = rows.map((row) => row.media.id);
+			if (!ids.length) return { items: [], total: total?.value ?? 0 };
+			const links = await client
+				.select()
+				.from(mediaAuthors)
+				.where(inArray(mediaAuthors.mediaId, ids));
+			const authorIds = [...new Set(links.map((link) => link.authorId))];
+			const authorRows = await client
+				.select()
+				.from(authors)
+				.where(inArray(authors.id, authorIds));
+			const byId = new Map(
+				(await mapAuthors(client, authorRows)).map((author) => [
+					author.id,
+					author,
+				]),
+			);
+			const urls = await client
+				.select()
+				.from(mediaUrls)
+				.where(inArray(mediaUrls.mediaId, ids));
+			return {
+				total: total?.value ?? 0,
+				items: rows.map(({ media }) => ({
+					id: media.id,
+					mediaSourceId: media.mediaSourceId,
+					fileName: media.fileName,
+					modifiedAt: media.modifiedAt,
+					authors: links
+						.filter((link) => link.mediaId === media.id)
+						.flatMap((link) => {
+							const author = byId.get(link.authorId);
+							return author ? [author] : [];
+						}),
+					sourceUrls: urls
+						.filter((url) => url.mediaId === media.id)
+						.map((url) => url.url),
+				})),
+			};
+		},
+		async correctMedia(input: CorrectMediaAuthorsInput, tx) {
+			const client = getExecutor(tx);
+			const ids = [...new Set(input.mediaIds)];
+			// Use the same author-first lock order as merging, then lock media in UUID order.
+			await client
+				.select({ id: authors.id })
+				.from(authors)
+				.where(
+					inArray(
+						authors.id,
+						input.targetAuthorId
+							? [input.sourceAuthorId, input.targetAuthorId]
+							: [input.sourceAuthorId],
+					),
+				)
+				.orderBy(asc(authors.id))
+				.for("update");
+			// Lock media records so concurrent corrections cannot silently change this selection.
+			await client
+				.select({ id: medias.id })
+				.from(medias)
+				.where(inArray(medias.id, ids))
+				.orderBy(asc(medias.id))
+				.for("update");
+			const source = await findById(input.sourceAuthorId, tx);
+			if (!source)
+				throw new ResourceNotFoundError("Author", input.sourceAuthorId);
+			if (input.targetAuthorId && !(await findById(input.targetAuthorId, tx))) {
+				throw new ResourceNotFoundError("Author", input.targetAuthorId);
+			}
+			const links = await client
+				.select()
+				.from(mediaAuthors)
+				.where(
+					and(
+						inArray(mediaAuthors.mediaId, ids),
+						eq(mediaAuthors.authorId, input.sourceAuthorId),
+					),
+				);
+			if (links.length !== ids.length)
+				throw new ResourceConflictError(
+					"作者の関連付けが変更されています。一覧を再取得してください。",
+				);
+			if (input.targetAuthorId)
+				await client
+					.insert(mediaAuthors)
+					.values(
+						ids.map((mediaId) => ({
+							mediaId,
+							authorId: input.targetAuthorId ?? "",
+						})),
+					)
+					.onConflictDoNothing();
+			await client
+				.delete(mediaAuthors)
+				.where(
+					and(
+						inArray(mediaAuthors.mediaId, ids),
+						eq(mediaAuthors.authorId, input.sourceAuthorId),
+					),
+				);
+			return ids.length;
+		},
+		async merge(input: MergeAuthorsInput, tx) {
+			const client = getExecutor(tx);
+			const locked = await client
+				.select()
+				.from(authors)
+				.where(
+					inArray(authors.id, [input.sourceAuthorId, input.targetAuthorId]),
+				)
+				.orderBy(asc(authors.id))
+				.for("update");
+			if (locked.length !== 2) throw new ResourceNotFoundError("Author");
+			const [total] = await client
+				.select({ value: count() })
+				.from(mediaAuthors)
+				.where(eq(mediaAuthors.authorId, input.sourceAuthorId));
+			// Copy within the database so the parameter count is independent of library size.
+			await client
+				.insert(mediaAuthors)
+				.select(
+					client
+						.select({
+							mediaId: mediaAuthors.mediaId,
+							authorId: sql<string>`${input.targetAuthorId}::uuid`.as(
+								"author_id",
+							),
+						})
+						.from(mediaAuthors)
+						.where(eq(mediaAuthors.authorId, input.sourceAuthorId)),
+				)
+				.onConflictDoNothing();
+			await client
+				.update(authorAccounts)
+				.set({ authorId: input.targetAuthorId, updatedAt: new Date() })
+				.where(eq(authorAccounts.authorId, input.sourceAuthorId));
+			await client
+				.update(tags)
+				.set({ authorId: input.targetAuthorId })
+				.where(eq(tags.authorId, input.sourceAuthorId));
+			await client.delete(authors).where(eq(authors.id, input.sourceAuthorId));
+			return total?.value ?? 0;
 		},
 	};
 }

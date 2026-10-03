@@ -1,9 +1,15 @@
+import { buildAbsoluteUrl } from "~/infrastructure/tauri-fetch-helpers";
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import {
 	prefetchManagerPageQueries,
 	useManagerPage,
 } from "@solid-imager/ui/hooks/use-manager-page";
+import { jobsQueryKeys } from "@solid-imager/ui/query-options";
+import type { ManagerTransferFormat } from "@solid-imager/ui/screens/manager/types";
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
+import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { createFileRoute } from "@tanstack/solid-router";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
@@ -31,7 +37,12 @@ import {
 	deleteProject,
 	updateProject,
 } from "~/infrastructure/api-clients/projects-api";
+import {
+	enqueueSourceExport,
+	enqueueSourceImport,
+} from "~/infrastructure/api-clients/sources-api";
 import { startThumbnailWarmup } from "~/infrastructure/api-clients/thumbnails-api";
+import { orpc } from "~/orpc-client";
 import {
 	allCharactersQueryOptions,
 	allIpsQueryOptions,
@@ -65,6 +76,75 @@ const managerActions = {
 	startThumbnailWarmup,
 };
 
+function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
+	return {
+		exportSource: async (input: {
+			format: ManagerTransferFormat;
+			includeImages: boolean;
+			sourceId: string;
+		}) => {
+			try {
+				const mode = input.format;
+				const job = await enqueueSourceExport(
+					input.sourceId,
+					mode,
+					input.format === "tar" && input.includeImages,
+				);
+				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+				toast.info(
+					`Export started (${job.id.slice(0, 8)}). Downloading when ready.`,
+				);
+				return {
+					fileName: `source-${input.sourceId}-dump.${
+						input.format === "ndjson" ? "ndjson" : "tar"
+					}`,
+					jobId: job.id,
+				};
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Export failed");
+				throw error;
+			}
+		},
+		importSource: async (input: {
+			file: File;
+			format: ManagerTransferFormat;
+			sourceId: string;
+		}) => {
+			try {
+				const mode = input.format;
+				const job = await enqueueSourceImport(input.sourceId, mode, input.file);
+				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+				toast.success(
+					`Restore queued (${job.id.slice(0, 8)}). Track it in Jobs.`,
+				);
+				return { jobId: job.id };
+			} catch (error) {
+				toast.error(error instanceof Error ? error.message : "Restore failed");
+				throw error;
+			}
+		},
+		downloadExport: async (input: { fileName: string; jobId: string }) => {
+			try {
+				const blob = await downloadCompletedJobArtifact(orpc.jobs, input.jobId);
+				const url = URL.createObjectURL(blob);
+				const anchor = document.createElement("a");
+				anchor.href = url;
+				anchor.download = input.fileName;
+				document.body.appendChild(anchor);
+				anchor.click();
+				anchor.remove();
+				setTimeout(() => URL.revokeObjectURL(url), 0);
+				toast.success(`Downloaded ${input.fileName}`);
+			} catch (error) {
+				toast.error(
+					error instanceof Error ? error.message : "Failed to download export",
+				);
+				throw error;
+			}
+		},
+	};
+}
+
 export const Route = createFileRoute("/manager")({
 	loader: ({ context }) => {
 		prefetchManagerPageQueries(context.queryClient, managerQueryOptions);
@@ -82,5 +162,40 @@ function ManagerPage() {
 		useBatchJobEvents,
 	});
 
-	return <ManagerScreen manager={manager} />;
+	return (
+		<ManagerScreen
+			authorActions={{
+				openAccountVerificationProfile: isTauri()
+					? (url) => invoke<void>("open_x_verification_profile", { url })
+					: undefined,
+				beginAccountVerification: (input) =>
+					orpc.authors.beginAccountVerification(input),
+				getAccountVerification: (input) =>
+					orpc.authors.getAccountVerification(input),
+				confirmAccountVerification: async (input) => {
+					const result = await orpc.authors.confirmAccountVerification(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				list: () => orpc.authors.list(),
+				create: (input) => orpc.authors.create(input),
+				updateName: (input) => orpc.authors.updateName(input),
+				listMedia: (input) => orpc.authors.listMedia(input),
+				correctMedia: async (input) => {
+					const result = await orpc.authors.correctMedia(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				merge: async (input) => {
+					const result = await orpc.authors.merge(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				thumbnailUrl: (sourceId, mediaId) =>
+					buildAbsoluteUrl(`/api/sources/${sourceId}/thumbnail/${mediaId}`),
+			}}
+			manager={manager}
+			transferActions={createTransferActions(queryClient)}
+		/>
+	);
 }

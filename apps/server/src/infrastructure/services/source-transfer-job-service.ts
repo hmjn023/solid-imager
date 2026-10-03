@@ -72,7 +72,7 @@ export async function processSourceRestoreJob(job: Job): Promise<unknown> {
 
 	let completed = false;
 	try {
-		if (payload.mode === "json") {
+		if (payload.mode === "ndjson") {
 			const result = await BackupService.importSourceNdjson(
 				job.mediaSourceId,
 				payload.inputPath,

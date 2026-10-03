@@ -224,9 +224,8 @@ export const BulkOperationService = {
 		targetSourceId: string,
 	) {
 		const mediaRepo = services.getMediaRepository();
-		const { MediaService } = await import(
-			"~/infrastructure/services/media-service"
-		);
+		const { MediaService } =
+			await import("~/infrastructure/services/media-service");
 
 		// 一括取得してセキュリティチェック
 		const mediaList = await mediaRepo.findByIds(mediaIds);
@@ -266,9 +265,8 @@ export const BulkOperationService = {
 		targetSourceId: string,
 	) {
 		const mediaRepo = services.getMediaRepository();
-		const { MediaService } = await import(
-			"~/infrastructure/services/media-service"
-		);
+		const { MediaService } =
+			await import("~/infrastructure/services/media-service");
 
 		// 一括取得してセキュリティチェック
 		const mediaList = await mediaRepo.findByIds(mediaIds);

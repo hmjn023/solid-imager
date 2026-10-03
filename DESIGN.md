@@ -157,12 +157,12 @@ This file defines the system in two layers:
 1. The tokens in this file are the normative visual values.
 2. The guidance below defines why and when those values are used.
 
-The `/v2/*` routes are the executable reference for layout and interaction
-behavior.
+The shared Web and Tauri workspace screens are the executable reference for
+layout and interaction behavior.
 
 Use the shared components in `packages/ui` and continue to source primitives from
-Solid UI. Keep the V2 screens on those shared primitives instead of creating a
-parallel component library. A visual state or control shown in design references
+Solid UI. Keep the workspace screens on those shared primitives instead of
+creating a parallel component library. A visual state or control shown in design references
 is not an API or feature contract until the corresponding product behavior is
 implemented.
 
@@ -425,7 +425,7 @@ browser Back must render the same item or source.
 ### Do
 
 - Consult this file before changing shared UI, then compare the implemented
-  `/v2/*` routes at wide and narrow viewports.
+  shared workspace screens at wide and narrow viewports.
 - Reuse Solid UI primitives and promote recurring compositions into `packages/ui`.
 - Give each region one scroll owner and verify direct navigation, reload, and Back.
 - Use the shared spacing, radius, type, and color values instead of introducing a

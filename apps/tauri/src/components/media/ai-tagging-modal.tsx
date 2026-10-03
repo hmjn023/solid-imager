@@ -4,20 +4,24 @@ import { orpc } from "~/infrastructure/api-clients/orpc-client";
 type AiTaggingModalProps = {
 	isOpen: boolean;
 	onClose: () => void;
-	fileName: string;
-	loadFile: () => Promise<File>;
+	mediaSourceId: string;
+	mediaId: string;
+	onSuccess?: () => void;
 };
 
 export function AiTaggingModal(props: AiTaggingModalProps) {
 	return (
 		<SharedAiTaggingModal
-			description={`Tags extracted from ${props.fileName} using the AI service.`}
-			fetchTags={async () => {
-				const file = await props.loadFile();
-				return orpc.ai.tag({ file });
-			}}
+			description="Tags extracted from the image using the AI service."
+			fetchTags={() =>
+				orpc.ai.tag({
+					mediaSourceId: props.mediaSourceId,
+					mediaId: props.mediaId,
+				})
+			}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
+			onSuccess={props.onSuccess}
 		/>
 	);
 }

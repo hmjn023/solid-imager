@@ -3,7 +3,7 @@ import type {
 	SearchSnapshotState,
 } from "@solid-imager/core/domain/search/history";
 import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
-import type { HistoryLocation } from "@tanstack/solid-router";
+import type { HistoryLocation, RouterHistory } from "@tanstack/solid-router";
 import { useLocation, useRouter } from "@tanstack/solid-router";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
@@ -146,6 +146,8 @@ export function useSearchHistoryPersistence(
 ) {
 	const sessionRestored = useCurrentSearchPersistence(sourceId, options);
 	const router = useRouter();
+	// The UI package has no registered route tree, so type the library history API here.
+	const history = router.history as RouterHistory;
 	const location = useLocation();
 	const [historyRestored, setHistoryRestored] = createSignal(false);
 	let lastEntryKey: string | null = null;
@@ -156,20 +158,20 @@ export function useSearchHistoryPersistence(
 
 	const isRestored = createMemo(() => sessionRestored() && historyRestored());
 
-	const currentHref = () => router.history.location.href;
-	const currentHistoryState = () => router.history.location.state;
+	const currentHref = () => history.location.href;
+	const currentHistoryState = () => history.location.state;
 	const routePathname = new URL(currentHref(), "http://solid-imager.invalid")
 		.pathname;
 	const currentEntryKey = () =>
 		readHistoryEntryKey(currentHistoryState(), currentHref());
 
 	const replaceWithLocalEntry = (entry: HistorySnapshotEntry): string => {
-		router.history.replace(
+		history.replace(
 			createPathWithoutSnapshot(currentHref()),
 			mergeHistoryEntry(currentHistoryState(), entry),
 			{ ignoreBlocker: true },
 		);
-		router.history.flush();
+		history.flush();
 		return currentEntryKey();
 	};
 
@@ -193,12 +195,12 @@ export function useSearchHistoryPersistence(
 				state: currentEntry?.state ?? state,
 			};
 			const path = createPathWithSnapshot(currentHref(), response.id);
-			router.history.replace(
+			history.replace(
 				path,
 				mergeHistoryEntry(currentHistoryState(), nextEntry),
 				{ ignoreBlocker: true },
 			);
-			router.history.flush();
+			history.flush();
 		} catch {
 			// The local history entry remains usable when the server is unavailable.
 		}
@@ -231,12 +233,12 @@ export function useSearchHistoryPersistence(
 				} catch {
 					if (generation !== restoreGeneration) return;
 					// A deleted/invalid shared snapshot falls back to the current session.
-					router.history.replace(
+					history.replace(
 						createPathWithoutSnapshot(href),
 						getRecord(currentHistoryState()),
 						{ ignoreBlocker: true },
 					);
-					router.history.flush();
+					history.flush();
 				}
 			} else if (localEntry) {
 				snapshotState = localEntry.state;
@@ -247,7 +249,6 @@ export function useSearchHistoryPersistence(
 				applySnapshotState(
 					snapshotState,
 					readPersistedSearchScrollPosition(sourceId, {
-						surface: options.surface,
 						historyEntryKey: entryKey,
 					}),
 				);
@@ -297,12 +298,12 @@ export function useSearchHistoryPersistence(
 		if (currentEntry && stateKey(currentEntry.state) === key) return;
 		skipNextCommitState = key;
 		const entry: HistorySnapshotEntry = { version: HISTORY_VERSION, state };
-		router.history.push(
+		history.push(
 			createPathWithoutSnapshot(currentHref()),
 			mergeHistoryEntry(currentHistoryState(), entry),
 			{ ignoreBlocker: true },
 		);
-		router.history.flush();
+		history.flush();
 		const pushedKey = currentEntryKey();
 		void captureForCurrentEntry(pushedKey, state);
 	};
@@ -310,7 +311,7 @@ export function useSearchHistoryPersistence(
 	let navigationCommitTriggered = false;
 	const disposeNavigationBlocker = isServer
 		? undefined
-		: router.history.block({
+		: history.block({
 				enableBeforeUnload: false,
 				blockerFn: ({
 					currentLocation,
@@ -327,7 +328,7 @@ export function useSearchHistoryPersistence(
 					navigationCommitTriggered = true;
 					commitCurrentState();
 					if (action === "REPLACE") {
-						router.history.replace(
+						history.replace(
 							nextLocation.href,
 							removeSearchSnapshot(nextLocation.state),
 							{
@@ -335,13 +336,13 @@ export function useSearchHistoryPersistence(
 							},
 						);
 					} else {
-						router.history.push(
+						history.push(
 							nextLocation.href,
 							removeSearchSnapshot(nextLocation.state),
 							{ ignoreBlocker: true },
 						);
 					}
-					router.history.flush();
+					history.flush();
 					return true;
 				},
 			});

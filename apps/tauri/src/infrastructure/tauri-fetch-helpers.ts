@@ -1,10 +1,10 @@
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
-import { API_BASE } from "./api-base";
-
-const isDev = import.meta.env.DEV;
+import { getApiBaseUrl, isDevelopmentProxy } from "./api-base";
 
 export function buildAbsoluteUrl(path: string): string {
-	return `${API_BASE}${path}`;
+	const baseUrl = new URL(getApiBaseUrl());
+	const basePath = baseUrl.pathname.replace(/\/+$/, "");
+	return `${baseUrl.origin}${basePath}${path.startsWith("/") ? path : `/${path}`}`;
 }
 
 export async function fetchAsBlobUrl(
@@ -22,5 +22,5 @@ export async function fetchAsBlobUrl(
 }
 
 export function getApiFetch() {
-	return isDev ? fetch : tauriFetch;
+	return isDevelopmentProxy() ? fetch : tauriFetch;
 }

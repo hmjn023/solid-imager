@@ -3,7 +3,7 @@ import {
 	type MediaSource,
 	MediaViewer as SharedMediaViewer,
 } from "@solid-imager/ui/media-viewer";
-import { createMemo } from "solid-js";
+import { createEffect, createSignal, onCleanup } from "solid-js";
 import { buildMediaContentUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { getApiFetch } from "~/infrastructure/tauri-fetch-helpers";
 
@@ -64,15 +64,26 @@ class ApiMediaSource implements MediaSource {
 			this.urls.splice(idx, 1);
 		}
 	}
+
+	cleanup() {
+		for (const url of this.urls) URL.revokeObjectURL(url);
+		this.urls = [];
+	}
 }
 
-type MediaViewerProps = {
-	media: MediaDetails;
-	sourceRootPath?: string | null;
-};
+export function MediaViewer(props: { media: MediaDetails }) {
+	const [source, setSource] = createSignal<ApiMediaSource>(
+		new ApiMediaSource(props.media),
+	);
 
-export function MediaViewer(props: MediaViewerProps) {
-	const source = createMemo(() => new ApiMediaSource(props.media));
+	createEffect((prev: ApiMediaSource | undefined) => {
+		prev?.cleanup();
+		const next = new ApiMediaSource(props.media);
+		setSource(next);
+		return next;
+	});
+
+	onCleanup(() => source().cleanup());
 
 	return (
 		<SharedMediaViewer

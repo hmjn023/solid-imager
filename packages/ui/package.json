@@ -6,9 +6,9 @@
     "./*": "./src/*"
   },
   "scripts": {
-    "lint": "biome lint ./src",
-    "format": "biome format --fix ./src",
-    "check": "biome check --fix --unsafe ./src",
+    "lint": "oxlint ./src",
+    "format": "oxfmt --write ./src",
+    "check": "oxlint --fix ./src && oxfmt --write ./src",
     "test": "vitest run",
     "test:unit": "vitest run",
     "typecheck": "sh -c 'tsc --noEmit'"
@@ -19,8 +19,8 @@
     "@solidjs/router": "^1.0.0",
     "@tanstack/solid-form": "^1.33.5",
     "@tanstack/solid-hotkeys": "0.10.0",
-    "@tanstack/solid-query": "5.102.0",
-    "@tanstack/solid-router": "1.170.30",
+    "@tanstack/solid-query": "5.103.1",
+    "@tanstack/solid-router": "1.170.36",
     "@tanstack/solid-virtual": "^3.13.37",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -33,9 +33,8 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.11",
     "typescript": "rc",
     "vite": "^8.2.2",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.1"
   }
 }

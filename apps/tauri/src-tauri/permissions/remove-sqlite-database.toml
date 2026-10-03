@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-remove-sqlite-database"
+description = "Enables the remove_sqlite_database command without any pre-configured scope."
+commands.allow = ["remove_sqlite_database"]

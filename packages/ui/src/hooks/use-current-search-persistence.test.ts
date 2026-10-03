@@ -56,6 +56,21 @@ class MemoryStorage implements Storage {
 	}
 }
 
+class FailingStorage extends MemoryStorage {
+	private shouldFail = false;
+
+	setItem(key: string, value: string): void {
+		if (this.shouldFail) {
+			throw new DOMException("storage is full", "QuotaExceededError");
+		}
+		super.setItem(key, value);
+	}
+
+	startFailingWrites(): void {
+		this.shouldFail = true;
+	}
+}
+
 interface MountedPersistence {
 	readonly dispose: () => void;
 	readonly initialValue: boolean;
@@ -121,7 +136,7 @@ describe("useCurrentSearchPersistence", () => {
 
 	it("gates queries until local session state is restored", async () => {
 		sessionStorage.setItem(
-			"current-all",
+			"solid-imager:search-state:current-all",
 			JSON.stringify(createPersistedSimpleState("restored query", "source-1")),
 		);
 
@@ -132,23 +147,37 @@ describe("useCurrentSearchPersistence", () => {
 		expect(mounted.isRestored()).toBe(true);
 		expect(searchState.searchQuery).toBe("restored query");
 		expect(searchState.selectedSource).toBe("source-1");
+		expect(
+			JSON.parse(
+				sessionStorage.getItem("solid-imager:search-state:current-all") ?? "{}",
+			),
+		).toMatchObject({
+			selectedSource: "source-1",
+			value: expect.objectContaining({
+				children: expect.arrayContaining([
+					expect.objectContaining({ value: "restored query" }),
+				]),
+			}),
+		});
 	});
 
 	it("persists the initial state before the debounce expires", async () => {
 		mountPersistence("all");
 		await flushMicrotasks();
 
-		expect(sessionStorage.getItem("current-all")).toContain('"mode":"simple"');
+		expect(
+			sessionStorage.getItem("solid-imager:search-state:current-all"),
+		).toContain('"mode":"simple"');
 	});
 
 	it("restores the latest source when the source accessor changes", async () => {
 		const [sourceId, setSourceId] = createSignal("source-a");
 		sessionStorage.setItem(
-			"current-source-a",
+			"solid-imager:search-state:current-source-a",
 			JSON.stringify(createPersistedSimpleState("source A")),
 		);
 		sessionStorage.setItem(
-			"current-source-b",
+			"solid-imager:search-state:current-source-b",
 			JSON.stringify(createPersistedSimpleState("source B")),
 		);
 		const mounted = mountPersistence(sourceId);
@@ -170,7 +199,7 @@ describe("useCurrentSearchPersistence", () => {
 			sortBy: "name",
 			sortOrder: "asc",
 		});
-		sessionStorage.setItem("current-all", "not-json");
+		sessionStorage.setItem("solid-imager:search-state:current-all", "not-json");
 
 		const mounted = mountPersistence("all");
 		await flushMicrotasks();
@@ -185,7 +214,7 @@ describe("useCurrentSearchPersistence", () => {
 
 	it("restores selectedSource from the session payload", async () => {
 		sessionStorage.setItem(
-			"current-all",
+			"solid-imager:search-state:current-all",
 			JSON.stringify(createPersistedSimpleState("saved query", "saved-source")),
 		);
 
@@ -197,9 +226,9 @@ describe("useCurrentSearchPersistence", () => {
 	});
 
 	it("preserves the current scroll position while restoring search state", async () => {
-		sessionStorage.setItem("search-scroll:legacy:current-all", "1840");
+		sessionStorage.setItem("solid-imager:search-scroll:current-all", "1840");
 		sessionStorage.setItem(
-			"current-all",
+			"solid-imager:search-state:current-all",
 			JSON.stringify(createPersistedSimpleState("saved query")),
 		);
 
@@ -207,58 +236,81 @@ describe("useCurrentSearchPersistence", () => {
 		await flushMicrotasks();
 
 		expect(searchState.scrollY).toBe(1840);
+		expect(
+			sessionStorage.getItem("solid-imager:search-scroll:current-all"),
+		).toBe("1840");
 	});
 
-	it("keeps v2 scroll persistence separate from the legacy surface", async () => {
+	it("restores a history entry scroll key independently", async () => {
+		sessionStorage.setItem("solid-imager:search-scroll:history:entry-1", "920");
+		sessionStorage.setItem(
+			"solid-imager:search-state:current-all",
+			JSON.stringify(createPersistedSimpleState("saved query")),
+		);
+
+		mountPersistence("all", { historyEntryKey: "entry-1" });
+		await flushMicrotasks();
+
+		expect(searchState.scrollY).toBe(920);
+		expect(
+			sessionStorage.getItem("solid-imager:search-scroll:history:entry-1"),
+		).toBe("920");
+	});
+
+	it("restores canonical search and scroll values", async () => {
 		vi.useFakeTimers();
 		sessionStorage.setItem(
-			"v2:current-all",
+			"solid-imager:search-state:current-all",
 			JSON.stringify(createPersistedSimpleState("shared query")),
 		);
-		sessionStorage.setItem(
-			"current-all",
-			JSON.stringify(createPersistedSimpleState("legacy query")),
-		);
-		sessionStorage.setItem("search-scroll:legacy:current-all", "240");
-		sessionStorage.setItem("search-scroll:v2:current-all", "1840");
+		sessionStorage.setItem("solid-imager:search-scroll:current-all", "1840");
 
-		mountPersistence("all", { surface: "v2" });
+		mountPersistence("all");
 		await flushMicrotasks();
 
 		expect(searchState.searchQuery).toBe("shared query");
 		expect(searchState.scrollY).toBe(1840);
-
+		expect(
+			sessionStorage.getItem("solid-imager:search-state:current-all"),
+		).toContain("shared query");
+		expect(
+			sessionStorage.getItem("solid-imager:search-scroll:current-all"),
+		).toBe("1840");
 		setSearchState("scrollY", 2200);
 		expect(searchState.scrollY).toBe(2200);
-		persistSearchScrollPosition("all", searchState.scrollY, { surface: "v2" });
+		persistSearchScrollPosition("all", searchState.scrollY);
 		await flushMicrotasks();
 		await vi.advanceTimersByTimeAsync(1000);
 
-		expect(sessionStorage.getItem("search-scroll:v2:current-all")).toBe("2200");
-		expect(sessionStorage.getItem("search-scroll:legacy:current-all")).toBe(
-			"240",
-		);
-		expect(sessionStorage.getItem("current-all")).toContain("legacy query");
+		expect(
+			sessionStorage.getItem("solid-imager:search-scroll:current-all"),
+		).toBe("2200");
 	});
 
-	it("restores v2 similarity ordering activated from the detail route", async () => {
-		activateSimilaritySearch("media-v2", { surface: "v2" });
+	it("restores similarity ordering activated from the detail route", async () => {
+		setSearchState("selectedSource", "source-1");
+		activateSimilaritySearch("media-1");
 
-		const mounted = mountPersistence("all", { surface: "v2" });
+		const mounted = mountPersistence("all");
 		await flushMicrotasks();
 
 		expect(mounted.isRestored()).toBe(true);
 		expect(searchState.mode).toBe("simple");
-		expect(searchState.similarityAnchorMediaId).toBe("media-v2");
-		expect(sessionStorage.getItem("current-all")).toBeNull();
+		expect(searchState.similarityAnchorMediaId).toBe("media-1");
+		expect(searchState.selectedSource).toBe("");
+		expect(
+			sessionStorage.getItem("solid-imager:search-state:current-all"),
+		).toContain("media-1");
 	});
 
-	it("migrates legacy similarity sessions without inheriting a source", async () => {
-		setSearchState("selectedSource", "stale-source");
+	it("restores similarity ordering from canonical session state", async () => {
 		sessionStorage.setItem(
-			"current-all",
+			"solid-imager:search-state:current-all",
 			JSON.stringify({
-				mode: "vector",
+				mode: "simple",
+				value: { type: "group", operator: "and", children: [] },
+				sort: "date",
+				order: "desc",
 				similarityAnchorMediaId: "11111111-1111-4111-8111-111111111111",
 				similarityTopK: 100,
 			}),
@@ -268,15 +320,36 @@ describe("useCurrentSearchPersistence", () => {
 		await flushMicrotasks();
 
 		expect(searchState.mode).toBe("simple");
-		expect(searchState.selectedSource).toBe("");
 		expect(searchState.similarityTopK).toBe(100);
+	});
+
+	it("restores canonical state when persistence writes fail", async () => {
+		const storage = new FailingStorage();
+		storage.setItem(
+			"solid-imager:search-state:current-all",
+			JSON.stringify(createPersistedSimpleState("stored query")),
+		);
+		storage.startFailingWrites();
+		Object.defineProperty(globalThis, "sessionStorage", {
+			configurable: true,
+			value: storage,
+		});
+
+		const mounted = mountPersistence("all");
+		await flushMicrotasks();
+
+		expect(mounted.isRestored()).toBe(true);
+		expect(searchState.searchQuery).toBe("stored query");
+		expect(storage.getItem("solid-imager:search-state:current-all")).toContain(
+			"stored query",
+		);
 	});
 
 	it("does not save a pending source state under the next source key", async () => {
 		vi.useFakeTimers();
 		const [sourceId, setSourceId] = createSignal("source-a");
 		sessionStorage.setItem(
-			"current-source-a",
+			"solid-imager:search-state:current-source-a",
 			JSON.stringify(createPersistedSimpleState("initial A")),
 		);
 		const mounted = mountPersistence(sourceId);
@@ -291,7 +364,8 @@ describe("useCurrentSearchPersistence", () => {
 		await vi.advanceTimersByTimeAsync(1000);
 
 		const persistedForB = JSON.parse(
-			sessionStorage.getItem("current-source-b") ?? "{}",
+			sessionStorage.getItem("solid-imager:search-state:current-source-b") ??
+				"{}",
 		);
 		expect(persistedForB.value?.children).toEqual([]);
 		expect(persistedForB.selectedSource).toBe("");
@@ -301,7 +375,7 @@ describe("useCurrentSearchPersistence", () => {
 	it("cancels a pending save when its owner is disposed", async () => {
 		vi.useFakeTimers();
 		sessionStorage.setItem(
-			"current-all",
+			"solid-imager:search-state:current-all",
 			JSON.stringify(createPersistedSimpleState("initial")),
 		);
 		const mounted = mountPersistence("all");
@@ -311,8 +385,8 @@ describe("useCurrentSearchPersistence", () => {
 		mounted.dispose();
 		await vi.advanceTimersByTimeAsync(1000);
 
-		expect(sessionStorage.getItem("current-all")).not.toContain(
-			"pending after unmount",
-		);
+		expect(
+			sessionStorage.getItem("solid-imager:search-state:current-all"),
+		).not.toContain("pending after unmount");
 	});
 });

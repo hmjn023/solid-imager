@@ -64,9 +64,9 @@ export type SourceFormValues = z.infer<
 >;
 
 export const uploadFormSchema = z.object({
-	filename: z.string().trim().min(1, "ファイル名を入力してください。"),
+	filename: z.string().trim(),
 	description: z.string(),
-	sourceUrl: z.string().url("有効なURLを入力してください。").or(z.literal("")),
+	sourceUrl: z.url("有効なURLを入力してください。").or(z.literal("")),
 	conflictResolution: z.enum(["overwrite", "skip", "rename"]),
 });
 

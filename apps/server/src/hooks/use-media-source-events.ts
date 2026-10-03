@@ -87,22 +87,14 @@ export function createServerTransport(
 		if (!id) {
 			return false;
 		}
-		if (
-			id === "*" &&
-			(pathname === "/search" ||
-				pathname === "/sources" ||
-				pathname.startsWith("/v2/"))
-		) {
+		if (id === "*" && (pathname === "/search" || pathname === "/sources")) {
 			return true;
 		}
 		if (id === "*") {
 			return false;
 		}
 		return (
-			pathname === `/sources/${id}` ||
-			pathname.startsWith(`/sources/${id}/`) ||
-			pathname === `/v2/sources/${id}` ||
-			pathname.startsWith(`/v2/sources/${id}/`)
+			pathname === `/sources/${id}` || pathname.startsWith(`/sources/${id}/`)
 		);
 	};
 

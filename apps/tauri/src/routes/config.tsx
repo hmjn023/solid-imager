@@ -1,6 +1,6 @@
 import { configQueryKeys } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { LegacyConfigStateScreen } from "@solid-imager/ui/screens/legacy-config-state-screen";
+import { ConfigStateScreen } from "@solid-imager/ui/screens/config-state-screen";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
@@ -8,7 +8,10 @@ import { configQueryOptions } from "~/queries";
 
 export const Route = createFileRoute("/config")({
 	loader: ({ context }) => {
-		void context.queryClient.prefetchQuery(configQueryOptions());
+		void context.queryClient.query(configQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
 	},
 	component: ConfigPage,
 });
@@ -19,8 +22,9 @@ function ConfigPage() {
 	const state = () => toQueryUiState(configQuery);
 
 	return (
-		<LegacyConfigStateScreen
+		<ConfigStateScreen
 			data={state().data}
+			checkAiHealth={() => orpc.ai.health()}
 			onRetry={async () => {
 				await configQuery.refetch();
 			}}

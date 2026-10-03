@@ -42,7 +42,7 @@ function processCommentChunk(
 	if (chunk.keyword === "prompt") {
 		try {
 			// It might be a simple string or a JSON object string.
-			const parsedJson = JSON.parse(chunk.text);
+			const parsedJson: unknown = JSON.parse(chunk.text);
 			if (typeof parsedJson === "object" && parsedJson !== null) {
 				const hasNodes = "nodes" in parsedJson;
 				// Check if it's an API format workflow (dictionary of nodes with class_type)

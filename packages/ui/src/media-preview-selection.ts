@@ -1,7 +1,8 @@
 /**
  * Only creates an item-local selection callback when the collection actually
  * supports preview selection. Keeping the absent case as `undefined` prevents
- * legacy links from mistaking a no-op callback for an inspector interaction.
+ * links without preview support from mistaking a no-op callback for an
+ * inspector interaction.
  */
 export function createMediaPreviewSelectHandler<T>(
 	item: T,

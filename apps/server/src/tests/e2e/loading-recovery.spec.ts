@@ -1,7 +1,6 @@
 import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
-	E2E_SOURCE_NAME,
 	mediaPath,
 	sourcePath,
 } from "./support/fixture";
@@ -70,7 +69,9 @@ test.describe("loading and recovery", () => {
 		});
 
 		const navigation = page.goto("/search", { waitUntil: "commit" });
-		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: "Library", exact: true }),
+		).toBeVisible();
 		const screenSkeleton = page.locator('[data-screen-skeleton="media-grid"]');
 		// Production can mount the route content before the route-level fallback
 		// becomes observable. The media-grid loading region is the stable state
@@ -92,9 +93,10 @@ test.describe("loading and recovery", () => {
 			skeletonGrid,
 			":scope > div",
 		);
-		expect(await getVisibleSkeletonItemCount(skeletonGrid)).toBe(
-			skeletonColumnCount * 2,
-		);
+		expect(skeletonColumnCount).toBeGreaterThan(1);
+		expect(
+			await getVisibleSkeletonItemCount(skeletonGrid),
+		).toBeGreaterThanOrEqual(skeletonColumnCount);
 		await expect(
 			page.getByText("APIの応答を待っています...", { exact: true }),
 		).toBeVisible();
@@ -104,9 +106,14 @@ test.describe("loading and recovery", () => {
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();
-		expect(await getGridColumnCount(page, "[data-media-grid]")).toBe(
-			skeletonColumnCount,
-		);
+		const firstRowItems = await page
+			.locator("[data-media-id]")
+			.evaluateAll((items) => {
+				const top = items[0]?.getBoundingClientRect().top;
+				return items.filter((item) => item.getBoundingClientRect().top === top)
+					.length;
+			});
+		expect(firstRowItems).toBe(skeletonColumnCount);
 		await expect(screenSkeleton).toHaveCount(0);
 	});
 
@@ -132,15 +139,20 @@ test.describe("loading and recovery", () => {
 		await expect(primaryLink).toBeVisible();
 
 		holdBackgroundRequest = true;
-		const searchInput = page.getByPlaceholder("ファイル名を入力...");
+		const searchInput = page.getByRole("combobox", {
+			name: "メディアを検索",
+			exact: true,
+		});
 		await primaryLink.evaluate((element) => {
 			element.setAttribute("data-existing-result", "true");
 		});
 		await searchInput.fill(E2E_PRIMARY_FILE_NAME);
+		await searchInput.press("Enter");
+		await searchInput.fill("unsent draft");
 		await expect(
 			page.getByText("検索結果を更新中...", { exact: true }),
 		).toBeVisible();
-		await expect(searchInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
+		await expect(searchInput).toHaveValue("unsent draft");
 		await expect(searchInput).toBeFocused();
 		await expect(primaryLink).toBeVisible();
 		await expect(page.locator('[data-existing-result="true"]')).toBeVisible();
@@ -150,12 +162,12 @@ test.describe("loading and recovery", () => {
 		await expect(
 			page.getByText("検索結果を更新中...", { exact: true }),
 		).toHaveCount(0);
-		await expect(searchInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
+		await expect(searchInput).toHaveValue("unsent draft");
 		await expect(searchInput).toBeFocused();
 		await expect(primaryLink).toBeVisible();
 	});
 
-	test("keeps route content visible while SPA media-detail preload is delayed", async ({
+	test("keeps the shell and detail skeleton visible while SPA media-detail data is delayed", async ({
 		page,
 	}) => {
 		let releaseRequest: () => void = () => {};
@@ -178,14 +190,12 @@ test.describe("loading and recovery", () => {
 		});
 		await expect(mediaLink).toBeVisible();
 
-		const navigation = mediaLink.click();
+		const navigation = mediaLink.dblclick();
 		await requestSeen;
-		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
 		await expect(
-			page.getByRole("heading", {
-				name: E2E_SOURCE_NAME,
-			}),
+			page.getByRole("link", { name: "Library", exact: true }),
 		).toBeVisible();
+		await expect(page.locator('[data-skeleton="media-detail"]')).toBeVisible();
 
 		releaseRequest();
 		await navigation;
@@ -213,9 +223,11 @@ test.describe("loading and recovery", () => {
 		await page.goto(sourcePath());
 		await page
 			.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) })
-			.click();
+			.dblclick();
 		await expect(page).toHaveURL(new RegExp(`${mediaPath()}/?$`));
-		await expect(page.getByRole("link", { name: "Home" })).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: "Library", exact: true }),
+		).toBeVisible();
 		await expect(page.getByRole("alert")).toContainText(
 			"メディア情報を読み込めませんでした",
 		);
@@ -286,9 +298,12 @@ test.describe("loading and recovery", () => {
 		page,
 	}) => {
 		await page.goto("/search");
-		await page
-			.getByPlaceholder("ファイル名を入力...")
-			.fill("__issue_579_no_matching_media__");
+		const searchInput = page.getByRole("combobox", {
+			name: "メディアを検索",
+			exact: true,
+		});
+		await searchInput.fill("__issue_579_no_matching_media__");
+		await searchInput.press("Enter");
 
 		const emptyState = page.locator('[data-state-ui="empty"]');
 		await expect(emptyState).toBeVisible();
@@ -296,15 +311,21 @@ test.describe("loading and recovery", () => {
 		await expect(emptyState.locator('[role="alert"]')).toHaveCount(0);
 	});
 
-	test("shows and clears the offline API status without replacing existing content", async ({
+	test("preserves existing content offline and completes the queued search after reconnecting", async ({
 		page,
+		context,
+		browserHealth,
 	}) => {
 		await page.goto("/search");
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();
 
-		await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+		browserHealth.allowConsole("net::ERR_INTERNET_DISCONNECTED");
+		browserHealth.allowRequestFailure(
+			/\/api\/rpc\/(?:media\/search|sources\/events|jobs\/events|searchSnapshots\/capture)(?:\?|$)/,
+		);
+		await context.setOffline(true);
 		await expect(
 			page.getByText(
 				"APIに接続できません。ネットワーク接続を確認してください。",
@@ -315,7 +336,26 @@ test.describe("loading and recovery", () => {
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();
 
-		await page.evaluate(() => window.dispatchEvent(new Event("online")));
+		const searchInput = page.getByRole("combobox", {
+			name: "メディアを検索",
+			exact: true,
+		});
+		await searchInput.fill(E2E_PRIMARY_FILE_NAME);
+		await searchInput.press("Enter");
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
+		const recoveredSearch = page.waitForResponse(
+			(response) =>
+				new URL(response.url()).pathname === "/api/rpc/media/search" &&
+				response.ok(),
+		);
+		await context.setOffline(false);
+		await recoveredSearch;
+		await expect(page.getByText("1 items", { exact: true })).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
 		await expect(
 			page.getByText(
 				"APIに接続できません。ネットワーク接続を確認してください。",

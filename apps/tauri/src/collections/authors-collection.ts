@@ -3,7 +3,7 @@ import { queryCollectionOptions } from "@tanstack/query-db-collection";
 import { persistedCollectionOptions } from "@tanstack/tauri-db-sqlite-persistence";
 import type { getPersistence } from "~/infrastructure/db/persistence";
 import { client } from "~/orpc-client";
-import { queryClient } from "~/router";
+import { queryClient } from "~/query-client";
 import { collectionQueryKeys } from "./query-keys";
 
 type AuthorResponse = Awaited<ReturnType<typeof client.authors.list>>[number];

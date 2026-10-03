@@ -40,7 +40,8 @@ export function asDumpStream(result: unknown): ReadableStream<Uint8Array> {
 		return nodeStreamToWebReadable(result);
 	}
 	if (result instanceof ReadableStream) {
-		return result;
+		// Runtime `instanceof` verifies the stream boundary; dump emits byte chunks.
+		return result as ReadableStream<Uint8Array>;
 	}
 	throw new Error("Expected a stream result from dump");
 }

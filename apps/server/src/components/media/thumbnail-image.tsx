@@ -24,7 +24,7 @@ type ThumbnailImageProps = {
 	width?: number | null;
 };
 
-function buildUrl(args: BuildThumbnailUrlArgs): string {
+export function buildThumbnailUrl(args: BuildThumbnailUrlArgs): string {
 	const base = `/api/sources/${args.mediaSourceId}/thumbnail/${args.mediaId}`;
 	const query = new URLSearchParams();
 	if (args.size) query.set("size", String(args.size));
@@ -36,7 +36,7 @@ function buildUrl(args: BuildThumbnailUrlArgs): string {
 export function ThumbnailImage(props: ThumbnailImageProps) {
 	const source = createMemo(() =>
 		createHttpThumbnailSource({
-			buildUrl,
+			buildUrl: buildThumbnailUrl,
 			defaultSize: props.requestedSize ?? (props.sizes ? 512 : undefined),
 			maxRetries: props.maxRetries,
 			mediaId: props.media.id,

@@ -3,9 +3,9 @@ import { thumbnailSizeSchema } from "../thumbnails/schemas";
 import { mediaSourceSyncStateSchema } from "./schemas";
 
 const sourceScopedEventSchema = z.object({
-	mediaSourceId: z.string().uuid().optional(),
+	mediaSourceId: z.uuid().optional(),
 	filePath: z.string(),
-	mediaId: z.string().uuid().optional(),
+	mediaId: z.uuid().optional(),
 	timestamp: z.string().optional(),
 });
 
@@ -13,7 +13,7 @@ export const mediaAddedEventSchema = sourceScopedEventSchema;
 export type MediaAddedEvent = z.infer<typeof mediaAddedEventSchema>;
 
 export const mediaDeletedEventSchema = sourceScopedEventSchema.extend({
-	mediaId: z.string().uuid(),
+	mediaId: z.uuid(),
 });
 export type MediaDeletedEvent = z.infer<typeof mediaDeletedEventSchema>;
 
@@ -21,10 +21,10 @@ export const mediaChangedEventSchema = sourceScopedEventSchema;
 export type MediaChangedEvent = z.infer<typeof mediaChangedEventSchema>;
 
 export const mediaCopiedEventSchema = z.object({
-	sourceId: z.string().uuid().optional(),
-	targetId: z.string().uuid().optional(),
-	sourceMediaId: z.string().uuid().optional(),
-	mediaId: z.string().uuid().optional(),
+	sourceId: z.uuid().optional(),
+	targetId: z.uuid().optional(),
+	sourceMediaId: z.uuid().optional(),
+	mediaId: z.uuid().optional(),
 	media: z.unknown().optional(),
 	timestamp: z.string().optional(),
 });
@@ -32,17 +32,17 @@ export type MediaCopiedEvent = z.infer<typeof mediaCopiedEventSchema>;
 
 export const mediaMovedEventSchema = z.object({
 	type: z.enum(["source", "target"]),
-	sourceId: z.string().uuid().optional(),
-	targetId: z.string().uuid().optional(),
-	mediaId: z.string().uuid().optional(),
+	sourceId: z.uuid().optional(),
+	targetId: z.uuid().optional(),
+	mediaId: z.uuid().optional(),
 	media: z.unknown().optional(),
 	timestamp: z.string().optional(),
 });
 export type MediaMovedEvent = z.infer<typeof mediaMovedEventSchema>;
 
 export const thumbnailGeneratedEventSchema = z.object({
-	mediaSourceId: z.string().uuid().optional(),
-	mediaId: z.string().uuid(),
+	mediaSourceId: z.uuid().optional(),
+	mediaId: z.uuid(),
 	filePath: z.string().optional(),
 	timestamp: z.string().optional(),
 	size: thumbnailSizeSchema.optional(),
@@ -52,20 +52,20 @@ export type ThumbnailGeneratedEvent = z.infer<
 >;
 
 export const allJobsCompletedEventSchema = z.object({
-	mediaSourceId: z.string().uuid().optional(),
+	mediaSourceId: z.uuid().optional(),
 	processed: z.number(),
 });
 export type AllJobsCompletedEvent = z.infer<typeof allJobsCompletedEventSchema>;
 
 export const watcherErrorEventSchema = z.object({
-	mediaSourceId: z.string().uuid().optional(),
+	mediaSourceId: z.uuid().optional(),
 	error: z.string().optional(),
 	timestamp: z.string().optional(),
 });
 export type WatcherErrorEvent = z.infer<typeof watcherErrorEventSchema>;
 
 export const sourceSyncStatusEventSchema = z.object({
-	mediaSourceId: z.string().uuid(),
+	mediaSourceId: z.uuid(),
 	status: mediaSourceSyncStateSchema,
 	message: z.string().optional(),
 	timestamp: z.string().optional(),
@@ -124,7 +124,7 @@ export type ImportRequestProcessedEvent = z.infer<
 >;
 
 export const importRequestDeletedEventSchema = z.object({
-	jobIds: z.array(z.string().uuid()),
+	jobIds: z.array(z.uuid()),
 });
 export type ImportRequestDeletedEvent = z.infer<
 	typeof importRequestDeletedEventSchema

@@ -23,25 +23,21 @@ flowchart LR
     ui["packages/ui"]
   end
 
+  application -->|25 imports| core
   cli -->|1 import| client
-  cli -->|1 import| core
-
-  server -->|26 imports| application
-  server -->|3 imports| client
-  server -->|146 imports| core
-  server -->|17 imports| db
-  server -->|108 imports| ui
-
+  cli -->|2 imports| core
+  db -->|8 imports| core
+  server -->|25 imports| application
+  server -->|4 imports| client
+  server -->|141 imports| core
+  server -->|16 imports| db
+  server -->|49 imports| ui
   tauri -->|3 imports| client
-  tauri -->|12 imports| core
-  tauri -->|50 imports| ui
-
+  tauri -->|17 imports| core
+  tauri -->|38 imports| ui
+  ui -->|108 imports| core
   xtracter -->|1 import| client
   xtracter -->|1 import| core
-
-  application -->|23 imports| core
-  db -->|7 imports| core
-  ui -->|100 imports| core
 
   classDef app fill:#e8f1ff,stroke:#4f76a8,color:#132238;
   classDef pkg fill:#eef8ee,stroke:#5b8a5a,color:#173117;

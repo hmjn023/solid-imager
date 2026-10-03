@@ -55,11 +55,17 @@ sequenceDiagram
 
 ## 適用範囲とフォールバック
 
-- Web と Tauri の global search、source search、legacy、v2 route は `searchHistoryQuerySchema` で `search` query を検証する。
-- 共通の復元処理は `packages/ui/src/hooks/use-search-history-persistence.ts` に置き、route 側は API client と surface を渡すだけにする。
+- Web と Tauri の global search、source search、旧URLからの転送は `searchHistoryQuerySchema` で `search` query を検証する。
+- 共通の復元処理は `packages/ui/src/hooks/use-search-history-persistence.ts` に置き、route 側は API client を渡す。Web と Tauri で保存先や復元処理を分岐しない。
 - API が利用できない場合は `history.state` のローカルエントリをそのまま利用する。
 - UUID が削除済み・不正な場合は query を除去し、現在の session state に戻す。履歴操作自体は失敗させない。
 - user preset には自動保存した検索を混ぜない。preset は検索 state の復元元として別に扱う。
+
+## ブラウザー内の保存キー
+
+`packages/ui/src/ui-storage.ts` が検索条件、スクロール位置、表示設定、詳細画面の戻り先のキーを定義する。検索条件は `solid-imager:search-state:current-all` または `solid-imager:search-state:current-<sourceId>`、スクロール位置は `solid-imager:search-scroll:` 配下へ保存する。履歴エントリのスクロール位置には `history:<entryKey>` を使う。
+
+以前の Web / Tauri キーは読み込み時に移行する。正規キーの値を優先し、旧キーしかない場合はコピーを確認してから移行元を削除する。容量不足などで保存に失敗した場合は旧データを残す。新しい書き込みには旧UIのキーを使わない。
 
 ## 検証
 

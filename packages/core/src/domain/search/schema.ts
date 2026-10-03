@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { searchGroupSchema } from "@/domain/media/schemas";
+import { mediaSortSchema, searchGroupSchema } from "@/domain/media/schemas";
 
 export const searchStateSchema = z.object({
 	// Modes
@@ -21,7 +21,7 @@ export const searchStateSchema = z.object({
 	advancedCondition: searchGroupSchema.nullable(),
 
 	// Similarity ordering
-	similarityAnchorMediaId: z.string().uuid().nullable(),
+	similarityAnchorMediaId: z.uuid().nullable(),
 	similarityTopK: z.number().int().min(1).max(100),
 
 	// Pagination
@@ -29,7 +29,7 @@ export const searchStateSchema = z.object({
 	offset: z.number(),
 
 	// Sorting
-	sortBy: z.enum(["date", "name", "size", "rating", "viewCount"]),
+	sortBy: mediaSortSchema,
 	sortOrder: z.enum(["asc", "desc"]),
 
 	// Scroll Position

@@ -34,7 +34,7 @@ describe("createHttpThumbnailSource", () => {
 		});
 	});
 
-	it("keeps the legacy URL when no requested size is provided", () => {
+	it("keeps the base URL when no requested size is provided", () => {
 		createRoot((dispose) => {
 			const source = createHttpThumbnailSource({
 				buildUrl,

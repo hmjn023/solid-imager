@@ -1,12 +1,13 @@
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import type {
 	Author,
 	DownloadItem,
 	MediaSearchRequest,
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
+import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import type { UploadResponse } from "@solid-imager/core/domain/media/upload-schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
 import {
@@ -36,7 +37,6 @@ import {
 import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
-import { getRestoreImportStrategies } from "./restore-import";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 import { createStableMediaResults } from "./stable-media-results";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
@@ -89,44 +89,15 @@ export type SourceMediaPageActions = {
 		sourceId: string,
 		file: File,
 		opts: Omit<UploadOptions, "file">,
-	) => Promise<unknown>;
+	) => Promise<UploadResponse>;
 	deleteMedia: (sourceId: string, mediaId: string) => Promise<unknown>;
-	copyMedia: (
-		sourceId: string,
-		mediaId: string,
-		targetId: string,
-	) => Promise<unknown>;
-	moveMedia: (
-		sourceId: string,
-		mediaId: string,
-		targetId: string,
-	) => Promise<unknown>;
+	copyMedia: (mediaId: string, targetId: string) => Promise<unknown>;
+	moveMedia: (mediaId: string, targetId: string) => Promise<unknown>;
 	syncMediaItems: (sourceId: string, ids: string[]) => Promise<unknown>;
 	startDownloadJobs: (
 		sourceId: string,
 		items: DownloadItem[],
 	) => Promise<unknown>;
-	fetchSourceDump: (
-		sourceId: string,
-		mode: "json" | "zip",
-		opts?: { includeImages?: boolean },
-	) => Promise<Blob>;
-	restoreSource: (
-		sourceId: string,
-		data: unknown,
-		opts?: {
-			signal?: AbortSignal;
-			onProgress?: (done: number, total: number) => void;
-		},
-	) => Promise<{
-		processed: number;
-		skipped: number;
-		errors: string[];
-		cancelled?: boolean;
-	}>;
-	importSourceZip: (sourceId: string, file: File) => Promise<JobDto>;
-	importSourceNdjson?: (sourceId: string, file: File) => Promise<JobDto>;
-	parseRestoreFile?: (file: File) => Promise<unknown>;
 };
 
 export type SourceMediaPagePresetClient = PresetManagerClient;
@@ -184,8 +155,6 @@ export type UseSourceMediaPageResult = {
 	presetClient: SourceMediaPagePresetClient;
 	handleUpload: (options: UploadOptions) => Promise<void>;
 	handleFileSelect: (e: Event) => Promise<void>;
-	handleDumpDownload: (mode?: "json" | "zip") => Promise<void>;
-	handleRestoreSelect: (e: Event) => Promise<void>;
 	handleAddButtonClick: () => void;
 	handleDrop: (e: DragEvent) => void;
 	handleDragOver: (e: DragEvent) => void;
@@ -197,8 +166,6 @@ export type UseSourceMediaPageResult = {
 	handleSyncSingleMedia: (mediaId: string) => Promise<void>;
 	fileInputRef: HTMLInputElement | undefined;
 	setFileInputRef: (el: HTMLInputElement) => void;
-	restoreInputRef: HTMLInputElement | undefined;
-	setRestoreInputRef: (el: HTMLInputElement) => void;
 };
 
 export function useSourceMediaPage(
@@ -393,10 +360,6 @@ export function useSourceMediaPage(
 	const setFileInputRef = (el: HTMLInputElement) => {
 		fileInputRef = el;
 	};
-	let restoreInputRef: HTMLInputElement | undefined;
-	const setRestoreInputRef = (el: HTMLInputElement) => {
-		restoreInputRef = el;
-	};
 
 	// --- Refresh helpers ---
 	const refreshMediaQuery = () => {
@@ -434,13 +397,6 @@ export function useSourceMediaPage(
 		const refreshTimer = mediaRefreshTimer();
 		if (refreshTimer) {
 			clearTimeout(refreshTimer);
-		}
-	});
-
-	onCleanup(() => {
-		if (restoreAbortController) {
-			restoreAbortController.abort();
-			restoreAbortController = null;
 		}
 	});
 
@@ -508,13 +464,19 @@ export function useSourceMediaPage(
 
 	// --- Handlers ---
 	const handleUpload = async (options: UploadOptions) => {
-		await actions.uploadMedia(id() || "", options.file, {
+		const result = await actions.uploadMedia(id() || "", options.file, {
 			filename: options.filename,
 			description: options.description,
 			sourceUrl: options.sourceUrl,
 			overwrite: options.overwrite,
 			autoIncrement: options.autoIncrement,
 		});
+		if (!result.success) {
+			toast.info(
+				`${result.conflict?.existingFile ?? options.filename} は既に存在するためスキップしました。`,
+			);
+			return;
+		}
 		toast.success("Media uploaded successfully");
 		refreshMediaQuery();
 	};
@@ -522,65 +484,28 @@ export function useSourceMediaPage(
 	const handleJsonFileUpload = async (file: File) => {
 		try {
 			const text = await file.text();
-			const jsonContent = JSON.parse(text);
-			let items: DownloadItem[] = [];
-
-			if (Array.isArray(jsonContent)) {
-				items = jsonContent;
-			} else if (jsonContent.items && Array.isArray(jsonContent.items)) {
-				items = jsonContent.items;
-			} else if (jsonContent.images && Array.isArray(jsonContent.images)) {
-				items = jsonContent.images.flatMap((image: Record<string, unknown>) => {
-					const imageUrl =
-						(typeof image.originalUrl === "string" && image.originalUrl) ||
-						(typeof image.displayUrl === "string" && image.displayUrl);
-					if (!imageUrl) {
-						return [];
-					}
-
-					const metadata =
-						typeof image.metadata === "object" && image.metadata
-							? (image.metadata as Record<string, unknown>)
-							: undefined;
-					const postId =
-						metadata && typeof metadata.postId === "string"
-							? metadata.postId
-							: undefined;
-					const tweetUrl =
-						image.source === "twitter" && postId
-							? `https://twitter.com/i/web/status/${postId}`
-							: undefined;
-					const author =
-						metadata && typeof metadata.author === "string"
-							? metadata.author
-							: undefined;
-					const timestamp =
-						metadata && typeof metadata.timestamp === "string"
-							? metadata.timestamp
-							: typeof image.date === "string"
-								? image.date
-								: undefined;
-
-					return [
-						{
-							targetUrl: imageUrl,
-							description:
-								(metadata && typeof metadata.title === "string"
-									? metadata.title
-									: typeof image.title === "string"
-										? image.title
-										: undefined) ?? undefined,
-							sourceUrls: tweetUrl ? [tweetUrl] : undefined,
-							authors: author ? [{ name: author }] : undefined,
-							createdAt: timestamp,
-						},
-					];
-				});
-			} else {
+			const jsonContent: unknown = JSON.parse(text);
+			const record =
+				typeof jsonContent === "object" &&
+				jsonContent !== null &&
+				!Array.isArray(jsonContent)
+					? jsonContent
+					: null;
+			const candidateItems = Array.isArray(jsonContent)
+				? jsonContent
+				: record && "items" in record && Array.isArray(record.items)
+					? record.items
+					: null;
+			if (!candidateItems) {
 				throw new Error(
-					"JSONファイルはアイテムの配列であるか、'items'または'images'キーを含むオブジェクトである必要があります。",
+					"JSONファイルはアイテムの配列であるか、'items'キーを含むオブジェクトである必要があります。",
 				);
 			}
+			const parsedItems = z.array(downloadItemSchema).safeParse(candidateItems);
+			if (!parsedItems.success) {
+				throw new Error("JSONファイルのダウンロードデータが不正です。");
+			}
+			const items: DownloadItem[] = parsedItems.data;
 
 			if (items.length === 0) {
 				throw new Error(
@@ -611,138 +536,6 @@ export function useSourceMediaPage(
 		}
 	};
 
-	const handleDumpDownload = async (mode: "json" | "zip" = "json") => {
-		const sourceId = id();
-		if (!sourceId) {
-			return;
-		}
-
-		try {
-			const blob = await actions.fetchSourceDump(sourceId, mode);
-			const url = window.URL.createObjectURL(blob);
-			const a = document.createElement("a");
-			a.href = url;
-			a.download =
-				mode === "json"
-					? `source-${sourceId}-dump.ndjson`
-					: `source-${sourceId}-dump.tar`;
-			document.body.appendChild(a);
-			a.click();
-			window.URL.revokeObjectURL(url);
-			document.body.removeChild(a);
-			toast.success(
-				mode === "json"
-					? "NDJSON dump downloaded successfully"
-					: "TAR dump downloaded successfully",
-			);
-		} catch (_error) {
-			toast.error("Failed to download dump");
-		}
-	};
-
-	let restoreAbortController: AbortController | null = null;
-
-	const handleRestoreSelect = async (e: Event) => {
-		const target = e.target as HTMLInputElement;
-		if (!target.files || target.files.length === 0) {
-			return;
-		}
-
-		const file = target.files[0];
-		const sourceId = id();
-		if (!sourceId) {
-			return;
-		}
-
-		restoreAbortController = new AbortController();
-
-		try {
-			const strategies = getRestoreImportStrategies(file, {
-				canImportNdjson: !!actions.importSourceNdjson,
-			});
-
-			if (strategies.includes("tar")) {
-				toast.loading("Queueing TAR restore...", { id: "restore-toast" });
-				const job = await actions.importSourceZip(sourceId, file);
-				toast.success(
-					`TAR restore queued (${job.id.slice(0, 8)}). Track it in Jobs.`,
-					{
-						id: "restore-toast",
-					},
-				);
-				return;
-			}
-
-			if (strategies[0] === "ndjson" && actions.importSourceNdjson) {
-				toast.loading("Queueing NDJSON restore...", { id: "restore-toast" });
-				const job = await actions.importSourceNdjson(sourceId, file);
-				toast.success(
-					`NDJSON restore queued (${job.id.slice(0, 8)}). Track it in Jobs.`,
-					{
-						id: "restore-toast",
-					},
-				);
-				return;
-			}
-
-			if (strategies[0] === "unsupported") {
-				throw new Error("Unsupported dump format");
-			}
-
-			const data = actions.parseRestoreFile
-				? await actions.parseRestoreFile(file)
-				: JSON.parse(await file.text());
-
-			const showCancel = typeof actions.parseRestoreFile === "function";
-			const cancelAction = showCancel
-				? {
-						label: "Cancel",
-						onClick: () => restoreAbortController?.abort(),
-					}
-				: undefined;
-
-			toast.loading("Restoring metadata...", {
-				id: "restore-toast",
-				cancel: cancelAction,
-			});
-
-			const total = Array.isArray(data)
-				? data.length
-				: ((data as { media?: unknown[] })?.media?.length ?? 0);
-
-			const result = await actions.restoreSource(sourceId, data, {
-				signal: restoreAbortController.signal,
-				onProgress: (done) => {
-					toast.loading(`Restoring metadata... ${done}/${total} items`, {
-						id: "restore-toast",
-						cancel: cancelAction,
-					});
-				},
-			});
-
-			if (result.cancelled) {
-				toast.info(`Restore cancelled: ${result.processed} items restored.`, {
-					id: "restore-toast",
-				});
-			} else {
-				toast.success(
-					`Restore complete: ${result.processed} processed, ${result.skipped} skipped`,
-					{
-						id: "restore-toast",
-					},
-				);
-			}
-			refreshMediaQuery();
-		} catch (error) {
-			toast.error(`Restore failed: ${getErrorMessage(error)}`, {
-				id: "restore-toast",
-			});
-		} finally {
-			restoreAbortController = null;
-			target.value = "";
-		}
-	};
-
 	const handleAddButtonClick = () => {
 		fileInputRef?.click();
 	};
@@ -769,9 +562,18 @@ export function useSourceMediaPage(
 		if (item.type.indexOf("image") !== -1) {
 			const blob = item.getAsFile();
 			if (blob) {
-				const file = new File([blob], `pasted-image-${Date.now()}.png`, {
-					type: blob.type,
-				});
+				const subtype = blob.type.split("/")[1]?.split(";")[0];
+				const extension =
+					blob.type === "image/jpeg"
+						? "jpg"
+						: subtype?.replace(/[^a-z0-9]/gi, "") || "png";
+				const file = new File(
+					[blob],
+					`pasted-image-${Date.now()}.${extension}`,
+					{
+						type: blob.type,
+					},
+				);
 				setFileToUpload(file);
 				setShowUploadModal(true);
 				e.preventDefault();
@@ -791,10 +593,7 @@ export function useSourceMediaPage(
 			});
 
 			const normalizedText = text?.trim();
-			if (
-				normalizedText &&
-				z.string().url().safeParse(normalizedText).success
-			) {
+			if (normalizedText && z.url().safeParse(normalizedText).success) {
 				setPastedUrl(normalizedText);
 				setShowUploadModal(true);
 				e.preventDefault();
@@ -838,11 +637,14 @@ export function useSourceMediaPage(
 		}
 		await processClipboardItems(e.clipboardData.items, e);
 	};
+	const handlePasteListener = (event: ClipboardEvent) => {
+		void handlePaste(event);
+	};
 
 	onMount(() => {
-		document.addEventListener("paste", handlePaste);
+		document.addEventListener("paste", handlePasteListener);
 		onCleanup(() => {
-			document.removeEventListener("paste", handlePaste);
+			document.removeEventListener("paste", handlePasteListener);
 		});
 	});
 
@@ -887,7 +689,7 @@ export function useSourceMediaPage(
 		const actionName = mode === "copy" ? "copied" : "moved";
 
 		try {
-			await action(sourceId, mediaId, targetSourceId);
+			await action(mediaId, targetSourceId);
 			toast.success(`Media ${actionName} successfully`);
 			refreshMediaQuery();
 			if (sourceId !== targetSourceId) {
@@ -968,8 +770,6 @@ export function useSourceMediaPage(
 		presetClient,
 		handleUpload,
 		handleFileSelect,
-		handleDumpDownload,
-		handleRestoreSelect,
 		handleAddButtonClick,
 		handleDrop,
 		handleDragOver,
@@ -981,7 +781,5 @@ export function useSourceMediaPage(
 		handleSyncSingleMedia,
 		fileInputRef,
 		setFileInputRef,
-		restoreInputRef,
-		setRestoreInputRef,
 	};
 }

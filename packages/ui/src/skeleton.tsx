@@ -43,9 +43,7 @@ export type LoadingRegionProps = ParentProps<{
 export function LoadingRegion(props: LoadingRegionProps) {
 	return (
 		<>
-			<p class="sr-only" role="status">
-				{props.label}
-			</p>
+			<output class="sr-only">{props.label}</output>
 			<section aria-busy="true" class={props.class} data-state-ui="pending">
 				{props.children}
 			</section>
@@ -133,9 +131,11 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 					{() => (
 						<Skeleton
 							class={cn(
-								"media-grid-skeleton-item w-full",
+								"w-full",
 								props.aspectRatio ? "rounded-md" : "rounded-lg",
-								props.aspectRatio === "4/3" ? "aspect-[4/3]" : "aspect-[3/4]",
+								props.aspectRatio === "4/3"
+									? "aspect-landscape"
+									: "aspect-portrait",
 							)}
 						/>
 					)}
@@ -144,9 +144,6 @@ export function MediaGridSkeleton(props: MediaGridSkeletonProps) {
 		</div>
 	);
 }
-
-/** Legacy compatibility export. New screens should import an explicit surface. */
-export { LegacyMediaDetailSkeleton as MediaDetailSkeleton } from "./legacy-media-detail-skeleton";
 
 export type ConfigSkeletonProps = {
 	class?: string;

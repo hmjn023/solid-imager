@@ -1,3 +1,4 @@
+import type { NewAuthor } from "@solid-imager/core/domain/authors/schemas";
 import { createReadStream, createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -15,7 +16,6 @@ import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
 import {
-	authorAccounts,
 	characterIps,
 	characters,
 	ips,
@@ -58,14 +58,16 @@ type JsonValue =
 	| JsonValue[]
 	| { [key: string]: JsonValue };
 
-function authorRestoreKey(author: {
-	name: string;
-	platform?: AuthorPlatform;
-	accountId?: string | null;
-}): string {
-	return author.platform && author.accountId
-		? `${author.platform}:${author.accountId}`
-		: `name:${author.name}`;
+function authorRestoreKey(author: NewAuthor): string {
+	const primary = author.accounts?.[0];
+	const platform = primary?.platform ?? author.platform;
+	const remoteId = primary?.remoteId ?? author.remoteId;
+	const accountId = primary?.accountId ?? author.accountId;
+	return platform && remoteId
+		? `${platform}:id:${remoteId}`
+		: accountId
+			? `${platform ?? "unknown"}:handle:${platform === "twitter" ? accountId.replace(/^@/, "").toLowerCase() : accountId}`
+			: `name:${author.name}`;
 }
 
 interface MediaListQueryItem {
@@ -100,10 +102,14 @@ interface MediaListQueryItem {
 	authors: {
 		author: {
 			name: string;
-			accountId: string | null;
+			accountId?: string | null;
 			accounts?: {
-				platform: AuthorPlatform;
+				platform: AuthorPlatform | null;
 				accountId: string;
+				remoteId?: string | null;
+				displayName?: string | null;
+				profileUrl?: string | null;
+				observedAt?: Date | null;
 			}[];
 		};
 	}[];
@@ -242,52 +248,61 @@ async function* iterateMediaDumpItems(
 async function writeNdjsonDump(
 	mediaSourceId: string,
 	outputPath: string,
+	imagePathsPath: string,
 	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
 ): Promise<void> {
 	const output = createWriteStream(outputPath);
+	const imagePaths = createWriteStream(imagePathsPath);
 	let streamError: Error | undefined;
 	const onOutputError = (error: Error) => {
 		streamError ??= error;
 	};
 	output.on("error", onOutputError);
+	imagePaths.on("error", onOutputError);
 	try {
 		for await (const item of iterateMediaDumpItems(mediaSourceId, transform)) {
 			if (streamError) {
 				throw streamError;
 			}
 			await writeWithBackpressure(output, `${JSON.stringify(item)}\n`);
+			if (item.filePath) {
+				await writeWithBackpressure(imagePaths, `${item.filePath}\0`);
+			}
 		}
 		if (streamError) {
 			throw streamError;
 		}
 		output.end();
-		await finished(output);
+		imagePaths.end();
+		await Promise.all([finished(output), finished(imagePaths)]);
 	} catch (error) {
 		output.destroy();
+		imagePaths.destroy();
 		throw error;
 	} finally {
 		output.removeListener("error", onOutputError);
+		imagePaths.removeListener("error", onOutputError);
 	}
 }
 
-async function* iterateNdjsonDumpItems(
-	inputPath: string,
-): AsyncGenerator<MediaDumpItem> {
-	const readline = await import("node:readline");
-	const input = createReadStream(inputPath);
-	const lines = readline.createInterface({
-		input,
-		crlfDelay: Infinity,
-	});
+async function* iterateImagePaths(inputPath: string): AsyncGenerator<string> {
+	const input = createReadStream(inputPath, { encoding: "utf8" });
+	let pending = "";
 
 	try {
-		for await (const line of lines) {
-			if (line.trim()) {
-				yield mediaDumpItemSchema.parse(JSON.parse(line));
+		for await (const chunk of input) {
+			pending += chunk;
+			let delimiterIndex = pending.indexOf("\0");
+			while (delimiterIndex !== -1) {
+				yield pending.slice(0, delimiterIndex);
+				pending = pending.slice(delimiterIndex + 1);
+				delimiterIndex = pending.indexOf("\0");
 			}
 		}
+		if (pending) {
+			throw new Error("Incomplete image path manifest");
+		}
 	} finally {
-		lines.close();
 		input.destroy();
 	}
 }
@@ -495,14 +510,7 @@ export const BackupService = {
 
 	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: BackupDbClient) {
 		const tagNames = new Set<string>();
-		const authorData = new Map<
-			string,
-			{
-				name: string;
-				accountId?: string | null;
-				platform?: AuthorPlatform;
-			}
-		>();
+		const authorData = new Map<string, NewAuthor>();
 		const projectNames = new Set<string>();
 		const charNames = new Set<string>();
 		const ipNames = new Set<string>();
@@ -578,33 +586,6 @@ export const BackupService = {
 			if (!authorMap.has(`name:${input.name}`)) {
 				authorMap.set(`name:${input.name}`, authorId);
 			}
-		}
-		const restoredAuthorAccounts = new Map<
-			string,
-			{
-				authorId: string;
-				platform: AuthorPlatform;
-				accountId: string;
-			}
-		>();
-		for (const item of validItems) {
-			for (const author of item.authors ?? []) {
-				if (!(author.platform && author.accountId)) continue;
-				const authorId = authorMap.get(authorRestoreKey(author));
-				if (!authorId) continue;
-				const key = `${author.platform}:${author.accountId}`;
-				restoredAuthorAccounts.set(key, {
-					authorId,
-					platform: author.platform,
-					accountId: author.accountId,
-				});
-			}
-		}
-		if (restoredAuthorAccounts.size > 0) {
-			await (_tx ?? db)
-				.insert(authorAccounts)
-				.values([...restoredAuthorAccounts.values()])
-				.onConflictDoNothing();
 		}
 		const projectMap = await this._ensureMasterData(
 			projects,
@@ -986,7 +967,7 @@ export const BackupService = {
 		for await (const line of rl) {
 			if (!line.trim()) continue;
 			try {
-				const item = JSON.parse(line);
+				const item: unknown = JSON.parse(line);
 				batch.push(item);
 				if (batch.length >= 2000) {
 					await flushBatch();
@@ -1097,7 +1078,7 @@ export const BackupService = {
 	 */
 	async createDump(
 		mediaSourceId: string,
-		mode: "json" | "zip" | "ndjson" | "tar" = "ndjson",
+		mode: "ndjson" | "tar" = "ndjson",
 		options?: { includeImages: boolean; jobId?: string },
 	) {
 		// 1. Fetch Media Source Info (needed for Driver)
@@ -1109,11 +1090,7 @@ export const BackupService = {
 			throw new Error("Media Source not found");
 		}
 
-		// Map legacy modes to new modes
-		const targetMode =
-			mode === "json" ? "ndjson" : mode === "zip" ? "tar" : mode;
-
-		if (targetMode === "ndjson") {
+		if (mode === "ndjson") {
 			const { PassThrough } = await import("node:stream");
 			const passThrough = new PassThrough();
 
@@ -1121,7 +1098,7 @@ export const BackupService = {
 				try {
 					for await (const item of iterateMediaDumpItems(
 						mediaSourceId,
-						this._transformMediaList,
+						(item) => this._transformMediaList(item),
 					)) {
 						await writeWithBackpressure(
 							passThrough,
@@ -1140,7 +1117,7 @@ export const BackupService = {
 			return nodeStreamToWebReadable(passThrough);
 		}
 
-		if (targetMode === "tar") {
+		if (mode === "tar") {
 			const driver = getDriver(mediaSource);
 			const archiverMod = await importArchiverModule();
 			const { PassThrough } = await import("node:stream");
@@ -1165,10 +1142,12 @@ export const BackupService = {
 						path.join(TarStagingDirectory, stagingPrefix),
 					);
 					const ndjsonPath = path.join(stagingDirectory, "dump.ndjson");
+					const imagePathsPath = path.join(stagingDirectory, "image-paths");
 					await writeNdjsonDump(
 						mediaSourceId,
 						ndjsonPath,
-						this._transformMediaList,
+						imagePathsPath,
+						(item) => this._transformMediaList(item),
 					);
 
 					const ndjsonStats = await fs.stat(ndjsonPath);
@@ -1179,21 +1158,17 @@ export const BackupService = {
 
 					const includeImages = options?.includeImages ?? true;
 					if (includeImages) {
-						for await (const item of iterateNdjsonDumpItems(ndjsonPath)) {
-							if (!item.filePath) {
-								continue;
-							}
-
+						for await (const filePath of iterateImagePaths(imagePathsPath)) {
 							let file: Awaited<ReturnType<typeof driver.getStream>>;
 							try {
-								file = await driver.getStream(item.filePath);
+								file = await driver.getStream(filePath);
 							} catch {
 								// Ignore missing files, matching the previous export behavior.
 								continue;
 							}
 
 							await appendTarEntry(archive, file.stream, {
-								name: `images/${item.filePath}`,
+								name: `images/${filePath}`,
 								stats: file.stats,
 							});
 						}
@@ -1217,7 +1192,7 @@ export const BackupService = {
 			return nodeStreamToWebReadable(passThrough);
 		}
 
-		throw new Error(`Unsupported dump mode: ${mode}`);
+		throw new Error(`Unsupported dump mode: ${String(mode)}`);
 	},
 
 	// Helper to transform media list to dump format
@@ -1240,18 +1215,23 @@ export const BackupService = {
 
 			// Extract authors
 			const simpleAuthors = (media.authors || []).map((ma) => {
-				const legacyAccount = ma.author?.accounts?.find(
-					(account) => account.accountId === ma.author?.accountId,
-				);
-				const account =
-					legacyAccount ??
-					(ma.author?.accounts?.length === 1
-						? ma.author.accounts[0]
-						: undefined);
+				const accounts = ma.author?.accounts ?? [];
+				const account = accounts[0];
 				return {
 					name: ma.author?.name || "",
-					accountId: account?.accountId ?? ma.author?.accountId ?? null,
-					platform: account?.platform,
+					accountId: account?.accountId ?? null,
+					platform: account?.platform ?? undefined,
+					remoteId: account?.remoteId,
+					profileUrl: account?.profileUrl,
+					observedAt: account?.observedAt ?? undefined,
+					accounts: accounts.map((external) => ({
+						platform: external.platform,
+						accountId: external.accountId,
+						remoteId: external.remoteId ?? null,
+						displayName: external.displayName ?? null,
+						profileUrl: external.profileUrl ?? null,
+						observedAt: external.observedAt ?? null,
+					})),
 				};
 			});
 

@@ -70,8 +70,9 @@ export function ApiActivityIndicator() {
 	return (
 		<Show when={isVisible()}>
 			<div
-				class="fixed top-3 left-1/2 z-[60] -translate-x-1/2 rounded-md border border-border bg-background px-3 py-2 text-sm shadow-lg"
-				role="status"
+				aria-atomic="true"
+				aria-live="polite"
+				class="fixed top-3 left-1/2 z-api-indicator -translate-x-1/2 rounded-md border border-border bg-background px-3 py-2 text-sm shadow-lg"
 			>
 				<div class="flex items-center gap-2">
 					<Show when={isOnline()}>

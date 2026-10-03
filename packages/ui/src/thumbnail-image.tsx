@@ -138,7 +138,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 	return (
 		<Show
 			fallback={
-				<div class="flex h-full w-full items-center justify-center bg-gray-200 text-gray-400">
+				<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
 					{props.fallback ?? props.alt}
 				</div>
 			}

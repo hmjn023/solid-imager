@@ -108,22 +108,24 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 		<button
 			aria-label={local.label || "Copy to clipboard"}
 			class={cn(
-				"inline-flex items-center justify-center rounded-sm transition-colors hover:bg-gray-200/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+				"inline-flex items-center justify-center rounded-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
 				local.class,
 			)}
-			onClick={handleCopy}
+			onClick={(event) => {
+				void handleCopy(event);
+			}}
 			title={local.label || "Copy to clipboard"}
 			type="button"
 			{...others}
 		>
 			{copied() ? (
 				<CheckIcon
-					class="text-green-600"
+					class="text-success-foreground"
 					size={local.iconSize || DEFAULT_ICON_SIZE}
 				/>
 			) : (
 				<CopyIcon
-					class="text-gray-500 hover:text-gray-700"
+					class="text-muted-foreground hover:text-foreground"
 					size={local.iconSize || DEFAULT_ICON_SIZE}
 				/>
 			)}

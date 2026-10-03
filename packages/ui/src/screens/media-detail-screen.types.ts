@@ -4,14 +4,18 @@ import type {
 	MediaDeletedEvent,
 	ThumbnailGeneratedEvent,
 } from "@solid-imager/core/domain/sources/events";
+import type { QueryOptions } from "@tanstack/solid-query";
 import type { Accessor, JSX } from "solid-js";
 import type { MediaSourceEventTransport } from "../hooks/use-media-source-events";
 
 export type MediaDetailScreenProps = {
 	mediaSourceId: Accessor<string>;
 	mediaId: Accessor<string>;
-	// biome-ignore lint/suspicious/noExplicitAny: library type mismatch between oRPC and solid-query
-	mediaDetailsQueryOptions: (mediaSourceId: string, mediaId: string) => any;
+	// oxlint-disable-next-line typescript/no-explicit-any -- library type mismatch between oRPC and solid-query
+	mediaDetailsQueryOptions: (
+		mediaSourceId: string,
+		mediaId: string,
+	) => QueryOptions<MediaDetails> & { initialData?: undefined };
 	sourceRootPath?: string;
 	onAdditionalInvalidate?: () => Promise<void>;
 	transport: MediaSourceEventTransport;

@@ -19,7 +19,7 @@ export type NewIp = z.infer<typeof newIpSchema>;
 export type UpdateIp = z.infer<typeof updateIpSchema>;
 
 export const ipSchema = z.object({
-	id: z.string().uuid(),
+	id: z.uuid(),
 	name: z.string(),
 	description: z.string().nullable(),
 	source: z.string(),

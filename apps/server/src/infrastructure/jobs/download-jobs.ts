@@ -13,7 +13,7 @@ import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
-import { hasStderr, isRecord } from "@solid-imager/core/utils/type-guards";
+import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
@@ -179,9 +179,44 @@ async function createNetscapeCookieFile(
 	}
 }
 
-/**
- * Downloads video/media using yt-dlp via youtube-dl-exec
- */
+function createYtDlpError(error: unknown): Error {
+	const details = isRecord(error) ? error : {};
+	const stderr =
+		typeof details.stderr === "string" ? details.stderr.trim() : "";
+	const exitCode =
+		typeof details.exitCode === "number" ? details.exitCode : undefined;
+	const signal =
+		typeof details.signalCode === "string"
+			? details.signalCode
+			: typeof details.signal === "string"
+				? details.signal
+				: undefined;
+	const code = typeof details.code === "string" ? details.code : undefined;
+	const status = [
+		exitCode !== undefined ? `exit code ${exitCode}` : undefined,
+		signal ? `signal ${signal}` : undefined,
+		code ? `code ${code}` : undefined,
+	]
+		.filter(Boolean)
+		.join(", ");
+	// tinyspawn's message embeds the full command; use its termination details instead.
+	const reason =
+		stderr ||
+		(status
+			? "process failed without stderr"
+			: error instanceof Error
+				? error.message.trim()
+				: String(error).trim()) ||
+		"unknown execution error (no diagnostic output)";
+	return Object.assign(
+		new Error(`yt-dlp failed${status ? ` (${status})` : ""}: ${reason}`, {
+			cause: error,
+		}),
+		{ stderr, exitCode, signal, code },
+	);
+}
+
+/** Downloads video/media using yt-dlp via youtube-dl-exec. */
 async function downloadWithYtDlp(
 	url: string,
 	outputDir: string,
@@ -208,10 +243,18 @@ async function downloadWithYtDlp(
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		};
-		const result = await ytdlp(url, flags);
+		// Use the raw subprocess API: the wrapper reparses rejected errors and can
+		// replace spawn/JSON errors with an empty stderr-based message.
+		const result = await ytdlp.exec(url, flags);
 
 		// output handling
-		const outputs = parseYtDlpOutput(result);
+		const outputs = parseYtDlpOutput(result.stdout);
+		if (outputs.length === 0) {
+			const stderr = result.stderr.trim();
+			throw new Error(
+				`yt-dlp returned no valid media metadata${stderr ? `: ${stderr}` : ""}`,
+			);
+		}
 
 		return outputs.map((metadata) => {
 			let finalPath = metadata.filename || metadata._filename || "";
@@ -221,14 +264,9 @@ async function downloadWithYtDlp(
 			return { filePath: finalPath, metadata };
 		});
 	} catch (error) {
-		// youtube-dl-exec errors include stderr
-		if (hasStderr(error)) {
-			logger.error({ stderr: error.stderr }, "yt-dlp execution failed");
-		} else {
-			logger.error({ err: error }, "yt-dlp execution failed");
-		}
-		const msg = error instanceof Error ? error.message : String(error);
-		throw new Error(`yt-dlp failed: ${msg}`);
+		const executionError = createYtDlpError(error);
+		logger.error({ err: executionError }, "yt-dlp execution failed");
+		throw executionError;
 	} finally {
 		if (cookieFilePath) {
 			fs.unlink(cookieFilePath).catch((err) =>
@@ -247,7 +285,8 @@ function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
 			.filter((line) => line.trim().length > 0);
 		outputs = lines.reduce<YtDlpOutput[]>((acc, line) => {
 			try {
-				acc.push(JSON.parse(line));
+				const parsed: unknown = JSON.parse(line);
+				acc.push(ytDlpOutputSchema.parse(parsed));
 			} catch (e) {
 				logger.warn({ err: e, line }, "Failed to parse yt-dlp JSON line");
 			}
@@ -288,11 +327,14 @@ async function fetchMetadataWithYtDlp(
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		};
-		const result = await ytdlp(url, flags);
+		const result = await ytdlp.exec(url, flags);
 
-		return ytDlpOutputSchema.parse(result);
+		return ytDlpOutputSchema.parse(JSON.parse(result.stdout));
 	} catch (error) {
-		logger.warn({ err: error, url }, "Failed to fetch metadata with yt-dlp");
+		logger.warn(
+			{ err: createYtDlpError(error), url },
+			"Failed to fetch metadata with yt-dlp",
+		);
 		return null;
 	} finally {
 		if (cookieFilePath) {
@@ -669,37 +711,9 @@ async function handleDirectImageDownload(
 	}
 }
 
-/**
- * Extracts and normalizes a DownloadItem from a job payload.
- * Handles backward compatibility mapping.
- */
+/** Extracts a DownloadItem from a job payload. */
 function getDownloadItemFromJob(job: Job): DownloadItem {
-	if (!isRecord(job.payload)) {
-		throw new Error("Invalid job payload: expected DownloadItem");
-	}
-	const payload = job.payload;
-	const normalized: Record<string, unknown> = { ...payload };
-
-	if (
-		typeof normalized.targetUrl !== "string" &&
-		typeof payload.imageUrl === "string"
-	) {
-		normalized.targetUrl = payload.imageUrl;
-	}
-
-	if (
-		typeof normalized.description !== "string" &&
-		typeof payload.description === "string"
-	) {
-		normalized.description = payload.description;
-	}
-
-	if (!Array.isArray(normalized.sourceUrls)) {
-		normalized.sourceUrls =
-			typeof payload.sourceUrl === "string" ? [payload.sourceUrl] : [];
-	}
-
-	return downloadItemSchema.parse(normalized);
+	return downloadItemSchema.parse(job.payload);
 }
 
 export async function processDownloadJob(job: Job): Promise<void> {
@@ -708,12 +722,12 @@ export async function processDownloadJob(job: Job): Promise<void> {
 		logger.error({ jobId: job.id }, "Missing mediaSourceId in download job");
 		return;
 	}
-	// Extract item directly from job payload (new schema) or fallbacks (backward compatibility)
+	// Extract the normalized item from the job payload.
 	const item = getDownloadItemFromJob(job);
 
 	if (!item.targetUrl) {
 		logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
-		return;
+		throw new Error("Download job payload missing targetUrl");
 	}
 
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Starting download job");
@@ -773,18 +787,13 @@ async function updateExistingMediaWithMetadata(
 	newMedia: AddMediaRequest,
 	item: DownloadItem,
 ): Promise<void> {
-	const { MediaProcessingService } = await import(
-		"~/infrastructure/services/media-processing-service"
-	);
+	const { MediaProcessingService } =
+		await import("~/infrastructure/services/media-processing-service");
 
 	await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
 		description: newMedia.description ?? undefined,
 		sourceUrls: newMedia.sourceUrls,
-		authors: item.authors?.map((a) => ({
-			name: a.name,
-			accountId: a.accountId ?? null,
-			...(a.platform ? { platform: a.platform } : {}),
-		})),
+		authors: item.authors,
 		// We can also update other metadata if needed, consistent with registerMedia
 		tags: item.tags,
 		characters: item.characters,
@@ -810,9 +819,8 @@ async function registerMedia(
 ) {
 	try {
 		// Use MediaProcessingService for unified registration and processing
-		const { MediaProcessingService } = await import(
-			"~/infrastructure/services/media-processing-service"
-		);
+		const { MediaProcessingService } =
+			await import("~/infrastructure/services/media-processing-service");
 
 		const insertedMedia = await MediaProcessingService.registerAndProcess(
 			mediaSourceId,
@@ -821,11 +829,7 @@ async function registerMedia(
 				description: newMedia.description ?? undefined,
 				createdAt: newMedia.createdAt,
 				sourceUrls: newMedia.sourceUrls,
-				authors: item.authors?.map((a) => ({
-					name: a.name,
-					accountId: a.accountId ?? null,
-					...(a.platform ? { platform: a.platform } : {}),
-				})),
+				authors: item.authors,
 				tags: item.tags,
 				characters: item.characters,
 				ips: item.ips,
@@ -889,9 +893,13 @@ export async function queueDownloadJobs(
 
 	const newItems: DownloadItem[] = [];
 	let skippedCount = 0;
-	for (const result of poolResults) {
+	for (const [index, result] of poolResults.entries()) {
 		if (result.status === "rejected") {
-			newItems.push(result.reason.item);
+			logger.warn(
+				{ err: result.reason, item: items[index] },
+				"Failed to check duplicate download item; keeping it in the batch",
+			);
+			newItems.push(items[index]);
 		} else if (result.value.skip) {
 			skippedCount++;
 		} else {
@@ -904,9 +912,6 @@ export async function queueDownloadJobs(
 		mediaSourceId,
 		payload: {
 			...item,
-			// Backward compatibility fields
-			imageUrl: item.targetUrl,
-			sourceUrl: item.targetUrl,
 			description: item.description ?? formatMetadataAsMarkdown(item),
 			createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
 		},

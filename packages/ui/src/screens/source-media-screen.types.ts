@@ -9,6 +9,7 @@ import type { MediaGridImageLoadPolicy } from "../media-grid-item";
 
 /** Presentation contract shared by source-media workspaces. */
 export type SourceMediaScreenProps = {
+	detailBasePath?: string;
 	enableVirtualization?: boolean;
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
@@ -23,13 +24,13 @@ export type SourceMediaScreenProps = {
 	onBulkAction?: () => void;
 	onClearSelection?: () => void;
 	onEnterBulkSelectMode?: () => void;
+	onFindSimilar?: (media: Media) => void;
 	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
 	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onRetryFilters: () => void | Promise<void>;
 	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
 	onToggleSelect?: (mediaId: string) => void;
 	page: UseSourceMediaPageResult;
-	renderActions: (props: { onOpenMobileFilters: () => void }) => JSX.Element;
 	renderItem: (
 		media: Media,
 		options: {
@@ -42,6 +43,7 @@ export type SourceMediaScreenProps = {
 			onPrepareMediaDetail?: () => void;
 			onPreviewSelect?: () => void;
 			onSelectGesture?: (event: MouseEvent | KeyboardEvent) => void;
+			onToggleSelect?: () => void;
 			priority?: boolean;
 		},
 	) => JSX.Element;

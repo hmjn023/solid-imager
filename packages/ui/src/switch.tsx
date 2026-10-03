@@ -42,7 +42,7 @@ const SwitchControl = <T extends ValidComponent = "input">(
 			/>
 			<SwitchControlPrimitive
 				class={cn(
-					"inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-input transition-[color,background-color,box-shadow] data-[disabled]:cursor-not-allowed data-[checked]:bg-primary data-[disabled]:opacity-50",
+					"inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent bg-input transition-colors transition-shadow data-[disabled]:cursor-not-allowed data-[checked]:bg-primary data-[disabled]:opacity-50",
 					local.class,
 				)}
 				{...others}

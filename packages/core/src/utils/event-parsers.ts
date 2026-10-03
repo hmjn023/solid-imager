@@ -9,7 +9,7 @@ export function parseJsonEventPayload<T>(
 	schema: SafeParseSchema<T>,
 ): { ok: true; data: T } | { ok: false; error: string } {
 	try {
-		const parsed = JSON.parse(String(raw));
+		const parsed: unknown = JSON.parse(String(raw));
 		return parseEventPayload(parsed, schema);
 	} catch (e) {
 		const message = e instanceof Error ? e.message : String(e);

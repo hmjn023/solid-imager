@@ -64,7 +64,7 @@ describe("MediaService - Copy Media Integration", () => {
 
 	beforeEach(async () => {
 		// Reset registry and register services
-		services.reset();
+		await services.reset();
 		services.registerMediaRepository(MediaRepository);
 		services.registerSourceRepository(DrizzleSourceRepository);
 		services.registerTagRepository(TagRepository);

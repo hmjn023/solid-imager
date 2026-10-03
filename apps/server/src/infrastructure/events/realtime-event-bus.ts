@@ -119,7 +119,7 @@ export const RealtimeEventBus = {
 	},
 
 	subscribeToSource(
-		mediaSourceId: string | "*",
+		mediaSourceId: string,
 		listener: (event: SourceEvent) => void,
 	): () => void {
 		return subscribe(
@@ -131,12 +131,17 @@ export const RealtimeEventBus = {
 	},
 
 	subscribeToJobs(listener: (event: JobEvent) => void): () => void {
+		// Deduplicate only during replay, when a reentrant publish can deliver
+		// the same event through both the live subscription and replay buffer.
+		let replaying = true;
 		const deliveredEvents = new Set<JobEvent>();
 		const deliver = (event: JobEvent) => {
-			if (deliveredEvents.has(event)) {
-				return;
+			if (replaying) {
+				if (deliveredEvents.has(event)) {
+					return;
+				}
+				deliveredEvents.add(event);
 			}
-			deliveredEvents.add(event);
 			listener(event);
 		};
 		const unsubscribe = subscribe(JOB_EVENTS_CHANNEL, deliver);
@@ -144,6 +149,7 @@ export const RealtimeEventBus = {
 		for (const { event } of recentJobEvents) {
 			deliver(event);
 		}
+		replaying = false;
 		deliveredEvents.clear();
 		return unsubscribe;
 	},

@@ -63,9 +63,11 @@ describe("ConfigService", () => {
 		expect(vi.mocked(fs.writeFileSync).mock.calls[0]?.[0]).toContain(
 			"config.json",
 		);
-		expect(
-			JSON.parse(String(vi.mocked(fs.writeFileSync).mock.calls[0]?.[1])),
-		).toEqual({
+		const serializedConfig = vi.mocked(fs.writeFileSync).mock.calls[0]?.[1];
+		if (typeof serializedConfig !== "string") {
+			throw new Error("Expected the configuration to be serialized as text.");
+		}
+		expect(JSON.parse(serializedConfig)).toEqual({
 			...legacyConfig,
 			downloads: defaultAppConfig.downloads,
 		});

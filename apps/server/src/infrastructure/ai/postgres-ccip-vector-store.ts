@@ -20,9 +20,9 @@ import { z } from "zod";
 const FULL_REGION_KIND = "full";
 
 const recordRowSchema = z.object({
-	mediaId: z.string().uuid(),
-	mediaSourceId: z.string().uuid(),
-	vector: z.array(z.number().finite()).length(CCIP_VECTOR_DIMENSIONS),
+	mediaId: z.uuid(),
+	mediaSourceId: z.uuid(),
+	vector: z.array(z.number()).length(CCIP_VECTOR_DIMENSIONS),
 	model: z.string(),
 	embeddingVersion: z.number().int(),
 	mediaModifiedAt: z.coerce.date(),
@@ -32,24 +32,28 @@ const recordRowSchema = z.object({
 const metadataRowSchema = recordRowSchema.omit({ vector: true });
 
 const rawCandidateRowSchema = recordRowSchema.extend({
-	vector: z
-		.union([z.string(), z.array(z.number().finite())])
-		.transform(parseVector),
-	cosineDistance: z.coerce.number().finite(),
+	vector: z.union([z.string(), z.array(z.number())]).transform(parseVector),
+	cosineDistance: z.coerce.number(),
 });
 
 function parseVector(value: string | number[]): number[] {
-	const parsed = typeof value === "string" ? JSON.parse(value) : value;
-	if (
-		!Array.isArray(parsed) ||
-		parsed.length !== CCIP_VECTOR_DIMENSIONS ||
-		!parsed.every((item) => typeof item === "number" && Number.isFinite(item))
-	) {
+	const parsed: unknown = typeof value === "string" ? JSON.parse(value) : value;
+	if (!isVector(parsed)) {
 		throw new Error(
 			`Expected a finite ${CCIP_VECTOR_DIMENSIONS}-dimension vector`,
 		);
 	}
 	return parsed;
+}
+
+function isVector(value: unknown): value is number[] {
+	return (
+		Array.isArray(value) &&
+		value.length === CCIP_VECTOR_DIMENSIONS &&
+		value.every(
+			(item: unknown) => typeof item === "number" && Number.isFinite(item),
+		)
+	);
 }
 
 function vectorLiteral(vector: number[]): string {

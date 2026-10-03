@@ -22,13 +22,13 @@ ORM: Drizzle ORM
 Validation: Zod
 AI/ML: dghs-imgutils-rs
 Testing: Vitest / Playwright
-Tooling: Vite / Biome
+Tooling: Vite / Oxlint / Oxfmt
 ```
 
 ### プロジェクト構成（モノレポ）
 
 - `apps/server/`: メインサーバー (TanStack Start + oRPC)。バックエンドAPIとWeb UIを統合。
-- `apps/tauri/`: Tauri アプリ。`src/` は独立 SPA、`src-tauri/` は Rust 実装。
+- `apps/tauri/`: Tauri アプリ。`src/` はWebと共通のワークスペース部品を使う独立 SPA、`src-tauri/` は Rust 実装。
 - `apps/cli/`: メディア管理・同期用CLIツール。
 - `apps/xtracter/`: メディア収集用ブラウザ拡張機能。
 - `packages/core/`: ドメインモデル、Zodスキーマ、contract、各種 port。
@@ -144,7 +144,10 @@ fi
 | `aube start`                                        | Aube経由の本番サーバー起動 |
 | `bun run check`                                     | lint / format / typecheck |
 | `bun run test`                                      | Vitest テスト             |
-| `bun run format`                                    | Biomeによるformat         |
+| `bun run --cwd apps/server test:e2e:components`       | DB不要のコンポーネント検証 |
+| `bun run --cwd apps/server test:e2e`                  | dev代表14件＋本番全97件のアプリE2E |
+| `bun run --cwd apps/server test:e2e:full`             | dev・本番とも全件のアプリE2E |
+| `bun run format`                                    | Oxfmtによるformat         |
 | `bun run lint`                                      | lint                      |
 | `bun --filter @solid-imager/server run db:generate` | マイグレーション生成      |
 
@@ -154,16 +157,17 @@ fi
 | ---------------------------------- | ------------------------ |
 | `packages/db/src/schema.ts`        | Drizzle DBスキーマ       |
 | `apps/server/drizzle.config.ts`    | DB接続、マイグレーション |
-| `biome.json`                       | Linter/Formatter         |
+| `.oxlintrc.json` / `.oxfmtrc.json` | Linter/Formatter         |
 | `vitest.config.ts`                 | Vitest projects          |
 | `apps/server/playwright.config.ts` | E2Eテスト                |
 | `compose.yml`                      | PostgreSQL (Docker)      |
 
 ## 詳細
 
-- **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Swagger UI](./apps/server/public/api-docs.html)
+- **テストの棚卸し・実行方針**: [テスト棚卸し](./docs/testing-audit.md)
+- **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Scalar API Reference](./apps/server/public/api-docs.html)
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
-- **V2移行状況**: [REPORT.md](./REPORT.md)
+- **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面）
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)

@@ -8,9 +8,9 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "check": "biome check --fix --unsafe ./src",
+    "check": "oxlint --fix ./src && oxfmt --write ./src",
     "typecheck": "sh -c 'tsc --noEmit'",
-    "lint": "biome lint ./src",
+    "lint": "oxlint ./src",
     "test": "vitest run"
   },
   "dependencies": {
@@ -19,6 +19,6 @@
   },
   "devDependencies": {
     "typescript": "rc",
-    "vitest": "^4.1.11"
+    "vitest": "^5.0.1"
   }
 }

@@ -35,8 +35,12 @@ if (!globalWatchers.__FILE_WATCHERS_CLEANUP_REGISTERED__) {
 		watchers.clear();
 	};
 
-	process.on("SIGINT", cleanup);
-	process.on("SIGTERM", cleanup);
+	process.on("SIGINT", () => {
+		void cleanup();
+	});
+	process.on("SIGTERM", () => {
+		void cleanup();
+	});
 	globalWatchers.__FILE_WATCHERS_CLEANUP_REGISTERED__ = true;
 }
 
@@ -73,9 +77,15 @@ export const FileWatcherManager = {
 			}
 		};
 
-		watcher.on("add", (filePath) => run(callbacks.onAdd, filePath));
-		watcher.on("unlink", (filePath) => run(callbacks.onDelete, filePath));
-		watcher.on("change", (filePath) => run(callbacks.onChange, filePath));
+		watcher.on("add", (filePath) => {
+			void run(callbacks.onAdd, filePath);
+		});
+		watcher.on("unlink", (filePath) => {
+			void run(callbacks.onDelete, filePath);
+		});
+		watcher.on("change", (filePath) => {
+			void run(callbacks.onChange, filePath);
+		});
 		watcher.on("error", (error) => {
 			const isUuid =
 				/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(

@@ -35,9 +35,9 @@ export const statusHandler = async (
 			new URL("/api/ai/health", c.options.remote).toString(),
 		).catch(() => null);
 		if (res?.ok) {
-			const details = await res
-				.json()
-				.catch(() => ({ message: "No valid JSON response available" }));
+			const details: unknown = await res.json().catch((): unknown => ({
+				message: "No valid JSON response available",
+			}));
 			return c.ok({ status: "online", details });
 		}
 		return c.error({

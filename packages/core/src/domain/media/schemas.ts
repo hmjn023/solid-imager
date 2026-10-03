@@ -4,6 +4,14 @@
  */
 
 import { z } from "zod";
+import { authorSchema, newAuthorSchema } from "../authors/schemas";
+export {
+	authorSchema,
+	authorPlatformSchema,
+	newAuthorSchema,
+} from "../authors/schemas";
+export type { Author, NewAuthor, AuthorPlatform } from "../authors/schemas";
+import { workflowSchema } from "../tags/schemas";
 
 /**
  * Zod schema for validating media types.
@@ -12,12 +20,18 @@ import { z } from "zod";
 export const mediaTypeSchema = z.enum(["image", "video", "audio"]);
 export type MediaType = z.infer<typeof mediaTypeSchema>;
 
-export const authorPlatformSchema = z.enum([
-	"twitter",
-	"pixiv-fanbox",
-	"danbooru",
+/** Sort keys supported by media collections and saved search presets. */
+export const mediaSortSchema = z.enum([
+	"date",
+	"modifiedAt",
+	"indexedAt",
+	"name",
+	"size",
+	"resolution",
+	"rating",
+	"viewCount",
 ]);
-export type AuthorPlatform = z.infer<typeof authorPlatformSchema>;
+export type MediaSort = z.infer<typeof mediaSortSchema>;
 
 /**
  * Zod schema for validating the request body when adding new media.
@@ -32,7 +46,7 @@ export const addMediaRequestSchema = z.object({
 	modifiedAt: z.coerce.date().optional(),
 	mediaType: mediaTypeSchema,
 	description: z.string().nullable(),
-	sourceUrls: z.array(z.string().url()).optional(),
+	sourceUrls: z.array(z.url()).optional(),
 	width: z.number().int().positive("Width must be a positive integer"),
 	height: z.number().int().positive("Height must be a positive integer"),
 });
@@ -72,16 +86,8 @@ export const updateMediaRequestSchema = z.object({
 		.positive("Height must be a positive integer")
 		.optional(),
 	description: z.string().nullable().optional(),
-	sourceUrls: z.array(z.string().url("Invalid URL format")).optional(),
-	authors: z
-		.array(
-			z.object({
-				name: z.string(),
-				accountId: z.string().optional().nullable(),
-				platform: authorPlatformSchema.optional(),
-			}),
-		)
-		.optional(),
+	sourceUrls: z.array(z.url("Invalid URL format")).optional(),
+	authors: z.array(newAuthorSchema).optional(),
 	characters: z
 		.array(
 			z.object({
@@ -135,8 +141,8 @@ export const extractedDataSchema = z.object({
 			type: z.enum(["positive", "negative"]),
 		}),
 	),
-	prompt: z.any().nullable(),
-	workflow: z.any().nullable(),
+	prompt: z.string().nullable(),
+	workflow: workflowSchema.nullable(),
 });
 
 export type ExtractedData = z.infer<typeof extractedDataSchema>;
@@ -176,28 +182,10 @@ export const mediaSafeSchema = mediaSchema.pick({
 });
 export type MediaSafe = z.infer<typeof mediaSafeSchema>;
 
-export const authorSchema = z.object({
-	id: z.uuid(),
-	name: z.string(),
-	accountId: z.string().nullable(),
-	createdAt: z.coerce.date(),
-	updatedAt: z.coerce.date(),
-});
-
-export type Author = z.infer<typeof authorSchema>;
-
-export const newAuthorSchema = z.object({
-	name: z.string(),
-	accountId: z.string().nullable().optional(),
-	platform: authorPlatformSchema.optional(),
-});
-
-export type NewAuthor = z.infer<typeof newAuthorSchema>;
-
 export const mediaUrlSchema = z.object({
 	id: z.uuid(),
 	mediaId: z.uuid(),
-	url: z.string().url(),
+	url: z.url(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 });
@@ -205,13 +193,13 @@ export const mediaUrlSchema = z.object({
 export type MediaUrl = z.infer<typeof mediaUrlSchema>;
 
 export const tagSchema = z.object({
-	id: z.string().uuid(),
+	id: z.uuid(),
 	name: z.string(),
 	description: z.string().nullable(),
 	attribute: z.string().nullable(),
 	color: z.string().nullable(),
 	source: z.string(),
-	authorId: z.string().uuid().nullable().optional(),
+	authorId: z.uuid().nullable().optional(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 	type: z.enum(["positive", "negative"]), // from mediaTags
@@ -221,7 +209,7 @@ export const tagSchema = z.object({
 export type MediaTag = z.infer<typeof tagSchema>;
 
 export const characterSchema = z.object({
-	id: z.string().uuid(),
+	id: z.uuid(),
 	name: z.string(),
 	description: z.string().nullable(),
 	source: z.string(),
@@ -234,7 +222,7 @@ export const characterSchema = z.object({
 export type MediaCharacter = z.infer<typeof characterSchema>;
 
 export const ipSchema = z.object({
-	id: z.string().uuid(),
+	id: z.uuid(),
 	name: z.string(),
 	description: z.string().nullable(),
 	source: z.string(),
@@ -343,7 +331,7 @@ export const searchGroupSchema: z.ZodType<SearchGroup> = z.lazy(() =>
 
 export const mediaSearchRequestSchema = z.object({
 	condition: searchGroupSchema.optional(),
-	sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+	sort: mediaSortSchema.optional(),
 	order: z.enum(["asc", "desc"]).default("desc"),
 	limit: z.coerce.number().int().positive().optional(),
 	offset: z.coerce.number().int().nonnegative().default(0),
@@ -363,7 +351,7 @@ export const similarMediaSearchResponseSchema = z.object({
 	total: z.number(),
 	scores: z.array(
 		z.object({
-			mediaId: z.string().uuid(),
+			mediaId: z.uuid(),
 			cosineDistance: z.number(),
 			ccipDistance: z.number(),
 		}),
@@ -411,18 +399,10 @@ export const mediaMetadataContextSchema = z.object({
 							return [];
 						})
 					: val,
-			z.array(z.string().url()),
+			z.array(z.url()),
 		)
 		.optional(),
-	authors: z
-		.array(
-			z.object({
-				name: z.string(),
-				accountId: z.string().nullable().optional(),
-				platform: authorPlatformSchema.optional(),
-			}),
-		)
-		.optional(),
+	authors: z.array(newAuthorSchema).optional(),
 	tags: z
 		.array(
 			z.object({
@@ -512,7 +492,7 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 	// Specific required fields for download
 	// Optional because restore items (from backup) might not have it,
 	// but required for actual download jobs (validated in handler).
-	targetUrl: z.string().url("Invalid target URL").optional(),
+	targetUrl: z.url("Invalid target URL").optional(),
 
 	// Restore fields
 	filePath: z.string().optional(),
@@ -583,7 +563,7 @@ export const presetSchema = z.object({
 	// Note: searchGroupSchema is lazy, so we use it directly.
 	// The database stores JSONB, so we validate it against the structure.
 	value: searchGroupSchema,
-	sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+	sort: mediaSortSchema.optional(),
 	order: z.enum(["asc", "desc"]).optional(),
 	mode: z.enum(["simple", "pro"]).optional(),
 	createdAt: z.coerce.date(),
@@ -594,7 +574,7 @@ export type Preset = z.infer<typeof presetSchema>;
 export const createPresetRequestSchema = z.object({
 	name: z.string().min(1, "Name is required"),
 	value: searchGroupSchema,
-	sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+	sort: mediaSortSchema.optional(),
 	order: z.enum(["asc", "desc"]).optional(),
 	mode: z.enum(["simple", "pro"]).optional(),
 });
@@ -604,7 +584,7 @@ export type CreatePresetRequest = z.infer<typeof createPresetRequestSchema>;
 export const updatePresetRequestSchema = z.object({
 	name: z.string().min(1, "Name is required").optional(),
 	value: searchGroupSchema.optional(),
-	sort: z.enum(["date", "name", "size", "rating", "viewCount"]).optional(),
+	sort: mediaSortSchema.optional(),
 	order: z.enum(["asc", "desc"]).optional(),
 	mode: z.enum(["simple", "pro"]).optional(),
 });
@@ -629,7 +609,7 @@ export const duplicateMediaItemSchema = z.object({
 	mediaType: z.enum(["image", "video", "audio"]),
 	createdAt: z.coerce.date(),
 	modifiedAt: z.coerce.date(),
-	sourceUrls: z.array(z.string().url()),
+	sourceUrls: z.array(z.url()),
 });
 export type DuplicateMediaItem = z.infer<typeof duplicateMediaItemSchema>;
 
@@ -653,18 +633,18 @@ export const findDuplicatesRequestSchema = z.object({
 export type FindDuplicatesRequest = z.infer<typeof findDuplicatesRequestSchema>;
 
 export const bulkEditMediaRequestSchema = z.object({
-	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
-		.array(z.string().uuid("Invalid media ID format"))
+		.array(z.uuid("Invalid media ID format"))
 		.min(1, "At least one media ID is required"),
 	updates: updateMediaRequestSchema,
 });
 export type BulkEditMediaRequest = z.infer<typeof bulkEditMediaRequestSchema>;
 
 export const bulkDeleteMediaRequestSchema = z.object({
-	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
-		.array(z.string().uuid("Invalid media ID format"))
+		.array(z.uuid("Invalid media ID format"))
 		.min(1, "At least one media ID is required"),
 });
 export type BulkDeleteMediaRequest = z.infer<
@@ -672,41 +652,41 @@ export type BulkDeleteMediaRequest = z.infer<
 >;
 
 export const bulkMoveMediaRequestSchema = z.object({
-	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
-		.array(z.string().uuid("Invalid media ID format"))
+		.array(z.uuid("Invalid media ID format"))
 		.min(1, "At least one media ID is required"),
 	destinationPath: z.string().min(1, "Destination path is required"),
 });
 export type BulkMoveMediaRequest = z.infer<typeof bulkMoveMediaRequestSchema>;
 
 export const bulkTagMediaRequestSchema = z.object({
-	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
-		.array(z.string().uuid("Invalid media ID format"))
+		.array(z.uuid("Invalid media ID format"))
 		.min(1, "At least one media ID is required"),
-	tagsToAdd: z.array(z.string().uuid("Invalid tag ID format")),
-	tagsToRemove: z.array(z.string().uuid("Invalid tag ID format")),
+	tagsToAdd: z.array(z.uuid("Invalid tag ID format")),
+	tagsToRemove: z.array(z.uuid("Invalid tag ID format")),
 });
 export type BulkTagMediaRequest = z.infer<typeof bulkTagMediaRequestSchema>;
 
 export const bulkCopyToSourceMediaRequestSchema = z.object({
-	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
-		.array(z.string().uuid("Invalid media ID format"))
+		.array(z.uuid("Invalid media ID format"))
 		.min(1, "At least one media ID is required"),
-	targetSourceId: z.string().uuid("Invalid target source ID format"),
+	targetSourceId: z.uuid("Invalid target source ID format"),
 });
 export type BulkCopyToSourceMediaRequest = z.infer<
 	typeof bulkCopyToSourceMediaRequestSchema
 >;
 
 export const bulkMoveToSourceMediaRequestSchema = z.object({
-	mediaSourceId: z.string().uuid("Invalid source ID format"),
+	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
-		.array(z.string().uuid("Invalid media ID format"))
+		.array(z.uuid("Invalid media ID format"))
 		.min(1, "At least one media ID is required"),
-	targetSourceId: z.string().uuid("Invalid target source ID format"),
+	targetSourceId: z.uuid("Invalid target source ID format"),
 });
 export type BulkMoveToSourceMediaRequest = z.infer<
 	typeof bulkMoveToSourceMediaRequestSchema

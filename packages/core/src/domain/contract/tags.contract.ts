@@ -7,22 +7,52 @@ import {
 } from "../tags/schemas";
 
 export const tagsContract = {
-	list: oc.output(z.array(tagResponseSchema)),
+	list: oc
+		.route({
+			tags: ["Tags"],
+			summary: "タグ一覧取得",
+			description: "登録済みのタグを一覧で取得します。",
+		})
+		.output(z.array(tagResponseSchema)),
 
-	get: oc.input(z.object({ id: z.string().uuid() })).output(tagResponseSchema),
+	get: oc
+		.route({
+			tags: ["Tags"],
+			summary: "タグ取得",
+			description: "UUIDで指定したタグの情報を取得します。",
+		})
+		.input(z.object({ id: z.uuid() }))
+		.output(tagResponseSchema),
 
-	create: oc.input(newTagSchema).output(tagResponseSchema),
+	create: oc
+		.route({
+			tags: ["Tags"],
+			summary: "タグ作成",
+			description: "新しいタグを登録します。",
+		})
+		.input(newTagSchema)
+		.output(tagResponseSchema),
 
 	update: oc
+		.route({
+			tags: ["Tags"],
+			summary: "タグ更新",
+			description: "UUIDで指定したタグの情報を更新します。",
+		})
 		.input(
 			z.object({
-				id: z.string().uuid(),
+				id: z.uuid(),
 				data: updateTagSchema,
 			}),
 		)
 		.output(tagResponseSchema),
 
 	delete: oc
-		.input(z.object({ id: z.string().uuid() }))
+		.route({
+			tags: ["Tags"],
+			summary: "タグ削除",
+			description: "UUIDで指定したタグを削除します。",
+		})
+		.input(z.object({ id: z.uuid() }))
 		.output(z.object({ success: z.boolean() })),
 };
