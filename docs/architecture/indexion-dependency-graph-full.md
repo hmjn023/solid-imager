@@ -435,8 +435,6 @@ graph LR
   N430["apps/server/src/routes/sources/$mediaSourceId/components/source-media-controller.tsx"]
   N431["apps/server/src/routes/sources/$mediaSourceId/index.tsx"]
   N432["apps/server/src/routes/sources/index.tsx"]
-  N433["apps/server/src/routes/design-lab.tsx"]
-  N434["npm:@solid-imager/ui/screens/design-concept-screen"]
   N435["apps/server/src/tests/api/categories/category-id-test.ts"]
   N436["apps/server/src/tests/api/categories/index.test.ts"]
   N437["apps/server/src/tests/api/characters/character-id-test.ts"]
@@ -857,7 +855,6 @@ graph LR
   N852["packages/ui/src/screens/source-media-screen.tsx"]
   N853["npm:lucide-solid/icons/upload"]
   N854["packages/ui/src/query-state.ts"]
-  N855["packages/ui/src/screens/design-concept-screen.tsx"]
   N856["npm:lucide-solid/icons/arrow-down-up"]
   N857["npm:lucide-solid/icons/arrow-left"]
   N858["npm:lucide-solid/icons/ban"]
@@ -1536,8 +1533,6 @@ graph LR
   N431 --> N423
   N432 --> N26
   N432 --> N395
-  N433 --> N434
-  N433 --> N26
   N435 --> N1
   N435 --> N172
   N436 --> N1
@@ -1904,7 +1899,6 @@ graph LR
   N554 --> N394
   N554 --> N398
   N554 --> N411
-  N554 --> N433
   N554 --> N413
   N554 --> N417
   N554 --> N419
@@ -2490,41 +2484,6 @@ graph LR
   N852 --> N759
   N844 --> N121
   N844 --> N854
-  N855 --> N856
-  N855 --> N857
-  N855 --> N858
-  N855 --> N833
-  N855 --> N834
-  N855 --> N859
-  N855 --> N860
-  N855 --> N861
-  N855 --> N862
-  N855 --> N863
-  N855 --> N864
-  N855 --> N835
-  N855 --> N865
-  N855 --> N866
-  N855 --> N867
-  N855 --> N868
-  N855 --> N869
-  N855 --> N870
-  N855 --> N836
-  N855 --> N837
-  N855 --> N871
-  N855 --> N872
-  N855 --> N873
-  N855 --> N839
-  N855 --> N874
-  N855 --> N875
-  N855 --> N876
-  N855 --> N877
-  N855 --> N878
-  N855 --> N879
-  N855 --> N880
-  N855 --> N881
-  N855 --> N882
-  N855 --> N883
-  N855 --> N884
   N885 --> N757
   N885 --> N759
   N885 --> N762
