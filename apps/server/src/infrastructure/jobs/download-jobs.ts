@@ -793,11 +793,7 @@ async function updateExistingMediaWithMetadata(
 	await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
 		description: newMedia.description ?? undefined,
 		sourceUrls: newMedia.sourceUrls,
-		authors: item.authors?.map((a) => ({
-			name: a.name,
-			accountId: a.accountId ?? null,
-			...(a.platform ? { platform: a.platform } : {}),
-		})),
+		authors: item.authors,
 		// We can also update other metadata if needed, consistent with registerMedia
 		tags: item.tags,
 		characters: item.characters,
@@ -833,11 +829,7 @@ async function registerMedia(
 				description: newMedia.description ?? undefined,
 				createdAt: newMedia.createdAt,
 				sourceUrls: newMedia.sourceUrls,
-				authors: item.authors?.map((a) => ({
-					name: a.name,
-					accountId: a.accountId ?? null,
-					...(a.platform ? { platform: a.platform } : {}),
-				})),
+				authors: item.authors,
 				tags: item.tags,
 				characters: item.characters,
 				ips: item.ips,

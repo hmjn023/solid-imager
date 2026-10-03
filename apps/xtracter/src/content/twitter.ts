@@ -176,7 +176,7 @@ function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
 	};
 }
 
-function extractMetadata(
+export function extractMetadata(
 	article: HTMLElement | null,
 	element: HTMLElement,
 	mediaType: "IMAGE" | "VIDEO" = "IMAGE",
@@ -196,6 +196,26 @@ function extractMetadata(
 		authorId = extracted.authorId;
 	}
 
+	// A quoted image links to its own post even when it shares the outer article.
+	const mediaLink =
+		mediaType === "IMAGE"
+			? element.closest<HTMLAnchorElement>("a[href]")
+			: null;
+	if (mediaLink && isTwitterStatusUrl(mediaLink.href)) {
+		const postId = (url: string) => {
+			const parts = getTwitterStatusPath(url);
+			return parts?.[parts[1] === "web" ? 3 : 2];
+		};
+		if (postId(mediaLink.href) !== postId(tweetUrl)) {
+			// The outer post's name, text and date are not evidence about the image author.
+			authorName = "";
+			tweetText = "";
+			timestamp = "";
+			tweetUrl = mediaLink.href;
+			authorId = extractTwitterAuthorIdFromStatusUrl(tweetUrl);
+		}
+	}
+
 	if (!tweetUrl) {
 		const urlMetadata = extractMetadataFromUrl();
 		authorId = authorId || urlMetadata.authorId;
@@ -208,7 +228,11 @@ function extractMetadata(
 	if (authorName || authorId) {
 		authors.push({
 			name: authorName || authorId,
-			accountId: authorId,
+			accountId: authorId || undefined,
+			profileUrl: authorId
+				? `https://x.com/${authorId.replace(/^@/, "")}`
+				: undefined,
+			observedAt: new Date().toISOString(),
 			platform: "twitter",
 		});
 	}

@@ -1,11 +1,13 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	extractFromArticle,
+	extractMetadata,
 	extractTwitterAuthorIdFromStatusUrl,
 	isTwitterStatusUrl,
 } from "./twitter";
 
 describe("extractTwitterAuthorIdFromStatusUrl", () => {
+	afterEach(() => vi.unstubAllGlobals());
 	it("extracts the handle from an X status permalink", () => {
 		expect(
 			extractTwitterAuthorIdFromStatusUrl(
@@ -67,5 +69,80 @@ describe("extractTwitterAuthorIdFromStatusUrl", () => {
 			tweetUrl: "",
 			authorId: "",
 		});
+	});
+	it.each([1, 2])(
+		"preserves the post permalink and metadata for photo %i of the same post",
+		(photo) => {
+			const postUrl = "https://x.com/creator/status/100";
+			const photoUrl = `${postUrl}/photo/${photo}`;
+			class FixtureImage {
+				src = "https://pbs.twimg.com/media/original.jpg";
+				closest() {
+					return { href: photoUrl };
+				}
+			}
+			vi.stubGlobal("HTMLImageElement", FixtureImage);
+			vi.stubGlobal("navigator", { userAgent: "fixture" });
+			const article = {
+				querySelector: (selector: string) => {
+					if (selector === "time")
+						return {
+							getAttribute: () => "2026-01-01T00:00:00.000Z",
+							closest: () => ({ href: postUrl }),
+						};
+					if (selector.includes("User-Name"))
+						return { querySelector: () => ({ innerText: "Creator" }) };
+					return { innerText: "Original text" };
+				},
+			} as unknown as HTMLElement;
+			const item = extractMetadata(
+				article,
+				new FixtureImage() as unknown as HTMLElement,
+			);
+			expect(item.sourceUrls).toContain(postUrl);
+			expect(item.sourceUrls).not.toContain(photoUrl);
+			expect(item.authors).toEqual([
+				expect.objectContaining({ name: "Creator", accountId: "@creator" }),
+			]);
+			expect(item.description).toBe("Original text");
+			expect(item.createdAt).toBe("2026-01-01T00:00:00.000Z");
+		},
+	);
+	it("associates a quoted image with the image permalink instead of the outer article's author", () => {
+		const quotedUrl = "https://x.com/quoted/status/200/photo/1";
+		class FixtureImage {
+			src = "https://pbs.twimg.com/media/quoted.jpg";
+			closest() {
+				return { href: quotedUrl };
+			}
+		}
+		vi.stubGlobal("HTMLImageElement", FixtureImage);
+		vi.stubGlobal("navigator", { userAgent: "fixture" });
+		const article = {
+			querySelector: (selector: string) => {
+				if (selector === "time")
+					return {
+						getAttribute: () => "2026-01-01",
+						closest: () => ({ href: "https://x.com/outer/status/100" }),
+					};
+				if (selector.includes("User-Name"))
+					return { querySelector: () => ({ innerText: "Outer Author" }) };
+				return { innerText: "Outer comment" };
+			},
+		} as unknown as HTMLElement;
+		const item = extractMetadata(
+			article,
+			new FixtureImage() as unknown as HTMLElement,
+		);
+		expect(item.authors).toEqual([
+			expect.objectContaining({
+				name: "@quoted",
+				accountId: "@quoted",
+				platform: "twitter",
+			}),
+		]);
+		expect(item.sourceUrls).toContain(quotedUrl);
+		expect(item.sourceUrls).not.toContain("https://x.com/outer/status/100");
+		expect(item.description).toBe("");
 	});
 });

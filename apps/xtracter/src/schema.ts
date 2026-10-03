@@ -1,8 +1,17 @@
 import { z } from "zod";
+import { submitAuthorAccountVerificationSchema } from "@solid-imager/core/domain/authors/schemas";
+
+export const submitAccountVerificationMessageSchema =
+	submitAuthorAccountVerificationSchema.extend({
+		type: z.literal("SUBMIT_ACCOUNT_VERIFICATION"),
+	});
 
 export const authorSchema = z.object({
 	name: z.string(),
 	accountId: z.string().nullable().optional(),
+	remoteId: z.string().nullable().optional(),
+	profileUrl: z.url().optional(),
+	observedAt: z.iso.datetime().optional(),
 	platform: z.enum(["twitter", "pixiv-fanbox", "danbooru"]).optional(),
 });
 
@@ -129,6 +138,7 @@ export const messageSchema = z.discriminatedUnion("type", [
 export type Message = z.infer<typeof messageSchema>;
 
 export const extendedMessageSchema = z.discriminatedUnion("type", [
+	submitAccountVerificationMessageSchema,
 	downloadMessageSchema,
 	downloadBulkMessageSchema,
 	postDownloadMessageSchema,

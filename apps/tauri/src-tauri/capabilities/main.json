@@ -6,6 +6,7 @@
   "permissions": [
     "core:default",
     "allow-remove-sqlite-database",
+    "allow-open-x-verification-profile",
     "core:webview:allow-create-webview-window",
     "core:webview:allow-webview-close",
     "core:path:default",

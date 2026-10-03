@@ -10,6 +10,7 @@ import type {
 	PostDownloadMessage,
 } from "@ext/schema";
 import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
+import { submitAccountVerificationMessageSchema } from "@ext/schema";
 
 const DATE_STRING_LENGTH = 19; // "YYYY-MM-DDTHH-mm-ss"
 const BASE64_CHUNK_SIZE = 0x8000;
@@ -198,7 +199,50 @@ function isGetCookiesMessage(
 }
 
 chrome.runtime.onMessage.addListener(
-	(message: ExtendedMessage, _sender, sendResponse) => {
+	(message: ExtendedMessage, sender, sendResponse) => {
+		if (message.type === "SUBMIT_ACCOUNT_VERIFICATION") {
+			const parsed = submitAccountVerificationMessageSchema.safeParse(message);
+			let senderUrl: URL;
+			try {
+				senderUrl = new URL(sender.url ?? "");
+			} catch {
+				sendResponse({ success: false });
+				return;
+			}
+			if (
+				!parsed.success ||
+				!["x.com", "twitter.com"].includes(senderUrl.hostname) ||
+				senderUrl.protocol !== "https:" ||
+				senderUrl.pathname
+					.replace(/^\//, "")
+					.replace(/\/$/, "")
+					.toLowerCase() !== parsed.data.profile.username.toLowerCase()
+			) {
+				sendResponse({ success: false });
+				return;
+			}
+			void getClient()
+				.then((client) =>
+					client.authors.submitAccountVerification({
+						verificationId: parsed.data.verificationId,
+						profile: parsed.data.profile,
+					}),
+				)
+				.then(() => sendResponse({ success: true }))
+				.catch((error: unknown) => {
+					sendResponse({ success: false });
+					void chrome.notifications.create({
+						type: "basic",
+						iconUrl: "icon.png",
+						title: "xtracter アカウント確認",
+						message:
+							error instanceof Error
+								? error.message
+								: "Managerへの送信に失敗しました。接続設定を確認してプロフィールを再読み込みしてください。",
+					});
+				});
+			return true;
+		}
 		// Handle Popup Requests
 		if (message.type === "GET_SOURCES") {
 			void getMediaSources().then((sources) => sendResponse(sources));
@@ -268,6 +312,12 @@ chrome.runtime.onMessage.addListener(
 			const filename = generateMediaFilename(
 				{
 					...message.data,
+					authors: message.data.authors?.map((author) => ({
+						...author,
+						observedAt: author.observedAt
+							? new Date(author.observedAt)
+							: undefined,
+					})),
 					createdAt: message.data.createdAt
 						? new Date(message.data.createdAt)
 						: undefined,

@@ -1,3 +1,7 @@
+import {
+	enrichTwitterMetadata,
+	observeTwitterAccounts,
+} from "./twitter-account-cache";
 import type { DownloadItem } from "@ext/schema";
 import { processDanbooruMedia } from "./danbooru";
 import { processFanboxMedia } from "./fanbox";
@@ -144,10 +148,11 @@ function createButton(
 }
 
 function handleAction(
-	metadata: DownloadItem,
+	originalMetadata: DownloadItem,
 	type: "DOWNLOAD" | "POST_DOWNLOAD",
 	mediaType: "IMAGE" | "VIDEO",
 ) {
+	const metadata = enrichTwitterMetadata(originalMetadata);
 	const tweetUrl =
 		metadata.sourceUrls && metadata.sourceUrls.length > 0
 			? metadata.sourceUrls[0]
@@ -178,7 +183,9 @@ chrome.runtime.onMessage.addListener(
 			"type" in message &&
 			message.type === "GET_METADATA"
 		) {
-			const allMetadata = Array.from(processedMetadata.values());
+			const allMetadata = Array.from(processedMetadata.values()).map(
+				enrichTwitterMetadata,
+			);
 			sendResponse(allMetadata);
 		}
 	},
@@ -194,6 +201,9 @@ function processMedia() {
 		processDanbooruMedia(createButtonContainer, createAsyncButtonContainer);
 	}
 }
+
+if (["x.com", "twitter.com"].includes(window.location.hostname))
+	observeTwitterAccounts();
 
 const observer = new MutationObserver((mutations) => {
 	let shouldProcess = false;
