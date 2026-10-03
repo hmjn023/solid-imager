@@ -1,6 +1,10 @@
 import path from "node:path";
 import type { IMediaStorage } from "@solid-imager/core";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import type { MediaStorageResult } from "@solid-imager/core";
+import {
+	MediaFileConflictError,
+	ResourceNotFoundError,
+} from "@solid-imager/core/domain/errors";
 import {
 	type AddMediaRequest,
 	type Media,
@@ -94,11 +98,26 @@ export class MediaUploadService {
 
 		await validateFileSignature(file, uploadRequest.filename ?? file.name);
 
-		const fileInfo = await this.storageService.saveFile(basePath, file, {
-			filename: uploadRequest.filename,
-			overwrite: uploadRequest.overwrite,
-			autoIncrement: uploadRequest.autoIncrement,
-		});
+		let fileInfo: MediaStorageResult;
+		try {
+			fileInfo = await this.storageService.saveFile(basePath, file, {
+				filename: uploadRequest.filename,
+				overwrite: uploadRequest.overwrite,
+				autoIncrement: uploadRequest.autoIncrement,
+			});
+		} catch (error) {
+			if (error instanceof MediaFileConflictError) {
+				return {
+					success: false,
+					filePath: error.filePath,
+					conflict: {
+						existingFile: error.filePath,
+						suggestedName: "",
+					},
+				};
+			}
+			throw error;
+		}
 
 		const mediaType = getMediaTypeFromExtension(fileInfo.fileName);
 

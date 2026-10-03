@@ -2,8 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	fetchSourceDump,
 	importSourceNdjson,
-	importSourceZip,
-	restoreSource,
+	importSourceTar,
 } from "~/infrastructure/api-clients/sources-api";
 
 // Mock the orpc client
@@ -12,7 +11,6 @@ vi.mock("~/infrastructure/api-clients/orpc-client", () => ({
 		sources: {
 			enqueueExport: vi.fn(),
 			enqueueImport: vi.fn(),
-			restore: vi.fn(),
 		},
 		jobs: { downloadArtifact: vi.fn(), get: vi.fn() },
 	},
@@ -26,7 +24,7 @@ describe("Sources API Client Extensions", () => {
 		vi.clearAllMocks();
 	});
 
-	it("should enqueue and download a completed json export", async () => {
+	it("should enqueue and download a completed NDJSON export", async () => {
 		const id = "test-source-id";
 		const mockBlob = new Blob(["dump"], {
 			type: "application/json",
@@ -45,11 +43,11 @@ describe("Sources API Client Extensions", () => {
 			new Blob([mockBlob]).stream(),
 		);
 
-		const result = await fetchSourceDump(id, "json");
+		const result = await fetchSourceDump(id, "ndjson");
 
 		expect((orpc.sources as any).enqueueExport).toHaveBeenCalledWith({
 			id,
-			mode: "json",
+			mode: "ndjson",
 			includeImages: false,
 		});
 		expect((orpc.jobs as any).get).toHaveBeenCalledWith(
@@ -67,7 +65,7 @@ describe("Sources API Client Extensions", () => {
 
 	it("should include images by default for TAR exports", async () => {
 		const id = "test-source-id";
-		const mockBlob = new Blob(["zip content"], { type: "application/zip" });
+		const mockBlob = new Blob(["tar content"], { type: "application/x-tar" });
 		((orpc.sources as any).enqueueExport as any).mockResolvedValue({
 			id: "export-job-id",
 		});
@@ -79,31 +77,31 @@ describe("Sources API Client Extensions", () => {
 			new Blob([mockBlob]).stream(),
 		);
 
-		const result = await fetchSourceDump(id, "zip");
+		const result = await fetchSourceDump(id, "tar");
 
 		expect((orpc.sources as any).enqueueExport).toHaveBeenCalledWith({
 			id,
-			mode: "zip",
+			mode: "tar",
 			includeImages: true,
 		});
-		expect(await result.text()).toBe("zip content");
+		expect(await result.text()).toBe("tar content");
 	});
 
 	it("should enqueue TAR imports through oRPC", async () => {
 		const id = "test-source-id";
-		const mockFile = new File(["zip content"], "test.zip", {
-			type: "application/zip",
+		const mockFile = new File(["tar content"], "test.tar", {
+			type: "application/x-tar",
 		});
 		const mockResponse = { id: "restore-job-id" };
 		((orpc.sources as any).enqueueImport as any).mockResolvedValue(
 			mockResponse,
 		);
 
-		const result = await importSourceZip(id, mockFile);
+		const result = await importSourceTar(id, mockFile);
 
 		expect((orpc.sources as any).enqueueImport).toHaveBeenCalledWith({
 			id,
-			mode: "zip",
+			mode: "tar",
 			file: mockFile,
 		});
 		expect(result).toEqual(mockResponse);
@@ -123,26 +121,8 @@ describe("Sources API Client Extensions", () => {
 
 		expect((orpc.sources as any).enqueueImport).toHaveBeenCalledWith({
 			id,
-			mode: "json",
+			mode: "ndjson",
 			file: mockFile,
-		});
-		expect(result).toEqual(mockResponse);
-	});
-
-	it("should call orpc.sources.restore with correct parameters", async () => {
-		const id = "test-source-id";
-		const data: any[] = [];
-		const mockResponse = { processed: 10, skipped: 2 };
-
-		((orpc.sources as any).restore as any).mockResolvedValue(
-			mockResponse as any,
-		);
-
-		const result = await restoreSource(id, data);
-
-		expect((orpc.sources as any).restore).toHaveBeenCalledWith({
-			id,
-			data,
 		});
 		expect(result).toEqual(mockResponse);
 	});

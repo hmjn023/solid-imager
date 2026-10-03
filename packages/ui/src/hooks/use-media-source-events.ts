@@ -101,7 +101,7 @@ type SafeParseSchema<T> = {
 };
 
 function assertNever(value: never): never {
-	throw new Error(`Unhandled source event: ${value}`);
+	throw new Error(`Unhandled source event: ${String(value)}`);
 }
 
 function validateAndDispatch<T>(

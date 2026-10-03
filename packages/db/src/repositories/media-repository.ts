@@ -1,3 +1,4 @@
+import { createAuthorRepository, mapAuthor } from "./author-repository";
 import {
 	ResourceNotFoundError,
 	UnexpectedError,
@@ -86,7 +87,9 @@ type MediaWithRelations = InferSelectModel<typeof medias> & {
 	})[];
 	generationInfo: InferSelectModel<typeof mediaGenerationInfo> | null;
 	authors: (InferSelectModel<typeof mediaAuthors> & {
-		author: InferSelectModel<typeof authors>;
+		author: InferSelectModel<typeof authors> & {
+			accounts: InferSelectModel<typeof import("../schema").authorAccounts>[];
+		};
 	})[];
 	urls: InferSelectModel<typeof mediaUrls>[];
 	characters: (InferSelectModel<typeof mediaCharacters> & {
@@ -161,7 +164,9 @@ function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
 					steps: row.generationInfo.steps ?? 0,
 				}
 			: null,
-		authors: row.authors.map((ma) => ma.author),
+		authors: row.authors.map(({ author }) =>
+			mapAuthor(author, author.accounts),
+		),
 		urls: row.urls.map(mapToMediaUrl),
 		characters: row.characters.map((mc) => ({
 			...mc.character,
@@ -966,7 +971,7 @@ export function createMediaRepository(
 						generationInfo: true,
 						authors: {
 							with: {
-								author: true,
+								author: { with: { accounts: true } },
 							},
 						},
 						urls: true,
@@ -1008,23 +1013,21 @@ export function createMediaRepository(
 				.from(mediaTags)
 				.innerJoin(tags, eq(mediaTags.tagId, tags.id))
 				.where(eq(mediaTags.mediaId, mediaId));
-			return rows.map(
-				(r): MediaTag => ({
-					id: r.tags.id,
-					name: r.tags.name,
-					description: r.tags.description,
-					attribute: r.tags.attribute,
-					color: r.tags.color,
-					source: r.tags.source,
-					authorId: r.tags.authorId,
-					createdAt: r.tags.createdAt,
-					updatedAt: r.tags.updatedAt,
-					type: isTagType(r.media_tags.tagType)
-						? r.media_tags.tagType
-						: "positive",
-					confidence: r.media_tags.confidence,
-				}),
-			);
+			return rows.map((r): MediaTag => ({
+				id: r.tags.id,
+				name: r.tags.name,
+				description: r.tags.description,
+				attribute: r.tags.attribute,
+				color: r.tags.color,
+				source: r.tags.source,
+				authorId: r.tags.authorId,
+				createdAt: r.tags.createdAt,
+				updatedAt: r.tags.updatedAt,
+				type: isTagType(r.media_tags.tagType)
+					? r.media_tags.tagType
+					: "positive",
+				confidence: r.media_tags.confidence,
+			}));
 		},
 
 		async getGenerationInfo(
@@ -1062,26 +1065,7 @@ export function createMediaRepository(
 			if (authorRepo) {
 				return await authorRepo.findByMediaId(mediaId, tx);
 			}
-			// Fallback: query directly
-			const client = getExecutor(tx);
-			const rows = await client
-				.select({
-					id: authors.id,
-					name: authors.name,
-					accountId: authors.accountId,
-					createdAt: authors.createdAt,
-					updatedAt: authors.updatedAt,
-				})
-				.from(mediaAuthors)
-				.innerJoin(authors, eq(mediaAuthors.authorId, authors.id))
-				.where(eq(mediaAuthors.mediaId, mediaId));
-			return rows.map((r) => ({
-				id: r.id,
-				name: r.name,
-				accountId: r.accountId,
-				createdAt: r.createdAt,
-				updatedAt: r.updatedAt,
-			}));
+			return createAuthorRepository(getExecutor).findByMediaId(mediaId, tx);
 		},
 
 		async getUrls(mediaId: string, tx?: Transaction): Promise<MediaUrl[]> {
@@ -1377,7 +1361,7 @@ export function createMediaRepository(
 				for (const [, ids] of byUrlSet) {
 					if (ids.length < 2) continue;
 					const group = ids.map((id) => {
-						// biome-ignore lint/style/noNonNullAssertion: ID mapped from mediaRows
+						// oxlint-disable-next-line typescript/no-non-null-assertion -- ID mapped from mediaRows
 						const row = mediaMap.get(id)!;
 						return {
 							id: row.id,

@@ -68,12 +68,30 @@ import {
 export const Route = createFileRoute("/search")({
 	validateSearch: searchHistoryQuerySchema,
 	loader: ({ context }) => {
-		void context.queryClient.prefetchQuery(tagsQueryOptions());
-		void context.queryClient.prefetchQuery(mediaSourcesQueryOptions());
-		void context.queryClient.prefetchQuery(allProjectsQueryOptions());
-		void context.queryClient.prefetchQuery(allIpsQueryOptions());
-		void context.queryClient.prefetchQuery(allCharactersQueryOptions());
-		void context.queryClient.prefetchQuery(allAuthorsQueryOptions());
+		void context.queryClient.query(tagsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(mediaSourcesQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(allProjectsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(allIpsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(allCharactersQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
+		void context.queryClient.query(allAuthorsQueryOptions()).then(
+			() => undefined,
+			() => undefined,
+		);
 	},
 	component: SearchRoute,
 });
@@ -306,7 +324,7 @@ function SearchRoute() {
 				}}
 				open={isDeleteDialogOpen()}
 			>
-				<DialogContent class="workspace-theme">
+				<DialogContent data-workspace-theme="">
 					<DialogHeader>
 						<DialogTitle>メディアを削除</DialogTitle>
 						<DialogDescription>
@@ -324,7 +342,9 @@ function SearchRoute() {
 						</Button>
 						<Button
 							disabled={isDeleteSubmitting()}
-							onClick={confirmDelete}
+							onClick={() => {
+								void confirmDelete();
+							}}
 							variant="destructive"
 						>
 							{isDeleteSubmitting() ? "削除中..." : "削除"}
@@ -335,7 +355,9 @@ function SearchRoute() {
 			<MoveCopyMediaDialog
 				currentSourceId={moveCopyTarget()?.mediaSourceId ?? ""}
 				mode={moveCopyMode()}
-				onConfirm={handleConfirmCopyMove}
+				onConfirm={(event) => {
+					void handleConfirmCopyMove(event);
+				}}
 				onOpenChange={(open) => {
 					setIsMoveCopyDialogOpen(open);
 					if (!open) setMoveCopyTarget(null);

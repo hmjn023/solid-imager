@@ -1,4 +1,8 @@
-import type { TweetMetadata } from "@ext/schema";
+import {
+	enrichTwitterMetadata,
+	observeTwitterAccounts,
+} from "./twitter-account-cache";
+import type { DownloadItem } from "@ext/schema";
 import { processDanbooruMedia } from "./danbooru";
 import { processFanboxMedia } from "./fanbox";
 import { processTwitterMedia } from "./twitter";
@@ -7,7 +11,7 @@ const OBSERVER_CONFIG = { childList: true, subtree: true };
 const ERROR_TIMEOUT_MS = 2000;
 
 function createButtonContainer(
-	metadata: TweetMetadata,
+	metadata: DownloadItem,
 	type: "IMAGE" | "VIDEO" = "IMAGE",
 ): HTMLDivElement {
 	const container = document.createElement("div");
@@ -37,7 +41,7 @@ function createButtonContainer(
 }
 
 export function createAsyncButtonContainer(
-	fetchMetadata: () => Promise<TweetMetadata | null>,
+	fetchMetadata: () => Promise<DownloadItem | null>,
 	type: "IMAGE" | "VIDEO" = "IMAGE",
 ): HTMLDivElement {
 	const container = document.createElement("div");
@@ -144,10 +148,11 @@ function createButton(
 }
 
 function handleAction(
-	metadata: TweetMetadata,
+	originalMetadata: DownloadItem,
 	type: "DOWNLOAD" | "POST_DOWNLOAD",
 	mediaType: "IMAGE" | "VIDEO",
 ) {
+	const metadata = enrichTwitterMetadata(originalMetadata);
 	const tweetUrl =
 		metadata.sourceUrls && metadata.sourceUrls.length > 0
 			? metadata.sourceUrls[0]
@@ -156,26 +161,35 @@ function handleAction(
 	if (mediaType === "VIDEO") {
 		chrome.runtime.sendMessage(
 			{ type: "GET_COOKIES", url: tweetUrl },
-			(cookies) => {
-				if (cookies) {
+			(cookies: unknown) => {
+				if (Array.isArray(cookies)) {
 					metadata.cookies = cookies;
 				}
-				chrome.runtime.sendMessage({ type, data: metadata });
+				void chrome.runtime.sendMessage({ type, data: metadata });
 			},
 		);
 	} else {
-		chrome.runtime.sendMessage({ type, data: metadata });
+		void chrome.runtime.sendMessage({ type, data: metadata });
 	}
 }
 
-const processedMetadata = new Map<string, TweetMetadata>();
+const processedMetadata = new Map<string, DownloadItem>();
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-	if (message.type === "GET_METADATA") {
-		const allMetadata = Array.from(processedMetadata.values());
-		sendResponse(allMetadata);
-	}
-});
+chrome.runtime.onMessage.addListener(
+	(message: unknown, _sender, sendResponse) => {
+		if (
+			typeof message === "object" &&
+			message !== null &&
+			"type" in message &&
+			message.type === "GET_METADATA"
+		) {
+			const allMetadata = Array.from(processedMetadata.values()).map(
+				enrichTwitterMetadata,
+			);
+			sendResponse(allMetadata);
+		}
+	},
+);
 
 function processMedia() {
 	const hostname = window.location.hostname;
@@ -187,6 +201,9 @@ function processMedia() {
 		processDanbooruMedia(createButtonContainer, createAsyncButtonContainer);
 	}
 }
+
+if (["x.com", "twitter.com"].includes(window.location.hostname))
+	observeTwitterAccounts();
 
 const observer = new MutationObserver((mutations) => {
 	let shouldProcess = false;

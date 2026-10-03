@@ -193,7 +193,9 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 	page,
 }) => {
 	await openTauriRoute(page, "/sources/");
-	await expect(page).toHaveURL(/\/#\/search(?:\?.*)?$/);
+	await expect(
+		page.getByRole("heading", { name: "ページが見つかりません", exact: true }),
+	).toBeVisible();
 
 	await openTauriRoute(page, sourcePath);
 	await expectWorkspaceShell(page);

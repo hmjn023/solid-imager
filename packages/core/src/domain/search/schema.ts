@@ -21,7 +21,7 @@ export const searchStateSchema = z.object({
 	advancedCondition: searchGroupSchema.nullable(),
 
 	// Similarity ordering
-	similarityAnchorMediaId: z.string().uuid().nullable(),
+	similarityAnchorMediaId: z.uuid().nullable(),
 	similarityTopK: z.number().int().min(1).max(100),
 
 	// Pagination

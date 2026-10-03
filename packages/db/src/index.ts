@@ -1,6 +1,5 @@
 export * from "./errors";
 export { createAuthorRepository } from "./repositories/author-repository";
-export { createAuthorsRepository } from "./repositories/authors-repository";
 export { createCategoryRepository } from "./repositories/category-repository";
 export { createCharacterRepository } from "./repositories/character-repository";
 export { createCollectionRepository } from "./repositories/collection-repository";

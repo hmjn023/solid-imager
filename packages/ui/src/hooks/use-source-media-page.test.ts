@@ -26,13 +26,13 @@ describe("getRestoreImportStrategies", () => {
 		).toEqual(["unsupported"]);
 	});
 
-	it("keeps legacy json restore support", () => {
+	it("marks JSON dump files as unsupported", () => {
 		expect(
 			getRestoreImportStrategies(
 				{ name: "source-dump.json", type: "application/json" } as File,
 				{},
 			),
-		).toEqual(["json"]);
+		).toEqual(["unsupported"]);
 	});
 
 	it("marks unknown file types as unsupported", () => {

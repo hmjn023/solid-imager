@@ -6,6 +6,8 @@ import type {
 	MediaSearchRequest,
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
+import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import type { UploadResponse } from "@solid-imager/core/domain/media/upload-schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
 import {
@@ -87,7 +89,7 @@ export type SourceMediaPageActions = {
 		sourceId: string,
 		file: File,
 		opts: Omit<UploadOptions, "file">,
-	) => Promise<unknown>;
+	) => Promise<UploadResponse>;
 	deleteMedia: (sourceId: string, mediaId: string) => Promise<unknown>;
 	copyMedia: (mediaId: string, targetId: string) => Promise<unknown>;
 	moveMedia: (mediaId: string, targetId: string) => Promise<unknown>;
@@ -462,13 +464,19 @@ export function useSourceMediaPage(
 
 	// --- Handlers ---
 	const handleUpload = async (options: UploadOptions) => {
-		await actions.uploadMedia(id() || "", options.file, {
+		const result = await actions.uploadMedia(id() || "", options.file, {
 			filename: options.filename,
 			description: options.description,
 			sourceUrl: options.sourceUrl,
 			overwrite: options.overwrite,
 			autoIncrement: options.autoIncrement,
 		});
+		if (!result.success) {
+			toast.info(
+				`${result.conflict?.existingFile ?? options.filename} は既に存在するためスキップしました。`,
+			);
+			return;
+		}
 		toast.success("Media uploaded successfully");
 		refreshMediaQuery();
 	};
@@ -476,65 +484,28 @@ export function useSourceMediaPage(
 	const handleJsonFileUpload = async (file: File) => {
 		try {
 			const text = await file.text();
-			const jsonContent = JSON.parse(text);
-			let items: DownloadItem[] = [];
-
-			if (Array.isArray(jsonContent)) {
-				items = jsonContent;
-			} else if (jsonContent.items && Array.isArray(jsonContent.items)) {
-				items = jsonContent.items;
-			} else if (jsonContent.images && Array.isArray(jsonContent.images)) {
-				items = jsonContent.images.flatMap((image: Record<string, unknown>) => {
-					const imageUrl =
-						(typeof image.originalUrl === "string" && image.originalUrl) ||
-						(typeof image.displayUrl === "string" && image.displayUrl);
-					if (!imageUrl) {
-						return [];
-					}
-
-					const metadata =
-						typeof image.metadata === "object" && image.metadata
-							? (image.metadata as Record<string, unknown>)
-							: undefined;
-					const postId =
-						metadata && typeof metadata.postId === "string"
-							? metadata.postId
-							: undefined;
-					const tweetUrl =
-						image.source === "twitter" && postId
-							? `https://twitter.com/i/web/status/${postId}`
-							: undefined;
-					const author =
-						metadata && typeof metadata.author === "string"
-							? metadata.author
-							: undefined;
-					const timestamp =
-						metadata && typeof metadata.timestamp === "string"
-							? metadata.timestamp
-							: typeof image.date === "string"
-								? image.date
-								: undefined;
-
-					return [
-						{
-							targetUrl: imageUrl,
-							description:
-								(metadata && typeof metadata.title === "string"
-									? metadata.title
-									: typeof image.title === "string"
-										? image.title
-										: undefined) ?? undefined,
-							sourceUrls: tweetUrl ? [tweetUrl] : undefined,
-							authors: author ? [{ name: author }] : undefined,
-							createdAt: timestamp,
-						},
-					];
-				});
-			} else {
+			const jsonContent: unknown = JSON.parse(text);
+			const record =
+				typeof jsonContent === "object" &&
+				jsonContent !== null &&
+				!Array.isArray(jsonContent)
+					? jsonContent
+					: null;
+			const candidateItems = Array.isArray(jsonContent)
+				? jsonContent
+				: record && "items" in record && Array.isArray(record.items)
+					? record.items
+					: null;
+			if (!candidateItems) {
 				throw new Error(
-					"JSONファイルはアイテムの配列であるか、'items'または'images'キーを含むオブジェクトである必要があります。",
+					"JSONファイルはアイテムの配列であるか、'items'キーを含むオブジェクトである必要があります。",
 				);
 			}
+			const parsedItems = z.array(downloadItemSchema).safeParse(candidateItems);
+			if (!parsedItems.success) {
+				throw new Error("JSONファイルのダウンロードデータが不正です。");
+			}
+			const items: DownloadItem[] = parsedItems.data;
 
 			if (items.length === 0) {
 				throw new Error(
@@ -591,9 +562,18 @@ export function useSourceMediaPage(
 		if (item.type.indexOf("image") !== -1) {
 			const blob = item.getAsFile();
 			if (blob) {
-				const file = new File([blob], `pasted-image-${Date.now()}.png`, {
-					type: blob.type,
-				});
+				const subtype = blob.type.split("/")[1]?.split(";")[0];
+				const extension =
+					blob.type === "image/jpeg"
+						? "jpg"
+						: subtype?.replace(/[^a-z0-9]/gi, "") || "png";
+				const file = new File(
+					[blob],
+					`pasted-image-${Date.now()}.${extension}`,
+					{
+						type: blob.type,
+					},
+				);
 				setFileToUpload(file);
 				setShowUploadModal(true);
 				e.preventDefault();
@@ -613,10 +593,7 @@ export function useSourceMediaPage(
 			});
 
 			const normalizedText = text?.trim();
-			if (
-				normalizedText &&
-				z.string().url().safeParse(normalizedText).success
-			) {
+			if (normalizedText && z.url().safeParse(normalizedText).success) {
 				setPastedUrl(normalizedText);
 				setShowUploadModal(true);
 				e.preventDefault();
@@ -660,11 +637,14 @@ export function useSourceMediaPage(
 		}
 		await processClipboardItems(e.clipboardData.items, e);
 	};
+	const handlePasteListener = (event: ClipboardEvent) => {
+		void handlePaste(event);
+	};
 
 	onMount(() => {
-		document.addEventListener("paste", handlePaste);
+		document.addEventListener("paste", handlePasteListener);
 		onCleanup(() => {
-			document.removeEventListener("paste", handlePaste);
+			document.removeEventListener("paste", handlePasteListener);
 		});
 	});
 

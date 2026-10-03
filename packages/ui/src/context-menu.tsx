@@ -48,7 +48,7 @@ const ContextMenuContent = <T extends ValidComponent = "div">(
 		<Portal>
 			<Content
 				class={cn(
-					"z-50 min-w-32 origin-[var(--kb-menu-content-transform-origin)] animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+					"z-50 min-w-32 origin-kb-menu animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
 					local.class,
 				)}
 				{...others}
@@ -160,7 +160,7 @@ const ContextMenuSubContent = <T extends ValidComponent = "div">(
 	return (
 		<SubContent
 			class={cn(
-				"z-50 min-w-32 origin-[var(--kb-menu-content-transform-origin)] animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
+				"z-50 min-w-32 origin-kb-menu animate-in overflow-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md",
 				local.class,
 			)}
 			{...others}

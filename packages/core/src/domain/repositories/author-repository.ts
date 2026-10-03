@@ -1,20 +1,29 @@
 import type { Transaction } from "@/domain/interfaces/transaction-manager";
-import type { Author, NewAuthor } from "@/domain/media/schemas";
+import type {
+	Author,
+	NewAuthor,
+	AuthorMediaListInput,
+	AuthorMediaPage,
+	CorrectMediaAuthorsInput,
+	MergeAuthorsInput,
+	ConfirmAuthorAccountInput,
+} from "@/domain/authors/schemas";
 
 export type IAuthorRepository = {
+	confirmAccount(
+		input: ConfirmAuthorAccountInput,
+		tx: Transaction,
+	): Promise<Author>;
 	findAll(): Promise<Author[]>;
+	listMedia(input: AuthorMediaListInput): Promise<AuthorMediaPage>;
+	correctMedia(
+		input: CorrectMediaAuthorsInput,
+		tx: Transaction,
+	): Promise<number>;
+	merge(input: MergeAuthorsInput, tx: Transaction): Promise<number>;
 	findById(id: string): Promise<Author | null>;
 	findByName(name: string, tx?: Transaction): Promise<Author | null>;
 	findByNames(names: string[], tx?: Transaction): Promise<Author[]>;
-	// findByAccountId is implementation detail or specific query, usually usually findBy(criteria).
-	// But keeping it simple for now if needed.
-	// Actually, standard repo usually has specific finders.
-	// Let's keep it as per previous implementation but rename interface.
-	// Wait, previous file content had findByAccountId? Yes.
-	// But in plan I only listed standard CRUD.
-	// Let's keep findByAccountId as it was in the file I viewed.
-	// But strictly speaking, findById(id) returns Author | null.
-	findByAccountId?: (accountId: string) => Promise<Author | null>;
 	create(author: NewAuthor, tx?: Transaction): Promise<Author>;
 	update(
 		id: string,

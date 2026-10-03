@@ -280,7 +280,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 				)}
 			</Show>
 
-			<div class="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+			<div class="grid gap-6 lg:grid-cols-server-settings">
 				<Card>
 					<CardHeader>
 						<CardTitle>Saved servers</CardTitle>
@@ -289,77 +289,83 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 							sync jobs. Adding a server activates it immediately.
 						</CardDescription>
 					</CardHeader>
-					<CardContent class="grid gap-3">
-						<Show
-							fallback={
-								<p class="rounded-lg border border-dashed px-4 py-6 text-muted-foreground text-sm">
-									No server has been added yet.
-								</p>
-							}
-							when={localSettings().servers.length > 0}
-						>
-							<div class="grid gap-3">
-								<For each={localSettings().servers}>
-									{(server) => (
-										<div class="grid gap-3 rounded-lg border p-4 sm:grid-cols-[1fr_auto] sm:items-center">
-											<div class="min-w-0">
-												<div class="flex flex-wrap items-center gap-2">
-													<span class="font-medium">{server.name}</span>
-													<Show
-														when={localSettings().activeServerId === server.id}
-													>
-														<Badge variant="secondary">Active</Badge>
-													</Show>
+					<CardContent>
+						<div class="grid gap-3">
+							<Show
+								fallback={
+									<p class="rounded-lg border border-dashed px-4 py-6 text-muted-foreground text-sm">
+										No server has been added yet.
+									</p>
+								}
+								when={localSettings().servers.length > 0}
+							>
+								<div class="grid gap-3">
+									<For each={localSettings().servers}>
+										{(server) => (
+											<div class="grid gap-3 rounded-lg border p-4 sm:grid-cols-content-action sm:items-center">
+												<div class="min-w-0">
+													<div class="flex flex-wrap items-center gap-2">
+														<span class="font-medium">{server.name}</span>
+														<Show
+															when={
+																localSettings().activeServerId === server.id
+															}
+														>
+															<Badge variant="secondary">Active</Badge>
+														</Show>
+													</div>
+													<p class="mt-1 truncate text-muted-foreground text-sm">
+														{server.baseUrl}
+													</p>
+													<HealthStatus
+														state={() => healthChecks()[server.id]}
+													/>
 												</div>
-												<p class="mt-1 truncate text-muted-foreground text-sm">
-													{server.baseUrl}
-												</p>
-												<HealthStatus state={() => healthChecks()[server.id]} />
-											</div>
-											<div class="flex flex-wrap gap-2 sm:justify-end">
-												<Button
-													disabled={isSaving() || isChecking()}
-													onClick={() =>
-														void runHealthCheck(server.id, server.baseUrl)
-													}
-													size="sm"
-													variant="outline"
-												>
-													Check
-												</Button>
-												<Show
-													when={localSettings().activeServerId !== server.id}
-												>
+												<div class="flex flex-wrap gap-2 sm:justify-end">
 													<Button
 														disabled={isSaving() || isChecking()}
-														onClick={() => void selectServer(server.id)}
+														onClick={() =>
+															void runHealthCheck(server.id, server.baseUrl)
+														}
+														size="sm"
+														variant="outline"
+													>
+														Check
+													</Button>
+													<Show
+														when={localSettings().activeServerId !== server.id}
+													>
+														<Button
+															disabled={isSaving() || isChecking()}
+															onClick={() => void selectServer(server.id)}
+															size="sm"
+														>
+															Use server
+														</Button>
+													</Show>
+													<Button
+														disabled={isSaving() || isChecking()}
+														onClick={() => beginEdit(server)}
+														variant="outline"
 														size="sm"
 													>
-														Use server
+														Edit
 													</Button>
-												</Show>
-												<Button
-													disabled={isSaving() || isChecking()}
-													onClick={() => beginEdit(server)}
-													variant="outline"
-													size="sm"
-												>
-													Edit
-												</Button>
-												<Button
-													disabled={isSaving() || isChecking()}
-													onClick={() => void deleteServer(server.id)}
-													size="sm"
-													variant="destructive"
-												>
-													Delete
-												</Button>
+													<Button
+														disabled={isSaving() || isChecking()}
+														onClick={() => void deleteServer(server.id)}
+														size="sm"
+														variant="destructive"
+													>
+														Delete
+													</Button>
+												</div>
 											</div>
-										</div>
-									)}
-								</For>
-							</div>
-						</Show>
+										)}
+									</For>
+								</div>
+							</Show>
+						</div>
 					</CardContent>
 				</Card>
 

@@ -283,7 +283,7 @@ export function MediaActions(props: MediaActionsProps) {
 						open={moreActionsOpen()}
 						placement="bottom-end"
 					>
-						<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-[var(--workspace-border-strong)] bg-[var(--workspace-surface)] px-3 font-medium text-[var(--workspace-text)] text-xs outline-none hover:bg-[var(--workspace-surface-muted)] focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)] md:h-9 md:flex-none">
+						<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-card px-3 font-medium text-foreground text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:flex-none">
 							More actions
 							<ChevronDown aria-hidden="true" size={14} />
 						</PopoverTrigger>
@@ -331,13 +331,13 @@ export function MediaActions(props: MediaActionsProps) {
 								</Button>
 								<p
 									aria-live="polite"
-									class="px-2 py-1 text-[11px] text-[var(--workspace-text-muted)]"
+									class="px-2 py-1 text-label-sm text-muted-foreground"
 								>
 									CCIP status: {ccipStatus()}
 								</p>
 							</ShowAction>
 							<ShowAction when={props.onDownload || props.onDelete}>
-								<div class="my-1 border-[var(--workspace-border)] border-t" />
+								<div class="my-1 border-border border-t" />
 							</ShowAction>
 							<ShowAction when={props.onDownload}>
 								<Button
@@ -352,7 +352,7 @@ export function MediaActions(props: MediaActionsProps) {
 							</ShowAction>
 							<ShowAction when={props.onDelete}>
 								<Button
-									class="h-9 w-full justify-start px-2 text-[var(--workspace-destructive)] hover:bg-[var(--workspace-surface-muted)] hover:text-[var(--workspace-destructive-hover)]"
+									class="h-9 w-full justify-start px-2 text-destructive hover:bg-muted hover:text-destructive"
 									onClick={() =>
 										openModalFromMoreActions(() => setIsDeleteDialogOpen(true))
 									}

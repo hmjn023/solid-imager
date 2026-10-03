@@ -48,10 +48,10 @@ export function NavigationItem(props: {
 		<Link
 			aria-current={active() ? "page" : undefined}
 			aria-label={props.label}
-			class={`flex h-11 w-full items-center gap-2 rounded-md px-3 font-medium text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)] md:h-10 ${
+			class={`flex h-11 w-full items-center gap-2 rounded-md px-3 font-medium text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:h-10 ${
 				active()
-					? "bg-[var(--workspace-surface-selected)] text-[var(--workspace-primary)]"
-					: "text-[var(--workspace-text-secondary)] hover:bg-[var(--workspace-surface-muted)] hover:text-[var(--workspace-text)]"
+					? "bg-accent text-primary"
+					: "text-muted-foreground hover:bg-muted hover:text-foreground"
 			}`}
 			onClick={props.onClick}
 			to={props.to}

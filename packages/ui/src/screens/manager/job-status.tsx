@@ -8,7 +8,7 @@ export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 		<Show when={props.manager.taggingStatus() || props.manager.jobProgress()}>
 			<section
 				aria-live="polite"
-				class="space-y-3 rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-4"
+				class="space-y-3 rounded-md border border-border bg-card p-4"
 			>
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<h3 class="font-medium text-sm">Current run</h3>
@@ -16,13 +16,13 @@ export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 						{props.manager.activeJobId() ? "Running" : "Status"}
 					</Badge>
 				</div>
-				<p class="text-xs text-[var(--workspace-text-secondary)]">
+				<p class="text-xs text-muted-foreground">
 					{props.manager.taggingStatus()}
 				</p>
 				<Show when={props.manager.jobProgress()}>
 					{(progress) => (
 						<div class="space-y-2">
-							<div class="flex justify-between text-xs text-[var(--workspace-text-muted)]">
+							<div class="flex justify-between text-xs text-muted-foreground">
 								<span>Progress</span>
 								<span>
 									{progress().processed} / {progress().total}

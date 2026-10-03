@@ -65,7 +65,6 @@ describe("activateSimilaritySearch", () => {
 			similarityTopK: 50,
 		});
 		expect(sessionStorage.getItem("current-all")).toBeNull();
-		expect(sessionStorage.getItem("v2:current-all")).toBeNull();
 	});
 });
 

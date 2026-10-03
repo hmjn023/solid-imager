@@ -160,8 +160,8 @@ export function CommandCenter(props: CommandCenterProps) {
 	};
 
 	createEffect(() => {
-		query();
-		filteredActions().length;
+		void query();
+		void filteredActions().length;
 		setActiveIndex(0);
 	});
 
@@ -175,10 +175,10 @@ export function CommandCenter(props: CommandCenterProps) {
 							Search navigation and application actions.
 						</DialogDescription>
 					</DialogHeader>
-					<div class="flex h-12 items-center gap-2 border-[var(--workspace-border)] border-b px-4 pr-12">
+					<div class="flex h-12 items-center gap-2 border-border border-b px-4 pr-12">
 						<Search
 							aria-hidden="true"
-							class="shrink-0 text-[var(--workspace-text-muted)]"
+							class="shrink-0 text-muted-foreground"
 							size={18}
 						/>
 						<input
@@ -191,7 +191,7 @@ export function CommandCenter(props: CommandCenterProps) {
 							aria-label="Search quick actions"
 							autocomplete="off"
 							autofocus
-							class="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-[var(--workspace-text-muted)]"
+							class="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
 							onInput={(event) => setQuery(event.currentTarget.value)}
 							onKeyDown={(event) => {
 								if (event.key === "ArrowDown") {
@@ -220,13 +220,13 @@ export function CommandCenter(props: CommandCenterProps) {
 						/>
 					</div>
 					<div
-						class="max-h-[min(28rem,60dvh)] overflow-y-auto overscroll-contain p-2 [scrollbar-gutter:stable]"
+						class="max-h-menu-small overflow-y-auto overscroll-contain p-2 scrollbar-stable"
 						id={listId}
 						role="listbox"
 					>
 						<Show
 							fallback={
-								<p class="px-3 py-8 text-center text-[var(--workspace-text-muted)] text-sm">
+								<p class="px-3 py-8 text-center text-muted-foreground text-sm">
 									No matching action.
 								</p>
 							}
@@ -240,7 +240,7 @@ export function CommandCenter(props: CommandCenterProps) {
 									>
 										<p
 											aria-hidden="true"
-											class="px-2 pt-2 pb-1 font-semibold text-[var(--workspace-text-muted)] text-[11px] uppercase tracking-wide"
+											class="px-2 pt-2 pb-1 font-semibold text-muted-foreground text-label-sm uppercase tracking-wide"
 										>
 											{actionGroup.group}
 										</p>
@@ -252,10 +252,10 @@ export function CommandCenter(props: CommandCenterProps) {
 												return (
 													<button
 														aria-selected={activeIndex() === flatIndex()}
-														class={`flex min-h-10 w-full items-center gap-3 rounded-md px-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)] ${
+														class={`flex min-h-10 w-full items-center gap-3 rounded-md px-2.5 text-left text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring ${
 															activeIndex() === flatIndex()
-																? "bg-[var(--workspace-surface-selected)] text-[var(--workspace-primary)]"
-																: "hover:bg-[var(--workspace-surface-muted)]"
+																? "bg-accent text-primary"
+																: "hover:bg-muted"
 														}`}
 														id={itemId(flatIndex())}
 														onClick={() => runAction(action)}
@@ -291,21 +291,21 @@ export function CommandCenter(props: CommandCenterProps) {
 
 			<Dialog onOpenChange={props.onHelpOpenChange} open={props.helpOpen}>
 				<DialogContent class="workspace-theme max-w-2xl overflow-hidden p-0">
-					<DialogHeader class="border-[var(--workspace-border)] border-b px-5 py-4 pr-12">
+					<DialogHeader class="border-border border-b px-5 py-4 pr-12">
 						<DialogTitle>Keyboard shortcuts</DialogTitle>
 						<DialogDescription>
 							Use these commands anywhere they apply. Customize them in Settings
 							→ Shortcuts.
 						</DialogDescription>
 					</DialogHeader>
-					<div class="max-h-[min(32rem,65dvh)] overflow-y-auto overscroll-contain px-5 pb-5 [scrollbar-gutter:stable]">
+					<div class="max-h-menu-tall overflow-y-auto overscroll-contain px-5 pb-5 scrollbar-stable">
 						<For each={SHORTCUT_GROUPS}>
 							{(group) => (
 								<section class="pt-5">
-									<h3 class="mb-2 font-semibold text-[var(--workspace-text-muted)] text-xs uppercase tracking-wide">
+									<h3 class="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
 										{group}
 									</h3>
-									<ul class="divide-y divide-[var(--workspace-border)] rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-surface-subtle)]">
+									<ul class="divide-y divide-border rounded-lg border border-border bg-background">
 										<For each={getShortcutDefinitionsForGroup(group)}>
 											{(definition) => (
 												<li class="flex min-w-0 items-center gap-4 px-3 py-2.5">
@@ -313,7 +313,7 @@ export function CommandCenter(props: CommandCenterProps) {
 														<div class="font-medium text-sm">
 															{definition.label}
 														</div>
-														<p class="truncate text-[var(--workspace-text-muted)] text-xs">
+														<p class="truncate text-muted-foreground text-xs">
 															{definition.description}
 														</p>
 													</div>

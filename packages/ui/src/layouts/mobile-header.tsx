@@ -9,7 +9,7 @@ export function MobileHeader(props: {
 	triggerRef?: (element: HTMLButtonElement) => void;
 }) {
 	return (
-		<header class="flex h-13 shrink-0 items-center gap-3 border-[var(--workspace-border)] border-b bg-[var(--workspace-surface-subtle)] px-3 md:hidden">
+		<header class="flex h-13 shrink-0 items-center gap-3 border-border border-b bg-background px-3 md:hidden">
 			<Button
 				aria-label="メニューを開く"
 				class="size-10 p-0"

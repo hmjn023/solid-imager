@@ -139,7 +139,7 @@ dev固有の問題を調べるときは `test:e2e:dev`、両runtimeの全件が�
 ## 実測と未解決事項
 
 - `bun run test`: 最終状態で89ファイル・411件成功。
-- `bun run check`: Biome、全workspaceのtypecheck、design lint成功。
+- `bun run check`: Oxlint/Oxfmt、全workspaceのtypecheck、design lint成功。
 - components: 固定フォントでbaselineを目視確認した後、更新オプションなしで7件成功、10.3秒。変更前の6成功・画像比較1失敗（14.5秒）との単純な速度比較には使わない。
 - 変更前のdev全体: 165件収集、Tauri 4件成功後にWeb 3件失敗、86.3秒で打ち切り。残る158件を成功扱いしない。
 - 棚卸し後の全件ベースライン: dev 97件成功（5.1分）、fresh production 97件成功（3.9分）。skip・flaky・unexpectedはいずれも0。galleryは上記の独立7件を1回実行する。

@@ -3,17 +3,34 @@ import type { SafeMediaSource } from "@core/domain/sources/schemas";
 import { APIError, getClient } from "@ext/api";
 import type {
 	DownloadBulkMessage,
+	DownloadItem,
 	DownloadMessage,
 	ExtendedMessage,
 	PostBulkMessage,
 	PostDownloadMessage,
-	TweetMetadata,
 } from "@ext/schema";
 import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
+import { submitAccountVerificationMessageSchema } from "@ext/schema";
 
 const DATE_STRING_LENGTH = 19; // "YYYY-MM-DDTHH-mm-ss"
+const BASE64_CHUNK_SIZE = 0x8000;
 
 const EXTENSION_REGEX = /\.([a-z0-9]+)$/i;
+
+function encodeBase64Utf8(value: string): string {
+	const bytes = new TextEncoder().encode(value);
+	const chunks: string[] = [];
+
+	for (let offset = 0; offset < bytes.length; offset += BASE64_CHUNK_SIZE) {
+		chunks.push(
+			String.fromCharCode(
+				...bytes.subarray(offset, offset + BASE64_CHUNK_SIZE),
+			),
+		);
+	}
+
+	return btoa(chunks.join(""));
+}
 
 function getExtensionFromUrl(url: string): string {
 	try {
@@ -107,10 +124,10 @@ async function getTargetSourceId(): Promise<string | null> {
 	return resolved.id;
 }
 
-async function postDownloads(items: TweetMetadata[]) {
+async function postDownloads(items: DownloadItem[]) {
 	const mediaSourceId = await getTargetSourceId();
 	if (!mediaSourceId) {
-		chrome.notifications.create({
+		void chrome.notifications.create({
 			type: "basic",
 			iconUrl: "icon.png",
 			title: "xtracter Error",
@@ -129,7 +146,7 @@ async function postDownloads(items: TweetMetadata[]) {
 			});
 		});
 
-		chrome.notifications.create({
+		void chrome.notifications.create({
 			type: "basic",
 			iconUrl: "icon.png",
 			title: "xtracter",
@@ -137,14 +154,14 @@ async function postDownloads(items: TweetMetadata[]) {
 		});
 	} catch (error) {
 		if (error instanceof APIError) {
-			chrome.notifications.create({
+			void chrome.notifications.create({
 				type: "basic",
 				iconUrl: "icon.png",
 				title: "xtracter Error",
 				message: `Failed to queue downloads: ${error.message}`,
 			});
 		} else {
-			chrome.notifications.create({
+			void chrome.notifications.create({
 				type: "basic",
 				iconUrl: "icon.png",
 				title: "xtracter Error",
@@ -182,10 +199,53 @@ function isGetCookiesMessage(
 }
 
 chrome.runtime.onMessage.addListener(
-	(message: ExtendedMessage, _sender, sendResponse) => {
+	(message: ExtendedMessage, sender, sendResponse) => {
+		if (message.type === "SUBMIT_ACCOUNT_VERIFICATION") {
+			const parsed = submitAccountVerificationMessageSchema.safeParse(message);
+			let senderUrl: URL;
+			try {
+				senderUrl = new URL(sender.url ?? "");
+			} catch {
+				sendResponse({ success: false });
+				return;
+			}
+			if (
+				!parsed.success ||
+				!["x.com", "twitter.com"].includes(senderUrl.hostname) ||
+				senderUrl.protocol !== "https:" ||
+				senderUrl.pathname
+					.replace(/^\//, "")
+					.replace(/\/$/, "")
+					.toLowerCase() !== parsed.data.profile.username.toLowerCase()
+			) {
+				sendResponse({ success: false });
+				return;
+			}
+			void getClient()
+				.then((client) =>
+					client.authors.submitAccountVerification({
+						verificationId: parsed.data.verificationId,
+						profile: parsed.data.profile,
+					}),
+				)
+				.then(() => sendResponse({ success: true }))
+				.catch((error: unknown) => {
+					sendResponse({ success: false });
+					void chrome.notifications.create({
+						type: "basic",
+						iconUrl: "icon.png",
+						title: "xtracter アカウント確認",
+						message:
+							error instanceof Error
+								? error.message
+								: "Managerへの送信に失敗しました。接続設定を確認してプロフィールを再読み込みしてください。",
+					});
+				});
+			return true;
+		}
 		// Handle Popup Requests
 		if (message.type === "GET_SOURCES") {
-			getMediaSources().then((sources) => sendResponse(sources));
+			void getMediaSources().then((sources) => sendResponse(sources));
 			return true; // Async response
 		}
 
@@ -222,7 +282,7 @@ chrome.runtime.onMessage.addListener(
 									.slice(0, DATE_STRING_LENGTH);
 								const filename = `xtracter/xtracter-${dateStr}.json`;
 								const jsonString = JSON.stringify(response, null, 2);
-								const dataUrl = `data:application/json;base64,${btoa(unescape(encodeURIComponent(jsonString)))}`;
+								const dataUrl = `data:application/json;base64,${encodeBase64Utf8(jsonString)}`;
 								chrome.downloads.download(
 									{
 										url: dataUrl,
@@ -252,6 +312,12 @@ chrome.runtime.onMessage.addListener(
 			const filename = generateMediaFilename(
 				{
 					...message.data,
+					authors: message.data.authors?.map((author) => ({
+						...author,
+						observedAt: author.observedAt
+							? new Date(author.observedAt)
+							: undefined,
+					})),
 					createdAt: message.data.createdAt
 						? new Date(message.data.createdAt)
 						: undefined,
@@ -278,7 +344,7 @@ chrome.runtime.onMessage.addListener(
 				.slice(0, DATE_STRING_LENGTH);
 			const filename = `xtracter/xtracter-${dateStr}.json`;
 			const jsonString = JSON.stringify(message.data, null, 2);
-			const dataUrl = `data:application/json;base64,${btoa(unescape(encodeURIComponent(jsonString)))}`;
+			const dataUrl = `data:application/json;base64,${encodeBase64Utf8(jsonString)}`;
 			chrome.downloads.download(
 				{
 					url: dataUrl,
@@ -291,9 +357,9 @@ chrome.runtime.onMessage.addListener(
 				},
 			);
 		} else if (isPostDownloadMessage(message)) {
-			postDownloads([message.data]);
+			void postDownloads([message.data]);
 		} else if (isPostBulkMessage(message)) {
-			postDownloads(message.data);
+			void postDownloads(message.data);
 		}
 
 		return true;

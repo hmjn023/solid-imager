@@ -83,7 +83,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 
 			{/* Mode Toggle */}
 			<div class="mb-4 flex items-center justify-between">
-				<Label class="font-medium text-sm">検索モード</Label>
+				<Label>検索モード</Label>
 				<div class="flex gap-2">
 					<Button
 						onClick={() => setSearchMode("simple")}

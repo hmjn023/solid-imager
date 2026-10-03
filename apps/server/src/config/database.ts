@@ -44,7 +44,7 @@ export function loadDatabaseConfig(
 	const fullPath = join(configPath, CONFIG_FILE_NAME);
 	try {
 		const configFileContent = readFileSync(fullPath, "utf-8");
-		const config = JSON.parse(configFileContent);
+		const config: unknown = JSON.parse(configFileContent);
 		return DatabaseConfigSchema.parse(config);
 	} catch (error) {
 		if (error instanceof z.ZodError) {

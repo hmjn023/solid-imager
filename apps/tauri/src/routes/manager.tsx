@@ -1,3 +1,4 @@
+import { buildAbsoluteUrl } from "~/infrastructure/tauri-fetch-helpers";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import {
 	prefetchManagerPageQueries,
@@ -8,6 +9,7 @@ import type { ManagerTransferFormat } from "@solid-imager/ui/screens/manager/typ
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { createFileRoute } from "@tanstack/solid-router";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
@@ -82,7 +84,7 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 			sourceId: string;
 		}) => {
 			try {
-				const mode = input.format === "ndjson" ? "json" : "zip";
+				const mode = input.format;
 				const job = await enqueueSourceExport(
 					input.sourceId,
 					mode,
@@ -109,7 +111,7 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 			sourceId: string;
 		}) => {
 			try {
-				const mode = input.format === "ndjson" ? "json" : "zip";
+				const mode = input.format;
 				const job = await enqueueSourceImport(input.sourceId, mode, input.file);
 				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
 				toast.success(
@@ -162,6 +164,36 @@ function ManagerPage() {
 
 	return (
 		<ManagerScreen
+			authorActions={{
+				openAccountVerificationProfile: isTauri()
+					? (url) => invoke<void>("open_x_verification_profile", { url })
+					: undefined,
+				beginAccountVerification: (input) =>
+					orpc.authors.beginAccountVerification(input),
+				getAccountVerification: (input) =>
+					orpc.authors.getAccountVerification(input),
+				confirmAccountVerification: async (input) => {
+					const result = await orpc.authors.confirmAccountVerification(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				list: () => orpc.authors.list(),
+				create: (input) => orpc.authors.create(input),
+				updateName: (input) => orpc.authors.updateName(input),
+				listMedia: (input) => orpc.authors.listMedia(input),
+				correctMedia: async (input) => {
+					const result = await orpc.authors.correctMedia(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				merge: async (input) => {
+					const result = await orpc.authors.merge(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				thumbnailUrl: (sourceId, mediaId) =>
+					buildAbsoluteUrl(`/api/sources/${sourceId}/thumbnail/${mediaId}`),
+			}}
 			manager={manager}
 			transferActions={createTransferActions(queryClient)}
 		/>

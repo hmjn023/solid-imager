@@ -1,5 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { useNavigate, useRouter } from "@tanstack/solid-router";
+import type { RouterHistory } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { Button } from "./button";
 import {
@@ -8,7 +9,6 @@ import {
 	readMediaContext,
 	readMediaReturnPath,
 } from "./media-context";
-import { toCanonicalRouteHref } from "./route-compat";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "./workspace/icons";
 
 export type MediaDetailHeaderProps = {
@@ -19,9 +19,8 @@ export type MediaDetailHeaderProps = {
 };
 
 function isCollectionRoute(path: string): boolean {
-	const canonicalPath = toCanonicalRouteHref(path) ?? path;
 	try {
-		const url = new URL(canonicalPath, "http://solid-imager.invalid");
+		const url = new URL(path, "http://solid-imager.invalid");
 		return url.pathname === "/search" || url.pathname.startsWith("/sources/");
 	} catch {
 		return false;
@@ -32,6 +31,8 @@ function isCollectionRoute(path: string): boolean {
 export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 	const navigate = useNavigate();
 	const router = useRouter();
+	// This shared UI package is compiled without either app's router registration.
+	const history = router.history as RouterHistory;
 	const neighbors = () => findMediaNeighbors(props.media.id);
 
 	const navigateToNeighbor = (direction: "next" | "previous") => {
@@ -57,10 +58,9 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 			if (
 				context?.returnPath === returnPath &&
 				context.returnHistoryIndex !== undefined &&
-				router.history.location.state.__TSR_index ===
-					context.returnHistoryIndex + 1
+				history.location.state.__TSR_index === context.returnHistoryIndex + 1
 			) {
-				router.history.back();
+				history.back();
 				return;
 			}
 			void navigate({ href: returnPath, replace: true });
@@ -73,7 +73,7 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 	};
 
 	return (
-		<header class="z-10 shrink-0 border-[var(--workspace-border)] border-b bg-[var(--workspace-surface-subtle)] px-3 py-2 sm:px-4">
+		<header class="z-10 shrink-0 border-border border-b bg-background px-3 py-2 sm:px-4">
 			<div class="flex min-w-0 flex-wrap items-center gap-2">
 				<Button
 					aria-label="一覧に戻る"
@@ -86,16 +86,16 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 				</Button>
 
 				<div class="min-w-0 flex-1">
-					<h1 class="truncate font-semibold text-sm text-[var(--workspace-text)]">
+					<h1 class="truncate font-semibold text-sm text-foreground">
 						{props.media.fileName}
 					</h1>
-					<p class="truncate text-[11px] text-[var(--workspace-text-muted)]">
+					<p class="truncate text-label-sm text-muted-foreground">
 						{props.sourceName}
 					</p>
 				</div>
 
 				<div
-					class="flex shrink-0 items-center rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-0.5"
+					class="flex shrink-0 items-center rounded-md border border-border bg-card p-0.5"
 					title={
 						neighbors().previous || neighbors().next
 							? "一覧の前後のメディアへ移動"

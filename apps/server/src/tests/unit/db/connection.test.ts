@@ -15,7 +15,7 @@ vi.mock("@electric-sql/pglite", () => {
 		query: vi.fn(() => Promise.resolve()),
 		constructor: { name: "PgLite" },
 	};
-	// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
+	// Constructor mock: vi.fn must be callable with `new`.
 	const PgLiteMock = vi.fn(function () {
 		return mockPgliteInstance;
 	});
@@ -36,7 +36,7 @@ vi.mock("pg", () => {
 		query: vi.fn(() => Promise.resolve({ rows: [] })),
 		constructor: { name: "Pool" },
 	};
-	// biome-ignore lint/complexity/useArrowFunction: constructor mock (vi.fn must be callable with `new`)
+	// Constructor mock: vi.fn must be callable with `new`.
 	const MockPool = vi.fn(function () {
 		return mockPool;
 	});

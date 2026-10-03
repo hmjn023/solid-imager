@@ -39,7 +39,7 @@ export function DataTransferPanel(props: {
 			case "ndjson":
 				return ".ndjson,application/x-ndjson";
 			case "tar":
-				return ".tar,.zip,application/x-tar,application/zip";
+				return ".tar,application/x-tar,application/tar";
 		}
 	};
 	const runExport = async () => {
@@ -76,15 +76,13 @@ export function DataTransferPanel(props: {
 	return (
 		<div class="space-y-5">
 			<div>
-				<h2 class="font-semibold text-lg text-[var(--workspace-text)]">
-					Data transfer
-				</h2>
-				<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+				<h2 class="font-semibold text-lg text-foreground">Data transfer</h2>
+				<p class="mt-0.5 text-xs text-muted-foreground">
 					Export a portable source dump or restore one into an existing source.
 				</p>
 			</div>
 
-			<section class="space-y-1.5 border-[var(--workspace-border)] border-y bg-[var(--workspace-surface)] py-4 sm:rounded-md sm:border sm:p-4">
+			<section class="space-y-1.5 border-border border-y bg-card py-4 sm:rounded-md sm:border sm:p-4">
 				<Label>Target source</Label>
 				<Select
 					itemComponent={(selectProps) => (
@@ -99,30 +97,28 @@ export function DataTransferPanel(props: {
 					placeholder="Choose a source"
 					value={selectedSource() ?? null}
 				>
-					<SelectTrigger class="w-full bg-[var(--workspace-surface)] sm:max-w-xl">
+					<SelectTrigger class="w-full bg-card sm:max-w-xl">
 						<SelectValue<unknown>>
 							{() => selectedSource()?.name ?? "Choose a source"}
 						</SelectValue>
 					</SelectTrigger>
 					<SelectContent />
 				</Select>
-				<p class="text-xs text-[var(--workspace-text-muted)]">
+				<p class="text-xs text-muted-foreground">
 					Restore writes into the selected source. Existing source configuration
 					is not replaced.
 				</p>
 			</section>
 
 			<div class="grid gap-4 xl:grid-cols-2">
-				<section class="rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-4">
+				<section class="rounded-md border border-border bg-card p-4">
 					<div class="flex items-start gap-3">
-						<span class="rounded-md bg-[var(--workspace-surface-muted)] p-2 text-[var(--workspace-primary)]">
+						<span class="rounded-md bg-muted p-2 text-primary">
 							<Download aria-hidden="true" size={17} />
 						</span>
 						<div>
-							<h3 class="font-medium text-sm text-[var(--workspace-text)]">
-								Export
-							</h3>
-							<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+							<h3 class="font-medium text-sm text-foreground">Export</h3>
+							<p class="mt-0.5 text-xs text-muted-foreground">
 								Generate and download metadata or a media archive.
 							</p>
 						</div>
@@ -174,16 +170,14 @@ export function DataTransferPanel(props: {
 					</div>
 				</section>
 
-				<section class="rounded-md border border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-4">
+				<section class="rounded-md border border-border bg-card p-4">
 					<div class="flex items-start gap-3">
-						<span class="rounded-md bg-[var(--workspace-surface-muted)] p-2 text-[var(--workspace-primary)]">
+						<span class="rounded-md bg-muted p-2 text-primary">
 							<Upload aria-hidden="true" size={17} />
 						</span>
 						<div>
-							<h3 class="font-medium text-sm text-[var(--workspace-text)]">
-								Restore
-							</h3>
-							<p class="mt-0.5 text-xs text-[var(--workspace-text-muted)]">
+							<h3 class="font-medium text-sm text-foreground">Restore</h3>
+							<p class="mt-0.5 text-xs text-muted-foreground">
 								Choose the dump type before selecting its file.
 							</p>
 						</div>
@@ -223,7 +217,9 @@ export function DataTransferPanel(props: {
 								const file = event.currentTarget.files?.[0];
 								if (file) void importFile(file);
 							}}
-							ref={fileInput}
+							ref={(element) => {
+								fileInput = element;
+							}}
 							type="file"
 						/>
 						<Button
@@ -237,7 +233,7 @@ export function DataTransferPanel(props: {
 					</div>
 				</section>
 			</div>
-			<p class="text-xs text-[var(--workspace-text-muted)]">
+			<p class="text-xs text-muted-foreground">
 				Exports run as background jobs and download automatically when complete.
 				Open Jobs for history or to download them again.
 			</p>

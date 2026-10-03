@@ -7,7 +7,7 @@ import Grid3X3 from "lucide-solid/icons/grid-3-x-3";
 import List from "lucide-solid/icons/list";
 import type { JSX } from "solid-js";
 import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
-import { Button, buttonVariants } from "../button";
+import { Button } from "../button";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
@@ -298,30 +298,29 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	);
 
 	return (
-		<header class="shrink-0 border-[var(--workspace-border)] border-b bg-[var(--workspace-surface-subtle)] px-3 py-3 sm:px-4">
+		<header class="shrink-0 border-border border-b bg-background px-3 py-3 sm:px-4">
 			<div class="mb-2 flex min-h-6 items-center gap-2 text-sm">
-				<span class="text-[var(--workspace-text-secondary)]">Library</span>
-				<span aria-hidden="true" class="text-[var(--workspace-border-strong)]">
+				<span class="text-muted-foreground">Library</span>
+				<span aria-hidden="true" class="text-input">
 					/
 				</span>
 				<strong class="min-w-0 truncate font-semibold">
 					{props.sourceName}
 				</strong>
 				<Show when={props.isUpdating}>
-					<p
-						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-[var(--workspace-text-muted)]"
+					<output
+						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-muted-foreground"
 						data-state-ui="background-fetching"
-						role="status"
 					>
 						<span
 							aria-hidden="true"
 							class="size-2 shrink-0 animate-pulse rounded-full bg-current motion-reduce:animate-none"
 						/>
 						<span class="truncate">{props.updatingLabel ?? "更新中..."}</span>
-					</p>
+					</output>
 				</Show>
 				<Show when={!props.isUpdating && props.itemCount !== undefined}>
-					<span class="ml-auto shrink-0 text-xs text-[var(--workspace-text-muted)]">
+					<span class="ml-auto shrink-0 text-xs text-muted-foreground">
 						{props.itemCount?.toLocaleString()} items
 					</span>
 				</Show>
@@ -364,29 +363,27 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				>
 					<PopoverTrigger
 						aria-label={`検索フィルター、${tokens().length}件の条件`}
-						class={buttonVariants({
-							class:
-								"min-h-11 border-[var(--workspace-border-strong)] bg-[var(--workspace-surface)] px-3 shadow-none sm:min-h-9",
-							size: "sm",
-							variant: "outline",
-						})}
+						as={Button}
+						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9"
+						size="sm"
+						variant="outline"
 					>
 						<Filter aria-hidden="true" size={15} />
 						フィルター
 						<Show when={tokens().length > 0}>
-							<span class="flex min-w-5 items-center justify-center rounded-full bg-[var(--workspace-primary)] px-1.5 py-0.5 text-[10px] text-white">
+							<span class="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-label-xs text-white">
 								{tokens().length}
 							</span>
 						</Show>
 					</PopoverTrigger>
 					<PopoverContent
 						aria-label="検索フィルター"
-						class="workspace-theme relative flex min-h-0 max-h-[min(42rem,var(--kb-popper-content-available-height,calc(100dvh-2rem)))] w-[min(24rem,calc(100dvw-1.5rem))] flex-col overflow-hidden bg-[var(--workspace-surface)] p-0 text-[var(--workspace-text)] shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
+						class="workspace-theme relative flex min-h-0 max-h-popover-fit-available w-popover-compact flex-col overflow-hidden bg-card p-0 text-foreground shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
 					>
-						<div class="flex shrink-0 items-start justify-between border-[var(--workspace-border)] border-b px-4 py-3">
+						<div class="flex shrink-0 items-start justify-between border-border border-b px-4 py-3">
 							<div>
 								<h2 class="font-semibold text-sm">検索フィルター</h2>
-								<p class="mt-0.5 text-[11px] text-[var(--workspace-text-muted)]">
+								<p class="mt-0.5 text-label-sm text-muted-foreground">
 									検索バーと同じ条件を編集します
 								</p>
 							</div>
@@ -415,7 +412,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								usePopover={false}
 							/>
 						</div>
-						<div class="flex shrink-0 justify-end gap-2 border-[var(--workspace-border)] border-t bg-[var(--workspace-surface)] p-3">
+						<div class="flex shrink-0 justify-end gap-2 border-border border-t bg-card p-3">
 							<Button
 								onClick={() => setFilterOpen(false)}
 								size="sm"
@@ -443,12 +440,10 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				>
 					<PopoverTrigger
 						aria-label={`並び替え、現在は${sortLabel(searchState)}`}
-						class={buttonVariants({
-							class:
-								"min-h-11 border-[var(--workspace-border-strong)] bg-[var(--workspace-surface)] px-3 shadow-none sm:min-h-9",
-							size: "sm",
-							variant: "outline",
-						})}
+						as={Button}
+						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9"
+						size="sm"
+						variant="outline"
 					>
 						<ArrowDownUp aria-hidden="true" size={15} />
 						<span class="hidden sm:inline">{sortLabel(searchState)}</span>
@@ -470,13 +465,13 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						/>
 					</PopoverContent>
 				</Popover>
-				<div class="flex rounded-md border border-[var(--workspace-border-strong)] bg-[var(--workspace-surface)] p-0.5">
+				<div class="flex rounded-md border border-input bg-card p-0.5">
 					<Button
 						aria-label="グリッド表示"
 						aria-pressed={(props.viewMode ?? "grid") === "grid"}
 						class={
 							(props.viewMode ?? "grid") === "grid"
-								? "size-11 bg-[var(--workspace-primary)] p-0 text-white hover:bg-[var(--workspace-primary-hover)] sm:size-8"
+								? "size-11 bg-primary p-0 text-white hover:bg-primary sm:size-8"
 								: "size-11 p-0 sm:size-8"
 						}
 						onClick={() => props.onViewModeChange?.("grid")}
@@ -489,7 +484,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						aria-pressed={(props.viewMode ?? "grid") === "list"}
 						class={
 							(props.viewMode ?? "grid") === "list"
-								? "size-11 bg-[var(--workspace-primary)] p-0 text-white hover:bg-[var(--workspace-primary-hover)] sm:size-8"
+								? "size-11 bg-primary p-0 text-white hover:bg-primary sm:size-8"
 								: "size-11 p-0 sm:size-8"
 						}
 						onClick={() => props.onViewModeChange?.("list")}

@@ -204,17 +204,22 @@ export function MediaViewer(props: MediaViewerProps) {
 	return (
 		<>
 			<section
-				class={`group/viewer relative flex aspect-[var(--media-aspect)] min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-[var(--workspace-surface)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-focus)] lg:aspect-auto lg:h-full ${
+				class={`group/viewer media-viewer-aspect relative flex min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:aspect-auto lg:h-full ${
 					props.source.type === "image" ? "cursor-zoom-in" : ""
 				}`}
 				data-media-viewer
-				style={`--media-aspect: ${props.width && props.height ? `${props.width} / ${props.height}` : "4 / 3"}`}
+				style={{
+					"--media-aspect":
+						props.width && props.height
+							? `${props.width} / ${props.height}`
+							: "4 / 3",
+				}}
 			>
 				<Switch>
 					<Match when={props.source.type === "video"}>
 						<Show
 							fallback={
-								<div class="flex h-full max-h-full w-full items-center justify-center bg-[var(--workspace-text)] text-[var(--workspace-surface)]">
+								<div class="flex h-full max-h-full w-full items-center justify-center bg-foreground text-background">
 									Video preview unavailable
 								</div>
 							}
@@ -254,7 +259,7 @@ export function MediaViewer(props: MediaViewerProps) {
 					<Match when={props.source.type === "audio"}>
 						<Show
 							fallback={
-								<div class="bg-[var(--workspace-text)] px-8 py-6 text-[var(--workspace-surface)]">
+								<div class="bg-foreground px-8 py-6 text-background">
 									Audio preview unavailable
 								</div>
 							}
@@ -270,8 +275,8 @@ export function MediaViewer(props: MediaViewerProps) {
 					<Match when={true}>
 						<Show
 							fallback={
-								<div class="flex h-full w-full items-center justify-center bg-[var(--workspace-surface-muted)] text-[var(--workspace-text-muted)]">
-									<div class="max-w-[80%] truncate rounded-md border border-current/20 px-4 py-2 text-sm">
+								<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
+									<div class="max-w-image-preview truncate rounded-md border border-current/20 px-4 py-2 text-sm">
 										{props.fileName}
 									</div>
 								</div>
@@ -281,7 +286,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							{(url) => (
 								<button
 									aria-label={`Open ${props.fileName} image viewer`}
-									class="h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-focus)]"
+									class="h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 									onClick={() => setIsViewerOpen(true)}
 									type="button"
 								>
@@ -307,20 +312,19 @@ export function MediaViewer(props: MediaViewerProps) {
 				}}
 				open={isViewerOpen()}
 			>
-				<DialogContent class="h-[calc(100dvh-2rem)] max-h-[calc(100dvh-2rem)] w-[calc(100dvw-2rem)] max-w-none overflow-hidden border-[var(--workspace-border)] bg-[var(--workspace-surface)] p-0 sm:max-h-[calc(100dvh-4rem)] sm:w-[calc(100dvw-4rem)] [&>button]:z-20">
+				<DialogContent class="h-dialog-screen max-h-dialog-screen w-viewport-gutter max-w-none overflow-hidden border-border bg-card p-0 sm:max-h-dialog-screen-sm sm:w-viewport-gutter-sm [&>button]:z-20">
 					<DialogTitle class="sr-only">{props.fileName}</DialogTitle>
 					<DialogDescription class="sr-only">
 						Use the zoom controls to zoom, and drag to pan.
 					</DialogDescription>
 					<section
 						aria-label={`${props.fileName} viewer. Use the zoom controls to zoom, and drag to pan.`}
-						class={`relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-[var(--workspace-surface)] outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--workspace-focus)] ${
-							isPanning()
-								? "cursor-grabbing"
-								: zoom() > 1
-									? "cursor-grab"
-									: "cursor-zoom-in"
-						}`}
+						class="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring media-viewer-stage"
+						classList={{
+							"cursor-grabbing": isPanning(),
+							"cursor-grab": !isPanning() && zoom() > 1,
+							"cursor-zoom-in": !isPanning() && zoom() <= 1,
+						}}
 						data-media-viewer-interactive
 						onDblClick={() => {
 							if (zoom() > 1) resetView();
@@ -342,20 +346,28 @@ export function MediaViewer(props: MediaViewerProps) {
 								},
 							);
 						}}
-						ref={viewer}
-						style={`touch-action: ${zoom() > 1 ? "none" : "pan-y pinch-zoom"}`}
+						ref={(element) => {
+							viewer = element;
+						}}
+						style={{
+							"--media-touch-action": zoom() > 1 ? "none" : "pan-y pinch-zoom",
+						}}
 					>
 						<Show when={mediaUrl()}>
 							{(url) => (
 								<img
 									alt={props.fileName}
-									class="pointer-events-none h-full w-full select-none object-contain motion-safe:transition-transform"
+									class="media-viewer-transform pointer-events-none h-full w-full select-none object-contain motion-safe:transition-transform"
 									draggable={false}
 									height={props.height}
 									src={url()}
 									style={{
-										transform: `translate3d(${pan().x}px, ${pan().y}px, 0) scale(${zoom()})`,
-										"transition-duration": isPanning() ? "0ms" : "150ms",
+										"--media-pan-x": `${pan().x}px`,
+										"--media-pan-y": `${pan().y}px`,
+										"--media-zoom": zoom(),
+										"--media-transition-duration": isPanning()
+											? "0ms"
+											: "150ms",
 									}}
 									width={props.width}
 								/>
@@ -363,7 +375,7 @@ export function MediaViewer(props: MediaViewerProps) {
 						</Show>
 						<div
 							aria-label="Image zoom controls"
-							class="absolute right-3 bottom-3 flex items-center gap-0.5 rounded-lg border border-[var(--workspace-border)] bg-[var(--workspace-surface-subtle)]/95 p-1 shadow-lg backdrop-blur"
+							class="absolute right-3 bottom-3 flex items-center gap-0.5 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
 							data-media-viewer-controls
 							role="toolbar"
 						>
@@ -379,7 +391,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							</Button>
 							<button
 								aria-label="Reset zoom to fit"
-								class="flex h-8 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-[11px] tabular-nums hover:bg-[var(--workspace-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)]"
+								class="flex h-8 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-label-sm tabular-nums hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={resetView}
 								type="button"
 							>
@@ -396,10 +408,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							>
 								<Plus aria-hidden="true" size={15} />
 							</Button>
-							<span
-								aria-hidden="true"
-								class="mx-0.5 h-5 w-px bg-[var(--workspace-border)]"
-							/>
+							<span aria-hidden="true" class="mx-0.5 h-5 w-px bg-border" />
 							<Button
 								aria-label={
 									isFullscreen() ? "Exit fullscreen" : "Enter fullscreen"

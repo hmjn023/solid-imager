@@ -75,9 +75,8 @@ export function MediaGridItem(props: MediaGridItemProps) {
 	return (
 		<LinkComponent
 			class={cn(
-				"group relative block aspect-[4/3] overflow-hidden rounded-md bg-[var(--workspace-surface-muted)] outline-none ring-offset-2 ring-offset-[var(--workspace-canvas)] transition focus-visible:ring-2 focus-visible:ring-[var(--workspace-focus)]",
-				(props.isSelected || props.isPreviewSelected) &&
-					"ring-2 ring-[var(--workspace-focus)]",
+				"group relative block aspect-landscape overflow-hidden rounded-md bg-muted outline-none ring-offset-2 ring-offset-background transition focus-visible:ring-2 focus-visible:ring-ring",
+				(props.isSelected || props.isPreviewSelected) && "ring-2 ring-ring",
 				props.class,
 			)}
 			data-media-id={props.media.id}
@@ -100,7 +99,7 @@ export function MediaGridItem(props: MediaGridItemProps) {
 
 			<Show
 				fallback={
-					<div class="flex h-full w-full items-center justify-center bg-[var(--workspace-surface-muted)] text-[var(--workspace-text-muted)]">
+					<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
 						{props.media.mediaType}
 					</div>
 				}
@@ -110,7 +109,7 @@ export function MediaGridItem(props: MediaGridItemProps) {
 					alt: props.media.fileName,
 					class: cn(
 						"h-full w-full object-cover",
-						"transition duration-200 group-hover:scale-[1.015] motion-reduce:transition-none",
+						"transition duration-200 group-hover:scale-105 motion-reduce:transition-none",
 						props.thumbnailClass,
 					),
 					height: props.media.height,

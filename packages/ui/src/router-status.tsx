@@ -61,7 +61,7 @@ export function RouteTransitionIndicator() {
 			<div
 				aria-label="画面を読み込んでいます"
 				aria-valuetext="読み込み中"
-				class="fixed inset-x-0 top-0 z-[70] h-1 overflow-hidden bg-primary/20"
+				class="fixed inset-x-0 top-0 z-router-status h-1 overflow-hidden bg-primary/20"
 				role="progressbar"
 			>
 				<div class="h-full w-1/2 animate-pulse rounded-full bg-primary motion-reduce:animate-none" />

@@ -11,7 +11,7 @@ export { createCollectionService } from "./collection-service";
 export { createIpService } from "./ip-service";
 export { MediaProcessingServiceImpl } from "./media-processing-service";
 export { MediaQueryService } from "./media-query-service";
-export { MediaServiceImpl, validateFileSignature } from "./media-service";
+export { MediaServiceImpl } from "./media-service";
 export { MediaTransferService } from "./media-transfer-service";
 export { MediaUploadService } from "./media-upload-service";
 export { createPresetService } from "./preset-service";

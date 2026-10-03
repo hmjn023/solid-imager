@@ -8,6 +8,7 @@ import {
 	type Mock,
 	vi,
 } from "vitest";
+import { FileWatcherService } from "~/infrastructure/jobs/file-watcher-service";
 import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
 
 // ---- Module mocks ----
@@ -31,6 +32,12 @@ vi.mock("~/infrastructure/logger", () => ({
 		debug: vi.fn(),
 		warn: vi.fn(),
 		error: vi.fn(),
+	},
+}));
+
+vi.mock("~/infrastructure/jobs/file-watcher-service", () => ({
+	FileWatcherService: {
+		startMonitoringAll: vi.fn().mockResolvedValue(undefined),
 	},
 }));
 
@@ -101,6 +108,13 @@ describe("MaintenanceService", () => {
 			).toHaveBeenCalledOnce();
 			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenCalledOnce();
 			expect(mockSourceRepo.findAll).not.toHaveBeenCalled();
+			expect(FileWatcherService.startMonitoringAll).toHaveBeenCalledOnce();
+			expect(
+				mockMediaRepo.findAllMediaIndices.mock.invocationCallOrder[0],
+			).toBeLessThan(
+				vi.mocked(FileWatcherService.startMonitoringAll).mock
+					.invocationCallOrder[0],
+			);
 		});
 	});
 

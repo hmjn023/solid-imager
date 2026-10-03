@@ -17,8 +17,8 @@ vi.mock("~/infrastructure/logger", () => ({
 
 // サービス登録を全テスト開始前に行う
 beforeAll(async () => {
-	const { bootstrap } = await import("~/infrastructure/bootstrap");
-	bootstrap();
+	const { startBackgroundWorker } = await import("~/infrastructure/bootstrap");
+	startBackgroundWorker();
 });
 
 // .envファイルのパスを指定して読み込む

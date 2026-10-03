@@ -51,7 +51,7 @@ describe("BackupService Security", () => {
 		});
 	});
 
-	// Note: Testing importSourceZip typically requires a real ZIP file or extensive mocking of unzipper.
+	// Archive import is covered by the queued TAR transfer flow.
 	// For this integration test, we focus on the unit-logic of path validation which is shared/used.
 	// Ideally we would mock `Open.file` return value to contain files with traversal paths.
 });

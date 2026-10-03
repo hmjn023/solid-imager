@@ -12,6 +12,7 @@ export default defineConfig({
         popup: path.resolve(__dirname, "src/popup/index.html"),
         background: path.resolve(__dirname, "src/background/index.ts"),
         content: path.resolve(__dirname, "src/content/index.ts"),
+        "twitter-network": path.resolve(__dirname, "src/content/twitter-network.ts"),
       },
       output: {
         entryFileNames: "[name].js",

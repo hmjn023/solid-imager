@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { implement, ORPCError } from "@orpc/server";
 import {
 	type SourceSyncResult,
@@ -22,15 +21,9 @@ import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import { allocateJobId } from "~/infrastructure/repositories/job-repository";
 import { services } from "~/infrastructure/service-registry";
-import { BackupService } from "~/infrastructure/services/backup-service";
 import { DirectorySyncService } from "~/infrastructure/services/directory-sync-service";
 import { persistJobInput } from "~/infrastructure/services/job-transfer-storage";
-import { MediaService } from "~/infrastructure/services/media-service";
 import { MediaSourceService } from "~/infrastructure/services/media-source-service";
-import {
-	asDumpStream,
-	webReadableToNodeStream,
-} from "~/infrastructure/utils/stream-utils";
 
 /**
  * 機密情報を除外した安全な MediaSource に変換
@@ -73,7 +66,7 @@ function toSafeMediaSource(source: MediaSource): SafeMediaSource {
 			},
 		};
 	}
-	throw new Error(`Unsupported source type: ${source.type}`);
+	throw new Error(`Unsupported source type: ${String(source.type)}`);
 }
 
 async function getMediaCounts(
@@ -139,12 +132,8 @@ export const sourcesRouter = os.router({
 
 		// ローカルソースの場合、バックグラウンド処理を開始
 		if (createdSource && createdSource.type === "local") {
-			MediaService.registerExistingMedia(
-				createdSource.id,
-				(createdSource.connectionInfo as { path: string }).path,
-			);
-
-			// ファイル監視の開始
+			// Monitoring performs the initial directory sync. Starting a second
+			// registration path here races with that sync and duplicates work.
 			import("~/infrastructure/jobs/file-watcher-service")
 				.then((module) => {
 					module.FileWatcherService.startMonitoring(createdSource.id).catch(
@@ -227,32 +216,6 @@ export const sourcesRouter = os.router({
 		return { results };
 	}),
 
-	/**
-	 * Dumps a media source
-	 */
-	dump: os.dump.handler(async ({ input }) => {
-		const result = await BackupService.createDump(input.id, input.mode, {
-			includeImages: input.includeImages,
-		});
-
-		if (input.mode === "zip") {
-			return new Response(asDumpStream(result), {
-				headers: {
-					"Content-Type": "application/x-tar",
-					"Content-Disposition": `attachment; filename="source-${input.id}-dump.tar"`,
-				},
-			});
-		}
-
-		// Mode json -> return as streaming NDJSON Response
-		return new Response(asDumpStream(result), {
-			headers: {
-				"Content-Type": "application/x-ndjson",
-				"Content-Disposition": `attachment; filename="source-${input.id}-dump.ndjson"`,
-			},
-		});
-	}),
-
 	enqueueExport: os.enqueueExport.handler(async ({ input }) => {
 		const [source] = await MediaSourceService.fetchSourceById(input.id);
 		if (!source) {
@@ -271,40 +234,6 @@ export const sourcesRouter = os.router({
 		});
 		return toJobDto(job);
 	}),
-	restore: os.restore.handler(
-		async ({ input }) =>
-			await BackupService.restoreSource(input.id, input.data),
-	),
-
-	/**
-	 * Imports a media source from a Tar file
-	 */
-	importZip: os.importZip.handler(async ({ input }) => {
-		const path = await import("node:path");
-		const fs = await import("node:fs");
-		const { pipeline } = await import("node:stream/promises");
-
-		const tempDir = path.join(process.cwd(), ".cache", "import");
-		await fs.promises.mkdir(tempDir, { recursive: true });
-		const tempFilePath = path.join(tempDir, `import-rpc-${randomUUID()}.tar`);
-
-		try {
-			const fileStream = input.file.stream();
-			await pipeline(
-				webReadableToNodeStream(fileStream),
-				fs.createWriteStream(tempFilePath),
-			);
-
-			return await BackupService.importSourceTar(input.id, tempFilePath);
-		} finally {
-			try {
-				await fs.promises.unlink(tempFilePath);
-			} catch {
-				// ignore
-			}
-		}
-	}),
-
 	enqueueImport: os.enqueueImport.handler(async ({ input }) => {
 		const [source] = await MediaSourceService.fetchSourceById(input.id);
 		if (!source) {
@@ -330,38 +259,6 @@ export const sourcesRouter = os.router({
 			const fs = await import("node:fs/promises");
 			await fs.rm(inputPath, { force: true }).catch(() => {});
 			throw error;
-		}
-	}),
-
-	/**
-	 * Imports a media source from a streaming NDJSON file
-	 */
-	importNdjson: os.importNdjson.handler(async ({ input }) => {
-		const path = await import("node:path");
-		const fs = await import("node:fs");
-		const { pipeline } = await import("node:stream/promises");
-
-		const tempDir = path.join(process.cwd(), ".cache", "import");
-		await fs.promises.mkdir(tempDir, { recursive: true });
-		const tempFilePath = path.join(
-			tempDir,
-			`import-rpc-${randomUUID()}.ndjson`,
-		);
-
-		try {
-			const fileStream = input.file.stream();
-			await pipeline(
-				webReadableToNodeStream(fileStream),
-				fs.createWriteStream(tempFilePath),
-			);
-
-			return await BackupService.importSourceNdjson(input.id, tempFilePath);
-		} finally {
-			try {
-				await fs.promises.unlink(tempFilePath);
-			} catch {
-				// ignore
-			}
 		}
 	}),
 

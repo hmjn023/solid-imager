@@ -218,28 +218,6 @@ function restoreCurrentSearchState(
 		return;
 	}
 
-	if (current.mode === "vector") {
-		if (!shouldApply()) {
-			return;
-		}
-		const preservedScrollY = searchState.scrollY;
-		const selectedSource =
-			typeof current.selectedSource === "string" ? current.selectedSource : "";
-		resetSearchState();
-		setSearchState({
-			// Migrate sessions written before similarity became an ordering option.
-			mode: "simple",
-			selectedSource,
-			similarityAnchorMediaId:
-				typeof current.similarityAnchorMediaId === "string"
-					? current.similarityAnchorMediaId
-					: null,
-			similarityTopK: normalizeSimilarityTopK(current.similarityTopK),
-			scrollY: preservedScrollY,
-		});
-		return;
-	}
-
 	const localPresetResult = presetSchema.safeParse({
 		id: -1,
 		name: presetName,

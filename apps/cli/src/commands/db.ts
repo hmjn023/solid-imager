@@ -71,7 +71,10 @@ async function runDatabaseCommand(
 	}
 
 	let stderr = "";
-	child.stderr?.on("data", (data) => (stderr += data.toString()));
+	child.stderr?.on(
+		"data",
+		(data: Buffer | string) => (stderr += data.toString()),
+	);
 
 	const writePromise = outStream
 		? new Promise((resolve, reject) => {

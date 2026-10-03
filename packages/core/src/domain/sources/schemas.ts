@@ -123,7 +123,7 @@ export const safeMediaSourceSchema = mediaSourceInfoSchema.extend({
 export type SafeMediaSource = z.infer<typeof safeMediaSourceSchema>;
 
 export const mediaSourceStatusSchema = z.object({
-	mediaSourceId: z.string().uuid(),
+	mediaSourceId: z.uuid(),
 	status: z.enum(["active", "error"]),
 	message: z.string().optional(),
 	lastChecked: z.coerce.date(),

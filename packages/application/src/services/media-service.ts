@@ -1,6 +1,6 @@
 /**
  * MediaServiceImpl - Thin facade that delegates to focused services.
- * Maintains backward compatibility with IMediaService interface.
+ * Implements the application media-service port by delegating to focused services.
  */
 
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
@@ -21,8 +21,6 @@ import type { DeferredActions, IMediaService } from "../ports/media-service";
 import type { MediaQueryService } from "./media-query-service";
 import type { MediaTransferService } from "./media-transfer-service";
 import type { MediaUploadService } from "./media-upload-service";
-
-export { validateFileSignature } from "./media-upload-service";
 
 export class MediaServiceImpl implements IMediaService {
 	constructor(

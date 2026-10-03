@@ -1,6 +1,6 @@
 import type { ManagerEntityType } from "../../hooks/use-manager-page";
 
-export type ManagerCategoryValue = ManagerEntityType | "transfer";
+export type ManagerCategoryValue = ManagerEntityType | "transfer" | "authors";
 
 export type ManagerCategory = {
 	description: string;
@@ -26,6 +26,12 @@ export type ManagerTransferActions = {
 };
 
 export const MANAGER_CATEGORIES: ManagerCategory[] = [
+	{
+		description: "誤登録の確認・付け替え・統合",
+		group: "Entities",
+		label: "作者・外部アカウント",
+		value: "authors",
+	},
 	{
 		description: "Collections and work",
 		group: "Entities",

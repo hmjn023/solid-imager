@@ -76,169 +76,194 @@ test("Workspace routes fit each viewport after hydration", async ({ page }) => {
 	}
 });
 
-test("Workspace sidebar keeps navigation items separated in a short viewport", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.setViewportSize({ width: 1440, height: 480 });
-	await page.goto("/search");
-	await waitForAppHydration(page);
+test(
+	"Workspace sidebar keeps navigation items separated in a short viewport",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.setViewportSize({ width: 1440, height: 480 });
+		await page.goto("/search");
+		await waitForAppHydration(page);
 
-	const sidebar = page.getByRole("complementary", {
-		name: "アプリケーションサイドバー",
-	});
-	await expect(sidebar).toBeVisible();
+		const sidebar = page.getByRole("complementary", {
+			name: "アプリケーションサイドバー",
+		});
+		await expect(sidebar).toBeVisible();
 
-	const verticalGaps = await sidebar.evaluate((element) => {
-		const links = Array.from(element.querySelectorAll("a"))
-			.map((link) => link.getBoundingClientRect())
-			.filter((rect) => rect.height > 0)
-			.sort((first, second) => first.top - second.top);
-		return links.slice(1).map((rect, index) => rect.top - links[index].bottom);
-	});
+		const verticalGaps = await sidebar.evaluate((element) => {
+			const links = Array.from(element.querySelectorAll("a"))
+				.map((link) => link.getBoundingClientRect())
+				.filter((rect) => rect.height > 0)
+				.sort((first, second) => first.top - second.top);
+			return links
+				.slice(1)
+				.map((rect, index) => rect.top - links[index].bottom);
+		});
 
-	expect(verticalGaps.length).toBeGreaterThan(0);
-	expect(Math.min(...verticalGaps)).toBeGreaterThanOrEqual(0);
-});
+		expect(verticalGaps.length).toBeGreaterThan(0);
+		expect(Math.min(...verticalGaps)).toBeGreaterThanOrEqual(0);
+	},
+);
 
-test("Workspace wide collection uses selection preview before detail navigation", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.setViewportSize({ width: 1600, height: 900 });
-	await page.goto(sourcePath);
-	await waitForAppHydration(page);
+test(
+	"Workspace wide collection uses selection preview before detail navigation",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.setViewportSize({ width: 1600, height: 900 });
+		await page.goto(sourcePath);
+		await waitForAppHydration(page);
 
-	await page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`).click();
-	await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
-	const inspector = page.getByRole("complementary", {
-		name: "選択中のメディア",
-	});
-	await expect(inspector).toContainText(E2E_PRIMARY_FILE_NAME);
-	await page.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`).click();
-	await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
-	await expect(inspector).toContainText(E2E_SIMILAR_FILE_NAME);
-	await expect(
-		inspector.getByRole("img", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
-	).toBeVisible();
-	await inspector.getByRole("button", { name: "詳細を開く" }).click();
-	await expect(page).toHaveURL(
-		new RegExp(`${mediaPath(E2E_SIMILAR_MEDIA_ID)}(?:\\?[^#]*)?$`),
-	);
-});
+		await page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`).click();
+		await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
+		const inspector = page.getByRole("complementary", {
+			name: "選択中のメディア",
+		});
+		await expect(inspector).toContainText(E2E_PRIMARY_FILE_NAME);
+		await page.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`).click();
+		await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
+		await expect(inspector).toContainText(E2E_SIMILAR_FILE_NAME);
+		await expect(
+			inspector.getByRole("img", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
+		).toBeVisible();
+		await inspector.getByRole("button", { name: "詳細を開く" }).click();
+		await expect(page).toHaveURL(
+			new RegExp(`${mediaPath(E2E_SIMILAR_MEDIA_ID)}(?:\\?[^#]*)?$`),
+		);
+	},
+);
 
-test("Workspace restore exposes and selects the TAR format", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto("/manager");
-	await waitForAppHydration(page);
+test(
+	"Workspace restore exposes and selects the TAR format",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto("/manager");
+		await waitForAppHydration(page);
 
-	const categoryNavigation = page.locator(
-		'nav[aria-label="Manager categories"]:visible',
-	);
-	const transferButton = categoryNavigation
-		.getByRole("button", { name: /Data transfer/ })
-		.first();
-	await transferButton.scrollIntoViewIfNeeded();
-	await transferButton.click();
-	await expect(
-		page.getByRole("heading", { name: "Data transfer", exact: true }),
-	).toBeVisible();
+		const categoryNavigation = page.locator(
+			'nav[aria-label="Manager categories"]:visible',
+		);
+		const transferButton = categoryNavigation
+			.getByRole("button", { name: /Data transfer/ })
+			.first();
+		await transferButton.scrollIntoViewIfNeeded();
+		await transferButton.click();
+		await expect(
+			page.getByRole("heading", { name: "Data transfer", exact: true }),
+		).toBeVisible();
 
-	const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
-	await selectTriggers.nth(0).click();
-	await page
-		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
-		.click();
+		const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
+		await selectTriggers.nth(0).click();
+		await page
+			.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
+			.click();
 
-	await selectTriggers.nth(2).click();
-	const tarOption = page.getByRole("option", {
-		name: "TAR archive",
-		exact: true,
-	});
-	await expect(tarOption).toBeVisible();
-	await tarOption.click();
-	await expect(selectTriggers.nth(2)).toContainText("TAR archive");
-	await expect(page.locator('input[type="file"]')).toHaveAttribute(
-		"accept",
-		".tar,.zip,application/x-tar,application/zip",
-	);
-});
+		await selectTriggers.nth(2).click();
+		const tarOption = page.getByRole("option", {
+			name: "TAR archive",
+			exact: true,
+		});
+		await expect(tarOption).toBeVisible();
+		await tarOption.click();
+		await expect(selectTriggers.nth(2)).toContainText("TAR archive");
+		await expect(page.locator('input[type="file"]')).toHaveAttribute(
+			"accept",
+			".tar,.zip,application/x-tar,application/zip",
+		);
+	},
+);
 
-test("Workspace Manager export downloads its artifact", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto("/manager");
-	await waitForAppHydration(page);
+test(
+	"Workspace Manager export downloads its artifact",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto("/manager");
+		await waitForAppHydration(page);
 
-	const categoryNavigation = page.locator(
-		'nav[aria-label="Manager categories"]:visible',
-	);
-	await categoryNavigation
-		.getByRole("button", { name: /Data transfer/ })
-		.first()
-		.click();
+		const categoryNavigation = page.locator(
+			'nav[aria-label="Manager categories"]:visible',
+		);
+		await categoryNavigation
+			.getByRole("button", { name: /Data transfer/ })
+			.first()
+			.click();
 
-	const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
-	await selectTriggers.nth(0).click();
-	await page
-		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
-		.click();
-	await selectTriggers.nth(1).click();
-	await page.getByRole("option", { name: "TAR archive", exact: true }).click();
-	await page.getByText("Include original media", { exact: true }).click();
-	await expect(
-		page.getByRole("checkbox", { name: "Include original media" }),
-	).toBeChecked();
-	const download = page.waitForEvent("download");
-	await page
-		.getByRole("button", { name: "Generate & download", exact: true })
-		.click();
-	const artifact = await download;
-	expect(artifact.suggestedFilename()).toMatch(/\.tar$/);
-	expect(await artifact.failure()).toBeNull();
-	const artifactPath = await artifact.path();
-	if (!artifactPath) throw new Error("TAR download did not produce a file");
-	const dump = await run("tar", ["-xOf", artifactPath, "dump.ndjson"]);
-	expectSeededMediaDump(dump.stdout);
-	const image = await run(
-		"tar",
-		["-xOf", artifactPath, `images/${E2E_PRIMARY_FILE_NAME}`],
-		{ encoding: "buffer" },
-	);
-	expect(image.stdout).toEqual(
-		await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME)),
-	);
-});
+		const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
+		await selectTriggers.nth(0).click();
+		await page
+			.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
+			.click();
+		await selectTriggers.nth(1).click();
+		await page
+			.getByRole("option", { name: "TAR archive", exact: true })
+			.click();
+		await page.getByText("Include original media", { exact: true }).click();
+		await expect(
+			page.getByRole("checkbox", { name: "Include original media" }),
+		).toBeChecked();
+		const download = page.waitForEvent("download");
+		await page
+			.getByRole("button", { name: "Generate & download", exact: true })
+			.click();
+		const artifact = await download;
+		expect(artifact.suggestedFilename()).toMatch(/\.tar$/);
+		expect(await artifact.failure()).toBeNull();
+		const artifactPath = await artifact.path();
+		if (!artifactPath) throw new Error("TAR download did not produce a file");
+		const dump = await run("tar", ["-xOf", artifactPath, "dump.ndjson"]);
+		expectSeededMediaDump(dump.stdout);
+		const image = await run(
+			"tar",
+			["-xOf", artifactPath, `images/${E2E_PRIMARY_FILE_NAME}`],
+			{ encoding: "buffer" },
+		);
+		expect(image.stdout).toEqual(
+			await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME)),
+		);
+	},
+);
 
-test("Workspace Manager NDJSON export downloads its artifact", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto("/manager");
-	await waitForAppHydration(page);
+test(
+	"Workspace Manager NDJSON export downloads its artifact",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto("/manager");
+		await waitForAppHydration(page);
 
-	const categoryNavigation = page.locator(
-		'nav[aria-label="Manager categories"]:visible',
-	);
-	await categoryNavigation
-		.getByRole("button", { name: /Data transfer/ })
-		.first()
-		.click();
+		const categoryNavigation = page.locator(
+			'nav[aria-label="Manager categories"]:visible',
+		);
+		await categoryNavigation
+			.getByRole("button", { name: /Data transfer/ })
+			.first()
+			.click();
 
-	const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
-	await selectTriggers.nth(0).click();
-	await page
-		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
-		.click();
-	const download = page.waitForEvent("download");
-	await page
-		.getByRole("button", { name: "Generate & download", exact: true })
-		.click();
-	const artifact = await download;
-	expect(artifact.suggestedFilename()).toMatch(/\.ndjson$/);
-	expect(await artifact.failure()).toBeNull();
-	const artifactPath = await artifact.path();
-	if (!artifactPath) throw new Error("NDJSON download did not produce a file");
-	expectSeededMediaDump(await readFile(artifactPath, "utf8"));
-});
+		const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
+		await selectTriggers.nth(0).click();
+		await page
+			.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
+			.click();
+		const download = page.waitForEvent("download");
+		await page
+			.getByRole("button", { name: "Generate & download", exact: true })
+			.click();
+		const artifact = await download;
+		expect(artifact.suggestedFilename()).toMatch(/\.ndjson$/);
+		expect(await artifact.failure()).toBeNull();
+		const artifactPath = await artifact.path();
+		if (!artifactPath)
+			throw new Error("NDJSON download did not produce a file");
+		expectSeededMediaDump(await readFile(artifactPath, "utf8"));
+	},
+);
 
 test("Workspace search filter opens without remounting media results", async ({
 	page,

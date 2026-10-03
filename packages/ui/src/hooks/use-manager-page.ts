@@ -9,7 +9,11 @@ import type {
 } from "@solid-imager/core/domain/sources/events";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { createQuery, type QueryClient } from "@tanstack/solid-query";
+import {
+	createQuery,
+	type QueryClient,
+	type QueryOptions,
+} from "@tanstack/solid-query";
 import {
 	type Accessor,
 	createEffect,
@@ -98,15 +102,15 @@ export type ManagerPageActions = {
 
 export type ManagerPageMutationActions = Omit<ManagerPageActions, "invalidate">;
 
+type QueryOptionsFor<TData> = QueryOptions<TData> & {
+	initialData?: undefined;
+};
+
 export type ManagerPageQueryOptions = {
-	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
-	projects: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
-	ips: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
-	characters: () => any;
-	// biome-ignore lint/suspicious/noExplicitAny: oRPC query option factories do not satisfy Solid Query's overloaded public type
-	sources: () => any;
+	projects: () => QueryOptionsFor<Project[]>;
+	ips: () => QueryOptionsFor<Ip[]>;
+	characters: () => QueryOptionsFor<Character[]>;
+	sources: () => QueryOptionsFor<SafeMediaSource[]>;
 };
 
 export type UseManagerPageOptions = {
@@ -126,14 +130,28 @@ export function prefetchManagerPageQueries(
 	queryOptions: ManagerPageQueryOptions,
 ): void {
 	prefetchQueryOnClient(() =>
-		queryClient.prefetchQuery(queryOptions.projects()),
+		queryClient.query(queryOptions.projects()).then(
+			() => undefined,
+			() => undefined,
+		),
 	);
-	prefetchQueryOnClient(() => queryClient.prefetchQuery(queryOptions.ips()));
 	prefetchQueryOnClient(() =>
-		queryClient.prefetchQuery(queryOptions.characters()),
+		queryClient.query(queryOptions.ips()).then(
+			() => undefined,
+			() => undefined,
+		),
 	);
 	prefetchQueryOnClient(() =>
-		queryClient.prefetchQuery(queryOptions.sources()),
+		queryClient.query(queryOptions.characters()).then(
+			() => undefined,
+			() => undefined,
+		),
+	);
+	prefetchQueryOnClient(() =>
+		queryClient.query(queryOptions.sources()).then(
+			() => undefined,
+			() => undefined,
+		),
 	);
 }
 

@@ -27,7 +27,7 @@ export function PendingDownloadsIndicator(
 						aria-disabled={!hasPendingImports()}
 						aria-label={`Import inbox${hasPendingImports() ? `, ${pendingCount()}件` : ""}`}
 						class={cn(
-							"relative flex h-10 w-full items-center justify-start gap-2 rounded-md px-3 font-medium text-[var(--workspace-text-secondary)] text-xs transition-colors hover:bg-[var(--workspace-surface-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-auto disabled:opacity-60",
+							"relative flex h-10 w-full items-center justify-start gap-2 rounded-md px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-auto disabled:opacity-60",
 							props.compact && "size-10 justify-center px-0",
 						)}
 						disabled={!hasPendingImports()}
@@ -43,7 +43,7 @@ export function PendingDownloadsIndicator(
 						<Show when={hasPendingImports()}>
 							<span
 								class={cn(
-									"ml-auto rounded-full bg-[var(--workspace-surface-selected)] px-1.5 py-0.5 text-[10px] text-[var(--workspace-primary)]",
+									"ml-auto rounded-full bg-accent px-1.5 py-0.5 text-label-xs text-primary",
 									props.compact && "absolute -mt-5 ml-5",
 								)}
 							>
@@ -55,7 +55,7 @@ export function PendingDownloadsIndicator(
 			}}
 			renderFallback={() => (
 				<button
-					class="h-10 w-full cursor-default rounded bg-transparent font-bold text-[var(--workspace-text-muted)] text-xs"
+					class="h-10 w-full cursor-default rounded bg-transparent font-bold text-muted-foreground text-xs"
 					disabled
 					type="button"
 				>

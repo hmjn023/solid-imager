@@ -12,7 +12,7 @@ import {
 	Outlet,
 	useNavigate,
 } from "@tanstack/solid-router";
-import { getCollections } from "~/collections";
+import { getCollections, refetchCollection } from "~/collections";
 import { collectionQueryKeys } from "~/collections/query-keys";
 import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
 import { getApiBaseUrl } from "~/infrastructure/api-base";
@@ -56,7 +56,7 @@ function RootRouteComponent() {
 				const result = await createMediaSource(
 					mediaSourceInfoSchema.parse(data),
 				);
-				await sources.utils.refetch();
+				await refetchCollection(sources);
 				return result;
 			},
 			updateMediaSource: async (id: string, data: unknown) => {
@@ -64,17 +64,17 @@ function RootRouteComponent() {
 					id,
 					mediaSourceInfoSchema.parse(data),
 				);
-				await sources.utils.refetch();
+				await refetchCollection(sources);
 				return result;
 			},
 			deleteMediaSource: async (id: string) => {
 				const result = await deleteMediaSource(id);
-				await sources.utils.refetch();
+				await refetchCollection(sources);
 				return result;
 			},
 			syncMediaSources: async (ids: string[]) => {
 				const result = await syncMediaSources(ids);
-				await sources.utils.refetch();
+				await refetchCollection(sources);
 				return result;
 			},
 		},
@@ -91,7 +91,7 @@ function RootRouteComponent() {
 		<ShortcutPreferencesProvider>
 			<Toaster />
 			<AppShell
-				apiDocsHref={`${getApiBaseUrl()}/docs/swagger`}
+				apiDocsHref={`${getApiBaseUrl()}/docs/scalar`}
 				mediaSources={sourceData}
 				onNavigate={(to) => void navigate({ to })}
 				renderPendingDownloadsIndicator={(compact) => (

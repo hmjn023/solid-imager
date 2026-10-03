@@ -27,9 +27,9 @@
     "./utils/*": "./src/utils/*.ts"
   },
   "scripts": {
-    "check": "biome check --fix --unsafe ./src",
+    "check": "oxlint --fix ./src && oxfmt --write ./src",
     "typecheck": "sh -c 'tsc --noEmit'",
-    "lint": "biome lint ./src",
+    "lint": "oxlint ./src",
     "test": "vitest run",
     "test:unit": "vitest run"
   },

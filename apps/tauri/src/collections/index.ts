@@ -16,6 +16,22 @@ export type AppCollections = {
 	authors: ReturnType<typeof createAuthorsCollection>;
 };
 
+export async function refetchCollection(collection: unknown): Promise<void> {
+	if (typeof collection !== "object" || collection === null) {
+		throw new Error("Expected a TanStack DB collection");
+	}
+	const utils: unknown = Reflect.get(collection, "utils");
+	if (typeof utils !== "object" || utils === null) {
+		throw new Error("Collection does not expose utilities");
+	}
+	const refetch: unknown = Reflect.get(utils, "refetch");
+	if (typeof refetch !== "function") {
+		throw new Error("Collection does not expose refetch");
+	}
+	const result: unknown = Reflect.apply(refetch, utils, []);
+	await result;
+}
+
 let collections: AppCollections | null = null;
 
 export async function initializeCollections() {
@@ -30,7 +46,7 @@ export async function initializeCollections() {
 	// 残りのコレクションを順次作成する。
 	const tags = createTagsCollection(persistence);
 	try {
-		await tags.utils.refetch();
+		await refetchCollection(tags);
 	} catch (error) {
 		console.error("Failed to perform initial refetch for tags:", error);
 	}

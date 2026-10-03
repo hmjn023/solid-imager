@@ -24,7 +24,7 @@ const CardHeader: Component<ComponentProps<"div">> = (props) => {
 };
 
 const CardTitle: Component<ComponentProps<"h3">> = (props) => {
-	const [local, others] = splitProps(props, ["class"]);
+	const [local, others] = splitProps(props, ["class", "children"]);
 	return (
 		<h3
 			class={cn(
@@ -32,7 +32,9 @@ const CardTitle: Component<ComponentProps<"h3">> = (props) => {
 				local.class,
 			)}
 			{...others}
-		/>
+		>
+			{local.children}
+		</h3>
 	);
 };
 

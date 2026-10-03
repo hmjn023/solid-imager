@@ -20,8 +20,8 @@ export function MediaDetailSkeleton(props: MediaDetailSkeletonProps) {
 				</div>
 				<Skeleton class="h-9 w-28" />
 			</div>
-			<div class="min-h-0 flex-1 lg:grid lg:grid-cols-[minmax(0,1fr)_22rem]">
-				<div class="flex min-h-[55dvh] items-center justify-center p-4 lg:min-h-0">
+			<div class="min-h-0 flex-1 lg:grid lg:grid-cols-detail-sidebar">
+				<div class="flex min-h-media-detail items-center justify-center p-4 lg:min-h-0">
 					<Skeleton class="h-full max-h-full w-full rounded-none" />
 				</div>
 				<div class="space-y-4 border-t p-4 lg:border-t-0 lg:border-l">

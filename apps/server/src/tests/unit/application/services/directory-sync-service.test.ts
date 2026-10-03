@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mocks
@@ -13,7 +14,7 @@ vi.mock("~/infrastructure/logger", () => ({
 vi.mock("node:fs/promises", () => ({
 	default: {
 		access: vi.fn(),
-		readdir: vi.fn(async (directoryPath: string) => {
+		opendir: vi.fn(async (directoryPath: string) => {
 			const names = directoryPath.endsWith("/sub")
 				? [["file2.png", "file"]]
 				: [
@@ -21,11 +22,17 @@ vi.mock("node:fs/promises", () => ({
 						["sub", "directory"],
 						["new_file.mp3", "file"],
 					];
-			return names.map(([name, type]) => ({
-				name,
-				isDirectory: () => type === "directory",
-				isFile: () => type === "file",
-			}));
+			return {
+				async *[Symbol.asyncIterator]() {
+					for (const [name, type] of names) {
+						yield {
+							name,
+							isDirectory: () => type === "directory",
+							isFile: () => type === "file",
+						};
+					}
+				},
+			};
 		}),
 	},
 }));
@@ -58,6 +65,10 @@ vi.mock("~/infrastructure/services/media-processing-service", () => ({
 	},
 }));
 
+vi.mock("~/infrastructure/services/ccip-vector-service", () => ({
+	ccipVectorService: { delete: vi.fn() },
+}));
+
 vi.mock("~/infrastructure/jobs/thumbnails", () => ({
 	deleteThumbnail: vi.fn(),
 }));
@@ -72,6 +83,7 @@ vi.mock("~/infrastructure/service-registry", () => ({
 	services: {
 		getConfigService: vi.fn().mockReturnValue({
 			getConfig: vi.fn().mockReturnValue({
+				jobs: { concurrency: 5 },
 				media: {
 					supportedExtensions: {
 						image: [".jpg", ".png"],
@@ -98,9 +110,8 @@ describe("DirectorySyncService", () => {
 		it("should process additions and deletions correctly", async () => {
 			const mediaSourceId = "source-1";
 
-			const { DirectorySyncService } = await import(
-				"~/infrastructure/services/directory-sync-service"
-			);
+			const { DirectorySyncService } =
+				await import("~/infrastructure/services/directory-sync-service");
 
 			// Execute
 			const result = await DirectorySyncService.syncMediaSource(mediaSourceId);
@@ -125,9 +136,8 @@ describe("DirectorySyncService", () => {
 
 		it("coalesces concurrent syncs for the same source", async () => {
 			const mediaSourceId = "source-1";
-			const { DirectorySyncService } = await import(
-				"~/infrastructure/services/directory-sync-service"
-			);
+			const { DirectorySyncService } =
+				await import("~/infrastructure/services/directory-sync-service");
 			let resolveProcessing: (() => void) | undefined;
 			let resolveStarted: (() => void) | undefined;
 			const started = new Promise<void>((resolve) => {
@@ -169,9 +179,8 @@ describe("DirectorySyncService", () => {
 		});
 
 		it("publishes a safe message when sync fails", async () => {
-			const { DirectorySyncService } = await import(
-				"~/infrastructure/services/directory-sync-service"
-			);
+			const { DirectorySyncService } =
+				await import("~/infrastructure/services/directory-sync-service");
 			vi.mocked(MediaRepository.findAllPathsBySourceId).mockRejectedValueOnce(
 				new Error("/secret/source-path and password=secret"),
 			);
@@ -187,5 +196,206 @@ describe("DirectorySyncService", () => {
 				}),
 			);
 		});
+	});
+});
+
+function directoryWithFiles(count: number, onRead: () => void = () => {}) {
+	return {
+		async *[Symbol.asyncIterator]() {
+			for (let i = 0; i < count; i++) {
+				onRead();
+				yield {
+					name: `image-${i}.jpg`,
+					isDirectory: () => false,
+					isFile: () => true,
+				};
+			}
+		},
+	} as Awaited<ReturnType<typeof fs.opendir>>;
+}
+
+function mediaRecord(mediaSourceId: string, filePath: string) {
+	const now = new Date();
+	return {
+		id: filePath,
+		mediaSourceId,
+		filePath,
+		fileName: filePath,
+		mediaType: "image" as const,
+		width: 1,
+		height: 1,
+		fileSize: 1,
+		description: null,
+		createdAt: now,
+		modifiedAt: now,
+		indexedAt: now,
+		status: "active" as const,
+	};
+}
+
+describe("large source sync and recovery", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(MediaProcessingService.registerAndProcess).mockReset();
+		vi.mocked(MediaRepository.delete).mockReset();
+	});
+
+	it("reads and registers only five files at a time while completing all additions", async () => {
+		const count = 115_894;
+		let scanned = 0;
+		vi.mocked(fs.opendir).mockResolvedValueOnce(
+			directoryWithFiles(count, () => {
+				scanned++;
+			}),
+		);
+		vi.mocked(MediaRepository.findAllPathsBySourceId).mockResolvedValueOnce([]);
+		let release!: () => void;
+		let batchStarted!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const started = new Promise<void>((resolve) => {
+			batchStarted = resolve;
+		});
+		let active = 0;
+		let peak = 0;
+		vi.mocked(MediaProcessingService.registerAndProcess).mockImplementation(
+			async (sourceId, filePath) => {
+				active++;
+				peak = Math.max(peak, active);
+				if (active === 5) batchStarted();
+				await gate;
+				active--;
+				return mediaRecord(sourceId, filePath);
+			},
+		);
+		const { DirectorySyncService } =
+			await import("~/infrastructure/services/directory-sync-service");
+		const sync = DirectorySyncService.syncMediaSource("large-source");
+		try {
+			await started;
+			expect(active).toBe(5);
+			expect(scanned).toBe(5);
+			expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledTimes(
+				5,
+			);
+		} finally {
+			release();
+		}
+		await expect(sync).resolves.toMatchObject({ added: count, deleted: 0 });
+		expect(peak).toBe(5);
+		expect(scanned).toBe(count);
+	});
+
+	it("honors a configured job concurrency below five for registration", async () => {
+		const { services } = await import("~/infrastructure/service-registry");
+		const config = services.getConfigService().getConfig();
+		vi.mocked(services.getConfigService().getConfig).mockReturnValueOnce({
+			...config,
+			jobs: { ...config.jobs, concurrency: 2 },
+		});
+		vi.mocked(fs.opendir).mockResolvedValueOnce(directoryWithFiles(12));
+		vi.mocked(MediaRepository.findAllPathsBySourceId).mockResolvedValueOnce([]);
+		let active = 0;
+		let peak = 0;
+		vi.mocked(MediaProcessingService.registerAndProcess).mockImplementation(
+			async (sourceId, filePath) => {
+				active++;
+				peak = Math.max(peak, active);
+				await new Promise<void>((resolve) => setImmediate(resolve));
+				active--;
+				return mediaRecord(sourceId, filePath);
+			},
+		);
+		const { DirectorySyncService } =
+			await import("~/infrastructure/services/directory-sync-service");
+		await expect(
+			DirectorySyncService.syncMediaSource("two-worker-source"),
+		).resolves.toMatchObject({ added: 12 });
+		expect(peak).toBe(2);
+	});
+
+	it("bounds deletion concurrency as well", async () => {
+		const count = 2048;
+		vi.mocked(fs.opendir).mockResolvedValueOnce(directoryWithFiles(0));
+		vi.mocked(MediaRepository.findAllPathsBySourceId).mockResolvedValueOnce(
+			Array.from({ length: count }, (_, i) => ({
+				id: `id-${i}`,
+				filePath: `image-${i}.jpg`,
+			})),
+		);
+		let active = 0;
+		let peak = 0;
+		vi.mocked(MediaRepository.delete).mockImplementation(async () => {
+			active++;
+			peak = Math.max(peak, active);
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			active--;
+		});
+		const { DirectorySyncService } =
+			await import("~/infrastructure/services/directory-sync-service");
+		await expect(
+			DirectorySyncService.syncMediaSource("large-delete-source"),
+		).resolves.toMatchObject({ added: 0, deleted: count });
+		expect(peak).toBe(5);
+	});
+
+	it("recovers previously unregistered files on a fresh sync without registering existing files again", async () => {
+		const registered = new Map<string, string>();
+		let interrupted = true;
+		vi.mocked(fs.opendir)
+			.mockResolvedValueOnce(directoryWithFiles(12))
+			.mockResolvedValueOnce(directoryWithFiles(12));
+		vi.mocked(MediaRepository.findAllPathsBySourceId).mockImplementation(
+			async () =>
+				Array.from(registered, ([filePath, id]) => ({ id, filePath })),
+		);
+		vi.mocked(MediaProcessingService.registerAndProcess).mockImplementation(
+			async (sourceId, filePath) => {
+				if (interrupted && Number(filePath.match(/image-(\d+)/)?.[1]) >= 5)
+					throw new Error("simulated interruption");
+				registered.set(filePath, filePath);
+				return mediaRecord(sourceId, filePath);
+			},
+		);
+		const first =
+			await import("~/infrastructure/services/directory-sync-service");
+		await expect(
+			first.DirectorySyncService.syncMediaSource("interrupted-source"),
+		).resolves.toMatchObject({ added: 5 });
+		expect(first.getSourceSyncState("interrupted-source")).toBe("error");
+		expect(DrizzleSourceRepository.update).toHaveBeenLastCalledWith(
+			"interrupted-source",
+			expect.objectContaining({ syncStatus: "error" }),
+		);
+		interrupted = false;
+		vi.resetModules();
+		vi.mocked(MediaProcessingService.registerAndProcess).mockClear();
+		const restarted =
+			await import("~/infrastructure/services/directory-sync-service");
+		await expect(
+			restarted.DirectorySyncService.syncMediaSource("interrupted-source"),
+		).resolves.toMatchObject({ added: 7, deleted: 0 });
+		expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledTimes(7);
+		expect(registered.size).toBe(12);
+		expect(restarted.getSourceSyncState("interrupted-source")).toBe("idle");
+	});
+
+	it("does not delete existing records when a subtree cannot be fully scanned", async () => {
+		vi.mocked(MediaRepository.findAllPathsBySourceId).mockResolvedValueOnce([
+			{ id: "existing", filePath: "sub/existing.jpg" },
+		]);
+		vi.mocked(fs.opendir)
+			.mockResolvedValueOnce({
+				async *[Symbol.asyncIterator]() {
+					yield { name: "sub", isDirectory: () => true, isFile: () => false };
+				},
+			} as Awaited<ReturnType<typeof fs.opendir>>)
+			.mockRejectedValueOnce(new Error("EACCES"));
+		const { DirectorySyncService, getSourceSyncState } =
+			await import("~/infrastructure/services/directory-sync-service");
+		await DirectorySyncService.syncMediaSource("unreadable-source");
+		expect(MediaRepository.delete).not.toHaveBeenCalled();
+		expect(getSourceSyncState("unreadable-source")).toBe("error");
 	});
 });

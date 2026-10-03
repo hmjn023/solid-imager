@@ -2,7 +2,6 @@ import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
-	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 	getFixtureMediaPath,
 	sourcePath,
@@ -51,37 +50,21 @@ async function expectInsideViewport(
 	expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
 }
 
-test("library entry points redirect to canonical search", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	for (const path of ["/", "/sources", "/v2", "/v2/search"]) {
-		await page.goto(path);
+test(
+	"the root entry point redirects to canonical search",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto("/");
 		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 		await waitForAppHydration(page);
 		await expect(
 			page.getByText("すべてのメディア", { exact: true }).last(),
 		).toBeVisible();
 		await expectRouteHealthy(page);
-	}
-});
-
-test("versioned detail routes preserve query and hash during redirect", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto(
-		`/v2/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}?migration=1#details`,
-	);
-	await expect(page).toHaveURL(
-		new RegExp(
-			`/sources/${E2E_SOURCE_ID}/${E2E_PRIMARY_MEDIA_ID}\\?migration=1#details$`,
-		),
-	);
-	await waitForAppHydration(page);
-	await expect(
-		page.getByRole("img", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
-	).toBeVisible();
-	await expectRouteHealthy(page);
-});
+	},
+);
 
 test("source media exposes mobile filters and touch selection", async ({
 	page,
@@ -111,9 +94,9 @@ test("source media exposes mobile filters and touch selection", async ({
 	await expectInsideViewport(page, addMediaButton);
 	const fileChooser = page.waitForEvent("filechooser");
 	await addMediaButton.click();
-	await (await fileChooser).setFiles(
-		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
-	);
+	await (
+		await fileChooser
+	).setFiles(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
 	const uploadDialog = page.getByRole("dialog");
 	await expect(
 		uploadDialog.getByRole("heading", {
@@ -146,9 +129,9 @@ test("source media exposes mobile filters and touch selection", async ({
 	await expect(uploadDialog).toBeHidden();
 	const reopenedFileChooser = page.waitForEvent("filechooser");
 	await addMediaButton.click();
-	await (await reopenedFileChooser).setFiles(
-		getFixtureMediaPath(E2E_PRIMARY_FILE_NAME),
-	);
+	await (
+		await reopenedFileChooser
+	).setFiles(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
 	await expect(filenameInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
 	await page.keyboard.press("Escape");
 	await discardDialog
@@ -207,19 +190,23 @@ test("source media exposes mobile filters and touch selection", async ({
 	await expectNoHorizontalOverflow(page);
 });
 
-test("canonical media grid opens its context menu", {
-	tag: "@desktop-only",
-}, async ({ page }) => {
-	await page.goto(sourcePath());
-	await waitForAppHydration(page);
+test(
+	"canonical media grid opens its context menu",
+	{
+		tag: "@desktop-only",
+	},
+	async ({ page }) => {
+		await page.goto(sourcePath());
+		await waitForAppHydration(page);
 
-	const firstMedia = page.locator("[data-media-id]").first();
-	await expect(firstMedia).toBeVisible();
-	await firstMedia.click({ button: "right" });
+		const firstMedia = page.locator("[data-media-id]").first();
+		await expect(firstMedia).toBeVisible();
+		await firstMedia.click({ button: "right" });
 
-	await expectRouteHealthy(page);
-	await expect(page.getByRole("menu")).toBeVisible();
-	await expect(
-		page.getByRole("menuitem", { name: "類似度検索", exact: true }),
-	).toBeVisible();
-});
+		await expectRouteHealthy(page);
+		await expect(page.getByRole("menu")).toBeVisible();
+		await expect(
+			page.getByRole("menuitem", { name: "類似度検索", exact: true }),
+		).toBeVisible();
+	},
+);

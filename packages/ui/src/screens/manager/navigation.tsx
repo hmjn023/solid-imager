@@ -17,6 +17,7 @@ function ManagerCategoryIcon(props: { value: ManagerCategoryValue }) {
 			return <Folder aria-hidden="true" size={16} />;
 		case "ips":
 			return <CopyCheck aria-hidden="true" size={16} />;
+		case "authors":
 		case "characters":
 			return <Image aria-hidden="true" size={16} />;
 		case "tagging":
@@ -41,7 +42,7 @@ export function ManagerCategoryNavigation(props: {
 		return (
 			<nav
 				aria-label="Manager categories"
-				class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-[var(--workspace-border)] border-b bg-[var(--workspace-canvas)]/95 px-3 py-2 backdrop-blur lg:hidden"
+				class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-border border-b bg-background/95 px-3 py-2 backdrop-blur lg:hidden"
 			>
 				<For each={MANAGER_CATEGORIES}>
 					{(category) => (
@@ -51,8 +52,8 @@ export function ManagerCategoryNavigation(props: {
 							}
 							class={`min-h-11 shrink-0 gap-2.5 px-2.5 ${
 								props.active === category.value
-									? "bg-[var(--workspace-surface-selected)] text-[var(--workspace-primary)]"
-									: "text-[var(--workspace-text-secondary)]"
+									? "bg-accent text-primary"
+									: "text-muted-foreground"
 							}`}
 							onClick={() => props.onChange(category.value)}
 							variant="ghost"
@@ -75,7 +76,7 @@ export function ManagerCategoryNavigation(props: {
 				<For each={["Entities", "Tools"] as const}>
 					{(group) => (
 						<div>
-							<p class="mb-1 px-2.5 font-medium text-[10px] uppercase tracking-[0.12em] text-[var(--workspace-text-muted)]">
+							<p class="mb-1 px-2.5 font-medium text-label-xs uppercase tracking-wider text-muted-foreground">
 								{group}
 							</p>
 							<div class="space-y-0.5">

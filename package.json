@@ -12,21 +12,24 @@
     "build": "bun --filter '*' build",
     "start": "bun --filter @solid-imager/server start",
     "deps:update:aube": "aube update -r",
-    "lint": "biome lint .",
-    "check": "biome check --write --unsafe && bun run typecheck && bun run design:lint",
+    "lint": "oxlint apps/*/src packages/*/src",
+    "check": "oxlint --fix apps/*/src packages/*/src && oxfmt --write apps/*/src packages/*/src && bun run typecheck && bun run design:lint",
     "design:lint": "designmd lint DESIGN.md",
-    "format": "biome format --write .",
+    "format": "oxfmt --write apps/*/src packages/*/src",
     "test": "bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd apps/xtracter test && bun run --cwd packages/core test && bun run --cwd packages/ui test && bun run --cwd packages/client test && bun run --cwd packages/db test",
     "typecheck": "bun --filter '*' typecheck",
     "prepare": "husky"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.11",
     "@google/design.md": "^0.4.0",
+    "@shadcn/lint": "^0.2.0",
     "@tanstack/cli": "^0.71.0",
     "husky": "^9.1.7",
     "lint-staged": "^17.4.1",
     "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
+    "oxfmt": "^0.70.0",
+    "oxlint": "^1.85.0",
+    "oxlint-tsgolint": "^7.0.2003",
     "typescript": "^7.0.2",
     "vitest": "^5.0.1"
   },
@@ -41,6 +44,13 @@
     "sharp"
   ],
   "lint-staged": {
-    "**/*.{js,jsx,json,jsonc,ts,tsx}": "biome check --write --unsafe"
+    "apps/**/src/**/*.{js,jsx,ts,tsx}": [
+      "oxlint --fix",
+      "oxfmt --write"
+    ],
+    "packages/**/src/**/*.{js,jsx,ts,tsx}": [
+      "oxlint --fix",
+      "oxfmt --write"
+    ]
   }
 }

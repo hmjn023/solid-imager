@@ -21,7 +21,8 @@ export function loadDghsImgutils(): DghsImgutilsModule {
 	const modulePath = existsSync(bundledModulePath)
 		? bundledModulePath
 		: "dghs-imgutils-rs";
-	const loadedModule: DghsImgutilsModule = require(modulePath);
+	// The package is loaded from a runtime-selected path, so its declaration is the boundary contract.
+	const loadedModule = require(modulePath) as DghsImgutilsModule;
 	cachedModule = loadedModule;
 	return loadedModule;
 }

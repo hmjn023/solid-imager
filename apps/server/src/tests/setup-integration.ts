@@ -48,47 +48,47 @@ if (typeof (globalThis as any).Bun === "undefined") {
 		file: (path: string) => {
 			return {
 				image: () => createBunImageMock(path),
-				exists: () =>
-					import("node:fs/promises").then((fs) => {
-						const res = fs.access?.(path);
-						return res
-							? res.then(() => true).catch(() => false)
-							: Promise.resolve(false);
-					}),
-				arrayBuffer: () =>
-					import("node:fs/promises").then((fs) => {
-						const res = fs.readFile?.(path);
-						return res
-							? res
-									.then((buf) => (buf ? buf.buffer : new ArrayBuffer(0)))
-									.catch(() => new ArrayBuffer(0))
-							: Promise.resolve(new ArrayBuffer(0));
-					}),
-				text: () =>
-					import("node:fs/promises").then((fs) => {
-						const res = fs.readFile?.(path, "utf-8");
-						return res
-							? res.then((val) => val || "").catch(() => "")
-							: Promise.resolve("");
-					}),
-				bytes: () =>
-					import("node:fs/promises").then((fs) => {
-						const res = fs.readFile?.(path);
-						return res
-							? res
-									.then((buf) =>
-										buf ? new Uint8Array(buf) : new Uint8Array(0),
-									)
-									.catch(() => new Uint8Array(0))
-							: Promise.resolve(new Uint8Array(0));
-					}),
+				exists: async () => {
+					const fs = await import("node:fs/promises");
+					try {
+						await fs.access(path);
+						return true;
+					} catch {
+						return false;
+					}
+				},
+				arrayBuffer: async () => {
+					const fs = await import("node:fs/promises");
+					try {
+						return (await fs.readFile(path)).buffer;
+					} catch {
+						return new ArrayBuffer(0);
+					}
+				},
+				text: async () => {
+					const fs = await import("node:fs/promises");
+					try {
+						return await fs.readFile(path, "utf-8");
+					} catch {
+						return "";
+					}
+				},
+				bytes: async () => {
+					const fs = await import("node:fs/promises");
+					try {
+						return new Uint8Array(await fs.readFile(path));
+					} catch {
+						return new Uint8Array(0);
+					}
+				},
 				size: 0,
 				type: "text/plain",
-				delete: () =>
-					import("node:fs/promises").then((fs) => {
-						const res = fs.unlink?.(path);
-						return res ? res.then(() => {}).catch(() => {}) : Promise.resolve();
-					}),
+				delete: async () => {
+					const fs = await import("node:fs/promises");
+					try {
+						await fs.unlink(path);
+					} catch {}
+				},
 			};
 		},
 		write: async (dest: any, data: any) => {
@@ -178,14 +178,34 @@ vi.mock("bun", () => {
 	};
 });
 
+// Generic integration fixtures use placeholder source paths such as "/".
+// Do not let automatic startup monitoring scan those paths during unrelated tests;
+// recovery tests explicitly exercise monitoring with their own temporary directories.
+vi.mock(
+	"~/infrastructure/jobs/file-watcher-service",
+	async (importOriginal) => {
+		const actual =
+			await importOriginal<
+				typeof import("~/infrastructure/jobs/file-watcher-service")
+			>();
+		return {
+			...actual,
+			FileWatcherService: {
+				...actual.FileWatcherService,
+				startMonitoringAll: vi.fn().mockResolvedValue(undefined),
+			},
+		};
+	},
+);
+
 // Bootstrap
 beforeAll(async () => {
 	// 1. Ensure DB migration is completed first
 	await mockDbFactory();
 
 	// 2. Then bootstrap the application
-	const { bootstrap } = await import("~/infrastructure/bootstrap");
-	bootstrap();
+	const { startBackgroundWorker } = await import("~/infrastructure/bootstrap");
+	startBackgroundWorker();
 });
 
 config({ path: path.resolve(process.cwd(), ".env") });

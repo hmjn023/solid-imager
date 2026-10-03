@@ -6,19 +6,16 @@ export function NotFoundRoute() {
 	return (
 		<section
 			aria-labelledby="not-found-title"
-			class="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-[var(--workspace-canvas)] p-6 text-center"
+			class="flex h-full min-h-0 flex-col items-center justify-center gap-4 bg-background p-6 text-center"
 		>
-			<span class="flex size-12 items-center justify-center rounded-full bg-[var(--workspace-surface-muted)] text-[var(--workspace-text-muted)]">
+			<span class="flex size-12 items-center justify-center rounded-full bg-muted text-muted-foreground">
 				<Search aria-hidden="true" size={22} />
 			</span>
 			<div>
-				<h1
-					class="font-semibold text-xl text-[var(--workspace-text)]"
-					id="not-found-title"
-				>
+				<h1 class="font-semibold text-xl text-foreground" id="not-found-title">
 					ページが見つかりません
 				</h1>
-				<p class="mt-2 text-sm text-[var(--workspace-text-secondary)]">
+				<p class="mt-2 text-sm text-muted-foreground">
 					URLを確認するか、ライブラリへ戻ってください。
 				</p>
 			</div>

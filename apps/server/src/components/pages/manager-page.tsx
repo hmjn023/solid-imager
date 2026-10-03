@@ -86,7 +86,7 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 			sourceId: string;
 		}) => {
 			try {
-				const mode = input.format === "ndjson" ? "json" : "zip";
+				const mode = input.format;
 				const job = await enqueueSourceExport(
 					input.sourceId,
 					mode,
@@ -113,7 +113,7 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 			sourceId: string;
 		}) => {
 			try {
-				const mode = input.format === "ndjson" ? "json" : "zip";
+				const mode = input.format;
 				const job = await enqueueSourceImport(input.sourceId, mode, input.file);
 				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
 				toast.success(
@@ -158,6 +158,33 @@ export function ManagerPage() {
 
 	return (
 		<ManagerScreen
+			authorActions={{
+				beginAccountVerification: (input) =>
+					orpc.authors.beginAccountVerification(input),
+				getAccountVerification: (input) =>
+					orpc.authors.getAccountVerification(input),
+				confirmAccountVerification: async (input) => {
+					const result = await orpc.authors.confirmAccountVerification(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				list: () => orpc.authors.list(),
+				create: (input) => orpc.authors.create(input),
+				updateName: (input) => orpc.authors.updateName(input),
+				listMedia: (input) => orpc.authors.listMedia(input),
+				correctMedia: async (input) => {
+					const result = await orpc.authors.correctMedia(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				merge: async (input) => {
+					const result = await orpc.authors.merge(input);
+					await queryClient.invalidateQueries();
+					return result;
+				},
+				thumbnailUrl: (sourceId, mediaId) =>
+					`/api/sources/${sourceId}/thumbnail/${mediaId}`,
+			}}
 			manager={manager}
 			transferActions={createTransferActions(queryClient)}
 		/>
