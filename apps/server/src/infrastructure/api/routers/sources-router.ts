@@ -23,7 +23,6 @@ import { allocateJobId } from "~/infrastructure/repositories/job-repository";
 import { services } from "~/infrastructure/service-registry";
 import { DirectorySyncService } from "~/infrastructure/services/directory-sync-service";
 import { persistJobInput } from "~/infrastructure/services/job-transfer-storage";
-import { MediaService } from "~/infrastructure/services/media-service";
 import { MediaSourceService } from "~/infrastructure/services/media-source-service";
 
 /**
@@ -133,12 +132,8 @@ export const sourcesRouter = os.router({
 
 		// ローカルソースの場合、バックグラウンド処理を開始
 		if (createdSource && createdSource.type === "local") {
-			void MediaService.registerExistingMedia(
-				createdSource.id,
-				(createdSource.connectionInfo as { path: string }).path,
-			);
-
-			// ファイル監視の開始
+			// Monitoring performs the initial directory sync. Starting a second
+			// registration path here races with that sync and duplicates work.
 			import("~/infrastructure/jobs/file-watcher-service")
 				.then((module) => {
 					module.FileWatcherService.startMonitoring(createdSource.id).catch(

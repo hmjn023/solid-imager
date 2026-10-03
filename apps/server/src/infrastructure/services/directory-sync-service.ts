@@ -1,6 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { MediaSourceSyncState } from "@solid-imager/core/domain/sources/schemas";
+import {
+	localConnectionSchema,
+	type MediaSourceSyncState,
+} from "@solid-imager/core/domain/sources/schemas";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
@@ -33,6 +36,7 @@ const sourceSyncStates =
 syncStateGlobal.__SOLID_IMAGER_SOURCE_SYNC_STATES__ = sourceSyncStates;
 const activeSyncs = new Map<string, Promise<SyncResult>>();
 const PublicDirectorySyncFailureMessage = "Directory sync failed";
+const DirectorySyncConcurrencyLimit = 5;
 
 function publishSyncStatus(
 	mediaSourceId: string,
@@ -88,8 +92,7 @@ export function getSourceSyncState(
 	return sourceSyncStates.get(mediaSourceId)?.status ?? "idle";
 }
 
-async function scanFiles(basePath: string): Promise<string[]> {
-	const files: string[] = [];
+async function* scanFiles(basePath: string): AsyncGenerator<string> {
 	const pendingDirectories = [""];
 
 	while (pendingDirectories.length > 0) {
@@ -99,8 +102,8 @@ async function scanFiles(basePath: string): Promise<string[]> {
 		}
 
 		const directoryPath = path.join(basePath, relativeDirectory);
-		const entries = await fs.readdir(directoryPath, { withFileTypes: true });
-		for (const entry of entries) {
+		const directory = await fs.opendir(directoryPath);
+		for await (const entry of directory) {
 			if (entry.name.startsWith(".")) {
 				continue;
 			}
@@ -109,23 +112,18 @@ async function scanFiles(basePath: string): Promise<string[]> {
 			if (entry.isDirectory()) {
 				pendingDirectories.push(relativePath);
 			} else if (entry.isFile()) {
-				files.push(relativePath.split(path.sep).join("/"));
+				yield relativePath.split(path.sep).join("/");
 			}
 		}
 	}
-
-	return files;
 }
 
 async function processAdditions(
 	mediaSourceId: string,
 	filesToAdd: string[],
 	result: SyncResult,
-): Promise<void> {
-	logger.info(
-		{ mediaSourceId, count: filesToAdd.length },
-		"Sync: Found new files to add",
-	);
+): Promise<number> {
+	let failures = 0;
 	await Promise.all(
 		filesToAdd.map(async (fileToAdd) => {
 			try {
@@ -139,23 +137,19 @@ async function processAdditions(
 					{ err: error, mediaSourceId, fileToAdd },
 					"Failed to process new file during sync",
 				);
+				failures++;
 			}
 		}),
 	);
+	return failures;
 }
 
 async function processDeletions(
 	mediaSourceId: string,
 	filesToDelete: { id: string; relativePath: string }[],
 	result: SyncResult,
-): Promise<void> {
-	logger.info(
-		{ mediaSourceId, count: filesToDelete.length },
-		"Sync: Found missing files to delete",
-	);
-	if (filesToDelete.length === 0) {
-		return;
-	}
+): Promise<number> {
+	let failures = 0;
 	await Promise.all(
 		filesToDelete.map(async (fileToDelete) => {
 			try {
@@ -180,9 +174,11 @@ async function processDeletions(
 					{ err: error, mediaSourceId, fileToDelete },
 					"Failed to process deleted file during sync",
 				);
+				failures++;
 			}
 		}),
 	);
+	return failures;
 }
 
 /**
@@ -223,7 +219,9 @@ export const DirectorySyncService = {
 					return result;
 				}
 
-				const basePath = (source.connectionInfo as { path: string }).path;
+				const basePath = localConnectionSchema.parse(
+					source.connectionInfo,
+				).path;
 
 				try {
 					await fs.access(basePath);
@@ -255,52 +253,76 @@ export const DirectorySyncService = {
 					dbPathMap.set(normalizedPath, record.id);
 				}
 
-				// 2. Scan the actual file system with runtime-portable Node APIs.
-				const fsPaths = await scanFiles(basePath);
-
-				const mediaExtensions = services.getConfigService().getConfig()
-					.media.supportedExtensions;
+				const config = services.getConfigService().getConfig();
+				const concurrency = Math.min(
+					DirectorySyncConcurrencyLimit,
+					Math.max(1, config.jobs.concurrency),
+				);
 				const allowedExts = new Set(
-					Object.values(mediaExtensions)
+					Object.values(config.media.supportedExtensions)
 						.flat()
 						.map((ext) => ext.toLowerCase()),
 				);
 
-				const actualMediaPaths = fsPaths.filter((p) => {
-					const ext = path.extname(p).toLowerCase();
-					return allowedExts.has(ext);
-				});
-				const allFilesPathSet = new Set(fsPaths);
-
-				// 3. Calculate diffs
-				const filesToAdd: string[] = [];
-				for (const p of actualMediaPaths) {
-					if (!dbPathMap.has(p)) {
-						filesToAdd.push(p.split("/").join(path.sep));
+				// Await each small batch before reading more files. Registration reads
+				// image/video metadata before enqueueing a job, outside JobWorker's pool.
+				let failures = 0;
+				let additions: string[] = [];
+				for await (const relativePath of scanFiles(basePath)) {
+					if (dbPathMap.delete(relativePath)) {
+						continue;
+					}
+					if (!allowedExts.has(path.extname(relativePath).toLowerCase())) {
+						continue;
+					}
+					additions.push(relativePath.split("/").join(path.sep));
+					if (additions.length >= concurrency) {
+						failures += await processAdditions(
+							mediaSourceId,
+							additions,
+							result,
+						);
+						additions = [];
 					}
 				}
+				failures += await processAdditions(mediaSourceId, additions, result);
 
-				const filesToDelete: { id: string; relativePath: string }[] = [];
-				for (const [p, id] of dbPathMap.entries()) {
-					if (!allFilesPathSet.has(p)) {
-						filesToDelete.push({
-							id,
-							relativePath: p.split("/").join(path.sep),
-						});
+				// Only delete after the entire scan succeeds. A failed/inaccessible
+				// subtree must never make its existing media look like missing files.
+				let deletions: { id: string; relativePath: string }[] = [];
+				for (const [relativePath, id] of dbPathMap) {
+					deletions.push({
+						id,
+						relativePath: relativePath.split("/").join(path.sep),
+					});
+					if (deletions.length >= concurrency) {
+						failures += await processDeletions(
+							mediaSourceId,
+							deletions,
+							result,
+						);
+						deletions = [];
 					}
 				}
+				failures += await processDeletions(mediaSourceId, deletions, result);
 
-				// 4. Batch process additions
-				await processAdditions(mediaSourceId, filesToAdd, result);
-
-				// 5. Batch process deletions
-				await processDeletions(mediaSourceId, filesToDelete, result);
-
-				logger.info(
-					{ mediaSourceId, syncResult: result },
-					"Directory sync completed successfully",
-				);
-				await setSyncStatus(mediaSourceId, "idle");
+				if (failures > 0) {
+					logger.warn(
+						{ mediaSourceId, failures, syncResult: result },
+						"Directory sync partially failed",
+					);
+					await setSyncStatus(
+						mediaSourceId,
+						"error",
+						PublicDirectorySyncFailureMessage,
+					);
+				} else {
+					logger.info(
+						{ mediaSourceId, syncResult: result },
+						"Directory sync completed successfully",
+					);
+					await setSyncStatus(mediaSourceId, "idle");
+				}
 				return result;
 			} catch (error) {
 				logger.error(

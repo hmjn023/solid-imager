@@ -98,3 +98,29 @@ describe("RealtimeEventBus", () => {
 		expect(listener).toHaveBeenCalledWith(event);
 	});
 });
+
+it("does not retain live job events after replay", () => {
+	const OriginalSet = globalThis.Set;
+	const sets: Set<unknown>[] = [];
+	class ObservedSet<T> extends OriginalSet<T> {
+		constructor(values?: Iterable<T> | null) {
+			super(values);
+			sets.push(this);
+		}
+	}
+	vi.stubGlobal("Set", ObservedSet);
+	try {
+		cleanups.push(RealtimeEventBus.subscribeToJobs(() => {}));
+	} finally {
+		vi.unstubAllGlobals();
+	}
+	expect(sets).toHaveLength(1);
+	for (let i = 0; i < 2048; i++) {
+		RealtimeEventBus.publishJob("job-progress", {
+			jobId: `job-${i}`,
+			processed: 1,
+			total: 1,
+		});
+	}
+	expect(sets[0].size).toBe(0);
+});
