@@ -178,6 +178,26 @@ vi.mock("bun", () => {
 	};
 });
 
+// Generic integration fixtures use placeholder source paths such as "/".
+// Do not let automatic startup monitoring scan those paths during unrelated tests;
+// recovery tests explicitly exercise monitoring with their own temporary directories.
+vi.mock(
+	"~/infrastructure/jobs/file-watcher-service",
+	async (importOriginal) => {
+		const actual =
+			await importOriginal<
+				typeof import("~/infrastructure/jobs/file-watcher-service")
+			>();
+		return {
+			...actual,
+			FileWatcherService: {
+				...actual.FileWatcherService,
+				startMonitoringAll: vi.fn().mockResolvedValue(undefined),
+			},
+		};
+	},
+);
+
 // Bootstrap
 beforeAll(async () => {
 	// 1. Ensure DB migration is completed first
