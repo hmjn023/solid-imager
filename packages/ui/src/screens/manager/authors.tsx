@@ -40,6 +40,7 @@ import {
 	DialogTitle,
 } from "../../dialog";
 import { ErrorState } from "../../async-state";
+import { createDebouncedSignal } from "../../utils/debounce";
 import { AuthorAccountVerificationPanel } from "./author-account-verification";
 
 export type AuthorManagementActions = {
@@ -78,24 +79,61 @@ function AuthorPicker(props: {
 	disabled?: boolean;
 	onChange: (author: Author | null) => void;
 }) {
+	const [filterText, setFilterText] = createDebouncedSignal("", 150);
+	const searchableAuthors = createMemo(() =>
+		props.options.map((author) => {
+			const label = authorLabel(author);
+			return { author, label, searchText: label.toLowerCase() };
+		}),
+	);
+	const labels = createMemo(
+		() =>
+			new Map(
+				searchableAuthors().map(({ author, label }) => [author.id, label]),
+			),
+	);
+	const getLabel = (author: Author) =>
+		labels().get(author.id) ?? authorLabel(author);
+	const filteredAuthors = createMemo(() => {
+		const query = filterText().toLowerCase();
+		const matches: Author[] = [];
+		for (const { author, searchText } of searchableAuthors()) {
+			if (!searchText.includes(query)) continue;
+			matches.push(author);
+			if (matches.length === 100) break;
+		}
+		return matches;
+	});
+	const filteredIds = createMemo(
+		() => new Set(filteredAuthors().map((author) => author.id)),
+	);
+	const options = createMemo(() => {
+		const selected = props.value;
+		// Kobalte resolves the controlled selection from options, even when filtered out.
+		return selected && !filteredIds().has(selected.id)
+			? [...filteredAuthors(), selected]
+			: filteredAuthors();
+	});
+
 	return (
 		<Combobox<Author>
-			options={props.options}
+			options={options()}
 			value={props.value}
 			onChange={props.onChange}
+			onInputChange={setFilterText}
+			// Filter only after the debounce; do not repeat live filtering on each keystroke.
+			defaultFilter={(author) => filteredIds().has(author.id)}
 			disabled={props.disabled}
 			optionValue="id"
-			optionTextValue={authorLabel}
-			optionLabel={authorLabel}
+			optionTextValue={getLabel}
+			optionLabel={getLabel}
 			itemComponent={(item) => (
 				<ComboboxItem
 					item={item.item}
 					// Keep virtual focus in the input: blur resets the filter before pointerup.
 					onMouseDown={(event) => event.preventDefault()}
 				>
-					<ComboboxItemLabel>
-						{authorLabel(item.item.rawValue)}
-					</ComboboxItemLabel>
+					<ComboboxItemLabel>{item.item.textValue}</ComboboxItemLabel>
 				</ComboboxItem>
 			)}
 		>
