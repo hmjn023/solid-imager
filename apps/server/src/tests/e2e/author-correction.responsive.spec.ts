@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import {
 	E2E_CORRECT_AUTHOR_ID,
@@ -36,6 +37,102 @@ async function choose(page: Page, label: string, query: string) {
 	);
 	await option.click();
 }
+
+test("large author lists debounce suggestions and preserve selections @desktop-only", async ({
+	page,
+}) => {
+	const timestamp = new Date().toISOString();
+	const authors = Array.from({ length: 3000 }, (_, index) => ({
+		id: randomUUID(),
+		name: `Bulk author ${index}`,
+		accountId: null,
+		accounts: [],
+		createdAt: timestamp,
+		updatedAt: timestamp,
+	}));
+	await page.route("**/api/rpc/authors/list", (route) =>
+		route.fulfill({
+			json: {
+				json: [
+					...authors,
+					{
+						id: E2E_WRONG_AUTHOR_ID,
+						name: "E2E incorrect author",
+						accountId: "bulk_source_handle",
+						createdAt: timestamp,
+						updatedAt: timestamp,
+					},
+					{
+						id: E2E_CORRECT_AUTHOR_ID,
+						name: "E2E correct author",
+						accountId: null,
+						accounts: [
+							{
+								id: randomUUID(),
+								authorId: E2E_CORRECT_AUTHOR_ID,
+								platform: "twitter",
+								accountId: "bulk_target_handle",
+								remoteId: null,
+								displayName: null,
+								profileUrl: null,
+								observedAt: null,
+								createdAt: timestamp,
+								updatedAt: timestamp,
+							},
+						],
+						createdAt: timestamp,
+						updatedAt: timestamp,
+					},
+				],
+			},
+		}),
+	);
+	await page.goto("/manager");
+	await waitForAppHydration(page);
+	await openAuthors(page);
+	await page.getByRole("button", { name: /修正対象の作者の候補/ }).click();
+	await expect(page.getByRole("option")).toHaveCount(100);
+	await page.clock.install();
+	await page.clock.pauseAt(new Date());
+	const source = page.getByRole("combobox", {
+		name: "修正対象の作者",
+		exact: true,
+	});
+	await source.fill("bulk_source_handle");
+	await source.fill("E2E incorrect author");
+	await expect(source).toHaveValue("E2E incorrect author");
+	await expect(source).toBeFocused();
+	await page.clock.runFor(149);
+	await expect(page.getByRole("option")).toHaveCount(100);
+	await page.clock.runFor(1);
+	const sourceOption = page.getByRole("option", {
+		name: /E2E incorrect author/,
+	});
+	await expect(sourceOption).toHaveAttribute("data-key", E2E_WRONG_AUTHOR_ID);
+	await sourceOption.click();
+	await expect(source).toHaveValue(/E2E incorrect author/);
+
+	const target = page.getByRole("combobox", {
+		name: "正しい作者（修正先）",
+		exact: true,
+	});
+	await target.fill("bulk_target_handle");
+	await page.clock.runFor(150);
+	await expect(page.getByRole("option")).toHaveCount(1);
+	await target.press("ArrowDown");
+	await target.press("Enter");
+	await expect(target).toHaveValue(/E2E correct author/);
+	await expect(source).toHaveValue(/E2E incorrect author/);
+
+	await target.fill("no matching author");
+	await page.clock.runFor(150);
+	await expect(page.getByRole("option")).toHaveCount(0);
+	await source.focus();
+	await expect(target).toHaveValue(/E2E correct author/);
+	await expect(
+		page.getByRole("button", { name: "この作者を修正先に統合", exact: true }),
+	).toBeEnabled();
+});
 
 test("author correction preserves coauthors after direct navigation and F5", async ({
 	page,
