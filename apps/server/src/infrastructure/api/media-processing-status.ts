@@ -1,3 +1,4 @@
+import { getCcipTaskRevision } from "@solid-imager/application/services/ccip-vector-service";
 import { getMediaTaskRevision } from "@solid-imager/application/services/media-task-service";
 import { getTaggingTaskRevision } from "@solid-imager/application/services/tagging-task-service";
 import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
@@ -52,7 +53,8 @@ export async function findCurrentProcessingSteps(mediaIds: string[]) {
 					kind,
 					status:
 						(kind === "thumbnail" && media.mediaType === "audio") ||
-						(kind === "tagging" && media.mediaType !== "image")
+						((kind === "tagging" || kind === "ccip") &&
+							media.mediaType !== "image")
 							? "skipped"
 							: "pending",
 					attemptCount: 0,
@@ -76,7 +78,9 @@ export async function findCurrentProcessingSteps(mediaIds: string[]) {
 						input,
 						services.getAiClient().getTaggingSettings(),
 					)
-				: getMediaTaskRevision(input, kind.data, settings);
+				: kind.data === "ccip"
+					? getCcipTaskRevision(input, services.getAiClient().getCcipSettings())
+					: getMediaTaskRevision(input, kind.data, settings);
 		const step = result
 			.get(media.id)
 			?.find((entry) => entry.kind === kind.data);

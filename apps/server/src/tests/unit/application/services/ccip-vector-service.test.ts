@@ -1,13 +1,79 @@
-import { CcipVectorService } from "@solid-imager/application/services/ccip-vector-service";
+import {
+	CcipVectorService,
+	getCcipTaskRevision,
+} from "@solid-imager/application/services/ccip-vector-service";
 import { describe, expect, it, vi } from "vitest";
 
-const source = { id: "00000000-0000-4000-8000-000000000010", type: "local" };
+const source = {
+	id: "00000000-0000-4000-8000-000000000010",
+	type: "local",
+	connectionInfo: { path: "/fixture" },
+};
 const media = {
 	id: "00000000-0000-4000-8000-000000000001",
 	mediaSourceId: source.id,
 	mediaType: "image",
+	filePath: "image.png",
+	fileSize: 100,
 	modifiedAt: new Date("2026-01-01T00:00:00Z"),
 };
+
+const settings = {
+	model: "ccip-caformer-24-randaug-pruned",
+	modelVersion: "native-v1",
+	runtimeVersion: "test",
+	provider: "cpu",
+	device: null,
+	endpoint: "",
+	embeddingVersion: 1,
+	dimensions: 768,
+};
+const revision = (item: typeof media) =>
+	getCcipTaskRevision(
+		{
+			mediaId: item.id,
+			mediaSourceId: item.mediaSourceId,
+			mediaType: "image",
+			sourcePath: "/fixture",
+			filePath: item.filePath,
+			fileSize: item.fileSize,
+			modifiedAt: item.modifiedAt,
+		},
+		settings,
+	);
+function taskDeps(items: (typeof media)[], cached = false) {
+	return {
+		getCcipSettings: () => settings,
+		transactionManager: { transaction: async (action: any) => action({}) },
+		jobRepo: {} as any,
+		processingStateRepo: {
+			claim: vi.fn(async (input: any) =>
+				cached
+					? { status: "completed" }
+					: {
+							status: "claimed",
+							claim: {
+								mediaId: input.mediaId,
+								taskKind: "ccip",
+								revision: revision(input),
+								token: "token",
+							},
+						},
+			),
+			commit: vi.fn(async (_input: any, _claim: any, save: any) => save({})),
+			fail: vi.fn(),
+			findByMediaIds: vi.fn(async () =>
+				items.map((item) => ({
+					mediaId: item.id,
+					taskKind: "ccip",
+					status: "completed",
+					requestedRevision: revision(item),
+					completedRevision: revision(item),
+				})),
+			),
+		} as any,
+	};
+}
 
 describe("CcipVectorService", () => {
 	it("skips extraction when the stored vector is current", async () => {
@@ -17,11 +83,13 @@ describe("CcipVectorService", () => {
 			vector: Array.from({ length: 768 }, () => 0),
 			model: "ccip-caformer-24-randaug-pruned",
 			embeddingVersion: 1,
-			mediaModifiedAt: new Date(media.modifiedAt.getTime() - 500),
+			mediaModifiedAt: media.modifiedAt,
+			processingRevision: revision(media),
 			extractedAt: new Date(),
 		};
 		const taggingService = { getCcipFeatureForMedia: vi.fn() };
 		const service = new CcipVectorService({
+			...taskDeps([media], true),
 			mediaRepository: {
 				findById: vi.fn().mockResolvedValue(media),
 			} as any,
@@ -40,14 +108,14 @@ describe("CcipVectorService", () => {
 		expect(taggingService.getCcipFeatureForMedia).not.toHaveBeenCalled();
 	});
 
-	it("persists successful batch extractions with one bulk upsert", async () => {
+	it("persists each successful batch extraction inside its claim transaction", async () => {
 		const secondMedia = {
 			...media,
 			id: "00000000-0000-4000-8000-000000000002",
 		};
 		const vectorStore = {
-			getMany: vi.fn().mockResolvedValue(new Map()),
-			upsertMany: vi.fn().mockResolvedValue(undefined),
+			get: vi.fn().mockResolvedValue(null),
+			upsert: vi.fn().mockResolvedValue(undefined),
 		};
 		const taggingService = {
 			getCcipFeatureForMedia: vi
@@ -60,6 +128,7 @@ describe("CcipVectorService", () => {
 				}),
 		};
 		const service = new CcipVectorService({
+			...taskDeps([media, secondMedia]),
 			mediaRepository: {
 				findById: vi.fn((id: string) =>
 					Promise.resolve(id === media.id ? media : secondMedia),
@@ -78,9 +147,8 @@ describe("CcipVectorService", () => {
 		]);
 
 		expect(results.every((result) => result.status === "fulfilled")).toBe(true);
-		expect(vectorStore.getMany).toHaveBeenCalledOnce();
-		expect(vectorStore.upsertMany).toHaveBeenCalledOnce();
-		expect(vectorStore.upsertMany.mock.calls[0]?.[0]).toEqual([
+		expect(vectorStore.upsert).toHaveBeenCalledTimes(2);
+		expect(vectorStore.upsert.mock.calls.map((call) => call[0])).toEqual([
 			expect.objectContaining({ mediaId: media.id }),
 			expect.objectContaining({ mediaId: secondMedia.id }),
 		]);
@@ -103,9 +171,11 @@ describe("CcipVectorService", () => {
 			model: "ccip-caformer-24-randaug-pruned",
 			embeddingVersion: 1,
 			mediaModifiedAt: item.modifiedAt,
+			processingRevision: revision(item),
 			extractedAt: new Date(),
 		});
 		const service = new CcipVectorService({
+			...taskDeps([media, candidateA, candidateB], true),
 			mediaRepository: {
 				findById: vi.fn().mockResolvedValue(media),
 				findByIds: vi.fn().mockResolvedValue([candidateA, candidateB]),

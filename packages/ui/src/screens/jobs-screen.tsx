@@ -1002,6 +1002,7 @@ function ProcessingSteps(props: {
 										metadata: "Metadata",
 										thumbnail: "Thumbnails",
 										tagging: "AI tagging",
+										ccip: "Full-image CCIP",
 										ai_dispatch: "Queue AI analysis",
 									}[step.kind]
 								}

@@ -95,7 +95,7 @@ test("reloads failed processing steps and retries only the unfinished step", asy
 	await expect(steps).toContainText("ThumbnailsCompleted");
 });
 
-test("reuses real tagging results and restores current AI state after reload", async ({
+test("reuses real tagging and CCIP results and restores current AI state after reload", async ({
 	page,
 	baseURL,
 }) => {
@@ -122,6 +122,25 @@ test("reuses real tagging results and restores current AI state after reload", a
 	expect(
 		after.currentProcessingSteps?.find((step) => step.kind === "tagging"),
 	).toEqual(tagging);
+	const ccipResult = await client.ai.ccipFeature({
+		mediaSourceId: E2E_SOURCE_ID,
+		mediaId: E2E_PRIMARY_MEDIA_ID,
+	});
+	const ccipBefore = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
+	const ccip = ccipBefore.currentProcessingSteps?.find(
+		(step) => step.kind === "ccip",
+	);
+	expect(ccip).toMatchObject({ status: "completed" });
+	expect(
+		await client.ai.ccipFeature({
+			mediaSourceId: E2E_SOURCE_ID,
+			mediaId: E2E_PRIMARY_MEDIA_ID,
+		}),
+	).toEqual(ccipResult);
+	const ccipAfter = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
+	expect(ccipAfter.currentProcessingSteps).toEqual(
+		ccipBefore.currentProcessingSteps,
+	);
 	await page.goto("/jobs");
 	await waitForAppHydration(page);
 	const selectJob = () =>
@@ -135,8 +154,10 @@ test("reuses real tagging results and restores current AI state after reload", a
 		.getByRole("region", { name: "Current media processing" })
 		.filter({ visible: true });
 	await expect(current).toContainText("AI taggingCompleted");
+	await expect(current).toContainText("Full-image CCIPCompleted");
 	await page.reload();
 	await waitForAppHydration(page);
 	await selectJob();
 	await expect(current).toContainText("AI taggingCompleted");
+	await expect(current).toContainText("Full-image CCIPCompleted");
 });

@@ -1,9 +1,18 @@
 import type { AppConfig } from "../config/config-schema";
 import { z } from "zod";
 
-export const mediaTaskKindSchema = z.enum(["metadata", "thumbnail", "tagging"]);
+export const mediaTaskKindSchema = z.enum([
+	"metadata",
+	"thumbnail",
+	"tagging",
+	"ccip",
+]);
 export type MediaTaskKind = z.infer<typeof mediaTaskKindSchema>;
-export type FileTaskKind = Exclude<MediaTaskKind, "tagging">;
+export type FileTaskKind = Extract<MediaTaskKind, "metadata" | "thumbnail">;
+
+export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
+export const CCIP_EMBEDDING_VERSION = 1;
+export const CCIP_VECTOR_DIMENSIONS = 768;
 
 export const taggingProcessingSettingsSchema = z.object({
 	model: z.string(),
@@ -15,6 +24,15 @@ export const taggingProcessingSettingsSchema = z.object({
 });
 export type TaggingProcessingSettings = z.infer<
 	typeof taggingProcessingSettingsSchema
+>;
+
+export const ccipProcessingSettingsSchema =
+	taggingProcessingSettingsSchema.extend({
+		embeddingVersion: z.number().int().positive(),
+		dimensions: z.number().int().positive(),
+	});
+export type CcipProcessingSettings = z.infer<
+	typeof ccipProcessingSettingsSchema
 >;
 
 export const mediaProcessingInputSchema = z.object({

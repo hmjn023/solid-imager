@@ -4,6 +4,8 @@ import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vecto
 import { db } from "~/infrastructure/db";
 import { services } from "~/infrastructure/service-registry";
 import { taggingService } from "~/infrastructure/services/tagging-service";
+import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 
 let service: CcipVectorService | null = null;
 let configuredLogger: ILogger | undefined;
@@ -15,6 +17,10 @@ export function configureCcipVectorService(logger: ILogger): void {
 export function getCcipVectorService(): CcipVectorService {
 	if (!service) {
 		service = new CcipVectorService({
+			processingStateRepo: MediaProcessingStateRepository,
+			transactionManager: DrizzleTransactionManager,
+			jobRepo: services.getJobRepository(),
+			getCcipSettings: () => services.getAiClient().getCcipSettings(),
 			mediaRepository: services.getMediaRepository(),
 			sourceRepository: services.getSourceRepository(),
 			taggingService,

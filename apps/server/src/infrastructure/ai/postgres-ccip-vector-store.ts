@@ -1,3 +1,4 @@
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
 	CcipVectorCandidate,
 	CcipVectorMetadata,
@@ -27,6 +28,7 @@ const recordRowSchema = z.object({
 	embeddingVersion: z.number().int(),
 	mediaModifiedAt: z.coerce.date(),
 	extractedAt: z.coerce.date(),
+	processingRevision: z.string().nullable(),
 });
 
 const metadataRowSchema = recordRowSchema.omit({ vector: true });
@@ -94,6 +96,7 @@ const recordColumns = {
 	embeddingVersion: ccipEmbeddings.embeddingVersion,
 	mediaModifiedAt: ccipEmbeddings.mediaModifiedAt,
 	extractedAt: ccipEmbeddings.extractedAt,
+	processingRevision: ccipEmbeddings.processingRevision,
 };
 
 /** pgvector-backed CCIP store used by the application at runtime. */
@@ -103,21 +106,28 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 		private readonly logger?: ILogger,
 	) {}
 
+	private executor(tx?: Transaction): DrizzleExecutor {
+		// Drizzle's public transaction implements the same query API as the database.
+		return tx ? (tx as DrizzleExecutor) : this.database;
+	}
+
 	async get(
 		mediaId: string,
 		query: CcipVectorReadQuery,
+		tx?: Transaction,
 	): Promise<CcipVectorRecord | null> {
-		return (await this.getMany([mediaId], query)).get(mediaId) ?? null;
+		return (await this.getMany([mediaId], query, tx)).get(mediaId) ?? null;
 	}
 
 	async getMany(
 		mediaIds: string[],
 		query: CcipVectorReadQuery,
+		tx?: Transaction,
 	): Promise<Map<string, CcipVectorRecord>> {
 		if (mediaIds.length === 0) {
 			return new Map();
 		}
-		const rows = await this.database
+		const rows = await this.executor(tx)
 			.select(recordColumns)
 			.from(ccipEmbeddings)
 			.innerJoin(mediaRegions, eq(ccipEmbeddings.regionId, mediaRegions.id))
@@ -146,6 +156,7 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 				embeddingVersion: ccipEmbeddings.embeddingVersion,
 				mediaModifiedAt: ccipEmbeddings.mediaModifiedAt,
 				extractedAt: ccipEmbeddings.extractedAt,
+				processingRevision: ccipEmbeddings.processingRevision,
 			})
 			.from(ccipEmbeddings)
 			.innerJoin(mediaRegions, eq(ccipEmbeddings.regionId, mediaRegions.id))
@@ -159,11 +170,14 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 		);
 	}
 
-	async upsert(record: CcipVectorRecord): Promise<void> {
-		await this.upsertMany([record]);
+	async upsert(record: CcipVectorRecord, tx?: Transaction): Promise<void> {
+		await this.upsertMany([record], tx);
 	}
 
-	async upsertMany(records: CcipVectorRecord[]): Promise<void> {
+	async upsertMany(
+		records: CcipVectorRecord[],
+		tx?: Transaction,
+	): Promise<void> {
 		if (records.length === 0) {
 			return;
 		}
@@ -189,7 +203,7 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 			}
 		}
 		const now = new Date();
-		await this.database.transaction(async (transaction) => {
+		const write = async (transaction: DrizzleExecutor) => {
 			const regions = await transaction
 				.insert(mediaRegions)
 				.values(
@@ -206,14 +220,14 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 					set: {
 						sourceModifiedAt: sql`
 							CASE
-								WHEN excluded.source_modified_at > ${mediaRegions.sourceModifiedAt}
+								WHEN ${Boolean(tx)} OR excluded.source_modified_at > ${mediaRegions.sourceModifiedAt}
 								THEN excluded.source_modified_at
 								ELSE ${mediaRegions.sourceModifiedAt}
 							END
 						`,
 						updatedAt: sql`
 							CASE
-								WHEN excluded.source_modified_at > ${mediaRegions.sourceModifiedAt}
+								WHEN ${Boolean(tx)} OR excluded.source_modified_at > ${mediaRegions.sourceModifiedAt}
 								THEN excluded.updated_at
 								ELSE ${mediaRegions.updatedAt}
 							END
@@ -238,6 +252,7 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 					embeddingVersion: record.embeddingVersion,
 					mediaModifiedAt: record.mediaModifiedAt,
 					extractedAt: record.extractedAt,
+					processingRevision: record.processingRevision ?? null,
 					updatedAt: now,
 				};
 			});
@@ -251,37 +266,43 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 						ccipEmbeddings.embeddingVersion,
 					],
 					set: {
+						processingRevision: sql`CASE WHEN excluded.processing_revision IS NOT NULL OR excluded.extracted_at > ${ccipEmbeddings.extractedAt} THEN excluded.processing_revision ELSE ${ccipEmbeddings.processingRevision} END`,
 						embedding: sql`
 							CASE
-								WHEN excluded.extracted_at > ${ccipEmbeddings.extractedAt}
+								WHEN excluded.processing_revision IS NOT NULL OR excluded.extracted_at > ${ccipEmbeddings.extractedAt}
 								THEN excluded.embedding
 								ELSE ${ccipEmbeddings.embedding}
 							END
 						`,
 						mediaModifiedAt: sql`
 							CASE
-								WHEN excluded.extracted_at > ${ccipEmbeddings.extractedAt}
+								WHEN excluded.processing_revision IS NOT NULL OR excluded.extracted_at > ${ccipEmbeddings.extractedAt}
 								THEN excluded.media_modified_at
 								ELSE ${ccipEmbeddings.mediaModifiedAt}
 							END
 						`,
 						extractedAt: sql`
 							CASE
-								WHEN excluded.extracted_at > ${ccipEmbeddings.extractedAt}
+								WHEN excluded.processing_revision IS NOT NULL OR excluded.extracted_at > ${ccipEmbeddings.extractedAt}
 								THEN excluded.extracted_at
 								ELSE ${ccipEmbeddings.extractedAt}
 							END
 						`,
 						updatedAt: sql`
 							CASE
-								WHEN excluded.extracted_at > ${ccipEmbeddings.extractedAt}
+								WHEN excluded.processing_revision IS NOT NULL OR excluded.extracted_at > ${ccipEmbeddings.extractedAt}
 								THEN excluded.updated_at
 								ELSE ${ccipEmbeddings.updatedAt}
 							END
 						`,
 					},
 				});
-		});
+		};
+		if (tx) await write(this.executor(tx));
+		else
+			await this.database.transaction((transaction) =>
+				write(transaction as DrizzleExecutor),
+			);
 	}
 
 	async delete(mediaId: string): Promise<void> {
@@ -358,6 +379,7 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 					embeddingVersion: ccipEmbeddings.embeddingVersion,
 					mediaModifiedAt: ccipEmbeddings.mediaModifiedAt,
 					extractedAt: ccipEmbeddings.extractedAt,
+					processingRevision: ccipEmbeddings.processingRevision,
 					cosineDistance: sql<number>`${ccipEmbeddings.embedding} <=> ${literal}::vector`,
 				})
 				.from(ccipEmbeddings)

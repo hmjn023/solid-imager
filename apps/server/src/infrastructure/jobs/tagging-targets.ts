@@ -1,7 +1,5 @@
-import {
-	canReuseTaggingResult,
-	getTaggingTaskRevision,
-} from "@solid-imager/application/services/tagging-task-service";
+import { canReuseAiResult } from "@solid-imager/application/services/ai-media-task-service";
+import { getTaggingTaskRevision } from "@solid-imager/application/services/tagging-task-service";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { taggingResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { and, asc, eq, gt, notExists, sql } from "drizzle-orm";
@@ -74,7 +72,7 @@ export async function scanTaggingTargetPage(
 		.filter(({ media, source, state }) => {
 			const connection = localConnectionSchema.safeParse(source.connectionInfo);
 			if (!connection.success) return false;
-			if (options.force || !canReuseTaggingResult(settings)) return true;
+			if (options.force || !canReuseAiResult(settings)) return true;
 			const revision = getTaggingTaskRevision(
 				{
 					mediaId: media.id,

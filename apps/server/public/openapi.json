@@ -1405,7 +1405,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -1454,7 +1455,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -1779,7 +1781,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -1828,7 +1831,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -14113,7 +14117,8 @@
                                     "metadata",
                                     "thumbnail",
                                     "ai_dispatch",
-                                    "tagging"
+                                    "tagging",
+                                    "ccip"
                                   ],
                                   "type": "string"
                                 }
@@ -14162,7 +14167,8 @@
                                     "metadata",
                                     "thumbnail",
                                     "ai_dispatch",
-                                    "tagging"
+                                    "tagging",
+                                    "ccip"
                                   ],
                                   "type": "string"
                                 }
@@ -14487,7 +14493,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -14536,7 +14543,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -14884,7 +14892,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -14933,7 +14942,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -15246,7 +15256,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
@@ -15295,7 +15306,8 @@
                               "metadata",
                               "thumbnail",
                               "ai_dispatch",
-                              "tagging"
+                              "tagging",
+                              "ccip"
                             ],
                             "type": "string"
                           }
