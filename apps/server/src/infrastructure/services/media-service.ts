@@ -87,6 +87,7 @@ function createMediaService(): MediaServiceImpl {
 		services.getSourceRepository(),
 		services.getMediaStorage(),
 		services.getJobRepository(),
+		DrizzleTransactionManager,
 	);
 
 	const transferService = new MediaTransferService(

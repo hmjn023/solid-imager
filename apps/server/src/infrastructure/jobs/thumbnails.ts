@@ -1,5 +1,7 @@
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { PreparedThumbnail } from "@solid-imager/application/services/media-processing-service";
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import {
 	generateThumbnailJobPayloadSchema,
@@ -133,6 +135,56 @@ export async function generateThumbnail(
 		media.id,
 		THUMBNAIL_SIZE_SMALL,
 	);
+}
+
+/** Convert outside a DB transaction; publish only while the job claim is locked. */
+export async function prepareProcessingThumbnail(
+	media: Pick<Media, "id" | "filePath">,
+	sourcePath: string,
+	mediaSourceId: string,
+): Promise<PreparedThumbnail> {
+	const token = randomUUID();
+	const large = getThumbnailPath(mediaSourceId, media.id, THUMBNAIL_SIZE_LARGE);
+	const small = getThumbnailPath(mediaSourceId, media.id, THUMBNAIL_SIZE_SMALL);
+	const temporaryLarge = `${large}.${token}.tmp.webp`;
+	const temporarySmall = `${small}.${token}.tmp.webp`;
+	const cleanup = async () => {
+		await Promise.all([
+			fs.rm(temporaryLarge, { force: true }),
+			fs.rm(temporarySmall, { force: true }),
+		]);
+	};
+	try {
+		await ensureCacheDir(mediaSourceId, THUMBNAIL_SIZE_LARGE);
+		await ensureCacheDir(mediaSourceId, THUMBNAIL_SIZE_SMALL);
+		const config = getStorageConfig();
+		await ImageProcessor.generateThumbnail(
+			path.join(sourcePath, media.filePath),
+			temporaryLarge,
+			config.thumbnailSize,
+			config.thumbnailQuality,
+		);
+		if (config.thumbnailSize <= THUMBNAIL_SIZE_SMALL) {
+			await fs.copyFile(temporaryLarge, temporarySmall);
+		} else {
+			await ImageProcessor.generateThumbnail(
+				temporaryLarge,
+				temporarySmall,
+				THUMBNAIL_SIZE_SMALL,
+				config.thumbnailQuality,
+			);
+		}
+		return {
+			commit: async () => {
+				await fs.rename(temporaryLarge, large);
+				await fs.rename(temporarySmall, small);
+			},
+			cleanup,
+		};
+	} catch (error) {
+		await cleanup();
+		throw error;
+	}
 }
 
 async function generateThumbnailAtSize(

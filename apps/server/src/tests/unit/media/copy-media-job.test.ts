@@ -116,8 +116,12 @@ describe("Reproduction: Copy Media Job Type", () => {
 		};
 
 		const mockJobRepo = {
+			withActiveAttempt: vi.fn(async (_id, _attempt, action) =>
+				action(undefined),
+			),
+			update: vi.fn(),
 			create: vi.fn((job) => {
-				capturedJobs.push(job);
+				capturedJobs.push({ ...job, id: "job-id", attemptCount: 1 });
 				return Promise.resolve({ ...job, id: "job-id" });
 			}),
 			createIfUnique: vi.fn((job) =>
@@ -183,6 +187,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 		const { MediaProcessingServiceImpl } =
 			await import("~/infrastructure/services/media-processing-service");
 		const mediaProcessingService = new MediaProcessingServiceImpl({
+			transactionManager: { transaction: async (action) => action(undefined) },
+			publishJobProgress: vi.fn(),
 			sourceRepo: mockSourceRepository as any,
 			mediaRepo: MediaRepository as any,
 			tagRepo: mockTagRepo,
@@ -199,7 +205,9 @@ describe("Reproduction: Copy Media Job Type", () => {
 				video: [".mp4", ".webm", ".mov"],
 				audio: [".mp3", ".wav"],
 			},
-			generateThumbnail: generateThumbnail as any,
+			prepareThumbnail: vi
+				.fn()
+				.mockResolvedValue({ commit: generateThumbnail, cleanup: vi.fn() }),
 			publishSourceEvent: vi.fn() as any,
 		});
 		services.registerMediaProcessingService(mediaProcessingService);
@@ -221,6 +229,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 			width: 800,
 			height: 600,
 			fileSize: 1024,
+			modifiedAt: new Date(),
 		};
 
 		// Mock MediaRepository.findById (used by MediaService.copyMedia)
@@ -261,6 +270,12 @@ describe("Reproduction: Copy Media Job Type", () => {
 		// MediaService.copyMedia calls jobRepo.create.
 		const { MediaProcessingService } =
 			await import("~/infrastructure/services/media-processing-service");
+		vi.spyOn(MediaRepository, "findById").mockResolvedValue(result.media);
+		mockImageProcessor.extractMetadata.mockResolvedValue({
+			tags: [],
+			prompt: null,
+			workflow: null,
+		});
 		await MediaProcessingService.executeProcessMediaJob(job);
 
 		// 5. Assert generateThumbnail was called

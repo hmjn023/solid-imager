@@ -1,6 +1,18 @@
+import { createHash } from "node:crypto";
 import path from "node:path";
+import {
+	JobAttemptLostError,
+	mediaProcessingCheckpointSchema,
+	processMediaPayloadSchema,
+	type MediaProcessingCheckpoint,
+	type ProcessingStep,
+	type ProcessingStepKind,
+} from "@solid-imager/core/domain/jobs/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type {
+	Transaction,
+	TransactionManager,
+} from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
 	Media,
 	MediaMetadataContext,
@@ -24,7 +36,35 @@ import { isRecord } from "@solid-imager/core/utils/type-guards";
 import type { IMediaProcessingService } from "../ports/media-processing-service";
 import type { ILogger } from "../ports/media-service";
 
+export type PreparedThumbnail = {
+	commit: () => Promise<void>;
+	cleanup: () => Promise<void>;
+};
+
+/** Indexed input identity; content hashes and processor-version invalidation belong to domain processing state. */
+export function getMediaProcessingRevision(
+	media: Pick<
+		Media,
+		"id" | "mediaSourceId" | "filePath" | "modifiedAt" | "fileSize"
+	>,
+	sourcePath: string,
+): string {
+	return createHash("sha256")
+		.update(
+			JSON.stringify([
+				media.id,
+				media.mediaSourceId,
+				sourcePath,
+				media.filePath,
+				media.modifiedAt.toISOString(),
+				media.fileSize,
+			]),
+		)
+		.digest("hex");
+}
+
 export type MediaProcessingServiceDeps = {
+	transactionManager: TransactionManager;
 	sourceRepo: SourceRepository;
 	mediaRepo: IMediaRepository;
 	tagRepo: TagRepository;
@@ -43,12 +83,13 @@ export type MediaProcessingServiceDeps = {
 		video: string[];
 		audio: string[];
 	};
-	generateThumbnail: (
+	prepareThumbnail: (
 		media: { id: string; filePath: string },
 		sourcePath: string,
 		mediaSourceId: string,
-	) => Promise<void>;
+	) => Promise<PreparedThumbnail>;
 	publishSourceEvent: SourceEventPublisher;
+	publishJobProgress: (jobId: string, processed: number, total: number) => void;
 };
 
 export class MediaProcessingServiceImpl implements IMediaProcessingService {
@@ -65,8 +106,10 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private enableAutoTagging: boolean;
 	private enableAutoCcipExtraction: boolean;
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
-	private readonly generateThumbnail: MediaProcessingServiceDeps["generateThumbnail"];
+	private readonly prepareThumbnail: MediaProcessingServiceDeps["prepareThumbnail"];
+	private readonly transactionManager: TransactionManager;
 	private readonly publishSourceEvent: SourceEventPublisher;
+	private readonly publishJobProgress: MediaProcessingServiceDeps["publishJobProgress"];
 	private readonly logger?: ILogger;
 
 	constructor(deps: MediaProcessingServiceDeps) {
@@ -83,8 +126,10 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		this.enableAutoTagging = deps.enableAutoTagging;
 		this.enableAutoCcipExtraction = deps.enableAutoCcipExtraction ?? false;
 		this.supportedExtensions = deps.supportedExtensions;
-		this.generateThumbnail = deps.generateThumbnail;
+		this.prepareThumbnail = deps.prepareThumbnail;
+		this.transactionManager = deps.transactionManager;
 		this.publishSourceEvent = deps.publishSourceEvent;
+		this.publishJobProgress = deps.publishJobProgress;
 		this.logger = deps.logger;
 	}
 
@@ -132,81 +177,176 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			mediaType = "audio";
 		}
 
-		// Step 1: Create media record
-		const media = await this.mediaRepo.create({
-			mediaSourceId,
-			filePath: relativePath,
-			fileName: path.basename(relativePath),
-			mediaType,
-			width: fileMetadata.width,
-			height: fileMetadata.height,
-			fileSize: fileMetadata.size,
-			description: contextMetadata?.description ?? null,
-			createdAt: contextMetadata?.createdAt ?? fileMetadata.createdAt,
-			modifiedAt: fileMetadata.modifiedAt,
-		});
+		const media = await this.transactionManager.transaction(async (tx) => {
+			// Step 1: Create media record
+			const media = await this.mediaRepo.create(
+				{
+					mediaSourceId,
+					filePath: relativePath,
+					fileName: path.basename(relativePath),
+					mediaType,
+					width: fileMetadata.width,
+					height: fileMetadata.height,
+					fileSize: fileMetadata.size,
+					description: contextMetadata?.description ?? null,
+					createdAt: contextMetadata?.createdAt ?? fileMetadata.createdAt,
+					modifiedAt: fileMetadata.modifiedAt,
+				},
+				tx,
+			);
 
-		// Step 2: Register related data
-		if (contextMetadata) {
-			await this.registerContextMetadata(media.id, contextMetadata);
-		}
+			// Step 2: Register related data
+			if (contextMetadata) {
+				await this.registerContextMetadata(media.id, contextMetadata, tx);
+			}
 
-		// Step 3: Queue processMedia job
-		await this.jobRepo.create({
-			type: "processMedia",
-			mediaSourceId,
-			payload: {
-				mediaId: media.id,
-				sourcePath: basePath,
-				type: "processMedia",
-			},
+			// Step 3: Queue processMedia job
+			await this.jobRepo.create(
+				{
+					type: "processMedia",
+					mediaSourceId,
+					payload: {
+						mediaId: media.id,
+						sourcePath: basePath,
+						type: "processMedia",
+					},
+				},
+				tx,
+			);
+
+			return media;
 		});
 
 		// Notify clients
-		this.publishSourceEvent(mediaSourceId, "media-added", {
-			mediaId: media.id,
-			filePath: media.filePath,
-		});
+		this.notify(() =>
+			this.publishSourceEvent(mediaSourceId, "media-added", {
+				mediaId: media.id,
+				filePath: media.filePath,
+			}),
+		);
 
 		return media;
 	}
 
 	async executeProcessMediaJob(job: Job): Promise<void> {
-		if (job.type !== "processMedia") {
-			return;
+		if (job.type !== "processMedia")
+			throw new Error("Expected processMedia job");
+		const payload = processMediaPayloadSchema.parse(job.payload);
+		const media = await this.mediaRepo.findById(payload.mediaId);
+		if (!media || media.mediaSourceId !== job.mediaSourceId) {
+			throw new Error("Processing target no longer exists in this source");
 		}
-
-		const payload = job.payload;
-		if (!isRecord(payload)) {
-			throw new Error(`Missing payload or invalid payload in job ${job.id}`);
-		}
-		const mediaId = payload.mediaId;
-		if (typeof mediaId !== "string") {
-			throw new Error(`Missing or invalid mediaId in job payload ${job.id}`);
-		}
-
-		const media = await this.mediaRepo.findById(mediaId);
-		if (!media) {
-			this.logger?.warn({ mediaId }, "Media not found for processMedia job");
-			return;
-		}
-
-		const sourcePath = payload.sourcePath;
-		if (typeof sourcePath !== "string") {
-			throw new Error(`Missing or invalid sourcePath in job payload ${job.id}`);
-		}
+		const source = await this.sourceRepo.findById(media.mediaSourceId);
+		if (source?.type !== "local")
+			throw new Error("Local processing source not found");
+		const sourcePath = localConnectionSchema.parse(source.connectionInfo).path;
 		const mediaPath = path.join(sourcePath, media.filePath);
+		const revisionOf = (media: Media) =>
+			getMediaProcessingRevision(media, sourcePath);
+		const inputRevision = revisionOf(media);
+		const previous = mediaProcessingCheckpointSchema.safeParse(
+			job.processingCheckpoint,
+		);
+		const step = (skip: boolean): ProcessingStep => ({
+			status: skip ? "skipped" : "pending",
+			attemptCount: 0,
+			updatedAt: null,
+		});
+		const checkpoint: MediaProcessingCheckpoint =
+			previous.success && previous.data.inputRevision === inputRevision
+				? previous.data
+				: {
+						version: 1,
+						inputRevision,
+						steps: {
+							metadata: step(payload.skipMetadataExtraction === true),
+							thumbnail: step(
+								payload.skipThumbnailGeneration === true ||
+									media.mediaType === "audio",
+							),
+							ai_dispatch: step(
+								media.mediaType !== "image" ||
+									(!(
+										this.enableAutoTagging && !payload.skipMetadataExtraction
+									) &&
+										!this.enableAutoCcipExtraction),
+							),
+						},
+					};
+		const save = async (tx: Transaction) => {
+			await this.jobRepo.update(
+				job.id,
+				{ processingCheckpoint: checkpoint },
+				tx,
+			);
+		};
+		const active = async <T>(action: (tx: Transaction) => Promise<T>) => {
+			const result = await this.jobRepo.withActiveAttempt(
+				job.id,
+				job.attemptCount ?? 0,
+				action,
+			);
+			const steps = Object.values(checkpoint.steps);
+			this.notify(() =>
+				this.publishJobProgress(
+					job.id,
+					steps.filter(
+						(entry) =>
+							entry.status === "completed" || entry.status === "skipped",
+					).length,
+					steps.length,
+				),
+			);
+			return result;
+		};
+		await active(save);
 
-		const mediaSourceId = job.mediaSourceId;
-		if (!mediaSourceId) {
-			throw new Error(`Missing mediaSourceId in job ${job.id}`);
-		}
-
-		// Step 1: Metadata extraction
-		if (payload.skipMetadataExtraction !== true) {
+		const failures: ProcessingStepKind[] = [];
+		const run = async (kind: ProcessingStepKind, work: () => Promise<void>) => {
+			const current = checkpoint.steps[kind];
+			if (current.status === "completed" || current.status === "skipped")
+				return;
+			current.status = "in_progress";
+			current.attemptCount++;
+			current.updatedAt = new Date().toISOString();
+			await active(save);
 			try {
-				const metadata = await this.imageProcessor.extractMetadata(mediaPath);
+				await work();
+			} catch (error) {
+				if (error instanceof JobAttemptLostError) throw error;
+				current.status = "failed";
+				current.updatedAt = new Date().toISOString();
+				await active(save);
+				failures.push(kind);
+				this.logger?.error(
+					{ err: error, jobId: job.id, mediaId: media.id, step: kind },
+					"Media processing step failed",
+				);
+			}
+		};
+		const complete = async (
+			kind: ProcessingStepKind,
+			action: (tx: Transaction) => Promise<void>,
+		) => {
+			await active(async (tx) => {
+				const currentMedia = await this.mediaRepo.findById(media.id, tx, {
+					forUpdate: true,
+				});
+				if (!currentMedia || revisionOf(currentMedia) !== inputRevision) {
+					throw new Error(
+						"Media changed during processing; retry with its current revision",
+					);
+				}
+				await action(tx);
+				checkpoint.steps[kind].status = "completed";
+				checkpoint.steps[kind].updatedAt = new Date().toISOString();
+				await save(tx);
+			});
+		};
 
+		await run("metadata", async () => {
+			const metadata = await this.imageProcessor.extractMetadata(mediaPath);
+			await complete("metadata", async (tx) => {
 				await this.mediaRepo.upsertGenerationInfo(
 					media.id,
 					typeof metadata.prompt === "object" && metadata.prompt !== null
@@ -215,70 +355,81 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 							? metadata.prompt
 							: null,
 					isRecord(metadata.workflow) ? metadata.workflow : null,
+					tx,
 				);
-
 				if (metadata.tags.length > 0) {
 					await this.tagRepo.addTagsToMedia(
 						media.id,
 						metadata.tags,
 						"comfyui_workflow",
+						tx,
 					);
 				}
-			} catch (e) {
-				this.logger?.warn(
-					{ err: e, mediaId },
-					"Metadata extraction failed, continuing...",
-				);
-			}
-		}
-
-		// Step 2: Thumbnail generation
-		try {
-			await this.generateThumbnail(media, sourcePath, mediaSourceId);
-			this.publishSourceEvent(mediaSourceId, "thumbnail-generated", {
-				mediaId: media.id,
 			});
-		} catch (e) {
-			this.logger?.error({ err: e, mediaId }, "Thumbnail generation failed");
-		}
+		});
 
-		// Step 3: AI tagging
-		if (
-			this.enableAutoTagging &&
-			!payload?.skipMetadataExtraction &&
-			media.mediaType === "image"
-		) {
+		await run("thumbnail", async () => {
+			const prepared = await this.prepareThumbnail(
+				media,
+				sourcePath,
+				media.mediaSourceId,
+			);
 			try {
-				await this.jobRepo.create({
-					type: "auto_tagging",
-					mediaSourceId,
-					payload: {
-						mediaId: media.id,
-					},
-				});
-			} catch (e) {
-				this.logger?.warn(
-					{ err: e, mediaId },
-					"Failed to queue AI tagging job",
-				);
+				await complete("thumbnail", () => prepared.commit());
+			} finally {
+				try {
+					await prepared.cleanup();
+				} catch (error) {
+					this.logger?.warn(
+						{ err: error, jobId: job.id },
+						"Failed to clean staged thumbnail files",
+					);
+				}
 			}
-		}
+			this.notify(() =>
+				this.publishSourceEvent(media.mediaSourceId, "thumbnail-generated", {
+					mediaId: media.id,
+				}),
+			);
+		});
 
-		if (this.enableAutoCcipExtraction && media.mediaType === "image") {
-			try {
-				await this.jobRepo.createIfUnique({
-					type: "extract_ccip_vector",
-					mediaSourceId,
-					payload: {
-						mediaId: media.id,
-					},
-				});
-			} catch (e) {
-				this.logger?.warn(
-					{ err: e, mediaId },
-					"Failed to queue CCIP vector extraction job",
-				);
-			}
+		await run("ai_dispatch", async () => {
+			await complete("ai_dispatch", async (tx) => {
+				if (this.enableAutoTagging && !payload.skipMetadataExtraction) {
+					await this.jobRepo.create(
+						{
+							type: "auto_tagging",
+							mediaSourceId: media.mediaSourceId,
+							payload: { mediaId: media.id },
+						},
+						tx,
+					);
+				}
+				if (this.enableAutoCcipExtraction) {
+					await this.jobRepo.createIfUnique(
+						{
+							type: "extract_ccip_vector",
+							mediaSourceId: media.mediaSourceId,
+							payload: { mediaId: media.id },
+						},
+						tx,
+					);
+				}
+			});
+		});
+		if (failures.length > 0)
+			throw new Error(`Media processing failed: ${failures.join(", ")}`);
+	}
+
+	private notify(publish: () => void): void {
+		try {
+			publish();
+		} catch (error) {
+			// Notifications are hints; a listener failure cannot undo committed work.
+			this.logger?.warn(
+				{ err: error },
+				"Failed to publish media processing event",
+			);
 		}
 	}
 
@@ -340,6 +491,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			await this.authorRepo.addMediaBulk(mediaId, authorIds, tx);
 		} catch (e) {
 			this.logger?.warn({ err: e }, "Failed to register authors");
+			if (tx) throw e;
 		}
 	}
 
@@ -475,6 +627,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			}
 		} catch (e) {
 			this.logger?.warn({ err: e }, "Failed to register characters");
+			if (tx) throw e;
 		}
 	}
 
@@ -513,6 +666,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "manual", tx);
 		} catch (e) {
 			this.logger?.warn({ err: e }, "Failed to register IPs");
+			if (tx) throw e;
 		}
 	}
 
@@ -531,6 +685,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			await this.projectRepo.addMediaBulk(mediaId, projectIds, tx);
 		} catch (e) {
 			this.logger?.warn({ err: e }, "Failed to register projects");
+			if (tx) throw e;
 		}
 	}
 

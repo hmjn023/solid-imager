@@ -98,6 +98,8 @@ describe("MediaService Unit Tests", () => {
 		mockJobRepository = {
 			create: vi.fn(),
 			createIfUnique: vi.fn(),
+			withActiveAttempt: vi.fn(),
+			heartbeat: vi.fn(),
 			findById: vi.fn(),
 			findPending: vi.fn(),
 			claimPending: vi.fn(),
@@ -215,6 +217,7 @@ describe("MediaService Unit Tests", () => {
 			mockSourceRepository,
 			mockStorageService,
 			mockJobRepository,
+			DrizzleTransactionManager,
 		);
 
 		const transferService = new MediaTransferService(

@@ -221,7 +221,7 @@ export class LocalImageProcessor implements IImageProcessor {
 				{ err: error, mediaPath },
 				"[ImageProcessor] Failed to extract metadata",
 			);
-			return { tags: [], prompt: null, workflow: null };
+			throw error;
 		}
 	}
 

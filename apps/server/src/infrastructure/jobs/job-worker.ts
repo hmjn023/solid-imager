@@ -259,14 +259,14 @@ export class JobWorker {
 			this.activeExportJobs++;
 		}
 		const heartbeatId = setInterval(() => {
-			void Promise.resolve(
-				this.jobRepo.update(job.id, { updatedAt: new Date() }),
-			).catch((error) => {
-				logger.error(
-					{ err: error, jobId: job.id },
-					"Failed to update job heartbeat",
-				);
-			});
+			void Promise.resolve(this.jobRepo.heartbeat(job.id, attemptCount)).catch(
+				(error) => {
+					logger.error(
+						{ err: error, jobId: job.id },
+						"Failed to update job heartbeat",
+					);
+				},
+			);
 		}, JobHeartbeatMs);
 
 		logger.info(

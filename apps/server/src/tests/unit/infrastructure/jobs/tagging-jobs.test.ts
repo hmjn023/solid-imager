@@ -15,6 +15,8 @@ const getTagsForMedia = vi.fn();
 
 const jobRepository: IJobRepository = {
 	create: vi.fn(),
+	withActiveAttempt: vi.fn(),
+	heartbeat: vi.fn(),
 	createIfUnique: (...args: Parameters<typeof createIfUnique>) =>
 		createIfUnique(...args),
 	findById: (...args: Parameters<typeof findById>) => findById(...args),

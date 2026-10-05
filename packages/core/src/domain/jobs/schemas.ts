@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { processingStepDtoSchema } from "./processing";
+export * from "./processing";
 
 export const jobStatusSchema = z.enum([
 	"pending",
@@ -48,6 +50,7 @@ export const jobDtoSchema = z.object({
 	targetMediaId: z.uuid().nullable(),
 	targetMediaModifiedAt: z.coerce.date().nullable(),
 	progress: jobProgressSchema,
+	processingSteps: z.array(processingStepDtoSchema).optional(),
 	artifact: z
 		.object({
 			fileName: z.string(),

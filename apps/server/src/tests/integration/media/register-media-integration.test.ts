@@ -21,6 +21,7 @@ describe("registerExistingMedia Integration", () => {
 	let tempSourceDir: string;
 
 	beforeEach(async () => {
+		services.getJobWorker().stop();
 		// Create a temporary directory for the media source
 		tempSourceDir = await fs.mkdtemp(
 			path.join(fixturesDir, "test-source-register-"),
@@ -72,11 +73,13 @@ describe("registerExistingMedia Integration", () => {
 
 			// Manually trigger background processing instead of waiting for worker
 			const jobRepo = services.getJobRepository();
-			const jobs = await jobRepo.findPending(10);
+			const jobs = await jobRepo.claimPending(10, {
+				includeTypes: ["processMedia"],
+			});
 			const processJob = jobs.find((j) => j.type === "processMedia");
-			if (processJob) {
-				await MediaProcessingService.executeProcessMediaJob(processJob);
-			}
+			expect(processJob).toBeDefined();
+			if (!processJob) throw new Error("Processing job was not reserved");
+			await MediaProcessingService.executeProcessMediaJob(processJob);
 
 			// Verify thumbnail generation
 			const storageConfig = services.getConfigService().getConfig().storage;

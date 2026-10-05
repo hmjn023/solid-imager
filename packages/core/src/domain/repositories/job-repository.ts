@@ -1,3 +1,6 @@
+import type { Transaction } from "../interfaces/transaction-manager";
+import type { MediaProcessingCheckpoint } from "../jobs/processing";
+
 export type JobStatus =
 	| "pending"
 	| "in_progress"
@@ -12,6 +15,7 @@ export type Job = {
 	status: JobStatus;
 	payload: unknown;
 	result: unknown;
+	processingCheckpoint?: MediaProcessingCheckpoint | null;
 	error: string | null;
 	createdAt: Date;
 	updatedAt: Date;
@@ -35,6 +39,7 @@ export type NewJob = {
 	status?: JobStatus;
 	payload?: unknown;
 	result?: unknown;
+	processingCheckpoint?: MediaProcessingCheckpoint | null;
 	error?: string | null;
 	createdAt?: Date;
 	updatedAt?: Date;
@@ -58,8 +63,15 @@ export type BatchProgress = {
 };
 
 export type IJobRepository = {
-	create(job: NewJob): Promise<Job>;
-	createIfUnique(job: NewJob): Promise<Job | null>;
+	create(job: NewJob, tx?: Transaction): Promise<Job>;
+	createIfUnique(job: NewJob, tx?: Transaction): Promise<Job | null>;
+	/** Locks and validates the claim before committing output and its checkpoint. */
+	withActiveAttempt<T>(
+		id: string,
+		attemptCount: number,
+		action: (tx: Transaction) => Promise<T>,
+	): Promise<T>;
+	heartbeat(id: string, attemptCount: number): Promise<boolean>;
 	findById(id: string): Promise<Job | null>;
 	findPending(
 		limit: number,
@@ -96,7 +108,7 @@ export type IJobRepository = {
 			expiresAt: Date;
 		},
 	): Promise<void>;
-	update(id: string, data: Partial<Job>): Promise<void>;
+	update(id: string, data: Partial<Job>, tx?: Transaction): Promise<void>;
 	incrementProgress(
 		id: string,
 		progressKey?: string,
