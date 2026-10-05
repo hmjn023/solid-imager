@@ -77,8 +77,7 @@ function createMediaService(): MediaServiceImpl {
 		services.getMediaRepository(),
 		services.getSourceRepository(),
 		services.getMediaStorage(),
-		services.getTagRepository(),
-		services.getImageProcessor(),
+		services.getMediaProcessingService(),
 		appLogger,
 	);
 

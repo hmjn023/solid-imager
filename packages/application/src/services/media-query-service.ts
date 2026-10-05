@@ -1,4 +1,3 @@
-import path from "node:path";
 import type { IMediaStorage } from "@solid-imager/core";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import {
@@ -15,8 +14,7 @@ import {
 import { getContentTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+import type { IMediaProcessingService } from "../ports/media-processing-service";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { ILogger } from "../ports/media-service";
 
@@ -25,8 +23,10 @@ export class MediaQueryService {
 		private readonly mediaRepository: IMediaRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
-		private readonly tagRepository: TagRepository,
-		private readonly imageProcessor: IImageProcessor,
+		private readonly processingService: Pick<
+			IMediaProcessingService,
+			"processTask"
+		>,
 		private readonly logger: ILogger,
 	) {}
 
@@ -165,7 +165,7 @@ export class MediaQueryService {
 			throw new ResourceNotFoundError("Media", validatedMediaId);
 		}
 
-		return await this.extractAndUpdateMetadata(media, validatedSourceId);
+		return await this.extractAndUpdateMetadata(media, validatedSourceId, true);
 	}
 
 	async getMediaTags(mediaSourceId: string, mediaId: string) {
@@ -221,53 +221,28 @@ export class MediaQueryService {
 	private async extractAndUpdateMetadata(
 		media: Media,
 		sourceId: string,
+		force = false,
 	): Promise<MediaGenerationInfo | null> {
 		const mediaSource = await this.sourceRepository.findById(sourceId);
 		if (mediaSource?.type !== "local") {
 			return null;
 		}
 
-		const connectionInfo = localConnectionSchema.parse(
-			mediaSource.connectionInfo,
-		);
-		const fullPath = path.join(connectionInfo.path, media.filePath);
-
 		try {
-			const metadata = await this.imageProcessor.extractMetadata(fullPath);
-
-			this.logger.info(
-				{
-					mediaId: media.id,
-					fullPath,
-					tagsCount: metadata.tags.length,
-					hasWorkflow: !!metadata.workflow,
-					hasPrompt: !!metadata.prompt,
-				},
-				"[MediaQueryService] extractAndUpdateMetadata result",
-			);
-
-			await this.mediaRepository.upsertGenerationInfo(
+			await this.processingService.processTask(
+				sourceId,
 				media.id,
-				typeof metadata.prompt === "object"
-					? JSON.stringify(metadata.prompt)
-					: (metadata.prompt as string | null),
-				metadata.workflow as object | null,
+				"metadata",
+				undefined,
+				force,
 			);
-
-			if (metadata.tags.length > 0) {
-				await this.tagRepository.addTagsToMedia(
-					media.id,
-					metadata.tags,
-					"comfyui_workflow",
-				);
-			}
-
 			return await this.mediaRepository.getGenerationInfo(media.id);
-		} catch (e) {
+		} catch (error) {
 			this.logger.error(
-				{ err: e, mediaId: media.id, fullPath },
-				"[MediaQueryService] extractAndUpdateMetadata FAILED",
+				{ err: error, mediaId: media.id },
+				"Metadata processing failed",
 			);
+			if (force) throw error;
 			return null;
 		}
 	}

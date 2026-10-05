@@ -26,6 +26,11 @@ test("reloads failed processing steps and retries only the unfinished step", asy
 		.filter({ visible: true });
 	await expect(steps).toContainText("ThumbnailsFailed");
 	await expect(steps).toContainText("MetadataCompleted");
+	const current = page
+		.getByRole("region", { name: "Current media processing" })
+		.filter({ visible: true });
+	await expect(current).toContainText("MetadataCompleted");
+	await expect(current).toContainText("ThumbnailsFailed");
 	await page.reload();
 	await waitForAppHydration(page);
 	await selectJob();
@@ -50,8 +55,35 @@ test("reloads failed processing steps and retries only the unfinished step", asy
 			}),
 		]),
 	);
+	expect(completed.currentProcessingSteps).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				kind: "metadata",
+				status: "completed",
+				attemptCount: 1,
+			}),
+			expect.objectContaining({
+				kind: "thumbnail",
+				status: "completed",
+				attemptCount: 2,
+			}),
+		]),
+	);
+	for (const step of completed.currentProcessingSteps ?? []) {
+		expect(Object.keys(step).sort()).toEqual([
+			"attemptCount",
+			"kind",
+			"status",
+			"updatedAt",
+		]);
+	}
 	expect(completed).not.toHaveProperty("processingCheckpoint");
 	expect(completed).not.toHaveProperty("payload");
+	await expect(current).toContainText("ThumbnailsCompleted");
+	await page.reload();
+	await waitForAppHydration(page);
+	await selectJob();
+	await expect(current).toContainText("ThumbnailsCompleted");
 	// SPA navigation also loads the persisted completed checkpoint.
 	await page.getByRole("link", { name: "Library", exact: true }).click();
 	await page.getByRole("link", { name: /^Jobs/ }).click();

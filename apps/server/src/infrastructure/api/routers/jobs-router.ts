@@ -1,3 +1,5 @@
+import { findCurrentProcessingSteps } from "~/infrastructure/api/media-processing-status";
+import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/domain/contract/jobs.contract";
 import {
@@ -92,7 +94,11 @@ function getTargetMediaModifiedAt(
 		: null;
 }
 
-export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
+export function toJobDto(
+	job: Job,
+	targetMediaModifiedAt: Date | null = null,
+	currentProcessingSteps: JobDto["currentProcessingSteps"] = [],
+) {
 	const checkpoint = mediaProcessingCheckpointSchema.safeParse(
 		job.processingCheckpoint,
 	);
@@ -113,6 +119,7 @@ export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
 		targetMediaId: readTargetMediaId(job.payload),
 		targetMediaModifiedAt,
 		progress: readProgress(job.payload),
+		currentProcessingSteps,
 		processingSteps:
 			job.type === "processMedia" && checkpoint.success
 				? processingStepKindSchema.options.map((kind) => {
@@ -141,6 +148,16 @@ export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
 	};
 }
 
+async function currentJobDto(job: Job) {
+	const id = readTargetMediaId(job.payload);
+	const steps = await findCurrentProcessingSteps(id ? [id] : []);
+	return toJobDto(
+		job,
+		await findTargetMediaModifiedAt(job),
+		id ? steps.get(id) : [],
+	);
+}
+
 function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
 	return status ? and(eq(jobs.status, status)) : undefined;
 }
@@ -162,10 +179,17 @@ export const jobsRouter = os.router({
 		]);
 
 		const targetMediaModifiedAtById = await findTargetMediaModifiedAtById(rows);
+		const currentSteps = await findCurrentProcessingSteps([
+			...targetMediaModifiedAtById.keys(),
+		]);
 
 		return {
 			items: rows.map((job) =>
-				toJobDto(job, getTargetMediaModifiedAt(job, targetMediaModifiedAtById)),
+				toJobDto(
+					job,
+					getTargetMediaModifiedAt(job, targetMediaModifiedAtById),
+					currentSteps.get(readTargetMediaId(job.payload) ?? ""),
+				),
 			),
 			total: Number(totalRows[0]?.total ?? 0),
 		};
@@ -176,7 +200,7 @@ export const jobsRouter = os.router({
 		if (!job) {
 			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
 		}
-		return toJobDto(job, await findTargetMediaModifiedAt(job));
+		return currentJobDto(job);
 	}),
 
 	downloadArtifact: os.downloadArtifact.handler(async ({ input }) => {
@@ -226,7 +250,7 @@ export const jobsRouter = os.router({
 			jobId: requeued.id,
 			message: "Job queued for retry",
 		});
-		return toJobDto(requeued, await findTargetMediaModifiedAt(requeued));
+		return currentJobDto(requeued);
 	}),
 
 	cancel: os.cancel.handler(async ({ input }) => {
@@ -257,7 +281,7 @@ export const jobsRouter = os.router({
 					? "Cancellation requested"
 					: "Job cancelled",
 		});
-		return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
+		return currentJobDto(cancelled);
 	}),
 
 	events: os.events.handler(async function* ({ signal }) {

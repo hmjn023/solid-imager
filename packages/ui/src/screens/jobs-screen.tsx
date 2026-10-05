@@ -591,49 +591,19 @@ function JobsInspector(props: {
 							</div>
 						</dl>
 
+						<ProcessingSteps
+							title="Current media processing"
+							steps={job().currentProcessingSteps}
+						/>
+						<ProcessingSteps
+							title="Processing steps"
+							steps={job().processingSteps}
+						/>
 						<Show when={job().processingSteps?.length}>
-							<section aria-label="Processing steps" class="mt-4 space-y-3">
-								<h3 class="font-medium text-sm">Processing steps</h3>
-								<For each={job().processingSteps}>
-									{(step) => (
-										<div class="flex items-center justify-between gap-3 text-xs">
-											<span>
-												{
-													{
-														metadata: "Metadata",
-														thumbnail: "Thumbnails",
-														ai_dispatch: "Queue AI analysis",
-													}[step.kind]
-												}
-											</span>
-											<Badge
-												variant={
-													step.status === "failed" ? "destructive" : "secondary"
-												}
-											>
-												{
-													{
-														pending: "Pending",
-														in_progress: "In progress",
-														completed: "Completed",
-														failed: "Failed",
-														skipped: "Skipped",
-													}[step.status]
-												}
-											</Badge>
-										</div>
-									)}
-								</For>
-								<Show when={job().status === "failed"}>
-									<p class="text-xs text-muted-foreground">
-										Retry resumes unfinished steps. Completed steps are kept
-										while the media is unchanged.
-									</p>
-								</Show>
-								<p class="text-xs text-muted-foreground">
-									AI analysis runs in separate jobs.
-								</p>
-							</section>
+							<p class="mt-3 text-xs text-muted-foreground">
+								Retry reuses completed work while the media and processing
+								settings are unchanged. AI analysis runs in separate jobs.
+							</p>
 						</Show>
 
 						<Show when={job().progress}>
@@ -1012,5 +982,46 @@ export function JobsScreen(props: JobsScreenProps) {
 				/>
 			</div>
 		</section>
+	);
+}
+
+function ProcessingSteps(props: {
+	title: string;
+	steps: JobDto["processingSteps"];
+}) {
+	return (
+		<Show when={props.steps?.length}>
+			<section aria-label={props.title} class="mt-4 space-y-3">
+				<h3 class="font-medium text-sm">{props.title}</h3>
+				<For each={props.steps}>
+					{(step) => (
+						<div class="flex items-center justify-between gap-3 text-xs">
+							<span>
+								{
+									{
+										metadata: "Metadata",
+										thumbnail: "Thumbnails",
+										ai_dispatch: "Queue AI analysis",
+									}[step.kind]
+								}
+							</span>
+							<Badge
+								variant={step.status === "failed" ? "destructive" : "secondary"}
+							>
+								{
+									{
+										pending: "Pending",
+										in_progress: "In progress",
+										completed: "Completed",
+										failed: "Failed",
+										skipped: "Skipped",
+									}[step.status]
+								}
+							</Badge>
+						</div>
+					)}
+				</For>
+			</section>
+		</Show>
 	);
 }

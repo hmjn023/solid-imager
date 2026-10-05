@@ -1,3 +1,11 @@
+import { createHash } from "node:crypto";
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import {
+	processingSettingsFromConfig,
+	serializeMediaTaskRevision,
+	type ProcessingSettings,
+} from "@solid-imager/core/domain/processing/schemas";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
 	JobAttemptLostError,
@@ -27,7 +35,7 @@ import {
 	type SQL,
 	sql,
 } from "drizzle-orm";
-import { jobs, medias } from "../schema";
+import { jobs, medias, mediaSources } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
 type RawClaimedJob = {
@@ -85,13 +93,112 @@ function mapJob(row: typeof jobs.$inferSelect): Job {
 
 export function createJobRepository(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
+	getSettings: () => ProcessingSettings = () =>
+		processingSettingsFromConfig(defaultAppConfig),
 ): IJobRepository {
 	const db = (tx?: Transaction) => getExecutor(tx);
 
+	const insert = async (job: NewJob, tx?: Transaction): Promise<Job> => {
+		const [created] = await db(tx).insert(jobs).values(job).returning();
+		return mapJob(created);
+	};
+	// Serialize producers on the media row. Configuration is part of the reservation:
+	// a request after a settings change must not be absorbed by an older running job.
+	const reserve = async (
+		job: NewJob,
+		repair: boolean,
+		tx: Transaction,
+	): Promise<Job | null> => {
+		const payload = processMediaPayloadSchema.parse(job.payload);
+		if (!job.mediaSourceId) throw new Error("processMedia requires a source");
+		const [media] = await db(tx)
+			.select()
+			.from(medias)
+			.where(
+				and(
+					eq(medias.id, payload.mediaId),
+					eq(medias.mediaSourceId, job.mediaSourceId),
+				),
+			)
+			.for("update");
+		const [source] = media
+			? await db(tx)
+					.select()
+					.from(mediaSources)
+					.where(eq(mediaSources.id, media.mediaSourceId))
+			: [];
+		const connection = localConnectionSchema.safeParse(source?.connectionInfo);
+		if (!media || source?.type !== "local" || !connection.success)
+			return repair ? null : insert(job, tx);
+		const input = {
+			mediaId: media.id,
+			mediaSourceId: media.mediaSourceId,
+			sourcePath: connection.data.path,
+			filePath: media.filePath,
+			modifiedAt: media.modifiedAt,
+			fileSize: media.fileSize,
+			mediaType: media.mediaType,
+		};
+		const settings = getSettings();
+		const requestRevision = createHash("sha256")
+			.update(
+				JSON.stringify([
+					serializeMediaTaskRevision(input, "metadata", settings),
+					serializeMediaTaskRevision(input, "thumbnail", settings),
+				]),
+			)
+			.digest("hex");
+		const existing = await db(tx)
+			.select()
+			.from(jobs)
+			.where(
+				and(
+					eq(jobs.type, "processMedia"),
+					eq(jobs.mediaSourceId, media.mediaSourceId),
+					inArray(
+						jobs.status,
+						repair
+							? ["pending", "in_progress", "failed"]
+							: ["pending", "in_progress"],
+					),
+					isNull(jobs.cancelRequestedAt),
+					sql`${jobs.payload}->>'mediaId' = ${payload.mediaId}`,
+					sql`${jobs.payload}->>'requestRevision' = ${requestRevision}`,
+				),
+			);
+		let metadataCovered = payload.skipMetadataExtraction === true;
+		let thumbnailCovered = payload.skipThumbnailGeneration === true;
+		for (const entry of existing) {
+			const previous = processMediaPayloadSchema.parse(entry.payload);
+			metadataCovered ||= !previous.skipMetadataExtraction;
+			thumbnailCovered ||= !previous.skipThumbnailGeneration;
+		}
+		if (existing.length && metadataCovered && thumbnailCovered)
+			return repair ? null : mapJob(existing[0]);
+		return insert(
+			{
+				...job,
+				payload: {
+					...payload,
+					requestRevision,
+					skipMetadataExtraction: metadataCovered,
+					skipThumbnailGeneration: thumbnailCovered,
+				},
+			},
+			tx,
+		);
+	};
+
 	return {
 		async create(job: NewJob, tx?: Transaction): Promise<Job> {
-			const [created] = await db(tx).insert(jobs).values(job).returning();
-			return mapJob(created);
+			if (job.type === "processMedia") {
+				const result = tx
+					? await reserve(job, false, tx)
+					: await db().transaction((tx) => reserve(job, false, tx));
+				if (!result) throw new Error("Failed to reserve media processing");
+				return result;
+			}
+			return insert(job, tx);
 		},
 
 		async withActiveAttempt<T>(
@@ -134,56 +241,10 @@ export function createJobRepository(
 		},
 
 		async createIfUnique(job: NewJob, tx?: Transaction): Promise<Job | null> {
-			// Startup repair must reuse unfinished ingestion, including failed jobs
-			// that the user can retry. Serialize repair producers on the media row.
 			if (job.type === "processMedia") {
-				const payload = processMediaPayloadSchema.parse(job.payload);
-				const sourceId = job.mediaSourceId;
-				if (!sourceId) throw new Error("processMedia requires a source");
-				const reserve = async (tx: Transaction) => {
-					const [media] = await db(tx)
-						.select({ id: medias.id })
-						.from(medias)
-						.where(
-							and(
-								eq(medias.id, payload.mediaId),
-								eq(medias.mediaSourceId, sourceId),
-							),
-						)
-						.for("update");
-					if (!media) return null;
-					const existing = await db(tx)
-						.select({ payload: jobs.payload })
-						.from(jobs)
-						.where(
-							and(
-								eq(jobs.type, "processMedia"),
-								eq(jobs.mediaSourceId, sourceId),
-								inArray(jobs.status, ["pending", "in_progress", "failed"]),
-								sql`${jobs.payload}->>'mediaId' = ${payload.mediaId}`,
-							),
-						);
-					let metadataCovered = payload.skipMetadataExtraction === true;
-					let thumbnailCovered = payload.skipThumbnailGeneration === true;
-					for (const entry of existing) {
-						const previous = processMediaPayloadSchema.parse(entry.payload);
-						metadataCovered ||= !previous.skipMetadataExtraction;
-						thumbnailCovered ||= !previous.skipThumbnailGeneration;
-					}
-					if (metadataCovered && thumbnailCovered) return null;
-					return this.create(
-						{
-							...job,
-							payload: {
-								...payload,
-								skipMetadataExtraction: metadataCovered,
-								skipThumbnailGeneration: thumbnailCovered,
-							},
-						},
-						tx,
-					);
-				};
-				return tx ? reserve(tx) : db().transaction(reserve);
+				return tx
+					? reserve(job, true, tx)
+					: db().transaction((tx) => reserve(job, true, tx));
 			}
 			if (job.type === "generate_thumbnail" && job.mediaSourceId) {
 				generateThumbnailJobPayloadSchema.parse(job.payload);

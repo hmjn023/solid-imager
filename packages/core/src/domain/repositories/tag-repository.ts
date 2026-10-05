@@ -18,6 +18,11 @@ export type TagRepository = {
 
 	// Associations
 	findByMediaId(mediaId: string, tx?: Transaction): Promise<MediaTag[]>;
+	removeTagsFromSource(
+		mediaId: string,
+		source: string,
+		tx: Transaction,
+	): Promise<void>;
 	addTagsToMedia(
 		mediaId: string,
 		tags: {

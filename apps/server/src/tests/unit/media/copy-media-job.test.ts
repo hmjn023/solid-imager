@@ -1,3 +1,5 @@
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -74,7 +76,10 @@ describe("Reproduction: Copy Media Job Type", () => {
 		// Reset registry and register services
 		await services.reset();
 		// Define Mocks
-		const mockTagRepo = { addTagsToMedia: vi.fn() } as any;
+		const mockTagRepo = {
+			removeTagsFromSource: vi.fn(),
+			addTagsToMedia: vi.fn(),
+		} as any;
 		const mockAuthorRepo = {
 			addMediaBulk: vi.fn(),
 			create: vi.fn(),
@@ -187,6 +192,18 @@ describe("Reproduction: Copy Media Job Type", () => {
 		const { MediaProcessingServiceImpl } =
 			await import("~/infrastructure/services/media-processing-service");
 		const mediaProcessingService = new MediaProcessingServiceImpl({
+			processingStateRepo: {
+				claim: vi
+					.fn()
+					.mockResolvedValue({ status: "claimed", claim: {}, state: {} }),
+				commit: vi.fn(async (_input, _claim, output, tx) => output(tx)),
+				fail: vi.fn().mockResolvedValue(true),
+				heartbeat: vi.fn().mockResolvedValue(true),
+				findByMediaIds: vi.fn().mockResolvedValue([]),
+			},
+			getProcessingSettings: () =>
+				processingSettingsFromConfig(defaultAppConfig),
+			hasThumbnails: vi.fn().mockResolvedValue(true),
 			transactionManager: { transaction: async (action) => action(undefined) },
 			publishJobProgress: vi.fn(),
 			sourceRepo: mockSourceRepository as any,

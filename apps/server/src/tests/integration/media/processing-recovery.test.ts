@@ -1,3 +1,12 @@
+import {
+	MediaProcessingSupersededError,
+	serializeMediaProcessingInput,
+} from "@solid-imager/core/domain/processing/schemas";
+import { getMediaTaskRevision } from "@solid-imager/application/services/media-task-service";
+import { mediaProcessingStates } from "@solid-imager/db/schema";
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
+import { createMediaProcessingStateRepository } from "@solid-imager/db/repositories/media-processing-state-repository";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -92,6 +101,10 @@ describe("durable media processing", () => {
 			cleanup: cleanupThumbnail,
 		});
 		deps = {
+			processingStateRepo: createMediaProcessingStateRepository(executor),
+			getProcessingSettings: () =>
+				processingSettingsFromConfig(defaultAppConfig),
+			hasThumbnails: vi.fn().mockResolvedValue(true),
 			transactionManager,
 			sourceRepo,
 			mediaRepo,
@@ -481,5 +494,316 @@ describe("durable media processing", () => {
 		});
 		expect(prepareThumbnail).not.toHaveBeenCalled();
 		expect(await database.select().from(jobs)).toHaveLength(1);
+	});
+	function gate() {
+		let release!: () => void;
+		const promise = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		return { promise, release };
+	}
+	async function inputFor(mediaId: string) {
+		const media = await mediaRepo.findById(mediaId);
+		if (!media) throw new Error("Missing fixture");
+		return {
+			mediaId,
+			mediaSourceId: sourceId,
+			sourcePath: "/fixture",
+			filePath: media.filePath,
+			modifiedAt: media.modifiedAt,
+			fileSize: media.fileSize,
+			mediaType: media.mediaType,
+		};
+	}
+	it("reuses media outputs across different completed jobs", async () => {
+		const media = await register();
+		const first = await claim();
+		await run(first);
+		const second = await jobRepo.create({
+			type: "processMedia",
+			mediaSourceId: sourceId,
+			payload: { mediaId: media.id },
+		});
+		expect(second.id).not.toBe(first.id);
+		await run(await claim());
+		expect(extractMetadata).toHaveBeenCalledOnce();
+		expect(prepareThumbnail).toHaveBeenCalledOnce();
+		expect(await deps.processingStateRepo.findByMediaIds([media.id])).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					taskKind: "metadata",
+					status: "completed",
+					attemptCount: 1,
+				}),
+				expect.objectContaining({
+					taskKind: "thumbnail",
+					status: "completed",
+					attemptCount: 1,
+				}),
+			]),
+		);
+	});
+	it("coalesces concurrent direct requests and a running job", async () => {
+		const media = await register();
+		const entered = gate();
+		const finish = gate();
+		extractMetadata.mockImplementationOnce(async () => {
+			entered.release();
+			await finish.promise;
+			return { tags: [], prompt: "shared", workflow: null };
+		});
+		const worker = run(await claim());
+		await entered.promise;
+		const reader = service.processTask(sourceId, media.id, "metadata");
+		finish.release();
+		await Promise.all([worker, reader]);
+		expect(extractMetadata).toHaveBeenCalledOnce();
+	});
+	it("fences both stale success and stale failure after a newer revision completed", async () => {
+		const media = await register();
+		const entered = gate();
+		const finish = gate();
+		extractMetadata.mockImplementationOnce(async () => {
+			entered.release();
+			await finish.promise;
+			return { tags: [], prompt: "old", workflow: null };
+		});
+		const old = service
+			.processTask(sourceId, media.id, "metadata")
+			.catch((error: unknown) => error);
+		await entered.promise;
+		await mediaRepo.update(media.id, { fileSize: 888 });
+		await service.processTask(sourceId, media.id, "metadata");
+		finish.release();
+		expect(await old).toBeInstanceOf(MediaProcessingSupersededError);
+		expect((await mediaRepo.getGenerationInfo(media.id))?.prompt).toBe(
+			"new prompt",
+		);
+		expect(
+			(await deps.processingStateRepo.findByMediaIds([media.id]))[0],
+		).toMatchObject({ status: "completed", attemptCount: 1, lastError: null });
+	});
+	it("does not publish old thumbnail files after replacement processing", async () => {
+		const media = await register();
+		const entered = gate();
+		const finish = gate();
+		const oldCommit = vi.fn();
+		const oldCleanup = vi.fn();
+		prepareThumbnail.mockImplementationOnce(async () => {
+			entered.release();
+			await finish.promise;
+			return { commit: oldCommit, cleanup: oldCleanup };
+		});
+		const old = service
+			.processTask(sourceId, media.id, "thumbnail")
+			.catch((error: unknown) => error);
+		await entered.promise;
+		await mediaRepo.update(media.id, { fileSize: 888 });
+		await service.processTask(sourceId, media.id, "thumbnail");
+		finish.release();
+		expect(await old).toBeInstanceOf(MediaProcessingSupersededError);
+		expect(oldCommit).not.toHaveBeenCalled();
+		expect(oldCleanup).toHaveBeenCalledOnce();
+		expect(commitThumbnail).toHaveBeenCalledOnce();
+	});
+	it("invalidates only the task whose settings changed", async () => {
+		const media = await register();
+		let settings = structuredClone(
+			processingSettingsFromConfig(defaultAppConfig),
+		);
+		deps.getProcessingSettings = () => settings;
+		await run(await claim());
+		settings = {
+			...settings,
+			thumbnail: { ...settings.thumbnail, quality: 65 },
+		};
+		await service.processTask(sourceId, media.id, "metadata");
+		await service.processTask(sourceId, media.id, "thumbnail");
+		expect(extractMetadata).toHaveBeenCalledOnce();
+		expect(prepareThumbnail).toHaveBeenCalledTimes(2);
+		settings = {
+			...settings,
+			metadata: { ...settings.metadata, negativeTags: ["changed"] },
+		};
+		await service.processTask(sourceId, media.id, "metadata");
+		expect(extractMetadata).toHaveBeenCalledTimes(2);
+	});
+	it("discards output if extraction settings changed while processing", async () => {
+		const media = await register();
+		let settings = structuredClone(
+			processingSettingsFromConfig(defaultAppConfig),
+		);
+		deps.getProcessingSettings = () => settings;
+		extractMetadata.mockImplementationOnce(async () => {
+			settings = {
+				...settings,
+				metadata: { ...settings.metadata, negativeTags: [] },
+			};
+			return { tags: [], prompt: "stale", workflow: null };
+		});
+		await expect(
+			service.processTask(sourceId, media.id, "metadata"),
+		).rejects.toThrow(MediaProcessingSupersededError);
+		expect(await mediaRepo.getGenerationInfo(media.id)).toBeNull();
+		await service.processTask(sourceId, media.id, "metadata");
+		expect((await mediaRepo.getGenerationInfo(media.id))?.prompt).toBe(
+			"new prompt",
+		);
+	});
+	it("repairs a missing cache once when two requests arrive together", async () => {
+		const media = await register();
+		await run(await claim());
+		let cache = false;
+		deps.hasThumbnails = async () => cache;
+		const entered = gate();
+		const finish = gate();
+		prepareThumbnail.mockImplementationOnce(async () => {
+			entered.release();
+			await finish.promise;
+			return {
+				commit: async () => {
+					cache = true;
+				},
+				cleanup: cleanupThumbnail,
+			};
+		});
+		const first = service.processTask(sourceId, media.id, "thumbnail");
+		await entered.promise;
+		const second = service.processTask(sourceId, media.id, "thumbnail");
+		finish.release();
+		await Promise.all([first, second]);
+		expect(prepareThumbnail).toHaveBeenCalledTimes(2);
+	});
+	it("replaces expired claims and rejects old tokens for commit, failure and heartbeat", async () => {
+		const media = await register();
+		const input = await inputFor(media.id);
+		const repo = deps.processingStateRepo;
+		const revision = getMediaTaskRevision(
+			input,
+			"metadata",
+			deps.getProcessingSettings(),
+		);
+		const old = await transactionManager.transaction((tx) =>
+			repo.claim(input, "metadata", revision, null, false, tx),
+		);
+		if (old.status !== "claimed") throw new Error("Expected claim");
+		await database
+			.update(mediaProcessingStates)
+			.set({ heartbeatAt: new Date(0) });
+		const next = await transactionManager.transaction((tx) =>
+			repo.claim(input, "metadata", revision, null, false, tx),
+		);
+		expect(next.status).toBe("claimed");
+		const output = vi.fn();
+		await expect(
+			transactionManager.transaction((tx) =>
+				repo.commit(input, old.claim, output, tx),
+			),
+		).rejects.toThrow(MediaProcessingSupersededError);
+		expect(output).not.toHaveBeenCalled();
+		expect(
+			await transactionManager.transaction((tx) =>
+				repo.fail(old.claim, "old failure", tx),
+			),
+		).toBe(false);
+		expect(await repo.heartbeat(old.claim)).toBe(false);
+	});
+	it("replaces generated tags and preserves manually attributed tags", async () => {
+		const media = await register();
+		await tagRepo.addTagsToMedia(
+			media.id,
+			[{ name: "recovered", type: "positive" }],
+			"manual",
+		);
+		await service.processTask(sourceId, media.id, "metadata");
+		extractMetadata.mockResolvedValue({
+			tags: [{ name: "old-generated", type: "positive" }],
+			prompt: null,
+			workflow: null,
+		});
+		await service.processTask(sourceId, media.id, "metadata", undefined, true);
+		extractMetadata.mockResolvedValue({
+			tags: [],
+			prompt: null,
+			workflow: null,
+		});
+		await service.processTask(sourceId, media.id, "metadata", undefined, true);
+		const links = await database
+			.select()
+			.from(mediaTags)
+			.where(eq(mediaTags.mediaId, media.id));
+		expect(links).toHaveLength(1);
+		expect(links[0].source).toBe("manual");
+	});
+	it("coalesces concurrent producer reservations and permits a newer indexed input", async () => {
+		const media = await register();
+		await database.delete(jobs);
+		const request = {
+			type: "processMedia",
+			mediaSourceId: sourceId,
+			payload: { mediaId: media.id },
+		};
+		const reserved = await Promise.all(
+			Array.from({ length: 8 }, () => jobRepo.create(request)),
+		);
+		expect(new Set(reserved.map((job) => job.id)).size).toBe(1);
+		await mediaRepo.update(media.id, { fileSize: 987 });
+		const latest = await jobRepo.create(request);
+		expect(latest.id).not.toBe(reserved[0].id);
+	});
+	it("does not absorb changed settings into an active reservation", async () => {
+		const media = await register();
+		let settings = structuredClone(
+			processingSettingsFromConfig(defaultAppConfig),
+		);
+		const repository = createJobRepository(executor, () => settings);
+		const request = {
+			type: "processMedia",
+			mediaSourceId: sourceId,
+			payload: { mediaId: media.id },
+		};
+		const first = await repository.create(request);
+		settings = {
+			...settings,
+			thumbnail: { ...settings.thumbnail, quality: 44 },
+		};
+		const second = await repository.create(request);
+		expect(second.id).not.toBe(first.id);
+	});
+	it("allows startup repair for a new revision even when an older job failed", async () => {
+		const media = await register();
+		extractMetadata.mockRejectedValueOnce(new Error("bad image"));
+		await expect(run(await claim())).rejects.toThrow();
+		await mediaRepo.update(media.id, { fileSize: 987 });
+		expect(
+			await jobRepo.createIfUnique({
+				type: "processMedia",
+				mediaSourceId: sourceId,
+				payload: { mediaId: media.id },
+			}),
+		).not.toBeNull();
+	});
+	it("enforces claim/completion constraints and cascades state on media deletion", async () => {
+		const media = await register();
+		const values = {
+			mediaId: media.id,
+			taskKind: "metadata",
+			status: "completed",
+			inputRevision: serializeMediaProcessingInput(await inputFor(media.id)),
+			requestedRevision: "revision",
+		};
+		await expect(
+			database.insert(mediaProcessingStates).values(values),
+		).rejects.toThrow();
+		await expect(
+			database
+				.insert(mediaProcessingStates)
+				.values({ ...values, status: "in_progress" }),
+		).rejects.toThrow();
+		await service.processTask(sourceId, media.id, "metadata");
+		await mediaRepo.delete(media.id);
+		expect(
+			await deps.processingStateRepo.findByMediaIds([media.id]),
+		).toHaveLength(0);
 	});
 });

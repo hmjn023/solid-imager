@@ -1,3 +1,6 @@
+import { getMediaTaskRevision } from "@solid-imager/application/services/media-task-service";
+import { processingSettingsFromConfig, serializeMediaProcessingInput } from "@solid-imager/core/domain/processing/schemas";
+import { mediaProcessingStates } from "@solid-imager/db/schema";
 import { randomUUID } from "node:crypto";
 import { copyFile, link, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -210,6 +213,17 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
         metadata: { fixture: "e2e-scroll" },
       })),
     ]);
+    const processingInput = { mediaId: E2E_PRIMARY_MEDIA_ID, mediaSourceId: E2E_SOURCE_ID,
+      sourcePath: mediaDir, filePath: E2E_PRIMARY_FILE_NAME, fileSize: primaryStats.size,
+      modifiedAt: primaryStats.mtime, mediaType: "image" as const };
+    const processingSettings = processingSettingsFromConfig({ ...defaultAppConfig,
+      storage: { ...defaultAppConfig.storage, thumbnailDir: path.join(runtimeDir, "thumbnails") } });
+    await db.insert(mediaProcessingStates).values((["metadata", "thumbnail"] as const).map((kind) => {
+      const revision = getMediaTaskRevision(processingInput, kind, processingSettings);
+      return { mediaId: E2E_PRIMARY_MEDIA_ID, taskKind: kind,
+        status: kind === "metadata" ? "completed" : "failed", inputRevision: serializeMediaProcessingInput(processingInput),
+        requestedRevision: revision, completedRevision: kind === "metadata" ? revision : null, attemptCount: 1 };
+    }));
     // A real failed job with a durable metadata checkpoint. Retrying through
     // the UI must run thumbnail generation without extracting metadata again.
     await db.insert(jobs).values({

@@ -1,3 +1,6 @@
+import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db/index";
@@ -125,6 +128,10 @@ describe("MediaService - Copy Media Integration", () => {
 
 		services.registerMediaProcessingService(
 			new MediaProcessingServiceImpl({
+				processingStateRepo: MediaProcessingStateRepository,
+				getProcessingSettings: () =>
+					processingSettingsFromConfig(defaultAppConfig),
+				hasThumbnails: vi.fn().mockResolvedValue(true),
 				transactionManager: DrizzleTransactionManager,
 				publishJobProgress: vi.fn(),
 				sourceRepo: services.getSourceRepository(),

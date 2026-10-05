@@ -1,3 +1,5 @@
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
 
@@ -9,6 +11,7 @@ const mockMediaRepo = {
 	upsertGenerationInfo: vi.fn(),
 };
 const mockTagRepo = {
+	removeTagsFromSource: vi.fn(),
 	addTagsToMedia: vi.fn(),
 };
 const mockAuthorRepo = {
@@ -79,6 +82,18 @@ describe("MediaProcessingService", () => {
 
 	beforeEach(() => {
 		service = new MediaProcessingServiceImpl({
+			processingStateRepo: {
+				claim: vi
+					.fn()
+					.mockResolvedValue({ status: "claimed", claim: {}, state: {} }),
+				commit: vi.fn(async (_input, _claim, output, tx) => output(tx)),
+				fail: vi.fn().mockResolvedValue(true),
+				heartbeat: vi.fn().mockResolvedValue(true),
+				findByMediaIds: vi.fn().mockResolvedValue([]),
+			},
+			getProcessingSettings: () =>
+				processingSettingsFromConfig(defaultAppConfig),
+			hasThumbnails: vi.fn().mockResolvedValue(true),
 			transactionManager: { transaction: async (action) => action(undefined) },
 			publishJobProgress: vi.fn(),
 			sourceRepo: {} as any,
