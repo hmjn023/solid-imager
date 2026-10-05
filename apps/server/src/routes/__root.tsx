@@ -42,8 +42,6 @@ function RootComponent() {
 	const isStandaloneRoute = () => {
 		const pathname = location().pathname;
 		return (
-			pathname === "/design-lab" ||
-			pathname.startsWith("/design-lab/") ||
 			pathname === "/docs/scalar" ||
 			pathname.startsWith("/docs/scalar/") ||
 			pathname === "/docs/swagger" ||

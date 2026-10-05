@@ -335,8 +335,6 @@ graph LR
   N328["npm:@solid-imager/ui/button"]
   N329["apps/server/src/routes/sources/$mediaSourceId/index.tsx"]
   N330["apps/server/src/routes/sources/index.tsx"]
-  N331["apps/server/src/routes/design-lab.tsx"]
-  N332["npm:@solid-imager/ui/screens/design-concept-screen"]
   N0 --> N1
   N0 --> N2
   N0 --> N3
@@ -749,6 +747,4 @@ graph LR
   N329 --> N318
   N330 --> N288
   N330 --> N289
-  N331 --> N332
-  N331 --> N288
 ```

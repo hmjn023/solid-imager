@@ -114,7 +114,6 @@ graph LR
   N107["apps/server/src/routes/$.tsx"]
   N108["apps/server/src/routes/about.tsx"]
   N109["apps/server/src/routes/config.tsx"]
-  N110["apps/server/src/routes/design-lab.tsx"]
   N111["apps/server/src/routes/jobs.tsx"]
   N112["apps/server/src/routes/manager.tsx"]
   N113["apps/server/src/routes/search.tsx"]
@@ -253,7 +252,6 @@ graph LR
   N104 --> N107
   N104 --> N108
   N104 --> N109
-  N104 --> N110
   N104 --> N111
   N104 --> N112
   N104 --> N113

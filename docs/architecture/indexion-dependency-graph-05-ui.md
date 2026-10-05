@@ -123,7 +123,6 @@ graph LR
   N116["screens/source-media-screen.tsx"]
   N117["npm:lucide-solid/icons/upload"]
   N118["query-state.ts"]
-  N119["screens/design-concept-screen.tsx"]
   N120["npm:lucide-solid/icons/arrow-down-up"]
   N121["npm:lucide-solid/icons/arrow-left"]
   N122["npm:lucide-solid/icons/ban"]
@@ -417,41 +416,6 @@ graph LR
   N116 --> N6
   N108 --> N83
   N108 --> N118
-  N119 --> N120
-  N119 --> N121
-  N119 --> N122
-  N119 --> N97
-  N119 --> N98
-  N119 --> N123
-  N119 --> N124
-  N119 --> N125
-  N119 --> N126
-  N119 --> N127
-  N119 --> N128
-  N119 --> N99
-  N119 --> N129
-  N119 --> N130
-  N119 --> N131
-  N119 --> N132
-  N119 --> N133
-  N119 --> N134
-  N119 --> N100
-  N119 --> N101
-  N119 --> N135
-  N119 --> N136
-  N119 --> N137
-  N119 --> N103
-  N119 --> N138
-  N119 --> N139
-  N119 --> N140
-  N119 --> N141
-  N119 --> N142
-  N119 --> N143
-  N119 --> N144
-  N119 --> N145
-  N119 --> N146
-  N119 --> N147
-  N119 --> N148
   N149 --> N3
   N149 --> N6
   N149 --> N9
