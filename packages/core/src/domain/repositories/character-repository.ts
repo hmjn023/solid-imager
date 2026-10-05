@@ -12,6 +12,11 @@ export type {
 } from "@/domain/characters/schemas";
 
 export type CharacterRepository = {
+	removeMediaFromSource(
+		mediaId: string,
+		source: string,
+		tx: Transaction,
+	): Promise<void>;
 	findAll(): Promise<Character[]>;
 	findById(id: string, tx?: Transaction): Promise<Character | null>;
 	findByName(name: string, tx?: Transaction): Promise<Character | null>;

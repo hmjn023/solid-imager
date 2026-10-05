@@ -435,7 +435,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	processTask(
 		sourceId: string,
 		mediaId: string,
-		kind: MediaTaskKind,
+		kind: Exclude<MediaTaskKind, "tagging">,
 		owner?: ProcessingOwner,
 		force = false,
 	): Promise<void> {

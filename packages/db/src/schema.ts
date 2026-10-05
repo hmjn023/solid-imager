@@ -1,5 +1,6 @@
 import type { MediaProcessingCheckpoint } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/job-repository";
+import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
@@ -1045,6 +1046,7 @@ export const mediaProcessingStates = pgTable(
 		inputRevision: text("input_revision").notNull(),
 		requestedRevision: text("requested_revision").notNull(),
 		completedRevision: text("completed_revision"),
+		taggingResult: jsonb("tagging_result").$type<TaggingResponse>(),
 		claimToken: uuid("claim_token"),
 		claimedAt: timestamp("claimed_at"),
 		heartbeatAt: timestamp("heartbeat_at"),
@@ -1059,7 +1061,7 @@ export const mediaProcessingStates = pgTable(
 		primaryKey({ columns: [table.mediaId, table.taskKind] }),
 		check(
 			"media_processing_kind",
-			sql`${table.taskKind} IN ('metadata', 'thumbnail')`,
+			sql`${table.taskKind} IN ('metadata', 'thumbnail', 'tagging')`,
 		),
 		check(
 			"media_processing_status",

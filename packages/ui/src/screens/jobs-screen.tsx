@@ -1001,6 +1001,7 @@ function ProcessingSteps(props: {
 									{
 										metadata: "Metadata",
 										thumbnail: "Thumbnails",
+										tagging: "AI tagging",
 										ai_dispatch: "Queue AI analysis",
 									}[step.kind]
 								}

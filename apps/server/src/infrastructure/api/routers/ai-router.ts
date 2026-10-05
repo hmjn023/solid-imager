@@ -11,25 +11,18 @@ import { aiContract } from "@solid-imager/core/domain/contract/ai.contract";
 import {
 	detectAndCropResponseSchema,
 	type NapiBBox,
-	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { loadDghsImgutils } from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { db } from "~/infrastructure/db";
-import {
-	jobs,
-	mediaCharacters,
-	mediaIps,
-	mediaSources,
-	medias,
-	mediaTags,
-} from "~/infrastructure/db/schema";
+import { jobs, mediaSources, medias } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
+import { scanTaggingTargetPage } from "~/infrastructure/jobs/tagging-targets";
 import { taggingService } from "~/infrastructure/services/tagging-service";
 
 function isRemoteServerLocal(url: string): boolean {
@@ -74,17 +67,6 @@ function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
 			}
 		},
 	});
-}
-
-async function callRemoteTagging(
-	remoteUrl: string,
-	fileBuffer: Buffer,
-	fileName: string,
-	timeoutMs: number,
-): Promise<unknown> {
-	const file = new File([new Uint8Array(fileBuffer)], fileName);
-	const remoteOrpc = createRemoteOprcClient(remoteUrl, timeoutMs);
-	return remoteOrpc.ai.tag({ file });
 }
 
 async function callRemoteCrop(
@@ -215,49 +197,6 @@ export const aiRouter = os.router({
 				throw new Error("mediaSourceId and mediaId are required");
 			}
 
-			const remoteUrl = getRemoteServerUrl();
-			const config = services.getConfigService().getConfig();
-			if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
-				const media = await services.getMediaRepository().findById(mediaId);
-				if (!media) {
-					throw new Error("Media not found");
-				}
-				const mediaSource = await services
-					.getSourceRepository()
-					.findById(media.mediaSourceId);
-				if (mediaSource?.type !== "local") {
-					throw new Error(
-						"Only local media sources are supported for remote tagging",
-					);
-				}
-				const connectionInfo = mediaSource.connectionInfo as
-					| Record<string, unknown>
-					| null
-					| undefined;
-				if (!connectionInfo || typeof connectionInfo.path !== "string") {
-					throw new Error("Media source connection path is missing or invalid");
-				}
-				const fullPath = path.join(connectionInfo.path, media.filePath);
-				const fileBuffer = await readFileBuffer(fullPath);
-				const result = taggingResponseSchema.parse(
-					await callRemoteTagging(
-						remoteUrl,
-						fileBuffer,
-						path.basename(fullPath),
-						config.ai.timeoutMs,
-					),
-				);
-				logger.info(
-					{
-						...logContext,
-						execution: "remote",
-						durationMs: Date.now() - startedAt,
-					},
-					"AI tagging completed",
-				);
-				return result;
-			}
-
 			const result = await taggingService.getTagsForMedia(
 				mediaSourceId,
 				mediaId,
@@ -268,7 +207,7 @@ export const aiRouter = os.router({
 			logger.info(
 				{
 					...logContext,
-					execution: "local",
+					execution: services.getAiClient().getBaseUrl?.() ? "remote" : "local",
 					durationMs: Date.now() - startedAt,
 				},
 				"AI tagging completed",
@@ -397,41 +336,21 @@ export const aiRouter = os.router({
 		async ({ input }) => {
 			const { mediaSourceId, force } = input;
 
-			const [{ count: rawCount }] = await db
-				.select({
-					count: sql<number>`count(distinct ${medias.id})`,
-				})
-				.from(medias)
-				.leftJoin(
-					mediaTags,
-					and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI")),
-				)
-				.leftJoin(
-					mediaCharacters,
-					and(
-						eq(mediaCharacters.mediaId, medias.id),
-						eq(mediaCharacters.source, "AI"),
-					),
-				)
-				.leftJoin(
-					mediaIps,
-					and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI")),
-				)
-				.where(
-					and(
-						eq(medias.mediaType, "image"),
-						mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
-						force
-							? undefined
-							: and(
-									isNull(mediaTags.mediaId),
-									isNull(mediaCharacters.mediaId),
-									isNull(mediaIps.mediaId),
-								),
-					),
-				);
+			let count = 0;
+			let afterId: string | undefined;
+			for (;;) {
+				const page = await scanTaggingTargetPage({
+					mediaSourceId,
+					force: force ?? false,
+					limit: 1000,
+					afterId,
+				});
+				count += page.targets.length;
+				if (!page.nextCursor) break;
+				afterId = page.nextCursor;
+			}
 
-			return { count: Number(rawCount ?? 0) };
+			return { count };
 		},
 	),
 

@@ -2,7 +2,11 @@ import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { ContractRouterClient } from "@orpc/contract";
 import { appContract } from "@solid-imager/core/domain/contract";
-import { E2E_PROCESSING_JOB_ID } from "./support/fixture";
+import {
+	E2E_PROCESSING_JOB_ID,
+	E2E_PRIMARY_MEDIA_ID,
+	E2E_SOURCE_ID,
+} from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 test("reloads failed processing steps and retries only the unfinished step", async ({
@@ -89,4 +93,50 @@ test("reloads failed processing steps and retries only the unfinished step", asy
 	await page.getByRole("link", { name: /^Jobs/ }).click();
 	await selectJob();
 	await expect(steps).toContainText("ThumbnailsCompleted");
+});
+
+test("reuses real tagging results and restores current AI state after reload", async ({
+	page,
+	baseURL,
+}) => {
+	test.setTimeout(120_000);
+	const client: ContractRouterClient<typeof appContract> = createORPCClient(
+		new RPCLink({ url: `${baseURL}/api/rpc` }),
+	);
+	const result = await client.ai.tag({
+		mediaSourceId: E2E_SOURCE_ID,
+		mediaId: E2E_PRIMARY_MEDIA_ID,
+	});
+	const before = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
+	const tagging = before.currentProcessingSteps?.find(
+		(step) => step.kind === "tagging",
+	);
+	expect(tagging).toMatchObject({ status: "completed" });
+	expect(
+		await client.ai.tag({
+			mediaSourceId: E2E_SOURCE_ID,
+			mediaId: E2E_PRIMARY_MEDIA_ID,
+		}),
+	).toEqual(result);
+	const after = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
+	expect(
+		after.currentProcessingSteps?.find((step) => step.kind === "tagging"),
+	).toEqual(tagging);
+	await page.goto("/jobs");
+	await waitForAppHydration(page);
+	const selectJob = () =>
+		page
+			.getByRole("button", {
+				name: new RegExp(`job ${E2E_PROCESSING_JOB_ID.slice(0, 8)}$`),
+			})
+			.click();
+	await selectJob();
+	const current = page
+		.getByRole("region", { name: "Current media processing" })
+		.filter({ visible: true });
+	await expect(current).toContainText("AI taggingCompleted");
+	await page.reload();
+	await waitForAppHydration(page);
+	await selectJob();
+	await expect(current).toContainText("AI taggingCompleted");
 });

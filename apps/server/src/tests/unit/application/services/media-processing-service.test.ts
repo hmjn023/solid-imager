@@ -83,6 +83,8 @@ describe("MediaProcessingService", () => {
 	beforeEach(() => {
 		service = new MediaProcessingServiceImpl({
 			processingStateRepo: {
+				findTaggingResult: vi.fn(),
+				saveTaggingResult: vi.fn(),
 				claim: vi
 					.fn()
 					.mockResolvedValue({ status: "claimed", claim: {}, state: {} }),

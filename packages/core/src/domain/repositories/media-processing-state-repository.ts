@@ -1,4 +1,5 @@
 import type { Transaction } from "../interfaces/transaction-manager";
+import type { TaggingResponse } from "../tagging/schemas";
 import type {
 	MediaProcessingClaim,
 	MediaProcessingInput,
@@ -17,6 +18,17 @@ export type ProcessingClaimResult =
 	  };
 
 export type IMediaProcessingStateRepository = {
+	findTaggingResult(
+		mediaId: string,
+		revision: string,
+		tx: Transaction,
+	): Promise<TaggingResponse | null>;
+	/** Called inside commit: caches only the currently fenced tagging claim. */
+	saveTaggingResult(
+		claim: MediaProcessingClaim,
+		result: TaggingResponse,
+		tx: Transaction,
+	): Promise<void>;
 	findByMediaIds(mediaIds: string[]): Promise<MediaProcessingState[]>;
 	claim(
 		input: MediaProcessingInput,
