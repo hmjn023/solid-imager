@@ -46,6 +46,23 @@ export const mediaProcessingInputSchema = z.object({
 });
 export type MediaProcessingInput = z.infer<typeof mediaProcessingInputSchema>;
 
+/** JSON-safe snapshot; never reconstruct a requested input from a later media row. */
+export const scheduledMediaInputSchema = mediaProcessingInputSchema.extend({
+	modifiedAt: z.iso.datetime(),
+});
+export type ScheduledMediaInput = z.infer<typeof scheduledMediaInputSchema>;
+
+export const mediaProcessingRequestSchema = z.object({
+	input: mediaProcessingInputSchema,
+	taskKind: mediaTaskKindSchema,
+	revision: z.string().min(1),
+	maxAttempts: z.number().int().min(1).max(20).default(5),
+	force: z.boolean().default(false),
+});
+export type MediaProcessingRequest = z.infer<
+	typeof mediaProcessingRequestSchema
+>;
+
 export const processingSettingsSchema = z.object({
 	metadata: z.object({
 		positiveNodeTypes: z.array(z.string()),
@@ -83,6 +100,9 @@ export const mediaProcessingStateSchema = z.object({
 	claimedAt: z.date().nullable(),
 	heartbeatAt: z.date().nullable(),
 	attemptCount: z.number().int().nonnegative(),
+	executionMode: z.enum(["inline", "scheduled"]),
+	availableAt: z.date(),
+	maxAttempts: z.number().int().min(1).max(20),
 	ownerJobId: z.uuid().nullable(),
 	ownerAttemptCount: z.number().int().nullable(),
 	lastError: z.string().nullable(),
@@ -90,10 +110,24 @@ export const mediaProcessingStateSchema = z.object({
 });
 export type MediaProcessingState = z.infer<typeof mediaProcessingStateSchema>;
 
+export const scheduledMediaWorkSchema = z.object({
+	input: mediaProcessingInputSchema,
+	claim: mediaProcessingClaimSchema,
+	state: mediaProcessingStateSchema,
+});
+export type ScheduledMediaWork = z.infer<typeof scheduledMediaWorkSchema>;
+
 export class MediaProcessingSupersededError extends Error {
 	constructor() {
 		super("Media processing input or claim has been superseded");
 		this.name = "MediaProcessingSupersededError";
+	}
+}
+
+export class MediaProcessingScheduledError extends Error {
+	constructor() {
+		super("Media task is owned by the dedicated scheduler");
+		this.name = "MediaProcessingScheduledError";
 	}
 }
 

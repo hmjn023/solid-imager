@@ -1,4 +1,7 @@
-import { CCIP_VECTOR_DIMENSIONS } from "@solid-imager/core/domain/processing/schemas";
+import {
+	CCIP_VECTOR_DIMENSIONS,
+	type ScheduledMediaInput,
+} from "@solid-imager/core/domain/processing/schemas";
 import type { MediaProcessingCheckpoint } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/job-repository";
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
@@ -1053,6 +1056,10 @@ export const mediaProcessingStates = pgTable(
 		claimedAt: timestamp("claimed_at"),
 		heartbeatAt: timestamp("heartbeat_at"),
 		attemptCount: integer("attempt_count").notNull().default(0),
+		executionMode: text("execution_mode").notNull().default("inline"),
+		scheduledInput: jsonb("scheduled_input").$type<ScheduledMediaInput>(),
+		availableAt: timestamp("available_at").notNull().defaultNow(),
+		maxAttempts: integer("max_attempts").notNull().default(5),
 		// Diagnostic owner only: deleting job history must not delete domain state.
 		ownerJobId: uuid("owner_job_id"),
 		ownerAttemptCount: integer("owner_attempt_count"),
@@ -1070,6 +1077,28 @@ export const mediaProcessingStates = pgTable(
 			sql`${table.status} IN ('pending', 'in_progress', 'completed', 'failed')`,
 		),
 		check("media_processing_attempt", sql`${table.attemptCount} >= 0`),
+		check(
+			"media_processing_execution",
+			sql`${table.executionMode} IN ('inline', 'scheduled')`,
+		),
+		check(
+			"media_processing_retry_cap",
+			sql`${table.maxAttempts} BETWEEN 1 AND 20`,
+		),
+		check(
+			"media_processing_scheduled_owner",
+			sql`${table.executionMode} <> 'scheduled' OR (${table.scheduledInput} IS NOT NULL AND ${table.ownerJobId} IS NULL AND ${table.ownerAttemptCount} IS NULL AND ${table.attemptCount} <= ${table.maxAttempts})`,
+		),
+		index("idx_media_processing_due")
+			.on(table.taskKind, table.availableAt)
+			.where(
+				sql`${table.executionMode} = 'scheduled' AND ${table.status} = 'pending'`,
+			),
+		index("idx_media_processing_expired")
+			.on(table.taskKind, table.heartbeatAt)
+			.where(
+				sql`${table.executionMode} = 'scheduled' AND ${table.status} = 'in_progress'`,
+			),
 		check(
 			"media_processing_claim",
 			sql`(${table.status} = 'in_progress' AND ${table.claimToken} IS NOT NULL AND ${table.claimedAt} IS NOT NULL AND ${table.heartbeatAt} IS NOT NULL) OR (${table.status} <> 'in_progress' AND ${table.claimToken} IS NULL AND ${table.claimedAt} IS NULL AND ${table.heartbeatAt} IS NULL)`,

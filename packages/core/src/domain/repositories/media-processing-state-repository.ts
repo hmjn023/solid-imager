@@ -6,6 +6,8 @@ import type {
 	MediaProcessingState,
 	MediaTaskKind,
 	ProcessingOwner,
+	MediaProcessingRequest,
+	ScheduledMediaWork,
 } from "../processing/schemas";
 
 export type ProcessingClaimResult =
@@ -16,6 +18,30 @@ export type ProcessingClaimResult =
 			claim: MediaProcessingClaim;
 			state: MediaProcessingState;
 	  };
+
+export type IMediaProcessingSchedulerRepository =
+	IMediaProcessingStateRepository & {
+		/** Explicit authority transfer. Callers must quiesce/reconcile old producers first. */
+		request(
+			request: MediaProcessingRequest,
+			tx: Transaction,
+		): Promise<MediaProcessingState>;
+		claimDue(
+			taskKinds: MediaTaskKind[],
+			tx: Transaction,
+		): Promise<ScheduledMediaWork | null>;
+		recoverExpired(
+			taskKinds: MediaTaskKind[],
+			limit: number,
+			tx: Transaction,
+		): Promise<number>;
+		settleFailure(
+			claim: MediaProcessingClaim,
+			error: string,
+			retryable: boolean,
+			tx: Transaction,
+		): Promise<MediaProcessingState | null>;
+	};
 
 export type IMediaProcessingStateRepository = {
 	findTaggingResult(
