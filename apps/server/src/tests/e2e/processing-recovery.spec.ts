@@ -2,6 +2,7 @@ import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { ContractRouterClient } from "@orpc/contract";
 import { appContract } from "@solid-imager/core/domain/contract";
+import { ccipFeatureResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
 import {
 	E2E_PROCESSING_JOB_ID,
 	E2E_PRIMARY_MEDIA_ID,
@@ -122,21 +123,28 @@ test("reuses real tagging and CCIP results and restores current AI state after r
 	expect(
 		after.currentProcessingSteps?.find((step) => step.kind === "tagging"),
 	).toEqual(tagging);
-	const ccipResult = await client.ai.ccipFeature({
-		mediaSourceId: E2E_SOURCE_ID,
-		mediaId: E2E_PRIMARY_MEDIA_ID,
-	});
+	const ccipResult = ccipFeatureResponseSchema.parse(
+		await client.ai.ccipFeature({
+			mediaSourceId: E2E_SOURCE_ID,
+			mediaId: E2E_PRIMARY_MEDIA_ID,
+		}),
+	);
 	const ccipBefore = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
 	const ccip = ccipBefore.currentProcessingSteps?.find(
 		(step) => step.kind === "ccip",
 	);
 	expect(ccip).toMatchObject({ status: "completed" });
-	expect(
+	const cachedCcipResult = ccipFeatureResponseSchema.parse(
 		await client.ai.ccipFeature({
 			mediaSourceId: E2E_SOURCE_ID,
 			mediaId: E2E_PRIMARY_MEDIA_ID,
 		}),
-	).toEqual(ccipResult);
+	);
+	// pgvector stores float32 values and can serialize them with fewer decimal
+	// digits than native inference. Compare the stored precision exactly.
+	expect(Array.from(new Float32Array(cachedCcipResult.feature))).toEqual(
+		Array.from(new Float32Array(ccipResult.feature)),
+	);
 	const ccipAfter = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
 	expect(ccipAfter.currentProcessingSteps).toEqual(
 		ccipBefore.currentProcessingSteps,
