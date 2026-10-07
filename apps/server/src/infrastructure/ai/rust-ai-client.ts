@@ -4,7 +4,13 @@ import { createClient } from "@solid-imager/client";
 import type { AiConfig } from "@solid-imager/core/domain/config/config-schema";
 import type { AppContract } from "@solid-imager/core/domain/contract";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
-import type { TaggingProcessingSettings } from "@solid-imager/core/domain/processing/schemas";
+import {
+	CCIP_MODEL,
+	CCIP_EMBEDDING_VERSION,
+	CCIP_VECTOR_DIMENSIONS,
+	type TaggingProcessingSettings,
+	type CcipProcessingSettings,
+} from "@solid-imager/core/domain/processing/schemas";
 import {
 	type CcipDifferenceResponse,
 	type CcipFeatureResponse,
@@ -111,6 +117,17 @@ export class RustAiClient implements IAiClient {
 			provider: this.inferenceOptions.provider ?? "auto",
 			device: this.inferenceOptions.device ?? null,
 			endpoint: this.baseUrl,
+		};
+	}
+
+	getCcipSettings(): CcipProcessingSettings {
+		return {
+			...this.getTaggingSettings(),
+			model: CCIP_MODEL,
+			// Model assets have no separate immutable revision; runtime identifies the native contract.
+			modelVersion: this.baseUrl ? "unknown" : "native-v1",
+			embeddingVersion: CCIP_EMBEDDING_VERSION,
+			dimensions: CCIP_VECTOR_DIMENSIONS,
 		};
 	}
 
@@ -311,7 +328,7 @@ export class RustAiClient implements IAiClient {
 		const { ccipGetEmbedding } = loadDghsImgutils();
 		const embedding = await ccipGetEmbedding(
 			filePath,
-			undefined,
+			CCIP_MODEL,
 			this.inferenceOptions,
 		);
 		return ccipFeatureResponseSchema.parse({

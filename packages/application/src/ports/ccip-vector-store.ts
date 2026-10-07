@@ -1,3 +1,5 @@
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+
 export type CcipVectorRecord = {
 	mediaId: string;
 	mediaSourceId: string;
@@ -6,6 +8,8 @@ export type CcipVectorRecord = {
 	embeddingVersion: number;
 	mediaModifiedAt: Date;
 	extractedAt: Date;
+	/** Null/absent for legacy imports; only a fenced extraction may set this. */
+	processingRevision?: string | null;
 };
 
 export type CcipVectorQuery = {
@@ -31,17 +35,19 @@ export interface ICcipVectorStore {
 	get(
 		mediaId: string,
 		query: CcipVectorReadQuery,
+		tx?: Transaction,
 	): Promise<CcipVectorRecord | null>;
 	getMany(
 		mediaIds: string[],
 		query: CcipVectorReadQuery,
+		tx?: Transaction,
 	): Promise<Map<string, CcipVectorRecord>>;
 	getMetadataMany(
 		mediaIds: string[],
 		query: CcipVectorReadQuery,
 	): Promise<Map<string, CcipVectorMetadata>>;
-	upsert(record: CcipVectorRecord): Promise<void>;
-	upsertMany(records: CcipVectorRecord[]): Promise<void>;
+	upsert(record: CcipVectorRecord, tx?: Transaction): Promise<void>;
+	upsertMany(records: CcipVectorRecord[], tx?: Transaction): Promise<void>;
 	delete(mediaId: string): Promise<void>;
 	deleteBySource(mediaSourceId: string): Promise<void>;
 	listMediaIds(query?: CcipVectorQuery): Promise<string[]>;

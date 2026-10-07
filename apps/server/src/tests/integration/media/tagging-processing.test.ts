@@ -78,6 +78,12 @@ describe("revision-aware tagging", () => {
 	function createService() {
 		const aiClient: IAiClient = {
 			getTaggingSettings: () => settings,
+			getCcipSettings: () => ({
+				...settings,
+				model: "ccip-caformer-24-randaug-pruned",
+				embeddingVersion: 1,
+				dimensions: 768,
+			}),
 			healthCheck: vi.fn().mockResolvedValue(true),
 			tagImage: () => infer("remote-buffer"),
 			tagImageByPath: infer,

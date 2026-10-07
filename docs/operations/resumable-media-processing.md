@@ -2,7 +2,7 @@
 
 ## 対象
 
-#771 の取り込み復旧に加え、#620 の範囲としてメタデータ抽出・サムネイル生成・自動タグ付けの正本を `media_processing_states` に置く。`processMedia` の工程別チェックポイントは個々のジョブの実行記録として残す。アップロード、`registerAndProcess`（監視／インポート経由）、既存ディレクトリ登録では、メディア行・関連情報・処理ジョブを同じDBトランザクションで保存する。
+#771 の取り込み復旧に加え、#620 の範囲としてメタデータ抽出・サムネイル生成・自動タグ付け・full-image CCIP の正本を `media_processing_states` に置く。`processMedia` の工程別チェックポイントは個々のジョブの実行記録として残す。アップロード、`registerAndProcess`（監視／インポート経由）、既存ディレクトリ登録では、メディア行・関連情報・処理ジョブを同じDBトランザクションで保存する。
 
 工程に失敗しても独立した残りの工程は実行する。1工程でも失敗したジョブは `failed` になり、Jobs の詳細に各工程の状態を表示する。原因を解消して **Retry job** を押すと、現在の入力と設定で未完了の工程を再実行する。同じ入力・設定で成功済みの抽出／生成は別ジョブでも再利用する。AI予約の完了は推論完了を意味せず、推論結果は別のAIジョブで確認する。
 
@@ -76,14 +76,32 @@ Jobs の **Current media processing** に **AI tagging** を追加する。AI �
 DELETE FROM media_processing_states WHERE task_kind = 'tagging';
 ```
 
+## migration 0035 と full-image CCIP
+
+0035 は task kind に `ccip` と `ccip_embeddings.processing_revision` を追加する。0033 と同じ停止・バックアップ手順で適用し、旧 worker と混在させない。既存ベクトルは削除せず、revision が不明な旧出力から成功状態を作らない。次の通常要求・一括抽出で一度再抽出し、成功したときに置き換える。
+
+CCIP revision は indexed input、モデル名・モデル版、ネイティブ runtime 版、provider・device・endpoint、embedding version・次元数、前処理/出力契約の `full-ccip-v1` を固定順序で生成する。ネイティブ抽出では `ccip-caformer-24-randaug-pruned` を明示する。`native-v1` はローカル抽出契約の版であり、重みファイルの digest ではない。同名・同版の重みを置換した場合は明示的な再抽出が必要となる。remote / 不明な runtime は別要求の永続キャッシュを使わず、同時要求だけを集約する。
+
+媒体別 direct `ccipFeature` API、取り込み後の `extract_ccip_vector`、複数媒体の子 job、batch を共通 claim に接続する。推論は transaction 外で実行し、ベクトル・full region 更新と完了状態を入力・設定・token/revision・job attempt/取消の検証と同じ transaction で保存する。検証済みの claim の出力は、過去ベクトルの `extracted_at` が未来でも置き換える。raw file の特徴量 API は処理状態を作らない。
+
+キャッシュは成功 state とベクトル双方の revision 一致が条件となる。出力だけ消えた場合は再抽出する。失敗中は以前の出力を残すが ready として再利用しない。類似検索も現在の成功 state と出力 revision が一致する anchor/candidate のみを使う。batch 件数と dispatch は同じページ走査を使い、成功済みだけのページも走査を続ける。複数媒体の子 job は各媒体を独立 transaction で保存し、再試行時は同じ revision の成功済み媒体を再利用する。
+
+Jobs の **Current media processing** に **Full-image CCIP** を表示する。失敗した `extract_ccip_vector` の **Retry job** は CCIP のみを再実行する。`ccipVectorStatus` の成功・失敗・実行中は現在状態を参照し、worker がまだ claim していない待機期間だけ既存 jobs を補助参照する。単体の `mediaId` と複数媒体の `mediaIds`、取消を判定する。状態・失敗は再読込後も復元し、生の例外を状態 API へ返さない。
+
+旧版へ rollback した後に新版へ戻す場合は全 writer を停止し、CCIP 状態だけを削除して次の要求で再構築する。0035 の列・制約と既存ベクトルは残せる。
+
+```sql
+DELETE FROM media_processing_states WHERE task_kind = 'ccip';
+```
+
 ## 保証の範囲と残作業
 
-- #620 のmetadata/thumbnail/taggingを実装。full-image CCIP、regions、#621 のrun/items移行、専用の状態キュー・backoff schedulerは後続。実行の輸送には既存jobs/workerを使う。
+- #620 のmetadata/thumbnail/tagging/full-image CCIPを実装。crop のregion state、#621 のrun/items移行、専用の状態キュー・backoff schedulerは後続。実行の輸送には既存jobs/workerを使うため、generic jobs なしで動作する初期完了条件はまだ満たさない。
 - 内容ハッシュや監視が未検出の実ファイル変更は対象外。DBに新しい入力が記録された後の古い結果を拒否する。複数プロセスは同じ設定・processor版で運用する。
 - DBとファイルシステムは単一トランザクションにならない。2サイズのrename途中や公開直後・DB commit直前の停止では再生成する。2サイズの公開は完全に同時ではない。クラッシュで残った `*.tmp.webp` はworker停止中に除去可能。
 - 同じrevisionの通常要求は実作業を共有する。明示的な再抽出／再生成、キャッシュ欠損、lease失効後には同じrevisionでも計算を再実行し得る。exactly-once実行の保証ではない。
 - アップロードのファイル保存自体はDB commitの前。上書き前のファイル復元、コピー／移動／download全体の原子化は含まない。
-- AI予約は同一ジョブの再試行内で重複を防ぐ。異なるジョブ間の tagging 実作業は state claim で集約するが、ジョブ行自体の全 type dedup、CCIP 出力の保護は #619 / #620 に残る。
+- AI予約は同一ジョブの再試行内で重複を防ぐ。異なるジョブ間の tagging/CCIP 実作業は state claim で集約するが、ジョブ行自体の全 type dedup、retry後の正確なbatch履歴・親件数の再計算は #619 / #621 に残る。
 - 公開DTOには工程種別・状態・試行回数・更新時刻だけを返す。パス、revision、claim token、payload、例外詳細は公開しない。詳細はサーバーログのjobId／stepで調べる。
 
 ## 回帰検証
@@ -91,7 +109,7 @@ DELETE FROM media_processing_states WHERE task_kind = 'tagging';
 ```bash
 bun run check
 bun run test
-bun run --cwd apps/server test:e2e -- processing-recovery.spec.ts realtime-preservation.spec.ts --project=desktop
+bun run --cwd apps/server test:e2e -- ccip-flow.spec.ts processing-recovery.spec.ts realtime-preservation.spec.ts --project=desktop
 ```
 
 `processing-recovery.test.ts` は専用の一時PGliteを使用し、登録のロールバック、工程別Retry、DB再オープン後の復旧、古いattemptとキャンセルの拒否、revision変更、起動時補修の重複抑止、別ジョブとの実作業共有、同時要求、設定変更、古い成功／失敗の拒否、キャッシュ修復、タグの置換、DB制約を検証する。E2Eは実際のfailedジョブをseedし、開発版・本番ビルドで直接アクセス／F5／SPA遷移と実workerのRetryを検証する。既存のSSE再接続テストも併せて実行する。
@@ -102,4 +120,10 @@ bun run --cwd apps/server test:e2e -- processing-recovery.spec.ts realtime-prese
 TAGGING_TEST_POSTGRES_PORT=<isolated-localhost-port> bun run --cwd apps/server test:integration -- src/tests/integration/media/tagging-processing.test.ts
 ```
 
-ブラウザテストは実 PixAI 推論、2回目の結果再利用、Jobs の AI 状態表示と再読込後の復元も検証する。
+`ccip-processing.test.ts` は一時 PGlite で CCIP キャッシュ、legacy 移行、入力/設定変更、stale success/failure、取消/attempt、削除、ベクトルと full region の rollback、batch 再試行、対象走査、待機状態復元を検証する。最大12接続の専用 PostgreSQL でも同じ suite を実行できる。localhost の一時コンテナの DB `ccip_processing_test` / user `ccip_test` / password `ephemeral_ccip_test` を使い、本番設定には接続しない。
+
+```bash
+CCIP_TEST_POSTGRES_PORT=<isolated-localhost-port> bun run --cwd apps/server test:integration -- src/tests/integration/media/ccip-processing.test.ts
+```
+
+ブラウザテストは実 PixAI/CCIP 推論、2回目の結果再利用、Jobs の AI 状態表示と再読込後の復元、CCIP の Find Similar と待機中の F5 も検証する。

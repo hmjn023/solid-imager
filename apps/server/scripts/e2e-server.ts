@@ -1,4 +1,5 @@
 import { appendFileSync, mkdirSync } from "node:fs";
+import { symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -16,6 +17,7 @@ const appRoot = path.resolve(
 );
 const allowedRuntimeRoot = path.join(tmpdir(), "solid-imager-e2e");
 const bunPreloadPath = path.join(appRoot, "scripts/e2e-bun-preload.ts");
+const workspaceNodeModules = path.resolve(appRoot, "../../node_modules");
 
 function getMode(): E2eMode {
 	const mode = process.env.E2E_MODE;
@@ -129,6 +131,13 @@ async function startServer(
 	}
 	if (mode === "production") {
 		await runCommand([process.execPath, "run", "build"], environment);
+		// The /tmp bundle has no workspace ancestors. Resolve external packages
+		// from the installed dependencies, matching the preload and bun.lock.
+		await symlink(
+			workspaceNodeModules,
+			path.join(outputDir, "server", "node_modules"),
+			process.platform === "win32" ? "junction" : "dir",
+		);
 	}
 
 	await runCommand(
@@ -143,6 +152,7 @@ async function startServer(
 				]
 			: [
 					process.execPath,
+					"--no-install",
 					`--preload=${bunPreloadPath}`,
 					path.join(outputDir, "server", "index.mjs"),
 				],

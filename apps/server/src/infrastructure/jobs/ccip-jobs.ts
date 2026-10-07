@@ -1,20 +1,11 @@
-import type { CcipVectorMetadata } from "@solid-imager/application/ports/ccip-vector-store";
-import {
-	CCIP_EMBEDDING_VERSION,
-	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
+import { scanCcipTargetPage } from "./ccip-targets";
+
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
-import {
-	type Job,
-	jobs,
-	mediaSources,
-	medias,
-	type NewJob,
-} from "~/infrastructure/db/schema";
+import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
@@ -120,54 +111,20 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 		),
 	);
 
-	const baseWhere = and(
-		eq(medias.mediaType, "image"),
-		eq(mediaSources.type, "local"),
-		mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
-	);
-
 	let lastSeenId: string | null = null;
 	let dispatchedCount = 0;
 
 	while (true) {
-		const rows = await db
-			.select({
-				id: medias.id,
-				mediaSourceId: medias.mediaSourceId,
-				modifiedAt: medias.modifiedAt,
-			})
-			.from(medias)
-			.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
-			.where(and(baseWhere, lastSeenId ? gt(medias.id, lastSeenId) : undefined))
-			.orderBy(asc(medias.id))
-			.limit(batchSize);
-
-		if (rows.length === 0) {
-			if (dispatchedCount === 0) {
-				logger.info(
-					{ jobId: job.id, parentId, mediaSourceId, force },
-					"No matching images found for batch CCIP extraction",
-				);
-			}
-			break;
-		}
-
-		const mediaIds = rows.map((row) => row.id);
-		const existingById = force
-			? new Map<string, CcipVectorMetadata>()
-			: await ccipVectorService.getMetadataMany(mediaIds);
-
-		const targetRows = rows
-			.filter((row) => !dispatchedMediaIds.has(row.id))
-			.filter((row) => {
-				const record = existingById.get(row.id);
-				return (
-					!record ||
-					record.model !== CCIP_MODEL ||
-					record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
-					record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
-				);
-			});
+		const page = await scanCcipTargetPage({
+			mediaSourceId,
+			force,
+			limit: batchSize,
+			afterId: lastSeenId ?? undefined,
+		});
+		if (!page.nextCursor) break;
+		const targetRows = page.targets.filter(
+			(row) => !dispatchedMediaIds.has(row.id),
+		);
 
 		const rowsBySource = new Map<string, typeof targetRows>();
 		for (const row of targetRows) {
@@ -204,7 +161,7 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 		}
 
 		dispatchedCount += targetRows.length;
-		lastSeenId = rows[rows.length - 1].id;
+		lastSeenId = page.nextCursor;
 
 		logger.info(
 			{
@@ -291,6 +248,7 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 			job.mediaSourceId,
 			mediaId,
 			payload.force,
+			{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
 		);
 		logger.info(
 			{
@@ -335,6 +293,7 @@ async function processCcipExtractionBatch(
 			mediaIds,
 			force,
 			1,
+			{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
 		);
 	} catch (error) {
 		logger.error(

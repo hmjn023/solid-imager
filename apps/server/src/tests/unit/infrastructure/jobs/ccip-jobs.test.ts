@@ -231,6 +231,10 @@ describe("processCcipExtractionJob", () => {
 			mediaIds,
 			false,
 			1,
+			expect.objectContaining({
+				jobId: expect.any(String),
+				attemptCount: expect.any(Number),
+			}),
 		);
 		expect(incrementProgress).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000012",

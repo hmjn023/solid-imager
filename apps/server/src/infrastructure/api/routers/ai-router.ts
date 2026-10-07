@@ -1,10 +1,11 @@
+import {
+	scanCcipTargetPage,
+	findQueuedCcipJob,
+} from "~/infrastructure/jobs/ccip-targets";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { implement, ORPCError } from "@orpc/server";
-import {
-	CCIP_EMBEDDING_VERSION,
-	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
+
 import { createClient } from "@solid-imager/client";
 import type { AppContract } from "@solid-imager/core/domain/contract";
 import { aiContract } from "@solid-imager/core/domain/contract/ai.contract";
@@ -13,12 +14,9 @@ import {
 	type NapiBBox,
 } from "@solid-imager/core/domain/tagging/schemas";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { loadDghsImgutils } from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
-import { db } from "~/infrastructure/db";
-import { jobs, mediaSources, medias } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
@@ -317,7 +315,8 @@ export const aiRouter = os.router({
 			throw new Error("mediaSourceId and mediaId are required");
 		}
 
-		return await taggingService.getCcipFeatureForMedia(mediaSourceId, mediaId);
+		const { record } = await ccipVectorService.extract(mediaSourceId, mediaId);
+		return { feature: record.vector };
 	}),
 
 	ccipDifference: os.ccipDifference.handler(
@@ -404,29 +403,12 @@ export const aiRouter = os.router({
 				input.mediaSourceId,
 				input.mediaId,
 			);
-			const latestJob = await db.query.jobs.findFirst({
-				where: and(
-					eq(jobs.type, "extract_ccip_vector"),
-					eq(jobs.mediaSourceId, input.mediaSourceId),
-					sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
-				),
-				orderBy: desc(jobs.createdAt),
-			});
-			if (status.status === "ready" || status.status === "stale") {
-				return status;
-			}
-			if (
-				latestJob?.status === "pending" ||
-				latestJob?.status === "in_progress"
-			) {
-				return { status: "processing" as const, jobId: latestJob.id };
-			}
-			if (latestJob?.status === "failed") {
-				return {
-					status: "failed" as const,
-					jobId: latestJob.id,
-					error: latestJob.error ?? "CCIP vector extraction failed",
-				};
+			if (status.status !== "ready" && status.status !== "processing") {
+				const queued = await findQueuedCcipJob(
+					input.mediaSourceId,
+					input.mediaId,
+				);
+				if (queued) return { status: "processing" as const, jobId: queued.id };
 			}
 			return status;
 		} catch (error) {
@@ -468,38 +450,19 @@ export const aiRouter = os.router({
 	}),
 
 	scanBatchCcipTargets: os.scanBatchCcipTargets.handler(async ({ input }) => {
-		const rows = await db
-			.select({
-				id: medias.id,
-				modifiedAt: medias.modifiedAt,
-			})
-			.from(medias)
-			.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
-			.where(
-				and(
-					eq(medias.mediaType, "image"),
-					eq(mediaSources.type, "local"),
-					input.mediaSourceId
-						? eq(medias.mediaSourceId, input.mediaSourceId)
-						: undefined,
-				),
-			)
-			.orderBy(asc(medias.id));
-		if (input.force) return { count: rows.length };
-		const records = new Map(
-			(await ccipVectorService.listRecords(input.mediaSourceId)).map(
-				(record) => [record.mediaId, record],
-			),
-		);
-		const count = rows.filter((row) => {
-			const record = records.get(row.id);
-			return (
-				!record ||
-				record.model !== CCIP_MODEL ||
-				record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
-				record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
-			);
-		}).length;
+		let count = 0;
+		let afterId: string | undefined;
+		for (;;) {
+			const page = await scanCcipTargetPage({
+				mediaSourceId: input.mediaSourceId,
+				force: input.force ?? false,
+				limit: 1000,
+				afterId,
+			});
+			count += page.targets.length;
+			if (!page.nextCursor) break;
+			afterId = page.nextCursor;
+		}
 		return { count };
 	}),
 

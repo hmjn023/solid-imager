@@ -1,3 +1,4 @@
+import { CCIP_VECTOR_DIMENSIONS } from "@solid-imager/core/domain/processing/schemas";
 import type { MediaProcessingCheckpoint } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/job-repository";
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
@@ -25,7 +26,7 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 
-export const CCIP_VECTOR_DIMENSIONS = 768;
+export { CCIP_VECTOR_DIMENSIONS } from "@solid-imager/core/domain/processing/schemas";
 
 function isCcipVector(value: unknown): value is number[] {
 	return (
@@ -296,6 +297,7 @@ export const ccipEmbeddings = pgTable(
 		model: text("model").notNull(),
 		embeddingVersion: integer("embedding_version").notNull(),
 		mediaModifiedAt: timestamp("media_modified_at").notNull(),
+		processingRevision: text("processing_revision"),
 		extractedAt: timestamp("extracted_at").notNull(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1061,7 +1063,7 @@ export const mediaProcessingStates = pgTable(
 		primaryKey({ columns: [table.mediaId, table.taskKind] }),
 		check(
 			"media_processing_kind",
-			sql`${table.taskKind} IN ('metadata', 'thumbnail', 'tagging')`,
+			sql`${table.taskKind} IN ('metadata', 'thumbnail', 'tagging', 'ccip')`,
 		),
 		check(
 			"media_processing_status",

@@ -2,6 +2,7 @@ import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
 import type { ContractRouterClient } from "@orpc/contract";
 import { appContract } from "@solid-imager/core/domain/contract";
+import { ccipFeatureResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
 import {
 	E2E_PROCESSING_JOB_ID,
 	E2E_PRIMARY_MEDIA_ID,
@@ -95,7 +96,7 @@ test("reloads failed processing steps and retries only the unfinished step", asy
 	await expect(steps).toContainText("ThumbnailsCompleted");
 });
 
-test("reuses real tagging results and restores current AI state after reload", async ({
+test("reuses real tagging and CCIP results and restores current AI state after reload", async ({
 	page,
 	baseURL,
 }) => {
@@ -122,6 +123,32 @@ test("reuses real tagging results and restores current AI state after reload", a
 	expect(
 		after.currentProcessingSteps?.find((step) => step.kind === "tagging"),
 	).toEqual(tagging);
+	const ccipResult = ccipFeatureResponseSchema.parse(
+		await client.ai.ccipFeature({
+			mediaSourceId: E2E_SOURCE_ID,
+			mediaId: E2E_PRIMARY_MEDIA_ID,
+		}),
+	);
+	const ccipBefore = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
+	const ccip = ccipBefore.currentProcessingSteps?.find(
+		(step) => step.kind === "ccip",
+	);
+	expect(ccip).toMatchObject({ status: "completed" });
+	const cachedCcipResult = ccipFeatureResponseSchema.parse(
+		await client.ai.ccipFeature({
+			mediaSourceId: E2E_SOURCE_ID,
+			mediaId: E2E_PRIMARY_MEDIA_ID,
+		}),
+	);
+	// pgvector stores float32 values and can serialize them with fewer decimal
+	// digits than native inference. Compare the stored precision exactly.
+	expect(Array.from(new Float32Array(cachedCcipResult.feature))).toEqual(
+		Array.from(new Float32Array(ccipResult.feature)),
+	);
+	const ccipAfter = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
+	expect(ccipAfter.currentProcessingSteps).toEqual(
+		ccipBefore.currentProcessingSteps,
+	);
 	await page.goto("/jobs");
 	await waitForAppHydration(page);
 	const selectJob = () =>
@@ -135,8 +162,10 @@ test("reuses real tagging results and restores current AI state after reload", a
 		.getByRole("region", { name: "Current media processing" })
 		.filter({ visible: true });
 	await expect(current).toContainText("AI taggingCompleted");
+	await expect(current).toContainText("Full-image CCIPCompleted");
 	await page.reload();
 	await waitForAppHydration(page);
 	await selectJob();
 	await expect(current).toContainText("AI taggingCompleted");
+	await expect(current).toContainText("Full-image CCIPCompleted");
 });

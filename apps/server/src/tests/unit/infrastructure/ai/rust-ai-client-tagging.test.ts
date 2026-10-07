@@ -7,7 +7,7 @@ vi.mock("~/infrastructure/ai/dghs-imgutils-loader", () => ({
 	},
 }));
 
-describe("tagging identity when native inference is unavailable", () => {
+describe("AI identity when native inference is unavailable", () => {
 	it("can claim a task before inference reports the native loader failure", async () => {
 		const client = new RustAiClient({ provider: "cpu" });
 		expect(client.getTaggingSettings()).toMatchObject({
@@ -19,5 +19,19 @@ describe("tagging identity when native inference is unavailable", () => {
 		await expect(client.tagImageByPath("/fixture/image.png")).rejects.toThrow(
 			"native runtime unavailable",
 		);
+	});
+	it("exposes CCIP identity even when loading the native runtime fails", async () => {
+		const client = new RustAiClient({ provider: "cpu" });
+		expect(client.getCcipSettings()).toMatchObject({
+			model: "ccip-caformer-24-randaug-pruned",
+			modelVersion: "native-v1",
+			runtimeVersion: "unknown",
+			embeddingVersion: 1,
+			dimensions: 768,
+			endpoint: "",
+		});
+		await expect(
+			client.extractCcipFeatureByPath("/fixture/image.png"),
+		).rejects.toThrow("native runtime unavailable");
 	});
 });
