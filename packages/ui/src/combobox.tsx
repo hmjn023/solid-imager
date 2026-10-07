@@ -203,6 +203,13 @@ const ComboboxTrigger = <T extends ValidComponent = "button">(
 type ComboboxContentProps<T extends ValidComponent = "div"> =
 	ComboboxPrimitive.ComboboxContentProps<T> & { class?: string | undefined };
 
+const preventInputBlur = (event: MouseEvent) => {
+	// Touch selection is committed on click, after the compatibility mousedown.
+	// Keep input focus so blur cannot reset the query and replace the tapped item.
+	// Preventing mousedown leaves native touch scrolling and click intact.
+	event.preventDefault();
+};
+
 const ComboboxContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, ComboboxContentProps<T>>,
 ) => {
@@ -216,7 +223,10 @@ const ComboboxContent = <T extends ValidComponent = "div">(
 				)}
 				{...others}
 			>
-				<ComboboxPrimitive.Listbox class="m-0 p-1" />
+				<ComboboxPrimitive.Listbox
+					class="m-0 p-1"
+					onMouseDown={preventInputBlur}
+				/>
 			</ComboboxPrimitive.Content>
 		</ComboboxPrimitive.Portal>
 	);
@@ -249,6 +259,7 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 			>
 				<ComboboxPrimitive.Listbox
 					class="m-0 overflow-auto p-1"
+					onMouseDown={preventInputBlur}
 					ref={(el: Element) => {
 						setScrollEl(el as HTMLUListElement);
 					}}
