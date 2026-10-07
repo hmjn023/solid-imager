@@ -94,9 +94,32 @@ Jobs の **Current media processing** に **Full-image CCIP** を表示する。
 DELETE FROM media_processing_states WHERE task_kind = 'ccip';
 ```
 
+## migration 0036 と専用 scheduler の基盤
+
+0036 は `execution_mode`（既存行は `inline`）、JSON の要求入力 snapshot、`available_at`、`max_attempts`（既定5、1〜20）と due/expired 検索の部分 index を追加する。既存行の実行権は変更せず、producer と server startup は引き続き既存 jobs を使用する。この PR では本番で専用 scheduler を起動しない。migration は停止・バックアップ手順で適用する。
+
+専用経路は `IMediaProcessingSchedulerRepository.request` で媒体×工程の要求を永続化し、`MediaProcessingScheduler.runOnce()` で登録された handler の1件を処理する。host は AI と file 用の runner を分け、各 pool の枠内で呼び出す。未登録の task は取得・回復しない。generic job 行は必要ない。handler は既存の canonical revision を使い、`prepare` で transaction 外の抽出・推論・一時生成、`commit(tx)` で業務出力の保存・公開、`cleanup` で一時出力の除去、`afterCommit` で通知を行う。準備途中の失敗時の一時ファイル除去は handler が担当する。設定変更で要求 revision が一致しなくなった場合は失敗として停止し、producer が現在の revision を再要求する。
+
+- claim は `available_at <= DB clock` の pending 行を `FOR UPDATE OF media SKIP LOCKED` で取得し、token と試行回数を同じ transaction で更新する。media → state のロック順を揃え、要求・完了との deadlock を避ける。対象入力が変更・破損していれば実行せず failed にする。
+- handler が明示的に transient と分類した失敗だけ再試行する。unknown/invalid input と設定の不一致は恒久失敗。delay は `min(5分, 1秒 × 2^(attempt−1) × 0.75〜1.25)`、日時と jitter の計算は DB 側で行う。
+- lease は120秒、heartbeat は30秒。期限切れ heartbeat は lease を復活させない。runner は1回につき最大25件の期限切れ claim を回収し、試行上限未満なら backoff 後の pending、上限なら failed にする。クラッシュも1回の試行として数える。
+- 同 revision の通常要求は pending/backoff、実行中、成功、terminal failure を維持する。force も pending/実行中を共有し、待ち時間や上限を迂回しない。成功・terminal failure に対する明示的な force、または新 revision は回数を0にして再予約する。
+- 新要求は旧 token を失効させる。旧完了・失敗・heartbeat は新要求へ書けない。scheduled 行は既存 `claim` で取得できず、専用実行権を取り返せない。結果と完了状態は同じ fenced transaction で保存し、完了更新時にも lease を確認する。イベントや cleanup の失敗で成功結果を再試行しない。
+
+### 後続 producer 切替の手順と rollback
+
+`request` は明示的な行単位の実行権移譲であり、feature flag だけの切替として使わない。producer 移行 PR で以下を実装・検証する。
+
+1. upload、watcher、copy/move、maintenance、restore/import、download、direct API、batch の対象工程への投入と旧 worker を停止する。既存 queued/in-progress job を列挙し、取消・完了・再要求対象を reconcile する。
+2. 全プロセスを0036の実行権を確認する版以降に揃え、計算中の旧 worker が終了したことを確認する。古い版は `execution_mode` を見ないため mixed-version 運用をしない。
+3. 現在の入力・設定から `request` を同じ media 更新 transaction 内で行う。専用 runner と新 producer だけを起動する。旧 queued job を後から再開させない。direct API も専用要求・完了待ちへ移す。
+4. DB の pending/available_at/attempt/last_error と保存結果、再起動後の復元を確認する。正確な batch 対象・履歴は #621 の run/items で管理する。
+
+rollback でも双方の投入と worker を停止し、実行中の計算を終了させ、DB・filesystem の出力と旧 job を reconcile する。専用要求の snapshot をバックアップして旧 producer 用に再予約する対象を確定し、旧経路へ戻す対象の scheduled 状態を停止中に無効化してから旧 producer を再開する。単に mode を変更したり、専用行を残したまま旧 worker を動かしたりしない。まだ専用要求のない基盤段階では追加列・index を残して旧版へ戻せる。
+
 ## 保証の範囲と残作業
 
-- #620 のmetadata/thumbnail/tagging/full-image CCIPを実装。crop のregion state、#621 のrun/items移行、専用の状態キュー・backoff schedulerは後続。実行の輸送には既存jobs/workerを使うため、generic jobs なしで動作する初期完了条件はまだ満たさない。
+- #620 のmetadata/thumbnail/tagging/full-image CCIPの状態と専用 scheduler/retry 基盤を実装。4工程の専用 handler・全producer・API/UI と server startup の切替、crop のregion state、#621 のrun/items移行は後続。既存の実行経路は jobs/worker を使うため、generic jobs なしで全工程が動作する初期完了条件はまだ満たさない。
 - 内容ハッシュや監視が未検出の実ファイル変更は対象外。DBに新しい入力が記録された後の古い結果を拒否する。複数プロセスは同じ設定・processor版で運用する。
 - DBとファイルシステムは単一トランザクションにならない。2サイズのrename途中や公開直後・DB commit直前の停止では再生成する。2サイズの公開は完全に同時ではない。クラッシュで残った `*.tmp.webp` はworker停止中に除去可能。
 - 同じrevisionの通常要求は実作業を共有する。明示的な再抽出／再生成、キャッシュ欠損、lease失効後には同じrevisionでも計算を再実行し得る。exactly-once実行の保証ではない。
@@ -127,3 +150,9 @@ CCIP_TEST_POSTGRES_PORT=<isolated-localhost-port> bun run --cwd apps/server test
 ```
 
 ブラウザテストは実 PixAI/CCIP 推論、2回目の結果再利用、Jobs の AI 状態表示と再読込後の復元、CCIP の Find Similar と待機中の F5 も検証する。
+
+`processing-scheduler.test.ts` は新要求・重複取得・DB時計・due時刻・retry/backoff/cap・期限回収・旧token拒否・業務出力のrollback・専用/旧経路の実行権を一時 PGlite で確認する。実DBでの SKIP LOCKED と時計ずれは最大8接続の専用 PostgreSQL 18 + pgvector で検証する。localhost の一時コンテナを DB `processing_scheduler_test` / user `processing_test` / password `ephemeral_processing_test` で起動し、本番設定には接続しない。
+
+```bash
+PROCESSING_TEST_POSTGRES_PORT=<isolated-localhost-port> bun run --cwd apps/server test:integration -- src/tests/integration/media/processing-scheduler.test.ts
+```
