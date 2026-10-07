@@ -13,5 +13,5 @@ export function bootstrapServerRoute(): void {
 		initServices();
 		return;
 	}
-	startBackgroundWorker();
+	void startBackgroundWorker().catch(() => undefined);
 }

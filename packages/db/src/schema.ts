@@ -1043,6 +1043,9 @@ export const mediaCollections = pgTable(
 export const mediaProcessingStates = pgTable(
 	"media_processing_states",
 	{
+		requestId: uuid("request_id")
+			.notNull()
+			.default(sql`uuidv7()`),
 		mediaId: uuid("media_id")
 			.notNull()
 			.references(() => medias.id, { onDelete: "cascade" }),

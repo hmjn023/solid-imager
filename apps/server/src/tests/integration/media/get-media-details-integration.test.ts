@@ -34,6 +34,8 @@ vi.mock("~/infrastructure/db/index", async () => {
 
 	const pg = createPglite();
 	const dbInstance = drizzleFunc(pg, { schema: schemaModule });
+	const { migrate } = await import("drizzle-orm/pglite/migrator");
+	await migrate(dbInstance, { migrationsFolder: "drizzle" });
 
 	// Expose the testDb instance to the global scope for the test file
 	(global as any).vitestTestDb = pg;

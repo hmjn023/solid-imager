@@ -380,15 +380,18 @@ describe("revision-aware full-image CCIP", () => {
 	it("preserves independent task states", async () => {
 		const data = await input();
 		await transactionManager.transaction(async (tx) => {
-			const claim = await processingStateRepo.claim(
-				data,
-				"metadata",
-				"metadata-revision",
-				null,
-				false,
+			await processingStateRepo.request(
+				{
+					input: data,
+					taskKind: "metadata",
+					revision: "metadata-revision",
+					maxAttempts: 5,
+					force: false,
+				},
 				tx,
 			);
-			if (claim.status !== "claimed") throw new Error("claim");
+			const claim = await processingStateRepo.claimDue(["metadata"], tx);
+			if (!claim) throw new Error("claim");
 			await processingStateRepo.commit(data, claim.claim, async () => {}, tx);
 		});
 		infer.mockRejectedValueOnce(new Error("CCIP temporary failure"));

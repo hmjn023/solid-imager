@@ -2,11 +2,13 @@
 
 ## 対象
 
-#771 の取り込み復旧に加え、#620 の範囲としてメタデータ抽出・サムネイル生成・自動タグ付け・full-image CCIP の正本を `media_processing_states` に置く。`processMedia` の工程別チェックポイントは個々のジョブの実行記録として残す。アップロード、`registerAndProcess`（監視／インポート経由）、既存ディレクトリ登録では、メディア行・関連情報・処理ジョブを同じDBトランザクションで保存する。
+#771 の取り込み復旧に加え、#620 のメタデータ抽出・サムネイル生成・自動タグ付け・full-image CCIP の正本を `media_processing_states` に置く。0037以降、metadata/thumbnail の計算は専用 scheduler だけが行う。tagging/CCIP は既存AIジョブと共通claimを引き続き使用する。
 
-工程に失敗しても独立した残りの工程は実行する。1工程でも失敗したジョブは `failed` になり、Jobs の詳細に各工程の状態を表示する。原因を解消して **Retry job** を押すと、現在の入力と設定で未完了の工程を再実行する。同じ入力・設定で成功済みの抽出／生成は別ジョブでも再利用する。AI予約の完了は推論完了を意味せず、推論結果は別のAIジョブで確認する。
+取り込み、upload/scan、watcher更新、copy/moveではメディアと専用要求を同じDB transactionで保存する。新しい `processMedia` ジョブは作らない。AIが有効なら同じtransactionで既存AIジョブを予約する。同じ専用要求を再投入してもAI予約を重ねない。metadata詳細の補完・明示的再抽出は要求を保存して完了を待つ。thumbnailキャッシュ欠損は専用要求だけを保存する。
 
-中断された `in_progress` ジョブは既存workerのstale recoveryによって再キューされる。DB上のチェックポイントは保持され、再claimでattemptが増える。古いattemptやキャンセル済みattemptは、工程結果の保存・サムネイルの公開・heartbeat更新を拒否される。起動時の補修は同じメディア・入力・設定の未完了／失敗ジョブが担当している工程を再予約しない。画像や設定が変わった要求は別に予約できる。失敗ジョブは利用者の明示的なRetryを待つ。
+Jobs の **Current media processing** は現在の媒体×工程の状態、**Processing steps** は選択した旧ジョブの履歴である。旧 `processMedia` / `generate_thumbnail` は専用要求を引き継いで完了を観測する互換経路となる。自動stale復旧はfile処理のterminal failureや試行上限をリセットしない。明示Retryは内部payloadへ印を付け、再要求と同じtransactionで消費する。旧ジョブの取消は観測を停止するが、他の呼び出し元と共有する専用要求は取り消さない。失敗した互換ジョブの **Retry job** は失敗工程を明示的に再要求する。通常の補修はterminal failureとbackoffを維持する。
+
+以下0032〜0036の記述は各migration時点の設計・移行履歴。現在のfile工程の切替と運用は0037の節を参照する。
 
 ## migration 0032
 
@@ -117,9 +119,27 @@ DELETE FROM media_processing_states WHERE task_kind = 'ccip';
 
 rollback でも双方の投入と worker を停止し、実行中の計算を終了させ、DB・filesystem の出力と旧 job を reconcile する。専用要求の snapshot をバックアップして旧 producer 用に再予約する対象を確定し、旧経路へ戻す対象の scheduled 状態を停止中に無効化してから旧 producer を再開する。単に mode を変更したり、専用行を残したまま旧 worker を動かしたりしない。まだ専用要求のない基盤段階では追加列・index を残して旧版へ戻せる。
 
+## migration 0037 と metadata/thumbnail の本番切替
+
+0037は全状態行に `request_id` を追加する。要求IDは自動retry/lease回収中には維持し、新revisionまたは完了・失敗後のforceで更新する。同revisionでも古いbatch/互換ジョブの観測を新しい再生成へ結び付けない。claim tokenは各実行attemptごとに変わる。
+
+全writerと旧版workerを停止して0037までmigrationを適用し、同じ版・設定のプロセスだけを起動する。起動時にinline file状態をkeyset走査し、現在のindexed inputとcanonical設定で専用要求へ移す。旧claimを失効させ、同revisionの成功済み出力とterminal failureは維持する。欠損した成功出力だけ補修し、未完了・入力変更はpendingにする。旧汎用ジョブは残して観測処理として再開する。状態のない旧queuedジョブも実行時に専用要求を作る。
+
+metadataは `jobs.concurrency` 枠、thumbnailは独立した1枠で実行する。AIと汎用ジョブのpoolは従来どおり。HMRは前世代のfile workerを停止・drainしてから引き継ぐ。SIGINT/SIGTERMもfile workerの現在の計算とheartbeatを維持して完了を待つ。強制終了ではlease回収を使う。新コードではinlineのmetadata/thumbnail claimを行単位のmodeに関わらず拒否する。旧版binaryはこの制限を知らないので混在運用しない。
+
+metadata抽出とthumbnailの一時生成はtransaction外、結果保存・生成タグの置換・状態完了は専用claimでfenceする。thumbnailの一時名はrevision/tokenを含む。通知はcommit後に既存sourceイベントで配信する。ファイル処理は `EAGAIN` / `EBUSY` / `EMFILE` / `ENFILE` / `ETIMEDOUT` / `ECONNRESET` の明示的な一時エラーだけ自動retryする。不明なエラーや不正入力はfailedで停止する。
+
+restoreは復元したmetadata/関連情報を保ち、同じ復元transaction内でthumbnailだけを要求する。一括thumbnail生成は親・子ジョブを進捗観測として残し、実際の生成は専用workerが行う。既存の重複子予約・親件数・Retry履歴の制約は #621 のrun/items移行まで残る。正確なbatch履歴の実装とは扱わない。
+
+要求IDのない旧thumbnailジョブも、初回予約と同じtransactionで要求IDをpayloadへ保存し、forceを消費する。観測ジョブがクラッシュして自動再開しても、同じ要求の完了・失敗を観測し、forceを繰り返さない。
+
+直接APIと互換ジョブは最大120秒待つ。時間切れでも要求はDBに残り、workerが継続する。公開APIの成功レスポンスや既存SSE契約は変更しない。専用要求の一括一覧・待機時刻・terminal失敗を管理する新UIは後続となる。
+
+rollbackは全writer/workerを停止・drainし、DBとfilesystemを照合する。専用要求snapshotと旧ジョブを保存し、旧producerで再予約する対象を確定してからfile状態を無効化して旧版を再開する。modeだけ変更して両workerを動かさない。
+
 ## 保証の範囲と残作業
 
-- #620 のmetadata/thumbnail/tagging/full-image CCIPの状態と専用 scheduler/retry 基盤を実装。4工程の専用 handler・全producer・API/UI と server startup の切替、crop のregion state、#621 のrun/items移行は後続。既存の実行経路は jobs/worker を使うため、generic jobs なしで全工程が動作する初期完了条件はまだ満たさない。
+- metadata/thumbnailは専用handler・producer・API・server startupを切替済み。tagging/full-image CCIPの専用実行、専用要求の管理UI、cropのregion state、#621のrun/itemsは後続。#620全体は完了していない。
 - 内容ハッシュや監視が未検出の実ファイル変更は対象外。DBに新しい入力が記録された後の古い結果を拒否する。複数プロセスは同じ設定・processor版で運用する。
 - DBとファイルシステムは単一トランザクションにならない。2サイズのrename途中や公開直後・DB commit直前の停止では再生成する。2サイズの公開は完全に同時ではない。クラッシュで残った `*.tmp.webp` はworker停止中に除去可能。
 - 同じrevisionの通常要求は実作業を共有する。明示的な再抽出／再生成、キャッシュ欠損、lease失効後には同じrevisionでも計算を再実行し得る。exactly-once実行の保証ではない。
@@ -135,7 +155,7 @@ bun run test
 bun run --cwd apps/server test:e2e -- ccip-flow.spec.ts processing-recovery.spec.ts realtime-preservation.spec.ts --project=desktop
 ```
 
-`processing-recovery.test.ts` は専用の一時PGliteを使用し、登録のロールバック、工程別Retry、DB再オープン後の復旧、古いattemptとキャンセルの拒否、revision変更、起動時補修の重複抑止、別ジョブとの実作業共有、同時要求、設定変更、古い成功／失敗の拒否、キャッシュ修復、タグの置換、DB制約を検証する。E2Eは実際のfailedジョブをseedし、開発版・本番ビルドで直接アクセス／F5／SPA遷移と実workerのRetryを検証する。既存のSSE再接続テストも併せて実行する。
+`processing-recovery.test.ts` は一時PGliteでproducer予約のrollback、独立工程と明示Retry、DB再オープン、互換観測の取消・再試行、古い結果の拒否、設定変更、backoff/terminal状態の維持、cache補修、inline移行、タグ置換を検証する。`PROCESSING_TEST_POSTGRES_PORT` を指定すれば同じ一時PostgreSQLへ接続し、再オープン専用ケースだけ省略する。scheduler suiteと同じDBを使うため、両suiteは別コマンドで順に実行する。worker unit testはpool分離・drain・poll errorとconfig変更を確認する。E2Eは開発版/新しい本番ビルドで直接アクセス/F5/SPA、旧failedジョブのRetry、SSE再接続、実AI推論を確認する。
 
 `tagging-processing.test.ts` は一時PGliteで推論レスポンス/空結果の再利用、入力・モデル設定変更、同時要求、手動情報の維持、全出力のロールバック、失敗と再試行、取消、削除、batch対象/ページングを検証する。同じスイートを一時 PostgreSQL 18 + pgvector へ最大12接続で実行できる。専用のローカルテストコンテナを `tagging_processing_test` DB / `tagging_test` user / `ephemeral_tagging_test` password で起動し、割り当てた localhost ポートだけを `TAGGING_TEST_POSTGRES_PORT` に指定する。本番 DB の接続設定は使わない。
 

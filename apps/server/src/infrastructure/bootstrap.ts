@@ -5,6 +5,7 @@ import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manag
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
+import { MediaFileWorker } from "~/infrastructure/jobs/media-file-worker";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import {
 	deleteThumbnail,
@@ -141,6 +142,10 @@ export function initServices() {
 			RealtimeEventBus.publishSource(mediaSourceId, event, data),
 	});
 	services.registerMediaProcessingService(mediaProcessingService);
+	const fileWorker = new MediaFileWorker(mediaProcessingService);
+	fileWorker.updateConfig(config);
+	configService.onChange((newConfig) => fileWorker.updateConfig(newConfig));
+	services.registerMediaFileWorker(fileWorker);
 	configService.onChange((newConfig) =>
 		mediaProcessingService.updateConfig({
 			enableAutoTagging: newConfig.jobs.enableAutoTagging,
@@ -153,58 +158,60 @@ export function initServices() {
  * Starts background worker and maintenance tasks.
  * This should only be called once in the main server process, never during SSR request processing.
  */
-export function startBackgroundWorker() {
-	if (isWorkerStarted) {
-		return;
-	}
+type WorkerGlobal = typeof globalThis & {
+	__JOB_WORKER__?: JobWorker;
+	__MEDIA_FILE_WORKER__?: MediaFileWorker;
+	__WORKER_STARTUP__?: Promise<void>;
+	__BOOTSTRAP_CLEANUP_REGISTERED__?: boolean;
+};
+export function startBackgroundWorker(): Promise<void> {
+	const host = globalThis as WorkerGlobal;
+	if (isWorkerStarted) return host.__WORKER_STARTUP__ ?? Promise.resolve();
 	isWorkerStarted = true;
-
-	initServices(); // Ensure services are initialized
-
+	initServices();
 	const jobWorker = services.getJobWorker();
-	const jobRepo = services.getJobRepository();
-
-	// Singleton management for JobWorker to prevent duplicates during HMR
-	const globalAny = globalThis as typeof globalThis & {
-		__JOB_WORKER__?: JobWorker;
-		__BOOTSTRAP_CLEANUP_REGISTERED__?: boolean;
+	const fileWorker = services.getMediaFileWorker();
+	const previousStart = host.__WORKER_STARTUP__;
+	const startup = async () => {
+		await previousStart?.catch(() => undefined);
+		host.__JOB_WORKER__?.stop();
+		await host.__MEDIA_FILE_WORKER__?.stop();
+		// Deployments must stop old-version writers before starting this version.
+		await services.getMediaProcessingService().reconcileFileTasks();
+		host.__JOB_WORKER__ = jobWorker;
+		host.__MEDIA_FILE_WORKER__ = fileWorker;
+		fileWorker.start();
+		jobWorker.start();
+		const maintenance = new MaintenanceService(
+			services.getMediaRepository(),
+			services.getMediaProcessingService(),
+			services.getSourceRepository(),
+		);
+		void maintenance
+			.performStartupChecks()
+			.catch((err) =>
+				logger.error({ err }, "Maintenance startup checks failed"),
+			);
 	};
-	if (globalAny.__JOB_WORKER__) {
-		globalAny.__JOB_WORKER__.stop();
-	}
-
-	globalAny.__JOB_WORKER__ = jobWorker;
-	jobWorker.start();
-
-	// Initialize MaintenanceService and perform startup checks (background)
-	const maintenanceService = new MaintenanceService(
-		services.getMediaRepository(),
-		jobRepo,
-		services.getSourceRepository(),
-	);
-
-	maintenanceService.performStartupChecks().catch((err) => {
-		logger.error({ err }, "Maintenance startup checks failed");
+	host.__WORKER_STARTUP__ = startup().catch((err) => {
+		isWorkerStarted = false;
+		logger.error({ err }, "Background worker startup failed");
+		throw err;
 	});
-
-	// Cleanup on process exit
-	if (!globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__) {
-		const cleanup = () => {
-			if (globalAny.__JOB_WORKER__) {
-				globalAny.__JOB_WORKER__.stop();
-			}
+	if (!host.__BOOTSTRAP_CLEANUP_REGISTERED__) {
+		const cleanup = async () => {
+			await host.__WORKER_STARTUP__?.catch(() => undefined);
+			host.__JOB_WORKER__?.stop();
+			await host.__MEDIA_FILE_WORKER__?.stop();
+			process.exit(0);
 		};
-
 		process.on("SIGINT", () => {
-			cleanup();
-			process.exit(0);
+			void cleanup();
 		});
-
 		process.on("SIGTERM", () => {
-			cleanup();
-			process.exit(0);
+			void cleanup();
 		});
-
-		globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
+		host.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
 	}
+	return host.__WORKER_STARTUP__;
 }

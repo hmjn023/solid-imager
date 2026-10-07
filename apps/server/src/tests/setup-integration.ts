@@ -205,7 +205,7 @@ beforeAll(async () => {
 
 	// 2. Then bootstrap the application
 	const { startBackgroundWorker } = await import("~/infrastructure/bootstrap");
-	startBackgroundWorker();
+	await startBackgroundWorker();
 });
 
 config({ path: path.resolve(process.cwd(), ".env") });

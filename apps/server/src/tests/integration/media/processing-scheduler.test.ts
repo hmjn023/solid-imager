@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -6,6 +7,7 @@ import {
 	type ScheduledMediaTaskHandler,
 } from "@solid-imager/application/services/media-processing-scheduler";
 import {
+	serializeMediaProcessingInput,
 	MediaProcessingScheduledError,
 	MediaProcessingSupersededError,
 	type MediaProcessingInput,
@@ -230,7 +232,7 @@ describe("dedicated media processing scheduler", () => {
 	});
 	it("claims only registered tasks and ignores inline work", async () => {
 		await transactions.transaction((tx) =>
-			repo.claim(input, "metadata", "v1", null, false, tx),
+			repo.claim(input, "tagging", "v1", null, false, tx),
 		);
 		await request("v1", { kind: "ccip" });
 		expect(await claim()).toBeNull();
@@ -322,10 +324,25 @@ describe("dedicated media processing scheduler", () => {
 		expect((await state())?.completedRevision).toBe("v2");
 	});
 	it("transfers authority and prevents the old inline path from taking it back", async () => {
-		const old = await transactions.transaction((tx) =>
-			repo.claim(input, "metadata", "v1", null, false, tx),
-		);
-		if (old.status !== "claimed") throw new Error("claim");
+		const token = randomUUID();
+		await database.insert(schema.mediaProcessingStates).values({
+			mediaId: input.mediaId,
+			taskKind: "metadata",
+			status: "in_progress",
+			inputRevision: serializeMediaProcessingInput(input),
+			requestedRevision: "v1",
+			claimToken: token,
+			claimedAt: new Date(),
+			heartbeatAt: new Date(),
+		});
+		const old = {
+			claim: {
+				mediaId: input.mediaId,
+				taskKind: "metadata" as const,
+				revision: "v1",
+				token,
+			},
+		};
 		await request();
 		expect(await repo.heartbeat(old.claim)).toBe(false);
 		expect(

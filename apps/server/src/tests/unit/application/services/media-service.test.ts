@@ -183,6 +183,7 @@ describe("MediaService Unit Tests", () => {
 		} as unknown as IIpRepository;
 
 		localMockMediaProcessingService = {
+			requestProcessing: vi.fn(),
 			addContextMetadataToExistingMedia: vi.fn(),
 		};
 
@@ -215,7 +216,7 @@ describe("MediaService Unit Tests", () => {
 			mockMediaRepository,
 			mockSourceRepository,
 			mockStorageService,
-			mockJobRepository,
+			localMockMediaProcessingService,
 			DrizzleTransactionManager,
 		);
 
@@ -228,7 +229,7 @@ describe("MediaService Unit Tests", () => {
 			mockCharacterRepository,
 			mockIpRepository,
 			DrizzleTransactionManager,
-			mockJobRepository,
+			localMockMediaProcessingService,
 			mockSseNotifier,
 			mockThumbnailManager,
 			mockLogger,

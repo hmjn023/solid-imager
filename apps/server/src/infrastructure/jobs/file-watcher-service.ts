@@ -141,7 +141,7 @@ async function handleFileChanged(
 		// Update file metadata (size, dimensions, mtime)
 		const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
 		await DrizzleTransactionManager.transaction(async (tx) => {
-			await MediaRepository.update(
+			const updated = await MediaRepository.update(
 				media.id,
 				{
 					width: fileMetadata.width,
@@ -151,14 +151,9 @@ async function handleFileChanged(
 				},
 				tx,
 			);
-			await services.getJobRepository().create(
-				{
-					type: "processMedia",
-					mediaSourceId,
-					payload: { mediaId: media.id },
-				},
-				tx,
-			);
+			await services
+				.getMediaProcessingService()
+				.requestProcessing(updated, basePath, {}, tx);
 		});
 
 		// Notify

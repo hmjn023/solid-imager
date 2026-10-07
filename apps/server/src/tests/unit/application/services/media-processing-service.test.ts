@@ -83,6 +83,13 @@ describe("MediaProcessingService", () => {
 	beforeEach(() => {
 		service = new MediaProcessingServiceImpl({
 			processingStateRepo: {
+				request: vi
+					.fn()
+					.mockResolvedValue({ requestId: "test", status: "pending" }),
+				claimDue: vi.fn(),
+				recoverExpired: vi.fn(),
+				settleFailure: vi.fn(),
+				findInlineMediaIds: vi.fn(),
 				findTaggingResult: vi.fn(),
 				saveTaggingResult: vi.fn(),
 				claim: vi

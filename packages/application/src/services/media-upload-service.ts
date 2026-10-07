@@ -16,7 +16,7 @@ import {
 	uploadMediaRequestSchema,
 } from "@solid-imager/core/domain/media/upload-schemas";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
+import type { IMediaProcessingService } from "../ports/media-processing-service";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
@@ -68,7 +68,10 @@ export class MediaUploadService {
 		private readonly mediaRepository: IMediaRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
-		private readonly jobRepo: IJobRepository,
+		private readonly processing: Pick<
+			IMediaProcessingService,
+			"requestProcessing"
+		>,
 		private readonly transactionManager: TransactionManager,
 	) {}
 
@@ -145,16 +148,10 @@ export class MediaUploadService {
 						tx,
 					);
 				}
-				await this.jobRepo.create(
-					{
-						type: "processMedia",
-						mediaSourceId: validatedSourceId,
-						payload: {
-							mediaId: insertedMedia.id,
-							sourcePath: basePath,
-							type: "processMedia",
-						},
-					},
+				await this.processing.requestProcessing(
+					insertedMedia,
+					basePath,
+					{},
 					tx,
 				);
 			});
@@ -208,16 +205,10 @@ export class MediaUploadService {
 						},
 						tx,
 					);
-					await this.jobRepo.create(
-						{
-							type: "processMedia",
-							mediaSourceId: validatedSourceId,
-							payload: {
-								mediaId: created.id,
-								sourcePath: directoryPath,
-								type: "processMedia",
-							},
-						},
+					await this.processing.requestProcessing(
+						created,
+						directoryPath,
+						{},
 						tx,
 					);
 				});

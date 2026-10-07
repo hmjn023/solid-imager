@@ -7,6 +7,9 @@ import { services } from "~/infrastructure/service-registry";
 import { MediaService } from "~/infrastructure/services/media-service";
 
 // Helper to capture jobs and processor
+const request = vi
+	.fn()
+	.mockResolvedValue({ requestId: "test", status: "pending" });
 let capturedJobs: any[] = [];
 let _capturedProcessor: ((job: any) => Promise<void>) | null = null;
 
@@ -193,6 +196,11 @@ describe("Reproduction: Copy Media Job Type", () => {
 			await import("~/infrastructure/services/media-processing-service");
 		const mediaProcessingService = new MediaProcessingServiceImpl({
 			processingStateRepo: {
+				request,
+				claimDue: vi.fn(),
+				recoverExpired: vi.fn(),
+				settleFailure: vi.fn(),
+				findInlineMediaIds: vi.fn(),
 				findTaggingResult: vi.fn(),
 				saveTaggingResult: vi.fn(),
 				claim: vi
@@ -236,7 +244,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 		vi.clearAllMocks();
 	});
 
-	it("should trigger generateThumbnail by using processMedia job type", async () => {
+	it("reserves dedicated file work without creating a processMedia job", async () => {
 		// 1. Prepare Source Media
 		// 1. Prepare Source Media
 		const sourceMedia = {
@@ -266,40 +274,24 @@ describe("Reproduction: Copy Media Job Type", () => {
 		};
 		services.registerMediaRepository(mockMediaRepository as any);
 
+		vi.spyOn(MediaRepository, "findById").mockResolvedValue({
+			...sourceMedia,
+			id: "123e4567-e89b-42d3-a456-426614174001",
+			mediaSourceId: targetSourceId,
+		} as any);
 		// 2. Execute Copy
 		const result = await MediaService.copyMedia(sourceMedia.id, targetSourceId);
 
 		// Verify Copy Success
 		expect(result.success).toBe(true);
 
-		// 3. Verify Job creation
-		expect(capturedJobs.length).toBeGreaterThan(0);
-		const job = capturedJobs[0];
-
-		// Check Job Type (This is what we are fixing, but assuming we want to test the EFFECT first)
-		// If the job type is wrong ("thumbnail"), the processor will skip it.
-
-		// 4. Manually trigger the processor
-		// The test invokes the processor directly instead of starting a worker.
-		// MediaService has already persisted the job through jobRepo.create.
-		// The test logic wants to verify that "If the job type is correct, generateThumbnail is called".
-		// So we can manually invoke MediaProcessingService.executeProcessMediaJob(job)
-
-		// But failing to see MediaProcessingService being used?
-		// MediaService.copyMedia calls jobRepo.create.
-		const { MediaProcessingService } =
-			await import("~/infrastructure/services/media-processing-service");
-		vi.spyOn(MediaRepository, "findById").mockResolvedValue(result.media);
-		mockImageProcessor.extractMetadata.mockResolvedValue({
-			tags: [],
-			prompt: null,
-			workflow: null,
-		});
-		await MediaProcessingService.executeProcessMediaJob(job);
-
-		// 5. Assert generateThumbnail was called
-		// If job type is "thumbnail", executeProcessMediaJob will return early and this will FAIL.
-		// If job type is "processMedia", it will call generateThumbnail.
-		expect(generateThumbnail).toHaveBeenCalled();
+		expect(capturedJobs).toHaveLength(0);
+		expect(generateThumbnail).not.toHaveBeenCalled();
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(
+			request.mock.calls
+				.map(([value]) => value.taskKind)
+				.sort((a, b) => a.localeCompare(b)),
+		).toEqual(["metadata", "thumbnail"]);
 	});
 });

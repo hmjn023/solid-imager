@@ -33,6 +33,7 @@ export const processingStepDtoSchema = processingStepSchema.extend({
 });
 
 export const processMediaPayloadSchema = z.object({
+	retryFileTasks: z.boolean().optional(),
 	requestRevision: z.string().optional(),
 	mediaId: z.uuid(),
 	skipMetadataExtraction: z.boolean().optional(),

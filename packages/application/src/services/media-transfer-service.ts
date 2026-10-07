@@ -15,7 +15,7 @@ import {
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
+import type { IMediaProcessingService } from "../ports/media-processing-service";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
@@ -40,7 +40,10 @@ export class MediaTransferService {
 		private readonly characterRepository: CharacterRepository,
 		private readonly ipRepository: IIpRepository,
 		private readonly transactionManager: TransactionManager,
-		private readonly jobRepo: IJobRepository,
+		private readonly processing: Pick<
+			IMediaProcessingService,
+			"requestProcessing"
+		>,
 		private readonly eventPublisher: ISourceEventPublisher,
 		private readonly thumbnailManager: IThumbnailManager,
 		private readonly logger: ILogger,
@@ -158,12 +161,20 @@ export class MediaTransferService {
 
 		let newMediaEntry: Media;
 		try {
-			newMediaEntry = await this.mediaRepository.create(newMedia, tx);
-			await this.copyMediaMetadata(
-				validatedSourceMediaId,
-				newMediaEntry.id,
-				tx,
-			);
+			const register = async (t: Transaction) => {
+				const created = await this.mediaRepository.create(newMedia, t);
+				await this.copyMediaMetadata(validatedSourceMediaId, created.id, t);
+				await this.processing.requestProcessing(
+					created,
+					targetConnection.path,
+					{},
+					t,
+				);
+				return created;
+			};
+			newMediaEntry = tx
+				? await register(tx)
+				: await this.transactionManager.transaction(register);
 		} catch (error) {
 			try {
 				await this.storageService.deleteFile(
@@ -179,26 +190,7 @@ export class MediaTransferService {
 			throw error;
 		}
 
-		const sourcePath = targetConnection.path;
-		const deferredJob = {
-			mediaId: newMediaEntry.id,
-			sourcePath,
-			type: "processMedia" as const,
-			payload: {
-				mediaId: newMediaEntry.id,
-				sourcePath,
-				type: "processMedia",
-			},
-		};
-		const deferredActions: DeferredActions = {
-			jobs: [
-				{
-					mediaSourceId: validatedTargetSourceId,
-					jobs: [deferredJob],
-				},
-			],
-			sourceEvents: [],
-		};
+		const deferredActions: DeferredActions = { jobs: [], sourceEvents: [] };
 
 		const sourceEvent: DeferredSourceEvent = {
 			mediaSourceId: validatedTargetSourceId,
@@ -218,16 +210,6 @@ export class MediaTransferService {
 				deferred: deferredActions,
 			};
 		}
-
-		await this.jobRepo.create({
-			type: "processMedia",
-			mediaSourceId: validatedTargetSourceId,
-			payload: {
-				mediaId: newMediaEntry.id,
-				sourcePath,
-				type: "processMedia",
-			},
-		});
 
 		this.eventPublisher.notifyMediaCopied(
 			sourceMediaId,

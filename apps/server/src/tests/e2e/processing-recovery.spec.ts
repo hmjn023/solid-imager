@@ -70,7 +70,8 @@ test("reloads failed processing steps and retries only the unfinished step", asy
 			expect.objectContaining({
 				kind: "thumbnail",
 				status: "completed",
-				attemptCount: 2,
+				// The dedicated request counts its own attempts; legacy checkpoint retains its history.
+				attemptCount: 1,
 			}),
 		]),
 	);

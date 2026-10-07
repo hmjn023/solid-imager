@@ -12,7 +12,7 @@ import {
 } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import type { JobEvent } from "@solid-imager/core/domain/sources/events";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
@@ -218,6 +218,8 @@ export const jobsRouter = os.router({
 		const [requeued] = await db
 			.update(jobs)
 			.set({
+				// Explicit user retry, distinct from a crashed observer's stale recovery.
+				payload: sql`CASE WHEN ${jobs.type} IN ('processMedia', 'generate_thumbnail') THEN jsonb_set(coalesce(${jobs.payload}, '{}'::jsonb), '{retryFileTasks}', 'true'::jsonb) ELSE ${jobs.payload} END`,
 				status: "pending",
 				error: null,
 				result: null,

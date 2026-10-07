@@ -14,7 +14,7 @@ import {
 import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { taggingResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
-import { and, eq, inArray, sql, asc, lt } from "drizzle-orm";
+import { and, eq, inArray, sql, asc, lt, gt } from "drizzle-orm";
 import {
 	mediaProcessingStates as states,
 	medias,
@@ -31,6 +31,7 @@ const retryAt = sql`${dbNow} + least(300000, 1000 * power(2, least(${states.atte
 
 function mapState(row: typeof states.$inferSelect): MediaProcessingState {
 	return mediaProcessingStateSchema.parse({
+		requestId: row.requestId,
 		mediaId: row.mediaId,
 		taskKind: row.taskKind,
 		status: row.status,
@@ -104,6 +105,22 @@ export function createMediaProcessingStateRepository(
 		}
 	}
 	return {
+		async findInlineMediaIds(afterId, limit) {
+			return (
+				await getExecutor()
+					.selectDistinct({ id: states.mediaId })
+					.from(states)
+					.where(
+						and(
+							eq(states.executionMode, "inline"),
+							inArray(states.taskKind, ["metadata", "thumbnail"]),
+							afterId ? gt(states.mediaId, afterId) : undefined,
+						),
+					)
+					.orderBy(asc(states.mediaId))
+					.limit(limit)
+			).map((row) => row.id);
+		},
 		async request(request, tx) {
 			const { input, taskKind, revision, maxAttempts, force } =
 				mediaProcessingRequestSchema.parse(request);
@@ -126,6 +143,7 @@ export function createMediaProcessingStateRepository(
 				return mapState(previous);
 			const values = {
 				...clearedClaim,
+				requestId: randomUUID(),
 				mediaId: input.mediaId,
 				taskKind,
 				requestedRevision: revision,
@@ -135,12 +153,27 @@ export function createMediaProcessingStateRepository(
 					modifiedAt: input.modifiedAt.toISOString(),
 				},
 				executionMode: "scheduled",
-				status: "pending",
-				attemptCount: 0,
+				status:
+					!force &&
+					previous?.requestedRevision === revision &&
+					(previous.status === "completed" || previous.status === "failed")
+						? previous.status
+						: "pending",
+				attemptCount:
+					!force &&
+					previous?.requestedRevision === revision &&
+					(previous.status === "completed" || previous.status === "failed")
+						? Math.min(previous.attemptCount, maxAttempts)
+						: 0,
 				maxAttempts,
 				availableAt: dbNow,
 				updatedAt: dbNow,
-				lastError: null,
+				lastError:
+					!force &&
+					previous?.requestedRevision === revision &&
+					previous.status === "failed"
+						? previous.lastError
+						: null,
 				taggingResult: null,
 				completedRevision: previous?.completedRevision ?? null,
 			};
@@ -359,16 +392,18 @@ export function createMediaProcessingStateRepository(
 				.returning();
 			if (!rows.length) throw new MediaProcessingSupersededError();
 		},
-		async findByMediaIds(ids) {
+		async findByMediaIds(ids, tx) {
 			if (!ids.length) return [];
 			return (
-				await getExecutor()
+				await getExecutor(tx)
 					.select()
 					.from(states)
 					.where(inArray(states.mediaId, ids))
 			).map(mapState);
 		},
 		async claim(input, taskKind, revision, owner, force, tx) {
+			if (taskKind === "metadata" || taskKind === "thumbnail")
+				throw new MediaProcessingScheduledError();
 			await lockInput(input, tx);
 			const db = getExecutor(tx);
 			const where = and(
