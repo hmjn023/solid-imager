@@ -90,8 +90,6 @@ function AuthorPicker(props: {
 			itemComponent={(item) => (
 				<ComboboxItem
 					item={item.item}
-					// Keep virtual focus in the input: blur resets the filter before pointerup.
-					onMouseDown={(event) => event.preventDefault()}
 				>
 					<ComboboxItemLabel>
 						{authorLabel(item.item.rawValue)}

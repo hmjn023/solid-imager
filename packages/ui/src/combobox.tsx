@@ -207,7 +207,9 @@ const preventInputBlur = (event: MouseEvent) => {
 	// Touch selection is committed on click, after the compatibility mousedown.
 	// Keep input focus so blur cannot reset the query and replace the tapped item.
 	// Preventing mousedown leaves native touch scrolling and click intact.
-	event.preventDefault();
+	if (event.button === 0) {
+		event.preventDefault();
+	}
 };
 
 const ComboboxContent = <T extends ValidComponent = "div">(
