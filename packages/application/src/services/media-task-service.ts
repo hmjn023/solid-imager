@@ -5,7 +5,7 @@ import {
 	MediaProcessingSupersededError,
 	serializeMediaTaskRevision,
 	type MediaProcessingInput,
-	type MediaTaskKind,
+	type FileTaskKind,
 	type ProcessingOwner,
 	type ProcessingSettings,
 } from "@solid-imager/core/domain/processing/schemas";
@@ -19,7 +19,7 @@ import type {
 // Fixed positional serialization: array order is retained because extraction rules can be ordered.
 export function getMediaTaskRevision(
 	input: MediaProcessingInput,
-	kind: MediaTaskKind,
+	kind: FileTaskKind,
 	settings: ProcessingSettings,
 ): string {
 	return createHash("sha256")
@@ -40,7 +40,7 @@ export class MediaTaskService {
 	async processTask(
 		sourceId: string,
 		mediaId: string,
-		kind: MediaTaskKind,
+		kind: FileTaskKind,
 		owner?: ProcessingOwner,
 		force = false,
 	): Promise<void> {
@@ -67,7 +67,7 @@ export class MediaTaskService {
 
 	async execute(
 		input: MediaProcessingInput,
-		kind: MediaTaskKind,
+		kind: FileTaskKind,
 		owner?: ProcessingOwner,
 		hooks?: TaskHooks,
 		force = false,

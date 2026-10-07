@@ -10,6 +10,7 @@ import {
 } from "@solid-imager/core/domain/processing/schemas";
 import type { IMediaProcessingStateRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import { taggingResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { and, eq, inArray } from "drizzle-orm";
 import {
 	mediaProcessingStates as states,
@@ -92,6 +93,32 @@ export function createMediaProcessingStateRepository(
 		}
 	}
 	return {
+		async findTaggingResult(mediaId, revision, tx) {
+			const [row] = await getExecutor(tx)
+				.select({ result: states.taggingResult })
+				.from(states)
+				.where(
+					and(
+						eq(states.mediaId, mediaId),
+						eq(states.taskKind, "tagging"),
+						eq(states.status, "completed"),
+						eq(states.requestedRevision, revision),
+						eq(states.completedRevision, revision),
+					),
+				);
+			const parsed = taggingResponseSchema.safeParse(row?.result);
+			return parsed.success ? parsed.data : null;
+		},
+		async saveTaggingResult(claim, result, tx) {
+			if (claim.taskKind !== "tagging")
+				throw new Error("Tagging result requires a tagging claim");
+			const rows = await getExecutor(tx)
+				.update(states)
+				.set({ taggingResult: taggingResponseSchema.parse(result) })
+				.where(claimCondition(claim))
+				.returning();
+			if (!rows.length) throw new MediaProcessingSupersededError();
+		},
 		async findByMediaIds(ids) {
 			if (!ids.length) return [];
 			return (
@@ -157,6 +184,7 @@ export function createMediaProcessingStateRepository(
 				ownerJobId: owner?.jobId ?? null,
 				ownerAttemptCount: owner?.attemptCount ?? null,
 				lastError: null,
+				taggingResult: null,
 			};
 			const [row] = await db
 				.insert(states)

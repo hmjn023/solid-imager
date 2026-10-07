@@ -2,7 +2,7 @@
 
 ## 対象
 
-#771 の取り込み復旧に加え、#620 の最初の範囲としてメタデータ抽出・サムネイル生成の正本を `media_processing_states` に置く。`processMedia` の工程別チェックポイントは個々のジョブの実行記録として残す。アップロード、`registerAndProcess`（監視／インポート経由）、既存ディレクトリ登録では、メディア行・関連情報・処理ジョブを同じDBトランザクションで保存する。
+#771 の取り込み復旧に加え、#620 の範囲としてメタデータ抽出・サムネイル生成・自動タグ付けの正本を `media_processing_states` に置く。`processMedia` の工程別チェックポイントは個々のジョブの実行記録として残す。アップロード、`registerAndProcess`（監視／インポート経由）、既存ディレクトリ登録では、メディア行・関連情報・処理ジョブを同じDBトランザクションで保存する。
 
 工程に失敗しても独立した残りの工程は実行する。1工程でも失敗したジョブは `failed` になり、Jobs の詳細に各工程の状態を表示する。原因を解消して **Retry job** を押すと、現在の入力と設定で未完了の工程を再実行する。同じ入力・設定で成功済みの抽出／生成は別ジョブでも再利用する。AI予約の完了は推論完了を意味せず、推論結果は別のAIジョブで確認する。
 
@@ -54,14 +54,36 @@ WHERE table_name = 'jobs' AND column_name = 'processing_checkpoint';
 
 Jobs の **Current media processing** は現在の入力と設定に対する状態、**Processing steps** は選択したジョブの実行記録。状態行がない場合や入力／設定が変わった場合は現在状態をPendingと表示する。Pendingは処理が必要なことを表し、ジョブの予約済みを保証しない。設定変更だけで全メディアを再予約する機能は含めない。
 
+## migration 0034 と自動タグ付け
+
+0034 は task kind に `tagging` を追加し、成功時の推論レスポンスを nullable な `tagging_result` に保存する。0033 の停止・バックアップ手順を使い、旧版 worker と混在させない。既存の AI タグから成功 revision や実行履歴を推測して作らず、次の要求で一度解析する。既存の AI 情報は成功した再解析を保存するまで維持する。
+
+ローカルの PixAI モデルは `v0.9` を明示して呼び出す。tagging revision は indexed input、モデル名・モデル版、実際のネイティブ runtime 版、provider・device・endpoint、前処理/出力契約の `tagging-v1` から固定順序で作る。同じ revision の成功レスポンスを、空の結果も含めて保存・再利用する。provider やモデルを変更しても全件を自動予約するわけではなく、次の通常要求または一括タグ付けで新しい revision を処理する。同じモデル名・版の重みファイルを置き換える運用は検出しないため、その場合は明示的に再解析する。
+
+メディア単位の direct API、取り込み後の `auto_tagging`、一括タグ付けを同じ claim に集約する。AI 計算はトランザクション外で行い、保存時に媒体/source、現在の設定、claim token/revision、job attempt と取消を検証する。古い worker の結果・失敗は新しい状態へ書き込めない。タグ、メディアとキャラクター/IP の AI 関連付け、レスポンスキャッシュ、完了状態を同じトランザクションで更新する。
+
+成功した再解析では古い AI 関連付けを置換する。手動など他の出所の関連付けと confidence は保持し、キャラクターと IP の既存のグローバル関連付けは削除しない。AI 情報を人の判断として採用・却下する履歴モデルは #774 の対象であり、本変更は却下履歴を作らない。
+
+リモート AI はモデル/runtime の識別を公開していないため、別々の要求では永続キャッシュを再利用せず再解析する。同じ設定で同時に到着した要求は実行中の claim を共有する。この制限を外すには、リモート側のモデル識別契約が必要になる。ネイティブ runtime の版を取得できない場合もキャッシュを再利用しない。ネイティブの読み込みに失敗した場合は、推論の失敗として処理状態に記録する。
+
+Jobs の **Current media processing** に **AI tagging** を追加する。AI だけ失敗した場合は `auto_tagging` ジョブの **Retry job** でタグ付けだけを再開し、metadata/thumbnail を再実行しない。生の推論レスポンス・revision・claim・例外は Jobs DTO に含めない。AI source 更新通知は DB commit 後に送る。
+
+一括タグ付けの対象件数と dispatch は同じ revision 判定を利用する。未解析、失敗、入力/設定変更、キャッシュ不整合の画像を選び、空の結果も含む成功済み画像は除外する。強制再解析は成功済み画像も対象とする。全件は固定サイズのページで走査し、成功済みだけのページに出会っても次へ進む。
+
+旧版への rollback では書き込み元を停止し、0034 の列・制約は残せる。旧版は処理状態を更新せず AI 情報を書き換えるため、新版へ戻す前に停止中の DB で tagging 状態だけを無効化する。metadata/thumbnail 状態を消す必要はない。
+
+```sql
+DELETE FROM media_processing_states WHERE task_kind = 'tagging';
+```
+
 ## 保証の範囲と残作業
 
-- #620 のmetadata/thumbnailのみ。AI推論、regions、#621 のrun/items移行、専用の状態キュー・backoff schedulerは後続。実行の輸送には既存jobs/workerを使う。
+- #620 のmetadata/thumbnail/taggingを実装。full-image CCIP、regions、#621 のrun/items移行、専用の状態キュー・backoff schedulerは後続。実行の輸送には既存jobs/workerを使う。
 - 内容ハッシュや監視が未検出の実ファイル変更は対象外。DBに新しい入力が記録された後の古い結果を拒否する。複数プロセスは同じ設定・processor版で運用する。
 - DBとファイルシステムは単一トランザクションにならない。2サイズのrename途中や公開直後・DB commit直前の停止では再生成する。2サイズの公開は完全に同時ではない。クラッシュで残った `*.tmp.webp` はworker停止中に除去可能。
 - 同じrevisionの通常要求は実作業を共有する。明示的な再抽出／再生成、キャッシュ欠損、lease失効後には同じrevisionでも計算を再実行し得る。exactly-once実行の保証ではない。
 - アップロードのファイル保存自体はDB commitの前。上書き前のファイル復元、コピー／移動／download全体の原子化は含まない。
-- AI予約は同一ジョブの再試行内で重複を防ぐ。異なるジョブ間のAI dedup、既存ジョブの統合、他ドメイン出力の保護は #619 / #620 に残る。
+- AI予約は同一ジョブの再試行内で重複を防ぐ。異なるジョブ間の tagging 実作業は state claim で集約するが、ジョブ行自体の全 type dedup、CCIP 出力の保護は #619 / #620 に残る。
 - 公開DTOには工程種別・状態・試行回数・更新時刻だけを返す。パス、revision、claim token、payload、例外詳細は公開しない。詳細はサーバーログのjobId／stepで調べる。
 
 ## 回帰検証
@@ -73,3 +95,11 @@ bun run --cwd apps/server test:e2e -- processing-recovery.spec.ts realtime-prese
 ```
 
 `processing-recovery.test.ts` は専用の一時PGliteを使用し、登録のロールバック、工程別Retry、DB再オープン後の復旧、古いattemptとキャンセルの拒否、revision変更、起動時補修の重複抑止、別ジョブとの実作業共有、同時要求、設定変更、古い成功／失敗の拒否、キャッシュ修復、タグの置換、DB制約を検証する。E2Eは実際のfailedジョブをseedし、開発版・本番ビルドで直接アクセス／F5／SPA遷移と実workerのRetryを検証する。既存のSSE再接続テストも併せて実行する。
+
+`tagging-processing.test.ts` は一時PGliteで推論レスポンス/空結果の再利用、入力・モデル設定変更、同時要求、手動情報の維持、全出力のロールバック、失敗と再試行、取消、削除、batch対象/ページングを検証する。同じスイートを一時 PostgreSQL 18 + pgvector へ最大12接続で実行できる。専用のローカルテストコンテナを `tagging_processing_test` DB / `tagging_test` user / `ephemeral_tagging_test` password で起動し、割り当てた localhost ポートだけを `TAGGING_TEST_POSTGRES_PORT` に指定する。本番 DB の接続設定は使わない。
+
+```bash
+TAGGING_TEST_POSTGRES_PORT=<isolated-localhost-port> bun run --cwd apps/server test:integration -- src/tests/integration/media/tagging-processing.test.ts
+```
+
+ブラウザテストは実 PixAI 推論、2回目の結果再利用、Jobs の AI 状態表示と再読込後の復元も検証する。

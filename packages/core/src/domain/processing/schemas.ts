@@ -1,8 +1,21 @@
 import type { AppConfig } from "../config/config-schema";
 import { z } from "zod";
 
-export const mediaTaskKindSchema = z.enum(["metadata", "thumbnail"]);
+export const mediaTaskKindSchema = z.enum(["metadata", "thumbnail", "tagging"]);
 export type MediaTaskKind = z.infer<typeof mediaTaskKindSchema>;
+export type FileTaskKind = Exclude<MediaTaskKind, "tagging">;
+
+export const taggingProcessingSettingsSchema = z.object({
+	model: z.string(),
+	modelVersion: z.string(),
+	runtimeVersion: z.string(),
+	provider: z.string(),
+	device: z.string().nullable(),
+	endpoint: z.string(),
+});
+export type TaggingProcessingSettings = z.infer<
+	typeof taggingProcessingSettingsSchema
+>;
 
 export const mediaProcessingInputSchema = z.object({
 	mediaId: z.uuid(),
@@ -96,7 +109,7 @@ export function processingSettingsFromConfig(
 /** Bump this task's version when processor or output semantics change. */
 export function serializeMediaTaskRevision(
 	input: MediaProcessingInput,
-	kind: MediaTaskKind,
+	kind: FileTaskKind,
 	settings: ProcessingSettings,
 ): string {
 	const options =

@@ -29,7 +29,7 @@ export type MediaProcessingCheckpoint = z.infer<
 >;
 
 export const processingStepDtoSchema = processingStepSchema.extend({
-	kind: processingStepKindSchema,
+	kind: z.enum([...processingStepKindSchema.options, "tagging"]),
 });
 
 export const processMediaPayloadSchema = z.object({

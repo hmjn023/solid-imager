@@ -1,4 +1,5 @@
 import { getMediaTaskRevision } from "@solid-imager/application/services/media-task-service";
+import { getTaggingTaskRevision } from "@solid-imager/application/services/tagging-task-service";
 import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import {
 	mediaTaskKindSchema,
@@ -50,7 +51,8 @@ export async function findCurrentProcessingSteps(mediaIds: string[]) {
 				mediaTaskKindSchema.options.map((kind) => ({
 					kind,
 					status:
-						kind === "thumbnail" && media.mediaType === "audio"
+						(kind === "thumbnail" && media.mediaType === "audio") ||
+						(kind === "tagging" && media.mediaType !== "image")
 							? "skipped"
 							: "pending",
 					attemptCount: 0,
@@ -59,19 +61,22 @@ export async function findCurrentProcessingSteps(mediaIds: string[]) {
 			);
 		const kind = mediaTaskKindSchema.safeParse(state?.taskKind);
 		if (!state || !kind.success) continue;
-		const revision = getMediaTaskRevision(
-			{
-				mediaId: media.id,
-				mediaSourceId: media.mediaSourceId,
-				sourcePath: connection.data.path,
-				filePath: media.filePath,
-				modifiedAt: media.modifiedAt,
-				fileSize: media.fileSize,
-				mediaType: media.mediaType,
-			},
-			kind.data,
-			settings,
-		);
+		const input = {
+			mediaId: media.id,
+			mediaSourceId: media.mediaSourceId,
+			sourcePath: connection.data.path,
+			filePath: media.filePath,
+			modifiedAt: media.modifiedAt,
+			fileSize: media.fileSize,
+			mediaType: media.mediaType,
+		};
+		const revision =
+			kind.data === "tagging"
+				? getTaggingTaskRevision(
+						input,
+						services.getAiClient().getTaggingSettings(),
+					)
+				: getMediaTaskRevision(input, kind.data, settings);
 		const step = result
 			.get(media.id)
 			?.find((entry) => entry.kind === kind.data);

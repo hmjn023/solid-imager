@@ -1404,7 +1404,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -1452,7 +1453,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -1776,7 +1778,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -1824,7 +1827,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -14108,7 +14112,8 @@
                                   "enum": [
                                     "metadata",
                                     "thumbnail",
-                                    "ai_dispatch"
+                                    "ai_dispatch",
+                                    "tagging"
                                   ],
                                   "type": "string"
                                 }
@@ -14156,7 +14161,8 @@
                                   "enum": [
                                     "metadata",
                                     "thumbnail",
-                                    "ai_dispatch"
+                                    "ai_dispatch",
+                                    "tagging"
                                   ],
                                   "type": "string"
                                 }
@@ -14480,7 +14486,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -14528,7 +14535,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -14875,7 +14883,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -14923,7 +14932,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -15235,7 +15245,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }
@@ -15283,7 +15294,8 @@
                             "enum": [
                               "metadata",
                               "thumbnail",
-                              "ai_dispatch"
+                              "ai_dispatch",
+                              "tagging"
                             ],
                             "type": "string"
                           }

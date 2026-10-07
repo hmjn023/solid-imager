@@ -1,19 +1,12 @@
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
-import { and, asc, eq, gt, notExists, sql } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
-import {
-	type Job,
-	jobs,
-	mediaCharacters,
-	mediaIps,
-	medias,
-	mediaTags,
-	type NewJob,
-} from "~/infrastructure/db/schema";
+import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
+import { scanTaggingTargetPage } from "./tagging-targets";
 import { taggingService } from "~/infrastructure/services/tagging-service";
 
 const autoTaggingPayloadSchema = z.object({
@@ -62,6 +55,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 			mediaId,
 			{
 				skipCache: force,
+				owner: { jobId: job.id, attemptCount: job.attemptCount ?? 0 },
 			},
 		);
 		logger.info(
@@ -130,80 +124,21 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 		"Starting bulk tagging dispatch job",
 	);
 
-	// Find images
-	// Logic: media_type = 'image' AND (source_id = ? IF set) AND (force OR NOT (EXISTS(AI tags) OR EXISTS(AI chars) OR EXISTS(AI IPs)))
-	const whereClause = and(
-		eq(medias.mediaType, "image"),
-		mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
-		force
-			? undefined
-			: and(
-					notExists(
-						db
-							.select()
-							.from(mediaTags)
-							.where(
-								and(
-									eq(mediaTags.mediaId, medias.id),
-									eq(mediaTags.source, "AI"),
-								),
-							),
-					),
-					notExists(
-						db
-							.select()
-							.from(mediaCharacters)
-							.where(
-								and(
-									eq(mediaCharacters.mediaId, medias.id),
-									eq(mediaCharacters.source, "AI"),
-								),
-							),
-					),
-					notExists(
-						db
-							.select()
-							.from(mediaIps)
-							.where(
-								and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI")),
-							),
-					),
-				),
-	);
-
-	const existingChild = db
-		.select({ id: jobs.id })
-		.from(jobs)
-		.where(
-			and(
-				eq(jobs.parentId, parentId),
-				eq(jobs.type, "auto_tagging"),
-				sql`(${jobs.payload}->>'mediaId')::uuid = ${medias.id}`,
-			),
-		);
-	const whereWithDedupe = and(whereClause, notExists(existingChild));
-
-	let lastSeenId: string | null = null;
+	let lastSeenId: string | undefined;
 	let dispatchedCount = 0;
 	const CHILD_INSERT_CHUNK = 500;
 
 	while (true) {
-		const results = await db
-			.select({
-				id: medias.id,
-				mediaSourceId: medias.mediaSourceId,
-			})
-			.from(medias)
-			.where(
-				and(
-					whereWithDedupe,
-					lastSeenId ? gt(medias.id, lastSeenId) : undefined,
-				),
-			)
-			.orderBy(asc(medias.id))
-			.limit(batchSize);
+		const page = await scanTaggingTargetPage({
+			mediaSourceId,
+			force,
+			limit: batchSize,
+			afterId: lastSeenId,
+			parentId,
+		});
+		const results = page.targets;
 
-		if (results.length === 0) {
+		if (!page.nextCursor) {
 			if (dispatchedCount === 0) {
 				logger.info(
 					{ jobId: job.id, parentId, mediaSourceId, force },
@@ -228,7 +163,7 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 		}
 
 		dispatchedCount += results.length;
-		lastSeenId = results[results.length - 1].id;
+		lastSeenId = page.nextCursor;
 
 		logger.info(
 			{

@@ -1,5 +1,6 @@
 import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
 import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
+import { randomUUID } from "node:crypto";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
@@ -23,6 +24,14 @@ describe("TaggingServiceImpl", () => {
 
 	beforeEach(() => {
 		mockAiClient = {
+			getTaggingSettings: () => ({
+				model: "pixai",
+				modelVersion: "v0.9",
+				runtimeVersion: "test",
+				provider: "cpu",
+				device: null,
+				endpoint: "",
+			}),
 			healthCheck: vi.fn(() => Promise.resolve(true)),
 			tagImage: vi.fn(),
 			tagImageByPath: vi.fn(),
@@ -48,12 +57,15 @@ describe("TaggingServiceImpl", () => {
 					mediaSourceId: "source-1",
 					mediaType: "image",
 					filePath: "remote/path.jpg",
+					modifiedAt: new Date(),
+					fileSize: 123,
 				}),
 			),
 		} as unknown as IMediaRepository;
 
 		mockTagRepo = {
 			findByMediaId: vi.fn(() => Promise.resolve([])),
+			removeTagsFromSource: vi.fn(),
 			addTagsToMedia: vi.fn(() => Promise.resolve()),
 		} as unknown as TagRepository;
 
@@ -69,6 +81,7 @@ describe("TaggingServiceImpl", () => {
 			create: vi.fn((data: { name: string }) =>
 				Promise.resolve({ id: "ip-new", name: data.name }),
 			),
+			removeMediaFromSource: vi.fn(),
 			addMediaBulk: vi.fn(() => Promise.resolve()),
 			getMediaIps: vi.fn(() => Promise.resolve([])),
 		} as unknown as IIpRepository;
@@ -93,6 +106,7 @@ describe("TaggingServiceImpl", () => {
 				Promise.resolve({ id: "char-new", name: data.name, ipId: data.ipId }),
 			),
 			update: vi.fn(() => Promise.resolve()),
+			removeMediaFromSource: vi.fn(),
 			addToMediaBulk: vi.fn(() => Promise.resolve()),
 			getMediaCharacters: vi.fn(() => Promise.resolve([])),
 		} as unknown as CharacterRepository;
@@ -103,6 +117,27 @@ describe("TaggingServiceImpl", () => {
 		);
 
 		const deps: TaggingServiceDeps = {
+			processingStateRepo: {
+				claim: vi.fn(async (input, taskKind, revision) => ({
+					status: "claimed" as const,
+					claim: {
+						mediaId: input.mediaId,
+						taskKind,
+						revision,
+						token: randomUUID(),
+					},
+					state: {} as any,
+				})),
+				commit: vi.fn(async (_input, _claim, output, tx) => output(tx)),
+				findByMediaIds: vi.fn(),
+				findTaggingResult: vi.fn(),
+				saveTaggingResult: vi.fn(),
+				fail: vi.fn(),
+				heartbeat: vi.fn(),
+			},
+			transactionManager: { transaction: async (callback) => callback({}) },
+			jobRepo: {} as any,
+
 			aiClient: mockAiClient,
 			sourceRepo: mockSourceRepo,
 			mediaRepo: mockMediaRepo,
@@ -157,12 +192,14 @@ describe("TaggingServiceImpl", () => {
 				},
 			],
 			"AI",
+			expect.anything(),
 		);
 
 		// Verify IPs were bulk-created via findOrCreateBulk
 		expect(mockIpRepo.findOrCreateBulk).toHaveBeenCalledWith(
 			["Vocaloid"],
 			"AI",
+			expect.anything(),
 		);
 
 		// Verify IP was linked to media
@@ -170,6 +207,7 @@ describe("TaggingServiceImpl", () => {
 			"media-1",
 			expect.arrayContaining([expect.objectContaining({ id: "ip-vocaloid" })]),
 			"AI",
+			expect.anything(),
 		);
 
 		// Verify characters were bulk-created via findOrCreateBulk with IP ids
@@ -181,6 +219,7 @@ describe("TaggingServiceImpl", () => {
 				}),
 			]),
 			"AI",
+			expect.anything(),
 		);
 
 		// Verify character was linked to media
@@ -190,6 +229,7 @@ describe("TaggingServiceImpl", () => {
 				expect.objectContaining({ id: "char-HatsuneMiku", confidence: 0.95 }),
 			]),
 			"AI",
+			expect.anything(),
 		);
 	});
 });

@@ -1,3 +1,4 @@
+import type { ProcessingOwner } from "@solid-imager/core/domain/processing/schemas";
 import type {
 	CcipFeatureResponse,
 	TaggingResponse,
@@ -9,7 +10,7 @@ export interface ITaggingService {
 	getTagsForMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		options?: { skipCache?: boolean },
+		options?: { skipCache?: boolean; owner?: ProcessingOwner },
 	): Promise<TaggingResponse | null>;
 	getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;
 	getCcipFeatureForMedia(

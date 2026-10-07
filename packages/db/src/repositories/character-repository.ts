@@ -428,6 +428,16 @@ export function createCharacterRepository(
 			}
 		},
 
+		async removeMediaFromSource(mediaId, source, tx) {
+			await getExecutor(tx)
+				.delete(mediaCharacters)
+				.where(
+					and(
+						eq(mediaCharacters.mediaId, mediaId),
+						eq(mediaCharacters.source, source),
+					),
+				);
+		},
 		async removeFromMedia(
 			mediaId: string,
 			characterId: string,

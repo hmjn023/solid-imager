@@ -4,6 +4,7 @@ import { createClient } from "@solid-imager/client";
 import type { AiConfig } from "@solid-imager/core/domain/config/config-schema";
 import type { AppContract } from "@solid-imager/core/domain/contract";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
+import type { TaggingProcessingSettings } from "@solid-imager/core/domain/processing/schemas";
 import {
 	type CcipDifferenceResponse,
 	type CcipFeatureResponse,
@@ -92,6 +93,25 @@ export class RustAiClient implements IAiClient {
 
 	getBaseUrl(): string {
 		return this.baseUrl;
+	}
+
+	getTaggingSettings(): TaggingProcessingSettings {
+		let runtimeVersion = "unknown";
+		if (!this.baseUrl) {
+			try {
+				runtimeVersion = loadDghsImgutils().getVersion();
+			} catch {
+				// Inference reports the loader failure after the task is claimed, so Jobs can show it.
+			}
+		}
+		return {
+			model: "pixai",
+			modelVersion: this.baseUrl ? "unknown" : "v0.9",
+			runtimeVersion,
+			provider: this.inferenceOptions.provider ?? "auto",
+			device: this.inferenceOptions.device ?? null,
+			endpoint: this.baseUrl,
+		};
 	}
 
 	async healthCheck(): Promise<boolean> {
@@ -217,7 +237,7 @@ export class RustAiClient implements IAiClient {
 		const { getPixaiTags } = loadDghsImgutils();
 		const result = await getPixaiTags(
 			filePath,
-			undefined,
+			"v0.9",
 			undefined,
 			this.inferenceOptions,
 		);

@@ -20,7 +20,7 @@ export interface IMediaProcessingService {
 	processTask(
 		sourceId: string,
 		mediaId: string,
-		kind: MediaTaskKind,
+		kind: Exclude<MediaTaskKind, "tagging">,
 		owner?: ProcessingOwner,
 		force?: boolean,
 	): Promise<void>;
