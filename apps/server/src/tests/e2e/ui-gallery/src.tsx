@@ -104,6 +104,7 @@ import { ThumbnailImage } from "@solid-imager/ui/thumbnail-image";
 import { Toaster, toast } from "@solid-imager/ui/toast";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { render } from "solid-js/web";
+import { ComboboxGallery } from "./combobox-gallery";
 import "../../../app.css";
 import "@fontsource/noto-sans/latin-400.css";
 import "@fontsource/noto-sans/latin-500.css";
@@ -534,4 +535,17 @@ if (!(root instanceof HTMLElement)) {
 const showVirtualGrid = new URLSearchParams(window.location.search).has(
 	"virtual-grid",
 );
-render(() => (showVirtualGrid ? <VirtualGridGallery /> : <Gallery />), root);
+const showCombobox = new URLSearchParams(window.location.search).has(
+	"combobox",
+);
+render(
+	() =>
+		showCombobox ? (
+			<ComboboxGallery />
+		) : showVirtualGrid ? (
+			<VirtualGridGallery />
+		) : (
+			<Gallery />
+		),
+	root,
+);
