@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
+import type { ProcessingOwner } from "@solid-imager/core/domain/processing/schemas";
 import type { PreparedThumbnail } from "@solid-imager/application/services/media-processing-service";
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import {
@@ -119,22 +120,12 @@ export async function thumbnailExists(
  */
 export async function generateThumbnail(
 	media: Pick<Media, "id" | "filePath">,
-	sourcePath: string,
+	_sourcePath: string,
 	mediaSourceId: string,
 ): Promise<void> {
-	const inputPath = path.join(sourcePath, media.filePath);
-	await generateThumbnailAtSize(
-		inputPath,
-		mediaSourceId,
-		media.id,
-		THUMBNAIL_SIZE_LARGE,
-	);
-	await generateThumbnailAtSize(
-		getThumbnailPath(mediaSourceId, media.id, THUMBNAIL_SIZE_LARGE),
-		mediaSourceId,
-		media.id,
-		THUMBNAIL_SIZE_SMALL,
-	);
+	await services
+		.getMediaProcessingService()
+		.processTask(mediaSourceId, media.id, "thumbnail");
 }
 
 /** Convert outside a DB transaction; publish only while the job claim is locked. */
@@ -187,85 +178,16 @@ export async function prepareProcessingThumbnail(
 	}
 }
 
-async function generateThumbnailAtSize(
-	inputPath: string,
-	mediaSourceId: string,
-	mediaId: string,
-	size: ThumbnailSize,
-): Promise<void> {
-	await ensureCacheDir(mediaSourceId, size);
-	const storageConfig = getStorageConfig();
-	const outputPath = getThumbnailPath(mediaSourceId, mediaId, size);
-	if (
-		size === THUMBNAIL_SIZE_SMALL &&
-		storageConfig.thumbnailSize <= THUMBNAIL_SIZE_SMALL
-	) {
-		await fs.copyFile(inputPath, outputPath);
-		return;
-	}
-	await ImageProcessor.generateThumbnail(
-		inputPath,
-		outputPath,
-		size === THUMBNAIL_SIZE_LARGE
-			? storageConfig.thumbnailSize
-			: THUMBNAIL_SIZE_SMALL,
-		storageConfig.thumbnailQuality,
-	);
-}
-
 export async function generateThumbnailForMedia(
 	mediaSourceId: string,
 	mediaId: string,
-	size: ThumbnailSize,
+	_size: ThumbnailSize,
+	owner?: ProcessingOwner,
+	force = false,
 ): Promise<void> {
-	const [source, media] = await Promise.all([
-		sourceRepo.findById(mediaSourceId),
-		MediaRepository.findById(mediaId),
-	]);
-	if (
-		source?.type !== "local" ||
-		!media ||
-		media.mediaSourceId !== mediaSourceId
-	) {
-		throw new Error("Media or local source not found");
-	}
-	const sourcePath = (source.connectionInfo as { path?: string }).path;
-	if (!sourcePath) {
-		throw new Error("Local source path is missing");
-	}
-
-	const originalPath = path.join(sourcePath, media.filePath);
-	if (size === THUMBNAIL_SIZE_SMALL) {
-		const largePath = getThumbnailPath(
-			mediaSourceId,
-			mediaId,
-			THUMBNAIL_SIZE_LARGE,
-		);
-		if (
-			!(await thumbnailExists(mediaSourceId, mediaId, THUMBNAIL_SIZE_LARGE))
-		) {
-			await generateThumbnailAtSize(
-				originalPath,
-				mediaSourceId,
-				mediaId,
-				THUMBNAIL_SIZE_LARGE,
-			);
-		}
-		await generateThumbnailAtSize(
-			largePath,
-			mediaSourceId,
-			mediaId,
-			THUMBNAIL_SIZE_SMALL,
-		);
-		return;
-	}
-
-	await generateThumbnailAtSize(
-		originalPath,
-		mediaSourceId,
-		mediaId,
-		THUMBNAIL_SIZE_LARGE,
-	);
+	await services
+		.getMediaProcessingService()
+		.processTask(mediaSourceId, mediaId, "thumbnail", owner, force);
 }
 
 /**
@@ -340,7 +262,11 @@ export async function generateThumbnailsForSource(
 						type: "generate_thumbnail",
 						mediaSourceId,
 						parentId: parent.id,
-						payload: { mediaId: media.id, size: options.size },
+						payload: {
+							mediaId: media.id,
+							size: options.size,
+							force: !options.missingOnly,
+						},
 					}),
 				),
 			);
@@ -434,12 +360,9 @@ export async function processThumbnailGenerationJob(job: Job): Promise<void> {
 			job.mediaSourceId,
 			payload.mediaId,
 			payload.size,
+			{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
+			payload.force,
 		);
-		RealtimeEventBus.publishSource(job.mediaSourceId, "thumbnail-generated", {
-			mediaId: payload.mediaId,
-			size: payload.size,
-			timestamp: new Date().toISOString(),
-		});
 		await updateThumbnailParentProgress(job, true);
 	} catch (error) {
 		await updateThumbnailParentProgress(job, false);

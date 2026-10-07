@@ -1034,6 +1034,53 @@ export const mediaCollections = pgTable(
  * Manages background jobs such as thumbnail generation, metadata extraction, and bulk tagging.
  * It tracks their progress and results.
  */
+export const mediaProcessingStates = pgTable(
+	"media_processing_states",
+	{
+		mediaId: uuid("media_id")
+			.notNull()
+			.references(() => medias.id, { onDelete: "cascade" }),
+		taskKind: text("task_kind").notNull(),
+		status: text("status").notNull(),
+		inputRevision: text("input_revision").notNull(),
+		requestedRevision: text("requested_revision").notNull(),
+		completedRevision: text("completed_revision"),
+		claimToken: uuid("claim_token"),
+		claimedAt: timestamp("claimed_at"),
+		heartbeatAt: timestamp("heartbeat_at"),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		// Diagnostic owner only: deleting job history must not delete domain state.
+		ownerJobId: uuid("owner_job_id"),
+		ownerAttemptCount: integer("owner_attempt_count"),
+		lastError: text("last_error"),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		primaryKey({ columns: [table.mediaId, table.taskKind] }),
+		check(
+			"media_processing_kind",
+			sql`${table.taskKind} IN ('metadata', 'thumbnail')`,
+		),
+		check(
+			"media_processing_status",
+			sql`${table.status} IN ('pending', 'in_progress', 'completed', 'failed')`,
+		),
+		check("media_processing_attempt", sql`${table.attemptCount} >= 0`),
+		check(
+			"media_processing_claim",
+			sql`(${table.status} = 'in_progress' AND ${table.claimToken} IS NOT NULL AND ${table.claimedAt} IS NOT NULL AND ${table.heartbeatAt} IS NOT NULL) OR (${table.status} <> 'in_progress' AND ${table.claimToken} IS NULL AND ${table.claimedAt} IS NULL AND ${table.heartbeatAt} IS NULL)`,
+		),
+		check(
+			"media_processing_owner",
+			sql`(${table.ownerJobId} IS NULL AND ${table.ownerAttemptCount} IS NULL) OR (${table.ownerJobId} IS NOT NULL AND ${table.ownerAttemptCount} IS NOT NULL AND ${table.ownerAttemptCount} >= 0)`,
+		),
+		check(
+			"media_processing_completed",
+			sql`${table.status} <> 'completed' OR (${table.completedRevision} IS NOT NULL AND ${table.completedRevision} = ${table.requestedRevision})`,
+		),
+	],
+);
+
 export const jobs = pgTable(
 	"jobs",
 	{

@@ -78,8 +78,8 @@ describe("MediaService Unit Tests", () => {
 	let mockMediaRepository: IMediaRepository;
 	let mockSourceRepository: SourceRepository;
 	let mockStorageService: IMediaStorage;
-	let mockTagRepository: TagRepository;
-	let mockImageProcessor: IImageProcessor;
+	let _mockTagRepository: TagRepository;
+	let _mockImageProcessor: IImageProcessor;
 	let mockAuthorRepository: IAuthorRepository;
 	let mockProjectRepository: IProjectRepository;
 	let mockCharacterRepository: CharacterRepository;
@@ -154,11 +154,11 @@ describe("MediaService Unit Tests", () => {
 			deleteFile: vi.fn(),
 		} as unknown as IMediaStorage;
 
-		mockTagRepository = {
+		_mockTagRepository = {
 			addTagsToMedia: vi.fn(),
 		} as unknown as TagRepository;
 
-		mockImageProcessor = {
+		_mockImageProcessor = {
 			extractMetadata: vi.fn(),
 		} as unknown as IImageProcessor;
 
@@ -207,8 +207,7 @@ describe("MediaService Unit Tests", () => {
 			mockMediaRepository,
 			mockSourceRepository,
 			mockStorageService,
-			mockTagRepository,
-			mockImageProcessor,
+			{ processTask: vi.fn() },
 			mockLogger,
 		);
 

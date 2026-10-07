@@ -1,3 +1,4 @@
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 /**
  * FileWatcherService - Manages file system monitoring for media sources
  *
@@ -139,22 +140,25 @@ async function handleFileChanged(
 
 		// Update file metadata (size, dimensions, mtime)
 		const fileMetadata = await ServerMediaStorage.getFileMetadata(fullPath);
-		await MediaRepository.update(media.id, {
-			width: fileMetadata.width,
-			height: fileMetadata.height,
-			fileSize: fileMetadata.size,
-			modifiedAt: fileMetadata.modifiedAt,
-		});
-
-		// Queue processMedia job for thumbnail regeneration and metadata re-extraction
-		const jobRepo = services.getJobRepository();
-		await jobRepo.create({
-			type: "processMedia",
-			mediaSourceId,
-			payload: {
-				mediaId: media.id,
-				sourcePath: basePath,
-			},
+		await DrizzleTransactionManager.transaction(async (tx) => {
+			await MediaRepository.update(
+				media.id,
+				{
+					width: fileMetadata.width,
+					height: fileMetadata.height,
+					fileSize: fileMetadata.size,
+					modifiedAt: fileMetadata.modifiedAt,
+				},
+				tx,
+			);
+			await services.getJobRepository().create(
+				{
+					type: "processMedia",
+					mediaSourceId,
+					payload: { mediaId: media.id },
+				},
+				tx,
+			);
 		});
 
 		// Notify

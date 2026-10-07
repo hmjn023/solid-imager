@@ -16,3 +16,5 @@ export { createUserRepository } from "./repositories/user-repository";
 export * from "./schema";
 export { createTransactionManager } from "./transaction-manager";
 export * from "./types";
+
+export { createMediaProcessingStateRepository } from "./repositories/media-processing-state-repository";

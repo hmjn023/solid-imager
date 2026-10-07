@@ -1,3 +1,5 @@
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
+import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -6,6 +8,7 @@ import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-ra
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import {
 	deleteThumbnail,
+	thumbnailExists,
 	prepareProcessingThumbnail,
 	processThumbnailGenerationJob,
 } from "~/infrastructure/jobs/thumbnails";
@@ -106,6 +109,16 @@ export function initServices() {
 
 	// Register MediaProcessingService (Implementation)
 	const mediaProcessingService = new MediaProcessingServiceImpl({
+		processingStateRepo: MediaProcessingStateRepository,
+		getProcessingSettings: () =>
+			processingSettingsFromConfig(configService.getConfig()),
+		hasThumbnails: async (sourceId, mediaId) =>
+			(
+				await Promise.all([
+					thumbnailExists(sourceId, mediaId, 512),
+					thumbnailExists(sourceId, mediaId, 256),
+				])
+			).every(Boolean),
 		transactionManager: DrizzleTransactionManager,
 		sourceRepo: services.getSourceRepository(),
 		mediaRepo: services.getMediaRepository(),

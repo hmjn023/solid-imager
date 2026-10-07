@@ -25,6 +25,12 @@ import type {
 	Job,
 } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
+import type { IMediaProcessingStateRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
+import type {
+	MediaTaskKind,
+	ProcessingOwner,
+	ProcessingSettings,
+} from "@solid-imager/core/domain/processing/schemas";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
@@ -32,7 +38,7 @@ import type { IImageProcessor } from "@solid-imager/core/domain/services/image-p
 import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/events";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { IMediaStorage } from "@solid-imager/core/interfaces/media-storage";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
+import { MediaTaskService } from "./media-task-service";
 import type { IMediaProcessingService } from "../ports/media-processing-service";
 import type { ILogger } from "../ports/media-service";
 
@@ -64,6 +70,9 @@ export function getMediaProcessingRevision(
 }
 
 export type MediaProcessingServiceDeps = {
+	processingStateRepo: IMediaProcessingStateRepository;
+	getProcessingSettings: () => ProcessingSettings;
+	hasThumbnails: (sourceId: string, mediaId: string) => Promise<boolean>;
 	transactionManager: TransactionManager;
 	sourceRepo: SourceRepository;
 	mediaRepo: IMediaRepository;
@@ -93,6 +102,7 @@ export type MediaProcessingServiceDeps = {
 };
 
 export class MediaProcessingServiceImpl implements IMediaProcessingService {
+	private readonly taskService: MediaTaskService;
 	private readonly sourceRepo: SourceRepository;
 	private readonly mediaRepo: IMediaRepository;
 	private readonly tagRepo: TagRepository;
@@ -101,18 +111,17 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly ipRepo: IIpRepository;
 	private readonly projectRepo: IProjectRepository;
 	private readonly jobRepo: IJobRepository;
-	private readonly imageProcessor: IImageProcessor;
 	private readonly mediaStorage: IMediaStorage;
 	private enableAutoTagging: boolean;
 	private enableAutoCcipExtraction: boolean;
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
-	private readonly prepareThumbnail: MediaProcessingServiceDeps["prepareThumbnail"];
 	private readonly transactionManager: TransactionManager;
 	private readonly publishSourceEvent: SourceEventPublisher;
 	private readonly publishJobProgress: MediaProcessingServiceDeps["publishJobProgress"];
 	private readonly logger?: ILogger;
 
 	constructor(deps: MediaProcessingServiceDeps) {
+		this.taskService = new MediaTaskService(deps);
 		this.sourceRepo = deps.sourceRepo;
 		this.mediaRepo = deps.mediaRepo;
 		this.tagRepo = deps.tagRepo;
@@ -121,12 +130,10 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		this.ipRepo = deps.ipRepo;
 		this.projectRepo = deps.projectRepo;
 		this.jobRepo = deps.jobRepo;
-		this.imageProcessor = deps.imageProcessor;
 		this.mediaStorage = deps.mediaStorage;
 		this.enableAutoTagging = deps.enableAutoTagging;
 		this.enableAutoCcipExtraction = deps.enableAutoCcipExtraction ?? false;
 		this.supportedExtensions = deps.supportedExtensions;
-		this.prepareThumbnail = deps.prepareThumbnail;
 		this.transactionManager = deps.transactionManager;
 		this.publishSourceEvent = deps.publishSourceEvent;
 		this.publishJobProgress = deps.publishJobProgress;
@@ -240,7 +247,6 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		if (source?.type !== "local")
 			throw new Error("Local processing source not found");
 		const sourcePath = localConnectionSchema.parse(source.connectionInfo).path;
-		const mediaPath = path.join(sourcePath, media.filePath);
 		const revisionOf = (media: Media) =>
 			getMediaProcessingRevision(media, sourcePath);
 		const inputRevision = revisionOf(media);
@@ -344,54 +350,59 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			});
 		};
 
-		await run("metadata", async () => {
-			const metadata = await this.imageProcessor.extractMetadata(mediaPath);
-			await complete("metadata", async (tx) => {
-				await this.mediaRepo.upsertGenerationInfo(
-					media.id,
-					typeof metadata.prompt === "object" && metadata.prompt !== null
-						? JSON.stringify(metadata.prompt)
-						: typeof metadata.prompt === "string"
-							? metadata.prompt
-							: null,
-					isRecord(metadata.workflow) ? metadata.workflow : null,
-					tx,
-				);
-				if (metadata.tags.length > 0) {
-					await this.tagRepo.addTagsToMedia(
-						media.id,
-						metadata.tags,
-						"comfyui_workflow",
-						tx,
-					);
-				}
-			});
-		});
-
-		await run("thumbnail", async () => {
-			const prepared = await this.prepareThumbnail(
-				media,
-				sourcePath,
-				media.mediaSourceId,
-			);
+		for (const kind of ["metadata", "thumbnail"] as const) {
+			if (checkpoint.steps[kind].status === "skipped") continue;
 			try {
-				await complete("thumbnail", () => prepared.commit());
-			} finally {
-				try {
-					await prepared.cleanup();
-				} catch (error) {
-					this.logger?.warn(
-						{ err: error, jobId: job.id },
-						"Failed to clean staged thumbnail files",
-					);
-				}
+				await this.taskService.execute(
+					{
+						mediaId: media.id,
+						mediaSourceId: media.mediaSourceId,
+						sourcePath,
+						filePath: media.filePath,
+						modifiedAt: media.modifiedAt,
+						fileSize: media.fileSize,
+						mediaType: media.mediaType,
+					},
+					kind,
+					{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
+					{
+						claimed: async (tx) => {
+							const step = checkpoint.steps[kind];
+							step.status = "in_progress";
+							step.attemptCount++;
+							step.updatedAt = new Date().toISOString();
+							await save(tx);
+						},
+						completed: async (tx) => {
+							checkpoint.steps[kind].status = "completed";
+							checkpoint.steps[kind].updatedAt = new Date().toISOString();
+							await save(tx);
+						},
+						changed: () =>
+							this.notify(() =>
+								this.publishJobProgress(
+									job.id,
+									Object.values(checkpoint.steps).filter(
+										(step) =>
+											step.status === "completed" || step.status === "skipped",
+									).length,
+									3,
+								),
+							),
+					},
+				);
+			} catch (error) {
+				if (error instanceof JobAttemptLostError) throw error;
+				checkpoint.steps[kind].status = "failed";
+				checkpoint.steps[kind].updatedAt = new Date().toISOString();
+				await active(save);
+				failures.push(kind);
+				this.logger?.error(
+					{ err: error, jobId: job.id, step: kind },
+					"Media processing step failed",
+				);
 			}
-			this.notify(() =>
-				this.publishSourceEvent(media.mediaSourceId, "thumbnail-generated", {
-					mediaId: media.id,
-				}),
-			);
-		});
+		}
 
 		await run("ai_dispatch", async () => {
 			await complete("ai_dispatch", async (tx) => {
@@ -419,6 +430,16 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		});
 		if (failures.length > 0)
 			throw new Error(`Media processing failed: ${failures.join(", ")}`);
+	}
+
+	processTask(
+		sourceId: string,
+		mediaId: string,
+		kind: MediaTaskKind,
+		owner?: ProcessingOwner,
+		force = false,
+	): Promise<void> {
+		return this.taskService.processTask(sourceId, mediaId, kind, owner, force);
 	}
 
 	private notify(publish: () => void): void {

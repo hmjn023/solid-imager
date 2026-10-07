@@ -51,6 +51,7 @@ export const jobDtoSchema = z.object({
 	targetMediaModifiedAt: z.coerce.date().nullable(),
 	progress: jobProgressSchema,
 	processingSteps: z.array(processingStepDtoSchema).optional(),
+	currentProcessingSteps: z.array(processingStepDtoSchema).optional(),
 	artifact: z
 		.object({
 			fileName: z.string(),

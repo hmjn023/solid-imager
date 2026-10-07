@@ -4,6 +4,10 @@ import type {
 	MediaMetadataContext,
 } from "@solid-imager/core/domain/media/schemas";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
+import type {
+	MediaTaskKind,
+	ProcessingOwner,
+} from "@solid-imager/core/domain/processing/schemas";
 
 export interface IMediaProcessingService {
 	registerAndProcess(
@@ -13,6 +17,13 @@ export interface IMediaProcessingService {
 	): Promise<Media>;
 
 	executeProcessMediaJob(job: Job): Promise<void>;
+	processTask(
+		sourceId: string,
+		mediaId: string,
+		kind: MediaTaskKind,
+		owner?: ProcessingOwner,
+		force?: boolean,
+	): Promise<void>;
 
 	addContextMetadataToExistingMedia(
 		mediaId: string,
