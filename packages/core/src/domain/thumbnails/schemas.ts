@@ -23,6 +23,10 @@ export type GenerateThumbnailsResponse = z.infer<
 >;
 
 export const generateThumbnailJobPayloadSchema = z.object({
+	retryFileTasks: z.boolean().optional(),
+	processingRequest: z
+		.object({ requestId: z.uuid(), requestedRevision: z.string().min(1) })
+		.optional(),
 	force: z.boolean().optional(),
 	mediaId: z.uuid(),
 	size: thumbnailSizeSchema,

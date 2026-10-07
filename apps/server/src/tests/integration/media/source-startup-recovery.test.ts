@@ -4,7 +4,12 @@ import path from "node:path";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db";
-import { jobs, mediaSources, medias } from "~/infrastructure/db/schema";
+import {
+	jobs,
+	mediaSources,
+	medias,
+	mediaProcessingStates,
+} from "~/infrastructure/db/schema";
 import { FileWatcherManager } from "~/infrastructure/jobs/file-watcher-manager";
 import { FileWatcherService } from "~/infrastructure/jobs/file-watcher-service";
 import { services } from "~/infrastructure/service-registry";
@@ -29,6 +34,7 @@ describe("interrupted source startup recovery", () => {
 			expect(FileWatcherService.startMonitoringAll).toHaveBeenCalled(),
 		);
 		services.getJobWorker().stop();
+		await services.getMediaFileWorker().stop();
 		directory = await fs.mkdtemp(
 			path.join(os.tmpdir(), "solid-imager-source-recovery-"),
 		);
@@ -73,7 +79,7 @@ describe("interrupted source startup recovery", () => {
 	it("restores missing media and jobs from disk during startup without duplicate registration", async () => {
 		const maintenance = new MaintenanceService(
 			services.getMediaRepository(),
-			services.getJobRepository(),
+			services.getMediaProcessingService(),
 			services.getSourceRepository(),
 		);
 		const resume = async () => {
@@ -97,23 +103,23 @@ describe("interrupted source startup recovery", () => {
 			.select()
 			.from(jobs)
 			.where(eq(jobs.mediaSourceId, sourceId));
-		for (const record of records) {
-			const mediaJobs = queued.filter(
-				(job) =>
-					job.payload &&
-					typeof job.payload === "object" &&
-					"mediaId" in job.payload &&
-					job.payload.mediaId === record.id,
+		const states = await db.select().from(mediaProcessingStates);
+		for (const record of records)
+			expect(states.filter((row) => row.mediaId === record.id)).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						taskKind: "metadata",
+						executionMode: "scheduled",
+						status: "pending",
+					}),
+					expect.objectContaining({
+						taskKind: "thumbnail",
+						executionMode: "scheduled",
+						status: "pending",
+					}),
+				]),
 			);
-			expect(mediaJobs.length).toBeGreaterThanOrEqual(1);
-			if (record.filePath !== "registered.png")
-				expect(mediaJobs).toHaveLength(1);
-		}
-		expect(
-			queued.every(
-				(job) => job.type === "processMedia" && job.status === "pending",
-			),
-		).toBe(true);
+		expect(queued.some((job) => job.type === "processMedia")).toBe(false);
 
 		expect(
 			(await services.getSourceRepository().findById(sourceId))?.syncStatus,

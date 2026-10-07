@@ -25,8 +25,12 @@ import type {
 	Job,
 } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { IMediaProcessingStateRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
+import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import type {
+	MediaProcessingInput,
+	MediaProcessingClaim,
+	FileTaskKind,
+	MediaProcessingState,
 	MediaTaskKind,
 	ProcessingOwner,
 	ProcessingSettings,
@@ -70,7 +74,7 @@ export function getMediaProcessingRevision(
 }
 
 export type MediaProcessingServiceDeps = {
-	processingStateRepo: IMediaProcessingStateRepository;
+	processingStateRepo: IMediaProcessingSchedulerRepository;
 	getProcessingSettings: () => ProcessingSettings;
 	hasThumbnails: (sourceId: string, mediaId: string) => Promise<boolean>;
 	transactionManager: TransactionManager;
@@ -96,6 +100,7 @@ export type MediaProcessingServiceDeps = {
 		media: { id: string; filePath: string },
 		sourcePath: string,
 		mediaSourceId: string,
+		claim?: MediaProcessingClaim,
 	) => Promise<PreparedThumbnail>;
 	publishSourceEvent: SourceEventPublisher;
 	publishJobProgress: (jobId: string, processed: number, total: number) => void;
@@ -103,6 +108,7 @@ export type MediaProcessingServiceDeps = {
 
 export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly taskService: MediaTaskService;
+	private readonly processingStates: IMediaProcessingSchedulerRepository;
 	private readonly sourceRepo: SourceRepository;
 	private readonly mediaRepo: IMediaRepository;
 	private readonly tagRepo: TagRepository;
@@ -122,6 +128,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 	constructor(deps: MediaProcessingServiceDeps) {
 		this.taskService = new MediaTaskService(deps);
+		this.processingStates = deps.processingStateRepo;
 		this.sourceRepo = deps.sourceRepo;
 		this.mediaRepo = deps.mediaRepo;
 		this.tagRepo = deps.tagRepo;
@@ -207,19 +214,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				await this.registerContextMetadata(media.id, contextMetadata, tx);
 			}
 
-			// Step 3: Queue processMedia job
-			await this.jobRepo.create(
-				{
-					type: "processMedia",
-					mediaSourceId,
-					payload: {
-						mediaId: media.id,
-						sourcePath: basePath,
-						type: "processMedia",
-					},
-				},
-				tx,
-			);
+			await this.requestProcessing(media, basePath, {}, tx);
 
 			return media;
 		});
@@ -305,7 +300,38 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			);
 			return result;
 		};
-		await active(save);
+		await active(async (tx) => {
+			if (payload.retryFileTasks) {
+				for (const kind of ["metadata", "thumbnail"] as const) {
+					const step = checkpoint.steps[kind];
+					if (step.status !== "failed") continue;
+					await this.taskService.request(
+						{
+							mediaId: media.id,
+							mediaSourceId: media.mediaSourceId,
+							sourcePath,
+							filePath: media.filePath,
+							modifiedAt: media.modifiedAt,
+							fileSize: media.fileSize,
+							mediaType: media.mediaType,
+						},
+						kind,
+						tx,
+						true,
+						true,
+					);
+					step.status = "in_progress";
+					step.attemptCount++;
+					step.updatedAt = new Date().toISOString();
+				}
+				await this.jobRepo.update(
+					job.id,
+					{ payload: { ...payload, retryFileTasks: false } },
+					tx,
+				);
+			}
+			await save(tx);
+		});
 
 		const failures: ProcessingStepKind[] = [];
 		const run = async (kind: ProcessingStepKind, work: () => Promise<void>) => {
@@ -368,8 +394,8 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 					{
 						claimed: async (tx) => {
 							const step = checkpoint.steps[kind];
+							if (step.status !== "in_progress") step.attemptCount++;
 							step.status = "in_progress";
-							step.attemptCount++;
 							step.updatedAt = new Date().toISOString();
 							await save(tx);
 						},
@@ -430,6 +456,96 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		});
 		if (failures.length > 0)
 			throw new Error(`Media processing failed: ${failures.join(", ")}`);
+	}
+
+	async requestProcessing(
+		media: Media,
+		sourcePath: string,
+		options: {
+			skipMetadataExtraction?: boolean;
+			skipThumbnailGeneration?: boolean;
+			skipAi?: boolean;
+		},
+		tx: Transaction,
+	) {
+		const input: MediaProcessingInput = {
+			mediaId: media.id,
+			mediaSourceId: media.mediaSourceId,
+			sourcePath,
+			filePath: media.filePath,
+			modifiedAt: media.modifiedAt,
+			fileSize: media.fileSize,
+			mediaType: media.mediaType,
+		};
+
+		await this.mediaRepo.findById(media.id, tx, { forUpdate: true });
+		const previous = await this.processingStates.findByMediaIds([media.id], tx);
+		let changed = false;
+		for (const kind of ["metadata", "thumbnail"] as const) {
+			if (
+				kind === "metadata"
+					? options.skipMetadataExtraction
+					: options.skipThumbnailGeneration
+			)
+				continue;
+			const state = await this.taskService.request(input, kind, tx);
+			changed ||=
+				!!state &&
+				previous.find((row) => row.taskKind === kind)?.requestId !==
+					state.requestId;
+		}
+
+		if (changed && !options.skipAi && media.mediaType === "image") {
+			if (this.enableAutoTagging && !options.skipMetadataExtraction)
+				await this.jobRepo.createIfUnique(
+					{
+						type: "auto_tagging",
+						mediaSourceId: media.mediaSourceId,
+						payload: { mediaId: media.id },
+					},
+					tx,
+				);
+			if (this.enableAutoCcipExtraction)
+				await this.jobRepo.createIfUnique(
+					{
+						type: "extract_ccip_vector",
+						mediaSourceId: media.mediaSourceId,
+						payload: { mediaId: media.id },
+					},
+					tx,
+				);
+		}
+	}
+	requestTask(
+		sourceId: string,
+		mediaId: string,
+		kind: FileTaskKind,
+		force = false,
+		tx?: Transaction,
+		repair = false,
+	) {
+		return this.taskService.requestTask(
+			sourceId,
+			mediaId,
+			kind,
+			force,
+			tx,
+			repair,
+		);
+	}
+	waitForTask(
+		mediaId: string,
+		kind: FileTaskKind,
+		request: Pick<MediaProcessingState, "requestId" | "requestedRevision">,
+		owner?: ProcessingOwner,
+	) {
+		return this.taskService.wait(mediaId, kind, request, owner);
+	}
+	runFileTask(kind: FileTaskKind) {
+		return this.taskService.runOnce(kind);
+	}
+	reconcileFileTasks() {
+		return this.taskService.reconcile();
 	}
 
 	processTask(

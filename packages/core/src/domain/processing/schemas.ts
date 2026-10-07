@@ -90,6 +90,7 @@ export const mediaProcessingClaimSchema = z.object({
 });
 export type MediaProcessingClaim = z.infer<typeof mediaProcessingClaimSchema>;
 export const mediaProcessingStateSchema = z.object({
+	requestId: z.uuid(),
 	mediaId: z.uuid(),
 	taskKind: mediaTaskKindSchema,
 	status: z.enum(["pending", "in_progress", "completed", "failed"]),

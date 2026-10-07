@@ -21,6 +21,10 @@ export type ProcessingClaimResult =
 
 export type IMediaProcessingSchedulerRepository =
 	IMediaProcessingStateRepository & {
+		findInlineMediaIds(
+			afterId: string | undefined,
+			limit: number,
+		): Promise<string[]>;
 		/** Explicit authority transfer. Callers must quiesce/reconcile old producers first. */
 		request(
 			request: MediaProcessingRequest,
@@ -55,7 +59,10 @@ export type IMediaProcessingStateRepository = {
 		result: TaggingResponse,
 		tx: Transaction,
 	): Promise<void>;
-	findByMediaIds(mediaIds: string[]): Promise<MediaProcessingState[]>;
+	findByMediaIds(
+		mediaIds: string[],
+		tx?: Transaction,
+	): Promise<MediaProcessingState[]>;
 	claim(
 		input: MediaProcessingInput,
 		taskKind: MediaTaskKind,

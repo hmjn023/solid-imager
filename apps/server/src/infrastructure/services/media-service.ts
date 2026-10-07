@@ -85,7 +85,7 @@ function createMediaService(): MediaServiceImpl {
 		services.getMediaRepository(),
 		services.getSourceRepository(),
 		services.getMediaStorage(),
-		services.getJobRepository(),
+		services.getMediaProcessingService(),
 		DrizzleTransactionManager,
 	);
 
@@ -98,7 +98,7 @@ function createMediaService(): MediaServiceImpl {
 		services.getCharacterRepository(),
 		services.getIpRepository(),
 		DrizzleTransactionManager as TransactionManager,
-		services.getJobRepository(),
+		services.getMediaProcessingService(),
 		eventPublisher,
 		thumbnailManager,
 		appLogger,

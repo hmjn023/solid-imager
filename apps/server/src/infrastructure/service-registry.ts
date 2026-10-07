@@ -19,6 +19,8 @@ import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domai
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
 
+import type { MediaFileWorker } from "~/infrastructure/jobs/media-file-worker";
+
 export class ServiceRegistry {
 	private static instance: ServiceRegistry;
 	private mediaRepository?: IMediaRepository;
@@ -34,6 +36,7 @@ export class ServiceRegistry {
 	private ipRepository?: IIpRepository;
 	private jobRepository?: IJobRepository;
 	private jobWorker?: JobWorker;
+	private mediaFileWorker?: MediaFileWorker;
 	private mediaProcessingService?: IMediaProcessingService;
 	private characterService?: ICharacterService;
 	private configService?: IConfigService;
@@ -93,6 +96,15 @@ export class ServiceRegistry {
 
 	registerJobRepository(repo: IJobRepository): void {
 		this.jobRepository = repo;
+	}
+
+	registerMediaFileWorker(worker: MediaFileWorker) {
+		this.mediaFileWorker = worker;
+	}
+	getMediaFileWorker(): MediaFileWorker {
+		if (!this.mediaFileWorker)
+			throw new Error("MediaFileWorker is not registered");
+		return this.mediaFileWorker;
 	}
 
 	registerJobWorker(worker: JobWorker): void {
@@ -225,6 +237,9 @@ export class ServiceRegistry {
 
 	// Helper for testing to reset the registry
 	async reset(): Promise<void> {
+		this.jobWorker?.stop();
+		await this.mediaFileWorker?.stop();
+		this.mediaFileWorker = undefined;
 		this.mediaRepository = undefined;
 		this.sourceRepository = undefined;
 		this.mediaStorage = undefined;

@@ -1,3 +1,5 @@
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import type { DeferredActions } from "@solid-imager/application/ports/media-service";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -79,6 +81,34 @@ export async function executeDeferredActions(actions: DeferredActions) {
 		const repo = services.getJobRepository();
 		for (const item of actions.jobs) {
 			for (const job of item.jobs) {
+				if (job.type === "processMedia") {
+					if (!job.mediaId)
+						throw new Error("Deferred processing media ID is missing");
+					const mediaId = job.mediaId;
+					await DrizzleTransactionManager.transaction(async (tx) => {
+						const media = await services
+							.getMediaRepository()
+							.findById(mediaId, tx);
+						const source = await services
+							.getSourceRepository()
+							.findById(item.mediaSourceId, tx);
+						if (
+							!media ||
+							media.mediaSourceId !== item.mediaSourceId ||
+							source?.type !== "local"
+						)
+							throw new Error("Deferred processing target not found");
+						await services
+							.getMediaProcessingService()
+							.requestProcessing(
+								media,
+								localConnectionSchema.parse(source.connectionInfo).path,
+								{},
+								tx,
+							);
+					});
+					continue;
+				}
 				const jobPayload = {
 					...(job.payload && typeof job.payload === "object"
 						? job.payload

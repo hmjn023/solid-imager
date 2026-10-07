@@ -1,3 +1,4 @@
+import { services } from "~/infrastructure/service-registry";
 import type { NewAuthor } from "@solid-imager/core/domain/authors/schemas";
 import { createReadStream, createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
@@ -441,12 +442,14 @@ export const BackupService = {
 				},
 				c,
 			);
+			for (const mediaId of mediaSource.type === "local"
+				? mediaPathToId.values()
+				: []) {
+				await services
+					.getMediaProcessingService()
+					.requestTask(mediaSourceId, mediaId, "thumbnail", false, tx, true);
+			}
 		});
-
-		// Thumbnail generation is intentionally not part of restore. Restoring a
-		// large dump must not start one processMedia job per item while the import
-		// transaction is still competing for CPU, disk, and the jobs table. Callers
-		// can use the dedicated thumbnail-generation workflow after the import.
 
 		return {
 			processed: validItems.length,

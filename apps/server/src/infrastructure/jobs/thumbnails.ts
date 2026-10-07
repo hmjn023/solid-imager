@@ -1,7 +1,10 @@
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { ProcessingOwner } from "@solid-imager/core/domain/processing/schemas";
+import type {
+	ProcessingOwner,
+	MediaProcessingClaim,
+} from "@solid-imager/core/domain/processing/schemas";
 import type { PreparedThumbnail } from "@solid-imager/application/services/media-processing-service";
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import {
@@ -11,8 +14,10 @@ import {
 import type { Job, Media } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
+import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { services } from "~/infrastructure/service-registry";
 
 const sourceRepo = DrizzleSourceRepository;
@@ -128,13 +133,14 @@ export async function generateThumbnail(
 		.processTask(mediaSourceId, media.id, "thumbnail");
 }
 
-/** Convert outside a DB transaction; publish only while the job claim is locked. */
+/** Convert outside a DB transaction; publish only while the dedicated claim is fenced. */
 export async function prepareProcessingThumbnail(
 	media: Pick<Media, "id" | "filePath">,
 	sourcePath: string,
 	mediaSourceId: string,
+	claim?: MediaProcessingClaim,
 ): Promise<PreparedThumbnail> {
-	const token = randomUUID();
+	const token = claim ? `${claim.revision}.${claim.token}` : randomUUID();
 	const large = getThumbnailPath(mediaSourceId, media.id, THUMBNAIL_SIZE_LARGE);
 	const small = getThumbnailPath(mediaSourceId, media.id, THUMBNAIL_SIZE_SMALL);
 	const temporaryLarge = `${large}.${token}.tmp.webp`;
@@ -213,7 +219,7 @@ export async function deleteThumbnail(
 
 /**
  * Queues all media items from a specified source for processing.
- * Uses the unified processMedia job type.
+ * Reserves dedicated requests; legacy child records observe batch progress until run/items migration.
  * @param {string} mediaSourceId - The ID of the media source.
  * @returns {Promise<number>} A promise that resolves with the number of jobs added to the queue.
  * @throws {Error} If the source is not found or is not a local source.
@@ -258,15 +264,34 @@ export async function generateThumbnailsForSource(
 			const chunk = targets.slice(index, index + ENQUEUE_CONCURRENCY);
 			const created = await Promise.all(
 				chunk.map((media) =>
-					jobRepo.createIfUnique({
-						type: "generate_thumbnail",
-						mediaSourceId,
-						parentId: parent.id,
-						payload: {
-							mediaId: media.id,
-							size: options.size,
-							force: !options.missingOnly,
-						},
+					DrizzleTransactionManager.transaction(async (tx) => {
+						const request = await services
+							.getMediaProcessingService()
+							.requestTask(
+								mediaSourceId,
+								media.id,
+								"thumbnail",
+								!options.missingOnly,
+								tx,
+								true,
+							);
+						if (!request) return false;
+						return jobRepo.createIfUnique(
+							{
+								type: "generate_thumbnail",
+								mediaSourceId,
+								parentId: parent.id,
+								payload: {
+									mediaId: media.id,
+									size: options.size,
+									processingRequest: {
+										requestId: request.requestId,
+										requestedRevision: request.requestedRevision,
+									},
+								},
+							},
+							tx,
+						);
 					}),
 				),
 			);
@@ -337,12 +362,8 @@ export async function queueThumbnailGeneration(
 		return;
 	}
 	const queued = services
-		.getJobRepository()
-		.createIfUnique({
-			type: "generate_thumbnail",
-			mediaSourceId,
-			payload: { mediaId, size },
-		})
+		.getMediaProcessingService()
+		.requestTask(mediaSourceId, mediaId, "thumbnail", false, undefined, true)
 		.then(() => undefined)
 		.finally(() => thumbnailQueueInFlight.delete(key));
 	thumbnailQueueInFlight.set(key, queued);
@@ -356,13 +377,105 @@ export async function processThumbnailGenerationJob(job: Job): Promise<void> {
 	}
 
 	try {
-		await generateThumbnailForMedia(
-			job.mediaSourceId,
-			payload.mediaId,
-			payload.size,
-			{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
-			payload.force,
-		);
+		const owner = { jobId: job.id, attemptCount: job.attemptCount ?? 0 };
+
+		let request = payload.processingRequest;
+		if (payload.retryFileTasks) {
+			const expected = request;
+			request = await services
+				.getJobRepository()
+				.withActiveAttempt(owner.jobId, owner.attemptCount, async (tx) => {
+					await MediaRepository.findById(payload.mediaId, tx, {
+						forUpdate: true,
+					});
+					const state = (
+						await MediaProcessingStateRepository.findByMediaIds(
+							[payload.mediaId],
+							tx,
+						)
+					).find((row) => row.taskKind === "thumbnail");
+					let next = expected;
+					if (
+						!expected ||
+						(state?.requestId === expected.requestId &&
+							state.requestedRevision === expected.requestedRevision &&
+							state.status === "failed")
+					) {
+						const reserved = await services
+							.getMediaProcessingService()
+							.requestTask(
+								job.mediaSourceId ?? "",
+								payload.mediaId,
+								"thumbnail",
+								state?.status === "failed",
+								tx,
+								true,
+							);
+						if (reserved)
+							next = {
+								requestId: reserved.requestId,
+								requestedRevision: reserved.requestedRevision,
+							};
+					}
+					await services.getJobRepository().update(
+						job.id,
+						{
+							payload: {
+								...payload,
+								retryFileTasks: false,
+								processingRequest: next,
+							},
+						},
+						tx,
+					);
+					return next;
+				});
+		}
+		if (request)
+			await services
+				.getMediaProcessingService()
+				.waitForTask(payload.mediaId, "thumbnail", request, owner);
+		else {
+			// Bind old payloads once so stale recovery cannot replay a force request.
+			request = await services
+				.getJobRepository()
+				.withActiveAttempt(owner.jobId, owner.attemptCount, async (tx) => {
+					const reserved = await services
+						.getMediaProcessingService()
+						.requestTask(
+							job.mediaSourceId ?? "",
+							payload.mediaId,
+							"thumbnail",
+							payload.force,
+							tx,
+							true,
+						);
+					const identity = reserved
+						? {
+								requestId: reserved.requestId,
+								requestedRevision: reserved.requestedRevision,
+							}
+						: undefined;
+					await services.getJobRepository().update(
+						job.id,
+						{
+							payload: {
+								...payload,
+								force: false,
+								retryFileTasks: false,
+								processingRequest: identity,
+							},
+						},
+						tx,
+					);
+					return identity;
+				});
+			if (request)
+				await services
+					.getMediaProcessingService()
+					.waitForTask(payload.mediaId, "thumbnail", request, owner);
+		}
+
 		await updateThumbnailParentProgress(job, true);
 	} catch (error) {
 		await updateThumbnailParentProgress(job, false);

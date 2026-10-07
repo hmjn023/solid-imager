@@ -2,22 +2,22 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { IJobRepository } from "~/domain/repositories/job-repository";
+import type { IMediaProcessingService } from "@solid-imager/application/ports/media-processing-service";
 import { getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
 export class MaintenanceService {
 	private readonly mediaRepo: IMediaRepository;
-	private readonly jobRepo: IJobRepository;
+	private readonly processing: Pick<IMediaProcessingService, "requestTask">;
 	private readonly sourceRepo: SourceRepository;
 
 	constructor(
 		mediaRepo: IMediaRepository,
-		jobRepo: IJobRepository,
+		processing: Pick<IMediaProcessingService, "requestTask">,
 		sourceRepo: SourceRepository,
 	) {
 		this.mediaRepo = mediaRepo;
-		this.jobRepo = jobRepo;
+		this.processing = processing;
 		this.sourceRepo = sourceRepo;
 	}
 
@@ -192,15 +192,15 @@ export class MaintenanceService {
 					}
 
 					try {
-						return await this.jobRepo.createIfUnique({
-							type: "processMedia",
-							mediaSourceId: item.mediaSourceId,
-							payload: {
-								mediaId: item.id,
-								sourcePath: basePath,
-								...options,
-							},
-						});
+						await this.processing.requestTask(
+							item.mediaSourceId,
+							item.id,
+							options.skipMetadataExtraction ? "thumbnail" : "metadata",
+							false,
+							undefined,
+							true,
+						);
+						return true;
 					} catch (err) {
 						logger.error(
 							{ err, mediaId: item.id },
