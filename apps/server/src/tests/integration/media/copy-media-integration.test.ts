@@ -125,6 +125,8 @@ describe("MediaService - Copy Media Integration", () => {
 
 		services.registerMediaProcessingService(
 			new MediaProcessingServiceImpl({
+				transactionManager: DrizzleTransactionManager,
+				publishJobProgress: vi.fn(),
 				sourceRepo: services.getSourceRepository(),
 				mediaRepo: services.getMediaRepository(),
 				tagRepo: services.getTagRepository(),
@@ -141,7 +143,9 @@ describe("MediaService - Copy Media Integration", () => {
 					video: [".mp4", ".webm", ".mov"],
 					audio: [".mp3", ".wav"],
 				},
-				generateThumbnail: vi.fn() as any,
+				prepareThumbnail: vi
+					.fn()
+					.mockResolvedValue({ commit: vi.fn(), cleanup: vi.fn() }),
 				publishSourceEvent: vi.fn() as any,
 			}),
 		);

@@ -2,7 +2,8 @@ import { randomUUID } from "node:crypto";
 import { copyFile, link, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
-import { authorAccounts, authors, mediaAuthors, mediaUrls, mediaGenerationInfo, medias, mediaSources } from "@solid-imager/db/schema";
+import { getMediaProcessingRevision } from "@solid-imager/application/services/media-processing-service";
+import { authorAccounts, authors, mediaAuthors, mediaUrls, mediaGenerationInfo, medias, mediaSources, jobs } from "@solid-imager/db/schema";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import sharp from "sharp";
@@ -11,6 +12,7 @@ import {
   E2E_WRONG_AUTHOR_ID, E2E_CORRECT_AUTHOR_ID, E2E_COAUTHOR_ID,
   E2E_PRIMARY_FILE_NAME,
   E2E_PRIMARY_MEDIA_ID,
+  E2E_PROCESSING_JOB_ID,
   E2E_SIMILAR_FILE_NAME,
   E2E_SIMILAR_MEDIA_ID,
   E2E_SOURCE_ID,
@@ -208,6 +210,25 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
         metadata: { fixture: "e2e-scroll" },
       })),
     ]);
+    // A real failed job with a durable metadata checkpoint. Retrying through
+    // the UI must run thumbnail generation without extracting metadata again.
+    await db.insert(jobs).values({
+      id: E2E_PROCESSING_JOB_ID, type: "processMedia", mediaSourceId: E2E_SOURCE_ID,
+      status: "failed", attemptCount: 1, error: "Media processing failed: thumbnail",
+      payload: { mediaId: E2E_PRIMARY_MEDIA_ID },
+      processingCheckpoint: {
+        version: 1,
+        inputRevision: getMediaProcessingRevision({
+          id: E2E_PRIMARY_MEDIA_ID, mediaSourceId: E2E_SOURCE_ID,
+          filePath: E2E_PRIMARY_FILE_NAME, fileSize: primaryStats.size, modifiedAt: primaryStats.mtime,
+        }, mediaDir),
+        steps: {
+          metadata: { status: "completed", attemptCount: 1, updatedAt: seededAt.toISOString() },
+          thumbnail: { status: "failed", attemptCount: 1, updatedAt: seededAt.toISOString() },
+          ai_dispatch: { status: "skipped", attemptCount: 0, updatedAt: null },
+        },
+      },
+    });
   } finally {
     await client.close();
   }

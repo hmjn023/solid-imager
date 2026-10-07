@@ -591,6 +591,51 @@ function JobsInspector(props: {
 							</div>
 						</dl>
 
+						<Show when={job().processingSteps?.length}>
+							<section aria-label="Processing steps" class="mt-4 space-y-3">
+								<h3 class="font-medium text-sm">Processing steps</h3>
+								<For each={job().processingSteps}>
+									{(step) => (
+										<div class="flex items-center justify-between gap-3 text-xs">
+											<span>
+												{
+													{
+														metadata: "Metadata",
+														thumbnail: "Thumbnails",
+														ai_dispatch: "Queue AI analysis",
+													}[step.kind]
+												}
+											</span>
+											<Badge
+												variant={
+													step.status === "failed" ? "destructive" : "secondary"
+												}
+											>
+												{
+													{
+														pending: "Pending",
+														in_progress: "In progress",
+														completed: "Completed",
+														failed: "Failed",
+														skipped: "Skipped",
+													}[step.status]
+												}
+											</Badge>
+										</div>
+									)}
+								</For>
+								<Show when={job().status === "failed"}>
+									<p class="text-xs text-muted-foreground">
+										Retry resumes unfinished steps. Completed steps are kept
+										while the media is unchanged.
+									</p>
+								</Show>
+								<p class="text-xs text-muted-foreground">
+									AI analysis runs in separate jobs.
+								</p>
+							</section>
+						</Show>
+
 						<Show when={job().progress}>
 							{(progress) => (
 								<div class="mt-4">

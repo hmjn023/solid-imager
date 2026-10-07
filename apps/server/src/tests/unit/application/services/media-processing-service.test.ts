@@ -79,6 +79,8 @@ describe("MediaProcessingService", () => {
 
 	beforeEach(() => {
 		service = new MediaProcessingServiceImpl({
+			transactionManager: { transaction: async (action) => action(undefined) },
+			publishJobProgress: vi.fn(),
 			sourceRepo: {} as any,
 			mediaRepo: mockMediaRepo as any,
 			tagRepo: mockTagRepo as any,
@@ -95,7 +97,9 @@ describe("MediaProcessingService", () => {
 				video: [".mp4", ".webm", ".mov"],
 				audio: [".mp3", ".wav"],
 			},
-			generateThumbnail: vi.fn() as any,
+			prepareThumbnail: vi
+				.fn()
+				.mockResolvedValue({ commit: vi.fn(), cleanup: vi.fn() }),
 			publishSourceEvent: vi.fn() as any,
 		});
 	});

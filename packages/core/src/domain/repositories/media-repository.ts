@@ -15,7 +15,11 @@ import type {
 } from "@/domain/media/schemas";
 
 export type IMediaRepository = {
-	findById(id: string, tx?: Transaction): Promise<Media | null>;
+	findById(
+		id: string,
+		tx?: Transaction,
+		options?: { forUpdate: boolean },
+	): Promise<Media | null>;
 	findByIds(ids: string[], tx?: Transaction): Promise<Media[]>;
 	findByPath(
 		sourceId: string,

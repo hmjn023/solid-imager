@@ -6,7 +6,7 @@ import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-ra
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import {
 	deleteThumbnail,
-	generateThumbnail,
+	prepareProcessingThumbnail,
 	processThumbnailGenerationJob,
 } from "~/infrastructure/jobs/thumbnails";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
@@ -106,6 +106,7 @@ export function initServices() {
 
 	// Register MediaProcessingService (Implementation)
 	const mediaProcessingService = new MediaProcessingServiceImpl({
+		transactionManager: DrizzleTransactionManager,
 		sourceRepo: services.getSourceRepository(),
 		mediaRepo: services.getMediaRepository(),
 		tagRepo: services.getTagRepository(),
@@ -120,11 +121,9 @@ export function initServices() {
 		enableAutoTagging: config.jobs.enableAutoTagging,
 		enableAutoCcipExtraction: config.jobs.enableAutoCcipExtraction,
 		supportedExtensions: config.media.supportedExtensions,
-		generateThumbnail: (
-			media: { id: string; filePath: string },
-			sourcePath: string,
-			mediaSourceId: string,
-		) => generateThumbnail(media, sourcePath, mediaSourceId),
+		prepareThumbnail: prepareProcessingThumbnail,
+		publishJobProgress: (jobId, processed, total) =>
+			RealtimeEventBus.publishJob("job-progress", { jobId, processed, total }),
 		publishSourceEvent: (mediaSourceId, event, data) =>
 			RealtimeEventBus.publishSource(mediaSourceId, event, data),
 	});

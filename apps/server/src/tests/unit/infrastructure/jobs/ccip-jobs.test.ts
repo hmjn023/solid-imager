@@ -16,6 +16,8 @@ const incrementFailedCount = vi.fn();
 const jobRepository: IJobRepository = {
 	create: vi.fn(),
 	createIfUnique: vi.fn(),
+	withActiveAttempt: vi.fn(),
+	heartbeat: vi.fn().mockResolvedValue(true),
 	findById: vi.fn(),
 	findPending: vi.fn(),
 	markAsInProgress: vi.fn(),

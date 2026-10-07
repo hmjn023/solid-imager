@@ -1,6 +1,10 @@
 import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/domain/contract/jobs.contract";
 import {
+	mediaProcessingCheckpointSchema,
+	processingStepKindSchema,
+} from "@solid-imager/core/domain/jobs/schemas";
+import {
 	isBatchParentJobType,
 	jobStatusSchema,
 } from "@solid-imager/core/domain/jobs/schemas";
@@ -89,6 +93,9 @@ function getTargetMediaModifiedAt(
 }
 
 export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
+	const checkpoint = mediaProcessingCheckpointSchema.safeParse(
+		job.processingCheckpoint,
+	);
 	return {
 		id: job.id,
 		type: job.type,
@@ -106,6 +113,20 @@ export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
 		targetMediaId: readTargetMediaId(job.payload),
 		targetMediaModifiedAt,
 		progress: readProgress(job.payload),
+		processingSteps:
+			job.type === "processMedia" && checkpoint.success
+				? processingStepKindSchema.options.map((kind) => {
+						const step = checkpoint.data.steps[kind];
+						return {
+							kind,
+							...step,
+							status:
+								step.status === "in_progress" && job.status !== "in_progress"
+									? ("pending" as const)
+									: step.status,
+						};
+					})
+				: [],
 		artifact:
 			job.status === "completed" &&
 			job.artifactPath &&

@@ -48,6 +48,21 @@ describe("LocalImageProcessor image format fallback", () => {
 		return inputPath;
 	}
 
+	it("reports unreadable metadata instead of returning an empty success", async () => {
+		const inputPath = path.join(tempDirectory, "corrupt.png");
+		await fs.writeFile(inputPath, "not an image");
+		await expect(imageProcessor.extractMetadata(inputPath)).rejects.toThrow();
+		await expect(
+			imageProcessor.extractMetadata(path.join(tempDirectory, "missing.png")),
+		).rejects.toThrow();
+	});
+
+	it("accepts a valid image that has no generation metadata", async () => {
+		await expect(
+			imageProcessor.extractMetadata(await createFixture(".tiff")),
+		).resolves.toEqual({ tags: [], prompt: null, workflow: null });
+	});
+
 	it.each([".svg", ".tiff"] as const)(
 		"uses sharp fallback for %s dimensions and thumbnails",
 		async (extension) => {

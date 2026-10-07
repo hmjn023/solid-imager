@@ -170,4 +170,5 @@ fi
 - **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面）
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
+- **取り込みジョブの復旧**: [工程別RetryとLOGGED移行手順](./docs/operations/resumable-media-processing.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)

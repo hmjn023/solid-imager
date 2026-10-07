@@ -1,3 +1,4 @@
+import type { MediaProcessingCheckpoint } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/job-repository";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
@@ -1051,6 +1052,10 @@ export const jobs = pgTable(
 		payload: jsonb("payload"),
 		/** ジョブの実行結果 (JSON) */
 		result: jsonb("result"),
+		/** Durable per-run checkpoints, retained by retry and stale recovery. */
+		processingCheckpoint: jsonb(
+			"processing_checkpoint",
+		).$type<MediaProcessingCheckpoint>(),
 		/** エラーメッセージ (失敗時) */
 		error: text("error"),
 		/** ジョブ作成日時 */
@@ -1112,6 +1117,11 @@ export const jobs = pgTable(
 		index("idx_jobs_cancelable")
 			.on(table.status, table.updatedAt)
 			.where(sql`${table.status} IN ('pending', 'in_progress')`),
+		index("idx_jobs_unfinished_processing_media")
+			.on(table.mediaSourceId, sql`(${table.payload}->>'mediaId')`)
+			.where(
+				sql`${table.type} = 'processMedia' AND ${table.status} IN ('pending', 'in_progress', 'failed')`,
+			),
 		index("idx_jobs_artifact_expiry")
 			.on(table.artifactExpiresAt)
 			.where(sql`${table.artifactPath} IS NOT NULL`),

@@ -1369,6 +1369,54 @@
                         }
                       ]
                     },
+                    "processingSteps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "in_progress",
+                              "completed",
+                              "failed",
+                              "skipped"
+                            ],
+                            "type": "string"
+                          },
+                          "attemptCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "enum": [
+                              "metadata",
+                              "thumbnail",
+                              "ai_dispatch"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "attemptCount",
+                          "updatedAt",
+                          "kind"
+                        ]
+                      }
+                    },
                     "artifact": {
                       "anyOf": [
                         {
@@ -1644,6 +1692,54 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "processingSteps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "in_progress",
+                              "completed",
+                              "failed",
+                              "skipped"
+                            ],
+                            "type": "string"
+                          },
+                          "attemptCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "enum": [
+                              "metadata",
+                              "thumbnail",
+                              "ai_dispatch"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "attemptCount",
+                          "updatedAt",
+                          "kind"
+                        ]
+                      }
                     },
                     "artifact": {
                       "anyOf": [
@@ -13881,6 +13977,54 @@
                               }
                             ]
                           },
+                          "processingSteps": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "status": {
+                                  "enum": [
+                                    "pending",
+                                    "in_progress",
+                                    "completed",
+                                    "failed",
+                                    "skipped"
+                                  ],
+                                  "type": "string"
+                                },
+                                "attemptCount": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "updatedAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "kind": {
+                                  "enum": [
+                                    "metadata",
+                                    "thumbnail",
+                                    "ai_dispatch"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "status",
+                                "attemptCount",
+                                "updatedAt",
+                                "kind"
+                              ]
+                            }
+                          },
                           "artifact": {
                             "anyOf": [
                               {
@@ -14156,6 +14300,54 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "processingSteps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "in_progress",
+                              "completed",
+                              "failed",
+                              "skipped"
+                            ],
+                            "type": "string"
+                          },
+                          "attemptCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "enum": [
+                              "metadata",
+                              "thumbnail",
+                              "ai_dispatch"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "attemptCount",
+                          "updatedAt",
+                          "kind"
+                        ]
+                      }
                     },
                     "artifact": {
                       "anyOf": [
@@ -14456,6 +14648,54 @@
                         }
                       ]
                     },
+                    "processingSteps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "in_progress",
+                              "completed",
+                              "failed",
+                              "skipped"
+                            ],
+                            "type": "string"
+                          },
+                          "attemptCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "enum": [
+                              "metadata",
+                              "thumbnail",
+                              "ai_dispatch"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "attemptCount",
+                          "updatedAt",
+                          "kind"
+                        ]
+                      }
+                    },
                     "artifact": {
                       "anyOf": [
                         {
@@ -14719,6 +14959,54 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "processingSteps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "status": {
+                            "enum": [
+                              "pending",
+                              "in_progress",
+                              "completed",
+                              "failed",
+                              "skipped"
+                            ],
+                            "type": "string"
+                          },
+                          "attemptCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "updatedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "kind": {
+                            "enum": [
+                              "metadata",
+                              "thumbnail",
+                              "ai_dispatch"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "status",
+                          "attemptCount",
+                          "updatedAt",
+                          "kind"
+                        ]
+                      }
                     },
                     "artifact": {
                       "anyOf": [

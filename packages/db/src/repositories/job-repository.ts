@@ -1,3 +1,9 @@
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import {
+	JobAttemptLostError,
+	mediaProcessingCheckpointSchema,
+	processMediaPayloadSchema,
+} from "@solid-imager/core/domain/jobs/schemas";
 import { batchParentJobTypes } from "@solid-imager/core/domain/jobs/schemas";
 import type {
 	BatchProgress,
@@ -21,7 +27,7 @@ import {
 	type SQL,
 	sql,
 } from "drizzle-orm";
-import { jobs } from "../schema";
+import { jobs, medias } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
 type RawClaimedJob = {
@@ -31,6 +37,7 @@ type RawClaimedJob = {
 	status: unknown;
 	payload: unknown;
 	result: unknown;
+	processingCheckpoint: unknown;
 	error: unknown;
 	createdAt: unknown;
 	updatedAt: unknown;
@@ -55,6 +62,10 @@ function mapJob(row: typeof jobs.$inferSelect): Job {
 		status: isJobStatus(row.status) ? row.status : "pending",
 		payload: row.payload,
 		result: row.result,
+		processingCheckpoint:
+			row.processingCheckpoint == null
+				? null
+				: mediaProcessingCheckpointSchema.parse(row.processingCheckpoint),
 		error: row.error,
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
@@ -75,18 +86,108 @@ function mapJob(row: typeof jobs.$inferSelect): Job {
 export function createJobRepository(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
 ): IJobRepository {
-	const db = () => getExecutor();
+	const db = (tx?: Transaction) => getExecutor(tx);
 
 	return {
-		async create(job: NewJob): Promise<Job> {
-			const [created] = await db().insert(jobs).values(job).returning();
+		async create(job: NewJob, tx?: Transaction): Promise<Job> {
+			const [created] = await db(tx).insert(jobs).values(job).returning();
 			return mapJob(created);
 		},
 
-		async createIfUnique(job: NewJob): Promise<Job | null> {
+		async withActiveAttempt<T>(
+			id: string,
+			attemptCount: number,
+			action: (tx: Transaction) => Promise<T>,
+		): Promise<T> {
+			return db().transaction(async (tx) => {
+				const [active] = await tx
+					.select({ id: jobs.id })
+					.from(jobs)
+					.where(
+						and(
+							eq(jobs.id, id),
+							eq(jobs.status, "in_progress"),
+							eq(jobs.attemptCount, attemptCount),
+							isNull(jobs.cancelRequestedAt),
+						),
+					)
+					.for("update");
+				if (!active) throw new JobAttemptLostError();
+				return action(tx);
+			});
+		},
+
+		async heartbeat(id: string, attemptCount: number): Promise<boolean> {
+			const rows = await db()
+				.update(jobs)
+				.set({ updatedAt: new Date() })
+				.where(
+					and(
+						eq(jobs.id, id),
+						eq(jobs.status, "in_progress"),
+						eq(jobs.attemptCount, attemptCount),
+						isNull(jobs.cancelRequestedAt),
+					),
+				)
+				.returning();
+			return rows.length > 0;
+		},
+
+		async createIfUnique(job: NewJob, tx?: Transaction): Promise<Job | null> {
+			// Startup repair must reuse unfinished ingestion, including failed jobs
+			// that the user can retry. Serialize repair producers on the media row.
+			if (job.type === "processMedia") {
+				const payload = processMediaPayloadSchema.parse(job.payload);
+				const sourceId = job.mediaSourceId;
+				if (!sourceId) throw new Error("processMedia requires a source");
+				const reserve = async (tx: Transaction) => {
+					const [media] = await db(tx)
+						.select({ id: medias.id })
+						.from(medias)
+						.where(
+							and(
+								eq(medias.id, payload.mediaId),
+								eq(medias.mediaSourceId, sourceId),
+							),
+						)
+						.for("update");
+					if (!media) return null;
+					const existing = await db(tx)
+						.select({ payload: jobs.payload })
+						.from(jobs)
+						.where(
+							and(
+								eq(jobs.type, "processMedia"),
+								eq(jobs.mediaSourceId, sourceId),
+								inArray(jobs.status, ["pending", "in_progress", "failed"]),
+								sql`${jobs.payload}->>'mediaId' = ${payload.mediaId}`,
+							),
+						);
+					let metadataCovered = payload.skipMetadataExtraction === true;
+					let thumbnailCovered = payload.skipThumbnailGeneration === true;
+					for (const entry of existing) {
+						const previous = processMediaPayloadSchema.parse(entry.payload);
+						metadataCovered ||= !previous.skipMetadataExtraction;
+						thumbnailCovered ||= !previous.skipThumbnailGeneration;
+					}
+					if (metadataCovered && thumbnailCovered) return null;
+					return this.create(
+						{
+							...job,
+							payload: {
+								...payload,
+								skipMetadataExtraction: metadataCovered,
+								skipThumbnailGeneration: thumbnailCovered,
+							},
+						},
+						tx,
+					);
+				};
+				return tx ? reserve(tx) : db().transaction(reserve);
+			}
 			if (job.type === "generate_thumbnail" && job.mediaSourceId) {
 				generateThumbnailJobPayloadSchema.parse(job.payload);
-				const [created] = await db()
+				const [created] = await db(tx)
 					.insert(jobs)
 					.values(job)
 					.onConflictDoNothing()
@@ -107,7 +208,7 @@ export function createJobRepository(
 			}
 
 			if (mediaId) {
-				const [created] = await db()
+				const [created] = await db(tx)
 					.insert(jobs)
 					.values(job)
 					.onConflictDoNothing()
@@ -116,7 +217,7 @@ export function createJobRepository(
 				return created ? mapJob(created) : null;
 			}
 
-			return this.create(job);
+			return this.create(job, tx);
 		},
 
 		async findById(id: string): Promise<Job | null> {
@@ -328,7 +429,11 @@ export function createJobRepository(
 				.where(eq(jobs.id, id));
 		},
 
-		async update(id: string, data: Partial<Job>): Promise<void> {
+		async update(
+			id: string,
+			data: Partial<Job>,
+			tx?: Transaction,
+		): Promise<void> {
 			const updates: Partial<typeof jobs.$inferInsert> = {};
 			if (data.type !== undefined) updates.type = data.type;
 			if (data.mediaSourceId !== undefined)
@@ -336,6 +441,8 @@ export function createJobRepository(
 			if (data.status !== undefined) updates.status = data.status;
 			if (data.payload !== undefined) updates.payload = data.payload;
 			if (data.result !== undefined) updates.result = data.result;
+			if (data.processingCheckpoint !== undefined)
+				updates.processingCheckpoint = data.processingCheckpoint;
 			if (data.error !== undefined) updates.error = data.error;
 			if (data.parentId !== undefined) updates.parentId = data.parentId;
 			if (data.cancelRequestedAt !== undefined)
@@ -358,7 +465,7 @@ export function createJobRepository(
 				updates.artifactExpiresAt = data.artifactExpiresAt;
 			updates.updatedAt = new Date();
 
-			await db().update(jobs).set(updates).where(eq(jobs.id, id));
+			await db(tx).update(jobs).set(updates).where(eq(jobs.id, id));
 		},
 
 		async incrementProgress(
@@ -507,6 +614,7 @@ function buildClaimUpdate(now: Date) {
 					status,
 					payload,
 			result,
+			processing_checkpoint AS "processingCheckpoint",
 			error,
 			created_at AS "createdAt",
 			updated_at AS "updatedAt",
@@ -557,6 +665,12 @@ function mapClaimedJob(row: unknown): Job {
 		status: requireJobStatus(raw.status),
 		payload: parseJsonColumn(raw.payload, "payload"),
 		result: parseJsonColumn(raw.result, "result"),
+		processingCheckpoint:
+			raw.processingCheckpoint == null
+				? null
+				: mediaProcessingCheckpointSchema.parse(
+						parseJsonColumn(raw.processingCheckpoint, "processingCheckpoint"),
+					),
 		error: nullableString(raw.error, "error"),
 		createdAt: requireDate(raw.createdAt, "createdAt"),
 		updatedAt: requireDate(raw.updatedAt, "updatedAt"),
