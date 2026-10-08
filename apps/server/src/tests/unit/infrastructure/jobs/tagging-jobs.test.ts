@@ -11,6 +11,17 @@ const incrementFailedCount = vi.fn();
 const findById = vi.fn();
 const update = vi.fn();
 const publishJob = vi.fn();
+const reserveTagsForJob = vi.fn(async (_owner, _source, ids: string[]) =>
+	Object.fromEntries(
+		ids.map((id) => [
+			id,
+			{
+				requestId: "00000000-0000-4000-8000-000000000099",
+				requestedRevision: "revision",
+			},
+		]),
+	),
+);
 const getTagsForMedia = vi.fn();
 
 const jobRepository: IJobRepository = {
@@ -45,6 +56,8 @@ vi.mock("~/infrastructure/service-registry", () => ({
 
 vi.mock("~/infrastructure/services/tagging-service", () => ({
 	taggingService: {
+		reserveTagsForJob: (...args: Parameters<typeof reserveTagsForJob>) =>
+			reserveTagsForJob(...args),
 		getTagsForMedia: (...args: Parameters<typeof getTagsForMedia>) =>
 			getTagsForMedia(...args),
 	},

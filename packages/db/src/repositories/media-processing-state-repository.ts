@@ -19,7 +19,6 @@ import {
 	mediaProcessingStates as states,
 	medias,
 	mediaSources,
-	jobs,
 } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -105,7 +104,12 @@ export function createMediaProcessingStateRepository(
 		}
 	}
 	return {
-		async findInlineMediaIds(afterId, limit) {
+		async findInlineMediaIds(
+			afterId,
+			limit,
+			taskKinds = ["metadata", "thumbnail"],
+		) {
+			if (!taskKinds.length) return [];
 			return (
 				await getExecutor()
 					.selectDistinct({ id: states.mediaId })
@@ -113,7 +117,7 @@ export function createMediaProcessingStateRepository(
 					.where(
 						and(
 							eq(states.executionMode, "inline"),
-							inArray(states.taskKind, ["metadata", "thumbnail"]),
+							inArray(states.taskKind, taskKinds),
 							afterId ? gt(states.mediaId, afterId) : undefined,
 						),
 					)
@@ -174,7 +178,12 @@ export function createMediaProcessingStateRepository(
 					previous.status === "failed"
 						? previous.lastError
 						: null,
-				taggingResult: null,
+				taggingResult:
+					!force &&
+					previous?.requestedRevision === revision &&
+					previous.status === "completed"
+						? previous.taggingResult
+						: null,
 				completedRevision: previous?.completedRevision ?? null,
 			};
 			const [row] = await db
@@ -401,81 +410,8 @@ export function createMediaProcessingStateRepository(
 					.where(inArray(states.mediaId, ids))
 			).map(mapState);
 		},
-		async claim(input, taskKind, revision, owner, force, tx) {
-			if (taskKind === "metadata" || taskKind === "thumbnail")
-				throw new MediaProcessingScheduledError();
-			await lockInput(input, tx);
-			const db = getExecutor(tx);
-			const where = and(
-				eq(states.mediaId, input.mediaId),
-				eq(states.taskKind, taskKind),
-			);
-			const [previous] = await db.select().from(states).where(where);
-			if (previous?.executionMode === "scheduled")
-				throw new MediaProcessingScheduledError();
-			const now = new Date();
-			if (previous?.requestedRevision === revision) {
-				if (previous.status === "completed" && !force)
-					return { status: "completed", state: mapState(previous) };
-				if (
-					previous.status === "in_progress" &&
-					previous.heartbeatAt &&
-					now.getTime() - previous.heartbeatAt.getTime() <
-						MEDIA_PROCESSING_LEASE_MS
-				) {
-					let active = true;
-					if (previous.ownerJobId) {
-						const [job] = await db
-							.select({
-								status: jobs.status,
-								attempt: jobs.attemptCount,
-								cancel: jobs.cancelRequestedAt,
-							})
-							.from(jobs)
-							.where(eq(jobs.id, previous.ownerJobId));
-						active =
-							!!job &&
-							job.status === "in_progress" &&
-							job.attempt === previous.ownerAttemptCount &&
-							job.cancel === null;
-					}
-					if (active) return { status: "busy" };
-				}
-			}
-			const token = randomUUID();
-			const values = {
-				mediaId: input.mediaId,
-				taskKind,
-				status: "in_progress",
-				inputRevision: serializeMediaProcessingInput(input),
-				requestedRevision: revision,
-				completedRevision: previous?.completedRevision ?? null,
-				claimToken: token,
-				claimedAt: now,
-				heartbeatAt: now,
-				updatedAt: now,
-				attemptCount:
-					previous?.requestedRevision === revision
-						? previous.attemptCount + 1
-						: 1,
-				ownerJobId: owner?.jobId ?? null,
-				ownerAttemptCount: owner?.attemptCount ?? null,
-				lastError: null,
-				taggingResult: null,
-			};
-			const [row] = await db
-				.insert(states)
-				.values(values)
-				.onConflictDoUpdate({
-					target: [states.mediaId, states.taskKind],
-					set: values,
-				})
-				.returning();
-			return {
-				status: "claimed",
-				claim: { mediaId: input.mediaId, taskKind, revision, token },
-				state: mapState(row),
-			};
+		async claim() {
+			throw new MediaProcessingScheduledError();
 		},
 		async commit(input, claim, output, tx) {
 			if (input.mediaId !== claim.mediaId)

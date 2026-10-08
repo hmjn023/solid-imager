@@ -37,6 +37,7 @@ describe("dedicated file processing producers", () => {
 		vi.restoreAllMocks();
 		services.getJobWorker().stop();
 		await services.getMediaFileWorker().stop();
+		await services.getMediaAiWorker().stop();
 		services.getMediaProcessingService().updateConfig({
 			enableAutoTagging: false,
 			enableAutoCcipExtraction: false,

@@ -6,6 +6,17 @@ import {
 } from "~/infrastructure/jobs/ccip-jobs";
 
 const publishJob = vi.fn();
+const reserveForJob = vi.fn(async (_owner, _source, ids: string[]) =>
+	Object.fromEntries(
+		ids.map((id) => [
+			id,
+			{
+				requestId: "00000000-0000-4000-8000-000000000099",
+				requestedRevision: "revision",
+			},
+		]),
+	),
+);
 const extract = vi.fn();
 const extractBatch = vi.fn();
 const loggerError = vi.fn();
@@ -44,6 +55,8 @@ vi.mock("~/infrastructure/service-registry", () => ({
 
 vi.mock("~/infrastructure/services/ccip-vector-service", () => ({
 	ccipVectorService: {
+		reserveForJob: (...args: Parameters<typeof reserveForJob>) =>
+			reserveForJob(...args),
 		extract: (...args: Parameters<typeof extract>) => extract(...args),
 		extractBatch: (...args: Parameters<typeof extractBatch>) =>
 			extractBatch(...args),
@@ -149,48 +162,53 @@ describe("processCcipExtractionJob", () => {
 		expect(update).not.toHaveBeenCalled();
 	});
 
-	it("increments failed count and marks parent failed when all children are done", async () => {
-		extract.mockRejectedValue(new Error("ccip error"));
-		incrementFailedCount.mockResolvedValue({
-			processed: 0,
-			failed: 1,
-			total: 1,
-		});
+	it.each(["extraction", "reservation"])(
+		"counts a %s failure and finishes the parent",
+		async (stage) => {
+			if (stage === "reservation")
+				reserveForJob.mockRejectedValueOnce(new Error("ccip error"));
+			else extract.mockRejectedValueOnce(new Error("ccip error"));
+			incrementFailedCount.mockResolvedValue({
+				processed: 0,
+				failed: 1,
+				total: 1,
+			});
 
-		await expect(
-			processCcipExtractionJob({
-				id: "00000000-0000-4000-8000-000000000020",
-				type: "extract_ccip_vector",
-				mediaSourceId: "00000000-0000-4000-8000-000000000001",
-				status: "in_progress",
-				payload: {
-					mediaId: "00000000-0000-4000-8000-000000000030",
-					force: false,
+			await expect(
+				processCcipExtractionJob({
+					id: "00000000-0000-4000-8000-000000000020",
+					type: "extract_ccip_vector",
+					mediaSourceId: "00000000-0000-4000-8000-000000000001",
+					status: "in_progress",
+					payload: {
+						mediaId: "00000000-0000-4000-8000-000000000030",
+						force: false,
+					},
+					result: null,
+					error: null,
+					createdAt: new Date(),
+					updatedAt: new Date(),
+					parentId: "00000000-0000-4000-8000-000000000010",
+				}),
+			).rejects.toThrow("ccip error");
+
+			expect(incrementFailedCount).toHaveBeenCalledWith(
+				"00000000-0000-4000-8000-000000000010",
+				"00000000-0000-4000-8000-000000000020",
+				1,
+			);
+			expect(update).toHaveBeenCalledWith(
+				"00000000-0000-4000-8000-000000000010",
+				{
+					status: "failed",
 				},
-				result: null,
-				error: null,
-				createdAt: new Date(),
-				updatedAt: new Date(),
-				parentId: "00000000-0000-4000-8000-000000000010",
-			}),
-		).rejects.toThrow("ccip error");
-
-		expect(incrementFailedCount).toHaveBeenCalledWith(
-			"00000000-0000-4000-8000-000000000010",
-			"00000000-0000-4000-8000-000000000020",
-			1,
-		);
-		expect(update).toHaveBeenCalledWith(
-			"00000000-0000-4000-8000-000000000010",
-			{
-				status: "failed",
-			},
-		);
-		expect(publishJob).toHaveBeenCalledWith("job-failed", {
-			jobId: "00000000-0000-4000-8000-000000000010",
-			error: "1 item(s) failed",
-		});
-	});
+			);
+			expect(publishJob).toHaveBeenCalledWith("job-failed", {
+				jobId: "00000000-0000-4000-8000-000000000010",
+				error: "1 item(s) failed",
+			});
+		},
+	);
 
 	it("extracts and persists a CCIP batch with item-based parent progress", async () => {
 		const mediaIds = [
@@ -235,6 +253,15 @@ describe("processCcipExtractionJob", () => {
 				jobId: expect.any(String),
 				attemptCount: expect.any(Number),
 			}),
+			Object.fromEntries(
+				mediaIds.map((id) => [
+					id,
+					{
+						requestId: "00000000-0000-4000-8000-000000000099",
+						requestedRevision: "revision",
+					},
+				]),
+			),
 		);
 		expect(incrementProgress).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000012",

@@ -1,3 +1,4 @@
+import { runScheduledObserver } from "./run-scheduled-observer";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -110,7 +111,11 @@ describe("revision-aware tagging", () => {
 	}
 	const run = (
 		options?: Parameters<TaggingServiceImpl["getTagsForMedia"]>[2],
-	) => service.getTagsForMedia(sourceId, mediaId, options);
+	) =>
+		runScheduledObserver(
+			service.getTagsForMedia(sourceId, mediaId, options),
+			() => service.runTaggingTask(),
+		);
 	const states = () => processingStateRepo.findByMediaIds([mediaId]);
 	function delayedInference() {
 		const started = Promise.withResolvers<void>();
@@ -142,7 +147,7 @@ describe("revision-aware tagging", () => {
 				user: "tagging_test",
 				password: "ephemeral_tagging_test",
 				database: "tagging_processing_test",
-				max: 12,
+				max: 8,
 			});
 			const pgDatabase = drizzlePostgres(postgres, { schema });
 			await migratePostgres(pgDatabase, {
@@ -333,19 +338,19 @@ describe("revision-aware tagging", () => {
 		]);
 	});
 	it("joins concurrent requests into one inference and forces a later new request", async () => {
-		const waiting = Promise.withResolvers<void>();
-		const claim = processingStateRepo.claim.bind(processingStateRepo);
-		vi.spyOn(processingStateRepo, "claim").mockImplementation(
+		const binding = Promise.withResolvers<void>();
+		const requestState = processingStateRepo.request.bind(processingStateRepo);
+		vi.spyOn(processingStateRepo, "request").mockImplementation(
 			async (...args) => {
-				const result = await claim(...args);
-				if (result.status === "busy") waiting.resolve();
-				return result;
+				const state = await requestState(...args);
+				if (state.status === "in_progress") binding.resolve();
+				return state;
 			},
 		);
 		const delayed = delayedInference();
 		await delayed.started;
 		const other = run({ skipCache: true });
-		await waiting.promise;
+		await binding.promise;
 		delayed.resolve(first);
 		await delayed.pending;
 		expect(await other).toEqual(first);
@@ -388,7 +393,7 @@ describe("revision-aware tagging", () => {
 		});
 		expect(await tagRepo.findByMediaId(mediaId)).toEqual([]);
 	});
-	it("rejects an expired claim's result after another request takes the lease", async () => {
+	it("shares recovered output while rejecting the expired worker's result", async () => {
 		const delayed = delayedInference();
 		await delayed.started;
 		await database
@@ -399,7 +404,7 @@ describe("revision-aware tagging", () => {
 		await run();
 		delayed.resolve(first);
 		expect(await delayed.pending).toEqual({
-			error: expect.any(MediaProcessingSupersededError),
+			value: empty,
 		});
 		expect(await states()).toEqual([
 			expect.objectContaining({
@@ -418,7 +423,7 @@ describe("revision-aware tagging", () => {
 		await run();
 		delayed.reject(new Error("old inference failed"));
 		expect(await delayed.pending).toEqual({
-			error: expect.objectContaining({ message: "old inference failed" }),
+			error: expect.any(MediaProcessingSupersededError),
 		});
 		expect(await states()).toEqual([
 			expect.objectContaining({ status: "completed", lastError: null }),
@@ -439,13 +444,13 @@ describe("revision-aware tagging", () => {
 				lastError: "relation write failed",
 			}),
 		]);
-		await run();
+		await run({ skipCache: true });
 		expect(before).toEqual([]);
 		expect(await states()).toEqual([
 			expect.objectContaining({
 				taskKind: "tagging",
 				status: "completed",
-				attemptCount: 2,
+				attemptCount: 1,
 			}),
 		]);
 	});
@@ -459,7 +464,7 @@ describe("revision-aware tagging", () => {
 				attemptCount: 1,
 			}),
 		]);
-		await run();
+		await run({ skipCache: true });
 		expect(infer).toHaveBeenCalledTimes(2);
 		expect((await states()).map((state) => state.taskKind)).toEqual([
 			"tagging",
@@ -500,11 +505,11 @@ describe("revision-aware tagging", () => {
 		expect(await states()).toEqual([
 			expect.objectContaining({ status: "failed" }),
 		]);
-		await run();
+		await run({ skipCache: true });
 		await run();
 		expect(infer).toHaveBeenCalledTimes(3);
 	});
-	it("rejects a cancelled job's late output", async () => {
+	it("stops a cancelled observer while retaining the shared scheduled output", async () => {
 		const job = await jobRepo.create({
 			type: "auto_tagging",
 			mediaSourceId: sourceId,
@@ -526,9 +531,9 @@ describe("revision-aware tagging", () => {
 		await jobRepo.requestCancellation(job.id);
 		response.resolve(first);
 		expect(await pending).toBeInstanceOf(Error);
-		expect(await tagRepo.findByMediaId(mediaId)).toEqual([]);
+		expect(await tagRepo.findByMediaId(mediaId)).not.toEqual([]);
 		expect(await states()).toEqual([
-			expect.objectContaining({ status: "failed" }),
+			expect.objectContaining({ status: "completed" }),
 		]);
 	});
 	it("cascades domain state and rejects late output after target deletion", async () => {
@@ -564,5 +569,161 @@ describe("revision-aware tagging", () => {
 				model: settings.model,
 			}),
 		);
+	});
+	it("runs durable requests after service recreation without generic jobs", async () => {
+		const request = await service.requestTags(sourceId, mediaId);
+		expect(request).toMatchObject({
+			status: "pending",
+			executionMode: "scheduled",
+			ownerJobId: null,
+		});
+		expect(infer).not.toHaveBeenCalled();
+		expect(await database.select().from(schema.jobs)).toHaveLength(0);
+		service = createService();
+		expect(await service.runTaggingTask()).toBe("completed");
+		expect(await run()).toEqual(first);
+		expect(infer).toHaveBeenCalledOnce();
+	});
+	it("keeps transient backoff and request identity until the dedicated retry completes", async () => {
+		infer.mockRejectedValueOnce(
+			Object.assign(new Error("AI timed out"), { code: "ETIMEDOUT" }),
+		);
+		const request = await service.requestTags(sourceId, mediaId);
+		expect(await service.runTaggingTask()).toBe("retry");
+		const [backoff] = await states();
+		expect(backoff).toMatchObject({
+			requestId: request.requestId,
+			status: "pending",
+			attemptCount: 1,
+		});
+		expect(await service.requestTags(sourceId, mediaId, true)).toEqual(backoff);
+		expect(await service.runTaggingTask()).toBe("idle");
+		await database
+			.update(schema.mediaProcessingStates)
+			.set({ availableAt: new Date(0) })
+			.where(eq(schema.mediaProcessingStates.mediaId, mediaId));
+		expect(await service.runTaggingTask()).toBe("completed");
+		expect(await run()).toEqual(first);
+		expect((await states())[0]).toMatchObject({
+			requestId: request.requestId,
+			attemptCount: 2,
+		});
+	});
+	it("preserves completed inline results and manual relations during startup handoff", async () => {
+		await run();
+		await database
+			.update(schema.mediaProcessingStates)
+			.set({ executionMode: "inline" })
+			.where(eq(schema.mediaProcessingStates.mediaId, mediaId));
+		const tags = await tagRepo.findByMediaId(mediaId);
+		service = createService();
+		await service.reconcileTaggingTasks();
+		expect((await states())[0]).toMatchObject({
+			status: "completed",
+			executionMode: "scheduled",
+			attemptCount: 1,
+		});
+		expect(await run()).toEqual(first);
+		expect(await tagRepo.findByMediaId(mediaId)).toEqual(tags);
+		expect(infer).toHaveBeenCalledOnce();
+	});
+	it("keeps terminal failures until explicit force and does not reset attempts on ordinary calls", async () => {
+		infer.mockRejectedValueOnce(new Error("invalid model"));
+		await expect(run()).rejects.toThrow("invalid model");
+		const terminal = await states();
+		await expect(run()).rejects.toThrow("invalid model");
+		expect(await states()).toEqual(terminal);
+		expect(infer).toHaveBeenCalledOnce();
+		expect(await run({ skipCache: true })).toEqual(first);
+		expect((await states())[0].requestId).not.toBe(terminal[0].requestId);
+		expect((await states())[0].attemptCount).toBe(1);
+	});
+	it("binds legacy force once, preserves failure on stale recovery and consumes explicit Retry", async () => {
+		const job = await jobRepo.create({
+			type: "auto_tagging",
+			mediaSourceId: sourceId,
+			payload: { mediaId, force: true },
+		});
+		const [initial] = await jobRepo.claimPending(1, {
+			includeTypes: ["auto_tagging"],
+		});
+		infer.mockRejectedValueOnce(new Error("invalid model"));
+		await expect(
+			run({
+				owner: { jobId: job.id, attemptCount: initial.attemptCount ?? 0 },
+				skipCache: true,
+			}),
+		).rejects.toThrow("invalid model");
+		const terminal = await states();
+		expect((await jobRepo.findById(job.id))?.payload).toMatchObject({
+			force: false,
+			processingRequests: { [mediaId]: { requestId: terminal[0].requestId } },
+		});
+		await database
+			.update(schema.jobs)
+			.set({ updatedAt: new Date(0) })
+			.where(eq(schema.jobs.id, job.id));
+		await jobRepo.requeueStaleInProgress(new Date());
+		const [stale] = await jobRepo.claimPending(1, {
+			includeTypes: ["auto_tagging"],
+		});
+		await expect(
+			run({
+				owner: { jobId: job.id, attemptCount: stale.attemptCount ?? 0 },
+				skipCache: true,
+			}),
+		).rejects.toThrow("invalid model");
+		expect(await states()).toEqual(terminal);
+		const current = await jobRepo.findById(job.id);
+		await jobRepo.update(job.id, {
+			status: "pending",
+			payload: { ...(current?.payload as object), retryAiTasks: true },
+		});
+		const [retry] = await jobRepo.claimPending(1, {
+			includeTypes: ["auto_tagging"],
+		});
+		expect(
+			await run({
+				owner: { jobId: job.id, attemptCount: retry.attemptCount ?? 0 },
+			}),
+		).toEqual(first);
+		expect((await states())[0]).toMatchObject({
+			status: "completed",
+			attemptCount: 1,
+		});
+		expect((await states())[0].requestId).not.toBe(terminal[0].requestId);
+		expect((await jobRepo.findById(job.id))?.payload).toMatchObject({
+			retryAiTasks: false,
+		});
+	});
+	it("does not report successful observation after a bound image becomes a video", async () => {
+		const request = await service.requestTags(sourceId, mediaId);
+		await database
+			.update(schema.medias)
+			.set({ mediaType: "video" })
+			.where(eq(schema.medias.id, mediaId));
+		await expect(
+			service.getTagsForMedia(sourceId, mediaId, { request }),
+		).rejects.toThrow(MediaProcessingSupersededError);
+		expect(infer).not.toHaveBeenCalled();
+	});
+	it("retains a terminal inline failure at startup instead of silently retrying", async () => {
+		infer.mockRejectedValueOnce(new Error("invalid image"));
+		await expect(run()).rejects.toThrow("invalid image");
+		const previous = (await states())[0];
+		await database
+			.update(schema.mediaProcessingStates)
+			.set({ executionMode: "inline" })
+			.where(eq(schema.mediaProcessingStates.mediaId, mediaId));
+		service = createService();
+		await service.reconcileTaggingTasks();
+		expect((await states())[0]).toMatchObject({
+			executionMode: "scheduled",
+			status: "failed",
+			attemptCount: previous.attemptCount,
+			lastError: previous.lastError,
+		});
+		await expect(run()).rejects.toThrow("invalid image");
+		expect(infer).toHaveBeenCalledOnce();
 	});
 });

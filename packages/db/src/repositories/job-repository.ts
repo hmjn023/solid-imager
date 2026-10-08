@@ -281,8 +281,8 @@ export function createJobRepository(
 			return this.create(job, tx);
 		},
 
-		async findById(id: string): Promise<Job | null> {
-			const [job] = await db().select().from(jobs).where(eq(jobs.id, id));
+		async findById(id: string, tx?: Transaction): Promise<Job | null> {
+			const [job] = await db(tx).select().from(jobs).where(eq(jobs.id, id));
 			return job ? mapJob(job) : null;
 		},
 

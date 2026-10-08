@@ -1,3 +1,4 @@
+import { runScheduledObserver } from "./run-scheduled-observer";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -69,7 +70,10 @@ describe("revision-aware full-image CCIP", () => {
 	const run = (
 		force = false,
 		owner?: Parameters<CcipVectorService["extract"]>[3],
-	) => service.extract(sourceId, mediaId, force, owner);
+	) =>
+		runScheduledObserver(service.extract(sourceId, mediaId, force, owner), () =>
+			service.runTask(),
+		);
 	const state = async () =>
 		(await processingStateRepo.findByMediaIds([mediaId])).find(
 			(row) => row.taskKind === "ccip",
@@ -112,7 +116,7 @@ describe("revision-aware full-image CCIP", () => {
 			vectorStore: store,
 			getCcipSettings: () => settings,
 			taggingService: {
-				getCcipFeatureForMedia: infer,
+				inferCcip: infer,
 				getCcipDistances: vi.fn().mockResolvedValue([0.1]),
 			} as any,
 		});
@@ -146,7 +150,7 @@ describe("revision-aware full-image CCIP", () => {
 				user: "ccip_test",
 				password: "ephemeral_ccip_test",
 				database: "ccip_processing_test",
-				max: 12,
+				max: 8,
 			});
 			const pgDatabase = drizzlePostgres(postgres, { schema });
 			await migratePostgres(pgDatabase, {
@@ -201,7 +205,7 @@ describe("revision-aware full-image CCIP", () => {
 		expect(infer).toHaveBeenCalledOnce();
 		await run(true);
 		expect(infer).toHaveBeenCalledTimes(2);
-		expect((await state())?.attemptCount).toBe(2);
+		expect((await state())?.attemptCount).toBe(1);
 		expect(await service.getStatus(sourceId, mediaId)).toMatchObject({
 			status: "ready",
 		});
@@ -253,22 +257,22 @@ describe("revision-aware full-image CCIP", () => {
 		expect(infer).toHaveBeenCalledTimes(2);
 	});
 	it("coalesces concurrent forced requests", async () => {
-		const old = delayed();
-		await old.started;
-		const busy = Promise.withResolvers<void>();
-		const claim = processingStateRepo.claim.bind(processingStateRepo);
-		vi.spyOn(processingStateRepo, "claim").mockImplementation(
+		const binding = Promise.withResolvers<void>();
+		const requestState = processingStateRepo.request.bind(processingStateRepo);
+		vi.spyOn(processingStateRepo, "request").mockImplementation(
 			async (...args) => {
-				const result = await claim(...args);
-				if (result.status === "busy") busy.resolve();
-				return result;
+				const state = await requestState(...args);
+				if (state.status === "in_progress") binding.resolve();
+				return state;
 			},
 		);
+		const old = delayed();
+		await old.started;
 		const next = run(true);
-		await busy.promise;
+		await binding.promise;
 		old.resolve(feature());
 		await old.pending;
-		expect((await next).skipped).toBe(true);
+		await next;
 		expect(infer).toHaveBeenCalledOnce();
 	});
 	for (const key of [
@@ -346,7 +350,7 @@ describe("revision-aware full-image CCIP", () => {
 			await run();
 			if (outcome === "success") old.resolve(feature(3));
 			else old.reject(new Error("old failure"));
-			expect(await old.pending).toHaveProperty("error");
+			expect(await old.pending).toHaveProperty("value");
 			expect((await state())?.status).toBe("completed");
 			expect((await store.get(mediaId, query()))?.vector).toEqual(
 				feature().feature,
@@ -363,7 +367,7 @@ describe("revision-aware full-image CCIP", () => {
 		expect(await store.get(mediaId, query())).toBeNull();
 		expect(await database.select().from(schema.mediaRegions)).toHaveLength(0);
 		expect((await state())?.status).toBe("failed");
-		await run();
+		await run(true);
 		expect((await state())?.status).toBe("completed");
 	});
 	it("records invalid zero-norm inference as a failed task without any output", async () => {
@@ -396,7 +400,7 @@ describe("revision-aware full-image CCIP", () => {
 		});
 		infer.mockRejectedValueOnce(new Error("CCIP temporary failure"));
 		await expect(run()).rejects.toThrow("CCIP temporary failure");
-		await run();
+		await run(true);
 		expect(
 			(await processingStateRepo.findByMediaIds([mediaId])).map((row) => [
 				row.taskKind,
@@ -410,7 +414,7 @@ describe("revision-aware full-image CCIP", () => {
 		);
 	});
 	for (const change of ["cancel", "attempt"] as const) {
-		it(`fences output after owner ${change}`, async () => {
+		it(`stops the observer after owner ${change} without canceling shared output`, async () => {
 			const job = await jobRepo.create({
 				type: "extract_ccip_vector",
 				mediaSourceId: sourceId,
@@ -432,7 +436,6 @@ describe("revision-aware full-image CCIP", () => {
 			await started.promise;
 			expect(await service.getStatus(sourceId, mediaId)).toMatchObject({
 				status: "processing",
-				jobId: job.id,
 			});
 			if (change === "cancel") await jobRepo.requestCancellation(job.id);
 			else
@@ -442,7 +445,7 @@ describe("revision-aware full-image CCIP", () => {
 					.where(eq(schema.jobs.id, job.id));
 			response.resolve(feature());
 			expect(await pending).toBeInstanceOf(Error);
-			expect(await store.get(mediaId, query())).toBeNull();
+			expect(await store.get(mediaId, query())).not.toBeNull();
 		});
 	}
 	it("does not recreate output for a deleted media", async () => {
@@ -454,17 +457,24 @@ describe("revision-aware full-image CCIP", () => {
 		expect(await state()).toBeUndefined();
 		expect(await database.select().from(schema.ccipEmbeddings)).toHaveLength(0);
 	});
-	it("commits successful batch items individually and only retries failed items", async () => {
+	it("commits successful batch items individually and requires explicit retry for terminal items", async () => {
 		const second = await createFixtureMedia("second.png");
 		infer
 			.mockResolvedValueOnce(feature())
 			.mockRejectedValueOnce(new Error("AI down"));
-		const first = await service.extractBatch(sourceId, [mediaId, second.id]);
+		const first = await runScheduledObserver(
+			service.extractBatch(sourceId, [mediaId, second.id]),
+			() => service.runTask(),
+		);
 		expect(first.map((result) => result.status)).toEqual([
 			"fulfilled",
 			"rejected",
 		]);
-		const retry = await service.extractBatch(sourceId, [mediaId, second.id]);
+		await service.requestExtraction(sourceId, second.id, true);
+		const retry = await runScheduledObserver(
+			service.extractBatch(sourceId, [mediaId, second.id]),
+			() => service.runTask(),
+		);
 		expect(retry.map((result) => result.status)).toEqual([
 			"fulfilled",
 			"fulfilled",
@@ -549,5 +559,110 @@ describe("revision-aware full-image CCIP", () => {
 				model: settings.model,
 			}),
 		);
+	});
+	it("reserves every batch target atomically and keeps each observer bound after newer requests", async () => {
+		const second = await createFixtureMedia("second.png");
+		const job = await jobRepo.create({
+			type: "extract_ccip_vector",
+			mediaSourceId: sourceId,
+			payload: { mediaIds: [mediaId, second.id], force: true },
+		});
+		const [active] = await jobRepo.claimPending(1, {
+			includeTypes: ["extract_ccip_vector"],
+		});
+		const owner = { jobId: job.id, attemptCount: active.attemptCount ?? 0 };
+		const requests = await service.reserveForJob(
+			owner,
+			sourceId,
+			[mediaId, second.id],
+			true,
+		);
+		expect(Object.keys(requests).sort()).toEqual([mediaId, second.id].sort());
+		expect(
+			(await processingStateRepo.findByMediaIds([mediaId, second.id])).every(
+				(row) => row.executionMode === "scheduled" && row.status === "pending",
+			),
+		).toBe(true);
+		expect(infer).not.toHaveBeenCalled();
+		await service.runTask();
+		await service.runTask();
+		const replacement = await service.requestExtraction(
+			sourceId,
+			mediaId,
+			true,
+		);
+		expect(replacement.requestId).not.toBe(requests[mediaId].requestId);
+		await expect(
+			service.extract(sourceId, mediaId, false, owner, requests[mediaId]),
+		).rejects.toThrow(MediaProcessingSupersededError);
+		expect(
+			(
+				await service.reserveForJob(owner, sourceId, [mediaId, second.id], true)
+			)[mediaId],
+		).toEqual(requests[mediaId]);
+	});
+	it("rolls back an entire observer reservation when one target is invalid", async () => {
+		const job = await jobRepo.create({
+			type: "extract_ccip_vector",
+			mediaSourceId: sourceId,
+			payload: { mediaIds: [mediaId] },
+		});
+		const [active] = await jobRepo.claimPending(1, {
+			includeTypes: ["extract_ccip_vector"],
+		});
+		await expect(
+			service.reserveForJob(
+				{ jobId: job.id, attemptCount: active.attemptCount ?? 0 },
+				sourceId,
+				[mediaId, "99999999-9999-4999-8999-999999999999"],
+			),
+		).rejects.toThrow();
+		expect(await state()).toBeUndefined();
+		expect((await jobRepo.findById(job.id))?.payload).not.toHaveProperty(
+			"processingRequests",
+		);
+	});
+	it("preserves successful inline vectors during startup handoff", async () => {
+		const initial = await run();
+		await database
+			.update(schema.mediaProcessingStates)
+			.set({ executionMode: "inline" })
+			.where(eq(schema.mediaProcessingStates.mediaId, mediaId));
+		service = createService();
+		await service.reconcileTasks();
+		expect(await service.getStatus(sourceId, mediaId)).toMatchObject({
+			status: "ready",
+		});
+		expect((await run()).record).toEqual(initial.record);
+		expect(infer).toHaveBeenCalledOnce();
+	});
+	it("coalesces overlapping observers with reversed target order", async () => {
+		const second = await createFixtureMedia("second.png");
+		for (const ids of [
+			[mediaId, second.id],
+			[second.id, mediaId],
+		])
+			await jobRepo.create({
+				type: "extract_ccip_vector",
+				mediaSourceId: sourceId,
+				payload: { mediaIds: ids },
+			});
+		const active = await jobRepo.claimPending(2, {
+			includeTypes: ["extract_ccip_vector"],
+		});
+		const reservations = await Promise.all(
+			active.map((job, index) =>
+				service.reserveForJob(
+					{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
+					sourceId,
+					index === 0 ? [mediaId, second.id] : [second.id, mediaId],
+				),
+			),
+		);
+		expect(reservations[0]).toEqual(reservations[1]);
+		expect(
+			await processingStateRepo.findByMediaIds([mediaId, second.id]),
+		).toHaveLength(2);
+		expect(infer).not.toHaveBeenCalled();
 	});
 });

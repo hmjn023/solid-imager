@@ -72,7 +72,7 @@ export type IJobRepository = {
 		action: (tx: Transaction) => Promise<T>,
 	): Promise<T>;
 	heartbeat(id: string, attemptCount: number): Promise<boolean>;
-	findById(id: string): Promise<Job | null>;
+	findById(id: string, tx?: Transaction): Promise<Job | null>;
 	findPending(
 		limit: number,
 		options?: {

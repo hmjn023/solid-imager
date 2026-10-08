@@ -95,3 +95,8 @@ export const sourceRestoreJobPayloadSchema = z.object({
 export type SourceRestoreJobPayload = z.infer<
 	typeof sourceRestoreJobPayloadSchema
 >;
+export {
+	downloadRegistrationCheckpointSchema,
+	downloadRegistrationEntrySchema,
+	type DownloadRegistrationEntry,
+} from "./download-registration";

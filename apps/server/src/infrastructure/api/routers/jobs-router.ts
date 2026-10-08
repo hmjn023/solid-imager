@@ -219,7 +219,7 @@ export const jobsRouter = os.router({
 			.update(jobs)
 			.set({
 				// Explicit user retry, distinct from a crashed observer's stale recovery.
-				payload: sql`CASE WHEN ${jobs.type} IN ('processMedia', 'generate_thumbnail') THEN jsonb_set(coalesce(${jobs.payload}, '{}'::jsonb), '{retryFileTasks}', 'true'::jsonb) ELSE ${jobs.payload} END`,
+				payload: sql`CASE WHEN ${jobs.type} IN ('processMedia', 'generate_thumbnail') THEN jsonb_set(coalesce(${jobs.payload}, '{}'::jsonb), '{retryFileTasks}', 'true'::jsonb) WHEN ${jobs.type} IN ('auto_tagging', 'extract_ccip_vector') THEN jsonb_set(coalesce(${jobs.payload}, '{}'::jsonb), '{retryAiTasks}', 'true'::jsonb) ELSE ${jobs.payload} END`,
 				status: "pending",
 				error: null,
 				result: null,

@@ -22,6 +22,7 @@ describe("registerExistingMedia Integration", () => {
 	beforeEach(async () => {
 		services.getJobWorker().stop();
 		await services.getMediaFileWorker().stop();
+		await services.getMediaAiWorker().stop();
 		// Create a temporary directory for the media source
 		tempSourceDir = await fs.mkdtemp(
 			path.join(fixturesDir, "test-source-register-"),

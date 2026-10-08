@@ -128,6 +128,7 @@ describe("MediaService - Copy Media Integration", () => {
 
 		services.registerMediaProcessingService(
 			new MediaProcessingServiceImpl({
+				requestAiTasks: vi.fn().mockResolvedValue(undefined),
 				processingStateRepo: MediaProcessingStateRepository,
 				getProcessingSettings: () =>
 					processingSettingsFromConfig(defaultAppConfig),

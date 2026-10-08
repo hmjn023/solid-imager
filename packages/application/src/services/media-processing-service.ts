@@ -30,6 +30,7 @@ import type {
 	MediaProcessingInput,
 	MediaProcessingClaim,
 	FileTaskKind,
+	AiTaskKind,
 	MediaProcessingState,
 	MediaTaskKind,
 	ProcessingOwner,
@@ -43,7 +44,10 @@ import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/eve
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { IMediaStorage } from "@solid-imager/core/interfaces/media-storage";
 import { MediaTaskService } from "./media-task-service";
-import type { IMediaProcessingService } from "../ports/media-processing-service";
+import type {
+	IMediaProcessingService,
+	MediaRegistrationOptions,
+} from "../ports/media-processing-service";
 import type { ILogger } from "../ports/media-service";
 
 export type PreparedThumbnail = {
@@ -103,12 +107,18 @@ export type MediaProcessingServiceDeps = {
 		claim?: MediaProcessingClaim,
 	) => Promise<PreparedThumbnail>;
 	publishSourceEvent: SourceEventPublisher;
+	requestAiTasks: (
+		sourceId: string,
+		mediaId: string,
+		kinds: AiTaskKind[],
+		tx: Transaction,
+	) => Promise<void>;
 	publishJobProgress: (jobId: string, processed: number, total: number) => void;
 };
 
 export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly taskService: MediaTaskService;
-	private readonly processingStates: IMediaProcessingSchedulerRepository;
+	private readonly requestAiTasks: MediaProcessingServiceDeps["requestAiTasks"];
 	private readonly sourceRepo: SourceRepository;
 	private readonly mediaRepo: IMediaRepository;
 	private readonly tagRepo: TagRepository;
@@ -128,7 +138,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 	constructor(deps: MediaProcessingServiceDeps) {
 		this.taskService = new MediaTaskService(deps);
-		this.processingStates = deps.processingStateRepo;
+		this.requestAiTasks = deps.requestAiTasks;
 		this.sourceRepo = deps.sourceRepo;
 		this.mediaRepo = deps.mediaRepo;
 		this.tagRepo = deps.tagRepo;
@@ -159,8 +169,10 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		mediaSourceId: string,
 		relativePath: string,
 		contextMetadata?: Partial<MediaMetadataContext>,
+		options?: MediaRegistrationOptions,
 	): Promise<Media> {
-		const source = await this.sourceRepo.findById(mediaSourceId);
+		const tx = options?.tx;
+		const source = await this.sourceRepo.findById(mediaSourceId, tx);
 		if (source?.type !== "local") {
 			throw new Error(
 				`Source not found or not a local source: ${mediaSourceId}`,
@@ -176,6 +188,11 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			);
 		}
 		const basePath = connectionParse.data.path;
+		if (
+			options?.sourcePath &&
+			path.resolve(basePath) !== path.resolve(options.sourcePath)
+		)
+			throw new Error("Download registration source changed");
 		const fullPath = path.join(basePath, relativePath);
 
 		// Get file metadata
@@ -191,9 +208,9 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			mediaType = "audio";
 		}
 
-		const media = await this.transactionManager.transaction(async (tx) => {
+		const register = async (tx: Transaction) => {
 			// Step 1: Create media record
-			const media = await this.mediaRepo.create(
+			const created = await this.mediaRepo.createIfAbsent(
 				{
 					mediaSourceId,
 					filePath: relativePath,
@@ -208,6 +225,34 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				},
 				tx,
 			);
+			const existing = created
+				? null
+				: await this.mediaRepo.findByPath(mediaSourceId, relativePath, tx);
+			let media = created ?? existing;
+			if (!media) throw new Error("Registered media disappeared");
+			if (existing) {
+				// Serialize registration with workers before attaching context or repairing requests.
+				const locked = await this.mediaRepo.findById(existing.id, tx, {
+					forUpdate: true,
+				});
+				if (!locked) throw new Error("Registered media disappeared");
+				media = await this.mediaRepo.update(
+					locked.id,
+					{
+						width: fileMetadata.width,
+						height: fileMetadata.height,
+						fileSize: fileMetadata.size,
+						modifiedAt: fileMetadata.modifiedAt,
+						...(contextMetadata?.description !== undefined && {
+							description: contextMetadata.description,
+						}),
+						...(contextMetadata?.createdAt && {
+							createdAt: contextMetadata.createdAt,
+						}),
+					},
+					tx,
+				);
+			}
 
 			// Step 2: Register related data
 			if (contextMetadata) {
@@ -217,15 +262,19 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			await this.requestProcessing(media, basePath, {}, tx);
 
 			return media;
-		});
+		};
+		const media = tx
+			? await register(tx)
+			: await this.transactionManager.transaction(register);
 
 		// Notify clients
-		this.notify(() =>
-			this.publishSourceEvent(mediaSourceId, "media-added", {
-				mediaId: media.id,
-				filePath: media.filePath,
-			}),
-		);
+		if (!tx)
+			this.notify(() =>
+				this.publishSourceEvent(mediaSourceId, "media-added", {
+					mediaId: media.id,
+					filePath: media.filePath,
+				}),
+			);
 
 		return media;
 	}
@@ -432,25 +481,12 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		await run("ai_dispatch", async () => {
 			await complete("ai_dispatch", async (tx) => {
-				if (this.enableAutoTagging && !payload.skipMetadataExtraction) {
-					await this.jobRepo.create(
-						{
-							type: "auto_tagging",
-							mediaSourceId: media.mediaSourceId,
-							payload: { mediaId: media.id },
-						},
-						tx,
-					);
-				}
-				if (this.enableAutoCcipExtraction) {
-					await this.jobRepo.createIfUnique(
-						{
-							type: "extract_ccip_vector",
-							mediaSourceId: media.mediaSourceId,
-							payload: { mediaId: media.id },
-						},
-						tx,
-					);
+				if (media.mediaType === "image") {
+					const kinds: AiTaskKind[] = [];
+					if (this.enableAutoTagging && !payload.skipMetadataExtraction)
+						kinds.push("tagging");
+					if (this.enableAutoCcipExtraction) kinds.push("ccip");
+					await this.requestAiTasks(media.mediaSourceId, media.id, kinds, tx);
 				}
 			});
 		});
@@ -479,8 +515,6 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		};
 
 		await this.mediaRepo.findById(media.id, tx, { forUpdate: true });
-		const previous = await this.processingStates.findByMediaIds([media.id], tx);
-		let changed = false;
 		for (const kind of ["metadata", "thumbnail"] as const) {
 			if (
 				kind === "metadata"
@@ -488,32 +522,14 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 					: options.skipThumbnailGeneration
 			)
 				continue;
-			const state = await this.taskService.request(input, kind, tx);
-			changed ||=
-				!!state &&
-				previous.find((row) => row.taskKind === kind)?.requestId !==
-					state.requestId;
+			await this.taskService.request(input, kind, tx);
 		}
-
-		if (changed && !options.skipAi && media.mediaType === "image") {
+		if (!options.skipAi && media.mediaType === "image") {
+			const kinds: AiTaskKind[] = [];
 			if (this.enableAutoTagging && !options.skipMetadataExtraction)
-				await this.jobRepo.createIfUnique(
-					{
-						type: "auto_tagging",
-						mediaSourceId: media.mediaSourceId,
-						payload: { mediaId: media.id },
-					},
-					tx,
-				);
-			if (this.enableAutoCcipExtraction)
-				await this.jobRepo.createIfUnique(
-					{
-						type: "extract_ccip_vector",
-						mediaSourceId: media.mediaSourceId,
-						payload: { mediaId: media.id },
-					},
-					tx,
-				);
+				kinds.push("tagging");
+			if (this.enableAutoCcipExtraction) kinds.push("ccip");
+			await this.requestAiTasks(media.mediaSourceId, media.id, kinds, tx);
 		}
 	}
 	requestTask(

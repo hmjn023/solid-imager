@@ -1,3 +1,5 @@
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/events";
 import type {
 	Media,
 	SimilarMediaSearchResponse,
@@ -19,6 +21,7 @@ import {
 	type CcipProcessingSettings,
 	type MediaProcessingInput,
 	type ProcessingOwner,
+	type ProcessingRequestIdentity,
 } from "@solid-imager/core/domain/processing/schemas";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { CcipVectorStatus } from "@solid-imager/core/domain/tagging/schemas";
@@ -59,7 +62,11 @@ const MIN_CANDIDATES = 100;
 const CANDIDATE_MULTIPLIER = 5;
 const MAX_CANDIDATES = 1000;
 
-export type CcipVectorServiceDeps = AiMediaTaskDeps & {
+export type CcipVectorServiceDeps = Omit<
+	AiMediaTaskDeps,
+	"mediaRepo" | "sourceRepo"
+> & {
+	publishSourceEvent?: SourceEventPublisher;
 	getCcipSettings: () => CcipProcessingSettings;
 	mediaRepository: IMediaRepository;
 	sourceRepository: SourceRepository;
@@ -71,7 +78,50 @@ export type CcipVectorServiceDeps = AiMediaTaskDeps & {
 export class CcipVectorService {
 	private readonly tasks: AiMediaTaskService<CcipVectorRecord>;
 	constructor(private readonly deps: CcipVectorServiceDeps) {
-		this.tasks = new AiMediaTaskService(deps);
+		this.tasks = new AiMediaTaskService(
+			{
+				...deps,
+				mediaRepo: deps.mediaRepository,
+				sourceRepo: deps.sourceRepository,
+			},
+			"ccip",
+			{
+				currentRevision: (input) =>
+					getCcipTaskRevision(input, deps.getCcipSettings()),
+				canReuse: () => canReuseAiResult(deps.getCcipSettings()),
+				load: async (input, tx) => {
+					const record = await deps.vectorStore.get(
+						input.mediaId,
+						this.currentVectorQuery(),
+						tx,
+					);
+					return record?.processingRevision ===
+						getCcipTaskRevision(input, deps.getCcipSettings())
+						? record
+						: null;
+				},
+				infer: async (input) => {
+					const settings = deps.getCcipSettings();
+					const response = await deps.taggingService.inferCcip(input);
+					return {
+						mediaId: input.mediaId,
+						mediaSourceId: input.mediaSourceId,
+						vector: response.feature,
+						model: settings.model,
+						embeddingVersion: settings.embeddingVersion,
+						mediaModifiedAt: input.modifiedAt,
+						extractedAt: new Date(),
+						processingRevision: getCcipTaskRevision(input, settings),
+					};
+				},
+				save: (_input, record, tx) => deps.vectorStore.upsert(record, tx),
+				afterCommit: (input) =>
+					deps.publishSourceEvent?.(input.mediaSourceId, "media-changed", {
+						mediaId: input.mediaId,
+						filePath: input.filePath,
+					}),
+			},
+		);
 	}
 
 	async extract(
@@ -79,47 +129,40 @@ export class CcipVectorService {
 		mediaId: string,
 		force = false,
 		owner?: ProcessingOwner,
+		request?: ProcessingRequestIdentity,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
 		const media = await this.requireImage(mediaSourceId, mediaId);
 		const input = await this.inputFor(media);
-		const currentRevision = () =>
-			getCcipTaskRevision(input, this.deps.getCcipSettings());
-		const settings = this.deps.getCcipSettings();
 		const { response, reused } = await this.tasks.execute(
 			input,
-			"ccip",
-			currentRevision,
-			async (tx) => {
-				const record = await this.deps.vectorStore.get(
-					mediaId,
-					this.currentVectorQuery(),
-					tx,
-				);
-				return record && record.processingRevision === currentRevision()
-					? record
-					: null;
-			},
-			async () => {
-				const response = await this.deps.taggingService.getCcipFeatureForMedia(
-					mediaSourceId,
-					mediaId,
-				);
-				return {
-					mediaId,
-					mediaSourceId,
-					vector: response.feature,
-					model: settings.model,
-					embeddingVersion: settings.embeddingVersion,
-					mediaModifiedAt: media.modifiedAt,
-					extractedAt: new Date(),
-					processingRevision: getCcipTaskRevision(input, settings),
-				};
-			},
-			(record, tx) => this.deps.vectorStore.upsert(record, tx),
 			owner,
-			force || !canReuseAiResult(settings),
+			force,
+			request,
 		);
 		return { record: response, skipped: reused };
+	}
+
+	requestExtraction(
+		sourceId: string,
+		mediaId: string,
+		force = false,
+		tx?: Transaction,
+	) {
+		return this.tasks.requestForMedia(sourceId, mediaId, force, tx);
+	}
+	reserveForJob(
+		owner: ProcessingOwner,
+		sourceId: string,
+		mediaIds: string[],
+		force = false,
+	) {
+		return this.tasks.reserveForJob(owner, sourceId, mediaIds, force);
+	}
+	runTask() {
+		return this.tasks.runOnce();
+	}
+	reconcileTasks() {
+		return this.tasks.reconcile();
 	}
 
 	async extractBatch(
@@ -128,12 +171,19 @@ export class CcipVectorService {
 		force = false,
 		concurrency = 1,
 		owner?: ProcessingOwner,
+		requests?: Record<string, ProcessingRequestIdentity>,
 	) {
 		if (!Number.isSafeInteger(concurrency) || concurrency < 1)
 			throw new Error("concurrency must be a positive integer");
 		return asyncPool(mediaIds, concurrency, async (mediaId) => ({
 			mediaId,
-			...(await this.extract(mediaSourceId, mediaId, force, owner)),
+			...(await this.extract(
+				mediaSourceId,
+				mediaId,
+				force,
+				owner,
+				requests?.[mediaId],
+			)),
 		}));
 	}
 
@@ -157,21 +207,10 @@ export class CcipVectorService {
 				error: "CCIP vector extraction failed",
 			};
 		if (
-			state?.status === "in_progress" &&
-			state.heartbeatAt &&
-			Date.now() - state.heartbeatAt.getTime() < 120_000
-		) {
-			const owner = state.ownerJobId
-				? await this.deps.jobRepo.findById(state.ownerJobId)
-				: null;
-			if (
-				!state.ownerJobId ||
-				(owner?.status === "in_progress" &&
-					owner.attemptCount === state.ownerAttemptCount &&
-					!owner.cancelRequestedAt)
-			)
-				return { status: "processing", jobId: state.ownerJobId ?? undefined };
-		}
+			state?.executionMode === "scheduled" &&
+			(state.status === "pending" || state.status === "in_progress")
+		)
+			return { status: "processing" };
 		const record = await this.deps.vectorStore.get(
 			mediaId,
 			this.currentVectorQuery(),

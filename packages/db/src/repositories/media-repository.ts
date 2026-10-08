@@ -821,6 +821,17 @@ export function createMediaRepository(
 			}
 		},
 
+		async createIfAbsent(media: AddMediaRequest, tx?: Transaction) {
+			const [row] = await getExecutor(tx)
+				.insert(medias)
+				.values({ ...media, status: "active", indexedAt: new Date() })
+				.onConflictDoNothing({
+					target: [medias.mediaSourceId, medias.filePath],
+				})
+				.returning();
+			return row ? mapToMedia(row) : null;
+		},
+
 		/**
 		 * Upserts a media entry in the database.
 		 */
