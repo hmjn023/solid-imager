@@ -1,3 +1,4 @@
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import type { ILogger } from "@solid-imager/application/ports/media-service";
 import { CcipVectorService } from "@solid-imager/application/services/ccip-vector-service";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
@@ -26,6 +27,8 @@ export function getCcipVectorService(): CcipVectorService {
 			taggingService,
 			vectorStore: new PostgresCcipVectorStore(db, configuredLogger),
 			logger: configuredLogger,
+			publishSourceEvent: (sourceId, event, payload) =>
+				RealtimeEventBus.publishSource(sourceId, event, payload),
 		});
 	}
 	return service;

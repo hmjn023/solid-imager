@@ -74,6 +74,9 @@ describe("Media Type Handling Integration", () => {
 	const ExpectedMixedMediaCount = 3;
 
 	beforeAll(async () => {
+		services.getJobWorker().stop();
+		await services.getMediaFileWorker().stop();
+		await services.getMediaAiWorker().stop();
 		services.registerMediaRepository(MediaRepository);
 		services.registerSourceRepository(DrizzleSourceRepository);
 		services.registerMediaStorage(ServerMediaStorage);

@@ -9,6 +9,23 @@ export const mediaTaskKindSchema = z.enum([
 ]);
 export type MediaTaskKind = z.infer<typeof mediaTaskKindSchema>;
 export type FileTaskKind = Extract<MediaTaskKind, "metadata" | "thumbnail">;
+export type AiTaskKind = Extract<MediaTaskKind, "tagging" | "ccip">;
+
+export const processingRequestIdentitySchema = z.object({
+	requestId: z.uuid(),
+	requestedRevision: z.string().min(1),
+});
+export type ProcessingRequestIdentity = z.infer<
+	typeof processingRequestIdentitySchema
+>;
+/** Internal observer payload. Never exposed through the public job DTO. */
+export const aiProcessingObserverSchema = z.looseObject({
+	processingRequests: z
+		.record(z.uuid(), processingRequestIdentitySchema)
+		.optional(),
+	retryAiTasks: z.boolean().optional(),
+	force: z.boolean().optional(),
+});
 
 export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
 export const CCIP_EMBEDDING_VERSION = 1;

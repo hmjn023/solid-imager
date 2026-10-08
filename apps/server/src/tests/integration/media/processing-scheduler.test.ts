@@ -231,9 +231,11 @@ describe("dedicated media processing scheduler", () => {
 		expect((await state())?.attemptCount).toBe(1);
 	});
 	it("claims only registered tasks and ignores inline work", async () => {
-		await transactions.transaction((tx) =>
-			repo.claim(input, "tagging", "v1", null, false, tx),
-		);
+		await request("v1", { kind: "tagging" });
+		await database
+			.update(schema.mediaProcessingStates)
+			.set({ executionMode: "inline" })
+			.where(where("tagging"));
 		await request("v1", { kind: "ccip" });
 		expect(await claim()).toBeNull();
 		expect((await claimed(["ccip"])).claim.taskKind).toBe("ccip");

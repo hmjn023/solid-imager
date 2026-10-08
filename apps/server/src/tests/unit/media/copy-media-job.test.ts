@@ -195,6 +195,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 		const { MediaProcessingServiceImpl } =
 			await import("~/infrastructure/services/media-processing-service");
 		const mediaProcessingService = new MediaProcessingServiceImpl({
+			requestAiTasks: vi.fn().mockResolvedValue(undefined),
 			processingStateRepo: {
 				request,
 				claimDue: vi.fn(),

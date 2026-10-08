@@ -1,3 +1,4 @@
+import { db } from "~/infrastructure/db";
 import {
 	scanCcipTargetPage,
 	findQueuedCcipJob,
@@ -403,7 +404,8 @@ export const aiRouter = os.router({
 				input.mediaSourceId,
 				input.mediaId,
 			);
-			if (status.status !== "ready" && status.status !== "processing") {
+			// Legacy queued jobs only supplement missing/stale domain state.
+			if (status.status === "missing" || status.status === "stale") {
 				const queued = await findQueuedCcipJob(
 					input.mediaSourceId,
 					input.mediaId,
@@ -428,10 +430,30 @@ export const aiRouter = os.router({
 	}),
 
 	startCcipExtraction: os.startCcipExtraction.handler(async ({ input }) => {
-		const job = await services.getJobRepository().create({
-			type: "extract_ccip_vector",
-			mediaSourceId: input.mediaSourceId,
-			payload: { mediaId: input.mediaId, force: input.force },
+		const job = await db.transaction(async (tx) => {
+			const state = await ccipVectorService.requestExtraction(
+				input.mediaSourceId,
+				input.mediaId,
+				input.force,
+				tx,
+			);
+			return services.getJobRepository().create(
+				{
+					type: "extract_ccip_vector",
+					mediaSourceId: input.mediaSourceId,
+					payload: {
+						mediaId: input.mediaId,
+						force: false,
+						processingRequests: {
+							[input.mediaId]: {
+								requestId: state.requestId,
+								requestedRevision: state.requestedRevision,
+							},
+						},
+					},
+				},
+				tx,
+			);
 		});
 		logger.info(
 			{

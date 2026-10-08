@@ -35,6 +35,7 @@ describe("interrupted source startup recovery", () => {
 		);
 		services.getJobWorker().stop();
 		await services.getMediaFileWorker().stop();
+		await services.getMediaAiWorker().stop();
 		directory = await fs.mkdtemp(
 			path.join(os.tmpdir(), "solid-imager-source-recovery-"),
 		);

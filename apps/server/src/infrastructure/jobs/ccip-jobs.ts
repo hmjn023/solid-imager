@@ -38,7 +38,7 @@ const dispatchedChildPayloadSchema = z.union([
 ]);
 
 const EXTRACTION_JOB_BATCH_SIZE = 25;
-const CHILD_INSERT_CHUNK = 500;
+const CHILD_INSERT_CHUNK = 20;
 
 function extractDispatchedMediaIds(payload: unknown): string[] {
 	let normalizedPayload = payload;
@@ -154,7 +154,34 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 		}
 		for (let i = 0; i < jobRows.length; i += CHILD_INSERT_CHUNK) {
 			const chunk = jobRows.slice(i, i + CHILD_INSERT_CHUNK);
-			await db.insert(jobs).values(chunk);
+			await db.transaction(async (tx) => {
+				const reservedRows: NewJob[] = [];
+				for (const row of chunk) {
+					const target = batchExtractionPayloadSchema.parse(row.payload);
+					if (!row.mediaSourceId) throw new Error("CCIP source is missing");
+					const processingRequests: Record<
+						string,
+						import("@solid-imager/core/domain/processing/schemas").ProcessingRequestIdentity
+					> = {};
+					for (const mediaId of target.mediaIds) {
+						const state = await ccipVectorService.requestExtraction(
+							row.mediaSourceId,
+							mediaId,
+							target.force,
+							tx,
+						);
+						processingRequests[mediaId] = {
+							requestId: state.requestId,
+							requestedRevision: state.requestedRevision,
+						};
+					}
+					reservedRows.push({
+						...row,
+						payload: { ...target, force: false, processingRequests },
+					});
+				}
+				await tx.insert(jobs).values(reservedRows);
+			});
 		}
 		for (const row of targetRows) {
 			dispatchedMediaIds.add(row.id);
@@ -238,8 +265,26 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 		throw new Error("CCIP extraction job is missing mediaSourceId");
 	}
 	const mediaIds = "mediaIds" in payload ? payload.mediaIds : [payload.mediaId];
+	const owner = { jobId: job.id, attemptCount: job.attemptCount ?? 0 };
+	let requests: Awaited<ReturnType<typeof ccipVectorService.reserveForJob>>;
+	try {
+		requests = await ccipVectorService.reserveForJob(
+			owner,
+			job.mediaSourceId,
+			mediaIds,
+			payload.force,
+		);
+	} catch (error) {
+		logger.error({ err: error, mediaIds }, "CCIP request reservation failed");
+		RealtimeEventBus.publishJob("job-failed", {
+			jobId: job.id,
+			error: getErrorMessage(error),
+		});
+		await updateParentProgress(job, 0, mediaIds.length);
+		throw error;
+	}
 	if (mediaIds.length > 1) {
-		await processCcipExtractionBatch(job, mediaIds, payload.force);
+		await processCcipExtractionBatch(job, mediaIds, payload.force, requests);
 		return;
 	}
 	try {
@@ -248,7 +293,8 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 			job.mediaSourceId,
 			mediaId,
 			payload.force,
-			{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
+			owner,
+			requests[mediaId],
 		);
 		logger.info(
 			{
@@ -282,6 +328,10 @@ async function processCcipExtractionBatch(
 	job: Job,
 	mediaIds: string[],
 	force: boolean,
+	requests: Record<
+		string,
+		import("@solid-imager/core/domain/processing/schemas").ProcessingRequestIdentity
+	>,
 ): Promise<void> {
 	if (!job.mediaSourceId) {
 		throw new Error("CCIP extraction job is missing mediaSourceId");
@@ -294,6 +344,7 @@ async function processCcipExtractionBatch(
 			force,
 			1,
 			{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
+			requests,
 		);
 	} catch (error) {
 		logger.error(

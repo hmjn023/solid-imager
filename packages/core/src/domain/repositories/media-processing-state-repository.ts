@@ -24,6 +24,7 @@ export type IMediaProcessingSchedulerRepository =
 		findInlineMediaIds(
 			afterId: string | undefined,
 			limit: number,
+			taskKinds?: MediaTaskKind[],
 		): Promise<string[]>;
 		/** Explicit authority transfer. Callers must quiesce/reconcile old producers first. */
 		request(

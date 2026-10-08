@@ -1,3 +1,6 @@
+import { MediaAiWorker } from "~/infrastructure/jobs/media-ai-worker";
+import { taggingService } from "~/infrastructure/services/tagging-service";
+import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
@@ -111,6 +114,12 @@ export function initServices() {
 	// Register MediaProcessingService (Implementation)
 	const mediaProcessingService = new MediaProcessingServiceImpl({
 		processingStateRepo: MediaProcessingStateRepository,
+		requestAiTasks: async (sourceId, mediaId, kinds, tx) => {
+			if (kinds.includes("tagging"))
+				await taggingService.requestTags(sourceId, mediaId, false, tx);
+			if (kinds.includes("ccip"))
+				await ccipVectorService.requestExtraction(sourceId, mediaId, false, tx);
+		},
 		getProcessingSettings: () =>
 			processingSettingsFromConfig(configService.getConfig()),
 		hasThumbnails: async (sourceId, mediaId) =>
@@ -146,6 +155,14 @@ export function initServices() {
 	fileWorker.updateConfig(config);
 	configService.onChange((newConfig) => fileWorker.updateConfig(newConfig));
 	services.registerMediaFileWorker(fileWorker);
+	const aiWorker = new MediaAiWorker((kind) =>
+		kind === "tagging"
+			? taggingService.runTaggingTask()
+			: ccipVectorService.runTask(),
+	);
+	aiWorker.updateConfig(config);
+	configService.onChange((newConfig) => aiWorker.updateConfig(newConfig));
+	services.registerMediaAiWorker(aiWorker);
 	configService.onChange((newConfig) =>
 		mediaProcessingService.updateConfig({
 			enableAutoTagging: newConfig.jobs.enableAutoTagging,
@@ -161,6 +178,7 @@ export function initServices() {
 type WorkerGlobal = typeof globalThis & {
 	__JOB_WORKER__?: JobWorker;
 	__MEDIA_FILE_WORKER__?: MediaFileWorker;
+	__MEDIA_AI_WORKER__?: MediaAiWorker;
 	__WORKER_STARTUP__?: Promise<void>;
 	__BOOTSTRAP_CLEANUP_REGISTERED__?: boolean;
 };
@@ -171,16 +189,23 @@ export function startBackgroundWorker(): Promise<void> {
 	initServices();
 	const jobWorker = services.getJobWorker();
 	const fileWorker = services.getMediaFileWorker();
+	const aiWorker = services.getMediaAiWorker();
 	const previousStart = host.__WORKER_STARTUP__;
 	const startup = async () => {
 		await previousStart?.catch(() => undefined);
 		host.__JOB_WORKER__?.stop();
+		const aiDrain = host.__MEDIA_AI_WORKER__?.stop();
 		await host.__MEDIA_FILE_WORKER__?.stop();
+		await aiDrain;
 		// Deployments must stop old-version writers before starting this version.
 		await services.getMediaProcessingService().reconcileFileTasks();
+		await taggingService.reconcileTaggingTasks();
+		await ccipVectorService.reconcileTasks();
 		host.__JOB_WORKER__ = jobWorker;
 		host.__MEDIA_FILE_WORKER__ = fileWorker;
+		host.__MEDIA_AI_WORKER__ = aiWorker;
 		fileWorker.start();
+		aiWorker.start();
 		jobWorker.start();
 		const maintenance = new MaintenanceService(
 			services.getMediaRepository(),
@@ -202,7 +227,9 @@ export function startBackgroundWorker(): Promise<void> {
 		const cleanup = async () => {
 			await host.__WORKER_STARTUP__?.catch(() => undefined);
 			host.__JOB_WORKER__?.stop();
+			const aiDrain = host.__MEDIA_AI_WORKER__?.stop();
 			await host.__MEDIA_FILE_WORKER__?.stop();
+			await aiDrain;
 			process.exit(0);
 		};
 		process.on("SIGINT", () => {

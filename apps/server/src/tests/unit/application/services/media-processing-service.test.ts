@@ -82,6 +82,7 @@ describe("MediaProcessingService", () => {
 
 	beforeEach(() => {
 		service = new MediaProcessingServiceImpl({
+			requestAiTasks: vi.fn().mockResolvedValue(undefined),
 			processingStateRepo: {
 				request: vi
 					.fn()

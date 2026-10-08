@@ -50,12 +50,20 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 	}
 
 	try {
+		const owner = { jobId: job.id, attemptCount: job.attemptCount ?? 0 };
+		const requests = await taggingService.reserveTagsForJob(
+			owner,
+			mediaSourceId,
+			[mediaId],
+			force,
+		);
 		const result = await taggingService.getTagsForMedia(
 			mediaSourceId,
 			mediaId,
 			{
 				skipCache: force,
-				owner: { jobId: job.id, attemptCount: job.attemptCount ?? 0 },
+				owner,
+				request: requests[mediaId],
 			},
 		);
 		logger.info(
@@ -159,7 +167,33 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 		}));
 		for (let i = 0; i < jobRows.length; i += CHILD_INSERT_CHUNK) {
 			const chunk = jobRows.slice(i, i + CHILD_INSERT_CHUNK);
-			await db.insert(jobs).values(chunk);
+			await db.transaction(async (tx) => {
+				const reservedRows: NewJob[] = [];
+				for (const row of chunk) {
+					const target = autoTaggingPayloadSchema.parse(row.payload);
+					if (!row.mediaSourceId) throw new Error("Tagging source is missing");
+					const state = await taggingService.requestTags(
+						row.mediaSourceId,
+						target.mediaId,
+						target.force,
+						tx,
+					);
+					reservedRows.push({
+						...row,
+						payload: {
+							...target,
+							force: false,
+							processingRequests: {
+								[target.mediaId]: {
+									requestId: state.requestId,
+									requestedRevision: state.requestedRevision,
+								},
+							},
+						},
+					});
+				}
+				await tx.insert(jobs).values(reservedRows);
+			});
 		}
 
 		dispatchedCount += results.length;

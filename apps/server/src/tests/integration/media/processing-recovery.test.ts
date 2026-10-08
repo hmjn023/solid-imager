@@ -121,6 +121,29 @@ describe("durable media processing", () => {
 			cleanup: cleanupThumbnail,
 		});
 		deps = {
+			requestAiTasks: vi.fn(async (sourceId, mediaId, kinds, tx) => {
+				const media = await mediaRepo.findById(mediaId, tx);
+				if (!media) throw new Error("missing image");
+				for (const kind of kinds)
+					await deps.processingStateRepo.request(
+						{
+							input: {
+								mediaId,
+								mediaSourceId: sourceId,
+								sourcePath: "/fixture",
+								filePath: media.filePath,
+								modifiedAt: media.modifiedAt,
+								fileSize: media.fileSize,
+								mediaType: media.mediaType,
+							},
+							taskKind: kind,
+							revision: kind + "-fixture",
+							force: false,
+							maxAttempts: 5,
+						},
+						tx,
+					);
+			}),
 			processingStateRepo: createMediaProcessingStateRepository(executor),
 			getProcessingSettings: () =>
 				processingSettingsFromConfig(defaultAppConfig),
@@ -179,7 +202,9 @@ describe("durable media processing", () => {
 		});
 	}
 	async function rows(mediaId: string) {
-		return deps.processingStateRepo.findByMediaIds([mediaId]);
+		return (await deps.processingStateRepo.findByMediaIds([mediaId])).filter(
+			(row) => row.taskKind === "metadata" || row.taskKind === "thumbnail",
+		);
 	}
 	async function task(mediaId: string, kind: "metadata" | "thumbnail") {
 		return (await rows(mediaId)).find((row) => row.taskKind === kind);
@@ -208,7 +233,7 @@ describe("durable media processing", () => {
 		new File([new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10])], "image.png", {
 			type: "image/png",
 		});
-	it("reserves both file tasks and AI jobs atomically without processMedia", async () => {
+	it("reserves all file and AI tasks atomically without generic jobs", async () => {
 		const media = await register();
 		expect(await rows(media.id)).toEqual(
 			expect.arrayContaining([
@@ -226,7 +251,12 @@ describe("durable media processing", () => {
 		);
 		expect(
 			(await database.select().from(jobs)).map((job) => job.type).sort(),
-		).toEqual(["auto_tagging", "extract_ccip_vector"]);
+		).toEqual([]);
+		expect(
+			(await deps.processingStateRepo.findByMediaIds([media.id]))
+				.map((row) => row.taskKind)
+				.sort(),
+		).toEqual(["ccip", "metadata", "tagging", "thumbnail"]);
 		expect(extractMetadata).not.toHaveBeenCalled();
 		await finish();
 		expect(
@@ -241,7 +271,7 @@ describe("durable media processing", () => {
 					new Error("queue unavailable"),
 				);
 			else
-				vi.spyOn(jobRepo, "createIfUnique").mockRejectedValueOnce(
+				vi.mocked(deps.requestAiTasks).mockRejectedValueOnce(
 					new Error("queue unavailable"),
 				);
 			await expect(register()).rejects.toThrow("queue unavailable");
@@ -288,7 +318,7 @@ describe("durable media processing", () => {
 		await upload().registerExistingMedia(sourceId, "/fixture");
 		await upload().registerExistingMedia(sourceId, "/fixture");
 		expect(await database.select().from(medias)).toHaveLength(1);
-		expect(await database.select().from(mediaProcessingStates)).toHaveLength(2);
+		expect(await database.select().from(mediaProcessingStates)).toHaveLength(4);
 	});
 	it("runs independent file tasks and retries only an explicitly failed task", async () => {
 		const media = await register();
@@ -307,7 +337,7 @@ describe("durable media processing", () => {
 		await finish();
 		expect(extractMetadata).toHaveBeenCalledTimes(2);
 		expect(prepareThumbnail).toHaveBeenCalledOnce();
-		expect(await database.select().from(jobs)).toHaveLength(2);
+		expect(await database.select().from(jobs)).toHaveLength(0);
 	});
 	it("rolls back metadata and tag output together", async () => {
 		const media = await register();
@@ -414,10 +444,15 @@ describe("durable media processing", () => {
 		).toBe("completed");
 		expect(prepareThumbnail).toHaveBeenCalledOnce();
 		expect(
+			(await deps.processingStateRepo.findByMediaIds([media.id])).find(
+				(row) => row.taskKind === "ccip",
+			),
+		).toMatchObject({ status: "pending", executionMode: "scheduled" });
+		expect(
 			(await database.select().from(jobs)).filter(
 				(job) => job.type === "extract_ccip_vector",
 			),
-		).toHaveLength(1);
+		).toHaveLength(0);
 	});
 	it.each(["metadata", "thumbnail"] as const)(
 		"fences old %s output after a newer input completes",
@@ -665,6 +700,7 @@ describe("durable media processing", () => {
 	});
 	it("coalesces repeated producer calls without reserving AI twice", async () => {
 		const media = await register();
+		const original = await deps.processingStateRepo.findByMediaIds([media.id]);
 		await Promise.all(
 			Array.from({ length: 8 }, () =>
 				transactionManager.transaction((tx) =>
@@ -672,7 +708,10 @@ describe("durable media processing", () => {
 				),
 			),
 		);
-		expect(await database.select().from(jobs)).toHaveLength(2);
+		expect(await database.select().from(jobs)).toHaveLength(0);
+		expect(await deps.processingStateRepo.findByMediaIds([media.id])).toEqual(
+			original,
+		);
 	});
 	it("handoff promotes only existing file kinds and preserves restored metadata", async () => {
 		const media = await register();

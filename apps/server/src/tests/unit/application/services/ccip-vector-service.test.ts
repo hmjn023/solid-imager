@@ -2,6 +2,8 @@ import {
 	CcipVectorService,
 	getCcipTaskRevision,
 } from "@solid-imager/application/services/ccip-vector-service";
+import { randomUUID } from "node:crypto";
+import { runScheduledObserver } from "../../../integration/media/run-scheduled-observer";
 import { describe, expect, it, vi } from "vitest";
 
 const source = {
@@ -42,34 +44,67 @@ const revision = (item: typeof media) =>
 		settings,
 	);
 function taskDeps(items: (typeof media)[], cached = false) {
+	const states = new Map<string, any>(
+		cached
+			? items.map((item) => [
+					item.id,
+					{
+						mediaId: item.id,
+						requestId: randomUUID(),
+						taskKind: "ccip",
+						requestedRevision: revision(item),
+						completedRevision: revision(item),
+						status: "completed",
+					},
+				])
+			: [],
+	);
 	return {
 		getCcipSettings: () => settings,
 		transactionManager: { transaction: async (action: any) => action({}) },
 		jobRepo: {} as any,
 		processingStateRepo: {
-			claim: vi.fn(async (input: any) =>
-				cached
-					? { status: "completed" }
-					: {
-							status: "claimed",
-							claim: {
-								mediaId: input.mediaId,
-								taskKind: "ccip",
-								revision: revision(input),
-								token: "token",
-							},
-						},
-			),
-			commit: vi.fn(async (_input: any, _claim: any, save: any) => save({})),
-			fail: vi.fn(),
-			findByMediaIds: vi.fn(async () =>
-				items.map((item) => ({
-					mediaId: item.id,
-					taskKind: "ccip",
-					status: "completed",
-					requestedRevision: revision(item),
-					completedRevision: revision(item),
-				})),
+			request: vi.fn(async ({ input, revision }: any) => {
+				let state = states.get(input.mediaId);
+				if (!state) {
+					state = {
+						mediaId: input.mediaId,
+						requestId: randomUUID(),
+						taskKind: "ccip",
+						requestedRevision: revision,
+						status: "pending",
+						input,
+					};
+					states.set(input.mediaId, state);
+				}
+				return state;
+			}),
+			claimDue: vi.fn(async () => {
+				const state = Array.from(states.values()).find(
+					(state) => state.status === "pending",
+				);
+				if (!state) return null;
+				state.status = "in_progress";
+				return {
+					input: state.input,
+					state,
+					claim: {
+						mediaId: state.mediaId,
+						taskKind: "ccip",
+						revision: state.requestedRevision,
+						token: randomUUID(),
+					},
+				};
+			}),
+			recoverExpired: vi.fn(),
+			heartbeat: vi.fn(),
+			settleFailure: vi.fn(),
+			commit: vi.fn(async (_input: any, claim: any, save: any, tx: any) => {
+				await save(tx);
+				states.get(claim.mediaId).status = "completed";
+			}),
+			findByMediaIds: vi.fn(async (ids: string[]) =>
+				ids.flatMap((id) => (states.has(id) ? [states.get(id)] : [])),
 			),
 		} as any,
 	};
@@ -87,7 +122,7 @@ describe("CcipVectorService", () => {
 			processingRevision: revision(media),
 			extractedAt: new Date(),
 		};
-		const taggingService = { getCcipFeatureForMedia: vi.fn() };
+		const taggingService = { inferCcip: vi.fn() };
 		const service = new CcipVectorService({
 			...taskDeps([media], true),
 			mediaRepository: {
@@ -105,7 +140,7 @@ describe("CcipVectorService", () => {
 		const result = await service.extract(source.id, media.id);
 
 		expect(result.skipped).toBe(true);
-		expect(taggingService.getCcipFeatureForMedia).not.toHaveBeenCalled();
+		expect(taggingService.inferCcip).not.toHaveBeenCalled();
 	});
 
 	it("persists each successful batch extraction inside its claim transaction", async () => {
@@ -113,12 +148,15 @@ describe("CcipVectorService", () => {
 			...media,
 			id: "00000000-0000-4000-8000-000000000002",
 		};
+		const stored = new Map<string, any>();
 		const vectorStore = {
-			get: vi.fn().mockResolvedValue(null),
-			upsert: vi.fn().mockResolvedValue(undefined),
+			get: vi.fn(async (id: string) => stored.get(id) ?? null),
+			upsert: vi.fn(async (record: any) => {
+				stored.set(record.mediaId, record);
+			}),
 		};
 		const taggingService = {
-			getCcipFeatureForMedia: vi
+			inferCcip: vi
 				.fn()
 				.mockResolvedValueOnce({
 					feature: Array.from({ length: 768 }, () => 1),
@@ -141,10 +179,10 @@ describe("CcipVectorService", () => {
 			vectorStore: vectorStore as any,
 		});
 
-		const results = await service.extractBatch(source.id, [
-			media.id,
-			secondMedia.id,
-		]);
+		const results = await runScheduledObserver(
+			service.extractBatch(source.id, [media.id, secondMedia.id]),
+			() => service.runTask(),
+		);
 
 		expect(results.every((result) => result.status === "fulfilled")).toBe(true);
 		expect(vectorStore.upsert).toHaveBeenCalledTimes(2);

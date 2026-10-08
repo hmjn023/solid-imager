@@ -1,3 +1,4 @@
+import type { MediaAiWorker } from "~/infrastructure/jobs/media-ai-worker";
 import type {
 	ICharacterService,
 	IMediaProcessingService,
@@ -37,6 +38,7 @@ export class ServiceRegistry {
 	private jobRepository?: IJobRepository;
 	private jobWorker?: JobWorker;
 	private mediaFileWorker?: MediaFileWorker;
+	private mediaAiWorker?: MediaAiWorker;
 	private mediaProcessingService?: IMediaProcessingService;
 	private characterService?: ICharacterService;
 	private configService?: IConfigService;
@@ -98,6 +100,13 @@ export class ServiceRegistry {
 		this.jobRepository = repo;
 	}
 
+	registerMediaAiWorker(worker: MediaAiWorker) {
+		this.mediaAiWorker = worker;
+	}
+	getMediaAiWorker(): MediaAiWorker {
+		if (!this.mediaAiWorker) throw new Error("MediaAiWorker is not registered");
+		return this.mediaAiWorker;
+	}
 	registerMediaFileWorker(worker: MediaFileWorker) {
 		this.mediaFileWorker = worker;
 	}
@@ -238,7 +247,10 @@ export class ServiceRegistry {
 	// Helper for testing to reset the registry
 	async reset(): Promise<void> {
 		this.jobWorker?.stop();
+		const aiDrain = this.mediaAiWorker?.stop();
 		await this.mediaFileWorker?.stop();
+		await aiDrain;
+		this.mediaAiWorker = undefined;
 		this.mediaFileWorker = undefined;
 		this.mediaRepository = undefined;
 		this.sourceRepository = undefined;

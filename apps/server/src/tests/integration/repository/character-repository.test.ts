@@ -1,3 +1,4 @@
+import { services } from "~/infrastructure/service-registry";
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
@@ -9,6 +10,9 @@ describe("CharacterRepository Multi-IP Support", () => {
 	const repo = DrizzleCharacterRepository;
 
 	beforeAll(async () => {
+		services.getJobWorker().stop();
+		await services.getMediaFileWorker().stop();
+		await services.getMediaAiWorker().stop();
 		try {
 			await db.execute("DROP SCHEMA IF EXISTS drizzle CASCADE");
 			await db.execute("DROP SCHEMA IF EXISTS public CASCADE");

@@ -3,10 +3,16 @@ import type {
 	Transaction,
 	TransactionManager,
 } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type { ProcessingOwner } from "@solid-imager/core/domain/processing/schemas";
+import {
+	MediaProcessingSupersededError,
+	type ProcessingOwner,
+	type MediaProcessingInput,
+	type ProcessingRequestIdentity,
+} from "@solid-imager/core/domain/processing/schemas";
 import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
-import type { IMediaProcessingStateRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
-import { TaggingTaskService } from "./tagging-task-service";
+import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
+import { getTaggingTaskRevision } from "./tagging-task-service";
+import { AiMediaTaskService, canReuseAiResult } from "./ai-media-task-service";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
@@ -23,7 +29,7 @@ import type { ILogger } from "../ports/media-service";
 import type { ITaggingService } from "../ports/tagging-service";
 
 export type TaggingServiceDeps = {
-	processingStateRepo: IMediaProcessingStateRepository;
+	processingStateRepo: IMediaProcessingSchedulerRepository;
 	transactionManager: TransactionManager;
 	jobRepo: IJobRepository;
 	aiClient: IAiClient;
@@ -39,7 +45,7 @@ export type TaggingServiceDeps = {
 
 export class TaggingServiceImpl implements ITaggingService {
 	private readonly aiClient: IAiClient;
-	private readonly tasks: TaggingTaskService;
+	private readonly tasks: AiMediaTaskService<TaggingResponse>;
 	private readonly sourceRepo: SourceRepository;
 	private readonly mediaRepo: IMediaRepository;
 	private readonly tagRepo: TagRepositoryDef;
@@ -51,9 +57,34 @@ export class TaggingServiceImpl implements ITaggingService {
 
 	constructor(deps: TaggingServiceDeps) {
 		this.aiClient = deps.aiClient;
-		this.tasks = new TaggingTaskService({
-			...deps,
-			getTaggingSettings: () => deps.aiClient.getTaggingSettings(),
+		this.tasks = new AiMediaTaskService(deps, "tagging", {
+			currentRevision: (input) =>
+				getTaggingTaskRevision(input, deps.aiClient.getTaggingSettings()),
+			canReuse: () => canReuseAiResult(deps.aiClient.getTaggingSettings()),
+			load: (input, tx) =>
+				deps.processingStateRepo.findTaggingResult(
+					input.mediaId,
+					getTaggingTaskRevision(input, deps.aiClient.getTaggingSettings()),
+					tx,
+				),
+			infer: (input) => {
+				const fullPath = path.join(input.sourcePath, input.filePath);
+				return this.isAiServiceLocal()
+					? this.aiClient.tagImageByPath(fullPath)
+					: this.readFileBuffer(fullPath).then((buffer) =>
+							this.aiClient.tagImage(buffer),
+						);
+			},
+			save: async (input, response, tx, claim) => {
+				await this.saveTags(input.mediaId, response, tx);
+				await deps.processingStateRepo.saveTaggingResult(claim, response, tx);
+			},
+			afterCommit: (input) =>
+				this.publishSourceEvent(input.mediaSourceId, "media-changed", {
+					filePath: input.filePath,
+					mediaId: input.mediaId,
+					timestamp: new Date().toISOString(),
+				}),
 		});
 		this.sourceRepo = deps.sourceRepo;
 		this.mediaRepo = deps.mediaRepo;
@@ -76,9 +107,20 @@ export class TaggingServiceImpl implements ITaggingService {
 	async getTagsForMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		options?: { skipCache?: boolean; owner?: ProcessingOwner },
+		options?: {
+			skipCache?: boolean;
+			owner?: ProcessingOwner;
+			request?: ProcessingRequestIdentity;
+		},
 	): Promise<TaggingResponse | null> {
 		const media = await this.mediaRepo.findById(mediaId);
+		if (
+			options?.request &&
+			(!media ||
+				media.mediaSourceId !== mediaSourceId ||
+				media.mediaType !== "image")
+		)
+			throw new MediaProcessingSupersededError();
 		if (!media || media.mediaSourceId !== mediaSourceId)
 			throw new Error("Media not found in source");
 		if (media.mediaType !== "image")
@@ -90,6 +132,8 @@ export class TaggingServiceImpl implements ITaggingService {
 				ips_mapping: {},
 			};
 		const source = await this.sourceRepo.findById(mediaSourceId);
+		if (options?.request && source?.type !== "local")
+			throw new MediaProcessingSupersededError();
 		if (!source) throw new Error("Media source not found");
 		if (source.type !== "local") return null;
 		const input = {
@@ -101,32 +145,36 @@ export class TaggingServiceImpl implements ITaggingService {
 			modifiedAt: media.modifiedAt,
 			fileSize: media.fileSize,
 		};
-		const fullPath = path.join(input.sourcePath, input.filePath);
-		const { response, reused } = await this.tasks.execute(
+		const { response } = await this.tasks.execute(
 			input,
-			async () =>
-				this.isAiServiceLocal()
-					? this.aiClient.tagImageByPath(fullPath)
-					: this.aiClient.tagImage(await this.readFileBuffer(fullPath)),
-			(result, tx) => this.saveTags(mediaId, result, tx),
 			options?.owner,
 			options?.skipCache,
+			options?.request,
 		);
-		if (!reused) {
-			try {
-				this.publishSourceEvent(mediaSourceId, "media-changed", {
-					filePath: media.filePath,
-					mediaId,
-					timestamp: new Date().toISOString(),
-				});
-			} catch (error) {
-				this.logger?.warn(
-					{ err: error, mediaId },
-					"Failed to publish tagging update",
-				);
-			}
-		}
 		return response;
+	}
+
+	requestTags(
+		mediaSourceId: string,
+		mediaId: string,
+		force = false,
+		tx?: Transaction,
+	) {
+		return this.tasks.requestForMedia(mediaSourceId, mediaId, force, tx);
+	}
+	reserveTagsForJob(
+		owner: ProcessingOwner,
+		sourceId: string,
+		mediaIds: string[],
+		force = false,
+	) {
+		return this.tasks.reserveForJob(owner, sourceId, mediaIds, force);
+	}
+	runTaggingTask() {
+		return this.tasks.runOnce();
+	}
+	reconcileTaggingTasks() {
+		return this.tasks.reconcile();
 	}
 
 	private async saveTags(
@@ -244,15 +292,21 @@ export class TaggingServiceImpl implements ITaggingService {
 		if (!connectionParse.success) {
 			throw new Error("Invalid local source connection info: missing path");
 		}
-		const fullPath = path.join(connectionParse.data.path, media.filePath);
-
-		const canUsePathApi = this.isAiServiceLocal();
-
-		if (canUsePathApi) {
-			return await this.aiClient.extractCcipFeatureByPath(fullPath);
-		}
-		const buffer = await this.readFileBuffer(fullPath);
-		return await this.aiClient.extractCcipFeature(buffer);
+		return this.inferCcip({
+			mediaId,
+			mediaSourceId,
+			sourcePath: connectionParse.data.path,
+			filePath: media.filePath,
+			modifiedAt: media.modifiedAt,
+			fileSize: media.fileSize,
+			mediaType: media.mediaType,
+		});
+	}
+	async inferCcip(input: MediaProcessingInput): Promise<CcipFeatureResponse> {
+		const fullPath = path.join(input.sourcePath, input.filePath);
+		return this.isAiServiceLocal()
+			? this.aiClient.extractCcipFeatureByPath(fullPath)
+			: this.aiClient.extractCcipFeature(await this.readFileBuffer(fullPath));
 	}
 
 	async getCcipDifference(

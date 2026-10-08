@@ -57,7 +57,7 @@ describe("TaggingServiceImpl", () => {
 					mediaSourceId: "source-1",
 					mediaType: "image",
 					filePath: "remote/path.jpg",
-					modifiedAt: new Date(),
+					modifiedAt: new Date("2026-01-01"),
 					fileSize: 123,
 				}),
 			),
@@ -116,24 +116,57 @@ describe("TaggingServiceImpl", () => {
 			Promise.resolve(new Uint8Array(MOCK_BUFFER_DATA).buffer as ArrayBuffer),
 		);
 
+		let state: any;
+		let cached: any;
 		const deps: TaggingServiceDeps = {
 			processingStateRepo: {
-				claim: vi.fn(async (input, taskKind, revision) => ({
-					status: "claimed" as const,
-					claim: {
+				request: vi.fn(async ({ input, taskKind, revision }) => {
+					state = {
+						requestId: randomUUID(),
 						mediaId: input.mediaId,
 						taskKind,
-						revision,
-						token: randomUUID(),
-					},
-					state: {} as any,
-				})),
-				commit: vi.fn(async (_input, _claim, output, tx) => output(tx)),
-				findByMediaIds: vi.fn(),
-				findTaggingResult: vi.fn(),
-				saveTaggingResult: vi.fn(),
+						requestedRevision: revision,
+						status: "pending",
+					};
+					return state;
+				}),
+				claimDue: vi.fn(async () => {
+					if (state?.status !== "pending") return null;
+					state.status = "in_progress";
+					return {
+						input: {
+							mediaId: "media-1",
+							mediaSourceId: "source-1",
+							sourcePath: "/mock",
+							filePath: "remote/path.jpg",
+							modifiedAt: new Date("2026-01-01"),
+							fileSize: 123,
+							mediaType: "image" as const,
+						},
+						claim: {
+							mediaId: state.mediaId,
+							taskKind: state.taskKind,
+							revision: state.requestedRevision,
+							token: randomUUID(),
+						},
+						state,
+					};
+				}),
+				recoverExpired: vi.fn(),
+				findInlineMediaIds: vi.fn(),
+				settleFailure: vi.fn(),
+				claim: vi.fn(),
 				fail: vi.fn(),
 				heartbeat: vi.fn(),
+				commit: vi.fn(async (_input, _claim, output, tx) => {
+					await output(tx);
+					state.status = "completed";
+				}),
+				findByMediaIds: vi.fn(async () => (state ? [state] : [])),
+				findTaggingResult: vi.fn(async () => cached),
+				saveTaggingResult: vi.fn(async (_claim, response) => {
+					cached = response;
+				}),
 			},
 			transactionManager: { transaction: async (callback) => callback({}) },
 			jobRepo: {} as any,
@@ -179,7 +212,11 @@ describe("TaggingServiceImpl", () => {
 			},
 		});
 
-		await taggingService.getTagsForMedia("source-1", "media-1");
+		const observing = taggingService.getTagsForMedia("source-1", "media-1");
+		await vi.waitFor(async () =>
+			expect(await taggingService.runTaggingTask()).toBe("completed"),
+		);
+		await observing;
 
 		expect(mockTagRepo.addTagsToMedia).toHaveBeenCalledWith(
 			"media-1",
