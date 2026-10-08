@@ -1,3 +1,5 @@
+import { DownloadRegistration } from "~/infrastructure/jobs/download-registration";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import * as schema from "@solid-imager/db/schema";
 import { Pool } from "pg";
 import { drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
@@ -7,7 +9,14 @@ import { mediaProcessingStates } from "@solid-imager/db/schema";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { createMediaProcessingStateRepository } from "@solid-imager/db/repositories/media-processing-state-repository";
-import { mkdtemp, rm } from "node:fs/promises";
+import {
+	mkdtemp,
+	readFile,
+	rm,
+	stat,
+	utimes,
+	writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -124,13 +133,17 @@ describe("durable media processing", () => {
 			requestAiTasks: vi.fn(async (sourceId, mediaId, kinds, tx) => {
 				const media = await mediaRepo.findById(mediaId, tx);
 				if (!media) throw new Error("missing image");
+				const source = await sourceRepo.findById(sourceId, tx);
+				const sourcePath = localConnectionSchema.parse(
+					source?.connectionInfo,
+				).path;
 				for (const kind of kinds)
 					await deps.processingStateRepo.request(
 						{
 							input: {
 								mediaId,
 								mediaSourceId: sourceId,
-								sourcePath: "/fixture",
+								sourcePath,
 								filePath: media.filePath,
 								modifiedAt: media.modifiedAt,
 								fileSize: media.fileSize,
@@ -286,6 +299,248 @@ describe("durable media processing", () => {
 			expect(await database.select().from(medias)).toHaveLength(1);
 		},
 	);
+	it("attaches URLs and repairs missing tasks after a watcher registered the file", async () => {
+		const existing = await mediaRepo.create({
+			mediaSourceId: sourceId,
+			filePath: "image.png",
+			fileName: "image.png",
+			mediaType: "image",
+			width: 100,
+			height: 100,
+			fileSize: 512,
+			createdAt: modifiedAt,
+			modifiedAt,
+			description: "watcher",
+		});
+		const media = await register();
+		expect(media.id).toBe(existing.id);
+		expect(media.description).toBe("watcher");
+		expect(await database.select().from(medias)).toHaveLength(1);
+		expect(await database.select().from(mediaUrls)).toEqual([
+			expect.objectContaining({
+				mediaId: existing.id,
+				url: "https://example.com/image",
+			}),
+		]);
+		expect(
+			(await deps.processingStateRepo.findByMediaIds([existing.id]))
+				.map((row) => row.taskKind)
+				.sort(),
+		).toEqual(["ccip", "metadata", "tagging", "thumbnail"]);
+		await finish();
+		const completed = await rows(media.id);
+		await register();
+		expect(await rows(media.id)).toEqual(completed);
+		expect(await database.select().from(mediaUrls)).toHaveLength(1);
+	});
+	it.each(["request", "ai"])(
+		"rolls back URL attachment to an existing media on %s reservation failure",
+		async (boundary) => {
+			const existing = await mediaRepo.create({
+				mediaSourceId: sourceId,
+				filePath: "image.png",
+				fileName: "image.png",
+				mediaType: "image",
+				width: 100,
+				height: 100,
+				fileSize: 512,
+				createdAt: modifiedAt,
+				modifiedAt,
+				description: "original",
+			});
+			if (boundary === "request")
+				vi.spyOn(deps.processingStateRepo, "request").mockRejectedValueOnce(
+					new Error("queue unavailable"),
+				);
+			else
+				vi.mocked(deps.requestAiTasks).mockRejectedValueOnce(
+					new Error("queue unavailable"),
+				);
+			await expect(
+				service.registerAndProcess(sourceId, "image.png", {
+					sourceUrls: ["https://example.com/image"],
+					description: "download",
+				}),
+			).rejects.toThrow("queue unavailable");
+			expect((await mediaRepo.findById(existing.id))?.description).toBe(
+				"original",
+			);
+			expect(await database.select().from(mediaUrls)).toHaveLength(0);
+			expect(await database.select().from(mediaProcessingStates)).toHaveLength(
+				0,
+			);
+			expect((await register()).id).toBe(existing.id);
+			expect(await database.select().from(mediaProcessingStates)).toHaveLength(
+				4,
+			);
+		},
+	);
+	it("coalesces concurrent watcher and download registrations", async () => {
+		const [watcher, download] = await Promise.all([
+			service.registerAndProcess(sourceId, "image.png"),
+			register(),
+		]);
+		expect(watcher.id).toBe(download.id);
+		expect(await database.select().from(medias)).toHaveLength(1);
+		expect(await database.select().from(mediaUrls)).toHaveLength(1);
+		expect(await database.select().from(mediaProcessingStates)).toHaveLength(4);
+	});
+	it.each(["reservation", "checkpoint"])(
+		"resumes publication after %s failure and atomically attaches URLs despite a watcher race",
+		async (boundary) => {
+			const base = await mkdtemp(path.join(tmpdir(), "download-handoff-"));
+			try {
+				await sourceRepo.update(sourceId, { connectionInfo: { path: base } });
+				await jobRepo.create({
+					type: "downloadImage",
+					mediaSourceId: sourceId,
+					payload: { targetUrl: "https://example.com/image" },
+				});
+				const [job] = await jobRepo.claimPending(1);
+				const handoff = new DownloadRegistration(
+					job,
+					sourceId,
+					base,
+					jobRepo,
+					(entry, tx) =>
+						service.registerAndProcess(
+							sourceId,
+							entry.filePath,
+							entry.context,
+							{ tx, sourcePath: base },
+						),
+				);
+				await handoff.prepare();
+				const stagedPath = path.join(handoff.stagingDirectory, "image.png");
+				await writeFile(stagedPath, new Uint8Array(512));
+				await utimes(stagedPath, modifiedAt, modifiedAt);
+				if (boundary === "reservation")
+					vi.spyOn(deps.processingStateRepo, "request").mockRejectedValueOnce(
+						new Error("queue unavailable"),
+					);
+				else {
+					const update = jobRepo.update.bind(jobRepo);
+					vi.spyOn(jobRepo, "update")
+						.mockImplementationOnce(update)
+						.mockRejectedValueOnce(new Error("queue unavailable"));
+				}
+				await expect(
+					handoff.complete([
+						{
+							stagedPath,
+							filePath: "image.png",
+							fileSize: 512,
+							modifiedAt,
+							published: false,
+							context: {
+								sourceUrls: ["https://example.com/image"],
+								description: "download",
+							},
+						},
+					]),
+				).rejects.toThrow("queue unavailable");
+				expect(await stat(path.join(base, "image.png"))).toMatchObject({
+					size: 512,
+				});
+				expect(await database.select().from(medias)).toHaveLength(0);
+				expect(await database.select().from(mediaUrls)).toHaveLength(0);
+				expect(
+					await database.select().from(mediaProcessingStates),
+				).toHaveLength(0);
+				const saved = await jobRepo.findById(job.id);
+				expect(saved?.payload).toMatchObject({
+					downloadRegistration: {
+						entries: [
+							{
+								published: false,
+								context: { sourceUrls: ["https://example.com/image"] },
+							},
+						],
+					},
+				});
+				const watcher = await service.registerAndProcess(sourceId, "image.png");
+				await jobRepo.markAsFailed(
+					job.id,
+					"interrupted",
+					job.attemptCount ?? 0,
+				);
+				await jobRepo.update(job.id, { status: "pending" });
+				const [retried] = await jobRepo.claimPending(1);
+				const resumed = new DownloadRegistration(
+					retried,
+					sourceId,
+					base,
+					jobRepo,
+					(entry, tx) =>
+						service.registerAndProcess(
+							sourceId,
+							entry.filePath,
+							entry.context,
+							{ tx, sourcePath: base },
+						),
+				);
+				expect(await resumed.resume()).toBe(true);
+				expect(await database.select().from(medias)).toEqual([
+					expect.objectContaining({ id: watcher.id, description: "download" }),
+				]);
+				expect(await database.select().from(mediaUrls)).toEqual([
+					expect.objectContaining({
+						mediaId: watcher.id,
+						url: "https://example.com/image",
+					}),
+				]);
+				expect(
+					await database.select().from(mediaProcessingStates),
+				).toHaveLength(4);
+				expect(await readFile(path.join(base, "image.png"))).toHaveLength(512);
+				expect((await jobRepo.findById(job.id))?.payload).toMatchObject({
+					downloadRegistration: { entries: [{ published: true }] },
+				});
+				await expect(stat(handoff.stagingDirectory)).rejects.toMatchObject({
+					code: "ENOENT",
+				});
+				// A crash after registration but before job completion also resumes without staging files.
+				const afterCommit = await jobRepo.findById(job.id);
+				if (!afterCommit) throw new Error("missing download");
+				expect(
+					await new DownloadRegistration(
+						afterCommit,
+						sourceId,
+						base,
+						jobRepo,
+						(entry, tx) =>
+							service.registerAndProcess(
+								sourceId,
+								entry.filePath,
+								entry.context,
+								{ tx, sourcePath: base },
+							),
+					).resume(),
+				).toBe(true);
+				expect(
+					await database.select().from(mediaProcessingStates),
+				).toHaveLength(4);
+			} finally {
+				await rm(base, { recursive: true, force: true });
+			}
+		},
+	);
+	it("rejects a source path changed while a download was in progress", async () => {
+		await sourceRepo.update(sourceId, { connectionInfo: { path: "/changed" } });
+		await expect(
+			transactionManager.transaction((tx) =>
+				service.registerAndProcess(
+					sourceId,
+					"image.png",
+					{ sourceUrls: ["https://example.com/image"] },
+					{ tx, sourcePath: "/fixture" },
+				),
+			),
+		).rejects.toThrow("Download registration source changed");
+		expect(await database.select().from(medias)).toHaveLength(0);
+		expect(await database.select().from(mediaUrls)).toHaveLength(0);
+		expect(await database.select().from(mediaProcessingStates)).toHaveLength(0);
+	});
 	it("rolls back failed upload reservation and preserves overwritten files", async () => {
 		vi.spyOn(deps.processingStateRepo, "request").mockRejectedValue(
 			new Error("queue unavailable"),

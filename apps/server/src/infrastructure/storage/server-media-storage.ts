@@ -145,6 +145,7 @@ export const ServerMediaStorage: IMediaStorage = {
 			try {
 				const dirents = await fs.readdir(dir, { withFileTypes: true });
 				for (const dirent of dirents) {
+					if (dirent.name === ".solid-imager-downloads") continue;
 					const res = path.resolve(dir, dirent.name);
 					if (dirent.isDirectory()) {
 						queue.push(res);

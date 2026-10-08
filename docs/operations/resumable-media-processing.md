@@ -151,6 +151,18 @@ upload、scan、watcher、copy/move、downloadと旧 `processMedia` のAI checkp
 
 rollbackは全writer/workerを停止・drainし、旧ジョブ、AI出力、専用要求snapshotを保存する。旧producerで再予約する対象を確定して、戻すAI工程の状態を停止中に無効化してから旧版を起動する。modeだけの変更では実行権を安全に移せない。正確なbatch対象・Retry履歴と親件数の再計算は #621 のrun/itemsで実装する。
 
+## download の確定地点と source URL
+
+URL取り込みでは、ファイル保存完了・media登録・source URL保存を復旧の基準にする。metadata/thumbnail/tagging/CCIPの相互の実行順は固定せず、metadataとthumbnailはAIとは別poolで実行する。必要な工程の選択・予約は共通の `registerAndProcess` / `requestProcessing` に残す。
+
+直接downloadとyt-dlpの出力はsource配下の `.solid-imager-downloads/<jobId>/<attempt>/` に保存する。watcher、起動時の同期、bulk scanはこの作業領域を取り込まない。完成後、公開先・サイズ/mtime・context metadataとsource URLを既存downloadジョブの内部payloadの `downloadRegistration` に保存してからファイルを公開する。公開には同一filesystem内のhard linkを使い、名前衝突では既存ファイルを上書きしない。hard linkを利用できないsourceでは失敗として保持する。
+
+media・source URL・有効な全4工程の要求・公開済みcheckpointは、現在のjob attemptを検証した同じDB transactionで保存する。監視や復旧scanが先に同じsource/pathを登録していても、同じmediaへcontextと不足する要求を保存する。通常の再登録で既存の成功・実行中・backoff・terminal failureをリセットしない。通知はcommit後に配信し、既存mediaがあるという理由で予約失敗を成功扱いにしない。
+
+公開直後に登録が失敗・停止しても、完成ファイルとURLの組はcheckpointに残る。stale復旧または失敗ジョブのRetryではこの組から登録を再開し、再downloadや別名の重複ファイル作成を避ける。複数ファイルは一件ずつ登録状態をcommitする。全件登録後に作業領域を削除し、ジョブ完了記録前に停止した場合も公開済みファイルから再開する。ファイルが変わった、source pathが変わった、checkpointが不正な場合は成功扱いにせず停止する。
+
+checkpoint保存前の停止では、未公開のdownloadを再実行し得る。失敗・取消中の作業領域は復旧に必要な場合があるため、checkpointで参照されている領域を削除しない。旧版へ戻す際はwriter/workerを停止し、このcheckpointを持つdownloadを新版で完了させるかDBとファイルを照合して復旧対象を確定する。旧版はcheckpointを解釈しない。
+
 ## 保証の範囲と残作業
 
 - metadata/thumbnail/tagging/full-image CCIPは専用handler・producer・API・server startupを切替済み。専用要求の管理UI、cropのregion state、#621のrun/itemsは後続。#620全体は完了していない。
@@ -170,6 +182,8 @@ bun run --cwd apps/server test:e2e -- ccip-flow.spec.ts processing-recovery.spec
 ```
 
 `processing-recovery.test.ts` は一時PGliteでproducer予約のrollback、独立工程と明示Retry、DB再オープン、互換観測の取消・再試行、古い結果の拒否、設定変更、backoff/terminal状態の維持、cache補修、inline移行、タグ置換を検証する。`PROCESSING_TEST_POSTGRES_PORT` を指定すれば同じ一時PostgreSQLへ接続し、再オープン専用ケースだけ省略する。scheduler suiteと同じDBを使うため、両suiteは別コマンドで順に実行する。`ai-processing-producers.test.ts`は一括tagging/CCIPの要求IDと子ジョブの同時保存、予約失敗時のrollback、専用worker完了後の親進捗を実装のDB adapterで確認する。worker unit testはfile/AI pool分離、tagging/CCIP共有上限・drain・poll errorとconfig変更を確認する。E2Eは開発版/新しい本番ビルドで直接アクセス/F5/SPA、旧failedジョブのRetry、SSE再接続、実AI推論を確認する。
+
+同suiteでは実ファイルを公開した後の予約失敗、watcherとの同時登録、既存mediaへのURL付与のrollback、登録後・ジョブ完了前の停止からの復旧も検証する。`download-registration.test.ts`は公開前のcheckpoint、公開後の失敗、名前衝突、複数ファイルの部分成功、古いattempt拒否、変更済みファイル拒否を実filesystemで確認する。download handlerはcheckpointがある場合にfetch/yt-dlpを再実行しないこと、bulk scanは作業領域を除外することをunit testで確認する。
 
 `tagging-processing.test.ts` は一時PGliteで推論レスポンス/空結果の再利用、入力・モデル設定変更、同時要求、手動情報の維持、全出力のロールバック、失敗と再試行、取消、削除、batch対象/ページングを検証する。専用workerへの再起動引き継ぎ、backoff、terminal failure、旧forceジョブと明示Retryの要求IDも検証する。同じスイートを一時 PostgreSQL 18 + pgvector へ最大8接続で実行できる。専用のローカルテストコンテナを `tagging_processing_test` DB / `tagging_test` user / `ephemeral_tagging_test` password で起動し、割り当てた localhost ポートだけを `TAGGING_TEST_POSTGRES_PORT` に指定する。本番 DB の接続設定は使わない。
 

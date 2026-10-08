@@ -10,6 +10,11 @@ import type {
 	ProcessingOwner,
 } from "@solid-imager/core/domain/processing/schemas";
 
+export type MediaRegistrationOptions = {
+	tx: Transaction;
+	sourcePath?: string;
+};
+
 export interface IMediaProcessingService {
 	requestProcessing(
 		media: Media,
@@ -44,6 +49,7 @@ export interface IMediaProcessingService {
 		mediaSourceId: string,
 		relativePath: string,
 		contextMetadata?: Partial<MediaMetadataContext>,
+		options?: MediaRegistrationOptions,
 	): Promise<Media>;
 
 	executeProcessMediaJob(job: Job): Promise<void>;

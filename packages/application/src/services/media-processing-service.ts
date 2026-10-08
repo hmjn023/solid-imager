@@ -44,7 +44,10 @@ import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/eve
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { IMediaStorage } from "@solid-imager/core/interfaces/media-storage";
 import { MediaTaskService } from "./media-task-service";
-import type { IMediaProcessingService } from "../ports/media-processing-service";
+import type {
+	IMediaProcessingService,
+	MediaRegistrationOptions,
+} from "../ports/media-processing-service";
 import type { ILogger } from "../ports/media-service";
 
 export type PreparedThumbnail = {
@@ -166,8 +169,10 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		mediaSourceId: string,
 		relativePath: string,
 		contextMetadata?: Partial<MediaMetadataContext>,
+		options?: MediaRegistrationOptions,
 	): Promise<Media> {
-		const source = await this.sourceRepo.findById(mediaSourceId);
+		const tx = options?.tx;
+		const source = await this.sourceRepo.findById(mediaSourceId, tx);
 		if (source?.type !== "local") {
 			throw new Error(
 				`Source not found or not a local source: ${mediaSourceId}`,
@@ -183,6 +188,11 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			);
 		}
 		const basePath = connectionParse.data.path;
+		if (
+			options?.sourcePath &&
+			path.resolve(basePath) !== path.resolve(options.sourcePath)
+		)
+			throw new Error("Download registration source changed");
 		const fullPath = path.join(basePath, relativePath);
 
 		// Get file metadata
@@ -198,9 +208,9 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			mediaType = "audio";
 		}
 
-		const media = await this.transactionManager.transaction(async (tx) => {
+		const register = async (tx: Transaction) => {
 			// Step 1: Create media record
-			const media = await this.mediaRepo.create(
+			const created = await this.mediaRepo.createIfAbsent(
 				{
 					mediaSourceId,
 					filePath: relativePath,
@@ -215,6 +225,34 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 				},
 				tx,
 			);
+			const existing = created
+				? null
+				: await this.mediaRepo.findByPath(mediaSourceId, relativePath, tx);
+			let media = created ?? existing;
+			if (!media) throw new Error("Registered media disappeared");
+			if (existing) {
+				// Serialize registration with workers before attaching context or repairing requests.
+				const locked = await this.mediaRepo.findById(existing.id, tx, {
+					forUpdate: true,
+				});
+				if (!locked) throw new Error("Registered media disappeared");
+				media = await this.mediaRepo.update(
+					locked.id,
+					{
+						width: fileMetadata.width,
+						height: fileMetadata.height,
+						fileSize: fileMetadata.size,
+						modifiedAt: fileMetadata.modifiedAt,
+						...(contextMetadata?.description !== undefined && {
+							description: contextMetadata.description,
+						}),
+						...(contextMetadata?.createdAt && {
+							createdAt: contextMetadata.createdAt,
+						}),
+					},
+					tx,
+				);
+			}
 
 			// Step 2: Register related data
 			if (contextMetadata) {
@@ -224,15 +262,19 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			await this.requestProcessing(media, basePath, {}, tx);
 
 			return media;
-		});
+		};
+		const media = tx
+			? await register(tx)
+			: await this.transactionManager.transaction(register);
 
 		// Notify clients
-		this.notify(() =>
-			this.publishSourceEvent(mediaSourceId, "media-added", {
-				mediaId: media.id,
-				filePath: media.filePath,
-			}),
-		);
+		if (!tx)
+			this.notify(() =>
+				this.publishSourceEvent(mediaSourceId, "media-added", {
+					mediaId: media.id,
+					filePath: media.filePath,
+				}),
+			);
 
 		return media;
 	}
