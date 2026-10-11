@@ -1,6 +1,6 @@
 # UI implementation report
 
-WebとTauriは `DESIGN.md` と Design Lab を基準にした共有ワークスペースを使用します。`/search`、`/sources/:sourceId`、`/manager`、`/jobs`、`/config`、`/about` は検索、ソース操作、メディア管理、AI操作、設定、インポート、データ転送を実データへ接続しています。未対応機能は推測データを表示せず無効化しています。
+WebとTauriは `DESIGN.md` を基準にした共有ワークスペースを使用します。`/search`、`/sources/:sourceId`、`/manager`、`/jobs`、`/config`、`/about` は検索、ソース操作、メディア管理、AI操作、設定、インポート、データ転送を実データへ接続しています。未対応機能は推測データを表示せず無効化しています。
 
 ## Current implementation status
 
