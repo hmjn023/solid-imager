@@ -1,4 +1,8 @@
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import {
+	executableJobSchema,
+	InvalidJobError,
+} from "@solid-imager/core/domain/jobs/dispatch";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import type { DeferredActions } from "@solid-imager/application/ports/media-service";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
@@ -36,6 +40,13 @@ function getThumbnailJobHandlers(): ThumbnailJobHandlers {
 
 // Helper for unified job processing (Called by JobWorker)
 export async function processJob(job: Job) {
+	if (
+		!executableJobSchema.options.some(
+			(schema) => schema.shape.type.value === job.type,
+		)
+	) {
+		throw new InvalidJobError("Unsupported job type");
+	}
 	const mediaSourceId = job.mediaSourceId;
 	if (
 		!mediaSourceId &&
@@ -45,34 +56,59 @@ export async function processJob(job: Job) {
 		throw new Error(`Job ${job.id} missing mediaSourceId`);
 	}
 
-	if (job.type === "processMedia") {
-		const { MediaProcessingService } =
-			await import("~/infrastructure/services/media-processing-service");
-		await MediaProcessingService.executeProcessMediaJob(job);
-	} else if (job.type === "downloadImage") {
-		const { processDownloadJob } =
-			await import("~/infrastructure/jobs/download-jobs");
-		await processDownloadJob(job);
-	} else if (job.type === "auto_tagging") {
-		await processAutoTaggingJob(job);
-	} else if (job.type === "extract_ccip_vector") {
-		const { processCcipExtractionJob } =
-			await import("~/infrastructure/jobs/ccip-jobs");
-		await processCcipExtractionJob(job);
-	} else if (job.type === "bulk_tagging_dispatch") {
-		await processBulkTaggingDispatchJob(job);
-	} else if (job.type === "batch_ccip_dispatch") {
-		const { processBatchCcipDispatchJob } =
-			await import("~/infrastructure/jobs/ccip-jobs");
-		await processBatchCcipDispatchJob(job);
-	} else if (job.type === "generate_thumbnail") {
-		await getThumbnailJobHandlers().processThumbnailGenerationJob(job);
-	} else if (job.type === "source_export") {
-		await processSourceExportJob(job);
-	} else if (job.type === "source_restore") {
-		return processSourceRestoreJob(job);
-	} else {
-		logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
+	const parsed = executableJobSchema.safeParse(job);
+	if (!parsed.success)
+		throw new InvalidJobError("Invalid job payload", parsed.error);
+	const dispatch = parsed.data;
+	// Keep the original payload: internal request identities/checkpoints are not public schema fields.
+	switch (dispatch.type) {
+		case "processMedia": {
+			const { MediaProcessingService } =
+				await import("~/infrastructure/services/media-processing-service");
+			await MediaProcessingService.executeProcessMediaJob(job);
+			return;
+		}
+		case "downloadImage": {
+			const { processDownloadJob } =
+				await import("~/infrastructure/jobs/download-jobs");
+			await processDownloadJob(job);
+			return;
+		}
+		case "auto_tagging": {
+			await processAutoTaggingJob(job);
+			return;
+		}
+		case "extract_ccip_vector": {
+			const { processCcipExtractionJob } =
+				await import("~/infrastructure/jobs/ccip-jobs");
+			await processCcipExtractionJob(job);
+			return;
+		}
+		case "bulk_tagging_dispatch": {
+			await processBulkTaggingDispatchJob(job);
+			return;
+		}
+		case "batch_ccip_dispatch": {
+			const { processBatchCcipDispatchJob } =
+				await import("~/infrastructure/jobs/ccip-jobs");
+			await processBatchCcipDispatchJob(job);
+			return;
+		}
+		case "generate_thumbnail": {
+			await getThumbnailJobHandlers().processThumbnailGenerationJob(job);
+			return;
+		}
+		case "source_export": {
+			await processSourceExportJob(job);
+			return;
+		}
+		case "source_restore": {
+			return processSourceRestoreJob(job);
+		}
+		default: {
+			const never: never = dispatch;
+			throw new Error(`Unhandled executable job: ${String(never)}`);
+		}
 	}
 }
 

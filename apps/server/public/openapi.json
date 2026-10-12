@@ -14692,7 +14692,7 @@
       "post": {
         "operationId": "jobs.retry",
         "summary": "ジョブ再実行",
-        "description": "失敗したバックグラウンドジョブを再実行し、更新後のジョブ情報を返します。",
+        "description": "失敗した実行ジョブを再実行し、更新後の情報を返します。batch親や承認待ちは対象外です。失敗工程またはdispatchジョブから再試行してください。",
         "tags": [
           "Jobs"
         ],

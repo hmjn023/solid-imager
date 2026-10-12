@@ -8,11 +8,12 @@ import {
 } from "@solid-imager/core/domain/jobs/schemas";
 import {
 	isBatchParentJobType,
+	batchParentJobTypes,
 	jobStatusSchema,
 } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import type { JobEvent } from "@solid-imager/core/domain/sources/events";
-import { and, count, desc, eq, sql } from "drizzle-orm";
+import { and, count, desc, eq, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
@@ -234,15 +235,30 @@ export const jobsRouter = os.router({
 				artifactExpiresAt: null,
 				updatedAt: new Date(),
 			})
-			.where(and(eq(jobs.id, input.id), eq(jobs.status, "failed")))
+			.where(
+				and(
+					eq(jobs.id, input.id),
+					eq(jobs.status, "failed"),
+					notInArray(jobs.type, ["import_request", ...batchParentJobTypes]),
+				),
+			)
 			.returning();
 		if (!requeued) {
 			const [current] = await db
-				.select({ id: jobs.id })
+				.select({ id: jobs.id, type: jobs.type })
 				.from(jobs)
 				.where(eq(jobs.id, input.id));
 			if (!current) {
 				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
+			}
+			if (
+				isBatchParentJobType(current.type) ||
+				current.type === "import_request"
+			) {
+				throw new ORPCError("BAD_REQUEST", {
+					message:
+						"This job is not executable. Retry failed processing steps or dispatch jobs instead.",
+				});
 			}
 			throw new ORPCError("BAD_REQUEST", {
 				message: "Only failed jobs can be retried",

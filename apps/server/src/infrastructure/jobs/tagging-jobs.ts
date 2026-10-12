@@ -1,6 +1,9 @@
 import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import { and, eq, sql } from "drizzle-orm";
-import { z } from "zod";
+import {
+	autoTaggingPayloadSchema,
+	bulkTaggingDispatchPayloadSchema,
+} from "@solid-imager/core/domain/jobs/dispatch";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -8,17 +11,6 @@ import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { scanTaggingTargetPage } from "./tagging-targets";
 import { taggingService } from "~/infrastructure/services/tagging-service";
-
-const autoTaggingPayloadSchema = z.object({
-	mediaId: z.string(),
-	force: z.boolean().optional(),
-});
-
-const bulkTaggingDispatchPayloadSchema = z.object({
-	force: z.boolean().optional(),
-	batchSize: z.number().optional(),
-	mediaSourceId: z.string().optional(),
-});
 
 async function finalizeBatchParent(
 	parentId: string,

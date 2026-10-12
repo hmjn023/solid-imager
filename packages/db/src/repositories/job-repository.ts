@@ -30,8 +30,8 @@ import {
 	isNotNull,
 	isNull,
 	lt,
-	ne,
 	notInArray,
+	or,
 	type SQL,
 	sql,
 } from "drizzle-orm";
@@ -301,7 +301,7 @@ export function createJobRepository(
 
 			const conditions = [
 				eq(jobs.status, "pending"),
-				ne(jobs.type, "import_request"),
+				notInArray(jobs.type, ["import_request", ...batchParentJobTypes]),
 			];
 
 			if (options?.excludeTypes?.length) {
@@ -368,25 +368,36 @@ export function createJobRepository(
 			error: string,
 			attemptCount: number,
 		): Promise<boolean> {
-			const now = new Date();
-			const rows = await db()
-				.update(jobs)
-				.set({
-					status: "failed",
-					error,
-					finishedAt: now,
-					updatedAt: now,
-				})
-				.where(
-					and(
-						eq(jobs.id, id),
-						eq(jobs.status, "in_progress"),
-						eq(jobs.attemptCount, attemptCount),
-						isNull(jobs.cancelRequestedAt),
-					),
+			// A pre-handler validation/dispatch failure must not leave its batch parent running.
+			// One statement commits both rows; rejected old attempts never update the parent.
+			const result: unknown = await db().execute(sql`
+				WITH failed_job AS (
+					UPDATE jobs SET status = 'failed', error = ${error},
+						finished_at = NOW(), updated_at = NOW()
+					WHERE id = ${id}::uuid AND status = 'in_progress'
+						AND attempt_count = ${attemptCount} AND cancel_requested_at IS NULL
+					RETURNING parent_id
+				), failed_parent AS (
+					UPDATE jobs AS parent SET status = 'failed', error = 'Batch job failed',
+						finished_at = NOW(), updated_at = NOW()
+					FROM failed_job AS child
+					WHERE parent.id = child.parent_id
+						AND parent.type IN ${sqlTuple([...batchParentJobTypes])}
+						AND parent.status IN ('pending', 'in_progress', 'completed')
+						AND parent.cancel_requested_at IS NULL
+					RETURNING parent.id
 				)
-				.returning();
-			return rows.length > 0;
+				SELECT EXISTS(SELECT 1 FROM failed_job) AS changed
+			`);
+			const row = extractRows(result)[0];
+			if (
+				!row ||
+				typeof row !== "object" ||
+				!("changed" in row) ||
+				typeof row.changed !== "boolean"
+			)
+				throw new Error("Invalid job failure result");
+			return row.changed;
 		},
 
 		async requestCancellation(id: string): Promise<void> {
@@ -526,7 +537,30 @@ export function createJobRepository(
 				updates.artifactExpiresAt = data.artifactExpiresAt;
 			updates.updatedAt = new Date();
 
-			await db(tx).update(jobs).set(updates).where(eq(jobs.id, id));
+			// Batch failure/cancellation is terminal until an explicit retry resets it.
+			// A late child/dispatch completion must not resurrect a failed batch.
+			const terminalGuard =
+				data.status === "completed"
+					? or(
+							notInArray(jobs.type, [...batchParentJobTypes]),
+							and(
+								inArray(jobs.status, ["pending", "in_progress"]),
+								isNull(jobs.cancelRequestedAt),
+							),
+						)
+					: data.status === "failed"
+						? or(
+								notInArray(jobs.type, [...batchParentJobTypes]),
+								and(
+									inArray(jobs.status, ["pending", "in_progress", "completed"]),
+									isNull(jobs.cancelRequestedAt),
+								),
+							)
+						: undefined;
+			await db(tx)
+				.update(jobs)
+				.set(updates)
+				.where(and(eq(jobs.id, id), terminalGuard));
 		},
 
 		async incrementProgress(
@@ -564,7 +598,7 @@ export function createJobRepository(
 
 			const conditions = [
 				sql`status = 'pending'`,
-				sql`type <> 'import_request'`,
+				sql`type NOT IN ${sqlTuple(["import_request", ...batchParentJobTypes])}`,
 			];
 
 			if (options?.excludeTypes?.length) {

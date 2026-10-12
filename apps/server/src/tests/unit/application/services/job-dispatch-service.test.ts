@@ -37,7 +37,10 @@ function createJob(
 		type,
 		mediaSourceId,
 		status: "pending",
-		payload: {},
+		payload:
+			type === "generate_thumbnail"
+				? { mediaId: "33333333-3333-4333-8333-333333333333", size: 512 }
+				: {},
 		result: null,
 		error: null,
 		parentId,
@@ -85,6 +88,61 @@ describe("processJob", () => {
 		processThumbnailGenerationJob.mockResolvedValueOnce(undefined);
 
 		await expect(processJob(job)).resolves.toBeUndefined();
+		expect(processThumbnailGenerationJob).toHaveBeenCalledWith(job);
+	});
+
+	it.each(["unknown_job", "bulk_tagging_parent", "import_request"])(
+		"rejects non-executable type %s",
+		async (type) => {
+			await expect(
+				processJob(createJob(type, "22222222-2222-4222-8222-222222222222")),
+			).rejects.toThrow("Unsupported job type");
+			expect(processBulkTaggingDispatchJob).not.toHaveBeenCalled();
+		},
+	);
+
+	it.each([
+		{},
+		{ mediaId: "invalid", size: 512 },
+		{ mediaId: "33333333-3333-4333-8333-333333333333", size: 0 },
+	])(
+		"rejects invalid thumbnail payload before running its handler",
+		async (payload) => {
+			const job = {
+				...createJob(
+					"generate_thumbnail",
+					"22222222-2222-4222-8222-222222222222",
+				),
+				payload,
+			};
+			await expect(processJob(job)).rejects.toThrow("Invalid job payload");
+			expect(processThumbnailGenerationJob).not.toHaveBeenCalled();
+		},
+	);
+
+	it("rejects invalid dispatch options without running the handler", async () => {
+		await expect(
+			processJob({
+				...createJob("bulk_tagging_dispatch", null),
+				payload: { batchSize: -1 },
+			}),
+		).rejects.toThrow("Invalid job payload");
+		expect(processBulkTaggingDispatchJob).not.toHaveBeenCalled();
+	});
+
+	it("preserves internal request identities in the original payload", async () => {
+		const job = {
+			...createJob(
+				"generate_thumbnail",
+				"22222222-2222-4222-8222-222222222222",
+			),
+			payload: {
+				mediaId: "33333333-3333-4333-8333-333333333333",
+				size: 512,
+				internalCheckpoint: { requestedRevision: "private-revision" },
+			},
+		};
+		await processJob(job);
 		expect(processThumbnailGenerationJob).toHaveBeenCalledWith(job);
 	});
 });

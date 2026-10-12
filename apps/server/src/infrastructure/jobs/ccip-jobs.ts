@@ -4,33 +4,17 @@ import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/sche
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
+import {
+	extractionPayloadSchema,
+	batchExtractionPayloadSchema,
+	batchCcipDispatchPayloadSchema,
+} from "@solid-imager/core/domain/jobs/dispatch";
 import { db } from "~/infrastructure/db";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
-
-const singleExtractionPayloadSchema = z.object({
-	mediaId: z.uuid(),
-	force: z.boolean().default(false),
-});
-
-const batchExtractionPayloadSchema = z.object({
-	mediaIds: z.array(z.uuid()).min(1).max(25),
-	force: z.boolean().default(false),
-});
-
-const extractionPayloadSchema = z.union([
-	singleExtractionPayloadSchema,
-	batchExtractionPayloadSchema,
-]);
-
-const batchCcipDispatchPayloadSchema = z.object({
-	force: z.boolean().default(false),
-	batchSize: z.number().int().min(1).max(5000).optional(),
-	mediaSourceId: z.uuid().optional(),
-});
 
 const dispatchedChildPayloadSchema = z.union([
 	z.object({ mediaId: z.uuid() }),

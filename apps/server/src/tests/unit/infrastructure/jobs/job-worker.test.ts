@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { InvalidJobError } from "@solid-imager/core/domain/jobs/dispatch";
 
 const { mockCleanupExpired, mockCleanupOrphaned } = vi.hoisted(() => ({
 	mockCleanupExpired: vi.fn().mockResolvedValue(undefined),
@@ -74,6 +76,7 @@ describe("JobWorker", () => {
 
 	afterEach(() => {
 		worker.stop();
+		vi.restoreAllMocks();
 		vi.useRealTimers();
 	});
 
@@ -401,6 +404,74 @@ describe("JobWorker", () => {
 
 		resolveExport();
 		await vi.runOnlyPendingTimersAsync();
+	});
+
+	it("records invalid jobs as failures and notifies their failed batch parent", async () => {
+		const job = {
+			id: "child",
+			type: "unknown_type",
+			parentId: "parent",
+			attemptCount: 3,
+		} as Job;
+		vi.mocked(jobRepo.claimPending).mockResolvedValueOnce([job]);
+		vi.mocked(jobRepo.findById).mockResolvedValue({
+			id: "parent",
+			type: "bulk_tagging_parent",
+			status: "failed",
+		} as Job);
+		vi.mocked(processor).mockRejectedValue(
+			new InvalidJobError("Unsupported job type"),
+		);
+		const notify = vi
+			.spyOn(RealtimeEventBus, "publishJob")
+			.mockImplementation(() => {});
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+		expect(jobRepo.markAsCompleted).not.toHaveBeenCalled();
+		expect(jobRepo.markAsFailed).toHaveBeenCalledWith(
+			"child",
+			"Unsupported job type",
+			3,
+		);
+		expect(notify).toHaveBeenCalledWith("job-failed", {
+			jobId: "parent",
+			error: "Job failed",
+		});
+	});
+
+	it("does not notify outcomes rejected as stale attempts", async () => {
+		vi.mocked(jobRepo.claimPending).mockResolvedValueOnce([
+			{
+				id: "child",
+				type: "unknown_type",
+				parentId: "parent",
+				attemptCount: 3,
+			} as Job,
+		]);
+		vi.mocked(processor).mockRejectedValue(
+			new InvalidJobError("Unsupported job type"),
+		);
+		vi.mocked(jobRepo.markAsFailed).mockResolvedValue(false);
+		const notify = vi
+			.spyOn(RealtimeEventBus, "publishJob")
+			.mockImplementation(() => {});
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+		expect(notify).not.toHaveBeenCalled();
+		expect(jobRepo.findById).not.toHaveBeenCalled();
+	});
+
+	it("does not turn committed completion into failure when notification throws", async () => {
+		vi.mocked(jobRepo.claimPending).mockResolvedValueOnce([
+			{ id: "job", type: "custom_job" } as Job,
+		]);
+		vi.spyOn(RealtimeEventBus, "publishJob").mockImplementation(() => {
+			throw new Error("listener disconnected");
+		});
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+		expect(jobRepo.markAsCompleted).toHaveBeenCalledOnce();
+		expect(jobRepo.markAsFailed).not.toHaveBeenCalled();
 	});
 
 	it("still expires transfer files when orphan cleanup fails", async () => {

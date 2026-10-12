@@ -1,4 +1,6 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { isBatchParentJobType } from "@solid-imager/core/domain/jobs/schemas";
+import type { JobEvent } from "@solid-imager/core/domain/sources/events";
 import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -239,7 +241,20 @@ export class JobWorker {
 	}
 
 	private async tryProcessJob(job: Job) {
-		void this.processJob(job);
+		void this.processJob(job).catch((error) => {
+			logger.error(
+				{ err: error, jobId: job.id },
+				"Failed to persist job outcome",
+			);
+		});
+	}
+
+	private publish(command: JobEvent): void {
+		try {
+			RealtimeEventBus.publishJob(command.event, command.data);
+		} catch (error) {
+			logger.warn({ err: error }, "Job outcome notification failed");
+		}
 	}
 
 	private async processJob(job: Job) {
@@ -304,9 +319,12 @@ export class JobWorker {
 					);
 					return;
 				}
-				RealtimeEventBus.publishJob("job-completed", {
-					jobId: job.id,
-					message: "Job completed",
+				this.publish({
+					event: "job-completed",
+					data: {
+						jobId: job.id,
+						message: "Job completed",
+					},
 				});
 			}
 			logger.info(
@@ -350,10 +368,32 @@ export class JobWorker {
 				);
 				return;
 			}
-			RealtimeEventBus.publishJob("job-failed", {
-				jobId: job.id,
-				error: PublicJobFailureMessage,
+			this.publish({
+				event: "job-failed",
+				data: {
+					jobId: job.id,
+					error: PublicJobFailureMessage,
+				},
 			});
+			if (job.parentId) {
+				try {
+					const parent = await this.jobRepo.findById(job.parentId);
+					if (
+						parent?.status === "failed" &&
+						isBatchParentJobType(parent.type)
+					) {
+						this.publish({
+							event: "job-failed",
+							data: { jobId: parent.id, error: PublicJobFailureMessage },
+						});
+					}
+				} catch (notificationError) {
+					logger.warn(
+						{ err: notificationError, parentId: job.parentId },
+						"Failed to notify batch outcome",
+					);
+				}
+			}
 		} finally {
 			clearInterval(heartbeatId);
 			this.activeJobs--;
@@ -388,9 +428,12 @@ export class JobWorker {
 		if (job.artifactPath) {
 			await removeJobTransferFile(job.artifactPath);
 		}
-		RealtimeEventBus.publishJob("job-cancelled", {
-			jobId: job.id,
-			message: "Job cancelled",
+		this.publish({
+			event: "job-cancelled",
+			data: {
+				jobId: job.id,
+				message: "Job cancelled",
+			},
 		});
 		logger.info(
 			{
