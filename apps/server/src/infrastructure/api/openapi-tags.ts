@@ -79,6 +79,11 @@ export const openApiTags = [
 			"バックグラウンドジョブの一覧、状態確認、再実行、キャンセル、成果物取得を行います。",
 	},
 	{
+		name: "Processing",
+		description:
+			"メディアごとの工程別処理状態を取得し、失敗した工程を個別再試行します。",
+	},
+	{
 		name: "Presets",
 		description: "検索条件を保存したプリセットを作成、取得、更新、削除します。",
 	},

@@ -20,6 +20,7 @@ import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/dom
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/events";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
 import type { ILogger } from "../ports/media-service";
 import { MediaProcessingScheduler } from "./media-processing-scheduler";
@@ -31,6 +32,7 @@ export type AiMediaTaskDeps = {
 	mediaRepo: IMediaRepository;
 	sourceRepo: SourceRepository;
 	logger?: ILogger;
+	publishSourceEvent?: SourceEventPublisher;
 };
 export type AiMediaTaskHandler<Result> = {
 	currentRevision(input: MediaProcessingInput): string;
@@ -62,6 +64,12 @@ export class AiMediaTaskService<Result> {
 	) {
 		this.scheduler = new MediaProcessingScheduler({
 			...deps,
+			onStateChanged: (input, taskKind) =>
+				deps.publishSourceEvent?.(
+					input?.mediaSourceId ?? "*",
+					"media-processing-changed",
+					{ mediaId: input?.mediaId, kind: taskKind },
+				),
 			handlers: {
 				[kind]: {
 					currentRevision: (input: MediaProcessingInput) =>

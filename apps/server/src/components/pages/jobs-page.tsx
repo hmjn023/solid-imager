@@ -11,13 +11,18 @@ import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal } from "solid-js";
+import type { Accessor } from "solid-js";
+import type { JobsView } from "@solid-imager/ui/screens/jobs-view";
 import { buildThumbnailUrl } from "~/components/media/thumbnail-image";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { jobsQueryOptions } from "~/infrastructure/api-clients/queries";
 
 const BULK_RETRY_CONCURRENCY = 8;
 
-export function JobsPage() {
+export function JobsPage(props: {
+	view: Accessor<JobsView>;
+	onViewChange: (view: JobsView) => void;
+}) {
 	const [pageIndex, setPageIndex] = createSignal(0);
 	const jobsQuery = createQuery<JobListResponse>(() =>
 		jobsQueryOptions({
@@ -54,6 +59,14 @@ export function JobsPage() {
 
 	return (
 		<JobsScreen
+			view={props.view}
+			onViewChange={props.onViewChange}
+			processingApi={{
+				list: (input) => orpc.processing.list(input),
+				get: (input) => orpc.processing.get(input),
+				retry: (input) => orpc.processing.retry(input),
+				openEvents: (signal) => orpc.sources.events({ id: "*" }, { signal }),
+			}}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
 			jobs={() => jobsQuery.data?.items ?? []}

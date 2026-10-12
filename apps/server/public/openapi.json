@@ -80,6 +80,10 @@
       "description": "バックグラウンドジョブの一覧、状態確認、再実行、キャンセル、成果物取得を行います。"
     },
     {
+      "name": "Processing",
+      "description": "メディアごとの工程別処理状態を取得し、失敗した工程を個別再試行します。"
+    },
+    {
       "name": "Presets",
       "description": "検索条件を保存したプリセットを作成、取得、更新、削除します。"
     }
@@ -2023,6 +2027,36 @@
                         },
                         "data": {
                           "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "event": {
+                                  "const": "media-processing-changed"
+                                },
+                                "data": {
+                                  "type": "object",
+                                  "properties": {
+                                    "mediaId": {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    "kind": {
+                                      "enum": [
+                                        "metadata",
+                                        "thumbnail",
+                                        "tagging",
+                                        "ccip"
+                                      ],
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              },
+                              "required": [
+                                "event",
+                                "data"
+                              ]
+                            },
                             {
                               "type": "object",
                               "properties": {
@@ -15577,6 +15611,651 @@
                         "event"
                       ]
                     }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processing/list": {
+      "post": {
+        "operationId": "processing.list",
+        "summary": "メディア処理状態一覧",
+        "description": "ローカルメディアの工程別要求を検索・状態条件で絞り込み、DBから現在の処理状態を取得します。",
+        "tags": [
+          "Processing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "status": {
+                    "enum": [
+                      "pending",
+                      "in_progress",
+                      "completed",
+                      "failed"
+                    ],
+                    "type": "string"
+                  },
+                  "query": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 25
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "default": 0
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "mediaId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "mediaSourceId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "sourceName": {
+                            "type": "string"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mediaType": {
+                            "enum": [
+                              "image",
+                              "video",
+                              "audio"
+                            ],
+                            "type": "string"
+                          },
+                          "modifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "x-native-type": "date"
+                          },
+                          "steps": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "enum": [
+                                    "metadata",
+                                    "thumbnail",
+                                    "tagging",
+                                    "ccip"
+                                  ],
+                                  "type": "string"
+                                },
+                                "status": {
+                                  "enum": [
+                                    "not_requested",
+                                    "skipped",
+                                    "pending",
+                                    "in_progress",
+                                    "completed",
+                                    "failed"
+                                  ],
+                                  "type": "string"
+                                },
+                                "isCurrent": {
+                                  "type": "boolean"
+                                },
+                                "requestId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "uuid"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "attemptCount": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "maxAttempts": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "exclusiveMinimum": 0
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "availableAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "x-native-type": "date"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "updatedAt": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "x-native-type": "date"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "failureCode": {
+                                  "anyOf": [
+                                    {
+                                      "enum": [
+                                        "file_missing",
+                                        "file_access_denied",
+                                        "service_unavailable",
+                                        "input_changed",
+                                        "lease_expired",
+                                        "retry_limit",
+                                        "processing_failed"
+                                      ],
+                                      "type": "string"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "canRetry": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "status",
+                                "isCurrent",
+                                "requestId",
+                                "attemptCount",
+                                "maxAttempts",
+                                "availableAt",
+                                "updatedAt",
+                                "failureCode",
+                                "canRetry"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "mediaId",
+                          "mediaSourceId",
+                          "sourceName",
+                          "fileName",
+                          "mediaType",
+                          "modifiedAt",
+                          "steps"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processing/get": {
+      "post": {
+        "operationId": "processing.get",
+        "summary": "メディア処理状態取得",
+        "description": "4工程の要求状態、入力の鮮度、試行回数、公開可能な失敗分類を取得します。",
+        "tags": [
+          "Processing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "mediaId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mediaId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "mediaSourceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "sourceName": {
+                      "type": "string"
+                    },
+                    "fileName": {
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "enum": [
+                        "image",
+                        "video",
+                        "audio"
+                      ],
+                      "type": "string"
+                    },
+                    "modifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "metadata",
+                              "thumbnail",
+                              "tagging",
+                              "ccip"
+                            ],
+                            "type": "string"
+                          },
+                          "status": {
+                            "enum": [
+                              "not_requested",
+                              "skipped",
+                              "pending",
+                              "in_progress",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          },
+                          "isCurrent": {
+                            "type": "boolean"
+                          },
+                          "requestId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "attemptCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "maxAttempts": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "exclusiveMinimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "availableAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "updatedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "failureCode": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "file_missing",
+                                  "file_access_denied",
+                                  "service_unavailable",
+                                  "input_changed",
+                                  "lease_expired",
+                                  "retry_limit",
+                                  "processing_failed"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "canRetry": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "status",
+                          "isCurrent",
+                          "requestId",
+                          "attemptCount",
+                          "maxAttempts",
+                          "availableAt",
+                          "updatedAt",
+                          "failureCode",
+                          "canRetry"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "mediaId",
+                    "mediaSourceId",
+                    "sourceName",
+                    "fileName",
+                    "mediaType",
+                    "modifiedAt",
+                    "steps"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processing/retry": {
+      "post": {
+        "operationId": "processing.retry",
+        "summary": "失敗工程の再試行",
+        "description": "指定した要求が現在も失敗状態の場合に、その工程だけ現在の入力で再予約します。他工程や新しい要求は変更しません。",
+        "tags": [
+          "Processing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "kind": {
+                    "enum": [
+                      "metadata",
+                      "thumbnail",
+                      "tagging",
+                      "ccip"
+                    ],
+                    "type": "string"
+                  },
+                  "requestId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "mediaId",
+                  "kind",
+                  "requestId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mediaId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "mediaSourceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "sourceName": {
+                      "type": "string"
+                    },
+                    "fileName": {
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "enum": [
+                        "image",
+                        "video",
+                        "audio"
+                      ],
+                      "type": "string"
+                    },
+                    "modifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "metadata",
+                              "thumbnail",
+                              "tagging",
+                              "ccip"
+                            ],
+                            "type": "string"
+                          },
+                          "status": {
+                            "enum": [
+                              "not_requested",
+                              "skipped",
+                              "pending",
+                              "in_progress",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          },
+                          "isCurrent": {
+                            "type": "boolean"
+                          },
+                          "requestId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "attemptCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "maxAttempts": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "exclusiveMinimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "availableAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "updatedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "failureCode": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "file_missing",
+                                  "file_access_denied",
+                                  "service_unavailable",
+                                  "input_changed",
+                                  "lease_expired",
+                                  "retry_limit",
+                                  "processing_failed"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "canRetry": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "status",
+                          "isCurrent",
+                          "requestId",
+                          "attemptCount",
+                          "maxAttempts",
+                          "availableAt",
+                          "updatedAt",
+                          "failureCode",
+                          "canRetry"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "mediaId",
+                    "mediaSourceId",
+                    "sourceName",
+                    "fileName",
+                    "mediaType",
+                    "modifiedAt",
+                    "steps"
                   ]
                 }
               }

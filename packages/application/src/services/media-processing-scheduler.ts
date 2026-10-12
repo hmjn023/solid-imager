@@ -34,11 +34,23 @@ export class MediaProcessingScheduler {
 			transactionManager: TransactionManager;
 			handlers: Partial<Record<MediaTaskKind, ScheduledMediaTaskHandler>>;
 			logger?: ILogger;
+			/** Notification only; durable state has already committed. */
+			onStateChanged?(input?: MediaProcessingInput, kind?: MediaTaskKind): void;
 		},
 	) {
 		this.taskKinds = mediaTaskKindSchema.options.filter(
 			(kind) => deps.handlers[kind],
 		);
+	}
+	private notify(input?: MediaProcessingInput, kind?: MediaTaskKind) {
+		try {
+			this.deps.onStateChanged?.(input, kind);
+		} catch (error) {
+			this.deps.logger?.warn(
+				{ err: error, mediaId: input?.mediaId },
+				"Processing state notification failed",
+			);
+		}
 	}
 
 	async runOnce(): Promise<
@@ -46,13 +58,15 @@ export class MediaProcessingScheduler {
 	> {
 		const { processingStateRepo: repo, transactionManager: transactions } =
 			this.deps;
-		await transactions.transaction((tx) =>
+		const recovered = await transactions.transaction((tx) =>
 			repo.recoverExpired(this.taskKinds, 25, tx),
 		);
+		if (recovered > 0) this.notify();
 		const work = await transactions.transaction((tx) =>
 			repo.claimDue(this.taskKinds, tx),
 		);
 		if (!work) return "idle";
+		this.notify(work.input, work.claim.taskKind);
 		const handler = this.deps.handlers[work.claim.taskKind];
 		if (!handler) throw new Error("Scheduled handler is missing");
 		let prepared: PreparedMediaTask | undefined;
@@ -104,6 +118,7 @@ export class MediaProcessingScheduler {
 					tx,
 				),
 			);
+			if (state) this.notify(work.input, work.claim.taskKind);
 			return !state
 				? "superseded"
 				: state.status === "pending"
@@ -120,6 +135,7 @@ export class MediaProcessingScheduler {
 				);
 			}
 		}
+		this.notify(work.input, work.claim.taskKind);
 		try {
 			await prepared.afterCommit?.();
 		} catch (error) {

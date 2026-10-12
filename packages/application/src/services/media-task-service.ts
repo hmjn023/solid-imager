@@ -49,6 +49,12 @@ export class MediaTaskService {
 			processingStateRepo: this.deps.processingStateRepo,
 			transactionManager: this.deps.transactionManager,
 			logger: this.deps.logger,
+			onStateChanged: (input, taskKind) =>
+				this.deps.publishSourceEvent(
+					input?.mediaSourceId ?? "*",
+					"media-processing-changed",
+					{ mediaId: input?.mediaId, kind: taskKind },
+				),
 			handlers: {
 				[kind]: {
 					currentRevision: (input: MediaProcessingInput) =>

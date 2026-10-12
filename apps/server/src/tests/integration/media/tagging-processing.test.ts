@@ -212,7 +212,14 @@ describe("revision-aware tagging", () => {
 		service = createService();
 		expect(await run()).toEqual(first);
 		expect(infer).toHaveBeenCalledTimes(1);
-		expect(publish).toHaveBeenCalledTimes(1);
+		expect(
+			publish.mock.calls.filter(([, event]) => event === "media-changed"),
+		).toHaveLength(1);
+		expect(
+			publish.mock.calls.filter(
+				([, event]) => event === "media-processing-changed",
+			),
+		).toHaveLength(2);
 		expect(await states()).toEqual([
 			expect.objectContaining({
 				taskKind: "tagging",

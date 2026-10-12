@@ -1,4 +1,6 @@
 import {
+	mediaProcessingChangedEventSchema,
+	type MediaProcessingChangedEvent,
 	type AllJobsCompletedEvent,
 	allJobsCompletedEventSchema,
 	type DownloadErrorEvent,
@@ -80,6 +82,7 @@ export function createSourceEventTransport(
 }
 
 export type UseMediaSourceEventsOptions = {
+	onMediaProcessingChanged?: (data: MediaProcessingChangedEvent) => void;
 	transport: MediaSourceEventTransport;
 	enabled?: boolean | Accessor<boolean>;
 	onMediaAdded?: (data: MediaAddedEvent) => void;
@@ -151,6 +154,14 @@ export function useMediaSourceEvents(
 		const cleanup = options.transport.listen((message) => {
 			const { event, data } = message;
 			switch (event) {
+				case "media-processing-changed":
+					validateAndDispatch(
+						mediaProcessingChangedEventSchema,
+						data,
+						options.onMediaProcessingChanged,
+						event,
+					);
+					break;
 				case "media-added":
 					validateAndDispatch(
 						mediaAddedEventSchema,

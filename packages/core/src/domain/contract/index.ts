@@ -8,6 +8,7 @@ export { downloadsContract } from "./downloads.contract";
 export { importsContract } from "./imports.contract";
 export { ipsContract } from "./ips.contract";
 export { jobsContract } from "./jobs.contract";
+export { processingContract } from "./processing.contract";
 export { mediaContract } from "./media.contract";
 export { presetsContract } from "./presets.contract";
 export type { PresetOrpcLike } from "./presets-client";
@@ -29,6 +30,7 @@ import { downloadsContract } from "./downloads.contract";
 import { importsContract } from "./imports.contract";
 import { ipsContract } from "./ips.contract";
 import { jobsContract } from "./jobs.contract";
+import { processingContract } from "./processing.contract";
 import { mediaContract } from "./media.contract";
 import { presetsContract } from "./presets.contract";
 import { projectsContract } from "./projects.contract";
@@ -57,6 +59,7 @@ export const appContract = {
 	ai: aiContract,
 	imports: importsContract,
 	jobs: jobsContract,
+	processing: processingContract,
 	utils: utilsContract,
 	config: configContract,
 	presets: presetsContract,

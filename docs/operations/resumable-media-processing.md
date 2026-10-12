@@ -133,7 +133,7 @@ restoreは復元したmetadata/関連情報を保ち、同じ復元transaction�
 
 要求IDのない旧thumbnailジョブも、初回予約と同じtransactionで要求IDをpayloadへ保存し、forceを消費する。観測ジョブがクラッシュして自動再開しても、同じ要求の完了・失敗を観測し、forceを繰り返さない。
 
-直接APIと互換ジョブは最大120秒待つ。時間切れでも要求はDBに残り、workerが継続する。公開APIの成功レスポンスや既存SSE契約は変更しない。専用要求の一括一覧・待機時刻・terminal失敗を管理する新UIは後続となる。
+直接APIと互換ジョブは最大120秒待つ。時間切れでも要求はDBに残り、workerが継続する。公開APIの成功レスポンスは変更しない。専用要求は Jobs の Media processing で確認・個別再試行できる。
 
 rollbackは全writer/workerを停止・drainし、DBとfilesystemを照合する。専用要求snapshotと旧ジョブを保存し、旧producerで再予約する対象を確定してからfile状態を無効化して旧版を再開する。modeだけ変更して両workerを動かさない。
 
@@ -163,22 +163,39 @@ media・source URL・有効な全4工程の要求・公開済みcheckpointは、
 
 checkpoint保存前の停止では、未公開のdownloadを再実行し得る。失敗・取消中の作業領域は復旧に必要な場合があるため、checkpointで参照されている領域を削除しない。旧版へ戻す際はwriter/workerを停止し、このcheckpointを持つdownloadを新版で完了させるかDBとファイルを照合して復旧対象を確定する。旧版はcheckpointを解釈しない。
 
+## 専用要求の管理画面と個別再試行
+
+Web/Tauri 共通の Jobs → Media processing (`/jobs?view=processing`) は、汎用ジョブ履歴の有無に依存せず、有効なローカル媒体の metadata / thumbnail / tagging / full-image CCIP を表示する。ファイル名検索、保存された要求状態での絞り込み、25件単位のページング、試行回数・更新時刻・次回実行時刻を確認できる。
+
+`processing.list/get` は DB の状態を取得し、未予約は Not requested、媒体に適用しない工程は Skipped、現在の入力・設定に一致しない要求は Outdated とする。古い成功を現在の完了として表示しない。パス・revision・claim token・生のエラーは返さず、失敗理由は定義済みの安全なコードから説明する。
+
+`processing.retry` は媒体行をロックし、画面で選んだ要求IDが現在も failed であることを確認して、その工程だけを現在の入力・設定で再予約する。完了済みの別工程、実行中・pending・backoff の要求はリセットしない。古い画面から新しい要求を上書きする操作や同時二重Retryは conflict とする。通知失敗で予約済み処理を失敗扱いにしない。
+
+既存 source SSE の `media-processing-changed` は再取得のヒントであり、状態の正本は DB。claim・完了・失敗・期限切れ回収・個別Retryの確定後に通知する。画面は通知をまとめて再取得し、再接続時も DB を読み直す。検索・選択・フォーカスを保持する。表示中に実行待ち／実行中がある場合は15秒ごとの再取得も行う。
+
+download 登録・source URL 保存・工程予約の順序と実行poolは変更しない。この画面は crop/region state や #621 の正確な batch run/items 履歴を実装しない。
+
 ## 保証の範囲と残作業
 
-- metadata/thumbnail/tagging/full-image CCIPは専用handler・producer・API・server startupを切替済み。専用要求の管理UI、cropのregion state、#621のrun/itemsは後続。#620全体は完了していない。
+- metadata/thumbnail/tagging/full-image CCIPは専用handler・producer・API・server startupを切替済み。専用要求の管理UIも実装済み。cropのregion state、#621のrun/itemsは後続。#620全体は完了していない。
 - 内容ハッシュや監視が未検出の実ファイル変更は対象外。DBに新しい入力が記録された後の古い結果を拒否する。複数プロセスは同じ設定・processor版で運用する。
 - DBとファイルシステムは単一トランザクションにならない。2サイズのrename途中や公開直後・DB commit直前の停止では再生成する。2サイズの公開は完全に同時ではない。クラッシュで残った `*.tmp.webp` はworker停止中に除去可能。
 - 同じrevisionの通常要求は実作業を共有する。明示的な再抽出／再生成、キャッシュ欠損、lease失効後には同じrevisionでも計算を再実行し得る。exactly-once実行の保証ではない。
 - アップロードのファイル保存自体はDB commitの前。上書き前のファイル復元、コピー／移動／download全体の原子化は含まない。
 - AI実作業は専用state claimで集約し、観測ジョブは固定した要求IDを追う。ジョブ行自体の全 type dedup、retry後の正確なbatch履歴・親件数の再計算は #619 / #621 に残る。
-- 公開DTOには工程種別・状態・試行回数・更新時刻だけを返す。パス、revision、claim token、payload、例外詳細は公開しない。詳細はサーバーログのjobId／stepで調べる。
+- 公開DTOには媒体ID・表示名、工程種別・状態・入力の鮮度・論理要求ID・試行回数・更新／次回実行時刻・安全な失敗分類を返す。パス、revision、claim token、payload、例外詳細は公開しない。詳細はサーバーログのmediaId／jobId／stepで調べる。
 
 ## 回帰検証
+
+`processing-management.test.ts` は、汎用jobのない媒体の一覧、未予約・対象外・Outdatedの区別、検索とページング、安全な失敗分類、個別Retryと他工程の保持、同時Retry、古い要求ID拒否、予約rollback、通知失敗を11件で検証する。専用のlocalhost PostgreSQL 18 + pgvector (DB `processing_management_test` / user `processing_test` / password `ephemeral_processing_test`) に対して `PROCESSING_MANAGEMENT_TEST_POSTGRES_PORT` を指定すると同じテストを最大8接続で実行する。
+
+`processing-management.spec.ts` は実AIサービス接続失敗から個別Retryによる実推論復旧、F5の復元、SSE再接続時の検索・選択・フォーカス保持、APIエラーからの復旧、375pxの横はみ出しを検証する。設定変更は隔離fixtureの完全な設定snapshotを保存・復元する。
 
 ```bash
 bun run check
 bun run test
 bun run --cwd apps/server test:e2e -- ccip-flow.spec.ts processing-recovery.spec.ts realtime-preservation.spec.ts --project=desktop
+bun run --cwd apps/server test:e2e -- processing-management.spec.ts processing-recovery.spec.ts realtime-preservation.spec.ts --project=desktop
 ```
 
 `processing-recovery.test.ts` は一時PGliteでproducer予約のrollback、独立工程と明示Retry、DB再オープン、互換観測の取消・再試行、古い結果の拒否、設定変更、backoff/terminal状態の維持、cache補修、inline移行、タグ置換を検証する。`PROCESSING_TEST_POSTGRES_PORT` を指定すれば同じ一時PostgreSQLへ接続し、再オープン専用ケースだけ省略する。scheduler suiteと同じDBを使うため、両suiteは別コマンドで順に実行する。`ai-processing-producers.test.ts`は一括tagging/CCIPの要求IDと子ジョブの同時保存、予約失敗時のrollback、専用worker完了後の親進捗を実装のDB adapterで確認する。worker unit testはfile/AI pool分離、tagging/CCIP共有上限・drain・poll errorとconfig変更を確認する。E2Eは開発版/新しい本番ビルドで直接アクセス/F5/SPA、旧failedジョブのRetry、SSE再接続、実AI推論を確認する。
