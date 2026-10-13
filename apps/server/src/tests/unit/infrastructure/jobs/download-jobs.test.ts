@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
+import { processDownloadRun } from "~/infrastructure/jobs/download-jobs";
+import type { DownloadClaim } from "@solid-imager/core/domain/downloads/schemas";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -8,6 +9,7 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 // Hoisted mocks
 // Hoisted mocks
 const {
+	mockDownloadRepo,
 	mockFindById,
 	mockGetFileMetadata,
 	mockMediaRegisterAndProcess,
@@ -22,6 +24,7 @@ const {
 	mockYtDlpExec,
 	mockYtDlp,
 } = vi.hoisted(() => ({
+	mockDownloadRepo: { withActiveClaim: vi.fn(), saveCheckpoint: vi.fn() },
 	mockFindById: vi.fn(),
 	mockGetFileMetadata: vi.fn(),
 	mockMediaRegisterAndProcess: vi.fn(),
@@ -38,6 +41,9 @@ const {
 }));
 
 // Mocks
+vi.mock("~/infrastructure/repositories/download-run-repository", () => ({
+	DownloadRunRepository: mockDownloadRepo,
+}));
 vi.mock("youtube-dl-exec", () => ({
 	create: () => Object.assign(mockYtDlp, { exec: mockYtDlpExec }),
 }));
@@ -113,6 +119,31 @@ global.fetch = fetchMock as any;
 
 // Unified format: {author}_{platform}_{postId}_{assetId}.{ext}
 const DOWNLOAD_FILENAME_PATTERN = /^user_twitter_123_image\.jpg$/;
+
+// Keep the downloader behavior fixtures while exercising the dedicated typed execution boundary.
+async function processDownloadJob(fixture: {
+	id: string;
+	mediaSourceId?: string | null;
+	payload?: unknown;
+	attemptCount?: number;
+}) {
+	const payload =
+		fixture.payload && typeof fixture.payload === "object"
+			? fixture.payload
+			: {};
+	const checkpoint =
+		"downloadRegistration" in payload ? payload.downloadRegistration : null;
+	return processDownloadRun({
+		...fixture,
+		input: payload,
+		checkpoint,
+		sourcePath: "/tmp/downloads",
+		status: "in_progress",
+		leaseToken: "11111111-1111-4111-8111-111111111111",
+		leaseExpiresAt: new Date(Date.now() + 120_000),
+		attemptCount: fixture.attemptCount ?? 1,
+	} as DownloadClaim);
+}
 
 describe("processDownloadJob", () => {
 	beforeEach(async () => {
@@ -204,14 +235,10 @@ describe("processDownloadJob", () => {
 			updatedAt: new Date(),
 		});
 
-		const { services } = await import("~/infrastructure/service-registry");
-		services.getJobRepository = vi.fn().mockReturnValue({
-			create: vi.fn(),
-			withActiveAttempt: vi.fn(async (_id, _attempt, action) =>
-				action(undefined),
-			),
-			update: vi.fn(),
-		});
+		mockDownloadRepo.withActiveClaim.mockImplementation(
+			async (_claim, action) => action(undefined),
+		);
+		mockDownloadRepo.saveCheckpoint.mockResolvedValue(undefined);
 	});
 
 	it.each([
@@ -263,11 +290,8 @@ describe("processDownloadJob", () => {
 				{ err: expect.objectContaining({ message, cause: error }) },
 				"yt-dlp execution failed",
 			);
-			expect(RealtimeEventBus.publishSource).toHaveBeenCalledWith(
-				"source-1",
-				"download-error",
-				{ url: job.payload.targetUrl, error: message },
-			);
+			// Execution cannot publish failure before the worker settles its current lease.
+			expect(RealtimeEventBus.publishSource).not.toHaveBeenCalled();
 			expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
 		},
 	);
@@ -295,6 +319,7 @@ describe("processDownloadJob", () => {
 		expect(mockYtDlpExec).toHaveBeenCalledWith(
 			job.payload.targetUrl,
 			expect.objectContaining({ printJson: true, simulate: false }),
+			{ signal: undefined },
 		);
 		expect(mockYtDlp).not.toHaveBeenCalled();
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
@@ -375,6 +400,7 @@ describe("processDownloadJob", () => {
 		expect(mockYtDlpExec).toHaveBeenCalledWith(
 			"https://x.com/user/status/123",
 			expect.objectContaining({ dumpSingleJson: true, skipDownload: true }),
+			{ signal: undefined },
 		);
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
 			"source-1",

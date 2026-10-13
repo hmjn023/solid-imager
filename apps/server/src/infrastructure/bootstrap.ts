@@ -10,6 +10,9 @@ import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
 import { MediaFileWorker } from "~/infrastructure/jobs/media-file-worker";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
+import { DownloadWorker } from "~/infrastructure/jobs/download-worker";
+import { processDownloadRun } from "~/infrastructure/jobs/download-jobs";
+import { DownloadRunRepository } from "~/infrastructure/repositories/download-run-repository";
 import {
 	deleteThumbnail,
 	thumbnailExists,
@@ -96,7 +99,11 @@ export function initServices() {
 		rustAiClient.updateConfig(newConfig.ai),
 	);
 
-	const jobWorker = new JobWorker(jobRepo, processJob);
+	const jobWorker = new JobWorker(
+		jobRepo,
+		processJob,
+		new DownloadWorker(DownloadRunRepository, processDownloadRun),
+	);
 	// Initialize worker with current config and subscribe to changes
 	jobWorker.updateConfig(configService.getConfig());
 	configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));

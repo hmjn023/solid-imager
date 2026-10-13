@@ -1,6 +1,6 @@
 # Import request の移行・復旧
 
-対象は [#788](https://github.com/hmjn023/solid-imager/issues/788)、親は [#621](https://github.com/hmjn023/solid-imager/issues/621)。承認待ち import を `jobs` から `import_requests` へ移す。download は既存 `downloadImage` queue/worker を使い、承認と予約を同じ transaction で保存する。download 完了後の source URL 保存、metadata/thumbnail と AI の独立した処理は維持する。
+対象は [#788](https://github.com/hmjn023/solid-imager/issues/788)、親は [#621](https://github.com/hmjn023/solid-imager/issues/621)。承認待ち import を `jobs` から `import_requests` へ移す。#788時点では既存 `downloadImage` queue/worker を使い、#789以降は [専用download run](./download-run-cutover.md) を使う。いずれも承認と予約を同じ transaction で保存する。download 完了後の source URL 保存、metadata/thumbnail と AI の独立した処理は維持する。
 
 ## 切替前
 
@@ -54,4 +54,4 @@ authority を legacy に戻して generation を増やす。**generation が 0 �
 
 ## 残りの段階
 
-download 専用 run は #789、固定 batch は #790、source sync/export/restore は #791。全 reader/producer の参照ゼロ監査・観測期間・jobs 削除は #792。この PR は本番移行の実行や観測期間の完了を意味しない。
+download 専用 run は #789で実装し、切替・rollbackは [専用手順](./download-run-cutover.md) に従う。残りは固定 batch の #790、source sync/export/restore の #791。全 reader/producer の参照ゼロ監査・観測期間・jobs 削除は #792。本番移行の実行や観測期間の完了を意味しない。

@@ -22,6 +22,7 @@ export class ImportRequestService {
 			repo: IImportRequestRepository;
 			transactions: TransactionManager;
 			sources: SourceRepository;
+			prepareReservation?(): Promise<void>;
 			reserve(
 				sourceId: string,
 				requests: ImportRequest[],
@@ -42,6 +43,7 @@ export class ImportRequestService {
 		}
 	}
 	private async initialize() {
+		await this.deps.prepareReservation?.();
 		const report = await this.deps.repo.ensureCutover();
 		if (report.migrated)
 			this.deps.logger?.info(report, "Legacy import requests migrated");

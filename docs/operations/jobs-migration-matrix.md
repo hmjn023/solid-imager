@@ -5,7 +5,7 @@
 | type | producer / execution | reader・event・UI | 移行先・issue |
 | --- | --- | --- | --- |
 | `import_request` | imports.bulkAdd / 非実行。承認で download 予約 | Imports list/count/process/cancel、import SSE、Web/Tauri inbox | `import_requests`、#788。旧 ID の alias・private snapshot・authority gate |
-| `downloadImage` | downloads-router、imports承認、deferred action / download worker、rate limiter | checkpoint、Jobs Retry、job/source SSE | download run、#789。完成 download・source URL・media/4工程予約を保持 |
+| `downloadImage` | downloads-router、imports承認、deferred action / 専用DownloadWorker、既存general枠とrate limiter | 専用Downloads API、Jobs互換view、job/source SSE | `download_runs`、#789。完成download・source URL・media/4工程予約とcurrent leaseでのcheckpoint再開 |
 | `processMedia` | 新 producer は media 共通予約へ移行済み / legacy 観測 | Jobs checkpoint/Retry、job/source SSE | media state を正本に履歴・要求 ID を reconcile、#790/#792 |
 | `auto_tagging` | bulk tagging dispatch / AI request 観測 | AI status、親進捗、Jobs/Media processing、job/source SSE | 専用 AI request と固定 batch item、#790 |
 | `extract_ccip_vector` | ai-router、CCIP dispatch / AI request 観測 | CCIP status、親進捗、Jobs/Media processing、job/source SSE | 専用 AI request と固定 batch item、#790 |
@@ -21,6 +21,6 @@
 | `source_export` | sources-router / source-transfer service、独立 export 枠 | artifact、取消/Retry、source API、job/source SSE、Web/Tauri | source transfer run。artifact/input 所有権と保持期間、#791 |
 | `source_restore` | sources-router / source-transfer service、general | artifact、取消/Retry、source API、job/source SSE、Web/Tauri | source transfer run、#791 |
 
-各 flow は writer 停止・drain、active 行の reconcile、epoch/version gate、shadow 照合、片側だけの claim authority、再起動・競合・rollback を条件に切り替える。import の具体的な手順は [import-request-cutover.md](./import-request-cutover.md)。SSE は更新通知として扱い、再接続後は DB API から復元する。
+各 flow は writer 停止・drain、active 行の reconcile、epoch/version gate、shadow 照合、片側だけの claim authority、再起動・競合・rollback を条件に切り替える。手順は [import-request-cutover.md](./import-request-cutover.md) と [download-run-cutover.md](./download-run-cutover.md)。SSE は更新通知として扱い、再接続後は DB API から復元する。
 
 未知 type、producer/reader、payload/checkpoint、event/UI、dedupe/merge の残存参照があれば #792 の削除 gate を通さない。全 flow 移行後の観測期間と参照ゼロ監査を経て、jobs 本体・generic UI/transport を別 PR で削除する。この表と最初の import PR は全体の移行完了を意味しない。

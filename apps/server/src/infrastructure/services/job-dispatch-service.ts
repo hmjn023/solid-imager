@@ -68,12 +68,6 @@ export async function processJob(job: Job) {
 			await MediaProcessingService.executeProcessMediaJob(job);
 			return;
 		}
-		case "downloadImage": {
-			const { processDownloadJob } =
-				await import("~/infrastructure/jobs/download-jobs");
-			await processDownloadJob(job);
-			return;
-		}
 		case "auto_tagging": {
 			await processAutoTaggingJob(job);
 			return;
@@ -117,6 +111,16 @@ export async function executeDeferredActions(actions: DeferredActions) {
 		const repo = services.getJobRepository();
 		for (const item of actions.jobs) {
 			for (const job of item.jobs) {
+				if (job.type === "downloadImage") {
+					const { downloadInputSchema } =
+						await import("@solid-imager/core/domain/downloads/schemas");
+					const { queueDownloadJobs } =
+						await import("~/infrastructure/jobs/download-jobs");
+					await queueDownloadJobs(item.mediaSourceId, [
+						downloadInputSchema.parse(job.payload),
+					]);
+					continue;
+				}
 				if (job.type === "processMedia") {
 					if (!job.mediaId)
 						throw new Error("Deferred processing media ID is missing");

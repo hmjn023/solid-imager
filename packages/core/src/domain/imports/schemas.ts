@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { downloadItemSchema } from "../media/schemas";
+import { downloadInputSchema } from "../downloads/schemas";
 
 export const importRequestStatusSchema = z.enum([
 	"pending",
@@ -18,7 +19,7 @@ export const importAuthoritySchema = z.enum(["legacy", "dedicated"]);
 export type ImportBlockedReason = z.infer<typeof importBlockedReasonSchema>;
 export type ImportAuthority = z.infer<typeof importAuthoritySchema>;
 export const importItemSchema = downloadItemSchema.extend({
-	targetUrl: z.url(),
+	targetUrl: downloadInputSchema.shape.targetUrl,
 });
 export const importRequestSchema = z.object({
 	id: z.uuid(),

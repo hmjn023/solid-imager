@@ -13,7 +13,7 @@ import {
 } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import type { JobEvent } from "@solid-imager/core/domain/sources/events";
-import { and, count, desc, eq, notInArray, sql } from "drizzle-orm";
+import { and, eq, notInArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
@@ -21,6 +21,11 @@ import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import {
+	findDownloadJob,
+	listJobView,
+	mutateDownloadJob,
+} from "~/infrastructure/api/download-job-view";
 
 const PublicJobFailureMessage = "Job failed";
 
@@ -66,33 +71,6 @@ async function findTargetMediaModifiedAt(
 
 	const media = await MediaRepository.findById(targetMediaId);
 	return media?.modifiedAt ?? null;
-}
-
-async function findTargetMediaModifiedAtById(
-	jobs: ReadonlyArray<Pick<Job, "payload">>,
-): Promise<ReadonlyMap<string, Date>> {
-	const targetMediaIds = [
-		...new Set(
-			jobs.flatMap((job) => {
-				const targetMediaId = readTargetMediaId(job.payload);
-				return targetMediaId ? [targetMediaId] : [];
-			}),
-		),
-	];
-	if (targetMediaIds.length === 0) return new Map<string, Date>();
-
-	const media = await MediaRepository.findByIds(targetMediaIds);
-	return new Map(media.map((item) => [item.id, item.modifiedAt]));
-}
-
-function getTargetMediaModifiedAt(
-	job: Pick<Job, "payload">,
-	targetMediaModifiedAtById: ReadonlyMap<string, Date>,
-): Date | null {
-	const targetMediaId = readTargetMediaId(job.payload);
-	return targetMediaId
-		? (targetMediaModifiedAtById.get(targetMediaId) ?? null)
-		: null;
 }
 
 export function toJobDto(
@@ -159,44 +137,34 @@ async function currentJobDto(job: Job) {
 	);
 }
 
-function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
-	return status ? and(eq(jobs.status, status)) : undefined;
-}
-
 const os = implement(jobsContract);
 
 export const jobsRouter = os.router({
 	list: os.list.handler(async ({ input }) => {
-		const where = jobWhere(input.status);
-		const [rows, totalRows] = await Promise.all([
-			db
-				.select()
-				.from(jobs)
-				.where(where)
-				.orderBy(desc(jobs.createdAt), desc(jobs.id))
-				.limit(input.limit)
-				.offset(input.offset),
-			db.select({ total: count() }).from(jobs).where(where),
-		]);
-
-		const targetMediaModifiedAtById = await findTargetMediaModifiedAtById(rows);
-		const currentSteps = await findCurrentProcessingSteps([
-			...targetMediaModifiedAtById.keys(),
-		]);
-
-		return {
-			items: rows.map((job) =>
-				toJobDto(
-					job,
-					getTargetMediaModifiedAt(job, targetMediaModifiedAtById),
-					currentSteps.get(readTargetMediaId(job.payload) ?? ""),
+		const page = await listJobView(input, toJobDto);
+		const ids = [
+			...new Set(
+				page.items.flatMap((job) =>
+					job.targetMediaId ? [job.targetMediaId] : [],
 				),
 			),
-			total: Number(totalRows[0]?.total ?? 0),
+		];
+		const media = await MediaRepository.findByIds(ids);
+		const modified = new Map(media.map((item) => [item.id, item.modifiedAt]));
+		const currentSteps = await findCurrentProcessingSteps(ids);
+		return {
+			items: page.items.map((job) => ({
+				...job,
+				targetMediaModifiedAt: modified.get(job.targetMediaId ?? "") ?? null,
+				currentProcessingSteps: currentSteps.get(job.targetMediaId ?? "") ?? [],
+			})),
+			total: page.total,
 		};
 	}),
 
 	get: os.get.handler(async ({ input }) => {
+		const download = await findDownloadJob(input.id);
+		if (download) return download;
 		const [job] = await db.select().from(jobs).where(eq(jobs.id, input.id));
 		if (!job) {
 			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
@@ -216,6 +184,8 @@ export const jobsRouter = os.router({
 	}),
 
 	retry: os.retry.handler(async ({ input }) => {
+		const download = await findDownloadJob(input.id);
+		if (download) return mutateDownloadJob("retry", input.id);
 		const [requeued] = await db
 			.update(jobs)
 			.set({
@@ -272,6 +242,8 @@ export const jobsRouter = os.router({
 	}),
 
 	cancel: os.cancel.handler(async ({ input }) => {
+		const download = await findDownloadJob(input.id);
+		if (download) return mutateDownloadJob("cancel", input.id);
 		const job = await JobRepository.findById(input.id);
 		if (!job) {
 			throw new ORPCError("NOT_FOUND", { message: "Job not found" });

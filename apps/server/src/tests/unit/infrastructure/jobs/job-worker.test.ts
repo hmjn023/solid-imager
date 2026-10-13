@@ -5,6 +5,9 @@ import type { Job } from "~/infrastructure/db/schema";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { InvalidJobError } from "@solid-imager/core/domain/jobs/dispatch";
+import { DownloadWorker } from "~/infrastructure/jobs/download-worker";
+import type { DownloadClaim } from "@solid-imager/core/domain/downloads/schemas";
+import type { IDownloadRunRepository } from "@solid-imager/core/domain/repositories/download-run-repository";
 
 const { mockCleanupExpired, mockCleanupOrphaned } = vi.hoisted(() => ({
 	mockCleanupExpired: vi.fn().mockResolvedValue(undefined),
@@ -127,6 +130,57 @@ describe("JobWorker", () => {
 			}),
 		);
 		expect(processor).toHaveBeenCalledTimes(2);
+	});
+	it("shares general capacity with typed downloads and gives other jobs the next free slot", async () => {
+		const downloads = [1, 2, 3].map(
+			(number) =>
+				({
+					id: `11111111-1111-4111-8111-11111111111${number}`,
+					attemptCount: 1,
+				}) as DownloadClaim,
+		);
+		const general = [{ id: "other-job", type: "source_restore" } as Job];
+		let active = 0;
+		let peak = 0;
+		const release: Array<() => void> = [];
+		const block = () =>
+			new Promise<void>((resolve) => {
+				active++;
+				peak = Math.max(peak, active);
+				release.push(() => {
+					active--;
+					resolve();
+				});
+			});
+		processor = vi.fn(block);
+		vi.mocked(jobRepo.claimPending).mockImplementation(
+			async (limit, options) =>
+				options?.excludeTypes ? general.splice(0, limit) : [],
+		);
+		const repo = {
+			ensureCutover: vi
+				.fn()
+				.mockResolvedValue({ migrated: 0, blocked: 0, aliases: 0 }),
+			claimPending: vi.fn(async (limit) => downloads.splice(0, limit)),
+			heartbeat: vi.fn().mockResolvedValue(true),
+			settle: vi.fn().mockResolvedValue(null),
+		} as unknown as IDownloadRunRepository;
+		worker = new JobWorker(jobRepo, processor, new DownloadWorker(repo, block));
+		worker.updateConfig({
+			jobs: { concurrency: 2, aiConcurrency: 1, pollIntervalMs: 1000 },
+		} as AppConfig);
+		worker.start();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+		expect(active).toBe(2);
+		expect(processor).not.toHaveBeenCalled();
+		release[0]();
+		await vi.advanceTimersByTimeAsync(TimerDelay);
+		expect(processor).toHaveBeenCalledOnce();
+		expect(active).toBe(2);
+		expect(peak).toBe(2);
+		worker.stop();
+		for (const finish of release.slice(1)) finish();
+		await vi.advanceTimersByTimeAsync(0);
 	});
 
 	it("should respect aiConcurrency limit for AI jobs", async () => {

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { canonicalJsonHash } from "../utils/canonical-json";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { IImportRequestRepository } from "@solid-imager/core/domain/repositories/import-request-repository";
 import { ResourceConflictError } from "@solid-imager/core/domain/errors";
@@ -16,6 +16,7 @@ import {
 	importRequestLegacySnapshots,
 	importRequests,
 	jobs,
+	downloadRuns,
 } from "../schema";
 import { createTransactionManager } from "../transaction-manager";
 import type { DrizzleExecutor } from "../types";
@@ -41,23 +42,8 @@ function map(row: typeof importRequests.$inferSelect): ImportRequest {
 		cancelledAt: row.cancelledAt,
 	});
 }
-/** Canonical JSON of validated reception content, including server-only authentication context. */
-function canonical(value: unknown): string {
-	if (Array.isArray(value))
-		return `[${value.map((entry: unknown) => canonical(entry)).join(",")}]`;
-	if (value !== null && typeof value === "object")
-		return `{${Object.entries(value)
-			.sort(([a], [b]) => (a === b ? 0 : a < b ? -1 : 1))
-			.map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`)
-			.join(",")}}`;
-	return JSON.stringify(value) ?? "null";
-}
 function key(item: DownloadItem) {
-	// JSON is an external serialization boundary. This removes undefined fields and normalizes dates.
-	const serialized: unknown = JSON.parse(
-		JSON.stringify(importItemSchema.parse(item)),
-	);
-	return createHash("sha256").update(canonical(serialized)).digest("hex");
+	return canonicalJsonHash(importItemSchema.parse(item));
 }
 function normalizeLegacy(payload: unknown): unknown {
 	if (typeof payload !== "string") return payload;
@@ -148,8 +134,21 @@ export function createImportRequestRepository(
 										)
 										.limit(1)
 								: [];
+						const [dedicatedReservation] =
+							item && status === "pending"
+								? await db
+										.select({ id: downloadRuns.id })
+										.from(downloadRuns)
+										.where(
+											and(
+												sql`${downloadRuns.createdAt} >= (SELECT original.created_at FROM jobs AS original WHERE original.id = ${row.id}::uuid)`,
+												sql`${downloadRuns.input}->>'targetUrl' = ${item.targetUrl}`,
+											),
+										)
+										.limit(1)
+								: [];
 						// Old approval queued downloads before saving completion. Do not guess or replay an ambiguous reservation.
-						if (existingReservation) status = "blocked";
+						if (existingReservation || dedicatedReservation) status = "blocked";
 						const requestKey = item ? key(item) : `invalid:${row.id}`;
 						const values: typeof importRequests.$inferInsert = {
 							id: row.id,
@@ -159,7 +158,7 @@ export function createImportRequestRepository(
 							blockedReason: !item
 								? "invalid_item"
 								: status === "blocked"
-									? existingReservation
+									? existingReservation || dedicatedReservation
 										? "legacy_reservation"
 										: "legacy_failure"
 									: null,

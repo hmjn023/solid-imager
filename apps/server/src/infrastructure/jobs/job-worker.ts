@@ -5,6 +5,8 @@ import type { IJobRepository } from "~/domain/repositories/job-repository";
 import type { Job } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
+import type { DownloadWorker } from "./download-worker";
+import type { DownloadClaim } from "@solid-imager/core/domain/downloads/schemas";
 import {
 	cleanupExpiredJobTransferFiles,
 	cleanupOrphanedJobTransferFiles,
@@ -62,6 +64,7 @@ export class JobWorker {
 	private activeAiJobs = 0;
 	private activeThumbnailJobs = 0;
 	private activeExportJobs = 0;
+	private preferDownloads = true;
 
 	private readonly jobRepo: IJobRepository;
 	private readonly processor: (job: Job) => Promise<unknown>;
@@ -76,6 +79,7 @@ export class JobWorker {
 	constructor(
 		jobRepo: IJobRepository,
 		processor: (job: Job) => Promise<unknown>,
+		private readonly downloads?: DownloadWorker,
 	) {
 		this.jobRepo = jobRepo;
 		this.processor = processor;
@@ -187,8 +191,14 @@ export class JobWorker {
 				this.activeThumbnailJobs -
 				this.activeExportJobs;
 			if (activeOtherJobs < this.concurrency) {
-				const slots = this.concurrency - activeOtherJobs;
+				let slots = this.concurrency - activeOtherJobs;
 				if (slots > 0) {
+					// Alternate the first claimant so neither typed downloads nor other general jobs starve.
+					if (this.downloads && this.preferDownloads) {
+						const downloads = await this.downloads.claimPending(slots);
+						for (const run of downloads) this.processDownload(run);
+						slots -= downloads.length;
+					}
 					const jobs = await this.jobRepo.claimPending(slots, {
 						excludeTypes: [
 							...this.aiJobTypes,
@@ -199,6 +209,13 @@ export class JobWorker {
 					for (const job of jobs) {
 						void this.tryProcessJob(job);
 					}
+					if (this.downloads && !this.preferDownloads && slots > jobs.length) {
+						const downloads = await this.downloads.claimPending(
+							slots - jobs.length,
+						);
+						for (const run of downloads) this.processDownload(run);
+					}
+					this.preferDownloads = !this.preferDownloads;
 				}
 			}
 		} catch (error) {
@@ -247,6 +264,22 @@ export class JobWorker {
 				"Failed to persist job outcome",
 			);
 		});
+	}
+	private processDownload(run: DownloadClaim) {
+		if (!this.downloads) return;
+		this.activeJobs++;
+		void this.downloads
+			.process(run)
+			.catch((error) => {
+				logger.error(
+					{ err: error, runId: run.id },
+					"Failed to persist download outcome",
+				);
+			})
+			.finally(() => {
+				this.activeJobs--;
+				this.requestPoll();
+			});
 	}
 
 	private publish(command: JobEvent): void {

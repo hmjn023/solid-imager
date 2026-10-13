@@ -598,7 +598,7 @@ export function createJobRepository(
 
 			const conditions = [
 				sql`status = 'pending'`,
-				sql`type NOT IN ${sqlTuple(["import_request", ...batchParentJobTypes])}`,
+				sql`type NOT IN ${sqlTuple(["import_request", "downloadImage", ...batchParentJobTypes])}`,
 			];
 
 			if (options?.excludeTypes?.length) {
@@ -620,7 +620,7 @@ export function createJobRepository(
 			const staleBaseCondition = and(
 				eq(jobs.status, "in_progress"),
 				lt(jobs.updatedAt, olderThan),
-				notInArray(jobs.type, [...batchParentJobTypes]),
+				notInArray(jobs.type, ["downloadImage", ...batchParentJobTypes]),
 			);
 			const cancelledRows = await db()
 				.update(jobs)

@@ -26,6 +26,8 @@ import {
 import { MediaUploadService } from "@solid-imager/application/services/media-upload-service";
 import { JobAttemptLostError } from "@solid-imager/core/domain/jobs/schemas";
 import { createJobRepository } from "@solid-imager/db/repositories/job-repository";
+import { createDownloadRunRepository } from "@solid-imager/db/repositories/download-run-repository";
+import { downloadClaimSchema } from "@solid-imager/core/domain/downloads/schemas";
 import { createMediaRepository } from "@solid-imager/db/repositories/media-repository";
 import { createSourceRepository } from "@solid-imager/db/repositories/source-repository";
 import { createTagRepository } from "@solid-imager/db/repositories/tag-repository";
@@ -60,6 +62,7 @@ describe("durable media processing", () => {
 	// This test owns its DB; the application worker cannot claim its jobs.
 	const executor = (tx?: unknown) => (tx ?? database) as DrizzleExecutor;
 	const jobRepo = createJobRepository(executor);
+	const downloadRepo = createDownloadRunRepository(executor);
 	const mediaRepo = createMediaRepository(executor);
 	const sourceRepo = createSourceRepository(executor);
 	const tagRepo = createTagRepository(executor);
@@ -108,6 +111,10 @@ describe("durable media processing", () => {
 	});
 	beforeEach(async () => {
 		vi.restoreAllMocks();
+		await database
+			.update(schema.downloadRunCutovers)
+			.set({ authority: "legacy", generation: 0 });
+		await database.delete(schema.downloadRuns);
 		await database.delete(jobs);
 		await database.delete(mediaSources);
 		sourceId = (
@@ -391,17 +398,20 @@ describe("durable media processing", () => {
 			const base = await mkdtemp(path.join(tmpdir(), "download-handoff-"));
 			try {
 				await sourceRepo.update(sourceId, { connectionInfo: { path: base } });
-				await jobRepo.create({
-					type: "downloadImage",
-					mediaSourceId: sourceId,
-					payload: { targetUrl: "https://example.com/image" },
-				});
-				const [job] = await jobRepo.claimPending(1);
+				await downloadRepo.ensureCutover();
+				await transactionManager.transaction((tx) =>
+					downloadRepo.reserve(
+						sourceId,
+						[{ targetUrl: "https://example.com/image" }],
+						tx,
+					),
+				);
+				const [job] = await downloadRepo.claimPending(1);
 				const handoff = new DownloadRegistration(
 					job,
 					sourceId,
 					base,
-					jobRepo,
+					downloadRepo,
 					(entry, tx) =>
 						service.registerAndProcess(
 							sourceId,
@@ -419,8 +429,8 @@ describe("durable media processing", () => {
 						new Error("queue unavailable"),
 					);
 				else {
-					const update = jobRepo.update.bind(jobRepo);
-					vi.spyOn(jobRepo, "update")
+					const update = downloadRepo.saveCheckpoint.bind(downloadRepo);
+					vi.spyOn(downloadRepo, "saveCheckpoint")
 						.mockImplementationOnce(update)
 						.mockRejectedValueOnce(new Error("queue unavailable"));
 				}
@@ -447,30 +457,24 @@ describe("durable media processing", () => {
 				expect(
 					await database.select().from(mediaProcessingStates),
 				).toHaveLength(0);
-				const saved = await jobRepo.findById(job.id);
-				expect(saved?.payload).toMatchObject({
-					downloadRegistration: {
-						entries: [
-							{
-								published: false,
-								context: { sourceUrls: ["https://example.com/image"] },
-							},
-						],
-					},
+				const saved = await downloadRepo.findById(job.id);
+				expect(saved?.checkpoint).toMatchObject({
+					entries: [
+						{
+							published: false,
+							context: { sourceUrls: ["https://example.com/image"] },
+						},
+					],
 				});
 				const watcher = await service.registerAndProcess(sourceId, "image.png");
-				await jobRepo.markAsFailed(
-					job.id,
-					"interrupted",
-					job.attemptCount ?? 0,
-				);
-				await jobRepo.update(job.id, { status: "pending" });
-				const [retried] = await jobRepo.claimPending(1);
+				await downloadRepo.settle(job, "failed", "interrupted");
+				await downloadRepo.retry(job.id);
+				const [retried] = await downloadRepo.claimPending(1);
 				const resumed = new DownloadRegistration(
 					retried,
 					sourceId,
 					base,
-					jobRepo,
+					downloadRepo,
 					(entry, tx) =>
 						service.registerAndProcess(
 							sourceId,
@@ -493,21 +497,23 @@ describe("durable media processing", () => {
 					await database.select().from(mediaProcessingStates),
 				).toHaveLength(4);
 				expect(await readFile(path.join(base, "image.png"))).toHaveLength(512);
-				expect((await jobRepo.findById(job.id))?.payload).toMatchObject({
-					downloadRegistration: { entries: [{ published: true }] },
-				});
+				expect((await downloadRepo.findById(job.id))?.checkpoint).toMatchObject(
+					{
+						entries: [{ published: true }],
+					},
+				);
 				await expect(stat(handoff.stagingDirectory)).rejects.toMatchObject({
 					code: "ENOENT",
 				});
 				// A crash after registration but before job completion also resumes without staging files.
-				const afterCommit = await jobRepo.findById(job.id);
+				const afterCommit = await downloadRepo.findById(job.id);
 				if (!afterCommit) throw new Error("missing download");
 				expect(
 					await new DownloadRegistration(
-						afterCommit,
+						downloadClaimSchema.parse(afterCommit),
 						sourceId,
 						base,
-						jobRepo,
+						downloadRepo,
 						(entry, tx) =>
 							service.registerAndProcess(
 								sourceId,

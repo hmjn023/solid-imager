@@ -9,6 +9,7 @@ import {
 	importRequestCutovers,
 	importRequests,
 	jobs,
+	downloadRuns,
 	mediaSources,
 } from "~/infrastructure/db/schema";
 
@@ -43,6 +44,9 @@ describe("Imports API uses dedicated requests and the existing download reservat
 				.delete(importRequests)
 				.where(inArray(importRequests.id, requestIds));
 		await db.delete(jobs).where(eq(jobs.mediaSourceId, sourceId));
+		await db
+			.delete(downloadRuns)
+			.where(eq(downloadRuns.mediaSourceId, sourceId));
 		await db.delete(mediaSources).where(eq(mediaSources.id, sourceId));
 		// The suite owns its PGlite database; permit unrelated legacy job fixtures afterward.
 		await db
@@ -82,13 +86,12 @@ describe("Imports API uses dedicated requests and the existing download reservat
 		).toEqual({ success: true, processedCount: 0 });
 		const reserved = await db
 			.select()
-			.from(jobs)
-			.where(eq(jobs.mediaSourceId, sourceId));
+			.from(downloadRuns)
+			.where(eq(downloadRuns.mediaSourceId, sourceId));
 		expect(reserved).toHaveLength(1);
 		expect(reserved[0]).toMatchObject({
-			type: "downloadImage",
 			status: "pending",
-			payload: { ...item, importRequestId: request.id },
+			input: { ...item, importRequestId: request.id },
 		});
 		expect(
 			(await client.listPending()).some((row) => row.id === request.id),
@@ -104,8 +107,8 @@ describe("Imports API uses dedicated requests and the existing download reservat
 		);
 		const before = await db
 			.select()
-			.from(jobs)
-			.where(eq(jobs.mediaSourceId, sourceId));
+			.from(downloadRuns)
+			.where(eq(downloadRuns.mediaSourceId, sourceId));
 		try {
 			await expect(
 				client.process({ jobIds: [request.id], targetSourceId: sourceId }),
@@ -114,7 +117,10 @@ describe("Imports API uses dedicated requests and the existing download reservat
 				message: "Unable to access import requests",
 			});
 			expect(
-				await db.select().from(jobs).where(eq(jobs.mediaSourceId, sourceId)),
+				await db
+					.select()
+					.from(downloadRuns)
+					.where(eq(downloadRuns.mediaSourceId, sourceId)),
 			).toEqual(before);
 			expect(
 				(await client.listPending()).some((row) => row.id === request.id),
@@ -134,10 +140,9 @@ describe("Imports API uses dedicated requests and the existing download reservat
 			targetSourceId: sourceId,
 		});
 		const { request } = await receive();
-		const [download] = await db
-			.select()
-			.from(jobs)
-			.where(eq(jobs.mediaSourceId, sourceId));
+		const download = await services
+			.getJobRepository()
+			.create({ type: "source_restore", mediaSourceId: sourceId, payload: {} });
 		await client.cancel({
 			jobIds: [request.id, download.id, approved.request.id],
 		});

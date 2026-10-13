@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { downloadItemSchema } from "../media/schemas";
 import { generateThumbnailJobPayloadSchema } from "../thumbnails/schemas";
 import {
 	processMediaPayloadSchema,
@@ -39,7 +38,6 @@ export const executableJobSchema = z.discriminatedUnion("type", [
 		type: z.literal("processMedia"),
 		payload: processMediaPayloadSchema,
 	}),
-	z.object({ type: z.literal("downloadImage"), payload: downloadItemSchema }),
 	z.object({
 		type: z.literal("auto_tagging"),
 		payload: autoTaggingPayloadSchema,

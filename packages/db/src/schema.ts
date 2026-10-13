@@ -7,6 +7,13 @@ import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/jo
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import type {
+	DownloadInput,
+	DownloadRunStatus,
+	DownloadBlockedReason,
+	DownloadRegistrationCheckpoint,
+	DownloadResult,
+} from "@solid-imager/core/domain/downloads/schemas";
+import type {
 	ImportAuthority,
 	ImportRequestStatus,
 	ImportBlockedReason,
@@ -1121,6 +1128,115 @@ export const mediaProcessingStates = pgTable(
 			sql`${table.status} <> 'completed' OR (${table.completedRevision} IS NOT NULL AND ${table.completedRevision} = ${table.requestedRevision})`,
 		),
 	],
+);
+
+export const downloadRunCutovers = pgTable(
+	"download_run_cutovers",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		authority: text("authority")
+			.$type<ImportAuthority>()
+			.notNull()
+			.default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"download_cutover_singleton",
+			sql`${table.id} = '78900000-0000-4000-8000-000000000001'::uuid`,
+		),
+		check(
+			"download_cutover_authority",
+			sql`${table.authority} IN ('legacy', 'dedicated')`,
+		),
+		check("download_cutover_generation", sql`${table.generation} >= 0`),
+	],
+);
+export const downloadRuns = pgTable(
+	"download_runs",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		mediaSourceId: uuid("source_id").references(() => mediaSources.id, {
+			onDelete: "set null",
+		}),
+		sourcePath: text("source_path"),
+		input: jsonb("input").$type<DownloadInput>(),
+		requestKey: text("request_key").notNull(),
+		importRequestId: uuid("import_request_id").unique(),
+		status: text("status")
+			.$type<DownloadRunStatus>()
+			.notNull()
+			.default("pending"),
+		canonicalId: uuid("canonical_id").references(
+			(): AnyPgColumn => downloadRuns.id,
+			{ onDelete: "restrict" },
+		),
+		blockedReason: text("blocked_reason").$type<DownloadBlockedReason>(),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		maxAttempts: integer("max_attempts").notNull().default(3),
+		leaseToken: uuid("lease_token"),
+		leaseExpiresAt: timestamp("lease_expires_at"),
+		nextRunAt: timestamp("next_run_at").notNull().defaultNow(),
+		checkpoint: jsonb("checkpoint").$type<DownloadRegistrationCheckpoint>(),
+		result: jsonb("result").$type<DownloadResult>(),
+		error: text("error"),
+		parentId: uuid("parent_id"),
+		cancelRequestedAt: timestamp("cancel_requested_at"),
+		cancelledAt: timestamp("cancelled_at"),
+		startedAt: timestamp("started_at"),
+		finishedAt: timestamp("finished_at"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("uq_download_active_key")
+			.on(table.mediaSourceId, table.requestKey)
+			.where(sql`${table.status} IN ('pending', 'in_progress')`),
+		index("idx_download_due")
+			.on(table.nextRunAt, table.createdAt, table.id)
+			.where(sql`${table.status} = 'pending'`),
+		index("idx_download_expired")
+			.on(table.leaseExpiresAt)
+			.where(sql`${table.status} = 'in_progress'`),
+		index("idx_download_history").on(table.createdAt, table.id),
+		check(
+			"download_run_status",
+			sql`${table.status} IN ('pending', 'in_progress', 'completed', 'failed', 'cancelled', 'blocked', 'superseded')`,
+		),
+		check(
+			"download_run_input",
+			sql`${table.status} NOT IN ('pending', 'in_progress') OR ${table.input} IS NOT NULL`,
+		),
+		check(
+			"download_run_attempt",
+			sql`${table.attemptCount} >= 0 AND ${table.maxAttempts} > 0`,
+		),
+		check(
+			"download_run_lease",
+			sql`(${table.status} = 'in_progress') = (${table.leaseToken} IS NOT NULL AND ${table.leaseExpiresAt} IS NOT NULL)`,
+		),
+		check(
+			"download_run_alias",
+			sql`(${table.status} = 'superseded') = (${table.canonicalId} IS NOT NULL) AND (${table.canonicalId} IS NULL OR ${table.canonicalId} <> ${table.id})`,
+		),
+		check(
+			"download_run_blocked",
+			sql`(${table.status} = 'blocked') = (${table.blockedReason} IS NOT NULL)`,
+		),
+	],
+);
+export const downloadRunLegacySnapshots = pgTable(
+	"download_run_legacy_snapshots",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		runId: uuid("run_id")
+			.notNull()
+			.unique()
+			.references(() => downloadRuns.id, { onDelete: "cascade" }),
+		// Private legacy row, including authentication and checkpoint, used only for rollback/audit.
+		snapshot: jsonb("snapshot").notNull(),
+	},
 );
 
 export const importRequestCutovers = pgTable(

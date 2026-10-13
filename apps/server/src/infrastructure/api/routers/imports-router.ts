@@ -2,7 +2,7 @@ import { implement, ORPCError } from "@orpc/server";
 import { importsContract } from "@solid-imager/core/domain/contract/imports.contract";
 import type { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import type { ImportEvent } from "@solid-imager/core/domain/sources/events";
-import type { z } from "zod";
+import { z } from "zod";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { getImportRequestService } from "~/infrastructure/services/import-request-service";
 import {
@@ -116,6 +116,8 @@ async function respond<T>(action: () => Promise<T>): Promise<T> {
 			throw new ORPCError("NOT_FOUND", { message: "Import target not found" });
 		if (error instanceof ResourceConflictError)
 			throw new ORPCError("CONFLICT", { message: error.message });
+		if (error instanceof z.ZodError)
+			throw new ORPCError("BAD_REQUEST", { message: "Invalid import input" });
 		logger.error({ err: error }, "Import request operation failed");
 		throw new ORPCError("INTERNAL_SERVER_ERROR", {
 			message: "Unable to access import requests",

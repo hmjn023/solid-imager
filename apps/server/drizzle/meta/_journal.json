@@ -274,6 +274,13 @@
       "when": 1791848745432,
       "tag": "0038_outgoing_slyde",
       "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1791888246017,
+      "tag": "0039_stiff_quasar",
+      "breakpoints": true
     }
   ]
 }
