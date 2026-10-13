@@ -539,6 +539,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		force = false,
 		tx?: Transaction,
 		repair = false,
+		batchId?: string,
 	) {
 		return this.taskService.requestTask(
 			sourceId,
@@ -547,6 +548,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			force,
 			tx,
 			repair,
+			batchId,
 		);
 	}
 	waitForTask(

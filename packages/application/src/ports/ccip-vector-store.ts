@@ -45,6 +45,7 @@ export interface ICcipVectorStore {
 	getMetadataMany(
 		mediaIds: string[],
 		query: CcipVectorReadQuery,
+		tx?: Transaction,
 	): Promise<Map<string, CcipVectorMetadata>>;
 	upsert(record: CcipVectorRecord, tx?: Transaction): Promise<void>;
 	upsertMany(records: CcipVectorRecord[], tx?: Transaction): Promise<void>;

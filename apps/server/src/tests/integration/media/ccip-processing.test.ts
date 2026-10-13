@@ -526,20 +526,49 @@ describe("revision-aware full-image CCIP", () => {
 		expect(infer).toHaveBeenCalledTimes(2);
 	});
 	it("restores queued single and multi-media requests and excludes cancellation", async () => {
-		const queued = await jobRepo.create({
-			type: "extract_ccip_vector",
+		const [queued] = await database
+			.insert(schema.batchRuns)
+			.values({
+				input: {
+					kind: "ccip",
+					mediaSourceId: sourceId,
+					force: false,
+					missingOnly: false,
+					thumbnailSize: 512,
+				},
+			})
+			.returning();
+		await database.insert(schema.batchItems).values({
+			runId: queued.id,
+			mediaId,
 			mediaSourceId: sourceId,
-			payload: { mediaIds: [mediaId] },
+			kind: "ccip",
 		});
 		expect(await findQueuedCcipJob(sourceId, mediaId, database)).toEqual({
 			id: queued.id,
 		});
-		await jobRepo.requestCancellation(queued.id);
+		await database
+			.update(schema.batchRuns)
+			.set({ status: "cancelled", cancelRequestedAt: new Date() })
+			.where(eq(schema.batchRuns.id, queued.id));
 		expect(await findQueuedCcipJob(sourceId, mediaId, database)).toBeNull();
-		const single = await jobRepo.create({
-			type: "extract_ccip_vector",
+		const [single] = await database
+			.insert(schema.batchRuns)
+			.values({
+				input: {
+					kind: "ccip",
+					mediaSourceId: sourceId,
+					force: false,
+					missingOnly: false,
+					thumbnailSize: 512,
+				},
+			})
+			.returning();
+		await database.insert(schema.batchItems).values({
+			runId: single.id,
+			mediaId,
 			mediaSourceId: sourceId,
-			payload: { mediaId },
+			kind: "ccip",
 		});
 		expect(await findQueuedCcipJob(sourceId, mediaId, database)).toEqual({
 			id: single.id,

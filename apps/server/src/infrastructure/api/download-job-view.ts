@@ -16,6 +16,9 @@ import { downloadRunService } from "~/infrastructure/services/download-run-servi
 import { findCurrentProcessingSteps } from "./media-processing-status";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ORPCError } from "@orpc/server";
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
+import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
+import { toBatchJobDto } from "./batch-job-view";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
@@ -113,8 +116,10 @@ export async function listJobView(
 	projectJob: (job: Job) => JobDto,
 ) {
 	await downloadRunService.initialize();
+	await batchRunService.initialize();
 	return DrizzleTransactionManager.transaction(async (tx) => {
 		await DownloadRunRepository.assertDedicated(tx);
+		await BatchRunRepository.assertDedicated(tx);
 		const db = getExecutor(tx);
 		const genericStatus = input.status
 			? sql`AND status = ${input.status}`
@@ -127,6 +132,12 @@ export async function listJobView(
 				SELECT id, created_at FROM jobs WHERE type <> 'downloadImage' ${genericStatus}
 				UNION ALL
 				SELECT id, created_at FROM download_runs WHERE status <> 'superseded' ${runStatus}
+ UNION ALL
+ SELECT r.id, r.created_at FROM batch_runs r JOIN batch_run_status b ON b.id = r.id
+ WHERE true ${input.status ? sql`AND (CASE WHEN b.status = 'blocked' THEN 'failed' ELSE b.status END) = ${input.status}` : sql``}
+ UNION ALL
+ SELECT id, created_at FROM batch_items
+ WHERE true ${input.status ? sql`AND (CASE WHEN status = 'scheduled' THEN 'in_progress' WHEN status IN ('blocked', 'superseded') THEN 'failed' ELSE status END) = ${input.status}` : sql``}
 			), page AS (SELECT id, created_at FROM combined ORDER BY created_at DESC, id DESC LIMIT ${input.limit} OFFSET ${input.offset})
 			SELECT coalesce(jsonb_agg(jsonb_build_object('id', id) ORDER BY created_at DESC, id DESC), '[]'::jsonb) AS ids, (SELECT count(*) FROM combined) AS total FROM page
 		`);
@@ -142,7 +153,20 @@ export async function listJobView(
 			? await db.select().from(jobs).where(inArray(jobs.id, ids))
 			: [];
 		const downloads = await DownloadRunRepository.findByIds(ids, tx);
+		const batchItems = await BatchRunRepository.findItemsByIds(ids, tx);
+		const batchRuns = await BatchRunRepository.findByIds(
+			[...new Set([...ids, ...batchItems.map((item) => item.runId)])],
+			tx,
+		);
+		const parents = new Map(batchRuns.map((run) => [run.run.id, run]));
 		const items = new Map<string, JobDto>([
+			...batchRuns
+				.filter((run) => ids.includes(run.run.id))
+				.map((run): [string, JobDto] => [run.run.id, toBatchJobDto(run)]),
+			...batchItems.flatMap((item): [string, JobDto][] => {
+				const parent = parents.get(item.runId);
+				return parent ? [[item.id, toBatchJobDto(parent, item)]] : [];
+			}),
 			...generic.map((row): [string, JobDto] => [row.id, projectJob(row)]),
 			...downloads.map((row): [string, JobDto] => [
 				row.id,

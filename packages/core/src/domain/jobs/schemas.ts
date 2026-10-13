@@ -38,6 +38,8 @@ export const jobDtoSchema = z.object({
 	type: z.string(),
 	mediaSourceId: z.uuid().nullable(),
 	status: jobStatusSchema,
+	canRetry: z.boolean().optional(),
+	canCancel: z.boolean().optional(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 	parentId: z.uuid().nullable(),

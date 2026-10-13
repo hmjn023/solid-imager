@@ -1,12 +1,11 @@
 import { getMediaTaskRevision } from "@solid-imager/application/services/media-task-service";
 import { processingSettingsFromConfig, serializeMediaProcessingInput } from "@solid-imager/core/domain/processing/schemas";
-import { mediaProcessingStates } from "@solid-imager/db/schema";
+import { mediaProcessingStates, batchRuns, batchItems, batchItemAttempts } from "@solid-imager/db/schema";
 import { randomUUID } from "node:crypto";
 import { copyFile, link, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
-import { getMediaProcessingRevision } from "@solid-imager/application/services/media-processing-service";
-import { authorAccounts, authors, mediaAuthors, mediaUrls, mediaGenerationInfo, medias, mediaSources, jobs } from "@solid-imager/db/schema";
+import { authorAccounts, authors, mediaAuthors, mediaUrls, mediaGenerationInfo, medias, mediaSources } from "@solid-imager/db/schema";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import sharp from "sharp";
@@ -218,31 +217,31 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
       modifiedAt: primaryStats.mtime, mediaType: "image" as const };
     const processingSettings = processingSettingsFromConfig({ ...defaultAppConfig,
       storage: { ...defaultAppConfig.storage, thumbnailDir: path.join(runtimeDir, "thumbnails") } });
-    await db.insert(mediaProcessingStates).values((["metadata", "thumbnail"] as const).map((kind) => {
+    const processingRows = await db.insert(mediaProcessingStates).values((["metadata", "thumbnail"] as const).map((kind) => {
       const revision = getMediaTaskRevision(processingInput, kind, processingSettings);
       return { mediaId: E2E_PRIMARY_MEDIA_ID, taskKind: kind,
         status: kind === "metadata" ? "completed" : "failed", inputRevision: serializeMediaProcessingInput(processingInput),
+        executionMode: "scheduled", scheduledInput: { ...processingInput, modifiedAt: processingInput.modifiedAt.toISOString() },
         requestedRevision: revision, completedRevision: kind === "metadata" ? revision : null, attemptCount: 1 };
-    }));
-    // A real failed job with a durable metadata checkpoint. Retrying through
-    // the UI must run thumbnail generation without extracting metadata again.
-    await db.insert(jobs).values({
-      id: E2E_PROCESSING_JOB_ID, type: "processMedia", mediaSourceId: E2E_SOURCE_ID,
-      status: "failed", attemptCount: 1, error: "Media processing failed: thumbnail",
-      payload: { mediaId: E2E_PRIMARY_MEDIA_ID },
-      processingCheckpoint: {
-        version: 1,
-        inputRevision: getMediaProcessingRevision({
-          id: E2E_PRIMARY_MEDIA_ID, mediaSourceId: E2E_SOURCE_ID,
-          filePath: E2E_PRIMARY_FILE_NAME, fileSize: primaryStats.size, modifiedAt: primaryStats.mtime,
-        }, mediaDir),
-        steps: {
-          metadata: { status: "completed", attemptCount: 1, updatedAt: seededAt.toISOString() },
-          thumbnail: { status: "failed", attemptCount: 1, updatedAt: seededAt.toISOString() },
-          ai_dispatch: { status: "skipped", attemptCount: 0, updatedAt: null },
-        },
-      },
+    })).returning();
+    const thumbnail = processingRows.find(row => row.taskKind === "thumbnail");
+    if (!thumbnail) throw new Error("Missing failed thumbnail fixture");
+    await db.insert(batchRuns).values({
+      id: E2E_PROCESSING_JOB_ID, status: "failed", attemptCount: 1, dispatchComplete: true,
+      input: { kind: "thumbnail", mediaSourceId: E2E_SOURCE_ID, mediaIds: [E2E_PRIMARY_MEDIA_ID], force: false, missingOnly: false, thumbnailSize: 512 },
+      createdAt: seededAt, updatedAt: seededAt, finishedAt: seededAt,
     });
+    const [item] = await db.insert(batchItems).values({
+      runId: E2E_PROCESSING_JOB_ID, mediaId: E2E_PRIMARY_MEDIA_ID, mediaSourceId: E2E_SOURCE_ID, kind: "thumbnail", status: "failed",
+      input: { ...processingInput, modifiedAt: processingInput.modifiedAt.toISOString() }, plannedRevision: thumbnail.requestedRevision,
+      requestId: thumbnail.requestId, requestedRevision: thumbnail.requestedRevision, attemptCount: 1, failureCode: "processing_failed",
+      createdAt: seededAt, updatedAt: seededAt, finishedAt: seededAt,
+    }).returning();
+    await db.insert(batchItemAttempts).values({
+      itemId: item.id, requestId: thumbnail.requestId, requestedRevision: thumbnail.requestedRevision,
+      attemptCount: 1, status: "failed", failureCode: "processing_failed", createdAt: seededAt, finishedAt: seededAt,
+    });
+
   } finally {
     await client.close();
   }

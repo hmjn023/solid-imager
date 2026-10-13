@@ -1,3 +1,7 @@
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
+import { downloadRunService } from "~/infrastructure/services/download-run-service";
+import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
+import { BatchWorker } from "~/infrastructure/jobs/batch-worker";
 import { MediaAiWorker } from "~/infrastructure/jobs/media-ai-worker";
 import { taggingService } from "~/infrastructure/services/tagging-service";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
@@ -103,6 +107,7 @@ export function initServices() {
 		jobRepo,
 		processJob,
 		new DownloadWorker(DownloadRunRepository, processDownloadRun),
+		new BatchWorker(BatchRunRepository, batchRunService),
 	);
 	// Initialize worker with current config and subscribe to changes
 	jobWorker.updateConfig(configService.getConfig());
@@ -205,6 +210,8 @@ export function startBackgroundWorker(): Promise<void> {
 		await host.__MEDIA_FILE_WORKER__?.stop();
 		await aiDrain;
 		// Deployments must stop old-version writers before starting this version.
+		await downloadRunService.initialize();
+		await batchRunService.initialize();
 		await services.getMediaProcessingService().reconcileFileTasks();
 		await taggingService.reconcileTaggingTasks();
 		await ccipVectorService.reconcileTasks();

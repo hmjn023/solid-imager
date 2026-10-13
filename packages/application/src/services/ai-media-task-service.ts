@@ -129,6 +129,7 @@ export class AiMediaTaskService<Result> {
 		input: MediaProcessingInput,
 		force: boolean,
 		tx: Transaction,
+		batchId?: string,
 	) {
 		const revision = this.handler.currentRevision(input);
 		const previous = (
@@ -141,7 +142,7 @@ export class AiMediaTaskService<Result> {
 		)
 			force = !this.handler.canReuse() || !(await this.handler.load(input, tx));
 		return this.deps.processingStateRepo.request(
-			{ input, taskKind: this.kind, revision, maxAttempts: 5, force },
+			{ input, taskKind: this.kind, revision, maxAttempts: 5, force, batchId },
 			tx,
 		);
 	}
@@ -150,9 +151,15 @@ export class AiMediaTaskService<Result> {
 		mediaId: string,
 		force = false,
 		tx?: Transaction,
+		batchId?: string,
 	) {
 		const action = async (tx: Transaction) =>
-			this.request(await this.inputFor(sourceId, mediaId, tx), force, tx);
+			this.request(
+				await this.inputFor(sourceId, mediaId, tx),
+				force,
+				tx,
+				batchId,
+			);
 		return tx ? action(tx) : this.deps.transactionManager.transaction(action);
 	}
 	/** Bind every target atomically before waiting. Retry replaces only this observer's failed request. */

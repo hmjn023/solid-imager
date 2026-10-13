@@ -1,3 +1,6 @@
+import type { BatchWorker } from "./batch-worker";
+import type { BatchClaim } from "@solid-imager/core/domain/batches/schemas";
+import { retiredBatchJobTypes } from "@solid-imager/core/domain/batches/schemas";
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { isBatchParentJobType } from "@solid-imager/core/domain/jobs/schemas";
 import type { JobEvent } from "@solid-imager/core/domain/sources/events";
@@ -80,6 +83,7 @@ export class JobWorker {
 		jobRepo: IJobRepository,
 		processor: (job: Job) => Promise<unknown>,
 		private readonly downloads?: DownloadWorker,
+		private readonly batches?: BatchWorker,
 	) {
 		this.jobRepo = jobRepo;
 		this.processor = processor;
@@ -147,8 +151,10 @@ export class JobWorker {
 		this.pollRequested = false;
 
 		try {
+			// Reconcile durable batch outcomes even when general slots are full.
+			await this.batches?.claimPending(0);
 			// 1. Poll AI Jobs
-			if (this.activeAiJobs < this.aiConcurrency) {
+			if (!this.batches && this.activeAiJobs < this.aiConcurrency) {
 				const slots = this.aiConcurrency - this.activeAiJobs;
 				if (slots > 0) {
 					const jobs = await this.jobRepo.claimPending(slots, {
@@ -162,7 +168,7 @@ export class JobWorker {
 
 			// 2. Keep thumbnail warming in its own single-worker pool. A burst of
 			// cache misses must not consume the general job concurrency.
-			if (this.activeThumbnailJobs < 1) {
+			if (!this.batches && this.activeThumbnailJobs < 1) {
 				const jobs = await this.jobRepo.claimPending(1, {
 					includeTypes: Array.from(this.thumbnailJobTypes),
 				});
@@ -204,6 +210,7 @@ export class JobWorker {
 							...this.aiJobTypes,
 							...this.thumbnailJobTypes,
 							...this.exportJobTypes,
+							...(this.batches ? retiredBatchJobTypes : []),
 						],
 					});
 					for (const job of jobs) {
@@ -214,6 +221,18 @@ export class JobWorker {
 							slots - jobs.length,
 						);
 						for (const run of downloads) this.processDownload(run);
+					}
+					if (this.batches) {
+						const available =
+							this.concurrency -
+							(this.activeJobs -
+								this.activeAiJobs -
+								this.activeThumbnailJobs -
+								this.activeExportJobs);
+						for (const claim of await this.batches.claimPending(
+							Math.max(0, available),
+						))
+							this.processBatch(claim);
 					}
 					this.preferDownloads = !this.preferDownloads;
 				}
@@ -228,6 +247,21 @@ export class JobWorker {
 				this.schedulePoll(nextDelay);
 			}
 		}
+	}
+
+	private processBatch(claim: BatchClaim) {
+		const batches = this.batches;
+		if (!batches) throw new Error("Batch worker is not configured");
+		this.activeJobs++;
+		void batches
+			.process(claim)
+			.catch((err) =>
+				logger.warn({ err, runId: claim.id }, "Batch dispatch interrupted"),
+			)
+			.finally(() => {
+				this.activeJobs--;
+				this.requestPoll();
+			});
 	}
 
 	private schedulePoll(delayMs: number): void {

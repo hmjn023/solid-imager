@@ -1,4 +1,4 @@
-import { db } from "~/infrastructure/db";
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import {
 	scanCcipTargetPage,
 	findQueuedCcipJob,
@@ -364,47 +364,14 @@ export const aiRouter = os.router({
 	),
 
 	startBatchTagging: os.startBatchTagging.handler(async ({ input }) => {
-		const { mediaSourceId, force, batchSize } = input;
-		const jobRepo = services.getJobRepository();
-
-		const parentJob = await jobRepo.create({
-			type: "bulk_tagging_parent",
-			status: "in_progress",
-			mediaSourceId,
-			payload: {
-				total: 0,
-				processed: 0,
-				failed: 0,
-				mediaSourceId,
-				force,
-			},
+		const { run } = await batchRunService.start({
+			kind: "tagging",
+			mediaSourceId: input.mediaSourceId,
+			force: input.force ?? false,
+			missingOnly: false,
+			thumbnailSize: 512,
 		});
-
-		await jobRepo.create({
-			type: "bulk_tagging_dispatch",
-			mediaSourceId,
-			parentId: parentJob.id,
-			payload: {
-				mediaSourceId,
-				force,
-				...(batchSize !== undefined ? { batchSize } : {}),
-			},
-		});
-
-		logger.info(
-			{
-				jobId: parentJob.id,
-				mediaSourceId,
-				force: force ?? false,
-			},
-			"Batch tagging dispatch queued",
-		);
-
-		return {
-			success: true,
-			message: "Batch tagging dispatch queued",
-			jobId: parentJob.id,
-		};
+		return { success: true, message: "Processing batch queued", jobId: run.id };
 	}),
 
 	ccipVectorStatus: os.ccipVectorStatus.handler(async ({ input }) => {
@@ -439,45 +406,15 @@ export const aiRouter = os.router({
 	}),
 
 	startCcipExtraction: os.startCcipExtraction.handler(async ({ input }) => {
-		const job = await db.transaction(async (tx) => {
-			const state = await ccipVectorService.requestExtraction(
-				input.mediaSourceId,
-				input.mediaId,
-				input.force,
-				tx,
-			);
-			return services.getJobRepository().create(
-				{
-					type: "extract_ccip_vector",
-					mediaSourceId: input.mediaSourceId,
-					payload: {
-						mediaId: input.mediaId,
-						force: false,
-						processingRequests: {
-							[input.mediaId]: {
-								requestId: state.requestId,
-								requestedRevision: state.requestedRevision,
-							},
-						},
-					},
-				},
-				tx,
-			);
+		const { run } = await batchRunService.start({
+			kind: "ccip",
+			mediaSourceId: input.mediaSourceId,
+			mediaIds: [input.mediaId],
+			force: input.force ?? false,
+			missingOnly: false,
+			thumbnailSize: 512,
 		});
-		logger.info(
-			{
-				jobId: job.id,
-				mediaSourceId: input.mediaSourceId,
-				mediaId: input.mediaId,
-				force: input.force,
-			},
-			"CCIP vector extraction queued",
-		);
-		return {
-			success: true,
-			message: "CCIP vector extraction queued",
-			jobId: job.id,
-		};
+		return { success: true, message: "Processing batch queued", jobId: run.id };
 	}),
 
 	scanBatchCcipTargets: os.scanBatchCcipTargets.handler(async ({ input }) => {
@@ -499,41 +436,17 @@ export const aiRouter = os.router({
 
 	startBatchCcipExtraction: os.startBatchCcipExtraction.handler(
 		async ({ input }) => {
-			const { mediaSourceId, force } = input;
-			const jobRepo = services.getJobRepository();
-			const parent = await jobRepo.create({
-				type: "batch_ccip_parent",
-				status: "in_progress",
-				mediaSourceId,
-				payload: {
-					total: 0,
-					processed: 0,
-					failed: 0,
-					mediaSourceId,
-					force,
-				},
+			const { run } = await batchRunService.start({
+				kind: "ccip",
+				mediaSourceId: input.mediaSourceId,
+				force: input.force ?? false,
+				missingOnly: false,
+				thumbnailSize: 512,
 			});
-			await jobRepo.create({
-				type: "batch_ccip_dispatch",
-				mediaSourceId,
-				parentId: parent.id,
-				payload: {
-					mediaSourceId,
-					force,
-				},
-			});
-			logger.info(
-				{
-					jobId: parent.id,
-					mediaSourceId,
-					force: force ?? false,
-				},
-				"Batch CCIP dispatch queued",
-			);
 			return {
 				success: true,
-				message: "Batch CCIP dispatch queued",
-				jobId: parent.id,
+				message: "Processing batch queued",
+				jobId: run.id,
 			};
 		},
 	),

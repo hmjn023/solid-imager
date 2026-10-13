@@ -1,10 +1,17 @@
+import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { and, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db";
-import { mediaSources, medias, jobs } from "~/infrastructure/db/schema";
+import {
+	mediaSources,
+	medias,
+	jobs,
+	batchRuns,
+} from "~/infrastructure/db/schema";
 import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
 import { services } from "~/infrastructure/service-registry";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
@@ -15,7 +22,6 @@ import {
 	generateThumbnailsForSource,
 	getSourceCacheDir,
 	getThumbnailPath,
-	processThumbnailGenerationJob,
 	queueThumbnailGeneration,
 } from "~/infrastructure/jobs/thumbnails";
 
@@ -58,6 +64,9 @@ describe("dedicated file processing producers", () => {
 	});
 	afterEach(async () => {
 		vi.restoreAllMocks();
+		await db
+			.delete(batchRuns)
+			.where(sql`${batchRuns.input}->>'mediaSourceId' = ${sourceId}`);
 		await db.delete(mediaSources).where(eq(mediaSources.id, sourceId));
 		await fs.rm(getSourceCacheDir(sourceId), { recursive: true, force: true });
 		await fs.rm(directory, { recursive: true, force: true });
@@ -125,59 +134,54 @@ describe("dedicated file processing producers", () => {
 			await db.select().from(jobs).where(eq(jobs.mediaSourceId, sourceId)),
 		).toHaveLength(0);
 	});
-	it("batch children observe a fixed dedicated request while its worker publishes both sizes", async () => {
+
+	const dispatchBatch = async () => {
+		const [claim] = await BatchRunRepository.claimPending(1);
+		if (!claim) throw new Error("Batch claim missing");
+		await batchRunService.dispatch(claim);
+		await batchRunService.reconcile();
+	};
+	it("batch items observe a fixed request while one worker publishes both sizes", async () => {
 		const media = await restoredMedia();
+		const batch = await generateThumbnailsForSource(sourceId, {
+			size: 512,
+			missingOnly: false,
+		});
+		expect(batch.count).toBe(1);
+		await dispatchBatch();
+		expect(
+			(await BatchRunRepository.listItems(batch.jobId ?? "", 100, 0)).items[0],
+		).toMatchObject({ status: "scheduled", requestId: expect.any(String) });
+		await services.getMediaProcessingService().runFileTask("thumbnail");
+		expect(
+			(await BatchRunRepository.findById(batch.jobId ?? ""))?.run.status,
+		).toBe("completed");
+		await fs.access(getThumbnailPath(sourceId, media.id, 256));
+		await fs.access(getThumbnailPath(sourceId, media.id, 512));
+	});
+	it("keeps distinct batch histories while coalescing overlapping processing requests", async () => {
+		await restoredMedia();
 		const first = await generateThumbnailsForSource(sourceId, {
 			size: 512,
 			missingOnly: false,
 		});
-		expect(first.count).toBe(1);
-		const [child] = await services
-			.getJobRepository()
-			.claimPending(1, { includeTypes: ["generate_thumbnail"] });
-		expect(child.payload).toMatchObject({
-			processingRequest: {
-				requestId: expect.any(String),
-				requestedRevision: expect.any(String),
-			},
+		const second = await generateThumbnailsForSource(sourceId, {
+			size: 512,
+			missingOnly: false,
 		});
-		const observing = processThumbnailGenerationJob(child);
-		await services.getMediaProcessingService().runFileTask("thumbnail");
-		await observing;
+		expect(first.count).toBe(1);
+		expect(second.count).toBe(1);
+		await dispatchBatch();
+		await dispatchBatch();
+		const a = (await BatchRunRepository.listItems(first.jobId ?? "", 100, 0))
+			.items[0];
+		const b = (await BatchRunRepository.listItems(second.jobId ?? "", 100, 0))
+			.items[0];
+		expect(a.id).not.toBe(b.id);
+		expect(a.requestId).toBe(b.requestId);
 		expect(
-			(await services.getJobRepository().findById(first.jobId ?? ""))?.status,
-		).toBe("completed");
-		await fs.access(getThumbnailPath(sourceId, media.id, 256));
-	});
-	it("coalesces overlapping batch reservations under the existing child uniqueness rule", async () => {
-		await restoredMedia();
-		expect(
-			(
-				await generateThumbnailsForSource(sourceId, {
-					size: 512,
-					missingOnly: false,
-				})
-			).count,
-		).toBe(1);
-		expect(
-			(
-				await generateThumbnailsForSource(sourceId, {
-					size: 512,
-					missingOnly: false,
-				})
-			).count,
-		).toBe(0);
-		expect(
-			await db
-				.select()
-				.from(jobs)
-				.where(
-					and(
-						eq(jobs.mediaSourceId, sourceId),
-						eq(jobs.type, "generate_thumbnail"),
-					),
-				),
-		).toHaveLength(1);
+			await db.select().from(jobs).where(eq(jobs.mediaSourceId, sourceId)),
+		).toHaveLength(0);
 	});
 	it("watcher changes update indexed input and both dedicated requests without processMedia", async () => {
 		const media = await restoredMedia();
@@ -199,58 +203,39 @@ describe("dedicated file processing producers", () => {
 			await db.select().from(jobs).where(eq(jobs.mediaSourceId, sourceId)),
 		).toHaveLength(0);
 	});
-	it("binds historical force jobs once and preserves terminal failure after observer recovery", async () => {
+
+	it("keeps a terminal failure when the dispatcher is restarted", async () => {
 		const media = await restoredMedia();
-		await services.getMediaProcessingService().runFileTask("thumbnail");
-		const repository = services.getJobRepository();
-		const created = await repository.create({
-			type: "generate_thumbnail",
-			mediaSourceId: sourceId,
-			payload: { mediaId: media.id, size: 512, force: true },
+		const batch = await generateThumbnailsForSource(sourceId, {
+			size: 512,
+			missingOnly: false,
 		});
-		const [first] = await repository.claimPending(1, {
-			includeTypes: ["generate_thumbnail"],
-		});
+		await dispatchBatch();
 		vi.spyOn(ImageProcessor, "generateThumbnail").mockRejectedValueOnce(
 			new Error("invalid file"),
-		);
-		const observing = processThumbnailGenerationJob(first);
-		const rejected = expect(observing).rejects.toThrow("invalid file");
-		await vi.waitFor(async () =>
-			expect((await repository.findById(created.id))?.payload).toMatchObject({
-				force: false,
-				processingRequest: { requestId: expect.any(String) },
-			}),
 		);
 		expect(
 			await services.getMediaProcessingService().runFileTask("thumbnail"),
 		).toBe("failed");
-		await rejected;
 		const terminal = await MediaProcessingStateRepository.findByMediaIds([
 			media.id,
 		]);
-		// Simulate stale generic-job recovery after domain failure, before job failure was saved.
-		await repository.update(created.id, { status: "pending" });
-		const [recovered] = await repository.claimPending(1, {
-			includeTypes: ["generate_thumbnail"],
-		});
-		await expect(processThumbnailGenerationJob(recovered)).rejects.toThrow(
-			"invalid file",
-		);
+		expect(await BatchRunRepository.claimPending(1)).toEqual([]);
+		await batchRunService.reconcile();
+		expect(
+			(await BatchRunRepository.findById(batch.jobId ?? ""))?.run.status,
+		).toBe("failed");
 		expect(
 			await MediaProcessingStateRepository.findByMediaIds([media.id]),
 		).toEqual(terminal);
 	});
-	it("explicitly retries a failed batch request and persists its replacement identity", async () => {
+	it("explicit retry replaces only the failed request and retains its history", async () => {
 		const media = await restoredMedia();
-		await generateThumbnailsForSource(sourceId, {
+		const batch = await generateThumbnailsForSource(sourceId, {
 			size: 512,
 			missingOnly: false,
 		});
-		const repository = services.getJobRepository();
-		const [first] = await repository.claimPending(1, {
-			includeTypes: ["generate_thumbnail"],
-		});
+		await dispatchBatch();
 		vi.spyOn(ImageProcessor, "generateThumbnail").mockRejectedValueOnce(
 			new Error("invalid file"),
 		);
@@ -258,40 +243,20 @@ describe("dedicated file processing producers", () => {
 		const previous = (
 			await MediaProcessingStateRepository.findByMediaIds([media.id])
 		)[0];
-		await expect(processThumbnailGenerationJob(first)).rejects.toThrow(
-			"invalid file",
-		);
-		await repository.markAsFailed(
-			first.id,
-			"invalid file",
-			first.attemptCount ?? 0,
-		);
-		await repository.update(first.id, {
-			status: "pending",
-			payload: {
-				...(typeof first.payload === "object" ? first.payload : {}),
-				retryFileTasks: true,
-			},
-		});
-		const [second] = await repository.claimPending(1, {
-			includeTypes: ["generate_thumbnail"],
-		});
-		const observing = processThumbnailGenerationJob(second);
-		await vi.waitFor(async () =>
-			expect(
-				(await MediaProcessingStateRepository.findByMediaIds([media.id]))[0],
-			).toMatchObject({ status: "pending" }),
-		);
+		await batchRunService.retry(batch.jobId ?? "");
+		await dispatchBatch();
 		await services.getMediaProcessingService().runFileTask("thumbnail");
-		await observing;
 		const completed = (
 			await MediaProcessingStateRepository.findByMediaIds([media.id])
 		)[0];
-		expect(completed.requestId).not.toBe(previous.requestId);
 		expect(completed.status).toBe("completed");
-		expect((await repository.findById(first.id))?.payload).toMatchObject({
-			retryFileTasks: false,
-			processingRequest: { requestId: completed.requestId },
-		});
+		expect(completed.requestId).not.toBe(previous.requestId);
+		const item = (await BatchRunRepository.listItems(batch.jobId ?? "", 100, 0))
+			.items[0];
+		expect(
+			(await BatchRunRepository.listAttempts(item.id, 100, 0)).items.map(
+				(attempt) => attempt.status,
+			),
+		).toEqual(["completed", "failed"]);
 	});
 });

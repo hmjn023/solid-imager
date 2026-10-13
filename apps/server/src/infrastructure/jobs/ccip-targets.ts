@@ -4,10 +4,11 @@ import { canReuseAiResult } from "@solid-imager/application/services/ai-media-ta
 import type { CcipProcessingSettings } from "@solid-imager/core/domain/processing/schemas";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { DrizzleExecutor } from "@solid-imager/db/types";
-import { and, asc, desc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
 import {
-	jobs,
+	batchRuns,
+	batchItems,
 	medias,
 	mediaSources,
 	mediaProcessingStates,
@@ -22,18 +23,20 @@ export async function findQueuedCcipJob(
 	queryDb: DrizzleExecutor = db,
 ) {
 	const [row] = await queryDb
-		.select({ id: jobs.id })
-		.from(jobs)
+		.select({ id: batchRuns.id })
+		.from(batchItems)
+		.innerJoin(batchRuns, eq(batchRuns.id, batchItems.runId))
 		.where(
 			and(
-				eq(jobs.type, "extract_ccip_vector"),
-				eq(jobs.mediaSourceId, mediaSourceId),
-				inArray(jobs.status, ["pending", "in_progress"]),
-				isNull(jobs.cancelRequestedAt),
-				sql`(${jobs.payload}->>'mediaId' = ${mediaId} OR ${jobs.payload}->'mediaIds' @> ${JSON.stringify([mediaId])}::jsonb)`,
+				eq(batchItems.kind, "ccip"),
+				eq(batchItems.mediaSourceId, mediaSourceId),
+				eq(batchItems.mediaId, mediaId),
+				inArray(batchItems.status, ["pending", "scheduled"]),
+				inArray(batchRuns.status, ["pending", "in_progress"]),
+				isNull(batchRuns.cancelRequestedAt),
 			),
 		)
-		.orderBy(desc(jobs.createdAt))
+		.orderBy(desc(batchRuns.createdAt))
 		.limit(1);
 	return row ?? null;
 }

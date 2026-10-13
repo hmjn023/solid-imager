@@ -1,22 +1,20 @@
 import { createRouterClient } from "@orpc/server";
 import { aiRouter } from "~/infrastructure/api/routers/ai-router";
-import { and, eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { aiProcessingObserverSchema } from "@solid-imager/core/domain/processing/schemas";
 import { db } from "~/infrastructure/db";
-import { jobs, medias, mediaSources } from "~/infrastructure/db/schema";
+import {
+	jobs,
+	medias,
+	mediaSources,
+	batchRuns,
+} from "~/infrastructure/db/schema";
 import { services } from "~/infrastructure/service-registry";
 import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
+import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import { taggingService } from "~/infrastructure/services/tagging-service";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
-import {
-	processAutoTaggingJob,
-	processBulkTaggingDispatchJob,
-} from "~/infrastructure/jobs/tagging-jobs";
-import {
-	processCcipExtractionJob,
-	processBatchCcipDispatchJob,
-} from "~/infrastructure/jobs/ccip-jobs";
 
 describe("dedicated AI batch producers", () => {
 	let sourceId: string;
@@ -53,29 +51,20 @@ describe("dedicated AI batch producers", () => {
 	});
 	afterEach(async () => {
 		vi.restoreAllMocks();
+		await db
+			.delete(batchRuns)
+			.where(sql`${batchRuns.input}->>'mediaSourceId' = ${sourceId}`);
 		await db.delete(mediaSources).where(eq(mediaSources.id, sourceId));
 	});
-	const dispatch = async (kind: "tagging" | "ccip") => {
-		const repo = services.getJobRepository();
-		const parent = await repo.create({
-			type: kind === "tagging" ? "bulk_tagging_parent" : "batch_ccip_parent",
-			mediaSourceId: sourceId,
-			payload: { processed: 0, failed: 0, total: 2 },
-		});
-		const job = await repo.create({
-			type:
-				kind === "tagging" ? "bulk_tagging_dispatch" : "batch_ccip_dispatch",
-			mediaSourceId: sourceId,
-			parentId: parent.id,
-			payload: { mediaSourceId: sourceId, force: true },
-		});
-		await (kind === "tagging"
-			? processBulkTaggingDispatchJob(job)
-			: processBatchCcipDispatchJob(job));
-		return parent;
+
+	const reserve = async () => {
+		const [claim] = await BatchRunRepository.claimPending(1);
+		if (!claim) throw new Error("Batch claim missing");
+		await batchRunService.dispatch(claim);
+		await batchRunService.reconcile();
 	};
 	it.each(["tagging", "ccip"] as const)(
-		"binds %s batch identities before inference and retains parent progress",
+		"binds %s fixed targets before inference and preserves results after restart",
 		async (kind) => {
 			const inferTag = vi
 				.spyOn(services.getAiClient(), "tagImageByPath")
@@ -89,66 +78,58 @@ describe("dedicated AI batch producers", () => {
 			const inferCcip = vi
 				.spyOn(services.getAiClient(), "extractCcipFeatureByPath")
 				.mockResolvedValue({ feature: Array.from({ length: 768 }, () => 0.5) });
-			const parent = await dispatch(kind);
+			const client = createRouterClient(aiRouter);
+			const batch = await (kind === "tagging"
+				? client.startBatchTagging({ mediaSourceId: sourceId, force: true })
+				: client.startBatchCcipExtraction({
+						mediaSourceId: sourceId,
+						force: true,
+					}));
+			expect(
+				(await BatchRunRepository.listItems(batch.jobId, 100, 0)).total,
+			).toBe(2);
+			await reserve();
 			const requests =
 				await MediaProcessingStateRepository.findByMediaIds(mediaIds);
 			expect(requests).toHaveLength(2);
 			expect(
 				requests.every(
-					(state) =>
-						state.taskKind === kind &&
-						state.status === "pending" &&
-						state.attemptCount === 0,
+					(state) => state.taskKind === kind && state.status === "pending",
 				),
 			).toBe(true);
-			const type = kind === "tagging" ? "auto_tagging" : "extract_ccip_vector";
-			const children = await services
-				.getJobRepository()
-				.claimPending(10, { includeTypes: [type] });
-			expect(children).toHaveLength(kind === "tagging" ? 2 : 1);
-			for (const child of children) {
-				const payload = aiProcessingObserverSchema.parse(child.payload);
-				expect(payload.force).toBe(false);
-				for (const [mediaId, identity] of Object.entries(
-					payload.processingRequests ?? {},
-				)) {
-					expect(
-						requests.find((state) => state.mediaId === mediaId),
-					).toMatchObject(identity);
-				}
-			}
 			expect(inferTag).not.toHaveBeenCalled();
 			expect(inferCcip).not.toHaveBeenCalled();
-			// Dedicated work completes independently before generic observers run.
+			expect(
+				await db.select().from(jobs).where(eq(jobs.mediaSourceId, sourceId)),
+			).toEqual([]);
 			for (const _ of mediaIds)
 				expect(
 					await (kind === "tagging"
 						? taggingService.runTaggingTask()
 						: ccipVectorService.runTask()),
 				).toBe("completed");
-			for (const child of children)
-				await (kind === "tagging"
-					? processAutoTaggingJob(child)
-					: processCcipExtractionJob(child));
-			expect(kind === "tagging" ? inferTag : inferCcip).toHaveBeenCalledTimes(
-				2,
-			);
 			expect(
-				await services.getJobRepository().findById(parent.id),
-			).toMatchObject({
-				status: "completed",
-				payload: { processed: 2, failed: 0, total: 2 },
-			});
+				(await BatchRunRepository.findById(batch.jobId))?.progress,
+			).toMatchObject({ total: 2, completed: 2, failed: 0 });
+			const item = (await BatchRunRepository.listItems(batch.jobId, 100, 0))
+				.items[0];
 			expect(
-				(await MediaProcessingStateRepository.findByMediaIds(mediaIds))
-					.map((state) => state.requestId)
-					.sort(),
-			).toEqual(requests.map((state) => state.requestId).sort());
+				(await BatchRunRepository.listAttempts(item.id, 100, 0)).items,
+			).toEqual([
+				expect.objectContaining({ status: "completed", attemptCount: 1 }),
+			]);
 		},
 	);
 	it.each(["tagging", "ccip"] as const)(
-		"rolls back %s reservations and children together",
+		"rolls back a %s reservation page atomically",
 		async (kind) => {
+			const batch = await batchRunService.start({
+				kind,
+				mediaSourceId: sourceId,
+				force: true,
+				missingOnly: false,
+				thumbnailSize: 512,
+			});
 			const original = MediaProcessingStateRepository.request;
 			let calls = 0;
 			vi.spyOn(MediaProcessingStateRepository, "request").mockImplementation(
@@ -157,54 +138,34 @@ describe("dedicated AI batch producers", () => {
 					return original(request, tx);
 				},
 			);
-			await expect(dispatch(kind)).rejects.toThrow("reservation unavailable");
+			await expect(reserve()).rejects.toThrow("reservation unavailable");
 			expect(
 				await MediaProcessingStateRepository.findByMediaIds(mediaIds),
 			).toEqual([]);
 			expect(
-				await db
-					.select()
-					.from(jobs)
-					.where(
-						and(
-							eq(jobs.mediaSourceId, sourceId),
-							eq(
-								jobs.type,
-								kind === "tagging" ? "auto_tagging" : "extract_ccip_vector",
-							),
-						),
-					),
-			).toEqual([]);
+				(await BatchRunRepository.listItems(batch.run.id, 100, 0)).items.every(
+					(item) => item.status === "pending" && !item.requestId,
+				),
+			).toBe(true);
 		},
 	);
-	it("reserves a direct CCIP job eagerly and shows terminal failure before its observer runs", async () => {
+	it("queues one CCIP target, then exposes its dedicated failure", async () => {
 		const client = createRouterClient(aiRouter);
 		const result = await client.startCcipExtraction({
 			mediaSourceId: sourceId,
 			mediaId: mediaIds[0],
 			force: false,
 		});
-		const [request] = await MediaProcessingStateRepository.findByMediaIds([
-			mediaIds[0],
-		]);
-		expect(request).toMatchObject({
-			taskKind: "ccip",
-			status: "pending",
-			attemptCount: 0,
-		});
 		expect(
-			await services.getJobRepository().findById(result.jobId),
-		).toMatchObject({
-			status: "pending",
-			payload: {
-				processingRequests: {
-					[mediaIds[0]]: {
-						requestId: request.requestId,
-						requestedRevision: request.requestedRevision,
-					},
-				},
-			},
-		});
+			(await BatchRunRepository.listItems(result.jobId, 100, 0)).total,
+		).toBe(1);
+		expect(
+			await client.ccipVectorStatus({
+				mediaSourceId: sourceId,
+				mediaId: mediaIds[0],
+			}),
+		).toMatchObject({ status: "processing", jobId: result.jobId });
+		await reserve();
 		vi.spyOn(
 			services.getAiClient(),
 			"extractCcipFeatureByPath",
@@ -220,9 +181,9 @@ describe("dedicated AI batch producers", () => {
 			error: "CCIP vector extraction failed",
 		});
 	});
-	it("rolls back a direct CCIP reservation if observer insertion fails", async () => {
-		vi.spyOn(services.getJobRepository(), "create").mockRejectedValueOnce(
-			new Error("job insert unavailable"),
+	it("rolls back target capture if a fixed item insert fails", async () => {
+		vi.spyOn(BatchRunRepository, "appendTargets").mockRejectedValueOnce(
+			new Error("item insert unavailable"),
 		);
 		await expect(
 			createRouterClient(aiRouter).startCcipExtraction({
@@ -230,9 +191,15 @@ describe("dedicated AI batch producers", () => {
 				mediaId: mediaIds[0],
 				force: false,
 			}),
-		).rejects.toThrow("job insert unavailable");
+		).rejects.toThrow("item insert unavailable");
 		expect(
 			await MediaProcessingStateRepository.findByMediaIds(mediaIds),
+		).toEqual([]);
+		expect(
+			await db
+				.select()
+				.from(batchRuns)
+				.where(sql`${batchRuns.input}->>'mediaSourceId' = ${sourceId}`),
 		).toEqual([]);
 	});
 });

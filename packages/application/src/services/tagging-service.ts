@@ -159,8 +159,15 @@ export class TaggingServiceImpl implements ITaggingService {
 		mediaId: string,
 		force = false,
 		tx?: Transaction,
+		batchId?: string,
 	) {
-		return this.tasks.requestForMedia(mediaSourceId, mediaId, force, tx);
+		return this.tasks.requestForMedia(
+			mediaSourceId,
+			mediaId,
+			force,
+			tx,
+			batchId,
+		);
 	}
 	reserveTagsForJob(
 		owner: ProcessingOwner,

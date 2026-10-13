@@ -10,56 +10,49 @@ import {
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
-test("reloads failed processing steps and retries only the unfinished step", async ({
+test("reloads a failed batch and retries only its unfinished thumbnail", async ({
 	page,
 	baseURL,
 }) => {
 	const client: ContractRouterClient<typeof appContract> = createORPCClient(
-		new RPCLink({ url: `${baseURL}/api/rpc` }),
+		new RPCLink({ url: baseURL + "/api/rpc" }),
 	);
 	await page.goto("/jobs");
 	await waitForAppHydration(page);
-	const selectJob = () =>
+	const select = () =>
 		page
 			.getByRole("button", {
-				name: new RegExp(`job ${E2E_PROCESSING_JOB_ID.slice(0, 8)}$`),
+				name: new RegExp("job " + E2E_PROCESSING_JOB_ID.slice(0, 8) + "$"),
 			})
 			.click();
-	await selectJob();
-	const steps = page
-		.getByRole("region", { name: "Processing steps" })
-		.filter({ visible: true });
-	await expect(steps).toContainText("ThumbnailsFailed");
-	await expect(steps).toContainText("MetadataCompleted");
-	const current = page
-		.getByRole("region", { name: "Current media processing" })
-		.filter({ visible: true });
-	await expect(current).toContainText("MetadataCompleted");
-	await expect(current).toContainText("ThumbnailsFailed");
+	await select();
+	const current = () =>
+		page
+			.getByRole("region", { name: "Current media processing" })
+			.filter({ visible: true });
+	await expect(current()).toContainText("MetadataCompleted");
+	await expect(current()).toContainText("ThumbnailsFailed");
+	const before = await client.batches.items({
+		id: E2E_PROCESSING_JOB_ID,
+		limit: 25,
+		offset: 0,
+	});
+	expect(before.items[0]).toMatchObject({
+		kind: "thumbnail",
+		status: "failed",
+		attemptCount: 1,
+	});
 	await page.reload();
 	await waitForAppHydration(page);
-	await selectJob();
-	await expect(steps).toContainText("ThumbnailsFailed");
+	await select();
 	await page
 		.getByRole("button", { name: "Retry job", exact: true })
 		.filter({ visible: true })
 		.click();
-	await expect(steps).toContainText("ThumbnailsCompleted", { timeout: 30_000 });
+	await expect(current()).toContainText("ThumbnailsCompleted", {
+		timeout: 30000,
+	});
 	const completed = await client.jobs.get({ id: E2E_PROCESSING_JOB_ID });
-	expect(completed.processingSteps).toEqual(
-		expect.arrayContaining([
-			expect.objectContaining({
-				kind: "metadata",
-				status: "completed",
-				attemptCount: 1,
-			}),
-			expect.objectContaining({
-				kind: "thumbnail",
-				status: "completed",
-				attemptCount: 2,
-			}),
-		]),
-	);
 	expect(completed.currentProcessingSteps).toEqual(
 		expect.arrayContaining([
 			expect.objectContaining({
@@ -70,31 +63,38 @@ test("reloads failed processing steps and retries only the unfinished step", asy
 			expect.objectContaining({
 				kind: "thumbnail",
 				status: "completed",
-				// The dedicated request counts its own attempts; legacy checkpoint retains its history.
 				attemptCount: 1,
 			}),
 		]),
 	);
-	for (const step of completed.currentProcessingSteps ?? []) {
-		expect(Object.keys(step).sort()).toEqual([
-			"attemptCount",
-			"kind",
-			"status",
-			"updatedAt",
-		]);
-	}
-	expect(completed).not.toHaveProperty("processingCheckpoint");
+	const after = await client.batches.items({
+		id: E2E_PROCESSING_JOB_ID,
+		limit: 25,
+		offset: 0,
+	});
+	expect(after.items[0]).toMatchObject({
+		id: before.items[0].id,
+		status: "completed",
+		attemptCount: 2,
+	});
+	expect(
+		(
+			await client.batches.attempts({
+				id: after.items[0].id,
+				limit: 25,
+				offset: 0,
+			})
+		).items.map((attempt) => attempt.status),
+	).toEqual(["completed", "failed"]);
 	expect(completed).not.toHaveProperty("payload");
-	await expect(current).toContainText("ThumbnailsCompleted");
 	await page.reload();
 	await waitForAppHydration(page);
-	await selectJob();
-	await expect(current).toContainText("ThumbnailsCompleted");
-	// SPA navigation also loads the persisted completed checkpoint.
+	await select();
+	await expect(current()).toContainText("ThumbnailsCompleted");
 	await page.getByRole("link", { name: "Library", exact: true }).click();
 	await page.getByRole("link", { name: /^Jobs/ }).click();
-	await selectJob();
-	await expect(steps).toContainText("ThumbnailsCompleted");
+	await select();
+	await expect(current()).toContainText("ThumbnailsCompleted");
 });
 
 test("reuses real tagging and CCIP results and restores current AI state after reload", async ({

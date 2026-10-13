@@ -1,3 +1,4 @@
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
@@ -6,7 +7,6 @@ import type {
 	MediaProcessingClaim,
 } from "@solid-imager/core/domain/processing/schemas";
 import type { PreparedThumbnail } from "@solid-imager/application/services/media-processing-service";
-import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
 import {
 	generateThumbnailJobPayloadSchema,
 	type ThumbnailSize,
@@ -17,7 +17,6 @@ import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { services } from "~/infrastructure/service-registry";
 
 const sourceRepo = DrizzleSourceRepository;
@@ -27,8 +26,6 @@ export const THUMBNAIL_SIZE_SMALL = 256 as const;
 export const THUMBNAIL_SIZE_LARGE = 512 as const;
 const DEFAULT_THUMBNAIL_SIZE = THUMBNAIL_SIZE_LARGE;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
-const ENQUEUE_CONCURRENCY = 25;
-const FILE_CHECK_CONCURRENCY = 50;
 
 type ThumbnailQueueGlobal = typeof globalThis & {
 	__THUMBNAIL_QUEUE_IN_FLIGHT__?: Map<string, Promise<void>>;
@@ -228,126 +225,20 @@ export async function generateThumbnailsForSource(
 	mediaSourceId: string,
 	options: { size: ThumbnailSize; missingOnly: boolean },
 ): Promise<{ count: number; jobId?: string }> {
-	const mediaSource = await sourceRepo.findById(mediaSourceId);
-	if (mediaSource?.type !== "local") {
+	const source = await sourceRepo.findById(mediaSourceId);
+	if (source?.type !== "local")
 		throw new Error("Source not found or not a local source");
-	}
-
-	const mediaItems = await MediaRepository.findAllBySourceId(mediaSourceId);
-	if (mediaItems.length === 0) {
-		return { count: 0 };
-	}
-
-	const targets = options.missingOnly
-		? await filterMissingThumbnails(mediaSourceId, mediaItems, options.size)
-		: mediaItems;
-	if (targets.length === 0) {
-		return { count: 0 };
-	}
-
-	const jobRepo = services.getJobRepository();
-	const parent = await jobRepo.create({
-		type: "thumbnail_generation_parent",
+	const summary = await batchRunService.start({
+		kind: "thumbnail",
 		mediaSourceId,
-		status: "in_progress",
-		payload: {
-			total: targets.length,
-			processed: 0,
-			failed: 0,
-			mediaSourceId,
-		},
+		force: !options.missingOnly,
+		missingOnly: options.missingOnly,
+		thumbnailSize: options.size,
 	});
-
-	let count = 0;
-	try {
-		for (let index = 0; index < targets.length; index += ENQUEUE_CONCURRENCY) {
-			const chunk = targets.slice(index, index + ENQUEUE_CONCURRENCY);
-			const created = await Promise.all(
-				chunk.map((media) =>
-					DrizzleTransactionManager.transaction(async (tx) => {
-						const request = await services
-							.getMediaProcessingService()
-							.requestTask(
-								mediaSourceId,
-								media.id,
-								"thumbnail",
-								!options.missingOnly,
-								tx,
-								true,
-							);
-						if (!request) return false;
-						return jobRepo.createIfUnique(
-							{
-								type: "generate_thumbnail",
-								mediaSourceId,
-								parentId: parent.id,
-								payload: {
-									mediaId: media.id,
-									size: options.size,
-									processingRequest: {
-										requestId: request.requestId,
-										requestedRevision: request.requestedRevision,
-									},
-								},
-							},
-							tx,
-						);
-					}),
-				),
-			);
-			count += created.filter(Boolean).length;
-		}
-
-		const currentParent = await jobRepo.findById(parent.id);
-		const currentProgress = parseThumbnailParentPayload(currentParent?.payload);
-		await jobRepo.update(parent.id, {
-			payload: {
-				total: count,
-				processed: currentProgress.processed,
-				failed: currentProgress.failed,
-				mediaSourceId,
-			},
-		});
-		if (count === 0) {
-			await jobRepo.update(parent.id, { status: "completed" });
-			return { count: 0 };
-		}
-		if (currentProgress.processed + currentProgress.failed >= count) {
-			await finalizeThumbnailParent(parent.id, {
-				...currentProgress,
-				total: count,
-			});
-		}
-		return { count, jobId: parent.id };
-	} catch (error) {
-		await jobRepo.update(parent.id, { status: "failed" });
-		throw error;
-	}
-}
-
-async function filterMissingThumbnails(
-	mediaSourceId: string,
-	mediaItems: Media[],
-	size: ThumbnailSize,
-): Promise<Media[]> {
-	const missing: Media[] = [];
-	for (
-		let index = 0;
-		index < mediaItems.length;
-		index += FILE_CHECK_CONCURRENCY
-	) {
-		const chunk = mediaItems.slice(index, index + FILE_CHECK_CONCURRENCY);
-		const results = await Promise.all(
-			chunk.map(async (media) => ({
-				media,
-				exists: await thumbnailExists(mediaSourceId, media.id, size),
-			})),
-		);
-		missing.push(
-			...results.filter((result) => !result.exists).map(({ media }) => media),
-		);
-	}
-	return missing;
+	return {
+		count: summary.progress.total,
+		...(summary.progress.total ? { jobId: summary.run.id } : {}),
+	};
 }
 
 export async function queueThumbnailGeneration(
@@ -526,8 +417,4 @@ async function finalizeThumbnailParent(
 		jobId: parentId,
 		message: "Thumbnail generation completed",
 	});
-}
-
-function parseThumbnailParentPayload(payload: unknown) {
-	return batchParentPayloadSchema.parse(payload);
 }

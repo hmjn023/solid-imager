@@ -281,6 +281,20 @@
       "when": 1791888246017,
       "tag": "0039_stiff_quasar",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1791931559691,
+      "tag": "0040_glorious_nextwave",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1791931902917,
+      "tag": "0041_daily_squadron_supreme",
+      "breakpoints": true
     }
   ]
 }

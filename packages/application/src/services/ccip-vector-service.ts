@@ -147,8 +147,9 @@ export class CcipVectorService {
 		mediaId: string,
 		force = false,
 		tx?: Transaction,
+		batchId?: string,
 	) {
-		return this.tasks.requestForMedia(sourceId, mediaId, force, tx);
+		return this.tasks.requestForMedia(sourceId, mediaId, force, tx, batchId);
 	}
 	reserveForJob(
 		owner: ProcessingOwner,
@@ -261,10 +262,12 @@ export class CcipVectorService {
 
 	async getMetadataMany(
 		mediaIds: string[],
+		tx?: Transaction,
 	): Promise<Map<string, CcipVectorMetadata>> {
 		return await this.deps.vectorStore.getMetadataMany(
 			mediaIds,
 			this.currentVectorQuery(),
+			tx,
 		);
 	}
 

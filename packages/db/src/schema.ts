@@ -7,6 +7,11 @@ import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/jo
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
 import type {
+	BatchInput,
+	BatchItem,
+	BatchRun,
+} from "@solid-imager/core/domain/batches/schemas";
+import type {
 	DownloadInput,
 	DownloadRunStatus,
 	DownloadBlockedReason,
@@ -1073,6 +1078,7 @@ export const mediaProcessingStates = pgTable(
 		heartbeatAt: timestamp("heartbeat_at"),
 		attemptCount: integer("attempt_count").notNull().default(0),
 		executionMode: text("execution_mode").notNull().default("inline"),
+		independentDemand: boolean("independent_demand").notNull().default(true),
 		scheduledInput: jsonb("scheduled_input").$type<ScheduledMediaInput>(),
 		availableAt: timestamp("available_at").notNull().defaultNow(),
 		maxAttempts: integer("max_attempts").notNull().default(5),
@@ -2176,3 +2182,155 @@ export type CcipEmbedding = InferSelectModel<typeof ccipEmbeddings>;
  * Type definition for inserting a CCIP embedding into the database.
  */
 export type NewCcipEmbedding = InferInsertModel<typeof ccipEmbeddings>;
+
+export const batchRunCutovers = pgTable(
+	"batch_run_cutovers",
+	{
+		id: uuid("id").primaryKey(),
+		authority: text("authority").notNull().default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"batch_authority",
+			sql`${table.authority} IN ('legacy', 'dedicated')`,
+		),
+		check("batch_generation", sql`${table.generation} >= 0`),
+	],
+);
+
+export const batchRuns = pgTable(
+	"batch_runs",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		input: jsonb("input").$type<BatchInput>(),
+		status: text("status")
+			.$type<BatchRun["status"]>()
+			.notNull()
+			.default("pending"),
+		blockedReason: text("blocked_reason"),
+		dispatchComplete: boolean("dispatch_complete").notNull().default(false),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		maxAttempts: integer("max_attempts").notNull().default(3),
+		leaseToken: uuid("lease_token"),
+		leaseExpiresAt: timestamp("lease_expires_at"),
+		cancelRequestedAt: timestamp("cancel_requested_at"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		finishedAt: timestamp("finished_at"),
+	},
+	(table) => [
+		check(
+			"batch_status",
+			sql`${table.status} IN ('pending', 'in_progress', 'completed', 'failed', 'cancelled', 'blocked')`,
+		),
+		check(
+			"batch_input",
+			sql`${table.status} IN ('blocked', 'completed', 'failed', 'cancelled') OR ${table.input} IS NOT NULL`,
+		),
+		check(
+			"batch_attempt",
+			sql`${table.attemptCount} >= 0 AND ${table.maxAttempts} > 0`,
+		),
+		check(
+			"batch_lease",
+			sql`(${table.leaseToken} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+		),
+		check(
+			"batch_blocked",
+			sql`(${table.status} = 'blocked') = (${table.blockedReason} IS NOT NULL)`,
+		),
+		index("idx_batch_dispatch").on(
+			table.status,
+			table.dispatchComplete,
+			table.leaseExpiresAt,
+		),
+	],
+);
+
+export const batchItems = pgTable(
+	"batch_items",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		runId: uuid("run_id")
+			.notNull()
+			.references(() => batchRuns.id, { onDelete: "cascade" }),
+		// Historical IDs deliberately survive media/source deletion.
+		mediaId: uuid("media_id").notNull(),
+		mediaSourceId: uuid("source_id").notNull(),
+		kind: text("kind").$type<BatchItem["kind"]>().notNull(),
+		input: jsonb("input").$type<ScheduledMediaInput>(),
+		plannedRevision: text("planned_revision"),
+		requestId: uuid("request_id"),
+		requestedRevision: text("requested_revision"),
+		status: text("status")
+			.$type<BatchItem["status"]>()
+			.notNull()
+			.default("pending"),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		failureCode: text("failure_code"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		finishedAt: timestamp("finished_at"),
+	},
+	(table) => [
+		unique("uq_batch_target").on(table.runId, table.mediaId, table.kind),
+		check(
+			"batch_item_kind",
+			sql`${table.kind} IN ('metadata', 'thumbnail', 'tagging', 'ccip')`,
+		),
+		check(
+			"batch_item_status",
+			sql`${table.status} IN ('pending', 'scheduled', 'completed', 'failed', 'cancelled', 'superseded', 'blocked')`,
+		),
+		check(
+			"batch_item_request",
+			sql`${table.status} <> 'scheduled' OR (${table.requestId} IS NOT NULL AND ${table.requestedRevision} IS NOT NULL)`,
+		),
+		check("batch_item_attempt", sql`${table.attemptCount} >= 0`),
+		index("idx_batch_item_progress").on(table.runId, table.status, table.id),
+		index("idx_batch_item_request").on(
+			table.requestId,
+			table.kind,
+			table.status,
+		),
+	],
+);
+
+export const batchItemAttempts = pgTable(
+	"batch_item_attempts",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		itemId: uuid("item_id")
+			.notNull()
+			.references(() => batchItems.id, { onDelete: "cascade" }),
+		attemptCount: integer("attempt_count").notNull(),
+		requestId: uuid("request_id").notNull(),
+		requestedRevision: text("requested_revision").notNull(),
+		status: text("status").$type<BatchItem["status"]>().notNull(),
+		failureCode: text("failure_code"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		finishedAt: timestamp("finished_at"),
+	},
+	(table) => [
+		unique("uq_batch_item_attempt").on(table.itemId, table.attemptCount),
+		index("idx_batch_attempt_request").on(table.requestId),
+	],
+);
+
+export const batchRunLegacySnapshots = pgTable("batch_run_legacy_snapshots", {
+	id: uuid("id").primaryKey(),
+	runId: uuid("run_id")
+		.notNull()
+		.references(() => batchRuns.id, { onDelete: "cascade" }),
+	snapshot: jsonb("snapshot").notNull(),
+});
+
+/** Revisioned notification work, not execution authority or an in-memory progress counter. */
+export const batchRunDirty = pgTable("batch_run_dirty", {
+	runId: uuid("run_id")
+		.primaryKey()
+		.references(() => batchRuns.id, { onDelete: "cascade" }),
+	generation: integer("generation").notNull().default(1),
+});

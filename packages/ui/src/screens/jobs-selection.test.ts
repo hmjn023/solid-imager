@@ -22,6 +22,14 @@ const jobs: Pick<JobDto, "id" | "status">[] = [
 ];
 
 describe("job selection helpers", () => {
+	it("uses batch action capabilities for cancelled and blocked history", () => {
+		expect(
+			getRetryableJobIds([
+				{ id: "cancelled-batch", status: "cancelled", canRetry: true },
+				{ id: "blocked-history", status: "failed", canRetry: false },
+			]),
+		).toEqual(["cancelled-batch"]);
+	});
 	it("returns only failed job ids", () => {
 		expect(getRetryableJobIds(jobs)).toEqual([
 			"00000000-0000-4000-8000-000000000001",

@@ -295,7 +295,7 @@ function JobsTable(props: {
 													—
 												</span>
 											}
-											when={job.status === "failed"}
+											when={job.canRetry ?? job.status === "failed"}
 										>
 											<Checkbox
 												aria-label={`Select ${jobTypeLabel(job.type)} job`}
@@ -442,7 +442,8 @@ function JobsInspector(props: {
 
 	const retry = async () => {
 		const job = props.job;
-		if (job?.status !== "failed" || isRetrying()) return;
+		if (!job || !(job.canRetry ?? job.status === "failed") || isRetrying())
+			return;
 		setIsRetrying(true);
 		try {
 			await props.onRetry(job.id);
@@ -468,8 +469,11 @@ function JobsInspector(props: {
 		const job = props.job;
 		if (
 			!job ||
-			(job.status !== "pending" && job.status !== "in_progress") ||
-			isBatchParentJobType(job.type) ||
+			!(
+				job.canCancel ??
+				((job.status === "pending" || job.status === "in_progress") &&
+					!isBatchParentJobType(job.type))
+			) ||
 			isCancelling()
 		)
 			return;
@@ -667,9 +671,10 @@ function JobsInspector(props: {
 							<Show
 								fallback={null}
 								when={
-									(job().status === "pending" ||
+									job().canCancel ??
+									((job().status === "pending" ||
 										job().status === "in_progress") &&
-									!isBatchParentJobType(job().type)
+										!isBatchParentJobType(job().type))
 								}
 							>
 								<Button
@@ -686,10 +691,10 @@ function JobsInspector(props: {
 							<Show
 								fallback={
 									<p class="text-xs leading-5 text-muted-foreground">
-										再実行できるのは失敗したジョブのみです。
+										失敗した処理、または再開可能なbatchを再実行できます。
 									</p>
 								}
-								when={job().status === "failed"}
+								when={job().canRetry ?? job().status === "failed"}
 							>
 								<Button
 									aria-busy={isRetrying()}

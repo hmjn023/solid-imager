@@ -1,3 +1,7 @@
+import {
+	findBatchJob,
+	mutateBatchJob,
+} from "~/infrastructure/api/batch-job-view";
 import { findCurrentProcessingSteps } from "~/infrastructure/api/media-processing-status";
 import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import { implement, ORPCError } from "@orpc/server";
@@ -165,6 +169,8 @@ export const jobsRouter = os.router({
 	get: os.get.handler(async ({ input }) => {
 		const download = await findDownloadJob(input.id);
 		if (download) return download;
+		const batch = await findBatchJob(input.id);
+		if (batch) return batch;
 		const [job] = await db.select().from(jobs).where(eq(jobs.id, input.id));
 		if (!job) {
 			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
@@ -186,6 +192,8 @@ export const jobsRouter = os.router({
 	retry: os.retry.handler(async ({ input }) => {
 		const download = await findDownloadJob(input.id);
 		if (download) return mutateDownloadJob("retry", input.id);
+		const batch = await findBatchJob(input.id);
+		if (batch) return mutateBatchJob("retry", input.id);
 		const [requeued] = await db
 			.update(jobs)
 			.set({
@@ -244,6 +252,8 @@ export const jobsRouter = os.router({
 	cancel: os.cancel.handler(async ({ input }) => {
 		const download = await findDownloadJob(input.id);
 		if (download) return mutateDownloadJob("cancel", input.id);
+		const batch = await findBatchJob(input.id);
+		if (batch) return mutateBatchJob("cancel", input.id);
 		const job = await JobRepository.findById(input.id);
 		if (!job) {
 			throw new ORPCError("NOT_FOUND", { message: "Job not found" });

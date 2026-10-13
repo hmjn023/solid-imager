@@ -75,6 +75,8 @@ export const mediaProcessingRequestSchema = z.object({
 	revision: z.string().min(1),
 	maxAttempts: z.number().int().min(1).max(20).default(5),
 	force: z.boolean().default(false),
+	/** Internal demand owner; absence means an independent request that batch cancel must preserve. */
+	batchId: z.uuid().optional(),
 });
 export type MediaProcessingRequest = z.infer<
 	typeof mediaProcessingRequestSchema

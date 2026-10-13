@@ -21,6 +21,8 @@
 | `source_export` | sources-router / source-transfer service、独立 export 枠 | artifact、取消/Retry、source API、job/source SSE、Web/Tauri | source transfer run。artifact/input 所有権と保持期間、#791 |
 | `source_restore` | sources-router / source-transfer service、general | artifact、取消/Retry、source API、job/source SSE、Web/Tauri | source transfer run、#791 |
 
-各 flow は writer 停止・drain、active 行の reconcile、epoch/version gate、shadow 照合、片側だけの claim authority、再起動・競合・rollback を条件に切り替える。手順は [import-request-cutover.md](./import-request-cutover.md) と [download-run-cutover.md](./download-run-cutover.md)。SSE は更新通知として扱い、再接続後は DB API から復元する。
+#790 の batch family と processMedia 観測行は `batch_runs` / `batch_items` / 試行履歴へ移行した。新規の一括操作は固定対象を専用 media request に予約し、汎用 child は作らない。Jobs は専用 run/item の互換表示となる。旧 scope・request identity が復元できない履歴は private snapshot を保持して blocked に分類する。
+
+各 flow は writer 停止・drain、active 行の reconcile、epoch/version gate、shadow 照合、片側だけの claim authority、再起動・競合・rollback を条件に切り替える。手順は [import-request-cutover.md](./import-request-cutover.md)、[download-run-cutover.md](./download-run-cutover.md)、[batch-run-cutover.md](./batch-run-cutover.md)。SSE は更新通知として扱い、再接続後は DB API から復元する。
 
 未知 type、producer/reader、payload/checkpoint、event/UI、dedupe/merge の残存参照があれば #792 の削除 gate を通さない。全 flow 移行後の観測期間と参照ゼロ監査を経て、jobs 本体・generic UI/transport を別 PR で削除する。この表と最初の import PR は全体の移行完了を意味しない。

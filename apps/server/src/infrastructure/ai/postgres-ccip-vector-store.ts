@@ -144,11 +144,12 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 	async getMetadataMany(
 		mediaIds: string[],
 		query: CcipVectorReadQuery,
+		tx?: Transaction,
 	): Promise<Map<string, CcipVectorMetadata>> {
 		if (mediaIds.length === 0) {
 			return new Map();
 		}
-		const rows = await this.database
+		const rows = await this.executor(tx)
 			.select({
 				mediaId: medias.id,
 				mediaSourceId: medias.mediaSourceId,

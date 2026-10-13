@@ -33,6 +33,7 @@ export interface IMediaProcessingService {
 		force?: boolean,
 		tx?: Transaction,
 		repair?: boolean,
+		batchId?: string,
 	): Promise<MediaProcessingState | null>;
 	waitForTask(
 		mediaId: string,

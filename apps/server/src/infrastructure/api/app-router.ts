@@ -1,3 +1,4 @@
+import { batchesRouter } from "./routers/batches-router";
 import "zod/compile";
 
 import { implement } from "@orpc/server";
@@ -45,6 +46,7 @@ export const appRouter = appRouterImplementer.router({
 	ai: aiRouter,
 	imports: importsRouter,
 	jobs: jobsRouter,
+	batches: batchesRouter,
 	processing: processingRouter,
 	utils: utilsRouter,
 	config: configRouter,

@@ -8,6 +8,8 @@ import { InvalidJobError } from "@solid-imager/core/domain/jobs/dispatch";
 import { DownloadWorker } from "~/infrastructure/jobs/download-worker";
 import type { DownloadClaim } from "@solid-imager/core/domain/downloads/schemas";
 import type { IDownloadRunRepository } from "@solid-imager/core/domain/repositories/download-run-repository";
+import type { BatchWorker } from "~/infrastructure/jobs/batch-worker";
+import type { BatchClaim } from "@solid-imager/core/domain/batches/schemas";
 
 const { mockCleanupExpired, mockCleanupOrphaned } = vi.hoisted(() => ({
 	mockCleanupExpired: vi.fn().mockResolvedValue(undefined),
@@ -83,6 +85,37 @@ describe("JobWorker", () => {
 		vi.useRealTimers();
 	});
 
+	it("dispatches batches within general capacity and skips retired observer pools", async () => {
+		const queue = [{ id: "batch-one" }, { id: "batch-two" }] as BatchClaim[];
+		let release: () => void = () => {};
+		const pending = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const claim = vi.fn(async (limit: number) => queue.splice(0, limit));
+		const process = vi.fn().mockReturnValue(pending);
+		const batches = { claimPending: claim, process } as unknown as BatchWorker;
+		worker = new JobWorker(jobRepo, processor, undefined, batches);
+		worker.updateConfig({
+			jobs: { concurrency: 1, aiConcurrency: 3, pollIntervalMs: 1000 },
+		} as AppConfig);
+		worker.start();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(process).toHaveBeenCalledTimes(1);
+		expect(
+			vi
+				.mocked(jobRepo.claimPending)
+				.mock.calls.some(
+					([, options]) =>
+						options?.includeTypes?.includes("auto_tagging") ||
+						options?.includeTypes?.includes("generate_thumbnail"),
+				),
+		).toBe(false);
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(process).toHaveBeenCalledTimes(1);
+		release();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(process).toHaveBeenCalledTimes(2);
+	});
 	it("should respect global concurrency limit for normal jobs", async () => {
 		// Setup config: concurrency 2, aiConcurrency 1
 		worker.updateConfig({

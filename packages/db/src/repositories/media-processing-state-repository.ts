@@ -126,7 +126,7 @@ export function createMediaProcessingStateRepository(
 			).map((row) => row.id);
 		},
 		async request(request, tx) {
-			const { input, taskKind, revision, maxAttempts, force } =
+			const { input, taskKind, revision, maxAttempts, force, batchId } =
 				mediaProcessingRequestSchema.parse(request);
 			await lockInput(input, tx);
 			const db = getExecutor(tx);
@@ -143,8 +143,22 @@ export function createMediaProcessingStateRepository(
 				(!force ||
 					previous.status === "pending" ||
 					previous.status === "in_progress")
-			)
+			) {
+				if (!batchId && !previous.independentDemand) {
+					const [promoted] = await db
+						.update(states)
+						.set({ independentDemand: true })
+						.where(
+							and(
+								eq(states.mediaId, input.mediaId),
+								eq(states.taskKind, taskKind),
+							),
+						)
+						.returning();
+					return mapState(promoted);
+				}
 				return mapState(previous);
+			}
 			const values = {
 				...clearedClaim,
 				requestId: randomUUID(),
@@ -157,6 +171,7 @@ export function createMediaProcessingStateRepository(
 					modifiedAt: input.modifiedAt.toISOString(),
 				},
 				executionMode: "scheduled",
+				independentDemand: !batchId,
 				status:
 					!force &&
 					previous?.requestedRevision === revision &&
@@ -203,6 +218,11 @@ export function createMediaProcessingStateRepository(
 			const due = and(
 				eq(states.executionMode, "scheduled"),
 				eq(states.status, "pending"),
+				sql`(${states.independentDemand} OR EXISTS (
+					SELECT 1 FROM batch_items bi JOIN batch_runs br ON br.id = bi.run_id
+					WHERE bi.request_id = ${states.requestId} AND bi.kind = ${states.taskKind}
+					AND bi.status = 'scheduled' AND br.status IN ('pending', 'in_progress')
+				))`,
 				inArray(states.taskKind, taskKinds),
 				lt(states.attemptCount, states.maxAttempts),
 				sql`${states.availableAt} <= ${dbNow}`,

@@ -144,6 +144,7 @@ export class MediaTaskService {
 		tx: Transaction,
 		force = false,
 		repair = false,
+		batchId?: string,
 	) {
 		if (kind === "thumbnail" && input.mediaType === "audio") return null;
 		const revision = getMediaTaskRevision(
@@ -169,7 +170,7 @@ export class MediaTaskService {
 			}
 		}
 		return this.deps.processingStateRepo.request(
-			{ input, taskKind: kind, revision, maxAttempts: 5, force },
+			{ input, taskKind: kind, revision, maxAttempts: 5, force, batchId },
 			tx,
 		);
 	}
@@ -180,6 +181,7 @@ export class MediaTaskService {
 		force = false,
 		tx?: Transaction,
 		repair = false,
+		batchId?: string,
 	) {
 		const action = async (tx: Transaction) => {
 			const media = await this.deps.mediaRepo.findById(mediaId, tx, {
@@ -206,6 +208,7 @@ export class MediaTaskService {
 				tx,
 				force,
 				repair,
+				batchId,
 			);
 		};
 		return tx ? action(tx) : this.deps.transactionManager.transaction(action);
