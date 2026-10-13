@@ -28,6 +28,7 @@ import {
 	loadDghsImgutils,
 } from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
+import { nativeInferenceGate } from "~/infrastructure/ai/native-inference-gate";
 
 type RustAiClientConfig = Pick<
 	AiConfig,
@@ -37,13 +38,7 @@ type RustAiClientConfig = Pick<
 function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
 	return createClient<AppContract>({
 		url: remoteUrl,
-		fetch: (request: Request, init?: RequestInit) => {
-			const timeoutSignal = AbortSignal.timeout(timeoutMs);
-			const signal = init?.signal
-				? AbortSignal.any([init.signal, timeoutSignal])
-				: timeoutSignal;
-			return fetch(request, { ...init, signal });
-		},
+		timeoutMs,
 	});
 }
 
@@ -252,11 +247,9 @@ export class RustAiClient implements IAiClient {
 		}
 
 		const { getPixaiTags } = loadDghsImgutils();
-		const result = await getPixaiTags(
-			filePath,
-			"v0.9",
-			undefined,
-			this.inferenceOptions,
+		const inferenceOptions = this.inferenceOptions;
+		const result = await nativeInferenceGate.run(() =>
+			getPixaiTags(filePath, "v0.9", undefined, inferenceOptions),
 		);
 		const attributes = "attributes" in result ? result.attributes : {};
 		return taggingResponseSchema.parse({
@@ -282,12 +275,15 @@ export class RustAiClient implements IAiClient {
 		}
 
 		const { getOppaioracleTags } = loadDghsImgutils();
-		const result = await getOppaioracleTags(
-			filePath,
-			undefined,
-			undefined,
-			undefined,
-			this.inferenceOptions,
+		const inferenceOptions = this.inferenceOptions;
+		const result = await nativeInferenceGate.run(() =>
+			getOppaioracleTags(
+				filePath,
+				undefined,
+				undefined,
+				undefined,
+				inferenceOptions,
+			),
 		);
 		return oppaiOracleResponseSchema.parse({
 			general: result.general,
@@ -326,10 +322,9 @@ export class RustAiClient implements IAiClient {
 		}
 
 		const { ccipGetEmbedding } = loadDghsImgutils();
-		const embedding = await ccipGetEmbedding(
-			filePath,
-			CCIP_MODEL,
-			this.inferenceOptions,
+		const inferenceOptions = this.inferenceOptions;
+		const embedding = await nativeInferenceGate.run(() =>
+			ccipGetEmbedding(filePath, CCIP_MODEL, inferenceOptions),
 		);
 		return ccipFeatureResponseSchema.parse({
 			feature: embedding,
@@ -352,7 +347,9 @@ export class RustAiClient implements IAiClient {
 		}
 
 		const { ccipDistance } = loadDghsImgutils();
-		const distance = await ccipDistance(feature1, feature2);
+		const distance = await nativeInferenceGate.run(() =>
+			ccipDistance(feature1, feature2),
+		);
 		return ccipDifferenceResponseSchema.parse({
 			difference: distance,
 		});
@@ -376,17 +373,15 @@ export class RustAiClient implements IAiClient {
 		if (!this.baseUrl) {
 			const nativeModule = loadDghsImgutils();
 			if (hasCcipDistances(nativeModule)) {
-				return await nativeModule.ccipDistances(feature, candidates);
+				return await nativeInferenceGate.run(() =>
+					nativeModule.ccipDistances(feature, candidates),
+				);
 			}
 		}
-		const settledResults = await asyncPool(
-			candidates,
-			50,
-			async (candidate) => {
-				const result = await this.calculateCcipDifference(feature, candidate);
-				return result.difference;
-			},
-		);
+		const settledResults = await asyncPool(candidates, 1, async (candidate) => {
+			const result = await this.calculateCcipDifference(feature, candidate);
+			return result.difference;
+		});
 		return settledResults.map((r) => {
 			if (r.status === "fulfilled") return r.value;
 			throw r.reason;

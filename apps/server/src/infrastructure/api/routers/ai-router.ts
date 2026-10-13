@@ -18,6 +18,10 @@ import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import sharp from "sharp";
 import { loadDghsImgutils } from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
+import {
+	AiInferenceBusyError,
+	nativeInferenceGate,
+} from "~/infrastructure/ai/native-inference-gate";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
@@ -53,6 +57,7 @@ async function readFileBuffer(filePath: string): Promise<Buffer> {
 function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
 	return createClient<AppContract>({
 		url: remoteUrl,
+		timeoutMs,
 		fetch: async (request: Request, init?: RequestInit) => {
 			const controller = new AbortController();
 			const t = setTimeout(() => controller.abort(), timeoutMs);
@@ -110,7 +115,9 @@ async function cropDetection(
 		try {
 			const { segmentRgbaWithIsnetis } = loadDghsImgutils();
 			cropBuffer = Buffer.from(
-				await segmentRgbaWithIsnetis(cropPath, undefined, inferenceOptions),
+				await nativeInferenceGate.run(() =>
+					segmentRgbaWithIsnetis(cropPath, undefined, inferenceOptions),
+				),
 			);
 			_format = "png";
 		} finally {
@@ -213,6 +220,7 @@ export const aiRouter = os.router({
 			);
 			return result;
 		} catch (error) {
+			if (error instanceof AiInferenceBusyError) throw error;
 			logger.error(
 				{
 					err: error,
@@ -294,6 +302,7 @@ export const aiRouter = os.router({
 			);
 			return result;
 		} catch (error) {
+			if (error instanceof AiInferenceBusyError) throw error;
 			logger.error(
 				{ err: error, durationMs: Date.now() - startedAt },
 				"OppaiOracle tagging failed",
@@ -561,20 +570,29 @@ export const aiRouter = os.router({
 					await Bun.write(tmpPath, buffer);
 					try {
 						const { detectPerson } = loadDghsImgutils();
-						const detections = await detectPerson(
-							tmpPath,
-							undefined,
-							undefined,
-							undefined,
-							undefined,
-							inferenceOptions,
-						);
-
-						const resultDetections = await Promise.all(
-							detections.map(async (det, idx) =>
-								cropDetection(tmpPath, det, idx, transparent, inferenceOptions),
+						const detections = await nativeInferenceGate.run(() =>
+							detectPerson(
+								tmpPath,
+								undefined,
+								undefined,
+								undefined,
+								undefined,
+								inferenceOptions,
 							),
 						);
+
+						const resultDetections = [];
+						for (const [idx, det] of detections.entries()) {
+							resultDetections.push(
+								await cropDetection(
+									tmpPath,
+									det,
+									idx,
+									transparent,
+									inferenceOptions,
+								),
+							);
+						}
 
 						logger.info(
 							{
@@ -644,20 +662,29 @@ export const aiRouter = os.router({
 
 				const { detectPerson } = loadDghsImgutils();
 				const inferenceOptions = createNativeInferenceOptions(config.ai);
-				const detections = await detectPerson(
-					fullPath,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					inferenceOptions,
-				);
-
-				const resultDetections = await Promise.all(
-					detections.map(async (det, idx) =>
-						cropDetection(fullPath, det, idx, transparent, inferenceOptions),
+				const detections = await nativeInferenceGate.run(() =>
+					detectPerson(
+						fullPath,
+						undefined,
+						undefined,
+						undefined,
+						undefined,
+						inferenceOptions,
 					),
 				);
+
+				const resultDetections = [];
+				for (const [idx, det] of detections.entries()) {
+					resultDetections.push(
+						await cropDetection(
+							fullPath,
+							det,
+							idx,
+							transparent,
+							inferenceOptions,
+						),
+					);
+				}
 
 				logger.info(
 					{
@@ -670,6 +697,7 @@ export const aiRouter = os.router({
 				);
 				return { detections: resultDetections };
 			} catch (error) {
+				if (error instanceof AiInferenceBusyError) throw error;
 				logger.error(
 					{
 						err: error,

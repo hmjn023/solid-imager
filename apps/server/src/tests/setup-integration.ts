@@ -1,6 +1,6 @@
 import path from "node:path";
 import { config } from "dotenv";
-import { beforeAll, beforeEach, vi } from "vitest";
+import { afterAll, beforeAll, beforeEach, vi } from "vitest";
 
 function createBunImageMock(input: string) {
 	const operations: Array<(pipeline: any) => any> = [];
@@ -208,6 +208,12 @@ beforeAll(async () => {
 	await startBackgroundWorker();
 });
 
+afterAll(async () => {
+	const { services } = await import("~/infrastructure/service-registry");
+	await services.reset();
+	await closeMockDb();
+});
+
 config({ path: path.resolve(process.cwd(), ".env") });
 
 process.env.DB_HOST = "pglite";
@@ -215,9 +221,13 @@ if (process.env.NODE_ENV !== "production") {
 	process.env.NODE_ENV = "test";
 }
 
-const { mockDbFactory } = vi.hoisted(() => {
-	let dbInstance: { db: unknown } | null = null;
+const { mockDbFactory, closeMockDb } = vi.hoisted(() => {
+	let dbInstance: { db: unknown; close: () => Promise<void> } | null = null;
 	return {
+		closeMockDb: async () => {
+			await dbInstance?.close();
+			dbInstance = null;
+		},
 		mockDbFactory: async () => {
 			if (dbInstance) {
 				return dbInstance;
@@ -236,7 +246,7 @@ const { mockDbFactory } = vi.hoisted(() => {
 				: nodePath.resolve(process.cwd(), "apps/server/drizzle");
 			await migrate(testDb, { migrationsFolder });
 
-			dbInstance = { db: testDb };
+			dbInstance = { db: testDb, close: () => client.close() };
 			return dbInstance;
 		},
 	};
