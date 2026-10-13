@@ -1,13 +1,15 @@
-import { implement } from "@orpc/server";
+import { implement, ORPCError } from "@orpc/server";
 import { importsContract } from "@solid-imager/core/domain/contract/imports.contract";
 import type { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import type { ImportEvent } from "@solid-imager/core/domain/sources/events";
-import { and, count, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
-import { db } from "~/infrastructure/db";
-import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
-import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
+import { getImportRequestService } from "~/infrastructure/services/import-request-service";
+import {
+	ResourceConflictError,
+	ResourceNotFoundError,
+} from "@solid-imager/core/domain/errors";
+import { logger } from "~/infrastructure/logger";
 import type { BackupService } from "~/infrastructure/services/backup-service";
 
 /**
@@ -92,26 +94,10 @@ export const bulkAddHandler = async ({
 		}
 	}
 
-	// 3. Create Import Jobs
+	// 3. Receive approval requests
 	if (importItems.length > 0) {
-		const jobValues = importItems.map((item) => ({
-			type: "import_request",
-			status: "pending" as const,
-			payload: { ...item, targetUrl: item.targetUrl ?? "" },
-			updatedAt: new Date(),
-		}));
-
-		// Chunking inserts
-		const ChunkSize = 100;
-		for (let i = 0; i < jobValues.length; i += ChunkSize) {
-			const chunk = jobValues.slice(i, i + ChunkSize);
-			await db.insert(jobs).values(chunk);
-		}
-		addedCount = importItems.length;
-
-		RealtimeEventBus.publishImport("import-request:created", {
-			count: addedCount,
-		});
+		addedCount = await getImportRequestService().add(importItems);
+		skippedCount += importItems.length - addedCount;
 	}
 
 	return { addedCount, skippedCount, restoredCount };
@@ -122,93 +108,66 @@ export const bulkAddHandler = async ({
  */
 const os = implement(importsContract);
 
+async function respond<T>(action: () => Promise<T>): Promise<T> {
+	try {
+		return await action();
+	} catch (error) {
+		if (error instanceof ResourceNotFoundError)
+			throw new ORPCError("NOT_FOUND", { message: "Import target not found" });
+		if (error instanceof ResourceConflictError)
+			throw new ORPCError("CONFLICT", { message: error.message });
+		logger.error({ err: error }, "Import request operation failed");
+		throw new ORPCError("INTERNAL_SERVER_ERROR", {
+			message: "Unable to access import requests",
+		});
+	}
+}
+
 export const importsRouter = os.router({
 	/**
 	 * Bulk add items from Xtracter.
-	 * Checks for duplicates and creates import_request jobs.
+	 * Checks for duplicates and receives dedicated import requests.
 	 */
-	bulkAdd: os.bulkAdd.handler(bulkAddHandler),
+	bulkAdd: os.bulkAdd.handler((args) => respond(() => bulkAddHandler(args))),
 
 	/**
 	 * List pending import requests.
 	 */
-	listPending: os.listPending.handler(async () => {
-		const pendingJobs = await db.query.jobs.findMany({
-			where: and(eq(jobs.type, "import_request"), eq(jobs.status, "pending")),
-			orderBy: (fields, { desc }) => [desc(fields.createdAt)],
-		});
-
-		return pendingJobs.map((job) => ({
-			id: job.id,
-			item: job.payload as z.infer<typeof downloadItemSchema>,
-			createdAt: job.createdAt,
-		}));
-	}),
+	listPending: os.listPending.handler(() =>
+		respond(() => getImportRequestService().listPending()),
+	),
 
 	/**
 	 * Count pending import requests without loading their payloads.
 	 */
-	countPending: os.countPending.handler(async () => {
-		const [result] = await db
-			.select({ count: count() })
-			.from(jobs)
-			.where(and(eq(jobs.type, "import_request"), eq(jobs.status, "pending")));
-
-		return { count: result?.count ?? 0 };
-	}),
+	countPending: os.countPending.handler(() =>
+		respond(async () => ({
+			count: await getImportRequestService().countPending(),
+		})),
+	),
 
 	/**
 	 * Process selected import requests (Queue downloads).
 	 */
-	process: os.process.handler(async ({ input }) => {
-		const { jobIds, targetSourceId } = input;
-
-		// Detect if jobIds is empty
-		if (jobIds.length === 0) {
-			return { success: true, processedCount: 0 };
-		}
-
-		// Fetch jobs
-		const importJobs = await db.query.jobs.findMany({
-			where: and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")),
-		});
-
-		const itemsToDownload = importJobs.map(
-			(job) => job.payload as z.infer<typeof downloadItemSchema>,
-		);
-
-		if (itemsToDownload.length > 0) {
-			await queueDownloadJobs(targetSourceId, itemsToDownload);
-		}
-
-		// Update jobs to completed
-		await db
-			.update(jobs)
-			.set({ status: "completed", updatedAt: new Date() })
-			.where(inArray(jobs.id, jobIds));
-
-		RealtimeEventBus.publishImport("import-request:processed", {
-			processedCount: itemsToDownload.length,
-		});
-
-		return { success: true, processedCount: itemsToDownload.length };
-	}),
+	process: os.process.handler(({ input }) =>
+		respond(async () => ({
+			success: true,
+			processedCount: await getImportRequestService().process(
+				input.jobIds,
+				input.targetSourceId,
+			),
+		})),
+	),
 
 	/**
 	 * Cancel/Delete import requests.
 	 */
-	cancel: os.cancel.handler(async ({ input }) => {
-		const { jobIds } = input;
-		if (jobIds.length === 0) {
+	cancel: os.cancel.handler(({ input }) =>
+		respond(async () => {
+			await getImportRequestService().cancel(input.jobIds);
 			return { success: true };
-		}
-
-		await db.delete(jobs).where(inArray(jobs.id, jobIds));
-		RealtimeEventBus.publishImport("import-request:deleted", {
-			jobIds,
-		});
-		return { success: true };
-	}),
+		}),
+	),
 
 	/**
 	 * Real-time events stream for imports

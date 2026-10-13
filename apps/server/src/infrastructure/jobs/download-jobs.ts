@@ -19,7 +19,7 @@ import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
-import { db } from "~/infrastructure/db";
+import { getExecutor } from "~/infrastructure/db/executor";
 import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
@@ -840,9 +840,10 @@ function registrationEntry(
 export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
+	tx?: import("@solid-imager/core/domain/interfaces/transaction-manager").Transaction,
 ): Promise<{ jobCount: number; skippedCount: number }> {
 	const sourceRepo = DrizzleSourceRepository;
-	const mediaSource = await sourceRepo.findById(mediaSourceId);
+	const mediaSource = await sourceRepo.findById(mediaSourceId, tx);
 	if (mediaSource?.type !== "local") {
 		throw new Error("Media source not found or not a local source");
 	}
@@ -851,8 +852,10 @@ export async function queueDownloadJobs(
 	const poolResults = await asyncPool(items, 5, async (item) => {
 		const urls = item.sourceUrls || [];
 		if (urls.length < 2) return { item, skip: false };
-		const existingMediaId =
-			await MediaRepository.findMediaIdWithMatchingUrlSet(urls);
+		const existingMediaId = await MediaRepository.findMediaIdWithMatchingUrlSet(
+			urls,
+			tx,
+		);
 		if (existingMediaId) {
 			logger.info(
 				{ urls, existingMediaId, fileName: item.fileName },
@@ -892,7 +895,7 @@ export async function queueDownloadJobs(
 	const BATCH_SIZE = 500;
 	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
 		const chunk = jobRows.slice(i, i + BATCH_SIZE);
-		await db.insert(jobs).values(chunk);
+		await getExecutor(tx).insert(jobs).values(chunk);
 	}
 
 	// Jobs are picked up by the worker automatically.

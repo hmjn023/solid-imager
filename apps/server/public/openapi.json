@@ -13141,11 +13141,28 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "anyOf": [
-                    {},
-                    {
-                      "not": {}
+                  "type": "object",
+                  "properties": {
+                    "addedCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "skippedCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "restoredCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
                     }
+                  },
+                  "required": [
+                    "addedCount",
+                    "skippedCount",
+                    "restoredCount"
                   ]
                 }
               }
@@ -13158,7 +13175,7 @@
       "post": {
         "operationId": "imports.listPending",
         "summary": "保留中インポート一覧取得",
-        "description": "処理待ちになっているインポートジョブを一覧で取得します。",
+        "description": "専用tableの承認待ち要求を取得します。cookie等の認証情報は返しません。",
         "tags": [
           "Imports"
         ],
@@ -13173,7 +13190,8 @@
                     "type": "object",
                     "properties": {
                       "id": {
-                        "type": "string"
+                        "type": "string",
+                        "format": "uuid"
                       },
                       "item": {
                         "type": "object",
@@ -13555,30 +13573,16 @@
                           },
                           "fileName": {
                             "type": "string"
-                          },
-                          "cookies": {
-                            "type": "array",
-                            "items": {
-                              "anyOf": [
-                                {},
-                                {
-                                  "type": "null"
-                                }
-                              ]
-                            }
-                          },
-                          "userAgent": {
-                            "type": "string"
                           }
-                        }
+                        },
+                        "required": [
+                          "targetUrl"
+                        ]
                       },
                       "createdAt": {
                         "type": "string",
                         "format": "date-time",
                         "x-native-type": "date"
-                      },
-                      "targetSourceId": {
-                        "type": "string"
                       }
                     },
                     "required": [
@@ -13630,7 +13634,7 @@
       "post": {
         "operationId": "imports.process",
         "summary": "インポート処理の実行",
-        "description": "指定したインポートジョブを対象メディアソースへ取り込み、処理結果と件数を返します。",
+        "description": "承認待ち要求をローカルsourceへ承認し、download予約と同時に保存します。jobIdsは互換名で、専用requestのIDを指定します。重複承認は再投入しません。",
         "tags": [
           "Imports"
         ],
@@ -13691,7 +13695,7 @@
       "post": {
         "operationId": "imports.cancel",
         "summary": "インポート処理のキャンセル",
-        "description": "指定したインポートジョブをキャンセルします。",
+        "description": "承認待ち要求だけを取消します。承認済み要求や汎用jobは変更しません。jobIdsは専用request IDの互換名です。",
         "tags": [
           "Imports"
         ],

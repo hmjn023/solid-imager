@@ -267,6 +267,13 @@
       "when": 1791383393120,
       "tag": "0037_clever_human_fly",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1791848745432,
+      "tag": "0038_outgoing_slyde",
+      "breakpoints": true
     }
   ]
 }

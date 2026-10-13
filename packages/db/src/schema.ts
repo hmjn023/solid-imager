@@ -5,6 +5,12 @@ import {
 import type { MediaProcessingCheckpoint } from "@solid-imager/core/domain/jobs/schemas";
 import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/job-repository";
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
+import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
+import type {
+	ImportAuthority,
+	ImportRequestStatus,
+	ImportBlockedReason,
+} from "@solid-imager/core/domain/imports/schemas";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
@@ -1115,6 +1121,100 @@ export const mediaProcessingStates = pgTable(
 			sql`${table.status} <> 'completed' OR (${table.completedRevision} IS NOT NULL AND ${table.completedRevision} = ${table.requestedRevision})`,
 		),
 	],
+);
+
+export const importRequestCutovers = pgTable(
+	"import_request_cutovers",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		authority: text("authority")
+			.$type<ImportAuthority>()
+			.notNull()
+			.default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"import_cutover_singleton",
+			sql`${table.id} = '62100000-0000-4000-8000-000000000001'::uuid`,
+		),
+		check(
+			"import_cutover_authority",
+			sql`${table.authority} IN ('legacy', 'dedicated')`,
+		),
+		check("import_cutover_generation", sql`${table.generation} >= 0`),
+	],
+);
+
+export const importRequests = pgTable(
+	"import_requests",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		item: jsonb("item").$type<DownloadItem>(),
+		requestKey: text("request_key").notNull(),
+		status: text("status")
+			.$type<ImportRequestStatus>()
+			.notNull()
+			.default("pending"),
+		canonicalId: uuid("canonical_id").references(
+			(): AnyPgColumn => importRequests.id,
+			{ onDelete: "restrict" },
+		),
+		blockedReason: text("blocked_reason").$type<ImportBlockedReason>(),
+		targetSourceId: uuid("target_source_id").references(() => mediaSources.id, {
+			onDelete: "set null",
+		}),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		approvedAt: timestamp("approved_at"),
+		cancelledAt: timestamp("cancelled_at"),
+	},
+	(table) => [
+		uniqueIndex("uq_import_pending_key")
+			.on(table.requestKey)
+			.where(sql`${table.status} = 'pending'`),
+		index("idx_import_pending_created")
+			.on(table.createdAt, table.id)
+			.where(sql`${table.status} = 'pending'`),
+		check(
+			"import_request_status",
+			sql`${table.status} IN ('pending', 'approved', 'cancelled', 'blocked', 'superseded')`,
+		),
+		check(
+			"import_request_item",
+			sql`${table.status} NOT IN ('pending', 'approved') OR ${table.item} IS NOT NULL`,
+		),
+		check(
+			"import_request_blocked",
+			sql`(${table.status} = 'blocked') = (${table.blockedReason} IS NOT NULL)`,
+		),
+		check(
+			"import_request_alias",
+			sql`(${table.status} = 'superseded') = (${table.canonicalId} IS NOT NULL) AND (${table.canonicalId} IS NULL OR ${table.canonicalId} <> ${table.id})`,
+		),
+		check(
+			"import_request_approval",
+			sql`${table.status} <> 'approved' OR ${table.approvedAt} IS NOT NULL`,
+		),
+		check(
+			"import_request_cancellation",
+			sql`${table.status} <> 'cancelled' OR ${table.cancelledAt} IS NOT NULL`,
+		),
+	],
+);
+
+export const importRequestLegacySnapshots = pgTable(
+	"import_request_legacy_snapshots",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		requestId: uuid("request_id")
+			.notNull()
+			.unique()
+			.references(() => importRequests.id, { onDelete: "cascade" }),
+		// Private DB snapshot used for rollback only; never projected to API DTOs.
+		snapshot: jsonb("snapshot").notNull(),
+	},
 );
 
 export const jobs = pgTable(
