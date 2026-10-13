@@ -6,6 +6,7 @@ import {
 	desc,
 	eq,
 	inArray,
+	notInArray,
 	isNull,
 	or,
 	sql,
@@ -194,6 +195,24 @@ export function createBatchRunRepository(
 						"Batch migration requires an initial legacy epoch",
 					);
 				// Verify bounded backfill before authority changes.
+				const retiredParents = db
+					.select({ id: jobs.id })
+					.from(jobs)
+					.where(inArray(jobs.type, [...retiredBatchJobTypes]));
+				const [foreignChild] = await db
+					.select({ id: jobs.id })
+					.from(jobs)
+					.where(
+						and(
+							inArray(jobs.parentId, retiredParents),
+							notInArray(jobs.type, [...retiredBatchJobTypes]),
+						),
+					)
+					.limit(1);
+				if (foreignChild)
+					throw new ResourceConflictError(
+						"Classify foreign legacy children before batch cutover",
+					);
 				const report = await migrateLegacyBatches(db);
 				await db
 					.delete(jobs)

@@ -535,6 +535,23 @@ describe("fixed batch runs and durable item outcomes", () => {
 		expect((await repo.findById(id))?.run.status).toBe("blocked");
 		expect(await repo.claimPending(1)).toEqual([]);
 	});
+	it("refuses cascading deletion of an unclassified legacy child", async () => {
+		const id = randomUUID();
+		await database.insert(schema.jobs).values({
+			id,
+			type: "bulk_tagging_parent",
+			status: "completed",
+			payload: { total: 0 },
+		});
+		await database
+			.insert(schema.jobs)
+			.values({ type: "unknown_legacy_type", parentId: id, status: "pending" });
+		await expect(repo.initialize()).rejects.toThrow("foreign legacy children");
+		expect(await database.select().from(schema.jobs)).toHaveLength(2);
+		expect(
+			(await database.select().from(schema.batchRunCutovers))[0].authority,
+		).toBe("legacy");
+	});
 	it("rejects legacy writes after authority changes", async () => {
 		await repo.initialize();
 		await expect(
