@@ -21,7 +21,7 @@ import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
-import { executeDeferredActions } from "~/infrastructure/services/job-dispatch-service";
+import { executeDeferredActions } from "~/infrastructure/services/deferred-media-effects";
 
 // Infrastructure adapters that wrap server-specific implementations
 const eventPublisher: ISourceEventPublisher = {

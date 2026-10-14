@@ -12,7 +12,6 @@ import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
@@ -35,7 +34,6 @@ export class ServiceRegistry {
 	private projectRepository?: IProjectRepository;
 	private characterRepository?: CharacterRepository;
 	private ipRepository?: IIpRepository;
-	private jobRepository?: IJobRepository;
 	private jobWorker?: JobWorker;
 	private mediaFileWorker?: MediaFileWorker;
 	private mediaAiWorker?: MediaAiWorker;
@@ -94,10 +92,6 @@ export class ServiceRegistry {
 
 	registerIpRepository(repo: IIpRepository): void {
 		this.ipRepository = repo;
-	}
-
-	registerJobRepository(repo: IJobRepository): void {
-		this.jobRepository = repo;
 	}
 
 	registerMediaAiWorker(worker: MediaAiWorker) {
@@ -197,13 +191,6 @@ export class ServiceRegistry {
 		return this.ipRepository;
 	}
 
-	getJobRepository(): IJobRepository {
-		if (!this.jobRepository) {
-			throw new Error("JobRepository has not been registered.");
-		}
-		return this.jobRepository;
-	}
-
 	getJobWorker(): JobWorker {
 		if (!this.jobWorker) {
 			throw new Error("JobWorker has not been registered.");
@@ -263,7 +250,6 @@ export class ServiceRegistry {
 		this.projectRepository = undefined;
 		this.characterRepository = undefined;
 		this.ipRepository = undefined;
-		this.jobRepository = undefined;
 		this.jobWorker = undefined;
 		this.mediaProcessingService = undefined;
 		this.characterService = undefined;

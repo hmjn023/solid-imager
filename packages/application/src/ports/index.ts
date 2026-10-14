@@ -11,8 +11,6 @@ export type { IIpService } from "./ip-service";
 export type { IMediaProcessingService } from "./media-processing-service";
 export type {
 	DeferredActions,
-	DeferredJob,
-	DeferredJobs,
 	DeferredSourceEvent,
 	IDeferredActionExecutor,
 	ILogger,

@@ -27,4 +27,6 @@
 
 #791 は directory sync を `source_sync_runs` と generation/CAS、export/restore を `source_transfer_runs` へ移行し、同一 source の共通 DB lease で直列化する。旧 restore の不明な再開位置は推測せず blocked、旧 LanceDB 処理は retired として archive する。手順は [source-run-cutover.md](./source-run-cutover.md)。Jobs API は専用状態の互換表示で、入力・artifact は専用 retention に従う。#638 の PostgreSQL dump cache は別 scope であり、この移行だけでは完了しない。
 
-未知 type、producer/reader、payload/checkpoint、event/UI、dedupe/merge の残存参照があれば #792 の削除 gate を通さない。全 flow 移行後の観測期間と参照ゼロ監査を経て、jobs 本体・generic UI/transport を別 PR で削除する。この表と最初の import PR は全体の移行完了を意味しない。
+#792 で通常 runtime の generic producer/worker/dispatch/processing observer/repository wiring、Jobs API と artifact/status の旧 jobs fallback を撤去した。Jobs API と SSE は専用状態の互換表示として維持する。専用 coordinator は download/batch/source の general 枠を共有し、export は独立1枠、計算は専用 file/AI worker のみが実行する。
+
+未知 type、producer/reader、payload/checkpoint、event/UI、dedupe/merge の残存参照があれば #792 の削除 gate を通さない。全16 type と DB distinct type、親子関係、archive/shadow、最終 write fence と実際の観測期間を確認する手順は [jobs-runtime-retirement.md](./jobs-runtime-retirement.md)。maintenance/schema/rollback 用参照は期間中維持する。本番での観測・rollback期限後に jobs 本体を別 PR で削除する。この表と実装テストは運用上の移行完了を意味しない。

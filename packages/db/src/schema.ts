@@ -2482,3 +2482,21 @@ export const sourceRunLegacySnapshots = pgTable("source_run_legacy_snapshots", {
 	kind: text("kind").$type<SourceRunKind>().notNull(),
 	snapshot: jsonb("snapshot").notNull(),
 });
+
+/** Final execution fence; jobs storage and archives survive the observation/rollback period. */
+export const jobRuntimeCutovers = pgTable(
+	"job_runtime_cutovers",
+	{
+		id: uuid("id").primaryKey(),
+		authority: text("authority").notNull().default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"job_runtime_authority",
+			sql`${table.authority} IN ('legacy','retired')`,
+		),
+		check("job_runtime_epoch", sql`${table.generation} >= 0`),
+	],
+);

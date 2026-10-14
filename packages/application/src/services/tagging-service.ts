@@ -5,11 +5,9 @@ import type {
 } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
 	MediaProcessingSupersededError,
-	type ProcessingOwner,
 	type MediaProcessingInput,
 	type ProcessingRequestIdentity,
 } from "@solid-imager/core/domain/processing/schemas";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import { getTaggingTaskRevision } from "./tagging-task-service";
 import { AiMediaTaskService, canReuseAiResult } from "./ai-media-task-service";
@@ -31,7 +29,6 @@ import type { ITaggingService } from "../ports/tagging-service";
 export type TaggingServiceDeps = {
 	processingStateRepo: IMediaProcessingSchedulerRepository;
 	transactionManager: TransactionManager;
-	jobRepo: IJobRepository;
 	aiClient: IAiClient;
 	sourceRepo: SourceRepository;
 	mediaRepo: IMediaRepository;
@@ -109,7 +106,6 @@ export class TaggingServiceImpl implements ITaggingService {
 		mediaId: string,
 		options?: {
 			skipCache?: boolean;
-			owner?: ProcessingOwner;
 			request?: ProcessingRequestIdentity;
 		},
 	): Promise<TaggingResponse | null> {
@@ -147,7 +143,6 @@ export class TaggingServiceImpl implements ITaggingService {
 		};
 		const { response } = await this.tasks.execute(
 			input,
-			options?.owner,
 			options?.skipCache,
 			options?.request,
 		);
@@ -168,14 +163,6 @@ export class TaggingServiceImpl implements ITaggingService {
 			tx,
 			batchId,
 		);
-	}
-	reserveTagsForJob(
-		owner: ProcessingOwner,
-		sourceId: string,
-		mediaIds: string[],
-		force = false,
-	) {
-		return this.tasks.reserveForJob(owner, sourceId, mediaIds, force);
 	}
 	runTaggingTask() {
 		return this.tasks.runOnce();

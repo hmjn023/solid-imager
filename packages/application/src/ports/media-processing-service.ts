@@ -3,11 +3,9 @@ import type {
 	Media,
 	MediaMetadataContext,
 } from "@solid-imager/core/domain/media/schemas";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import type {
 	FileTaskKind,
 	MediaProcessingState,
-	ProcessingOwner,
 } from "@solid-imager/core/domain/processing/schemas";
 
 export type MediaRegistrationOptions = {
@@ -39,7 +37,6 @@ export interface IMediaProcessingService {
 		mediaId: string,
 		kind: FileTaskKind,
 		request: Pick<MediaProcessingState, "requestId" | "requestedRevision">,
-		owner?: ProcessingOwner,
 	): Promise<void>;
 	runFileTask(
 		kind: FileTaskKind,
@@ -53,12 +50,10 @@ export interface IMediaProcessingService {
 		options?: MediaRegistrationOptions,
 	): Promise<Media>;
 
-	executeProcessMediaJob(job: Job): Promise<void>;
 	processTask(
 		sourceId: string,
 		mediaId: string,
 		kind: FileTaskKind,
-		owner?: ProcessingOwner,
 		force?: boolean,
 	): Promise<void>;
 

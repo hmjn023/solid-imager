@@ -2,10 +2,9 @@ import { canReuseAiResult } from "@solid-imager/application/services/ai-media-ta
 import { getTaggingTaskRevision } from "@solid-imager/application/services/tagging-task-service";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { taggingResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
-import { and, asc, eq, gt, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, gt } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
 import {
-	jobs,
 	medias,
 	mediaSources,
 	mediaProcessingStates,
@@ -21,25 +20,12 @@ export async function scanTaggingTargetPage(
 		force: boolean;
 		limit: number;
 		afterId?: string;
-		parentId?: string;
 	},
 	queryDb: DrizzleExecutor = db,
 	settings: TaggingProcessingSettings = services
 		.getAiClient()
 		.getTaggingSettings(),
 ) {
-	const existingChild = options.parentId
-		? queryDb
-				.select({ id: jobs.id })
-				.from(jobs)
-				.where(
-					and(
-						eq(jobs.parentId, options.parentId),
-						eq(jobs.type, "auto_tagging"),
-						sql`${jobs.payload}->>'mediaId' = ${medias.id}::text`,
-					),
-				)
-		: undefined;
 	const rows = await queryDb
 		.select({
 			media: medias,
@@ -63,7 +49,6 @@ export async function scanTaggingTargetPage(
 					? eq(medias.mediaSourceId, options.mediaSourceId)
 					: undefined,
 				options.afterId ? gt(medias.id, options.afterId) : undefined,
-				existingChild ? notExists(existingChild) : undefined,
 			),
 		)
 		.orderBy(asc(medias.id))

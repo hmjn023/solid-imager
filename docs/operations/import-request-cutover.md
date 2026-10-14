@@ -45,6 +45,7 @@ migration 直後は `import_request_cutovers` が `authority=legacy, generation=
 ## Rollback
 
 1. 新・旧 import writer を停止し、処理中 API を drain する。DB snapshot を取得する。
+   最終 retirement (0045) が有効なら、先に [jobs-runtime-retirement.md](./jobs-runtime-retirement.md) に従って最終 write fence を解除する。
 2. `bun scripts/import-request-cutover.ts rollback --writers-stopped` を実行する。
 3. `inspect` と private な照合資料で復元件数を確認し、互換性のある旧サーバーのみを再開する。ブラウザも再読み込みする。
 

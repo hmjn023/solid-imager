@@ -2,16 +2,14 @@ import { SourceRunRepository } from "~/infrastructure/repositories/source-run-re
 import { sourceRunService } from "~/infrastructure/services/source-run-service";
 import { toSourceJobDto } from "./source-run-view";
 import { z } from "zod";
-import { inArray, sql } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
 	jobDtoSchema,
 	type JobDto,
 	type JobListRequest,
 } from "@solid-imager/core/domain/jobs/schemas";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import type { DownloadRun } from "@solid-imager/core/domain/downloads/schemas";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
-import { jobs } from "~/infrastructure/db/schema";
 import { getExecutor } from "~/infrastructure/db/executor";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { DownloadRunRepository } from "~/infrastructure/repositories/download-run-repository";
@@ -114,10 +112,7 @@ const pageSchema = z.object({
 	total: z.coerce.number().int().nonnegative(),
 });
 /** Temporary Jobs API compatibility projection. Dedicated execution never reads generic job rows. */
-export async function listJobView(
-	input: JobListRequest,
-	projectJob: (job: Job) => JobDto,
-) {
+export async function listJobView(input: JobListRequest) {
 	await downloadRunService.initialize();
 	await batchRunService.initialize();
 	await sourceRunService.initialize();
@@ -126,16 +121,11 @@ export async function listJobView(
 		await BatchRunRepository.assertDedicated(tx);
 		await SourceRunRepository.assertDedicated(tx);
 		const db = getExecutor(tx);
-		const genericStatus = input.status
-			? sql`AND status = ${input.status}`
-			: sql``;
 		const runStatus = input.status
 			? sql`AND (CASE WHEN status = 'blocked' THEN 'failed' ELSE status END) = ${input.status}`
 			: sql``;
 		const result: unknown = await db.execute(sql`
 			WITH combined AS (
-				SELECT id, created_at FROM jobs WHERE type NOT IN ('downloadImage','source_export','source_restore','sync_lancedb','sync_lancedb_full','sync_lancedb_delta') ${genericStatus}
-				UNION ALL
 				SELECT id, created_at FROM download_runs WHERE status <> 'superseded' ${runStatus}
  UNION ALL SELECT id, created_at FROM source_sync_runs WHERE true ${runStatus}
  UNION ALL SELECT id, created_at FROM source_transfer_runs WHERE true ${runStatus}
@@ -156,9 +146,6 @@ export async function listJobView(
 				: [];
 		const page = pageSchema.parse(rows[0]);
 		const ids = page.ids.map((row) => row.id);
-		const generic = ids.length
-			? await db.select().from(jobs).where(inArray(jobs.id, ids))
-			: [];
 		const downloads = await DownloadRunRepository.findByIds(ids, tx);
 		const sourceRuns = await SourceRunRepository.findByIds(ids, tx);
 		const batchItems = await BatchRunRepository.findItemsByIds(ids, tx);
@@ -179,7 +166,6 @@ export async function listJobView(
 				const parent = parents.get(item.runId);
 				return parent ? [[item.id, toBatchJobDto(parent, item)]] : [];
 			}),
-			...generic.map((row): [string, JobDto] => [row.id, projectJob(row)]),
 			...downloads.map((row): [string, JobDto] => [
 				row.id,
 				toDownloadJobDto(row),

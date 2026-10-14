@@ -6,7 +6,7 @@ import { drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
 import { migrate as migratePostgres } from "drizzle-orm/node-postgres/migrator";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { sql } from "drizzle-orm";
+import { sql, isNotNull } from "drizzle-orm";
 import { beforeAll, beforeEach, afterAll, describe, expect, it } from "vitest";
 import { createJobRepository } from "@solid-imager/db/repositories/job-repository";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
@@ -47,6 +47,7 @@ describe("job failure and batch parent reconciliation", () => {
 		}
 	}, 30_000);
 	beforeEach(async () => {
+		await database.delete(schema.jobs).where(isNotNull(schema.jobs.parentId));
 		await database.delete(schema.jobs);
 	});
 	afterAll(async () => {

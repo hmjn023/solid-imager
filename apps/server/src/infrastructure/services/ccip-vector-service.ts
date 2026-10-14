@@ -20,7 +20,6 @@ export function getCcipVectorService(): CcipVectorService {
 		service = new CcipVectorService({
 			processingStateRepo: MediaProcessingStateRepository,
 			transactionManager: DrizzleTransactionManager,
-			jobRepo: services.getJobRepository(),
 			getCcipSettings: () => services.getAiClient().getCcipSettings(),
 			mediaRepository: services.getMediaRepository(),
 			sourceRepository: services.getSourceRepository(),

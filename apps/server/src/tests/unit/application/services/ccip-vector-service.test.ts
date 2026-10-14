@@ -62,7 +62,6 @@ function taskDeps(items: (typeof media)[], cached = false) {
 	return {
 		getCcipSettings: () => settings,
 		transactionManager: { transaction: async (action: any) => action({}) },
-		jobRepo: {} as any,
 		processingStateRepo: {
 			request: vi.fn(async ({ input, revision }: any) => {
 				let state = states.get(input.mediaId);

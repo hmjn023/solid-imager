@@ -5,7 +5,7 @@ import { drizzle as pg } from "drizzle-orm/node-postgres";
 import { migrate as migratePg } from "drizzle-orm/node-postgres/migrator";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { eq } from "drizzle-orm";
+import { eq, isNotNull } from "drizzle-orm";
 import {
 	beforeAll,
 	beforeEach,
@@ -93,6 +93,9 @@ describe("durable source operations", () => {
 	}, 30_000);
 	beforeEach(async () => {
 		await database
+			.update(schema.jobRuntimeCutovers)
+			.set({ authority: "legacy", generation: 0 });
+		await database
 			.update(schema.sourceRunCutovers)
 			.set({ authority: "legacy", generation: 0 });
 		await database
@@ -103,6 +106,7 @@ describe("durable source operations", () => {
 		await database.delete(schema.sourceTransferRuns);
 		await database.delete(schema.sourceRunLegacySnapshots);
 		await database.delete(schema.sourceSyncWatermarks);
+		await database.delete(schema.jobs).where(isNotNull(schema.jobs.parentId));
 		await database.delete(schema.jobs);
 		await database.delete(schema.mediaSources);
 		const source = await sources.create({

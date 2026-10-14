@@ -22,7 +22,6 @@ import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manag
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
@@ -75,7 +74,6 @@ describe("MediaService - Copy Media Integration", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerJobRepository(JobRepository);
 		services.registerMediaStorage(mockStorageService as any);
 		services.registerImageProcessor(mockImageProcessor as any);
 		services.registerAiClient(mockAiClient as any);
@@ -134,7 +132,6 @@ describe("MediaService - Copy Media Integration", () => {
 					processingSettingsFromConfig(defaultAppConfig),
 				hasThumbnails: vi.fn().mockResolvedValue(true),
 				transactionManager: DrizzleTransactionManager,
-				publishJobProgress: vi.fn(),
 				sourceRepo: services.getSourceRepository(),
 				mediaRepo: services.getMediaRepository(),
 				tagRepo: services.getTagRepository(),
@@ -142,7 +139,6 @@ describe("MediaService - Copy Media Integration", () => {
 				characterRepo: services.getCharacterRepository(),
 				ipRepo: services.getIpRepository(),
 				projectRepo: services.getProjectRepository(),
-				jobRepo: services.getJobRepository() as any,
 				imageProcessor: {} as any,
 				mediaStorage: {} as any,
 				enableAutoTagging: false,

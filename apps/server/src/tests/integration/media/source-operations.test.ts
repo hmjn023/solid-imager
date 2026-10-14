@@ -2,7 +2,15 @@ import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
 import { eq } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
 import {
@@ -35,9 +43,15 @@ const png = Buffer.from(
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
 	"base64",
 );
+vi.hoisted(() => {
+	process.env.SOLID_IMAGER_JOB_TRANSFER_DIR = `/tmp/solid-source-transfers-${process.pid}`;
+});
 describe("source workflow filesystem and DB recovery", () => {
 	let directory: string, sourceId: string, revision: string;
 	const owned: string[] = [];
+	afterAll(async () => {
+		await fs.rm(getJobTransferRoot(), { recursive: true, force: true });
+	});
 	const claimed = async (kind: SourceRunKind) => {
 		const [run] = await repo.claimPending([kind], 1, sourceId);
 		if (!run) throw new Error("No source claim");
@@ -282,6 +296,32 @@ describe("source workflow filesystem and DB recovery", () => {
 			(await services.getMediaRepository().findByPath(sourceId, "bulk.png"))
 				?.description,
 		).toBe("last");
+	});
+	it("cleans expired owned input without a generic job lookup", async () => {
+		const input = await createInput("{}\n");
+		const run = await repo.createTransfer(
+			sourceId,
+			{
+				kind: "restore",
+				mode: "ndjson",
+				inputPath: input.inputPath,
+				...(await fingerprintSourceInput(input.inputPath)),
+				sourceRevision: revision,
+			},
+			input.id,
+		);
+		await db
+			.update(sourceTransferRuns)
+			.set({ retentionExpiresAt: new Date(0) })
+			.where(eq(sourceTransferRuns.id, run.id));
+		await sourceRunService.cleanup();
+		await expect(fs.access(input.inputPath)).rejects.toMatchObject({
+			code: "ENOENT",
+		});
+		expect(await repo.findById(run.id)).toMatchObject({
+			status: "blocked",
+			input: null,
+		});
 	});
 	it("rejects a modified retained input before applying it", async () => {
 		const input = await createInput("{}\n");

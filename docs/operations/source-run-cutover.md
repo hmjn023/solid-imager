@@ -24,7 +24,7 @@ Inputs remain available for 24 hours after creation/progress/completion; artifac
 
 ## Rollback rehearsal
 
-Stop all new source writers and drain their leases, then run `bun scripts/source-run-cutover.ts rollback --writers-stopped`.
+Stop all new source writers and drain their leases. If final generic retirement (0045) is active, first release that fence using [jobs-runtime-retirement.md](./jobs-runtime-retirement.md); then run `bun scripts/source-run-cutover.ts rollback --writers-stopped`.
 
 Rollback refuses live source owners. A partially applied native restore must complete or be explicitly cancelled before rollback; old code cannot resume its cursor. Legacy snapshots preserve IDs and unknown fields. Completed history stays terminal. Native transfer runs reconstruct equivalent legacy transfer rows. Native directory scans keep their dedicated history; old startup performs a full filesystem rescan, since there was no legacy directory job producer.
 

@@ -190,7 +190,7 @@ export class MediaTransferService {
 			throw error;
 		}
 
-		const deferredActions: DeferredActions = { jobs: [], sourceEvents: [] };
+		const deferredActions: DeferredActions = { sourceEvents: [] };
 
 		const sourceEvent: DeferredSourceEvent = {
 			mediaSourceId: validatedTargetSourceId,
@@ -230,7 +230,6 @@ export class MediaTransferService {
 	): Promise<{ success: boolean; media: Media; deferred?: DeferredActions }> {
 		const execute = async (t: Transaction) => {
 			const accumulatedDeferred: DeferredActions = {
-				jobs: [],
 				sourceEvents: [],
 			};
 
@@ -243,9 +242,6 @@ export class MediaTransferService {
 					targetSourceId,
 					t,
 				);
-				if (copyResult.deferred) {
-					accumulatedDeferred.jobs.push(...copyResult.deferred.jobs);
-				}
 
 				if (copyResult.success) {
 					const targetSource = await this.sourceRepository.findById(
@@ -273,7 +269,6 @@ export class MediaTransferService {
 							t,
 						);
 						if (deleteResult) {
-							accumulatedDeferred.jobs.push(...deleteResult.jobs);
 							if (deleteResult.filesToDelete) {
 								accumulatedDeferred.filesToDelete = [
 									...(accumulatedDeferred.filesToDelete ?? []),
@@ -393,7 +388,6 @@ export class MediaTransferService {
 
 		if (tx) {
 			return {
-				jobs: [],
 				sourceEvents: [sourceEvent],
 				filesToDelete,
 				thumbnailsToDelete,

@@ -7,7 +7,7 @@ import { drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
 import { migrate as migratePostgres } from "drizzle-orm/node-postgres/migrator";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, isNotNull } from "drizzle-orm";
 import {
 	afterAll,
 	beforeAll,
@@ -176,9 +176,14 @@ describe("fixed batch runs and durable item outcomes", () => {
 	beforeEach(async () => {
 		notify.mockClear();
 		await database
+			.update(schema.jobRuntimeCutovers)
+			.set({ authority: "legacy", generation: 0 });
+		await database
 			.update(schema.batchRunCutovers)
 			.set({ authority: "legacy", generation: 0 });
 		await database.delete(schema.batchRuns);
+		// Delete owned fixture children first; the final fence rejects cross-family cascades.
+		await database.delete(schema.jobs).where(isNotNull(schema.jobs.parentId));
 		await database.delete(schema.jobs);
 		await database.delete(schema.mediaSources);
 		const source = await sources.create({

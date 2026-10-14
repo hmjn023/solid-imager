@@ -15,7 +15,6 @@ import {
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { createCharacterRepository } from "@solid-imager/db/repositories/character-repository";
 import { createIpRepository } from "@solid-imager/db/repositories/ip-repository";
-import { createJobRepository } from "@solid-imager/db/repositories/job-repository";
 import { createMediaProcessingStateRepository } from "@solid-imager/db/repositories/media-processing-state-repository";
 import { createMediaRepository } from "@solid-imager/db/repositories/media-repository";
 import { createSourceRepository } from "@solid-imager/db/repositories/source-repository";
@@ -68,7 +67,6 @@ describe("revision-aware tagging", () => {
 	const tagRepo = createTagRepository(executor);
 	const characterRepo = createCharacterRepository(executor);
 	const ipRepo = createIpRepository(executor);
-	const jobRepo = createJobRepository(executor);
 	const processingStateRepo = createMediaProcessingStateRepository(executor);
 	const infer = vi.fn<IAiClient["tagImageByPath"]>();
 	const publish = vi.fn<TaggingServiceDeps["publishSourceEvent"]>();
@@ -102,7 +100,6 @@ describe("revision-aware tagging", () => {
 			tagRepo,
 			characterRepo,
 			ipRepo,
-			jobRepo,
 			transactionManager,
 			processingStateRepo,
 			readFileBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
@@ -256,7 +253,7 @@ describe("revision-aware tagging", () => {
 		expect((await scan()).targets).toHaveLength(1);
 	});
 
-	it("continues a batch past cached-only pages and excludes already dispatched children", async () => {
+	it("continues a batch past cached-only pages", async () => {
 		await run();
 		const second = await mediaRepo.create({
 			mediaSourceId: sourceId,
@@ -281,27 +278,6 @@ describe("revision-aware tagging", () => {
 			settings,
 		);
 		expect(nextPage.targets.map((target) => target.id)).toEqual([second.id]);
-		const parent = await jobRepo.create({
-			type: "bulk_tagging_parent",
-			status: "in_progress",
-			mediaSourceId: sourceId,
-			payload: {},
-		});
-		await jobRepo.create({
-			type: "auto_tagging",
-			parentId: parent.id,
-			mediaSourceId: sourceId,
-			payload: { mediaId: second.id },
-		});
-		expect(
-			(
-				await scanTaggingTargetPage(
-					{ force: false, limit: 10, parentId: parent.id },
-					database,
-					settings,
-				)
-			).targets,
-		).toEqual([]);
 	});
 	it("replaces old AI relations and retains manual associations and confidence", async () => {
 		await tagRepo.addTagsToMedia(
@@ -516,33 +492,6 @@ describe("revision-aware tagging", () => {
 		await run();
 		expect(infer).toHaveBeenCalledTimes(3);
 	});
-	it("stops a cancelled observer while retaining the shared scheduled output", async () => {
-		const job = await jobRepo.create({
-			type: "auto_tagging",
-			mediaSourceId: sourceId,
-			payload: { mediaId },
-		});
-		const [claimed] = await jobRepo.claimPending(1, {
-			includeTypes: ["auto_tagging"],
-		});
-		const started = Promise.withResolvers<void>();
-		const response = Promise.withResolvers<TaggingResponse>();
-		infer.mockImplementationOnce(() => {
-			started.resolve();
-			return response.promise;
-		});
-		const pending = run({
-			owner: { jobId: job.id, attemptCount: claimed.attemptCount ?? 0 },
-		}).catch((error: unknown) => error);
-		await started.promise;
-		await jobRepo.requestCancellation(job.id);
-		response.resolve(first);
-		expect(await pending).toBeInstanceOf(Error);
-		expect(await tagRepo.findByMediaId(mediaId)).not.toEqual([]);
-		expect(await states()).toEqual([
-			expect.objectContaining({ status: "completed" }),
-		]);
-	});
 	it("cascades domain state and rejects late output after target deletion", async () => {
 		const delayed = delayedInference();
 		await delayed.started;
@@ -644,64 +593,6 @@ describe("revision-aware tagging", () => {
 		expect(await run({ skipCache: true })).toEqual(first);
 		expect((await states())[0].requestId).not.toBe(terminal[0].requestId);
 		expect((await states())[0].attemptCount).toBe(1);
-	});
-	it("binds legacy force once, preserves failure on stale recovery and consumes explicit Retry", async () => {
-		const job = await jobRepo.create({
-			type: "auto_tagging",
-			mediaSourceId: sourceId,
-			payload: { mediaId, force: true },
-		});
-		const [initial] = await jobRepo.claimPending(1, {
-			includeTypes: ["auto_tagging"],
-		});
-		infer.mockRejectedValueOnce(new Error("invalid model"));
-		await expect(
-			run({
-				owner: { jobId: job.id, attemptCount: initial.attemptCount ?? 0 },
-				skipCache: true,
-			}),
-		).rejects.toThrow("invalid model");
-		const terminal = await states();
-		expect((await jobRepo.findById(job.id))?.payload).toMatchObject({
-			force: false,
-			processingRequests: { [mediaId]: { requestId: terminal[0].requestId } },
-		});
-		await database
-			.update(schema.jobs)
-			.set({ updatedAt: new Date(0) })
-			.where(eq(schema.jobs.id, job.id));
-		await jobRepo.requeueStaleInProgress(new Date());
-		const [stale] = await jobRepo.claimPending(1, {
-			includeTypes: ["auto_tagging"],
-		});
-		await expect(
-			run({
-				owner: { jobId: job.id, attemptCount: stale.attemptCount ?? 0 },
-				skipCache: true,
-			}),
-		).rejects.toThrow("invalid model");
-		expect(await states()).toEqual(terminal);
-		const current = await jobRepo.findById(job.id);
-		await jobRepo.update(job.id, {
-			status: "pending",
-			payload: { ...(current?.payload as object), retryAiTasks: true },
-		});
-		const [retry] = await jobRepo.claimPending(1, {
-			includeTypes: ["auto_tagging"],
-		});
-		expect(
-			await run({
-				owner: { jobId: job.id, attemptCount: retry.attemptCount ?? 0 },
-			}),
-		).toEqual(first);
-		expect((await states())[0]).toMatchObject({
-			status: "completed",
-			attemptCount: 1,
-		});
-		expect((await states())[0].requestId).not.toBe(terminal[0].requestId);
-		expect((await jobRepo.findById(job.id))?.payload).toMatchObject({
-			retryAiTasks: false,
-		});
 	});
 	it("does not report successful observation after a bound image becomes a video", async () => {
 		const request = await service.requestTags(sourceId, mediaId);

@@ -18,10 +18,7 @@ vi.mock("~/infrastructure/service-registry", () => ({
 		getJobRepository: () => ({ withActiveAttempt, update: updateJob }),
 	},
 }));
-import {
-	generateThumbnailForMedia,
-	processThumbnailGenerationJob,
-} from "~/infrastructure/jobs/thumbnails";
+import { generateThumbnailForMedia } from "~/infrastructure/jobs/thumbnails";
 const sourceId = "11111111-1111-4111-8111-111111111111";
 const mediaId = "22222222-2222-4222-8222-222222222222";
 const request = {
@@ -39,48 +36,12 @@ describe("shared processing entry points", () => {
 			.mockReset()
 			.mockImplementation((_id, _attempt, action) => action(transaction));
 	});
-	it("binds a legacy rebuild request within the job attempt and observes the saved request", async () => {
-		const job = {
-			id: "33333333-3333-4333-8333-333333333333",
-			attemptCount: 2,
-			mediaSourceId: sourceId,
-			payload: { mediaId, size: 512, force: true },
-			parentId: null,
-		};
-		await processThumbnailGenerationJob(job as any);
-		expect(requestTask).toHaveBeenCalledWith(
-			sourceId,
-			mediaId,
-			"thumbnail",
-			true,
-			transaction,
-			true,
-		);
-		expect(updateJob).toHaveBeenCalledWith(
-			job.id,
-			{
-				payload: {
-					...job.payload,
-					force: false,
-					retryFileTasks: false,
-					processingRequest: request,
-				},
-			},
-			transaction,
-		);
-		expect(waitForTask).toHaveBeenCalledWith(mediaId, "thumbnail", request, {
-			jobId: job.id,
-			attemptCount: 2,
-		});
-		expect(processTask).not.toHaveBeenCalled();
-	});
 	it("shares on-demand thumbnail processing without forcing a rebuild", async () => {
 		await generateThumbnailForMedia(sourceId, mediaId, 256);
 		expect(processTask).toHaveBeenCalledWith(
 			sourceId,
 			mediaId,
 			"thumbnail",
-			undefined,
 			false,
 		);
 	});
@@ -110,7 +71,6 @@ describe("shared processing entry points", () => {
 			sourceId,
 			mediaId,
 			"metadata",
-			undefined,
 			false,
 		);
 		await query.reprocessMetadata(sourceId, mediaId);
@@ -118,7 +78,6 @@ describe("shared processing entry points", () => {
 			sourceId,
 			mediaId,
 			"metadata",
-			undefined,
 			true,
 		);
 		processTask.mockRejectedValueOnce(new Error("unreadable"));

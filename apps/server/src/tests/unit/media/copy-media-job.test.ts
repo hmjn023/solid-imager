@@ -123,23 +123,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 			}),
 		};
 
-		const mockJobRepo = {
-			withActiveAttempt: vi.fn(async (_id, _attempt, action) =>
-				action(undefined),
-			),
-			update: vi.fn(),
-			create: vi.fn((job) => {
-				capturedJobs.push({ ...job, id: "job-id", attemptCount: 1 });
-				return Promise.resolve({ ...job, id: "job-id" });
-			}),
-			createIfUnique: vi.fn((job) =>
-				Promise.resolve({ ...job, id: "sync-job-id" }),
-			),
-		};
-
 		// Register Repositories
 		services.registerSourceRepository(mockSourceRepository as any);
-		services.registerJobRepository(mockJobRepo as any);
 		services.registerTagRepository(mockTagRepo);
 		services.registerAuthorRepository(mockAuthorRepo);
 		services.registerProjectRepository(mockProjectRepo);
@@ -216,7 +201,6 @@ describe("Reproduction: Copy Media Job Type", () => {
 				processingSettingsFromConfig(defaultAppConfig),
 			hasThumbnails: vi.fn().mockResolvedValue(true),
 			transactionManager: { transaction: async (action) => action(undefined) },
-			publishJobProgress: vi.fn(),
 			sourceRepo: mockSourceRepository as any,
 			mediaRepo: MediaRepository as any,
 			tagRepo: mockTagRepo,
@@ -224,7 +208,6 @@ describe("Reproduction: Copy Media Job Type", () => {
 			characterRepo: mockCharRepo,
 			ipRepo: mockIpRepo,
 			projectRepo: mockProjectRepo,
-			jobRepo: mockJobRepo as any,
 			imageProcessor: mockImageProcessor as any,
 			mediaStorage: {} as any,
 			enableAutoTagging: false,

@@ -55,9 +55,6 @@ const mockProjectRepo = {
 	findOrCreateBulk: vi.fn(),
 	addMediaBulk: vi.fn(),
 };
-const mockJobRepo = {
-	create: vi.fn(),
-};
 
 const _mockConfigService = {
 	getConfig: vi.fn().mockReturnValue({
@@ -105,7 +102,6 @@ describe("MediaProcessingService", () => {
 				processingSettingsFromConfig(defaultAppConfig),
 			hasThumbnails: vi.fn().mockResolvedValue(true),
 			transactionManager: { transaction: async (action) => action(undefined) },
-			publishJobProgress: vi.fn(),
 			sourceRepo: {} as any,
 			mediaRepo: mockMediaRepo as any,
 			tagRepo: mockTagRepo as any,
@@ -113,7 +109,6 @@ describe("MediaProcessingService", () => {
 			characterRepo: mockCharacterRepo as any,
 			ipRepo: mockIpRepo as any,
 			projectRepo: mockProjectRepo as any,
-			jobRepo: mockJobRepo as any,
 			imageProcessor: {} as any,
 			mediaStorage: {} as any,
 			enableAutoTagging: false,

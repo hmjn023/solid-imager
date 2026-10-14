@@ -14,7 +14,6 @@ import {
 	type CcipProcessingSettings,
 } from "@solid-imager/core/domain/processing/schemas";
 import type { CcipFeatureResponse } from "@solid-imager/core/domain/tagging/schemas";
-import { createJobRepository } from "@solid-imager/db/repositories/job-repository";
 import { createMediaProcessingStateRepository } from "@solid-imager/db/repositories/media-processing-state-repository";
 import { createMediaRepository } from "@solid-imager/db/repositories/media-repository";
 import { createSourceRepository } from "@solid-imager/db/repositories/source-repository";
@@ -56,7 +55,6 @@ describe("revision-aware full-image CCIP", () => {
 	const mediaRepository = createMediaRepository(executor);
 	const sourceRepository = createSourceRepository(executor);
 	const processingStateRepo = createMediaProcessingStateRepository(executor);
-	const jobRepo = createJobRepository(executor);
 	const infer = vi.fn<() => Promise<CcipFeatureResponse>>();
 	let store: PostgresCcipVectorStore;
 	let settings: CcipProcessingSettings;
@@ -112,7 +110,6 @@ describe("revision-aware full-image CCIP", () => {
 			sourceRepository,
 			processingStateRepo,
 			transactionManager,
-			jobRepo,
 			vectorStore: store,
 			getCcipSettings: () => settings,
 			taggingService: {
@@ -413,41 +410,6 @@ describe("revision-aware full-image CCIP", () => {
 			]),
 		);
 	});
-	for (const change of ["cancel", "attempt"] as const) {
-		it(`stops the observer after owner ${change} without canceling shared output`, async () => {
-			const job = await jobRepo.create({
-				type: "extract_ccip_vector",
-				mediaSourceId: sourceId,
-				payload: { mediaId },
-			});
-			await jobRepo.markAsInProgress(job.id);
-			const active = await jobRepo.findById(job.id);
-			if (!active) throw new Error("job");
-			const response = Promise.withResolvers<CcipFeatureResponse>();
-			const started = Promise.withResolvers<void>();
-			infer.mockImplementationOnce(() => {
-				started.resolve();
-				return response.promise;
-			});
-			const pending = run(false, {
-				jobId: job.id,
-				attemptCount: active.attemptCount ?? 0,
-			}).catch((error) => error);
-			await started.promise;
-			expect(await service.getStatus(sourceId, mediaId)).toMatchObject({
-				status: "processing",
-			});
-			if (change === "cancel") await jobRepo.requestCancellation(job.id);
-			else
-				await database
-					.update(schema.jobs)
-					.set({ attemptCount: (active.attemptCount ?? 0) + 1 })
-					.where(eq(schema.jobs.id, job.id));
-			response.resolve(feature());
-			expect(await pending).toBeInstanceOf(Error);
-			expect(await store.get(mediaId, query())).not.toBeNull();
-		});
-	}
 	it("does not recreate output for a deleted media", async () => {
 		const old = delayed();
 		await old.started;
@@ -589,68 +551,6 @@ describe("revision-aware full-image CCIP", () => {
 			}),
 		);
 	});
-	it("reserves every batch target atomically and keeps each observer bound after newer requests", async () => {
-		const second = await createFixtureMedia("second.png");
-		const job = await jobRepo.create({
-			type: "extract_ccip_vector",
-			mediaSourceId: sourceId,
-			payload: { mediaIds: [mediaId, second.id], force: true },
-		});
-		const [active] = await jobRepo.claimPending(1, {
-			includeTypes: ["extract_ccip_vector"],
-		});
-		const owner = { jobId: job.id, attemptCount: active.attemptCount ?? 0 };
-		const requests = await service.reserveForJob(
-			owner,
-			sourceId,
-			[mediaId, second.id],
-			true,
-		);
-		expect(Object.keys(requests).sort()).toEqual([mediaId, second.id].sort());
-		expect(
-			(await processingStateRepo.findByMediaIds([mediaId, second.id])).every(
-				(row) => row.executionMode === "scheduled" && row.status === "pending",
-			),
-		).toBe(true);
-		expect(infer).not.toHaveBeenCalled();
-		await service.runTask();
-		await service.runTask();
-		const replacement = await service.requestExtraction(
-			sourceId,
-			mediaId,
-			true,
-		);
-		expect(replacement.requestId).not.toBe(requests[mediaId].requestId);
-		await expect(
-			service.extract(sourceId, mediaId, false, owner, requests[mediaId]),
-		).rejects.toThrow(MediaProcessingSupersededError);
-		expect(
-			(
-				await service.reserveForJob(owner, sourceId, [mediaId, second.id], true)
-			)[mediaId],
-		).toEqual(requests[mediaId]);
-	});
-	it("rolls back an entire observer reservation when one target is invalid", async () => {
-		const job = await jobRepo.create({
-			type: "extract_ccip_vector",
-			mediaSourceId: sourceId,
-			payload: { mediaIds: [mediaId] },
-		});
-		const [active] = await jobRepo.claimPending(1, {
-			includeTypes: ["extract_ccip_vector"],
-		});
-		await expect(
-			service.reserveForJob(
-				{ jobId: job.id, attemptCount: active.attemptCount ?? 0 },
-				sourceId,
-				[mediaId, "99999999-9999-4999-8999-999999999999"],
-			),
-		).rejects.toThrow();
-		expect(await state()).toBeUndefined();
-		expect((await jobRepo.findById(job.id))?.payload).not.toHaveProperty(
-			"processingRequests",
-		);
-	});
 	it("preserves successful inline vectors during startup handoff", async () => {
 		const initial = await run();
 		await database
@@ -664,34 +564,5 @@ describe("revision-aware full-image CCIP", () => {
 		});
 		expect((await run()).record).toEqual(initial.record);
 		expect(infer).toHaveBeenCalledOnce();
-	});
-	it("coalesces overlapping observers with reversed target order", async () => {
-		const second = await createFixtureMedia("second.png");
-		for (const ids of [
-			[mediaId, second.id],
-			[second.id, mediaId],
-		])
-			await jobRepo.create({
-				type: "extract_ccip_vector",
-				mediaSourceId: sourceId,
-				payload: { mediaIds: ids },
-			});
-		const active = await jobRepo.claimPending(2, {
-			includeTypes: ["extract_ccip_vector"],
-		});
-		const reservations = await Promise.all(
-			active.map((job, index) =>
-				service.reserveForJob(
-					{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
-					sourceId,
-					index === 0 ? [mediaId, second.id] : [second.id, mediaId],
-				),
-			),
-		);
-		expect(reservations[0]).toEqual(reservations[1]);
-		expect(
-			await processingStateRepo.findByMediaIds([mediaId, second.id]),
-		).toHaveLength(2);
-		expect(infer).not.toHaveBeenCalled();
 	});
 });

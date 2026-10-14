@@ -19,7 +19,7 @@ Processing results and item attempt outcomes commit together through the databas
 
 ## Rollback rehearsal
 
-Stop all new writers and drain native/file tasks, then run `bun scripts/batch-run-cutover.ts rollback --writers-stopped`.
+Stop all new writers and drain native/file tasks. If final generic retirement (0045) is active, first release that fence using [jobs-runtime-retirement.md](./jobs-runtime-retirement.md); then run `bun scripts/batch-run-cutover.ts rollback --writers-stopped`.
 
 Live dispatch leases or processing leases linked to batch items refuse rollback. Old IDs and private unknown fields are restored; successful targets remain terminal. Native runs reconstruct fixed legacy parents/children. ID collisions abort the whole transaction. Cancelled or paused batch-only pending work becomes failed before ordinary demand ownership is restored, preventing old schedulers from silently reviving it.
 

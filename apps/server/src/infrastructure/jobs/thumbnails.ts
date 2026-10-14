@@ -2,20 +2,11 @@ import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type {
-	ProcessingOwner,
-	MediaProcessingClaim,
-} from "@solid-imager/core/domain/processing/schemas";
+import type { MediaProcessingClaim } from "@solid-imager/core/domain/processing/schemas";
 import type { PreparedThumbnail } from "@solid-imager/application/services/media-processing-service";
-import {
-	generateThumbnailJobPayloadSchema,
-	type ThumbnailSize,
-} from "@solid-imager/core/domain/thumbnails/schemas";
-import type { Job, Media } from "~/infrastructure/db/schema";
-import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { type ThumbnailSize } from "@solid-imager/core/domain/thumbnails/schemas";
+import type { Media } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { services } from "~/infrastructure/service-registry";
 
@@ -185,12 +176,11 @@ export async function generateThumbnailForMedia(
 	mediaSourceId: string,
 	mediaId: string,
 	_size: ThumbnailSize,
-	owner?: ProcessingOwner,
 	force = false,
 ): Promise<void> {
 	await services
 		.getMediaProcessingService()
-		.processTask(mediaSourceId, mediaId, "thumbnail", owner, force);
+		.processTask(mediaSourceId, mediaId, "thumbnail", force);
 }
 
 /**
@@ -259,162 +249,4 @@ export async function queueThumbnailGeneration(
 		.finally(() => thumbnailQueueInFlight.delete(key));
 	thumbnailQueueInFlight.set(key, queued);
 	await queued;
-}
-
-export async function processThumbnailGenerationJob(job: Job): Promise<void> {
-	const payload = generateThumbnailJobPayloadSchema.parse(job.payload);
-	if (!job.mediaSourceId) {
-		throw new Error("Thumbnail generation job is missing mediaSourceId");
-	}
-
-	try {
-		const owner = { jobId: job.id, attemptCount: job.attemptCount ?? 0 };
-
-		let request = payload.processingRequest;
-		if (payload.retryFileTasks) {
-			const expected = request;
-			request = await services
-				.getJobRepository()
-				.withActiveAttempt(owner.jobId, owner.attemptCount, async (tx) => {
-					await MediaRepository.findById(payload.mediaId, tx, {
-						forUpdate: true,
-					});
-					const state = (
-						await MediaProcessingStateRepository.findByMediaIds(
-							[payload.mediaId],
-							tx,
-						)
-					).find((row) => row.taskKind === "thumbnail");
-					let next = expected;
-					if (
-						!expected ||
-						(state?.requestId === expected.requestId &&
-							state.requestedRevision === expected.requestedRevision &&
-							state.status === "failed")
-					) {
-						const reserved = await services
-							.getMediaProcessingService()
-							.requestTask(
-								job.mediaSourceId ?? "",
-								payload.mediaId,
-								"thumbnail",
-								state?.status === "failed",
-								tx,
-								true,
-							);
-						if (reserved)
-							next = {
-								requestId: reserved.requestId,
-								requestedRevision: reserved.requestedRevision,
-							};
-					}
-					await services.getJobRepository().update(
-						job.id,
-						{
-							payload: {
-								...payload,
-								retryFileTasks: false,
-								processingRequest: next,
-							},
-						},
-						tx,
-					);
-					return next;
-				});
-		}
-		if (request)
-			await services
-				.getMediaProcessingService()
-				.waitForTask(payload.mediaId, "thumbnail", request, owner);
-		else {
-			// Bind old payloads once so stale recovery cannot replay a force request.
-			request = await services
-				.getJobRepository()
-				.withActiveAttempt(owner.jobId, owner.attemptCount, async (tx) => {
-					const reserved = await services
-						.getMediaProcessingService()
-						.requestTask(
-							job.mediaSourceId ?? "",
-							payload.mediaId,
-							"thumbnail",
-							payload.force,
-							tx,
-							true,
-						);
-					const identity = reserved
-						? {
-								requestId: reserved.requestId,
-								requestedRevision: reserved.requestedRevision,
-							}
-						: undefined;
-					await services.getJobRepository().update(
-						job.id,
-						{
-							payload: {
-								...payload,
-								force: false,
-								retryFileTasks: false,
-								processingRequest: identity,
-							},
-						},
-						tx,
-					);
-					return identity;
-				});
-			if (request)
-				await services
-					.getMediaProcessingService()
-					.waitForTask(payload.mediaId, "thumbnail", request, owner);
-		}
-
-		await updateThumbnailParentProgress(job, true);
-	} catch (error) {
-		await updateThumbnailParentProgress(job, false);
-		throw error;
-	}
-}
-
-async function updateThumbnailParentProgress(
-	job: Job,
-	succeeded: boolean,
-): Promise<void> {
-	if (!job.parentId) {
-		return;
-	}
-	const jobRepo = services.getJobRepository();
-	const progress = succeeded
-		? await jobRepo.incrementProgress(job.parentId, job.id)
-		: await jobRepo.incrementFailedCount(job.parentId, job.id);
-	if (!progress) {
-		return;
-	}
-	RealtimeEventBus.publishJob("job-progress", {
-		jobId: job.parentId,
-		processed: progress.processed,
-		total: progress.total,
-	});
-	if (progress.processed + progress.failed < progress.total) {
-		return;
-	}
-	await finalizeThumbnailParent(job.parentId, progress);
-}
-
-async function finalizeThumbnailParent(
-	parentId: string,
-	progress: { processed: number; failed: number; total: number },
-): Promise<void> {
-	const jobRepo = services.getJobRepository();
-	if (progress.failed > 0) {
-		await jobRepo.update(parentId, { status: "failed" });
-		RealtimeEventBus.publishJob("job-failed", {
-			jobId: parentId,
-			error: `${progress.failed} thumbnail job(s) failed`,
-		});
-		return;
-	}
-	await jobRepo.update(parentId, { status: "completed" });
-	RealtimeEventBus.publishJob("job-completed", {
-		jobId: parentId,
-		message: "Thumbnail generation completed",
-	});
 }

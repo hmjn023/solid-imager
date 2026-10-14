@@ -9,6 +9,8 @@ import { jobs, batchRuns, batchItems } from "~/infrastructure/db/schema";
 import { batchParentJobTypes } from "@solid-imager/core/domain/jobs/schemas";
 import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
+import { getImportRequestService } from "~/infrastructure/services/import-request-service";
+import { importRequests } from "~/infrastructure/db/schema";
 describe("dedicated batch retry through the Jobs facade", () => {
 	const created: string[] = [];
 	const client = createRouterClient(jobsRouter);
@@ -24,22 +26,24 @@ describe("dedicated batch retry through the Jobs facade", () => {
 		"rejects a retired generic %s producer",
 		async (type) => {
 			await expect(
-				services
-					.getJobRepository()
-					.create({ type, status: "failed", payload: {} }),
+				db.insert(jobs).values({ type, status: "failed", payload: {} }),
 			).rejects.toThrow();
 		},
 	);
 	it("keeps import approval records non-executable", async () => {
-		const record = await services
-			.getJobRepository()
-			.create({ type: "import_request", status: "failed" });
+		const imports = getImportRequestService();
+		const url = `https://example.invalid/${randomUUID()}.png`;
+		await imports.add([{ targetUrl: url }]);
+		const record = (await imports.listPending()).find(
+			(request) => request.item.targetUrl === url,
+		);
+		if (!record) throw new Error("Missing import request");
 		try {
 			await expect(client.retry({ id: record.id })).rejects.toMatchObject({
-				code: "BAD_REQUEST",
+				code: "NOT_FOUND",
 			});
 		} finally {
-			await db.delete(jobs).where(eq(jobs.id, record.id));
+			await db.delete(importRequests).where(eq(importRequests.id, record.id));
 		}
 	});
 	async function fixture(status: "failed" | "pending") {

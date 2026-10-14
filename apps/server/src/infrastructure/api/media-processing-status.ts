@@ -8,10 +8,9 @@ import {
 } from "@solid-imager/core/domain/processing/schemas";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { MEDIA_PROCESSING_LEASE_MS } from "@solid-imager/db/repositories/media-processing-state-repository";
-import { and, eq, inArray } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
 import {
-	jobs,
 	medias,
 	mediaSources,
 	mediaProcessingStates,
@@ -30,7 +29,6 @@ export async function findCurrentProcessingSteps(mediaIds: string[]) {
 			media: medias,
 			source: mediaSources,
 			state: mediaProcessingStates,
-			owner: jobs,
 		})
 		.from(medias)
 		.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
@@ -38,12 +36,11 @@ export async function findCurrentProcessingSteps(mediaIds: string[]) {
 			mediaProcessingStates,
 			eq(mediaProcessingStates.mediaId, medias.id),
 		)
-		.leftJoin(jobs, and(eq(jobs.id, mediaProcessingStates.ownerJobId)))
 		.where(inArray(medias.id, mediaIds));
 	const settings = processingSettingsFromConfig(
 		services.getConfigService().getConfig(),
 	);
-	for (const { media, source, state, owner } of rows) {
+	for (const { media, source, state } of rows) {
 		const connection = localConnectionSchema.safeParse(source.connectionInfo);
 		if (source.type !== "local" || !connection.success) continue;
 		if (!result.has(media.id))
@@ -92,11 +89,7 @@ export async function findCurrentProcessingSteps(mediaIds: string[]) {
 			continue;
 		const active =
 			state.heartbeatAt &&
-			Date.now() - state.heartbeatAt.getTime() < MEDIA_PROCESSING_LEASE_MS &&
-			(!state.ownerJobId ||
-				(owner?.status === "in_progress" &&
-					owner.attemptCount === state.ownerAttemptCount &&
-					!owner.cancelRequestedAt));
+			Date.now() - state.heartbeatAt.getTime() < MEDIA_PROCESSING_LEASE_MS;
 		step.status =
 			state.status === "completed"
 				? "completed"

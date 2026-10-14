@@ -169,7 +169,6 @@ describe("TaggingServiceImpl", () => {
 				}),
 			},
 			transactionManager: { transaction: async (callback) => callback({}) },
-			jobRepo: {} as any,
 
 			aiClient: mockAiClient,
 			sourceRepo: mockSourceRepo,

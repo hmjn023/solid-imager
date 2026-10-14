@@ -1,14 +1,11 @@
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { SourceRunRepository } from "~/infrastructure/repositories/source-run-repository";
 import { sourceRunService } from "~/infrastructure/services/source-run-service";
 import { isJobTransferPath } from "~/infrastructure/services/job-transfer-storage";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
 export type ResolvedJobArtifact = {
-	job: Pick<Job, "id">;
 	path: string;
 	fileName: string;
 	contentType: string;
@@ -33,7 +30,6 @@ export async function resolveJobArtifact(
 		const stat = await fs.stat(artifact.path).catch(() => null);
 		if (!stat?.isFile()) return null;
 		return {
-			job: { id: run.id },
 			path: artifact.path,
 			fileName: artifact.fileName,
 			contentType: artifact.contentType,
@@ -41,39 +37,7 @@ export async function resolveJobArtifact(
 			stream: nodeStreamToWebReadable(createReadStream(artifact.path)),
 		};
 	}
-	const job = await JobRepository.findById(jobId);
-	if (
-		job?.status !== "completed" ||
-		!job.artifactPath ||
-		!job.artifactFileName ||
-		!job.artifactContentType ||
-		!isJobTransferPath(job.id, job.artifactPath)
-	) {
-		return null;
-	}
-
-	if (job.artifactExpiresAt && job.artifactExpiresAt <= new Date()) {
-		return null;
-	}
-
-	let stat: Awaited<ReturnType<typeof fs.stat>>;
-	try {
-		stat = await fs.stat(job.artifactPath);
-	} catch {
-		return null;
-	}
-	if (!stat.isFile()) {
-		return null;
-	}
-
-	return {
-		job,
-		path: job.artifactPath,
-		fileName: job.artifactFileName,
-		contentType: job.artifactContentType,
-		size: stat.size,
-		stream: nodeStreamToWebReadable(createReadStream(job.artifactPath)),
-	};
+	return null;
 }
 
 function encodeContentDispositionFilename(fileName: string): string {

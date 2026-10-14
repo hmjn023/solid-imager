@@ -9,7 +9,6 @@
     "./domain/events/*": "./src/domain/events/*.ts",
     "./domain/errors": "./src/domain/errors/index.ts",
     "./domain/*/schemas": "./src/domain/*/schemas.ts",
-    "./domain/jobs/dispatch": "./src/domain/jobs/dispatch.ts",
     "./domain/repositories/*": "./src/domain/repositories/*.ts",
     "./domain/services/*": "./src/domain/services/*.ts",
     "./domain/interfaces/*": "./src/domain/interfaces/*.ts",

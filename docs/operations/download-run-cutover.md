@@ -47,6 +47,7 @@ PostgreSQLはDB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_DATABASE（またはDB_NAME�
 
 1. 全download producer/workerとimport承認を停止・drainし、DB/source/stagingをsnapshotする。
 2. inspectのliveLeasesが0であることを確認する。生きたleaseがあればrollbackは拒否する。強制的にtokenを無効化せず、停止済みworkerのlease expiryまたは正常なdrainを待つ。
+   最終 retirement (0045) が有効なら、先に [jobs-runtime-retirement.md](./jobs-runtime-retirement.md) に従って最終 write fence を解除する。
 3. `bun scripts/download-run-cutover.ts rollback --writers-stopped` を実行し、復元件数・logical outcome・予約・checkpoint・source/fileを照合する。
 4. 互換性のある旧バージョン（このstackの#793まで）だけを起動する。ブラウザも再読み込みする。
 

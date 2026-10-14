@@ -1,4 +1,7 @@
 import { SourceWorker } from "~/infrastructure/jobs/source-worker";
+import { createImportRequestRepository } from "@solid-imager/db/repositories/import-request-repository";
+import { getExecutor } from "~/infrastructure/db/executor";
+import { JobRetirementRepository } from "~/infrastructure/repositories/job-retirement-repository";
 import { sourceRunService } from "~/infrastructure/services/source-run-service";
 import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import { downloadRunService } from "~/infrastructure/services/download-run-service";
@@ -20,17 +23,14 @@ import { DownloadWorker } from "~/infrastructure/jobs/download-worker";
 import { processDownloadRun } from "~/infrastructure/jobs/download-jobs";
 import { DownloadRunRepository } from "~/infrastructure/repositories/download-run-repository";
 import {
-	deleteThumbnail,
 	thumbnailExists,
 	prepareProcessingThumbnail,
-	processThumbnailGenerationJob,
 } from "~/infrastructure/jobs/thumbnails";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository as ActualSourceRepo } from "~/infrastructure/repositories/source-repository";
@@ -38,10 +38,6 @@ import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { services } from "~/infrastructure/service-registry";
 import { configureCcipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { CharacterServiceImpl } from "~/infrastructure/services/character-service";
-import {
-	configureThumbnailJobHandlers,
-	processJob,
-} from "~/infrastructure/services/job-dispatch-service";
 import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
 import { ServerConfigService } from "~/infrastructure/services/server-config-service";
@@ -86,13 +82,6 @@ export function initServices() {
 	services.registerCharacterRepository(DrizzleCharacterRepository);
 	services.registerIpRepository(IpRepository);
 
-	const jobRepo = JobRepository;
-	services.registerJobRepository(jobRepo);
-	configureThumbnailJobHandlers({
-		deleteThumbnail,
-		processThumbnailGenerationJob,
-	});
-
 	// Register Services
 	services.registerMediaStorage(ServerMediaStorage);
 	services.registerFileSystem(new NodeFileSystem());
@@ -106,8 +95,6 @@ export function initServices() {
 	);
 
 	const jobWorker = new JobWorker(
-		jobRepo,
-		processJob,
 		new DownloadWorker(DownloadRunRepository, processDownloadRun),
 		new BatchWorker(BatchRunRepository, batchRunService),
 		new SourceWorker(),
@@ -152,7 +139,6 @@ export function initServices() {
 		characterRepo: services.getCharacterRepository(),
 		ipRepo: services.getIpRepository(),
 		projectRepo: services.getProjectRepository(),
-		jobRepo,
 		imageProcessor: services.getImageProcessor(),
 		mediaStorage: services.getMediaStorage(),
 		logger,
@@ -160,8 +146,6 @@ export function initServices() {
 		enableAutoCcipExtraction: config.jobs.enableAutoCcipExtraction,
 		supportedExtensions: config.media.supportedExtensions,
 		prepareThumbnail: prepareProcessingThumbnail,
-		publishJobProgress: (jobId, processed, total) =>
-			RealtimeEventBus.publishJob("job-progress", { jobId, processed, total }),
 		publishSourceEvent: (mediaSourceId, event, data) =>
 			RealtimeEventBus.publishSource(mediaSourceId, event, data),
 	});
@@ -213,9 +197,12 @@ export function startBackgroundWorker(): Promise<void> {
 		await host.__MEDIA_FILE_WORKER__?.stop();
 		await aiDrain;
 		// Deployments must stop old-version writers before starting this version.
+		await JobRetirementRepository.preflight();
 		await downloadRunService.initialize();
+		await createImportRequestRepository(getExecutor).ensureCutover();
 		await batchRunService.initialize();
 		await sourceRunService.initialize();
+		await JobRetirementRepository.initialize();
 		await services.getMediaProcessingService().reconcileFileTasks();
 		await taggingService.reconcileTaggingTasks();
 		await ccipVectorService.reconcileTasks();

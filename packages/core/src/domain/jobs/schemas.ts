@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { processingStepDtoSchema } from "./processing";
 export * from "./processing";
+export * from "./retirement";
 
 export const jobStatusSchema = z.enum([
 	"pending",

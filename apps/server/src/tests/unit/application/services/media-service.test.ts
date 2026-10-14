@@ -7,7 +7,6 @@ import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
@@ -18,7 +17,6 @@ import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manag
 
 vi.mock("~/infrastructure/service-registry", () => {
 	const mockServices = {
-		getJobRepository: vi.fn(),
 		registerMediaRepository: vi.fn(),
 		registerSourceRepository: vi.fn(),
 		registerTagRepository: vi.fn(),
@@ -26,7 +24,6 @@ vi.mock("~/infrastructure/service-registry", () => {
 		registerProjectRepository: vi.fn(),
 		registerCharacterRepository: vi.fn(),
 		registerIpRepository: vi.fn(),
-		registerJobRepository: vi.fn(),
 		registerMediaStorage: vi.fn(),
 		registerFileSystem: vi.fn(),
 		registerImageProcessor: vi.fn(),
@@ -84,7 +81,6 @@ describe("MediaService Unit Tests", () => {
 	let mockProjectRepository: IProjectRepository;
 	let mockCharacterRepository: CharacterRepository;
 	let mockIpRepository: IIpRepository;
-	let mockJobRepository: IJobRepository;
 	let localMockMediaProcessingService: any;
 
 	beforeEach(async () => {
@@ -94,28 +90,6 @@ describe("MediaService Unit Tests", () => {
 		);
 
 		// Mock registry
-		const { services } = await import("~/infrastructure/service-registry");
-		mockJobRepository = {
-			create: vi.fn(),
-			createIfUnique: vi.fn(),
-			withActiveAttempt: vi.fn(),
-			heartbeat: vi.fn(),
-			findById: vi.fn(),
-			findPending: vi.fn(),
-			claimPending: vi.fn(),
-			requeueStaleInProgress: vi.fn(),
-			markAsInProgress: vi.fn(),
-			markAsCompleted: vi.fn(),
-			markAsFailed: vi.fn(),
-			requestCancellation: vi.fn(),
-			markAsCancelled: vi.fn(),
-			isCancellationRequested: vi.fn(),
-			setArtifact: vi.fn(),
-			update: vi.fn(),
-			incrementProgress: vi.fn(),
-			incrementFailedCount: vi.fn(),
-		};
-		services.getJobRepository = vi.fn().mockReturnValue(mockJobRepository);
 
 		// Create mocks for all dependencies
 		mockMediaRepository = {
@@ -346,7 +320,6 @@ describe("MediaService Unit Tests", () => {
 				}),
 			);
 			expect(mockMediaRepository.upsert).toHaveBeenCalled();
-			expect(mockJobRepository.createIfUnique).not.toHaveBeenCalled();
 		});
 	});
 

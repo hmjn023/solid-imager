@@ -20,7 +20,6 @@ import {
 	serializeMediaProcessingInput,
 	type CcipProcessingSettings,
 	type MediaProcessingInput,
-	type ProcessingOwner,
 	type ProcessingRequestIdentity,
 } from "@solid-imager/core/domain/processing/schemas";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
@@ -128,14 +127,12 @@ export class CcipVectorService {
 		mediaSourceId: string,
 		mediaId: string,
 		force = false,
-		owner?: ProcessingOwner,
 		request?: ProcessingRequestIdentity,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
 		const media = await this.requireImage(mediaSourceId, mediaId);
 		const input = await this.inputFor(media);
 		const { response, reused } = await this.tasks.execute(
 			input,
-			owner,
 			force,
 			request,
 		);
@@ -151,14 +148,6 @@ export class CcipVectorService {
 	) {
 		return this.tasks.requestForMedia(sourceId, mediaId, force, tx, batchId);
 	}
-	reserveForJob(
-		owner: ProcessingOwner,
-		sourceId: string,
-		mediaIds: string[],
-		force = false,
-	) {
-		return this.tasks.reserveForJob(owner, sourceId, mediaIds, force);
-	}
 	runTask() {
 		return this.tasks.runOnce();
 	}
@@ -171,7 +160,6 @@ export class CcipVectorService {
 		mediaIds: string[],
 		force = false,
 		concurrency = 1,
-		owner?: ProcessingOwner,
 		requests?: Record<string, ProcessingRequestIdentity>,
 	) {
 		if (!Number.isSafeInteger(concurrency) || concurrency < 1)
@@ -182,7 +170,6 @@ export class CcipVectorService {
 				mediaSourceId,
 				mediaId,
 				force,
-				owner,
 				requests?.[mediaId],
 			)),
 		}));

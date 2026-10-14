@@ -3,19 +3,16 @@ import type {
 	TransactionManager,
 } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
-	aiProcessingObserverSchema,
 	MediaProcessingSupersededError,
 	serializeMediaProcessingInput,
 	type AiTaskKind,
 	type TaggingProcessingSettings,
 	type MediaProcessingInput,
-	type ProcessingOwner,
 	type MediaProcessingClaim,
 	type ProcessingRequestIdentity,
 	type ScheduledMediaWork,
 } from "@solid-imager/core/domain/processing/schemas";
 import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
@@ -28,7 +25,6 @@ import { MediaProcessingScheduler } from "./media-processing-scheduler";
 export type AiMediaTaskDeps = {
 	processingStateRepo: IMediaProcessingSchedulerRepository;
 	transactionManager: TransactionManager;
-	jobRepo: IJobRepository;
 	mediaRepo: IMediaRepository;
 	sourceRepo: SourceRepository;
 	logger?: ILogger;
@@ -163,80 +159,13 @@ export class AiMediaTaskService<Result> {
 		return tx ? action(tx) : this.deps.transactionManager.transaction(action);
 	}
 	/** Bind every target atomically before waiting. Retry replaces only this observer's failed request. */
-	reserveForJob(
-		owner: ProcessingOwner,
-		sourceId: string,
-		mediaIds: string[],
-		force = false,
-	) {
-		return this.deps.jobRepo.withActiveAttempt(
-			owner.jobId,
-			owner.attemptCount,
-			async (tx) => {
-				const job = await this.deps.jobRepo.findById(owner.jobId, tx);
-				const payload = aiProcessingObserverSchema.parse(job?.payload ?? {});
-				const requests = { ...payload.processingRequests };
-				// Acquire media locks in stable order across overlapping batches.
-				for (const mediaId of [...new Set(mediaIds)].sort()) {
-					const expected = requests[mediaId];
-					await this.deps.mediaRepo.findById(mediaId, tx, { forUpdate: true });
-					const state = (
-						await this.deps.processingStateRepo.findByMediaIds([mediaId], tx)
-					).find((row) => row.taskKind === this.kind);
-					if (
-						expected &&
-						!(
-							payload.retryAiTasks &&
-							state?.requestId === expected.requestId &&
-							state.requestedRevision === expected.requestedRevision &&
-							state.status === "failed"
-						)
-					)
-						continue;
-					const reserved = await this.requestForMedia(
-						sourceId,
-						mediaId,
-						expected ? true : force,
-						tx,
-					);
-					requests[mediaId] = {
-						requestId: reserved.requestId,
-						requestedRevision: reserved.requestedRevision,
-					};
-				}
-				await this.deps.jobRepo.update(
-					owner.jobId,
-					{
-						payload: {
-							...payload,
-							processingRequests: requests,
-							force: false,
-							retryAiTasks: false,
-						},
-					},
-					tx,
-				);
-				return requests;
-			},
-		);
-	}
 	async execute(
 		input: MediaProcessingInput,
-		owner?: ProcessingOwner,
 		force = false,
 		expected?: ProcessingRequestIdentity,
 	): Promise<{ response: Result; reused: boolean }> {
 		let identity = expected;
 		let reused = false;
-		if (!identity && owner)
-			identity = (
-				await this.reserveForJob(
-					owner,
-					input.mediaSourceId,
-					[input.mediaId],
-					force,
-				)
-			)[input.mediaId];
 		if (!identity) {
 			const state = await this.requestForMedia(
 				input.mediaSourceId,
@@ -248,13 +177,7 @@ export class AiMediaTaskService<Result> {
 		}
 		const request = identity;
 		const active = <T>(action: (tx: Transaction) => Promise<T>) =>
-			owner
-				? this.deps.jobRepo.withActiveAttempt(
-						owner.jobId,
-						owner.attemptCount,
-						action,
-					)
-				: this.deps.transactionManager.transaction(action);
+			this.deps.transactionManager.transaction(action);
 		const deadline = Date.now() + 120_000;
 		for (;;) {
 			const response = await active(async (tx) => {

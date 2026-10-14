@@ -24,8 +24,6 @@ import {
 	type MediaProcessingServiceDeps,
 } from "@solid-imager/application/services/media-processing-service";
 import { MediaUploadService } from "@solid-imager/application/services/media-upload-service";
-import { JobAttemptLostError } from "@solid-imager/core/domain/jobs/schemas";
-import { createJobRepository } from "@solid-imager/db/repositories/job-repository";
 import { createDownloadRunRepository } from "@solid-imager/db/repositories/download-run-repository";
 import { downloadClaimSchema } from "@solid-imager/core/domain/downloads/schemas";
 import { createMediaRepository } from "@solid-imager/db/repositories/media-repository";
@@ -61,7 +59,6 @@ describe("durable media processing", () => {
 	let postgres: Pool | undefined;
 	// This test owns its DB; the application worker cannot claim its jobs.
 	const executor = (tx?: unknown) => (tx ?? database) as DrizzleExecutor;
-	const jobRepo = createJobRepository(executor);
 	const downloadRepo = createDownloadRunRepository(executor);
 	const mediaRepo = createMediaRepository(executor);
 	const sourceRepo = createSourceRepository(executor);
@@ -172,7 +169,6 @@ describe("durable media processing", () => {
 			sourceRepo,
 			mediaRepo,
 			tagRepo,
-			jobRepo,
 			authorRepo: {} as MediaProcessingServiceDeps["authorRepo"],
 			characterRepo: {} as MediaProcessingServiceDeps["characterRepo"],
 			ipRepo: {} as MediaProcessingServiceDeps["ipRepo"],
@@ -211,7 +207,6 @@ describe("durable media processing", () => {
 			},
 			prepareThumbnail,
 			publishSourceEvent: vi.fn(),
-			publishJobProgress: vi.fn(),
 		};
 		service = new MediaProcessingServiceImpl(deps);
 	});
@@ -647,74 +642,6 @@ describe("durable media processing", () => {
 			).toHaveBeenCalledOnce();
 		},
 	);
-	it("a canceled compatibility observer does not own or cancel shared file computation", async () => {
-		const media = await register();
-		const job = await jobRepo.create({
-			type: "processMedia",
-			mediaSourceId: sourceId,
-			payload: { mediaId: media.id },
-		});
-		const [claimed] = await jobRepo.claimPending(1, {
-			includeTypes: ["processMedia"],
-		});
-		await jobRepo.requestCancellation(job.id);
-		await expect(service.executeProcessMediaJob(claimed)).rejects.toThrow(
-			JobAttemptLostError,
-		);
-		await finish();
-		expect(await task(media.id, "metadata")).toMatchObject({
-			status: "completed",
-			ownerJobId: null,
-		});
-	});
-	it("compatibility jobs observe file output and resume a failed checkpoint", async () => {
-		const media = await register();
-		extractMetadata.mockRejectedValueOnce(new Error("bad file"));
-		await finish();
-		await database.delete(jobs);
-		const queued = await jobRepo.create({
-			type: "processMedia",
-			mediaSourceId: sourceId,
-			payload: { mediaId: media.id },
-		});
-		const [first] = await jobRepo.claimPending(1, {
-			includeTypes: ["processMedia"],
-		});
-		await expect(service.executeProcessMediaJob(first)).rejects.toThrow(
-			"metadata",
-		);
-		await jobRepo.markAsFailed(first.id, "metadata", first.attemptCount ?? 0);
-		await jobRepo.update(queued.id, {
-			status: "pending",
-			payload: { mediaId: media.id, retryFileTasks: true },
-		});
-		const [second] = await jobRepo.claimPending(1, {
-			includeTypes: ["processMedia"],
-		});
-		const observer = service.executeProcessMediaJob(second);
-		await vi.waitFor(async () =>
-			expect(await task(media.id, "metadata")).toMatchObject({
-				status: "pending",
-			}),
-		);
-		await finish();
-		await observer;
-		expect(
-			(await jobRepo.findById(queued.id))?.processingCheckpoint?.steps.metadata
-				.status,
-		).toBe("completed");
-		expect(prepareThumbnail).toHaveBeenCalledOnce();
-		expect(
-			(await deps.processingStateRepo.findByMediaIds([media.id])).find(
-				(row) => row.taskKind === "ccip",
-			),
-		).toMatchObject({ status: "pending", executionMode: "scheduled" });
-		expect(
-			(await database.select().from(jobs)).filter(
-				(job) => job.type === "extract_ccip_vector",
-			),
-		).toHaveLength(0);
-	});
 	it.each(["metadata", "thumbnail"] as const)(
 		"fences old %s output after a newer input completes",
 		async (kind) => {
@@ -1007,37 +934,5 @@ describe("durable media processing", () => {
 		expect(
 			(await rows(media.id)).every((row) => row.executionMode === "inline"),
 		).toBe(true);
-	});
-
-	it("a stale compatibility observer cannot reset a terminal file request", async () => {
-		const media = await register();
-		extractMetadata.mockRejectedValueOnce(new Error("invalid file"));
-		await finish();
-		await database.delete(jobs);
-		const queued = await jobRepo.create({
-			type: "processMedia",
-			mediaSourceId: sourceId,
-			payload: { mediaId: media.id },
-		});
-		const [first] = await jobRepo.claimPending(1, {
-			includeTypes: ["processMedia"],
-		});
-		await expect(service.executeProcessMediaJob(first)).rejects.toThrow(
-			"metadata",
-		);
-		const terminal = await task(media.id, "metadata");
-		await database
-			.update(jobs)
-			.set({ updatedAt: new Date(0) })
-			.where(eq(jobs.id, queued.id));
-		await jobRepo.requeueStaleInProgress(new Date());
-		const [second] = await jobRepo.claimPending(1, {
-			includeTypes: ["processMedia"],
-		});
-		await expect(service.executeProcessMediaJob(second)).rejects.toThrow(
-			"metadata",
-		);
-		expect(await task(media.id, "metadata")).toEqual(terminal);
-		expect(extractMetadata).toHaveBeenCalledOnce();
 	});
 });

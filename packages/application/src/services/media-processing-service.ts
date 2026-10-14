@@ -1,13 +1,5 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
-import {
-	JobAttemptLostError,
-	mediaProcessingCheckpointSchema,
-	processMediaPayloadSchema,
-	type MediaProcessingCheckpoint,
-	type ProcessingStep,
-	type ProcessingStepKind,
-} from "@solid-imager/core/domain/jobs/schemas";
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type {
 	Transaction,
@@ -20,10 +12,6 @@ import type {
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type {
-	IJobRepository,
-	Job,
-} from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import type {
@@ -33,7 +21,6 @@ import type {
 	AiTaskKind,
 	MediaProcessingState,
 	MediaTaskKind,
-	ProcessingOwner,
 	ProcessingSettings,
 } from "@solid-imager/core/domain/processing/schemas";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
@@ -89,7 +76,6 @@ export type MediaProcessingServiceDeps = {
 	characterRepo: CharacterRepository;
 	ipRepo: IIpRepository;
 	projectRepo: IProjectRepository;
-	jobRepo: IJobRepository;
 	imageProcessor: IImageProcessor;
 	mediaStorage: IMediaStorage;
 	logger?: ILogger;
@@ -113,7 +99,6 @@ export type MediaProcessingServiceDeps = {
 		kinds: AiTaskKind[],
 		tx: Transaction,
 	) => Promise<void>;
-	publishJobProgress: (jobId: string, processed: number, total: number) => void;
 };
 
 export class MediaProcessingServiceImpl implements IMediaProcessingService {
@@ -126,14 +111,12 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly characterRepo: CharacterRepository;
 	private readonly ipRepo: IIpRepository;
 	private readonly projectRepo: IProjectRepository;
-	private readonly jobRepo: IJobRepository;
 	private readonly mediaStorage: IMediaStorage;
 	private enableAutoTagging: boolean;
 	private enableAutoCcipExtraction: boolean;
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
 	private readonly transactionManager: TransactionManager;
 	private readonly publishSourceEvent: SourceEventPublisher;
-	private readonly publishJobProgress: MediaProcessingServiceDeps["publishJobProgress"];
 	private readonly logger?: ILogger;
 
 	constructor(deps: MediaProcessingServiceDeps) {
@@ -146,14 +129,12 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		this.characterRepo = deps.characterRepo;
 		this.ipRepo = deps.ipRepo;
 		this.projectRepo = deps.projectRepo;
-		this.jobRepo = deps.jobRepo;
 		this.mediaStorage = deps.mediaStorage;
 		this.enableAutoTagging = deps.enableAutoTagging;
 		this.enableAutoCcipExtraction = deps.enableAutoCcipExtraction ?? false;
 		this.supportedExtensions = deps.supportedExtensions;
 		this.transactionManager = deps.transactionManager;
 		this.publishSourceEvent = deps.publishSourceEvent;
-		this.publishJobProgress = deps.publishJobProgress;
 		this.logger = deps.logger;
 	}
 
@@ -279,221 +260,6 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		return media;
 	}
 
-	async executeProcessMediaJob(job: Job): Promise<void> {
-		if (job.type !== "processMedia")
-			throw new Error("Expected processMedia job");
-		const payload = processMediaPayloadSchema.parse(job.payload);
-		const media = await this.mediaRepo.findById(payload.mediaId);
-		if (!media || media.mediaSourceId !== job.mediaSourceId) {
-			throw new Error("Processing target no longer exists in this source");
-		}
-		const source = await this.sourceRepo.findById(media.mediaSourceId);
-		if (source?.type !== "local")
-			throw new Error("Local processing source not found");
-		const sourcePath = localConnectionSchema.parse(source.connectionInfo).path;
-		const revisionOf = (media: Media) =>
-			getMediaProcessingRevision(media, sourcePath);
-		const inputRevision = revisionOf(media);
-		const previous = mediaProcessingCheckpointSchema.safeParse(
-			job.processingCheckpoint,
-		);
-		const step = (skip: boolean): ProcessingStep => ({
-			status: skip ? "skipped" : "pending",
-			attemptCount: 0,
-			updatedAt: null,
-		});
-		const checkpoint: MediaProcessingCheckpoint =
-			previous.success && previous.data.inputRevision === inputRevision
-				? previous.data
-				: {
-						version: 1,
-						inputRevision,
-						steps: {
-							metadata: step(payload.skipMetadataExtraction === true),
-							thumbnail: step(
-								payload.skipThumbnailGeneration === true ||
-									media.mediaType === "audio",
-							),
-							ai_dispatch: step(
-								media.mediaType !== "image" ||
-									(!(
-										this.enableAutoTagging && !payload.skipMetadataExtraction
-									) &&
-										!this.enableAutoCcipExtraction),
-							),
-						},
-					};
-		const save = async (tx: Transaction) => {
-			await this.jobRepo.update(
-				job.id,
-				{ processingCheckpoint: checkpoint },
-				tx,
-			);
-		};
-		const active = async <T>(action: (tx: Transaction) => Promise<T>) => {
-			const result = await this.jobRepo.withActiveAttempt(
-				job.id,
-				job.attemptCount ?? 0,
-				action,
-			);
-			const steps = Object.values(checkpoint.steps);
-			this.notify(() =>
-				this.publishJobProgress(
-					job.id,
-					steps.filter(
-						(entry) =>
-							entry.status === "completed" || entry.status === "skipped",
-					).length,
-					steps.length,
-				),
-			);
-			return result;
-		};
-		await active(async (tx) => {
-			if (payload.retryFileTasks) {
-				for (const kind of ["metadata", "thumbnail"] as const) {
-					const step = checkpoint.steps[kind];
-					if (step.status !== "failed") continue;
-					await this.taskService.request(
-						{
-							mediaId: media.id,
-							mediaSourceId: media.mediaSourceId,
-							sourcePath,
-							filePath: media.filePath,
-							modifiedAt: media.modifiedAt,
-							fileSize: media.fileSize,
-							mediaType: media.mediaType,
-						},
-						kind,
-						tx,
-						true,
-						true,
-					);
-					step.status = "in_progress";
-					step.attemptCount++;
-					step.updatedAt = new Date().toISOString();
-				}
-				await this.jobRepo.update(
-					job.id,
-					{ payload: { ...payload, retryFileTasks: false } },
-					tx,
-				);
-			}
-			await save(tx);
-		});
-
-		const failures: ProcessingStepKind[] = [];
-		const run = async (kind: ProcessingStepKind, work: () => Promise<void>) => {
-			const current = checkpoint.steps[kind];
-			if (current.status === "completed" || current.status === "skipped")
-				return;
-			current.status = "in_progress";
-			current.attemptCount++;
-			current.updatedAt = new Date().toISOString();
-			await active(save);
-			try {
-				await work();
-			} catch (error) {
-				if (error instanceof JobAttemptLostError) throw error;
-				current.status = "failed";
-				current.updatedAt = new Date().toISOString();
-				await active(save);
-				failures.push(kind);
-				this.logger?.error(
-					{ err: error, jobId: job.id, mediaId: media.id, step: kind },
-					"Media processing step failed",
-				);
-			}
-		};
-		const complete = async (
-			kind: ProcessingStepKind,
-			action: (tx: Transaction) => Promise<void>,
-		) => {
-			await active(async (tx) => {
-				const currentMedia = await this.mediaRepo.findById(media.id, tx, {
-					forUpdate: true,
-				});
-				if (!currentMedia || revisionOf(currentMedia) !== inputRevision) {
-					throw new Error(
-						"Media changed during processing; retry with its current revision",
-					);
-				}
-				await action(tx);
-				checkpoint.steps[kind].status = "completed";
-				checkpoint.steps[kind].updatedAt = new Date().toISOString();
-				await save(tx);
-			});
-		};
-
-		for (const kind of ["metadata", "thumbnail"] as const) {
-			if (checkpoint.steps[kind].status === "skipped") continue;
-			try {
-				await this.taskService.execute(
-					{
-						mediaId: media.id,
-						mediaSourceId: media.mediaSourceId,
-						sourcePath,
-						filePath: media.filePath,
-						modifiedAt: media.modifiedAt,
-						fileSize: media.fileSize,
-						mediaType: media.mediaType,
-					},
-					kind,
-					{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
-					{
-						claimed: async (tx) => {
-							const step = checkpoint.steps[kind];
-							if (step.status !== "in_progress") step.attemptCount++;
-							step.status = "in_progress";
-							step.updatedAt = new Date().toISOString();
-							await save(tx);
-						},
-						completed: async (tx) => {
-							checkpoint.steps[kind].status = "completed";
-							checkpoint.steps[kind].updatedAt = new Date().toISOString();
-							await save(tx);
-						},
-						changed: () =>
-							this.notify(() =>
-								this.publishJobProgress(
-									job.id,
-									Object.values(checkpoint.steps).filter(
-										(step) =>
-											step.status === "completed" || step.status === "skipped",
-									).length,
-									3,
-								),
-							),
-					},
-				);
-			} catch (error) {
-				if (error instanceof JobAttemptLostError) throw error;
-				checkpoint.steps[kind].status = "failed";
-				checkpoint.steps[kind].updatedAt = new Date().toISOString();
-				await active(save);
-				failures.push(kind);
-				this.logger?.error(
-					{ err: error, jobId: job.id, step: kind },
-					"Media processing step failed",
-				);
-			}
-		}
-
-		await run("ai_dispatch", async () => {
-			await complete("ai_dispatch", async (tx) => {
-				if (media.mediaType === "image") {
-					const kinds: AiTaskKind[] = [];
-					if (this.enableAutoTagging && !payload.skipMetadataExtraction)
-						kinds.push("tagging");
-					if (this.enableAutoCcipExtraction) kinds.push("ccip");
-					await this.requestAiTasks(media.mediaSourceId, media.id, kinds, tx);
-				}
-			});
-		});
-		if (failures.length > 0)
-			throw new Error(`Media processing failed: ${failures.join(", ")}`);
-	}
-
 	async requestProcessing(
 		media: Media,
 		sourcePath: string,
@@ -555,9 +321,8 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		mediaId: string,
 		kind: FileTaskKind,
 		request: Pick<MediaProcessingState, "requestId" | "requestedRevision">,
-		owner?: ProcessingOwner,
 	) {
-		return this.taskService.wait(mediaId, kind, request, owner);
+		return this.taskService.wait(mediaId, kind, request);
 	}
 	runFileTask(kind: FileTaskKind) {
 		return this.taskService.runOnce(kind);
@@ -570,10 +335,9 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		sourceId: string,
 		mediaId: string,
 		kind: Extract<MediaTaskKind, "metadata" | "thumbnail">,
-		owner?: ProcessingOwner,
 		force = false,
 	): Promise<void> {
-		return this.taskService.processTask(sourceId, mediaId, kind, owner, force);
+		return this.taskService.processTask(sourceId, mediaId, kind, force);
 	}
 
 	private notify(publish: () => void): void {

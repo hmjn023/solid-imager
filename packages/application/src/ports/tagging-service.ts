@@ -1,6 +1,5 @@
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
-	ProcessingOwner,
 	MediaProcessingInput,
 	MediaProcessingState,
 	ProcessingRequestIdentity,
@@ -17,12 +16,6 @@ export interface ITaggingService {
 		force?: boolean,
 		tx?: Transaction,
 	): Promise<MediaProcessingState>;
-	reserveTagsForJob(
-		owner: ProcessingOwner,
-		sourceId: string,
-		mediaIds: string[],
-		force?: boolean,
-	): Promise<Record<string, ProcessingRequestIdentity>>;
 	runTaggingTask(): Promise<
 		"idle" | "completed" | "retry" | "failed" | "superseded"
 	>;
@@ -35,7 +28,6 @@ export interface ITaggingService {
 		mediaId: string,
 		options?: {
 			skipCache?: boolean;
-			owner?: ProcessingOwner;
 			request?: ProcessingRequestIdentity;
 		},
 	): Promise<TaggingResponse | null>;

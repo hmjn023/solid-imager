@@ -233,7 +233,6 @@ export class MediaQueryService {
 				sourceId,
 				media.id,
 				"metadata",
-				undefined,
 				force,
 			);
 			return await this.mediaRepository.getGenerationInfo(media.id);

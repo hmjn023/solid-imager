@@ -7,6 +7,7 @@ import {
 	type MediaSource,
 	mediaSources,
 	medias,
+	jobs,
 } from "~/infrastructure/db/schema";
 import { services } from "~/infrastructure/service-registry";
 import { MediaService } from "~/infrastructure/services/media-service";
@@ -75,11 +76,7 @@ describe("registerExistingMedia Integration", () => {
 			const processor = services.getMediaProcessingService();
 			await processor.runFileTask("metadata");
 			await processor.runFileTask("thumbnail");
-			expect(
-				await services
-					.getJobRepository()
-					.claimPending(10, { includeTypes: ["processMedia"] }),
-			).toHaveLength(0);
+			expect(await db.select().from(jobs)).toHaveLength(0);
 
 			// Verify thumbnail generation
 			const storageConfig = services.getConfigService().getConfig().storage;

@@ -7,7 +7,6 @@ import {
 	serializeMediaTaskRevision,
 	type MediaProcessingInput,
 	type FileTaskKind,
-	type ProcessingOwner,
 	type ProcessingSettings,
 	type MediaProcessingState,
 	type ScheduledMediaWork,
@@ -28,12 +27,6 @@ export function getMediaTaskRevision(
 		.update(serializeMediaTaskRevision(input, kind, settings))
 		.digest("hex");
 }
-
-type TaskHooks = {
-	claimed(tx: Transaction): Promise<void>;
-	completed(tx: Transaction): Promise<void>;
-	changed(): void;
-};
 
 /** File computation is owned solely by dedicated schedulers; callers only request/observe. */
 export class MediaTaskService {
@@ -274,19 +267,12 @@ export class MediaTaskService {
 		mediaId: string,
 		kind: FileTaskKind,
 		request: Pick<MediaProcessingState, "requestId" | "requestedRevision">,
-		owner?: ProcessingOwner,
 	) {
 		const deadline = Date.now() + 120_000;
 		for (;;) {
-			const read = (tx?: Transaction) =>
-				this.deps.processingStateRepo.findByMediaIds([mediaId], tx);
-			const rows = owner
-				? await this.deps.jobRepo.withActiveAttempt(
-						owner.jobId,
-						owner.attemptCount,
-						read,
-					)
-				: await read();
+			const rows = await this.deps.processingStateRepo.findByMediaIds([
+				mediaId,
+			]);
 			const current = rows.find((row) => row.taskKind === kind);
 			if (
 				!current ||
@@ -306,62 +292,16 @@ export class MediaTaskService {
 		sourceId: string,
 		mediaId: string,
 		kind: FileTaskKind,
-		owner?: ProcessingOwner,
 		force = false,
 	) {
-		const reserve = (tx?: Transaction) =>
-			this.requestTask(sourceId, mediaId, kind, force, tx, true);
-		const request = owner
-			? await this.deps.jobRepo.withActiveAttempt(
-					owner.jobId,
-					owner.attemptCount,
-					reserve,
-				)
-			: await reserve();
-		if (request) await this.wait(mediaId, kind, request, owner);
-	}
-	async execute(
-		input: MediaProcessingInput,
-		kind: FileTaskKind,
-		owner?: ProcessingOwner,
-		hooks?: TaskHooks,
-		force = false,
-	) {
-		const active = <T>(action: (tx: Transaction) => Promise<T>) =>
-			owner
-				? this.deps.jobRepo.withActiveAttempt(
-						owner.jobId,
-						owner.attemptCount,
-						action,
-					)
-				: this.deps.transactionManager.transaction(action);
-		const request = await active(async (tx) => {
-			const request = await this.request(input, kind, tx, force, true);
-			if (request && request.status !== "completed") await hooks?.claimed(tx);
-			return request;
-		});
-		hooks?.changed();
-		if (request) await this.wait(input.mediaId, kind, request, owner);
-
-		await active(async (tx) => {
-			await this.deps.mediaRepo.findById(input.mediaId, tx, {
-				forUpdate: true,
-			});
-			if (request) {
-				const current = (
-					await this.deps.processingStateRepo.findByMediaIds(
-						[input.mediaId],
-						tx,
-					)
-				).find((row) => row.taskKind === kind);
-				if (
-					current?.requestId !== request.requestId ||
-					current.status !== "completed"
-				)
-					throw new MediaProcessingSupersededError();
-			}
-			await hooks?.completed(tx);
-		});
-		hooks?.changed();
+		const request = await this.requestTask(
+			sourceId,
+			mediaId,
+			kind,
+			force,
+			undefined,
+			true,
+		);
+		if (request) await this.wait(mediaId, kind, request);
 	}
 }

@@ -316,6 +316,13 @@
       "when": 1791987215915,
       "tag": "0044_superb_surge",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1791988654150,
+      "tag": "0045_many_firebrand",
+      "breakpoints": true
     }
   ]
 }

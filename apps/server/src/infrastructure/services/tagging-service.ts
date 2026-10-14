@@ -19,7 +19,6 @@ const getTaggingService = () => {
 		const deps: TaggingServiceDeps = {
 			processingStateRepo: MediaProcessingStateRepository,
 			transactionManager: DrizzleTransactionManager,
-			jobRepo: services.getJobRepository(),
 			aiClient: services.getAiClient(),
 			sourceRepo: services.getSourceRepository(),
 			mediaRepo: services.getMediaRepository(),
