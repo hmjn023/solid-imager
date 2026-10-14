@@ -1,3 +1,4 @@
+import { sourceRunsContract } from "./source-runs.contract";
 export { batchesContract } from "./batches.contract";
 import { batchesContract } from "./batches.contract";
 export { aiContract } from "./ai.contract";
@@ -62,6 +63,7 @@ export const appContract = {
 	imports: importsContract,
 	jobs: jobsContract,
 	batches: batchesContract,
+	sourceRuns: sourceRunsContract,
 	processing: processingContract,
 	utils: utilsContract,
 	config: configContract,

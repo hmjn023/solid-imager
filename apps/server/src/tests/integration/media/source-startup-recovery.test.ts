@@ -33,7 +33,7 @@ describe("interrupted source startup recovery", () => {
 		await vi.waitFor(() =>
 			expect(FileWatcherService.startMonitoringAll).toHaveBeenCalled(),
 		);
-		services.getJobWorker().stop();
+		await services.getJobWorker().stop();
 		await services.getMediaFileWorker().stop();
 		await services.getMediaAiWorker().stop();
 		directory = await fs.mkdtemp(
@@ -70,6 +70,7 @@ describe("interrupted source startup recovery", () => {
 	});
 
 	afterEach(async () => {
+		await services.getJobWorker().stop();
 		if (sourceId) {
 			await db.delete(jobs).where(eq(jobs.mediaSourceId, sourceId));
 			await db.delete(mediaSources).where(eq(mediaSources.id, sourceId));
@@ -89,6 +90,7 @@ describe("interrupted source startup recovery", () => {
 		vi.mocked(FileWatcherService.startMonitoringAll).mockImplementationOnce(
 			resume,
 		);
+		services.getJobWorker().start();
 		await maintenance.performStartupChecks();
 
 		const records = await db

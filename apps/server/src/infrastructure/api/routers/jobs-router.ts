@@ -1,4 +1,9 @@
 import {
+	findSourceJob,
+	mutateSourceRun,
+	toSourceJobDto,
+} from "../source-run-view";
+import {
 	findBatchJob,
 	mutateBatchJob,
 } from "~/infrastructure/api/batch-job-view";
@@ -167,6 +172,8 @@ export const jobsRouter = os.router({
 	}),
 
 	get: os.get.handler(async ({ input }) => {
+		const source = await findSourceJob(input.id);
+		if (source) return source;
 		const download = await findDownloadJob(input.id);
 		if (download) return download;
 		const batch = await findBatchJob(input.id);
@@ -190,6 +197,8 @@ export const jobsRouter = os.router({
 	}),
 
 	retry: os.retry.handler(async ({ input }) => {
+		const source = await findSourceJob(input.id);
+		if (source) return toSourceJobDto(await mutateSourceRun("retry", input.id));
 		const download = await findDownloadJob(input.id);
 		if (download) return mutateDownloadJob("retry", input.id);
 		const batch = await findBatchJob(input.id);
@@ -250,6 +259,9 @@ export const jobsRouter = os.router({
 	}),
 
 	cancel: os.cancel.handler(async ({ input }) => {
+		const source = await findSourceJob(input.id);
+		if (source)
+			return toSourceJobDto(await mutateSourceRun("cancel", input.id));
 		const download = await findDownloadJob(input.id);
 		if (download) return mutateDownloadJob("cancel", input.id);
 		const batch = await findBatchJob(input.id);

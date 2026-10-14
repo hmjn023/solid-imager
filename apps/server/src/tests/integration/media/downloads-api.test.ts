@@ -1,3 +1,5 @@
+import { SourceRunRepository } from "~/infrastructure/repositories/source-run-repository";
+import { sourceTransferRuns } from "~/infrastructure/db/schema";
 import { randomUUID } from "node:crypto";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -24,7 +26,7 @@ describe("Downloads API and transitional Jobs view", () => {
 		userAgent: "private-download-agent",
 	});
 	beforeAll(async () => {
-		services.getJobWorker().stop();
+		await services.getJobWorker().stop();
 		directory = await mkdtemp(path.join(tmpdir(), "downloads-api-"));
 		sourceId = (
 			await services.getSourceRepository().create({
@@ -41,6 +43,9 @@ describe("Downloads API and transitional Jobs view", () => {
 			.delete(downloadRuns)
 			.where(eq(downloadRuns.mediaSourceId, sourceId));
 		await db.delete(jobs).where(eq(jobs.mediaSourceId, sourceId));
+		await db
+			.delete(sourceTransferRuns)
+			.where(eq(sourceTransferRuns.sourceId, sourceId));
 		await db.delete(mediaSources).where(eq(mediaSources.id, sourceId));
 		await rm(directory, { recursive: true, force: true });
 	});
@@ -79,12 +84,16 @@ describe("Downloads API and transitional Jobs view", () => {
 		).toHaveLength(0);
 	});
 	it("paginates and filters the combined view, hiding duplicate aliases", async () => {
-		const general = await services.getJobRepository().create({
-			type: "source_restore",
-			mediaSourceId: sourceId,
-			payload: {},
-			createdAt: new Date("2026-01-01T00:00:00Z"),
+		const general = await SourceRunRepository.createTransfer(sourceId, {
+			kind: "export",
+			mode: "ndjson",
+			includeImages: false,
+			sourceRevision: "fixture",
 		});
+		await db
+			.update(sourceTransferRuns)
+			.set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+			.where(eq(sourceTransferRuns.id, general.id));
 		const first = await jobClient.list({
 			limit: 1,
 			offset: 0,
@@ -140,13 +149,21 @@ describe("Downloads API and transitional Jobs view", () => {
 	});
 	it("preserves unrelated jobs and refuses unknown download IDs", async () => {
 		const general = (
-			await db.select().from(jobs).where(eq(jobs.mediaSourceId, sourceId))
+			await db
+				.select()
+				.from(sourceTransferRuns)
+				.where(eq(sourceTransferRuns.sourceId, sourceId))
 		)[0];
 		await expect(client.cancel({ id: general.id })).rejects.toMatchObject({
 			code: "NOT_FOUND",
 		});
 		expect(
-			(await db.select().from(jobs).where(eq(jobs.id, general.id)))[0],
+			(
+				await db
+					.select()
+					.from(sourceTransferRuns)
+					.where(eq(sourceTransferRuns.id, general.id))
+			)[0],
 		).toEqual(general);
 		await expect(client.get({ id: randomUUID() })).rejects.toMatchObject({
 			code: "NOT_FOUND",

@@ -13,7 +13,7 @@ describe("dedicated batch retry through the Jobs facade", () => {
 	const created: string[] = [];
 	const client = createRouterClient(jobsRouter);
 	beforeAll(async () => {
-		services.getJobWorker().stop();
+		await services.getJobWorker().stop();
 		await batchRunService.initialize();
 	});
 	afterAll(async () => {

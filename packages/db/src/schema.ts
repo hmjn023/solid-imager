@@ -3,6 +3,13 @@ import {
 	type ScheduledMediaInput,
 } from "@solid-imager/core/domain/processing/schemas";
 import type { MediaProcessingCheckpoint } from "@solid-imager/core/domain/jobs/schemas";
+import type {
+	SourceRun,
+	SourceRunInput,
+	SourceRunCheckpoint,
+	SourceRunArtifact,
+	SourceRunKind,
+} from "@solid-imager/core/domain/source-runs/schemas";
 import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/job-repository";
 import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
 import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
@@ -2333,4 +2340,145 @@ export const batchRunDirty = pgTable("batch_run_dirty", {
 		.primaryKey()
 		.references(() => batchRuns.id, { onDelete: "cascade" }),
 	generation: integer("generation").notNull().default(1),
+});
+
+export const sourceRunCutovers = pgTable(
+	"source_run_cutovers",
+	{
+		id: uuid("id").primaryKey(),
+		authority: text("authority").notNull().default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"source_run_authority",
+			sql`${table.authority} IN ('legacy','dedicated')`,
+		),
+		check("source_run_epoch", sql`${table.generation} >= 0`),
+	],
+);
+
+export const sourceSyncWatermarks = pgTable(
+	"source_sync_watermarks",
+	{
+		sourceId: uuid("source_id").primaryKey(),
+		generation: bigint("generation", { mode: "number" }).notNull().default(0),
+		requestedGeneration: bigint("requested_generation", { mode: "number" })
+			.notNull()
+			.default(0),
+		appliedGeneration: bigint("applied_generation", { mode: "number" })
+			.notNull()
+			.default(0),
+	},
+	(table) => [
+		check(
+			"source_watermark_order",
+			sql`${table.appliedGeneration} >= 0 AND ${table.requestedGeneration} >= 0 AND ${table.generation} >= ${table.requestedGeneration} AND ${table.generation} >= ${table.appliedGeneration}`,
+		),
+	],
+);
+
+function sourceRunColumns() {
+	return {
+		id: uuid("id").primaryKey().defaultRandom(),
+		sourceId: uuid("source_id"),
+		kind: text("kind").$type<SourceRunKind>().notNull(),
+		input: jsonb("input").$type<SourceRunInput>(),
+		status: text("status")
+			.$type<SourceRun["status"]>()
+			.notNull()
+			.default("pending"),
+		checkpoint: jsonb("checkpoint")
+			.$type<SourceRunCheckpoint>()
+			.notNull()
+			.default({
+				offset: 0,
+				added: 0,
+				deleted: 0,
+				processed: 0,
+				skipped: 0,
+				filesComplete: false,
+				fileCursor: null,
+			}),
+		artifact: jsonb("artifact").$type<SourceRunArtifact>(),
+		failureCode: text("failure_code"),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		maxAttempts: integer("max_attempts").notNull().default(3),
+		leaseToken: uuid("lease_token"),
+		leaseExpiresAt: timestamp("lease_expires_at"),
+		retentionExpiresAt: timestamp("retention_expires_at"),
+		cancelRequestedAt: timestamp("cancel_requested_at"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		startedAt: timestamp("started_at"),
+		finishedAt: timestamp("finished_at"),
+	};
+}
+export const sourceSyncRuns = pgTable(
+	"source_sync_runs",
+	sourceRunColumns(),
+	(table) => [
+		check("sync_run_kind", sql`${table.kind} = 'sync'`),
+		check(
+			"sync_run_status",
+			sql`${table.status} IN ('pending','in_progress','completed','failed','cancelled','blocked')`,
+		),
+		check(
+			"sync_run_input",
+			sql`${table.status} IN ('blocked','failed','completed','cancelled') OR (${table.input} IS NOT NULL AND jsonb_typeof(${table.input}) = 'object' AND coalesce(${table.input}->>'kind' = 'sync', false) AND ${table.sourceId} IS NOT NULL)`,
+		),
+		check(
+			"sync_run_lease",
+			sql`(${table.leaseToken} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+		),
+		uniqueIndex("uq_sync_run_pending")
+			.on(table.sourceId)
+			.where(sql`${table.status} = 'pending'`),
+		index("idx_sync_run_claim").on(table.status, table.createdAt),
+		index("idx_sync_run_source").on(table.sourceId, table.createdAt),
+	],
+);
+export const sourceTransferRuns = pgTable(
+	"source_transfer_runs",
+	sourceRunColumns(),
+	(table) => [
+		check("transfer_run_kind", sql`${table.kind} IN ('export','restore')`),
+		check(
+			"transfer_run_status",
+			sql`${table.status} IN ('pending','in_progress','completed','failed','cancelled','blocked')`,
+		),
+		check(
+			"transfer_run_input",
+			sql`${table.status} IN ('blocked','failed','completed','cancelled') OR (${table.input} IS NOT NULL AND jsonb_typeof(${table.input}) = 'object' AND coalesce(${table.input}->>'kind' = ${table.kind}, false) AND ${table.sourceId} IS NOT NULL)`,
+		),
+		check(
+			"transfer_run_lease",
+			sql`(${table.leaseToken} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+		),
+		index("idx_transfer_run_claim").on(table.status, table.createdAt),
+		index("idx_transfer_run_source").on(table.sourceId, table.createdAt),
+	],
+);
+/** One DB owner across directory sync, export and restore for a source. */
+export const sourceRunLeases = pgTable(
+	"source_run_leases",
+	{
+		sourceId: uuid("source_id").primaryKey(),
+		runId: uuid("run_id"),
+		kind: text("kind").$type<SourceRunKind>(),
+		token: uuid("token"),
+		expiresAt: timestamp("expires_at"),
+	},
+	(table) => [
+		check(
+			"source_owner_lease",
+			sql`(${table.token} IS NULL AND ${table.runId} IS NULL AND ${table.expiresAt} IS NULL AND ${table.kind} IS NULL) OR (${table.token} IS NOT NULL AND ${table.runId} IS NOT NULL AND ${table.expiresAt} IS NOT NULL AND ${table.kind} IS NOT NULL)`,
+		),
+	],
+);
+export const sourceRunLegacySnapshots = pgTable("source_run_legacy_snapshots", {
+	id: uuid("id").primaryKey(),
+	kind: text("kind").$type<SourceRunKind>().notNull(),
+	snapshot: jsonb("snapshot").notNull(),
 });

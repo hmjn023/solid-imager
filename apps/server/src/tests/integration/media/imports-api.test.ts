@@ -1,3 +1,5 @@
+import { SourceRunRepository } from "~/infrastructure/repositories/source-run-repository";
+import { sourceTransferRuns } from "~/infrastructure/db/schema";
 import { randomUUID } from "node:crypto";
 import { createRouterClient } from "@orpc/server";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -24,7 +26,7 @@ describe("Imports API uses dedicated requests and the existing download reservat
 		userAgent: "server-only-agent",
 	});
 	beforeAll(async () => {
-		services.getJobWorker().stop();
+		await services.getJobWorker().stop();
 		sourceId = (
 			await services.getSourceRepository().create({
 				name: "Imports API test",
@@ -47,6 +49,9 @@ describe("Imports API uses dedicated requests and the existing download reservat
 		await db
 			.delete(downloadRuns)
 			.where(eq(downloadRuns.mediaSourceId, sourceId));
+		await db
+			.delete(sourceTransferRuns)
+			.where(eq(sourceTransferRuns.sourceId, sourceId));
 		await db.delete(mediaSources).where(eq(mediaSources.id, sourceId));
 		// The suite owns its PGlite database; permit unrelated legacy job fixtures afterward.
 		await db
@@ -140,15 +145,16 @@ describe("Imports API uses dedicated requests and the existing download reservat
 			targetSourceId: sourceId,
 		});
 		const { request } = await receive();
-		const download = await services
-			.getJobRepository()
-			.create({ type: "source_restore", mediaSourceId: sourceId, payload: {} });
+		const download = await SourceRunRepository.createTransfer(sourceId, {
+			kind: "export",
+			mode: "ndjson",
+			includeImages: false,
+			sourceRevision: "fixture",
+		});
 		await client.cancel({
 			jobIds: [request.id, download.id, approved.request.id],
 		});
-		expect(
-			(await db.select().from(jobs).where(eq(jobs.id, download.id)))[0],
-		).toEqual(download);
+		expect(await SourceRunRepository.findById(download.id)).toEqual(download);
 		expect(
 			(
 				await db

@@ -20,7 +20,7 @@ describe("dedicated AI batch producers", () => {
 	let sourceId: string;
 	let mediaIds: string[];
 	beforeEach(async () => {
-		services.getJobWorker().stop();
+		await services.getJobWorker().stop();
 		await services.getMediaFileWorker().stop();
 		await services.getMediaAiWorker().stop();
 		sourceId = (

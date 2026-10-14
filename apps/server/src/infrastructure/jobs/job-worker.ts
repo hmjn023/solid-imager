@@ -1,3 +1,7 @@
+import type { SourceWorker } from "./source-worker";
+import { setImmediate as yieldPoll } from "node:timers/promises";
+import type { SourceRunClaim } from "@solid-imager/core/domain/source-runs/schemas";
+import { retiredSourceJobTypes } from "@solid-imager/core/domain/source-runs/schemas";
 import type { BatchWorker } from "./batch-worker";
 import type { BatchClaim } from "@solid-imager/core/domain/batches/schemas";
 import { retiredBatchJobTypes } from "@solid-imager/core/domain/batches/schemas";
@@ -84,6 +88,7 @@ export class JobWorker {
 		processor: (job: Job) => Promise<unknown>,
 		private readonly downloads?: DownloadWorker,
 		private readonly batches?: BatchWorker,
+		private readonly sources?: SourceWorker,
 	) {
 		this.jobRepo = jobRepo;
 		this.processor = processor;
@@ -103,7 +108,7 @@ export class JobWorker {
 		void this.poll();
 	}
 
-	stop() {
+	async stop() {
 		this.isRunning = false;
 		if (this.timeoutId) {
 			clearTimeout(this.timeoutId);
@@ -115,6 +120,10 @@ export class JobWorker {
 			this.recoverStaleJobsIntervalId = null;
 		}
 		logger.info("Job processing worker stopped");
+		if (this.sources) {
+			while (this.isPolling) await yieldPoll();
+			await this.sources.stop();
+		}
 	}
 
 	updateConfig(config: AppConfig) {
@@ -180,7 +189,11 @@ export class JobWorker {
 			// 3. Keep source exports in a single-worker pool. A TAR export is
 			// disk-backed, but concurrent archives still multiply stream buffers and
 			// database page memory.
-			if (this.activeExportJobs < 1) {
+			if (this.sources && this.activeExportJobs < 1) {
+				for (const claim of await this.sources.claimPending(["export"], 1))
+					this.processSource(claim);
+			}
+			if (!this.sources && this.activeExportJobs < 1) {
 				const jobs = await this.jobRepo.claimPending(1, {
 					includeTypes: Array.from(this.exportJobTypes),
 				});
@@ -211,6 +224,7 @@ export class JobWorker {
 							...this.thumbnailJobTypes,
 							...this.exportJobTypes,
 							...(this.batches ? retiredBatchJobTypes : []),
+							...(this.sources ? retiredSourceJobTypes : []),
 						],
 					});
 					for (const job of jobs) {
@@ -221,6 +235,19 @@ export class JobWorker {
 							slots - jobs.length,
 						);
 						for (const run of downloads) this.processDownload(run);
+					}
+					if (this.sources) {
+						const available =
+							this.concurrency -
+							(this.activeJobs -
+								this.activeAiJobs -
+								this.activeThumbnailJobs -
+								this.activeExportJobs);
+						for (const claim of await this.sources.claimPending(
+							["sync", "restore"],
+							Math.max(0, available),
+						))
+							this.processSource(claim);
 					}
 					if (this.batches) {
 						const available =
@@ -249,6 +276,24 @@ export class JobWorker {
 		}
 	}
 
+	private processSource(claim: SourceRunClaim) {
+		if (!this.sources) throw new Error("Source worker is not configured");
+		this.activeJobs++;
+		if (claim.kind === "export") this.activeExportJobs++;
+		void this.sources
+			.process(claim)
+			.catch((err) =>
+				logger.error(
+					{ err, runId: claim.id },
+					"Source outcome persistence failed",
+				),
+			)
+			.finally(() => {
+				this.activeJobs--;
+				if (claim.kind === "export") this.activeExportJobs--;
+				this.requestPoll();
+			});
+	}
 	private processBatch(claim: BatchClaim) {
 		const batches = this.batches;
 		if (!batches) throw new Error("Batch worker is not configured");
@@ -518,6 +563,10 @@ export class JobWorker {
 			const count = await this.jobRepo.requeueStaleInProgress(olderThan);
 			if (count > 0) {
 				logger.warn({ count, olderThan }, "Requeued stale in-progress jobs");
+			}
+			if (this.sources) {
+				await this.sources.cleanup();
+				return;
 			}
 			try {
 				const orphaned = await cleanupOrphanedJobTransferFiles(

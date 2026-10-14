@@ -246,7 +246,7 @@ export class ServiceRegistry {
 
 	// Helper for testing to reset the registry
 	async reset(): Promise<void> {
-		this.jobWorker?.stop();
+		await this.jobWorker?.stop();
 		const aiDrain = this.mediaAiWorker?.stop();
 		await this.mediaFileWorker?.stop();
 		await aiDrain;

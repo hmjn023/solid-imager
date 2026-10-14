@@ -1,3 +1,5 @@
+import { SourceWorker } from "~/infrastructure/jobs/source-worker";
+import { sourceRunService } from "~/infrastructure/services/source-run-service";
 import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import { downloadRunService } from "~/infrastructure/services/download-run-service";
 import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
@@ -108,6 +110,7 @@ export function initServices() {
 		processJob,
 		new DownloadWorker(DownloadRunRepository, processDownloadRun),
 		new BatchWorker(BatchRunRepository, batchRunService),
+		new SourceWorker(),
 	);
 	// Initialize worker with current config and subscribe to changes
 	jobWorker.updateConfig(configService.getConfig());
@@ -205,13 +208,14 @@ export function startBackgroundWorker(): Promise<void> {
 	const previousStart = host.__WORKER_STARTUP__;
 	const startup = async () => {
 		await previousStart?.catch(() => undefined);
-		host.__JOB_WORKER__?.stop();
+		await host.__JOB_WORKER__?.stop();
 		const aiDrain = host.__MEDIA_AI_WORKER__?.stop();
 		await host.__MEDIA_FILE_WORKER__?.stop();
 		await aiDrain;
 		// Deployments must stop old-version writers before starting this version.
 		await downloadRunService.initialize();
 		await batchRunService.initialize();
+		await sourceRunService.initialize();
 		await services.getMediaProcessingService().reconcileFileTasks();
 		await taggingService.reconcileTaggingTasks();
 		await ccipVectorService.reconcileTasks();
@@ -240,7 +244,7 @@ export function startBackgroundWorker(): Promise<void> {
 	if (!host.__BOOTSTRAP_CLEANUP_REGISTERED__) {
 		const cleanup = async () => {
 			await host.__WORKER_STARTUP__?.catch(() => undefined);
-			host.__JOB_WORKER__?.stop();
+			await host.__JOB_WORKER__?.stop();
 			const aiDrain = host.__MEDIA_AI_WORKER__?.stop();
 			await host.__MEDIA_FILE_WORKER__?.stop();
 			await aiDrain;

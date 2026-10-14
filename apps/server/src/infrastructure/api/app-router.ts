@@ -1,3 +1,4 @@
+import { sourceRunsRouter } from "./routers/source-runs-router";
 import { batchesRouter } from "./routers/batches-router";
 import "zod/compile";
 
@@ -47,6 +48,7 @@ export const appRouter = appRouterImplementer.router({
 	imports: importsRouter,
 	jobs: jobsRouter,
 	batches: batchesRouter,
+	sourceRuns: sourceRunsRouter,
 	processing: processingRouter,
 	utils: utilsRouter,
 	config: configRouter,

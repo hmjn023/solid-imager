@@ -1,3 +1,5 @@
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import { getExecutor } from "~/infrastructure/db/executor";
 import { services } from "~/infrastructure/service-registry";
 import type { NewAuthor } from "@solid-imager/core/domain/authors/schemas";
 import { createReadStream, createWriteStream } from "node:fs";
@@ -174,6 +176,8 @@ async function writeWithBackpressure(
 	stream: Writable,
 	chunk: string,
 ): Promise<void> {
+	if (stream.destroyed || stream.writableEnded)
+		throw new Error("Dump output is closed");
 	if (stream.write(chunk)) {
 		return;
 	}
@@ -207,7 +211,7 @@ async function* iterateMediaDumpItems(
 	mediaSourceId: string,
 	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
 ): AsyncGenerator<MediaDumpItem> {
-	const limit = 1000;
+	const limit = 100;
 	let lastId: string | null = null;
 	let hasMore = true;
 
@@ -251,6 +255,7 @@ async function writeNdjsonDump(
 	outputPath: string,
 	imagePathsPath: string,
 	transform: (mediaList: Partial<MediaListQueryItem>[]) => MediaDumpItem[],
+	signal?: AbortSignal,
 ): Promise<void> {
 	const output = createWriteStream(outputPath);
 	const imagePaths = createWriteStream(imagePathsPath);
@@ -262,6 +267,7 @@ async function writeNdjsonDump(
 	imagePaths.on("error", onOutputError);
 	try {
 		for await (const item of iterateMediaDumpItems(mediaSourceId, transform)) {
+			signal?.throwIfAborted();
 			if (streamError) {
 				throw streamError;
 			}
@@ -324,6 +330,13 @@ function appendTarEntry(
 			archive.removeListener("entry", onEntry);
 			archive.removeListener("error", onArchiveError);
 			source.removeListener("error", onSourceError);
+			archive.removeListener("close", onClose);
+			archive.removeListener("end", onClose);
+		};
+		const onClose = () => {
+			source.destroy();
+			cleanup();
+			reject(new Error("Source archive closed before entry completed"));
 		};
 		const onEntry = (entry: TarEntryData) => {
 			if (entry.name !== normalizedName) {
@@ -343,6 +356,8 @@ function appendTarEntry(
 
 		archive.on("entry", onEntry);
 		archive.once("error", onArchiveError);
+		archive.once("close", onClose);
+		archive.once("end", onClose);
 		source.once("error", onSourceError);
 		try {
 			archive.append(source, normalizedData);
@@ -395,8 +410,14 @@ export const BackupService = {
 	 * Restores media metadata from a JSON dump.
 	 * Optimized with Bulk Operations.
 	 */
-	async restoreSource(mediaSourceId: string, items: unknown[]) {
-		const mediaSource = await db.query.mediaSources.findFirst({
+	async restoreSource(
+		mediaSourceId: string,
+		items: unknown[],
+		externalTx?: Transaction,
+	) {
+		const mediaSource = await getExecutor(
+			externalTx,
+		).query.mediaSources.findFirst({
 			where: eq(mediaSources.id, mediaSourceId),
 		});
 
@@ -416,23 +437,27 @@ export const BackupService = {
 			};
 		}
 
+		const uniqueItems = [
+			...new Map(validItems.map((item) => [item.filePath, item])).values(),
+		];
+
 		// Execute all data operations atomically
 		let mediaPathToId = new Map<string, string>();
 
-		await db.transaction(async (tx) => {
-			const c: BackupDbClient = tx;
+		const restore = async (tx: Transaction) => {
+			const c: BackupDbClient = getExecutor(tx);
 			const { tagMap, authorMap, projectMap, ipMap, charMap } =
-				await this._restoreMasterData(validItems, c);
+				await this._restoreMasterData(uniqueItems, c);
 
 			mediaPathToId = await this._restoreMediaRecords(
 				mediaSourceId,
-				validItems,
+				uniqueItems,
 				c,
 			);
 
 			await this._restoreRelations(
 				{
-					validItems,
+					validItems: uniqueItems,
 					mediaPathToId,
 					tagMap,
 					authorMap,
@@ -449,7 +474,9 @@ export const BackupService = {
 					.getMediaProcessingService()
 					.requestTask(mediaSourceId, mediaId, "thumbnail", false, tx, true);
 			}
-		});
+		};
+		if (externalTx) await restore(externalTx);
+		else await db.transaction(restore);
 
 		return {
 			processed: validItems.length,
@@ -1082,7 +1109,7 @@ export const BackupService = {
 	async createDump(
 		mediaSourceId: string,
 		mode: "ndjson" | "tar" = "ndjson",
-		options?: { includeImages: boolean; jobId?: string },
+		options?: { includeImages: boolean; jobId?: string; signal?: AbortSignal },
 	) {
 		// 1. Fetch Media Source Info (needed for Driver)
 		const mediaSource = await db.query.mediaSources.findFirst({
@@ -1096,6 +1123,13 @@ export const BackupService = {
 		if (mode === "ndjson") {
 			const { PassThrough } = await import("node:stream");
 			const passThrough = new PassThrough();
+			const abort = () =>
+				passThrough.destroy(new Error("Source export interrupted"));
+			options?.signal?.addEventListener("abort", abort, { once: true });
+			passThrough.once("close", () =>
+				options?.signal?.removeEventListener("abort", abort),
+			);
+			if (options?.signal?.aborted) abort();
 
 			void (async () => {
 				try {
@@ -1126,8 +1160,16 @@ export const BackupService = {
 			const { PassThrough } = await import("node:stream");
 
 			const passThrough = new PassThrough();
+			const abort = () =>
+				passThrough.destroy(new Error("Source export interrupted"));
+			options?.signal?.addEventListener("abort", abort, { once: true });
+			passThrough.once("close", () =>
+				options?.signal?.removeEventListener("abort", abort),
+			);
+			if (options?.signal?.aborted) abort();
 			const archive = new archiverMod.TarArchive();
 			archive.pipe(passThrough);
+			passThrough.once("close", () => archive.abort());
 			archive.on("error", (error) => {
 				if (!passThrough.destroyed) {
 					passThrough.destroy(error);
@@ -1144,6 +1186,7 @@ export const BackupService = {
 					stagingDirectory = await fs.mkdtemp(
 						path.join(TarStagingDirectory, stagingPrefix),
 					);
+					options?.signal?.throwIfAborted();
 					const ndjsonPath = path.join(stagingDirectory, "dump.ndjson");
 					const imagePathsPath = path.join(stagingDirectory, "image-paths");
 					await writeNdjsonDump(
@@ -1151,6 +1194,7 @@ export const BackupService = {
 						ndjsonPath,
 						imagePathsPath,
 						(item) => this._transformMediaList(item),
+						options?.signal,
 					);
 
 					const ndjsonStats = await fs.stat(ndjsonPath);
@@ -1162,6 +1206,7 @@ export const BackupService = {
 					const includeImages = options?.includeImages ?? true;
 					if (includeImages) {
 						for await (const filePath of iterateImagePaths(imagePathsPath)) {
+							options?.signal?.throwIfAborted();
 							let file: Awaited<ReturnType<typeof driver.getStream>>;
 							try {
 								file = await driver.getStream(filePath);

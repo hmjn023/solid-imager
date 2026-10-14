@@ -295,6 +295,27 @@
       "when": 1791931902917,
       "tag": "0041_daily_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1791934929236,
+      "tag": "0042_wise_mastermind",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1791935410364,
+      "tag": "0043_lethal_lady_ursula",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1791987215915,
+      "tag": "0044_superb_surge",
+      "breakpoints": true
     }
   ]
 }

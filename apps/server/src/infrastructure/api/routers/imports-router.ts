@@ -10,6 +10,7 @@ import {
 	ResourceNotFoundError,
 } from "@solid-imager/core/domain/errors";
 import { logger } from "~/infrastructure/logger";
+import { sourceRunService } from "~/infrastructure/services/source-run-service";
 import type { BackupService } from "~/infrastructure/services/backup-service";
 
 /**
@@ -85,12 +86,12 @@ export const bulkAddHandler = async ({
 	// 2. Execute Restore
 	for (const [sourceId, group] of restoreGroups) {
 		try {
-			const result = await BackupService.restoreSource(sourceId, group);
+			const result = await sourceRunService.restoreItems(sourceId, group);
 			restoredCount += result.processed;
 			skippedCount += result.skipped;
-		} catch (_e) {
-			// If restore fails for a source, count as skipped? Or log error?
-			// Current implementation in BackupService usually handles safe partial restore.
+		} catch (err) {
+			logger.error({ err, sourceId }, "Bulk source restore failed");
+			skippedCount += group.length;
 		}
 	}
 

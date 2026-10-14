@@ -20,7 +20,7 @@ describe("registerExistingMedia Integration", () => {
 	let tempSourceDir: string;
 
 	beforeEach(async () => {
-		services.getJobWorker().stop();
+		await services.getJobWorker().stop();
 		await services.getMediaFileWorker().stop();
 		await services.getMediaAiWorker().stop();
 		// Create a temporary directory for the media source

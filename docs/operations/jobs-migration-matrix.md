@@ -25,4 +25,6 @@
 
 各 flow は writer 停止・drain、active 行の reconcile、epoch/version gate、shadow 照合、片側だけの claim authority、再起動・競合・rollback を条件に切り替える。手順は [import-request-cutover.md](./import-request-cutover.md)、[download-run-cutover.md](./download-run-cutover.md)、[batch-run-cutover.md](./batch-run-cutover.md)。SSE は更新通知として扱い、再接続後は DB API から復元する。
 
+#791 は directory sync を `source_sync_runs` と generation/CAS、export/restore を `source_transfer_runs` へ移行し、同一 source の共通 DB lease で直列化する。旧 restore の不明な再開位置は推測せず blocked、旧 LanceDB 処理は retired として archive する。手順は [source-run-cutover.md](./source-run-cutover.md)。Jobs API は専用状態の互換表示で、入力・artifact は専用 retention に従う。#638 の PostgreSQL dump cache は別 scope であり、この移行だけでは完了しない。
+
 未知 type、producer/reader、payload/checkpoint、event/UI、dedupe/merge の残存参照があれば #792 の削除 gate を通さない。全 flow 移行後の観測期間と参照ゼロ監査を経て、jobs 本体・generic UI/transport を別 PR で削除する。この表と最初の import PR は全体の移行完了を意味しない。

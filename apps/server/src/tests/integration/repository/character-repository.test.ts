@@ -10,7 +10,7 @@ describe("CharacterRepository Multi-IP Support", () => {
 	const repo = DrizzleCharacterRepository;
 
 	beforeAll(async () => {
-		services.getJobWorker().stop();
+		await services.getJobWorker().stop();
 		await services.getMediaFileWorker().stop();
 		await services.getMediaAiWorker().stop();
 		try {

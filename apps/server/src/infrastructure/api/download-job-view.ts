@@ -1,3 +1,6 @@
+import { SourceRunRepository } from "~/infrastructure/repositories/source-run-repository";
+import { sourceRunService } from "~/infrastructure/services/source-run-service";
+import { toSourceJobDto } from "./source-run-view";
 import { z } from "zod";
 import { inArray, sql } from "drizzle-orm";
 import {
@@ -117,9 +120,11 @@ export async function listJobView(
 ) {
 	await downloadRunService.initialize();
 	await batchRunService.initialize();
+	await sourceRunService.initialize();
 	return DrizzleTransactionManager.transaction(async (tx) => {
 		await DownloadRunRepository.assertDedicated(tx);
 		await BatchRunRepository.assertDedicated(tx);
+		await SourceRunRepository.assertDedicated(tx);
 		const db = getExecutor(tx);
 		const genericStatus = input.status
 			? sql`AND status = ${input.status}`
@@ -129,9 +134,11 @@ export async function listJobView(
 			: sql``;
 		const result: unknown = await db.execute(sql`
 			WITH combined AS (
-				SELECT id, created_at FROM jobs WHERE type <> 'downloadImage' ${genericStatus}
+				SELECT id, created_at FROM jobs WHERE type NOT IN ('downloadImage','source_export','source_restore','sync_lancedb','sync_lancedb_full','sync_lancedb_delta') ${genericStatus}
 				UNION ALL
 				SELECT id, created_at FROM download_runs WHERE status <> 'superseded' ${runStatus}
+ UNION ALL SELECT id, created_at FROM source_sync_runs WHERE true ${runStatus}
+ UNION ALL SELECT id, created_at FROM source_transfer_runs WHERE true ${runStatus}
  UNION ALL
  SELECT r.id, r.created_at FROM batch_runs r JOIN batch_run_status b ON b.id = r.id
  WHERE true ${input.status ? sql`AND (CASE WHEN b.status = 'blocked' THEN 'failed' ELSE b.status END) = ${input.status}` : sql``}
@@ -153,6 +160,7 @@ export async function listJobView(
 			? await db.select().from(jobs).where(inArray(jobs.id, ids))
 			: [];
 		const downloads = await DownloadRunRepository.findByIds(ids, tx);
+		const sourceRuns = await SourceRunRepository.findByIds(ids, tx);
 		const batchItems = await BatchRunRepository.findItemsByIds(ids, tx);
 		const batchRuns = await BatchRunRepository.findByIds(
 			[...new Set([...ids, ...batchItems.map((item) => item.runId)])],
@@ -160,6 +168,10 @@ export async function listJobView(
 		);
 		const parents = new Map(batchRuns.map((run) => [run.run.id, run]));
 		const items = new Map<string, JobDto>([
+			...sourceRuns.map((run): [string, JobDto] => [
+				run.id,
+				toSourceJobDto(run),
+			]),
 			...batchRuns
 				.filter((run) => ids.includes(run.run.id))
 				.map((run): [string, JobDto] => [run.run.id, toBatchJobDto(run)]),

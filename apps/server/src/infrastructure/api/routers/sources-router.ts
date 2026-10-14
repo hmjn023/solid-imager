@@ -1,3 +1,9 @@
+import { randomUUID } from "node:crypto";
+import { getSourceRunRevision } from "@solid-imager/core/domain/sources/run-revision";
+import { SourceRunRepository } from "~/infrastructure/repositories/source-run-repository";
+import { sourceRunService } from "~/infrastructure/services/source-run-service";
+import { fingerprintSourceInput } from "~/infrastructure/services/source-run-files";
+import { toSourceJobDto } from "../source-run-view";
 import { implement, ORPCError } from "@orpc/server";
 import {
 	type SourceSyncResult,
@@ -14,13 +20,10 @@ import {
 } from "@solid-imager/core/domain/sources/schemas";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { count, inArray } from "drizzle-orm";
-import { toJobDto } from "~/infrastructure/api/routers/jobs-router";
 import { db } from "~/infrastructure/db";
 import { medias } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
-import { allocateJobId } from "~/infrastructure/repositories/job-repository";
-import { services } from "~/infrastructure/service-registry";
 import { DirectorySyncService } from "~/infrastructure/services/directory-sync-service";
 import { persistJobInput } from "~/infrastructure/services/job-transfer-storage";
 import { MediaSourceService } from "~/infrastructure/services/media-source-service";
@@ -224,15 +227,14 @@ export const sourcesRouter = os.router({
 			});
 		}
 
-		const job = await services.getJobRepository().create({
-			type: "source_export",
-			mediaSourceId: input.id,
-			payload: {
-				mode: input.mode,
-				includeImages: input.includeImages,
-			},
+		await sourceRunService.initialize();
+		const run = await SourceRunRepository.createTransfer(source.id, {
+			kind: "export",
+			mode: input.mode,
+			includeImages: input.includeImages,
+			sourceRevision: getSourceRunRevision(source.type, source.connectionInfo),
 		});
-		return toJobDto(job);
+		return toSourceJobDto(run);
 	}),
 	enqueueImport: os.enqueueImport.handler(async ({ input }) => {
 		const [source] = await MediaSourceService.fetchSourceById(input.id);
@@ -242,19 +244,26 @@ export const sourcesRouter = os.router({
 			});
 		}
 
-		const jobId = await allocateJobId();
+		await sourceRunService.initialize();
+		const jobId = randomUUID();
 		const inputPath = await persistJobInput(jobId, input.mode, input.file);
 		try {
-			const job = await services.getJobRepository().create({
-				id: jobId,
-				type: "source_restore",
-				mediaSourceId: input.id,
-				payload: {
+			const identity = await fingerprintSourceInput(inputPath);
+			const run = await SourceRunRepository.createTransfer(
+				source.id,
+				{
+					kind: "restore",
 					mode: input.mode,
 					inputPath,
+					...identity,
+					sourceRevision: getSourceRunRevision(
+						source.type,
+						source.connectionInfo,
+					),
 				},
-			});
-			return toJobDto(job);
+				jobId,
+			);
+			return toSourceJobDto(run);
 		} catch (error) {
 			const fs = await import("node:fs/promises");
 			await fs.rm(inputPath, { force: true }).catch(() => {});

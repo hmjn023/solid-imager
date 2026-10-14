@@ -29,9 +29,8 @@ export class MaintenanceService {
 		try {
 			await this.queueMissingMetadata();
 			await this.queueMissingThumbnails();
-			// Initial directory sync is not a persistent job. After repairing
-			// registered media, rescan local sources for files lost on interruption
-			// and restore their watchers. Sources are processed sequentially.
+			// After repairing registered media, request durable source scans for files
+			// lost on interruption, then restore watchers. Sources are requested sequentially.
 			const { FileWatcherService } =
 				await import("~/infrastructure/jobs/file-watcher-service");
 			await FileWatcherService.startMonitoringAll();

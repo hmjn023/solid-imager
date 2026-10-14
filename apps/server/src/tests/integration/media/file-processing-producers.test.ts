@@ -1,3 +1,5 @@
+import { SourceRunRepository } from "~/infrastructure/repositories/source-run-repository";
+import { sourceRunService } from "~/infrastructure/services/source-run-service";
 import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
 import { batchRunService } from "~/infrastructure/services/batch-run-service";
 import fs from "node:fs/promises";
@@ -41,7 +43,7 @@ describe("dedicated file processing producers", () => {
 	};
 	beforeEach(async () => {
 		vi.restoreAllMocks();
-		services.getJobWorker().stop();
+		await services.getJobWorker().stop();
 		await services.getMediaFileWorker().stop();
 		await services.getMediaAiWorker().stop();
 		services.getMediaProcessingService().updateConfig({
@@ -185,7 +187,27 @@ describe("dedicated file processing producers", () => {
 	});
 	it("watcher changes update indexed input and both dedicated requests without processMedia", async () => {
 		const media = await restoredMedia();
-		await FileWatcherService.startMonitoring(sourceId);
+		const monitoring = FileWatcherService.startMonitoring(sourceId);
+		await vi.waitFor(async () =>
+			expect(
+				(
+					await SourceRunRepository.list({
+						sourceId,
+						kind: "sync",
+						status: "pending",
+						limit: 1,
+						offset: 0,
+					})
+				).total,
+			).toBe(1),
+		);
+		const [sync] = await SourceRunRepository.claimPending(
+			["sync"],
+			1,
+			sourceId,
+		);
+		await sourceRunService.process(sync, new AbortController().signal);
+		await monitoring;
 		const callbacks = vi
 			.mocked(FileWatcherManager.start)
 			.mock.calls.at(-1)?.[2];
