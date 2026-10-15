@@ -196,7 +196,11 @@ export class CcipVectorService {
 			};
 		if (
 			state?.executionMode === "scheduled" &&
-			(state.status === "pending" || state.status === "in_progress")
+			(state.status === "in_progress" ||
+				(state.status === "pending" &&
+					!(await this.deps.processingStateRepo.isPendingRequestAbandoned(
+						state,
+					))))
 		)
 			return { status: "processing" };
 		const record = await this.deps.vectorStore.get(

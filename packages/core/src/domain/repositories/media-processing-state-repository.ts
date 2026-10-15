@@ -38,6 +38,11 @@ export type IMediaProcessingSchedulerRepository =
 			request: MediaProcessingRequest,
 			tx: Transaction,
 		): Promise<MediaProcessingState>;
+		/** True only while a pending request has no independent or active batch demand. */
+		isPendingRequestAbandoned(
+			request: Pick<MediaProcessingState, "mediaId" | "taskKind" | "requestId">,
+			tx?: Transaction,
+		): Promise<boolean>;
 		claimDue(
 			taskKinds: MediaTaskKind[],
 			tx: Transaction,

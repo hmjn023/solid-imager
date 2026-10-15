@@ -81,6 +81,7 @@ describe("MediaProcessingService", () => {
 		service = new MediaProcessingServiceImpl({
 			requestAiTasks: vi.fn().mockResolvedValue(undefined),
 			processingStateRepo: {
+				isPendingRequestAbandoned: vi.fn().mockResolvedValue(false),
 				skipInapplicable: vi.fn(),
 				request: vi
 					.fn()

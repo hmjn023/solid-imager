@@ -120,6 +120,7 @@ describe("TaggingServiceImpl", () => {
 		let cached: any;
 		const deps: TaggingServiceDeps = {
 			processingStateRepo: {
+				isPendingRequestAbandoned: vi.fn().mockResolvedValue(false),
 				skipInapplicable: vi.fn(),
 				request: vi.fn(async ({ input, taskKind, revision }) => {
 					state = {

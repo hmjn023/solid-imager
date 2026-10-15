@@ -380,8 +380,12 @@ export const aiRouter = os.router({
 				input.mediaSourceId,
 				input.mediaId,
 			);
-			// Legacy queued jobs only supplement missing/stale domain state.
-			if (status.status === "missing" || status.status === "stale") {
+			// Batch IDs restore event monitoring before and after task reservation.
+			if (
+				status.status === "missing" ||
+				status.status === "stale" ||
+				status.status === "processing"
+			) {
 				const queued = await findQueuedCcipJob(
 					input.mediaSourceId,
 					input.mediaId,

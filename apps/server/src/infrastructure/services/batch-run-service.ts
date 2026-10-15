@@ -168,14 +168,15 @@ export const batchRunService = new BatchRunService({
 			revisions().revision(current, item.kind) !== item.plannedRevision
 		)
 			return null;
+		// A new batch explicitly requests failed work again, while completed and
+		// in-flight requests remain reusable under the normal reservation rules.
+		const previous = (
+			await MediaProcessingStateRepository.findByMediaIds([item.mediaId], tx)
+		).find((state) => state.taskKind === item.kind);
+		const force =
+			input.force || item.attemptCount > 0 || previous?.status === "failed";
 		try {
 			if (item.requestId) {
-				const previous = (
-					await MediaProcessingStateRepository.findByMediaIds(
-						[item.mediaId],
-						tx,
-					)
-				).find((state) => state.taskKind === item.kind);
 				if (
 					previous?.status === "completed" &&
 					previous.requestId === item.requestId &&
@@ -187,7 +188,7 @@ export const batchRunService = new BatchRunService({
 				return await taggingService.requestTags(
 					item.mediaSourceId,
 					item.mediaId,
-					input.force || item.attemptCount > 0,
+					force,
 					tx,
 					item.runId,
 				);
@@ -195,7 +196,7 @@ export const batchRunService = new BatchRunService({
 				return await ccipVectorService.requestExtraction(
 					item.mediaSourceId,
 					item.mediaId,
-					input.force || item.attemptCount > 0,
+					force,
 					tx,
 					item.runId,
 				);
@@ -205,7 +206,7 @@ export const batchRunService = new BatchRunService({
 					item.mediaSourceId,
 					item.mediaId,
 					item.kind,
-					input.force || item.attemptCount > 0,
+					force,
 					tx,
 					true,
 					item.runId,

@@ -15,7 +15,7 @@ import {
 import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { taggingResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
-import { and, or, ne, eq, inArray, sql, asc, lt, gt } from "drizzle-orm";
+import { and, or, not, ne, eq, inArray, sql, asc, lt, gt } from "drizzle-orm";
 import {
 	mediaProcessingStates as states,
 	medias,
@@ -28,6 +28,11 @@ export const MEDIA_PROCESSING_LEASE_MS = 120_000;
 const dbNow = sql`timezone('UTC', clock_timestamp())`;
 const leaseAlive = sql`${states.heartbeatAt} > ${dbNow} - ${MEDIA_PROCESSING_LEASE_MS} * interval '1 millisecond'`;
 const retryAt = sql`${dbNow} + least(300000, 1000 * power(2, least(${states.attemptCount} - 1, 20)) * (0.75 + random() * 0.5)) * interval '1 millisecond'`;
+const scheduledDemand = sql`(${states.independentDemand} OR EXISTS (
+	SELECT 1 FROM batch_items bi JOIN batch_runs br ON br.id = bi.run_id
+	WHERE bi.request_id = ${states.requestId} AND bi.kind = ${states.taskKind}
+	AND bi.status = 'scheduled' AND br.status IN ('pending', 'in_progress')
+))`;
 
 function mapState(row: typeof states.$inferSelect): MediaProcessingState {
 	return mediaProcessingStateSchema.parse({
@@ -238,6 +243,23 @@ export function createMediaProcessingStateRepository(
 				.returning();
 			return mapState(row);
 		},
+		async isPendingRequestAbandoned(request, tx) {
+			const [row] = await getExecutor(tx)
+				.select({ requestId: states.requestId })
+				.from(states)
+				.where(
+					and(
+						eq(states.mediaId, request.mediaId),
+						eq(states.taskKind, request.taskKind),
+						eq(states.requestId, request.requestId),
+						eq(states.executionMode, "scheduled"),
+						eq(states.status, "pending"),
+						not(scheduledDemand),
+					),
+				)
+				.limit(1);
+			return row !== undefined;
+		},
 		async claimDue(taskKinds, tx) {
 			if (!taskKinds.length) return null;
 			if (!tx) throw new Error("Processing claim requires a transaction");
@@ -245,11 +267,7 @@ export function createMediaProcessingStateRepository(
 			const due = and(
 				eq(states.executionMode, "scheduled"),
 				eq(states.status, "pending"),
-				sql`(${states.independentDemand} OR EXISTS (
-					SELECT 1 FROM batch_items bi JOIN batch_runs br ON br.id = bi.run_id
-					WHERE bi.request_id = ${states.requestId} AND bi.kind = ${states.taskKind}
-					AND bi.status = 'scheduled' AND br.status IN ('pending', 'in_progress')
-				))`,
+				scheduledDemand,
 				inArray(states.taskKind, taskKinds),
 				lt(states.attemptCount, states.maxAttempts),
 				sql`${states.availableAt} <= ${dbNow}`,
