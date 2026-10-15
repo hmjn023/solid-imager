@@ -122,10 +122,10 @@ async function sync(claim: SourceRunClaim, signal: AbortSignal) {
 	for await (const file of scanFiles(root)) {
 		signal.throwIfAborted();
 		if (!supported.has(path.extname(file).toLowerCase())) continue;
-		await repo.withActiveClaim(claim, async (tx) => {
+		const added = await repo.withActiveClaim(claim, async (tx) => {
 			await currentSource(claim, tx);
 			if (!(await MediaRepository.findByPath(claim.sourceId, file, tx))) {
-				await MediaProcessingService.registerAndProcess(
+				const media = await MediaProcessingService.registerAndProcess(
 					claim.sourceId,
 					file,
 					undefined,
@@ -133,8 +133,23 @@ async function sync(claim: SourceRunClaim, signal: AbortSignal) {
 				);
 				checkpoint = { ...checkpoint, added: checkpoint.added + 1 };
 				await repo.checkpoint(claim, checkpoint, tx);
+				return media;
 			}
+			return null;
 		});
+		if (added) {
+			try {
+				RealtimeEventBus.publishSource(claim.sourceId, "media-added", {
+					mediaId: added.id,
+					filePath: added.filePath,
+				});
+			} catch (err) {
+				logger.warn(
+					{ err, mediaId: added.id },
+					"Source addition notification failed",
+				);
+			}
+		}
 	}
 	let after: string | undefined;
 	for (;;) {

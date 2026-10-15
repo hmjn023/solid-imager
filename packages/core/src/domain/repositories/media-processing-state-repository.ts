@@ -21,11 +21,18 @@ export type ProcessingClaimResult =
 
 export type IMediaProcessingSchedulerRepository =
 	IMediaProcessingStateRepository & {
+		/** Startup handoff also includes unsupported file requests left by older producers. */
 		findInlineMediaIds(
 			afterId: string | undefined,
 			limit: number,
 			taskKinds?: MediaTaskKind[],
 		): Promise<string[]>;
+		/** Retire an existing unsupported request and fence its previous owner. No row is created. */
+		skipInapplicable(
+			input: MediaProcessingInput,
+			kind: MediaTaskKind,
+			tx: Transaction,
+		): Promise<void>;
 		/** Explicit authority transfer. Callers must quiesce/reconcile old producers first. */
 		request(
 			request: MediaProcessingRequest,

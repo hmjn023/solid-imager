@@ -7,6 +7,7 @@ import { migrate as migratePostgres } from "drizzle-orm/node-postgres/migrator";
 import { MediaProcessingSupersededError } from "@solid-imager/core/domain/processing/schemas";
 import { mediaProcessingStates } from "@solid-imager/db/schema";
 import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { getMediaTaskRevision } from "@solid-imager/application/services/media-task-service";
 import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { createMediaProcessingStateRepository } from "@solid-imager/db/repositories/media-processing-state-repository";
 import {
@@ -869,12 +870,102 @@ describe("durable media processing", () => {
 			(await rows(media.id)).every((row) => row.status === "completed"),
 		).toBe(true);
 	});
-	it("skips thumbnail and AI work for audio", async () => {
+	it.each(["sound.flac", "clip.m4v"])(
+		"skips image metadata for non-image %s",
+		async (file) => {
+			deps.supportedExtensions.audio.push(".flac");
+			deps.supportedExtensions.video.push(".m4v");
+			const media = await register(file);
+			await finish();
+			expect(extractMetadata).not.toHaveBeenCalled();
+			expect(await task(media.id, "metadata")).toBeUndefined();
+			expect(
+				await service.requestTask(sourceId, media.id, "metadata", true),
+			).toBeNull();
+			if (media.mediaType === "audio")
+				expect(prepareThumbnail).not.toHaveBeenCalled();
+			else expect(prepareThumbnail).toHaveBeenCalledOnce();
+			expect(await database.select().from(jobs)).toHaveLength(0);
+		},
+	);
+	it.each([
+		{ executionMode: "inline", status: "failed" },
+		{ executionMode: "scheduled", status: "failed" },
+		{ executionMode: "scheduled", status: "in_progress" },
+	] as const)(
+		"retires existing $executionMode/$status non-image metadata during startup and fences the old claim",
+		async ({ executionMode, status }) => {
+			const media = await register();
+			const work = await transactionManager.transaction((tx) =>
+				deps.processingStateRepo.claimDue(["metadata"], tx),
+			);
+			if (!work) throw new Error("Missing claim");
+			await mediaRepo.update(media.id, { mediaType: "audio" });
+			await database
+				.update(mediaProcessingStates)
+				.set({
+					executionMode,
+					status,
+					lastError: "unsupported format",
+					...(status === "failed" && {
+						claimToken: null,
+						claimedAt: null,
+						heartbeatAt: null,
+					}),
+				})
+				.where(eq(mediaProcessingStates.taskKind, "metadata"));
+			await service.reconcileFileTasks();
+			expect(await task(media.id, "metadata")).toMatchObject({
+				status: "completed",
+				executionMode: "scheduled",
+				lastError: null,
+				claimToken: null,
+			});
+			expect(await service.runFileTask("metadata")).toBe("idle");
+			expect(extractMetadata).not.toHaveBeenCalled();
+			await expect(
+				transactionManager.transaction((tx) =>
+					deps.processingStateRepo.commit(
+						work.input,
+						work.claim,
+						async () => {},
+						tx,
+					),
+				),
+			).rejects.toThrow(MediaProcessingSupersededError);
+		},
+	);
+	it("drains an old pending non-image metadata request without extracting image content", async () => {
 		const media = await register("sound.mp3");
-		await finish();
-		expect(await rows(media.id)).toHaveLength(1);
-		expect(prepareThumbnail).not.toHaveBeenCalled();
-		expect(await database.select().from(jobs)).toHaveLength(0);
+		const input = {
+			mediaId: media.id,
+			mediaSourceId: sourceId,
+			sourcePath: "/fixture",
+			filePath: media.filePath,
+			fileSize: media.fileSize,
+			modifiedAt: media.modifiedAt,
+			mediaType: media.mediaType,
+		};
+		// Seed the unsupported request as an older producer would, bypassing the new applicability guard.
+		await transactionManager.transaction((tx) =>
+			deps.processingStateRepo.request(
+				{
+					input,
+					taskKind: "metadata",
+					revision: getMediaTaskRevision(
+						input,
+						"metadata",
+						deps.getProcessingSettings(),
+					),
+					maxAttempts: 5,
+					force: false,
+				},
+				tx,
+			),
+		);
+		expect(await service.runFileTask("metadata")).toBe("completed");
+		expect(extractMetadata).not.toHaveBeenCalled();
+		expect(await mediaRepo.getGenerationInfo(media.id)).toBeNull();
 	});
 	it("cascades requests on deletion and fails an observer of the deleted request", async () => {
 		const media = await register();

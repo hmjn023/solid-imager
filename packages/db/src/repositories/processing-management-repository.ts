@@ -4,7 +4,7 @@ import type {
 	ProcessingListRequest,
 } from "@solid-imager/core/domain/processing/schemas";
 import type { IProcessingManagementRepository } from "@solid-imager/core/domain/repositories/processing-management-repository";
-import { and, count, desc, eq, exists, ilike, sql } from "drizzle-orm";
+import { and, or, ne, count, desc, eq, exists, ilike, sql } from "drizzle-orm";
 import { medias, mediaSources, mediaProcessingStates } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -65,6 +65,13 @@ export function createProcessingManagementRepository(
 									and(
 										eq(mediaProcessingStates.mediaId, medias.id),
 										eq(mediaProcessingStates.status, input.status),
+										or(
+											eq(medias.mediaType, "image"),
+											and(
+												eq(mediaProcessingStates.taskKind, "thumbnail"),
+												ne(medias.mediaType, "audio"),
+											),
+										),
 									),
 								),
 						)

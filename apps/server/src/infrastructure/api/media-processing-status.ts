@@ -4,6 +4,7 @@ import { getTaggingTaskRevision } from "@solid-imager/application/services/taggi
 import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import {
 	mediaTaskKindSchema,
+	isMediaTaskApplicable,
 	processingSettingsFromConfig,
 } from "@solid-imager/core/domain/processing/schemas";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
@@ -48,12 +49,9 @@ export async function findCurrentProcessingSteps(mediaIds: string[]) {
 				media.id,
 				mediaTaskKindSchema.options.map((kind) => ({
 					kind,
-					status:
-						(kind === "thumbnail" && media.mediaType === "audio") ||
-						((kind === "tagging" || kind === "ccip") &&
-							media.mediaType !== "image")
-							? "skipped"
-							: "pending",
+					status: isMediaTaskApplicable(media.mediaType, kind)
+						? "pending"
+						: "skipped",
 					attemptCount: 0,
 					updatedAt: null,
 				})),

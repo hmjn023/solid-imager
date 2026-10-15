@@ -8,6 +8,7 @@ import type {
 } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
 	mediaTaskKindSchema,
+	isMediaTaskApplicable,
 	type MediaProcessingInput,
 	type MediaProcessingState,
 	type MediaTaskKind,
@@ -78,12 +79,7 @@ export class ProcessingManagementService {
 			mediaType: input.mediaType,
 			modifiedAt: input.modifiedAt,
 			steps: mediaTaskKindSchema.options.map((kind): SafeProcessingStep => {
-				const applicable =
-					!(kind === "thumbnail" && input.mediaType === "audio") &&
-					!(
-						(kind === "tagging" || kind === "ccip") &&
-						input.mediaType !== "image"
-					);
+				const applicable = isMediaTaskApplicable(input.mediaType, kind);
 				const state = applicable
 					? states.find((row) => row.taskKind === kind)
 					: undefined;

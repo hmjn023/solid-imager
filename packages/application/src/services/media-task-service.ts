@@ -5,6 +5,7 @@ import type { Transaction } from "@solid-imager/core/domain/interfaces/transacti
 import {
 	MediaProcessingSupersededError,
 	serializeMediaTaskRevision,
+	isMediaTaskApplicable,
 	type MediaProcessingInput,
 	type FileTaskKind,
 	type ProcessingSettings,
@@ -69,6 +70,9 @@ export class MediaTaskService {
 						].includes(error.code),
 					prepare: async (work: ScheduledMediaWork) => {
 						const { input } = work;
+						// Requests persisted by older versions may still reach the runner.
+						if (!isMediaTaskApplicable(input.mediaType, kind))
+							return { commit: async () => {} };
 						if (kind === "metadata") {
 							const metadata = await this.deps.imageProcessor.extractMetadata(
 								path.join(input.sourcePath, input.filePath),
@@ -139,7 +143,10 @@ export class MediaTaskService {
 		repair = false,
 		batchId?: string,
 	) {
-		if (kind === "thumbnail" && input.mediaType === "audio") return null;
+		if (!isMediaTaskApplicable(input.mediaType, kind)) {
+			await this.deps.processingStateRepo.skipInapplicable(input, kind, tx);
+			return null;
+		}
 		const revision = getMediaTaskRevision(
 			input,
 			kind,
@@ -232,8 +239,9 @@ export class MediaTaskService {
 				const states = await this.deps.processingStateRepo.findByMediaIds([id]);
 				for (const state of states) {
 					if (
-						state.executionMode !== "inline" ||
-						(state.taskKind !== "metadata" && state.taskKind !== "thumbnail")
+						(state.taskKind !== "metadata" && state.taskKind !== "thumbnail") ||
+						(state.executionMode !== "inline" &&
+							isMediaTaskApplicable(media.mediaType, state.taskKind))
 					)
 						continue;
 					try {

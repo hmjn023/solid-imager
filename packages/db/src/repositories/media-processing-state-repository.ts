@@ -7,6 +7,7 @@ import {
 	MediaProcessingScheduledError,
 	MediaProcessingSupersededError,
 	serializeMediaProcessingInput,
+	isMediaTaskApplicable,
 	type MediaProcessingInput,
 	type MediaProcessingClaim,
 	type MediaProcessingState,
@@ -14,7 +15,7 @@ import {
 import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import { taggingResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
-import { and, eq, inArray, sql, asc, lt, gt } from "drizzle-orm";
+import { and, or, ne, eq, inArray, sql, asc, lt, gt } from "drizzle-orm";
 import {
 	mediaProcessingStates as states,
 	medias,
@@ -114,9 +115,17 @@ export function createMediaProcessingStateRepository(
 				await getExecutor()
 					.selectDistinct({ id: states.mediaId })
 					.from(states)
+					.innerJoin(medias, eq(medias.id, states.mediaId))
 					.where(
 						and(
-							eq(states.executionMode, "inline"),
+							or(
+								eq(states.executionMode, "inline"),
+								and(
+									eq(states.taskKind, "metadata"),
+									ne(medias.mediaType, "image"),
+									ne(states.status, "completed"),
+								),
+							),
 							inArray(states.taskKind, taskKinds),
 							afterId ? gt(states.mediaId, afterId) : undefined,
 						),
@@ -124,6 +133,24 @@ export function createMediaProcessingStateRepository(
 					.orderBy(asc(states.mediaId))
 					.limit(limit)
 			).map((row) => row.id);
+		},
+		async skipInapplicable(input, kind, tx) {
+			if (isMediaTaskApplicable(input.mediaType, kind))
+				throw new Error("Cannot skip an applicable media task");
+			await lockInput(input, tx);
+			await getExecutor(tx)
+				.update(states)
+				.set({
+					...clearedClaim,
+					executionMode: "scheduled",
+					status: "completed",
+					completedRevision: sql`${states.requestedRevision}`,
+					lastError: null,
+					updatedAt: dbNow,
+				})
+				.where(
+					and(eq(states.mediaId, input.mediaId), eq(states.taskKind, kind)),
+				);
 		},
 		async request(request, tx) {
 			const { input, taskKind, revision, maxAttempts, force, batchId } =

@@ -182,6 +182,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 		const mediaProcessingService = new MediaProcessingServiceImpl({
 			requestAiTasks: vi.fn().mockResolvedValue(undefined),
 			processingStateRepo: {
+				skipInapplicable: vi.fn(),
 				request,
 				claimDue: vi.fn(),
 				recoverExpired: vi.fn(),

@@ -74,6 +74,9 @@ export class AiMediaTaskService<Result> {
 						isRecord(error) &&
 						typeof error.code === "string" &&
 						[
+							"NETWORK_ERROR",
+							"TIMEOUT",
+							"TOO_MANY_REQUESTS",
 							"EAGAIN",
 							"EBUSY",
 							"EMFILE",

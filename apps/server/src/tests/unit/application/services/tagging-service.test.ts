@@ -120,6 +120,7 @@ describe("TaggingServiceImpl", () => {
 		let cached: any;
 		const deps: TaggingServiceDeps = {
 			processingStateRepo: {
+				skipInapplicable: vi.fn(),
 				request: vi.fn(async ({ input, taskKind, revision }) => {
 					state = {
 						requestId: randomUUID(),

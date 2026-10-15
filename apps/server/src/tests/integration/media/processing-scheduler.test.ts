@@ -35,6 +35,10 @@ import {
 	vi,
 } from "vitest";
 import { createPglite } from "~/infrastructure/db/pglite";
+import { AiMediaTaskService } from "@solid-imager/application/services/ai-media-task-service";
+import { createClient } from "@solid-imager/client";
+import { AiInferenceBusyError } from "~/infrastructure/ai/native-inference-gate";
+import type { AppContract } from "@solid-imager/core/domain/contract";
 
 describe("dedicated media processing scheduler", () => {
 	let directory: string | undefined;
@@ -224,6 +228,118 @@ describe("dedicated media processing scheduler", () => {
 			availableAt: expect.any(Date),
 		});
 	});
+	it.each(["NETWORK_ERROR", "TIMEOUT", "TOO_MANY_REQUESTS"])(
+		"backs off and completes after transient AI %s",
+		async (code) => {
+			let error: unknown;
+			if (code === "TOO_MANY_REQUESTS") error = new AiInferenceBusyError();
+			else {
+				const remote = createClient<AppContract>({
+					url: "http://fixture.invalid",
+					timeoutMs: 1,
+					fetch: async (_request, init) => {
+						if (code === "NETWORK_ERROR") throw new TypeError("fetch failed");
+						return new Promise<Response>((_resolve, reject) =>
+							init?.signal?.addEventListener(
+								"abort",
+								() => reject(init.signal?.reason),
+								{ once: true },
+							),
+						);
+					},
+				});
+				try {
+					await remote.ai.tag({ file: new File(["fixture"], "image.png") });
+				} catch (caught) {
+					error = caught;
+				}
+			}
+			expect(error).toHaveProperty("code", code);
+			const infer = vi
+				.fn<() => Promise<string>>()
+				.mockRejectedValueOnce(error)
+				.mockResolvedValue("result");
+			const task = new AiMediaTaskService(
+				{
+					processingStateRepo: repo,
+					transactionManager: transactions,
+					mediaRepo,
+					sourceRepo: sources,
+				},
+				"tagging",
+				{
+					currentRevision: () => "v1",
+					canReuse: () => false,
+					load: async () => null,
+					infer,
+					save: async () => {},
+				},
+			);
+			await task.requestForMedia(input.mediaSourceId, input.mediaId);
+			expect(await task.runOnce()).toBe("retry");
+			const delayed = await state("tagging");
+			if (!delayed) throw new Error("Missing retry state");
+			expect(delayed).toMatchObject({
+				status: "pending",
+				attemptCount: 1,
+				maxAttempts: 5,
+			});
+			expect(delayed.availableAt.getTime()).toBeGreaterThan(
+				delayed.updatedAt.getTime(),
+			);
+			expect(await task.runOnce()).toBe("idle");
+			await database
+				.update(schema.mediaProcessingStates)
+				.set({ availableAt: new Date(0) })
+				.where(where("tagging"));
+			expect(await task.runOnce()).toBe("completed");
+			expect(await state("tagging")).toMatchObject({
+				status: "completed",
+				attemptCount: 2,
+			});
+		},
+	);
+	it.each(["TOO_MANY_REQUESTS", "BAD_REQUEST"])(
+		"keeps AI retries bounded for %s",
+		async (code) => {
+			const infer = vi.fn(async () => {
+				throw Object.assign(new Error(code), { code });
+			});
+			const task = new AiMediaTaskService(
+				{
+					processingStateRepo: repo,
+					transactionManager: transactions,
+					mediaRepo,
+					sourceRepo: sources,
+				},
+				"ccip",
+				{
+					currentRevision: () => "v1",
+					canReuse: () => false,
+					load: async () => null,
+					infer,
+					save: async () => {},
+				},
+			);
+			await task.requestForMedia(input.mediaSourceId, input.mediaId);
+			const attempts = code === "BAD_REQUEST" ? 1 : 5;
+			for (let attempt = 1; attempt <= attempts; attempt++) {
+				await database
+					.update(schema.mediaProcessingStates)
+					.set({ availableAt: new Date(0) })
+					.where(where("ccip"));
+				expect(await task.runOnce()).toBe(
+					attempt === attempts ? "failed" : "retry",
+				);
+			}
+			expect(await task.runOnce()).toBe("idle");
+			expect(infer).toHaveBeenCalledTimes(attempts);
+			expect(await state("ccip")).toMatchObject({
+				status: "failed",
+				attemptCount: attempts,
+			});
+		},
+	);
 	it("coalesces simultaneous requests and claims one token", async () => {
 		await Promise.all(Array.from({ length: 6 }, () => request()));
 		const works = await Promise.all(Array.from({ length: 6 }, () => claim()));

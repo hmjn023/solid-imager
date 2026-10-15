@@ -38,6 +38,7 @@ import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { BackupService } from "~/infrastructure/services/backup-service";
 import { asDumpStream } from "~/infrastructure/utils/stream-utils";
 import type { SourceRunKind } from "@solid-imager/core/domain/source-runs/schemas";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 
 const png = Buffer.from(
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -115,6 +116,7 @@ describe("source workflow filesystem and DB recovery", () => {
 	});
 
 	it("scans additions and deletions without loading the source path set", async () => {
+		const publish = vi.spyOn(RealtimeEventBus, "publishSource");
 		await fs.mkdir(path.join(directory, "nested"));
 		await fs.writeFile(path.join(directory, "nested", "one.png"), png);
 		await services.getMediaRepository().create({
@@ -146,6 +148,54 @@ describe("source workflow filesystem and DB recovery", () => {
 		expect(
 			(await services.getSourceRepository().findById(sourceId))?.syncStatus,
 		).toBe("idle");
+		const media = await services
+			.getMediaRepository()
+			.findByPath(sourceId, "nested/one.png");
+		expect(publish).toHaveBeenCalledWith(sourceId, "media-added", {
+			mediaId: media?.id,
+			filePath: "nested/one.png",
+		});
+		expect(
+			publish.mock.calls.filter((call) => call[1] === "media-added"),
+		).toHaveLength(1);
+	});
+	it("does not announce a source addition whose registration transaction rolls back", async () => {
+		await fs.writeFile(path.join(directory, "one.png"), png);
+		const publish = vi.spyOn(RealtimeEventBus, "publishSource");
+		const withActiveClaim = repo.withActiveClaim;
+		vi.spyOn(repo, "withActiveClaim").mockImplementationOnce((claim, action) =>
+			withActiveClaim(claim, async (tx, current) => {
+				await action(tx, current);
+				throw new Error("commit unavailable");
+			}),
+		);
+		await repo.requestSync(sourceId, directory);
+		expect((await execute("sync")).status).toBe("failed");
+		expect(
+			await services.getMediaRepository().findByPath(sourceId, "one.png"),
+		).toBeNull();
+		expect(
+			publish.mock.calls.filter((call) => call[1] === "media-added"),
+		).toEqual([]);
+	});
+	it("keeps committed source additions when a notification listener fails", async () => {
+		await fs.writeFile(path.join(directory, "one.png"), png);
+		const publish = vi
+			.spyOn(RealtimeEventBus, "publishSource")
+			.mockImplementation((_sourceId, event) => {
+				if (event === "media-added") throw new Error("listener failed");
+			});
+		await repo.requestSync(sourceId, directory);
+		expect(await execute("sync")).toMatchObject({
+			status: "completed",
+			checkpoint: { added: 1 },
+		});
+		expect(
+			await services.getMediaRepository().findByPath(sourceId, "one.png"),
+		).not.toBeNull();
+		expect(
+			publish.mock.calls.filter((call) => call[1] === "media-added"),
+		).toHaveLength(1);
 	});
 
 	it("keeps existing media when the source traversal fails and exposes the failure after restart", async () => {

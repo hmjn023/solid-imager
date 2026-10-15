@@ -11,6 +11,14 @@ export type MediaTaskKind = z.infer<typeof mediaTaskKindSchema>;
 export type FileTaskKind = Extract<MediaTaskKind, "metadata" | "thumbnail">;
 export type AiTaskKind = Extract<MediaTaskKind, "tagging" | "ccip">;
 
+/** Metadata and AI extract image content; only thumbnails also support video. */
+export function isMediaTaskApplicable(
+	mediaType: MediaProcessingInput["mediaType"],
+	kind: MediaTaskKind,
+): boolean {
+	return kind === "thumbnail" ? mediaType !== "audio" : mediaType === "image";
+}
+
 export const processingRequestIdentitySchema = z.object({
 	requestId: z.uuid(),
 	requestedRevision: z.string().min(1),

@@ -93,6 +93,8 @@ async function runTar(
 	signal.throwIfAborted();
 	const child = spawn("tar", args, {
 		stdio: ["ignore", "pipe", "pipe"],
+		// GNU tar then emits non-ASCII path bytes as octal escapes consistently.
+		env: { ...process.env, LC_ALL: "C" },
 		signal,
 	});
 	const done = new Promise<void>((resolve, reject) => {
@@ -129,6 +131,40 @@ async function runTar(
 	}
 }
 
+/** Decode GNU tar's display escaping before validating the actual UTF-8 path. */
+function decodeTarPath(value: string): string {
+	const bytes: number[] = [];
+	const escapes: Record<string, number> = {
+		a: 7,
+		b: 8,
+		f: 12,
+		n: 10,
+		r: 13,
+		t: 9,
+		v: 11,
+		"\\": 92,
+	};
+	for (let index = 0; index < value.length; index++) {
+		if (value[index] !== "\\") {
+			bytes.push(value.charCodeAt(index));
+			continue;
+		}
+		const octal = value.slice(index + 1, index + 4);
+		if (/^[0-7]{3}$/.test(octal)) {
+			bytes.push(Number.parseInt(octal, 8));
+			index += 3;
+		} else {
+			const escaped = escapes[value[++index] ?? ""];
+			if (escaped === undefined)
+				throw new Error("Invalid source archive path escape");
+			bytes.push(escaped);
+		}
+	}
+	return new TextDecoder("utf-8", { fatal: true }).decode(
+		new Uint8Array(bytes),
+	);
+}
+
 /** Validate all entry types before extracting; disk manifest preserves archive order on retry. */
 export async function extractSourceTar(
 	input: string,
@@ -155,7 +191,7 @@ export async function extractSourceTar(
 			["--list", "--file", input, "--quoting-style=escape"],
 			signal,
 			async (line) => {
-				const entry = validateSourceRelativePath(line);
+				const entry = validateSourceRelativePath(decodeTarPath(line));
 				if (entry === "dump.ndjson") {
 					dumps++;
 					return;

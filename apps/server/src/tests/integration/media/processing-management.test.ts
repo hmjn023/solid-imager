@@ -204,9 +204,35 @@ describe("processing management", () => {
 			(await service.get(audio.id)).steps
 				.filter((step) => step.status === "skipped")
 				.map((step) => step.kind),
-		).toEqual(["thumbnail", "tagging", "ccip"]);
+		).toEqual(["metadata", "thumbnail", "tagging", "ccip"]);
 		expect(await database.select().from(schema.jobs)).toHaveLength(0);
 	});
+	it.each(["audio", "video"] as const)(
+		"hides legacy %s metadata failures and rejects their Retry",
+		async (type) => {
+			const target = await media("legacy.flac", type);
+			const queued = await reserve(target.id, "metadata");
+			await finish("metadata", "unsupported format");
+			expect(
+				(await service.get(target.id)).steps.find(
+					(step) => step.kind === "metadata",
+				),
+			).toMatchObject({
+				status: "skipped",
+				canRetry: false,
+				failureCode: null,
+			});
+			expect((await list({ status: "failed" })).total).toBe(0);
+			await expect(
+				service.retry({
+					mediaId: target.id,
+					kind: "metadata",
+					requestId: queued.requestId,
+				}),
+			).rejects.toThrow(ResourceConflictError);
+			expect(request).not.toHaveBeenCalled();
+		},
+	);
 	it("filters and paginates on the server without treating filename wildcards as patterns", async () => {
 		const first = await media("sample_a.png");
 		await media("sampleXb.png");
