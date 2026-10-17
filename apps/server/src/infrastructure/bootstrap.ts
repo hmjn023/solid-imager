@@ -190,6 +190,18 @@ export function startBackgroundWorker(): Promise<void> {
 	const fileWorker = services.getMediaFileWorker();
 	const aiWorker = services.getMediaAiWorker();
 	const previousStart = host.__WORKER_STARTUP__;
+	const initializeStage = async <T>(
+		stage: string,
+		initialize: () => Promise<T>,
+	) => {
+		const startedAt = performance.now();
+		const result = await initialize();
+		logger.info(
+			{ stage, durationMs: Math.round(performance.now() - startedAt) },
+			"Background worker initialization stage completed",
+		);
+		return result;
+	};
 	const startup = async () => {
 		await previousStart?.catch(() => undefined);
 		await host.__JOB_WORKER__?.stop();
@@ -197,15 +209,27 @@ export function startBackgroundWorker(): Promise<void> {
 		await host.__MEDIA_FILE_WORKER__?.stop();
 		await aiDrain;
 		// Deployments must stop old-version writers before starting this version.
-		await JobRetirementRepository.preflight();
-		await downloadRunService.initialize();
-		await createImportRequestRepository(getExecutor).ensureCutover();
-		await batchRunService.initialize();
-		await sourceRunService.initialize();
-		await JobRetirementRepository.initialize();
-		await services.getMediaProcessingService().reconcileFileTasks();
-		await taggingService.reconcileTaggingTasks();
-		await ccipVectorService.reconcileTasks();
+		await initializeStage("legacy-preflight", () =>
+			JobRetirementRepository.preflight(),
+		);
+		await initializeStage("downloads", () => downloadRunService.initialize());
+		await initializeStage("imports", () =>
+			createImportRequestRepository(getExecutor).ensureCutover(),
+		);
+		await initializeStage("batches", () => batchRunService.initialize());
+		await initializeStage("sources", () => sourceRunService.initialize());
+		await initializeStage("legacy-retirement", () =>
+			JobRetirementRepository.initialize(),
+		);
+		await initializeStage("file-recovery", () =>
+			services.getMediaProcessingService().reconcileFileTasks(),
+		);
+		await initializeStage("tagging-recovery", () =>
+			taggingService.reconcileTaggingTasks(),
+		);
+		await initializeStage("ccip-recovery", () =>
+			ccipVectorService.reconcileTasks(),
+		);
 		host.__JOB_WORKER__ = jobWorker;
 		host.__MEDIA_FILE_WORKER__ = fileWorker;
 		host.__MEDIA_AI_WORKER__ = aiWorker;

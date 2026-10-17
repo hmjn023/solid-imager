@@ -122,6 +122,55 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 			const contentReadyMetrics: ContentReadyMetric[] = [];
 			const navigationMetrics: NavigationMetric[] = [];
 			const observedPages = new Set<Page>();
+			const explicitFetchAborts = new Set<string>();
+			const pendingAbortFailures: Array<{ id: string; message: string }> = [];
+			await context.exposeBinding(
+				"__reportFetchAbort",
+				(_source, id: string) => {
+					explicitFetchAborts.add(id);
+				},
+			);
+			await context.addInitScript(() => {
+				const nativeFetch = globalThis.fetch;
+				const bridge = globalThis as typeof globalThis & {
+					__reportFetchAbort(id: string): Promise<void>;
+				};
+				globalThis.fetch = Object.assign(
+					(...args: Parameters<typeof nativeFetch>) => {
+						const [input, init] = args;
+						const request =
+							input instanceof globalThis.Request ? input : undefined;
+						const url = new URL(
+							typeof input === "string"
+								? input
+								: input instanceof URL
+									? input.href
+									: input.url,
+							location.href,
+						);
+						if (
+							url.origin !== location.origin ||
+							!url.pathname.startsWith("/api/")
+						)
+							return nativeFetch(input, init);
+						const id = crypto.randomUUID();
+						const headers = new Headers(init?.headers ?? request?.headers);
+						headers.set("x-e2e-fetch-id", id);
+						const signal =
+							init?.signal === undefined ? request?.signal : init.signal;
+						const report = () => {
+							// Only explicit caller cancellation is expected. API timeouts and
+							// failed/cancelled transports without a JS abort remain failures.
+							if (signal?.reason?.name === "AbortError")
+								void bridge.__reportFetchAbort(id).catch(() => {});
+						};
+						if (signal?.aborted) report();
+						else signal?.addEventListener("abort", report, { once: true });
+						return nativeFetch(input, { ...init, headers });
+					},
+					nativeFetch,
+				);
+			});
 
 			const observePage = (target: Page) => {
 				if (observedPages.has(target)) {
@@ -172,9 +221,11 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 						!isLifecycleRequestAbort &&
 						!matches(request.url(), allowedRequestFailures)
 					) {
-						failures.push(
-							`request failed: ${request.url()} ${errorText ?? ""}`,
-						);
+						const message = `request failed: ${request.url()} ${errorText ?? ""}`;
+						const id = request.headers()["x-e2e-fetch-id"];
+						if (id && errorText?.includes("ERR_ABORTED"))
+							pendingAbortFailures.push({ id, message });
+						else failures.push(message);
 					}
 					// A failed top-level navigation never emits load. Without resetting
 					// here, later stable-page aborts would be incorrectly ignored.
@@ -289,6 +340,11 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 					contentType: "application/json",
 				});
 
+				// Match by unique transport ID, not URL: cancelling one query must
+				// never hide a later failure of another query to the same endpoint.
+				for (const aborted of pendingAbortFailures)
+					if (!explicitFetchAborts.has(aborted.id))
+						failures.push(aborted.message);
 				if (failures.length > 0) {
 					await testInfo.attach("browser-diagnostics", {
 						body: failures.join("\n"),

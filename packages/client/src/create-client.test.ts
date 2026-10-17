@@ -1,8 +1,153 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { APIError } from "./api-error";
 import { createClient, createTimedFetch } from "./create-client";
 
+type TestClient = {
+	ai: Record<
+		string,
+		(input: object, options?: { signal?: AbortSignal }) => Promise<unknown>
+	>;
+};
+
+function delayedClient(timeoutMs?: number): TestClient {
+	return createClient({
+		url: "http://localhost",
+		timeoutMs,
+		fetch: (_request, init) =>
+			new Promise<Response>((resolve, reject) => {
+				const timer = setTimeout(
+					() => resolve(Response.json({ json: "completed" })),
+					35_000,
+				);
+				init?.signal?.addEventListener(
+					"abort",
+					() => {
+						clearTimeout(timer);
+						reject(init.signal?.reason);
+					},
+					{ once: true },
+				);
+			}),
+	}) as unknown as TestClient;
+}
+
+describe("RPC timeout budgets", () => {
+	afterEach(() => vi.useRealTimers());
+	it.each([
+		"tag",
+		"tagOppaiOracle",
+		"ccipFeature",
+		"ccipDifference",
+		"ccipDistances",
+		"detectAndCropCharacters",
+	])(
+		"allows %s inference to take longer than 30 seconds",
+		async (procedure) => {
+			vi.useFakeTimers();
+			const pending = delayedClient().ai[procedure]({});
+			const completed = expect(pending).resolves.toBe("completed");
+			await vi.advanceTimersByTimeAsync(35_000);
+			await completed;
+		},
+	);
+	it.each(["health", "ccipVectorStatus", "startCcipExtraction"])(
+		"keeps the 30-second budget for %s",
+		async (procedure) => {
+			vi.useFakeTimers();
+			const pending = delayedClient().ai[procedure]({});
+			const timedOut = expect(pending).rejects.toMatchObject({
+				code: "TIMEOUT",
+			});
+			await vi.advanceTimersByTimeAsync(30_000);
+			await timedOut;
+		},
+	);
+	it("respects an explicitly configured inference timeout", async () => {
+		vi.useFakeTimers();
+		const timedOut = expect(
+			delayedClient(1_000).ai.tag({}),
+		).rejects.toMatchObject({ code: "TIMEOUT" });
+		await vi.advanceTimersByTimeAsync(1_000);
+		await timedOut;
+	});
+});
+
 describe("createTimedFetch", () => {
+	it("does not dispatch an already cancelled request", async () => {
+		const fetchImpl = vi.fn();
+		const controller = new AbortController();
+		const reason = new Error("Caller disposed");
+		controller.abort(reason);
+		await expect(
+			createTimedFetch(
+				fetchImpl,
+				30_000,
+			)(new Request("http://localhost", { signal: controller.signal })),
+		).rejects.toBe(reason);
+		expect(fetchImpl).not.toHaveBeenCalled();
+	});
+	it("respects the explicit init signal override", async () => {
+		const requestController = new AbortController();
+		requestController.abort();
+		const initController = new AbortController();
+		const fetchImpl = vi.fn(async (_request: Request, init?: RequestInit) => {
+			expect(init?.signal?.aborted).toBe(false);
+			return new Response("ok");
+		});
+		const response = await createTimedFetch(fetchImpl, 30_000)(
+			new Request("http://localhost", { signal: requestController.signal }),
+			{ signal: initController.signal },
+		);
+		expect(await response.text()).toBe("ok");
+	});
+	it("releases an RPC transport when cancellation is carried on Request.signal", async () => {
+		const signals: AbortSignal[] = [];
+		const client = createClient({
+			url: "http://localhost",
+			fetch: async (_request, init) => {
+				if (!init?.signal) throw new Error("Missing fetch signal");
+				const signal = init.signal;
+				signals.push(signal);
+				return new Promise<Response>((_resolve, reject) => {
+					signal.addEventListener("abort", () => reject(signal.reason), {
+						once: true,
+					});
+				});
+			},
+		}) as unknown as TestClient;
+		const controller = new AbortController();
+		const pending = client.ai
+			.health({}, { signal: controller.signal })
+			.catch((error) => error);
+		await vi.waitFor(() => expect(signals).toHaveLength(1));
+		controller.abort();
+		expect(signals[0]?.aborted).toBe(true);
+		expect(await pending).toMatchObject({ name: "AbortError" });
+	});
+	it("releases all cancelled pending connections before their response headers", async () => {
+		const signals: AbortSignal[] = [];
+		const timedFetch = createTimedFetch(async (_request, init) => {
+			if (!init?.signal) throw new Error("Missing fetch signal");
+			const signal = init.signal;
+			signals.push(signal);
+			return new Promise<Response>((_resolve, reject) => {
+				signal.addEventListener("abort", () => reject(signal.reason), {
+					once: true,
+				});
+			});
+		}, 30_000);
+		const controller = new AbortController();
+		const pending = Array.from({ length: 6 }, () =>
+			timedFetch(
+				new Request("http://localhost/api/rpc/sources/events", {
+					signal: controller.signal,
+				}),
+			).catch((error) => error),
+		);
+		controller.abort();
+		expect(signals.filter((signal) => signal.aborted)).toHaveLength(6);
+		await Promise.all(pending);
+	});
 	it("propagates an upstream abort signal to fetch", async () => {
 		const receivedSignals: AbortSignal[] = [];
 		const fetchImpl = async (_request: Request, init?: RequestInit) => {

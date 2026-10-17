@@ -1,22 +1,14 @@
 import fs from "node:fs/promises";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	type Mock,
-	vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileWatcherService } from "~/infrastructure/jobs/file-watcher-service";
 import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
 
 // ---- Module mocks ----
 
-// Mock node:fs/promises to control thumbnail directory reads
+// Mock node:fs/promises to control checks for individual thumbnails.
 vi.mock("node:fs/promises", () => ({
 	default: {
-		readdir: vi.fn(),
+		access: vi.fn(),
 	},
 }));
 
@@ -79,6 +71,7 @@ describe("MaintenanceService", () => {
 	let service: MaintenanceService;
 
 	beforeEach(() => {
+		vi.mocked(fs.access).mockReset().mockResolvedValue(undefined);
 		service = new MaintenanceService(
 			mockMediaRepo as any,
 			mockProcessing as any,
@@ -227,6 +220,38 @@ describe("MaintenanceService", () => {
 	// --------------------------------------------------------------------------
 
 	describe("queueMissingThumbnails", () => {
+		it("checks each thumbnail once across pages with bounded filesystem concurrency", async () => {
+			const items = Array.from({ length: 1001 }, (_, index) =>
+				makeMedia(`paged-${index}`),
+			);
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices
+				.mockResolvedValueOnce(items.slice(0, 1000))
+				.mockResolvedValueOnce(items.slice(1000));
+			let active = 0;
+			let peak = 0;
+			vi.mocked(fs.access).mockImplementation(async () => {
+				active++;
+				peak = Math.max(peak, active);
+				await Promise.resolve();
+				active--;
+			});
+			await service.performStartupChecks();
+			expect(fs.access).toHaveBeenCalledTimes(1001);
+			expect(peak).toBeLessThanOrEqual(16);
+			expect(mockProcessing.requestTask).not.toHaveBeenCalled();
+		});
+		it("does not regenerate thumbnails on a permission failure", async () => {
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices.mockResolvedValueOnce([
+				makeMedia("private"),
+			]);
+			vi.mocked(fs.access).mockRejectedValue(
+				Object.assign(new Error("EACCES"), { code: "EACCES" }),
+			);
+			await service.performStartupChecks();
+			expect(mockProcessing.requestTask).not.toHaveBeenCalled();
+		});
 		it("should NOT create any requests when all thumbnails exist", async () => {
 			const media1 = makeMedia("media-1");
 
@@ -235,9 +260,7 @@ describe("MaintenanceService", () => {
 			mockMediaRepo.findAllMediaIndices.mockResolvedValueOnce([media1]);
 
 			// Thumbnail for media-1 already exists in the cache directory
-			(fs.readdir as unknown as Mock).mockResolvedValue([
-				"media-1.webp",
-			] as any);
+			vi.mocked(fs.access).mockResolvedValue(undefined);
 
 			await service.performStartupChecks();
 
@@ -252,7 +275,9 @@ describe("MaintenanceService", () => {
 			mockMediaRepo.findAllMediaIndices.mockResolvedValueOnce([media1]);
 
 			// The cache directory exists but is empty → thumbnail is missing
-			(fs.readdir as unknown as Mock).mockResolvedValue([] as any);
+			vi.mocked(fs.access).mockRejectedValue(
+				Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+			);
 
 			mockSourceRepo.findById.mockResolvedValue(
 				makeLocalSource("source-1", "/local/images"),
@@ -281,7 +306,7 @@ describe("MaintenanceService", () => {
 
 			// ENOENT: directory does not exist yet → treat as empty → thumbnail missing
 			const err = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
-			(fs.readdir as unknown as Mock).mockRejectedValue(err);
+			vi.mocked(fs.access).mockRejectedValue(err);
 
 			mockSourceRepo.findById.mockResolvedValue(
 				makeLocalSource("source-1", "/local/images"),
@@ -307,9 +332,7 @@ describe("MaintenanceService", () => {
 				.mockResolvedValueOnce([]); // second page: empty → stop
 
 			// All thumbnails exist (one set shared by all items in source-1)
-			(fs.readdir as unknown as Mock).mockResolvedValue(
-				batch1.map((m) => `${m.id}.webp`) as any,
-			);
+			vi.mocked(fs.access).mockResolvedValue(undefined);
 
 			await service.performStartupChecks();
 

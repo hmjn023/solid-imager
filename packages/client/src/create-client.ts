@@ -4,6 +4,11 @@ import type { AnyContractRouter, ContractRouterClient } from "@orpc/contract";
 import { APIError } from "./api-error";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
+// Media inference observes a durable request for up to 180 seconds. Allow
+// queueing/HTTP overhead as well, without extending normal reads and writes.
+export const AI_REQUEST_TIMEOUT_MS = 240_000;
+const inferencePath =
+	/^\/api\/rpc\/ai\/(?:tag|tagOppaiOracle|ccipFeature|ccipDifference|ccipDistances|detectAndCropCharacters)\/?$/;
 
 type FetchInit = RequestInit & {
 	redirect?: Request["redirect"];
@@ -96,10 +101,6 @@ function withStreamingJobArtifactDownload<C extends AnyContractRouter>(
 	}) as ContractRouterClient<C>;
 }
 
-function isAbortError(error: unknown): boolean {
-	return error instanceof Error && error.name === "AbortError";
-}
-
 function createTimeoutError(timeoutMs: number): APIError {
 	return new APIError(`API request timed out after ${timeoutMs}ms`, "TIMEOUT");
 }
@@ -128,20 +129,21 @@ export function createTimedFetch(
 			controller.abort(createTimeoutError(timeoutMs));
 		}, timeoutMs);
 
-		const upstreamSignal = init?.signal;
+		// oRPC carries caller cancellation on Request.signal; fetch init normally
+		// contains only redirect options. Explicit init signals override it, as
+		// they do in native fetch. Dropping the request signal leaves cancelled
+		// reads/subscriptions occupying connections until their timeout expires.
+		const upstreamSignal =
+			init?.signal === undefined ? request.signal : init.signal;
 		const signal = upstreamSignal
 			? AbortSignal.any([upstreamSignal, controller.signal])
 			: controller.signal;
 
 		try {
+			signal.throwIfAborted();
 			return await fetchImpl(request, { ...init, signal });
 		} catch (error) {
-			if (controller.signal.aborted) {
-				throw controller.signal.reason;
-			}
-			if (isAbortError(error) && upstreamSignal?.aborted) {
-				throw error;
-			}
+			if (signal.aborted) throw signal.reason;
 			throw createNetworkError(error);
 		} finally {
 			clearTimeout(timeout);
@@ -154,10 +156,21 @@ export function createClient<C extends AnyContractRouter>(
 ): ContractRouterClient<C> {
 	const base = options.url || "http://localhost:3000";
 	const rpcUrl = new URL("/api/rpc/", base).toString();
-	const fetchImpl = createTimedFetch(
-		options.fetch ?? ((request, init) => fetch(request, init)),
+	const baseFetch =
+		options.fetch ??
+		((request: Request, init?: FetchInit) => fetch(request, init));
+	const defaultFetch = createTimedFetch(
+		baseFetch,
 		options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 	);
+	const inferenceFetch = createTimedFetch(
+		baseFetch,
+		options.timeoutMs ?? AI_REQUEST_TIMEOUT_MS,
+	);
+	const fetchImpl = (request: Request, init?: FetchInit) =>
+		inferencePath.test(new URL(request.url).pathname)
+			? inferenceFetch(request, init)
+			: defaultFetch(request, init);
 
 	const link = new RPCLink({
 		url: rpcUrl,

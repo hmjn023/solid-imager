@@ -6,7 +6,7 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { cleanupSourceRunFiles } from "./source-run-retention";
-import { and, asc, eq, gt } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import {
 	SourceRunAttemptLostError,
@@ -118,39 +118,70 @@ async function sync(claim: SourceRunClaim, signal: AbortSignal) {
 			.map((ext) => ext.toLowerCase()),
 	);
 	let checkpoint = { ...claim.checkpoint };
+	let page: string[] = [];
+	const registerPage = async () => {
+		if (!page.length) return;
+		const files = page;
+		page = [];
+		signal.throwIfAborted();
+		// A restart usually scans existing files. Validate ownership/source once
+		// per bounded page instead of locking and renewing two rows per file.
+		const existing = await repo.withActiveClaim(claim, async (tx) => {
+			await currentSource(claim, tx);
+			const rows = await getExecutor(tx)
+				.select({ filePath: medias.filePath })
+				.from(medias)
+				.where(
+					and(
+						eq(medias.mediaSourceId, claim.sourceId),
+						inArray(medias.filePath, files),
+					),
+				);
+			return new Set(rows.map((row) => row.filePath));
+		});
+		for (const file of files) {
+			signal.throwIfAborted();
+			if (existing.has(file)) continue;
+			// Recheck new files under the original write fence: a watcher or
+			// another producer may have registered them since the page read.
+			const added = await repo.withActiveClaim(claim, async (tx) => {
+				await currentSource(claim, tx);
+				if (!(await MediaRepository.findByPath(claim.sourceId, file, tx))) {
+					const media = await MediaProcessingService.registerAndProcess(
+						claim.sourceId,
+						file,
+						undefined,
+						{ tx, sourcePath: root },
+					);
+					checkpoint = { ...checkpoint, added: checkpoint.added + 1 };
+					await repo.checkpoint(claim, checkpoint, tx);
+					return media;
+				}
+				return null;
+			});
+			if (added) {
+				try {
+					RealtimeEventBus.publishSource(claim.sourceId, "media-added", {
+						mediaId: added.id,
+						filePath: added.filePath,
+					});
+				} catch (err) {
+					logger.warn(
+						{ err, mediaId: added.id },
+						"Source addition notification failed",
+					);
+				}
+			}
+		}
+	};
 	// A failed traversal never enters deletion. Retry rescans additions idempotently.
 	for await (const file of scanFiles(root)) {
 		signal.throwIfAborted();
 		if (!supported.has(path.extname(file).toLowerCase())) continue;
-		const added = await repo.withActiveClaim(claim, async (tx) => {
-			await currentSource(claim, tx);
-			if (!(await MediaRepository.findByPath(claim.sourceId, file, tx))) {
-				const media = await MediaProcessingService.registerAndProcess(
-					claim.sourceId,
-					file,
-					undefined,
-					{ tx, sourcePath: root },
-				);
-				checkpoint = { ...checkpoint, added: checkpoint.added + 1 };
-				await repo.checkpoint(claim, checkpoint, tx);
-				return media;
-			}
-			return null;
-		});
-		if (added) {
-			try {
-				RealtimeEventBus.publishSource(claim.sourceId, "media-added", {
-					mediaId: added.id,
-					filePath: added.filePath,
-				});
-			} catch (err) {
-				logger.warn(
-					{ err, mediaId: added.id },
-					"Source addition notification failed",
-				);
-			}
-		}
+		page.push(file);
+		if (page.length === 100) await registerPage();
 	}
+	await registerPage();
 	let after: string | undefined;
 	for (;;) {
 		signal.throwIfAborted();

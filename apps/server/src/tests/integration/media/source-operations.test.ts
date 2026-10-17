@@ -115,6 +115,36 @@ describe("source workflow filesystem and DB recovery", () => {
 		if (directory) await fs.rm(directory, { recursive: true, force: true });
 	});
 
+	it("does not renew a source lease for every unchanged file", async () => {
+		const files = Array.from(
+			{ length: 201 },
+			(_, index) => `existing-${index}.png`,
+		);
+		for (let offset = 0; offset < files.length; offset += 25)
+			await Promise.all(
+				files
+					.slice(offset, offset + 25)
+					.map((file) => fs.writeFile(path.join(directory, file), png)),
+			);
+		await db.insert(medias).values(
+			files.map((file) => ({
+				mediaSourceId: sourceId,
+				filePath: file,
+				fileName: file,
+				mediaType: "image" as const,
+				width: 1,
+				height: 1,
+				fileSize: png.length,
+			})),
+		);
+		const renew = vi.spyOn(repo, "withActiveClaim");
+		await repo.requestSync(sourceId, directory);
+		const run = await execute("sync");
+		expect(run.status).toBe("completed");
+		expect(run.checkpoint).toMatchObject({ added: 0, deleted: 0 });
+		expect(renew.mock.calls.length).toBeLessThanOrEqual(10);
+	}, 20_000);
+
 	it("scans additions and deletions without loading the source path set", async () => {
 		const publish = vi.spyOn(RealtimeEventBus, "publishSource");
 		await fs.mkdir(path.join(directory, "nested"));

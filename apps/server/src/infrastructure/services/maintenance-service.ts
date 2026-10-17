@@ -5,6 +5,7 @@ import type { SourceRepository } from "@solid-imager/core/domain/repositories/so
 import type { IMediaProcessingService } from "@solid-imager/application/ports/media-processing-service";
 import { getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 
 export class MaintenanceService {
 	private readonly mediaRepo: IMediaRepository;
@@ -101,52 +102,31 @@ export class MaintenanceService {
 	private async findMissingThumbnails(
 		batch: { id: string; mediaSourceId: string; filePath: string }[],
 	) {
-		const missing: typeof batch = [];
-		const mediaBySource = this.groupMediaBySource(batch);
-
-		for (const [sourceId, items] of mediaBySource) {
-			const existingFiles = await this.getExistingThumbnails(sourceId);
-			if (!existingFiles) {
-				continue;
+		// Never re-enumerate the entire source cache for every 1,000-media page.
+		// Check just this page, with bounded filesystem concurrency and memory.
+		const results = await asyncPool(batch, 16, async (item) => {
+			try {
+				await fs.access(
+					path.join(getSourceCacheDir(item.mediaSourceId), `${item.id}.webp`),
+				);
+				return null;
+			} catch (error) {
+				if (
+					error instanceof Error &&
+					"code" in error &&
+					error.code === "ENOENT"
+				)
+					return item;
+				logger.warn(
+					{ err: error, sourceId: item.mediaSourceId, mediaId: item.id },
+					"Failed to check thumbnail",
+				);
+				return null;
 			}
-
-			for (const item of items) {
-				if (!existingFiles.has(item.id)) {
-					missing.push(item);
-				}
-			}
-		}
-		return missing;
-	}
-
-	private groupMediaBySource(
-		batch: { id: string; mediaSourceId: string; filePath: string }[],
-	) {
-		const mediaBySource = new Map<string, typeof batch>();
-		for (const media of batch) {
-			if (!mediaBySource.has(media.mediaSourceId)) {
-				mediaBySource.set(media.mediaSourceId, []);
-			}
-			mediaBySource.get(media.mediaSourceId)?.push(media);
-		}
-		return mediaBySource;
-	}
-
-	private async getExistingThumbnails(sourceId: string) {
-		const cacheDir = getSourceCacheDir(sourceId);
-		try {
-			const files = await fs.readdir(cacheDir);
-			return new Set(files.map((f) => path.basename(f, path.extname(f))));
-		} catch (error) {
-			if ((error as { code?: string }).code === "ENOENT") {
-				return new Set<string>();
-			}
-			logger.warn(
-				{ err: error, sourceId },
-				"Failed to read thumbnail directory",
-			);
-			return null;
-		}
+		});
+		return results.flatMap((result) =>
+			result.status === "fulfilled" && result.value ? [result.value] : [],
+		);
 	}
 
 	private async dispatchJobs(

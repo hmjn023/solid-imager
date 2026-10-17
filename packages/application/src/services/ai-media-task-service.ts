@@ -22,6 +22,10 @@ import { isRecord } from "@solid-imager/core/utils/type-guards";
 import type { ILogger } from "../ports/media-service";
 import { MediaProcessingScheduler } from "./media-processing-scheduler";
 
+// Bound HTTP observation independently from durable execution. Keep this below
+// the shared HTTP budget so the observer can return its own result.
+const AI_TASK_WAIT_TIMEOUT_MS = 180_000;
+
 export type AiMediaTaskDeps = {
 	processingStateRepo: IMediaProcessingSchedulerRepository;
 	transactionManager: TransactionManager;
@@ -181,7 +185,7 @@ export class AiMediaTaskService<Result> {
 		const request = identity;
 		const active = <T>(action: (tx: Transaction) => Promise<T>) =>
 			this.deps.transactionManager.transaction(action);
-		const deadline = Date.now() + 120_000;
+		const deadline = Date.now() + AI_TASK_WAIT_TIMEOUT_MS;
 		for (;;) {
 			const response = await active(async (tx) => {
 				const currentInput = await this.inputFor(

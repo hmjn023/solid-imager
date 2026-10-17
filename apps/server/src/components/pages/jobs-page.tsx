@@ -31,8 +31,9 @@ export function JobsPage(props: {
 		}),
 	);
 	const queryClient = useQueryClient();
+	const state = () => toQueryUiState(jobsQuery);
 	const pagination = () => {
-		const total = jobsQuery.data?.total ?? 0;
+		const total = state().data?.total ?? 0;
 		return {
 			canNext: (pageIndex() + 1) * DEFAULT_JOBS_PAGE_SIZE < total,
 			canPrevious: pageIndex() > 0,
@@ -69,7 +70,7 @@ export function JobsPage(props: {
 			}}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
-			jobs={() => jobsQuery.data?.items ?? []}
+			jobs={() => state().data?.items ?? []}
 			onRefresh={async () => {
 				await jobsQuery.refetch();
 			}}
@@ -162,7 +163,7 @@ export function JobsPage(props: {
 				})();
 			}}
 			page={pagination}
-			state={() => toQueryUiState(jobsQuery)}
+			state={state}
 		/>
 	);
 }

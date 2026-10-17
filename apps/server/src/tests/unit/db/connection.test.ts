@@ -51,8 +51,10 @@ afterEach(() => {
 });
 
 describe("createConnection", () => {
-	it("defaults PostgreSQL connections to Bun.SQL", () => {
-		expect(resolvePostgresDriver(undefined)).toBe("bun-sql");
+	it("defaults PostgreSQL connections to pg for JSONB compatibility", () => {
+		expect(resolvePostgresDriver(undefined)).toBe("node-postgres");
+		expect(resolvePostgresDriver("")).toBe("node-postgres");
+		expect(resolvePostgresDriver("  ")).toBe("node-postgres");
 	});
 
 	it("rejects unknown PostgreSQL drivers", () => {
