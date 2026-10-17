@@ -25,7 +25,11 @@ export function toQueryUiState<T>(
 	query: QueryStateLike<T>,
 	options: ToQueryUiStateOptions<T> = {},
 ): QueryUiState<T> {
-	const hasData = query.data !== undefined;
+	// Solid Query's data getter participates in Suspense, even when it returns
+	// undefined. Manual loading UI must check status first or an initial read
+	// can suspend the enclosing route transition and prevent query disposal.
+	const data = query.status === "pending" ? undefined : query.data;
+	const hasData = data !== undefined;
 	const error = query.error ?? undefined;
 	const fetchState: QueryUiFetchState =
 		query.fetchStatus === "paused"
@@ -34,11 +38,11 @@ export function toQueryUiState<T>(
 				? "background-fetching"
 				: "idle";
 
-	if (query.data !== undefined) {
+	if (data !== undefined) {
 		return {
-			phase: options.isEmpty?.(query.data) ? "empty" : "data",
+			phase: options.isEmpty?.(data) ? "empty" : "data",
 			fetchState,
-			data: query.data,
+			data,
 			error,
 		};
 	}

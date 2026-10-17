@@ -75,7 +75,7 @@ PostgreSQLを使わずPGliteで動かす場合は、DB_HOSTを上書きしてマ
 DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
 ```
 
-PostgreSQL接続はBun.SQLを既定で使用します。`COPY`、`LISTEN/NOTIFY`、PostGISなどBun.SQLで未対応の機能が必要な環境では、`DB_POSTGRES_DRIVER=node-postgres` を設定すると従来の `pg` 経路へ切り替えられます。
+PostgreSQL接続は `node-postgres`（`pg`）を既定で使用します。Bun 1.4.3のBun.SQLではDrizzleのJSONB入力が二重にエンコードされ、ソース同期や処理キューのJSON条件が壊れることを確認しています。Bun.SQLを使う場合は、対象ランタイムで下記の `validate:bun-sql` が成功することを確認し、`DB_POSTGRES_DRIVER=bun-sql` を明示してください。既存環境の切り替えは `DB_POSTGRES_DRIVER=node-postgres` を設定して再起動します。
 
 画像処理はサムネイル変換と寸法取得を Bun.Image に寄せ、EXIF/コメント抽出と AI 用 crop は互換性のため sharp を継続利用します。
 
@@ -170,4 +170,5 @@ fi
 - **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面）
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
+- **取り込みジョブの復旧**: [工程別RetryとLOGGED移行手順](./docs/operations/resumable-media-processing.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)

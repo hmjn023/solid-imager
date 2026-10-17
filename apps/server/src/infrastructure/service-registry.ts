@@ -1,3 +1,4 @@
+import type { MediaAiWorker } from "~/infrastructure/jobs/media-ai-worker";
 import type {
 	ICharacterService,
 	IMediaProcessingService,
@@ -11,13 +12,14 @@ import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
 import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
 import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
+
+import type { MediaFileWorker } from "~/infrastructure/jobs/media-file-worker";
 
 export class ServiceRegistry {
 	private static instance: ServiceRegistry;
@@ -32,8 +34,9 @@ export class ServiceRegistry {
 	private projectRepository?: IProjectRepository;
 	private characterRepository?: CharacterRepository;
 	private ipRepository?: IIpRepository;
-	private jobRepository?: IJobRepository;
 	private jobWorker?: JobWorker;
+	private mediaFileWorker?: MediaFileWorker;
+	private mediaAiWorker?: MediaAiWorker;
 	private mediaProcessingService?: IMediaProcessingService;
 	private characterService?: ICharacterService;
 	private configService?: IConfigService;
@@ -91,8 +94,20 @@ export class ServiceRegistry {
 		this.ipRepository = repo;
 	}
 
-	registerJobRepository(repo: IJobRepository): void {
-		this.jobRepository = repo;
+	registerMediaAiWorker(worker: MediaAiWorker) {
+		this.mediaAiWorker = worker;
+	}
+	getMediaAiWorker(): MediaAiWorker {
+		if (!this.mediaAiWorker) throw new Error("MediaAiWorker is not registered");
+		return this.mediaAiWorker;
+	}
+	registerMediaFileWorker(worker: MediaFileWorker) {
+		this.mediaFileWorker = worker;
+	}
+	getMediaFileWorker(): MediaFileWorker {
+		if (!this.mediaFileWorker)
+			throw new Error("MediaFileWorker is not registered");
+		return this.mediaFileWorker;
 	}
 
 	registerJobWorker(worker: JobWorker): void {
@@ -176,13 +191,6 @@ export class ServiceRegistry {
 		return this.ipRepository;
 	}
 
-	getJobRepository(): IJobRepository {
-		if (!this.jobRepository) {
-			throw new Error("JobRepository has not been registered.");
-		}
-		return this.jobRepository;
-	}
-
 	getJobWorker(): JobWorker {
 		if (!this.jobWorker) {
 			throw new Error("JobWorker has not been registered.");
@@ -225,6 +233,12 @@ export class ServiceRegistry {
 
 	// Helper for testing to reset the registry
 	async reset(): Promise<void> {
+		await this.jobWorker?.stop();
+		const aiDrain = this.mediaAiWorker?.stop();
+		await this.mediaFileWorker?.stop();
+		await aiDrain;
+		this.mediaAiWorker = undefined;
+		this.mediaFileWorker = undefined;
 		this.mediaRepository = undefined;
 		this.sourceRepository = undefined;
 		this.mediaStorage = undefined;
@@ -236,7 +250,6 @@ export class ServiceRegistry {
 		this.projectRepository = undefined;
 		this.characterRepository = undefined;
 		this.ipRepository = undefined;
-		this.jobRepository = undefined;
 		this.jobWorker = undefined;
 		this.mediaProcessingService = undefined;
 		this.characterService = undefined;

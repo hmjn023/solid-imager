@@ -1,13 +1,13 @@
-export const DEFAULT_POSTGRES_DRIVER = "bun-sql" as const;
+export const DEFAULT_POSTGRES_DRIVER = "node-postgres" as const;
 
 export type PostgresDriver = "bun-sql" | "node-postgres";
 
 /**
  * Resolves the PostgreSQL implementation used by the server.
  *
- * Bun.SQL is the default. The node-postgres path remains available as an
- * explicit escape hatch for deployments that still depend on pg-specific
- * behavior (for example COPY, LISTEN/NOTIFY, or PostGIS extensions).
+ * Keep pg as the default: Bun 1.4.3 double-encodes Drizzle's serialized JSONB
+ * parameters, breaking JSON operators and durable processing constraints.
+ * Bun.SQL remains opt-in for runtimes that pass validate:bun-sql.
  */
 export function resolvePostgresDriver(
 	value: string | undefined = process.env.DB_POSTGRES_DRIVER,

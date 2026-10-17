@@ -23,18 +23,6 @@ import type {
 // Deferred Action Types (moved from server's job-dispatch-service)
 // ============================================================================
 
-export type DeferredJob = {
-	mediaId?: string;
-	sourcePath?: string;
-	type: "processMedia" | "downloadImage";
-	payload?: unknown;
-};
-
-export type DeferredJobs = {
-	mediaSourceId: string;
-	jobs: DeferredJob[];
-};
-
 export type DeferredSourceEvent = {
 	mediaSourceId: string;
 } & SourceEventCommand;
@@ -50,7 +38,6 @@ export type ThumbnailToDelete = {
 };
 
 export type DeferredActions = {
-	jobs: DeferredJobs[];
 	sourceEvents: DeferredSourceEvent[];
 	filesToDelete?: FileToDelete[];
 	thumbnailsToDelete?: ThumbnailToDelete[];

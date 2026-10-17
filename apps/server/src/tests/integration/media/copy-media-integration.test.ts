@@ -1,3 +1,6 @@
+import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { eq } from "drizzle-orm";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db/index";
@@ -19,7 +22,6 @@ import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manag
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
@@ -72,7 +74,6 @@ describe("MediaService - Copy Media Integration", () => {
 		services.registerProjectRepository(ProjectRepository);
 		services.registerCharacterRepository(DrizzleCharacterRepository);
 		services.registerIpRepository(IpRepository);
-		services.registerJobRepository(JobRepository);
 		services.registerMediaStorage(mockStorageService as any);
 		services.registerImageProcessor(mockImageProcessor as any);
 		services.registerAiClient(mockAiClient as any);
@@ -125,6 +126,12 @@ describe("MediaService - Copy Media Integration", () => {
 
 		services.registerMediaProcessingService(
 			new MediaProcessingServiceImpl({
+				requestAiTasks: vi.fn().mockResolvedValue(undefined),
+				processingStateRepo: MediaProcessingStateRepository,
+				getProcessingSettings: () =>
+					processingSettingsFromConfig(defaultAppConfig),
+				hasThumbnails: vi.fn().mockResolvedValue(true),
+				transactionManager: DrizzleTransactionManager,
 				sourceRepo: services.getSourceRepository(),
 				mediaRepo: services.getMediaRepository(),
 				tagRepo: services.getTagRepository(),
@@ -132,7 +139,6 @@ describe("MediaService - Copy Media Integration", () => {
 				characterRepo: services.getCharacterRepository(),
 				ipRepo: services.getIpRepository(),
 				projectRepo: services.getProjectRepository(),
-				jobRepo: services.getJobRepository() as any,
 				imageProcessor: {} as any,
 				mediaStorage: {} as any,
 				enableAutoTagging: false,
@@ -141,7 +147,9 @@ describe("MediaService - Copy Media Integration", () => {
 					video: [".mp4", ".webm", ".mov"],
 					audio: [".mp3", ".wav"],
 				},
-				generateThumbnail: vi.fn() as any,
+				prepareThumbnail: vi
+					.fn()
+					.mockResolvedValue({ commit: vi.fn(), cleanup: vi.fn() }),
 				publishSourceEvent: vi.fn() as any,
 			}),
 		);

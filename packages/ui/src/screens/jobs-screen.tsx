@@ -43,6 +43,11 @@ import {
 	toggleAllJobSelection,
 	toggleJobSelection,
 } from "./jobs-selection";
+import {
+	MediaProcessingPanel,
+	type ProcessingApi,
+} from "./media-processing-panel";
+import type { JobsView } from "./jobs-view";
 import { formatDate } from "./manager/utils";
 
 const JOB_FILTERS = [
@@ -85,6 +90,9 @@ export type JobsPagination = {
 };
 
 export type JobsScreenProps = {
+	processingApi?: ProcessingApi;
+	view?: Accessor<JobsView>;
+	onViewChange?: (view: JobsView) => void;
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	isRefreshing: Accessor<boolean>;
 	jobs: Accessor<JobDto[]>;
@@ -287,7 +295,7 @@ function JobsTable(props: {
 													—
 												</span>
 											}
-											when={job.status === "failed"}
+											when={job.canRetry ?? job.status === "failed"}
 										>
 											<Checkbox
 												aria-label={`Select ${jobTypeLabel(job.type)} job`}
@@ -434,7 +442,8 @@ function JobsInspector(props: {
 
 	const retry = async () => {
 		const job = props.job;
-		if (job?.status !== "failed" || isRetrying()) return;
+		if (!job || !(job.canRetry ?? job.status === "failed") || isRetrying())
+			return;
 		setIsRetrying(true);
 		try {
 			await props.onRetry(job.id);
@@ -460,8 +469,11 @@ function JobsInspector(props: {
 		const job = props.job;
 		if (
 			!job ||
-			(job.status !== "pending" && job.status !== "in_progress") ||
-			isBatchParentJobType(job.type) ||
+			!(
+				job.canCancel ??
+				((job.status === "pending" || job.status === "in_progress") &&
+					!isBatchParentJobType(job.type))
+			) ||
 			isCancelling()
 		)
 			return;
@@ -591,6 +603,21 @@ function JobsInspector(props: {
 							</div>
 						</dl>
 
+						<ProcessingSteps
+							title="Current media processing"
+							steps={job().currentProcessingSteps}
+						/>
+						<ProcessingSteps
+							title="Processing steps"
+							steps={job().processingSteps}
+						/>
+						<Show when={job().processingSteps?.length}>
+							<p class="mt-3 text-xs text-muted-foreground">
+								Retry reuses completed work while the media and processing
+								settings are unchanged. AI analysis runs in separate jobs.
+							</p>
+						</Show>
+
 						<Show when={job().progress}>
 							{(progress) => (
 								<div class="mt-4">
@@ -644,9 +671,10 @@ function JobsInspector(props: {
 							<Show
 								fallback={null}
 								when={
-									(job().status === "pending" ||
+									job().canCancel ??
+									((job().status === "pending" ||
 										job().status === "in_progress") &&
-									!isBatchParentJobType(job().type)
+										!isBatchParentJobType(job().type))
 								}
 							>
 								<Button
@@ -663,10 +691,10 @@ function JobsInspector(props: {
 							<Show
 								fallback={
 									<p class="text-xs leading-5 text-muted-foreground">
-										再実行できるのは失敗したジョブのみです。
+										失敗した処理、または再開可能なbatchを再実行できます。
 									</p>
 								}
-								when={job().status === "failed"}
+								when={job().canRetry ?? job().status === "failed"}
 							>
 								<Button
 									aria-busy={isRetrying()}
@@ -688,6 +716,8 @@ function JobsInspector(props: {
 }
 
 export function JobsScreen(props: JobsScreenProps) {
+	const [localView, setLocalView] = createSignal<JobsView>("jobs");
+	const view = () => props.view?.() ?? localView();
 	const [activeFilter, setActiveFilter] = createSignal<JobFilter>("all");
 	const [selectedJobId, setSelectedJobId] = createSignal<string | null>(null);
 	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
@@ -753,219 +783,298 @@ export function JobsScreen(props: JobsScreenProps) {
 	};
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
+		<Tabs
+			as="section"
+			class="flex h-full min-h-0 min-w-0 flex-col bg-background"
+			value={view()}
+			onChange={(value) => {
+				if (value === "jobs" || value === "processing") {
+					setLocalView(value);
+					props.onViewChange?.(value);
+				}
+			}}
+		>
 			<ManagementHeader
 				actions={
-					<div class="flex items-center gap-2">
-						<Show when={props.state().data}>
-							{(data) => (
-								<span class="hidden text-xs text-muted-foreground sm:inline">
-									{data().total.toLocaleString()} jobs
-								</span>
-							)}
-						</Show>
-						<Button
-							aria-busy={props.isRefreshing()}
-							disabled={props.isRefreshing()}
-							onClick={() => void refresh()}
-							size="sm"
-							variant="outline"
-						>
-							<RefreshCw aria-hidden="true" size={14} />
-							{props.isRefreshing() ? "Refreshing..." : "Refresh"}
-						</Button>
-					</div>
+					<Show when={view() === "jobs"}>
+						<div class="flex items-center gap-2">
+							<Show when={props.state().data}>
+								{(data) => (
+									<span class="hidden text-xs text-muted-foreground sm:inline">
+										{data().total.toLocaleString()} jobs
+									</span>
+								)}
+							</Show>
+							<Button
+								aria-busy={props.isRefreshing()}
+								disabled={props.isRefreshing()}
+								onClick={() => void refresh()}
+								size="sm"
+								variant="outline"
+							>
+								<RefreshCw aria-hidden="true" size={14} />
+								{props.isRefreshing() ? "Refreshing..." : "Refresh"}
+							</Button>
+						</div>
+					</Show>
 				}
 				description="バックグラウンド処理の進捗、失敗、履歴を確認します。"
 				title="Jobs"
 			/>
 
-			<div class="grid min-h-0 flex-1 xl:grid-cols-detail-sidebar">
-				<div class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable">
-					<Tabs
-						onChange={(value) => {
-							setActiveFilter(value as JobFilter);
-							clearBulkSelection();
-						}}
-						value={activeFilter()}
-					>
-						<div class="grid gap-6 lg:grid-cols-settings-sidebar xl:gap-8">
-							<TabsList
-								aria-label="Job status filter"
-								class="flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
-							>
-								<For each={JOB_FILTERS}>
-									{(filter) => {
-										const Icon = filter.icon;
-										return (
-											<TabsTrigger
-												class="min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start"
-												type="button"
-												value={filter.value}
-											>
-												<CategoryLabel
-													description={filter.description}
-													icon={<Icon aria-hidden="true" size={16} />}
-													label={filter.label}
-												/>
-											</TabsTrigger>
-										);
-									}}
-								</For>
-							</TabsList>
-							<div class="min-w-0">
-								<For each={JOB_FILTERS}>
-									{(filter) => (
-										<TabsContent class="mt-0" value={filter.value}>
-											<Switch>
-												<Match when={props.state().phase === "pending"}>
-													<LoadingRegion label="ジョブ一覧を読み込んでいます...">
-														<div class="h-64 rounded-md border border-border bg-card" />
-													</LoadingRegion>
-												</Match>
-												<Match when={props.state().phase === "error"}>
-													<ErrorState
-														description="接続を確認して、もう一度お試しください。"
-														onRetry={refresh}
-														title="ジョブ一覧を取得できませんでした"
-													/>
-												</Match>
-												<Match when={props.state().phase === "offline"}>
-													<OfflineState
-														description="接続が戻ったら再試行してください。"
-														onRetry={refresh}
-													/>
-												</Match>
-												<Match
-													when={
-														props.state().phase === "data" ||
-														props.state().phase === "empty"
-													}
+			<Show when={props.processingApi}>
+				<TabsList
+					aria-label="Jobs view"
+					class="mx-3 my-2 w-fit shrink-0 sm:mx-4"
+				>
+					<TabsTrigger value="jobs">Job history</TabsTrigger>
+					<TabsTrigger value="processing">Media processing</TabsTrigger>
+				</TabsList>
+			</Show>
+			<TabsContent value="jobs" class="mt-0 min-h-0 flex-1">
+				<div class="grid h-full min-h-0 flex-1 xl:grid-cols-detail-sidebar">
+					<div class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable">
+						<Tabs
+							onChange={(value) => {
+								setActiveFilter(value as JobFilter);
+								clearBulkSelection();
+							}}
+							value={activeFilter()}
+						>
+							<div class="grid gap-6 lg:grid-cols-settings-sidebar xl:gap-8">
+								<TabsList
+									aria-label="Job status filter"
+									class="flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
+								>
+									<For each={JOB_FILTERS}>
+										{(filter) => {
+											const Icon = filter.icon;
+											return (
+												<TabsTrigger
+													class="min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start"
+													type="button"
+													value={filter.value}
 												>
-													<Show
-														fallback={
-															<EmptyState
-																description="ジョブが作成されると、ここに実行状態が表示されます。"
-																title={`${filter.label} jobsはありません`}
-															/>
-														}
-														when={filteredJobs().length > 0}
-													>
-														<Show when={retryableJobIds().length > 0}>
-															<JobsBulkActions
-																action={bulkAction()}
-																allSelected={
-																	selectedRetryableJobIds().length ===
-																	retryableJobIds().length
-																}
-																hasSelection={
-																	selectedRetryableJobIds().length > 0
-																}
-																isApplying={isApplyingBulkAction()}
-																onActionChange={setBulkAction}
-																onApply={applyBulkAction}
-																onToggleAll={toggleAllJobs}
-																selectableCount={retryableJobIds().length}
-																selectedCount={selectedRetryableJobIds().length}
-															/>
-														</Show>
-														<JobsTable
-															buildThumbnailUrl={props.buildThumbnailUrl}
-															jobs={filteredJobs()}
-															onSelect={(job) => setSelectedJobId(job.id)}
-															onToggleSelect={toggleJob}
-															selectedJobId={selectedJobId()}
-															selectedJobIds={selectedJobIds()}
+													<CategoryLabel
+														description={filter.description}
+														icon={<Icon aria-hidden="true" size={16} />}
+														label={filter.label}
+													/>
+												</TabsTrigger>
+											);
+										}}
+									</For>
+								</TabsList>
+								<div class="min-w-0">
+									<For each={JOB_FILTERS}>
+										{(filter) => (
+											<TabsContent class="mt-0" value={filter.value}>
+												<Switch>
+													<Match when={props.state().phase === "pending"}>
+														<LoadingRegion label="ジョブ一覧を読み込んでいます...">
+															<div class="h-64 rounded-md border border-border bg-card" />
+														</LoadingRegion>
+													</Match>
+													<Match when={props.state().phase === "error"}>
+														<ErrorState
+															description="接続を確認して、もう一度お試しください。"
+															onRetry={refresh}
+															title="ジョブ一覧を取得できませんでした"
 														/>
-														<Show when={props.state().data?.total}>
-															{(total) => (
-																<p class="mt-3 text-xs text-muted-foreground">
-																	Showing{" "}
-																	{filteredJobs().length.toLocaleString()} of{" "}
-																	{total().toLocaleString()} jobs
-																</p>
-															)}
-														</Show>
-														<Show when={selectedJob()}>
-															{(job) => (
-																<JobsInspector
-																	buildThumbnailUrl={props.buildThumbnailUrl}
-																	class="mt-4 rounded-md border border-border bg-background p-4 xl:hidden"
-																	job={job()}
-																	onCancel={props.onCancel}
-																	onDownload={props.onDownload}
-																	onRetry={props.onRetry}
+													</Match>
+													<Match when={props.state().phase === "offline"}>
+														<OfflineState
+															description="接続が戻ったら再試行してください。"
+															onRetry={refresh}
+														/>
+													</Match>
+													<Match
+														when={
+															props.state().phase === "data" ||
+															props.state().phase === "empty"
+														}
+													>
+														<Show
+															fallback={
+																<EmptyState
+																	description="ジョブが作成されると、ここに実行状態が表示されます。"
+																	title={`${filter.label} jobsはありません`}
 																/>
-															)}
-														</Show>
-													</Show>
-													<Show when={props.page().total > 1}>
-														<nav
-															aria-label="Job pages"
-															class="mt-4 flex items-center justify-between gap-3"
+															}
+															when={filteredJobs().length > 0}
 														>
-															<Button
-																aria-label="Previous page"
-																disabled={
-																	!props.page().canPrevious ||
-																	props.isRefreshing()
-																}
-																onClick={() => {
-																	if (props.page().canPrevious) {
-																		clearBulkSelection();
-																		props.page().onPrevious();
+															<Show when={retryableJobIds().length > 0}>
+																<JobsBulkActions
+																	action={bulkAction()}
+																	allSelected={
+																		selectedRetryableJobIds().length ===
+																		retryableJobIds().length
 																	}
-																}}
-																size="sm"
-																variant="outline"
-															>
-																<ChevronLeft aria-hidden="true" size={14} />
-																<span class="hidden sm:inline">Previous</span>
-															</Button>
-															<span
-																aria-live="polite"
-																class="text-sm text-muted-foreground"
-															>
-																Page {props.page().current} of{" "}
-																{props.page().total}
-															</span>
-															<Button
-																aria-label="Next page"
-																disabled={
-																	!props.page().canNext || props.isRefreshing()
-																}
-																onClick={() => {
-																	if (props.page().canNext) {
-																		clearBulkSelection();
-																		props.page().onNext();
+																	hasSelection={
+																		selectedRetryableJobIds().length > 0
 																	}
-																}}
-																size="sm"
-																variant="outline"
+																	isApplying={isApplyingBulkAction()}
+																	onActionChange={setBulkAction}
+																	onApply={applyBulkAction}
+																	onToggleAll={toggleAllJobs}
+																	selectableCount={retryableJobIds().length}
+																	selectedCount={
+																		selectedRetryableJobIds().length
+																	}
+																/>
+															</Show>
+															<JobsTable
+																buildThumbnailUrl={props.buildThumbnailUrl}
+																jobs={filteredJobs()}
+																onSelect={(job) => setSelectedJobId(job.id)}
+																onToggleSelect={toggleJob}
+																selectedJobId={selectedJobId()}
+																selectedJobIds={selectedJobIds()}
+															/>
+															<Show when={props.state().data?.total}>
+																{(total) => (
+																	<p class="mt-3 text-xs text-muted-foreground">
+																		Showing{" "}
+																		{filteredJobs().length.toLocaleString()} of{" "}
+																		{total().toLocaleString()} jobs
+																	</p>
+																)}
+															</Show>
+															<Show when={selectedJob()}>
+																{(job) => (
+																	<JobsInspector
+																		buildThumbnailUrl={props.buildThumbnailUrl}
+																		class="mt-4 rounded-md border border-border bg-background p-4 xl:hidden"
+																		job={job()}
+																		onCancel={props.onCancel}
+																		onDownload={props.onDownload}
+																		onRetry={props.onRetry}
+																	/>
+																)}
+															</Show>
+														</Show>
+														<Show when={props.page().total > 1}>
+															<nav
+																aria-label="Job pages"
+																class="mt-4 flex items-center justify-between gap-3"
 															>
-																<span class="hidden sm:inline">Next</span>
-																<ChevronRight aria-hidden="true" size={14} />
-															</Button>
-														</nav>
-													</Show>
-												</Match>
-											</Switch>
-										</TabsContent>
-									)}
-								</For>
+																<Button
+																	aria-label="Previous page"
+																	disabled={
+																		!props.page().canPrevious ||
+																		props.isRefreshing()
+																	}
+																	onClick={() => {
+																		if (props.page().canPrevious) {
+																			clearBulkSelection();
+																			props.page().onPrevious();
+																		}
+																	}}
+																	size="sm"
+																	variant="outline"
+																>
+																	<ChevronLeft aria-hidden="true" size={14} />
+																	<span class="hidden sm:inline">Previous</span>
+																</Button>
+																<span
+																	aria-live="polite"
+																	class="text-sm text-muted-foreground"
+																>
+																	Page {props.page().current} of{" "}
+																	{props.page().total}
+																</span>
+																<Button
+																	aria-label="Next page"
+																	disabled={
+																		!props.page().canNext ||
+																		props.isRefreshing()
+																	}
+																	onClick={() => {
+																		if (props.page().canNext) {
+																			clearBulkSelection();
+																			props.page().onNext();
+																		}
+																	}}
+																	size="sm"
+																	variant="outline"
+																>
+																	<span class="hidden sm:inline">Next</span>
+																	<ChevronRight aria-hidden="true" size={14} />
+																</Button>
+															</nav>
+														</Show>
+													</Match>
+												</Switch>
+											</TabsContent>
+										)}
+									</For>
+								</div>
 							</div>
-						</div>
-					</Tabs>
-				</div>
+						</Tabs>
+					</div>
 
-				<JobsInspector
-					buildThumbnailUrl={props.buildThumbnailUrl}
-					job={selectedJob()}
-					onCancel={props.onCancel}
-					onDownload={props.onDownload}
-					onRetry={props.onRetry}
-				/>
-			</div>
-		</section>
+					<JobsInspector
+						buildThumbnailUrl={props.buildThumbnailUrl}
+						job={selectedJob()}
+						onCancel={props.onCancel}
+						onDownload={props.onDownload}
+						onRetry={props.onRetry}
+					/>
+				</div>
+			</TabsContent>
+			<Show when={props.processingApi}>
+				{(api) => (
+					<TabsContent
+						value="processing"
+						class="mt-0 flex min-h-0 flex-1 flex-col"
+					>
+						<MediaProcessingPanel api={api()} />
+					</TabsContent>
+				)}
+			</Show>
+		</Tabs>
+	);
+}
+
+function ProcessingSteps(props: {
+	title: string;
+	steps: JobDto["processingSteps"];
+}) {
+	return (
+		<Show when={props.steps?.length}>
+			<section aria-label={props.title} class="mt-4 space-y-3">
+				<h3 class="font-medium text-sm">{props.title}</h3>
+				<For each={props.steps}>
+					{(step) => (
+						<div class="flex items-center justify-between gap-3 text-xs">
+							<span>
+								{
+									{
+										metadata: "Metadata",
+										thumbnail: "Thumbnails",
+										tagging: "AI tagging",
+										ccip: "Full-image CCIP",
+										ai_dispatch: "Queue AI analysis",
+									}[step.kind]
+								}
+							</span>
+							<Badge
+								variant={step.status === "failed" ? "destructive" : "secondary"}
+							>
+								{
+									{
+										pending: "Pending",
+										in_progress: "In progress",
+										completed: "Completed",
+										failed: "Failed",
+										skipped: "Skipped",
+									}[step.status]
+								}
+							</Badge>
+						</div>
+					)}
+				</For>
+			</section>
+		</Show>
 	);
 }

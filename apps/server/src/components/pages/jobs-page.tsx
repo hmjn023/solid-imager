@@ -11,13 +11,18 @@ import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal } from "solid-js";
+import type { Accessor } from "solid-js";
+import type { JobsView } from "@solid-imager/ui/screens/jobs-view";
 import { buildThumbnailUrl } from "~/components/media/thumbnail-image";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { jobsQueryOptions } from "~/infrastructure/api-clients/queries";
 
 const BULK_RETRY_CONCURRENCY = 8;
 
-export function JobsPage() {
+export function JobsPage(props: {
+	view: Accessor<JobsView>;
+	onViewChange: (view: JobsView) => void;
+}) {
 	const [pageIndex, setPageIndex] = createSignal(0);
 	const jobsQuery = createQuery<JobListResponse>(() =>
 		jobsQueryOptions({
@@ -26,8 +31,9 @@ export function JobsPage() {
 		}),
 	);
 	const queryClient = useQueryClient();
+	const state = () => toQueryUiState(jobsQuery);
 	const pagination = () => {
-		const total = jobsQuery.data?.total ?? 0;
+		const total = state().data?.total ?? 0;
 		return {
 			canNext: (pageIndex() + 1) * DEFAULT_JOBS_PAGE_SIZE < total,
 			canPrevious: pageIndex() > 0,
@@ -54,9 +60,17 @@ export function JobsPage() {
 
 	return (
 		<JobsScreen
+			view={props.view}
+			onViewChange={props.onViewChange}
+			processingApi={{
+				list: (input) => orpc.processing.list(input),
+				get: (input) => orpc.processing.get(input),
+				retry: (input) => orpc.processing.retry(input),
+				openEvents: (signal) => orpc.sources.events({ id: "*" }, { signal }),
+			}}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
-			jobs={() => jobsQuery.data?.items ?? []}
+			jobs={() => state().data?.items ?? []}
 			onRefresh={async () => {
 				await jobsQuery.refetch();
 			}}
@@ -149,7 +163,7 @@ export function JobsPage() {
 				})();
 			}}
 			page={pagination}
-			state={() => toQueryUiState(jobsQuery)}
+			state={state}
 		/>
 	);
 }

@@ -42,9 +42,30 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 			ccipVectorStatusEndpoint.test(new URL(response.url()).pathname),
 		{ timeout: 30_000 },
 	);
+	let initialStatusWithoutJobId = true;
+	await page.route(ccipVectorStatusEndpoint, async (route) => {
+		if (initialStatusWithoutJobId) {
+			initialStatusWithoutJobId = false;
+			// No batch has been started, so only polling can recover from this
+			// independent-work status. The next response comes from the real API.
+			await route.fulfill({ json: { json: { status: "processing" } } });
+			return;
+		}
+		await route.continue();
+	});
 	await page.goto(mediaPath(E2E_SIMILAR_MEDIA_ID));
 	await initialStatusResponse;
 	await jobEventsConnected;
+	const moreActions = page.getByRole("button", {
+		name: "More actions",
+		exact: true,
+	});
+	await moreActions.click();
+	await expect(
+		page.getByRole("button", { name: "Extract CCIP vector", exact: true }),
+	).toBeEnabled();
+	await moreActions.click();
+	await page.unroute(ccipVectorStatusEndpoint);
 
 	let releaseStatusRequest: () => void = () => {};
 	const statusRequestGate = new Promise<void>((resolve) => {
@@ -60,10 +81,6 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 		await route.continue();
 	});
 
-	const moreActions = page.getByRole("button", {
-		name: "More actions",
-		exact: true,
-	});
 	await moreActions.click();
 	await page
 		.getByRole("button", { name: "Extract CCIP vector", exact: true })

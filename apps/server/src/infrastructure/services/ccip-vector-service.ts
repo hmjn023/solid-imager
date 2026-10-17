@@ -1,9 +1,12 @@
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import type { ILogger } from "@solid-imager/application/ports/media-service";
 import { CcipVectorService } from "@solid-imager/application/services/ccip-vector-service";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { db } from "~/infrastructure/db";
 import { services } from "~/infrastructure/service-registry";
 import { taggingService } from "~/infrastructure/services/tagging-service";
+import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 
 let service: CcipVectorService | null = null;
 let configuredLogger: ILogger | undefined;
@@ -15,11 +18,16 @@ export function configureCcipVectorService(logger: ILogger): void {
 export function getCcipVectorService(): CcipVectorService {
 	if (!service) {
 		service = new CcipVectorService({
+			processingStateRepo: MediaProcessingStateRepository,
+			transactionManager: DrizzleTransactionManager,
+			getCcipSettings: () => services.getAiClient().getCcipSettings(),
 			mediaRepository: services.getMediaRepository(),
 			sourceRepository: services.getSourceRepository(),
 			taggingService,
 			vectorStore: new PostgresCcipVectorStore(db, configuredLogger),
 			logger: configuredLogger,
+			publishSourceEvent: (sourceId, event, payload) =>
+				RealtimeEventBus.publishSource(sourceId, event, payload),
 		});
 	}
 	return service;

@@ -1,4 +1,35 @@
+import {
+	CCIP_VECTOR_DIMENSIONS,
+	type ScheduledMediaInput,
+} from "@solid-imager/core/domain/processing/schemas";
+import type { MediaProcessingCheckpoint } from "@solid-imager/core/domain/jobs/schemas";
+import type {
+	SourceRun,
+	SourceRunInput,
+	SourceRunCheckpoint,
+	SourceRunArtifact,
+	SourceRunKind,
+} from "@solid-imager/core/domain/source-runs/schemas";
 import type { Job as DomainJob } from "@solid-imager/core/domain/repositories/job-repository";
+import type { TaggingResponse } from "@solid-imager/core/domain/tagging/schemas";
+import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
+import type {
+	BatchInput,
+	BatchItem,
+	BatchRun,
+} from "@solid-imager/core/domain/batches/schemas";
+import type {
+	DownloadInput,
+	DownloadRunStatus,
+	DownloadBlockedReason,
+	DownloadRegistrationCheckpoint,
+	DownloadResult,
+} from "@solid-imager/core/domain/downloads/schemas";
+import type {
+	ImportAuthority,
+	ImportRequestStatus,
+	ImportBlockedReason,
+} from "@solid-imager/core/domain/imports/schemas";
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
 import {
@@ -23,7 +54,7 @@ import {
 	uuid,
 } from "drizzle-orm/pg-core";
 
-export const CCIP_VECTOR_DIMENSIONS = 768;
+export { CCIP_VECTOR_DIMENSIONS } from "@solid-imager/core/domain/processing/schemas";
 
 function isCcipVector(value: unknown): value is number[] {
 	return (
@@ -294,6 +325,7 @@ export const ccipEmbeddings = pgTable(
 		model: text("model").notNull(),
 		embeddingVersion: integer("embedding_version").notNull(),
 		mediaModifiedAt: timestamp("media_modified_at").notNull(),
+		processingRevision: text("processing_revision"),
 		extractedAt: timestamp("extracted_at").notNull(),
 		createdAt: timestamp("created_at").notNull().defaultNow(),
 		updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -1033,6 +1065,287 @@ export const mediaCollections = pgTable(
  * Manages background jobs such as thumbnail generation, metadata extraction, and bulk tagging.
  * It tracks their progress and results.
  */
+export const mediaProcessingStates = pgTable(
+	"media_processing_states",
+	{
+		requestId: uuid("request_id")
+			.notNull()
+			.default(sql`uuidv7()`),
+		mediaId: uuid("media_id")
+			.notNull()
+			.references(() => medias.id, { onDelete: "cascade" }),
+		taskKind: text("task_kind").notNull(),
+		status: text("status").notNull(),
+		inputRevision: text("input_revision").notNull(),
+		requestedRevision: text("requested_revision").notNull(),
+		completedRevision: text("completed_revision"),
+		taggingResult: jsonb("tagging_result").$type<TaggingResponse>(),
+		claimToken: uuid("claim_token"),
+		claimedAt: timestamp("claimed_at"),
+		heartbeatAt: timestamp("heartbeat_at"),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		executionMode: text("execution_mode").notNull().default("inline"),
+		independentDemand: boolean("independent_demand").notNull().default(true),
+		scheduledInput: jsonb("scheduled_input").$type<ScheduledMediaInput>(),
+		availableAt: timestamp("available_at").notNull().defaultNow(),
+		maxAttempts: integer("max_attempts").notNull().default(5),
+		// Diagnostic owner only: deleting job history must not delete domain state.
+		ownerJobId: uuid("owner_job_id"),
+		ownerAttemptCount: integer("owner_attempt_count"),
+		lastError: text("last_error"),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		primaryKey({ columns: [table.mediaId, table.taskKind] }),
+		check(
+			"media_processing_kind",
+			sql`${table.taskKind} IN ('metadata', 'thumbnail', 'tagging', 'ccip')`,
+		),
+		check(
+			"media_processing_status",
+			sql`${table.status} IN ('pending', 'in_progress', 'completed', 'failed')`,
+		),
+		check("media_processing_attempt", sql`${table.attemptCount} >= 0`),
+		check(
+			"media_processing_execution",
+			sql`${table.executionMode} IN ('inline', 'scheduled')`,
+		),
+		check(
+			"media_processing_retry_cap",
+			sql`${table.maxAttempts} BETWEEN 1 AND 20`,
+		),
+		check(
+			"media_processing_scheduled_owner",
+			sql`${table.executionMode} <> 'scheduled' OR (${table.scheduledInput} IS NOT NULL AND ${table.ownerJobId} IS NULL AND ${table.ownerAttemptCount} IS NULL AND ${table.attemptCount} <= ${table.maxAttempts})`,
+		),
+		index("idx_media_processing_due")
+			.on(table.taskKind, table.availableAt)
+			.where(
+				sql`${table.executionMode} = 'scheduled' AND ${table.status} = 'pending'`,
+			),
+		index("idx_media_processing_expired")
+			.on(table.taskKind, table.heartbeatAt)
+			.where(
+				sql`${table.executionMode} = 'scheduled' AND ${table.status} = 'in_progress'`,
+			),
+		check(
+			"media_processing_claim",
+			sql`(${table.status} = 'in_progress' AND ${table.claimToken} IS NOT NULL AND ${table.claimedAt} IS NOT NULL AND ${table.heartbeatAt} IS NOT NULL) OR (${table.status} <> 'in_progress' AND ${table.claimToken} IS NULL AND ${table.claimedAt} IS NULL AND ${table.heartbeatAt} IS NULL)`,
+		),
+		check(
+			"media_processing_owner",
+			sql`(${table.ownerJobId} IS NULL AND ${table.ownerAttemptCount} IS NULL) OR (${table.ownerJobId} IS NOT NULL AND ${table.ownerAttemptCount} IS NOT NULL AND ${table.ownerAttemptCount} >= 0)`,
+		),
+		check(
+			"media_processing_completed",
+			sql`${table.status} <> 'completed' OR (${table.completedRevision} IS NOT NULL AND ${table.completedRevision} = ${table.requestedRevision})`,
+		),
+	],
+);
+
+export const downloadRunCutovers = pgTable(
+	"download_run_cutovers",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		authority: text("authority")
+			.$type<ImportAuthority>()
+			.notNull()
+			.default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"download_cutover_singleton",
+			sql`${table.id} = '78900000-0000-4000-8000-000000000001'::uuid`,
+		),
+		check(
+			"download_cutover_authority",
+			sql`${table.authority} IN ('legacy', 'dedicated')`,
+		),
+		check("download_cutover_generation", sql`${table.generation} >= 0`),
+	],
+);
+export const downloadRuns = pgTable(
+	"download_runs",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		mediaSourceId: uuid("source_id").references(() => mediaSources.id, {
+			onDelete: "set null",
+		}),
+		sourcePath: text("source_path"),
+		input: jsonb("input").$type<DownloadInput>(),
+		requestKey: text("request_key").notNull(),
+		importRequestId: uuid("import_request_id").unique(),
+		status: text("status")
+			.$type<DownloadRunStatus>()
+			.notNull()
+			.default("pending"),
+		canonicalId: uuid("canonical_id").references(
+			(): AnyPgColumn => downloadRuns.id,
+			{ onDelete: "restrict" },
+		),
+		blockedReason: text("blocked_reason").$type<DownloadBlockedReason>(),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		maxAttempts: integer("max_attempts").notNull().default(3),
+		leaseToken: uuid("lease_token"),
+		leaseExpiresAt: timestamp("lease_expires_at"),
+		nextRunAt: timestamp("next_run_at").notNull().defaultNow(),
+		checkpoint: jsonb("checkpoint").$type<DownloadRegistrationCheckpoint>(),
+		result: jsonb("result").$type<DownloadResult>(),
+		error: text("error"),
+		parentId: uuid("parent_id"),
+		cancelRequestedAt: timestamp("cancel_requested_at"),
+		cancelledAt: timestamp("cancelled_at"),
+		startedAt: timestamp("started_at"),
+		finishedAt: timestamp("finished_at"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		uniqueIndex("uq_download_active_key")
+			.on(table.mediaSourceId, table.requestKey)
+			.where(sql`${table.status} IN ('pending', 'in_progress')`),
+		index("idx_download_due")
+			.on(table.nextRunAt, table.createdAt, table.id)
+			.where(sql`${table.status} = 'pending'`),
+		index("idx_download_expired")
+			.on(table.leaseExpiresAt)
+			.where(sql`${table.status} = 'in_progress'`),
+		index("idx_download_history").on(table.createdAt, table.id),
+		check(
+			"download_run_status",
+			sql`${table.status} IN ('pending', 'in_progress', 'completed', 'failed', 'cancelled', 'blocked', 'superseded')`,
+		),
+		check(
+			"download_run_input",
+			sql`${table.status} NOT IN ('pending', 'in_progress') OR ${table.input} IS NOT NULL`,
+		),
+		check(
+			"download_run_attempt",
+			sql`${table.attemptCount} >= 0 AND ${table.maxAttempts} > 0`,
+		),
+		check(
+			"download_run_lease",
+			sql`(${table.status} = 'in_progress') = (${table.leaseToken} IS NOT NULL AND ${table.leaseExpiresAt} IS NOT NULL)`,
+		),
+		check(
+			"download_run_alias",
+			sql`(${table.status} = 'superseded') = (${table.canonicalId} IS NOT NULL) AND (${table.canonicalId} IS NULL OR ${table.canonicalId} <> ${table.id})`,
+		),
+		check(
+			"download_run_blocked",
+			sql`(${table.status} = 'blocked') = (${table.blockedReason} IS NOT NULL)`,
+		),
+	],
+);
+export const downloadRunLegacySnapshots = pgTable(
+	"download_run_legacy_snapshots",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		runId: uuid("run_id")
+			.notNull()
+			.unique()
+			.references(() => downloadRuns.id, { onDelete: "cascade" }),
+		// Private legacy row, including authentication and checkpoint, used only for rollback/audit.
+		snapshot: jsonb("snapshot").notNull(),
+	},
+);
+
+export const importRequestCutovers = pgTable(
+	"import_request_cutovers",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		authority: text("authority")
+			.$type<ImportAuthority>()
+			.notNull()
+			.default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"import_cutover_singleton",
+			sql`${table.id} = '62100000-0000-4000-8000-000000000001'::uuid`,
+		),
+		check(
+			"import_cutover_authority",
+			sql`${table.authority} IN ('legacy', 'dedicated')`,
+		),
+		check("import_cutover_generation", sql`${table.generation} >= 0`),
+	],
+);
+
+export const importRequests = pgTable(
+	"import_requests",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		item: jsonb("item").$type<DownloadItem>(),
+		requestKey: text("request_key").notNull(),
+		status: text("status")
+			.$type<ImportRequestStatus>()
+			.notNull()
+			.default("pending"),
+		canonicalId: uuid("canonical_id").references(
+			(): AnyPgColumn => importRequests.id,
+			{ onDelete: "restrict" },
+		),
+		blockedReason: text("blocked_reason").$type<ImportBlockedReason>(),
+		targetSourceId: uuid("target_source_id").references(() => mediaSources.id, {
+			onDelete: "set null",
+		}),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		approvedAt: timestamp("approved_at"),
+		cancelledAt: timestamp("cancelled_at"),
+	},
+	(table) => [
+		uniqueIndex("uq_import_pending_key")
+			.on(table.requestKey)
+			.where(sql`${table.status} = 'pending'`),
+		index("idx_import_pending_created")
+			.on(table.createdAt, table.id)
+			.where(sql`${table.status} = 'pending'`),
+		check(
+			"import_request_status",
+			sql`${table.status} IN ('pending', 'approved', 'cancelled', 'blocked', 'superseded')`,
+		),
+		check(
+			"import_request_item",
+			sql`${table.status} NOT IN ('pending', 'approved') OR ${table.item} IS NOT NULL`,
+		),
+		check(
+			"import_request_blocked",
+			sql`(${table.status} = 'blocked') = (${table.blockedReason} IS NOT NULL)`,
+		),
+		check(
+			"import_request_alias",
+			sql`(${table.status} = 'superseded') = (${table.canonicalId} IS NOT NULL) AND (${table.canonicalId} IS NULL OR ${table.canonicalId} <> ${table.id})`,
+		),
+		check(
+			"import_request_approval",
+			sql`${table.status} <> 'approved' OR ${table.approvedAt} IS NOT NULL`,
+		),
+		check(
+			"import_request_cancellation",
+			sql`${table.status} <> 'cancelled' OR ${table.cancelledAt} IS NOT NULL`,
+		),
+	],
+);
+
+export const importRequestLegacySnapshots = pgTable(
+	"import_request_legacy_snapshots",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		requestId: uuid("request_id")
+			.notNull()
+			.unique()
+			.references(() => importRequests.id, { onDelete: "cascade" }),
+		// Private DB snapshot used for rollback only; never projected to API DTOs.
+		snapshot: jsonb("snapshot").notNull(),
+	},
+);
+
 export const jobs = pgTable(
 	"jobs",
 	{
@@ -1051,6 +1364,10 @@ export const jobs = pgTable(
 		payload: jsonb("payload"),
 		/** ジョブの実行結果 (JSON) */
 		result: jsonb("result"),
+		/** Durable per-run checkpoints, retained by retry and stale recovery. */
+		processingCheckpoint: jsonb(
+			"processing_checkpoint",
+		).$type<MediaProcessingCheckpoint>(),
 		/** エラーメッセージ (失敗時) */
 		error: text("error"),
 		/** ジョブ作成日時 */
@@ -1112,6 +1429,11 @@ export const jobs = pgTable(
 		index("idx_jobs_cancelable")
 			.on(table.status, table.updatedAt)
 			.where(sql`${table.status} IN ('pending', 'in_progress')`),
+		index("idx_jobs_unfinished_processing_media")
+			.on(table.mediaSourceId, sql`(${table.payload}->>'mediaId')`)
+			.where(
+				sql`${table.type} = 'processMedia' AND ${table.status} IN ('pending', 'in_progress', 'failed')`,
+			),
 		index("idx_jobs_artifact_expiry")
 			.on(table.artifactExpiresAt)
 			.where(sql`${table.artifactPath} IS NOT NULL`),
@@ -1867,3 +2189,314 @@ export type CcipEmbedding = InferSelectModel<typeof ccipEmbeddings>;
  * Type definition for inserting a CCIP embedding into the database.
  */
 export type NewCcipEmbedding = InferInsertModel<typeof ccipEmbeddings>;
+
+export const batchRunCutovers = pgTable(
+	"batch_run_cutovers",
+	{
+		id: uuid("id").primaryKey(),
+		authority: text("authority").notNull().default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"batch_authority",
+			sql`${table.authority} IN ('legacy', 'dedicated')`,
+		),
+		check("batch_generation", sql`${table.generation} >= 0`),
+	],
+);
+
+export const batchRuns = pgTable(
+	"batch_runs",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		input: jsonb("input").$type<BatchInput>(),
+		status: text("status")
+			.$type<BatchRun["status"]>()
+			.notNull()
+			.default("pending"),
+		blockedReason: text("blocked_reason"),
+		dispatchComplete: boolean("dispatch_complete").notNull().default(false),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		maxAttempts: integer("max_attempts").notNull().default(3),
+		leaseToken: uuid("lease_token"),
+		leaseExpiresAt: timestamp("lease_expires_at"),
+		cancelRequestedAt: timestamp("cancel_requested_at"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		finishedAt: timestamp("finished_at"),
+	},
+	(table) => [
+		check(
+			"batch_status",
+			sql`${table.status} IN ('pending', 'in_progress', 'completed', 'failed', 'cancelled', 'blocked')`,
+		),
+		check(
+			"batch_input",
+			sql`${table.status} IN ('blocked', 'completed', 'failed', 'cancelled') OR ${table.input} IS NOT NULL`,
+		),
+		check(
+			"batch_attempt",
+			sql`${table.attemptCount} >= 0 AND ${table.maxAttempts} > 0`,
+		),
+		check(
+			"batch_lease",
+			sql`(${table.leaseToken} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+		),
+		check(
+			"batch_blocked",
+			sql`(${table.status} = 'blocked') = (${table.blockedReason} IS NOT NULL)`,
+		),
+		index("idx_batch_dispatch").on(
+			table.status,
+			table.dispatchComplete,
+			table.leaseExpiresAt,
+		),
+	],
+);
+
+export const batchItems = pgTable(
+	"batch_items",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		runId: uuid("run_id")
+			.notNull()
+			.references(() => batchRuns.id, { onDelete: "cascade" }),
+		// Historical IDs deliberately survive media/source deletion.
+		mediaId: uuid("media_id").notNull(),
+		mediaSourceId: uuid("source_id").notNull(),
+		kind: text("kind").$type<BatchItem["kind"]>().notNull(),
+		input: jsonb("input").$type<ScheduledMediaInput>(),
+		plannedRevision: text("planned_revision"),
+		requestId: uuid("request_id"),
+		requestedRevision: text("requested_revision"),
+		status: text("status")
+			.$type<BatchItem["status"]>()
+			.notNull()
+			.default("pending"),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		failureCode: text("failure_code"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		finishedAt: timestamp("finished_at"),
+	},
+	(table) => [
+		unique("uq_batch_target").on(table.runId, table.mediaId, table.kind),
+		check(
+			"batch_item_kind",
+			sql`${table.kind} IN ('metadata', 'thumbnail', 'tagging', 'ccip')`,
+		),
+		check(
+			"batch_item_status",
+			sql`${table.status} IN ('pending', 'scheduled', 'completed', 'failed', 'cancelled', 'superseded', 'blocked')`,
+		),
+		check(
+			"batch_item_request",
+			sql`${table.status} <> 'scheduled' OR (${table.requestId} IS NOT NULL AND ${table.requestedRevision} IS NOT NULL)`,
+		),
+		check("batch_item_attempt", sql`${table.attemptCount} >= 0`),
+		index("idx_batch_item_progress").on(table.runId, table.status, table.id),
+		index("idx_batch_item_request").on(
+			table.requestId,
+			table.kind,
+			table.status,
+		),
+	],
+);
+
+export const batchItemAttempts = pgTable(
+	"batch_item_attempts",
+	{
+		id: uuid("id").primaryKey().defaultRandom(),
+		itemId: uuid("item_id")
+			.notNull()
+			.references(() => batchItems.id, { onDelete: "cascade" }),
+		attemptCount: integer("attempt_count").notNull(),
+		requestId: uuid("request_id").notNull(),
+		requestedRevision: text("requested_revision").notNull(),
+		status: text("status").$type<BatchItem["status"]>().notNull(),
+		failureCode: text("failure_code"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		finishedAt: timestamp("finished_at"),
+	},
+	(table) => [
+		unique("uq_batch_item_attempt").on(table.itemId, table.attemptCount),
+		index("idx_batch_attempt_request").on(table.requestId),
+	],
+);
+
+export const batchRunLegacySnapshots = pgTable("batch_run_legacy_snapshots", {
+	id: uuid("id").primaryKey(),
+	runId: uuid("run_id")
+		.notNull()
+		.references(() => batchRuns.id, { onDelete: "cascade" }),
+	snapshot: jsonb("snapshot").notNull(),
+});
+
+/** Revisioned notification work, not execution authority or an in-memory progress counter. */
+export const batchRunDirty = pgTable("batch_run_dirty", {
+	runId: uuid("run_id")
+		.primaryKey()
+		.references(() => batchRuns.id, { onDelete: "cascade" }),
+	generation: integer("generation").notNull().default(1),
+});
+
+export const sourceRunCutovers = pgTable(
+	"source_run_cutovers",
+	{
+		id: uuid("id").primaryKey(),
+		authority: text("authority").notNull().default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"source_run_authority",
+			sql`${table.authority} IN ('legacy','dedicated')`,
+		),
+		check("source_run_epoch", sql`${table.generation} >= 0`),
+	],
+);
+
+export const sourceSyncWatermarks = pgTable(
+	"source_sync_watermarks",
+	{
+		sourceId: uuid("source_id").primaryKey(),
+		generation: bigint("generation", { mode: "number" }).notNull().default(0),
+		requestedGeneration: bigint("requested_generation", { mode: "number" })
+			.notNull()
+			.default(0),
+		appliedGeneration: bigint("applied_generation", { mode: "number" })
+			.notNull()
+			.default(0),
+	},
+	(table) => [
+		check(
+			"source_watermark_order",
+			sql`${table.appliedGeneration} >= 0 AND ${table.requestedGeneration} >= 0 AND ${table.generation} >= ${table.requestedGeneration} AND ${table.generation} >= ${table.appliedGeneration}`,
+		),
+	],
+);
+
+function sourceRunColumns() {
+	return {
+		id: uuid("id").primaryKey().defaultRandom(),
+		sourceId: uuid("source_id"),
+		kind: text("kind").$type<SourceRunKind>().notNull(),
+		input: jsonb("input").$type<SourceRunInput>(),
+		status: text("status")
+			.$type<SourceRun["status"]>()
+			.notNull()
+			.default("pending"),
+		checkpoint: jsonb("checkpoint")
+			.$type<SourceRunCheckpoint>()
+			.notNull()
+			.default({
+				offset: 0,
+				added: 0,
+				deleted: 0,
+				processed: 0,
+				skipped: 0,
+				filesComplete: false,
+				fileCursor: null,
+			}),
+		artifact: jsonb("artifact").$type<SourceRunArtifact>(),
+		failureCode: text("failure_code"),
+		attemptCount: integer("attempt_count").notNull().default(0),
+		maxAttempts: integer("max_attempts").notNull().default(3),
+		leaseToken: uuid("lease_token"),
+		leaseExpiresAt: timestamp("lease_expires_at"),
+		retentionExpiresAt: timestamp("retention_expires_at"),
+		cancelRequestedAt: timestamp("cancel_requested_at"),
+		createdAt: timestamp("created_at").notNull().defaultNow(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+		startedAt: timestamp("started_at"),
+		finishedAt: timestamp("finished_at"),
+	};
+}
+export const sourceSyncRuns = pgTable(
+	"source_sync_runs",
+	sourceRunColumns(),
+	(table) => [
+		check("sync_run_kind", sql`${table.kind} = 'sync'`),
+		check(
+			"sync_run_status",
+			sql`${table.status} IN ('pending','in_progress','completed','failed','cancelled','blocked')`,
+		),
+		check(
+			"sync_run_input",
+			sql`${table.status} IN ('blocked','failed','completed','cancelled') OR (${table.input} IS NOT NULL AND jsonb_typeof(${table.input}) = 'object' AND coalesce(${table.input}->>'kind' = 'sync', false) AND ${table.sourceId} IS NOT NULL)`,
+		),
+		check(
+			"sync_run_lease",
+			sql`(${table.leaseToken} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+		),
+		uniqueIndex("uq_sync_run_pending")
+			.on(table.sourceId)
+			.where(sql`${table.status} = 'pending'`),
+		index("idx_sync_run_claim").on(table.status, table.createdAt),
+		index("idx_sync_run_source").on(table.sourceId, table.createdAt),
+	],
+);
+export const sourceTransferRuns = pgTable(
+	"source_transfer_runs",
+	sourceRunColumns(),
+	(table) => [
+		check("transfer_run_kind", sql`${table.kind} IN ('export','restore')`),
+		check(
+			"transfer_run_status",
+			sql`${table.status} IN ('pending','in_progress','completed','failed','cancelled','blocked')`,
+		),
+		check(
+			"transfer_run_input",
+			sql`${table.status} IN ('blocked','failed','completed','cancelled') OR (${table.input} IS NOT NULL AND jsonb_typeof(${table.input}) = 'object' AND coalesce(${table.input}->>'kind' = ${table.kind}, false) AND ${table.sourceId} IS NOT NULL)`,
+		),
+		check(
+			"transfer_run_lease",
+			sql`(${table.leaseToken} IS NULL) = (${table.leaseExpiresAt} IS NULL)`,
+		),
+		index("idx_transfer_run_claim").on(table.status, table.createdAt),
+		index("idx_transfer_run_source").on(table.sourceId, table.createdAt),
+	],
+);
+/** One DB owner across directory sync, export and restore for a source. */
+export const sourceRunLeases = pgTable(
+	"source_run_leases",
+	{
+		sourceId: uuid("source_id").primaryKey(),
+		runId: uuid("run_id"),
+		kind: text("kind").$type<SourceRunKind>(),
+		token: uuid("token"),
+		expiresAt: timestamp("expires_at"),
+	},
+	(table) => [
+		check(
+			"source_owner_lease",
+			sql`(${table.token} IS NULL AND ${table.runId} IS NULL AND ${table.expiresAt} IS NULL AND ${table.kind} IS NULL) OR (${table.token} IS NOT NULL AND ${table.runId} IS NOT NULL AND ${table.expiresAt} IS NOT NULL AND ${table.kind} IS NOT NULL)`,
+		),
+	],
+);
+export const sourceRunLegacySnapshots = pgTable("source_run_legacy_snapshots", {
+	id: uuid("id").primaryKey(),
+	kind: text("kind").$type<SourceRunKind>().notNull(),
+	snapshot: jsonb("snapshot").notNull(),
+});
+
+/** Final execution fence; jobs storage and archives survive the observation/rollback period. */
+export const jobRuntimeCutovers = pgTable(
+	"job_runtime_cutovers",
+	{
+		id: uuid("id").primaryKey(),
+		authority: text("authority").notNull().default("legacy"),
+		generation: integer("generation").notNull().default(0),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		check(
+			"job_runtime_authority",
+			sql`${table.authority} IN ('legacy','retired')`,
+		),
+		check("job_runtime_epoch", sql`${table.generation} >= 0`),
+	],
+);

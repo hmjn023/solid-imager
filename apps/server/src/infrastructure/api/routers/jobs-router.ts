@@ -1,242 +1,74 @@
 import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/domain/contract/jobs.contract";
-import {
-	isBatchParentJobType,
-	jobStatusSchema,
-} from "@solid-imager/core/domain/jobs/schemas";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import type { JobEvent } from "@solid-imager/core/domain/sources/events";
-import { and, count, desc, eq } from "drizzle-orm";
-import { z } from "zod";
-import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
-import { db } from "~/infrastructure/db";
-import { jobs } from "~/infrastructure/db/schema";
-import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-
-const PublicJobFailureMessage = "Job failed";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function readNonNegativeInteger(value: unknown): number | undefined {
-	return typeof value === "number" && Number.isInteger(value) && value >= 0
-		? value
-		: undefined;
-}
-
-function readTargetMediaId(payload: unknown): string | null {
-	if (!isRecord(payload)) {
-		return null;
-	}
-	const result = z.uuid().safeParse(payload.mediaId);
-	return result.success ? result.data : null;
-}
-
-function readProgress(payload: unknown) {
-	if (!isRecord(payload)) {
-		return null;
-	}
-	const processed = readNonNegativeInteger(payload.processed);
-	const total = readNonNegativeInteger(payload.total);
-	if (processed === undefined || total === undefined) {
-		return null;
-	}
-	return {
-		processed,
-		failed: readNonNegativeInteger(payload.failed) ?? 0,
-		total,
-	};
-}
-
-async function findTargetMediaModifiedAt(
-	job: Pick<Job, "payload">,
-): Promise<Date | null> {
-	const targetMediaId = readTargetMediaId(job.payload);
-	if (!targetMediaId) return null;
-
-	const media = await MediaRepository.findById(targetMediaId);
-	return media?.modifiedAt ?? null;
-}
-
-async function findTargetMediaModifiedAtById(
-	jobs: ReadonlyArray<Pick<Job, "payload">>,
-): Promise<ReadonlyMap<string, Date>> {
-	const targetMediaIds = [
-		...new Set(
-			jobs.flatMap((job) => {
-				const targetMediaId = readTargetMediaId(job.payload);
-				return targetMediaId ? [targetMediaId] : [];
-			}),
-		),
-	];
-	if (targetMediaIds.length === 0) return new Map<string, Date>();
-
-	const media = await MediaRepository.findByIds(targetMediaIds);
-	return new Map(media.map((item) => [item.id, item.modifiedAt]));
-}
-
-function getTargetMediaModifiedAt(
-	job: Pick<Job, "payload">,
-	targetMediaModifiedAtById: ReadonlyMap<string, Date>,
-): Date | null {
-	const targetMediaId = readTargetMediaId(job.payload);
-	return targetMediaId
-		? (targetMediaModifiedAtById.get(targetMediaId) ?? null)
-		: null;
-}
-
-export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
-	return {
-		id: job.id,
-		type: job.type,
-		mediaSourceId: job.mediaSourceId,
-		status: jobStatusSchema.parse(job.status),
-		createdAt: job.createdAt,
-		updatedAt: job.updatedAt,
-		parentId: job.parentId,
-		error: job.error === null ? null : PublicJobFailureMessage,
-		cancelRequestedAt: job.cancelRequestedAt ?? null,
-		cancelledAt: job.cancelledAt ?? null,
-		attemptCount: job.attemptCount ?? 0,
-		startedAt: job.startedAt ?? null,
-		finishedAt: job.finishedAt ?? null,
-		targetMediaId: readTargetMediaId(job.payload),
-		targetMediaModifiedAt,
-		progress: readProgress(job.payload),
-		artifact:
-			job.status === "completed" &&
-			job.artifactPath &&
-			job.artifactFileName &&
-			job.artifactContentType
-				? {
-						fileName: job.artifactFileName,
-						contentType: job.artifactContentType,
-						size: job.artifactSize ?? null,
-					}
-				: null,
-	};
-}
-
-function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
-	return status ? and(eq(jobs.status, status)) : undefined;
-}
-
+import { findCurrentProcessingSteps } from "../media-processing-status";
+import { findBatchJob, mutateBatchJob } from "../batch-job-view";
+import {
+	findSourceJob,
+	mutateSourceRun,
+	toSourceJobDto,
+} from "../source-run-view";
+import {
+	findDownloadJob,
+	mutateDownloadJob,
+	listJobView,
+} from "../download-job-view";
+import { resolveJobArtifact } from "../job-artifact";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 const os = implement(jobsContract);
-
 export const jobsRouter = os.router({
 	list: os.list.handler(async ({ input }) => {
-		const where = jobWhere(input.status);
-		const [rows, totalRows] = await Promise.all([
-			db
-				.select()
-				.from(jobs)
-				.where(where)
-				.orderBy(desc(jobs.createdAt), desc(jobs.id))
-				.limit(input.limit)
-				.offset(input.offset),
-			db.select({ total: count() }).from(jobs).where(where),
-		]);
-
-		const targetMediaModifiedAtById = await findTargetMediaModifiedAtById(rows);
-
-		return {
-			items: rows.map((job) =>
-				toJobDto(job, getTargetMediaModifiedAt(job, targetMediaModifiedAtById)),
+		const page = await listJobView(input);
+		const ids = [
+			...new Set(
+				page.items.flatMap((job) =>
+					job.targetMediaId ? [job.targetMediaId] : [],
+				),
 			),
-			total: Number(totalRows[0]?.total ?? 0),
+		];
+		const media = await MediaRepository.findByIds(ids),
+			modified = new Map(media.map((item) => [item.id, item.modifiedAt]));
+		const steps = await findCurrentProcessingSteps(ids);
+		return {
+			items: page.items.map((job) => ({
+				...job,
+				targetMediaModifiedAt: modified.get(job.targetMediaId ?? "") ?? null,
+				currentProcessingSteps: steps.get(job.targetMediaId ?? "") ?? [],
+			})),
+			total: page.total,
 		};
 	}),
-
 	get: os.get.handler(async ({ input }) => {
-		const [job] = await db.select().from(jobs).where(eq(jobs.id, input.id));
-		if (!job) {
-			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-		}
-		return toJobDto(job, await findTargetMediaModifiedAt(job));
+		const run =
+			(await findDownloadJob(input.id)) ??
+			(await findBatchJob(input.id)) ??
+			(await findSourceJob(input.id));
+		if (!run)
+			throw new ORPCError("NOT_FOUND", { message: "Operation not found" });
+		return run;
 	}),
-
 	downloadArtifact: os.downloadArtifact.handler(async ({ input }) => {
 		const artifact = await resolveJobArtifact(input.id);
-		if (!artifact) {
-			throw new ORPCError("NOT_FOUND", {
-				message: "Artifact not found",
-			});
-		}
-
+		if (!artifact)
+			throw new ORPCError("NOT_FOUND", { message: "Artifact not found" });
 		return artifact.stream;
 	}),
-
 	retry: os.retry.handler(async ({ input }) => {
-		const [requeued] = await db
-			.update(jobs)
-			.set({
-				status: "pending",
-				error: null,
-				result: null,
-				cancelRequestedAt: null,
-				cancelledAt: null,
-				startedAt: null,
-				finishedAt: null,
-				artifactPath: null,
-				artifactFileName: null,
-				artifactContentType: null,
-				artifactSize: null,
-				artifactExpiresAt: null,
-				updatedAt: new Date(),
-			})
-			.where(and(eq(jobs.id, input.id), eq(jobs.status, "failed")))
-			.returning();
-		if (!requeued) {
-			const [current] = await db
-				.select({ id: jobs.id })
-				.from(jobs)
-				.where(eq(jobs.id, input.id));
-			if (!current) {
-				throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-			}
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Only failed jobs can be retried",
-			});
-		}
-		RealtimeEventBus.publishJob("job-retried", {
-			jobId: requeued.id,
-			message: "Job queued for retry",
-		});
-		return toJobDto(requeued, await findTargetMediaModifiedAt(requeued));
+		if (await findDownloadJob(input.id))
+			return mutateDownloadJob("retry", input.id);
+		if (await findBatchJob(input.id)) return mutateBatchJob("retry", input.id);
+		if (await findSourceJob(input.id))
+			return toSourceJobDto(await mutateSourceRun("retry", input.id));
+		throw new ORPCError("NOT_FOUND", { message: "Operation not found" });
 	}),
-
 	cancel: os.cancel.handler(async ({ input }) => {
-		const job = await JobRepository.findById(input.id);
-		if (!job) {
-			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-		}
-		if (job.status !== "pending" && job.status !== "in_progress") {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Only pending or in-progress jobs can be cancelled",
-			});
-		}
-		if (isBatchParentJobType(job.type)) {
-			throw new ORPCError("BAD_REQUEST", {
-				message: "Batch parent jobs cannot be cancelled",
-			});
-		}
-
-		await JobRepository.requestCancellation(input.id);
-		const cancelled = await JobRepository.findById(input.id);
-		if (!cancelled) {
-			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
-		}
-		RealtimeEventBus.publishJob("job-cancelled", {
-			jobId: input.id,
-			message:
-				cancelled.status === "in_progress"
-					? "Cancellation requested"
-					: "Job cancelled",
-		});
-		return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
+		if (await findDownloadJob(input.id))
+			return mutateDownloadJob("cancel", input.id);
+		if (await findBatchJob(input.id)) return mutateBatchJob("cancel", input.id);
+		if (await findSourceJob(input.id))
+			return toSourceJobDto(await mutateSourceRun("cancel", input.id));
+		throw new ORPCError("NOT_FOUND", { message: "Operation not found" });
 	}),
 
 	events: os.events.handler(async function* ({ signal }) {

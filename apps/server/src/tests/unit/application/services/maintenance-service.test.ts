@@ -1,22 +1,14 @@
 import fs from "node:fs/promises";
-import {
-	afterEach,
-	beforeEach,
-	describe,
-	expect,
-	it,
-	type Mock,
-	vi,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { FileWatcherService } from "~/infrastructure/jobs/file-watcher-service";
 import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
 
 // ---- Module mocks ----
 
-// Mock node:fs/promises to control thumbnail directory reads
+// Mock node:fs/promises to control checks for individual thumbnails.
 vi.mock("node:fs/promises", () => ({
 	default: {
-		readdir: vi.fn(),
+		access: vi.fn(),
 	},
 }));
 
@@ -48,8 +40,8 @@ const mockMediaRepo = {
 	findAllMediaIndices: vi.fn(),
 };
 
-const mockJobRepo = {
-	createIfUnique: vi.fn(),
+const mockProcessing = {
+	requestTask: vi.fn(),
 };
 
 const mockSourceRepo = {
@@ -79,9 +71,10 @@ describe("MaintenanceService", () => {
 	let service: MaintenanceService;
 
 	beforeEach(() => {
+		vi.mocked(fs.access).mockReset().mockResolvedValue(undefined);
 		service = new MaintenanceService(
 			mockMediaRepo as any,
-			mockJobRepo as any,
+			mockProcessing as any,
 			mockSourceRepo as any,
 		);
 		mockSourceRepo.findAll.mockResolvedValue([]);
@@ -123,16 +116,16 @@ describe("MaintenanceService", () => {
 	// --------------------------------------------------------------------------
 
 	describe("queueMissingMetadata", () => {
-		it("should NOT create any jobs when there are no media with missing generation info", async () => {
+		it("should NOT create any requests when there are no media with missing generation info", async () => {
 			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
 			mockMediaRepo.findAllMediaIndices.mockResolvedValue([]);
 
 			await service.performStartupChecks();
 
-			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+			expect(mockProcessing.requestTask).not.toHaveBeenCalled();
 		});
 
-		it("should create a job for each media that is missing generation info", async () => {
+		it("should create a request for each media that is missing generation info", async () => {
 			const media1 = makeMedia("media-1");
 			const media2 = makeMedia("media-2");
 
@@ -145,24 +138,21 @@ describe("MaintenanceService", () => {
 			mockSourceRepo.findById.mockResolvedValue(
 				makeLocalSource("source-1", "/local/images"),
 			);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+			mockProcessing.requestTask.mockResolvedValue({ id: "request-new" });
 
 			await service.performStartupChecks();
 
-			// One job per missing-metadata media item
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledTimes(2);
+			// One request per missing-metadata media item
+			expect(mockProcessing.requestTask).toHaveBeenCalledTimes(2);
 
 			// Jobs should be created with skipThumbnailGeneration: true
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "processMedia",
-					mediaSourceId: "source-1",
-					payload: expect.objectContaining({
-						mediaId: "media-1",
-						sourcePath: "/local/images",
-						skipThumbnailGeneration: true,
-					}),
-				}),
+			expect(mockProcessing.requestTask).toHaveBeenCalledWith(
+				"source-1",
+				"media-1",
+				"metadata",
+				false,
+				undefined,
+				true,
 			);
 		});
 
@@ -177,11 +167,11 @@ describe("MaintenanceService", () => {
 			mockSourceRepo.findById.mockResolvedValue(
 				makeLocalSource("source-1", "/local/images"),
 			);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+			mockProcessing.requestTask.mockResolvedValue({ id: "request-new" });
 
 			await service.performStartupChecks();
 
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledTimes(TOTAL_ITEMS);
+			expect(mockProcessing.requestTask).toHaveBeenCalledTimes(TOTAL_ITEMS);
 		});
 
 		it("should skip media whose source is not a local source", async () => {
@@ -201,10 +191,10 @@ describe("MaintenanceService", () => {
 
 			await service.performStartupChecks();
 
-			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+			expect(mockProcessing.requestTask).not.toHaveBeenCalled();
 		});
 
-		it("should not create a duplicate job if createIfUnique returns null", async () => {
+		it("should not create a duplicate request if requestTask returns null", async () => {
 			const media1 = makeMedia("media-1");
 
 			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([
@@ -215,13 +205,13 @@ describe("MaintenanceService", () => {
 			mockSourceRepo.findById.mockResolvedValue(
 				makeLocalSource("source-1", "/local/images"),
 			);
-			// Simulate "already queued" – createIfUnique returns null
-			mockJobRepo.createIfUnique.mockResolvedValue(null);
+			// Simulate "already queued" – requestTask returns null
+			mockProcessing.requestTask.mockResolvedValue(null);
 
 			await service.performStartupChecks();
 
-			// createIfUnique was still called, but its null return means no new job
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledOnce();
+			// requestTask was still called, but its null return means no new request
+			expect(mockProcessing.requestTask).toHaveBeenCalledOnce();
 		});
 	});
 
@@ -230,7 +220,39 @@ describe("MaintenanceService", () => {
 	// --------------------------------------------------------------------------
 
 	describe("queueMissingThumbnails", () => {
-		it("should NOT create any jobs when all thumbnails exist", async () => {
+		it("checks each thumbnail once across pages with bounded filesystem concurrency", async () => {
+			const items = Array.from({ length: 1001 }, (_, index) =>
+				makeMedia(`paged-${index}`),
+			);
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices
+				.mockResolvedValueOnce(items.slice(0, 1000))
+				.mockResolvedValueOnce(items.slice(1000));
+			let active = 0;
+			let peak = 0;
+			vi.mocked(fs.access).mockImplementation(async () => {
+				active++;
+				peak = Math.max(peak, active);
+				await Promise.resolve();
+				active--;
+			});
+			await service.performStartupChecks();
+			expect(fs.access).toHaveBeenCalledTimes(1001);
+			expect(peak).toBeLessThanOrEqual(16);
+			expect(mockProcessing.requestTask).not.toHaveBeenCalled();
+		});
+		it("does not regenerate thumbnails on a permission failure", async () => {
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices.mockResolvedValueOnce([
+				makeMedia("private"),
+			]);
+			vi.mocked(fs.access).mockRejectedValue(
+				Object.assign(new Error("EACCES"), { code: "EACCES" }),
+			);
+			await service.performStartupChecks();
+			expect(mockProcessing.requestTask).not.toHaveBeenCalled();
+		});
+		it("should NOT create any requests when all thumbnails exist", async () => {
 			const media1 = makeMedia("media-1");
 
 			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
@@ -238,16 +260,14 @@ describe("MaintenanceService", () => {
 			mockMediaRepo.findAllMediaIndices.mockResolvedValueOnce([media1]);
 
 			// Thumbnail for media-1 already exists in the cache directory
-			(fs.readdir as unknown as Mock).mockResolvedValue([
-				"media-1.webp",
-			] as any);
+			vi.mocked(fs.access).mockResolvedValue(undefined);
 
 			await service.performStartupChecks();
 
-			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+			expect(mockProcessing.requestTask).not.toHaveBeenCalled();
 		});
 
-		it("should create a job for media whose thumbnail is missing", async () => {
+		it("should create a request for media whose thumbnail is missing", async () => {
 			const media1 = makeMedia("media-1");
 
 			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
@@ -255,24 +275,25 @@ describe("MaintenanceService", () => {
 			mockMediaRepo.findAllMediaIndices.mockResolvedValueOnce([media1]);
 
 			// The cache directory exists but is empty → thumbnail is missing
-			(fs.readdir as unknown as Mock).mockResolvedValue([] as any);
+			vi.mocked(fs.access).mockRejectedValue(
+				Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+			);
 
 			mockSourceRepo.findById.mockResolvedValue(
 				makeLocalSource("source-1", "/local/images"),
 			);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+			mockProcessing.requestTask.mockResolvedValue({ id: "request-new" });
 
 			await service.performStartupChecks();
 
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledOnce();
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
-				expect.objectContaining({
-					type: "processMedia",
-					payload: expect.objectContaining({
-						mediaId: "media-1",
-						skipMetadataExtraction: true,
-					}),
-				}),
+			expect(mockProcessing.requestTask).toHaveBeenCalledOnce();
+			expect(mockProcessing.requestTask).toHaveBeenCalledWith(
+				"source-1",
+				"media-1",
+				"thumbnail",
+				false,
+				undefined,
+				true,
 			);
 		});
 
@@ -285,16 +306,16 @@ describe("MaintenanceService", () => {
 
 			// ENOENT: directory does not exist yet → treat as empty → thumbnail missing
 			const err = Object.assign(new Error("ENOENT"), { code: "ENOENT" });
-			(fs.readdir as unknown as Mock).mockRejectedValue(err);
+			vi.mocked(fs.access).mockRejectedValue(err);
 
 			mockSourceRepo.findById.mockResolvedValue(
 				makeLocalSource("source-1", "/local/images"),
 			);
-			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+			mockProcessing.requestTask.mockResolvedValue({ id: "request-new" });
 
 			await service.performStartupChecks();
 
-			expect(mockJobRepo.createIfUnique).toHaveBeenCalledOnce();
+			expect(mockProcessing.requestTask).toHaveBeenCalledOnce();
 		});
 
 		it("should fetch the next batch by last media id when a page is full", async () => {
@@ -311,9 +332,7 @@ describe("MaintenanceService", () => {
 				.mockResolvedValueOnce([]); // second page: empty → stop
 
 			// All thumbnails exist (one set shared by all items in source-1)
-			(fs.readdir as unknown as Mock).mockResolvedValue(
-				batch1.map((m) => `${m.id}.webp`) as any,
-			);
+			vi.mocked(fs.access).mockResolvedValue(undefined);
 
 			await service.performStartupChecks();
 
@@ -327,7 +346,7 @@ describe("MaintenanceService", () => {
 				limit: 1000,
 				afterId: "m-999",
 			});
-			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+			expect(mockProcessing.requestTask).not.toHaveBeenCalled();
 		});
 	});
 });

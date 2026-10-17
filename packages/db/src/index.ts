@@ -4,7 +4,6 @@ export { createCategoryRepository } from "./repositories/category-repository";
 export { createCharacterRepository } from "./repositories/character-repository";
 export { createCollectionRepository } from "./repositories/collection-repository";
 export { createIpRepository } from "./repositories/ip-repository";
-export { createJobRepository } from "./repositories/job-repository";
 export { createMediaRepository } from "./repositories/media-repository";
 export { createMediaSearchFunctions } from "./repositories/media-repository-utils";
 export { createPresetRepository } from "./repositories/preset-repository";
@@ -16,3 +15,5 @@ export { createUserRepository } from "./repositories/user-repository";
 export * from "./schema";
 export { createTransactionManager } from "./transaction-manager";
 export * from "./types";
+
+export { createMediaProcessingStateRepository } from "./repositories/media-processing-state-repository";

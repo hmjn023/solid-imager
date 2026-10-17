@@ -1,0 +1,528 @@
+import { randomUUID } from "node:crypto";
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import {
+	mediaProcessingStateSchema,
+	mediaProcessingRequestSchema,
+	scheduledMediaInputSchema,
+	MediaProcessingScheduledError,
+	MediaProcessingSupersededError,
+	serializeMediaProcessingInput,
+	isMediaTaskApplicable,
+	type MediaProcessingInput,
+	type MediaProcessingClaim,
+	type MediaProcessingState,
+} from "@solid-imager/core/domain/processing/schemas";
+import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import { taggingResponseSchema } from "@solid-imager/core/domain/tagging/schemas";
+import { and, or, not, ne, eq, inArray, sql, asc, lt, gt } from "drizzle-orm";
+import {
+	mediaProcessingStates as states,
+	medias,
+	mediaSources,
+} from "../schema";
+import type { DrizzleExecutor } from "../types";
+
+export const MEDIA_PROCESSING_LEASE_MS = 120_000;
+// Schema timestamps are UTC without time zone. Dedicated scheduling uses DB time.
+const dbNow = sql`timezone('UTC', clock_timestamp())`;
+const leaseAlive = sql`${states.heartbeatAt} > ${dbNow} - ${MEDIA_PROCESSING_LEASE_MS} * interval '1 millisecond'`;
+const retryAt = sql`${dbNow} + least(300000, 1000 * power(2, least(${states.attemptCount} - 1, 20)) * (0.75 + random() * 0.5)) * interval '1 millisecond'`;
+const scheduledDemand = sql`(${states.independentDemand} OR EXISTS (
+	SELECT 1 FROM batch_items bi JOIN batch_runs br ON br.id = bi.run_id
+	WHERE bi.request_id = ${states.requestId} AND bi.kind = ${states.taskKind}
+	AND bi.status = 'scheduled' AND br.status IN ('pending', 'in_progress')
+))`;
+
+function mapState(row: typeof states.$inferSelect): MediaProcessingState {
+	return mediaProcessingStateSchema.parse({
+		requestId: row.requestId,
+		mediaId: row.mediaId,
+		taskKind: row.taskKind,
+		status: row.status,
+		inputRevision: row.inputRevision,
+		requestedRevision: row.requestedRevision,
+		completedRevision: row.completedRevision,
+		claimToken: row.claimToken,
+		claimedAt: row.claimedAt,
+		heartbeatAt: row.heartbeatAt,
+		attemptCount: row.attemptCount,
+		executionMode: row.executionMode,
+		availableAt: row.availableAt,
+		maxAttempts: row.maxAttempts,
+		ownerJobId: row.ownerJobId,
+		ownerAttemptCount: row.ownerAttemptCount,
+		lastError: row.lastError,
+		updatedAt: row.updatedAt,
+	});
+}
+const clearedClaim = {
+	claimToken: null,
+	claimedAt: null,
+	heartbeatAt: null,
+	ownerJobId: null,
+	ownerAttemptCount: null,
+};
+function claimCondition(claim: MediaProcessingClaim) {
+	return and(
+		eq(states.mediaId, claim.mediaId),
+		eq(states.taskKind, claim.taskKind),
+		eq(states.status, "in_progress"),
+		eq(states.requestedRevision, claim.revision),
+		eq(states.claimToken, claim.token),
+		sql`(${states.executionMode} <> 'scheduled' OR ${leaseAlive})`,
+	);
+}
+
+export function createMediaProcessingStateRepository(
+	getExecutor: (tx?: unknown) => DrizzleExecutor,
+): IMediaProcessingSchedulerRepository {
+	async function lockInput(input: MediaProcessingInput, tx: Transaction) {
+		if (!tx) throw new Error("Processing state requires a transaction");
+		const db = getExecutor(tx);
+		const [media] = await db
+			.select()
+			.from(medias)
+			.where(eq(medias.id, input.mediaId))
+			.for("update");
+		const [source] = await db
+			.select()
+			.from(mediaSources)
+			.where(eq(mediaSources.id, input.mediaSourceId))
+			.for("share");
+		const connection = localConnectionSchema.safeParse(source?.connectionInfo);
+		if (
+			!media ||
+			source?.type !== "local" ||
+			!connection.success ||
+			media.mediaSourceId !== input.mediaSourceId ||
+			media.mediaType !== input.mediaType ||
+			serializeMediaProcessingInput({
+				...input,
+				mediaSourceId: media.mediaSourceId,
+				sourcePath: connection.data.path,
+				filePath: media.filePath,
+				fileSize: media.fileSize,
+				modifiedAt: media.modifiedAt,
+			}) !== serializeMediaProcessingInput(input)
+		) {
+			throw new MediaProcessingSupersededError();
+		}
+	}
+	return {
+		async findInlineMediaIds(
+			afterId,
+			limit,
+			taskKinds = ["metadata", "thumbnail"],
+		) {
+			if (!taskKinds.length) return [];
+			return (
+				await getExecutor()
+					.selectDistinct({ id: states.mediaId })
+					.from(states)
+					.innerJoin(medias, eq(medias.id, states.mediaId))
+					.where(
+						and(
+							or(
+								eq(states.executionMode, "inline"),
+								and(
+									eq(states.taskKind, "metadata"),
+									ne(medias.mediaType, "image"),
+									ne(states.status, "completed"),
+								),
+							),
+							inArray(states.taskKind, taskKinds),
+							afterId ? gt(states.mediaId, afterId) : undefined,
+						),
+					)
+					.orderBy(asc(states.mediaId))
+					.limit(limit)
+			).map((row) => row.id);
+		},
+		async skipInapplicable(input, kind, tx) {
+			if (isMediaTaskApplicable(input.mediaType, kind))
+				throw new Error("Cannot skip an applicable media task");
+			await lockInput(input, tx);
+			await getExecutor(tx)
+				.update(states)
+				.set({
+					...clearedClaim,
+					executionMode: "scheduled",
+					status: "completed",
+					completedRevision: sql`${states.requestedRevision}`,
+					lastError: null,
+					updatedAt: dbNow,
+				})
+				.where(
+					and(eq(states.mediaId, input.mediaId), eq(states.taskKind, kind)),
+				);
+		},
+		async request(request, tx) {
+			const { input, taskKind, revision, maxAttempts, force, batchId } =
+				mediaProcessingRequestSchema.parse(request);
+			await lockInput(input, tx);
+			const db = getExecutor(tx);
+			const [previous] = await db
+				.select()
+				.from(states)
+				.where(
+					and(eq(states.mediaId, input.mediaId), eq(states.taskKind, taskKind)),
+				)
+				.for("update");
+			if (
+				previous?.executionMode === "scheduled" &&
+				previous.requestedRevision === revision &&
+				(!force ||
+					previous.status === "pending" ||
+					previous.status === "in_progress")
+			) {
+				if (!batchId && !previous.independentDemand) {
+					const [promoted] = await db
+						.update(states)
+						.set({ independentDemand: true })
+						.where(
+							and(
+								eq(states.mediaId, input.mediaId),
+								eq(states.taskKind, taskKind),
+							),
+						)
+						.returning();
+					return mapState(promoted);
+				}
+				return mapState(previous);
+			}
+			const values = {
+				...clearedClaim,
+				requestId: randomUUID(),
+				mediaId: input.mediaId,
+				taskKind,
+				requestedRevision: revision,
+				inputRevision: serializeMediaProcessingInput(input),
+				scheduledInput: {
+					...input,
+					modifiedAt: input.modifiedAt.toISOString(),
+				},
+				executionMode: "scheduled",
+				independentDemand: !batchId,
+				status:
+					!force &&
+					previous?.requestedRevision === revision &&
+					(previous.status === "completed" || previous.status === "failed")
+						? previous.status
+						: "pending",
+				attemptCount:
+					!force &&
+					previous?.requestedRevision === revision &&
+					(previous.status === "completed" || previous.status === "failed")
+						? Math.min(previous.attemptCount, maxAttempts)
+						: 0,
+				maxAttempts,
+				availableAt: dbNow,
+				updatedAt: dbNow,
+				lastError:
+					!force &&
+					previous?.requestedRevision === revision &&
+					previous.status === "failed"
+						? previous.lastError
+						: null,
+				taggingResult:
+					!force &&
+					previous?.requestedRevision === revision &&
+					previous.status === "completed"
+						? previous.taggingResult
+						: null,
+				completedRevision: previous?.completedRevision ?? null,
+			};
+			const [row] = await db
+				.insert(states)
+				.values(values)
+				.onConflictDoUpdate({
+					target: [states.mediaId, states.taskKind],
+					set: values,
+				})
+				.returning();
+			return mapState(row);
+		},
+		async isPendingRequestAbandoned(request, tx) {
+			const [row] = await getExecutor(tx)
+				.select({ requestId: states.requestId })
+				.from(states)
+				.where(
+					and(
+						eq(states.mediaId, request.mediaId),
+						eq(states.taskKind, request.taskKind),
+						eq(states.requestId, request.requestId),
+						eq(states.executionMode, "scheduled"),
+						eq(states.status, "pending"),
+						not(scheduledDemand),
+					),
+				)
+				.limit(1);
+			return row !== undefined;
+		},
+		async claimDue(taskKinds, tx) {
+			if (!taskKinds.length) return null;
+			if (!tx) throw new Error("Processing claim requires a transaction");
+			const db = getExecutor(tx);
+			const due = and(
+				eq(states.executionMode, "scheduled"),
+				eq(states.status, "pending"),
+				scheduledDemand,
+				inArray(states.taskKind, taskKinds),
+				lt(states.attemptCount, states.maxAttempts),
+				sql`${states.availableAt} <= ${dbNow}`,
+			);
+			// All request/commit/claim paths lock media before state. Locking state first would deadlock.
+			const [candidate] = await db
+				.select({ mediaId: states.mediaId, taskKind: states.taskKind })
+				.from(states)
+				.innerJoin(medias, eq(medias.id, states.mediaId))
+				.where(due)
+				.orderBy(
+					asc(states.availableAt),
+					asc(states.mediaId),
+					asc(states.taskKind),
+				)
+				.limit(1)
+				.for("update", { of: medias, skipLocked: true });
+			if (!candidate) return null;
+			const [row] = await db
+				.select()
+				.from(states)
+				.where(
+					and(
+						due,
+						eq(states.mediaId, candidate.mediaId),
+						eq(states.taskKind, candidate.taskKind),
+					),
+				)
+				.for("update");
+			if (!row) return null;
+			const parsed = scheduledMediaInputSchema.safeParse(row.scheduledInput);
+			if (
+				!parsed.success ||
+				parsed.data.mediaId !== row.mediaId ||
+				serializeMediaProcessingInput({
+					...parsed.data,
+					modifiedAt: new Date(parsed.data.modifiedAt),
+				}) !== row.inputRevision
+			) {
+				await db
+					.update(states)
+					.set({
+						status: "failed",
+						lastError: "Invalid scheduled media input",
+						updatedAt: dbNow,
+					})
+					.where(
+						and(
+							eq(states.mediaId, row.mediaId),
+							eq(states.taskKind, row.taskKind),
+						),
+					);
+				return null;
+			}
+			const snapshot = parsed.data;
+			const input = { ...snapshot, modifiedAt: new Date(snapshot.modifiedAt) };
+			try {
+				await lockInput(input, tx);
+			} catch (error) {
+				if (!(error instanceof MediaProcessingSupersededError)) throw error;
+				await db
+					.update(states)
+					.set({
+						status: "failed",
+						lastError: "Requested media input has changed",
+						updatedAt: dbNow,
+					})
+					.where(
+						and(
+							eq(states.mediaId, row.mediaId),
+							eq(states.taskKind, row.taskKind),
+						),
+					);
+				return null;
+			}
+			const token = randomUUID();
+			const [claimed] = await db
+				.update(states)
+				.set({
+					status: "in_progress",
+					claimToken: token,
+					claimedAt: dbNow,
+					heartbeatAt: dbNow,
+					updatedAt: dbNow,
+					attemptCount: sql`${states.attemptCount} + 1`,
+				})
+				.where(
+					and(
+						due,
+						eq(states.mediaId, row.mediaId),
+						eq(states.taskKind, row.taskKind),
+					),
+				)
+				.returning();
+			if (!claimed) return null;
+			const state = mapState(claimed);
+			return {
+				input,
+				state,
+				claim: {
+					mediaId: state.mediaId,
+					taskKind: state.taskKind,
+					revision: state.requestedRevision,
+					token,
+				},
+			};
+		},
+		async recoverExpired(taskKinds, limit, tx) {
+			if (!taskKinds.length) return 0;
+			if (!tx || !Number.isInteger(limit) || limit < 1 || limit > 1000)
+				throw new Error("Invalid processing recovery transaction or limit");
+			const db = getExecutor(tx);
+			const expired = and(
+				eq(states.executionMode, "scheduled"),
+				eq(states.status, "in_progress"),
+				inArray(states.taskKind, taskKinds),
+				sql`NOT (${leaseAlive})`,
+			);
+			const candidates = await db
+				.select({ mediaId: states.mediaId, taskKind: states.taskKind })
+				.from(states)
+				.innerJoin(medias, eq(medias.id, states.mediaId))
+				.where(expired)
+				.orderBy(
+					asc(states.heartbeatAt),
+					asc(states.mediaId),
+					asc(states.taskKind),
+				)
+				.limit(limit)
+				.for("update", { of: medias, skipLocked: true });
+			let recovered = 0;
+			for (const candidate of candidates) {
+				const rows = await db
+					.update(states)
+					.set({
+						...clearedClaim,
+						status: sql`CASE WHEN ${states.attemptCount} < ${states.maxAttempts} THEN 'pending' ELSE 'failed' END`,
+						availableAt: retryAt,
+						lastError: "Processing lease expired",
+						updatedAt: dbNow,
+					})
+					.where(
+						and(
+							expired,
+							eq(states.mediaId, candidate.mediaId),
+							eq(states.taskKind, candidate.taskKind),
+						),
+					)
+					.returning();
+				recovered += rows.length;
+			}
+			return recovered;
+		},
+		async settleFailure(claim, error, retryable, tx) {
+			if (!tx) throw new Error("Processing settlement requires a transaction");
+			const [row] = await getExecutor(tx)
+				.update(states)
+				.set({
+					...clearedClaim,
+					status: retryable
+						? sql`CASE WHEN ${states.attemptCount} < ${states.maxAttempts} THEN 'pending' ELSE 'failed' END`
+						: "failed",
+					availableAt: retryable ? retryAt : dbNow,
+					lastError: error.slice(0, 2048),
+					updatedAt: dbNow,
+				})
+				.where(
+					and(claimCondition(claim), eq(states.executionMode, "scheduled")),
+				)
+				.returning();
+			return row ? mapState(row) : null;
+		},
+		async findTaggingResult(mediaId, revision, tx) {
+			const [row] = await getExecutor(tx)
+				.select({ result: states.taggingResult })
+				.from(states)
+				.where(
+					and(
+						eq(states.mediaId, mediaId),
+						eq(states.taskKind, "tagging"),
+						eq(states.status, "completed"),
+						eq(states.requestedRevision, revision),
+						eq(states.completedRevision, revision),
+					),
+				);
+			const parsed = taggingResponseSchema.safeParse(row?.result);
+			return parsed.success ? parsed.data : null;
+		},
+		async saveTaggingResult(claim, result, tx) {
+			if (claim.taskKind !== "tagging")
+				throw new Error("Tagging result requires a tagging claim");
+			const rows = await getExecutor(tx)
+				.update(states)
+				.set({ taggingResult: taggingResponseSchema.parse(result) })
+				.where(claimCondition(claim))
+				.returning();
+			if (!rows.length) throw new MediaProcessingSupersededError();
+		},
+		async findByMediaIds(ids, tx) {
+			if (!ids.length) return [];
+			return (
+				await getExecutor(tx)
+					.select()
+					.from(states)
+					.where(inArray(states.mediaId, ids))
+			).map(mapState);
+		},
+		async claim() {
+			throw new MediaProcessingScheduledError();
+		},
+		async commit(input, claim, output, tx) {
+			if (input.mediaId !== claim.mediaId)
+				throw new MediaProcessingSupersededError();
+			await lockInput(input, tx);
+			const db = getExecutor(tx);
+			const [state] = await db
+				.select()
+				.from(states)
+				.where(claimCondition(claim))
+				.for("update");
+			if (!state) throw new MediaProcessingSupersededError();
+			await output(tx);
+			const completed = await db
+				.update(states)
+				.set({
+					...clearedClaim,
+					status: "completed",
+					completedRevision: claim.revision,
+					lastError: null,
+					updatedAt: dbNow,
+				})
+				.where(claimCondition(claim))
+				.returning();
+			if (!completed.length) throw new MediaProcessingSupersededError();
+		},
+		async fail(claim, error, tx) {
+			const rows = await getExecutor(tx)
+				.update(states)
+				.set({
+					...clearedClaim,
+					status: "failed",
+					lastError: error.slice(0, 2048),
+					updatedAt: new Date(),
+				})
+				.where(claimCondition(claim))
+				.returning();
+			return rows.length > 0;
+		},
+		async heartbeat(claim) {
+			const rows = await getExecutor()
+				.update(states)
+				.set({ heartbeatAt: dbNow, updatedAt: dbNow })
+				.where(claimCondition(claim))
+				.returning();
+			return rows.length > 0;
+		},
+	};
+}

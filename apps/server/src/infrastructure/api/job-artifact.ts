@@ -1,12 +1,11 @@
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
+import { SourceRunRepository } from "~/infrastructure/repositories/source-run-repository";
+import { sourceRunService } from "~/infrastructure/services/source-run-service";
 import { isJobTransferPath } from "~/infrastructure/services/job-transfer-storage";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
 export type ResolvedJobArtifact = {
-	job: Job;
 	path: string;
 	fileName: string;
 	contentType: string;
@@ -17,39 +16,28 @@ export type ResolvedJobArtifact = {
 export async function resolveJobArtifact(
 	jobId: string,
 ): Promise<ResolvedJobArtifact | null> {
-	const job = await JobRepository.findById(jobId);
-	if (
-		job?.status !== "completed" ||
-		!job.artifactPath ||
-		!job.artifactFileName ||
-		!job.artifactContentType ||
-		!isJobTransferPath(job.id, job.artifactPath)
-	) {
-		return null;
+	await sourceRunService.initialize();
+	const run = await SourceRunRepository.findById(jobId);
+	if (run) {
+		const artifact = run.artifact;
+		if (
+			run.status !== "completed" ||
+			!artifact ||
+			artifact.expiresAt <= new Date() ||
+			!isJobTransferPath(run.id, artifact.path)
+		)
+			return null;
+		const stat = await fs.stat(artifact.path).catch(() => null);
+		if (!stat?.isFile()) return null;
+		return {
+			path: artifact.path,
+			fileName: artifact.fileName,
+			contentType: artifact.contentType,
+			size: stat.size,
+			stream: nodeStreamToWebReadable(createReadStream(artifact.path)),
+		};
 	}
-
-	if (job.artifactExpiresAt && job.artifactExpiresAt <= new Date()) {
-		return null;
-	}
-
-	let stat: Awaited<ReturnType<typeof fs.stat>>;
-	try {
-		stat = await fs.stat(job.artifactPath);
-	} catch {
-		return null;
-	}
-	if (!stat.isFile()) {
-		return null;
-	}
-
-	return {
-		job,
-		path: job.artifactPath,
-		fileName: job.artifactFileName,
-		contentType: job.artifactContentType,
-		size: stat.size,
-		stream: nodeStreamToWebReadable(createReadStream(job.artifactPath)),
-	};
+	return null;
 }
 
 function encodeContentDispositionFilename(fileName: string): string {

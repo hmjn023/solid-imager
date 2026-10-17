@@ -1,35 +1,31 @@
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
+import {
+	scanCcipTargetPage,
+	findQueuedCcipJob,
+} from "~/infrastructure/jobs/ccip-targets";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { implement, ORPCError } from "@orpc/server";
-import {
-	CCIP_EMBEDDING_VERSION,
-	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
+
 import { createClient } from "@solid-imager/client";
 import type { AppContract } from "@solid-imager/core/domain/contract";
 import { aiContract } from "@solid-imager/core/domain/contract/ai.contract";
 import {
 	detectAndCropResponseSchema,
 	type NapiBBox,
-	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { loadDghsImgutils } from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
-import { db } from "~/infrastructure/db";
 import {
-	jobs,
-	mediaCharacters,
-	mediaIps,
-	mediaSources,
-	medias,
-	mediaTags,
-} from "~/infrastructure/db/schema";
+	AiInferenceBusyError,
+	nativeInferenceGate,
+} from "~/infrastructure/ai/native-inference-gate";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
+import { scanTaggingTargetPage } from "~/infrastructure/jobs/tagging-targets";
 import { taggingService } from "~/infrastructure/services/tagging-service";
 
 function isRemoteServerLocal(url: string): boolean {
@@ -61,6 +57,7 @@ async function readFileBuffer(filePath: string): Promise<Buffer> {
 function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
 	return createClient<AppContract>({
 		url: remoteUrl,
+		timeoutMs,
 		fetch: async (request: Request, init?: RequestInit) => {
 			const controller = new AbortController();
 			const t = setTimeout(() => controller.abort(), timeoutMs);
@@ -74,17 +71,6 @@ function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
 			}
 		},
 	});
-}
-
-async function callRemoteTagging(
-	remoteUrl: string,
-	fileBuffer: Buffer,
-	fileName: string,
-	timeoutMs: number,
-): Promise<unknown> {
-	const file = new File([new Uint8Array(fileBuffer)], fileName);
-	const remoteOrpc = createRemoteOprcClient(remoteUrl, timeoutMs);
-	return remoteOrpc.ai.tag({ file });
 }
 
 async function callRemoteCrop(
@@ -129,7 +115,9 @@ async function cropDetection(
 		try {
 			const { segmentRgbaWithIsnetis } = loadDghsImgutils();
 			cropBuffer = Buffer.from(
-				await segmentRgbaWithIsnetis(cropPath, undefined, inferenceOptions),
+				await nativeInferenceGate.run(() =>
+					segmentRgbaWithIsnetis(cropPath, undefined, inferenceOptions),
+				),
 			);
 			_format = "png";
 		} finally {
@@ -215,49 +203,6 @@ export const aiRouter = os.router({
 				throw new Error("mediaSourceId and mediaId are required");
 			}
 
-			const remoteUrl = getRemoteServerUrl();
-			const config = services.getConfigService().getConfig();
-			if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
-				const media = await services.getMediaRepository().findById(mediaId);
-				if (!media) {
-					throw new Error("Media not found");
-				}
-				const mediaSource = await services
-					.getSourceRepository()
-					.findById(media.mediaSourceId);
-				if (mediaSource?.type !== "local") {
-					throw new Error(
-						"Only local media sources are supported for remote tagging",
-					);
-				}
-				const connectionInfo = mediaSource.connectionInfo as
-					| Record<string, unknown>
-					| null
-					| undefined;
-				if (!connectionInfo || typeof connectionInfo.path !== "string") {
-					throw new Error("Media source connection path is missing or invalid");
-				}
-				const fullPath = path.join(connectionInfo.path, media.filePath);
-				const fileBuffer = await readFileBuffer(fullPath);
-				const result = taggingResponseSchema.parse(
-					await callRemoteTagging(
-						remoteUrl,
-						fileBuffer,
-						path.basename(fullPath),
-						config.ai.timeoutMs,
-					),
-				);
-				logger.info(
-					{
-						...logContext,
-						execution: "remote",
-						durationMs: Date.now() - startedAt,
-					},
-					"AI tagging completed",
-				);
-				return result;
-			}
-
 			const result = await taggingService.getTagsForMedia(
 				mediaSourceId,
 				mediaId,
@@ -268,13 +213,14 @@ export const aiRouter = os.router({
 			logger.info(
 				{
 					...logContext,
-					execution: "local",
+					execution: services.getAiClient().getBaseUrl?.() ? "remote" : "local",
 					durationMs: Date.now() - startedAt,
 				},
 				"AI tagging completed",
 			);
 			return result;
 		} catch (error) {
+			if (error instanceof AiInferenceBusyError) throw error;
 			logger.error(
 				{
 					err: error,
@@ -356,6 +302,7 @@ export const aiRouter = os.router({
 			);
 			return result;
 		} catch (error) {
+			if (error instanceof AiInferenceBusyError) throw error;
 			logger.error(
 				{ err: error, durationMs: Date.now() - startedAt },
 				"OppaiOracle tagging failed",
@@ -378,7 +325,8 @@ export const aiRouter = os.router({
 			throw new Error("mediaSourceId and mediaId are required");
 		}
 
-		return await taggingService.getCcipFeatureForMedia(mediaSourceId, mediaId);
+		const { record } = await ccipVectorService.extract(mediaSourceId, mediaId);
+		return { feature: record.vector };
 	}),
 
 	ccipDifference: os.ccipDifference.handler(
@@ -397,86 +345,33 @@ export const aiRouter = os.router({
 		async ({ input }) => {
 			const { mediaSourceId, force } = input;
 
-			const [{ count: rawCount }] = await db
-				.select({
-					count: sql<number>`count(distinct ${medias.id})`,
-				})
-				.from(medias)
-				.leftJoin(
-					mediaTags,
-					and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI")),
-				)
-				.leftJoin(
-					mediaCharacters,
-					and(
-						eq(mediaCharacters.mediaId, medias.id),
-						eq(mediaCharacters.source, "AI"),
-					),
-				)
-				.leftJoin(
-					mediaIps,
-					and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI")),
-				)
-				.where(
-					and(
-						eq(medias.mediaType, "image"),
-						mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
-						force
-							? undefined
-							: and(
-									isNull(mediaTags.mediaId),
-									isNull(mediaCharacters.mediaId),
-									isNull(mediaIps.mediaId),
-								),
-					),
-				);
+			let count = 0;
+			let afterId: string | undefined;
+			for (;;) {
+				const page = await scanTaggingTargetPage({
+					mediaSourceId,
+					force: force ?? false,
+					limit: 1000,
+					afterId,
+				});
+				count += page.targets.length;
+				if (!page.nextCursor) break;
+				afterId = page.nextCursor;
+			}
 
-			return { count: Number(rawCount ?? 0) };
+			return { count };
 		},
 	),
 
 	startBatchTagging: os.startBatchTagging.handler(async ({ input }) => {
-		const { mediaSourceId, force, batchSize } = input;
-		const jobRepo = services.getJobRepository();
-
-		const parentJob = await jobRepo.create({
-			type: "bulk_tagging_parent",
-			status: "in_progress",
-			mediaSourceId,
-			payload: {
-				total: 0,
-				processed: 0,
-				failed: 0,
-				mediaSourceId,
-				force,
-			},
+		const { run } = await batchRunService.start({
+			kind: "tagging",
+			mediaSourceId: input.mediaSourceId,
+			force: input.force ?? false,
+			missingOnly: false,
+			thumbnailSize: 512,
 		});
-
-		await jobRepo.create({
-			type: "bulk_tagging_dispatch",
-			mediaSourceId,
-			parentId: parentJob.id,
-			payload: {
-				mediaSourceId,
-				force,
-				...(batchSize !== undefined ? { batchSize } : {}),
-			},
-		});
-
-		logger.info(
-			{
-				jobId: parentJob.id,
-				mediaSourceId,
-				force: force ?? false,
-			},
-			"Batch tagging dispatch queued",
-		);
-
-		return {
-			success: true,
-			message: "Batch tagging dispatch queued",
-			jobId: parentJob.id,
-		};
+		return { success: true, message: "Processing batch queued", jobId: run.id };
 	}),
 
 	ccipVectorStatus: os.ccipVectorStatus.handler(async ({ input }) => {
@@ -485,29 +380,17 @@ export const aiRouter = os.router({
 				input.mediaSourceId,
 				input.mediaId,
 			);
-			const latestJob = await db.query.jobs.findFirst({
-				where: and(
-					eq(jobs.type, "extract_ccip_vector"),
-					eq(jobs.mediaSourceId, input.mediaSourceId),
-					sql`${jobs.payload}->>'mediaId' = ${input.mediaId}`,
-				),
-				orderBy: desc(jobs.createdAt),
-			});
-			if (status.status === "ready" || status.status === "stale") {
-				return status;
-			}
+			// Batch IDs restore event monitoring before and after task reservation.
 			if (
-				latestJob?.status === "pending" ||
-				latestJob?.status === "in_progress"
+				status.status === "missing" ||
+				status.status === "stale" ||
+				status.status === "processing"
 			) {
-				return { status: "processing" as const, jobId: latestJob.id };
-			}
-			if (latestJob?.status === "failed") {
-				return {
-					status: "failed" as const,
-					jobId: latestJob.id,
-					error: latestJob.error ?? "CCIP vector extraction failed",
-				};
+				const queued = await findQueuedCcipJob(
+					input.mediaSourceId,
+					input.mediaId,
+				);
+				if (queued) return { status: "processing" as const, jobId: queued.id };
 			}
 			return status;
 		} catch (error) {
@@ -527,100 +410,47 @@ export const aiRouter = os.router({
 	}),
 
 	startCcipExtraction: os.startCcipExtraction.handler(async ({ input }) => {
-		const job = await services.getJobRepository().create({
-			type: "extract_ccip_vector",
+		const { run } = await batchRunService.start({
+			kind: "ccip",
 			mediaSourceId: input.mediaSourceId,
-			payload: { mediaId: input.mediaId, force: input.force },
+			mediaIds: [input.mediaId],
+			force: input.force ?? false,
+			missingOnly: false,
+			thumbnailSize: 512,
 		});
-		logger.info(
-			{
-				jobId: job.id,
-				mediaSourceId: input.mediaSourceId,
-				mediaId: input.mediaId,
-				force: input.force,
-			},
-			"CCIP vector extraction queued",
-		);
-		return {
-			success: true,
-			message: "CCIP vector extraction queued",
-			jobId: job.id,
-		};
+		return { success: true, message: "Processing batch queued", jobId: run.id };
 	}),
 
 	scanBatchCcipTargets: os.scanBatchCcipTargets.handler(async ({ input }) => {
-		const rows = await db
-			.select({
-				id: medias.id,
-				modifiedAt: medias.modifiedAt,
-			})
-			.from(medias)
-			.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
-			.where(
-				and(
-					eq(medias.mediaType, "image"),
-					eq(mediaSources.type, "local"),
-					input.mediaSourceId
-						? eq(medias.mediaSourceId, input.mediaSourceId)
-						: undefined,
-				),
-			)
-			.orderBy(asc(medias.id));
-		if (input.force) return { count: rows.length };
-		const records = new Map(
-			(await ccipVectorService.listRecords(input.mediaSourceId)).map(
-				(record) => [record.mediaId, record],
-			),
-		);
-		const count = rows.filter((row) => {
-			const record = records.get(row.id);
-			return (
-				!record ||
-				record.model !== CCIP_MODEL ||
-				record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
-				record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
-			);
-		}).length;
+		let count = 0;
+		let afterId: string | undefined;
+		for (;;) {
+			const page = await scanCcipTargetPage({
+				mediaSourceId: input.mediaSourceId,
+				force: input.force ?? false,
+				limit: 1000,
+				afterId,
+			});
+			count += page.targets.length;
+			if (!page.nextCursor) break;
+			afterId = page.nextCursor;
+		}
 		return { count };
 	}),
 
 	startBatchCcipExtraction: os.startBatchCcipExtraction.handler(
 		async ({ input }) => {
-			const { mediaSourceId, force } = input;
-			const jobRepo = services.getJobRepository();
-			const parent = await jobRepo.create({
-				type: "batch_ccip_parent",
-				status: "in_progress",
-				mediaSourceId,
-				payload: {
-					total: 0,
-					processed: 0,
-					failed: 0,
-					mediaSourceId,
-					force,
-				},
+			const { run } = await batchRunService.start({
+				kind: "ccip",
+				mediaSourceId: input.mediaSourceId,
+				force: input.force ?? false,
+				missingOnly: false,
+				thumbnailSize: 512,
 			});
-			await jobRepo.create({
-				type: "batch_ccip_dispatch",
-				mediaSourceId,
-				parentId: parent.id,
-				payload: {
-					mediaSourceId,
-					force,
-				},
-			});
-			logger.info(
-				{
-					jobId: parent.id,
-					mediaSourceId,
-					force: force ?? false,
-				},
-				"Batch CCIP dispatch queued",
-			);
 			return {
 				success: true,
-				message: "Batch CCIP dispatch queued",
-				jobId: parent.id,
+				message: "Processing batch queued",
+				jobId: run.id,
 			};
 		},
 	),
@@ -657,20 +487,29 @@ export const aiRouter = os.router({
 					await Bun.write(tmpPath, buffer);
 					try {
 						const { detectPerson } = loadDghsImgutils();
-						const detections = await detectPerson(
-							tmpPath,
-							undefined,
-							undefined,
-							undefined,
-							undefined,
-							inferenceOptions,
-						);
-
-						const resultDetections = await Promise.all(
-							detections.map(async (det, idx) =>
-								cropDetection(tmpPath, det, idx, transparent, inferenceOptions),
+						const detections = await nativeInferenceGate.run(() =>
+							detectPerson(
+								tmpPath,
+								undefined,
+								undefined,
+								undefined,
+								undefined,
+								inferenceOptions,
 							),
 						);
+
+						const resultDetections = [];
+						for (const [idx, det] of detections.entries()) {
+							resultDetections.push(
+								await cropDetection(
+									tmpPath,
+									det,
+									idx,
+									transparent,
+									inferenceOptions,
+								),
+							);
+						}
 
 						logger.info(
 							{
@@ -740,20 +579,29 @@ export const aiRouter = os.router({
 
 				const { detectPerson } = loadDghsImgutils();
 				const inferenceOptions = createNativeInferenceOptions(config.ai);
-				const detections = await detectPerson(
-					fullPath,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					inferenceOptions,
-				);
-
-				const resultDetections = await Promise.all(
-					detections.map(async (det, idx) =>
-						cropDetection(fullPath, det, idx, transparent, inferenceOptions),
+				const detections = await nativeInferenceGate.run(() =>
+					detectPerson(
+						fullPath,
+						undefined,
+						undefined,
+						undefined,
+						undefined,
+						inferenceOptions,
 					),
 				);
+
+				const resultDetections = [];
+				for (const [idx, det] of detections.entries()) {
+					resultDetections.push(
+						await cropDetection(
+							fullPath,
+							det,
+							idx,
+							transparent,
+							inferenceOptions,
+						),
+					);
+				}
 
 				logger.info(
 					{
@@ -766,6 +614,7 @@ export const aiRouter = os.router({
 				);
 				return { detections: resultDetections };
 			} catch (error) {
+				if (error instanceof AiInferenceBusyError) throw error;
 				logger.error(
 					{
 						err: error,

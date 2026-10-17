@@ -230,6 +230,11 @@ export function createIpRepository(
 				});
 		},
 
+		async removeMediaFromSource(mediaId, source, tx) {
+			await getExecutor(tx)
+				.delete(mediaIps)
+				.where(and(eq(mediaIps.mediaId, mediaId), eq(mediaIps.source, source)));
+		},
 		async removeMedia(
 			mediaId: string,
 			ipId: string,

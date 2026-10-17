@@ -1,6 +1,7 @@
 import fs from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
+import { processDownloadRun } from "~/infrastructure/jobs/download-jobs";
+import type { DownloadClaim } from "@solid-imager/core/domain/downloads/schemas";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -8,6 +9,7 @@ import { MediaRepository } from "~/infrastructure/repositories/media-repository"
 // Hoisted mocks
 // Hoisted mocks
 const {
+	mockDownloadRepo,
 	mockFindById,
 	mockGetFileMetadata,
 	mockMediaRegisterAndProcess,
@@ -22,6 +24,7 @@ const {
 	mockYtDlpExec,
 	mockYtDlp,
 } = vi.hoisted(() => ({
+	mockDownloadRepo: { withActiveClaim: vi.fn(), saveCheckpoint: vi.fn() },
 	mockFindById: vi.fn(),
 	mockGetFileMetadata: vi.fn(),
 	mockMediaRegisterAndProcess: vi.fn(),
@@ -38,6 +41,9 @@ const {
 }));
 
 // Mocks
+vi.mock("~/infrastructure/repositories/download-run-repository", () => ({
+	DownloadRunRepository: mockDownloadRepo,
+}));
 vi.mock("youtube-dl-exec", () => ({
 	create: () => Object.assign(mockYtDlp, { exec: mockYtDlpExec }),
 }));
@@ -96,6 +102,9 @@ vi.mock("node:fs/promises", () => ({
 		unlink: vi.fn(),
 		access: vi.fn(),
 		rename: vi.fn(),
+		stat: vi.fn(),
+		link: vi.fn(),
+		rm: vi.fn(),
 	},
 }));
 vi.mock("node:child_process", () => ({
@@ -111,10 +120,43 @@ global.fetch = fetchMock as any;
 // Unified format: {author}_{platform}_{postId}_{assetId}.{ext}
 const DOWNLOAD_FILENAME_PATTERN = /^user_twitter_123_image\.jpg$/;
 
+// Keep the downloader behavior fixtures while exercising the dedicated typed execution boundary.
+async function processDownloadJob(fixture: {
+	id: string;
+	mediaSourceId?: string | null;
+	payload?: unknown;
+	attemptCount?: number;
+}) {
+	const payload =
+		fixture.payload && typeof fixture.payload === "object"
+			? fixture.payload
+			: {};
+	const checkpoint =
+		"downloadRegistration" in payload ? payload.downloadRegistration : null;
+	return processDownloadRun({
+		...fixture,
+		input: payload,
+		checkpoint,
+		sourcePath: "/tmp/downloads",
+		status: "in_progress",
+		leaseToken: "11111111-1111-4111-8111-111111111111",
+		leaseExpiresAt: new Date(Date.now() + 120_000),
+		attemptCount: fixture.attemptCount ?? 1,
+	} as DownloadClaim);
+}
+
 describe("processDownloadJob", () => {
 	beforeEach(async () => {
 		vi.resetAllMocks();
+		vi.mocked(fs.rm).mockResolvedValue(undefined);
 		vi.mocked(fs.access).mockRejectedValue(new Error("ENOENT"));
+		const modifiedAt = new Date("2026-01-01T00:00:00Z");
+		vi.mocked(fs.stat).mockResolvedValue({
+			size: 1000,
+			mtime: modifiedAt,
+			dev: 1,
+			ino: 1,
+		} as any);
 		fetchMock.mockResolvedValue({
 			ok: true,
 			headers: new Headers({ "content-type": "image/jpeg" }),
@@ -135,7 +177,7 @@ describe("processDownloadJob", () => {
 		mockGetFileMetadata.mockResolvedValue({
 			size: 1000,
 			createdAt: new Date(),
-			modifiedAt: new Date(),
+			modifiedAt: new Date("2026-01-01T00:00:00Z"),
 			width: 800,
 			height: 600,
 		});
@@ -149,7 +191,7 @@ describe("processDownloadJob", () => {
 				height: 600,
 				size: 1000,
 				createdAt: new Date(),
-				modifiedAt: new Date(),
+				modifiedAt: new Date("2026-01-01T00:00:00Z"),
 			});
 		});
 
@@ -164,7 +206,7 @@ describe("processDownloadJob", () => {
 			fileSize: 1000,
 			description: null,
 			createdAt: new Date(),
-			modifiedAt: new Date(),
+			modifiedAt: new Date("2026-01-01T00:00:00Z"),
 			indexedAt: new Date(),
 			status: "active",
 		});
@@ -180,7 +222,7 @@ describe("processDownloadJob", () => {
 			fileSize: 1000,
 			description: null,
 			createdAt: new Date(),
-			modifiedAt: new Date(),
+			modifiedAt: new Date("2026-01-01T00:00:00Z"),
 			indexedAt: new Date(),
 			status: "active",
 		});
@@ -193,10 +235,10 @@ describe("processDownloadJob", () => {
 			updatedAt: new Date(),
 		});
 
-		const { services } = await import("~/infrastructure/service-registry");
-		services.getJobRepository = vi.fn().mockReturnValue({
-			create: vi.fn(),
-		});
+		mockDownloadRepo.withActiveClaim.mockImplementation(
+			async (_claim, action) => action(undefined),
+		);
+		mockDownloadRepo.saveCheckpoint.mockResolvedValue(undefined);
 	});
 
 	it.each([
@@ -248,11 +290,8 @@ describe("processDownloadJob", () => {
 				{ err: expect.objectContaining({ message, cause: error }) },
 				"yt-dlp execution failed",
 			);
-			expect(RealtimeEventBus.publishSource).toHaveBeenCalledWith(
-				"source-1",
-				"download-error",
-				{ url: job.payload.targetUrl, error: message },
-			);
+			// Execution cannot publish failure before the worker settles its current lease.
+			expect(RealtimeEventBus.publishSource).not.toHaveBeenCalled();
 			expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
 		},
 	);
@@ -264,7 +303,7 @@ describe("processDownloadJob", () => {
 				title: "Video",
 				description: "Video description",
 				ext: "mp4",
-				filename: "/tmp/downloads/123.mp4",
+				filename: "123.mp4",
 			}),
 			stderr: "",
 			exitCode: 0,
@@ -280,12 +319,14 @@ describe("processDownloadJob", () => {
 		expect(mockYtDlpExec).toHaveBeenCalledWith(
 			job.payload.targetUrl,
 			expect.objectContaining({ printJson: true, simulate: false }),
+			{ signal: undefined },
 		);
 		expect(mockYtDlp).not.toHaveBeenCalled();
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
 			"source-1",
 			expect.stringMatching(/\.mp4$/),
 			expect.objectContaining({ description: "Video description" }),
+			expect.objectContaining({ sourcePath: "/tmp/downloads" }),
 		);
 	});
 
@@ -316,7 +357,7 @@ describe("processDownloadJob", () => {
 					title: "Video",
 					description: "Video description",
 					ext: "mp4",
-					filename: `/tmp/downloads/${id}.mp4`,
+					filename: `${id}.mp4`,
 				}),
 			)
 			.join("\n");
@@ -359,11 +400,13 @@ describe("processDownloadJob", () => {
 		expect(mockYtDlpExec).toHaveBeenCalledWith(
 			"https://x.com/user/status/123",
 			expect.objectContaining({ dumpSingleJson: true, skipDownload: true }),
+			{ signal: undefined },
 		);
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
 			"source-1",
 			expect.any(String),
 			expect.objectContaining({ createdAt: new Date("2026-09-30") }),
+			expect.objectContaining({ sourcePath: "/tmp/downloads" }),
 		);
 	});
 
@@ -404,6 +447,7 @@ describe("processDownloadJob", () => {
 				]),
 				authors: [{ name: "User", accountId: "@user" }],
 			}),
+			expect.objectContaining({ sourcePath: "/tmp/downloads" }),
 		);
 	});
 
@@ -463,6 +507,7 @@ describe("processDownloadJob", () => {
 				"source-1",
 				expect.stringMatching(expectedExtension),
 				expect.anything(),
+				expect.objectContaining({ sourcePath: "/tmp/downloads" }),
 			);
 		},
 	);
@@ -511,45 +556,73 @@ describe("processDownloadJob", () => {
 			expect.objectContaining({
 				description: "My Description",
 			}),
+			expect.objectContaining({ sourcePath: "/tmp/downloads" }),
 		);
 	});
 
-	it("should update existing media metadata if file already exists", async () => {
-		const { MediaProcessingService } =
-			await import("~/infrastructure/services/media-processing-service");
-
-		// Simulate file existing -> registerAndProcess throws -> catch block searches media -> updates
-		const error = new Error("File already exists");
-		mockMediaRegisterAndProcess.mockRejectedValueOnce(error);
-
-		mockMediaFindByPath.mockResolvedValueOnce({
-			id: "existing-media-id",
-		} as any);
-
-		const item = {
-			targetUrl: "https://example.com/duplicate.jpg",
-			description: "Updated Description",
-			authors: [{ name: "New Author", accountId: "@new" }],
-		};
-
+	it("resumes checkpointed files without downloading again", async () => {
 		const job = {
-			id: "job-3",
+			id: "job-resume",
 			mediaSourceId: "source-1",
 			type: "downloadImage",
-			payload: { ...item },
+			payload: {
+				targetUrl: "https://example.com/image.jpg",
+				downloadRegistration: {
+					version: 1,
+					mediaSourceId: "source-1",
+					sourcePath: "/tmp/downloads",
+					stagingDirectory:
+						"/tmp/downloads/.solid-imager-downloads/job-resume/1",
+					entries: [
+						{
+							stagedPath:
+								"/tmp/downloads/.solid-imager-downloads/job-resume/1/image.jpg",
+							filePath: "image.jpg",
+							fileSize: 1000,
+							modifiedAt: "2026-01-01T00:00:00Z",
+							published: true,
+							context: {
+								sourceUrls: [
+									"https://example.com/image.jpg",
+									"https://example.com/post",
+								],
+							},
+						},
+					],
+				},
+			},
 		} as any;
-
 		await processDownloadJob(job);
-
-		expect(MediaRepository.findByPath).toHaveBeenCalled();
-		expect(
-			MediaProcessingService.addContextMetadataToExistingMedia,
-		).toHaveBeenCalledWith(
-			"existing-media-id",
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(mockSaveFile).not.toHaveBeenCalled();
+		expect(mockYtDlpExec).not.toHaveBeenCalled();
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+			"source-1",
+			"image.jpg",
 			expect.objectContaining({
-				description: "Updated Description",
-				authors: [{ name: "New Author", accountId: "@new" }],
+				sourceUrls: [
+					"https://example.com/image.jpg",
+					"https://example.com/post",
+				],
 			}),
+			expect.objectContaining({ sourcePath: "/tmp/downloads" }),
 		);
+	});
+	it("does not hide registration failures when the watcher already registered a media", async () => {
+		mockMediaRegisterAndProcess.mockRejectedValueOnce(
+			new Error("processing reservation failed"),
+		);
+		mockMediaFindByPath.mockResolvedValue({ id: "watcher-media" });
+		const job = {
+			id: "job-reservation-failure",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: { targetUrl: "https://example.com/image.jpg" },
+		} as any;
+		await expect(processDownloadJob(job)).rejects.toThrow(
+			"processing reservation failed",
+		);
+		expect(mockMediaAddContextMetadata).not.toHaveBeenCalled();
+		expect(MediaRepository.findByPath).not.toHaveBeenCalled();
 	});
 });

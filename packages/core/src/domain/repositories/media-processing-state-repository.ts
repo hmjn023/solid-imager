@@ -1,0 +1,99 @@
+import type { Transaction } from "../interfaces/transaction-manager";
+import type { TaggingResponse } from "../tagging/schemas";
+import type {
+	MediaProcessingClaim,
+	MediaProcessingInput,
+	MediaProcessingState,
+	MediaTaskKind,
+	ProcessingOwner,
+	MediaProcessingRequest,
+	ScheduledMediaWork,
+} from "../processing/schemas";
+
+export type ProcessingClaimResult =
+	| { status: "completed"; state: MediaProcessingState }
+	| { status: "busy" }
+	| {
+			status: "claimed";
+			claim: MediaProcessingClaim;
+			state: MediaProcessingState;
+	  };
+
+export type IMediaProcessingSchedulerRepository =
+	IMediaProcessingStateRepository & {
+		/** Startup handoff also includes unsupported file requests left by older producers. */
+		findInlineMediaIds(
+			afterId: string | undefined,
+			limit: number,
+			taskKinds?: MediaTaskKind[],
+		): Promise<string[]>;
+		/** Retire an existing unsupported request and fence its previous owner. No row is created. */
+		skipInapplicable(
+			input: MediaProcessingInput,
+			kind: MediaTaskKind,
+			tx: Transaction,
+		): Promise<void>;
+		/** Explicit authority transfer. Callers must quiesce/reconcile old producers first. */
+		request(
+			request: MediaProcessingRequest,
+			tx: Transaction,
+		): Promise<MediaProcessingState>;
+		/** True only while a pending request has no independent or active batch demand. */
+		isPendingRequestAbandoned(
+			request: Pick<MediaProcessingState, "mediaId" | "taskKind" | "requestId">,
+			tx?: Transaction,
+		): Promise<boolean>;
+		claimDue(
+			taskKinds: MediaTaskKind[],
+			tx: Transaction,
+		): Promise<ScheduledMediaWork | null>;
+		recoverExpired(
+			taskKinds: MediaTaskKind[],
+			limit: number,
+			tx: Transaction,
+		): Promise<number>;
+		settleFailure(
+			claim: MediaProcessingClaim,
+			error: string,
+			retryable: boolean,
+			tx: Transaction,
+		): Promise<MediaProcessingState | null>;
+	};
+
+export type IMediaProcessingStateRepository = {
+	findTaggingResult(
+		mediaId: string,
+		revision: string,
+		tx: Transaction,
+	): Promise<TaggingResponse | null>;
+	/** Called inside commit: caches only the currently fenced tagging claim. */
+	saveTaggingResult(
+		claim: MediaProcessingClaim,
+		result: TaggingResponse,
+		tx: Transaction,
+	): Promise<void>;
+	findByMediaIds(
+		mediaIds: string[],
+		tx?: Transaction,
+	): Promise<MediaProcessingState[]>;
+	claim(
+		input: MediaProcessingInput,
+		taskKind: MediaTaskKind,
+		revision: string,
+		owner: ProcessingOwner | null,
+		force: boolean,
+		tx: Transaction,
+	): Promise<ProcessingClaimResult>;
+	commit(
+		input: MediaProcessingInput,
+		claim: MediaProcessingClaim,
+		output: (tx: Transaction) => Promise<void>,
+		tx: Transaction,
+	): Promise<void>;
+	fail(
+		claim: MediaProcessingClaim,
+		error: string,
+		tx: Transaction,
+	): Promise<boolean>;
+	heartbeat(claim: MediaProcessingClaim): Promise<boolean>;
+};

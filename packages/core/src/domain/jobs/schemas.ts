@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { processingStepDtoSchema } from "./processing";
+export * from "./processing";
+export * from "./retirement";
 
 export const jobStatusSchema = z.enum([
 	"pending",
@@ -36,6 +39,8 @@ export const jobDtoSchema = z.object({
 	type: z.string(),
 	mediaSourceId: z.uuid().nullable(),
 	status: jobStatusSchema,
+	canRetry: z.boolean().optional(),
+	canCancel: z.boolean().optional(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 	parentId: z.uuid().nullable(),
@@ -48,6 +53,8 @@ export const jobDtoSchema = z.object({
 	targetMediaId: z.uuid().nullable(),
 	targetMediaModifiedAt: z.coerce.date().nullable(),
 	progress: jobProgressSchema,
+	processingSteps: z.array(processingStepDtoSchema).optional(),
+	currentProcessingSteps: z.array(processingStepDtoSchema).optional(),
 	artifact: z
 		.object({
 			fileName: z.string(),
@@ -91,3 +98,8 @@ export const sourceRestoreJobPayloadSchema = z.object({
 export type SourceRestoreJobPayload = z.infer<
 	typeof sourceRestoreJobPayloadSchema
 >;
+export {
+	downloadRegistrationCheckpointSchema,
+	downloadRegistrationEntrySchema,
+	type DownloadRegistrationEntry,
+} from "./download-registration";

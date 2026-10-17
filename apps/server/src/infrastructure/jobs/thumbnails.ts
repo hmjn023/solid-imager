@@ -1,14 +1,12 @@
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
+import { randomUUID } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
-import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
-import {
-	generateThumbnailJobPayloadSchema,
-	type ThumbnailSize,
-} from "@solid-imager/core/domain/thumbnails/schemas";
-import type { Job, Media } from "~/infrastructure/db/schema";
-import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import type { MediaProcessingClaim } from "@solid-imager/core/domain/processing/schemas";
+import type { PreparedThumbnail } from "@solid-imager/application/services/media-processing-service";
+import { type ThumbnailSize } from "@solid-imager/core/domain/thumbnails/schemas";
+import type { Media } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { services } from "~/infrastructure/service-registry";
 
@@ -19,8 +17,6 @@ export const THUMBNAIL_SIZE_SMALL = 256 as const;
 export const THUMBNAIL_SIZE_LARGE = 512 as const;
 const DEFAULT_THUMBNAIL_SIZE = THUMBNAIL_SIZE_LARGE;
 const DEFAULT_THUMBNAIL_QUALITY = 80;
-const ENQUEUE_CONCURRENCY = 25;
-const FILE_CHECK_CONCURRENCY = 50;
 
 type ThumbnailQueueGlobal = typeof globalThis & {
 	__THUMBNAIL_QUEUE_IN_FLIGHT__?: Map<string, Promise<void>>;
@@ -117,103 +113,74 @@ export async function thumbnailExists(
  */
 export async function generateThumbnail(
 	media: Pick<Media, "id" | "filePath">,
-	sourcePath: string,
+	_sourcePath: string,
 	mediaSourceId: string,
 ): Promise<void> {
-	const inputPath = path.join(sourcePath, media.filePath);
-	await generateThumbnailAtSize(
-		inputPath,
-		mediaSourceId,
-		media.id,
-		THUMBNAIL_SIZE_LARGE,
-	);
-	await generateThumbnailAtSize(
-		getThumbnailPath(mediaSourceId, media.id, THUMBNAIL_SIZE_LARGE),
-		mediaSourceId,
-		media.id,
-		THUMBNAIL_SIZE_SMALL,
-	);
+	await services
+		.getMediaProcessingService()
+		.processTask(mediaSourceId, media.id, "thumbnail");
 }
 
-async function generateThumbnailAtSize(
-	inputPath: string,
+/** Convert outside a DB transaction; publish only while the dedicated claim is fenced. */
+export async function prepareProcessingThumbnail(
+	media: Pick<Media, "id" | "filePath">,
+	sourcePath: string,
 	mediaSourceId: string,
-	mediaId: string,
-	size: ThumbnailSize,
-): Promise<void> {
-	await ensureCacheDir(mediaSourceId, size);
-	const storageConfig = getStorageConfig();
-	const outputPath = getThumbnailPath(mediaSourceId, mediaId, size);
-	if (
-		size === THUMBNAIL_SIZE_SMALL &&
-		storageConfig.thumbnailSize <= THUMBNAIL_SIZE_SMALL
-	) {
-		await fs.copyFile(inputPath, outputPath);
-		return;
+	claim?: MediaProcessingClaim,
+): Promise<PreparedThumbnail> {
+	const token = claim ? `${claim.revision}.${claim.token}` : randomUUID();
+	const large = getThumbnailPath(mediaSourceId, media.id, THUMBNAIL_SIZE_LARGE);
+	const small = getThumbnailPath(mediaSourceId, media.id, THUMBNAIL_SIZE_SMALL);
+	const temporaryLarge = `${large}.${token}.tmp.webp`;
+	const temporarySmall = `${small}.${token}.tmp.webp`;
+	const cleanup = async () => {
+		await Promise.all([
+			fs.rm(temporaryLarge, { force: true }),
+			fs.rm(temporarySmall, { force: true }),
+		]);
+	};
+	try {
+		await ensureCacheDir(mediaSourceId, THUMBNAIL_SIZE_LARGE);
+		await ensureCacheDir(mediaSourceId, THUMBNAIL_SIZE_SMALL);
+		const config = getStorageConfig();
+		await ImageProcessor.generateThumbnail(
+			path.join(sourcePath, media.filePath),
+			temporaryLarge,
+			config.thumbnailSize,
+			config.thumbnailQuality,
+		);
+		if (config.thumbnailSize <= THUMBNAIL_SIZE_SMALL) {
+			await fs.copyFile(temporaryLarge, temporarySmall);
+		} else {
+			await ImageProcessor.generateThumbnail(
+				temporaryLarge,
+				temporarySmall,
+				THUMBNAIL_SIZE_SMALL,
+				config.thumbnailQuality,
+			);
+		}
+		return {
+			commit: async () => {
+				await fs.rename(temporaryLarge, large);
+				await fs.rename(temporarySmall, small);
+			},
+			cleanup,
+		};
+	} catch (error) {
+		await cleanup();
+		throw error;
 	}
-	await ImageProcessor.generateThumbnail(
-		inputPath,
-		outputPath,
-		size === THUMBNAIL_SIZE_LARGE
-			? storageConfig.thumbnailSize
-			: THUMBNAIL_SIZE_SMALL,
-		storageConfig.thumbnailQuality,
-	);
 }
 
 export async function generateThumbnailForMedia(
 	mediaSourceId: string,
 	mediaId: string,
-	size: ThumbnailSize,
+	_size: ThumbnailSize,
+	force = false,
 ): Promise<void> {
-	const [source, media] = await Promise.all([
-		sourceRepo.findById(mediaSourceId),
-		MediaRepository.findById(mediaId),
-	]);
-	if (
-		source?.type !== "local" ||
-		!media ||
-		media.mediaSourceId !== mediaSourceId
-	) {
-		throw new Error("Media or local source not found");
-	}
-	const sourcePath = (source.connectionInfo as { path?: string }).path;
-	if (!sourcePath) {
-		throw new Error("Local source path is missing");
-	}
-
-	const originalPath = path.join(sourcePath, media.filePath);
-	if (size === THUMBNAIL_SIZE_SMALL) {
-		const largePath = getThumbnailPath(
-			mediaSourceId,
-			mediaId,
-			THUMBNAIL_SIZE_LARGE,
-		);
-		if (
-			!(await thumbnailExists(mediaSourceId, mediaId, THUMBNAIL_SIZE_LARGE))
-		) {
-			await generateThumbnailAtSize(
-				originalPath,
-				mediaSourceId,
-				mediaId,
-				THUMBNAIL_SIZE_LARGE,
-			);
-		}
-		await generateThumbnailAtSize(
-			largePath,
-			mediaSourceId,
-			mediaId,
-			THUMBNAIL_SIZE_SMALL,
-		);
-		return;
-	}
-
-	await generateThumbnailAtSize(
-		originalPath,
-		mediaSourceId,
-		mediaId,
-		THUMBNAIL_SIZE_LARGE,
-	);
+	await services
+		.getMediaProcessingService()
+		.processTask(mediaSourceId, mediaId, "thumbnail", force);
 }
 
 /**
@@ -239,7 +206,7 @@ export async function deleteThumbnail(
 
 /**
  * Queues all media items from a specified source for processing.
- * Uses the unified processMedia job type.
+ * Reserves dedicated requests; legacy child records observe batch progress until run/items migration.
  * @param {string} mediaSourceId - The ID of the media source.
  * @returns {Promise<number>} A promise that resolves with the number of jobs added to the queue.
  * @throws {Error} If the source is not found or is not a local source.
@@ -248,103 +215,20 @@ export async function generateThumbnailsForSource(
 	mediaSourceId: string,
 	options: { size: ThumbnailSize; missingOnly: boolean },
 ): Promise<{ count: number; jobId?: string }> {
-	const mediaSource = await sourceRepo.findById(mediaSourceId);
-	if (mediaSource?.type !== "local") {
+	const source = await sourceRepo.findById(mediaSourceId);
+	if (source?.type !== "local")
 		throw new Error("Source not found or not a local source");
-	}
-
-	const mediaItems = await MediaRepository.findAllBySourceId(mediaSourceId);
-	if (mediaItems.length === 0) {
-		return { count: 0 };
-	}
-
-	const targets = options.missingOnly
-		? await filterMissingThumbnails(mediaSourceId, mediaItems, options.size)
-		: mediaItems;
-	if (targets.length === 0) {
-		return { count: 0 };
-	}
-
-	const jobRepo = services.getJobRepository();
-	const parent = await jobRepo.create({
-		type: "thumbnail_generation_parent",
+	const summary = await batchRunService.start({
+		kind: "thumbnail",
 		mediaSourceId,
-		status: "in_progress",
-		payload: {
-			total: targets.length,
-			processed: 0,
-			failed: 0,
-			mediaSourceId,
-		},
+		force: !options.missingOnly,
+		missingOnly: options.missingOnly,
+		thumbnailSize: options.size,
 	});
-
-	let count = 0;
-	try {
-		for (let index = 0; index < targets.length; index += ENQUEUE_CONCURRENCY) {
-			const chunk = targets.slice(index, index + ENQUEUE_CONCURRENCY);
-			const created = await Promise.all(
-				chunk.map((media) =>
-					jobRepo.createIfUnique({
-						type: "generate_thumbnail",
-						mediaSourceId,
-						parentId: parent.id,
-						payload: { mediaId: media.id, size: options.size },
-					}),
-				),
-			);
-			count += created.filter(Boolean).length;
-		}
-
-		const currentParent = await jobRepo.findById(parent.id);
-		const currentProgress = parseThumbnailParentPayload(currentParent?.payload);
-		await jobRepo.update(parent.id, {
-			payload: {
-				total: count,
-				processed: currentProgress.processed,
-				failed: currentProgress.failed,
-				mediaSourceId,
-			},
-		});
-		if (count === 0) {
-			await jobRepo.update(parent.id, { status: "completed" });
-			return { count: 0 };
-		}
-		if (currentProgress.processed + currentProgress.failed >= count) {
-			await finalizeThumbnailParent(parent.id, {
-				...currentProgress,
-				total: count,
-			});
-		}
-		return { count, jobId: parent.id };
-	} catch (error) {
-		await jobRepo.update(parent.id, { status: "failed" });
-		throw error;
-	}
-}
-
-async function filterMissingThumbnails(
-	mediaSourceId: string,
-	mediaItems: Media[],
-	size: ThumbnailSize,
-): Promise<Media[]> {
-	const missing: Media[] = [];
-	for (
-		let index = 0;
-		index < mediaItems.length;
-		index += FILE_CHECK_CONCURRENCY
-	) {
-		const chunk = mediaItems.slice(index, index + FILE_CHECK_CONCURRENCY);
-		const results = await Promise.all(
-			chunk.map(async (media) => ({
-				media,
-				exists: await thumbnailExists(mediaSourceId, media.id, size),
-			})),
-		);
-		missing.push(
-			...results.filter((result) => !result.exists).map(({ media }) => media),
-		);
-	}
-	return missing;
+	return {
+		count: summary.progress.total,
+		...(summary.progress.total ? { jobId: summary.run.id } : {}),
+	};
 }
 
 export async function queueThumbnailGeneration(
@@ -359,87 +243,10 @@ export async function queueThumbnailGeneration(
 		return;
 	}
 	const queued = services
-		.getJobRepository()
-		.createIfUnique({
-			type: "generate_thumbnail",
-			mediaSourceId,
-			payload: { mediaId, size },
-		})
+		.getMediaProcessingService()
+		.requestTask(mediaSourceId, mediaId, "thumbnail", false, undefined, true)
 		.then(() => undefined)
 		.finally(() => thumbnailQueueInFlight.delete(key));
 	thumbnailQueueInFlight.set(key, queued);
 	await queued;
-}
-
-export async function processThumbnailGenerationJob(job: Job): Promise<void> {
-	const payload = generateThumbnailJobPayloadSchema.parse(job.payload);
-	if (!job.mediaSourceId) {
-		throw new Error("Thumbnail generation job is missing mediaSourceId");
-	}
-
-	try {
-		await generateThumbnailForMedia(
-			job.mediaSourceId,
-			payload.mediaId,
-			payload.size,
-		);
-		RealtimeEventBus.publishSource(job.mediaSourceId, "thumbnail-generated", {
-			mediaId: payload.mediaId,
-			size: payload.size,
-			timestamp: new Date().toISOString(),
-		});
-		await updateThumbnailParentProgress(job, true);
-	} catch (error) {
-		await updateThumbnailParentProgress(job, false);
-		throw error;
-	}
-}
-
-async function updateThumbnailParentProgress(
-	job: Job,
-	succeeded: boolean,
-): Promise<void> {
-	if (!job.parentId) {
-		return;
-	}
-	const jobRepo = services.getJobRepository();
-	const progress = succeeded
-		? await jobRepo.incrementProgress(job.parentId, job.id)
-		: await jobRepo.incrementFailedCount(job.parentId, job.id);
-	if (!progress) {
-		return;
-	}
-	RealtimeEventBus.publishJob("job-progress", {
-		jobId: job.parentId,
-		processed: progress.processed,
-		total: progress.total,
-	});
-	if (progress.processed + progress.failed < progress.total) {
-		return;
-	}
-	await finalizeThumbnailParent(job.parentId, progress);
-}
-
-async function finalizeThumbnailParent(
-	parentId: string,
-	progress: { processed: number; failed: number; total: number },
-): Promise<void> {
-	const jobRepo = services.getJobRepository();
-	if (progress.failed > 0) {
-		await jobRepo.update(parentId, { status: "failed" });
-		RealtimeEventBus.publishJob("job-failed", {
-			jobId: parentId,
-			error: `${progress.failed} thumbnail job(s) failed`,
-		});
-		return;
-	}
-	await jobRepo.update(parentId, { status: "completed" });
-	RealtimeEventBus.publishJob("job-completed", {
-		jobId: parentId,
-		message: "Thumbnail generation completed",
-	});
-}
-
-function parseThumbnailParentPayload(payload: unknown) {
-	return batchParentPayloadSchema.parse(payload);
 }

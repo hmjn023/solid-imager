@@ -1,3 +1,5 @@
+import { sourceRunsRouter } from "./routers/source-runs-router";
+import { batchesRouter } from "./routers/batches-router";
 import "zod/compile";
 
 import { implement } from "@orpc/server";
@@ -12,6 +14,7 @@ import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
 import { importsRouter } from "~/infrastructure/api/routers/imports-router";
 import { ipsRouter } from "~/infrastructure/api/routers/ips-router";
 import { jobsRouter } from "~/infrastructure/api/routers/jobs-router";
+import { processingRouter } from "~/infrastructure/api/routers/processing-router";
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { presetsRouter } from "~/infrastructure/api/routers/presets-router";
 import { projectsRouter } from "~/infrastructure/api/routers/projects-router";
@@ -44,6 +47,9 @@ export const appRouter = appRouterImplementer.router({
 	ai: aiRouter,
 	imports: importsRouter,
 	jobs: jobsRouter,
+	batches: batchesRouter,
+	sourceRuns: sourceRunsRouter,
+	processing: processingRouter,
 	utils: utilsRouter,
 	config: configRouter,
 	presets: presetsRouter,

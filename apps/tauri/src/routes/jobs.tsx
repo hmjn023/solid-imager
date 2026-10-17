@@ -15,6 +15,7 @@ import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
+import { jobsSearchSchema } from "@solid-imager/ui/screens/jobs-view";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { buildThumbnailUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { jobsQueryOptions } from "~/queries";
@@ -22,6 +23,7 @@ import { jobsQueryOptions } from "~/queries";
 const BULK_RETRY_CONCURRENCY = 8;
 
 export const Route = createFileRoute("/jobs")({
+	validateSearch: jobsSearchSchema,
 	loader: ({ context }) => {
 		void context.queryClient.query(jobsQueryOptions()).then(
 			() => undefined,
@@ -54,6 +56,8 @@ async function downloadJobArtifact(job: JobDto): Promise<void> {
 }
 
 function JobsRoute() {
+	const search = Route.useSearch();
+	const navigate = Route.useNavigate();
 	const [pageIndex, setPageIndex] = createSignal(0);
 	const jobsQuery = createQuery<JobListResponse>(() =>
 		jobsQueryOptions({
@@ -90,6 +94,16 @@ function JobsRoute() {
 
 	return (
 		<JobsScreen
+			view={() => search().view}
+			onViewChange={(view) => {
+				void navigate({ search: { view }, replace: true });
+			}}
+			processingApi={{
+				list: (input) => orpc.processing.list(input),
+				get: (input) => orpc.processing.get(input),
+				retry: (input) => orpc.processing.retry(input),
+				openEvents: (signal) => orpc.sources.events({ id: "*" }, { signal }),
+			}}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
 			jobs={() => jobsQuery.data?.items ?? []}

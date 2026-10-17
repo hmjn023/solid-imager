@@ -2,22 +2,23 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { IJobRepository } from "~/domain/repositories/job-repository";
+import type { IMediaProcessingService } from "@solid-imager/application/ports/media-processing-service";
 import { getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
+import { asyncPool } from "@solid-imager/core/utils/async-pool";
 
 export class MaintenanceService {
 	private readonly mediaRepo: IMediaRepository;
-	private readonly jobRepo: IJobRepository;
+	private readonly processing: Pick<IMediaProcessingService, "requestTask">;
 	private readonly sourceRepo: SourceRepository;
 
 	constructor(
 		mediaRepo: IMediaRepository,
-		jobRepo: IJobRepository,
+		processing: Pick<IMediaProcessingService, "requestTask">,
 		sourceRepo: SourceRepository,
 	) {
 		this.mediaRepo = mediaRepo;
-		this.jobRepo = jobRepo;
+		this.processing = processing;
 		this.sourceRepo = sourceRepo;
 	}
 
@@ -29,9 +30,8 @@ export class MaintenanceService {
 		try {
 			await this.queueMissingMetadata();
 			await this.queueMissingThumbnails();
-			// Initial directory sync is not a persistent job. After repairing
-			// registered media, rescan local sources for files lost on interruption
-			// and restore their watchers. Sources are processed sequentially.
+			// After repairing registered media, request durable source scans for files
+			// lost on interruption, then restore watchers. Sources are requested sequentially.
 			const { FileWatcherService } =
 				await import("~/infrastructure/jobs/file-watcher-service");
 			await FileWatcherService.startMonitoringAll();
@@ -102,52 +102,31 @@ export class MaintenanceService {
 	private async findMissingThumbnails(
 		batch: { id: string; mediaSourceId: string; filePath: string }[],
 	) {
-		const missing: typeof batch = [];
-		const mediaBySource = this.groupMediaBySource(batch);
-
-		for (const [sourceId, items] of mediaBySource) {
-			const existingFiles = await this.getExistingThumbnails(sourceId);
-			if (!existingFiles) {
-				continue;
+		// Never re-enumerate the entire source cache for every 1,000-media page.
+		// Check just this page, with bounded filesystem concurrency and memory.
+		const results = await asyncPool(batch, 16, async (item) => {
+			try {
+				await fs.access(
+					path.join(getSourceCacheDir(item.mediaSourceId), `${item.id}.webp`),
+				);
+				return null;
+			} catch (error) {
+				if (
+					error instanceof Error &&
+					"code" in error &&
+					error.code === "ENOENT"
+				)
+					return item;
+				logger.warn(
+					{ err: error, sourceId: item.mediaSourceId, mediaId: item.id },
+					"Failed to check thumbnail",
+				);
+				return null;
 			}
-
-			for (const item of items) {
-				if (!existingFiles.has(item.id)) {
-					missing.push(item);
-				}
-			}
-		}
-		return missing;
-	}
-
-	private groupMediaBySource(
-		batch: { id: string; mediaSourceId: string; filePath: string }[],
-	) {
-		const mediaBySource = new Map<string, typeof batch>();
-		for (const media of batch) {
-			if (!mediaBySource.has(media.mediaSourceId)) {
-				mediaBySource.set(media.mediaSourceId, []);
-			}
-			mediaBySource.get(media.mediaSourceId)?.push(media);
-		}
-		return mediaBySource;
-	}
-
-	private async getExistingThumbnails(sourceId: string) {
-		const cacheDir = getSourceCacheDir(sourceId);
-		try {
-			const files = await fs.readdir(cacheDir);
-			return new Set(files.map((f) => path.basename(f, path.extname(f))));
-		} catch (error) {
-			if ((error as { code?: string }).code === "ENOENT") {
-				return new Set<string>();
-			}
-			logger.warn(
-				{ err: error, sourceId },
-				"Failed to read thumbnail directory",
-			);
-			return null;
-		}
+		});
+		return results.flatMap((result) =>
+			result.status === "fulfilled" && result.value ? [result.value] : [],
+		);
 	}
 
 	private async dispatchJobs(
@@ -192,15 +171,15 @@ export class MaintenanceService {
 					}
 
 					try {
-						return await this.jobRepo.createIfUnique({
-							type: "processMedia",
-							mediaSourceId: item.mediaSourceId,
-							payload: {
-								mediaId: item.id,
-								sourcePath: basePath,
-								...options,
-							},
-						});
+						await this.processing.requestTask(
+							item.mediaSourceId,
+							item.id,
+							options.skipMetadataExtraction ? "thumbnail" : "metadata",
+							false,
+							undefined,
+							true,
+						);
+						return true;
 					} catch (err) {
 						logger.error(
 							{ err, mediaId: item.id },

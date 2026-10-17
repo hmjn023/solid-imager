@@ -10,8 +10,8 @@ import type {
 } from "@solid-imager/core/domain/repositories/source-repository";
 import { connectionInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import { isMediaSourceType } from "@solid-imager/core/utils/type-guards";
-import { eq, type InferSelectModel } from "drizzle-orm";
-import { mediaSources } from "../schema";
+import { desc, eq, inArray, sql, type InferSelectModel } from "drizzle-orm";
+import { mediaSources, sourceSyncRuns, sourceRunCutovers } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
 type DbMediaSource = InferSelectModel<typeof mediaSources>;
@@ -35,6 +35,61 @@ function mapToMediaSource(dbSource: DbMediaSource): MediaSource {
 export function createSourceRepository(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
 ): SourceRepository {
+	async function summaries(
+		sources: MediaSource[],
+		tx?: unknown,
+	): Promise<MediaSource[]> {
+		if (!sources.length) return sources;
+		const client = getExecutor(tx);
+		const [control] = await client
+			.select()
+			.from(sourceRunCutovers)
+			.where(eq(sourceRunCutovers.id, "79100000-0000-4000-8000-000000000001"));
+		if (control?.authority !== "dedicated") return sources;
+		const runs = await client
+			.selectDistinctOn([sourceSyncRuns.sourceId], {
+				sourceId: sourceSyncRuns.sourceId,
+				status: sourceSyncRuns.status,
+				startedAt: sourceSyncRuns.startedAt,
+				finishedAt: sourceSyncRuns.finishedAt,
+			})
+			.from(sourceSyncRuns)
+			.where(
+				inArray(
+					sourceSyncRuns.sourceId,
+					sources.map((source) => source.id),
+				),
+			)
+			.orderBy(
+				sourceSyncRuns.sourceId,
+				sql`CASE WHEN ${sourceSyncRuns.status} IN ('pending','in_progress') THEN 0 ELSE 1 END`,
+				desc(sourceSyncRuns.updatedAt),
+				desc(sourceSyncRuns.id),
+			);
+		const bySource = new Map(runs.map((run) => [run.sourceId, run]));
+		return sources.map((source) => {
+			const run = bySource.get(source.id);
+			return run
+				? {
+						...source,
+						syncStatus: ["pending", "in_progress"].includes(run.status)
+							? "syncing"
+							: ["failed", "blocked"].includes(run.status)
+								? "error"
+								: "idle",
+						lastSyncStartedAt: run.startedAt,
+						lastSyncCompletedAt:
+							run.status === "completed"
+								? run.finishedAt
+								: source.lastSyncCompletedAt,
+						lastSyncError: ["failed", "blocked"].includes(run.status)
+							? "Directory sync failed"
+							: null,
+					}
+				: source;
+		});
+	}
+
 	return {
 		async findAll(): Promise<MediaSource[]> {
 			try {
@@ -42,7 +97,7 @@ export function createSourceRepository(
 					.select()
 					.from(mediaSources)
 					.orderBy(mediaSources.name);
-				return results.map(mapToMediaSource);
+				return summaries(results.map(mapToMediaSource));
 			} catch (error) {
 				throw new UnexpectedError("Failed to select media sources", error);
 			}
@@ -58,7 +113,7 @@ export function createSourceRepository(
 				if (result.length === 0) {
 					return null;
 				}
-				return mapToMediaSource(result[0]);
+				return (await summaries([mapToMediaSource(result[0])], tx))[0];
 			} catch (error) {
 				throw new UnexpectedError(
 					`Failed to select media source by ID: ${id}`,

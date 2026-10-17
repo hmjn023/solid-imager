@@ -2,6 +2,17 @@ import { describe, expect, it } from "vitest";
 import { toQueryUiState } from "./query-state";
 
 describe("toQueryUiState", () => {
+	it("does not read Solid Query's suspending data getter while the initial request is pending", () => {
+		expect(
+			toQueryUiState({
+				get data(): undefined {
+					throw new Error("Pending data suspended the route");
+				},
+				status: "pending",
+				fetchStatus: "fetching",
+			}),
+		).toMatchObject({ phase: "pending", data: undefined });
+	});
 	it("maps an initial fetch to pending", () => {
 		expect(
 			toQueryUiState({

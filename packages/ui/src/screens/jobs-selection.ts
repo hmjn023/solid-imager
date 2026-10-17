@@ -1,11 +1,13 @@
 import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 
-type JobSelectionCandidate = Pick<JobDto, "id" | "status">;
+type JobSelectionCandidate = Pick<JobDto, "id" | "status" | "canRetry">;
 
 export function getRetryableJobIds(
 	jobs: readonly JobSelectionCandidate[],
 ): string[] {
-	return jobs.filter((job) => job.status === "failed").map((job) => job.id);
+	return jobs
+		.filter((job) => job.canRetry ?? job.status === "failed")
+		.map((job) => job.id);
 }
 
 export function toggleJobSelection(

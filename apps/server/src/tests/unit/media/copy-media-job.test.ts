@@ -1,3 +1,5 @@
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
@@ -5,6 +7,9 @@ import { services } from "~/infrastructure/service-registry";
 import { MediaService } from "~/infrastructure/services/media-service";
 
 // Helper to capture jobs and processor
+const request = vi
+	.fn()
+	.mockResolvedValue({ requestId: "test", status: "pending" });
 let capturedJobs: any[] = [];
 let _capturedProcessor: ((job: any) => Promise<void>) | null = null;
 
@@ -74,7 +79,10 @@ describe("Reproduction: Copy Media Job Type", () => {
 		// Reset registry and register services
 		await services.reset();
 		// Define Mocks
-		const mockTagRepo = { addTagsToMedia: vi.fn() } as any;
+		const mockTagRepo = {
+			removeTagsFromSource: vi.fn(),
+			addTagsToMedia: vi.fn(),
+		} as any;
 		const mockAuthorRepo = {
 			addMediaBulk: vi.fn(),
 			create: vi.fn(),
@@ -115,19 +123,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 			}),
 		};
 
-		const mockJobRepo = {
-			create: vi.fn((job) => {
-				capturedJobs.push(job);
-				return Promise.resolve({ ...job, id: "job-id" });
-			}),
-			createIfUnique: vi.fn((job) =>
-				Promise.resolve({ ...job, id: "sync-job-id" }),
-			),
-		};
-
 		// Register Repositories
 		services.registerSourceRepository(mockSourceRepository as any);
-		services.registerJobRepository(mockJobRepo as any);
 		services.registerTagRepository(mockTagRepo);
 		services.registerAuthorRepository(mockAuthorRepo);
 		services.registerProjectRepository(mockProjectRepo);
@@ -183,6 +180,29 @@ describe("Reproduction: Copy Media Job Type", () => {
 		const { MediaProcessingServiceImpl } =
 			await import("~/infrastructure/services/media-processing-service");
 		const mediaProcessingService = new MediaProcessingServiceImpl({
+			requestAiTasks: vi.fn().mockResolvedValue(undefined),
+			processingStateRepo: {
+				isPendingRequestAbandoned: vi.fn().mockResolvedValue(false),
+				skipInapplicable: vi.fn(),
+				request,
+				claimDue: vi.fn(),
+				recoverExpired: vi.fn(),
+				settleFailure: vi.fn(),
+				findInlineMediaIds: vi.fn(),
+				findTaggingResult: vi.fn(),
+				saveTaggingResult: vi.fn(),
+				claim: vi
+					.fn()
+					.mockResolvedValue({ status: "claimed", claim: {}, state: {} }),
+				commit: vi.fn(async (_input, _claim, output, tx) => output(tx)),
+				fail: vi.fn().mockResolvedValue(true),
+				heartbeat: vi.fn().mockResolvedValue(true),
+				findByMediaIds: vi.fn().mockResolvedValue([]),
+			},
+			getProcessingSettings: () =>
+				processingSettingsFromConfig(defaultAppConfig),
+			hasThumbnails: vi.fn().mockResolvedValue(true),
+			transactionManager: { transaction: async (action) => action(undefined) },
 			sourceRepo: mockSourceRepository as any,
 			mediaRepo: MediaRepository as any,
 			tagRepo: mockTagRepo,
@@ -190,7 +210,6 @@ describe("Reproduction: Copy Media Job Type", () => {
 			characterRepo: mockCharRepo,
 			ipRepo: mockIpRepo,
 			projectRepo: mockProjectRepo,
-			jobRepo: mockJobRepo as any,
 			imageProcessor: mockImageProcessor as any,
 			mediaStorage: {} as any,
 			enableAutoTagging: false,
@@ -199,7 +218,9 @@ describe("Reproduction: Copy Media Job Type", () => {
 				video: [".mp4", ".webm", ".mov"],
 				audio: [".mp3", ".wav"],
 			},
-			generateThumbnail: generateThumbnail as any,
+			prepareThumbnail: vi
+				.fn()
+				.mockResolvedValue({ commit: generateThumbnail, cleanup: vi.fn() }),
 			publishSourceEvent: vi.fn() as any,
 		});
 		services.registerMediaProcessingService(mediaProcessingService);
@@ -209,7 +230,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 		vi.clearAllMocks();
 	});
 
-	it("should trigger generateThumbnail by using processMedia job type", async () => {
+	it("reserves dedicated file work without creating a processMedia job", async () => {
 		// 1. Prepare Source Media
 		// 1. Prepare Source Media
 		const sourceMedia = {
@@ -221,6 +242,7 @@ describe("Reproduction: Copy Media Job Type", () => {
 			width: 800,
 			height: 600,
 			fileSize: 1024,
+			modifiedAt: new Date(),
 		};
 
 		// Mock MediaRepository.findById (used by MediaService.copyMedia)
@@ -238,34 +260,24 @@ describe("Reproduction: Copy Media Job Type", () => {
 		};
 		services.registerMediaRepository(mockMediaRepository as any);
 
+		vi.spyOn(MediaRepository, "findById").mockResolvedValue({
+			...sourceMedia,
+			id: "123e4567-e89b-42d3-a456-426614174001",
+			mediaSourceId: targetSourceId,
+		} as any);
 		// 2. Execute Copy
 		const result = await MediaService.copyMedia(sourceMedia.id, targetSourceId);
 
 		// Verify Copy Success
 		expect(result.success).toBe(true);
 
-		// 3. Verify Job creation
-		expect(capturedJobs.length).toBeGreaterThan(0);
-		const job = capturedJobs[0];
-
-		// Check Job Type (This is what we are fixing, but assuming we want to test the EFFECT first)
-		// If the job type is wrong ("thumbnail"), the processor will skip it.
-
-		// 4. Manually trigger the processor
-		// The test invokes the processor directly instead of starting a worker.
-		// MediaService has already persisted the job through jobRepo.create.
-		// The test logic wants to verify that "If the job type is correct, generateThumbnail is called".
-		// So we can manually invoke MediaProcessingService.executeProcessMediaJob(job)
-
-		// But failing to see MediaProcessingService being used?
-		// MediaService.copyMedia calls jobRepo.create.
-		const { MediaProcessingService } =
-			await import("~/infrastructure/services/media-processing-service");
-		await MediaProcessingService.executeProcessMediaJob(job);
-
-		// 5. Assert generateThumbnail was called
-		// If job type is "thumbnail", executeProcessMediaJob will return early and this will FAIL.
-		// If job type is "processMedia", it will call generateThumbnail.
-		expect(generateThumbnail).toHaveBeenCalled();
+		expect(capturedJobs).toHaveLength(0);
+		expect(generateThumbnail).not.toHaveBeenCalled();
+		expect(request).toHaveBeenCalledTimes(2);
+		expect(
+			request.mock.calls
+				.map(([value]) => value.taskKind)
+				.sort((a, b) => a.localeCompare(b)),
+		).toEqual(["metadata", "thumbnail"]);
 	});
 });

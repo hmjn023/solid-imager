@@ -1,0 +1,1 @@
+ALTER TABLE "media_processing_states" ADD COLUMN "request_id" uuid DEFAULT uuidv7() NOT NULL;

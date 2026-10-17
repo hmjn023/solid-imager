@@ -19,6 +19,11 @@ import {
 	tagImageRequestSchema,
 } from "../tagging/schemas";
 
+const inferenceProcedure = oc.errors({
+	TOO_MANY_REQUESTS: { message: "AI inference capacity exceeded" },
+	PAYLOAD_TOO_LARGE: { message: "AI request exceeds 17 MiB" },
+});
+
 export const aiContract = {
 	health: oc
 		.route({
@@ -28,7 +33,7 @@ export const aiContract = {
 				"画像解析やタグ付けに使うAIサービスが稼働しているか確認します。各AI機能の利用前に接続状態を確認できます。",
 		})
 		.output(aiHealthResponseSchema),
-	tag: oc
+	tag: inferenceProcedure
 		.route({
 			tags: ["AI"],
 			summary: "画像の自動タグ付け",
@@ -41,7 +46,7 @@ export const aiContract = {
 		)
 		.output(taggingResponseSchema),
 
-	tagOppaiOracle: oc
+	tagOppaiOracle: inferenceProcedure
 		.route({
 			tags: ["AI"],
 			summary: "OppaiOracleで画像をタグ付け",
@@ -54,7 +59,7 @@ export const aiContract = {
 		)
 		.output(oppaiOracleResponseSchema),
 
-	ccipFeature: oc
+	ccipFeature: inferenceProcedure
 		.route({
 			tags: ["AI"],
 			summary: "CCIP特徴量の抽出",
@@ -68,7 +73,7 @@ export const aiContract = {
 			]),
 		),
 
-	ccipDifference: oc
+	ccipDifference: inferenceProcedure
 		.route({
 			tags: ["AI"],
 			summary: "画像のCCIP差分計算",
@@ -77,7 +82,7 @@ export const aiContract = {
 		})
 		.input(ccipDifferenceRequestSchema),
 
-	ccipDistances: oc
+	ccipDistances: inferenceProcedure
 		.route({
 			tags: ["AI"],
 			summary: "CCIP距離の計算",
@@ -156,7 +161,7 @@ export const aiContract = {
 		.input(batchTaggingRequestSchema)
 		.output(startBatchTaggingResponseSchema),
 
-	detectAndCropCharacters: oc
+	detectAndCropCharacters: inferenceProcedure
 		.route({
 			tags: ["AI"],
 			summary: "キャラクター領域の検出と切り抜き",

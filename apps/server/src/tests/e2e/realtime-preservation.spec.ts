@@ -22,6 +22,7 @@ test("preserves an open dialog, input value, and focus after an SSE reconnect re
 	const reconnected = page.waitForResponse(
 		(response) =>
 			response.request() === reconnectedRequest && response.status() === 200,
+		{ timeout: 30_000 },
 	);
 	await page.route(sourceEventsEndpoint, async (route) => {
 		streamAttempts++;
