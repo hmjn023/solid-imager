@@ -24,7 +24,7 @@ export class JobWorker {
 	constructor(
 		private readonly downloads: Pick<
 			DownloadWorker,
-			"claimPending" | "process"
+			"claimPending" | "process" | "stop"
 		>,
 		private readonly batches: Pick<BatchWorker, "claimPending" | "process">,
 		private readonly sources: Pick<
@@ -49,10 +49,11 @@ export class JobWorker {
 		if (this.cleanupTimer) clearInterval(this.cleanupTimer);
 		this.timer = undefined;
 		this.cleanupTimer = undefined;
-		const aborting = this.sources.stop();
+		const aborting = Promise.all([this.downloads.stop(), this.sources.stop()]);
 		await this.polling;
 		await aborting;
-		await this.sources.stop();
+		// A claim already in flight may have launched work after the first abort.
+		await Promise.all([this.downloads.stop(), this.sources.stop()]);
 		await Promise.allSettled(this.tasks);
 		await this.cleaning;
 	}

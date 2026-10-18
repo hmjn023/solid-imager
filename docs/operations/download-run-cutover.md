@@ -14,6 +14,8 @@ claimはDB transactionとSKIP LOCKEDで行い、attemptとUUID tokenを更新す
 
 pendingの取消は即時確定。実行中は取消要求を保存し、公開・登録前に拒否する。network/subprocessはheartbeatによるAbortSignalで停止するため、取消停止の反映には最大heartbeat間隔程度かかる。公開済み・登録済みの完成mediaは取消で削除しない。失敗・完了・取消の通知はDB確定後にだけ発行する。
 
+正常終了・worker置換では、claim中のdownloadにも中断を通知してからdrainする。network/subprocessとrate limiterの待機を終了し、まだ有効なclaimだけをpendingへ戻す。この中断はretry budgetを消費せず、登録checkpointとstagingを保持して次のworkerで再開する。既に要求された取消はcancelledを維持し、旧tokenでの解放・完了は拒否する。停止と競合したclaimにも再度中断を通知する。
+
 ## 切替前
 
 1. downloads.start、import承認、CLI、deferred producer と全旧・新 download worker の受付を止める。旧workerの実行中のdownloadと登録transactionをdrainし、全instanceを停止する。DB gateはdrainの代替ではない。

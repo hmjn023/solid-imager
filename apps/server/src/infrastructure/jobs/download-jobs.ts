@@ -395,7 +395,7 @@ async function handleYtDlpDownload(
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
 
 	try {
-		await waitForDownloadRateLimit();
+		await waitForDownloadRateLimit(registration.signal);
 
 		const results = await downloadWithYtDlp(
 			item.targetUrl,
@@ -588,7 +588,7 @@ async function handleDirectImageDownload(
 		// Download the image
 		const headers = buildFetchHeaders(item);
 
-		await waitForDownloadRateLimit();
+		await waitForDownloadRateLimit(registration.signal);
 
 		const response = await fetch(item.targetUrl, {
 			headers,

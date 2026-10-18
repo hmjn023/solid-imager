@@ -29,6 +29,7 @@ export interface ITaggingService {
 		options?: {
 			skipCache?: boolean;
 			request?: ProcessingRequestIdentity;
+			signal?: AbortSignal;
 		},
 	): Promise<TaggingResponse | null>;
 	getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;

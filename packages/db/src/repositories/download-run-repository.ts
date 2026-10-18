@@ -692,6 +692,37 @@ export function createDownloadRunRepository(
 				.returning();
 			if (!rows.length) throw new DownloadAttemptLostError();
 		},
+		async release(claim) {
+			return transactions.transaction(async (tx) => {
+				await assertDedicated(tx);
+				const db = getExecutor(tx);
+				const [active] = await db
+					.select()
+					.from(runs)
+					.where(currentClaim(claim))
+					.for("update");
+				if (!active) return null;
+				const cancelled = !!active.cancelRequestedAt;
+				const [released] = await db
+					.update(runs)
+					.set({
+						status: cancelled ? "cancelled" : "pending",
+						...clearLease,
+						attemptCount: cancelled
+							? active.attemptCount
+							: Math.max(0, active.attemptCount - 1),
+						nextRunAt: now,
+						startedAt: null,
+						finishedAt: cancelled ? now : null,
+						cancelledAt: cancelled ? now : null,
+						updatedAt: now,
+						error: null,
+					})
+					.where(currentClaim(claim))
+					.returning();
+				return released ? map(released) : null;
+			});
+		},
 		async settle(claim, outcome, error) {
 			return transactions.transaction(async (tx) => {
 				await assertDedicated(tx);

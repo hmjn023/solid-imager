@@ -39,6 +39,7 @@ import { AiMediaTaskService } from "@solid-imager/application/services/ai-media-
 import { createClient } from "@solid-imager/client";
 import { AiInferenceBusyError } from "~/infrastructure/ai/native-inference-gate";
 import type { AppContract } from "@solid-imager/core/domain/contract";
+import { ORPCError } from "@orpc/server";
 
 describe("dedicated media processing scheduler", () => {
 	let directory: string | undefined;
@@ -299,7 +300,7 @@ describe("dedicated media processing scheduler", () => {
 			});
 		},
 	);
-	it.each(["NETWORK_ERROR", "BAD_REQUEST"])(
+	it.each(["NETWORK_ERROR", "BAD_REQUEST", "TOO_MANY_REQUESTS"])(
 		"keeps AI retries bounded for %s",
 		async (code) => {
 			const infer = vi.fn(async () => {
@@ -340,6 +341,51 @@ describe("dedicated media processing scheduler", () => {
 			});
 		},
 	);
+	it("bounds repeated remote RPC 429s without classifying them as local admission", async () => {
+		const remote = createClient<AppContract>({
+			url: "http://fixture.invalid",
+			fetch: async () =>
+				Response.json(
+					new ORPCError("TOO_MANY_REQUESTS", {
+						message: "Remote quota exhausted",
+					}).toJSON(),
+					{ status: 429 },
+				),
+		});
+		const infer = vi.fn(() =>
+			remote.ai.tag({ file: new File(["fixture"], "image.png") }),
+		);
+		const task = new AiMediaTaskService(
+			{
+				processingStateRepo: repo,
+				transactionManager: transactions,
+				mediaRepo,
+				sourceRepo: sources,
+			},
+			"tagging",
+			{
+				currentRevision: () => "v1",
+				canReuse: () => false,
+				load: async () => null,
+				infer,
+				save: async () => {},
+			},
+		);
+		await task.requestForMedia(input.mediaSourceId, input.mediaId);
+		for (let attempt = 1; attempt <= 5; attempt++) {
+			await database
+				.update(schema.mediaProcessingStates)
+				.set({ availableAt: new Date(0) })
+				.where(where("tagging"));
+			expect(await task.runOnce()).toBe(attempt === 5 ? "failed" : "retry");
+			expect(await state("tagging")).toMatchObject({
+				attemptCount: attempt,
+				status: attempt === 5 ? "failed" : "pending",
+			});
+		}
+		expect(infer).toHaveBeenCalledTimes(5);
+		expect(await task.runOnce()).toBe("idle");
+	});
 	it("survives repeated capacity rejections without exhausting attempts and completes when admitted", async () => {
 		const infer = vi
 			.fn<() => Promise<string>>()

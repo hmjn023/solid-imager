@@ -151,8 +151,22 @@ async function cropDetection(
 }
 
 const os = implement(aiContract);
+const aiErrorBoundary = os.middleware(async ({ next, signal }) => {
+	try {
+		return await next();
+	} catch (error) {
+		if (signal?.aborted && error === signal.reason)
+			throw new ORPCError("CLIENT_CLOSED_REQUEST", {
+				status: 499,
+				message: "Client Closed Request",
+			});
+		if (error instanceof AiInferenceBusyError)
+			throw new ORPCError("TOO_MANY_REQUESTS", { message: error.message });
+		throw error;
+	}
+});
 
-export const aiRouter = os.router({
+export const aiRouter = os.use(aiErrorBoundary).router({
 	health: os.health.handler(async () => {
 		const config = services.getConfigService().getConfig();
 		const mode = config.ai.baseUrl?.trim() ? "remote" : "local";
@@ -173,7 +187,7 @@ export const aiRouter = os.router({
 			checkedAt: new Date(),
 		};
 	}),
-	tag: os.tag.handler(async ({ input }) => {
+	tag: os.tag.handler(async ({ input, signal }) => {
 		const startedAt = Date.now();
 		const logContext =
 			"file" in input
@@ -206,6 +220,7 @@ export const aiRouter = os.router({
 			const result = await taggingService.getTagsForMedia(
 				mediaSourceId,
 				mediaId,
+				{ signal },
 			);
 			if (!result) {
 				throw new Error("AI tagging is unavailable for this media source");
@@ -220,6 +235,7 @@ export const aiRouter = os.router({
 			);
 			return result;
 		} catch (error) {
+			if (signal?.aborted && error === signal.reason) throw error;
 			if (error instanceof AiInferenceBusyError) throw error;
 			logger.error(
 				{
@@ -314,7 +330,7 @@ export const aiRouter = os.router({
 		}
 	}),
 
-	ccipFeature: os.ccipFeature.handler(async ({ input }) => {
+	ccipFeature: os.ccipFeature.handler(async ({ input, signal }) => {
 		if ("file" in input) {
 			const buffer = await input.file.arrayBuffer();
 			return await taggingService.getCcipFeature(buffer);
@@ -325,7 +341,13 @@ export const aiRouter = os.router({
 			throw new Error("mediaSourceId and mediaId are required");
 		}
 
-		const { record } = await ccipVectorService.extract(mediaSourceId, mediaId);
+		const { record } = await ccipVectorService.extract(
+			mediaSourceId,
+			mediaId,
+			false,
+			undefined,
+			signal,
+		);
 		return { feature: record.vector };
 	}),
 

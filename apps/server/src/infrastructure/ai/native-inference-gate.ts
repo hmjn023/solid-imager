@@ -1,15 +1,5 @@
-import { ORPCError } from "@orpc/server";
-
-/** Resource admission only: durable pending work remains in the database scheduler. */
-export class AiInferenceBusyError extends ORPCError<
-	"TOO_MANY_REQUESTS",
-	undefined
-> {
-	constructor() {
-		super("TOO_MANY_REQUESTS", { message: "AI inference capacity exceeded" });
-		this.name = "AiInferenceBusyError";
-	}
-}
+import { AiInferenceBusyError } from "@solid-imager/core/domain/errors";
+export { AiInferenceBusyError } from "@solid-imager/core/domain/errors";
 
 export class NativeInferenceGate {
 	private active = false;

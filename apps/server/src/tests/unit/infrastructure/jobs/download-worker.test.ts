@@ -1,5 +1,7 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from "vitest";
 import { DownloadWorker } from "~/infrastructure/jobs/download-worker";
+import { JobWorker } from "~/infrastructure/jobs/job-worker";
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import type { IDownloadRunRepository } from "@solid-imager/core/domain/repositories/download-run-repository";
 import type {
@@ -28,13 +30,64 @@ describe("typed download execution", () => {
 		vi.useFakeTimers();
 		vi.clearAllMocks();
 		repo = {
+			ensureCutover: vi.fn().mockResolvedValue({ migrated: 0 }),
+			claimPending: vi.fn().mockResolvedValue([]),
 			heartbeat: vi.fn().mockResolvedValue(true),
+			release: vi.fn().mockResolvedValue({ ...run, status: "pending" }),
 			settle: vi.fn().mockResolvedValue({ ...run, status: "completed" }),
 		} as unknown as IDownloadRunRepository;
 	});
 	afterEach(() => {
 		vi.useRealTimers();
 	});
+	it.each([false, true])(
+		"aborts and releases a download during stop, including a late claim: %s",
+		async (late) => {
+			const pending = Promise.withResolvers<DownloadClaim[]>();
+			vi.mocked(repo.claimPending).mockImplementationOnce(
+				() => pending.promise,
+			);
+			let activeSignal: AbortSignal | undefined;
+			const downloads = new DownloadWorker(repo, async (_run, signal) => {
+				activeSignal = signal;
+				await new Promise<void>((_resolve, reject) =>
+					signal.addEventListener("abort", () => reject(signal.reason), {
+						once: true,
+					}),
+				);
+			});
+			const coordinator = new JobWorker(
+				downloads,
+				{ claimPending: vi.fn().mockResolvedValue([]), process: vi.fn() },
+				{
+					claimPending: vi.fn().mockResolvedValue([]),
+					process: vi.fn(),
+					cleanup: vi.fn().mockResolvedValue(undefined),
+					stop: vi.fn().mockResolvedValue(undefined),
+				},
+			);
+			coordinator.updateConfig({
+				...defaultAppConfig,
+				jobs: { ...defaultAppConfig.jobs, concurrency: 1, pollIntervalMs: 100 },
+			});
+			coordinator.start();
+			await vi.advanceTimersByTimeAsync(0);
+			if (!late) {
+				pending.resolve([run]);
+				await vi.advanceTimersByTimeAsync(0);
+			}
+			const stopping = coordinator.stop();
+			if (late) pending.resolve([run]);
+			await stopping;
+			expect(activeSignal?.aborted).toBe(true);
+			expect(repo.release).toHaveBeenCalledExactlyOnceWith(run);
+			expect(repo.settle).not.toHaveBeenCalled();
+			expect(RealtimeEventBus.publishJob).not.toHaveBeenCalled();
+			const count = vi.mocked(repo.heartbeat).mock.calls.length;
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(repo.heartbeat).toHaveBeenCalledTimes(count);
+		},
+	);
 	it("publishes failure once, only after settlement, without raw paths or authentication", async () => {
 		const failure = {
 			...run,

@@ -128,6 +128,7 @@ export class CcipVectorService {
 		mediaId: string,
 		force = false,
 		request?: ProcessingRequestIdentity,
+		signal?: AbortSignal,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
 		const media = await this.requireImage(mediaSourceId, mediaId);
 		const input = await this.inputFor(media);
@@ -135,6 +136,7 @@ export class CcipVectorService {
 			input,
 			force,
 			request,
+			signal,
 		);
 		return { record: response, skipped: reused };
 	}

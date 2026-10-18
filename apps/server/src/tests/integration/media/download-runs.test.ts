@@ -336,6 +336,45 @@ describe("dedicated download runs", () => {
 			error: null,
 		});
 	});
+	it("releases shutdown claims with their checkpoint and retry budget, fencing the old worker", async () => {
+		const id = await add();
+		const run = await claim();
+		const { entry } = await prepare(run);
+		const checkpoint = {
+			version: 1 as const,
+			mediaSourceId: sourceId,
+			sourcePath: base,
+			stagingDirectory: path.dirname(entry.stagedPath),
+			entries: [entry],
+		};
+		await repo.withActiveClaim(run, (tx) =>
+			repo.saveCheckpoint(run, checkpoint, tx),
+		);
+		expect(await repo.release(run)).toMatchObject({
+			status: "pending",
+			checkpoint,
+			attemptCount: 0,
+			maxAttempts: run.maxAttempts,
+			leaseToken: null,
+		});
+		const restarted = await claim();
+		expect(restarted).toMatchObject({ id, checkpoint, attemptCount: 1 });
+		expect(restarted.leaseToken).not.toBe(run.leaseToken);
+		expect(await repo.release(run)).toBeNull();
+		expect(await repo.settle(run, "failed", "stale")).toBeNull();
+		expect(await repo.heartbeat(restarted)).toBe(true);
+	});
+	it("does not revive a cancelled download when shutdown releases its claim", async () => {
+		const id = await add();
+		const run = await claim();
+		await service.cancel(id);
+		expect(await repo.release(run)).toMatchObject({
+			status: "cancelled",
+			attemptCount: 1,
+			leaseToken: null,
+		});
+		expect(await repo.claimPending(1)).toHaveLength(0);
+	});
 	it("serializes cancellation against terminal completion", async () => {
 		const id = await add();
 		const run = await claim();

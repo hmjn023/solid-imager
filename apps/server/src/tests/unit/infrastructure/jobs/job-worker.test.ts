@@ -11,6 +11,7 @@ describe("typed flow coordinator", () => {
 	const downloads = {
 		claimPending: vi.fn<(limit: number) => Promise<DownloadClaim[]>>(),
 		process: vi.fn<(run: DownloadClaim) => Promise<void>>(),
+		stop: vi.fn(),
 	};
 	const batches = {
 		claimPending: vi.fn<(limit: number) => Promise<BatchClaim[]>>(),
@@ -52,6 +53,7 @@ describe("typed flow coordinator", () => {
 		sources.process.mockImplementation(hold);
 		sources.cleanup.mockResolvedValue(undefined);
 		sources.stop.mockResolvedValue(undefined);
+		downloads.stop.mockResolvedValue(undefined);
 		worker = new JobWorker(downloads, batches, sources);
 		worker.updateConfig({
 			...defaultAppConfig,

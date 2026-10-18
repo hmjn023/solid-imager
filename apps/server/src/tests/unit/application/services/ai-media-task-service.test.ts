@@ -54,6 +54,44 @@ function fixture() {
 
 describe("durable AI observation timeout", () => {
 	afterEach(() => vi.useRealTimers());
+	it("does not reserve work for an already aborted observer", async () => {
+		const { service, input, deps } = fixture();
+		const controller = new AbortController();
+		controller.abort();
+		await expect(
+			service.execute(input, false, undefined, controller.signal),
+		).rejects.toBe(controller.signal.reason);
+		expect(deps.processingStateRepo.request).not.toHaveBeenCalled();
+	});
+	it("cancels observation immediately without cancelling durable work or another observer", async () => {
+		vi.useFakeTimers();
+		const { service, input, state, deps, infer } = fixture();
+		const controller = new AbortController();
+		const abandoned = service.execute(
+			input,
+			false,
+			undefined,
+			controller.signal,
+		);
+		const retained = service.execute(input);
+		await vi.advanceTimersByTimeAsync(0);
+		const reason = new DOMException("Disconnected", "AbortError");
+		const rejected = expect(abandoned).rejects.toBe(reason);
+		controller.abort(reason);
+		await rejected;
+		expect(state.status).toBe("pending");
+		const reads = vi.mocked(deps.processingStateRepo.findByMediaIds).mock.calls
+			.length;
+		await vi.advanceTimersByTimeAsync(250);
+		expect(deps.processingStateRepo.findByMediaIds).toHaveBeenCalledTimes(
+			reads + 1,
+		);
+		state.status = "completed";
+		await vi.advanceTimersByTimeAsync(250);
+		await expect(retained).resolves.toMatchObject({ response: "result" });
+		expect(infer).not.toHaveBeenCalled();
+		expect(vi.getTimerCount()).toBe(0);
+	});
 	it.each([null, "old", "v1"])(
 		"repairs a completed request with completion revision %s even when output is present",
 		async (completedRevision) => {

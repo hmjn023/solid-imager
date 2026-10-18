@@ -12,13 +12,17 @@ import {
 	type ProcessingRequestIdentity,
 	type ScheduledMediaWork,
 } from "@solid-imager/core/domain/processing/schemas";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import {
+	AiInferenceBusyError,
+	ResourceNotFoundError,
+} from "@solid-imager/core/domain/errors";
 import type { IMediaProcessingSchedulerRepository } from "@solid-imager/core/domain/repositories/media-processing-state-repository";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/events";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
+import { abortableDelay } from "@solid-imager/core/utils/abortable-delay";
 import type { ILogger } from "../ports/media-service";
 import { MediaProcessingScheduler } from "./media-processing-scheduler";
 
@@ -75,7 +79,7 @@ export class AiMediaTaskService<Result> {
 					currentRevision: (input: MediaProcessingInput) =>
 						handler.currentRevision(input),
 					isCapacityError: (error: unknown) =>
-						isRecord(error) && error.code === "TOO_MANY_REQUESTS",
+						error instanceof AiInferenceBusyError,
 					isRetryable: (error: unknown) =>
 						isRecord(error) &&
 						typeof error.code === "string" &&
@@ -175,7 +179,9 @@ export class AiMediaTaskService<Result> {
 		input: MediaProcessingInput,
 		force = false,
 		expected?: ProcessingRequestIdentity,
+		signal?: AbortSignal,
 	): Promise<{ response: Result; reused: boolean }> {
+		signal?.throwIfAborted();
 		let identity = expected;
 		let reused = false;
 		if (!identity) {
@@ -192,6 +198,7 @@ export class AiMediaTaskService<Result> {
 			this.deps.transactionManager.transaction(action);
 		const deadline = Date.now() + AI_TASK_WAIT_TIMEOUT_MS;
 		for (;;) {
+			signal?.throwIfAborted();
 			const response = await active(async (tx) => {
 				const currentInput = await this.inputFor(
 					input.mediaSourceId,
@@ -233,10 +240,11 @@ export class AiMediaTaskService<Result> {
 					throw new MediaProcessingSupersededError();
 				return result;
 			});
+			signal?.throwIfAborted();
 			if (response) return { response, reused };
 			if (Date.now() >= deadline)
 				throw new Error("AI task is still pending; request remains queued");
-			await new Promise<void>((resolve) => setTimeout(resolve, 250));
+			await abortableDelay(250, signal);
 		}
 	}
 	async reconcile() {

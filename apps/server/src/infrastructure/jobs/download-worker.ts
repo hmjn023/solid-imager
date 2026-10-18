@@ -9,6 +9,9 @@ import { logger } from "~/infrastructure/logger";
 
 /** Typed download execution. JobWorker supplies shared general slots; no separate polling queue. */
 export class DownloadWorker {
+	private readonly controllers = new Set<AbortController>();
+	private readonly running = new Set<Promise<void>>();
+	private readonly shutdownReason = new Error("Download worker stopped");
 	constructor(
 		private readonly repo: IDownloadRunRepository,
 		private readonly execute: (
@@ -21,8 +24,20 @@ export class DownloadWorker {
 		if (report.migrated) logger.info(report, "Legacy downloads migrated");
 		return this.repo.claimPending(limit);
 	}
-	async process(run: DownloadClaim) {
+	process(run: DownloadClaim) {
+		const task = this.executeRun(run);
+		this.running.add(task);
+		void task.finally(() => this.running.delete(task)).catch(() => {});
+		return task;
+	}
+	async stop() {
+		for (const controller of this.controllers)
+			controller.abort(this.shutdownReason);
+		await Promise.allSettled(this.running);
+	}
+	private async executeRun(run: DownloadClaim) {
 		const controller = new AbortController();
+		this.controllers.add(controller);
 		let renewing = false;
 		const heartbeat = setInterval(() => {
 			if (renewing) return;
@@ -48,6 +63,14 @@ export class DownloadWorker {
 			const settled = await this.repo.settle(run, "completed");
 			if (settled) this.publish(settled);
 		} catch (error) {
+			if (
+				controller.signal.aborted &&
+				controller.signal.reason === this.shutdownReason
+			) {
+				const released = await this.repo.release(run);
+				if (released) this.publish(released);
+				return;
+			}
 			logger.warn(
 				{ err: error, runId: run.id, attemptCount: run.attemptCount },
 				"Download execution interrupted",
@@ -60,6 +83,7 @@ export class DownloadWorker {
 			if (settled) this.publish(settled);
 		} finally {
 			clearInterval(heartbeat);
+			this.controllers.delete(controller);
 		}
 	}
 	private publish(run: DownloadRun) {

@@ -2,6 +2,8 @@
 
 Batch runs own fixed targets and durable outcomes. Tagging, CCIP, metadata and thumbnails still execute only through `media_processing_states`. The batch dispatcher uses the existing general worker budget and never runs inference.
 
+Only local inference admission failures preserve the attempt budget and defer work for five seconds. Remote HTTP 429 responses use the normal bounded retry policy. Disconnecting an HTTP observer stops its result polling and releases its HTTP admission slot, while the durable media request and other observers continue independently.
+
 `batches.start/list/get/items/attempts/cancel/retry` expose safe projections. Jobs remains a compatibility view of dedicated runs and individual items. Old job IDs resolve through private snapshots. SSE is an invalidation signal; reconnect and reload restore state from the database.
 
 ## Activation

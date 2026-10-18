@@ -24,6 +24,8 @@ export type IDownloadRunRepository = {
 	): Promise<{ items: DownloadRun[]; total: number }>;
 	claimPending(limit: number): Promise<DownloadClaim[]>;
 	heartbeat(claim: DownloadClaim): Promise<boolean>;
+	/** Relinquish a stopped worker's current claim, preserving resumable checkpoints and retry budget. */
+	release(claim: DownloadClaim): Promise<DownloadRun | null>;
 	withActiveClaim<T>(
 		claim: DownloadClaim,
 		action: (tx: Transaction) => Promise<T>,

@@ -107,6 +107,7 @@ export class TaggingServiceImpl implements ITaggingService {
 		options?: {
 			skipCache?: boolean;
 			request?: ProcessingRequestIdentity;
+			signal?: AbortSignal;
 		},
 	): Promise<TaggingResponse | null> {
 		const media = await this.mediaRepo.findById(mediaId);
@@ -145,6 +146,7 @@ export class TaggingServiceImpl implements ITaggingService {
 			input,
 			options?.skipCache,
 			options?.request,
+			options?.signal,
 		);
 		return response;
 	}
