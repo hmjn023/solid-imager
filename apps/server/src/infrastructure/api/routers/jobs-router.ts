@@ -17,6 +17,11 @@ import {
 import { resolveJobArtifact } from "../job-artifact";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { retryFailedJobsPage } from "~/infrastructure/services/retry-failed-jobs-service";
+import { deleteJobHistory } from "~/infrastructure/services/job-history-service";
+import {
+	isJobHistoryDismissed,
+	restoreJobHistory,
+} from "~/infrastructure/repositories/job-history-repository";
 const os = implement(jobsContract);
 export const jobsRouter = os.router({
 	list: os.list.handler(async ({ input }) => {
@@ -45,7 +50,7 @@ export const jobsRouter = os.router({
 			(await findDownloadJob(input.id)) ??
 			(await findBatchJob(input.id)) ??
 			(await findSourceJob(input.id));
-		if (!run)
+		if (!run || (await isJobHistoryDismissed(run)))
 			throw new ORPCError("NOT_FOUND", { message: "Operation not found" });
 		return run;
 	}),
@@ -56,13 +61,19 @@ export const jobsRouter = os.router({
 		return artifact.stream;
 	}),
 	retry: os.retry.handler(async ({ input }) => {
-		if (await findDownloadJob(input.id))
-			return mutateDownloadJob("retry", input.id);
-		if (await findBatchJob(input.id)) return mutateBatchJob("retry", input.id);
-		if (await findSourceJob(input.id))
-			return toSourceJobDto(await mutateSourceRun("retry", input.id));
-		throw new ORPCError("NOT_FOUND", { message: "Operation not found" });
+		const job = (await findDownloadJob(input.id))
+			? await mutateDownloadJob("retry", input.id)
+			: (await findBatchJob(input.id))
+				? await mutateBatchJob("retry", input.id)
+				: (await findSourceJob(input.id))
+					? toSourceJobDto(await mutateSourceRun("retry", input.id))
+					: null;
+		if (!job)
+			throw new ORPCError("NOT_FOUND", { message: "Operation not found" });
+		await restoreJobHistory(job);
+		return job;
 	}),
+	delete: os.delete.handler(({ input }) => deleteJobHistory(input.id)),
 	retryFailed: os.retryFailed.handler(({ input }) =>
 		retryFailedJobsPage(input),
 	),

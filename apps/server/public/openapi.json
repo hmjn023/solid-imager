@@ -1240,6 +1240,9 @@
                     "canCancel": {
                       "type": "boolean"
                     },
+                    "canDelete": {
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -1620,6 +1623,9 @@
                       "type": "boolean"
                     },
                     "canCancel": {
+                      "type": "boolean"
+                    },
+                    "canDelete": {
                       "type": "boolean"
                     },
                     "createdAt": {
@@ -15646,6 +15652,9 @@
                           "canCancel": {
                             "type": "boolean"
                           },
+                          "canDelete": {
+                            "type": "boolean"
+                          },
                           "createdAt": {
                             "type": "string",
                             "format": "date-time",
@@ -16026,6 +16035,9 @@
                       "type": "boolean"
                     },
                     "canCancel": {
+                      "type": "boolean"
+                    },
+                    "canDelete": {
                       "type": "boolean"
                     },
                     "createdAt": {
@@ -16433,6 +16445,9 @@
                     "canCancel": {
                       "type": "boolean"
                     },
+                    "canDelete": {
+                      "type": "boolean"
+                    },
                     "createdAt": {
                       "type": "string",
                       "format": "date-time",
@@ -16836,7 +16851,7 @@
       "post": {
         "operationId": "jobs.cancel",
         "summary": "ジョブキャンセル",
-        "description": "実行中または待機中のバックグラウンドジョブをキャンセルし、更新後のジョブ情報を返します。",
+        "description": "実行中または待機中のバックグラウンドジョブをキャンセルし、更新後のジョブ情報を返します。batchの待機中・実行中の子を指定した場合は、親batchの残り全体をキャンセルします。完了済みと独立・共有要求は保持します。",
         "tags": [
           "Jobs"
         ],
@@ -16899,6 +16914,9 @@
                       "type": "boolean"
                     },
                     "canCancel": {
+                      "type": "boolean"
+                    },
+                    "canDelete": {
                       "type": "boolean"
                     },
                     "createdAt": {
@@ -17194,6 +17212,55 @@
                     "targetMediaModifiedAt",
                     "progress",
                     "artifact"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/delete": {
+      "post": {
+        "operationId": "jobs.delete",
+        "summary": "終了したジョブの履歴を削除",
+        "description": "終了した処理をJobsの一覧から除外します。batchは親子まとめて対象になり、メディア・処理結果・実行状態は保持します。待機中・実行中は先にキャンセルが必要です。",
+        "tags": [
+          "Jobs"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "const": true
+                    }
+                  },
+                  "required": [
+                    "success"
                   ]
                 }
               }

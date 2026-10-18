@@ -8,16 +8,16 @@ import {
 } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
+import { mutateSelectedJobs } from "@solid-imager/ui/screens/jobs-mutations";
+import type { JobBulkAction } from "@solid-imager/ui/screens/jobs-selection";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { batch, createSignal } from "solid-js";
+import { batch, createEffect, createSignal } from "solid-js";
 import type { Accessor } from "solid-js";
 import type { JobFilter, JobsView } from "@solid-imager/ui/screens/jobs-view";
 import { buildThumbnailUrl } from "~/components/media/thumbnail-image";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { jobsQueryOptions } from "~/infrastructure/api-clients/queries";
-
-const BULK_RETRY_CONCURRENCY = 8;
 
 export function JobsPage(props: {
 	view: Accessor<JobsView>;
@@ -35,6 +35,16 @@ export function JobsPage(props: {
 	});
 	const queryClient = useQueryClient();
 	const state = () => toQueryUiState(jobsQuery);
+	createEffect(() => {
+		const total = state().data?.total;
+		if (total !== undefined)
+			setPageIndex((current) =>
+				Math.min(
+					current,
+					Math.max(0, Math.ceil(total / DEFAULT_JOBS_PAGE_SIZE) - 1),
+				),
+			);
+	});
 	const pagination = () => {
 		const total = state().data?.total ?? 0;
 		return {
@@ -101,40 +111,19 @@ export function JobsPage(props: {
 					throw error;
 				}
 			}}
-			onRetryMany={async (jobIds) => {
-				let failedCount = 0;
-				let firstError: unknown;
-				for (
-					let index = 0;
-					index < jobIds.length;
-					index += BULK_RETRY_CONCURRENCY
-				) {
-					const results = await Promise.allSettled(
-						jobIds
-							.slice(index, index + BULK_RETRY_CONCURRENCY)
-							.map((jobId) => orpc.jobs.retry({ id: jobId })),
-					);
-					for (const result of results) {
-						if (result.status === "rejected") {
-							failedCount += 1;
-							if (firstError === undefined) {
-								firstError = result.reason;
-							}
-						}
-					}
-				}
-				await queryClient.invalidateQueries({
-					queryKey: jobsQueryKeys.all(),
-				});
-				if (failedCount > 0) {
-					toast.error(
-						`${failedCount} of ${jobIds.length} jobs failed to queue for retry`,
-					);
-					throw firstError instanceof Error
-						? firstError
-						: new Error("Failed to retry some jobs");
-				}
-				toast.success(`${jobIds.length} jobs queued for retry`);
+			onMutateMany={async (action: JobBulkAction, jobIds) => {
+				const result = await mutateSelectedJobs(orpc.jobs, action, jobIds);
+				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+				const verb = {
+					retry: "queued for retry",
+					cancel: "cancellation requested",
+					delete: "history deleted",
+				}[action];
+				if (result.succeeded)
+					toast.success(`${result.succeeded} jobs: ${verb}`);
+				if (result.failed.length)
+					toast.error(`${result.failed.length} jobs could not be changed`);
+				return result;
 			}}
 			onCancel={async (jobId) => {
 				try {

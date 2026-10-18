@@ -61,10 +61,19 @@ export const jobsContract = {
 			tags: ["Jobs"],
 			summary: "ジョブキャンセル",
 			description:
-				"実行中または待機中のバックグラウンドジョブをキャンセルし、更新後のジョブ情報を返します。",
+				"実行中または待機中のバックグラウンドジョブをキャンセルし、更新後のジョブ情報を返します。batchの待機中・実行中の子を指定した場合は、親batchの残り全体をキャンセルします。完了済みと独立・共有要求は保持します。",
 		})
 		.input(jobIdRequestSchema)
 		.output(jobDtoSchema),
+	delete: oc
+		.route({
+			tags: ["Jobs"],
+			summary: "終了したジョブの履歴を削除",
+			description:
+				"終了した処理をJobsの一覧から除外します。batchは親子まとめて対象になり、メディア・処理結果・実行状態は保持します。待機中・実行中は先にキャンセルが必要です。",
+		})
+		.input(jobIdRequestSchema)
+		.output(z.object({ success: z.literal(true) })),
 	events: oc
 		.route({
 			tags: ["Jobs"],

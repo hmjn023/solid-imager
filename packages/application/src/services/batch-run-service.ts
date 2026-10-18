@@ -92,6 +92,7 @@ export class BatchRunService {
 		try {
 			// Renew between bounded pages. A crash resumes pending items only.
 			let finished = false;
+			let lastProgressAt = -Infinity;
 			while (!finished) {
 				try {
 					await this.deps.repo.withActiveClaim(claim, async (tx) => {
@@ -116,13 +117,23 @@ export class BatchRunService {
 						this.deps.repo.failItem(claim, error.item, "input_changed", tx),
 					);
 				}
+				// Polling skips a run while dispatch holds its lease row lock. Report
+				// between commits so a large dispatch cannot starve progress notifications.
+				// Aggregate at most once a second, plus the first and final pages.
+				if (finished || performance.now() - lastProgressAt >= 1000) {
+					await this.reconcile(claim.id);
+					lastProgressAt = performance.now();
+				}
 			}
 		} catch (error) {
 			if (!(error instanceof BatchAttemptLostError)) throw error;
 		}
 	}
-	async reconcile() {
-		for (const summary of await this.deps.repo.reconcile(100))
+	async reconcile(runId?: string) {
+		for (const summary of await this.deps.repo.reconcile(
+			runId ? 1 : 100,
+			runId,
+		))
 			this.notify(summary);
 	}
 	async cancel(id: string) {

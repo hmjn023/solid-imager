@@ -2500,3 +2500,9 @@ export const jobRuntimeCutovers = pgTable(
 		check("job_runtime_epoch", sql`${table.generation} >= 0`),
 	],
 );
+
+/** Jobs history visibility only; execution ownership, outcomes and cleanup remain intact. */
+export const jobHistoryDismissals = pgTable("job_history_dismissals", {
+	id: uuid("id").primaryKey(),
+	dismissedAt: timestamp("dismissed_at").notNull().defaultNow(),
+});

@@ -67,7 +67,8 @@ export type IBatchRunRepository = {
 		tx: Transaction,
 	): Promise<void>;
 	finishDispatch(claim: BatchClaim, tx: Transaction): Promise<void>;
-	reconcile(limit: number): Promise<BatchSummary[]>;
+	/** A dispatcher can reconcile its own run between committed pages without scanning other runs. */
+	reconcile(limit: number, runId?: string): Promise<BatchSummary[]>;
 	cancel(id: string): Promise<BatchSummary>;
 	/** Failed-only retry also resumes failed children of an active batch, preserving cancellations. */
 	retry(id: string, scope?: "failed"): Promise<BatchSummary>;

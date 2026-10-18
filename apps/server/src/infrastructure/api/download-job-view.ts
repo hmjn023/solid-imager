@@ -68,6 +68,7 @@ export function toDownloadJobDto(run: DownloadRun): JobDto {
 		processingSteps: [],
 		currentProcessingSteps: [],
 		artifact: null,
+		canDelete: !["pending", "in_progress"].includes(run.status),
 	});
 }
 export async function findDownloadJob(id: string): Promise<JobDto | null> {
@@ -139,17 +140,18 @@ export async function listJobView(input: JobListRequest) {
 		);
 		const result: unknown = await db.execute(sql`
 			WITH combined AS (
-				SELECT id, created_at FROM download_runs WHERE status <> 'superseded' ${runStatus}
- UNION ALL SELECT id, created_at FROM source_sync_runs WHERE true ${runStatus}
- UNION ALL SELECT id, created_at FROM source_transfer_runs WHERE true ${runStatus}
+				SELECT id, created_at, id AS owner_id FROM download_runs WHERE status <> 'superseded' ${runStatus}
+ UNION ALL SELECT id, created_at, id AS owner_id FROM source_sync_runs WHERE true ${runStatus}
+ UNION ALL SELECT id, created_at, id AS owner_id FROM source_transfer_runs WHERE true ${runStatus}
  UNION ALL
- SELECT r.id, r.created_at FROM batch_runs r JOIN batch_run_status b ON b.id = r.id
+ SELECT r.id, r.created_at, r.id AS owner_id FROM batch_runs r JOIN batch_run_status b ON b.id = r.id
  WHERE true ${statusFilter(sql`(CASE WHEN b.status = 'blocked' THEN 'failed' ELSE b.status END)`)}
  UNION ALL
- SELECT id, created_at FROM batch_items
+ SELECT id, created_at, run_id AS owner_id FROM batch_items
  WHERE true ${statusFilter(sql`(CASE WHEN status = 'scheduled' THEN 'in_progress' WHEN status IN ('blocked', 'superseded') THEN 'failed' ELSE status END)`)}
-			), page AS (SELECT id, created_at FROM combined ORDER BY created_at DESC, id DESC LIMIT ${input.limit} OFFSET ${input.offset})
-			SELECT coalesce(jsonb_agg(jsonb_build_object('id', id) ORDER BY created_at DESC, id DESC), '[]'::jsonb) AS ids, (SELECT count(*) FROM combined) AS total FROM page
+			), visible AS (SELECT * FROM combined c WHERE NOT EXISTS (SELECT 1 FROM job_history_dismissals h WHERE h.id = c.owner_id)),
+			page AS (SELECT id, created_at FROM visible ORDER BY created_at DESC, id DESC LIMIT ${input.limit} OFFSET ${input.offset})
+			SELECT coalesce(jsonb_agg(jsonb_build_object('id', id) ORDER BY created_at DESC, id DESC), '[]'::jsonb) AS ids, (SELECT count(*) FROM visible) AS total FROM page
 		`);
 		// Driver result is an external boundary; parse the shared pg/PGlite rows shape explicitly.
 		const rows = Array.isArray(result)

@@ -17,6 +17,8 @@ Targets are captured with repeatable-read, keyset pages of at most 100 and a sin
 
 Processing results and item attempt outcomes commit together through the database trigger. A durable generation marker drives notifications. Parent counts derive from fixed items, independently of the media's newer requests.
 
+Dispatch reconciles its own dirty marker between committed pages: after the first page, at roughly one-second intervals, and after the final page. The polling reconciler skips locked parent rows, so relying on polling alone delays progress throughout large dispatches. Keep aggregation outside reservation transactions and retain the time bound to avoid scanning all fixed items for every fast page.
+
 Dispatch locks every existing media row in its bounded page, in ID order, before reserving requests or updating items. Processing failure settlement follows the same media-before-state order as successful commits. Parent lease/progress updates use `FOR NO KEY UPDATE` so the dirty-marker trigger's foreign-key `KEY SHARE` check can finish while dispatch owns the parent. Keep these orders when changing dispatch, cancellation or reconciliation.
 
 After deploying a fix for a stopped dispatcher or exhausted processing attempts, resume the failed batch with its existing Retry action. This keeps fixed targets and completed outcomes; remaining pending items and failed items are dispatched again. A server restart alone does not resume a terminal failed batch.
@@ -26,6 +28,10 @@ In Jobs, select Failed, then select the batch parent and Retry job. Status filte
 For a large failure backlog, use Failed → Retry all failed. This spans every page and retries batches once per parent, including failed children of an active batch and pending items stranded by a failed dispatcher. Completed, cancelled and blocked items remain unchanged. Downloads and recoverable source operations are retried as well; expired source inputs and retired/blocked operations are excluded. The progress count represents parent operations, not individual images.
 
 `jobs.retryFailed` handles at most five execution owners per call and returns an opaque continuation cursor. Continue until `cursor` is null. Keyset pagination keeps shrinking result sets from skipping parents and advances past individual failures. The UI reports committed progress if a later call fails; rerunning the action skips work already queued. Leaving the screen stops additional calls after the current bounded request. This reserves existing durable work without creating another inference queue.
+
+Jobs supports selected Retry, Cancel and Delete history actions. Capability flags determine eligibility; cancellation is sequential to avoid competing large batch writes. Delete history requires a terminal execution owner and dismisses a batch parent with all its children, even when invoked on a child. Migration 0046 adds `job_history_dismissals`; it changes visibility only and retains media, outcomes, checkpoints and source artifact retention cleanup. Dismissals are excluded before list pagination/counts and from retry-all. An explicit retry restores visibility. Cancelling a batch keeps completed siblings and independent/shared media demand.
+
+Manager can submit tagging, CCIP and thumbnail batches and export/restore operations; Sources can submit sync operations. Metadata has no standalone Manager batch action. Failed metadata, thumbnails, tagging and CCIP requests can instead be retried individually under Jobs → Media processing. Downloads are submitted through imports/URL input and can be retried from Jobs while their source/input remain available.
 
 ## Rollback rehearsal
 

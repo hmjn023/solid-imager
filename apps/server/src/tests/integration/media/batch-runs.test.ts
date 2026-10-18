@@ -265,6 +265,87 @@ describe("fixed batch runs and durable item outcomes", () => {
 		expect(history).toHaveLength(3);
 		expect(history.some((attempt) => attempt.status === "failed")).toBe(true);
 	});
+
+	it("publishes committed progress before dispatching the next page", async () => {
+		for (let index = 0; index < 76; index++) await media();
+		await start();
+		await dispatch();
+		for (let index = 0; index < 76; index++) await complete();
+		await service.reconcile();
+
+		// Reused outcomes complete immediately while a large batch is still dispatching.
+		const batch = await start();
+		const other = await start();
+		notify.mockClear();
+		let pages = 0;
+		const clock = vi.spyOn(performance, "now").mockReturnValue(0);
+		const dispatching = new BatchRunService({
+			repo: {
+				...repo,
+				pendingItems: async (...args) => {
+					if (++pages === 2) {
+						expect(notify).toHaveBeenCalledWith(
+							expect.objectContaining({
+								run: expect.objectContaining({
+									id: batch.run.id,
+									dispatchComplete: false,
+								}),
+								progress: {
+									total: 76,
+									completed: 25,
+									failed: 0,
+									cancelled: 0,
+									pending: 51,
+								},
+							}),
+							undefined,
+						);
+						clock.mockReturnValue(500);
+					}
+					if (pages === 3) {
+						// Fast pages do not rescan all outcomes and flood the stream.
+						expect(notify).toHaveBeenCalledTimes(1);
+						clock.mockReturnValue(1000);
+					}
+					if (pages === 4) {
+						expect(notify).toHaveBeenCalledTimes(2);
+						expect(notify.mock.lastCall?.[0].progress.completed).toBe(75);
+					}
+					return repo.pendingItems(...args);
+				},
+			},
+			transactions,
+			notify,
+			logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+			capture: () => async () => ({ targets: [] }),
+			reserve: async (item, _input, tx) =>
+				(await processing.findByMediaIds([item.mediaId], tx))[0],
+		});
+		const [claim] = await repo.claimPending(1);
+		expect(claim.id).toBe(batch.run.id);
+		try {
+			await dispatching.dispatch(claim);
+		} finally {
+			clock.mockRestore();
+		}
+		expect(notify).toHaveBeenLastCalledWith(
+			expect.objectContaining({
+				run: expect.objectContaining({ id: batch.run.id, status: "completed" }),
+				progress: expect.objectContaining({ completed: 76, pending: 0 }),
+			}),
+			undefined,
+		);
+		// An individual dispatch reports only itself; the polling worker owns other runs.
+		expect(
+			notify.mock.calls.every(([summary]) => summary.run.id === batch.run.id),
+		).toBe(true);
+		expect(
+			await database
+				.select()
+				.from(schema.batchRunDirty)
+				.where(eq(schema.batchRunDirty.runId, other.run.id)),
+		).toHaveLength(1);
+	});
 	it("resumes pending items after dispatch exhausts its leases without repeating completed siblings", async () => {
 		await media();
 		await media();

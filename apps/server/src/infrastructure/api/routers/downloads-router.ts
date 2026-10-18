@@ -8,6 +8,7 @@ import {
 } from "@solid-imager/core/domain/errors";
 import { z } from "zod";
 import { logger } from "~/infrastructure/logger";
+import { restoreJobHistory } from "~/infrastructure/repositories/job-history-repository";
 
 async function respond<T>(action: () => Promise<T>): Promise<T> {
 	try {
@@ -58,7 +59,11 @@ export const downloadsRouter = os.router({
 		respond(() => downloadRunService.get(input.id)),
 	),
 	retry: os.retry.handler(({ input }) =>
-		respond(() => downloadRunService.retry(input.id)),
+		respond(async () => {
+			const run = await downloadRunService.retry(input.id);
+			await restoreJobHistory({ id: run.id, parentId: null });
+			return run;
+		}),
 	),
 	cancel: os.cancel.handler(({ input }) =>
 		respond(() => downloadRunService.cancel(input.id)),

@@ -13,6 +13,7 @@ import {
 } from "@solid-imager/core/domain/errors";
 import { SourceRunRepository } from "~/infrastructure/repositories/source-run-repository";
 import { sourceRunService } from "~/infrastructure/services/source-run-service";
+import { restoreJobHistory } from "~/infrastructure/repositories/job-history-repository";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 
 export function toSafeSourceRun(run: SourceRun) {
@@ -84,6 +85,7 @@ export function toSourceJobDto(run: SourceRun): JobDto {
 				: null,
 		canRetry: safe.canRetry,
 		canCancel: safe.canCancel,
+		canDelete: !["pending", "in_progress"].includes(run.status),
 	});
 }
 
@@ -99,6 +101,8 @@ export async function mutateSourceRun(action: "retry" | "cancel", id: string) {
 		const run = await (action === "retry"
 			? sourceRunService.retry(id)
 			: SourceRunRepository.cancel(id));
+		if (action === "retry")
+			await restoreJobHistory({ id: run.id, parentId: null });
 		if (action === "cancel")
 			RealtimeEventBus.publishJob("job-cancelled", {
 				jobId: id,

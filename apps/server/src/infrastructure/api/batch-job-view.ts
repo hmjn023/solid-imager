@@ -84,7 +84,10 @@ export function toBatchJobDto(summary: BatchSummary, item?: BatchItem): JobDto {
 				!!run.input &&
 				!["blocked", "cancelled"].includes(run.status)
 			: !!run.input && ["failed", "cancelled"].includes(run.status),
-		canCancel: !item && ["pending", "in_progress"].includes(run.status),
+		canCancel:
+			["pending", "in_progress"].includes(run.status) &&
+			(!item || ["pending", "scheduled"].includes(item.status)),
+		canDelete: !["pending", "in_progress"].includes(run.status),
 	});
 }
 export async function findBatchJob(id: string): Promise<JobDto | null> {
@@ -125,9 +128,9 @@ export async function mutateBatchJob(action: "retry" | "cancel", id: string) {
 			await batchRunService.reconcile();
 		} else if (action === "retry") await batchRunService.retry(runId);
 		else {
-			if (item)
+			if (item && !["pending", "scheduled"].includes(item.status))
 				throw new ResourceConflictError(
-					"Cancel the batch to stop its remaining items",
+					"Use the batch parent to stop remaining items after this item has finished",
 				);
 			await batchRunService.cancel(runId);
 		}

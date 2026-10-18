@@ -14,6 +14,7 @@ import Clock3 from "lucide-solid/icons/clock-3";
 import Download from "lucide-solid/icons/download";
 import RefreshCw from "lucide-solid/icons/refresh-cw";
 import RotateCcw from "lucide-solid/icons/rotate-ccw";
+import Trash2 from "lucide-solid/icons/trash-2";
 import type { Accessor } from "solid-js";
 import {
 	createMemo,
@@ -27,6 +28,15 @@ import {
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
+import {
+	AlertDialog,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../alert-dialog";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
 import type { QueryUiState } from "../query-state";
 import {
@@ -49,7 +59,10 @@ import {
 	ManagementHeader,
 } from "../workspace/management-layout";
 import {
-	getRetryableJobIds,
+	getJobActionIds,
+	getJobActionTargetId,
+	canApplyJobAction,
+	type JobBulkAction,
 	toggleAllJobSelection,
 	toggleJobSelection,
 } from "./jobs-selection";
@@ -109,7 +122,10 @@ export type JobsScreenProps = {
 	jobs: Accessor<JobDto[]>;
 	onRefresh: () => void | Promise<void>;
 	onRetry: (jobId: string) => void | Promise<void>;
-	onRetryMany: (jobIds: string[]) => void | Promise<void>;
+	onMutateMany: (
+		action: JobBulkAction,
+		jobIds: string[],
+	) => Promise<{ succeeded: number; failed: string[] }>;
 	retryFailedPage: (
 		input: JobRetryFailedRequest,
 		signal: AbortSignal,
@@ -120,11 +136,14 @@ export type JobsScreenProps = {
 	state: Accessor<QueryUiState<JobListResponse>>;
 };
 
-const JOB_BULK_ACTIONS = ["retry"] as const;
-type JobBulkAction = (typeof JOB_BULK_ACTIONS)[number];
+const JOB_BULK_ACTIONS = ["retry", "cancel", "delete"] as const;
 
 function jobBulkActionLabel(action: JobBulkAction): string {
-	return action === "retry" ? "Retry failed jobs" : action;
+	return {
+		retry: "Retry failed jobs",
+		cancel: "Cancel jobs",
+		delete: "Delete history",
+	}[action];
 }
 
 function jobTypeLabel(type: string): string {
@@ -310,7 +329,7 @@ function JobsTable(props: {
 													—
 												</span>
 											}
-											when={job.canRetry ?? job.status === "failed"}
+											when={getJobActionIds([job]).length > 0}
 										>
 											<Checkbox
 												aria-label={`Select ${jobTypeLabel(job.type)} job`}
@@ -378,6 +397,7 @@ function JobsBulkActions(props: {
 	onToggleAll: () => void;
 	selectableCount: number;
 	selectedCount: number;
+	eligibleCount: number;
 }) {
 	return (
 		<div class="mb-3 flex flex-col gap-3 rounded-md border border-border bg-card p-3 sm:flex-row sm:items-center sm:justify-between">
@@ -390,14 +410,20 @@ function JobsBulkActions(props: {
 				>
 					<CheckboxControl class="border-input bg-card data-[checked]:border-primary data-[checked]:bg-primary" />
 					<CheckboxLabel class="font-medium text-xs text-muted-foreground">
-						{props.allSelected
-							? "Clear failed selection"
-							: "Select all failed jobs"}
+						{props.allSelected ? "Clear selection" : "Select all jobs"}
 					</CheckboxLabel>
 				</Checkbox>
 				<span aria-live="polite" class="text-xs text-muted-foreground">
 					{props.selectedCount.toLocaleString()} of{" "}
-					{props.selectableCount.toLocaleString()} failed jobs selected
+					{props.selectableCount.toLocaleString()} jobs selected
+					<Show when={props.action}>
+						{" "}
+						· {props.eligibleCount} eligible for this action
+					</Show>
+					<Show when={props.action === "cancel"}>
+						{" "}
+						· Batch actions stop all remaining items
+					</Show>
 				</span>
 			</div>
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center">
@@ -430,13 +456,15 @@ function JobsBulkActions(props: {
 					aria-busy={props.isApplying}
 					class="min-h-11 sm:min-h-9"
 					disabled={
-						props.isApplying || !props.hasSelection || props.action === null
+						props.isApplying ||
+						props.eligibleCount === 0 ||
+						props.action === null
 					}
 					onClick={() => void props.onApply()}
 					size="sm"
 				>
 					<RotateCcw aria-hidden="true" size={14} />
-					{props.isApplying ? "Retrying..." : "Apply"}
+					{props.isApplying ? "Applying..." : "Apply"}
 				</Button>
 			</div>
 		</div>
@@ -450,6 +478,7 @@ function JobsInspector(props: {
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
 	onRetry: (jobId: string) => void | Promise<void>;
+	onDelete: (jobId: string) => void;
 }) {
 	const [isRetrying, setIsRetrying] = createSignal(false);
 	const [isCancelling, setIsCancelling] = createSignal(false);
@@ -494,7 +523,7 @@ function JobsInspector(props: {
 			return;
 		setIsCancelling(true);
 		try {
-			await props.onCancel(job.id);
+			await props.onCancel(getJobActionTargetId(job, "cancel"));
 		} catch {
 			// The route reports mutation failures; keep the selected job visible.
 		} finally {
@@ -683,6 +712,16 @@ function JobsInspector(props: {
 						</Show>
 
 						<div class="mt-5 space-y-2">
+							<Show when={canApplyJobAction(job(), "delete")}>
+								<Button
+									class="w-full"
+									variant="outline"
+									onClick={() => props.onDelete(job().id)}
+								>
+									<Trash2 aria-hidden="true" size={15} />
+									Delete history
+								</Button>
+							</Show>
 							<Show
 								fallback={null}
 								when={
@@ -700,7 +739,12 @@ function JobsInspector(props: {
 									variant="outline"
 								>
 									<Ban aria-hidden="true" size={15} />
-									{isCancelling() ? "Cancelling..." : "Cancel job"}
+									{isCancelling()
+										? "Cancelling..."
+										: getJobActionTargetId(job(), "cancel") !== job().id ||
+											  isBatchParentJobType(job().type)
+											? "Cancel batch"
+											: "Cancel job"}
 								</Button>
 							</Show>
 							<Show
@@ -738,6 +782,8 @@ export function JobsScreen(props: JobsScreenProps) {
 		new Set(),
 	);
 	const [bulkAction, setBulkAction] = createSignal<JobBulkAction | null>(null);
+	const [deleteIds, setDeleteIds] = createSignal<string[]>([]);
+	const [mutationError, setMutationError] = createSignal("");
 	const [isApplyingBulkAction, setIsApplyingBulkAction] = createSignal(false);
 	const [isRetryingAll, setIsRetryingAll] = createSignal(false);
 	const [retryAllMessage, setRetryAllMessage] = createSignal("");
@@ -794,9 +840,16 @@ export function JobsScreen(props: JobsScreenProps) {
 	);
 	// The route fetches the selected status before pagination, including its total.
 	const filteredJobs = () => props.jobs();
-	const retryableJobIds = createMemo(() => getRetryableJobIds(filteredJobs()));
-	const selectedRetryableJobIds = createMemo(() =>
-		retryableJobIds().filter((jobId) => selectedJobIds().has(jobId)),
+	const selectableJobIds = createMemo(() => getJobActionIds(filteredJobs()));
+	const selectedVisibleJobIds = createMemo(() =>
+		selectableJobIds().filter((jobId) => selectedJobIds().has(jobId)),
+	);
+	const eligibleJobIds = createMemo(() =>
+		bulkAction()
+			? getJobActionIds(filteredJobs(), bulkAction() ?? undefined).filter(
+					(id) => selectedJobIds().has(id),
+				)
+			: [],
 	);
 	const clearBulkSelection = () => {
 		setSelectedJobIds(new Set<string>());
@@ -807,28 +860,56 @@ export function JobsScreen(props: JobsScreenProps) {
 	};
 	const toggleAllJobs = () => {
 		setSelectedJobIds((current) =>
-			toggleAllJobSelection(current, retryableJobIds()),
+			toggleAllJobSelection(current, selectableJobIds()),
 		);
 	};
-	const applyBulkAction = async () => {
-		const action = bulkAction();
-		const jobIds = selectedRetryableJobIds();
-		if (
-			action !== "retry" ||
-			jobIds.length === 0 ||
-			isApplyingBulkAction() ||
-			isRetryingAll()
-		) {
+	const mutateMany = async (action: JobBulkAction, jobIds: string[]) => {
+		if (jobIds.length === 0 || isApplyingBulkAction() || isRetryingAll()) {
 			return;
 		}
 		setIsApplyingBulkAction(true);
+		setMutationError("");
 		try {
-			await props.onRetryMany(jobIds);
-			clearBulkSelection();
-		} catch {
-			// The route reports mutation failures; keep any remaining selection visible.
+			const targets = new Map(
+				jobIds.map((id) => {
+					const job = filteredJobs().find((candidate) => candidate.id === id);
+					return [id, job ? getJobActionTargetId(job, action) : id] as const;
+				}),
+			);
+			const result = await props.onMutateMany(action, [
+				...new Set(targets.values()),
+			]);
+			const remaining = [...targets]
+				.filter(([, target]) => result.failed.includes(target))
+				.map(([id]) => id);
+			setSelectedJobIds(new Set(remaining));
+			if (action === "delete") setDeleteIds(remaining);
+			if (result.failed.length)
+				setMutationError(
+					`${result.failed.length} jobs could not be changed. Refresh and try again.`,
+				);
+		} catch (error) {
+			setMutationError(
+				error instanceof Error
+					? error.message
+					: "Could not change jobs. Try again.",
+			);
 		} finally {
 			setIsApplyingBulkAction(false);
+		}
+	};
+	const applyBulkAction = async () => {
+		const action = bulkAction();
+		if (!action || isApplyingBulkAction() || isRetryingAll()) return;
+		if (action === "delete") {
+			setMutationError("");
+			setDeleteIds(eligibleJobIds());
+		} else await mutateMany(action, eligibleJobIds());
+	};
+	const requestDelete = (id: string) => {
+		if (!isApplyingBulkAction() && !isRetryingAll()) {
+			setMutationError("");
+			setDeleteIds([id]);
 		}
 	};
 	const refresh = async () => {
@@ -847,6 +928,44 @@ export function JobsScreen(props: JobsScreenProps) {
 				}
 			}}
 		>
+			<AlertDialog
+				open={deleteIds().length > 0}
+				onOpenChange={(open) => {
+					if (!open && !isApplyingBulkAction()) setDeleteIds([]);
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Delete job history?</AlertDialogTitle>
+						<AlertDialogDescription>
+							Remove {deleteIds().length} selected jobs from history. For a
+							batch, its parent and all children are removed together. Media and
+							processing results are kept. Active jobs must be cancelled first.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<Show when={mutationError()}>
+						<p role="alert" class="text-sm text-destructive">
+							{mutationError()}
+						</p>
+					</Show>
+					<AlertDialogFooter>
+						<AlertDialogCancel
+							aria-label="Keep history"
+							disabled={isApplyingBulkAction()}
+						>
+							Keep history
+						</AlertDialogCancel>
+						<Button
+							variant="destructive"
+							disabled={isApplyingBulkAction()}
+							aria-busy={isApplyingBulkAction()}
+							onClick={() => void mutateMany("delete", deleteIds())}
+						>
+							{isApplyingBulkAction() ? "Deleting..." : "Delete history"}
+						</Button>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			<ManagementHeader
 				actions={
 					<Show when={view() === "jobs"}>
@@ -876,6 +995,11 @@ export function JobsScreen(props: JobsScreenProps) {
 			/>
 
 			<Show when={props.processingApi}>
+				<Show when={mutationError() && deleteIds().length === 0}>
+					<p role="alert" class="mx-4 text-sm text-destructive">
+						{mutationError()}
+					</p>
+				</Show>
 				<TabsList
 					aria-label="Jobs view"
 					class="mx-3 my-2 w-fit shrink-0 sm:mx-4"
@@ -988,26 +1112,25 @@ export function JobsScreen(props: JobsScreenProps) {
 															}
 															when={filteredJobs().length > 0}
 														>
-															<Show when={retryableJobIds().length > 0}>
+															<Show when={selectableJobIds().length > 0}>
 																<JobsBulkActions
 																	action={bulkAction()}
 																	allSelected={
-																		selectedRetryableJobIds().length ===
-																		retryableJobIds().length
+																		selectedVisibleJobIds().length ===
+																		selectableJobIds().length
 																	}
 																	hasSelection={
-																		selectedRetryableJobIds().length > 0
+																		selectedVisibleJobIds().length > 0
 																	}
 																	isApplying={
 																		isApplyingBulkAction() || isRetryingAll()
 																	}
 																	onActionChange={setBulkAction}
 																	onApply={applyBulkAction}
+																	eligibleCount={eligibleJobIds().length}
 																	onToggleAll={toggleAllJobs}
-																	selectableCount={retryableJobIds().length}
-																	selectedCount={
-																		selectedRetryableJobIds().length
-																	}
+																	selectableCount={selectableJobIds().length}
+																	selectedCount={selectedVisibleJobIds().length}
 																/>
 															</Show>
 															<JobsTable
@@ -1034,6 +1157,7 @@ export function JobsScreen(props: JobsScreenProps) {
 																		class="mt-4 rounded-md border border-border bg-background p-4 xl:hidden"
 																		job={job()}
 																		onCancel={props.onCancel}
+																		onDelete={requestDelete}
 																		onDownload={props.onDownload}
 																		onRetry={props.onRetry}
 																	/>
@@ -1104,6 +1228,7 @@ export function JobsScreen(props: JobsScreenProps) {
 						buildThumbnailUrl={props.buildThumbnailUrl}
 						job={selectedJob()}
 						onCancel={props.onCancel}
+						onDelete={requestDelete}
 						onDownload={props.onDownload}
 						onRetry={props.onRetry}
 					/>

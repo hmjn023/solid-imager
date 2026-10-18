@@ -52,6 +52,7 @@ export async function findFailedRetryCandidates(input: JobRetryFailedRequest) {
 			 ))
 		)
 		SELECT id, kind FROM candidates WHERE created_at <= ${cutoff}
+		 AND NOT EXISTS (SELECT 1 FROM job_history_dismissals h WHERE h.id = candidates.id)
 		 ${input.cursor ? sql`AND id > ${input.cursor.afterId}::uuid` : sql``}
 		 ORDER BY id LIMIT ${FAILED_RETRY_PAGE_SIZE + 1}
 	`);

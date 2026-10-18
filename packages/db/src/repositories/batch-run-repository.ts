@@ -614,7 +614,7 @@ export function createBatchRunRepository(
 					set: { generation: sql`${dirty.generation} + 1` },
 				});
 		},
-		async reconcile(limit) {
+		async reconcile(limit, runId) {
 			return transactions.transaction(async (tx) => {
 				await assertDedicated(tx);
 				const db = getExecutor(tx);
@@ -622,6 +622,7 @@ export function createBatchRunRepository(
 					.select({ run: runs })
 					.from(runs)
 					.innerJoin(dirty, eq(dirty.runId, runs.id))
+					.where(runId ? eq(runs.id, runId) : undefined)
 					.orderBy(asc(runs.id))
 					.limit(limit)
 					.for("no key update", { of: runs, skipLocked: true });

@@ -41,6 +41,7 @@ export const jobDtoSchema = z.object({
 	status: jobStatusSchema,
 	canRetry: z.boolean().optional(),
 	canCancel: z.boolean().optional(),
+	canDelete: z.boolean().optional(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 	parentId: z.uuid().nullable(),
