@@ -2,6 +2,11 @@ import type { Transaction } from "@/domain/interfaces/transaction-manager";
 import type { Ip, NewIp, UpdateIp } from "@/domain/ips/schemas";
 
 export type IIpRepository = {
+	removeMediaFromSource(
+		mediaId: string,
+		source: string,
+		tx: Transaction,
+	): Promise<void>;
 	findAll(): Promise<Ip[]>;
 	findById(id: string, tx?: Transaction): Promise<Ip | null>;
 	findByName(name: string, tx?: Transaction): Promise<Ip | null>;

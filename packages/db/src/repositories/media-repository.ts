@@ -721,13 +721,22 @@ export function createMediaRepository(
 		/**
 		 * Retrieves a specific media item by its ID.
 		 */
-		async findById(mediaId: string, tx?: Transaction): Promise<Media | null> {
+		async findById(
+			mediaId: string,
+			tx?: Transaction,
+			options?: { forUpdate: boolean },
+		): Promise<Media | null> {
 			try {
 				const client = getExecutor(tx);
-				const result = await client
+				if (options?.forUpdate && !tx)
+					throw new Error("Media lock requires a transaction");
+				const query = client
 					.select()
 					.from(medias)
 					.where(eq(medias.id, mediaId));
+				const result = options?.forUpdate
+					? await query.for("update")
+					: await query;
 				if (result.length === 0) {
 					return null;
 				}
@@ -810,6 +819,17 @@ export function createMediaRepository(
 			} catch (error) {
 				throw new UnexpectedError("Failed to insert media", error);
 			}
+		},
+
+		async createIfAbsent(media: AddMediaRequest, tx?: Transaction) {
+			const [row] = await getExecutor(tx)
+				.insert(medias)
+				.values({ ...media, status: "active", indexedAt: new Date() })
+				.onConflictDoNothing({
+					target: [medias.mediaSourceId, medias.filePath],
+				})
+				.returning();
+			return row ? mapToMedia(row) : null;
 		},
 
 		/**

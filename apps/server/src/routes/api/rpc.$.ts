@@ -1,4 +1,9 @@
-import { RPCHandler } from "@orpc/server/fetch";
+import { BodyLimitPlugin, RPCHandler } from "@orpc/server/fetch";
+import {
+	aiRequestAdmission,
+	AI_MAX_BODY_BYTES,
+	isAiInferenceRequest,
+} from "~/infrastructure/ai/ai-request-admission";
 import { ResponseHeadersPlugin } from "@orpc/server/plugins";
 import { createFileRoute } from "@tanstack/solid-router";
 import { appRouter } from "~/infrastructure/api/app-router";
@@ -10,24 +15,42 @@ import { bootstrapServerRoute } from "~/infrastructure/server-route-bootstrap";
 const handler = new RPCHandler(appRouter, {
 	plugins: [new ResponseHeadersPlugin()],
 });
+const aiHandler = new RPCHandler(appRouter, {
+	plugins: [
+		new BodyLimitPlugin({ maxBodySize: AI_MAX_BODY_BYTES }),
+		new ResponseHeadersPlugin(),
+	],
+});
 
 export const Route = createFileRoute("/api/rpc/$")({
 	server: {
 		handlers: {
 			ANY: async ({ request }: ServerRouteContext) => {
-				bootstrapServerRoute();
-				const { response } = await handler.handle(request, {
-					prefix: "/api/rpc",
-					context: { resHeaders: createRpcResponseHeaders(request.url) },
-				});
-				if (response) {
-					return response;
-				}
-				logger.warn(
-					{ method: request.method, url: request.url },
-					"Unmatched RPC request",
+				const admission = aiRequestAdmission.acquire(
+					request.url,
+					request.headers.get("content-length"),
 				);
-				return new Response("Not Found", { status: 404 });
+				if (admission instanceof Response) return admission;
+				try {
+					bootstrapServerRoute();
+					const selected = isAiInferenceRequest(request.url)
+						? aiHandler
+						: handler;
+					const { response } = await selected.handle(request, {
+						prefix: "/api/rpc",
+						context: { resHeaders: createRpcResponseHeaders(request.url) },
+					});
+					if (response) {
+						return response;
+					}
+					logger.warn(
+						{ method: request.method, url: request.url },
+						"Unmatched RPC request",
+					);
+					return new Response("Not Found", { status: 404 });
+				} finally {
+					admission();
+				}
 			},
 		},
 	},

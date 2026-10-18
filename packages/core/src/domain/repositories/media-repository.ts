@@ -15,7 +15,11 @@ import type {
 } from "@/domain/media/schemas";
 
 export type IMediaRepository = {
-	findById(id: string, tx?: Transaction): Promise<Media | null>;
+	findById(
+		id: string,
+		tx?: Transaction,
+		options?: { forUpdate: boolean },
+	): Promise<Media | null>;
 	findByIds(ids: string[], tx?: Transaction): Promise<Media[]>;
 	findByPath(
 		sourceId: string,
@@ -23,6 +27,11 @@ export type IMediaRepository = {
 		tx?: Transaction,
 	): Promise<Media | null>;
 	create(media: AddMediaRequest, tx?: Transaction): Promise<Media>;
+	/** Returns null only when the same source/path was already registered. */
+	createIfAbsent(
+		media: AddMediaRequest,
+		tx?: Transaction,
+	): Promise<Media | null>;
 	upsert(media: AddMediaRequest, tx?: Transaction): Promise<Media>;
 	update(
 		id: string,

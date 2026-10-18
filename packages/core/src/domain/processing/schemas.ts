@@ -1,0 +1,337 @@
+import type { AppConfig } from "../config/config-schema";
+import { z } from "zod";
+
+export const mediaTaskKindSchema = z.enum([
+	"metadata",
+	"thumbnail",
+	"tagging",
+	"ccip",
+]);
+export type MediaTaskKind = z.infer<typeof mediaTaskKindSchema>;
+export type FileTaskKind = Extract<MediaTaskKind, "metadata" | "thumbnail">;
+export type AiTaskKind = Extract<MediaTaskKind, "tagging" | "ccip">;
+
+/** Metadata and AI extract image content; only thumbnails also support video. */
+export function isMediaTaskApplicable(
+	mediaType: MediaProcessingInput["mediaType"],
+	kind: MediaTaskKind,
+): boolean {
+	return kind === "thumbnail" ? mediaType !== "audio" : mediaType === "image";
+}
+
+export const processingRequestIdentitySchema = z.object({
+	requestId: z.uuid(),
+	requestedRevision: z.string().min(1),
+});
+export type ProcessingRequestIdentity = z.infer<
+	typeof processingRequestIdentitySchema
+>;
+/** Internal observer payload. Never exposed through the public job DTO. */
+export const aiProcessingObserverSchema = z.looseObject({
+	processingRequests: z
+		.record(z.uuid(), processingRequestIdentitySchema)
+		.optional(),
+	retryAiTasks: z.boolean().optional(),
+	force: z.boolean().optional(),
+});
+
+export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
+export const CCIP_EMBEDDING_VERSION = 1;
+export const CCIP_VECTOR_DIMENSIONS = 768;
+
+export const taggingProcessingSettingsSchema = z.object({
+	model: z.string(),
+	modelVersion: z.string(),
+	runtimeVersion: z.string(),
+	provider: z.string(),
+	device: z.string().nullable(),
+	endpoint: z.string(),
+});
+export type TaggingProcessingSettings = z.infer<
+	typeof taggingProcessingSettingsSchema
+>;
+
+export const ccipProcessingSettingsSchema =
+	taggingProcessingSettingsSchema.extend({
+		embeddingVersion: z.number().int().positive(),
+		dimensions: z.number().int().positive(),
+	});
+export type CcipProcessingSettings = z.infer<
+	typeof ccipProcessingSettingsSchema
+>;
+
+export const mediaProcessingInputSchema = z.object({
+	mediaId: z.uuid(),
+	mediaSourceId: z.uuid(),
+	sourcePath: z.string(),
+	filePath: z.string(),
+	modifiedAt: z.date(),
+	fileSize: z.number().nullable(),
+	mediaType: z.enum(["image", "video", "audio"]),
+});
+export type MediaProcessingInput = z.infer<typeof mediaProcessingInputSchema>;
+
+/** JSON-safe snapshot; never reconstruct a requested input from a later media row. */
+export const scheduledMediaInputSchema = mediaProcessingInputSchema.extend({
+	modifiedAt: z.iso.datetime(),
+});
+export type ScheduledMediaInput = z.infer<typeof scheduledMediaInputSchema>;
+
+export const mediaProcessingRequestSchema = z.object({
+	input: mediaProcessingInputSchema,
+	taskKind: mediaTaskKindSchema,
+	revision: z.string().min(1),
+	maxAttempts: z.number().int().min(1).max(20).default(5),
+	force: z.boolean().default(false),
+	/** Internal demand owner; absence means an independent request that batch cancel must preserve. */
+	batchId: z.uuid().optional(),
+});
+export type MediaProcessingRequest = z.infer<
+	typeof mediaProcessingRequestSchema
+>;
+
+export const processingSettingsSchema = z.object({
+	metadata: z.object({
+		positiveNodeTypes: z.array(z.string()),
+		negativeKeywords: z.array(z.string()),
+		negativeTags: z.array(z.string()),
+	}),
+	thumbnail: z.object({
+		directory: z.string(),
+		size: z.number(),
+		quality: z.number(),
+	}),
+});
+export type ProcessingSettings = z.infer<typeof processingSettingsSchema>;
+
+export const processingOwnerSchema = z.object({
+	jobId: z.uuid(),
+	attemptCount: z.number().int().nonnegative(),
+});
+export type ProcessingOwner = z.infer<typeof processingOwnerSchema>;
+export const mediaProcessingClaimSchema = z.object({
+	mediaId: z.uuid(),
+	taskKind: mediaTaskKindSchema,
+	revision: z.string(),
+	token: z.uuid(),
+});
+export type MediaProcessingClaim = z.infer<typeof mediaProcessingClaimSchema>;
+export const mediaProcessingStateSchema = z.object({
+	requestId: z.uuid(),
+	mediaId: z.uuid(),
+	taskKind: mediaTaskKindSchema,
+	status: z.enum(["pending", "in_progress", "completed", "failed"]),
+	inputRevision: z.string(),
+	requestedRevision: z.string(),
+	completedRevision: z.string().nullable(),
+	claimToken: z.uuid().nullable(),
+	claimedAt: z.date().nullable(),
+	heartbeatAt: z.date().nullable(),
+	attemptCount: z.number().int().nonnegative(),
+	executionMode: z.enum(["inline", "scheduled"]),
+	availableAt: z.date(),
+	maxAttempts: z.number().int().min(1).max(20),
+	ownerJobId: z.uuid().nullable(),
+	ownerAttemptCount: z.number().int().nullable(),
+	lastError: z.string().nullable(),
+	updatedAt: z.date(),
+});
+export type MediaProcessingState = z.infer<typeof mediaProcessingStateSchema>;
+
+export const processingFailureCodeSchema = z.enum([
+	"file_missing",
+	"file_access_denied",
+	"service_unavailable",
+	"input_changed",
+	"lease_expired",
+	"retry_limit",
+	"processing_failed",
+]);
+export type ProcessingFailureCode = z.infer<typeof processingFailureCodeSchema>;
+
+/** Public projection: no raw errors, filesystem paths, revisions or claim credentials. */
+export const safeProcessingStepSchema = z.object({
+	kind: mediaTaskKindSchema,
+	status: z.enum([
+		"not_requested",
+		"skipped",
+		"pending",
+		"in_progress",
+		"completed",
+		"failed",
+	]),
+	isCurrent: z.boolean(),
+	requestId: z.uuid().nullable(),
+	attemptCount: z.number().int().nonnegative(),
+	maxAttempts: z.number().int().positive().nullable(),
+	availableAt: z.coerce.date().nullable(),
+	updatedAt: z.coerce.date().nullable(),
+	failureCode: processingFailureCodeSchema.nullable(),
+	canRetry: z.boolean(),
+	canRequest: z.boolean().optional(),
+});
+export type SafeProcessingStep = z.infer<typeof safeProcessingStepSchema>;
+export const safeMediaProcessingSchema = z.object({
+	mediaId: z.uuid(),
+	mediaSourceId: z.uuid(),
+	sourceName: z.string(),
+	fileName: z.string(),
+	mediaType: mediaProcessingInputSchema.shape.mediaType,
+	modifiedAt: z.coerce.date(),
+	steps: z.array(safeProcessingStepSchema),
+});
+export type SafeMediaProcessing = z.infer<typeof safeMediaProcessingSchema>;
+export const processingListRequestSchema = z.object({
+	mediaSourceId: z.uuid().optional(),
+	status: z
+		.union([
+			mediaProcessingStateSchema.shape.status,
+			z.literal("not_requested"),
+		])
+		.optional(),
+	kind: mediaTaskKindSchema.optional(),
+	query: z.string().trim().max(100).optional(),
+	limit: z.number().int().min(1).max(100).default(25),
+	offset: z.number().int().min(0).default(0),
+});
+export type ProcessingListRequest = z.infer<typeof processingListRequestSchema>;
+export const processingListResponseSchema = z.object({
+	items: z.array(safeMediaProcessingSchema),
+	total: z.number().int().nonnegative(),
+});
+export type ProcessingListResponse = z.infer<
+	typeof processingListResponseSchema
+>;
+export const processingMediaRequestSchema = z.object({ mediaId: z.uuid() });
+export const processingRetryRequestSchema = processingMediaRequestSchema.extend(
+	{
+		kind: mediaTaskKindSchema,
+		/** Opaque identity of the failed request selected by the user, not a claim token. */
+		requestId: z.uuid(),
+	},
+);
+export type ProcessingRetryRequest = z.infer<
+	typeof processingRetryRequestSchema
+>;
+
+export const processingRequestStepSchema = processingMediaRequestSchema.extend({
+	kind: mediaTaskKindSchema,
+	/** Null asserts that no request exists; otherwise fence the observed request. */
+	requestId: z.uuid().nullable(),
+});
+export type ProcessingRequestStep = z.infer<typeof processingRequestStepSchema>;
+export const processingRecoveryReasonSchema = z.enum([
+	"not_requested",
+	"failed",
+	"outdated",
+	"missing_output",
+	"abandoned",
+]);
+export type ProcessingRecoveryReason = z.infer<
+	typeof processingRecoveryReasonSchema
+>;
+export const processingRecoveryCursorSchema = z.object({
+	before: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/),
+	afterId: z.uuid(),
+});
+export const processingRecoveryRequestSchema = z.object({
+	kind: mediaTaskKindSchema,
+	mediaSourceId: z.uuid().optional(),
+	query: z.string().trim().max(100).optional(),
+	cursor: processingRecoveryCursorSchema.optional(),
+});
+export const processingRecoveryItemSchema = z.object({
+	mediaId: z.uuid(),
+	fileName: z.string(),
+	sourceName: z.string(),
+	reason: processingRecoveryReasonSchema,
+});
+export const processingRecoveryResponseSchema = z.object({
+	scanned: z.number().int().nonnegative(),
+	items: z.array(processingRecoveryItemSchema).max(100),
+	queued: z.number().int().nonnegative(),
+	jobId: z.uuid().nullable(),
+	cursor: processingRecoveryCursorSchema.nullable(),
+});
+export type ProcessingRecoveryRequest = z.infer<
+	typeof processingRecoveryRequestSchema
+>;
+export type ProcessingRecoveryResponse = z.infer<
+	typeof processingRecoveryResponseSchema
+>;
+
+export const scheduledMediaWorkSchema = z.object({
+	input: mediaProcessingInputSchema,
+	claim: mediaProcessingClaimSchema,
+	state: mediaProcessingStateSchema,
+});
+export type ScheduledMediaWork = z.infer<typeof scheduledMediaWorkSchema>;
+
+export class MediaProcessingSupersededError extends Error {
+	constructor() {
+		super("Media processing input or claim has been superseded");
+		this.name = "MediaProcessingSupersededError";
+	}
+}
+
+export class MediaProcessingScheduledError extends Error {
+	constructor() {
+		super("Media task is owned by the dedicated scheduler");
+		this.name = "MediaProcessingScheduledError";
+	}
+}
+
+/** Fixed field order, ISO UTC timestamp, numeric byte count; shared by all producers. */
+export function serializeMediaProcessingInput(
+	input: Omit<MediaProcessingInput, "mediaType">,
+): string {
+	return JSON.stringify([
+		input.mediaId,
+		input.mediaSourceId,
+		input.sourcePath,
+		input.filePath,
+		input.modifiedAt.toISOString(),
+		input.fileSize,
+	]);
+}
+
+export function processingSettingsFromConfig(
+	config: AppConfig,
+): ProcessingSettings {
+	return {
+		metadata: config.media.tagExtraction.comfyui,
+		thumbnail: {
+			directory: config.storage.thumbnailDir,
+			size: config.storage.thumbnailSize,
+			quality: config.storage.thumbnailQuality,
+		},
+	};
+}
+
+/** Bump this task's version when processor or output semantics change. */
+export function serializeMediaTaskRevision(
+	input: MediaProcessingInput,
+	kind: FileTaskKind,
+	settings: ProcessingSettings,
+): string {
+	const options =
+		kind === "metadata"
+			? [
+					settings.metadata.positiveNodeTypes,
+					settings.metadata.negativeKeywords,
+					settings.metadata.negativeTags,
+				]
+			: [
+					settings.thumbnail.directory,
+					settings.thumbnail.size,
+					settings.thumbnail.quality,
+					[512, 256],
+				];
+	return JSON.stringify([
+		kind === "metadata" ? "metadata-v1" : "thumbnail-v1",
+		kind,
+		serializeMediaProcessingInput(input),
+		input.mediaType,
+		options,
+	]);
+}

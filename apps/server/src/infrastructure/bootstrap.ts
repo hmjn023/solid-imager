@@ -1,20 +1,36 @@
+import { SourceWorker } from "~/infrastructure/jobs/source-worker";
+import { createImportRequestRepository } from "@solid-imager/db/repositories/import-request-repository";
+import { getExecutor } from "~/infrastructure/db/executor";
+import { JobRetirementRepository } from "~/infrastructure/repositories/job-retirement-repository";
+import { sourceRunService } from "~/infrastructure/services/source-run-service";
+import { batchRunService } from "~/infrastructure/services/batch-run-service";
+import { downloadRunService } from "~/infrastructure/services/download-run-service";
+import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
+import { BatchWorker } from "~/infrastructure/jobs/batch-worker";
+import { MediaAiWorker } from "~/infrastructure/jobs/media-ai-worker";
+import { taggingService } from "~/infrastructure/services/tagging-service";
+import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
+import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
+import { MediaFileWorker } from "~/infrastructure/jobs/media-file-worker";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
+import { DownloadWorker } from "~/infrastructure/jobs/download-worker";
+import { processDownloadRun } from "~/infrastructure/jobs/download-jobs";
+import { DownloadRunRepository } from "~/infrastructure/repositories/download-run-repository";
 import {
-	deleteThumbnail,
-	generateThumbnail,
-	processThumbnailGenerationJob,
+	thumbnailExists,
+	prepareProcessingThumbnail,
 } from "~/infrastructure/jobs/thumbnails";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
 import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
 import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
 import { DrizzleSourceRepository as ActualSourceRepo } from "~/infrastructure/repositories/source-repository";
@@ -22,10 +38,6 @@ import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { services } from "~/infrastructure/service-registry";
 import { configureCcipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { CharacterServiceImpl } from "~/infrastructure/services/character-service";
-import {
-	configureThumbnailJobHandlers,
-	processJob,
-} from "~/infrastructure/services/job-dispatch-service";
 import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
 import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
 import { ServerConfigService } from "~/infrastructure/services/server-config-service";
@@ -70,13 +82,6 @@ export function initServices() {
 	services.registerCharacterRepository(DrizzleCharacterRepository);
 	services.registerIpRepository(IpRepository);
 
-	const jobRepo = JobRepository;
-	services.registerJobRepository(jobRepo);
-	configureThumbnailJobHandlers({
-		deleteThumbnail,
-		processThumbnailGenerationJob,
-	});
-
 	// Register Services
 	services.registerMediaStorage(ServerMediaStorage);
 	services.registerFileSystem(new NodeFileSystem());
@@ -89,7 +94,11 @@ export function initServices() {
 		rustAiClient.updateConfig(newConfig.ai),
 	);
 
-	const jobWorker = new JobWorker(jobRepo, processJob);
+	const jobWorker = new JobWorker(
+		new DownloadWorker(DownloadRunRepository, processDownloadRun),
+		new BatchWorker(BatchRunRepository, batchRunService),
+		new SourceWorker(),
+	);
 	// Initialize worker with current config and subscribe to changes
 	jobWorker.updateConfig(configService.getConfig());
 	configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));
@@ -106,6 +115,23 @@ export function initServices() {
 
 	// Register MediaProcessingService (Implementation)
 	const mediaProcessingService = new MediaProcessingServiceImpl({
+		processingStateRepo: MediaProcessingStateRepository,
+		requestAiTasks: async (sourceId, mediaId, kinds, tx) => {
+			if (kinds.includes("tagging"))
+				await taggingService.requestTags(sourceId, mediaId, false, tx);
+			if (kinds.includes("ccip"))
+				await ccipVectorService.requestExtraction(sourceId, mediaId, false, tx);
+		},
+		getProcessingSettings: () =>
+			processingSettingsFromConfig(configService.getConfig()),
+		hasThumbnails: async (sourceId, mediaId) =>
+			(
+				await Promise.all([
+					thumbnailExists(sourceId, mediaId, 512),
+					thumbnailExists(sourceId, mediaId, 256),
+				])
+			).every(Boolean),
+		transactionManager: DrizzleTransactionManager,
 		sourceRepo: services.getSourceRepository(),
 		mediaRepo: services.getMediaRepository(),
 		tagRepo: services.getTagRepository(),
@@ -113,22 +139,29 @@ export function initServices() {
 		characterRepo: services.getCharacterRepository(),
 		ipRepo: services.getIpRepository(),
 		projectRepo: services.getProjectRepository(),
-		jobRepo,
 		imageProcessor: services.getImageProcessor(),
 		mediaStorage: services.getMediaStorage(),
 		logger,
 		enableAutoTagging: config.jobs.enableAutoTagging,
 		enableAutoCcipExtraction: config.jobs.enableAutoCcipExtraction,
 		supportedExtensions: config.media.supportedExtensions,
-		generateThumbnail: (
-			media: { id: string; filePath: string },
-			sourcePath: string,
-			mediaSourceId: string,
-		) => generateThumbnail(media, sourcePath, mediaSourceId),
+		prepareThumbnail: prepareProcessingThumbnail,
 		publishSourceEvent: (mediaSourceId, event, data) =>
 			RealtimeEventBus.publishSource(mediaSourceId, event, data),
 	});
 	services.registerMediaProcessingService(mediaProcessingService);
+	const fileWorker = new MediaFileWorker(mediaProcessingService);
+	fileWorker.updateConfig(config);
+	configService.onChange((newConfig) => fileWorker.updateConfig(newConfig));
+	services.registerMediaFileWorker(fileWorker);
+	const aiWorker = new MediaAiWorker((kind) =>
+		kind === "tagging"
+			? taggingService.runTaggingTask()
+			: ccipVectorService.runTask(),
+	);
+	aiWorker.updateConfig(config);
+	configService.onChange((newConfig) => aiWorker.updateConfig(newConfig));
+	services.registerMediaAiWorker(aiWorker);
 	configService.onChange((newConfig) =>
 		mediaProcessingService.updateConfig({
 			enableAutoTagging: newConfig.jobs.enableAutoTagging,
@@ -141,58 +174,100 @@ export function initServices() {
  * Starts background worker and maintenance tasks.
  * This should only be called once in the main server process, never during SSR request processing.
  */
-export function startBackgroundWorker() {
-	if (isWorkerStarted) {
-		return;
-	}
+type WorkerGlobal = typeof globalThis & {
+	__JOB_WORKER__?: JobWorker;
+	__MEDIA_FILE_WORKER__?: MediaFileWorker;
+	__MEDIA_AI_WORKER__?: MediaAiWorker;
+	__WORKER_STARTUP__?: Promise<void>;
+	__BOOTSTRAP_CLEANUP_REGISTERED__?: boolean;
+};
+export function startBackgroundWorker(): Promise<void> {
+	const host = globalThis as WorkerGlobal;
+	if (isWorkerStarted) return host.__WORKER_STARTUP__ ?? Promise.resolve();
 	isWorkerStarted = true;
-
-	initServices(); // Ensure services are initialized
-
+	initServices();
 	const jobWorker = services.getJobWorker();
-	const jobRepo = services.getJobRepository();
-
-	// Singleton management for JobWorker to prevent duplicates during HMR
-	const globalAny = globalThis as typeof globalThis & {
-		__JOB_WORKER__?: JobWorker;
-		__BOOTSTRAP_CLEANUP_REGISTERED__?: boolean;
+	const fileWorker = services.getMediaFileWorker();
+	const aiWorker = services.getMediaAiWorker();
+	const previousStart = host.__WORKER_STARTUP__;
+	const initializeStage = async <T>(
+		stage: string,
+		initialize: () => Promise<T>,
+	) => {
+		const startedAt = performance.now();
+		const result = await initialize();
+		logger.info(
+			{ stage, durationMs: Math.round(performance.now() - startedAt) },
+			"Background worker initialization stage completed",
+		);
+		return result;
 	};
-	if (globalAny.__JOB_WORKER__) {
-		globalAny.__JOB_WORKER__.stop();
-	}
-
-	globalAny.__JOB_WORKER__ = jobWorker;
-	jobWorker.start();
-
-	// Initialize MaintenanceService and perform startup checks (background)
-	const maintenanceService = new MaintenanceService(
-		services.getMediaRepository(),
-		jobRepo,
-		services.getSourceRepository(),
-	);
-
-	maintenanceService.performStartupChecks().catch((err) => {
-		logger.error({ err }, "Maintenance startup checks failed");
+	const startup = async () => {
+		await previousStart?.catch(() => undefined);
+		await host.__JOB_WORKER__?.stop();
+		const aiDrain = host.__MEDIA_AI_WORKER__?.stop();
+		await host.__MEDIA_FILE_WORKER__?.stop();
+		await aiDrain;
+		// Deployments must stop old-version writers before starting this version.
+		await initializeStage("legacy-preflight", () =>
+			JobRetirementRepository.preflight(),
+		);
+		await initializeStage("downloads", () => downloadRunService.initialize());
+		await initializeStage("imports", () =>
+			createImportRequestRepository(getExecutor).ensureCutover(),
+		);
+		await initializeStage("batches", () => batchRunService.initialize());
+		await initializeStage("sources", () => sourceRunService.initialize());
+		await initializeStage("legacy-retirement", () =>
+			JobRetirementRepository.initialize(),
+		);
+		await initializeStage("file-recovery", () =>
+			services.getMediaProcessingService().reconcileFileTasks(),
+		);
+		await initializeStage("tagging-recovery", () =>
+			taggingService.reconcileTaggingTasks(),
+		);
+		await initializeStage("ccip-recovery", () =>
+			ccipVectorService.reconcileTasks(),
+		);
+		host.__JOB_WORKER__ = jobWorker;
+		host.__MEDIA_FILE_WORKER__ = fileWorker;
+		host.__MEDIA_AI_WORKER__ = aiWorker;
+		fileWorker.start();
+		aiWorker.start();
+		jobWorker.start();
+		const maintenance = new MaintenanceService(
+			services.getMediaRepository(),
+			services.getMediaProcessingService(),
+			services.getSourceRepository(),
+		);
+		void maintenance
+			.performStartupChecks()
+			.catch((err) =>
+				logger.error({ err }, "Maintenance startup checks failed"),
+			);
+	};
+	host.__WORKER_STARTUP__ = startup().catch((err) => {
+		isWorkerStarted = false;
+		logger.error({ err }, "Background worker startup failed");
+		throw err;
 	});
-
-	// Cleanup on process exit
-	if (!globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__) {
-		const cleanup = () => {
-			if (globalAny.__JOB_WORKER__) {
-				globalAny.__JOB_WORKER__.stop();
-			}
+	if (!host.__BOOTSTRAP_CLEANUP_REGISTERED__) {
+		const cleanup = async () => {
+			await host.__WORKER_STARTUP__?.catch(() => undefined);
+			await host.__JOB_WORKER__?.stop();
+			const aiDrain = host.__MEDIA_AI_WORKER__?.stop();
+			await host.__MEDIA_FILE_WORKER__?.stop();
+			await aiDrain;
+			process.exit(0);
 		};
-
 		process.on("SIGINT", () => {
-			cleanup();
-			process.exit(0);
+			void cleanup();
 		});
-
 		process.on("SIGTERM", () => {
-			cleanup();
-			process.exit(0);
+			void cleanup();
 		});
-
-		globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
+		host.__BOOTSTRAP_CLEANUP_REGISTERED__ = true;
 	}
+	return host.__WORKER_STARTUP__;
 }

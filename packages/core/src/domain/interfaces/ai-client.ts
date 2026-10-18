@@ -1,4 +1,8 @@
 import type {
+	TaggingProcessingSettings,
+	CcipProcessingSettings,
+} from "@/domain/processing/schemas";
+import type {
 	CcipDifferenceResponse,
 	CcipFeatureResponse,
 	OppaiOracleResponse,
@@ -7,6 +11,8 @@ import type {
 
 export type IAiClient = {
 	healthCheck(): Promise<boolean>;
+	getTaggingSettings(): TaggingProcessingSettings;
+	getCcipSettings(): CcipProcessingSettings;
 
 	tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse>;
 

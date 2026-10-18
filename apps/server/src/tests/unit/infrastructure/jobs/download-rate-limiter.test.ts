@@ -45,4 +45,23 @@ describe("download-rate-limiter", () => {
 		await second;
 		expect(settled).toBe(true);
 	});
+	it("aborts queued downloads without leaving a timer or blocking the next request", async () => {
+		const initial = waitForDownloadRateLimit();
+		await vi.runAllTimersAsync();
+		await initial;
+		const first = new AbortController();
+		const second = new AbortController();
+		const waiting = waitForDownloadRateLimit(first.signal);
+		const queued = waitForDownloadRateLimit(second.signal);
+		await vi.advanceTimersByTimeAsync(0);
+		const a = expect(waiting).rejects.toBeInstanceOf(DOMException);
+		const b = expect(queued).rejects.toBeInstanceOf(DOMException);
+		first.abort();
+		second.abort();
+		await Promise.all([a, b]);
+		expect(vi.getTimerCount()).toBe(0);
+		const next = waitForDownloadRateLimit();
+		await vi.advanceTimersByTimeAsync(1000);
+		await next;
+	});
 });

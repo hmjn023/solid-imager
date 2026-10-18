@@ -1,15 +1,36 @@
+import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type {
+	MediaProcessingInput,
+	MediaProcessingState,
+	ProcessingRequestIdentity,
+} from "@solid-imager/core/domain/processing/schemas";
 import type {
 	CcipFeatureResponse,
 	TaggingResponse,
 } from "@solid-imager/core/domain/tagging/schemas";
 
 export interface ITaggingService {
+	requestTags(
+		sourceId: string,
+		mediaId: string,
+		force?: boolean,
+		tx?: Transaction,
+	): Promise<MediaProcessingState>;
+	runTaggingTask(): Promise<
+		"idle" | "completed" | "retry" | "failed" | "superseded"
+	>;
+	reconcileTaggingTasks(): Promise<void>;
+	inferCcip(input: MediaProcessingInput): Promise<CcipFeatureResponse>;
 	isServiceAvailable(): Promise<boolean>;
 	getTags(imageBuffer: ArrayBuffer): Promise<TaggingResponse>;
 	getTagsForMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		options?: { skipCache?: boolean },
+		options?: {
+			skipCache?: boolean;
+			request?: ProcessingRequestIdentity;
+			signal?: AbortSignal;
+		},
 	): Promise<TaggingResponse | null>;
 	getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse>;
 	getCcipFeatureForMedia(

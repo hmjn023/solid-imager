@@ -1,4 +1,5 @@
 import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { abortableDelay } from "@solid-imager/core/utils/abortable-delay";
 
 type DownloadRateLimitConfig = AppConfig["downloads"];
 
@@ -15,7 +16,10 @@ export function updateDownloadRateLimitConfig(
 	config = newConfig;
 }
 
-export async function waitForDownloadRateLimit(): Promise<void> {
+export async function waitForDownloadRateLimit(
+	signal?: AbortSignal,
+): Promise<void> {
+	signal?.throwIfAborted();
 	if (!config.rateLimitEnabled || config.requestIntervalMs <= 0) {
 		return;
 	}
@@ -27,10 +31,11 @@ export async function waitForDownloadRateLimit(): Promise<void> {
 		} catch {
 			// 前のチェーンのエラーでレートリミッターが機能停止しないよう無視
 		}
+		signal?.throwIfAborted();
 		const elapsed = Date.now() - lastRequestTime;
-		const delay = config.requestIntervalMs - elapsed;
-		if (delay > 0) {
-			await new Promise<void>((resolve) => setTimeout(resolve, delay));
+		const waitMs = config.requestIntervalMs - elapsed;
+		if (waitMs > 0) {
+			await abortableDelay(waitMs, signal);
 		}
 		lastRequestTime = Date.now();
 	})();

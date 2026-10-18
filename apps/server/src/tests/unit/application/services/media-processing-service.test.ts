@@ -1,3 +1,5 @@
+import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
 
@@ -9,6 +11,7 @@ const mockMediaRepo = {
 	upsertGenerationInfo: vi.fn(),
 };
 const mockTagRepo = {
+	removeTagsFromSource: vi.fn(),
 	addTagsToMedia: vi.fn(),
 };
 const mockAuthorRepo = {
@@ -52,9 +55,6 @@ const mockProjectRepo = {
 	findOrCreateBulk: vi.fn(),
 	addMediaBulk: vi.fn(),
 };
-const mockJobRepo = {
-	create: vi.fn(),
-};
 
 const _mockConfigService = {
 	getConfig: vi.fn().mockReturnValue({
@@ -79,6 +79,31 @@ describe("MediaProcessingService", () => {
 
 	beforeEach(() => {
 		service = new MediaProcessingServiceImpl({
+			requestAiTasks: vi.fn().mockResolvedValue(undefined),
+			processingStateRepo: {
+				isPendingRequestAbandoned: vi.fn().mockResolvedValue(false),
+				skipInapplicable: vi.fn(),
+				request: vi
+					.fn()
+					.mockResolvedValue({ requestId: "test", status: "pending" }),
+				claimDue: vi.fn(),
+				recoverExpired: vi.fn(),
+				settleFailure: vi.fn(),
+				findInlineMediaIds: vi.fn(),
+				findTaggingResult: vi.fn(),
+				saveTaggingResult: vi.fn(),
+				claim: vi
+					.fn()
+					.mockResolvedValue({ status: "claimed", claim: {}, state: {} }),
+				commit: vi.fn(async (_input, _claim, output, tx) => output(tx)),
+				fail: vi.fn().mockResolvedValue(true),
+				heartbeat: vi.fn().mockResolvedValue(true),
+				findByMediaIds: vi.fn().mockResolvedValue([]),
+			},
+			getProcessingSettings: () =>
+				processingSettingsFromConfig(defaultAppConfig),
+			hasThumbnails: vi.fn().mockResolvedValue(true),
+			transactionManager: { transaction: async (action) => action(undefined) },
 			sourceRepo: {} as any,
 			mediaRepo: mockMediaRepo as any,
 			tagRepo: mockTagRepo as any,
@@ -86,7 +111,6 @@ describe("MediaProcessingService", () => {
 			characterRepo: mockCharacterRepo as any,
 			ipRepo: mockIpRepo as any,
 			projectRepo: mockProjectRepo as any,
-			jobRepo: mockJobRepo as any,
 			imageProcessor: {} as any,
 			mediaStorage: {} as any,
 			enableAutoTagging: false,
@@ -95,7 +119,9 @@ describe("MediaProcessingService", () => {
 				video: [".mp4", ".webm", ".mov"],
 				audio: [".mp3", ".wav"],
 			},
-			generateThumbnail: vi.fn() as any,
+			prepareThumbnail: vi
+				.fn()
+				.mockResolvedValue({ commit: vi.fn(), cleanup: vi.fn() }),
 			publishSourceEvent: vi.fn() as any,
 		});
 	});

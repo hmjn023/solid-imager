@@ -1,4 +1,5 @@
 import path from "node:path";
+import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type { IMediaStorage } from "@solid-imager/core";
 import type { MediaStorageResult } from "@solid-imager/core";
 import {
@@ -7,7 +8,6 @@ import {
 } from "@solid-imager/core/domain/errors";
 import {
 	type AddMediaRequest,
-	type Media,
 	mediaSourceIdSchema,
 } from "@solid-imager/core/domain/media/schemas";
 import {
@@ -16,7 +16,7 @@ import {
 	uploadMediaRequestSchema,
 } from "@solid-imager/core/domain/media/upload-schemas";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
+import type { IMediaProcessingService } from "../ports/media-processing-service";
 import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
 import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
@@ -68,7 +68,11 @@ export class MediaUploadService {
 		private readonly mediaRepository: IMediaRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
-		private readonly jobRepo: IJobRepository,
+		private readonly processing: Pick<
+			IMediaProcessingService,
+			"requestProcessing"
+		>,
+		private readonly transactionManager: TransactionManager,
 	) {}
 
 	async uploadMedia(
@@ -134,33 +138,34 @@ export class MediaUploadService {
 			modifiedAt: fileInfo.modifiedAt,
 		};
 
-		let insertedMedia: Media;
 		try {
-			insertedMedia = await this.mediaRepository.upsert(newMedia);
+			await this.transactionManager.transaction(async (tx) => {
+				const insertedMedia = await this.mediaRepository.upsert(newMedia, tx);
+				if (uploadRequest.sourceUrl) {
+					await this.mediaRepository.addUrls(
+						insertedMedia.id,
+						[uploadRequest.sourceUrl],
+						tx,
+					);
+				}
+				await this.processing.requestProcessing(
+					insertedMedia,
+					basePath,
+					{},
+					tx,
+				);
+			});
 		} catch (error) {
-			try {
-				await this.storageService.deleteFile(basePath, fileInfo.filePath);
-			} catch (_deleteError) {
-				// Ignore rollback error
+			// An overwritten file may already belong to a registered media; never delete it.
+			if (!uploadRequest.overwrite) {
+				try {
+					await this.storageService.deleteFile(basePath, fileInfo.filePath);
+				} catch {
+					/* Preserve the registration error. */
+				}
 			}
 			throw error;
 		}
-
-		if (uploadRequest.sourceUrl) {
-			await this.mediaRepository.addUrls(insertedMedia.id, [
-				uploadRequest.sourceUrl,
-			]);
-		}
-
-		await this.jobRepo.create({
-			type: "processMedia",
-			mediaSourceId: validatedSourceId,
-			payload: {
-				mediaId: insertedMedia.id,
-				sourcePath: basePath,
-				type: "processMedia",
-			},
-		});
 
 		return {
 			success: true,
@@ -174,8 +179,7 @@ export class MediaUploadService {
 	async registerExistingMedia(mediaSourceId: string, directoryPath: string) {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const files = await this.storageService.scanDirectory(directoryPath);
-		const newMediaItems: { id: string; filePath: string }[] = [];
-
+		const failures: unknown[] = [];
 		for (const file of files) {
 			try {
 				const relativePath = path.relative(directoryPath, file);
@@ -183,48 +187,36 @@ export class MediaUploadService {
 					validatedSourceId,
 					relativePath,
 				);
-
-				if (!existing) {
-					try {
-						const metadata = await this.storageService.getFileMetadata(file);
-						const mediaType = getMediaTypeFromExtension(file);
-
-						const newMedia: AddMediaRequest = {
+				if (existing) continue;
+				const metadata = await this.storageService.getFileMetadata(file);
+				await this.transactionManager.transaction(async (tx) => {
+					const created = await this.mediaRepository.upsert(
+						{
 							mediaSourceId: validatedSourceId,
 							filePath: relativePath,
 							fileName: path.basename(file),
-							mediaType,
+							mediaType: getMediaTypeFromExtension(file),
 							width: metadata.width,
 							height: metadata.height,
 							fileSize: metadata.size,
 							createdAt: metadata.createdAt,
 							modifiedAt: metadata.modifiedAt,
 							description: null,
-						};
-
-						const created = await this.mediaRepository.upsert(newMedia);
-						newMediaItems.push({ id: created.id, filePath: relativePath });
-					} catch (_e) {
-						// Ignore creation errors
-					}
-				}
-			} catch (_e) {
-				// Ignore finding errors
-			}
-		}
-
-		if (newMediaItems.length > 0) {
-			for (const item of newMediaItems) {
-				await this.jobRepo.create({
-					type: "processMedia",
-					mediaSourceId: validatedSourceId,
-					payload: {
-						mediaId: item.id,
-						sourcePath: directoryPath,
-						type: "processMedia",
-					},
+						},
+						tx,
+					);
+					await this.processing.requestProcessing(
+						created,
+						directoryPath,
+						{},
+						tx,
+					);
 				});
+			} catch (error) {
+				failures.push(error);
 			}
 		}
+		if (failures.length > 0)
+			throw new AggregateError(failures, "Some media could not be registered");
 	}
 }

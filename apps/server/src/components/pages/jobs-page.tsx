@@ -8,26 +8,45 @@ import {
 } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
+import { mutateSelectedJobs } from "@solid-imager/ui/screens/jobs-mutations";
+import type { JobBulkAction } from "@solid-imager/ui/screens/jobs-selection";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createSignal } from "solid-js";
+import { batch, createEffect, createSignal } from "solid-js";
+import type { Accessor } from "solid-js";
+import type { JobFilter, JobsView } from "@solid-imager/ui/screens/jobs-view";
 import { buildThumbnailUrl } from "~/components/media/thumbnail-image";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { jobsQueryOptions } from "~/infrastructure/api-clients/queries";
 
-const BULK_RETRY_CONCURRENCY = 8;
-
-export function JobsPage() {
+export function JobsPage(props: {
+	view: Accessor<JobsView>;
+	onViewChange: (view: JobsView) => void;
+}) {
 	const [pageIndex, setPageIndex] = createSignal(0);
-	const jobsQuery = createQuery<JobListResponse>(() =>
-		jobsQueryOptions({
+	const [filter, setFilter] = createSignal<JobFilter>("all");
+	const jobsQuery = createQuery<JobListResponse>(() => {
+		const status = filter();
+		return jobsQueryOptions({
+			status: status === "all" ? undefined : status,
 			limit: DEFAULT_JOBS_PAGE_SIZE,
 			offset: pageIndex() * DEFAULT_JOBS_PAGE_SIZE,
-		}),
-	);
+		});
+	});
 	const queryClient = useQueryClient();
+	const state = () => toQueryUiState(jobsQuery);
+	createEffect(() => {
+		const total = state().data?.total;
+		if (total !== undefined)
+			setPageIndex((current) =>
+				Math.min(
+					current,
+					Math.max(0, Math.ceil(total / DEFAULT_JOBS_PAGE_SIZE) - 1),
+				),
+			);
+	});
 	const pagination = () => {
-		const total = jobsQuery.data?.total ?? 0;
+		const total = state().data?.total ?? 0;
 		return {
 			canNext: (pageIndex() + 1) * DEFAULT_JOBS_PAGE_SIZE < total,
 			canPrevious: pageIndex() > 0,
@@ -54,9 +73,33 @@ export function JobsPage() {
 
 	return (
 		<JobsScreen
+			filter={filter}
+			onFilterChange={(value) =>
+				batch(() => {
+					setPageIndex(0);
+					setFilter(value);
+				})
+			}
+			view={props.view}
+			onViewChange={props.onViewChange}
+			processingApi={{
+				listSources: () => orpc.sources.list(),
+				scanRecovery: (input, signal) =>
+					orpc.processing.scanRecovery(input, { signal }),
+				enqueueRecovery: (input, signal) =>
+					orpc.processing.enqueueRecovery(input, { signal }),
+				request: (input) => orpc.processing.request(input),
+				list: (input) => orpc.processing.list(input),
+				get: (input) => orpc.processing.get(input),
+				retry: (input) => orpc.processing.retry(input),
+				openEvents: (signal) => orpc.sources.events({ id: "*" }, { signal }),
+			}}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
-			jobs={() => jobsQuery.data?.items ?? []}
+			jobs={() => state().data?.items ?? []}
+			retryFailedPage={(input, signal) =>
+				orpc.jobs.retryFailed(input, { signal })
+			}
 			onRefresh={async () => {
 				await jobsQuery.refetch();
 			}}
@@ -74,40 +117,19 @@ export function JobsPage() {
 					throw error;
 				}
 			}}
-			onRetryMany={async (jobIds) => {
-				let failedCount = 0;
-				let firstError: unknown;
-				for (
-					let index = 0;
-					index < jobIds.length;
-					index += BULK_RETRY_CONCURRENCY
-				) {
-					const results = await Promise.allSettled(
-						jobIds
-							.slice(index, index + BULK_RETRY_CONCURRENCY)
-							.map((jobId) => orpc.jobs.retry({ id: jobId })),
-					);
-					for (const result of results) {
-						if (result.status === "rejected") {
-							failedCount += 1;
-							if (firstError === undefined) {
-								firstError = result.reason;
-							}
-						}
-					}
-				}
-				await queryClient.invalidateQueries({
-					queryKey: jobsQueryKeys.all(),
-				});
-				if (failedCount > 0) {
-					toast.error(
-						`${failedCount} of ${jobIds.length} jobs failed to queue for retry`,
-					);
-					throw firstError instanceof Error
-						? firstError
-						: new Error("Failed to retry some jobs");
-				}
-				toast.success(`${jobIds.length} jobs queued for retry`);
+			onMutateMany={async (action: JobBulkAction, jobIds) => {
+				const result = await mutateSelectedJobs(orpc.jobs, action, jobIds);
+				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+				const verb = {
+					retry: "queued for retry",
+					cancel: "cancellation requested",
+					delete: "history deleted",
+				}[action];
+				if (result.succeeded)
+					toast.success(`${result.succeeded} jobs: ${verb}`);
+				if (result.failed.length)
+					toast.error(`${result.failed.length} jobs could not be changed`);
+				return result;
 			}}
 			onCancel={async (jobId) => {
 				try {
@@ -149,7 +171,7 @@ export function JobsPage() {
 				})();
 			}}
 			page={pagination}
-			state={() => toQueryUiState(jobsQuery)}
+			state={state}
 		/>
 	);
 }

@@ -3,8 +3,8 @@
  */
 
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { MediaRegistrationOptions } from "@solid-imager/application/ports/media-processing-service";
 import type { MediaMetadataContext } from "@solid-imager/core/domain/media/schemas";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
 import { services } from "~/infrastructure/service-registry";
 
 export { MediaProcessingServiceImpl } from "@solid-imager/application/services/media-processing-service";
@@ -14,14 +14,16 @@ export const MediaProcessingService = {
 		mediaSourceId: string,
 		relativePath: string,
 		contextMetadata?: Partial<MediaMetadataContext>,
+		options?: MediaRegistrationOptions,
 	) => {
 		return services
 			.getMediaProcessingService()
-			.registerAndProcess(mediaSourceId, relativePath, contextMetadata);
-	},
-
-	executeProcessMediaJob: async (job: Job) => {
-		return services.getMediaProcessingService().executeProcessMediaJob(job);
+			.registerAndProcess(
+				mediaSourceId,
+				relativePath,
+				contextMetadata,
+				options,
+			);
 	},
 
 	addContextMetadataToExistingMedia: async (

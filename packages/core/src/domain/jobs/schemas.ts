@@ -1,4 +1,7 @@
 import { z } from "zod";
+import { processingStepDtoSchema } from "./processing";
+export * from "./processing";
+export * from "./retirement";
 
 export const jobStatusSchema = z.enum([
 	"pending",
@@ -10,6 +13,7 @@ export const jobStatusSchema = z.enum([
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
 export const batchParentJobTypes = [
+	"metadata_extraction_parent",
 	"batch_ccip_parent",
 	"bulk_tagging_parent",
 	"thumbnail_generation_parent",
@@ -36,6 +40,9 @@ export const jobDtoSchema = z.object({
 	type: z.string(),
 	mediaSourceId: z.uuid().nullable(),
 	status: jobStatusSchema,
+	canRetry: z.boolean().optional(),
+	canCancel: z.boolean().optional(),
+	canDelete: z.boolean().optional(),
 	createdAt: z.coerce.date(),
 	updatedAt: z.coerce.date(),
 	parentId: z.uuid().nullable(),
@@ -48,6 +55,8 @@ export const jobDtoSchema = z.object({
 	targetMediaId: z.uuid().nullable(),
 	targetMediaModifiedAt: z.coerce.date().nullable(),
 	progress: jobProgressSchema,
+	processingSteps: z.array(processingStepDtoSchema).optional(),
+	currentProcessingSteps: z.array(processingStepDtoSchema).optional(),
 	artifact: z
 		.object({
 			fileName: z.string(),
@@ -59,7 +68,7 @@ export const jobDtoSchema = z.object({
 export type JobDto = z.infer<typeof jobDtoSchema>;
 
 export const jobListRequestSchema = z.object({
-	status: jobStatusSchema.optional(),
+	status: z.union([jobStatusSchema, z.literal("active")]).optional(),
 	limit: z.number().int().min(1).max(200).default(50),
 	offset: z.number().int().min(0).default(0),
 });
@@ -70,6 +79,25 @@ export const jobListResponseSchema = z.object({
 	total: z.number().int().nonnegative(),
 });
 export type JobListResponse = z.infer<typeof jobListResponseSchema>;
+
+export const jobRetryFailedCursorSchema = z.object({
+	// Opaque DB timestamp without time zone; preserve its representation across clients.
+	before: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/),
+	afterId: z.uuid(),
+});
+export const jobRetryFailedRequestSchema = z.object({
+	cursor: jobRetryFailedCursorSchema.optional(),
+});
+export const jobRetryFailedResponseSchema = z.object({
+	retried: z.number().int().nonnegative(),
+	skipped: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+	cursor: jobRetryFailedCursorSchema.nullable(),
+});
+export type JobRetryFailedRequest = z.infer<typeof jobRetryFailedRequestSchema>;
+export type JobRetryFailedResponse = z.infer<
+	typeof jobRetryFailedResponseSchema
+>;
 
 export const jobIdRequestSchema = z.object({
 	id: z.uuid(),
@@ -91,3 +119,8 @@ export const sourceRestoreJobPayloadSchema = z.object({
 export type SourceRestoreJobPayload = z.infer<
 	typeof sourceRestoreJobPayloadSchema
 >;
+export {
+	downloadRegistrationCheckpointSchema,
+	downloadRegistrationEntrySchema,
+	type DownloadRegistrationEntry,
+} from "./download-registration";

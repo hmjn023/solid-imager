@@ -1,6 +1,16 @@
 import { z } from "zod";
 import { thumbnailSizeSchema } from "../thumbnails/schemas";
 import { mediaSourceSyncStateSchema } from "./schemas";
+import { mediaTaskKindSchema } from "../processing/schemas";
+
+/** Invalidates DB projections; never used as a durable execution record. */
+export const mediaProcessingChangedEventSchema = z.object({
+	mediaId: z.uuid().optional(),
+	kind: mediaTaskKindSchema.optional(),
+});
+export type MediaProcessingChangedEvent = z.infer<
+	typeof mediaProcessingChangedEventSchema
+>;
 
 const sourceScopedEventSchema = z.object({
 	mediaSourceId: z.uuid().optional(),
@@ -131,6 +141,10 @@ export type ImportRequestDeletedEvent = z.infer<
 >;
 
 export const sourceEventSchema = z.discriminatedUnion("event", [
+	z.object({
+		event: z.literal("media-processing-changed"),
+		data: mediaProcessingChangedEventSchema,
+	}),
 	z.object({ event: z.literal("media-added"), data: mediaAddedEventSchema }),
 	z.object({
 		event: z.literal("media-deleted"),

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { RPCHandler } from "@orpc/server/node";
+import { BodyLimitPlugin, RPCHandler } from "@orpc/server/node";
 import { ResponseHeadersPlugin } from "@orpc/server/plugins";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
@@ -116,7 +116,7 @@ const bypassSecFetchDestPlugin = (): Plugin => ({
 });
 
 const loadDevRpcHandler = async () => {
-  const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }, { createRpcResponseHeaders }] = await Promise.all([
+  const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }, { createRpcResponseHeaders }, aiAdmission] = await Promise.all([
     runtimeImport<typeof import("./src/infrastructure/api/app-router")>(
       serverModuleUrl("src/infrastructure/api/app-router.ts"),
     ),
@@ -129,12 +129,19 @@ const loadDevRpcHandler = async () => {
     runtimeImport<typeof import("./src/infrastructure/api/rpc-response-headers")>(
       serverModuleUrl("src/infrastructure/api/rpc-response-headers.ts"),
     ),
+    runtimeImport<typeof import("./src/infrastructure/ai/ai-request-admission")>(
+      serverModuleUrl("src/infrastructure/ai/ai-request-admission.ts"),
+    ),
   ]);
 
   return {
     handler: new RPCHandler(appRouter, {
       plugins: [new ResponseHeadersPlugin()],
     }),
+    aiHandler: new RPCHandler(appRouter, {
+      plugins: [new BodyLimitPlugin({ maxBodySize: aiAdmission.AI_MAX_BODY_BYTES }), new ResponseHeadersPlugin()],
+    }),
+    ...aiAdmission,
     createRpcResponseHeaders,
     initServices,
     startBackgroundWorker,
@@ -274,10 +281,19 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
         return;
       }
 
+      let releaseAdmission: (() => void) | undefined;
       try {
         const devRpcHandler = await getDevRpcHandler();
         logger = devRpcHandler.logger;
         const { handler, initServices, createRpcResponseHeaders } = devRpcHandler;
+        const admission = devRpcHandler.aiRequestAdmission.acquire(req.url ?? "/", req.headers["content-length"]);
+        if (admission instanceof Response) {
+          res.statusCode = admission.status;
+          admission.headers.forEach((value, key) => res.setHeader(key, value));
+          res.end(await admission.text());
+          return;
+        }
+        releaseAdmission = admission;
         startBackgroundWorker = devRpcHandler.startBackgroundWorker;
         initServices();
 
@@ -291,7 +307,8 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
         };
         res.once("finish", startAfterSuccessfulResponse);
 
-        const result = await handler.handle(req, res, {
+        const selected = devRpcHandler.isAiInferenceRequest(req.url ?? "/") ? devRpcHandler.aiHandler : handler;
+        const result = await selected.handle(req, res, {
           prefix: "/api/rpc",
           context: { resHeaders: createRpcResponseHeaders(req.url ?? "/") },
         });
@@ -308,6 +325,8 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
       } catch (error) {
         logger?.error({ err: error }, "Dev RPC middleware failed");
         next(error);
+      } finally {
+        releaseAdmission?.();
       }
     });
 	},

@@ -1,0 +1,1 @@
+CREATE INDEX "idx_batch_item_active_media" ON "batch_items" USING btree ("media_id","kind","run_id") WHERE "batch_items"."status" IN ('pending', 'scheduled');

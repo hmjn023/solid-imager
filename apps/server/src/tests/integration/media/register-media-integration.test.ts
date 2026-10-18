@@ -7,9 +7,9 @@ import {
 	type MediaSource,
 	mediaSources,
 	medias,
+	jobs,
 } from "~/infrastructure/db/schema";
 import { services } from "~/infrastructure/service-registry";
-import { MediaProcessingService } from "~/infrastructure/services/media-processing-service";
 import { MediaService } from "~/infrastructure/services/media-service";
 
 const TEST_TIMEOUT = 15_000;
@@ -21,6 +21,9 @@ describe("registerExistingMedia Integration", () => {
 	let tempSourceDir: string;
 
 	beforeEach(async () => {
+		await services.getJobWorker().stop();
+		await services.getMediaFileWorker().stop();
+		await services.getMediaAiWorker().stop();
 		// Create a temporary directory for the media source
 		tempSourceDir = await fs.mkdtemp(
 			path.join(fixturesDir, "test-source-register-"),
@@ -70,13 +73,10 @@ describe("registerExistingMedia Integration", () => {
 			expect(mediaList[0].width).toBe(ExpectedWidth);
 			expect(mediaList[0].height).toBe(ExpectedHeight);
 
-			// Manually trigger background processing instead of waiting for worker
-			const jobRepo = services.getJobRepository();
-			const jobs = await jobRepo.findPending(10);
-			const processJob = jobs.find((j) => j.type === "processMedia");
-			if (processJob) {
-				await MediaProcessingService.executeProcessMediaJob(processJob);
-			}
+			const processor = services.getMediaProcessingService();
+			await processor.runFileTask("metadata");
+			await processor.runFileTask("thumbnail");
+			expect(await db.select().from(jobs)).toHaveLength(0);
 
 			// Verify thumbnail generation
 			const storageConfig = services.getConfigService().getConfig().storage;

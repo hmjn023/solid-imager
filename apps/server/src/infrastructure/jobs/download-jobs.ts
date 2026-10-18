@@ -9,19 +9,22 @@ import type {
 	AddMediaRequest,
 	DownloadItem,
 } from "@solid-imager/core/domain/media/schemas";
-import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import type { DownloadRegistrationEntry } from "@solid-imager/core/domain/jobs/schemas";
+import { DownloadRegistration } from "./download-registration";
+import {
+	downloadInputSchema,
+	type DownloadClaim,
+} from "@solid-imager/core/domain/downloads/schemas";
+import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import { DownloadRunRepository } from "~/infrastructure/repositories/download-run-repository";
+import { downloadRunService } from "~/infrastructure/services/download-run-service";
 import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
 import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import { asyncPool } from "@solid-imager/core/utils/async-pool";
 import { isRecord } from "@solid-imager/core/utils/type-guards";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
-import { db } from "~/infrastructure/db";
-import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
-import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { logger } from "~/infrastructure/logger";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
@@ -222,6 +225,7 @@ async function downloadWithYtDlp(
 	outputDir: string,
 	cookies?: Cookie[],
 	userAgent?: string,
+	signal?: AbortSignal,
 ): Promise<{ filePath: string; metadata: YtDlpOutput }[]> {
 	await fs.mkdir(outputDir, { recursive: true });
 
@@ -245,7 +249,7 @@ async function downloadWithYtDlp(
 		};
 		// Use the raw subprocess API: the wrapper reparses rejected errors and can
 		// replace spawn/JSON errors with an empty stderr-based message.
-		const result = await ytdlp.exec(url, flags);
+		const result = await ytdlp.exec(url, flags, { signal });
 
 		// output handling
 		const outputs = parseYtDlpOutput(result.stdout);
@@ -313,6 +317,7 @@ async function fetchMetadataWithYtDlp(
 	url: string,
 	cookies?: Cookie[],
 	userAgent?: string,
+	signal?: AbortSignal,
 ): Promise<YtDlpOutput | null> {
 	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
 
@@ -327,7 +332,7 @@ async function fetchMetadataWithYtDlp(
 			...(userAgent && { userAgent }),
 			...(cookieFilePath && { cookies: cookieFilePath }),
 		};
-		const result = await ytdlp.exec(url, flags);
+		const result = await ytdlp.exec(url, flags, { signal });
 
 		return ytDlpOutputSchema.parse(JSON.parse(result.stdout));
 	} catch (error) {
@@ -380,7 +385,7 @@ function resolveCreatedAt(
 async function handleYtDlpDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
-	basePath: string,
+	registration: DownloadRegistration,
 ) {
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for yt-dlp download");
@@ -390,13 +395,14 @@ async function handleYtDlpDownload(
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
 
 	try {
-		await waitForDownloadRateLimit();
+		await waitForDownloadRateLimit(registration.signal);
 
 		const results = await downloadWithYtDlp(
 			item.targetUrl,
-			basePath,
+			registration.stagingDirectory,
 			item.cookies,
 			item.userAgent,
+			registration.signal,
 		);
 
 		logger.info(
@@ -404,23 +410,23 @@ async function handleYtDlpDownload(
 			"[DownloadJob] yt-dlp download completed",
 		);
 
+		const entries: DownloadRegistrationEntry[] = [];
 		for (let i = 0; i < results.length; i++) {
-			await _processSingleYtDlpResult({
-				index: i,
-				results,
-				item,
-				mediaSourceId,
-				basePath,
-			});
+			entries.push(
+				await _processSingleYtDlpResult({
+					index: i,
+					results,
+					item,
+					mediaSourceId,
+					basePath: registration.stagingDirectory,
+				}),
+			);
 		}
+		await registration.complete(entries);
 	} catch (error) {
 		logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
 
-		// Notify frontend through the typed event bus.
-		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
+		// The typed worker publishes failure after its current lease outcome commits.
 		throw error;
 	}
 }
@@ -498,7 +504,7 @@ async function _processSingleYtDlpResult(params: {
 		),
 	};
 
-	await registerMedia(newMedia, mediaSourceId, item, basePath);
+	return registrationEntry(newMedia, item, filePath);
 }
 
 async function _resolveFinalPathWithAvoidance(
@@ -567,7 +573,7 @@ function getDirectImageExtension(contentType: string): string | null {
 async function handleDirectImageDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
-	basePath: string,
+	registration: DownloadRegistration,
 ) {
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for direct download");
@@ -582,10 +588,11 @@ async function handleDirectImageDownload(
 		// Download the image
 		const headers = buildFetchHeaders(item);
 
-		await waitForDownloadRateLimit();
+		await waitForDownloadRateLimit(registration.signal);
 
 		const response = await fetch(item.targetUrl, {
 			headers,
+			signal: registration.signal,
 		});
 		if (!response.ok) {
 			logger.error(
@@ -623,7 +630,7 @@ async function handleDirectImageDownload(
 
 		// Use ServerMediaStorage to save with autoIncrement
 		const fileInfo = await ServerMediaStorage.saveFile(
-			basePath,
+			registration.stagingDirectory,
 			{
 				name: filename,
 				arrayBuffer: async () => arrayBuffer,
@@ -635,7 +642,10 @@ async function handleDirectImageDownload(
 			},
 		);
 
-		const fullPath = path.join(basePath, fileInfo.filePath);
+		const fullPath = path.join(
+			registration.stagingDirectory,
+			fileInfo.filePath,
+		);
 
 		let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
 
@@ -651,6 +661,7 @@ async function handleDirectImageDownload(
 					tweetUrl,
 					item.cookies,
 					item.userAgent,
+					registration.signal,
 				);
 				if (meta?.upload_date) {
 					createdAt = new Date(
@@ -689,7 +700,7 @@ async function handleDirectImageDownload(
 			),
 		};
 
-		await registerMedia(newMedia, mediaSourceId, item, basePath);
+		await registration.complete([registrationEntry(newMedia, item, fullPath)]);
 
 		logger.info(
 			{ url: item.targetUrl },
@@ -701,32 +712,26 @@ async function handleDirectImageDownload(
 			"[DownloadJob] Download failed",
 		);
 
-		// Notify frontend through the typed event bus.
-		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
-
 		throw error;
 	}
 }
 
-/** Extracts a DownloadItem from a job payload. */
-function getDownloadItemFromJob(job: Job): DownloadItem {
-	return downloadItemSchema.parse(job.payload);
-}
-
-export async function processDownloadJob(job: Job): Promise<void> {
-	const mediaSourceId = job.mediaSourceId;
+export async function processDownloadRun(
+	run: DownloadClaim,
+	signal?: AbortSignal,
+): Promise<void> {
+	const mediaSourceId = run.mediaSourceId;
 	if (!mediaSourceId) {
-		logger.error({ jobId: job.id }, "Missing mediaSourceId in download job");
-		return;
+		throw new Error("Download source was removed");
 	}
 	// Extract the normalized item from the job payload.
-	const item = getDownloadItemFromJob(job);
+	const item = downloadInputSchema.parse(run.input);
 
 	if (!item.targetUrl) {
-		logger.error({ job }, "[DownloadJob] Job payload missing targetUrl");
+		logger.error(
+			{ runId: run.id },
+			"[DownloadJob] Run input missing targetUrl",
+		);
 		throw new Error("Download job payload missing targetUrl");
 	}
 
@@ -737,15 +742,32 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	if (mediaSource?.type !== "local") {
 		const error = "Media source not found or not a local source";
 		logger.error({ mediaSourceId }, `[DownloadJob] ${error}`);
-		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error,
-		});
 		throw new Error(error);
 	}
 
-	const connectionInfo = mediaSource.connectionInfo as { path: string };
+	const connectionInfo = localConnectionSchema.parse(
+		mediaSource.connectionInfo,
+	);
 	const basePath = connectionInfo.path;
+	if (basePath !== run.sourcePath)
+		throw new Error("Download target source changed");
+	const registration = new DownloadRegistration(
+		run,
+		mediaSourceId,
+		basePath,
+		DownloadRunRepository,
+		async (entry, tx) => {
+			const { MediaProcessingService } =
+				await import("~/infrastructure/services/media-processing-service");
+			return MediaProcessingService.registerAndProcess(
+				mediaSourceId,
+				entry.filePath,
+				entry.context,
+				{ tx, sourcePath: basePath },
+			);
+		},
+		signal,
+	);
 
 	// Decision: Direct download or yt-dlp?
 	// Use regex to detect Twitter URLs which might need yt-dlp if target is the tweet link
@@ -757,108 +779,49 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	);
 
 	try {
+		if (await registration.resume()) return;
+		await registration.prepare();
 		if (isTwitterPost) {
 			logger.info({}, "[DownloadJob] Using yt-dlp download method");
-			await handleYtDlpDownload(item, mediaSourceId, basePath);
+			await handleYtDlpDownload(item, mediaSourceId, registration);
 		} else {
-			await handleDirectImageDownload(item, mediaSourceId, basePath);
+			await handleDirectImageDownload(item, mediaSourceId, registration);
 		}
 	} catch (error) {
 		logger.error(
 			{ err: error, url: item.targetUrl },
 			"[DownloadJob] Job execution failed",
 		);
-		// Notify frontend through the typed event bus.
-		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
 		throw error;
 	}
 }
 
-/**
- * Helper to update existing media with download metadata when media already exists
- * (handles race condition with FileWatcherService)
- */
-async function updateExistingMediaWithMetadata(
-	mediaId: string,
-	mediaSourceId: string,
+/** Files and context are checkpointed before publication or registration. */
+function registrationEntry(
 	newMedia: AddMediaRequest,
 	item: DownloadItem,
-): Promise<void> {
-	const { MediaProcessingService } =
-		await import("~/infrastructure/services/media-processing-service");
-
-	await MediaProcessingService.addContextMetadataToExistingMedia(mediaId, {
-		description: newMedia.description ?? undefined,
-		sourceUrls: newMedia.sourceUrls,
-		authors: item.authors,
-		// We can also update other metadata if needed, consistent with registerMedia
-		tags: item.tags,
-		characters: item.characters,
-		ips: item.ips,
-		projects: item.projects,
-	});
-
-	RealtimeEventBus.publishSource(mediaSourceId, "media-added", {
-		mediaId,
+	stagedPath: string,
+): DownloadRegistrationEntry {
+	if (!newMedia.modifiedAt)
+		throw new Error("Completed download has no modification time");
+	return {
+		stagedPath,
 		filePath: newMedia.filePath,
-	});
-	logger.info(
-		{ mediaId },
-		"[DownloadJob] Existing media updated with download metadata",
-	);
-}
-
-async function registerMedia(
-	newMedia: AddMediaRequest,
-	mediaSourceId: string,
-	item: DownloadItem,
-	_basePath: string,
-) {
-	try {
-		// Use MediaProcessingService for unified registration and processing
-		const { MediaProcessingService } =
-			await import("~/infrastructure/services/media-processing-service");
-
-		const insertedMedia = await MediaProcessingService.registerAndProcess(
-			mediaSourceId,
-			newMedia.filePath,
-			{
-				description: newMedia.description ?? undefined,
-				createdAt: newMedia.createdAt,
-				sourceUrls: newMedia.sourceUrls,
-				authors: item.authors,
-				tags: item.tags,
-				characters: item.characters,
-				ips: item.ips,
-				projects: item.projects,
-				generationInfo: item.generationInfo,
-			},
-		);
-
-		logger.info(
-			{ mediaId: insertedMedia.id, filePath: newMedia.filePath },
-			"[DownloadJob] Media registered via MediaProcessingService",
-		);
-	} catch (error) {
-		// Handle race condition with FileWatcherService
-		const existing = await MediaRepository.findByPath(
-			mediaSourceId,
-			newMedia.filePath,
-		);
-		if (existing) {
-			await updateExistingMediaWithMetadata(
-				existing.id,
-				mediaSourceId,
-				newMedia,
-				item,
-			);
-		} else {
-			throw error;
-		}
-	}
+		fileSize: newMedia.fileSize,
+		modifiedAt: newMedia.modifiedAt,
+		published: false,
+		context: {
+			description: newMedia.description ?? undefined,
+			createdAt: newMedia.createdAt,
+			sourceUrls: newMedia.sourceUrls ?? [],
+			authors: item.authors,
+			tags: item.tags,
+			characters: item.characters,
+			ips: item.ips,
+			projects: item.projects,
+			generationInfo: item.generationInfo,
+		},
+	};
 }
 
 /**
@@ -868,62 +831,7 @@ async function registerMedia(
 export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
-): Promise<{ jobCount: number; skippedCount: number }> {
-	const sourceRepo = DrizzleSourceRepository;
-	const mediaSource = await sourceRepo.findById(mediaSourceId);
-	if (mediaSource?.type !== "local") {
-		throw new Error("Media source not found or not a local source");
-	}
-
-	// Filter out items whose complete source URL set already exists (parallel)
-	const poolResults = await asyncPool(items, 5, async (item) => {
-		const urls = item.sourceUrls || [];
-		if (urls.length < 2) return { item, skip: false };
-		const existingMediaId =
-			await MediaRepository.findMediaIdWithMatchingUrlSet(urls);
-		if (existingMediaId) {
-			logger.info(
-				{ urls, existingMediaId, fileName: item.fileName },
-				"Skipping duplicate download item (source URLs already exist)",
-			);
-			return { item, skip: true };
-		}
-		return { item, skip: false };
-	});
-
-	const newItems: DownloadItem[] = [];
-	let skippedCount = 0;
-	for (const [index, result] of poolResults.entries()) {
-		if (result.status === "rejected") {
-			logger.warn(
-				{ err: result.reason, item: items[index] },
-				"Failed to check duplicate download item; keeping it in the batch",
-			);
-			newItems.push(items[index]);
-		} else if (result.value.skip) {
-			skippedCount++;
-		} else {
-			newItems.push(result.value.item);
-		}
-	}
-
-	const jobRows: NewJob[] = newItems.map((item) => ({
-		type: "downloadImage",
-		mediaSourceId,
-		payload: {
-			...item,
-			description: item.description ?? formatMetadataAsMarkdown(item),
-			createdAt: item.createdAt ? new Date(item.createdAt) : undefined,
-		},
-	}));
-	if (jobRows.length === 0) return { jobCount: 0, skippedCount };
-	const BATCH_SIZE = 500;
-	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
-		const chunk = jobRows.slice(i, i + BATCH_SIZE);
-		await db.insert(jobs).values(chunk);
-	}
-
-	// Jobs are picked up by the worker automatically.
-
-	return { jobCount: newItems.length, skippedCount };
+	tx?: import("@solid-imager/core/domain/interfaces/transaction-manager").Transaction,
+): Promise<{ jobCount: number; skippedCount: number; runIds: string[] }> {
+	return downloadRunService.enqueue(mediaSourceId, items, tx);
 }

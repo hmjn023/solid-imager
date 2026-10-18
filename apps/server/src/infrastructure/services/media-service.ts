@@ -21,7 +21,7 @@ import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
-import { executeDeferredActions } from "~/infrastructure/services/job-dispatch-service";
+import { executeDeferredActions } from "~/infrastructure/services/deferred-media-effects";
 
 // Infrastructure adapters that wrap server-specific implementations
 const eventPublisher: ISourceEventPublisher = {
@@ -77,8 +77,7 @@ function createMediaService(): MediaServiceImpl {
 		services.getMediaRepository(),
 		services.getSourceRepository(),
 		services.getMediaStorage(),
-		services.getTagRepository(),
-		services.getImageProcessor(),
+		services.getMediaProcessingService(),
 		appLogger,
 	);
 
@@ -86,7 +85,8 @@ function createMediaService(): MediaServiceImpl {
 		services.getMediaRepository(),
 		services.getSourceRepository(),
 		services.getMediaStorage(),
-		services.getJobRepository(),
+		services.getMediaProcessingService(),
+		DrizzleTransactionManager,
 	);
 
 	const transferService = new MediaTransferService(
@@ -98,7 +98,7 @@ function createMediaService(): MediaServiceImpl {
 		services.getCharacterRepository(),
 		services.getIpRepository(),
 		DrizzleTransactionManager as TransactionManager,
-		services.getJobRepository(),
+		services.getMediaProcessingService(),
 		eventPublisher,
 		thumbnailManager,
 		appLogger,

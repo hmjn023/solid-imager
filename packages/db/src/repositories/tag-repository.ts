@@ -10,7 +10,7 @@ import type {
 	TagRepository as TagRepositoryDef,
 } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { UpdateTag } from "@solid-imager/core/domain/tags/schemas";
-import { eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
+import { and, eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import { mediaTags, tags } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -207,6 +207,14 @@ export function createTagRepository(
 			}
 		},
 
+		async removeTagsFromSource(mediaId, source, tx) {
+			await getExecutor(tx)
+				.delete(mediaTags)
+				.where(
+					and(eq(mediaTags.mediaId, mediaId), eq(mediaTags.source, source)),
+				);
+		},
+
 		async addTagsToMedia(
 			mediaId: string,
 			tagsToInsert: {
@@ -275,7 +283,10 @@ export function createTagRepository(
 						let sourceUpdateSql = sql`excluded.source`;
 						let confidenceUpdateSql = sql`excluded.confidence`;
 
-						if (source === "AI") {
+						if (source === "comfyui_workflow") {
+							sourceUpdateSql = sql`CASE WHEN media_tags.source = 'comfyui_workflow' THEN excluded.source ELSE media_tags.source END`;
+							confidenceUpdateSql = sql`CASE WHEN media_tags.source = 'comfyui_workflow' THEN excluded.confidence ELSE media_tags.confidence END`;
+						} else if (source === "AI") {
 							sourceUpdateSql = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.source ELSE media_tags.source END`;
 							confidenceUpdateSql = sql`CASE WHEN media_tags.source = 'AI' THEN excluded.confidence ELSE media_tags.confidence END`;
 						} else if (source === "manual") {

@@ -1,3 +1,6 @@
+import { getMediaTaskRevision } from "@solid-imager/application/services/media-task-service";
+import { processingSettingsFromConfig, serializeMediaProcessingInput } from "@solid-imager/core/domain/processing/schemas";
+import { mediaProcessingStates, batchRuns, batchItems, batchItemAttempts } from "@solid-imager/db/schema";
 import { randomUUID } from "node:crypto";
 import { copyFile, link, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -11,6 +14,7 @@ import {
   E2E_WRONG_AUTHOR_ID, E2E_CORRECT_AUTHOR_ID, E2E_COAUTHOR_ID,
   E2E_PRIMARY_FILE_NAME,
   E2E_PRIMARY_MEDIA_ID,
+  E2E_PROCESSING_JOB_ID,
   E2E_SIMILAR_FILE_NAME,
   E2E_SIMILAR_MEDIA_ID,
   E2E_SOURCE_ID,
@@ -208,6 +212,36 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
         metadata: { fixture: "e2e-scroll" },
       })),
     ]);
+    const processingInput = { mediaId: E2E_PRIMARY_MEDIA_ID, mediaSourceId: E2E_SOURCE_ID,
+      sourcePath: mediaDir, filePath: E2E_PRIMARY_FILE_NAME, fileSize: primaryStats.size,
+      modifiedAt: primaryStats.mtime, mediaType: "image" as const };
+    const processingSettings = processingSettingsFromConfig({ ...defaultAppConfig,
+      storage: { ...defaultAppConfig.storage, thumbnailDir: path.join(runtimeDir, "thumbnails") } });
+    const processingRows = await db.insert(mediaProcessingStates).values((["metadata", "thumbnail"] as const).map((kind) => {
+      const revision = getMediaTaskRevision(processingInput, kind, processingSettings);
+      return { mediaId: E2E_PRIMARY_MEDIA_ID, taskKind: kind,
+        status: kind === "metadata" ? "completed" : "failed", inputRevision: serializeMediaProcessingInput(processingInput),
+        executionMode: "scheduled", scheduledInput: { ...processingInput, modifiedAt: processingInput.modifiedAt.toISOString() },
+        requestedRevision: revision, completedRevision: kind === "metadata" ? revision : null, attemptCount: 1 };
+    })).returning();
+    const thumbnail = processingRows.find(row => row.taskKind === "thumbnail");
+    if (!thumbnail) throw new Error("Missing failed thumbnail fixture");
+    await db.insert(batchRuns).values({
+      id: E2E_PROCESSING_JOB_ID, status: "failed", attemptCount: 1, dispatchComplete: true,
+      input: { kind: "thumbnail", mediaSourceId: E2E_SOURCE_ID, mediaIds: [E2E_PRIMARY_MEDIA_ID], force: false, missingOnly: false, thumbnailSize: 512 },
+      createdAt: seededAt, updatedAt: seededAt, finishedAt: seededAt,
+    });
+    const [item] = await db.insert(batchItems).values({
+      runId: E2E_PROCESSING_JOB_ID, mediaId: E2E_PRIMARY_MEDIA_ID, mediaSourceId: E2E_SOURCE_ID, kind: "thumbnail", status: "failed",
+      input: { ...processingInput, modifiedAt: processingInput.modifiedAt.toISOString() }, plannedRevision: thumbnail.requestedRevision,
+      requestId: thumbnail.requestId, requestedRevision: thumbnail.requestedRevision, attemptCount: 1, failureCode: "processing_failed",
+      createdAt: seededAt, updatedAt: seededAt, finishedAt: seededAt,
+    }).returning();
+    await db.insert(batchItemAttempts).values({
+      itemId: item.id, requestId: thumbnail.requestId, requestedRevision: thumbnail.requestedRevision,
+      attemptCount: 1, status: "failed", failureCode: "processing_failed", createdAt: seededAt, finishedAt: seededAt,
+    });
+
   } finally {
     await client.close();
   }

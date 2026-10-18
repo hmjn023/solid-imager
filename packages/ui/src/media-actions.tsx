@@ -191,7 +191,8 @@ export function MediaActions(props: MediaActionsProps) {
 	}
 
 	createEffect(() => {
-		if (!isCcipJobPending() || !activeCcipJobId()) return;
+		// Independent scheduled work can be processing without a batch job ID.
+		if (!isCcipJobPending()) return;
 		const intervalId = setInterval(() => {
 			void refreshCcipStatus();
 		}, CCIP_STATUS_REFRESH_INTERVAL_MS);

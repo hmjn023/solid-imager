@@ -22,6 +22,14 @@ export class ResourceNotFoundError extends DomainError {
 
 export class ResourceConflictError extends DomainError {}
 
+/** Local inference admission was refused before computation began. Never reconstructed from HTTP errors. */
+export class AiInferenceBusyError extends DomainError {
+	readonly code = "TOO_MANY_REQUESTS";
+	constructor() {
+		super("AI inference capacity exceeded");
+	}
+}
+
 export class MediaFileConflictError extends DomainError {
 	constructor(readonly filePath: string) {
 		super(`Media file already exists: ${filePath}`);

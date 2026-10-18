@@ -54,6 +54,20 @@ describe.each([".svg", ".tiff"] as const)(
 			return filePath;
 		}
 
+		it("keeps staged downloads out of bulk media scans", async () => {
+			const hidden = path.join(
+				tempDirectory,
+				".solid-imager-downloads",
+				"job",
+				"1",
+			);
+			await fs.mkdir(hidden, { recursive: true });
+			await createFixture(`unpublished${extension}`, hidden);
+			const published = await createFixture(`published${extension}`);
+			expect(await ServerMediaStorage.scanDirectory(tempDirectory)).toEqual([
+				published,
+			]);
+		});
 		it("retains uploaded files after sharp metadata fallback", async () => {
 			const fileName = `uploaded${extension}`;
 			const sourceDirectory = path.join(tempDirectory, "source");

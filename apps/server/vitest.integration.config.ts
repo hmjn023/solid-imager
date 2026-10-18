@@ -19,7 +19,9 @@ export default defineConfig({
 			hooks: "stack",
 		},
 		pool: "forks",
-		singleFork: true,
+		// singleFork is no longer a Vitest 5 option. Explicitly bound PGlite workers.
+		maxWorkers: 1,
+		fileParallelism: false,
 		env: {
 			DB_HOST: "pglite",
 		},

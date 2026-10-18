@@ -49,6 +49,7 @@ function record(
 		vector: feature,
 		model: CCIP_MODEL,
 		embeddingVersion: CCIP_EMBEDDING_VERSION,
+		processingRevision: null,
 		mediaModifiedAt: MODIFIED_AT,
 		extractedAt: EXTRACTED_AT,
 	};
@@ -136,6 +137,7 @@ describe("PostgresCcipVectorStore", () => {
 						mediaSourceId: SOURCE_A_ID,
 						model: CCIP_MODEL,
 						embeddingVersion: CCIP_EMBEDDING_VERSION,
+						processingRevision: null,
 						mediaModifiedAt: MODIFIED_AT,
 						extractedAt: EXTRACTED_AT,
 					},

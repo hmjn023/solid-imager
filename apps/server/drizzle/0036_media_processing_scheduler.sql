@@ -1,0 +1,9 @@
+ALTER TABLE "media_processing_states" ADD COLUMN "execution_mode" text DEFAULT 'inline' NOT NULL;--> statement-breakpoint
+ALTER TABLE "media_processing_states" ADD COLUMN "scheduled_input" jsonb;--> statement-breakpoint
+ALTER TABLE "media_processing_states" ADD COLUMN "available_at" timestamp DEFAULT now() NOT NULL;--> statement-breakpoint
+ALTER TABLE "media_processing_states" ADD COLUMN "max_attempts" integer DEFAULT 5 NOT NULL;--> statement-breakpoint
+CREATE INDEX "idx_media_processing_due" ON "media_processing_states" USING btree ("task_kind","available_at") WHERE "media_processing_states"."execution_mode" = 'scheduled' AND "media_processing_states"."status" = 'pending';--> statement-breakpoint
+CREATE INDEX "idx_media_processing_expired" ON "media_processing_states" USING btree ("task_kind","heartbeat_at") WHERE "media_processing_states"."execution_mode" = 'scheduled' AND "media_processing_states"."status" = 'in_progress';--> statement-breakpoint
+ALTER TABLE "media_processing_states" ADD CONSTRAINT "media_processing_execution" CHECK ("media_processing_states"."execution_mode" IN ('inline', 'scheduled'));--> statement-breakpoint
+ALTER TABLE "media_processing_states" ADD CONSTRAINT "media_processing_retry_cap" CHECK ("media_processing_states"."max_attempts" BETWEEN 1 AND 20);--> statement-breakpoint
+ALTER TABLE "media_processing_states" ADD CONSTRAINT "media_processing_scheduled_owner" CHECK ("media_processing_states"."execution_mode" <> 'scheduled' OR ("media_processing_states"."scheduled_input" IS NOT NULL AND "media_processing_states"."owner_job_id" IS NULL AND "media_processing_states"."owner_attempt_count" IS NULL AND "media_processing_states"."attempt_count" <= "media_processing_states"."max_attempts"));

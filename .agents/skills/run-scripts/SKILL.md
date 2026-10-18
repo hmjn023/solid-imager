@@ -22,11 +22,9 @@ description: サーバー等のユーティリティ・管理スクリプトの�
    ```
 
 3. **環境変数とサービスの初期化**
-   - DBクエリや共通サービス（`registry`等）に依存するスクリプトでは、実行の最初期に `initServices()` を呼び出して、設定ファイル（`.env`等）のロードと各種レジストリサービスの設定を行う必要があります。
-   ```typescript
-   import { initServices } from "../src/infrastructure/bootstrap";
-   initServices();
-   ```
+   - DBの監査・cutover・rollbackには `scripts/maintenance-database.ts` の `withMaintenanceDatabase` を使う。設定を読み、所有する接続を閉じる。bootstrapやworker起動を伴わせない。
+   - 通常のアプリケーションサービスが必要なスクリプトだけ、既存entrypointに合わせてregistryを初期化する。DB保守のためだけに `initServices()` を呼ばない。
+   - 実行先DB・storageを明示し、テストは隔離fixtureを使う。稼働DBへ向く設定のまま検証しない。
 
 ## パスエイリアス（`~/*`）解決のトラブルシューティング
 
