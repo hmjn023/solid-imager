@@ -5,9 +5,39 @@ import {
 	processingMediaRequestSchema,
 	processingRetryRequestSchema,
 	safeMediaProcessingSchema,
+	processingRequestStepSchema,
+	processingRecoveryRequestSchema,
+	processingRecoveryResponseSchema,
 } from "../processing/schemas";
 
 export const processingContract = {
+	scanRecovery: oc
+		.route({
+			tags: ["Processing"],
+			summary: "未完了工程の検査",
+			description:
+				"100件以下ずつ検査し、未要求・失敗・古い要求・成果物欠損・需要を失った待機要求を返します。実行中・予約済み・正常完了は除外します。cursorがnullになるまで継続します。",
+		})
+		.input(processingRecoveryRequestSchema)
+		.output(processingRecoveryResponseSchema),
+	enqueueRecovery: oc
+		.route({
+			tags: ["Processing"],
+			summary: "未完了工程の補修投入",
+			description:
+				"検査と再確認を行い、100件以下の固定対象batchへ予約します。metadata・thumbnail・tagging・ccipに対応し、正常完了や既存の実行を保持します。cursorで全ページを継続できます。",
+		})
+		.input(processingRecoveryRequestSchema)
+		.output(processingRecoveryResponseSchema),
+	request: oc
+		.route({
+			tags: ["Processing"],
+			summary: "未要求・古い工程の投入",
+			description:
+				"観測した要求ID（未要求はnull）を照合し、未要求・古い要求・失敗した工程だけを現在の入力で予約します。",
+		})
+		.input(processingRequestStepSchema)
+		.output(safeMediaProcessingSchema),
 	list: oc
 		.route({
 			tags: ["Processing"],

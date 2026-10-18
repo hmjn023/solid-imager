@@ -8,6 +8,7 @@ export const batchKindSchema = z.enum([
 	"tagging",
 	"ccip",
 	"thumbnail",
+	"metadata",
 	"media",
 ]);
 export const batchStatusSchema = z.enum([
@@ -31,6 +32,8 @@ export const batchInputSchema = z.object({
 	kind: batchKindSchema,
 	mediaSourceId: z.uuid().optional(),
 	mediaIds: z.array(z.uuid()).min(1).max(5000).optional(),
+	/** Recheck unfinished work only when capturing an explicit recovery page. */
+	recovery: z.boolean().optional(),
 	force: z.boolean().default(false),
 	missingOnly: z.boolean().default(false),
 	thumbnailSize: z.union([z.literal(256), z.literal(512)]).default(512),

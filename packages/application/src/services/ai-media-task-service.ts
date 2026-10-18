@@ -145,7 +145,10 @@ export class AiMediaTaskService<Result> {
 			previous?.status === "completed" &&
 			previous.requestedRevision === revision
 		)
-			force = !this.handler.canReuse() || !(await this.handler.load(input, tx));
+			force =
+				previous.completedRevision !== revision ||
+				!this.handler.canReuse() ||
+				!(await this.handler.load(input, tx));
 		return this.deps.processingStateRepo.request(
 			{ input, taskKind: this.kind, revision, maxAttempts: 5, force, batchId },
 			tx,

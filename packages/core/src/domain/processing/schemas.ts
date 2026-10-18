@@ -168,6 +168,7 @@ export const safeProcessingStepSchema = z.object({
 	updatedAt: z.coerce.date().nullable(),
 	failureCode: processingFailureCodeSchema.nullable(),
 	canRetry: z.boolean(),
+	canRequest: z.boolean().optional(),
 });
 export type SafeProcessingStep = z.infer<typeof safeProcessingStepSchema>;
 export const safeMediaProcessingSchema = z.object({
@@ -182,7 +183,13 @@ export const safeMediaProcessingSchema = z.object({
 export type SafeMediaProcessing = z.infer<typeof safeMediaProcessingSchema>;
 export const processingListRequestSchema = z.object({
 	mediaSourceId: z.uuid().optional(),
-	status: mediaProcessingStateSchema.shape.status.optional(),
+	status: z
+		.union([
+			mediaProcessingStateSchema.shape.status,
+			z.literal("not_requested"),
+		])
+		.optional(),
+	kind: mediaTaskKindSchema.optional(),
 	query: z.string().trim().max(100).optional(),
 	limit: z.number().int().min(1).max(100).default(25),
 	offset: z.number().int().min(0).default(0),
@@ -205,6 +212,52 @@ export const processingRetryRequestSchema = processingMediaRequestSchema.extend(
 );
 export type ProcessingRetryRequest = z.infer<
 	typeof processingRetryRequestSchema
+>;
+
+export const processingRequestStepSchema = processingMediaRequestSchema.extend({
+	kind: mediaTaskKindSchema,
+	/** Null asserts that no request exists; otherwise fence the observed request. */
+	requestId: z.uuid().nullable(),
+});
+export type ProcessingRequestStep = z.infer<typeof processingRequestStepSchema>;
+export const processingRecoveryReasonSchema = z.enum([
+	"not_requested",
+	"failed",
+	"outdated",
+	"missing_output",
+	"abandoned",
+]);
+export type ProcessingRecoveryReason = z.infer<
+	typeof processingRecoveryReasonSchema
+>;
+export const processingRecoveryCursorSchema = z.object({
+	before: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/),
+	afterId: z.uuid(),
+});
+export const processingRecoveryRequestSchema = z.object({
+	kind: mediaTaskKindSchema,
+	mediaSourceId: z.uuid().optional(),
+	query: z.string().trim().max(100).optional(),
+	cursor: processingRecoveryCursorSchema.optional(),
+});
+export const processingRecoveryItemSchema = z.object({
+	mediaId: z.uuid(),
+	fileName: z.string(),
+	sourceName: z.string(),
+	reason: processingRecoveryReasonSchema,
+});
+export const processingRecoveryResponseSchema = z.object({
+	scanned: z.number().int().nonnegative(),
+	items: z.array(processingRecoveryItemSchema).max(100),
+	queued: z.number().int().nonnegative(),
+	jobId: z.uuid().nullable(),
+	cursor: processingRecoveryCursorSchema.nullable(),
+});
+export type ProcessingRecoveryRequest = z.infer<
+	typeof processingRecoveryRequestSchema
+>;
+export type ProcessingRecoveryResponse = z.infer<
+	typeof processingRecoveryResponseSchema
 >;
 
 export const scheduledMediaWorkSchema = z.object({

@@ -15,6 +15,7 @@ export function getJobActionTargetId(
 			"extract_ccip_vector",
 			"generate_thumbnail",
 			"processMedia",
+			"extract_metadata",
 		].includes(job.type)
 		? job.parentId
 		: job.id;

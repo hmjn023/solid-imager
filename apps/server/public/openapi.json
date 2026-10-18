@@ -17507,6 +17507,9 @@
                       "format": "uuid"
                     }
                   },
+                  "recovery": {
+                    "type": "boolean"
+                  },
                   "force": {
                     "type": "boolean",
                     "default": false
@@ -17553,6 +17556,7 @@
                             "tagging",
                             "ccip",
                             "thumbnail",
+                            "metadata",
                             "media"
                           ],
                           "type": "string"
@@ -17868,6 +17872,7 @@
                                   "tagging",
                                   "ccip",
                                   "thumbnail",
+                                  "metadata",
                                   "media"
                                 ],
                                 "type": "string"
@@ -18037,6 +18042,7 @@
                             "tagging",
                             "ccip",
                             "thumbnail",
+                            "metadata",
                             "media"
                           ],
                           "type": "string"
@@ -18357,6 +18363,7 @@
                             "tagging",
                             "ccip",
                             "thumbnail",
+                            "metadata",
                             "media"
                           ],
                           "type": "string"
@@ -18514,6 +18521,7 @@
                             "tagging",
                             "ccip",
                             "thumbnail",
+                            "metadata",
                             "media"
                           ],
                           "type": "string"
@@ -19499,6 +19507,548 @@
         }
       }
     },
+    "/processing/scanRecovery": {
+      "post": {
+        "operationId": "processing.scanRecovery",
+        "summary": "未完了工程の検査",
+        "description": "100件以下ずつ検査し、未要求・失敗・古い要求・成果物欠損・需要を失った待機要求を返します。実行中・予約済み・正常完了は除外します。cursorがnullになるまで継続します。",
+        "tags": [
+          "Processing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "metadata",
+                      "thumbnail",
+                      "tagging",
+                      "ccip"
+                    ],
+                    "type": "string"
+                  },
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "query": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "cursor": {
+                    "type": "object",
+                    "properties": {
+                      "before": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}$"
+                      },
+                      "afterId": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    },
+                    "required": [
+                      "before",
+                      "afterId"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scanned": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "items": {
+                      "type": "array",
+                      "maxItems": 100,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "mediaId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "sourceName": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "enum": [
+                              "not_requested",
+                              "failed",
+                              "outdated",
+                              "missing_output",
+                              "abandoned"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "mediaId",
+                          "fileName",
+                          "sourceName",
+                          "reason"
+                        ]
+                      }
+                    },
+                    "queued": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "jobId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "cursor": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "before": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}$"
+                            },
+                            "afterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "required": [
+                            "before",
+                            "afterId"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "scanned",
+                    "items",
+                    "queued",
+                    "jobId",
+                    "cursor"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processing/enqueueRecovery": {
+      "post": {
+        "operationId": "processing.enqueueRecovery",
+        "summary": "未完了工程の補修投入",
+        "description": "検査と再確認を行い、100件以下の固定対象batchへ予約します。metadata・thumbnail・tagging・ccipに対応し、正常完了や既存の実行を保持します。cursorで全ページを継続できます。",
+        "tags": [
+          "Processing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "metadata",
+                      "thumbnail",
+                      "tagging",
+                      "ccip"
+                    ],
+                    "type": "string"
+                  },
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "query": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "cursor": {
+                    "type": "object",
+                    "properties": {
+                      "before": {
+                        "type": "string",
+                        "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}$"
+                      },
+                      "afterId": {
+                        "type": "string",
+                        "format": "uuid"
+                      }
+                    },
+                    "required": [
+                      "before",
+                      "afterId"
+                    ]
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scanned": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "items": {
+                      "type": "array",
+                      "maxItems": 100,
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "mediaId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "sourceName": {
+                            "type": "string"
+                          },
+                          "reason": {
+                            "enum": [
+                              "not_requested",
+                              "failed",
+                              "outdated",
+                              "missing_output",
+                              "abandoned"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "mediaId",
+                          "fileName",
+                          "sourceName",
+                          "reason"
+                        ]
+                      }
+                    },
+                    "queued": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "jobId": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "cursor": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "before": {
+                              "type": "string",
+                              "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{6}$"
+                            },
+                            "afterId": {
+                              "type": "string",
+                              "format": "uuid"
+                            }
+                          },
+                          "required": [
+                            "before",
+                            "afterId"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "scanned",
+                    "items",
+                    "queued",
+                    "jobId",
+                    "cursor"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/processing/request": {
+      "post": {
+        "operationId": "processing.request",
+        "summary": "未要求・古い工程の投入",
+        "description": "観測した要求ID（未要求はnull）を照合し、未要求・古い要求・失敗した工程だけを現在の入力で予約します。",
+        "tags": [
+          "Processing"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "kind": {
+                    "enum": [
+                      "metadata",
+                      "thumbnail",
+                      "tagging",
+                      "ccip"
+                    ],
+                    "type": "string"
+                  },
+                  "requestId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "mediaId",
+                  "kind",
+                  "requestId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "mediaId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "mediaSourceId": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "sourceName": {
+                      "type": "string"
+                    },
+                    "fileName": {
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "enum": [
+                        "image",
+                        "video",
+                        "audio"
+                      ],
+                      "type": "string"
+                    },
+                    "modifiedAt": {
+                      "type": "string",
+                      "format": "date-time",
+                      "x-native-type": "date"
+                    },
+                    "steps": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "enum": [
+                              "metadata",
+                              "thumbnail",
+                              "tagging",
+                              "ccip"
+                            ],
+                            "type": "string"
+                          },
+                          "status": {
+                            "enum": [
+                              "not_requested",
+                              "skipped",
+                              "pending",
+                              "in_progress",
+                              "completed",
+                              "failed"
+                            ],
+                            "type": "string"
+                          },
+                          "isCurrent": {
+                            "type": "boolean"
+                          },
+                          "requestId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "attemptCount": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "maxAttempts": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "exclusiveMinimum": 0
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "availableAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "updatedAt": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "failureCode": {
+                            "anyOf": [
+                              {
+                                "enum": [
+                                  "file_missing",
+                                  "file_access_denied",
+                                  "service_unavailable",
+                                  "input_changed",
+                                  "lease_expired",
+                                  "retry_limit",
+                                  "processing_failed"
+                                ],
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "canRetry": {
+                            "type": "boolean"
+                          },
+                          "canRequest": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "status",
+                          "isCurrent",
+                          "requestId",
+                          "attemptCount",
+                          "maxAttempts",
+                          "availableAt",
+                          "updatedAt",
+                          "failureCode",
+                          "canRetry"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "mediaId",
+                    "mediaSourceId",
+                    "sourceName",
+                    "fileName",
+                    "mediaType",
+                    "modifiedAt",
+                    "steps"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/processing/list": {
       "post": {
         "operationId": "processing.list",
@@ -19519,11 +20069,27 @@
                     "format": "uuid"
                   },
                   "status": {
+                    "anyOf": [
+                      {
+                        "enum": [
+                          "pending",
+                          "in_progress",
+                          "completed",
+                          "failed"
+                        ],
+                        "type": "string"
+                      },
+                      {
+                        "const": "not_requested"
+                      }
+                    ]
+                  },
+                  "kind": {
                     "enum": [
-                      "pending",
-                      "in_progress",
-                      "completed",
-                      "failed"
+                      "metadata",
+                      "thumbnail",
+                      "tagging",
+                      "ccip"
                     ],
                     "type": "string"
                   },
@@ -19689,6 +20255,9 @@
                                   ]
                                 },
                                 "canRetry": {
+                                  "type": "boolean"
+                                },
+                                "canRequest": {
                                   "type": "boolean"
                                 }
                               },
@@ -19898,6 +20467,9 @@
                             ]
                           },
                           "canRetry": {
+                            "type": "boolean"
+                          },
+                          "canRequest": {
                             "type": "boolean"
                           }
                         },
@@ -20110,6 +20682,9 @@
                             ]
                           },
                           "canRetry": {
+                            "type": "boolean"
+                          },
+                          "canRequest": {
                             "type": "boolean"
                           }
                         },

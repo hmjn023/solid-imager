@@ -314,6 +314,57 @@ describe("processing management", () => {
 			canRetry: false,
 		});
 	});
+	it("requests an unrequested step with a null identity and fences a repeated click", async () => {
+		const image = await media();
+		expect((await service.get(image.id)).steps[0]).toMatchObject({
+			status: "not_requested",
+			canRequest: true,
+		});
+		const input = {
+			mediaId: image.id,
+			kind: "metadata" as const,
+			requestId: null,
+		};
+		expect((await service.request(input)).steps[0]).toMatchObject({
+			status: "pending",
+			canRequest: false,
+		});
+		const queued = await states.findByMediaIds([image.id]);
+		await expect(service.request(input)).rejects.toBeInstanceOf(
+			ResourceConflictError,
+		);
+		expect(await states.findByMediaIds([image.id])).toEqual(queued);
+		expect(request).toHaveBeenCalledOnce();
+	});
+	it("requeues outdated completed metadata without redoing another completed step", async () => {
+		const image = await media();
+		const original = await reserve(image.id, "metadata");
+		await finish("metadata");
+		await reserve(image.id, "thumbnail");
+		await finish("thumbnail");
+		const before = (await states.findByMediaIds([image.id])).find(
+			(row) => row.taskKind === "thumbnail",
+		);
+		version = "v2";
+		expect(
+			(
+				await service.request({
+					mediaId: image.id,
+					kind: "metadata",
+					requestId: original.requestId,
+				})
+			).steps[0],
+		).toMatchObject({ status: "pending", isCurrent: true });
+		expect(
+			(await states.findByMediaIds([image.id])).find(
+				(row) => row.taskKind === "thumbnail",
+			),
+		).toEqual(before);
+		const video = await media("movie.mp4", "video");
+		await expect(
+			service.request({ mediaId: video.id, kind: "metadata", requestId: null }),
+		).rejects.toBeInstanceOf(ResourceConflictError);
+	});
 	it("retries one failed task while preserving success and backoff in other tasks", async () => {
 		const image = await media();
 		for (const kind of ["metadata", "thumbnail", "tagging", "ccip"] as const)

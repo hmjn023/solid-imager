@@ -13,6 +13,7 @@ export const jobStatusSchema = z.enum([
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
 export const batchParentJobTypes = [
+	"metadata_extraction_parent",
 	"batch_ccip_parent",
 	"bulk_tagging_parent",
 	"thumbnail_generation_parent",

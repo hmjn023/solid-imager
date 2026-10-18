@@ -18,6 +18,7 @@ function fixture() {
 	const state = {
 		requestId: "33333333-3333-4333-8333-333333333333",
 		requestedRevision: "v1",
+		completedRevision: null as string | null,
 		taskKind: "tagging",
 		status: "pending",
 	};
@@ -53,6 +54,20 @@ function fixture() {
 
 describe("durable AI observation timeout", () => {
 	afterEach(() => vi.useRealTimers());
+	it.each([null, "old", "v1"])(
+		"repairs a completed request with completion revision %s even when output is present",
+		async (completedRevision) => {
+			const { service, input, state, infer, deps } = fixture();
+			state.status = "completed";
+			state.completedRevision = completedRevision;
+			await service.requestForMedia(input.mediaSourceId, input.mediaId);
+			expect(deps.processingStateRepo.request).toHaveBeenCalledWith(
+				expect.objectContaining({ force: completedRevision !== "v1" }),
+				expect.anything(),
+			);
+			expect(infer).not.toHaveBeenCalled();
+		},
+	);
 	it("observes successful work that completes 137 seconds after submission", async () => {
 		vi.useFakeTimers();
 		const { service, input, state, infer } = fixture();

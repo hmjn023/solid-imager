@@ -83,6 +83,12 @@ export function JobsPage(props: {
 			view={props.view}
 			onViewChange={props.onViewChange}
 			processingApi={{
+				listSources: () => orpc.sources.list(),
+				scanRecovery: (input, signal) =>
+					orpc.processing.scanRecovery(input, { signal }),
+				enqueueRecovery: (input, signal) =>
+					orpc.processing.enqueueRecovery(input, { signal }),
+				request: (input) => orpc.processing.request(input),
 				list: (input) => orpc.processing.list(input),
 				get: (input) => orpc.processing.get(input),
 				retry: (input) => orpc.processing.retry(input),

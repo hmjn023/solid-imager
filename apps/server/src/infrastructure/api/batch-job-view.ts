@@ -36,14 +36,18 @@ export function toBatchJobDto(summary: BatchSummary, item?: BatchItem): JobDto {
 					? "extract_ccip_vector"
 					: kind === "thumbnail"
 						? "generate_thumbnail"
-						: "processMedia"
+						: kind === "metadata"
+							? "extract_metadata"
+							: "processMedia"
 			: kind === "tagging"
 				? "bulk_tagging_parent"
 				: kind === "ccip"
 					? "batch_ccip_parent"
 					: kind === "thumbnail"
 						? "thumbnail_generation_parent"
-						: "processMedia",
+						: kind === "metadata"
+							? "metadata_extraction_parent"
+							: "processMedia",
 		mediaSourceId: item?.mediaSourceId ?? run.input?.mediaSourceId ?? null,
 		status,
 		createdAt: item?.createdAt ?? run.createdAt,

@@ -2297,6 +2297,9 @@ export const batchItems = pgTable(
 		),
 		check("batch_item_attempt", sql`${table.attemptCount} >= 0`),
 		index("idx_batch_item_progress").on(table.runId, table.status, table.id),
+		index("idx_batch_item_active_media")
+			.on(table.mediaId, table.kind, table.runId)
+			.where(sql`${table.status} IN ('pending', 'scheduled')`),
 		index("idx_batch_item_request").on(
 			table.requestId,
 			table.kind,

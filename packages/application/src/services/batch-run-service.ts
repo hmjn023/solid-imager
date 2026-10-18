@@ -79,6 +79,7 @@ export class BatchRunService {
 			const result = await this.deps.repo.sealCapture(run.id, tx);
 			if (
 				input.mediaIds &&
+				!input.recovery &&
 				!(input.kind === "thumbnail" && input.missingOnly) &&
 				result.progress.total !== input.mediaIds.length
 			)

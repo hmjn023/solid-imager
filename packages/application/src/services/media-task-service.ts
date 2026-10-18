@@ -161,12 +161,16 @@ export class MediaTaskService {
 				previous.requestedRevision === revision
 			) {
 				force =
-					kind === "thumbnail"
+					previous.completedRevision !== revision ||
+					(kind === "thumbnail"
 						? !(await this.deps.hasThumbnails(
 								input.mediaSourceId,
 								input.mediaId,
 							))
-						: !(await this.deps.mediaRepo.getGenerationInfo(input.mediaId, tx));
+						: !(await this.deps.mediaRepo.getGenerationInfo(
+								input.mediaId,
+								tx,
+							)));
 			}
 		}
 		return this.deps.processingStateRepo.request(

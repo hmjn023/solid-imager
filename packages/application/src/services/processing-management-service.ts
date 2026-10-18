@@ -15,6 +15,7 @@ import {
 	type ProcessingFailureCode,
 	type ProcessingListRequest,
 	type ProcessingRetryRequest,
+	type ProcessingRequestStep,
 	type SafeMediaProcessing,
 	type SafeProcessingStep,
 } from "@solid-imager/core/domain/processing/schemas";
@@ -101,6 +102,8 @@ export class ProcessingManagementService {
 					updatedAt: state?.updatedAt ?? null,
 					failureCode: state ? processingFailureCode(state) : null,
 					canRetry: applicable && state?.status === "failed",
+					canRequest:
+						applicable && (!state || !isCurrent || state.status === "failed"),
 				};
 			}),
 		};
@@ -129,6 +132,9 @@ export class ProcessingManagementService {
 		);
 	}
 	async retry(input: ProcessingRetryRequest) {
+		return this.request(input, true);
+	}
+	async request(input: ProcessingRequestStep, failedOnly = false) {
 		const target = await this.deps.transactions.transaction(async (tx) => {
 			await this.deps.mediaRepo.findById(input.mediaId, tx, {
 				forUpdate: true,
@@ -140,15 +146,14 @@ export class ProcessingManagementService {
 				await this.deps.states.findByMediaIds([input.mediaId], tx)
 			).find((row) => row.taskKind === input.kind);
 			if (
-				!state ||
-				state.requestId !== input.requestId ||
-				state.status !== "failed" ||
-				!this.project(current, [state]).steps.find(
+				(state?.requestId ?? null) !== input.requestId ||
+				(failedOnly && state?.status !== "failed") ||
+				!this.project(current, state ? [state] : []).steps.find(
 					(step) => step.kind === input.kind,
-				)?.canRetry
+				)?.canRequest
 			)
 				throw new ResourceConflictError(
-					"The selected request is no longer failed. Refresh its current state.",
+					"The selected request changed or no longer needs processing. Refresh its current state.",
 				);
 			await this.deps.request(
 				current.input.mediaSourceId,

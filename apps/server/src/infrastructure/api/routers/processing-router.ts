@@ -6,6 +6,7 @@ import {
 } from "@solid-imager/core/domain/errors";
 import { getProcessingManagementService } from "~/infrastructure/services/processing-management-service";
 import { logger } from "~/infrastructure/logger";
+import { recoverProcessingPage } from "~/infrastructure/services/processing-recovery-service";
 
 const os = implement(processingContract);
 async function respond<T>(action: () => Promise<T>): Promise<T> {
@@ -23,6 +24,15 @@ async function respond<T>(action: () => Promise<T>): Promise<T> {
 	}
 }
 export const processingRouter = os.router({
+	scanRecovery: os.scanRecovery.handler(({ input }) =>
+		respond(() => recoverProcessingPage(input, false)),
+	),
+	enqueueRecovery: os.enqueueRecovery.handler(({ input }) =>
+		respond(() => recoverProcessingPage(input, true)),
+	),
+	request: os.request.handler(({ input }) =>
+		respond(() => getProcessingManagementService().request(input)),
+	),
 	list: os.list.handler(({ input }) =>
 		respond(() => getProcessingManagementService().list(input)),
 	),

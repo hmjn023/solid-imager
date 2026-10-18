@@ -11,11 +11,17 @@ import {
 } from "@solid-imager/core/domain/processing/schemas";
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { BatchInput } from "@solid-imager/core/domain/batches/schemas";
-import { and, asc, eq, gt, inArray } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull } from "drizzle-orm";
 import { BatchRunRepository } from "~/infrastructure/repositories/batch-run-repository";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { getExecutor } from "~/infrastructure/db/executor";
-import { medias, mediaSources } from "~/infrastructure/db/schema";
+import {
+	medias,
+	mediaSources,
+	batchItems,
+	batchRuns,
+} from "~/infrastructure/db/schema";
+import { createProcessingRecoveryInspector } from "~/infrastructure/jobs/processing-recovery-targets";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { services } from "~/infrastructure/service-registry";
 import { logger } from "~/infrastructure/logger";
@@ -52,11 +58,14 @@ export const batchRunService = new BatchRunService({
 			throw new Error("Mixed legacy media batches are read-only");
 		const kind = input.kind;
 		const settings = revisions();
+		const inspectRecovery = input.recovery
+			? createProcessingRecoveryInspector()
+			: null;
 		return async (cursor, tx) => {
 			const db = getExecutor(tx);
 			let ids: string[] | undefined = input.mediaIds;
 			let nextCursor: string | undefined;
-			if (!ids && kind !== "thumbnail") {
+			if (!ids && kind !== "thumbnail" && kind !== "metadata") {
 				const options = {
 					mediaSourceId: input.mediaSourceId,
 					force: input.force,
@@ -85,6 +94,7 @@ export const batchRunService = new BatchRunService({
 							.where(
 								and(
 									eq(mediaSources.type, "local"),
+									input.recovery ? eq(medias.status, "active") : undefined,
 									input.mediaSourceId
 										? eq(medias.mediaSourceId, input.mediaSourceId)
 										: undefined,
@@ -94,7 +104,7 @@ export const batchRunService = new BatchRunService({
 							)
 							.orderBy(asc(medias.id))
 							.limit(100);
-			if (input.mediaIds || kind === "thumbnail")
+			if (input.mediaIds || kind === "thumbnail" || kind === "metadata")
 				nextCursor = rows.at(-1)?.media.id;
 			const targets = [];
 			for (const { media, source } of rows) {
@@ -130,6 +140,44 @@ export const batchRunService = new BatchRunService({
 					input: { ...snapshot, modifiedAt: snapshot.modifiedAt.toISOString() },
 					plannedRevision: settings.revision(snapshot, kind),
 				});
+			}
+			if (inspectRecovery && targets.length) {
+				const queued = await db
+					.select({ mediaId: batchItems.mediaId })
+					.from(batchItems)
+					.innerJoin(batchRuns, eq(batchRuns.id, batchItems.runId))
+					.where(
+						and(
+							inArray(
+								batchItems.mediaId,
+								targets.map((target) => target.mediaId),
+							),
+							eq(batchItems.kind, kind),
+							inArray(batchItems.status, ["pending", "scheduled"]),
+							inArray(batchRuns.status, ["pending", "in_progress"]),
+							isNull(batchRuns.cancelRequestedAt),
+						),
+					);
+				const matches = await inspectRecovery(
+					targets.map((target) => ({
+						input: {
+							...target.input,
+							modifiedAt: new Date(target.input.modifiedAt),
+						},
+						fileName: "",
+						sourceName: "",
+						queued: queued.some((row) => row.mediaId === target.mediaId),
+					})),
+					kind,
+					tx,
+				);
+				const eligible = new Set(
+					matches.map(({ target }) => target.input.mediaId),
+				);
+				return {
+					targets: targets.filter((target) => eligible.has(target.mediaId)),
+					nextCursor,
+				};
 			}
 			return { targets, nextCursor };
 		};

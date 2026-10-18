@@ -31,7 +31,7 @@ For a large failure backlog, use Failed → Retry all failed. This spans every p
 
 Jobs supports selected Retry, Cancel and Delete history actions. Capability flags determine eligibility; cancellation is sequential to avoid competing large batch writes. Delete history requires a terminal execution owner and dismisses a batch parent with all its children, even when invoked on a child. Migration 0046 adds `job_history_dismissals`; it changes visibility only and retains media, outcomes, checkpoints and source artifact retention cleanup. Dismissals are excluded before list pagination/counts and from retry-all. An explicit retry restores visibility. Cancelling a batch keeps completed siblings and independent/shared media demand.
 
-Manager can submit tagging, CCIP and thumbnail batches and export/restore operations; Sources can submit sync operations. Metadata has no standalone Manager batch action. Failed metadata, thumbnails, tagging and CCIP requests can instead be retried individually under Jobs → Media processing. Downloads are submitted through imports/URL input and can be retried from Jobs while their source/input remain available.
+Manager can submit tagging, CCIP and thumbnail batches and export/restore operations; Sources can submit sync operations. Jobs → Media processing also detects and queues unfinished metadata, thumbnails, tagging and CCIP work, including inputs without any request history. See [processing-recovery.md](./processing-recovery.md) for scope and continuation behavior. Downloads are submitted through imports/URL input and can be retried from Jobs while their source/input remain available.
 
 ## Rollback rehearsal
 

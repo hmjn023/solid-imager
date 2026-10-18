@@ -2,6 +2,7 @@ import type {
 	ProcessingListRequest,
 	ProcessingListResponse,
 	ProcessingRetryRequest,
+	ProcessingRequestStep,
 	SafeMediaProcessing,
 	SafeProcessingStep,
 	ProcessingFailureCode,
@@ -52,11 +53,15 @@ import { toQueryUiState } from "../query-state";
 import { toast } from "../toast";
 import { createDebouncedSignal } from "../utils/debounce";
 import { formatDate } from "./manager/utils";
+import { ProcessingRecoveryPanel } from "./processing-recovery-panel";
+import type { ProcessingRecoveryApi } from "./processing-recovery";
+import { jobsQueryKeys } from "../query-options";
 
-export type ProcessingApi = {
+export type ProcessingApi = ProcessingRecoveryApi & {
 	list(input: ProcessingListRequest): Promise<ProcessingListResponse>;
 	get(input: { mediaId: string }): Promise<SafeMediaProcessing>;
 	retry(input: ProcessingRetryRequest): Promise<SafeMediaProcessing>;
+	request(input: ProcessingRequestStep): Promise<SafeMediaProcessing>;
 	openEvents(signal: AbortSignal): Promise<AsyncIterable<SourceEvent>>;
 };
 export const processingQueryKeys = { all: () => ["media-processing"] as const };
@@ -206,6 +211,17 @@ function ProcessingDetails(props: {
 								Retry this step
 							</Button>
 						</Show>
+						<Show when={!step.canRetry && step.canRequest}>
+							<Button
+								aria-label={`Queue ${processingKindLabels[step.kind]}`}
+								disabled={props.busy !== null}
+								size="sm"
+								variant="outline"
+								onClick={() => void props.onRetry(props.media, step)}
+							>
+								Queue this step
+							</Button>
+						</Show>
 					</section>
 				)}
 			</For>
@@ -221,6 +237,7 @@ export function MediaProcessingPanel(props: { api: ProcessingApi }) {
 	const [page, setPage] = createSignal(0);
 	const [selected, setSelected] = createSignal<string | null>(null);
 	const [busy, setBusy] = createSignal<string | null>(null);
+	const [recoveryBusy, setRecoveryBusy] = createSignal(false);
 	const input = createMemo((): ProcessingListRequest => ({
 		query: debouncedSearch(),
 		status: status(),
@@ -343,14 +360,22 @@ export function MediaProcessingPanel(props: { api: ProcessingApi }) {
 		media: SafeMediaProcessing,
 		step: SafeProcessingStep,
 	) => {
-		if (!step.canRetry || !step.requestId || busy()) return;
+		if ((!step.canRetry && !step.canRequest) || busy() || recoveryBusy())
+			return;
 		setBusy(`${media.mediaId}:${step.kind}`);
 		try {
-			const updated = await props.api.retry({
-				mediaId: media.mediaId,
-				kind: step.kind,
-				requestId: step.requestId,
-			});
+			const updated =
+				step.canRetry && step.requestId
+					? await props.api.retry({
+							mediaId: media.mediaId,
+							kind: step.kind,
+							requestId: step.requestId,
+						})
+					: await props.api.request({
+							mediaId: media.mediaId,
+							kind: step.kind,
+							requestId: step.requestId,
+						});
 			client.setQueryData(
 				[...processingQueryKeys.all(), "detail", media.mediaId],
 				updated,
@@ -370,6 +395,7 @@ export function MediaProcessingPanel(props: { api: ProcessingApi }) {
 		toQueryUiState(list, { isEmpty: (data) => data.items.length === 0 });
 	const filters = [
 		"all",
+		"not_requested",
 		"pending",
 		"in_progress",
 		"failed",
@@ -378,6 +404,18 @@ export function MediaProcessingPanel(props: { api: ProcessingApi }) {
 	return (
 		<div class="grid min-h-0 flex-1 xl:grid-cols-detail-sidebar">
 			<div class="min-h-0 min-w-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable">
+				<ProcessingRecoveryPanel
+					api={props.api}
+					labels={processingKindLabels}
+					query={search}
+					onBusyChange={setRecoveryBusy}
+					onQueued={async () => {
+						await Promise.all([
+							refresh(),
+							client.invalidateQueries({ queryKey: jobsQueryKeys.all() }),
+						]);
+					}}
+				/>
 				<div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end">
 					<TextField
 						class="min-w-0 flex-1"
@@ -388,7 +426,10 @@ export function MediaProcessingPanel(props: { api: ProcessingApi }) {
 						}}
 					>
 						<TextFieldLabel>Search media processing</TextFieldLabel>
-						<TextFieldInput placeholder="Search by filename" />
+						<TextFieldInput
+							placeholder="Search by filename"
+							disabled={recoveryBusy()}
+						/>
 					</TextField>
 					<Select<(typeof filters)[number]>
 						options={[...filters]}
@@ -545,7 +586,7 @@ export function MediaProcessingPanel(props: { api: ProcessingApi }) {
 							{(media) => (
 								<ProcessingDetails
 									media={media()}
-									busy={busy()}
+									busy={busy() ?? (recoveryBusy() ? "recovery" : null)}
 									onRetry={retry}
 								/>
 							)}
@@ -574,7 +615,11 @@ export function MediaProcessingPanel(props: { api: ProcessingApi }) {
 					}
 				>
 					{(media) => (
-						<ProcessingDetails media={media()} busy={busy()} onRetry={retry} />
+						<ProcessingDetails
+							media={media()}
+							busy={busy() ?? (recoveryBusy() ? "recovery" : null)}
+							onRetry={retry}
+						/>
 					)}
 				</Show>
 				<Show when={detail.error}>
