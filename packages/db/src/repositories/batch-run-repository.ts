@@ -41,6 +41,7 @@ import {
 	batchRunCutovers as controls,
 	batchRunDirty as dirty,
 	batchRunLegacySnapshots as archives,
+	medias,
 	jobs,
 } from "../schema";
 import {
@@ -157,7 +158,8 @@ export function createBatchRunRepository(
 			.select()
 			.from(runs)
 			.where(currentClaim(claim))
-			.for("update");
+			// Progress triggers insert children referencing this run. Keep FK KEY SHARE compatible.
+			.for("no key update");
 		if (!run) throw new BatchAttemptLostError();
 		return run;
 	}
@@ -166,7 +168,7 @@ export function createBatchRunRepository(
 			.select()
 			.from(runs)
 			.where(eq(runs.id, id))
-			.for("update");
+			.for("no key update");
 		if (!run) throw new ResourceNotFoundError("Batch", id);
 		return run;
 	}
@@ -465,7 +467,7 @@ export function createBatchRunRepository(
 					)
 					.orderBy(asc(runs.createdAt), asc(runs.id))
 					.limit(limit)
-					.for("update", { skipLocked: true });
+					.for("no key update", { skipLocked: true });
 				const claimed: BatchClaim[] = [];
 				for (const run of rows) {
 					if (run.attemptCount >= run.maxAttempts) {
@@ -511,7 +513,7 @@ export function createBatchRunRepository(
 		},
 		async pendingItems(claim, limit, tx) {
 			await locked(claim, tx);
-			return (
+			const page = (
 				await getExecutor(tx)
 					.select()
 					.from(items)
@@ -519,6 +521,22 @@ export function createBatchRunRepository(
 					.orderBy(asc(items.mediaId), asc(items.kind))
 					.limit(limit)
 			).map(mapItem);
+			// Reserve locks every media in the page before any item update acquires the
+			// shared dirty marker. Otherwise a later media can be held by a worker
+			// waiting for that marker: dispatch -> marker -> media -> worker -> marker.
+			if (page.length)
+				await getExecutor(tx)
+					.select({ id: medias.id })
+					.from(medias)
+					.where(
+						inArray(
+							medias.id,
+							page.map((item) => item.mediaId),
+						),
+					)
+					.orderBy(asc(medias.id))
+					.for("update");
+			return page;
 		},
 		async bindItem(claim, item, state, tx) {
 			await locked(claim, tx);
@@ -606,7 +624,7 @@ export function createBatchRunRepository(
 					.innerJoin(dirty, eq(dirty.runId, runs.id))
 					.orderBy(asc(runs.id))
 					.limit(limit)
-					.for("update", { of: runs, skipLocked: true });
+					.for("no key update", { of: runs, skipLocked: true });
 				const changed: BatchSummary[] = [];
 				for (const { run: row } of rows) {
 					const [marker] = await db
@@ -687,16 +705,35 @@ export function createBatchRunRepository(
 				return summary(cancelled, tx);
 			});
 		},
-		async retry(id) {
+		async retry(id, scope) {
 			return transactions.transaction(async (tx) => {
 				await assertDedicated(tx);
 				const row = await required(id, tx);
 				const current = await summary(row, tx);
-				if (!row.input || !["failed", "cancelled"].includes(current.run.status))
+				const allowed =
+					scope === "failed"
+						? ["pending", "in_progress", "failed"]
+						: ["failed", "cancelled"];
+				if (!row.input || !allowed.includes(current.run.status))
 					throw new ResourceConflictError(
 						"Only failed or cancelled batches can be resumed",
 					);
 				const db = getExecutor(tx);
+				const retryStatuses: BatchItem["status"][] =
+					scope === "failed"
+						? ["failed", "superseded"]
+						: ["failed", "cancelled", "superseded"];
+				if (scope === "failed" && current.run.status !== "failed") {
+					const [failed] = await db
+						.select({ id: items.id })
+						.from(items)
+						.where(
+							and(eq(items.runId, id), inArray(items.status, retryStatuses)),
+						)
+						.limit(1);
+					if (!failed)
+						throw new ResourceConflictError("No failed batch items remain");
+				}
 				await db
 					.update(items)
 					.set({
@@ -706,10 +743,7 @@ export function createBatchRunRepository(
 						updatedAt: now,
 					})
 					.where(
-						and(
-							eq(items.runId, id),
-							inArray(items.status, ["failed", "cancelled", "superseded"]),
-						),
+						and(eq(items.runId, id), inArray(items.status, retryStatuses)),
 					);
 				const [retried] = await db
 					.update(runs)

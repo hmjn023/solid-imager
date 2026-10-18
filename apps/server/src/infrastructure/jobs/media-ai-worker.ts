@@ -16,7 +16,9 @@ export class MediaAiWorker {
 	private readonly wakeups = new Set<() => void>();
 	constructor(private readonly runTask: RunTask) {}
 	updateConfig(config: AppConfig) {
-		this.concurrency = config.jobs.aiConcurrency;
+		// The local native gate executes one inference. Leave excess work durable
+		// instead of claiming dozens of requests only to exhaust native admission.
+		this.concurrency = config.ai.baseUrl ? config.jobs.aiConcurrency : 1;
 		this.pollIntervalMs = config.jobs.pollIntervalMs;
 		if (this.running) this.addSlots();
 	}

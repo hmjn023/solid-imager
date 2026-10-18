@@ -130,8 +130,8 @@ export class BatchRunService {
 		this.notify(summary, "cancel");
 		return summary;
 	}
-	async retry(id: string) {
-		const summary = await this.deps.repo.retry(id);
+	async retry(id: string, scope?: "failed") {
+		const summary = await this.deps.repo.retry(id, scope);
 		this.notify(summary, "retry");
 		return summary;
 	}

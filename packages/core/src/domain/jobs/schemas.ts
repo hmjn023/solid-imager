@@ -66,7 +66,7 @@ export const jobDtoSchema = z.object({
 export type JobDto = z.infer<typeof jobDtoSchema>;
 
 export const jobListRequestSchema = z.object({
-	status: jobStatusSchema.optional(),
+	status: z.union([jobStatusSchema, z.literal("active")]).optional(),
 	limit: z.number().int().min(1).max(200).default(50),
 	offset: z.number().int().min(0).default(0),
 });
@@ -77,6 +77,25 @@ export const jobListResponseSchema = z.object({
 	total: z.number().int().nonnegative(),
 });
 export type JobListResponse = z.infer<typeof jobListResponseSchema>;
+
+export const jobRetryFailedCursorSchema = z.object({
+	// Opaque DB timestamp without time zone; preserve its representation across clients.
+	before: z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}$/),
+	afterId: z.uuid(),
+});
+export const jobRetryFailedRequestSchema = z.object({
+	cursor: jobRetryFailedCursorSchema.optional(),
+});
+export const jobRetryFailedResponseSchema = z.object({
+	retried: z.number().int().nonnegative(),
+	skipped: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+	cursor: jobRetryFailedCursorSchema.nullable(),
+});
+export type JobRetryFailedRequest = z.infer<typeof jobRetryFailedRequestSchema>;
+export type JobRetryFailedResponse = z.infer<
+	typeof jobRetryFailedResponseSchema
+>;
 
 export const jobIdRequestSchema = z.object({
 	id: z.uuid(),

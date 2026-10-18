@@ -2,7 +2,7 @@ import { SourceRunRepository } from "~/infrastructure/repositories/source-run-re
 import { sourceRunService } from "~/infrastructure/services/source-run-service";
 import { toSourceJobDto } from "./source-run-view";
 import { z } from "zod";
-import { sql } from "drizzle-orm";
+import { sql, type SQL } from "drizzle-orm";
 import {
 	jobDtoSchema,
 	type JobDto,
@@ -121,9 +121,22 @@ export async function listJobView(input: JobListRequest) {
 		await BatchRunRepository.assertDedicated(tx);
 		await SourceRunRepository.assertDedicated(tx);
 		const db = getExecutor(tx);
-		const runStatus = input.status
-			? sql`AND (CASE WHEN status = 'blocked' THEN 'failed' ELSE status END) = ${input.status}`
-			: sql``;
+		const statuses =
+			input.status === "active"
+				? ["pending", "in_progress"]
+				: input.status
+					? [input.status]
+					: [];
+		const statusFilter = (column: SQL) =>
+			statuses.length
+				? sql`AND ${column} IN (${sql.join(
+						statuses.map((status) => sql`${status}`),
+						sql`, `,
+					)})`
+				: sql``;
+		const runStatus = statusFilter(
+			sql`(CASE WHEN status = 'blocked' THEN 'failed' ELSE status END)`,
+		);
 		const result: unknown = await db.execute(sql`
 			WITH combined AS (
 				SELECT id, created_at FROM download_runs WHERE status <> 'superseded' ${runStatus}
@@ -131,10 +144,10 @@ export async function listJobView(input: JobListRequest) {
  UNION ALL SELECT id, created_at FROM source_transfer_runs WHERE true ${runStatus}
  UNION ALL
  SELECT r.id, r.created_at FROM batch_runs r JOIN batch_run_status b ON b.id = r.id
- WHERE true ${input.status ? sql`AND (CASE WHEN b.status = 'blocked' THEN 'failed' ELSE b.status END) = ${input.status}` : sql``}
+ WHERE true ${statusFilter(sql`(CASE WHEN b.status = 'blocked' THEN 'failed' ELSE b.status END)`)}
  UNION ALL
  SELECT id, created_at FROM batch_items
- WHERE true ${input.status ? sql`AND (CASE WHEN status = 'scheduled' THEN 'in_progress' WHEN status IN ('blocked', 'superseded') THEN 'failed' ELSE status END) = ${input.status}` : sql``}
+ WHERE true ${statusFilter(sql`(CASE WHEN status = 'scheduled' THEN 'in_progress' WHEN status IN ('blocked', 'superseded') THEN 'failed' ELSE status END)`)}
 			), page AS (SELECT id, created_at FROM combined ORDER BY created_at DESC, id DESC LIMIT ${input.limit} OFFSET ${input.offset})
 			SELECT coalesce(jsonb_agg(jsonb_build_object('id', id) ORDER BY created_at DESC, id DESC), '[]'::jsonb) AS ids, (SELECT count(*) FROM combined) AS total FROM page
 		`);

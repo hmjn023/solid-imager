@@ -440,6 +440,23 @@ async function restoreSource(claim: SourceRunClaim, signal: AbortSignal) {
 export const sourceRunService = {
 	initialize: () => repo.initialize(),
 	notify,
+	async retry(id: string) {
+		await repo.initialize();
+		const run = await repo.retry(id);
+		try {
+			RealtimeEventBus.publishJob("job-retried", {
+				jobId: id,
+				message: "Source operation queued",
+			});
+		} catch (err) {
+			logger.warn(
+				{ err, runId: id },
+				"Source retry notification failed after commit",
+			);
+		}
+		if (run.kind === "sync") notify(run);
+		return run;
+	},
 	async process(claim: SourceRunClaim, signal: AbortSignal) {
 		try {
 			if (claim.kind === "sync") notify(claim);

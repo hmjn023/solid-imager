@@ -107,4 +107,68 @@ describe("dedicated batch retry through the Jobs facade", () => {
 			progress: { total: 2, processed: 1, failed: 0 },
 		});
 	});
+	it("finds a failed parent behind a full page of newer pending children and resumes it", async () => {
+		const run = await fixture("failed");
+		await db
+			.update(batchRuns)
+			.set({ createdAt: new Date("2020-01-01"), dispatchComplete: false })
+			.where(eq(batchRuns.id, run.id));
+		await db
+			.update(batchItems)
+			.set({ status: "pending" })
+			.where(eq(batchItems.runId, run.id));
+		await db.insert(batchItems).values(
+			Array.from({ length: 201 }, () => ({
+				runId: run.id,
+				kind: "tagging" as const,
+				mediaId: randomUUID(),
+				mediaSourceId: randomUUID(),
+				status: "pending" as const,
+			})),
+		);
+		const firstPage = await client.list({ limit: 200, offset: 0 });
+		expect(firstPage.items).toHaveLength(200);
+		expect(firstPage.items.some((job) => job.id === run.id)).toBe(false);
+		const failed = await client.list({
+			status: "failed",
+			limit: 200,
+			offset: 0,
+		});
+		expect(failed.items).toContainEqual(
+			expect.objectContaining({ id: run.id, status: "failed", canRetry: true }),
+		);
+		expect(failed.items.every((job) => job.status === "failed")).toBe(true);
+		expect(failed.total).toBe(failed.items.length);
+		expect(await client.retry({ id: run.id })).toMatchObject({
+			status: "pending",
+			progress: { total: 203, processed: 0, failed: 0 },
+		});
+	});
+	it("filters active work before pagination, including both pending and in-progress runs", async () => {
+		const run = await fixture("pending");
+		await db
+			.update(batchRuns)
+			.set({ status: "in_progress" })
+			.where(eq(batchRuns.id, run.id));
+		const first = await client.list({
+			status: "active",
+			limit: 200,
+			offset: 0,
+		});
+		const second = await client.list({
+			status: "active",
+			limit: 200,
+			offset: 200,
+		});
+		const jobs = [...first.items, ...second.items];
+		expect(jobs).toContainEqual(
+			expect.objectContaining({ id: run.id, status: "in_progress" }),
+		);
+		expect(jobs.some((job) => job.status === "pending")).toBe(true);
+		expect(
+			jobs.every((job) => ["pending", "in_progress"].includes(job.status)),
+		).toBe(true);
+		expect(first.total).toBe(second.total);
+		expect(jobs).toHaveLength(first.total);
+	});
 });

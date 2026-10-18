@@ -16,6 +16,7 @@ import {
 } from "../download-job-view";
 import { resolveJobArtifact } from "../job-artifact";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { retryFailedJobsPage } from "~/infrastructure/services/retry-failed-jobs-service";
 const os = implement(jobsContract);
 export const jobsRouter = os.router({
 	list: os.list.handler(async ({ input }) => {
@@ -62,6 +63,9 @@ export const jobsRouter = os.router({
 			return toSourceJobDto(await mutateSourceRun("retry", input.id));
 		throw new ORPCError("NOT_FOUND", { message: "Operation not found" });
 	}),
+	retryFailed: os.retryFailed.handler(({ input }) =>
+		retryFailedJobsPage(input),
+	),
 	cancel: os.cancel.handler(async ({ input }) => {
 		if (await findDownloadJob(input.id))
 			return mutateDownloadJob("cancel", input.id);

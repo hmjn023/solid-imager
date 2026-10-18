@@ -10,9 +10,9 @@ import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createSignal } from "solid-js";
+import { batch, createSignal } from "solid-js";
 import type { Accessor } from "solid-js";
-import type { JobsView } from "@solid-imager/ui/screens/jobs-view";
+import type { JobFilter, JobsView } from "@solid-imager/ui/screens/jobs-view";
 import { buildThumbnailUrl } from "~/components/media/thumbnail-image";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { jobsQueryOptions } from "~/infrastructure/api-clients/queries";
@@ -24,12 +24,15 @@ export function JobsPage(props: {
 	onViewChange: (view: JobsView) => void;
 }) {
 	const [pageIndex, setPageIndex] = createSignal(0);
-	const jobsQuery = createQuery<JobListResponse>(() =>
-		jobsQueryOptions({
+	const [filter, setFilter] = createSignal<JobFilter>("all");
+	const jobsQuery = createQuery<JobListResponse>(() => {
+		const status = filter();
+		return jobsQueryOptions({
+			status: status === "all" ? undefined : status,
 			limit: DEFAULT_JOBS_PAGE_SIZE,
 			offset: pageIndex() * DEFAULT_JOBS_PAGE_SIZE,
-		}),
-	);
+		});
+	});
 	const queryClient = useQueryClient();
 	const state = () => toQueryUiState(jobsQuery);
 	const pagination = () => {
@@ -60,6 +63,13 @@ export function JobsPage(props: {
 
 	return (
 		<JobsScreen
+			filter={filter}
+			onFilterChange={(value) =>
+				batch(() => {
+					setPageIndex(0);
+					setFilter(value);
+				})
+			}
 			view={props.view}
 			onViewChange={props.onViewChange}
 			processingApi={{
@@ -71,6 +81,9 @@ export function JobsPage(props: {
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
 			jobs={() => state().data?.items ?? []}
+			retryFailedPage={(input, signal) =>
+				orpc.jobs.retryFailed(input, { signal })
+			}
 			onRefresh={async () => {
 				await jobsQuery.refetch();
 			}}

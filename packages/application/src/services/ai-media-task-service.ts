@@ -74,6 +74,8 @@ export class AiMediaTaskService<Result> {
 				[kind]: {
 					currentRevision: (input: MediaProcessingInput) =>
 						handler.currentRevision(input),
+					isCapacityError: (error: unknown) =>
+						isRecord(error) && error.code === "TOO_MANY_REQUESTS",
 					isRetryable: (error: unknown) =>
 						isRecord(error) &&
 						typeof error.code === "string" &&

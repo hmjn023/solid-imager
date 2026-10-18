@@ -7,7 +7,7 @@ import { drizzle as drizzlePostgres } from "drizzle-orm/node-postgres";
 import { migrate as migratePostgres } from "drizzle-orm/node-postgres/migrator";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { and, asc, eq, gt, isNotNull } from "drizzle-orm";
+import { and, asc, eq, gt, isNotNull, sql } from "drizzle-orm";
 import {
 	afterAll,
 	beforeAll,
@@ -264,6 +264,56 @@ describe("fixed batch runs and durable item outcomes", () => {
 		const history = await database.select().from(schema.batchItemAttempts);
 		expect(history).toHaveLength(3);
 		expect(history.some((attempt) => attempt.status === "failed")).toBe(true);
+	});
+	it("resumes pending items after dispatch exhausts its leases without repeating completed siblings", async () => {
+		await media();
+		await media();
+		await start("ccip");
+		const [first] = await repo.claimPending(1);
+		// Simulate one committed dispatch page, then a dispatcher that never finishes.
+		await repo.withActiveClaim(first, async (tx) => {
+			const [item] = await repo.pendingItems(first, 1, tx);
+			if (!item.input) throw new Error("Missing input");
+			const state = await processing.request(
+				{
+					input: { ...item.input, modifiedAt: new Date(item.input.modifiedAt) },
+					taskKind: item.kind,
+					revision: "v1",
+					maxAttempts: 3,
+					force: false,
+					batchId: item.runId,
+				},
+				tx,
+			);
+			await repo.bindItem(first, item, state, tx);
+		});
+		await complete("ccip");
+		for (let attempt = 1; attempt <= first.maxAttempts; attempt++) {
+			await database
+				.update(schema.batchRuns)
+				.set({ leaseExpiresAt: new Date(0) })
+				.where(eq(schema.batchRuns.id, first.id));
+			await repo.claimPending(1);
+		}
+		expect((await repo.findById(first.id))?.run.status).toBe("failed");
+		expect(
+			(await allItems(first.id)).map((item) => item.status).sort(),
+		).toEqual(["completed", "pending"]);
+		expect(
+			await transactions.transaction((tx) => processing.claimDue(["ccip"], tx)),
+		).toBeNull();
+		await service.retry(first.id);
+		await dispatch();
+		await complete("ccip");
+		expect((await repo.findById(first.id))?.run.status).toBe("completed");
+		expect(
+			(await allItems(first.id)).every(
+				(item) => item.status === "completed" && item.attemptCount === 1,
+			),
+		).toBe(true);
+		expect(await database.select().from(schema.batchItemAttempts)).toHaveLength(
+			2,
+		);
 	});
 	it("cancels unclaimed batch-only demand and rejects an old scheduler claim", async () => {
 		await media();
@@ -588,6 +638,114 @@ describe("fixed batch runs and durable item outcomes", () => {
 			),
 		).toBe(true);
 	});
+	it.runIf(!!process.env.BATCH_TEST_POSTGRES_PORT)(
+		"allows outcome foreign-key checks while dispatch holds the parent lease",
+		async () => {
+			await media();
+			await media();
+			const batch = await start();
+			const [claim] = await repo.claimPending(1);
+			await repo.withActiveClaim(claim, async (tx) => {
+				const [item] = await repo.pendingItems(claim, 1, tx);
+				if (!item.input) throw new Error("Missing input");
+				const state = await processing.request(
+					{
+						input: {
+							...item.input,
+							modifiedAt: new Date(item.input.modifiedAt),
+						},
+						taskKind: item.kind,
+						revision: "v1",
+						maxAttempts: 3,
+						force: false,
+						batchId: claim.id,
+					},
+					tx,
+				);
+				await repo.bindItem(claim, item, state, tx);
+			});
+			const work = await claimed();
+			// A newly inserted dirty marker checks its FK against the locked parent.
+			await database
+				.delete(schema.batchRunDirty)
+				.where(eq(schema.batchRunDirty.runId, batch.run.id));
+			const entered = Promise.withResolvers<void>();
+			const release = Promise.withResolvers<void>();
+			const holding = repo.withActiveClaim(claim, async () => {
+				entered.resolve();
+				await release.promise;
+			});
+			try {
+				await entered.promise;
+				await transactions.transaction(async (tx) => {
+					await executor(tx).execute(
+						sql`SET LOCAL statement_timeout = '750ms'`,
+					);
+					await processing.commit(work.input, work.claim, async () => {}, tx);
+				});
+			} finally {
+				release.resolve();
+				await holding;
+			}
+			expect(
+				(await allItems(batch.run.id)).filter(
+					(item) => item.status === "completed",
+				),
+			).toHaveLength(1);
+		},
+	);
+	it.runIf(!!process.env.BATCH_TEST_POSTGRES_PORT)(
+		"locks the whole dispatch page before taking the shared progress marker",
+		async () => {
+			if (!postgres) throw new Error("Missing PostgreSQL fixture");
+			await media();
+			await media();
+			const batch = await start();
+			const [claim] = await repo.claimPending(1);
+			const page = (await allItems(batch.run.id)).sort((a, b) =>
+				a.mediaId.localeCompare(b.mediaId),
+			);
+			const worker = await postgres.connect();
+			const probe = await postgres.connect();
+			let dispatching: Promise<void> | undefined;
+			try {
+				await worker.query("BEGIN");
+				await worker.query("SELECT id FROM media WHERE id=$1 FOR UPDATE", [
+					page[1].mediaId,
+				]);
+				const {
+					rows: [{ pid }],
+				} = await worker.query("SELECT pg_backend_pid() AS pid");
+				dispatching = service.dispatch(claim);
+				// Observe the real lock wait rather than relying on sleeps or fake time.
+				await vi.waitFor(async () => {
+					const blocked = await probe.query(
+						"SELECT count(*)::int AS n FROM pg_stat_activity WHERE $1=ANY(pg_blocking_pids(pid))",
+						[pid],
+					);
+					expect(blocked.rows[0].n).toBeGreaterThan(0);
+				});
+				await probe.query("BEGIN");
+				await probe.query("SET LOCAL lock_timeout = '500ms'");
+				// This marker must still be free while any media in the page is blocked.
+				await probe.query(
+					"SELECT run_id FROM batch_run_dirty WHERE run_id=$1 FOR UPDATE",
+					[batch.run.id],
+				);
+			} finally {
+				await probe.query("ROLLBACK");
+				probe.release();
+				await worker.query("ROLLBACK");
+				worker.release();
+				await dispatching;
+			}
+			expect(
+				(await allItems(batch.run.id)).every(
+					(item) => item.status === "scheduled",
+				),
+			).toBe(true);
+		},
+	);
 	it.runIf(!!process.env.BATCH_TEST_POSTGRES_PORT)(
 		"waits for an old table writer before taking the authority lock",
 		async () => {

@@ -55,7 +55,8 @@ export type IMediaProcessingSchedulerRepository =
 		settleFailure(
 			claim: MediaProcessingClaim,
 			error: string,
-			retryable: boolean,
+			/** Capacity rejection defers admission without consuming a processing attempt. */
+			retryable: boolean | "capacity",
 			tx: Transaction,
 		): Promise<MediaProcessingState | null>;
 	};

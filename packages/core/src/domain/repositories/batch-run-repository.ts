@@ -69,6 +69,7 @@ export type IBatchRunRepository = {
 	finishDispatch(claim: BatchClaim, tx: Transaction): Promise<void>;
 	reconcile(limit: number): Promise<BatchSummary[]>;
 	cancel(id: string): Promise<BatchSummary>;
-	retry(id: string): Promise<BatchSummary>;
+	/** Failed-only retry also resumes failed children of an active batch, preserving cancellations. */
+	retry(id: string, scope?: "failed"): Promise<BatchSummary>;
 	rollback(): Promise<{ restored: number }>;
 };

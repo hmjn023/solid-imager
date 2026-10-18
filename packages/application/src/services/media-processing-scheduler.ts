@@ -23,6 +23,7 @@ export type ScheduledMediaTaskHandler = {
 	prepare(work: ScheduledMediaWork): Promise<PreparedMediaTask>;
 	/** Unknown/invalid input errors must be terminal; classify transient failures explicitly. */
 	isRetryable(error: unknown): boolean;
+	isCapacityError?(error: unknown): boolean;
 };
 
 /** One durable unit of work per call. Hosts can poll this from independent AI/file pools. */
@@ -114,7 +115,10 @@ export class MediaProcessingScheduler {
 					work.claim,
 					error instanceof Error ? error.message : "Media task failed",
 					!(error instanceof MediaProcessingSupersededError) &&
-						handler.isRetryable(error),
+						handler.isCapacityError?.(error)
+						? "capacity"
+						: !(error instanceof MediaProcessingSupersededError) &&
+								handler.isRetryable(error),
 					tx,
 				),
 			);

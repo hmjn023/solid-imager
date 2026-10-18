@@ -141,7 +141,7 @@ rollbackは全writer/workerを停止・drainし、DBとfilesystemを照合する
 
 この切替は0037のテーブルと要求IDを使い、追加migrationはない。全writerと旧workerを停止し、計算中の処理を終了させてから同じ版・設定で起動する。起動時はfile工程の引き継ぎに続いてinlineのtagging/CCIPをkeyset走査する。現在の入力・設定で専用要求へ移し、同revisionの成功済みレスポンス／ベクトルとterminal failureを保つ。成功出力の欠損は補修する。旧inline claimは全4工程で拒否するため、旧版プロセスとの混在は行わない。
 
-`MediaAiWorker`はtaggingとCCIPを共有の `jobs.aiConcurrency` 枠で実行し、両工程を交互に探索する。汎用ジョブのAI枠は完了観測用で、推論枠とは独立する。HMRとSIGINT/SIGTERMはAI workerを停止し、実行中の推論・heartbeat・fenced保存が終わるまでdrainする。強制終了ではDB lease回収を使う。raw uploadの一時ファイル推論、OppaiOracle、crop/region推論はこのpoolの対象外。
+`MediaAiWorker`はtaggingとCCIPを共有枠で実行し、両工程を交互に探索する。remote接続では `jobs.aiConcurrency`、localではnative推論に合わせた1枠でclaimする。汎用ジョブのAI枠は完了観測用で、推論枠とは独立する。HMRとSIGINT/SIGTERMはAI workerを停止し、実行中の推論・heartbeat・fenced保存が終わるまでdrainする。強制終了ではDB lease回収を使う。raw uploadの一時ファイル推論、OppaiOracle、crop/region推論はこのpoolの対象外。
 
 upload、scan、watcher、copy/move、downloadと旧 `processMedia` のAI checkpointは、媒体と有効なAI要求を同じtransactionで保存する。直接tagging/CCIP APIは要求を保存して最大120秒待つ。待機が時間切れになっても要求は継続する。一括タグ付けとCCIPは対象を固定サイズで走査し、各chunkで要求と進捗用の子ジョブを同じtransactionで保存する。CCIPの一子ジョブに複数媒体がある場合、初回観測前に全対象の要求IDを一括予約する。
 

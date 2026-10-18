@@ -2,6 +2,8 @@ import {
 	isBatchParentJobType,
 	type JobDto,
 	type JobListResponse,
+	type JobRetryFailedRequest,
+	type JobRetryFailedResponse,
 } from "@solid-imager/core/domain/jobs/schemas";
 import Ban from "lucide-solid/icons/ban";
 import ChevronLeft from "lucide-solid/icons/chevron-left";
@@ -13,7 +15,15 @@ import Download from "lucide-solid/icons/download";
 import RefreshCw from "lucide-solid/icons/refresh-cw";
 import RotateCcw from "lucide-solid/icons/rotate-ccw";
 import type { Accessor } from "solid-js";
-import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
+import {
+	createMemo,
+	createSignal,
+	For,
+	Match,
+	Show,
+	Switch,
+	onCleanup,
+} from "solid-js";
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
@@ -47,8 +57,9 @@ import {
 	MediaProcessingPanel,
 	type ProcessingApi,
 } from "./media-processing-panel";
-import type { JobsView } from "./jobs-view";
+import type { JobFilter, JobsView } from "./jobs-view";
 import { formatDate } from "./manager/utils";
+import { retryAllFailedJobs, type RetryFailedTotals } from "./jobs-retry-all";
 
 const JOB_FILTERS = [
 	{ description: "すべての処理", icon: Clock3, label: "All", value: "all" },
@@ -78,8 +89,6 @@ const JOB_FILTERS = [
 	},
 ] as const;
 
-type JobFilter = (typeof JOB_FILTERS)[number]["value"];
-
 export type JobsPagination = {
 	canNext: boolean;
 	canPrevious: boolean;
@@ -90,6 +99,8 @@ export type JobsPagination = {
 };
 
 export type JobsScreenProps = {
+	filter: Accessor<JobFilter>;
+	onFilterChange: (filter: JobFilter) => void;
 	processingApi?: ProcessingApi;
 	view?: Accessor<JobsView>;
 	onViewChange?: (view: JobsView) => void;
@@ -99,6 +110,10 @@ export type JobsScreenProps = {
 	onRefresh: () => void | Promise<void>;
 	onRetry: (jobId: string) => void | Promise<void>;
 	onRetryMany: (jobIds: string[]) => void | Promise<void>;
+	retryFailedPage: (
+		input: JobRetryFailedRequest,
+		signal: AbortSignal,
+	) => Promise<JobRetryFailedResponse>;
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
 	page: Accessor<JobsPagination>;
@@ -718,34 +733,67 @@ function JobsInspector(props: {
 export function JobsScreen(props: JobsScreenProps) {
 	const [localView, setLocalView] = createSignal<JobsView>("jobs");
 	const view = () => props.view?.() ?? localView();
-	const [activeFilter, setActiveFilter] = createSignal<JobFilter>("all");
 	const [selectedJobId, setSelectedJobId] = createSignal<string | null>(null);
 	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
 		new Set(),
 	);
 	const [bulkAction, setBulkAction] = createSignal<JobBulkAction | null>(null);
 	const [isApplyingBulkAction, setIsApplyingBulkAction] = createSignal(false);
+	const [isRetryingAll, setIsRetryingAll] = createSignal(false);
+	const [retryAllMessage, setRetryAllMessage] = createSignal("");
+	let retryAllController: AbortController | undefined;
+	onCleanup(() => retryAllController?.abort());
+	const retryAll = async () => {
+		if (isRetryingAll() || isApplyingBulkAction()) return;
+		retryAllController = new AbortController();
+		const signal = retryAllController.signal;
+		setIsRetryingAll(true);
+		setRetryAllMessage("失敗した処理を確認しています…");
+		clearBulkSelection();
+		let progress: RetryFailedTotals = { retried: 0, skipped: 0, failed: 0 };
+		try {
+			const totals = await retryAllFailedJobs(
+				props.retryFailedPage,
+				signal,
+				(totals) => {
+					progress = totals;
+					setRetryAllMessage(
+						`${totals.retried.toLocaleString()}件の処理を再開しました。続けて確認しています…`,
+					);
+				},
+			);
+			if (signal.aborted) return;
+			setRetryAllMessage(
+				totals.retried + totals.skipped + totals.failed === 0
+					? "再試行可能な失敗はありません。取消・保留中の処理は対象外です。"
+					: `${totals.retried.toLocaleString()}件の処理を再開しました（変更済み ${totals.skipped.toLocaleString()}件・再開失敗 ${totals.failed.toLocaleString()}件）。`,
+			);
+		} catch (error) {
+			if (signal.aborted) return;
+			setRetryAllMessage(
+				`${progress.retried.toLocaleString()}件を再開したところで停止しました。${error instanceof Error ? error.message : "接続を確認してもう一度お試しください。"}`,
+			);
+		} finally {
+			if (!signal.aborted) {
+				setIsRetryingAll(false);
+				try {
+					await props.onRefresh();
+				} catch {
+					setRetryAllMessage(
+						(message) =>
+							message +
+							" 一覧の更新に失敗しました。Refreshで確認してください。",
+					);
+				}
+			}
+		}
+	};
 
 	const selectedJob = createMemo(() =>
 		props.jobs().find((job) => job.id === selectedJobId()),
 	);
-	const filteredJobs = createMemo(() => {
-		const jobs = props.jobs();
-		switch (activeFilter()) {
-			case "active":
-				return jobs.filter(
-					(job) => job.status === "pending" || job.status === "in_progress",
-				);
-			case "completed":
-				return jobs.filter((job) => job.status === "completed");
-			case "failed":
-				return jobs.filter((job) => job.status === "failed");
-			case "cancelled":
-				return jobs.filter((job) => job.status === "cancelled");
-			default:
-				return jobs;
-		}
-	});
+	// The route fetches the selected status before pagination, including its total.
+	const filteredJobs = () => props.jobs();
 	const retryableJobIds = createMemo(() => getRetryableJobIds(filteredJobs()));
 	const selectedRetryableJobIds = createMemo(() =>
 		retryableJobIds().filter((jobId) => selectedJobIds().has(jobId)),
@@ -765,7 +813,12 @@ export function JobsScreen(props: JobsScreenProps) {
 	const applyBulkAction = async () => {
 		const action = bulkAction();
 		const jobIds = selectedRetryableJobIds();
-		if (action !== "retry" || jobIds.length === 0 || isApplyingBulkAction()) {
+		if (
+			action !== "retry" ||
+			jobIds.length === 0 ||
+			isApplyingBulkAction() ||
+			isRetryingAll()
+		) {
 			return;
 		}
 		setIsApplyingBulkAction(true);
@@ -836,10 +889,15 @@ export function JobsScreen(props: JobsScreenProps) {
 					<div class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable">
 						<Tabs
 							onChange={(value) => {
-								setActiveFilter(value as JobFilter);
+								const filter = JOB_FILTERS.find(
+									(filter) => filter.value === value,
+								);
+								if (!filter) return;
+								props.onFilterChange(filter.value);
+								setSelectedJobId(null);
 								clearBulkSelection();
 							}}
-							value={activeFilter()}
+							value={props.filter()}
 						>
 							<div class="grid gap-6 lg:grid-cols-settings-sidebar xl:gap-8">
 								<TabsList
@@ -869,6 +927,33 @@ export function JobsScreen(props: JobsScreenProps) {
 									<For each={JOB_FILTERS}>
 										{(filter) => (
 											<TabsContent class="mt-0" value={filter.value}>
+												<Show when={filter.value === "failed"}>
+													<div class="mb-4 space-y-2">
+														<Button
+															variant="outline"
+															disabled={
+																isRetryingAll() || isApplyingBulkAction()
+															}
+															aria-busy={isRetryingAll()}
+															onClick={() => void retryAll()}
+														>
+															<RotateCcw aria-hidden="true" size={15} />
+															{isRetryingAll()
+																? "Retrying all failed…"
+																: "Retry all failed"}
+														</Button>
+														<p class="text-xs text-muted-foreground">
+															ページ外も対象です。バッチは失敗・未投入分をまとめて再開します。
+														</p>
+														<p
+															role="status"
+															aria-live="polite"
+															class="text-xs text-muted-foreground"
+														>
+															{retryAllMessage()}
+														</p>
+													</div>
+												</Show>
 												<Switch>
 													<Match when={props.state().phase === "pending"}>
 														<LoadingRegion label="ジョブ一覧を読み込んでいます...">
@@ -913,7 +998,9 @@ export function JobsScreen(props: JobsScreenProps) {
 																	hasSelection={
 																		selectedRetryableJobIds().length > 0
 																	}
-																	isApplying={isApplyingBulkAction()}
+																	isApplying={
+																		isApplyingBulkAction() || isRetryingAll()
+																	}
 																	onActionChange={setBulkAction}
 																	onApply={applyBulkAction}
 																	onToggleAll={toggleAllJobs}

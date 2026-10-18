@@ -97,19 +97,15 @@ export async function mutateSourceRun(action: "retry" | "cancel", id: string) {
 	await sourceRunService.initialize();
 	try {
 		const run = await (action === "retry"
-			? SourceRunRepository.retry(id)
+			? sourceRunService.retry(id)
 			: SourceRunRepository.cancel(id));
-		if (action === "retry")
-			RealtimeEventBus.publishJob("job-retried", {
-				jobId: id,
-				message: "Source operation queued",
-			});
-		else
+		if (action === "cancel")
 			RealtimeEventBus.publishJob("job-cancelled", {
 				jobId: id,
 				message: "Source operation cancelled",
 			});
-		if (run.kind === "sync") sourceRunService.notify(run);
+		if (action === "cancel" && run.kind === "sync")
+			sourceRunService.notify(run);
 		return run;
 	} catch (error) {
 		if (error instanceof ResourceConflictError)

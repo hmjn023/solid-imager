@@ -14,8 +14,11 @@ import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createSignal } from "solid-js";
-import { jobsSearchSchema } from "@solid-imager/ui/screens/jobs-view";
+import { batch, createSignal } from "solid-js";
+import {
+	jobsSearchSchema,
+	type JobFilter,
+} from "@solid-imager/ui/screens/jobs-view";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { buildThumbnailUrl } from "~/infrastructure/media/thumbnail-runtime";
 import { jobsQueryOptions } from "~/queries";
@@ -59,15 +62,19 @@ function JobsRoute() {
 	const search = Route.useSearch();
 	const navigate = Route.useNavigate();
 	const [pageIndex, setPageIndex] = createSignal(0);
-	const jobsQuery = createQuery<JobListResponse>(() =>
-		jobsQueryOptions({
+	const [filter, setFilter] = createSignal<JobFilter>("all");
+	const jobsQuery = createQuery<JobListResponse>(() => {
+		const status = filter();
+		return jobsQueryOptions({
+			status: status === "all" ? undefined : status,
 			limit: DEFAULT_JOBS_PAGE_SIZE,
 			offset: pageIndex() * DEFAULT_JOBS_PAGE_SIZE,
-		}),
-	);
+		});
+	});
 	const queryClient = useQueryClient();
+	const state = () => toQueryUiState(jobsQuery);
 	const pagination = () => {
-		const total = jobsQuery.data?.total ?? 0;
+		const total = state().data?.total ?? 0;
 		return {
 			canNext: (pageIndex() + 1) * DEFAULT_JOBS_PAGE_SIZE < total,
 			canPrevious: pageIndex() > 0,
@@ -94,6 +101,13 @@ function JobsRoute() {
 
 	return (
 		<JobsScreen
+			filter={filter}
+			onFilterChange={(value) =>
+				batch(() => {
+					setPageIndex(0);
+					setFilter(value);
+				})
+			}
 			view={() => search().view}
 			onViewChange={(view) => {
 				void navigate({ search: { view }, replace: true });
@@ -106,7 +120,10 @@ function JobsRoute() {
 			}}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
-			jobs={() => jobsQuery.data?.items ?? []}
+			jobs={() => state().data?.items ?? []}
+			retryFailedPage={(input, signal) =>
+				orpc.jobs.retryFailed(input, { signal })
+			}
 			onRefresh={async () => {
 				await jobsQuery.refetch();
 			}}
@@ -175,7 +192,7 @@ function JobsRoute() {
 			}}
 			onDownload={downloadJobArtifact}
 			page={pagination}
-			state={() => toQueryUiState(jobsQuery)}
+			state={state}
 		/>
 	);
 }

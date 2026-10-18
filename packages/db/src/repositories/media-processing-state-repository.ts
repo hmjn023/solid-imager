@@ -423,14 +423,32 @@ export function createMediaProcessingStateRepository(
 		},
 		async settleFailure(claim, error, retryable, tx) {
 			if (!tx) throw new Error("Processing settlement requires a transaction");
+			// Terminal updates publish batch outcomes via triggers. Match request/commit
+			// and dispatch's media-before-state/dirty-marker lock order even on failure.
+			await getExecutor(tx)
+				.select({ id: medias.id })
+				.from(medias)
+				.where(eq(medias.id, claim.mediaId))
+				.for("update");
 			const [row] = await getExecutor(tx)
 				.update(states)
 				.set({
 					...clearedClaim,
-					status: retryable
-						? sql`CASE WHEN ${states.attemptCount} < ${states.maxAttempts} THEN 'pending' ELSE 'failed' END`
-						: "failed",
-					availableAt: retryable ? retryAt : dbNow,
+					status:
+						retryable === "capacity"
+							? "pending"
+							: retryable
+								? sql`CASE WHEN ${states.attemptCount} < ${states.maxAttempts} THEN 'pending' ELSE 'failed' END`
+								: "failed",
+					...(retryable === "capacity"
+						? { attemptCount: sql`greatest(0, ${states.attemptCount} - 1)` }
+						: {}),
+					availableAt:
+						retryable === "capacity"
+							? sql`${dbNow} + interval '5 seconds'`
+							: retryable
+								? retryAt
+								: dbNow,
 					lastError: error.slice(0, 2048),
 					updatedAt: dbNow,
 				})
@@ -504,6 +522,11 @@ export function createMediaProcessingStateRepository(
 			if (!completed.length) throw new MediaProcessingSupersededError();
 		},
 		async fail(claim, error, tx) {
+			await getExecutor(tx)
+				.select({ id: medias.id })
+				.from(medias)
+				.where(eq(medias.id, claim.mediaId))
+				.for("update");
 			const rows = await getExecutor(tx)
 				.update(states)
 				.set({

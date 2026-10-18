@@ -2,7 +2,9 @@
 
 外部AI APIとlocal background workerは、同じprocess内のnative推論枠を共有する。local推論は常に1件ずつ実行し、待機は最大16件に制限する。PixAI・CCIP・OppaiOracle・検出・透過処理・CCIP距離計算の全native呼び出しを対象とする。同じモデルのcold loadが競合して複数sessionを構築する経路を、このadapterで防ぐ。native依存ライブラリ自体のcache実装は変更していない。
 
-`jobs.aiConcurrency`はbackground workerのclaim数を制御する。remote接続時にもその設定を使うが、local native推論はメモリ保護のため1件ずつになる。HTTP受付を含む推論の上限を、background jobのclaim数だけに任せない。
+`jobs.aiConcurrency`はremote接続時のbackground workerのclaim数を制御する。localではnative推論に合わせてclaimも1件に制限し、余った要求はDBで待機させる。HTTP受付を含む推論の上限を、background jobのclaim数だけに任せない。
+
+`TOO_MANY_REQUESTS`は推論の容量待ちとして5秒後に再開し、処理の試行回数を消費しない。ネットワーク障害・推論エラーの上限付き再試行とは区別する。以前の容量超過で既に失敗したbatchは、修正版への更新後にRetryで再開する。
 
 ## HTTP受付
 

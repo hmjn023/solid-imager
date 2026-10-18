@@ -281,7 +281,7 @@ describe("dedicated media processing scheduler", () => {
 			if (!delayed) throw new Error("Missing retry state");
 			expect(delayed).toMatchObject({
 				status: "pending",
-				attemptCount: 1,
+				attemptCount: code === "TOO_MANY_REQUESTS" ? 0 : 1,
 				maxAttempts: 5,
 			});
 			expect(delayed.availableAt.getTime()).toBeGreaterThan(
@@ -295,11 +295,11 @@ describe("dedicated media processing scheduler", () => {
 			expect(await task.runOnce()).toBe("completed");
 			expect(await state("tagging")).toMatchObject({
 				status: "completed",
-				attemptCount: 2,
+				attemptCount: code === "TOO_MANY_REQUESTS" ? 1 : 2,
 			});
 		},
 	);
-	it.each(["TOO_MANY_REQUESTS", "BAD_REQUEST"])(
+	it.each(["NETWORK_ERROR", "BAD_REQUEST"])(
 		"keeps AI retries bounded for %s",
 		async (code) => {
 			const infer = vi.fn(async () => {
@@ -340,6 +340,50 @@ describe("dedicated media processing scheduler", () => {
 			});
 		},
 	);
+	it("survives repeated capacity rejections without exhausting attempts and completes when admitted", async () => {
+		const infer = vi
+			.fn<() => Promise<string>>()
+			.mockRejectedValue(new AiInferenceBusyError());
+		const task = new AiMediaTaskService(
+			{
+				processingStateRepo: repo,
+				transactionManager: transactions,
+				mediaRepo,
+				sourceRepo: sources,
+			},
+			"ccip",
+			{
+				currentRevision: () => "v1",
+				canReuse: () => false,
+				load: async () => null,
+				infer,
+				save: async () => {},
+			},
+		);
+		await task.requestForMedia(input.mediaSourceId, input.mediaId);
+		for (let attempt = 0; attempt < 8; attempt++) {
+			await database
+				.update(schema.mediaProcessingStates)
+				.set({ availableAt: new Date(0) })
+				.where(where("ccip"));
+			expect(await task.runOnce()).toBe("retry");
+			expect(await state("ccip")).toMatchObject({
+				status: "pending",
+				attemptCount: 0,
+			});
+			expect(await task.runOnce()).toBe("idle");
+		}
+		infer.mockResolvedValue("admitted");
+		await database
+			.update(schema.mediaProcessingStates)
+			.set({ availableAt: new Date(0) })
+			.where(where("ccip"));
+		expect(await task.runOnce()).toBe("completed");
+		expect(await state("ccip")).toMatchObject({
+			status: "completed",
+			attemptCount: 1,
+		});
+	});
 	it("coalesces simultaneous requests and claims one token", async () => {
 		await Promise.all(Array.from({ length: 6 }, () => request()));
 		const works = await Promise.all(Array.from({ length: 6 }, () => claim()));

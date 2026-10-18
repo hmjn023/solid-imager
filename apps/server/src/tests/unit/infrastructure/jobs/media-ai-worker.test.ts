@@ -10,6 +10,7 @@ describe("dedicated AI inference pool", () => {
 		const worker = new MediaAiWorker(runTask);
 		worker.updateConfig({
 			...defaultAppConfig,
+			ai: { ...defaultAppConfig.ai, baseUrl: "https://ai.example.test" },
 			jobs: { ...defaultAppConfig.jobs, aiConcurrency: 2, pollIntervalMs: 100 },
 		});
 		worker.start();
@@ -35,6 +36,7 @@ describe("dedicated AI inference pool", () => {
 		const worker = new MediaAiWorker(runTask);
 		const config = {
 			...defaultAppConfig,
+			ai: { ...defaultAppConfig.ai, baseUrl: "https://ai.example.test" },
 			jobs: { ...defaultAppConfig.jobs, aiConcurrency: 1, pollIntervalMs: 100 },
 		};
 		worker.updateConfig(config);
@@ -54,5 +56,21 @@ describe("dedicated AI inference pool", () => {
 		await vi.advanceTimersByTimeAsync(100);
 		expect(runTask).toHaveBeenCalledTimes(6);
 		await worker.stop();
+	});
+	it("leaves local work in the database when configured concurrency exceeds native capacity", async () => {
+		vi.useFakeTimers();
+		const release = Promise.withResolvers<"completed">();
+		const runTask = vi.fn(() => release.promise);
+		const worker = new MediaAiWorker(runTask);
+		worker.updateConfig({
+			...defaultAppConfig,
+			jobs: { ...defaultAppConfig.jobs, aiConcurrency: 70 },
+		});
+		worker.start();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(runTask).toHaveBeenCalledTimes(1);
+		const draining = worker.stop();
+		release.resolve("completed");
+		await draining;
 	});
 });
