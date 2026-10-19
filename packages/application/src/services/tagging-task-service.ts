@@ -5,24 +5,23 @@ import {
 	type TaggingProcessingSettings,
 } from "@solid-imager/core/domain/processing/schemas";
 
-/** Fixed field order; bump tagging-v1 when preprocessing or output semantics change. */
+/** Result identity depends on indexed input and the Solid Imager model version, not execution location. */
 export function getTaggingTaskRevision(
 	input: MediaProcessingInput,
 	settings: TaggingProcessingSettings,
 ): string {
-	return createHash("sha256")
-		.update(
-			JSON.stringify([
-				"tagging-v1",
-				serializeMediaProcessingInput(input),
-				input.mediaType,
-				settings.model,
-				settings.modelVersion,
-				settings.runtimeVersion,
-				settings.provider,
-				settings.device,
-				settings.endpoint,
-			]),
-		)
-		.digest("hex");
+	return (
+		"tagging:" +
+		createHash("sha256")
+			.update(
+				JSON.stringify([
+					"tagging-v1",
+					serializeMediaProcessingInput(input),
+					input.mediaType,
+					settings.model,
+					settings.modelVersion,
+				]),
+			)
+			.digest("hex")
+	);
 }

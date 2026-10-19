@@ -7,6 +7,7 @@ import {
 	type TaggingServiceDeps,
 } from "@solid-imager/application/services/tagging-service";
 import { getTaggingTaskRevision } from "@solid-imager/application/services/tagging-task-service";
+import { adoptLegacyAiResults } from "~/infrastructure/services/ai-result-version-cutover";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import {
 	MediaProcessingSupersededError,
@@ -172,7 +173,7 @@ describe("revision-aware tagging", () => {
 		await database.delete(schema.tags);
 		settings = {
 			model: "pixai",
-			modelVersion: "v0.9",
+			modelVersion: "1",
 			runtimeVersion: "test-v1",
 			provider: "cpu",
 			device: null,
@@ -231,6 +232,101 @@ describe("revision-aware tagging", () => {
 		await run();
 		expect(infer).toHaveBeenCalledTimes(1);
 	});
+	it("adopts legacy successful responses and batch observers without inference, but never upgrades them to a newer model", async () => {
+		await run();
+		const [completed] = await states();
+		const legacy = "a".repeat(64);
+		await database
+			.update(schema.mediaProcessingStates)
+			.set({ requestedRevision: legacy, completedRevision: legacy })
+			.where(eq(schema.mediaProcessingStates.mediaId, mediaId));
+		const [batch] = await database
+			.insert(schema.batchRuns)
+			.values({
+				input: {
+					kind: "tagging",
+					mediaSourceId: sourceId,
+					force: false,
+					missingOnly: false,
+					thumbnailSize: 512,
+				},
+			})
+			.returning();
+		const [item] = await database
+			.insert(schema.batchItems)
+			.values({
+				runId: batch.id,
+				mediaId,
+				mediaSourceId: sourceId,
+				kind: "tagging",
+				status: "scheduled",
+				requestId: completed.requestId,
+				requestedRevision: legacy,
+				plannedRevision: legacy,
+			})
+			.returning();
+		await database.insert(schema.batchItemAttempts).values({
+			itemId: item.id,
+			attemptCount: 1,
+			requestId: completed.requestId,
+			requestedRevision: legacy,
+			status: "scheduled",
+		});
+		expect(await adoptLegacyAiResults(executor)).toBe(1);
+		expect(await adoptLegacyAiResults(executor)).toBe(0);
+		expect(await run()).toEqual(first);
+		expect(await states()).toEqual([completed]);
+		expect(infer).toHaveBeenCalledOnce();
+		expect(
+			await database
+				.select()
+				.from(schema.batchItems)
+				.where(eq(schema.batchItems.id, item.id)),
+		).toEqual([
+			expect.objectContaining({
+				requestId: completed.requestId,
+				plannedRevision: completed.requestedRevision,
+				requestedRevision: completed.requestedRevision,
+			}),
+		]);
+		expect(
+			await database
+				.select()
+				.from(schema.batchItemAttempts)
+				.where(eq(schema.batchItemAttempts.itemId, item.id)),
+		).toEqual([
+			expect.objectContaining({
+				requestedRevision: completed.requestedRevision,
+			}),
+		]);
+		settings = { ...settings, modelVersion: "2" };
+		expect(await adoptLegacyAiResults(executor)).toBe(0);
+		await run();
+		expect(infer).toHaveBeenCalledTimes(2);
+	});
+	it.each(["input", "result", "failure", "unversioned"] as const)(
+		"does not adopt a legacy tagging response with invalid %s",
+		async (invalid) => {
+			await run();
+			const legacy = invalid === "unversioned" ? "legacy" : "b".repeat(64);
+			await database
+				.update(schema.mediaProcessingStates)
+				.set({
+					requestedRevision: legacy,
+					completedRevision: legacy,
+					...(invalid === "result" ? { taggingResult: null } : {}),
+					...(invalid === "failure" ? { status: "failed" as const } : {}),
+				})
+				.where(eq(schema.mediaProcessingStates.mediaId, mediaId));
+			if (invalid === "input")
+				await database
+					.update(schema.medias)
+					.set({ fileSize: 999 })
+					.where(eq(schema.medias.id, mediaId));
+			expect(await adoptLegacyAiResults(executor)).toBe(0);
+			expect((await states())[0].requestedRevision).toBe(legacy);
+		},
+	);
 
 	it("uses revision-aware batch targets for legacy, empty, forced and changed-model results", async () => {
 		const scan = (force = false) =>
@@ -341,7 +437,7 @@ describe("revision-aware tagging", () => {
 		await run({ skipCache: true });
 		expect(infer).toHaveBeenCalledTimes(2);
 	});
-	it.each(["modelVersion", "runtimeVersion", "provider", "device"] as const)(
+	it.each(["model", "modelVersion"] as const)(
 		"rejects stale results and failures after %s changes",
 		async (field) => {
 			const delayed = delayedInference();
@@ -359,6 +455,31 @@ describe("revision-aware tagging", () => {
 			expect(await states()).toEqual([
 				expect.objectContaining({ status: "completed", lastError: null }),
 			]);
+		},
+	);
+	it.each(["runtimeVersion", "provider", "device", "endpoint"] as const)(
+		"preserves in-flight and completed results after %s changes",
+		async (field) => {
+			const delayed = delayedInference();
+			await delayed.started;
+			settings = { ...settings, [field]: "changed" };
+			delayed.resolve(first);
+			expect(await delayed.pending).toEqual({ value: first });
+			const [completed] = await states();
+			settings = { ...settings, [field]: "changed-again" };
+			service = createService();
+			expect(await run()).toEqual(first);
+			expect(await states()).toEqual([completed]);
+			expect(infer).toHaveBeenCalledOnce();
+			expect(
+				(
+					await scanTaggingTargetPage(
+						{ force: false, limit: 10 },
+						database,
+						settings,
+					)
+				).targets,
+			).toEqual([]);
 		},
 	);
 	it("rejects an old result after the media input changes", async () => {
@@ -481,7 +602,7 @@ describe("revision-aware tagging", () => {
 		await run();
 		expect(infer).toHaveBeenCalledTimes(2);
 	});
-	it("does not reuse results without a known runtime identity and retains inference failures", async () => {
+	it("reuses successful results without a runtime identity and retains inference failures", async () => {
 		settings = { ...settings, runtimeVersion: "unknown" };
 		infer.mockRejectedValueOnce(new Error("native runtime unavailable"));
 		await expect(run()).rejects.toThrow("native runtime unavailable");
@@ -490,7 +611,7 @@ describe("revision-aware tagging", () => {
 		]);
 		await run({ skipCache: true });
 		await run();
-		expect(infer).toHaveBeenCalledTimes(3);
+		expect(infer).toHaveBeenCalledTimes(2);
 	});
 	it("cascades domain state and rejects late output after target deletion", async () => {
 		const delayed = delayedInference();

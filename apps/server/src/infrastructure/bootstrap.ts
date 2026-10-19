@@ -10,6 +10,7 @@ import { BatchWorker } from "~/infrastructure/jobs/batch-worker";
 import { MediaAiWorker } from "~/infrastructure/jobs/media-ai-worker";
 import { taggingService } from "~/infrastructure/services/tagging-service";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
+import { adoptLegacyAiResults } from "~/infrastructure/services/ai-result-version-cutover";
 import { processingSettingsFromConfig } from "@solid-imager/core/domain/processing/schemas";
 import { MediaProcessingStateRepository } from "~/infrastructure/repositories/media-processing-state-repository";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
@@ -220,6 +221,9 @@ export function startBackgroundWorker(): Promise<void> {
 		await initializeStage("sources", () => sourceRunService.initialize());
 		await initializeStage("legacy-retirement", () =>
 			JobRetirementRepository.initialize(),
+		);
+		await initializeStage("ai-result-versions", () =>
+			adoptLegacyAiResults(getExecutor),
 		);
 		await initializeStage("file-recovery", () =>
 			services.getMediaProcessingService().reconcileFileTasks(),

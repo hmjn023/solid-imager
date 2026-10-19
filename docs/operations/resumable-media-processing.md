@@ -8,7 +8,17 @@
 
 Jobs の **Current media processing** は現在の媒体×工程の状態、**Processing steps** は選択した旧ジョブの履歴である。旧 `processMedia` / `generate_thumbnail` は専用要求を引き継いで完了を観測する互換経路となる。自動stale復旧はfile処理のterminal failureや試行上限をリセットしない。明示Retryは内部payloadへ印を付け、再要求と同じtransactionで消費する。旧ジョブの取消は観測を停止するが、他の呼び出し元と共有する専用要求は取り消さない。失敗した互換ジョブの **Retry job** は失敗工程を明示的に再要求する。通常の補修はterminal failureとbackoffを維持する。
 
-以下0032〜0036の記述は各migration時点の設計・移行履歴。現在の切替と運用は0037およびAI専用workerの節を参照する。
+以下0032〜0036の記述は各migration時点の設計・移行履歴。現在の切替と運用は0037およびAI専用workerの節、推論結果の有効判定は次節を参照する。
+
+## Solid Imager 管理の AI モデル版
+
+tagging と full-image CCIP のモデル版は `packages/core/src/domain/processing/schemas.ts` の `TAGGING_MODEL_VERSION` / `CCIP_MODEL_VERSION`（初版はそれぞれ `"1"`）で管理する。dghs-imgutils の同じ関数が使うモデル・重み、または推論結果に影響する前処理・出力の意味を変更するときだけ、該当する版を更新する。PixAI の呼び出し引数 `v0.9` や dghs-imgutils パッケージのリリース番号とは独立した版である。
+
+revision は indexed input、モデル名、Solid Imager のモデル版から作る。CCIP は embedding version・次元数も含める。URL、local/remote、provider、device、native runtime 版、timeout は推論結果の有効判定に含めない。同一モデルを各推論先で使用する前提で、切り替え後も成功キャッシュ・完了状態・一括処理の除外・CCIP 類似検索を維持する。モデル版または入力が変われば従来どおり stale となり、明示的な強制再推論も可能。native runtime が読み込めなくても既存の成功結果は再利用でき、新規推論の失敗は処理状態へ記録する。
+
+初回移行では、worker 起動前の `ai-result-versions` で旧形式の64桁ハッシュを `tagging:` / `ccip:` 付き revision に変換する。入力が現行DBと一致し、成功 state と有効な保存結果が揃うものだけを、固定した初版モデルの結果として引き継ぐ。旧ハッシュからモデル版は復元できないため、これは既存の完了済み結果を初版として採用する移行方針である。CCIP は full region のモデル・embedding version・画像更新日時・出力 revision も一致することが条件。タグ関連付け・ベクトル本体・推論日時・request ID・試行回数は維持し、未確定の batch observer の revision も同じ transaction で更新する。
+
+旧writerを停止して新版を起動する。100件ずつ走査し、媒体ごとの transaction で変換するため、中断後の再起動でも再開できる。名前付き revision は再変換せず、モデル版更新後の古い成功を新モデル版へ自動昇格しない。失敗・処理中・入力変更済み・出力欠損・成功 state のない旧結果は引き継がず、通常の要求または復旧操作で処理する。DBの列追加や実モデルの読み込みは不要。
 
 ## migration 0032
 

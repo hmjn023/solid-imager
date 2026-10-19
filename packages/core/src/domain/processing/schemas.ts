@@ -35,13 +35,18 @@ export const aiProcessingObserverSchema = z.looseObject({
 	force: z.boolean().optional(),
 });
 
+/** Solid Imager owns these versions. Bump only when the model or inference output semantics change. */
+export const TAGGING_MODEL_VERSION = "1";
+export const CCIP_MODEL_VERSION = "1";
 export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
 export const CCIP_EMBEDDING_VERSION = 1;
 export const CCIP_VECTOR_DIMENSIONS = 768;
 
 export const taggingProcessingSettingsSchema = z.object({
 	model: z.string(),
+	/** Solid Imager model version, shared by local and remote inference. */
 	modelVersion: z.string(),
+	/** Execution diagnostics; these fields do not determine result validity. */
 	runtimeVersion: z.string(),
 	provider: z.string(),
 	device: z.string().nullable(),

@@ -38,23 +38,22 @@ export function getCcipTaskRevision(
 	input: MediaProcessingInput,
 	settings: CcipProcessingSettings,
 ): string {
-	return createHash("sha256")
-		.update(
-			JSON.stringify([
-				"full-ccip-v1",
-				serializeMediaProcessingInput(input),
-				input.mediaType,
-				settings.model,
-				settings.modelVersion,
-				settings.runtimeVersion,
-				settings.provider,
-				settings.device,
-				settings.endpoint,
-				settings.embeddingVersion,
-				settings.dimensions,
-			]),
-		)
-		.digest("hex");
+	return (
+		"ccip:" +
+		createHash("sha256")
+			.update(
+				JSON.stringify([
+					"full-ccip-v1",
+					serializeMediaProcessingInput(input),
+					input.mediaType,
+					settings.model,
+					settings.modelVersion,
+					settings.embeddingVersion,
+					settings.dimensions,
+				]),
+			)
+			.digest("hex")
+	);
 }
 
 const MIN_CANDIDATES = 100;

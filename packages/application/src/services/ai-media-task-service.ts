@@ -52,12 +52,8 @@ export type AiMediaTaskHandler<Result> = {
 	afterCommit?(input: MediaProcessingInput): void | Promise<void>;
 };
 export function canReuseAiResult(settings: TaggingProcessingSettings): boolean {
-	return (
-		// Remote services do not expose an immutable model version, so the configured endpoint identifies reusable results.
-		settings.endpoint !== "" ||
-		(settings.modelVersion !== "unknown" &&
-			settings.runtimeVersion !== "unknown")
-	);
+	// Solid Imager assigns the model version for both local and remote inference.
+	return settings.modelVersion !== "unknown";
 }
 /** Only the dedicated runner performs inference. Direct calls and jobs request/observe. */
 export class AiMediaTaskService<Result> {
