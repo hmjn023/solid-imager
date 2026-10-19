@@ -53,9 +53,10 @@ export type AiMediaTaskHandler<Result> = {
 };
 export function canReuseAiResult(settings: TaggingProcessingSettings): boolean {
 	return (
-		settings.endpoint === "" &&
-		settings.modelVersion !== "unknown" &&
-		settings.runtimeVersion !== "unknown"
+		// Remote services do not expose an immutable model version, so the configured endpoint identifies reusable results.
+		settings.endpoint !== "" ||
+		(settings.modelVersion !== "unknown" &&
+			settings.runtimeVersion !== "unknown")
 	);
 }
 /** Only the dedicated runner performs inference. Direct calls and jobs request/observe. */

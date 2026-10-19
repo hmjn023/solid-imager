@@ -49,6 +49,13 @@ const retained = sql`${now} + interval '24 hours'`;
 const emptyOwner = { runId: null, kind: null, token: null, expiresAt: null };
 const emptyLease = { leaseToken: null, leaseExpiresAt: null };
 const tableFor = (kind: SourceRunKind) => (kind === "sync" ? syncs : transfers);
+// Bun SQL encodes string parameters as JSON strings; cast JSON text through text.
+function asJsonb(value: object | null) {
+	if (value === null) return sql`NULL::jsonb`;
+	const encoded = JSON.stringify(value);
+	if (encoded === undefined) throw new Error("JSONB value is not serializable");
+	return sql`${encoded}::text::jsonb`;
+}
 function rowsOf(value: unknown): unknown[] {
 	return Array.isArray(value)
 		? value
@@ -180,7 +187,7 @@ export function createSourceRunRepository(
 			.values({
 				sourceId,
 				kind: "sync",
-				input: { kind: "sync", sourcePath, generation },
+				input: asJsonb({ kind: "sync", sourcePath, generation }),
 				createdAt: now,
 				updatedAt: now,
 			})
@@ -241,7 +248,7 @@ export function createSourceRunRepository(
 						id,
 						sourceId,
 						kind: parsed.kind,
-						input: parsed,
+						input: asJsonb(parsed),
 						retentionExpiresAt: parsed.kind === "restore" ? retained : null,
 						createdAt: now,
 						updatedAt: now,
@@ -523,7 +530,7 @@ export function createSourceRunRepository(
 			const table = tableFor(claim.kind);
 			const changed = await getExecutor(tx)
 				.update(table)
-				.set({ checkpoint, updatedAt: now })
+				.set({ checkpoint: asJsonb(checkpoint), updatedAt: now })
 				.where(
 					and(
 						eq(table.id, claim.id),
@@ -558,7 +565,7 @@ export function createSourceRunRepository(
 							.update(table)
 							.set({
 								status: "completed",
-								artifact: artifact ?? null,
+								artifact: asJsonb(artifact ?? null),
 								...emptyLease,
 								failureCode: null,
 								retentionExpiresAt: claim.kind === "sync" ? null : retained,
