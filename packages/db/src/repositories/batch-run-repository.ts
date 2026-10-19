@@ -32,6 +32,7 @@ import {
 import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
 import type {
 	IBatchRunRepository,
+	BatchReconcileSummary,
 	BatchSummary,
 } from "@solid-imager/core/domain/repositories/batch-run-repository";
 import {
@@ -626,7 +627,7 @@ export function createBatchRunRepository(
 					.orderBy(asc(runs.id))
 					.limit(limit)
 					.for("no key update", { of: runs, skipLocked: true });
-				const changed: BatchSummary[] = [];
+				const changed: BatchReconcileSummary[] = [];
 				for (const { run: row } of rows) {
 					const [marker] = await db
 						.select()
@@ -635,6 +636,7 @@ export function createBatchRunRepository(
 						.for("update");
 					if (!marker) continue;
 					const current = await summary(row, tx);
+					const statusChanged = row.status !== current.run.status;
 					const [updated] = await db
 						.update(runs)
 						.set({
@@ -657,7 +659,11 @@ export function createBatchRunRepository(
 								eq(dirty.generation, marker.generation),
 							),
 						);
-					changed.push({ run: mapRun(updated), progress: current.progress });
+					changed.push({
+						run: mapRun(updated),
+						progress: current.progress,
+						statusChanged,
+					});
 				}
 				return changed;
 			});

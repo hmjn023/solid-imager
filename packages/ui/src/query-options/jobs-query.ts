@@ -4,6 +4,7 @@ import type {
 } from "@solid-imager/core/domain/jobs/schemas";
 import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
 import { queryOptions } from "@tanstack/solid-query";
+import type { QueryClient } from "@tanstack/solid-query";
 
 export const DEFAULT_JOBS_PAGE_SIZE = 200;
 export const defaultJobsQueryInput = {
@@ -17,6 +18,21 @@ export const jobsQueryKeys = {
 	list: (input: JobListRequest) => ["jobs", "list", input] as const,
 	detail: (jobId: string) => ["jobs", "detail", jobId] as const,
 };
+
+const pendingJobsInvalidations = new WeakMap<
+	QueryClient,
+	ReturnType<typeof setTimeout>
+>();
+
+/** Coalesces bursts of lifecycle events into one jobs-list refresh per window. */
+export function scheduleJobsListInvalidation(queryClient: QueryClient) {
+	if (pendingJobsInvalidations.has(queryClient)) return;
+	const timer = setTimeout(() => {
+		pendingJobsInvalidations.delete(queryClient);
+		void queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+	}, 250);
+	pendingJobsInvalidations.set(queryClient, timer);
+}
 
 export const defaultJobsQueryConfig = {
 	staleTime: 5_000,

@@ -112,8 +112,25 @@ const pageSchema = z.object({
 	ids: z.array(z.object({ id: z.uuid() })),
 	total: z.coerce.number().int().nonnegative(),
 });
+type JobViewPage = { items: JobDto[]; total: number };
+const inFlightJobLists = new Map<string, Promise<JobViewPage>>();
+
 /** Temporary Jobs API compatibility projection. Dedicated execution never reads generic job rows. */
 export async function listJobView(input: JobListRequest) {
+	const key = `${input.status ?? "all"}:${input.limit}:${input.offset}`;
+	const existing = inFlightJobLists.get(key);
+	if (existing) return existing;
+
+	const pending = loadJobView(input);
+	inFlightJobLists.set(key, pending);
+	const clear = () => {
+		if (inFlightJobLists.get(key) === pending) inFlightJobLists.delete(key);
+	};
+	void pending.then(clear, clear);
+	return pending;
+}
+
+async function loadJobView(input: JobListRequest): Promise<JobViewPage> {
 	await downloadRunService.initialize();
 	await batchRunService.initialize();
 	await sourceRunService.initialize();
@@ -138,14 +155,37 @@ export async function listJobView(input: JobListRequest) {
 		const runStatus = statusFilter(
 			sql`(CASE WHEN status = 'blocked' THEN 'failed' ELSE status END)`,
 		);
+		const batchRunStatus = statusFilter(sql`(
+			CASE
+				WHEN dirty.run_id IS NOT NULL
+					AND r.status IN ('pending', 'in_progress')
+					AND r.dispatch_complete
+					AND NOT EXISTS (
+						SELECT 1 FROM batch_items pending_item
+						WHERE pending_item.run_id = r.id
+							AND pending_item.status IN ('pending', 'scheduled')
+					)
+				THEN CASE WHEN EXISTS (
+					SELECT 1 FROM batch_items failed_item
+					WHERE failed_item.run_id = r.id
+						AND failed_item.status IN ('failed', 'superseded', 'blocked')
+				) THEN 'failed' ELSE 'completed' END
+				WHEN r.status = 'blocked' THEN 'failed'
+				ELSE r.status
+			END
+		)`);
+		const dirtyBatchRunsJoin = statuses.length
+			? sql`LEFT JOIN batch_run_dirty dirty ON dirty.run_id = r.id`
+			: sql``;
 		const result: unknown = await db.execute(sql`
 			WITH combined AS (
 				SELECT id, created_at, id AS owner_id FROM download_runs WHERE status <> 'superseded' ${runStatus}
  UNION ALL SELECT id, created_at, id AS owner_id FROM source_sync_runs WHERE true ${runStatus}
  UNION ALL SELECT id, created_at, id AS owner_id FROM source_transfer_runs WHERE true ${runStatus}
  UNION ALL
- SELECT r.id, r.created_at, r.id AS owner_id FROM batch_runs r JOIN batch_run_status b ON b.id = r.id
- WHERE true ${statusFilter(sql`(CASE WHEN b.status = 'blocked' THEN 'failed' ELSE b.status END)`)}
+ SELECT r.id, r.created_at, r.id AS owner_id FROM batch_runs r
+ ${dirtyBatchRunsJoin}
+ WHERE true ${batchRunStatus}
  UNION ALL
  SELECT id, created_at, run_id AS owner_id FROM batch_items
  WHERE true ${statusFilter(sql`(CASE WHEN status = 'scheduled' THEN 'in_progress' WHEN status IN ('blocked', 'superseded') THEN 'failed' ELSE status END)`)}

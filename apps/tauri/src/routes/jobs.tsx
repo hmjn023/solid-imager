@@ -7,6 +7,7 @@ import { useJobEvents } from "@solid-imager/ui/hooks/use-job-events";
 import {
 	DEFAULT_JOBS_PAGE_SIZE,
 	jobsQueryKeys,
+	scheduleJobsListInvalidation,
 	updateJobProgress,
 } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
@@ -105,7 +106,7 @@ function JobsRoute() {
 				);
 				return;
 			}
-			void queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+			scheduleJobsListInvalidation(queryClient);
 		},
 	);
 

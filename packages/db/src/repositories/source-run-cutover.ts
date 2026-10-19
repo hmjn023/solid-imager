@@ -26,6 +26,13 @@ import type { DrizzleExecutor } from "../types";
 const ID = "79100000-0000-4000-8000-000000000001";
 const now = sql`timezone('UTC',clock_timestamp())`;
 const tableFor = (kind: SourceRunKind) => (kind === "sync" ? syncs : transfers);
+// Bun SQL encodes string parameters as JSON strings; cast JSON text through text.
+function asJsonb(value: object | null) {
+	if (value === null) return sql`NULL::jsonb`;
+	const encoded = JSON.stringify(value);
+	if (encoded === undefined) throw new Error("JSONB value is not serializable");
+	return sql`${encoded}::text::jsonb`;
+}
 function rowsOf(value: unknown): unknown[] {
 	return Array.isArray(value)
 		? value
@@ -174,10 +181,10 @@ export async function activateSourceRuns(
 						id: row.id,
 						sourceId: row.mediaSourceId,
 						kind,
-						input,
+						input: asJsonb(input),
 						status,
 						failureCode: code,
-						artifact,
+						artifact: asJsonb(artifact),
 						retentionExpiresAt: row.artifactExpiresAt,
 						attemptCount: row.attemptCount,
 						maxAttempts: row.attemptCount + 3,

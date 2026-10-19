@@ -24,6 +24,7 @@ export {
 	defaultJobsQueryConfig,
 	defaultJobsQueryInput,
 	jobsQueryKeys,
+	scheduleJobsListInvalidation,
 	updateJobProgress,
 } from "./jobs-query";
 export {

@@ -265,6 +265,12 @@ export const batchRunService = new BatchRunService({
 		}
 	},
 	notify: ({ run, progress }, action) => {
+		if (action === "progress")
+			return RealtimeEventBus.publishJob("job-progress", {
+				jobId: run.id,
+				processed: progress.completed + progress.failed + progress.cancelled,
+				total: progress.total,
+			});
 		if (action === "retry")
 			RealtimeEventBus.publishJob("job-retried", {
 				jobId: run.id,

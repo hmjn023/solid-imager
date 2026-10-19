@@ -32,7 +32,10 @@ export type BatchRunServiceDeps = {
 		input: BatchInput,
 		tx: Transaction,
 	) => Promise<MediaProcessingState | null>;
-	notify: (summary: BatchSummary, action?: "retry" | "cancel") => void;
+	notify: (
+		summary: BatchSummary,
+		action?: "retry" | "cancel" | "progress",
+	) => void;
 	logger: ILogger;
 };
 class ChangedReservationError extends Error {
@@ -135,7 +138,10 @@ export class BatchRunService {
 			runId ? 1 : 100,
 			runId,
 		))
-			this.notify(summary);
+			this.notify(
+				summary,
+				summary.statusChanged === false ? "progress" : undefined,
+			);
 	}
 	async cancel(id: string) {
 		const summary = await this.deps.repo.cancel(id);
@@ -147,7 +153,10 @@ export class BatchRunService {
 		this.notify(summary, "retry");
 		return summary;
 	}
-	private notify(summary: BatchSummary, action?: "retry" | "cancel") {
+	private notify(
+		summary: BatchSummary,
+		action?: "retry" | "cancel" | "progress",
+	) {
 		try {
 			this.deps.notify(summary, action);
 		} catch (error) {
