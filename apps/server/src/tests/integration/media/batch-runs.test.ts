@@ -298,7 +298,7 @@ describe("fixed batch runs and durable item outcomes", () => {
 									pending: 51,
 								},
 							}),
-							undefined,
+							"progress",
 						);
 						clock.mockReturnValue(500);
 					}

@@ -1,4 +1,5 @@
 import { runScheduledObserver } from "./run-scheduled-observer";
+import { adoptLegacyAiResults } from "~/infrastructure/services/ai-result-version-cutover";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -172,7 +173,7 @@ describe("revision-aware full-image CCIP", () => {
 		await database.delete(schema.mediaSources);
 		settings = {
 			model: CCIP_MODEL,
-			modelVersion: "native-v1",
+			modelVersion: "1",
 			runtimeVersion: "test-v1",
 			provider: "cpu",
 			device: null,
@@ -226,6 +227,74 @@ describe("revision-aware full-image CCIP", () => {
 			getCcipTaskRevision(await input(), settings),
 		);
 	});
+	it("adopts matching legacy CCIP state and vector together without inference", async () => {
+		const initial = await run();
+		const completed = await state();
+		const legacy = "c".repeat(64);
+		await database
+			.update(schema.mediaProcessingStates)
+			.set({ requestedRevision: legacy, completedRevision: legacy })
+			.where(eq(schema.mediaProcessingStates.mediaId, mediaId));
+		await database
+			.update(schema.ccipEmbeddings)
+			.set({ processingRevision: legacy });
+		expect(await adoptLegacyAiResults(executor)).toBe(1);
+		expect(await adoptLegacyAiResults(executor)).toBe(0);
+		settings = {
+			...settings,
+			endpoint: "https://other-ai.example",
+			runtimeVersion: "unknown",
+		};
+		expect((await run()).record).toEqual(initial.record);
+		expect(await state()).toEqual(completed);
+		expect(infer).toHaveBeenCalledOnce();
+		expect(await service.getStatus(sourceId, mediaId)).toMatchObject({
+			status: "ready",
+		});
+		settings = { ...settings, modelVersion: "2" };
+		expect(await adoptLegacyAiResults(executor)).toBe(0);
+		expect(await service.getStatus(sourceId, mediaId)).toMatchObject({
+			status: "stale",
+		});
+	});
+	it.each([
+		"input",
+		"model",
+		"embeddingVersion",
+		"vectorRevision",
+		"missingVector",
+	] as const)(
+		"does not adopt a legacy CCIP result with invalid %s",
+		async (invalid) => {
+			await run();
+			const legacy = "d".repeat(64);
+			await database
+				.update(schema.mediaProcessingStates)
+				.set({ requestedRevision: legacy, completedRevision: legacy })
+				.where(eq(schema.mediaProcessingStates.mediaId, mediaId));
+			await database
+				.update(schema.ccipEmbeddings)
+				.set({ processingRevision: legacy });
+			if (invalid === "input")
+				await database
+					.update(schema.medias)
+					.set({ fileSize: 999 })
+					.where(eq(schema.medias.id, mediaId));
+			if (invalid === "model")
+				await database.update(schema.ccipEmbeddings).set({ model: "other" });
+			if (invalid === "embeddingVersion")
+				await database
+					.update(schema.ccipEmbeddings)
+					.set({ embeddingVersion: 2 });
+			if (invalid === "vectorRevision")
+				await database
+					.update(schema.ccipEmbeddings)
+					.set({ processingRevision: "other" });
+			if (invalid === "missingVector") await store.delete(mediaId);
+			expect(await adoptLegacyAiResults(executor)).toBe(0);
+			expect((await state())?.requestedRevision).toBe(legacy);
+		},
+	);
 	it("replaces legacy future timestamps under the current claim", async () => {
 		await store.upsert({
 			mediaId,
@@ -273,10 +342,8 @@ describe("revision-aware full-image CCIP", () => {
 		expect(infer).toHaveBeenCalledOnce();
 	});
 	for (const key of [
+		"model",
 		"modelVersion",
-		"runtimeVersion",
-		"provider",
-		"device",
 		"embeddingVersion",
 		"dimensions",
 	] as const) {
@@ -291,6 +358,44 @@ describe("revision-aware full-image CCIP", () => {
 				error: expect.any(MediaProcessingSupersededError),
 			});
 			expect(await store.get(mediaId, query())).toBeNull();
+		});
+	}
+	for (const key of [
+		"runtimeVersion",
+		"provider",
+		"device",
+		"endpoint",
+	] as const) {
+		it(`preserves in-flight and completed vectors after ${key} changes`, async () => {
+			const old = delayed();
+			await old.started;
+			settings = { ...settings, [key]: "changed" };
+			old.resolve(feature());
+			expect(await old.pending).toHaveProperty("value");
+			const completed = await state();
+			settings = { ...settings, [key]: "changed-again" };
+			service = createService();
+			expect((await run()).skipped).toBe(true);
+			expect(await state()).toEqual(completed);
+			expect(infer).toHaveBeenCalledOnce();
+			expect(await service.getStatus(sourceId, mediaId)).toMatchObject({
+				status: "ready",
+			});
+			expect(await service.searchSimilar(mediaId, 5)).toEqual({
+				media: [],
+				total: 0,
+				scores: [],
+			});
+			expect(
+				(
+					await scanCcipTargetPage(
+						{ force: false, limit: 10 },
+						database,
+						settings,
+						(ids) => store.getMetadataMany(ids, query()),
+					)
+				).targets,
+			).toEqual([]);
 		});
 	}
 	for (const key of ["fileSize", "filePath", "modifiedAt"] as const) {
@@ -463,12 +568,12 @@ describe("revision-aware full-image CCIP", () => {
 			(await scan({ afterId: next.nextCursor })).nextCursor,
 		).toBeUndefined();
 		expect((await scan({ force: true })).targets).toHaveLength(1);
-		settings = { ...settings, runtimeVersion: "test-v2" };
+		settings = { ...settings, modelVersion: "2" };
 		expect((await scan()).targets).toHaveLength(1);
 	});
 	it("marks a cached vector stale and excludes it from similarity search after settings change", async () => {
 		await run();
-		settings = { ...settings, runtimeVersion: "v2" };
+		settings = { ...settings, modelVersion: "2" };
 		expect(await service.getStatus(sourceId, mediaId)).toMatchObject({
 			status: "stale",
 		});

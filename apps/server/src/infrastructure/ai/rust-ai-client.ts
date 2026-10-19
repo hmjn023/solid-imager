@@ -6,6 +6,8 @@ import type { AppContract } from "@solid-imager/core/domain/contract";
 import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
 import {
 	CCIP_MODEL,
+	CCIP_MODEL_VERSION,
+	TAGGING_MODEL_VERSION,
 	CCIP_EMBEDDING_VERSION,
 	CCIP_VECTOR_DIMENSIONS,
 	type TaggingProcessingSettings,
@@ -107,7 +109,7 @@ export class RustAiClient implements IAiClient {
 		}
 		return {
 			model: "pixai",
-			modelVersion: this.baseUrl ? "unknown" : "v0.9",
+			modelVersion: TAGGING_MODEL_VERSION,
 			runtimeVersion,
 			provider: this.inferenceOptions.provider ?? "auto",
 			device: this.inferenceOptions.device ?? null,
@@ -119,8 +121,7 @@ export class RustAiClient implements IAiClient {
 		return {
 			...this.getTaggingSettings(),
 			model: CCIP_MODEL,
-			// Model assets have no separate immutable revision; runtime identifies the native contract.
-			modelVersion: this.baseUrl ? "unknown" : "native-v1",
+			modelVersion: CCIP_MODEL_VERSION,
 			embeddingVersion: CCIP_EMBEDDING_VERSION,
 			dimensions: CCIP_VECTOR_DIMENSIONS,
 		};
