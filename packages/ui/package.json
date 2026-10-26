@@ -18,9 +18,9 @@
     "@solid-imager/core": "workspace:*",
     "@solidjs/router": "^1.0.0",
     "@tanstack/solid-form": "^1.33.5",
-    "@tanstack/solid-hotkeys": "0.10.0",
-    "@tanstack/solid-query": "5.103.1",
-    "@tanstack/solid-router": "1.170.36",
+    "@tanstack/solid-hotkeys": "0.17.0",
+    "@tanstack/solid-query": "5.105.0",
+    "@tanstack/solid-router": "1.170.43",
     "@tanstack/solid-virtual": "^3.13.37",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -33,7 +33,7 @@
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "typescript": "rc",
+    "typescript": "7.0.2",
     "vite": "^8.2.2",
     "vitest": "^5.0.1"
   }

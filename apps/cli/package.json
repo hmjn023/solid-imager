@@ -18,13 +18,13 @@
     "@orpc/client": "^1.15.0",
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
-    "incur": "^0.5.1",
+    "incur": "0.7.1",
     "zod": "^4.5.4"
   },
   "devDependencies": {
-    "@types/bun": "1.4.2",
+    "@types/bun": "1.4.4",
     "@types/node": "^26.4.0",
-    "typescript": "rc",
+    "typescript": "7.0.2",
     "vitest": "^5.0.1"
   }
 }

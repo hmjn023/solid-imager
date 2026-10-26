@@ -18,7 +18,7 @@
     "@orpc/contract": "^1.15.0"
   },
   "devDependencies": {
-    "typescript": "rc",
+    "typescript": "7.0.2",
     "vitest": "^5.0.1"
   }
 }

@@ -22,21 +22,21 @@
   },
   "devDependencies": {
     "@google/design.md": "^0.4.0",
-    "@shadcn/lint": "^0.2.0",
-    "@tanstack/cli": "^0.71.0",
+    "@shadcn/lint": "^0.2.3",
+    "@tanstack/cli": "0.72.0",
     "husky": "^9.1.7",
-    "lint-staged": "^17.4.1",
-    "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363",
-    "oxfmt": "^0.70.0",
-    "oxlint": "^1.85.0",
-    "oxlint-tsgolint": "^7.0.2003",
+    "lint-staged": "^17.6.0",
+    "nitro": "npm:nitro-nightly@3.0.1-20261024-005652-6bccaad1",
+    "oxfmt": "0.74.0",
+    "oxlint": "^1.89.0",
+    "oxlint-tsgolint": "^7.0.2005",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.5"
   },
   "overrides": {
-    "nitro": "npm:nitro-nightly@3.0.1-20260601-173724-a2597363"
+    "nitro": "npm:nitro-nightly@3.0.1-20261024-005652-6bccaad1"
   },
-  "packageManager": "bun@1.4.0",
+  "packageManager": "bun@1.4.4",
   "trustedDependencies": [
     "youtube-dl-exec",
     "ffmpeg-static",
