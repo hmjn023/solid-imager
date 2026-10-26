@@ -242,6 +242,9 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 ) => {
 	const [local, others] = splitProps(props as ComboboxContentProps, ["class"]);
 	const [scrollEl, setScrollEl] = createSignal<HTMLUListElement | null>(null);
+	const [itemIndices, setItemIndices] = createSignal<Map<string, number>>(
+		new Map(),
+	);
 
 	const virtualizer = createVirtualizer({
 		count: 0,
@@ -266,19 +269,24 @@ const VirtualComboboxContent = <T extends ValidComponent = "div">(
 						setScrollEl(el as HTMLUListElement);
 					}}
 					scrollToItem={(key) => {
-						const items = virtualizer.getVirtualItems();
-						const idx = items.findIndex((v) => v.key === key);
-						if (idx >= 0) virtualizer.scrollToIndex(idx);
+						const index = itemIndices().get(key);
+						if (index !== undefined) virtualizer.scrollToIndex(index);
 					}}
 				>
 					{(items) => {
 						const asArray = createMemo(() => [...items()]);
 
 						createEffect(() => {
+							const collectionItems = asArray();
 							virtualizer.setOptions({
 								...virtualizer.options,
-								count: asArray().length,
+								count: collectionItems.length,
 							});
+							const nextItemIndices = new Map<string, number>();
+							collectionItems.forEach((item, index) => {
+								nextItemIndices.set(item.key, index);
+							});
+							setItemIndices(nextItemIndices);
 						});
 
 						const virtualItems = createMemo(() => {
