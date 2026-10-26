@@ -32,12 +32,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		filterStates().some(
 			(state) => state.phase === "error" || state.phase === "offline",
 		);
-	const hasContentStatus = () => {
+	const hasOfflineStatus = () => {
 		const state = page().contentState();
-		return (
-			state.fetchState === "background-fetching" ||
-			(state.fetchState === "paused" && state.data !== undefined)
-		);
+		return state.fetchState === "paused" && state.data !== undefined;
 	};
 	const shouldRenderGrid = () => !props.enableVirtualization || isMounted();
 	const previewMedia = () =>
@@ -131,9 +128,11 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				context="source"
 				filterData={page().filterData()}
 				itemCount={page().totalCount()}
+				isUpdating={page().contentState().fetchState === "background-fetching"}
 				onSearch={page().handleSearch}
 				presetClient={page().presetClient}
 				sourceName={props.mediaSourceName?.() ?? "メディア一覧"}
+				updatingLabel="メディア一覧を更新中..."
 				onViewModeChange={updateViewMode}
 				viewMode={viewMode()}
 			/>
@@ -141,7 +140,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			<Show when={props.renderJobProgress && page().jobProgress()}>
 				{props.renderJobProgress?.({ jobProgress: page().jobProgress })}
 			</Show>
-			<Show when={hasFilterError() || hasContentStatus()}>
+			<Show when={hasFilterError() || hasOfflineStatus()}>
 				<div class="shrink-0 px-3 pt-3 sm:px-4">
 					<Show when={hasFilterError()}>
 						<FilterErrorBanner
