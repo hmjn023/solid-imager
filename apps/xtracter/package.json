@@ -23,7 +23,7 @@
     "@types/chrome": "^0.3.0",
     "@types/node": "^26.4.0",
     "solid-js": "^1.9.15",
-    "typescript": "rc",
+    "typescript": "7.0.2",
     "vite": "^8.2.2",
     "vite-plugin-solid": "^2.11.14"
   }
