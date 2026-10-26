@@ -208,7 +208,7 @@ export function SearchComposer(props: SearchComposerProps) {
 				<VirtualComboboxContent class="workspace-theme w-popover-large p-1 shadow-xl" />
 			</Combobox>
 			<ShortcutKbd
-				class="pointer-events-none absolute top-2 right-2 min-h-5 border-border px-1.5 py-0.5 text-label-xs text-muted-foreground shadow-none"
+				class="pointer-events-none absolute top-2 right-2 min-h-5 border-border px-1.5 py-0.5 text-label-xs leading-none text-muted-foreground shadow-none"
 				shortcutId="focusSearch"
 			/>
 		</form>

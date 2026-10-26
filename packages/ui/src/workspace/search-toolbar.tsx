@@ -476,6 +476,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						}
 						onClick={() => props.onViewModeChange?.("grid")}
 						size="icon"
+						variant="ghost"
 					>
 						<Grid3X3 aria-hidden="true" size={15} />
 					</Button>
