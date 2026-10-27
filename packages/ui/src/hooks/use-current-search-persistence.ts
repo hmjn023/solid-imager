@@ -83,10 +83,10 @@ function normalizeScrollPosition(value: number): number {
 function normalizeSimilarityTopK(value: unknown): number {
 	return typeof value === "number" &&
 		Number.isInteger(value) &&
-		value >= 1 &&
-		value <= 100
+		Number.isSafeInteger(value) &&
+		value >= 1
 		? value
-		: 50;
+		: 1000;
 }
 
 /**

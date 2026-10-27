@@ -76,7 +76,7 @@ export const activateSimilaritySearch = (mediaId: string) => {
 	const nextState: SearchState = {
 		...searchState,
 		similarityAnchorMediaId: mediaId,
-		similarityTopK: 50,
+		similarityTopK: 1000,
 		selectedSource: "",
 		offset: 0,
 		scrollY: 0,

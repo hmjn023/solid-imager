@@ -92,9 +92,7 @@ export function getSearchComposerTokens(state: SearchState): SearchToken[] {
 
 export function parseSimilarityTopK(value: string): number | undefined {
 	const parsed = Number(value);
-	return Number.isInteger(parsed) && parsed >= 1 && parsed <= 100
-		? parsed
-		: undefined;
+	return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : undefined;
 }
 
 export function parseSimilarityAnchor(value: string): string | undefined {

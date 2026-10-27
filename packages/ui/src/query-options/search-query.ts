@@ -112,6 +112,8 @@ type SearchSimilar = (
 		anchorMediaId: string;
 		mediaSourceId?: string;
 		topK: number;
+		limit: number;
+		offset: number;
 	},
 	signal?: AbortSignal,
 ) => Promise<MediaSearchResponse>;
@@ -156,6 +158,8 @@ export function buildSearchResultsQueryOptions(
 						anchorMediaId: input.similarityAnchorMediaId,
 						mediaSourceId: input.sourceId,
 						topK: input.similarityTopK,
+						limit: Math.min(input.limit, 200),
+						offset: typeof pageParam === "number" ? pageParam : 0,
 					},
 					signal,
 				);
@@ -175,9 +179,7 @@ export function buildSearchResultsQueryOptions(
 		},
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, allPages) => {
-			if (input.similarityAnchorMediaId) {
-				return;
-			}
+			if (lastPage.media.length === 0) return;
 			const loadedCount = allPages.reduce(
 				(sum, page) => sum + page.media.length,
 				0,

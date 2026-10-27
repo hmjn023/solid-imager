@@ -31,9 +31,10 @@ const recordRowSchema = z.object({
 
 const metadataRowSchema = recordRowSchema.omit({ vector: true });
 
-const rawCandidateRowSchema = recordRowSchema.extend({
-	vector: z.union([z.string(), z.array(z.number())]).transform(parseVector),
+const rawCandidateRowSchema = z.object({
+	mediaId: z.uuid(),
 	cosineDistance: z.coerce.number(),
+	total: z.coerce.number().int(),
 });
 
 function parseVector(value: string | number[]): number[] {
@@ -329,13 +330,17 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 		vector: number[],
 		limit: number,
 		query: CcipVectorReadQuery,
-	): Promise<CcipVectorCandidate[]> {
+		offset: number,
+		anchorMediaId: string,
+	): Promise<{ candidates: CcipVectorCandidate[]; total: number }> {
 		if (!Number.isSafeInteger(limit) || limit < 1) {
 			throw new Error("limit must be a positive integer");
 		}
 		const literal = vectorLiteral(vector);
 		const filters = [
 			sql`${mediaRegions.kind} = ${FULL_REGION_KIND}`,
+			sql`${medias.id} <> ${anchorMediaId}`,
+			sql`${ccipEmbeddings.extractedAt} >= ${medias.modifiedAt}`,
 			query?.mediaSourceId
 				? sql`${medias.mediaSourceId} = ${query.mediaSourceId}`
 				: undefined,
@@ -345,29 +350,28 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 				: undefined,
 		].filter((value): value is SQL => value !== undefined);
 		const startedAt = performance.now();
-		const candidates = await this.database.transaction(async (transaction) => {
-			await transaction.execute(
-				sql`SET LOCAL hnsw.iterative_scan = 'relaxed_order'`,
-			);
-			const rows = await transaction
-				.select({
-					mediaId: medias.id,
-					mediaSourceId: medias.mediaSourceId,
-					vector: sql<string>`${ccipEmbeddings.embedding}::text`,
-					model: ccipEmbeddings.model,
-					embeddingVersion: ccipEmbeddings.embeddingVersion,
-					mediaModifiedAt: ccipEmbeddings.mediaModifiedAt,
-					extractedAt: ccipEmbeddings.extractedAt,
-					cosineDistance: sql<number>`${ccipEmbeddings.embedding} <=> ${literal}::vector`,
-				})
-				.from(ccipEmbeddings)
-				.innerJoin(mediaRegions, eq(ccipEmbeddings.regionId, mediaRegions.id))
-				.innerJoin(medias, eq(mediaRegions.mediaId, medias.id))
-				.where(and(...filters))
-				.orderBy(sql`${ccipEmbeddings.embedding} <=> ${literal}::vector`)
-				.limit(limit);
-			return rows.map((row) => rawCandidateRowSchema.parse(row));
-		});
+		const rows = await this.database
+			.select({
+				mediaId: medias.id,
+				cosineDistance:
+					sql<number>`(${ccipEmbeddings.embedding} <=> ${literal}::vector) + 0`.as(
+						"cosine_distance",
+					),
+				total: sql<number>`count(*) over()`,
+			})
+			.from(ccipEmbeddings)
+			.innerJoin(mediaRegions, eq(ccipEmbeddings.regionId, mediaRegions.id))
+			.innerJoin(medias, eq(mediaRegions.mediaId, medias.id))
+			.where(and(...filters))
+			// Arithmetic prevents an approximate HNSW scan, giving stable, complete pages.
+			.orderBy(sql`cosine_distance`, medias.id)
+			.limit(limit)
+			.offset(offset);
+		const parsed = rows.map((row) => rawCandidateRowSchema.parse(row));
+		const candidates = parsed.map(({ mediaId, cosineDistance }) => ({
+			mediaId,
+			cosineDistance,
+		}));
 		this.logger?.info(
 			{
 				durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
@@ -377,6 +381,6 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 			},
 			"CCIP pgvector candidate search completed",
 		);
-		return candidates;
+		return { candidates, total: parsed[0]?.total ?? 0 };
 	}
 }

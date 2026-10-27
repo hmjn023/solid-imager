@@ -63,6 +63,8 @@ export interface UseSearchPageOptions {
 			anchorMediaId: string;
 			mediaSourceId?: string;
 			topK: number;
+			limit: number;
+			offset: number;
 		},
 		signal?: AbortSignal,
 	) => Promise<SimilarMediaSearchResponse>;
@@ -132,7 +134,7 @@ export function useSearchPage(
 		setOffset,
 		mode = () => "simple",
 		similarityAnchorMediaId = () => null,
-		similarityTopK = () => 50,
+		similarityTopK = () => 1000,
 		gcTime = DEFAULT_GC_TIME,
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored = () => true,

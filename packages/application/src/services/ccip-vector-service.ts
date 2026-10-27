@@ -15,9 +15,6 @@ import type { ITaggingService } from "../ports/tagging-service";
 
 export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
 export const CCIP_EMBEDDING_VERSION = 1;
-const MIN_CANDIDATES = 100;
-const CANDIDATE_MULTIPLIER = 5;
-const MAX_CANDIDATES = 1000;
 
 export type CcipVectorServiceDeps = {
 	mediaRepository: IMediaRepository;
@@ -176,6 +173,8 @@ export class CcipVectorService {
 		anchorMediaId: string,
 		topK: number,
 		mediaSourceId?: string,
+		limit = 20,
+		offset = 0,
 	): Promise<SimilarMediaSearchResponse> {
 		const anchorMedia = await this.deps.mediaRepository.findById(anchorMediaId);
 		if (!anchorMedia) throw new Error(`Media not found: ${anchorMediaId}`);
@@ -190,81 +189,32 @@ export class CcipVectorService {
 			throw new Error("CCIP vector is missing or stale for the anchor media");
 		}
 
-		const candidateLimit = Math.min(
-			Math.max(topK * CANDIDATE_MULTIPLIER, MIN_CANDIDATES),
-			MAX_CANDIDATES,
-		);
-		const candidates = (
-			await this.deps.vectorStore.search(anchor.vector, candidateLimit + 1, {
+		if (offset >= topK) return { media: [], total: 0, scores: [] };
+		const { candidates, total } = await this.deps.vectorStore.search(
+			anchor.vector,
+			Math.min(limit, topK - offset),
+			{
 				...this.currentVectorQuery(),
 				mediaSourceId,
-			})
-		).filter((candidate) => candidate.mediaId !== anchorMediaId);
-		this.deps.logger?.info(
-			{ candidateCount: candidates.length, candidateLimit },
-			"CCIP vector candidates loaded",
+			},
+			offset,
+			anchorMediaId,
 		);
 		if (candidates.length === 0) {
 			return { media: [], total: 0, scores: [] };
 		}
-		const mediaStartedAt = performance.now();
 		const media = await this.deps.mediaRepository.findByIds(
 			candidates.map((candidate) => candidate.mediaId),
 		);
-		this.deps.logger?.info(
-			{
-				durationMs:
-					Math.round((performance.now() - mediaStartedAt) * 100) / 100,
-				mediaCount: media.length,
-				candidateCount: candidates.length,
-			},
-			"CCIP similar media lookup completed",
-		);
 		const mediaById = new Map(media.map((item) => [item.id, item]));
-		const currentCandidates = candidates.filter((candidate) => {
-			const item = mediaById.get(candidate.mediaId);
-			return item ? this.isCurrent(candidate, item, item.mediaSourceId) : false;
-		});
-		if (currentCandidates.length === 0) {
-			return { media: [], total: 0, scores: [] };
-		}
-		const rerankStartedAt = performance.now();
-		const distances = await this.deps.taggingService.getCcipDistances(
-			anchor.vector,
-			currentCandidates.map((candidate) => candidate.vector),
-		);
-		this.deps.logger?.info(
-			{
-				durationMs:
-					Math.round((performance.now() - rerankStartedAt) * 100) / 100,
-				candidateCount: currentCandidates.length,
-			},
-			"CCIP Rust reranking completed",
-		);
-		const ranked = currentCandidates
-			.map((candidate, index) => ({
-				candidate,
-				ccipDistance: distances[index],
-			}))
-			.filter(
-				(item): item is typeof item & { ccipDistance: number } =>
-					item.ccipDistance !== undefined,
-			)
-			.sort((left, right) => left.ccipDistance - right.ccipDistance)
-			.slice(0, topK);
-
-		const rankedMedia = ranked.flatMap((item) => {
-			const value = mediaById.get(item.candidate.mediaId);
+		const rankedMedia = candidates.flatMap((item) => {
+			const value = mediaById.get(item.mediaId);
 			return value ? [value] : [];
 		});
 		return {
 			media: rankedMedia,
-			total: rankedMedia.length,
-			scores: ranked.map((item) => ({
-				mediaId: item.candidate.mediaId,
-				cosineDistance: item.candidate.cosineDistance,
-				ccipDistance: item.ccipDistance,
-			})),
+			total: Math.min(total, topK),
+			scores: candidates.filter((item) => mediaById.has(item.mediaId)),
 		};
 	}
 
