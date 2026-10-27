@@ -316,11 +316,12 @@ export function MediaSidebar(props: MediaSidebarProps) {
 										"border-input":
 											tag.source === "AI" || tag.source === "comfyui_workflow",
 										"bg-info": tag.source === "AI",
-										"text-info-foreground": tag.source === "AI",
+										"dark:bg-info/20": tag.source === "AI",
 										"bg-accent": tag.source === "comfyui_workflow",
 										"text-primary": tag.source === "comfyui_workflow",
 									}}
 									title={`Source: ${tag.source}`}
+									variant={tag.source === "AI" ? "outline" : "default"}
 								>
 									{tag.name}
 									<ClipboardCopy
