@@ -326,6 +326,7 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 		return rows.map(mapRecord);
 	}
 
+	/** Returns an exact cosine-ordered page of current vectors and its total. */
 	async search(
 		vector: number[],
 		limit: number,
@@ -372,15 +373,18 @@ export class PostgresCcipVectorStore implements ICcipVectorStore {
 			mediaId,
 			cosineDistance,
 		}));
+		const total = parsed[0]?.total ?? 0;
 		this.logger?.info(
 			{
 				durationMs: Math.round((performance.now() - startedAt) * 100) / 100,
 				candidateCount: candidates.length,
 				limit,
+				offset,
+				total,
 				hasMediaSourceFilter: Boolean(query?.mediaSourceId),
 			},
 			"CCIP pgvector candidate search completed",
 		);
-		return { candidates, total: parsed[0]?.total ?? 0 };
+		return { candidates, total };
 	}
 }

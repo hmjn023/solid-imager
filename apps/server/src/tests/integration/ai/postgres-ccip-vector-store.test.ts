@@ -13,7 +13,7 @@ import {
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { createPglite } from "~/infrastructure/db/pglite";
 import * as schema from "~/infrastructure/db/schema";
@@ -102,7 +102,8 @@ describe("PostgresCcipVectorStore", () => {
 			),
 		);
 
-		const store = new PostgresCcipVectorStore(database);
+		const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+		const store = new PostgresCcipVectorStore(database, logger);
 		const anchor = record(ANCHOR_MEDIA_ID, SOURCE_A_ID, vector(1));
 		await store.upsertMany([
 			anchor,
@@ -164,6 +165,10 @@ describe("PostgresCcipVectorStore", () => {
 		);
 		expect(first.total).toBe(2);
 		expect(second.total).toBe(2);
+		expect(logger.info).toHaveBeenCalledWith(
+			expect.objectContaining({ offset: 1, total: 2, candidateCount: 1 }),
+			"CCIP pgvector candidate search completed",
+		);
 		expect(first.candidates.map((candidate) => candidate.mediaId)).toEqual([
 			NEAR_MEDIA_ID,
 		]);

@@ -169,6 +169,7 @@ export class CcipVectorService {
 		});
 	}
 
+	/** Returns a cosine-ranked page bounded by the requested total result cap. */
 	async searchSimilar(
 		anchorMediaId: string,
 		topK: number,

@@ -134,6 +134,7 @@ export type SearchResultsQueryOptionsInput = {
 	gcTime?: number;
 };
 
+/** Creates paged search options for either ordinary or similarity ordering. */
 export function buildSearchResultsQueryOptions(
 	input: SearchResultsQueryOptionsInput,
 ) {

@@ -2,6 +2,7 @@ import {
 	type Preset,
 	presetSchema,
 } from "@solid-imager/core/domain/media/schemas";
+import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/domain/search/schema";
 import {
 	type Accessor,
 	createEffect,
@@ -80,13 +81,14 @@ function normalizeScrollPosition(value: number): number {
 	return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
+/** Restores a valid result cap or falls back to the shared default. */
 function normalizeSimilarityTopK(value: unknown): number {
 	return typeof value === "number" &&
 		Number.isInteger(value) &&
 		Number.isSafeInteger(value) &&
 		value >= 1
 		? value
-		: 1000;
+		: DEFAULT_SIMILARITY_TOP_K;
 }
 
 /**

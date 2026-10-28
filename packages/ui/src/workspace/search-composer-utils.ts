@@ -90,6 +90,7 @@ export function getSearchComposerTokens(state: SearchState): SearchToken[] {
 	return [...similarityTokens, ...normalTokens];
 }
 
+/** Parses a positive, safely representable result cap from a search token. */
 export function parseSimilarityTopK(value: string): number | undefined {
 	const parsed = Number(value);
 	return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : undefined;

@@ -7,6 +7,7 @@ import type {
 	SimilarMediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/domain/search/schema";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import {
@@ -134,7 +135,7 @@ export function useSearchPage(
 		setOffset,
 		mode = () => "simple",
 		similarityAnchorMediaId = () => null,
-		similarityTopK = () => 1000,
+		similarityTopK = () => DEFAULT_SIMILARITY_TOP_K,
 		gcTime = DEFAULT_GC_TIME,
 		refreshDebounceMs = DEFAULT_REFRESH_DEBOUNCE_MS,
 		isSearchStateRestored = () => true,
