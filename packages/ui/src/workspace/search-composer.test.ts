@@ -117,7 +117,7 @@ describe("parseSimilarityTopK", () => {
 
 	it("rejects unsupported result sizes", () => {
 		expect(parseSimilarityTopK("0")).toBeUndefined();
-		expect(parseSimilarityTopK("200")).toBeUndefined();
+		expect(parseSimilarityTopK("200")).toBe(200);
 		expect(parseSimilarityTopK("abc")).toBeUndefined();
 	});
 });

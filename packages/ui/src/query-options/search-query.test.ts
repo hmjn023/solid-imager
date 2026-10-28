@@ -226,7 +226,7 @@ describe("buildSearchResultsQueryOptions", () => {
 		).toBeUndefined();
 	});
 
-	it("forwards similarity ordering input and disables pagination", async () => {
+	it("forwards similarity ordering and paginates", async () => {
 		const response = { media: [TEST_MEDIA], total: 10 };
 		const searchMedia = vi.fn(
 			async (): Promise<MediaSearchResponse> => EMPTY_RESPONSE,
@@ -267,6 +267,8 @@ describe("buildSearchResultsQueryOptions", () => {
 				anchorMediaId: "anchor-media",
 				mediaSourceId: "source-2",
 				topK: 10,
+				limit: 100,
+				offset: 200,
 			},
 			signal,
 		);
@@ -276,7 +278,7 @@ describe("buildSearchResultsQueryOptions", () => {
 		if (!getNextPageParam) {
 			throw new Error("getNextPageParam must be defined");
 		}
-		expect(getNextPageParam(response, [response], 0, [0])).toBeUndefined();
+		expect(getNextPageParam(response, [response], 0, [0])).toBe(1);
 		expect(options.placeholderData).toBeUndefined();
 	});
 

@@ -22,7 +22,7 @@ export const searchStateSchema = z.object({
 
 	// Similarity ordering
 	similarityAnchorMediaId: z.uuid().nullable(),
-	similarityTopK: z.number().int().min(1).max(100),
+	similarityTopK: z.number().int().min(1),
 
 	// Pagination
 	limit: z.number(),
@@ -38,6 +38,8 @@ export const searchStateSchema = z.object({
 
 export type SearchState = z.infer<typeof searchStateSchema>;
 
+export const DEFAULT_SIMILARITY_TOP_K = 1000;
+
 export const defaultState: SearchState = {
 	mode: "simple",
 	activePresetId: null,
@@ -52,7 +54,7 @@ export const defaultState: SearchState = {
 	selectedAuthors: [],
 	advancedCondition: null,
 	similarityAnchorMediaId: null,
-	similarityTopK: 50,
+	similarityTopK: DEFAULT_SIMILARITY_TOP_K,
 	limit: 20,
 	offset: 0,
 	sortBy: "date",

@@ -23,7 +23,8 @@ export type CcipVectorReadQuery = {
 
 export type CcipVectorMetadata = Omit<CcipVectorRecord, "vector">;
 
-export type CcipVectorCandidate = CcipVectorRecord & {
+export type CcipVectorCandidate = {
+	mediaId: string;
 	cosineDistance: number;
 };
 
@@ -50,5 +51,7 @@ export interface ICcipVectorStore {
 		vector: number[],
 		limit: number,
 		query: CcipVectorReadQuery,
-	): Promise<CcipVectorCandidate[]>;
+		offset: number,
+		anchorMediaId: string,
+	): Promise<{ candidates: CcipVectorCandidate[]; total: number }>;
 }

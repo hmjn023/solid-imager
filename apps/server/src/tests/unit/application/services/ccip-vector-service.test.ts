@@ -86,7 +86,7 @@ describe("CcipVectorService", () => {
 		]);
 	});
 
-	it("reranks vector candidates using CCIP distance", async () => {
+	it("returns cosine-ranked pages without invoking CCIP inference", async () => {
 		const anchorVector = Array.from({ length: 768 }, () => 0);
 		const candidateA = {
 			...media,
@@ -105,6 +105,14 @@ describe("CcipVectorService", () => {
 			mediaModifiedAt: item.modifiedAt,
 			extractedAt: new Date(),
 		});
+		const getCcipDistances = vi.fn();
+		const search = vi.fn().mockResolvedValue({
+			candidates: [
+				{ mediaId: candidateA.id, cosineDistance: 0.1 },
+				{ mediaId: candidateB.id, cosineDistance: 0.2 },
+			],
+			total: 12,
+		});
 		const service = new CcipVectorService({
 			mediaRepository: {
 				findById: vi.fn().mockResolvedValue(media),
@@ -114,35 +122,31 @@ describe("CcipVectorService", () => {
 				findById: vi.fn().mockResolvedValue(source),
 			} as any,
 			taggingService: {
-				getCcipDistances: vi.fn().mockResolvedValue([0.4, 0.1]),
+				getCcipDistances,
 			} as any,
 			vectorStore: {
 				get: vi.fn().mockResolvedValue(record(media, anchorVector)),
-				search: vi.fn().mockResolvedValue([
-					{
-						...record(
-							candidateA,
-							Array.from({ length: 768 }, () => 1),
-						),
-						cosineDistance: 0.1,
-					},
-					{
-						...record(
-							candidateB,
-							Array.from({ length: 768 }, () => 2),
-						),
-						cosineDistance: 0.2,
-					},
-				]),
+				search,
 			} as any,
 		});
 
-		const result = await service.searchSimilar(media.id, 2);
+		const result = await service.searchSimilar(media.id, 10, undefined, 2, 3);
 
 		expect(result.media.map((item) => item.id)).toEqual([
-			candidateB.id,
 			candidateA.id,
+			candidateB.id,
 		]);
-		expect(result.scores.map((item) => item.ccipDistance)).toEqual([0.1, 0.4]);
+		expect(result.scores.map((item) => item.cosineDistance)).toEqual([
+			0.1, 0.2,
+		]);
+		expect(result.total).toBe(10);
+		expect(search).toHaveBeenCalledWith(
+			anchorVector,
+			2,
+			expect.anything(),
+			3,
+			media.id,
+		);
+		expect(getCcipDistances).not.toHaveBeenCalled();
 	});
 });

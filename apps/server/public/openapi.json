@@ -3210,8 +3210,20 @@
                   "topK": {
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 100,
-                    "default": 50
+                    "maximum": 9007199254740991,
+                    "default": 1000
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200,
+                    "default": 20
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "default": 0
                   }
                 },
                 "required": [
@@ -3337,15 +3349,11 @@
                           },
                           "cosineDistance": {
                             "type": "number"
-                          },
-                          "ccipDistance": {
-                            "type": "number"
                           }
                         },
                         "required": [
                           "mediaId",
-                          "cosineDistance",
-                          "ccipDistance"
+                          "cosineDistance"
                         ]
                       }
                     }
@@ -18629,7 +18637,7 @@
                       "similarityTopK": {
                         "type": "integer",
                         "minimum": 1,
-                        "maximum": 100
+                        "maximum": 9007199254740991
                       },
                       "limit": {
                         "type": "number"
@@ -19089,7 +19097,7 @@
                         "similarityTopK": {
                           "type": "integer",
                           "minimum": 1,
-                          "maximum": 100
+                          "maximum": 9007199254740991
                         },
                         "limit": {
                           "type": "number"

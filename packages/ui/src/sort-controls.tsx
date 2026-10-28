@@ -161,12 +161,11 @@ export function SortControls(props: SortControlsProps) {
 							class="min-h-9"
 							id={props.similarityLimitId ?? "similarity-limit"}
 							inputmode="numeric"
-							max={100}
 							min={1}
 							name={props.similarityLimitId ?? "similarity-limit"}
 							onInput={(event) => {
 								const value = Number(event.currentTarget.value);
-								if (Number.isInteger(value) && value >= 1 && value <= 100) {
+								if (Number.isSafeInteger(value) && value >= 1) {
 									props.onSimilarityTopKChange?.(value);
 								}
 							}}
@@ -180,7 +179,7 @@ export function SortControls(props: SortControlsProps) {
 						class="text-muted-foreground text-xs"
 						id={`${props.similarityLimitId ?? "similarity-limit"}-help`}
 					>
-						1〜100の整数を指定できます。
+						1以上の整数を指定できます。
 					</p>
 				</div>
 			</Show>
