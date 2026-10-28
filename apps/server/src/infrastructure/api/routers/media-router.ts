@@ -36,6 +36,8 @@ export const mediaRouter = os.router({
 				input.anchorMediaId,
 				input.topK,
 				input.mediaSourceId,
+				input.limit,
+				input.offset,
 			);
 			logger.info(
 				{

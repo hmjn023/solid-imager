@@ -101,13 +101,14 @@ export type StartCcipExtractionResponse = z.infer<
 export const similarMediaRequestSchema = z.object({
 	anchorMediaId: z.uuid(),
 	mediaSourceId: z.uuid().optional(),
-	topK: z.number().int().min(1).max(100).default(50),
+	topK: z.number().int().min(1).default(1000),
+	limit: z.number().int().min(1).max(200).default(20),
+	offset: z.number().int().nonnegative().default(0),
 });
 
 export const similarMediaScoreSchema = z.object({
 	mediaId: z.uuid(),
 	cosineDistance: z.number(),
-	ccipDistance: z.number(),
 });
 
 export type SimilarMediaScore = z.infer<typeof similarMediaScoreSchema>;

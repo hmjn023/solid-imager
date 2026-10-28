@@ -14,6 +14,8 @@ export function searchSimilar(
 		anchorMediaId: string;
 		mediaSourceId?: string;
 		topK: number;
+		limit: number;
+		offset: number;
 	},
 	signal?: AbortSignal,
 ) {

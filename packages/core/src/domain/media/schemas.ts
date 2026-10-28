@@ -353,7 +353,6 @@ export const similarMediaSearchResponseSchema = z.object({
 		z.object({
 			mediaId: z.uuid(),
 			cosineDistance: z.number(),
-			ccipDistance: z.number(),
 		}),
 	),
 });

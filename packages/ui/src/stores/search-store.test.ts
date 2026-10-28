@@ -62,7 +62,7 @@ describe("activateSimilaritySearch", () => {
 		).toMatchObject({
 			selectedSource: "",
 			similarityAnchorMediaId: "media-1",
-			similarityTopK: 50,
+			similarityTopK: 1000,
 		});
 		expect(sessionStorage.getItem("current-all")).toBeNull();
 	});
@@ -98,7 +98,7 @@ describe("clearSimilaritySearch", () => {
 		).toMatchObject({
 			selectedSource: "source-2",
 			similarityAnchorMediaId: null,
-			similarityTopK: 50,
+			similarityTopK: 1000,
 			mode: "pro",
 		});
 	});

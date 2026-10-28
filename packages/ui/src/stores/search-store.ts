@@ -6,6 +6,7 @@ import {
 } from "@solid-imager/core/domain/search/logic";
 import {
 	defaultState,
+	DEFAULT_SIMILARITY_TOP_K,
 	type SearchState,
 } from "@solid-imager/core/domain/search/schema";
 import { createStore } from "solid-js/store";
@@ -72,11 +73,12 @@ function persistSearchState(state: SearchState): void {
 	);
 }
 
+/** Opens similarity ordering with its default result cap and resets the viewport. */
 export const activateSimilaritySearch = (mediaId: string) => {
 	const nextState: SearchState = {
 		...searchState,
 		similarityAnchorMediaId: mediaId,
-		similarityTopK: 50,
+		similarityTopK: DEFAULT_SIMILARITY_TOP_K,
 		selectedSource: "",
 		offset: 0,
 		scrollY: 0,

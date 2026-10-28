@@ -13,7 +13,7 @@ import {
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { createPglite } from "~/infrastructure/db/pglite";
 import * as schema from "~/infrastructure/db/schema";
@@ -102,7 +102,8 @@ describe("PostgresCcipVectorStore", () => {
 			),
 		);
 
-		const store = new PostgresCcipVectorStore(database);
+		const logger = { info: vi.fn(), warn: vi.fn(), error: vi.fn() };
+		const store = new PostgresCcipVectorStore(database, logger);
 		const anchor = record(ANCHOR_MEDIA_ID, SOURCE_A_ID, vector(1));
 		await store.upsertMany([
 			anchor,
@@ -143,19 +144,72 @@ describe("PostgresCcipVectorStore", () => {
 			]),
 		);
 
-		const candidates = await store.search(anchor.vector, 10, {
+		const query = {
 			mediaSourceId: SOURCE_A_ID,
 			model: CCIP_MODEL,
 			embeddingVersion: CCIP_EMBEDDING_VERSION,
-		});
-		expect(candidates.map((candidate) => candidate.mediaId)).toEqual([
+		};
+		const first = await store.search(
+			anchor.vector,
+			1,
+			query,
+			0,
 			ANCHOR_MEDIA_ID,
+		);
+		const second = await store.search(
+			anchor.vector,
+			1,
+			query,
+			1,
+			ANCHOR_MEDIA_ID,
+		);
+		expect(first.total).toBe(2);
+		expect(second.total).toBe(2);
+		expect(logger.info).toHaveBeenCalledWith(
+			expect.objectContaining({ offset: 1, total: 2, candidateCount: 1 }),
+			"CCIP pgvector candidate search completed",
+		);
+		expect(first.candidates.map((candidate) => candidate.mediaId)).toEqual([
 			NEAR_MEDIA_ID,
+		]);
+		expect(second.candidates.map((candidate) => candidate.mediaId)).toEqual([
 			FAR_MEDIA_ID,
 		]);
-		expect(candidates.map((candidate) => candidate.mediaId)).not.toContain(
-			OTHER_SOURCE_MEDIA_ID,
+		await store.upsert({
+			...record(FAR_MEDIA_ID, SOURCE_A_ID, vector(0.875, 0.125)),
+			extractedAt: NEWER_EXTRACTED_AT,
+		});
+		const tiedFirst = await store.search(
+			anchor.vector,
+			1,
+			query,
+			0,
+			ANCHOR_MEDIA_ID,
 		);
+		const tiedSecond = await store.search(
+			anchor.vector,
+			1,
+			query,
+			1,
+			ANCHOR_MEDIA_ID,
+		);
+		expect(tiedFirst.candidates[0]?.mediaId).toBe(NEAR_MEDIA_ID);
+		expect(tiedSecond.candidates[0]?.mediaId).toBe(FAR_MEDIA_ID);
+		await database
+			.update(medias)
+			.set({ modifiedAt: NEWER_MODIFIED_AT })
+			.where(eq(medias.id, NEAR_MEDIA_ID));
+		const current = await store.search(
+			anchor.vector,
+			10,
+			query,
+			0,
+			ANCHOR_MEDIA_ID,
+		);
+		expect(current.total).toBe(1);
+		expect(current.candidates.map((candidate) => candidate.mediaId)).toEqual([
+			FAR_MEDIA_ID,
+		]);
 
 		const newerAnchor = {
 			...anchor,
