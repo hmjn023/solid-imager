@@ -13,6 +13,73 @@ import { expect, expectRouteHealthy, test } from "./support/test";
 const sourcePath = `/sources/${E2E_SOURCE_ID}`;
 const mediaPath = `${sourcePath}/${E2E_PRIMARY_MEDIA_ID}`;
 
+test("Tauri Manager loads clustering thumbnails through managed Blob URLs", async ({
+	page,
+}) => {
+	await page.addInitScript(() => {
+		const active = new Set<string>();
+		const create = URL.createObjectURL.bind(URL);
+		const revoke = URL.revokeObjectURL.bind(URL);
+		const update = () => {
+			document.documentElement.dataset.activeThumbnailUrls = String(
+				active.size,
+			);
+		};
+		URL.createObjectURL = (blob) => {
+			const url = create(blob);
+			active.add(url);
+			update();
+			return url;
+		};
+		URL.revokeObjectURL = (url) => {
+			active.delete(url);
+			update();
+			revoke(url);
+		};
+	});
+	await openTauriRoute(page, "/manager");
+	await page
+		.getByRole("button", { name: /キャラクタークラスタリング/ })
+		.filter({ visible: true })
+		.click();
+	const groups = page.getByRole("list", { name: "クラスタ一覧", exact: true });
+	const preview = groups.locator("img").first();
+	await expect(preview).toHaveAttribute("src", /^blob:/);
+	await expect
+		.poll(() =>
+			preview.evaluate(
+				(image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
+			),
+		)
+		.toBe(true);
+	await page
+		.getByRole("button", { name: "グループ #0 の60枚を確認", exact: true })
+		.click();
+	const dialog = page.getByRole("dialog");
+	const member = dialog.locator("img").first();
+	await expect(member).toHaveAttribute("src", /^blob:/);
+	await expect
+		.poll(() =>
+			member.evaluate(
+				(image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
+			),
+		)
+		.toBe(true);
+	await dialog.getByRole("button", { name: "Dismiss", exact: true }).click();
+	// Hash navigation disposes the Manager without destroying the document,
+	// so this catches leaks that a page reload would conceal.
+	await page.evaluate(() => {
+		window.location.hash = "/jobs";
+	});
+	await expect(
+		page.getByRole("list", { name: "クラスタ一覧", exact: true }),
+	).toHaveCount(0);
+	await expect
+		.poll(() => page.locator("html").getAttribute("data-active-thumbnail-urls"))
+		.toBe("0");
+	await expectRouteHealthy(page);
+});
+
 type PendingImportJob = {
 	id: string;
 	item?: { targetUrl?: string };

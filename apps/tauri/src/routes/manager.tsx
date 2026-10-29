@@ -1,4 +1,4 @@
-import { buildAbsoluteUrl } from "~/infrastructure/tauri-fetch-helpers";
+import { fetchAsBlobUrl } from "~/infrastructure/tauri-fetch-helpers";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import {
 	prefetchManagerPageQueries,
@@ -176,9 +176,10 @@ function ManagerPage() {
 				listGroups: (input) => orpc.characters.clusteringGroups(input),
 				listMedia: (input) => orpc.characters.clusteringMedia(input),
 				thumbnailUrl: (sourceId, mediaId, modifiedAt) =>
-					buildAbsoluteUrl(
+					fetchAsBlobUrl(
 						`/api/sources/${sourceId}/thumbnail/${mediaId}?t=${encodeURIComponent(modifiedAt)}`,
 					),
+				releaseThumbnailUrl: (url) => URL.revokeObjectURL(url),
 			}}
 			authorActions={{
 				openAccountVerificationProfile: isTauri()
@@ -208,7 +209,8 @@ function ManagerPage() {
 					return result;
 				},
 				thumbnailUrl: (sourceId, mediaId) =>
-					buildAbsoluteUrl(`/api/sources/${sourceId}/thumbnail/${mediaId}`),
+					fetchAsBlobUrl(`/api/sources/${sourceId}/thumbnail/${mediaId}`),
+				releaseThumbnailUrl: (url) => URL.revokeObjectURL(url),
 			}}
 			manager={manager}
 			transferActions={createTransferActions(queryClient)}

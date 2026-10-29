@@ -13,7 +13,6 @@ import {
 	createMemo,
 	createSignal,
 	For,
-	on,
 	Show,
 } from "solid-js";
 import {
@@ -40,6 +39,7 @@ import {
 	SelectValue,
 } from "../../select";
 import { Skeleton } from "../../skeleton";
+import { ManagedThumbnailImage } from "../../managed-thumbnail-image";
 import { TextField, TextFieldInput, TextFieldLabel } from "../../text-field";
 
 import { ClusteringVirtualGrid } from "./clustering-virtual-grid";
@@ -57,7 +57,8 @@ export type CharacterClusteringReviewActions = {
 		sourceId: string,
 		mediaId: string,
 		modifiedAt: string,
-	) => string;
+	) => string | Promise<string>;
+	releaseThumbnailUrl?: (url: string) => void;
 };
 
 const PAGE = 24;
@@ -85,33 +86,25 @@ function title(run: ClusteringRunSummary): string {
 	return `${run.name.split("/").at(-1)} · 最小${p.minClusterSize}枚 / 密度${p.minSamples} / 近傍${p.neighbors} / ${p.selectionMethod}`;
 }
 
-function Thumbnail(props: { src: string; alt: string; eager?: boolean }) {
-	const [failed, setFailed] = createSignal(false);
-	createEffect(
-		on(
-			() => props.src,
-			() => setFailed(false),
-		),
-	);
+function Thumbnail(props: {
+	src: string | Promise<string>;
+	alt: string;
+	eager?: boolean;
+	releaseUrl?: (url: string) => void;
+}) {
 	return (
 		<div class="relative aspect-4/3 min-w-0 overflow-hidden rounded-md">
-			<img
+			<ManagedThumbnailImage
 				alt={props.alt}
 				class="h-full w-full object-contain"
-				classList={{ invisible: failed() }}
-				decoding="async"
+				fallback="画像を取得できません"
 				fetchpriority={props.eager ? "high" : undefined}
 				height={256}
 				loading={props.eager ? "eager" : "lazy"}
-				onError={() => setFailed(true)}
 				src={props.src}
+				releaseUrl={props.releaseUrl}
 				width={256}
 			/>
-			<Show when={failed()}>
-				<span class="absolute inset-0 flex items-center justify-center p-2 text-center text-xs text-muted-foreground">
-					画像を取得できません
-				</span>
-			</Show>
 		</div>
 	);
 }
@@ -191,6 +184,7 @@ function ImageGrid(props: {
 						}}
 					>
 						<Thumbnail
+							releaseUrl={props.actions.releaseThumbnailUrl}
 							alt={media.fileName}
 							eager={index === 0}
 							src={props.actions.thumbnailUrl(
@@ -763,6 +757,7 @@ export function CharacterClusteringReviewPanel(props: {
 											<For each={group.previews}>
 												{(image, imageIndex) => (
 													<Thumbnail
+														releaseUrl={props.actions.releaseThumbnailUrl}
 														alt=""
 														eager={index === 0 && imageIndex() === 0}
 														src={props.actions.thumbnailUrl(

@@ -298,13 +298,20 @@ export async function extract(output: string, request: object) {
 		await writeJson(path.join(output, "graph.json"), manifest);
 		return manifest;
 	} catch (error) {
-		if (transaction) await client.query("ROLLBACK");
+		if (transaction)
+			await client.query("ROLLBACK").catch((rollbackError: unknown) => {
+				logger.warn({ err: rollbackError }, "Unable to roll back extraction");
+			});
 		await writeJson(path.join(output, "graph.json"), {
 			...initial,
 			status: "failed",
+		}).catch((writeError: unknown) => {
+			logger.warn({ err: writeError }, "Unable to mark extraction as failed");
 		});
 		throw error;
 	} finally {
-		await client.end();
+		await client.end().catch((closeError: unknown) => {
+			logger.warn({ err: closeError }, "Unable to close extraction connection");
+		});
 	}
 }

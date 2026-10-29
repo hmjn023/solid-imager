@@ -42,6 +42,7 @@ import {
 import { ErrorState } from "../../async-state";
 import { createDebouncedSignal } from "../../utils/debounce";
 import { AuthorAccountVerificationPanel } from "./author-account-verification";
+import { ManagedThumbnailImage } from "../../managed-thumbnail-image";
 
 export type AuthorManagementActions = {
 	openAccountVerificationProfile?: (url: string) => Promise<void>;
@@ -62,7 +63,8 @@ export type AuthorManagementActions = {
 		input: CorrectMediaAuthorsInput,
 	) => Promise<{ changedCount: number }>;
 	merge: (input: MergeAuthorsInput) => Promise<{ changedCount: number }>;
-	thumbnailUrl: (sourceId: string, mediaId: string) => string;
+	thumbnailUrl: (sourceId: string, mediaId: string) => string | Promise<string>;
+	releaseThumbnailUrl?: (url: string) => void;
 };
 
 function authorLabel(author: Author): string {
@@ -128,9 +130,7 @@ function AuthorPicker(props: {
 			optionTextValue={getLabel}
 			optionLabel={getLabel}
 			itemComponent={(item) => (
-				<ComboboxItem
-					item={item.item}
-				>
+				<ComboboxItem item={item.item}>
 					<ComboboxItemLabel>{item.item.textValue}</ComboboxItemLabel>
 				</ComboboxItem>
 			)}
@@ -562,8 +562,9 @@ export function AuthorManagementPanel(props: {
 													{item.fileName}を選択
 												</CheckboxLabel>
 											</Checkbox>
-											<img
+											<ManagedThumbnailImage
 												alt={item.fileName}
+												releaseUrl={props.actions.releaseThumbnailUrl}
 												src={props.actions.thumbnailUrl(
 													item.mediaSourceId,
 													item.id,
