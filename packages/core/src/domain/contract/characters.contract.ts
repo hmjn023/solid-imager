@@ -4,9 +4,39 @@ import {
 	characterSchema,
 	newCharacterSchema,
 	updateCharacterSchema,
+	clusteringRunSummarySchema,
+	clusteringGroupsRequestSchema,
+	clusteringGroupsResponseSchema,
+	clusteringMediaRequestSchema,
+	clusteringMediaResponseSchema,
 } from "../characters/schemas";
 
 export const charactersContract = {
+	clusteringRuns: oc
+		.route({
+			tags: ["Characters"],
+			summary: "保存済みクラスタリング結果一覧",
+			description: "保存済み解析結果の条件と件数を取得します。",
+		})
+		.output(z.array(clusteringRunSummarySchema)),
+	clusteringGroups: oc
+		.route({
+			tags: ["Characters"],
+			summary: "クラスタリングのグループ一覧",
+			description:
+				"既存ラベル・ファイル名で絞り込み、代表例と境界例をページ取得します。",
+		})
+		.input(clusteringGroupsRequestSchema)
+		.output(clusteringGroupsResponseSchema),
+	clusteringMedia: oc
+		.route({
+			tags: ["Characters"],
+			summary: "クラスタ・ノイズの画像一覧",
+			description:
+				"指定グループまたはノイズの全画像をページ取得し、別設定での所属先も確認します。",
+		})
+		.input(clusteringMediaRequestSchema)
+		.output(clusteringMediaResponseSchema),
 	list: oc
 		.route({
 			tags: ["Characters"],

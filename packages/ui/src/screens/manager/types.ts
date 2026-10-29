@@ -1,6 +1,10 @@
 import type { ManagerEntityType } from "../../hooks/use-manager-page";
 
-export type ManagerCategoryValue = ManagerEntityType | "transfer" | "authors";
+export type ManagerCategoryValue =
+	| ManagerEntityType
+	| "transfer"
+	| "authors"
+	| "clustering";
 
 export type ManagerCategory = {
 	description: string;
@@ -26,6 +30,12 @@ export type ManagerTransferActions = {
 };
 
 export const MANAGER_CATEGORIES: ManagerCategory[] = [
+	{
+		description: "解析結果・ノイズ・設定ごとの差を確認",
+		group: "Tools",
+		label: "キャラクタークラスタリング",
+		value: "clustering",
+	},
 	{
 		description: "誤登録の確認・付け替え・統合",
 		group: "Entities",

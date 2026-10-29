@@ -19154,6 +19154,462 @@
           }
         }
       }
+    },
+    "/characters/clusteringRuns": {
+      "post": {
+        "operationId": "characters.clusteringRuns",
+        "summary": "保存済みクラスタリング結果一覧",
+        "description": "保存済み解析結果の条件と件数を取得します。",
+        "tags": [
+          "Characters"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "completedAt": {
+                        "type": "string"
+                      },
+                      "implementation": {
+                        "type": "string"
+                      },
+                      "points": {
+                        "type": "number"
+                      },
+                      "clusters": {
+                        "type": "number"
+                      },
+                      "clustered": {
+                        "type": "number"
+                      },
+                      "noise": {
+                        "type": "number"
+                      },
+                      "cohortId": {
+                        "type": "string"
+                      },
+                      "soloOnly": {
+                        "type": "boolean"
+                      },
+                      "parameters": {
+                        "type": "object",
+                        "properties": {
+                          "neighbors": {
+                            "type": "number"
+                          },
+                          "minClusterSize": {
+                            "type": "number"
+                          },
+                          "minSamples": {
+                            "type": "number"
+                          },
+                          "selectionMethod": {
+                            "enum": [
+                              "eom",
+                              "leaf"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "neighbors",
+                          "minClusterSize",
+                          "minSamples",
+                          "selectionMethod"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "completedAt",
+                      "implementation",
+                      "points",
+                      "clusters",
+                      "clustered",
+                      "noise",
+                      "cohortId",
+                      "soloOnly",
+                      "parameters"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/clusteringGroups": {
+      "post": {
+        "operationId": "characters.clusteringGroups",
+        "summary": "クラスタリングのグループ一覧",
+        "description": "既存ラベル・ファイル名で絞り込み、代表例と境界例をページ取得します。",
+        "tags": [
+          "Characters"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "runId": {
+                    "type": "string"
+                  },
+                  "comparisonRunId": {
+                    "type": "string"
+                  },
+                  "query": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "offset": {
+                    "type": "number",
+                    "default": 0
+                  },
+                  "limit": {
+                    "type": "number",
+                    "default": 24
+                  },
+                  "sort": {
+                    "enum": [
+                      "size",
+                      "mixed",
+                      "weak"
+                    ],
+                    "type": "string",
+                    "default": "size"
+                  }
+                },
+                "required": [
+                  "runId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "number"
+                          },
+                          "size": {
+                            "type": "number"
+                          },
+                          "meanStrength": {
+                            "type": "number"
+                          },
+                          "minimumStrength": {
+                            "type": "number"
+                          },
+                          "characters": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "count": {
+                                  "type": "number"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "count"
+                              ]
+                            }
+                          },
+                          "labelKinds": {
+                            "type": "number"
+                          },
+                          "previews": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "mediaSourceId": {
+                                  "type": "string"
+                                },
+                                "fileName": {
+                                  "type": "string"
+                                },
+                                "modifiedAt": {
+                                  "type": "string"
+                                },
+                                "characters": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "name"
+                                    ]
+                                  }
+                                },
+                                "clusterId": {
+                                  "type": "number"
+                                },
+                                "membershipStrength": {
+                                  "type": "number"
+                                },
+                                "comparisonClusterId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "number"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "mediaSourceId",
+                                "fileName",
+                                "modifiedAt",
+                                "characters",
+                                "clusterId",
+                                "membershipStrength",
+                                "comparisonClusterId"
+                              ]
+                            }
+                          },
+                          "comparison": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "clusters": {
+                                    "type": "number"
+                                  },
+                                  "noise": {
+                                    "type": "number"
+                                  },
+                                  "missing": {
+                                    "type": "number"
+                                  }
+                                },
+                                "required": [
+                                  "clusters",
+                                  "noise",
+                                  "missing"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "size",
+                          "meanStrength",
+                          "minimumStrength",
+                          "characters",
+                          "labelKinds",
+                          "previews",
+                          "comparison"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "groups",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/clusteringMedia": {
+      "post": {
+        "operationId": "characters.clusteringMedia",
+        "summary": "クラスタ・ノイズの画像一覧",
+        "description": "指定グループまたはノイズの全画像をページ取得し、別設定での所属先も確認します。",
+        "tags": [
+          "Characters"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "runId": {
+                    "type": "string"
+                  },
+                  "comparisonRunId": {
+                    "type": "string"
+                  },
+                  "query": {
+                    "type": "string",
+                    "default": ""
+                  },
+                  "offset": {
+                    "type": "number",
+                    "default": 0
+                  },
+                  "limit": {
+                    "type": "number",
+                    "default": 24
+                  },
+                  "clusterId": {
+                    "type": "number"
+                  },
+                  "order": {
+                    "enum": [
+                      "weak",
+                      "strong",
+                      "name"
+                    ],
+                    "type": "string",
+                    "default": "weak"
+                  }
+                },
+                "required": [
+                  "runId",
+                  "clusterId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "mediaSourceId": {
+                            "type": "string"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "modifiedAt": {
+                            "type": "string"
+                          },
+                          "characters": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ]
+                            }
+                          },
+                          "clusterId": {
+                            "type": "number"
+                          },
+                          "membershipStrength": {
+                            "type": "number"
+                          },
+                          "comparisonClusterId": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "mediaSourceId",
+                          "fileName",
+                          "modifiedAt",
+                          "characters",
+                          "clusterId",
+                          "membershipStrength",
+                          "comparisonClusterId"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "media",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
