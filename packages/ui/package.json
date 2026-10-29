@@ -14,27 +14,27 @@
     "typecheck": "sh -c 'tsc --noEmit'"
   },
   "dependencies": {
-    "@kobalte/core": "^0.13.13",
+    "@kobalte/core": "^0.13.14",
     "@solid-imager/core": "workspace:*",
     "@solidjs/router": "^1.0.0",
     "@tanstack/solid-form": "^1.33.5",
     "@tanstack/solid-hotkeys": "0.17.0",
     "@tanstack/solid-query": "5.105.0",
     "@tanstack/solid-router": "1.170.43",
-    "@tanstack/solid-virtual": "^3.13.37",
+    "@tanstack/solid-virtual": "^3.13.51",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cmdk-solid": "^1.2.0",
-    "lucide-solid": "^1.37.0",
-    "solid-js": "^1.9.15",
-    "solid-sonner": "^0.3.2",
-    "tailwind-merge": "^3.6.0",
+    "lucide-solid": "^1.64.0",
+    "solid-js": "^1.9.17",
+    "solid-sonner": "^0.3.3",
+    "tailwind-merge": "^3.7.0",
     "tailwindcss-animate": "^1.0.7",
-    "zod": "^4.5.4"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "typescript": "7.0.2",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.1"
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   }
 }

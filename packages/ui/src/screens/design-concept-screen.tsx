@@ -13,9 +13,9 @@ import DownloadCloud from "lucide-solid/icons/cloud-download";
 import Database from "lucide-solid/icons/database";
 import Download from "lucide-solid/icons/download";
 import ExternalLink from "lucide-solid/icons/external-link";
-import Filter from "lucide-solid/icons/filter";
+import Filter from "lucide-solid/icons/funnel";
 import Folder from "lucide-solid/icons/folder";
-import Grid3X3 from "lucide-solid/icons/grid-3-x-3";
+import Grid3X3 from "lucide-solid/icons/grid-3x3";
 import HardDrive from "lucide-solid/icons/hard-drive";
 import Image from "lucide-solid/icons/image";
 import Inbox from "lucide-solid/icons/inbox";
@@ -31,7 +31,7 @@ import RotateCcw from "lucide-solid/icons/rotate-ccw";
 import Search from "lucide-solid/icons/search";
 import Settings from "lucide-solid/icons/settings";
 import Share2 from "lucide-solid/icons/share-2";
-import Trash2 from "lucide-solid/icons/trash-2";
+import Trash2 from "lucide-solid/icons/trash";
 import X from "lucide-solid/icons/x";
 import {
 	createEffect,
