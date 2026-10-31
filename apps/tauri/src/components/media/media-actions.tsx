@@ -75,6 +75,7 @@ export function MediaActions(props: MediaActionsProps) {
 				void navigate({ to: "/search" });
 			}}
 			onUpdate={props.onUpdate}
+			onViewJobs={() => void navigate({ to: "/jobs" })}
 			oppaiOracleModal={(modalProps) => (
 				<OppaiOracleModal
 					description="Tags extracted from the image using the OppaiOracle model."
@@ -97,6 +98,13 @@ export function MediaActions(props: MediaActionsProps) {
 				})
 			}
 			useCcipJobEvents={useBatchJobEvents}
+			startEmbeddingExtraction={() =>
+				client.ai.startEmbeddingExtraction({
+					mediaSourceId: props.media.mediaSourceId,
+					mediaId: props.media.id,
+					force: true,
+				})
+			}
 			media={props.media}
 		/>
 	);

@@ -61,6 +61,17 @@ export function startCcipExtraction(
 	return orpc.ai.startCcipExtraction({ mediaSourceId, mediaId, force });
 }
 
+export function startEmbeddingExtraction(
+	mediaSourceId: string,
+	mediaId: string,
+) {
+	return orpc.ai.startEmbeddingExtraction({
+		mediaSourceId,
+		mediaId,
+		force: true,
+	});
+}
+
 export function scanBatchCcipTargets(params: {
 	force?: boolean;
 	mediaSourceId?: string;

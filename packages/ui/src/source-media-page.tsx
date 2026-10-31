@@ -6,6 +6,7 @@ import type {
 	MediaSearchRequest,
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import {
 	createQuery,
@@ -61,7 +62,7 @@ export type SourceMediaPageProps = {
 	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
 	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
 	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
-	onFindSimilar?: (media: Media) => void;
+	onFindSimilar?: (media: Media, model?: SimilarityModel) => void;
 	showOpenInNewTab?: boolean;
 	onToggleSelect?: (mediaId: string) => void;
 	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;

@@ -224,7 +224,9 @@ export default function SearchContent() {
 				onClearSelection={clearSelection}
 				onCopyMove={handleCopyMove}
 				onDelete={handleDelete}
-				onFindSimilar={(media) => activateSimilaritySearch(media.id)}
+				onFindSimilar={(media, model) =>
+					activateSimilaritySearch(media.id, model)
+				}
 				onSelectAll={() => {
 					setIsBulkSelectMode(true);
 					selection.selectAll();

@@ -9,6 +9,7 @@ import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	getCcipVectorStatus,
 	startCcipExtraction,
+	startEmbeddingExtraction,
 } from "~/infrastructure/api-clients/ai-api";
 import { deleteMedia } from "~/infrastructure/api-clients/media-api";
 
@@ -60,6 +61,7 @@ export function MediaActions(props: MediaActionsProps) {
 				void navigate({ to: "/search" });
 			}}
 			onUpdate={props.onUpdate}
+			onViewJobs={() => void navigate({ to: "/jobs" })}
 			oppaiOracleModal={(modalProps) => (
 				<OppaiOracleModal
 					isOpen={modalProps.isOpen}
@@ -73,6 +75,9 @@ export function MediaActions(props: MediaActionsProps) {
 				startCcipExtraction(props.media.mediaSourceId, props.media.id, force)
 			}
 			useCcipJobEvents={useBatchJobEvents}
+			startEmbeddingExtraction={() =>
+				startEmbeddingExtraction(props.media.mediaSourceId, props.media.id)
+			}
 			media={props.media}
 		/>
 	);

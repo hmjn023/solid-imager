@@ -1,3 +1,4 @@
+import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type {
@@ -26,7 +27,7 @@ export type SearchWorkspaceProps = {
 	detailBasePath?: string;
 	enableVirtualization?: boolean;
 	filterData: SearchPageFilterData;
-	onFindSimilar?: (media: Media) => void;
+	onFindSimilar?: (media: Media, model?: SimilarityModel) => void;
 	onSelectSource: (id: string) => void;
 	page: UseSearchPageResult;
 	presetClient: SourceMediaPagePresetClient;

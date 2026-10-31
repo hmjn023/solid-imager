@@ -41,8 +41,9 @@ export function SourceMediaPage(props: { mediaSourceId?: Accessor<string> }) {
 		};
 	const onFindSimilar: SourceMediaPageControllerProps["onFindSimilar"] = (
 		media,
+		model,
 	) => {
-		activateSimilaritySearch(media.id);
+		activateSimilaritySearch(media.id, model);
 		void navigate({ to: "/search" });
 	};
 

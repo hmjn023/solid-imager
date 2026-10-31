@@ -1,4 +1,12 @@
+import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
 import type { Media } from "@solid-imager/core/domain/media/schemas";
+import { useMenuContext } from "@kobalte/core/menu";
+import Copy from "lucide-solid/icons/copy";
+import ExternalLink from "lucide-solid/icons/external-link";
+import FolderInput from "lucide-solid/icons/folder-input";
+import ListChecks from "lucide-solid/icons/list-checks";
+import SquareCheck from "lucide-solid/icons/square-check";
+import X from "lucide-solid/icons/x";
 import {
 	createVirtualizer,
 	createWindowVirtualizer,
@@ -44,6 +52,7 @@ import {
 	isCollectionNavigationKey,
 	isCollectionScrollNearEnd,
 } from "./workspace/collection-navigation";
+import { FileText, RefreshCw, ScanSearch, Trash2 } from "./workspace/icons";
 
 const VIRTUALIZATION_THRESHOLD = 100;
 const GRID_GAP_PX = 12;
@@ -92,7 +101,7 @@ type SourceMediaGridProps = {
 	onDelete?: (mediaId: string) => void;
 	onCopyMove?: (mediaId: string, mode: "copy" | "move") => void;
 	onSyncSingleMedia?: (mediaId: string) => void;
-	onFindSimilar?: (media: Media) => void;
+	onFindSimilar?: (media: Media, model?: SimilarityModel) => void;
 	onToggleSelect?: (mediaId: string) => void;
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
@@ -617,14 +626,30 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const handleGridKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (
 		event,
 	) => {
-		if (!isCollectionNavigationKey(event.key)) return;
+		if (event.defaultPrevented || event.isComposing) return;
 		if (
 			event.target instanceof HTMLInputElement ||
 			event.target instanceof HTMLTextAreaElement ||
-			event.target instanceof HTMLSelectElement
+			event.target instanceof HTMLSelectElement ||
+			(event.target instanceof HTMLElement && event.target.isContentEditable)
 		) {
 			return;
 		}
+		if (
+			event.key === "Delete" &&
+			!event.metaKey &&
+			!event.ctrlKey &&
+			!event.altKey &&
+			!event.shiftKey
+		) {
+			const media = findMediaFromEventTarget(event.target);
+			if (media && props.onDelete) {
+				event.preventDefault();
+				if (!event.repeat) props.onDelete(media.id);
+			}
+			return;
+		}
+		if (!isCollectionNavigationKey(event.key)) return;
 
 		const results = props.mediaResults();
 		if (results.length === 0) return;
@@ -999,6 +1024,40 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		props.onPrepareMediaDetail?.(media);
 		props.onOpenMediaDetail?.(media);
 	};
+	const handleContextMenuKeyDown = (
+		event: KeyboardEvent,
+		close: () => void,
+	) => {
+		if (
+			event.defaultPrevented ||
+			event.isComposing ||
+			event.metaKey ||
+			event.ctrlKey ||
+			event.altKey ||
+			event.shiftKey
+		)
+			return;
+		const media = contextMenuMedia();
+		if (!media) return;
+		// Enter/Space on a focused menu item retain the menu's native activation.
+		const onMenuItem =
+			event.target instanceof Element &&
+			event.target.closest('[role="menuitem"]');
+		const action =
+			event.key === "Delete" && props.onDelete
+				? () => props.onDelete?.(media.id)
+				: !onMenuItem && event.key === " " && props.onToggleSelect
+					? () => props.onToggleSelect?.(media.id)
+					: !onMenuItem && event.key === "Enter" && props.onOpenMediaDetail
+						? () => prepareAndOpenMediaDetail(media)
+						: undefined;
+		if (!action) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (event.repeat) return;
+		close();
+		queueMicrotask(action);
+	};
 	const openMediaInNewTab = (media: Media) => {
 		props.onPrepareMediaDetail?.(media);
 		const detailBasePath = (props.detailBasePath ?? "/sources").replace(
@@ -1104,7 +1163,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									{collectionContent}
 								</section>
 							</ContextMenuTrigger>
-							<ContextMenuContent class="workspace-theme min-w-56 max-w-80">
+							<MediaContextMenuContent onShortcut={handleContextMenuKeyDown}>
 								<Show
 									keyed
 									fallback={
@@ -1133,6 +1192,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 													<ContextMenuItem
 														onSelect={() => prepareAndOpenMediaDetail(media)}
 													>
+														<FileText
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
 														詳細を開く
 														<ContextMenuShortcut>Enter</ContextMenuShortcut>
 													</ContextMenuItem>
@@ -1143,20 +1207,49 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 													<ContextMenuItem
 														onSelect={() => openMediaInNewTab(media)}
 													>
+														<ExternalLink
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
 														新しいタブで開く
 													</ContextMenuItem>
 												</Show>
 												<Show when={canFindSimilar(media)}>
 													<ContextMenuItem
-														onSelect={() => props.onFindSimilar?.(media)}
+														onSelect={() =>
+															props.onFindSimilar?.(media, "ccip")
+														}
 													>
+														<ScanSearch
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
 														類似度検索
+													</ContextMenuItem>
+													<ContextMenuItem
+														onSelect={() =>
+															props.onFindSimilar?.(media, "embeddinggemma2")
+														}
+													>
+														<ScanSearch
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
+														類似度検索（EmbeddingGemma 2）
 													</ContextMenuItem>
 												</Show>
 												<Show when={props.onToggleSelect}>
 													<ContextMenuItem
 														onSelect={() => props.onToggleSelect?.(media.id)}
 													>
+														<SquareCheck
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
 														{props.isBulkSelectMode?.() &&
 														props.isSelected?.(media.id)
 															? "選択解除"
@@ -1175,6 +1268,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 														<ContextMenuItem
 															onSelect={() => props.onBulkAction?.()}
 														>
+															<ListChecks
+																aria-hidden="true"
+																class="mr-2 shrink-0"
+																size={14}
+															/>
 															一括操作を実行 ({props.selectedCount?.()}件選択中)
 														</ContextMenuItem>
 													</Show>
@@ -1182,6 +1280,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 														<ContextMenuItem
 															onSelect={() => props.onClearSelection?.()}
 														>
+															<X
+																aria-hidden="true"
+																class="mr-2 shrink-0"
+																size={14}
+															/>
 															選択をクリア
 														</ContextMenuItem>
 													</Show>
@@ -1192,6 +1295,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 														class="text-destructive focus:text-destructive"
 														onSelect={() => props.onDelete?.(media.id)}
 													>
+														<Trash2
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
 														削除
 														<ContextMenuShortcut>Delete</ContextMenuShortcut>
 													</ContextMenuItem>
@@ -1203,6 +1311,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															props.onCopyMove?.(media.id, "copy")
 														}
 													>
+														<Copy
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
 														他のソースへコピー
 													</ContextMenuItem>
 													<ContextMenuItem
@@ -1210,6 +1323,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															props.onCopyMove?.(media.id, "move")
 														}
 													>
+														<FolderInput
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
 														他のソースへ移動
 													</ContextMenuItem>
 												</Show>
@@ -1218,6 +1336,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 													<ContextMenuItem
 														onSelect={() => props.onSyncSingleMedia?.(media.id)}
 													>
+														<RefreshCw
+															aria-hidden="true"
+															class="mr-2 shrink-0"
+															size={14}
+														/>
 														メタデータを同期 (再処理)
 													</ContextMenuItem>
 												</Show>
@@ -1225,7 +1348,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 										</>
 									)}
 								</Show>
-							</ContextMenuContent>
+							</MediaContextMenuContent>
 						</ContextMenu>
 					</Show>
 
@@ -1259,5 +1382,20 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 				</Match>
 			</Switch>
 		</div>
+	);
+}
+
+function MediaContextMenuContent(props: {
+	children: JSX.Element;
+	onShortcut: (event: KeyboardEvent, close: () => void) => void;
+}) {
+	const menu = useMenuContext();
+	return (
+		<ContextMenuContent
+			class="workspace-theme min-w-56 max-w-80"
+			onKeyDown={(event) => props.onShortcut(event, () => menu.close(true))}
+		>
+			{props.children}
+		</ContextMenuContent>
 	);
 }

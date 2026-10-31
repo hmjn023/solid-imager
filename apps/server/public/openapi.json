@@ -12270,6 +12270,72 @@
         }
       }
     },
+    "/ai/startEmbeddingExtraction": {
+      "post": {
+        "operationId": "ai.startEmbeddingExtraction",
+        "summary": "単一メディアのEmbeddingGemma 2画像索引作成ジョブを開始",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "mediaSourceId",
+                  "mediaId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message",
+                    "jobId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ai/embeddingImage": {
       "post": {
         "operationId": "ai.embeddingImage",

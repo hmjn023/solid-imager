@@ -65,6 +65,39 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 				return data.json.total;
 			})
 			.toBe(2);
+		await page.goto(`/sources/${sourceId}/${primaryId}`);
+		await page
+			.getByRole("button", { name: "More actions", exact: true })
+			.click();
+		const extractionResponse = page.waitForResponse(
+			(response) =>
+				response.url().includes("/api/rpc/ai/startEmbeddingExtraction") &&
+				response.status() === 200,
+		);
+		await page
+			.getByRole("button", {
+				name: "Extract EmbeddingGemma 2 vector",
+				exact: true,
+			})
+			.click();
+		const { json: extraction } = await (await extractionResponse).json();
+		await expect(
+			page.getByText("EmbeddingGemma 2 extraction queued", { exact: true }),
+		).toBeVisible();
+		await expect
+			.poll(
+				async () => {
+					const response = await page.request.post("/api/rpc/jobs/get", {
+						data: { json: { id: extraction.jobId } },
+					});
+					expect(response.ok()).toBe(true);
+					const { json: job } = await response.json();
+					expect(job.type).toBe("extract_embedding_vector");
+					return job.status;
+				},
+				{ timeout: 180_000 },
+			)
+			.toBe("completed");
 		await page.goto("/manager");
 		await page
 			.getByRole("button", { name: /Vector extraction/ })
@@ -191,6 +224,42 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			path: testInfo.outputPath("embedding-search.png"),
 			animations: "disabled",
 		});
+		// Both collection entry points must preserve the explicitly chosen model.
+		await page.goto(`/sources/${sourceId}`);
+		await page
+			.locator(`[data-media-id="${primaryId}"]`)
+			.click({ button: "right" });
+		await page
+			.getByRole("menuitem", {
+				name: "類似度検索（EmbeddingGemma 2）",
+				exact: true,
+			})
+			.click();
+		await expect(page).toHaveURL(/\/search/);
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_SIMILAR_FILE_NAME) }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toHaveCount(0);
+		await page.reload();
+		const similarMedia = page.getByRole("link", {
+			name: new RegExp(E2E_SIMILAR_FILE_NAME),
+		});
+		await expect(similarMedia).toBeVisible();
+		await similarMedia.click({ button: "right" });
+		await page
+			.getByRole("menuitem", {
+				name: "類似度検索（EmbeddingGemma 2）",
+				exact: true,
+			})
+			.click();
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_SIMILAR_FILE_NAME) }),
+		).toHaveCount(0);
 		await page.request.post("/api/rpc/sources/delete", {
 			data: { json: { id: sourceId } },
 		});
