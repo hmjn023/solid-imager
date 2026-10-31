@@ -7,6 +7,7 @@ import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import sharp from "sharp";
 import { createPglite } from "../src/infrastructure/db/pglite";
+import { clusteringRecord, seedClusteringResults } from "../src/tests/fixtures/character-clustering-results";
 import {
   E2E_WRONG_AUTHOR_ID, E2E_CORRECT_AUTHOR_ID, E2E_COAUTHOR_ID,
   E2E_PRIMARY_FILE_NAME,
@@ -211,6 +212,11 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
   } finally {
     await client.close();
   }
+  await seedClusteringResults(path.join(runtimeDir, "character-clustering"), [
+    clusteringRecord(E2E_PRIMARY_MEDIA_ID, E2E_PRIMARY_FILE_NAME),
+    clusteringRecord(E2E_SIMILAR_MEDIA_ID, E2E_SIMILAR_FILE_NAME),
+    ...paginatedMedia.slice(0, 598).map(({ id, fileName }) => clusteringRecord(id, fileName)),
+  ].map((record, index) => ({ ...record, characters: index === 0 ? [{ id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa", name: "Fixture Character" }] : [] })), { groupsEnd: 300 });
 }
 
 async function createRouteTreePlaceholder(runtimeDir: string): Promise<string> {

@@ -4,7 +4,7 @@ import {
 	type SearchGroup,
 	searchGroupSchema,
 } from "@solid-imager/core/domain/media/schemas";
-import Trash2 from "lucide-solid/icons/trash-2";
+import Trash2 from "lucide-solid/icons/trash";
 import {
 	getSearchConditionFromState,
 	preparePresetState,

@@ -17,8 +17,8 @@
     "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'"
   },
   "dependencies": {
-    "@orpc/client": "^1.15.0",
-    "@orpc/solid-query": "^1.15.0",
+    "@orpc/client": "^1.16.1",
+    "@orpc/solid-query": "^1.16.1",
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
     "@solid-imager/ui": "workspace:*",
@@ -28,22 +28,22 @@
     "@tanstack/solid-query": "5.105.0",
     "@tanstack/solid-router": "1.170.43",
     "@tanstack/tauri-db-sqlite-persistence": "0.2.37",
-    "@tauri-apps/api": "^2.11.1",
-    "@tauri-apps/plugin-http": "^2.5.9",
-    "@tauri-apps/plugin-sql": "^2.4.0",
-    "@tauri-apps/plugin-store": "^2",
-    "solid-js": "^1.9.15",
-    "zod": "^4.5.4"
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/plugin-http": "^2.8.3",
+    "@tauri-apps/plugin-sql": "^2.6.0",
+    "@tauri-apps/plugin-store": "^2.5.0",
+    "solid-js": "^1.9.17",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/router-plugin": "1.168.48",
-    "@tauri-apps/cli": "^2.11.4",
-    "@types/node": "^26.4.0",
+    "@tauri-apps/cli": "^2.12.4",
+    "@types/node": "^26.6.6",
     "tailwindcss": "^4.3.3",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "7.0.2",
-    "vite": "^8.2.2",
+    "vite": "^8.3.5",
     "vite-plugin-solid": "^2.11.14"
   }
 }

@@ -14,11 +14,11 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@orpc/client": "^1.15.0",
-    "@orpc/contract": "^1.15.0"
+    "@orpc/client": "^1.16.1",
+    "@orpc/contract": "^1.16.1"
   },
   "devDependencies": {
     "typescript": "7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.5"
   }
 }

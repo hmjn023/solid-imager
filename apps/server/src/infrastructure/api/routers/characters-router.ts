@@ -2,6 +2,7 @@ import { implement } from "@orpc/server";
 import { charactersContract } from "@solid-imager/core/domain/contract/characters.contract";
 import { CharacterService } from "~/infrastructure/services/character-service";
 import { getCharacterMediaCounts } from "./entity-media-counts";
+import { characterClusteringReviewService } from "~/infrastructure/services/character-clustering-results-store";
 
 /**
  * Characters Router Implementation
@@ -9,6 +10,15 @@ import { getCharacterMediaCounts } from "./entity-media-counts";
 const os = implement(charactersContract);
 
 export const charactersRouter = os.router({
+	clusteringRuns: os.clusteringRuns.handler(() =>
+		characterClusteringReviewService.listRuns(),
+	),
+	clusteringGroups: os.clusteringGroups.handler(({ input }) =>
+		characterClusteringReviewService.listGroups(input),
+	),
+	clusteringMedia: os.clusteringMedia.handler(({ input }) =>
+		characterClusteringReviewService.listMedia(input),
+	),
 	list: os.list.handler(async () => {
 		const characters = await CharacterService.getAllCharacters();
 		const mediaCounts = await getCharacterMediaCounts(

@@ -10,6 +10,7 @@ WebとTauriは `DESIGN.md` と Design Lab を基準にした共有ワークス�
 | JobのRetry / Cancel / realtime更新 | 実装済み | Jobs contract/router、`jobs-screen.tsx`、Jobイベント購読 |
 | Sourceの件数・同期状態 | 実装済み | `sources-router.ts` の `mediaCount` / `syncStatus` |
 | Managerの利用件数 | 実装済み | `entity-media-counts.ts` と Project / IP / Character router |
+| キャラクタークラスタリングの目視確認 | 実装済み | Managerの専用ツール。保存済みHDBSCAN結果のグループ・境界例・ノイズを仮想スクロールで表示し、別設定との比較も確認 |
 | Export / Restore | 実装済み | Web / TauriのManagerから転送Jobをキューへ登録し、共有Jobs画面で追跡・ダウンロード |
 | AI接続状態・latency | 実装済み | `ai.health` contract/router と Config画面 |
 | リロード後の前後メディア移動 | 実装済み | `packages/ui/src/media-context.ts` と sessionStorage |

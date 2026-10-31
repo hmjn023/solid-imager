@@ -1,4 +1,8 @@
 /** Browser fixture replacement for the small native command surface. */
+export function isTauri(): boolean {
+	return false;
+}
+
 export async function invoke<T>(command: string): Promise<T> {
 	if (command === "remove_sqlite_database") {
 		return undefined as T;

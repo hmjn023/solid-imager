@@ -6,6 +6,7 @@
  */
 
 import { z } from "zod";
+export * from "./clustering-schemas";
 
 export const newCharacterSchema = z.object({
 	name: z.string().min(1),
