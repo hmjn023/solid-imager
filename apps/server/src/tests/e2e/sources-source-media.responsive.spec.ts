@@ -210,3 +210,52 @@ test(
 		).toBeVisible();
 	},
 );
+
+test("media keyboard shortcuts match context menu hints @desktop-only", async ({
+	page,
+}) => {
+	await page.goto(sourcePath());
+	await waitForAppHydration(page);
+	const media = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
+	const deleteDialog = page.getByRole("dialog", {
+		name: "メディアを削除",
+		exact: true,
+	});
+	await media.focus();
+	await page.keyboard.press("Space");
+	await expect(media).toHaveAttribute("aria-pressed", "true");
+	await media.focus();
+	await page.keyboard.press("Space");
+	await expect(media).toHaveAttribute("aria-pressed", "false");
+	await media.focus();
+	await page.keyboard.press("Delete");
+	await expect(deleteDialog).toBeVisible();
+	await deleteDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
+	await media.click({ button: "right" });
+	await expect(page.getByRole("menu")).toBeVisible();
+	await page.keyboard.press("Delete");
+	await expect(deleteDialog).toBeVisible();
+	await expect(page.getByRole("menu")).toHaveCount(0);
+	await deleteDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
+	await media.click({ button: "right" });
+	await page.keyboard.press("Space");
+	await expect(media).toHaveAttribute("aria-pressed", "true");
+	await expect(page.getByRole("menu")).toHaveCount(0);
+	await media.click({ button: "right" });
+	await page.keyboard.press("Enter");
+	await expect(page).toHaveURL(
+		new RegExp(`/sources/[^/]+/${E2E_PRIMARY_MEDIA_ID}$`),
+	);
+	await page.goto(sourcePath());
+	await waitForAppHydration(page);
+	const composer = page.locator("#search-composer");
+	await composer.fill("abc");
+	await composer.press("Home");
+	await composer.press("Delete");
+	await expect(composer).toHaveValue("bc");
+	await expect(deleteDialog).toHaveCount(0);
+});

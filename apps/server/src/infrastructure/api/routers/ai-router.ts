@@ -2,10 +2,6 @@ import { tmpdir } from "node:os";
 import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import { implement, ORPCError } from "@orpc/server";
-import {
-	CCIP_EMBEDDING_VERSION,
-	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
 import { createClient } from "@solid-imager/client";
 import type { AppContract } from "@solid-imager/core/domain/contract";
 import { aiContract } from "@solid-imager/core/domain/contract/ai.contract";
@@ -15,24 +11,21 @@ import {
 	taggingResponseSchema,
 } from "@solid-imager/core/domain/tagging/schemas";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import sharp from "sharp";
 import { loadDghsImgutils } from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { db } from "~/infrastructure/db";
-import {
-	jobs,
-	mediaCharacters,
-	mediaIps,
-	mediaSources,
-	medias,
-	mediaTags,
-} from "~/infrastructure/db/schema";
+import { jobs } from "~/infrastructure/db/schema";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { taggingService } from "~/infrastructure/services/tagging-service";
 import { embeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker";
+import {
+	countCcipTargets,
+	countTaggingTargets,
+} from "~/infrastructure/services/ai-batch-targets";
 import { countEmbeddingTargets } from "~/infrastructure/jobs/embedding-jobs";
 
 function isRemoteServerLocal(url: string): boolean {
@@ -168,6 +161,20 @@ async function cropDetection(
 const os = implement(aiContract);
 
 export const aiRouter = os.router({
+	startEmbeddingExtraction: os.startEmbeddingExtraction.handler(
+		async ({ input }) => {
+			const job = await services.getJobRepository().create({
+				type: "extract_embedding_vector",
+				mediaSourceId: input.mediaSourceId,
+				payload: { mediaId: input.mediaId, force: input.force },
+			});
+			return {
+				success: true,
+				message: "EmbeddingGemma 2 extraction queued",
+				jobId: job.id,
+			};
+		},
+	),
 	embeddingText: os.embeddingText.handler(async ({ input }) => ({
 		feature: await embeddingGemmaWorker.encode(
 			"text",
@@ -441,45 +448,7 @@ export const aiRouter = os.router({
 	})),
 
 	scanBatchTaggingTargets: os.scanBatchTaggingTargets.handler(
-		async ({ input }) => {
-			const { mediaSourceId, force } = input;
-
-			const [{ count: rawCount }] = await db
-				.select({
-					count: sql<number>`count(distinct ${medias.id})`,
-				})
-				.from(medias)
-				.leftJoin(
-					mediaTags,
-					and(eq(mediaTags.mediaId, medias.id), eq(mediaTags.source, "AI")),
-				)
-				.leftJoin(
-					mediaCharacters,
-					and(
-						eq(mediaCharacters.mediaId, medias.id),
-						eq(mediaCharacters.source, "AI"),
-					),
-				)
-				.leftJoin(
-					mediaIps,
-					and(eq(mediaIps.mediaId, medias.id), eq(mediaIps.source, "AI")),
-				)
-				.where(
-					and(
-						eq(medias.mediaType, "image"),
-						mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
-						force
-							? undefined
-							: and(
-									isNull(mediaTags.mediaId),
-									isNull(mediaCharacters.mediaId),
-									isNull(mediaIps.mediaId),
-								),
-					),
-				);
-
-			return { count: Number(rawCount ?? 0) };
-		},
+		async ({ input }) => ({ count: await countTaggingTargets(db, input) }),
 	),
 
 	startBatchTagging: os.startBatchTagging.handler(async ({ input }) => {
@@ -595,41 +564,9 @@ export const aiRouter = os.router({
 		};
 	}),
 
-	scanBatchCcipTargets: os.scanBatchCcipTargets.handler(async ({ input }) => {
-		const rows = await db
-			.select({
-				id: medias.id,
-				modifiedAt: medias.modifiedAt,
-			})
-			.from(medias)
-			.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
-			.where(
-				and(
-					eq(medias.mediaType, "image"),
-					eq(mediaSources.type, "local"),
-					input.mediaSourceId
-						? eq(medias.mediaSourceId, input.mediaSourceId)
-						: undefined,
-				),
-			)
-			.orderBy(asc(medias.id));
-		if (input.force) return { count: rows.length };
-		const records = new Map(
-			(await ccipVectorService.listRecords(input.mediaSourceId)).map(
-				(record) => [record.mediaId, record],
-			),
-		);
-		const count = rows.filter((row) => {
-			const record = records.get(row.id);
-			return (
-				!record ||
-				record.model !== CCIP_MODEL ||
-				record.embeddingVersion !== CCIP_EMBEDDING_VERSION ||
-				record.mediaModifiedAt.getTime() !== row.modifiedAt.getTime()
-			);
-		}).length;
-		return { count };
-	}),
+	scanBatchCcipTargets: os.scanBatchCcipTargets.handler(async ({ input }) => ({
+		count: await countCcipTargets(db, input),
+	})),
 
 	startBatchCcipExtraction: os.startBatchCcipExtraction.handler(
 		async ({ input }) => {

@@ -24,6 +24,13 @@ import {
 } from "../tagging/schemas";
 
 export const aiContract = {
+	startEmbeddingExtraction: oc
+		.route({
+			tags: ["AI"],
+			summary: "単一メディアのEmbeddingGemma 2画像索引作成ジョブを開始",
+		})
+		.input(ccipExtractionRequestSchema)
+		.output(startCcipExtractionResponseSchema),
 	embeddingImage: oc
 		.route({ tags: ["AI"], summary: "EmbeddingGemma 2 画像特徴抽出" })
 		.input(z.object({ file: z.instanceof(File) }))

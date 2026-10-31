@@ -148,8 +148,8 @@ export function SourceMediaPage() {
 						to: "/sources/$mediaSourceId/$mediaId",
 					});
 				}}
-				onFindSimilar={(media) => {
-					activateSimilaritySearch(media.id);
+				onFindSimilar={(media, model) => {
+					activateSimilaritySearch(media.id, model);
 					void navigate({ to: "/search" });
 				}}
 				renderItem={(media, options) => (
