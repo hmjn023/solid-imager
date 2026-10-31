@@ -60,6 +60,7 @@ const managerQueryOptions = {
 };
 
 const managerActions = {
+	getJob: (jobId: string) => orpc.jobs.get({ id: jobId }),
 	createProject,
 	updateProject,
 	deleteProject,

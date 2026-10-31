@@ -43,7 +43,7 @@ const Progress: Component<ComponentProps<typeof ProgressPrimitiveRoot>> = (
 ) => (
 	<ProgressRoot {...props}>
 		<ProgressPrimitiveTrack class="h-full w-full flex-1 bg-secondary transition-all">
-			<ProgressPrimitiveFill class="h-full w-full flex-1 bg-primary transition-all duration-500 ease-in-out data-[progress=complete]:bg-primary" />
+			<ProgressPrimitiveFill class="h-full w-(--kb-progress-fill-width) bg-primary transition-all duration-500 ease-in-out motion-reduce:transition-none" />
 		</ProgressPrimitiveTrack>
 	</ProgressRoot>
 );
