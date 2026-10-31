@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { similarityModelSchema } from "../search/embedding";
 
 export const aiHealthResponseSchema = z.object({
 	status: z.enum(["available", "unavailable"]),
@@ -99,6 +100,7 @@ export type StartCcipExtractionResponse = z.infer<
 >;
 
 export const similarMediaRequestSchema = z.object({
+	model: similarityModelSchema.default("ccip"),
 	anchorMediaId: z.uuid(),
 	mediaSourceId: z.uuid().optional(),
 	topK: z.number().int().min(1).default(1000),

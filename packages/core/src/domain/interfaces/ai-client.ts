@@ -8,6 +8,12 @@ import type {
 export type IAiClient = {
 	healthCheck(): Promise<boolean>;
 
+	extractImageEmbedding(imageBuffer: ArrayBuffer): Promise<number[]>;
+
+	extractImageEmbeddingByPath(path: string): Promise<number[]>;
+
+	extractTextEmbedding(text: string): Promise<number[]>;
+
 	tagImage(imageBuffer: ArrayBuffer): Promise<TaggingResponse>;
 
 	tagImageByPath(path: string): Promise<TaggingResponse>;

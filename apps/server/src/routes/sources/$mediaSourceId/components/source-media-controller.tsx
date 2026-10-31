@@ -33,7 +33,10 @@ import {
 	mediaSourcesQueryOptions,
 	tagsQueryOptions,
 } from "~/infrastructure/api-clients/queries";
-import { searchMedia } from "~/infrastructure/api-clients/search-api";
+import {
+	searchMedia,
+	searchSemantic,
+} from "~/infrastructure/api-clients/search-api";
 import {
 	getSearchCondition,
 	searchState,
@@ -140,6 +143,7 @@ export function SourceMediaPageController(
 				presetClient={PresetClient}
 				actions={{
 					searchMedia,
+					searchSemantic,
 					uploadMedia: (sourceId, file, opts) =>
 						uploadMedia(sourceId, file, opts),
 					deleteMedia,

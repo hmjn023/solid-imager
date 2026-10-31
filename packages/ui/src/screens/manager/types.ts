@@ -67,7 +67,7 @@ export const MANAGER_CATEGORIES: ManagerCategory[] = [
 		value: "tagging",
 	},
 	{
-		description: "Build CCIP features",
+		description: "Build image or character embeddings",
 		group: "Tools",
 		label: "Vector extraction",
 		value: "vectors",

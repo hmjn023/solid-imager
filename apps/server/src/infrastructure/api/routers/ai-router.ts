@@ -1,4 +1,5 @@
 import { tmpdir } from "node:os";
+import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import { implement, ORPCError } from "@orpc/server";
 import {
@@ -31,6 +32,8 @@ import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { taggingService } from "~/infrastructure/services/tagging-service";
+import { embeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker";
+import { countEmbeddingTargets } from "~/infrastructure/jobs/embedding-jobs";
 
 function isRemoteServerLocal(url: string): boolean {
 	try {
@@ -165,6 +168,50 @@ async function cropDetection(
 const os = implement(aiContract);
 
 export const aiRouter = os.router({
+	embeddingText: os.embeddingText.handler(async ({ input }) => ({
+		feature: await embeddingGemmaWorker.encode(
+			"text",
+			input.text,
+			createNativeInferenceOptions(services.getConfigService().getConfig().ai),
+		),
+	})),
+	embeddingImage: os.embeddingImage.handler(async ({ input }) => {
+		const directory = await mkdtemp(path.join(tmpdir(), "embeddinggemma-"));
+		try {
+			const filePath = path.join(directory, "image.png");
+			await sharp(new Uint8Array(await input.file.arrayBuffer()))
+				.png()
+				.toFile(filePath);
+			return {
+				feature: await embeddingGemmaWorker.encode(
+					"image",
+					filePath,
+					createNativeInferenceOptions(
+						services.getConfigService().getConfig().ai,
+					),
+				),
+			};
+		} finally {
+			await rm(directory, { recursive: true, force: true });
+		}
+	}),
+	scanBatchEmbeddingTargets: os.scanBatchEmbeddingTargets.handler(
+		async ({ input }) => ({ count: await countEmbeddingTargets(input) }),
+	),
+	startBatchEmbeddingExtraction: os.startBatchEmbeddingExtraction.handler(
+		async ({ input }) => {
+			const job = await services.getJobRepository().create({
+				type: "extract_embedding_batch",
+				mediaSourceId: input.mediaSourceId,
+				payload: { ...input, processed: 0, failed: 0, total: 0 },
+			});
+			return {
+				success: true,
+				message: "EmbeddingGemma 2 indexing queued",
+				jobId: job.id,
+			};
+		},
+	),
 	health: os.health.handler(async () => {
 		const config = services.getConfigService().getConfig();
 		const mode = config.ai.baseUrl?.trim() ? "remote" : "local";

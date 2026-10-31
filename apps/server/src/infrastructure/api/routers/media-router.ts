@@ -6,6 +6,7 @@ import { logger } from "~/infrastructure/logger";
 import { BulkOperationService } from "~/infrastructure/services/bulk-operation-service";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { MediaService } from "~/infrastructure/services/media-service";
+import { getEmbeddingSearchService } from "~/infrastructure/services/embedding-search-service";
 
 /**
  * Media Router Implementation
@@ -13,6 +14,9 @@ import { MediaService } from "~/infrastructure/services/media-service";
 const os = implement(mediaContract);
 
 export const mediaRouter = os.router({
+	searchSemantic: os.searchSemantic.handler(({ input }) =>
+		getEmbeddingSearchService().searchText(input),
+	),
 	/**
 	 * Search media in a source
 	 */
@@ -32,7 +36,11 @@ export const mediaRouter = os.router({
 			"Vector similarity search started",
 		);
 		try {
-			const result = await ccipVectorService.searchSimilar(
+			const service =
+				input.model === "embeddinggemma2"
+					? getEmbeddingSearchService()
+					: ccipVectorService;
+			const result = await service.searchSimilar(
 				input.anchorMediaId,
 				input.topK,
 				input.mediaSourceId,

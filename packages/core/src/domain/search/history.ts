@@ -49,6 +49,8 @@ export const safeSearchSnapshotStateSchema = searchSnapshotStateSchema.pick({
 	advancedCondition: true,
 	similarityAnchorMediaId: true,
 	similarityTopK: true,
+	similarityModel: true,
+	semanticQuery: true,
 	limit: true,
 	sortBy: true,
 	sortOrder: true,

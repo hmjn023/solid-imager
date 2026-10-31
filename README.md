@@ -9,6 +9,15 @@ AI生成画像などのメディアを管理する包括的なメディア管理
 - 検索・ソート・サムネイル生成
 - リアルタイム更新 (SSE)
 - AI自動タグ付け
+- EmbeddingGemma 2 による画像の類似検索・日本語の自然言語検索
+
+### EmbeddingGemma 2 検索
+
+1. `bun run --cwd apps/server db:migrate` を適用し、Manager → Vector extraction で **EmbeddingGemma 2** を選んでローカル画像の索引を作成します。
+2. Library のフィルター内「自然言語検索」に文章を入力するか、画像詳細の More actions → Find similar (EmbeddingGemma 2) を使います。Web と Tauri で共通です。
+3. 新規登録画像も自動で索引化する場合は、Settings → Jobs の **Enable Auto EmbeddingGemma 2 Extraction** を有効にします（初期値は無効）。
+
+画像と検索文は dghs の Q8・768 次元モデルで符号化し、専用ワーカーで実行します。推論先は全モデル共通の Settings → AI Service の Provider / Device 設定に従い、GPU も同じ設定を使います。Q8 はモデルの重み形式で、CPU/GPU の選択とは独立しています。初回はモデルがダウンロードされます。AI のリモート URL を設定している場合は、同じ API に対応したサーバーへ推論を委譲し、推論サーバー側の共通 Provider / Device 設定を使います。検索にはソースと結果件数を適用し、通常のタグ・ファイル名条件は適用しません。索引作成後に更新された画像は、再抽出されるまで検索結果から除外します。CCIP の索引とは独立しています。
 
 ## 技術スタック
 

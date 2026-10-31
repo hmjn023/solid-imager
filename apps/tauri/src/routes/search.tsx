@@ -49,6 +49,7 @@ import {
 import {
 	searchMedia,
 	searchSimilar,
+	searchSemantic,
 } from "~/infrastructure/api-clients/search-api";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import {
@@ -123,6 +124,9 @@ function SearchRoute() {
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
+		searchSemantic,
+		similarityModel: () => searchState.similarityModel,
+		semanticQuery: () => searchState.semanticQuery,
 		queries: {
 			tags: tagsQueryOptions,
 			sources: mediaSourcesQueryOptions,

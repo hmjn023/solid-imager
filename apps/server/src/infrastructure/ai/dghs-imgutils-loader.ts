@@ -15,12 +15,16 @@ const bundledModulePath = path.join(
 
 let cachedModule: DghsImgutilsModule | undefined;
 
+export function resolveDghsImgutilsPath(): string {
+	return existsSync(bundledModulePath)
+		? bundledModulePath
+		: require.resolve("dghs-imgutils-rs");
+}
+
 export function loadDghsImgutils(): DghsImgutilsModule {
 	if (cachedModule) return cachedModule;
 
-	const modulePath = existsSync(bundledModulePath)
-		? bundledModulePath
-		: "dghs-imgutils-rs";
+	const modulePath = resolveDghsImgutilsPath();
 	// The package is loaded from a runtime-selected path, so its declaration is the boundary contract.
 	const loadedModule = require(modulePath) as DghsImgutilsModule;
 	cachedModule = loadedModule;

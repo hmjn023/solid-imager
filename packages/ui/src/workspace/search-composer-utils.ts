@@ -15,6 +15,7 @@ export type SearchToken = {
 	key:
 		| SearchArrayKey
 		| "searchQuery"
+		| "semanticQuery"
 		| "similarityAnchorMediaId"
 		| "similarityTopK";
 	prefix: string;
@@ -30,6 +31,10 @@ export type SearchSuggestion = {
 };
 
 export function getSearchComposerTokens(state: SearchState): SearchToken[] {
+	if (state.semanticQuery)
+		return [
+			{ key: "semanticQuery", prefix: "文章", value: state.semanticQuery },
+		];
 	const similarityTokens: SearchToken[] = state.similarityAnchorMediaId
 		? [
 				{

@@ -248,6 +248,14 @@ function restoreCurrentSearchState(
 					? current.similarityAnchorMediaId
 					: null,
 			similarityTopK: normalizeSimilarityTopK(current.similarityTopK),
+			similarityModel:
+				current.similarityModel === "embeddinggemma2"
+					? "embeddinggemma2"
+					: "ccip",
+			semanticQuery:
+				typeof current.semanticQuery === "string"
+					? current.semanticQuery.slice(0, 2000)
+					: "",
 		});
 	}
 }
@@ -326,6 +334,8 @@ export function useCurrentSearchPersistence(
 			searchState.advancedCondition,
 			searchState.similarityAnchorMediaId,
 			searchState.similarityTopK,
+			searchState.similarityModel,
+			searchState.semanticQuery,
 			searchState.sortBy,
 			searchState.sortOrder,
 			searchState.scrollY,
@@ -365,6 +375,8 @@ export function useCurrentSearchPersistence(
 				mode: searchState.mode,
 				similarityAnchorMediaId: searchState.similarityAnchorMediaId,
 				similarityTopK: searchState.similarityTopK,
+				similarityModel: searchState.similarityModel,
+				semanticQuery: searchState.semanticQuery,
 			};
 			try {
 				const storage = getSessionStorage();

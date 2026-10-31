@@ -79,6 +79,10 @@ function appendValues(key: SearchArrayKey, rawValue: string) {
 }
 
 function removeToken(token: SearchToken) {
+	if (token.key === "semanticQuery") {
+		setSearchState("semanticQuery", "");
+		return;
+	}
 	if (token.key === "searchQuery") {
 		setSearchState("searchQuery", "");
 		return;
@@ -103,6 +107,10 @@ function tokenId(token: Pick<SearchToken, "key" | "value">): string {
 }
 
 function submitComposerDraft(rawDraft: string): boolean {
+	if (searchState.semanticQuery && rawDraft.trim()) {
+		setSearchState("semanticQuery", rawDraft.trim().slice(0, 2000));
+		return true;
+	}
 	const parts = rawDraft.match(/(?:[^\s"]+|"[^"]*")+/g) ?? [];
 	const freeText: string[] = [];
 	let changed = false;
@@ -186,6 +194,7 @@ function submitComposerDraft(rawDraft: string): boolean {
 }
 
 function sortLabel(state: SearchState): string {
+	if (state.semanticQuery) return `文章検索・${state.similarityTopK}件`;
 	if (state.similarityAnchorMediaId) {
 		return `類似度順・${state.similarityTopK}件`;
 	}
@@ -460,6 +469,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 							similarityAnchorMediaId={searchState.similarityAnchorMediaId}
 							similarityLimitId="sort-similarity-limit"
 							similarityTopK={searchState.similarityTopK}
+							semanticQuery={searchState.semanticQuery}
 							sortBy={searchState.sortBy}
 							sortOrder={searchState.sortOrder}
 						/>

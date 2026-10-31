@@ -19,6 +19,7 @@ export const JobsConfigSchema = z.object({
 		.default(DEFAULT_JOBS_POLL_INTERVAL),
 	enableAutoTagging: z.boolean().default(DEFAULT_AUTO_TAGGING),
 	enableAutoCcipExtraction: z.boolean().default(DEFAULT_AUTO_CCIP_EXTRACTION),
+	enableAutoEmbeddingExtraction: z.boolean().default(false),
 });
 
 const DEFAULT_JOBS_CONFIG = {
@@ -27,6 +28,7 @@ const DEFAULT_JOBS_CONFIG = {
 	pollIntervalMs: DEFAULT_JOBS_POLL_INTERVAL,
 	enableAutoTagging: DEFAULT_AUTO_TAGGING,
 	enableAutoCcipExtraction: DEFAULT_AUTO_CCIP_EXTRACTION,
+	enableAutoEmbeddingExtraction: false,
 } as const;
 
 const DEFAULT_AI_BASE_URL = "";

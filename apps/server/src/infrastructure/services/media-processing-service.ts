@@ -37,6 +37,7 @@ export const MediaProcessingService = {
 	updateConfig: (config: {
 		enableAutoTagging: boolean;
 		enableAutoCcipExtraction: boolean;
+		enableAutoEmbeddingExtraction?: boolean;
 	}) => {
 		return services.getMediaProcessingService().updateConfig(config);
 	},

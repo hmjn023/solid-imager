@@ -79,6 +79,8 @@ function readSnapshotState(): SearchSnapshotState | null {
 		advancedCondition: searchState.advancedCondition,
 		similarityAnchorMediaId: searchState.similarityAnchorMediaId,
 		similarityTopK: searchState.similarityTopK,
+		similarityModel: searchState.similarityModel,
+		semanticQuery: searchState.semanticQuery,
 		limit: searchState.limit,
 		sortBy: searchState.sortBy,
 		sortOrder: searchState.sortOrder,

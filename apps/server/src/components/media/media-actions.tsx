@@ -55,8 +55,8 @@ export function MediaActions(props: MediaActionsProps) {
 				anchor.download = props.media.fileName;
 				anchor.click();
 			}}
-			onFindSimilar={() => {
-				activateSimilaritySearch(props.media.id);
+			onFindSimilar={(model) => {
+				activateSimilaritySearch(props.media.id, model);
 				void navigate({ to: "/search" });
 			}}
 			onUpdate={props.onUpdate}

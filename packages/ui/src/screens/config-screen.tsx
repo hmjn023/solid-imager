@@ -312,6 +312,21 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										</div>
 									)}
 								</form.Field>
+								<form.Field name="jobs.enableAutoEmbeddingExtraction">
+									{(field) => (
+										<Switch
+											checked={field().state.value ?? false}
+											onChange={field().handleChange}
+										>
+											<SwitchControl>
+												<SwitchThumb />
+											</SwitchControl>
+											<SwitchLabel>
+												Enable Auto EmbeddingGemma 2 Extraction
+											</SwitchLabel>
+										</Switch>
+									)}
+								</form.Field>
 							</fieldset>
 						</TabsContent>
 

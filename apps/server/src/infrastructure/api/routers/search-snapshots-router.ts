@@ -25,6 +25,8 @@ function toSafeSearchSnapshot(snapshot: SearchSnapshot) {
 			advancedCondition: state.advancedCondition,
 			similarityAnchorMediaId: state.similarityAnchorMediaId,
 			similarityTopK: state.similarityTopK,
+			similarityModel: state.similarityModel,
+			semanticQuery: state.semanticQuery,
 			limit: state.limit,
 			sortBy: state.sortBy,
 			sortOrder: state.sortOrder,

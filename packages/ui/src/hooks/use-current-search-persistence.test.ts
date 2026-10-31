@@ -313,6 +313,7 @@ describe("useCurrentSearchPersistence", () => {
 				order: "desc",
 				similarityAnchorMediaId: "11111111-1111-4111-8111-111111111111",
 				similarityTopK: 100,
+				similarityModel: "embeddinggemma2",
 			}),
 		);
 
@@ -321,6 +322,26 @@ describe("useCurrentSearchPersistence", () => {
 
 		expect(searchState.mode).toBe("simple");
 		expect(searchState.similarityTopK).toBe(100);
+		expect(searchState.similarityModel).toBe("embeddinggemma2");
+	});
+
+	it("restores a natural language query and result limit across reloads", async () => {
+		sessionStorage.setItem(
+			"solid-imager:search-state:current-all",
+			JSON.stringify({
+				mode: "simple",
+				value: { type: "group", operator: "and", children: [] },
+				sort: "date",
+				order: "desc",
+				semanticQuery: "海辺に立つ人物",
+				similarityModel: "embeddinggemma2",
+				similarityTopK: 80,
+			}),
+		);
+		mountPersistence("all");
+		await flushMicrotasks();
+		expect(searchState.semanticQuery).toBe("海辺に立つ人物");
+		expect(searchState.similarityTopK).toBe(80);
 	});
 
 	it("restores canonical state when persistence writes fail", async () => {
