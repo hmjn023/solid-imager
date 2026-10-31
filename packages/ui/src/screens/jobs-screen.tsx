@@ -158,7 +158,7 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 		>
 			{(progress) => (
 				<div class="min-w-28 space-y-1">
-					<div class="flex items-center justify-between gap-2 text-xs">
+					<div class="flex items-center justify-between gap-2 whitespace-nowrap text-xs tabular-nums">
 						<span>{percent()}%</span>
 						<span class="text-muted-foreground">
 							{progress().processed.toLocaleString()}/
@@ -244,7 +244,8 @@ function JobsTable(props: {
 	return (
 		<div class="overflow-hidden rounded-md border border-border bg-card">
 			<div class="overflow-x-auto">
-				<table class="w-full min-w-table-wide text-left text-sm">
+				{/* Live progress must not resize columns and rewrap neighboring rows. */}
+				<table class="w-full min-w-table-wide table-fixed text-left text-sm">
 					<caption class="sr-only">
 						ジョブの一覧。{props.jobs.length}件。
 					</caption>
@@ -259,13 +260,13 @@ function JobsTable(props: {
 							<th class="px-4 py-3 font-medium" scope="col">
 								Type
 							</th>
-							<th class="px-4 py-3 font-medium" scope="col">
+							<th class="w-32 px-4 py-3 font-medium" scope="col">
 								Status
 							</th>
-							<th class="px-4 py-3 font-medium" scope="col">
+							<th class="w-48 px-4 py-3 font-medium" scope="col">
 								Progress
 							</th>
-							<th class="px-4 py-3 font-medium" scope="col">
+							<th class="w-48 px-4 py-3 font-medium" scope="col">
 								Updated
 							</th>
 						</tr>
@@ -303,14 +304,16 @@ function JobsTable(props: {
 										</Show>
 									</td>
 									<td class="px-2 py-2">
-										<JobThumbnail
-											alt={`Target media for ${jobTypeLabel(job.type)} job`}
-											buildUrl={props.buildThumbnailUrl}
-											class="size-12 shrink-0 rounded-sm object-cover"
-											height={48}
-											job={job}
-											width={48}
-										/>
+										<div class="flex size-12 items-center justify-center overflow-hidden rounded-sm text-xs">
+											<JobThumbnail
+												alt={`Target media for ${jobTypeLabel(job.type)} job`}
+												buildUrl={props.buildThumbnailUrl}
+												class="size-12 shrink-0 rounded-sm object-cover"
+												height={48}
+												job={job}
+												width={48}
+											/>
+										</div>
 									</td>
 									<td class="px-2 py-2">
 										<button
@@ -320,19 +323,21 @@ function JobsTable(props: {
 											onClick={() => props.onSelect(job)}
 											type="button"
 										>
-											<div>{jobTypeLabel(job.type)}</div>
+											<div class="truncate" title={jobTypeLabel(job.type)}>
+												{jobTypeLabel(job.type)}
+											</div>
 											<div class="mt-0.5 font-normal text-muted-foreground text-xs">
 												{job.id.slice(0, 8)}
 											</div>
 										</button>
 									</td>
-									<td class="px-4 py-3">
+									<td class="px-4 py-3 whitespace-nowrap">
 										<JobStatusBadge status={job.status} />
 									</td>
 									<td class="px-4 py-3">
 										<JobProgress progress={job.progress} />
 									</td>
-									<td class="px-4 py-3 whitespace-nowrap text-muted-foreground">
+									<td class="px-4 py-3 whitespace-nowrap text-muted-foreground tabular-nums">
 										{formatDate(job.updatedAt, { includeTime: true })}
 									</td>
 								</tr>
