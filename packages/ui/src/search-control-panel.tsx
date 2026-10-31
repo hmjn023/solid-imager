@@ -9,6 +9,7 @@ import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { Show } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Button } from "./button";
+import { EmbeddingSearchControls } from "./embedding-search-controls";
 import { Label } from "./label";
 import { PresetManager, type PresetManagerClient } from "./preset-manager";
 import { ProSearchDialog } from "./pro-search-dialog";
@@ -67,7 +68,10 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 		props.onSelectSource?.(id);
 	};
 	const handleSetMode = (mode: "simple" | "pro") => {
-		updateState(calculateNextModeState(currentState(), mode));
+		updateState({
+			...calculateNextModeState(currentState(), mode),
+			semanticQuery: "",
+		});
 	};
 	const clearSimilarityAnchor = () => {
 		if (!props.setState) {
@@ -76,6 +80,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 		}
 		props.setState({
 			similarityAnchorMediaId: null,
+			semanticQuery: "",
 			offset: 0,
 			scrollY: 0,
 		});
@@ -139,6 +144,12 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				</div>
 			</div>
 
+			<EmbeddingSearchControls
+				state={currentState()}
+				setState={updateState}
+				onSearch={props.onSearch}
+				id={props.setState ? "mobile-embedding-search" : "embedding-search"}
+			/>
 			<SortControls
 				className="mb-4"
 				onClearSimilarity={clearSimilarityAnchor}
@@ -152,13 +163,20 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						: "search-panel-similarity-limit"
 				}
 				similarityTopK={currentState().similarityTopK}
+				semanticQuery={currentState().semanticQuery}
 				sortBy={currentState().sortBy}
 				sortOrder={currentState().sortOrder}
 			/>
 
 			<div class="my-4 h-px bg-border" />
 
-			<div class={currentState().mode === "simple" ? "block" : "hidden"}>
+			<div
+				class={
+					currentState().mode === "simple" && !currentState().semanticQuery
+						? "block"
+						: "hidden"
+				}
+			>
 				<SearchFilters
 					authors={props.filterData.authors}
 					characters={props.filterData.characters}
@@ -174,7 +192,9 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				/>
 			</div>
 
-			<Show when={currentState().mode === "pro"}>
+			<Show
+				when={currentState().mode === "pro" && !currentState().semanticQuery}
+			>
 				<div class="space-y-4">
 					<PresetManager
 						class="w-full flex-col items-stretch"

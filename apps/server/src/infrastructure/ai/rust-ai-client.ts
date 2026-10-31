@@ -21,6 +21,11 @@ import {
 	loadDghsImgutils,
 } from "~/infrastructure/ai/dghs-imgutils-loader";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
+import { embeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker";
+import {
+	embeddingResponseSchema,
+	embeddingTextRequestSchema,
+} from "@solid-imager/core/domain/search/embedding";
 
 type RustAiClientConfig = Pick<
 	AiConfig,
@@ -200,6 +205,44 @@ export class RustAiClient implements IAiClient {
 
 		return this.withTempFile(imageBuffer, "rust-tag", (filePath) =>
 			this.tagImageByPath(filePath),
+		);
+	}
+
+	async extractImageEmbedding(imageBuffer: ArrayBuffer): Promise<number[]> {
+		if (this.baseUrl) {
+			const result = await this.callRemoteOrpcWithFile(
+				(client, file) => client.ai.embeddingImage({ file }),
+				imageBuffer,
+			);
+			return embeddingResponseSchema.parse(result).feature;
+		}
+		return this.withTempFile(imageBuffer, "rust-embedding", (filePath) =>
+			this.extractImageEmbeddingByPath(filePath),
+		);
+	}
+
+	async extractImageEmbeddingByPath(filePath: string): Promise<number[]> {
+		if (this.baseUrl) {
+			return this.extractImageEmbedding(await Bun.file(filePath).arrayBuffer());
+		}
+		return embeddingGemmaWorker.encode(
+			"image",
+			filePath,
+			this.inferenceOptions,
+		);
+	}
+
+	async extractTextEmbedding(text: string): Promise<number[]> {
+		const input = embeddingTextRequestSchema.parse({ text });
+		if (this.client) {
+			return embeddingResponseSchema.parse(
+				await this.client.ai.embeddingText(input),
+			).feature;
+		}
+		return embeddingGemmaWorker.encode(
+			"text",
+			input.text,
+			this.inferenceOptions,
 		);
 	}
 

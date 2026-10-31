@@ -19,8 +19,18 @@ import {
 } from "../media/schemas";
 import { uploadResponseSchema } from "../media/upload-schemas";
 import { similarMediaRequestSchema } from "../tagging/schemas";
+import { semanticSearchRequestSchema } from "../search/embedding";
 
 export const mediaContract = {
+	searchSemantic: oc
+		.route({
+			tags: ["Media"],
+			summary: "自然言語で画像を検索",
+			description:
+				"EmbeddingGemma 2 の画像索引を文章で検索します。対象は索引登録済みで更新されていない画像です。",
+		})
+		.input(semanticSearchRequestSchema)
+		.output(similarMediaSearchResponseSchema),
 	search: oc
 		.route({
 			tags: ["Media"],

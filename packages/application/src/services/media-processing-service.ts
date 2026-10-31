@@ -38,6 +38,7 @@ export type MediaProcessingServiceDeps = {
 	logger?: ILogger;
 	enableAutoTagging: boolean;
 	enableAutoCcipExtraction?: boolean;
+	enableAutoEmbeddingExtraction?: boolean;
 	supportedExtensions: {
 		image: string[];
 		video: string[];
@@ -64,6 +65,7 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly mediaStorage: IMediaStorage;
 	private enableAutoTagging: boolean;
 	private enableAutoCcipExtraction: boolean;
+	private enableAutoEmbeddingExtraction: boolean;
 	private readonly supportedExtensions: MediaProcessingServiceDeps["supportedExtensions"];
 	private readonly generateThumbnail: MediaProcessingServiceDeps["generateThumbnail"];
 	private readonly publishSourceEvent: SourceEventPublisher;
@@ -82,6 +84,8 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		this.mediaStorage = deps.mediaStorage;
 		this.enableAutoTagging = deps.enableAutoTagging;
 		this.enableAutoCcipExtraction = deps.enableAutoCcipExtraction ?? false;
+		this.enableAutoEmbeddingExtraction =
+			deps.enableAutoEmbeddingExtraction ?? false;
 		this.supportedExtensions = deps.supportedExtensions;
 		this.generateThumbnail = deps.generateThumbnail;
 		this.publishSourceEvent = deps.publishSourceEvent;
@@ -91,9 +95,12 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	updateConfig(config: {
 		enableAutoTagging: boolean;
 		enableAutoCcipExtraction: boolean;
+		enableAutoEmbeddingExtraction?: boolean;
 	}): void {
 		this.enableAutoTagging = config.enableAutoTagging;
 		this.enableAutoCcipExtraction = config.enableAutoCcipExtraction;
+		this.enableAutoEmbeddingExtraction =
+			config.enableAutoEmbeddingExtraction ?? false;
 	}
 
 	async registerAndProcess(
@@ -264,6 +271,13 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 			}
 		}
 
+		if (this.enableAutoEmbeddingExtraction && media.mediaType === "image") {
+			await this.jobRepo.createIfUnique({
+				type: "extract_embedding_vector",
+				mediaSourceId,
+				payload: { mediaId: media.id },
+			});
+		}
 		if (this.enableAutoCcipExtraction && media.mediaType === "image") {
 			try {
 				await this.jobRepo.createIfUnique({

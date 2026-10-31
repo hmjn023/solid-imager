@@ -14,6 +14,8 @@ import { createFileRoute, useNavigate } from "@tanstack/solid-router";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	scanBatchCcipTargets,
+	scanBatchEmbeddingTargets,
+	startBatchEmbeddingExtraction,
 	scanBatchTaggingTargets,
 	startBatchCcipExtraction,
 	startBatchTagging,
@@ -70,6 +72,8 @@ const managerActions = {
 	scanBatchTaggingTargets,
 	startBatchTagging,
 	scanBatchCcipTargets,
+	scanBatchEmbeddingTargets,
+	startBatchEmbeddingExtraction,
 	startBatchCcipExtraction,
 	findDuplicateMedia,
 	bulkDeleteMedia,

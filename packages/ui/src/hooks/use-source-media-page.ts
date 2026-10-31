@@ -9,6 +9,7 @@ import type {
 import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
 import type { UploadResponse } from "@solid-imager/core/domain/media/upload-schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { SemanticSearchRequest } from "@solid-imager/core/domain/search/embedding";
 import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
 import {
 	getScrollPosition,
@@ -37,6 +38,7 @@ import {
 import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
+import { searchState } from "../stores/search-store";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 import { createStableMediaResults } from "./stable-media-results";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
@@ -80,6 +82,10 @@ export type SourceMediaPageQueryStates = {
 };
 
 export type SourceMediaPageActions = {
+	searchSemantic: (
+		input: SemanticSearchRequest,
+		signal?: AbortSignal,
+	) => Promise<MediaSearchResponse>;
 	searchMedia: (
 		sourceId: string,
 		params: MediaSearchRequest,
@@ -207,6 +213,9 @@ export function useSourceMediaPage(
 
 	const mediaQueryOptions = createMemo(() =>
 		buildSourceMediaResultsQueryOptions({
+			semanticQuery: searchState.semanticQuery,
+			similarityTopK: searchState.similarityTopK,
+			searchSemantic: actions.searchSemantic,
 			sourceId: id(),
 			condition: getSearchCondition(),
 			conditionKey: searchConditionKey(),

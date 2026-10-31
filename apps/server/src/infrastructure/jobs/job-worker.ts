@@ -67,6 +67,8 @@ export class JobWorker {
 	private readonly aiJobTypes = new Set([
 		"auto_tagging",
 		"extract_ccip_vector",
+		"extract_embedding_batch",
+		"extract_embedding_vector",
 	]);
 	private readonly thumbnailJobTypes = new Set(["generate_thumbnail"]);
 	private readonly exportJobTypes = new Set(["source_export"]);

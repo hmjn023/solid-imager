@@ -74,3 +74,16 @@ export function startBatchCcipExtraction(params: {
 }) {
 	return orpc.ai.startBatchCcipExtraction(params);
 }
+
+export function scanBatchEmbeddingTargets(params: {
+	force: boolean;
+	mediaSourceId?: string;
+}) {
+	return orpc.ai.scanBatchEmbeddingTargets(params);
+}
+export function startBatchEmbeddingExtraction(params: {
+	force: boolean;
+	mediaSourceId?: string;
+}) {
+	return orpc.ai.startBatchEmbeddingExtraction(params);
+}

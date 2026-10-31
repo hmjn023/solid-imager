@@ -38,7 +38,8 @@ export async function processJob(job: Job) {
 	if (
 		!mediaSourceId &&
 		job.type !== "bulk_tagging_dispatch" &&
-		job.type !== "batch_ccip_dispatch"
+		job.type !== "batch_ccip_dispatch" &&
+		job.type !== "extract_embedding_batch"
 	) {
 		throw new Error(`Job ${job.id} missing mediaSourceId`);
 	}
@@ -53,6 +54,14 @@ export async function processJob(job: Job) {
 		await processDownloadJob(job);
 	} else if (job.type === "auto_tagging") {
 		await processAutoTaggingJob(job);
+	} else if (job.type === "extract_embedding_vector") {
+		const { processEmbeddingExtractionJob } =
+			await import("~/infrastructure/jobs/embedding-jobs");
+		await processEmbeddingExtractionJob(job);
+	} else if (job.type === "extract_embedding_batch") {
+		const { processEmbeddingBatchJob } =
+			await import("~/infrastructure/jobs/embedding-jobs");
+		await processEmbeddingBatchJob(job);
 	} else if (job.type === "extract_ccip_vector") {
 		const { processCcipExtractionJob } =
 			await import("~/infrastructure/jobs/ccip-jobs");

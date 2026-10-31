@@ -103,6 +103,7 @@ export function SearchComposer(props: SearchComposerProps) {
 	const handleKeyDown: JSX.EventHandler<HTMLInputElement, KeyboardEvent> = (
 		event,
 	) => {
+		if (event.isComposing) return;
 		if (event.key === "Backspace" && props.draft.length === 0) {
 			const token = props.tokens
 				.filter((item) => item.removable !== false)
@@ -201,7 +202,7 @@ export function SearchComposer(props: SearchComposerProps) {
 							if (suggestions().length > 0) setMenuOpen(true);
 						}}
 						onKeyDown={handleKeyDown}
-						placeholder="検索、または tag: / author: / similar: / limit:100 …"
+						placeholder="検索、または text: / tag: / author: / similar: / limit:100 …"
 						ref={props.inputRef}
 					/>
 				</ComboboxControl>

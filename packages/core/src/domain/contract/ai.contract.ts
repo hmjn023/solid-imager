@@ -1,6 +1,10 @@
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
+	embeddingResponseSchema,
+	embeddingTextRequestSchema,
+} from "../search/embedding";
+import {
 	aiHealthResponseSchema,
 	batchCcipExtractionRequestSchema,
 	batchTaggingRequestSchema,
@@ -20,6 +24,25 @@ import {
 } from "../tagging/schemas";
 
 export const aiContract = {
+	embeddingImage: oc
+		.route({ tags: ["AI"], summary: "EmbeddingGemma 2 画像特徴抽出" })
+		.input(z.object({ file: z.instanceof(File) }))
+		.output(embeddingResponseSchema),
+	embeddingText: oc
+		.route({ tags: ["AI"], summary: "EmbeddingGemma 2 検索文特徴抽出" })
+		.input(embeddingTextRequestSchema)
+		.output(embeddingResponseSchema),
+	scanBatchEmbeddingTargets: oc
+		.route({ tags: ["AI"], summary: "EmbeddingGemma 2 索引の作成対象数" })
+		.input(batchCcipExtractionRequestSchema)
+		.output(batchTargetCountResponseSchema),
+	startBatchEmbeddingExtraction: oc
+		.route({
+			tags: ["AI"],
+			summary: "EmbeddingGemma 2 画像索引作成ジョブを開始",
+		})
+		.input(batchCcipExtractionRequestSchema)
+		.output(startCcipExtractionResponseSchema),
 	health: oc
 		.route({
 			tags: ["AI"],

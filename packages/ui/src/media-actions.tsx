@@ -42,7 +42,9 @@ export type MediaActionModalProps = {
 export type MediaActionsProps = {
 	media: MediaDetails;
 	onUpdate?: () => void;
-	onFindSimilar?: () => void;
+	onFindSimilar?: (
+		model?: import("@solid-imager/core/domain/search/embedding").SimilarityModel,
+	) => void;
 	onDownload?: () => void | Promise<void>;
 	onDelete?: () => void | Promise<void>;
 	aiTaggingModal?: (
@@ -288,6 +290,18 @@ export function MediaActions(props: MediaActionsProps) {
 							<ChevronDown aria-hidden="true" size={14} />
 						</PopoverTrigger>
 						<PopoverContent class="workspace-theme w-64 space-y-1 p-1.5 shadow-xl">
+							<ShowAction
+								when={props.onFindSimilar && props.media.mediaType === "image"}
+							>
+								<Button
+									class="h-auto min-h-9 w-full justify-start whitespace-normal px-2 text-left"
+									size="sm"
+									variant="ghost"
+									onClick={() => props.onFindSimilar?.("embeddinggemma2")}
+								>
+									Find similar (EmbeddingGemma 2)
+								</Button>
+							</ShowAction>
 							<ShowAction when={props.oppaiOracleModal}>
 								<Button
 									class="h-9 w-full justify-start px-2"

@@ -119,6 +119,7 @@ export function initServices() {
 		logger,
 		enableAutoTagging: config.jobs.enableAutoTagging,
 		enableAutoCcipExtraction: config.jobs.enableAutoCcipExtraction,
+		enableAutoEmbeddingExtraction: config.jobs.enableAutoEmbeddingExtraction,
 		supportedExtensions: config.media.supportedExtensions,
 		generateThumbnail: (
 			media: { id: string; filePath: string },
@@ -133,6 +134,8 @@ export function initServices() {
 		mediaProcessingService.updateConfig({
 			enableAutoTagging: newConfig.jobs.enableAutoTagging,
 			enableAutoCcipExtraction: newConfig.jobs.enableAutoCcipExtraction,
+			enableAutoEmbeddingExtraction:
+				newConfig.jobs.enableAutoEmbeddingExtraction,
 		}),
 	);
 }

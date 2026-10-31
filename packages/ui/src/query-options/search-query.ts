@@ -7,10 +7,16 @@ import {
 	infiniteQueryOptions,
 	keepPreviousData,
 } from "@tanstack/solid-query";
+import type {
+	SimilarityModel,
+	SemanticSearchRequest,
+} from "@solid-imager/core/domain/search/embedding";
 
 export const MEDIA_RESULTS_STALE_TIME_MS = 1000 * 60 * 5;
 
 export type SearchResultsQueryKeyInput = {
+	similarityModel?: SimilarityModel;
+	semanticQuery?: string;
 	mode: "simple" | "pro";
 	sourceId: string | undefined;
 	conditionKey: string;
@@ -28,6 +34,8 @@ export const searchQueryKeys = {
 };
 
 export type SourceMediaQueryKeyInput = {
+	semanticQuery?: string;
+	similarityTopK?: number;
 	sourceId: string | undefined;
 	conditionKey: string;
 	sort: string | undefined;
@@ -109,6 +117,7 @@ type SearchSourceMedia = (
 
 type SearchSimilar = (
 	input: {
+		model?: SimilarityModel;
 		anchorMediaId: string;
 		mediaSourceId?: string;
 		topK: number;
@@ -119,6 +128,12 @@ type SearchSimilar = (
 ) => Promise<MediaSearchResponse>;
 
 export type SearchResultsQueryOptionsInput = {
+	similarityModel?: SimilarityModel;
+	semanticQuery?: string;
+	searchSemantic?: (
+		input: SemanticSearchRequest,
+		signal?: AbortSignal,
+	) => Promise<MediaSearchResponse>;
 	mode: "simple" | "pro";
 	sourceId: string | undefined;
 	condition: MediaSearchRequest["condition"];
@@ -148,8 +163,24 @@ export function buildSearchResultsQueryOptions(
 			limit: input.limit,
 			similarityAnchorMediaId: input.similarityAnchorMediaId,
 			similarityTopK: input.similarityTopK,
+			similarityModel: input.similarityModel,
+			semanticQuery: input.semanticQuery,
 		}),
 		queryFn: async ({ pageParam, signal }): Promise<MediaSearchResponse> => {
+			if (input.semanticQuery?.trim()) {
+				if (!input.searchSemantic)
+					throw new Error("Natural language search is unavailable");
+				return input.searchSemantic(
+					{
+						text: input.semanticQuery.trim(),
+						mediaSourceId: input.sourceId,
+						topK: input.similarityTopK,
+						limit: Math.min(input.limit, 200),
+						offset: typeof pageParam === "number" ? pageParam : 0,
+					},
+					signal,
+				);
+			}
 			if (input.similarityAnchorMediaId) {
 				if (!input.searchSimilar) {
 					return { media: [], total: 0 };
@@ -157,6 +188,7 @@ export function buildSearchResultsQueryOptions(
 				return await input.searchSimilar(
 					{
 						anchorMediaId: input.similarityAnchorMediaId,
+						...(input.similarityModel ? { model: input.similarityModel } : {}),
 						mediaSourceId: input.sourceId,
 						topK: input.similarityTopK,
 						limit: Math.min(input.limit, 200),
@@ -189,9 +221,10 @@ export function buildSearchResultsQueryOptions(
 		},
 		// Similarity result sets have a user-selected size. Keeping the previous
 		// result while changing topK makes selecting 100 look like a no-op.
-		placeholderData: input.similarityAnchorMediaId
-			? undefined
-			: keepPreviousData,
+		placeholderData:
+			input.similarityAnchorMediaId || input.semanticQuery?.trim()
+				? undefined
+				: keepPreviousData,
 		enabled: input.enabled,
 		gcTime: input.gcTime,
 		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
@@ -199,6 +232,12 @@ export function buildSearchResultsQueryOptions(
 }
 
 export type SourceMediaResultsQueryOptionsInput = {
+	semanticQuery?: string;
+	similarityTopK?: number;
+	searchSemantic?: (
+		input: SemanticSearchRequest,
+		signal?: AbortSignal,
+	) => Promise<MediaSearchResponse>;
 	sourceId: string | undefined;
 	condition: MediaSearchRequest["condition"];
 	conditionKey: string;
@@ -214,6 +253,12 @@ export function buildSourceMediaResultsQueryOptions(
 ) {
 	return infiniteQueryOptions({
 		queryKey: sourceMediaQueryKeys.results({
+			...(input.semanticQuery !== undefined
+				? { semanticQuery: input.semanticQuery }
+				: {}),
+			...(input.similarityTopK !== undefined
+				? { similarityTopK: input.similarityTopK }
+				: {}),
 			sourceId: input.sourceId,
 			conditionKey: input.conditionKey,
 			sort: input.sort,
@@ -223,6 +268,20 @@ export function buildSourceMediaResultsQueryOptions(
 		queryFn: async ({ pageParam, signal }): Promise<MediaSearchResponse> => {
 			if (!input.sourceId) {
 				throw new Error("Media source ID is required");
+			}
+			if (input.semanticQuery?.trim()) {
+				if (!input.searchSemantic)
+					throw new Error("Natural language search is unavailable");
+				return input.searchSemantic(
+					{
+						text: input.semanticQuery.trim(),
+						mediaSourceId: input.sourceId,
+						topK: input.similarityTopK ?? 1000,
+						limit: Math.min(input.limit, 200),
+						offset: typeof pageParam === "number" ? pageParam : 0,
+					},
+					signal,
+				);
 			}
 			return await input.searchMedia(
 				input.sourceId,
@@ -244,7 +303,7 @@ export function buildSourceMediaResultsQueryOptions(
 			);
 			return loadedCount < lastPage.total ? loadedCount : undefined;
 		},
-		placeholderData: keepPreviousData,
+		placeholderData: input.semanticQuery?.trim() ? undefined : keepPreviousData,
 		enabled: input.enabled,
 		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
 	});

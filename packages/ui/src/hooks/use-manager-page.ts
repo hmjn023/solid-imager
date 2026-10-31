@@ -2,6 +2,7 @@ import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
 import type { DuplicateGroup } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
 import type {
 	JobCompletedEvent,
 	JobFailedEvent,
@@ -57,6 +58,14 @@ export type ManagerPageQueries = {
 };
 
 export type ManagerPageActions = {
+	scanBatchEmbeddingTargets?: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+	}) => Promise<{ count: number }>;
+	startBatchEmbeddingExtraction?: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+	}) => Promise<StartBatchTaggingResult>;
 	createProject: (data: ManagerFormData) => Promise<unknown>;
 	updateProject: (
 		id: string,
@@ -162,6 +171,8 @@ export type ManagerJobHandlers = {
 };
 
 export type UseManagerPageResult = {
+	vectorModel: Accessor<SimilarityModel>;
+	setVectorModel: Setter<SimilarityModel>;
 	activeTab: Accessor<ManagerEntityType>;
 	setActiveTab: Setter<ManagerEntityType>;
 	isDialogOpen: Accessor<boolean>;
@@ -298,6 +309,9 @@ export function useManagerPage(
 		string | undefined
 	>(undefined);
 	const [forceRetag, setForceRetag] = createSignal(false);
+	const [vectorModel, setVectorModel] = createSignal<SimilarityModel>(
+		actions.startBatchEmbeddingExtraction ? "embeddinggemma2" : "ccip",
+	);
 	const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
 	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(
 		null,
@@ -473,7 +487,12 @@ export function useManagerPage(
 			setTaggingStatus("Scanning...");
 			const result =
 				scanTab === "vectors"
-					? await actions.scanBatchCcipTargets({
+					? await (
+							vectorModel() === "embeddinggemma2" &&
+								actions.scanBatchEmbeddingTargets
+								? actions.scanBatchEmbeddingTargets
+								: actions.scanBatchCcipTargets
+						)({
 							force: forceRetag(),
 							mediaSourceId: selectedSourceId(),
 						})
@@ -498,13 +517,20 @@ export function useManagerPage(
 		try {
 			setTaggingStatus("Starting...");
 			setJobProgress(null);
-			const result = await actions.startBatchCcipExtraction({
+			const result = await (
+				vectorModel() === "embeddinggemma2" &&
+					actions.startBatchEmbeddingExtraction
+					? actions.startBatchEmbeddingExtraction
+					: actions.startBatchCcipExtraction
+			)({
 				force: forceRetag(),
 				mediaSourceId: selectedSourceId(),
 			});
 			if (result.success && result.jobId) {
 				toast.success(result.message);
-				setTaggingStatus("Batch CCIP extraction in progress...");
+				setTaggingStatus(
+					`${vectorModel() === "embeddinggemma2" ? "EmbeddingGemma 2" : "CCIP"} extraction in progress...`,
+				);
 				setActiveJobId(result.jobId);
 			} else {
 				toast.error("Failed to start batch CCIP extraction.");
@@ -782,6 +808,8 @@ export function useManagerPage(
 
 	return {
 		activeTab,
+		vectorModel,
+		setVectorModel,
 		setActiveTab,
 		isDialogOpen,
 		setIsDialogOpen,

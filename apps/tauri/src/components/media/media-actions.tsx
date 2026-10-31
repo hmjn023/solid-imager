@@ -70,8 +70,8 @@ export function MediaActions(props: MediaActionsProps) {
 				});
 			}}
 			onDownload={() => downloadMedia(props.media)}
-			onFindSimilar={() => {
-				activateSimilaritySearch(props.media.id);
+			onFindSimilar={(model) => {
+				activateSimilaritySearch(props.media.id, model);
 				void navigate({ to: "/search" });
 			}}
 			onUpdate={props.onUpdate}

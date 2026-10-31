@@ -6,6 +6,10 @@
  */
 
 import type { MediaSearchRequest } from "@solid-imager/core/domain/media/schemas";
+import type {
+	SemanticSearchRequest,
+	SimilarityModel,
+} from "@solid-imager/core/domain/search/embedding";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 /**
@@ -30,6 +34,7 @@ export function searchMedia(
 
 export function searchSimilar(
 	input: {
+		model?: SimilarityModel;
 		anchorMediaId: string;
 		mediaSourceId?: string;
 		topK: number;
@@ -39,4 +44,11 @@ export function searchSimilar(
 	signal?: AbortSignal,
 ) {
 	return orpc.media.searchSimilar(input, { signal });
+}
+
+export function searchSemantic(
+	input: SemanticSearchRequest,
+	signal?: AbortSignal,
+) {
+	return orpc.media.searchSemantic(input, { signal });
 }

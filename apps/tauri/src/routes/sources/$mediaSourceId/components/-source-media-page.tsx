@@ -36,7 +36,10 @@ import {
 	syncMediaItems,
 	uploadMedia,
 } from "~/infrastructure/api-clients/media-api";
-import { searchMedia } from "~/infrastructure/api-clients/search-api";
+import {
+	searchMedia,
+	searchSemantic,
+} from "~/infrastructure/api-clients/search-api";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
 import {
@@ -105,6 +108,7 @@ export function SourceMediaPage() {
 				searchHistoryClient={searchHistoryClient}
 				actions={{
 					searchMedia,
+					searchSemantic,
 					uploadMedia: (sourceId, file, options) =>
 						uploadMedia(sourceId, file, options),
 					deleteMedia,
