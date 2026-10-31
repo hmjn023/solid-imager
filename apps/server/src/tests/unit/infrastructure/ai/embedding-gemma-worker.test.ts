@@ -6,7 +6,15 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { EmbeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker";
 
-const mocks = vi.hoisted(() => ({ modulePath: "", workers: [] as Worker[] }));
+const mocks = vi.hoisted(() => ({
+	modulePath: "",
+	workers: [] as Worker[],
+	info: vi.fn(),
+	error: vi.fn(),
+}));
+vi.mock("~/infrastructure/logger", () => ({
+	logger: { info: mocks.info, error: mocks.error },
+}));
 vi.mock("~/infrastructure/ai/dghs-imgutils-loader", () => ({
 	resolveDghsImgutilsPath: () => mocks.modulePath,
 }));
@@ -33,6 +41,7 @@ describe("EmbeddingGemma worker inference settings", () => {
 			mocks.workers.splice(0).map((worker) => worker.terminate()),
 		);
 		if (directory) await rm(directory, { recursive: true, force: true });
+		vi.clearAllMocks();
 	});
 
 	it("passes provider/device to both native encoders and isolates queued configuration changes", async () => {
@@ -90,5 +99,34 @@ describe("EmbeddingGemma worker inference settings", () => {
 			createNativeInferenceOptions({ provider: "cpu" }),
 		);
 		expect(third.slice(0, 3)).toEqual([2, 3, 0]);
+		expect(mocks.info).toHaveBeenCalledWith(
+			expect.objectContaining({ kind: "image", provider: "cuda", device: "1" }),
+			"EmbeddingGemma 2 first inference started (including model initialization)",
+		);
+		expect(mocks.info).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: "image",
+				provider: "cuda",
+				durationMs: expect.any(Number),
+			}),
+			"EmbeddingGemma 2 first inference completed",
+		);
+		expect(mocks.error).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: "text",
+				provider: "intel_gpu",
+				err: expect.any(Error),
+			}),
+			"EmbeddingGemma 2 first inference failed",
+		);
+		const logged = mocks.info.mock.calls.length;
+		await worker.encode(
+			"text",
+			"海辺",
+			createNativeInferenceOptions({ provider: "cpu" }),
+		);
+		expect(mocks.info).toHaveBeenCalledTimes(logged);
+		expect(JSON.stringify(mocks.info.mock.calls)).not.toContain("海辺");
+		expect(JSON.stringify(mocks.info.mock.calls)).not.toContain("/image.png");
 	});
 });

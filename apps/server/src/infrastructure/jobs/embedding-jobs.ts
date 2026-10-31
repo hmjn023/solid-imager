@@ -71,6 +71,7 @@ export async function countEmbeddingTargets(
 }
 
 export async function processEmbeddingBatchJob(job: Job): Promise<void> {
+	const startedAt = performance.now();
 	const payload = batchPayloadSchema.parse(job.payload);
 	const service = getEmbeddingSearchService();
 	const repository = services.getJobRepository();
@@ -100,6 +101,17 @@ export async function processEmbeddingBatchJob(job: Job): Promise<void> {
 		return true;
 	};
 	if (!(await persist())) return;
+	logger.info(
+		{
+			jobId: job.id,
+			mediaSourceId: payload.mediaSourceId,
+			force: payload.force,
+			processed,
+			failed,
+			total,
+		},
+		"EmbeddingGemma 2 batch started",
+	);
 	while (true) {
 		const rows = await targetQuery(payload, cursor).limit(100);
 		if (rows.length === 0) break;
@@ -110,8 +122,14 @@ export async function processEmbeddingBatchJob(job: Job): Promise<void> {
 				currentJob.cancelRequestedAt ||
 				currentJob.status === "cancelled" ||
 				currentJob.attemptCount !== job.attemptCount
-			)
+			) {
+				logger.info(
+					{ jobId: job.id, processed, failed, total },
+					"EmbeddingGemma 2 batch interrupted",
+				);
 				return;
+			}
+			const extractionStartedAt = performance.now();
 			try {
 				await service.extract(row.mediaSourceId, row.id, payload.force);
 				processed += 1;
@@ -124,9 +142,31 @@ export async function processEmbeddingBatchJob(job: Job): Promise<void> {
 			}
 			cursor = row.id;
 			if (!(await persist())) return;
+			logger.info(
+				{
+					jobId: job.id,
+					mediaSourceId: row.mediaSourceId,
+					mediaId: row.id,
+					processed,
+					failed,
+					total,
+					durationMs: Math.round(performance.now() - extractionStartedAt),
+				},
+				"EmbeddingGemma 2 batch progress",
+			);
 		}
 	}
 	if (failed > 0) {
+		logger.error(
+			{
+				jobId: job.id,
+				processed,
+				failed,
+				total,
+				durationMs: Math.round(performance.now() - startedAt),
+			},
+			"EmbeddingGemma 2 batch failed",
+		);
 		// A user retry must revisit failed images; successful current vectors are skipped.
 		await repository.update(job.id, {
 			payload: { force: payload.force, mediaSourceId: payload.mediaSourceId },
@@ -134,7 +174,14 @@ export async function processEmbeddingBatchJob(job: Job): Promise<void> {
 		throw new Error(`${failed} EmbeddingGemma 2 extraction(s) failed`);
 	}
 	logger.info(
-		{ jobId: job.id, processed },
+		{
+			jobId: job.id,
+			mediaSourceId: payload.mediaSourceId,
+			processed,
+			failed,
+			total,
+			durationMs: Math.round(performance.now() - startedAt),
+		},
 		"EmbeddingGemma 2 indexing completed",
 	);
 }
@@ -143,9 +190,34 @@ export async function processEmbeddingExtractionJob(job: Job): Promise<void> {
 	const input = embeddingExtractionPayloadSchema.parse(job.payload);
 	if (!job.mediaSourceId)
 		throw new Error("Embedding extraction requires a media source");
-	await getEmbeddingSearchService().extract(
-		job.mediaSourceId,
-		input.mediaId,
-		input.force,
-	);
+	const context = {
+		jobId: job.id,
+		parentId: job.parentId,
+		mediaSourceId: job.mediaSourceId,
+		mediaId: input.mediaId,
+		force: input.force,
+	};
+	const startedAt = performance.now();
+	logger.info(context, "EmbeddingGemma 2 extraction started");
+	try {
+		await getEmbeddingSearchService().extract(
+			job.mediaSourceId,
+			input.mediaId,
+			input.force,
+		);
+		logger.info(
+			{ ...context, durationMs: Math.round(performance.now() - startedAt) },
+			"EmbeddingGemma 2 extraction completed",
+		);
+	} catch (err) {
+		logger.error(
+			{
+				...context,
+				err,
+				durationMs: Math.round(performance.now() - startedAt),
+			},
+			"EmbeddingGemma 2 extraction failed",
+		);
+		throw err;
+	}
 }
