@@ -2,7 +2,7 @@ import {
 	AuthorManagementPanel,
 	type AuthorManagementActions,
 } from "./manager/authors";
-import { createSignal, Match, Show, Switch } from "solid-js";
+import { createEffect, createSignal, Match, on, Show, Switch } from "solid-js";
 import {
 	EmptyState,
 	ErrorState,
@@ -57,6 +57,15 @@ export function ManagerScreen(props: {
 				}
 			})(),
 		);
+	createEffect(
+		on(
+			() => props.manager.activeTab(),
+			(tab, previous) => {
+				if (previous !== undefined || tab !== "projects")
+					setActiveCategory(tab);
+			},
+		),
+	);
 	const activeQueryState = () => {
 		const states = props.manager.queryStates();
 		switch (activeCategory()) {

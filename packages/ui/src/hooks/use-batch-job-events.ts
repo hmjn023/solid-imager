@@ -15,6 +15,7 @@ export type JobEventStreamFactory = (
 
 export type UseBatchJobEventsOptions = {
 	subscribeImmediately?: boolean;
+	onConnected?: () => void | Promise<void>;
 };
 
 const BUFFERED_JOB_EVENT_LIMIT = 20;
@@ -52,6 +53,7 @@ export function dispatchJobEvent(
 			handlers.handleJobFailed(event.data);
 			break;
 		case "job-cancelled":
+			handlers.handleJobCancelled?.();
 			break;
 		default:
 			assertNever(event);
@@ -106,16 +108,21 @@ export function useBatchJobEvents(
 			return;
 		}
 
-		const cleanup = subscribeToEventStream(openStream, (event) => {
-			const jobId = activeJobId();
-			if (event.data.jobId === jobId) {
-				dispatchJobEvent(jobId, event, handlers);
-				return;
-			}
-			if (options.subscribeImmediately) {
-				rememberJobEvent(bufferedEvents, event);
-			}
-		});
+		const cleanup = subscribeToEventStream(
+			openStream,
+			(event) => {
+				const jobId = activeJobId();
+				if (event.data.jobId === jobId) {
+					dispatchJobEvent(jobId, event, handlers);
+					return;
+				}
+				if (options.subscribeImmediately) {
+					rememberJobEvent(bufferedEvents, event);
+				}
+			},
+			undefined,
+			options.onConnected,
+		);
 
 		onCleanup(cleanup);
 	});
