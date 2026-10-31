@@ -87,21 +87,25 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		).toBeVisible({ timeout: 180_000 });
 
 		await page.goto(`/sources/${sourceId}`);
-		await page.getByRole("button", { name: /^検索フィルター/ }).click();
-		const sourceSearch = page.getByRole("textbox", {
-			name: "自然言語検索（EmbeddingGemma 2）",
-		});
+		const sourceFilters = page.getByRole("button", { name: /^検索フィルター/ });
+		await sourceFilters.click();
+		await expect(
+			page.getByRole("textbox", { name: "自然言語検索（EmbeddingGemma 2）" }),
+		).toBeVisible();
+		await sourceFilters.click();
+		const sourceSearch = page.locator("#search-composer");
 		await expect(sourceSearch).toBeVisible();
-		await sourceSearch.fill("アニメのキャラクター");
+		await sourceSearch.fill("text:アニメの キャラクター");
 		const sourceSearchResponse = page.waitForResponse(
 			(response) =>
 				response.url().includes("/api/rpc/media/searchSemantic") &&
 				response.status() === 200,
 		);
-		await page
-			.getByRole("button", { name: "文章で画像を検索", exact: true })
-			.click();
+		await sourceSearch.press("Enter");
 		await sourceSearchResponse;
+		await expect(
+			page.getByRole("button", { name: "文章:アニメの キャラクターを解除" }),
+		).toBeVisible();
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible({ timeout: 60_000 });

@@ -30,6 +30,18 @@ export type SearchSuggestion = {
 	value: string;
 };
 
+/** A text: prefix consumes the remainder as one natural-language query. */
+export function parseSemanticSearchDraft(draft: string): string | undefined {
+	const match = draft.match(/^\s*text:(.*)$/is);
+	if (!match) return undefined;
+	const value = match[1].trim();
+	const unquoted =
+		value.length >= 2 && value.startsWith('"') && value.endsWith('"')
+			? value.slice(1, -1).trim()
+			: value;
+	return unquoted.slice(0, 2000);
+}
+
 export function getSearchComposerTokens(state: SearchState): SearchToken[] {
 	if (state.semanticQuery)
 		return [

@@ -29,6 +29,7 @@ import {
 	type SearchSuggestion,
 	type SearchToken,
 } from "./search-composer";
+import { parseSemanticSearchDraft } from "./search-composer-utils";
 
 export type SearchToolbarProps = {
 	actions?: JSX.Element;
@@ -107,6 +108,18 @@ function tokenId(token: Pick<SearchToken, "key" | "value">): string {
 }
 
 function submitComposerDraft(rawDraft: string): boolean {
+	const semanticDraft = parseSemanticSearchDraft(rawDraft);
+	if (semanticDraft !== undefined) {
+		if (!semanticDraft) return false;
+		setSearchState({
+			semanticQuery: semanticDraft,
+			similarityAnchorMediaId: null,
+			similarityModel: "embeddinggemma2",
+			offset: 0,
+			scrollY: 0,
+		});
+		return true;
+	}
 	if (searchState.semanticQuery && rawDraft.trim()) {
 		setSearchState("semanticQuery", rawDraft.trim().slice(0, 2000));
 		return true;
