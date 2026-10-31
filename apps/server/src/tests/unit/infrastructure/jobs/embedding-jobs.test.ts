@@ -17,6 +17,8 @@ const mocks = vi.hoisted(() => ({
 	repository: undefined as any,
 	extract: vi.fn(),
 	publishJob: vi.fn(),
+	info: vi.fn(),
+	error: vi.fn(),
 }));
 vi.mock("~/infrastructure/db", () => ({
 	get db() {
@@ -33,11 +35,12 @@ vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
 	RealtimeEventBus: { publishJob: mocks.publishJob },
 }));
 vi.mock("~/infrastructure/logger", () => ({
-	logger: { info: vi.fn(), error: vi.fn() },
+	logger: { info: mocks.info, error: mocks.error },
 }));
 import {
 	countEmbeddingTargets,
 	processEmbeddingBatchJob,
+	processEmbeddingExtractionJob,
 } from "~/infrastructure/jobs/embedding-jobs";
 
 const sourceId = "11111111-1111-4111-8111-111111111111";
@@ -182,6 +185,45 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		await expect(processEmbeddingBatchJob(job)).rejects.toThrow(
 			"1 EmbeddingGemma",
 		);
+		expect(mocks.info).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: job.id,
+				processed: 0,
+				failed: 0,
+				total: 2,
+			}),
+			"EmbeddingGemma 2 batch started",
+		);
+		expect(mocks.info).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: job.id,
+				mediaId: ids[0],
+				processed: 1,
+				failed: 0,
+				total: 2,
+				durationMs: expect.any(Number),
+			}),
+			"EmbeddingGemma 2 batch progress",
+		);
+		expect(mocks.info).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: job.id,
+				mediaId: ids[1],
+				processed: 1,
+				failed: 1,
+				total: 2,
+			}),
+			"EmbeddingGemma 2 batch progress",
+		);
+		expect(mocks.error).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: job.id,
+				processed: 1,
+				failed: 1,
+				total: 2,
+			}),
+			"EmbeddingGemma 2 batch failed",
+		);
 		expect(
 			await countEmbeddingTargets({ mediaSourceId: sourceId, force: false }),
 		).toBe(1);
@@ -190,6 +232,16 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		);
 		const retry = await mocks.repository.findById(job.id);
 		await processEmbeddingBatchJob(retry);
+		expect(mocks.info).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: job.id,
+				processed: 1,
+				failed: 0,
+				total: 1,
+				durationMs: expect.any(Number),
+			}),
+			"EmbeddingGemma 2 indexing completed",
+		);
 		expect(
 			await countEmbeddingTargets({ mediaSourceId: sourceId, force: false }),
 		).toBe(0);
@@ -197,6 +249,39 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		expect(mocks.publishJob).toHaveBeenCalledWith(
 			"job-progress",
 			expect.objectContaining({ jobId: job.id, processed: 1, total: 1 }),
+		);
+	});
+	it("logs single-image start, completion and failures with job and media context", async () => {
+		await setup();
+		mocks.extract.mockResolvedValue(undefined);
+		const job = await mocks.repository.create({
+			type: "extract_embedding_vector",
+			mediaSourceId: sourceId,
+			payload: { mediaId: ids[0] },
+		});
+		await processEmbeddingExtractionJob(job);
+		expect(mocks.info).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: job.id,
+				mediaSourceId: sourceId,
+				mediaId: ids[0],
+			}),
+			"EmbeddingGemma 2 extraction started",
+		);
+		expect(mocks.info).toHaveBeenCalledWith(
+			expect.objectContaining({
+				jobId: job.id,
+				mediaId: ids[0],
+				durationMs: expect.any(Number),
+			}),
+			"EmbeddingGemma 2 extraction completed",
+		);
+		const error = new Error("inference unavailable");
+		mocks.extract.mockRejectedValueOnce(error);
+		await expect(processEmbeddingExtractionJob(job)).rejects.toBe(error);
+		expect(mocks.error).toHaveBeenCalledWith(
+			expect.objectContaining({ jobId: job.id, mediaId: ids[0], err: error }),
+			"EmbeddingGemma 2 extraction failed",
 		);
 	});
 });
