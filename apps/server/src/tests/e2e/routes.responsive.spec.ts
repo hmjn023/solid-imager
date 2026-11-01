@@ -172,7 +172,7 @@ test(
 		await expect(selectTriggers.nth(2)).toContainText("TAR archive");
 		await expect(page.locator('input[type="file"]')).toHaveAttribute(
 			"accept",
-			".tar,.zip,application/x-tar,application/zip",
+			".tar,application/x-tar,application/tar",
 		);
 	},
 );

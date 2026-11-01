@@ -1,8 +1,6 @@
-import {
-	AuthorManagementPanel,
-	type AuthorManagementActions,
-} from "./manager/authors";
-import { createSignal, Match, Show, Switch } from "solid-js";
+import { AuthorManagementPanel } from "./manager/authors";
+import type { AuthorManagementActions } from "./manager/authors.types";
+import { createEffect, createSignal, Match, on, Show, Switch } from "solid-js";
 import {
 	EmptyState,
 	ErrorState,
@@ -20,6 +18,10 @@ import { DuplicateToolPanel } from "./manager/duplicates";
 import { EntityTablePanel, ManagerTableSkeleton } from "./manager/entity-panel";
 import { ManagerCategoryNavigation } from "./manager/navigation";
 import { ThumbnailWarmupPanel } from "./manager/thumbnail";
+import {
+	CharacterClusteringReviewPanel,
+	type CharacterClusteringReviewActions,
+} from "./manager/character-clustering";
 import type {
 	ManagerCategoryValue,
 	ManagerTransferActions,
@@ -35,11 +37,33 @@ export function ManagerScreen(props: {
 	manager: UseManagerPageResult;
 	transferActions?: ManagerTransferActions;
 	authorActions?: AuthorManagementActions;
+	clusteringActions?: CharacterClusteringReviewActions;
 }) {
 	const [query, setQuery] = createSignal("");
 	const [selectedId, setSelectedId] = createSignal<string | null>(null);
 	const [activeCategory, setActiveCategory] =
-		createSignal<ManagerCategoryValue>("projects");
+		createSignal<ManagerCategoryValue>(
+			(() => {
+				try {
+					return typeof sessionStorage !== "undefined" &&
+						sessionStorage.getItem("solid-imager:manager:clustering-open") ===
+							"1"
+						? "clustering"
+						: "projects";
+				} catch {
+					return "projects";
+				}
+			})(),
+		);
+	createEffect(
+		on(
+			() => props.manager.activeTab(),
+			(tab, previous) => {
+				if (previous !== undefined || tab !== "projects")
+					setActiveCategory(tab);
+			},
+		),
+	);
 	const activeQueryState = () => {
 		const states = props.manager.queryStates();
 		switch (activeCategory()) {
@@ -60,7 +84,16 @@ export function ManagerScreen(props: {
 		setQuery("");
 		setSelectedId(null);
 		setActiveCategory(value);
-		if (value !== "transfer" && value !== "authors")
+		try {
+			if (typeof sessionStorage !== "undefined")
+				sessionStorage.setItem(
+					"solid-imager:manager:clustering-open",
+					value === "clustering" ? "1" : "0",
+				);
+		} catch {
+			/* Storage can be disabled. */
+		}
+		if (value !== "transfer" && value !== "authors" && value !== "clustering")
 			props.manager.setActiveTab(value);
 	};
 
@@ -71,7 +104,10 @@ export function ManagerScreen(props: {
 				title="Manager"
 			/>
 
-			<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-stable">
+			<div
+				class="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-stable"
+				data-clustering-scroll
+			>
 				<ManagerCategoryNavigation
 					active={activeCategory()}
 					compact
@@ -101,7 +137,24 @@ export function ManagerScreen(props: {
 								)}
 							</Show>
 						</Show>
-						<Show when={activeCategory() !== "authors"}>
+						<Show when={activeCategory() === "clustering"}>
+							<Show
+								when={props.clusteringActions}
+								fallback={
+									<ErrorState title="クラスタリング結果を利用できません" />
+								}
+							>
+								{(actions) => (
+									<CharacterClusteringReviewPanel actions={actions()} />
+								)}
+							</Show>
+						</Show>
+						<Show
+							when={
+								activeCategory() !== "authors" &&
+								activeCategory() !== "clustering"
+							}
+						>
 							<QueryStatus
 								class="mb-3"
 								fetchState={activeQueryState().fetchState}

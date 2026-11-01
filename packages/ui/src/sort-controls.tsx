@@ -31,6 +31,7 @@ type SortControlsProps = {
 	onSortByChange: (value: SortOption) => void;
 	onSortOrderChange: (value: "asc" | "desc") => void;
 	similarityAnchorMediaId?: string | null;
+	semanticQuery?: string;
 	similarityTopK?: number;
 	onSimilarityTopKChange?: (value: number) => void;
 	onClearSimilarity?: () => void;
@@ -70,7 +71,9 @@ export function SortControls(props: SortControlsProps) {
 				<Label>ソート</Label>
 				<div class="grid grid-cols-2 gap-2">
 					<Select
-						disabled={Boolean(props.similarityAnchorMediaId)}
+						disabled={Boolean(
+							props.similarityAnchorMediaId || props.semanticQuery,
+						)}
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
 								{getSortLabel(
@@ -107,7 +110,9 @@ export function SortControls(props: SortControlsProps) {
 						<SelectContent />
 					</Select>
 					<Select
-						disabled={Boolean(props.similarityAnchorMediaId)}
+						disabled={Boolean(
+							props.similarityAnchorMediaId || props.semanticQuery,
+						)}
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
 								{itemProps.item.rawValue === "asc" ? "昇順" : "降順"}
@@ -131,7 +136,7 @@ export function SortControls(props: SortControlsProps) {
 			</div>
 			<Show
 				when={
-					props.similarityAnchorMediaId &&
+					(props.similarityAnchorMediaId || props.semanticQuery) &&
 					props.similarityTopK !== undefined &&
 					props.onSimilarityTopKChange
 				}
@@ -153,7 +158,9 @@ export function SortControls(props: SortControlsProps) {
 						</Show>
 					</div>
 					<p class="truncate text-muted-foreground text-xs">
-						類似元: {props.similarityAnchorMediaId}
+						{props.semanticQuery
+							? `検索文: ${props.semanticQuery}`
+							: `類似元: ${props.similarityAnchorMediaId}`}
 					</p>
 					<div class="flex items-center gap-2">
 						<Input

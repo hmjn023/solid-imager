@@ -105,6 +105,7 @@ import { Toaster, toast } from "@solid-imager/ui/toast";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { render } from "solid-js/web";
 import { ComboboxGallery } from "./combobox-gallery";
+import { JobsGallery } from "./jobs-gallery";
 import "../../../app.css";
 import "@fontsource/noto-sans/latin-400.css";
 import "@fontsource/noto-sans/latin-500.css";
@@ -538,9 +539,12 @@ const showVirtualGrid = new URLSearchParams(window.location.search).has(
 const showCombobox = new URLSearchParams(window.location.search).has(
 	"combobox",
 );
+const showJobs = new URLSearchParams(window.location.search).has("jobs");
 render(
 	() =>
-		showCombobox ? (
+		showJobs ? (
+			<JobsGallery />
+		) : showCombobox ? (
 			<ComboboxGallery />
 		) : showVirtualGrid ? (
 			<VirtualGridGallery />

@@ -1,10 +1,17 @@
-import { createSignal } from "solid-js";
+import { createSignal, Show } from "solid-js";
 import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import { Label } from "../../label";
 import { ManagerJobStatus } from "./job-status";
 import { SourceSelect } from "./source-select";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "../../select";
 
 export function BatchToolPanel(props: {
 	kind: "tagging" | "vectors";
@@ -45,7 +52,7 @@ export function BatchToolPanel(props: {
 				</h2>
 				<p class="mt-0.5 text-xs text-muted-foreground">
 					{isVector()
-						? "Create CCIP character embeddings for similarity search."
+						? "Create EmbeddingGemma 2 image embeddings for image and natural language search, or CCIP character embeddings."
 						: "Analyze media and submit AI tagging jobs."}
 				</p>
 			</div>
@@ -58,6 +65,48 @@ export function BatchToolPanel(props: {
 					Job options
 				</h3>
 				<div class="grid gap-4 lg:grid-cols-2">
+					<Show when={isVector()}>
+						<div class="space-y-1.5">
+							<Label for="batch-vector-model">Model</Label>
+							<Select
+								options={["embeddinggemma2", "ccip"]}
+								value={props.manager.vectorModel()}
+								disabled={
+									pendingAction() !== null || !!props.manager.activeJobId()
+								}
+								onChange={(value) =>
+									props.manager.setVectorModel(
+										value === "ccip" ? "ccip" : "embeddinggemma2",
+									)
+								}
+								itemComponent={(item) => (
+									<SelectItem item={item.item}>
+										{item.item.rawValue === "ccip"
+											? "CCIP"
+											: "EmbeddingGemma 2"}
+									</SelectItem>
+								)}
+							>
+								<SelectTrigger
+									id="batch-vector-model"
+									aria-label="Embedding model"
+								>
+									<SelectValue<string>>
+										{(state) =>
+											state.selectedOption() === "ccip"
+												? "CCIP"
+												: "EmbeddingGemma 2"
+										}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent />
+							</Select>
+							<p class="text-xs text-muted-foreground">
+								EmbeddingGemma 2 uses the shared AI Provider / Device settings.
+								The first run downloads the Q8 model (768 dimensions).
+							</p>
+						</div>
+					</Show>
 					<div class="space-y-1.5">
 						<Label>Target source</Label>
 						<SourceSelect

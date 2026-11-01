@@ -23,6 +23,7 @@ function ManagerCategoryIcon(props: { value: ManagerCategoryValue }) {
 		case "tagging":
 			return <Bot aria-hidden="true" size={16} />;
 		case "vectors":
+		case "clustering":
 			return <Share2 aria-hidden="true" size={16} />;
 		case "thumbnails":
 			return <Image aria-hidden="true" size={16} />;

@@ -2,7 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { MediaRepository } from "~/infrastructure/repositories/media-repository";
 import { services } from "~/infrastructure/service-registry";
-import { MediaService } from "~/infrastructure/services/media-service";
+import {
+	MediaService,
+	resetMediaService,
+} from "~/infrastructure/services/media-service";
 
 // Helper to capture jobs and processor
 let capturedJobs: any[] = [];
@@ -72,7 +75,8 @@ describe("Reproduction: Copy Media Job Type", () => {
 		_capturedProcessor = null;
 
 		// Reset registry and register services
-		await services.reset();
+		services.reset();
+		resetMediaService();
 		// Define Mocks
 		const mockTagRepo = { addTagsToMedia: vi.fn() } as any;
 		const mockAuthorRepo = {

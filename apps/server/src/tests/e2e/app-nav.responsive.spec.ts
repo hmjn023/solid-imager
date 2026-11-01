@@ -108,7 +108,7 @@ test("app navigation is responsive and accessible", async ({
 
 	await menuButton.click();
 	await dialog.getByRole("link", { name: "Library", exact: true }).click();
-	await expect(page).toHaveURL(/\/search$/);
+	await expect(page).toHaveURL((url) => url.pathname === "/search");
 	await expect(dialog).toBeHidden();
 	await expectNoHorizontalOverflow(page);
 });

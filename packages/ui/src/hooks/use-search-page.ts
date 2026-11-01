@@ -8,6 +8,10 @@ import type {
 } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/domain/search/schema";
+import type {
+	SimilarityModel,
+	SemanticSearchRequest,
+} from "@solid-imager/core/domain/search/embedding";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import {
@@ -54,6 +58,12 @@ export type SearchPageQueryOptions = {
 };
 
 export interface UseSearchPageOptions {
+	similarityModel?: () => SimilarityModel;
+	semanticQuery?: () => string;
+	searchSemantic?: (
+		input: SemanticSearchRequest,
+		signal?: AbortSignal,
+	) => Promise<SimilarMediaSearchResponse>;
 	searchMedia: (
 		sourceId: string | undefined,
 		params: MediaSearchRequest,
@@ -61,6 +71,7 @@ export interface UseSearchPageOptions {
 	) => Promise<MediaSearchResponse>;
 	searchSimilar?: (
 		input: {
+			model?: SimilarityModel;
 			anchorMediaId: string;
 			mediaSourceId?: string;
 			topK: number;
@@ -230,6 +241,9 @@ export function useSearchPage(
 			limit: limit(),
 			similarityAnchorMediaId: similarityAnchorMediaId(),
 			similarityTopK: similarityTopK(),
+			similarityModel: options.similarityModel?.(),
+			semanticQuery: options.semanticQuery?.(),
+			searchSemantic: options.searchSemantic,
 			searchMedia,
 			searchSimilar: options.searchSimilar,
 			enabled: !isServer && isSearchStateRestored(),

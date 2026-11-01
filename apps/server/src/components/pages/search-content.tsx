@@ -47,6 +47,7 @@ import {
 import {
 	searchMedia,
 	searchSimilar,
+	searchSemantic,
 } from "~/infrastructure/api-clients/search-api";
 import {
 	getSearchCondition,
@@ -95,6 +96,9 @@ export default function SearchContent() {
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
+		searchSemantic,
+		similarityModel: () => searchState.similarityModel,
+		semanticQuery: () => searchState.semanticQuery,
 		queries: {
 			tags: tagsQueryOptions,
 			sources: mediaSourcesQueryOptions,
@@ -220,7 +224,9 @@ export default function SearchContent() {
 				onClearSelection={clearSelection}
 				onCopyMove={handleCopyMove}
 				onDelete={handleDelete}
-				onFindSimilar={(media) => activateSimilaritySearch(media.id)}
+				onFindSimilar={(media, model) =>
+					activateSimilaritySearch(media.id, model)
+				}
 				onSelectAll={() => {
 					setIsBulkSelectMode(true);
 					selection.selectAll();

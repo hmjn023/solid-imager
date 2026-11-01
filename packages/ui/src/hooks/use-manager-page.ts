@@ -1,7 +1,9 @@
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
 import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { JobDto, JobStatus } from "@solid-imager/core/domain/jobs/schemas";
 import type { DuplicateGroup } from "@solid-imager/core/domain/media/schemas";
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
 import type {
 	JobCompletedEvent,
 	JobFailedEvent,
@@ -18,12 +20,25 @@ import {
 	type Accessor,
 	createEffect,
 	createSignal,
+	onMount,
 	type Setter,
 } from "solid-js";
 import { isServer } from "solid-js/web";
 import { prefetchQueryOnClient } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
 import { toast } from "../toast";
+import type {
+	ManagerJobHandlers,
+	UseBatchJobEventsOptions,
+} from "./batch-job-events.types";
+import { jobsQueryKeys } from "../query-options/jobs-query";
+import {
+	managerSessionStorage,
+	forgetManagerBatchRun,
+	readManagerBatchRun,
+	saveManagerBatchRun,
+	type ManagerBatchRun,
+} from "./manager-batch-run";
 
 export type ManagerEntityType =
 	| "projects"
@@ -57,6 +72,15 @@ export type ManagerPageQueries = {
 };
 
 export type ManagerPageActions = {
+	getJob: (jobId: string) => Promise<JobDto>;
+	scanBatchEmbeddingTargets?: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+	}) => Promise<{ count: number }>;
+	startBatchEmbeddingExtraction?: (input: {
+		force: boolean;
+		mediaSourceId?: string;
+	}) => Promise<StartBatchTaggingResult>;
 	createProject: (data: ManagerFormData) => Promise<unknown>;
 	updateProject: (
 		id: string,
@@ -120,7 +144,7 @@ export type UseManagerPageOptions = {
 	useBatchJobEvents?: (
 		activeJobId: Accessor<string | null>,
 		handlers: ManagerJobHandlers,
-		options?: { subscribeImmediately?: boolean },
+		options?: UseBatchJobEventsOptions,
 	) => void;
 	onBatchTaggingStart?: (result: StartBatchTaggingResult) => void;
 };
@@ -155,13 +179,9 @@ export function prefetchManagerPageQueries(
 	);
 }
 
-export type ManagerJobHandlers = {
-	handleJobProgress: (event: JobProgressEvent) => void;
-	handleJobCompleted: (event: JobCompletedEvent) => void;
-	handleJobFailed: (event: JobFailedEvent) => void;
-};
-
 export type UseManagerPageResult = {
+	vectorModel: Accessor<SimilarityModel>;
+	setVectorModel: Setter<SimilarityModel>;
 	activeTab: Accessor<ManagerEntityType>;
 	setActiveTab: Setter<ManagerEntityType>;
 	isDialogOpen: Accessor<boolean>;
@@ -178,7 +198,8 @@ export type UseManagerPageResult = {
 	forceRetag: Accessor<boolean>;
 	setForceRetag: Setter<boolean>;
 	taggingStatus: Accessor<string | null>;
-	jobProgress: Accessor<JobProgressEvent | null>;
+	jobProgress: Accessor<(JobProgressEvent & { failed?: number }) | null>;
+	jobStatus: Accessor<JobStatus | null>;
 	activeJobId: Accessor<string | null>;
 	sources: Accessor<SafeMediaSource[]>;
 	ips: Accessor<Ip[]>;
@@ -298,11 +319,66 @@ export function useManagerPage(
 		string | undefined
 	>(undefined);
 	const [forceRetag, setForceRetag] = createSignal(false);
+	const [vectorModel, setVectorModel] = createSignal<SimilarityModel>(
+		actions.startBatchEmbeddingExtraction ? "embeddinggemma2" : "ccip",
+	);
 	const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
-	const [jobProgress, setJobProgress] = createSignal<JobProgressEvent | null>(
+	const [jobProgress, setJobProgress] = createSignal<
+		(JobProgressEvent & { failed?: number }) | null
+	>(null);
+	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
+	const [jobStatus, setJobStatus] = createSignal<JobStatus | null>(null);
+	const [trackedRun, setTrackedRun] = createSignal<ManagerBatchRun | null>(
 		null,
 	);
-	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
+	const trackedJob = createQuery<JobDto>(() => ({
+		queryKey: jobsQueryKeys.detail(trackedRun()?.jobId ?? ""),
+		queryFn: () => actions.getJob(trackedRun()?.jobId ?? ""),
+		enabled: !isServer && trackedRun() !== null,
+		staleTime: 0,
+	}));
+	const trackRun = (run: ManagerBatchRun) => {
+		// Persist immediately, even if the start request finishes after navigation.
+		const storage = managerSessionStorage();
+		if (storage) saveManagerBatchRun(storage, run);
+		setTrackedRun(run);
+		setJobStatus("pending");
+		setActiveJobId(run.jobId);
+	};
+	onMount(() => {
+		const storage = managerSessionStorage();
+		const run = storage ? readManagerBatchRun(storage) : null;
+		if (!run) return;
+		setActiveTab(run.tab);
+		setSelectedSourceId(run.mediaSourceId);
+		setVectorModel(run.vectorModel);
+		setForceRetag(run.force);
+		setTaggingStatus("Restoring batch progress...");
+		setTrackedRun(run);
+		setActiveJobId(run.jobId);
+	});
+	createEffect(() => {
+		const job = trackedJob.data;
+		if (!job || job.id !== trackedRun()?.jobId) return;
+		setJobStatus(job.status);
+		setActiveJobId(
+			job.status === "pending" || job.status === "in_progress" ? job.id : null,
+		);
+		if (job.progress) setJobProgress({ jobId: job.id, ...job.progress });
+		setTaggingStatus(
+			job.status === "completed"
+				? "Batch operation completed successfully."
+				: job.status === "failed"
+					? `Job failed: ${job.error || "unknown error"}`
+					: job.status === "cancelled"
+						? "Batch operation cancelled."
+						: job.status === "pending"
+							? "Batch operation queued."
+							: job.progress && job.progress.total > 0
+								? `Processing: ${job.progress.processed} / ${job.progress.total}.`
+								: "Preparing batch targets...",
+		);
+	});
 
 	createEffect(() => {
 		const tab = activeTab();
@@ -310,7 +386,24 @@ export function useManagerPage(
 			return;
 		}
 
-		setTaggingStatus(null);
+		if (!trackedRun()) setTaggingStatus(null);
+	});
+	createEffect(() => {
+		const error = trackedJob.error;
+		if (!error) return;
+		if ("code" in error && error.code === "NOT_FOUND") {
+			const storage = managerSessionStorage();
+			if (storage) forgetManagerBatchRun(storage);
+			setTrackedRun(null);
+			setActiveJobId(null);
+			setJobStatus(null);
+			setJobProgress(null);
+			setTaggingStatus("The tracked batch no longer exists.");
+			return;
+		}
+		setTaggingStatus(
+			`Unable to refresh batch progress: ${getErrorMessage(error)}.`,
+		);
 	});
 
 	// Duplicates state
@@ -473,7 +566,12 @@ export function useManagerPage(
 			setTaggingStatus("Scanning...");
 			const result =
 				scanTab === "vectors"
-					? await actions.scanBatchCcipTargets({
+					? await (
+							vectorModel() === "embeddinggemma2" &&
+								actions.scanBatchEmbeddingTargets
+								? actions.scanBatchEmbeddingTargets
+								: actions.scanBatchCcipTargets
+						)({
 							force: forceRetag(),
 							mediaSourceId: selectedSourceId(),
 						})
@@ -495,17 +593,30 @@ export function useManagerPage(
 	};
 
 	const handleStartBatchCcipExtraction = async () => {
+		const context: Omit<ManagerBatchRun, "jobId"> = {
+			tab: "vectors",
+			vectorModel: vectorModel(),
+			mediaSourceId: selectedSourceId(),
+			force: forceRetag(),
+		};
 		try {
 			setTaggingStatus("Starting...");
 			setJobProgress(null);
-			const result = await actions.startBatchCcipExtraction({
-				force: forceRetag(),
-				mediaSourceId: selectedSourceId(),
+			const result = await (
+				context.vectorModel === "embeddinggemma2" &&
+					actions.startBatchEmbeddingExtraction
+					? actions.startBatchEmbeddingExtraction
+					: actions.startBatchCcipExtraction
+			)({
+				force: context.force,
+				mediaSourceId: context.mediaSourceId,
 			});
 			if (result.success && result.jobId) {
 				toast.success(result.message);
-				setTaggingStatus("Batch CCIP extraction in progress...");
-				setActiveJobId(result.jobId);
+				setTaggingStatus(
+					`${vectorModel() === "embeddinggemma2" ? "EmbeddingGemma 2" : "CCIP"} extraction in progress...`,
+				);
+				trackRun({ ...context, jobId: result.jobId });
 			} else {
 				toast.error("Failed to start batch CCIP extraction.");
 				setTaggingStatus("Failed to start batch CCIP extraction.");
@@ -517,18 +628,24 @@ export function useManagerPage(
 	};
 
 	const handleStartBatchTagging = async () => {
+		const context: Omit<ManagerBatchRun, "jobId"> = {
+			tab: "tagging",
+			vectorModel: vectorModel(),
+			mediaSourceId: selectedSourceId(),
+			force: forceRetag(),
+		};
 		try {
 			setTaggingStatus("Starting...");
 			setJobProgress(null);
 			const result = await actions.startBatchTagging({
-				force: forceRetag(),
-				mediaSourceId: selectedSourceId(),
+				force: context.force,
+				mediaSourceId: context.mediaSourceId,
 			});
 			if (result.success && result.jobId) {
 				onBatchTaggingStart?.(result);
 				toast.success(result.message);
 				setTaggingStatus("Batch tagging in progress...");
-				setActiveJobId(result.jobId);
+				trackRun({ ...context, jobId: result.jobId });
 			} else {
 				toast.error("Failed to start batch tagging.");
 				setTaggingStatus("Failed to start batch tagging.");
@@ -557,7 +674,13 @@ export function useManagerPage(
 			if (result.success && result.jobId) {
 				toast.success(result.message);
 				setTaggingStatus("Thumbnail warmup in progress...");
-				setActiveJobId(result.jobId);
+				trackRun({
+					jobId: result.jobId,
+					tab: "thumbnails",
+					vectorModel: vectorModel(),
+					mediaSourceId,
+					force: false,
+				});
 				return;
 			}
 			if (result.success) {
@@ -751,15 +874,27 @@ export function useManagerPage(
 	};
 
 	const handleJobProgress = (event: JobProgressEvent) => {
-		setJobProgress(event);
+		setJobStatus("in_progress");
+		setJobProgress((previous) => ({ ...event, failed: previous?.failed ?? 0 }));
 		setTaggingStatus(`Processing: ${event.processed} / ${event.total}.`);
+		const run = trackedRun();
+		if (run) {
+			void queryClient
+				.query({
+					queryKey: jobsQueryKeys.detail(run.jobId),
+					queryFn: () => actions.getJob(run.jobId),
+					staleTime: 1_000,
+				})
+				.catch(() => undefined);
+		}
 	};
 
 	const handleJobCompleted = (event: JobCompletedEvent) => {
 		toast.success(event.message || "Batch operation completed!");
 		setTaggingStatus("Batch operation completed successfully.");
 		setActiveJobId(null);
-		setJobProgress(null);
+		setJobStatus("completed");
+		void trackedJob.refetch();
 	};
 
 	const handleJobFailed = (event: JobFailedEvent) => {
@@ -767,21 +902,35 @@ export function useManagerPage(
 		toast.error(`Job failed: ${message}`);
 		setTaggingStatus(`Job failed: ${message}`);
 		setActiveJobId(null);
-		setJobProgress(null);
+		setJobStatus("failed");
+		void trackedJob.refetch();
 	};
 
 	const jobHandlers: ManagerJobHandlers = {
 		handleJobProgress,
 		handleJobCompleted,
 		handleJobFailed,
+		handleJobCancelled: () => {
+			setJobStatus("cancelled");
+			setTaggingStatus("Batch operation cancelled.");
+			setActiveJobId(null);
+			void trackedJob.refetch();
+		},
 	};
 
 	// Fast children may publish parent progress before the start request returns.
 	// Buffer those events until activeJobId is known.
-	useBatchJobEvents?.(activeJobId, jobHandlers, { subscribeImmediately: true });
+	useBatchJobEvents?.(activeJobId, jobHandlers, {
+		subscribeImmediately: true,
+		onConnected: () => {
+			if (trackedRun()) void trackedJob.refetch();
+		},
+	});
 
 	return {
 		activeTab,
+		vectorModel,
+		setVectorModel,
 		setActiveTab,
 		isDialogOpen,
 		setIsDialogOpen,
@@ -798,6 +947,7 @@ export function useManagerPage(
 		setForceRetag,
 		taggingStatus,
 		jobProgress,
+		jobStatus,
 		activeJobId,
 		sources,
 		ips,

@@ -5,9 +5,13 @@ import type { ManagerTransferFormat } from "@solid-imager/ui/screens/manager/typ
 import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
+import { useNavigate } from "@tanstack/solid-router";
+import type { JSX } from "solid-js";
 import { useBatchJobEvents } from "~/hooks/use-batch-job-events";
 import {
 	scanBatchCcipTargets,
+	scanBatchEmbeddingTargets,
+	startBatchEmbeddingExtraction,
 	scanBatchTaggingTargets,
 	startBatchCcipExtraction,
 	startBatchTagging,
@@ -52,6 +56,7 @@ const managerQueryOptions = {
 };
 
 const managerActions = {
+	getJob: (jobId: string) => orpc.jobs.get({ id: jobId }),
 	createProject,
 	updateProject,
 	deleteProject,
@@ -64,6 +69,8 @@ const managerActions = {
 	scanBatchTaggingTargets,
 	startBatchTagging,
 	scanBatchCcipTargets,
+	scanBatchEmbeddingTargets,
+	startBatchEmbeddingExtraction,
 	startBatchCcipExtraction,
 	findDuplicateMedia,
 	bulkDeleteMedia,
@@ -147,7 +154,8 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 	};
 }
 
-export function ManagerPage() {
+export function ManagerPage(): JSX.Element {
+	const navigate = useNavigate({ from: "/manager" });
 	const queryClient = useQueryClient();
 	const manager = useManagerPage({
 		queryClient,
@@ -158,6 +166,27 @@ export function ManagerPage() {
 
 	return (
 		<ManagerScreen
+			clusteringActions={{
+				startClustering: async (input) => {
+					const result = await orpc.characters.startClustering(input);
+					void queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+					return result;
+				},
+				openJobs: () => {
+					void navigate({ to: "/jobs" });
+				},
+				openMedia: (media) => {
+					void navigate({
+						to: "/sources/$mediaSourceId/$mediaId",
+						params: { mediaSourceId: media.mediaSourceId, mediaId: media.id },
+					});
+				},
+				listRuns: () => orpc.characters.clusteringRuns(),
+				listGroups: (input) => orpc.characters.clusteringGroups(input),
+				listMedia: (input) => orpc.characters.clusteringMedia(input),
+				thumbnailUrl: (sourceId, mediaId, modifiedAt) =>
+					`/api/sources/${sourceId}/thumbnail/${mediaId}?t=${encodeURIComponent(modifiedAt)}`,
+			}}
 			authorActions={{
 				beginAccountVerification: (input) =>
 					orpc.authors.beginAccountVerification(input),

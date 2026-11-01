@@ -4,10 +4,29 @@ import type { SearchPageFilterData } from "../hooks/use-search-page";
 import {
 	getSearchComposerSuggestions,
 	getSearchComposerTokens,
+	parseSemanticSearchDraft,
 	parseSimilarityAnchor,
 	parseSimilarityTopK,
 	type SearchToken,
 } from "./search-composer-utils";
+
+describe("parseSemanticSearchDraft", () => {
+	it("preserves complete phrases and removes surrounding quotes", () => {
+		expect(parseSemanticSearchDraft("text:赤い服の キャラクター")).toBe(
+			"赤い服の キャラクター",
+		);
+		expect(parseSemanticSearchDraft(' TEXT: "blue hair, red dress" ')).toBe(
+			"blue hair, red dress",
+		);
+	});
+	it("distinguishes an empty prefix from ordinary searches", () => {
+		expect(parseSemanticSearchDraft("text:  ")).toBe("");
+		expect(parseSemanticSearchDraft("name:text:cat")).toBeUndefined();
+		expect(parseSemanticSearchDraft(`text:${"a".repeat(2100)}`)).toHaveLength(
+			2000,
+		);
+	});
+});
 
 const filterData = {
 	tags: [{ name: "blue hair" }, { name: "blush" }, { name: "green" }],

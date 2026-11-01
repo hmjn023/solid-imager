@@ -311,6 +311,31 @@ export const ccipEmbeddings = pgTable(
 	],
 );
 
+/** EmbeddingGemma 2 image embeddings, kept separate from character embeddings. */
+export const imageEmbeddings = pgTable(
+	"image_embeddings",
+	{
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
+		mediaId: uuid("media_id")
+			.notNull()
+			.references(() => medias.id, { onDelete: "cascade" }),
+		embedding: ccipVector("embedding").notNull(),
+		model: text("model").notNull(),
+		version: integer("version").notNull(),
+		mediaModifiedAt: timestamp("media_modified_at").notNull(),
+		updatedAt: timestamp("updated_at").notNull().defaultNow(),
+	},
+	(table) => [
+		unique("uq_image_embeddings_media_model_version").on(
+			table.mediaId,
+			table.model,
+			table.version,
+		),
+	],
+);
+
 /**
  * Schema for the tags table.
  * Stores information about tags used to categorize media.

@@ -58,6 +58,10 @@ function getActiveConditionLabels(
 	if (state.similarityAnchorMediaId) {
 		labels.push(`類似度順: ${state.similarityTopK}件`);
 	}
+	if (state.semanticQuery) {
+		labels.push(`文章検索: ${state.semanticQuery}`);
+		return labels;
+	}
 
 	if (state.mode === "simple") {
 		if (state.searchQuery.trim()) {

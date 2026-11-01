@@ -2,8 +2,8 @@ import type { SearchState } from "@solid-imager/core/domain/search/schema";
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
 import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
 import ChevronDown from "lucide-solid/icons/chevron-down";
-import Filter from "lucide-solid/icons/filter";
-import Grid3X3 from "lucide-solid/icons/grid-3-x-3";
+import Filter from "lucide-solid/icons/funnel";
+import Grid3X3 from "lucide-solid/icons/grid-3x3";
 import List from "lucide-solid/icons/list";
 import type { JSX } from "solid-js";
 import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
@@ -29,6 +29,7 @@ import {
 	type SearchSuggestion,
 	type SearchToken,
 } from "./search-composer";
+import { parseSemanticSearchDraft } from "./search-composer-utils";
 
 export type SearchToolbarProps = {
 	actions?: JSX.Element;
@@ -79,6 +80,10 @@ function appendValues(key: SearchArrayKey, rawValue: string) {
 }
 
 function removeToken(token: SearchToken) {
+	if (token.key === "semanticQuery") {
+		setSearchState("semanticQuery", "");
+		return;
+	}
 	if (token.key === "searchQuery") {
 		setSearchState("searchQuery", "");
 		return;
@@ -103,6 +108,22 @@ function tokenId(token: Pick<SearchToken, "key" | "value">): string {
 }
 
 function submitComposerDraft(rawDraft: string): boolean {
+	const semanticDraft = parseSemanticSearchDraft(rawDraft);
+	if (semanticDraft !== undefined) {
+		if (!semanticDraft) return false;
+		setSearchState({
+			semanticQuery: semanticDraft,
+			similarityAnchorMediaId: null,
+			similarityModel: "embeddinggemma2",
+			offset: 0,
+			scrollY: 0,
+		});
+		return true;
+	}
+	if (searchState.semanticQuery && rawDraft.trim()) {
+		setSearchState("semanticQuery", rawDraft.trim().slice(0, 2000));
+		return true;
+	}
 	const parts = rawDraft.match(/(?:[^\s"]+|"[^"]*")+/g) ?? [];
 	const freeText: string[] = [];
 	let changed = false;
@@ -186,6 +207,7 @@ function submitComposerDraft(rawDraft: string): boolean {
 }
 
 function sortLabel(state: SearchState): string {
+	if (state.semanticQuery) return `文章検索・${state.similarityTopK}件`;
 	if (state.similarityAnchorMediaId) {
 		return `類似度順・${state.similarityTopK}件`;
 	}
@@ -460,6 +482,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 							similarityAnchorMediaId={searchState.similarityAnchorMediaId}
 							similarityLimitId="sort-similarity-limit"
 							similarityTopK={searchState.similarityTopK}
+							semanticQuery={searchState.semanticQuery}
 							sortBy={searchState.sortBy}
 							sortOrder={searchState.sortOrder}
 						/>

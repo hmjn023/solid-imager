@@ -1,3 +1,4 @@
+import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
 import type { Media } from "@solid-imager/core/domain/media/schemas";
 import type { Component, JSX } from "solid-js";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
@@ -24,7 +25,7 @@ export type SourceMediaScreenProps = {
 	onBulkAction?: () => void;
 	onClearSelection?: () => void;
 	onEnterBulkSelectMode?: () => void;
-	onFindSimilar?: (media: Media) => void;
+	onFindSimilar?: (media: Media, model?: SimilarityModel) => void;
 	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
 	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onRetryFilters: () => void | Promise<void>;

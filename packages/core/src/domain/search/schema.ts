@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { mediaSortSchema, searchGroupSchema } from "@/domain/media/schemas";
+import { similarityModelSchema } from "./embedding";
 
 export const searchStateSchema = z.object({
 	// Modes
@@ -23,6 +24,8 @@ export const searchStateSchema = z.object({
 	// Similarity ordering
 	similarityAnchorMediaId: z.uuid().nullable(),
 	similarityTopK: z.number().int().min(1),
+	similarityModel: similarityModelSchema.default("ccip"),
+	semanticQuery: z.string().max(2000).default(""),
 
 	// Pagination
 	limit: z.number(),
@@ -55,6 +58,8 @@ export const defaultState: SearchState = {
 	advancedCondition: null,
 	similarityAnchorMediaId: null,
 	similarityTopK: DEFAULT_SIMILARITY_TOP_K,
+	similarityModel: "ccip",
+	semanticQuery: "",
 	limit: 20,
 	offset: 0,
 	sortBy: "date",

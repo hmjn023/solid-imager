@@ -1,8 +1,8 @@
-import {
-	type UseBatchJobEventsOptions,
-	useBatchJobEvents as useBatchJobEventsShared,
-} from "@solid-imager/ui/hooks/use-batch-job-events";
-import type { ManagerJobHandlers } from "@solid-imager/ui/hooks/use-manager-page";
+import type {
+	ManagerJobHandlers,
+	UseBatchJobEventsOptions,
+} from "@solid-imager/ui/hooks/batch-job-events.types";
+import { useBatchJobEvents as useBatchJobEventsShared } from "@solid-imager/ui/hooks/use-batch-job-events";
 import type { Accessor } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 

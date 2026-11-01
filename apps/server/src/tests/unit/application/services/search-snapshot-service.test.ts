@@ -69,6 +69,8 @@ describe("SearchSnapshotService", () => {
 			sortBy: snapshotState.sortBy,
 			limit: snapshotState.limit,
 			similarityTopK: snapshotState.similarityTopK,
+			similarityModel: snapshotState.similarityModel,
+			semanticQuery: snapshotState.semanticQuery,
 			similarityAnchorMediaId: snapshotState.similarityAnchorMediaId,
 			advancedCondition: snapshotState.advancedCondition,
 			selectedAuthors: snapshotState.selectedAuthors,

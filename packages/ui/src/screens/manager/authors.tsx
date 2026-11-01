@@ -1,12 +1,6 @@
 import type {
 	Author,
-	AuthorMediaPage,
 	NewAuthor,
-	AuthorMediaListInput,
-	CorrectMediaAuthorsInput,
-	MergeAuthorsInput,
-	BeginAuthorAccountVerificationInput,
-	AuthorAccountVerification,
 } from "@solid-imager/core/domain/authors/schemas";
 import { createQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
@@ -42,28 +36,8 @@ import {
 import { ErrorState } from "../../async-state";
 import { createDebouncedSignal } from "../../utils/debounce";
 import { AuthorAccountVerificationPanel } from "./author-account-verification";
-
-export type AuthorManagementActions = {
-	openAccountVerificationProfile?: (url: string) => Promise<void>;
-	beginAccountVerification: (
-		input: BeginAuthorAccountVerificationInput,
-	) => Promise<AuthorAccountVerification>;
-	getAccountVerification: (input: {
-		verificationId: string;
-	}) => Promise<AuthorAccountVerification>;
-	confirmAccountVerification: (input: {
-		verificationId: string;
-	}) => Promise<Author>;
-	list: () => Promise<Author[]>;
-	create: (input: NewAuthor) => Promise<Author>;
-	updateName: (input: { id: string; name: string }) => Promise<Author>;
-	listMedia: (input: AuthorMediaListInput) => Promise<AuthorMediaPage>;
-	correctMedia: (
-		input: CorrectMediaAuthorsInput,
-	) => Promise<{ changedCount: number }>;
-	merge: (input: MergeAuthorsInput) => Promise<{ changedCount: number }>;
-	thumbnailUrl: (sourceId: string, mediaId: string) => string;
-};
+import { ManagedThumbnailImage } from "../../managed-thumbnail-image";
+import type { AuthorManagementActions } from "./authors.types";
 
 function authorLabel(author: Author): string {
 	const accounts = author.accounts
@@ -128,9 +102,7 @@ function AuthorPicker(props: {
 			optionTextValue={getLabel}
 			optionLabel={getLabel}
 			itemComponent={(item) => (
-				<ComboboxItem
-					item={item.item}
-				>
+				<ComboboxItem item={item.item}>
 					<ComboboxItemLabel>{item.item.textValue}</ComboboxItemLabel>
 				</ComboboxItem>
 			)}
@@ -562,8 +534,9 @@ export function AuthorManagementPanel(props: {
 													{item.fileName}を選択
 												</CheckboxLabel>
 											</Checkbox>
-											<img
+											<ManagedThumbnailImage
 												alt={item.fileName}
+												releaseUrl={props.actions.releaseThumbnailUrl}
 												src={props.actions.thumbnailUrl(
 													item.mediaSourceId,
 													item.id,

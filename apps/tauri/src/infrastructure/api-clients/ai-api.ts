@@ -27,3 +27,16 @@ export function startBatchCcipExtraction(params: {
 }) {
 	return client.ai.startBatchCcipExtraction(params);
 }
+
+export function scanBatchEmbeddingTargets(params: {
+	force: boolean;
+	mediaSourceId?: string;
+}) {
+	return client.ai.scanBatchEmbeddingTargets(params);
+}
+export function startBatchEmbeddingExtraction(params: {
+	force: boolean;
+	mediaSourceId?: string;
+}) {
+	return client.ai.startBatchEmbeddingExtraction(params);
+}

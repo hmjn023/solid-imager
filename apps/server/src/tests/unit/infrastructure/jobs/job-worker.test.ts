@@ -116,6 +116,8 @@ describe("JobWorker", () => {
 				excludeTypes: [
 					"auto_tagging",
 					"extract_ccip_vector",
+					"extract_embedding_batch",
+					"extract_embedding_vector",
 					"generate_thumbnail",
 					"source_export",
 				],
@@ -164,7 +166,12 @@ describe("JobWorker", () => {
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({
-				includeTypes: ["auto_tagging", "extract_ccip_vector"],
+				includeTypes: [
+					"auto_tagging",
+					"extract_ccip_vector",
+					"extract_embedding_batch",
+					"extract_embedding_vector",
+				],
 			}),
 		);
 		expect(processor).toHaveBeenCalledTimes(1);
@@ -223,7 +230,12 @@ describe("JobWorker", () => {
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({
-				includeTypes: ["auto_tagging", "extract_ccip_vector"],
+				includeTypes: [
+					"auto_tagging",
+					"extract_ccip_vector",
+					"extract_embedding_batch",
+					"extract_embedding_vector",
+				],
 			}),
 		);
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
@@ -232,6 +244,8 @@ describe("JobWorker", () => {
 				excludeTypes: [
 					"auto_tagging",
 					"extract_ccip_vector",
+					"extract_embedding_batch",
+					"extract_embedding_vector",
 					"generate_thumbnail",
 					"source_export",
 				],

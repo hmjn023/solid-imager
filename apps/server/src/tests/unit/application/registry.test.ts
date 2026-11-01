@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ServiceRegistry } from "~/infrastructure/service-registry";
 
+vi.mock("~/infrastructure/services/media-service", () => {
+	throw new Error("Resetting the registry must not load concrete services");
+});
+
 describe("ServiceRegistry Unit Tests", () => {
 	let registry: ServiceRegistry;
 
@@ -10,7 +14,7 @@ describe("ServiceRegistry Unit Tests", () => {
 	});
 
 	describe("reset", () => {
-		it("should clear all registered repositories and services", async () => {
+		it("should clear registrations without loading concrete services", () => {
 			// Register mock repository
 			const mockRepo = {} as any;
 			registry.registerMediaRepository(mockRepo);
@@ -19,7 +23,7 @@ describe("ServiceRegistry Unit Tests", () => {
 			expect(registry.getMediaRepository()).toBe(mockRepo);
 
 			// Perform reset
-			await registry.reset();
+			registry.reset();
 
 			// Verify it's cleared
 			expect(() => registry.getMediaRepository()).toThrow(

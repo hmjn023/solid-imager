@@ -27,7 +27,10 @@ import { TagRepository } from "~/infrastructure/repositories/tag-repository";
 import { services } from "~/infrastructure/service-registry";
 import { CharacterServiceImpl } from "~/infrastructure/services/character-service";
 import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
-import { MediaService } from "~/infrastructure/services/media-service";
+import {
+	MediaService,
+	resetMediaService,
+} from "~/infrastructure/services/media-service";
 
 // Mocks
 const mockStorageService = {
@@ -64,7 +67,8 @@ describe("MediaService - Copy Media Integration", () => {
 
 	beforeEach(async () => {
 		// Reset registry and register services
-		await services.reset();
+		services.reset();
+		resetMediaService();
 		services.registerMediaRepository(MediaRepository);
 		services.registerSourceRepository(DrizzleSourceRepository);
 		services.registerTagRepository(TagRepository);

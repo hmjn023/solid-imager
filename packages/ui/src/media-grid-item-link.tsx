@@ -86,9 +86,18 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 					return;
 				}
 
-				if (event.key === " " && props.onPreviewSelect) {
+				if (
+					event.key === " " &&
+					!event.metaKey &&
+					!event.ctrlKey &&
+					!event.shiftKey &&
+					!event.altKey &&
+					(props.onToggleSelect || props.onPreviewSelect)
+				) {
 					event.preventDefault();
-					props.onPreviewSelect();
+					if (event.repeat) return;
+					if (props.onToggleSelect) props.onToggleSelect();
+					else props.onPreviewSelect?.();
 				}
 			}}
 			params={{

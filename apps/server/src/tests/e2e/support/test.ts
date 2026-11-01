@@ -5,7 +5,7 @@ type UrlMatcher = RegExp | string;
 
 type BrowserHealth = {
 	allowConsole: (matcher: UrlMatcher) => void;
-	allowRequestFailure: (matcher: UrlMatcher) => void;
+	allowRequestFailure: (matcher: UrlMatcher, errorMatcher?: UrlMatcher) => void;
 	allowResponseFailure: (matcher: UrlMatcher) => void;
 	apiRequestCount: (matcher: UrlMatcher) => number;
 	apiRequestCountPathSince: (checkpoint: number, pathname: string) => number;
@@ -115,7 +115,10 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 		async ({ context, page }, use, testInfo) => {
 			const failures: string[] = [];
 			const allowedConsole: UrlMatcher[] = [];
-			const allowedRequestFailures: UrlMatcher[] = [];
+			const allowedRequestFailures: Array<{
+				url: UrlMatcher;
+				error?: UrlMatcher;
+			}> = [];
 			const allowedResponseFailures: UrlMatcher[] = [];
 			const apiRequestUrls: string[] = [];
 			const apiRequestCounts = new Map<string, number>();
@@ -170,7 +173,12 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 							errorText?.includes("ERR_NETWORK_CHANGED"));
 					if (
 						!isLifecycleRequestAbort &&
-						!matches(request.url(), allowedRequestFailures)
+						!allowedRequestFailures.some(
+							(allowed) =>
+								matches(request.url(), [allowed.url]) &&
+								(allowed.error === undefined ||
+									matches(errorText ?? "", [allowed.error])),
+						)
 					) {
 						failures.push(
 							`request failed: ${request.url()} ${errorText ?? ""}`,
@@ -211,8 +219,8 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 			try {
 				await use({
 					allowConsole: (matcher) => allowedConsole.push(matcher),
-					allowRequestFailure: (matcher) =>
-						allowedRequestFailures.push(matcher),
+					allowRequestFailure: (matcher, errorMatcher) =>
+						allowedRequestFailures.push({ url: matcher, error: errorMatcher }),
 					allowResponseFailure: (matcher) =>
 						allowedResponseFailures.push(matcher),
 					apiRequestCount: (matcher) =>

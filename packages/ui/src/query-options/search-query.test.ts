@@ -122,6 +122,60 @@ describe("removeMediaFromInfiniteQueryData", () => {
 });
 
 describe("buildSearchResultsQueryOptions", () => {
+	it("keys semantic queries separately and sends text, source and pagination without filename filters", async () => {
+		const searchSemantic = vi.fn(async () => ({
+			media: [TEST_MEDIA],
+			total: 2,
+		}));
+		const searchMedia = vi.fn();
+		const input = {
+			mode: "simple" as const,
+			sourceId: "source",
+			condition: TEST_CONDITION,
+			conditionKey: "condition",
+			sort: "date" as const,
+			order: "desc" as const,
+			limit: 20,
+			similarityAnchorMediaId: null,
+			similarityTopK: 50,
+			similarityModel: "embeddinggemma2" as const,
+			semanticQuery: "夕焼けの海",
+			searchSemantic,
+			searchMedia,
+			searchSimilar: undefined,
+		};
+		const options = buildSearchResultsQueryOptions(input);
+		const other = buildSearchResultsQueryOptions({
+			...input,
+			semanticQuery: "雪景色",
+		});
+		expect(options.queryKey).not.toEqual(other.queryKey);
+		expect(options.placeholderData).toBeUndefined();
+		if (typeof options.queryFn !== "function")
+			throw new Error("queryFn missing");
+		const signal = new AbortController().signal;
+		await options.queryFn({
+			client: new QueryClient(),
+			queryKey: options.queryKey,
+			signal,
+			meta: undefined,
+			pageParam: 20,
+		} as any);
+		expect(searchSemantic).toHaveBeenCalledWith(
+			{
+				text: "夕焼けの海",
+				mediaSourceId: "source",
+				limit: 20,
+				offset: 20,
+				topK: 50,
+			},
+			signal,
+		);
+		expect(searchMedia).not.toHaveBeenCalled();
+		expect(
+			options.getNextPageParam?.({ media: [], total: 2 }, [], 0, []),
+		).toBeUndefined();
+	});
 	it("builds a stable key and forwards paged search input", async () => {
 		const searchMedia = vi.fn(
 			async (): Promise<MediaSearchResponse> => EMPTY_RESPONSE,
@@ -320,6 +374,49 @@ describe("buildSearchResultsQueryOptions", () => {
 });
 
 describe("buildSourceMediaResultsQueryOptions", () => {
+	it("searches natural language within the current source", async () => {
+		const searchMedia = vi.fn(
+			async (): Promise<MediaSearchResponse> => EMPTY_RESPONSE,
+		);
+		const searchSemantic = vi.fn(
+			async (): Promise<MediaSearchResponse> => EMPTY_RESPONSE,
+		);
+		const options = buildSourceMediaResultsQueryOptions({
+			sourceId: "source-3",
+			condition: TEST_CONDITION,
+			conditionKey: "test",
+			sort: "size",
+			order: "desc",
+			limit: 200,
+			semanticQuery: "  猫  ",
+			similarityTopK: 50,
+			searchMedia,
+			searchSemantic,
+		});
+		const queryFn = options.queryFn;
+		if (typeof queryFn !== "function")
+			throw new Error("queryFn must be a function");
+		const signal = new AbortController().signal;
+		await queryFn({
+			client: new QueryClient(),
+			queryKey: options.queryKey,
+			signal,
+			meta: undefined,
+			pageParam: 20,
+		} as unknown as Parameters<typeof queryFn>[0]);
+		expect(searchSemantic).toHaveBeenCalledWith(
+			{
+				text: "猫",
+				mediaSourceId: "source-3",
+				topK: 50,
+				limit: 200,
+				offset: 20,
+			},
+			signal,
+		);
+		expect(searchMedia).not.toHaveBeenCalled();
+		expect(options.placeholderData).toBeUndefined();
+	});
 	it("builds a source-scoped key and forwards paged search input", async () => {
 		const searchMedia = vi.fn(
 			async (): Promise<MediaSearchResponse> => EMPTY_RESPONSE,

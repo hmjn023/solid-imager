@@ -1,4 +1,5 @@
 import type { Preset } from "@solid-imager/core/domain/media/schemas";
+import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
 import {
 	calculateNextModeState,
 	getSearchConditionFromState,
@@ -41,7 +42,7 @@ export const clearPresetFilters = () => {
 
 export const loadPreset = (preset: Preset) => {
 	const nextState = preparePresetState(preset, searchState);
-	setSearchState(nextState);
+	setSearchState({ ...nextState, semanticQuery: "" });
 };
 
 export const setSearchMode = (mode: "simple" | "pro") => {
@@ -69,15 +70,22 @@ function persistSearchState(state: SearchState): void {
 			mode: state.mode,
 			similarityAnchorMediaId: state.similarityAnchorMediaId,
 			similarityTopK: state.similarityTopK,
+			similarityModel: state.similarityModel,
+			semanticQuery: state.semanticQuery,
 		}),
 	);
 }
 
 /** Opens similarity ordering with its default result cap and resets the viewport. */
-export const activateSimilaritySearch = (mediaId: string) => {
+export const activateSimilaritySearch = (
+	mediaId: string,
+	model: SimilarityModel = "ccip",
+) => {
 	const nextState: SearchState = {
 		...searchState,
 		similarityAnchorMediaId: mediaId,
+		similarityModel: model,
+		semanticQuery: "",
 		similarityTopK: DEFAULT_SIMILARITY_TOP_K,
 		selectedSource: "",
 		offset: 0,
@@ -95,6 +103,7 @@ export const clearSimilaritySearch = () => {
 	const nextState: SearchState = {
 		...searchState,
 		similarityAnchorMediaId: null,
+		semanticQuery: "",
 		offset: 0,
 		scrollY: 0,
 	};

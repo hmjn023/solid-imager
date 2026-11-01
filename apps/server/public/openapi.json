@@ -2754,6 +2754,193 @@
         }
       }
     },
+    "/media/searchSemantic": {
+      "post": {
+        "operationId": "media.searchSemantic",
+        "summary": "自然言語で画像を検索",
+        "description": "EmbeddingGemma 2 の画像索引を文章で検索します。対象は索引登録済みで更新されていない画像です。",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "topK": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991,
+                    "default": 1000
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200,
+                    "default": 20
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "default": 0
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "mediaSourceId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "filePath": {
+                            "type": "string"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "mediaType": {
+                            "enum": [
+                              "image",
+                              "video",
+                              "audio"
+                            ],
+                            "type": "string"
+                          },
+                          "width": {
+                            "type": "number"
+                          },
+                          "height": {
+                            "type": "number"
+                          },
+                          "fileSize": {
+                            "anyOf": [
+                              {
+                                "type": "number"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "description": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "x-native-type": "date"
+                          },
+                          "modifiedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "x-native-type": "date"
+                          },
+                          "indexedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "x-native-type": "date"
+                          },
+                          "status": {
+                            "enum": [
+                              "active",
+                              "archived",
+                              "deleted"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "mediaSourceId",
+                          "filePath",
+                          "fileName",
+                          "mediaType",
+                          "width",
+                          "height",
+                          "fileSize",
+                          "description",
+                          "createdAt",
+                          "modifiedAt",
+                          "indexedAt",
+                          "status"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "number"
+                    },
+                    "scores": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "mediaId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "cosineDistance": {
+                            "type": "number"
+                          }
+                        },
+                        "required": [
+                          "mediaId",
+                          "cosineDistance"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "media",
+                    "total",
+                    "scores"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/media/search": {
       "post": {
         "operationId": "media.search",
@@ -3199,6 +3386,14 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "model": {
+                    "enum": [
+                      "ccip",
+                      "embeddinggemma2"
+                    ],
+                    "type": "string",
+                    "default": "ccip"
+                  },
                   "anchorMediaId": {
                     "type": "string",
                     "format": "uuid"
@@ -6711,6 +6906,613 @@
                     {
                       "not": {}
                     }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/startClustering": {
+      "post": {
+        "operationId": "characters.startClustering",
+        "summary": "キャラクタークラスタリングを開始",
+        "description": "保存済みCCIPのsolo画像から近傍を抽出し、HDBSCANの結果を新規保存するジョブを投入します。",
+        "tags": [
+          "Characters"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "neighbors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 256,
+                    "default": 64
+                  },
+                  "minClusterSize": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 10000,
+                    "default": 5
+                  },
+                  "minSamples": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 256,
+                    "default": 3
+                  },
+                  "selectionMethod": {
+                    "enum": [
+                      "eom",
+                      "leaf"
+                    ],
+                    "type": "string",
+                    "default": "leaf"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "jobId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/clusteringRuns": {
+      "post": {
+        "operationId": "characters.clusteringRuns",
+        "summary": "保存済みクラスタリング結果一覧",
+        "description": "保存済み解析結果の条件と件数を取得します。",
+        "tags": [
+          "Characters"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "maxLength": 160,
+                        "pattern": "^[A-Za-z0-9_-]+(?:\\/[A-Za-z0-9_-]+)?$"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "completedAt": {
+                        "type": "string",
+                        "format": "date-time"
+                      },
+                      "implementation": {
+                        "type": "string"
+                      },
+                      "points": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "clusters": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "clustered": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "noise": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "cohortId": {
+                        "type": "string"
+                      },
+                      "soloOnly": {
+                        "type": "boolean"
+                      },
+                      "parameters": {
+                        "type": "object",
+                        "properties": {
+                          "neighbors": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "exclusiveMinimum": 0
+                          },
+                          "minClusterSize": {
+                            "type": "integer",
+                            "minimum": 2,
+                            "maximum": 9007199254740991
+                          },
+                          "minSamples": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "exclusiveMinimum": 0
+                          },
+                          "selectionMethod": {
+                            "enum": [
+                              "eom",
+                              "leaf"
+                            ],
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "neighbors",
+                          "minClusterSize",
+                          "minSamples",
+                          "selectionMethod"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "name",
+                      "completedAt",
+                      "implementation",
+                      "points",
+                      "clusters",
+                      "clustered",
+                      "noise",
+                      "cohortId",
+                      "soloOnly",
+                      "parameters"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/clusteringGroups": {
+      "post": {
+        "operationId": "characters.clusteringGroups",
+        "summary": "クラスタリングのグループ一覧",
+        "description": "既存ラベル・ファイル名で絞り込み、代表例と境界例をページ取得します。",
+        "tags": [
+          "Characters"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "runId": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "pattern": "^[A-Za-z0-9_-]+(?:\\/[A-Za-z0-9_-]+)?$"
+                  },
+                  "comparisonRunId": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "pattern": "^[A-Za-z0-9_-]+(?:\\/[A-Za-z0-9_-]+)?$"
+                  },
+                  "query": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "default": ""
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "default": 0
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60,
+                    "default": 24
+                  },
+                  "sort": {
+                    "enum": [
+                      "size",
+                      "mixed",
+                      "weak"
+                    ],
+                    "type": "string",
+                    "default": "size"
+                  }
+                },
+                "required": [
+                  "runId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "groups": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "size": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "exclusiveMinimum": 0
+                          },
+                          "meanStrength": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "minimumStrength": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "characters": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "count": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991,
+                                  "exclusiveMinimum": 0
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name",
+                                "count"
+                              ]
+                            }
+                          },
+                          "labelKinds": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "previews": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "mediaSourceId": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "fileName": {
+                                  "type": "string"
+                                },
+                                "modifiedAt": {
+                                  "type": "string"
+                                },
+                                "characters": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      },
+                                      "name": {
+                                        "type": "string"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "name"
+                                    ]
+                                  }
+                                },
+                                "clusterId": {
+                                  "type": "integer",
+                                  "minimum": -1,
+                                  "maximum": 9007199254740991
+                                },
+                                "membershipStrength": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 1
+                                },
+                                "comparisonClusterId": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": -1,
+                                      "maximum": 9007199254740991
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "mediaSourceId",
+                                "fileName",
+                                "modifiedAt",
+                                "characters",
+                                "clusterId",
+                                "membershipStrength",
+                                "comparisonClusterId"
+                              ]
+                            }
+                          },
+                          "comparison": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "clusters": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "noise": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "missing": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "clusters",
+                                  "noise",
+                                  "missing"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "size",
+                          "meanStrength",
+                          "minimumStrength",
+                          "characters",
+                          "labelKinds",
+                          "previews",
+                          "comparison"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "groups",
+                    "total"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/characters/clusteringMedia": {
+      "post": {
+        "operationId": "characters.clusteringMedia",
+        "summary": "クラスタ・ノイズの画像一覧",
+        "description": "指定グループまたはノイズの全画像をページ取得し、別設定での所属先も確認します。",
+        "tags": [
+          "Characters"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "runId": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "pattern": "^[A-Za-z0-9_-]+(?:\\/[A-Za-z0-9_-]+)?$"
+                  },
+                  "comparisonRunId": {
+                    "type": "string",
+                    "maxLength": 160,
+                    "pattern": "^[A-Za-z0-9_-]+(?:\\/[A-Za-z0-9_-]+)?$"
+                  },
+                  "query": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "default": ""
+                  },
+                  "offset": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "default": 0
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 60,
+                    "default": 24
+                  },
+                  "clusterId": {
+                    "type": "integer",
+                    "minimum": -1,
+                    "maximum": 9007199254740991
+                  },
+                  "order": {
+                    "enum": [
+                      "weak",
+                      "strong",
+                      "name"
+                    ],
+                    "type": "string",
+                    "default": "weak"
+                  }
+                },
+                "required": [
+                  "runId",
+                  "clusterId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "media": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "mediaSourceId": {
+                            "type": "string",
+                            "format": "uuid"
+                          },
+                          "fileName": {
+                            "type": "string"
+                          },
+                          "modifiedAt": {
+                            "type": "string"
+                          },
+                          "characters": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string",
+                                  "format": "uuid"
+                                },
+                                "name": {
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "id",
+                                "name"
+                              ]
+                            }
+                          },
+                          "clusterId": {
+                            "type": "integer",
+                            "minimum": -1,
+                            "maximum": 9007199254740991
+                          },
+                          "membershipStrength": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1
+                          },
+                          "comparisonClusterId": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -1,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "mediaSourceId",
+                          "fileName",
+                          "modifiedAt",
+                          "characters",
+                          "clusterId",
+                          "membershipStrength",
+                          "comparisonClusterId"
+                        ]
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "media",
+                    "total"
                   ]
                 }
               }
@@ -11537,6 +12339,287 @@
         }
       }
     },
+    "/ai/startEmbeddingExtraction": {
+      "post": {
+        "operationId": "ai.startEmbeddingExtraction",
+        "summary": "単一メディアのEmbeddingGemma 2画像索引作成ジョブを開始",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "default": false
+                  }
+                },
+                "required": [
+                  "mediaSourceId",
+                  "mediaId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message",
+                    "jobId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/embeddingImage": {
+      "post": {
+        "operationId": "ai.embeddingImage",
+        "summary": "EmbeddingGemma 2 画像特徴抽出",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "not": {}
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "feature": {
+                      "type": "array",
+                      "minItems": 768,
+                      "maxItems": 768,
+                      "items": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "required": [
+                    "feature"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/embeddingText": {
+      "post": {
+        "operationId": "ai.embeddingText",
+        "summary": "EmbeddingGemma 2 検索文特徴抽出",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "text": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "text"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "feature": {
+                      "type": "array",
+                      "minItems": 768,
+                      "maxItems": 768,
+                      "items": {
+                        "type": "number"
+                      }
+                    }
+                  },
+                  "required": [
+                    "feature"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/scanBatchEmbeddingTargets": {
+      "post": {
+        "operationId": "ai.scanBatchEmbeddingTargets",
+        "summary": "EmbeddingGemma 2 索引の作成対象数",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "force": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "count": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "count"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ai/startBatchEmbeddingExtraction": {
+      "post": {
+        "operationId": "ai.startBatchEmbeddingExtraction",
+        "summary": "EmbeddingGemma 2 画像索引作成ジョブを開始",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "force": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "mediaSourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message",
+                    "jobId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/ai/health": {
       "post": {
         "operationId": "ai.health",
@@ -15073,6 +16156,10 @@
                         "enableAutoCcipExtraction": {
                           "type": "boolean",
                           "default": false
+                        },
+                        "enableAutoEmbeddingExtraction": {
+                          "type": "boolean",
+                          "default": false
                         }
                       },
                       "default": {
@@ -15080,7 +16167,8 @@
                         "aiConcurrency": 1,
                         "pollIntervalMs": 1000,
                         "enableAutoTagging": false,
-                        "enableAutoCcipExtraction": false
+                        "enableAutoCcipExtraction": false,
+                        "enableAutoEmbeddingExtraction": false
                       }
                     },
                     "ai": {
@@ -15396,6 +16484,10 @@
                       "enableAutoCcipExtraction": {
                         "type": "boolean",
                         "default": false
+                      },
+                      "enableAutoEmbeddingExtraction": {
+                        "type": "boolean",
+                        "default": false
                       }
                     },
                     "default": {
@@ -15403,7 +16495,8 @@
                       "aiConcurrency": 1,
                       "pollIntervalMs": 1000,
                       "enableAutoTagging": false,
-                      "enableAutoCcipExtraction": false
+                      "enableAutoCcipExtraction": false,
+                      "enableAutoEmbeddingExtraction": false
                     }
                   },
                   "ai": {
@@ -15709,6 +16802,10 @@
                         "enableAutoCcipExtraction": {
                           "type": "boolean",
                           "default": false
+                        },
+                        "enableAutoEmbeddingExtraction": {
+                          "type": "boolean",
+                          "default": false
                         }
                       },
                       "default": {
@@ -15716,7 +16813,8 @@
                         "aiConcurrency": 1,
                         "pollIntervalMs": 1000,
                         "enableAutoTagging": false,
-                        "enableAutoCcipExtraction": false
+                        "enableAutoCcipExtraction": false,
+                        "enableAutoEmbeddingExtraction": false
                       }
                     },
                     "ai": {
@@ -18639,6 +19737,19 @@
                         "minimum": 1,
                         "maximum": 9007199254740991
                       },
+                      "similarityModel": {
+                        "enum": [
+                          "ccip",
+                          "embeddinggemma2"
+                        ],
+                        "type": "string",
+                        "default": "ccip"
+                      },
+                      "semanticQuery": {
+                        "type": "string",
+                        "maxLength": 2000,
+                        "default": ""
+                      },
                       "limit": {
                         "type": "number"
                       },
@@ -19098,6 +20209,19 @@
                           "type": "integer",
                           "minimum": 1,
                           "maximum": 9007199254740991
+                        },
+                        "similarityModel": {
+                          "enum": [
+                            "ccip",
+                            "embeddinggemma2"
+                          ],
+                          "type": "string",
+                          "default": "ccip"
+                        },
+                        "semanticQuery": {
+                          "type": "string",
+                          "maxLength": 2000,
+                          "default": ""
                         },
                         "limit": {
                           "type": "number"

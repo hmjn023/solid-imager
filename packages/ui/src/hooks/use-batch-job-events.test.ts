@@ -6,6 +6,23 @@ import {
 } from "./use-batch-job-events";
 
 describe("useBatchJobEvents", () => {
+	it("dispatches cancellation only for the tracked job", () => {
+		const handleJobCancelled = vi.fn();
+		const handlers = {
+			handleJobProgress: vi.fn(),
+			handleJobCompleted: vi.fn(),
+			handleJobFailed: vi.fn(),
+			handleJobCancelled,
+		};
+		const event: JobEvent = {
+			event: "job-cancelled",
+			data: { jobId: "tracked" },
+		};
+		dispatchJobEvent("other", event, handlers);
+		expect(handleJobCancelled).not.toHaveBeenCalled();
+		dispatchJobEvent("tracked", event, handlers);
+		expect(handleJobCancelled).toHaveBeenCalledOnce();
+	});
 	it("keeps the stream subscribed before a CCIP job is queued", () => {
 		const inactiveJobId = vi.fn(() => null);
 		expect(shouldSubscribeToJobEvents(inactiveJobId, {})).toBe(false);

@@ -21,7 +21,7 @@ import {
 	AlertDialogTitle,
 } from "./alert-dialog";
 import { Button } from "./button";
-import type { ManagerJobHandlers } from "./hooks/use-manager-page";
+import type { ManagerJobHandlers } from "./hooks/batch-job-events.types";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { toast } from "./toast";
 import {
@@ -42,8 +42,11 @@ export type MediaActionModalProps = {
 export type MediaActionsProps = {
 	media: MediaDetails;
 	onUpdate?: () => void;
-	onFindSimilar?: () => void;
+	onFindSimilar?: (
+		model?: import("@solid-imager/core/domain/search/embedding").SimilarityModel,
+	) => void;
 	onDownload?: () => void | Promise<void>;
+	onViewJobs?: () => void;
 	onDelete?: () => void | Promise<void>;
 	aiTaggingModal?: (
 		props: MediaActionModalProps,
@@ -58,6 +61,7 @@ export type MediaActionsProps = {
 	startCcipExtraction?: (
 		force: boolean,
 	) => Promise<StartCcipExtractionResponse>;
+	startEmbeddingExtraction?: () => Promise<StartCcipExtractionResponse>;
 	useCcipJobEvents?: (
 		activeJobId: Accessor<string | null>,
 		handlers: ManagerJobHandlers,
@@ -83,6 +87,7 @@ export function MediaActions(props: MediaActionsProps) {
 	);
 	const [isCcipJobPending, setIsCcipJobPending] = createSignal(false);
 	const [isExtractingCcip, setIsExtractingCcip] = createSignal(false);
+	const [isExtractingEmbedding, setIsExtractingEmbedding] = createSignal(false);
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [isDeleting, setIsDeleting] = createSignal(false);
 	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
@@ -126,6 +131,7 @@ export function MediaActions(props: MediaActionsProps) {
 	createEffect(
 		on([() => props.media.id, () => props.media.mediaSourceId], () => {
 			setIsExtractingCcip(false);
+			setIsExtractingEmbedding(false);
 			setIsCcipJobPending(false);
 			setCcipStatus(props.getCcipVectorStatus ? "missing" : "ready");
 			setActiveCcipJobId(null);
@@ -133,6 +139,28 @@ export function MediaActions(props: MediaActionsProps) {
 			void refreshCcipStatus();
 		}),
 	);
+
+	const handleEmbeddingExtraction = async () => {
+		if (!props.startEmbeddingExtraction || isExtractingEmbedding()) return;
+		setMoreActionsOpen(false);
+		setIsExtractingEmbedding(true);
+		const mediaId = props.media.id;
+		try {
+			await props.startEmbeddingExtraction();
+			toast.success("EmbeddingGemma 2 extraction queued", {
+				duration: 7_000,
+				action: props.onViewJobs
+					? { label: "View Jobs", onClick: props.onViewJobs }
+					: undefined,
+			});
+		} catch (error) {
+			toast.error(
+				`Failed to extract EmbeddingGemma 2 vector: ${getErrorMessage(error)}`,
+			);
+		} finally {
+			if (props.media.id === mediaId) setIsExtractingEmbedding(false);
+		}
+	};
 
 	const handleCcipExtraction = async () => {
 		if (!props.startCcipExtraction) return;
@@ -273,6 +301,8 @@ export function MediaActions(props: MediaActionsProps) {
 					when={
 						props.oppaiOracleModal ||
 						props.characterCropModal ||
+						props.startEmbeddingExtraction ||
+						props.onFindSimilar ||
 						hasCcipActions ||
 						props.onDownload ||
 						props.onDelete
@@ -288,6 +318,39 @@ export function MediaActions(props: MediaActionsProps) {
 							<ChevronDown aria-hidden="true" size={14} />
 						</PopoverTrigger>
 						<PopoverContent class="workspace-theme w-64 space-y-1 p-1.5 shadow-xl">
+							<ShowAction
+								when={props.onFindSimilar && props.media.mediaType === "image"}
+							>
+								<Button
+									class="h-auto min-h-9 w-full justify-start whitespace-normal px-2 text-left"
+									size="sm"
+									variant="ghost"
+									onClick={() => {
+										setMoreActionsOpen(false);
+										props.onFindSimilar?.("embeddinggemma2");
+									}}
+								>
+									<ScanSearch aria-hidden="true" size={14} />
+									Find similar (EmbeddingGemma 2)
+								</Button>
+							</ShowAction>
+							<ShowAction
+								when={
+									props.startEmbeddingExtraction &&
+									props.media.mediaType === "image"
+								}
+							>
+								<Button
+									class="h-auto min-h-9 w-full justify-start whitespace-normal px-2 text-left"
+									disabled={isExtractingEmbedding()}
+									onClick={() => void handleEmbeddingExtraction()}
+									size="sm"
+									variant="ghost"
+								>
+									<Binary aria-hidden="true" size={14} />
+									Extract EmbeddingGemma 2 vector
+								</Button>
+							</ShowAction>
 							<ShowAction when={props.oppaiOracleModal}>
 								<Button
 									class="h-9 w-full justify-start px-2"

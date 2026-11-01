@@ -4,6 +4,7 @@ export const UI_STORAGE_KEYS = {
 	sourceViewMode: "solid-imager:source-media:view-mode",
 	mediaContext: "solid-imager:media-context",
 	mediaReturn: "solid-imager:media-return",
+	managerBatchRun: "solid-imager:manager:batch-run",
 } as const;
 
 const SEARCH_STATE_STORAGE_PREFIX = "solid-imager:search-state:";

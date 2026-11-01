@@ -7,15 +7,14 @@ import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
 import { subscribeToEventStream } from "../event-stream";
-import type { ManagerJobHandlers } from "./use-manager-page";
+import type {
+	ManagerJobHandlers,
+	UseBatchJobEventsOptions,
+} from "./batch-job-events.types";
 
 export type JobEventStreamFactory = (
 	signal: AbortSignal,
 ) => Promise<AsyncIterable<JobEvent>>;
-
-export type UseBatchJobEventsOptions = {
-	subscribeImmediately?: boolean;
-};
 
 const BUFFERED_JOB_EVENT_LIMIT = 20;
 
@@ -52,6 +51,7 @@ export function dispatchJobEvent(
 			handlers.handleJobFailed(event.data);
 			break;
 		case "job-cancelled":
+			handlers.handleJobCancelled?.();
 			break;
 		default:
 			assertNever(event);
@@ -106,16 +106,21 @@ export function useBatchJobEvents(
 			return;
 		}
 
-		const cleanup = subscribeToEventStream(openStream, (event) => {
-			const jobId = activeJobId();
-			if (event.data.jobId === jobId) {
-				dispatchJobEvent(jobId, event, handlers);
-				return;
-			}
-			if (options.subscribeImmediately) {
-				rememberJobEvent(bufferedEvents, event);
-			}
-		});
+		const cleanup = subscribeToEventStream(
+			openStream,
+			(event) => {
+				const jobId = activeJobId();
+				if (event.data.jobId === jobId) {
+					dispatchJobEvent(jobId, event, handlers);
+					return;
+				}
+				if (options.subscribeImmediately) {
+					rememberJobEvent(bufferedEvents, event);
+				}
+			},
+			undefined,
+			options.onConnected,
+		);
 
 		onCleanup(cleanup);
 	});
