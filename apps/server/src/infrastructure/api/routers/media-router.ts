@@ -1,7 +1,12 @@
 import { implement, ORPCError } from "@orpc/server";
 import { mediaContract } from "@solid-imager/core/domain/contract/media.contract";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import type { MediaPreferencesPatch } from "@solid-imager/core/domain/media/schemas";
+import {
+	ResourceConflictError,
+	ResourceNotFoundError,
+} from "@solid-imager/core/domain/errors";
 import { asyncPool } from "@solid-imager/core/utils/async-pool";
+import { services } from "~/infrastructure/service-registry";
 import { logger } from "~/infrastructure/logger";
 import { BulkOperationService } from "~/infrastructure/services/bulk-operation-service";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
@@ -13,7 +18,31 @@ import { getEmbeddingSearchService } from "~/infrastructure/services/embedding-s
  */
 const os = implement(mediaContract);
 
+async function updateActivity(
+	sourceId: string,
+	mediaId: string,
+	change: MediaPreferencesPatch | { viewId: string },
+) {
+	try {
+		return await services
+			.getMediaRepository()
+			.updateActivity(sourceId, mediaId, change);
+	} catch (error) {
+		if (error instanceof ResourceNotFoundError)
+			throw new ORPCError("NOT_FOUND", { message: error.message });
+		if (error instanceof ResourceConflictError)
+			throw new ORPCError("CONFLICT", { message: error.message });
+		throw error;
+	}
+}
+
 export const mediaRouter = os.router({
+	updatePreferences: os.updatePreferences.handler(({ input }) =>
+		updateActivity(input.sourceId, input.mediaId, input.data),
+	),
+	recordView: os.recordView.handler(({ input }) =>
+		updateActivity(input.sourceId, input.mediaId, { viewId: input.viewId }),
+	),
 	searchSemantic: os.searchSemantic.handler(({ input }) =>
 		getEmbeddingSearchService().searchText(input),
 	),

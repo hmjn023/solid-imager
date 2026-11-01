@@ -361,8 +361,32 @@ export type SimilarMediaSearchResponse = z.infer<
 	typeof similarMediaSearchResponseSchema
 >;
 
+const mediaRatingSchema = z.number().int().min(0).max(5);
+
+export const mediaPreferencesPatchSchema = z
+	.object({
+		rating: mediaRatingSchema.optional(),
+		favorite: z.boolean().optional(),
+	})
+	.refine(
+		(patch) => patch.rating !== undefined || patch.favorite !== undefined,
+		{
+			message: "Specify rating or favorite",
+		},
+	);
+export type MediaPreferencesPatch = z.infer<typeof mediaPreferencesPatchSchema>;
+
+export const mediaActivitySchema = z.object({
+	rating: mediaRatingSchema,
+	favorite: z.boolean(),
+	viewCount: z.number().int().nonnegative(),
+	lastViewedAt: z.coerce.date().nullable(),
+});
+export type MediaActivity = z.infer<typeof mediaActivitySchema>;
+
 // Combined schema for the details endpoint
 export const mediaDetailsSchema = mediaSchema.extend({
+	activity: mediaActivitySchema,
 	tags: z.array(tagSchema),
 	generationInfo: mediaGenerationInfoSchema.nullable(),
 	authors: z.array(authorSchema),
