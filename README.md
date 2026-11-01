@@ -20,7 +20,7 @@ HTTP MCP はデータ操作、ブラウザの WebMCP はユーザーと同じ画
 | `list_sources` | ソース一覧を取得します。登録前にローカルパスの重複を確認できます。 |
 | `create_local_source` | サーバー上のディレクトリを `name`、`path`、任意の `description` で登録し、初回スキャンと監視を開始します。 |
 | `search_media` | キーワード・タグ・ソースで検索します。`limit` と `offset` でページを取得できます。 |
-| `get_media_details` | 検索結果の `mediaSourceId` を `sourceId`、`id` を `mediaId` に渡すと、メディアの基本情報、生成パラメーター、作者、キャラクター、作品、タグを取得できます。 |
+| `get_media_details` | 検索結果の `mediaSourceId` を `sourceId`、`id` を `mediaId` に渡すと、メディアの基本情報、生成パラメーター、作者、キャラクター、作品（IP）、タグを取得できます。 |
 | `find_tags` | 既存タグを名前で部分一致検索し、編集に必要なタグ ID を取得します。 |
 | `edit_media_tags` | 1件のメディアに対して `action`（`add` または `remove`）と `tagIds` を指定します。追加は positive タグ、解除は指定 ID のすべての割り当てが対象です。 |
 

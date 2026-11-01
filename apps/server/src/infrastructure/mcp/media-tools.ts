@@ -125,7 +125,7 @@ export function createMediaTools(
 		),
 		defineTool(
 			"get_media_details",
-			"Get a media item's metadata, generation parameters, authors, characters, works and assigned tags.",
+			"Get a media item's metadata, generation parameters, authors, characters, IPs and assigned tags.",
 			true,
 			locationSchema,
 			async (location, signal) => {

@@ -70,16 +70,25 @@ export function afterWebViewPaint(signal: AbortSignal) {
 	signal.throwIfAborted();
 	return new Promise<void>((resolve, reject) => {
 		let frame = 0;
-		const abort = () => {
+		// Background tabs may never deliver animation frames. State updates have
+		// already finished, so allow completion without a paint in that case.
+		const fallback = setTimeout(finish, 100);
+		function cleanup() {
+			clearTimeout(fallback);
 			cancelAnimationFrame(frame);
+			signal.removeEventListener("abort", abort);
+		}
+		function finish() {
+			cleanup();
+			resolve();
+		}
+		const abort = () => {
+			cleanup();
 			reject(signal.reason);
 		};
 		signal.addEventListener("abort", abort, { once: true });
 		frame = requestAnimationFrame(() => {
-			frame = requestAnimationFrame(() => {
-				signal.removeEventListener("abort", abort);
-				resolve();
-			});
+			frame = requestAnimationFrame(finish);
 		});
 	});
 }
