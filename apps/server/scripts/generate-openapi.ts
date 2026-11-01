@@ -3,6 +3,7 @@ import { OpenAPIGenerator } from "@orpc/openapi";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
 import { appContract } from "@solid-imager/core/domain/contract";
 import { REST_API_PREFIX } from "@solid-imager/core/domain/contract/http-paths";
+import { isRestProcedure } from "@solid-imager/core/domain/contract/rest-visibility";
 import { openApiTags } from "../src/infrastructure/api/openapi-tags";
 
 const generator = new OpenAPIGenerator({
@@ -11,6 +12,7 @@ const generator = new OpenAPIGenerator({
 
 const document = await generator.generate(appContract, {
 	version: "3.1.1",
+	filter: isRestProcedure,
 	base: {
 		info: {
 			title: "Solid Imager oRPC API",
@@ -19,7 +21,7 @@ const document = await generator.generate(appContract, {
 		},
 		servers: [
 			{
-				url: REST_API_PREFIX,
+				url: REST_API_PREFIX.slice(1),
 				description: "現在のAPIサーバー",
 			},
 		],

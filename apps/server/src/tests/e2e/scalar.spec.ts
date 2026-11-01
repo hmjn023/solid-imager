@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import {
@@ -8,20 +9,13 @@ import {
 } from "./support/fixture";
 import { expect, test } from "./support/test";
 
-test("Scalar sends its documented request to the local REST API", async ({
-	page,
-}) => {
-	await page.goto("/about");
-	await page
-		.getByRole("link", { name: "API documentation", exact: true })
-		.click();
-	await expect(page).toHaveURL(/\/docs\/scalar\/?(?:#.*)?$/);
+async function listSourcesFromScalar(page: Page, restPrefix: string) {
 	await page
 		.getByRole("button", { name: /Test Request.*POST \/tools\/list_sources/i })
 		.click();
 	const result = page.waitForResponse(
 		(response) =>
-			new URL(response.url()).pathname === "/api/rest/tools/list_sources" &&
+			new URL(response.url()).pathname === restPrefix + "/tools/list_sources" &&
 			response.request().method() === "POST",
 	);
 	await page
@@ -38,17 +32,43 @@ test("Scalar sends its documented request to the local REST API", async ({
 	await expect(
 		page.getByText(E2E_SOURCE_NAME, { exact: false }).first(),
 	).toBeVisible();
+}
+
+test("Scalar sends its documented request to the local REST API", async ({
+	page,
+}) => {
+	await page.goto("/about");
+	await page
+		.getByRole("link", { name: "API documentation", exact: true })
+		.click();
+	await expect(page).toHaveURL(/\/docs\/scalar\/?(?:#.*)?$/);
+	await listSourcesFromScalar(page, "/api/rest");
 });
 
 test("the published REST server shares RPC data and returns standard HTTP errors", async ({
 	request,
 }) => {
-	const spec = await (await request.get("/openapi.json")).json();
-	expect(spec.servers).toMatchObject([{ url: "/api/rest" }]);
+	const specResponse = await request.get("/openapi.json");
+	const spec = await specResponse.json();
+	expect(spec.servers).toMatchObject([{ url: "api/rest" }]);
+	expect(spec.paths).not.toHaveProperty("/media/getContent");
 	expect(spec.paths["/tags/create"].post.requestBody.content).toHaveProperty(
 		"application/json",
 	);
-	const rest = spec.servers[0].url;
+	const rest = new URL(spec.servers[0].url, specResponse.url()).pathname;
+	const location = { sourceId: E2E_SOURCE_ID, mediaId: E2E_SOURCE_ID };
+	expect(
+		(
+			await request.post(rest + "/media/getContent", { data: location })
+		).status(),
+	).toBe(404);
+	expect(
+		(
+			await request.post("/api/rpc/media/getContent", {
+				data: { json: location },
+			})
+		).status(),
+	).toBe(400);
 	const name = "scalar-" + randomUUID();
 	const created = await request.post(rest + "/tags/create", { data: { name } });
 	expect(created.status()).toBe(200);
@@ -109,4 +129,67 @@ test("the standalone documentation bookmark opens the bundled Scalar page", asyn
 	await expect(
 		page.getByRole("heading", { name: "Solid Imager oRPC API", exact: true }),
 	).toBeVisible();
+});
+
+test("Scalar works when a proxy serves only /imager/ and strips the prefix", async ({
+	page,
+	baseURL,
+}) => {
+	const prefix = "/imager";
+	if (!baseURL) throw new Error("Missing Playwright baseURL");
+	const server = new URL(baseURL);
+	await page.route(
+		(url) => url.origin === server.origin,
+		async (route) => {
+			const external = new URL(route.request().url());
+			if (!external.pathname.startsWith(prefix + "/")) {
+				await route.fulfill({ status: 404, body: "Outside proxy mount" });
+				return;
+			}
+			external.pathname = external.pathname.slice(prefix.length);
+			await route.fulfill({
+				response: await route.fetch({ url: external.href }),
+			});
+		},
+	);
+	const spec = page.waitForResponse(
+		(response) => new URL(response.url()).pathname === prefix + "/openapi.json",
+	);
+	await page.goto(prefix + "/docs/scalar/");
+	expect((await spec).ok()).toBe(true);
+	await listSourcesFromScalar(page, prefix + "/api/rest");
+});
+
+test("legacy Swagger bookmarks redirect relative to their public mount", async ({
+	request,
+}) => {
+	for (const path of ["/docs/swagger", "/docs/swagger/"]) {
+		const result = await request.get(path + "?lang=ja", { maxRedirects: 0 });
+		expect(result.status()).toBe(302);
+		const publicURL = new URL("/imager" + path, "https://imager.example.test");
+		expect(new URL(result.headers().location, publicURL).href).toBe(
+			"https://imager.example.test/imager/docs/scalar?lang=ja",
+		);
+	}
+});
+
+test("REST behind TLS termination validates the configured public Origin", async ({
+	request,
+}) => {
+	const path = "/api/rest/sources/list";
+	const publicOrigin = "https://imager.example.test";
+	const valid = await request.post(path, { headers: { Origin: publicOrigin } });
+	expect(valid.status()).toBe(200);
+	const rejected: Record<string, string>[] = [
+		{
+			Origin: "https://foreign.example.test",
+			"X-Forwarded-Proto": "https",
+			"X-Forwarded-Host": "foreign.example.test",
+		},
+		{ Origin: "null" },
+		{ Origin: publicOrigin, "Sec-Fetch-Site": "cross-site" },
+	];
+	for (const headers of rejected) {
+		expect((await request.post(path, { headers })).status()).toBe(403);
+	}
 });

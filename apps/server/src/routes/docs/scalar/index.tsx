@@ -1,8 +1,13 @@
 import { createFileRoute } from "@tanstack/solid-router";
-import { ScalarApiReference } from "~/components/scalar-api-reference";
+import page from "~/infrastructure/api/scalar.html?raw";
 
 export const Route = createFileRoute("/docs/scalar/")({
-	ssr: false,
-	pendingComponent: () => null,
-	component: ScalarApiReference,
+	server: {
+		handlers: {
+			GET: () =>
+				new Response(page, {
+					headers: { "content-type": "text/html; charset=utf-8" },
+				}),
+		},
+	},
 });
