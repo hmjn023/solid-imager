@@ -1595,7 +1595,7 @@ export function createMediaRepository(
 						.insert(mediaTags)
 						.values(chunk)
 						.onConflictDoNothing({
-							target: [mediaTags.mediaId, mediaTags.tagId],
+							target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
 						});
 				}
 			} catch (error) {

@@ -8,6 +8,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackStart } from "@tanstack/solid-start/plugin/vite";
 import solidPlugin from "vite-plugin-solid";
 import { nitro } from "nitro/vite";
+import { toNodeHandler } from "srvx/node";
 import { devtools } from "@tanstack/devtools-vite";
 import mkcert from "vite-plugin-mkcert";
 
@@ -247,6 +248,19 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
   name: "dev-orpc-node-middleware",
   apply: "serve",
   configureServer(server) {
+    // Nitro dev runs in another Bun process. Keep MCP writes on the same PGlite
+    // connection as browser RPC requests so both see the same committed tags.
+    const mcpMiddleware = toNodeHandler(async (request) => {
+      const [{ handleMcpRequest }, devRpcHandler] = await Promise.all([
+        runtimeImport<typeof import("./src/infrastructure/mcp/http-handler")>(
+          serverModuleUrl("src/infrastructure/mcp/http-handler.ts"),
+        ),
+        getDevRpcHandler(),
+      ]);
+      logger = devRpcHandler.logger;
+      startBackgroundWorker = devRpcHandler.startBackgroundWorker;
+      return handleMcpRequest(request, devRpcHandler.initServices);
+    });
     let backgroundWorkerStarted = false;
     let startBackgroundWorker: DevRpcHandler["startBackgroundWorker"] | undefined;
     let logger: DevRpcHandler["logger"] | undefined;
@@ -269,6 +283,19 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
 
     server.middlewares.use(async (req, res, next) => {
       const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+      if (pathname === "/api/mcp" || pathname === "/api/mcp/") {
+        try {
+          res.once("finish", () => {
+            if (res.statusCode >= 200 && res.statusCode < 300) {
+              startBackgroundWorkerOnce();
+            }
+          });
+          await mcpMiddleware(req, res);
+        } catch (error) {
+          next(error);
+        }
+        return;
+      }
       if (pathname !== "/api/rpc" && !pathname.startsWith("/api/rpc/")) {
         next();
         return;
