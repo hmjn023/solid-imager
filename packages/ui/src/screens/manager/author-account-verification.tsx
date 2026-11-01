@@ -15,7 +15,7 @@ import {
 	DialogTitle,
 } from "../../dialog";
 import { TextField, TextFieldInput, TextFieldLabel } from "../../text-field";
-import type { AuthorManagementActions } from "./authors";
+import type { AuthorManagementActions } from "./authors.types";
 
 export function AuthorAccountVerificationPanel(props: {
 	account: AuthorAccount | null;

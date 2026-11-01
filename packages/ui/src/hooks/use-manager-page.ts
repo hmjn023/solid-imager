@@ -27,7 +27,10 @@ import { isServer } from "solid-js/web";
 import { prefetchQueryOnClient } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
 import { toast } from "../toast";
-import type { UseBatchJobEventsOptions } from "./use-batch-job-events";
+import type {
+	ManagerJobHandlers,
+	UseBatchJobEventsOptions,
+} from "./batch-job-events.types";
 import { jobsQueryKeys } from "../query-options/jobs-query";
 import {
 	managerSessionStorage,
@@ -175,13 +178,6 @@ export function prefetchManagerPageQueries(
 		),
 	);
 }
-
-export type ManagerJobHandlers = {
-	handleJobProgress: (event: JobProgressEvent) => void;
-	handleJobCompleted: (event: JobCompletedEvent) => void;
-	handleJobFailed: (event: JobFailedEvent) => void;
-	handleJobCancelled?: () => void;
-};
 
 export type UseManagerPageResult = {
 	vectorModel: Accessor<SimilarityModel>;

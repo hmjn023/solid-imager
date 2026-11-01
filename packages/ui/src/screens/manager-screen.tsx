@@ -1,7 +1,5 @@
-import {
-	AuthorManagementPanel,
-	type AuthorManagementActions,
-} from "./manager/authors";
+import { AuthorManagementPanel } from "./manager/authors";
+import type { AuthorManagementActions } from "./manager/authors.types";
 import { createEffect, createSignal, Match, on, Show, Switch } from "solid-js";
 import {
 	EmptyState,

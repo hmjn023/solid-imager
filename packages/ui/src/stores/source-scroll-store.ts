@@ -1,6 +1,7 @@
 import { createStore } from "solid-js/store";
 import { z } from "zod";
 
+// Shared browser scroll state for the web and Tauri source pages.
 export type SourcesState = {
 	// Map of mediaSourceId to scrollY position
 	scrollPositions: Record<string, number>;
