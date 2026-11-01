@@ -1,7 +1,26 @@
 import { randomUUID } from "node:crypto";
+import type { Page } from "@playwright/test";
 import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import { E2E_SOURCE_ID, E2E_SOURCE_NAME } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
+
+async function navigateWorkspace(page: Page, label: string, pathname: string) {
+	const menuButton = page.getByRole("button", { name: "メニューを開く" });
+	if (await menuButton.isVisible()) {
+		await menuButton.click();
+		await page
+			.getByRole("dialog")
+			.getByRole("link", { name: label, exact: true })
+			.click();
+		await expect(page.getByRole("dialog")).toBeHidden();
+	} else {
+		await page
+			.getByRole("link", { name: label, exact: true })
+			.filter({ visible: true })
+			.click();
+	}
+	await expect(page).toHaveURL((url) => url.pathname === pathname);
+}
 
 for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 	test(`restores ${kind} batch progress after navigation and reload`, async ({
@@ -125,20 +144,9 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 			releaseReconnect();
 			await expect(bar).toHaveAttribute("aria-valuenow", "50");
 		}
-		const mobile = testInfo.project.name === "responsive-375";
-		if (mobile) await page.goto("/search");
-		else
-			await page
-				.getByRole("link", { name: "Library", exact: true })
-				.filter({ visible: true })
-				.click();
+		await navigateWorkspace(page, "Library", "/search");
 		job.progress = { processed: 3, failed: 0, total: 4 };
-		if (mobile) await page.goto("/manager");
-		else
-			await page
-				.getByRole("link", { name: "Manager", exact: true })
-				.filter({ visible: true })
-				.click();
+		await navigateWorkspace(page, "Manager", "/manager");
 		await expect(bar).toHaveAttribute("aria-valuenow", "75");
 		await expect(start).toBeDisabled();
 		await expect(

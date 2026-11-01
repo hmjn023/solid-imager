@@ -267,7 +267,13 @@ for (const restorationCase of restorationCases) {
 	for (const returnMethod of ["browser", "ui"] as const) {
 		test(`${restorationCase.name} keeps its restored scroller mounted during a fast page fetch via ${returnMethod} back`, async ({
 			page,
+			browserHealth,
 		}) => {
+			// Leaving media detail unmounts its job subscription and cancels the SSE fetch.
+			browserHealth.allowRequestFailure(
+				/\/api\/rpc\/jobs\/events(?:\?|$)/,
+				"net::ERR_ABORTED",
+			);
 			await verifyRestoredScrollerDuringFastPageFetch(
 				page,
 				restorationCase.entryPath,
