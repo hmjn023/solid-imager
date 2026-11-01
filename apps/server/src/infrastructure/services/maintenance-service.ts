@@ -61,32 +61,43 @@ export class MaintenanceService {
 	}
 
 	private async queueMissingThumbnails() {
+		// Snapshot each source once per scan, never across startup checks.
+		const thumbnailsBySource = new Map<string, Set<string>>();
+		const timings = { dbFetchMs: 0, directoryScanMs: 0, jobDispatchMs: 0 };
 		try {
 			const BATCH_SIZE = 1000;
 			let lastId: string | undefined;
 			let hasMore = true;
 
 			while (hasMore) {
+				const fetchStartedAt = performance.now();
 				const batch = await this.mediaRepo.findAllMediaIndices({
 					limit: BATCH_SIZE,
 					afterId: lastId,
 				});
+				timings.dbFetchMs += performance.now() - fetchStartedAt;
 
 				if (batch.length === 0) {
 					hasMore = false;
 					break;
 				}
 
-				const missingInBatch = await this.findMissingThumbnails(batch);
+				const missingInBatch = await this.findMissingThumbnails(
+					batch,
+					thumbnailsBySource,
+					timings,
+				);
 
 				if (missingInBatch.length > 0) {
 					logger.info(
 						{ count: missingInBatch.length, afterId: lastId },
 						"Found media with missing thumbnails in batch. Queueing jobs...",
 					);
+					const dispatchStartedAt = performance.now();
 					await this.dispatchJobs(missingInBatch, {
 						skipMetadataExtraction: true,
 					});
+					timings.jobDispatchMs += performance.now() - dispatchStartedAt;
 				}
 
 				lastId = batch.at(-1)?.id ?? lastId;
@@ -96,19 +107,34 @@ export class MaintenanceService {
 			}
 		} catch (error) {
 			logger.error({ err: error }, "Failed to queue missing thumbnail jobs");
+		} finally {
+			logger.info(
+				{ ...timings, cachedSources: thumbnailsBySource.size },
+				"Startup thumbnail check timings",
+			);
 		}
 	}
 
 	private async findMissingThumbnails(
 		batch: { id: string; mediaSourceId: string; filePath: string }[],
+		thumbnailsBySource: Map<string, Set<string>>,
+		timings: { directoryScanMs: number },
 	) {
 		const missing: typeof batch = [];
 		const mediaBySource = this.groupMediaBySource(batch);
 
 		for (const [sourceId, items] of mediaBySource) {
-			const existingFiles = await this.getExistingThumbnails(sourceId);
+			let existingFiles = thumbnailsBySource.get(sourceId);
 			if (!existingFiles) {
-				continue;
+				const scanStartedAt = performance.now();
+				const files = await this.getExistingThumbnails(sourceId);
+				timings.directoryScanMs += performance.now() - scanStartedAt;
+				// Do not cache read failures: a later page may recover.
+				if (!files) {
+					continue;
+				}
+				existingFiles = files;
+				thumbnailsBySource.set(sourceId, files);
 			}
 
 			for (const item of items) {
