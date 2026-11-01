@@ -97,3 +97,50 @@ export function subscribeToEventStream<TEvent>(
 		abortController.abort();
 	};
 }
+
+/** Share one connection between the desktop and mobile subscribers in the same app shell. */
+export function createSharedEventSubscription<TEvent>(
+	openStream: EventStreamFactory<TEvent>,
+) {
+	type Subscriber = {
+		handler: (event: TEvent) => void | Promise<void>;
+		onConnected?: EventStreamConnectedHandler;
+	};
+	const subscribers = new Set<Subscriber>();
+	let disconnect: (() => void) | undefined;
+	let connected = false;
+
+	return (
+		handler: Subscriber["handler"],
+		onConnected?: EventStreamConnectedHandler,
+	) => {
+		const subscriber = { handler, onConnected };
+		subscribers.add(subscriber);
+		if (connected) void onConnected?.();
+		disconnect ??= subscribeToEventStream(
+			openStream,
+			async (event) => {
+				for (const current of subscribers) await current.handler(event);
+			},
+			() => {
+				connected = false;
+			},
+			async () => {
+				connected = true;
+				await Promise.all(
+					Array.from(subscribers, async (current) => {
+						await current.onConnected?.();
+					}),
+				);
+			},
+		);
+		return () => {
+			subscribers.delete(subscriber);
+			if (!subscribers.size) {
+				disconnect?.();
+				disconnect = undefined;
+				connected = false;
+			}
+		};
+	};
+}

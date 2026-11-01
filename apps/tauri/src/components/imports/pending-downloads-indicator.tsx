@@ -1,4 +1,4 @@
-import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
+import { createSharedEventSubscription } from "@solid-imager/ui/event-stream";
 import { PendingDownloadsIndicator as SharedPendingDownloadsIndicator } from "@solid-imager/ui/pending-downloads-indicator";
 import {
 	cancelPendingImports,
@@ -7,6 +7,10 @@ import {
 } from "~/infrastructure/api-clients/imports-api";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
+
+const subscribeImportEvents = createSharedEventSubscription((signal) =>
+	orpc.imports.events(undefined, { signal }),
+);
 
 export function PendingDownloadsIndicator(props: { compact?: boolean }) {
 	return (
@@ -22,14 +26,7 @@ export function PendingDownloadsIndicator(props: { compact?: boolean }) {
 			processPending={(jobIds, targetSourceId) =>
 				processPendingImports(jobIds, targetSourceId)
 			}
-			subscribeImportEvents={(handler, onConnected) => {
-				return subscribeToEventStream(
-					(signal) => orpc.imports.events(undefined, { signal }),
-					handler,
-					undefined,
-					onConnected,
-				);
-			}}
+			subscribeImportEvents={subscribeImportEvents}
 		/>
 	);
 }

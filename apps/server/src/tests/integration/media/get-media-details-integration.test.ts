@@ -166,4 +166,69 @@ describe("getMediaDetails", () => {
 		expect(details.tags[0].name).toBe("positive prompt");
 		expect(details.tags[0].type).toBe("positive");
 	});
+
+	it("records distinct visits once and keeps preferences independent from the view count", async () => {
+		const update = (
+			change: { viewId: string } | { rating?: number; favorite?: boolean },
+		) => MediaRepository.updateActivity(mediaSource.id, media.id, change);
+		const visit = { viewId: crypto.randomUUID() };
+		const initial = await MediaRepository.getDetails(media.id);
+		expect(initial?.activity).toEqual({
+			rating: 0,
+			favorite: false,
+			viewCount: 0,
+			lastViewedAt: null,
+		});
+		const unviewed = await MediaRepository.search(mediaSource.id, {
+			order: "desc",
+			offset: 0,
+			condition: {
+				type: "group",
+				operator: "and",
+				children: [
+					{
+						type: "criterion",
+						target: "viewCount",
+						operator: "equals",
+						value: 0,
+					},
+					{
+						type: "criterion",
+						target: "favorite",
+						operator: "equals",
+						value: false,
+					},
+				],
+			},
+		});
+		expect(unviewed.media.map((item) => item.id)).toEqual([media.id]);
+		await expect(
+			MediaRepository.updateActivity(crypto.randomUUID(), media.id, visit),
+		).rejects.toThrow("not found");
+		expect(await db.select().from(schema.viewHistory)).toHaveLength(0);
+		await Promise.all([
+			update(visit),
+			update(visit),
+			update({ viewId: crypto.randomUUID() }),
+			update({ rating: 5 }),
+			update({ favorite: true }),
+		]);
+		const history = await db.select().from(schema.viewHistory);
+		expect(history).toHaveLength(2);
+		expect((await MediaRepository.getDetails(media.id))?.activity).toEqual({
+			rating: 5,
+			favorite: true,
+			viewCount: 2,
+			lastViewedAt: new Date(
+				Math.max(
+					...history.map((v: { viewedAt: Date }) => v.viewedAt.getTime()),
+				),
+			),
+		});
+		expect(await update({ rating: 0, favorite: false })).toMatchObject({
+			rating: 0,
+			favorite: false,
+			viewCount: 2,
+		});
+	});
 });

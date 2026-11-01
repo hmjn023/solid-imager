@@ -6,6 +6,8 @@ import type {
 	FindDuplicatesResponse,
 	Media,
 	MediaDetails,
+	MediaActivity,
+	MediaPreferencesPatch,
 	MediaGenerationInfo,
 	MediaSearchRequest,
 	MediaSearchResponse,
@@ -45,6 +47,12 @@ export type IMediaRepository = {
 	 * Retrieves full media details (tags, authors, etc.) in a single optimized query.
 	 */
 	getDetails(mediaId: string, tx?: Transaction): Promise<MediaDetails | null>;
+
+	updateActivity(
+		sourceId: string,
+		mediaId: string,
+		change: MediaPreferencesPatch | { viewId: string },
+	): Promise<MediaActivity>;
 
 	// Ancillary data
 	getTags(mediaId: string, tx?: Transaction): Promise<MediaTag[]>;

@@ -8,6 +8,7 @@ import {
 	useQueryClient,
 } from "@tanstack/solid-query";
 import type { Accessor } from "solid-js";
+import type { MediaActivityApi } from "./media-activity-controls";
 import { MediaSidebar } from "./media-sidebar";
 import {
 	charactersQueryKeys,
@@ -23,6 +24,7 @@ type QueryOptionsFactory<TData> = () => QueryOptions<TData>;
 
 export type MediaSidebarContentProps = {
 	media: MediaDetails;
+	activityApi: MediaActivityApi;
 	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
 	projectsForMediaQueryOptions: (
@@ -102,6 +104,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 
 	return (
 		<MediaSidebar
+			activityApi={props.activityApi}
 			allCharacters={allCharacters.data || []}
 			allIps={allIps.data || []}
 			allProjects={allProjects.data || []}

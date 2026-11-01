@@ -247,6 +247,8 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await media.dblclick();
 	await expect(page).toHaveURL(new RegExp(`/#${mediaPath}$`));
 	await expectTauriMediaDetail(page);
+	await expect(page.getByRole("button", { name: /^Rating/ })).toBeVisible();
+	await expect(page.getByText(/^Views: [1-9]\d*$/)).toBeVisible();
 	await captureTauriScreenshot(page, "detail");
 
 	const detailUrl = page.url();
