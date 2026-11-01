@@ -88,7 +88,7 @@ describe("RustAiClient shared embedding configuration", () => {
 		expect(mocks.createClient).toHaveBeenCalledWith(
 			expect.objectContaining({
 				url: "http://ai.example",
-				fetch: expect.any(Function),
+				timeoutMs: 45000,
 			}),
 		);
 		client.updateConfig({ provider: "auto", baseUrl: "", timeoutMs: 45000 });

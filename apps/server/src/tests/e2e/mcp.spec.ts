@@ -54,6 +54,33 @@ test("HTTP MCP and visible WebMCP tools edit the same media tags", async ({
 	expect(list.tools.map((tool: { name: string }) => tool.name).sort()).toEqual(
 		names,
 	);
+	// Discovery comes from the same oRPC schemas that validate tool calls.
+	expect(list.tools).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				name: "search_media",
+				annotations: expect.objectContaining({
+					readOnlyHint: true,
+					openWorldHint: false,
+				}),
+				outputSchema: expect.objectContaining({ type: "object" }),
+			}),
+			expect.objectContaining({
+				name: "create_local_source",
+				annotations: expect.objectContaining({
+					readOnlyHint: false,
+					idempotentHint: false,
+				}),
+			}),
+			expect.objectContaining({
+				name: "edit_media_tags",
+				annotations: expect.objectContaining({
+					readOnlyHint: false,
+					idempotentHint: true,
+				}),
+			}),
+		]),
+	);
 	const call = (name: string, args: object) =>
 		rpc(request, "tools/call", { name, arguments: args });
 	const search = await call("search_media", { query: E2E_PRIMARY_FILE_NAME });

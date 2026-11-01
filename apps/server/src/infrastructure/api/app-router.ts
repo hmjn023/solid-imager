@@ -12,6 +12,7 @@ import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
 import { importsRouter } from "~/infrastructure/api/routers/imports-router";
 import { ipsRouter } from "~/infrastructure/api/routers/ips-router";
 import { jobsRouter } from "~/infrastructure/api/routers/jobs-router";
+import { mediaToolsRouter } from "~/infrastructure/api/routers/media-tools-router";
 import { mediaRouter } from "~/infrastructure/api/routers/media-router";
 import { presetsRouter } from "~/infrastructure/api/routers/presets-router";
 import { projectsRouter } from "~/infrastructure/api/routers/projects-router";
@@ -33,6 +34,7 @@ export const appRouter = appRouterImplementer.router({
 	sources: sourcesRouter,
 	tags: tagsRouter,
 	media: mediaRouter,
+	tools: mediaToolsRouter,
 	categories: categoriesRouter,
 	projects: projectsRouter,
 	characters: charactersRouter,

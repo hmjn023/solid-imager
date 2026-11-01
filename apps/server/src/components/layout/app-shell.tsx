@@ -1,3 +1,4 @@
+import { SCALAR_DOCS_PATH } from "@solid-imager/core/domain/contract/http-paths";
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { AppShell as SharedAppShell } from "@solid-imager/ui/layouts/app-shell";
@@ -50,7 +51,7 @@ export function AppShell(props: AppShellProps) {
 
 	return (
 		<SharedAppShell
-			apiDocsHref="/docs/scalar"
+			apiDocsHref={SCALAR_DOCS_PATH}
 			mediaSources={() => mediaSources.data ?? []}
 			onNavigate={(to) => void navigate({ to })}
 			renderPendingDownloadsIndicator={(compact) => (

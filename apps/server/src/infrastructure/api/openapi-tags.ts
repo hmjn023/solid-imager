@@ -1,6 +1,10 @@
 /** OpenAPI tag descriptions used when generating the API specification. */
 export const openApiTags = [
 	{
+		name: "Media Tools",
+		description: "HTTP MCP と WebMCP で共有するメディア操作です。",
+	},
+	{
 		name: "Media Sources",
 		description:
 			"ローカル、SFTP、S3などのメディアソースの登録、設定、同期、エクスポート、インポートを行います。",

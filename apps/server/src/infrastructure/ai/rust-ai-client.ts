@@ -32,19 +32,6 @@ type RustAiClientConfig = Pick<
 	"baseUrl" | "timeoutMs" | "provider" | "device"
 >;
 
-function createRemoteOrpcClient(remoteUrl: string, timeoutMs: number) {
-	return createClient<AppContract>({
-		url: remoteUrl,
-		fetch: (request: Request, init?: RequestInit) => {
-			const timeoutSignal = AbortSignal.timeout(timeoutMs);
-			const signal = init?.signal
-				? AbortSignal.any([init.signal, timeoutSignal])
-				: timeoutSignal;
-			return fetch(request, { ...init, signal });
-		},
-	});
-}
-
 type DghsImgutilsWithCcipDistances = DghsImgutilsModule & {
 	ccipDistances(
 		feature: number[],
@@ -68,7 +55,7 @@ export class RustAiClient implements IAiClient {
 	private baseUrl: string;
 	private timeoutMs: number;
 	private inferenceOptions: NapiInferenceOptions;
-	private client: ReturnType<typeof createRemoteOrpcClient> | null = null;
+	private client: ReturnType<typeof createClient<AppContract>> | null = null;
 
 	constructor(config: Partial<RustAiClientConfig> = {}) {
 		this.baseUrl = config.baseUrl ?? "";
@@ -89,7 +76,10 @@ export class RustAiClient implements IAiClient {
 
 	private refreshClient() {
 		if (this.baseUrl) {
-			this.client = createRemoteOrpcClient(this.baseUrl, this.timeoutMs);
+			this.client = createClient<AppContract>({
+				url: this.baseUrl,
+				timeoutMs: this.timeoutMs,
+			});
 		} else {
 			this.client = null;
 		}
@@ -156,7 +146,7 @@ export class RustAiClient implements IAiClient {
 
 	private async callRemoteOrpcWithFile<T>(
 		action: (
-			client: ReturnType<typeof createRemoteOrpcClient>,
+			client: ReturnType<typeof createClient<AppContract>>,
 			file: File,
 		) => Promise<T>,
 		buffer: ArrayBuffer | Uint8Array,

@@ -148,6 +148,11 @@ export const extractedDataSchema = z.object({
 export type ExtractedData = z.infer<typeof extractedDataSchema>;
 
 // Base schemas mirroring database tables
+export const mediaLocationSchema = z.object({
+	sourceId: z.uuid(),
+	mediaId: z.uuid(),
+});
+
 export const mediaSchema = z.object({
 	id: z.uuid(),
 	mediaSourceId: z.uuid(),

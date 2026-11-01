@@ -1,4 +1,4 @@
-import type { ContractRouterClient } from "@orpc/contract";
+import type { RouterContractClient } from "@orpc/contract";
 import type { presetsContract } from "./presets.contract";
 
 /**
@@ -8,5 +8,5 @@ import type { presetsContract } from "./presets.contract";
  * need to depend on the UI package for their transport boundary.
  */
 export type PresetOrpcLike = {
-	presets: ContractRouterClient<typeof presetsContract>;
+	presets: RouterContractClient<typeof presetsContract>;
 };

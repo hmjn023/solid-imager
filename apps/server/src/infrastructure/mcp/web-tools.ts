@@ -16,8 +16,25 @@ import type { QueryClient } from "@tanstack/solid-query";
 import { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
-import { createMediaTools, defineTool } from "./media-tools";
+import { mediaToolInputs } from "@solid-imager/core/domain/media/tool-schemas";
 import { afterWebViewPaint, readWebView, waitForWebView } from "./web-view";
+
+function defineTool<Schema extends z.ZodObject, Result extends object>(
+	name: string,
+	description: string,
+	readOnly: boolean,
+	inputSchema: Schema,
+	run: (input: z.output<Schema>, signal: AbortSignal) => Promise<Result>,
+) {
+	return {
+		name,
+		description,
+		readOnly,
+		inputSchema,
+		execute: (input: unknown, signal: AbortSignal) =>
+			run(inputSchema.parse(input), signal),
+	};
+}
 
 const pageSchema = z.strictObject({
 	limit: z.int().min(1).max(5).default(5),
@@ -61,14 +78,6 @@ export async function registerWebTools(
 	signal: AbortSignal,
 ) {
 	if (signal.aborted) return;
-	const [
-		listSources,
-		createSource,
-		searchMedia,
-		getDetails,
-		findTags,
-		editTags,
-	] = createMediaTools(orpc);
 
 	const canChangeView = () => {
 		if (document.querySelector('[role="dialog"], [role="alertdialog"]')) {
@@ -86,7 +95,7 @@ export async function registerWebTools(
 	};
 
 	const openMedia = async (
-		location: z.infer<typeof getDetails.inputSchema>,
+		location: z.infer<typeof mediaToolInputs.get_media_details>,
 		execution: AbortSignal,
 	) => {
 		canChangeView();
@@ -183,7 +192,7 @@ export async function registerWebTools(
 			"search_media",
 			"Search the library and show the results in this tab, replacing the current filters. Use when the user wants to find images together. Returns a brief result page; inspect more with get_current_view.",
 			false,
-			searchMedia.inputSchema.omit({ limit: true, offset: true }),
+			mediaToolInputs.search_media.omit({ limit: true, offset: true }),
 			async ({ query, tags, sourceId }, execution) => {
 				canChangeView();
 				const state = searchSnapshotStateSchema.parse({
@@ -232,7 +241,7 @@ export async function registerWebTools(
 			"open_media",
 			"Open an image and its metadata in this tab. Use when the user wants to inspect an image from the search results.",
 			false,
-			getDetails.inputSchema,
+			mediaToolInputs.get_media_details,
 			async (location, execution) => {
 				await openMedia(location, execution);
 				return currentView();
@@ -242,11 +251,13 @@ export async function registerWebTools(
 			"edit_media_tags",
 			"Open the target image, add or remove its tags, and show the updated tags. Use when the user asks to change an image's tags.",
 			false,
-			editTags.inputSchema,
+			mediaToolInputs.edit_media_tags,
 			async (input, execution) => {
 				await openMedia(input, execution);
 				execution.throwIfAborted();
-				const result = await editTags.execute(input, execution);
+				const result = await orpc.tools.edit_media_tags(input, {
+					signal: execution,
+				});
 				await Promise.all(
 					[
 						mediaDetailsQueryKeys.detail(input.sourceId, input.mediaId),
@@ -274,9 +285,9 @@ export async function registerWebTools(
 			"find_tags",
 			"Find existing tags by name. Use to choose tag IDs before editing an image.",
 			true,
-			findTags.inputSchema.extend(pageSchema.shape),
+			mediaToolInputs.find_tags.extend(pageSchema.shape),
 			async (input, execution) => {
-				const result = await findTags.execute(input, execution);
+				const result = await orpc.tools.find_tags(input, { signal: execution });
 				return {
 					tags: result.tags.map(({ id, name }) => ({
 						id,
@@ -297,7 +308,7 @@ export async function registerWebTools(
 			true,
 			pageSchema,
 			async ({ offset, limit }, execution) => {
-				const result = await listSources.execute({}, execution);
+				const result = await orpc.tools.list_sources({}, { signal: execution });
 				return pageOf(
 					result.sources.map(({ id, name, type, connectionInfo }) => ({
 						id,
@@ -317,11 +328,13 @@ export async function registerWebTools(
 		),
 		defineTool(
 			"create_local_source",
-			createSource.description,
+			"Register a local directory on the server and show it in the sources list. Check list_sources first to avoid duplicates.",
 			false,
-			createSource.inputSchema,
+			mediaToolInputs.create_local_source,
 			async (input, execution) => {
-				const { source } = await createSource.execute(input, execution);
+				const { source } = await orpc.tools.create_local_source(input, {
+					signal: execution,
+				});
 				await queryClient.invalidateQueries({
 					queryKey: sourcesQueryKeys.all(),
 				});
@@ -335,7 +348,6 @@ export async function registerWebTools(
 					scan: "started",
 				};
 			},
-			false,
 		),
 	];
 

@@ -54,24 +54,6 @@ async function readFileBuffer(filePath: string): Promise<Buffer> {
 	return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
 }
 
-function createRemoteOprcClient(remoteUrl: string, timeoutMs: number) {
-	return createClient<AppContract>({
-		url: remoteUrl,
-		fetch: async (request: Request, init?: RequestInit) => {
-			const controller = new AbortController();
-			const t = setTimeout(() => controller.abort(), timeoutMs);
-			try {
-				return await fetch(request, {
-					...init,
-					signal: controller.signal,
-				});
-			} finally {
-				clearTimeout(t);
-			}
-		},
-	});
-}
-
 async function callRemoteTagging(
 	remoteUrl: string,
 	fileBuffer: Buffer,
@@ -79,7 +61,7 @@ async function callRemoteTagging(
 	timeoutMs: number,
 ): Promise<unknown> {
 	const file = new File([new Uint8Array(fileBuffer)], fileName);
-	const remoteOrpc = createRemoteOprcClient(remoteUrl, timeoutMs);
+	const remoteOrpc = createClient<AppContract>({ url: remoteUrl, timeoutMs });
 	return remoteOrpc.ai.tag({ file });
 }
 
@@ -90,7 +72,7 @@ async function callRemoteCrop(
 	timeoutMs: number,
 ): Promise<unknown> {
 	const file = new File([new Uint8Array(fileBuffer)], fileName);
-	const remoteOrpc = createRemoteOprcClient(remoteUrl, timeoutMs);
+	const remoteOrpc = createClient<AppContract>({ url: remoteUrl, timeoutMs });
 	return remoteOrpc.ai.detectAndCropCharacters({ file });
 }
 

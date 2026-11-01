@@ -156,6 +156,7 @@ export default defineConfig({
 			cwd: process.cwd(),
 			env: {
 				...getEnvironment(),
+				REST_PUBLIC_ORIGIN: "https://imager.example.test",
 				E2E: "1",
 				E2E_MODE: mode,
 				E2E_PORT: port,
