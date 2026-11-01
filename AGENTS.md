@@ -7,7 +7,7 @@
 ## 主要ドキュメント
 
 - **UIデザインシステム:** [./DESIGN.md](./DESIGN.md)（実装前に参照し、`bun run design:lint` で検証）
-- **API仕様:** [`./apps/server/public/openapi.json`](./apps/server/public/openapi.json)、Scalar API Referenceは `/docs/scalar` と [`./apps/server/public/api-docs.html`](./apps/server/public/api-docs.html)
+- **API仕様:** [OpenAPI 仕様](./apps/server/public/openapi.json) に対応する REST API は `/api/rest`、型付き RPC は `/api/rpc`。Scalar API Reference は `/docs/scalar`（旧 `/api-docs.html` からも転送）。
 - **API契約:** `packages/core/src/domain/contract/`（Server実装の集約は `apps/server/src/infrastructure/api/app-router.ts`）
 - **Tauri SPA:** [`./apps/tauri/src/`](./apps/tauri/src/)、Rust側は [`./apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **Web UI実装状況:** [`./REPORT.md`](./REPORT.md)

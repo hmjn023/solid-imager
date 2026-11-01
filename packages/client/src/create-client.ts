@@ -1,6 +1,6 @@
 import { createORPCClient } from "@orpc/client";
 import { RPCLink } from "@orpc/client/fetch";
-import type { AnyContractRouter, ContractRouterClient } from "@orpc/contract";
+import type { RouterContract, RouterContractClient } from "@orpc/contract";
 import { APIError } from "./api-error";
 
 const DEFAULT_TIMEOUT_MS = 30_000;
@@ -11,90 +11,10 @@ type FetchInit = RequestInit & {
 };
 
 export type ClientOptions = {
-	url?: string;
-	fetch?: (request: Request, init?: FetchInit) => Promise<Response>;
+	url?: string | (() => string);
+	fetch?: (url: string, init?: FetchInit) => Promise<Response>;
 	timeoutMs?: number;
 };
-
-type JobArtifactInput = { id: string };
-type JobArtifactOptions = { signal?: AbortSignal };
-
-function readProperty(
-	target: object,
-	property: PropertyKey,
-	receiver: unknown,
-): unknown {
-	return Reflect.get(target, property, receiver);
-}
-
-// The server intentionally returns this root-level artifact as a raw stream.
-// The regular oRPC JSON decoder cannot deserialize a stream body, so this one
-// procedure must be fetched directly while the other procedures use RPCLink.
-async function downloadJobArtifact(
-	url: URL,
-	fetchImpl: (request: Request, init?: FetchInit) => Promise<Response>,
-	input: JobArtifactInput,
-	options?: JobArtifactOptions,
-): Promise<ReadableStream<Uint8Array>> {
-	const response = await fetchImpl(
-		new Request(url, {
-			method: "POST",
-			headers: {
-				accept: "application/octet-stream",
-				"content-type": "application/json",
-			},
-			body: JSON.stringify({ json: input }),
-			signal: options?.signal,
-		}),
-		{ signal: options?.signal },
-	);
-
-	if (!response.ok) {
-		const body = await response.text().catch(() => "");
-		throw new APIError(
-			body || `Artifact download failed with status ${response.status}`,
-			"SERVER_ERROR",
-		);
-	}
-	if (!response.body) {
-		throw new APIError(
-			"Artifact download returned an empty body",
-			"SERVER_ERROR",
-		);
-	}
-
-	return response.body;
-}
-
-function withStreamingJobArtifactDownload<C extends AnyContractRouter>(
-	client: ContractRouterClient<C>,
-	artifactUrl: URL,
-	fetchImpl: (request: Request, init?: FetchInit) => Promise<Response>,
-): ContractRouterClient<C> {
-	return new Proxy(client as object, {
-		get(target, property, receiver) {
-			if (property !== "jobs") {
-				return readProperty(target, property, receiver);
-			}
-
-			const jobs = readProperty(target, property, receiver);
-			if (typeof jobs !== "function") {
-				return jobs;
-			}
-
-			return new Proxy(jobs, {
-				get(jobsTarget, jobsProperty, jobsReceiver) {
-					if (jobsProperty !== "downloadArtifact") {
-						return readProperty(jobsTarget, jobsProperty, jobsReceiver);
-					}
-
-					return (input: JobArtifactInput, options?: JobArtifactOptions) =>
-						downloadJobArtifact(artifactUrl, fetchImpl, input, options);
-				},
-			});
-		},
-	}) as ContractRouterClient<C>;
-}
 
 function isAbortError(error: unknown): boolean {
 	return error instanceof Error && error.name === "AbortError";
@@ -119,10 +39,10 @@ function createNetworkError(error: unknown): APIError {
 }
 
 export function createTimedFetch(
-	fetchImpl: (request: Request, init?: FetchInit) => Promise<Response>,
+	fetchImpl: (url: string, init?: FetchInit) => Promise<Response>,
 	timeoutMs: number,
-): (request: Request, init?: FetchInit) => Promise<Response> {
-	return async (request, init) => {
+): (url: string, init?: FetchInit) => Promise<Response> {
+	return async (url, init) => {
 		const controller = new AbortController();
 		const timeout = setTimeout(() => {
 			controller.abort(createTimeoutError(timeoutMs));
@@ -134,7 +54,7 @@ export function createTimedFetch(
 			: controller.signal;
 
 		try {
-			return await fetchImpl(request, { ...init, signal });
+			return await fetchImpl(url, { ...init, signal });
 		} catch (error) {
 			if (controller.signal.aborted) {
 				throw controller.signal.reason;
@@ -149,22 +69,31 @@ export function createTimedFetch(
 	};
 }
 
-export function createClient<C extends AnyContractRouter>(
+// Accept a server base (including a reverse-proxy prefix) or an existing /api/rpc endpoint.
+function rpcBaseUrl(url: string): string {
+	const endpoint = new URL(url);
+	const path = endpoint.pathname.replace(/\/+$/, "").replace(/\/api\/rpc$/, "");
+	return endpoint.origin + path;
+}
+
+export function createClient<C extends RouterContract>(
 	options: ClientOptions = {},
-): ContractRouterClient<C> {
-	const base = options.url || "http://localhost:3000";
-	const rpcUrl = new URL("/api/rpc/", base).toString();
+): RouterContractClient<C> {
+	const url = options.url;
+	const origin =
+		typeof url === "function"
+			? () => rpcBaseUrl(url())
+			: rpcBaseUrl(url || "http://localhost:3000");
 	const fetchImpl = createTimedFetch(
 		options.fetch ?? ((request, init) => fetch(request, init)),
 		options.timeoutMs ?? DEFAULT_TIMEOUT_MS,
 	);
 
 	const link = new RPCLink({
-		url: rpcUrl,
+		origin,
+		url: "/api/rpc",
 		fetch: fetchImpl,
 	});
 
-	const client = createORPCClient(link) as ContractRouterClient<C>;
-	const artifactUrl = new URL("jobs/downloadArtifact", rpcUrl);
-	return withStreamingJobArtifactDownload(client, artifactUrl, fetchImpl);
+	return createORPCClient(link);
 }

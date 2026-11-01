@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { RPCHandler } from "@orpc/server/node";
-import { ResponseHeadersPlugin } from "@orpc/server/plugins";
+import { REST_API_PREFIX } from "@solid-imager/core/domain/contract/http-paths";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import tailwindcss from "@tailwindcss/vite";
@@ -117,7 +117,7 @@ const bypassSecFetchDestPlugin = (): Plugin => ({
 });
 
 const loadDevRpcHandler = async () => {
-  const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }, { createRpcResponseHeaders }] = await Promise.all([
+  const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }] = await Promise.all([
     runtimeImport<typeof import("./src/infrastructure/api/app-router")>(
       serverModuleUrl("src/infrastructure/api/app-router.ts"),
     ),
@@ -127,16 +127,10 @@ const loadDevRpcHandler = async () => {
     runtimeImport<typeof import("./src/infrastructure/logger")>(
       serverModuleUrl("src/infrastructure/logger.ts"),
     ),
-    runtimeImport<typeof import("./src/infrastructure/api/rpc-response-headers")>(
-      serverModuleUrl("src/infrastructure/api/rpc-response-headers.ts"),
-    ),
   ]);
 
   return {
-    handler: new RPCHandler(appRouter, {
-      plugins: [new ResponseHeadersPlugin()],
-    }),
-    createRpcResponseHeaders,
+    handler: new RPCHandler(appRouter),
     initServices,
     startBackgroundWorker,
     logger,
@@ -261,6 +255,12 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
       startBackgroundWorker = devRpcHandler.startBackgroundWorker;
       return handleMcpRequest(request, devRpcHandler.initServices);
     });
+    const restMiddleware = toNodeHandler(async (request) => {
+      const { handleRestRequest } = await runtimeImport<typeof import("./src/infrastructure/api/rest-handler")>(
+        serverModuleUrl("src/infrastructure/api/rest-handler.ts"),
+      );
+      return handleRestRequest(request);
+    });
     let backgroundWorkerStarted = false;
     let startBackgroundWorker: DevRpcHandler["startBackgroundWorker"] | undefined;
     let logger: DevRpcHandler["logger"] | undefined;
@@ -296,7 +296,8 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
         }
         return;
       }
-      if (pathname !== "/api/rpc" && !pathname.startsWith("/api/rpc/")) {
+      const isRest = pathname === REST_API_PREFIX || pathname.startsWith(REST_API_PREFIX + "/");
+      if (!isRest && pathname !== "/api/rpc" && !pathname.startsWith("/api/rpc/")) {
         next();
         return;
       }
@@ -304,7 +305,7 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
       try {
         const devRpcHandler = await getDevRpcHandler();
         logger = devRpcHandler.logger;
-        const { handler, initServices, createRpcResponseHeaders } = devRpcHandler;
+        const { handler, initServices } = devRpcHandler;
         startBackgroundWorker = devRpcHandler.startBackgroundWorker;
         initServices();
 
@@ -318,9 +319,13 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
         };
         res.once("finish", startAfterSuccessfulResponse);
 
+        if (isRest) {
+          matched = true;
+          await restMiddleware(req, res);
+          return;
+        }
         const result = await handler.handle(req, res, {
           prefix: "/api/rpc",
-          context: { resHeaders: createRpcResponseHeaders(req.url ?? "/") },
         });
         matched = result.matched;
         if (matched && responseFinished && res.statusCode >= 200 && res.statusCode < 300) {
@@ -424,6 +429,12 @@ const nitroSsrCodeSplittingPlugin = (): Plugin => ({
 });
 
 export default defineConfig({
+  // Scalar embeds the Vue bundler runtime in its browser-only documentation view.
+  define: {
+    __VUE_OPTIONS_API__: true,
+    __VUE_PROD_DEVTOOLS__: false,
+    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
+  },
   root: __dirname,
   cacheDir: viteCacheDir,
   server: isolatedDevConfig

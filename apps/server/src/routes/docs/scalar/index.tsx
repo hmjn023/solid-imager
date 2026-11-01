@@ -1,14 +1,8 @@
-import { createFileRoute, lazyRouteComponent } from "@tanstack/solid-router";
-
-const ScalarApiReference = lazyRouteComponent(
-	() => import("~/components/scalar-api-reference"),
-	"ScalarApiReference",
-);
+import { createFileRoute } from "@tanstack/solid-router";
+import { ScalarApiReference } from "~/components/scalar-api-reference";
 
 export const Route = createFileRoute("/docs/scalar/")({
-	component: ScalarPage,
+	ssr: false,
+	pendingComponent: () => null,
+	component: ScalarApiReference,
 });
-
-function ScalarPage() {
-	return <ScalarApiReference />;
-}

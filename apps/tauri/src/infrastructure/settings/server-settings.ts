@@ -1,3 +1,4 @@
+import { SCALAR_DOCS_PATH } from "@solid-imager/core/domain/contract/http-paths";
 import { Store } from "@tauri-apps/plugin-store";
 import { z } from "zod";
 import { getBuildTimeServerUrl } from "~/infrastructure/api-base";
@@ -164,6 +165,14 @@ export function getActiveServer(): ServerConnection | null {
 		current.servers.find((server) => server.id === current.activeServerId) ??
 		null
 	);
+}
+
+// Documentation is served by the selected server, including when RPC uses the local Vite proxy.
+export function getApiDocsUrl(): string | undefined {
+	const server = getActiveServer();
+	return server
+		? server.baseUrl.replace(/\/api\/rpc$/, "") + SCALAR_DOCS_PATH
+		: undefined;
 }
 
 export async function saveServerSettings(

@@ -15,7 +15,6 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@orpc/client": "^1.16.1",
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
     "incur": "0.7.1",
