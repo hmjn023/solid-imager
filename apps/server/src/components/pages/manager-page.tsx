@@ -167,6 +167,14 @@ export function ManagerPage(): JSX.Element {
 	return (
 		<ManagerScreen
 			clusteringActions={{
+				startClustering: async (input) => {
+					const result = await orpc.characters.startClustering(input);
+					void queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
+					return result;
+				},
+				openJobs: () => {
+					void navigate({ to: "/jobs" });
+				},
 				openMedia: (media) => {
 					void navigate({
 						to: "/sources/$mediaSourceId/$mediaId",

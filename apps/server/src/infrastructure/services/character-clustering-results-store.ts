@@ -47,7 +47,7 @@ const summaryFileSchema = z
 		"解析件数が一致しません。",
 	);
 
-function defaultRoot(): string {
+export function characterClusteringRoot(): string {
 	if (process.env.CHARACTER_CLUSTERING_DIR)
 		return path.resolve(process.env.CHARACTER_CLUSTERING_DIR);
 	const cwd = process.cwd();
@@ -77,7 +77,7 @@ export class FileCharacterClusteringResultsStore implements ICharacterClustering
 			records: Map<string, ClusteringSnapshotMedia>;
 		}
 	>();
-	constructor(private readonly root = defaultRoot()) {}
+	constructor(private readonly root = characterClusteringRoot()) {}
 
 	private async safeFile(relative: string): Promise<string> {
 		const root = await realpath(this.root);

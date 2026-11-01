@@ -2,6 +2,7 @@ import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
 	characterSchema,
+	startCharacterClusteringSchema,
 	newCharacterSchema,
 	updateCharacterSchema,
 	clusteringRunSummarySchema,
@@ -12,6 +13,16 @@ import {
 } from "../characters/schemas";
 
 export const charactersContract = {
+	startClustering: oc
+		.route({
+			method: "POST",
+			tags: ["Characters"],
+			summary: "キャラクタークラスタリングを開始",
+			description:
+				"保存済みCCIPのsolo画像から近傍を抽出し、HDBSCANの結果を新規保存するジョブを投入します。",
+		})
+		.input(startCharacterClusteringSchema)
+		.output(z.object({ jobId: z.uuid() })),
 	clusteringRuns: oc
 		.route({
 			tags: ["Characters"],
