@@ -183,10 +183,8 @@ export default defineConfig({
 		emptyOutDir: true,
 	},
 	define: {
-		// The Tauri app treats this as its initial server profile. Keeping it on
-		// the fixture origin makes both dev and production use the same-origin
-		// proxy and prevents the built-in LAN fallback from being exercised.
-		"import.meta.env.VITE_API_URL": JSON.stringify(fixtureOrigin),
+		// The selected server URL is also used to open external links such as Scalar.
+		"import.meta.env.VITE_API_URL": JSON.stringify(apiTarget),
 	},
 	plugins: [
 		binaryMediaProxy(),

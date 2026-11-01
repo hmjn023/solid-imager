@@ -194,6 +194,18 @@ test("Tauri root opens the real shared Library workspace", async ({ page }) => {
 	await expectRouteHealthy(page);
 });
 
+test("Tauri links to Scalar on the selected API server", async ({ page }) => {
+	await page.goto("/#/about");
+	await waitForTauriWorkspace(page);
+	const docs = `http://127.0.0.1:${process.env.E2E_PORT}/docs/scalar`;
+	await expect(
+		page.getByRole("link", { name: "API Docs", exact: true }).first(),
+	).toHaveAttribute("href", docs);
+	await expect(
+		page.getByRole("link", { name: "API documentation", exact: true }),
+	).toHaveAttribute("href", docs);
+});
+
 test("Tauri Library separates preview selection from current media detail", async ({
 	page,
 }) => {

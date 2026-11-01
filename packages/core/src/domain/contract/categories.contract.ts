@@ -1,36 +1,45 @@
+import { openapi } from "@orpc/openapi";
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import { newCategorySchema, updateCategorySchema } from "../categories/schemas";
 
 export const categoriesContract = {
-	list: oc.route({
-		tags: ["Categories"],
-		summary: "カテゴリ一覧取得",
-		description: "登録済みのカテゴリを一覧で取得します。",
-	}),
+	list: oc.meta(
+		openapi({
+			tags: ["Categories"],
+			summary: "カテゴリ一覧取得",
+			description: "登録済みのカテゴリを一覧で取得します。",
+		}),
+	),
 
 	get: oc
-		.route({
-			tags: ["Categories"],
-			summary: "カテゴリ取得",
-			description: "UUIDで指定したカテゴリの情報を取得します。",
-		})
+		.meta(
+			openapi({
+				tags: ["Categories"],
+				summary: "カテゴリ取得",
+				description: "UUIDで指定したカテゴリの情報を取得します。",
+			}),
+		)
 		.input(z.object({ id: z.uuid() })),
 
 	create: oc
-		.route({
-			tags: ["Categories"],
-			summary: "カテゴリ作成",
-			description: "新しいカテゴリを登録します。",
-		})
+		.meta(
+			openapi({
+				tags: ["Categories"],
+				summary: "カテゴリ作成",
+				description: "新しいカテゴリを登録します。",
+			}),
+		)
 		.input(newCategorySchema),
 
 	update: oc
-		.route({
-			tags: ["Categories"],
-			summary: "カテゴリ更新",
-			description: "UUIDで指定したカテゴリの情報を更新します。",
-		})
+		.meta(
+			openapi({
+				tags: ["Categories"],
+				summary: "カテゴリ更新",
+				description: "UUIDで指定したカテゴリの情報を更新します。",
+			}),
+		)
 		.input(
 			z.object({
 				id: z.uuid(),
@@ -39,11 +48,13 @@ export const categoriesContract = {
 		),
 
 	delete: oc
-		.route({
-			tags: ["Categories"],
-			summary: "カテゴリ削除",
-			description: "UUIDで指定したカテゴリを削除します。",
-		})
+		.meta(
+			openapi({
+				tags: ["Categories"],
+				summary: "カテゴリ削除",
+				description: "UUIDで指定したカテゴリを削除します。",
+			}),
+		)
 		.input(z.object({ id: z.uuid() }))
 		.output(z.object({ success: z.boolean() })),
 };

@@ -13,6 +13,7 @@ export function ScalarApiReference() {
 		const reference = createApiReference(referenceElement, {
 			url: "/openapi.json",
 			layout: "modern",
+			withDefaultFonts: false,
 		});
 
 		onCleanup(() => reference.destroy());

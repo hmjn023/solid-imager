@@ -1,5 +1,5 @@
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import { queryOptions } from "@tanstack/solid-query";
+import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const projectsQueryKeys = {
 	all: () => ["allProjects"] as const,
@@ -10,22 +10,29 @@ export const defaultProjectsQueryConfig = {
 	staleTime: 1000 * 60 * 5,
 };
 
-export function buildProjectsQueryOptions(queryFn: () => Promise<Project[]>) {
-	return queryOptions({
+export function buildProjectsQueryOptions(
+	queryFn: (context: QueryFunctionContext) => Promise<Project[]>,
+) {
+	return {
 		queryKey: projectsQueryKeys.all(),
 		queryFn,
 		...defaultProjectsQueryConfig,
-	});
+	};
 }
 
 export function buildProjectsForMediaQueryOptions(
 	mediaSourceId: string,
 	mediaId: string,
-	queryFn: (mediaSourceId: string, mediaId: string) => Promise<Project[]>,
+	queryFn: (
+		mediaSourceId: string,
+		mediaId: string,
+		signal: AbortSignal,
+	) => Promise<Project[]>,
 ) {
-	return queryOptions({
+	return {
 		queryKey: projectsQueryKeys.forMedia(mediaId),
-		queryFn: () => queryFn(mediaSourceId, mediaId),
+		queryFn: ({ signal }: QueryFunctionContext) =>
+			queryFn(mediaSourceId, mediaId, signal),
 		...defaultProjectsQueryConfig,
-	});
+	};
 }

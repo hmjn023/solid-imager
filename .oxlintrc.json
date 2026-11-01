@@ -150,6 +150,7 @@
 				"apps/server/src/routes/api/health.ts",
 				"apps/server/src/routes/api/mcp.ts",
 				"apps/server/src/routes/sources/index.tsx",
+				"apps/server/src/routes/api/rest.$.ts",
 				"apps/server/src/routes/api/rpc.$.ts",
 				"apps/server/src/routes/api/jobs.$jobId.artifact.ts",
 				"apps/server/src/routes/api/sources.$mediaSourceId.$mediaId.ts",

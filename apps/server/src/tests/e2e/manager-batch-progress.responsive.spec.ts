@@ -1,7 +1,11 @@
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
-import { E2E_SOURCE_ID, E2E_SOURCE_NAME } from "./support/fixture";
+import {
+	E2E_PRIMARY_FILE_NAME,
+	E2E_SOURCE_ID,
+	E2E_SOURCE_NAME,
+} from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 async function navigateWorkspace(page: Page, label: string, pathname: string) {
@@ -42,7 +46,7 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 					await route.fulfill({
 						status: 200,
 						contentType: "text/event-stream",
-						body: "",
+						body: "event: close\n\n",
 					});
 				} else await route.continue();
 			});
@@ -145,6 +149,10 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 			await expect(bar).toHaveAttribute("aria-valuenow", "50");
 		}
 		await navigateWorkspace(page, "Library", "/search");
+		// Complete the visit before switching back: an unmounted pending search is normally cancelled.
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
 		job.progress = { processed: 3, failed: 0, total: 4 };
 		await navigateWorkspace(page, "Manager", "/manager");
 		await expect(bar).toHaveAttribute("aria-valuenow", "75");

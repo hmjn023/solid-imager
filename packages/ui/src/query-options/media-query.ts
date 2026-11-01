@@ -1,6 +1,6 @@
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import type { UUID } from "@solid-imager/core/domain/shared/schemas";
-import { queryOptions } from "@tanstack/solid-query";
+import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const mediaDetailsQueryKeys = {
 	detail: (mediaSourceId: UUID, mediaId: UUID) =>
@@ -14,11 +14,16 @@ export const defaultMediaDetailsQueryConfig = {
 export function buildMediaDetailsQueryOptions(
 	mediaSourceId: UUID,
 	mediaId: UUID,
-	queryFn: (sourceId: UUID, id: UUID) => Promise<MediaDetails>,
+	queryFn: (
+		sourceId: UUID,
+		id: UUID,
+		signal: AbortSignal,
+	) => Promise<MediaDetails>,
 ) {
-	return queryOptions({
+	return {
 		queryKey: mediaDetailsQueryKeys.detail(mediaSourceId, mediaId),
-		queryFn: () => queryFn(mediaSourceId, mediaId),
+		queryFn: ({ signal }: QueryFunctionContext) =>
+			queryFn(mediaSourceId, mediaId, signal),
 		...defaultMediaDetailsQueryConfig,
-	});
+	};
 }

@@ -1,26 +1,30 @@
 import { writeFile } from "node:fs/promises";
 import { OpenAPIGenerator } from "@orpc/openapi";
-import { ZodToJsonSchemaConverter } from "@orpc/zod/zod4";
+import { ZodToJsonSchemaConverter } from "@orpc/zod";
 import { appContract } from "@solid-imager/core/domain/contract";
+import { REST_API_PREFIX } from "@solid-imager/core/domain/contract/http-paths";
 import { openApiTags } from "../src/infrastructure/api/openapi-tags";
 
 const generator = new OpenAPIGenerator({
-	schemaConverters: [new ZodToJsonSchemaConverter()],
+	converters: [new ZodToJsonSchemaConverter()],
 });
 
 const document = await generator.generate(appContract, {
-	info: {
-		title: "Solid Imager oRPC API",
-		version: "1.0.0",
-		description: "Solid Imagerを管理するためのAPI仕様です。",
-	},
-	servers: [
-		{
-			url: "/api/rpc",
-			description: "現在のAPIサーバー",
+	version: "3.1.1",
+	base: {
+		info: {
+			title: "Solid Imager oRPC API",
+			version: "1.0.0",
+			description: "Solid Imagerを管理するためのAPI仕様です。",
 		},
-	],
-	tags: openApiTags,
+		servers: [
+			{
+				url: REST_API_PREFIX,
+				description: "現在のAPIサーバー",
+			},
+		],
+		tags: openApiTags,
+	},
 });
 
 await writeFile(

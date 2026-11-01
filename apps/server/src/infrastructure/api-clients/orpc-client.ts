@@ -27,4 +27,4 @@ const getORPCClient = createIsomorphicFn()
 	});
 
 export const client = getORPCClient();
-export const orpc = getORPCClient();
+export const orpc = client;

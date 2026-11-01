@@ -1,3 +1,4 @@
+import type { RouterContractClient } from "@orpc/contract";
 export { aiContract } from "./ai.contract";
 export { authorsContract } from "./authors.contract";
 export { categoriesContract } from "./categories.contract";
@@ -8,6 +9,7 @@ export { downloadsContract } from "./downloads.contract";
 export { importsContract } from "./imports.contract";
 export { ipsContract } from "./ips.contract";
 export { jobsContract } from "./jobs.contract";
+export { mediaToolsContract } from "./media-tools.contract";
 export { mediaContract } from "./media.contract";
 export { presetsContract } from "./presets.contract";
 export type { PresetOrpcLike } from "./presets-client";
@@ -29,6 +31,7 @@ import { downloadsContract } from "./downloads.contract";
 import { importsContract } from "./imports.contract";
 import { ipsContract } from "./ips.contract";
 import { jobsContract } from "./jobs.contract";
+import { mediaToolsContract } from "./media-tools.contract";
 import { mediaContract } from "./media.contract";
 import { presetsContract } from "./presets.contract";
 import { projectsContract } from "./projects.contract";
@@ -46,6 +49,7 @@ export const appContract = {
 	sources: sourcesContract,
 	tags: tagsContract,
 	media: mediaContract,
+	tools: mediaToolsContract,
 	categories: categoriesContract,
 	projects: projectsContract,
 	characters: charactersContract,
@@ -64,3 +68,5 @@ export const appContract = {
 };
 
 export type AppContract = typeof appContract;
+
+export type AppContractClient = RouterContractClient<AppContract>;
