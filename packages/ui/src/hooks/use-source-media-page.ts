@@ -11,10 +11,6 @@ import type { UploadResponse } from "@solid-imager/core/domain/media/upload-sche
 import type { Project } from "@solid-imager/core/domain/projects/schemas";
 import type { SemanticSearchRequest } from "@solid-imager/core/domain/search/embedding";
 import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
-import {
-	getScrollPosition,
-	setScrollPosition,
-} from "@solid-imager/core/domain/sources/store";
 import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import type { QueryClient } from "@tanstack/solid-query";
@@ -39,6 +35,10 @@ import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
 import { searchState } from "../stores/search-store";
+import {
+	getScrollPosition,
+	setScrollPosition,
+} from "../stores/source-scroll-store";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 import { createStableMediaResults } from "./stable-media-results";
 import type { MediaSourceEventTransport } from "./use-media-source-events";

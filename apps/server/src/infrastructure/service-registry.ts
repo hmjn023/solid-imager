@@ -224,7 +224,7 @@ export class ServiceRegistry {
 	}
 
 	// Helper for testing to reset the registry
-	async reset(): Promise<void> {
+	reset(): void {
 		this.mediaRepository = undefined;
 		this.sourceRepository = undefined;
 		this.mediaStorage = undefined;
@@ -241,10 +241,6 @@ export class ServiceRegistry {
 		this.mediaProcessingService = undefined;
 		this.characterService = undefined;
 		this.configService = undefined;
-
-		// Reset service singletons that might hold references to old repositories
-		const { resetMediaService } = await import("./services/media-service");
-		resetMediaService();
 	}
 }
 

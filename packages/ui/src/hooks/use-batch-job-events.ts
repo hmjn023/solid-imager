@@ -7,16 +7,14 @@ import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
 import { subscribeToEventStream } from "../event-stream";
-import type { ManagerJobHandlers } from "./use-manager-page";
+import type {
+	ManagerJobHandlers,
+	UseBatchJobEventsOptions,
+} from "./batch-job-events.types";
 
 export type JobEventStreamFactory = (
 	signal: AbortSignal,
 ) => Promise<AsyncIterable<JobEvent>>;
-
-export type UseBatchJobEventsOptions = {
-	subscribeImmediately?: boolean;
-	onConnected?: () => void | Promise<void>;
-};
 
 const BUFFERED_JOB_EVENT_LIMIT = 20;
 

@@ -199,9 +199,6 @@
         "typescript": "7.0.2",
         "vitest": "^5.0.5",
       },
-      "peerDependencies": {
-        "solid-js": "^1.9.17",
-      },
     },
     "packages/db": {
       "name": "@solid-imager/db",

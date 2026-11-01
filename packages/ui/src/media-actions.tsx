@@ -21,7 +21,7 @@ import {
 	AlertDialogTitle,
 } from "./alert-dialog";
 import { Button } from "./button";
-import type { ManagerJobHandlers } from "./hooks/use-manager-page";
+import type { ManagerJobHandlers } from "./hooks/batch-job-events.types";
 import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { toast } from "./toast";
 import {

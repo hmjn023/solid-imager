@@ -1,12 +1,6 @@
 import type {
 	Author,
-	AuthorMediaPage,
 	NewAuthor,
-	AuthorMediaListInput,
-	CorrectMediaAuthorsInput,
-	MergeAuthorsInput,
-	BeginAuthorAccountVerificationInput,
-	AuthorAccountVerification,
 } from "@solid-imager/core/domain/authors/schemas";
 import { createQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
@@ -43,29 +37,7 @@ import { ErrorState } from "../../async-state";
 import { createDebouncedSignal } from "../../utils/debounce";
 import { AuthorAccountVerificationPanel } from "./author-account-verification";
 import { ManagedThumbnailImage } from "../../managed-thumbnail-image";
-
-export type AuthorManagementActions = {
-	openAccountVerificationProfile?: (url: string) => Promise<void>;
-	beginAccountVerification: (
-		input: BeginAuthorAccountVerificationInput,
-	) => Promise<AuthorAccountVerification>;
-	getAccountVerification: (input: {
-		verificationId: string;
-	}) => Promise<AuthorAccountVerification>;
-	confirmAccountVerification: (input: {
-		verificationId: string;
-	}) => Promise<Author>;
-	list: () => Promise<Author[]>;
-	create: (input: NewAuthor) => Promise<Author>;
-	updateName: (input: { id: string; name: string }) => Promise<Author>;
-	listMedia: (input: AuthorMediaListInput) => Promise<AuthorMediaPage>;
-	correctMedia: (
-		input: CorrectMediaAuthorsInput,
-	) => Promise<{ changedCount: number }>;
-	merge: (input: MergeAuthorsInput) => Promise<{ changedCount: number }>;
-	thumbnailUrl: (sourceId: string, mediaId: string) => string | Promise<string>;
-	releaseThumbnailUrl?: (url: string) => void;
-};
+import type { AuthorManagementActions } from "./authors.types";
 
 function authorLabel(author: Author): string {
 	const accounts = author.accounts
