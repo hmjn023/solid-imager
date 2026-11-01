@@ -39,12 +39,17 @@ export async function processJob(job: Job) {
 		!mediaSourceId &&
 		job.type !== "bulk_tagging_dispatch" &&
 		job.type !== "batch_ccip_dispatch" &&
+		job.type !== "character_clustering" &&
 		job.type !== "extract_embedding_batch"
 	) {
 		throw new Error(`Job ${job.id} missing mediaSourceId`);
 	}
 
-	if (job.type === "processMedia") {
+	if (job.type === "character_clustering") {
+		const { processCharacterClusteringJob } =
+			await import("./character-clustering-job-service");
+		return processCharacterClusteringJob(job, services.getJobRepository());
+	} else if (job.type === "processMedia") {
 		const { MediaProcessingService } =
 			await import("~/infrastructure/services/media-processing-service");
 		await MediaProcessingService.executeProcessMediaJob(job);

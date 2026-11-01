@@ -5,6 +5,7 @@ import type {
 	ClusteringMediaResponse,
 	ClusteringReviewMedia,
 	ClusteringRunSummary,
+	StartCharacterClustering,
 } from "@solid-imager/core/domain/characters/schemas";
 import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
 import {
@@ -43,8 +44,13 @@ import { ManagedThumbnailImage } from "../../managed-thumbnail-image";
 import { TextField, TextFieldInput, TextFieldLabel } from "../../text-field";
 
 import { ClusteringVirtualGrid } from "./clustering-virtual-grid";
+import { CharacterClusteringStart } from "./character-clustering-start";
 
 export type CharacterClusteringReviewActions = {
+	startClustering?: (
+		input: StartCharacterClustering,
+	) => Promise<{ jobId: string }>;
+	openJobs?: () => void;
 	openMedia: (media: ClusteringReviewMedia) => void;
 	listRuns: () => Promise<ClusteringRunSummary[]>;
 	listGroups: (
@@ -431,6 +437,14 @@ export function CharacterClusteringReviewPanel(props: {
 					結果を再読み込み
 				</Button>
 			</div>
+			<Show when={props.actions.startClustering}>
+				{(start) => (
+					<CharacterClusteringStart
+						start={start()}
+						openJobs={() => props.actions.openJobs?.()}
+					/>
+				)}
+			</Show>
 			<Show when={runs.isPending && runs.fetchStatus !== "paused"}>
 				<p aria-live="polite" class="text-sm">
 					解析結果を読み込んでいます…
@@ -448,7 +462,7 @@ export function CharacterClusteringReviewPanel(props: {
 			<Show when={runsData() && runsData()?.length === 0}>
 				<EmptyState
 					title="保存済みの解析結果がありません"
-					description="解析結果と、その解析で使った画像一覧をサーバーへ配置すると確認できます。"
+					description="クラスタリングを開始し、ジョブ完了後に結果を再読み込みしてください。"
 				/>
 			</Show>
 			<Show when={current()}>

@@ -4,6 +4,14 @@ import type { Job as DbJob } from "~/infrastructure/db/schema";
 const processBatchCcipDispatchJob = vi.fn();
 const processBulkTaggingDispatchJob = vi.fn();
 const processThumbnailGenerationJob = vi.fn();
+const processCharacterClusteringJob = vi.fn();
+const clusteringRepository = {};
+vi.doMock("~/infrastructure/services/character-clustering-job-service", () => ({
+	processCharacterClusteringJob,
+}));
+vi.doMock("~/infrastructure/service-registry", () => ({
+	services: { getJobRepository: () => clusteringRepository },
+}));
 
 vi.doMock("~/infrastructure/jobs/ccip-jobs", () => ({
 	processBatchCcipDispatchJob,
@@ -48,9 +56,20 @@ function createJob(
 
 describe("processJob", () => {
 	beforeEach(() => {
+		processCharacterClusteringJob.mockReset();
 		processBatchCcipDispatchJob.mockReset();
 		processBulkTaggingDispatchJob.mockReset();
 		processThumbnailGenerationJob.mockReset();
+	});
+
+	it("dispatches global clustering jobs without a source and returns the handler result", async () => {
+		const job = createJob("character_clustering", null);
+		processCharacterClusteringJob.mockResolvedValueOnce({ success: true });
+		await expect(processJob(job)).resolves.toEqual({ success: true });
+		expect(processCharacterClusteringJob).toHaveBeenCalledWith(
+			job,
+			clusteringRepository,
+		);
 	});
 
 	it("allows batch_ccip_dispatch without mediaSourceId", async () => {

@@ -6914,6 +6914,75 @@
         }
       }
     },
+    "/characters/startClustering": {
+      "post": {
+        "operationId": "characters.startClustering",
+        "summary": "キャラクタークラスタリングを開始",
+        "description": "保存済みCCIPのsolo画像から近傍を抽出し、HDBSCANの結果を新規保存するジョブを投入します。",
+        "tags": [
+          "Characters"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "neighbors": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 256,
+                    "default": 64
+                  },
+                  "minClusterSize": {
+                    "type": "integer",
+                    "minimum": 2,
+                    "maximum": 10000,
+                    "default": 5
+                  },
+                  "minSamples": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 256,
+                    "default": 3
+                  },
+                  "selectionMethod": {
+                    "enum": [
+                      "eom",
+                      "leaf"
+                    ],
+                    "type": "string",
+                    "default": "leaf"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid"
+                    }
+                  },
+                  "required": [
+                    "jobId"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/characters/clusteringRuns": {
       "post": {
         "operationId": "characters.clusteringRuns",

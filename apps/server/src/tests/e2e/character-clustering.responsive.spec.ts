@@ -18,6 +18,68 @@ async function openReview(page: Page) {
 	).toBeVisible();
 }
 
+test("manager submits clustering conditions and prevents duplicate pending submissions", async ({
+	page,
+	browserHealth,
+}) => {
+	await openReview(page);
+	await page.reload();
+	await waitForAppHydration(page);
+	const start = page.getByRole("button", {
+		name: "クラスタリングを開始",
+		exact: true,
+	});
+	await expect(start).toBeVisible();
+	await page.getByLabel("近傍数", { exact: true }).fill("32");
+	await page.getByLabel("最小クラスタ枚数", { exact: true }).fill("8");
+	await page.getByLabel("密度の最小サンプル数", { exact: true }).fill("2");
+	let release = () => {};
+	const held = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	let requests = 0;
+	await page.route("**/api/rpc/characters/startClustering", async (route) => {
+		requests++;
+		expect(route.request().postDataJSON().json).toEqual({
+			neighbors: 32,
+			minClusterSize: 8,
+			minSamples: 2,
+			selectionMethod: "leaf",
+		});
+		await held;
+		await route.fulfill({
+			json: { json: { jobId: "11111111-1111-4111-8111-111111111111" } },
+		});
+	});
+	await start.click();
+	await expect(
+		page.getByRole("button", { name: "開始しています…", exact: true }),
+	).toBeDisabled();
+	release();
+	await expect(
+		page.getByText("解析ジョブを登録しました。", { exact: false }),
+	).toBeVisible();
+	expect(requests).toBe(1);
+	await expect(page.getByLabel("近傍数", { exact: true })).toHaveValue("32");
+	await page
+		.getByRole("button", { name: "結果を再読み込み", exact: true })
+		.click();
+	await expect(page.getByLabel("近傍数", { exact: true })).toHaveValue("32");
+	await page.unroute("**/api/rpc/characters/startClustering");
+	browserHealth.allowResponseFailure("/characters/startClustering");
+	browserHealth.allowConsole(
+		"Failed to load resource: the server responded with a status of 503",
+	);
+	await page.route("**/api/rpc/characters/startClustering", (route) =>
+		route.fulfill({ status: 503, body: "Temporarily unavailable" }),
+	);
+	await start.click();
+	await expect(page.getByRole("alert")).toContainText(
+		"解析を開始できませんでした",
+	);
+	await expect(start).toBeEnabled();
+});
+
 async function scrollList(list: Locator, end: boolean) {
 	await list.evaluate((element, toEnd) => {
 		const owner = element.closest("[data-clustering-scroll]");

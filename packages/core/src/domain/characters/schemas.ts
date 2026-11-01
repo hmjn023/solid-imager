@@ -6,6 +6,21 @@
  */
 
 import { z } from "zod";
+
+export const startCharacterClusteringSchema = z
+	.object({
+		neighbors: z.number().int().min(2).max(256).default(64),
+		minClusterSize: z.number().int().min(2).max(10000).default(5),
+		minSamples: z.number().int().min(1).max(256).default(3),
+		selectionMethod: z.enum(["eom", "leaf"]).default("leaf"),
+	})
+	.refine((value) => value.minSamples <= value.neighbors, {
+		message: "密度の最小サンプル数は近傍数以下にしてください。",
+		path: ["minSamples"],
+	});
+export type StartCharacterClustering = z.infer<
+	typeof startCharacterClusteringSchema
+>;
 export * from "./clustering-schemas";
 
 export const newCharacterSchema = z.object({
