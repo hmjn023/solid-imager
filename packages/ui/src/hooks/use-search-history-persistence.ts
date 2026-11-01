@@ -232,6 +232,19 @@ export function useSearchHistoryPersistence(
 						await options.client.get(queryId);
 					if (generation !== restoreGeneration) return;
 					snapshotState = snapshot.state;
+					// Keep a server-restored snapshot in the local history entry too.
+					// Otherwise leaving this view captures an identical new entry with
+					// no URL id, whose async capture may finish after navigation.
+					history.replace(
+						href,
+						mergeHistoryEntry(currentHistoryState(), {
+							version: HISTORY_VERSION,
+							id: queryId,
+							state: snapshotState,
+						}),
+						{ ignoreBlocker: true },
+					);
+					history.flush();
 				} catch {
 					if (generation !== restoreGeneration) return;
 					// A deleted/invalid shared snapshot falls back to the current session.

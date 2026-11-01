@@ -148,6 +148,7 @@
 				"apps/server/src/routes/manager.tsx",
 				"apps/server/src/routes/search.tsx",
 				"apps/server/src/routes/api/health.ts",
+				"apps/server/src/routes/api/mcp.ts",
 				"apps/server/src/routes/sources/index.tsx",
 				"apps/server/src/routes/api/rpc.$.ts",
 				"apps/server/src/routes/api/jobs.$jobId.artifact.ts",
@@ -161,6 +162,7 @@
 			"files": [
 				"apps/server/src/hooks/use-media-source-events.ts",
 				"apps/server/src/components/layout/app-shell.tsx",
+				"apps/server/src/components/layout/layout.tsx",
 				"apps/server/src/components/home-route.tsx",
 				"apps/server/src/components/pages/search-content.tsx",
 				"apps/server/src/components/media/media-actions.tsx",

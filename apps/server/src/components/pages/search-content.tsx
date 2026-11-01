@@ -1,4 +1,5 @@
 import type { Media } from "@solid-imager/core/domain/media/schemas";
+import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { Button } from "@solid-imager/ui/button";
 import {
@@ -29,6 +30,7 @@ import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
+import { useWebMcpView } from "~/infrastructure/mcp/web-view";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
 import {
@@ -140,6 +142,17 @@ export default function SearchContent() {
 				mediaId: media.id,
 				mediaSourceId: media.mediaSourceId,
 			}));
+	useWebMcpView(() => ({
+		kind: "search",
+		snapshotId: location().search.search,
+		searchKey: JSON.stringify(searchSnapshotStateSchema.parse(searchState)),
+		resultsCurrent: page.resultsCurrent(),
+		ready: searchHistory.isRestored(),
+		state: page.contentState(),
+		media: page.searchResults(),
+		total: page.totalCount() ?? 0,
+		selectedIds: [...selection.selectedIds()],
+	}));
 	const findSearchMedia = (mediaId: string) =>
 		page.searchResults().find((media) => media.id === mediaId);
 	const handleDelete = (mediaId: string) => {

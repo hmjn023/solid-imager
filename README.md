@@ -11,6 +11,31 @@ AI生成画像などのメディアを管理する包括的なメディア管理
 - AI自動タグ付け
 - EmbeddingGemma 2 による画像の類似検索・日本語の自然言語検索
 
+### MCP からメディアを操作する
+
+HTTP MCP はデータ操作、ブラウザの WebMCP はユーザーと同じ画面を使う操作を提供します。HTTP MCP のツールは次の6つです。
+
+| ツール | 操作 |
+| --- | --- |
+| `list_sources` | ソース一覧を取得します。登録前にローカルパスの重複を確認できます。 |
+| `create_local_source` | サーバー上のディレクトリを `name`、`path`、任意の `description` で登録し、初回スキャンと監視を開始します。 |
+| `search_media` | キーワード・タグ・ソースで検索します。`limit` と `offset` でページを取得できます。 |
+| `get_media_details` | 検索結果の `mediaSourceId` を `sourceId`、`id` を `mediaId` に渡すと、メディアの基本情報、生成パラメーター、作者、キャラクター、作品、タグを取得できます。 |
+| `find_tags` | 既存タグを名前で部分一致検索し、編集に必要なタグ ID を取得します。 |
+| `edit_media_tags` | 1件のメディアに対して `action`（`add` または `remove`）と `tagIds` を指定します。追加は positive タグ、解除は指定 ID のすべての割り当てが対象です。 |
+
+**HTTP MCP** — MCP クライアントの接続方式に Streamable HTTP を選び、起動中の Web サーバーの URL に `/api/mcp` を付けます。本番サーバーをローカルのポート 3000 で起動した場合は `http://localhost:3000/api/mcp` です。既定ではループバックのホスト名を許可します。リバースプロキシ経由で使う場合は、サーバーの環境変数 `MCP_ALLOWED_HOSTS` に公開ホスト名を設定し、Web UI と同じアクセス制御を適用してください。
+
+**WebMCP** — 対応ブラウザで HTTPS または localhost の Web UI を開くと、ツールがそのタブに登録されます。Chrome で試すには `chrome://flags/#enable-webmcp-testing` を有効にして再起動してください。[Chrome の WebMCP ガイド](https://developer.chrome.com/docs/ai/webmcp)
+
+- `search_media`: 検索画面に移動し、キーワード・タグ・ソースの条件と結果を表示します。既存の検索条件を置き換え、検索履歴として「戻る」や再読み込みで復元できます。
+- `open_media`: HTTP の `get_media_details` に相当する画面操作です。対象画像とメタデータを開きます。
+- `edit_media_tags`: 対象画像を開いて編集し、画面上のタグが更新されてから完了します。
+- `get_current_view`: 表示中の画像、検索結果、選択状態を確認します。`limit`（最大5件）と `offset` で取得し、`next_offset` があれば次のページを取得できます。
+- `find_tags`、`list_sources`、`create_local_source` も利用できます。検索・一覧の応答は短いページ単位です。
+
+WebMCP の操作は開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
+
 ### EmbeddingGemma 2 検索
 
 1. `bun run --cwd apps/server db:migrate` を適用し、Manager → Vector extraction で **EmbeddingGemma 2** を選んでローカル画像の索引を作成します。
