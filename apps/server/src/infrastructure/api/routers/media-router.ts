@@ -99,16 +99,10 @@ export const mediaRouter = os.router({
 		async ({ input }) => await MediaService.findDuplicates(input ?? {}),
 	),
 
-	/**
-	 * Get media file content (binary)
-	 * Note: This returns the actual image/video file
-	 */
 	getContent: os.getContent.handler(() => {
-		// JSONシリアライズを避けるため、バッファコンテンツではなくURLまたはストリームを返す必要があります
-		// 現時点では、誤用を防ぐためにバッファの返却を削除するか、エラーをスローするのが安全です。
 		throw new ORPCError("BAD_REQUEST", {
 			message:
-				"Binary content cannot be returned via oRPC. Please use the dedicated REST endpoint. Refer to the API documentation for details.",
+				"Use GET /api/sources/{sourceId}/{mediaId} to download the media file.",
 		});
 	}),
 

@@ -1,4 +1,5 @@
 import path from "node:path";
+import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { RPCHandler } from "@orpc/server/node";
 import { REST_API_PREFIX } from "@solid-imager/core/domain/contract/http-paths";
@@ -429,12 +430,6 @@ const nitroSsrCodeSplittingPlugin = (): Plugin => ({
 });
 
 export default defineConfig({
-  // Scalar embeds the Vue bundler runtime in its browser-only documentation view.
-  define: {
-    __VUE_OPTIONS_API__: true,
-    __VUE_PROD_DEVTOOLS__: false,
-    __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: false,
-  },
   root: __dirname,
   cacheDir: viteCacheDir,
   server: isolatedDevConfig
@@ -491,13 +486,14 @@ export default defineConfig({
           }),
         ]
       : []),
-    nitro(
-      e2eNitroOutput
-        ? {
-            output: e2eNitroOutput,
-          }
-        : undefined,
-    ),
+    nitro({
+      ...(e2eNitroOutput && { output: e2eNitroOutput }),
+      publicAssets: [{
+        baseURL: "/_scalar",
+        dir: path.join(path.dirname(createRequire(import.meta.url).resolve("@scalar/api-reference")), "browser"),
+        ignore: ["**/chunks/**", "**/*.map", "**/*.esm.js"],
+      }],
+    }),
     tailwindcss(),
     tanstackStart({
       router: {

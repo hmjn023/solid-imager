@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>Solid Imager API Reference</title>
+	</head>
+	<body>
+		<div id="app"></div>
+		<script>
+			// Resolve from the public /docs/scalar URL, even when the proxy strips its mount path.
+			const base = new URL(
+				"../",
+				location.origin + location.pathname.replace(/\/+$/, ""),
+			);
+			const script = document.createElement("script");
+			script.src = new URL("_scalar/standalone.js", base).href;
+			const showLoadError = () => {
+				document.getElementById("app").textContent =
+					"Could not load the Solid Imager API reference.";
+			};
+			script.onerror = showLoadError;
+			script.onload = async () => {
+				try {
+					const specURL = new URL("openapi.json", base);
+					const response = await fetch(specURL);
+					if (!response.ok) throw new Error("OpenAPI document unavailable");
+					const spec = await response.json();
+					// Scalar's request client otherwise resolves relative servers against the origin.
+					const servers = spec.servers.map((server) => ({
+						...server,
+						url: new URL(server.url, specURL).href,
+					}));
+					Scalar.createApiReference("#app", {
+						content: spec,
+						servers,
+						layout: "modern",
+						withDefaultFonts: false,
+					});
+				} catch {
+					showLoadError();
+				}
+			};
+			document.head.append(script);
+		</script>
+	</body>
+</html>

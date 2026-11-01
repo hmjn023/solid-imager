@@ -1,5 +1,6 @@
 import { openapi } from "@orpc/openapi";
 import { oc } from "@orpc/contract";
+import { rpcOnly } from "./rest-visibility";
 import { z } from "zod";
 import {
 	bulkCopyToSourceMediaRequestSchema,
@@ -88,17 +89,8 @@ export const mediaContract = {
 		.input(mediaLocationSchema)
 		.output(mediaDetailsSchema),
 
-	getContent: oc
-		.meta(
-			openapi({
-				tags: ["Media"],
-				summary: "メディア本体取得（非対応）",
-				description:
-					"このoRPC操作はバイナリ本体を返せないため、呼び出すとBAD_REQUESTになります。画像や動画本体の取得には専用RESTルートを使用してください。",
-			}),
-		)
-		.input(mediaLocationSchema)
-		.output(z.never()),
+	// Legacy RPC callers get directions to the dedicated media endpoint.
+	getContent: oc.meta(rpcOnly).input(mediaLocationSchema).output(z.never()),
 
 	getTags: oc
 		.meta(
