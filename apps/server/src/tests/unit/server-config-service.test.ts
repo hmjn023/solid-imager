@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import fsPromises from "node:fs/promises";
-import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import {
+	AppConfigUpdateSchema,
+	defaultAppConfig,
+} from "@solid-imager/core/domain/config/config-schema";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ServerConfigService } from "~/infrastructure/services/server-config-service";
 
@@ -70,7 +73,32 @@ describe("ConfigService", () => {
 		expect(JSON.parse(serializedConfig)).toEqual({
 			...legacyConfig,
 			downloads: defaultAppConfig.downloads,
+			mcp: defaultAppConfig.mcp,
 		});
+	});
+
+	it("preserves explicit empty publication lists and merges independent settings updates on disk", async () => {
+		vi.mocked(fs.existsSync).mockReturnValue(true);
+		vi.mocked(fs.readFileSync).mockReturnValue(
+			JSON.stringify({ mcp: { http: [], web: ["tags_list"] } }),
+		);
+		service.load();
+		expect(service.getConfig().mcp).toEqual({ http: [], web: ["tags_list"] });
+		await Promise.all([
+			service.updateConfig(
+				AppConfigUpdateSchema.parse({ mcp: { http: ["jobs_list"] } }),
+			),
+			service.updateConfig(
+				AppConfigUpdateSchema.parse({ logging: { level: "debug" } }),
+			),
+			service.updateConfig(AppConfigUpdateSchema.parse({ mcp: { web: [] } })),
+		]);
+		const saved = service.getConfig();
+		expect(saved.mcp).toEqual({ http: ["jobs_list"], web: [] });
+		expect(saved.logging.level).toBe("debug");
+		expect(vi.mocked(fsPromises.writeFile).mock.lastCall?.[1]).toBe(
+			JSON.stringify(saved, null, 2),
+		);
 	});
 
 	it("should override config with environment variables", () => {

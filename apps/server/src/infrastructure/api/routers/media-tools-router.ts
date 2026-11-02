@@ -13,7 +13,6 @@ const hints = (readOnlyHint: boolean, idempotentHint: boolean) =>
 		annotations: { readOnlyHint, idempotentHint, openWorldHint: false },
 	});
 const readOnly = hints(true, true);
-// Only this router is registered with MCP. The full app router contains administrative procedures.
 const os = implement({
 	list_sources: contract.list_sources.meta(readOnly),
 	create_local_source: contract.create_local_source.meta(hints(false, false)),

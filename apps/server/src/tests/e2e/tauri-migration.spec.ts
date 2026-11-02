@@ -404,6 +404,16 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 	await expect(
 		page.getByRole("heading", { name: "Settings", exact: true }),
 	).toBeVisible();
+	await page.getByRole("tab", { name: /^MCP/ }).click();
+	await page
+		.getByRole("textbox", { name: "ツールを絞り込む" })
+		.fill("get_current_view");
+	await expect(
+		page.getByRole("checkbox", { name: "WebMCP get_current_view" }),
+	).toBeChecked();
+	await expect(
+		page.getByRole("checkbox", { name: "HTTP MCP get_current_view" }),
+	).toHaveCount(0);
 	await page.getByRole("tab", { name: /^AI/ }).click();
 	await expect(
 		page.getByRole("group", { name: "AI Service", exact: true }),

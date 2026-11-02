@@ -13,7 +13,7 @@ AI生成画像などのメディアを管理する包括的なメディア管理
 
 ### MCP からメディアを操作する
 
-HTTP MCP はデータ操作、ブラウザの WebMCP はユーザーと同じ画面を使う操作を提供します。HTTP MCP のツールは次の6つです。
+Web と Tauri の **Settings → MCP** で、接続先サーバーの公開候補を検索し、HTTP MCP と WebMCP の公開先を個別に選んで **Save Changes** で保存します。HTTP MCP の初期設定は次の6件です。
 
 | ツール | 操作 |
 | --- | --- |
@@ -34,9 +34,22 @@ HTTP MCP はデータ操作、ブラウザの WebMCP はユーザーと同じ画
 - `get_current_view`: 表示中の画像、検索結果、選択状態を確認します。`limit`（最大5件）と `offset` で取得し、`next_offset` があれば次のページを取得できます。
 - `find_tags`、`list_sources`、`create_local_source` も利用できます。検索・一覧の応答は短いページ単位です。
 
-WebMCP の操作は開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
+既存の画面随伴ツールは操作の開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
 
-ツールの入出力は [oRPC の共有契約](./packages/core/src/domain/contract/media-tools.contract.ts) で定義します。HTTP MCP は [専用ルーター](./apps/server/src/infrastructure/api/routers/media-tools-router.ts) のみを登録し、WebMCP は同じ契約を使ってデータを操作します。画面遷移、選択状態、操作通知はブラウザー側が担当します。
+追加の候補は oRPC の契約から生成します。たとえば `tags.list` は `tags_list` として両方で公開でき、WebMCP ではタブを移動せずにデータを返します。設定 API、イベント購読、ファイルやバイナリを扱う API、旧 `media.getContent` は対象外です。新しい候補は初期状態で非公開です。
+
+サーバーの `config.json`（リポジトリ直下から起動する場合は `apps/server/config.json`、パス変更は `CONFIG_PATH`）でも同じ公開リストを指定できます。次の例では HTTP からは検索だけを許可し、ブラウザーでは現在の画面とタグ一覧を参照できます。
+
+```json
+{
+  "mcp": {
+    "http": ["search_media"],
+    "web": ["get_current_view", "tags_list"]
+  }
+}
+```
+
+各配列はその公開先で許可するツール名の全件です。空配列で全件非公開になります。設定画面からの保存は稼働中のサーバーに反映され、ファイルを直接編集した場合はサーバー再起動時に読み込みます。外部 MCP クライアントが一覧をキャッシュしている場合は、ツール一覧を再取得してください。
 
 ### EmbeddingGemma 2 検索
 
