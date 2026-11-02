@@ -2,15 +2,15 @@ import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
 import { configQueryKeys } from "@solid-imager/ui/query-options";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { Outlet, useLocation, useNavigate } from "@tanstack/solid-router";
+import { Outlet } from "@tanstack/solid-router";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { ApiActivityIndicator } from "~/components/api-activity-indicator";
+import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { AppShell } from "./app-shell";
 
 export function AppLayout() {
 	const queryClient = useQueryClient();
-	const navigate = useNavigate();
-	const location = useLocation();
+	const workspace = useWorkspaceNavigation();
 	const [context, setContext] = createSignal<WebMCP.ModelContext>();
 	onMount(() => setContext(document.modelContext));
 	const publication = createQuery(() => ({
@@ -31,16 +31,7 @@ export function AppLayout() {
 					browser,
 					published,
 					queryClient,
-					{
-						pathname: () => location().pathname,
-						openSearch: (id) =>
-							navigate({ to: "/search", search: { search: id } }),
-						openMedia: (sourceId, mediaId) =>
-							navigate({
-								to: "/sources/$mediaSourceId/$mediaId",
-								params: { mediaSourceId: sourceId, mediaId },
-							}),
-					},
+					workspace,
 					registration.signal,
 				),
 			)
