@@ -208,7 +208,9 @@ test("Tauri links to Scalar on the selected API server", async ({ page }) => {
 
 test("Tauri Library separates preview selection from current media detail", async ({
 	page,
+	browserHealth,
 }) => {
+	const checkpoint = browserHealth.requestCheckpoint();
 	await openTauriRoute(page, "/search");
 	await expectWorkspaceShell(page);
 
@@ -241,6 +243,9 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await expect(inspector).toBeVisible();
 	await expect(inspector).toContainText(E2E_PRIMARY_FILE_NAME);
 	await captureTauriScreenshot(page, "search");
+	for (const path of ["/api/rpc/imports/events", "/api/rpc/sources/events"]) {
+		expect(browserHealth.apiRequestCountPathSince(checkpoint, path)).toBe(1);
+	}
 
 	// `window.open` is emitted on the context even when Chromium does not
 	// classify the child as a popup. Keep a bounded wait so a blocked new tab

@@ -111,3 +111,33 @@ it("shares the inbox stream with late subscribers until the last indicator unmou
 	stopSecond();
 	expect(signal.aborted).toBe(true);
 });
+
+it("shares one stream, initializes late listeners, and closes after the last unsubscribe", async () => {
+	const connected = Promise.withResolvers<void>();
+	const publish = Promise.withResolvers<string>();
+	let signal: AbortSignal | undefined;
+	const open = vi.fn(async (execution: AbortSignal) => {
+		signal = execution;
+		return {
+			async *[Symbol.asyncIterator]() {
+				yield await publish.promise;
+			},
+		};
+	});
+	const subscribe = createSharedEventSubscription(open);
+	const first = vi.fn();
+	const second = vi.fn();
+	const offFirst = subscribe(first, connected.resolve);
+	await connected.promise;
+	const lateConnected = vi.fn();
+	const offSecond = subscribe(second, lateConnected);
+	expect(open).toHaveBeenCalledOnce();
+	expect(lateConnected).toHaveBeenCalledOnce();
+	offFirst();
+	expect(signal?.aborted).toBe(false);
+	publish.resolve("event");
+	await vi.waitFor(() => expect(second).toHaveBeenCalledWith("event"));
+	expect(first).not.toHaveBeenCalled();
+	offSecond();
+	expect(signal?.aborted).toBe(true);
+});

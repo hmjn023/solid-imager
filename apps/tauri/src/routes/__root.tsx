@@ -1,5 +1,5 @@
 import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
-import { subscribeToEventStream } from "@solid-imager/ui/event-stream";
+import { subscribeAllSourceEvents } from "~/hooks/use-media-source-events";
 import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
 import { AppShell } from "@solid-imager/ui/layouts/app-shell";
 import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
@@ -16,7 +16,6 @@ import { getCollections, refetchCollection } from "~/collections";
 import { collectionQueryKeys } from "~/collections/query-keys";
 import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
 import { getApiDocsUrl } from "~/infrastructure/settings/server-settings";
-import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createMediaSource,
 	deleteMediaSource,
@@ -28,15 +27,6 @@ import type { AppRouterContext } from "~/router";
 export const Route = createRootRouteWithContext<AppRouterContext>()({
 	component: RootRouteComponent,
 });
-
-function registerSourceEvents(
-	handler: import("@solid-imager/ui/hooks/use-sources-events").RawEventHandler,
-): () => void {
-	return subscribeToEventStream(
-		(signal) => orpc.sources.events({ id: "*" }, { signal }),
-		handler,
-	);
-}
 
 function RootRouteComponent() {
 	const queryClient = useQueryClient();
@@ -80,7 +70,7 @@ function RootRouteComponent() {
 		},
 		queryClient,
 		invalidateQueryKey: collectionQueryKeys.sources(),
-		registerEvents: registerSourceEvents,
+		registerEvents: subscribeAllSourceEvents,
 		getSourceIds: () =>
 			sourceData()
 				.map((source) => source.id ?? source.name)
