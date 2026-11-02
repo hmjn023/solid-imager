@@ -25,6 +25,7 @@ export {
 	defaultJobsQueryInput,
 	jobsQueryKeys,
 	updateJobProgress,
+	updateCachedJobProgress,
 } from "./jobs-query";
 export {
 	buildMediaDetailsQueryOptions,

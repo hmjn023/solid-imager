@@ -1,13 +1,14 @@
+import { useJobInspection } from "@solid-imager/ui/hooks/use-job-inspection";
+import { jobSelectionSearchSchema } from "@solid-imager/ui/screens/jobs-selection";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import type {
 	JobDto,
 	JobListResponse,
 } from "@solid-imager/core/domain/jobs/schemas";
-import { useJobEvents } from "@solid-imager/ui/hooks/use-job-events";
+import { useJobsQueryEvents } from "@solid-imager/ui/hooks/use-jobs-query-events";
 import {
 	DEFAULT_JOBS_PAGE_SIZE,
 	jobsQueryKeys,
-	updateJobProgress,
 } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
@@ -22,6 +23,7 @@ import { jobsQueryOptions } from "~/queries";
 const BULK_RETRY_CONCURRENCY = 8;
 
 export const Route = createFileRoute("/jobs")({
+	validateSearch: jobSelectionSearchSchema,
 	loader: ({ context }) => {
 		void context.queryClient.query(jobsQueryOptions()).then(
 			() => undefined,
@@ -61,6 +63,14 @@ function JobsRoute() {
 			offset: pageIndex() * DEFAULT_JOBS_PAGE_SIZE,
 		}),
 	);
+	const search = Route.useSearch();
+	const navigate = Route.useNavigate();
+	const inspection = useJobInspection(
+		() => search().jobId,
+		jobsQuery,
+		(id, signal) => orpc.jobs.get({ id }, { signal }),
+		(jobId) => void navigate({ search: { jobId } }),
+	);
 	const queryClient = useQueryClient();
 	const pagination = () => {
 		const total = jobsQuery.data?.total ?? 0;
@@ -74,22 +84,11 @@ function JobsRoute() {
 		};
 	};
 
-	useJobEvents(
-		(signal) => orpc.jobs.events(undefined, { signal }),
-		(event) => {
-			if (event.event === "job-progress") {
-				queryClient.setQueriesData<JobListResponse>(
-					{ queryKey: jobsQueryKeys.listPrefix() },
-					(data) => updateJobProgress(data, event.data),
-				);
-				return;
-			}
-			void queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
-		},
-	);
+	useJobsQueryEvents((signal) => orpc.jobs.events(undefined, { signal }));
 
 	return (
 		<JobsScreen
+			inspection={inspection}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
 			jobs={() => jobsQuery.data?.items ?? []}

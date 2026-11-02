@@ -75,7 +75,7 @@ export function MediaActions(props: MediaActionsProps) {
 				void navigate({ to: "/search" });
 			}}
 			onUpdate={props.onUpdate}
-			onViewJobs={() => void navigate({ to: "/jobs" })}
+			onViewJobs={(jobId) => void navigate({ to: "/jobs", search: { jobId } })}
 			oppaiOracleModal={(modalProps) => (
 				<OppaiOracleModal
 					description="Tags extracted from the image using the OppaiOracle model."

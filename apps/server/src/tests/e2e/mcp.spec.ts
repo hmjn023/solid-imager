@@ -657,3 +657,115 @@ test("an acknowledged tag edit never reopens the image after the user leaves", a
 		await request.post("/api/rpc/tags/delete", { data: { json: { id } } });
 	}
 });
+
+test("CCIP WebMCP follows the returned job only when requested", async ({
+	page,
+	request,
+	browserHealth,
+}) => {
+	const tool = "ai_startCcipExtraction";
+	const settings = await request.post("/api/rpc/config/get", { data: {} });
+	const original: McpConfig = (await settings.json()).json.mcp;
+	const publish = (web: string[]) =>
+		request.post("/api/rpc/config/update", {
+			data: { json: { mcp: { web } } },
+		});
+	// Leave the two unprocessed images used by the native CCIP flow untouched.
+	const found = await request.post("/api/rpc/tools/search_media", {
+		data: { json: { sourceId: E2E_SOURCE_ID, query: "e2e-scroll-0001.png" } },
+	});
+	expect(found.ok()).toBe(true);
+	const [target] = (await found.json()).json.media;
+	const input = { mediaSourceId: E2E_SOURCE_ID, mediaId: target.id };
+	const waitForTool = () =>
+		expect
+			.poll(async () =>
+				(await page.webmcp.tools()).some((item) => item.name === tool),
+			)
+			.toBe(true);
+	try {
+		expect((await publish([...original.web, tool])).ok()).toBe(true);
+		await page.goto("/config");
+		await waitForTool();
+		const checkpoint = browserHealth.requestCheckpoint();
+		expect(
+			await page.webmcp.callTool(tool, { ...input, showJob: true }),
+		).toMatchObject({ code: "VIEW_BUSY" });
+		expect(
+			browserHealth.apiRequestCountPathSince(
+				checkpoint,
+				"/api/rpc/config/callWebTool",
+			),
+		).toBe(0);
+		const dataOnly = await page.webmcp.callTool(tool, input);
+		expect(dataOnly).toMatchObject({
+			success: true,
+			jobId: expect.any(String),
+		});
+		await expect(page).toHaveURL(/\/config$/);
+		await page.goto(mediaPath());
+		await waitForTool();
+		const result = await page.webmcp.callTool(tool, {
+			...input,
+			showJob: true,
+		});
+		expect(result).toMatchObject({ success: true, jobId: expect.any(String) });
+		expect(result).not.toHaveProperty("presentation");
+		expect(result.jobId).not.toBe(dataOnly.jobId);
+		const inspector = page.locator('[aria-label="Job details"]:visible');
+		await expect(page).toHaveURL(
+			new RegExp("/jobs\\?jobId=" + result.jobId + "$"),
+		);
+		await expect(inspector).toHaveAttribute("data-job-id", result.jobId);
+		expect(await page.webmcp.callTool("get_current_view")).toMatchObject({
+			view: "jobs",
+			job: { id: result.jobId, type: "extract_ccip_vector" },
+		});
+		const earlierJob = page.getByRole("button", {
+			name: new RegExp("job " + dataOnly.jobId + "$"),
+		});
+		await earlierJob.click();
+		await expect(inspector).toHaveAttribute("data-job-id", dataOnly.jobId);
+		await page.goBack();
+		await expect(inspector).toHaveAttribute("data-job-id", result.jobId);
+
+		// Even when this page of the list contains no target, open the linked inspector by ID.
+		await page.route("**/api/rpc/jobs/list", (route) =>
+			route.fulfill({ json: { json: { items: [], total: 0 } } }),
+		);
+		await page.setViewportSize({ width: 375, height: 740 });
+		await page.reload();
+		await expect(inspector).toHaveAttribute("data-job-id", result.jobId);
+		await expect(inspector).toBeInViewport();
+		await page.unroute("**/api/rpc/jobs/list");
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await waitForTool();
+		const acknowledged = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		await page.route("**/api/rpc/config/callWebTool", async (route) => {
+			const response = await route.fetch();
+			acknowledged.resolve();
+			await release.promise;
+			await route.fulfill({ response });
+		});
+		const pending = page.webmcp.callTool(tool, { ...input, showJob: true });
+		try {
+			await acknowledged.promise;
+			await page
+				.getByRole("link", { name: "Settings", exact: true })
+				.first()
+				.click();
+			await expect(page).toHaveURL(/\/config$/);
+		} finally {
+			release.resolve();
+		}
+		expect(await pending).toMatchObject({
+			success: true,
+			jobId: expect.any(String),
+			presentation: "unconfirmed",
+		});
+		await expect(page).toHaveURL(/\/config$/);
+	} finally {
+		expect((await publish(original.web)).ok()).toBe(true);
+	}
+});

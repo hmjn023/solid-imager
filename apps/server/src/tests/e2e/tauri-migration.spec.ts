@@ -511,3 +511,21 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 	await expect(page.getByLabel("Server URL", { exact: true })).toBeVisible();
 	await expectRouteHealthy(page);
 });
+
+test("Tauri opens a linked job inspector on a fresh hash route", async ({
+	page,
+	request,
+}) => {
+	const queued = await request.post("/api/rpc/sources/enqueueExport", {
+		data: {
+			json: { id: E2E_SOURCE_ID, mode: "ndjson", includeImages: false },
+		},
+	});
+	expect(queued.ok()).toBe(true);
+	const { id: jobId } = (await queued.json()).json;
+	await openTauriRoute(page, "/jobs?jobId=" + jobId);
+	const inspector = page.locator('[aria-label="Job details"]:visible');
+	await expect(inspector).toHaveAttribute("data-job-id", jobId);
+	await reloadTauriRoute(page);
+	await expect(inspector).toHaveAttribute("data-job-id", jobId);
+});
