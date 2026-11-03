@@ -142,24 +142,26 @@ BUN_SQL_TEST_DATABASE_URL=postgres://user:password@localhost:5432/solid_imager \
 
 ### AI ネイティブ依存（GPU 対応）
 
-AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。GPU (CUDA) を有効にする場合も、アプリケーションをビルドするホスト側のランタイムを使用します。コンテナ内で Python、Rust toolchain、ONNX Runtime、アプリケーション依存関係をセットアップする必要はありません。
+AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。インストール時に GitHub Releases からビルド済みバイナリを取得し、チェックサムを検証します。Rust toolchain は不要です。対応プラットフォームは Linux x64 (glibc)、Windows x64、macOS x64/arm64 です。
 
 ```bash
-ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
+bun install
 ```
 
-Aubeを使う場合も同じ環境変数を付けて実行します。
+Aube を使う場合:
 
 ```bash
-ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib aube i
+aube i
 ```
 
-要件:
+推論には対応する ONNX Runtime の共有ライブラリが実行環境に必要です。`ORT_DYLIB_PATH` にそのファイルを指定し、プロバイダーとその依存ライブラリを動的ローダーから参照できるようにします。例えば Linux では次のように設定します。
 
-- `/usr/lib/libonnxruntime.so.1` と `/usr/lib/libonnxruntime_providers_cuda.so` が存在すること
-- NVIDIA ドライバーと CUDA ランタイムがインストールされていること
+```bash
+export ORT_DYLIB_PATH=/opt/onnxruntime/lib/libonnxruntime.so
+export LD_LIBRARY_PATH=/opt/onnxruntime/lib:${LD_LIBRARY_PATH:-}
+```
 
-CPU のみで使用する場合は通常通り `bun install` してください。
+CUDA を使用する場合は CUDA 対応の ONNX Runtime、NVIDIA ドライバー、CUDA および cuDNN が必要です。
 
 ### 本番コンテナ
 
