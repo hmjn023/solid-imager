@@ -5,6 +5,7 @@ export const newProjectSchema = z.object({
 	description: z.string().optional(),
 });
 
+/** Partial project update; null archivedAt clears the archive timestamp. */
 export const updateProjectSchema = z.object({
 	name: z.string().min(1, "Project name is required").optional(),
 	description: z.string().optional(),

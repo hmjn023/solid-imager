@@ -1,5 +1,6 @@
 import { buildAbsoluteUrl } from "~/infrastructure/tauri-fetch-helpers";
 
+/** Returns the remote thumbnail endpoint for a media item. */
 export function getThumbnailResource(
 	mediaSourceId: string,
 	mediaId: string,
@@ -7,6 +8,7 @@ export function getThumbnailResource(
 	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/thumbnail/${mediaId}`);
 }
 
+/** Builds a thumbnail URL with optional size and cache-busting timestamp. */
 export function buildThumbnailUrl(args: {
 	cacheKey: number;
 	mediaId: string;
@@ -23,6 +25,7 @@ export function buildThumbnailUrl(args: {
 	return search ? `${base}?${search}` : base;
 }
 
+/** Returns the remote content URL for a media item. */
 export function buildMediaContentUrl(
 	mediaSourceId: string,
 	mediaId: string,
@@ -30,6 +33,7 @@ export function buildMediaContentUrl(
 	return buildAbsoluteUrl(`/api/sources/${mediaSourceId}/${mediaId}`);
 }
 
+/** Remote server mode does not require a local thumbnail-ready notification. */
 export function notifyThumbnailReady(_mediaId: string) {
 	// No-op for remote server mode
 }

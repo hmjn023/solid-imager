@@ -22,6 +22,7 @@ type Preview = {
 	result: Author | null;
 	confirming: Promise<Author> | null;
 };
+/** Create in-memory state that can be shared by verification service instances. */
 export function createAuthorAccountVerificationState() {
 	return new Map<string, Preview>();
 }

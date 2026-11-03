@@ -17,6 +17,7 @@ export function getFormErrorMessage(error: unknown): string | undefined {
 	return undefined;
 }
 
+/** Extracts a form-level message from a nested form error or a direct string/message object. */
 export function getFormSubmitError(error: unknown): string | undefined {
 	if (typeof error === "object" && error !== null && "form" in error) {
 		return getFormErrorMessage(error.form);

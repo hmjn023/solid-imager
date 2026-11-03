@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+/** Internal user record containing a password; do not expose directly as an API response. */
 export const userSchema = z.object({
 	id: z.uuid(),
 	name: z.string(),

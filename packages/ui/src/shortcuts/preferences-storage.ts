@@ -64,6 +64,7 @@ export function normalizeShortcutBinding(
 	return normalizeHotkey(binding, platform);
 }
 
+/** Validates and normalizes a binding for the platform; null disables it and validation warnings are rejected. */
 export function parseShortcutBinding(
 	value: unknown,
 	platform: ShortcutPlatform = "linux",
@@ -106,6 +107,7 @@ function readStoredBinding(
 	return parsed.valid ? parsed.binding : DEFAULT_SHORTCUT_BINDINGS[id];
 }
 
+/** Parses versioned preferences, falling back to defaults for an unsupported payload or individual invalid bindings. */
 export function parseShortcutPreferencesPayload(
 	payload: unknown,
 	platform: ShortcutPlatform = "linux",
@@ -129,6 +131,7 @@ export function parseShortcutPreferencesPayload(
 	};
 }
 
+/** Parses stored JSON preferences; missing or invalid JSON falls back to default bindings. */
 export function parseStoredShortcutPreferences(
 	serialized: string | null,
 	platform: ShortcutPlatform = "linux",
@@ -156,6 +159,7 @@ export function serializeShortcutPreferences(
 	return typeof serialized === "string" ? serialized : "";
 }
 
+/** Finds the first normalized binding collision in the same scope, excluding the shortcut being edited. */
 export function findShortcutConflict(
 	bindings: ShortcutBindings,
 	shortcutId: ShortcutId,

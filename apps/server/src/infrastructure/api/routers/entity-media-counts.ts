@@ -7,6 +7,7 @@ import {
 	medias,
 } from "~/infrastructure/db/schema";
 
+/** Counts project associations, omitting IDs with no matching rows. */
 export async function getProjectMediaCounts(
 	ids: string[],
 ): Promise<Map<string, number>> {
@@ -19,6 +20,7 @@ export async function getProjectMediaCounts(
 	return new Map(rows.map((row) => [row.id, Number(row.mediaCount)] as const));
 }
 
+/** Counts non-deleted media per IP, omitting IDs with no matching rows. */
 export async function getIpMediaCounts(
 	ids: string[],
 ): Promise<Map<string, number>> {
@@ -32,6 +34,7 @@ export async function getIpMediaCounts(
 	return new Map(rows.map((row) => [row.id, Number(row.mediaCount)] as const));
 }
 
+/** Counts non-deleted media per character, omitting IDs with no matching rows. */
 export async function getCharacterMediaCounts(
 	ids: string[],
 ): Promise<Map<string, number>> {

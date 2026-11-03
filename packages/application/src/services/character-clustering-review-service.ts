@@ -12,6 +12,7 @@ import type {
 	StoredClusteringMedia,
 } from "../ports/character-clustering-results-store";
 
+/** Builds review groups and media views from saved clustering runs. Comparisons require the same cohort and matching embeddings. */
 export class CharacterClusteringReviewService {
 	constructor(private readonly store: ICharacterClusteringResultsStore) {}
 	listRuns() {

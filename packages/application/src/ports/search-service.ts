@@ -3,6 +3,7 @@ import type {
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
 
+/** Filters and pagination used by global media search. */
 export type SearchOptions = {
 	tags?: string[];
 	sortBy?: MediaSearchRequest["sort"];
@@ -11,6 +12,7 @@ export type SearchOptions = {
 	limit?: number;
 };
 
+/** Searches media across sources using the supplied filters and pagination. */
 export interface ISearchService {
 	globalSearchMedia(options: SearchOptions): Promise<MediaSearchResponse>;
 }

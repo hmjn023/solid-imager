@@ -1,8 +1,17 @@
+/** Minimal source information needed to resolve an extension selection. */
 export interface SelectableSource {
 	id: string;
 	name: string;
 }
 
+/**
+ * Selects by preferred ID, then fallback name, then first source.
+ *
+ * @param sources - Available sources in fallback priority order.
+ * @param preferredId - Preferred source ID, if one has been saved.
+ * @param fallbackName - Name to match when the preferred ID is absent or no longer exists.
+ * @returns The selected source, or null if the list is empty.
+ */
 export function resolveEffectiveSourceId(
 	sources: readonly SelectableSource[],
 	preferredId?: string | null,

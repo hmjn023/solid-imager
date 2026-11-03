@@ -32,6 +32,7 @@ function fingerprintState(state: SearchSnapshotState): string {
 		.digest("hex");
 }
 
+/** Validate and fingerprint captured search state; retrieving an absent ID throws ResourceNotFoundError. */
 export function createSearchSnapshotService(
 	repository: SearchSnapshotRepository,
 ): ISearchSnapshotService {

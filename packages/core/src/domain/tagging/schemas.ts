@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { similarityModelSchema } from "../search/embedding";
 
+/** AI service availability, connection mode, latency and check time. */
 export const aiHealthResponseSchema = z.object({
 	status: z.enum(["available", "unavailable"]),
 	mode: z.enum(["local", "remote"]),
@@ -10,6 +11,7 @@ export const aiHealthResponseSchema = z.object({
 });
 export type AiHealthResponse = z.infer<typeof aiHealthResponseSchema>;
 
+/** Model scores grouped by general, rating and tag categories. */
 export const oppaiOracleResponseSchema = z.object({
 	general: z.record(z.string(), z.number()),
 	rating: z.record(z.string(), z.number()),
@@ -18,6 +20,7 @@ export const oppaiOracleResponseSchema = z.object({
 
 export type OppaiOracleResponse = z.infer<typeof oppaiOracleResponseSchema>;
 
+/** Predicted tag scores, attributes, IP names and their tag mappings. */
 export const taggingResponseSchema = z.object({
 	general: z.record(z.string(), z.number()),
 	character: z.record(z.string(), z.number()),
@@ -29,12 +32,14 @@ export const taggingResponseSchema = z.object({
 
 export type TaggingResponse = z.infer<typeof taggingResponseSchema>;
 
+/** CCIP feature vector extracted from an image. */
 export const ccipFeatureResponseSchema = z.object({
 	feature: z.array(z.number()),
 });
 
 export type CcipFeatureResponse = z.infer<typeof ccipFeatureResponseSchema>;
 
+/** Difference calculated between two CCIP features. */
 export const ccipDifferenceResponseSchema = z.object({
 	difference: z.number(),
 });
@@ -59,15 +64,18 @@ export const ccipDifferenceRequestSchema = z.object({
 	feature2: z.array(z.number()),
 });
 
+/** A 768-dimensional feature and candidate vectors to compare against it. */
 export const ccipDistancesRequestSchema = z.object({
 	feature: z.array(z.number()).length(768),
 	candidates: z.array(z.array(z.number()).length(768)),
 });
 
+/** Distances corresponding to the request candidates. */
 export const ccipDistancesResponseSchema = z.object({
 	distances: z.array(z.number()),
 });
 
+/** Extraction status and optional job, model, timestamp or failure details. */
 export const ccipVectorStatusSchema = z.object({
 	status: z.enum(["missing", "processing", "ready", "stale", "failed"]),
 	jobId: z.uuid().optional(),
@@ -78,12 +86,14 @@ export const ccipVectorStatusSchema = z.object({
 
 export type CcipVectorStatus = z.infer<typeof ccipVectorStatusSchema>;
 
+/** Requests extraction for one media item; force defaults to false. */
 export const ccipExtractionRequestSchema = z.object({
 	mediaSourceId: z.uuid(),
 	mediaId: z.uuid(),
 	force: z.boolean().default(false),
 });
 
+/** Requests extraction across sources or within an optional source. */
 export const batchCcipExtractionRequestSchema = z.object({
 	force: z.boolean().default(false),
 	mediaSourceId: z.uuid().optional(),
@@ -99,6 +109,10 @@ export type StartCcipExtractionResponse = z.infer<
 	typeof startCcipExtractionResponseSchema
 >;
 
+/**
+ * Similarity search options. The model defaults to CCIP, `topK` to 1000,
+ * `limit` to 20 (maximum 200), and `offset` to zero.
+ */
 export const similarMediaRequestSchema = z.object({
 	model: similarityModelSchema.default("ccip"),
 	anchorMediaId: z.uuid(),
@@ -108,6 +122,7 @@ export const similarMediaRequestSchema = z.object({
 	offset: z.number().int().nonnegative().default(0),
 });
 
+/** Cosine distance for a media item in similarity search results. */
 export const similarMediaScoreSchema = z.object({
 	mediaId: z.uuid(),
 	cosineDistance: z.number(),
@@ -130,6 +145,7 @@ export const napiBBoxSchema = z.object({
 
 export type NapiBBox = z.infer<typeof napiBBoxSchema>;
 
+/** Detected character crop, its bounding box, score and encoded image. */
 export const characterCropSchema = z.object({
 	index: z.number(),
 	bbox: napiBBoxSchema,
@@ -143,6 +159,7 @@ export const characterCropSchema = z.object({
 
 export type CharacterCrop = z.infer<typeof characterCropSchema>;
 
+/** Requests character crops for a media item; transparent output defaults to false. */
 export const detectAndCropRequestSchema = z.object({
 	mediaId: z.uuid(),
 	transparent: z.boolean().optional().default(false),
@@ -172,6 +189,7 @@ export type BatchTargetCountResponse = z.infer<
 	typeof batchTargetCountResponseSchema
 >;
 
+/** Progress counters and options stored for a parent batch job. */
 export const batchParentPayloadSchema = z.object({
 	total: z.number().int().nonnegative(),
 	processed: z.number().int().nonnegative(),

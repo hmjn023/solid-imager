@@ -18,8 +18,10 @@ const JobTransferDirectory = path.resolve(
 const JobArtifactTtlMs = 24 * 60 * 60 * 1000;
 const JobTransferStaleFileTtlMs = 60 * 60 * 1000;
 
+/** Supported source transfer formats and their filename extensions. */
 export type JobTransferMode = "ndjson" | "tar";
 
+/** Metadata for a completed export file, including its expiry time. */
 export type JobArtifact = {
 	path: string;
 	fileName: string;
@@ -28,6 +30,7 @@ export type JobArtifact = {
 	expiresAt: Date;
 };
 
+/** Returns the configured transfer directory, resolved at module initialization. */
 export function getJobTransferRoot(): string {
 	return JobTransferDirectory;
 }
@@ -44,6 +47,7 @@ export function getInputPath(jobId: string, mode: JobTransferMode): string {
 	);
 }
 
+/** Returns the temporary upload path used before an input is fully persisted. */
 export function getInputPartialPath(
 	jobId: string,
 	mode: JobTransferMode,
@@ -59,6 +63,7 @@ export function getArtifactPath(jobId: string, mode: JobTransferMode): string {
 	);
 }
 
+/** Returns the temporary path used while an export artifact is being written. */
 export function getArtifactPartialPath(
 	jobId: string,
 	mode: JobTransferMode,
@@ -66,6 +71,7 @@ export function getArtifactPartialPath(
 	return `${getArtifactPath(jobId, mode)}.partial`;
 }
 
+/** Checks that a resolved path is inside the transfer root and its basename starts with the job ID. */
 export function isJobTransferPath(jobId: string, targetPath: string): boolean {
 	const resolvedTarget = path.resolve(targetPath);
 	const resolvedRoot = path.resolve(JobTransferDirectory);
@@ -75,6 +81,7 @@ export function isJobTransferPath(jobId: string, targetPath: string): boolean {
 	);
 }
 
+/** Builds download metadata with an expiry 24 hours from the time of this call. */
 export function getArtifactMetadata(
 	jobId: string,
 	mediaSourceId: string,
@@ -97,6 +104,13 @@ export function getArtifactMetadata(
 	};
 }
 
+/**
+ * Streams an upload to a partial file and renames it when complete. Existing input
+ * and partial files for the job are removed first; the partial is removed on failure.
+ *
+ * @returns The completed input file path.
+ * @throws If directory creation, streaming, or rename fails.
+ */
 export async function persistJobInput(
 	jobId: string,
 	mode: JobTransferMode,
@@ -119,6 +133,7 @@ export async function persistJobInput(
 	}
 }
 
+/** Best-effort removal of a file under the transfer root; errors are ignored. */
 export async function removeJobTransferFile(targetPath: string): Promise<void> {
 	if (!targetPath.startsWith(`${JobTransferDirectory}${path.sep}`)) {
 		return;
@@ -135,6 +150,12 @@ function isNodeErrorCode(error: unknown, code: string): boolean {
 	);
 }
 
+/**
+ * Removes input and artifact files whose modification time is at least 24 hours old.
+ *
+ * @param now - Reference time in milliseconds since the Unix epoch; defaults to Date.now().
+ * @throws If a directory cannot be read for a reason other than absence, or a file cannot be statted.
+ */
 export async function cleanupExpiredJobTransferFiles(
 	now = Date.now(),
 ): Promise<void> {

@@ -4,6 +4,7 @@ import type {
 } from "@solid-imager/core/domain/repositories/tag-repository";
 import type { UpdateTag } from "@solid-imager/core/domain/tags/schemas";
 
+/** Manages tags and looks them up by ID. */
 export interface ITagService {
 	getAllTags(): Promise<Tag[]>;
 	getTagById(id: string): Promise<Tag | undefined>;

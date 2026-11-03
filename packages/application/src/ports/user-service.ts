@@ -4,6 +4,7 @@ import type {
 	User,
 } from "@solid-imager/core/domain/users/schemas";
 
+/** Manages user records and returns undefined when a user is absent. */
 export interface IUserService {
 	getAllUsers(): Promise<User[]>;
 	createUser(userData: NewUser): Promise<User>;

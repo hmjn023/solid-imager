@@ -6,6 +6,7 @@ export { APIError };
 const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
 const REQUEST_TIMEOUT_MS = 10_000; // 10秒
 
+/** Creates an API client using the saved URL or localhost, with a ten-second fetch timeout. */
 export const getClient = async () => {
 	const result: { apiUrl?: string } = await chrome.storage.local.get([
 		"apiUrl",

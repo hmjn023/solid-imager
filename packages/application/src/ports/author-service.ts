@@ -8,6 +8,7 @@ import type {
 	ConfirmAuthorAccountInput,
 } from "@solid-imager/core/domain/authors/schemas";
 
+/** Manages authors, their accounts and media attribution, including correction and merging. */
 export interface IAuthorService {
 	confirmAccount(input: ConfirmAuthorAccountInput): Promise<Author>;
 	getAllAuthors(): Promise<Author[]>;

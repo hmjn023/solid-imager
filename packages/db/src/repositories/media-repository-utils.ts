@@ -123,6 +123,7 @@ function buildOrderByClause(
 	return desc(medias.createdAt);
 }
 
+/** Build source-scoped media search operations backed by a Drizzle executor. */
 export function createMediaSearchFunctions(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
 ) {

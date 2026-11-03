@@ -27,6 +27,7 @@ export type TaggingServiceDeps = {
 	readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
 };
 
+/** Performs tagging and CCIP inference, using stored AI tags when available unless cache is skipped. */
 export class TaggingServiceImpl implements ITaggingService {
 	private readonly aiClient: IAiClient;
 	private readonly sourceRepo: SourceRepository;

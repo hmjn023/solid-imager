@@ -21,6 +21,14 @@ export type ToQueryUiStateOptions<T> = {
 	isOnline?: boolean;
 };
 
+/**
+ * Maps query status to presentation state. Existing data remains visible during
+ * background fetches and errors; paused queries without data are offline.
+ *
+ * @param query - Query data and status to classify.
+ * @param options - Optional empty-data predicate and online status override.
+ * @returns Display phase, fetch state, data, and any retained error.
+ */
 export function toQueryUiState<T>(
 	query: QueryStateLike<T>,
 	options: ToQueryUiStateOptions<T> = {},

@@ -29,6 +29,7 @@ export const collectionSchema = z.object({
 
 export type Collection = z.infer<typeof collectionSchema>;
 
+/** Association between a collection and media, with an optional display order. */
 export const collectionItemSchema = z.object({
 	collectionId: z.uuid(),
 	mediaId: z.uuid(),

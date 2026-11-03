@@ -4,6 +4,7 @@ import type {
 	UpdatePresetRequest,
 } from "@solid-imager/core/domain/media/schemas";
 
+/** Manages named search presets; lookup by name returns null when absent. */
 export interface IPresetService {
 	list(): Promise<Preset[]>;
 	get(id: number): Promise<Preset>;

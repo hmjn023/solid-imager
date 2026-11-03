@@ -30,6 +30,7 @@ import type {
 	IThumbnailManager,
 } from "../ports/media-service";
 
+/** Coordinates media updates, copying, moving and deletion across repositories and storage. */
 export class MediaTransferService {
 	constructor(
 		private readonly mediaRepository: IMediaRepository,

@@ -52,6 +52,7 @@ export const sourceMediaQueryKeys = {
 		["media", input.sourceId, input] as const,
 };
 
+/** Matches source-specific infinite result keys without matching other media cache entries. */
 export function isSourceMediaResultsQueryKey(
 	queryKey: readonly unknown[],
 	sourceId: string,
@@ -267,6 +268,7 @@ export type SourceMediaResultsQueryOptionsInput = {
 	enabled?: boolean;
 };
 
+/** Builds an infinite query for a source collection with its filter, ordering, and pagination in the cache key. */
 export function buildSourceMediaResultsQueryOptions(
 	input: SourceMediaResultsQueryOptionsInput,
 ) {

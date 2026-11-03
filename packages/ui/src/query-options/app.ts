@@ -14,6 +14,7 @@ import {
 	defaultJobsQueryInput,
 } from "./index";
 
+/** Binds shared query option factories to an application contract client. */
 export function createAppQueryOptions(client: AppContractClient) {
 	return {
 		tagsQueryOptions: () =>

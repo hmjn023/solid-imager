@@ -21,6 +21,7 @@ import type {
 	StatisticsRequest,
 } from "@/domain/media/statistics";
 
+/** Media persistence and search port, with optional transaction context for multi-step operations. */
 export type IMediaRepository = {
 	getStatistics(input: StatisticsRequest): Promise<LibraryStatistics>;
 	findById(id: string, tx?: Transaction): Promise<Media | null>;

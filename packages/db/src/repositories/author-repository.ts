@@ -38,6 +38,7 @@ function mapAccount(row: typeof authorAccounts.$inferSelect): AuthorAccount {
 	};
 }
 
+/** Map an author and accounts to the domain model, ordering accounts by creation time and ID. */
 export function mapAuthor(
 	row: typeof authors.$inferSelect,
 	accountRows: (typeof authorAccounts.$inferSelect)[],
@@ -59,6 +60,7 @@ export function mapAuthor(
 	};
 }
 
+/** Load accounts for a batch of authors and preserve the input author order. */
 export async function mapAuthors(
 	client: DrizzleExecutor,
 	rows: (typeof authors.$inferSelect)[],

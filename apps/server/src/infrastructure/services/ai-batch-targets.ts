@@ -16,6 +16,7 @@ import {
 
 type ScanInput = { mediaSourceId?: string; force?: boolean };
 
+/** Counts images without AI tags, characters, or IPs; force includes already tagged images. */
 export async function countTaggingTargets(
 	database: DrizzleExecutor,
 	input: ScanInput,
@@ -48,6 +49,7 @@ export async function countTaggingTargets(
 	return Number(row?.count ?? 0);
 }
 
+/** Counts local images lacking a current full-image CCIP embedding; force includes existing embeddings. */
 export async function countCcipTargets(
 	database: DrizzleExecutor,
 	input: ScanInput,

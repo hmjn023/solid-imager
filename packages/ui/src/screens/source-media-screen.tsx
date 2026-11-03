@@ -21,6 +21,7 @@ import { reconcileCollectionPreviewId } from "../workspace/collection-navigation
 import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
+/** Renders a source collection with search, upload, preview, and optional virtualized results. */
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);

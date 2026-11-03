@@ -52,6 +52,7 @@ export const addMediaRequestSchema = z.object({
 });
 export type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
+/** A named text entry extracted from image metadata. */
 export const imageMetadataCommentSchema = z.object({
 	keyword: z.string().min(1, "keyword is required"),
 	text: z.string().min(1, "keyword is required"),
@@ -134,6 +135,7 @@ export const directoryPathSchema = z
 	.min(1, "Directory path is required");
 export type DirectoryPath = z.infer<typeof directoryPathSchema>;
 
+/** Tags, prompt, and workflow extracted from a media file. */
 export const extractedDataSchema = z.object({
 	tags: z.array(
 		z.object({
@@ -148,11 +150,13 @@ export const extractedDataSchema = z.object({
 export type ExtractedData = z.infer<typeof extractedDataSchema>;
 
 // Base schemas mirroring database tables
+/** Associates a media item with its source. */
 export const mediaLocationSchema = z.object({
 	sourceId: z.uuid(),
 	mediaId: z.uuid(),
 });
 
+/** Internal media record, including its source-relative file path. */
 export const mediaSchema = z.object({
 	id: z.uuid(),
 	mediaSourceId: z.uuid(),
@@ -171,6 +175,7 @@ export const mediaSchema = z.object({
 
 export type Media = z.infer<typeof mediaSchema>;
 
+/** Client-facing media fields; excludes the internal file path. */
 export const mediaSafeSchema = mediaSchema.pick({
 	id: true,
 	mediaSourceId: true,
@@ -238,6 +243,7 @@ export const ipSchema = z.object({
 });
 export type MediaIp = z.infer<typeof ipSchema>;
 
+/** Generation parameters and metadata associated with a media item. */
 export const mediaGenerationInfoSchema = z.object({
 	mediaId: z.uuid(),
 	metadata: z.any().nullable(),
@@ -257,6 +263,7 @@ export const mediaGenerationInfoSchema = z.object({
 export type MediaGenerationInfo = z.infer<typeof mediaGenerationInfoSchema>;
 
 // Search schemas
+/** Operators supported by a search criterion. */
 export const filterOperatorSchema = z.enum([
 	"equals", // 完全一致
 	"contains", // 部分一致 (LIKE %val%)
@@ -272,6 +279,7 @@ export const filterOperatorSchema = z.enum([
 	"isNotEmpty", // 空でない
 ]);
 
+/** Media fields and related entities addressable by search criteria. */
 export const filterTargetSchema = z.enum([
 	"keyword", // 全文検索 (ファイル名, パス, 説明, プロンプト等)
 	"fileName",
@@ -298,6 +306,11 @@ export const filterTargetSchema = z.enum([
 // 単一の検索条件ノード
 // 注意: operator と value の整合性はアプリケーション層で検証する
 // 例: isEmpty/isNotEmpty の場合は value を無視、in/notIn の場合は配列を期待
+/**
+ * A single search predicate. The operator defaults to `equals` and negate to
+ * false. Operator/value compatibility is checked by the application layer:
+ * empty checks ignore the value, while `in` and `notIn` expect an array.
+ */
 export const searchCriterionSchema = z.object({
 	type: z.literal("criterion"),
 	target: filterTargetSchema,
@@ -317,6 +330,7 @@ export const searchCriterionSchema = z.object({
 export type SearchCriterion = z.infer<typeof searchCriterionSchema>;
 
 // 条件グループノード (AND/OR)
+/** Recursive AND/OR search expression; negate inverts the group when set. */
 export type SearchGroup = {
 	type: "group";
 	operator: "and" | "or";
@@ -324,6 +338,7 @@ export type SearchGroup = {
 	negate?: boolean;
 };
 
+/** Validates recursive search expressions. Empty groups are treated as having no condition. */
 export const searchGroupSchema: z.ZodType<SearchGroup> = z.lazy(() =>
 	z.object({
 		type: z.literal("group"),
@@ -334,6 +349,7 @@ export const searchGroupSchema: z.ZodType<SearchGroup> = z.lazy(() =>
 	}),
 );
 
+/** Search conditions and pagination; offset defaults to zero and order to descending. */
 export const mediaSearchRequestSchema = z.object({
 	condition: searchGroupSchema.optional(),
 	sort: mediaSortSchema.optional(),
@@ -344,6 +360,7 @@ export const mediaSearchRequestSchema = z.object({
 
 export type MediaSearchRequest = z.infer<typeof mediaSearchRequestSchema>;
 
+/** Search results and the total number of matching media items. */
 export const mediaSearchResponseSchema = z.object({
 	media: z.array(mediaSchema),
 	total: z.number(),
@@ -351,6 +368,7 @@ export const mediaSearchResponseSchema = z.object({
 
 export type MediaSearchResponse = z.infer<typeof mediaSearchResponseSchema>;
 
+/** Search results with cosine distances keyed by media ID. */
 export const similarMediaSearchResponseSchema = z.object({
 	media: z.array(mediaSchema),
 	total: z.number(),
@@ -368,6 +386,7 @@ export type SimilarMediaSearchResponse = z.infer<
 
 const mediaRatingSchema = z.number().int().min(0).max(5);
 
+/** Partial preference update requiring rating (an integer from 0 to 5), favorite, or both. */
 export const mediaPreferencesPatchSchema = z
 	.object({
 		rating: mediaRatingSchema.optional(),
@@ -381,6 +400,7 @@ export const mediaPreferencesPatchSchema = z
 	);
 export type MediaPreferencesPatch = z.infer<typeof mediaPreferencesPatchSchema>;
 
+/** Per-media preference and view activity, including the last viewed time. */
 export const mediaActivitySchema = z.object({
 	rating: mediaRatingSchema,
 	favorite: z.boolean(),
@@ -390,6 +410,7 @@ export const mediaActivitySchema = z.object({
 export type MediaActivity = z.infer<typeof mediaActivitySchema>;
 
 // Combined schema for the details endpoint
+/** Media record with activity, generation information and associated entities. */
 export const mediaDetailsSchema = mediaSchema.extend({
 	activity: mediaActivitySchema,
 	tags: z.array(tagSchema),
@@ -534,6 +555,7 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 
+/** A queued import item, its creation time and optional target source. */
 export const pendingImportJobSchema = z.object({
 	id: z.string(),
 	item: downloadItemSchema,
@@ -549,6 +571,7 @@ export const pendingImportCountSchema = z.object({
 
 export type PendingImportCount = z.infer<typeof pendingImportCountSchema>;
 
+/** Submits one or more download items to a target source. */
 export const bulkDownloadRequestSchema = z.object({
 	mediaSourceId: z.uuid({ message: "Invalid media source ID" }),
 	items: z.array(downloadItemSchema).min(1, "At least one item is required"),
@@ -586,6 +609,7 @@ export const moveMediaRequestSchema = copyMediaRequestSchema;
 export type MoveMediaRequest = z.infer<typeof moveMediaRequestSchema>;
 
 // Preset schemas
+/** Saved search condition and optional mode and ordering settings. */
 export const presetSchema = z.object({
 	id: z.number().int(),
 	name: z.string().min(1, "Name is required"),
@@ -642,6 +666,7 @@ export const duplicateMediaItemSchema = z.object({
 });
 export type DuplicateMediaItem = z.infer<typeof duplicateMediaItemSchema>;
 
+/** Media grouped by a shared duplicate reason. */
 export const duplicateGroupSchema = z.object({
 	id: z.string(),
 	reason: duplicateReasonSchema,
@@ -656,11 +681,13 @@ export type FindDuplicatesResponse = z.infer<
 	typeof findDuplicatesResponseSchema
 >;
 
+/** Duplicate search, optionally restricted to a single source. */
 export const findDuplicatesRequestSchema = z.object({
 	mediaSourceId: z.uuid().optional(),
 });
 export type FindDuplicatesRequest = z.infer<typeof findDuplicatesRequestSchema>;
 
+/** Applies a partial update to selected media in one source. */
 export const bulkEditMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
@@ -680,6 +707,7 @@ export type BulkDeleteMediaRequest = z.infer<
 	typeof bulkDeleteMediaRequestSchema
 >;
 
+/** Moves selected media to a destination path within the source. */
 export const bulkMoveMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
@@ -689,6 +717,7 @@ export const bulkMoveMediaRequestSchema = z.object({
 });
 export type BulkMoveMediaRequest = z.infer<typeof bulkMoveMediaRequestSchema>;
 
+/** Adds and removes tag IDs on selected media. */
 export const bulkTagMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
@@ -699,6 +728,7 @@ export const bulkTagMediaRequestSchema = z.object({
 });
 export type BulkTagMediaRequest = z.infer<typeof bulkTagMediaRequestSchema>;
 
+/** Copies selected media to another source. */
 export const bulkCopyToSourceMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
@@ -710,6 +740,7 @@ export type BulkCopyToSourceMediaRequest = z.infer<
 	typeof bulkCopyToSourceMediaRequestSchema
 >;
 
+/** Moves selected media to another source. */
 export const bulkMoveToSourceMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z

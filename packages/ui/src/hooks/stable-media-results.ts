@@ -8,6 +8,13 @@ export type StableMediaResultsState = {
 	items: MediaSearchResponse["media"];
 };
 
+/**
+ * Flattens pages in order, drops duplicate IDs, and retains existing item
+ * references while updating their fields. Clears the list when data is unavailable.
+ *
+ * @param setState - Solid store setter for the existing result state.
+ * @param data - Infinite query pages, or undefined to clear the list.
+ */
 export function updateStableMediaResults(
 	setState: SetStoreFunction<StableMediaResultsState>,
 	data: InfiniteData<MediaSearchResponse> | undefined,
@@ -46,6 +53,7 @@ export function updateStableMediaResults(
 	);
 }
 
+/** Reactively exposes a deduplicated result list with stable item identities across query updates. */
 export function createStableMediaResults(
 	data: Accessor<InfiniteData<MediaSearchResponse> | undefined>,
 ): Accessor<MediaSearchResponse["media"]> {

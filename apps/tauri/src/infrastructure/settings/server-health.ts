@@ -4,6 +4,7 @@ import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 
 const HEALTH_CHECK_TIMEOUT_MS = 5_000;
 
+/** Endpoint probed and elapsed time for a successful configuration RPC. */
 export type ServerHealthResult = {
 	endpoint: string;
 	latencyMs: number;
@@ -35,6 +36,13 @@ function canUseBrowserFetch(baseUrl: string): boolean {
 	return new URL(baseUrl).origin === window.location.origin;
 }
 
+/**
+ * Calls the server configuration RPC with a five-second timeout and validates its version.
+ *
+ * @param baseUrl - HTTP(S) server URL without embedded credentials.
+ * @returns The probed endpoint and elapsed time in milliseconds.
+ * @throws If the URL is invalid, the request fails, or the response lacks a version string.
+ */
 export async function checkServerHealth(
 	baseUrl: string,
 ): Promise<ServerHealthResult> {

@@ -5,6 +5,7 @@ import { JobRepository } from "~/infrastructure/repositories/job-repository";
 import { isJobTransferPath } from "~/infrastructure/services/job-transfer-storage";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 
+/** Validated export metadata and a readable stream for the artifact file. */
 export type ResolvedJobArtifact = {
 	job: Job;
 	path: string;
@@ -14,6 +15,12 @@ export type ResolvedJobArtifact = {
 	stream: ReadableStream<Uint8Array>;
 };
 
+/**
+ * Resolves a completed, unexpired artifact after checking its path and file metadata.
+ *
+ * @param jobId - ID of the job owning the artifact.
+ * @returns Metadata and a readable file stream, or null if the artifact is unavailable or invalid.
+ */
 export async function resolveJobArtifact(
 	jobId: string,
 ): Promise<ResolvedJobArtifact | null> {
@@ -59,6 +66,7 @@ function encodeContentDispositionFilename(fileName: string): string {
 	);
 }
 
+/** Builds no-cache download headers with ASCII and UTF-8 filename variants. */
 export function createJobArtifactHeaders(
 	artifact: Pick<ResolvedJobArtifact, "fileName" | "contentType" | "size">,
 ): HeadersInit {

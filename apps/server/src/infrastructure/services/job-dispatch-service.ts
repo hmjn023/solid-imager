@@ -12,6 +12,7 @@ import {
 	processSourceRestoreJob,
 } from "~/infrastructure/services/source-transfer-job-service";
 
+/** Thumbnail operations injected into job dispatch to avoid a direct module dependency. */
 export type ThumbnailJobHandlers = {
 	deleteThumbnail: (mediaSourceId: string, mediaId: string) => Promise<void>;
 	processThumbnailGenerationJob: (job: Job) => Promise<void>;
@@ -19,6 +20,7 @@ export type ThumbnailJobHandlers = {
 
 let thumbnailJobHandlers: ThumbnailJobHandlers | undefined;
 
+/** Registers the thumbnail handlers required before thumbnail jobs or deletions run. */
 export function configureThumbnailJobHandlers(
 	handlers: ThumbnailJobHandlers,
 ): void {
@@ -32,7 +34,7 @@ function getThumbnailJobHandlers(): ThumbnailJobHandlers {
 	return thumbnailJobHandlers;
 }
 
-// Helper for unified job processing (Called by JobWorker)
+/** Dispatches a job to its type-specific handler; most types require a media source ID. */
 export async function processJob(job: Job) {
 	const mediaSourceId = job.mediaSourceId;
 	if (
@@ -88,6 +90,7 @@ export async function processJob(job: Job) {
 	}
 }
 
+/** Creates queued jobs and publishes events, then attempts file and thumbnail deletions. Deletion failures are logged. */
 export async function executeDeferredActions(actions: DeferredActions) {
 	if (actions.jobs.length > 0) {
 		const repo = services.getJobRepository();

@@ -1,6 +1,7 @@
 import type { z } from "zod";
 import type { conflictSchema } from "@/domain/media/upload-schemas";
 
+/** Stored file metadata and an optional name conflict. */
 export type MediaStorageResult = {
 	filePath: string;
 	fileName: string;
@@ -12,11 +13,13 @@ export type MediaStorageResult = {
 	conflict?: z.infer<typeof conflictSchema>;
 };
 
+/** Minimal file input supported by media storage implementations. */
 export type MediaSourceFile = {
 	name: string;
 	arrayBuffer(): Promise<ArrayBuffer | Uint8Array>;
 };
 
+/** Dimensions, size and timestamps read from a stored file. */
 export type MediaMetadata = {
 	width: number;
 	height: number;
@@ -25,6 +28,7 @@ export type MediaMetadata = {
 	modifiedAt: Date;
 };
 
+/** Platform-neutral port for reading and modifying media files. */
 export type IMediaStorage = {
 	saveFile(
 		basePath: string,

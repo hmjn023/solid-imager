@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+/** Run identifier containing one or two slash-separated safe path segments. */
 export const clusteringRunIdSchema = z
 	.string()
 	.max(160)
@@ -16,6 +17,7 @@ export const clusteringSnapshotMediaSchema = z.object({
 	modified_at: z.string(),
 	characters: z.array(namedCharacterSchema),
 });
+/** Media-to-cluster assignment; cluster ID -1 denotes noise and membership strength is 0–1. */
 export const clusteringAssignmentSchema = z.object({
 	mediaId: z.uuid(),
 	embeddingId: z.uuid(),
@@ -24,6 +26,7 @@ export const clusteringAssignmentSchema = z.object({
 	membershipStrength: z.number().min(0).max(1),
 });
 
+/** Summary and parameters of a completed clustering run. */
 export const clusteringRunSummarySchema = z.object({
 	id: clusteringRunIdSchema,
 	name: z.string(),
@@ -43,6 +46,7 @@ export const clusteringRunSummarySchema = z.object({
 	}),
 });
 
+/** Media assignment with optional comparison-run cluster for review. */
 export const clusteringReviewMediaSchema = z.object({
 	id: z.uuid(),
 	mediaSourceId: z.uuid(),
@@ -53,6 +57,7 @@ export const clusteringReviewMediaSchema = z.object({
 	membershipStrength: z.number().min(0).max(1),
 	comparisonClusterId: z.number().int().min(-1).nullable(),
 });
+/** Cluster statistics, character labels, previews and optional comparison. */
 export const clusteringGroupSchema = z.object({
 	id: z.number().int().nonnegative(),
 	size: z.number().int().positive(),
@@ -79,9 +84,11 @@ const pageInput = z.object({
 	offset: z.number().int().min(0).default(0),
 	limit: z.number().int().min(1).max(60).default(24),
 });
+/** Paginated cluster review request with selectable sort order. */
 export const clusteringGroupsRequestSchema = pageInput.extend({
 	sort: z.enum(["size", "mixed", "weak"]).default("size"),
 });
+/** Paginated media review for a cluster; cluster ID -1 selects noise. */
 export const clusteringMediaRequestSchema = pageInput.extend({
 	clusterId: z.number().int().min(-1),
 	order: z.enum(["weak", "strong", "name"]).default("weak"),

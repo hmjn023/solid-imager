@@ -9,16 +9,19 @@ export const jobStatusSchema = z.enum([
 ]);
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
+/** Job types whose progress is aggregated from child jobs. */
 export const batchParentJobTypes = [
 	"batch_ccip_parent",
 	"bulk_tagging_parent",
 	"thumbnail_generation_parent",
 ] as const;
 
+/** Tests whether a job type represents a batch parent. */
 export function isBatchParentJobType(type: string): boolean {
 	return batchParentJobTypes.some((parentType) => parentType === type);
 }
 
+/** Batch counts, or null when progress is unavailable for the job. */
 export const jobProgressSchema = z
 	.object({
 		processed: z.number().int().nonnegative(),
@@ -58,6 +61,7 @@ export const jobDtoSchema = z.object({
 });
 export type JobDto = z.infer<typeof jobDtoSchema>;
 
+/** Paginated job listing with an optional status filter. */
 export const jobListRequestSchema = z.object({
 	status: jobStatusSchema.optional(),
 	limit: z.number().int().min(1).max(200).default(50),
@@ -76,6 +80,7 @@ export const jobIdRequestSchema = z.object({
 });
 export type JobIdRequest = z.infer<typeof jobIdRequestSchema>;
 
+/** Export format and whether image files should be included. */
 export const sourceExportJobPayloadSchema = z.object({
 	mode: z.enum(["ndjson", "tar"]),
 	includeImages: z.boolean(),
@@ -84,6 +89,7 @@ export type SourceExportJobPayload = z.infer<
 	typeof sourceExportJobPayloadSchema
 >;
 
+/** Restore format and server-side path to the input archive or dump. */
 export const sourceRestoreJobPayloadSchema = z.object({
 	mode: z.enum(["ndjson", "tar"]),
 	inputPath: z.string().min(1),
