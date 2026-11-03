@@ -10,7 +10,7 @@ import { createMemo, For, Show } from "solid-js";
 import { Button } from "../../button";
 import { Card } from "../../card";
 
-const primary = "hsl(var(--primary))";
+const chartBlue = "var(--chart-blue)";
 const chartTheme = {
 	foreground: "hsl(var(--foreground))",
 	muted: "hsl(var(--muted-foreground))",
@@ -18,21 +18,13 @@ const chartTheme = {
 	background: "hsl(var(--card))",
 };
 const typeStyle = {
-	image: { label: "画像", fill: primary, swatch: "bg-primary" },
-	video: {
-		label: "動画",
-		fill: "hsl(var(--info-foreground))",
-		swatch: "bg-info-foreground",
-	},
-	audio: {
-		label: "音声",
-		fill: "hsl(var(--warning-foreground))",
-		swatch: "bg-warning-foreground",
-	},
-} satisfies Record<MediaType, { label: string; fill: string; swatch: string }>;
+	image: { label: "画像", fill: "var(--chart-amber)" },
+	video: { label: "動画", fill: chartBlue },
+	audio: { label: "音声", fill: "var(--chart-violet)" },
+} satisfies Record<MediaType, { label: string; fill: string }>;
 const mediaTypes: readonly MediaType[] = ["image", "video", "audio"];
 
-function PanelTitle(props: { index: string; title: string }) {
+function PanelTitle(props: { index: string; title: string; accent: string }) {
 	return (
 		<div class="flex items-center gap-2.5">
 			<span
@@ -41,7 +33,10 @@ function PanelTitle(props: { index: string; title: string }) {
 			>
 				{props.index}
 			</span>
-			<span aria-hidden="true" class="h-3 w-px bg-border" />
+			<span
+				aria-hidden="true"
+				class={`h-3.5 w-1 rounded-full ${props.accent}`}
+			/>
 			<h2 class="text-base font-semibold tracking-tight">{props.title}</h2>
 		</div>
 	);
@@ -81,14 +76,14 @@ export function ImportTrend(props: {
 							x: "bucket",
 							y: "cumulative",
 							y1: 0,
-							fill: primary,
+							fill: chartBlue,
 							fillOpacity: 0.1,
 						}),
 						lineY(rows(), {
 							id: "累計",
 							x: "bucket",
 							y: "cumulative",
-							stroke: primary,
+							stroke: chartBlue,
 							points: rows().length < 2,
 						}),
 					]
@@ -101,8 +96,8 @@ export function ImportTrend(props: {
 							radius: [3, 3, 0, 0],
 							fill: (item) =>
 								props.selected && props.selected !== item.bucket
-									? "hsl(var(--primary) / 0.35)"
-									: primary,
+									? "color-mix(in srgb, var(--chart-blue) 77%, transparent)"
+									: chartBlue,
 						}),
 					],
 			scales: {
@@ -135,7 +130,7 @@ export function ImportTrend(props: {
 	return (
 		<Card class="flex min-w-0 flex-col gap-4 p-4 shadow-none sm:p-5">
 			<div class="flex flex-wrap items-center justify-between gap-2">
-				<PanelTitle index="01" title="取り込み推移" />
+				<PanelTitle index="01" title="取り込み推移" accent="bg-chart-blue" />
 				<fieldset
 					aria-label="推移の表示方法"
 					class="flex rounded-md bg-muted p-1"
@@ -264,7 +259,7 @@ export function MediaComposition(props: {
 	});
 	return (
 		<Card class="flex min-w-0 flex-col gap-3 p-4 shadow-none sm:p-5">
-			<PanelTitle index="02" title="メディアの内訳" />
+			<PanelTitle index="02" title="メディアの内訳" accent="bg-chart-amber" />
 			<p class="text-xs text-muted-foreground">
 				{props.filtered ? "絞り込みに一致したメディア" : "集計期間内のメディア"}
 				の構成比
@@ -296,10 +291,9 @@ export function MediaComposition(props: {
 				<For each={counts()}>
 					{(item) => (
 						<li class="flex items-center gap-2 py-2 text-xs">
-							<span
-								aria-hidden="true"
-								class={`size-2 shrink-0 rounded-sm ${item.swatch}`}
-							/>
+							<svg aria-hidden="true" class="size-2 shrink-0" viewBox="0 0 8 8">
+								<rect width="8" height="8" rx="2" fill={item.fill} />
+							</svg>
 							<span class="flex-1 font-medium">{item.label}</span>
 							<span class="tabular-nums">{item.count.toLocaleString()} 件</span>
 							<span class="w-12 text-right tabular-nums text-muted-foreground">
@@ -330,6 +324,7 @@ export function Ranking(props: {
 			<div class="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-5">
 				<PanelTitle
 					index={isIp() ? "03" : "04"}
+					accent={isIp() ? "bg-chart-violet" : "bg-chart-coral"}
 					title={isIp() ? "IPランキング" : "キャラクターランキング"}
 				/>
 				<span class="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
@@ -377,7 +372,7 @@ export function Ranking(props: {
 											width={`${(100 * item.count) / props.items[0].count}%`}
 											height="5"
 											rx="2"
-											class={isIp() ? "fill-primary" : "fill-info-foreground"}
+											class={isIp() ? "fill-chart-violet" : "fill-chart-coral"}
 										/>
 									</svg>
 								</span>
@@ -394,7 +389,11 @@ export function Ranking(props: {
 export function ModelFavorites(props: { models: LibraryStatistics["models"] }) {
 	return (
 		<Card class="min-w-0 p-4 shadow-none sm:p-5">
-			<PanelTitle index="05" title="生成モデル別のお気に入り" />
+			<PanelTitle
+				index="05"
+				title="生成モデル別のお気に入り"
+				accent="bg-chart-rose"
+			/>
 			<p class="mt-2 text-xs text-muted-foreground">
 				お気に入り件数の上位5モデル。棒の長さは、各モデルの登録件数に占めるお気に入りの割合です。
 			</p>
@@ -427,7 +426,7 @@ export function ModelFavorites(props: { models: LibraryStatistics["models"] }) {
 											width={`${percent}%`}
 											height="100%"
 											rx="2"
-											class="fill-primary"
+											class="fill-chart-rose"
 										/>
 									</svg>
 									<strong class="w-14 text-right font-medium tabular-nums">

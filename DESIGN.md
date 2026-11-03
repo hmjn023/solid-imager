@@ -23,6 +23,11 @@ colors:
   warning-surface: "#FFF8E8"
   info: "#426D86"
   info-surface: "#EEF6FA"
+  chart-blue: "#356BCC"
+  chart-violet: "#7852B6"
+  chart-coral: "#BB5736"
+  chart-amber: "#AC731A"
+  chart-rose: "#B34577"
 typography:
   page-title:
     fontFamily: "system-ui"
@@ -64,6 +69,16 @@ spacing:
   2xl: "24px"
   3xl: "32px"
 components:
+  import-bar:
+    backgroundColor: "{colors.chart-blue}"
+  ip-bar:
+    backgroundColor: "{colors.chart-violet}"
+  character-bar:
+    backgroundColor: "{colors.chart-coral}"
+  image-slice:
+    backgroundColor: "{colors.chart-amber}"
+  favorite-bar:
+    backgroundColor: "{colors.chart-rose}"
   app-shell:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.text}"
@@ -198,6 +213,11 @@ tool than a colorful dashboard.
   metadata. `text-muted` remains WCAG AA compliant for small helper text.
 - `destructive` is only for irreversible or failed actions. Warnings and information
   use their dedicated foreground/surface pairs and must not borrow destructive red.
+
+In library statistics, blue identifies imports, violet identifies IPs, coral
+identifies characters, and rose identifies favorites. In the media-type chart,
+amber denotes images, blue denotes video, and violet denotes audio. Keep each
+legend swatch paired with its label and count when filtering or changing periods.
 
 Avoid broad gradients, tinted page backgrounds, and arbitrary accent colors. A
 black-to-transparent gradient is allowed only as a thumbnail text scrim. Do not add
