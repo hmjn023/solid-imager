@@ -1,6 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
+	E2E_SOURCE_ID,
 	mediaPath,
 	sourcePath,
 } from "./support/fixture";
@@ -324,6 +325,12 @@ test.describe("loading and recovery", () => {
 		browserHealth.allowConsole("net::ERR_INTERNET_DISCONNECTED");
 		browserHealth.allowRequestFailure(
 			/\/api\/rpc\/(?:media\/search|sources\/events|jobs\/events|searchSnapshots\/capture)(?:\?|$)/,
+			"net::ERR_INTERNET_DISCONNECTED",
+		);
+		// Lazy thumbnails may start while the browser is deliberately offline.
+		browserHealth.allowRequestFailure(
+			new RegExp(`/api/sources/${E2E_SOURCE_ID}/thumbnail/[^/?]+(?:\\?|$)`),
+			"net::ERR_INTERNET_DISCONNECTED",
 		);
 		await context.setOffline(true);
 		await expect(

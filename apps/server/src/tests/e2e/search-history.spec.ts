@@ -8,6 +8,21 @@ import { expect, test, waitForAppHydration } from "./support/test";
 
 const snapshotUrl = /\/search\?search=[0-9a-f-]{36}$/;
 
+async function waitForSearchSnapshot(
+	page: import("@playwright/test").Page,
+	query: string,
+): Promise<string> {
+	const response = await page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname === "/api/rpc/searchSnapshots/capture" &&
+			response.ok() &&
+			response.request().postDataJSON().json.state.searchQuery === query,
+	);
+	const { json } = await response.json();
+	await expect(page).toHaveURL(new RegExp(`/search\\?search=${json.id}$`));
+	return page.url();
+}
+
 function searchInput(page: import("@playwright/test").Page) {
 	return page.getByRole("combobox", { name: "メディアを検索", exact: true });
 }
@@ -41,20 +56,23 @@ test("search results remain traversable across detail navigation", async ({
 
 	const fileNameInput = searchInput(page);
 
+	const firstSnapshot = waitForSearchSnapshot(page, E2E_PRIMARY_FILE_NAME);
 	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
 	await fileNameInput.press("Enter");
-	await expect(page).toHaveURL(snapshotUrl);
+	const firstSearchUrl = await firstSnapshot;
 	await expectSearchState(page, E2E_PRIMARY_FILE_NAME);
-	const firstSearchUrl = page.url();
 
+	// Removing the token is itself a settled search state with a history entry.
+	const clearedSnapshot = waitForSearchSnapshot(page, "");
 	await searchToken(page, E2E_PRIMARY_FILE_NAME).click();
+	const clearedSearchUrl = await clearedSnapshot;
+	const secondSnapshot = waitForSearchSnapshot(page, E2E_SIMILAR_FILE_NAME);
 	await fileNameInput.fill(E2E_SIMILAR_FILE_NAME);
 	await fileNameInput.press("Enter");
-	await expect(page).toHaveURL(snapshotUrl);
+	const secondSearchUrl = await secondSnapshot;
 	await expect(page).not.toHaveURL(firstSearchUrl);
 	await expectSearchState(page, E2E_SIMILAR_FILE_NAME);
 	await expect(searchToken(page, E2E_PRIMARY_FILE_NAME)).toHaveCount(0);
-	const secondSearchUrl = page.url();
 
 	const similarResult = page.getByRole("link", {
 		name: new RegExp(E2E_SIMILAR_FILE_NAME),
@@ -73,6 +91,12 @@ test("search results remain traversable across detail navigation", async ({
 	await waitForAppHydration(page);
 	await expect(page).toHaveURL(secondSearchUrl);
 	await expectSearchState(page, E2E_SIMILAR_FILE_NAME);
+
+	await page.goBack();
+	await waitForAppHydration(page);
+	await expect(page).toHaveURL(clearedSearchUrl);
+	await expect(searchToken(page, E2E_PRIMARY_FILE_NAME)).toHaveCount(0);
+	await expect(searchToken(page, E2E_SIMILAR_FILE_NAME)).toHaveCount(0);
 
 	await page.goBack();
 	await waitForAppHydration(page);

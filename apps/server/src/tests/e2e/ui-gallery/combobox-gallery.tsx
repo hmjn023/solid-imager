@@ -57,7 +57,7 @@ export function ComboboxGallery() {
 									/>
 								</ComboboxControl>
 								<Show when={virtual} fallback={<ComboboxContent />}>
-									<VirtualComboboxContent class="max-h-[300px]" />
+									<VirtualComboboxContent class="max-h-75" />
 								</Show>
 							</Combobox>
 							<output
