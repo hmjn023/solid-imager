@@ -81,11 +81,12 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 							options={options()}
 							optionTextValue="label"
 							optionValue="value"
+							placeholder="Select a source"
 							value={
 								options().find((o) => o.value === targetSourceId()) ?? null
 							}
 						>
-							<SelectTrigger>
+							<SelectTrigger aria-label="Destination source">
 								<SelectValue<{ label: string; value: string }>>
 									{(state) =>
 										state.selectedOption()?.label ?? "Select a source"

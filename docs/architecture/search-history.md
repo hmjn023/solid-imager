@@ -15,6 +15,22 @@
 
 ## ライフサイクル
 
+Web と Tauri の global search は `@solid-imager/ui/search` の
+`useSearchWorkspace` で検索・履歴・スクロール復元を組み立てる。route は検索 API、
+filter query、履歴 client、メディア操作 API、通知を渡す。ページサイズの下限、
+更新 debounce、履歴確定とスクロール保存の接続はこの共通層が持つ。
+
+選択・削除・コピー・移動・一括操作後の再取得は
+`packages/ui/src/hooks/use-media-collection-actions.ts` に置く。表示順に沿う選択は
+検索結果から導出し、結果の再取得で同じ ID が残る場合は選択を保持する。
+削除成功時は対象だけを選択から外し、一括操作の部分成功では選択を保持する。
+処理中の単体操作は二重送信と対象の差し替えを拒否する。
+
+`@solid-imager/ui/screens/search` の `SearchWorkspace` が表示部品と共通ダイアログを
+接続する。各アプリには詳細画面への遷移、画像表示、イベント購読、API client の
+組み立てを残す。Web の workspace view 連携と Tauri の戻り先保存も各アプリが担当する。
+この共通化では session の保存キーや接続先切替時の状態分離は変更しない。
+
 ```mermaid
 sequenceDiagram
   participant Store as Search store
@@ -70,3 +86,10 @@ sequenceDiagram
 ## 検証
 
 `apps/server/src/tests/e2e/search-history.spec.ts` は、2つのファイル名検索を別々の履歴エントリにした後、詳細画面から `goBack()` を複数回実行し、各検索結果と direct URL reload が復元されることを確認する。
+
+`use-media-collection-actions.test.ts` は選択の再照合、部分成功、単体操作の失敗・再試行、
+二重送信と処理中の対象保持を検証する。
+`apps/server/src/tests/e2e/search-workspace.spec.ts` は Web と Tauri の両 project で
+同じシナリオを実行し、選択、確認の取消、一括操作ダイアログ、隔離したソース間の
+実コピー・移動・削除と検索結果の再取得を確認する。Tauri project はブラウザ上の
+adapter による検証であり、native desktop の SQLite・HTTP plugin の実機検証を代替しない。

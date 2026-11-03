@@ -1,50 +1,28 @@
-import type { Media } from "@solid-imager/core/media";
 import { searchSnapshotStateSchema } from "@solid-imager/core/search";
-import { getErrorMessage } from "@solid-imager/core/utils";
-import { Button } from "@solid-imager/ui/button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "@solid-imager/ui/dialog";
-import {
-	persistSearchScrollPosition,
-	useSearchHistoryPersistence,
-	useSearchPage,
-} from "@solid-imager/ui/search";
-import {
-	type MediaCollectionSelectionMode,
-	useMediaCollectionSelection,
-} from "@solid-imager/ui/collections";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { SearchScreen } from "@solid-imager/ui/screens/search";
+import { SearchWorkspace } from "@solid-imager/ui/screens/search";
+import { useSearchWorkspace } from "@solid-imager/ui/search";
 import { createSearchHistoryClient } from "@solid-imager/ui/search/history";
-import {
-	activateSimilaritySearch,
-	getSearchCondition,
-	searchState,
-	setSearchState,
-} from "@solid-imager/ui/search/state";
+import { searchState } from "@solid-imager/ui/search/state";
 import { toast } from "@solid-imager/ui/toast";
 import { useLocation } from "@tanstack/solid-router";
-import { createSignal } from "solid-js";
-import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
 import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { MediaGridItem } from "~/components/media/media-grid-item";
-import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
 import { useWorkspaceView } from "~/presentation/workspace-view";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
 import {
+	bulkCopyToSource,
+	bulkDeleteMedia,
+	bulkMoveMedia,
+	bulkMoveToSource,
 	copyMedia,
 	deleteMedia,
 	moveMedia,
 } from "~/infrastructure/api-clients/media-api";
+import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import {
 	allAuthorsQueryOptions,
 	allCharactersQueryOptions,
@@ -59,46 +37,17 @@ import {
 	searchSemantic,
 } from "~/infrastructure/api-clients/search-api";
 
-const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
-const SEARCH_RESULTS_PER_PAGE = 200;
-const PresetClient = createPresetClient(rawPresetClient);
-const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
+const presetClient = createPresetClient(rawPresetClient);
+const historyClient = createSearchHistoryClient(rawSearchHistoryClient);
 
 export default function SearchContent() {
 	const location = useLocation();
 	const workspace = useWorkspaceNavigation();
-	const [visibleMediaIds, setVisibleMediaIds] = createSignal<readonly string[]>(
-		[],
-	);
-	const selection = useMediaCollectionSelection(visibleMediaIds);
-	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
-	const handleSelection = (
-		mediaId: string,
-		mode: MediaCollectionSelectionMode,
-	) => {
-		setIsBulkSelectMode(true);
-		selection.select(mediaId, mode);
-	};
-	const clearSelection = () => {
-		setIsBulkSelectMode(false);
-		selection.clear();
-	};
-	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
-	const [deleteTarget, setDeleteTarget] = createSignal<Media | null>(null);
-	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
-	const [isDeleteSubmitting, setIsDeleteSubmitting] = createSignal(false);
-	const [moveCopyTarget, setMoveCopyTarget] = createSignal<Media | null>(null);
-	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
-	const [isMoveCopyDialogOpen, setIsMoveCopyDialogOpen] = createSignal(false);
-	const searchHistory = useSearchHistoryPersistence("all", {
-		client: SearchHistoryClient,
-	});
-	const page = useSearchPage({
+	const controller = useSearchWorkspace({
 		searchMedia,
 		searchSimilar,
 		searchSemantic,
-		similarityModel: () => searchState.similarityModel,
-		semanticQuery: () => searchState.semanticQuery,
+		historyClient,
 		queries: {
 			tags: tagsQueryOptions,
 			sources: mediaSourcesQueryOptions,
@@ -107,115 +56,22 @@ export default function SearchContent() {
 			characters: allCharactersQueryOptions,
 			authors: allAuthorsQueryOptions,
 		},
-		selectedSource: () => searchState.selectedSource,
-		getSearchCondition,
-		sortBy: () => searchState.sortBy,
-		sortOrder: () => searchState.sortOrder,
-		// Workspace can display up to eight columns. Fetch enough complete rows per page
-		// so scrolling does not stop for another request every two or three rows.
-		limit: () => Math.max(searchState.limit, SEARCH_RESULTS_PER_PAGE),
-		scrollY: () => searchState.scrollY,
-		setScrollY: (value) => {
-			setSearchState("scrollY", value);
-			persistSearchScrollPosition("all", value, {
-				historyEntryKey: searchHistory.historyEntryKey,
-			});
-		},
-		setOffset: (value) => setSearchState("offset", value),
-		mode: () => searchState.mode,
-		similarityAnchorMediaId: () => searchState.similarityAnchorMediaId,
-		similarityTopK: () => searchState.similarityTopK,
-		refreshDebounceMs: SEARCH_RESULTS_REFRESH_DEBOUNCE_MS,
-		isSearchStateRestored: searchHistory.isRestored,
-		commitSearchHistory: searchHistory.commitNow,
-		historyEntryKey: searchHistory.historyEntryKey,
-		enableVirtualization: true,
-		scrollContainerSelector: '[data-media-scroll="search"]',
+		operations: { deleteMedia, copyMedia, moveMedia },
+		notify: toast,
 	});
-	const selectedMediaItems = () =>
-		page
-			.searchResults()
-			.filter((media) => selection.isSelected(media.id))
-			.map((media) => ({
-				mediaId: media.id,
-				mediaSourceId: media.mediaSourceId,
-			}));
+	const { page, history, actions } = controller;
 	useWorkspaceView(() => ({
 		kind: "search",
 		snapshotId: location().search.search,
 		searchKey: JSON.stringify(searchSnapshotStateSchema.parse(searchState)),
 		resultsCurrent: page.resultsCurrent(),
-		ready: searchHistory.isRestored(),
+		ready: history.isRestored(),
 		state: page.contentState(),
 		media: page.searchResults(),
 		total: page.totalCount() ?? 0,
-		selectedIds: [...selection.selectedIds()],
+		selectedIds: [...actions.selection.selectedIds()],
 	}));
-	const findSearchMedia = (mediaId: string) =>
-		page.searchResults().find((media) => media.id === mediaId);
-	const handleDelete = (mediaId: string) => {
-		const media = findSearchMedia(mediaId);
-		if (!media) return;
-		setDeleteTarget(media);
-		setIsDeleteSubmitting(false);
-		setIsDeleteDialogOpen(true);
-	};
-	const handleCopyMove = (mediaId: string, mode: "copy" | "move") => {
-		const media = findSearchMedia(mediaId);
-		if (!media) return;
-		setMoveCopyTarget(media);
-		setMoveCopyMode(mode);
-		setIsMoveCopyDialogOpen(true);
-	};
-	const forgetSelectedMedia = (mediaId: string) => {
-		if (selection.isSelected(mediaId)) {
-			selection.select(mediaId, "toggle");
-		}
-		if (selection.selectedIds().size === 0) {
-			setIsBulkSelectMode(false);
-		}
-	};
-	const confirmDelete = async () => {
-		const media = deleteTarget();
-		if (!media || isDeleteSubmitting()) return;
-		setIsDeleteSubmitting(true);
-		try {
-			await deleteMedia(media.mediaSourceId, media.id);
-			forgetSelectedMedia(media.id);
-			toast.success("Media deleted");
-			page.refreshSearchResults();
-		} catch (error) {
-			toast.error(`Failed to delete media: ${getErrorMessage(error)}`);
-		} finally {
-			setIsDeleteSubmitting(false);
-			setIsDeleteDialogOpen(false);
-			setDeleteTarget(null);
-		}
-	};
-	const handleConfirmCopyMove = async (targetSourceId: string) => {
-		const media = moveCopyTarget();
-		if (!media) return;
-		const mode = moveCopyMode();
-		const action = mode === "copy" ? copyMedia : moveMedia;
-		try {
-			await action(media.id, targetSourceId);
-			toast.success(`Media ${mode === "copy" ? "copied" : "moved"}`);
-			page.refreshSearchResults();
-		} catch (error) {
-			toast.error(`Failed to ${mode} media: ${getErrorMessage(error)}`);
-		} finally {
-			setMoveCopyTarget(null);
-			setIsMoveCopyDialogOpen(false);
-		}
-	};
-	const handleBulkSuccess = (partial = false) => {
-		if (!partial) {
-			clearSelection();
-		}
-		page.refreshSearchResults();
-	};
-
-	useMediaSourceEvents(() => searchState.selectedSource || "*", {
+	useMediaSourceEvents(() => controller.selectedSource() || "*", {
 		onMediaAdded: page.refreshSearchResults,
 		onMediaDeleted: page.refreshSearchResults,
 		onMediaChanged: page.refreshSearchResults,
@@ -223,119 +79,46 @@ export default function SearchContent() {
 		onMediaMoved: page.refreshSearchResults,
 		onAllJobsCompleted: page.refreshSearchResults,
 	});
-
 	return (
-		<>
-			<SearchScreen
-				enableVirtualization
-				filterData={page.filterData}
-				isBulkSelectMode={isBulkSelectMode}
-				isSelected={selection.isSelected}
-				onBulkAction={() => setIsBulkActionOpen(true)}
-				onClearSelection={clearSelection}
-				onCopyMove={handleCopyMove}
-				onDelete={handleDelete}
-				onFindSimilar={(media, model) =>
-					activateSimilaritySearch(media.id, model)
-				}
-				onSelectAll={() => {
-					setIsBulkSelectMode(true);
-					selection.selectAll();
-				}}
-				onSelectMedia={handleSelection}
-				onSelectSource={(id) => setSearchState("selectedSource", id)}
-				onToggleSelect={(mediaId) => handleSelection(mediaId, "toggle")}
-				onVisibleMediaIdsChange={setVisibleMediaIds}
-				page={page}
-				presetClient={PresetClient}
-				renderMediaItem={(media, options) => (
-					<MediaGridItem
-						imageLoadPolicy={options?.imageLoadPolicy}
-						isBulkSelectMode={options?.isBulkSelectMode}
-						isSelected={options?.isSelected}
-						isPreviewSelected={options?.isPreviewSelected}
-						media={media}
-						onContextMenu={options?.onContextMenu}
-						onOpenMediaDetail={options?.onOpenMediaDetail}
-						onPreviewSelect={options?.onPreviewSelect}
-						onSelectGesture={options?.onSelectGesture}
-						onToggleSelect={options?.onToggleSelect}
-						priority={options?.priority}
-						onPrepareMediaDetail={options?.onPrepareMediaDetail}
-					/>
-				)}
-				onPrepareMediaDetail={workspace.prepareMediaDetail}
-				onOpenMediaDetail={workspace.openMediaDetail}
-				renderMediaPreview={(media) => (
-					<ThumbnailImage
-						alt={media.fileName}
-						class="h-full w-full object-contain"
-						height={media.height}
-						loading="eager"
-						media={media}
-						requestedSize={512}
-						width={media.width}
-					/>
-				)}
-				selectedSource={searchState.selectedSource}
-				selectedCount={() => selection.selectedIds().size}
-				ssrGuard
-				sources={page.sources()}
-			/>
-			<Dialog
-				onOpenChange={(open) => {
-					setIsDeleteDialogOpen(open);
-					if (!open && !isDeleteSubmitting()) setDeleteTarget(null);
-				}}
-				open={isDeleteDialogOpen()}
-			>
-				<DialogContent data-workspace-theme="">
-					<DialogHeader>
-						<DialogTitle>メディアを削除</DialogTitle>
-						<DialogDescription>
-							この操作は取り消せません。
-							{deleteTarget()?.fileName ?? "選択したメディア"}を削除しますか？
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button
-							disabled={isDeleteSubmitting()}
-							onClick={() => setIsDeleteDialogOpen(false)}
-							variant="outline"
-						>
-							キャンセル
-						</Button>
-						<Button
-							disabled={isDeleteSubmitting()}
-							onClick={() => {
-								void confirmDelete();
-							}}
-							variant="destructive"
-						>
-							{isDeleteSubmitting() ? "削除中..." : "削除"}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-			<MoveCopyMediaDialog
-				currentSourceId={moveCopyTarget()?.mediaSourceId ?? ""}
-				mode={moveCopyMode()}
-				onConfirm={(event) => {
-					void handleConfirmCopyMove(event);
-				}}
-				onOpenChange={(open) => {
-					setIsMoveCopyDialogOpen(open);
-					if (!open) setMoveCopyTarget(null);
-				}}
-				open={isMoveCopyDialogOpen()}
-			/>
-			<BulkActionDialog
-				mediaIds={selectedMediaItems().map((item) => item.mediaId)}
-				mediaItems={selectedMediaItems()}
-				onOpenChange={setIsBulkActionOpen}
-				onSuccess={handleBulkSuccess}
-				open={isBulkActionOpen()}
-			/>
-		</>
+		<SearchWorkspace
+			controller={controller}
+			presetClient={presetClient}
+			operations={{
+				listSources: fetchMediaSources,
+				bulkCopyToSource,
+				bulkDeleteMedia,
+				bulkMoveMedia,
+				bulkMoveToSource,
+			}}
+			renderMediaItem={(media, options) => (
+				<MediaGridItem
+					imageLoadPolicy={options?.imageLoadPolicy}
+					isBulkSelectMode={options?.isBulkSelectMode}
+					isSelected={options?.isSelected}
+					isPreviewSelected={options?.isPreviewSelected}
+					media={media}
+					onContextMenu={options?.onContextMenu}
+					onOpenMediaDetail={options?.onOpenMediaDetail}
+					onPreviewSelect={options?.onPreviewSelect}
+					onSelectGesture={options?.onSelectGesture}
+					onToggleSelect={options?.onToggleSelect}
+					priority={options?.priority}
+					onPrepareMediaDetail={options?.onPrepareMediaDetail}
+				/>
+			)}
+			onPrepareMediaDetail={workspace.prepareMediaDetail}
+			onOpenMediaDetail={workspace.openMediaDetail}
+			renderMediaPreview={(media) => (
+				<ThumbnailImage
+					alt={media.fileName}
+					class="h-full w-full object-contain"
+					height={media.height}
+					loading="eager"
+					media={media}
+					requestedSize={512}
+					width={media.width}
+				/>
+			)}
+		/>
 	);
 }
