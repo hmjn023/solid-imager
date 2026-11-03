@@ -141,3 +141,32 @@ it("shares one stream, initializes late listeners, and closes after the last uns
 	offSecond();
 	expect(signal?.aborted).toBe(true);
 });
+
+it("does not initialize late listeners while a normally completed stream reconnects", async () => {
+	vi.useFakeTimers();
+	try {
+		const finish = Promise.withResolvers<void>();
+		const open = vi.fn(async () => ({
+			async *[Symbol.asyncIterator]() {
+				await finish.promise;
+				yield* [];
+			},
+		}));
+		const subscribe = createSharedEventSubscription(open);
+		const firstConnected = vi.fn();
+		const stopFirst = subscribe(vi.fn(), firstConnected);
+		await vi.waitFor(() => expect(firstConnected).toHaveBeenCalledOnce());
+		finish.resolve();
+		await vi.advanceTimersByTimeAsync(0);
+		const lateConnected = vi.fn();
+		const stopLate = subscribe(vi.fn(), lateConnected);
+		expect(lateConnected).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(open).toHaveBeenCalledTimes(2);
+		expect(lateConnected).toHaveBeenCalledOnce();
+		stopLate();
+		stopFirst();
+	} finally {
+		vi.useRealTimers();
+	}
+});

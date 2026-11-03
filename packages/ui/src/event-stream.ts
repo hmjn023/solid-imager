@@ -35,6 +35,7 @@ export function subscribeToEventStream<TEvent>(
 	onEvent: (event: TEvent) => void | Promise<void>,
 	onError?: EventStreamErrorHandler,
 	onConnected?: EventStreamConnectedHandler,
+	onDisconnected?: () => void,
 ): () => void {
 	const abortController = new AbortController();
 	const canObservePageLifecycle = typeof window !== "undefined";
@@ -66,6 +67,7 @@ export function subscribeToEventStream<TEvent>(
 				}
 
 				if (!abortController.signal.aborted) {
+					onDisconnected?.();
 					retryCount++;
 					const delay = Math.min(
 						INITIAL_RETRY_DELAY * 2 ** (retryCount - 1),
@@ -132,6 +134,9 @@ export function createSharedEventSubscription<TEvent>(
 					await Promise.all(
 						Array.from(subscribers, (listener) => listener.onConnected?.()),
 					);
+				},
+				() => {
+					connected = false;
 				},
 			);
 		} else if (connected) {
