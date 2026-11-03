@@ -1,10 +1,10 @@
 # solid-imager source dependencies (full)
 
-Generated 2026-11-04 from `f67c0183`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
+Generated 2026-11-04 from `521b18a7`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
 
 Solid arrows show value imports and re-exports. Dotted arrows show explicit type-only references. Arrows labeled `dynamic` show literal `import()` and `require()` calls. Workspace references resolve to files and `external:` identifies third-party and platform modules. Each edge represents a unique source, target and reference kind.
 
-3,790 edges. This single block requires a Mermaid renderer with a higher `maxEdges` setting. Use the [split diagrams](indexion-dependency-graph.md) for normal previews.
+3,794 edges. This single block requires a Mermaid renderer with a higher `maxEdges` setting. Use the [split diagrams](indexion-dependency-graph.md) for normal previews.
 
 ```mermaid
 flowchart LR
@@ -79,6 +79,7 @@ flowchart LR
   N70["apps/server/src/infrastructure/api/app-router.ts"]
   N71["apps/server/src/infrastructure/api/clients/preset-client.ts"]
   N72["apps/server/src/infrastructure/api/clients/search-history-client.ts"]
+  N987["apps/server/src/infrastructure/api/feature-routers.ts"]
   N73["apps/server/src/infrastructure/api/job-artifact.ts"]
   N876["apps/server/src/infrastructure/api/rest-handler.ts"]
   N74["apps/server/src/infrastructure/api/routers/ai-router.ts"]
@@ -282,6 +283,7 @@ flowchart LR
   N272["apps/server/src/tests/unit/application/services/search-snapshot-service.test.ts"]
   N273["apps/server/src/tests/unit/application/services/sparse-hdbscan.test.ts"]
   N274["apps/server/src/tests/unit/application/services/tagging-service.test.ts"]
+  N988["apps/server/src/tests/unit/architecture/mcp-catalog.test.ts"]
   N894["apps/server/src/tests/unit/architecture/package-exports.test.ts"]
   N275["apps/server/src/tests/unit/config/database.test.ts"]
   N276["apps/server/src/tests/unit/db/connection.test.ts"]
@@ -1294,32 +1296,33 @@ flowchart LR
   N68 --> N585
   N68 -. type .-> N957
   N69 --> N64
-  N70 --> N74
-  N70 --> N75
-  N70 --> N76
-  N70 --> N77
+  N70 --> N987
   N70 --> N78
-  N70 --> N79
-  N70 --> N80
-  N70 --> N82
-  N70 --> N83
-  N70 --> N84
-  N70 --> N85
-  N70 --> N877
-  N70 --> N86
-  N70 --> N87
-  N70 --> N88
-  N70 --> N89
-  N70 --> N90
-  N70 --> N91
-  N70 --> N92
   N70 --> N419
-  N70 --> N535
   N70 --> N601
   N71 --> N64
   N71 -. type .-> N601
   N72 --> N64
   N72 -. type .-> N601
+  N987 --> N74
+  N987 --> N75
+  N987 --> N76
+  N987 --> N77
+  N987 --> N79
+  N987 --> N80
+  N987 --> N82
+  N987 --> N83
+  N987 --> N84
+  N987 --> N85
+  N987 --> N877
+  N987 --> N86
+  N987 --> N87
+  N987 --> N88
+  N987 --> N89
+  N987 --> N90
+  N987 --> N91
+  N987 --> N92
+  N987 --> N535
   N73 --> N879
   N73 --> N153
   N73 --> N173
@@ -1611,7 +1614,7 @@ flowchart LR
   N116 --> N959
   N116 --> N961
   N117 --> N522
-  N880 --> N70
+  N880 --> N987
   N880 --> N418
   N880 --> N899
   N880 --> N900
@@ -2457,6 +2460,9 @@ flowchart LR
   N274 -. type .-> N952
   N274 -. type .-> N957
   N274 -. type .-> N960
+  N988 --> N90
+  N988 -->|dynamic| N880
+  N988 --> N532
   N894 --> N509
   N894 --> N512
   N894 --> N518

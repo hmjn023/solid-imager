@@ -1,10 +1,10 @@
 # solid-imager dependencies: Server infrastructure and routes
 
-Generated 2026-11-04 from `f67c0183`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
+Generated 2026-11-04 from `521b18a7`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
 
 Solid arrows show value imports and re-exports. Dotted arrows show explicit type-only references. Arrows labeled `dynamic` show literal `import()` and `require()` calls. Workspace references resolve to files and `external:` identifies third-party and platform modules. Each edge represents a unique source, target and reference kind.
 
-737 edges, with at most 450 per Mermaid block.
+738 edges, with at most 450 per Mermaid block.
 
 ## Part 1
 
@@ -32,6 +32,7 @@ flowchart LR
   N20["apps/server/src/infrastructure/api/app-router.ts"]
   N21["apps/server/src/infrastructure/api/clients/preset-client.ts"]
   N22["apps/server/src/infrastructure/api/clients/search-history-client.ts"]
+  N266["apps/server/src/infrastructure/api/feature-routers.ts"]
   N23["apps/server/src/infrastructure/api/job-artifact.ts"]
   N223["apps/server/src/infrastructure/api/rest-handler.ts"]
   N24["apps/server/src/infrastructure/api/routers/ai-router.ts"]
@@ -254,32 +255,33 @@ flowchart LR
   N18 --> N151
   N18 -. type .-> N258
   N19 --> N14
-  N20 --> N24
-  N20 --> N25
-  N20 --> N26
-  N20 --> N27
+  N20 --> N266
   N20 --> N28
-  N20 --> N29
-  N20 --> N30
-  N20 --> N32
-  N20 --> N33
-  N20 --> N34
-  N20 --> N35
-  N20 --> N224
-  N20 --> N36
-  N20 --> N37
-  N20 --> N38
-  N20 --> N39
-  N20 --> N40
-  N20 --> N41
-  N20 --> N42
   N20 --> N118
-  N20 --> N145
   N20 --> N161
   N21 --> N14
   N21 -. type .-> N161
   N22 --> N14
   N22 -. type .-> N161
+  N266 --> N24
+  N266 --> N25
+  N266 --> N26
+  N266 --> N27
+  N266 --> N29
+  N266 --> N30
+  N266 --> N32
+  N266 --> N33
+  N266 --> N34
+  N266 --> N35
+  N266 --> N224
+  N266 --> N36
+  N266 --> N37
+  N266 --> N38
+  N266 --> N39
+  N266 --> N40
+  N266 --> N41
+  N266 --> N42
+  N266 --> N145
   N23 --> N225
   N23 --> N101
   N23 --> N115
@@ -571,7 +573,7 @@ flowchart LR
   N65 --> N259
   N65 --> N261
   N66 --> N139
-  N226 --> N20
+  N226 --> N266
   N226 --> N233
   N226 --> N234
   N226 --> N235
@@ -638,7 +640,6 @@ flowchart LR
   N89 --> N49
   N89 --> N52
   N89 --> N66
-  N89 -->|dynamic| N85
 ```
 
 ## Part 2
@@ -813,6 +814,7 @@ flowchart LR
   N193["packages/ui/src/shortcuts/index.ts"]
   N194["packages/ui/src/source-media-page.tsx"]
   N196["packages/ui/src/toast.tsx"]
+  N61 -->|dynamic| N57
   N61 --> N74
   N61 --> N89
   N61 --> N94

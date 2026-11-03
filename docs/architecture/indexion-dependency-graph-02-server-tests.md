@@ -1,20 +1,20 @@
 # solid-imager dependencies: Server tests
 
-Generated 2026-11-04 from `f67c0183`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
+Generated 2026-11-04 from `521b18a7`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
 
 Solid arrows show value imports and re-exports. Dotted arrows show explicit type-only references. Arrows labeled `dynamic` show literal `import()` and `require()` calls. Workspace references resolve to files and `external:` identifies third-party and platform modules. Each edge represents a unique source, target and reference kind.
 
-596 edges, with at most 450 per Mermaid block.
+599 edges, with at most 450 per Mermaid block.
 
 ## Part 1
 
 ```mermaid
 flowchart LR
   N0["apps/server/src/app.css"]
-  N171["apps/server/src/config/database.ts"]
   N1["apps/server/src/infrastructure/ai/postgres-ccip-vector-store.ts"]
   N2["apps/server/src/infrastructure/ai/rust-ai-client.ts"]
   N172["apps/server/src/infrastructure/api/routers/entity-media-counts.ts"]
+  N211["apps/server/src/infrastructure/api/routers/tags-router.ts"]
   N3["apps/server/src/infrastructure/bootstrap.ts"]
   N4["apps/server/src/infrastructure/db/index.ts"]
   N5["apps/server/src/infrastructure/db/pglite.ts"]
@@ -24,6 +24,7 @@ flowchart LR
   N8["apps/server/src/infrastructure/events/realtime-event-bus.ts"]
   N9["apps/server/src/infrastructure/jobs/file-watcher-manager.ts"]
   N10["apps/server/src/infrastructure/jobs/file-watcher-service.ts"]
+  N212["apps/server/src/infrastructure/mcp/catalog.ts"]
   N11["apps/server/src/infrastructure/processing/image-processor.ts"]
   N21["apps/server/src/infrastructure/service-registry.ts"]
   N22["apps/server/src/infrastructure/services/author-service.ts"]
@@ -119,8 +120,8 @@ flowchart LR
   N182["apps/server/src/tests/unit/application/services/search-snapshot-service.test.ts"]
   N183["apps/server/src/tests/unit/application/services/sparse-hdbscan.test.ts"]
   N184["apps/server/src/tests/unit/application/services/tagging-service.test.ts"]
+  N213["apps/server/src/tests/unit/architecture/mcp-catalog.test.ts"]
   N185["apps/server/src/tests/unit/architecture/package-exports.test.ts"]
-  N186["apps/server/src/tests/unit/config/database.test.ts"]
   N105["external:@fontsource/noto-sans/latin-400.css"]
   N106["external:@fontsource/noto-sans/latin-500.css"]
   N107["external:@fontsource/noto-sans/latin-600.css"]
@@ -640,15 +641,15 @@ flowchart LR
   N184 -. type .-> N202
   N184 -. type .-> N205
   N184 -. type .-> N206
+  N213 --> N211
+  N213 -->|dynamic| N212
+  N213 --> N133
   N185 --> N119
   N185 --> N187
   N185 --> N126
   N185 --> N133
   N185 -. type .-> N207
   N185 -. type .-> N209
-  N186 --> N171
-  N186 --> N119
-  N186 --> N123
 ```
 
 ## Part 2
@@ -758,6 +759,9 @@ flowchart LR
   N149["packages/core/src/public/media.ts"]
   N150["packages/core/src/public/search.ts"]
   N151["packages/db/src/index.ts"]
+  N51 --> N3
+  N51 --> N93
+  N51 --> N96
   N51 --> N100
   N52 -. type .-> N3
   N52 --> N14
