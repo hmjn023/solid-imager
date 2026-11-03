@@ -2,18 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Solid Imager API Reference</title>
+    <script>location.replace("./docs/scalar" + location.search + location.hash);</script>
+    <noscript><meta http-equiv="refresh" content="0; url=./docs/scalar" /></noscript>
   </head>
-  <body>
-    <div id="app"></div>
-    <script type="module">
-      import { createApiReference } from "https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.72.1/esm.js";
-
-      createApiReference("#app", {
-        url: "/openapi.json",
-        layout: "modern",
-      });
-    </script>
-  </body>
+  <body><a href="./docs/scalar">Open the Solid Imager API Reference</a></body>
 </html>

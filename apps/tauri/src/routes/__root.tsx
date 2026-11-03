@@ -15,7 +15,7 @@ import {
 import { getCollections, refetchCollection } from "~/collections";
 import { collectionQueryKeys } from "~/collections/query-keys";
 import { PendingDownloadsIndicator } from "~/components/imports/pending-downloads-indicator";
-import { getApiBaseUrl } from "~/infrastructure/api-base";
+import { getApiDocsUrl } from "~/infrastructure/settings/server-settings";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import {
 	createMediaSource,
@@ -91,7 +91,7 @@ function RootRouteComponent() {
 		<ShortcutPreferencesProvider>
 			<Toaster />
 			<AppShell
-				apiDocsHref={`${getApiBaseUrl()}/docs/scalar`}
+				apiDocsHref={getApiDocsUrl()}
 				mediaSources={sourceData}
 				onNavigate={(to) => void navigate({ to })}
 				renderPendingDownloadsIndicator={(compact) => (

@@ -31,7 +31,7 @@ test("preserves an open dialog, input value, and focus after an SSE reconnect re
 			await route.fulfill({
 				status: 200,
 				contentType: "text/event-stream",
-				body: "",
+				body: "event: close\n\n",
 			});
 			return;
 		}

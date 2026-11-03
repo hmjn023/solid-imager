@@ -36,6 +36,8 @@ HTTP MCP はデータ操作、ブラウザの WebMCP はユーザーと同じ画
 
 WebMCP の操作は開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
 
+ツールの入出力は [oRPC の共有契約](./packages/core/src/domain/contract/media-tools.contract.ts) で定義します。HTTP MCP は [専用ルーター](./apps/server/src/infrastructure/api/routers/media-tools-router.ts) のみを登録し、WebMCP は同じ契約を使ってデータを操作します。画面遷移、選択状態、操作通知はブラウザー側が担当します。
+
 ### EmbeddingGemma 2 検索
 
 1. `bun run --cwd apps/server db:migrate` を適用し、Manager → Vector extraction で **EmbeddingGemma 2** を選んでローカル画像の索引を作成します。
@@ -49,7 +51,7 @@ WebMCP の操作は開始・完了・失敗を通知します。ダイアログ�
 ```
 Runtime: Bun
 Framework: TanStack Start
-API: oRPC
+API: oRPC v2
 UI: Kobalte + Tailwind CSS + solid-ui
 Database: PostgreSQL / PGlite
 ORM: Drizzle ORM
@@ -70,6 +72,8 @@ Tooling: Vite / Oxlint / Oxfmt
 - `packages/db/`: Drizzle schema、DB repository 実装、transaction manager。
 - `packages/ui/`: 共通UIコンポーネントライブラリ。
 - `packages/client/`: oRPC client factory などの共有クライアント基盤。
+
+oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定しています。[v1 と v2 の RPC 通信形式は非互換](https://orpc.dev/docs/migrations/from-v1)です。更新時は Web とサーバー、Tauri、CLI、xtracter、およびリモート推論先の Solid Imager を同じリリースに揃えてください。
 
 ## セットアップ
 
@@ -199,9 +203,15 @@ fi
 ## 詳細
 
 - **テストの棚卸し・実行方針**: [テスト棚卸し](./docs/testing-audit.md)
-- **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Scalar API Reference](./apps/server/public/api-docs.html)
+- **API 仕様と実行**: 起動中のサーバーの `/docs/scalar`（Web・Tauri の「API Docs」）で操作を選び、**Test Request → Send** から実行できます。[OpenAPI 仕様](./apps/server/public/openapi.json) は `/openapi.json` で配信し、REST の接続先は `/api/rest` です。たとえば `curl -X POST http://localhost:3000/api/rest/sources/list` でソース一覧を取得できます。アプリ・CLI・拡張機能の型付きクライアントは `/api/rpc` を使用します。メディア本体は `GET /api/sources/{sourceId}/{mediaId}` で取得します。
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面）
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)
+
+### リバースプロキシ経由での API 公開
+
+リバースプロキシが `/imager/` を取り除いて転送する場合、Scalar は `/imager/docs/scalar` から `/imager/openapi.json` を読み、`/imager/api/rest` に送信します。TLS をプロキシで終端する場合は、サーバーに `REST_PUBLIC_ORIGIN=https://imager.example.com` のように公開 Origin を設定してください。設定値にはパスを含めません。
+
+`/api/rest` と `/api/rpc` は削除や設定変更も実行できます。外部公開時は両方をリバースプロキシなどの認証・アクセス制御で保護してください。REST の Origin 検証はブラウザーのクロスサイト送信を防ぐためのもので、利用者の認証は行いません。

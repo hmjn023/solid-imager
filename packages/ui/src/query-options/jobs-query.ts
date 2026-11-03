@@ -3,7 +3,7 @@ import type {
 	JobListResponse,
 } from "@solid-imager/core/domain/jobs/schemas";
 import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
-import { queryOptions } from "@tanstack/solid-query";
+import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const DEFAULT_JOBS_PAGE_SIZE = 200;
 export const defaultJobsQueryInput = {
@@ -24,13 +24,16 @@ export const defaultJobsQueryConfig = {
 
 export function buildJobsQueryOptions(
 	input: JobListRequest,
-	queryFn: (input: JobListRequest) => Promise<JobListResponse>,
+	queryFn: (
+		input: JobListRequest,
+		signal: AbortSignal,
+	) => Promise<JobListResponse>,
 ) {
-	return queryOptions({
+	return {
 		queryKey: jobsQueryKeys.list(input),
-		queryFn: () => queryFn(input),
+		queryFn: ({ signal }: QueryFunctionContext) => queryFn(input, signal),
 		...defaultJobsQueryConfig,
-	});
+	};
 }
 
 export function updateJobProgress(

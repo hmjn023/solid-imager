@@ -17,8 +17,6 @@
     "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'"
   },
   "dependencies": {
-    "@orpc/client": "^1.16.1",
-    "@orpc/solid-query": "^1.16.1",
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
     "@solid-imager/ui": "workspace:*",
