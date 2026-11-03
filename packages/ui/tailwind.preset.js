@@ -69,6 +69,13 @@ const solidUiPreset = {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
+        chart: {
+          blue: "var(--chart-blue)",
+          violet: "var(--chart-violet)",
+          coral: "var(--chart-coral)",
+          amber: "var(--chart-amber)",
+          rose: "var(--chart-rose)",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {

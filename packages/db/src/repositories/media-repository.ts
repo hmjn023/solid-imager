@@ -1,3 +1,4 @@
+import { readLibraryStatistics } from "./media-statistics";
 import { createAuthorRepository, mapAuthor } from "./author-repository";
 import {
 	ResourceConflictError,
@@ -699,6 +700,7 @@ export function createMediaRepository(
 	const executeSearch = makeExecuteSearch(getExecutor);
 
 	return {
+		getStatistics: (input) => readLibraryStatistics(getExecutor(), input),
 		async updateActivity(sourceId, mediaId, change) {
 			return getExecutor().transaction(async (tx) => {
 				const [media] = await tx
@@ -874,7 +876,6 @@ export function createMediaRepository(
 							description: newMedia.description,
 							createdAt: newMedia.createdAt,
 							modifiedAt: newMedia.modifiedAt,
-							indexedAt: newMedia.indexedAt,
 							status: newMedia.status,
 						},
 					})

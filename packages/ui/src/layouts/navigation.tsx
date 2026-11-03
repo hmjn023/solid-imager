@@ -3,6 +3,7 @@ import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import {
 	BriefcaseBusiness,
+	ChartColumn,
 	Clock3,
 	Library,
 	Settings,
@@ -20,6 +21,12 @@ export const NAVIGATION_ITEMS = [
 		label: "Manager",
 		shortcutId: "goManager",
 		to: "/manager",
+	},
+	{
+		icon: ChartColumn,
+		label: "Statistics",
+		shortcutId: undefined,
+		to: "/statistics",
 	},
 	{ icon: Clock3, label: "Jobs", shortcutId: "goJobs", to: "/jobs" },
 	{

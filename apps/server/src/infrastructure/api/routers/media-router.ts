@@ -37,6 +37,9 @@ async function updateActivity(
 }
 
 export const mediaRouter = os.router({
+	statistics: os.statistics.handler(({ input }) =>
+		services.getMediaRepository().getStatistics(input),
+	),
 	updatePreferences: os.updatePreferences.handler(({ input }) =>
 		updateActivity(input.sourceId, input.mediaId, input.data),
 	),

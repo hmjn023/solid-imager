@@ -23,6 +23,7 @@ import {
 } from "../shortcuts/index";
 import {
 	BriefcaseBusiness,
+	ChartColumn,
 	CircleHelp,
 	Clock3,
 	Library,
@@ -77,6 +78,13 @@ export function CommandCenter(props: CommandCenterProps) {
 			label: "Manager",
 			run: () => void navigate({ to: "/manager" }),
 			shortcutId: "goManager",
+		},
+		{
+			group: "Navigate",
+			icon: ChartColumn,
+			keywords: "statistics imports rankings library 統計",
+			label: "Statistics",
+			run: () => void navigate({ to: "/statistics" }),
 		},
 		{
 			group: "Navigate",

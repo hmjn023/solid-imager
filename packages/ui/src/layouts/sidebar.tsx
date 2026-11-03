@@ -139,10 +139,14 @@ export function Sidebar(props: SidebarProps) {
 							onClick={props.onNavigate}
 							to={item.to}
 						>
-							<ShortcutKbd
-								class="min-h-5 text-label-xs"
-								shortcutId={item.shortcutId}
-							/>
+							<Show when={item.shortcutId}>
+								{(id) => (
+									<ShortcutKbd
+										class="min-h-5 text-label-xs"
+										shortcutId={id()}
+									/>
+								)}
+							</Show>
 						</NavigationItem>
 					)}
 				</For>
