@@ -15909,6 +15909,153 @@
         }
       }
     },
+    "/config/mcpCatalog": {
+      "post": {
+        "operationId": "config.mcpCatalog",
+        "summary": "MCP 公開候補一覧",
+        "tags": [
+          "Configuration"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "group": {
+                        "type": "string"
+                      },
+                      "webOnly": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "title",
+                      "group",
+                      "webOnly"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/webTools": {
+      "post": {
+        "operationId": "config.webTools",
+        "summary": "公開中の WebMCP ツール",
+        "tags": [
+          "Configuration"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "group": {
+                        "type": "string"
+                      },
+                      "webOnly": {
+                        "type": "boolean"
+                      },
+                      "description": {
+                        "type": "string"
+                      },
+                      "inputSchema": {
+                        "type": "object",
+                        "propertyNames": {
+                          "type": "string"
+                        },
+                        "additionalProperties": {}
+                      },
+                      "readOnly": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "title",
+                      "group",
+                      "webOnly",
+                      "description",
+                      "inputSchema",
+                      "readOnly"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/config/callWebTool": {
+      "post": {
+        "operationId": "config.callWebTool",
+        "summary": "公開中の WebMCP データ操作を実行",
+        "tags": [
+          "Configuration"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "arguments": {
+                    "type": "object",
+                    "propertyNames": {
+                      "type": "string"
+                    },
+                    "additionalProperties": {}
+                  }
+                },
+                "required": [
+                  "name",
+                  "arguments"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/config/get": {
       "post": {
         "operationId": "config.get",
@@ -15928,6 +16075,47 @@
                     "version": {
                       "default": "1.0.0",
                       "type": "string"
+                    },
+                    "mcp": {
+                      "type": "object",
+                      "properties": {
+                        "http": {
+                          "default": [
+                            "list_sources",
+                            "create_local_source",
+                            "search_media",
+                            "get_media_details",
+                            "find_tags",
+                            "edit_media_tags"
+                          ],
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "web": {
+                          "default": [
+                            "list_sources",
+                            "create_local_source",
+                            "search_media",
+                            "find_tags",
+                            "edit_media_tags",
+                            "get_current_view",
+                            "open_media"
+                          ],
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "http",
+                        "web"
+                      ],
+                      "additionalProperties": false
                     },
                     "jobs": {
                       "default": {
@@ -16284,6 +16472,7 @@
                   },
                   "required": [
                     "version",
+                    "mcp",
                     "jobs",
                     "ai",
                     "downloads",
@@ -16315,18 +16504,28 @@
                 "type": "object",
                 "properties": {
                   "version": {
-                    "default": "1.0.0",
                     "type": "string"
                   },
+                  "mcp": {
+                    "type": "object",
+                    "properties": {
+                      "http": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      },
+                      "web": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  },
                   "jobs": {
-                    "default": {
-                      "concurrency": 3,
-                      "aiConcurrency": 1,
-                      "pollIntervalMs": 1000,
-                      "enableAutoTagging": false,
-                      "enableAutoCcipExtraction": false,
-                      "enableAutoEmbeddingExtraction": false
-                    },
                     "type": "object",
                     "properties": {
                       "concurrency": {
@@ -16359,11 +16558,6 @@
                     }
                   },
                   "ai": {
-                    "default": {
-                      "baseUrl": "",
-                      "timeoutMs": 120000,
-                      "provider": "auto"
-                    },
                     "type": "object",
                     "properties": {
                       "baseUrl": {
@@ -16398,10 +16592,6 @@
                     }
                   },
                   "downloads": {
-                    "default": {
-                      "rateLimitEnabled": true,
-                      "requestIntervalMs": 1000
-                    },
                     "type": "object",
                     "properties": {
                       "rateLimitEnabled": {
@@ -16417,11 +16607,6 @@
                     }
                   },
                   "storage": {
-                    "default": {
-                      "thumbnailDir": ".cache/thumbnails",
-                      "thumbnailSize": 512,
-                      "thumbnailQuality": 80
-                    },
                     "type": "object",
                     "properties": {
                       "thumbnailDir": {
@@ -16443,39 +16628,6 @@
                     }
                   },
                   "media": {
-                    "default": {
-                      "supportedExtensions": {
-                        "image": [
-                          ".jpg",
-                          ".jpeg",
-                          ".png",
-                          ".webp"
-                        ],
-                        "video": [
-                          ".mp4",
-                          ".webm",
-                          ".mov"
-                        ],
-                        "audio": [
-                          ".mp3",
-                          ".wav"
-                        ]
-                      },
-                      "tagExtraction": {
-                        "comfyui": {
-                          "positiveNodeTypes": [
-                            "CLIPTextEncode",
-                            "CR Combine Prompt"
-                          ],
-                          "negativeKeywords": [
-                            "negative"
-                          ],
-                          "negativeTags": [
-                            "lowres"
-                          ]
-                        }
-                      }
-                    },
                     "type": "object",
                     "properties": {
                       "supportedExtensions": {
@@ -16600,9 +16752,6 @@
                     }
                   },
                   "logging": {
-                    "default": {
-                      "level": "info"
-                    },
                     "type": "object",
                     "properties": {
                       "level": {
@@ -16635,6 +16784,47 @@
                     "version": {
                       "default": "1.0.0",
                       "type": "string"
+                    },
+                    "mcp": {
+                      "type": "object",
+                      "properties": {
+                        "http": {
+                          "default": [
+                            "list_sources",
+                            "create_local_source",
+                            "search_media",
+                            "get_media_details",
+                            "find_tags",
+                            "edit_media_tags"
+                          ],
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        },
+                        "web": {
+                          "default": [
+                            "list_sources",
+                            "create_local_source",
+                            "search_media",
+                            "find_tags",
+                            "edit_media_tags",
+                            "get_current_view",
+                            "open_media"
+                          ],
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      },
+                      "required": [
+                        "http",
+                        "web"
+                      ],
+                      "additionalProperties": false
                     },
                     "jobs": {
                       "default": {
@@ -16991,6 +17181,7 @@
                   },
                   "required": [
                     "version",
+                    "mcp",
                     "jobs",
                     "ai",
                     "downloads",

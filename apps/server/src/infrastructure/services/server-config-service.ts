@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { IConfigService } from "@solid-imager/core";
 import {
 	type AppConfig,
+	type AppConfigUpdate,
 	AppConfigSchema,
 	defaultAppConfig,
 } from "@solid-imager/core/domain/config/config-schema";
@@ -17,6 +18,7 @@ type ConfigChangeListener = (config: AppConfig) => void;
 export class ServerConfigService implements IConfigService {
 	private config: AppConfig;
 	private readonly configPath: string;
+	private pendingSave = Promise.resolve();
 	private listeners: ConfigChangeListener[] = [];
 
 	constructor() {
@@ -108,7 +110,14 @@ export class ServerConfigService implements IConfigService {
 		return this.config;
 	}
 
-	async updateConfig(newConfig: Partial<AppConfig>): Promise<void> {
+	updateConfig(newConfig: AppConfigUpdate): Promise<void> {
+		// Serialize the merge and atomic rename so concurrent patches observe the last saved policy.
+		const saved = this.pendingSave.then(() => this.applyUpdate(newConfig));
+		this.pendingSave = saved.catch(() => {});
+		return saved;
+	}
+
+	private async applyUpdate(newConfig: AppConfigUpdate): Promise<void> {
 		const merged = this.deepMerge(this.config, newConfig);
 
 		const result = AppConfigSchema.safeParse(merged);

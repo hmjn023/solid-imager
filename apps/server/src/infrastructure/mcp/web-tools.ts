@@ -1,3 +1,7 @@
+import {
+	viewToolTitles,
+	type WebToolInfo,
+} from "@solid-imager/core/domain/config/mcp";
 import { defaultState } from "@solid-imager/core/domain/search/schema";
 import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
 import {
@@ -16,7 +20,10 @@ import type { QueryClient } from "@tanstack/solid-query";
 import { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
-import { mediaToolInputs } from "@solid-imager/core/domain/media/tool-schemas";
+import {
+	mediaToolInputs,
+	mediaToolOutputs,
+} from "@solid-imager/core/domain/media/tool-schemas";
 import { afterWebViewPaint, readWebView, waitForWebView } from "./web-view";
 
 function defineTool<Schema extends z.ZodObject, Result extends object>(
@@ -69,6 +76,7 @@ class WebToolError extends Error {
 
 export async function registerWebTools(
 	context: WebMCP.ModelContext,
+	published: WebToolInfo[],
 	queryClient: QueryClient,
 	navigation: {
 		pathname: () => string;
@@ -255,9 +263,12 @@ export async function registerWebTools(
 			async (input, execution) => {
 				await openMedia(input, execution);
 				execution.throwIfAborted();
-				const result = await orpc.tools.edit_media_tags(input, {
-					signal: execution,
-				});
+				const result = mediaToolOutputs.edit_media_tags.parse(
+					await orpc.config.callWebTool(
+						{ name: "edit_media_tags", arguments: input },
+						{ signal: execution },
+					),
+				);
 				await Promise.all(
 					[
 						mediaDetailsQueryKeys.detail(input.sourceId, input.mediaId),
@@ -332,9 +343,12 @@ export async function registerWebTools(
 			false,
 			mediaToolInputs.create_local_source,
 			async (input, execution) => {
-				const { source } = await orpc.tools.create_local_source(input, {
-					signal: execution,
-				});
+				const { source } = mediaToolOutputs.create_local_source.parse(
+					await orpc.config.callWebTool(
+						{ name: "create_local_source", arguments: input },
+						{ signal: execution },
+					),
+				);
 				await queryClient.invalidateQueries({
 					queryKey: sourcesQueryKeys.all(),
 				});
@@ -352,18 +366,47 @@ export async function registerWebTools(
 	];
 
 	const labels: Record<string, string> = {
-		get_current_view: "現在の画面を確認",
+		...viewToolTitles,
 		search_media: "メディアを検索",
-		open_media: "画像の詳細を表示",
 		edit_media_tags: "画像のタグを編集",
 		find_tags: "タグを検索",
 		list_sources: "ソース一覧を確認",
 		create_local_source: "ソースを追加",
 	};
 	let running = false;
-	await Promise.all(
-		tools.map((tool) =>
-			context.registerTool(
+	const results = await Promise.allSettled(
+		published.map(async (entry) => {
+			const tool = tools.find(({ name }) => name === entry.name);
+			if (!tool) {
+				return context.registerTool(
+					{
+						name: entry.name,
+						title: entry.title,
+						description: entry.description,
+						inputSchema: entry.inputSchema,
+						annotations: {
+							untrustedContentHint: true,
+							...(entry.readOnly && { readOnlyHint: true }),
+						},
+						async execute(args, options) {
+							try {
+								return await orpc.config.callWebTool(
+									{ name: entry.name, arguments: args },
+									{ signal: AbortSignal.any([signal, options.signal]) },
+								);
+							} catch (error) {
+								return {
+									error:
+										error instanceof Error ? error.message : "Tool call failed",
+									code: "TOOL_FAILED",
+								};
+							}
+						},
+					},
+					{ signal },
+				);
+			}
+			return context.registerTool(
 				{
 					name: tool.name,
 					description: tool.description,
@@ -389,6 +432,15 @@ export async function registerWebTools(
 						toast.loading(`AI: ${label}中…`, { id });
 						try {
 							execution.throwIfAborted();
+							// Another tab may have unpublished this tool since the last discovery.
+							const { mcp } = await orpc.config.get(undefined, {
+								signal: execution,
+							});
+							if (!mcp.web.includes(tool.name))
+								throw new WebToolError(
+									"This tool is no longer published.",
+									"NOT_PUBLISHED",
+								);
 							const result = await tool.execute(input, execution);
 							execution.throwIfAborted();
 							toast.success(`AI: ${label}しました`, { id });
@@ -424,7 +476,15 @@ export async function registerWebTools(
 					},
 				},
 				{ signal },
-			),
-		),
+			);
+		}),
 	);
+	for (const [index, result] of results.entries()) {
+		if (result.status === "rejected" && !signal.aborted) {
+			console.warn(
+				`Could not register WebMCP tool ${published[index]?.name}`,
+				result.reason,
+			);
+		}
+	}
 }

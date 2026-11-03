@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { mcpConfigSchema, mcpConfigUpdateSchema } from "./mcp";
+
 const DEFAULT_JOBS_CONCURRENCY = 3;
 const DEFAULT_JOBS_POLL_INTERVAL = 1000;
 const MIN_JOBS_CONCURRENCY = 1;
@@ -178,6 +180,7 @@ const DEFAULT_LOGGING_CONFIG = {
 
 export const AppConfigSchema = z.object({
 	version: z.string().default("1.0.0"),
+	mcp: mcpConfigSchema.prefault({}),
 	jobs: JobsConfigSchema.default(DEFAULT_JOBS_CONFIG),
 	ai: AiConfigSchema.default(DEFAULT_AI_CONFIG),
 	downloads: DownloadsConfigSchema.default(DEFAULT_DOWNLOADS_CONFIG),
@@ -186,6 +189,20 @@ export const AppConfigSchema = z.object({
 	logging: LoggingConfigSchema.default(DEFAULT_LOGGING_CONFIG),
 });
 
+// Defaults belong to file loading. Omitting a section in an update must preserve it.
+export const AppConfigUpdateSchema = z
+	.object({
+		version: z.string(),
+		mcp: mcpConfigUpdateSchema,
+		jobs: JobsConfigSchema,
+		ai: AiConfigSchema,
+		downloads: DownloadsConfigSchema,
+		storage: StorageConfigSchema,
+		media: MediaConfigSchema,
+		logging: LoggingConfigSchema,
+	})
+	.partial();
+export type AppConfigUpdate = z.infer<typeof AppConfigUpdateSchema>;
 export type AppConfig = z.infer<typeof AppConfigSchema>;
 
 export const defaultAppConfig = AppConfigSchema.parse({});

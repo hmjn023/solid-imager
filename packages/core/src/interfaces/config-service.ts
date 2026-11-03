@@ -1,7 +1,7 @@
-import type { AppConfig } from "@/domain/config/config-schema";
+import type { AppConfig, AppConfigUpdate } from "@/domain/config/config-schema";
 
 export type IConfigService = {
 	getConfig(): AppConfig;
-	updateConfig(config: Partial<AppConfig>): Promise<void>;
+	updateConfig(config: AppConfigUpdate): Promise<void>;
 	onChange(callback: (config: AppConfig) => void): void;
 };

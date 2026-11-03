@@ -40,6 +40,7 @@ export function ConfigStateScreen(props: ConfigStateScreenProps) {
 					<Match when={props.data}>
 						{(data) => (
 							<ConfigScreen
+								loadMcpCatalog={props.loadMcpCatalog}
 								checkAiHealth={props.checkAiHealth}
 								data={data()}
 								onSubmit={props.onSubmit}
