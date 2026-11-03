@@ -1,4 +1,4 @@
-import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
+import { searchHistoryQuerySchema } from "@solid-imager/ui/search/history";
 import { createFileRoute } from "@tanstack/solid-router";
 import { SourceMediaPage } from "./components/source-media-page";
 

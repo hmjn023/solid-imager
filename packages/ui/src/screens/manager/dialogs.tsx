@@ -1,4 +1,4 @@
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { Ip } from "@solid-imager/core/ips";
 import { createSignal, For, Show } from "solid-js";
 import {
 	AlertDialog,

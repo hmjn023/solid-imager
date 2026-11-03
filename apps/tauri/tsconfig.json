@@ -5,13 +5,7 @@
     "jsxImportSource": "solid-js",
     "isolatedModules": true,
     "paths": {
-      "~/*": ["./src/*"],
-      "@solid-imager/core": ["../../packages/core/src"],
-      "@solid-imager/core/*": ["../../packages/core/src/*"],
-      "@solid-imager/client": ["../../packages/client/src"],
-      "@solid-imager/client/*": ["../../packages/client/src/*"],
-      "@solid-imager/ui/*": ["../../packages/ui/src/*"],
-      "@/*": ["../../packages/core/src/*"]
+      "~/*": ["./src/*"]
     }
   },
   "include": ["src", "src/**/*.ts", "src/**/*.tsx"],

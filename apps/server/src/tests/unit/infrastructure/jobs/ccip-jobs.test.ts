@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { IJobRepository } from "~/domain/repositories/job-repository";
+import type { IJobRepository } from "@solid-imager/core/jobs";
 import {
 	processBatchCcipDispatchJob,
 	processCcipExtractionJob,

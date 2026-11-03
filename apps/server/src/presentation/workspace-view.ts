@@ -1,9 +1,6 @@
-import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
-import type {
-	Media,
-	MediaDetails,
-} from "@solid-imager/core/domain/media/schemas";
-import type { QueryUiState } from "@solid-imager/ui/query-state";
+import type { JobDto } from "@solid-imager/core/jobs";
+import type { Media, MediaDetails } from "@solid-imager/core/media";
+import type { QueryUiState } from "@solid-imager/ui/query";
 import {
 	type Accessor,
 	createEffect,

@@ -10,9 +10,8 @@ import {
 	getSortLabel,
 	SORT_OPTIONS,
 	type SortOption,
-} from "@solid-imager/ui/sort-controls";
-import { parseSelectValue } from "@solid-imager/ui/utils";
-import { cn } from "@solid-imager/ui/utils/cn";
+} from "@solid-imager/ui/sort-options";
+import { parseSelectValue, cn } from "@solid-imager/ui/utils";
 
 type SortControlsProps = {
 	sortBy: SortOption;

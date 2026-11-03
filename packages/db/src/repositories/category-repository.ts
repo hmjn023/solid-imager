@@ -1,15 +1,13 @@
 import type {
 	NewCategory,
 	UpdateCategory,
-} from "@solid-imager/core/domain/categories/schemas";
+	Category,
+	CategoryRepository,
+} from "@solid-imager/core/categories";
 import {
 	ResourceNotFoundError,
 	UnexpectedError,
-} from "@solid-imager/core/domain/errors";
-import type {
-	Category,
-	CategoryRepository,
-} from "@solid-imager/core/domain/repositories/category-repository";
+} from "@solid-imager/core/errors";
 import { eq } from "drizzle-orm";
 import { categories } from "../schema";
 import type { DrizzleExecutor } from "../types";

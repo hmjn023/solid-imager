@@ -1,7 +1,4 @@
-import type {
-	JobDto,
-	JobListResponse,
-} from "@solid-imager/core/domain/jobs/schemas";
+import type { JobDto, JobListResponse } from "@solid-imager/core/jobs";
 import { createQuery } from "@tanstack/solid-query";
 import { createMemo, type Accessor } from "solid-js";
 import { jobsQueryKeys } from "../query-options/jobs-query";

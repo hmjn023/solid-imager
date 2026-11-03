@@ -1,7 +1,4 @@
-import {
-	jobIdRequestSchema,
-	type JobDto,
-} from "@solid-imager/core/domain/jobs/schemas";
+import { jobIdRequestSchema, type JobDto } from "@solid-imager/core/jobs";
 import { z } from "zod";
 
 export const jobSelectionSearchSchema = z.object({

@@ -7,7 +7,7 @@ import {
 	ComboboxItemLabel,
 	VirtualComboboxContent,
 } from "@solid-imager/ui/combobox";
-import { createDebouncedSignal } from "@solid-imager/ui/utils/debounce";
+import { createDebouncedSignal } from "@solid-imager/ui/utils";
 import { createMemo, createSignal, For, Show } from "solid-js";
 
 const OPTIONS = Array.from({ length: 100 }, (_, index) => ({

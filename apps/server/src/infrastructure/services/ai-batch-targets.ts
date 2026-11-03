@@ -1,8 +1,8 @@
 import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
-import type { DrizzleExecutor } from "@solid-imager/db/types";
+} from "@solid-imager/application/ccip";
+import type { DrizzleExecutor } from "@solid-imager/db";
 import { and, eq, notExists, sql } from "drizzle-orm";
 import {
 	ccipEmbeddings,

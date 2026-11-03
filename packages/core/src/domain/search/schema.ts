@@ -1,5 +1,6 @@
 import { z } from "zod";
-import { mediaSortSchema, searchGroupSchema } from "@/domain/media/schemas";
+import { mediaSortSchema } from "./sort";
+import { searchGroupSchema } from "./criteria";
 import { similarityModelSchema } from "./embedding";
 
 /** Search UI state shared across simple, advanced and similarity search modes. */

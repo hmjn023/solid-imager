@@ -1,4 +1,4 @@
-import type { OppaiOracleResponse } from "@solid-imager/core/domain/tagging/schemas";
+import type { OppaiOracleResponse } from "@solid-imager/core/tagging";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Badge } from "./badge";
 import {

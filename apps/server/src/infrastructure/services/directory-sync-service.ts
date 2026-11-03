@@ -3,12 +3,14 @@ import path from "node:path";
 import {
 	localConnectionSchema,
 	type MediaSourceSyncState,
-} from "@solid-imager/core/domain/sources/schemas";
+} from "@solid-imager/core/sources";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import {
+	MediaRepository,
+	DrizzleSourceRepository,
+} from "~/infrastructure/db/repositories";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { MediaProcessingService } from "~/infrastructure/services/media-processing-service";

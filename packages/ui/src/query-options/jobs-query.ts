@@ -2,8 +2,8 @@ import type {
 	JobDto,
 	JobListRequest,
 	JobListResponse,
-} from "@solid-imager/core/domain/jobs/schemas";
-import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/jobs";
+import type { JobProgressEvent } from "@solid-imager/core/events";
 import type { QueryClient, QueryFunctionContext } from "@tanstack/solid-query";
 
 export const DEFAULT_JOBS_PAGE_SIZE = 200;

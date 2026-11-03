@@ -1,7 +1,4 @@
-import type {
-	Author,
-	NewAuthor,
-} from "@solid-imager/core/domain/authors/schemas";
+import type { Author, NewAuthor } from "@solid-imager/core/authors";
 import { createQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "../../button";

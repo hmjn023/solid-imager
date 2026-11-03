@@ -1,4 +1,4 @@
-import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
+import { extractDataFromComments } from "@solid-imager/core/media/metadata";
 import { describe, expect, it } from "vitest";
 
 describe("extractDataFromComments", () => {

@@ -1,4 +1,4 @@
-import type { DrizzleExecutor } from "@solid-imager/db/types";
+import type { DrizzleExecutor } from "@solid-imager/db";
 import { db, type TransactionClient } from "~/infrastructure/db/index";
 
 function isTransactionClient(value: unknown): value is TransactionClient {

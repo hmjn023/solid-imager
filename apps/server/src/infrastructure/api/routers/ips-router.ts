@@ -1,5 +1,5 @@
 import { implement } from "@orpc/server";
-import { ipsContract } from "@solid-imager/core/domain/contract/ips.contract";
+import { ipsContract } from "@solid-imager/core/contract";
 import { IpService } from "~/infrastructure/services/ip-service";
 import { getIpMediaCounts } from "./entity-media-counts";
 

@@ -1,5 +1,5 @@
-import type { DownloadItem } from "@solid-imager/core/domain/media/schemas";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { DownloadItem } from "@solid-imager/core/media";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 
 export function getPreferredImportSourceId(sources: SafeMediaSource[]): string {
 	return (

@@ -1,11 +1,10 @@
-import { fingerprintState } from "@solid-imager/application/services/search-snapshot-service";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
-import type { SearchSnapshotRepository } from "@solid-imager/core/domain/repositories/search-snapshot-repository";
+import { ResourceNotFoundError } from "@solid-imager/core/errors";
 import {
+	type SearchSnapshotRepository,
 	type SearchSnapshot,
 	searchSnapshotStateSchema,
-} from "@solid-imager/core/domain/search/history";
-import { defaultState } from "@solid-imager/core/domain/search/schema";
+	defaultState,
+} from "@solid-imager/core/search";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	SearchSnapshotService,
@@ -63,7 +62,7 @@ describe("SearchSnapshotService", () => {
 		expect(secondFingerprint).toBe(firstFingerprint);
 	});
 
-	it("generates the same fingerprint when state keys are inserted in a different order", () => {
+	it("generates the same fingerprint when state keys are inserted in a different order", async () => {
 		const reorderedState = {
 			sortOrder: snapshotState.sortOrder,
 			sortBy: snapshotState.sortBy,
@@ -86,9 +85,10 @@ describe("SearchSnapshotService", () => {
 		} satisfies typeof snapshotState;
 
 		expect(Object.keys(reorderedState)).not.toEqual(Object.keys(snapshotState));
-		expect(fingerprintState(reorderedState)).toBe(
-			fingerprintState(snapshotState),
-		);
+		await SearchSnapshotService.capture(snapshotState);
+		await SearchSnapshotService.capture(reorderedState);
+		const [[first], [second]] = vi.mocked(repository.create).mock.calls;
+		expect(second.fingerprint).toBe(first.fingerprint);
 	});
 
 	it("throws a typed not-found error", async () => {

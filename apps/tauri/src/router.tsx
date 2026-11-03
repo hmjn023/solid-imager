@@ -4,7 +4,7 @@ import {
 	RouteErrorScreen,
 	RoutePendingScreen,
 } from "@solid-imager/ui/router-status";
-import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
+import { NotFoundScreen } from "@solid-imager/ui/screens/not-found";
 import { type QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { createHashHistory, createRouter } from "@tanstack/solid-router";
 import { queryClient } from "./query-client";

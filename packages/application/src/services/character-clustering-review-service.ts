@@ -5,8 +5,8 @@ import {
 	type ClusteringGroupsRequest,
 	type ClusteringMediaRequest,
 	type ClusteringReviewMedia,
-} from "@solid-imager/core/domain/characters/schemas";
-import { ValidationError } from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/characters";
+import { ValidationError } from "@solid-imager/core/errors";
 import type {
 	ICharacterClusteringResultsStore,
 	StoredClusteringMedia,

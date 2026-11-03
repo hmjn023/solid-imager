@@ -2,17 +2,17 @@ import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 	embeddingExtractionPayloadSchema,
-} from "@solid-imager/core/domain/search/embedding";
-import { batchCcipExtractionRequestSchema } from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/core/search";
+import { batchCcipExtractionRequestSchema } from "@solid-imager/core/tagging";
 import { and, asc, eq, gt, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
+import type { Job } from "@solid-imager/core/jobs";
 import {
 	imageEmbeddings,
 	jobs,
 	medias,
 	mediaSources,
-	type Job,
 } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";

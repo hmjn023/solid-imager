@@ -3,7 +3,7 @@
  * Implements the application media-service port by delegating to focused services.
  */
 
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { Transaction } from "@solid-imager/core/ports";
 import type {
 	FindDuplicatesRequest,
 	FindDuplicatesResponse,
@@ -12,11 +12,9 @@ import type {
 	MediaGenerationInfo,
 	MediaSearchResponse,
 	MediaTag,
-} from "@solid-imager/core/domain/media/schemas";
-import type {
 	UploadMediaRequest,
 	UploadResponse,
-} from "@solid-imager/core/domain/media/upload-schemas";
+} from "@solid-imager/core/media";
 import type { DeferredActions, IMediaService } from "../ports/media-service";
 import type { MediaQueryService } from "./media-query-service";
 import type { MediaTransferService } from "./media-transfer-service";

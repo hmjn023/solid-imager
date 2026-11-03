@@ -1,4 +1,4 @@
-import { sourceEventSchema } from "@solid-imager/core/domain/sources/events";
+import { sourceEventSchema } from "@solid-imager/core/events";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 

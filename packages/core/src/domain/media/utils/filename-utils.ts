@@ -1,4 +1,5 @@
-import type { AuthorPlatform, DownloadItem } from "../schemas";
+import type { AuthorPlatform } from "../../authors/schemas";
+import type { DownloadItem } from "../schemas";
 
 const TWITTER_ID_PREFIX_LENGTH = 1;
 const FILENAME_SANITIZE_REGEX = /[/\\?%*:|"<>.]/g;

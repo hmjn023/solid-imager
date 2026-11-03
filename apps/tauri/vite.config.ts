@@ -13,10 +13,10 @@ export default defineConfig({
   base: "./",
   resolve: {
     alias: {
-      "@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
-      "@solid-imager/client": path.resolve(__dirname, "../../packages/client/src"),
-      "@solid-imager/ui": path.resolve(__dirname, "../../packages/ui/src"),
-      "@": path.resolve(__dirname, "../../packages/core/src"),
+
+
+
+
       "~": path.resolve(__dirname, "./src"),
     },
     dedupe: [

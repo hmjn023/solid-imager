@@ -1,16 +1,16 @@
 import type {
 	Media,
 	SimilarMediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import { asyncPool } from "@solid-imager/core/utils/async-pool";
+	IMediaRepository,
+} from "@solid-imager/core/media";
+import type { SourceRepository } from "@solid-imager/core/sources";
+import { asyncPool } from "@solid-imager/core/utils";
 import type {
 	CcipVectorMetadata,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "../ports/ccip-vector-store";
-import type { ILogger } from "../ports/media-service";
+import type { ILogger } from "../ports/logger";
 import type { ITaggingService } from "../ports/tagging-service";
 
 /** Model identifier used to partition current CCIP vectors. */

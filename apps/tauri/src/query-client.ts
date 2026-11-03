@@ -1,5 +1,5 @@
 import { isTransientApiError } from "@solid-imager/client";
-import { createAppQueryClientConfig } from "@solid-imager/ui/query-options";
+import { createAppQueryClientConfig } from "@solid-imager/ui/query";
 import { QueryClient } from "@tanstack/solid-query";
 
 /**

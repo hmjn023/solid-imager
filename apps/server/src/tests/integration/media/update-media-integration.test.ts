@@ -5,13 +5,15 @@ import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { db } from "~/infrastructure/db/index";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
-import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
-import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import {
+	AuthorRepository,
+	DrizzleCharacterRepository,
+	IpRepository,
+	MediaRepository,
+	ProjectRepository,
+	DrizzleSourceRepository,
+	TagRepository,
+} from "~/infrastructure/db/repositories";
 import { services } from "~/infrastructure/service-registry";
 import { MediaService } from "~/infrastructure/services/media-service";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";

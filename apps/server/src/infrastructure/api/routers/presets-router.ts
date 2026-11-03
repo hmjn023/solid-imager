@@ -1,5 +1,5 @@
 import { implement } from "@orpc/server";
-import { presetsContract } from "@solid-imager/core/domain/contract/presets.contract";
+import { presetsContract } from "@solid-imager/core/contract";
 import { PresetService } from "~/infrastructure/services/preset-service";
 
 /**

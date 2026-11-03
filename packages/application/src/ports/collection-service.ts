@@ -3,7 +3,7 @@ import type {
 	NewCollection,
 	NewCollectionItem,
 	UpdateCollection,
-} from "@solid-imager/core/domain/collections/schemas";
+} from "@solid-imager/core/collections";
 
 /** Manages collections and their media membership. */
 export interface ICollectionService {

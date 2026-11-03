@@ -1,7 +1,4 @@
-import {
-	type AiProvider,
-	AiProviderSchema,
-} from "@solid-imager/core/domain/config/config-schema";
+import { type AiProvider, AiProviderSchema } from "@solid-imager/core/config";
 import { Show } from "solid-js";
 import { FormFieldMessage } from "./form-message";
 import { Input } from "./input";

@@ -1,4 +1,4 @@
-import { updateMediaRequestSchema } from "@solid-imager/core/domain/media/schemas";
+import { updateMediaRequestSchema } from "@solid-imager/core/media";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
@@ -240,7 +240,7 @@ export const BulkOperationService = {
 			}
 		}
 
-		const { asyncPool } = await import("@solid-imager/core/utils/async-pool");
+		const { asyncPool } = await import("@solid-imager/core/utils");
 		const processCopy = async (mediaId: string) => {
 			await MediaService.copyMedia(mediaId, targetSourceId);
 		};
@@ -281,7 +281,7 @@ export const BulkOperationService = {
 			}
 		}
 
-		const { asyncPool } = await import("@solid-imager/core/utils/async-pool");
+		const { asyncPool } = await import("@solid-imager/core/utils");
 		const processMove = async (mediaId: string) => {
 			await MediaService.moveMedia(mediaId, targetSourceId);
 		};

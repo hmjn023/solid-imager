@@ -1,9 +1,9 @@
 import { implement, ORPCError } from "@orpc/server";
-import { authorsContract } from "@solid-imager/core/domain/contract/authors.contract";
+import { authorsContract } from "@solid-imager/core/contract";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/errors";
 import { AuthorService } from "~/infrastructure/services/author-service";
 import { AuthorAccountVerificationService } from "~/infrastructure/services/author-account-verification-service";
 

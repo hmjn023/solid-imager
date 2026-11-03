@@ -12,6 +12,7 @@
 			}
 		],
 		"no-restricted-imports": "error",
+		"workspace/public-imports": "error",
 		"typescript/no-explicit-any": "error",
 		"typescript/no-deprecated": "warn",
 		"typescript/no-floating-promises": "warn",
@@ -46,7 +47,7 @@
 		"**/.worktree",
 		"**/routeTree.gen.ts"
 	],
-	"jsPlugins": ["@shadcn/lint"],
+	"jsPlugins": ["@shadcn/lint", "./tools/workspace-imports.mjs"],
 	"settings": {
 		"shadcn": {
 			"ui": "@solid-imager/ui",
@@ -55,6 +56,22 @@
 		}
 	},
 	"overrides": [
+		{
+			"files": ["apps/**"],
+			"rules": {
+				"no-restricted-imports": [
+					"error",
+					{
+						"patterns": [
+							{
+								"group": ["@/**", "@core/**"],
+								"message": "Import a public @solid-imager package entry point."
+							}
+						]
+					}
+				]
+			}
+		},
 		{
 			"files": ["apps/xtracter/src/**/*.ts", "apps/xtracter/src/**/*.tsx"],
 			"env": { "browser": true, "webextensions": true },
@@ -201,7 +218,9 @@
 									"@solid-imager/db/**",
 									"@solid-imager/ui",
 									"@solid-imager/ui/**",
-									"~/**"
+									"~/**",
+									"@/**",
+									"@core/**"
 								],
 								"message": "Keep core independent from application and infrastructure packages."
 							}
@@ -225,7 +244,9 @@
 									"@solid-imager/db/**",
 									"@solid-imager/ui",
 									"@solid-imager/ui/**",
-									"~/**"
+									"~/**",
+									"@/**",
+									"@core/**"
 								],
 								"message": "Keep application code independent from client, database, and UI packages."
 							}
@@ -249,7 +270,9 @@
 									"@solid-imager/client/**",
 									"@solid-imager/ui",
 									"@solid-imager/ui/**",
-									"~/**"
+									"~/**",
+									"@/**",
+									"@core/**"
 								],
 								"message": "Keep database infrastructure independent from application, client, and UI packages."
 							}
@@ -273,7 +296,9 @@
 									"@solid-imager/client/**",
 									"@solid-imager/db",
 									"@solid-imager/db/**",
-									"~/**"
+									"~/**",
+									"@/**",
+									"@core/**"
 								],
 								"message": "Keep shared UI independent from application, client, and database packages."
 							}
@@ -299,7 +324,9 @@
 									"@solid-imager/db/**",
 									"@solid-imager/ui",
 									"@solid-imager/ui/**",
-									"~/**"
+									"~/**",
+									"@/**",
+									"@core/**"
 								],
 								"message": "Keep the API client independent from application, domain, database, and UI packages."
 							}

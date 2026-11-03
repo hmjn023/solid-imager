@@ -13,7 +13,7 @@ import {
 	type SourceEventData,
 	type SourceEventName,
 	sourceEventSchema,
-} from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/events";
 
 const JOB_EVENTS_CHANNEL = "jobs";
 const IMPORT_EVENTS_CHANNEL = "imports";

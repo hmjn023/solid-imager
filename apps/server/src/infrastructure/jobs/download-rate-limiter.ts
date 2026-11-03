@@ -1,4 +1,4 @@
-import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import type { AppConfig } from "@solid-imager/core/config";
 
 type DownloadRateLimitConfig = AppConfig["downloads"];
 

@@ -1,4 +1,4 @@
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { Transaction } from "@solid-imager/core/ports";
 import type {
 	FindDuplicatesRequest,
 	FindDuplicatesResponse,
@@ -8,16 +8,14 @@ import type {
 	MediaMetadataContext,
 	MediaSearchResponse,
 	MediaTag,
-} from "@solid-imager/core/domain/media/schemas";
-import type {
 	UploadMediaRequest,
 	UploadResponse,
-} from "@solid-imager/core/domain/media/upload-schemas";
+} from "@solid-imager/core/media";
 import type {
 	SourceEventCommand,
 	SourceEventData,
 	SourceEventName,
-} from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/events";
 
 // ============================================================================
 // Deferred Action Types (moved from server's job-dispatch-service)
@@ -79,13 +77,6 @@ export interface ISourceEventPublisher {
 /** Removes thumbnails associated with media. */
 export interface IThumbnailManager {
 	deleteThumbnail(mediaSourceId: string, mediaId: string): Promise<void>;
-}
-
-/** Application logging port accepting structured context and a message. */
-export interface ILogger {
-	info(obj: object, msg: string): void;
-	error(obj: object, msg: string): void;
-	warn(obj: object, msg: string): void;
 }
 
 /** Adds contextual metadata to existing media, optionally within a transaction. */

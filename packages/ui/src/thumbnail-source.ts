@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import { createRenderEffect, createSignal, onCleanup } from "solid-js";
 import type { ThumbnailSource } from "./thumbnail-image";
 

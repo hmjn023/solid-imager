@@ -1,4 +1,4 @@
-import { SCALAR_DOCS_PATH } from "@solid-imager/core/domain/contract/http-paths";
+import { SCALAR_DOCS_PATH } from "@solid-imager/core/http";
 import { Store } from "@tauri-apps/plugin-store";
 import { z } from "zod";
 import { getBuildTimeServerUrl } from "~/infrastructure/api-base";

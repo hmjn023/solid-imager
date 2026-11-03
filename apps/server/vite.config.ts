@@ -1,8 +1,10 @@
+import { getContentTypeFromExtension } from "@solid-imager/core/media/files";
+import { localConnectionSchema } from "@solid-imager/core/sources";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { RPCHandler } from "@orpc/server/node";
-import { REST_API_PREFIX } from "@solid-imager/core/domain/contract/http-paths";
+import { REST_API_PREFIX } from "@solid-imager/core/http";
 import { defineConfig } from "vite";
 import type { Plugin } from "vite";
 import tailwindcss from "@tailwindcss/vite";
@@ -150,26 +152,12 @@ const loadDevMediaFileHandler = async () => {
   const [
     { services },
     { initServices },
-    { getContentTypeFromExtension },
-    { localConnectionSchema },
   ] = await Promise.all([
     runtimeImport<typeof import("./src/infrastructure/service-registry")>(
       serverModuleUrl("src/infrastructure/service-registry.ts"),
     ),
     runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
       serverModuleUrl("src/infrastructure/bootstrap.ts"),
-    ),
-    runtimeImport<
-      typeof import("../../packages/core/src/domain/media/utils/media-type-utils")
-    >(
-      serverModuleUrl(
-        "../../packages/core/src/domain/media/utils/media-type-utils.ts",
-      ),
-    ),
-    runtimeImport<
-      typeof import("../../packages/core/src/domain/sources/schemas")
-    >(
-      serverModuleUrl("../../packages/core/src/domain/sources/schemas.ts"),
     ),
   ]);
 
@@ -465,8 +453,8 @@ export default defineConfig({
   resolve: {
     alias: {
       "#route-tree": routeTreePath,
-      "@solid-imager/core": path.resolve(__dirname, "../../packages/core/src"),
-      "@": path.resolve(__dirname, "../../packages/core/src"),
+
+
       "~": path.resolve(__dirname, "./src"),
     },
     tsconfigPaths: true,

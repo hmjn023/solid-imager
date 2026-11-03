@@ -1,4 +1,4 @@
-import { EmbeddingSearchService } from "@solid-imager/application/services/embedding-search-service";
+import { EmbeddingSearchService } from "@solid-imager/application/embeddings";
 import { PostgresEmbeddingStore } from "~/infrastructure/ai/postgres-embedding-store";
 import { db } from "~/infrastructure/db";
 import { services } from "~/infrastructure/service-registry";

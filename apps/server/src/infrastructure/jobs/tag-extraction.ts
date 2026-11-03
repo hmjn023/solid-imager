@@ -1,5 +1,5 @@
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { TagRepository } from "~/infrastructure/db/repositories";
 
 /**
  * Extracts tags from a media file and saves them to the database.

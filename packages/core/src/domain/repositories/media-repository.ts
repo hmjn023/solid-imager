@@ -1,7 +1,6 @@
-import type { Transaction } from "@/domain/interfaces/transaction-manager";
+import type { Transaction } from "../interfaces/transaction-manager";
 import type {
 	AddMediaRequest,
-	Author,
 	FindDuplicatesRequest,
 	FindDuplicatesResponse,
 	Media,
@@ -14,12 +13,10 @@ import type {
 	MediaTag,
 	MediaUrl,
 	UpdateMediaRequest,
-} from "@/domain/media/schemas";
+} from "../media/schemas";
+import type { Author } from "../authors/schemas";
 
-import type {
-	LibraryStatistics,
-	StatisticsRequest,
-} from "@/domain/media/statistics";
+import type { LibraryStatistics, StatisticsRequest } from "../media/statistics";
 
 /** Media persistence and search port, with optional transaction context for multi-step operations. */
 export type IMediaRepository = {

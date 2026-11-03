@@ -1,17 +1,17 @@
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type {
-	Author,
-	DownloadItem,
-	MediaSearchRequest,
-	MediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
-import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
-import type { UploadResponse } from "@solid-imager/core/domain/media/upload-schemas";
-import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import type { SemanticSearchRequest } from "@solid-imager/core/domain/search/embedding";
-import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
-import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
+import type { Character } from "@solid-imager/core/characters";
+import type { Ip } from "@solid-imager/core/ips";
+import { type Author } from "@solid-imager/core/authors";
+import {
+	type DownloadItem,
+	type MediaSearchRequest,
+	type MediaSearchResponse,
+	downloadItemSchema,
+	type UploadResponse,
+} from "@solid-imager/core/media";
+import type { Project } from "@solid-imager/core/projects";
+import type { SemanticSearchRequest } from "@solid-imager/core/search";
+import type { JobProgressEvent } from "@solid-imager/core/events";
+import type { TagResponse } from "@solid-imager/core/tags";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import type { QueryClient } from "@tanstack/solid-query";
 import { createInfiniteQuery, type InfiniteData } from "@tanstack/solid-query";

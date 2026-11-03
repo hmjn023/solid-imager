@@ -1,8 +1,8 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { IJobRepository } from "~/domain/repositories/job-repository";
+import type { IMediaRepository } from "@solid-imager/core/media";
+import type { SourceRepository } from "@solid-imager/core/sources";
+import type { IJobRepository } from "@solid-imager/core/jobs";
 import { getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 

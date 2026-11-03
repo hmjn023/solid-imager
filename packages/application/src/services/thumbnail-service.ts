@@ -1,13 +1,8 @@
-import type {
-	GenerateThumbnailsResponse,
-	ThumbnailSize,
-} from "@solid-imager/core/domain/thumbnails/schemas";
-import type { IFileSystem } from "@solid-imager/core/interfaces/file-system";
+import type { ThumbnailSize } from "@solid-imager/core/thumbnails";
 import type { IThumbnailService } from "../ports/thumbnail-service";
 
 export type ThumbnailServiceDeps = {
-	fileSystem: IFileSystem;
-	thumbnailCacheDir: string;
+	removeSourceCache: (mediaSourceId: string) => Promise<void>;
 	generateThumbnailsForSource: (
 		mediaSourceId: string,
 		options: { size: ThumbnailSize; missingOnly: boolean },
@@ -15,57 +10,44 @@ export type ThumbnailServiceDeps = {
 };
 
 /** Builds thumbnail URLs, queues generation and clears a source cache directory. */
-export class ThumbnailServiceImpl implements IThumbnailService {
-	private readonly fileSystem: IFileSystem;
-	private readonly thumbnailCacheDir: string;
-	private readonly generateThumbnailsForSource: ThumbnailServiceDeps["generateThumbnailsForSource"];
+export function createThumbnailService(
+	deps: ThumbnailServiceDeps,
+): IThumbnailService {
+	return {
+		getMediaThumbnailUrl(mediaSourceId, mediaId, size) {
+			let url = `/api/sources/${mediaSourceId}/thumbnail/${mediaId}`;
+			if (size) {
+				url += `?size=${size}`;
+			}
+			return url;
+		},
 
-	constructor(deps: ThumbnailServiceDeps) {
-		this.fileSystem = deps.fileSystem;
-		this.thumbnailCacheDir = deps.thumbnailCacheDir;
-		this.generateThumbnailsForSource = deps.generateThumbnailsForSource;
-	}
+		async startThumbnailGeneration(mediaSourceId, options) {
+			const result = await deps.generateThumbnailsForSource(
+				mediaSourceId,
+				options,
+			);
+			return {
+				success: true,
+				count: result.count,
+				jobId: result.jobId,
+				message:
+					result.count > 0
+						? `Queued ${result.count} thumbnail job(s)`
+						: "No thumbnails need generation",
+			};
+		},
 
-	getMediaThumbnailUrl(
-		mediaSourceId: string,
-		mediaId: string,
-		size?: ThumbnailSize,
-	): string {
-		let url = `/api/sources/${mediaSourceId}/thumbnail/${mediaId}`;
-		if (size) {
-			url += `?size=${size}`;
-		}
-		return url;
-	}
-
-	async startThumbnailGeneration(
-		mediaSourceId: string,
-		options: { size: ThumbnailSize; missingOnly: boolean },
-	): Promise<GenerateThumbnailsResponse> {
-		const result = await this.generateThumbnailsForSource(
-			mediaSourceId,
-			options,
-		);
-		return {
-			success: true,
-			count: result.count,
-			jobId: result.jobId,
-			message:
-				result.count > 0
-					? `Queued ${result.count} thumbnail job(s)`
-					: "No thumbnails need generation",
-		};
-	}
-
-	async clearThumbnailCache(
-		mediaSourceId: string,
-	): Promise<{ success: boolean }> {
-		const cacheDir = `${this.thumbnailCacheDir}/${mediaSourceId}`;
-		try {
-			await this.fileSystem.rm(cacheDir, { recursive: true, force: true });
-			return { success: true };
-		} catch (error) {
-			throw new Error("Failed to clear thumbnail cache", { cause: error });
-		}
-	}
+		async clearThumbnailCache(mediaSourceId) {
+			try {
+				await deps.removeSourceCache(mediaSourceId);
+				return { success: true };
+			} catch (error) {
+				throw new Error(
+					`Failed to clear thumbnail cache: ${error instanceof Error ? error.message : String(error)}`,
+					{ cause: error },
+				);
+			}
+		},
+	};
 }

@@ -2,14 +2,14 @@ import {
 	ResourceConflictError,
 	ResourceNotFoundError,
 	UnexpectedError,
-} from "@solid-imager/core/domain/errors";
-import type { MediaTag } from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/errors";
+import type { MediaTag } from "@solid-imager/core/media";
 import type {
 	NewTag,
 	Tag,
 	TagRepository as TagRepositoryDef,
-} from "@solid-imager/core/domain/repositories/tag-repository";
-import type { UpdateTag } from "@solid-imager/core/domain/tags/schemas";
+	UpdateTag,
+} from "@solid-imager/core/tags";
 import { eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import { mediaTags, tags } from "../schema";
 import type { DrizzleExecutor } from "../types";

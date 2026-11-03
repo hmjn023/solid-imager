@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";

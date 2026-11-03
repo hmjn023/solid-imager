@@ -1,7 +1,7 @@
 import type {
 	CcipFeatureResponse,
 	TaggingResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/core/tagging";
 
 /** Provides tag inference and CCIP feature extraction and distance calculations. */
 export interface ITaggingService {

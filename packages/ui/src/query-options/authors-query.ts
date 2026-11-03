@@ -1,4 +1,4 @@
-import type { Author } from "@solid-imager/core/domain/authors/schemas";
+import type { Author } from "@solid-imager/core/authors";
 import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const authorsQueryKeys = {

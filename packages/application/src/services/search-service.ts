@@ -1,13 +1,13 @@
 import type {
 	MediaSearchRequest,
 	MediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SearchOptions } from "../ports/search-service";
+	IMediaRepository,
+} from "@solid-imager/core/media";
+import type { ISearchService, SearchOptions } from "../ports/search-service";
 
 const DEFAULT_PAGE_LIMIT = 20;
 
-export class SearchServiceImpl {
+class SearchServiceImpl {
 	private readonly mediaRepository: IMediaRepository;
 
 	constructor(mediaRepository: IMediaRepository) {
@@ -58,4 +58,10 @@ export class SearchServiceImpl {
 
 		return await this.mediaRepository.globalSearch(request);
 	}
+}
+
+export function createSearchService(
+	mediaRepository: IMediaRepository,
+): ISearchService {
+	return new SearchServiceImpl(mediaRepository);
 }

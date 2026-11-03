@@ -1,4 +1,4 @@
-import { DesignConceptScreen } from "@solid-imager/ui/screens/design-concept-screen";
+import { DesignConceptScreen } from "@solid-imager/ui/screens/design-lab";
 import { createFileRoute } from "@tanstack/solid-router";
 
 export const Route = createFileRoute("/design-lab")({

@@ -2,7 +2,7 @@ import type {
 	CreatePresetRequest,
 	Preset,
 	UpdatePresetRequest,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/presets";
 
 /** Manages named search presets; lookup by name returns null when absent. */
 export interface IPresetService {

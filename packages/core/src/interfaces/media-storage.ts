@@ -1,5 +1,5 @@
 import type { z } from "zod";
-import type { conflictSchema } from "@/domain/media/upload-schemas";
+import type { conflictSchema } from "../domain/media/upload-schemas";
 
 /** Stored file metadata and an optional name conflict. */
 export type MediaStorageResult = {

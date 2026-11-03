@@ -1,4 +1,4 @@
-import type { JobEvent } from "@solid-imager/core/domain/sources/events";
+import type { JobEvent } from "@solid-imager/core/events";
 import { describe, expect, it, vi } from "vitest";
 import {
 	dispatchJobEvent,

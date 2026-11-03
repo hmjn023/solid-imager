@@ -3,11 +3,11 @@ import type {
 	AuthorAccountVerification,
 	BeginAuthorAccountVerificationInput,
 	TwitterProfile,
-} from "@solid-imager/core/domain/authors/schemas";
+} from "@solid-imager/core/authors";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/errors";
 import type { IAuthorService } from "../ports/author-service";
 
 const LIFETIME_MS = 10 * 60 * 1000;

@@ -1,4 +1,4 @@
-import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
+import type { JobDto } from "@solid-imager/core/jobs";
 import { describe, expect, it } from "vitest";
 import {
 	getRetryableJobIds,

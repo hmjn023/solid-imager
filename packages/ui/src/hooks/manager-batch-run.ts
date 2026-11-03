@@ -1,4 +1,4 @@
-import { similarityModelSchema } from "@solid-imager/core/domain/search/embedding";
+import { similarityModelSchema } from "@solid-imager/core/search";
 import { z } from "zod";
 import {
 	readUiStorageValue,

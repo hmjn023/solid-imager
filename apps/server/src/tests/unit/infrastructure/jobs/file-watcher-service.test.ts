@@ -1,21 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { FileWatcherManager } from "~/infrastructure/jobs/file-watcher-manager";
 import { FileWatcherService } from "~/infrastructure/jobs/file-watcher-service";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/db/repositories";
 import { DirectorySyncService } from "~/infrastructure/services/directory-sync-service";
 
 vi.mock("~/infrastructure/jobs/file-watcher-manager", () => ({
 	FileWatcherManager: { start: vi.fn(), stop: vi.fn() },
 }));
-vi.mock("~/infrastructure/repositories/source-repository", () => ({
+vi.mock("~/infrastructure/db/repositories", () => ({
 	DrizzleSourceRepository: { findAll: vi.fn(), findById: vi.fn() },
+	MediaRepository: {},
 }));
 vi.mock("~/infrastructure/services/directory-sync-service", () => ({
 	DirectorySyncService: { syncMediaSource: vi.fn() },
 }));
-vi.mock("~/infrastructure/repositories/media-repository", () => ({
-	MediaRepository: {},
-}));
+
 vi.mock("~/infrastructure/services/media-processing-service", () => ({
 	MediaProcessingService: {},
 }));

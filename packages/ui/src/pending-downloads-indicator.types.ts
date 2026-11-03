@@ -1,5 +1,5 @@
-import type { ImportEvent } from "@solid-imager/core/domain/sources/events";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { ImportEvent } from "@solid-imager/core/events";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { PendingImportJob } from "./import-review-modal.types";
 
 export type ImportEventHandler = (event: ImportEvent) => void | Promise<void>;

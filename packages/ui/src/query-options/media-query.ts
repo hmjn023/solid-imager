@@ -1,5 +1,5 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
-import type { UUID } from "@solid-imager/core/domain/shared/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
+import type { UUID } from "@solid-imager/core/shared";
 import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const mediaDetailsQueryKeys = {

@@ -13,11 +13,8 @@ import {
 	type AnyProcedure,
 } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
-import {
-	viewToolTitles,
-	type WebToolInfo,
-} from "@solid-imager/core/domain/config/mcp";
-import { isRestProcedure } from "@solid-imager/core/domain/contract/rest-visibility";
+import { viewToolTitles, type WebToolInfo } from "@solid-imager/core/config";
+import { isRestProcedure } from "@solid-imager/core/contract";
 import { appRouter } from "~/infrastructure/api/app-router";
 
 const converter = new ZodToJsonSchemaConverter({ cache: true });

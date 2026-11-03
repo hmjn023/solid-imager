@@ -1,4 +1,4 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { createQuery } from "@tanstack/solid-query";
 
 export type SourceRootPathResolver = (

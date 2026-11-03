@@ -1,13 +1,27 @@
 {
   "name": "@solid-imager/application",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
-  "main": "src/index.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./services/*": "./src/services/*.ts",
-    "./ports/*": "./src/ports/*.ts",
-    "./utils/*": "./src/utils/*.ts"
+    "./authors": "./src/public/authors.ts",
+    "./categories": "./src/public/categories.ts",
+    "./ccip": "./src/public/ccip.ts",
+    "./characters": "./src/public/characters.ts",
+    "./clustering": "./src/public/clustering.ts",
+    "./collections": "./src/public/collections.ts",
+    "./embeddings": "./src/public/embeddings.ts",
+    "./ips": "./src/public/ips.ts",
+    "./logging": "./src/ports/logger.ts",
+    "./media": "./src/media.ts",
+    "./media-processing": "./src/public/media-processing.ts",
+    "./presets": "./src/public/presets.ts",
+    "./projects": "./src/public/projects.ts",
+    "./search": "./src/public/search.ts",
+    "./tagging": "./src/public/tagging.ts",
+    "./tags": "./src/public/tags.ts",
+    "./thumbnails": "./src/public/thumbnails.ts",
+    "./users": "./src/public/users.ts"
   },
   "scripts": {
     "check": "oxlint --fix ./src && oxfmt --write ./src",

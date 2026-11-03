@@ -1,4 +1,4 @@
-import { createAuthorAccountVerificationService } from "@solid-imager/application/services/author-account-verification-service";
+import { createAuthorAccountVerificationService } from "@solid-imager/application/authors";
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
@@ -8,7 +8,7 @@ import {
 	mediaSources,
 	medias,
 } from "~/infrastructure/db/schema";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { AuthorRepository } from "~/infrastructure/db/repositories";
 import { AuthorService } from "~/infrastructure/services/author-service";
 
 describe("manual X account confirmation", () => {

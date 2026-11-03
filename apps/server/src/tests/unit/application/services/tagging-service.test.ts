@@ -1,17 +1,20 @@
-import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
-import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
-import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
+import {
+	type ITaggingService,
+	type TaggingServiceDeps,
+	createTaggingService,
+} from "@solid-imager/application/tagging";
+import type { IAiClient } from "@solid-imager/core/ports";
+import type { CharacterRepository } from "@solid-imager/core/characters";
+import type { IIpRepository } from "@solid-imager/core/ips";
+import type { IMediaRepository } from "@solid-imager/core/media";
+import type { SourceRepository } from "@solid-imager/core/sources";
+import type { TagRepository } from "@solid-imager/core/tags";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const MOCK_BUFFER_DATA = [1, 2, 3];
 
-describe("TaggingServiceImpl", () => {
-	let taggingService: TaggingServiceImpl;
+describe("createTaggingService", () => {
+	let taggingService: ITaggingService;
 	let mockAiClient: IAiClient;
 	let mockSourceRepo: SourceRepository;
 	let mockMediaRepo: IMediaRepository;
@@ -113,7 +116,7 @@ describe("TaggingServiceImpl", () => {
 			readFileBuffer: mockReadFileBuffer as any,
 		};
 
-		taggingService = new TaggingServiceImpl(deps);
+		taggingService = createTaggingService(deps);
 	});
 
 	it("should correctly link characters to IPs based on ips_mapping", async () => {

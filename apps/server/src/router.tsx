@@ -1,12 +1,12 @@
 import { isTransientApiError } from "@solid-imager/client";
-import { createAppQueryClientConfig } from "@solid-imager/ui/query-options";
+import { createAppQueryClientConfig } from "@solid-imager/ui/query";
 import {
 	ROUTE_PENDING_DELAY_MS,
 	ROUTE_PENDING_MIN_DURATION_MS,
 	RouteErrorScreen,
 	RoutePendingScreen,
 } from "@solid-imager/ui/router-status";
-import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
+import { NotFoundScreen } from "@solid-imager/ui/screens/not-found";
 import { QueryClient } from "@tanstack/solid-query";
 import { createRouter as createTanStackRouter } from "@tanstack/solid-router";
 import { setupRouterSsrQueryIntegration } from "@tanstack/solid-router-ssr-query";

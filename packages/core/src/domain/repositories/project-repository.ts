@@ -1,9 +1,5 @@
-import type { Transaction } from "@/domain/interfaces/transaction-manager";
-import type {
-	NewProject,
-	Project,
-	UpdateProject,
-} from "@/domain/projects/schemas";
+import type { Transaction } from "../interfaces/transaction-manager";
+import type { NewProject, Project, UpdateProject } from "../projects/schemas";
 
 export type IProjectRepository = {
 	findAll(): Promise<Project[]>;

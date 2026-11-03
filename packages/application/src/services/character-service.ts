@@ -2,17 +2,14 @@ import type {
 	Character,
 	NewCharacter,
 	UpdateCharacter,
-} from "@solid-imager/core/domain/characters/schemas";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
-import type {
-	Transaction,
-	TransactionManager,
-} from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+	CharacterRepository,
+} from "@solid-imager/core/characters";
+import { ResourceNotFoundError } from "@solid-imager/core/errors";
+import type { Transaction, TransactionManager } from "@solid-imager/core/ports";
+import type { IIpRepository } from "@solid-imager/core/ips";
 import type { ICharacterService } from "../ports/character-service";
 
-export class CharacterServiceImpl implements ICharacterService {
+class CharacterServiceImpl implements ICharacterService {
 	readonly characterRepo: CharacterRepository;
 	private readonly ipRepo: IIpRepository;
 	private readonly transactionManager: TransactionManager;
@@ -102,4 +99,12 @@ export class CharacterServiceImpl implements ICharacterService {
 	): Promise<void> {
 		await this.characterRepo.removeFromMedia(mediaId, characterId);
 	}
+}
+
+export function createCharacterService(
+	characterRepo: CharacterRepository,
+	ipRepo: IIpRepository,
+	transactionManager: TransactionManager,
+): ICharacterService {
+	return new CharacterServiceImpl(characterRepo, ipRepo, transactionManager);
 }

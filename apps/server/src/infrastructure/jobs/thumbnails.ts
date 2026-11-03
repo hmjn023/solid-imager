@@ -1,15 +1,18 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
+import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
 import {
 	generateThumbnailJobPayloadSchema,
 	type ThumbnailSize,
-} from "@solid-imager/core/domain/thumbnails/schemas";
-import type { Job, Media } from "~/infrastructure/db/schema";
+} from "@solid-imager/core/thumbnails";
+import type { Job } from "@solid-imager/core/jobs";
+import type { Media } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import {
+	MediaRepository,
+	DrizzleSourceRepository,
+} from "~/infrastructure/db/repositories";
 import { services } from "~/infrastructure/service-registry";
 
 const sourceRepo = DrizzleSourceRepository;

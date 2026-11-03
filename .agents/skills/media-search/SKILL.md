@@ -7,8 +7,8 @@ description: solid-imagerのメディア検索schema、simple/pro/vector mode、
 
 ## 既存設計
 
-- schemaと型の正は`packages/core/src/domain/search/`とmedia schemaに置く。
-- stateの正は`packages/ui/src/stores/search-store.ts`。server/Tauriは同じstoreをre-exportする。
+- 検索条件・状態・ソート順は `@solid-imager/core/search`、保存プリセットは `@solid-imager/core/presets` から取得する。実装はそれぞれ `packages/core/src/domain/search/` と `packages/core/src/domain/presets/` に置く。
+- Web と Tauri は `@solid-imager/ui/search/state` から同じ検索ストアを直接 import する。
 - 検索状態はstoreと`use-current-search-persistence`の`sessionStorage`で保持する。URL queryへ別系統の状態を追加しない。
 - simple/pro変換はcoreのsearch logicを経由する。
 - user presetとcurrent session stateを区別する。一時的な類似元などを通常presetへ混ぜない。

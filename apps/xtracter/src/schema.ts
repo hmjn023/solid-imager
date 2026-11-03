@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { submitAuthorAccountVerificationSchema } from "@solid-imager/core/domain/authors/schemas";
+import { submitAuthorAccountVerificationSchema } from "@solid-imager/core/authors";
 
 export const submitAccountVerificationMessageSchema =
 	submitAuthorAccountVerificationSchema.extend({

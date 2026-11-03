@@ -1,4 +1,4 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { MoveCopyMediaDialog as SharedMoveCopyMediaDialog } from "@solid-imager/ui/move-copy-media-dialog";
 import { createResource } from "solid-js";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";

@@ -5,12 +5,12 @@ import type {
 	AuthorMediaPage,
 	CorrectMediaAuthorsInput,
 	MergeAuthorsInput,
-} from "@solid-imager/core/domain/authors/schemas";
+	IAuthorRepository,
+} from "@solid-imager/core/authors";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
-import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
+} from "@solid-imager/core/errors";
 import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
 	authorAccounts,

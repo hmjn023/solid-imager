@@ -3,10 +3,10 @@ import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import {
 	prefetchManagerPageQueries,
 	useManagerPage,
-} from "@solid-imager/ui/hooks/use-manager-page";
-import { jobsQueryKeys } from "@solid-imager/ui/query-options";
-import type { ManagerTransferFormat } from "@solid-imager/ui/screens/manager/types";
-import { ManagerScreen } from "@solid-imager/ui/screens/manager-screen";
+	type ManagerTransferFormat,
+} from "@solid-imager/ui/manager";
+import { jobsQueryKeys } from "@solid-imager/ui/query";
+import { ManagerScreen } from "@solid-imager/ui/screens/manager";
 import { toast } from "@solid-imager/ui/toast";
 import { useQueryClient } from "@tanstack/solid-query";
 import { invoke, isTauri } from "@tauri-apps/api/core";

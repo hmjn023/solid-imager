@@ -3,7 +3,7 @@ import { createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
+import type { Job } from "@solid-imager/core/jobs";
 import { webReadableToNodeStream } from "~/infrastructure/utils/stream-utils";
 
 const configuredTransferDirectory = process.env.SOLID_IMAGER_JOB_TRANSFER_DIR;

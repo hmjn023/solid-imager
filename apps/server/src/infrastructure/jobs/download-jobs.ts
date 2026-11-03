@@ -5,24 +5,28 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import type {
-	AddMediaRequest,
-	DownloadItem,
-} from "@solid-imager/core/domain/media/schemas";
-import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
-import { generateMediaFilename } from "@solid-imager/core/domain/media/utils/filename-utils";
-import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import { asyncPool } from "@solid-imager/core/utils/async-pool";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
+import {
+	type AddMediaRequest,
+	type DownloadItem,
+	downloadItemSchema,
+} from "@solid-imager/core/media";
+import {
+	generateMediaFilename,
+	getMediaTypeFromExtension,
+} from "@solid-imager/core/media/files";
+import { asyncPool, isRecord } from "@solid-imager/core/utils";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
-import { type Job, jobs, type NewJob } from "~/infrastructure/db/schema";
+import type { Job } from "@solid-imager/core/jobs";
+import { jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { logger } from "~/infrastructure/logger";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import {
+	MediaRepository,
+	DrizzleSourceRepository,
+} from "~/infrastructure/db/repositories";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
 

@@ -1,7 +1,4 @@
-import type {
-	Media,
-	MediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
+import type { Media, MediaSearchResponse } from "@solid-imager/core/media";
 import type { InfiniteData } from "@tanstack/solid-query";
 import { createStore } from "solid-js/store";
 import { describe, expect, it } from "vitest";

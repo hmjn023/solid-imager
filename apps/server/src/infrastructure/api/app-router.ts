@@ -1,7 +1,7 @@
 import "zod/compile";
 
 import { implement } from "@orpc/server";
-import { appContract } from "@solid-imager/core/domain/contract";
+import { appContract } from "@solid-imager/core/contract";
 import { aiRouter } from "~/infrastructure/api/routers/ai-router";
 import { authorsRouter } from "~/infrastructure/api/routers/authors-router";
 import { categoriesRouter } from "~/infrastructure/api/routers/categories-router";
@@ -51,5 +51,3 @@ export const appRouter = appRouterImplementer.router({
 	presets: presetsRouter,
 	searchSnapshots: searchSnapshotsRouter,
 });
-
-export type AppRouter = typeof appRouter;

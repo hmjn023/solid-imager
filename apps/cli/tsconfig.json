@@ -1,5 +1,5 @@
 {
-  "extends": "../../tsconfig.json",
+  "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "esnext",
     "target": "esnext",
@@ -11,9 +11,6 @@
     "forceConsistentCasingInFileNames": true,
     "outDir": "./dist",
     "rootDir": "../..",
-    "paths": {
-      "@/*": ["../../packages/core/src/*"]
-    },
     "types": ["node", "bun-types", "vitest/globals"]
   },
   "include": ["src/**/*"],

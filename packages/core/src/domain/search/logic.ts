@@ -1,8 +1,5 @@
-import type {
-	Preset,
-	SearchCriterion,
-	SearchGroup,
-} from "@/domain/media/schemas";
+import type { Preset } from "../presets/schemas";
+import type { SearchCriterion, SearchGroup } from "./criteria";
 import type { SearchState } from "./schema";
 
 /**

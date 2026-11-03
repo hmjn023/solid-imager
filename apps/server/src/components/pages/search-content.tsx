@@ -1,5 +1,5 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
-import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
+import type { Media } from "@solid-imager/core/media";
+import { searchSnapshotStateSchema } from "@solid-imager/core/search";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { Button } from "@solid-imager/ui/button";
 import {
@@ -10,17 +10,24 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@solid-imager/ui/dialog";
-import { persistSearchScrollPosition } from "@solid-imager/ui/hooks/use-current-search-persistence";
+import {
+	persistSearchScrollPosition,
+	useSearchHistoryPersistence,
+	useSearchPage,
+} from "@solid-imager/ui/search";
 import {
 	type MediaCollectionSelectionMode,
 	useMediaCollectionSelection,
-} from "@solid-imager/ui/hooks/use-media-collection-selection";
-import { useSearchHistoryPersistence } from "@solid-imager/ui/hooks/use-search-history-persistence";
-import { useSearchPage } from "@solid-imager/ui/hooks/use-search-page";
+} from "@solid-imager/ui/collections";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
-import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
-import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
+import { SearchScreen } from "@solid-imager/ui/screens/search";
+import { createSearchHistoryClient } from "@solid-imager/ui/search/history";
+import {
+	activateSimilaritySearch,
+	getSearchCondition,
+	searchState,
+	setSearchState,
+} from "@solid-imager/ui/search/state";
 import { toast } from "@solid-imager/ui/toast";
 import { useLocation } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
@@ -51,11 +58,6 @@ import {
 	searchSimilar,
 	searchSemantic,
 } from "~/infrastructure/api-clients/search-api";
-import {
-	getSearchCondition,
-	searchState,
-	setSearchState,
-} from "~/presentation/store/search-store";
 
 const SEARCH_RESULTS_REFRESH_DEBOUNCE_MS = 300;
 const SEARCH_RESULTS_PER_PAGE = 200;

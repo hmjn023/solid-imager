@@ -1,7 +1,7 @@
 import type {
 	MediaSourceInfo,
 	SafeMediaSource,
-} from "@solid-imager/core/domain/sources/schemas";
+} from "@solid-imager/core/sources";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { createForm } from "@tanstack/solid-form";
 import { createEffect, createSignal, Show } from "solid-js";

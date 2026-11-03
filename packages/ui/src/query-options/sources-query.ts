@@ -1,4 +1,4 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const sourcesQueryKeys = {

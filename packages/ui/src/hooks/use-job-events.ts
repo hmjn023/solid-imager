@@ -1,4 +1,4 @@
-import type { JobEvent } from "@solid-imager/core/domain/sources/events";
+import type { JobEvent } from "@solid-imager/core/events";
 import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";

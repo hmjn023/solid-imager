@@ -15,7 +15,7 @@ export { searchMedia } from "./search-api";
 import type {
 	DownloadItem,
 	UpdateMediaRequest,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/media";
 import { client } from "~/orpc-client";
 
 export function updateMedia(

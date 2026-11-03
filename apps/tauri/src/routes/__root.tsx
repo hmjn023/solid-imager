@@ -1,9 +1,9 @@
-import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
+import { mediaSourceInfoSchema } from "@solid-imager/core/sources";
 import { subscribeAllSourceEvents } from "~/hooks/use-media-source-events";
-import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
-import { AppShell } from "@solid-imager/ui/layouts/app-shell";
+import { useSourcesPage } from "@solid-imager/ui/sources";
+import { AppShell } from "@solid-imager/ui/app-shell";
 import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
-import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts/index";
+import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts";
 import { Toaster } from "@solid-imager/ui/toast";
 import { useLiveQuery } from "@tanstack/solid-db";
 import { useQueryClient } from "@tanstack/solid-query";

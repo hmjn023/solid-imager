@@ -1,5 +1,5 @@
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/domain/contract";
+import type { AppContract } from "@solid-imager/core/contract";
 
 /** Creates a client for the supplied host, defaulting to localhost and adding HTTP when omitted. */
 export function getClient(url: string) {

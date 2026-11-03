@@ -1,4 +1,4 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 
 const IMPORT_SOURCE_PREFERENCE_KEY = "solid-imager:import-source-preference";
 

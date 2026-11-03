@@ -1,5 +1,5 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
-import type { DetectAndCropResponse } from "@solid-imager/core/domain/tagging/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
+import type { DetectAndCropResponse } from "@solid-imager/core/tagging";
 import Scan from "lucide-solid/icons/scan";
 import ScanFace from "lucide-solid/icons/scan-face";
 import { createEffect, createSignal, For, Show, untrack } from "solid-js";

@@ -1,5 +1,8 @@
+import {
+	type IMediaProcessingService,
+	createMediaProcessingService,
+} from "@solid-imager/application/media-processing";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
 
 // Mock Repositories
 const mockMediaRepo = {
@@ -75,10 +78,10 @@ const _mockConfigService = {
 };
 
 describe("MediaProcessingService", () => {
-	let service: MediaProcessingServiceImpl;
+	let service: IMediaProcessingService;
 
 	beforeEach(() => {
-		service = new MediaProcessingServiceImpl({
+		service = createMediaProcessingService({
 			sourceRepo: {} as any,
 			mediaRepo: mockMediaRepo as any,
 			tagRepo: mockTagRepo as any,
