@@ -1,34 +1,37 @@
 import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
-import { useQueryClient } from "@tanstack/solid-query";
-import { Outlet, useLocation, useNavigate } from "@tanstack/solid-router";
-import { onCleanup, onMount } from "solid-js";
+import { configQueryKeys } from "@solid-imager/ui/query-options";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
+import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { Outlet } from "@tanstack/solid-router";
+import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import { ApiActivityIndicator } from "~/components/api-activity-indicator";
+import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { AppShell } from "./app-shell";
 
 export function AppLayout() {
 	const queryClient = useQueryClient();
-	const navigate = useNavigate();
-	const location = useLocation();
-	onMount(() => {
-		const context = document.modelContext;
-		if (!context) return;
+	const workspace = useWorkspaceNavigation();
+	const [context, setContext] = createSignal<WebMCP.ModelContext>();
+	onMount(() => setContext(document.modelContext));
+	const publication = createQuery(() => ({
+		queryKey: [...configQueryKeys.all(), "webTools"],
+		queryFn: ({ signal }) => orpc.config.webTools(undefined, { signal }),
+		enabled: !!context(),
+		refetchInterval: 30_000,
+	}));
+	createEffect(() => {
+		const browser = context();
+		const published = publication.data;
+		if (!browser || !published) return;
 		const registration = new AbortController();
 		onCleanup(() => registration.abort());
 		void import("~/infrastructure/mcp/web-tools")
 			.then(({ registerWebTools }) =>
 				registerWebTools(
-					context,
+					browser,
+					published,
 					queryClient,
-					{
-						pathname: () => location().pathname,
-						openSearch: (id) =>
-							navigate({ to: "/search", search: { search: id } }),
-						openMedia: (sourceId, mediaId) =>
-							navigate({
-								to: "/sources/$mediaSourceId/$mediaId",
-								params: { mediaSourceId: sourceId, mediaId },
-							}),
-					},
+					workspace,
 					registration.signal,
 				),
 			)

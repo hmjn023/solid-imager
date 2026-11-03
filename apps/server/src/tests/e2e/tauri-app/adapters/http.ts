@@ -14,7 +14,14 @@ export async function fetch(
 ): Promise<Response> {
 	const request = new Request(input, init);
 	const body = request.body ? await request.arrayBuffer() : undefined;
-	return globalThis.fetch(request.url, {
+	// Native HTTP can reach a separate server without browser CORS. Forward that
+	// server's calls through the fixture proxy when emulating the plugin in Chromium.
+	const url = new URL(request.url);
+	const target =
+		url.origin === import.meta.env.VITE_API_URL
+			? url.pathname + url.search
+			: request.url;
+	return globalThis.fetch(target, {
 		body,
 		cache: request.cache,
 		credentials: request.credentials,

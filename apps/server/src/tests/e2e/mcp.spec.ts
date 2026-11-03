@@ -1,6 +1,10 @@
 import type { APIRequestContext } from "@playwright/test";
-import { mkdtemp, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
 import path from "node:path";
+import type {
+	McpConfig,
+	McpToolInfo,
+} from "@solid-imager/core/domain/config/mcp";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -12,12 +16,15 @@ import { expect, test, waitForAppHydration } from "./support/test";
 
 test.use({ launchOptions: { args: ["--enable-features=WebMCP"] } });
 
-async function rpc(request: APIRequestContext, method: string, params: object) {
+async function mcpResponse(
+	request: APIRequestContext,
+	method: string,
+	params: object,
+) {
 	const response = await request.post("/api/mcp", {
 		headers: { Accept: "application/json, text/event-stream" },
 		data: { jsonrpc: "2.0", id: 1, method, params },
 	});
-	expect(response.status()).toBe(200);
 	const text = await response.text();
 	const data = response.headers()["content-type"]?.includes("text/event-stream")
 		? text
@@ -26,7 +33,11 @@ async function rpc(request: APIRequestContext, method: string, params: object) {
 				?.slice(5)
 		: text;
 	if (!data) throw new Error(`Empty MCP response for ${method}`);
-	const message = JSON.parse(data);
+	return JSON.parse(data);
+}
+
+async function rpc(request: APIRequestContext, method: string, params: object) {
+	const message = await mcpResponse(request, method, params);
 	expect(message.error).toBeUndefined();
 	return message.result;
 }
@@ -53,6 +64,33 @@ test("HTTP MCP and visible WebMCP tools edit the same media tags", async ({
 	];
 	expect(list.tools.map((tool: { name: string }) => tool.name).sort()).toEqual(
 		names,
+	);
+	// Discovery comes from the same oRPC schemas that validate tool calls.
+	expect(list.tools).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({
+				name: "search_media",
+				annotations: expect.objectContaining({
+					readOnlyHint: true,
+					openWorldHint: false,
+				}),
+				outputSchema: expect.objectContaining({ type: "object" }),
+			}),
+			expect.objectContaining({
+				name: "create_local_source",
+				annotations: expect.objectContaining({
+					readOnlyHint: false,
+					idempotentHint: false,
+				}),
+			}),
+			expect.objectContaining({
+				name: "edit_media_tags",
+				annotations: expect.objectContaining({
+					readOnlyHint: false,
+					idempotentHint: true,
+				}),
+			}),
+		]),
 	);
 	const call = (name: string, args: object) =>
 		rpc(request, "tools/call", { name, arguments: args });
@@ -436,4 +474,316 @@ test("WebMCP reports a failed visible search and can recover", async ({
 		ready: true,
 		total_count: 1,
 	});
+});
+
+test("settings publish oRPC data tools independently and revoke cached calls", async ({
+	page,
+	request,
+}) => {
+	const config = async (action: string, input?: object) => {
+		const response = await request.post("/api/rpc/config/" + action, {
+			data: { json: input },
+		});
+		expect(response.ok()).toBe(true);
+		return (await response.json()).json;
+	};
+	const initial: McpConfig = (await config("get")).mcp;
+	const catalog: McpToolInfo[] = await config("mcpCatalog");
+	const candidates = catalog
+		.filter((tool) => !tool.webOnly)
+		.map((tool) => tool.name)
+		.sort();
+	expect(candidates.length).toBeGreaterThan(100);
+	expect(candidates).toEqual(
+		expect.arrayContaining([
+			"tags_list",
+			"media_search",
+			"jobs_retry",
+			"authors_create",
+		]),
+	);
+	for (const excluded of [
+		"media_getContent",
+		"media_upload",
+		"sources_events",
+		"jobs_downloadArtifact",
+		"utils_fetchUrl",
+		"config_update",
+		"config_callWebTool",
+		"open_media",
+	]) {
+		expect(candidates).not.toContain(excluded);
+	}
+	try {
+		await config("update", { mcp: { http: candidates, web: [] } });
+		const all = await rpc(request, "tools/list", {});
+		expect(all.tools).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: "tags_list",
+					annotations: expect.objectContaining({ readOnlyHint: true }),
+				}),
+			]),
+		);
+		expect(all.tools.map((tool: { name: string }) => tool.name).sort()).toEqual(
+			candidates,
+		);
+		const tags = await rpc(request, "tools/call", {
+			name: "tags_list",
+			arguments: {},
+		});
+		expect(tags.isError).not.toBe(true);
+		expect(JSON.parse(tags.content[0].text)).toEqual(expect.any(Array));
+		await config("update", { mcp: { http: [] } });
+		expect((await rpc(request, "tools/list", {})).tools).toEqual([]);
+		await page.goto("/config");
+		await waitForAppHydration(page);
+		const category = page.getByRole("tab", { name: /MCP/ });
+		await category.click();
+		await page
+			.getByRole("textbox", { name: "ツールを絞り込む" })
+			.fill("jobs_list");
+		const http = page.getByRole("checkbox", { name: "HTTP MCP jobs_list" });
+		const web = page.getByRole("checkbox", { name: "WebMCP jobs_list" });
+		await expect(http).not.toBeChecked();
+		await web.press("Space");
+		await expect(web).toBeChecked();
+		await page.getByRole("button", { name: "Save Changes" }).click();
+		await expect
+			.poll(async () => (await page.webmcp.tools()).map((t) => t.name))
+			.toEqual(["jobs_list"]);
+		expect((await rpc(request, "tools/list", {})).tools).toEqual([]);
+		expect(await page.webmcp.callTool("jobs_list", { limit: 1 })).toMatchObject(
+			{ items: expect.any(Array) },
+		);
+		expect(new URL(page.url()).pathname).toBe("/config");
+		await page.reload();
+		await category.click();
+		await page
+			.getByRole("textbox", { name: "ツールを絞り込む" })
+			.fill("jobs_list");
+		await expect(web).toBeChecked();
+		await web.press("Space");
+		await expect(web).not.toBeChecked();
+		await page
+			.locator("label")
+			.filter({ hasText: "HTTP MCP jobs_list" })
+			.click();
+		await expect(http).toBeChecked();
+		await page.getByRole("button", { name: "Save Changes" }).click();
+		await expect
+			.poll(async () =>
+				(await rpc(request, "tools/list", {})).tools.map(
+					(t: { name: string }) => t.name,
+				),
+			)
+			.toEqual(["jobs_list"]);
+		await expect
+			.poll(async () => (await page.webmcp.tools()).map((t) => t.name))
+			.toEqual([]);
+		const saved = JSON.parse(
+			await readFile(path.join(getE2eRuntimeDir(), "config.json"), "utf8"),
+		);
+		expect(saved.mcp).toEqual({ http: ["jobs_list"], web: [] });
+		expect(
+			(
+				await rpc(request, "tools/call", {
+					name: "jobs_list",
+					arguments: { limit: 1 },
+				})
+			).structuredContent,
+		).toMatchObject({ items: expect.any(Array) });
+		const denied = await request.post("/api/rpc/config/callWebTool", {
+			data: { json: { name: "jobs_list", arguments: {} } },
+		});
+		expect(denied.status()).toBe(404);
+		for (const name of [
+			"list_sources",
+			"find_tags",
+			"search_media_capture_snapshot",
+		]) {
+			const revoked = await request.post("/api/rpc/config/callWebTool", {
+				data: { json: { name, arguments: {} } },
+			});
+			expect(revoked.status()).toBe(404);
+		}
+		await config("update", {
+			mcp: { http: ["config_update", "open_media"], web: ["config_update"] },
+		});
+		expect(
+			(
+				await mcpResponse(request, "tools/call", {
+					name: "jobs_list",
+					arguments: {},
+				})
+			).error,
+		).toBeDefined();
+		expect((await rpc(request, "tools/list", {})).tools).toEqual([]);
+		expect(await config("webTools")).toEqual([]);
+	} finally {
+		await config("update", { mcp: initial });
+	}
+});
+
+test("an acknowledged tag edit never reopens the image after the user leaves", async ({
+	page,
+	request,
+}) => {
+	const created = await request.post("/api/rpc/tags/create", {
+		data: { json: { name: "e2e-follow-edit-once" } },
+	});
+	expect(created.ok()).toBe(true);
+	const { id } = (await created.json()).json;
+	const saved = Promise.withResolvers<void>();
+	const release = Promise.withResolvers<void>();
+	let writes = 0;
+	try {
+		await page.goto(mediaPath());
+		await waitForAppHydration(page);
+		await expect
+			.poll(async () =>
+				(await page.webmcp.tools()).some(
+					(tool) => tool.name === "edit_media_tags",
+				),
+			)
+			.toBe(true);
+		await page.route("**/api/rpc/config/callWebTool", async (route) => {
+			writes++;
+			const response = await route.fetch();
+			saved.resolve();
+			await release.promise;
+			await route.fulfill({ response });
+		});
+		const edit = page.webmcp.callTool("edit_media_tags", {
+			sourceId: E2E_SOURCE_ID,
+			mediaId: E2E_PRIMARY_MEDIA_ID,
+			action: "add",
+			tagIds: [id],
+		});
+		await saved.promise;
+		await page.getByRole("link", { name: "Jobs", exact: true }).first().click();
+		await expect(page).toHaveURL(/\/jobs$/);
+		release.resolve();
+		expect(await edit).toMatchObject({
+			success: true,
+			presentation: "unconfirmed",
+		});
+		await expect(page).toHaveURL(/\/jobs$/);
+		expect(writes).toBe(1);
+	} finally {
+		release.resolve();
+		await request.post("/api/rpc/tags/delete", { data: { json: { id } } });
+	}
+});
+
+test("CCIP WebMCP follows the returned job only when requested", async ({
+	page,
+	request,
+	browserHealth,
+}) => {
+	const tool = "ai_startCcipExtraction";
+	const settings = await request.post("/api/rpc/config/get", { data: {} });
+	const original: McpConfig = (await settings.json()).json.mcp;
+	const publish = (web: string[]) =>
+		request.post("/api/rpc/config/update", {
+			data: { json: { mcp: { web } } },
+		});
+	// Leave the two unprocessed images used by the native CCIP flow untouched.
+	const found = await request.post("/api/rpc/tools/search_media", {
+		data: { json: { sourceId: E2E_SOURCE_ID, query: "e2e-scroll-0001.png" } },
+	});
+	expect(found.ok()).toBe(true);
+	const [target] = (await found.json()).json.media;
+	const input = { mediaSourceId: E2E_SOURCE_ID, mediaId: target.id };
+	const waitForTool = () =>
+		expect
+			.poll(async () =>
+				(await page.webmcp.tools()).some((item) => item.name === tool),
+			)
+			.toBe(true);
+	try {
+		expect((await publish([...original.web, tool])).ok()).toBe(true);
+		await page.goto("/config");
+		await waitForTool();
+		const checkpoint = browserHealth.requestCheckpoint();
+		expect(
+			await page.webmcp.callTool(tool, { ...input, showJob: true }),
+		).toMatchObject({ code: "VIEW_BUSY" });
+		expect(
+			browserHealth.apiRequestCountPathSince(
+				checkpoint,
+				"/api/rpc/config/callWebTool",
+			),
+		).toBe(0);
+		const dataOnly = await page.webmcp.callTool(tool, input);
+		expect(dataOnly).toMatchObject({
+			success: true,
+			jobId: expect.any(String),
+		});
+		await expect(page).toHaveURL(/\/config$/);
+		await page.goto(mediaPath());
+		await waitForTool();
+		const result = await page.webmcp.callTool(tool, {
+			...input,
+			showJob: true,
+		});
+		expect(result).toMatchObject({ success: true, jobId: expect.any(String) });
+		expect(result).not.toHaveProperty("presentation");
+		expect(result.jobId).not.toBe(dataOnly.jobId);
+		const inspector = page.locator('[aria-label="Job details"]:visible');
+		await expect(page).toHaveURL(
+			new RegExp("/jobs\\?jobId=" + result.jobId + "$"),
+		);
+		await expect(inspector).toHaveAttribute("data-job-id", result.jobId);
+		expect(await page.webmcp.callTool("get_current_view")).toMatchObject({
+			view: "jobs",
+			job: { id: result.jobId, type: "extract_ccip_vector" },
+		});
+		const earlierJob = page.getByRole("button", {
+			name: new RegExp("job " + dataOnly.jobId + "$"),
+		});
+		await earlierJob.click();
+		await expect(inspector).toHaveAttribute("data-job-id", dataOnly.jobId);
+		await page.goBack();
+		await expect(inspector).toHaveAttribute("data-job-id", result.jobId);
+
+		// Even when this page of the list contains no target, open the linked inspector by ID.
+		await page.route("**/api/rpc/jobs/list", (route) =>
+			route.fulfill({ json: { json: { items: [], total: 0 } } }),
+		);
+		await page.setViewportSize({ width: 375, height: 740 });
+		await page.reload();
+		await expect(inspector).toHaveAttribute("data-job-id", result.jobId);
+		await expect(inspector).toBeInViewport();
+		await page.unroute("**/api/rpc/jobs/list");
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await waitForTool();
+		const acknowledged = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		await page.route("**/api/rpc/config/callWebTool", async (route) => {
+			const response = await route.fetch();
+			acknowledged.resolve();
+			await release.promise;
+			await route.fulfill({ response });
+		});
+		const pending = page.webmcp.callTool(tool, { ...input, showJob: true });
+		try {
+			await acknowledged.promise;
+			await page
+				.getByRole("link", { name: "Settings", exact: true })
+				.first()
+				.click();
+			await expect(page).toHaveURL(/\/config$/);
+		} finally {
+			release.resolve();
+		}
+		expect(await pending).toMatchObject({
+			success: true,
+			jobId: expect.any(String),
+			presentation: "unconfirmed",
+		});
+		await expect(page).toHaveURL(/\/config$/);
+	} finally {
+		expect((await publish(original.web)).ok()).toBe(true);
+	}
 });

@@ -1,5 +1,13 @@
-import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
-import { AppConfigSchema } from "@solid-imager/core/domain/config/config-schema";
+import {
+	AppConfigSchema,
+	AppConfigUpdateSchema,
+	type AppConfig,
+	type AppConfigUpdate,
+} from "@solid-imager/core/domain/config/config-schema";
+import {
+	mcpConfigSchema,
+	type McpToolInfo,
+} from "@solid-imager/core/domain/config/mcp";
 import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
 import { createForm } from "@tanstack/solid-form";
 // oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
@@ -11,6 +19,7 @@ import HardDrive from "lucide-solid/icons/hard-drive";
 import Image from "lucide-solid/icons/image";
 import Keyboard from "lucide-solid/icons/keyboard";
 import Logs from "lucide-solid/icons/logs";
+import Wrench from "lucide-solid/icons/wrench";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import type { z } from "zod";
 import {
@@ -38,6 +47,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
 import { CategoryLabel } from "../workspace/management-layout";
+
+import { McpPublicationSettings } from "./mcp-publication-settings";
 
 type AppConfigFormValues = z.input<typeof AppConfigSchema>;
 
@@ -73,11 +84,23 @@ const SETTINGS_CATEGORIES = [
 		label: "Shortcuts",
 		value: "shortcuts",
 	},
+	{ description: "ツールの公開範囲", icon: Wrench, label: "MCP", value: "mcp" },
 	{ description: "出力レベル", icon: Logs, label: "Logging", value: "logging" },
 ] as const;
 
 function toFormValues(data: AppConfig): AppConfigFormValues {
 	return data;
+}
+
+function changedFields<T extends Record<string, unknown>>(
+	before: T,
+	after: T,
+): Record<string, unknown> {
+	return Object.fromEntries(
+		Object.entries(after).filter(
+			([key, value]) => JSON.stringify(value) !== JSON.stringify(before[key]),
+		),
+	);
 }
 
 function parseNumberInput(val: string): number | undefined {
@@ -87,7 +110,8 @@ function parseNumberInput(val: string): number | undefined {
 export type ConfigScreenProps = {
 	checkAiHealth: () => Promise<AiHealthResponse>;
 	data: AppConfig;
-	onSubmit: (value: Partial<AppConfig>) => Promise<void>;
+	onSubmit: (value: AppConfigUpdate) => Promise<AppConfig>;
+	loadMcpCatalog: () => Promise<McpToolInfo[]>;
 	onSubmitSuccess?: () => void;
 };
 
@@ -98,6 +122,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 	const [isCheckingAiHealth, setIsCheckingAiHealth] = createSignal(false);
 	const [submitError, setSubmitError] = createSignal<string | null>(null);
 	const sectionClass = "min-w-0 space-y-5 border-b border-border pb-8";
+	let baseline = props.data;
 	const form = createForm(() => ({
 		defaultValues: toFormValues(props.data),
 		validators: {
@@ -107,8 +132,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 			setSubmitError(null);
 			try {
 				const parsedValue = AppConfigSchema.parse(value);
-				await props.onSubmit(parsedValue);
-				form.reset(parsedValue);
+				// Patch only edited sections, including each MCP surface independently.
+				const patch = changedFields(baseline, parsedValue);
+				if (patch.mcp) patch.mcp = changedFields(baseline.mcp, parsedValue.mcp);
+				baseline = await props.onSubmit(AppConfigUpdateSchema.parse(patch));
+				form.reset(toFormValues(baseline));
 				props.onSubmitSuccess?.();
 				toast.success("Configuration saved successfully");
 			} catch (error) {
@@ -143,6 +171,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 	createEffect(() => {
 		const data = props.data;
 		if (!form.state.isDirty) {
+			baseline = data;
 			form.reset(toFormValues(data));
 		}
 	});
@@ -749,6 +778,17 @@ export function ConfigScreen(props: ConfigScreenProps) {
 							</fieldset>
 						</TabsContent>
 
+						<TabsContent value="mcp">
+							<form.Field name="mcp">
+								{(field) => (
+									<McpPublicationSettings
+										value={mcpConfigSchema.parse(field().state.value)}
+										onChange={(value) => field().handleChange(value)}
+										loadCatalog={props.loadMcpCatalog}
+									/>
+								)}
+							</form.Field>
+						</TabsContent>
 						<TabsContent value="shortcuts">
 							<ShortcutSettingsPanel
 								description="Record a new key combination, disable an action, or restore defaults. Changes are saved immediately in this browser or desktop app and are not part of the server configuration."
@@ -774,7 +814,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									disabled={state().isSubmitting}
 									onClick={() => {
 										setSubmitError(null);
-										form.reset(toFormValues(props.data));
+										baseline = props.data;
+										form.reset(toFormValues(baseline));
 									}}
 									type="button"
 									variant="outline"
@@ -814,7 +855,8 @@ export function ConfigScreen(props: ConfigScreenProps) {
 							onClick={() => {
 								const resolver = navigationBlocker();
 								if (resolver.status !== "blocked") return;
-								form.reset(toFormValues(props.data));
+								baseline = props.data;
+								form.reset(toFormValues(baseline));
 								resolver.proceed?.();
 							}}
 						>

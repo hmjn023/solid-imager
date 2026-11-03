@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { afterWebViewPaint } from "~/infrastructure/mcp/web-view";
+import { afterWebViewPaint } from "~/presentation/workspace-view";
 
 describe("WebMCP paint completion", () => {
 	beforeEach(() => {

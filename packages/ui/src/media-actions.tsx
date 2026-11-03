@@ -46,7 +46,7 @@ export type MediaActionsProps = {
 		model?: import("@solid-imager/core/domain/search/embedding").SimilarityModel,
 	) => void;
 	onDownload?: () => void | Promise<void>;
-	onViewJobs?: () => void;
+	onViewJobs?: (jobId: string) => void;
 	onDelete?: () => void | Promise<void>;
 	aiTaggingModal?: (
 		props: MediaActionModalProps,
@@ -146,11 +146,14 @@ export function MediaActions(props: MediaActionsProps) {
 		setIsExtractingEmbedding(true);
 		const mediaId = props.media.id;
 		try {
-			await props.startEmbeddingExtraction();
+			const result = await props.startEmbeddingExtraction();
 			toast.success("EmbeddingGemma 2 extraction queued", {
 				duration: 7_000,
 				action: props.onViewJobs
-					? { label: "View Jobs", onClick: props.onViewJobs }
+					? {
+							label: "View Jobs",
+							onClick: () => props.onViewJobs?.(result.jobId),
+						}
 					: undefined,
 			});
 		} catch (error) {
@@ -181,7 +184,15 @@ export function MediaActions(props: MediaActionsProps) {
 			setIsCcipJobPending(true);
 			setCcipMissingStatusCount(0);
 			void refreshCcipStatus();
-			toast.success("CCIP vector extraction queued");
+			toast.success("CCIP vector extraction queued", {
+				duration: 7_000,
+				action: props.onViewJobs
+					? {
+							label: "View Jobs",
+							onClick: () => props.onViewJobs?.(result.jobId),
+						}
+					: undefined,
+			});
 		} catch (error) {
 			if (!isCurrentMedia()) return;
 			toast.error(`Failed to extract CCIP vector: ${getErrorMessage(error)}`);

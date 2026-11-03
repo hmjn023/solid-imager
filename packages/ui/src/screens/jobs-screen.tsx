@@ -1,3 +1,4 @@
+import type { useJobInspection } from "../hooks/use-job-inspection";
 import {
 	isBatchParentJobType,
 	type JobDto,
@@ -13,7 +14,15 @@ import Download from "lucide-solid/icons/download";
 import RefreshCw from "lucide-solid/icons/refresh-cw";
 import RotateCcw from "lucide-solid/icons/rotate-ccw";
 import type { Accessor } from "solid-js";
-import { createMemo, createSignal, For, Match, Show, Switch } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	Match,
+	Show,
+	Switch,
+} from "solid-js";
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
@@ -85,6 +94,7 @@ export type JobsPagination = {
 };
 
 export type JobsScreenProps = {
+	inspection?: ReturnType<typeof useJobInspection>;
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	isRefreshing: Accessor<boolean>;
 	jobs: Accessor<JobDto[]>;
@@ -317,7 +327,7 @@ function JobsTable(props: {
 									</td>
 									<td class="px-2 py-2">
 										<button
-											aria-label={`${jobTypeLabel(job.type)} job ${job.id.slice(0, 8)}`}
+											aria-label={`${jobTypeLabel(job.type)} job ${job.id}`}
 											aria-pressed={props.selectedJobId === job.id}
 											class="w-full rounded px-2 py-2 text-left font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 											onClick={() => props.onSelect(job)}
@@ -483,6 +493,7 @@ function JobsInspector(props: {
 	return (
 		<aside
 			aria-label="Job details"
+			data-job-id={props.job?.id}
 			class={
 				props.class ??
 				"hidden min-h-0 overflow-y-auto overscroll-contain border-border border-l bg-background p-5 scrollbar-stable xl:block"
@@ -694,7 +705,7 @@ function JobsInspector(props: {
 
 export function JobsScreen(props: JobsScreenProps) {
 	const [activeFilter, setActiveFilter] = createSignal<JobFilter>("all");
-	const [selectedJobId, setSelectedJobId] = createSignal<string | null>(null);
+	const [localSelection, setLocalSelection] = createSignal<string | null>(null);
 	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
 		new Set(),
 	);
@@ -702,8 +713,24 @@ export function JobsScreen(props: JobsScreenProps) {
 	const [isApplyingBulkAction, setIsApplyingBulkAction] = createSignal(false);
 
 	const selectedJob = createMemo(() =>
-		props.jobs().find((job) => job.id === selectedJobId()),
+		props.inspection
+			? props.inspection.job()
+			: props.jobs().find((job) => job.id === localSelection()),
 	);
+	const selectJob = (job: JobDto) => {
+		if (props.inspection) props.inspection.select(job.id);
+		else setLocalSelection(job.id);
+	};
+	const selectedId = createMemo(() => selectedJob()?.id);
+	let inlineInspector: HTMLDivElement | undefined;
+	createEffect(() => {
+		const id = selectedId();
+		if (id)
+			queueMicrotask(() => {
+				if (id === selectedId() && inlineInspector?.getClientRects().length)
+					inlineInspector.scrollIntoView({ block: "nearest" });
+			});
+	});
 	const filteredJobs = createMemo(() => {
 		const jobs = props.jobs();
 		switch (activeFilter()) {
@@ -787,6 +814,32 @@ export function JobsScreen(props: JobsScreenProps) {
 
 			<div class="grid min-h-0 flex-1 xl:grid-cols-detail-sidebar">
 				<div class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable">
+					<Show when={props.inspection?.failed()}>
+						<ErrorState
+							title="選択したジョブを取得できませんでした"
+							description="ジョブを再取得するか一覧から別のジョブを選択してください。"
+							onRetry={() => props.inspection?.retry()}
+						/>
+					</Show>
+					<Show when={selectedJob()}>
+						{(job) => (
+							<div
+								ref={(element) => {
+									inlineInspector = element;
+								}}
+								class="mb-4 xl:hidden"
+							>
+								<JobsInspector
+									buildThumbnailUrl={props.buildThumbnailUrl}
+									class="rounded-md border border-border bg-background p-4"
+									job={job()}
+									onCancel={props.onCancel}
+									onDownload={props.onDownload}
+									onRetry={props.onRetry}
+								/>
+							</div>
+						)}
+					</Show>
 					<Tabs
 						onChange={(value) => {
 							setActiveFilter(value as JobFilter);
@@ -877,9 +930,9 @@ export function JobsScreen(props: JobsScreenProps) {
 														<JobsTable
 															buildThumbnailUrl={props.buildThumbnailUrl}
 															jobs={filteredJobs()}
-															onSelect={(job) => setSelectedJobId(job.id)}
+															onSelect={selectJob}
 															onToggleSelect={toggleJob}
-															selectedJobId={selectedJobId()}
+															selectedJobId={selectedId() ?? null}
 															selectedJobIds={selectedJobIds()}
 														/>
 														<Show when={props.state().data?.total}>
@@ -889,18 +942,6 @@ export function JobsScreen(props: JobsScreenProps) {
 																	{filteredJobs().length.toLocaleString()} of{" "}
 																	{total().toLocaleString()} jobs
 																</p>
-															)}
-														</Show>
-														<Show when={selectedJob()}>
-															{(job) => (
-																<JobsInspector
-																	buildThumbnailUrl={props.buildThumbnailUrl}
-																	class="mt-4 rounded-md border border-border bg-background p-4 xl:hidden"
-																	job={job()}
-																	onCancel={props.onCancel}
-																	onDownload={props.onDownload}
-																	onRetry={props.onRetry}
-																/>
 															)}
 														</Show>
 													</Show>

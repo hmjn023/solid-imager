@@ -7,7 +7,7 @@ import { MediaActions } from "~/components/media/media-actions";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
-import { useWebMcpView } from "~/infrastructure/mcp/web-view";
+import { useWorkspaceView } from "~/presentation/workspace-view";
 import {
 	mediaDetailsQueryOptions,
 	mediaSourcesQueryOptions,
@@ -64,13 +64,13 @@ function MediaContent(props: {
 					onUpdate={onUpdate}
 				/>
 			)}
-			renderMediaViewer={(media) => <WebMcpMediaViewer media={media} />}
+			renderMediaViewer={(media) => <ObservedMediaViewer media={media} />}
 			transport={createServerTransport(props.mediaSourceId)}
 		/>
 	);
 }
 
-function WebMcpMediaViewer(props: { media: MediaDetails }) {
-	useWebMcpView(() => ({ kind: "media", media: props.media }));
+function ObservedMediaViewer(props: { media: MediaDetails }) {
+	useWorkspaceView(() => ({ kind: "media", media: props.media }));
 	return <MediaViewer media={props.media} />;
 }

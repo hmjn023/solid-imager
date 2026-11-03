@@ -1,6 +1,11 @@
+import { QueryClient } from "@tanstack/solid-query";
 import type { JobListResponse } from "@solid-imager/core/domain/jobs/schemas";
 import { describe, expect, it } from "vitest";
-import { updateJobProgress } from "./jobs-query";
+import {
+	jobsQueryKeys,
+	updateCachedJobProgress,
+	updateJobProgress,
+} from "./jobs-query";
 
 const jobList: JobListResponse = {
 	items: [
@@ -51,4 +56,19 @@ describe("updateJobProgress", () => {
 
 		expect(updated).toBe(jobList);
 	});
+});
+
+it("updates a linked inspector when its job is outside the current list page", () => {
+	const client = new QueryClient();
+	const job = jobList.items[0];
+	const detail = jobsQueryKeys.detail(job.id);
+	const list = jobsQueryKeys.list({ limit: 1, offset: 0 });
+	const emptyPage = { items: [], total: 1 };
+	client.setQueryData(list, emptyPage);
+	client.setQueryData(detail, job);
+	updateCachedJobProgress(client, { jobId: job.id, processed: 8, total: 12 });
+	expect(client.getQueryData(detail)).toMatchObject({
+		progress: { failed: 2, processed: 8, total: 12 },
+	});
+	expect(client.getQueryData(list)).toBe(emptyPage);
 });

@@ -131,6 +131,7 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 					return;
 				}
 				observedPages.add(target);
+				const eventStreams = new WeakSet<Request>();
 				let isClosing = false;
 				let isNavigating = false;
 				target.on("console", (message) => {
@@ -173,6 +174,8 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 							errorText?.includes("ERR_NETWORK_CHANGED"));
 					if (
 						!isLifecycleRequestAbort &&
+						// Disposing a subscription aborts its ongoing, successful SSE response.
+						!(eventStreams.has(request) && errorText === "net::ERR_ABORTED") &&
 						!allowedRequestFailures.some(
 							(allowed) =>
 								matches(request.url(), [allowed.url]) &&
@@ -191,6 +194,17 @@ export const test = base.extend<{ browserHealth: BrowserHealth }>({
 					}
 				});
 				target.on("response", (response) => {
+					if (
+						response.ok() &&
+						response
+							.headers()
+							["content-type"]?.startsWith("text/event-stream") &&
+						/^\/api\/rpc\/(jobs|sources|imports)\/events$/.test(
+							new URL(response.url()).pathname,
+						)
+					) {
+						eventStreams.add(response.request());
+					}
 					if (
 						response.url().includes("/api/") &&
 						response.status() >= 400 &&

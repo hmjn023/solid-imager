@@ -11,16 +11,18 @@ export function ConfigPage() {
 
 	return (
 		<ConfigStateScreen
+			loadMcpCatalog={() => orpc.config.mcpCatalog()}
 			checkAiHealth={() => orpc.ai.health()}
 			data={configQuery.data}
 			onRetry={async () => {
 				await configQuery.refetch();
 			}}
 			onSubmit={async (value) => {
-				await orpc.config.update(value);
+				const saved = await orpc.config.update(value);
 				await queryClient.invalidateQueries({
 					queryKey: configQueryKeys.all(),
 				});
+				return saved;
 			}}
 			state={toQueryUiState(configQuery)}
 		/>

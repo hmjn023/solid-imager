@@ -1,3 +1,4 @@
+import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import type {
 	Media,
 	MediaDetails,
@@ -24,13 +25,18 @@ type SearchView = {
 	selectedIds: string[];
 };
 type MediaView = { kind: "media"; media: MediaDetails };
-export type WebView = SearchView | MediaView;
+type JobsView = {
+	kind: "jobs";
+	job: Pick<JobDto, "id" | "type" | "status"> | undefined;
+	failed: boolean;
+};
+export type WorkspaceView = SearchView | MediaView | JobsView;
 
 // Only mounted browser views register here; SSR never writes per-user state.
-const [viewReader, setViewReader] = createSignal<Accessor<WebView>>();
-export const readWebView = () => viewReader()?.();
+const [viewReader, setViewReader] = createSignal<Accessor<WorkspaceView>>();
+export const readWorkspaceView = () => viewReader()?.();
 
-export function useWebMcpView(read: Accessor<WebView>) {
+export function useWorkspaceView(read: Accessor<WorkspaceView>) {
 	onMount(() => {
 		setViewReader(() => read);
 		onCleanup(() => {
@@ -40,30 +46,43 @@ export function useWebMcpView(read: Accessor<WebView>) {
 }
 
 /** Wait for the mounted view's actual data, rather than only the API response. */
-export async function waitForWebView(
-	accept: (view: WebView) => boolean,
+export async function waitForWorkspaceView(
+	accept: (view: WorkspaceView) => boolean,
 	signal: AbortSignal,
+	checkTarget: () => void,
 ) {
 	signal.throwIfAborted();
 	const boundedSignal = AbortSignal.any([signal, AbortSignal.timeout(20_000)]);
-	await new Promise<void>((resolve, reject) => {
-		createRoot((dispose) => {
-			const abort = () => {
-				dispose();
-				reject(boundedSignal.reason);
-			};
-			boundedSignal.addEventListener("abort", abort, { once: true });
-			onCleanup(() => boundedSignal.removeEventListener("abort", abort));
-			createEffect(() => {
-				const view = readWebView();
-				if (view && accept(view)) {
+	const ready = () => {
+		checkTarget();
+		const view = readWorkspaceView();
+		return view && accept(view);
+	};
+	do {
+		boundedSignal.throwIfAborted();
+		await new Promise<void>((resolve, reject) => {
+			createRoot((dispose) => {
+				const abort = () => {
 					dispose();
-					resolve();
-				}
+					reject(boundedSignal.reason);
+				};
+				boundedSignal.addEventListener("abort", abort, { once: true });
+				onCleanup(() => boundedSignal.removeEventListener("abort", abort));
+				createEffect(() => {
+					try {
+						if (ready()) {
+							dispose();
+							resolve();
+						}
+					} catch (error) {
+						dispose();
+						reject(error);
+					}
+				});
 			});
 		});
-	});
-	await afterWebViewPaint(signal);
+		await afterWebViewPaint(boundedSignal);
+	} while (!ready());
 }
 
 export function afterWebViewPaint(signal: AbortSignal) {

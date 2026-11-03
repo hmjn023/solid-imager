@@ -35,6 +35,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	return (
 		<MediaSidebarContent
 			activityApi={orpc.media}
+			tagApi={{
+				list: () => orpc.tags.list(),
+				create: (data) => orpc.tags.create(data),
+				bulkTag: (data) => orpc.media.bulkTag(data),
+			}}
 			addCharacterToMedia={addCharacterToMedia}
 			addIpToMedia={addIpToMedia}
 			addProjectToMedia={addProjectToMedia}

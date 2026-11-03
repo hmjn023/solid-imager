@@ -1,23 +1,57 @@
+import {
+	ccipExtractionRequestSchema,
+	startCcipExtractionResponseSchema,
+} from "@solid-imager/core/domain/tagging/schemas";
+import {
+	viewToolTitles,
+	type WebToolInfo,
+} from "@solid-imager/core/domain/config/mcp";
 import { defaultState } from "@solid-imager/core/domain/search/schema";
-import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
 import {
-	mediaDetailsQueryKeys,
-	searchQueryKeys,
-	sourceMediaQueryKeys,
-	sourcesQueryKeys,
-} from "@solid-imager/ui/query-options";
+	captureSearchSnapshotResponseSchema,
+	searchSnapshotStateSchema,
+} from "@solid-imager/core/domain/search/history";
+import { sourcesQueryKeys } from "@solid-imager/ui/query-options";
 import { searchState } from "@solid-imager/ui/stores/search-store";
-import {
-	saveMediaContext,
-	clearMediaReturnPath,
-} from "@solid-imager/ui/media-context";
 import { toast } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
-import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
-import { createMediaTools, defineTool } from "./media-tools";
-import { afterWebViewPaint, readWebView, waitForWebView } from "./web-view";
+import type { WorkspaceNavigation } from "~/presentation/workspace-navigation";
+import {
+	afterCommit,
+	createViewActions,
+	ViewActionError,
+} from "~/presentation/workspace-actions";
+import {
+	mediaToolInputs,
+	mediaToolOutputs,
+} from "@solid-imager/core/domain/media/tool-schemas";
+import {
+	afterWebViewPaint,
+	readWorkspaceView,
+} from "~/presentation/workspace-view";
+
+function defineTool<Schema extends z.ZodObject, Result extends object>(
+	name: string,
+	description: string,
+	readOnly: boolean,
+	inputSchema: Schema,
+	run: (
+		input: z.output<Schema>,
+		signal: AbortSignal,
+		origin: string,
+	) => Promise<Result>,
+) {
+	return {
+		name,
+		description,
+		readOnly,
+		inputSchema,
+		execute: (input: unknown, signal: AbortSignal, origin: string) =>
+			run(inputSchema.parse(input), signal, origin),
+	};
+}
 
 const pageSchema = z.strictObject({
 	limit: z.int().min(1).max(5).default(5),
@@ -41,90 +75,19 @@ function pageOf<T>(items: T[], offset = 0, limit = 5, total = items.length) {
 	};
 }
 
-class WebToolError extends Error {
-	constructor(
-		message: string,
-		readonly code: string,
-	) {
-		super(message);
-	}
-}
-
 export async function registerWebTools(
 	context: WebMCP.ModelContext,
+	published: WebToolInfo[],
 	queryClient: QueryClient,
-	navigation: {
-		pathname: () => string;
-		openSearch: (id: string) => Promise<void>;
-		openMedia: (sourceId: string, mediaId: string) => Promise<void>;
-	},
+	navigation: WorkspaceNavigation,
 	signal: AbortSignal,
 ) {
 	if (signal.aborted) return;
-	const [
-		listSources,
-		createSource,
-		searchMedia,
-		getDetails,
-		findTags,
-		editTags,
-	] = createMediaTools(orpc);
 
-	const canChangeView = () => {
-		if (document.querySelector('[role="dialog"], [role="alertdialog"]')) {
-			throw new WebToolError(
-				"An editor or dialog is open. Ask the user to finish or close it before changing the view.",
-				"VIEW_BUSY",
-			);
-		}
-		if (navigation.pathname() === "/config") {
-			throw new WebToolError(
-				"Settings may contain unsaved changes. Ask the user to finish editing and leave Settings first.",
-				"VIEW_BUSY",
-			);
-		}
-	};
-
-	const openMedia = async (
-		location: z.infer<typeof getDetails.inputSchema>,
-		execution: AbortSignal,
-	) => {
-		canChangeView();
-		// Refresh even an already-open item so HTTP edits are reflected too.
-		await queryClient.query({
-			...mediaDetailsQueryOptions(location.sourceId, location.mediaId),
-			staleTime: 0,
-			queryFn: () => orpc.media.getDetails(location, { signal: execution }),
-		});
-		execution.throwIfAborted();
-		const view = readWebView();
-		if (view?.kind === "search") {
-			saveMediaContext(
-				`${window.location.pathname}${window.location.search}${window.location.hash}`,
-				view.media,
-			);
-		} else if (view?.kind !== "media") {
-			clearMediaReturnPath();
-		}
-		if (
-			view?.kind !== "media" ||
-			view.media.id !== location.mediaId ||
-			view.media.mediaSourceId !== location.sourceId
-		) {
-			canChangeView();
-			await navigation.openMedia(location.sourceId, location.mediaId);
-		}
-		await waitForWebView(
-			(view) =>
-				view.kind === "media" &&
-				view.media.id === location.mediaId &&
-				view.media.mediaSourceId === location.sourceId,
-			execution,
-		);
-	};
+	const views = createViewActions(navigation, queryClient);
 
 	const currentView = (offset = 0, limit = 5) => {
-		const view = readWebView();
+		const view = readWorkspaceView();
 		if (view?.kind === "media") {
 			const media = view.media;
 			return {
@@ -168,13 +131,20 @@ export async function registerWebTools(
 				),
 			};
 		}
+		if (view?.kind === "jobs") {
+			const job = view.job;
+			return {
+				view: "jobs",
+				job: job ? { id: job.id, type: job.type, status: job.status } : null,
+			};
+		}
 		return { view: "other", path: navigation.pathname() };
 	};
 
 	const tools = [
 		defineTool(
 			"get_current_view",
-			"Inspect the open image or loaded search results and selection. Use to understand what the user is looking at before acting.",
+			"Inspect the open image, search results and selection, or selected job. Use to understand what the user is looking at before acting.",
 			true,
 			pageSchema,
 			async ({ offset, limit }) => currentView(offset, limit),
@@ -183,48 +153,30 @@ export async function registerWebTools(
 			"search_media",
 			"Search the library and show the results in this tab, replacing the current filters. Use when the user wants to find images together. Returns a brief result page; inspect more with get_current_view.",
 			false,
-			searchMedia.inputSchema.omit({ limit: true, offset: true }),
-			async ({ query, tags, sourceId }, execution) => {
-				canChangeView();
+			mediaToolInputs.search_media.omit({ limit: true, offset: true }),
+			async ({ query, tags, sourceId }, execution, origin) => {
+				views.beforeNavigation(execution, origin);
 				const state = searchSnapshotStateSchema.parse({
 					...defaultState,
 					searchQuery: query,
 					selectedTags: tags,
 					selectedSource: sourceId ?? "",
 				});
-				const snapshot = await orpc.searchSnapshots.capture(
-					{ state },
-					{ signal: execution },
+				const snapshot = captureSearchSnapshotResponseSchema.parse(
+					await orpc.config.callWebTool(
+						{ name: "search_media_capture_snapshot", arguments: { state } },
+						{ signal: execution },
+					),
 				);
-				execution.throwIfAborted();
-				canChangeView();
-				await navigation.openSearch(snapshot.id);
-				await waitForWebView(
-					(view) =>
-						view.kind === "search" &&
-						view.snapshotId === snapshot.id &&
-						view.searchKey === JSON.stringify(state) &&
-						view.ready &&
-						(view.resultsCurrent ||
-							["error", "offline"].includes(view.state.phase)) &&
-						["data", "empty", "error", "offline"].includes(view.state.phase) &&
-						view.state.fetchState !== "background-fetching",
+				await views.show(
+					{
+						kind: "search",
+						snapshotId: snapshot.id,
+						searchKey: JSON.stringify(state),
+					},
 					execution,
+					origin,
 				);
-				const view = readWebView();
-				if (
-					view?.kind !== "search" ||
-					view.snapshotId !== snapshot.id ||
-					view.searchKey !== JSON.stringify(state) ||
-					!view.resultsCurrent ||
-					view.state.error ||
-					!["data", "empty"].includes(view.state.phase)
-				) {
-					throw new WebToolError(
-						"Search could not load. Check the connection and retry.",
-						"SEARCH_FAILED",
-					);
-				}
 				return currentView();
 			},
 		),
@@ -232,9 +184,9 @@ export async function registerWebTools(
 			"open_media",
 			"Open an image and its metadata in this tab. Use when the user wants to inspect an image from the search results.",
 			false,
-			getDetails.inputSchema,
-			async (location, execution) => {
-				await openMedia(location, execution);
+			mediaToolInputs.get_media_details,
+			async (location, execution, origin) => {
+				await views.show({ kind: "media", ...location }, execution, origin);
 				return currentView();
 			},
 		),
@@ -242,41 +194,62 @@ export async function registerWebTools(
 			"edit_media_tags",
 			"Open the target image, add or remove its tags, and show the updated tags. Use when the user asks to change an image's tags.",
 			false,
-			editTags.inputSchema,
-			async (input, execution) => {
-				await openMedia(input, execution);
-				execution.throwIfAborted();
-				const result = await editTags.execute(input, execution);
-				await Promise.all(
-					[
-						mediaDetailsQueryKeys.detail(input.sourceId, input.mediaId),
-						sourceMediaQueryKeys.forSource(input.sourceId),
-						searchQueryKeys.all(),
-					].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+			mediaToolInputs.edit_media_tags,
+			async (input, execution, origin) => {
+				const target = {
+					kind: "media",
+					sourceId: input.sourceId,
+					mediaId: input.mediaId,
+				} as const;
+				await views.show(target, execution, origin);
+				views.beforeNavigation(execution);
+				const result = mediaToolOutputs.edit_media_tags.parse(
+					await orpc.config.callWebTool(
+						{ name: "edit_media_tags", arguments: input },
+						{ signal: execution },
+					),
 				);
-				await waitForWebView(
-					(view) =>
-						view.kind === "media" &&
-						view.media.id === input.mediaId &&
-						input.tagIds.every((id) =>
-							input.action === "add"
-								? view.media.tags.some(
-										(tag) => tag.id === id && tag.type === "positive",
-									)
-								: !view.media.tags.some((tag) => tag.id === id),
-						),
-					execution,
+				return afterCommit(result, () =>
+					views.reflectTags(target, input.action, input.tagIds, execution),
 				);
-				return result;
+			},
+		),
+		defineTool(
+			"ai_startCcipExtraction",
+			"Queue CCIP feature extraction for an image. Set showJob when the user wants to follow progress in this tab. Returns the queued job ID.",
+			false,
+			ccipExtractionRequestSchema.extend({
+				showJob: z
+					.boolean()
+					.default(false)
+					.describe("Open the queued job in this tab."),
+			}),
+			async ({ showJob, ...input }, execution, origin) => {
+				if (showJob) views.beforeNavigation(execution, origin);
+				const result = startCcipExtractionResponseSchema.parse(
+					await orpc.config.callWebTool(
+						{ name: "ai_startCcipExtraction", arguments: input },
+						{ signal: execution },
+					),
+				);
+				if (!showJob || !result.success) return result;
+				return afterCommit(result, () =>
+					views.show({ kind: "job", jobId: result.jobId }, execution, origin),
+				);
 			},
 		),
 		defineTool(
 			"find_tags",
 			"Find existing tags by name. Use to choose tag IDs before editing an image.",
 			true,
-			findTags.inputSchema.extend(pageSchema.shape),
+			mediaToolInputs.find_tags.extend(pageSchema.shape),
 			async (input, execution) => {
-				const result = await findTags.execute(input, execution);
+				const result = mediaToolOutputs.find_tags.parse(
+					await orpc.config.callWebTool(
+						{ name: "find_tags", arguments: input },
+						{ signal: execution },
+					),
+				);
 				return {
 					tags: result.tags.map(({ id, name }) => ({
 						id,
@@ -297,7 +270,12 @@ export async function registerWebTools(
 			true,
 			pageSchema,
 			async ({ offset, limit }, execution) => {
-				const result = await listSources.execute({}, execution);
+				const result = mediaToolOutputs.list_sources.parse(
+					await orpc.config.callWebTool(
+						{ name: "list_sources", arguments: {} },
+						{ signal: execution },
+					),
+				);
 				return pageOf(
 					result.sources.map(({ id, name, type, connectionInfo }) => ({
 						id,
@@ -317,11 +295,16 @@ export async function registerWebTools(
 		),
 		defineTool(
 			"create_local_source",
-			createSource.description,
+			"Register a local directory on the server and show it in the sources list. Check list_sources first to avoid duplicates.",
 			false,
-			createSource.inputSchema,
+			mediaToolInputs.create_local_source,
 			async (input, execution) => {
-				const { source } = await createSource.execute(input, execution);
+				const { source } = mediaToolOutputs.create_local_source.parse(
+					await orpc.config.callWebTool(
+						{ name: "create_local_source", arguments: input },
+						{ signal: execution },
+					),
+				);
 				await queryClient.invalidateQueries({
 					queryKey: sourcesQueryKeys.all(),
 				});
@@ -335,23 +318,52 @@ export async function registerWebTools(
 					scan: "started",
 				};
 			},
-			false,
 		),
 	];
 
 	const labels: Record<string, string> = {
-		get_current_view: "現在の画面を確認",
+		...viewToolTitles,
+		ai_startCcipExtraction: "CCIP特徴抽出を登録",
 		search_media: "メディアを検索",
-		open_media: "画像の詳細を表示",
 		edit_media_tags: "画像のタグを編集",
 		find_tags: "タグを検索",
 		list_sources: "ソース一覧を確認",
 		create_local_source: "ソースを追加",
 	};
 	let running = false;
-	await Promise.all(
-		tools.map((tool) =>
-			context.registerTool(
+	const results = await Promise.allSettled(
+		published.map(async (entry) => {
+			const tool = tools.find(({ name }) => name === entry.name);
+			if (!tool) {
+				return context.registerTool(
+					{
+						name: entry.name,
+						title: entry.title,
+						description: entry.description,
+						inputSchema: entry.inputSchema,
+						annotations: {
+							untrustedContentHint: true,
+							...(entry.readOnly && { readOnlyHint: true }),
+						},
+						async execute(args, options) {
+							try {
+								return await orpc.config.callWebTool(
+									{ name: entry.name, arguments: args },
+									{ signal: AbortSignal.any([signal, options.signal]) },
+								);
+							} catch (error) {
+								return {
+									error:
+										error instanceof Error ? error.message : "Tool call failed",
+									code: "TOOL_FAILED",
+								};
+							}
+						},
+					},
+					{ signal },
+				);
+			}
+			return context.registerTool(
 				{
 					name: tool.name,
 					description: tool.description,
@@ -377,8 +389,24 @@ export async function registerWebTools(
 						toast.loading(`AI: ${label}中…`, { id });
 						try {
 							execution.throwIfAborted();
-							const result = await tool.execute(input, execution);
-							execution.throwIfAborted();
+							// Another tab may have unpublished this tool since the last discovery.
+							const origin = navigation.href();
+							const { mcp } = await orpc.config.get(undefined, {
+								signal: execution,
+							});
+							if (!mcp.web.includes(tool.name))
+								throw new ViewActionError(
+									"This tool is no longer published.",
+									"NOT_PUBLISHED",
+								);
+							const result = await tool.execute(input, execution, origin);
+							if (
+								"presentation" in result &&
+								result.presentation === "unconfirmed"
+							) {
+								toast.info(`AI: ${label}しました（画面反映は未確認）`, { id });
+								return result;
+							}
 							toast.success(`AI: ${label}しました`, { id });
 							return result;
 						} catch (error) {
@@ -394,14 +422,14 @@ export async function registerWebTools(
 									? "Operation canceled. Inspect the current view before retrying; completed changes may remain."
 									: error instanceof z.ZodError
 										? z.prettifyError(error).slice(0, 1000)
-										: error instanceof WebToolError
+										: error instanceof ViewActionError
 											? error.message
 											: `Could not finish ${tool.name}. Inspect the current view and check IDs and the server connection before retrying; completed changes may remain.`,
 								code: canceled
 									? "CANCELED"
 									: error instanceof z.ZodError
 										? "INVALID_INPUT"
-										: error instanceof WebToolError
+										: error instanceof ViewActionError
 											? error.code
 											: "OPERATION_FAILED",
 								retryable: false,
@@ -412,7 +440,15 @@ export async function registerWebTools(
 					},
 				},
 				{ signal },
-			),
-		),
+			);
+		}),
 	);
+	for (const [index, result] of results.entries()) {
+		if (result.status === "rejected" && !signal.aborted) {
+			console.warn(
+				`Could not register WebMCP tool ${published[index]?.name}`,
+				result.reason,
+			);
+		}
+	}
 }

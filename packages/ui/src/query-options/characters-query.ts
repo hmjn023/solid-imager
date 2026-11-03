@@ -1,5 +1,5 @@
 import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import { queryOptions } from "@tanstack/solid-query";
+import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const charactersQueryKeys = {
 	all: () => ["allCharacters"] as const,
@@ -10,11 +10,11 @@ export const defaultCharactersQueryConfig = {
 };
 
 export function buildCharactersQueryOptions(
-	queryFn: () => Promise<Character[]>,
+	queryFn: (context: QueryFunctionContext) => Promise<Character[]>,
 ) {
-	return queryOptions({
+	return {
 		queryKey: charactersQueryKeys.all(),
 		queryFn,
 		...defaultCharactersQueryConfig,
-	});
+	};
 }

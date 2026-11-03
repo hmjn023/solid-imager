@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import type { Page, Request, Response } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -194,9 +194,23 @@ test("Tauri root opens the real shared Library workspace", async ({ page }) => {
 	await expectRouteHealthy(page);
 });
 
+test("Tauri links to Scalar on the selected API server", async ({ page }) => {
+	await page.goto("/#/about");
+	await waitForTauriWorkspace(page);
+	const docs = `http://127.0.0.1:${process.env.E2E_PORT}/docs/scalar`;
+	await expect(
+		page.getByRole("link", { name: "API Docs", exact: true }).first(),
+	).toHaveAttribute("href", docs);
+	await expect(
+		page.getByRole("link", { name: "API documentation", exact: true }),
+	).toHaveAttribute("href", docs);
+});
+
 test("Tauri Library separates preview selection from current media detail", async ({
 	page,
+	browserHealth,
 }) => {
+	const checkpoint = browserHealth.requestCheckpoint();
 	await openTauriRoute(page, "/search");
 	await expectWorkspaceShell(page);
 
@@ -229,10 +243,31 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await expect(inspector).toBeVisible();
 	await expect(inspector).toContainText(E2E_PRIMARY_FILE_NAME);
 	await captureTauriScreenshot(page, "search");
+	for (const path of ["/api/rpc/imports/events", "/api/rpc/sources/events"]) {
+		expect(browserHealth.apiRequestCountPathSince(checkpoint, path)).toBe(1);
+	}
 
 	// `window.open` is emitted on the context even when Chromium does not
 	// classify the child as a popup. Keep a bounded wait so a blocked new tab
 	// cannot leave this migration suite running indefinitely.
+	const popupRequests: Request[] = [];
+	const popupResponses: Response[] = [];
+	const recordRequest = (request: Request) => {
+		if (
+			new URL(request.url()).pathname.startsWith("/api/rpc/") &&
+			request.frame().page() !== page
+		)
+			popupRequests.push(request);
+	};
+	const recordResponse = (response: Response) => {
+		if (
+			new URL(response.url()).pathname.startsWith("/api/rpc/") &&
+			response.request().frame().page() !== page
+		)
+			popupResponses.push(response);
+	};
+	page.context().on("request", recordRequest);
+	page.context().on("response", recordResponse);
 	const popupPromise = page.context().waitForEvent("page", { timeout: 15_000 });
 	await media.click({ button: "right" });
 	await page
@@ -242,6 +277,35 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await waitForTauriWorkspace(popup);
 	await expect(popup).toHaveURL(new RegExp(`/#${mediaPath}$`));
 	await expectTauriMediaDetail(popup);
+	await expect
+		.poll(
+			() =>
+				popupRequests.filter(
+					(request) =>
+						new URL(request.url()).pathname === "/api/rpc/sources/events",
+				).length,
+		)
+		.toBe(2);
+	await expect
+		.poll(
+			() =>
+				popupRequests.filter(
+					(request) =>
+						new URL(request.url()).pathname === "/api/rpc/imports/events",
+				).length,
+		)
+		.toBe(1);
+	await expect
+		.poll(() =>
+			popupResponses.some(
+				(response) =>
+					new URL(response.url()).pathname === "/api/rpc/media/getDetails" &&
+					response.ok(),
+			),
+		)
+		.toBe(true);
+	page.context().off("request", recordRequest);
+	page.context().off("response", recordResponse);
 	await popup.close();
 
 	await media.dblclick();
@@ -392,6 +456,16 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 	await expect(
 		page.getByRole("heading", { name: "Settings", exact: true }),
 	).toBeVisible();
+	await page.getByRole("tab", { name: /^MCP/ }).click();
+	await page
+		.getByRole("textbox", { name: "ツールを絞り込む" })
+		.fill("get_current_view");
+	await expect(
+		page.getByRole("checkbox", { name: "WebMCP get_current_view" }),
+	).toBeChecked();
+	await expect(
+		page.getByRole("checkbox", { name: "HTTP MCP get_current_view" }),
+	).toHaveCount(0);
 	await page.getByRole("tab", { name: /^AI/ }).click();
 	await expect(
 		page.getByRole("group", { name: "AI Service", exact: true }),
@@ -436,4 +510,22 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 	await expect(page.getByLabel("Name", { exact: true })).toBeVisible();
 	await expect(page.getByLabel("Server URL", { exact: true })).toBeVisible();
 	await expectRouteHealthy(page);
+});
+
+test("Tauri opens a linked job inspector on a fresh hash route", async ({
+	page,
+	request,
+}) => {
+	const queued = await request.post("/api/rpc/sources/enqueueExport", {
+		data: {
+			json: { id: E2E_SOURCE_ID, mode: "ndjson", includeImages: false },
+		},
+	});
+	expect(queued.ok()).toBe(true);
+	const { id: jobId } = (await queued.json()).json;
+	await openTauriRoute(page, "/jobs?jobId=" + jobId);
+	const inspector = page.locator('[aria-label="Job details"]:visible');
+	await expect(inspector).toHaveAttribute("data-job-id", jobId);
+	await reloadTauriRoute(page);
+	await expect(inspector).toHaveAttribute("data-job-id", jobId);
 });

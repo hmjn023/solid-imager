@@ -13,7 +13,7 @@ AI生成画像などのメディアを管理する包括的なメディア管理
 
 ### MCP からメディアを操作する
 
-HTTP MCP はデータ操作、ブラウザの WebMCP はユーザーと同じ画面を使う操作を提供します。HTTP MCP のツールは次の6つです。
+Web と Tauri の **Settings → MCP** で、接続先サーバーの公開候補を検索し、HTTP MCP と WebMCP の公開先を個別に選んで **Save Changes** で保存します。HTTP MCP の初期設定は次の6件です。
 
 | ツール | 操作 |
 | --- | --- |
@@ -34,7 +34,24 @@ HTTP MCP はデータ操作、ブラウザの WebMCP はユーザーと同じ画
 - `get_current_view`: 表示中の画像、検索結果、選択状態を確認します。`limit`（最大5件）と `offset` で取得し、`next_offset` があれば次のページを取得できます。
 - `find_tags`、`list_sources`、`create_local_source` も利用できます。検索・一覧の応答は短いページ単位です。
 
-WebMCP の操作は開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
+既存の画面随伴ツールは操作の開始・完了・失敗を通知します。ダイアログや Settings を開いている場合、画面を切り替える操作は編集を保護するため実行せず理由を返します。HTTP MCP は画面を遷移させません。
+
+追加の候補は oRPC の契約から生成します。たとえば `tags.list` は `tags_list` として両方で公開でき、WebMCP ではタブを移動せずにデータを返します。設定 API、イベント購読、ファイルやバイナリを扱う API、旧 `media.getContent` は対象外です。新しい候補は初期状態で非公開です。
+
+WebMCP で `ai_startCcipExtraction` を公開すると、`showJob: true` を指定して CCIP 特徴抽出を登録し、返された `jobId` の詳細を Jobs 画面で開けます。省略時はジョブを登録したタブに留まります。登録後に別画面へ移った場合もジョブは有効で、結果の `presentation: "unconfirmed"` は表示を確認できなかったことを示します。受け取った ID でジョブを確認できます。
+
+サーバーの `config.json`（リポジトリ直下から起動する場合は `apps/server/config.json`、パス変更は `CONFIG_PATH`）でも同じ公開リストを指定できます。次の例では HTTP からは検索だけを許可し、ブラウザーでは現在の画面とタグ一覧を参照できます。
+
+```json
+{
+  "mcp": {
+    "http": ["search_media"],
+    "web": ["get_current_view", "tags_list"]
+  }
+}
+```
+
+各配列はその公開先で許可するツール名の全件です。空配列で全件非公開になります。設定画面からの保存は稼働中のサーバーに反映され、ファイルを直接編集した場合はサーバー再起動時に読み込みます。外部 MCP クライアントが一覧をキャッシュしている場合は、ツール一覧を再取得してください。
 
 ### EmbeddingGemma 2 検索
 
@@ -49,7 +66,7 @@ WebMCP の操作は開始・完了・失敗を通知します。ダイアログ�
 ```
 Runtime: Bun
 Framework: TanStack Start
-API: oRPC
+API: oRPC v2
 UI: Kobalte + Tailwind CSS + solid-ui
 Database: PostgreSQL / PGlite
 ORM: Drizzle ORM
@@ -70,6 +87,8 @@ Tooling: Vite / Oxlint / Oxfmt
 - `packages/db/`: Drizzle schema、DB repository 実装、transaction manager。
 - `packages/ui/`: 共通UIコンポーネントライブラリ。
 - `packages/client/`: oRPC client factory などの共有クライアント基盤。
+
+oRPC は全クライアントとサーバーで `2.0.0-beta.48` に固定しています。[v1 と v2 の RPC 通信形式は非互換](https://orpc.dev/docs/migrations/from-v1)です。更新時は Web とサーバー、Tauri、CLI、xtracter、およびリモート推論先の Solid Imager を同じリリースに揃えてください。
 
 ## セットアップ
 
@@ -123,24 +142,26 @@ BUN_SQL_TEST_DATABASE_URL=postgres://user:password@localhost:5432/solid_imager \
 
 ### AI ネイティブ依存（GPU 対応）
 
-AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。GPU (CUDA) を有効にする場合も、アプリケーションをビルドするホスト側のランタイムを使用します。コンテナ内で Python、Rust toolchain、ONNX Runtime、アプリケーション依存関係をセットアップする必要はありません。
+AI自動タグ付けに使用する `dghs-imgutils-rs` は Rust の N-API アドオンです。インストール時に GitHub Releases からビルド済みバイナリを取得し、チェックサムを検証します。Rust toolchain は不要です。対応プラットフォームは Linux x64 (glibc)、Windows x64、macOS x64/arm64 です。
 
 ```bash
-ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
+bun install
 ```
 
-Aubeを使う場合も同じ環境変数を付けて実行します。
+Aube を使う場合:
 
 ```bash
-ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib aube i
+aube i
 ```
 
-要件:
+推論には対応する ONNX Runtime の共有ライブラリが実行環境に必要です。`ORT_DYLIB_PATH` にそのファイルを指定し、プロバイダーとその依存ライブラリを動的ローダーから参照できるようにします。例えば Linux では次のように設定します。
 
-- `/usr/lib/libonnxruntime.so.1` と `/usr/lib/libonnxruntime_providers_cuda.so` が存在すること
-- NVIDIA ドライバーと CUDA ランタイムがインストールされていること
+```bash
+export ORT_DYLIB_PATH=/opt/onnxruntime/lib/libonnxruntime.so
+export LD_LIBRARY_PATH=/opt/onnxruntime/lib:${LD_LIBRARY_PATH:-}
+```
 
-CPU のみで使用する場合は通常通り `bun install` してください。
+CUDA を使用する場合は CUDA 対応の ONNX Runtime、NVIDIA ドライバー、CUDA および cuDNN が必要です。
 
 ### 本番コンテナ
 
@@ -199,9 +220,15 @@ fi
 ## 詳細
 
 - **テストの棚卸し・実行方針**: [テスト棚卸し](./docs/testing-audit.md)
-- **API仕様**: [OpenAPI](./apps/server/public/openapi.json)、[Scalar API Reference](./apps/server/public/api-docs.html)
+- **API 仕様と実行**: 起動中のサーバーの `/docs/scalar`（Web・Tauri の「API Docs」）で操作を選び、**Test Request → Send** から実行できます。[OpenAPI 仕様](./apps/server/public/openapi.json) は `/openapi.json` で配信し、REST の接続先は `/api/rest` です。たとえば `curl -X POST http://localhost:3000/api/rest/sources/list` でソース一覧を取得できます。アプリ・CLI・拡張機能の型付きクライアントは `/api/rpc` を使用します。メディア本体は `GET /api/sources/{sourceId}/{mediaId}` で取得します。
 - **Tauri SPA**: [`apps/tauri/src/`](./apps/tauri/src/)、Rust側 [`apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **UI実装状況**: [REPORT.md](./REPORT.md)（Web / Tauriの共有画面）
 - **DBスキーマ**: `packages/db/src/schema.ts`
 - **本番DB移行**: [PostgreSQL 18 / UUIDv7移行手順](./docs/operations/postgresql-18-uuidv7-migration.md)
 - **開発ルール**: [AGENTS.md](./AGENTS.md)
+
+### リバースプロキシ経由での API 公開
+
+リバースプロキシが `/imager/` を取り除いて転送する場合、Scalar は `/imager/docs/scalar` から `/imager/openapi.json` を読み、`/imager/api/rest` に送信します。TLS をプロキシで終端する場合は、サーバーに `REST_PUBLIC_ORIGIN=https://imager.example.com` のように公開 Origin を設定してください。設定値にはパスを含めません。
+
+`/api/rest` と `/api/rpc` は削除や設定変更も実行できます。外部公開時は両方をリバースプロキシなどの認証・アクセス制御で保護してください。REST の Origin 検証はブラウザーのクロスサイト送信を防ぐためのもので、利用者の認証は行いません。

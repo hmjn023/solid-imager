@@ -23,7 +23,7 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "./alert-dialog";
-import { AssociationManager } from "./association-manager";
+import { RelationsEditor } from "./relations-editor";
 import { Badge } from "./badge";
 import {
 	MediaActivityControls,
@@ -31,6 +31,7 @@ import {
 } from "./media-activity-controls";
 import { Button } from "./button";
 import { ClipboardCopy } from "./clipboard-copy";
+import { Label } from "./label";
 import { CollapsibleRoot as Collapsible } from "./collapsible";
 import { toast } from "./toast";
 import { ChevronDown } from "./workspace/icons";
@@ -47,6 +48,7 @@ export type MediaSidebarProps = {
 	isAllIpsLoading?: boolean;
 	isAllCharactersLoading?: boolean;
 	onUpdate?: () => void;
+	onPositiveTagsUpdate: (names: string[]) => Promise<void>;
 	onDescriptionUpdate: (description: string) => void | Promise<void>;
 	onProjectAdd: (projectId: string) => void | Promise<void>;
 	onProjectRemove: (projectId: string) => void | Promise<void>;
@@ -72,6 +74,9 @@ function formatBytes(bytes: number, decimals = 2) {
 
 export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
+	const [editingTags, setEditingTags] = createSignal(false);
+	const [tagText, setTagText] = createSignal("");
+	const [savingTags, setSavingTags] = createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
@@ -80,8 +85,22 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		isEditingDescription() &&
 		descriptionValue() !== (props.media.description ?? "");
 	const navigationBlocker = useBlocker({
-		shouldBlockFn: descriptionDirty,
-		enableBeforeUnload: descriptionDirty,
+		shouldBlockFn: () =>
+			descriptionDirty() ||
+			(editingTags() &&
+				tagText() !==
+					tags()
+						.filter((tag) => tag.type === "positive")
+						.map((tag) => tag.name)
+						.join("\n")),
+		enableBeforeUnload: () =>
+			descriptionDirty() ||
+			(editingTags() &&
+				tagText() !==
+					tags()
+						.filter((tag) => tag.type === "positive")
+						.map((tag) => tag.name)
+						.join("\n")),
 		withResolver: true,
 	});
 	const [allowBlockedNavigation, setAllowBlockedNavigation] =
@@ -103,18 +122,6 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 	const genInfo = createMemo(() => props.media.generationInfo);
 
-	const availableCharacters = createMemo(() => {
-		const currentIps = props.media.ips || [];
-		const allChars = props.allCharacters || [];
-
-		if (currentIps.length === 0) {
-			return allChars;
-		}
-
-		const ipIds = new Set(currentIps.map((ip) => ip.id));
-		return allChars.filter((char) => char.ips.some((ip) => ipIds.has(ip.id)));
-	});
-
 	const handleSaveDescription = async () => {
 		try {
 			await props.onDescriptionUpdate(descriptionValue());
@@ -130,52 +137,20 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		setIsEditingDescription(false);
 	};
 
-	const handleCreateProject = async (name: string) => {
-		const newProject = await props.onProjectCreate(name);
-		await props.onProjectAdd(newProject.id);
-	};
-
-	const handleCreateIp = async (name: string) => {
-		const newIp = await props.onIpCreate(name);
-		await props.onIpAdd(newIp.id);
-	};
-
-	const handleAddCharacter = async (characterId: string) => {
-		await props.onCharacterAdd(characterId);
-		props.onUpdate?.();
-
-		const character = props.allCharacters.find((c) => c.id === characterId);
-		if (character?.ips && character.ips.length > 0) {
-			const currentIpIds = new Set((props.media.ips || []).map((ip) => ip.id));
-			const ipsToAdd = character.ips.filter(
-				(charIp) => !currentIpIds.has(charIp.id),
-			);
-			await Promise.all(
-				ipsToAdd.map(async (charIp) => {
-					await props.onIpAdd(charIp.id);
-				}),
-			);
-		}
-	};
-
-	const handleCreateCharacter = async (name: string) => {
-		const newCharacter = await props.onCharacterCreate(name);
-		await handleAddCharacter(newCharacter.id);
-	};
-
 	return (
 		<aside class="min-w-0 divide-y divide-border bg-background px-4 pb-6 text-foreground lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 scrollbar-stable">
 			<div class="space-y-2">
 				<div class="flex items-start justify-between gap-2">
 					<h2 class="font-semibold text-sm">Description</h2>
 					<Show when={!isEditingDescription()}>
-						<button
-							class="min-h-11 px-2 text-primary text-sm hover:underline"
+						<Button
+							size="sm"
+							variant="outline"
 							onClick={() => setIsEditingDescription(true)}
 							type="button"
 						>
 							Edit
-						</button>
+						</Button>
 					</Show>
 				</div>
 				<Show
@@ -280,41 +255,155 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			</Show>
 
 			<div class="space-y-4">
-				<h2 class="font-semibold text-sm">Relations</h2>
-				<AssociationManager
-					availableItems={props.allProjects}
-					isLoading={props.isProjectsLoading || props.isUpdating?.()}
-					items={props.projects}
-					onAdd={props.onProjectAdd}
-					onCreate={handleCreateProject}
-					onRemove={props.onProjectRemove}
-					title="Projects"
-				/>
-
-				<AssociationManager
-					availableItems={props.allIps}
-					isLoading={props.isAllIpsLoading || props.isUpdating?.()}
-					items={props.media.ips || []}
-					onAdd={props.onIpAdd}
-					onCreate={handleCreateIp}
-					onRemove={props.onIpRemove}
-					title="IPs"
-				/>
-
-				<AssociationManager
-					availableItems={availableCharacters()}
-					isLoading={props.isAllCharactersLoading || props.isUpdating?.()}
-					items={props.media.characters || []}
-					onAdd={handleAddCharacter}
-					onCreate={handleCreateCharacter}
-					onRemove={props.onCharacterRemove}
-					title="Characters"
-				/>
+				<div class="flex items-center justify-between">
+					<h2 class="font-semibold text-sm">Relations</h2>
+					<RelationsEditor
+						disabled={
+							props.isProjectsLoading ||
+							props.isAllIpsLoading ||
+							props.isAllCharactersLoading ||
+							props.isUpdating?.()
+						}
+						characterIps={(id) =>
+							props.allCharacters
+								.find((character) => character.id === id)
+								?.ips.map((ip) => ip.id) ?? []
+						}
+						onUpdate={props.onUpdate}
+						groups={[
+							{
+								title: "Projects",
+								items: props.projects,
+								available: props.allProjects,
+								add: props.onProjectAdd,
+								remove: props.onProjectRemove,
+								create: props.onProjectCreate,
+							},
+							{
+								title: "IPs",
+								items: props.media.ips,
+								available: props.allIps,
+								add: props.onIpAdd,
+								remove: props.onIpRemove,
+								create: props.onIpCreate,
+							},
+							{
+								title: "Characters",
+								items: props.media.characters,
+								available: props.allCharacters,
+								add: props.onCharacterAdd,
+								remove: props.onCharacterRemove,
+								create: props.onCharacterCreate,
+							},
+						]}
+					/>
+				</div>
+				<For
+					each={[
+						{ title: "Projects", items: props.projects },
+						{ title: "IPs", items: props.media.ips },
+						{ title: "Characters", items: props.media.characters },
+					]}
+				>
+					{(group) => (
+						<div class="space-y-2">
+							<h3 class="font-semibold text-sm">{group.title}</h3>
+							<div class="flex flex-wrap gap-2">
+								<For each={group.items}>
+									{(item) => <Badge variant="secondary">{item.name}</Badge>}
+								</For>
+								<Show when={group.items.length === 0}>
+									<span class="text-muted-foreground text-sm italic">
+										No {group.title.toLowerCase()} associated
+									</span>
+								</Show>
+							</div>
+						</div>
+					)}
+				</For>
 			</div>
 
-			<Show when={positiveTags().length > 0}>
-				<div class="space-y-2">
+			<div class="space-y-2">
+				<div class="flex items-center justify-between">
 					<h2 class="font-semibold text-sm">Positive Tags</h2>
+					<Show when={!editingTags()}>
+						<Button
+							size="sm"
+							variant="outline"
+							onClick={() => {
+								setTagText(
+									positiveTags()
+										.map((tag) => tag.name)
+										.join("\n"),
+								);
+								setEditingTags(true);
+							}}
+						>
+							Edit
+						</Button>
+					</Show>
+				</div>
+				<Show
+					when={editingTags()}
+					fallback={
+						<Show when={positiveTags().length === 0}>
+							<span class="text-muted-foreground text-sm italic">
+								No positive tags
+							</span>
+						</Show>
+					}
+				>
+					<Label for="positive-tags" class="text-sm text-muted-foreground">
+						One tag per line
+					</Label>
+					<textarea
+						id="positive-tags"
+						class="w-full rounded-md border border-input bg-background p-2 text-sm"
+						rows={8}
+						value={tagText()}
+						onInput={(event) => setTagText(event.currentTarget.value)}
+					/>
+					<div class="flex gap-2">
+						<Button
+							size="sm"
+							disabled={savingTags()}
+							onClick={() => {
+								void (async () => {
+									setSavingTags(true);
+									try {
+										await props.onPositiveTagsUpdate([
+											...new Set(
+												tagText()
+													.split("\n")
+													.map((name) => name.trim())
+													.filter(Boolean),
+											),
+										]);
+										setEditingTags(false);
+										props.onUpdate?.();
+									} catch (error) {
+										toast.error(
+											`Failed to update tags: ${getErrorMessage(error)}`,
+										);
+									} finally {
+										setSavingTags(false);
+									}
+								})();
+							}}
+						>
+							Save
+						</Button>
+						<Button
+							size="sm"
+							variant="outline"
+							disabled={savingTags()}
+							onClick={() => setEditingTags(false)}
+						>
+							Cancel
+						</Button>
+					</div>
+				</Show>
+				<Show when={!editingTags()}>
 					<div class="flex flex-wrap gap-2">
 						<For each={positiveTags()}>
 							{(tag) => (
@@ -340,8 +429,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							)}
 						</For>
 					</div>
-				</div>
-			</Show>
+				</Show>
+			</div>
 
 			<Show when={negativeTags().length > 0}>
 				<div class="space-y-2">
@@ -349,18 +438,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<div class="flex flex-wrap gap-2">
 						<For each={negativeTags()}>
 							{(tag) => (
-								<Badge
-									classList={{
-										"border-input":
-											tag.source === "AI" || tag.source === "comfyui_workflow",
-										"bg-muted":
-											tag.source === "AI" || tag.source === "comfyui_workflow",
-										"text-destructive":
-											tag.source === "AI" || tag.source === "comfyui_workflow",
-									}}
-									title={`Source: ${tag.source}`}
-									variant="destructive"
-								>
+								<Badge title={`Source: ${tag.source}`} variant="secondary">
 									{tag.name}
 									<ClipboardCopy
 										class="ml-1.5 p-0.5"
@@ -374,7 +452,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</div>
 			</Show>
 
-			<Show when={genInfo()}>
+			<Show
+				when={
+					genInfo()?.prompt ||
+					genInfo()?.negativePrompt ||
+					(genInfo()?.workflow && JSON.stringify(genInfo()?.workflow) !== "{}")
+				}
+			>
 				<div class="space-y-2">
 					<Collapsible.Root>
 						<Collapsible.Trigger class="flex w-full items-center justify-between font-semibold text-sm">
@@ -438,6 +522,14 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			<div class="space-y-2">
 				<h2 class="font-semibold text-sm">File information</h2>
 				<dl class="grid grid-cols-label-field gap-x-4 gap-y-2 text-sm">
+					<dt class="font-medium text-muted-foreground">Original date</dt>
+					<dd class="text-right text-foreground">
+						{new Date(props.media.createdAt).toLocaleString()}
+					</dd>
+					<dt class="font-medium text-muted-foreground">Registered</dt>
+					<dd class="text-right text-foreground">
+						{new Date(props.media.indexedAt).toLocaleString()}
+					</dd>
 					<dt class="font-medium text-muted-foreground">Resolution</dt>
 					<dd class="text-right text-foreground">
 						{props.media.width} × {props.media.height}
@@ -468,7 +560,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Unsaved description</AlertDialogTitle>
+						<AlertDialogTitle>Unsaved changes</AlertDialogTitle>
 						<AlertDialogDescription>
 							You have unsaved changes to this description. Leave without
 							saving?
@@ -488,6 +580,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								if (resolver.status !== "blocked") return;
 								setDescriptionValue(props.media.description ?? "");
 								setIsEditingDescription(false);
+								setEditingTags(false);
 								setAllowBlockedNavigation(true);
 								resolver.proceed?.();
 							}}

@@ -1,5 +1,5 @@
 import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
-import { queryOptions } from "@tanstack/solid-query";
+import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const sourcesQueryKeys = {
 	all: () => ["mediaSources"] as const,
@@ -11,11 +11,11 @@ export const defaultSourcesQueryConfig = {
 };
 
 export function buildSourcesQueryOptions(
-	queryFn: () => Promise<SafeMediaSource[]>,
+	queryFn: (context: QueryFunctionContext) => Promise<SafeMediaSource[]>,
 ) {
-	return queryOptions({
+	return {
 		queryKey: sourcesQueryKeys.all(),
 		queryFn,
 		...defaultSourcesQueryConfig,
-	});
+	};
 }

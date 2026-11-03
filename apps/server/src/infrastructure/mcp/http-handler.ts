@@ -5,10 +5,11 @@ import {
 	McpServer,
 	originValidationResponse,
 } from "@modelcontextprotocol/server";
-import { createRouterClient } from "@orpc/server";
-import type { z } from "zod";
-import { appRouter } from "~/infrastructure/api/app-router";
-import { createMediaTools } from "./media-tools";
+import { McpRegistrar } from "@orpc/mcp";
+import { ZodToJsonSchemaConverter } from "@orpc/zod";
+import { services } from "~/infrastructure/service-registry";
+import { toolCatalog } from "./catalog";
+import type { AnyProcedure } from "@orpc/server";
 
 const allowedHosts = [
 	...localhostAllowedHostnames(),
@@ -18,33 +19,29 @@ const allowedHosts = [
 		.filter(Boolean),
 ];
 
-const handler = createMcpHandler(({ requestInfo }) => {
-	const orpc = createRouterClient(appRouter, {
+function makeRegistrar(names: string[]) {
+	const router: Record<string, AnyProcedure> = {};
+	for (const [name, tool] of toolCatalog) {
+		if (tool.procedure && names.includes(name)) router[name] = tool.procedure;
+	}
+	return new McpRegistrar(router, {
+		converters: [new ZodToJsonSchemaConverter({ cache: true })],
+	});
+}
+let cached:
+	| { names: string[]; registrar: ReturnType<typeof makeRegistrar> }
+	| undefined;
+const handler = createMcpHandler(async ({ requestInfo }) => {
+	const server = new McpServer(
+		{ name: "solid-imager", version: "0.0.0" },
+		{ capabilities: { tools: {} } },
+	);
+	const names = services.getConfigService().getConfig().mcp.http;
+	if (cached?.names !== names)
+		cached = { names, registrar: makeRegistrar(names) };
+	await cached.registrar.register(server, {
 		context: { headers: requestInfo?.headers },
 	});
-	const server = new McpServer({ name: "solid-imager", version: "0.0.0" });
-	for (const tool of createMediaTools(orpc)) {
-		const inputSchema: z.ZodObject = tool.inputSchema;
-		server.registerTool(
-			tool.name,
-			{
-				description: tool.description,
-				inputSchema,
-				annotations: {
-					readOnlyHint: tool.readOnly,
-					idempotentHint: tool.idempotent,
-					openWorldHint: false,
-				},
-			},
-			async (args, ctx) => {
-				const result = await tool.execute(args, ctx.mcpReq.signal);
-				return {
-					content: [{ type: "text", text: JSON.stringify(result) }],
-					structuredContent: result,
-				};
-			},
-		);
-	}
 	return server;
 });
 
