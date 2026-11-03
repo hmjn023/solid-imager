@@ -85,6 +85,7 @@ describe("BackupService ZIP Integration", () => {
 				width: 100,
 				height: 100,
 				fileSize: 1024,
+				indexedAt: new Date("2025-08-01T15:30:00Z"),
 			})
 			.returning();
 
@@ -170,6 +171,7 @@ describe("BackupService ZIP Integration", () => {
 
 		expect(restoredMedia).toBeDefined();
 		expect(restoredMedia?.filePath).toBe(testFileName);
+		expect(restoredMedia?.indexedAt).toEqual(media.indexedAt);
 		expect(restoredMedia?.tags[0].tag.name).toBe("Zip Tag");
 		expect(restoredMedia?.authors[0].author.name).toBe("Zip Author");
 		expect(restoredMedia?.characters[0].character.name).toBe("Zip Character");

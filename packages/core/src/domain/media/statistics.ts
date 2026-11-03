@@ -35,7 +35,13 @@ const rankedEntitySchema = z.object({
 });
 export const STATISTICS_PAGE_SIZE = 20;
 export const statisticsResponseSchema = z.object({
-	trend: z.array(z.object({ bucket: z.iso.date(), count: countSchema })),
+	trend: z.array(
+		z.object({
+			bucket: z.iso.date(),
+			count: countSchema,
+			cumulative: countSchema,
+		}),
+	),
 	models: z.array(
 		z.object({ name: z.string(), count: countSchema, favorites: countSchema }),
 	),

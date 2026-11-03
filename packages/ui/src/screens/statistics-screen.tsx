@@ -30,34 +30,43 @@ export function StatisticsScreen(props: {
 	const location = useLocation();
 	const [cumulative, setCumulative] = createSignal(false);
 	const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-	const query = createQuery(() => {
-		const input = { ...props.selection, timeZone };
-		return {
-			queryKey: ["media", "statistics", input],
-			queryFn: ({ signal }) => props.load(input, signal),
-		};
-	});
-	const recent = () => props.selection.period !== "all";
 	const isFiltered = () =>
 		Boolean(
 			props.selection.bucket ||
 			props.selection.ipId ||
 			props.selection.characterId,
 		);
+	// Earlier drill-down URLs without a period used the recent window.
+	const period = () =>
+		props.selection.period ?? (isFiltered() ? "recent" : "all");
+	const query = createQuery(() => {
+		const input = { ...props.selection, period: period(), timeZone };
+		return {
+			queryKey: ["media", "statistics", input],
+			queryFn: ({ signal }) => props.load(input, signal),
+		};
+	});
+	const recent = () => period() === "recent";
+	const periodLabel = () => {
+		const bucket = props.selection.bucket;
+		if (bucket) return recent() ? bucket : bucket.slice(0, 7);
+		return recent() ? "直近30日" : "全期間";
+	};
 	const setBucket = (bucket: string) =>
 		props.change({
-			period: props.selection.period,
+			period: period(),
 			bucket: bucket === props.selection.bucket ? undefined : bucket,
 		});
 	const setIp = (ipId: string) =>
 		props.change({
-			period: props.selection.period,
+			period: period(),
 			bucket: props.selection.bucket,
 			ipId: ipId === props.selection.ipId ? undefined : ipId,
 		});
 	const setCharacter = (id: string) =>
 		props.change({
 			...props.selection,
+			period: period(),
 			page: undefined,
 			characterId: props.selection.characterId === id ? undefined : id,
 		});
@@ -103,7 +112,7 @@ export function StatisticsScreen(props: {
 								<div class="grid items-stretch gap-4 @3xl:grid-cols-3">
 									<div class="grid min-w-0 @3xl:col-span-2">
 										<Show
-											when={data().trend.some((item) => item.count > 0)}
+											when={data().trend.some((item) => item.cumulative > 0)}
 											fallback={
 												<EmptyState title="この期間の取り込みはありません" />
 											}
@@ -149,9 +158,7 @@ export function StatisticsScreen(props: {
 										</Show>
 										<Button
 											variant="outline"
-											onClick={() =>
-												props.change({ period: props.selection.period })
-											}
+											onClick={() => props.change({ period: period() })}
 										>
 											絞り込みを解除
 										</Button>
@@ -160,12 +167,14 @@ export function StatisticsScreen(props: {
 								<div class="grid gap-4 @3xl:grid-cols-2">
 									<Ranking
 										kind="ip"
+										periodLabel={periodLabel()}
 										items={data().ips}
 										selected={props.selection.ipId}
 										select={setIp}
 									/>
 									<Ranking
 										kind="character"
+										periodLabel={periodLabel()}
 										items={data().characters}
 										selected={props.selection.characterId}
 										select={setCharacter}

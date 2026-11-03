@@ -6,7 +6,6 @@ import {
 } from "@solid-imager/core/domain/media/statistics";
 import { sql } from "drizzle-orm";
 import {
-	characterIps,
 	characters,
 	ips,
 	mediaCharacters,
@@ -29,6 +28,13 @@ export async function readLibraryStatistics(
 	const periodStart = recent
 		? sql`${today} - 29`
 		: sql`(select min(bucket) from library)`;
+	// Rows before the visible window still contribute to every cumulative point.
+	const openingCount = recent
+		? sql`(select count(*) from ${medias} where status <> 'deleted' and ${localDate} < ${periodStart})`
+		: sql`0`;
+	const periodEnd = recent
+		? today
+		: sql`greatest(${today}, (select max(bucket) from library))`;
 	const scope = input.bucket
 		? sql`where bucket = ${input.bucket}::date`
 		: sql``;
@@ -46,28 +52,24 @@ export async function readLibraryStatistics(
 			select id, source_id, file_name, indexed_at, media_type, date_trunc(${unit}, ${localDate}::timestamp)::date as bucket
 			from ${medias}
 			where status <> 'deleted'
-				and ${localDate} <= ${today}
-				${recent ? sql`and ${localDate} >= ${today} - 29` : sql``}
+				${recent ? sql`and ${localDate} between ${periodStart} and ${today}` : sql``}
 		), counts as (
 			select bucket, count(*) as count from library group by bucket
 		), trend as (
-			select day::date as bucket, coalesce(counts.count, 0) as count
-			from generate_series((${periodStart})::timestamp, ${today}::timestamp, ${recent ? "1 day" : "1 month"}::interval) day
+			select day::date as bucket, coalesce(counts.count, 0) as count,
+				${openingCount} + sum(coalesce(counts.count, 0)) over (order by day) as cumulative
+			from generate_series((${periodStart})::timestamp, (${periodEnd})::timestamp, ${recent ? "1 day" : "1 month"}::interval) day
 			left join counts on counts.bucket = day::date
 		), scoped as (
 			select * from library ${scope}
-		), appearances as (
-			select mc.media_id, mc.character_id from ${mediaCharacters} mc join scoped on scoped.id = mc.media_id
 		), works as (
 			select mi.media_id, mi.ip_id from ${mediaIps} mi join scoped on scoped.id = mi.media_id
-			union
-			select a.media_id, ci.ip_id from appearances a join ${characterIps} ci using (character_id)
 		), ranked_ips as (
 			select i.id, i.name, count(*) as count from works join ${ips} i on i.id = works.ip_id
 			group by i.id, i.name order by count desc, i.name, i.id limit 10
 		), scoped_characters as (
-			select a.* from appearances a
-			${input.ipId ? sql`join ${characterIps} ci on ci.character_id = a.character_id and ci.ip_id = ${input.ipId}` : sql``}
+			select mc.media_id, mc.character_id from ${mediaCharacters} mc join scoped on scoped.id = mc.media_id
+			${input.ipId ? sql`join works w on w.media_id = mc.media_id and w.ip_id = ${input.ipId}` : sql``}
 		), ranked_characters as (
 			select c.id, c.name, count(*) as count from scoped_characters a join ${characters} c on c.id = a.character_id
 			group by c.id, c.name order by count desc, c.name, c.id limit 10

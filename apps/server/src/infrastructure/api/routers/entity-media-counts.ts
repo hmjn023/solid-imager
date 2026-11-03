@@ -1,9 +1,10 @@
-import { count, inArray } from "drizzle-orm";
+import { and, count, eq, inArray, ne } from "drizzle-orm";
 import { db } from "~/infrastructure/db";
 import {
 	mediaCharacters,
 	mediaIps,
 	mediaProjects,
+	medias,
 } from "~/infrastructure/db/schema";
 
 export async function getProjectMediaCounts(
@@ -25,7 +26,8 @@ export async function getIpMediaCounts(
 	const rows = await db
 		.select({ id: mediaIps.ipId, mediaCount: count() })
 		.from(mediaIps)
-		.where(inArray(mediaIps.ipId, ids))
+		.innerJoin(medias, eq(medias.id, mediaIps.mediaId))
+		.where(and(inArray(mediaIps.ipId, ids), ne(medias.status, "deleted")))
 		.groupBy(mediaIps.ipId);
 	return new Map(rows.map((row) => [row.id, Number(row.mediaCount)] as const));
 }
@@ -37,7 +39,13 @@ export async function getCharacterMediaCounts(
 	const rows = await db
 		.select({ id: mediaCharacters.characterId, mediaCount: count() })
 		.from(mediaCharacters)
-		.where(inArray(mediaCharacters.characterId, ids))
+		.innerJoin(medias, eq(medias.id, mediaCharacters.mediaId))
+		.where(
+			and(
+				inArray(mediaCharacters.characterId, ids),
+				ne(medias.status, "deleted"),
+			),
+		)
 		.groupBy(mediaCharacters.characterId);
 	return new Map(rows.map((row) => [row.id, Number(row.mediaCount)] as const));
 }
