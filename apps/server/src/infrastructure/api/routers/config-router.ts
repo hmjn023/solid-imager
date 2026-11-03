@@ -1,6 +1,8 @@
 import { call, implement, ORPCError } from "@orpc/server";
 import { configContract } from "@solid-imager/core/domain/contract/config.contract";
+import { captureSearchSnapshotRequestSchema } from "@solid-imager/core/domain/search/history";
 import { services } from "~/infrastructure/service-registry";
+import { searchSnapshotsRouter } from "./search-snapshots-router";
 
 const os = implement(configContract);
 
@@ -15,6 +17,23 @@ export const configRouter = os.router({
 	}),
 	callWebTool: os.callWebTool.handler(async ({ input, context, signal }) => {
 		const { toolCatalog } = await import("~/infrastructure/mcp/catalog");
+		if (input.name === "search_media_capture_snapshot") {
+			if (
+				!services
+					.getConfigService()
+					.getConfig()
+					.mcp.web.includes("search_media")
+			) {
+				throw new ORPCError("NOT_FOUND", {
+					message: "WebMCP tool is not published",
+				});
+			}
+			return call(
+				searchSnapshotsRouter.capture,
+				captureSearchSnapshotRequestSchema.parse(input.arguments),
+				{ context, signal },
+			);
+		}
 		const tool = toolCatalog.get(input.name);
 		if (
 			!tool?.procedure ||

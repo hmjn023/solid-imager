@@ -517,6 +517,14 @@ test("settings publish oRPC data tools independently and revoke cached calls", a
 	try {
 		await config("update", { mcp: { http: candidates, web: [] } });
 		const all = await rpc(request, "tools/list", {});
+		expect(all.tools).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: "tags_list",
+					annotations: expect.objectContaining({ readOnlyHint: true }),
+				}),
+			]),
+		);
 		expect(all.tools.map((tool: { name: string }) => tool.name).sort()).toEqual(
 			candidates,
 		);
@@ -589,6 +597,16 @@ test("settings publish oRPC data tools independently and revoke cached calls", a
 			data: { json: { name: "jobs_list", arguments: {} } },
 		});
 		expect(denied.status()).toBe(404);
+		for (const name of [
+			"list_sources",
+			"find_tags",
+			"search_media_capture_snapshot",
+		]) {
+			const revoked = await request.post("/api/rpc/config/callWebTool", {
+				data: { json: { name, arguments: {} } },
+			});
+			expect(revoked.status()).toBe(404);
+		}
 		await config("update", {
 			mcp: { http: ["config_update", "open_media"], web: ["config_update"] },
 		});

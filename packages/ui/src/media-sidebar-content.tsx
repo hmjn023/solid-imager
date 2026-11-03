@@ -25,6 +25,16 @@ type QueryOptionsFactory<TData> = () => QueryOptions<TData>;
 export type MediaSidebarContentProps = {
 	media: MediaDetails;
 	activityApi: MediaActivityApi;
+	tagApi: {
+		list: () => Promise<{ id: string; name: string }[]>;
+		create: (data: { name: string }) => Promise<{ id: string; name: string }>;
+		bulkTag: (data: {
+			mediaSourceId: string;
+			mediaIds: string[];
+			tagsToAdd: string[];
+			tagsToRemove: string[];
+		}) => Promise<unknown>;
+	};
 	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
 	projectsForMediaQueryOptions: (
@@ -134,6 +144,39 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					characterId,
 				);
 				props.onUpdate?.();
+			}}
+			onPositiveTagsUpdate={async (names) => {
+				const existing = props.media.tags.filter(
+					(tag) => tag.type === "positive",
+				);
+				const removed = existing.filter((tag) => !names.includes(tag.name));
+				if (
+					removed.some((tag) =>
+						props.media.tags.some(
+							(other) => other.id === tag.id && other.type === "negative",
+						),
+					)
+				) {
+					throw new Error(
+						"Cannot remove a tag that is also assigned as negative.",
+					);
+				}
+				const available = await props.tagApi.list();
+				const added = [];
+				for (const name of names.filter(
+					(name) => !existing.some((tag) => tag.name === name),
+				)) {
+					const tag =
+						available.find((item) => item.name === name) ??
+						(await props.tagApi.create({ name }));
+					added.push(tag.id);
+				}
+				await props.tagApi.bulkTag({
+					mediaSourceId: props.media.mediaSourceId,
+					mediaIds: [props.media.id],
+					tagsToAdd: added,
+					tagsToRemove: removed.map((tag) => tag.id),
+				});
 			}}
 			onDescriptionUpdate={async (description) => {
 				await props.updateMediaDescription(
