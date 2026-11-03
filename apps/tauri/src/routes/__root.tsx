@@ -6,7 +6,7 @@ import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
 import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts";
 import { Toaster } from "@solid-imager/ui/toast";
 import { useLiveQuery } from "@tanstack/solid-db";
-import { useQueryClient } from "@tanstack/solid-query";
+import { type QueryClient, useQueryClient } from "@tanstack/solid-query";
 import {
 	createRootRouteWithContext,
 	Outlet,
@@ -22,7 +22,8 @@ import {
 	syncMediaSources,
 	updateMediaSource,
 } from "~/infrastructure/api-clients/sources-api";
-import type { AppRouterContext } from "~/router";
+
+type AppRouterContext = { queryClient: QueryClient };
 
 export const Route = createRootRouteWithContext<AppRouterContext>()({
 	component: RootRouteComponent,
