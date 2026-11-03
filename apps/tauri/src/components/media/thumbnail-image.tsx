@@ -1,4 +1,4 @@
-import type { MediaSafe } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSafe } from "@solid-imager/core/media";
 import {
 	ThumbnailImage as SharedThumbnailImage,
 	type ThumbnailImageProps as SharedThumbnailImageProps,

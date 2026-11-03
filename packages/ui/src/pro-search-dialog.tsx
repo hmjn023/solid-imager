@@ -1,9 +1,9 @@
-import type { Author } from "@solid-imager/core/domain/authors/schemas";
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
-import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
+import type { Author } from "@solid-imager/core/authors";
+import type { Character } from "@solid-imager/core/characters";
+import type { Ip } from "@solid-imager/core/ips";
+import type { SearchGroup } from "@solid-imager/core/search";
+import type { Project } from "@solid-imager/core/projects";
+import type { TagResponse } from "@solid-imager/core/tags";
 import { createSignal } from "solid-js";
 import { Button } from "./button";
 import {

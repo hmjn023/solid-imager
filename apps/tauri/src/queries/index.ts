@@ -1,4 +1,4 @@
-import { createAppQueryOptions } from "@solid-imager/ui/query-options/app";
+import { createAppQueryOptions } from "@solid-imager/ui/query";
 import { client as orpc } from "~/orpc-client";
 
 export const {

@@ -1,4 +1,4 @@
-import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
+import type { TagResponse } from "@solid-imager/core/tags";
 import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const tagsQueryKeys = {

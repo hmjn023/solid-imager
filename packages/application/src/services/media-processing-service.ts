@@ -1,32 +1,37 @@
 import path from "node:path";
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type {
+	Character,
+	CharacterRepository,
+} from "@solid-imager/core/characters";
+import type {
+	Transaction,
+	IImageProcessor,
+	IMediaStorage,
+} from "@solid-imager/core/ports";
 import type {
 	Media,
 	MediaMetadataContext,
-} from "@solid-imager/core/domain/media/schemas";
-import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type {
-	IJobRepository,
-	Job,
-} from "@solid-imager/core/domain/repositories/job-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/events";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
-import type { IMediaStorage } from "@solid-imager/core/interfaces/media-storage";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
+	MediaReader,
+	MediaWriter,
+} from "@solid-imager/core/media";
+import type { IAuthorRepository } from "@solid-imager/core/authors";
+import type { IIpRepository } from "@solid-imager/core/ips";
+import type { IJobRepository, Job } from "@solid-imager/core/jobs";
+import type { IProjectRepository } from "@solid-imager/core/projects";
+import {
+	type SourceRepository,
+	localConnectionSchema,
+} from "@solid-imager/core/sources";
+import type { TagRepository } from "@solid-imager/core/tags";
+import type { SourceEventPublisher } from "@solid-imager/core/events";
+import { isRecord } from "@solid-imager/core/utils";
 import type { IMediaProcessingService } from "../ports/media-processing-service";
-import type { ILogger } from "../ports/media-service";
+import type { ILogger } from "../ports/logger";
 
 export type MediaProcessingServiceDeps = {
 	sourceRepo: SourceRepository;
-	mediaRepo: IMediaRepository;
+	mediaRepo: Pick<MediaReader, "findById"> &
+		Pick<MediaWriter, "addUrls" | "create" | "update" | "upsertGenerationInfo">;
 	tagRepo: TagRepository;
 	authorRepo: IAuthorRepository;
 	characterRepo: CharacterRepository;
@@ -52,9 +57,10 @@ export type MediaProcessingServiceDeps = {
 	publishSourceEvent: SourceEventPublisher;
 };
 
-export class MediaProcessingServiceImpl implements IMediaProcessingService {
+/** Registers media and processes jobs, including optional automatic tagging and CCIP extraction. */
+class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly sourceRepo: SourceRepository;
-	private readonly mediaRepo: IMediaRepository;
+	private readonly mediaRepo: MediaProcessingServiceDeps["mediaRepo"];
 	private readonly tagRepo: TagRepository;
 	private readonly authorRepo: IAuthorRepository;
 	private readonly characterRepo: CharacterRepository;
@@ -572,4 +578,10 @@ export class MediaProcessingServiceImpl implements IMediaProcessingService {
 		// Register related data
 		await this.registerContextMetadata(mediaId, context, tx);
 	}
+}
+
+export function createMediaProcessingService(
+	deps: MediaProcessingServiceDeps,
+): IMediaProcessingService {
+	return new MediaProcessingServiceImpl(deps);
 }

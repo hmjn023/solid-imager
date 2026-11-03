@@ -1,15 +1,19 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import { BulkActionDialog } from "@solid-imager/ui/bulk-action-dialog";
 import {
 	type MediaCollectionSelectionMode,
 	useMediaCollectionSelection,
-} from "@solid-imager/ui/hooks/use-media-collection-selection";
-import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
+} from "@solid-imager/ui/collections";
+import { useSourceRootPath } from "@solid-imager/ui/sources";
 import { saveMediaContext } from "@solid-imager/ui/media-context";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
+import { createSearchHistoryClient } from "@solid-imager/ui/search/history";
 import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
-import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
+import {
+	activateSimilaritySearch,
+	getSearchCondition,
+	searchState,
+} from "@solid-imager/ui/search/state";
 import { createQuery } from "@tanstack/solid-query";
 import {
 	useLocation,
@@ -42,10 +46,6 @@ import {
 } from "~/infrastructure/api-clients/search-api";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
-import {
-	getSearchCondition,
-	searchState,
-} from "~/presentation/store/search-store";
 import {
 	allAuthorsQueryOptions,
 	allCharactersQueryOptions,

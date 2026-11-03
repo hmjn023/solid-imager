@@ -1,5 +1,5 @@
-import { generateMediaFilename } from "@core/domain/media/utils/filename-utils";
-import type { SafeMediaSource } from "@core/domain/sources/schemas";
+import { generateMediaFilename } from "@solid-imager/core/media/files";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { APIError, getClient } from "@ext/api";
 import type {
 	DownloadBulkMessage,

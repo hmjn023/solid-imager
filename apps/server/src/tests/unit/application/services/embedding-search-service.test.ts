@@ -1,8 +1,8 @@
-import { EmbeddingSearchService } from "@solid-imager/application/services/embedding-search-service";
+import { EmbeddingSearchService } from "@solid-imager/application/embeddings";
 import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
-} from "@solid-imager/core/domain/search/embedding";
+} from "@solid-imager/core/search";
 import { describe, it, expect, vi } from "vitest";
 
 const sourceId = "11111111-1111-4111-8111-111111111111";

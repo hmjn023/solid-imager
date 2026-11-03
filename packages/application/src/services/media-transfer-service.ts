@@ -1,38 +1,48 @@
+import type { ILogger } from "../ports/logger";
 import path from "node:path";
-import type { IMediaStorage } from "@solid-imager/core";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
 import type {
+	IMediaStorage,
 	Transaction,
 	TransactionManager,
-} from "@solid-imager/core/domain/interfaces/transaction-manager";
+} from "@solid-imager/core/ports";
+import { ResourceNotFoundError } from "@solid-imager/core/errors";
 import {
 	type AddMediaRequest,
 	type Media,
 	mediaIdSchema,
 	mediaSourceIdSchema,
 	updateMediaRequestSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+	type MediaDetailsReader,
+	type MediaReader,
+	type MediaWriter,
+	type UpdateMediaRequestInput,
+} from "@solid-imager/core/media";
+import type { IAuthorRepository } from "@solid-imager/core/authors";
+import type { CharacterRepository } from "@solid-imager/core/characters";
+import type { IIpRepository } from "@solid-imager/core/ips";
+import type { IJobRepository } from "@solid-imager/core/jobs";
+import type { IProjectRepository } from "@solid-imager/core/projects";
+import {
+	type SourceRepository,
+	localConnectionSchema,
+} from "@solid-imager/core/sources";
 import type {
 	DeferredActions,
 	DeferredSourceEvent,
 	IDeferredActionExecutor,
-	ILogger,
 	IMediaContextProcessor,
 	ISourceEventPublisher,
 	IThumbnailManager,
 } from "../ports/media-service";
 
+export type MediaTransferRepository = Pick<MediaReader, "findById"> &
+	Pick<MediaDetailsReader, "getAuthors" | "getUrls"> &
+	Pick<MediaWriter, "create" | "update" | "delete" | "addUrls">;
+
+/** Coordinates media updates, copying, moving and deletion across repositories and storage. */
 export class MediaTransferService {
 	constructor(
-		private readonly mediaRepository: IMediaRepository,
+		private readonly mediaRepository: MediaTransferRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
 		private readonly authorRepository: IAuthorRepository,
@@ -51,7 +61,7 @@ export class MediaTransferService {
 	async updateMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		updates: unknown,
+		updates: UpdateMediaRequestInput,
 		tx?: Transaction,
 	): Promise<Media> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);

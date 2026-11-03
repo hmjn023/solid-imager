@@ -1,5 +1,6 @@
 import { z } from "zod";
 
+/** Existing file and suggested alternative name when an upload conflicts. */
 export const conflictSchema = z.object({
 	existingFile: z.string(),
 	suggestedName: z.string(),
@@ -13,8 +14,7 @@ const baseUploadFields = {
 	sourceUrl: z.url("Invalid URL format").or(z.literal("")).optional(),
 };
 
-// Schema for Frontend UI Form
-// Schema for Frontend UI Form
+/** UI form values; an empty source URL means no source URL. */
 export const uploadMediaFormSchema = z.object({
 	description: z.string(),
 	// Allow valid URL or empty string (which acts as "no URL")
@@ -25,7 +25,10 @@ export const uploadMediaFormSchema = z.object({
 });
 export type UploadMediaFormData = z.infer<typeof uploadMediaFormSchema>;
 
-// Schema for Backend API Request (FormData parsing)
+/**
+ * FormData fields for upload. Boolean options are true only when their
+ * stringified value equals `true` case-insensitively; an empty source URL is allowed.
+ */
 export const uploadMediaRequestSchema = z.object({
 	...baseUploadFields,
 	filename: z.string().optional(),

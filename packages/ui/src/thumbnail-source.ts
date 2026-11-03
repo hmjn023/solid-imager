@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import { createRenderEffect, createSignal, onCleanup } from "solid-js";
 import type { ThumbnailSource } from "./thumbnail-image";
 
@@ -80,6 +80,7 @@ function resolveMimeType(fileName: string) {
 	);
 }
 
+/** Creates a thumbnail source with cache-busting retries and optional responsive URLs. Use within a Solid owner for cleanup. */
 export function createHttpThumbnailSource(
 	props: CreateHttpThumbnailSourceProps,
 ): ThumbnailSource {
@@ -152,6 +153,13 @@ export function createHttpThumbnailSource(
 	};
 }
 
+/**
+ * Creates a local thumbnail source with file and original-image fallbacks and retries.
+ * Must be created under a Solid owner so timers and object URLs are released on cleanup.
+ *
+ * @param props - File access, object URL, and thumbnail-ready adapters plus retry settings.
+ * @returns A source suitable for ThumbnailImage.
+ */
 export function createLocalThumbnailSource(
 	props: CreateLocalThumbnailSourceProps,
 ): ThumbnailSource {

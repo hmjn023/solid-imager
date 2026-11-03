@@ -1,5 +1,5 @@
-import type { MediaType } from "@solid-imager/core/domain/media/schemas";
-import type { LibraryStatistics } from "@solid-imager/core/domain/media/statistics";
+import type { MediaType } from "@solid-imager/core/media";
+import type { LibraryStatistics } from "@solid-imager/core/statistics";
 import { areaY, barY, defineChart, lineY } from "@tanstack/charts";
 import { pie, polar, radialArc } from "@tanstack/charts/polar";
 import { scaleBand } from "@tanstack/charts/scales/band";

@@ -2,7 +2,7 @@ import type {
 	JobEvent,
 	JobFailedEvent,
 	JobProgressEvent,
-} from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/events";
 import type { Accessor } from "solid-js";
 import { createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
@@ -29,6 +29,7 @@ export function shouldSubscribeToJobEvents(
 	return options.subscribeImmediately === true || activeJobId() !== null;
 }
 
+/** Dispatches events for the active job only; retry events do not invoke a handler. */
 export function dispatchJobEvent(
 	activeJobId: string | null,
 	event: JobEvent,
@@ -76,6 +77,16 @@ function rememberJobEvent(
 	}
 }
 
+/**
+ * Subscribes to batch events and dispatches those for the active job. Immediate
+ * subscriptions buffer the latest event per job until its ID is known. The
+ * subscription is disposed with its Solid owner.
+ *
+ * @param activeJobId - Reactive ID used to filter and replay events.
+ * @param handlers - Callbacks for progress and terminal events.
+ * @param openStream - Opens the abortable job event stream.
+ * @param options - Controls early subscription and connection notification.
+ */
 export function useBatchJobEvents(
 	activeJobId: Accessor<string | null>,
 	handlers: ManagerJobHandlers,

@@ -70,3 +70,6 @@ export const appContract = {
 export type AppContract = typeof appContract;
 
 export type AppContractClient = RouterContractClient<AppContract>;
+
+export type { SourceSyncResult } from "./sources.contract";
+export { isRestProcedure } from "./rest-visibility";

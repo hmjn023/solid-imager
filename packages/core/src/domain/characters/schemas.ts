@@ -7,6 +7,7 @@
 
 import { z } from "zod";
 
+/** Clustering parameters; minimum samples cannot exceed the neighbor count. */
 export const startCharacterClusteringSchema = z
 	.object({
 		neighbors: z.number().int().min(2).max(256).default(64),

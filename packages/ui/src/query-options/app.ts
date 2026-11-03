@@ -1,5 +1,5 @@
-import type { AppContractClient } from "@solid-imager/core/domain/contract";
-import type { JobListRequest } from "@solid-imager/core/domain/jobs/schemas";
+import type { AppContractClient } from "@solid-imager/core/contract";
+import type { JobListRequest } from "@solid-imager/core/jobs";
 import {
 	buildAuthorsQueryOptions,
 	buildCharactersQueryOptions,
@@ -14,6 +14,7 @@ import {
 	defaultJobsQueryInput,
 } from "./index";
 
+/** Binds shared query option factories to an application contract client. */
 export function createAppQueryOptions(client: AppContractClient) {
 	return {
 		tagsQueryOptions: () =>

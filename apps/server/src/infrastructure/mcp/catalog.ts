@@ -13,12 +13,9 @@ import {
 	type AnyProcedure,
 } from "@orpc/server";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
-import {
-	viewToolTitles,
-	type WebToolInfo,
-} from "@solid-imager/core/domain/config/mcp";
-import { isRestProcedure } from "@solid-imager/core/domain/contract/rest-visibility";
-import { appRouter } from "~/infrastructure/api/app-router";
+import { viewToolTitles, type WebToolInfo } from "@solid-imager/core/config";
+import { appContract, isRestProcedure } from "@solid-imager/core/contract";
+import { featureRouters } from "~/infrastructure/api/feature-routers";
 
 const converter = new ZodToJsonSchemaConverter({ cache: true });
 const emptyInput = { type: "object", properties: {} } as const;
@@ -28,7 +25,7 @@ function buildCatalog() {
 		string,
 		{ info: WebToolInfo; procedure?: AnyProcedure }
 	>();
-	walkProcedureContractsSync(appRouter, (contract, path) => {
+	walkProcedureContractsSync(appContract, (contract, path) => {
 		const group = path[0];
 		// Settings must not be able to publish themselves through a tool call.
 		if (group === "config" || !isRestProcedure(contract)) return;
@@ -53,7 +50,7 @@ function buildCatalog() {
 			)
 		)
 			return;
-		const procedure = getRouter(appRouter, path);
+		const procedure = getRouter(featureRouters, path);
 		if (!(procedure instanceof Procedure)) return;
 		const meta = getOpenAPIMeta(contract);
 		const mcp = getMcpToolMeta(procedure);

@@ -1,32 +1,44 @@
 import type {
 	Media,
 	SimilarMediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import { asyncPool } from "@solid-imager/core/utils/async-pool";
+	MediaReader,
+} from "@solid-imager/core/media";
+import type { SourceRepository } from "@solid-imager/core/sources";
+import { asyncPool } from "@solid-imager/core/utils";
 import type {
 	CcipVectorMetadata,
 	CcipVectorRecord,
 	ICcipVectorStore,
 } from "../ports/ccip-vector-store";
-import type { ILogger } from "../ports/media-service";
+import type { ILogger } from "../ports/logger";
 import type { ITaggingService } from "../ports/tagging-service";
 
+/** Model identifier used to partition current CCIP vectors. */
 export const CCIP_MODEL = "ccip-caformer-24-randaug-pruned";
+/** Version of the current CCIP embedding space. */
 export const CCIP_EMBEDDING_VERSION = 1;
 
+/** Storage, inference and media dependencies used for CCIP extraction and search. */
 export type CcipVectorServiceDeps = {
-	mediaRepository: IMediaRepository;
+	mediaRepository: Pick<MediaReader, "findById" | "findByIds">;
 	sourceRepository: SourceRepository;
 	taggingService: ITaggingService;
 	vectorStore: ICcipVectorStore;
 	logger?: ILogger;
 };
 
+/** Extracts and searches CCIP vectors, reusing records that are current for the media. */
 export class CcipVectorService {
 	constructor(private readonly deps: CcipVectorServiceDeps) {}
 
+	/**
+	 * Extract and persist a CCIP vector for an image in a local source.
+	 * @param mediaSourceId - Source expected to own the image.
+	 * @param mediaId - Image to encode.
+	 * @param force - Recompute even when a current vector exists; defaults to false.
+	 * @returns The vector and whether an existing current record was reused.
+	 * @throws If the media is missing, belongs to another source, is not an image, or the source is not local. Inference and storage failures propagate.
+	 */
 	async extract(
 		mediaSourceId: string,
 		mediaId: string,
@@ -46,6 +58,15 @@ export class CcipVectorService {
 		return result;
 	}
 
+	/**
+	 * Extract vectors concurrently, then persist the successfully extracted records.
+	 * @param mediaSourceId - Source expected to own the images.
+	 * @param mediaIds - Images to process, in result order.
+	 * @param force - Recompute current records when true; defaults to false.
+	 * @param concurrency - Maximum concurrent extractions; defaults to 1 and must be a positive integer.
+	 * @returns A settled result for each input, including individual extraction failures.
+	 * @throws If concurrency is invalid or the batch read or write fails.
+	 */
 	async extractBatch(
 		mediaSourceId: string,
 		mediaIds: string[],
@@ -169,7 +190,16 @@ export class CcipVectorService {
 		});
 	}
 
-	/** Returns a cosine-ranked page bounded by the requested total result cap. */
+	/**
+	 * Return a cosine-ranked page bounded by the requested total result cap.
+	 * @param anchorMediaId - Image whose current vector is used as the query and excluded from results.
+	 * @param topK - Maximum number of results across pages.
+	 * @param mediaSourceId - Optional source filter for candidates.
+	 * @param limit - Maximum page size; defaults to 20.
+	 * @param offset - Number of ranked candidates to skip; defaults to 0.
+	 * @returns Ranked media and corresponding scores, with a total capped at topK.
+	 * @throws If the anchor is missing or its CCIP vector is missing or stale.
+	 */
 	async searchSimilar(
 		anchorMediaId: string,
 		topK: number,

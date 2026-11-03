@@ -38,7 +38,7 @@ description: solid-imager プロジェクトにおけるロギング方針、Pin
 アプリケーション層はインフラ層 (`~/infrastructure/logger`) に直接依存してはいけません (依存ルール違反)。
 代わりに `ILogger` ポートインターフェースを介した依存性注入 (Dependency Injection) を行います。
 
-- **`ILogger` インターフェース定義** (`packages/application/src/ports/media-service.ts`):
+- **`ILogger` インターフェース定義** (`packages/application/src/ports/logger.ts`):
   ```typescript
   export interface ILogger {
     info(obj: object, msg: string): void;
@@ -46,10 +46,12 @@ description: solid-imager プロジェクトにおけるロギング方針、Pin
     warn(obj: object, msg: string): void;
   }
   ```
+server 側では `ILogger` を `@solid-imager/application/logging` から import する。
+
 - **依存関係の定義**:
 
   ```typescript
-  import type { ILogger } from "../ports/media-service";
+  import type { ILogger } from "../ports/logger";
 
   export type SomeServiceDeps = {
     logger?: ILogger;

@@ -1,4 +1,4 @@
-import { searchHistoryQuerySchema } from "@solid-imager/ui/search-history-route";
+import { searchHistoryQuerySchema } from "@solid-imager/ui/search/history";
 import { createFileRoute, lazyRouteComponent } from "@tanstack/solid-router";
 
 const SearchRoute = lazyRouteComponent(

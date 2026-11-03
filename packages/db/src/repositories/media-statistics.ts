@@ -3,7 +3,7 @@ import {
 	statisticsResponseSchema,
 	type LibraryStatistics,
 	type StatisticsRequest,
-} from "@solid-imager/core/domain/media/statistics";
+} from "@solid-imager/core/statistics";
 import { sql } from "drizzle-orm";
 import {
 	characters,

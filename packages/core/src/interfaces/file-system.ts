@@ -1,3 +1,4 @@
+/** Platform-neutral filesystem operations used by application services. */
 export type IFileSystem = {
 	exists(path: string): Promise<boolean>;
 	readFile(path: string): Promise<Uint8Array>;

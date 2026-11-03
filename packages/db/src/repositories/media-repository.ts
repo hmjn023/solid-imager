@@ -4,15 +4,15 @@ import {
 	ResourceConflictError,
 	ResourceNotFoundError,
 	UnexpectedError,
-} from "@solid-imager/core/domain/errors";
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type {
-	SearchCriterion,
-	SearchGroup,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/errors";
+import type { Transaction } from "@solid-imager/core/ports";
+import {
+	type SearchCriterion,
+	type SearchGroup,
+	type MediaSort,
+} from "@solid-imager/core/search";
 import {
 	type AddMediaRequest,
-	type Author,
 	type DuplicateGroup,
 	type FindDuplicatesRequest,
 	type FindDuplicatesResponse,
@@ -22,15 +22,15 @@ import {
 	type MediaGenerationInfo,
 	type MediaSearchRequest,
 	type MediaSearchResponse,
-	type MediaSort,
 	type MediaTag,
 	type MediaUrl,
 	mediaSearchResponseSchema,
 	type UpdateMediaRequest,
-} from "@solid-imager/core/domain/media/schemas";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { TagRepository as TagRepositoryType } from "@solid-imager/core/domain/repositories/tag-repository";
-import { isMediaStatus, isTagType } from "@solid-imager/core/utils/type-guards";
+	type IMediaRepository,
+} from "@solid-imager/core/media";
+import { type Author } from "@solid-imager/core/authors";
+import type { TagRepository as TagRepositoryType } from "@solid-imager/core/tags";
+import { isMediaStatus, isTagType } from "@solid-imager/core/utils";
 import {
 	type AnyColumn,
 	and,
@@ -76,7 +76,6 @@ import {
 	viewHistory,
 } from "../schema";
 import type { DrizzleExecutor } from "../types";
-import type { createMediaSearchFunctions } from "./media-repository-utils";
 
 // ============================================================================
 // Types
@@ -692,9 +691,8 @@ export function createMediaRepository(
 			info?(data: unknown, msg?: string): void;
 			error?(data: unknown, msg?: string): void;
 		};
-		authorRepository?: import("@solid-imager/core/domain/repositories/author-repository").IAuthorRepository;
+		authorRepository?: import("@solid-imager/core/authors").IAuthorRepository;
 		tagRepository?: TagRepositoryType;
-		mediaSearch?: ReturnType<typeof createMediaSearchFunctions>;
 	},
 ): IMediaRepository {
 	const executeSearch = makeExecuteSearch(getExecutor);
@@ -1220,27 +1218,40 @@ export function createMediaRepository(
 			params: { query?: string; tags?: string[] },
 			tx?: Transaction,
 		): Promise<Media[]> {
-			const mediaSearch = deps?.mediaSearch;
-			if (mediaSearch) {
-				const results = await mediaSearch.searchMediaInDirectory(
-					mediaSourceId,
-					directoryPath,
-					params,
+			try {
+				const client = getExecutor(tx);
+				const conditions: (SQL | undefined)[] = [
+					eq(medias.mediaSourceId, mediaSourceId),
+					ilike(medias.filePath, `${escapeLikePattern(directoryPath)}%`),
+				];
+				if (params.query) {
+					const pattern = `%${escapeLikePattern(params.query)}%`;
+					conditions.push(
+						or(
+							ilike(medias.fileName, pattern),
+							ilike(medias.description, pattern),
+						),
+					);
+				}
+				if (params.tags?.length) {
+					const matching = client
+						.select({ mediaId: mediaTags.mediaId })
+						.from(mediaTags)
+						.innerJoin(tags, eq(mediaTags.tagId, tags.id))
+						.where(inArray(tags.name, params.tags));
+					conditions.push(inArray(medias.id, matching));
+				}
+				const rows = await client
+					.select()
+					.from(medias)
+					.where(and(...conditions));
+				return rows.map(mapToMedia);
+			} catch (error) {
+				throw new UnexpectedError(
+					`Failed to search media in directory ${directoryPath} for source ID: ${mediaSourceId}`,
+					error,
 				);
-				return results.map(mapToMedia);
 			}
-			// Fallback: basic direct query
-			const client = getExecutor(tx);
-			const pattern = `${directoryPath.endsWith("/") ? directoryPath : `${directoryPath}/`}%`;
-			const conditions: import("drizzle-orm").SQL[] = [
-				eq(medias.mediaSourceId, mediaSourceId),
-				ilike(medias.filePath, pattern),
-			];
-			const results = await client
-				.select()
-				.from(medias)
-				.where(and(...conditions));
-			return results.map(mapToMedia);
 		},
 
 		async findExistingUrls(

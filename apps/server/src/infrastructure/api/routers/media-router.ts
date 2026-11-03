@@ -1,11 +1,11 @@
 import { implement, ORPCError } from "@orpc/server";
-import { mediaContract } from "@solid-imager/core/domain/contract/media.contract";
-import type { MediaPreferencesPatch } from "@solid-imager/core/domain/media/schemas";
+import { mediaContract } from "@solid-imager/core/contract";
+import type { MediaPreferencesPatch } from "@solid-imager/core/media";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
-import { asyncPool } from "@solid-imager/core/utils/async-pool";
+} from "@solid-imager/core/errors";
+import { asyncPool } from "@solid-imager/core/utils";
 import { services } from "~/infrastructure/service-registry";
 import { logger } from "~/infrastructure/logger";
 import { BulkOperationService } from "~/infrastructure/services/bulk-operation-service";

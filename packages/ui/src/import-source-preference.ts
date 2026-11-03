@@ -1,4 +1,4 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 
 const IMPORT_SOURCE_PREFERENCE_KEY = "solid-imager:import-source-preference";
 
@@ -50,6 +50,7 @@ function readPreference(): StoredImportSourcePreference {
 	}
 }
 
+/** Returns the remembered source only if remembering is enabled and the source remains in the provided list. */
 export function getRememberedImportSourceId(
 	sources: readonly SafeMediaSource[],
 ): string | null {
@@ -67,6 +68,7 @@ export function isImportSourceRemembered(): boolean {
 	return readPreference().remember;
 }
 
+/** Stores the chosen source locally, or clears the preference when remembering is disabled or no source is provided. */
 export function setImportSourcePreference(
 	remember: boolean,
 	sourceId?: string,

@@ -3,6 +3,7 @@ import { z } from "zod";
 export const UuidSchema = z.uuid();
 export type UUID = z.infer<typeof UuidSchema>;
 
+/** Extensible shared configuration; unknown top-level fields are retained. */
 export const appConfigSchema = z
 	.object({
 		server: z
@@ -30,6 +31,7 @@ export const appConfigSchema = z
 	.loose(); // Allow for future expansion
 export type AppConfig = z.infer<typeof appConfigSchema>;
 
+/** Extensible search options with date strings coerced to Date values. */
 export const searchOptionsSchema = z
 	.object({
 		tags: z.array(z.string()).optional(),
@@ -51,6 +53,7 @@ export const importDataSchema = z.object({
 });
 export type ImportData = z.infer<typeof importDataSchema>;
 
+/** User input that may contain a password and should be handled as sensitive data. */
 export const userDataSchema = z.object({
 	name: z.string(),
 	email: z.email(),

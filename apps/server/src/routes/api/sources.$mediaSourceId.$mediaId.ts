@@ -1,6 +1,6 @@
 import path from "node:path";
-import { getContentTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import { getContentTypeFromExtension } from "@solid-imager/core/media/files";
+import { localConnectionSchema } from "@solid-imager/core/sources";
 import { createFileRoute } from "@tanstack/solid-router";
 import type { ServerRouteContext } from "~/infrastructure/router/route-types";
 import { bootstrapServerRoute } from "~/infrastructure/server-route-bootstrap";

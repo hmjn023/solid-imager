@@ -5,8 +5,8 @@ import { pipeline } from "node:stream/promises";
 import {
 	sourceExportJobPayloadSchema,
 	sourceRestoreJobPayloadSchema,
-} from "@solid-imager/core/domain/jobs/schemas";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
+	type Job,
+} from "@solid-imager/core/jobs";
 import { services } from "~/infrastructure/service-registry";
 import { BackupService } from "~/infrastructure/services/backup-service";
 import {

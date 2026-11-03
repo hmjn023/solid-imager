@@ -1,9 +1,9 @@
-import type { Author } from "@solid-imager/core/domain/authors/schemas";
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import type { SearchState } from "@solid-imager/core/domain/search/schema";
-import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
+import type { Author } from "@solid-imager/core/authors";
+import type { Character } from "@solid-imager/core/characters";
+import type { Ip } from "@solid-imager/core/ips";
+import type { Project } from "@solid-imager/core/projects";
+import type { SearchState } from "@solid-imager/core/search";
+import type { TagResponse } from "@solid-imager/core/tags";
 import { createMemo, createSignal, For } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Badge } from "./badge";

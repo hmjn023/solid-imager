@@ -1,15 +1,13 @@
-import type { Preset } from "@solid-imager/core/domain/media/schemas";
-import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
+import type { Preset } from "@solid-imager/core/presets";
 import {
+	type SimilarityModel,
 	calculateNextModeState,
 	getSearchConditionFromState,
 	preparePresetState,
-} from "@solid-imager/core/domain/search/logic";
-import {
 	defaultState,
 	DEFAULT_SIMILARITY_TOP_K,
 	type SearchState,
-} from "@solid-imager/core/domain/search/schema";
+} from "@solid-imager/core/search";
 import { createStore } from "solid-js/store";
 import { getSearchStateStorageKey } from "../ui-storage";
 

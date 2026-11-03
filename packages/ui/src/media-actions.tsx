@@ -1,8 +1,8 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
 import type {
 	CcipVectorStatus,
 	StartCcipExtractionResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/core/tagging";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	type Accessor,
@@ -43,7 +43,7 @@ export type MediaActionsProps = {
 	media: MediaDetails;
 	onUpdate?: () => void;
 	onFindSimilar?: (
-		model?: import("@solid-imager/core/domain/search/embedding").SimilarityModel,
+		model?: import("@solid-imager/core/search").SimilarityModel,
 	) => void;
 	onDownload?: () => void | Promise<void>;
 	onViewJobs?: (jobId: string) => void;

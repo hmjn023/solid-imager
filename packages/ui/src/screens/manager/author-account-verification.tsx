@@ -1,7 +1,7 @@
 import type {
 	AuthorAccount,
 	AuthorAccountVerification,
-} from "@solid-imager/core/domain/authors/schemas";
+} from "@solid-imager/core/authors";
 import { createQuery } from "@tanstack/solid-query";
 import { createSignal, onCleanup, Show } from "solid-js";
 import { Button } from "../../button";

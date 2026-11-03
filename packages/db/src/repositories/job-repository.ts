@@ -1,13 +1,13 @@
-import { batchParentJobTypes } from "@solid-imager/core/domain/jobs/schemas";
-import type {
-	BatchProgress,
-	IJobRepository,
-	Job,
-	NewJob,
-} from "@solid-imager/core/domain/repositories/job-repository";
-import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
-import { generateThumbnailJobPayloadSchema } from "@solid-imager/core/domain/thumbnails/schemas";
-import { isJobStatus } from "@solid-imager/core/utils/type-guards";
+import {
+	batchParentJobTypes,
+	type BatchProgress,
+	type IJobRepository,
+	type Job,
+	type NewJob,
+} from "@solid-imager/core/jobs";
+import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
+import { generateThumbnailJobPayloadSchema } from "@solid-imager/core/thumbnails";
+import { isJobStatus } from "@solid-imager/core/utils";
 import {
 	and,
 	asc,

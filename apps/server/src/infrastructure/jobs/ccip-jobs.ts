@@ -1,15 +1,15 @@
-import type { CcipVectorMetadata } from "@solid-imager/application/ports/ccip-vector-store";
 import {
+	type CcipVectorMetadata,
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
-import { batchParentPayloadSchema } from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/application/ccip";
+import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
+import type { Job } from "@solid-imager/core/jobs";
 import {
-	type Job,
 	jobs,
 	mediaSources,
 	medias,

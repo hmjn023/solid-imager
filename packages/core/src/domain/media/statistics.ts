@@ -2,6 +2,7 @@ import { z } from "zod";
 import { mediaTypeSchema } from "./schemas";
 
 export const statisticsPeriodSchema = z.enum(["recent", "all"]);
+/** Filters and page selection for library statistics. */
 export const statisticsSelectionSchema = z.object({
 	period: statisticsPeriodSchema.optional(),
 	bucket: z.iso.date().optional(),
@@ -9,6 +10,7 @@ export const statisticsSelectionSchema = z.object({
 	characterId: z.uuid().optional(),
 	page: z.int().min(0).max(1_000_000).optional(),
 });
+/** Statistics selection with an IANA time-zone name; defaults to UTC. */
 export const statisticsRequestSchema = statisticsSelectionSchema.extend({
 	timeZone: z
 		.string()
@@ -33,7 +35,9 @@ const rankedEntitySchema = z.object({
 	name: z.string(),
 	count: countSchema,
 });
+/** Number of media entries returned per statistics page. */
 export const STATISTICS_PAGE_SIZE = 20;
+/** Trend, rankings and the selected page of media for the requested filters. */
 export const statisticsResponseSchema = z.object({
 	trend: z.array(
 		z.object({

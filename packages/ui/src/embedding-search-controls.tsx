@@ -1,4 +1,4 @@
-import type { SearchState } from "@solid-imager/core/domain/search/schema";
+import type { SearchState } from "@solid-imager/core/search";
 import { createEffect, createSignal, Show } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Button } from "./button";

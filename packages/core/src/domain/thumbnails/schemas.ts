@@ -1,8 +1,10 @@
 import { z } from "zod";
 
+/** Supported thumbnail dimensions in pixels. */
 export const thumbnailSizeSchema = z.union([z.literal(256), z.literal(512)]);
 export type ThumbnailSize = z.infer<typeof thumbnailSizeSchema>;
 
+/** Starts source-wide generation; defaults to size 512 and includes existing thumbnails. */
 export const generateThumbnailsRequestSchema = z.object({
 	sourceId: z.uuid(),
 	size: thumbnailSizeSchema.optional().default(512),

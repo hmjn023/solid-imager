@@ -2,7 +2,7 @@ import {
 	defaultState,
 	type SearchState,
 	searchStateSchema,
-} from "@solid-imager/core/domain/search/schema";
+} from "@solid-imager/core/search";
 import { createEffect, For, Show } from "solid-js";
 import { createStore } from "solid-js/store";
 import { Button } from "./button";

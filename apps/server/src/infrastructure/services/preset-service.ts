@@ -1,7 +1,9 @@
-import type { IPresetService } from "@solid-imager/application";
-import { createPresetService } from "@solid-imager/application/services/preset-service";
-import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
-import { DrizzlePresetRepository } from "~/infrastructure/repositories/preset-repository";
+import {
+	type IPresetService,
+	createPresetService,
+} from "@solid-imager/application/presets";
+import type { PresetRepository } from "@solid-imager/core/presets";
+import { DrizzlePresetRepository } from "~/infrastructure/db/repositories";
 
 let _service: IPresetService = createPresetService(DrizzlePresetRepository);
 

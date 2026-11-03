@@ -3,20 +3,20 @@
  * Implements the application media-service port by delegating to focused services.
  */
 
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { Transaction } from "@solid-imager/core/ports";
 import type {
 	FindDuplicatesRequest,
 	FindDuplicatesResponse,
 	Media,
 	MediaDetails,
 	MediaGenerationInfo,
+	MediaSearchRequestInput,
 	MediaSearchResponse,
 	MediaTag,
-} from "@solid-imager/core/domain/media/schemas";
-import type {
+	UpdateMediaRequestInput,
 	UploadMediaRequest,
 	UploadResponse,
-} from "@solid-imager/core/domain/media/upload-schemas";
+} from "@solid-imager/core/media";
 import type { DeferredActions, IMediaService } from "../ports/media-service";
 import type { MediaQueryService } from "./media-query-service";
 import type { MediaTransferService } from "./media-transfer-service";
@@ -35,7 +35,7 @@ export class MediaServiceImpl implements IMediaService {
 
 	async searchMedia(
 		mediaSourceId: string | undefined | null,
-		params: unknown,
+		params: MediaSearchRequestInput,
 	): Promise<MediaSearchResponse> {
 		return this.queryService.searchMedia(mediaSourceId, params);
 	}
@@ -92,7 +92,7 @@ export class MediaServiceImpl implements IMediaService {
 	async updateMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		updates: unknown,
+		updates: UpdateMediaRequestInput,
 		tx?: Transaction,
 	): Promise<Media> {
 		return this.transferService.updateMedia(

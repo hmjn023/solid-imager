@@ -1,11 +1,11 @@
 import { mkdtemp, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { CharacterClusteringReviewService } from "@solid-imager/application/services/character-clustering-review-service";
+import { CharacterClusteringReviewService } from "@solid-imager/application/clustering";
 import {
 	clusteringGroupsRequestSchema,
 	clusteringMediaRequestSchema,
-} from "@solid-imager/core/domain/characters/schemas";
+} from "@solid-imager/core/characters";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { FileCharacterClusteringResultsStore } from "~/infrastructure/services/character-clustering-results-store";
 import {

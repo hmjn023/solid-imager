@@ -1,7 +1,6 @@
-import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
+import type { AppConfig } from "@solid-imager/core/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { IJobRepository } from "~/domain/repositories/job-repository";
-import type { Job } from "~/infrastructure/db/schema";
+import type { IJobRepository, Job } from "@solid-imager/core/jobs";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 
 const { mockCleanupExpired, mockCleanupOrphaned } = vi.hoisted(() => ({

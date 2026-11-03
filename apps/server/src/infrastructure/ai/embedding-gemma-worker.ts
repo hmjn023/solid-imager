@@ -2,7 +2,7 @@ import { Worker } from "node:worker_threads";
 import {
 	EMBEDDING_GEMMA_MODEL,
 	embeddingVectorSchema,
-} from "@solid-imager/core/domain/search/embedding";
+} from "@solid-imager/core/search";
 import { z } from "zod";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import { resolveDghsImgutilsPath } from "./dghs-imgutils-loader";

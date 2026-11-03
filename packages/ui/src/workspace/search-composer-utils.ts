@@ -1,5 +1,5 @@
-import { mediaIdSchema } from "@solid-imager/core/domain/media/schemas";
-import type { SearchState } from "@solid-imager/core/domain/search/schema";
+import { mediaIdSchema } from "@solid-imager/core/media";
+import type { SearchState } from "@solid-imager/core/search";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 
 export type SearchArrayKey =
@@ -42,6 +42,7 @@ export function parseSemanticSearchDraft(draft: string): string | undefined {
 	return unquoted.slice(0, 2000);
 }
 
+/** Builds display tokens from search state; a semantic query takes precedence over other filters. */
 export function getSearchComposerTokens(state: SearchState): SearchToken[] {
 	if (state.semanticQuery)
 		return [
@@ -113,6 +114,7 @@ export function parseSimilarityTopK(value: string): number | undefined {
 	return Number.isSafeInteger(parsed) && parsed >= 1 ? parsed : undefined;
 }
 
+/** Validates a similarity anchor as a media ID, returning undefined when invalid. */
 export function parseSimilarityAnchor(value: string): string | undefined {
 	const parsed = mediaIdSchema.safeParse(value);
 	return parsed.success ? parsed.data : undefined;
@@ -165,6 +167,7 @@ function getActiveToken(value: string): ActiveToken | undefined {
 	};
 }
 
+/** Removes the final whitespace-delimited draft token while preserving a separator after preceding text. */
 export function removeActiveSearchToken(value: string): string {
 	const match = value.match(/(?:^|\s)([^\s]*)$/);
 	if (!match) return value;
@@ -208,6 +211,15 @@ function getSourceValues(
 	}
 }
 
+/**
+ * Suggests up to 100 matching values for the final recognized prefix, excluding
+ * selected and duplicate values. Matching ignores case.
+ *
+ * @param draft - Current text, whose final token determines the suggestion category.
+ * @param filterData - Available values for each search category.
+ * @param tokens - Existing tokens excluded from suggestions of the same category.
+ * @returns Matching suggestions in source order, or an empty list for an unrecognized prefix.
+ */
 export function getSearchComposerSuggestions(
 	draft: string,
 	filterData: SearchPageFilterData,

@@ -8,6 +8,7 @@ import { useJobEvents, type JobEventStreamFactory } from "./use-job-events";
 
 // The stream replays terminal events on connection. Finish the current read, then
 // fetch the latest state once for all events received while that read was pending.
+/** Applies progress events to cached jobs and coalesces other events into query refreshes. */
 export function useJobsQueryEvents(openStream: JobEventStreamFactory) {
 	const client = useQueryClient();
 	const key = { queryKey: jobsQueryKeys.all() };

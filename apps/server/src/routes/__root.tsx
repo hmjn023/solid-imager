@@ -1,4 +1,4 @@
-import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts/index";
+import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import {

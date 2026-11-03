@@ -1,12 +1,10 @@
-import type {
-	JobDto,
-	JobListResponse,
-} from "@solid-imager/core/domain/jobs/schemas";
+import type { JobDto, JobListResponse } from "@solid-imager/core/jobs";
 import { createQuery } from "@tanstack/solid-query";
 import { createMemo, type Accessor } from "solid-js";
 import { jobsQueryKeys } from "../query-options/jobs-query";
 
 // A linked job can be outside the loaded page. Prefer the live row when it is available.
+/** Uses the live list row when available, otherwise fetches the selected job independently of pagination. */
 export function useJobInspection(
 	id: Accessor<string | undefined>,
 	list: { data: JobListResponse | undefined; isPending: boolean },

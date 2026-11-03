@@ -1,8 +1,8 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
+	type Media,
 	mediaIdSchema,
 	mediaSourceIdSchema,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/media";
 import {
 	readUiStorageValue,
 	removeUiStorageValue,
@@ -41,6 +41,13 @@ function writeStorageValue(
 	}
 }
 
+/**
+ * Saves up to 500 valid, unique media IDs and the return route in session storage
+ * for detail navigation. Storage failures are ignored.
+ *
+ * @param returnPath - Route to restore when leaving the detail view.
+ * @param items - Ordered collection used to determine neighboring media.
+ */
 export function saveMediaContext(
 	returnPath: string,
 	items: readonly MediaContextItem[],
@@ -84,6 +91,7 @@ export function saveMediaContext(
 	writeStorageValue(storage, UI_STORAGE_KEYS.mediaReturn, returnPath);
 }
 
+/** Reads stored detail-navigation context, discarding invalid items and returning null for malformed or unavailable context. */
 export function readMediaContext(): StoredMediaContext | null {
 	const storage = getStorage();
 	if (!storage) return null;
@@ -127,12 +135,14 @@ export function readMediaReturnPath(): string | null {
 		: null;
 }
 
+/** Removes the separate return-path entry without removing the stored media context. */
 export function clearMediaReturnPath(): void {
 	const storage = getStorage();
 	if (!storage) return;
 	removeUiStorageValue(storage, UI_STORAGE_KEYS.mediaReturn);
 }
 
+/** Finds adjacent items in the stored collection order; an unknown ID has no neighbors. */
 export function findMediaNeighbors(mediaId: string): {
 	next: MediaContextItem | undefined;
 	previous: MediaContextItem | undefined;

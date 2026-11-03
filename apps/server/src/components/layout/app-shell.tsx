@@ -1,7 +1,7 @@
-import { SCALAR_DOCS_PATH } from "@solid-imager/core/domain/contract/http-paths";
-import { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
-import { useSourcesPage } from "@solid-imager/ui/hooks/use-sources-page";
-import { AppShell as SharedAppShell } from "@solid-imager/ui/layouts/app-shell";
+import { SCALAR_DOCS_PATH } from "@solid-imager/core/http";
+import { mediaSourceInfoSchema } from "@solid-imager/core/sources";
+import { useSourcesPage } from "@solid-imager/ui/sources";
+import { AppShell as SharedAppShell } from "@solid-imager/ui/app-shell";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useNavigate } from "@tanstack/solid-router";
 import type { ParentProps } from "solid-js";

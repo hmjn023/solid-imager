@@ -2,7 +2,7 @@ import type {
 	Media,
 	MediaSearchRequest,
 	MediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/media";
 import { QueryClient } from "@tanstack/solid-query";
 import { describe, expect, it, vi } from "vitest";
 import {

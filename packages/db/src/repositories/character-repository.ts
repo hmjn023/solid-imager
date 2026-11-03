@@ -2,13 +2,13 @@ import type {
 	Character,
 	NewCharacter,
 	UpdateCharacter,
-} from "@solid-imager/core/domain/characters/schemas";
+	CharacterRepository,
+} from "@solid-imager/core/characters";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
 	UnexpectedError,
-} from "@solid-imager/core/domain/errors";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
+} from "@solid-imager/core/errors";
 import { and, eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import { characterIps, characters, ips, mediaCharacters } from "../schema";
 import type { DrizzleExecutor } from "../types";

@@ -1,15 +1,12 @@
 {
   "name": "@solid-imager/db",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "main": "src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./schema": "./src/schema.ts",
-    "./types": "./src/types.ts",
-    "./transaction-manager": "./src/transaction-manager.ts",
-    "./errors": "./src/errors.ts",
-    "./repositories/*": "./src/repositories/*.ts"
+    "./schema": "./src/schema.ts"
   },
   "scripts": {
     "check": "oxlint --fix ./src && oxfmt --write ./src",

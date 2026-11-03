@@ -1,4 +1,4 @@
-import { thumbnailSizeSchema } from "@solid-imager/core/domain/thumbnails/schemas";
+import { thumbnailSizeSchema } from "@solid-imager/core/thumbnails";
 import { createFileRoute } from "@tanstack/solid-router";
 import {
 	getThumbnailPath,

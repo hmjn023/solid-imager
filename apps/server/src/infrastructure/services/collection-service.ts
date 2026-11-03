@@ -1,4 +1,4 @@
-import { createCollectionService } from "@solid-imager/application/services/collection-service";
-import { CollectionRepository } from "~/infrastructure/repositories/collection-repository";
+import { createCollectionService } from "@solid-imager/application/collections";
+import { CollectionRepository } from "~/infrastructure/db/repositories";
 
 export const CollectionService = createCollectionService(CollectionRepository);

@@ -1,9 +1,9 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
 import type {
 	MediaChangedEvent,
 	MediaDeletedEvent,
 	ThumbnailGeneratedEvent,
-} from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/events";
 import type { QueryOptions } from "@tanstack/solid-query";
 import type { Accessor, JSX } from "solid-js";
 import type { MediaSourceEventTransport } from "../hooks/use-media-source-events";

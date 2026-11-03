@@ -1,4 +1,4 @@
-import { CcipVectorService } from "@solid-imager/application/services/ccip-vector-service";
+import { CcipVectorService } from "@solid-imager/application/ccip";
 import { describe, expect, it, vi } from "vitest";
 
 const source = { id: "00000000-0000-4000-8000-000000000010", type: "local" };

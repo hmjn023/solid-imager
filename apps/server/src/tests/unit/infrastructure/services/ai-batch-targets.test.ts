@@ -3,7 +3,7 @@ import path from "node:path";
 import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
+} from "@solid-imager/application/ccip";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq, sql } from "drizzle-orm";

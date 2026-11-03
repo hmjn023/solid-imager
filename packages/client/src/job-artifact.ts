@@ -1,3 +1,4 @@
+/** Job status and artifact metadata needed while waiting for an export. */
 export type ExportJob = {
 	id: string;
 	status: "pending" | "in_progress" | "completed" | "failed" | "cancelled";
@@ -5,6 +6,7 @@ export type ExportJob = {
 	artifact: { contentType: string } | null;
 };
 
+/** Minimal job API required to wait for and download an export artifact. */
 export type JobArtifactClient = {
 	get: (
 		input: { id: string },
@@ -18,6 +20,15 @@ export type JobArtifactClient = {
 
 const DEFAULT_EXPORT_TIMEOUT_MS = 5 * 60 * 1000;
 
+/**
+ * Poll an export job every 500 ms and download its artifact as a Blob.
+ *
+ * @param jobs - Job lookup and artifact download operations.
+ * @param jobId - ID of the export job to wait for.
+ * @param options - Cancellation signal and total timeout in milliseconds (default five minutes).
+ * @returns The downloaded artifact, with the job's content type.
+ * @throws If the job fails or is cancelled, completes without an artifact, or waiting is cancelled or times out. Transport errors also propagate.
+ */
 export async function downloadCompletedJobArtifact(
 	jobs: JobArtifactClient,
 	jobId: string,

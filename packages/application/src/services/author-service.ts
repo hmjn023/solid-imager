@@ -1,6 +1,5 @@
-import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type { NewAuthor } from "@solid-imager/core/domain/media/schemas";
-import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
+import type { TransactionManager } from "@solid-imager/core/ports";
+import type { NewAuthor, IAuthorRepository } from "@solid-imager/core/authors";
 import type { IAuthorService } from "../ports/author-service";
 
 export function createAuthorService(

@@ -2,14 +2,14 @@ import {
 	ResourceConflictError,
 	ResourceNotFoundError,
 	UnexpectedError,
-} from "@solid-imager/core/domain/errors";
-import type {
-	MediaSource,
-	NewMediaSource,
-	SourceRepository,
-} from "@solid-imager/core/domain/repositories/source-repository";
-import { connectionInfoSchema } from "@solid-imager/core/domain/sources/schemas";
-import { isMediaSourceType } from "@solid-imager/core/utils/type-guards";
+} from "@solid-imager/core/errors";
+import {
+	type MediaSource,
+	type NewMediaSource,
+	type SourceRepository,
+	connectionInfoSchema,
+} from "@solid-imager/core/sources";
+import { isMediaSourceType } from "@solid-imager/core/utils";
 import { eq, type InferSelectModel } from "drizzle-orm";
 import { mediaSources } from "../schema";
 import type { DrizzleExecutor } from "../types";

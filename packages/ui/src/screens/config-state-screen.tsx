@@ -1,4 +1,4 @@
-import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
+import type { AiHealthResponse } from "@solid-imager/core/tagging";
 import { Match, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { ConfigSkeleton, LoadingRegion } from "../skeleton";

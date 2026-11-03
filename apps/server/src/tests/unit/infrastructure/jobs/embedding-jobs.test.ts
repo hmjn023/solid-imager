@@ -2,8 +2,8 @@ import path from "node:path";
 import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
-} from "@solid-imager/core/domain/search/embedding";
-import { createJobRepository } from "@solid-imager/db/repositories/job-repository";
+} from "@solid-imager/core/search";
+import { createRepositories } from "@solid-imager/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq, sql } from "drizzle-orm";
@@ -66,7 +66,10 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		client = createPglite();
 		const database = drizzle(client, { schema });
 		mocks.database = database;
-		mocks.repository = createJobRepository(() => database);
+		mocks.repository = createRepositories(() => database, {
+			info: mocks.info,
+			error: mocks.error,
+		}).job;
 		await migrate(database, {
 			migrationsFolder: path.resolve(
 				process.cwd().endsWith("apps/server")

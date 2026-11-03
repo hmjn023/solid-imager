@@ -1,4 +1,4 @@
-import type { Project } from "@solid-imager/core/domain/projects/schemas";
+import type { Project } from "@solid-imager/core/projects";
 import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const projectsQueryKeys = {

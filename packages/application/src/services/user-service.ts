@@ -1,8 +1,8 @@
-import type { UserRepository } from "@solid-imager/core/domain/repositories/user-repository";
 import type {
+	UserRepository,
 	NewUser,
 	UpdateUser,
-} from "@solid-imager/core/domain/users/schemas";
+} from "@solid-imager/core/users";
 import type { IUserService } from "../ports/user-service";
 
 export function createUserService(repo: UserRepository): IUserService {

@@ -1,8 +1,8 @@
-import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
+import { useSourceRootPath } from "@solid-imager/ui/sources";
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
-import { projectsQueryKeys } from "@solid-imager/ui/query-options";
+import { projectsQueryKeys } from "@solid-imager/ui/query";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useRouterState } from "@tanstack/solid-router";
 import { Show } from "solid-js";

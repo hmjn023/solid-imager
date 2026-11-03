@@ -3,7 +3,7 @@ import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import { characterIps, characters, ips } from "~/infrastructure/db/schema";
-import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
+import { DrizzleCharacterRepository } from "~/infrastructure/db/repositories";
 
 describe("CharacterRepository Multi-IP Support", () => {
 	const repo = DrizzleCharacterRepository;

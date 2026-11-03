@@ -17,7 +17,12 @@ test(
 	{
 		tag: "@mobile-only",
 	},
-	async ({ context, page }) => {
+	async ({ context, page, browserHealth }) => {
+		// Source sync events invalidate the list again while its previous refresh is pending.
+		browserHealth.allowRequestFailure(
+			/\/api\/rpc\/sources\/list(?:\?|$)/,
+			"net::ERR_ABORTED",
+		);
 		const sourceEventsConnected = page.waitForResponse(
 			(response) =>
 				sourceEventsEndpoint.test(new URL(response.url()).pathname) &&

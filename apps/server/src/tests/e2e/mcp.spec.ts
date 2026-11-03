@@ -1,10 +1,7 @@
 import type { APIRequestContext } from "@playwright/test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import path from "node:path";
-import type {
-	McpConfig,
-	McpToolInfo,
-} from "@solid-imager/core/domain/config/mcp";
+import type { McpConfig, McpToolInfo } from "@solid-imager/core/config";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -769,6 +766,11 @@ test("CCIP WebMCP follows the returned job only when requested", async ({
 		const pending = page.webmcp.callTool(tool, { ...input, showJob: true });
 		try {
 			await acknowledged.promise;
+			// Leaving Jobs disposes its inspector query and aborts an in-flight refetch.
+			browserHealth.allowRequestFailure(
+				/\/api\/rpc\/jobs\/get(?:\?|$)/,
+				"net::ERR_ABORTED",
+			);
 			await page
 				.getByRole("link", { name: "Settings", exact: true })
 				.first()

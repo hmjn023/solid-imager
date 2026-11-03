@@ -1,7 +1,7 @@
 import {
 	createAuthorAccountVerificationService,
 	createAuthorAccountVerificationState,
-} from "@solid-imager/application/services/author-account-verification-service";
+} from "@solid-imager/application/authors";
 import { AuthorService } from "./author-service";
 
 // Keep pending previews across dev module reloads and API bundle instances in this process.

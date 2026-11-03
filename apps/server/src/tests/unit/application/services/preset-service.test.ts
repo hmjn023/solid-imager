@@ -1,13 +1,13 @@
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/errors";
 import type {
 	CreatePresetRequest,
 	Preset,
-	SearchGroup,
-} from "@solid-imager/core/domain/media/schemas";
-import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
+	PresetRepository,
+} from "@solid-imager/core/presets";
+import type { SearchGroup } from "@solid-imager/core/search";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	PresetService,

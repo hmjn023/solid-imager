@@ -1,4 +1,4 @@
-import type { mediaSourceInfoSchema } from "@solid-imager/core/domain/sources/schemas";
+import type { mediaSourceInfoSchema } from "@solid-imager/core/sources";
 import type { z } from "zod";
 import { client } from "~/orpc-client";
 

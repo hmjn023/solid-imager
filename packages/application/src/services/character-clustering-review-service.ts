@@ -5,13 +5,14 @@ import {
 	type ClusteringGroupsRequest,
 	type ClusteringMediaRequest,
 	type ClusteringReviewMedia,
-} from "@solid-imager/core/domain/characters/schemas";
-import { ValidationError } from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/characters";
+import { ValidationError } from "@solid-imager/core/errors";
 import type {
 	ICharacterClusteringResultsStore,
 	StoredClusteringMedia,
 } from "../ports/character-clustering-results-store";
 
+/** Builds review groups and media views from saved clustering runs. Comparisons require the same cohort and matching embeddings. */
 export class CharacterClusteringReviewService {
 	constructor(private readonly store: ICharacterClusteringResultsStore) {}
 	listRuns() {

@@ -1,6 +1,6 @@
 import { call, implement, ORPCError } from "@orpc/server";
-import { configContract } from "@solid-imager/core/domain/contract/config.contract";
-import { captureSearchSnapshotRequestSchema } from "@solid-imager/core/domain/search/history";
+import { configContract } from "@solid-imager/core/contract";
+import { captureSearchSnapshotRequestSchema } from "@solid-imager/core/search";
 import { services } from "~/infrastructure/service-registry";
 import { searchSnapshotsRouter } from "./search-snapshots-router";
 

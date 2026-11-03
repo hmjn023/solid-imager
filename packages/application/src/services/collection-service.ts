@@ -2,8 +2,8 @@ import type {
 	NewCollection,
 	NewCollectionItem,
 	UpdateCollection,
-} from "@solid-imager/core/domain/collections/schemas";
-import type { ICollectionRepository } from "@solid-imager/core/domain/repositories/collection-repository";
+	ICollectionRepository,
+} from "@solid-imager/core/collections";
 import type { ICollectionService } from "../ports/collection-service";
 
 export function createCollectionService(

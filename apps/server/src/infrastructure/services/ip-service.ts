@@ -1,4 +1,4 @@
-import { createIpService } from "@solid-imager/application/services/ip-service";
-import { IpRepository } from "~/infrastructure/repositories/ip-repository";
+import { createIpService } from "@solid-imager/application/ips";
+import { IpRepository } from "~/infrastructure/db/repositories";
 
 export const IpService = createIpService(IpRepository);

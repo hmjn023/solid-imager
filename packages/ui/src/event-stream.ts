@@ -30,6 +30,16 @@ function waitForRetry(delay: number, signal: AbortSignal): Promise<void> {
 	});
 }
 
+/**
+ * Consumes an abortable stream and reconnects with capped exponential backoff.
+ *
+ * @param openStream - Opens a stream using the cancellation signal.
+ * @param onEvent - Handles each event sequentially; a rejection triggers reconnection.
+ * @param onError - Receives failures, the retry count, and the next delay in milliseconds.
+ * @param onConnected - Runs after each successful connection before events are consumed.
+ * @param onDisconnected - Runs when a stream ends normally without being aborted.
+ * @returns A cleanup function that aborts the stream and stops retries.
+ */
 export function subscribeToEventStream<TEvent>(
 	openStream: EventStreamFactory<TEvent>,
 	onEvent: (event: TEvent) => void | Promise<void>,
@@ -101,7 +111,7 @@ export function subscribeToEventStream<TEvent>(
 	};
 }
 
-// Multiple mounted views in a tab can observe the same long-lived oRPC request.
+/** Shares one reconnecting stream among subscribers and closes it when the last subscriber unsubscribes. */
 export function createSharedEventSubscription<TEvent>(
 	openStream: EventStreamFactory<TEvent>,
 ) {
@@ -123,7 +133,9 @@ export function createSharedEventSubscription<TEvent>(
 				openStream,
 				async (event) => {
 					await Promise.all(
-						Array.from(subscribers, (listener) => listener.onEvent(event)),
+						Array.from(subscribers, async (listener) =>
+							listener.onEvent(event),
+						),
 					);
 				},
 				() => {
@@ -132,7 +144,9 @@ export function createSharedEventSubscription<TEvent>(
 				async () => {
 					connected = true;
 					await Promise.all(
-						Array.from(subscribers, (listener) => listener.onConnected?.()),
+						Array.from(subscribers, async (listener) =>
+							listener.onConnected?.(),
+						),
 					);
 				},
 				() => {

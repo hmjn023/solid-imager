@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import { cn } from "./utils/cn";

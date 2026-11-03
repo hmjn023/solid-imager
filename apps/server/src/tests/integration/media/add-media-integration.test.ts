@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db/index";
 import type { NewMedia } from "~/infrastructure/db/schema";
 import { mediaSources, medias } from "~/infrastructure/db/schema";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { MediaRepository } from "~/infrastructure/db/repositories";
 
 const TEST_FILE_SIZE = 1024 * 1024;
 const TEST_WIDTH = 800;

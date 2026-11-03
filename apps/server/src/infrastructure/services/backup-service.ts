@@ -1,16 +1,15 @@
-import type { NewAuthor } from "@solid-imager/core/domain/authors/schemas";
+import type { NewAuthor, AuthorPlatform } from "@solid-imager/core/authors";
 import { createReadStream, createWriteStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import type { Writable } from "node:stream";
 import { finished } from "node:stream/promises";
 import {
-	type AuthorPlatform,
 	type MediaDumpItem,
 	mediaDumpItemSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
-import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
+} from "@solid-imager/core/media";
+import { localConnectionSchema } from "@solid-imager/core/sources";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import type { Table } from "drizzle-orm";
 import { and, eq, gt, inArray, sql } from "drizzle-orm";
 import type { PgColumn } from "drizzle-orm/pg-core";

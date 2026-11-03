@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { MediaRepository } from "~/infrastructure/db/repositories";
 
 // Hoisted mocks
 // Hoisted mocks
@@ -50,25 +50,22 @@ vi.mock("~/infrastructure/jobs/download-rate-limiter", () => ({
 vi.mock("~/infrastructure/logger", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
-vi.mock("~/infrastructure/repositories/source-repository", () => ({
+vi.mock("~/infrastructure/db/repositories", () => ({
 	DrizzleSourceRepository: {
 		findById: mockFindById,
 	},
-}));
-vi.mock("~/infrastructure/repositories/media-repository", () => ({
 	MediaRepository: {
 		create: mockMediaCreate,
 		update: mockMediaUpdate,
 		addUrls: mockMediaAddUrls,
 		findByPath: mockMediaFindByPath,
 	},
-}));
-vi.mock("~/infrastructure/repositories/author-repository", () => ({
 	AuthorRepository: {
 		create: mockAuthorCreate,
 		addMedia: mockAuthorAddMedia,
 	},
 }));
+
 vi.mock("~/infrastructure/storage/server-media-storage", () => ({
 	ServerMediaStorage: {
 		getFileMetadata: mockGetFileMetadata,
@@ -86,8 +83,6 @@ vi.mock("~/infrastructure/services/media-processing-service", () => ({
 		registerAndProcess: mockMediaRegisterAndProcess,
 		addContextMetadataToExistingMedia: mockMediaAddContextMetadata,
 	},
-
-	MediaProcessingServiceImpl: class {},
 }));
 vi.mock("node:fs/promises", () => ({
 	default: {

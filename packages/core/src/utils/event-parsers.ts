@@ -1,9 +1,16 @@
+/** Minimal validation interface accepted by the event payload parsers. */
 export type SafeParseSchema<T> = {
 	safeParse: (
 		input: unknown,
 	) => { success: true; data: T } | { success: false; error: unknown };
 };
 
+/**
+ * Parses a JSON event payload and validates it, returning errors as strings.
+ * @param raw - Value converted to a string before JSON parsing.
+ * @param schema - Validator for the parsed value.
+ * @returns Validated data, or a parsing or validation error message.
+ */
 export function parseJsonEventPayload<T>(
 	raw: unknown,
 	schema: SafeParseSchema<T>,
@@ -17,6 +24,12 @@ export function parseJsonEventPayload<T>(
 	}
 }
 
+/**
+ * Validates an already decoded event payload without throwing validation errors.
+ * @param raw - Decoded value to validate.
+ * @param schema - Validator for the payload.
+ * @returns Validated data, or a validation error message.
+ */
 export function parseEventPayload<T>(
 	raw: unknown,
 	schema: SafeParseSchema<T>,

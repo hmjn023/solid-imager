@@ -19,6 +19,7 @@ function getTwitterStatusPath(urlValue: string): string[] | null {
 	}
 }
 
+/** Recognizes status paths on x.com and twitter.com, including /i/web/status paths. */
 export function isTwitterStatusUrl(urlValue: string): boolean {
 	const pathParts = getTwitterStatusPath(urlValue);
 	return (
@@ -31,6 +32,7 @@ export function isTwitterStatusUrl(urlValue: string): boolean {
 	);
 }
 
+/** Extracts an @handle from an author status URL; returns an empty string for anonymous or invalid paths. */
 export function extractTwitterAuthorIdFromStatusUrl(urlValue: string): string {
 	const pathParts = getTwitterStatusPath(urlValue);
 	if (
@@ -45,6 +47,7 @@ export function extractTwitterAuthorIdFromStatusUrl(urlValue: string): string {
 	return `@${pathParts[0]}`;
 }
 
+/** Adds controls to unprocessed images and videos and records their metadata for bulk export. */
 export function processTwitterMedia(
 	processedMetadata: Map<string, DownloadItem>,
 	createButtonContainer: (
@@ -176,6 +179,14 @@ function extractMetadataFromUrl(): { authorId: string; tweetUrl: string } {
 	};
 }
 
+/**
+ * Extracts post metadata and a download target, avoiding attribution of quoted media to the outer post.
+ *
+ * @param article - Post container, or null to use the current status URL as a fallback.
+ * @param element - Image or video container associated with the media.
+ * @param mediaType - IMAGE by default; VIDEO requires a recognized post URL.
+ * @returns Download metadata; targetUrl can be empty if no valid video post URL is available.
+ */
 export function extractMetadata(
 	article: HTMLElement | null,
 	element: HTMLElement,
@@ -276,6 +287,7 @@ function determineTargetUrl(
 	}
 }
 
+/** Reads text, timestamp, status URL and author information from a post article. */
 export function extractFromArticle(article: HTMLElement) {
 	const tweetTextNode = querySelectorTyped<HTMLElement>(
 		article,

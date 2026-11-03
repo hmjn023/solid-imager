@@ -27,6 +27,7 @@ export const MediaCopiedEventSchema = z.object({
 });
 export type MediaCopiedEvent = z.infer<typeof MediaCopiedEventSchema>;
 
+/** Move notification: type identifies the source or target side of the move. */
 export const MediaMovedEventSchema = z.object({
 	type: z.enum(["source", "target"]),
 	mediaId: z.string().optional(),
@@ -58,18 +59,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
+/** Checks the required filePath only; optional fields are not fully schema-validated. */
 export function isValidMediaAdded(data: unknown): data is MediaAddedEvent {
 	return isRecord(data) && typeof data.filePath === "string";
 }
 
+/** Checks the required filePath only; optional fields are not fully schema-validated. */
 export function isValidMediaDeleted(data: unknown): data is MediaDeletedEvent {
 	return isRecord(data) && typeof data.filePath === "string";
 }
 
+/** Checks the required filePath only; optional fields are not fully schema-validated. */
 export function isValidMediaChanged(data: unknown): data is MediaChangedEvent {
 	return isRecord(data) && typeof data.filePath === "string";
 }
 
+/** Checks sourceId and timestamp without validating the media payload. */
 export function isValidMediaCopied(data: unknown): data is MediaCopiedEvent {
 	return (
 		isRecord(data) &&
@@ -78,6 +83,7 @@ export function isValidMediaCopied(data: unknown): data is MediaCopiedEvent {
 	);
 }
 
+/** Checks the move side and timestamp without validating optional fields. */
 export function isValidMediaMoved(data: unknown): data is MediaMovedEvent {
 	return (
 		isRecord(data) &&
@@ -98,6 +104,7 @@ export function isValidAllJobsCompleted(
 	return isRecord(data) && typeof data.processed === "number";
 }
 
+/** Requires an error string, although the event schema also permits an omitted error. */
 export function isValidWatcherError(data: unknown): data is WatcherErrorEvent {
 	return isRecord(data) && typeof data.error === "string";
 }

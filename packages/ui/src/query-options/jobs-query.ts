@@ -2,8 +2,8 @@ import type {
 	JobDto,
 	JobListRequest,
 	JobListResponse,
-} from "@solid-imager/core/domain/jobs/schemas";
-import type { JobProgressEvent } from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/jobs";
+import type { JobProgressEvent } from "@solid-imager/core/events";
 import type { QueryClient, QueryFunctionContext } from "@tanstack/solid-query";
 
 export const DEFAULT_JOBS_PAGE_SIZE = 200;
@@ -37,6 +37,13 @@ export function buildJobsQueryOptions(
 	};
 }
 
+/**
+ * Updates the matching cached list row without changing unrelated rows.
+ *
+ * @param data - Cached job page, if present.
+ * @param event - Progress event identifying the job and its processed and total counts.
+ * @returns Updated data, or the original reference if no matching row exists.
+ */
 export function updateJobProgress(
 	data: JobListResponse | undefined,
 	event: JobProgressEvent,
@@ -64,6 +71,7 @@ function withProgress(job: JobDto, event: JobProgressEvent): JobDto {
 	};
 }
 
+/** Applies progress to all cached job lists and the matching detail, without creating missing cache entries. */
 export function updateCachedJobProgress(
 	client: QueryClient,
 	event: JobProgressEvent,

@@ -24,6 +24,7 @@ const sourceSyncResultSchema = z.discriminatedUnion("success", [
 	}),
 ]);
 
+/** Per-source synchronization outcome, including counts on success or an error on failure. */
 export type SourceSyncResult = z.infer<typeof sourceSyncResultSchema>;
 
 export const sourcesContract = {

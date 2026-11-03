@@ -1,6 +1,5 @@
-import type { AppConfig } from "@solid-imager/core/domain/config/config-schema";
-import type { IJobRepository } from "~/domain/repositories/job-repository";
-import type { Job } from "~/infrastructure/db/schema";
+import type { AppConfig } from "@solid-imager/core/config";
+import type { IJobRepository, Job } from "@solid-imager/core/jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import {

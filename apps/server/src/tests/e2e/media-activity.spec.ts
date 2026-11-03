@@ -4,7 +4,7 @@ import {
 	mediaPath,
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
-import { mediaActivitySchema } from "@solid-imager/core/domain/media/schemas";
+import { mediaActivitySchema } from "@solid-imager/core/media";
 
 test("a detail visit counts once and media preferences persist after reload", async ({
 	page,

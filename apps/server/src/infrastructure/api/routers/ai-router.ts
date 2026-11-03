@@ -3,13 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import { implement, ORPCError } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/domain/contract";
-import { aiContract } from "@solid-imager/core/domain/contract/ai.contract";
+import { type AppContract, aiContract } from "@solid-imager/core/contract";
 import {
 	detectAndCropResponseSchema,
 	type NapiBBox,
 	taggingResponseSchema,
-} from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/core/tagging";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import { and, desc, eq, sql } from "drizzle-orm";
 import sharp from "sharp";

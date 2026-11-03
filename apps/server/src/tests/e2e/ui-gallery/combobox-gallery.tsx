@@ -7,7 +7,7 @@ import {
 	ComboboxItemLabel,
 	VirtualComboboxContent,
 } from "@solid-imager/ui/combobox";
-import { createDebouncedSignal } from "@solid-imager/ui/utils/debounce";
+import { createDebouncedSignal } from "@solid-imager/ui/utils";
 import { createMemo, createSignal, For, Show } from "solid-js";
 
 const OPTIONS = Array.from({ length: 100 }, (_, index) => ({
@@ -57,7 +57,7 @@ export function ComboboxGallery() {
 									/>
 								</ComboboxControl>
 								<Show when={virtual} fallback={<ComboboxContent />}>
-									<VirtualComboboxContent class="max-h-[300px]" />
+									<VirtualComboboxContent class="max-h-75" />
 								</Show>
 							</Combobox>
 							<output

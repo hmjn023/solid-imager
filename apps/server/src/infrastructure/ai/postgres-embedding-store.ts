@@ -1,14 +1,14 @@
 import type {
 	IEmbeddingStore,
 	ImageEmbedding,
-} from "@solid-imager/application/ports/embedding-store";
+} from "@solid-imager/application/embeddings";
 import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 	embeddingVectorSchema,
-} from "@solid-imager/core/domain/search/embedding";
+} from "@solid-imager/core/search";
 import { imageEmbeddings, medias } from "@solid-imager/db/schema";
-import type { DrizzleExecutor } from "@solid-imager/db/types";
+import type { DrizzleExecutor } from "@solid-imager/db";
 import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 

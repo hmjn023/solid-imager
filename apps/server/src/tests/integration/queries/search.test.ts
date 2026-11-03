@@ -1,3 +1,9 @@
+import type { MediaSearchRequest } from "@solid-imager/core/media";
+import {
+	defaultState,
+	getSearchConditionFromState,
+	type SearchState,
+} from "@solid-imager/core/search";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
 import {
@@ -5,14 +11,17 @@ import {
 	medias,
 	mediaTags,
 	type NewMedia,
-	type NewTag,
 	tags,
 } from "~/infrastructure/db/schema";
-import {
-	globalSearchMedia,
-	searchMedia,
-	searchMediaInDirectory,
-} from "~/infrastructure/repositories/media-repository-utils";
+import { MediaRepository } from "~/infrastructure/db/repositories";
+
+function searchParams(filters: Partial<SearchState>): MediaSearchRequest {
+	return {
+		condition: getSearchConditionFromState({ ...defaultState, ...filters }),
+		offset: 0,
+		order: "desc",
+	};
+}
 
 describe("search queries Integration", () => {
 	const mediaSourceId1 = "a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a14";
@@ -77,7 +86,7 @@ describe("search queries Integration", () => {
 			.returning();
 
 		// Seed tags
-		const tagsToInsert: NewTag[] = [{ name: "fruit" }, { name: "dessert" }];
+		const tagsToInsert = [{ name: "fruit" }, { name: "dessert" }];
 		const insertedTags = await db.insert(tags).values(tagsToInsert).returning();
 
 		// Associate tags
@@ -111,34 +120,84 @@ describe("search queries Integration", () => {
 	});
 
 	it("should search media by query within a source", async () => {
-		const { media: results } = await searchMedia(mediaSourceId1, {
-			query: "red",
-		});
+		const { media: results } = await MediaRepository.search(
+			mediaSourceId1,
+			searchParams({
+				searchQuery: "red",
+			}),
+		);
 		expect(results.length).toBe(1);
 		expect(results[0].fileName).toBe("apple.jpg");
 	});
 
 	it("should search media by tag within a source", async () => {
-		const { media: results } = await searchMedia(mediaSourceId1, {
-			tags: ["fruit"],
-		});
+		const { media: results } = await MediaRepository.search(
+			mediaSourceId1,
+			searchParams({
+				selectedTags: ["fruit"],
+			}),
+		);
 		expect(results.length).toBe(2);
 	});
 
 	it("should search media in a specific directory", async () => {
-		const results = await searchMediaInDirectory(mediaSourceId1, "dir1", {
-			query: "fruit",
-		});
+		const results = await MediaRepository.searchInDirectory(
+			mediaSourceId1,
+			"dir1",
+			{
+				query: "fruit",
+			},
+		);
 		expect(results.length).toBe(2);
 	});
 
+	it("finds tagged media added in the current transaction", async () => {
+		await db.transaction(async (tx) => {
+			const [image] = await tx
+				.insert(medias)
+				.values({
+					mediaSourceId: mediaSourceId1,
+					filePath: "dir1/cherry.jpg",
+					fileName: "cherry.jpg",
+					mediaType: "image",
+					width: 1,
+					height: 1,
+					fileSize: 1,
+				})
+				.returning();
+			const [tag] = await tx
+				.insert(tags)
+				.values({ name: "cherry" })
+				.returning();
+			await tx
+				.insert(mediaTags)
+				.values({ mediaId: image.id, tagId: tag.id, tagType: "positive" });
+
+			const results = await MediaRepository.searchInDirectory(
+				mediaSourceId1,
+				"dir1",
+				{ tags: ["cherry"] },
+				tx,
+			);
+			expect(results.map((media) => media.id)).toEqual([image.id]);
+		});
+	});
+
 	it("should perform a global search by query", async () => {
-		const { media: results } = await globalSearchMedia({ query: "apple" });
+		const { media: results } = await MediaRepository.globalSearch(
+			searchParams({
+				searchQuery: "apple",
+			}),
+		);
 		expect(results.length).toBe(2);
 	});
 
 	it("should perform a global search by tag", async () => {
-		const { media: results } = await globalSearchMedia({ tags: ["dessert"] });
+		const { media: results } = await MediaRepository.globalSearch(
+			searchParams({
+				selectedTags: ["dessert"],
+			}),
+		);
 		expect(results.length).toBe(1);
 		expect(results[0].fileName).toBe("apple_pie.jpg");
 	});

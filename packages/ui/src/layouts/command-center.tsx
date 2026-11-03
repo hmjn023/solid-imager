@@ -19,8 +19,8 @@ import {
 	getShortcutDefinitionsForGroup,
 	SHORTCUT_GROUPS,
 	type ShortcutId,
-	ShortcutKbd,
-} from "../shortcuts/index";
+} from "../shortcuts/definitions";
+import { ShortcutKbd } from "../shortcuts/shortcut-kbd";
 import {
 	BriefcaseBusiness,
 	ChartColumn,

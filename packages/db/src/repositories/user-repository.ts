@@ -2,13 +2,13 @@ import {
 	ResourceConflictError,
 	ResourceNotFoundError,
 	UnexpectedError,
-} from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/errors";
 import type {
 	NewUser,
 	UpdateUser,
 	User,
 	UserRepository as UserRepositoryDef,
-} from "@solid-imager/core/domain/repositories/user-repository";
+} from "@solid-imager/core/users";
 import { eq } from "drizzle-orm";
 import { users } from "../schema";
 import type { DrizzleExecutor } from "../types";

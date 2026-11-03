@@ -2,7 +2,7 @@ import type {
 	LibraryStatistics,
 	StatisticsRequest,
 	StatisticsSelection,
-} from "@solid-imager/core/domain/media/statistics";
+} from "@solid-imager/core/statistics";
 import { createQuery } from "@tanstack/solid-query";
 import { Link, useLocation } from "@tanstack/solid-router";
 import { createSignal, For, Match, Show, Switch } from "solid-js";

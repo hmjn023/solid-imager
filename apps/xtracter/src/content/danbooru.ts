@@ -60,6 +60,7 @@ function isExcludedTwitterUser(username: string): boolean {
 	return excluded.includes(username.toLowerCase());
 }
 
+/** Adds controls to post images and preview cards, fetching preview metadata on demand. */
 export function processDanbooruMedia(
 	createButtonContainer: (
 		metadata: DownloadItem,
@@ -170,6 +171,14 @@ function parseTagsFromApiString(tagString: string | undefined): string[] {
 	return result;
 }
 
+/**
+ * Converts a Danbooru post response to download metadata. A single artist can
+ * inherit a Twitter account from the source URL; multiple artists remain Danbooru accounts.
+ *
+ * @param data - Untrusted API response to validate.
+ * @param postId - Post identifier used to construct the source URL.
+ * @returns Metadata, or null when the response is invalid or has no file URL.
+ */
 export function parseDanbooruApiMetadata(
 	data: unknown,
 	postId: string,

@@ -1,4 +1,3 @@
-import type { MediaSort } from "@solid-imager/core/domain/media/schemas";
 import { Show } from "solid-js";
 import { Button } from "./button";
 import { Input } from "./input";
@@ -12,18 +11,7 @@ import {
 } from "./select";
 import { parseSelectValue } from "./utils/parse-select-value";
 
-export const SORT_OPTIONS = [
-	"date",
-	"modifiedAt",
-	"indexedAt",
-	"size",
-	"resolution",
-	"name",
-	"rating",
-	"viewCount",
-] as const satisfies readonly MediaSort[];
-
-export type SortOption = (typeof SORT_OPTIONS)[number];
+import { getSortLabel, SORT_OPTIONS, type SortOption } from "./sort-options";
 
 type SortControlsProps = {
 	sortBy: SortOption;
@@ -38,31 +26,6 @@ type SortControlsProps = {
 	similarityLimitId?: string;
 	className?: string;
 };
-
-export function getSortLabel(value: SortOption) {
-	if (value === "date") {
-		return "ファイル作成日時";
-	}
-	if (value === "modifiedAt") {
-		return "更新日時";
-	}
-	if (value === "indexedAt") {
-		return "登録日時";
-	}
-	if (value === "name") {
-		return "名前";
-	}
-	if (value === "size") {
-		return "ファイルサイズ";
-	}
-	if (value === "resolution") {
-		return "解像度";
-	}
-	if (value === "rating") {
-		return "評価";
-	}
-	return "閲覧数";
-}
 
 export function SortControls(props: SortControlsProps) {
 	return (

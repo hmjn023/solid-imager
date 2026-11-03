@@ -6,7 +6,7 @@
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { LocalConnection } from "@solid-imager/core/domain/sources/schemas";
+import type { LocalConnection } from "@solid-imager/core/sources";
 import type { MediaSourceDriver, MediaSourceEntry } from "./schema";
 
 /**

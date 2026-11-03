@@ -1,0 +1,6 @@
+{
+	"categories": { "correctness": "off" },
+	"plugins": [],
+	"jsPlugins": ["./workspace-imports.mjs"],
+	"rules": { "workspace/public-imports": "error" }
+}

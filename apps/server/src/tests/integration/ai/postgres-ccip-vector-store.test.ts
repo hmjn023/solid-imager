@@ -1,9 +1,9 @@
 import path from "node:path";
-import type { CcipVectorRecord } from "@solid-imager/application/ports/ccip-vector-store";
 import {
+	type CcipVectorRecord,
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
+} from "@solid-imager/application/ccip";
 import {
 	CCIP_VECTOR_DIMENSIONS,
 	mediaRegions,

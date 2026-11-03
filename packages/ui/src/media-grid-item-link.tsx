@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import { Link } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import type { MediaGridLinkProps } from "./media-grid-item";
