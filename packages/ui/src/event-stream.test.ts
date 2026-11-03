@@ -111,3 +111,62 @@ it("shares the inbox stream with late subscribers until the last indicator unmou
 	stopSecond();
 	expect(signal.aborted).toBe(true);
 });
+
+it("shares one stream, initializes late listeners, and closes after the last unsubscribe", async () => {
+	const connected = Promise.withResolvers<void>();
+	const publish = Promise.withResolvers<string>();
+	let signal: AbortSignal | undefined;
+	const open = vi.fn(async (execution: AbortSignal) => {
+		signal = execution;
+		return {
+			async *[Symbol.asyncIterator]() {
+				yield await publish.promise;
+			},
+		};
+	});
+	const subscribe = createSharedEventSubscription(open);
+	const first = vi.fn();
+	const second = vi.fn();
+	const offFirst = subscribe(first, connected.resolve);
+	await connected.promise;
+	const lateConnected = vi.fn();
+	const offSecond = subscribe(second, lateConnected);
+	expect(open).toHaveBeenCalledOnce();
+	expect(lateConnected).toHaveBeenCalledOnce();
+	offFirst();
+	expect(signal?.aborted).toBe(false);
+	publish.resolve("event");
+	await vi.waitFor(() => expect(second).toHaveBeenCalledWith("event"));
+	expect(first).not.toHaveBeenCalled();
+	offSecond();
+	expect(signal?.aborted).toBe(true);
+});
+
+it("does not initialize late listeners while a normally completed stream reconnects", async () => {
+	vi.useFakeTimers();
+	try {
+		const finish = Promise.withResolvers<void>();
+		const open = vi.fn(async () => ({
+			async *[Symbol.asyncIterator]() {
+				await finish.promise;
+				yield* [];
+			},
+		}));
+		const subscribe = createSharedEventSubscription(open);
+		const firstConnected = vi.fn();
+		const stopFirst = subscribe(vi.fn(), firstConnected);
+		await vi.waitFor(() => expect(firstConnected).toHaveBeenCalledOnce());
+		finish.resolve();
+		await vi.advanceTimersByTimeAsync(0);
+		const lateConnected = vi.fn();
+		const stopLate = subscribe(vi.fn(), lateConnected);
+		expect(lateConnected).not.toHaveBeenCalled();
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(open).toHaveBeenCalledTimes(2);
+		expect(lateConnected).toHaveBeenCalledOnce();
+		stopLate();
+		stopFirst();
+	} finally {
+		vi.useRealTimers();
+	}
+});

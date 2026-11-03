@@ -1,3 +1,4 @@
+import { createSharedEventSubscription } from "@solid-imager/ui/event-stream";
 import {
 	createSourceEventTransport,
 	type MediaSourceEventTransport,
@@ -22,12 +23,22 @@ export type {
 
 type MediaSourceEventsOptions = Omit<UseMediaSourceEventsOptions, "transport">;
 
+export const subscribeAllSourceEvents = createSharedEventSubscription(
+	(signal) => orpc.sources.events({ id: "*" }, { signal }),
+);
+
 export function createTauriTransport(
 	mediaSourceId: Accessor<string | undefined>,
 ): MediaSourceEventTransport {
-	return createSourceEventTransport(mediaSourceId, (id, signal) =>
+	const scoped = createSourceEventTransport(mediaSourceId, (id, signal) =>
 		orpc.sources.events({ id }, { signal }),
 	);
+	return {
+		listen: (handler) =>
+			mediaSourceId() === "*"
+				? subscribeAllSourceEvents(handler)
+				: scoped.listen(handler),
+	};
 }
 
 export function useMediaSourceEvents(

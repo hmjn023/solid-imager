@@ -35,6 +35,7 @@ export function subscribeToEventStream<TEvent>(
 	onEvent: (event: TEvent) => void | Promise<void>,
 	onError?: EventStreamErrorHandler,
 	onConnected?: EventStreamConnectedHandler,
+	onDisconnected?: () => void,
 ): () => void {
 	const abortController = new AbortController();
 	const canObservePageLifecycle = typeof window !== "undefined";
@@ -54,6 +55,7 @@ export function subscribeToEventStream<TEvent>(
 		while (!abortController.signal.aborted) {
 			try {
 				const events = await openStream(abortController.signal);
+				if (abortController.signal.aborted) break;
 				await onConnected?.();
 
 				for await (const event of events) {
@@ -65,6 +67,7 @@ export function subscribeToEventStream<TEvent>(
 				}
 
 				if (!abortController.signal.aborted) {
+					onDisconnected?.();
 					retryCount++;
 					const delay = Math.min(
 						INITIAL_RETRY_DELAY * 2 ** (retryCount - 1),
@@ -98,49 +101,52 @@ export function subscribeToEventStream<TEvent>(
 	};
 }
 
-/** Share one connection between the desktop and mobile subscribers in the same app shell. */
+// Multiple mounted views in a tab can observe the same long-lived oRPC request.
 export function createSharedEventSubscription<TEvent>(
 	openStream: EventStreamFactory<TEvent>,
 ) {
 	type Subscriber = {
-		handler: (event: TEvent) => void | Promise<void>;
+		onEvent: (event: TEvent) => void | Promise<void>;
 		onConnected?: EventStreamConnectedHandler;
 	};
 	const subscribers = new Set<Subscriber>();
-	let disconnect: (() => void) | undefined;
+	let stop: (() => void) | undefined;
 	let connected = false;
-
 	return (
-		handler: Subscriber["handler"],
+		onEvent: Subscriber["onEvent"],
 		onConnected?: EventStreamConnectedHandler,
 	) => {
-		const subscriber = { handler, onConnected };
+		const subscriber = { onEvent, onConnected };
 		subscribers.add(subscriber);
-		if (connected) void onConnected?.();
-		disconnect ??= subscribeToEventStream(
-			openStream,
-			async (event) => {
-				for (const current of subscribers) await current.handler(event);
-			},
-			() => {
-				connected = false;
-			},
-			async () => {
-				connected = true;
-				await Promise.all(
-					Array.from(subscribers, async (current) => {
-						await current.onConnected?.();
-					}),
-				);
-			},
-		);
+		if (!stop) {
+			stop = subscribeToEventStream(
+				openStream,
+				async (event) => {
+					await Promise.all(
+						Array.from(subscribers, (listener) => listener.onEvent(event)),
+					);
+				},
+				() => {
+					connected = false;
+				},
+				async () => {
+					connected = true;
+					await Promise.all(
+						Array.from(subscribers, (listener) => listener.onConnected?.()),
+					);
+				},
+				() => {
+					connected = false;
+				},
+			);
+		} else if (connected) {
+			void onConnected?.();
+		}
 		return () => {
-			subscribers.delete(subscriber);
-			if (!subscribers.size) {
-				disconnect?.();
-				disconnect = undefined;
-				connected = false;
-			}
+			if (!subscribers.delete(subscriber) || subscribers.size) return;
+			stop?.();
+			stop = undefined;
+			connected = false;
 		};
 	};
 }

@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { Page } from "@playwright/test";
+import type { Page, Request, Response } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -208,7 +208,9 @@ test("Tauri links to Scalar on the selected API server", async ({ page }) => {
 
 test("Tauri Library separates preview selection from current media detail", async ({
 	page,
+	browserHealth,
 }) => {
+	const checkpoint = browserHealth.requestCheckpoint();
 	await openTauriRoute(page, "/search");
 	await expectWorkspaceShell(page);
 
@@ -241,10 +243,31 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await expect(inspector).toBeVisible();
 	await expect(inspector).toContainText(E2E_PRIMARY_FILE_NAME);
 	await captureTauriScreenshot(page, "search");
+	for (const path of ["/api/rpc/imports/events", "/api/rpc/sources/events"]) {
+		expect(browserHealth.apiRequestCountPathSince(checkpoint, path)).toBe(1);
+	}
 
 	// `window.open` is emitted on the context even when Chromium does not
 	// classify the child as a popup. Keep a bounded wait so a blocked new tab
 	// cannot leave this migration suite running indefinitely.
+	const popupRequests: Request[] = [];
+	const popupResponses: Response[] = [];
+	const recordRequest = (request: Request) => {
+		if (
+			new URL(request.url()).pathname.startsWith("/api/rpc/") &&
+			request.frame().page() !== page
+		)
+			popupRequests.push(request);
+	};
+	const recordResponse = (response: Response) => {
+		if (
+			new URL(response.url()).pathname.startsWith("/api/rpc/") &&
+			response.request().frame().page() !== page
+		)
+			popupResponses.push(response);
+	};
+	page.context().on("request", recordRequest);
+	page.context().on("response", recordResponse);
 	const popupPromise = page.context().waitForEvent("page", { timeout: 15_000 });
 	await media.click({ button: "right" });
 	await page
@@ -254,6 +277,35 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await waitForTauriWorkspace(popup);
 	await expect(popup).toHaveURL(new RegExp(`/#${mediaPath}$`));
 	await expectTauriMediaDetail(popup);
+	await expect
+		.poll(
+			() =>
+				popupRequests.filter(
+					(request) =>
+						new URL(request.url()).pathname === "/api/rpc/sources/events",
+				).length,
+		)
+		.toBe(2);
+	await expect
+		.poll(
+			() =>
+				popupRequests.filter(
+					(request) =>
+						new URL(request.url()).pathname === "/api/rpc/imports/events",
+				).length,
+		)
+		.toBe(1);
+	await expect
+		.poll(() =>
+			popupResponses.some(
+				(response) =>
+					new URL(response.url()).pathname === "/api/rpc/media/getDetails" &&
+					response.ok(),
+			),
+		)
+		.toBe(true);
+	page.context().off("request", recordRequest);
+	page.context().off("response", recordResponse);
 	await popup.close();
 
 	await media.dblclick();
