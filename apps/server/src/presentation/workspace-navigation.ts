@@ -6,7 +6,8 @@ import { useLocation, useRouter } from "@tanstack/solid-router";
 
 export type WorkspaceTarget =
 	| { kind: "media"; sourceId: string; mediaId: string }
-	| { kind: "search"; snapshotId: string };
+	| { kind: "search"; snapshotId: string }
+	| { kind: "job"; jobId: string };
 
 function destination(target: WorkspaceTarget) {
 	switch (target.kind) {
@@ -15,6 +16,8 @@ function destination(target: WorkspaceTarget) {
 				to: "/sources/$mediaSourceId/$mediaId",
 				params: { mediaSourceId: target.sourceId, mediaId: target.mediaId },
 			} as const;
+		case "job":
+			return { to: "/jobs", search: { jobId: target.jobId } } as const;
 		case "search":
 			return { to: "/search", search: { search: target.snapshotId } } as const;
 	}
@@ -23,6 +26,7 @@ function destination(target: WorkspaceTarget) {
 // Human navigation and assisted navigation use the same route and return history.
 export type WorkspaceNavigation = {
 	href: () => string;
+	selectedJobId: () => string | undefined;
 	pathname: () => string;
 	open: (
 		target: WorkspaceTarget,
@@ -36,7 +40,7 @@ export type WorkspaceNavigation = {
 	openMediaDetail: (
 		media: MediaContextItem,
 		items?: readonly MediaContextItem[],
-	) => Promise<void>;
+	) => void;
 };
 export function useWorkspaceNavigation(): WorkspaceNavigation {
 	const router = useRouter();
@@ -49,6 +53,7 @@ export function useWorkspaceNavigation(): WorkspaceNavigation {
 	}
 	return {
 		href: () => location().href,
+		selectedJobId: () => location().search.jobId,
 		pathname: () => location().pathname,
 		open,
 		at(target: WorkspaceTarget) {
@@ -57,6 +62,7 @@ export function useWorkspaceNavigation(): WorkspaceNavigation {
 			return (
 				current.pathname.replace(/\/$/, "") ===
 					route.pathname.replace(/\/$/, "") &&
+				(target.kind !== "job" || current.search.jobId === target.jobId) &&
 				(target.kind !== "search" ||
 					current.search.search === target.snapshotId)
 			);
@@ -71,7 +77,7 @@ export function useWorkspaceNavigation(): WorkspaceNavigation {
 			media: MediaContextItem,
 			items?: readonly MediaContextItem[],
 		) => {
-			return open(
+			void open(
 				{ kind: "media", sourceId: media.mediaSourceId, mediaId: media.id },
 				items ?? [media],
 			);

@@ -1,4 +1,8 @@
 import {
+	ccipExtractionRequestSchema,
+	startCcipExtractionResponseSchema,
+} from "@solid-imager/core/domain/tagging/schemas";
+import {
 	viewToolTitles,
 	type WebToolInfo,
 } from "@solid-imager/core/domain/config/mcp";
@@ -124,13 +128,20 @@ export async function registerWebTools(
 				),
 			};
 		}
+		if (view?.kind === "jobs") {
+			const job = view.job;
+			return {
+				view: "jobs",
+				job: job ? { id: job.id, type: job.type, status: job.status } : null,
+			};
+		}
 		return { view: "other", path: navigation.pathname() };
 	};
 
 	const tools = [
 		defineTool(
 			"get_current_view",
-			"Inspect the open image or loaded search results and selection. Use to understand what the user is looking at before acting.",
+			"Inspect the open image, search results and selection, or selected job. Use to understand what the user is looking at before acting.",
 			true,
 			pageSchema,
 			async ({ offset, limit }) => currentView(offset, limit),
@@ -195,6 +206,30 @@ export async function registerWebTools(
 				);
 				return afterCommit(result, () =>
 					views.reflectTags(target, input.action, input.tagIds, execution),
+				);
+			},
+		),
+		defineTool(
+			"ai_startCcipExtraction",
+			"Queue CCIP feature extraction for an image. Set showJob when the user wants to follow progress in this tab. Returns the queued job ID.",
+			false,
+			ccipExtractionRequestSchema.extend({
+				showJob: z
+					.boolean()
+					.default(false)
+					.describe("Open the queued job in this tab."),
+			}),
+			async ({ showJob, ...input }, execution, origin) => {
+				if (showJob) views.beforeNavigation(execution, origin);
+				const result = startCcipExtractionResponseSchema.parse(
+					await orpc.config.callWebTool(
+						{ name: "ai_startCcipExtraction", arguments: input },
+						{ signal: execution },
+					),
+				);
+				if (!showJob || !result.success) return result;
+				return afterCommit(result, () =>
+					views.show({ kind: "job", jobId: result.jobId }, execution, origin),
 				);
 			},
 		),
@@ -273,6 +308,7 @@ export async function registerWebTools(
 
 	const labels: Record<string, string> = {
 		...viewToolTitles,
+		ai_startCcipExtraction: "CCIP特徴抽出を登録",
 		search_media: "メディアを検索",
 		edit_media_tags: "画像のタグを編集",
 		find_tags: "タグを検索",

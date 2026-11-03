@@ -33,6 +33,14 @@ type ViewTarget =
 
 function matchesTarget(target: ViewTarget, view: WorkspaceView) {
 	switch (target.kind) {
+		case "job":
+			if (view.kind !== "jobs") return false;
+			if (view.failed)
+				throw new ViewActionError(
+					"The selected job could not be loaded.",
+					"JOB_VIEW_FAILED",
+				);
+			return view.job?.id === target.jobId;
 		case "media":
 			return (
 				view.kind === "media" &&

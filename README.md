@@ -38,6 +38,8 @@ Web と Tauri の **Settings → MCP** で、接続先サーバーの公開候�
 
 追加の候補は oRPC の契約から生成します。たとえば `tags.list` は `tags_list` として両方で公開でき、WebMCP ではタブを移動せずにデータを返します。設定 API、イベント購読、ファイルやバイナリを扱う API、旧 `media.getContent` は対象外です。新しい候補は初期状態で非公開です。
 
+WebMCP で `ai_startCcipExtraction` を公開すると、`showJob: true` を指定して CCIP 特徴抽出を登録し、返された `jobId` の詳細を Jobs 画面で開けます。省略時はジョブを登録したタブに留まります。登録後に別画面へ移った場合もジョブは有効で、結果の `presentation: "unconfirmed"` は表示を確認できなかったことを示します。受け取った ID でジョブを確認できます。
+
 サーバーの `config.json`（リポジトリ直下から起動する場合は `apps/server/config.json`、パス変更は `CONFIG_PATH`）でも同じ公開リストを指定できます。次の例では HTTP からは検索だけを許可し、ブラウザーでは現在の画面とタグ一覧を参照できます。
 
 ```json

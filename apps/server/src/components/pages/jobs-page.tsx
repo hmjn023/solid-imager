@@ -1,10 +1,12 @@
+import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
+import { useWorkspaceView } from "~/presentation/workspace-view";
+import { useJobInspection } from "@solid-imager/ui/hooks/use-job-inspection";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import type { JobListResponse } from "@solid-imager/core/domain/jobs/schemas";
-import { useJobEvents } from "@solid-imager/ui/hooks/use-job-events";
+import { useJobsQueryEvents } from "@solid-imager/ui/hooks/use-jobs-query-events";
 import {
 	DEFAULT_JOBS_PAGE_SIZE,
 	jobsQueryKeys,
-	updateJobProgress,
 } from "@solid-imager/ui/query-options";
 import { toQueryUiState } from "@solid-imager/ui/query-state";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
@@ -25,6 +27,18 @@ export function JobsPage() {
 			offset: pageIndex() * DEFAULT_JOBS_PAGE_SIZE,
 		}),
 	);
+	const workspace = useWorkspaceNavigation();
+	const inspection = useJobInspection(
+		workspace.selectedJobId,
+		jobsQuery,
+		(id, signal) => orpc.jobs.get({ id }, { signal }),
+		(jobId) => void workspace.open({ kind: "job", jobId }),
+	);
+	useWorkspaceView(() => ({
+		kind: "jobs",
+		job: inspection.job(),
+		failed: inspection.failed(),
+	}));
 	const queryClient = useQueryClient();
 	const pagination = () => {
 		const total = jobsQuery.data?.total ?? 0;
@@ -38,22 +52,11 @@ export function JobsPage() {
 		};
 	};
 
-	useJobEvents(
-		(signal) => orpc.jobs.events(undefined, { signal }),
-		(event) => {
-			if (event.event === "job-progress") {
-				queryClient.setQueriesData<JobListResponse>(
-					{ queryKey: jobsQueryKeys.listPrefix() },
-					(data) => updateJobProgress(data, event.data),
-				);
-				return;
-			}
-			void queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
-		},
-	);
+	useJobsQueryEvents((signal) => orpc.jobs.events(undefined, { signal }));
 
 	return (
 		<JobsScreen
+			inspection={inspection}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}
 			jobs={() => jobsQuery.data?.items ?? []}

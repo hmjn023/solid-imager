@@ -1,3 +1,4 @@
+import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaActions as SharedMediaActions } from "@solid-imager/ui/media-actions";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
@@ -19,6 +20,7 @@ export type MediaActionsProps = {
 };
 
 export function MediaActions(props: MediaActionsProps) {
+	const workspace = useWorkspaceNavigation();
 	const navigate = useNavigate();
 
 	return (
@@ -61,7 +63,7 @@ export function MediaActions(props: MediaActionsProps) {
 				void navigate({ to: "/search" });
 			}}
 			onUpdate={props.onUpdate}
-			onViewJobs={() => void navigate({ to: "/jobs" })}
+			onViewJobs={(jobId) => void workspace.open({ kind: "job", jobId })}
 			oppaiOracleModal={(modalProps) => (
 				<OppaiOracleModal
 					isOpen={modalProps.isOpen}

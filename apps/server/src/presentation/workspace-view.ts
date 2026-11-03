@@ -1,3 +1,4 @@
+import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
 import type {
 	Media,
 	MediaDetails,
@@ -24,7 +25,12 @@ type SearchView = {
 	selectedIds: string[];
 };
 type MediaView = { kind: "media"; media: MediaDetails };
-export type WorkspaceView = SearchView | MediaView;
+type JobsView = {
+	kind: "jobs";
+	job: Pick<JobDto, "id" | "type" | "status"> | undefined;
+	failed: boolean;
+};
+export type WorkspaceView = SearchView | MediaView | JobsView;
 
 // Only mounted browser views register here; SSR never writes per-user state.
 const [viewReader, setViewReader] = createSignal<Accessor<WorkspaceView>>();
