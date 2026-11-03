@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { mediaTypeSchema } from "./schemas";
 
 export const statisticsPeriodSchema = z.enum(["recent", "all"]);
 export const statisticsSelectionSchema = z.object({
@@ -35,6 +36,10 @@ const rankedEntitySchema = z.object({
 export const STATISTICS_PAGE_SIZE = 20;
 export const statisticsResponseSchema = z.object({
 	trend: z.array(z.object({ bucket: z.iso.date(), count: countSchema })),
+	models: z.array(
+		z.object({ name: z.string(), count: countSchema, favorites: countSchema }),
+	),
+	mediaTypes: z.array(z.object({ type: mediaTypeSchema, count: countSchema })),
 	ips: z.array(rankedEntitySchema),
 	characters: z.array(rankedEntitySchema),
 	media: z.array(

@@ -2863,6 +2863,59 @@
                         "additionalProperties": false
                       }
                     },
+                    "models": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "favorites": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "name",
+                          "count",
+                          "favorites"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "mediaTypes": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "enum": [
+                              "image",
+                              "video",
+                              "audio"
+                            ]
+                          },
+                          "count": {
+                            "type": "integer",
+                            "minimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "count"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
                     "ips": {
                       "type": "array",
                       "items": {
@@ -2950,6 +3003,8 @@
                   },
                   "required": [
                     "trend",
+                    "models",
+                    "mediaTypes",
                     "ips",
                     "characters",
                     "media",

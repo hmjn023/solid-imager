@@ -6,6 +6,8 @@ import {
 	ips,
 	mediaCharacters,
 	mediaIps,
+	mediaDetails,
+	mediaGenerationInfo,
 	medias,
 	mediaSources,
 } from "~/infrastructure/db/schema";
@@ -52,6 +54,7 @@ describe("library statistics", () => {
 					fileName: String(i),
 					filePath: String(i),
 					indexedAt: new Date(ms),
+					mediaType: i === 1 ? ("video" as const) : ("image" as const),
 					status: i === 3 ? ("deleted" as const) : ("active" as const),
 				})),
 			)
@@ -62,6 +65,16 @@ describe("library statistics", () => {
 				...items.map((m) => ({ mediaId: m.id, characterId: one.id })),
 				{ mediaId: items[2].id, characterId: two.id },
 			]);
+		await db.insert(mediaGenerationInfo).values([
+			{ mediaId: items[0].id, modelName: "Library A" },
+			{ mediaId: items[1].id, modelName: "  Library A " },
+			{ mediaId: items[2].id, modelName: "Library B" },
+			{ mediaId: items[3].id, modelName: "Deleted model" },
+		]);
+		await db.insert(mediaDetails).values([
+			{ mediaId: items[0].id, favorite: true },
+			{ mediaId: items[2].id, favorite: true },
+		]);
 		await db.insert(mediaIps).values({ mediaId: items[2].id, ipId: work.id });
 		const rescanned = await MediaRepository.upsert({
 			...base,
@@ -77,6 +90,14 @@ describe("library statistics", () => {
 		expect(recent.trend[0].count).toBe(1);
 		expect(recent.trend.at(-1)).toEqual({ bucket: today, count: 1 });
 		expect(recent.trend.reduce((sum, b) => sum + b.count, 0)).toBe(2);
+		expect(recent.mediaTypes).toEqual([
+			{ type: "image", count: 1 },
+			{ type: "video", count: 1 },
+		]);
+		expect(recent.models).toEqual([
+			{ name: "Library B", count: 1, favorites: 1 },
+			{ name: "Library A", count: 1, favorites: 0 },
+		]);
 		expect(recent.ips).toEqual([{ id: work.id, name: work.name, count: 2 }]);
 		expect(recent.characters.map((c) => c.count)).toEqual([2, 1]);
 		const all = await MediaRepository.getStatistics({
@@ -85,6 +106,14 @@ describe("library statistics", () => {
 		});
 		expect(all.trend.reduce((sum, b) => sum + b.count, 0)).toBe(3);
 		expect(all.ips[0].count).toBe(3);
+		expect(all.models).toEqual([
+			{ name: "Library A", count: 2, favorites: 1 },
+			{ name: "Library B", count: 1, favorites: 1 },
+		]);
+		expect(all.mediaTypes).toEqual([
+			{ type: "image", count: 2 },
+			{ type: "video", count: 1 },
+		]);
 		expect(all.trend.every((b) => b.bucket.endsWith("-01"))).toBe(true);
 		const selected = await MediaRepository.getStatistics({
 			period: "recent",
@@ -96,6 +125,10 @@ describe("library statistics", () => {
 		expect(selected.ips[0].count).toBe(1);
 		expect(selected.characters.map((c) => c.count)).toEqual([1, 1]);
 		expect(selected.media.map((m) => m.id)).toEqual([items[2].id]);
+		expect(selected.mediaTypes).toEqual([{ type: "image", count: 1 }]);
+		expect(selected.models).toEqual([
+			{ name: "Library B", count: 1, favorites: 1 },
+		]);
 		expect(selected.hasMore).toBe(false);
 	});
 });
