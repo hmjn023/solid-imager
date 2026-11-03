@@ -36,6 +36,9 @@ export const ArrowLeft = icon(() => (
 		<path d="M19 12H5" />
 	</>
 ));
+export const ChartColumn = icon(() => (
+	<path d="M3 3v18h18M8 17v-5m5 5V7m5 10v-8" />
+));
 export const BriefcaseBusiness = icon(() => (
 	<>
 		<path d="M12 12h.01" />

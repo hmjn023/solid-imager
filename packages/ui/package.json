@@ -17,6 +17,7 @@
     "@kobalte/core": "^0.13.14",
     "@solid-imager/core": "workspace:*",
     "@solidjs/router": "^1.0.0",
+    "@tanstack/charts": "^1.2.1",
     "@tanstack/solid-form": "^1.33.5",
     "@tanstack/solid-hotkeys": "0.17.0",
     "@tanstack/solid-query": "5.105.0",

@@ -26,7 +26,23 @@ import { uploadResponseSchema } from "../media/upload-schemas";
 import { similarMediaRequestSchema } from "../tagging/schemas";
 import { semanticSearchRequestSchema } from "../search/embedding";
 
+import {
+	statisticsRequestSchema,
+	statisticsResponseSchema,
+} from "../media/statistics";
+
 export const mediaContract = {
+	statistics: oc
+		.meta(
+			openapi({
+				tags: ["Media"],
+				summary: "ライブラリ統計",
+				description:
+					"現在ライブラリに残るメディアをDB登録日で集計します。累計には表示期間より前の登録分も含みます。作品・キャラクター別の件数はManagerと同じ直接の関連付けを対象とします。",
+			}),
+		)
+		.input(statisticsRequestSchema)
+		.output(statisticsResponseSchema),
 	updatePreferences: oc
 		.meta(
 			openapi({

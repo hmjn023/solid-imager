@@ -1,5 +1,10 @@
 @layer base {
 	:root {
+		--chart-blue: #356bcc;
+		--chart-violet: #7852b6;
+		--chart-coral: #bb5736;
+		--chart-amber: #ac731a;
+		--chart-rose: #b34577;
 		color-scheme: light;
 		--background: 0 0% 100%;
 		--foreground: 240 10% 3.9%;
