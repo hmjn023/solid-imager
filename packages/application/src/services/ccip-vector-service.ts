@@ -1,7 +1,7 @@
 import type {
 	Media,
 	SimilarMediaSearchResponse,
-	IMediaRepository,
+	MediaReader,
 } from "@solid-imager/core/media";
 import type { SourceRepository } from "@solid-imager/core/sources";
 import { asyncPool } from "@solid-imager/core/utils";
@@ -20,7 +20,7 @@ export const CCIP_EMBEDDING_VERSION = 1;
 
 /** Storage, inference and media dependencies used for CCIP extraction and search. */
 export type CcipVectorServiceDeps = {
-	mediaRepository: IMediaRepository;
+	mediaRepository: Pick<MediaReader, "findById" | "findByIds">;
 	sourceRepository: SourceRepository;
 	taggingService: ITaggingService;
 	vectorStore: ICcipVectorStore;

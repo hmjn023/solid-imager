@@ -11,7 +11,8 @@ import type {
 import type {
 	Media,
 	MediaMetadataContext,
-	IMediaRepository,
+	MediaReader,
+	MediaWriter,
 } from "@solid-imager/core/media";
 import type { IAuthorRepository } from "@solid-imager/core/authors";
 import type { IIpRepository } from "@solid-imager/core/ips";
@@ -29,7 +30,8 @@ import type { ILogger } from "../ports/logger";
 
 export type MediaProcessingServiceDeps = {
 	sourceRepo: SourceRepository;
-	mediaRepo: IMediaRepository;
+	mediaRepo: Pick<MediaReader, "findById"> &
+		Pick<MediaWriter, "addUrls" | "create" | "update" | "upsertGenerationInfo">;
 	tagRepo: TagRepository;
 	authorRepo: IAuthorRepository;
 	characterRepo: CharacterRepository;
@@ -58,7 +60,7 @@ export type MediaProcessingServiceDeps = {
 /** Registers media and processes jobs, including optional automatic tagging and CCIP extraction. */
 class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly sourceRepo: SourceRepository;
-	private readonly mediaRepo: IMediaRepository;
+	private readonly mediaRepo: MediaProcessingServiceDeps["mediaRepo"];
 	private readonly tagRepo: TagRepository;
 	private readonly authorRepo: IAuthorRepository;
 	private readonly characterRepo: CharacterRepository;

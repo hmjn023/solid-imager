@@ -1,25 +1,22 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import type { IMediaRepository } from "@solid-imager/core/media";
+import type { MediaMaintenanceRepository } from "@solid-imager/core/media";
 import type { SourceRepository } from "@solid-imager/core/sources";
 import type { IJobRepository } from "@solid-imager/core/jobs";
 import { getSourceCacheDir } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 
-export class MaintenanceService {
-	private readonly mediaRepo: IMediaRepository;
-	private readonly jobRepo: IJobRepository;
-	private readonly sourceRepo: SourceRepository;
+type MaintenanceMediaIndex = Pick<
+	MediaMaintenanceRepository,
+	"findAllMediaIndices" | "findIdsWithMissingGenerationInfo"
+>;
 
+export class MaintenanceService {
 	constructor(
-		mediaRepo: IMediaRepository,
-		jobRepo: IJobRepository,
-		sourceRepo: SourceRepository,
-	) {
-		this.mediaRepo = mediaRepo;
-		this.jobRepo = jobRepo;
-		this.sourceRepo = sourceRepo;
-	}
+		private readonly mediaRepo: MaintenanceMediaIndex,
+		private readonly jobRepo: IJobRepository,
+		private readonly sourceRepo: SourceRepository,
+	) {}
 
 	/**
 	 * Performs startup checks to ensure data consistency and recovery.

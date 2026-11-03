@@ -8,7 +8,6 @@ import type { IAuthorRepository } from "@solid-imager/core/authors";
 import type { CharacterRepository } from "@solid-imager/core/characters";
 import type { IIpRepository } from "@solid-imager/core/ips";
 import type { IJobRepository } from "@solid-imager/core/jobs";
-import type { IMediaRepository } from "@solid-imager/core/media";
 import type { IProjectRepository } from "@solid-imager/core/projects";
 import type { SourceRepository } from "@solid-imager/core/sources";
 import type { TagRepository } from "@solid-imager/core/tags";
@@ -19,15 +18,26 @@ import type {
 	ISourceEventPublisher,
 	IThumbnailManager,
 } from "./ports/media-service";
-import { MediaQueryService } from "./services/media-query-service";
+import {
+	MediaQueryService,
+	type MediaQueryRepository,
+} from "./services/media-query-service";
 import { MediaServiceImpl } from "./services/media-service";
-import { MediaTransferService } from "./services/media-transfer-service";
-import { MediaUploadService } from "./services/media-upload-service";
+import {
+	MediaTransferService,
+	type MediaTransferRepository,
+} from "./services/media-transfer-service";
+import {
+	MediaUploadService,
+	type MediaUploadRepository,
+} from "./services/media-upload-service";
 
 export type { DeferredActions, IMediaService } from "./ports/media-service";
 
 export interface MediaServiceDeps {
-	mediaRepository: IMediaRepository;
+	mediaRepository: MediaQueryRepository &
+		MediaUploadRepository &
+		MediaTransferRepository;
 	sourceRepository: SourceRepository;
 	tagRepository: TagRepository;
 	jobRepository: IJobRepository;

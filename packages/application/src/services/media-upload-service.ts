@@ -14,7 +14,8 @@ import {
 	type UploadMediaRequest,
 	type UploadResponse,
 	uploadMediaRequestSchema,
-	type IMediaRepository,
+	type MediaReader,
+	type MediaWriter,
 } from "@solid-imager/core/media";
 import { getMediaTypeFromExtension } from "@solid-imager/core/media/files";
 import type { IJobRepository } from "@solid-imager/core/jobs";
@@ -67,10 +68,13 @@ export async function validateFileSignature(
 	}
 }
 
+export type MediaUploadRepository = Pick<MediaReader, "findByPath"> &
+	Pick<MediaWriter, "upsert" | "addUrls">;
+
 /** Uploads to local sources, registers media and queues processing. A failed registration attempts file cleanup. */
 export class MediaUploadService {
 	constructor(
-		private readonly mediaRepository: IMediaRepository,
+		private readonly mediaRepository: MediaUploadRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
 		private readonly jobRepo: IJobRepository,

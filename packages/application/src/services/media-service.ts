@@ -10,8 +10,10 @@ import type {
 	Media,
 	MediaDetails,
 	MediaGenerationInfo,
+	MediaSearchRequestInput,
 	MediaSearchResponse,
 	MediaTag,
+	UpdateMediaRequestInput,
 	UploadMediaRequest,
 	UploadResponse,
 } from "@solid-imager/core/media";
@@ -33,7 +35,7 @@ export class MediaServiceImpl implements IMediaService {
 
 	async searchMedia(
 		mediaSourceId: string | undefined | null,
-		params: unknown,
+		params: MediaSearchRequestInput,
 	): Promise<MediaSearchResponse> {
 		return this.queryService.searchMedia(mediaSourceId, params);
 	}
@@ -90,7 +92,7 @@ export class MediaServiceImpl implements IMediaService {
 	async updateMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		updates: unknown,
+		updates: UpdateMediaRequestInput,
 		tx?: Transaction,
 	): Promise<Media> {
 		return this.transferService.updateMedia(

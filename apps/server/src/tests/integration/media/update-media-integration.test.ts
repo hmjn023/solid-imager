@@ -135,11 +135,7 @@ describe("updateMedia Integration", () => {
 	it("should throw a ZodError for invalid update data", async () => {
 		const invalidUpdates = { width: -100 }; // 無効なフィールド
 		await expect(
-			MediaService.updateMedia(
-				testSourceId,
-				testMediaId,
-				invalidUpdates as any,
-			),
+			MediaService.updateMedia(testSourceId, testMediaId, invalidUpdates),
 		).rejects.toBeInstanceOf(ZodError);
 	});
 });

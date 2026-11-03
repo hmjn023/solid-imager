@@ -1,9 +1,14 @@
 import {
 	createMediaService,
 	type IMediaService,
+	type MediaServiceDeps,
 } from "@solid-imager/application/media";
 import type { IMediaStorage, IImageProcessor } from "@solid-imager/core/ports";
-import type { MediaDetails, IMediaRepository } from "@solid-imager/core/media";
+import type {
+	MediaDetails,
+	MediaSearchRequestInput,
+	UpdateMediaRequestInput,
+} from "@solid-imager/core/media";
 import type { IAuthorRepository } from "@solid-imager/core/authors";
 import type { CharacterRepository } from "@solid-imager/core/characters";
 import type { IIpRepository } from "@solid-imager/core/ips";
@@ -11,12 +16,20 @@ import type { IJobRepository } from "@solid-imager/core/jobs";
 import type { IProjectRepository } from "@solid-imager/core/projects";
 import type { SourceRepository } from "@solid-imager/core/sources";
 import type { TagRepository } from "@solid-imager/core/tags";
-import { beforeEach, describe, expect, it, type Mock, vi } from "vitest";
+import {
+	beforeEach,
+	describe,
+	expect,
+	expectTypeOf,
+	it,
+	type Mock,
+	vi,
+} from "vitest";
 const MEDIA_NOT_FOUND_REGEX = /media.*not found/i;
 
 describe("MediaService Unit Tests", () => {
 	let mediaService: IMediaService;
-	let mockMediaRepository: IMediaRepository;
+	let mockMediaRepository: MediaServiceDeps["mediaRepository"];
 	let mockSourceRepository: SourceRepository;
 	let mockStorageService: IMediaStorage;
 	let mockTagRepository: TagRepository;
@@ -56,7 +69,6 @@ describe("MediaService Unit Tests", () => {
 			create: vi.fn(),
 			upsert: vi.fn(),
 			update: vi.fn(),
-			updateConfig: vi.fn(),
 			delete: vi.fn(),
 			search: vi.fn(),
 			findAllBySourceId: vi.fn(),
@@ -68,9 +80,9 @@ describe("MediaService Unit Tests", () => {
 			addUrls: vi.fn(),
 			upsertGenerationInfo: vi.fn(),
 			getDetails: vi.fn(),
-			findAllPathsBySourceId: vi.fn(),
+			globalSearch: vi.fn(),
 			findDuplicates: vi.fn(),
-		} as unknown as IMediaRepository;
+		};
 
 		mockSourceRepository = {
 			findById: vi.fn(),
@@ -131,6 +143,32 @@ describe("MediaService Unit Tests", () => {
 			logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
 			deferredActionExecutor: { execute: vi.fn() },
 			mediaContextProcessor,
+		});
+	});
+
+	describe("searchMedia", () => {
+		it("passes parsed pagination and defaults to global search", async () => {
+			expectTypeOf(mediaService.searchMedia)
+				.parameter(1)
+				.toEqualTypeOf<MediaSearchRequestInput>();
+			const result = { media: [], total: 0 };
+			vi.mocked(mockMediaRepository.globalSearch).mockResolvedValue(result);
+
+			await expect(
+				mediaService.searchMedia(null, { limit: "5" }),
+			).resolves.toEqual(result);
+			expect(mockMediaRepository.globalSearch).toHaveBeenCalledWith({
+				limit: 5,
+				offset: 0,
+				order: "desc",
+			});
+		});
+
+		it("rejects invalid pagination before querying the repository", async () => {
+			await expect(
+				mediaService.searchMedia(null, { limit: "bad" }),
+			).rejects.toThrow();
+			expect(mockMediaRepository.globalSearch).not.toHaveBeenCalled();
 		});
 	});
 
@@ -247,10 +285,14 @@ describe("MediaService Unit Tests", () => {
 
 	describe("updateMedia", () => {
 		it("should update media and call MediaProcessingService for characters/ips", async () => {
+			expectTypeOf(mediaService.updateMedia)
+				.parameter(2)
+				.toEqualTypeOf<UpdateMediaRequestInput>();
 			const mediaId = "123e4567-e89b-42d3-a456-426614174000";
 			const sourceId = "123e4567-e89b-42d3-a456-426614174001";
 			const updates = {
 				description: "Updated desc",
+				modifiedAt: "2026-01-15T00:00:00Z",
 				characters: [{ name: "Char 1", confidence: 0.8 }],
 				ips: [{ name: "IP 1" }],
 			};
@@ -265,7 +307,10 @@ describe("MediaService Unit Tests", () => {
 
 			expect(mockMediaRepository.update).toHaveBeenCalledWith(
 				mediaId,
-				expect.objectContaining({ description: "Updated desc" }),
+				expect.objectContaining({
+					description: "Updated desc",
+					modifiedAt: new Date(updates.modifiedAt),
+				}),
 				expect.anything(),
 			);
 

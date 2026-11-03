@@ -6,7 +6,6 @@ import {
 import type { IAiClient } from "@solid-imager/core/ports";
 import type { CharacterRepository } from "@solid-imager/core/characters";
 import type { IIpRepository } from "@solid-imager/core/ips";
-import type { IMediaRepository } from "@solid-imager/core/media";
 import type { SourceRepository } from "@solid-imager/core/sources";
 import type { TagRepository } from "@solid-imager/core/tags";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -17,7 +16,7 @@ describe("createTaggingService", () => {
 	let taggingService: ITaggingService;
 	let mockAiClient: IAiClient;
 	let mockSourceRepo: SourceRepository;
-	let mockMediaRepo: IMediaRepository;
+	let mockMediaRepo: TaggingServiceDeps["mediaRepo"];
 	let mockTagRepo: TagRepository;
 	let mockCharacterRepo: CharacterRepository;
 	let mockIpRepo: IIpRepository;
@@ -45,15 +44,13 @@ describe("createTaggingService", () => {
 		} as unknown as SourceRepository;
 
 		mockMediaRepo = {
-			findById: vi.fn(() =>
-				Promise.resolve({
-					id: "media-1",
-					mediaSourceId: "source-1",
-					mediaType: "image",
-					filePath: "remote/path.jpg",
-				}),
-			),
-		} as unknown as IMediaRepository;
+			findById: vi.fn().mockResolvedValue({
+				id: "media-1",
+				mediaSourceId: "source-1",
+				mediaType: "image",
+				filePath: "remote/path.jpg",
+			}),
+		};
 
 		mockTagRepo = {
 			findByMediaId: vi.fn(() => Promise.resolve([])),

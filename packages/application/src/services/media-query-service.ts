@@ -11,7 +11,11 @@ import {
 	mediaIdSchema,
 	mediaSearchRequestSchema,
 	mediaSourceIdSchema,
-	type IMediaRepository,
+	type MediaDetailsReader,
+	type MediaReader,
+	type MediaSearchRepository,
+	type MediaWriter,
+	type MediaSearchRequestInput,
 } from "@solid-imager/core/media";
 import { getContentTypeFromExtension } from "@solid-imager/core/media/files";
 import {
@@ -21,10 +25,15 @@ import {
 import type { TagRepository } from "@solid-imager/core/tags";
 import type { ILogger } from "../ports/logger";
 
+export type MediaQueryRepository = MediaSearchRepository &
+	Pick<MediaReader, "findById" | "findAllBySourceId"> &
+	Pick<MediaDetailsReader, "getDetails" | "getTags" | "getGenerationInfo"> &
+	Pick<MediaWriter, "upsertGenerationInfo">;
+
 /** Provides media lookup, content retrieval, metadata and duplicate search operations. */
 export class MediaQueryService {
 	constructor(
-		private readonly mediaRepository: IMediaRepository,
+		private readonly mediaRepository: MediaQueryRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
 		private readonly tagRepository: TagRepository,
@@ -34,7 +43,7 @@ export class MediaQueryService {
 
 	async searchMedia(
 		mediaSourceId: string | undefined | null,
-		params: unknown,
+		params: MediaSearchRequestInput,
 	): Promise<MediaSearchResponse> {
 		const searchRequest = mediaSearchRequestSchema.parse(params);
 		if (mediaSourceId) {

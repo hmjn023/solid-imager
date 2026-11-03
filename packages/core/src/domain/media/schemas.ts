@@ -89,6 +89,7 @@ export const updateMediaRequestSchema = z.object({
 		)
 		.optional(),
 });
+export type UpdateMediaRequestInput = z.input<typeof updateMediaRequestSchema>;
 export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 
 /**
@@ -254,6 +255,7 @@ export const mediaSearchRequestSchema = z.object({
 	offset: z.coerce.number().int().nonnegative().default(0),
 });
 
+export type MediaSearchRequestInput = z.input<typeof mediaSearchRequestSchema>;
 export type MediaSearchRequest = z.infer<typeof mediaSearchRequestSchema>;
 
 /** Search results and the total number of matching media items. */

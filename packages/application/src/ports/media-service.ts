@@ -6,8 +6,10 @@ import type {
 	MediaDetails,
 	MediaGenerationInfo,
 	MediaMetadataContext,
+	MediaSearchRequestInput,
 	MediaSearchResponse,
 	MediaTag,
+	UpdateMediaRequestInput,
 	UploadMediaRequest,
 	UploadResponse,
 } from "@solid-imager/core/media";
@@ -103,7 +105,7 @@ export interface IMediaService {
 
 	searchMedia(
 		mediaSourceId: string | undefined | null,
-		params: unknown,
+		params: MediaSearchRequestInput,
 	): Promise<MediaSearchResponse>;
 
 	searchMediaInDirectory(
@@ -140,7 +142,7 @@ export interface IMediaService {
 	updateMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		updates: unknown,
+		updates: UpdateMediaRequestInput,
 		tx?: Transaction,
 	): Promise<Media>;
 

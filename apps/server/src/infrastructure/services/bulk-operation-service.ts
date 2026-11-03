@@ -1,7 +1,17 @@
-import { updateMediaRequestSchema } from "@solid-imager/core/media";
+import {
+	type MediaBulkRepository,
+	type MediaReader,
+	type UpdateMediaRequestInput,
+	updateMediaRequestSchema,
+} from "@solid-imager/core/media";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
+
+function getBulkMediaRepository(): MediaBulkRepository &
+	Pick<MediaReader, "findByIds"> {
+	return services.getMediaRepository();
+}
 
 /**
  * BulkOperationService - バルク操作機能
@@ -13,15 +23,15 @@ export const BulkOperationService = {
 	 * Performs a bulk edit on multiple media items within a specific source.
 	 * @param {string} mediaSourceId - The ID of the media source.
 	 * @param {string[]} mediaIds - An array of media IDs to be edited.
-	 * @param {unknown} updates - An object containing the fields to update and their new values.
+	 * @param updates - An object containing the fields to update and their new values.
 	 */
 	async bulkEditMedia(
 		mediaSourceId: string,
 		mediaIds: string[],
-		updates: unknown,
+		updates: UpdateMediaRequestInput,
 	) {
 		const parsedUpdates = updateMediaRequestSchema.parse(updates);
-		const mediaRepo = services.getMediaRepository();
+		const mediaRepo = getBulkMediaRepository();
 
 		// 一括取得してセキュリティ及び整合性チェック
 		const mediaList = await mediaRepo.findByIds(mediaIds);
@@ -45,7 +55,7 @@ export const BulkOperationService = {
 	 * @param {string[]} mediaIds - An array of media IDs to be deleted.
 	 */
 	async bulkDeleteMedia(mediaSourceId: string, mediaIds: string[]) {
-		const mediaRepo = services.getMediaRepository();
+		const mediaRepo = getBulkMediaRepository();
 		const mediaStorage = services.getMediaStorage();
 		const sourceRepo = services.getSourceRepository();
 
@@ -112,7 +122,7 @@ export const BulkOperationService = {
 		mediaIds: string[],
 		destinationPath: string,
 	) {
-		const mediaRepo = services.getMediaRepository();
+		const mediaRepo = getBulkMediaRepository();
 		const mediaStorage = services.getMediaStorage();
 		const sourceRepo = services.getSourceRepository();
 
@@ -192,7 +202,7 @@ export const BulkOperationService = {
 		tagsToAdd: string[],
 		tagsToRemove: string[],
 	) {
-		const mediaRepo = services.getMediaRepository();
+		const mediaRepo = getBulkMediaRepository();
 
 		// 一括取得してセキュリティ及び整合性チェック
 		const mediaList = await mediaRepo.findByIds(mediaIds);
@@ -223,7 +233,7 @@ export const BulkOperationService = {
 		mediaIds: string[],
 		targetSourceId: string,
 	) {
-		const mediaRepo = services.getMediaRepository();
+		const mediaRepo = getBulkMediaRepository();
 		const { MediaService } =
 			await import("~/infrastructure/services/media-service");
 
@@ -264,7 +274,7 @@ export const BulkOperationService = {
 		mediaIds: string[],
 		targetSourceId: string,
 	) {
-		const mediaRepo = services.getMediaRepository();
+		const mediaRepo = getBulkMediaRepository();
 		const { MediaService } =
 			await import("~/infrastructure/services/media-service");
 

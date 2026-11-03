@@ -1,7 +1,7 @@
 import path from "node:path";
 import type {
 	SimilarMediaSearchResponse,
-	IMediaRepository,
+	MediaReader,
 } from "@solid-imager/core/media";
 import {
 	type SourceRepository,
@@ -24,7 +24,7 @@ import type {
 export class EmbeddingSearchService {
 	constructor(
 		private readonly deps: {
-			mediaRepository: IMediaRepository;
+			mediaRepository: Pick<MediaReader, "findById" | "findByIds">;
 			sourceRepository: SourceRepository;
 			encoder: IEmbeddingEncoder;
 			store: IEmbeddingStore;

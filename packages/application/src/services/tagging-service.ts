@@ -2,7 +2,7 @@ import path from "node:path";
 import type { IAiClient } from "@solid-imager/core/ports";
 import type { CharacterRepository } from "@solid-imager/core/characters";
 import type { IIpRepository } from "@solid-imager/core/ips";
-import type { IMediaRepository } from "@solid-imager/core/media";
+import type { MediaReader } from "@solid-imager/core/media";
 import {
 	type SourceRepository,
 	localConnectionSchema,
@@ -20,7 +20,7 @@ import type { ITaggingService } from "../ports/tagging-service";
 export type TaggingServiceDeps = {
 	aiClient: IAiClient;
 	sourceRepo: SourceRepository;
-	mediaRepo: IMediaRepository;
+	mediaRepo: Pick<MediaReader, "findById">;
 	tagRepo: TagRepositoryDef;
 	characterRepo: CharacterRepository;
 	ipRepo: IIpRepository;
@@ -33,7 +33,7 @@ export type TaggingServiceDeps = {
 class TaggingServiceImpl implements ITaggingService {
 	private readonly aiClient: IAiClient;
 	private readonly sourceRepo: SourceRepository;
-	private readonly mediaRepo: IMediaRepository;
+	private readonly mediaRepo: TaggingServiceDeps["mediaRepo"];
 	private readonly tagRepo: TagRepositoryDef;
 	private readonly characterRepo: CharacterRepository;
 	private readonly ipRepo: IIpRepository;

@@ -14,12 +14,14 @@ export type {
 	MediaPreferencesPatch,
 	MediaSafe,
 	MediaSearchRequest,
+	MediaSearchRequestInput,
 	MediaSearchResponse,
 	MediaTag,
 	MediaType,
 	MediaUrl,
 	SimilarMediaSearchResponse,
 	UpdateMediaRequest,
+	UpdateMediaRequestInput,
 } from "../domain/media/schemas";
 export {
 	downloadItemSchema,
@@ -39,4 +41,12 @@ export {
 	conflictSchema,
 	uploadMediaRequestSchema,
 } from "../domain/media/upload-schemas";
-export type { IMediaRepository } from "../domain/repositories/media-repository";
+export type {
+	IMediaRepository,
+	MediaReader,
+	MediaWriter,
+	MediaSearchRepository,
+	MediaDetailsReader,
+	MediaMaintenanceRepository,
+	MediaBulkRepository,
+} from "../domain/repositories/media-repository";

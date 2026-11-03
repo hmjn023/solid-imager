@@ -12,7 +12,10 @@ import {
 	mediaIdSchema,
 	mediaSourceIdSchema,
 	updateMediaRequestSchema,
-	type IMediaRepository,
+	type MediaDetailsReader,
+	type MediaReader,
+	type MediaWriter,
+	type UpdateMediaRequestInput,
 } from "@solid-imager/core/media";
 import type { IAuthorRepository } from "@solid-imager/core/authors";
 import type { CharacterRepository } from "@solid-imager/core/characters";
@@ -32,10 +35,14 @@ import type {
 	IThumbnailManager,
 } from "../ports/media-service";
 
+export type MediaTransferRepository = Pick<MediaReader, "findById"> &
+	Pick<MediaDetailsReader, "getAuthors" | "getUrls"> &
+	Pick<MediaWriter, "create" | "update" | "delete" | "addUrls">;
+
 /** Coordinates media updates, copying, moving and deletion across repositories and storage. */
 export class MediaTransferService {
 	constructor(
-		private readonly mediaRepository: IMediaRepository,
+		private readonly mediaRepository: MediaTransferRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
 		private readonly authorRepository: IAuthorRepository,
@@ -54,7 +61,7 @@ export class MediaTransferService {
 	async updateMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		updates: unknown,
+		updates: UpdateMediaRequestInput,
 		tx?: Transaction,
 	): Promise<Media> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
