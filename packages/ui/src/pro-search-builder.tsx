@@ -41,6 +41,7 @@ const TARGET_LABELS: Record<string, string> = {
 	ip: "IP",
 	character: "キャラクター",
 	folder: "フォルダ",
+	favorite: "お気に入り",
 	rating: "評価",
 	viewCount: "閲覧数",
 	fileSize: "ファイルサイズ",

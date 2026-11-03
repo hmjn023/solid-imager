@@ -1,5 +1,6 @@
 import { createAuthorRepository, mapAuthor } from "./author-repository";
 import {
+	ResourceConflictError,
 	ResourceNotFoundError,
 	UnexpectedError,
 } from "@solid-imager/core/domain/errors";
@@ -16,6 +17,7 @@ import {
 	type FindDuplicatesResponse,
 	type Media,
 	type MediaDetails,
+	type MediaActivity,
 	type MediaGenerationInfo,
 	type MediaSearchRequest,
 	type MediaSearchResponse,
@@ -48,6 +50,7 @@ import {
 	notInArray,
 	or,
 	type SQL,
+	type SQLWrapper,
 	sql,
 } from "drizzle-orm";
 import type { BunSQLDatabase } from "drizzle-orm/bun-sql";
@@ -69,6 +72,7 @@ import {
 	type NewMedia,
 	projects,
 	tags,
+	viewHistory,
 } from "../schema";
 import type { DrizzleExecutor } from "../types";
 import type { createMediaSearchFunctions } from "./media-repository-utils";
@@ -82,6 +86,7 @@ type DbMediaUrl = InferSelectModel<typeof mediaUrls>;
 type CriterionValue = SearchCriterion["value"];
 
 type MediaWithRelations = InferSelectModel<typeof medias> & {
+	details: typeof mediaDetails.$inferSelect | null;
 	tags: (InferSelectModel<typeof mediaTags> & {
 		tag: InferSelectModel<typeof tags>;
 	})[];
@@ -145,9 +150,22 @@ function mapToMediaUrl(dbUrl: DbMediaUrl): MediaUrl {
 	};
 }
 
+function mapActivity(
+	row: typeof mediaDetails.$inferSelect | null,
+): MediaActivity {
+	return {
+		rating: row?.rating ?? 0,
+		favorite: row?.favorite ?? false,
+		viewCount: row?.viewCount ?? 0,
+		// Older detail rows use the Unix epoch to mean "never viewed".
+		lastViewedAt: row?.lastViewedAt?.getTime() ? row.lastViewedAt : null,
+	};
+}
+
 function mapToMediaDetails(row: MediaWithRelations): MediaDetails {
 	return {
 		...mapToMedia(row),
+		activity: mapActivity(row.details),
 		tags: row.tags.map((mt) => ({
 			...mt.tag,
 			type: mt.tagType,
@@ -221,7 +239,7 @@ function getColumnForTarget(target: string): AnyColumn | undefined {
 }
 
 function buildValueCondition(
-	column: AnyColumn,
+	column: SQLWrapper,
 	operator: string,
 	value: CriterionValue,
 ): SQL | undefined {
@@ -236,11 +254,11 @@ function buildValueCondition(
 		case "equals":
 			return eq(column, value);
 		case "contains":
-			return ilike(column, `%${escapeLikePattern(String(value))}%`);
+			return ilike(column.getSQL(), `%${escapeLikePattern(String(value))}%`);
 		case "startsWith":
-			return ilike(column, `${escapeLikePattern(String(value))}%`);
+			return ilike(column.getSQL(), `${escapeLikePattern(String(value))}%`);
 		case "endsWith":
-			return ilike(column, `%${escapeLikePattern(String(value))}`);
+			return ilike(column.getSQL(), `%${escapeLikePattern(String(value))}`);
 		case "gt":
 			return gt(column, value);
 		case "gte":
@@ -387,45 +405,14 @@ function makeBuildRelationQuery(
 	};
 }
 
-function makeBuildDetailsQuery(getExecutor: (tx?: unknown) => DrizzleExecutor) {
-	return (
-		target: string,
-		operator: string,
-		value: CriterionValue,
-		negate?: boolean,
-	): SQL | undefined => {
-		let column: AnyColumn | undefined;
-		if (target === "rating") {
-			column = mediaDetails.rating;
-		}
-		if (target === "favorite") {
-			column = mediaDetails.favorite;
-		}
-		if (target === "viewCount") {
-			column = mediaDetails.viewCount;
-		}
-
-		if (!column) {
-			return;
-		}
-
-		const condition = exists(
-			getExecutor()
-				.select({ one: sql`1` })
-				.from(mediaDetails)
-				.where(
-					and(
-						eq(mediaDetails.mediaId, medias.id),
-						buildValueCondition(column, operator, value),
-					),
-				),
-		);
-
-		if (!condition) {
-			return;
-		}
-		return negate ? not(condition) : condition;
-	};
+function buildDetailsQuery(node: SearchCriterion): SQL | undefined {
+	const column = getColumnForTarget(node.target);
+	if (!column) return;
+	// A media item may not have a details row until its first view or preference change.
+	const fallback = node.target === "favorite" ? sql`false` : sql`0`;
+	const field = sql`coalesce((select ${column} from ${mediaDetails} where ${mediaDetails.mediaId} = ${medias.id}), ${fallback})`;
+	const condition = buildValueCondition(field, node.operator, node.value);
+	return node.negate && condition ? not(condition) : condition;
 }
 
 function makeBuildGenerationInfoQuery(
@@ -462,7 +449,6 @@ function makeBuildCriterionQuery(
 ) {
 	const buildKeywordCondition = makeBuildKeywordCondition(getExecutor);
 	const buildRelationQuery = makeBuildRelationQuery(getExecutor);
-	const buildDetailsQuery = makeBuildDetailsQuery(getExecutor);
 	const buildGenerationInfoQuery = makeBuildGenerationInfoQuery(getExecutor);
 
 	return (node: SearchCriterion): SQL | undefined => {
@@ -495,12 +481,7 @@ function makeBuildCriterionQuery(
 		}
 
 		if (["rating", "favorite", "viewCount"].includes(target)) {
-			return buildDetailsQuery(
-				target,
-				node.operator,
-				node.value,
-				node.negate ?? false,
-			);
+			return buildDetailsQuery(node);
 		}
 
 		if (target === "aiGenerated") {
@@ -599,9 +580,9 @@ function getOrderByClause(sort: MediaSort | undefined, order: "asc" | "desc") {
 		case "date":
 			return direction(medias.createdAt);
 		case "rating":
-			return direction(mediaDetails.rating);
+			return direction(sql`coalesce(${mediaDetails.rating}, 0)`);
 		case "viewCount":
-			return direction(mediaDetails.viewCount);
+			return direction(sql`coalesce(${mediaDetails.viewCount}, 0)`);
 		default:
 			return direction(medias.createdAt);
 	}
@@ -718,6 +699,62 @@ export function createMediaRepository(
 	const executeSearch = makeExecuteSearch(getExecutor);
 
 	return {
+		async updateActivity(sourceId, mediaId, change) {
+			return getExecutor().transaction(async (tx) => {
+				const [media] = await tx
+					.select({ id: medias.id })
+					.from(medias)
+					.where(
+						and(eq(medias.id, mediaId), eq(medias.mediaSourceId, sourceId)),
+					)
+					.for("share");
+				if (!media) throw new ResourceNotFoundError("Media", mediaId);
+
+				if (!("viewId" in change)) {
+					const [updated] = await tx
+						.insert(mediaDetails)
+						.values({ mediaId, ...change })
+						.onConflictDoUpdate({ target: mediaDetails.mediaId, set: change })
+						.returning();
+					return mapActivity(updated);
+				}
+
+				const viewedAt = new Date();
+				const [visit] = await tx
+					.insert(viewHistory)
+					.values({ id: change.viewId, mediaId, viewedAt })
+					.onConflictDoNothing({ target: viewHistory.id })
+					.returning();
+				if (!visit) {
+					const [existing] = await tx
+						.select({ mediaId: viewHistory.mediaId })
+						.from(viewHistory)
+						.where(eq(viewHistory.id, change.viewId));
+					if (existing?.mediaId !== mediaId)
+						throw new ResourceConflictError(
+							"View ID belongs to another media item",
+						);
+					const [details] = await tx
+						.select()
+						.from(mediaDetails)
+						.where(eq(mediaDetails.mediaId, mediaId));
+					return mapActivity(details ?? null);
+				}
+				const [updated] = await tx
+					.insert(mediaDetails)
+					.values({ mediaId, viewCount: 1, lastViewedAt: viewedAt })
+					.onConflictDoUpdate({
+						target: mediaDetails.mediaId,
+						set: {
+							viewCount: sql`coalesce(${mediaDetails.viewCount}, 0) + 1`,
+							lastViewedAt: sql`greatest(${mediaDetails.lastViewedAt}, excluded.last_viewed_at)`,
+						},
+					})
+					.returning();
+				return mapActivity(updated);
+			});
+		},
+
 		/**
 		 * Retrieves a specific media item by its ID.
 		 */
@@ -968,6 +1005,7 @@ export function createMediaRepository(
 								tag: true,
 							},
 						},
+						details: true,
 						generationInfo: true,
 						authors: {
 							with: {

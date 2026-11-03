@@ -247,6 +247,12 @@ describe("MediaService Unit Tests", () => {
 			const mediaId = "123e4567-e89b-42d3-a456-426614174000";
 			const sourceId = "123e4567-e89b-42d3-a456-426614174001";
 			const mockMedia: MediaDetails = {
+				activity: {
+					rating: 0,
+					favorite: false,
+					viewCount: 0,
+					lastViewedAt: null,
+				},
 				id: mediaId,
 				mediaSourceId: sourceId,
 				filePath: "/path/to/image.png",

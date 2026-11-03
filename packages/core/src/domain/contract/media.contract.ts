@@ -9,7 +9,9 @@ import {
 	bulkTagMediaRequestSchema,
 	findDuplicatesRequestSchema,
 	findDuplicatesResponseSchema,
+	mediaActivitySchema,
 	mediaDetailsSchema,
+	mediaPreferencesPatchSchema,
 	mediaSchema,
 	mediaSearchRequestSchema,
 	mediaSearchResponseSchema,
@@ -21,7 +23,27 @@ import { uploadResponseSchema } from "../media/upload-schemas";
 import { similarMediaRequestSchema } from "../tagging/schemas";
 import { semanticSearchRequestSchema } from "../search/embedding";
 
+const mediaLocationSchema = z.object({ sourceId: z.uuid(), mediaId: z.uuid() });
+
 export const mediaContract = {
+	updatePreferences: oc
+		.route({
+			tags: ["Media"],
+			summary: "メディアの評価・お気に入りを更新",
+			description:
+				"評価は1〜5、0で未評価に戻します。指定した項目だけを更新します。",
+		})
+		.input(mediaLocationSchema.extend({ data: mediaPreferencesPatchSchema }))
+		.output(mediaActivitySchema),
+	recordView: oc
+		.route({
+			tags: ["Media"],
+			summary: "メディアの閲覧を記録",
+			description:
+				"詳細を開いた際の閲覧を記録します。同じ閲覧IDの再送は1回として扱います。",
+		})
+		.input(mediaLocationSchema.extend({ viewId: z.uuid() }))
+		.output(mediaActivitySchema),
 	searchSemantic: oc
 		.route({
 			tags: ["Media"],

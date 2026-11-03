@@ -2754,6 +2754,183 @@
         }
       }
     },
+    "/media/updatePreferences": {
+      "post": {
+        "operationId": "media.updatePreferences",
+        "summary": "メディアの評価・お気に入りを更新",
+        "description": "評価は1〜5、0で未評価に戻します。指定した項目だけを更新します。",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "data": {
+                    "type": "object",
+                    "properties": {
+                      "rating": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 5
+                      },
+                      "favorite": {
+                        "type": "boolean"
+                      }
+                    }
+                  }
+                },
+                "required": [
+                  "sourceId",
+                  "mediaId",
+                  "data"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rating": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 5
+                    },
+                    "favorite": {
+                      "type": "boolean"
+                    },
+                    "viewCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "lastViewedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "x-native-type": "date"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "rating",
+                    "favorite",
+                    "viewCount",
+                    "lastViewedAt"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/media/recordView": {
+      "post": {
+        "operationId": "media.recordView",
+        "summary": "メディアの閲覧を記録",
+        "description": "詳細を開いた際の閲覧を記録します。同じ閲覧IDの再送は1回として扱います。",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sourceId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid"
+                  },
+                  "viewId": {
+                    "type": "string",
+                    "format": "uuid"
+                  }
+                },
+                "required": [
+                  "sourceId",
+                  "mediaId",
+                  "viewId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rating": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 5
+                    },
+                    "favorite": {
+                      "type": "boolean"
+                    },
+                    "viewCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    "lastViewedAt": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "format": "date-time",
+                          "x-native-type": "date"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "rating",
+                    "favorite",
+                    "viewCount",
+                    "lastViewedAt"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/media/searchSemantic": {
       "post": {
         "operationId": "media.searchSemantic",
@@ -3810,6 +3987,42 @@
                       ],
                       "type": "string"
                     },
+                    "activity": {
+                      "type": "object",
+                      "properties": {
+                        "rating": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 5
+                        },
+                        "favorite": {
+                          "type": "boolean"
+                        },
+                        "viewCount": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991
+                        },
+                        "lastViewedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "x-native-type": "date"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "rating",
+                        "favorite",
+                        "viewCount",
+                        "lastViewedAt"
+                      ]
+                    },
                     "tags": {
                       "type": "array",
                       "items": {
@@ -4340,6 +4553,7 @@
                     "modifiedAt",
                     "indexedAt",
                     "status",
+                    "activity",
                     "tags",
                     "generationInfo",
                     "authors",

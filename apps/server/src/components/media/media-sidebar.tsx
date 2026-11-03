@@ -11,6 +11,7 @@ import {
 	createIp,
 	removeIpFromMedia,
 } from "~/infrastructure/api-clients/ips-api";
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { updateMedia } from "~/infrastructure/api-clients/media-api";
 import {
 	addProjectToMedia,
@@ -33,6 +34,7 @@ export type MediaSidebarProps = {
 export function MediaSidebar(props: MediaSidebarProps) {
 	return (
 		<MediaSidebarContent
+			activityApi={orpc.media}
 			addCharacterToMedia={addCharacterToMedia}
 			addIpToMedia={addIpToMedia}
 			addProjectToMedia={addProjectToMedia}

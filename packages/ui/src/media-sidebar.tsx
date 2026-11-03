@@ -25,6 +25,10 @@ import {
 } from "./alert-dialog";
 import { AssociationManager } from "./association-manager";
 import { Badge } from "./badge";
+import {
+	MediaActivityControls,
+	type MediaActivityApi,
+} from "./media-activity-controls";
 import { Button } from "./button";
 import { ClipboardCopy } from "./clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "./collapsible";
@@ -33,6 +37,7 @@ import { ChevronDown } from "./workspace/icons";
 
 export type MediaSidebarProps = {
 	media: MediaDetails;
+	activityApi: MediaActivityApi;
 	isUpdating?: Accessor<boolean>;
 	projects: Project[];
 	allProjects: Project[];
@@ -218,6 +223,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					</Show>
 				</Show>
 			</div>
+
+			<MediaActivityControls media={props.media} api={props.activityApi} />
 
 			<Show when={props.media.urls?.length > 0}>
 				<div class="space-y-2">

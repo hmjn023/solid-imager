@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { subscribeToEventStream } from "./event-stream";
+import {
+	createSharedEventSubscription,
+	subscribeToEventStream,
+} from "./event-stream";
 
 function createPageHideEvent(persisted: boolean): PageTransitionEvent {
 	const event = new Event("pagehide") as PageTransitionEvent;
@@ -83,4 +86,28 @@ describe("subscribeToEventStream", () => {
 		expect(onConnected).toHaveBeenCalledOnce();
 		unsubscribe();
 	});
+});
+
+it("shares the inbox stream with late subscribers until the last indicator unmounts", async () => {
+	const open = vi.fn(async (signal: AbortSignal) => ({
+		async *[Symbol.asyncIterator]() {
+			yield 1;
+			await new Promise<void>((resolve) =>
+				signal.addEventListener("abort", () => resolve(), { once: true }),
+			);
+		},
+	}));
+	const subscribe = createSharedEventSubscription(open);
+	const firstEvent = vi.fn();
+	const stopFirst = subscribe(firstEvent);
+	await vi.waitFor(() => expect(firstEvent).toHaveBeenCalledWith(1));
+	const connected = vi.fn();
+	const stopSecond = subscribe(vi.fn(), connected);
+	expect(connected).toHaveBeenCalledOnce();
+	expect(open).toHaveBeenCalledOnce();
+	const signal = open.mock.calls[0][0];
+	stopFirst();
+	expect(signal.aborted).toBe(false);
+	stopSecond();
+	expect(signal.aborted).toBe(true);
 });
