@@ -374,8 +374,8 @@ export async function registerWebTools(
 		create_local_source: "ソースを追加",
 	};
 	let running = false;
-	await Promise.all(
-		published.map((entry) => {
+	const results = await Promise.allSettled(
+		published.map(async (entry) => {
 			const tool = tools.find(({ name }) => name === entry.name);
 			if (!tool) {
 				return context.registerTool(
@@ -479,4 +479,12 @@ export async function registerWebTools(
 			);
 		}),
 	);
+	for (const [index, result] of results.entries()) {
+		if (result.status === "rejected" && !signal.aborted) {
+			console.warn(
+				`Could not register WebMCP tool ${published[index]?.name}`,
+				result.reason,
+			);
+		}
+	}
 }
