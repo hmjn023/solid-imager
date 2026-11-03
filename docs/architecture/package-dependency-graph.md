@@ -1,8 +1,8 @@
 # solid-imager package dependencies
 
-Updated **2026-11-01**, dependency-boundary fixes based on `b22d4dd6`. Indexion 0.19.0 extraction plus AST verification; see the [audit and limitations](dependency-audit-2026-11-01.md) and [source diagrams](indexion-dependency-graph.md).
+Updated **2026-11-04** from `f67c0183` on [#837](https://github.com/hmjn023/solid-imager/pull/837). Indexion 0.19.0 output was checked against the TypeScript/JavaScript AST. See the [audit and limitations](dependency-audit-2026-11-04.md) and [source diagrams](indexion-dependency-graph.md).
 
-Edges count source reference occurrences (imports, re-exports, and literal dynamic imports) in non-test TypeScript/JavaScript files. Package-local and external dependencies are omitted. Unlike the source diagrams, repeated statements are counted separately. These counts do not represent exported symbols or bundle sizes.
+Edges count source reference occurrences (imports, re-exports, and literal dynamic imports) in non-test TypeScript/JavaScript files. Each arrow counts statements crossing a workspace boundary. Across the same 15 package pairs, references fell from **875 to 758**, and the number of distinct target files fell from **190 to 103**.
 
 ```mermaid
 flowchart LR
@@ -21,41 +21,41 @@ flowchart LR
   end
   cli -->|1 refs| client
   cli -->|2 refs| core
-  server -->|37 refs| application
+  server -->|28 refs| application
   server -->|7 refs| client
   server -->|177 refs| core
-  server -->|22 refs| db
-  server -->|104 refs| ui
-  tauri -->|5 refs| client
-  tauri -->|20 refs| core
-  tauri -->|85 refs| ui
+  server -->|9 refs| db
+  server -->|103 refs| ui
+  tauri -->|6 refs| client
+  tauri -->|23 refs| core
+  tauri -->|76 refs| ui
   xtracter -->|1 refs| client
   xtracter -->|4 refs| core
-  application -->|128 refs| core
-  db -->|50 refs| core
-  ui -->|184 refs| core
+  application -->|99 refs| core
+  db -->|37 refs| core
+  ui -->|185 refs| core
   classDef app fill:#e8f1ff,stroke:#4f76a8,color:#132238;
   classDef pkg fill:#eef8ee,stroke:#5b8a5a,color:#173117;
   class cli,server,tauri,xtracter app;
   class application,client,core,db,ui pkg;
 ```
 
-| From | To | Value | Type-only | Dynamic | Total |
-| --- | --- | ---: | ---: | ---: | ---: |
-| `apps/cli` | `packages/client` | 1 | 0 | 0 | 1 |
-| `apps/cli` | `packages/core` | 1 | 1 | 0 | 2 |
-| `apps/server` | `packages/application` | 25 | 12 | 0 | 37 |
-| `apps/server` | `packages/client` | 7 | 0 | 0 | 7 |
-| `apps/server` | `packages/core` | 66 | 109 | 2 | 177 |
-| `apps/server` | `packages/db` | 18 | 4 | 0 | 22 |
-| `apps/server` | `packages/ui` | 96 | 8 | 0 | 104 |
-| `apps/tauri` | `packages/client` | 5 | 0 | 0 | 5 |
-| `apps/tauri` | `packages/core` | 2 | 18 | 0 | 20 |
-| `apps/tauri` | `packages/ui` | 81 | 4 | 0 | 85 |
-| `apps/xtracter` | `packages/client` | 1 | 0 | 0 | 1 |
-| `apps/xtracter` | `packages/core` | 2 | 2 | 0 | 4 |
-| `packages/application` | `packages/core` | 26 | 102 | 0 | 128 |
-| `packages/db` | `packages/core` | 21 | 29 | 0 | 50 |
-| `packages/ui` | `packages/core` | 31 | 153 | 0 | 184 |
+| From | To | Value | Type-only | Dynamic | Total | Before #836 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| `apps/cli` | `packages/client` | 1 | 0 | 0 | 1 | 1 |
+| `apps/cli` | `packages/core` | 1 | 1 | 0 | 2 | 2 |
+| `apps/server` | `packages/application` | 21 | 7 | 0 | 28 | 37 |
+| `apps/server` | `packages/client` | 7 | 0 | 0 | 7 | 7 |
+| `apps/server` | `packages/core` | 80 | 95 | 2 | 177 | 198 |
+| `apps/server` | `packages/db` | 5 | 4 | 0 | 9 | 22 |
+| `apps/server` | `packages/ui` | 99 | 4 | 0 | 103 | 115 |
+| `apps/tauri` | `packages/client` | 6 | 0 | 0 | 6 | 6 |
+| `apps/tauri` | `packages/core` | 4 | 19 | 0 | 23 | 22 |
+| `apps/tauri` | `packages/ui` | 76 | 0 | 0 | 76 | 87 |
+| `apps/xtracter` | `packages/client` | 1 | 0 | 0 | 1 | 1 |
+| `apps/xtracter` | `packages/core` | 2 | 2 | 0 | 4 | 4 |
+| `packages/application` | `packages/core` | 25 | 74 | 0 | 99 | 128 |
+| `packages/db` | `packages/core` | 21 | 16 | 0 | 37 | 51 |
+| `packages/ui` | `packages/core` | 30 | 155 | 0 | 185 | 194 |
 
-No workspace-package cycles or reverse dependencies from `core` / `application` to infrastructure were found. The three audit findings have been fixed: scroll state lives in shared UI, registry reset no longer imports concrete services, and shared UI contracts live in independent type modules. No static or dynamic value-reference cycles remain; the two remaining type-inclusive cycles are generated router/type connections.
+The package graph has no cycles. No cross-workspace reference from core or application points to infrastructure. Within server, one cycle includes a dynamic import from the config router into the MCP catalog. Both snapshots contain that cycle. The [audit](dependency-audit-2026-11-04.md) traces the three files involved.

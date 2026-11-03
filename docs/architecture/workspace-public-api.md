@@ -30,6 +30,8 @@ git grep -nE '(from[[:space:]]+|import\([[:space:]]*)"@solid-imager/(core/domain
 
 ## メディアの repository と facade
 
+公開入口の整理による参照先ファイル数の変化と循環の内訳は[依存監査](dependency-audit-2026-11-04.md)に記録した。
+
 `@solid-imager/core/media` は 31 操作を次の 6 種類に分ける。DB adapter が実装し、server の registry に登録する `IMediaRepository` はこの 6 つの交差型。ユースケースは必要な操作を `Pick` で組み合わせる。
 
 | Port | 用途 | 利用例 |

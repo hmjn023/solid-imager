@@ -1,6 +1,6 @@
 # 依存関係の監査と修正 — 2026-11-01
 
-`b22d4dd6` を基点に監査し、見つかった3点を修正した。[パッケージ依存マップ](package-dependency-graph.md) と [ソース依存マップ](indexion-dependency-graph.md) は修正後の状態。
+`b22d4dd6` を基点に監査し、見つかった3点を修正した。当時の図は `716a20e4` の[パッケージ依存マップ](https://github.com/hmjn023/solid-imager/blob/716a20e4/docs/architecture/package-dependency-graph.md) と[ソース依存マップ](https://github.com/hmjn023/solid-imager/blob/716a20e4/docs/architecture/indexion-dependency-graph.md)で参照できる。公開 API 整理後の集計は[11月4日の監査](dependency-audit-2026-11-04.md)を参照。
 
 **coreのUI依存、ServiceRegistry.reset()を入口とする動的循環、UI内の型相互参照を解消した。** 再解析では、パッケージ間の逆向き依存・循環、静的および動的な値参照の循環はいずれも0。残る型参照込みの循環は、生成ルートとrouterの型を接続する2組のみ。
 
