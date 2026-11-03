@@ -1,10 +1,10 @@
 # solid-imager source dependencies (full)
 
-Generated 2026-11-04 from `521b18a7`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
+Generated 2026-11-04 from `50d5336c`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
 
 Solid arrows show value imports and re-exports. Dotted arrows show explicit type-only references. Arrows labeled `dynamic` show literal `import()` and `require()` calls. Workspace references resolve to files and `external:` identifies third-party and platform modules. Each edge represents a unique source, target and reference kind.
 
-3,794 edges. This single block requires a Mermaid renderer with a higher `maxEdges` setting. Use the [split diagrams](indexion-dependency-graph.md) for normal previews.
+3,793 edges. This single block requires a Mermaid renderer with a higher `maxEdges` setting. Use the [split diagrams](indexion-dependency-graph.md) for normal previews.
 
 ```mermaid
 flowchart LR
@@ -2816,7 +2816,6 @@ flowchart LR
   N364 --> N335
   N364 --> N346
   N364 --> N354
-  N364 -. type .-> N362
   N364 --> N430
   N364 --> N433
   N364 --> N434

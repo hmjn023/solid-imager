@@ -1,10 +1,10 @@
 # solid-imager dependencies: Apps and shared packages
 
-Generated 2026-11-04 from `521b18a7`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
+Generated 2026-11-04 from `50d5336c`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
 
 Solid arrows show value imports and re-exports. Dotted arrows show explicit type-only references. Arrows labeled `dynamic` show literal `import()` and `require()` calls. Workspace references resolve to files and `external:` identifies third-party and platform modules. Each edge represents a unique source, target and reference kind.
 
-1,010 edges, with at most 450 per Mermaid block.
+1,009 edges, with at most 450 per Mermaid block.
 
 ## Part 1
 
@@ -141,6 +141,7 @@ flowchart LR
   N130["packages/application/src/ports/project-service.ts"]
   N131["packages/application/src/ports/search-service.ts"]
   N132["packages/application/src/ports/search-snapshot-service.ts"]
+  N251["packages/application/src/ports/tag-service.ts"]
   N216["packages/application/src/services/media-query-service.ts"]
   N217["packages/application/src/services/media-service.ts"]
   N218["packages/application/src/services/media-transfer-service.ts"]
@@ -448,7 +449,6 @@ flowchart LR
   N65 --> N36
   N65 --> N47
   N65 --> N55
-  N65 -. type .-> N63
   N65 --> N99
   N65 --> N100
   N65 --> N101
@@ -664,6 +664,7 @@ flowchart LR
   N130 -. type .-> N232
   N131 -. type .-> N229
   N132 -. type .-> N233
+  N251 -. type .-> N237
 ```
 
 ## Part 2
@@ -858,7 +859,7 @@ flowchart LR
   N137["packages/core/src/utils/type-guards.ts"]
   N139["packages/db/src/index.ts"]
   N140["packages/db/src/repositories/author-repository.ts"]
-  N27 -. type .-> N209
+  N212["packages/db/src/repositories/category-repository.ts"]
   N28 -. type .-> N208
   N29 -. type .-> N210
   N30 -. type .-> N211
@@ -1308,6 +1309,7 @@ flowchart LR
   N136 --> N135
   N136 --> N137
   N139 --> N140
+  N139 --> N212
 ```
 
 ## Part 3
@@ -1358,7 +1360,6 @@ flowchart LR
   N18["packages/db/src/schema.ts"]
   N19["packages/db/src/transaction-manager.ts"]
   N20["packages/db/src/types.ts"]
-  N40 --> N42
   N40 --> N43
   N40 --> N44
   N40 --> N45

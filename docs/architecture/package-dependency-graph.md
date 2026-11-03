@@ -1,6 +1,6 @@
 # solid-imager package dependencies
 
-Updated **2026-11-04** from `521b18a7` on [#837](https://github.com/hmjn023/solid-imager/pull/837). Indexion 0.19.0 output was checked against the TypeScript/JavaScript AST. See the [audit and limitations](dependency-audit-2026-11-04.md) and [source diagrams](indexion-dependency-graph.md).
+Updated **2026-11-04** from `50d5336c` on [#837](https://github.com/hmjn023/solid-imager/pull/837). Indexion 0.19.0 output was checked against the TypeScript/JavaScript AST. See the [audit and limitations](dependency-audit-2026-11-04.md) and [source diagrams](indexion-dependency-graph.md).
 
 Edges count source reference occurrences (imports, re-exports, and literal dynamic imports) in non-test TypeScript/JavaScript files. Each arrow counts statements crossing a workspace boundary. Across the same 15 package pairs, references fell from **875 to 758**, and the number of distinct target files fell from **190 to 103**.
 
@@ -58,4 +58,4 @@ flowchart LR
 | `packages/db` | `packages/core` | 21 | 16 | 0 | 37 | 51 |
 | `packages/ui` | `packages/core` | 30 | 155 | 0 | 185 | 194 |
 
-The package graph has no cycles. No cross-workspace reference from core or application points to infrastructure. The server tool catalog now uses the same feature routers as the API, removing the former runtime cycle through the settings router. The [audit](dependency-audit-2026-11-04.md) traces the new dependency direction. The only remaining file cycles come from generated router types in Web and Tauri.
+The package graph has no cycles. No cross-workspace reference from core or application points to infrastructure. The server tool catalog now uses the same feature routers as the API, removing the former runtime cycle through the settings router. The [audit](dependency-audit-2026-11-04.md) traces the new dependency direction. Tauri declares its router context on the root route. The only remaining file cycle is the type registration that TanStack Start generates for the Web router.

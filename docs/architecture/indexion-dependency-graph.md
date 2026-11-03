@@ -1,10 +1,10 @@
 # solid-imager source dependencies (indexion + AST verification)
 
-Updated **2026-11-04** from `521b18a7` on [#837](https://github.com/hmjn023/solid-imager/pull/837).
+Updated **2026-11-04** from `50d5336c` on [#837](https://github.com/hmjn023/solid-imager/pull/837).
 
 Start with the [package map](package-dependency-graph.md) and [dependency audit](dependency-audit-2026-11-04.md). The [public API inventory](workspace-public-api.md) connects the former deep imports to the entry points used today.
 
-Indexion 0.19.0 returned **1,949 dependency records**, but omitted imports, re-exports, and dynamic imports in this checkout. The diagrams below use AST verification to complete and classify the source references: **811 TypeScript/JavaScript files**, **3,888 reference occurrences**, and **3,794 unique source/target/kind edges**. Compared with the pre-refactor commit `dcd8b6e2`, the number of source files grew from 771 to 811 while unique edges fell from 3,902 to 3,794.
+Indexion 0.19.0 returned **1,949 dependency records**, but omitted imports, re-exports, and dynamic imports in this checkout. The diagrams below use AST verification to complete and classify the source references: **811 TypeScript/JavaScript files**, **3,887 reference occurrences**, and **3,793 unique source/target/kind edges**. Compared with the pre-refactor commit `dcd8b6e2`, the number of source files grew from 771 to 811 while unique edges fell from 3,902 to 3,793.
 
 The scan covers `apps/{cli,server,tauri,xtracter}/src` and `packages/{application,client,core,db,ui}/src`. It includes source tests and the two generated route trees. CSS and scripts can appear as targets when a source file imports them. The scan omits build outputs, Rust and external implementations. The package map omits test-source references.
 
@@ -12,7 +12,7 @@ Solid arrows show value imports/re-exports, dotted arrows explicit type-only ref
 
 | Part | Scope | Edges | Blocks |
 | --- | --- | ---: | ---: |
-| [Apps and shared packages](indexion-dependency-graph-01-apps-and-core.md) | apps-and-core | 1010 | 3 |
+| [Apps and shared packages](indexion-dependency-graph-01-apps-and-core.md) | apps-and-core | 1009 | 3 |
 | [Server tests](indexion-dependency-graph-02-server-tests.md) | server-tests | 599 | 2 |
 | [Server infrastructure and routes](indexion-dependency-graph-03-server-infrastructure-routes.md) | server-infrastructure-routes | 738 | 2 |
 | [Server components and root modules](indexion-dependency-graph-04-server-application-components.md) | server-application-components | 281 | 1 |
