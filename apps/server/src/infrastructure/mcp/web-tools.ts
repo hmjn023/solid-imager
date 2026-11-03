@@ -7,7 +7,10 @@ import {
 	type WebToolInfo,
 } from "@solid-imager/core/domain/config/mcp";
 import { defaultState } from "@solid-imager/core/domain/search/schema";
-import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
+import {
+	captureSearchSnapshotResponseSchema,
+	searchSnapshotStateSchema,
+} from "@solid-imager/core/domain/search/history";
 import { sourcesQueryKeys } from "@solid-imager/ui/query-options";
 import { searchState } from "@solid-imager/ui/stores/search-store";
 import { toast } from "@solid-imager/ui/toast";
@@ -159,9 +162,11 @@ export async function registerWebTools(
 					selectedTags: tags,
 					selectedSource: sourceId ?? "",
 				});
-				const snapshot = await orpc.searchSnapshots.capture(
-					{ state },
-					{ signal: execution },
+				const snapshot = captureSearchSnapshotResponseSchema.parse(
+					await orpc.config.callWebTool(
+						{ name: "search_media_capture_snapshot", arguments: { state } },
+						{ signal: execution },
+					),
 				);
 				await views.show(
 					{
@@ -239,7 +244,12 @@ export async function registerWebTools(
 			true,
 			mediaToolInputs.find_tags.extend(pageSchema.shape),
 			async (input, execution) => {
-				const result = await orpc.tools.find_tags(input, { signal: execution });
+				const result = mediaToolOutputs.find_tags.parse(
+					await orpc.config.callWebTool(
+						{ name: "find_tags", arguments: input },
+						{ signal: execution },
+					),
+				);
 				return {
 					tags: result.tags.map(({ id, name }) => ({
 						id,
@@ -260,7 +270,12 @@ export async function registerWebTools(
 			true,
 			pageSchema,
 			async ({ offset, limit }, execution) => {
-				const result = await orpc.tools.list_sources({}, { signal: execution });
+				const result = mediaToolOutputs.list_sources.parse(
+					await orpc.config.callWebTool(
+						{ name: "list_sources", arguments: {} },
+						{ signal: execution },
+					),
+				);
 				return pageOf(
 					result.sources.map(({ id, name, type, connectionInfo }) => ({
 						id,

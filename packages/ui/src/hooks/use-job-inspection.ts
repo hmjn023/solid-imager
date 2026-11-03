@@ -18,7 +18,7 @@ export function useJobInspection(
 		const jobId = id();
 		return {
 			queryKey: jobsQueryKeys.detail(jobId ?? ""),
-			enabled: !!jobId && !list.isPending && !row(),
+			enabled: !!jobId && !row(),
 			queryFn: ({ signal }: { signal: AbortSignal }) => {
 				if (!jobId) throw new Error("No job selected");
 				return getJob(jobId, signal);

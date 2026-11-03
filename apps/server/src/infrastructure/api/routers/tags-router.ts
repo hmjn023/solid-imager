@@ -1,11 +1,17 @@
 import { implement } from "@orpc/server";
+import { mcp } from "@orpc/mcp";
 import { tagsContract } from "@solid-imager/core/domain/contract/tags.contract";
 import { TagService } from "~/infrastructure/services/tag-service";
 
 /**
  * Tags Router Implementation
  */
-const os = implement(tagsContract);
+const readOnly = mcp.tool({ annotations: { readOnlyHint: true } });
+const os = implement({
+	...tagsContract,
+	list: tagsContract.list.meta(readOnly),
+	get: tagsContract.get.meta(readOnly),
+});
 
 export const tagsRouter = os.router({
 	list: os.list.handler(async () => await TagService.getAllTags()),
