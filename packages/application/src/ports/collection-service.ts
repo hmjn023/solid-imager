@@ -5,6 +5,7 @@ import type {
 	UpdateCollection,
 } from "@solid-imager/core/domain/collections/schemas";
 
+/** Manages collections and their media membership. */
 export interface ICollectionService {
 	getAll(): Promise<Collection[]>;
 	getById(id: string): Promise<Collection | undefined>;

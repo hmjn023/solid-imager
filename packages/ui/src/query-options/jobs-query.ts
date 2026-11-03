@@ -37,6 +37,13 @@ export function buildJobsQueryOptions(
 	};
 }
 
+/**
+ * Updates the matching cached list row without changing unrelated rows.
+ *
+ * @param data - Cached job page, if present.
+ * @param event - Progress event identifying the job and its processed and total counts.
+ * @returns Updated data, or the original reference if no matching row exists.
+ */
 export function updateJobProgress(
 	data: JobListResponse | undefined,
 	event: JobProgressEvent,
@@ -64,6 +71,7 @@ function withProgress(job: JobDto, event: JobProgressEvent): JobDto {
 	};
 }
 
+/** Applies progress to all cached job lists and the matching detail, without creating missing cache entries. */
 export function updateCachedJobProgress(
 	client: QueryClient,
 	event: JobProgressEvent,

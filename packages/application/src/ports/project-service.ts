@@ -4,6 +4,7 @@ import type {
 	UpdateProject,
 } from "@solid-imager/core/domain/projects/schemas";
 
+/** Manages projects and their associations with media. */
 export interface IProjectService {
 	getAllProjects(): Promise<Project[]>;
 	createProject(data: NewProject): Promise<Project>;

@@ -4,6 +4,7 @@ import type {
 	UpdateCharacter,
 } from "@solid-imager/core/domain/characters/schemas";
 
+/** Manages characters and their associations with media. */
 export interface ICharacterService {
 	getAllCharacters(): Promise<Character[]>;
 	createCharacter(data: NewCharacter): Promise<Character>;

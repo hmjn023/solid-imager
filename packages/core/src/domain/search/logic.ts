@@ -7,6 +7,11 @@ import type { SearchState } from "./schema";
 
 /**
  * Transitions between search modes while attempting to preserve conditions.
+ * If a pro condition cannot be represented in simple mode, simple filters are reset.
+ *
+ * @param currentState - State from which to derive the target mode.
+ * @param nextMode - Mode to switch to.
+ * @returns A partial state update; unrelated state fields are left to the caller.
  */
 export const calculateNextModeState = (
 	currentState: SearchState,
@@ -47,7 +52,10 @@ export const calculateNextModeState = (
 
 /**
  * Tries to map a SearchGroup back to simple search state.
- * Returns null if the condition cannot be represented in simple mode.
+ * Nested groups, non-AND groups and unsupported criteria cannot be represented.
+ *
+ * @param group - Advanced search expression to convert.
+ * @returns The corresponding simple filter fields, or null if conversion fails.
  */
 export const restoreFromSearchGroup = (
 	group: SearchGroup,
@@ -118,6 +126,10 @@ const applyCriterionToState = (
 
 /**
  * Constructs the SearchGroup based on current mode and filters.
+ *
+ * @param state - Current search mode and filter values.
+ * @returns The advanced condition in pro mode, a group in simple mode, or
+ * undefined if there is no condition.
  */
 export const getSearchConditionFromState = (
 	state: SearchState,
@@ -202,6 +214,17 @@ const addFilterConditions = (
 	}
 };
 
+/**
+ * Builds the state changes needed to apply a saved preset.
+ *
+ * Presets that cannot be represented by simple filters use pro mode. Older
+ * presets without a stored mode retain the current mode when possible.
+ * Missing sort and order default to date and descending respectively.
+ *
+ * @param preset - Saved condition and optional mode and ordering.
+ * @param currentState - Current mode, used for presets without a stored mode.
+ * @returns A partial state update to merge into the current search state.
+ */
 export const preparePresetState = (
 	preset: Preset,
 	currentState: SearchState,

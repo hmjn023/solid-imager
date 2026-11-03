@@ -16,6 +16,7 @@ import type {
 	ImageEmbedding,
 } from "../ports/embedding-store";
 
+/** Extracts local image embeddings and searches by image or text. Existing embeddings are reused when the media modification time matches. */
 export class EmbeddingSearchService {
 	constructor(
 		private readonly deps: {

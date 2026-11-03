@@ -5,6 +5,7 @@ import type {
 	TaggingResponse,
 } from "@/domain/tagging/schemas";
 
+/** AI service operations for tagging, embeddings, and CCIP similarity features. */
 export type IAiClient = {
 	healthCheck(): Promise<boolean>;
 

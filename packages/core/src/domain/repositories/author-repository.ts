@@ -9,6 +9,7 @@ import type {
 	ConfirmAuthorAccountInput,
 } from "@/domain/authors/schemas";
 
+/** Author and account persistence port; correction and merge operations require a transaction. */
 export type IAuthorRepository = {
 	confirmAccount(
 		input: ConfirmAuthorAccountInput,

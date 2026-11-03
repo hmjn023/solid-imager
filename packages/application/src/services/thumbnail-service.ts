@@ -14,6 +14,7 @@ export type ThumbnailServiceDeps = {
 	) => Promise<{ count: number; jobId?: string }>;
 };
 
+/** Builds thumbnail URLs, queues generation and clears a source cache directory. */
 export class ThumbnailServiceImpl implements IThumbnailService {
 	private readonly fileSystem: IFileSystem;
 	private readonly thumbnailCacheDir: string;

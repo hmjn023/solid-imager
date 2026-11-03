@@ -1,3 +1,4 @@
+/** Lifecycle states persisted for a background job. */
 export type JobStatus =
 	| "pending"
 	| "in_progress"
@@ -5,6 +6,7 @@ export type JobStatus =
 	| "failed"
 	| "cancelled";
 
+/** Persisted job state, including cancellation, retry and optional artifact metadata. */
 export type Job = {
 	id: string;
 	type: string;
@@ -28,6 +30,7 @@ export type Job = {
 	artifactExpiresAt?: Date | null;
 };
 
+/** Job creation fields; the repository supplies omitted defaults. */
 export type NewJob = {
 	id?: string;
 	type: string;
@@ -51,12 +54,14 @@ export type NewJob = {
 	artifactExpiresAt?: Date | null;
 };
 
+/** Progress counters for a parent batch job. */
 export type BatchProgress = {
 	processed: number;
 	failed: number;
 	total: number;
 };
 
+/** Port for job persistence, claiming, cancellation and batch progress updates. */
 export type IJobRepository = {
 	create(job: NewJob): Promise<Job>;
 	createIfUnique(job: NewJob): Promise<Job | null>;

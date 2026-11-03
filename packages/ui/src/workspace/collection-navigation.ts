@@ -25,6 +25,12 @@ export function isCollectionNavigationKey(
 	return COLLECTION_NAVIGATION_KEYS.has(key);
 }
 
+/**
+ * Computes the clamped grid destination for a navigation key.
+ *
+ * @param options - Current index, collection size, grid columns, visible page rows, and key.
+ * @returns The destination index, or null when the collection is empty.
+ */
 export function getCollectionNavigationIndex(options: {
 	columnCount: number;
 	currentIndex: number;
@@ -72,6 +78,7 @@ export function getCollectionNavigationIndex(options: {
 	return Math.min(Math.max(nextIndex, 0), options.itemCount - 1);
 }
 
+/** Keeps the current preview if present, otherwise selects the first item or null. */
 export function reconcileCollectionPreviewId(
 	items: readonly { id: string }[],
 	currentId: string | null,
@@ -90,6 +97,7 @@ export function findCollectionItemById<T extends { id: string }>(
 	return items.find((item) => item.id === itemId);
 }
 
+/** Tests whether the remaining scrollable distance is within the non-negative threshold. */
 export function isCollectionScrollNearEnd(options: {
 	contentSize: number;
 	scrollOffset: number;

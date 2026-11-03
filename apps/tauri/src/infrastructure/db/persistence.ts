@@ -41,6 +41,12 @@ let persistenceInstance: ReturnType<
 > | null = null;
 let rawDatabase: InstanceType<typeof Database> | null = null;
 
+/**
+ * Opens the per-server SQLite persistence once; close it before switching servers.
+ *
+ * @param serverId - Server cache identity used to choose the database file.
+ * @returns The existing instance if already initialized, regardless of serverId.
+ */
 export async function initializePersistence(serverId?: string | null) {
 	if (persistenceInstance) {
 		return persistenceInstance;
@@ -54,6 +60,7 @@ export async function initializePersistence(serverId?: string | null) {
 	return persistenceInstance;
 }
 
+/** Clears the shared persistence instance and closes its underlying database. */
 export async function closePersistence(): Promise<void> {
 	const database = rawDatabase;
 	rawDatabase = null;
@@ -63,6 +70,7 @@ export async function closePersistence(): Promise<void> {
 	}
 }
 
+/** Returns the initialized persistence instance, or throws if it has not been opened. */
 export function getPersistence() {
 	if (!persistenceInstance) {
 		throw new Error(

@@ -7,6 +7,7 @@ export const authorPlatformSchema = z.enum([
 ]);
 export type AuthorPlatform = z.infer<typeof authorPlatformSchema>;
 
+/** An observed platform account; accountId is a mutable handle and remoteId is the platform identity. */
 export const authorAccountSchema = z.object({
 	id: z.uuid(),
 	authorId: z.uuid(),
@@ -23,6 +24,7 @@ export const authorAccountSchema = z.object({
 });
 export type AuthorAccount = z.infer<typeof authorAccountSchema>;
 
+/** Trims a Twitter handle, removes a leading @, and validates its 1–15 character form. */
 export const twitterUsernameSchema = z
 	.string()
 	.trim()
@@ -32,12 +34,14 @@ export const twitterUsernameSchema = z
 			.string()
 			.regex(/^[A-Za-z0-9_]{1,15}$/, "Xのユーザー名を指定してください。"),
 	);
+/** A Twitter profile observation with a numeric stable user ID. */
 export const twitterProfileSchema = z.object({
 	remoteId: z.string().regex(/^[0-9]+$/),
 	username: twitterUsernameSchema,
 	displayName: z.string().trim().min(1).max(200),
 });
 export type TwitterProfile = z.infer<typeof twitterProfileSchema>;
+/** Starts a profile verification for an author and optionally an existing account. */
 export const beginAuthorAccountVerificationSchema = z.object({
 	authorId: z.uuid(),
 	accountId: z.uuid().nullable(),
@@ -51,6 +55,7 @@ export const authorAccountVerificationIdSchema = z.object({
 });
 export const submitAuthorAccountVerificationSchema =
 	authorAccountVerificationIdSchema.extend({ profile: twitterProfileSchema });
+/** Verification state returned to the client, including its expiry and observed profile. */
 export const authorAccountVerificationSchema = z.object({
 	verificationId: z.uuid(),
 	profileUrl: z.url(),
@@ -62,7 +67,7 @@ export const authorAccountVerificationSchema = z.object({
 export type AuthorAccountVerification = z.infer<
 	typeof authorAccountVerificationSchema
 >;
-// The expected version comes from the server-side preview, never from a client edit.
+/** Confirms an observed profile using the author version from the server-side preview. */
 export const confirmAuthorAccountSchema = beginAuthorAccountVerificationSchema
 	.omit({ username: true })
 	.extend({
@@ -74,6 +79,7 @@ export type ConfirmAuthorAccountInput = z.infer<
 	typeof confirmAuthorAccountSchema
 >;
 
+/** Author and optional accounts; accountId is a compatibility projection derived from accounts. */
 export const authorSchema = z.object({
 	id: z.uuid(),
 	name: z.string().min(1),
@@ -85,6 +91,7 @@ export const authorSchema = z.object({
 });
 export type Author = z.infer<typeof authorSchema>;
 
+/** Account input requiring platform for stable IDs and numeric IDs for Twitter. */
 export const authorAccountInputSchema = authorAccountSchema
 	.pick({
 		platform: true,
@@ -106,6 +113,7 @@ export const authorAccountInputSchema = authorAccountSchema
 	);
 export type AuthorAccountInput = z.infer<typeof authorAccountInputSchema>;
 
+/** Author input supporting account arrays and legacy top-level account fields. */
 export const newAuthorSchema = z
 	.object({
 		name: z.string().trim().min(1),
@@ -154,6 +162,7 @@ export const authorMediaPageSchema = z.object({
 	total: z.number().int(),
 });
 export type AuthorMediaPage = z.infer<typeof authorMediaPageSchema>;
+/** Replaces or removes an author on 1–100 media items; source and target must differ. */
 export const correctMediaAuthorsSchema = z
 	.object({
 		mediaIds: z.array(z.uuid()).min(1).max(100),
@@ -166,6 +175,7 @@ export const correctMediaAuthorsSchema = z
 export type CorrectMediaAuthorsInput = z.infer<
 	typeof correctMediaAuthorsSchema
 >;
+/** Identifies distinct source and target authors for a merge. */
 export const mergeAuthorsSchema = z
 	.object({ sourceAuthorId: z.uuid(), targetAuthorId: z.uuid() })
 	.refine((value) => value.sourceAuthorId !== value.targetAuthorId, {

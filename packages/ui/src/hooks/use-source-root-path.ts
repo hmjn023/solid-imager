@@ -5,6 +5,7 @@ export type SourceRootPathResolver = (
 	mediaSourceId: string,
 ) => string | undefined;
 
+/** Resolves local source IDs to root paths from the sources query; remote or unknown sources return undefined. */
 export function useSourceRootPath(
 	// oxlint-disable-next-line typescript/no-explicit-any -- library type mismatch between oRPC and solid-query
 	sourcesQueryOptions: () => any,

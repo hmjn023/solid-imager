@@ -9,6 +9,7 @@ export function resolveScrollContainer(
 	return document.querySelector<HTMLElement>(selector);
 }
 
+/** Scrolls the selected element or the window; returns false when the target is unavailable. */
 export function scrollToPosition(
 	selector: string | undefined,
 	top: number,
@@ -24,6 +25,7 @@ export function scrollToPosition(
 	return true;
 }
 
+/** Returns the selected element or window scroll offset, or null when unavailable. */
 export function currentScrollPosition(
 	selector: string | undefined,
 ): number | null {

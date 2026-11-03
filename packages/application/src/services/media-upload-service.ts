@@ -38,6 +38,8 @@ const FILE_HEADER_BYTES = 12;
 const WEBP_OFFSET = 8;
 const WEBP_END = 12;
 
+/** Check the leading bytes for recognized filename extensions; unknown extensions are not checked.
+ * Throws when a recognized signature does not match. */
 export async function validateFileSignature(
 	file: File,
 	filename: string,
@@ -63,6 +65,7 @@ export async function validateFileSignature(
 	}
 }
 
+/** Uploads to local sources, registers media and queues processing. A failed registration attempts file cleanup. */
 export class MediaUploadService {
 	constructor(
 		private readonly mediaRepository: IMediaRepository,

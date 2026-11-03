@@ -101,6 +101,7 @@ function getBrowserLocalStorage(): Storage | null {
 	}
 }
 
+/** Provides editable shortcut bindings, restoring browser preferences on mount and retaining in-memory changes if storage fails. */
 export const ShortcutPreferencesProvider: ParentComponent = (props) => {
 	const [bindings, setBindings] = createSignal<ShortcutBindings>(
 		DEFAULT_SHORTCUT_BINDINGS,
@@ -217,6 +218,7 @@ export function useOptionalShortcutPreferences():
 	return useContext(ShortcutPreferencesContext);
 }
 
+/** Returns the preferences context or a read-only default implementation when no provider is present. */
 export function useShortcutPreferences(): ShortcutPreferences {
 	return useOptionalShortcutPreferences() ?? DEFAULT_SHORTCUT_PREFERENCES;
 }

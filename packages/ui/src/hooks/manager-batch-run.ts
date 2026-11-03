@@ -16,6 +16,12 @@ const managerBatchRunSchema = z.object({
 
 export type ManagerBatchRun = z.infer<typeof managerBatchRunSchema>;
 
+/**
+ * Reads the resumable batch from storage; malformed or outdated data is removed.
+ *
+ * @param storage - Session storage containing the saved batch.
+ * @returns The validated batch, or null if missing or invalid.
+ */
 export function readManagerBatchRun(storage: Storage): ManagerBatchRun | null {
 	const raw = readUiStorageValue(storage, UI_STORAGE_KEYS.managerBatchRun);
 	if (!raw) return null;
@@ -29,6 +35,7 @@ export function readManagerBatchRun(storage: Storage): ManagerBatchRun | null {
 	return null;
 }
 
+/** Persists the current batch for session recovery; unavailable storage is ignored. */
 export function saveManagerBatchRun(
 	storage: Storage,
 	run: ManagerBatchRun,
@@ -40,6 +47,7 @@ export function saveManagerBatchRun(
 	}
 }
 
+/** Returns session storage when available, including in privacy-restricted browsers. */
 export function managerSessionStorage(): Storage | undefined {
 	try {
 		return typeof window === "undefined" ? undefined : window.sessionStorage;

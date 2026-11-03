@@ -30,6 +30,7 @@ export const mediaCopiedEventSchema = z.object({
 });
 export type MediaCopiedEvent = z.infer<typeof mediaCopiedEventSchema>;
 
+/** Move notification; type identifies the source or target side. */
 export const mediaMovedEventSchema = z.object({
 	type: z.enum(["source", "target"]),
 	sourceId: z.uuid().optional(),
@@ -64,6 +65,7 @@ export const watcherErrorEventSchema = z.object({
 });
 export type WatcherErrorEvent = z.infer<typeof watcherErrorEventSchema>;
 
+/** Reports the current synchronization state of a media source. */
 export const sourceSyncStatusEventSchema = z.object({
 	mediaSourceId: z.uuid(),
 	status: mediaSourceSyncStateSchema,
@@ -72,6 +74,7 @@ export const sourceSyncStatusEventSchema = z.object({
 });
 export type SourceSyncStatusEvent = z.infer<typeof sourceSyncStatusEventSchema>;
 
+/** Progress counts for a job, with an optional job identifier. */
 export const jobProgressEventSchema = z.object({
 	jobId: z.string().optional(),
 	processed: z.number(),
@@ -130,6 +133,7 @@ export type ImportRequestDeletedEvent = z.infer<
 	typeof importRequestDeletedEventSchema
 >;
 
+/** Source-scoped event envelope, discriminated by event name. */
 export const sourceEventSchema = z.discriminatedUnion("event", [
 	z.object({ event: z.literal("media-added"), data: mediaAddedEventSchema }),
 	z.object({
@@ -165,15 +169,18 @@ export const sourceEventSchema = z.discriminatedUnion("event", [
 ]);
 export type SourceEvent = z.infer<typeof sourceEventSchema>;
 export type SourceEventName = SourceEvent["event"];
+/** Payload associated with a particular source event name. */
 export type SourceEventData<TName extends SourceEventName> = Extract<
 	SourceEvent,
 	{ event: TName }
 >["data"];
+/** Publishes a typed source event to the specified source. */
 export type SourceEventPublisher = <TName extends SourceEventName>(
 	mediaSourceId: string,
 	eventType: TName,
 	data: SourceEventData<TName>,
 ) => void;
+/** Source event name and matching payload for dispatch. */
 export type SourceEventCommand = {
 	[TName in SourceEventName]: {
 		event: TName;
@@ -181,6 +188,7 @@ export type SourceEventCommand = {
 	};
 }[SourceEventName];
 
+/** Job event envelope, discriminated by event name. */
 export const jobEventSchema = z.discriminatedUnion("event", [
 	z.object({ event: z.literal("job-progress"), data: jobProgressEventSchema }),
 	z.object({ event: z.literal("job-retried"), data: jobRetriedEventSchema }),
@@ -196,11 +204,13 @@ export const jobEventSchema = z.discriminatedUnion("event", [
 ]);
 export type JobEvent = z.infer<typeof jobEventSchema>;
 export type JobEventName = JobEvent["event"];
+/** Payload associated with a particular job event name. */
 export type JobEventData<TName extends JobEventName> = Extract<
 	JobEvent,
 	{ event: TName }
 >["data"];
 
+/** Import request event envelope, discriminated by event name. */
 export const importEventSchema = z.discriminatedUnion("event", [
 	z.object({
 		event: z.literal("import-request:created"),
@@ -217,6 +227,7 @@ export const importEventSchema = z.discriminatedUnion("event", [
 ]);
 export type ImportEvent = z.infer<typeof importEventSchema>;
 export type ImportEventName = ImportEvent["event"];
+/** Payload associated with a particular import event name. */
 export type ImportEventData<TName extends ImportEventName> = Extract<
 	ImportEvent,
 	{ event: TName }

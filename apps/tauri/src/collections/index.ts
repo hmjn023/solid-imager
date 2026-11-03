@@ -7,6 +7,7 @@ import { createProjectsCollection } from "./projects-collection";
 import { createSourcesCollection } from "./sources-collection";
 import { createTagsCollection } from "./tags-collection";
 
+/** Collections backed by the active server’s SQLite persistence. */
 export type AppCollections = {
 	tags: ReturnType<typeof createTagsCollection>;
 	sources: ReturnType<typeof createSourcesCollection>;
@@ -16,6 +17,7 @@ export type AppCollections = {
 	authors: ReturnType<typeof createAuthorsCollection>;
 };
 
+/** Invokes a collection’s refetch utility, rejecting objects that do not expose it. */
 export async function refetchCollection(collection: unknown): Promise<void> {
 	if (typeof collection !== "object" || collection === null) {
 		throw new Error("Expected a TanStack DB collection");
@@ -34,6 +36,7 @@ export async function refetchCollection(collection: unknown): Promise<void> {
 
 let collections: AppCollections | null = null;
 
+/** Initializes shared collections once after opening persistence for the active server. */
 export async function initializeCollections() {
 	if (collections) {
 		return collections;
@@ -61,6 +64,7 @@ export async function initializeCollections() {
 	return collections;
 }
 
+/** Returns initialized collections; initializeCollections must have completed first. */
 export function getCollections() {
 	if (!collections) {
 		throw new Error(

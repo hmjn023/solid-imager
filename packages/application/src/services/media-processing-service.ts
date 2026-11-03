@@ -52,6 +52,7 @@ export type MediaProcessingServiceDeps = {
 	publishSourceEvent: SourceEventPublisher;
 };
 
+/** Registers media and processes jobs, including optional automatic tagging and CCIP extraction. */
 export class MediaProcessingServiceImpl implements IMediaProcessingService {
 	private readonly sourceRepo: SourceRepository;
 	private readonly mediaRepo: IMediaRepository;

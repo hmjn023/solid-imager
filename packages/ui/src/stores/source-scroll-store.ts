@@ -49,6 +49,7 @@ function getScrollKey(mediaSourceId: string, historyEntryKey?: string): string {
 		: mediaSourceId;
 }
 
+/** Reads the source scroll offset, optionally scoped to a history entry; missing offsets return zero. */
 export const getScrollPosition = (
 	mediaSourceId: string,
 	historyEntryKey?: string,
@@ -60,6 +61,7 @@ export const getScrollPosition = (
 	return position;
 };
 
+/** Updates and immediately persists a source scroll offset, optionally scoped to a history entry. */
 export const setScrollPosition = (
 	mediaSourceId: string,
 	scrollY: number,

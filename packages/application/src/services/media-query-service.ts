@@ -20,6 +20,7 @@ import type { IImageProcessor } from "@solid-imager/core/domain/services/image-p
 import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
 import type { ILogger } from "../ports/media-service";
 
+/** Provides media lookup, content retrieval, metadata and duplicate search operations. */
 export class MediaQueryService {
 	constructor(
 		private readonly mediaRepository: IMediaRepository,

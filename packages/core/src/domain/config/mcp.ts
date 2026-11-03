@@ -17,9 +17,11 @@ const defaultWebTools = [
 	...Object.keys(viewToolTitles),
 ];
 const toolNames = z.array(z.string().min(1));
+/** Partial replacement of the enabled HTTP and web tool name lists. */
 export const mcpConfigUpdateSchema = z
 	.object({ http: toolNames, web: toolNames })
 	.partial();
+/** Enabled tool names per transport, with defaults applied to omitted lists. */
 export const mcpConfigSchema = z.object({
 	http: toolNames.default(defaultHttpTools),
 	web: toolNames.default(defaultWebTools),
@@ -32,6 +34,7 @@ export const mcpToolInfoSchema = z.object({
 	webOnly: z.boolean(),
 });
 export type McpToolInfo = z.infer<typeof mcpToolInfoSchema>;
+/** Web-exposed tool metadata, including its input schema and read-only annotation. */
 export const webToolInfoSchema = mcpToolInfoSchema.extend({
 	description: z.string(),
 	inputSchema: z.record(z.string(), z.unknown()),

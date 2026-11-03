@@ -23,6 +23,7 @@ export const TagsSchema = z.object({
 
 export type Tags = z.infer<typeof TagsSchema>;
 
+/** ComfyUI node fields used for tag extraction; additional node fields are retained. */
 export const workflowNodeSchema = z
 	.object({
 		type: z.string().optional(),
@@ -34,6 +35,7 @@ export const workflowNodeSchema = z
 	.loose();
 export type WorkflowNode = z.infer<typeof workflowNodeSchema>;
 
+/** ComfyUI workflow container; additional workflow fields are retained. */
 export const workflowSchema = z
 	.object({
 		nodes: z.array(workflowNodeSchema).optional(),

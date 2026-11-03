@@ -38,7 +38,9 @@ const serverSettingsSchema = z.object({
 	servers: z.array(serverConnectionSchema),
 });
 
+/** A named server profile with a normalized HTTP(S) URL and stable cache identity. */
 export type ServerConnection = z.infer<typeof serverConnectionSchema>;
+/** Persisted server profiles and the selected profile, if any. */
 export type ServerSettings = z.infer<typeof serverSettingsSchema>;
 
 let settings: ServerSettings | null = null;
@@ -120,6 +122,12 @@ async function getStore(): Promise<Store> {
 	return storePromise;
 }
 
+/**
+ * Loads settings once, replacing missing or invalid persisted data with the build-time default.
+ *
+ * @returns The cached or newly initialized settings.
+ * @throws If loading or saving the Tauri store fails.
+ */
 export async function initializeServerSettings(): Promise<ServerSettings> {
 	if (settings) {
 		return settings;
@@ -150,6 +158,11 @@ export async function initializeServerSettings(): Promise<ServerSettings> {
 	return settings;
 }
 
+/**
+ * Returns the in-memory settings.
+ *
+ * @throws If initializeServerSettings has not completed.
+ */
 export function getServerSettings(): ServerSettings {
 	if (!settings) {
 		throw new Error(
@@ -159,6 +172,7 @@ export function getServerSettings(): ServerSettings {
 	return settings;
 }
 
+/** Returns the selected profile, or null when no profile is selected. */
 export function getActiveServer(): ServerConnection | null {
 	const current = getServerSettings();
 	return (
@@ -167,7 +181,7 @@ export function getActiveServer(): ServerConnection | null {
 	);
 }
 
-// Documentation is served by the selected server, including when RPC uses the local Vite proxy.
+/** Returns the selected server’s documentation URL, even when RPC uses the Vite proxy. */
 export function getApiDocsUrl(): string | undefined {
 	const server = getActiveServer();
 	return server
@@ -175,6 +189,7 @@ export function getApiDocsUrl(): string | undefined {
 		: undefined;
 }
 
+/** Normalizes and persists the supplied settings before replacing the in-memory copy. */
 export async function saveServerSettings(
 	next: ServerSettings,
 ): Promise<ServerSettings> {
@@ -189,6 +204,7 @@ export async function saveServerSettings(
 	return normalized;
 }
 
+/** Adds a validated profile and selects it if no server is currently active. */
 export async function addServerConnection(input: {
 	baseUrl: string;
 	name: string;
@@ -207,6 +223,12 @@ export async function addServerConnection(input: {
 	return server;
 }
 
+/**
+ * Removes a profile and its local database, closing persistence if it is active.
+ *
+ * @param id - Profile ID; an unknown ID is ignored.
+ * @throws If closing persistence, deleting the database, or saving settings fails.
+ */
 export async function removeServerConnection(id: string): Promise<void> {
 	const current = getServerSettings();
 	const removedServer = current.servers.find((server) => server.id === id);
@@ -227,6 +249,12 @@ export async function removeServerConnection(id: string): Promise<void> {
 	});
 }
 
+/**
+ * Updates a profile. Changing its URL assigns a new ID and removes the old cache;
+ * changing the name alone preserves both. Active persistence is closed on URL change.
+ *
+ * @throws If the profile is missing, its data is invalid, or persistence operations fail.
+ */
 export async function updateServerConnection(
 	server: ServerConnection,
 ): Promise<ServerConnection> {
@@ -271,6 +299,7 @@ export async function updateServerConnection(
 	);
 }
 
+/** Persists the selected profile ID, rejecting IDs that do not exist. */
 export async function activateServer(id: string): Promise<ServerConnection> {
 	const current = getServerSettings();
 	const server = current.servers.find((item) => item.id === id);

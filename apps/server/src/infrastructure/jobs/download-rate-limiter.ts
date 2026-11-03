@@ -9,12 +9,14 @@ let config: DownloadRateLimitConfig = {
 let lastRequestTime = 0;
 let pendingChain: Promise<void> = Promise.resolve();
 
+/** Replaces the rate-limit settings used by subsequent download requests. */
 export function updateDownloadRateLimitConfig(
 	newConfig: DownloadRateLimitConfig,
 ): void {
 	config = newConfig;
 }
 
+/** Serializes callers to maintain the configured request interval; returns immediately when disabled. */
 export async function waitForDownloadRateLimit(): Promise<void> {
 	if (!config.rateLimitEnabled || config.requestIntervalMs <= 0) {
 		return;
