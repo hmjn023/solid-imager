@@ -16,7 +16,13 @@ import type {
 	UpdateMediaRequest,
 } from "@/domain/media/schemas";
 
+import type {
+	LibraryStatistics,
+	StatisticsRequest,
+} from "@/domain/media/statistics";
+
 export type IMediaRepository = {
+	getStatistics(input: StatisticsRequest): Promise<LibraryStatistics>;
 	findById(id: string, tx?: Transaction): Promise<Media | null>;
 	findByIds(ids: string[], tx?: Transaction): Promise<Media[]>;
 	findByPath(
