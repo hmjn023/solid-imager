@@ -184,6 +184,8 @@
 				"apps/server/src/components/layout/layout.tsx",
 				"apps/server/src/components/home-route.tsx",
 				"apps/server/src/components/pages/search-content.tsx",
+				"apps/server/src/components/pages/manager-page.tsx",
+				"apps/server/src/routes/statistics.tsx",
 				"apps/server/src/components/media/media-actions.tsx",
 				"apps/server/src/router.tsx",
 				"apps/server/src/routes/__root.tsx",

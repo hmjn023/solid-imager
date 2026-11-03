@@ -133,7 +133,9 @@ export function createSharedEventSubscription<TEvent>(
 				openStream,
 				async (event) => {
 					await Promise.all(
-						Array.from(subscribers, (listener) => listener.onEvent(event)),
+						Array.from(subscribers, async (listener) =>
+							listener.onEvent(event),
+						),
 					);
 				},
 				() => {
@@ -142,7 +144,9 @@ export function createSharedEventSubscription<TEvent>(
 				async () => {
 					connected = true;
 					await Promise.all(
-						Array.from(subscribers, (listener) => listener.onConnected?.()),
+						Array.from(subscribers, async (listener) =>
+							listener.onConnected?.(),
+						),
 					);
 				},
 				() => {
