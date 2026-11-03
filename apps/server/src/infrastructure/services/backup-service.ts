@@ -81,6 +81,7 @@ interface MediaListQueryItem {
 	mediaType: string;
 	createdAt: Date | string;
 	modifiedAt: Date | string;
+	indexedAt: Date | string;
 	generationInfo?: {
 		prompt: string | null;
 		negativePrompt: string | null;
@@ -637,7 +638,7 @@ export const BackupService = {
 				: "image") as "image" | "video",
 			createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
 			modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : new Date(),
-			indexedAt: new Date(),
+			indexedAt: item.indexedAt ?? new Date(),
 			status: "active" as const,
 		}));
 
@@ -656,6 +657,7 @@ export const BackupService = {
 						description: sql`excluded.description`,
 						modifiedAt: sql`excluded.modified_at`,
 						createdAt: sql`excluded.created_at`,
+						indexedAt: sql`least(${medias.indexedAt}, excluded.indexed_at)`,
 						width: sql`excluded.width`,
 						height: sql`excluded.height`,
 						fileSize: sql`excluded.file_size`,
@@ -1281,7 +1283,7 @@ export const BackupService = {
 						: undefined,
 				createdAt: media.createdAt ? new Date(media.createdAt) : undefined,
 				modifiedAt: media.modifiedAt ? new Date(media.modifiedAt) : undefined,
-				// indexedAt: media.indexedAt, // Not in schema
+				indexedAt: media.indexedAt ? new Date(media.indexedAt) : undefined,
 
 				// Essential metadata
 				sourceUrls,

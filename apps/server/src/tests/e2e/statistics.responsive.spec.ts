@@ -9,13 +9,12 @@ test("statistics switches period and keeps the monthly drill-down across reload"
 	await expect(
 		page.getByRole("heading", { name: "ライブラリ統計" }),
 	).toBeVisible();
-	await expect(page.getByRole("button", { name: "直近30日" })).toHaveAttribute(
+	await expect(page.getByRole("button", { name: "全期間" })).toHaveAttribute(
 		"aria-pressed",
 		"true",
 	);
 	await expect(page.locator(".ts-chart-host svg").first()).toBeVisible();
-	await page.getByRole("button", { name: "全期間", exact: true }).click();
-	await expect(page.getByText(/月別 · 計/)).toBeVisible();
+	await expect(page.getByText(/月別 · 期間計/)).toBeVisible();
 	await expect(
 		page.getByRole("heading", { name: "IPランキング" }),
 	).toBeVisible();
@@ -40,7 +39,7 @@ test("statistics switches period and keeps the monthly drill-down across reload"
 		page.getByRole("button", { name: "全期間", exact: true }),
 	).toHaveAttribute("aria-pressed", "true");
 	await page.getByRole("button", { name: "直近30日" }).click();
-	await expect(page.getByText(/日別 · 計/)).toBeVisible();
+	await expect(page.getByText(/日別 · 期間計/)).toBeVisible();
 	await expect(
 		page.getByRole("heading", { name: "該当するメディア" }),
 	).toHaveCount(0);
@@ -83,9 +82,11 @@ test("chart views show composition, cumulative counts and selectable ranking bar
 		9, 16, 12, 21, 7, 4, 0, 18, 29, 21, 38, 16, 10, 8, 20, 34, 18, 57, 41, 23,
 		14, 0, 12, 31, 27, 20, 43, 26, 16, 35,
 	];
+	let cumulative = 1000;
 	const trend = counts.map((count, i) => ({
 		bucket: `2026-10-${String(i + 1).padStart(2, "0")}`,
 		count,
+		cumulative: (cumulative += count),
 	}));
 	const total = counts.reduce((sum, value) => sum + value, 0);
 	const entities = (names: string[], values: number[]) =>
@@ -130,7 +131,7 @@ test("chart views show composition, cumulative counts and selectable ranking bar
 			},
 		});
 	});
-	await page.goto("/statistics");
+	await page.goto("/statistics?period=recent");
 	await waitForAppHydration(page);
 	await expect(
 		page.getByRole("img", { name: "画像・動画・音声の構成比" }),
@@ -152,11 +153,14 @@ test("chart views show composition, cumulative counts and selectable ranking bar
 	});
 	await page.getByRole("button", { name: "累計", exact: true }).click();
 	await expect(
-		page.getByRole("img", { name: "取り込みの期間内累計" }),
+		page.getByRole("img", { name: "ライブラリの累計メディア数" }),
 	).toBeVisible();
 	await page.getByText("件数を一覧で見る").click();
 	await expect(
-		page.getByRole("button", { name: `2026-10-30 ${total} 件`, exact: true }),
+		page.getByRole("button", {
+			name: `2026-10-30 ${(1000 + total).toLocaleString("ja-JP")} 件`,
+			exact: true,
+		}),
 	).toBeVisible();
 	await page.getByText("件数を一覧で見る").click();
 	await leading.click();
@@ -164,7 +168,7 @@ test("chart views show composition, cumulative counts and selectable ranking bar
 	await expect(page.getByText("214 件", { exact: true }).first()).toBeVisible();
 	await expect(page.getByRole("button", { name: /アリア/ })).toHaveCount(0);
 	await expect(
-		page.getByRole("img", { name: "取り込みの期間内累計" }),
+		page.getByRole("img", { name: "ライブラリの累計メディア数" }),
 	).toBeAttached();
 	expect(
 		await page.evaluate(

@@ -508,6 +508,7 @@ export const mediaDumpItemSchema = mediaMetadataContextSchema.extend({
 	mediaType: z.enum(["image", "video", "audio"]).optional(),
 	createdAt: z.coerce.date().optional(),
 	modifiedAt: z.coerce.date().optional(),
+	indexedAt: z.coerce.date().nullish(),
 });
 
 export type MediaDumpItem = z.infer<typeof mediaDumpItemSchema>;

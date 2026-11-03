@@ -50,18 +50,14 @@ export function ImportTrend(props: {
 	selected?: string;
 	select: (bucket: string) => void;
 }) {
-	const rows = createMemo(() => {
-		let cumulative = 0;
-		return props.trend.map((item) => {
-			cumulative += item.count;
-			return { ...item, cumulative };
-		});
-	});
-	const total = () => rows().at(-1)?.cumulative ?? 0;
+	const total = createMemo(() =>
+		props.cumulative
+			? (props.trend.at(-1)?.cumulative ?? 0)
+			: props.trend.reduce((sum, item) => sum + item.count, 0),
+	);
 	const peak = createMemo(() =>
-		rows().reduce<LibraryStatistics["trend"][number] | undefined>(
-			(largest, item) =>
-				!largest || item.count > largest.count ? item : largest,
+		props.trend.reduce<LibraryStatistics["trend"][number] | undefined>(
+			(largest, item) => (item.count > (largest?.count ?? 0) ? item : largest),
 			undefined,
 		),
 	);
@@ -71,24 +67,24 @@ export function ImportTrend(props: {
 		defineChart({
 			marks: props.cumulative
 				? [
-						areaY(rows(), {
-							id: "期間内累計",
+						areaY(props.trend, {
+							id: "ライブラリ累計",
 							x: "bucket",
 							y: "cumulative",
 							y1: 0,
 							fill: chartBlue,
 							fillOpacity: 0.1,
 						}),
-						lineY(rows(), {
+						lineY(props.trend, {
 							id: "累計",
 							x: "bucket",
 							y: "cumulative",
 							stroke: chartBlue,
-							points: rows().length < 2,
+							points: props.trend.length < 2,
 						}),
 					]
 				: [
-						barY(rows(), {
+						barY(props.trend, {
 							id: "取り込み件数",
 							x: "bucket",
 							y: "count",
@@ -153,7 +149,8 @@ export function ImportTrend(props: {
 			<div class="flex flex-wrap items-end justify-between gap-3">
 				<div>
 					<p class="text-xs text-muted-foreground">
-						{props.monthly ? "月別" : "日別"} · 計
+						{props.monthly ? "月別" : "日別"} ·{" "}
+						{props.cumulative ? "ライブラリ累計" : "期間計"}
 					</p>
 					<p class="mt-1 flex items-baseline gap-1.5">
 						<strong class="text-3xl font-semibold tracking-tight tabular-nums">
@@ -166,7 +163,7 @@ export function ImportTrend(props: {
 					<p class="text-muted-foreground">
 						{props.monthly ? "取り込み最多月" : "取り込み最多日"}
 					</p>
-					<Show when={peak()}>
+					<Show when={peak()} fallback={<span>取り込みなし</span>}>
 						{(item) => (
 							<p class="mt-1 font-medium tabular-nums">
 								{label(item().bucket)} · {item().count.toLocaleString()} 件
@@ -177,7 +174,9 @@ export function ImportTrend(props: {
 			</div>
 			<Chart
 				ariaLabel={
-					props.cumulative ? "取り込みの期間内累計" : "メディアの取り込み件数"
+					props.cumulative
+						? "ライブラリの累計メディア数"
+						: "メディアの取り込み件数"
 				}
 				definition={chart()}
 				height={186}
@@ -189,8 +188,11 @@ export function ImportTrend(props: {
 				<summary class="w-fit cursor-pointer text-muted-foreground hover:text-foreground">
 					件数を一覧で見る
 				</summary>
+				<p class="mt-2 text-muted-foreground">
+					現在ライブラリに残るメディアをDB登録日で数えています。累計には表示期間より前の登録分も含みます。
+				</p>
 				<ul class="mt-2 grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
-					<For each={rows()}>
+					<For each={props.trend}>
 						{(item) => (
 							<li>
 								<Button
@@ -314,6 +316,7 @@ export function MediaComposition(props: {
 
 export function Ranking(props: {
 	kind: "ip" | "character";
+	periodLabel: string;
 	items: LibraryStatistics["ips"];
 	selected?: string;
 	select: (id: string) => void;
@@ -331,6 +334,9 @@ export function Ranking(props: {
 					上位10件
 				</span>
 			</div>
+			<p class="px-4 pt-2 text-xs text-muted-foreground sm:px-5">
+				{props.periodLabel}に登録されたメディアの直接の関連付けを集計
+			</p>
 			<ol class="px-2 py-2 sm:px-3">
 				<For
 					each={props.items}

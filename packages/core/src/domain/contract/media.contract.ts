@@ -38,7 +38,7 @@ export const mediaContract = {
 				tags: ["Media"],
 				summary: "ライブラリ統計",
 				description:
-					"取り込み日時に基づく日別・月別件数と、作品およびキャラクター別のメディア件数を取得します。",
+					"現在ライブラリに残るメディアをDB登録日で集計します。累計には表示期間より前の登録分も含みます。作品・キャラクター別の件数はManagerと同じ直接の関連付けを対象とします。",
 			}),
 		)
 		.input(statisticsRequestSchema)
