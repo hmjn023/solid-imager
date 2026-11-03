@@ -26,6 +26,7 @@ type AssociationManagerProps = {
 	onRemove: (id: string) => void | Promise<void>;
 	onCreate?: (name: string) => void | Promise<void>;
 	isLoading?: boolean;
+	editing?: boolean;
 };
 
 export function AssociationManager(props: AssociationManagerProps) {
@@ -56,7 +57,6 @@ export function AssociationManager(props: AssociationManagerProps) {
 		setIsMutating(true);
 		try {
 			await props.onAdd(id);
-			setOpen(false);
 			setSearch("");
 		} catch (error) {
 			toast.error(
@@ -91,14 +91,16 @@ export function AssociationManager(props: AssociationManagerProps) {
 		<div class="space-y-2">
 			<div class="flex items-center justify-between">
 				<h2 class="font-semibold text-lg">{props.title}</h2>
-				<Button
-					disabled={isMutating()}
-					onClick={() => setOpen(true)}
-					size="sm"
-					variant="outline"
-				>
-					Add
-				</Button>
+				<Show when={props.editing}>
+					<Button
+						disabled={isMutating()}
+						onClick={() => setOpen(true)}
+						size="sm"
+						variant="outline"
+					>
+						Add
+					</Button>
+				</Show>
 			</div>
 			<div class="flex flex-wrap gap-2">
 				<For each={props.items}>
