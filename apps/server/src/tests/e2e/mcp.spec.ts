@@ -606,3 +606,54 @@ test("settings publish oRPC data tools independently and revoke cached calls", a
 		await config("update", { mcp: initial });
 	}
 });
+
+test("an acknowledged tag edit never reopens the image after the user leaves", async ({
+	page,
+	request,
+}) => {
+	const created = await request.post("/api/rpc/tags/create", {
+		data: { json: { name: "e2e-follow-edit-once" } },
+	});
+	expect(created.ok()).toBe(true);
+	const { id } = (await created.json()).json;
+	const saved = Promise.withResolvers<void>();
+	const release = Promise.withResolvers<void>();
+	let writes = 0;
+	try {
+		await page.goto(mediaPath());
+		await waitForAppHydration(page);
+		await expect
+			.poll(async () =>
+				(await page.webmcp.tools()).some(
+					(tool) => tool.name === "edit_media_tags",
+				),
+			)
+			.toBe(true);
+		await page.route("**/api/rpc/config/callWebTool", async (route) => {
+			writes++;
+			const response = await route.fetch();
+			saved.resolve();
+			await release.promise;
+			await route.fulfill({ response });
+		});
+		const edit = page.webmcp.callTool("edit_media_tags", {
+			sourceId: E2E_SOURCE_ID,
+			mediaId: E2E_PRIMARY_MEDIA_ID,
+			action: "add",
+			tagIds: [id],
+		});
+		await saved.promise;
+		await page.getByRole("link", { name: "Jobs", exact: true }).first().click();
+		await expect(page).toHaveURL(/\/jobs$/);
+		release.resolve();
+		expect(await edit).toMatchObject({
+			success: true,
+			presentation: "unconfirmed",
+		});
+		await expect(page).toHaveURL(/\/jobs$/);
+		expect(writes).toBe(1);
+	} finally {
+		release.resolve();
+		await request.post("/api/rpc/tags/delete", { data: { json: { id } } });
+	}
+});

@@ -22,15 +22,15 @@ import { SearchScreen } from "@solid-imager/ui/screens/search-screen";
 import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
 import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
 import { toast } from "@solid-imager/ui/toast";
-import { useLocation, useNavigate } from "@tanstack/solid-router";
+import { useLocation } from "@tanstack/solid-router";
 import { createSignal } from "solid-js";
 import { BulkActionDialog } from "~/components/media/bulk-action-dialog";
-import { saveMediaContext } from "~/components/media/media-context";
+import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
 import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { useMediaSourceEvents } from "~/hooks/use-media-source-events";
-import { useWebMcpView } from "~/infrastructure/mcp/web-view";
+import { useWorkspaceView } from "~/presentation/workspace-view";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
 import { SearchHistoryClient as rawSearchHistoryClient } from "~/infrastructure/api/clients/search-history-client";
 import {
@@ -64,7 +64,7 @@ const SearchHistoryClient = createSearchHistoryClient(rawSearchHistoryClient);
 
 export default function SearchContent() {
 	const location = useLocation();
-	const navigate = useNavigate();
+	const workspace = useWorkspaceNavigation();
 	const [visibleMediaIds, setVisibleMediaIds] = createSignal<readonly string[]>(
 		[],
 	);
@@ -91,10 +91,6 @@ export default function SearchContent() {
 	const searchHistory = useSearchHistoryPersistence("all", {
 		client: SearchHistoryClient,
 	});
-	const currentReturnPath = () => {
-		const current = location();
-		return `${current.pathname}${current.searchStr}${current.hash}`;
-	};
 	const page = useSearchPage({
 		searchMedia,
 		searchSimilar,
@@ -142,7 +138,7 @@ export default function SearchContent() {
 				mediaId: media.id,
 				mediaSourceId: media.mediaSourceId,
 			}));
-	useWebMcpView(() => ({
+	useWorkspaceView(() => ({
 		kind: "search",
 		snapshotId: location().search.search,
 		searchKey: JSON.stringify(searchSnapshotStateSchema.parse(searchState)),
@@ -266,21 +262,8 @@ export default function SearchContent() {
 						onPrepareMediaDetail={options?.onPrepareMediaDetail}
 					/>
 				)}
-				onPrepareMediaDetail={(media, context) => {
-					const returnPath = currentReturnPath();
-					saveMediaContext(returnPath, context ?? [media]);
-				}}
-				onOpenMediaDetail={(media, context) => {
-					const returnPath = currentReturnPath();
-					saveMediaContext(returnPath, context ?? [media]);
-					void navigate({
-						params: {
-							mediaId: media.id,
-							mediaSourceId: media.mediaSourceId,
-						},
-						to: "/sources/$mediaSourceId/$mediaId",
-					});
-				}}
+				onPrepareMediaDetail={workspace.prepareMediaDetail}
+				onOpenMediaDetail={workspace.openMediaDetail}
 				renderMediaPreview={(media) => (
 					<ThumbnailImage
 						alt={media.fileName}

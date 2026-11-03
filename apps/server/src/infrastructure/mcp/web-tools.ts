@@ -4,42 +4,45 @@ import {
 } from "@solid-imager/core/domain/config/mcp";
 import { defaultState } from "@solid-imager/core/domain/search/schema";
 import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
-import {
-	mediaDetailsQueryKeys,
-	searchQueryKeys,
-	sourceMediaQueryKeys,
-	sourcesQueryKeys,
-} from "@solid-imager/ui/query-options";
+import { sourcesQueryKeys } from "@solid-imager/ui/query-options";
 import { searchState } from "@solid-imager/ui/stores/search-store";
-import {
-	saveMediaContext,
-	clearMediaReturnPath,
-} from "@solid-imager/ui/media-context";
 import { toast } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
-import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
+import type { WorkspaceNavigation } from "~/presentation/workspace-navigation";
+import {
+	afterCommit,
+	createViewActions,
+	ViewActionError,
+} from "~/presentation/workspace-actions";
 import {
 	mediaToolInputs,
 	mediaToolOutputs,
 } from "@solid-imager/core/domain/media/tool-schemas";
-import { afterWebViewPaint, readWebView, waitForWebView } from "./web-view";
+import {
+	afterWebViewPaint,
+	readWorkspaceView,
+} from "~/presentation/workspace-view";
 
 function defineTool<Schema extends z.ZodObject, Result extends object>(
 	name: string,
 	description: string,
 	readOnly: boolean,
 	inputSchema: Schema,
-	run: (input: z.output<Schema>, signal: AbortSignal) => Promise<Result>,
+	run: (
+		input: z.output<Schema>,
+		signal: AbortSignal,
+		origin: string,
+	) => Promise<Result>,
 ) {
 	return {
 		name,
 		description,
 		readOnly,
 		inputSchema,
-		execute: (input: unknown, signal: AbortSignal) =>
-			run(inputSchema.parse(input), signal),
+		execute: (input: unknown, signal: AbortSignal, origin: string) =>
+			run(inputSchema.parse(input), signal, origin),
 	};
 }
 
@@ -65,83 +68,19 @@ function pageOf<T>(items: T[], offset = 0, limit = 5, total = items.length) {
 	};
 }
 
-class WebToolError extends Error {
-	constructor(
-		message: string,
-		readonly code: string,
-	) {
-		super(message);
-	}
-}
-
 export async function registerWebTools(
 	context: WebMCP.ModelContext,
 	published: WebToolInfo[],
 	queryClient: QueryClient,
-	navigation: {
-		pathname: () => string;
-		openSearch: (id: string) => Promise<void>;
-		openMedia: (sourceId: string, mediaId: string) => Promise<void>;
-	},
+	navigation: WorkspaceNavigation,
 	signal: AbortSignal,
 ) {
 	if (signal.aborted) return;
 
-	const canChangeView = () => {
-		if (document.querySelector('[role="dialog"], [role="alertdialog"]')) {
-			throw new WebToolError(
-				"An editor or dialog is open. Ask the user to finish or close it before changing the view.",
-				"VIEW_BUSY",
-			);
-		}
-		if (navigation.pathname() === "/config") {
-			throw new WebToolError(
-				"Settings may contain unsaved changes. Ask the user to finish editing and leave Settings first.",
-				"VIEW_BUSY",
-			);
-		}
-	};
-
-	const openMedia = async (
-		location: z.infer<typeof mediaToolInputs.get_media_details>,
-		execution: AbortSignal,
-	) => {
-		canChangeView();
-		// Refresh even an already-open item so HTTP edits are reflected too.
-		await queryClient.query({
-			...mediaDetailsQueryOptions(location.sourceId, location.mediaId),
-			staleTime: 0,
-			queryFn: () => orpc.media.getDetails(location, { signal: execution }),
-		});
-		execution.throwIfAborted();
-		const view = readWebView();
-		if (view?.kind === "search") {
-			saveMediaContext(
-				`${window.location.pathname}${window.location.search}${window.location.hash}`,
-				view.media,
-			);
-		} else if (view?.kind !== "media") {
-			clearMediaReturnPath();
-		}
-		if (
-			view?.kind !== "media" ||
-			view.media.id !== location.mediaId ||
-			view.media.mediaSourceId !== location.sourceId
-		) {
-			canChangeView();
-			await navigation.openMedia(location.sourceId, location.mediaId);
-		}
-		await waitForWebView(
-			(view) =>
-				view.kind === "media" &&
-				view.media.id === location.mediaId &&
-				view.media.mediaSourceId === location.sourceId,
-			execution,
-		);
-	};
+	const views = createViewActions(navigation, queryClient);
 
 	const currentView = (offset = 0, limit = 5) => {
-		const view = readWebView();
+		const view = readWorkspaceView();
 		if (view?.kind === "media") {
 			const media = view.media;
 			return {
@@ -201,8 +140,8 @@ export async function registerWebTools(
 			"Search the library and show the results in this tab, replacing the current filters. Use when the user wants to find images together. Returns a brief result page; inspect more with get_current_view.",
 			false,
 			mediaToolInputs.search_media.omit({ limit: true, offset: true }),
-			async ({ query, tags, sourceId }, execution) => {
-				canChangeView();
+			async ({ query, tags, sourceId }, execution, origin) => {
+				views.beforeNavigation(execution, origin);
 				const state = searchSnapshotStateSchema.parse({
 					...defaultState,
 					searchQuery: query,
@@ -213,35 +152,15 @@ export async function registerWebTools(
 					{ state },
 					{ signal: execution },
 				);
-				execution.throwIfAborted();
-				canChangeView();
-				await navigation.openSearch(snapshot.id);
-				await waitForWebView(
-					(view) =>
-						view.kind === "search" &&
-						view.snapshotId === snapshot.id &&
-						view.searchKey === JSON.stringify(state) &&
-						view.ready &&
-						(view.resultsCurrent ||
-							["error", "offline"].includes(view.state.phase)) &&
-						["data", "empty", "error", "offline"].includes(view.state.phase) &&
-						view.state.fetchState !== "background-fetching",
+				await views.show(
+					{
+						kind: "search",
+						snapshotId: snapshot.id,
+						searchKey: JSON.stringify(state),
+					},
 					execution,
+					origin,
 				);
-				const view = readWebView();
-				if (
-					view?.kind !== "search" ||
-					view.snapshotId !== snapshot.id ||
-					view.searchKey !== JSON.stringify(state) ||
-					!view.resultsCurrent ||
-					view.state.error ||
-					!["data", "empty"].includes(view.state.phase)
-				) {
-					throw new WebToolError(
-						"Search could not load. Check the connection and retry.",
-						"SEARCH_FAILED",
-					);
-				}
 				return currentView();
 			},
 		),
@@ -250,8 +169,8 @@ export async function registerWebTools(
 			"Open an image and its metadata in this tab. Use when the user wants to inspect an image from the search results.",
 			false,
 			mediaToolInputs.get_media_details,
-			async (location, execution) => {
-				await openMedia(location, execution);
+			async (location, execution, origin) => {
+				await views.show({ kind: "media", ...location }, execution, origin);
 				return currentView();
 			},
 		),
@@ -260,36 +179,23 @@ export async function registerWebTools(
 			"Open the target image, add or remove its tags, and show the updated tags. Use when the user asks to change an image's tags.",
 			false,
 			mediaToolInputs.edit_media_tags,
-			async (input, execution) => {
-				await openMedia(input, execution);
-				execution.throwIfAborted();
+			async (input, execution, origin) => {
+				const target = {
+					kind: "media",
+					sourceId: input.sourceId,
+					mediaId: input.mediaId,
+				} as const;
+				await views.show(target, execution, origin);
+				views.beforeNavigation(execution);
 				const result = mediaToolOutputs.edit_media_tags.parse(
 					await orpc.config.callWebTool(
 						{ name: "edit_media_tags", arguments: input },
 						{ signal: execution },
 					),
 				);
-				await Promise.all(
-					[
-						mediaDetailsQueryKeys.detail(input.sourceId, input.mediaId),
-						sourceMediaQueryKeys.forSource(input.sourceId),
-						searchQueryKeys.all(),
-					].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+				return afterCommit(result, () =>
+					views.reflectTags(target, input.action, input.tagIds, execution),
 				);
-				await waitForWebView(
-					(view) =>
-						view.kind === "media" &&
-						view.media.id === input.mediaId &&
-						input.tagIds.every((id) =>
-							input.action === "add"
-								? view.media.tags.some(
-										(tag) => tag.id === id && tag.type === "positive",
-									)
-								: !view.media.tags.some((tag) => tag.id === id),
-						),
-					execution,
-				);
-				return result;
 			},
 		),
 		defineTool(
@@ -433,16 +339,23 @@ export async function registerWebTools(
 						try {
 							execution.throwIfAborted();
 							// Another tab may have unpublished this tool since the last discovery.
+							const origin = navigation.href();
 							const { mcp } = await orpc.config.get(undefined, {
 								signal: execution,
 							});
 							if (!mcp.web.includes(tool.name))
-								throw new WebToolError(
+								throw new ViewActionError(
 									"This tool is no longer published.",
 									"NOT_PUBLISHED",
 								);
-							const result = await tool.execute(input, execution);
-							execution.throwIfAborted();
+							const result = await tool.execute(input, execution, origin);
+							if (
+								"presentation" in result &&
+								result.presentation === "unconfirmed"
+							) {
+								toast.info(`AI: ${label}しました（画面反映は未確認）`, { id });
+								return result;
+							}
 							toast.success(`AI: ${label}しました`, { id });
 							return result;
 						} catch (error) {
@@ -458,14 +371,14 @@ export async function registerWebTools(
 									? "Operation canceled. Inspect the current view before retrying; completed changes may remain."
 									: error instanceof z.ZodError
 										? z.prettifyError(error).slice(0, 1000)
-										: error instanceof WebToolError
+										: error instanceof ViewActionError
 											? error.message
 											: `Could not finish ${tool.name}. Inspect the current view and check IDs and the server connection before retrying; completed changes may remain.`,
 								code: canceled
 									? "CANCELED"
 									: error instanceof z.ZodError
 										? "INVALID_INPUT"
-										: error instanceof WebToolError
+										: error instanceof ViewActionError
 											? error.code
 											: "OPERATION_FAILED",
 								retryable: false,
