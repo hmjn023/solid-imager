@@ -1,8 +1,8 @@
-import type { MediaSearchRequest } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSearchRequest } from "@solid-imager/core/media";
 import type {
 	SemanticSearchRequest,
 	SimilarityModel,
-} from "@solid-imager/core/domain/search/embedding";
+} from "@solid-imager/core/search";
 import { client } from "~/orpc-client";
 
 export function searchMedia(

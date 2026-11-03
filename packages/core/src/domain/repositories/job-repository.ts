@@ -1,10 +1,4 @@
-/** Lifecycle states persisted for a background job. */
-export type JobStatus =
-	| "pending"
-	| "in_progress"
-	| "completed"
-	| "failed"
-	| "cancelled";
+import type { JobStatus } from "../jobs/schemas";
 
 /** Persisted job state, including cancellation, retry and optional artifact metadata. */
 export type Job = {

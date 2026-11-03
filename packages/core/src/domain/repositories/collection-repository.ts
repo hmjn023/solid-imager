@@ -3,7 +3,7 @@ import type {
 	NewCollection,
 	NewCollectionItem,
 	UpdateCollection,
-} from "@/domain/collections/schemas";
+} from "../collections/schemas";
 
 export type ICollectionRepository = {
 	findAll(): Promise<Collection[]>;

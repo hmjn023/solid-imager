@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import { mkdir, utimes, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { ClusteringSnapshotMedia } from "@solid-imager/core/domain/characters/schemas";
+import type { ClusteringSnapshotMedia } from "@solid-imager/core/characters";
 
 /** Saved review data only; clustering algorithm tests use independent fixtures. */
 export async function seedClusteringResults(

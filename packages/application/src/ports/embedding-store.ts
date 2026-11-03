@@ -1,4 +1,4 @@
-import type { SimilarMediaScore } from "@solid-imager/core/domain/tagging/schemas";
+import type { SimilarMediaScore } from "@solid-imager/core/tagging";
 
 /** An image embedding with its model, version and source media modification time. */
 export type ImageEmbedding = {

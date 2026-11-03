@@ -4,11 +4,11 @@ import type {
 	IMediaStorage,
 	MediaMetadata,
 	MediaStorageResult,
-} from "@solid-imager/core";
-import { MediaFileConflictError } from "@solid-imager/core/domain/errors";
-import type { conflictSchema } from "@solid-imager/core/domain/media/upload-schemas";
+} from "@solid-imager/core/ports";
+import { MediaFileConflictError } from "@solid-imager/core/errors";
+import type { conflictSchema } from "@solid-imager/core/media";
 import type { z } from "zod";
-import { getErrorMessage } from "@solid-imager/core/utils/get-error-message";
+import { getErrorMessage } from "@solid-imager/core/utils";
 import { getImageMetadata } from "~/infrastructure/processing/bun-image";
 
 /**

@@ -1,4 +1,4 @@
-import type { MediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
+import type { MediaSearchResponse } from "@solid-imager/core/media";
 import type { InfiniteData } from "@tanstack/solid-query";
 import type { Accessor } from "solid-js";
 import { createComputed } from "solid-js";

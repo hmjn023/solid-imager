@@ -1,5 +1,5 @@
 import { implement } from "@orpc/server";
-import { directoriesContract } from "@solid-imager/core/domain/contract/directories.contract";
+import { directoriesContract } from "@solid-imager/core/contract";
 import { DirectoryService } from "~/infrastructure/services/directory-service";
 
 const os = implement(directoriesContract);

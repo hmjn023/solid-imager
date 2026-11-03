@@ -1,22 +1,20 @@
-import type {
-	ICharacterService,
-	IMediaProcessingService,
-} from "@solid-imager/application";
+import type { ICharacterService } from "@solid-imager/application/characters";
+import type { IMediaProcessingService } from "@solid-imager/application/media-processing";
 import type {
 	IConfigService,
 	IFileSystem,
 	IMediaStorage,
-} from "@solid-imager/core";
-import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
-import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
+	IAiClient,
+	IImageProcessor,
+} from "@solid-imager/core/ports";
+import type { IAuthorRepository } from "@solid-imager/core/authors";
+import type { CharacterRepository } from "@solid-imager/core/characters";
+import type { IIpRepository } from "@solid-imager/core/ips";
+import type { IJobRepository } from "@solid-imager/core/jobs";
+import type { IMediaRepository } from "@solid-imager/core/media";
+import type { IProjectRepository } from "@solid-imager/core/projects";
+import type { SourceRepository } from "@solid-imager/core/sources";
+import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/tags";
 import type { JobWorker } from "~/infrastructure/jobs/job-worker";
 
 export class ServiceRegistry {

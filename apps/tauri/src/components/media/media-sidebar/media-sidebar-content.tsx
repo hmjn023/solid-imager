@@ -1,4 +1,4 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
 import { MediaSidebarContent } from "@solid-imager/ui/media-sidebar-content";
 import type { Accessor } from "solid-js";
 import {

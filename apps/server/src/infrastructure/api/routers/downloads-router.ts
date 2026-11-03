@@ -1,5 +1,5 @@
 import { implement } from "@orpc/server";
-import { downloadsContract } from "@solid-imager/core/domain/contract/downloads.contract";
+import { downloadsContract } from "@solid-imager/core/contract";
 import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
 
 /**

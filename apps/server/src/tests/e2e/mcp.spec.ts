@@ -1,10 +1,7 @@
 import type { APIRequestContext } from "@playwright/test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import path from "node:path";
-import type {
-	McpConfig,
-	McpToolInfo,
-} from "@solid-imager/core/domain/config/mcp";
+import type { McpConfig, McpToolInfo } from "@solid-imager/core/config";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,

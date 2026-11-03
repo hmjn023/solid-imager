@@ -40,6 +40,18 @@
 - ドメインごとにディレクトリを分離（`media`, `tags`, `characters`, `ips`, `authors` 等）。
 - 各ドメイン配下に `schemas.ts` を配置し、Zodスキーマを定義する。
 
+### パッケージの公開 API
+
+- すべてのワークスペースは内部利用とし、`package.json` に `"private": true` を設定する。
+- パッケージをまたぐ import は各 `package.json` の `exports` に列挙した入口を使う。TypeScript・Vite・Vitest は workspace のパッケージ解決を共用する。パッケージ内の実装同士は相対 import で参照する。
+- server・CLI・Tauri・ブラウザ拡張は実行用アプリとして扱い、共有機能は `packages/*` に置く。ルーター実装は server 内で使い、クライアントは `@solid-imager/core/contract` の型を使う。
+- ドメイン型・schema・repository port は `@solid-imager/core/media` や `@solid-imager/core/search` などの機能別入口から取得する。API 契約は `@solid-imager/core/contract`、HTTP パス定数は `@solid-imager/core/http` にある。
+- メディアのユースケースには必要な repository 操作だけを渡す。旧 import の移行先と用途別 port は[パッケージ境界の棚卸し](docs/architecture/workspace-public-api.md)にまとめている。
+- server は `@solid-imager/application/media` などの factory に外部依存を渡す。DB repository の組み立ては `@solid-imager/db` の `createRepositories`、Drizzle のテーブル定義は `@solid-imager/db/schema` から利用する。
+- Web と Tauri の Tailwind 設定は `@solid-imager/ui/tailwind-preset` を import する。共有部品のクラス探索範囲は UI の `theme.css` が指定する。
+- `bun run lint:boundaries` は、設定・スクリプト・テストを含むワークスペースの JS/TS で、相対パスの境界越え、未公開の入口、未宣言のワークスペース依存を検出する。
+- Web と Tauri は `@solid-imager/ui/search/state` の共有状態や `@solid-imager/ui/screens/jobs` の画面を個別に読み込む。画面と共有状態の入口は分け、状態だけを使う側に画面コンポーネントを読み込ませない。
+
 ### アーキテクチャルール (Clean Architecture)
 
 - **依存方向:** `infrastructure` -> `application` -> `core` (Domain)。コアは他へ依存しない。

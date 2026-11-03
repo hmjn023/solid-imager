@@ -3,7 +3,7 @@ import {
 	type SourceEvent,
 	sourceSyncStatusEventSchema,
 	watcherErrorEventSchema,
-} from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/events";
 import type { QueryClient, QueryKey } from "@tanstack/solid-query";
 import { type Accessor, createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";

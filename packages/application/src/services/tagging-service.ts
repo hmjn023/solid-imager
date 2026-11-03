@@ -1,24 +1,26 @@
 import path from "node:path";
-import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { SourceEventPublisher } from "@solid-imager/core/domain/sources/events";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
-import { DEFAULT_MANUAL_CONFIDENCE } from "@solid-imager/core/domain/tagging/constants";
-import type {
-	CcipFeatureResponse,
-	TaggingResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
-import type { ILogger } from "../ports/media-service";
+import type { IAiClient } from "@solid-imager/core/ports";
+import type { CharacterRepository } from "@solid-imager/core/characters";
+import type { IIpRepository } from "@solid-imager/core/ips";
+import type { MediaReader } from "@solid-imager/core/media";
+import {
+	type SourceRepository,
+	localConnectionSchema,
+} from "@solid-imager/core/sources";
+import type { TagRepository as TagRepositoryDef } from "@solid-imager/core/tags";
+import type { SourceEventPublisher } from "@solid-imager/core/events";
+import {
+	DEFAULT_MANUAL_CONFIDENCE,
+	type CcipFeatureResponse,
+	type TaggingResponse,
+} from "@solid-imager/core/tagging";
+import type { ILogger } from "../ports/logger";
 import type { ITaggingService } from "../ports/tagging-service";
 
 export type TaggingServiceDeps = {
 	aiClient: IAiClient;
 	sourceRepo: SourceRepository;
-	mediaRepo: IMediaRepository;
+	mediaRepo: Pick<MediaReader, "findById">;
 	tagRepo: TagRepositoryDef;
 	characterRepo: CharacterRepository;
 	ipRepo: IIpRepository;
@@ -28,10 +30,10 @@ export type TaggingServiceDeps = {
 };
 
 /** Performs tagging and CCIP inference, using stored AI tags when available unless cache is skipped. */
-export class TaggingServiceImpl implements ITaggingService {
+class TaggingServiceImpl implements ITaggingService {
 	private readonly aiClient: IAiClient;
 	private readonly sourceRepo: SourceRepository;
-	private readonly mediaRepo: IMediaRepository;
+	private readonly mediaRepo: TaggingServiceDeps["mediaRepo"];
 	private readonly tagRepo: TagRepositoryDef;
 	private readonly characterRepo: CharacterRepository;
 	private readonly ipRepo: IIpRepository;
@@ -399,4 +401,10 @@ export class TaggingServiceImpl implements ITaggingService {
 			return true; // Fallback: assume local if URL parsing fails
 		}
 	}
+}
+
+export function createTaggingService(
+	deps: TaggingServiceDeps,
+): ITaggingService {
+	return new TaggingServiceImpl(deps);
 }

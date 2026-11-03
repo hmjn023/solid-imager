@@ -1,5 +1,5 @@
-import type { DeferredActions } from "@solid-imager/application/ports/media-service";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
+import type { DeferredActions } from "@solid-imager/application/media";
+import type { Job } from "@solid-imager/core/jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
 	processAutoTaggingJob,

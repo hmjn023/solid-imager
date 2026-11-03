@@ -1,8 +1,8 @@
 import { SmartCoercionHandlerPlugin } from "@orpc/json-schema";
 import { OpenAPIHandler } from "@orpc/openapi/fetch";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
-import { REST_API_PREFIX } from "@solid-imager/core/domain/contract/http-paths";
-import { isRestProcedure } from "@solid-imager/core/domain/contract/rest-visibility";
+import { REST_API_PREFIX } from "@solid-imager/core/http";
+import { isRestProcedure } from "@solid-imager/core/contract";
 import { appRouter } from "./app-router";
 
 const handler = new OpenAPIHandler(appRouter, {

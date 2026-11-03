@@ -3,12 +3,10 @@ import {
 	AppConfigUpdateSchema,
 	type AppConfig,
 	type AppConfigUpdate,
-} from "@solid-imager/core/domain/config/config-schema";
-import {
 	mcpConfigSchema,
 	type McpToolInfo,
-} from "@solid-imager/core/domain/config/mcp";
-import type { AiHealthResponse } from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/core/config";
+import type { AiHealthResponse } from "@solid-imager/core/tagging";
 import { createForm } from "@tanstack/solid-form";
 // oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";

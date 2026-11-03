@@ -1,9 +1,9 @@
-import type { SearchGroup } from "@solid-imager/core/domain/media/schemas";
-import { calculateNextModeState } from "@solid-imager/core/domain/search/logic";
 import {
+	type SearchGroup,
+	calculateNextModeState,
 	defaultState,
 	type SearchState,
-} from "@solid-imager/core/domain/search/schema";
+} from "@solid-imager/core/search";
 
 describe("calculateNextModeState - Pro to Simple transition", () => {
 	it("should clear simple state when transitioning from empty Pro condition", () => {

@@ -1,5 +1,5 @@
-import { createSearchHistoryClient } from "@solid-imager/ui/search-history-client";
-import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
+import { createSearchHistoryClient } from "@solid-imager/ui/search/history";
+import { activateSimilaritySearch } from "@solid-imager/ui/search/state";
 import { useNavigate } from "@tanstack/solid-router";
 import type { Accessor } from "solid-js";
 import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";

@@ -1,8 +1,8 @@
 import type {
 	NewCategory,
 	UpdateCategory,
-} from "@solid-imager/core/domain/categories/schemas";
-import type { CategoryRepository } from "@solid-imager/core/domain/repositories/category-repository";
+	CategoryRepository,
+} from "@solid-imager/core/categories";
 import type { ICategoryService } from "../ports/category-service";
 
 export function createCategoryService(

@@ -1,5 +1,5 @@
-import { mediaIdSchema } from "@solid-imager/core/domain/media/schemas";
-import type { SearchState } from "@solid-imager/core/domain/search/schema";
+import { mediaIdSchema } from "@solid-imager/core/media";
+import type { SearchState } from "@solid-imager/core/search";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 
 export type SearchArrayKey =

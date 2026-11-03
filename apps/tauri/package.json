@@ -2,6 +2,7 @@
   "name": "@solid-imager/tauri",
   "version": "0.0.0",
   "private": true,
+  "exports": {},
   "type": "module",
   "scripts": {
     "dev": "bun run tauri:dev",

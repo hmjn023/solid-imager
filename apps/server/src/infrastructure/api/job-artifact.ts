@@ -1,7 +1,7 @@
 import { createReadStream } from "node:fs";
 import fs from "node:fs/promises";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
+import type { Job } from "@solid-imager/core/jobs";
+import { JobRepository } from "~/infrastructure/db/repositories";
 import { isJobTransferPath } from "~/infrastructure/services/job-transfer-storage";
 import { nodeStreamToWebReadable } from "~/infrastructure/utils/stream-utils";
 

@@ -1,8 +1,8 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
 import {
+	type Media,
 	mediaIdSchema,
 	mediaSourceIdSchema,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/media";
 import {
 	readUiStorageValue,
 	removeUiStorageValue,

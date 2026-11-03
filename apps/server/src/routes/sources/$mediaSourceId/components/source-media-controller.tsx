@@ -1,15 +1,17 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import { Button } from "@solid-imager/ui/button";
 import {
 	type MediaCollectionSelectionMode,
 	useMediaCollectionSelection,
-} from "@solid-imager/ui/hooks/use-media-collection-selection";
+} from "@solid-imager/ui/collections";
 import { createPresetClient } from "@solid-imager/ui/preset-client";
-import { sourceMediaQueryKeys } from "@solid-imager/ui/query-options";
+import { sourceMediaQueryKeys } from "@solid-imager/ui/query";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import type { SourceMediaScreenProps } from "@solid-imager/ui/screens/source-media-screen.types";
-import type { SearchHistoryClient } from "@solid-imager/ui/search-history-client";
-import { SourceMediaPage as SourceMediaPageComponent } from "@solid-imager/ui/source-media-page";
+import type { SearchHistoryClient } from "@solid-imager/ui/search/history";
+import {
+	SourceMediaPage as SourceMediaPageComponent,
+	type SourceMediaPageProps,
+} from "@solid-imager/ui/source-media-page";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { useParams } from "@tanstack/solid-router";
 import { type Accessor, createSignal, type JSX, onMount, Show } from "solid-js";
@@ -37,29 +39,24 @@ import {
 	searchMedia,
 	searchSemantic,
 } from "~/infrastructure/api-clients/search-api";
-import {
-	getSearchCondition,
-	searchState,
-} from "~/presentation/store/search-store";
+import { getSearchCondition, searchState } from "@solid-imager/ui/search/state";
 
 const PresetClient = createPresetClient(rawPresetClient);
 export type SourceMediaPageControllerProps = {
 	mediaSourceId?: Accessor<string>;
-	uploadModalComponent: SourceMediaScreenProps["uploadModalComponent"];
+	uploadModalComponent: SourceMediaPageProps["uploadModalComponent"];
 	searchHistoryClient: SearchHistoryClient;
 	renderItem: SourceMediaGridRenderer;
 	bulkActionsClass: string;
 	ssrGuard?: boolean;
 	scrollContainerSelector?: Accessor<string>;
-	onOpenMediaDetail?: SourceMediaScreenProps["onOpenMediaDetail"];
-	onPrepareMediaDetail?: SourceMediaScreenProps["onPrepareMediaDetail"];
-	onFindSimilar?: SourceMediaScreenProps["onFindSimilar"];
-	renderMediaPreview?: SourceMediaScreenProps["renderMediaPreview"];
+	onOpenMediaDetail?: SourceMediaPageProps["onOpenMediaDetail"];
+	onPrepareMediaDetail?: SourceMediaPageProps["onPrepareMediaDetail"];
+	onFindSimilar?: SourceMediaPageProps["onFindSimilar"];
+	renderMediaPreview?: SourceMediaPageProps["renderMediaPreview"];
 };
 
-type SourceMediaGridOptions = Parameters<
-	SourceMediaScreenProps["renderItem"]
->[1];
+type SourceMediaGridOptions = Parameters<SourceMediaPageProps["renderItem"]>[1];
 
 type SourceMediaGridRenderer = (
 	media: Media,

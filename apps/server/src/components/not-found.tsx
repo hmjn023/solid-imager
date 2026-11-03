@@ -1,5 +1,5 @@
 import { Button } from "@solid-imager/ui/button";
-import { Search } from "@solid-imager/ui/workspace/icons";
+import { Search } from "@solid-imager/ui/icons";
 import { Link } from "@tanstack/solid-router";
 
 export function NotFoundRoute() {

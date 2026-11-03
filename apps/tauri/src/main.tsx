@@ -1,4 +1,4 @@
-import { WorkspaceSetupFrame } from "@solid-imager/ui/layouts/app-shell";
+import { WorkspaceSetupFrame } from "@solid-imager/ui/app-shell";
 import { BootstrapStatusScreen } from "@solid-imager/ui/router-status";
 import { RouterProvider } from "@tanstack/solid-router";
 import { createSignal, Match, onMount, Switch } from "solid-js";

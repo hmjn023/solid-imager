@@ -2,7 +2,7 @@ import type {
 	CreatePresetRequest,
 	Preset,
 	UpdatePresetRequest,
-} from "@/domain/media/schemas";
+} from "../presets/schemas";
 
 export type PresetRepository = {
 	list(): Promise<Preset[]>;

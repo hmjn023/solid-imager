@@ -1,5 +1,7 @@
-import type { BulkActionDialogProps as SharedBulkActionDialogProps } from "@solid-imager/ui/bulk-action-dialog";
-import { BulkActionDialog as SharedBulkActionDialog } from "@solid-imager/ui/bulk-action-dialog";
+import {
+	type BulkActionDialogProps as SharedBulkActionDialogProps,
+	BulkActionDialog as SharedBulkActionDialog,
+} from "@solid-imager/ui/bulk-action-dialog";
 import {
 	bulkCopyToSource,
 	bulkDeleteMedia,

@@ -1,5 +1,5 @@
 import { RouteTransitionIndicator } from "@solid-imager/ui/router-status";
-import { configQueryKeys } from "@solid-imager/ui/query-options";
+import { configQueryKeys } from "@solid-imager/ui/query";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { Outlet } from "@tanstack/solid-router";

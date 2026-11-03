@@ -1,19 +1,19 @@
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { Character } from "@solid-imager/core/characters";
+import type { Ip } from "@solid-imager/core/ips";
+import type { Author } from "@solid-imager/core/authors";
 import type {
-	Author,
 	MediaSearchRequest,
 	MediaSearchResponse,
 	SimilarMediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
-import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/domain/search/schema";
-import type {
-	SimilarityModel,
-	SemanticSearchRequest,
-} from "@solid-imager/core/domain/search/embedding";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
-import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
+} from "@solid-imager/core/media";
+import type { Project } from "@solid-imager/core/projects";
+import {
+	DEFAULT_SIMILARITY_TOP_K,
+	type SimilarityModel,
+	type SemanticSearchRequest,
+} from "@solid-imager/core/search";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
+import type { TagResponse } from "@solid-imager/core/tags";
 import {
 	createInfiniteQuery,
 	createQuery,

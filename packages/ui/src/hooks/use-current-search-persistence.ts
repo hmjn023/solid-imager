@@ -1,8 +1,5 @@
-import {
-	type Preset,
-	presetSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/domain/search/schema";
+import { type Preset, presetSchema } from "@solid-imager/core/presets";
+import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/search";
 import {
 	type Accessor,
 	createEffect,

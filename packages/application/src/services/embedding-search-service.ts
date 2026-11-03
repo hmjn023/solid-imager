@@ -1,15 +1,19 @@
 import path from "node:path";
-import type { SimilarMediaSearchResponse } from "@solid-imager/core/domain/media/schemas";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+import type {
+	SimilarMediaSearchResponse,
+	MediaReader,
+} from "@solid-imager/core/media";
+import {
+	type SourceRepository,
+	localConnectionSchema,
+} from "@solid-imager/core/sources";
 import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 	embeddingVectorSchema,
 	semanticSearchRequestSchema,
-} from "@solid-imager/core/domain/search/embedding";
-import type { SemanticSearchRequest } from "@solid-imager/core/domain/search/embedding";
+	type SemanticSearchRequest,
+} from "@solid-imager/core/search";
 import type {
 	IEmbeddingEncoder,
 	IEmbeddingStore,
@@ -20,7 +24,7 @@ import type {
 export class EmbeddingSearchService {
 	constructor(
 		private readonly deps: {
-			mediaRepository: IMediaRepository;
+			mediaRepository: Pick<MediaReader, "findById" | "findByIds">;
 			sourceRepository: SourceRepository;
 			encoder: IEmbeddingEncoder;
 			store: IEmbeddingStore;

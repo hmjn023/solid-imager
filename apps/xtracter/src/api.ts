@@ -1,5 +1,5 @@
 import { APIError, createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/domain/contract";
+import type { AppContract } from "@solid-imager/core/contract";
 
 export { APIError };
 

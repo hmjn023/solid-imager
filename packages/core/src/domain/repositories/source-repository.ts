@@ -1,8 +1,5 @@
-import type { Transaction } from "@/domain/interfaces/transaction-manager";
-import type {
-	MediaSourceInfo,
-	MediaSourceSyncState,
-} from "@/domain/sources/schemas";
+import type { Transaction } from "../interfaces/transaction-manager";
+import type { MediaSourceInfo, MediaSourceSyncState } from "../sources/schemas";
 
 // Using MediaSourceInfo as the base, but ensuring it matches the DB entity structure
 // which is required for existing infrastructure utilities like getDriver.

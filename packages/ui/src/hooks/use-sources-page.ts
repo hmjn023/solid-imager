@@ -1,7 +1,7 @@
 import type {
 	MediaSourceInfo,
 	SafeMediaSource,
-} from "@solid-imager/core/domain/sources/schemas";
+} from "@solid-imager/core/sources";
 import type { QueryClient, QueryKey } from "@tanstack/solid-query";
 import { type Accessor, createSignal } from "solid-js";
 import { toast } from "../toast";

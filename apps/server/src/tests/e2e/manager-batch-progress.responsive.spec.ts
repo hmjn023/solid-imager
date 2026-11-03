@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
-import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
+import type { JobDto } from "@solid-imager/core/jobs";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SOURCE_ID,

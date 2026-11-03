@@ -1,5 +1,5 @@
 import { implement } from "@orpc/server";
-import { utilsContract } from "@solid-imager/core/domain/contract/utils.contract";
+import { utilsContract } from "@solid-imager/core/contract";
 
 /**
  * Utils Router Implementation

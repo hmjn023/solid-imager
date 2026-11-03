@@ -1,7 +1,7 @@
 import { implement } from "@orpc/server";
-import { importsContract } from "@solid-imager/core/domain/contract/imports.contract";
-import type { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
-import type { ImportEvent } from "@solid-imager/core/domain/sources/events";
+import { importsContract } from "@solid-imager/core/contract";
+import type { downloadItemSchema } from "@solid-imager/core/media";
+import type { ImportEvent } from "@solid-imager/core/events";
 import { and, count, eq, inArray } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "~/infrastructure/db";

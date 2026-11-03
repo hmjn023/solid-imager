@@ -42,14 +42,13 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		page()
 			.mediaResults()
 			.find((media) => media.id === previewMediaId());
-	const openMediaDetail = (
-		media: import("@solid-imager/core/domain/media/schemas").Media,
-	) => props.onOpenMediaDetail?.(media, page().mediaResults());
+	const openMediaDetail = (media: import("@solid-imager/core/media").Media) =>
+		props.onOpenMediaDetail?.(media, page().mediaResults());
 	const prepareMediaDetail = (
-		media: import("@solid-imager/core/domain/media/schemas").Media,
+		media: import("@solid-imager/core/media").Media,
 	) => props.onPrepareMediaDetail?.(media, page().mediaResults());
 	const selectPreviewMedia = (
-		media: import("@solid-imager/core/domain/media/schemas").Media,
+		media: import("@solid-imager/core/media").Media,
 	) => {
 		setPreviewMediaId(media.id);
 		setIsInspectorVisible(true);

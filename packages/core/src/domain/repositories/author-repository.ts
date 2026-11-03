@@ -1,4 +1,4 @@
-import type { Transaction } from "@/domain/interfaces/transaction-manager";
+import type { Transaction } from "../interfaces/transaction-manager";
 import type {
 	Author,
 	NewAuthor,
@@ -7,7 +7,7 @@ import type {
 	CorrectMediaAuthorsInput,
 	MergeAuthorsInput,
 	ConfirmAuthorAccountInput,
-} from "@/domain/authors/schemas";
+} from "../authors/schemas";
 
 /** Author and account persistence port; correction and merge operations require a transaction. */
 export type IAuthorRepository = {

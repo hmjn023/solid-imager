@@ -2,7 +2,7 @@ import type {
 	Character,
 	NewCharacter,
 	UpdateCharacter,
-} from "@solid-imager/core/domain/characters/schemas";
+} from "@solid-imager/core/characters";
 
 /** Manages characters and their associations with media. */
 export interface ICharacterService {

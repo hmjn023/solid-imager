@@ -1,5 +1,5 @@
-import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { SimilarityModel } from "@solid-imager/core/search";
+import type { Media } from "@solid-imager/core/media";
 import type { Component, JSX } from "solid-js";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
 import type {
@@ -50,7 +50,7 @@ export type SourceMediaScreenProps = {
 	) => JSX.Element;
 	renderJobProgress?: (props: {
 		jobProgress: () =>
-			| import("@solid-imager/core/domain/sources/events").JobProgressEvent
+			| import("@solid-imager/core/events").JobProgressEvent
 			| null;
 	}) => JSX.Element;
 	renderMediaPreview?: (media: Media) => JSX.Element;

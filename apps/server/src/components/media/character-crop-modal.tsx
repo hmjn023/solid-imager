@@ -1,4 +1,4 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
 import { CharacterCropModal as SharedCharacterCropModal } from "@solid-imager/ui/character-crop-modal";
 import { fetchCharacterCrops } from "~/infrastructure/api-clients/ai-api";
 

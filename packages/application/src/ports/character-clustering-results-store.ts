@@ -2,7 +2,7 @@ import type {
 	ClusteringAssignment,
 	ClusteringRunSummary,
 	ClusteringSnapshotMedia,
-} from "@solid-imager/core/domain/characters/schemas";
+} from "@solid-imager/core/characters";
 
 /** A snapshot media record paired with its clustering assignment. */
 export type StoredClusteringMedia = {

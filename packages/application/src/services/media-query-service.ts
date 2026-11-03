@@ -1,6 +1,6 @@
 import path from "node:path";
-import type { IMediaStorage } from "@solid-imager/core";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import type { IMediaStorage, IImageProcessor } from "@solid-imager/core/ports";
+import { ResourceNotFoundError } from "@solid-imager/core/errors";
 import {
 	type FindDuplicatesRequest,
 	type FindDuplicatesResponse,
@@ -11,19 +11,29 @@ import {
 	mediaIdSchema,
 	mediaSearchRequestSchema,
 	mediaSourceIdSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import { getContentTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
-import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
-import type { ILogger } from "../ports/media-service";
+	type MediaDetailsReader,
+	type MediaReader,
+	type MediaSearchRepository,
+	type MediaWriter,
+	type MediaSearchRequestInput,
+} from "@solid-imager/core/media";
+import { getContentTypeFromExtension } from "@solid-imager/core/media/files";
+import {
+	type SourceRepository,
+	localConnectionSchema,
+} from "@solid-imager/core/sources";
+import type { TagRepository } from "@solid-imager/core/tags";
+import type { ILogger } from "../ports/logger";
+
+export type MediaQueryRepository = MediaSearchRepository &
+	Pick<MediaReader, "findById" | "findAllBySourceId"> &
+	Pick<MediaDetailsReader, "getDetails" | "getTags" | "getGenerationInfo"> &
+	Pick<MediaWriter, "upsertGenerationInfo">;
 
 /** Provides media lookup, content retrieval, metadata and duplicate search operations. */
 export class MediaQueryService {
 	constructor(
-		private readonly mediaRepository: IMediaRepository,
+		private readonly mediaRepository: MediaQueryRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
 		private readonly tagRepository: TagRepository,
@@ -33,7 +43,7 @@ export class MediaQueryService {
 
 	async searchMedia(
 		mediaSourceId: string | undefined | null,
-		params: unknown,
+		params: MediaSearchRequestInput,
 	): Promise<MediaSearchResponse> {
 		const searchRequest = mediaSearchRequestSchema.parse(params);
 		if (mediaSourceId) {

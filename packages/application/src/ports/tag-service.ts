@@ -1,8 +1,4 @@
-import type {
-	NewTag,
-	Tag,
-} from "@solid-imager/core/domain/repositories/tag-repository";
-import type { UpdateTag } from "@solid-imager/core/domain/tags/schemas";
+import type { NewTag, Tag, UpdateTag } from "@solid-imager/core/tags";
 
 /** Manages tags and looks them up by ID. */
 export interface ITagService {

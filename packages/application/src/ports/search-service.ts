@@ -1,7 +1,7 @@
 import type {
 	MediaSearchRequest,
 	MediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/media";
 
 /** Filters and pagination used by global media search. */
 export type SearchOptions = {

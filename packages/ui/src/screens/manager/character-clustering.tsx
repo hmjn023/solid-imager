@@ -6,7 +6,7 @@ import type {
 	ClusteringReviewMedia,
 	ClusteringRunSummary,
 	StartCharacterClustering,
-} from "@solid-imager/core/domain/characters/schemas";
+} from "@solid-imager/core/characters";
 import { createInfiniteQuery, createQuery } from "@tanstack/solid-query";
 import {
 	batch,

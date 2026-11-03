@@ -3,14 +3,14 @@ import fsPromises from "node:fs/promises";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { z } from "zod";
-import type { IConfigService } from "@solid-imager/core";
+import type { IConfigService } from "@solid-imager/core/ports";
 import {
 	type AppConfig,
 	type AppConfigUpdate,
 	AppConfigSchema,
 	defaultAppConfig,
-} from "@solid-imager/core/domain/config/config-schema";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
+} from "@solid-imager/core/config";
+import { isRecord } from "@solid-imager/core/utils";
 import { logger } from "~/infrastructure/logger";
 
 type ConfigChangeListener = (config: AppConfig) => void;

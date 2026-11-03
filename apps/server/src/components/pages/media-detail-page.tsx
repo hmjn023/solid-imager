@@ -1,6 +1,6 @@
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
-import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import type { MediaDetails } from "@solid-imager/core/media";
+import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail";
 import { createQuery } from "@tanstack/solid-query";
 import { type Accessor, Show } from "solid-js";
 import { MediaActions } from "~/components/media/media-actions";

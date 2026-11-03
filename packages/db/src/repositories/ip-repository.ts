@@ -2,13 +2,13 @@ import {
 	ResourceConflictError,
 	ResourceNotFoundError,
 	UnexpectedError,
-} from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/errors";
 import type {
 	Ip,
 	NewIp,
 	UpdateIp,
-} from "@solid-imager/core/domain/ips/schemas";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+	IIpRepository,
+} from "@solid-imager/core/ips";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { ips, mediaIps } from "../schema";
 import type { DrizzleExecutor } from "../types";

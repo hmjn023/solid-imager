@@ -1,23 +1,23 @@
 import { createHash } from "node:crypto";
 import { readFile, readdir, realpath, stat } from "node:fs/promises";
 import path from "node:path";
-import type {
-	ICharacterClusteringResultsStore,
-	StoredClusteringRun,
-} from "@solid-imager/application/ports/character-clustering-results-store";
-import { CharacterClusteringReviewService } from "@solid-imager/application/services/character-clustering-review-service";
+import {
+	type ICharacterClusteringResultsStore,
+	type StoredClusteringRun,
+	CharacterClusteringReviewService,
+} from "@solid-imager/application/clustering";
 import {
 	clusteringAssignmentSchema,
 	clusteringRunIdSchema,
 	clusteringSnapshotMediaSchema,
 	type ClusteringRunSummary,
 	type ClusteringSnapshotMedia,
-} from "@solid-imager/core/domain/characters/schemas";
+} from "@solid-imager/core/characters";
 import {
 	DomainError,
 	ResourceNotFoundError,
 	ValidationError,
-} from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/errors";
 import { z } from "zod";
 import { logger } from "~/infrastructure/logger";
 

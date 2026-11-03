@@ -1,4 +1,4 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
 import { useNavigate, useRouter } from "@tanstack/solid-router";
 import type { RouterHistory } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";

@@ -1,4 +1,4 @@
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
+import type { Ip } from "@solid-imager/core/ips";
 import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const ipsQueryKeys = {

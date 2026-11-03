@@ -4,7 +4,7 @@ import {
 	type MediaSourceEventTransport,
 	type UseMediaSourceEventsOptions,
 	useMediaSourceEvents as useMediaSourceEventsShared,
-} from "@solid-imager/ui/hooks/use-media-source-events";
+} from "@solid-imager/ui/source-events";
 import { type Accessor, mergeProps } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
@@ -19,7 +19,7 @@ export type {
 	SourceSyncStatusEvent,
 	ThumbnailGeneratedEvent,
 	WatcherErrorEvent,
-} from "@solid-imager/ui/hooks/use-media-source-events";
+} from "@solid-imager/core/events";
 
 type MediaSourceEventsOptions = Omit<UseMediaSourceEventsOptions, "transport">;
 

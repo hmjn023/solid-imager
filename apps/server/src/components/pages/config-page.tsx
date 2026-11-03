@@ -1,6 +1,5 @@
-import { configQueryKeys } from "@solid-imager/ui/query-options";
-import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { ConfigStateScreen } from "@solid-imager/ui/screens/config-state-screen";
+import { configQueryKeys, toQueryUiState } from "@solid-imager/ui/query";
+import { ConfigStateScreen } from "@solid-imager/ui/screens/config";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { configQueryOptions } from "~/infrastructure/api-clients/queries";

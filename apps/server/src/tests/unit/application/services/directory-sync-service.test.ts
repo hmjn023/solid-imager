@@ -37,7 +37,7 @@ vi.mock("node:fs/promises", () => ({
 	},
 }));
 
-vi.mock("~/infrastructure/repositories/media-repository", () => ({
+vi.mock("~/infrastructure/db/repositories", () => ({
 	MediaRepository: {
 		findAllPathsBySourceId: vi.fn().mockResolvedValue([
 			{ id: "id1", filePath: "file1.jpg" },
@@ -46,9 +46,6 @@ vi.mock("~/infrastructure/repositories/media-repository", () => ({
 		]),
 		delete: vi.fn(),
 	},
-}));
-
-vi.mock("~/infrastructure/repositories/source-repository", () => ({
 	DrizzleSourceRepository: {
 		findById: vi.fn().mockResolvedValue({
 			id: "source-1",
@@ -59,6 +56,7 @@ vi.mock("~/infrastructure/repositories/source-repository", () => ({
 		update: vi.fn().mockResolvedValue(undefined),
 	},
 }));
+
 vi.mock("~/infrastructure/services/media-processing-service", () => ({
 	MediaProcessingService: {
 		registerAndProcess: vi.fn(),
@@ -97,8 +95,10 @@ vi.mock("~/infrastructure/service-registry", () => ({
 }));
 
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import {
+	MediaRepository,
+	DrizzleSourceRepository,
+} from "~/infrastructure/db/repositories";
 import { MediaProcessingService } from "~/infrastructure/services/media-processing-service";
 
 describe("DirectorySyncService", () => {

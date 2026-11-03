@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateThumbnail } from "~/infrastructure/jobs/thumbnails";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { MediaRepository } from "~/infrastructure/db/repositories";
 import { services } from "~/infrastructure/service-registry";
 import {
 	MediaService,
@@ -184,9 +184,9 @@ describe("Reproduction: Copy Media Job Type", () => {
 		services.registerConfigService(mockConfigService as any);
 
 		// Instantiate and Register MediaProcessingService
-		const { MediaProcessingServiceImpl } =
-			await import("~/infrastructure/services/media-processing-service");
-		const mediaProcessingService = new MediaProcessingServiceImpl({
+		const { createMediaProcessingService } =
+			await import("@solid-imager/application/media-processing");
+		const mediaProcessingService = createMediaProcessingService({
 			sourceRepo: mockSourceRepository as any,
 			mediaRepo: MediaRepository as any,
 			tagRepo: mockTagRepo,

@@ -1,4 +1,4 @@
-import { ManagementHeader } from "@solid-imager/ui/workspace/management-layout";
+import { ManagementHeader } from "@solid-imager/ui/management-layout";
 import { createFileRoute } from "@tanstack/solid-router";
 import { ServerSettingsScreen } from "~/components/server-settings-screen";
 import { getServerSettings } from "~/infrastructure/settings/server-settings";

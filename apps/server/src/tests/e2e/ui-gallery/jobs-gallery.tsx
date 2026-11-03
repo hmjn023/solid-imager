@@ -1,6 +1,6 @@
-import type { JobDto } from "@solid-imager/core/domain/jobs/schemas";
+import type { JobDto } from "@solid-imager/core/jobs";
 import { Button } from "@solid-imager/ui/button";
-import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
+import { JobsScreen } from "@solid-imager/ui/screens/jobs";
 import { createSignal } from "solid-js";
 
 const date = new Date("2026-01-01T00:00:00Z");

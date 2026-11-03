@@ -4,7 +4,7 @@ import {
 	mediaDetailsQueryKeys,
 	searchQueryKeys,
 	sourceMediaQueryKeys,
-} from "@solid-imager/ui/query-options";
+} from "@solid-imager/ui/query";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { mediaDetailsQueryOptions } from "~/infrastructure/api-clients/queries";
 import type {

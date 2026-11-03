@@ -1,4 +1,4 @@
-import { createCategoryService } from "@solid-imager/application/services/category-service";
-import { DrizzleCategoryRepository } from "~/infrastructure/repositories/category-repository";
+import { createCategoryService } from "@solid-imager/application/categories";
+import { DrizzleCategoryRepository } from "~/infrastructure/db/repositories";
 
 export const CategoryService = createCategoryService(DrizzleCategoryRepository);

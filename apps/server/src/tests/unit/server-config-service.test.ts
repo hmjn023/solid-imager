@@ -3,7 +3,7 @@ import fsPromises from "node:fs/promises";
 import {
 	AppConfigUpdateSchema,
 	defaultAppConfig,
-} from "@solid-imager/core/domain/config/config-schema";
+} from "@solid-imager/core/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ServerConfigService } from "~/infrastructure/services/server-config-service";
 

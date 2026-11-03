@@ -1,18 +1,15 @@
 import {
 	ccipExtractionRequestSchema,
 	startCcipExtractionResponseSchema,
-} from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/core/tagging";
+import { viewToolTitles, type WebToolInfo } from "@solid-imager/core/config";
 import {
-	viewToolTitles,
-	type WebToolInfo,
-} from "@solid-imager/core/domain/config/mcp";
-import { defaultState } from "@solid-imager/core/domain/search/schema";
-import {
+	defaultState,
 	captureSearchSnapshotResponseSchema,
 	searchSnapshotStateSchema,
-} from "@solid-imager/core/domain/search/history";
-import { sourcesQueryKeys } from "@solid-imager/ui/query-options";
-import { searchState } from "@solid-imager/ui/stores/search-store";
+} from "@solid-imager/core/search";
+import { sourcesQueryKeys } from "@solid-imager/ui/query";
+import { searchState } from "@solid-imager/ui/search/state";
 import { toast } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
 import { z } from "zod";
@@ -26,7 +23,7 @@ import {
 import {
 	mediaToolInputs,
 	mediaToolOutputs,
-} from "@solid-imager/core/domain/media/tool-schemas";
+} from "@solid-imager/core/media-tools";
 import {
 	afterWebViewPaint,
 	readWorkspaceView,

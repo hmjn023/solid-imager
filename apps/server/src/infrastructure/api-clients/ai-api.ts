@@ -4,7 +4,7 @@
  * NOTE: Migrated to use oRPC ✅
  */
 
-import type { tagImageRequestSchema } from "@solid-imager/core/domain/tagging/schemas";
+import type { tagImageRequestSchema } from "@solid-imager/core/tagging";
 import type { z } from "zod";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 

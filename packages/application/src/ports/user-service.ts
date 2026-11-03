@@ -1,8 +1,4 @@
-import type {
-	NewUser,
-	UpdateUser,
-	User,
-} from "@solid-imager/core/domain/users/schemas";
+import type { NewUser, UpdateUser, User } from "@solid-imager/core/users";
 
 /** Manages user records and returns undefined when a user is absent. */
 export interface IUserService {

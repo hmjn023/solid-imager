@@ -1,5 +1,4 @@
-import type { NewIp, UpdateIp } from "@solid-imager/core/domain/ips/schemas";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
+import type { NewIp, UpdateIp, IIpRepository } from "@solid-imager/core/ips";
 import type { IIpService } from "../ports/ip-service";
 
 export function createIpService(repo: IIpRepository): IIpService {

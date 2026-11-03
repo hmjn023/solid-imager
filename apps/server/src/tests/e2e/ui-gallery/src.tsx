@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -63,7 +63,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
-import { useScrollRestoration } from "@solid-imager/ui/hooks/scroll-container";
+import { useScrollRestoration } from "@solid-imager/ui/scroll";
 import { Input } from "@solid-imager/ui/input";
 import {
 	Popover,

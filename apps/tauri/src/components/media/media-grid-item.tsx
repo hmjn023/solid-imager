@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import {
 	type MediaGridImageLoadPolicy,
 	type MediaGridLinkProps,

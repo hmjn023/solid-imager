@@ -1,6 +1,6 @@
 import { implement } from "@orpc/server";
 import { mcp } from "@orpc/mcp";
-import { tagsContract } from "@solid-imager/core/domain/contract/tags.contract";
+import { tagsContract } from "@solid-imager/core/contract";
 import { TagService } from "~/infrastructure/services/tag-service";
 
 /**

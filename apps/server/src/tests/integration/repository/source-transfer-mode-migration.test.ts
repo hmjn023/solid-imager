@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import {
 	sourceExportJobPayloadSchema,
 	sourceRestoreJobPayloadSchema,
-} from "@solid-imager/core/domain/jobs/schemas";
+} from "@solid-imager/core/jobs";
 import { expect, it } from "vitest";
 import { createPglite } from "~/infrastructure/db/pglite";
 

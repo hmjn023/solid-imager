@@ -9,7 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
+import type { Job } from "@solid-imager/core/jobs";
 import {
 	enqueueCharacterClustering,
 	processCharacterClusteringJob,

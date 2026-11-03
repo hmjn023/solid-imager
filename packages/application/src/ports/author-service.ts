@@ -6,7 +6,7 @@ import type {
 	Author,
 	NewAuthor,
 	ConfirmAuthorAccountInput,
-} from "@solid-imager/core/domain/authors/schemas";
+} from "@solid-imager/core/authors";
 
 /** Manages authors, their accounts and media attribution, including correction and merging. */
 export interface IAuthorService {

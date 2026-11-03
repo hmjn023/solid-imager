@@ -1,9 +1,9 @@
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createClient } from "@solid-imager/client";
-import type { AiConfig } from "@solid-imager/core/domain/config/config-schema";
-import type { AppContract } from "@solid-imager/core/domain/contract";
-import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
+import type { AiConfig } from "@solid-imager/core/config";
+import type { AppContract } from "@solid-imager/core/contract";
+import type { IAiClient } from "@solid-imager/core/ports";
 import {
 	type CcipDifferenceResponse,
 	type CcipFeatureResponse,
@@ -13,8 +13,8 @@ import {
 	oppaiOracleResponseSchema,
 	type TaggingResponse,
 	taggingResponseSchema,
-} from "@solid-imager/core/domain/tagging/schemas";
-import { asyncPool } from "@solid-imager/core/utils/async-pool";
+} from "@solid-imager/core/tagging";
+import { asyncPool } from "@solid-imager/core/utils";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import {
 	type DghsImgutilsModule,
@@ -25,7 +25,7 @@ import { embeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker
 import {
 	embeddingResponseSchema,
 	embeddingTextRequestSchema,
-} from "@solid-imager/core/domain/search/embedding";
+} from "@solid-imager/core/search";
 
 type RustAiClientConfig = Pick<
 	AiConfig,

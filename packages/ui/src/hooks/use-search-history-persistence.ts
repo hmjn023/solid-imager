@@ -1,8 +1,8 @@
-import type {
-	SafeSearchSnapshot,
-	SearchSnapshotState,
-} from "@solid-imager/core/domain/search/history";
-import { searchSnapshotStateSchema } from "@solid-imager/core/domain/search/history";
+import {
+	type SafeSearchSnapshot,
+	type SearchSnapshotState,
+	searchSnapshotStateSchema,
+} from "@solid-imager/core/search";
 import type { HistoryLocation, RouterHistory } from "@tanstack/solid-router";
 import { useLocation, useRouter } from "@tanstack/solid-router";
 import { createEffect, createMemo, createSignal, onCleanup } from "solid-js";

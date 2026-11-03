@@ -1,7 +1,4 @@
-import type {
-	McpConfig,
-	McpToolInfo,
-} from "@solid-imager/core/domain/config/mcp";
+import type { McpConfig, McpToolInfo } from "@solid-imager/core/config";
 import { createQuery } from "@tanstack/solid-query";
 import { createSignal, For, Show } from "solid-js";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";

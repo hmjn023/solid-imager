@@ -1,7 +1,9 @@
 import { implement } from "@orpc/server";
-import { searchSnapshotsContract } from "@solid-imager/core/domain/contract/search-snapshots.contract";
-import type { SearchSnapshot } from "@solid-imager/core/domain/search/history";
-import { safeSearchSnapshotSchema } from "@solid-imager/core/domain/search/history";
+import { searchSnapshotsContract } from "@solid-imager/core/contract";
+import {
+	type SearchSnapshot,
+	safeSearchSnapshotSchema,
+} from "@solid-imager/core/search";
 import { SearchSnapshotService } from "~/infrastructure/services/search-snapshot-service";
 
 const os = implement(searchSnapshotsContract);
