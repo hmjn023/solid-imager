@@ -1,4 +1,6 @@
 import type {
+	SearchCriterion,
+	SearchGroup,
 	MediaSearchRequest,
 	MediaSearchResponse,
 } from "@solid-imager/core/domain/media/schemas";
@@ -149,11 +151,28 @@ export type SearchResultsQueryOptionsInput = {
 	gcTime?: number;
 };
 
+function filtersActivity(node: SearchGroup | SearchCriterion): boolean {
+	return node.type === "group"
+		? node.children.some(filtersActivity)
+		: ["favorite", "rating", "viewCount"].includes(node.target);
+}
+
+function usesMediaActivity(
+	input: Pick<SearchResultsQueryOptionsInput, "sort" | "condition">,
+) {
+	return (
+		input.sort === "rating" ||
+		input.sort === "viewCount" ||
+		Boolean(input.condition && filtersActivity(input.condition))
+	);
+}
+
 /** Creates paged search options for either ordinary or similarity ordering. */
 export function buildSearchResultsQueryOptions(
 	input: SearchResultsQueryOptionsInput,
 ) {
 	return infiniteQueryOptions({
+		meta: { usesMediaActivity: usesMediaActivity(input) },
 		queryKey: searchQueryKeys.results({
 			mode: input.mode,
 			sourceId: input.sourceId,
@@ -252,6 +271,7 @@ export function buildSourceMediaResultsQueryOptions(
 	input: SourceMediaResultsQueryOptionsInput,
 ) {
 	return infiniteQueryOptions({
+		meta: { usesMediaActivity: usesMediaActivity(input) },
 		queryKey: sourceMediaQueryKeys.results({
 			...(input.semanticQuery !== undefined
 				? { semanticQuery: input.semanticQuery }

@@ -4,7 +4,7 @@
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
     "allowJs": true,
-    "types": ["bun-types", "vitest/globals"],
+    "types": ["bun-types", "vitest/globals", "webmcp-types"],
     "isolatedModules": true,
     "paths": {
       "#route-tree": ["./src/routeTree.gen.ts"],

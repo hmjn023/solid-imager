@@ -106,6 +106,7 @@ export interface UseSearchPageResult {
 		typeof createInfiniteQuery<MediaSearchResponse>
 	>;
 	searchResults: () => MediaSearchResponse["media"];
+	resultsCurrent: () => boolean;
 	hasData: () => boolean;
 	totalCount: () => number | undefined;
 	fetchNextPage: () => Promise<unknown>;
@@ -258,6 +259,7 @@ export function useSearchPage(
 	const [searchResultData, setSearchResultData] = createSignal<
 		InfiniteData<MediaSearchResponse> | undefined
 	>();
+	const [renderedQueryKey, setRenderedQueryKey] = createSignal<string>();
 
 	createEffect(() => {
 		// Solid Query exposes `data` as a resource-backed accessor. During an
@@ -270,8 +272,10 @@ export function useSearchPage(
 			queryClient.getQueryData<InfiniteData<MediaSearchResponse>>(queryKey);
 		if (cachedData !== undefined) {
 			setSearchResultData(cachedData);
+			setRenderedQueryKey(JSON.stringify(queryKey));
 		} else if (!searchResultQuery.isPlaceholderData) {
 			setSearchResultData(undefined);
+			setRenderedQueryKey(undefined);
 		}
 	});
 
@@ -424,6 +428,12 @@ export function useSearchPage(
 	return {
 		searchResultQuery,
 		searchResults,
+		// Previous results stay mounted during a filter change, but must not be
+		// treated as the completed result of the new search.
+		resultsCurrent: () =>
+			!searchResultQuery.isPlaceholderData &&
+			renderedQueryKey() ===
+				JSON.stringify(searchResultQueryOptions().queryKey),
 		hasData: () => searchResultData() !== undefined,
 		totalCount: () => searchResultData()?.pages[0]?.total,
 		fetchNextPage,

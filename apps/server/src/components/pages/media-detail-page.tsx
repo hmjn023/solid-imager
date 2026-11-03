@@ -1,4 +1,5 @@
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
+import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
 import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
 import { createQuery } from "@tanstack/solid-query";
 import { type Accessor, Show } from "solid-js";
@@ -6,6 +7,7 @@ import { MediaActions } from "~/components/media/media-actions";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
 import { createServerTransport } from "~/hooks/use-media-source-events";
+import { useWebMcpView } from "~/infrastructure/mcp/web-view";
 import {
 	mediaDetailsQueryOptions,
 	mediaSourcesQueryOptions,
@@ -62,8 +64,13 @@ function MediaContent(props: {
 					onUpdate={onUpdate}
 				/>
 			)}
-			renderMediaViewer={(media) => <MediaViewer media={media} />}
+			renderMediaViewer={(media) => <WebMcpMediaViewer media={media} />}
 			transport={createServerTransport(props.mediaSourceId)}
 		/>
 	);
+}
+
+function WebMcpMediaViewer(props: { media: MediaDetails }) {
+	useWebMcpView(() => ({ kind: "media", media: props.media }));
+	return <MediaViewer media={props.media} />;
 }
