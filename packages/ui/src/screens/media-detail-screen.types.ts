@@ -23,6 +23,7 @@ export type MediaDetailScreenProps = {
 		media: MediaDetails,
 		sourceRootPath?: string,
 	) => JSX.Element;
+	renderRelatedMedia?: (media: MediaDetails) => JSX.Element;
 	renderMediaSidebar: (
 		media: MediaDetails,
 		isUpdating: Accessor<boolean>,

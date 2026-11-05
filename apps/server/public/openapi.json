@@ -2780,6 +2780,298 @@
         }
       }
     },
+    "/media/getRelated": {
+      "post": {
+        "operationId": "media.getRelated",
+        "summary": "関連メディア取得",
+        "description": "保存済み画像索引、同じキャラクター・IP、positiveタグの希少性を考慮した一致から全ソースの画像を推薦します。recommendationsは関連度と多様性を考慮した重み付き抽選、itemsは種類別の候補です。limitはおすすめと各種類それぞれの上限です。seedと候補データが同じなら抽選結果を再現できます。閲覧時にAI推論は行いません。",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sourceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "limit": {
+                    "default": 12,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 24
+                  },
+                  "seed": {
+                    "default": "default",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "sourceId",
+                  "mediaId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "media": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "mediaSourceId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "fileName": {
+                                "type": "string"
+                              },
+                              "mediaType": {
+                                "type": "string",
+                                "enum": [
+                                  "image",
+                                  "video",
+                                  "audio"
+                                ]
+                              },
+                              "width": {
+                                "type": "number"
+                              },
+                              "height": {
+                                "type": "number"
+                              },
+                              "fileSize": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "modifiedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "indexedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "archived",
+                                  "deleted"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mediaSourceId",
+                              "fileName",
+                              "mediaType",
+                              "width",
+                              "height",
+                              "fileSize",
+                              "description",
+                              "createdAt",
+                              "modifiedAt",
+                              "indexedAt",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "reasons": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "similar",
+                                "character",
+                                "ip",
+                                "tag"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "media",
+                          "reasons"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "recommendations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "media": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "mediaSourceId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "fileName": {
+                                "type": "string"
+                              },
+                              "mediaType": {
+                                "type": "string",
+                                "enum": [
+                                  "image",
+                                  "video",
+                                  "audio"
+                                ]
+                              },
+                              "width": {
+                                "type": "number"
+                              },
+                              "height": {
+                                "type": "number"
+                              },
+                              "fileSize": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "modifiedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "indexedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "archived",
+                                  "deleted"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mediaSourceId",
+                              "fileName",
+                              "mediaType",
+                              "width",
+                              "height",
+                              "fileSize",
+                              "description",
+                              "createdAt",
+                              "modifiedAt",
+                              "indexedAt",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "reasons": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "similar",
+                                "character",
+                                "ip",
+                                "tag"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "media",
+                          "reasons"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "similarityStatus": {
+                      "type": "string",
+                      "enum": [
+                        "available",
+                        "not_indexed",
+                        "unavailable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "recommendations",
+                    "similarityStatus"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/media/statistics": {
       "post": {
         "operationId": "media.statistics",

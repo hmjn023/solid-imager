@@ -11,5 +11,6 @@ export const {
 	allAuthorsQueryOptions,
 	configQueryOptions,
 	mediaDetailsQueryOptions,
+	relatedMediaQueryOptions,
 	projectsForMediaQueryOptions,
 } = createAppQueryOptions(orpc);

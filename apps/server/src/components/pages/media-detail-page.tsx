@@ -1,16 +1,21 @@
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
 import type { MediaDetails } from "@solid-imager/core/media";
-import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail";
+import {
+	MediaDetailScreen,
+	RelatedMedia,
+} from "@solid-imager/ui/screens/media-detail";
 import { createQuery } from "@tanstack/solid-query";
 import { type Accessor, Show } from "solid-js";
 import { MediaActions } from "~/components/media/media-actions";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
+import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { createServerTransport } from "~/hooks/use-media-source-events";
 import { useWorkspaceView } from "~/presentation/workspace-view";
 import {
 	mediaDetailsQueryOptions,
 	mediaSourcesQueryOptions,
+	relatedMediaQueryOptions,
 } from "~/infrastructure/api-clients/queries";
 
 export function MediaDetailPage(props: {
@@ -65,6 +70,15 @@ function MediaContent(props: {
 				/>
 			)}
 			renderMediaViewer={(media) => <ObservedMediaViewer media={media} />}
+			renderRelatedMedia={(media) => (
+				<RelatedMedia
+					media={media}
+					queryOptions={relatedMediaQueryOptions}
+					renderThumbnail={(thumbnailProps) => (
+						<ThumbnailImage {...thumbnailProps} />
+					)}
+				/>
+			)}
 			transport={createServerTransport(props.mediaSourceId)}
 		/>
 	);

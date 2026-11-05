@@ -1,4 +1,7 @@
-import type { MediaDetails } from "@solid-imager/core/media";
+import type {
+	MediaDetails,
+	RelatedMediaResponse,
+} from "@solid-imager/core/media";
 import type { UUID } from "@solid-imager/core/shared";
 import type { QueryFunctionContext } from "@tanstack/solid-query";
 
@@ -25,5 +28,34 @@ export function buildMediaDetailsQueryOptions(
 		queryFn: ({ signal }: QueryFunctionContext) =>
 			queryFn(mediaSourceId, mediaId, signal),
 		...defaultMediaDetailsQueryConfig,
+	};
+}
+
+export const relatedMediaQueryKeys = {
+	detail: (sourceId: UUID, mediaId: UUID) =>
+		["relatedMedia", sourceId, mediaId] as const,
+	list: (sourceId: UUID, mediaId: UUID, limit: number, seed = "default") =>
+		[...relatedMediaQueryKeys.detail(sourceId, mediaId), limit, seed] as const,
+};
+
+/** Includes the sampling seed in cache identity while keeping per-media invalidation. */
+export function buildRelatedMediaQueryOptions(
+	sourceId: UUID,
+	mediaId: UUID,
+	limit: number,
+	seed: string,
+	queryFn: (
+		sourceId: UUID,
+		mediaId: UUID,
+		limit: number,
+		seed: string,
+		signal: AbortSignal,
+	) => Promise<RelatedMediaResponse>,
+) {
+	return {
+		queryKey: relatedMediaQueryKeys.list(sourceId, mediaId, limit, seed),
+		queryFn: ({ signal }: QueryFunctionContext) =>
+			queryFn(sourceId, mediaId, limit, seed, signal),
+		staleTime: 60_000,
 	};
 }

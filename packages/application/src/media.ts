@@ -33,6 +33,7 @@ import {
 } from "./services/media-upload-service";
 
 export type { DeferredActions, IMediaService } from "./ports/media-service";
+export { RelatedMediaService } from "./services/related-media-service";
 
 export interface MediaServiceDeps {
 	mediaRepository: MediaQueryRepository &

@@ -12,6 +12,8 @@ import type {
 	MediaSearchResponse,
 	MediaTag,
 	MediaUrl,
+	RelatedMediaTagCandidate,
+	RelatedMediaSignals,
 	UpdateMediaRequest,
 } from "../media/schemas";
 import type { Author } from "../authors/schemas";
@@ -110,6 +112,22 @@ export type MediaDetailsReader = {
 	getStatistics(input: StatisticsRequest): Promise<LibraryStatistics>;
 };
 
+/** Read-only candidates and metadata for related-media recommendations. */
+export type MediaRelatedReader = {
+	findRelatedByRelation(
+		mediaId: string,
+		relation: "character" | "ip",
+		limit: number,
+		seed?: string,
+	): Promise<Media[]>;
+	findRelatedByTags(
+		mediaId: string,
+		limit: number,
+		seed: string,
+	): Promise<RelatedMediaTagCandidate[]>;
+	getRelatedMediaSignals(mediaIds: string[]): Promise<RelatedMediaSignals[]>;
+};
+
 export type MediaMaintenanceRepository = {
 	findIdsWithMissingGenerationInfo(
 		tx?: Transaction,
@@ -152,5 +170,6 @@ export type IMediaRepository = MediaReader &
 	MediaWriter &
 	MediaSearchRepository &
 	MediaDetailsReader &
+	MediaRelatedReader &
 	MediaMaintenanceRepository &
 	MediaBulkRepository;

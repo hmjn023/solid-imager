@@ -19,6 +19,13 @@ export type {
 	MediaTag,
 	MediaType,
 	MediaUrl,
+	RelatedMediaItem,
+	RelatedMediaReason,
+	RelatedMediaRequest,
+	RelatedMediaRequestInput,
+	RelatedMediaResponse,
+	RelatedMediaTagCandidate,
+	RelatedMediaSignals,
 	SimilarMediaSearchResponse,
 	UpdateMediaRequest,
 	UpdateMediaRequestInput,
@@ -31,6 +38,9 @@ export {
 	mediaSearchRequestSchema,
 	mediaSearchResponseSchema,
 	mediaSourceIdSchema,
+	relatedMediaReasonSchema,
+	relatedMediaRequestSchema,
+	relatedMediaResponseSchema,
 	updateMediaRequestSchema,
 } from "../domain/media/schemas";
 export type {
@@ -49,4 +59,5 @@ export type {
 	MediaDetailsReader,
 	MediaMaintenanceRepository,
 	MediaBulkRepository,
+	MediaRelatedReader,
 } from "../domain/repositories/media-repository";
