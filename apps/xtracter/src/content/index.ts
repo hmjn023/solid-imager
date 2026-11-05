@@ -5,9 +5,19 @@ import {
 import type { DownloadItem } from "@ext/schema";
 import { processDanbooruMedia } from "./danbooru";
 import { processFanboxMedia } from "./fanbox";
+import { processPixivMedia } from "./pixiv";
 import { processTwitterMedia } from "./twitter";
 
-const OBSERVER_CONFIG = { childList: true, subtree: true };
+const OBSERVER_CONFIG: MutationObserverInit = {
+	childList: true,
+	subtree: true,
+	...(window.location.hostname === "www.pixiv.net"
+		? {
+				attributes: true,
+				attributeFilter: ["src", "srcset", "href", "poster", "content"],
+			}
+		: {}),
+};
 const ERROR_TIMEOUT_MS = 2000;
 
 function createButtonContainer(
@@ -43,6 +53,7 @@ function createButtonContainer(
 export function createAsyncButtonContainer(
 	fetchMetadata: () => Promise<DownloadItem | null>,
 	type: "IMAGE" | "VIDEO" = "IMAGE",
+	allowDownload = true,
 ): HTMLDivElement {
 	const container = document.createElement("div");
 	Object.assign(container.style, {
@@ -75,9 +86,17 @@ export function createAsyncButtonContainer(
 		});
 	});
 
+	let resetTimeout: ReturnType<typeof setTimeout> | undefined;
+	const resetLabels = () => {
+		dlBtn.innerText = type === "VIDEO" ? "DL VIDEO" : "DL";
+		postBtn.innerText = "POST";
+		container.removeAttribute("title");
+	};
 	const handleAsyncAction = async (
 		actionType: "DOWNLOAD" | "POST_DOWNLOAD",
 	) => {
+		clearTimeout(resetTimeout);
+		resetLabels();
 		try {
 			// Show loading state
 			dlBtn.innerText = "⏳";
@@ -88,27 +107,25 @@ export function createAsyncButtonContainer(
 			const metadata = await fetchMetadata();
 			if (metadata) {
 				handleAction(metadata, actionType, type);
+				resetLabels();
 			} else {
-				// Show error state
-				dlBtn.innerText = "❌";
-				postBtn.innerText = "❌";
-				setTimeout(() => {
-					dlBtn.innerText = type === "VIDEO" ? "DL VIDEO" : "DL";
-					postBtn.innerText = "POST";
-				}, ERROR_TIMEOUT_MS);
+				throw new Error(
+					"Could not load this image. Try again on the artwork page.",
+				);
 			}
-		} catch {
-			// Ignore errors silently
+		} catch (error) {
+			dlBtn.innerText = "❌";
+			postBtn.innerText = "❌";
+			container.title =
+				error instanceof Error ? error.message : "Could not load this image.";
+			resetTimeout = setTimeout(resetLabels, ERROR_TIMEOUT_MS);
 		} finally {
-			// Restore button state
-			dlBtn.innerText = type === "VIDEO" ? "DL VIDEO" : "DL";
-			postBtn.innerText = "POST";
 			dlBtn.disabled = false;
 			postBtn.disabled = false;
 		}
 	};
 
-	container.appendChild(dlBtn);
+	if (allowDownload) container.appendChild(dlBtn);
 	container.appendChild(postBtn);
 	return container;
 }
@@ -119,6 +136,7 @@ function createButton(
 	onClick: () => void,
 ): HTMLButtonElement {
 	const button = document.createElement("button");
+	button.type = "button";
 	button.innerText = text;
 	button.style.backgroundColor = bgColor;
 	button.style.color = "white";
@@ -197,6 +215,10 @@ function processMedia() {
 		processTwitterMedia(processedMetadata, createButtonContainer);
 	} else if (hostname === "fanbox.cc" || hostname.endsWith(".fanbox.cc")) {
 		processFanboxMedia(processedMetadata, createButtonContainer);
+	} else if (hostname === "www.pixiv.net") {
+		processPixivMedia(processedMetadata, (fetchMetadata) =>
+			createAsyncButtonContainer(fetchMetadata, "IMAGE", false),
+		);
 	} else if (hostname.includes("danbooru.donmai.us")) {
 		processDanbooruMedia(createButtonContainer, createAsyncButtonContainer);
 	}
@@ -208,7 +230,7 @@ if (["x.com", "twitter.com"].includes(window.location.hostname))
 const observer = new MutationObserver((mutations) => {
 	let shouldProcess = false;
 	for (const mutation of mutations) {
-		if (mutation.addedNodes.length > 0) {
+		if (mutation.type === "attributes" || mutation.addedNodes.length > 0) {
 			shouldProcess = true;
 			break;
 		}
@@ -219,5 +241,22 @@ const observer = new MutationObserver((mutations) => {
 });
 
 observer.observe(document.body, OBSERVER_CONFIG);
+
+if (window.location.hostname === "www.pixiv.net") {
+	// Decoded image/video sources may become available without another DOM mutation.
+	for (const event of ["load", "loadedmetadata"]) {
+		document.addEventListener(
+			event,
+			(e) => {
+				if (
+					e.target instanceof HTMLImageElement ||
+					e.target instanceof HTMLVideoElement
+				)
+					processMedia();
+			},
+			true,
+		);
+	}
+}
 
 processMedia();

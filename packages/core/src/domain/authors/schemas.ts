@@ -4,6 +4,7 @@ export const authorPlatformSchema = z.enum([
 	"twitter",
 	"pixiv-fanbox",
 	"danbooru",
+	"pixiv",
 ]);
 export type AuthorPlatform = z.infer<typeof authorPlatformSchema>;
 

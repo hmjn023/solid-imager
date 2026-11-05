@@ -39,6 +39,12 @@ describe("filename-utils", () => {
       expect(extractIdFromUrl("https://example-creator.fanbox.cc/posts/12345678")).toBe("12345678");
     });
 
+    it("should extract Pixiv artwork IDs from canonical and localized URLs", () => {
+      expect(extractIdFromUrl("https://www.pixiv.net/artworks/12345678")).toBe("12345678");
+      expect(extractIdFromUrl("https://www.pixiv.net/en/artworks/12345678?from=search")).toBe("12345678");
+      expect(extractIdFromUrl("https://www.pixiv.net.example.com/artworks/12345678")).toBeNull();
+    });
+
     it("should return null for other URLs", () => {
       expect(extractIdFromUrl("https://google.com")).toBeNull();
     });
@@ -87,6 +93,32 @@ describe("filename-utils", () => {
         sourceUrls: ["https://danbooru.donmai.us/posts/123456"],
       };
       expect(generateMediaFilename(item, ".png")).toBe("Artist_danbooru_123456_hash.png");
+    });
+
+    it("should keep each Pixiv page and original asset suffix in its filename", () => {
+      const sourceUrl = "https://www.pixiv.net/artworks/12345678";
+      const firstUrl = "https://i.pximg.net/img-original/img/2026/01/02/03/04/05/12345678_p0_abcd1234.png";
+      const secondUrl = "https://i.pximg.net/img-original/img/2026/01/02/03/04/05/12345678_p1_efgh5678.png";
+      const item: DownloadItem = {
+        targetUrl: firstUrl,
+        authors: [
+          { name: "Creator", accountId: "1234", remoteId: "1234", platform: "pixiv" },
+        ],
+        sourceUrls: [firstUrl, sourceUrl],
+      };
+      expect(generateMediaFilename(item, ".png")).toBe(
+        "1234_pixiv_12345678_12345678_p0_abcd1234.png",
+      );
+      expect(generateMediaFilename({
+        ...item,
+        targetUrl: secondUrl,
+        sourceUrls: [secondUrl, sourceUrl],
+      }, ".png")).toBe("1234_pixiv_12345678_12345678_p1_efgh5678.png");
+    });
+
+    it("should infer Pixiv from original CDN metadata without author information", () => {
+      const targetUrl = "https://i.pximg.net/img-original/img/2026/01/02/03/04/05/12345678_p0.jpg";
+      expect(generateMediaFilename({ targetUrl }, ".jpg")).toBe("pixiv_12345678_p0.jpg");
     });
 
     it("should not have a trailing dot if extension is empty", () => {
