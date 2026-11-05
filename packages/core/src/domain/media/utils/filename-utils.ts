@@ -24,6 +24,8 @@ export function sanitizeFilenamePart(part: string): string {
 const TWITTER_STATUS_REGEX = /\/status\/(\d+)/;
 const DANBOORU_POST_REGEX = /\/posts\/(\d+)/;
 const FANBOX_POST_REGEX = /\/posts\/(\d+)/;
+const PIXIV_ARTWORK_REGEX =
+	/^\/(?:[a-z]{2}(?:-[a-z]{2})?\/)?artworks\/(\d+)\/?$/;
 
 /**
  * Extract a unique post ID from supported media source URLs.
@@ -50,6 +52,13 @@ export function extractIdFromUrl(url: string): string | null {
 			urlObj.hostname.endsWith(".fanbox.cc")
 		) {
 			const match = urlObj.pathname.match(FANBOX_POST_REGEX);
+			return match ? match[1] : null;
+		}
+		if (
+			urlObj.hostname === "pixiv.net" ||
+			urlObj.hostname === "www.pixiv.net"
+		) {
+			const match = urlObj.pathname.match(PIXIV_ARTWORK_REGEX);
 			return match ? match[1] : null;
 		}
 	} catch (_e) {
@@ -123,6 +132,14 @@ function inferPlatformFromUrl(url: string): AuthorPlatform | null {
 		}
 		if (hostname === "fanbox.cc" || hostname.endsWith(".fanbox.cc")) {
 			return "pixiv-fanbox";
+		}
+		if (
+			hostname === "pixiv.net" ||
+			hostname === "www.pixiv.net" ||
+			hostname === "pximg.net" ||
+			hostname.endsWith(".pximg.net")
+		) {
+			return "pixiv";
 		}
 		if (hostname === "danbooru.donmai.us" || hostname.endsWith(".donmai.us")) {
 			return "danbooru";

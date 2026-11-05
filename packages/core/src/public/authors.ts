@@ -14,6 +14,7 @@ export type {
 	TwitterProfile,
 } from "../domain/authors/schemas";
 export {
+	authorPlatformSchema,
 	authorAccountVerificationSchema,
 	authorSchema,
 	submitAuthorAccountVerificationSchema,

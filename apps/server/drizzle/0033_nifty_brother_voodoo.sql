@@ -1,0 +1,1 @@
+ALTER TYPE "public"."author_platform" ADD VALUE 'pixiv';
