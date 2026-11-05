@@ -22,8 +22,8 @@ function seededRandom(seed: string): () => number {
 	};
 }
 
+/** Requires enough positive tags before overlap can justify a diversity penalty. */
 function nearIdenticalTags(left: Set<string>, right: Set<string>): boolean {
-	// A few ubiquitous tags do not establish that two images are near duplicates.
 	if (left.size < 4 || right.size < 4) return false;
 	let intersection = 0;
 	for (const tagId of left) {

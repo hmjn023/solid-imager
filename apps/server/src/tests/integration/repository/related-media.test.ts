@@ -256,9 +256,9 @@ describe("Related media tag queries", () => {
 			{ mediaId: ids.exact, indexes: [0, 1] },
 			{ mediaId: ids.extra, indexes: [0, 1, 2, 3, 4] },
 			{ mediaId: ids.lowConfidence, indexes: [0, 1], confidence: 0.1 },
-			{ mediaId: ids.zeroConfidence, indexes: [0, 1], confidence: 0 },
-			{ mediaId: ids.archived, indexes: [0, 1] },
-			{ mediaId: ids.video, indexes: [0, 1, 5] },
+			{ mediaId: ids.zeroConfidence, indexes: [0, 1, 2], confidence: 0 },
+			{ mediaId: ids.archived, indexes: [0, 1, 2, 3, 4] },
+			{ mediaId: ids.video, indexes: [0, 1, 2, 5] },
 			...fillerIds.map((mediaId) => ({ mediaId, indexes: [0] })),
 		];
 		await db.insert(mediaTags).values([
@@ -271,6 +271,7 @@ describe("Related media tag queries", () => {
 				})),
 			),
 			{ mediaId: ids.negative, tagId: tagIds[1], tagType: "negative" as const },
+			{ mediaId: ids.negative, tagId: tagIds[2], tagType: "negative" as const },
 			{ mediaId: ids.exact, tagId: tagIds[1], tagType: "negative" as const },
 		]);
 		await db.insert(mediaAuthors).values({ mediaId: ids.exact, authorId });
@@ -340,6 +341,29 @@ describe("Related media tag queries", () => {
 				),
 			).size,
 		).toBeGreaterThan(2);
+	});
+
+	it("uses active positive document frequencies for both reused anchor weights and candidate-only weights", async () => {
+		const results = await MediaRepository.findRelatedByTags(
+			ids.anchor,
+			100,
+			"idf",
+		);
+		// The fixture has 21 active images. The common tag occurs on 17 of them,
+		// the rare tag on 5, and each candidate-only tag on exactly one image.
+		// Archived/video/negative/zero-confidence associations must not raise df.
+		const commonWeight = Math.log(1 + 21 / (1 + 17));
+		const rareWeight = Math.log(1 + 21 / (1 + 5));
+		const candidateOnlyWeight = Math.log(1 + 21 / (1 + 1));
+		const anchorMass = commonWeight + rareWeight;
+		const score = (id: string) =>
+			results.find((item) => item.media.id === id)?.score;
+		expect(score(ids.rare)).toBeCloseTo(rareWeight / anchorMass, 10);
+		expect(score(ids.common)).toBeCloseTo(commonWeight / anchorMass, 10);
+		expect(score(ids.extra)).toBeCloseTo(
+			anchorMass / (anchorMass + 3 * candidateOnlyWeight),
+			10,
+		);
 	});
 
 	it("returns no tag candidates without positive anchor tags", async () => {

@@ -55,6 +55,11 @@ export class RelatedMediaService {
 		},
 	) {}
 
+	/**
+	 * Builds bounded category results and samples recommendations from a wider pool.
+	 * Category reasons preserve each tab's limit and visual order; sampled results
+	 * retain every matching reason from the full candidate pool.
+	 */
 	async getRelated(
 		input: RelatedMediaRequestInput,
 	): Promise<RelatedMediaResponse> {
@@ -180,6 +185,10 @@ export class RelatedMediaService {
 		};
 	}
 
+	/**
+	 * Reads only a current, compatible embedding and preserves its search order.
+	 * Missing or failed vector searches leave metadata-based recommendations usable.
+	 */
 	private async findSimilar(
 		anchor: Media,
 		limit: number,

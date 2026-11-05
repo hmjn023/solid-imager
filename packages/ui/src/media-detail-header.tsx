@@ -37,6 +37,7 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 	const history = router.history as RouterHistory;
 	const neighbors = () => findMediaNeighbors(props.media.id);
 
+	/** Replaces the detail entry while carrying a verified collection-return marker. */
 	const navigateToNeighbor = (direction: "next" | "previous") => {
 		const neighbor = neighbors()[direction];
 		if (!neighbor) return;
@@ -59,6 +60,10 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 		});
 	};
 
+	/**
+	 * Restores a verified collection history entry, or uses its saved route when the
+	 * current detail has no valid history chain. Direct links fall back to their source.
+	 */
 	const returnToCollection = () => {
 		const returnPath = readMediaReturnPath();
 		if (returnPath && isCollectionRoute(returnPath)) {

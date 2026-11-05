@@ -38,6 +38,7 @@ export const relatedMediaQueryKeys = {
 		[...relatedMediaQueryKeys.detail(sourceId, mediaId), limit, seed] as const,
 };
 
+/** Includes the sampling seed in cache identity while keeping per-media invalidation. */
 export function buildRelatedMediaQueryOptions(
 	sourceId: UUID,
 	mediaId: UUID,

@@ -71,6 +71,8 @@ export function readRelatedMedia(
  * Confidence-aware weighted Jaccard over positive tags. IDF is measured against
  * active images only; the union includes unmatched tags so tag-heavy images do
  * not win merely by having more tags. Manual tags (NULL confidence) have weight 1.
+ * Reuse anchor weights after shortlisting; only candidate-exclusive tags need a
+ * second document-frequency aggregation.
  */
 export function readRelatedTagMatches(
 	db: DrizzleExecutor,
@@ -118,22 +120,23 @@ export function readRelatedTagMatches(
 				least(1.0, greatest(0.0, coalesce(mt.confidence, 1.0))) as confidence
 			from ${mediaTags} mt join matching_ids c on c.media_id = mt.media_id
 			where mt.tag_type = 'positive' and coalesce(mt.confidence, 1.0) > 0
-		), relevant_tags as (
-			select tag_id from anchor_tags union select tag_id from candidate_tags
-		), frequencies as (
-			select mt.tag_id, count(*)::double precision as frequency
+		), candidate_only_tags as (
+			select distinct c.tag_id from candidate_tags c
+			where not exists (select 1 from anchor_tags a where a.tag_id = c.tag_id)
+		), candidate_weights as (
+			select mt.tag_id,
+				ln(1.0 + (select count(*) from eligible)::double precision / (1.0 + count(*))) as weight
 			from ${mediaTags} mt
-			join relevant_tags r on r.tag_id = mt.tag_id
+			join candidate_only_tags c on c.tag_id = mt.tag_id
 			join eligible e on e.id = mt.media_id
 			where mt.tag_type = 'positive' and coalesce(mt.confidence, 1.0) > 0
 			group by mt.tag_id
 		), weights as (
-			select r.tag_id,
-				ln(1.0 + (select count(*) from eligible)::double precision / (1.0 + coalesce(f.frequency, 0))) as weight
-			from relevant_tags r left join frequencies f on f.tag_id = r.tag_id
+			select tag_id, weight from anchor_weights
+			union all
+			select tag_id, weight from candidate_weights
 		), anchor_mass as (
-			select coalesce(sum(a.confidence * w.weight), 0) as mass
-			from anchor_tags a join weights w on w.tag_id = a.tag_id
+			select coalesce(sum(confidence * weight), 0) as mass from anchor_weights
 		), intersections as (
 			select c.media_id, sum(c.confidence * w.weight) as mass,
 				sum(case when a.tag_id is null then 0 else least(c.confidence, a.confidence) * w.weight end) as overlap

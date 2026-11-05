@@ -9,6 +9,7 @@ const entrySchema = relatedMediaRequestSchema.pick({
 });
 const savedSeedsSchema = entrySchema.array().max(MAX_SAVED_SEEDS);
 
+/** Creates a fresh sampling seed, including in browsers without randomUUID. */
 export function createRelatedMediaSeed(): string {
 	return (
 		globalThis.crypto?.randomUUID?.() ??
@@ -36,6 +37,7 @@ export function createRelatedMediaSeedStore(
 		// Invalid or blocked optional persistence must not prevent recommendations.
 	}
 
+	/** Refreshes entry recency and persists the bounded cache on a best-effort basis. */
 	const save = (sourceId: string, mediaId: string, seed: string) => {
 		const key = keyFor(sourceId, mediaId);
 		entries.delete(key);
@@ -68,6 +70,10 @@ type RelatedMediaSeedStore = ReturnType<typeof createRelatedMediaSeedStore>;
 // Only mounted browser components enter this map; SSR never retains user state.
 const browserStores = new WeakMap<Window, RelatedMediaSeedStore>();
 
+/**
+ * Reuses one store per browser window so Back works even without session storage.
+ * Call after mounting; server rendering must never create window-specific state.
+ */
 export function getBrowserRelatedMediaSeedStore(
 	browser: Window,
 ): RelatedMediaSeedStore {

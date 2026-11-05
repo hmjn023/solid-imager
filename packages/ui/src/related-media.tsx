@@ -95,6 +95,10 @@ export function RelatedMedia(props: RelatedMediaProps) {
 	);
 }
 
+/**
+ * Restores the browser's seed before querying and keeps displayed recommendations
+ * separate from an attempted refresh so loading or failure cannot clear them.
+ */
 function RelatedMediaContent(props: RelatedMediaProps) {
 	const queryClient = useQueryClient();
 	const [seedStore, setSeedStore] =
@@ -129,6 +133,10 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 	const activeAttempt = () =>
 		refreshAttempt()?.anchor === anchor() ? refreshAttempt() : undefined;
 	const isRefreshing = () => activeAttempt()?.status === "pending";
+	/**
+	 * Commits a new seed only after fetching succeeds; retries reuse the failed seed.
+	 * Results from an unmounted view, another media item or an older attempt are ignored.
+	 */
 	const refresh = async (retrySeed?: string) => {
 		if (isRefreshing()) return;
 		const sourceId = props.media.mediaSourceId;
@@ -143,8 +151,6 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 		}
 		setRefreshAttempt({ ...attempt, status: "pending" });
 		try {
-			// Commit the new seed only after success, retaining the current tiles and tab
-			// throughout loading, errors and offline recovery.
 			await queryClient.query(
 				props.queryOptions(sourceId, mediaId, attempt.seed),
 			);
