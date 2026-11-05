@@ -17,6 +17,7 @@ import { createStore, reconcile } from "solid-js/store";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { useMediaSourceEvents } from "../hooks/use-media-source-events";
 import { toQueryUiState } from "../query-state";
+import { relatedMediaQueryKeys } from "../query-options/media-query";
 import type {
 	MediaDetailDataRenderProps,
 	MediaDetailScreenProps,
@@ -56,12 +57,20 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 	};
 
 	const handleUpdate = async () => {
-		await queryClient.invalidateQueries({
-			queryKey: props.mediaDetailsQueryOptions(
-				props.mediaSourceId(),
-				props.mediaId(),
-			).queryKey,
-		});
+		await Promise.all([
+			queryClient.invalidateQueries({
+				queryKey: props.mediaDetailsQueryOptions(
+					props.mediaSourceId(),
+					props.mediaId(),
+				).queryKey,
+			}),
+			queryClient.invalidateQueries({
+				queryKey: relatedMediaQueryKeys.detail(
+					props.mediaSourceId(),
+					props.mediaId(),
+				),
+			}),
+		]);
 		await props.onAdditionalInvalidate?.();
 	};
 

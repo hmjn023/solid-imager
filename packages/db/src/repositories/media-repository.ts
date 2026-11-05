@@ -1,4 +1,9 @@
 import { readLibraryStatistics } from "./media-statistics";
+import {
+	readRelatedMedia,
+	readRelatedMediaSignals,
+	readRelatedTagMatches,
+} from "./related-media";
 import { createAuthorRepository, mapAuthor } from "./author-repository";
 import {
 	ResourceConflictError,
@@ -699,6 +704,42 @@ export function createMediaRepository(
 
 	return {
 		getStatistics: (input) => readLibraryStatistics(getExecutor(), input),
+		async findRelatedByRelation(mediaId, relation, limit, seed) {
+			const rows = await readRelatedMedia(
+				getExecutor(),
+				mediaId,
+				relation,
+				limit,
+				seed,
+			);
+			return rows.map(mapToMedia);
+		},
+		async findRelatedByTags(mediaId, limit, seed) {
+			const executor = getExecutor();
+			const matches = await readRelatedTagMatches(
+				executor,
+				mediaId,
+				limit,
+				seed,
+			);
+			if (matches.length === 0) return [];
+			const rows = await executor
+				.select()
+				.from(medias)
+				.where(
+					inArray(
+						medias.id,
+						matches.map((match) => match.mediaId),
+					),
+				);
+			const byId = new Map(rows.map((row) => [row.id, mapToMedia(row)]));
+			return matches.flatMap((match) => {
+				const media = byId.get(match.mediaId);
+				return media ? [{ media, score: match.score }] : [];
+			});
+		},
+		getRelatedMediaSignals: (mediaIds) =>
+			readRelatedMediaSignals(getExecutor(), mediaIds),
 		async updateActivity(sourceId, mediaId, change) {
 			return getExecutor().transaction(async (tx) => {
 				const [media] = await tx

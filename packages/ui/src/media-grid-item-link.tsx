@@ -1,14 +1,19 @@
 import type { Media } from "@solid-imager/core/media";
-import { Link } from "@tanstack/solid-router";
+import { Link, type RouterHistory } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import type { MediaGridLinkProps } from "./media-grid-item";
+import {
+	createRelatedMediaReturnMarker,
+	type MediaContextItem,
+} from "./media-context";
 
 export type MediaGridItemLinkProps = {
 	children: MediaGridLinkProps["children"];
 	linkProps: MediaGridLinkProps;
-	media: Media;
+	media: Pick<Media, "id" | "mediaSourceId">;
 	isBulkSelectMode?: boolean;
 	isSelected?: boolean;
+	relatedFrom?: MediaContextItem;
 	onOpenMediaDetail?: () => void;
 	onPrepareMediaDetail?: () => void;
 	onPreviewSelect?: () => void;
@@ -104,6 +109,20 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 				mediaId: props.media.id,
 				mediaSourceId: props.media.mediaSourceId,
 			}}
+			state={
+				props.relatedFrom
+					? (state: RouterHistory["location"]["state"]) => ({
+							...state,
+							relatedMediaReturn: props.relatedFrom
+								? createRelatedMediaReturnMarker(
+										state,
+										props.relatedFrom,
+										props.media,
+									)
+								: undefined,
+						})
+					: undefined
+			}
 			to="/sources/$mediaSourceId/$mediaId"
 		>
 			{props.children}

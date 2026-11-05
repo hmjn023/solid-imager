@@ -29,8 +29,10 @@ export {
 } from "./jobs-query";
 export {
 	buildMediaDetailsQueryOptions,
+	buildRelatedMediaQueryOptions,
 	defaultMediaDetailsQueryConfig,
 	mediaDetailsQueryKeys,
+	relatedMediaQueryKeys,
 } from "./media-query";
 export { prefetchQueryOnClient } from "./prefetch";
 export {

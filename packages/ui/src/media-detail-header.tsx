@@ -5,7 +5,9 @@ import type { JSX } from "solid-js";
 import { Button } from "./button";
 import {
 	clearMediaReturnPath,
+	createRelatedMediaReturnMarker,
 	findMediaNeighbors,
+	getMediaReturnHistoryDelta,
 	readMediaContext,
 	readMediaReturnPath,
 } from "./media-context";
@@ -44,6 +46,15 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 				mediaSourceId: neighbor.mediaSourceId,
 			},
 			replace: true,
+			state: (state: RouterHistory["location"]["state"]) => ({
+				...state,
+				relatedMediaReturn: createRelatedMediaReturnMarker(
+					state,
+					props.media,
+					neighbor,
+					true,
+				),
+			}),
 			to: "/sources/$mediaSourceId/$mediaId",
 		});
 	};
@@ -52,15 +63,17 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 		const returnPath = readMediaReturnPath();
 		if (returnPath && isCollectionRoute(returnPath)) {
 			const context = readMediaContext();
+			const historyDelta = getMediaReturnHistoryDelta(
+				context,
+				returnPath,
+				history.location.state,
+				props.media,
+			);
 			clearMediaReturnPath();
 			// Reuse the collection history entry so its search and scroll state
 			// survive. Direct links have no preceding collection and use the fallback.
-			if (
-				context?.returnPath === returnPath &&
-				context.returnHistoryIndex !== undefined &&
-				history.location.state.__TSR_index === context.returnHistoryIndex + 1
-			) {
-				history.back();
+			if (historyDelta !== undefined) {
+				history.go(historyDelta);
 				return;
 			}
 			void navigate({ href: returnPath, replace: true });

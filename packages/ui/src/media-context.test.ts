@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
 	clearMediaReturnPath,
+	createRelatedMediaReturnMarker,
 	findMediaNeighbors,
+	getMediaReturnHistoryDelta,
 	readMediaContext,
 	readMediaReturnPath,
 	saveMediaContext,
@@ -119,5 +121,160 @@ describe("media detail context", () => {
 		expect(storage.getItem(UI_STORAGE_KEYS.mediaReturn)).toBe(
 			"/search#results",
 		);
+	});
+
+	const firstMedia = { id: firstMediaId, mediaSourceId: sourceId };
+	const secondMedia = { id: secondMediaId, mediaSourceId: sourceId };
+	const collectionContext = {
+		items: [firstMedia, secondMedia],
+		returnPath: "/search?snapshot=saved",
+		returnHistoryIndex: 1,
+		updatedAt: 123,
+	};
+	function saveCollectionContext() {
+		storage.setItem(
+			UI_STORAGE_KEYS.mediaContext,
+			JSON.stringify(collectionContext),
+		);
+		storage.setItem(UI_STORAGE_KEYS.mediaReturn, collectionContext.returnPath);
+	}
+
+	it("returns through a related-image chain and keeps the chain across reloads", () => {
+		saveCollectionContext();
+		const secondState = {
+			__TSR_index: 3,
+			relatedMediaReturn: createRelatedMediaReturnMarker(
+				{ __TSR_index: 2 },
+				firstMedia,
+				secondMedia,
+			),
+		};
+		expect(
+			getMediaReturnHistoryDelta(
+				collectionContext,
+				collectionContext.returnPath,
+				secondState,
+				secondMedia,
+			),
+		).toBe(-2);
+		const thirdState = {
+			__TSR_index: 4,
+			relatedMediaReturn: createRelatedMediaReturnMarker(
+				secondState,
+				secondMedia,
+				firstMedia,
+			),
+		};
+		const reloadedState: unknown = JSON.parse(JSON.stringify(thirdState));
+		expect(
+			getMediaReturnHistoryDelta(
+				readMediaContext(),
+				collectionContext.returnPath,
+				reloadedState,
+				firstMedia,
+			),
+		).toBe(-3);
+	});
+
+	it("does not traverse or inherit stale collection history on a different branch", () => {
+		saveCollectionContext();
+		// The old collection at index 1 was replaced by Jobs; a Manager image is at 3.
+		const unrelatedState = { __TSR_index: 3 };
+		expect(
+			getMediaReturnHistoryDelta(
+				collectionContext,
+				collectionContext.returnPath,
+				unrelatedState,
+				firstMedia,
+			),
+		).toBeUndefined();
+		expect(
+			createRelatedMediaReturnMarker(unrelatedState, firstMedia, secondMedia),
+		).toBeUndefined();
+		// Existing immediate collection -> detail navigation still uses browser Back.
+		expect(
+			getMediaReturnHistoryDelta(
+				collectionContext,
+				collectionContext.returnPath,
+				{ __TSR_index: 2 },
+				firstMedia,
+			),
+		).toBe(-1);
+	});
+
+	it("rejects a copied marker on a different detail, index, or collection context", () => {
+		saveCollectionContext();
+		const state = {
+			__TSR_index: 3,
+			relatedMediaReturn: createRelatedMediaReturnMarker(
+				{ __TSR_index: 2 },
+				firstMedia,
+				secondMedia,
+			),
+		};
+		expect(
+			getMediaReturnHistoryDelta(
+				collectionContext,
+				collectionContext.returnPath,
+				state,
+				firstMedia,
+			),
+		).toBeUndefined();
+		expect(
+			createRelatedMediaReturnMarker(state, firstMedia, secondMedia),
+		).toBeUndefined();
+		expect(
+			getMediaReturnHistoryDelta(
+				collectionContext,
+				collectionContext.returnPath,
+				{ ...state, __TSR_index: 4 },
+				secondMedia,
+			),
+		).toBeUndefined();
+		expect(
+			getMediaReturnHistoryDelta(
+				{ ...collectionContext, updatedAt: 124 },
+				collectionContext.returnPath,
+				state,
+				secondMedia,
+			),
+		).toBeUndefined();
+	});
+
+	it("preserves the collection return when previous/next replaces a related detail", () => {
+		saveCollectionContext();
+		const state = {
+			__TSR_index: 3,
+			relatedMediaReturn: createRelatedMediaReturnMarker(
+				{ __TSR_index: 2 },
+				firstMedia,
+				secondMedia,
+			),
+		};
+		const replacedState = {
+			__TSR_index: 3,
+			relatedMediaReturn: createRelatedMediaReturnMarker(
+				state,
+				secondMedia,
+				firstMedia,
+				true,
+			),
+		};
+		expect(
+			getMediaReturnHistoryDelta(
+				collectionContext,
+				collectionContext.returnPath,
+				replacedState,
+				firstMedia,
+			),
+		).toBe(-2);
+		expect(
+			getMediaReturnHistoryDelta(
+				collectionContext,
+				collectionContext.returnPath,
+				replacedState,
+				secondMedia,
+			),
+		).toBeUndefined();
 	});
 });

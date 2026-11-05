@@ -5,13 +5,113 @@ import type { Page, Request, Response } from "@playwright/test";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
+	E2E_SIMILAR_FILE_NAME,
+	E2E_SIMILAR_MEDIA_ID,
 	E2E_SOURCE_ID,
 	E2E_SOURCE_NAME,
 } from "./support/fixture";
+import {
+	withRelatedMedia,
+	withRelatedMediaTag,
+} from "./support/related-media-fixture";
 import { expect, expectRouteHealthy, test } from "./support/test";
 
 const sourcePath = `/sources/${E2E_SOURCE_ID}`;
 const mediaPath = `${sourcePath}/${E2E_PRIMARY_MEDIA_ID}`;
+
+test("Tauri tag recommendations refresh and survive reload", async ({
+	page,
+}) => {
+	await withRelatedMediaTag(
+		page.request,
+		async () => {
+			await openTauriRoute(page, mediaPath);
+			const related = page.getByRole("region", {
+				name: "関連メディア",
+				exact: true,
+			});
+			await related.scrollIntoViewIfNeeded();
+			await related
+				.getByRole("tab", { name: "タグが近い", exact: true })
+				.click();
+			const candidate = related.locator(
+				`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
+			);
+			await expect(candidate).toBeVisible();
+			await related.getByRole("tab", { name: "おすすめ", exact: true }).click();
+			await expect(candidate).toBeVisible();
+			const refreshed = page.waitForResponse(
+				(response) =>
+					response.url().endsWith("/api/rpc/media/getRelated") && response.ok(),
+			);
+			await related
+				.getByRole("button", { name: "関連メディアを再取得", exact: true })
+				.click();
+			await refreshed;
+			await expect(candidate).toBeVisible();
+			await reloadTauriRoute(page);
+			await related.scrollIntoViewIfNeeded();
+			await expect(candidate).toBeVisible();
+			await expectNoHorizontalOverflow(page);
+		},
+		`http://127.0.0.1:${process.env.E2E_PORT}`,
+	);
+});
+
+test("Tauri related media loads thumbnails and follows the selected image", async ({
+	page,
+}) => {
+	await withRelatedMedia(
+		page.request,
+		async () => {
+			await openTauriRoute(page, mediaPath);
+			const related = page.getByRole("region", {
+				name: "関連メディア",
+				exact: true,
+			});
+			await related.scrollIntoViewIfNeeded();
+			await related
+				.getByRole("tab", { name: "同じキャラ", exact: true })
+				.click();
+			const candidate = related.locator(
+				`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`,
+			);
+			await expect(candidate).toBeVisible();
+			const thumbnail = candidate.getByRole("img");
+			await expect(thumbnail).toHaveAttribute(
+				"src",
+				new RegExp(
+					`/api/sources/${E2E_SOURCE_ID}/thumbnail/${E2E_SIMILAR_MEDIA_ID}`,
+				),
+			);
+			await expect
+				.poll(() =>
+					thumbnail.evaluate(
+						(image: HTMLImageElement) =>
+							image.complete && image.naturalWidth > 0,
+					),
+				)
+				.toBe(true);
+			await candidate.click();
+			await expect(page).toHaveURL(
+				new RegExp(`/#${sourcePath}/${E2E_SIMILAR_MEDIA_ID}$`),
+			);
+			await expect(
+				page.getByRole("heading", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
+			).toBeVisible();
+			await reloadTauriRoute(page);
+			await related.scrollIntoViewIfNeeded();
+			await expect(
+				related.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+			).toBeVisible();
+			await expect(
+				related.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`),
+			).toHaveCount(0);
+			await expectNoHorizontalOverflow(page);
+		},
+		`http://127.0.0.1:${process.env.E2E_PORT}`,
+	);
+});
 
 test("Tauri Manager loads clustering thumbnails through managed Blob URLs", async ({
 	page,
