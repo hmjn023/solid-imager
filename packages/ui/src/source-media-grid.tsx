@@ -184,7 +184,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		return error instanceof Error ? error.message : "API接続に失敗しました";
 	};
 	const canFindSimilar = (media: Media) =>
-		props.onFindSimilar !== undefined && media.mediaType === "image";
+		props.onFindSimilar !== undefined &&
+		(media.mediaType === "image" || media.mediaType === "video");
 
 	// --- Virtual grid setup ---
 	const [windowWidth, setWindowWidth] = createSignal(0);

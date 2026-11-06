@@ -38,7 +38,7 @@ export function EmbeddingSearchControls(props: {
 							<SelectItem item={item.item}>
 								{item.item.rawValue === "ccip"
 									? "CCIP（キャラクター）"
-									: "EmbeddingGemma 2（画像全体）"}
+									: "EmbeddingGemma 2（見た目）"}
 							</SelectItem>
 						)}
 					>
@@ -47,7 +47,7 @@ export function EmbeddingSearchControls(props: {
 								{(state) =>
 									state.selectedOption() === "ccip"
 										? "CCIP（キャラクター）"
-										: "EmbeddingGemma 2（画像全体）"
+										: "EmbeddingGemma 2（見た目）"
 								}
 							</SelectValue>
 						</SelectTrigger>
@@ -81,7 +81,7 @@ export function EmbeddingSearchControls(props: {
 				/>
 				<div class="flex flex-wrap gap-2">
 					<Button type="submit" size="sm" disabled={!draft().trim()}>
-						文章で画像を検索
+						文章で画像・動画を検索
 					</Button>
 					<Show when={props.state.semanticQuery}>
 						<Button
@@ -105,7 +105,7 @@ export function EmbeddingSearchControls(props: {
 				</p>
 			</Show>
 			<p class="text-xs text-muted-foreground">
-				画像索引は Manager → Vector extraction
+				画像と動画の代表サムネイルの索引は Manager → Vector extraction
 				で作成できます。類似検索・文章検索にはソースと件数を適用します。CCIP
 				はキャラクターの類似性を検索します。
 			</p>

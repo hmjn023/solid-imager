@@ -15,13 +15,8 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "./dialog";
-import {
-	Maximize2,
-	Minus,
-	Plus,
-	RefreshCw,
-	RotateCcw,
-} from "./workspace/icons";
+import { VideoPlayer } from "./video-player";
+import { Maximize2, Minus, Plus, RotateCcw } from "./workspace/icons";
 
 export interface MediaSource {
 	type: "image" | "video" | "audio";
@@ -43,7 +38,6 @@ export function MediaViewer(props: MediaViewerProps) {
 	const [isPanning, setIsPanning] = createSignal(false);
 	const [isFullscreen, setIsFullscreen] = createSignal(false);
 	const [isViewerOpen, setIsViewerOpen] = createSignal(false);
-	const [isVideoLooping, setIsVideoLooping] = createSignal(true);
 	const pointers = new Map<number, { x: number; y: number }>();
 	let viewer: HTMLElement | undefined;
 	let lastPointer: { x: number; y: number } | undefined;
@@ -166,7 +160,6 @@ export function MediaViewer(props: MediaViewerProps) {
 		let disposed = false;
 		setMediaUrl(null);
 		resetView();
-		setIsVideoLooping(true);
 
 		void (async () => {
 			try {
@@ -225,35 +218,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							}
 							when={mediaUrl()}
 						>
-							{(url) => (
-								<>
-									<video
-										class="h-full max-w-full"
-										controls
-										loop={isVideoLooping()}
-										src={url()}
-									>
-										<track kind="captions" />
-									</video>
-									<div class="pointer-events-none absolute inset-x-0 bottom-0 flex justify-end bg-gradient-to-t from-black/70 via-black/20 to-transparent px-3 pt-12 pb-12 opacity-0 transition-opacity group-hover/viewer:opacity-100 group-focus-within/viewer:opacity-100 motion-reduce:transition-none">
-										<Button
-											aria-label="Toggle video loop"
-											aria-pressed={isVideoLooping()}
-											class={`pointer-events-auto size-8 rounded-full border border-white/30 p-0 text-white shadow-lg backdrop-blur transition-colors motion-reduce:transition-none ${
-												isVideoLooping()
-													? "bg-white/25 hover:bg-white/40"
-													: "bg-black/35 hover:bg-black/55"
-											}`}
-											data-media-viewer-controls
-											onClick={() => setIsVideoLooping((current) => !current)}
-											size="icon"
-											variant="ghost"
-										>
-											<RefreshCw aria-hidden="true" size={15} />
-										</Button>
-									</div>
-								</>
-							)}
+							{(url) => <VideoPlayer fileName={props.fileName} src={url()} />}
 						</Show>
 					</Match>
 					<Match when={props.source.type === "audio"}>

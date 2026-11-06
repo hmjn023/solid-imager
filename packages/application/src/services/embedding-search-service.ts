@@ -19,8 +19,9 @@ import type {
 	IEmbeddingStore,
 	ImageEmbedding,
 } from "../ports/embedding-store";
+import type { ResolveVideoThumbnail } from "../ports/video-thumbnail";
 
-/** Extracts local image embeddings and searches by image or text. Existing embeddings are reused when the media modification time matches. */
+/** Embeds local images or video thumbnails and searches by media or text. */
 export class EmbeddingSearchService {
 	constructor(
 		private readonly deps: {
@@ -28,6 +29,7 @@ export class EmbeddingSearchService {
 			sourceRepository: SourceRepository;
 			encoder: IEmbeddingEncoder;
 			store: IEmbeddingStore;
+			resolveVideoThumbnail: ResolveVideoThumbnail;
 		},
 	) {}
 
@@ -39,8 +41,10 @@ export class EmbeddingSearchService {
 		const media = await this.deps.mediaRepository.findById(mediaId);
 		if (!media || media.mediaSourceId !== mediaSourceId)
 			throw new Error("Media not found in source");
-		if (media.mediaType !== "image")
-			throw new Error("EmbeddingGemma 2 supports images only");
+		if (media.mediaType !== "image" && media.mediaType !== "video")
+			throw new Error(
+				"EmbeddingGemma 2 supports images and video thumbnails only",
+			);
 		const source = await this.deps.sourceRepository.findById(mediaSourceId);
 		if (!source || source.type !== "local")
 			throw new Error("EmbeddingGemma 2 extraction requires a local source");
@@ -51,10 +55,12 @@ export class EmbeddingSearchService {
 			existing.mediaModifiedAt.getTime() === media.modifiedAt.getTime()
 		)
 			return existing;
+		const imagePath =
+			media.mediaType === "video"
+				? await this.deps.resolveVideoThumbnail(media)
+				: path.join(connection.path, media.filePath);
 		const vector = embeddingVectorSchema.parse(
-			await this.deps.encoder.encodeImage(
-				path.join(connection.path, media.filePath),
-			),
+			await this.deps.encoder.encodeImage(imagePath),
 		);
 		const record: ImageEmbedding = {
 			mediaId,

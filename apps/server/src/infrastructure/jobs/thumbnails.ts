@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
 import {
@@ -147,21 +148,42 @@ async function generateThumbnailAtSize(
 	await ensureCacheDir(mediaSourceId, size);
 	const storageConfig = getStorageConfig();
 	const outputPath = getThumbnailPath(mediaSourceId, mediaId, size);
-	if (
-		size === THUMBNAIL_SIZE_SMALL &&
-		storageConfig.thumbnailSize <= THUMBNAIL_SIZE_SMALL
-	) {
-		await fs.copyFile(inputPath, outputPath);
-		return;
+	const temporaryPath = `${outputPath}.${randomUUID()}.webp`;
+	try {
+		const inputBefore = await fs.stat(inputPath);
+		if (
+			size === THUMBNAIL_SIZE_SMALL &&
+			storageConfig.thumbnailSize <= THUMBNAIL_SIZE_SMALL
+		) {
+			await fs.copyFile(inputPath, temporaryPath);
+		} else {
+			await ImageProcessor.generateThumbnail(
+				inputPath,
+				temporaryPath,
+				size === THUMBNAIL_SIZE_LARGE
+					? storageConfig.thumbnailSize
+					: THUMBNAIL_SIZE_SMALL,
+				storageConfig.thumbnailQuality,
+			);
+		}
+		const inputAfter = await fs.stat(inputPath);
+		if (
+			inputBefore.mtimeMs !== inputAfter.mtimeMs ||
+			inputBefore.ctimeMs !== inputAfter.ctimeMs ||
+			inputBefore.size !== inputAfter.size ||
+			inputBefore.ino !== inputAfter.ino
+		) {
+			throw new Error(
+				"Media changed during thumbnail generation; retry the operation",
+			);
+		}
+		// Preserve the input generation even if it changes between this check and rename.
+		await fs.utimes(temporaryPath, inputBefore.atime, inputBefore.mtime);
+		// Readers, including AI inference, must never see a partly written thumbnail.
+		await fs.rename(temporaryPath, outputPath);
+	} finally {
+		await fs.rm(temporaryPath, { force: true });
 	}
-	await ImageProcessor.generateThumbnail(
-		inputPath,
-		outputPath,
-		size === THUMBNAIL_SIZE_LARGE
-			? storageConfig.thumbnailSize
-			: THUMBNAIL_SIZE_SMALL,
-		storageConfig.thumbnailQuality,
-	);
 }
 
 export async function generateThumbnailForMedia(

@@ -98,6 +98,7 @@
     "clsx": "^2.1.1",
     "cmdk-solid": "^1.2.0",
     "lucide-solid": "^1.64.0",
+    "media-chrome": "^4.19.4",
     "solid-js": "^1.9.17",
     "solid-sonner": "^0.3.3",
     "tailwind-merge": "^3.7.0",

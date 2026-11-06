@@ -5,7 +5,7 @@ import {
 } from "@solid-imager/application/ccip";
 import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { and, asc, eq, gt, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
 import type { Job } from "@solid-imager/core/jobs";
@@ -121,7 +121,7 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 	);
 
 	const baseWhere = and(
-		eq(medias.mediaType, "image"),
+		inArray(medias.mediaType, ["image", "video"]),
 		eq(mediaSources.type, "local"),
 		mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
 	);
@@ -146,7 +146,7 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 			if (dispatchedCount === 0) {
 				logger.info(
 					{ jobId: job.id, parentId, mediaSourceId, force },
-					"No matching images found for batch CCIP extraction",
+					"No matching media found for batch CCIP extraction",
 				);
 			}
 			break;
