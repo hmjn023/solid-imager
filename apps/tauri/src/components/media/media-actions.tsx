@@ -42,6 +42,7 @@ export function MediaActions(props: MediaActionsProps) {
 			aiTaggingModal={(modalProps) => (
 				<AiTaggingModal
 					isOpen={modalProps.isOpen}
+					mediaType={props.media.mediaType}
 					mediaId={props.media.id}
 					mediaSourceId={props.media.mediaSourceId}
 					onClose={modalProps.onClose}
@@ -78,7 +79,7 @@ export function MediaActions(props: MediaActionsProps) {
 			onViewJobs={(jobId) => void navigate({ to: "/jobs", search: { jobId } })}
 			oppaiOracleModal={(modalProps) => (
 				<OppaiOracleModal
-					description="Tags extracted from the image using the OppaiOracle model."
+					mediaType={props.media.mediaType}
 					fetchTags={() =>
 						client.ai.tagOppaiOracle({
 							mediaSourceId: props.media.mediaSourceId,

@@ -52,8 +52,8 @@ export function BatchToolPanel(props: {
 				</h2>
 				<p class="mt-0.5 text-xs text-muted-foreground">
 					{isVector()
-						? "Create EmbeddingGemma 2 image embeddings for image and natural language search, or CCIP character embeddings."
-						: "Analyze media and submit AI tagging jobs."}
+						? "Analyze images and representative video thumbnails with EmbeddingGemma 2 for visual and natural language search, or CCIP for character similarity."
+						: "Analyze images and representative video thumbnails and submit AI tagging jobs."}
 				</p>
 			</div>
 

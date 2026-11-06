@@ -41,13 +41,24 @@ function setup() {
 			connectionInfo: { path: "/images" },
 		}),
 	};
+	const resolveVideoThumbnail = vi
+		.fn()
+		.mockResolvedValue("/thumbnails/video.webp");
 	const service = new EmbeddingSearchService({
 		mediaRepository: mediaRepository as any,
 		sourceRepository: sourceRepository as any,
 		encoder,
 		store,
+		resolveVideoThumbnail,
 	});
-	return { service, encoder, store, mediaRepository, sourceRepository };
+	return {
+		service,
+		encoder,
+		store,
+		mediaRepository,
+		sourceRepository,
+		resolveVideoThumbnail,
+	};
 }
 
 describe("EmbeddingSearchService", () => {
@@ -73,9 +84,10 @@ describe("EmbeddingSearchService", () => {
 	});
 
 	it("extracts a missing image anchor and excludes it from the results", async () => {
-		const { service, store, encoder } = setup();
+		const { service, store, encoder, resolveVideoThumbnail } = setup();
 		await service.searchSimilar(mediaId, 100);
 		expect(encoder.encodeImage).toHaveBeenCalledWith("/images/picture.png");
+		expect(resolveVideoThumbnail).not.toHaveBeenCalled();
 		expect(store.upsert).toHaveBeenCalledWith({
 			mediaId,
 			vector,
@@ -107,8 +119,76 @@ describe("EmbeddingSearchService", () => {
 		expect(encoder.encodeImage).toHaveBeenCalledOnce();
 	});
 
-	it("rejects blank queries, invalid vectors, mismatched sources, and non-image anchors", async () => {
-		const { service, encoder, mediaRepository } = setup();
+	it("extracts a video thumbnail and makes the original video the similarity anchor", async () => {
+		const { service, store, encoder, mediaRepository, resolveVideoThumbnail } =
+			setup();
+		const video = { ...media, filePath: "clip.mp4", mediaType: "video" };
+		mediaRepository.findById.mockResolvedValue(video);
+		await service.searchSimilar(mediaId, 100);
+		expect(resolveVideoThumbnail).toHaveBeenCalledWith(video);
+		expect(encoder.encodeImage).toHaveBeenCalledWith("/thumbnails/video.webp");
+		expect(encoder.encodeImage).not.toHaveBeenCalledWith("/images/clip.mp4");
+		expect(store.upsert).toHaveBeenCalledWith(
+			expect.objectContaining({
+				mediaId,
+				mediaModifiedAt: video.modifiedAt,
+			}),
+		);
+		expect(store.search).toHaveBeenCalledWith(
+			vector,
+			expect.objectContaining({ excludeMediaId: mediaId }),
+		);
+	});
+
+	it("reuses current video embeddings without resolving a thumbnail, and resolves stale or forced vectors", async () => {
+		const { service, store, encoder, mediaRepository, resolveVideoThumbnail } =
+			setup();
+		mediaRepository.findById.mockResolvedValue({
+			...media,
+			mediaType: "video",
+		});
+		const current = { mediaId, vector, mediaModifiedAt: media.modifiedAt };
+		store.get.mockResolvedValue(current);
+		expect(await service.extract(sourceId, mediaId)).toEqual(current);
+		expect(resolveVideoThumbnail).not.toHaveBeenCalled();
+		expect(encoder.encodeImage).not.toHaveBeenCalled();
+		store.get.mockResolvedValue({
+			...current,
+			mediaModifiedAt: new Date("2025-01-01"),
+		});
+		await service.extract(sourceId, mediaId);
+		expect(resolveVideoThumbnail).toHaveBeenCalledTimes(1);
+		store.get.mockResolvedValue(current);
+		await service.extract(sourceId, mediaId, true);
+		expect(resolveVideoThumbnail).toHaveBeenCalledTimes(2);
+		expect(encoder.encodeImage).toHaveBeenCalledTimes(2);
+	});
+
+	it("propagates video thumbnail failure without encoding or storing a vector", async () => {
+		const { service, store, encoder, mediaRepository, resolveVideoThumbnail } =
+			setup();
+		mediaRepository.findById.mockResolvedValue({
+			...media,
+			mediaType: "video",
+		});
+		resolveVideoThumbnail.mockRejectedValue(
+			new Error("Unable to decode video"),
+		);
+		await expect(service.extract(sourceId, mediaId)).rejects.toThrow(
+			"Unable to decode video",
+		);
+		expect(encoder.encodeImage).not.toHaveBeenCalled();
+		expect(store.upsert).not.toHaveBeenCalled();
+	});
+
+	it("rejects blank queries, invalid vectors, mismatched sources, audio and remote videos", async () => {
+		const {
+			service,
+			encoder,
+			mediaRepository,
+			sourceRepository,
+			resolveVideoThumbnail,
+		} = setup();
 		await expect(
 			service.searchText({ text: " ", topK: 10, limit: 20, offset: 0 }),
 		).rejects.toThrow();
@@ -121,10 +201,23 @@ describe("EmbeddingSearchService", () => {
 		);
 		mediaRepository.findById.mockResolvedValue({
 			...media,
-			mediaType: "video",
+			mediaType: "audio",
 		});
 		await expect(service.searchSimilar(mediaId, 10)).rejects.toThrow(
-			"images only",
+			"images and video thumbnails only",
 		);
+		mediaRepository.findById.mockResolvedValue({
+			...media,
+			mediaType: "video",
+		});
+		await expect(service.extract(candidateId, mediaId)).rejects.toThrow(
+			"Media not found in source",
+		);
+		sourceRepository.findById.mockResolvedValue({ id: sourceId, type: "s3" });
+		await expect(service.extract(sourceId, mediaId)).rejects.toThrow(
+			"requires a local source",
+		);
+		expect(resolveVideoThumbnail).not.toHaveBeenCalled();
+		expect(encoder.encodeImage).not.toHaveBeenCalled();
 	});
 });

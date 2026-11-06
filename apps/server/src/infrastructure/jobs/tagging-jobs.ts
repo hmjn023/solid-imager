@@ -1,5 +1,5 @@
 import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
-import { and, asc, eq, gt, notExists, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
 import type { Job } from "@solid-imager/core/jobs";
@@ -8,6 +8,7 @@ import {
 	mediaCharacters,
 	mediaIps,
 	medias,
+	mediaSources,
 	mediaTags,
 	type NewJob,
 } from "~/infrastructure/db/schema";
@@ -130,10 +131,10 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 		"Starting bulk tagging dispatch job",
 	);
 
-	// Find images
-	// Logic: media_type = 'image' AND (source_id = ? IF set) AND (force OR NOT (EXISTS(AI tags) OR EXISTS(AI chars) OR EXISTS(AI IPs)))
+	// Videos use their representative thumbnail for the same AI tagging flow.
 	const whereClause = and(
-		eq(medias.mediaType, "image"),
+		inArray(medias.mediaType, ["image", "video"]),
+		eq(mediaSources.type, "local"),
 		mediaSourceId ? eq(medias.mediaSourceId, mediaSourceId) : undefined,
 		force
 			? undefined
@@ -194,6 +195,7 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 				mediaSourceId: medias.mediaSourceId,
 			})
 			.from(medias)
+			.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
 			.where(
 				and(
 					whereWithDedupe,
@@ -207,7 +209,7 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 			if (dispatchedCount === 0) {
 				logger.info(
 					{ jobId: job.id, parentId, mediaSourceId, force },
-					"No matching images found for bulk tagging",
+					"No matching media found for bulk tagging",
 				);
 			}
 			break;

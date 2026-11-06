@@ -29,7 +29,9 @@ export const aiContract = {
 		.meta(
 			openapi({
 				tags: ["AI"],
-				summary: "単一メディアのEmbeddingGemma 2画像索引作成ジョブを開始",
+				summary: "単一メディアのEmbeddingGemma 2索引作成ジョブを開始",
+				description:
+					"ローカルソースの画像または動画サムネイルを解析します。動画は代表サムネイル1枚から索引を作成します。",
 			}),
 		)
 		.input(ccipExtractionRequestSchema)
@@ -52,7 +54,9 @@ export const aiContract = {
 		.meta(
 			openapi({
 				tags: ["AI"],
-				summary: "EmbeddingGemma 2 画像索引作成ジョブを開始",
+				summary: "EmbeddingGemma 2 画像・動画索引作成ジョブを開始",
+				description:
+					"ローカルソースの画像と動画サムネイルを一括で索引登録します。既存の動画も対象です。",
 			}),
 		)
 		.input(batchCcipExtractionRequestSchema)
@@ -71,9 +75,9 @@ export const aiContract = {
 		.meta(
 			openapi({
 				tags: ["AI"],
-				summary: "画像の自動タグ付け",
+				summary: "画像・動画サムネイルの自動タグ付け",
 				description:
-					"画像ファイルまたはメディアIDを受け取り、利用可能なタグ付けモデルで内容を解析してタグ候補を返します。",
+					"画像ファイルまたはローカルソースのメディアIDを受け取り、利用可能なモデルで解析します。動画は代表サムネイル1枚を解析し、メディアID指定時は元のメディアにタグを保存します。",
 			}),
 		)
 
@@ -84,9 +88,9 @@ export const aiContract = {
 		.meta(
 			openapi({
 				tags: ["AI"],
-				summary: "OppaiOracleで画像をタグ付け",
+				summary: "OppaiOracleで画像・動画サムネイルをタグ付け",
 				description:
-					"画像ファイルまたはメディアIDをOppaiOracleで解析し、検出結果とタグ候補を返します。",
+					"画像ファイルまたはローカルソースのメディアIDをOppaiOracleで解析します。動画は代表サムネイル1枚を使い、検出結果とタグ候補を返します。",
 			}),
 		)
 
@@ -99,7 +103,7 @@ export const aiContract = {
 				tags: ["AI"],
 				summary: "CCIP特徴量の抽出",
 				description:
-					"画像ファイルまたはメディアIDからCCIP特徴量を計算して返します。類似画像検索や画像間比較に利用できます。",
+					"画像ファイルまたはローカルソースのメディアIDからCCIP特徴量を計算します。動画は代表サムネイル1枚を使い、キャラクター類似検索や比較に利用できます。",
 			}),
 		)
 		.input(z.union([z.object({ file: z.file() }), ccipFeatureRequestSchema])),
@@ -149,7 +153,7 @@ export const aiContract = {
 				tags: ["AI"],
 				summary: "CCIP特徴量抽出の開始",
 				description:
-					"指定したメディアのCCIP特徴量を抽出してベクトルストアへ登録するジョブを開始します。",
+					"指定したローカル画像または動画サムネイルのCCIP特徴量を抽出し、元メディアのベクトルとして登録するジョブを開始します。",
 			}),
 		)
 
@@ -175,7 +179,7 @@ export const aiContract = {
 				tags: ["AI"],
 				summary: "CCIP一括抽出の開始",
 				description:
-					"指定条件に一致するメディアを対象に、CCIP特徴量を一括抽出するジョブを開始します。",
+					"指定条件に一致するローカル画像と動画サムネイルを対象に、CCIP特徴量を一括抽出するジョブを開始します。",
 			}),
 		)
 
@@ -201,7 +205,7 @@ export const aiContract = {
 				tags: ["AI"],
 				summary: "一括タグ付けの開始",
 				description:
-					"指定条件に一致するメディアを対象に、自動タグ付けジョブを開始します。",
+					"指定条件に一致するローカル画像と動画サムネイルを対象に、自動タグ付けジョブを開始します。",
 			}),
 		)
 

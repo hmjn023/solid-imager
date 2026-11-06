@@ -16,6 +16,7 @@ import {
 } from "@solid-imager/core/tagging";
 import type { ILogger } from "../ports/logger";
 import type { ITaggingService } from "../ports/tagging-service";
+import type { ResolveVideoThumbnail } from "../ports/video-thumbnail";
 
 export type TaggingServiceDeps = {
 	aiClient: IAiClient;
@@ -27,6 +28,7 @@ export type TaggingServiceDeps = {
 	logger?: ILogger;
 	publishSourceEvent: SourceEventPublisher;
 	readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
+	resolveVideoThumbnail: ResolveVideoThumbnail;
 };
 
 /** Performs tagging and CCIP inference, using stored AI tags when available unless cache is skipped. */
@@ -39,6 +41,7 @@ class TaggingServiceImpl implements ITaggingService {
 	private readonly ipRepo: IIpRepository;
 	private readonly publishSourceEvent: SourceEventPublisher;
 	private readonly readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
+	private readonly resolveVideoThumbnail: ResolveVideoThumbnail;
 	private readonly logger?: ILogger;
 
 	constructor(deps: TaggingServiceDeps) {
@@ -50,6 +53,7 @@ class TaggingServiceImpl implements ITaggingService {
 		this.ipRepo = deps.ipRepo;
 		this.publishSourceEvent = deps.publishSourceEvent;
 		this.readFileBuffer = deps.readFileBuffer;
+		this.resolveVideoThumbnail = deps.resolveVideoThumbnail;
 		this.logger = deps.logger;
 	}
 
@@ -73,7 +77,7 @@ class TaggingServiceImpl implements ITaggingService {
 		if (media.mediaSourceId !== mediaSourceId) {
 			throw new Error("Media not found in source");
 		}
-		if (media.mediaType !== "image") {
+		if (media.mediaType !== "image" && media.mediaType !== "video") {
 			return {
 				general: {},
 				character: {},
@@ -163,7 +167,10 @@ class TaggingServiceImpl implements ITaggingService {
 		if (!connectionParse.success) {
 			throw new Error("Invalid local source connection info: missing path");
 		}
-		const fullPath = path.join(connectionParse.data.path, media.filePath);
+		const fullPath =
+			media.mediaType === "video"
+				? await this.resolveVideoThumbnail(media)
+				: path.join(connectionParse.data.path, media.filePath);
 
 		let response: TaggingResponse;
 		const canUsePathApi = this.isAiServiceLocal();
@@ -331,8 +338,10 @@ class TaggingServiceImpl implements ITaggingService {
 		if (media.mediaSourceId !== mediaSourceId) {
 			throw new Error("Media not found in source");
 		}
-		if (media.mediaType !== "image") {
-			throw new Error("CCIP feature extraction is only supported for images");
+		if (media.mediaType !== "image" && media.mediaType !== "video") {
+			throw new Error(
+				"CCIP feature extraction only supports images and video thumbnails",
+			);
 		}
 		const mediaSource = await this.sourceRepo.findById(mediaSourceId);
 		if (!mediaSource) {
@@ -349,7 +358,10 @@ class TaggingServiceImpl implements ITaggingService {
 		if (!connectionParse.success) {
 			throw new Error("Invalid local source connection info: missing path");
 		}
-		const fullPath = path.join(connectionParse.data.path, media.filePath);
+		const fullPath =
+			media.mediaType === "video"
+				? await this.resolveVideoThumbnail(media)
+				: path.join(connectionParse.data.path, media.filePath);
 
 		const canUsePathApi = this.isAiServiceLocal();
 

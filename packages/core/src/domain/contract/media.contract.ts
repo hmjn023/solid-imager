@@ -69,9 +69,9 @@ export const mediaContract = {
 		.meta(
 			openapi({
 				tags: ["Media"],
-				summary: "自然言語で画像を検索",
+				summary: "自然言語で画像・動画を検索",
 				description:
-					"EmbeddingGemma 2 の画像索引を文章で検索します。対象は索引登録済みで更新されていない画像です。",
+					"EmbeddingGemma 2 の索引を文章で検索します。対象は索引登録済みで更新されていない画像と動画です。動画の索引は代表サムネイル1枚に基づきます。",
 			}),
 		)
 		.input(semanticSearchRequestSchema)

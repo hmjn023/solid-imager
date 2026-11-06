@@ -32,12 +32,12 @@ export class CcipVectorService {
 	constructor(private readonly deps: CcipVectorServiceDeps) {}
 
 	/**
-	 * Extract and persist a CCIP vector for an image in a local source.
-	 * @param mediaSourceId - Source expected to own the image.
-	 * @param mediaId - Image to encode.
+	 * Extract and persist a CCIP vector for an image or video thumbnail in a local source.
+	 * @param mediaSourceId - Source expected to own the media.
+	 * @param mediaId - Media to encode.
 	 * @param force - Recompute even when a current vector exists; defaults to false.
 	 * @returns The vector and whether an existing current record was reused.
-	 * @throws If the media is missing, belongs to another source, is not an image, or the source is not local. Inference and storage failures propagate.
+	 * @throws If the media is missing, belongs to another source, is neither an image nor a video, or the source is not local. Inference and storage failures propagate.
 	 */
 	async extract(
 		mediaSourceId: string,
@@ -60,8 +60,8 @@ export class CcipVectorService {
 
 	/**
 	 * Extract vectors concurrently, then persist the successfully extracted records.
-	 * @param mediaSourceId - Source expected to own the images.
-	 * @param mediaIds - Images to process, in result order.
+	 * @param mediaSourceId - Source expected to own the media.
+	 * @param mediaIds - Media to process, in result order.
 	 * @param force - Recompute current records when true; defaults to false.
 	 * @param concurrency - Maximum concurrent extractions; defaults to 1 and must be a positive integer.
 	 * @returns A settled result for each input, including individual extraction failures.
@@ -110,7 +110,7 @@ export class CcipVectorService {
 		mediaId: string,
 		existing: CcipVectorRecord | null,
 	): Promise<{ record: CcipVectorRecord; skipped: boolean }> {
-		const media = await this.requireImage(mediaSourceId, mediaId);
+		const media = await this.requireVisualMedia(mediaSourceId, mediaId);
 		if (existing && this.isCurrent(existing, media, mediaSourceId)) {
 			return { record: existing, skipped: true };
 		}
@@ -139,7 +139,7 @@ export class CcipVectorService {
 		model?: string;
 		extractedAt?: Date;
 	}> {
-		const media = await this.requireImage(mediaSourceId, mediaId);
+		const media = await this.requireVisualMedia(mediaSourceId, mediaId);
 		const record = await this.deps.vectorStore.get(
 			mediaId,
 			this.currentVectorQuery(),
@@ -192,7 +192,7 @@ export class CcipVectorService {
 
 	/**
 	 * Return a cosine-ranked page bounded by the requested total result cap.
-	 * @param anchorMediaId - Image whose current vector is used as the query and excluded from results.
+	 * @param anchorMediaId - Media whose current vector is used as the query and excluded from results.
 	 * @param topK - Maximum number of results across pages.
 	 * @param mediaSourceId - Optional source filter for candidates.
 	 * @param limit - Maximum page size; defaults to 20.
@@ -271,7 +271,7 @@ export class CcipVectorService {
 		};
 	}
 
-	private async requireImage(
+	private async requireVisualMedia(
 		mediaSourceId: string,
 		mediaId: string,
 	): Promise<Media> {
@@ -279,8 +279,10 @@ export class CcipVectorService {
 		if (!media || media.mediaSourceId !== mediaSourceId) {
 			throw new Error("Media not found in source");
 		}
-		if (media.mediaType !== "image") {
-			throw new Error("CCIP vector extraction is only supported for images");
+		if (media.mediaType !== "image" && media.mediaType !== "video") {
+			throw new Error(
+				"CCIP vector extraction only supports images and video thumbnails",
+			);
 		}
 		const source = await this.deps.sourceRepository.findById(mediaSourceId);
 		if (!source) throw new Error("Media source not found");

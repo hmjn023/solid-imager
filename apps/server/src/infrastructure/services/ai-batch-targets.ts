@@ -3,7 +3,7 @@ import {
 	CCIP_MODEL,
 } from "@solid-imager/application/ccip";
 import type { DrizzleExecutor } from "@solid-imager/db";
-import { and, eq, notExists, sql } from "drizzle-orm";
+import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 import {
 	ccipEmbeddings,
 	mediaCharacters,
@@ -16,7 +16,7 @@ import {
 
 type ScanInput = { mediaSourceId?: string; force?: boolean };
 
-/** Counts images without AI tags, characters, or IPs; force includes already tagged images. */
+/** Counts local images/videos without AI tags, characters, or IPs; force includes tagged media. */
 export async function countTaggingTargets(
 	database: DrizzleExecutor,
 	input: ScanInput,
@@ -24,9 +24,11 @@ export async function countTaggingTargets(
 	const [row] = await database
 		.select({ count: sql<number>`count(*)` })
 		.from(medias)
+		.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
 		.where(
 			and(
-				eq(medias.mediaType, "image"),
+				inArray(medias.mediaType, ["image", "video"]),
+				eq(mediaSources.type, "local"),
 				input.mediaSourceId
 					? eq(medias.mediaSourceId, input.mediaSourceId)
 					: undefined,
@@ -49,7 +51,7 @@ export async function countTaggingTargets(
 	return Number(row?.count ?? 0);
 }
 
-/** Counts local images lacking a current full-image CCIP embedding; force includes existing embeddings. */
+/** Counts local images/videos lacking a current full-media CCIP embedding; force includes existing embeddings. */
 export async function countCcipTargets(
 	database: DrizzleExecutor,
 	input: ScanInput,
@@ -60,7 +62,7 @@ export async function countCcipTargets(
 		.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
 		.where(
 			and(
-				eq(medias.mediaType, "image"),
+				inArray(medias.mediaType, ["image", "video"]),
 				eq(mediaSources.type, "local"),
 				input.mediaSourceId
 					? eq(medias.mediaSourceId, input.mediaSourceId)
