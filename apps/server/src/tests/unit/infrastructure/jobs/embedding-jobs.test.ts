@@ -254,7 +254,7 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			expect.objectContaining({ jobId: job.id, processed: 1, total: 1 }),
 		);
 	});
-	it("filters inactive images and active videos before applying the recommendation limit", async () => {
+	it("includes active videos and filters archived media before applying the recommendation limit", async () => {
 		const { database, store, record } = await setup();
 		await store.upsert(record(ids[0], vector(1)));
 		await store.upsert(record(ids[1], vector(0.99, 0.01)));
@@ -264,12 +264,12 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			.set({ status: "archived" })
 			.where(eq(schema.medias.id, ids[0]));
 		const result = await store.search(vector(1), {
-			activeImagesOnly: true,
+			activeOnly: true,
 			limit: 1,
 			offset: 0,
 		});
-		expect(result.candidates.map((item) => item.mediaId)).toEqual([ids[2]]);
-		expect(result.total).toBe(1);
+		expect(result.candidates.map((item) => item.mediaId)).toEqual([ids[1]]);
+		expect(result.total).toBe(2);
 	});
 
 	it("indexes local images and videos while excluding audio and remote sources", async () => {

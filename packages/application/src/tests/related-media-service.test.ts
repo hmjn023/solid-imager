@@ -124,7 +124,7 @@ describe("RelatedMediaService", () => {
 		).toBe(true);
 		expect(store.search).toHaveBeenCalledWith([1, 0], {
 			excludeMediaId: mediaId,
-			activeImagesOnly: true,
+			activeOnly: true,
 			limit: 96,
 			offset: 0,
 		});
@@ -235,10 +235,10 @@ describe("RelatedMediaService", () => {
 		expect((await service.getRelated({ sourceId, mediaId })).items).toEqual([]);
 	});
 
-	it("skips embedding reads for non-image anchors and handles empty relations", async () => {
+	it("skips embedding reads for audio anchors and handles empty relations", async () => {
 		const { repository, store, service } = setup();
 		repository.findById.mockResolvedValue(
-			media(mediaId, { mediaType: "video" }),
+			media(mediaId, { mediaType: "audio" }),
 		);
 		expect(await service.getRelated({ sourceId, mediaId })).toEqual({
 			items: [],

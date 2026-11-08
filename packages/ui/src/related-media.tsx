@@ -177,11 +177,14 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 		}
 	};
 	const similarityMessage = () => {
-		if (props.media.mediaType !== "image") {
-			return "似た画像のおすすめは画像メディアで利用できます。";
+		if (
+			props.media.mediaType !== "image" &&
+			props.media.mediaType !== "video"
+		) {
+			return "見た目が似ている候補は画像と動画で利用できます。";
 		}
 		if (query.data?.similarityStatus === "not_indexed") {
-			return "似た画像のおすすめには、この画像の画像検索インデックスが必要です。画像の操作メニューやManagerで作成できます。";
+			return "似た画像のおすすめには、このメディアの画像検索インデックスが必要です。操作メニューやManagerで作成できます。";
 		}
 		if (query.data?.similarityStatus === "unavailable") {
 			return "似た画像を取得できませんでした。キャラ・IP・タグの候補は引き続き表示できます。";

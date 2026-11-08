@@ -40,7 +40,7 @@ export const mediaContract = {
 				tags: ["Media"],
 				summary: "関連メディア取得",
 				description:
-					"保存済み画像索引、同じキャラクター・IP、positiveタグの希少性を考慮した一致から全ソースの画像を推薦します。recommendationsは関連度と多様性を考慮した重み付き抽選、itemsは種類別の候補です。limitはおすすめと各種類それぞれの上限です。seedと候補データが同じなら抽選結果を再現できます。閲覧時にAI推論は行いません。",
+					"保存済み索引から見た目の似た画像・動画を推薦します。動画は代表サムネイルで比較します。同じキャラクター・IPやpositiveタグの希少性に基づく候補は全ソースの画像が対象です。recommendationsは関連度と多様性を考慮した重み付き抽選、itemsは種類別の候補です。limitはおすすめと各種類それぞれの上限です。seedと候補データが同じなら抽選結果を再現できます。閲覧時にAI推論は行いません。",
 			}),
 		)
 		.input(relatedMediaRequestSchema)

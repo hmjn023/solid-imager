@@ -4,7 +4,10 @@ import { copyFile, mkdir, rm } from "node:fs/promises";
 import path from "node:path";
 import { AppConfigSchema } from "@solid-imager/core/config";
 import { jobStatusSchema } from "@solid-imager/core/jobs";
-import { mediaSearchResponseSchema } from "@solid-imager/core/media";
+import {
+	mediaSearchResponseSchema,
+	relatedMediaResponseSchema,
+} from "@solid-imager/core/media";
 import {
 	startCcipExtractionResponseSchema,
 	taggingResponseSchema,
@@ -212,6 +215,20 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 					anchorMediaId,
 				);
 			}
+		}
+		for (const [anchor, candidate] of [
+			[imageId, videoId],
+			[videoId, imageId],
+		]) {
+			const related = relatedMediaResponseSchema.parse(
+				await rpc("media/getRelated", { sourceId, mediaId: anchor, limit: 12 }),
+			);
+			expect(related.items).toContainEqual(
+				expect.objectContaining({
+					media: expect.objectContaining({ id: candidate }),
+					reasons: expect.arrayContaining(["similar"]),
+				}),
+			);
 		}
 		const semantic = mediaSearchResponseSchema.parse(
 			await rpc(

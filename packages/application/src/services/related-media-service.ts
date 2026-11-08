@@ -127,7 +127,8 @@ export class RelatedMediaService {
 				if (
 					media.id === mediaId ||
 					media.status !== "active" ||
-					media.mediaType !== "image" ||
+					(media.mediaType !== "image" &&
+						!(group.reason === "similar" && media.mediaType === "video")) ||
 					seen.has(media.id)
 				)
 					continue;
@@ -193,7 +194,7 @@ export class RelatedMediaService {
 		anchor: Media,
 		limit: number,
 	): Promise<SimilarCandidates> {
-		if (anchor.mediaType !== "image") {
+		if (anchor.mediaType !== "image" && anchor.mediaType !== "video") {
 			return { media: [], weights: new Map(), status: "not_indexed" };
 		}
 		try {
@@ -208,7 +209,7 @@ export class RelatedMediaService {
 			}
 			const result = await this.deps.embeddingStore.search(embedding.vector, {
 				excludeMediaId: anchor.id,
-				activeImagesOnly: true,
+				activeOnly: true,
 				limit,
 				offset: 0,
 			});
