@@ -716,12 +716,11 @@ export function createMediaRepository(
 		},
 		async findRelatedByTags(mediaId, limit, seed) {
 			const executor = getExecutor();
-			const matches = await readRelatedTagMatches(
-				executor,
-				mediaId,
-				limit,
-				seed,
-			);
+			const matches = await executor.transaction(async (tx) => {
+				// JIT compilation dominates this short, bounded query on PostgreSQL.
+				await tx.execute(sql`set local jit = off`);
+				return readRelatedTagMatches(tx, mediaId, limit, seed);
+			});
 			if (matches.length === 0) return [];
 			const rows = await executor
 				.select()

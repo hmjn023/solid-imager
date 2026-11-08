@@ -14,7 +14,7 @@ import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 } from "@solid-imager/core/search";
-import type { IEmbeddingStore } from "../ports/embedding-store";
+import type { RelatedEmbeddingReader } from "../ports/embedding-store";
 import type { ILogger } from "../ports/logger";
 import {
 	sampleRelatedMedia,
@@ -50,7 +50,7 @@ export class RelatedMediaService {
 		private readonly deps: {
 			mediaRepository: Pick<MediaReader, "findById" | "findByIds"> &
 				MediaRelatedReader;
-			embeddingStore: Pick<IEmbeddingStore, "get" | "search">;
+			embeddingStore: RelatedEmbeddingReader;
 			logger: Pick<ILogger, "warn">;
 		},
 	) {}
@@ -207,19 +207,18 @@ export class RelatedMediaService {
 			) {
 				return { media: [], weights: new Map(), status: "not_indexed" };
 			}
-			const result = await this.deps.embeddingStore.search(embedding.vector, {
-				excludeMediaId: anchor.id,
-				activeOnly: true,
+			const candidates = await this.deps.embeddingStore.nearestRelated(
+				embedding.vector,
+				anchor.id,
 				limit,
-				offset: 0,
-			});
+			);
 			const media = await this.deps.mediaRepository.findByIds(
-				result.candidates.map((candidate) => candidate.mediaId),
+				candidates.map((candidate) => candidate.mediaId),
 			);
 			const byId = new Map(media.map((item) => [item.id, item]));
 			return {
 				weights: new Map(
-					result.candidates.map((candidate, index) => [
+					candidates.map((candidate, index) => [
 						candidate.mediaId,
 						// Cosine strength supplies relevance; rank gently favors the closest
 						// images without removing the tail from the candidate pool.
@@ -228,7 +227,7 @@ export class RelatedMediaService {
 							(0.5 + 0.5 / (1 + index / 12)),
 					]),
 				),
-				media: result.candidates.flatMap((candidate) => {
+				media: candidates.flatMap((candidate) => {
 					const item = byId.get(candidate.mediaId);
 					return item ? [item] : [];
 				}),

@@ -333,6 +333,10 @@ export const imageEmbeddings = pgTable(
 			table.model,
 			table.version,
 		),
+		index("idx_image_embeddings_cosine").using(
+			"hnsw",
+			table.embedding.op("vector_cosine_ops"),
+		),
 	],
 );
 
@@ -370,6 +374,12 @@ export const tags = pgTable(
 		index("idx_tags_author_id").on(table.authorId),
 	],
 );
+
+/** Number of active images with a positive, nonzero-confidence occurrence. */
+export const relatedTagFrequencies = pgTable("related_tag_frequencies", {
+	tagId: uuid("tag_id").primaryKey(),
+	imageCount: bigint("image_count", { mode: "number" }).notNull(),
+});
 
 /**
  * Schema for the media_tags join table.

@@ -128,6 +128,27 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			processEmbeddingBatchJob({ ...job, payload: { cursor: "invalid-id" } }),
 		).rejects.toThrow();
 	});
+	it("retrieves active, current visual neighbors across sources without the anchor", async () => {
+		const { database, store, record } = await setup();
+		await store.upsert(record(ids[0], vector(1)));
+		await store.upsert(record(ids[1], vector(0, 1)));
+		await store.upsert(record(ids[2], vector(0.9, 0.1)));
+		const neighbors = () => store.nearestRelated(vector(1), ids[0], 96);
+		expect((await neighbors()).map((row) => row.mediaId)).toEqual([
+			ids[2],
+			ids[1],
+		]);
+		await database
+			.update(schema.medias)
+			.set({ status: "archived" })
+			.where(eq(schema.medias.id, ids[2]));
+		await database
+			.update(schema.medias)
+			.set({ modifiedAt: new Date("2026-02-01") })
+			.where(eq(schema.medias.id, ids[1]));
+		expect(await neighbors()).toEqual([]);
+	});
+
 	it("orders image and video vectors, pages, filters source and stale vectors, and cascades deletion", async () => {
 		const { database, store, record } = await setup();
 		await store.upsert(record(ids[0], vector(1)));

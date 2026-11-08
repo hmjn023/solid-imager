@@ -30,3 +30,12 @@ export interface IEmbeddingStore {
 		},
 	): Promise<{ candidates: SimilarMediaScore[]; total: number }>;
 }
+
+/** Top visual neighbors for a detail view, with no pagination or corpus total. */
+export interface RelatedEmbeddingReader extends Pick<IEmbeddingStore, "get"> {
+	nearestRelated(
+		vector: number[],
+		anchorId: string,
+		limit: number,
+	): Promise<SimilarMediaScore[]>;
+}
