@@ -41,7 +41,7 @@ describe("resolveVideoThumbnail", () => {
 		expect(mocks.generateThumbnailForMedia).not.toHaveBeenCalled();
 	});
 
-	it.each(["missing", "stale", "empty"])(
+	it.each(["missing", "stale", "legacy", "empty"])(
 		"generates a %s thumbnail before returning its path",
 		async (state) => {
 			if (state !== "missing") {
@@ -50,7 +50,11 @@ describe("resolveVideoThumbnail", () => {
 					state === "empty" ? "" : "old still image",
 				);
 				const timestamp =
-					state === "stale" ? new Date("2025-01-01") : media.modifiedAt;
+					state === "stale"
+						? new Date("2025-01-01")
+						: state === "legacy"
+							? new Date("2026-01-02")
+							: media.modifiedAt;
 				await utimes(mocks.thumbnailPath, timestamp, timestamp);
 			}
 			expect(await resolveVideoThumbnail(media)).toBe(mocks.thumbnailPath);

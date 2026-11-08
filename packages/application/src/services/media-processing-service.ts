@@ -253,6 +253,7 @@ class MediaProcessingServiceImpl implements IMediaProcessingService {
 			});
 		} catch (e) {
 			this.logger?.error({ err: e, mediaId }, "Thumbnail generation failed");
+			if (media.mediaType === "video") return;
 		}
 
 		// Step 3: AI tagging

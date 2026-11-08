@@ -22,7 +22,10 @@ export const resolveVideoThumbnail: ResolveVideoThumbnail = async (media) => {
 		);
 		try {
 			const cached = await stat(thumbnailPath);
-			if (cached.size > 0 && cached.mtimeMs >= media.modifiedAt.getTime()) {
+			if (
+				cached.size > 0 &&
+				cached.mtime.getTime() === media.modifiedAt.getTime()
+			) {
 				return thumbnailPath;
 			}
 		} catch (error) {

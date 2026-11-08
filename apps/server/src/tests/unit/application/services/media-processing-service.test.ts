@@ -55,6 +55,7 @@ const mockProjectRepo = {
 	findOrCreateBulk: vi.fn(),
 	addMediaBulk: vi.fn(),
 };
+const generateThumbnail = vi.fn();
 const mockJobRepo = {
 	create: vi.fn(),
 	createIfUnique: vi.fn(),
@@ -99,7 +100,7 @@ describe("MediaProcessingService", () => {
 				video: [".mp4", ".webm", ".mov"],
 				audio: [".mp3", ".wav"],
 			},
-			generateThumbnail: vi.fn() as any,
+			generateThumbnail,
 			publishSourceEvent: vi.fn() as any,
 		});
 	});
@@ -155,6 +156,23 @@ describe("MediaProcessingService", () => {
 				});
 			},
 		);
+
+		it("skips video inference when thumbnail generation fails", async () => {
+			service.updateConfig({
+				enableAutoTagging: true,
+				enableAutoEmbeddingExtraction: true,
+				enableAutoCcipExtraction: true,
+			});
+			mockMediaRepo.findById.mockResolvedValue({
+				id: mediaId,
+				filePath: "clip.mp4",
+				mediaType: "video",
+			});
+			generateThumbnail.mockRejectedValueOnce(new Error("Decode failed"));
+			await service.executeProcessMediaJob(job);
+			expect(mockJobRepo.create).not.toHaveBeenCalled();
+			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+		});
 
 		it("does not enqueue visual inference for audio or when automatic flags are disabled", async () => {
 			mockMediaRepo.findById.mockResolvedValue({

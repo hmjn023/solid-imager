@@ -3,6 +3,7 @@ import {
 	type TaggingServiceDeps,
 	createTaggingService,
 } from "@solid-imager/application/tagging";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
@@ -17,6 +18,7 @@ let _taggingService: ITaggingService | null = null;
 const getTaggingService = () => {
 	if (!_taggingService) {
 		const deps: TaggingServiceDeps = {
+			transactionManager: DrizzleTransactionManager,
 			aiClient: services.getAiClient(),
 			sourceRepo: services.getSourceRepository(),
 			mediaRepo: services.getMediaRepository(),

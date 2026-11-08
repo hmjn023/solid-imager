@@ -44,6 +44,7 @@ export type MediaReader = {
 };
 
 export type MediaWriter = {
+	clearAiAssociations(mediaId: string, tx: Transaction): Promise<void>;
 	create(media: AddMediaRequest, tx?: Transaction): Promise<Media>;
 	upsert(media: AddMediaRequest, tx?: Transaction): Promise<Media>;
 	update(

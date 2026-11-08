@@ -46,6 +46,7 @@ describe("createTaggingService", () => {
 		} as unknown as SourceRepository;
 
 		mockMediaRepo = {
+			clearAiAssociations: vi.fn(),
 			findById: vi.fn().mockResolvedValue({
 				id: "media-1",
 				mediaSourceId: "source-1",
@@ -106,6 +107,9 @@ describe("createTaggingService", () => {
 		resolveVideoThumbnail = vi.fn().mockResolvedValue("/cache/video.webp");
 
 		const deps: TaggingServiceDeps = {
+			transactionManager: {
+				transaction: (callback) => callback("test-transaction"),
+			},
 			aiClient: mockAiClient,
 			sourceRepo: mockSourceRepo,
 			mediaRepo: mockMediaRepo,
@@ -150,6 +154,7 @@ describe("createTaggingService", () => {
 			"media-1",
 			[expect.objectContaining({ name: "outdoors" })],
 			"AI",
+			"test-transaction",
 		);
 		expect(mockSseSendEvent).toHaveBeenCalledWith(
 			"source-1",
@@ -254,12 +259,14 @@ describe("createTaggingService", () => {
 				},
 			],
 			"AI",
+			"test-transaction",
 		);
 
 		// Verify IPs were bulk-created via findOrCreateBulk
 		expect(mockIpRepo.findOrCreateBulk).toHaveBeenCalledWith(
 			["Vocaloid"],
 			"AI",
+			"test-transaction",
 		);
 
 		// Verify IP was linked to media
@@ -267,6 +274,7 @@ describe("createTaggingService", () => {
 			"media-1",
 			expect.arrayContaining([expect.objectContaining({ id: "ip-vocaloid" })]),
 			"AI",
+			"test-transaction",
 		);
 
 		// Verify characters were bulk-created via findOrCreateBulk with IP ids
@@ -278,6 +286,7 @@ describe("createTaggingService", () => {
 				}),
 			]),
 			"AI",
+			"test-transaction",
 		);
 
 		// Verify character was linked to media
@@ -287,6 +296,7 @@ describe("createTaggingService", () => {
 				expect.objectContaining({ id: "char-HatsuneMiku", confidence: 0.95 }),
 			]),
 			"AI",
+			"test-transaction",
 		);
 	});
 });

@@ -758,6 +758,21 @@ export function createMediaRepository(
 		/**
 		 * Retrieves a specific media item by its ID.
 		 */
+		async clearAiAssociations(mediaId, tx) {
+			const client = getExecutor(tx);
+			// Serialize replacement even when this media has no AI associations yet.
+			await client
+				.select({ id: medias.id })
+				.from(medias)
+				.where(eq(medias.id, mediaId))
+				.for("update");
+			for (const table of [mediaTags, mediaCharacters, mediaIps]) {
+				await client
+					.delete(table)
+					.where(and(eq(table.mediaId, mediaId), eq(table.source, "AI")));
+			}
+		},
+
 		async findById(mediaId: string, tx?: Transaction): Promise<Media | null> {
 			try {
 				const client = getExecutor(tx);
