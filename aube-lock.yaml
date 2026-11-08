@@ -154,8 +154,8 @@ importers:
         specifier: 6.0.0
         version: 6.0.0
       dghs-imgutils-rs:
-        specifier: github:hmjn023/dghs-imgutils-rs#v0.5.6
-        version: https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/8bcaaf0e1eb719cb8177377d3b5402476b8029ba
+        specifier: github:hmjn023/dghs-imgutils-rs#v0.5.9
+        version: https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/05799a47274625f4708bd56d457870454725e80d
       drizzle-orm:
         specifier: ^0.45.4
         version: 0.45.4(@electric-sql/pglite@0.5.11)(@types/pg@8.23.1)(bun-types@1.4.4)(pg@8.23.1)
@@ -471,7 +471,7 @@ importers:
         version: 1.0.0(solid-js@1.9.18)
       '@tanstack/charts':
         specifier: ^1.2.1
-        version: 1.2.1(solid-js@1.9.18)(vue@3.5.44(typescript@7.0.2))
+        version: 1.2.1(react@19.3.1)(solid-js@1.9.18)(vue@3.5.44(typescript@7.0.2))
       '@tanstack/solid-form':
         specifier: ^1.33.5
         version: 1.33.5(solid-js@1.9.18)
@@ -499,6 +499,9 @@ importers:
       lucide-solid:
         specifier: ^1.64.0
         version: 1.66.0(solid-js@1.9.18)
+      media-chrome:
+        specifier: ^4.19.4
+        version: 4.19.4(react@19.3.1)
       solid-js:
         specifier: ^1.9.17
         version: 1.9.18
@@ -3543,6 +3546,11 @@ packages:
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
 
+  ce-la-react@0.3.2:
+    resolution: {integrity: sha512-QJ6k4lOD/btI08xG8jBPxRCGXvCnusGGkTsiXk0u3NqUu/W+BXRnFD4PYjwtqh8AWmGa5LDbGk0fLQsqr0nSMA==}
+    peerDependencies:
+      react: '>=17.0.0'
+
   chai@6.3.0:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
     engines: {node: '>=18'}
@@ -3824,9 +3832,9 @@ packages:
   devlop@1.1.0:
     resolution: {integrity: sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA==}
 
-  dghs-imgutils-rs@https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/8bcaaf0e1eb719cb8177377d3b5402476b8029ba:
-    resolution: {gitHosted: true, integrity: sha512-YgxRlwyiz/wW710MZLS6K5rAnwQVFpBfz4u656GEprRraALVJIBtXNBpPA0cfGGh7kD3bHkqEblmMAVH9Vy7rQ==, tarball: https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/8bcaaf0e1eb719cb8177377d3b5402476b8029ba}
-    version: 0.5.6
+  dghs-imgutils-rs@https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/05799a47274625f4708bd56d457870454725e80d:
+    resolution: {gitHosted: true, integrity: sha512-Ztz3hdwj4wURGdD94IVw0UZHgOOqDyfnuDA1OEhfwkHjR9LHESicpdziu8lOcu4xVb3ynnYli2doYSNcp7twJw==, tarball: https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/05799a47274625f4708bd56d457870454725e80d}
+    version: 0.5.9
 
   diff@7.0.0:
     resolution: {integrity: sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw==}
@@ -4638,6 +4646,9 @@ packages:
   mdurl@2.1.0:
     resolution: {integrity: sha512-1+HBaOx0zi/dQWht8rNv9MYf9qqpqL/kxI0hXImU6Y547zM6Sni8BQibt7ifgMcYtQg41ao3Ivd6cnSM86inpg==}
 
+  media-chrome@4.19.4:
+    resolution: {integrity: sha512-QAL48kT03+InLijPzXN1end9fcsl0/l53j1laCfbt/79vF2iZ45dovv4wQMw2q9zOLEiDwWsB718NJPhtZUBDg==}
+
   merge-anything@5.1.7:
     resolution: {integrity: sha512-eRtbOb1N5iyH0tkQDAoQ4Ipsp/5qSR79Dzrz8hEPxRX10RWWR/iQXdoKmBSRCThY1Fh5EhISDtpSc93fpxUniQ==}
     engines: {node: '>=12.13'}
@@ -5057,6 +5068,10 @@ packages:
     resolution: {integrity: sha512-mVCu7I2vXt1L2IUYHTt0sZMz7s1K2ZtqKeTIxG3yC5mMFfLBG4FtE1FDeRMpDd+Hhg/ybi9+iXmAP1ISREndoQ==}
     peerDependencies:
       vue: '>= 3.2.0'
+
+  react@19.3.1:
+    resolution: {integrity: sha512-QNhWdt7nrgVWWQG58QuGsAR3jv3Hbe4mb4vz7w2csnHavciZJgda1CPNaldF6eVxv90ud3jUXpKlHL69gO38yw==}
+    engines: {node: '>=0.10.0'}
 
   readable-stream@2.3.8:
     resolution: {integrity: sha512-8p0AUk4XODgIewSi0l8Epjs+EVnWiK7NoDIEGU0HhE7+ZyY8D1IMY7odu5lRrFXGg71L15KG8QrPmum45RTtdA==}
@@ -7702,7 +7717,7 @@ snapshots:
       tailwindcss: 4.3.3
       vite: 8.3.5(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
 
-  '@tanstack/charts@1.2.1(solid-js@1.9.18)(vue@3.5.44(typescript@7.0.2))':
+  '@tanstack/charts@1.2.1(react@19.3.1)(solid-js@1.9.18)(vue@3.5.44(typescript@7.0.2))':
     dependencies:
       '@types/d3-force': 3.0.10
       '@types/d3-geo': 3.1.1
@@ -7724,6 +7739,7 @@ snapshots:
       d3-zoom: 3.0.0
       tslib: 2.8.1
     optionalDependencies:
+      react: 19.3.1
       solid-js: 1.9.18
       vue: 3.5.44(typescript@7.0.2)
 
@@ -8706,6 +8722,10 @@ snapshots:
 
   ccount@2.0.1: {}
 
+  ce-la-react@0.3.2(react@19.3.1):
+    dependencies:
+      react: 19.3.1
+
   chai@6.3.0: {}
 
   chalk@5.6.2: {}
@@ -8965,7 +8985,7 @@ snapshots:
     dependencies:
       dequal: 2.0.3
 
-  dghs-imgutils-rs@https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/8bcaaf0e1eb719cb8177377d3b5402476b8029ba: {}
+  dghs-imgutils-rs@https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/05799a47274625f4708bd56d457870454725e80d: {}
 
   diff@7.0.0: {}
 
@@ -9855,6 +9875,12 @@ snapshots:
 
   mdurl@2.1.0: {}
 
+  media-chrome@4.19.4(react@19.3.1):
+    dependencies:
+      ce-la-react: 0.3.2(react@19.3.1)
+    transitivePeerDependencies:
+      - react
+
   merge-anything@5.1.7:
     dependencies:
       is-what: 4.1.16
@@ -10482,6 +10508,8 @@ snapshots:
       vue: 3.5.44(typescript@7.0.2)
     transitivePeerDependencies:
       - '@vue/composition-api'
+
+  react@19.3.1: {}
 
   readable-stream@2.3.8:
     dependencies:
