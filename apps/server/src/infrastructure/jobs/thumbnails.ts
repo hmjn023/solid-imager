@@ -1,7 +1,6 @@
 import fs from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
 import {
 	generateThumbnailJobPayloadSchema,
 	type ThumbnailSize,
@@ -303,6 +302,11 @@ export async function generateThumbnailsForSource(
 		},
 	});
 
+	RealtimeEventBus.publishJob("job-progress", {
+		jobId: parent.id,
+		processed: 0,
+		total: targets.length,
+	});
 	let count = 0;
 	try {
 		for (let index = 0; index < targets.length; index += ENQUEUE_CONCURRENCY) {
@@ -320,18 +324,9 @@ export async function generateThumbnailsForSource(
 			count += created.filter(Boolean).length;
 		}
 
-		const currentParent = await jobRepo.findById(parent.id);
-		const currentProgress = parseThumbnailParentPayload(currentParent?.payload);
-		await jobRepo.update(parent.id, {
-			payload: {
-				total: count,
-				processed: currentProgress.processed,
-				failed: currentProgress.failed,
-				mediaSourceId,
-			},
-		});
+		const currentProgress = await jobRepo.setBatchTotal(parent.id, count);
 		if (count === 0) {
-			await jobRepo.update(parent.id, { status: "completed" });
+			await finalizeThumbnailParent(parent.id, currentProgress);
 			return { count: 0 };
 		}
 		if (currentProgress.processed + currentProgress.failed >= count) {
@@ -343,6 +338,10 @@ export async function generateThumbnailsForSource(
 		return { count, jobId: parent.id };
 	} catch (error) {
 		await jobRepo.update(parent.id, { status: "failed" });
+		RealtimeEventBus.publishJob("job-failed", {
+			jobId: parent.id,
+			error: "Thumbnail scheduling failed",
+		});
 		throw error;
 	}
 }
@@ -463,8 +462,4 @@ async function finalizeThumbnailParent(
 		jobId: parentId,
 		message: "Thumbnail generation completed",
 	});
-}
-
-function parseThumbnailParentPayload(payload: unknown) {
-	return batchParentPayloadSchema.parse(payload);
 }

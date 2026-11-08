@@ -10,6 +10,10 @@ import {
 import { jobEventSchema } from "../sources/events";
 
 export const jobsContract = {
+	activeBatches: oc
+		.meta(openapi({ tags: ["Jobs"], summary: "Managerの実行中バッチ一覧" }))
+		.input(z.object({}))
+		.output(z.array(jobDtoSchema)),
 	list: oc
 		.meta(
 			openapi({

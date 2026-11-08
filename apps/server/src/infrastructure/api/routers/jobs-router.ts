@@ -2,11 +2,12 @@ import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/contract";
 import {
 	isBatchParentJobType,
+	batchParentJobTypes,
 	jobStatusSchema,
 	type Job,
 } from "@solid-imager/core/jobs";
 import type { JobEvent } from "@solid-imager/core/events";
-import { and, count, desc, eq } from "drizzle-orm";
+import { and, count, desc, eq, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
@@ -37,7 +38,15 @@ function readTargetMediaId(payload: unknown): string | null {
 	return result.success ? result.data : null;
 }
 
+/** Reads batch counters from an object or a legacy JSON string. Returns null when the payload has no usable progress counts. */
 function readProgress(payload: unknown) {
+	if (typeof payload === "string") {
+		try {
+			payload = JSON.parse(payload);
+		} catch {
+			return null;
+		}
+	}
 	if (!isRecord(payload)) {
 		return null;
 	}
@@ -129,6 +138,22 @@ function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
 const os = implement(jobsContract);
 
 export const jobsRouter = os.router({
+	activeBatches: os.activeBatches.handler(async () => {
+		const rows = await db
+			.select()
+			.from(jobs)
+			.where(
+				and(
+					inArray(jobs.type, [
+						...batchParentJobTypes,
+						"extract_embedding_batch",
+					]),
+					inArray(jobs.status, ["pending", "in_progress"]),
+				),
+			)
+			.orderBy(desc(jobs.createdAt), desc(jobs.id));
+		return rows.map((job) => toJobDto(job, null));
+	}),
 	list: os.list.handler(async ({ input }) => {
 		const where = jobWhere(input.status);
 		const [rows, totalRows] = await Promise.all([

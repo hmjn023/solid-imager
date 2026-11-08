@@ -1,5 +1,6 @@
 import type {
 	JobCompletedEvent,
+	JobEvent,
 	JobFailedEvent,
 	JobProgressEvent,
 } from "@solid-imager/core/events";
@@ -13,5 +14,6 @@ export type ManagerJobHandlers = {
 
 export type UseBatchJobEventsOptions = {
 	subscribeImmediately?: boolean;
+	onEvent?: (event: JobEvent) => void;
 	onConnected?: () => void | Promise<void>;
 };

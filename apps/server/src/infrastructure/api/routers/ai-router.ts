@@ -1,3 +1,4 @@
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { tmpdir } from "node:os";
 import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
@@ -182,6 +183,11 @@ export const aiRouter = os.router({
 				type: "extract_embedding_batch",
 				mediaSourceId: input.mediaSourceId,
 				payload: { ...input, processed: 0, failed: 0, total: 0 },
+			});
+			RealtimeEventBus.publishJob("job-progress", {
+				jobId: job.id,
+				processed: 0,
+				total: 0,
 			});
 			return {
 				success: true,
@@ -398,6 +404,11 @@ export const aiRouter = os.router({
 				force,
 			},
 		});
+		RealtimeEventBus.publishJob("job-progress", {
+			jobId: parentJob.id,
+			processed: 0,
+			total: 0,
+		});
 
 		await jobRepo.create({
 			type: "bulk_tagging_dispatch",
@@ -514,6 +525,11 @@ export const aiRouter = os.router({
 					mediaSourceId,
 					force,
 				},
+			});
+			RealtimeEventBus.publishJob("job-progress", {
+				jobId: parent.id,
+				processed: 0,
+				total: 0,
 			});
 			await jobRepo.create({
 				type: "batch_ccip_dispatch",

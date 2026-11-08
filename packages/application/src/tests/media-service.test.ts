@@ -58,6 +58,8 @@ describe("MediaService Unit Tests", () => {
 			isCancellationRequested: vi.fn(),
 			setArtifact: vi.fn(),
 			update: vi.fn(),
+			setBatchTotal: vi.fn(),
+			recordBatchChildOutcome: vi.fn(),
 			incrementProgress: vi.fn(),
 			incrementFailedCount: vi.fn(),
 		};
