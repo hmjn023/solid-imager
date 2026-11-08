@@ -55,8 +55,10 @@ const mockProjectRepo = {
 	findOrCreateBulk: vi.fn(),
 	addMediaBulk: vi.fn(),
 };
+const generateThumbnail = vi.fn();
 const mockJobRepo = {
 	create: vi.fn(),
+	createIfUnique: vi.fn(),
 };
 
 const _mockConfigService = {
@@ -98,13 +100,120 @@ describe("MediaProcessingService", () => {
 				video: [".mp4", ".webm", ".mov"],
 				audio: [".mp3", ".wav"],
 			},
-			generateThumbnail: vi.fn() as any,
+			generateThumbnail,
 			publishSourceEvent: vi.fn() as any,
 		});
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+	});
+
+	describe("automatic visual inference", () => {
+		const mediaId = "11111111-1111-4111-8111-111111111111";
+		const mediaSourceId = "22222222-2222-4222-8222-222222222222";
+		const job = {
+			id: "33333333-3333-4333-8333-333333333333",
+			type: "processMedia",
+			mediaSourceId,
+			status: "in_progress" as const,
+			payload: { mediaId, sourcePath: "/tmp/media" },
+			result: null,
+			error: null,
+			parentId: null,
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		};
+
+		it.each(["image", "video"])(
+			"queues tagging and both vectors for %s media",
+			async (mediaType) => {
+				service.updateConfig({
+					enableAutoTagging: true,
+					enableAutoCcipExtraction: true,
+					enableAutoEmbeddingExtraction: true,
+				});
+				mockMediaRepo.findById.mockResolvedValue({
+					id: mediaId,
+					filePath: "clip.mp4",
+					mediaType,
+				});
+				await service.executeProcessMediaJob(job);
+				expect(mockJobRepo.create).toHaveBeenCalledWith({
+					type: "auto_tagging",
+					mediaSourceId,
+					payload: { mediaId },
+				});
+				expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith({
+					type: "extract_embedding_vector",
+					mediaSourceId,
+					payload: { mediaId },
+				});
+				expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith({
+					type: "extract_ccip_vector",
+					mediaSourceId,
+					payload: { mediaId },
+				});
+			},
+		);
+
+		it("skips video inference when thumbnail generation fails", async () => {
+			service.updateConfig({
+				enableAutoTagging: true,
+				enableAutoEmbeddingExtraction: true,
+				enableAutoCcipExtraction: true,
+			});
+			mockMediaRepo.findById.mockResolvedValue({
+				id: mediaId,
+				filePath: "clip.mp4",
+				mediaType: "video",
+			});
+			generateThumbnail.mockRejectedValueOnce(new Error("Decode failed"));
+			await service.executeProcessMediaJob(job);
+			expect(mockJobRepo.create).not.toHaveBeenCalled();
+			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+		});
+
+		it("does not enqueue visual inference for audio or when automatic flags are disabled", async () => {
+			mockMediaRepo.findById.mockResolvedValue({
+				id: mediaId,
+				filePath: "clip.mp4",
+				mediaType: "video",
+			});
+			await service.executeProcessMediaJob(job);
+			service.updateConfig({
+				enableAutoTagging: true,
+				enableAutoCcipExtraction: true,
+				enableAutoEmbeddingExtraction: true,
+			});
+			mockMediaRepo.findById.mockResolvedValue({
+				id: mediaId,
+				filePath: "audio.mp3",
+				mediaType: "audio",
+			});
+			await service.executeProcessMediaJob(job);
+			expect(mockJobRepo.create).not.toHaveBeenCalled();
+			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+		});
+
+		it("preserves metadata skip behavior while allowing video vector extraction", async () => {
+			service.updateConfig({
+				enableAutoTagging: true,
+				enableAutoCcipExtraction: true,
+				enableAutoEmbeddingExtraction: true,
+			});
+			mockMediaRepo.findById.mockResolvedValue({
+				id: mediaId,
+				filePath: "clip.mp4",
+				mediaType: "video",
+			});
+			await service.executeProcessMediaJob({
+				...job,
+				payload: { ...job.payload, skipMetadataExtraction: true },
+			});
+			expect(mockJobRepo.create).not.toHaveBeenCalled();
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe("addContextMetadataToExistingMedia", () => {

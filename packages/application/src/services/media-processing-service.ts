@@ -253,13 +253,16 @@ class MediaProcessingServiceImpl implements IMediaProcessingService {
 			});
 		} catch (e) {
 			this.logger?.error({ err: e, mediaId }, "Thumbnail generation failed");
+			if (media.mediaType === "video") return;
 		}
 
 		// Step 3: AI tagging
+		const supportsVisualInference =
+			media.mediaType === "image" || media.mediaType === "video";
 		if (
 			this.enableAutoTagging &&
 			!payload?.skipMetadataExtraction &&
-			media.mediaType === "image"
+			supportsVisualInference
 		) {
 			try {
 				await this.jobRepo.create({
@@ -277,14 +280,14 @@ class MediaProcessingServiceImpl implements IMediaProcessingService {
 			}
 		}
 
-		if (this.enableAutoEmbeddingExtraction && media.mediaType === "image") {
+		if (this.enableAutoEmbeddingExtraction && supportsVisualInference) {
 			await this.jobRepo.createIfUnique({
 				type: "extract_embedding_vector",
 				mediaSourceId,
 				payload: { mediaId: media.id },
 			});
 		}
-		if (this.enableAutoCcipExtraction && media.mediaType === "image") {
+		if (this.enableAutoCcipExtraction && supportsVisualInference) {
 			try {
 				await this.jobRepo.createIfUnique({
 					type: "extract_ccip_vector",

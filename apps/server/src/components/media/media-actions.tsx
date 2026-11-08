@@ -28,6 +28,7 @@ export function MediaActions(props: MediaActionsProps) {
 			aiTaggingModal={(modalProps) => (
 				<AiTaggingModal
 					isOpen={modalProps.isOpen}
+					mediaType={props.media.mediaType}
 					mediaId={props.media.id}
 					mediaSourceId={props.media.mediaSourceId}
 					onClose={modalProps.onClose}
@@ -67,6 +68,7 @@ export function MediaActions(props: MediaActionsProps) {
 			oppaiOracleModal={(modalProps) => (
 				<OppaiOracleModal
 					isOpen={modalProps.isOpen}
+					mediaType={props.media.mediaType}
 					mediaId={props.media.id}
 					mediaSourceId={props.media.mediaSourceId}
 					onClose={modalProps.onClose}

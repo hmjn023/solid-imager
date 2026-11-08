@@ -1,8 +1,12 @@
 import path from "node:path";
-import type { IAiClient } from "@solid-imager/core/ports";
+import type {
+	IAiClient,
+	Transaction,
+	TransactionManager,
+} from "@solid-imager/core/ports";
 import type { CharacterRepository } from "@solid-imager/core/characters";
 import type { IIpRepository } from "@solid-imager/core/ips";
-import type { MediaReader } from "@solid-imager/core/media";
+import type { MediaReader, MediaWriter } from "@solid-imager/core/media";
 import {
 	type SourceRepository,
 	localConnectionSchema,
@@ -16,17 +20,21 @@ import {
 } from "@solid-imager/core/tagging";
 import type { ILogger } from "../ports/logger";
 import type { ITaggingService } from "../ports/tagging-service";
+import type { ResolveVideoThumbnail } from "../ports/video-thumbnail";
 
 export type TaggingServiceDeps = {
 	aiClient: IAiClient;
 	sourceRepo: SourceRepository;
-	mediaRepo: Pick<MediaReader, "findById">;
+	transactionManager: TransactionManager;
+	mediaRepo: Pick<MediaReader, "findById"> &
+		Pick<MediaWriter, "clearAiAssociations">;
 	tagRepo: TagRepositoryDef;
 	characterRepo: CharacterRepository;
 	ipRepo: IIpRepository;
 	logger?: ILogger;
 	publishSourceEvent: SourceEventPublisher;
 	readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
+	resolveVideoThumbnail: ResolveVideoThumbnail;
 };
 
 /** Performs tagging and CCIP inference, using stored AI tags when available unless cache is skipped. */
@@ -39,9 +47,13 @@ class TaggingServiceImpl implements ITaggingService {
 	private readonly ipRepo: IIpRepository;
 	private readonly publishSourceEvent: SourceEventPublisher;
 	private readonly readFileBuffer: (filePath: string) => Promise<ArrayBuffer>;
+	private readonly resolveVideoThumbnail: ResolveVideoThumbnail;
 	private readonly logger?: ILogger;
 
+	private readonly transactionManager: TransactionManager;
+
 	constructor(deps: TaggingServiceDeps) {
+		this.transactionManager = deps.transactionManager;
 		this.aiClient = deps.aiClient;
 		this.sourceRepo = deps.sourceRepo;
 		this.mediaRepo = deps.mediaRepo;
@@ -50,6 +62,7 @@ class TaggingServiceImpl implements ITaggingService {
 		this.ipRepo = deps.ipRepo;
 		this.publishSourceEvent = deps.publishSourceEvent;
 		this.readFileBuffer = deps.readFileBuffer;
+		this.resolveVideoThumbnail = deps.resolveVideoThumbnail;
 		this.logger = deps.logger;
 	}
 
@@ -73,7 +86,7 @@ class TaggingServiceImpl implements ITaggingService {
 		if (media.mediaSourceId !== mediaSourceId) {
 			throw new Error("Media not found in source");
 		}
-		if (media.mediaType !== "image") {
+		if (media.mediaType !== "image" && media.mediaType !== "video") {
 			return {
 				general: {},
 				character: {},
@@ -163,7 +176,10 @@ class TaggingServiceImpl implements ITaggingService {
 		if (!connectionParse.success) {
 			throw new Error("Invalid local source connection info: missing path");
 		}
-		const fullPath = path.join(connectionParse.data.path, media.filePath);
+		const fullPath =
+			media.mediaType === "video"
+				? await this.resolveVideoThumbnail(media)
+				: path.join(connectionParse.data.path, media.filePath);
 
 		let response: TaggingResponse;
 		const canUsePathApi = this.isAiServiceLocal();
@@ -176,16 +192,23 @@ class TaggingServiceImpl implements ITaggingService {
 		}
 
 		// Save to DB
-		await this.saveTags(mediaSourceId, mediaId, media.filePath, response);
+		await this.transactionManager.transaction(async (tx) => {
+			await this.mediaRepo.clearAiAssociations(mediaId, tx);
+			await this.saveTags(mediaId, response, tx);
+		});
+		this.publishSourceEvent(mediaSourceId, "media-changed", {
+			filePath: media.filePath,
+			mediaId,
+			timestamp: new Date().toISOString(),
+		});
 
 		return response;
 	}
 
 	private async saveTags(
-		mediaSourceId: string,
 		mediaId: string,
-		filePath: string,
 		response: TaggingResponse,
+		tx: Transaction,
 	): Promise<void> {
 		// 1. Tags
 		const tagsToInsert = Object.entries(response.general).map(
@@ -196,14 +219,14 @@ class TaggingServiceImpl implements ITaggingService {
 				attribute: response.attributes?.[name],
 			}),
 		);
-		await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI");
+		await this.tagRepo.addTagsToMedia(mediaId, tagsToInsert, "AI", tx);
 
 		// 2. IPs — bulk find-or-create
 		const ipNames = response.ips;
 		const ipNameIdMap = new Map<string, string>();
 
 		if (ipNames.length > 0) {
-			const allIps = await this.ipRepo.findOrCreateBulk(ipNames, "AI");
+			const allIps = await this.ipRepo.findOrCreateBulk(ipNames, "AI", tx);
 			for (const ip of allIps) {
 				ipNameIdMap.set(ip.name, ip.id);
 			}
@@ -218,7 +241,7 @@ class TaggingServiceImpl implements ITaggingService {
 		}
 
 		if (ipsToLink.length > 0) {
-			await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "AI");
+			await this.ipRepo.addMediaBulk(mediaId, ipsToLink, "AI", tx);
 		}
 
 		// 3. Characters
@@ -243,7 +266,7 @@ class TaggingServiceImpl implements ITaggingService {
 		const charNames = Object.keys(response.character);
 
 		// Fetch existing characters in one query
-		const existingChars = await this.characterRepo.findByNames(charNames);
+		const existingChars = await this.characterRepo.findByNames(charNames, tx);
 		const existingCharMap = new Map(existingChars.map((c) => [c.name, c]));
 
 		// Build full character data for findOrCreateBulk:
@@ -283,11 +306,12 @@ class TaggingServiceImpl implements ITaggingService {
 		const newChars = await this.characterRepo.findOrCreateBulk(
 			bulkCharData,
 			"AI",
+			tx,
 		);
 
 		// Bulk IP updates for existing characters
 		if (charsNeedingUpdate.length > 0) {
-			await this.characterRepo.updateIpsBulk(charsNeedingUpdate, "AI");
+			await this.characterRepo.updateIpsBulk(charsNeedingUpdate, "AI", tx);
 		}
 
 		// Build character link list for addToMediaBulk
@@ -305,15 +329,8 @@ class TaggingServiceImpl implements ITaggingService {
 		}
 
 		if (charsToLink.length > 0) {
-			await this.characterRepo.addToMediaBulk(mediaId, charsToLink, "AI");
+			await this.characterRepo.addToMediaBulk(mediaId, charsToLink, "AI", tx);
 		}
-
-		// Notify clients of the update
-		this.publishSourceEvent(mediaSourceId, "media-changed", {
-			filePath,
-			mediaId,
-			timestamp: new Date().toISOString(),
-		});
 	}
 
 	async getCcipFeature(imageBuffer: ArrayBuffer): Promise<CcipFeatureResponse> {
@@ -331,8 +348,10 @@ class TaggingServiceImpl implements ITaggingService {
 		if (media.mediaSourceId !== mediaSourceId) {
 			throw new Error("Media not found in source");
 		}
-		if (media.mediaType !== "image") {
-			throw new Error("CCIP feature extraction is only supported for images");
+		if (media.mediaType !== "image" && media.mediaType !== "video") {
+			throw new Error(
+				"CCIP feature extraction only supports images and video thumbnails",
+			);
 		}
 		const mediaSource = await this.sourceRepo.findById(mediaSourceId);
 		if (!mediaSource) {
@@ -349,7 +368,10 @@ class TaggingServiceImpl implements ITaggingService {
 		if (!connectionParse.success) {
 			throw new Error("Invalid local source connection info: missing path");
 		}
-		const fullPath = path.join(connectionParse.data.path, media.filePath);
+		const fullPath =
+			media.mediaType === "video"
+				? await this.resolveVideoThumbnail(media)
+				: path.join(connectionParse.data.path, media.filePath);
 
 		const canUsePathApi = this.isAiServiceLocal();
 

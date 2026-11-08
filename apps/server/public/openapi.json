@@ -3503,8 +3503,8 @@
     "/media/searchSemantic": {
       "post": {
         "operationId": "media.searchSemantic",
-        "summary": "自然言語で画像を検索",
-        "description": "EmbeddingGemma 2 の画像索引を文章で検索します。対象は索引登録済みで更新されていない画像です。",
+        "summary": "自然言語で画像・動画を検索",
+        "description": "EmbeddingGemma 2 の索引を文章で検索します。対象は索引登録済みで更新されていない画像と動画です。動画の索引は代表サムネイル1枚に基づきます。",
         "tags": [
           "Media"
         ],
@@ -12741,7 +12741,8 @@
     "/ai/startEmbeddingExtraction": {
       "post": {
         "operationId": "ai.startEmbeddingExtraction",
-        "summary": "単一メディアのEmbeddingGemma 2画像索引作成ジョブを開始",
+        "summary": "単一メディアのEmbeddingGemma 2索引作成ジョブを開始",
+        "description": "ローカルソースの画像または動画サムネイルを解析します。動画は代表サムネイル1枚から索引を作成します。",
         "tags": [
           "AI"
         ],
@@ -12974,7 +12975,8 @@
     "/ai/startBatchEmbeddingExtraction": {
       "post": {
         "operationId": "ai.startBatchEmbeddingExtraction",
-        "summary": "EmbeddingGemma 2 画像索引作成ジョブを開始",
+        "summary": "EmbeddingGemma 2 画像・動画索引作成ジョブを開始",
+        "description": "ローカルソースの画像と動画サムネイルを一括で索引登録します。既存の動画も対象です。",
         "tags": [
           "AI"
         ],
@@ -13104,8 +13106,8 @@
     "/ai/tag": {
       "post": {
         "operationId": "ai.tag",
-        "summary": "画像の自動タグ付け",
-        "description": "画像ファイルまたはメディアIDを受け取り、利用可能なタグ付けモデルで内容を解析してタグ候補を返します。",
+        "summary": "画像・動画サムネイルの自動タグ付け",
+        "description": "画像ファイルまたはローカルソースのメディアIDを受け取り、利用可能なモデルで解析します。動画は代表サムネイル1枚を解析し、メディアID指定時は元のメディアにタグを保存します。",
         "tags": [
           "AI"
         ],
@@ -13217,8 +13219,8 @@
     "/ai/tagOppaiOracle": {
       "post": {
         "operationId": "ai.tagOppaiOracle",
-        "summary": "OppaiOracleで画像をタグ付け",
-        "description": "画像ファイルまたはメディアIDをOppaiOracleで解析し、検出結果とタグ候補を返します。",
+        "summary": "OppaiOracleで画像・動画サムネイルをタグ付け",
+        "description": "画像ファイルまたはローカルソースのメディアIDをOppaiOracleで解析します。動画は代表サムネイル1枚を使い、検出結果とタグ候補を返します。",
         "tags": [
           "AI"
         ],
@@ -13310,7 +13312,7 @@
       "post": {
         "operationId": "ai.ccipFeature",
         "summary": "CCIP特徴量の抽出",
-        "description": "画像ファイルまたはメディアIDからCCIP特徴量を計算して返します。類似画像検索や画像間比較に利用できます。",
+        "description": "画像ファイルまたはローカルソースのメディアIDからCCIP特徴量を計算します。動画は代表サムネイル1枚を使い、キャラクター類似検索や比較に利用できます。",
         "tags": [
           "AI"
         ],
@@ -13554,7 +13556,7 @@
       "post": {
         "operationId": "ai.startCcipExtraction",
         "summary": "CCIP特徴量抽出の開始",
-        "description": "指定したメディアのCCIP特徴量を抽出してベクトルストアへ登録するジョブを開始します。",
+        "description": "指定したローカル画像または動画サムネイルのCCIP特徴量を抽出し、元メディアのベクトルとして登録するジョブを開始します。",
         "tags": [
           "AI"
         ],
@@ -13679,7 +13681,7 @@
       "post": {
         "operationId": "ai.startBatchCcipExtraction",
         "summary": "CCIP一括抽出の開始",
-        "description": "指定条件に一致するメディアを対象に、CCIP特徴量を一括抽出するジョブを開始します。",
+        "description": "指定条件に一致するローカル画像と動画サムネイルを対象に、CCIP特徴量を一括抽出するジョブを開始します。",
         "tags": [
           "AI"
         ],
@@ -13795,7 +13797,7 @@
       "post": {
         "operationId": "ai.startBatchTagging",
         "summary": "一括タグ付けの開始",
-        "description": "指定条件に一致するメディアを対象に、自動タグ付けジョブを開始します。",
+        "description": "指定条件に一致するローカル画像と動画サムネイルを対象に、自動タグ付けジョブを開始します。",
         "tags": [
           "AI"
         ],
