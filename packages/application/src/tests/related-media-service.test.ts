@@ -5,7 +5,10 @@ import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 } from "@solid-imager/core/search";
-import type { IEmbeddingStore, ImageEmbedding } from "../ports/embedding-store";
+import type {
+	RelatedEmbeddingReader,
+	ImageEmbedding,
+} from "../ports/embedding-store";
 import { RelatedMediaService } from "../services/related-media-service";
 
 const sourceId = "11111111-1111-4111-8111-111111111111";
@@ -63,10 +66,10 @@ function setup() {
 		mediaModifiedAt: modifiedAt,
 	};
 	const store = {
-		get: vi.fn<IEmbeddingStore["get"]>().mockResolvedValue(embedding),
-		search: vi
-			.fn<IEmbeddingStore["search"]>()
-			.mockResolvedValue({ candidates: [], total: 0 }),
+		get: vi.fn<RelatedEmbeddingReader["get"]>().mockResolvedValue(embedding),
+		nearestRelated: vi
+			.fn<RelatedEmbeddingReader["nearestRelated"]>()
+			.mockResolvedValue([]),
 	};
 	const logger = { warn: vi.fn() };
 	return {
@@ -91,13 +94,10 @@ describe("RelatedMediaService", () => {
 			mediaSourceId: otherSourceId,
 		});
 		const ip = media("77777777-7777-4777-8777-777777777777");
-		store.search.mockResolvedValue({
-			candidates: [
-				{ mediaId: first.id, cosineDistance: 0.1 },
-				{ mediaId: second.id, cosineDistance: 0.2 },
-			],
-			total: 2,
-		});
+		store.nearestRelated.mockResolvedValue([
+			{ mediaId: first.id, cosineDistance: 0.1 },
+			{ mediaId: second.id, cosineDistance: 0.2 },
+		]);
 		repository.findByIds.mockResolvedValue([second, first]);
 		repository.findRelatedByRelation.mockImplementation(
 			async (_id, relation) =>
@@ -122,12 +122,7 @@ describe("RelatedMediaService", () => {
 		expect(
 			result.recommendations.every((item) => !("filePath" in item.media)),
 		).toBe(true);
-		expect(store.search).toHaveBeenCalledWith([1, 0], {
-			excludeMediaId: mediaId,
-			activeOnly: true,
-			limit: 96,
-			offset: 0,
-		});
+		expect(store.nearestRelated).toHaveBeenCalledWith([1, 0], mediaId, 96);
 	});
 
 	it("does not promote a lower-ranked visual match ahead of better visual matches through metadata", async () => {
@@ -137,13 +132,12 @@ describe("RelatedMediaService", () => {
 			media("55555555-5555-4555-8555-555555555555"),
 			media("66666666-6666-4666-8666-666666666666"),
 		];
-		store.search.mockResolvedValue({
-			candidates: candidates.map((item, index) => ({
+		store.nearestRelated.mockResolvedValue(
+			candidates.map((item, index) => ({
 				mediaId: item.id,
 				cosineDistance: index / 10,
 			})),
-			total: candidates.length,
-		});
+		);
 		repository.findByIds.mockResolvedValue(candidates);
 		repository.findRelatedByRelation.mockResolvedValue([candidates[2]]);
 		const result = await service.getRelated({ sourceId, mediaId });
@@ -181,7 +175,7 @@ describe("RelatedMediaService", () => {
 			expect(result.similarityStatus).toBe("not_indexed");
 			expect(result.items).toHaveLength(1);
 			expect(result.items[0].reasons).toEqual(["character", "ip"]);
-			expect(store.search).not.toHaveBeenCalled();
+			expect(store.nearestRelated).not.toHaveBeenCalled();
 			expect(repository.findRelatedByRelation).toHaveBeenCalledWith(
 				mediaId,
 				"character",
@@ -193,7 +187,9 @@ describe("RelatedMediaService", () => {
 
 	it("isolates an unavailable vector search from metadata recommendations", async () => {
 		const { repository, store, service, logger } = setup();
-		store.search.mockRejectedValue(new Error("vector store unavailable"));
+		store.nearestRelated.mockRejectedValue(
+			new Error("vector store unavailable"),
+		);
 		repository.findRelatedByRelation.mockResolvedValue([
 			media("44444444-4444-4444-8444-444444444444"),
 		]);
@@ -311,13 +307,12 @@ describe("RelatedMediaService", () => {
 		const pool = Array.from({ length: 8 }, (_, index) =>
 			media(`candidate-${index}`),
 		);
-		store.search.mockResolvedValue({
-			candidates: pool.map((item, index) => ({
+		store.nearestRelated.mockResolvedValue(
+			pool.map((item, index) => ({
 				mediaId: item.id,
 				cosineDistance: 0.1 + index * 0.05,
 			})),
-			total: pool.length,
-		});
+		);
 		repository.findByIds.mockResolvedValue([...pool].reverse());
 		repository.findRelatedByRelation.mockResolvedValue([pool[7], ...pool]);
 		repository.findRelatedByTags.mockResolvedValue(

@@ -9,6 +9,7 @@ import {
 	mediaIps,
 	medias,
 	mediaTags,
+	relatedTagFrequencies,
 } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -71,8 +72,7 @@ export function readRelatedMedia(
  * Confidence-aware weighted Jaccard over positive tags. IDF is measured against
  * active images only; the union includes unmatched tags so tag-heavy images do
  * not win merely by having more tags. Manual tags (NULL confidence) have weight 1.
- * Reuse anchor weights after shortlisting; only candidate-exclusive tags need a
- * second document-frequency aggregation.
+ * The migration maintains document frequencies transactionally as tags or media change.
  */
 export function readRelatedTagMatches(
 	db: DrizzleExecutor,
@@ -80,61 +80,63 @@ export function readRelatedTagMatches(
 	limit: number,
 	seed: string,
 ) {
-	// Rank shared tags first so ubiquitous anchor tags do not expand every image's
-	// full tag set. Rarity participates before this bound, preserving rare matches.
-	const shortlistLimit = Math.min(2048, Math.max(512, limit * 4));
+	// Gather postings from several discriminating tags before fetching full tag sets.
+	// Keep rare lists whole and bound the work for tags present on most images.
+	// Preliminary overlap uses anchor weights so probes can use the reverse
+	// index alone. The final score uses every positive tag and both confidences.
+	const postingsPerSide = 8192;
+	const shortlistLimit = Math.max(512, limit * 4);
+	const probe = (forward: boolean) => sql`
+		select mt.media_id from ${mediaTags} mt
+		where mt.tag_id = p.tag_id and mt.tag_type = 'positive'
+			and mt.media_id ${forward ? sql`>` : sql`<`} ${mediaId}
+		order by mt.media_id ${forward ? sql`asc` : sql`desc`} limit ${postingsPerSide}
+	`;
 	return db.select({
 		mediaId: sql<string>`ranked.media_id`,
 		score: sql<number>`ranked.score`.mapWith(Number),
 	}).from(sql`(
 		with eligible as (
 			select id from ${medias} where status = 'active' and media_type = 'image'
+		), population as (
+			select count(*)::double precision as images from eligible
 		), anchor_tags as (
 			select tag_id, least(1.0, greatest(0.0, coalesce(confidence, 1.0))) as confidence
 			from ${mediaTags}
 			where media_id = ${mediaId} and tag_type = 'positive'
 				and coalesce(confidence, 1.0) > 0
+		), weights as (
+			select f.tag_id,
+				ln(1.0 + (select images from population) / (1.0 + f.image_count)) as weight
+			from ${relatedTagFrequencies} f
 		), anchor_weights as (
-			select a.tag_id, a.confidence,
-				ln(1.0 + (select count(*) from eligible)::double precision / (1.0 + count(e.id))) as weight
-			from anchor_tags a
-			join ${mediaTags} mt on mt.tag_id = a.tag_id
-			left join eligible e on e.id = mt.media_id
-			where mt.tag_type = 'positive' and coalesce(mt.confidence, 1.0) > 0
-			group by a.tag_id, a.confidence
-		), preliminary_scores as (
-			select mt.media_id,
-				sum(least(1.0, greatest(0.0, coalesce(mt.confidence, 1.0)), a.confidence) * a.weight) as overlap
-			from ${mediaTags} mt
-			join anchor_weights a on a.tag_id = mt.tag_id
-			join eligible e on e.id = mt.media_id
-			where mt.tag_type = 'positive' and coalesce(mt.confidence, 1.0) > 0
-				and mt.media_id <> ${mediaId}
-			group by mt.media_id
+			select a.*, coalesce(w.weight, ln(1.0 + (select images from population))) as weight
+			from anchor_tags a left join weights w using (tag_id)
+		), probe_tags as (
+			select a.tag_id, a.confidence * a.weight as priority from anchor_weights a
+			join ${relatedTagFrequencies} f using (tag_id)
+			where f.image_count > (select count(*) from ${medias}
+				where id = ${mediaId} and status = 'active' and media_type = 'image')
+			order by priority desc, a.tag_id limit 24
+		), overlap_candidates as (
+			select postings.media_id, sum(p.priority) as overlap
+			from probe_tags p cross join lateral (
+				(${probe(true)}) union all (${probe(false)})
+			) postings group by postings.media_id
 		), matching_ids as (
-			select media_id from preliminary_scores
-			order by overlap desc, md5(media_id::text || ${seed}), media_id
-			limit ${shortlistLimit}
+			select c.media_id from overlap_candidates c join eligible m on m.id = c.media_id
+			order by c.overlap desc, md5(c.media_id::text || ${seed}), c.media_id limit ${shortlistLimit}
 		), candidate_tags as (
 			select mt.media_id, mt.tag_id,
 				least(1.0, greatest(0.0, coalesce(mt.confidence, 1.0))) as confidence
-			from ${mediaTags} mt join matching_ids c on c.media_id = mt.media_id
-			where mt.tag_type = 'positive' and coalesce(mt.confidence, 1.0) > 0
-		), candidate_only_tags as (
-			select distinct c.tag_id from candidate_tags c
-			where not exists (select 1 from anchor_tags a where a.tag_id = c.tag_id)
-		), candidate_weights as (
-			select mt.tag_id,
-				ln(1.0 + (select count(*) from eligible)::double precision / (1.0 + count(*))) as weight
-			from ${mediaTags} mt
-			join candidate_only_tags c on c.tag_id = mt.tag_id
-			join eligible e on e.id = mt.media_id
-			where mt.tag_type = 'positive' and coalesce(mt.confidence, 1.0) > 0
-			group by mt.tag_id
-		), weights as (
-			select tag_id, weight from anchor_weights
-			union all
-			select tag_id, weight from candidate_weights
+			from matching_ids c
+			cross join lateral (
+				select media_id, tag_id, confidence from ${mediaTags}
+				where media_id = c.media_id and tag_type = 'positive'
+					and coalesce(confidence, 1.0) > 0
+				-- Keep the indexed lookup bounded by the shortlist.
+				offset 0
+			) mt
 		), anchor_mass as (
 			select coalesce(sum(confidence * weight), 0) as mass from anchor_weights
 		), intersections as (

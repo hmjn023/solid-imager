@@ -239,6 +239,20 @@
       "when": 1793917446968,
       "tag": "0033_nifty_brother_voodoo",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1794130314209,
+      "tag": "0034_image_embedding_neighbors",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1794130892202,
+      "tag": "0035_related_tag_frequencies",
+      "breakpoints": true
     }
   ]
 }

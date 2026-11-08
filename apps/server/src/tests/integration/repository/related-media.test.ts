@@ -441,4 +441,22 @@ describe("Related media tag queries", () => {
 		);
 		expect(results.map((item) => item.media.id)).toEqual([ids.exact, ids.rare]);
 	});
+	it("does not spend the tag probe budget on tags belonging only to the anchor", async () => {
+		const uniqueTags = Array.from({ length: 10 }, () => randomUUID());
+		try {
+			await db.insert(tags).values(uniqueTags.map((id) => ({ id, name: id })));
+			await db
+				.insert(mediaTags)
+				.values(uniqueTags.map((tagId) => ({ tagId, mediaId: ids.anchor })));
+			const matches = await MediaRepository.findRelatedByTags(
+				ids.anchor,
+				12,
+				"unique",
+			);
+			expect(matches.some(({ media }) => media.id === ids.exact)).toBe(true);
+			expect(matches.some(({ media }) => media.id === ids.rare)).toBe(true);
+		} finally {
+			await db.delete(tags).where(inArray(tags.id, uniqueTags));
+		}
+	});
 });

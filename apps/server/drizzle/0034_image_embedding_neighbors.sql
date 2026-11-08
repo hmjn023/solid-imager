@@ -1,0 +1,1 @@
+CREATE INDEX "idx_image_embeddings_cosine" ON "image_embeddings" USING hnsw ("embedding" vector_cosine_ops);
