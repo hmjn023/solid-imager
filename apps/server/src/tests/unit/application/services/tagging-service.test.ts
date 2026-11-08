@@ -1,25 +1,29 @@
-import type { TaggingServiceDeps } from "@solid-imager/application/services/tagging-service";
-import { TaggingServiceImpl } from "@solid-imager/application/services/tagging-service";
-import type { IAiClient } from "@solid-imager/core/domain/interfaces/ai-client";
-import type { CharacterRepository } from "@solid-imager/core/domain/repositories/character-repository";
-import type { IIpRepository } from "@solid-imager/core/domain/repositories/ip-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import type { TagRepository } from "@solid-imager/core/domain/repositories/tag-repository";
+import {
+	type ITaggingService,
+	type ResolveVideoThumbnail,
+	type TaggingServiceDeps,
+	createTaggingService,
+} from "@solid-imager/application/tagging";
+import type { IAiClient } from "@solid-imager/core/ports";
+import type { CharacterRepository } from "@solid-imager/core/characters";
+import type { IIpRepository } from "@solid-imager/core/ips";
+import type { SourceRepository } from "@solid-imager/core/sources";
+import type { TagRepository } from "@solid-imager/core/tags";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const MOCK_BUFFER_DATA = [1, 2, 3];
 
-describe("TaggingServiceImpl", () => {
-	let taggingService: TaggingServiceImpl;
+describe("createTaggingService", () => {
+	let taggingService: ITaggingService;
 	let mockAiClient: IAiClient;
 	let mockSourceRepo: SourceRepository;
-	let mockMediaRepo: IMediaRepository;
+	let mockMediaRepo: TaggingServiceDeps["mediaRepo"];
 	let mockTagRepo: TagRepository;
 	let mockCharacterRepo: CharacterRepository;
 	let mockIpRepo: IIpRepository;
 	let mockSseSendEvent: ReturnType<typeof vi.fn>;
 	let mockReadFileBuffer: ReturnType<typeof vi.fn>;
+	let resolveVideoThumbnail: ReturnType<typeof vi.fn<ResolveVideoThumbnail>>;
 
 	beforeEach(() => {
 		mockAiClient = {
@@ -42,15 +46,14 @@ describe("TaggingServiceImpl", () => {
 		} as unknown as SourceRepository;
 
 		mockMediaRepo = {
-			findById: vi.fn(() =>
-				Promise.resolve({
-					id: "media-1",
-					mediaSourceId: "source-1",
-					mediaType: "image",
-					filePath: "remote/path.jpg",
-				}),
-			),
-		} as unknown as IMediaRepository;
+			clearAiAssociations: vi.fn(),
+			findById: vi.fn().mockResolvedValue({
+				id: "media-1",
+				mediaSourceId: "source-1",
+				mediaType: "image",
+				filePath: "remote/path.jpg",
+			}),
+		};
 
 		mockTagRepo = {
 			findByMediaId: vi.fn(() => Promise.resolve([])),
@@ -101,8 +104,12 @@ describe("TaggingServiceImpl", () => {
 		mockReadFileBuffer = vi.fn(() =>
 			Promise.resolve(new Uint8Array(MOCK_BUFFER_DATA).buffer as ArrayBuffer),
 		);
+		resolveVideoThumbnail = vi.fn().mockResolvedValue("/cache/video.webp");
 
 		const deps: TaggingServiceDeps = {
+			transactionManager: {
+				transaction: (callback) => callback("test-transaction"),
+			},
 			aiClient: mockAiClient,
 			sourceRepo: mockSourceRepo,
 			mediaRepo: mockMediaRepo,
@@ -111,9 +118,104 @@ describe("TaggingServiceImpl", () => {
 			ipRepo: mockIpRepo,
 			publishSourceEvent: mockSseSendEvent as any,
 			readFileBuffer: mockReadFileBuffer as any,
+			resolveVideoThumbnail,
 		};
 
-		taggingService = new TaggingServiceImpl(deps);
+		taggingService = createTaggingService(deps);
+	});
+
+	const emptyTags = {
+		general: {},
+		character: {},
+		attributes: {},
+		ips: [],
+		ips_mapping: {},
+	};
+	const video = {
+		id: "media-1",
+		mediaSourceId: "source-1",
+		mediaType: "video",
+		filePath: "clip.mp4",
+		modifiedAt: new Date("2026-01-01"),
+	};
+
+	it("tags the video thumbnail and stores tags against the original video", async () => {
+		vi.mocked(mockMediaRepo.findById).mockResolvedValue(video as any);
+		vi.mocked(mockAiClient.tagImageByPath).mockResolvedValue({
+			...emptyTags,
+			general: { outdoors: 0.9 },
+		});
+		await taggingService.getTagsForMedia("source-1", "media-1");
+		expect(resolveVideoThumbnail).toHaveBeenCalledWith(video);
+		expect(mockAiClient.tagImageByPath).toHaveBeenCalledWith(
+			"/cache/video.webp",
+		);
+		expect(mockTagRepo.addTagsToMedia).toHaveBeenCalledWith(
+			"media-1",
+			[expect.objectContaining({ name: "outdoors" })],
+			"AI",
+			"test-transaction",
+		);
+		expect(mockSseSendEvent).toHaveBeenCalledWith(
+			"source-1",
+			"media-changed",
+			expect.objectContaining({ mediaId: "media-1", filePath: "clip.mp4" }),
+		);
+	});
+
+	it("uses thumbnail bytes for remote tagging and CCIP, never video bytes", async () => {
+		vi.mocked(mockMediaRepo.findById).mockResolvedValue(video as any);
+		mockAiClient.getBaseUrl = () => "https://ai.example.test";
+		vi.mocked(mockAiClient.tagImage).mockResolvedValue(emptyTags);
+		vi.mocked(mockAiClient.extractCcipFeature).mockResolvedValue({
+			feature: [1, 2, 3],
+		});
+		await taggingService.getTagsForMedia("source-1", "media-1");
+		await taggingService.getCcipFeatureForMedia("source-1", "media-1");
+		expect(mockReadFileBuffer).toHaveBeenCalledTimes(2);
+		expect(mockReadFileBuffer).toHaveBeenNthCalledWith(1, "/cache/video.webp");
+		expect(mockReadFileBuffer).toHaveBeenNthCalledWith(2, "/cache/video.webp");
+		expect(mockAiClient.tagImageByPath).not.toHaveBeenCalled();
+		expect(mockAiClient.extractCcipFeatureByPath).not.toHaveBeenCalled();
+	});
+
+	it("extracts local video CCIP from the thumbnail and propagates generation errors", async () => {
+		vi.mocked(mockMediaRepo.findById).mockResolvedValue(video as any);
+		vi.mocked(mockAiClient.extractCcipFeatureByPath).mockResolvedValue({
+			feature: [1],
+		});
+		await expect(
+			taggingService.getCcipFeatureForMedia("source-1", "media-1"),
+		).resolves.toEqual({ feature: [1] });
+		expect(mockAiClient.extractCcipFeatureByPath).toHaveBeenCalledWith(
+			"/cache/video.webp",
+		);
+		resolveVideoThumbnail.mockRejectedValue(new Error("thumbnail failed"));
+		await expect(
+			taggingService.getTagsForMedia("source-1", "media-1"),
+		).rejects.toThrow("thumbnail failed");
+		expect(mockTagRepo.addTagsToMedia).not.toHaveBeenCalled();
+	});
+
+	it("does not generate thumbnails for cached tags, other sources or audio", async () => {
+		vi.mocked(mockMediaRepo.findById).mockResolvedValue(video as any);
+		vi.mocked(mockTagRepo.findByMediaId).mockResolvedValue([
+			{ name: "outdoors", source: "AI", confidence: 0.9 },
+		] as any);
+		await expect(
+			taggingService.getTagsForMedia("source-1", "media-1"),
+		).resolves.toMatchObject({ general: { outdoors: 0.9 } });
+		await expect(
+			taggingService.getTagsForMedia("source-2", "media-1"),
+		).rejects.toThrow("Media not found in source");
+		vi.mocked(mockMediaRepo.findById).mockResolvedValue({
+			...video,
+			mediaType: "audio",
+		} as any);
+		await expect(
+			taggingService.getCcipFeatureForMedia("source-1", "media-1"),
+		).rejects.toThrow("images and video thumbnails");
+		expect(resolveVideoThumbnail).not.toHaveBeenCalled();
 	});
 
 	it("should correctly link characters to IPs based on ips_mapping", async () => {
@@ -157,12 +259,14 @@ describe("TaggingServiceImpl", () => {
 				},
 			],
 			"AI",
+			"test-transaction",
 		);
 
 		// Verify IPs were bulk-created via findOrCreateBulk
 		expect(mockIpRepo.findOrCreateBulk).toHaveBeenCalledWith(
 			["Vocaloid"],
 			"AI",
+			"test-transaction",
 		);
 
 		// Verify IP was linked to media
@@ -170,6 +274,7 @@ describe("TaggingServiceImpl", () => {
 			"media-1",
 			expect.arrayContaining([expect.objectContaining({ id: "ip-vocaloid" })]),
 			"AI",
+			"test-transaction",
 		);
 
 		// Verify characters were bulk-created via findOrCreateBulk with IP ids
@@ -181,6 +286,7 @@ describe("TaggingServiceImpl", () => {
 				}),
 			]),
 			"AI",
+			"test-transaction",
 		);
 
 		// Verify character was linked to media
@@ -190,6 +296,7 @@ describe("TaggingServiceImpl", () => {
 				expect.objectContaining({ id: "char-HatsuneMiku", confidence: 0.95 }),
 			]),
 			"AI",
+			"test-transaction",
 		);
 	});
 });

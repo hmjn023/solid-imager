@@ -1,10 +1,7 @@
 import { implement, ORPCError } from "@orpc/server";
 import { RPCHandler } from "@orpc/server/fetch";
 import { createClient } from "@solid-imager/client";
-import {
-	jobsContract,
-	mediaContract,
-} from "@solid-imager/core/domain/contract";
+import { jobsContract, mediaContract } from "@solid-imager/core/contract";
 import { describe, expect, it } from "vitest";
 
 const id = "11111111-1111-4111-8111-111111111111";

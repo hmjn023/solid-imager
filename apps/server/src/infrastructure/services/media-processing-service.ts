@@ -2,12 +2,10 @@
  * MediaProcessingService - Thin proxy wrapping the extracted implementation
  */
 
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type { MediaMetadataContext } from "@solid-imager/core/domain/media/schemas";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
+import type { Transaction } from "@solid-imager/core/ports";
+import type { MediaMetadataContext } from "@solid-imager/core/media";
+import type { Job } from "@solid-imager/core/jobs";
 import { services } from "~/infrastructure/service-registry";
-
-export { MediaProcessingServiceImpl } from "@solid-imager/application/services/media-processing-service";
 
 export const MediaProcessingService = {
 	registerAndProcess: async (

@@ -1,5 +1,5 @@
-import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { SimilarityModel } from "@solid-imager/core/search";
+import type { Media } from "@solid-imager/core/media";
 import { useMenuContext } from "@kobalte/core/menu";
 import Copy from "lucide-solid/icons/copy";
 import ExternalLink from "lucide-solid/icons/external-link";
@@ -184,7 +184,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		return error instanceof Error ? error.message : "API接続に失敗しました";
 	};
 	const canFindSimilar = (media: Media) =>
-		props.onFindSimilar !== undefined && media.mediaType === "image";
+		props.onFindSimilar !== undefined &&
+		(media.mediaType === "image" || media.mediaType === "video");
 
 	// --- Virtual grid setup ---
 	const [windowWidth, setWindowWidth] = createSignal(0);

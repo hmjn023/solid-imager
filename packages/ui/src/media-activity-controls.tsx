@@ -2,7 +2,7 @@ import type {
 	MediaActivity,
 	MediaDetails,
 	MediaPreferencesPatch,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/media";
 import { createMutation, useQueryClient } from "@tanstack/solid-query";
 import { onMount, Show } from "solid-js";
 import { v7 as uuidv7 } from "uuid";

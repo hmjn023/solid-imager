@@ -1,11 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
-import { startCharacterClusteringSchema } from "@solid-imager/core/domain/characters/schemas";
-import type {
-	IJobRepository,
-	Job,
-} from "@solid-imager/core/domain/repositories/job-repository";
+import { startCharacterClusteringSchema } from "@solid-imager/core/characters";
+import type { IJobRepository, Job } from "@solid-imager/core/jobs";
 import { extract } from "../../../scripts/character-clustering/extract";
 import { fit } from "../../../scripts/character-clustering/fit";
 import { characterClusteringRoot } from "./character-clustering-results-store";

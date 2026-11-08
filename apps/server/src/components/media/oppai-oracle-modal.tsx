@@ -1,3 +1,4 @@
+import type { Media } from "@solid-imager/core/media";
 import { OppaiOracleModal as SharedOppaiOracleModal } from "@solid-imager/ui/oppai-oracle-modal";
 import { fetchOppaiOracleTags } from "~/infrastructure/api-clients/ai-api";
 
@@ -6,13 +7,14 @@ type OppaiOracleModalProps = {
 	onClose: () => void;
 	mediaSourceId: string;
 	mediaId: string;
+	mediaType?: Media["mediaType"];
 	onSuccess?: () => void;
 };
 
 export function OppaiOracleModal(props: OppaiOracleModalProps) {
 	return (
 		<SharedOppaiOracleModal
-			description="Tags extracted from the image using the OppaiOracle model."
+			mediaType={props.mediaType}
 			onSuccess={props.onSuccess}
 			fetchTags={async () => {
 				const result = await fetchOppaiOracleTags({

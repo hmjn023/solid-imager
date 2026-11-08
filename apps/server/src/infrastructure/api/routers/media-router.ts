@@ -1,17 +1,18 @@
 import { implement, ORPCError } from "@orpc/server";
-import { mediaContract } from "@solid-imager/core/domain/contract/media.contract";
-import type { MediaPreferencesPatch } from "@solid-imager/core/domain/media/schemas";
+import { mediaContract } from "@solid-imager/core/contract";
+import type { MediaPreferencesPatch } from "@solid-imager/core/media";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
-import { asyncPool } from "@solid-imager/core/utils/async-pool";
+} from "@solid-imager/core/errors";
+import { asyncPool } from "@solid-imager/core/utils";
 import { services } from "~/infrastructure/service-registry";
 import { logger } from "~/infrastructure/logger";
 import { BulkOperationService } from "~/infrastructure/services/bulk-operation-service";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { MediaService } from "~/infrastructure/services/media-service";
 import { getEmbeddingSearchService } from "~/infrastructure/services/embedding-search-service";
+import { getRelatedMediaService } from "~/infrastructure/services/related-media-service";
 
 /**
  * Media Router Implementation
@@ -37,6 +38,16 @@ async function updateActivity(
 }
 
 export const mediaRouter = os.router({
+	getRelated: os.getRelated.handler(async ({ input }) => {
+		try {
+			return await getRelatedMediaService().getRelated(input);
+		} catch (error) {
+			if (error instanceof ResourceNotFoundError) {
+				throw new ORPCError("NOT_FOUND", { message: error.message });
+			}
+			throw error;
+		}
+	}),
 	statistics: os.statistics.handler(({ input }) =>
 		services.getMediaRepository().getStatistics(input),
 	),

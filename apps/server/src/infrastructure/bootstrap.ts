@@ -11,23 +11,25 @@ import {
 } from "~/infrastructure/jobs/thumbnails";
 import { logger, updateLogLevel } from "~/infrastructure/logger";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
-import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
-import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
-import { DrizzleSourceRepository as ActualSourceRepo } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import {
+	AuthorRepository,
+	DrizzleCharacterRepository,
+	IpRepository,
+	JobRepository,
+	MediaRepository,
+	ProjectRepository,
+	DrizzleSourceRepository as ActualSourceRepo,
+	TagRepository,
+} from "~/infrastructure/db/repositories";
 import { services } from "~/infrastructure/service-registry";
 import { configureCcipVectorService } from "~/infrastructure/services/ccip-vector-service";
-import { CharacterServiceImpl } from "~/infrastructure/services/character-service";
+import { createCharacterService } from "@solid-imager/application/characters";
 import {
 	configureThumbnailJobHandlers,
 	processJob,
 } from "~/infrastructure/services/job-dispatch-service";
 import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
-import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
+import { createMediaProcessingService } from "@solid-imager/application/media-processing";
 import { ServerConfigService } from "~/infrastructure/services/server-config-service";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
@@ -97,7 +99,7 @@ export function initServices() {
 	services.registerJobWorker(jobWorker);
 
 	services.registerCharacterService(
-		new CharacterServiceImpl(
+		createCharacterService(
 			services.getCharacterRepository(),
 			services.getIpRepository(),
 			DrizzleTransactionManager,
@@ -105,7 +107,7 @@ export function initServices() {
 	);
 
 	// Register MediaProcessingService (Implementation)
-	const mediaProcessingService = new MediaProcessingServiceImpl({
+	const mediaProcessingService = createMediaProcessingService({
 		sourceRepo: services.getSourceRepository(),
 		mediaRepo: services.getMediaRepository(),
 		tagRepo: services.getTagRepository(),

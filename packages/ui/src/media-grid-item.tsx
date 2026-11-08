@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 import { cn } from "./utils/cn";
@@ -12,14 +12,19 @@ export type MediaGridImageLoadPolicy = {
 	loading?: "eager" | "lazy";
 };
 
-export type MediaGridThumbnailProps = {
+export type MediaGridMedia = Pick<
+	Media,
+	"id" | "mediaSourceId" | "fileName" | "mediaType" | "width" | "height"
+>;
+
+export type MediaGridThumbnailProps<TMedia extends MediaGridMedia = Media> = {
 	alt: string;
 	class: string;
 	enabled?: boolean;
 	fetchpriority?: "high" | "low" | "auto";
 	height?: number | null;
 	loading: "eager" | "lazy";
-	media: Media;
+	media: TMedia;
 	sizes?: string;
 	sourceRootPath?: string;
 	width?: number | null;
@@ -43,16 +48,16 @@ export type MediaGridLinkProps = {
 	onContextMenu: (event: MouseEvent) => void;
 };
 
-type MediaGridItemProps = {
-	media: Media;
+type MediaGridItemProps<TMedia extends MediaGridMedia> = {
+	media: TMedia;
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
 	linkPrefix?: string;
 	priority?: boolean;
 	sourceRootPath?: string;
 	onContextMenu?: (event: MouseEvent) => void;
-	canRenderThumbnail?: (media: Media) => boolean;
+	canRenderThumbnail?: (media: TMedia) => boolean;
 	linkComponent: (props: MediaGridLinkProps) => JSX.Element;
-	renderThumbnail: (props: MediaGridThumbnailProps) => JSX.Element;
+	renderThumbnail: (props: MediaGridThumbnailProps<TMedia>) => JSX.Element;
 	class?: string;
 	thumbnailClass?: string;
 	overlayClass?: string;
@@ -61,7 +66,9 @@ type MediaGridItemProps = {
 	isSelected?: boolean;
 };
 
-export function MediaGridItem(props: MediaGridItemProps) {
+export function MediaGridItem<TMedia extends MediaGridMedia>(
+	props: MediaGridItemProps<TMedia>,
+) {
 	const href = () =>
 		props.linkPrefix
 			? `${props.linkPrefix}/${props.media.id}`

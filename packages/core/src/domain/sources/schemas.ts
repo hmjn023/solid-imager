@@ -10,11 +10,13 @@ export const mediaSourceIdSchema = z.uuid({
 });
 export type MedioaSourceId = z.infer<typeof mediaSourceIdSchema>;
 
+/** Connection settings for a local filesystem source. */
 export const localConnectionSchema = z.object({
 	path: z.string().min(1, "Path is required"),
 });
 export type LocalConnection = z.infer<typeof localConnectionSchema>;
 
+/** Connection settings for an SFTP source, potentially including credentials. */
 export const sftpConnectionSchema = z.object({
 	host: z.string(),
 	port: z.number().int().positive(),
@@ -25,6 +27,7 @@ export const sftpConnectionSchema = z.object({
 });
 export type SftpConnection = z.infer<typeof sftpConnectionSchema>;
 
+/** Connection settings for an S3 source, potentially including credentials. */
 export const s3ConnectionSchema = z.object({
 	region: z.string(),
 	bucket: z.string(),
@@ -34,6 +37,7 @@ export const s3ConnectionSchema = z.object({
 });
 export type S3Connection = z.infer<typeof s3ConnectionSchema>;
 
+/** Supported source connection settings; may contain sensitive credentials. */
 export const connectionInfoSchema = z.union([
 	localConnectionSchema,
 	sftpConnectionSchema,
@@ -44,9 +48,11 @@ export type ConnectionInfo = z.infer<typeof connectionInfoSchema>;
 export const mediaSourceTypeEnumSchema = z.enum(["local", "sftp", "s3"]);
 export type MediaSourceTypeEnum = z.infer<typeof mediaSourceTypeEnumSchema>;
 
+/** Synchronization state reported for a media source. */
 export const mediaSourceSyncStateSchema = z.enum(["idle", "syncing", "error"]);
 export type MediaSourceSyncState = z.infer<typeof mediaSourceSyncStateSchema>;
 
+/** Source information and its current synchronization state. */
 export const mediaSourceInfoSchema = z.object({
 	id: z.uuid().optional(),
 	name: z.string(),
@@ -56,6 +62,7 @@ export const mediaSourceInfoSchema = z.object({
 });
 export type MediaSourceInfo = z.infer<typeof mediaSourceInfoSchema>;
 
+/** File system change observed for a media source. */
 export const fileSystemEventSchema = z.object({
 	type: z.enum(["added", "deleted", "modified"]),
 	mediaSourceId: z.string(),

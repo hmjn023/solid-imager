@@ -1,6 +1,6 @@
-import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
-import type { Media } from "@solid-imager/core/domain/media/schemas";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SimilarityModel } from "@solid-imager/core/search";
+import type { Media } from "@solid-imager/core/media";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type {
 	SearchPageFilterData,
 	UseSearchPageResult,

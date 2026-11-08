@@ -1,7 +1,4 @@
-import type {
-	Author,
-	NewAuthor,
-} from "@solid-imager/core/domain/authors/schemas";
+import type { Author, NewAuthor } from "@solid-imager/core/authors";
 import { createQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Button } from "../../button";
@@ -235,7 +232,7 @@ export function AuthorManagementPanel(props: {
 			await media.refetch();
 		});
 	const allSources = { id: "__all__", name: "すべてのソース" };
-	const platforms = ["twitter", "pixiv-fanbox", "danbooru"] as const;
+	const platforms = ["twitter", "pixiv-fanbox", "danbooru", "pixiv"] as const;
 	return (
 		<div class="space-y-5">
 			<div>

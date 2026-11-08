@@ -1,8 +1,8 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { Link } from "@tanstack/solid-router";
 import { For, Show } from "solid-js";
 import { Button } from "../button";
-import { ShortcutKbd } from "../shortcuts/index";
+import { ShortcutKbd } from "../shortcuts/shortcut-kbd";
 import {
 	CircleHelp,
 	Database,

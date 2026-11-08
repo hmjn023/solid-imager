@@ -1,4 +1,4 @@
-import type { AiConfig } from "@solid-imager/core/domain/config/config-schema";
+import type { AiConfig } from "@solid-imager/core/config";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 
 type InferenceConfig = Pick<AiConfig, "provider" | "device">;

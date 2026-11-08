@@ -1,4 +1,4 @@
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { Transaction } from "@solid-imager/core/ports";
 import type {
 	FindDuplicatesRequest,
 	FindDuplicatesResponse,
@@ -6,23 +6,24 @@ import type {
 	MediaDetails,
 	MediaGenerationInfo,
 	MediaMetadataContext,
+	MediaSearchRequestInput,
 	MediaSearchResponse,
 	MediaTag,
-} from "@solid-imager/core/domain/media/schemas";
-import type {
+	UpdateMediaRequestInput,
 	UploadMediaRequest,
 	UploadResponse,
-} from "@solid-imager/core/domain/media/upload-schemas";
+} from "@solid-imager/core/media";
 import type {
 	SourceEventCommand,
 	SourceEventData,
 	SourceEventName,
-} from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/events";
 
 // ============================================================================
 // Deferred Action Types (moved from server's job-dispatch-service)
 // ============================================================================
 
+/** A processing or download job to dispatch as part of deferred media actions. */
 export type DeferredJob = {
 	mediaId?: string;
 	sourcePath?: string;
@@ -30,25 +31,30 @@ export type DeferredJob = {
 	payload?: unknown;
 };
 
+/** Jobs grouped by the media source they belong to. */
 export type DeferredJobs = {
 	mediaSourceId: string;
 	jobs: DeferredJob[];
 };
 
+/** A source event together with the source to which it will be published. */
 export type DeferredSourceEvent = {
 	mediaSourceId: string;
 } & SourceEventCommand;
 
+/** A file deletion request identifying the source base and file path. */
 export type FileToDelete = {
 	basePath: string;
 	filePath: string;
 };
 
+/** A thumbnail deletion request scoped to a media source. */
 export type ThumbnailToDelete = {
 	mediaSourceId: string;
 	mediaId: string;
 };
 
+/** Side effects collected by a media operation for execution after its transaction. */
 export type DeferredActions = {
 	jobs: DeferredJobs[];
 	sourceEvents: DeferredSourceEvent[];
@@ -60,6 +66,7 @@ export type DeferredActions = {
 // Infrastructure Abstractions (server-specific concerns)
 // ============================================================================
 
+/** Publishes source events and copy notifications to interested consumers. */
 export interface ISourceEventPublisher {
 	publishSource<TName extends SourceEventName>(
 		mediaSourceId: string,
@@ -69,16 +76,12 @@ export interface ISourceEventPublisher {
 	notifyMediaCopied(sourceId: string, targetId: string, media: Media): void;
 }
 
+/** Removes thumbnails associated with media. */
 export interface IThumbnailManager {
 	deleteThumbnail(mediaSourceId: string, mediaId: string): Promise<void>;
 }
 
-export interface ILogger {
-	info(obj: object, msg: string): void;
-	error(obj: object, msg: string): void;
-	warn(obj: object, msg: string): void;
-}
-
+/** Adds contextual metadata to existing media, optionally within a transaction. */
 export interface IMediaContextProcessor {
 	addContextMetadataToExistingMedia(
 		mediaId: string,
@@ -87,6 +90,7 @@ export interface IMediaContextProcessor {
 	): Promise<void>;
 }
 
+/** Executes the jobs, events and cleanup collected by a media operation. */
 export interface IDeferredActionExecutor {
 	execute(actions: DeferredActions): Promise<void>;
 }
@@ -95,12 +99,13 @@ export interface IDeferredActionExecutor {
 // Media Service Interface
 // ============================================================================
 
+/** Application operations for searching, uploading and managing media. */
 export interface IMediaService {
 	startProcessing(mediaSourceId: string): void;
 
 	searchMedia(
 		mediaSourceId: string | undefined | null,
-		params: unknown,
+		params: MediaSearchRequestInput,
 	): Promise<MediaSearchResponse>;
 
 	searchMediaInDirectory(
@@ -137,7 +142,7 @@ export interface IMediaService {
 	updateMedia(
 		mediaSourceId: string,
 		mediaId: string,
-		updates: unknown,
+		updates: UpdateMediaRequestInput,
 		tx?: Transaction,
 	): Promise<Media>;
 
@@ -153,6 +158,14 @@ export interface IMediaService {
 		mediaId: string,
 	): Promise<MediaGenerationInfo | null>;
 
+	/**
+	 * Copy media between local sources, including its metadata.
+	 * @param sourceMediaId - Media to copy.
+	 * @param targetSourceId - Destination source; both sources must be local.
+	 * @param tx - Existing transaction. When supplied, the caller must execute deferred actions after commit.
+	 * @returns The new media and, when a transaction is supplied, jobs and events to execute after commit.
+	 * @throws If the media or either source is missing, the sources are not local, or the copy fails.
+	 */
 	copyMedia(
 		sourceMediaId: string,
 		targetSourceId: string,
@@ -163,6 +176,14 @@ export interface IMediaService {
 		deferred?: DeferredActions;
 	}>;
 
+	/**
+	 * Copy media to another local source and remove the original.
+	 * @param sourceMediaId - Media to move.
+	 * @param targetSourceId - Destination source; both sources must be local.
+	 * @param tx - Existing transaction. When supplied, the caller must execute deferred actions after commit.
+	 * @returns The new media and deferred actions. Without a supplied transaction the service has already executed those actions.
+	 * @throws If copying or deleting the media fails.
+	 */
 	moveMedia(
 		sourceMediaId: string,
 		targetSourceId: string,
@@ -173,6 +194,14 @@ export interface IMediaService {
 		deferred?: DeferredActions;
 	}>;
 
+	/**
+	 * Delete a media record and schedule or perform its file, thumbnail and event side effects.
+	 * @param mediaSourceId - Source expected to own the media.
+	 * @param mediaId - Media to delete.
+	 * @param tx - Existing transaction. When supplied, the caller must execute the returned actions after commit.
+	 * @returns Deferred cleanup and event actions when a transaction is supplied; otherwise undefined.
+	 * @throws If the media is missing or belongs to another source.
+	 */
 	deleteMedia(
 		mediaSourceId: string,
 		mediaId: string,

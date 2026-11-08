@@ -1,18 +1,18 @@
 import type {
 	SearchCriterion,
 	SearchGroup,
+	SimilarityModel,
+	SemanticSearchRequest,
+} from "@solid-imager/core/search";
+import type {
 	MediaSearchRequest,
 	MediaSearchResponse,
-} from "@solid-imager/core/domain/media/schemas";
+} from "@solid-imager/core/media";
 import {
 	type InfiniteData,
 	infiniteQueryOptions,
 	keepPreviousData,
 } from "@tanstack/solid-query";
-import type {
-	SimilarityModel,
-	SemanticSearchRequest,
-} from "@solid-imager/core/domain/search/embedding";
 
 export const MEDIA_RESULTS_STALE_TIME_MS = 1000 * 60 * 5;
 
@@ -52,6 +52,7 @@ export const sourceMediaQueryKeys = {
 		["media", input.sourceId, input] as const,
 };
 
+/** Matches source-specific infinite result keys without matching other media cache entries. */
 export function isSourceMediaResultsQueryKey(
 	queryKey: readonly unknown[],
 	sourceId: string,
@@ -267,6 +268,7 @@ export type SourceMediaResultsQueryOptionsInput = {
 	enabled?: boolean;
 };
 
+/** Builds an infinite query for a source collection with its filter, ordering, and pagination in the cache key. */
 export function buildSourceMediaResultsQueryOptions(
 	input: SourceMediaResultsQueryOptionsInput,
 ) {

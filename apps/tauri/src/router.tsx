@@ -4,15 +4,11 @@ import {
 	RouteErrorScreen,
 	RoutePendingScreen,
 } from "@solid-imager/ui/router-status";
-import { NotFoundScreen } from "@solid-imager/ui/screens/not-found-screen";
-import { type QueryClient, QueryClientProvider } from "@tanstack/solid-query";
+import { NotFoundScreen } from "@solid-imager/ui/screens/not-found";
+import { QueryClientProvider } from "@tanstack/solid-query";
 import { createHashHistory, createRouter } from "@tanstack/solid-router";
 import { queryClient } from "./query-client";
 import { routeTree } from "./routeTree.gen";
-
-export type AppRouterContext = {
-	queryClient: QueryClient;
-};
 
 export { queryClient } from "./query-client";
 
@@ -20,9 +16,7 @@ export function createAppRouter() {
 	return createRouter({
 		routeTree,
 		history: createHashHistory(),
-		context: {
-			queryClient,
-		} satisfies AppRouterContext,
+		context: { queryClient },
 		scrollRestoration: true,
 		defaultPreload: "intent",
 		defaultPreloadStaleTime: 0,

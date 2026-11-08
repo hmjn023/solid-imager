@@ -1,5 +1,6 @@
 import { type Accessor, createEffect, createSignal } from "solid-js";
 
+/** Selection and navigation cursors for an ordered media collection. The anchor starts range selections; focus can differ from the active item. */
 export type MediaCollectionSelectionState<Id extends string = string> = {
 	readonly selectedIds: ReadonlySet<Id>;
 	readonly activeId: Id | null;
@@ -18,6 +19,7 @@ export type MediaCollectionSelectionMode =
 	| "range"
 	| "additive-range";
 
+/** Controls whether IDs omitted from the visible collection remain selected during reconciliation. Defaults to remove. */
 export type HiddenSelectionPolicy = "remove" | "preserve";
 
 export type MediaCollectionSelectionAction<Id extends string = string> =
@@ -40,6 +42,7 @@ export type MediaCollectionSelectionOptions<Id extends string = string> =
 		initialState?: MediaCollectionSelectionState<Id>;
 	};
 
+/** Reactive selection state and commands; selection ranges follow the current visible ID order. */
 export type MediaCollectionSelectionController<Id extends string = string> = {
 	readonly state: Accessor<MediaCollectionSelectionState<Id>>;
 	readonly selectedIds: Accessor<ReadonlySet<Id>>;

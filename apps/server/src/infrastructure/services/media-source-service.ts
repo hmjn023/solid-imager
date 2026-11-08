@@ -1,9 +1,6 @@
-import type {
-	MediaSource,
-	NewMediaSource,
-} from "@solid-imager/core/domain/repositories/source-repository";
+import type { MediaSource, NewMediaSource } from "@solid-imager/core/sources";
 import { logger } from "~/infrastructure/logger";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import { DrizzleSourceRepository } from "~/infrastructure/db/repositories";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 
 /**

@@ -1,9 +1,6 @@
-import type {
-	Ip,
-	NewIp,
-	UpdateIp,
-} from "@solid-imager/core/domain/ips/schemas";
+import type { Ip, NewIp, UpdateIp } from "@solid-imager/core/ips";
 
+/** Manages intellectual properties and their associations with media. */
 export interface IIpService {
 	getAllIps(): Promise<Ip[]>;
 	createIp(data: NewIp): Promise<Ip>;

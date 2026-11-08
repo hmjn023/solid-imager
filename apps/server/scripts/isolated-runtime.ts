@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { copyFile, link, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { defaultAppConfig } from "@solid-imager/core/domain/config/config-schema";
+import { defaultAppConfig } from "@solid-imager/core/config";
 import { authorAccounts, authors, mediaAuthors, mediaUrls, mediaGenerationInfo, medias, mediaSources } from "@solid-imager/db/schema";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";

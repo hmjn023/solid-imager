@@ -1,5 +1,5 @@
 import { QueryClient } from "@tanstack/solid-query";
-import type { JobListResponse } from "@solid-imager/core/domain/jobs/schemas";
+import type { JobListResponse } from "@solid-imager/core/jobs";
 import { describe, expect, it } from "vitest";
 import {
 	jobsQueryKeys,

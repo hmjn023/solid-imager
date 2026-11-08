@@ -1,8 +1,5 @@
-import {
-	type Preset,
-	presetSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/domain/search/schema";
+import { type Preset, presetSchema } from "@solid-imager/core/presets";
+import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/search";
 import {
 	type Accessor,
 	createEffect,
@@ -128,6 +125,13 @@ export function persistSearchScrollPosition(
 	}
 }
 
+/**
+ * Reads a session scroll offset; invalid or unavailable values return zero.
+ *
+ * @param sourceId - Source key or reactive accessor; defaults to the current search.
+ * @param options - Optional history entry key for independently restored positions.
+ * @returns The stored non-negative offset in pixels, or zero.
+ */
 export function readPersistedSearchScrollPosition(
 	sourceId: SearchPersistenceSource = "current",
 	options: SearchPersistenceOptions = {},
@@ -260,6 +264,14 @@ function restoreCurrentSearchState(
 	}
 }
 
+/**
+ * Restores and persists source-specific search state in session storage.
+ * Subsequent state changes are debounced; pending scroll position is flushed on cleanup.
+ *
+ * @param sourceId - Source key or reactive accessor; a missing value suspends persistence.
+ * @param options - Optional history entry key used to isolate scroll positions.
+ * @returns An accessor indicating that restoration for the current source completed.
+ */
 export function useCurrentSearchPersistence(
 	sourceId: SearchPersistenceSource = "current",
 	options: SearchPersistenceOptions = {},

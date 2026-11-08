@@ -1,5 +1,5 @@
-import type { AppContractClient } from "@solid-imager/core/domain/contract";
-import type { JobListRequest } from "@solid-imager/core/domain/jobs/schemas";
+import type { AppContractClient } from "@solid-imager/core/contract";
+import type { JobListRequest } from "@solid-imager/core/jobs";
 import {
 	buildAuthorsQueryOptions,
 	buildCharactersQueryOptions,
@@ -7,6 +7,7 @@ import {
 	buildIpsQueryOptions,
 	buildJobsQueryOptions,
 	buildMediaDetailsQueryOptions,
+	buildRelatedMediaQueryOptions,
 	buildProjectsForMediaQueryOptions,
 	buildProjectsQueryOptions,
 	buildSourcesQueryOptions,
@@ -14,6 +15,7 @@ import {
 	defaultJobsQueryInput,
 } from "./index";
 
+/** Binds shared query option factories to an application contract client. */
 export function createAppQueryOptions(client: AppContractClient) {
 	return {
 		tagsQueryOptions: () =>
@@ -54,6 +56,23 @@ export function createAppQueryOptions(client: AppContractClient) {
 				mediaId,
 				(sourceId, mediaId, signal) =>
 					client.media.getDetails({ sourceId, mediaId }, { signal }),
+			),
+		relatedMediaQueryOptions: (
+			sourceId: string,
+			mediaId: string,
+			seed = "default",
+			limit = 12,
+		) =>
+			buildRelatedMediaQueryOptions(
+				sourceId,
+				mediaId,
+				limit,
+				seed,
+				(sourceId, mediaId, limit, seed, signal) =>
+					client.media.getRelated(
+						{ sourceId, mediaId, limit, seed },
+						{ signal },
+					),
 			),
 		projectsForMediaQueryOptions: (
 			sourceIdOrMediaId: string,

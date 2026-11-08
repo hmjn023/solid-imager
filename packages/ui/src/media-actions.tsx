@@ -1,8 +1,8 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
 import type {
 	CcipVectorStatus,
 	StartCcipExtractionResponse,
-} from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/core/tagging";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	type Accessor,
@@ -43,7 +43,7 @@ export type MediaActionsProps = {
 	media: MediaDetails;
 	onUpdate?: () => void;
 	onFindSimilar?: (
-		model?: import("@solid-imager/core/domain/search/embedding").SimilarityModel,
+		model?: import("@solid-imager/core/search").SimilarityModel,
 	) => void;
 	onDownload?: () => void | Promise<void>;
 	onViewJobs?: (jobId: string) => void;
@@ -92,11 +92,14 @@ export function MediaActions(props: MediaActionsProps) {
 	const [isDeleting, setIsDeleting] = createSignal(false);
 	const [ccipMissingStatusCount, setCcipMissingStatusCount] = createSignal(0);
 	let ccipStatusRequestId = 0;
+	const supportsVisualAnalysis = () =>
+		props.media.mediaType === "image" || props.media.mediaType === "video";
+	const supportsCropping = () => props.media.mediaType === "image";
 
 	const refreshCcipStatus = async () => {
-		if (!props.getCcipVectorStatus) return;
 		const requestId = ccipStatusRequestId + 1;
 		ccipStatusRequestId = requestId;
+		if (!supportsVisualAnalysis() || !props.getCcipVectorStatus) return;
 		const activeJobIdAtRequest = activeCcipJobId();
 		try {
 			const result = await props.getCcipVectorStatus();
@@ -129,19 +132,35 @@ export function MediaActions(props: MediaActionsProps) {
 	};
 
 	createEffect(
-		on([() => props.media.id, () => props.media.mediaSourceId], () => {
-			setIsExtractingCcip(false);
-			setIsExtractingEmbedding(false);
-			setIsCcipJobPending(false);
-			setCcipStatus(props.getCcipVectorStatus ? "missing" : "ready");
-			setActiveCcipJobId(null);
-			setCcipMissingStatusCount(0);
-			void refreshCcipStatus();
-		}),
+		on(
+			[
+				() => props.media.id,
+				() => props.media.mediaSourceId,
+				() => props.media.mediaType,
+			],
+			() => {
+				setIsAiTaggingModalOpen(false);
+				setIsOppaiOracleModalOpen(false);
+				setIsCharacterCropModalOpen(false);
+				setMoreActionsOpen(false);
+				setIsExtractingCcip(false);
+				setIsExtractingEmbedding(false);
+				setIsCcipJobPending(false);
+				setCcipStatus(props.getCcipVectorStatus ? "missing" : "ready");
+				setActiveCcipJobId(null);
+				setCcipMissingStatusCount(0);
+				void refreshCcipStatus();
+			},
+		),
 	);
 
 	const handleEmbeddingExtraction = async () => {
-		if (!props.startEmbeddingExtraction || isExtractingEmbedding()) return;
+		if (
+			!supportsVisualAnalysis() ||
+			!props.startEmbeddingExtraction ||
+			isExtractingEmbedding()
+		)
+			return;
 		setMoreActionsOpen(false);
 		setIsExtractingEmbedding(true);
 		const mediaId = props.media.id;
@@ -166,7 +185,7 @@ export function MediaActions(props: MediaActionsProps) {
 	};
 
 	const handleCcipExtraction = async () => {
-		if (!props.startCcipExtraction) return;
+		if (!supportsVisualAnalysis() || !props.startCcipExtraction) return;
 		setMoreActionsOpen(false);
 		setIsExtractingCcip(true);
 		const currentMediaId = props.media.id;
@@ -273,12 +292,15 @@ export function MediaActions(props: MediaActionsProps) {
 		if (ccipStatus() === "processing") return "Extracting CCIP vector…";
 		return "Extract CCIP vector";
 	};
-	const hasCcipActions = props.getCcipVectorStatus && props.startCcipExtraction;
+	const hasCcipActions = () =>
+		supportsVisualAnalysis() &&
+		props.getCcipVectorStatus &&
+		props.startCcipExtraction;
 
 	return (
 		<>
 			<div class="flex w-full flex-wrap items-center gap-2 md:w-auto md:flex-nowrap">
-				<ShowAction when={props.aiTaggingModal}>
+				<ShowAction when={supportsVisualAnalysis() && props.aiTaggingModal}>
 					<Button
 						class="h-10 min-w-32 flex-1 md:h-9 md:flex-none"
 						onClick={() => setIsAiTaggingModalOpen(true)}
@@ -288,7 +310,7 @@ export function MediaActions(props: MediaActionsProps) {
 						Extract tags
 					</Button>
 				</ShowAction>
-				<ShowAction when={props.onFindSimilar}>
+				<ShowAction when={supportsVisualAnalysis() && props.onFindSimilar}>
 					<Button
 						class="h-10 min-w-32 flex-1 md:h-9 md:flex-none"
 						disabled={
@@ -310,11 +332,12 @@ export function MediaActions(props: MediaActionsProps) {
 				</ShowAction>
 				<ShowAction
 					when={
-						props.oppaiOracleModal ||
-						props.characterCropModal ||
-						props.startEmbeddingExtraction ||
-						props.onFindSimilar ||
-						hasCcipActions ||
+						(supportsVisualAnalysis() &&
+							(props.oppaiOracleModal ||
+								props.startEmbeddingExtraction ||
+								props.onFindSimilar)) ||
+						(supportsCropping() && props.characterCropModal) ||
+						hasCcipActions() ||
 						props.onDownload ||
 						props.onDelete
 					}
@@ -330,7 +353,7 @@ export function MediaActions(props: MediaActionsProps) {
 						</PopoverTrigger>
 						<PopoverContent class="workspace-theme w-64 space-y-1 p-1.5 shadow-xl">
 							<ShowAction
-								when={props.onFindSimilar && props.media.mediaType === "image"}
+								when={props.onFindSimilar && supportsVisualAnalysis()}
 							>
 								<Button
 									class="h-auto min-h-9 w-full justify-start whitespace-normal px-2 text-left"
@@ -347,8 +370,7 @@ export function MediaActions(props: MediaActionsProps) {
 							</ShowAction>
 							<ShowAction
 								when={
-									props.startEmbeddingExtraction &&
-									props.media.mediaType === "image"
+									props.startEmbeddingExtraction && supportsVisualAnalysis()
 								}
 							>
 								<Button
@@ -362,7 +384,9 @@ export function MediaActions(props: MediaActionsProps) {
 									Extract EmbeddingGemma 2 vector
 								</Button>
 							</ShowAction>
-							<ShowAction when={props.oppaiOracleModal}>
+							<ShowAction
+								when={supportsVisualAnalysis() && props.oppaiOracleModal}
+							>
 								<Button
 									class="h-9 w-full justify-start px-2"
 									onClick={() =>
@@ -377,7 +401,7 @@ export function MediaActions(props: MediaActionsProps) {
 									Extract tags (OppaiOracle)
 								</Button>
 							</ShowAction>
-							<ShowAction when={props.characterCropModal}>
+							<ShowAction when={supportsCropping() && props.characterCropModal}>
 								<Button
 									class="h-9 w-full justify-start px-2"
 									onClick={() =>
@@ -392,7 +416,7 @@ export function MediaActions(props: MediaActionsProps) {
 									Detect &amp; crop characters
 								</Button>
 							</ShowAction>
-							<ShowAction when={hasCcipActions}>
+							<ShowAction when={hasCcipActions()}>
 								<Button
 									class="h-9 w-full justify-start px-2"
 									disabled={isExtractingCcip() || isCcipJobPending()}
@@ -441,20 +465,34 @@ export function MediaActions(props: MediaActionsProps) {
 					</Popover>
 				</ShowAction>
 			</div>
+			<ShowAction
+				when={
+					props.media.mediaType === "video" &&
+					(props.aiTaggingModal ||
+						props.oppaiOracleModal ||
+						props.onFindSimilar ||
+						props.startEmbeddingExtraction ||
+						hasCcipActions())
+				}
+			>
+				<p class="mt-1 text-xs text-muted-foreground">
+					AI analyzes this video's representative thumbnail.
+				</p>
+			</ShowAction>
 
-			<ShowAction when={props.aiTaggingModal}>
+			<ShowAction when={supportsVisualAnalysis() && props.aiTaggingModal}>
 				{props.aiTaggingModal?.({
 					isOpen: isAiTaggingModalOpen(),
 					onClose: () => setIsAiTaggingModalOpen(false),
 				})}
 			</ShowAction>
-			<ShowAction when={props.oppaiOracleModal}>
+			<ShowAction when={supportsVisualAnalysis() && props.oppaiOracleModal}>
 				{props.oppaiOracleModal?.({
 					isOpen: isOppaiOracleModalOpen(),
 					onClose: () => setIsOppaiOracleModalOpen(false),
 				})}
 			</ShowAction>
-			<ShowAction when={props.characterCropModal}>
+			<ShowAction when={supportsCropping() && props.characterCropModal}>
 				{props.characterCropModal?.({
 					isOpen: isCharacterCropModalOpen(),
 					onClose: () => setIsCharacterCropModalOpen(false),

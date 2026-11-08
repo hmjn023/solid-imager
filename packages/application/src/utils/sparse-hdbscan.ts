@@ -13,12 +13,14 @@ export type SparseDistanceGraph = {
 	distances: Float64Array;
 };
 
+/** Cluster size, density and hierarchy selection settings for sparse HDBSCAN. */
 export type SparseHdbscanOptions = {
 	minClusterSize: number;
 	minSamples: number;
 	selectionMethod: "eom" | "leaf";
 };
 
+/** Cluster labels and strengths with persistence, graph size and timing diagnostics. */
 export type SparseHdbscanResult = {
 	labels: Int32Array;
 	membershipStrengths: Float64Array;

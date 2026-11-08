@@ -1,8 +1,8 @@
-import type { McpToolInfo } from "@solid-imager/core/domain/config/mcp";
 import type {
+	McpToolInfo,
 	AppConfig,
 	AppConfigUpdate,
-} from "@solid-imager/core/domain/config/config-schema";
+} from "@solid-imager/core/config";
 import type { QueryUiState } from "../query-state";
 
 export type ConfigStateScreenProps = {

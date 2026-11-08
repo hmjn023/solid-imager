@@ -1,4 +1,4 @@
-import { downloadItemSchema } from "@solid-imager/core/domain/media/schemas";
+import { downloadItemSchema } from "@solid-imager/core/media";
 import { describe, expect, it } from "vitest";
 
 describe("downloadItemSchema", () => {

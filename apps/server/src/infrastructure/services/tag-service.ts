@@ -1,4 +1,4 @@
-import { createTagService } from "@solid-imager/application/services/tag-service";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import { createTagService } from "@solid-imager/application/tags";
+import { TagRepository } from "~/infrastructure/db/repositories";
 
 export const TagService = createTagService(TagRepository);

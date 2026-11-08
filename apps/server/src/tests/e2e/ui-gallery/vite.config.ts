@@ -84,9 +84,6 @@ function virtualThumbnailPlugin(): Plugin {
 export default defineConfig({
 	root: galleryRoot,
 	resolve: {
-		alias: {
-			"@solid-imager/ui": path.join(workspaceRoot, "packages/ui/src"),
-		},
 		dedupe: ["solid-js", "solid-js/web"],
 	},
 	server: {

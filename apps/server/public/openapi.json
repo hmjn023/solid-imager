@@ -2780,6 +2780,298 @@
         }
       }
     },
+    "/media/getRelated": {
+      "post": {
+        "operationId": "media.getRelated",
+        "summary": "関連メディア取得",
+        "description": "保存済み索引から見た目の似た画像・動画を推薦します。動画は代表サムネイルで比較します。同じキャラクター・IPやpositiveタグの希少性に基づく候補は全ソースの画像が対象です。recommendationsは関連度と多様性を考慮した重み付き抽選、itemsは種類別の候補です。limitはおすすめと各種類それぞれの上限です。seedと候補データが同じなら抽選結果を再現できます。閲覧時にAI推論は行いません。",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sourceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "limit": {
+                    "default": 12,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 24
+                  },
+                  "seed": {
+                    "default": "default",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 128
+                  }
+                },
+                "required": [
+                  "sourceId",
+                  "mediaId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "media": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "mediaSourceId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "fileName": {
+                                "type": "string"
+                              },
+                              "mediaType": {
+                                "type": "string",
+                                "enum": [
+                                  "image",
+                                  "video",
+                                  "audio"
+                                ]
+                              },
+                              "width": {
+                                "type": "number"
+                              },
+                              "height": {
+                                "type": "number"
+                              },
+                              "fileSize": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "modifiedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "indexedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "archived",
+                                  "deleted"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mediaSourceId",
+                              "fileName",
+                              "mediaType",
+                              "width",
+                              "height",
+                              "fileSize",
+                              "description",
+                              "createdAt",
+                              "modifiedAt",
+                              "indexedAt",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "reasons": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "similar",
+                                "character",
+                                "ip",
+                                "tag"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "media",
+                          "reasons"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "recommendations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "media": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "mediaSourceId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "fileName": {
+                                "type": "string"
+                              },
+                              "mediaType": {
+                                "type": "string",
+                                "enum": [
+                                  "image",
+                                  "video",
+                                  "audio"
+                                ]
+                              },
+                              "width": {
+                                "type": "number"
+                              },
+                              "height": {
+                                "type": "number"
+                              },
+                              "fileSize": {
+                                "type": [
+                                  "number",
+                                  "null"
+                                ]
+                              },
+                              "description": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "modifiedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "indexedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "x-native-type": "date"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "archived",
+                                  "deleted"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "mediaSourceId",
+                              "fileName",
+                              "mediaType",
+                              "width",
+                              "height",
+                              "fileSize",
+                              "description",
+                              "createdAt",
+                              "modifiedAt",
+                              "indexedAt",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "reasons": {
+                            "minItems": 1,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "enum": [
+                                "similar",
+                                "character",
+                                "ip",
+                                "tag"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "media",
+                          "reasons"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "similarityStatus": {
+                      "type": "string",
+                      "enum": [
+                        "available",
+                        "not_indexed",
+                        "unavailable"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "recommendations",
+                    "similarityStatus"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/media/statistics": {
       "post": {
         "operationId": "media.statistics",
@@ -3211,8 +3503,8 @@
     "/media/searchSemantic": {
       "post": {
         "operationId": "media.searchSemantic",
-        "summary": "自然言語で画像を検索",
-        "description": "EmbeddingGemma 2 の画像索引を文章で検索します。対象は索引登録済みで更新されていない画像です。",
+        "summary": "自然言語で画像・動画を検索",
+        "description": "EmbeddingGemma 2 の索引を文章で検索します。対象は索引登録済みで更新されていない画像と動画です。動画の索引は代表サムネイル1枚に基づきます。",
         "tags": [
           "Media"
         ],
@@ -4284,7 +4576,8 @@
                                       "enum": [
                                         "twitter",
                                         "pixiv-fanbox",
-                                        "danbooru"
+                                        "danbooru",
+                                        "pixiv"
                                       ]
                                     },
                                     {
@@ -4801,7 +5094,8 @@
                                         "enum": [
                                           "twitter",
                                           "pixiv-fanbox",
-                                          "danbooru"
+                                          "danbooru",
+                                          "pixiv"
                                         ]
                                       },
                                       {
@@ -4875,7 +5169,8 @@
                               "enum": [
                                 "twitter",
                                 "pixiv-fanbox",
-                                "danbooru"
+                                "danbooru",
+                                "pixiv"
                               ]
                             },
                             "remoteId": {
@@ -5718,7 +6013,8 @@
                                         "enum": [
                                           "twitter",
                                           "pixiv-fanbox",
-                                          "danbooru"
+                                          "danbooru",
+                                          "pixiv"
                                         ]
                                       },
                                       {
@@ -5792,7 +6088,8 @@
                               "enum": [
                                 "twitter",
                                 "pixiv-fanbox",
-                                "danbooru"
+                                "danbooru",
+                                "pixiv"
                               ]
                             },
                             "remoteId": {
@@ -10356,7 +10653,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               {
@@ -10544,7 +10842,8 @@
                                   "enum": [
                                     "twitter",
                                     "pixiv-fanbox",
-                                    "danbooru"
+                                    "danbooru",
+                                    "pixiv"
                                   ]
                                 },
                                 {
@@ -10709,7 +11008,8 @@
                               "enum": [
                                 "twitter",
                                 "pixiv-fanbox",
-                                "danbooru"
+                                "danbooru",
+                                "pixiv"
                               ]
                             },
                             {
@@ -10783,7 +11083,8 @@
                     "enum": [
                       "twitter",
                       "pixiv-fanbox",
-                      "danbooru"
+                      "danbooru",
+                      "pixiv"
                     ]
                   },
                   "remoteId": {
@@ -10866,7 +11167,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               {
@@ -11076,7 +11378,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               {
@@ -11326,7 +11629,8 @@
                                             "enum": [
                                               "twitter",
                                               "pixiv-fanbox",
-                                              "danbooru"
+                                              "danbooru",
+                                              "pixiv"
                                             ]
                                           },
                                           {
@@ -11887,7 +12191,8 @@
                                           "enum": [
                                             "twitter",
                                             "pixiv-fanbox",
-                                            "danbooru"
+                                            "danbooru",
+                                            "pixiv"
                                           ]
                                         },
                                         {
@@ -11961,7 +12266,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               "remoteId": {
@@ -12182,6 +12488,37 @@
                         },
                         "userAgent": {
                           "type": "string"
+                        },
+                        "ugoira": {
+                          "type": "object",
+                          "properties": {
+                            "frames": {
+                              "minItems": 1,
+                              "maxItems": 10000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "file": {
+                                    "type": "string",
+                                    "pattern": "^\\d+\\.(?:jpe?g|png|gif)$"
+                                  },
+                                  "delay": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 60000
+                                  }
+                                },
+                                "required": [
+                                  "file",
+                                  "delay"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "frames"
+                          ]
                         }
                       }
                     }
@@ -12404,7 +12741,8 @@
     "/ai/startEmbeddingExtraction": {
       "post": {
         "operationId": "ai.startEmbeddingExtraction",
-        "summary": "単一メディアのEmbeddingGemma 2画像索引作成ジョブを開始",
+        "summary": "単一メディアのEmbeddingGemma 2索引作成ジョブを開始",
+        "description": "ローカルソースの画像または動画サムネイルを解析します。動画は代表サムネイル1枚から索引を作成します。",
         "tags": [
           "AI"
         ],
@@ -12637,7 +12975,8 @@
     "/ai/startBatchEmbeddingExtraction": {
       "post": {
         "operationId": "ai.startBatchEmbeddingExtraction",
-        "summary": "EmbeddingGemma 2 画像索引作成ジョブを開始",
+        "summary": "EmbeddingGemma 2 画像・動画索引作成ジョブを開始",
+        "description": "ローカルソースの画像と動画サムネイルを一括で索引登録します。既存の動画も対象です。",
         "tags": [
           "AI"
         ],
@@ -12767,8 +13106,8 @@
     "/ai/tag": {
       "post": {
         "operationId": "ai.tag",
-        "summary": "画像の自動タグ付け",
-        "description": "画像ファイルまたはメディアIDを受け取り、利用可能なタグ付けモデルで内容を解析してタグ候補を返します。",
+        "summary": "画像・動画サムネイルの自動タグ付け",
+        "description": "画像ファイルまたはローカルソースのメディアIDを受け取り、利用可能なモデルで解析します。動画は代表サムネイル1枚を解析し、メディアID指定時は元のメディアにタグを保存します。",
         "tags": [
           "AI"
         ],
@@ -12880,8 +13219,8 @@
     "/ai/tagOppaiOracle": {
       "post": {
         "operationId": "ai.tagOppaiOracle",
-        "summary": "OppaiOracleで画像をタグ付け",
-        "description": "画像ファイルまたはメディアIDをOppaiOracleで解析し、検出結果とタグ候補を返します。",
+        "summary": "OppaiOracleで画像・動画サムネイルをタグ付け",
+        "description": "画像ファイルまたはローカルソースのメディアIDをOppaiOracleで解析します。動画は代表サムネイル1枚を使い、検出結果とタグ候補を返します。",
         "tags": [
           "AI"
         ],
@@ -12973,7 +13312,7 @@
       "post": {
         "operationId": "ai.ccipFeature",
         "summary": "CCIP特徴量の抽出",
-        "description": "画像ファイルまたはメディアIDからCCIP特徴量を計算して返します。類似画像検索や画像間比較に利用できます。",
+        "description": "画像ファイルまたはローカルソースのメディアIDからCCIP特徴量を計算します。動画は代表サムネイル1枚を使い、キャラクター類似検索や比較に利用できます。",
         "tags": [
           "AI"
         ],
@@ -13217,7 +13556,7 @@
       "post": {
         "operationId": "ai.startCcipExtraction",
         "summary": "CCIP特徴量抽出の開始",
-        "description": "指定したメディアのCCIP特徴量を抽出してベクトルストアへ登録するジョブを開始します。",
+        "description": "指定したローカル画像または動画サムネイルのCCIP特徴量を抽出し、元メディアのベクトルとして登録するジョブを開始します。",
         "tags": [
           "AI"
         ],
@@ -13342,7 +13681,7 @@
       "post": {
         "operationId": "ai.startBatchCcipExtraction",
         "summary": "CCIP一括抽出の開始",
-        "description": "指定条件に一致するメディアを対象に、CCIP特徴量を一括抽出するジョブを開始します。",
+        "description": "指定条件に一致するローカル画像と動画サムネイルを対象に、CCIP特徴量を一括抽出するジョブを開始します。",
         "tags": [
           "AI"
         ],
@@ -13458,7 +13797,7 @@
       "post": {
         "operationId": "ai.startBatchTagging",
         "summary": "一括タグ付けの開始",
-        "description": "指定条件に一致するメディアを対象に、自動タグ付けジョブを開始します。",
+        "description": "指定条件に一致するローカル画像と動画サムネイルを対象に、自動タグ付けジョブを開始します。",
         "tags": [
           "AI"
         ],
@@ -13724,7 +14063,8 @@
                                           "enum": [
                                             "twitter",
                                             "pixiv-fanbox",
-                                            "danbooru"
+                                            "danbooru",
+                                            "pixiv"
                                           ]
                                         },
                                         {
@@ -13798,7 +14138,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               "remoteId": {
@@ -14019,6 +14360,37 @@
                         },
                         "userAgent": {
                           "type": "string"
+                        },
+                        "ugoira": {
+                          "type": "object",
+                          "properties": {
+                            "frames": {
+                              "minItems": 1,
+                              "maxItems": 10000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "file": {
+                                    "type": "string",
+                                    "pattern": "^\\d+\\.(?:jpe?g|png|gif)$"
+                                  },
+                                  "delay": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 60000
+                                  }
+                                },
+                                "required": [
+                                  "file",
+                                  "delay"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "frames"
+                          ]
                         }
                       }
                     }
@@ -14108,7 +14480,8 @@
                                             "enum": [
                                               "twitter",
                                               "pixiv-fanbox",
-                                              "danbooru"
+                                              "danbooru",
+                                              "pixiv"
                                             ]
                                           },
                                           {
@@ -14183,7 +14556,8 @@
                                   "enum": [
                                     "twitter",
                                     "pixiv-fanbox",
-                                    "danbooru"
+                                    "danbooru",
+                                    "pixiv"
                                   ]
                                 },
                                 "remoteId": {
@@ -14410,6 +14784,39 @@
                           },
                           "userAgent": {
                             "type": "string"
+                          },
+                          "ugoira": {
+                            "type": "object",
+                            "properties": {
+                              "frames": {
+                                "minItems": 1,
+                                "maxItems": 10000,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "file": {
+                                      "type": "string",
+                                      "pattern": "^\\d+\\.(?:jpe?g|png|gif)$"
+                                    },
+                                    "delay": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 60000
+                                    }
+                                  },
+                                  "required": [
+                                    "file",
+                                    "delay"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "frames"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "additionalProperties": false

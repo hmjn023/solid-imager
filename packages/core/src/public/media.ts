@@ -1,0 +1,65 @@
+export type {
+	AddMediaRequest,
+	DownloadItem,
+	DuplicateGroup,
+	FindDuplicatesRequest,
+	FindDuplicatesResponse,
+	ImageMetadataComment,
+	Media,
+	MediaActivity,
+	MediaDetails,
+	MediaDumpItem,
+	MediaGenerationInfo,
+	MediaMetadataContext,
+	MediaPreferencesPatch,
+	MediaSafe,
+	MediaSearchRequest,
+	MediaSearchRequestInput,
+	MediaSearchResponse,
+	MediaTag,
+	MediaType,
+	MediaUrl,
+	RelatedMediaItem,
+	RelatedMediaReason,
+	RelatedMediaRequest,
+	RelatedMediaRequestInput,
+	RelatedMediaResponse,
+	RelatedMediaTagCandidate,
+	RelatedMediaSignals,
+	SimilarMediaSearchResponse,
+	UpdateMediaRequest,
+	UpdateMediaRequestInput,
+} from "../domain/media/schemas";
+export { ugoiraMetadataSchema } from "../domain/media/ugoira-schemas";
+export type { UgoiraMetadata } from "../domain/media/ugoira-schemas";
+export {
+	downloadItemSchema,
+	mediaActivitySchema,
+	mediaDumpItemSchema,
+	mediaIdSchema,
+	mediaSearchRequestSchema,
+	mediaSearchResponseSchema,
+	mediaSourceIdSchema,
+	relatedMediaReasonSchema,
+	relatedMediaRequestSchema,
+	relatedMediaResponseSchema,
+	updateMediaRequestSchema,
+} from "../domain/media/schemas";
+export type {
+	UploadMediaRequest,
+	UploadResponse,
+} from "../domain/media/upload-schemas";
+export {
+	conflictSchema,
+	uploadMediaRequestSchema,
+} from "../domain/media/upload-schemas";
+export type {
+	IMediaRepository,
+	MediaReader,
+	MediaWriter,
+	MediaSearchRepository,
+	MediaDetailsReader,
+	MediaMaintenanceRepository,
+	MediaBulkRepository,
+	MediaRelatedReader,
+} from "../domain/repositories/media-repository";

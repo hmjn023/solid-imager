@@ -3,13 +3,13 @@ import type {
 	NewCollection,
 	NewCollectionItem,
 	UpdateCollection,
-} from "@solid-imager/core/domain/collections/schemas";
+	ICollectionRepository,
+} from "@solid-imager/core/collections";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
 	UnexpectedError,
-} from "@solid-imager/core/domain/errors";
-import type { ICollectionRepository } from "@solid-imager/core/domain/repositories/collection-repository";
+} from "@solid-imager/core/errors";
 import { and, eq } from "drizzle-orm";
 import { collections, mediaCollections } from "../schema";
 import type { DrizzleExecutor } from "../types";

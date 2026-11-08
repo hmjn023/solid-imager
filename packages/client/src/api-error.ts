@@ -1,3 +1,4 @@
+/** Client-side transport failure, with the original error retained when available. */
 export class APIError extends Error {
 	readonly code:
 		| "NETWORK_ERROR"
@@ -24,6 +25,7 @@ export class APIError extends Error {
 	}
 }
 
+/** Identify network failures and timeouts that may succeed on retry. */
 export function isTransientApiError(error: unknown): boolean {
 	if (error instanceof APIError) {
 		return error.code === "NETWORK_ERROR" || error.code === "TIMEOUT";

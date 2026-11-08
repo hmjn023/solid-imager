@@ -1,5 +1,5 @@
 import { implement } from "@orpc/server";
-import { projectsContract } from "@solid-imager/core/domain/contract/projects.contract";
+import { projectsContract } from "@solid-imager/core/contract";
 import { ProjectService } from "~/infrastructure/services/project-service";
 import { getProjectMediaCounts } from "./entity-media-counts";
 

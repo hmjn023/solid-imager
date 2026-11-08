@@ -1,8 +1,6 @@
-import type {
-	SearchSnapshot,
-	SearchSnapshotState,
-} from "@/domain/search/history";
+import type { SearchSnapshot, SearchSnapshotState } from "../search/history";
 
+/** Persistence port for reusable search snapshots and fingerprint lookup. */
 export type SearchSnapshotRepository = {
 	get(id: string): Promise<SearchSnapshot | null>;
 	getByFingerprint(fingerprint: string): Promise<SearchSnapshot | null>;

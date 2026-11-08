@@ -1,10 +1,10 @@
 # solid-imager dependencies: Server components and root modules
 
-Generated 2026-11-01 from dependency-boundary fixes based on `b22d4dd6`. Indexion 0.19.0 output was checked and completed with a TypeScript/JavaScript AST scan. See the [method and findings](dependency-audit-2026-11-01.md).
+Generated 2026-11-04 from `50d5336c`. The [dependency audit](dependency-audit-2026-11-04.md) compares the indexion graph with the TypeScript/JavaScript AST.
 
-Solid arrows: value imports/re-exports. Dotted arrows: explicit type-only references. `dynamic`: literal `import()` / `require()`. External modules use `external:`; workspace aliases are resolved to source files. Repeated `(source, target, kind)` edges are collapsed. These are source references, not bundler reachability results.
+Solid arrows show value imports and re-exports. Dotted arrows show explicit type-only references. Arrows labeled `dynamic` show literal `import()` and `require()` calls. Workspace references resolve to files and `external:` identifies third-party and platform modules. Each edge represents a unique source, target and reference kind.
 
-265 edges; at most 450 edges per Mermaid block.
+281 edges, with at most 450 per Mermaid block.
 
 ## Part 1
 
@@ -40,11 +40,9 @@ flowchart LR
   N27["apps/server/src/components/pages/manager-page.tsx"]
   N28["apps/server/src/components/pages/media-detail-page.tsx"]
   N29["apps/server/src/components/pages/search-content.tsx"]
-  N30["apps/server/src/components/scalar-api-reference.tsx"]
   N31["apps/server/src/components/simple-modal.tsx"]
   N32["apps/server/src/components/upload-media-modal.tsx"]
   N33["apps/server/src/config/database.ts"]
-  N34["apps/server/src/domain/repositories/job-repository.ts"]
   N35["apps/server/src/hooks/use-batch-job-events.ts"]
   N36["apps/server/src/hooks/use-current-search-persistence.ts"]
   N37["apps/server/src/hooks/use-media-source-events.ts"]
@@ -63,8 +61,11 @@ flowchart LR
   N50["apps/server/src/infrastructure/api/clients/search-history-client.ts"]
   N51["apps/server/src/infrastructure/bootstrap.ts"]
   N52["apps/server/src/infrastructure/logger.ts"]
+  N155["apps/server/src/infrastructure/mcp/web-tools.ts"]
   N53["apps/server/src/orpc/client.ts"]
-  N54["apps/server/src/presentation/store/search-store.ts"]
+  N156["apps/server/src/presentation/workspace-actions.ts"]
+  N157["apps/server/src/presentation/workspace-navigation.ts"]
+  N158["apps/server/src/presentation/workspace-view.ts"]
   N55["apps/server/src/routeTree.gen.ts"]
   N56["apps/server/src/router.tsx"]
   N57["apps/server/src/routes/$.tsx"]
@@ -72,6 +73,8 @@ flowchart LR
   N59["apps/server/src/routes/about.tsx"]
   N60["apps/server/src/routes/api/health.ts"]
   N61["apps/server/src/routes/api/jobs.$jobId.artifact.ts"]
+  N159["apps/server/src/routes/api/mcp.ts"]
+  N160["apps/server/src/routes/api/rest.$.ts"]
   N62["apps/server/src/routes/api/rpc.$.ts"]
   N63["apps/server/src/routes/api/sources.$mediaSourceId.$mediaId.ts"]
   N64["apps/server/src/routes/api/sources.$mediaSourceId.thumbnail.$mediaId.ts"]
@@ -86,8 +89,7 @@ flowchart LR
   N73["apps/server/src/routes/sources/$mediaSourceId/$mediaId/index.tsx"]
   N74["apps/server/src/routes/sources/$mediaSourceId/index.tsx"]
   N75["apps/server/src/routes/sources/index.tsx"]
-  N76["external:@scalar/api-reference"]
-  N77["external:@scalar/api-reference/style.css"]
+  N161["apps/server/src/routes/statistics.tsx"]
   N78["external:@tanstack/solid-query"]
   N79["external:@tanstack/solid-router"]
   N80["external:@tanstack/solid-router-ssr-query"]
@@ -98,15 +100,17 @@ flowchart LR
   N85["external:solid-js/web"]
   N86["external:zod"]
   N87["packages/client/src/index.ts"]
-  N88["packages/core/src/domain/authors/schemas.ts"]
-  N89["packages/core/src/domain/characters/schemas.ts"]
-  N90["packages/core/src/domain/ips/schemas.ts"]
-  N91["packages/core/src/domain/jobs/schemas.ts"]
-  N92["packages/core/src/domain/media/schemas.ts"]
-  N93["packages/core/src/domain/projects/schemas.ts"]
-  N94["packages/core/src/domain/repositories/job-repository.ts"]
-  N95["packages/core/src/domain/sources/schemas.ts"]
-  N96["packages/core/src/domain/tags/schemas.ts"]
+  N162["packages/core/src/domain/contract/http-paths.ts"]
+  N163["packages/core/src/public/authors.ts"]
+  N164["packages/core/src/public/characters.ts"]
+  N165["packages/core/src/public/events.ts"]
+  N166["packages/core/src/public/ips.ts"]
+  N167["packages/core/src/public/jobs.ts"]
+  N168["packages/core/src/public/media.ts"]
+  N169["packages/core/src/public/projects.ts"]
+  N170["packages/core/src/public/search.ts"]
+  N171["packages/core/src/public/sources.ts"]
+  N172["packages/core/src/public/tags.ts"]
   N97["packages/core/src/utils/index.ts"]
   N98["packages/ui/src/ai-tagging-modal.tsx"]
   N99["packages/ui/src/badge.tsx"]
@@ -116,17 +120,6 @@ flowchart LR
   N103["packages/ui/src/character-crop-modal.tsx"]
   N104["packages/ui/src/combobox.tsx"]
   N105["packages/ui/src/dialog.tsx"]
-  N106["packages/ui/src/event-stream.ts"]
-  N107["packages/ui/src/hooks/batch-job-events.types.ts"]
-  N108["packages/ui/src/hooks/use-batch-job-events.ts"]
-  N109["packages/ui/src/hooks/use-current-search-persistence.ts"]
-  N110["packages/ui/src/hooks/use-job-events.ts"]
-  N111["packages/ui/src/hooks/use-manager-page.ts"]
-  N112["packages/ui/src/hooks/use-media-collection-selection.ts"]
-  N113["packages/ui/src/hooks/use-media-source-events.ts"]
-  N114["packages/ui/src/hooks/use-search-history-persistence.ts"]
-  N115["packages/ui/src/hooks/use-search-page.ts"]
-  N116["packages/ui/src/hooks/use-sources-page.ts"]
   N117["packages/ui/src/input.tsx"]
   N118["packages/ui/src/label.tsx"]
   N119["packages/ui/src/layouts/app-shell.tsx"]
@@ -142,37 +135,40 @@ flowchart LR
   N129["packages/ui/src/pending-downloads-indicator.tsx"]
   N130["packages/ui/src/preset-client.ts"]
   N131["packages/ui/src/preset-manager.tsx"]
-  N132["packages/ui/src/query-options/index.ts"]
-  N133["packages/ui/src/query-state.ts"]
+  N173["packages/ui/src/public/collections.ts"]
+  N174["packages/ui/src/public/event-stream.ts"]
+  N175["packages/ui/src/public/icons.ts"]
+  N176["packages/ui/src/public/jobs.ts"]
+  N177["packages/ui/src/public/manager.ts"]
+  N178["packages/ui/src/public/query.ts"]
+  N179["packages/ui/src/public/search.ts"]
+  N180["packages/ui/src/public/search/history.ts"]
+  N181["packages/ui/src/public/search/state.ts"]
+  N182["packages/ui/src/public/source-events.ts"]
+  N183["packages/ui/src/public/sources.ts"]
+  N184["packages/ui/src/public/thumbnail-source.ts"]
   N134["packages/ui/src/router-status.tsx"]
   N135["packages/ui/src/screens/about-screen.tsx"]
   N136["packages/ui/src/screens/config-state-screen.tsx"]
   N137["packages/ui/src/screens/jobs-screen.tsx"]
   N138["packages/ui/src/screens/manager-screen.tsx"]
-  N139["packages/ui/src/screens/manager/types.ts"]
   N140["packages/ui/src/screens/media-detail-screen.tsx"]
   N141["packages/ui/src/screens/not-found-screen.tsx"]
   N142["packages/ui/src/screens/search-screen.tsx"]
-  N143["packages/ui/src/search-history-client.ts"]
   N144["packages/ui/src/select.tsx"]
-  N145["packages/ui/src/sort-controls.tsx"]
-  N146["packages/ui/src/stores/search-store.ts"]
+  N185["packages/ui/src/sort-options.ts"]
   N147["packages/ui/src/thumbnail-image.tsx"]
-  N148["packages/ui/src/thumbnail-source.ts"]
   N149["packages/ui/src/toast.tsx"]
   N150["packages/ui/src/upload-media-modal-content.tsx"]
-  N151["packages/ui/src/utils/cn.ts"]
-  N152["packages/ui/src/utils/debounce.ts"]
   N153["packages/ui/src/utils/index.ts"]
-  N154["packages/ui/src/workspace/icons.tsx"]
   N0 --> N78
   N0 --> N84
   N0 --> N85
   N1 --> N79
   N2 --> N43
   N2 --> N47
-  N2 --> N106
   N2 -. type .-> N129
+  N2 --> N174
   N3 --> N2
   N3 --> N129
   N4 --> N3
@@ -182,21 +178,27 @@ flowchart LR
   N4 --> N78
   N4 --> N79
   N4 -. type .-> N84
-  N4 --> N95
-  N4 --> N116
+  N4 --> N162
+  N4 --> N171
   N4 --> N119
+  N4 --> N183
   N5 --> N0
   N5 --> N4
+  N5 --> N43
+  N5 -->|dynamic| N155
+  N5 --> N157
+  N5 --> N78
   N5 --> N79
+  N5 --> N84
+  N5 --> N178
   N5 --> N134
   N6 --> N38
   N6 --> N98
   N7 --> N42
   N7 --> N47
-  N7 -. type .-> N100
   N7 --> N100
   N8 --> N38
-  N8 -. type .-> N92
+  N8 -. type .-> N168
   N8 --> N103
   N9 --> N6
   N9 --> N8
@@ -204,30 +206,32 @@ flowchart LR
   N9 --> N35
   N9 --> N38
   N9 --> N42
+  N9 --> N157
   N9 --> N79
-  N9 -. type .-> N92
+  N9 -. type .-> N168
   N9 --> N120
-  N9 --> N146
+  N9 --> N181
   N10 -. type .-> N121
   N10 --> N121
   N11 --> N22
-  N11 -. type .-> N92
+  N11 -. type .-> N168
   N11 --> N123
   N11 --> N124
   N12 --> N39
   N12 --> N41
   N12 --> N42
+  N12 --> N43
   N12 --> N44
   N12 --> N45
   N12 -. type .-> N84
-  N12 -. type .-> N92
+  N12 -. type .-> N168
   N12 --> N125
   N13 --> N84
-  N13 -. type .-> N92
+  N13 -. type .-> N168
   N13 --> N126
   N14 --> N47
   N14 --> N84
-  N14 -. type .-> N95
+  N14 -. type .-> N171
   N14 --> N127
   N15 --> N38
   N15 --> N128
@@ -235,87 +239,85 @@ flowchart LR
   N16 --> N130
   N16 --> N131
   N17 --> N84
-  N17 -. type .-> N88
-  N17 -. type .-> N89
-  N17 -. type .-> N90
-  N17 -. type .-> N92
-  N17 -. type .-> N93
-  N17 -. type .-> N96
+  N17 -. type .-> N163
+  N17 -. type .-> N164
+  N17 -. type .-> N166
+  N17 -. type .-> N169
+  N17 -. type .-> N170
+  N17 -. type .-> N172
   N17 --> N101
   N17 --> N102
   N17 --> N104
   N17 --> N117
   N17 --> N144
-  N17 --> N151
   N17 --> N153
   N18 --> N17
   N18 --> N84
-  N18 -. type .-> N88
-  N18 -. type .-> N89
-  N18 -. type .-> N90
-  N18 -. type .-> N92
-  N18 -. type .-> N93
-  N18 -. type .-> N96
+  N18 -. type .-> N163
+  N18 -. type .-> N164
+  N18 -. type .-> N166
+  N18 -. type .-> N169
+  N18 -. type .-> N170
+  N18 -. type .-> N172
   N18 --> N101
   N18 --> N105
   N19 --> N16
   N19 --> N18
   N19 --> N20
   N19 --> N21
-  N19 --> N54
   N19 --> N84
-  N19 -. type .-> N88
-  N19 -. type .-> N89
-  N19 -. type .-> N90
-  N19 -. type .-> N93
-  N19 -. type .-> N95
-  N19 -. type .-> N96
+  N19 -. type .-> N163
+  N19 -. type .-> N164
+  N19 -. type .-> N166
+  N19 -. type .-> N169
+  N19 -. type .-> N171
+  N19 -. type .-> N172
   N19 --> N101
   N19 --> N118
+  N19 --> N181
   N19 --> N144
   N20 --> N84
-  N20 -. type .-> N88
-  N20 -. type .-> N89
-  N20 -. type .-> N90
-  N20 -. type .-> N92
-  N20 -. type .-> N93
-  N20 -. type .-> N96
+  N20 -. type .-> N163
+  N20 -. type .-> N164
+  N20 -. type .-> N166
+  N20 -. type .-> N169
+  N20 -. type .-> N170
+  N20 -. type .-> N172
   N20 --> N99
   N20 --> N101
   N20 --> N104
   N20 --> N117
   N20 --> N118
-  N20 --> N151
-  N20 --> N152
+  N20 --> N153
   N21 --> N118
   N21 --> N144
-  N21 --> N145
-  N21 --> N151
+  N21 --> N185
   N21 --> N153
   N22 --> N84
-  N22 -. type .-> N92
+  N22 -. type .-> N168
+  N22 --> N184
   N22 --> N147
-  N22 --> N148
   N23 --> N79
   N23 --> N101
-  N23 --> N154
+  N23 --> N175
+  N24 --> N162
   N24 --> N135
   N25 --> N43
   N25 --> N45
   N25 --> N78
-  N25 --> N132
-  N25 --> N133
+  N25 --> N178
   N25 --> N136
   N26 --> N22
   N26 --> N43
   N26 --> N45
+  N26 --> N157
+  N26 --> N158
   N26 --> N78
   N26 --> N84
   N26 --> N87
-  N26 -. type .-> N91
-  N26 --> N110
-  N26 --> N132
-  N26 --> N133
+  N26 -. type .-> N167
+  N26 --> N176
+  N26 --> N178
   N26 --> N137
   N26 --> N149
   N27 --> N35
@@ -332,22 +334,22 @@ flowchart LR
   N27 --> N79
   N27 -. type .-> N84
   N27 --> N87
-  N27 --> N111
-  N27 --> N132
+  N27 --> N177
+  N27 --> N178
   N27 --> N138
-  N27 -. type .-> N139
   N27 --> N149
   N28 --> N9
   N28 --> N12
   N28 --> N13
   N28 --> N37
   N28 --> N45
+  N28 --> N158
   N28 --> N78
   N28 --> N84
+  N28 -. type .-> N168
   N28 --> N122
   N28 --> N140
   N29 --> N7
-  N29 --> N10
   N29 --> N11
   N29 --> N14
   N29 --> N22
@@ -357,25 +359,22 @@ flowchart LR
   N29 --> N46
   N29 --> N49
   N29 --> N50
-  N29 --> N54
+  N29 --> N157
+  N29 --> N158
   N29 --> N79
   N29 --> N84
-  N29 -. type .-> N92
+  N29 -. type .-> N168
+  N29 --> N170
   N29 --> N97
   N29 --> N101
   N29 --> N105
-  N29 --> N109
-  N29 --> N112
-  N29 --> N114
-  N29 --> N115
   N29 --> N130
+  N29 --> N173
+  N29 --> N179
+  N29 --> N180
+  N29 --> N181
   N29 --> N142
-  N29 --> N143
-  N29 --> N146
   N29 --> N149
-  N30 --> N76
-  N30 --> N77
-  N30 --> N84
   N31 --> N84
   N31 --> N101
   N32 --> N40
@@ -383,20 +382,30 @@ flowchart LR
   N33 --> N82
   N33 --> N83
   N33 --> N86
-  N34 -. type .-> N94
   N35 --> N43
   N35 -. type .-> N84
-  N35 -. type .-> N107
-  N35 --> N108
-  N36 --> N109
+  N35 --> N176
+  N36 --> N179
   N37 --> N43
   N37 --> N52
   N37 --> N79
   N37 --> N84
-  N37 -. type .-> N113
-  N37 --> N113
+  N37 -. type .-> N165
+  N37 --> N182
   N53 --> N43
-  N54 --> N146
+  N156 --> N43
+  N156 --> N45
+  N156 -. type .-> N157
+  N156 --> N158
+  N156 -. type .-> N78
+  N156 --> N121
+  N156 --> N178
+  N157 --> N79
+  N157 --> N121
+  N158 --> N84
+  N158 -. type .-> N167
+  N158 -. type .-> N168
+  N158 -. type .-> N178
   N56 -->|dynamic| N51
   N56 -->|dynamic| N52
   N56 -. type .-> N52
@@ -406,7 +415,7 @@ flowchart LR
   N56 --> N80
   N56 --> N85
   N56 --> N87
-  N56 --> N132
+  N56 --> N178
   N56 --> N134
   N56 --> N141
   N55 -. type .-> N56
@@ -415,6 +424,8 @@ flowchart LR
   N55 --> N59
   N55 --> N60
   N55 --> N61
+  N55 --> N159
+  N55 --> N160
   N55 --> N62
   N55 --> N63
   N55 --> N64
@@ -429,5 +440,6 @@ flowchart LR
   N55 --> N73
   N55 --> N74
   N55 --> N75
+  N55 --> N161
   N55 -. type .-> N81
 ```

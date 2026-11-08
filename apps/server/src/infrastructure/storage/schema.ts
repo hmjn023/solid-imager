@@ -4,7 +4,7 @@ import type {
 	LocalConnection,
 	S3Connection,
 	SftpConnection,
-} from "@solid-imager/core/domain/sources/schemas";
+} from "@solid-imager/core/sources";
 import { z } from "zod";
 
 // すべての接続情報の方をまとめたUnion型

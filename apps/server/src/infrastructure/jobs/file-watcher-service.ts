@@ -9,8 +9,10 @@ import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { FileWatcherManager } from "~/infrastructure/jobs/file-watcher-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
+import {
+	MediaRepository,
+	DrizzleSourceRepository,
+} from "~/infrastructure/db/repositories";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { DirectorySyncService } from "~/infrastructure/services/directory-sync-service";

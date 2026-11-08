@@ -1,16 +1,24 @@
-import { useSourceRootPath } from "@solid-imager/ui/hooks/use-source-root-path";
+import { useSourceRootPath } from "@solid-imager/ui/sources";
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
-import { projectsQueryKeys } from "@solid-imager/ui/query-options";
+import { projectsQueryKeys } from "@solid-imager/ui/query";
 import { RouteDataPendingScreen } from "@solid-imager/ui/router-status";
-import { MediaDetailScreen } from "@solid-imager/ui/screens/media-detail-screen";
+import {
+	MediaDetailScreen,
+	RelatedMedia,
+} from "@solid-imager/ui/screens/media-detail";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute, useRouterState } from "@tanstack/solid-router";
 import { Show } from "solid-js";
 import { MediaActions } from "~/components/media/media-actions";
 import { MediaSidebar } from "~/components/media/media-sidebar";
 import { MediaViewer } from "~/components/media/media-viewer";
+import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
-import { mediaDetailsQueryOptions, mediaSourcesQueryOptions } from "~/queries";
+import {
+	mediaDetailsQueryOptions,
+	mediaSourcesQueryOptions,
+	relatedMediaQueryOptions,
+} from "~/queries";
 
 export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	loader: ({ context, params }) => {
@@ -89,6 +97,15 @@ function MediaDetailRoute() {
 						/>
 					)}
 					renderMediaViewer={(media) => <MediaViewer media={media} />}
+					renderRelatedMedia={(media) => (
+						<RelatedMedia
+							media={media}
+							queryOptions={relatedMediaQueryOptions}
+							renderThumbnail={(thumbnailProps) => (
+								<ThumbnailImage {...thumbnailProps} />
+							)}
+						/>
+					)}
 					sourceRootPath={sourceRootPath()}
 					transport={createTauriTransport(mediaSourceId)}
 				/>

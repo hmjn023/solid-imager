@@ -3,7 +3,7 @@ import {
 	buildNeighborGraph,
 	fitSparseHdbscan,
 	type SparseDistanceGraph,
-} from "@solid-imager/application/utils/sparse-hdbscan";
+} from "@solid-imager/application/clustering";
 
 function graphFromDistances(matrix: number[][]): SparseDistanceGraph {
 	const offsets = [0];

@@ -2,11 +2,7 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "paths": {
-      "~/*": ["./apps/server/src/*"],
-      "@solid-imager/core": ["./packages/core/src"],
-      "@solid-imager/core/*": ["./packages/core/src/*"],
-      "@solid-imager/application": ["./packages/application/src"],
-      "@solid-imager/application/*": ["./packages/application/src/*"]
+      "~/*": ["./apps/server/src/*"]
     }
   },
   "exclude": ["node_modules", "dist", ".vinxi", ".output"]

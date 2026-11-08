@@ -1,15 +1,15 @@
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { JobDto, JobStatus } from "@solid-imager/core/domain/jobs/schemas";
-import type { DuplicateGroup } from "@solid-imager/core/domain/media/schemas";
-import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import type { SimilarityModel } from "@solid-imager/core/domain/search/embedding";
+import type { Character } from "@solid-imager/core/characters";
+import type { Ip } from "@solid-imager/core/ips";
+import type { JobDto, JobStatus } from "@solid-imager/core/jobs";
+import type { DuplicateGroup } from "@solid-imager/core/media";
+import type { Project } from "@solid-imager/core/projects";
+import type { SimilarityModel } from "@solid-imager/core/search";
 import type {
 	JobCompletedEvent,
 	JobFailedEvent,
 	JobProgressEvent,
-} from "@solid-imager/core/domain/sources/events";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+} from "@solid-imager/core/events";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createQuery,

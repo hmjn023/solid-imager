@@ -5,12 +5,12 @@ import type {
 	AuthorMediaPage,
 	CorrectMediaAuthorsInput,
 	MergeAuthorsInput,
-} from "@solid-imager/core/domain/authors/schemas";
+	IAuthorRepository,
+} from "@solid-imager/core/authors";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
-import type { IAuthorRepository } from "@solid-imager/core/domain/repositories/author-repository";
+} from "@solid-imager/core/errors";
 import { and, asc, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import {
 	authorAccounts,
@@ -38,6 +38,7 @@ function mapAccount(row: typeof authorAccounts.$inferSelect): AuthorAccount {
 	};
 }
 
+/** Map an author and accounts to the domain model, ordering accounts by creation time and ID. */
 export function mapAuthor(
 	row: typeof authors.$inferSelect,
 	accountRows: (typeof authorAccounts.$inferSelect)[],
@@ -59,6 +60,7 @@ export function mapAuthor(
 	};
 }
 
+/** Load accounts for a batch of authors and preserve the input author order. */
 export async function mapAuthors(
 	client: DrizzleExecutor,
 	rows: (typeof authors.$inferSelect)[],

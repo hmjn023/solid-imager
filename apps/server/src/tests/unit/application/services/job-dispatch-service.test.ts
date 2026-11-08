@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { Job as DbJob } from "~/infrastructure/db/schema";
+import type { Job } from "@solid-imager/core/jobs";
 
 const processBatchCcipDispatchJob = vi.fn();
 const processBulkTaggingDispatchJob = vi.fn();
@@ -36,10 +36,10 @@ configureThumbnailJobHandlers({
 });
 
 function createJob(
-	type: DbJob["type"],
+	type: Job["type"],
 	mediaSourceId: string | null,
 	parentId: string | null = null,
-): DbJob {
+): Job {
 	return {
 		id: "11111111-1111-4111-8111-111111111111",
 		type,

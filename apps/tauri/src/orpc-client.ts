@@ -1,5 +1,5 @@
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/domain/contract";
+import type { AppContract } from "@solid-imager/core/contract";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import {
 	getApiBaseUrl,

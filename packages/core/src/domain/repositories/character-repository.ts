@@ -2,14 +2,14 @@ import type {
 	Character,
 	NewCharacter,
 	UpdateCharacter,
-} from "@/domain/characters/schemas";
-import type { Transaction } from "@/domain/interfaces/transaction-manager";
+} from "../characters/schemas";
+import type { Transaction } from "../interfaces/transaction-manager";
 
 export type {
 	Character,
 	NewCharacter,
 	UpdateCharacter,
-} from "@/domain/characters/schemas";
+} from "../characters/schemas";
 
 export type CharacterRepository = {
 	findAll(): Promise<Character[]>;

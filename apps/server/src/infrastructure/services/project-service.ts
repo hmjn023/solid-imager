@@ -1,4 +1,4 @@
-import { createProjectService } from "@solid-imager/application/services/project-service";
-import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
+import { createProjectService } from "@solid-imager/application/projects";
+import { ProjectRepository } from "~/infrastructure/db/repositories";
 
 export const ProjectService = createProjectService(ProjectRepository);

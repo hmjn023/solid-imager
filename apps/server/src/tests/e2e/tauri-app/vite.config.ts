@@ -134,10 +134,6 @@ export default defineConfig({
 	base: "./",
 	resolve: {
 		alias: {
-			"@solid-imager/core": path.join(workspaceRoot, "packages/core/src"),
-			"@solid-imager/client": path.join(workspaceRoot, "packages/client/src"),
-			"@solid-imager/ui": path.join(workspaceRoot, "packages/ui/src"),
-			"@": path.join(workspaceRoot, "packages/core/src"),
 			"~": path.join(tauriRoot, "src"),
 			"@tauri-apps/plugin-http": path.join(adapterDirectory, "http.ts"),
 			"@tauri-apps/api/core": path.join(adapterDirectory, "core.ts"),

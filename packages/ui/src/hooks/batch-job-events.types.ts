@@ -2,7 +2,7 @@ import type {
 	JobCompletedEvent,
 	JobFailedEvent,
 	JobProgressEvent,
-} from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/events";
 
 export type ManagerJobHandlers = {
 	handleJobProgress: (event: JobProgressEvent) => void;

@@ -1,9 +1,8 @@
 import { writeFile } from "node:fs/promises";
 import { OpenAPIGenerator } from "@orpc/openapi";
 import { ZodToJsonSchemaConverter } from "@orpc/zod";
-import { appContract } from "@solid-imager/core/domain/contract";
-import { REST_API_PREFIX } from "@solid-imager/core/domain/contract/http-paths";
-import { isRestProcedure } from "@solid-imager/core/domain/contract/rest-visibility";
+import { appContract, isRestProcedure } from "@solid-imager/core/contract";
+import { REST_API_PREFIX } from "@solid-imager/core/http";
 import { openApiTags } from "../src/infrastructure/api/openapi-tags";
 
 const generator = new OpenAPIGenerator({

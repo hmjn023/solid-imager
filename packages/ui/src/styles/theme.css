@@ -1,3 +1,7 @@
+@import "./video-player.css";
+
+@source "../**/*.{ts,tsx}";
+
 @layer base {
 	:root {
 		--chart-blue: #356bcc;

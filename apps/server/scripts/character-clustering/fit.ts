@@ -3,7 +3,7 @@ import path from "node:path";
 import {
 	buildNeighborGraph,
 	fitSparseHdbscan,
-} from "@solid-imager/application/utils/sparse-hdbscan";
+} from "@solid-imager/application/clustering";
 import { optionsSchema, type MediaRecord } from "./schemas";
 import { loadSnapshot, writeJson } from "./snapshot";
 

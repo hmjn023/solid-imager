@@ -10,9 +10,13 @@ type FetchInit = RequestInit & {
 	priority?: "high" | "low" | "auto";
 };
 
+/** Configuration for an RPC client. The URL may be resolved for each request. */
 export type ClientOptions = {
+	/** Absolute server base URL or RPC endpoint; defaults to http://localhost:3000. A function resolves it for each request. */
 	url?: string | (() => string);
+	/** Fetch implementation used for RPC requests; defaults to the global fetch. */
 	fetch?: (url: string, init?: FetchInit) => Promise<Response>;
+	/** Per-request timeout in milliseconds; defaults to 30,000. */
 	timeoutMs?: number;
 };
 
@@ -38,6 +42,15 @@ function createNetworkError(error: unknown): APIError {
 	);
 }
 
+/**
+ * Wrap fetch with a per-request timeout while preserving caller cancellation.
+ *
+ * @param fetchImpl - Transport to call with the combined abort signal.
+ * @param timeoutMs - Maximum request duration in milliseconds.
+ * @returns A fetch wrapper that clears its timer when the request settles.
+ * @throws APIError with code TIMEOUT when the timeout fires, or NETWORK_ERROR
+ * for a TypeError from the transport. Caller abort errors are passed through.
+ */
 export function createTimedFetch(
 	fetchImpl: (url: string, init?: FetchInit) => Promise<Response>,
 	timeoutMs: number,
@@ -76,6 +89,14 @@ function rpcBaseUrl(url: string): string {
 	return endpoint.origin + path;
 }
 
+/**
+ * Create a typed RPC client from a server base URL or an existing /api/rpc URL.
+ * Requests time out after 30 seconds unless configured otherwise.
+ *
+ * @param options - Server URL, optional transport and request timeout.
+ * @returns A client typed against the supplied router contract.
+ * @throws If a static URL is invalid. A URL callback is evaluated when used.
+ */
 export function createClient<C extends RouterContract>(
 	options: ClientOptions = {},
 ): RouterContractClient<C> {

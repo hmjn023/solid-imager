@@ -10,10 +10,10 @@ import sharp from "sharp";
 // Default cache is too aggressive for development environment
 sharp.cache({ memory: 100, items: 200, files: 20 });
 
-import type { ImageMetadataComment } from "@solid-imager/core/domain/media/schemas";
-import { extractDataFromComments } from "@solid-imager/core/domain/media/utils/metadata-utils";
-import type { IImageProcessor } from "@solid-imager/core/domain/services/image-processor";
-import { isRecord } from "@solid-imager/core/utils/type-guards";
+import { type ImageMetadataComment } from "@solid-imager/core/media";
+import { extractDataFromComments } from "@solid-imager/core/media/metadata";
+import type { IImageProcessor } from "@solid-imager/core/ports";
+import { isRecord } from "@solid-imager/core/utils";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { checkFfmpegAvailable, getFfmpeg } from "~/infrastructure/utils/ffmpeg";

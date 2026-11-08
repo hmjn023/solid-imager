@@ -3,7 +3,7 @@ import {
 	isBatchParentJobType,
 	type JobDto,
 	type JobListResponse,
-} from "@solid-imager/core/domain/jobs/schemas";
+} from "@solid-imager/core/jobs";
 import Ban from "lucide-solid/icons/ban";
 import ChevronLeft from "lucide-solid/icons/chevron-left";
 import ChevronRight from "lucide-solid/icons/chevron-right";

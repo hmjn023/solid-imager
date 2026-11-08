@@ -5,7 +5,7 @@ import {
 	createPresetRequestSchema,
 	presetSchema,
 	updatePresetRequestSchema,
-} from "../media/schemas";
+} from "../presets/schemas";
 
 export const presetsContract = {
 	list: oc

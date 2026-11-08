@@ -1,11 +1,11 @@
 import { createHash } from "node:crypto";
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
-import type { SearchSnapshotRepository } from "@solid-imager/core/domain/repositories/search-snapshot-repository";
+import { ResourceNotFoundError } from "@solid-imager/core/errors";
 import {
+	type SearchSnapshotRepository,
 	type SearchSnapshot,
 	type SearchSnapshotState,
 	searchSnapshotStateSchema,
-} from "@solid-imager/core/domain/search/history";
+} from "@solid-imager/core/search";
 import type { ISearchSnapshotService } from "../ports/search-snapshot-service";
 
 function stableSerialize(value: unknown): string {
@@ -32,6 +32,7 @@ function fingerprintState(state: SearchSnapshotState): string {
 		.digest("hex");
 }
 
+/** Validate and fingerprint captured search state; retrieving an absent ID throws ResourceNotFoundError. */
 export function createSearchSnapshotService(
 	repository: SearchSnapshotRepository,
 ): ISearchSnapshotService {
@@ -51,5 +52,3 @@ export function createSearchSnapshotService(
 		},
 	};
 }
-
-export { fingerprintState, stableSerialize };

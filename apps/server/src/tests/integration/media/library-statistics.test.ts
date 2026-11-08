@@ -15,7 +15,7 @@ import {
 	getCharacterMediaCounts,
 	getIpMediaCounts,
 } from "~/infrastructure/api/routers/entity-media-counts";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
+import { MediaRepository } from "~/infrastructure/db/repositories";
 
 describe("library statistics", () => {
 	it("uses local registration days, preserves them on rescan, and agrees with Manager on direct associations", async () => {

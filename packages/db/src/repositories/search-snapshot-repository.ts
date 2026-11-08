@@ -1,15 +1,15 @@
-import type { SearchSnapshotRepository } from "@solid-imager/core/domain/repositories/search-snapshot-repository";
 import {
+	type SearchSnapshotRepository,
 	type SearchSnapshot,
 	type SearchSnapshotState,
 	searchSnapshotSchema,
 	searchSnapshotStateSchema,
-} from "@solid-imager/core/domain/search/history";
+} from "@solid-imager/core/search";
 import { eq } from "drizzle-orm";
-import { type SearchSnapshotRow, searchSnapshots } from "../schema";
+import { searchSnapshots } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
-function mapToEntity(row: SearchSnapshotRow): SearchSnapshot {
+function mapToEntity(row: typeof searchSnapshots.$inferSelect): SearchSnapshot {
 	return searchSnapshotSchema.parse({
 		id: row.id,
 		version: row.version,

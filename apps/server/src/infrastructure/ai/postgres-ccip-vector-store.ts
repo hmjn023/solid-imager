@@ -5,15 +5,15 @@ import type {
 	CcipVectorReadQuery,
 	CcipVectorRecord,
 	ICcipVectorStore,
-} from "@solid-imager/application/ports/ccip-vector-store";
-import type { ILogger } from "@solid-imager/application/ports/media-service";
+} from "@solid-imager/application/ccip";
+import type { ILogger } from "@solid-imager/application/logging";
 import {
 	CCIP_VECTOR_DIMENSIONS,
 	ccipEmbeddings,
 	mediaRegions,
 	medias,
 } from "@solid-imager/db/schema";
-import type { DrizzleExecutor } from "@solid-imager/db/types";
+import type { DrizzleExecutor } from "@solid-imager/db";
 import { and, eq, inArray, type SQL, sql } from "drizzle-orm";
 import { z } from "zod";
 

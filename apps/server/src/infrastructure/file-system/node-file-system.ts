@@ -1,5 +1,5 @@
 import fs from "node:fs/promises";
-import type { IFileSystem } from "@solid-imager/core";
+import type { IFileSystem } from "@solid-imager/core/ports";
 
 export class NodeFileSystem implements IFileSystem {
 	async exists(path: string): Promise<boolean> {

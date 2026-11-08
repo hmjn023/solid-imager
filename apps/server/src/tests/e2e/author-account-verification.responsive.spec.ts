@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test";
 import {
 	authorSchema,
 	authorAccountVerificationSchema,
-} from "@solid-imager/core/domain/authors/schemas";
+} from "@solid-imager/core/authors";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 async function rpc(page: Page, name: string, input: object = {}) {

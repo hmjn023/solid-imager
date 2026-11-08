@@ -1,5 +1,5 @@
 import { implement } from "@orpc/server";
-import { categoriesContract } from "@solid-imager/core/domain/contract/categories.contract";
+import { categoriesContract } from "@solid-imager/core/contract";
 import { CategoryService } from "~/infrastructure/services/category-service";
 
 /**

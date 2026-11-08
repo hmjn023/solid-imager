@@ -1,9 +1,7 @@
+import { createCharacterService } from "@solid-imager/application/characters";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { services } from "~/infrastructure/service-registry";
-import {
-	CharacterService,
-	CharacterServiceImpl,
-} from "~/infrastructure/services/character-service";
+import { CharacterService } from "~/infrastructure/services/character-service";
 
 // Mock Repositories
 const mockCharacterRepo = {
@@ -30,7 +28,7 @@ describe("CharacterService", () => {
 		const mockTransactionManager = {
 			transaction: vi.fn(async (cb) => await cb("mock-tx")),
 		};
-		const service = new CharacterServiceImpl(
+		const service = createCharacterService(
 			mockCharacterRepo as any,
 			mockIpRepo as any,
 			mockTransactionManager as any,

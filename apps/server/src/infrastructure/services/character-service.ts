@@ -1,10 +1,8 @@
 import type {
 	NewCharacter,
 	UpdateCharacter,
-} from "@solid-imager/core/domain/characters/schemas";
+} from "@solid-imager/core/characters";
 import { services } from "~/infrastructure/service-registry";
-
-export { CharacterServiceImpl } from "@solid-imager/application/services/character-service";
 
 export const CharacterService = {
 	getAllCharacters: async () =>

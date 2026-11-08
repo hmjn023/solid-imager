@@ -1,4 +1,4 @@
-import type { SearchSnapshotsOrpcLike } from "@solid-imager/core/domain/contract/search-snapshots-client";
+import type { SearchSnapshotsOrpcLike } from "@solid-imager/core/contract";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 
 export const SearchHistoryClient: SearchSnapshotsOrpcLike = {

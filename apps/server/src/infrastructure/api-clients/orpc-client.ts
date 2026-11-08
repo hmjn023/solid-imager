@@ -1,6 +1,6 @@
 import { createRouterClient } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/domain/contract";
+import type { AppContract } from "@solid-imager/core/contract";
 import { createIsomorphicFn } from "@tanstack/solid-start";
 import { getRequestHeaders } from "@tanstack/solid-start/server";
 import { appRouter } from "~/infrastructure/api/app-router";

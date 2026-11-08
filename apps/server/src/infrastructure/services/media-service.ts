@@ -1,21 +1,7 @@
-/**
- * MediaService - Server-side wiring.
- * Thin wrapper that delegates to the extracted MediaServiceImpl in @solid-imager/application.
- */
-
-import type {
-	DeferredActions,
-	IDeferredActionExecutor,
-	ILogger,
-	IMediaContextProcessor,
-	ISourceEventPublisher,
-	IThumbnailManager,
-} from "@solid-imager/application/ports/media-service";
-import { MediaQueryService } from "@solid-imager/application/services/media-query-service";
-import { MediaServiceImpl } from "@solid-imager/application/services/media-service";
-import { MediaTransferService } from "@solid-imager/application/services/media-transfer-service";
-import { MediaUploadService } from "@solid-imager/application/services/media-upload-service";
-import type { TransactionManager } from "@solid-imager/core/domain/interfaces/transaction-manager";
+import {
+	createMediaService,
+	type IMediaService,
+} from "@solid-imager/application/media";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -23,103 +9,44 @@ import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { executeDeferredActions } from "~/infrastructure/services/job-dispatch-service";
 
-// Infrastructure adapters that wrap server-specific implementations
-const eventPublisher: ISourceEventPublisher = {
-	publishSource(mediaSourceId, eventType, data) {
-		RealtimeEventBus.publishSource(mediaSourceId, eventType, data);
-	},
-	notifyMediaCopied(sourceId, targetId, media) {
-		RealtimeEventBus.notifyMediaCopied(sourceId, targetId, media);
-	},
-};
-
-const thumbnailManager: IThumbnailManager = {
-	deleteThumbnail(mediaSourceId, mediaId) {
-		return deleteThumbnail(mediaSourceId, mediaId);
-	},
-};
-
-const appLogger: ILogger = {
-	info(obj, msg) {
-		logger.info(obj, msg);
-	},
-	error(obj, msg) {
-		logger.error(obj, msg);
-	},
-	warn(obj, msg) {
-		logger.warn(obj, msg);
-	},
-};
-
-const deferredActionExecutor: IDeferredActionExecutor = {
-	async execute(actions: DeferredActions) {
-		await executeDeferredActions(actions);
-	},
-};
-
 // Defer construction until the service registry is initialized.
-let _mediaService: MediaServiceImpl | null = null;
+let mediaService: IMediaService | undefined;
 
 export const resetMediaService = () => {
-	_mediaService = null;
+	mediaService = undefined;
 };
 
-function createMediaService(): MediaServiceImpl {
-	const mediaContextProcessor: IMediaContextProcessor = {
-		addContextMetadataToExistingMedia(mediaId, context, tx) {
-			return services
-				.getMediaProcessingService()
-				.addContextMetadataToExistingMedia(mediaId, context, tx);
+function getMediaService(): IMediaService {
+	return (mediaService ??= createMediaService({
+		mediaRepository: services.getMediaRepository(),
+		sourceRepository: services.getSourceRepository(),
+		tagRepository: services.getTagRepository(),
+		jobRepository: services.getJobRepository(),
+		authorRepository: services.getAuthorRepository(),
+		projectRepository: services.getProjectRepository(),
+		characterRepository: services.getCharacterRepository(),
+		ipRepository: services.getIpRepository(),
+		storage: services.getMediaStorage(),
+		imageProcessor: services.getImageProcessor(),
+		transactionManager: DrizzleTransactionManager,
+		eventPublisher: RealtimeEventBus,
+		thumbnailManager: { deleteThumbnail },
+		logger,
+		deferredActionExecutor: { execute: executeDeferredActions },
+		mediaContextProcessor: {
+			addContextMetadataToExistingMedia(mediaId, context, tx) {
+				return services
+					.getMediaProcessingService()
+					.addContextMetadataToExistingMedia(mediaId, context, tx);
+			},
 		},
-	};
-
-	const queryService = new MediaQueryService(
-		services.getMediaRepository(),
-		services.getSourceRepository(),
-		services.getMediaStorage(),
-		services.getTagRepository(),
-		services.getImageProcessor(),
-		appLogger,
-	);
-
-	const uploadService = new MediaUploadService(
-		services.getMediaRepository(),
-		services.getSourceRepository(),
-		services.getMediaStorage(),
-		services.getJobRepository(),
-	);
-
-	const transferService = new MediaTransferService(
-		services.getMediaRepository(),
-		services.getSourceRepository(),
-		services.getMediaStorage(),
-		services.getAuthorRepository(),
-		services.getProjectRepository(),
-		services.getCharacterRepository(),
-		services.getIpRepository(),
-		DrizzleTransactionManager as TransactionManager,
-		services.getJobRepository(),
-		eventPublisher,
-		thumbnailManager,
-		appLogger,
-		deferredActionExecutor,
-		mediaContextProcessor,
-	);
-
-	return new MediaServiceImpl(queryService, uploadService, transferService);
+	}));
 }
 
-const getMediaService = () => {
-	if (!_mediaService) {
-		_mediaService = createMediaService();
-	}
-	return _mediaService;
-};
-
-export const MediaService = new Proxy({} as MediaServiceImpl, {
+export const MediaService = new Proxy({} as IMediaService, {
 	get(_target, prop) {
 		const service = getMediaService();
-		const value = service[prop as keyof MediaServiceImpl];
+		const value = service[prop as keyof IMediaService];
 		return typeof value === "function" ? value.bind(service) : value;
 	},
 });

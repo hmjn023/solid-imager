@@ -1,7 +1,9 @@
 import { z } from "zod";
-import { mediaSortSchema, searchGroupSchema } from "@/domain/media/schemas";
+import { mediaSortSchema } from "./sort";
+import { searchGroupSchema } from "./criteria";
 import { similarityModelSchema } from "./embedding";
 
+/** Search UI state shared across simple, advanced and similarity search modes. */
 export const searchStateSchema = z.object({
 	// Modes
 	mode: z.enum(["simple", "pro"]),
@@ -41,8 +43,10 @@ export const searchStateSchema = z.object({
 
 export type SearchState = z.infer<typeof searchStateSchema>;
 
+/** Default number of similarity candidates considered before pagination. */
 export const DEFAULT_SIMILARITY_TOP_K = 1000;
 
+/** Initial search state used before applying saved or session state. */
 export const defaultState: SearchState = {
 	mode: "simple",
 	activePresetId: null,

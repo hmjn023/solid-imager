@@ -1,9 +1,9 @@
-import type { Author } from "@solid-imager/core/domain/authors/schemas";
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
-import type { Ip } from "@solid-imager/core/domain/ips/schemas";
-import type { Project } from "@solid-imager/core/domain/projects/schemas";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
-import type { TagResponse } from "@solid-imager/core/domain/tags/schemas";
+import type { Author } from "@solid-imager/core/authors";
+import type { Character } from "@solid-imager/core/characters";
+import type { Ip } from "@solid-imager/core/ips";
+import type { Project } from "@solid-imager/core/projects";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
+import type { TagResponse } from "@solid-imager/core/tags";
 import { Button } from "@solid-imager/ui/button";
 import { Label } from "@solid-imager/ui/label";
 import {
@@ -22,7 +22,7 @@ import {
 	searchState,
 	setSearchMode,
 	setSearchState,
-} from "~/presentation/store/search-store";
+} from "@solid-imager/ui/search/state";
 
 export type SearchControlPanelProps = {
 	context: "source" | "global";

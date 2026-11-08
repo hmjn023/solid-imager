@@ -1,13 +1,13 @@
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/errors";
 import type {
 	CreatePresetRequest,
 	Preset,
 	UpdatePresetRequest,
-} from "@solid-imager/core/domain/media/schemas";
-import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
+	PresetRepository,
+} from "@solid-imager/core/presets";
 import type { IPresetService } from "../ports/preset-service";
 
 export function createPresetService(repo: PresetRepository): IPresetService {

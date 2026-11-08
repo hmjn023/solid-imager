@@ -1,4 +1,4 @@
-import type { AuthorAccountInput } from "@solid-imager/core/domain/authors/schemas";
+import type { AuthorAccountInput } from "@solid-imager/core/authors";
 import { and, count, eq, sql } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { db } from "~/infrastructure/db";
@@ -12,7 +12,7 @@ import {
 	tags,
 } from "~/infrastructure/db/schema";
 import { AuthorService } from "~/infrastructure/services/author-service";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
+import { AuthorRepository } from "~/infrastructure/db/repositories";
 
 describe("AuthorRepository Deduplication", () => {
 	afterEach(async () => {

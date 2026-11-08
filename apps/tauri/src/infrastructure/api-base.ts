@@ -20,6 +20,7 @@ export function getBuildTimeServerUrl(): string {
 	return import.meta.env.VITE_API_URL || FALLBACK_API_URL;
 }
 
+/** Returns the same-origin proxy in development, otherwise the configured server URL. */
 export function getBuildTimeApiBaseUrl(): string {
 	if (isDev && typeof window !== "undefined") {
 		return window.location.origin;
@@ -29,10 +30,12 @@ export function getBuildTimeApiBaseUrl(): string {
 
 let apiBaseUrl = getBuildTimeApiBaseUrl();
 
+/** Returns the current request base URL, which may be the development proxy. */
 export function getApiBaseUrl(): string {
 	return apiBaseUrl;
 }
 
+/** Selects a normalized server URL, preserving the same-origin proxy for the default development target. */
 export function setApiBaseUrl(value: string): void {
 	const normalizedValue = normalizeUrl(value);
 	if (
@@ -48,6 +51,7 @@ export function setApiBaseUrl(value: string): void {
 	apiBaseUrl = normalizedValue;
 }
 
+/** Whether requests currently target the local development proxy. */
 export function isDevelopmentProxy(): boolean {
 	return (
 		isDev &&

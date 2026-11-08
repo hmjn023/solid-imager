@@ -16,17 +16,19 @@ import {
 	projects,
 } from "~/infrastructure/db/schema";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
-import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
-import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { JobRepository } from "~/infrastructure/repositories/job-repository";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import {
+	AuthorRepository,
+	DrizzleCharacterRepository,
+	IpRepository,
+	JobRepository,
+	MediaRepository,
+	ProjectRepository,
+	DrizzleSourceRepository,
+	TagRepository,
+} from "~/infrastructure/db/repositories";
 import { services } from "~/infrastructure/service-registry";
-import { CharacterServiceImpl } from "~/infrastructure/services/character-service";
-import { MediaProcessingServiceImpl } from "~/infrastructure/services/media-processing-service";
+import { createCharacterService } from "@solid-imager/application/characters";
+import { createMediaProcessingService } from "@solid-imager/application/media-processing";
 import {
 	MediaService,
 	resetMediaService,
@@ -120,7 +122,7 @@ describe("MediaService - Copy Media Integration", () => {
 		services.registerConfigService(mockConfigService as any);
 
 		services.registerCharacterService(
-			new CharacterServiceImpl(
+			createCharacterService(
 				services.getCharacterRepository(),
 				services.getIpRepository(),
 				DrizzleTransactionManager,
@@ -128,7 +130,7 @@ describe("MediaService - Copy Media Integration", () => {
 		);
 
 		services.registerMediaProcessingService(
-			new MediaProcessingServiceImpl({
+			createMediaProcessingService({
 				sourceRepo: services.getSourceRepository(),
 				mediaRepo: services.getMediaRepository(),
 				tagRepo: services.getTagRepository(),

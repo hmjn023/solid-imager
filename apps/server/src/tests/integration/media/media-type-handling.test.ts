@@ -11,13 +11,15 @@ import {
 } from "vitest";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
-import { AuthorRepository } from "~/infrastructure/repositories/author-repository";
-import { DrizzleCharacterRepository } from "~/infrastructure/repositories/character-repository";
-import { IpRepository } from "~/infrastructure/repositories/ip-repository";
-import { MediaRepository } from "~/infrastructure/repositories/media-repository";
-import { ProjectRepository } from "~/infrastructure/repositories/project-repository";
-import { DrizzleSourceRepository } from "~/infrastructure/repositories/source-repository";
-import { TagRepository } from "~/infrastructure/repositories/tag-repository";
+import {
+	AuthorRepository,
+	DrizzleCharacterRepository,
+	IpRepository,
+	MediaRepository,
+	ProjectRepository,
+	DrizzleSourceRepository,
+	TagRepository,
+} from "~/infrastructure/db/repositories";
 import { services } from "~/infrastructure/service-registry";
 import { MediaService } from "~/infrastructure/services/media-service";
 import { taggingService } from "~/infrastructure/services/tagging-service";
@@ -179,14 +181,14 @@ describe("Media Type Handling Integration", () => {
 		expect(aud?.mediaType).toBe("audio");
 	});
 
-	it("should return empty tags for non-image media types without error", async () => {
-		const [videoMedia] = await db
+	it("should return empty tags for audio media without error", async () => {
+		const [audioMedia] = await db
 			.insert(schema.medias)
 			.values({
 				mediaSourceId: mediaSource.id,
-				filePath: "dummy.mp4",
-				fileName: "dummy.mp4",
-				mediaType: "video",
+				filePath: "dummy.mp3",
+				fileName: "dummy.mp3",
+				mediaType: "audio",
 				width: 1920,
 				height: 1080,
 				fileSize: 1000,
@@ -195,7 +197,7 @@ describe("Media Type Handling Integration", () => {
 
 		const result = await taggingService.getTagsForMedia(
 			mediaSource.id,
-			videoMedia.id,
+			audioMedia.id,
 		);
 
 		expect(result).toBeDefined();
@@ -204,14 +206,14 @@ describe("Media Type Handling Integration", () => {
 		expect(result?.ips).toEqual([]);
 	});
 
-	it("should throw error for non-image media types in CCIP feature extraction", async () => {
-		const [videoMedia] = await db
+	it("should throw error for audio media in CCIP feature extraction", async () => {
+		const [audioMedia] = await db
 			.insert(schema.medias)
 			.values({
 				mediaSourceId: mediaSource.id,
-				filePath: "dummy-ccip.mp4",
-				fileName: "dummy-ccip.mp4",
-				mediaType: "video",
+				filePath: "dummy-ccip.mp3",
+				fileName: "dummy-ccip.mp3",
+				mediaType: "audio",
 				width: 1920,
 				height: 1080,
 				fileSize: 1000,
@@ -219,8 +221,10 @@ describe("Media Type Handling Integration", () => {
 			.returning();
 
 		await expect(
-			taggingService.getCcipFeatureForMedia(mediaSource.id, videoMedia.id),
-		).rejects.toThrow("CCIP feature extraction is only supported for images");
+			taggingService.getCcipFeatureForMedia(mediaSource.id, audioMedia.id),
+		).rejects.toThrow(
+			"CCIP feature extraction only supports images and video thumbnails",
+		);
 	});
 
 	it("should return correct contentType from getMediaContent", async () => {

@@ -1,7 +1,7 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
 import { MediaActions as SharedMediaActions } from "@solid-imager/ui/media-actions";
 import { OppaiOracleModal } from "@solid-imager/ui/oppai-oracle-modal";
-import { activateSimilaritySearch } from "@solid-imager/ui/stores/search-store";
+import { activateSimilaritySearch } from "@solid-imager/ui/search/state";
 import { useNavigate } from "@tanstack/solid-router";
 import { AiTaggingModal } from "~/components/media/ai-tagging-modal";
 import { CharacterCropModal } from "~/components/media/character-crop-modal";
@@ -42,6 +42,7 @@ export function MediaActions(props: MediaActionsProps) {
 			aiTaggingModal={(modalProps) => (
 				<AiTaggingModal
 					isOpen={modalProps.isOpen}
+					mediaType={props.media.mediaType}
 					mediaId={props.media.id}
 					mediaSourceId={props.media.mediaSourceId}
 					onClose={modalProps.onClose}
@@ -78,7 +79,7 @@ export function MediaActions(props: MediaActionsProps) {
 			onViewJobs={(jobId) => void navigate({ to: "/jobs", search: { jobId } })}
 			oppaiOracleModal={(modalProps) => (
 				<OppaiOracleModal
-					description="Tags extracted from the image using the OppaiOracle model."
+					mediaType={props.media.mediaType}
 					fetchTags={() =>
 						client.ai.tagOppaiOracle({
 							mediaSourceId: props.media.mediaSourceId,

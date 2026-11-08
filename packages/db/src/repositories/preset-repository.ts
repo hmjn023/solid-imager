@@ -2,9 +2,9 @@ import type {
 	CreatePresetRequest,
 	Preset,
 	UpdatePresetRequest,
-} from "@solid-imager/core/domain/media/schemas";
-import { searchGroupSchema } from "@solid-imager/core/domain/media/schemas";
-import type { PresetRepository } from "@solid-imager/core/domain/repositories/preset-repository";
+	PresetRepository,
+} from "@solid-imager/core/presets";
+import { searchGroupSchema } from "@solid-imager/core/search";
 import { eq, type InferSelectModel } from "drizzle-orm";
 import { presets } from "../schema";
 import type { DrizzleExecutor } from "../types";

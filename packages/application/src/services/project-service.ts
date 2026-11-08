@@ -1,8 +1,8 @@
 import type {
 	NewProject,
 	UpdateProject,
-} from "@solid-imager/core/domain/projects/schemas";
-import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
+	IProjectRepository,
+} from "@solid-imager/core/projects";
 import type { IProjectService } from "../ports/project-service";
 
 export function createProjectService(

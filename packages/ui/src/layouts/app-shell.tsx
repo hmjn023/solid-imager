@@ -1,4 +1,4 @@
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { Accessor, JSX, ParentProps } from "solid-js";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
 import {
@@ -9,7 +9,7 @@ import {
 	DialogTitle,
 } from "../dialog";
 import type { UseSourcesPageResult } from "../hooks/use-sources-page";
-import { createAppShortcut } from "../shortcuts/index";
+import { createAppShortcut } from "../shortcuts/create-app-shortcut";
 import { SourceDeleteModal } from "../source-delete-modal";
 import { SourceFormModal } from "../source-form-modal";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";

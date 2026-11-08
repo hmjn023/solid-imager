@@ -1,9 +1,7 @@
-import type {
-	Transaction,
-	TransactionManager,
-} from "@solid-imager/core/domain/interfaces/transaction-manager";
+import type { Transaction, TransactionManager } from "@solid-imager/core/ports";
 import type { DrizzleExecutor } from "./types";
 
+/** Adapt the configured Drizzle executor to the application transaction port. */
 export function createTransactionManager(
 	getExecutor: () => DrizzleExecutor,
 ): TransactionManager {

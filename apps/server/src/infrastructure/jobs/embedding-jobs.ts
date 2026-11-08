@@ -2,17 +2,17 @@ import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 	embeddingExtractionPayloadSchema,
-} from "@solid-imager/core/domain/search/embedding";
-import { batchCcipExtractionRequestSchema } from "@solid-imager/core/domain/tagging/schemas";
-import { and, asc, eq, gt, isNull, or, sql } from "drizzle-orm";
+} from "@solid-imager/core/search";
+import { batchCcipExtractionRequestSchema } from "@solid-imager/core/tagging";
+import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
+import type { Job } from "@solid-imager/core/jobs";
 import {
 	imageEmbeddings,
 	jobs,
 	medias,
 	mediaSources,
-	type Job,
 } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
@@ -44,7 +44,7 @@ function targetQuery(
 		)
 		.where(
 			and(
-				eq(medias.mediaType, "image"),
+				inArray(medias.mediaType, ["image", "video"]),
 				eq(mediaSources.type, "local"),
 				input.mediaSourceId
 					? eq(medias.mediaSourceId, input.mediaSourceId)
@@ -167,7 +167,7 @@ export async function processEmbeddingBatchJob(job: Job): Promise<void> {
 			},
 			"EmbeddingGemma 2 batch failed",
 		);
-		// A user retry must revisit failed images; successful current vectors are skipped.
+		// A user retry must revisit failed media; successful current vectors are skipped.
 		await repository.update(job.id, {
 			payload: { force: payload.force, mediaSourceId: payload.mediaSourceId },
 		});

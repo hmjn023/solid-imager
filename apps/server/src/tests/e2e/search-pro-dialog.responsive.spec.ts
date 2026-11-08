@@ -5,7 +5,12 @@ test(
 	{
 		tag: "@desktop-only",
 	},
-	async ({ page }) => {
+	async ({ page, browserHealth }) => {
+		// Mode and condition edits cancel searches for superseded query keys.
+		browserHealth.allowRequestFailure(
+			/\/api\/rpc\/media\/search(?:\?|$)/,
+			"net::ERR_ABORTED",
+		);
 		await page.goto("/search");
 		await page.getByRole("button", { name: /^検索フィルター、/ }).click();
 		await page.getByRole("button", { name: "詳細", exact: true }).click();

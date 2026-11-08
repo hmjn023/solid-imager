@@ -1,5 +1,5 @@
 import { implement } from "@orpc/server";
-import { thumbnailsContract } from "@solid-imager/core/domain/contract/thumbnails.contract";
+import { thumbnailsContract } from "@solid-imager/core/contract";
 import { ThumbnailService } from "~/infrastructure/services/thumbnail-service";
 
 /**

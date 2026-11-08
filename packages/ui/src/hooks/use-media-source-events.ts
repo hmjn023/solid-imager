@@ -21,7 +21,7 @@ import {
 	thumbnailGeneratedEventSchema,
 	type WatcherErrorEvent,
 	watcherErrorEventSchema,
-} from "@solid-imager/core/domain/sources/events";
+} from "@solid-imager/core/events";
 import { type Accessor, createEffect, onCleanup } from "solid-js";
 import { isServer } from "solid-js/web";
 import { subscribeToEventStream } from "../event-stream";

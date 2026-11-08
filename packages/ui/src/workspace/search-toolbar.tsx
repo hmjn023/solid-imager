@@ -1,5 +1,5 @@
-import type { SearchState } from "@solid-imager/core/domain/search/schema";
-import type { SafeMediaSource } from "@solid-imager/core/domain/sources/schemas";
+import type { SearchState } from "@solid-imager/core/search";
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
 import ChevronDown from "lucide-solid/icons/chevron-down";
 import Filter from "lucide-solid/icons/funnel";
@@ -12,7 +12,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "../popover";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
-import { getSortLabel, SortControls } from "../sort-controls";
+import { getSortLabel } from "../sort-options";
+import { SortControls } from "../sort-controls";
 import type { SourceMediaViewMode } from "../source-media-grid";
 import {
 	clearPresetFilters,
@@ -35,19 +36,11 @@ export type SearchToolbarProps = {
 	actions?: JSX.Element;
 	context: "global" | "source";
 	filterData: {
-		authors:
-			| import("@solid-imager/core/domain/authors/schemas").Author[]
-			| undefined;
-		characters:
-			| import("@solid-imager/core/domain/characters/schemas").Character[]
-			| undefined;
-		ips: import("@solid-imager/core/domain/ips/schemas").Ip[] | undefined;
-		projects:
-			| import("@solid-imager/core/domain/projects/schemas").Project[]
-			| undefined;
-		tags:
-			| import("@solid-imager/core/domain/tags/schemas").TagResponse[]
-			| undefined;
+		authors: import("@solid-imager/core/authors").Author[] | undefined;
+		characters: import("@solid-imager/core/characters").Character[] | undefined;
+		ips: import("@solid-imager/core/ips").Ip[] | undefined;
+		projects: import("@solid-imager/core/projects").Project[] | undefined;
+		tags: import("@solid-imager/core/tags").TagResponse[] | undefined;
 	};
 	itemCount?: number;
 	isUpdating?: boolean;

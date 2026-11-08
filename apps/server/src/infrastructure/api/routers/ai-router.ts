@@ -3,13 +3,12 @@ import { mkdtemp, rm } from "node:fs/promises";
 import path from "node:path";
 import { implement, ORPCError } from "@orpc/server";
 import { createClient } from "@solid-imager/client";
-import type { AppContract } from "@solid-imager/core/domain/contract";
-import { aiContract } from "@solid-imager/core/domain/contract/ai.contract";
+import { type AppContract, aiContract } from "@solid-imager/core/contract";
 import {
 	detectAndCropResponseSchema,
 	type NapiBBox,
-	taggingResponseSchema,
-} from "@solid-imager/core/domain/tagging/schemas";
+} from "@solid-imager/core/tagging";
+import { localConnectionSchema } from "@solid-imager/core/sources";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import { and, desc, eq, sql } from "drizzle-orm";
 import sharp from "sharp";
@@ -21,6 +20,7 @@ import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
 import { taggingService } from "~/infrastructure/services/tagging-service";
+import { resolveVideoThumbnail } from "~/infrastructure/services/video-thumbnail";
 import { embeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker";
 import {
 	countCcipTargets,
@@ -52,17 +52,6 @@ function getRemoteServerUrl(): string | undefined {
 async function readFileBuffer(filePath: string): Promise<Buffer> {
 	const bytes = await Bun.file(filePath).bytes();
 	return Buffer.from(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-}
-
-async function callRemoteTagging(
-	remoteUrl: string,
-	fileBuffer: Buffer,
-	fileName: string,
-	timeoutMs: number,
-): Promise<unknown> {
-	const file = new File([new Uint8Array(fileBuffer)], fileName);
-	const remoteOrpc = createClient<AppContract>({ url: remoteUrl, timeoutMs });
-	return remoteOrpc.ai.tag({ file });
 }
 
 async function callRemoteCrop(
@@ -251,49 +240,6 @@ export const aiRouter = os.router({
 				throw new Error("mediaSourceId and mediaId are required");
 			}
 
-			const remoteUrl = getRemoteServerUrl();
-			const config = services.getConfigService().getConfig();
-			if (remoteUrl && !isRemoteServerLocal(remoteUrl)) {
-				const media = await services.getMediaRepository().findById(mediaId);
-				if (!media) {
-					throw new Error("Media not found");
-				}
-				const mediaSource = await services
-					.getSourceRepository()
-					.findById(media.mediaSourceId);
-				if (mediaSource?.type !== "local") {
-					throw new Error(
-						"Only local media sources are supported for remote tagging",
-					);
-				}
-				const connectionInfo = mediaSource.connectionInfo as
-					| Record<string, unknown>
-					| null
-					| undefined;
-				if (!connectionInfo || typeof connectionInfo.path !== "string") {
-					throw new Error("Media source connection path is missing or invalid");
-				}
-				const fullPath = path.join(connectionInfo.path, media.filePath);
-				const fileBuffer = await readFileBuffer(fullPath);
-				const result = taggingResponseSchema.parse(
-					await callRemoteTagging(
-						remoteUrl,
-						fileBuffer,
-						path.basename(fullPath),
-						config.ai.timeoutMs,
-					),
-				);
-				logger.info(
-					{
-						...logContext,
-						execution: "remote",
-						durationMs: Date.now() - startedAt,
-					},
-					"AI tagging completed",
-				);
-				return result;
-			}
-
 			const result = await taggingService.getTagsForMedia(
 				mediaSourceId,
 				mediaId,
@@ -304,7 +250,6 @@ export const aiRouter = os.router({
 			logger.info(
 				{
 					...logContext,
-					execution: "local",
 					durationMs: Date.now() - startedAt,
 				},
 				"AI tagging completed",
@@ -363,8 +308,13 @@ export const aiRouter = os.router({
 			}
 
 			const media = await services.getMediaRepository().findById(mediaId);
-			if (!media) {
-				throw new Error("Media not found");
+			if (!media || media.mediaSourceId !== mediaSourceId) {
+				throw new Error("Media not found in source");
+			}
+			if (media.mediaType !== "image" && media.mediaType !== "video") {
+				throw new Error(
+					"OppaiOracle supports images and video thumbnails only",
+				);
 			}
 			const mediaSource = await services
 				.getSourceRepository()
@@ -374,14 +324,13 @@ export const aiRouter = os.router({
 					"Only local media sources are supported for OppaiOracle tagging",
 				);
 			}
-			const connectionInfo = mediaSource.connectionInfo as
-				| Record<string, unknown>
-				| null
-				| undefined;
-			if (!connectionInfo || typeof connectionInfo.path !== "string") {
-				throw new Error("Media source connection path is missing or invalid");
-			}
-			const fullPath = path.join(connectionInfo.path, media.filePath);
+			const connection = localConnectionSchema.parse(
+				mediaSource.connectionInfo,
+			);
+			const fullPath =
+				media.mediaType === "video"
+					? await resolveVideoThumbnail(media)
+					: path.join(connection.path, media.filePath);
 
 			const result = await services
 				.getAiClient()

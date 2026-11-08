@@ -1,4 +1,5 @@
-import type { OppaiOracleResponse } from "@solid-imager/core/domain/tagging/schemas";
+import type { Media } from "@solid-imager/core/media";
+import type { OppaiOracleResponse } from "@solid-imager/core/tagging";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
 import { Badge } from "./badge";
 import {
@@ -14,6 +15,7 @@ export type OppaiOracleModalProps = {
 	onClose: () => void;
 	fetchTags: () => Promise<OppaiOracleResponse>;
 	description?: string;
+	mediaType?: Media["mediaType"];
 	onSuccess?: () => void;
 };
 
@@ -75,7 +77,10 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 				<DialogHeader>
 					<DialogTitle>OppaiOracle Tagging Results</DialogTitle>
 					<DialogDescription>
-						{props.description ?? DEFAULT_DESCRIPTION}
+						{props.description ??
+							(props.mediaType === "video"
+								? "Tags extracted from the video's representative thumbnail using the OppaiOracle model."
+								: DEFAULT_DESCRIPTION)}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -83,7 +88,11 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 					<Show when={isLoading()}>
 						<div class="flex items-center justify-center py-8">
 							<div class="h-8 w-8 animate-spin rounded-full border-4 border-warning-foreground border-t-transparent" />
-							<span class="ml-2 text-muted-foreground">Analyzing image...</span>
+							<span class="ml-2 text-muted-foreground">
+								{props.mediaType === "video"
+									? "Analyzing video thumbnail..."
+									: "Analyzing image..."}
+							</span>
 						</div>
 					</Show>
 

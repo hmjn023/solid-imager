@@ -1,4 +1,4 @@
-import type { Character } from "@solid-imager/core/domain/characters/schemas";
+import type { Character } from "@solid-imager/core/characters";
 import type { QueryFunctionContext } from "@tanstack/solid-query";
 
 export const charactersQueryKeys = {

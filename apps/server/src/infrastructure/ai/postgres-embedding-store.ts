@@ -1,15 +1,15 @@
 import type {
 	IEmbeddingStore,
 	ImageEmbedding,
-} from "@solid-imager/application/ports/embedding-store";
+} from "@solid-imager/application/embeddings";
 import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 	embeddingVectorSchema,
-} from "@solid-imager/core/domain/search/embedding";
+} from "@solid-imager/core/search";
 import { imageEmbeddings, medias } from "@solid-imager/db/schema";
-import type { DrizzleExecutor } from "@solid-imager/db/types";
-import { and, eq, sql } from "drizzle-orm";
+import type { DrizzleExecutor } from "@solid-imager/db";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 /** An independent image/text embedding space; CCIP vectors are never read here. */
@@ -91,7 +91,8 @@ export class PostgresEmbeddingStore implements IEmbeddingStore {
 					eq(imageEmbeddings.version, EMBEDDING_GEMMA_VERSION),
 					// Drizzle maps timestamps to Date (millisecond precision).
 					sql`${imageEmbeddings.mediaModifiedAt} = date_trunc('milliseconds', ${medias.modifiedAt})`,
-					eq(medias.mediaType, "image"),
+					inArray(medias.mediaType, ["image", "video"]),
+					options.activeOnly ? eq(medias.status, "active") : undefined,
 					options.mediaSourceId
 						? eq(medias.mediaSourceId, options.mediaSourceId)
 						: undefined,

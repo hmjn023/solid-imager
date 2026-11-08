@@ -1,25 +1,28 @@
 import path from "node:path";
-import type { IMediaStorage } from "@solid-imager/core";
-import type { MediaStorageResult } from "@solid-imager/core";
+import type {
+	IMediaStorage,
+	MediaStorageResult,
+} from "@solid-imager/core/ports";
 import {
 	MediaFileConflictError,
 	ResourceNotFoundError,
-} from "@solid-imager/core/domain/errors";
+} from "@solid-imager/core/errors";
 import {
 	type AddMediaRequest,
 	type Media,
 	mediaSourceIdSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import {
 	type UploadMediaRequest,
 	type UploadResponse,
 	uploadMediaRequestSchema,
-} from "@solid-imager/core/domain/media/upload-schemas";
-import { getMediaTypeFromExtension } from "@solid-imager/core/domain/media/utils/media-type-utils";
-import type { IJobRepository } from "@solid-imager/core/domain/repositories/job-repository";
-import type { IMediaRepository } from "@solid-imager/core/domain/repositories/media-repository";
-import type { SourceRepository } from "@solid-imager/core/domain/repositories/source-repository";
-import { localConnectionSchema } from "@solid-imager/core/domain/sources/schemas";
+	type MediaReader,
+	type MediaWriter,
+} from "@solid-imager/core/media";
+import { getMediaTypeFromExtension } from "@solid-imager/core/media/files";
+import type { IJobRepository } from "@solid-imager/core/jobs";
+import {
+	type SourceRepository,
+	localConnectionSchema,
+} from "@solid-imager/core/sources";
 
 const SIGNATURES: Record<string, Buffer> = {
 	png: Buffer.from("89504e470d0a1a0a", "hex"),
@@ -38,6 +41,8 @@ const FILE_HEADER_BYTES = 12;
 const WEBP_OFFSET = 8;
 const WEBP_END = 12;
 
+/** Check the leading bytes for recognized filename extensions; unknown extensions are not checked.
+ * Throws when a recognized signature does not match. */
 export async function validateFileSignature(
 	file: File,
 	filename: string,
@@ -63,9 +68,13 @@ export async function validateFileSignature(
 	}
 }
 
+export type MediaUploadRepository = Pick<MediaReader, "findByPath"> &
+	Pick<MediaWriter, "upsert" | "addUrls">;
+
+/** Uploads to local sources, registers media and queues processing. A failed registration attempts file cleanup. */
 export class MediaUploadService {
 	constructor(
-		private readonly mediaRepository: IMediaRepository,
+		private readonly mediaRepository: MediaUploadRepository,
 		private readonly sourceRepository: SourceRepository,
 		private readonly storageService: IMediaStorage,
 		private readonly jobRepo: IJobRepository,

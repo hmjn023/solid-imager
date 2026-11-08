@@ -1,4 +1,4 @@
-import { AboutScreen } from "@solid-imager/ui/screens/about-screen";
+import { AboutScreen } from "@solid-imager/ui/screens/about";
 import { createFileRoute } from "@tanstack/solid-router";
 import { getApiDocsUrl } from "~/infrastructure/settings/server-settings";
 

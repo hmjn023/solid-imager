@@ -1,9 +1,10 @@
 import type {
 	NewCategory,
 	UpdateCategory,
-} from "@solid-imager/core/domain/categories/schemas";
-import type { Category } from "@solid-imager/core/domain/repositories/category-repository";
+	Category,
+} from "@solid-imager/core/categories";
 
+/** Manages categories and looks up category details. */
 export interface ICategoryService {
 	getAllCategories(): Promise<Category[]>;
 	createCategory(data: NewCategory): Promise<Category>;

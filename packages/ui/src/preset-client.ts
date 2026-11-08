@@ -1,10 +1,5 @@
-import type { PresetOrpcLike } from "@solid-imager/core/domain/contract/presets-client";
-import type {
-	MediaSort,
-	SearchGroup,
-} from "@solid-imager/core/domain/media/schemas";
-
-export type { PresetOrpcLike } from "@solid-imager/core/domain/contract/presets-client";
+import type { PresetOrpcLike } from "@solid-imager/core/contract";
+import type { MediaSort, SearchGroup } from "@solid-imager/core/search";
 
 export function createPresetClient(orpc: PresetOrpcLike) {
 	return {

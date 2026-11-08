@@ -1,5 +1,5 @@
-import type { Transaction } from "@/domain/interfaces/transaction-manager";
-import type { Ip, NewIp, UpdateIp } from "@/domain/ips/schemas";
+import type { Transaction } from "../interfaces/transaction-manager";
+import type { Ip, NewIp, UpdateIp } from "../ips/schemas";
 
 export type IIpRepository = {
 	findAll(): Promise<Ip[]>;

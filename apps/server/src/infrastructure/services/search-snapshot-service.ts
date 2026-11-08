@@ -1,7 +1,9 @@
-import type { ISearchSnapshotService } from "@solid-imager/application";
-import { createSearchSnapshotService } from "@solid-imager/application/services/search-snapshot-service";
-import type { SearchSnapshotRepository as SearchSnapshotRepositoryPort } from "@solid-imager/core/domain/repositories/search-snapshot-repository";
-import { SearchSnapshotRepository } from "~/infrastructure/repositories/search-snapshot-repository";
+import {
+	type ISearchSnapshotService,
+	createSearchSnapshotService,
+} from "@solid-imager/application/search";
+import type { SearchSnapshotRepository as SearchSnapshotRepositoryPort } from "@solid-imager/core/search";
+import { SearchSnapshotRepository } from "~/infrastructure/db/repositories";
 
 let service: ISearchSnapshotService = createSearchSnapshotService(
 	SearchSnapshotRepository,

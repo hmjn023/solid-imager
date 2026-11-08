@@ -64,7 +64,7 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 
 ### パッケージ境界
 
-既存コードには deep import が多く残っていますが、新規コードでは公開 API を薄く保つ方針を優先します。内部ファイル構成に直接依存する import を増やす前に、適切な barrel、port、factory を用意できないか検討してください。
+パッケージをまたぐ import は各 `package.json` の `exports` から機能別の入口を選ぶ。たとえば `@solid-imager/core/search` は検索条件と状態を、`@solid-imager/application/media` は `createMediaService` を公開する。パッケージ内の実装同士は相対 import を使う。
 
 ### 型安全性
 
@@ -73,8 +73,7 @@ description: solid-imager プロジェクトの全体像、モノレポ構成、
 ### インポートエイリアス
 
 - **Server:** `~/*` → `apps/server/src`
-- **Core Package:** `@/*` → `packages/core/src`
-- **Workspace Packages:** `@solid-imager/core`, `@solid-imager/application`, `@solid-imager/db`, `@solid-imager/ui`, `@solid-imager/client`
+- **Workspace packages:** TypeScript・Vite・Vitest は workspace のパッケージ解決を共用する。例は `@solid-imager/core/media`、`@solid-imager/ui/search/state`、`@solid-imager/db/schema`。
 
 ### Bun固有APIの活用
 

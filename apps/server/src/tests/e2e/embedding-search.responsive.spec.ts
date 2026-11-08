@@ -47,9 +47,10 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			},
 		});
 		expect(created.ok()).toBe(true);
-		await page.request.post("/api/rpc/sources/sync", {
-			data: { json: { id: sourceId } },
+		const synced = await page.request.post("/api/rpc/sources/sync", {
+			data: { json: { ids: [sourceId] } },
 		});
+		expect(synced.ok()).toBe(true);
 		let primaryId = "";
 		await expect
 			.poll(async () => {
@@ -154,7 +155,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			.getByRole("textbox", { name: "自然言語検索（EmbeddingGemma 2）" })
 			.fill("アニメのキャラクター");
 		await dialog
-			.getByRole("button", { name: "文章で画像を検索", exact: true })
+			.getByRole("button", { name: "文章で画像・動画を検索", exact: true })
 			.click();
 		await dialog.getByRole("button", { name: "適用", exact: true }).click();
 		await expect(
@@ -187,6 +188,22 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			.toBeLessThanOrEqual(1);
 
 		await page.goto(`/sources/${sourceId}/${primaryId}`);
+		const relatedMedia = page.getByRole("region", {
+			name: "関連メディア",
+			exact: true,
+		});
+		await relatedMedia.scrollIntoViewIfNeeded();
+		await relatedMedia
+			.getByRole("tab", { name: "似た画像", exact: true })
+			.click();
+		await expect(
+			relatedMedia.getByRole("link", {
+				name: new RegExp(E2E_SIMILAR_FILE_NAME),
+			}),
+		).toBeVisible();
+		await expect(
+			relatedMedia.locator(`[data-media-id="${primaryId}"]`),
+		).toHaveCount(0);
 		await page
 			.getByRole("button", { name: "More actions", exact: true })
 			.click();

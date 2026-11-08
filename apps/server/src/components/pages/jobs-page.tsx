@@ -1,15 +1,14 @@
 import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { useWorkspaceView } from "~/presentation/workspace-view";
-import { useJobInspection } from "@solid-imager/ui/hooks/use-job-inspection";
+import { useJobInspection, useJobsQueryEvents } from "@solid-imager/ui/jobs";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
-import type { JobListResponse } from "@solid-imager/core/domain/jobs/schemas";
-import { useJobsQueryEvents } from "@solid-imager/ui/hooks/use-jobs-query-events";
+import type { JobListResponse } from "@solid-imager/core/jobs";
 import {
 	DEFAULT_JOBS_PAGE_SIZE,
 	jobsQueryKeys,
-} from "@solid-imager/ui/query-options";
-import { toQueryUiState } from "@solid-imager/ui/query-state";
-import { JobsScreen } from "@solid-imager/ui/screens/jobs-screen";
+	toQueryUiState,
+} from "@solid-imager/ui/query";
+import { JobsScreen } from "@solid-imager/ui/screens/jobs";
 import { toast } from "@solid-imager/ui/toast";
 import { createQuery, useQueryClient } from "@tanstack/solid-query";
 import { createSignal } from "solid-js";

@@ -2,6 +2,7 @@
   "name": "@solid-imager/cli",
   "version": "0.1.0",
   "private": true,
+  "exports": {},
   "bin": {
     "imager-cli": "./src/index.ts"
   },

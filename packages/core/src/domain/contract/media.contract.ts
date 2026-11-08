@@ -18,6 +18,8 @@ import {
 	mediaLocationSchema,
 	mediaSearchRequestSchema,
 	mediaSearchResponseSchema,
+	relatedMediaRequestSchema,
+	relatedMediaResponseSchema,
 	similarMediaSearchResponseSchema,
 	tagSchema,
 	updateMediaRequestSchema,
@@ -32,6 +34,17 @@ import {
 } from "../media/statistics";
 
 export const mediaContract = {
+	getRelated: oc
+		.meta(
+			openapi({
+				tags: ["Media"],
+				summary: "関連メディア取得",
+				description:
+					"保存済み索引から見た目の似た画像・動画を推薦します。動画は代表サムネイルで比較します。同じキャラクター・IPやpositiveタグの希少性に基づく候補は全ソースの画像が対象です。recommendationsは関連度と多様性を考慮した重み付き抽選、itemsは種類別の候補です。limitはおすすめと各種類それぞれの上限です。seedと候補データが同じなら抽選結果を再現できます。閲覧時にAI推論は行いません。",
+			}),
+		)
+		.input(relatedMediaRequestSchema)
+		.output(relatedMediaResponseSchema),
 	statistics: oc
 		.meta(
 			openapi({
@@ -69,9 +82,9 @@ export const mediaContract = {
 		.meta(
 			openapi({
 				tags: ["Media"],
-				summary: "自然言語で画像を検索",
+				summary: "自然言語で画像・動画を検索",
 				description:
-					"EmbeddingGemma 2 の画像索引を文章で検索します。対象は索引登録済みで更新されていない画像です。",
+					"EmbeddingGemma 2 の索引を文章で検索します。対象は索引登録済みで更新されていない画像と動画です。動画の索引は代表サムネイル1枚に基づきます。",
 			}),
 		)
 		.input(semanticSearchRequestSchema)

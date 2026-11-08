@@ -1,7 +1,8 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
+import type { SearchWorkspaceController } from "../hooks/use-search-workspace";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
@@ -13,6 +14,59 @@ import { CollectionInspector } from "../workspace/collection-inspector";
 import { reconcileCollectionPreviewId } from "../workspace/collection-navigation";
 import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SearchWorkspaceProps } from "./search-screen.types";
+import {
+	SearchActionDialogs,
+	type SearchBulkOperations,
+} from "./search-action-dialogs";
+
+type SearchWorkspaceComponentProps = Pick<
+	SearchScreenProps,
+	| "detailBasePath"
+	| "onOpenMediaDetail"
+	| "onPrepareMediaDetail"
+	| "presetClient"
+	| "renderMediaItem"
+	| "renderMediaPreview"
+> & {
+	controller: SearchWorkspaceController;
+	operations: SearchBulkOperations;
+};
+
+/** Connects the shared controller to the collection screen and its dialogs. */
+export function SearchWorkspace(props: SearchWorkspaceComponentProps) {
+	const { page, actions } = props.controller;
+	return (
+		<>
+			<SearchScreen
+				enableVirtualization
+				ssrGuard
+				page={page}
+				filterData={page.filterData}
+				sources={page.sources()}
+				selectedSource={props.controller.selectedSource()}
+				onSelectSource={props.controller.selectSource}
+				onFindSimilar={props.controller.findSimilar}
+				isBulkSelectMode={actions.isBulkSelectMode}
+				isSelected={actions.selection.isSelected}
+				selectedCount={() => actions.selection.selectedIds().size}
+				onBulkAction={() => actions.changeBulkActionOpen(true)}
+				onClearSelection={actions.clearSelection}
+				onCopyMove={actions.openCopyMove}
+				onDelete={actions.openDelete}
+				onSelectAll={actions.selectAll}
+				onSelectMedia={actions.selectMedia}
+				onToggleSelect={(id) => actions.selectMedia(id, "toggle")}
+				detailBasePath={props.detailBasePath}
+				onOpenMediaDetail={props.onOpenMediaDetail}
+				onPrepareMediaDetail={props.onPrepareMediaDetail}
+				presetClient={props.presetClient}
+				renderMediaItem={props.renderMediaItem}
+				renderMediaPreview={props.renderMediaPreview}
+			/>
+			<SearchActionDialogs actions={actions} operations={props.operations} />
+		</>
+	);
+}
 
 export type SearchScreenProps = SearchWorkspaceProps & {
 	isBulkSelectMode?: () => boolean;

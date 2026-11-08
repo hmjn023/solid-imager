@@ -31,6 +31,17 @@ function _extractTagsFromWidgetValue(
 }
 */
 
+/**
+ * Splits a widget string into normalized tags and classifies the entire value
+ * as negative when its title or any tag matches the negative rules.
+ * Spaces become underscores and double quotes are removed. Non-string values
+ * produce empty lists.
+ * @param widgetValue - ComfyUI widget or input value.
+ * @param nodeTitle - Optional node title used for negative keyword matching.
+ * @param negativeTagSet - Exact normalized tags that classify the value as negative.
+ * @param options - Optional negative title keywords; defaults to `negative`.
+ * @returns Positive and negative normalized tag lists.
+ */
 export function processWidgetValueTags(
 	widgetValue: unknown,
 	nodeTitle: string | undefined,
@@ -132,6 +143,13 @@ function processWorkflowNode({
 	}
 }
 
+/**
+ * Extracts tags from supported ComfyUI workflow nodes in UI or API format.
+ * Returns null when no tags were found.
+ * @param workflow - Workflow containing nodes or an API-format node map.
+ * @param options - Overrides for node types and negative classification rules.
+ * @returns Extracted positive and negative tags, or null when both are empty.
+ */
 export function extractTagsFromWorkflow(
 	workflow: Workflow,
 	options?: TagExtractionOptions,

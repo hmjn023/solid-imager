@@ -8,11 +8,7 @@
     "isolatedModules": true,
     "paths": {
       "#route-tree": ["./src/routeTree.gen.ts"],
-      "~/*": ["./src/*"],
-      "@solid-imager/ui/*": ["../../packages/ui/src/*"],
-      "@solid-imager/application": ["../../packages/application/src"],
-      "@solid-imager/application/*": ["../../packages/application/src/*"],
-      "@/*": ["../../packages/core/src/*"]
+      "~/*": ["./src/*"]
     }
   },
     "include": ["src", "src/**/*.ts", "src/**/*.tsx", "scripts/**/*.ts"],

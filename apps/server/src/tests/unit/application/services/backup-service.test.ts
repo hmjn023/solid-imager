@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { Readable } from "node:stream";
-import type { MediaDumpItem } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDumpItem } from "@solid-imager/core/media";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { db } from "~/infrastructure/db";
 import {

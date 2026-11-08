@@ -5,13 +5,10 @@
 
 import { z } from "zod";
 import { authorSchema, newAuthorSchema } from "../authors/schemas";
-export {
-	authorSchema,
-	authorPlatformSchema,
-	newAuthorSchema,
-} from "../authors/schemas";
-export type { Author, NewAuthor, AuthorPlatform } from "../authors/schemas";
+import { mediaSortSchema } from "../search/sort";
+import { searchGroupSchema } from "../search/criteria";
 import { workflowSchema } from "../tags/schemas";
+import { ugoiraMetadataSchema } from "./ugoira-schemas";
 
 /**
  * Zod schema for validating media types.
@@ -19,19 +16,6 @@ import { workflowSchema } from "../tags/schemas";
  */
 export const mediaTypeSchema = z.enum(["image", "video", "audio"]);
 export type MediaType = z.infer<typeof mediaTypeSchema>;
-
-/** Sort keys supported by media collections and saved search presets. */
-export const mediaSortSchema = z.enum([
-	"date",
-	"modifiedAt",
-	"indexedAt",
-	"name",
-	"size",
-	"resolution",
-	"rating",
-	"viewCount",
-]);
-export type MediaSort = z.infer<typeof mediaSortSchema>;
 
 /**
  * Zod schema for validating the request body when adding new media.
@@ -52,6 +36,7 @@ export const addMediaRequestSchema = z.object({
 });
 export type AddMediaRequest = z.infer<typeof addMediaRequestSchema>;
 
+/** A named text entry extracted from image metadata. */
 export const imageMetadataCommentSchema = z.object({
 	keyword: z.string().min(1, "keyword is required"),
 	text: z.string().min(1, "keyword is required"),
@@ -105,6 +90,7 @@ export const updateMediaRequestSchema = z.object({
 		)
 		.optional(),
 });
+export type UpdateMediaRequestInput = z.input<typeof updateMediaRequestSchema>;
 export type UpdateMediaRequest = z.infer<typeof updateMediaRequestSchema>;
 
 /**
@@ -134,6 +120,7 @@ export const directoryPathSchema = z
 	.min(1, "Directory path is required");
 export type DirectoryPath = z.infer<typeof directoryPathSchema>;
 
+/** Tags, prompt, and workflow extracted from a media file. */
 export const extractedDataSchema = z.object({
 	tags: z.array(
 		z.object({
@@ -148,11 +135,13 @@ export const extractedDataSchema = z.object({
 export type ExtractedData = z.infer<typeof extractedDataSchema>;
 
 // Base schemas mirroring database tables
+/** Associates a media item with its source. */
 export const mediaLocationSchema = z.object({
 	sourceId: z.uuid(),
 	mediaId: z.uuid(),
 });
 
+/** Internal media record, including its source-relative file path. */
 export const mediaSchema = z.object({
 	id: z.uuid(),
 	mediaSourceId: z.uuid(),
@@ -171,6 +160,7 @@ export const mediaSchema = z.object({
 
 export type Media = z.infer<typeof mediaSchema>;
 
+/** Client-facing media fields; excludes the internal file path. */
 export const mediaSafeSchema = mediaSchema.pick({
 	id: true,
 	mediaSourceId: true,
@@ -186,6 +176,56 @@ export const mediaSafeSchema = mediaSchema.pick({
 	status: true,
 });
 export type MediaSafe = z.infer<typeof mediaSafeSchema>;
+
+/** Why an image is recommended alongside the current media. */
+export const relatedMediaReasonSchema = z.enum([
+	"similar",
+	"character",
+	"ip",
+	"tag",
+]);
+export type RelatedMediaReason = z.infer<typeof relatedMediaReasonSchema>;
+
+/** Limit applies separately to recommendations and each category. */
+export const relatedMediaRequestSchema = mediaLocationSchema.extend({
+	limit: z.number().int().min(1).max(24).default(12),
+	seed: z.string().min(1).max(128).default("default"),
+});
+export type RelatedMediaRequest = z.infer<typeof relatedMediaRequestSchema>;
+export type RelatedMediaRequestInput = z.input<
+	typeof relatedMediaRequestSchema
+>;
+
+export const relatedMediaItemSchema = z.object({
+	media: mediaSafeSchema,
+	reasons: z.array(relatedMediaReasonSchema).min(1),
+});
+export type RelatedMediaItem = z.infer<typeof relatedMediaItemSchema>;
+
+/** Category results retain their ranking; recommendations are sampled independently. */
+export const relatedMediaResponseSchema = z.object({
+	items: z.array(relatedMediaItemSchema),
+	recommendations: z.array(relatedMediaItemSchema),
+	similarityStatus: z.enum(["available", "not_indexed", "unavailable"]),
+});
+export type RelatedMediaResponse = z.infer<typeof relatedMediaResponseSchema>;
+
+/** Internal scored tag candidate; paths stay inside the application boundary. */
+export const relatedMediaTagCandidateSchema = z.object({
+	media: mediaSchema,
+	score: z.number().min(0).max(1),
+});
+export type RelatedMediaTagCandidate = z.infer<
+	typeof relatedMediaTagCandidateSchema
+>;
+
+/** Bounded candidate metadata used to avoid repetitive recommendations. */
+export const relatedMediaSignalsSchema = z.object({
+	mediaId: z.uuid(),
+	authorIds: z.array(z.uuid()),
+	tagIds: z.array(z.uuid()),
+});
+export type RelatedMediaSignals = z.infer<typeof relatedMediaSignalsSchema>;
 
 export const mediaUrlSchema = z.object({
 	id: z.uuid(),
@@ -238,6 +278,7 @@ export const ipSchema = z.object({
 });
 export type MediaIp = z.infer<typeof ipSchema>;
 
+/** Generation parameters and metadata associated with a media item. */
 export const mediaGenerationInfoSchema = z.object({
 	mediaId: z.uuid(),
 	metadata: z.any().nullable(),
@@ -256,84 +297,7 @@ export const mediaGenerationInfoSchema = z.object({
 });
 export type MediaGenerationInfo = z.infer<typeof mediaGenerationInfoSchema>;
 
-// Search schemas
-export const filterOperatorSchema = z.enum([
-	"equals", // 完全一致
-	"contains", // 部分一致 (LIKE %val%)
-	"startsWith", // 前方一致 (LIKE val%)
-	"endsWith", // 後方一致 (LIKE %val)
-	"gt", // Greater than (>)
-	"gte", // Greater than or equal (>=)
-	"lt", // Less than (<)
-	"lte", // Less than or equal (<=)
-	"in", // 配列に含まれる (IN)
-	"notIn", // 配列に含まれない (NOT IN)
-	"isEmpty", // 空またはNULL
-	"isNotEmpty", // 空でない
-]);
-
-export const filterTargetSchema = z.enum([
-	"keyword", // 全文検索 (ファイル名, パス, 説明, プロンプト等)
-	"fileName",
-	"filePath",
-	"description",
-	"mediaType",
-	"width",
-	"height",
-	"fileSize",
-	"createdAt",
-	"rating",
-	"favorite",
-	"viewCount",
-	"aiGenerated",
-	// 関連テーブル
-	"tag", // タグ名またはID
-	"author", // 作者名またはID
-	"project", // プロジェクト名またはID
-	"ip", // IP名またはID
-	"character", // キャラクター名またはID
-	"folder", // ディレクトリパス (前方一致など)
-]);
-
-// 単一の検索条件ノード
-// 注意: operator と value の整合性はアプリケーション層で検証する
-// 例: isEmpty/isNotEmpty の場合は value を無視、in/notIn の場合は配列を期待
-export const searchCriterionSchema = z.object({
-	type: z.literal("criterion"),
-	target: filterTargetSchema,
-	operator: filterOperatorSchema.default("equals"),
-	value: z
-		.union([
-			z.string(),
-			z.number(),
-			z.boolean(),
-			z.array(z.string()),
-			z.array(z.number()),
-		])
-		.nullable(),
-	negate: z.boolean().default(false).optional(), // NOT条件
-});
-
-export type SearchCriterion = z.infer<typeof searchCriterionSchema>;
-
-// 条件グループノード (AND/OR)
-export type SearchGroup = {
-	type: "group";
-	operator: "and" | "or";
-	children: (SearchGroup | z.infer<typeof searchCriterionSchema>)[];
-	negate?: boolean;
-};
-
-export const searchGroupSchema: z.ZodType<SearchGroup> = z.lazy(() =>
-	z.object({
-		type: z.literal("group"),
-		operator: z.enum(["and", "or"]),
-		// children が空の場合、このグループは条件なしとして扱われる（無視される）
-		children: z.array(z.union([searchGroupSchema, searchCriterionSchema])),
-		negate: z.boolean().default(false).optional(),
-	}),
-);
-
+/** Search conditions and pagination; offset defaults to zero and order to descending. */
 export const mediaSearchRequestSchema = z.object({
 	condition: searchGroupSchema.optional(),
 	sort: mediaSortSchema.optional(),
@@ -342,8 +306,10 @@ export const mediaSearchRequestSchema = z.object({
 	offset: z.coerce.number().int().nonnegative().default(0),
 });
 
+export type MediaSearchRequestInput = z.input<typeof mediaSearchRequestSchema>;
 export type MediaSearchRequest = z.infer<typeof mediaSearchRequestSchema>;
 
+/** Search results and the total number of matching media items. */
 export const mediaSearchResponseSchema = z.object({
 	media: z.array(mediaSchema),
 	total: z.number(),
@@ -351,6 +317,7 @@ export const mediaSearchResponseSchema = z.object({
 
 export type MediaSearchResponse = z.infer<typeof mediaSearchResponseSchema>;
 
+/** Search results with cosine distances keyed by media ID. */
 export const similarMediaSearchResponseSchema = z.object({
 	media: z.array(mediaSchema),
 	total: z.number(),
@@ -368,6 +335,7 @@ export type SimilarMediaSearchResponse = z.infer<
 
 const mediaRatingSchema = z.number().int().min(0).max(5);
 
+/** Partial preference update requiring rating (an integer from 0 to 5), favorite, or both. */
 export const mediaPreferencesPatchSchema = z
 	.object({
 		rating: mediaRatingSchema.optional(),
@@ -381,6 +349,7 @@ export const mediaPreferencesPatchSchema = z
 	);
 export type MediaPreferencesPatch = z.infer<typeof mediaPreferencesPatchSchema>;
 
+/** Per-media preference and view activity, including the last viewed time. */
 export const mediaActivitySchema = z.object({
 	rating: mediaRatingSchema,
 	favorite: z.boolean(),
@@ -390,6 +359,7 @@ export const mediaActivitySchema = z.object({
 export type MediaActivity = z.infer<typeof mediaActivitySchema>;
 
 // Combined schema for the details endpoint
+/** Media record with activity, generation information and associated entities. */
 export const mediaDetailsSchema = mediaSchema.extend({
 	activity: mediaActivitySchema,
 	tags: z.array(tagSchema),
@@ -530,10 +500,12 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 	// Technical options
 	cookies: z.array(z.any()).optional(),
 	userAgent: z.string().optional(),
+	ugoira: ugoiraMetadataSchema.optional(),
 });
 
 export type DownloadItem = z.infer<typeof downloadItemSchema>;
 
+/** A queued import item, its creation time and optional target source. */
 export const pendingImportJobSchema = z.object({
 	id: z.string(),
 	item: downloadItemSchema,
@@ -549,6 +521,7 @@ export const pendingImportCountSchema = z.object({
 
 export type PendingImportCount = z.infer<typeof pendingImportCountSchema>;
 
+/** Submits one or more download items to a target source. */
 export const bulkDownloadRequestSchema = z.object({
 	mediaSourceId: z.uuid({ message: "Invalid media source ID" }),
 	items: z.array(downloadItemSchema).min(1, "At least one item is required"),
@@ -585,41 +558,6 @@ export const moveMediaRequestSchema = copyMediaRequestSchema;
 
 export type MoveMediaRequest = z.infer<typeof moveMediaRequestSchema>;
 
-// Preset schemas
-export const presetSchema = z.object({
-	id: z.number().int(),
-	name: z.string().min(1, "Name is required"),
-	// Note: searchGroupSchema is lazy, so we use it directly.
-	// The database stores JSONB, so we validate it against the structure.
-	value: searchGroupSchema,
-	sort: mediaSortSchema.optional(),
-	order: z.enum(["asc", "desc"]).optional(),
-	mode: z.enum(["simple", "pro"]).optional(),
-	createdAt: z.coerce.date(),
-});
-
-export type Preset = z.infer<typeof presetSchema>;
-
-export const createPresetRequestSchema = z.object({
-	name: z.string().min(1, "Name is required"),
-	value: searchGroupSchema,
-	sort: mediaSortSchema.optional(),
-	order: z.enum(["asc", "desc"]).optional(),
-	mode: z.enum(["simple", "pro"]).optional(),
-});
-
-export type CreatePresetRequest = z.infer<typeof createPresetRequestSchema>;
-
-export const updatePresetRequestSchema = z.object({
-	name: z.string().min(1, "Name is required").optional(),
-	value: searchGroupSchema.optional(),
-	sort: mediaSortSchema.optional(),
-	order: z.enum(["asc", "desc"]).optional(),
-	mode: z.enum(["simple", "pro"]).optional(),
-});
-
-export type UpdatePresetRequest = z.infer<typeof updatePresetRequestSchema>;
-
 // ============================================================================
 // Duplicate Detection Schemas
 // ============================================================================
@@ -642,6 +580,7 @@ export const duplicateMediaItemSchema = z.object({
 });
 export type DuplicateMediaItem = z.infer<typeof duplicateMediaItemSchema>;
 
+/** Media grouped by a shared duplicate reason. */
 export const duplicateGroupSchema = z.object({
 	id: z.string(),
 	reason: duplicateReasonSchema,
@@ -656,11 +595,13 @@ export type FindDuplicatesResponse = z.infer<
 	typeof findDuplicatesResponseSchema
 >;
 
+/** Duplicate search, optionally restricted to a single source. */
 export const findDuplicatesRequestSchema = z.object({
 	mediaSourceId: z.uuid().optional(),
 });
 export type FindDuplicatesRequest = z.infer<typeof findDuplicatesRequestSchema>;
 
+/** Applies a partial update to selected media in one source. */
 export const bulkEditMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
@@ -680,6 +621,7 @@ export type BulkDeleteMediaRequest = z.infer<
 	typeof bulkDeleteMediaRequestSchema
 >;
 
+/** Moves selected media to a destination path within the source. */
 export const bulkMoveMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
@@ -689,6 +631,7 @@ export const bulkMoveMediaRequestSchema = z.object({
 });
 export type BulkMoveMediaRequest = z.infer<typeof bulkMoveMediaRequestSchema>;
 
+/** Adds and removes tag IDs on selected media. */
 export const bulkTagMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
@@ -699,6 +642,7 @@ export const bulkTagMediaRequestSchema = z.object({
 });
 export type BulkTagMediaRequest = z.infer<typeof bulkTagMediaRequestSchema>;
 
+/** Copies selected media to another source. */
 export const bulkCopyToSourceMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z
@@ -710,6 +654,7 @@ export type BulkCopyToSourceMediaRequest = z.infer<
 	typeof bulkCopyToSourceMediaRequestSchema
 >;
 
+/** Moves selected media to another source. */
 export const bulkMoveToSourceMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),
 	mediaIds: z

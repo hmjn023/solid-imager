@@ -2,8 +2,8 @@ import path from "node:path";
 import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
-} from "@solid-imager/core/domain/search/embedding";
-import { createJobRepository } from "@solid-imager/db/repositories/job-repository";
+} from "@solid-imager/core/search";
+import { createRepositories } from "@solid-imager/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq, sql } from "drizzle-orm";
@@ -66,7 +66,10 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		client = createPglite();
 		const database = drizzle(client, { schema });
 		mocks.database = database;
-		mocks.repository = createJobRepository(() => database);
+		mocks.repository = createRepositories(() => database, {
+			info: mocks.info,
+			error: mocks.error,
+		}).job;
 		await migrate(database, {
 			migrationsFolder: path.resolve(
 				process.cwd().endsWith("apps/server")
@@ -86,9 +89,9 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			ids.map((id, index) => ({
 				id,
 				mediaSourceId: index === 2 ? otherSourceId : sourceId,
-				filePath: `${id}.png`,
-				fileName: `${id}.png`,
-				mediaType: "image" as const,
+				filePath: `${id}.${index === 1 ? "mp4" : "png"}`,
+				fileName: `${id}.${index === 1 ? "mp4" : "png"}`,
+				mediaType: index === 1 ? ("video" as const) : ("image" as const),
 				width: 256,
 				height: 256,
 				modifiedAt,
@@ -125,7 +128,7 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			processEmbeddingBatchJob({ ...job, payload: { cursor: "invalid-id" } }),
 		).rejects.toThrow();
 	});
-	it("orders, pages, filters source and stale vectors, and cascades deletion", async () => {
+	it("orders image and video vectors, pages, filters source and stale vectors, and cascades deletion", async () => {
 		const { database, store, record } = await setup();
 		await store.upsert(record(ids[0], vector(1)));
 		await store.upsert(record(ids[1], vector(0, 1)));
@@ -170,7 +173,7 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		await expect(store.upsert(record(ids[1], vector(0)))).rejects.toThrow();
 	});
 
-	it("runs a scoped batch and retries failed images without losing its AI job payload", async () => {
+	it("runs a scoped batch and retries failed videos without losing its AI job payload", async () => {
 		const { store, record } = await setup();
 		mocks.extract.mockImplementation(async (_source: string, id: string) => {
 			if (id === ids[1]) throw new Error("Inference unavailable");
@@ -250,6 +253,56 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			"job-progress",
 			expect.objectContaining({ jobId: job.id, processed: 1, total: 1 }),
 		);
+	});
+	it("includes active videos and filters archived media before applying the recommendation limit", async () => {
+		const { database, store, record } = await setup();
+		await store.upsert(record(ids[0], vector(1)));
+		await store.upsert(record(ids[1], vector(0.99, 0.01)));
+		await store.upsert(record(ids[2], vector(0.9, 0.1)));
+		await database
+			.update(schema.medias)
+			.set({ status: "archived" })
+			.where(eq(schema.medias.id, ids[0]));
+		const result = await store.search(vector(1), {
+			activeOnly: true,
+			limit: 1,
+			offset: 0,
+		});
+		expect(result.candidates.map((item) => item.mediaId)).toEqual([ids[1]]);
+		expect(result.total).toBe(2);
+	});
+
+	it("indexes local images and videos while excluding audio and remote sources", async () => {
+		const { database, store, record } = await setup();
+		const audioId = "66666666-6666-4666-8666-666666666666";
+		await database.insert(schema.medias).values({
+			id: audioId,
+			mediaSourceId: sourceId,
+			filePath: "audio.mp3",
+			fileName: "audio.mp3",
+			mediaType: "audio",
+			width: 0,
+			height: 0,
+			modifiedAt,
+		});
+		await database
+			.update(schema.mediaSources)
+			.set({ type: "s3" })
+			.where(eq(schema.mediaSources.id, otherSourceId));
+		expect(await countEmbeddingTargets({ force: false })).toBe(2);
+		expect(await countEmbeddingTargets({ force: true })).toBe(2);
+
+		await store.upsert(record(ids[0], vector(1)));
+		await store.upsert(record(ids[1], vector(0.9, 0.1)));
+		// Even an accidentally stored audio vector must not enter visual search.
+		await store.upsert(record(audioId, vector(1)));
+		expect(
+			(await store.search(vector(1), { limit: 20, offset: 0 })).candidates.map(
+				(item) => item.mediaId,
+			),
+		).toEqual([ids[0], ids[1]]);
+		expect(await countEmbeddingTargets({ force: false })).toBe(0);
+		expect(await countEmbeddingTargets({ force: true })).toBe(2);
 	});
 	it("logs single-image start, completion and failures with job and media context", async () => {
 		await setup();

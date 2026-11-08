@@ -21,6 +21,7 @@ import { reconcileCollectionPreviewId } from "../workspace/collection-navigation
 import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
+/** Renders a source collection with search, upload, preview, and optional virtualized results. */
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
 	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
@@ -41,14 +42,13 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		page()
 			.mediaResults()
 			.find((media) => media.id === previewMediaId());
-	const openMediaDetail = (
-		media: import("@solid-imager/core/domain/media/schemas").Media,
-	) => props.onOpenMediaDetail?.(media, page().mediaResults());
+	const openMediaDetail = (media: import("@solid-imager/core/media").Media) =>
+		props.onOpenMediaDetail?.(media, page().mediaResults());
 	const prepareMediaDetail = (
-		media: import("@solid-imager/core/domain/media/schemas").Media,
+		media: import("@solid-imager/core/media").Media,
 	) => props.onPrepareMediaDetail?.(media, page().mediaResults());
 	const selectPreviewMedia = (
-		media: import("@solid-imager/core/domain/media/schemas").Media,
+		media: import("@solid-imager/core/media").Media,
 	) => {
 		setPreviewMediaId(media.id);
 		setIsInspectorVisible(true);

@@ -1,5 +1,6 @@
 import { createSignal, onCleanup } from "solid-js";
 
+/** Creates a signal whose setter applies only the latest value after the delay; pending updates are cancelled on cleanup. */
 export function createDebouncedSignal<T>(
 	initialValue: T,
 	delayMs: number,

@@ -3,8 +3,9 @@ import type {
 	CcipFeatureResponse,
 	OppaiOracleResponse,
 	TaggingResponse,
-} from "@/domain/tagging/schemas";
+} from "../tagging/schemas";
 
+/** AI service operations for tagging, embeddings, and CCIP similarity features. */
 export type IAiClient = {
 	healthCheck(): Promise<boolean>;
 

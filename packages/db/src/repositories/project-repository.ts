@@ -1,10 +1,10 @@
-import { ResourceNotFoundError } from "@solid-imager/core/domain/errors";
+import { ResourceNotFoundError } from "@solid-imager/core/errors";
 import type {
 	NewProject,
 	Project,
 	UpdateProject,
-} from "@solid-imager/core/domain/projects/schemas";
-import type { IProjectRepository } from "@solid-imager/core/domain/repositories/project-repository";
+	IProjectRepository,
+} from "@solid-imager/core/projects";
 import { and, eq, inArray } from "drizzle-orm";
 import { mediaProjects, projects } from "../schema";
 import type { DrizzleExecutor } from "../types";

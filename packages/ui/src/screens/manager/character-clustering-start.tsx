@@ -1,7 +1,7 @@
 import {
 	startCharacterClusteringSchema,
 	type StartCharacterClustering,
-} from "@solid-imager/core/domain/characters/schemas";
+} from "@solid-imager/core/characters";
 import { createMutation } from "@tanstack/solid-query";
 import { createSignal, Show } from "solid-js";
 import { Button } from "../../button";

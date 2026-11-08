@@ -3,11 +3,21 @@ import path from "node:path";
 import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
-} from "@solid-imager/application/services/ccip-vector-service";
+} from "@solid-imager/application/ccip";
+import { createRepositories } from "@solid-imager/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq, sql } from "drizzle-orm";
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+	afterAll,
+	afterEach,
+	beforeAll,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
+import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { createPglite } from "~/infrastructure/db/pglite";
 import * as schema from "~/infrastructure/db/schema";
 import {
@@ -15,9 +25,46 @@ import {
 	countTaggingTargets,
 } from "~/infrastructure/services/ai-batch-targets";
 
+const mocks = vi.hoisted(() => ({
+	database: undefined as any,
+	repository: undefined as any,
+	getMetadataMany: vi.fn(),
+	publishJob: vi.fn(),
+	info: vi.fn(),
+	error: vi.fn(),
+}));
+vi.mock("~/infrastructure/db", () => ({
+	get db() {
+		return mocks.database;
+	},
+}));
+vi.mock("~/infrastructure/service-registry", () => ({
+	services: { getJobRepository: () => mocks.repository },
+}));
+vi.mock("~/infrastructure/services/ccip-vector-service", () => ({
+	ccipVectorService: { getMetadataMany: mocks.getMetadataMany },
+}));
+vi.mock("~/infrastructure/services/tagging-service", () => ({
+	taggingService: {},
+}));
+vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
+	RealtimeEventBus: { publishJob: mocks.publishJob },
+}));
+vi.mock("~/infrastructure/logger", () => ({
+	logger: { info: mocks.info, error: mocks.error },
+}));
+import { processBulkTaggingDispatchJob } from "~/infrastructure/jobs/tagging-jobs";
+import { processBatchCcipDispatchJob } from "~/infrastructure/jobs/ccip-jobs";
+
 describe("AI batch target counts", () => {
 	const client = createPglite();
 	const database = drizzle(client, { schema });
+	const repository = createRepositories(() => database, {
+		info: mocks.info,
+		error: mocks.error,
+	}).job;
+	mocks.database = database;
+	mocks.repository = repository;
 	const modifiedAt = new Date("2026-01-01T00:00:00.123Z");
 	beforeAll(async () => {
 		await migrate(database, {
@@ -30,6 +77,8 @@ describe("AI batch target counts", () => {
 	});
 	afterEach(async () => {
 		await database.delete(schema.mediaSources);
+		await database.delete(schema.jobs);
+		vi.clearAllMocks();
 	});
 	afterAll(async () => client.close());
 
@@ -45,7 +94,7 @@ describe("AI batch target counts", () => {
 	}
 	async function media(
 		mediaSourceId: string,
-		mediaType: "image" | "video" = "image",
+		mediaType: "image" | "video" | "audio" = "image",
 	) {
 		const id = randomUUID();
 		await database.insert(schema.medias).values({
@@ -61,16 +110,18 @@ describe("AI batch target counts", () => {
 		return id;
 	}
 
-	it("counts untagged images, preserving AI/manual and any-category semantics", async () => {
+	it("counts local images and videos, preserving AI/manual and any-category semantics", async () => {
 		const local = await source();
 		const remote = await source("s3");
 		await media(local); // untagged
 		const manual = await media(local);
-		const tagged = await media(local);
+		const tagged = await media(local, "video");
 		const character = await media(local);
 		const ip = await media(local);
 		await media(local, "video");
+		await media(local, "audio");
 		await media(remote);
+		await media(remote, "video");
 		const tagIds = [randomUUID(), randomUUID()];
 		await database
 			.insert(schema.tags)
@@ -95,27 +146,29 @@ describe("AI batch target counts", () => {
 			.values({ mediaId: ip, ipId, source: "AI" });
 		expect(await countTaggingTargets(database, {})).toBe(3);
 		expect(await countTaggingTargets(database, { mediaSourceId: local })).toBe(
-			2,
+			3,
 		);
 		expect(
 			await countTaggingTargets(database, {
 				mediaSourceId: local,
 				force: true,
 			}),
-		).toBe(5);
+		).toBe(6);
 		expect(await countTaggingTargets(database, { force: true })).toBe(6);
 		expect(
 			await countTaggingTargets(database, { mediaSourceId: randomUUID() }),
 		).toBe(0);
 	});
 
-	it("counts missing/stale full-image CCIP vectors without loading vector data", async () => {
+	it("counts missing/stale image and video CCIP vectors without loading vector data", async () => {
 		const local = await source();
 		const other = await source();
 		await media(local); // missing
 		await media(other);
 		await media(local, "video");
+		await media(local, "audio");
 		await media(await source("s3"));
+		await media(await source("s3"), "video");
 		for (const state of [
 			"current",
 			"stale",
@@ -124,7 +177,10 @@ describe("AI batch target counts", () => {
 			"crop",
 			"precision",
 		]) {
-			const mediaId = await media(local);
+			const mediaId = await media(
+				local,
+				state === "current" || state === "stale" ? "video" : "image",
+			);
 			const regionId = randomUUID();
 			await database.insert(schema.mediaRegions).values({
 				id: regionId,
@@ -158,14 +214,122 @@ describe("AI batch target counts", () => {
 					.where(eq(schema.ccipEmbeddings.regionId, regionId));
 			}
 		}
-		expect(await countCcipTargets(database, { mediaSourceId: local })).toBe(5);
-		expect(await countCcipTargets(database, {})).toBe(6);
+		expect(await countCcipTargets(database, { mediaSourceId: local })).toBe(6);
+		expect(await countCcipTargets(database, {})).toBe(7);
 		expect(
 			await countCcipTargets(database, { mediaSourceId: local, force: true }),
-		).toBe(7);
-		expect(await countCcipTargets(database, { force: true })).toBe(8);
+		).toBe(8);
+		expect(await countCcipTargets(database, { force: true })).toBe(9);
 		expect(
 			await countCcipTargets(database, { mediaSourceId: randomUUID() }),
 		).toBe(0);
+	});
+
+	it("dispatches untagged local video jobs with matching counts, force and retry deduplication", async () => {
+		const local = await source();
+		const image = await media(local);
+		const video = await media(local, "video");
+		const tagged = await media(local, "video");
+		await media(local, "audio");
+		await media(await source("s3"), "video");
+		await media(await source(), "video");
+		const tagId = randomUUID();
+		await database.insert(schema.tags).values({ id: tagId, name: tagId });
+		await database
+			.insert(schema.mediaTags)
+			.values({ mediaId: tagged, tagId, source: "AI" });
+
+		for (const force of [false, true]) {
+			const expected = force ? [image, video, tagged] : [image, video];
+			expect(
+				await countTaggingTargets(database, { mediaSourceId: local, force }),
+			).toBe(expected.length);
+			const parent = await repository.create({
+				type: "bulk_tagging_parent",
+				status: "in_progress",
+				payload: { total: expected.length, processed: 0, failed: 0 },
+			});
+			const dispatch = await repository.create({
+				type: "bulk_tagging_dispatch",
+				parentId: parent.id,
+				payload: { mediaSourceId: local, force, batchSize: 1 },
+			});
+			await processBulkTaggingDispatchJob(dispatch);
+			await processBulkTaggingDispatchJob(dispatch);
+			const children = await database
+				.select()
+				.from(schema.jobs)
+				.where(eq(schema.jobs.parentId, parent.id));
+			const targets = children.filter((child) => child.type === "auto_tagging");
+			expect(
+				targets
+					.map((child) => child.payload)
+					.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+			).toEqual(expected.sort().map((mediaId) => ({ mediaId, force })));
+			expect(targets.every((child) => child.mediaSourceId === local)).toBe(
+				true,
+			);
+		}
+	});
+
+	it("dispatches missing/stale video vectors with matching counts and skips current videos unless forced", async () => {
+		const local = await source();
+		const image = await media(local);
+		const video = await media(local, "video");
+		const current = await media(local, "video");
+		await media(local, "audio");
+		await media(await source("s3"), "video");
+		await media(await source(), "video");
+		const store = new PostgresCcipVectorStore(database);
+		await store.upsert({
+			mediaId: current,
+			mediaSourceId: local,
+			vector: Array.from({ length: 768 }, (_, index) => (index === 0 ? 1 : 0)),
+			model: CCIP_MODEL,
+			embeddingVersion: CCIP_EMBEDDING_VERSION,
+			mediaModifiedAt: modifiedAt,
+			extractedAt: modifiedAt,
+		});
+		mocks.getMetadataMany.mockImplementation((mediaIds: string[]) =>
+			store.getMetadataMany(mediaIds, {
+				model: CCIP_MODEL,
+				embeddingVersion: CCIP_EMBEDDING_VERSION,
+			}),
+		);
+		for (const force of [false, true]) {
+			const expected = force ? [image, video, current] : [image, video];
+			expect(
+				await countCcipTargets(database, { mediaSourceId: local, force }),
+			).toBe(expected.length);
+			const parent = await repository.create({
+				type: "batch_ccip_parent",
+				status: "in_progress",
+				payload: { total: expected.length, processed: 0, failed: 0 },
+			});
+			const dispatch = await repository.create({
+				type: "batch_ccip_dispatch",
+				parentId: parent.id,
+				payload: { mediaSourceId: local, force, batchSize: 1 },
+			});
+			await processBatchCcipDispatchJob(dispatch);
+			await processBatchCcipDispatchJob(dispatch);
+			const children = await database
+				.select()
+				.from(schema.jobs)
+				.where(eq(schema.jobs.parentId, parent.id));
+			const targets = children.filter(
+				(child) => child.type === "extract_ccip_vector",
+			);
+			expect(
+				targets
+					.map((child) => child.payload)
+					.sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b))),
+			).toEqual(
+				expected.sort().map((mediaId) => ({ mediaIds: [mediaId], force })),
+			);
+			expect(targets.every((child) => child.mediaSourceId === local)).toBe(
+				true,
+			);
+		}
 	});
 });

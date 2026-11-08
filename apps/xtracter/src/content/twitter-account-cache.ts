@@ -22,6 +22,7 @@ function isIdentity(value: unknown): value is TwitterPostIdentity {
 	);
 }
 const cache = new Map<string, TwitterPostIdentity>();
+/** Listens for validated same-origin account observations and requests the current page data. */
 export function observeTwitterAccounts() {
 	observeAccountVerification();
 	window.addEventListener("message", (event) => {
@@ -122,6 +123,7 @@ function observeAccountVerification() {
 		window.location.origin,
 	);
 }
+/** Adds cached account metadata for the first recognized post URL, or returns the item unchanged. */
 export function enrichTwitterMetadata(item: DownloadItem): DownloadItem {
 	for (const rawUrl of item.sourceUrls ?? []) {
 		let url: URL;

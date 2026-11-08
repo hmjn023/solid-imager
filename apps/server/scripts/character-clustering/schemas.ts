@@ -2,7 +2,7 @@ import { z } from "zod";
 import {
 	clusteringSnapshotMediaSchema,
 	clusteringAssignmentSchema,
-} from "@solid-imager/core/domain/characters/schemas";
+} from "@solid-imager/core/characters";
 
 export const optionsSchema = z.object({
 	neighbors: z.number().int().min(1).optional(),

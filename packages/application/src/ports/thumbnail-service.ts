@@ -1,8 +1,9 @@
 import type {
 	GenerateThumbnailsResponse,
 	ThumbnailSize,
-} from "@solid-imager/core/domain/thumbnails/schemas";
+} from "@solid-imager/core/thumbnails";
 
+/** Provides thumbnail URLs, generation requests and cache clearing for a source. */
 export interface IThumbnailService {
 	getMediaThumbnailUrl(
 		mediaSourceId: string,

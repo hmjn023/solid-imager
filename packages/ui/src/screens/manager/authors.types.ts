@@ -7,7 +7,7 @@ import type {
 	MergeAuthorsInput,
 	BeginAuthorAccountVerificationInput,
 	AuthorAccountVerification,
-} from "@solid-imager/core/domain/authors/schemas";
+} from "@solid-imager/core/authors";
 
 export type AuthorManagementActions = {
 	openAccountVerificationProfile?: (url: string) => Promise<void>;

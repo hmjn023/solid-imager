@@ -3,7 +3,7 @@ import path from "node:path";
 import {
 	CCIP_MODEL,
 	CCIP_EMBEDDING_VERSION,
-} from "@solid-imager/application/services/ccip-vector-service";
+} from "@solid-imager/application/ccip";
 import { Client } from "pg";
 import pino from "pino";
 import { z } from "zod";

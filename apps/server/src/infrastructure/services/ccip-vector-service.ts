@@ -1,5 +1,5 @@
-import type { ILogger } from "@solid-imager/application/ports/media-service";
-import { CcipVectorService } from "@solid-imager/application/services/ccip-vector-service";
+import type { ILogger } from "@solid-imager/application/logging";
+import { CcipVectorService } from "@solid-imager/application/ccip";
 import { PostgresCcipVectorStore } from "~/infrastructure/ai/postgres-ccip-vector-store";
 import { db } from "~/infrastructure/db";
 import { services } from "~/infrastructure/service-registry";

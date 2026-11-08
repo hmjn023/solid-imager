@@ -1,4 +1,4 @@
-import type { Media } from "@solid-imager/core/domain/media/schemas";
+import type { Media } from "@solid-imager/core/media";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -63,7 +63,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "@solid-imager/ui/dialog";
-import { useScrollRestoration } from "@solid-imager/ui/hooks/scroll-container";
+import { useScrollRestoration } from "@solid-imager/ui/scroll";
 import { Input } from "@solid-imager/ui/input";
 import {
 	Popover,
@@ -106,6 +106,8 @@ import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 import { render } from "solid-js/web";
 import { ComboboxGallery } from "./combobox-gallery";
 import { JobsGallery } from "./jobs-gallery";
+import { MediaAiGallery } from "./media-ai-gallery";
+import { VideoPlayerGallery } from "./video-player-gallery";
 import "../../../app.css";
 import "@fontsource/noto-sans/latin-400.css";
 import "@fontsource/noto-sans/latin-500.css";
@@ -540,9 +542,17 @@ const showCombobox = new URLSearchParams(window.location.search).has(
 	"combobox",
 );
 const showJobs = new URLSearchParams(window.location.search).has("jobs");
+const showVideoPlayer = new URLSearchParams(window.location.search).has(
+	"video-player",
+);
+const showMediaAi = new URLSearchParams(window.location.search).has("media-ai");
 render(
 	() =>
-		showJobs ? (
+		showMediaAi ? (
+			<MediaAiGallery />
+		) : showVideoPlayer ? (
+			<VideoPlayerGallery />
+		) : showJobs ? (
 			<JobsGallery />
 		) : showCombobox ? (
 			<ComboboxGallery />

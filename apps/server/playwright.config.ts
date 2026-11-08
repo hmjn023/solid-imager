@@ -48,8 +48,10 @@ const requestedProjects = playwrightArguments.flatMap((value, index) => {
 const shouldStartTauriFixture =
 	requestedProjects.length > 0
 		? requestedProjects.includes("tauri")
-		: playwrightArguments.some((value) =>
-				value.includes("tauri-migration.spec.ts"),
+		: playwrightArguments.some(
+				(value) =>
+					value.includes("tauri-migration.spec.ts") ||
+					value.includes("search-workspace.spec.ts"),
 			) ||
 			!playwrightArguments.some((value) =>
 				/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(value),
@@ -89,7 +91,7 @@ export default defineConfig({
 	projects: [
 		{
 			name: "tauri",
-			testMatch: "**/tauri-migration.spec.ts",
+			testMatch: ["**/tauri-migration.spec.ts", "**/search-workspace.spec.ts"],
 			use: {
 				...devices["Desktop Chrome"],
 				baseURL: resolvedTauriBaseURL,

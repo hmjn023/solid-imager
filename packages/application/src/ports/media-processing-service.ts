@@ -1,10 +1,8 @@
-import type { Transaction } from "@solid-imager/core/domain/interfaces/transaction-manager";
-import type {
-	Media,
-	MediaMetadataContext,
-} from "@solid-imager/core/domain/media/schemas";
-import type { Job } from "@solid-imager/core/domain/repositories/job-repository";
+import type { Transaction } from "@solid-imager/core/ports";
+import type { Media, MediaMetadataContext } from "@solid-imager/core/media";
+import type { Job } from "@solid-imager/core/jobs";
 
+/** Registers media, executes processing jobs and controls automatic processing options. */
 export interface IMediaProcessingService {
 	registerAndProcess(
 		mediaSourceId: string,
@@ -23,5 +21,6 @@ export interface IMediaProcessingService {
 	updateConfig(config: {
 		enableAutoTagging: boolean;
 		enableAutoCcipExtraction: boolean;
+		enableAutoEmbeddingExtraction?: boolean;
 	}): void;
 }

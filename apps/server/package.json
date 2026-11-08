@@ -1,10 +1,9 @@
 {
   "name": "@solid-imager/server",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
-  "exports": {
-    "./app-router": "./src/infrastructure/api/app-router.ts"
-  },
+  "exports": {},
   "scripts": {
     "dev": "bun --bun run vite dev",
     "build": "bun --bun run vite build",

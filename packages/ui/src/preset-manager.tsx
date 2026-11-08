@@ -1,19 +1,15 @@
 import {
 	type MediaSort,
-	type Preset,
 	type SearchGroup,
 	searchGroupSchema,
-} from "@solid-imager/core/domain/media/schemas";
-import Trash2 from "lucide-solid/icons/trash";
-import {
 	getSearchConditionFromState,
 	preparePresetState,
-} from "@solid-imager/core/domain/search/logic";
-import {
 	defaultState,
 	type SearchState,
-} from "@solid-imager/core/domain/search/schema";
-import { deepEqual } from "@solid-imager/core/utils/deep-equal";
+} from "@solid-imager/core/search";
+import { type Preset } from "@solid-imager/core/presets";
+import Trash2 from "lucide-solid/icons/trash";
+import { deepEqual } from "@solid-imager/core/utils";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import {

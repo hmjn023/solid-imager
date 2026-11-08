@@ -1,4 +1,4 @@
-import type { MediaDetails } from "@solid-imager/core/domain/media/schemas";
+import type { MediaDetails } from "@solid-imager/core/media";
 import {
 	type MediaSource,
 	MediaViewer as SharedMediaViewer,

@@ -1,6 +1,7 @@
 import type { z } from "zod";
-import type { conflictSchema } from "@/domain/media/upload-schemas";
+import type { conflictSchema } from "../media/upload-schemas";
 
+/** File storage operations used by application services. */
 export type IStorageService = {
 	saveFile(
 		basePath: string,

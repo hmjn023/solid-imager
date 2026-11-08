@@ -1,3 +1,4 @@
+/** Image processing operations supplied by the infrastructure layer. */
 export type IImageProcessor = {
 	generateThumbnail(
 		mediaPath: string,
