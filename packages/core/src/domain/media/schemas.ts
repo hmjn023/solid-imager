@@ -176,6 +176,56 @@ export const mediaSafeSchema = mediaSchema.pick({
 });
 export type MediaSafe = z.infer<typeof mediaSafeSchema>;
 
+/** Why an image is recommended alongside the current media. */
+export const relatedMediaReasonSchema = z.enum([
+	"similar",
+	"character",
+	"ip",
+	"tag",
+]);
+export type RelatedMediaReason = z.infer<typeof relatedMediaReasonSchema>;
+
+/** Limit applies separately to recommendations and each category. */
+export const relatedMediaRequestSchema = mediaLocationSchema.extend({
+	limit: z.number().int().min(1).max(24).default(12),
+	seed: z.string().min(1).max(128).default("default"),
+});
+export type RelatedMediaRequest = z.infer<typeof relatedMediaRequestSchema>;
+export type RelatedMediaRequestInput = z.input<
+	typeof relatedMediaRequestSchema
+>;
+
+export const relatedMediaItemSchema = z.object({
+	media: mediaSafeSchema,
+	reasons: z.array(relatedMediaReasonSchema).min(1),
+});
+export type RelatedMediaItem = z.infer<typeof relatedMediaItemSchema>;
+
+/** Category results retain their ranking; recommendations are sampled independently. */
+export const relatedMediaResponseSchema = z.object({
+	items: z.array(relatedMediaItemSchema),
+	recommendations: z.array(relatedMediaItemSchema),
+	similarityStatus: z.enum(["available", "not_indexed", "unavailable"]),
+});
+export type RelatedMediaResponse = z.infer<typeof relatedMediaResponseSchema>;
+
+/** Internal scored tag candidate; paths stay inside the application boundary. */
+export const relatedMediaTagCandidateSchema = z.object({
+	media: mediaSchema,
+	score: z.number().min(0).max(1),
+});
+export type RelatedMediaTagCandidate = z.infer<
+	typeof relatedMediaTagCandidateSchema
+>;
+
+/** Bounded candidate metadata used to avoid repetitive recommendations. */
+export const relatedMediaSignalsSchema = z.object({
+	mediaId: z.uuid(),
+	authorIds: z.array(z.uuid()),
+	tagIds: z.array(z.uuid()),
+});
+export type RelatedMediaSignals = z.infer<typeof relatedMediaSignalsSchema>;
+
 export const mediaUrlSchema = z.object({
 	id: z.uuid(),
 	mediaId: z.uuid(),

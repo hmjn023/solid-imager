@@ -4,6 +4,8 @@ import { LoadingRegion } from "../skeleton";
 import type { MediaDetailScreenProps as MediaDetailScreenBaseProps } from "./media-detail-screen.types";
 import { MediaDetailScreenController } from "./media-detail-screen-core";
 
+export { RelatedMedia, type RelatedMediaProps } from "../related-media";
+
 export type MediaDetailScreenProps = MediaDetailScreenBaseProps & {
 	renderHeader?: (
 		media: Parameters<MediaDetailScreenProps["renderMediaViewer"]>[0],
@@ -36,8 +38,11 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 								sourceRootPath,
 							)}
 							<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden scrollbar-stable">
-								<div class="min-w-0 lg:min-h-0 lg:overflow-hidden">
-									{props.renderMediaViewer(details, sourceRootPath)}
+								<div class="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain scrollbar-stable">
+									<div class="lg:h-full">
+										{props.renderMediaViewer(details, sourceRootPath)}
+									</div>
+									{props.renderRelatedMedia?.(details)}
 								</div>
 								<div class="min-w-0 border-border border-t lg:min-h-0 lg:border-t-0 lg:border-l">
 									{props.renderMediaSidebar(

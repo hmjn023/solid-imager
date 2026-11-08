@@ -23,6 +23,7 @@ export interface IEmbeddingStore {
 		vector: number[],
 		options: {
 			mediaSourceId?: string;
+			activeOnly?: boolean;
 			excludeMediaId?: string;
 			limit: number;
 			offset: number;

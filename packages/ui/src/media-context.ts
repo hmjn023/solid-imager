@@ -20,6 +20,85 @@ export type StoredMediaContext = {
 	updatedAt: number;
 };
 
+type RelatedMediaReturnMarker = {
+	mediaId: string;
+	mediaSourceId: string;
+	historyIndex: number;
+	returnPath: string;
+	returnHistoryIndex: number;
+	contextUpdatedAt: number;
+};
+
+/** Only traverse multiple entries when this exact detail belongs to a related-image chain. */
+export function getMediaReturnHistoryDelta(
+	context: StoredMediaContext | null,
+	returnPath: string,
+	historyState: unknown,
+	media: MediaContextItem,
+): number | undefined {
+	if (
+		!context ||
+		context.returnPath !== returnPath ||
+		context.returnHistoryIndex === undefined ||
+		!isRecord(historyState) ||
+		typeof historyState.__TSR_index !== "number" ||
+		!Number.isInteger(historyState.__TSR_index)
+	) {
+		return undefined;
+	}
+	const currentIndex = historyState.__TSR_index;
+	const delta = context.returnHistoryIndex - currentIndex;
+	if (delta === -1) return delta;
+	const marker = historyState.relatedMediaReturn;
+	if (
+		delta < -1 &&
+		isRecord(marker) &&
+		marker.mediaId === media.id &&
+		marker.mediaSourceId === media.mediaSourceId &&
+		marker.historyIndex === currentIndex &&
+		marker.returnPath === returnPath &&
+		marker.returnHistoryIndex === context.returnHistoryIndex &&
+		marker.contextUpdatedAt === context.updatedAt
+	) {
+		return delta;
+	}
+	return undefined;
+}
+
+/** Carry collection history only from an adjacent detail or a verified related-image chain. */
+export function createRelatedMediaReturnMarker(
+	historyState: unknown,
+	currentMedia: MediaContextItem,
+	nextMedia: MediaContextItem,
+	replace = false,
+): RelatedMediaReturnMarker | undefined {
+	const context = readMediaContext();
+	const returnPath = readMediaReturnPath();
+	if (
+		!context ||
+		!returnPath ||
+		context.returnHistoryIndex === undefined ||
+		!isRecord(historyState) ||
+		typeof historyState.__TSR_index !== "number" ||
+		getMediaReturnHistoryDelta(
+			context,
+			returnPath,
+			historyState,
+			currentMedia,
+		) === undefined
+	) {
+		return undefined;
+	}
+	return {
+		mediaId: nextMedia.id,
+		mediaSourceId: nextMedia.mediaSourceId,
+		historyIndex: historyState.__TSR_index + (replace ? 0 : 1),
+		returnPath,
+		returnHistoryIndex: context.returnHistoryIndex,
+		contextUpdatedAt: context.updatedAt,
+	};
+}
+
 function getStorage(): Storage | null {
 	try {
 		return typeof sessionStorage === "undefined" ? null : sessionStorage;

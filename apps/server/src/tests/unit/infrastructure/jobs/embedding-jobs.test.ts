@@ -254,6 +254,27 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			expect.objectContaining({ jobId: job.id, processed: 1, total: 1 }),
 		);
 	});
+	it("filters inactive candidates before applying the recommendation limit", async () => {
+		const { database, store, record } = await setup();
+		await store.upsert(record(ids[0], vector(1)));
+		await store.upsert(record(ids[1], vector(0.99, 0.01)));
+		await store.upsert(record(ids[2], vector(0.9, 0.1)));
+		await database
+			.update(schema.medias)
+			.set({ status: "archived" })
+			.where(eq(schema.medias.id, ids[0]));
+		await database
+			.update(schema.medias)
+			.set({ status: "deleted" })
+			.where(eq(schema.medias.id, ids[1]));
+		const result = await store.search(vector(1), {
+			activeOnly: true,
+			limit: 1,
+			offset: 0,
+		});
+		expect(result.candidates.map((item) => item.mediaId)).toEqual([ids[2]]);
+		expect(result.total).toBe(1);
+	});
 	it("logs single-image start, completion and failures with job and media context", async () => {
 		await setup();
 		mocks.extract.mockResolvedValue(undefined);

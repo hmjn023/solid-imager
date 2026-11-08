@@ -187,6 +187,22 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			.toBeLessThanOrEqual(1);
 
 		await page.goto(`/sources/${sourceId}/${primaryId}`);
+		const relatedMedia = page.getByRole("region", {
+			name: "関連メディア",
+			exact: true,
+		});
+		await relatedMedia.scrollIntoViewIfNeeded();
+		await relatedMedia
+			.getByRole("tab", { name: "似た画像", exact: true })
+			.click();
+		await expect(
+			relatedMedia.getByRole("link", {
+				name: new RegExp(E2E_SIMILAR_FILE_NAME),
+			}),
+		).toBeVisible();
+		await expect(
+			relatedMedia.locator(`[data-media-id="${primaryId}"]`),
+		).toHaveCount(0);
 		await page
 			.getByRole("button", { name: "More actions", exact: true })
 			.click();

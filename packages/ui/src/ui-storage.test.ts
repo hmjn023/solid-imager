@@ -45,6 +45,7 @@ describe("ui storage keys", () => {
 			sourceViewMode: "solid-imager:source-media:view-mode",
 			mediaContext: "solid-imager:media-context",
 			mediaReturn: "solid-imager:media-return",
+			relatedMediaSeeds: "solid-imager:related-media-seeds:v1",
 		});
 	});
 

@@ -4,6 +4,7 @@ export {
 	createAppQueryClientConfig,
 	jobsQueryKeys,
 	mediaDetailsQueryKeys,
+	relatedMediaQueryKeys,
 	projectsQueryKeys,
 	searchQueryKeys,
 	sourceMediaQueryKeys,

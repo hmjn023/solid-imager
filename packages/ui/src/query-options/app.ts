@@ -7,6 +7,7 @@ import {
 	buildIpsQueryOptions,
 	buildJobsQueryOptions,
 	buildMediaDetailsQueryOptions,
+	buildRelatedMediaQueryOptions,
 	buildProjectsForMediaQueryOptions,
 	buildProjectsQueryOptions,
 	buildSourcesQueryOptions,
@@ -55,6 +56,23 @@ export function createAppQueryOptions(client: AppContractClient) {
 				mediaId,
 				(sourceId, mediaId, signal) =>
 					client.media.getDetails({ sourceId, mediaId }, { signal }),
+			),
+		relatedMediaQueryOptions: (
+			sourceId: string,
+			mediaId: string,
+			seed = "default",
+			limit = 12,
+		) =>
+			buildRelatedMediaQueryOptions(
+				sourceId,
+				mediaId,
+				limit,
+				seed,
+				(sourceId, mediaId, limit, seed, signal) =>
+					client.media.getRelated(
+						{ sourceId, mediaId, limit, seed },
+						{ signal },
+					),
 			),
 		projectsForMediaQueryOptions: (
 			sourceIdOrMediaId: string,
