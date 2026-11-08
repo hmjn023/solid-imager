@@ -124,7 +124,7 @@ describe("RelatedMediaService", () => {
 		).toBe(true);
 		expect(store.search).toHaveBeenCalledWith([1, 0], {
 			excludeMediaId: mediaId,
-			activeOnly: true,
+			activeImagesOnly: true,
 			limit: 96,
 			offset: 0,
 		});

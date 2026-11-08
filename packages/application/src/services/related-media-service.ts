@@ -208,7 +208,7 @@ export class RelatedMediaService {
 			}
 			const result = await this.deps.embeddingStore.search(embedding.vector, {
 				excludeMediaId: anchor.id,
-				activeOnly: true,
+				activeImagesOnly: true,
 				limit,
 				offset: 0,
 			});

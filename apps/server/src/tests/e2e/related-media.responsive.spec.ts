@@ -286,8 +286,14 @@ test(
 				.locator(`[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`)
 				.click();
 			await expect(page).toHaveURL(mediaPath(E2E_SIMILAR_MEDIA_ID));
+			await expect(
+				page.getByRole("heading", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
+			).toBeVisible();
 			await page.goBack();
 			await expect(page).toHaveURL(mediaPath());
+			await expect(
+				page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+			).toBeVisible();
 			await page.goBack();
 			await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
 			await page.goBack();

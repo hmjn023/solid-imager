@@ -254,7 +254,7 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			expect.objectContaining({ jobId: job.id, processed: 1, total: 1 }),
 		);
 	});
-	it("filters inactive candidates before applying the recommendation limit", async () => {
+	it("filters inactive images and active videos before applying the recommendation limit", async () => {
 		const { database, store, record } = await setup();
 		await store.upsert(record(ids[0], vector(1)));
 		await store.upsert(record(ids[1], vector(0.99, 0.01)));
@@ -263,12 +263,8 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			.update(schema.medias)
 			.set({ status: "archived" })
 			.where(eq(schema.medias.id, ids[0]));
-		await database
-			.update(schema.medias)
-			.set({ status: "deleted" })
-			.where(eq(schema.medias.id, ids[1]));
 		const result = await store.search(vector(1), {
-			activeOnly: true,
+			activeImagesOnly: true,
 			limit: 1,
 			offset: 0,
 		});

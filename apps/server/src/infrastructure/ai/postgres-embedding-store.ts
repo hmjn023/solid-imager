@@ -91,8 +91,10 @@ export class PostgresEmbeddingStore implements IEmbeddingStore {
 					eq(imageEmbeddings.version, EMBEDDING_GEMMA_VERSION),
 					// Drizzle maps timestamps to Date (millisecond precision).
 					sql`${imageEmbeddings.mediaModifiedAt} = date_trunc('milliseconds', ${medias.modifiedAt})`,
-					inArray(medias.mediaType, ["image", "video"]),
-					options.activeOnly ? eq(medias.status, "active") : undefined,
+					options.activeImagesOnly
+						? eq(medias.mediaType, "image")
+						: inArray(medias.mediaType, ["image", "video"]),
+					options.activeImagesOnly ? eq(medias.status, "active") : undefined,
 					options.mediaSourceId
 						? eq(medias.mediaSourceId, options.mediaSourceId)
 						: undefined,
