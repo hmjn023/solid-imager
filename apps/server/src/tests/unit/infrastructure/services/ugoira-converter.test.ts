@@ -317,7 +317,9 @@ describe.skipIf(!realEncoderAvailable)("ugoira real FFmpeg conversion", () => {
 				file: name,
 				delay: delays[index],
 			}));
-			await convertUgoiraToMp4(archivePath, outputPath, frames);
+			expect(await convertUgoiraToMp4(archivePath, outputPath, frames)).toEqual(
+				{ width: 8, height: 6 },
+			);
 			const { stdout } = await execFileAsync("ffprobe", [
 				"-v",
 				"error",

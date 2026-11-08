@@ -97,6 +97,7 @@ vi.mock("~/infrastructure/services/media-processing-service", () => ({
 vi.mock("node:fs/promises", () => ({
 	default: {
 		mkdir: vi.fn(),
+		stat: vi.fn(),
 		writeFile: vi.fn(),
 		unlink: vi.fn(),
 		access: vi.fn(),
@@ -143,6 +144,12 @@ describe("processDownloadJob", () => {
 			description: null,
 		});
 
+		mockConvertUgoiraToMp4.mockResolvedValue({ width: 800, height: 600 });
+		vi.mocked(fs.stat).mockResolvedValue({
+			size: 1000,
+			birthtime: new Date(),
+			mtime: new Date(),
+		} as Awaited<ReturnType<typeof fs.stat>>);
 		mockGetFileMetadata.mockResolvedValue({
 			size: 1000,
 			createdAt: new Date(),
@@ -533,8 +540,7 @@ describe("processDownloadJob", () => {
 				mockDownloadUgoiraArchive.mockRejectedValueOnce(error);
 			if (phase === "convert")
 				mockConvertUgoiraToMp4.mockRejectedValueOnce(error);
-			if (phase === "metadata")
-				mockGetFileMetadata.mockRejectedValueOnce(error);
+			if (phase === "metadata") vi.mocked(fs.stat).mockRejectedValueOnce(error);
 			const targetUrl =
 				"https://i.pximg.net/img-zip-ugoira/101003492_ugoira1920x1080.zip";
 			const job = {

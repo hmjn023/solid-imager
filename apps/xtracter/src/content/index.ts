@@ -227,6 +227,20 @@ function processMedia() {
 if (["x.com", "twitter.com"].includes(window.location.hostname))
 	observeTwitterAccounts();
 
+let pixivScanPending = false;
+function scheduleMediaScan() {
+	if (window.location.hostname !== "www.pixiv.net") {
+		processMedia();
+		return;
+	}
+	if (pixivScanPending) return;
+	pixivScanPending = true;
+	requestAnimationFrame(() => {
+		pixivScanPending = false;
+		processMedia();
+	});
+}
+
 const observer = new MutationObserver((mutations) => {
 	let shouldProcess = false;
 	for (const mutation of mutations) {
@@ -236,7 +250,7 @@ const observer = new MutationObserver((mutations) => {
 		}
 	}
 	if (shouldProcess) {
-		processMedia();
+		scheduleMediaScan();
 	}
 });
 
@@ -252,7 +266,7 @@ if (window.location.hostname === "www.pixiv.net") {
 					e.target instanceof HTMLImageElement ||
 					e.target instanceof HTMLVideoElement
 				)
-					processMedia();
+					scheduleMediaScan();
 			},
 			true,
 		);

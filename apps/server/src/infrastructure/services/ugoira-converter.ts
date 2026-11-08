@@ -1,7 +1,6 @@
 import { execFile } from "node:child_process";
 import { constants, createWriteStream } from "node:fs";
 import { copyFile, mkdtemp, rm, stat, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
 import path from "node:path";
 import { Transform } from "node:stream";
 import { pipeline } from "node:stream/promises";
@@ -166,7 +165,12 @@ async function getConcatFrames(
 		}
 		dimensions = { width: metadata.width, height: metadata.height };
 	}
-	if (!formats.has(".gif")) return frames;
+	if (!dimensions) throw new Error("Ugoira animation has no frames");
+	const encodedDimensions = {
+		width: Math.ceil(dimensions.width / 2) * 2,
+		height: Math.ceil(dimensions.height / 2) * 2,
+	};
+	if (!formats.has(".gif")) return { frames, encodedDimensions };
 	// One metadata entry means one frame even if its GIF contains an embedded animation.
 	let normalizedBytes = 0;
 	const converted = [];
@@ -186,7 +190,7 @@ async function getConcatFrames(
 		}
 		converted.push({ file, delay: frame.delay });
 	}
-	return converted;
+	return { frames: converted, encodedDimensions };
 }
 
 /** Converts an ugoira ZIP without exposing extracted files or partial encodes to the library. */
@@ -194,15 +198,20 @@ export async function convertUgoiraToMp4(
 	zipPath: string,
 	outputPath: string,
 	frames: UgoiraMetadata["frames"],
-): Promise<void> {
+) {
 	const validated = ugoiraMetadataSchema.parse({ frames }).frames;
 	const ffmpeg = await resolveFfmpegPath();
 	if (!ffmpeg)
 		throw new Error("FFmpeg is required to convert ugoira animations");
-	const directory = await mkdtemp(path.join(tmpdir(), "solid-imager-ugoira-"));
+	const directory = await mkdtemp(
+		path.join(path.dirname(outputPath), ".frames-"),
+	);
 	try {
 		await extractFrames(zipPath, directory, validated);
-		const concatFrames = await getConcatFrames(directory, validated);
+		const { frames: concatFrames, encodedDimensions } = await getConcatFrames(
+			directory,
+			validated,
+		);
 		const manifest = path.join(directory, "frames.ffconcat");
 		await writeFile(
 			manifest,
@@ -290,6 +299,7 @@ export async function convertUgoiraToMp4(
 		if ((await stat(encoded)).size === 0)
 			throw new Error("FFmpeg produced an empty ugoira video");
 		await copyFile(encoded, outputPath, constants.COPYFILE_EXCL);
+		return encodedDimensions;
 	} finally {
 		await rm(directory, { recursive: true, force: true });
 	}

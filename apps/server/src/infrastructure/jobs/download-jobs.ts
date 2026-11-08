@@ -730,6 +730,17 @@ async function publishUgoira(
 			await fs.link(outputPath, path.join(basePath, name));
 			return name;
 		} catch (error) {
+			if (
+				isRecord(error) &&
+				["ENOTSUP", "EOPNOTSUPP", "EPERM", "ENOSYS"].some(
+					(code) => code === error.code,
+				)
+			) {
+				throw new Error(
+					"Publishing ugoira requires a destination that allows hard links",
+					{ cause: error },
+				);
+			}
 			if (!isRecord(error) || error.code !== "EEXIST") throw error;
 		}
 	}
@@ -750,8 +761,12 @@ async function handleUgoiraDownload(
 		const videoPath = path.join(staging, "animation.mp4");
 		await waitForDownloadRateLimit();
 		await downloadUgoiraArchive(item, archivePath);
-		await convertUgoiraToMp4(archivePath, videoPath, item.ugoira.frames);
-		const fileMeta = await ServerMediaStorage.getFileMetadata(videoPath);
+		const { width, height } = await convertUgoiraToMp4(
+			archivePath,
+			videoPath,
+			item.ugoira.frames,
+		);
+		const stats = await fs.stat(videoPath);
 		const fileName = await publishUgoira(
 			videoPath,
 			basePath,
@@ -765,11 +780,11 @@ async function handleUgoiraDownload(
 					fileName,
 					mediaType: "video",
 					description: formatMetadataAsMarkdown(item),
-					width: fileMeta.width,
-					height: fileMeta.height,
-					fileSize: fileMeta.size,
-					createdAt: item.createdAt ?? fileMeta.createdAt,
-					modifiedAt: fileMeta.modifiedAt,
+					width,
+					height,
+					fileSize: stats.size,
+					createdAt: item.createdAt ?? stats.birthtime,
+					modifiedAt: stats.mtime,
 					sourceUrls: [
 						...new Set([item.targetUrl, ...(item.sourceUrls ?? [])]),
 					],
