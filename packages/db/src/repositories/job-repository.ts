@@ -72,6 +72,7 @@ function mapJob(row: typeof jobs.$inferSelect): Job {
 	};
 }
 
+/** Creates the database repository that claims jobs and persists their execution state and batch progress. */
 export function createJobRepository(
 	getExecutor: (tx?: unknown) => DrizzleExecutor,
 ): IJobRepository {
@@ -361,6 +362,7 @@ export function createJobRepository(
 			await db().update(jobs).set(updates).where(eq(jobs.id, id));
 		},
 
+		/** Sets the dispatched item count while preserving progress recorded concurrently by children. */
 		async setBatchTotal(parentId, total) {
 			const [parent] = await db()
 				.update(jobs)
@@ -373,6 +375,7 @@ export function createJobRepository(
 			return batchParentPayloadSchema.parse(parent?.payload);
 		},
 
+		/** Applies the difference from the child’s last recorded outcome to its open parent. Returns null for stale attempts or closed batches. */
 		async recordBatchChildOutcome(
 			parentId,
 			childId,

@@ -38,6 +38,7 @@ function readTargetMediaId(payload: unknown): string | null {
 	return result.success ? result.data : null;
 }
 
+/** Reads batch counters from an object or a legacy JSON string. Returns null when the payload has no usable progress counts. */
 function readProgress(payload: unknown) {
 	if (typeof payload === "string") {
 		try {

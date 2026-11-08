@@ -271,6 +271,7 @@ function activeCrudTab(
 		: activeTab;
 }
 
+/** Manages Manager actions and selections, restores the locally tracked job, and refreshes server batch snapshots on job events and reconnects. */
 export function useManagerPage(
 	options: UseManagerPageOptions,
 ): UseManagerPageResult {
@@ -341,11 +342,11 @@ export function useManagerPage(
 		queryFn: actions.getActiveBatches,
 		enabled: !isServer,
 	}));
-	// Coalesce bursts and replay an invalidation received during a snapshot read.
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
 	let disposed = false;
 	let reading = false;
 	let dirty = false;
+	/** Coalesces job events into snapshot reads and schedules another read if an event arrives during a refresh. */
 	function refreshActiveBatches() {
 		dirty = true;
 		if (reading || refreshTimer || disposed) return;

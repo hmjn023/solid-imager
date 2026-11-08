@@ -34,6 +34,7 @@ export type {
 	ManagerTransferFormat,
 } from "./manager/types";
 
+/** Renders the selected management tool and shows active server batches, including runs started by other clients. */
 export function ManagerScreen(props: {
 	manager: UseManagerPageResult;
 	transferActions?: ManagerTransferActions;

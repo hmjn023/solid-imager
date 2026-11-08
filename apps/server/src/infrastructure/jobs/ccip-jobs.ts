@@ -89,6 +89,7 @@ async function finalizeBatchParent(
 	});
 }
 
+/** Queues CCIP extraction in chunks and sets the parent total to the number of distinct media IDs, including previously dispatched items on resume. */
 export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 	const payload = batchCcipDispatchPayloadSchema.parse(job.payload);
 	const force = payload.force ?? false;
@@ -359,6 +360,7 @@ async function processCcipExtractionBatch(
 	});
 }
 
+/** Records the child attempt’s successful and failed media counts and closes the batch once all target media are accounted for. */
 async function updateParentProgress(
 	job: Job,
 	processed: number,

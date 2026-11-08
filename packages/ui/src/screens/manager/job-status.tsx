@@ -4,6 +4,7 @@ import { Badge } from "../../badge";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import { Progress } from "../../progress";
 
+/** Shows the locally tracked run’s progress and terminal status in its batch tool. */
 export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 	return (
 		<Show when={props.manager.taggingStatus() || props.manager.jobProgress()}>
@@ -52,6 +53,7 @@ export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 	);
 }
 
+/** Displays successful and failed items together as progress toward the server total. Shows a preparation message until a positive total is available. */
 function BatchCounts(props: {
 	progress: NonNullable<JobDto["progress"]>;
 	label: string;
@@ -88,6 +90,7 @@ const batchLabels: Record<string, string> = {
 	thumbnail_generation_parent: "Thumbnail generation",
 };
 
+/** Displays the source, status and item counts of active batches returned by the server. */
 export function ServerBatchStatus(props: {
 	jobs: JobDto[];
 	manager: UseManagerPageResult;

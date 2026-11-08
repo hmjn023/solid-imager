@@ -114,6 +114,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 	}
 }
 
+/** Queues tagging jobs for eligible media and publishes the parent total after counting its queued children. */
 export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 	const payload = bulkTaggingDispatchPayloadSchema.parse(job.payload);
 	const force = payload?.force ?? false;
