@@ -21,6 +21,8 @@ const {
 	mockSaveFile,
 	mockYtDlpExec,
 	mockYtDlp,
+	mockDownloadUgoiraArchive,
+	mockConvertUgoiraToMp4,
 } = vi.hoisted(() => ({
 	mockFindById: vi.fn(),
 	mockGetFileMetadata: vi.fn(),
@@ -35,9 +37,17 @@ const {
 	mockSaveFile: vi.fn(),
 	mockYtDlpExec: vi.fn(),
 	mockYtDlp: vi.fn(),
+	mockDownloadUgoiraArchive: vi.fn(),
+	mockConvertUgoiraToMp4: vi.fn(),
 }));
 
 // Mocks
+vi.mock("~/infrastructure/services/ugoira-download", () => ({
+	downloadUgoiraArchive: mockDownloadUgoiraArchive,
+}));
+vi.mock("~/infrastructure/services/ugoira-converter", () => ({
+	convertUgoiraToMp4: mockConvertUgoiraToMp4,
+}));
 vi.mock("youtube-dl-exec", () => ({
 	create: () => Object.assign(mockYtDlp, { exec: mockYtDlpExec }),
 }));
@@ -87,10 +97,14 @@ vi.mock("~/infrastructure/services/media-processing-service", () => ({
 vi.mock("node:fs/promises", () => ({
 	default: {
 		mkdir: vi.fn(),
+		stat: vi.fn(),
 		writeFile: vi.fn(),
 		unlink: vi.fn(),
 		access: vi.fn(),
 		rename: vi.fn(),
+		mkdtemp: vi.fn(),
+		link: vi.fn(),
+		rm: vi.fn(),
 	},
 }));
 vi.mock("node:child_process", () => ({
@@ -110,6 +124,9 @@ describe("processDownloadJob", () => {
 	beforeEach(async () => {
 		vi.resetAllMocks();
 		vi.mocked(fs.access).mockRejectedValue(new Error("ENOENT"));
+		vi.mocked(fs.mkdtemp).mockResolvedValue(
+			"/tmp/downloads/.xtracter-ugoira-fixture",
+		);
 		fetchMock.mockResolvedValue({
 			ok: true,
 			headers: new Headers({ "content-type": "image/jpeg" }),
@@ -127,6 +144,12 @@ describe("processDownloadJob", () => {
 			description: null,
 		});
 
+		mockConvertUgoiraToMp4.mockResolvedValue({ width: 800, height: 600 });
+		vi.mocked(fs.stat).mockResolvedValue({
+			size: 1000,
+			birthtime: new Date(),
+			mtime: new Date(),
+		} as Awaited<ReturnType<typeof fs.stat>>);
 		mockGetFileMetadata.mockResolvedValue({
 			size: 1000,
 			createdAt: new Date(),
@@ -400,6 +423,201 @@ describe("processDownloadJob", () => {
 				authors: [{ name: "User", accountId: "@user" }],
 			}),
 		);
+	});
+
+	it("should download a Pixiv original with the artwork page as Referer and preserve both source URLs", async () => {
+		const targetUrl =
+			"https://i.pximg.net/img-original/img/2026/09/30/12/00/00/123456789_p1.png";
+		const artworkUrl = "https://www.pixiv.net/artworks/123456789";
+		const sourceUrls = [targetUrl, artworkUrl];
+		const createdAt = new Date("2026-09-30T12:00:00+09:00");
+		fetchMock.mockResolvedValueOnce({
+			ok: true,
+			headers: new Headers({ "content-type": "image/png" }),
+			arrayBuffer: async () => new ArrayBuffer(10),
+		});
+		const job = {
+			id: "job-pixiv-original",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: {
+				targetUrl,
+				sourceUrls,
+				createdAt: createdAt.toISOString(),
+				description: "Pixiv artwork description",
+				authors: [{ name: "Pixiv Artist", accountId: "12345" }],
+				tags: [{ name: "オリジナル", source: "pixiv" }],
+			},
+		} as any;
+
+		await processDownloadJob(job);
+
+		expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+			targetUrl,
+			expect.objectContaining({
+				headers: expect.objectContaining({ Referer: artworkUrl }),
+			}),
+		);
+		expect(mockYtDlpExec).not.toHaveBeenCalled();
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+			"source-1",
+			expect.stringMatching(/123456789_p1\.png$/),
+			expect.objectContaining({
+				sourceUrls,
+				createdAt,
+				description: "Pixiv artwork description",
+				authors: job.payload.authors,
+				tags: job.payload.tags,
+			}),
+		);
+	});
+
+	it("converts ugoira and registers only the completed MP4 with its artwork metadata", async () => {
+		const targetUrl =
+			"https://i.pximg.net/img-zip-ugoira/img/2022/09/05/00/00/00/101003492_ugoira1920x1080.zip";
+		const sourceUrls = [targetUrl, "https://www.pixiv.net/artworks/101003492"];
+		const ugoira = {
+			frames: [
+				{ file: "000000.jpg", delay: 50 },
+				{ file: "000001.jpg", delay: 120 },
+			],
+		};
+		const job = {
+			id: "job-ugoira",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: {
+				targetUrl,
+				sourceUrls,
+				ugoira,
+				description: "Animation",
+				authors: [{ name: "Artist", accountId: "123", platform: "pixiv" }],
+				tags: [{ name: "animation", source: "pixiv" }],
+				createdAt: "2022-09-05T00:00:00Z",
+			},
+		} as any;
+		vi.mocked(fs.link)
+			.mockRejectedValueOnce(
+				Object.assign(new Error("exists"), { code: "EEXIST" }),
+			)
+			.mockResolvedValueOnce();
+
+		await processDownloadJob(job);
+
+		expect(mockDownloadUgoiraArchive).toHaveBeenCalledWith(
+			expect.objectContaining({ targetUrl, sourceUrls, ugoira }),
+			"/tmp/downloads/.xtracter-ugoira-fixture/frames.zip",
+		);
+		expect(mockConvertUgoiraToMp4).toHaveBeenCalledWith(
+			"/tmp/downloads/.xtracter-ugoira-fixture/frames.zip",
+			"/tmp/downloads/.xtracter-ugoira-fixture/animation.mp4",
+			ugoira.frames,
+		);
+		expect(mockYtDlpExec).not.toHaveBeenCalled();
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(mockSaveFile).not.toHaveBeenCalled();
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+			"source-1",
+			expect.stringMatching(/_\(1\)\.mp4$/),
+			expect.objectContaining({
+				sourceUrls,
+				authors: job.payload.authors,
+				tags: job.payload.tags,
+				createdAt: new Date(job.payload.createdAt),
+			}),
+		);
+		expect(fs.rm).toHaveBeenCalledWith(
+			"/tmp/downloads/.xtracter-ugoira-fixture",
+			{ recursive: true, force: true },
+		);
+	});
+
+	it.each(["download", "convert", "metadata"])(
+		"cleans ugoira staging and reports %s failure without publishing media",
+		async (phase) => {
+			const error = new Error(`${phase} failed`);
+			if (phase === "download")
+				mockDownloadUgoiraArchive.mockRejectedValueOnce(error);
+			if (phase === "convert")
+				mockConvertUgoiraToMp4.mockRejectedValueOnce(error);
+			if (phase === "metadata") vi.mocked(fs.stat).mockRejectedValueOnce(error);
+			const targetUrl =
+				"https://i.pximg.net/img-zip-ugoira/101003492_ugoira1920x1080.zip";
+			const job = {
+				id: "job-ugoira-failure",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload: {
+					targetUrl,
+					sourceUrls: [targetUrl, "https://www.pixiv.net/artworks/101003492"],
+					ugoira: { frames: [{ file: "0.jpg", delay: 50 }] },
+				},
+			} as any;
+			await expect(processDownloadJob(job)).rejects.toThrow(error);
+			expect(fs.link).not.toHaveBeenCalled();
+			expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
+			expect(fs.rm).toHaveBeenCalledWith(
+				"/tmp/downloads/.xtracter-ugoira-fixture",
+				{ recursive: true, force: true },
+			);
+			expect(RealtimeEventBus.publishSource).toHaveBeenCalledExactlyOnceWith(
+				"source-1",
+				"download-error",
+				{ url: targetUrl, error: error.message },
+			);
+		},
+	);
+
+	it.each([false, true])(
+		"cleans a failed registration only when no media row owns the MP4 (registered=%s)",
+		async (registered) => {
+			mockMediaRegisterAndProcess.mockRejectedValueOnce(
+				new Error("registration failed"),
+			);
+			mockMediaFindByPath.mockResolvedValue(
+				registered ? { id: "watcher-media" } : null,
+			);
+			mockMediaAddContextMetadata.mockRejectedValueOnce(
+				new Error("context update failed"),
+			);
+			const targetUrl =
+				"https://i.pximg.net/img-zip-ugoira/101003492_ugoira1920x1080.zip";
+			const job = {
+				id: "failed-registration",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload: {
+					targetUrl,
+					sourceUrls: [targetUrl, "https://www.pixiv.net/artworks/101003492"],
+					ugoira: { frames: [{ file: "0.jpg", delay: 50 }] },
+				},
+			} as any;
+			await expect(processDownloadJob(job)).rejects.toThrow();
+			if (registered) expect(fs.unlink).not.toHaveBeenCalled();
+			else
+				expect(fs.unlink).toHaveBeenCalledWith(
+					expect.stringMatching(/^\/tmp\/downloads\/[^/]+\.mp4$/),
+				);
+			expect(fs.rm).toHaveBeenCalledWith(
+				"/tmp/downloads/.xtracter-ugoira-fixture",
+				{ recursive: true, force: true },
+			);
+		},
+	);
+
+	it("rejects malformed ugoira payloads instead of downloading a still image", async () => {
+		const job = {
+			id: "bad-ugoira",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: {
+				targetUrl: "https://i.pximg.net/file.jpg",
+				ugoira: { frames: [{ file: "../bad.jpg", delay: 50 }] },
+			},
+		} as any;
+		await expect(processDownloadJob(job)).rejects.toThrow();
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(mockConvertUgoiraToMp4).not.toHaveBeenCalled();
 	});
 
 	it("should reject non-image direct download responses", async () => {

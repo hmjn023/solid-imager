@@ -232,7 +232,7 @@ export function AuthorManagementPanel(props: {
 			await media.refetch();
 		});
 	const allSources = { id: "__all__", name: "すべてのソース" };
-	const platforms = ["twitter", "pixiv-fanbox", "danbooru"] as const;
+	const platforms = ["twitter", "pixiv-fanbox", "danbooru", "pixiv"] as const;
 	return (
 		<div class="space-y-5">
 			<div>

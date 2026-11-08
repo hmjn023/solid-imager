@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { submitAuthorAccountVerificationSchema } from "@solid-imager/core/authors";
+import { ugoiraMetadataSchema } from "@solid-imager/core/media";
+import {
+	authorPlatformSchema,
+	submitAuthorAccountVerificationSchema,
+} from "@solid-imager/core/authors";
 
 export const submitAccountVerificationMessageSchema =
 	submitAuthorAccountVerificationSchema.extend({
@@ -12,7 +16,7 @@ export const authorSchema = z.object({
 	remoteId: z.string().nullable().optional(),
 	profileUrl: z.url().optional(),
 	observedAt: z.iso.datetime().optional(),
-	platform: z.enum(["twitter", "pixiv-fanbox", "danbooru"]).optional(),
+	platform: authorPlatformSchema.optional(),
 });
 
 export type Author = z.infer<typeof authorSchema>;
@@ -24,6 +28,7 @@ export const downloadItemSchema = z.object({
 	// Metadata
 	description: z.string().nullable().optional(),
 	createdAt: z.string().optional(),
+	ugoira: ugoiraMetadataSchema.optional(),
 
 	// Relations
 	sourceUrls: z.array(z.string()).optional(),

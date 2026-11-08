@@ -8,6 +8,7 @@ import { authorSchema, newAuthorSchema } from "../authors/schemas";
 import { mediaSortSchema } from "../search/sort";
 import { searchGroupSchema } from "../search/criteria";
 import { workflowSchema } from "../tags/schemas";
+import { ugoiraMetadataSchema } from "./ugoira-schemas";
 
 /**
  * Zod schema for validating media types.
@@ -499,6 +500,7 @@ export const downloadItemSchema = mediaMetadataContextSchema.extend({
 	// Technical options
 	cookies: z.array(z.any()).optional(),
 	userAgent: z.string().optional(),
+	ugoira: ugoiraMetadataSchema.optional(),
 });
 
 export type DownloadItem = z.infer<typeof downloadItemSchema>;

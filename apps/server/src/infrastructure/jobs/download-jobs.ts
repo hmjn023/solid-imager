@@ -29,6 +29,8 @@ import {
 } from "~/infrastructure/db/repositories";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
+import { downloadUgoiraArchive } from "~/infrastructure/services/ugoira-download";
+import { convertUgoiraToMp4 } from "~/infrastructure/services/ugoira-converter";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX =
@@ -715,6 +717,105 @@ async function handleDirectImageDownload(
 	}
 }
 
+/** Publish a completed conversion without overwriting another download. */
+async function publishUgoira(
+	outputPath: string,
+	basePath: string,
+	filename: string,
+): Promise<string> {
+	const stem = path.basename(filename, ".mp4");
+	for (let index = 0; ; index++) {
+		const name = index === 0 ? filename : `${stem}_(${index}).mp4`;
+		try {
+			await fs.link(outputPath, path.join(basePath, name));
+			return name;
+		} catch (error) {
+			if (
+				isRecord(error) &&
+				["ENOTSUP", "EOPNOTSUPP", "EPERM", "ENOSYS"].some(
+					(code) => code === error.code,
+				)
+			) {
+				throw new Error(
+					"Publishing ugoira requires a destination that allows hard links",
+					{ cause: error },
+				);
+			}
+			if (!isRecord(error) || error.code !== "EEXIST") throw error;
+		}
+	}
+}
+
+async function handleUgoiraDownload(
+	item: DownloadItem,
+	mediaSourceId: string,
+	basePath: string,
+): Promise<void> {
+	if (!item.ugoira || !item.targetUrl)
+		throw new Error("Missing ugoira download metadata");
+	// Keep staging on the destination filesystem for atomic publication. Watchers ignore dotfiles.
+	await fs.mkdir(basePath, { recursive: true });
+	const staging = await fs.mkdtemp(path.join(basePath, ".xtracter-ugoira-"));
+	try {
+		const archivePath = path.join(staging, "frames.zip");
+		const videoPath = path.join(staging, "animation.mp4");
+		await waitForDownloadRateLimit();
+		await downloadUgoiraArchive(item, archivePath);
+		const { width, height } = await convertUgoiraToMp4(
+			archivePath,
+			videoPath,
+			item.ugoira.frames,
+		);
+		const stats = await fs.stat(videoPath);
+		const fileName = await publishUgoira(
+			videoPath,
+			basePath,
+			generateMediaFilename(item, ".mp4"),
+		);
+		try {
+			await registerMedia(
+				{
+					mediaSourceId,
+					filePath: fileName,
+					fileName,
+					mediaType: "video",
+					description: formatMetadataAsMarkdown(item),
+					width,
+					height,
+					fileSize: stats.size,
+					createdAt: item.createdAt ?? stats.birthtime,
+					modifiedAt: stats.mtime,
+					sourceUrls: [
+						...new Set([item.targetUrl, ...(item.sourceUrls ?? [])]),
+					],
+				},
+				mediaSourceId,
+				item,
+				basePath,
+			);
+		} catch (error) {
+			// A watcher may already own the file. Remove only an unregistered result.
+			try {
+				if (!(await MediaRepository.findByPath(mediaSourceId, fileName))) {
+					await fs.unlink(path.join(basePath, fileName));
+				}
+			} catch (cleanupError) {
+				logger.warn(
+					{ err: cleanupError, fileName },
+					"[DownloadJob] Could not confirm ugoira registration for cleanup",
+				);
+			}
+			throw error;
+		}
+		logger.info(
+			{ url: item.targetUrl, fileName },
+			"[DownloadJob] Ugoira converted and registered",
+		);
+	} finally {
+		await fs.rm(staging, { recursive: true, force: true });
+	}
+}
+
 /** Extracts a DownloadItem from a job payload. */
 function getDownloadItemFromJob(job: Job): DownloadItem {
 	return downloadItemSchema.parse(job.payload);
@@ -761,7 +862,9 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	);
 
 	try {
-		if (isTwitterPost) {
+		if (item.ugoira) {
+			await handleUgoiraDownload(item, mediaSourceId, basePath);
+		} else if (isTwitterPost) {
 			logger.info({}, "[DownloadJob] Using yt-dlp download method");
 			await handleYtDlpDownload(item, mediaSourceId, basePath);
 		} else {

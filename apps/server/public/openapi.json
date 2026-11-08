@@ -4576,7 +4576,8 @@
                                       "enum": [
                                         "twitter",
                                         "pixiv-fanbox",
-                                        "danbooru"
+                                        "danbooru",
+                                        "pixiv"
                                       ]
                                     },
                                     {
@@ -5093,7 +5094,8 @@
                                         "enum": [
                                           "twitter",
                                           "pixiv-fanbox",
-                                          "danbooru"
+                                          "danbooru",
+                                          "pixiv"
                                         ]
                                       },
                                       {
@@ -5167,7 +5169,8 @@
                               "enum": [
                                 "twitter",
                                 "pixiv-fanbox",
-                                "danbooru"
+                                "danbooru",
+                                "pixiv"
                               ]
                             },
                             "remoteId": {
@@ -6010,7 +6013,8 @@
                                         "enum": [
                                           "twitter",
                                           "pixiv-fanbox",
-                                          "danbooru"
+                                          "danbooru",
+                                          "pixiv"
                                         ]
                                       },
                                       {
@@ -6084,7 +6088,8 @@
                               "enum": [
                                 "twitter",
                                 "pixiv-fanbox",
-                                "danbooru"
+                                "danbooru",
+                                "pixiv"
                               ]
                             },
                             "remoteId": {
@@ -10648,7 +10653,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               {
@@ -10836,7 +10842,8 @@
                                   "enum": [
                                     "twitter",
                                     "pixiv-fanbox",
-                                    "danbooru"
+                                    "danbooru",
+                                    "pixiv"
                                   ]
                                 },
                                 {
@@ -11001,7 +11008,8 @@
                               "enum": [
                                 "twitter",
                                 "pixiv-fanbox",
-                                "danbooru"
+                                "danbooru",
+                                "pixiv"
                               ]
                             },
                             {
@@ -11075,7 +11083,8 @@
                     "enum": [
                       "twitter",
                       "pixiv-fanbox",
-                      "danbooru"
+                      "danbooru",
+                      "pixiv"
                     ]
                   },
                   "remoteId": {
@@ -11158,7 +11167,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               {
@@ -11368,7 +11378,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               {
@@ -11618,7 +11629,8 @@
                                             "enum": [
                                               "twitter",
                                               "pixiv-fanbox",
-                                              "danbooru"
+                                              "danbooru",
+                                              "pixiv"
                                             ]
                                           },
                                           {
@@ -12179,7 +12191,8 @@
                                           "enum": [
                                             "twitter",
                                             "pixiv-fanbox",
-                                            "danbooru"
+                                            "danbooru",
+                                            "pixiv"
                                           ]
                                         },
                                         {
@@ -12253,7 +12266,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               "remoteId": {
@@ -12474,6 +12488,37 @@
                         },
                         "userAgent": {
                           "type": "string"
+                        },
+                        "ugoira": {
+                          "type": "object",
+                          "properties": {
+                            "frames": {
+                              "minItems": 1,
+                              "maxItems": 10000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "file": {
+                                    "type": "string",
+                                    "pattern": "^\\d+\\.(?:jpe?g|png|gif)$"
+                                  },
+                                  "delay": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 60000
+                                  }
+                                },
+                                "required": [
+                                  "file",
+                                  "delay"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "frames"
+                          ]
                         }
                       }
                     }
@@ -14016,7 +14061,8 @@
                                           "enum": [
                                             "twitter",
                                             "pixiv-fanbox",
-                                            "danbooru"
+                                            "danbooru",
+                                            "pixiv"
                                           ]
                                         },
                                         {
@@ -14090,7 +14136,8 @@
                                 "enum": [
                                   "twitter",
                                   "pixiv-fanbox",
-                                  "danbooru"
+                                  "danbooru",
+                                  "pixiv"
                                 ]
                               },
                               "remoteId": {
@@ -14311,6 +14358,37 @@
                         },
                         "userAgent": {
                           "type": "string"
+                        },
+                        "ugoira": {
+                          "type": "object",
+                          "properties": {
+                            "frames": {
+                              "minItems": 1,
+                              "maxItems": 10000,
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "file": {
+                                    "type": "string",
+                                    "pattern": "^\\d+\\.(?:jpe?g|png|gif)$"
+                                  },
+                                  "delay": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 60000
+                                  }
+                                },
+                                "required": [
+                                  "file",
+                                  "delay"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "frames"
+                          ]
                         }
                       }
                     }
@@ -14400,7 +14478,8 @@
                                             "enum": [
                                               "twitter",
                                               "pixiv-fanbox",
-                                              "danbooru"
+                                              "danbooru",
+                                              "pixiv"
                                             ]
                                           },
                                           {
@@ -14475,7 +14554,8 @@
                                   "enum": [
                                     "twitter",
                                     "pixiv-fanbox",
-                                    "danbooru"
+                                    "danbooru",
+                                    "pixiv"
                                   ]
                                 },
                                 "remoteId": {
@@ -14702,6 +14782,39 @@
                           },
                           "userAgent": {
                             "type": "string"
+                          },
+                          "ugoira": {
+                            "type": "object",
+                            "properties": {
+                              "frames": {
+                                "minItems": 1,
+                                "maxItems": 10000,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "file": {
+                                      "type": "string",
+                                      "pattern": "^\\d+\\.(?:jpe?g|png|gif)$"
+                                    },
+                                    "delay": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 60000
+                                    }
+                                  },
+                                  "required": [
+                                    "file",
+                                    "delay"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "frames"
+                            ],
+                            "additionalProperties": false
                           }
                         },
                         "additionalProperties": false

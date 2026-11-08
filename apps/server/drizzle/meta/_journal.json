@@ -232,6 +232,13 @@
       "when": 1793335882208,
       "tag": "0032_busy_chimera",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793917446968,
+      "tag": "0033_nifty_brother_voodoo",
+      "breakpoints": true
     }
   ]
 }

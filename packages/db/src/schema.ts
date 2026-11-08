@@ -138,6 +138,7 @@ export const authorPlatformEnum = pgEnum("author_platform", [
 	"twitter",
 	"pixiv-fanbox",
 	"danbooru",
+	"pixiv",
 ]);
 
 // テーブル
