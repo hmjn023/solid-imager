@@ -29,6 +29,8 @@ const jobRepository: IJobRepository = {
 	update: (...args: Parameters<typeof update>) => update(...args),
 	incrementProgress: (...args: Parameters<typeof incrementProgress>) =>
 		incrementProgress(...args),
+	setBatchTotal: vi.fn(),
+	recordBatchChildOutcome: vi.fn(),
 	incrementFailedCount: (...args: Parameters<typeof incrementFailedCount>) =>
 		incrementFailedCount(...args),
 	claimPending: vi.fn(),

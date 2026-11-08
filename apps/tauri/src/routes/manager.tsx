@@ -60,6 +60,7 @@ const managerQueryOptions = {
 };
 
 const managerActions = {
+	getActiveBatches: () => orpc.jobs.activeBatches({}),
 	getJob: (jobId: string) => orpc.jobs.get({ id: jobId }),
 	createProject,
 	updateProject,

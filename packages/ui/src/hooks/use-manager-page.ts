@@ -21,6 +21,7 @@ import {
 	createEffect,
 	createSignal,
 	onMount,
+	onCleanup,
 	type Setter,
 } from "solid-js";
 import { isServer } from "solid-js/web";
@@ -72,6 +73,7 @@ export type ManagerPageQueries = {
 };
 
 export type ManagerPageActions = {
+	getActiveBatches: () => Promise<JobDto[]>;
 	getJob: (jobId: string) => Promise<JobDto>;
 	scanBatchEmbeddingTargets?: (input: {
 		force: boolean;
@@ -198,6 +200,9 @@ export type UseManagerPageResult = {
 	forceRetag: Accessor<boolean>;
 	setForceRetag: Setter<boolean>;
 	taggingStatus: Accessor<string | null>;
+	activeBatches: Accessor<JobDto[]>;
+	activeBatchesFailed: Accessor<boolean>;
+	retryActiveBatches: () => void;
 	jobProgress: Accessor<(JobProgressEvent & { failed?: number }) | null>;
 	jobStatus: Accessor<JobStatus | null>;
 	activeJobId: Accessor<string | null>;
@@ -331,6 +336,32 @@ export function useManagerPage(
 	const [trackedRun, setTrackedRun] = createSignal<ManagerBatchRun | null>(
 		null,
 	);
+	const activeBatches = createQuery(() => ({
+		queryKey: ["jobs", "activeBatches"],
+		queryFn: actions.getActiveBatches,
+		enabled: !isServer,
+	}));
+	// Coalesce bursts and replay an invalidation received during a snapshot read.
+	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
+	let disposed = false;
+	let reading = false;
+	let dirty = false;
+	function refreshActiveBatches() {
+		dirty = true;
+		if (reading || refreshTimer || disposed) return;
+		refreshTimer = setTimeout(async () => {
+			refreshTimer = undefined;
+			reading = true;
+			dirty = false;
+			await activeBatches.refetch();
+			reading = false;
+			if (dirty) refreshActiveBatches();
+		}, 250);
+	}
+	onCleanup(() => {
+		disposed = true;
+		clearTimeout(refreshTimer);
+	});
 	const trackedJob = createQuery<JobDto>(() => ({
 		queryKey: jobsQueryKeys.detail(trackedRun()?.jobId ?? ""),
 		queryFn: () => actions.getJob(trackedRun()?.jobId ?? ""),
@@ -375,7 +406,7 @@ export function useManagerPage(
 						: job.status === "pending"
 							? "Batch operation queued."
 							: job.progress && job.progress.total > 0
-								? `Processing: ${job.progress.processed} / ${job.progress.total}.`
+								? "Processing..."
 								: "Preparing batch targets...",
 		);
 	});
@@ -876,7 +907,9 @@ export function useManagerPage(
 	const handleJobProgress = (event: JobProgressEvent) => {
 		setJobStatus("in_progress");
 		setJobProgress((previous) => ({ ...event, failed: previous?.failed ?? 0 }));
-		setTaggingStatus(`Processing: ${event.processed} / ${event.total}.`);
+		setTaggingStatus(
+			event.total > 0 ? "Processing..." : "Preparing batch targets...",
+		);
 		const run = trackedRun();
 		if (run) {
 			void queryClient
@@ -922,7 +955,17 @@ export function useManagerPage(
 	// Buffer those events until activeJobId is known.
 	useBatchJobEvents?.(activeJobId, jobHandlers, {
 		subscribeImmediately: true,
+		onEvent: (event) => {
+			if (
+				event.event === "job-progress" ||
+				event.event === "job-retried" ||
+				activeBatches.isFetching ||
+				activeBatches.data?.some((job) => job.id === event.data.jobId)
+			)
+				refreshActiveBatches();
+		},
 		onConnected: () => {
+			refreshActiveBatches();
 			if (trackedRun()) void trackedJob.refetch();
 		},
 	});
@@ -945,6 +988,9 @@ export function useManagerPage(
 		setSelectedSourceId,
 		forceRetag,
 		setForceRetag,
+		activeBatches: () => activeBatches.data ?? [],
+		activeBatchesFailed: () => activeBatches.isError,
+		retryActiveBatches: refreshActiveBatches,
 		taggingStatus,
 		jobProgress,
 		jobStatus,

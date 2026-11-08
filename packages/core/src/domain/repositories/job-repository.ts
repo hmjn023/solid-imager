@@ -96,6 +96,14 @@ export type IJobRepository = {
 		},
 	): Promise<void>;
 	update(id: string, data: Partial<Job>): Promise<void>;
+	setBatchTotal(parentId: string, total: number): Promise<BatchProgress>;
+	recordBatchChildOutcome(
+		parentId: string,
+		childId: string,
+		attempt: number,
+		processed: number,
+		failed: number,
+	): Promise<BatchProgress | null>;
 	incrementProgress(
 		id: string,
 		progressKey?: string,

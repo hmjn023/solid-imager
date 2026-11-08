@@ -3,9 +3,8 @@ import {
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
 } from "@solid-imager/application/ccip";
-import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
 import type { Job } from "@solid-imager/core/jobs";
@@ -217,36 +216,9 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 	}
 
 	const jobRepo = services.getJobRepository();
-	const [childSummary] = await db
-		.select({
-			total: sql<number>`COALESCE(SUM(
-				CASE
-					WHEN jsonb_typeof(${jobs.payload}->'mediaIds') = 'array'
-						THEN jsonb_array_length(${jobs.payload}->'mediaIds')
-					ELSE 1
-				END
-			), 0)::int`,
-		})
-		.from(jobs)
-		.where(
-			and(eq(jobs.parentId, parentId), eq(jobs.type, "extract_ccip_vector")),
-		);
-	const total = Number(childSummary?.total ?? 0);
-	const [updatedParent] = await db
-		.update(jobs)
-		.set({
-			payload: sql`jsonb_set(
-				COALESCE(${jobs.payload}, '{}'::jsonb),
-				'{total}',
-				to_jsonb(${total}::int)
-			)`,
-			updatedAt: new Date(),
-		})
-		.where(eq(jobs.id, parentId))
-		.returning();
-	const parentPayload = batchParentPayloadSchema.parse(
-		updatedParent?.payload ?? {},
-	);
+	// Includes children from earlier dispatch attempts as well as newly inserted pages.
+	const total = dispatchedMediaIds.size;
+	const parentPayload = await jobRepo.setBatchTotal(parentId, total);
 
 	if (total === 0) {
 		await jobRepo.update(parentId, { status: "completed" });
@@ -396,13 +368,13 @@ async function updateParentProgress(
 		return;
 	}
 	const jobRepo = services.getJobRepository();
-	let progress = null;
-	if (processed > 0) {
-		progress = await jobRepo.incrementProgress(job.parentId, job.id, processed);
-	}
-	if (failed > 0) {
-		progress = await jobRepo.incrementFailedCount(job.parentId, job.id, failed);
-	}
+	const progress = await jobRepo.recordBatchChildOutcome(
+		job.parentId,
+		job.id,
+		job.attemptCount ?? 0,
+		processed,
+		failed,
+	);
 	if (!progress || progress.total <= 0) {
 		return;
 	}

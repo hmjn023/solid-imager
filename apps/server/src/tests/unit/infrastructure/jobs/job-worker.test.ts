@@ -61,6 +61,8 @@ describe("JobWorker", () => {
 			setArtifact: vi.fn().mockResolvedValue(undefined),
 			update: vi.fn(),
 			incrementProgress: vi.fn(),
+			setBatchTotal: vi.fn(),
+			recordBatchChildOutcome: vi.fn(),
 			incrementFailedCount: vi.fn(),
 		};
 

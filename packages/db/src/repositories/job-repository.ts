@@ -361,6 +361,56 @@ export function createJobRepository(
 			await db().update(jobs).set(updates).where(eq(jobs.id, id));
 		},
 
+		async setBatchTotal(parentId, total) {
+			const [parent] = await db()
+				.update(jobs)
+				.set({
+					payload: sql`jsonb_set(${normalizedPayloadExpression()}, '{total}', to_jsonb(${total}::int))`,
+					updatedAt: new Date(),
+				})
+				.where(eq(jobs.id, parentId))
+				.returning();
+			return batchParentPayloadSchema.parse(parent?.payload);
+		},
+
+		async recordBatchChildOutcome(
+			parentId,
+			childId,
+			attempt,
+			processed,
+			failed,
+		) {
+			// Keep the child's last contribution in its payload across retry/stale recovery.
+			// Applying both deltas in one update also accounts for mixed-result chunks.
+			const payload = normalizedPayloadExpression();
+			const result = await db().execute(sql`
+				WITH previous AS (
+					SELECT id, ${payload} AS data FROM ${jobs}
+					WHERE id = ${childId} AND parent_id = ${parentId}
+					  AND attempt_count = ${attempt} AND status = 'in_progress'
+					FOR UPDATE
+				), recorded AS (
+					UPDATE ${jobs} AS child SET payload = previous.data ||
+						jsonb_build_object('batchOutcome', jsonb_build_object(
+							'processed', ${processed}::int, 'failed', ${failed}::int))
+					FROM previous WHERE child.id = previous.id
+					RETURNING COALESCE((previous.data#>>'{batchOutcome,processed}')::int,0) AS old_processed,
+						COALESCE((previous.data#>>'{batchOutcome,failed}')::int,0) AS old_failed
+				)
+				UPDATE ${jobs} SET payload = ${payload} || jsonb_build_object(
+					'processed', COALESCE((${payload}->>'processed')::int,0) + ${processed} - recorded.old_processed,
+					'failed', COALESCE((${payload}->>'failed')::int,0) + ${failed} - recorded.old_failed
+				), updated_at = NOW()
+				FROM recorded WHERE id = ${parentId} AND status = 'in_progress'
+				RETURNING payload
+			`);
+			const [row] = extractRows(result);
+			if (!row || typeof row !== "object" || !("payload" in row)) return null;
+			return batchParentPayloadSchema.parse(
+				parseJsonColumn(row.payload, "payload"),
+			);
+		},
+
 		async incrementProgress(
 			id: string,
 			progressKey?: string,

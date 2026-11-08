@@ -200,3 +200,45 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 		await expect(start).toBeEnabled();
 	});
 }
+
+test("shows another client's batch on Manager and after reload", async ({
+	page,
+	request,
+}) => {
+	const id = randomUUID();
+	let visible = false;
+	// Hold the remote batch snapshot steady across the reload. The event which
+	// discovers it comes from a real start request in an independent API client.
+	await page.route("**/api/rpc/jobs/activeBatches", (route) =>
+		route.fulfill({
+			json: {
+				json: visible
+					? [
+							{
+								id,
+								type: "batch_ccip_parent",
+								mediaSourceId: E2E_SOURCE_ID,
+								status: "in_progress",
+								progress: { processed: 24, failed: 1, total: 50 },
+							},
+						]
+					: [],
+			},
+		}),
+	);
+	await page.goto("/manager");
+	await waitForAppHydration(page);
+	const bar = page.getByRole("progressbar", {
+		name: "CCIP extraction progress",
+	});
+	await expect(bar).toHaveCount(0);
+	visible = true;
+	const started = await request.post("/api/rest/ai/startBatchCcipExtraction", {
+		data: { mediaSourceId: E2E_SOURCE_ID },
+	});
+	expect(started.ok(), await started.text()).toBe(true);
+	await expect(bar).toHaveAttribute("aria-valuenow", "50");
+	await expect(page.getByText("25 / 50 (50%)")).toBeVisible();
+	await page.reload();
+	await expect(bar).toHaveAttribute("aria-valuenow", "50");
+});

@@ -1,3 +1,4 @@
+import { ServerBatchStatus } from "./manager/job-status";
 import { AuthorManagementPanel } from "./manager/authors";
 import type { AuthorManagementActions } from "./manager/authors.types";
 import { createEffect, createSignal, Match, on, Show, Switch } from "solid-js";
@@ -120,6 +121,24 @@ export function ManagerScreen(props: {
 					/>
 
 					<div class="min-w-0">
+						<Show when={props.manager.activeBatchesFailed()}>
+							<ErrorState
+								title="実行中のバッチを取得できませんでした"
+								onRetry={props.manager.retryActiveBatches}
+							/>
+						</Show>
+						<ServerBatchStatus
+							manager={props.manager}
+							jobs={props.manager
+								.activeBatches()
+								.filter(
+									(job) =>
+										job.id !== props.manager.activeJobId() ||
+										!["thumbnails", "vectors", "tagging"].includes(
+											activeCategory(),
+										),
+								)}
+						/>
 						<Show when={activeCategory() === "authors"}>
 							<Show
 								when={props.authorActions}
