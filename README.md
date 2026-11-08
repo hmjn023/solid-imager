@@ -192,27 +192,6 @@ fi
 `APP_ARTIFACT_DIR` には `node_modules/` と `apps/server/.output/` を含む、ビルドホストのプロジェクトディレクトリを指定してください。
 `APP_RUNTIME_IMAGE` を指定した場合は、Python 3 がインストール済みの互換イメージを使用してください。この場合、`app` はローカルビルドせず、指定イメージをそのまま使用します。
 
-#### Intel N100 の GPU 推論
-
-N100 では、OpenVINO 対応の ONNX Runtime と Intel GPU ドライバーを同じ Arch Linux イメージに入れます。`compose.production.intel-gpu.yml` はホストの `/dev/dri/renderD128` をアプリに渡し、モデルと変換済みのキャッシュを `.cache/n100-models` に保存します。rootless Podman では実行ユーザーに render デバイスへのアクセス権が必要です。
-
-リポジトリ直下の `.cache/n100-runtime-build/` に、N100 で検証した x86_64 の Arch パッケージを3つ置きます。
-
-- `onnxruntime-openvino-1.29.0-4-x86_64.pkg.tar.zst`
-- `openvino-2026.4.1-1-x86_64.pkg.tar.zst`
-- `openvino-intel-gpu-plugin-2026.4.1-1-x86_64.pkg.tar.zst`
-
-既存のメディアマウントを含む本番構成に GPU 設定を重ねます。次は NAS の `podman-compose` での起動例です。
-
-```bash
-mkdir -p .cache/n100-models
-files=(-f compose.yml -f compose.production.yml -f compose.production.override.yml -f compose.production.intel-gpu.yml)
-podman-compose "${files[@]}" build app
-podman-compose "${files[@]}" up -d --no-deps --no-build app
-```
-
-アプリの AI 設定でローカル推論を選び、プロバイダーを「Intel GPU」に設定します。推論はジョブ画面の完了状態や、実画像を渡した `/api/rest/ai/ccipFeature` の768次元の応答で確認できます。
-
 ## 主要スクリプト
 
 | コマンド                                            | 用途                      |
