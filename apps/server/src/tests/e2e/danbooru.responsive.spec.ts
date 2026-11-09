@@ -121,34 +121,43 @@ test("Danbooru sidebar, completion, pagination, viewer, imports and reload", asy
 		.getByRole("link", { name: "Danbooru #201 を開く", exact: true })
 		.click();
 	await expect(page).toHaveURL(/\/danbooru\/201$/);
-	const dialog = page.getByRole("dialog", {
+	const detail = page.getByRole("region", {
 		name: "Danbooru #201",
 		exact: true,
 	});
-	await expect(dialog).toBeVisible();
+	await expect(detail).toBeVisible();
+	await expect(input).toHaveCount(0);
 	await expect(
-		dialog.getByRole("img", { name: "Danbooru #201", exact: true }),
+		detail.getByRole("img", { name: "Danbooru #201", exact: true }),
 	).toBeVisible();
 	await expect(
-		dialog.getByRole("button", { name: "test_artist", exact: true }),
+		detail.getByRole("button", { name: "test_artist", exact: true }),
 	).toBeVisible();
 	await expectNoOverflow(page);
 	await page.screenshot({
 		path: testInfo.outputPath("danbooru-viewer.png"),
 		animations: "disabled",
 	});
+	await detail
+		.getByRole("button", { name: "Open Danbooru #201 image viewer" })
+		.click();
+	await expect(page.getByRole("dialog")).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect(page).toHaveURL(/\/danbooru\/201$/);
 	const added = page.waitForResponse(
 		(response) =>
 			new URL(response.url()).pathname === "/api/rpc/imports/bulkAdd" &&
 			response.ok(),
 	);
-	await dialog
+	await detail
 		.getByRole("button", { name: "画像を取り込み待ちへ", exact: true })
 		.click();
 	await added;
 	await expect(
-		dialog.getByRole("button", { name: "取り込み待ちに追加済み", exact: true }),
+		detail.getByRole("button", { name: "取り込み待ちに追加済み", exact: true }),
 	).toBeDisabled();
+	await page.getByRole("button", { name: "Close notification" }).click();
 	const pending = await page.request.post("/api/rpc/imports/listPending", {
 		data: { json: {} },
 	});
@@ -165,27 +174,65 @@ test("Danbooru sidebar, completion, pagination, viewer, imports and reload", asy
 		});
 		expect(cancelled.ok()).toBe(true);
 	}
-	await dialog.getByRole("button", { name: "次の投稿", exact: true }).click();
+	await detail.getByRole("button", { name: "次の投稿", exact: true }).click();
 	await expect(
-		page.getByRole("dialog", { name: "Danbooru #202", exact: true }),
+		page.getByRole("region", { name: "Danbooru #202", exact: true }),
 	).toBeVisible();
 	await page.goBack();
-	await expect(page.getByRole("dialog")).toHaveCount(0);
+	await expect(
+		page.getByRole("region", { name: "Danbooru #202", exact: true }),
+	).toHaveCount(0);
 	await expect(
 		page.getByRole("link", { name: "Danbooru #201 を開く", exact: true }),
 	).toBeVisible();
+	await expect(
+		page.getByRole("link", { name: "Danbooru #201 を開く", exact: true }),
+	).toBeFocused();
 	await page.goto(appPath("/danbooru/333"));
 	await expect(
-		page.getByRole("dialog", { name: "Danbooru #333", exact: true }),
+		page.getByRole("region", { name: "Danbooru #333", exact: true }),
 	).toBeVisible();
 	await page.reload();
 	await expect(
 		page
-			.getByRole("dialog", { name: "Danbooru #333", exact: true })
+			.getByRole("region", { name: "Danbooru #333", exact: true })
 			.getByRole("img", { name: "Danbooru #333", exact: true }),
 	).toBeVisible();
 	await page.keyboard.press("Escape");
 	await expect(page).toHaveURL(/\/danbooru$/);
+});
+
+test("the collection restores the focused tile and scroll position after detail navigation", async ({
+	page,
+}, info) => {
+	await mockDanbooru(page);
+	await page.goto(info.project.name === "tauri" ? "/#/danbooru" : "/danbooru");
+	const grid = page.getByRole("region", {
+		name: "メディアグリッド",
+		exact: true,
+	});
+	const first = grid.getByRole("link", { name: "Danbooru #101 を開く" });
+	const last = grid.getByRole("link", { name: "Danbooru #140 を開く" });
+	await first.focus();
+	await first.press("ArrowRight");
+	await expect(
+		grid.getByRole("link", { name: "Danbooru #102 を開く" }),
+	).toBeFocused();
+	await page.keyboard.press("End");
+	await expect(last).toBeFocused();
+	const scroller = page.locator('[data-media-scroll="Danbooru"]');
+	const scrollTop = await scroller.evaluate((el) => el.scrollTop);
+	await last.press("Enter");
+	const detail = page.getByRole("region", {
+		name: "Danbooru #140",
+		exact: true,
+	});
+	await expect(detail).toBeVisible();
+	await detail.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+	await expect(last).toBeFocused();
+	await expect
+		.poll(() => scroller.evaluate((el) => el.scrollTop))
+		.toBe(scrollTop);
 });
 
 test("Danbooru recovers failed requests without losing search input", async ({
@@ -225,4 +272,33 @@ test("Danbooru recovers failed requests without losing search input", async ({
 	).toBeVisible();
 	await expect(input).toHaveValue("rating:g");
 	await expectNoOverflow(page);
+});
+
+test("the shared search field completes a tag at the caret and submits the full expression", async ({
+	page,
+}, info) => {
+	const searches = await mockDanbooru(page);
+	await page.goto(info.project.name === "tauri" ? "/#/danbooru" : "/danbooru");
+	await expect(
+		page.getByRole("link", { name: "Danbooru #101 を開く" }),
+	).toBeVisible();
+	const input = page.getByRole("combobox", { name: "Danbooru を検索" });
+	await page.keyboard.press("/");
+	await expect(input).toBeFocused();
+
+	await input.fill("-lan ~cat");
+	await input.press("Home");
+	for (let i = 0; i < 4; i++) await input.press("ArrowRight");
+	await expect(page.getByRole("option", { name: /landscape/ })).toBeVisible();
+	await expect(input).toBeFocused();
+	await input.press("ArrowDown");
+	await input.press("Enter");
+	await expect(input).toHaveValue("-landscape ~cat");
+	await expect(input).toBeFocused();
+	expect(
+		await input.evaluate((el: HTMLInputElement) => el.selectionStart),
+	).toBe("-landscape ".length);
+
+	await input.press("Enter");
+	await expect.poll(() => searches.at(-1)?.tags).toBe("-landscape ~cat");
 });

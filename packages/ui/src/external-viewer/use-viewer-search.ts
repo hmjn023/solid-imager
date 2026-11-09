@@ -8,11 +8,13 @@ import { createQuery } from "@tanstack/solid-query";
 import {
 	batch,
 	createEffect,
+	createMemo,
 	createSignal,
 	onCleanup,
 	onMount,
 } from "solid-js";
 import { z } from "zod";
+import { toQueryUiState } from "../query-state";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
 
 const session = externalSearchSchema.extend({
@@ -31,8 +33,8 @@ export function createViewerSearch<T>(
 	const [draft, setDraft] = createSignal("");
 	const [choices, setChoices] = createSignal<Record<string, string>>({});
 	const [ready, setReady] = createSignal(false);
-	let area: HTMLDivElement | undefined;
-	let restore = 0;
+	const [scrollArea, setScrollArea] = createSignal<HTMLDivElement>();
+	let scrollTop = 0;
 	const persist = () => {
 		if (!ready()) return;
 		try {
@@ -43,7 +45,7 @@ export function createViewerSearch<T>(
 					provider,
 					draft: draft(),
 					choices: choices(),
-					scrollTop: restore || area?.scrollTop || 0,
+					scrollTop,
 				}),
 			);
 		} catch {
@@ -64,7 +66,7 @@ export function createViewerSearch<T>(
 				);
 				setDraft(saved.draft);
 				setChoices(saved.choices);
-				restore = same ? saved.scrollTop : 0;
+				scrollTop = same ? saved.scrollTop : 0;
 			}
 		} catch {
 			/* A malformed session must not prevent browsing. */
@@ -87,20 +89,40 @@ export function createViewerSearch<T>(
 		staleTime: 30_000,
 		retry: false,
 	}));
+	// An unresolved query's data accessor suspends its parent. Keep the search field
+	// mounted while this page of results is loading.
+	const state = createMemo(() =>
+		toQueryUiState({
+			data: results.isPending ? undefined : results.data,
+			error: results.error,
+			status: results.status,
+			fetchStatus: results.fetchStatus,
+		}),
+	);
 	createEffect(() => {
-		if (results.data && restore > 0) {
-			const top = restore;
-			restore = 0;
-			requestAnimationFrame(() => {
-				if (area) area.scrollTop = top;
-			});
-		}
+		const area = scrollArea();
+		if (!area || !scrollTop || !state().data) return;
+		const frame = requestAnimationFrame(() => {
+			area.scrollTop = scrollTop;
+		});
+		onCleanup(() => cancelAnimationFrame(frame));
 	});
-	function changePage(page: number) {
-		setParams((value) => ({ ...value, page }));
+	function rememberScroll() {
+		const area = scrollArea();
+		if (area) scrollTop = area.scrollTop;
+		persist();
+	}
+	function resetScroll() {
+		scrollTop = 0;
+		const area = scrollArea();
 		if (area) area.scrollTop = 0;
 	}
+	function changePage(page: number) {
+		resetScroll();
+		setParams((value) => ({ ...value, page }));
+	}
 	function submit(value = draft()) {
+		resetScroll();
 		batch(() => {
 			setDraft(value);
 			const active = new Set(
@@ -116,7 +138,6 @@ export function createViewerSearch<T>(
 			);
 			setParams((current) => ({ ...current, tags: value.trim(), page: 1 }));
 		});
-		if (area) area.scrollTop = 0;
 	}
 	function choose(tag: string, name: string) {
 		batch(() => {
@@ -129,10 +150,10 @@ export function createViewerSearch<T>(
 		draft,
 		setDraft,
 		results,
-		persist,
-		scrollRef: (el: HTMLDivElement) => {
-			area = el;
-		},
+		state,
+		rememberScroll,
+		scrollArea,
+		setScrollArea,
 		changePage,
 		submit,
 		choose,

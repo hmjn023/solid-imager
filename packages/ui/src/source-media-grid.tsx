@@ -38,6 +38,7 @@ import {
 } from "./context-menu";
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
+import { HIGH_PRIORITY_THUMBNAILS, MediaTileGrid } from "./media-tile-grid";
 import { createMediaPreviewSelectHandler } from "./media-preview-selection";
 import type { QueryUiState } from "./query-state";
 import {
@@ -64,7 +65,6 @@ const ELEMENT_RETAIN_ROWS = 4;
 // the number of mounted grid items.
 const LOAD_MORE_ROWS_AHEAD = 12;
 const INITIAL_PRIORITY_ROWS = 2;
-const INITIAL_HIGH_PRIORITY_MEDIA = 2;
 const INITIAL_SKELETON_ROWS = 3;
 const LIST_LOAD_MORE_THRESHOLD_PX = 480;
 const FOCUS_RESTORE_FRAME_LIMIT = 6;
@@ -328,7 +328,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			return {
 				enabled: true,
 				fetchpriority:
-					mediaIndex < INITIAL_HIGH_PRIORITY_MEDIA ? "high" : undefined,
+					mediaIndex < HIGH_PRIORITY_THUMBNAILS ? "high" : undefined,
 				loading: "eager",
 			};
 		}
@@ -353,7 +353,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			// when the user scrolls again.
 			enabled: true,
 			fetchpriority:
-				isVisible && mediaIndex < INITIAL_HIGH_PRIORITY_MEDIA
+				isVisible && mediaIndex < HIGH_PRIORITY_THUMBNAILS
 					? "high"
 					: isPrefetch
 						? "low"
@@ -729,57 +729,50 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						}
 						when={!virtualizationPending()}
 					>
-						<div class={mediaGridClassName} data-media-grid>
-							<For each={props.mediaResults()}>
-								{(media, index) =>
-									props.renderItem(media, {
-										imageLoadPolicy:
-											props.scrollMode === "element"
-												? {
-														enabled: true,
-														fetchpriority:
-															index() < INITIAL_HIGH_PRIORITY_MEDIA
-																? "high"
-																: undefined,
-														loading:
-															index() < initialPriorityMediaCount()
-																? "eager"
-																: "lazy",
-													}
-												: undefined,
-										onContextMenu: onContextMenuHandler(media),
-										onOpenMediaDetail: props.onOpenMediaDetail
-											? () => props.onOpenMediaDetail?.(media)
+						<MediaTileGrid
+							items={props.mediaResults()}
+							eagerCount={
+								props.scrollMode === "element"
+									? initialPriorityMediaCount()
+									: undefined
+							}
+							onNavigate={props.onPreviewSelect}
+						>
+							{(media, imageLoadPolicy, index) =>
+								props.renderItem(media, {
+									imageLoadPolicy,
+									onContextMenu: onContextMenuHandler(media),
+									onOpenMediaDetail: props.onOpenMediaDetail
+										? () => props.onOpenMediaDetail?.(media)
+										: undefined,
+									onPrepareMediaDetail: () =>
+										props.onPrepareMediaDetail?.(media),
+									priority:
+										props.scrollMode === "element"
+											? index() < initialPriorityMediaCount()
 											: undefined,
-										onPrepareMediaDetail: () =>
-											props.onPrepareMediaDetail?.(media),
-										priority:
-											props.scrollMode === "element"
-												? index() < initialPriorityMediaCount()
-												: undefined,
-										get isBulkSelectMode() {
-											return props.isBulkSelectMode?.();
-										},
-										get isSelected() {
-											return props.isSelected?.(media.id);
-										},
-										onToggleSelect: props.onToggleSelect
-											? () => props.onToggleSelect?.(media.id)
-											: undefined,
-										onPreviewSelect: createMediaPreviewSelectHandler(
-											media,
-											props.onPreviewSelect,
-										),
-										onSelectGesture: props.onSelectMedia
-											? (event) => selectFromGesture(media, event)
-											: undefined,
-										get isPreviewSelected() {
-											return props.previewSelectedMediaId?.() === media.id;
-										},
-									})
-								}
-							</For>
-						</div>
+									get isBulkSelectMode() {
+										return props.isBulkSelectMode?.();
+									},
+									get isSelected() {
+										return props.isSelected?.(media.id);
+									},
+									onToggleSelect: props.onToggleSelect
+										? () => props.onToggleSelect?.(media.id)
+										: undefined,
+									onPreviewSelect: createMediaPreviewSelectHandler(
+										media,
+										props.onPreviewSelect,
+									),
+									onSelectGesture: props.onSelectMedia
+										? (event) => selectFromGesture(media, event)
+										: undefined,
+									get isPreviewSelected() {
+										return props.previewSelectedMediaId?.() === media.id;
+									},
+								})
+							}
+						</MediaTileGrid>
 					</Show>
 				}
 				when={shouldVirtualize()}

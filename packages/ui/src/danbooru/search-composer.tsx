@@ -1,73 +1,14 @@
 import type { ViewerTag } from "@solid-imager/core/external-viewer";
 import { createQuery } from "@tanstack/solid-query";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	Show,
-	type JSX,
-} from "solid-js";
-import { Button } from "../button";
-import {
-	Combobox,
-	ComboboxContent,
-	ComboboxControl,
-	ComboboxInput,
-	ComboboxItem,
-	ComboboxItemLabel,
-	useComboboxContext,
-} from "../combobox";
+import { createEffect, createMemo, createSignal } from "solid-js";
+import { createAppShortcut } from "../shortcuts/create-app-shortcut";
 import { createDebouncedSignal } from "../utils/debounce";
+import { SearchComposerField } from "../workspace/search-composer-field";
 import {
 	completeDanbooruTag,
 	danbooruTagCategoryLabels,
 	getDanbooruCompletion,
 } from "./completion";
-
-function SearchInput(props: {
-	label: string;
-	draft: string;
-	inputRef: (element: HTMLInputElement) => void;
-	onInput: (value: string, caret: number) => void;
-	onCaretChange: (caret: number) => void;
-	onEnter: () => boolean;
-}) {
-	const context = useComboboxContext();
-	createEffect(() => context.setInputValue(props.draft));
-	return (
-		<ComboboxInput
-			aria-label={props.label}
-			aria-describedby="danbooru-search-hint"
-			class="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-3 text-sm shadow-none focus-visible:ring-0"
-			placeholder="タグを入力（例: landscape -monochrome）"
-			ref={props.inputRef}
-			onInput={
-				((event) =>
-					props.onInput(
-						event.currentTarget.value,
-						event.currentTarget.selectionStart ??
-							event.currentTarget.value.length,
-					)) satisfies JSX.EventHandler<HTMLInputElement, InputEvent>
-			}
-			onClick={
-				((event) =>
-					props.onCaretChange(
-						event.currentTarget.selectionStart ?? props.draft.length,
-					)) satisfies JSX.EventHandler<HTMLInputElement, MouseEvent>
-			}
-			onKeyUp={
-				((event) =>
-					props.onCaretChange(
-						event.currentTarget.selectionStart ?? props.draft.length,
-					)) satisfies JSX.EventHandler<HTMLInputElement, KeyboardEvent>
-			}
-			onKeyDown={(event) => {
-				if (!event.isComposing && event.key === "Enter" && props.onEnter())
-					event.preventDefault();
-			}}
-		/>
-	);
-}
 
 export function DanbooruSearchComposer(props: {
 	provider?: "Danbooru" | "pixiv";
@@ -77,10 +18,8 @@ export function DanbooruSearchComposer(props: {
 	suggestTags: (query: string) => Promise<ViewerTag[]>;
 }) {
 	let input: HTMLInputElement | undefined;
-	let committing = false;
+	createAppShortcut("focusSearch", () => input?.focus());
 	const [caret, setCaret] = createSignal(props.draft.length);
-	const [open, setOpen] = createSignal(false);
-	const [selected, setSelected] = createSignal<ViewerTag | null>(null);
 	const [query, setQuery] = createDebouncedSignal("", 250);
 	const token = createMemo(() => getDanbooruCompletion(props.draft, caret()));
 	createEffect(() => setQuery(token().query));
@@ -91,114 +30,49 @@ export function DanbooruSearchComposer(props: {
 		staleTime: 300_000,
 		retry: false,
 	}));
-	const options = () =>
-		query() === token().query ? (suggestions.data ?? []) : [];
-	const submit = () => {
-		setOpen(false);
-		props.onSubmit();
-	};
+	const options = createMemo(() => {
+		// Reading pending query data suspends the route and detaches the focused input.
+		if (!suggestions.isSuccess || query() !== token().query) return [];
+		return (suggestions.data ?? []).map((tag) => ({
+			label: tag.name,
+			value: tag.name,
+			description: [
+				danbooruTagCategoryLabels[tag.category ?? -1] ?? "タグ",
+				tag.postCount?.toLocaleString(),
+			]
+				.filter(Boolean)
+				.join(" · "),
+		}));
+	});
 	return (
-		<form
-			class="min-w-0 flex-1 space-y-1"
-			autocomplete="off"
-			onSubmit={(event) => {
-				event.preventDefault();
-				submit();
+		<SearchComposerField
+			id="external-search-composer"
+			label={(props.provider ?? "Danbooru") + " を検索"}
+			draft={props.draft}
+			inputRef={(element) => {
+				input = element;
 			}}
-		>
-			<div class="flex items-start gap-2">
-				<Combobox<ViewerTag>
-					class="min-w-0 flex-1"
-					options={options()}
-					optionValue="name"
-					optionTextValue="name"
-					optionLabel="name"
-					defaultFilter={() => true}
-					triggerMode="input"
-					value={selected()}
-					open={open() && options().length > 0}
-					onOpenChange={setOpen}
-					allowDuplicateSelectionEvents
-					closeOnSelection
-					noResetInputOnBlur
-					removeOnBackspace={false}
-					onInputChange={(value) => {
-						if (!committing) {
-							props.onDraftChange(value);
-							setOpen(true);
-						}
-					}}
-					onChange={(tag) => {
-						if (!tag) return;
-						committing = true;
-						const completion = token();
-						const value = completeDanbooruTag(props.draft, caret(), tag.name);
-						const position =
-							completion.start + completion.prefix.length + tag.name.length + 1;
-						setSelected(tag);
-						setOpen(false);
-						props.onDraftChange(value);
-						setCaret(position);
-						requestAnimationFrame(() => {
-							setSelected(null);
-							props.onDraftChange(value);
-							input?.focus();
-							input?.setSelectionRange(position, position);
-							committing = false;
-						});
-					}}
-					itemComponent={(item) => (
-						<ComboboxItem item={item.item} class="gap-3">
-							<ComboboxItemLabel class="min-w-0 truncate">
-								{item.item.rawValue.name}
-							</ComboboxItemLabel>
-							<span class="shrink-0 text-muted-foreground text-xs">
-								{danbooruTagCategoryLabels[item.item.rawValue.category ?? -1] ??
-									"タグ"}{" "}
-								{item.item.rawValue.postCount !== null
-									? "· " + item.item.rawValue.postCount.toLocaleString()
-									: ""}
-							</span>
-						</ComboboxItem>
-					)}
-				>
-					<ComboboxControl<ViewerTag> class="flex min-w-0 rounded-md border border-input bg-card focus-within:ring-2 focus-within:ring-ring">
-						<SearchInput
-							label={(props.provider ?? "Danbooru") + " を検索"}
-							draft={props.draft}
-							inputRef={(element) => {
-								input = element;
-							}}
-							onInput={(value, position) => {
-								if (!committing) {
-									props.onDraftChange(value);
-									setCaret(position);
-									setOpen(true);
-								}
-							}}
-							onCaretChange={setCaret}
-							onEnter={() => {
-								if (open() && options().length > 0) return false;
-								submit();
-								return true;
-							}}
-						/>
-					</ComboboxControl>
-					<ComboboxContent class="workspace-theme w-popover-large max-w-viewport-gutter" />
-				</Combobox>
-				<Button type="submit">検索</Button>
-			</div>
-			<p class="text-muted-foreground text-xs" id="danbooru-search-hint">
-				スペースで AND、-タグで除外、~タグで OR。
-				{props.provider === "pixiv"
+			onDraftChange={props.onDraftChange}
+			onCaretChange={setCaret}
+			onSelect={(option) => ({
+				draft: completeDanbooruTag(props.draft, caret(), option.value),
+				caret: token().start + token().prefix.length + option.value.length + 1,
+			})}
+			onSubmit={props.onSubmit}
+			options={options()}
+			placeholder="タグを入力（例: landscape -monochrome）"
+			submitLabel="検索"
+			hint={
+				"スペースで AND、-タグで除外、~タグで OR。" +
+				(props.provider === "pixiv"
 					? "Danbooru タグを pixiv のタグに変換します。"
-					: "rating:g や order:score も使えます。"}
-			</p>
-			<Show when={open() && suggestions.isError && query() === token().query}>
-				<output class="text-muted-foreground text-xs">
-					タグ候補を取得できませんでした。タグを直接入力して検索できます。
-				</output>
-			</Show>
-		</form>
+					: "rating:g や order:score も使えます。")
+			}
+			status={
+				suggestions.isError && query() === token().query
+					? "タグ候補を取得できませんでした。タグを直接入力して検索できます。"
+					: undefined
+			}
+		/>
 	);
 }

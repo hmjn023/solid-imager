@@ -1,8 +1,10 @@
+import { Show } from "solid-js";
 import { Skeleton } from "./skeleton";
 import { cn } from "./utils/cn";
 
 export type MediaDetailSkeletonProps = {
 	class?: string;
+	includeHeader?: boolean;
 };
 
 export function MediaDetailSkeleton(props: MediaDetailSkeletonProps) {
@@ -12,14 +14,16 @@ export function MediaDetailSkeleton(props: MediaDetailSkeletonProps) {
 			class={cn("flex h-full min-h-0 flex-col", props.class)}
 			data-skeleton="media-detail"
 		>
-			<div class="flex min-h-14 shrink-0 items-center gap-3 border-b px-4">
-				<Skeleton class="size-9" />
-				<div class="min-w-0 flex-1 space-y-2">
-					<Skeleton class="h-4 w-56 max-w-full" />
-					<Skeleton class="h-3 w-32 max-w-full" />
+			<Show when={props.includeHeader !== false}>
+				<div class="flex min-h-14 shrink-0 items-center gap-3 border-b px-4">
+					<Skeleton class="size-9" />
+					<div class="min-w-0 flex-1 space-y-2">
+						<Skeleton class="h-4 w-56 max-w-full" />
+						<Skeleton class="h-3 w-32 max-w-full" />
+					</div>
+					<Skeleton class="h-9 w-28" />
 				</div>
-				<Skeleton class="h-9 w-28" />
-			</div>
+			</Show>
 			<div class="min-h-0 flex-1 lg:grid lg:grid-cols-detail-sidebar">
 				<div class="flex min-h-media-detail items-center justify-center p-4 lg:min-h-0">
 					<Skeleton class="h-full max-h-full w-full rounded-none" />

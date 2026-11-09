@@ -7,7 +7,10 @@ Web と Tauri は同じ画面とサーバー側の API を使う。
   `rating:g`、`order:score` などのメタタグもそのまま渡す。
 - 入力中のタグを API で補完する。候補にはタグ種別と投稿数を表示する。
   別名からの候補取得にも対応し、選択時には正規名を入力する。
-- 投稿を開くと既存の MediaViewer で画像・動画を閲覧できる。
+- 一覧ではライブラリと共通の検索バーとメディアグリッドを使う。検索欄には
+  `/` で移動できる。サムネイルにフォーカスして矢印キーで移動し、Enter で詳細を開く。
+- 詳細はライブラリと同じプレビューと情報パネルを使う。前後の投稿への移動や
+  画像の拡大に対応し、「一覧に戻る」で検索結果のスクロール位置とフォーカスが戻る。
   `/danbooru/<投稿ID>` の直接アクセス・再読み込みにも対応する。
 - 画像の「取り込み待ちへ」は既存の Import inbox に追加する。
   保存先の選択と実際の取り込みは Import inbox で行う。
@@ -64,8 +67,8 @@ API 通信は `danbooru.donmai.us` 固定で、リクエスト開始間隔を 25
 `bun run check` と `bun run test` に加え、隔離環境で次を実行する。
 
 ```sh
-bun run --cwd apps/server test:e2e:dev -- danbooru.responsive.spec.ts
-bun run --cwd apps/server test:e2e:production -- danbooru.responsive.spec.ts
+bun run --cwd apps/server test:e2e:dev -- danbooru.responsive.spec.ts pixiv.responsive.spec.ts
+bun run --cwd apps/server test:e2e:production -- danbooru.responsive.spec.ts pixiv.responsive.spec.ts
 ```
 
 E2E は外部の検索・画像配信を固定データに差し替え、取り込み待ち登録は実 API と

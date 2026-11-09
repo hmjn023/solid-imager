@@ -1,11 +1,12 @@
 /** Locate the tag at the caret; preserve exclusion/OR operators and other tokens. */
 export function getDanbooruCompletion(draft: string, caret = draft.length) {
-	const start = draft.lastIndexOf(" ", Math.max(0, caret - 1)) + 1;
-	const nextSpace = draft.indexOf(" ", caret);
-	const end = nextSpace < 0 ? draft.length : nextSpace;
-	const token = draft.slice(start, end);
-	const prefix = /^[~-]/.test(token) ? token[0] : "";
-	const query = draft.slice(start + prefix.length, caret);
+	const beforeCaret = draft.slice(0, caret);
+	const active = beforeCaret.match(/\S*$/)?.[0] ?? "";
+	const start = beforeCaret.length - active.length;
+	const afterCaret = draft.slice(caret).match(/^\S*/)?.[0] ?? "";
+	const end = beforeCaret.length + afterCaret.length;
+	const prefix = /^[~-]/.test(active) ? active[0] : "";
+	const query = active.slice(prefix.length);
 	return { start, end, prefix, query: query.includes(":") ? "" : query };
 }
 

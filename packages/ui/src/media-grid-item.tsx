@@ -1,6 +1,6 @@
 import type { Media } from "@solid-imager/core/media";
 import type { JSX } from "solid-js";
-import { Show } from "solid-js";
+import { mergeProps, Show } from "solid-js";
 import { cn } from "./utils/cn";
 
 export const MEDIA_GRID_IMAGE_SIZES =
@@ -17,18 +17,19 @@ export type MediaGridMedia = Pick<
 	"id" | "mediaSourceId" | "fileName" | "mediaType" | "width" | "height"
 >;
 
-export type MediaGridThumbnailProps<TMedia extends MediaGridMedia = Media> = {
+type TileThumbnailProps = {
 	alt: string;
 	class: string;
 	enabled?: boolean;
 	fetchpriority?: "high" | "low" | "auto";
 	height?: number | null;
 	loading: "eager" | "lazy";
-	media: TMedia;
 	sizes?: string;
-	sourceRootPath?: string;
 	width?: number | null;
 };
+
+export type MediaGridThumbnailProps<TMedia extends MediaGridMedia = Media> =
+	TileThumbnailProps & { media: TMedia; sourceRootPath?: string };
 
 export type MediaGridLinkProps = {
 	children: JSX.Element;
@@ -48,22 +49,25 @@ export type MediaGridLinkProps = {
 	onContextMenu: (event: MouseEvent) => void;
 };
 
-type MediaGridItemProps<TMedia extends MediaGridMedia> = {
-	media: TMedia;
+type MediaTileStyleProps = {
 	imageLoadPolicy?: MediaGridImageLoadPolicy;
-	linkPrefix?: string;
 	priority?: boolean;
-	sourceRootPath?: string;
 	onContextMenu?: (event: MouseEvent) => void;
-	canRenderThumbnail?: (media: TMedia) => boolean;
 	linkComponent: (props: MediaGridLinkProps) => JSX.Element;
-	renderThumbnail: (props: MediaGridThumbnailProps<TMedia>) => JSX.Element;
 	class?: string;
 	thumbnailClass?: string;
 	overlayClass?: string;
 	isBulkSelectMode?: boolean;
 	isPreviewSelected?: boolean;
 	isSelected?: boolean;
+};
+
+type MediaGridItemProps<TMedia extends MediaGridMedia> = MediaTileStyleProps & {
+	media: TMedia;
+	linkPrefix?: string;
+	sourceRootPath?: string;
+	canRenderThumbnail?: (media: TMedia) => boolean;
+	renderThumbnail: (props: MediaGridThumbnailProps<TMedia>) => JSX.Element;
 };
 
 export function MediaGridItem<TMedia extends MediaGridMedia>(
@@ -77,6 +81,46 @@ export function MediaGridItem<TMedia extends MediaGridMedia>(
 		props.canRenderThumbnail?.(props.media) ??
 		props.media.mediaType !== "audio";
 
+	return (
+		<MediaGridTile
+			{...props}
+			id={props.media.id}
+			href={href()}
+			title={props.media.fileName}
+			width={props.media.width}
+			height={props.media.height}
+			hasThumbnail={canRenderThumbnail()}
+			fallbackLabel={props.media.mediaType}
+			renderThumbnail={(thumbnail) =>
+				props.renderThumbnail(
+					mergeProps(thumbnail, {
+						get media() {
+							return props.media;
+						},
+						get sourceRootPath() {
+							return props.sourceRootPath;
+						},
+					}),
+				)
+			}
+		/>
+	);
+}
+
+/** A collection tile can link to a library item or an external provider's detail route. */
+export function MediaGridTile(
+	props: MediaTileStyleProps & {
+		id: string;
+		href: string;
+		title: string;
+		info?: string;
+		width?: number | null;
+		height?: number | null;
+		hasThumbnail: boolean;
+		fallbackLabel: string;
+		renderThumbnail: (props: TileThumbnailProps) => JSX.Element;
+	},
+) {
 	const LinkComponent = props.linkComponent;
 
 	return (
@@ -86,8 +130,8 @@ export function MediaGridItem<TMedia extends MediaGridMedia>(
 				(props.isSelected || props.isPreviewSelected) && "ring-2 ring-ring",
 				props.class,
 			)}
-			data-media-id={props.media.id}
-			href={href()}
+			data-media-id={props.id}
+			href={props.href}
 			aria-current={props.isPreviewSelected ? "true" : undefined}
 			aria-pressed={props.isSelected}
 			onClick={undefined}
@@ -107,19 +151,19 @@ export function MediaGridItem<TMedia extends MediaGridMedia>(
 			<Show
 				fallback={
 					<div class="flex h-full w-full items-center justify-center bg-muted text-muted-foreground">
-						{props.media.mediaType}
+						{props.fallbackLabel}
 					</div>
 				}
-				when={canRenderThumbnail()}
+				when={props.hasThumbnail}
 			>
 				{props.renderThumbnail({
-					alt: props.media.fileName,
+					alt: props.title,
 					class: cn(
 						"h-full w-full object-cover",
 						"transition duration-200 group-hover:scale-105 motion-reduce:transition-none",
 						props.thumbnailClass,
 					),
-					height: props.media.height,
+					height: props.height,
 					get enabled() {
 						return props.imageLoadPolicy?.enabled;
 					},
@@ -132,10 +176,8 @@ export function MediaGridItem<TMedia extends MediaGridMedia>(
 							(props.priority ? "eager" : "lazy")
 						);
 					},
-					media: props.media,
 					sizes: MEDIA_GRID_IMAGE_SIZES,
-					sourceRootPath: props.sourceRootPath,
-					width: props.media.width,
+					width: props.width,
 				})}
 			</Show>
 
@@ -146,12 +188,12 @@ export function MediaGridItem<TMedia extends MediaGridMedia>(
 					props.overlayClass,
 				)}
 			>
-				<p
-					class="truncate font-medium text-white text-xs"
-					title={props.media.fileName}
-				>
-					{props.media.fileName}
+				<p class="truncate font-medium text-white text-xs" title={props.title}>
+					{props.title}
 				</p>
+				<Show when={props.info}>
+					<p class="truncate text-white text-xs">{props.info}</p>
+				</Show>
 			</div>
 		</LinkComponent>
 	);

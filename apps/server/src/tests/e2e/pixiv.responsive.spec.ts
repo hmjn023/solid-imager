@@ -36,10 +36,7 @@ const artwork = pixivArtworkSchema.parse({
 		height: 400,
 	})),
 });
-test("switches the same canonical tag between viewers, chooses a pixiv name and imports the selected page", async ({
-	page,
-}, info) => {
-	const path = (s: string) => (info.project.name === "tauri" ? "/#" + s : s);
+async function mockPixivImage(page: Page) {
 	await page.route("**/api/pixiv-image?*", (route) =>
 		route.fulfill({
 			contentType: "image/png",
@@ -49,6 +46,13 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 			),
 		}),
 	);
+}
+
+test("switches the same canonical tag between viewers, chooses a pixiv name and imports the selected page", async ({
+	page,
+}, info) => {
+	const path = (s: string) => (info.project.name === "tauri" ? "/#" + s : s);
+	await mockPixivImage(page);
 	const requests: z.infer<typeof viewerRequestSchema>[] = [];
 	await page.route("**/api/rpc/viewer/**", async (route) => {
 		const procedure = new URL(route.request().url()).pathname.split("/").at(-1);
@@ -99,18 +103,18 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 	await expect.poll(() => requests.at(-1)?.choices?.landscape).toBe("風景画");
 	await page.getByRole("link", { name: "海の風景 を開く" }).click();
 	await page.reload();
-	const dialog = page.getByRole("dialog", { name: "pixiv #123" });
-	await expect(dialog).toBeVisible();
-	await dialog.getByRole("button", { name: "次の画像", exact: true }).click();
-	await expect(dialog.getByRole("img", { name: "海の風景" })).toHaveAttribute(
+	const detail = page.getByRole("region", { name: "pixiv #123" });
+	await expect(detail).toBeVisible();
+	await detail.getByRole("button", { name: "次の画像", exact: true }).click();
+	await expect(detail.getByRole("img", { name: "海の風景" })).toHaveAttribute(
 		"src",
 		/123_p1/,
 	);
-	await dialog
+	await detail
 		.getByRole("button", { name: "この画像を取り込み待ちへ" })
 		.click();
 	await expect(
-		dialog.getByRole("button", { name: "取り込み待ちに追加済み" }),
+		detail.getByRole("button", { name: "取り込み待ちに追加済み" }),
 	).toBeDisabled();
 	const pending = await page.request.post("/api/rpc/imports/listPending", {
 		data: { json: {} },
@@ -221,4 +225,56 @@ test("connects a pixiv account, restores it on reload and removes private result
 	expect(
 		await page.evaluate(() => JSON.stringify(sessionStorage)),
 	).not.toContain(fixtureSession);
+});
+
+test("pixiv ugoira switches between the preview and shared video player", async ({
+	page,
+}, info) => {
+	const animation = pixivArtworkSchema.parse({
+		...artwork,
+		pages: [artwork.pages[0]],
+		pageCount: 1,
+		isAnimation: true,
+		animation: {
+			zip: "https://i.pximg.net/img-zip-ugoira/img/2026/01/01/00/00/00/123_ugoira640x400.zip",
+			metadata: { frames: [{ file: "000000.jpg", delay: 100 }] },
+		},
+	});
+	await mockPixivImage(page);
+	await page.route("**/api/rpc/viewer/search", (route) =>
+		route.fulfill({
+			json: {
+				json: {
+					provider: "pixiv",
+					posts: [artwork],
+					hasNextPage: false,
+					word: "",
+					mappings: [],
+				},
+			},
+		}),
+	);
+	await page.route("**/api/rpc/viewer/pixivArtwork", (route) =>
+		route.fulfill({ json: { json: animation } }),
+	);
+	await page.route("**/api/pixiv-animation/123", (route) =>
+		route.fulfill({
+			path: "src/tests/e2e/ui-gallery/video-player.webm",
+			contentType: "video/webm",
+		}),
+	);
+	await page.goto(
+		info.project.name === "tauri" ? "/#/pixiv/123" : "/pixiv/123",
+	);
+	const detail = page.getByRole("region", { name: "pixiv #123" });
+	await expect(detail.getByRole("img", { name: artwork.title })).toBeVisible();
+	await detail.getByRole("button", { name: "うごイラを再生" }).click();
+	const video = detail.locator("video");
+	await expect(video).toHaveAttribute("src", /^blob:/);
+	await expect
+		.poll(() => video.evaluate((el: HTMLVideoElement) => el.readyState))
+		.toBeGreaterThanOrEqual(1);
+	await detail.getByRole("button", { name: "プレビュー画像に戻る" }).click();
+	await expect(video).toHaveCount(0);
+	await expect(detail.getByRole("img", { name: artwork.title })).toBeVisible();
 });

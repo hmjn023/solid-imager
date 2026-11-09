@@ -21,7 +21,7 @@ export type MediaGridItemLinkProps = {
 	onToggleSelect?: () => void;
 };
 
-const isPlainPrimaryClick = (event: MouseEvent) =>
+export const isPlainPrimaryClick = (event: MouseEvent) =>
 	event.button === 0 &&
 	!event.metaKey &&
 	!event.ctrlKey &&

@@ -17,6 +17,16 @@ describe("Danbooru tag completion", () => {
 			"cat blue_sky dog",
 		);
 	});
+	it("accepts pasted whitespace separators while editing a term", () => {
+		const draft = "cat　-bl\tdog";
+		expect(getDanbooruCompletion(draft, 7)).toMatchObject({
+			query: "bl",
+			prefix: "-",
+		});
+		expect(completeDanbooruTag(draft, 7, "blue_sky")).toBe(
+			"cat　-blue_sky dog",
+		);
+	});
 	it("keeps an OR operator and avoids requesting metatag values", () => {
 		expect(completeDanbooruTag("~bl", 3, "blue_sky")).toBe("~blue_sky ");
 		expect(getDanbooruCompletion("cat rating:g").query).toBe("");

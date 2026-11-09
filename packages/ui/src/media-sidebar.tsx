@@ -23,6 +23,11 @@ import {
 	AlertDialogHeader,
 	AlertDialogTitle,
 } from "./alert-dialog";
+import {
+	formatBytes,
+	MediaDetailInspector,
+	MediaFileInformation,
+} from "./media-detail-layout";
 import { RelationsEditor } from "./relations-editor";
 import { Badge } from "./badge";
 import {
@@ -60,17 +65,6 @@ export type MediaSidebarProps = {
 	onCharacterRemove: (characterId: string) => void | Promise<void>;
 	onCharacterCreate: (name: string) => Promise<{ id: string }>;
 };
-
-function formatBytes(bytes: number, decimals = 2) {
-	if (bytes === 0) {
-		return "0 Bytes";
-	}
-	const k = 1024;
-	const dm = decimals < 0 ? 0 : decimals;
-	const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
-	const i = Math.floor(Math.log(bytes) / Math.log(k));
-	return `${Number.parseFloat((bytes / k ** i).toFixed(dm))} ${sizes[i]}`;
-}
 
 export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
@@ -138,7 +132,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	};
 
 	return (
-		<aside class="min-w-0 divide-y divide-border bg-background px-4 pb-6 text-foreground lg:h-full lg:overflow-y-auto lg:overscroll-contain [&>div]:py-4 scrollbar-stable">
+		<MediaDetailInspector>
 			<div class="space-y-2">
 				<div class="flex items-start justify-between gap-2">
 					<h2 class="font-semibold text-sm">Description</h2>
@@ -519,31 +513,22 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</div>
 			</Show>
 
-			<div class="space-y-2">
-				<h2 class="font-semibold text-sm">File information</h2>
-				<dl class="grid grid-cols-label-field gap-x-4 gap-y-2 text-sm">
-					<dt class="font-medium text-muted-foreground">Original date</dt>
-					<dd class="text-right text-foreground">
-						{new Date(props.media.createdAt).toLocaleString()}
-					</dd>
-					<dt class="font-medium text-muted-foreground">Registered</dt>
-					<dd class="text-right text-foreground">
-						{new Date(props.media.indexedAt).toLocaleString()}
-					</dd>
-					<dt class="font-medium text-muted-foreground">Resolution</dt>
-					<dd class="text-right text-foreground">
-						{props.media.width} × {props.media.height}
-					</dd>
-					<dt class="font-medium text-muted-foreground">File Size</dt>
-					<dd class="text-right text-foreground">
-						{props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A"}
-					</dd>
-					<dt class="font-medium text-muted-foreground">Path</dt>
-					<dd class="min-w-0 break-all text-right text-foreground text-xs">
-						{props.media.filePath}
-					</dd>
-				</dl>
-			</div>
+			<MediaFileInformation
+				title="File information"
+				rows={[
+					["Original date", new Date(props.media.createdAt).toLocaleString()],
+					["Registered", new Date(props.media.indexedAt).toLocaleString()],
+					["Resolution", `${props.media.width} × ${props.media.height}`],
+					[
+						"File Size",
+						props.media.fileSize ? formatBytes(props.media.fileSize) : "N/A",
+					],
+					[
+						"Path",
+						<span class="break-all text-xs">{props.media.filePath}</span>,
+					],
+				]}
+			/>
 
 			<AlertDialog
 				onOpenChange={(open) => {
@@ -590,6 +575,6 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>
-		</aside>
+		</MediaDetailInspector>
 	);
 }
