@@ -2,6 +2,7 @@ import type { ViewerTag } from "@solid-imager/core/external-viewer";
 import {
 	createEffect,
 	createMemo,
+	createSignal,
 	Match,
 	on,
 	onCleanup,
@@ -16,7 +17,7 @@ import {
 	QueryStatus,
 } from "../async-state";
 import { DanbooruSearchComposer } from "../danbooru/search-composer";
-import { PaginationControls } from "../pagination-controls";
+import { ViewerLoadBoundary } from "./load-boundary";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import type { ViewerDetailNavigation } from "./detail";
 import {
@@ -65,32 +66,55 @@ export function ViewerWorkspace<T extends ViewerResults>(
 		await results.refetch();
 	};
 	let collectionTitle: HTMLHeadingElement | undefined;
-	let returnFocusId: number | undefined;
+	const [returnFocusId, setReturnFocusId] = createSignal<number>();
 	createEffect(
 		on(
 			() => props.selectedPostId,
 			(id, previous) => {
-				if (id && !previous) returnFocusId = id;
+				if (id && !previous) setReturnFocusId(id);
+				browse.rememberDetail(id);
 			},
 		),
 	);
 	createEffect(() => {
-		const area = browse.scrollArea();
+		const id = returnFocusId();
 		if (
-			!area ||
+			!id ||
 			props.selectedPostId ||
-			!returnFocusId ||
-			state().phase === "pending"
+			state().phase === "pending" ||
+			browse.restoring()
 		)
 			return;
-		const frame = requestAnimationFrame(() => {
-			const tile = area.querySelector<HTMLElement>(
-				`a[data-media-id="${returnFocusId}"]`,
-			);
-			(tile ?? collectionTitle)?.focus({ preventScroll: true });
-			returnFocusId = undefined;
+		const grid = browse.gridHandle();
+		let cancelled = false;
+		const frame = requestAnimationFrame(async () => {
+			const focused = await grid?.focusPost(id);
+			if (cancelled) return;
+			if (!focused) collectionTitle?.focus({ preventScroll: true });
+			setReturnFocusId(undefined);
 		});
-		onCleanup(() => cancelAnimationFrame(frame));
+		onCleanup(() => {
+			cancelled = true;
+			cancelAnimationFrame(frame);
+		});
+	});
+	// Keep the next/previous action working when browsing across a loaded page boundary.
+	createEffect(() => {
+		const index = selectedIndex();
+		if (index < 0 || browse.restoring() || results.isFetching) return;
+		if (
+			index === (state().data?.posts.length ?? 0) - 1 &&
+			browse.canAutoLoadNext() &&
+			!results.isFetchNextPageError
+		) {
+			void browse.loadMore();
+		} else if (
+			index === 0 &&
+			browse.canAutoLoadPrevious() &&
+			!results.isFetchPreviousPageError
+		) {
+			void browse.loadPrevious();
+		}
 	});
 	return (
 		<div class="workspace-theme flex h-full min-h-0 min-w-0 flex-col bg-background text-foreground">
@@ -136,9 +160,13 @@ export function ViewerWorkspace<T extends ViewerResults>(
 						>
 							<QueryStatus
 								hideWhenIdle
-								fetchState={state().fetchState}
+								fetchState={
+									results.isFetchingNextPage || results.isFetchingPreviousPage
+										? "idle"
+										: state().fetchState
+								}
 								hasData={!!state().data}
-								hasError={results.isError}
+								hasError={results.isRefetchError}
 								offlineLabel="オフラインのため保存済みの検索結果を表示しています"
 								updatingLabel="検索結果を更新中..."
 							/>
@@ -165,21 +193,43 @@ export function ViewerWorkspace<T extends ViewerResults>(
 												class="mb-2 text-muted-foreground text-sm"
 												aria-live="polite"
 											>
-												{browse.params().page} ページ · {data().posts.length} 件
+												{data().posts.length.toLocaleString()} 件を表示
 											</p>
 											{props.renderSearchInfo?.(data())}
+											<Show when={browse.hasPreviousPage()}>
+												<ViewerLoadBoundary
+													direction="previous"
+													root={browse.scrollArea}
+													autoLoad={
+														!browse.restoring() &&
+														!results.isFetching &&
+														browse.canAutoLoadPrevious() &&
+														!!browse.gridHandle()
+													}
+													loading={results.isFetchingPreviousPage}
+													failed={results.isFetchPreviousPageError}
+													onLoad={browse.loadPrevious}
+												/>
+											</Show>
 											<Show
 												when={data().posts.length}
 												fallback={
-													<EmptyState
-														title={props.emptyTitle}
-														description="タグを変更して検索してください。"
-													/>
+													<Show
+														when={
+															!browse.hasNextPage() && !browse.hasPreviousPage()
+														}
+													>
+														<EmptyState
+															title={props.emptyTitle}
+															description="タグを変更して検索してください。"
+														/>
+													</Show>
 												}
 											>
 												<ViewerResultsGrid<T["posts"][number]>
 													posts={data().posts}
 													describe={props.describePost}
+													onGridReady={browse.setGridHandle}
 													postHref={props.postHref}
 													onOpenPost={(id) => {
 														browse.rememberScroll();
@@ -187,22 +237,35 @@ export function ViewerWorkspace<T extends ViewerResults>(
 													}}
 												/>
 											</Show>
+											<Show
+												when={browse.hasNextPage()}
+												fallback={
+													<Show when={data().posts.length}>
+														<p class="py-3 text-center text-sm text-muted-foreground">
+															すべての投稿を表示しました
+														</p>
+													</Show>
+												}
+											>
+												<ViewerLoadBoundary
+													direction="next"
+													root={browse.scrollArea}
+													autoLoad={
+														!browse.restoring() &&
+														!results.isFetching &&
+														browse.canAutoLoadNext() &&
+														!!browse.gridHandle()
+													}
+													loading={results.isFetchingNextPage}
+													failed={results.isFetchNextPageError}
+													onLoad={browse.loadMore}
+												/>
+											</Show>
 										</>
 									)}
 								</Match>
 							</Switch>
 						</div>
-						<PaginationControls
-							label={props.providerName + " のページ"}
-							class="shrink-0 justify-center border-t border-border p-2"
-							currentPage={browse.params().page}
-							hasNextPage={
-								state().data?.hasNextPage === true &&
-								browse.params().page < 1000
-							}
-							disabled={results.isFetching}
-							onPageChange={browse.changePage}
-						/>
 					</>
 				}
 			>

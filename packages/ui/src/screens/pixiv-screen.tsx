@@ -87,6 +87,7 @@ export function PixivScreen(props: PixivProps) {
 			return result;
 		},
 		account,
+		() => props.selectedPostId,
 	);
 	const imports = createViewerImports((item) =>
 		props.client.imports.bulkAdd({ items: [item] }),

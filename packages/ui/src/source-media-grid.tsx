@@ -7,16 +7,9 @@ import FolderInput from "lucide-solid/icons/folder-input";
 import ListChecks from "lucide-solid/icons/list-checks";
 import SquareCheck from "lucide-solid/icons/square-check";
 import X from "lucide-solid/icons/x";
-import {
-	createVirtualizer,
-	createWindowVirtualizer,
-	type Range,
-	type Virtualizer,
-} from "@tanstack/solid-virtual";
 import type { Accessor, JSX, Setter } from "solid-js";
 import {
 	createEffect,
-	createMemo,
 	createSignal,
 	For,
 	Match,
@@ -38,54 +31,18 @@ import {
 } from "./context-menu";
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
-import { HIGH_PRIORITY_THUMBNAILS, MediaTileGrid } from "./media-tile-grid";
+import { MediaTileGrid } from "./media-tile-grid";
 import { createMediaPreviewSelectHandler } from "./media-preview-selection";
 import type { QueryUiState } from "./query-state";
-import {
-	getMediaGridColumnCount,
-	LoadingRegion,
-	MediaGridSkeleton,
-	mediaGridClassName,
-} from "./skeleton";
+import { LoadingRegion, MediaGridSkeleton } from "./skeleton";
 import {
 	findCollectionItemById,
-	getCollectionNavigationIndex,
-	isCollectionNavigationKey,
 	isCollectionScrollNearEnd,
 } from "./workspace/collection-navigation";
 import { FileText, RefreshCw, ScanSearch, Trash2 } from "./workspace/icons";
 
-const VIRTUALIZATION_THRESHOLD = 100;
-const GRID_GAP_PX = 12;
-const WINDOW_VIRTUAL_ROWS_OVERSCAN = 4;
-const ELEMENT_PREFETCH_ROWS = 3;
-const ELEMENT_RETAIN_ROWS = 4;
-// Start the next page before the user reaches the last prefetched rows. The
-// request itself is independent of image loading, so this does not increase
-// the number of mounted grid items.
-const LOAD_MORE_ROWS_AHEAD = 12;
-const INITIAL_PRIORITY_ROWS = 2;
-const INITIAL_SKELETON_ROWS = 3;
-const LIST_LOAD_MORE_THRESHOLD_PX = 480;
-const FOCUS_RESTORE_FRAME_LIMIT = 6;
-
 export type SourceMediaViewMode = "grid" | "list";
-
-type ScrollDirection = "backward" | "forward" | null;
-
-function extractDirectionalRows(
-	range: Range,
-	direction: ScrollDirection,
-): number[] {
-	const rowsBefore =
-		direction === "backward" ? ELEMENT_PREFETCH_ROWS : ELEMENT_RETAIN_ROWS;
-	const rowsAfter =
-		direction === "backward" ? ELEMENT_RETAIN_ROWS : ELEMENT_PREFETCH_ROWS;
-	const start = Math.max(range.startIndex - rowsBefore, 0);
-	const end = Math.min(range.endIndex + rowsAfter, range.count - 1);
-
-	return Array.from({ length: end - start + 1 }, (_, index) => start + index);
-}
+const LIST_LOAD_MORE_THRESHOLD_PX = 480;
 
 type SourceMediaGridProps = {
 	detailBasePath?: string;
@@ -161,7 +118,6 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const showResultCount = () => props.showResultCount ?? true;
 	const showEmptyState = () => props.showEmptyState ?? true;
 	const showOpenInNewTab = () => props.showOpenInNewTab ?? true;
-	const enableVirtualization = () => props.enableVirtualization ?? false;
 	const disableContextMenu = () => props.disableContextMenu ?? false;
 	const totalCount = () => props.totalCount ?? props.mediaResults().length;
 	const selectionModeFromEvent = (
@@ -187,297 +143,19 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		props.onFindSimilar !== undefined &&
 		(media.mediaType === "image" || media.mediaType === "video");
 
-	// --- Virtual grid setup ---
-	const [windowWidth, setWindowWidth] = createSignal(0);
-	const [mediaGridWidth, setMediaGridWidth] = createSignal(0);
-	const [scrollElement, setScrollElement] = createSignal<HTMLElement | null>(
-		null,
-	);
-	const [scrollMargin, setScrollMargin] = createSignal(0);
-	const [elementLoadState, setElementLoadState] = createSignal<{
-		direction: ScrollDirection;
-		endIndex: number;
-		startIndex: number;
-	} | null>(null);
-	const [activeMediaId, setActiveMediaId] = createSignal<string | null>(null);
 	const [collectionRoot, setCollectionRoot] = createSignal<HTMLDivElement>();
 	const [internalContextMenuMedia, setInternalContextMenuMedia] =
 		createSignal<Media>();
-	let mediaGridRef: HTMLElement | undefined;
-	let mediaGridResizeObserver: ResizeObserver | undefined;
-	let metricsFrameId: number | undefined;
-	let focusFrameId: number | undefined;
+	const [scrollElement, setScrollElement] = createSignal<HTMLElement>();
 	let listLoadRequestPending = false;
 	let listLoadRequestCount = -1;
 	let listLoadWasFetching = false;
 
-	const columnCount = createMemo(() => {
-		const width = mediaGridWidth() || windowWidth();
-		return getMediaGridColumnCount(width);
-	});
-
-	const mediaItemWidth = createMemo(() => {
-		const width = mediaGridWidth();
-		const columns = columnCount();
-		if (!(width > 0 && columns > 0)) return 0;
-		return Math.max((width - GRID_GAP_PX * (columns - 1)) / columns, 0);
-	});
-
-	const mediaItemHeight = createMemo(() => {
-		const width = mediaItemWidth();
-		if (width <= 0) return 0;
-		return width / (props.itemAspectRatio ?? 3 / 4);
-	});
-
-	const rowCount = createMemo(() => {
-		const columns = columnCount();
-		return columns > 0 ? Math.ceil(props.mediaResults().length / columns) : 0;
-	});
-	const getRowMedia = (rowIndex: number) => {
-		const columns = columnCount();
-		if (columns <= 0) return [];
-		const results = props.mediaResults();
-		return results.slice(rowIndex * columns, (rowIndex + 1) * columns);
-	};
-
-	const windowRowVirtualizer = createWindowVirtualizer<HTMLDivElement>({
-		get count() {
-			return rowCount();
-		},
-		estimateSize: () => mediaItemHeight() || 320,
-		gap: GRID_GAP_PX,
-		getItemKey: (index) => index,
-		overscan: WINDOW_VIRTUAL_ROWS_OVERSCAN,
-		get scrollMargin() {
-			return scrollMargin();
-		},
-	});
-
-	let elementRowVirtualizer:
-		| Virtualizer<HTMLElement, HTMLDivElement>
-		| undefined;
-	elementRowVirtualizer = createVirtualizer<HTMLElement, HTMLDivElement>({
-		get count() {
-			return rowCount();
-		},
-		getScrollElement: () => scrollElement(),
-		estimateSize: () => mediaItemHeight() || 320,
-		gap: GRID_GAP_PX,
-		getItemKey: (index) => index,
-		overscan: 0,
-		onChange: (instance) => {
-			const range = instance.range;
-			const nextState = range
-				? {
-						direction: instance.scrollDirection,
-						endIndex: range.endIndex,
-						startIndex: range.startIndex,
-					}
-				: null;
-			setElementLoadState((previous) => {
-				if (
-					previous?.direction === nextState?.direction &&
-					previous?.endIndex === nextState?.endIndex &&
-					previous?.startIndex === nextState?.startIndex
-				) {
-					return previous;
-				}
-				return nextState;
-			});
-		},
-		rangeExtractor: (range) =>
-			extractDirectionalRows(
-				range,
-				elementRowVirtualizer?.scrollDirection ?? null,
-			),
-		get scrollMargin() {
-			return scrollMargin();
-		},
-	});
-	const mediaRowVirtualizer = () =>
-		props.scrollMode === "element"
-			? (elementRowVirtualizer ?? windowRowVirtualizer)
-			: windowRowVirtualizer;
-	const measuredVirtualRows = () => mediaRowVirtualizer().getVirtualItems();
-
-	const shouldVirtualize = createMemo(
-		() =>
-			enableVirtualization() &&
-			props.mediaResults().length > VIRTUALIZATION_THRESHOLD &&
-			mediaItemWidth() > 0 &&
-			measuredVirtualRows().length > 0,
-	);
-	const virtualizationPending = createMemo(
-		() =>
-			enableVirtualization() &&
-			props.mediaResults().length > VIRTUALIZATION_THRESHOLD &&
-			mediaGridWidth() <= 0,
-	);
-	const initialPriorityMediaCount = createMemo(() =>
-		Math.max(columnCount() * INITIAL_PRIORITY_ROWS, 1),
-	);
-	const resolveElementImageLoadPolicy = (
-		rowIndex: number,
-		mediaIndex: number,
-	): MediaGridImageLoadPolicy => {
-		const state = elementLoadState();
-		if (!state) {
-			// A virtualizer can briefly have no measured range while its scroll
-			// container is being restored. Keep mounted rows loadable so a
-			// transient range reset does not blank the entire viewport.
-			return {
-				enabled: true,
-				fetchpriority:
-					mediaIndex < HIGH_PRIORITY_THUMBNAILS ? "high" : undefined,
-				loading: "eager",
-			};
-		}
-
-		const isVisible =
-			rowIndex >= state.startIndex && rowIndex <= state.endIndex;
-		const isForwardPrefetch =
-			state.direction !== "backward" &&
-			rowIndex > state.endIndex &&
-			rowIndex <= state.endIndex + ELEMENT_PREFETCH_ROWS;
-		const isBackwardPrefetch =
-			state.direction === "backward" &&
-			rowIndex < state.startIndex &&
-			rowIndex >= state.startIndex - ELEMENT_PREFETCH_ROWS;
-		const isPrefetch = isForwardPrefetch || isBackwardPrefetch;
-
-		return {
-			// The element virtualizer already bounds the DOM to the visible range
-			// plus a small directional buffer. Keep every mounted row loadable:
-			// during navigation restoration the virtualizer can report the previous
-			// range for one frame, and disabling those rows leaves the viewport blank
-			// when the user scrolls again.
-			enabled: true,
-			fetchpriority:
-				isVisible && mediaIndex < HIGH_PRIORITY_THUMBNAILS
-					? "high"
-					: isPrefetch
-						? "low"
-						: undefined,
-			loading: "eager",
-		};
-	};
-	const createElementImageLoadPolicy = (
-		rowIndex: number,
-		mediaIndex: number,
-	): MediaGridImageLoadPolicy => ({
-		get enabled() {
-			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).enabled;
-		},
-		get fetchpriority() {
-			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).fetchpriority;
-		},
-		get loading() {
-			return resolveElementImageLoadPolicy(rowIndex, mediaIndex).loading;
-		},
-	});
-
-	const resolveScrollElement = () => {
-		if (props.scrollMode !== "element") return null;
-		const element = collectionRoot()?.closest("[data-media-scroll]");
-		return element instanceof HTMLElement ? element : null;
-	};
-
-	const updateMediaGridMetrics = () => {
-		if (!mediaGridRef) return;
-		const gridRect = mediaGridRef.getBoundingClientRect();
-		setMediaGridWidth(gridRect.width);
-		const resolvedScrollElement = resolveScrollElement();
-		if (resolvedScrollElement !== scrollElement()) {
-			setScrollElement(resolvedScrollElement);
-		}
-		const scroller = resolvedScrollElement;
-		setScrollMargin(
-			props.scrollMode === "element" && scroller
-				? gridRect.top -
-						scroller.getBoundingClientRect().top +
-						scroller.scrollTop
-				: gridRect.top + window.scrollY,
-		);
-	};
-	const scheduleMediaGridMetrics = () => {
-		if (metricsFrameId !== undefined) return;
-		metricsFrameId = requestAnimationFrame(() => {
-			metricsFrameId = undefined;
-			updateMediaGridMetrics();
-		});
-	};
-
 	onMount(() => {
-		setWindowWidth(window.innerWidth);
-		setScrollElement(resolveScrollElement());
-		updateMediaGridMetrics();
-
-		const handleResize = () => {
-			setWindowWidth(window.innerWidth);
-		};
-		window.addEventListener("resize", handleResize);
-
-		const resizeObserver = new ResizeObserver(scheduleMediaGridMetrics);
-		mediaGridResizeObserver = resizeObserver;
-		if (mediaGridRef) {
-			resizeObserver.observe(mediaGridRef);
-		}
-
-		onCleanup(() => {
-			window.removeEventListener("resize", handleResize);
-			if (metricsFrameId !== undefined) {
-				cancelAnimationFrame(metricsFrameId);
-				metricsFrameId = undefined;
-			}
-			if (focusFrameId !== undefined) {
-				cancelAnimationFrame(focusFrameId);
-				focusFrameId = undefined;
-			}
-			resizeObserver.disconnect();
-			if (mediaGridResizeObserver === resizeObserver) {
-				mediaGridResizeObserver = undefined;
-			}
-		});
-	});
-
-	createEffect(() => {
-		rowCount();
-		mediaItemHeight();
-		columnCount();
-		// The element virtualizer is created before the grid's mount callback
-		// discovers its nested scroller. Re-measure when that scroller or the
-		// content offset becomes available so the initial range is populated
-		// without requiring a user scroll event.
-		scrollElement();
-		scrollMargin();
-		const virtualizer = mediaRowVirtualizer();
-		virtualizer.measure();
-		const element = scrollElement();
-		if (props.scrollMode === "element" && element) {
-			// Element scroll containers do not consistently emit a native scroll
-			// event when their content is replaced or clamped. Window scrolling in
-			// the v1 screen gets that notification from the browser automatically.
-			// Dispatching lets the virtualizer read the element's current offset
-			// without imperatively writing a possibly stale offset back to it.
-			element.dispatchEvent(new Event("scroll"));
-		}
-	});
-
-	// Virtual scroll-based load more: trigger when user scrolls near the end
-	createEffect(() => {
-		if (!shouldVirtualize() || viewMode() !== "grid") return;
-		const totalRows = rowCount();
-		const handleScroll = () => {
-			if (!props.hasNextPage || props.isFetchingNextPage) return;
-			const lastItem = mediaRowVirtualizer().getVirtualItems().at(-1);
-			if (lastItem && lastItem.index >= totalRows - LOAD_MORE_ROWS_AHEAD) {
-				props.onLoadMore?.();
-			}
-		};
-		const target = props.scrollMode === "element" ? scrollElement() : window;
-		if (!target) return;
-		target.addEventListener("scroll", handleScroll, { passive: true });
-		onCleanup(() => target.removeEventListener("scroll", handleScroll));
+		setScrollElement(
+			collectionRoot()?.closest<HTMLElement>("[data-media-scroll]") ??
+				undefined,
+		);
 	});
 
 	createEffect(() => {
@@ -561,7 +239,6 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		const shouldNotifyPreview = internalContextMenuMedia()?.id !== media.id;
 		setInternalContextMenuMedia(media);
 		props.setContextMenuMediaId?.(media.id);
-		setActiveMediaId(media.id);
 		if (shouldNotifyPreview) {
 			props.onPreviewSelect?.(media);
 		}
@@ -593,252 +270,51 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		});
 	});
 
-	const findRenderedMediaElement = (mediaId: string) =>
-		Array.from(
-			mediaGridRef?.querySelectorAll<HTMLElement>("[data-media-id]") ?? [],
-		).find((element) => element.dataset.mediaId === mediaId);
-
-	const focusRenderedMedia = (mediaId: string, attempt = 0) => {
-		const element = findRenderedMediaElement(mediaId);
-		if (element) {
-			focusFrameId = undefined;
-			element.focus({ preventScroll: true });
-			return;
-		}
-		if (attempt >= FOCUS_RESTORE_FRAME_LIMIT) {
-			focusFrameId = undefined;
-			return;
-		}
-		focusFrameId = requestAnimationFrame(() => {
-			focusRenderedMedia(mediaId, attempt + 1);
-		});
-	};
-
-	const visiblePageRowCount = () => {
-		const viewportHeight =
-			props.scrollMode === "element"
-				? scrollElement()?.clientHeight
-				: window.innerHeight;
-		const rowHeight = mediaItemHeight() + GRID_GAP_PX;
-		if (!viewportHeight || rowHeight <= 0) return 1;
-		return Math.max(Math.floor(viewportHeight / rowHeight), 1);
-	};
-
-	const handleGridKeyDown: JSX.EventHandler<HTMLElement, KeyboardEvent> = (
-		event,
-	) => {
-		if (event.defaultPrevented || event.isComposing) return;
-		if (
-			event.target instanceof HTMLInputElement ||
-			event.target instanceof HTMLTextAreaElement ||
-			event.target instanceof HTMLSelectElement ||
-			(event.target instanceof HTMLElement && event.target.isContentEditable)
-		) {
-			return;
-		}
-		if (
-			event.key === "Delete" &&
-			!event.metaKey &&
-			!event.ctrlKey &&
-			!event.altKey &&
-			!event.shiftKey
-		) {
-			const media = findMediaFromEventTarget(event.target);
-			if (media && props.onDelete) {
-				event.preventDefault();
-				if (!event.repeat) props.onDelete(media.id);
-			}
-			return;
-		}
-		if (!isCollectionNavigationKey(event.key)) return;
-
-		const results = props.mediaResults();
-		if (results.length === 0) return;
-		const focusedMedia = findMediaFromEventTarget(event.target);
-		const currentMediaId =
-			focusedMedia?.id ??
-			activeMediaId() ??
-			props.previewSelectedMediaId?.() ??
-			results[0]?.id;
-		const currentIndex = Math.max(
-			results.findIndex((media) => media.id === currentMediaId),
-			0,
-		);
-		const nextIndex = getCollectionNavigationIndex({
-			columnCount: columnCount(),
-			currentIndex,
-			itemCount: results.length,
-			key: event.key,
-			pageRowCount: visiblePageRowCount(),
-		});
-		if (nextIndex === null) return;
-		const nextMedia = results[nextIndex];
-		if (!nextMedia) return;
-
-		event.preventDefault();
-		setActiveMediaId(nextMedia.id);
-		props.onPreviewSelect?.(nextMedia);
-		if (shouldVirtualize()) {
-			mediaRowVirtualizer().scrollToIndex(
-				Math.floor(nextIndex / Math.max(columnCount(), 1)),
-				{ align: "auto" },
-			);
-		}
-		if (focusFrameId !== undefined) cancelAnimationFrame(focusFrameId);
-		focusRenderedMedia(nextMedia.id);
-	};
-
 	const gridContent = (
-		<section
-			class="@container relative min-w-0 w-full"
-			classList={{ "virtualized-media-grid": shouldVirtualize() }}
-			aria-label="メディア一覧"
-			onFocusIn={(event) => {
-				const media = findMediaFromEventTarget(event.target);
-				if (media) setActiveMediaId(media.id);
-			}}
-			onKeyDown={handleGridKeyDown}
-			ref={(element) => {
-				if (mediaGridRef && mediaGridRef !== element) {
-					mediaGridResizeObserver?.unobserve(mediaGridRef);
-				}
-				mediaGridRef = element;
-				mediaGridResizeObserver?.observe(element);
-				scheduleMediaGridMetrics();
-			}}
-			style={{
-				"--media-grid-height": shouldVirtualize()
-					? `${mediaRowVirtualizer().getTotalSize()}px`
-					: undefined,
-			}}
-		>
-			<Show
-				fallback={
-					<Show
-						fallback={
-							<MediaGridSkeleton
-								aspectRatio={
-									props.scrollMode === "element"
-										? props.itemAspectRatio === 4 / 3
-											? "4/3"
-											: "3/4"
-										: undefined
-								}
-								count={columnCount() * INITIAL_SKELETON_ROWS}
-							/>
-						}
-						when={!virtualizationPending()}
-					>
-						<MediaTileGrid
-							items={props.mediaResults()}
-							eagerCount={
-								props.scrollMode === "element"
-									? initialPriorityMediaCount()
-									: undefined
-							}
-							onNavigate={props.onPreviewSelect}
-						>
-							{(media, imageLoadPolicy, index) =>
-								props.renderItem(media, {
-									imageLoadPolicy,
-									onContextMenu: onContextMenuHandler(media),
-									onOpenMediaDetail: props.onOpenMediaDetail
-										? () => props.onOpenMediaDetail?.(media)
-										: undefined,
-									onPrepareMediaDetail: () =>
-										props.onPrepareMediaDetail?.(media),
-									priority:
-										props.scrollMode === "element"
-											? index() < initialPriorityMediaCount()
-											: undefined,
-									get isBulkSelectMode() {
-										return props.isBulkSelectMode?.();
-									},
-									get isSelected() {
-										return props.isSelected?.(media.id);
-									},
-									onToggleSelect: props.onToggleSelect
-										? () => props.onToggleSelect?.(media.id)
-										: undefined,
-									onPreviewSelect: createMediaPreviewSelectHandler(
-										media,
-										props.onPreviewSelect,
-									),
-									onSelectGesture: props.onSelectMedia
-										? (event) => selectFromGesture(media, event)
-										: undefined,
-									get isPreviewSelected() {
-										return props.previewSelectedMediaId?.() === media.id;
-									},
-								})
-							}
-						</MediaTileGrid>
-					</Show>
-				}
-				when={shouldVirtualize()}
-			>
-				<For each={measuredVirtualRows()}>
-					{(virtualRow) => {
-						const rowMedia = () => getRowMedia(virtualRow.index);
-						return (
-							<div
-								class={`absolute top-0 left-0 w-full ${mediaGridClassName} virtualized-media-row`}
-								style={{
-									"--media-grid-columns": columnCount(),
-									"--media-grid-row-height": `${virtualRow.size}px`,
-									"--media-grid-row-offset": `${virtualRow.start - mediaRowVirtualizer().options.scrollMargin}px`,
-								}}
-							>
-								<For each={rowMedia()}>
-									{(media, mediaIndexInRow) =>
-										props.renderItem(media, {
-											imageLoadPolicy:
-												props.scrollMode === "element"
-													? createElementImageLoadPolicy(
-															virtualRow.index,
-															virtualRow.index * columnCount() +
-																mediaIndexInRow(),
-														)
-													: undefined,
-											onContextMenu: onContextMenuHandler(media),
-											onOpenMediaDetail: props.onOpenMediaDetail
-												? () => props.onOpenMediaDetail?.(media)
-												: undefined,
-											onPrepareMediaDetail: () =>
-												props.onPrepareMediaDetail?.(media),
-											// Window virtualization keeps its established native lazy-loading
-											// behavior. Element mode supplies a separate direction-aware policy.
-											priority:
-												props.scrollMode === "element" &&
-												virtualRow.index < INITIAL_PRIORITY_ROWS,
-											get isBulkSelectMode() {
-												return props.isBulkSelectMode?.();
-											},
-											get isSelected() {
-												return props.isSelected?.(media.id);
-											},
-											onToggleSelect: props.onToggleSelect
-												? () => props.onToggleSelect?.(media.id)
-												: undefined,
-											onPreviewSelect: createMediaPreviewSelectHandler(
-												media,
-												props.onPreviewSelect,
-											),
-											onSelectGesture: props.onSelectMedia
-												? (event) => selectFromGesture(media, event)
-												: undefined,
-											get isPreviewSelected() {
-												return props.previewSelectedMediaId?.() === media.id;
-											},
-										})
-									}
-								</For>
-							</div>
-						);
-					}}
-				</For>
-			</Show>
-		</section>
+		<MediaTileGrid
+			items={props.mediaResults()}
+			ariaLabel="メディア一覧"
+			itemAspectRatio={props.itemAspectRatio}
+			enableVirtualization={props.enableVirtualization}
+			scrollMode={props.scrollMode}
+			onNavigate={props.onPreviewSelect}
+			onDelete={props.onDelete}
+			onNearEnd={
+				props.hasNextPage && !props.isFetchingNextPage && viewMode() === "grid"
+					? props.onLoadMore
+					: undefined
+			}
+			renderItem={(media, imageLoadPolicy, priority) =>
+				props.renderItem(media, {
+					imageLoadPolicy,
+					priority,
+					onContextMenu: onContextMenuHandler(media),
+					onOpenMediaDetail: props.onOpenMediaDetail
+						? () => props.onOpenMediaDetail?.(media)
+						: undefined,
+					onPrepareMediaDetail: () => props.onPrepareMediaDetail?.(media),
+					get isBulkSelectMode() {
+						return props.isBulkSelectMode?.();
+					},
+					get isSelected() {
+						return props.isSelected?.(media.id);
+					},
+					onToggleSelect: props.onToggleSelect
+						? () => props.onToggleSelect?.(media.id)
+						: undefined,
+					onPreviewSelect: createMediaPreviewSelectHandler(
+						media,
+						props.onPreviewSelect,
+					),
+					onSelectGesture: props.onSelectMedia
+						? (event) => selectFromGesture(media, event)
+						: undefined,
+					get isPreviewSelected() {
+						return props.previewSelectedMediaId?.() === media.id;
+					},
+				})
+			}
+		/>
 	);
 	const formatFileSize = (bytes: number | null): string => {
 		if (bytes === null) return "—";
@@ -896,7 +372,6 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									) {
 										return;
 									}
-									setActiveMediaId(media.id);
 									if (
 										props.onSelectMedia &&
 										(event.metaKey || event.ctrlKey || event.shiftKey)
@@ -1071,16 +546,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	);
 
 	return (
-		<div
-			class="min-h-0 min-w-0 space-y-4"
-			ref={(element) => {
-				setCollectionRoot(element);
-				const resolvedScrollElement = resolveScrollElement();
-				if (resolvedScrollElement !== scrollElement()) {
-					setScrollElement(resolvedScrollElement);
-				}
-			}}
-		>
+		<div class="min-h-0 min-w-0 space-y-4" ref={setCollectionRoot}>
 			<Switch>
 				<Match when={props.state().phase === "pending"}>
 					<LoadingRegion label="メディア一覧を読み込んでいます...">

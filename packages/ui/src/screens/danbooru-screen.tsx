@@ -25,7 +25,12 @@ export type DanbooruScreenProps = ViewerNavigation & {
 };
 
 export function DanbooruScreen(props: DanbooruScreenProps) {
-	const browse = createViewerSearch("danbooru", props.search);
+	const browse = createViewerSearch(
+		"danbooru",
+		props.search,
+		undefined,
+		() => props.selectedPostId,
+	);
 	const imports = createViewerImports(props.enqueueImport);
 	const detail = createQuery(() => ({
 		queryKey: ["danbooru", "post", props.selectedPostId],

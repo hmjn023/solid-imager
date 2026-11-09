@@ -278,3 +278,99 @@ test("pixiv ugoira switches between the preview and shared video player", async 
 	await expect(video).toHaveCount(0);
 	await expect(detail.getByRole("img", { name: artwork.title })).toBeVisible();
 });
+
+test("pixiv keeps the ranking on a failed append, retries the same page and starts a new tag from the top", async ({
+	page,
+	browserHealth,
+}, info) => {
+	const requests: z.infer<typeof viewerRequestSchema>[] = [];
+	let failAppend = true;
+	browserHealth.allowResponseFailure("/api/rpc/viewer/search");
+	browserHealth.allowConsole(
+		"Failed to load resource: the server responded with a status of 503",
+	);
+	await page.route("**/api/rpc/viewer/suggestTags", (route) =>
+		route.fulfill({ json: { json: [] } }),
+	);
+	await page.route("**/api/rpc/viewer/search", async (route) => {
+		const query = viewerRequestSchema.parse(
+			route.request().postDataJSON().json,
+		);
+		requests.push(query);
+		if (query.page === 2 && failAppend) {
+			await route.fulfill({
+				status: 503,
+				contentType: "text/plain",
+				body: "Service Unavailable",
+			});
+			return;
+		}
+		const ranking = query.tags === "";
+		const start = ranking ? query.page * 100 + 1 : 301;
+		const count =
+			ranking && query.page <= 2 ? 40 : !ranking && query.page === 1 ? 1 : 0;
+		const posts = Array.from({ length: count }, (_, i) => ({
+			id: start + i,
+			title: `作品 ${start + i}`,
+			author: "作者",
+			thumbnail: null,
+			pageCount: 1,
+		}));
+		await route.fulfill({
+			json: {
+				json: {
+					provider: "pixiv",
+					posts,
+					hasNextPage: ranking && query.page === 1,
+					word: query.tags,
+					mappings: [],
+				},
+			},
+		});
+	});
+	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
+	const grid = page.getByRole("region", {
+		name: "メディアグリッド",
+		exact: true,
+	});
+	const first = grid.getByRole("link", {
+		name: "作品 101 を開く",
+		exact: true,
+	});
+	const next = grid.getByRole("link", { name: "作品 201 を開く", exact: true });
+	const scroller = page.locator('[data-media-scroll="pixiv"]');
+	await expect(first).toBeVisible();
+	await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	const retry = scroller.getByRole("button", { name: /再試行/ });
+	await expect(retry).toBeVisible();
+	await expect(first).toHaveCount(1);
+	await expect(next).toHaveCount(0);
+	expect(requests.map(({ page }) => page)).toEqual([1, 2]);
+
+	failAppend = false;
+	await retry.click();
+	await expect(next).toHaveCount(1);
+	await expect(first).toHaveCount(1);
+	await expect(grid.getByRole("link")).toHaveCount(80);
+	await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	await expect(
+		grid.getByRole("link", { name: "作品 240 を開く", exact: true }),
+	).toBeInViewport();
+
+	const input = page.getByRole("combobox", { name: "pixiv を検索" });
+	await input.fill("landscape");
+	await page.getByRole("button", { name: "検索", exact: true }).click();
+	await expect(
+		grid.getByRole("link", { name: "作品 301 を開く", exact: true }),
+	).toBeInViewport();
+	await expect(grid.getByRole("link")).toHaveCount(1);
+	await expect(first).toHaveCount(0);
+	await expect(next).toHaveCount(0);
+	await expect.poll(() => scroller.evaluate((el) => el.scrollTop)).toBe(0);
+	expect(requests.map(({ tags, page }) => [tags, page])).toEqual([
+		["", 1],
+		["", 2],
+		["", 2],
+		["landscape", 1],
+	]);
+});

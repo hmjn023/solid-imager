@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import {
 	danbooruPostSchema,
 	danbooruSearchSchema,
@@ -32,7 +32,7 @@ function post(id: number) {
 	});
 }
 
-async function mockDanbooru(page: Page) {
+async function mockDanbooru(page: Page, pageSizes = [40, 39], overlap = false) {
 	const searches: DanbooruSearch[] = [];
 	await page.route("https://cdn.donmai.us/**", (route) =>
 		route.fulfill({
@@ -47,13 +47,17 @@ async function mockDanbooru(page: Page) {
 		if (method === "search") {
 			const query = danbooruSearchSchema.parse(input);
 			searches.push(query);
-			const start = query.page === 1 ? 101 : 201;
+			const start = query.page * 100 + 1;
 			result = {
 				provider: "danbooru",
-				posts: Array.from({ length: query.page === 1 ? 40 : 2 }, (_, i) =>
-					post(start + i),
+				posts: Array.from({ length: pageSizes[query.page - 1] ?? 0 }, (_, i) =>
+					post(
+						overlap && query.page > 1 && i === 0
+							? (query.page - 1) * 100 + pageSizes[query.page - 2]
+							: start + i,
+					),
 				),
-				hasNextPage: query.page === 1,
+				hasNextPage: query.page < pageSizes.length,
 			};
 		} else if (method === "getPost") result = post(input.id);
 		else result = [{ name: "landscape", category: 0, postCount: 1234 }];
@@ -73,7 +77,7 @@ async function expectNoOverflow(page: Page) {
 	).toBe(true);
 }
 
-test("Danbooru sidebar, completion, pagination, viewer, imports and reload", async ({
+test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", async ({
 	page,
 }, testInfo) => {
 	const searches = await mockDanbooru(page);
@@ -104,22 +108,24 @@ test("Danbooru sidebar, completion, pagination, viewer, imports and reload", asy
 	await expect(input).toHaveValue("landscape ");
 	await page.getByRole("button", { name: "検索", exact: true }).click();
 	await expect.poll(() => searches.at(-1)?.tags).toBe("landscape");
-	await page.getByRole("button", { name: "次のページ", exact: true }).click();
-	await expect(
-		page.getByRole("link", { name: "Danbooru #201 を開く", exact: true }),
-	).toBeVisible();
-	await expect(
-		page.getByRole("button", { name: "次のページ", exact: true }),
-	).toBeDisabled();
-	await page.reload();
-	await expect(input).toHaveValue("landscape ");
-	await expect(
-		page.getByRole("link", { name: "Danbooru #201 を開く", exact: true }),
-	).toBeVisible();
+	const scroller = page.locator('[data-media-scroll="Danbooru"]');
+	const first = page.getByRole("link", {
+		name: "Danbooru #101 を開く",
+		exact: true,
+	});
+	const nextPage = page.getByRole("link", {
+		name: "Danbooru #201 を開く",
+		exact: true,
+	});
+	await expect(first).toBeVisible();
+	await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	await expect(nextPage).toBeVisible();
+	await expect(first).toHaveCount(1);
+	expect(
+		searches.filter((s) => s.tags === "landscape").map((s) => s.page),
+	).toEqual([1, 2]);
 	await expectNoOverflow(page);
-	await page
-		.getByRole("link", { name: "Danbooru #201 を開く", exact: true })
-		.click();
+	await nextPage.click();
 	await expect(page).toHaveURL(/\/danbooru\/201$/);
 	const detail = page.getByRole("region", {
 		name: "Danbooru #201",
@@ -127,6 +133,13 @@ test("Danbooru sidebar, completion, pagination, viewer, imports and reload", asy
 	});
 	await expect(detail).toBeVisible();
 	await expect(input).toHaveCount(0);
+	await detail.getByRole("button", { name: "前の投稿", exact: true }).click();
+	const previous = page.getByRole("region", {
+		name: "Danbooru #140",
+		exact: true,
+	});
+	await expect(previous).toBeVisible();
+	await previous.getByRole("button", { name: "次の投稿", exact: true }).click();
 	await expect(
 		detail.getByRole("img", { name: "Danbooru #201", exact: true }),
 	).toBeVisible();
@@ -202,38 +215,135 @@ test("Danbooru sidebar, completion, pagination, viewer, imports and reload", asy
 	await expect(page).toHaveURL(/\/danbooru$/);
 });
 
-test("the collection restores the focused tile and scroll position after detail navigation", async ({
+async function expectAnchorRestored(
+	page: Page,
+	grid: Locator,
+	scroller: Locator,
+	targetId: number,
+	searches: DanbooruSearch[],
+) {
+	const tile = (id: number) =>
+		grid.getByRole("link", { name: `Danbooru #${id} を開く`, exact: true });
+	await tile(targetId).evaluate((el) => el.scrollIntoView({ block: "start" }));
+	const anchor = await scroller.evaluate((el) => {
+		const top = el.getBoundingClientRect().top;
+		const first = [
+			...el.querySelectorAll<HTMLAnchorElement>("a[data-media-id]"),
+		].find((item) => item.getBoundingClientRect().bottom > top + 1);
+		if (!first) throw new Error("No tile at the top of the scroll area");
+		return {
+			id: Number(first.dataset.mediaId),
+			offset: first.getBoundingClientRect().top - top,
+		};
+	});
+	// A responsive row may start a few posts before the requested tile; restore its leading post.
+	expect(Math.floor(anchor.id / 100)).toBe(Math.floor(targetId / 100));
+	const current = tile(anchor.id);
+	const offsetError = () =>
+		current.evaluate((el, offset) => {
+			const area = el.closest("[data-media-scroll]");
+			if (!area) throw new Error("Missing collection scroll area");
+			return Math.abs(
+				el.getBoundingClientRect().top -
+					area.getBoundingClientRect().top -
+					offset,
+			);
+		}, anchor.offset);
+
+	await current.press("Enter");
+	const detail = page.getByRole("region", {
+		name: `Danbooru #${anchor.id}`,
+		exact: true,
+	});
+	await detail.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+	await expect(current).toBeFocused();
+	await expect.poll(offsetError).toBeLessThanOrEqual(2);
+	const requestsBeforeReload = searches.length;
+	await page.reload();
+	await expect(current).toBeInViewport();
+	expect(searches[requestsBeforeReload]?.page).toBe(
+		Math.floor(anchor.id / 100),
+	);
+	await expect.poll(offsetError).toBeLessThanOrEqual(2);
+}
+
+test("the collection restores the second-page tile on Back and reload and can scroll up to earlier results", async ({
 	page,
 }, info) => {
-	await mockDanbooru(page);
+	// Keep a full second page scrollable on wide displays with eight grid columns.
+	const viewport = page.viewportSize();
+	if (viewport && viewport.width >= 1024)
+		await page.setViewportSize({ ...viewport, height: 520 });
+	const searches = await mockDanbooru(page);
 	await page.goto(info.project.name === "tauri" ? "/#/danbooru" : "/danbooru");
 	const grid = page.getByRole("region", {
 		name: "メディアグリッド",
 		exact: true,
 	});
-	const first = grid.getByRole("link", { name: "Danbooru #101 を開く" });
-	const last = grid.getByRole("link", { name: "Danbooru #140 を開く" });
+	const first = grid.getByRole("link", {
+		name: "Danbooru #101 を開く",
+		exact: true,
+	});
+	const scroller = page.locator('[data-media-scroll="Danbooru"]');
 	await first.focus();
 	await first.press("ArrowRight");
 	await expect(
 		grid.getByRole("link", { name: "Danbooru #102 を開く" }),
 	).toBeFocused();
-	await page.keyboard.press("End");
-	await expect(last).toBeFocused();
-	const scroller = page.locator('[data-media-scroll="Danbooru"]');
-	const scrollTop = await scroller.evaluate((el) => el.scrollTop);
-	await last.press("Enter");
-	const detail = page.getByRole("region", {
-		name: "Danbooru #140",
+	await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	await expect(grid.getByRole("link")).toHaveCount(79);
+	await first.press("End");
+	const last = grid.getByRole("link", {
+		name: "Danbooru #239 を開く",
 		exact: true,
 	});
-	await expect(detail).toBeVisible();
-	await detail.getByRole("button", { name: "一覧に戻る", exact: true }).click();
 	await expect(last).toBeFocused();
-	await expect
-		.poll(() => scroller.evaluate((el) => el.scrollTop))
-		.toBe(scrollTop);
+	await expectAnchorRestored(page, grid, scroller, 209, searches);
+	await scroller.evaluate((el) => el.scrollTo(0, 0));
+	await expect(first).toHaveCount(1);
+	await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+	await expect(last).toBeInViewport();
+	expect(searches.every(({ page }) => page <= 2)).toBe(true);
 });
+
+test(
+	"a long collection renders bounded rows, merges overlapping pages and restores a late tile",
+	{ tag: "@desktop-only" },
+	async ({ page }, info) => {
+		// Keep the first page taller than the preload margin at desktop widths.
+		await page.setViewportSize({ width: 1024, height: 520 });
+		const searches = await mockDanbooru(page, [40, 40, 40, 39], true);
+		await page.goto(
+			info.project.name === "tauri" ? "/#/danbooru" : "/danbooru",
+		);
+		const grid = page.getByRole("region", {
+			name: "メディアグリッド",
+			exact: true,
+		});
+		const scroller = page.locator('[data-media-scroll="Danbooru"]');
+		await expect(
+			scroller.getByText("40 件を表示", { exact: true }),
+		).toBeVisible();
+		for (const total of [79, 118, 156]) {
+			await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
+			await expect(
+				scroller.getByText(`${total} 件を表示`, { exact: true }),
+			).toBeVisible();
+		}
+		expect(searches.map(({ page }) => page)).toEqual([1, 2, 3, 4]);
+		await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight * 0.73));
+		const late = grid.getByRole("link", {
+			name: "Danbooru #410 を開く",
+			exact: true,
+		});
+		await expect(late).toHaveCount(1);
+		await expect(
+			grid.getByRole("link", { name: "Danbooru #101 を開く", exact: true }),
+		).toHaveCount(0);
+		expect(await grid.getByRole("link").count()).toBeLessThan(100);
+		await expectAnchorRestored(page, grid, scroller, 410, searches);
+	},
+);
 
 test("Danbooru recovers failed requests without losing search input", async ({
 	page,
