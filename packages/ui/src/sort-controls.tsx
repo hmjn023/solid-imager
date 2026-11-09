@@ -32,7 +32,7 @@ export function SortControls(props: SortControlsProps) {
 		<div class={props.className}>
 			<div class="space-y-2">
 				<Label>ソート</Label>
-				<div class="grid grid-cols-2 gap-2">
+				<div class="flex gap-2">
 					<Select
 						disabled={Boolean(
 							props.similarityAnchorMediaId || props.semanticQuery,
@@ -57,7 +57,7 @@ export function SortControls(props: SortControlsProps) {
 						placeholder="項目"
 						value={props.sortBy}
 					>
-						<SelectTrigger>
+						<SelectTrigger class="min-w-0 flex-1 gap-2 whitespace-nowrap text-left">
 							<SelectValue<string>>
 								{(state) =>
 									getSortLabel(
@@ -86,7 +86,7 @@ export function SortControls(props: SortControlsProps) {
 						placeholder="順序"
 						value={props.sortOrder}
 					>
-						<SelectTrigger>
+						<SelectTrigger class="w-20 shrink-0 gap-2 whitespace-nowrap text-left">
 							<SelectValue<string>>
 								{(state) =>
 									state.selectedOption() === "asc" ? "昇順" : "降順"

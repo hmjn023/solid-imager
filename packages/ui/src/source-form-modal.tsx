@@ -238,7 +238,7 @@ function SourceTextInput(props: SourceTextInputProps) {
 
 export function SourceFormModal(props: SourceFormModalProps) {
 	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
-	const sourceTypes = () => props.sourceTypes ?? ["local", "sftp", "s3"];
+	const sourceTypes = () => props.sourceTypes ?? ["local"];
 	const defaultValues = () => {
 		const fallbackType = sourceTypes()[0] ?? "local";
 		if (props.initialValues) {
