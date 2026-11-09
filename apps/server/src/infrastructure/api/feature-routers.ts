@@ -6,6 +6,7 @@ import { categoriesRouter } from "~/infrastructure/api/routers/categories-router
 import { charactersRouter } from "~/infrastructure/api/routers/characters-router";
 import { directoriesRouter } from "~/infrastructure/api/routers/directories-router";
 import { downloadsRouter } from "~/infrastructure/api/routers/downloads-router";
+import { viewerRouter } from "./routers/viewer-router";
 import { danbooruRouter } from "~/infrastructure/api/routers/danbooru-router";
 import { importsRouter } from "~/infrastructure/api/routers/imports-router";
 import { ipsRouter } from "~/infrastructure/api/routers/ips-router";
@@ -22,6 +23,7 @@ import { utilsRouter } from "~/infrastructure/api/routers/utils-router";
 
 /** Feature procedures shared by the API and the MCP tool catalog. */
 export const featureRouters = {
+	viewer: viewerRouter,
 	danbooru: danbooruRouter,
 	sources: sourcesRouter,
 	tags: tagsRouter,

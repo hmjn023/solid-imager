@@ -1,4 +1,4 @@
-import type { DanbooruTag } from "@solid-imager/core/danbooru";
+import type { ViewerTag } from "@solid-imager/core/external-viewer";
 import { createQuery } from "@tanstack/solid-query";
 import {
 	createEffect,
@@ -25,6 +25,7 @@ import {
 } from "./completion";
 
 function SearchInput(props: {
+	label: string;
 	draft: string;
 	inputRef: (element: HTMLInputElement) => void;
 	onInput: (value: string, caret: number) => void;
@@ -35,7 +36,7 @@ function SearchInput(props: {
 	createEffect(() => context.setInputValue(props.draft));
 	return (
 		<ComboboxInput
-			aria-label="Danbooru を検索"
+			aria-label={props.label}
 			aria-describedby="danbooru-search-hint"
 			class="min-h-11 min-w-0 flex-1 border-0 bg-transparent px-3 text-sm shadow-none focus-visible:ring-0"
 			placeholder="タグを入力（例: landscape -monochrome）"
@@ -69,16 +70,17 @@ function SearchInput(props: {
 }
 
 export function DanbooruSearchComposer(props: {
+	provider?: "Danbooru" | "pixiv";
 	draft: string;
 	onDraftChange: (value: string) => void;
 	onSubmit: () => void;
-	suggestTags: (query: string) => Promise<DanbooruTag[]>;
+	suggestTags: (query: string) => Promise<ViewerTag[]>;
 }) {
 	let input: HTMLInputElement | undefined;
 	let committing = false;
 	const [caret, setCaret] = createSignal(props.draft.length);
 	const [open, setOpen] = createSignal(false);
-	const [selected, setSelected] = createSignal<DanbooruTag | null>(null);
+	const [selected, setSelected] = createSignal<ViewerTag | null>(null);
 	const [query, setQuery] = createDebouncedSignal("", 250);
 	const token = createMemo(() => getDanbooruCompletion(props.draft, caret()));
 	createEffect(() => setQuery(token().query));
@@ -105,7 +107,7 @@ export function DanbooruSearchComposer(props: {
 			}}
 		>
 			<div class="flex items-start gap-2">
-				<Combobox<DanbooruTag>
+				<Combobox<ViewerTag>
 					class="min-w-0 flex-1"
 					options={options()}
 					optionValue="name"
@@ -151,15 +153,18 @@ export function DanbooruSearchComposer(props: {
 								{item.item.rawValue.name}
 							</ComboboxItemLabel>
 							<span class="shrink-0 text-muted-foreground text-xs">
-								{danbooruTagCategoryLabels[item.item.rawValue.category] ??
+								{danbooruTagCategoryLabels[item.item.rawValue.category ?? -1] ??
 									"タグ"}{" "}
-								· {item.item.rawValue.postCount.toLocaleString()}
+								{item.item.rawValue.postCount !== null
+									? "· " + item.item.rawValue.postCount.toLocaleString()
+									: ""}
 							</span>
 						</ComboboxItem>
 					)}
 				>
-					<ComboboxControl<DanbooruTag> class="flex min-w-0 rounded-md border border-input bg-card focus-within:ring-2 focus-within:ring-ring">
+					<ComboboxControl<ViewerTag> class="flex min-w-0 rounded-md border border-input bg-card focus-within:ring-2 focus-within:ring-ring">
 						<SearchInput
+							label={(props.provider ?? "Danbooru") + " を検索"}
 							draft={props.draft}
 							inputRef={(element) => {
 								input = element;
@@ -184,7 +189,10 @@ export function DanbooruSearchComposer(props: {
 				<Button type="submit">検索</Button>
 			</div>
 			<p class="text-muted-foreground text-xs" id="danbooru-search-hint">
-				スペースで AND、-タグで除外。rating:g や order:score も使えます。
+				スペースで AND、-タグで除外、~タグで OR。
+				{props.provider === "pixiv"
+					? "Danbooru タグを pixiv のタグに変換します。"
+					: "rating:g や order:score も使えます。"}
 			</p>
 			<Show when={open() && suggestions.isError && query() === token().query}>
 				<output class="text-muted-foreground text-xs">

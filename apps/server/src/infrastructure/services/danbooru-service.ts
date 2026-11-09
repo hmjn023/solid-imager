@@ -188,6 +188,57 @@ export function createDanbooruService(
 				),
 			);
 		},
+		async wikiNames(tag: string): Promise<string[]> {
+			// Query by exact title, so tag punctuation cannot alter the upstream path.
+			const rows = z
+				.array(
+					z.object({ title: z.string(), other_names: z.array(z.string()) }),
+				)
+				.parse(
+					await request(
+						"/wiki_pages.json",
+						new URLSearchParams({
+							"search[title]": tag,
+							"search[hide_deleted]": "true",
+							only: "title,other_names",
+							limit: "1",
+						}),
+						3_600_000,
+					),
+				);
+			return rows.find((row) => row.title === tag)?.other_names ?? [];
+		},
+		async suggestWikiTitles(query: string) {
+			const rows = z
+				.array(
+					z.object({ title: z.string(), category_name: z.string().nullish() }),
+				)
+				.parse(
+					await request(
+						"/wiki_pages.json",
+						new URLSearchParams({
+							"search[other_names_match]": query + "*",
+							"search[hide_deleted]": "true",
+							"search[order]": "post_count",
+							only: "title,category_name",
+							limit: "12",
+						}),
+						300_000,
+					),
+				);
+			const categories: Record<string, number> = {
+				general: 0,
+				artist: 1,
+				copyright: 3,
+				character: 4,
+				meta: 5,
+			};
+			return rows.map((row) => ({
+				name: row.title,
+				category: categories[row.category_name ?? ""] ?? null,
+				postCount: null,
+			}));
+		},
 		async suggestTags(query: string) {
 			const data = await request(
 				"/tags.json",

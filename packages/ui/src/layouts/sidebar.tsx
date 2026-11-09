@@ -123,6 +123,13 @@ export function Sidebar(props: SidebarProps) {
 					onClick={props.onNavigate}
 					to="/danbooru"
 				/>
+				<NavigationItem
+					expanded={props.expanded}
+					icon={Image}
+					label="pixiv"
+					onClick={props.onNavigate}
+					to="/pixiv"
+				/>
 			</nav>
 
 			<SourceList

@@ -40,7 +40,7 @@ async function mockDanbooru(page: Page) {
 			body: '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900"><rect width="1200" height="900" fill="#dae6e8"/><path d="M0 900 480 250 1200 900" fill="#608080"/></svg>',
 		}),
 	);
-	await page.route("**/api/rpc/danbooru/**", async (route) => {
+	await page.route(/\/api\/rpc\/(?:viewer|danbooru)\//, async (route) => {
 		const method = new URL(route.request().url()).pathname.split("/").at(-1);
 		const { json: input } = route.request().postDataJSON();
 		let result: unknown;
@@ -49,6 +49,7 @@ async function mockDanbooru(page: Page) {
 			searches.push(query);
 			const start = query.page === 1 ? 101 : 201;
 			result = {
+				provider: "danbooru",
 				posts: Array.from({ length: query.page === 1 ? 40 : 2 }, (_, i) =>
 					post(start + i),
 				),
@@ -192,12 +193,12 @@ test("Danbooru recovers failed requests without losing search input", async ({
 	browserHealth,
 }, testInfo) => {
 	await mockDanbooru(page);
-	browserHealth.allowResponseFailure("/api/rpc/danbooru/search");
+	browserHealth.allowResponseFailure("/api/rpc/viewer/search");
 	browserHealth.allowConsole(
 		"Failed to load resource: the server responded with a status of 503",
 	);
 	let fail = true;
-	await page.route("**/api/rpc/danbooru/search", async (route) => {
+	await page.route("**/api/rpc/viewer/search", async (route) => {
 		if (fail)
 			await route.fulfill({
 				status: 503,

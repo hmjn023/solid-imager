@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { externalSearchSchema } from "../external-viewer/search";
 
 /** Only Danbooru's HTTPS media hosts may be used by the remote viewer. */
 export const danbooruMediaUrlSchema = z.url().refine((value) => {
@@ -36,9 +37,7 @@ export const danbooruPostSchema = z.object({
 });
 export type DanbooruPost = z.infer<typeof danbooruPostSchema>;
 
-export const danbooruSearchSchema = z.object({
-	tags: z.string().trim().max(1000).default(""),
-	page: z.number().int().min(1).max(1000).default(1),
+export const danbooruSearchSchema = externalSearchSchema.extend({
 	limit: z.number().int().min(1).max(100).default(40),
 });
 export type DanbooruSearch = z.infer<typeof danbooruSearchSchema>;

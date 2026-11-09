@@ -1,25 +1,18 @@
 import {
 	danbooruPostToDownloadItem,
-	danbooruSearchSchema,
 	getDanbooruPostUrl,
 	getDanbooruPreview,
 	type DanbooruPost,
-	type DanbooruSearch,
 	type DanbooruSearchResult,
-	type DanbooruTag,
 } from "@solid-imager/core/danbooru";
 import type { DownloadItem } from "@solid-imager/core/media";
 import { createQuery } from "@tanstack/solid-query";
-import {
-	createEffect,
-	createMemo,
-	createSignal,
-	For,
-	onCleanup,
-	onMount,
-	Show,
-} from "solid-js";
-import { z } from "zod";
+import { createMemo, createSignal, For, Show } from "solid-js";
+import type {
+	ExternalSearch,
+	ViewerTag,
+} from "@solid-imager/core/external-viewer";
+import { createViewerSearch } from "../external-viewer/use-viewer-search";
 import { EmptyState, ErrorState } from "../async-state";
 import { Button, buttonVariants } from "../button";
 import { DanbooruSearchComposer } from "../danbooru/search-composer";
@@ -32,12 +25,7 @@ import {
 import { MediaViewer, type MediaSource } from "../media-viewer";
 import { MediaGridSkeleton, mediaGridClassName } from "../skeleton";
 import { toast } from "../toast";
-import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
 
-const sessionSchema = danbooruSearchSchema.extend({
-	draft: z.string().default(""),
-	scrollTop: z.number().nonnegative().default(0),
-});
 const ratingLabels: Record<string, string> = {
 	g: "General",
 	s: "Sensitive",
@@ -53,9 +41,9 @@ const tagGroups = [
 ] as const;
 
 export type DanbooruScreenProps = {
-	search: (input: DanbooruSearch) => Promise<DanbooruSearchResult>;
+	search: (input: ExternalSearch) => Promise<DanbooruSearchResult>;
 	getPost: (id: number) => Promise<DanbooruPost>;
-	suggestTags: (query: string) => Promise<DanbooruTag[]>;
+	suggestTags: (query: string) => Promise<ViewerTag[]>;
 	enqueueImport: (item: DownloadItem) => Promise<unknown>;
 	selectedPostId?: number;
 	onOpenPost: (id: number, replace?: boolean) => void;
@@ -65,66 +53,19 @@ export type DanbooruScreenProps = {
 
 /** Remote browsing deliberately keeps its query separate from local library filters. */
 export function DanbooruScreen(props: DanbooruScreenProps) {
-	const [params, setParams] = createSignal<DanbooruSearch>(
-		danbooruSearchSchema.parse({}),
-	);
-	const [draft, setDraft] = createSignal("");
-	const [ready, setReady] = createSignal(false);
+	const {
+		params,
+		draft,
+		setDraft,
+		results,
+		changePage,
+		persist,
+		scrollRef,
+		submit,
+	} = createViewerSearch("danbooru", props.search);
 	const [addingId, setAddingId] = createSignal<number | null>(null);
 	const [queuedIds, setQueuedIds] = createSignal(new Set<number>());
-	let scrollArea: HTMLDivElement | undefined;
-	let restoreScrollTop = 0;
 	let lastTrigger: HTMLAnchorElement | undefined;
-	const persist = () => {
-		if (!ready()) return;
-		try {
-			sessionStorage.setItem(
-				UI_STORAGE_KEYS.danbooruSearch,
-				JSON.stringify({
-					...params(),
-					draft: draft(),
-					scrollTop: scrollArea?.scrollTop ?? restoreScrollTop,
-				}),
-			);
-		} catch {
-			/* Browsing remains available when session storage is blocked. */
-		}
-	};
-	onMount(() => {
-		try {
-			const value = readUiStorageValue(
-				sessionStorage,
-				UI_STORAGE_KEYS.danbooruSearch,
-			);
-			const stored = sessionSchema.safeParse(value ? JSON.parse(value) : null);
-			if (stored.success) {
-				setParams(danbooruSearchSchema.parse(stored.data));
-				setDraft(stored.data.draft);
-				restoreScrollTop = stored.data.scrollTop;
-			}
-		} catch {
-			/* Ignore invalid or unavailable optional browser storage. */
-		}
-		setReady(true);
-	});
-	createEffect(persist);
-	onCleanup(persist);
-	const results = createQuery(() => ({
-		queryKey: ["danbooru", "posts", params()],
-		queryFn: () => props.search(params()),
-		enabled: ready(),
-		staleTime: 30_000,
-		retry: false,
-	}));
-	createEffect(() => {
-		if (results.data && restoreScrollTop > 0) {
-			const position = restoreScrollTop;
-			restoreScrollTop = 0;
-			requestAnimationFrame(() => {
-				if (scrollArea) scrollArea.scrollTop = position;
-			});
-		}
-	});
 	const detail = createQuery(() => ({
 		queryKey: ["danbooru", "post", props.selectedPostId],
 		queryFn: () => props.getPost(props.selectedPostId ?? 0),
@@ -142,14 +83,8 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 		const preview = getDanbooruPreview(post);
 		return preview ? { type: preview.type, getUrl: () => preview.url } : null;
 	});
-	const changePage = (page: number) => {
-		setParams((current) => ({ ...current, page }));
-		if (scrollArea) scrollArea.scrollTop = 0;
-	};
 	const search = (tags = draft()) => {
-		setDraft(tags);
-		setParams((current) => ({ ...current, tags: tags.trim(), page: 1 }));
-		if (scrollArea) scrollArea.scrollTop = 0;
+		submit(tags);
 		if (props.selectedPostId) props.onClosePost();
 	};
 	const addImport = async (post: DanbooruPost) => {
@@ -200,15 +135,13 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 			</header>
 			<div
 				class="@container min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 scrollbar-stable sm:p-4"
-				ref={(element) => {
-					scrollArea = element;
-				}}
+				ref={scrollRef}
 				onScroll={persist}
 			>
 				<Show when={results.isPending}>
 					<div aria-live="polite" aria-busy="true">
 						<span class="sr-only">投稿を読み込み中</span>
-						<MediaGridSkeleton count={params().limit} aspectRatio="4/3" />
+						<MediaGridSkeleton aspectRatio="4/3" />
 					</div>
 				</Show>
 				<Show when={results.isError}>
