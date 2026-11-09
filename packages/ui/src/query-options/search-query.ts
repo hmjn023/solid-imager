@@ -319,6 +319,7 @@ export function buildSourceMediaResultsQueryOptions(
 		},
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, allPages) => {
+			if (lastPage.media.length === 0) return;
 			const loadedCount = allPages.reduce(
 				(sum, page) => sum + page.media.length,
 				0,

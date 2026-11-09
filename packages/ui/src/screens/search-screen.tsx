@@ -226,6 +226,9 @@ export function SearchScreen(props: SearchScreenProps) {
 								errorTitle="検索結果を取得できませんでした"
 								hasNextPage={page().searchResultQuery.hasNextPage}
 								isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
+								isFetchNextPageError={
+									page().searchResultQuery.isFetchNextPageError
+								}
 								itemAspectRatio={4 / 3}
 								isBulkSelectMode={props.isBulkSelectMode}
 								isSelected={props.isSelected}

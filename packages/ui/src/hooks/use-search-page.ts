@@ -254,8 +254,8 @@ export function useSearchPage(
 	});
 	const searchResultQuery = createInfiniteQuery(searchResultQueryOptions);
 	const fetchNextPage = () =>
-		isSearchStateRestored()
-			? searchResultQuery.fetchNextPage()
+		isSearchStateRestored() && searchResultQuery.hasNextPage
+			? searchResultQuery.fetchNextPage({ cancelRefetch: false })
 			: Promise.resolve();
 	const [searchResultData, setSearchResultData] = createSignal<
 		InfiniteData<MediaSearchResponse> | undefined
@@ -405,7 +405,8 @@ export function useSearchPage(
 			!enableVirtualization &&
 			isSearchStateRestored() &&
 			searchResultQuery.hasNextPage &&
-			!searchResultQuery.isFetching,
+			!searchResultQuery.isFetching &&
+			!searchResultQuery.isFetchNextPageError,
 		rootMargin: "2400px",
 		load: fetchNextPage,
 	});

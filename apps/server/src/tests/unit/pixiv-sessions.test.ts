@@ -60,6 +60,52 @@ describe("pixiv account connection", () => {
 		expect(() => store.credential(session.token)).toThrow();
 	});
 
+	it("admits concurrent codes per verified account and releases the slots when they expire", async () => {
+		let now = 0;
+		const store = createPixivSessions(
+			async (cookie) => (cookie === "other-cookie" ? "93" : "42"),
+			() => now,
+		);
+		const issued = await Promise.allSettled(
+			Array.from({ length: 9 }, (_, i) => store.issue(`cookie-${i}`)),
+		);
+		expect(
+			issued.filter((result) => result.status === "fulfilled"),
+		).toHaveLength(8);
+		expect(
+			issued.filter((result) => result.status === "rejected"),
+		).toMatchObject([{ reason: { code: "TOO_MANY_REQUESTS" } }]);
+		const other = store.login((await store.issue("other-cookie")).code);
+		expect(other.userId).toBe("93");
+		now += 300_000;
+		expect(store.login((await store.issue("fresh-cookie")).code).userId).toBe(
+			"42",
+		);
+	});
+
+	it("keeps other accounts available and preserves a login code until a viewer slot opens", async () => {
+		const store = createPixivSessions(async (cookie) =>
+			cookie === "other-cookie" ? "93" : "42",
+		);
+		const sessions = await Promise.all(
+			Array.from({ length: 8 }, async (_, i) =>
+				store.login((await store.issue(`cookie-${i}`)).code),
+			),
+		);
+		const waiting = await store.issue("waiting-cookie");
+		expect(() => store.login(waiting.code)).toThrow(
+			expect.objectContaining({ code: "TOO_MANY_REQUESTS" }),
+		);
+		const other = store.login((await store.issue("other-cookie")).code);
+		expect(store.credential(other.token)).toBe("other-cookie");
+		store.logout(sessions[0].token);
+		const connected = store.login(waiting.code);
+		expect(store.credential(connected.token)).toBe("waiting-cookie");
+		expect(() => store.login(waiting.code)).toThrow(
+			expect.objectContaining({ code: "BAD_REQUEST" }),
+		);
+	});
+
 	it("rejects anonymous pages, transport failure and malformed upstream responses", async () => {
 		await expect(
 			verifyPixivAccount("123_fake", async () => accountPage("")),

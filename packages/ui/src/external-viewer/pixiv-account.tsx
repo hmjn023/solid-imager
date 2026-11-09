@@ -25,6 +25,8 @@ import {
 import { Input } from "../input";
 import { Label } from "../label";
 
+const SESSION_CHECK_INTERVAL_MS = 60_000;
+
 export type ViewerFetch = (
 	url: string,
 	init?: RequestInit,
@@ -40,6 +42,8 @@ export function createPixivAccount(
 	send: ViewerFetch = fetch,
 ) {
 	const storageKey = "solid-imager:pixiv-session:" + base;
+	let checkPending = false;
+	let nextCheckAt = 0;
 	const [session, setSession] = createSignal<PixivViewerSession>();
 	const [ready, setReady] = createSignal(false);
 	const [notice, setNotice] = createSignal("");
@@ -72,6 +76,8 @@ export function createPixivAccount(
 		};
 	});
 	function save(next: PixivViewerSession | undefined) {
+		checkPending = false;
+		nextCheckAt = 0;
 		setSession(next);
 		try {
 			if (next) sessionStorage.setItem(storageKey, JSON.stringify(next));
@@ -94,7 +100,8 @@ export function createPixivAccount(
 		setReady(true);
 		const check = () => {
 			const current = session();
-			if (!current) return;
+			if (!current || checkPending || Date.now() < nextCheckAt) return;
+			checkPending = true;
 			void transport()
 				.viewer.checkPixivSession()
 				.then(() => {
@@ -103,6 +110,12 @@ export function createPixivAccount(
 				.catch(() => {
 					if (session() === current)
 						setNotice("pixiv との接続を確認できませんでした。");
+				})
+				.finally(() => {
+					if (session() === current) {
+						checkPending = false;
+						nextCheckAt = Date.now() + SESSION_CHECK_INTERVAL_MS;
+					}
 				});
 		};
 		check();

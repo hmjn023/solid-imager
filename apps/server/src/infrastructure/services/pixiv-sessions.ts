@@ -97,6 +97,9 @@ export async function verifyPixivAccount(
 
 type Entry = { sessionId: string; userId: string; expiresAt: number };
 
+const MAX_ENTRIES = 256;
+const MAX_ENTRIES_PER_ACCOUNT = 8;
+
 export function createPixivSessions(
 	verify = verifyPixivAccount,
 	now = Date.now,
@@ -111,8 +114,18 @@ export function createPixivSessions(
 	// Discard expired credentials even when no client makes another request.
 	let sweep: ReturnType<typeof setInterval> | undefined;
 	const insert = (map: Map<string, Entry>, key: string, entry: Entry) => {
-		for (const k of map.keys()) read(map, k);
-		if (map.size >= 256)
+		let accountEntries = 0;
+		for (const existingKey of map.keys()) {
+			if (read(map, existingKey)?.userId === entry.userId) accountEntries++;
+		}
+		if (accountEntries >= MAX_ENTRIES_PER_ACCOUNT)
+			throw new ORPCError("TOO_MANY_REQUESTS", {
+				message:
+					map === codes
+						? "このアカウントの未使用の接続コードが上限に達しました。発行済みのコードを使うか、期限切れを待ってください。"
+						: "このアカウントの接続数が上限に達しました。使用していない Viewer からログアウトしてください。",
+			});
+		if (map.size >= MAX_ENTRIES)
 			throw new ORPCError("TOO_MANY_REQUESTS", {
 				message: "接続数の上限に達しました。",
 			});

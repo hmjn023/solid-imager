@@ -15,6 +15,7 @@ import {
 	untrack,
 	type JSX,
 } from "solid-js";
+import { observePageBoundary } from "./hooks/observe-page-boundary";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
 import {
 	getMediaGridColumnCount,
@@ -76,6 +77,7 @@ type TileGridProps<T extends { id: string | number }> = {
 	onDelete?: (id: T["id"]) => void;
 	onReady?: (handle: MediaGridHandle<T["id"]> | undefined) => void;
 	onNearEnd?: () => void;
+	loadMoreTarget?: () => HTMLElement | undefined;
 	renderItem: (
 		item: T,
 		imageLoadPolicy?: MediaGridImageLoadPolicy,
@@ -395,6 +397,23 @@ export function MediaTileGrid<T extends { id: string | number }>(
 			// without imperatively writing a possibly stale offset back to it.
 			untrack(() => element.dispatchEvent(new Event("scroll")));
 		}
+	});
+
+	// A virtualization-enabled library can receive a short page. Observe its
+	// footer until row virtualization takes over; ordinary grids have their
+	// existing page-hook observer and external viewers provide their own boundaries.
+	observePageBoundary({
+		target: () => props.loadMoreTarget?.(),
+		root: () => scrollElement() ?? undefined,
+		enabled: () =>
+			Boolean(
+				props.enableVirtualization &&
+				mediaItemWidth() > 0 &&
+				!shouldVirtualize() &&
+				props.onNearEnd,
+			),
+		rootMargin: "0px 0px 480px",
+		load: () => props.onNearEnd?.(),
 	});
 
 	// The visible range and the network request are independent of thumbnail prefetch.

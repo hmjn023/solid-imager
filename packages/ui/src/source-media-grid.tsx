@@ -10,6 +10,7 @@ import X from "lucide-solid/icons/x";
 import type { Accessor, JSX, Setter } from "solid-js";
 import {
 	createEffect,
+	createMemo,
 	createSignal,
 	For,
 	Match,
@@ -18,6 +19,7 @@ import {
 	Show,
 	Switch,
 } from "solid-js";
+import { Button } from "./button";
 import { EmptyState, ErrorState, OfflineState } from "./async-state";
 import {
 	ContextMenu,
@@ -52,6 +54,7 @@ type SourceMediaGridProps = {
 	mediaSourceId: Accessor<string | undefined>;
 	state: Accessor<QueryUiState<Media[]>>;
 	isFetchingNextPage: boolean;
+	isFetchNextPageError?: boolean;
 	onRetry?: () => void | Promise<void>;
 	contextMenuMediaId?: Accessor<string | null>;
 	setContextMenuMediaId?: Setter<string | null>;
@@ -147,6 +150,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const [internalContextMenuMedia, setInternalContextMenuMedia] =
 		createSignal<Media>();
 	const [scrollElement, setScrollElement] = createSignal<HTMLElement>();
+	const [loadMoreTarget, setLoadMoreTarget] = createSignal<HTMLDivElement>();
 	let listLoadRequestPending = false;
 	let listLoadRequestCount = -1;
 	let listLoadWasFetching = false;
@@ -180,6 +184,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			if (
 				!props.hasNextPage ||
 				props.isFetchingNextPage ||
+				props.isFetchNextPageError ||
 				!props.onLoadMore ||
 				listLoadRequestPending
 			) {
@@ -270,6 +275,15 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		});
 	});
 
+	const gridLoadMore = createMemo(() =>
+		props.hasNextPage &&
+		!props.isFetchingNextPage &&
+		!props.isFetchNextPageError &&
+		props.state().fetchState === "idle" &&
+		viewMode() === "grid"
+			? props.onLoadMore
+			: undefined,
+	);
 	const gridContent = (
 		<MediaTileGrid
 			items={props.mediaResults()}
@@ -279,11 +293,8 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 			scrollMode={props.scrollMode}
 			onNavigate={props.onPreviewSelect}
 			onDelete={props.onDelete}
-			onNearEnd={
-				props.hasNextPage && !props.isFetchingNextPage && viewMode() === "grid"
-					? props.onLoadMore
-					: undefined
-			}
+			loadMoreTarget={loadMoreTarget}
+			onNearEnd={gridLoadMore()}
 			renderItem={(media, imageLoadPolicy, priority) =>
 				props.renderItem(media, {
 					imageLoadPolicy,
@@ -826,12 +837,26 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 						aria-live="polite"
 						class="flex min-h-11 w-full items-center justify-center py-2 text-muted-foreground text-sm"
 						data-testid="media-load-more-sentinel"
-						ref={props.setLoadMoreRef}
+						ref={(el) => {
+							setLoadMoreTarget(el);
+							props.setLoadMoreRef(el);
+						}}
 					>
 						<Show
 							fallback={
 								<Show when={props.hasNextPage}>
-									<p>スクロールしてさらに読み込む</p>
+									<Show
+										when={props.isFetchNextPageError}
+										fallback={<p>スクロールしてさらに読み込む</p>}
+									>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={props.onLoadMore}
+										>
+											追加の読み込みを再試行
+										</Button>
+									</Show>
 								</Show>
 							}
 							when={props.isFetchingNextPage}

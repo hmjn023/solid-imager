@@ -144,6 +144,9 @@ test("connects a pixiv account, restores it on reload and removes private result
 	const code = "A".repeat(22),
 		token = "B".repeat(43);
 	let active = false;
+	let checkCount = 0;
+	let countRestoredChecks = false;
+	const restoredCheck = Promise.withResolvers<void>();
 	const fixtureSession = "123_fixture";
 	await page.route("**/api/rpc/viewer/**", async (route) => {
 		const rpc = route.request().url().split("/").at(-1);
@@ -158,10 +161,12 @@ test("connects a pixiv account, restores it on reload and removes private result
 			expect(route.request().postDataJSON().json.code).toBe(code);
 			expect(bearer).toBeUndefined();
 			active = true;
-			result = { token, userId: "123", expiresAt: Date.now() + 60_000 };
+			result = { token, userId: "123", expiresAt: Date.now() + 3_600_000 };
 		} else if (rpc === "logoutPixiv" || rpc === "checkPixivSession") {
 			expect(bearer).toBe("Bearer " + token);
 			if (rpc === "logoutPixiv") active = false;
+			else if (countRestoredChecks && ++checkCount === 1)
+				await restoredCheck.promise;
 			result = rpc === "logoutPixiv" ? null : { userId: "123" };
 		} else {
 			const authenticated = active && bearer === "Bearer " + token;
@@ -200,10 +205,33 @@ test("connects a pixiv account, restores it on reload and removes private result
 	await expect(
 		page.getByRole("link", { name: "会員作品 を開く" }),
 	).toBeVisible();
+	const started = Date.now();
+	await page.clock.setFixedTime(started);
+	countRestoredChecks = true;
+	const checked = () =>
+		page.waitForResponse("**/api/rpc/viewer/checkPixivSession");
+	const firstCheck = checked();
 	await page.reload();
 	await expect(
 		page.getByRole("link", { name: "会員作品 を開く" }),
 	).toBeVisible();
+	await expect.poll(() => checkCount).toBe(1);
+	const focusViewer = () =>
+		page.evaluate(() => {
+			window.dispatchEvent(new Event("focus"));
+			window.dispatchEvent(new Event("focus"));
+		});
+	// The first request still owns the check even after a minute passes.
+	await page.clock.setFixedTime(started + 90_000);
+	await focusViewer();
+	restoredCheck.resolve();
+	await (await firstCheck).finished();
+	await focusViewer();
+	await page.clock.setFixedTime(started + 151_000);
+	const nextCheck = checked();
+	await focusViewer();
+	await nextCheck;
+	expect(checkCount).toBe(2);
 	await page.getByRole("button", { name: "pixiv ID 123" }).click();
 	await dialog
 		.getByRole("button", { name: "この Viewer からログアウト" })

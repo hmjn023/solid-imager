@@ -6,7 +6,7 @@ export function observePageBoundary(options: {
 	root?: () => Element | undefined;
 	enabled: () => boolean;
 	rootMargin: string;
-	load: () => Promise<unknown>;
+	load: () => void | Promise<unknown>;
 }) {
 	createEffect(() => {
 		const target = options.target();

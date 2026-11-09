@@ -186,6 +186,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 								hasNextPage={page().mediaQuery.hasNextPage}
 								isBulkSelectMode={props.isBulkSelectMode}
 								isFetchingNextPage={page().mediaQuery.isFetchingNextPage}
+								isFetchNextPageError={page().mediaQuery.isFetchNextPageError}
 								itemAspectRatio={4 / 3}
 								isSelected={props.isSelected}
 								mediaResults={page().mediaResults}
