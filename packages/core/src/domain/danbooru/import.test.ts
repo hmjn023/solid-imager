@@ -65,6 +65,7 @@ describe("Danbooru import metadata", () => {
 	});
 	it("only accepts HTTPS Danbooru media hosts without credentials or custom ports", () => {
 		for (const url of [
+			"not a url",
 			"http://cdn.donmai.us/123.jpg",
 			"https://cdn.donmai.us.attacker.test/123.jpg",
 			"https://user:password@cdn.donmai.us/123.jpg",

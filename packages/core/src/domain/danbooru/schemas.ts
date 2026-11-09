@@ -2,8 +2,9 @@ import { z } from "zod";
 
 /** Only Danbooru's HTTPS media hosts may be used by the remote viewer. */
 export const danbooruMediaUrlSchema = z.url().refine((value) => {
-	const url = new URL(value);
+	const url = URL.parse(value);
 	return (
+		url !== null &&
 		url.protocol === "https:" &&
 		!url.username &&
 		!url.password &&

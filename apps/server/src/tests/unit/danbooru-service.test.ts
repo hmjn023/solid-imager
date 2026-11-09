@@ -86,6 +86,22 @@ describe("Danbooru service", () => {
 		expect(url.searchParams.get("search[order]")).toBe("count");
 	});
 
+	it("keeps the search results when one post has a malformed file URL", async () => {
+		const service = createDanbooruService({
+			fetch: vi.fn<typeof fetch>().mockResolvedValue(
+				Response.json([
+					{ ...remotePost, file_url: "not a url" },
+					{ ...remotePost, id: 124 },
+				]),
+			),
+		});
+		const result = await service.search({ tags: "", page: 1, limit: 40 });
+		expect(result.posts).toMatchObject([
+			{ id: 123, fileUrl: null, previewUrl: remotePost.preview_file_url },
+			{ id: 124, fileUrl: remotePost.file_url },
+		]);
+	});
+
 	it("keeps inaccessible media unavailable and rejects foreign media hosts", async () => {
 		const fetchRemote = vi.fn<typeof fetch>().mockResolvedValue(
 			Response.json({
