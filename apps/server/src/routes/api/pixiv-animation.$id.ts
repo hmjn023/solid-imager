@@ -4,8 +4,11 @@ import { servePixivAnimation } from "~/infrastructure/services/pixiv-animation";
 export const Route = createFileRoute("/api/pixiv-animation/$id")({
 	server: {
 		handlers: {
-			GET: ({ params }: ServerRouteContext<{ id: string }>) =>
-				servePixivAnimation(Number(params.id)),
+			GET: ({ params, request }: ServerRouteContext<{ id: string }>) =>
+				servePixivAnimation(
+					Number(params.id),
+					request.headers.get("authorization"),
+				),
 		},
 	},
 });

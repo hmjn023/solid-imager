@@ -25,6 +25,7 @@ const key = "solid-imager:external-viewer:search";
 export function createViewerSearch<T>(
 	provider: ViewerProvider,
 	run: (params: ExternalSearch, choices: Record<string, string>) => Promise<T>,
+	identity?: { scope: () => (string | number)[]; ready: () => boolean },
 ) {
 	const [params, setParams] = createSignal(externalSearchSchema.parse({}));
 	const [draft, setDraft] = createSignal("");
@@ -73,9 +74,16 @@ export function createViewerSearch<T>(
 	createEffect(persist);
 	onCleanup(persist);
 	const results = createQuery(() => ({
-		queryKey: ["external-viewer", provider, params(), choices()],
+		queryKey: [
+			"external-viewer",
+			provider,
+			params(),
+			choices(),
+			...(identity?.scope() ?? []),
+		],
 		queryFn: () => run(params(), choices()),
-		enabled: ready(),
+		enabled: ready() && (identity?.ready() ?? true),
+		gcTime: identity ? 0 : undefined,
 		staleTime: 30_000,
 		retry: false,
 	}));

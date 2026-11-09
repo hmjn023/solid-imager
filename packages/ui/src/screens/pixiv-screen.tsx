@@ -1,3 +1,9 @@
+import {
+	createPixivAccount,
+	type ViewerFetch,
+	type PixivClientFactory,
+	PixivAccountDialog,
+} from "../external-viewer/pixiv-account";
 import type { AppContractClient } from "@solid-imager/core/contract";
 import {
 	pixivDownloadItem,
@@ -31,6 +37,8 @@ import { toast } from "../toast";
 type PixivProps = {
 	client: Pick<AppContractClient, "viewer" | "imports">;
 	apiBase: () => string;
+	fetch?: ViewerFetch;
+	createViewer: PixivClientFactory;
 	selectedPostId?: number;
 	postHref: (id: number) => string;
 	onOpenPost: (id: number, replace?: boolean) => void;
@@ -44,6 +52,7 @@ function imageHref(base: string, url: string) {
 
 function Artwork(props: {
 	post: PixivArtwork;
+	animation: (id: number) => Promise<string>;
 	apiBase: () => string;
 	enqueue: (item: DownloadItem) => Promise<unknown>;
 }) {
@@ -57,9 +66,8 @@ function Artwork(props: {
 		play() && props.post.animation
 			? {
 					type: "video",
-					getUrl: () =>
-						new URL("/api/pixiv-animation/" + props.post.id, props.apiBase())
-							.href,
+					getUrl: () => props.animation(props.post.id),
+					revokeUrl: (url) => URL.revokeObjectURL(url),
 				}
 			: {
 					type: "image",
@@ -167,10 +175,15 @@ function Artwork(props: {
 }
 
 export function PixivScreen(props: PixivProps) {
+	const account = createPixivAccount(
+		props.apiBase(),
+		props.createViewer,
+		props.fetch,
+	);
 	const browse = createViewerSearch<PixivSearchResult>(
 		"pixiv",
 		async (input, choices) => {
-			const result = await props.client.viewer.search({
+			const result = await account.transport().viewer.search({
 				...input,
 				provider: "pixiv",
 				choices,
@@ -178,13 +191,17 @@ export function PixivScreen(props: PixivProps) {
 			if (result.provider !== "pixiv") throw new Error("検索先が一致しません");
 			return result;
 		},
+		account,
 	);
 	const results = browse.results;
 	const detail = createQuery(() => ({
-		queryKey: ["pixiv", "artwork", props.selectedPostId],
+		queryKey: ["pixiv", "artwork", props.selectedPostId, ...account.scope()],
 		queryFn: () =>
-			props.client.viewer.pixivArtwork({ id: props.selectedPostId ?? 0 }),
-		enabled: !!props.selectedPostId,
+			account
+				.transport()
+				.viewer.pixivArtwork({ id: props.selectedPostId ?? 0 }),
+		enabled: account.ready() && !!props.selectedPostId,
+		gcTime: 0,
 		retry: false,
 		staleTime: 30_000,
 	}));
@@ -199,14 +216,17 @@ export function PixivScreen(props: PixivProps) {
 			<header class="shrink-0 space-y-3 border-b border-border p-3 sm:p-4">
 				<div class="flex items-baseline justify-between gap-3">
 					<h1 class="font-semibold text-xl">pixiv</h1>
-					<a
-						href="https://www.pixiv.net"
-						target="_blank"
-						rel="noopener noreferrer"
-						class="text-primary text-sm hover:underline"
-					>
-						サイトを開く ↗
-					</a>
+					<div class="flex items-center gap-3">
+						<PixivAccountDialog account={account} />
+						<a
+							href="https://www.pixiv.net"
+							target="_blank"
+							rel="noopener noreferrer"
+							class="text-primary text-sm hover:underline"
+						>
+							サイトを開く ↗
+						</a>
+					</div>
 				</div>
 				<DanbooruSearchComposer
 					provider="pixiv"
@@ -405,6 +425,7 @@ export function PixivScreen(props: PixivProps) {
 						{(post) => (
 							<Artwork
 								post={post}
+								animation={(id) => account.transport().animation(id)}
 								apiBase={props.apiBase}
 								enqueue={(item) =>
 									props.client.imports.bulkAdd({ items: [item] })

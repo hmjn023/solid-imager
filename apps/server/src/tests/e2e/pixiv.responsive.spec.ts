@@ -133,3 +133,92 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 		page.getByRole("combobox", { name: "Danbooru を検索" }),
 	).toHaveValue("landscape ");
 });
+
+test("connects a pixiv account, restores it on reload and removes private results on logout", async ({
+	page,
+}, info) => {
+	const code = "A".repeat(22),
+		token = "B".repeat(43);
+	let active = false;
+	const fixtureSession = "123_fixture";
+	await page.route("**/api/rpc/viewer/**", async (route) => {
+		const rpc = route.request().url().split("/").at(-1);
+		const bearer = route.request().headers().authorization;
+		let result: unknown;
+		if (rpc === "issuePixivCode") {
+			expect(route.request().postDataJSON().json.sessionId).toBe(
+				fixtureSession,
+			);
+			result = { code };
+		} else if (rpc === "loginPixiv") {
+			expect(route.request().postDataJSON().json.code).toBe(code);
+			expect(bearer).toBeUndefined();
+			active = true;
+			result = { token, userId: "123", expiresAt: Date.now() + 60_000 };
+		} else if (rpc === "logoutPixiv" || rpc === "checkPixivSession") {
+			expect(bearer).toBe("Bearer " + token);
+			if (rpc === "logoutPixiv") active = false;
+			result = rpc === "logoutPixiv" ? null : { userId: "123" };
+		} else {
+			const authenticated = active && bearer === "Bearer " + token;
+			result = {
+				provider: "pixiv",
+				posts: [
+					{
+						id: 123,
+						title: authenticated ? "会員作品" : "公開作品",
+						author: "作者",
+						thumbnail: null,
+						pageCount: 1,
+					},
+				],
+				hasNextPage: false,
+				word: "",
+				mappings: [],
+			};
+		}
+		await route.fulfill({ json: { json: result } });
+	});
+	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
+	await expect(
+		page.getByRole("link", { name: "公開作品 を開く" }),
+	).toBeVisible();
+	await page.getByRole("button", { name: "pixiv にログイン" }).click();
+	const dialog = page.getByRole("dialog", { name: "pixiv アカウント" });
+	await expect(
+		dialog.getByRole("link", { name: "公式 pixiv でログイン ↗" }),
+	).toHaveAttribute("href", "https://accounts.pixiv.net/login");
+	await dialog.getByLabel("接続コード").fill("bad");
+	await dialog.getByRole("button", { name: "接続する" }).click();
+	await expect(dialog.getByRole("alert")).toContainText("接続コード");
+	await dialog.getByLabel("接続コード").fill(code);
+	await dialog.getByRole("button", { name: "接続する" }).click();
+	await expect(
+		page.getByRole("link", { name: "会員作品 を開く" }),
+	).toBeVisible();
+	await page.reload();
+	await expect(
+		page.getByRole("link", { name: "会員作品 を開く" }),
+	).toBeVisible();
+	await page.getByRole("button", { name: "pixiv ID 123" }).click();
+	await dialog
+		.getByRole("button", { name: "この Viewer からログアウト" })
+		.click();
+	await expect(
+		page.getByRole("link", { name: "公開作品 を開く" }),
+	).toBeVisible();
+	await expect(page.getByRole("link", { name: "会員作品 を開く" })).toHaveCount(
+		0,
+	);
+	await page.reload();
+	await page.getByRole("button", { name: "pixiv にログイン" }).click();
+	await dialog.getByRole("button", { name: "拡張機能を使わずに接続" }).click();
+	await dialog.getByLabel("PHPSESSID").fill(fixtureSession);
+	await dialog.getByRole("button", { name: "接続する" }).click();
+	await expect(
+		page.getByRole("link", { name: "会員作品 を開く" }),
+	).toBeVisible();
+	expect(
+		await page.evaluate(() => JSON.stringify(sessionStorage)),
+	).not.toContain(fixtureSession);
+});

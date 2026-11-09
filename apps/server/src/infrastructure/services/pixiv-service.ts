@@ -82,8 +82,7 @@ export function createPixivService(
 			Referer: "https://www.pixiv.net/",
 			Accept: "application/json",
 		};
-		if (sessionId)
-			headers.Cookie = "PHPSESSID=" + encodeURIComponent(sessionId);
+		if (sessionId) headers.Cookie = "PHPSESSID=" + sessionId;
 		let response: Response;
 		try {
 			response = await fetchRemote(url, {
@@ -283,7 +282,3 @@ export function createPixivService(
 		},
 	};
 }
-export const pixivService = createPixivService(
-	fetch,
-	process.env.PIXIV_PHPSESSID,
-);

@@ -14,7 +14,24 @@ import {
 	pixivArtworkSchema,
 	pixivSearchResultSchema,
 } from "../external-viewer/pixiv";
+import { rpcOnly } from "./rest-visibility";
+import {
+	pixivCodeSchema,
+	pixivViewerSessionSchema,
+	pixivWebSessionSchema,
+} from "../external-viewer/pixiv-session";
+
 export const viewerContract = {
+	issuePixivCode: oc
+		.meta(rpcOnly)
+		.input(z.object({ sessionId: pixivWebSessionSchema }))
+		.output(pixivCodeSchema),
+	loginPixiv: oc
+		.meta(rpcOnly)
+		.input(pixivCodeSchema)
+		.output(pixivViewerSessionSchema),
+	checkPixivSession: oc.meta(rpcOnly).output(z.object({ userId: z.string() })),
+	logoutPixiv: oc.meta(rpcOnly).output(z.null()),
 	search: oc
 		.meta(
 			openapi({

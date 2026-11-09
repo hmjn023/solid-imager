@@ -14,6 +14,10 @@ export const Route = createFileRoute("/api/rpc/$")({
 				bootstrapServerRoute();
 				const { response } = await handler.handle(request, {
 					prefix: "/api/rpc",
+					context: {
+						pixivAuthorization:
+							request.headers.get("authorization") ?? undefined,
+					},
 				});
 				if (response) {
 					return response;

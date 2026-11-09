@@ -1,5 +1,5 @@
+import type { ViewerFetch, PixivClientFactory } from "./pixiv-account";
 import type { AppContractClient } from "@solid-imager/core/contract";
-import type { ViewerProvider } from "@solid-imager/core/external-viewer";
 import {
 	type RouterHistory,
 	Outlet,
@@ -9,12 +9,20 @@ import {
 import { DanbooruScreen } from "../screens/danbooru-screen";
 import { PixivScreen } from "../screens/pixiv-screen";
 
-export function ExternalViewerRoute(props: {
-	provider: ViewerProvider;
-	client: Pick<AppContractClient, "viewer" | "danbooru" | "imports">;
-	apiBase: () => string;
-	history: Pick<RouterHistory, "back" | "createHref">;
-}) {
+export function ExternalViewerRoute(
+	props: {
+		client: Pick<AppContractClient, "viewer" | "danbooru" | "imports">;
+		apiBase: () => string;
+		history: Pick<RouterHistory, "back" | "createHref">;
+	} & (
+		| { provider: "danbooru" }
+		| {
+				provider: "pixiv";
+				createViewer: PixivClientFactory;
+				fetch?: ViewerFetch;
+		  }
+	),
+) {
 	const navigate = useNavigate(),
 		location = useLocation();
 	let openedFromCollection = false;
@@ -76,6 +84,8 @@ export function ExternalViewerRoute(props: {
 					{...navigation}
 					client={props.client}
 					apiBase={props.apiBase}
+					createViewer={props.createViewer}
+					fetch={props.fetch}
 				/>
 			)}
 			<Outlet />

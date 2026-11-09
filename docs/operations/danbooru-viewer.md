@@ -42,7 +42,16 @@ DANBOORU_LOGIN=your-login
 DANBOORU_API_KEY=your-api-key
 ```
 
-pixiv は公開作品を匿名で取得できる。ログインが必要な作品には任意でサーバーの `PIXIV_PHPSESSID` を設定する。設定したアカウントで閲覧できる作品はサーバー利用者にも表示される。セッション値は pixiv のメタデータ API にだけ送る。
+公開作品はそのまま閲覧できる。自分の pixiv アカウントを使う手順は Web・Tauri 共通。
+
+1. pixiv Viewer の「pixiv にログイン」を開き、公式 pixiv にブラウザーでログインする。
+2. 同じブラウザーの xtracter 拡張で、接続先に自分の Solid Imager サーバー（HTTPS または localhost）を指定する。「Viewer の接続コードを発行」を押すと、そのサーバーに pixiv セッションが渡る。
+3. Viewer にコードを貼り付けて「接続する」を押す。コードの有効期限は 5 分で、1 回だけ使用できる。
+4. 接続中は Viewer に pixiv ID が表示される。ID を押すとログアウトできる。
+
+拡張を使えない環境では「拡張機能を使わずに接続」から、自分のブラウザーの pixiv Cookie にある `PHPSESSID` の値を直接入力できる。
+
+pixiv セッションはサーバーのメモリーに保持する。Viewer の接続はタブ単位で最長 12 時間有効。サーバー再起動後は再接続する。旧設定 `PIXIV_PHPSESSID` を使っていた場合も、利用するタブで接続する。
 ユーザーごとのアカウント切り替えや、お気に入り等のリモート更新は実装していない。
 
 API 通信は `danbooru.donmai.us` 固定で、リクエスト開始間隔を 250ms 以上空ける。

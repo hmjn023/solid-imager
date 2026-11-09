@@ -5,12 +5,22 @@ import {
 	danbooruService,
 	DanbooruRequestError,
 } from "~/infrastructure/services/danbooru-service";
-import { pixivService } from "~/infrastructure/services/pixiv-service";
+import {
+	pixivBearerToken,
+	pixivSessions,
+} from "~/infrastructure/services/pixiv-sessions";
+import { createPixivService } from "~/infrastructure/services/pixiv-service";
 import {
 	resolvePixivQuery,
 	suggestViewerTags,
 } from "~/infrastructure/services/viewer-tags";
-const os = implement(viewerContract);
+type ViewerContext = { pixivAuthorization?: string };
+const os = implement(viewerContract).$context<ViewerContext>();
+const service = (context: ViewerContext) =>
+	createPixivService(
+		fetch,
+		pixivSessions.credential(pixivBearerToken(context.pixivAuthorization)),
+	);
 async function readViewer<T>(operation: () => Promise<T>): Promise<T> {
 	try {
 		return await operation();
@@ -31,7 +41,20 @@ async function readViewer<T>(operation: () => Promise<T>): Promise<T> {
 	}
 }
 export const viewerRouter = os.router({
-	search: os.search.handler(({ input }) =>
+	issuePixivCode: os.issuePixivCode.handler(({ input }) =>
+		pixivSessions.issue(input.sessionId),
+	),
+	loginPixiv: os.loginPixiv.handler(({ input }) =>
+		pixivSessions.login(input.code),
+	),
+	checkPixivSession: os.checkPixivSession.handler(({ context }) =>
+		pixivSessions.check(pixivBearerToken(context.pixivAuthorization) ?? ""),
+	),
+	logoutPixiv: os.logoutPixiv.handler(({ context }) => {
+		pixivSessions.logout(pixivBearerToken(context.pixivAuthorization) ?? "");
+		return null;
+	}),
+	search: os.search.handler(({ input, context }) =>
 		readViewer(async () => {
 			if (input.provider === "danbooru")
 				return {
@@ -42,14 +65,14 @@ export const viewerRouter = os.router({
 			return {
 				provider: "pixiv" as const,
 				...query,
-				...(await pixivService.search(query.word, input.page)),
+				...(await service(context).search(query.word, input.page)),
 			};
 		}),
 	),
 	suggestTags: os.suggestTags.handler(({ input }) =>
 		readViewer(() => suggestViewerTags(input.query)),
 	),
-	pixivArtwork: os.pixivArtwork.handler(({ input }) =>
-		readViewer(() => pixivService.getPost(input.id)),
+	pixivArtwork: os.pixivArtwork.handler(({ input, context }) =>
+		readViewer(() => service(context).getPost(input.id)),
 	),
 });

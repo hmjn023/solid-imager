@@ -2,12 +2,13 @@ import { mkdtemp, readFile, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { pixivDownloadItem } from "@solid-imager/core/external-viewer";
-import { pixivService } from "./pixiv-service";
+import { pixivSessions, pixivBearerToken } from "./pixiv-sessions";
+import { createPixivService } from "./pixiv-service";
 import { downloadUgoiraArchive } from "./ugoira-download";
 import { convertUgoiraToMp4 } from "./ugoira-converter";
 
-async function render(id: number): Promise<Blob> {
-	const post = await pixivService.getPost(id);
+async function render(id: number, sessionId?: string): Promise<Blob> {
+	const post = await createPixivService(fetch, sessionId).getPost(id);
 	const item = pixivDownloadItem(post, 0);
 	if (!post.animation || !item?.ugoira)
 		throw new Error("うごイラを取得できませんでした。");
@@ -24,22 +25,33 @@ async function render(id: number): Promise<Blob> {
 		await rm(dir, { recursive: true, force: true });
 	}
 }
-let last: { id: number; blob: Blob; expires: number } | undefined;
-const inFlight = new Map<number, Promise<Blob>>();
-export async function servePixivAnimation(id: number) {
+let last: { key: string; blob: Blob; expires: number } | undefined;
+const inFlight = new Map<string, Promise<Blob>>();
+export async function servePixivAnimation(
+	id: number,
+	authorization?: string | null,
+) {
 	if (!Number.isSafeInteger(id) || id < 1)
 		return new Response(null, { status: 400 });
-	if (last?.id === id && last.expires > Date.now()) return video(last.blob);
-	let work = inFlight.get(id);
+	let token, sessionId;
+	try {
+		token = pixivBearerToken(authorization);
+		sessionId = pixivSessions.credential(token);
+	} catch {
+		return new Response(null, { status: 401 });
+	}
+	const key = (token ?? "guest") + "/" + id;
+	if (last?.key === key && last.expires > Date.now()) return video(last.blob);
+	let work = inFlight.get(key);
 	if (!work) {
 		if (inFlight.size >= 2) return new Response(null, { status: 429 });
-		work = render(id)
+		work = render(id, sessionId)
 			.then((blob) => {
-				last = { id, blob, expires: Date.now() + 300_000 };
+				last = { key, blob, expires: Date.now() + 300_000 };
 				return blob;
 			})
-			.finally(() => inFlight.delete(id));
-		inFlight.set(id, work);
+			.finally(() => inFlight.delete(key));
+		inFlight.set(key, work);
 	}
 	try {
 		return video(await work);
@@ -52,7 +64,7 @@ function video(blob: Blob) {
 		headers: {
 			"Content-Type": "video/mp4",
 			"Content-Length": String(blob.size),
-			"Cache-Control": "private, max-age=300",
+			"Cache-Control": "private, no-store",
 		},
 	});
 }

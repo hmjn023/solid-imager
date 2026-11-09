@@ -19,6 +19,8 @@ const getORPCClient = createIsomorphicFn()
 		return createRouterClient(appRouter, {
 			context: () => ({
 				headers: getRequestHeaders(),
+				pixivAuthorization:
+					getRequestHeaders().get("authorization") ?? undefined,
 			}),
 		});
 	})
