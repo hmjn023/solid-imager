@@ -1,4 +1,5 @@
 export const UI_STORAGE_KEYS = {
+	danbooruSearch: "solid-imager:danbooru:search",
 	sidebarExpanded: "solid-imager:sidebar-expanded",
 	searchViewMode: "solid-imager:search:view-mode",
 	sourceViewMode: "solid-imager:source-media:view-mode",

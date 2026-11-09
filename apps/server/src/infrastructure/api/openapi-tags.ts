@@ -1,6 +1,10 @@
 /** OpenAPI tag descriptions used when generating the API specification. */
 export const openApiTags = [
 	{
+		name: "Danbooru",
+		description: "Danbooru の投稿検索、閲覧、タグ候補取得を行います。",
+	},
+	{
 		name: "Media Tools",
 		description: "HTTP MCP と WebMCP で共有するメディア操作です。",
 	},

@@ -116,6 +116,13 @@ export function Sidebar(props: SidebarProps) {
 					/>
 				</NavigationItem>
 				{props.renderPendingDownloadsIndicator?.(!props.expanded)}
+				<NavigationItem
+					expanded={props.expanded}
+					icon={Image}
+					label="Danbooru"
+					onClick={props.onNavigate}
+					to="/danbooru"
+				/>
 			</nav>
 
 			<SourceList

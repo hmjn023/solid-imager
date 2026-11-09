@@ -91,7 +91,11 @@ export default defineConfig({
 	projects: [
 		{
 			name: "tauri",
-			testMatch: ["**/tauri-migration.spec.ts", "**/search-workspace.spec.ts"],
+			testMatch: [
+				"**/tauri-migration.spec.ts",
+				"**/search-workspace.spec.ts",
+				"**/danbooru.responsive.spec.ts",
+			],
 			use: {
 				...devices["Desktop Chrome"],
 				baseURL: resolvedTauriBaseURL,

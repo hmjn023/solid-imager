@@ -4,6 +4,7 @@ export { authorsContract } from "./authors.contract";
 export { categoriesContract } from "./categories.contract";
 export { charactersContract } from "./characters.contract";
 export { configContract } from "./config.contract";
+export { danbooruContract } from "./danbooru.contract";
 export { directoriesContract } from "./directories.contract";
 export { downloadsContract } from "./downloads.contract";
 export { importsContract } from "./imports.contract";
@@ -26,6 +27,7 @@ import { authorsContract } from "./authors.contract";
 import { categoriesContract } from "./categories.contract";
 import { charactersContract } from "./characters.contract";
 import { configContract } from "./config.contract";
+import { danbooruContract } from "./danbooru.contract";
 import { directoriesContract } from "./directories.contract";
 import { downloadsContract } from "./downloads.contract";
 import { importsContract } from "./imports.contract";
@@ -46,6 +48,7 @@ import { utilsContract } from "./utils.contract";
  * フロントエンド（Tauriアプリ、ブラウザ拡張等）とバックエンドで共有される型定義
  */
 export const appContract = {
+	danbooru: danbooruContract,
 	sources: sourcesContract,
 	tags: tagsContract,
 	media: mediaContract,
