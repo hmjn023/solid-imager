@@ -28,9 +28,13 @@
 - in_progressの取消は `cancelRequestedAt` を保存し、`job-cancellation-requested` を発行する。この通知だけで追跡を終えない。
 - `finishAttempt` が現在の試行をCASで更新する時に取消が保存されていれば、成功・失敗の提案より取消を優先して終端化する。
 - `job-completed` / `job-failed` / `job-cancelled` は保存済み状態の通知。通知例外はログに残し、DB結果を再変更しない。
-- 親の成功・失敗集約は、全子/dispatchが終端で既知の対象数が揃った後にCASで確定する。最後の子と親の終端を同じTxで保存し、兄弟の同時終了は親の行lockで直列化する。dispatchや不正payloadの失敗は親を非終端で残さない。
+- 親の成功集約は、全子/dispatchが終端で既知の対象数が揃った後にCASで確定する。最後の子と親の終端を同じTxで保存し、兄弟の同時終了は親の行lockで直列化する。子の失敗・取消では親も同じTxでfailedへ早期確定する。残る子の実行状態は独立しており、閉じた親の終端・集計を上書きしない。dispatchや不正payloadの失敗も親を非終端で残さない。
 - 子の寄与はpayloadの `batchOutcome` に保持し、同一試行の重複通知では差分0とする。従来のresult側 `parentProcessed` / `parentFailed` も読み、更新をまたぐ中断からの二重加算を避ける。古い複数項目chunkのBooleanマーカーは寄与数を確定できないため、推測で加算せず親を明示的に失敗させ、新batchを必要とする。
 - 汎用Retryの可否はcoreの `canRetryJob` をAPIとJobs画面で共有する。バッチの過去の集約をpendingへ戻す操作は提供しない。
+
+一括転送では内側のstorage/application層から補償失敗を型付きで伝え、再試行不能として扱う。Tx callback完了後のCOMMIT応答不明では保存済みかもしれない転送先を削除しない。移動元・thumbnailの必須削除は通知より前に試み、通知先の例外で飛ばさない。
+
+全体のFind similarは非永続のactivation世代を先に更新する。古いsource画面は全体検索への引継ぎ後の状態を問い合わせに使わず、遷移直前の不要なsource指定検索を防ぐ。sourceのcomposer操作と新しくmountしたsource画面は引き続きsource内類似検索を所有する。
 
 SSEは更新通知であり、再接続・F5ではAPI snapshotから復元する。ManagerはGET開始時の観測versionを記録し、途中にSSEが届いたGET結果を現在値へ上書きしない。
 
@@ -41,6 +45,8 @@ SSEは更新通知であり、再接続・F5ではAPI snapshotから復元する
 #799の設計から今回適用する責務は、受付と投入の原子性、受付由来の冪等性、現在試行のfencing、親非claim、parent/dispatch作成の原子性、DB確定後の通知である。これらを現行jobsと既存APIに適用する。
 
 専用table/runモデル、lease/backoffの全面刷新、cutover authority、汎用jobs廃止、本番観測・rollback gateは #619/#621/#771 側で追跡する。今回の修正をそれらの完了条件には数えない。ソース同期の今回の対象はディレクトリ同期結果の整合性と監視開始の失効である。
+
+監視パス再設定では、旧pathの同期を待った後に新pathの走査を実行または共有し、新pathの既存ファイル登録より先にwatcherを開始しない。停止・削除で失効した待機開始は新しい走査も開始しない。旧走査中のsource-wide状態更新権限そのものは従前のままであり、設定revisionによる同期本体のfencingは専用source run側の継続課題である。
 
 関連する #649 の管理画面骨子、#773 の検索/ワークスペース再設計、#843 の検索session保存形式は既存の境界を維持する。
 
