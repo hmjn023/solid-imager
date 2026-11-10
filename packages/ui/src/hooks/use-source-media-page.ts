@@ -34,7 +34,10 @@ import {
 import { type QueryUiState, toQueryUiState } from "../query-state";
 import type { PresetManagerClient } from "../search-control-panel";
 import { toast } from "../toast";
-import { searchState } from "../stores/search-store";
+import {
+	getGlobalSimilarityActivation,
+	searchState,
+} from "../stores/search-store";
 import {
 	getScrollPosition,
 	setScrollPosition,
@@ -198,6 +201,10 @@ export function useSourceMediaPage(
 	} = options;
 
 	const id = mediaSourceId;
+	// Global Find Similar sets shared search state before navigation can unmount
+	// this view. Its successor owns that request; do not launch a transient
+	// source-scoped query that will immediately be cancelled by navigation.
+	const sourceActivation = getGlobalSimilarityActivation();
 	// --- Filter data queries ---
 	const filterData = (): SourceMediaPageFilterData => ({
 		tags: queries.tags(),
@@ -227,7 +234,11 @@ export function useSourceMediaPage(
 			order: sortOrder(),
 			limit: itemsPerPage,
 			searchMedia: actions.searchMedia,
-			enabled: !isServer && isSearchStateRestored() && !!id(),
+			enabled:
+				!isServer &&
+				isSearchStateRestored() &&
+				!!id() &&
+				getGlobalSimilarityActivation() === sourceActivation,
 		}),
 	);
 	const mediaQuery = createInfiniteQuery(mediaQueryOptions);
