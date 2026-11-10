@@ -403,6 +403,52 @@ describe("persistence and collection generations", () => {
 		).toBe(true);
 	});
 
+	it("orders a server switch after an in-flight initial DB load and fences the old collection generation", async () => {
+		const settings = await import("./server-settings");
+		const persistence = await import("../db/persistence");
+		const collections = await import("~/collections");
+		await settings.initializeServerSettings();
+		const loading = Promise.withResolvers<void>();
+		const originalLoad = fixture.loadDatabase.getMockImplementation();
+		fixture.loadDatabase.mockImplementationOnce(async (path: string) => {
+			await loading.promise;
+			return originalLoad?.(path);
+		});
+		const starting = collections.initializeCollections();
+		// Attach rejection handling before the switch can invalidate initialization.
+		const started = starting.then(
+			(value) => ({ value }),
+			(error: Error) => ({ error }),
+		);
+		await vi.waitFor(() =>
+			expect(fixture.loadDatabase).toHaveBeenCalledTimes(1),
+		);
+		const switching = settings.activateServer("server-b");
+		try {
+			await new Promise<void>((resolve) => setTimeout(resolve, 0));
+			expect(fixture.store.set).not.toHaveBeenCalled();
+			expect(settings.getActiveServer()?.id).toBe("server-a");
+			expect(fixture.apiUrl).toBe("https://a.example");
+		} finally {
+			loading.resolve();
+			await Promise.all([switching, started]);
+		}
+		expect(settings.getActiveServer()?.id).toBe("server-b");
+		expect(persistence.getPersistenceServerId()).toBe("server-b");
+		expect(fixture.apiUrl).toBe("https://b.example");
+		expect(fixture.handles[0].closed).toBe(true);
+		await collections.initializeCollections();
+		expect(
+			fixture.bundles
+				.slice(-6)
+				.every(
+					(collection) =>
+						collection.persistence === persistence.getPersistence(),
+				),
+		).toBe(true);
+		expect(fixture.clearQueries).toHaveBeenCalledOnce();
+	});
+
 	it("prevents an old in-flight collection initialization from replacing the new bundle", async () => {
 		const settings = await import("./server-settings");
 		const persistence = await import("../db/persistence");

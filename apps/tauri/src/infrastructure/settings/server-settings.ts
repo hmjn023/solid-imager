@@ -3,10 +3,7 @@ import { Store } from "@tauri-apps/plugin-store";
 import { z } from "zod";
 import { getBuildTimeServerUrl } from "~/infrastructure/api-base";
 import { removeDatabaseFile } from "~/infrastructure/db/database-files";
-import {
-	getPersistenceServerId,
-	replacePersistence,
-} from "~/infrastructure/db/persistence";
+import { replacePersistence } from "~/infrastructure/db/persistence";
 import { setApiBaseUrl } from "~/infrastructure/api-base";
 
 const SETTINGS_FILE = "settings.json";
@@ -226,7 +223,6 @@ async function commitSettings(next: ServerSettings): Promise<ServerSettings> {
 	const changedConnection =
 		oldServer?.id !== nextServer?.id ||
 		oldServer?.baseUrl !== nextServer?.baseUrl;
-	const hadRuntime = getPersistenceServerId() !== undefined;
 	const store = await getStore();
 	let touchedStore = false;
 	const persist = async () => {
@@ -234,10 +230,9 @@ async function commitSettings(next: ServerSettings): Promise<ServerSettings> {
 		await store.set(SETTINGS_KEY, normalized);
 		await store.save();
 	};
-	const reset =
-		changedConnection && hadRuntime
-			? (await import("~/collections")).resetCollections
-			: null;
+	const reset = changedConnection
+		? (await import("~/collections")).resetCollections
+		: null;
 	let cleanup: Promise<void> = Promise.resolve();
 	const publish = () => {
 		settings = normalized;
@@ -247,7 +242,9 @@ async function commitSettings(next: ServerSettings): Promise<ServerSettings> {
 		cleanup = reset?.() ?? Promise.resolve();
 	};
 	try {
-		if (changedConnection && hadRuntime)
+		// A pending first Database.load is already a runtime operation even while
+		// no connection is published. Queue every target change behind it.
+		if (changedConnection)
 			await replacePersistence(nextServer?.id ?? null, persist, publish);
 		else {
 			await persist();
