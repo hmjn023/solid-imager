@@ -270,7 +270,6 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							page().setFileToUpload(null);
 						}}
 						onUpload={page().handleUpload}
-						onUrlFetch={(file) => page().setFileToUpload(file)}
 						pastedUrl={page().pastedUrl()}
 					/>
 				);
