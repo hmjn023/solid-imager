@@ -165,6 +165,67 @@ describe("bulk media item outcomes", () => {
 		);
 		expect(mocks.notify).not.toHaveBeenCalled();
 	});
+	it.each([
+		["bulkCopyToSource", "delete-fails"],
+		["bulkCopyToSource", "missing-target"],
+		["bulkCopyToSource", "lookup-fails"],
+		["bulkMoveToSource", "delete-fails"],
+	] as const)(
+		"marks %s unsafe to retry when compensation %s leaves a copied file",
+		async (operation, failure) => {
+			const copiedFile = path.join(directory, `copied-${one}.png`);
+			await writeFile(copiedFile, "uncommitted-copy");
+			mocks.values.mockRejectedValueOnce(
+				new Error("processing reservation failed"),
+			);
+			if (failure === "delete-fails")
+				mocks.deleteFile.mockRejectedValueOnce(
+					new Error("storage unavailable"),
+				);
+			else if (failure === "missing-target")
+				mocks.findSource.mockResolvedValueOnce(null);
+			else
+				mocks.findSource.mockRejectedValueOnce(
+					new Error("target lookup unavailable"),
+				);
+			const result = await BulkOperationService[operation](
+				sourceId,
+				[one],
+				targetId,
+			);
+			expect(await readFile(copiedFile, "utf8")).toBe("uncommitted-copy");
+			expect(result.items).toEqual([
+				expect.objectContaining({
+					mediaId: one,
+					status: "failed",
+					retryable: false,
+				}),
+			]);
+			expect(mocks.notify).not.toHaveBeenCalled();
+		},
+	);
+	it("keeps a transfer retryable when rollback deletes its copied file successfully", async () => {
+		const copiedFile = path.join(directory, `copied-${one}.png`);
+		await writeFile(copiedFile, "uncommitted-copy");
+		mocks.values.mockRejectedValueOnce(
+			new Error("processing reservation failed"),
+		);
+		mocks.deleteFile.mockImplementationOnce(
+			async (base: string, relative: string) => {
+				await rm(path.join(base, relative));
+			},
+		);
+		const result = await BulkOperationService.bulkCopyToSource(
+			sourceId,
+			[one],
+			targetId,
+		);
+		expect(result.items[0]).toMatchObject({ status: "failed" });
+		expect(
+			result.items[0].status === "failed" && result.items[0].retryable,
+		).not.toBe(false);
+		await expect(readFile(copiedFile)).rejects.toThrow();
+	});
 	it("does not perform any side effects when a group contains a wrong-source item", async () => {
 		mocks.findByIds.mockResolvedValue([
 			{ id: one, mediaSourceId: sourceId },
