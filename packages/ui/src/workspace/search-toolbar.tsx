@@ -1,3 +1,7 @@
+import {
+	getSearchConditionCount,
+	getSearchExecutionKind,
+} from "../search-execution";
 import type { SearchState } from "@solid-imager/core/search";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import ArrowDownUp from "lucide-solid/icons/arrow-down-up";
@@ -200,8 +204,9 @@ function submitComposerDraft(rawDraft: string): boolean {
 }
 
 function sortLabel(state: SearchState): string {
-	if (state.semanticQuery) return `文章検索・${state.similarityTopK}件`;
-	if (state.similarityAnchorMediaId) {
+	if (getSearchExecutionKind(state) === "semantic")
+		return `文章検索・${state.similarityTopK}件`;
+	if (getSearchExecutionKind(state) === "similarity") {
 		return `類似度順・${state.similarityTopK}件`;
 	}
 	const field = getSortLabel(state.sortBy);
@@ -222,13 +227,22 @@ export function SearchToolbar(props: SearchToolbarProps) {
 			...getSearchComposerTokens(searchState).filter(
 				(token) => !removalIds.has(tokenId(token)),
 			),
-			...pendingSuggestions().map((suggestion) => ({
+			...(getSearchExecutionKind(searchState) === "ordinary" &&
+			searchState.mode === "simple"
+				? pendingSuggestions()
+				: []
+			).map((suggestion) => ({
 				key: suggestion.key,
 				prefix: suggestion.prefix,
 				value: suggestion.value,
 			})),
 		];
 	});
+	const appliedFilterCount = createMemo(() =>
+		getSearchExecutionKind(searchState) === "ordinary"
+			? getSearchConditionCount(searchState)
+			: 0,
+	);
 	let composerInput: HTMLInputElement | undefined;
 	let searchApplyTimer: ReturnType<typeof setTimeout> | undefined;
 	const applyPendingChanges = () => {
@@ -340,6 +354,22 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					</span>
 				</Show>
 			</div>
+			<Show when={getSearchExecutionKind(searchState) !== "ordinary"}>
+				<output class="mb-2 block text-xs text-muted-foreground">
+					通常検索の絞り込み条件と並び順は退避中です。類似・文章検索を解除すると再適用されます。
+				</output>
+			</Show>
+			<Show
+				when={
+					getSearchExecutionKind(searchState) === "ordinary" &&
+					searchState.mode === "pro" &&
+					searchState.advancedCondition
+				}
+			>
+				<p class="mb-2 text-xs text-muted-foreground">
+					詳細条件を適用中です。「フィルター」で条件式を確認できます。
+				</p>
+			</Show>
 			<div class="flex min-w-0 flex-wrap items-start gap-2">
 				<SearchComposer
 					draft={draft()}
@@ -377,7 +407,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					placement="bottom-end"
 				>
 					<PopoverTrigger
-						aria-label={`検索フィルター、${tokens().length}件の条件`}
+						aria-label={`検索フィルター、${appliedFilterCount()}件の条件`}
 						as={Button}
 						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9"
 						size="sm"
@@ -385,9 +415,9 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					>
 						<Filter aria-hidden="true" size={15} />
 						フィルター
-						<Show when={tokens().length > 0}>
+						<Show when={appliedFilterCount() > 0}>
 							<span class="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-label-xs text-white">
-								{tokens().length}
+								{appliedFilterCount()}
 							</span>
 						</Show>
 					</PopoverTrigger>

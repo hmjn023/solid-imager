@@ -43,6 +43,7 @@ import {
 import {
 	searchMedia,
 	searchSemantic,
+	searchSimilar,
 } from "~/infrastructure/api-clients/search-api";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 import { notifyThumbnailReady } from "~/infrastructure/media/thumbnail-runtime";
@@ -109,6 +110,7 @@ export function SourceMediaPage() {
 				actions={{
 					searchMedia,
 					searchSemantic,
+					searchSimilar,
 					uploadMedia: (sourceId, file, options) =>
 						uploadMedia(sourceId, file, options),
 					deleteMedia,

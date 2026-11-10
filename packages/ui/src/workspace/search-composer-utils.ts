@@ -1,3 +1,4 @@
+import { getSearchExecutionKind } from "../search-execution";
 import { mediaIdSchema } from "@solid-imager/core/media";
 import type { SearchState } from "@solid-imager/core/search";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
@@ -44,9 +45,13 @@ export function parseSemanticSearchDraft(draft: string): string | undefined {
 
 /** Builds display tokens from search state; a semantic query takes precedence over other filters. */
 export function getSearchComposerTokens(state: SearchState): SearchToken[] {
-	if (state.semanticQuery)
+	if (getSearchExecutionKind(state) === "semantic")
 		return [
-			{ key: "semanticQuery", prefix: "文章", value: state.semanticQuery },
+			{
+				key: "semanticQuery",
+				prefix: "文章",
+				value: state.semanticQuery.trim(),
+			},
 		];
 	const similarityTokens: SearchToken[] = state.similarityAnchorMediaId
 		? [
@@ -63,6 +68,9 @@ export function getSearchComposerTokens(state: SearchState): SearchToken[] {
 				},
 			]
 		: [];
+	if (getSearchExecutionKind(state) === "similarity") return similarityTokens;
+	// Pro conditions are edited in their expression tree; stale simple fields are not applied.
+	if (state.mode === "pro") return [];
 	const normalTokens: SearchToken[] = [
 		...(state.searchQuery
 			? [

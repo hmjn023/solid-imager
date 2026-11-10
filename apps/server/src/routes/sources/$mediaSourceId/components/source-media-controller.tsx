@@ -38,6 +38,7 @@ import {
 import {
 	searchMedia,
 	searchSemantic,
+	searchSimilar,
 } from "~/infrastructure/api-clients/search-api";
 import { getSearchCondition, searchState } from "@solid-imager/ui/search/state";
 
@@ -143,6 +144,7 @@ export function SourceMediaPageController(
 				actions={{
 					searchMedia,
 					searchSemantic,
+					searchSimilar,
 					uploadMedia: (sourceId, file, opts) =>
 						uploadMedia(sourceId, file, opts),
 					deleteMedia,

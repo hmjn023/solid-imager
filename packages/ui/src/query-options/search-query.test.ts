@@ -159,6 +159,7 @@ describe("buildSearchResultsQueryOptions", () => {
 			queryKey: options.queryKey,
 			signal,
 			meta: undefined,
+			direction: "forward",
 			pageParam: 20,
 		} as any);
 		expect(searchSemantic).toHaveBeenCalledWith(
@@ -202,14 +203,12 @@ describe("buildSearchResultsQueryOptions", () => {
 		expect(options.queryKey).toEqual([
 			"searchResults",
 			{
-				mode: "pro",
+				kind: "ordinary",
 				sourceId: "source-1",
 				conditionKey: '{"type":"group"}',
 				sort: "rating",
 				order: "asc",
 				limit: 40,
-				similarityAnchorMediaId: null,
-				similarityTopK: 25,
 			},
 		]);
 		expect(options.initialPageParam).toBe(0);
@@ -228,6 +227,7 @@ describe("buildSearchResultsQueryOptions", () => {
 			queryKey: options.queryKey,
 			signal,
 			meta: undefined,
+			direction: "forward",
 			pageParam: 80,
 		} as unknown as Parameters<typeof queryFn>[0]);
 
@@ -313,6 +313,7 @@ describe("buildSearchResultsQueryOptions", () => {
 				queryKey: options.queryKey,
 				signal,
 				meta: undefined,
+				direction: "forward",
 				pageParam: 200,
 			} as unknown as Parameters<typeof queryFn>[0]),
 		).resolves.toEqual(response);
@@ -336,7 +337,7 @@ describe("buildSearchResultsQueryOptions", () => {
 		expect(options.placeholderData).toBeUndefined();
 	});
 
-	it("returns an empty result when the similarity client is unavailable", async () => {
+	it("reports unavailable similarity instead of silently returning ordinary or empty results", async () => {
 		const searchMedia = vi.fn(
 			async (): Promise<MediaSearchResponse> => EMPTY_RESPONSE,
 		);
@@ -365,9 +366,10 @@ describe("buildSearchResultsQueryOptions", () => {
 				queryKey: options.queryKey,
 				signal: new AbortController().signal,
 				meta: undefined,
+				direction: "forward",
 				pageParam: 0,
 			} as unknown as Parameters<typeof queryFn>[0]),
-		).resolves.toEqual(EMPTY_RESPONSE);
+		).rejects.toThrow("Similarity search is unavailable");
 		expect(options.enabled).toBe(false);
 		expect(searchMedia).not.toHaveBeenCalled();
 	});
@@ -402,6 +404,7 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 			queryKey: options.queryKey,
 			signal,
 			meta: undefined,
+			direction: "forward",
 			pageParam: 20,
 		} as unknown as Parameters<typeof queryFn>[0]);
 		expect(searchSemantic).toHaveBeenCalledWith(
@@ -438,6 +441,7 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 			{
 				sourceId: "source-3",
 				conditionKey: "source-condition",
+				kind: "ordinary",
 				sort: "size",
 				order: "desc",
 				limit: 200,
@@ -457,6 +461,7 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 			queryKey: options.queryKey,
 			signal,
 			meta: undefined,
+			direction: "forward",
 			pageParam: 400,
 		} as unknown as Parameters<typeof queryFn>[0]);
 
@@ -529,10 +534,153 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 				queryKey: options.queryKey,
 				signal: new AbortController().signal,
 				meta: undefined,
+				direction: "forward",
 				pageParam: 0,
 			} as unknown as Parameters<typeof queryFn>[0]),
 		).rejects.toThrow("Media source ID is required");
 		expect(options.enabled).toBe(false);
 		expect(searchMedia).not.toHaveBeenCalled();
+	});
+});
+
+describe("applied search mechanism", () => {
+	const base = {
+		sourceId: "source-3",
+		condition: TEST_CONDITION,
+		conditionKey: "normal filters",
+		sort: "rating" as const,
+		order: "asc" as const,
+		limit: 40,
+		similarityAnchorMediaId: TEST_MEDIA.id,
+		similarityModel: "ccip" as const,
+		similarityTopK: 37,
+		searchMedia: vi.fn(async () => EMPTY_RESPONSE),
+		searchSimilar: vi.fn(async () => ({ media: [TEST_MEDIA], total: 37 })),
+	};
+	it("executes similarity within the source with its anchor/model/cap and no ordinary filters", async () => {
+		const searchSimilar = vi.fn(async () => EMPTY_RESPONSE);
+		const searchMedia = vi.fn(async () => EMPTY_RESPONSE);
+		const options = buildSourceMediaResultsQueryOptions({
+			...base,
+			searchSimilar,
+			searchMedia,
+		});
+		if (typeof options.queryFn !== "function")
+			throw new Error("Missing query function");
+		const signal = new AbortController().signal;
+		await options.queryFn({
+			client: new QueryClient(),
+			queryKey: options.queryKey,
+			signal,
+			meta: undefined,
+			direction: "forward",
+			pageParam: 20,
+		});
+		expect(searchSimilar).toHaveBeenCalledExactlyOnceWith(
+			{
+				mediaSourceId: "source-3",
+				anchorMediaId: TEST_MEDIA.id,
+				model: "ccip",
+				topK: 37,
+				limit: 40,
+				offset: 20,
+			},
+			signal,
+		);
+		expect(searchMedia).not.toHaveBeenCalled();
+		expect(options.placeholderData).toBeUndefined();
+		expect(options.meta).toEqual({ usesMediaActivity: false });
+	});
+	it("keys source similarity by applied anchor/model/source/cap, excluding suspended ordinary filters", () => {
+		const key = buildSourceMediaResultsQueryOptions(base).queryKey;
+		expect(
+			buildSourceMediaResultsQueryOptions({
+				...base,
+				conditionKey: "different retained filters",
+				sort: "date",
+				order: "desc",
+			}).queryKey,
+		).toEqual(key);
+		for (const change of [
+			{ similarityAnchorMediaId: "another-anchor" },
+			{ similarityModel: "embeddinggemma2" as const },
+			{ similarityTopK: 50 },
+			{ sourceId: "other-source" },
+		])
+			expect(
+				buildSourceMediaResultsQueryOptions({ ...base, ...change }).queryKey,
+			).not.toEqual(key);
+		expect(isSourceMediaResultsQueryKey(key, "source-3")).toBe(true);
+	});
+	it("does not execute ordinary search when source similarity is unavailable", async () => {
+		const searchMedia = vi.fn(async () => EMPTY_RESPONSE);
+		const options = buildSourceMediaResultsQueryOptions({
+			...base,
+			searchMedia,
+			searchSimilar: undefined,
+		});
+		if (typeof options.queryFn !== "function")
+			throw new Error("Missing query function");
+		await expect(
+			options.queryFn({
+				client: new QueryClient(),
+				queryKey: options.queryKey,
+				signal: new AbortController().signal,
+				meta: undefined,
+				direction: "forward",
+				pageParam: 0,
+			}),
+		).rejects.toThrow("Similarity search is unavailable");
+		expect(searchMedia).not.toHaveBeenCalled();
+	});
+	it("keeps simple/pro independent of execution and restores normal applied filters when similarity is cleared", () => {
+		const global = { ...base, mode: "simple" as const };
+		expect(buildSearchResultsQueryOptions(global).queryKey).toEqual(
+			buildSearchResultsQueryOptions({ ...global, mode: "pro" }).queryKey,
+		);
+		const ordinary = buildSearchResultsQueryOptions({
+			...global,
+			similarityAnchorMediaId: null,
+		});
+		expect(ordinary.queryKey).not.toEqual(
+			buildSearchResultsQueryOptions(global).queryKey,
+		);
+		expect(ordinary.queryKey[1]).toMatchObject({
+			kind: "ordinary",
+			conditionKey: "normal filters",
+			sort: "rating",
+			order: "asc",
+		});
+		expect(ordinary.meta).toEqual({ usesMediaActivity: true });
+	});
+	it("gives trimmed semantic text precedence over a retained anchor in execution and cache keys", async () => {
+		const searchSemantic = vi.fn(async () => EMPTY_RESPONSE);
+		const options = buildSourceMediaResultsQueryOptions({
+			...base,
+			semanticQuery: "  a cat  ",
+			searchSemantic,
+		});
+		expect(options.queryKey).toEqual(
+			buildSourceMediaResultsQueryOptions({
+				...base,
+				semanticQuery: "a cat",
+				similarityAnchorMediaId: "different",
+				conditionKey: "other",
+			}).queryKey,
+		);
+		if (typeof options.queryFn !== "function")
+			throw new Error("Missing query function");
+		await options.queryFn({
+			client: new QueryClient(),
+			queryKey: options.queryKey,
+			signal: new AbortController().signal,
+			meta: undefined,
+			direction: "forward",
+			pageParam: 0,
+		});
+		expect(searchSemantic).toHaveBeenCalledWith(
+			expect.objectContaining({ text: "a cat", mediaSourceId: "source-3" }),
+			expect.any(AbortSignal),
+		);
 	});
 });

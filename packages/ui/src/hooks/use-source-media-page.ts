@@ -82,6 +82,7 @@ export type SourceMediaPageQueryStates = {
 };
 
 export type SourceMediaPageActions = {
+	searchSimilar?: import("../query-options").SourceMediaResultsQueryOptionsInput["searchSimilar"];
 	searchSemantic: (
 		input: SemanticSearchRequest,
 		signal?: AbortSignal,
@@ -213,6 +214,9 @@ export function useSourceMediaPage(
 
 	const mediaQueryOptions = createMemo(() =>
 		buildSourceMediaResultsQueryOptions({
+			similarityAnchorMediaId: searchState.similarityAnchorMediaId,
+			similarityModel: searchState.similarityModel,
+			searchSimilar: actions.searchSimilar,
 			semanticQuery: searchState.semanticQuery,
 			similarityTopK: searchState.similarityTopK,
 			searchSemantic: actions.searchSemantic,
