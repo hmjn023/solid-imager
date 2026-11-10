@@ -1,9 +1,14 @@
+import type { IMediaService } from "@solid-imager/application/media";
 import {
+	type BulkMediaItemResult,
+	type BulkMediaOperationResult,
 	type MediaBulkRepository,
 	type MediaReader,
 	type UpdateMediaRequestInput,
 	updateMediaRequestSchema,
 } from "@solid-imager/core/media";
+import { db } from "~/infrastructure/db";
+import { jobs } from "~/infrastructure/db/schema";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
@@ -11,6 +16,139 @@ import { services } from "~/infrastructure/service-registry";
 function getBulkMediaRepository(): MediaBulkRepository &
 	Pick<MediaReader, "findByIds"> {
 	return services.getMediaRepository();
+}
+
+/** Validate the entire source group before performing any side effect. */
+async function preflight(mediaSourceId: string, mediaIds: string[]) {
+	const mediaList = await getBulkMediaRepository().findByIds(mediaIds);
+	const mediaMap = new Map(mediaList.map((media) => [media.id, media]));
+	return {
+		mediaMap,
+		invalid: new Set(
+			mediaIds.filter(
+				(id) => mediaMap.get(id)?.mediaSourceId !== mediaSourceId,
+			),
+		),
+	};
+}
+function rejectedGroup(
+	mediaIds: string[],
+	invalid: Set<string>,
+): BulkMediaOperationResult {
+	return {
+		success: false,
+		items: mediaIds.map((mediaId) =>
+			invalid.has(mediaId)
+				? {
+						mediaId,
+						status: "failed",
+						error: "指定されたソースのメディアを確認できません。",
+					}
+				: {
+						mediaId,
+						status: "not_processed",
+						error: "対象確認に失敗したため実行していません。",
+					},
+		),
+	};
+}
+async function transferItems(
+	mediaSourceId: string,
+	inputIds: string[],
+	perform: (mediaId: string) => Promise<unknown>,
+): Promise<BulkMediaOperationResult> {
+	const mediaIds = [...new Set(inputIds)];
+	const { invalid } = await preflight(mediaSourceId, mediaIds);
+	if (invalid.size) return rejectedGroup(mediaIds, invalid);
+	const { asyncPool } = await import("@solid-imager/core/utils");
+	const results = await asyncPool(mediaIds, 5, perform);
+	const items: BulkMediaItemResult[] = results.map((result, index) => {
+		const mediaId = mediaIds[index];
+		if (result.status === "fulfilled") return { mediaId, status: "succeeded" };
+		logger.error({ mediaId, err: result.reason }, "Bulk media transfer failed");
+		return {
+			mediaId,
+			status: "failed",
+			error: "メディアのコピー・移動に失敗しました。",
+		};
+	});
+	return { success: items.every((item) => item.status === "succeeded"), items };
+}
+
+/** Commit one transfer and its processing reservations before publishing notifications. */
+async function commitTransfer(
+	mediaId: string,
+	targetSourceId: string,
+	transfer: IMediaService["copyMedia"],
+	afterCommit: (
+		actions: NonNullable<
+			Awaited<ReturnType<IMediaService["copyMedia"]>>["deferred"]
+		>,
+	) => Promise<void>,
+) {
+	let copiedPath: string | undefined;
+	let result;
+	try {
+		result = await db.transaction(async (tx) => {
+			const transferred = await transfer(mediaId, targetSourceId, tx);
+			if (!transferred.success)
+				throw new Error("Media transfer did not complete.");
+			copiedPath = transferred.media.filePath;
+			for (const group of transferred.deferred?.jobs ?? []) {
+				for (const job of group.jobs) {
+					await tx.insert(jobs).values({
+						type: job.type,
+						mediaSourceId: group.mediaSourceId,
+						payload: {
+							...(job.payload &&
+							typeof job.payload === "object" &&
+							!Array.isArray(job.payload)
+								? job.payload
+								: {}),
+							mediaId: job.mediaId,
+							sourcePath: job.sourcePath,
+						},
+					});
+				}
+			}
+			return transferred;
+		});
+	} catch (err) {
+		if (copiedPath) {
+			try {
+				const target = await services
+					.getSourceRepository()
+					.findById(targetSourceId);
+				if (target?.type === "local") {
+					const { localConnectionSchema } =
+						await import("@solid-imager/core/sources");
+					await services
+						.getMediaStorage()
+						.deleteFile(
+							localConnectionSchema.parse(target.connectionInfo).path,
+							copiedPath,
+						);
+				}
+			} catch (cleanupError) {
+				logger.error(
+					{ mediaId, err: cleanupError },
+					"Failed to clean up uncommitted bulk transfer",
+				);
+			}
+		}
+		throw err;
+	}
+	if (result.deferred) {
+		try {
+			await afterCommit({ ...result.deferred, jobs: [] });
+		} catch (err) {
+			// The item has committed. A notification failure must not cause copying it again.
+			logger.warn(
+				{ mediaId, err },
+				"Media transfer committed; deferred notification failed",
+			);
+		}
+	}
 }
 
 /**
@@ -124,69 +262,67 @@ export const BulkOperationService = {
 	) {
 		const mediaRepo = getBulkMediaRepository();
 		const mediaStorage = services.getMediaStorage();
-		const sourceRepo = services.getSourceRepository();
-
-		const source = await sourceRepo.findById(mediaSourceId);
-		if (!source) {
-			throw new Error(`Media source not found: ${mediaSourceId}`);
-		}
-		const connectionInfo = source.connectionInfo as Record<
-			string,
-			unknown
-		> | null;
-		const basePath = connectionInfo?.path as string | undefined;
-		if (!basePath) {
-			throw new Error(`Base path not found for media source: ${mediaSourceId}`);
-		}
-
-		// 一括取得してセキュリティ及び整合性チェック
-		const mediaList = await mediaRepo.findByIds(mediaIds);
-		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
-
-		for (const mediaId of mediaIds) {
+		const source = await services.getSourceRepository().findById(mediaSourceId);
+		const { localConnectionSchema } =
+			await import("@solid-imager/core/sources");
+		if (!source || source.type !== "local")
+			throw new Error("A local media source is required.");
+		const { path: basePath } = localConnectionSchema.parse(
+			source.connectionInfo,
+		);
+		const ids = [...new Set(mediaIds)];
+		const { mediaMap, invalid } = await preflight(mediaSourceId, ids);
+		if (invalid.size) return rejectedGroup(ids, invalid);
+		const items: BulkMediaItemResult[] = [];
+		for (const mediaId of ids) {
 			const media = mediaMap.get(mediaId);
-			if (!media || media.mediaSourceId !== mediaSourceId) {
-				throw new Error(
-					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
-				);
+			if (!media) continue; // preflight already validated every ID
+			const newFilePath = `${destinationPath.replace(/\/$/, "")}/${media.fileName}`;
+			if (newFilePath === media.filePath) {
+				items.push({ mediaId, status: "succeeded" });
+				continue;
 			}
-		}
-
-		const pathUpdates: { id: string; filePath: string; fileName: string }[] =
-			[];
-
-		for (const media of mediaList) {
-			const cleanDestDir = destinationPath.endsWith("/")
-				? destinationPath
-				: `${destinationPath}/`;
-			const newFilePath = `${cleanDestDir}${media.fileName}`;
-
-			if (newFilePath !== media.filePath) {
+			try {
+				await mediaStorage.moveFile(basePath, media.filePath, newFilePath);
+			} catch (err) {
+				logger.error({ mediaId, err }, "Bulk folder move failed");
+				items.push({
+					mediaId,
+					status: "failed",
+					error: "ファイルの移動に失敗しました。",
+				});
+				continue;
+			}
+			try {
+				await mediaRepo.bulkUpdatePaths([
+					{ id: mediaId, filePath: newFilePath, fileName: media.fileName },
+				]);
+				items.push({ mediaId, status: "succeeded" });
+			} catch (err) {
+				logger.error({ mediaId, err }, "Failed to persist bulk folder move");
+				let retryable = true;
 				try {
-					// ファイルを物理的に移動
-					await mediaStorage.moveFile(basePath, media.filePath, newFilePath);
-					pathUpdates.push({
-						id: media.id,
-						filePath: newFilePath,
-						fileName: media.fileName,
-					});
-				} catch (e) {
+					await mediaStorage.moveFile(basePath, newFilePath, media.filePath);
+				} catch (rollbackError) {
+					retryable = false;
 					logger.error(
-						{
-							mediaId: media.id,
-							filePath: media.filePath,
-							newFilePath,
-							error: e,
-						},
-						"Failed to move file in storage during bulk move",
+						{ mediaId, err: rollbackError },
+						"Failed to restore file after bulk move persistence failure",
 					);
 				}
+				items.push({
+					mediaId,
+					status: "failed",
+					retryable,
+					error:
+						"移動結果の保存に失敗しました。一覧とファイルを確認してください。",
+				});
 			}
 		}
-
-		if (pathUpdates.length > 0) {
-			await mediaRepo.bulkUpdatePaths(pathUpdates);
-		}
+		return {
+			success: items.every((item) => item.status === "succeeded"),
+			items,
+		};
 	},
 
 	/**
@@ -233,37 +369,18 @@ export const BulkOperationService = {
 		mediaIds: string[],
 		targetSourceId: string,
 	) {
-		const mediaRepo = getBulkMediaRepository();
-		const { MediaService } =
-			await import("~/infrastructure/services/media-service");
-
-		// 一括取得してセキュリティチェック
-		const mediaList = await mediaRepo.findByIds(mediaIds);
-		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
-
-		for (const mediaId of mediaIds) {
-			const media = mediaMap.get(mediaId);
-			if (!media || media.mediaSourceId !== mediaSourceId) {
-				throw new Error(
-					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
-				);
-			}
-		}
-
-		const { asyncPool } = await import("@solid-imager/core/utils");
-		const processCopy = async (mediaId: string) => {
-			await MediaService.copyMedia(mediaId, targetSourceId);
-		};
-
-		const poolResults = await asyncPool(mediaIds, 5, processCopy);
-		const failures = poolResults.filter((r) => r.status === "rejected");
-		if (failures.length > 0) {
-			logger.error(
-				{ failures },
-				"Some copy operations failed during bulk copy",
-			);
-			throw new Error(`Failed to copy ${failures.length} media items.`);
-		}
+		const [{ MediaService }, { executeDeferredActions }] = await Promise.all([
+			import("~/infrastructure/services/media-service"),
+			import("~/infrastructure/services/job-dispatch-service"),
+		]);
+		return transferItems(mediaSourceId, mediaIds, (mediaId) =>
+			commitTransfer(
+				mediaId,
+				targetSourceId,
+				(id, target, tx) => MediaService.copyMedia(id, target, tx),
+				executeDeferredActions,
+			),
+		);
 	},
 
 	/**
@@ -274,36 +391,17 @@ export const BulkOperationService = {
 		mediaIds: string[],
 		targetSourceId: string,
 	) {
-		const mediaRepo = getBulkMediaRepository();
-		const { MediaService } =
-			await import("~/infrastructure/services/media-service");
-
-		// 一括取得してセキュリティチェック
-		const mediaList = await mediaRepo.findByIds(mediaIds);
-		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
-
-		for (const mediaId of mediaIds) {
-			const media = mediaMap.get(mediaId);
-			if (!media || media.mediaSourceId !== mediaSourceId) {
-				throw new Error(
-					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
-				);
-			}
-		}
-
-		const { asyncPool } = await import("@solid-imager/core/utils");
-		const processMove = async (mediaId: string) => {
-			await MediaService.moveMedia(mediaId, targetSourceId);
-		};
-
-		const poolResults = await asyncPool(mediaIds, 5, processMove);
-		const failures = poolResults.filter((r) => r.status === "rejected");
-		if (failures.length > 0) {
-			logger.error(
-				{ failures },
-				"Some move operations failed during bulk move",
-			);
-			throw new Error(`Failed to move ${failures.length} media items.`);
-		}
+		const [{ MediaService }, { executeDeferredActions }] = await Promise.all([
+			import("~/infrastructure/services/media-service"),
+			import("~/infrastructure/services/job-dispatch-service"),
+		]);
+		return transferItems(mediaSourceId, mediaIds, (mediaId) =>
+			commitTransfer(
+				mediaId,
+				targetSourceId,
+				(id, target, tx) => MediaService.moveMedia(id, target, tx),
+				executeDeferredActions,
+			),
+		);
 	},
 };

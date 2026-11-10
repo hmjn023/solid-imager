@@ -106,10 +106,12 @@ export function SourceMediaPageController(
 	};
 
 	// 一括操作成功時のコールバック
-	const handleBulkSuccess = (partial = false) => {
-		if (!partial) {
-			handleCancelSelect();
+	const handleBulkSuccess = (partial: boolean, succeededMediaIds: string[]) => {
+		for (const id of succeededMediaIds) {
+			if (selection.isSelected(id)) selection.select(id, "toggle");
 		}
+		if (!partial && selection.selectedIds().size === 0)
+			setIsBulkSelectMode(false);
 		void queryClient.invalidateQueries({
 			queryKey: sourceMediaQueryKeys.forSource(mediaSourceId()),
 		});
