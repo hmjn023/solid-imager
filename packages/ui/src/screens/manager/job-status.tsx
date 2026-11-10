@@ -1,6 +1,7 @@
 import type { JobDto } from "@solid-imager/core/jobs";
 import { For, Show } from "solid-js";
 import { Badge } from "../../badge";
+import { Button } from "../../button";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import { Progress } from "../../progress";
 
@@ -13,19 +14,29 @@ export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 				class="space-y-3 rounded-md border border-border bg-card p-4"
 			>
 				<div class="flex flex-wrap items-center justify-between gap-2">
-					<h3 class="font-medium text-sm">Current run</h3>
+					<h3 class="font-medium text-sm">
+						{props.manager.batchDisplayKind() === "scan"
+							? "Target scan"
+							: props.manager.batchDisplayKind() === "start"
+								? "Batch request"
+								: "Current run"}
+					</h3>
 					<Badge variant="secondary">
-						{props.manager.jobStatus() === "completed"
-							? "Completed"
-							: props.manager.jobStatus() === "failed"
-								? "Failed"
-								: props.manager.jobStatus() === "cancelled"
-									? "Cancelled"
-									: props.manager.jobStatus() === "pending"
-										? "Queued"
-										: props.manager.activeJobId()
-											? "Running"
-											: "Status"}
+						{props.manager.batchDisplayKind() === "scan"
+							? "Scan"
+							: props.manager.batchDisplayKind() === "start"
+								? "Request"
+								: props.manager.jobStatus() === "completed"
+									? "Completed"
+									: props.manager.jobStatus() === "failed"
+										? "Failed"
+										: props.manager.jobStatus() === "cancelled"
+											? "Cancelled"
+											: props.manager.jobStatus() === "pending"
+												? "Queued"
+												: props.manager.jobStatus() === "in_progress"
+													? "Running"
+													: "Status"}
 					</Badge>
 				</div>
 				<p class="text-xs text-muted-foreground">
@@ -34,7 +45,13 @@ export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 				<Show
 					when={props.manager.jobProgress()}
 					fallback={
-						<Show when={props.manager.activeJobId()}>
+						<Show
+							when={
+								props.manager.batchDisplayKind() === "run" &&
+								(props.manager.jobStatus() === "pending" ||
+									props.manager.jobStatus() === "in_progress")
+							}
+						>
 							<p class="text-xs text-muted-foreground">
 								Preparing target count...
 							</p>
@@ -129,6 +146,13 @@ export function ServerBatchStatus(props: {
 							/>
 						)}
 					</Show>
+					<Button
+						size="sm"
+						variant="outline"
+						onClick={() => props.manager.trackBatchJob(job)}
+					>
+						Track progress
+					</Button>
 				</section>
 			)}
 		</For>

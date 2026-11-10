@@ -2,6 +2,7 @@ import type { JobEvent } from "@solid-imager/core/events";
 import { describe, expect, it, vi } from "vitest";
 import {
 	dispatchJobEvent,
+	rememberJobEvent,
 	shouldSubscribeToJobEvents,
 } from "./use-batch-job-events";
 
@@ -20,6 +21,27 @@ describe("useBatchJobEvents", () => {
 		);
 		expect(handlers.handleJobCancelled).not.toHaveBeenCalled();
 		expect(handlers.handleJobCompleted).not.toHaveBeenCalled();
+	});
+	it("keeps terminal events received before the start response ahead of late progress", () => {
+		const buffer = new Map<string, JobEvent>();
+		rememberJobEvent(buffer, {
+			event: "job-completed",
+			data: { jobId: "early" },
+		});
+		rememberJobEvent(buffer, {
+			event: "job-progress",
+			data: { jobId: "early", processed: 1, total: 2 },
+		});
+		expect(buffer.get("early")?.event).toBe("job-completed");
+		rememberJobEvent(buffer, {
+			event: "job-retried",
+			data: { jobId: "early" },
+		});
+		rememberJobEvent(buffer, {
+			event: "job-progress",
+			data: { jobId: "early", processed: 1, total: 2 },
+		});
+		expect(buffer.get("early")?.event).toBe("job-progress");
 	});
 	it("dispatches cancellation only for the tracked job", () => {
 		const handleJobCancelled = vi.fn();

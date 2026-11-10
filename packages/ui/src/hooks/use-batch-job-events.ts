@@ -60,7 +60,7 @@ export function dispatchJobEvent(
 	}
 }
 
-function rememberJobEvent(
+export function rememberJobEvent(
 	bufferedEvents: Map<string, JobEvent>,
 	event: JobEvent,
 ): void {
@@ -68,6 +68,15 @@ function rememberJobEvent(
 	if (!jobId) {
 		return;
 	}
+	const previous = bufferedEvents.get(jobId);
+	if (
+		event.event === "job-progress" &&
+		previous &&
+		(previous.event === "job-completed" ||
+			previous.event === "job-failed" ||
+			previous.event === "job-cancelled")
+	)
+		return;
 	bufferedEvents.set(jobId, event);
 	if (bufferedEvents.size <= BUFFERED_JOB_EVENT_LIMIT) {
 		return;

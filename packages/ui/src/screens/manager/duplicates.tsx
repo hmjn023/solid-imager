@@ -1,4 +1,4 @@
-import { createSignal, For, Show } from "solid-js";
+import { For, Show } from "solid-js";
 import { Button } from "../../button";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import { Label } from "../../label";
@@ -14,16 +14,7 @@ import { formatBytes, formatDate } from "./utils";
 const ALL_SOURCES_OPTION = { id: "__all__", name: "All sources" };
 
 export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
-	const [isScanning, setIsScanning] = createSignal(false);
-	const scan = async () => {
-		if (isScanning()) return;
-		setIsScanning(true);
-		try {
-			await props.manager.handleScanDuplicates();
-		} finally {
-			setIsScanning(false);
-		}
-	};
+	const isScanning = () => props.manager.isScanningDuplicates();
 
 	return (
 		<div class="space-y-5">
@@ -82,8 +73,8 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 					</div>
 					<Button
 						class="w-full lg:w-auto"
-						disabled={isScanning()}
-						onClick={() => void scan()}
+						disabled={isScanning() || props.manager.isDeletingDuplicates()}
+						onClick={() => void props.manager.handleScanDuplicates()}
 					>
 						{isScanning() ? "Scanning..." : "Scan for duplicates"}
 					</Button>
@@ -102,6 +93,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 					</p>
 					<div class="grid grid-cols-2 gap-2 sm:flex">
 						<Button
+							disabled={props.manager.isDeletingDuplicates()}
 							onClick={props.manager.selectKeepOldest}
 							size="sm"
 							variant="outline"
@@ -109,6 +101,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 							Keep oldest
 						</Button>
 						<Button
+							disabled={props.manager.isDeletingDuplicates()}
 							onClick={props.manager.selectKeepLargest}
 							size="sm"
 							variant="outline"
@@ -117,7 +110,10 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 						</Button>
 						<Button
 							class="col-span-2 sm:col-auto"
-							disabled={props.manager.deleteCount() === 0}
+							disabled={
+								props.manager.deleteCount() === 0 ||
+								props.manager.isDeletingDuplicates()
+							}
 							onClick={() => {
 								void props.manager.handleDeleteDuplicates();
 							}}

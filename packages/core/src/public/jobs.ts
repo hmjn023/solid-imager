@@ -8,6 +8,7 @@ export type {
 } from "../domain/jobs/schemas";
 export {
 	batchParentJobTypes,
+	canRetryJob,
 	isBatchParentJobType,
 	jobIdRequestSchema,
 	jobStatusSchema,

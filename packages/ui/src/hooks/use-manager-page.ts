@@ -4,11 +4,7 @@ import type { JobDto, JobStatus } from "@solid-imager/core/jobs";
 import type { DuplicateGroup } from "@solid-imager/core/media";
 import type { Project } from "@solid-imager/core/projects";
 import type { SimilarityModel } from "@solid-imager/core/search";
-import type {
-	JobCompletedEvent,
-	JobFailedEvent,
-	JobProgressEvent,
-} from "@solid-imager/core/events";
+import type { JobProgressEvent } from "@solid-imager/core/events";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
@@ -34,11 +30,15 @@ import type {
 } from "./batch-job-events.types";
 import { jobsQueryKeys } from "../query-options/jobs-query";
 import {
+	createManagerBatchState,
+	type ManagerBatchContext,
+} from "./manager-batch-state";
+import { createManagerDuplicatesState } from "./manager-duplicates-state";
+import {
 	managerSessionStorage,
 	forgetManagerBatchRun,
 	readManagerBatchRun,
 	saveManagerBatchRun,
-	type ManagerBatchRun,
 } from "./manager-batch-run";
 
 export type ManagerEntityType =
@@ -206,6 +206,10 @@ export type UseManagerPageResult = {
 	jobProgress: Accessor<(JobProgressEvent & { failed?: number }) | null>;
 	jobStatus: Accessor<JobStatus | null>;
 	activeJobId: Accessor<string | null>;
+	batchPendingAction: Accessor<"scan" | "start" | null>;
+	batchDisplayKind: Accessor<"run" | "scan" | "start" | null>;
+	displayedJobId: Accessor<string | null>;
+	trackBatchJob: (job: JobDto) => void;
 	sources: Accessor<SafeMediaSource[]>;
 	ips: Accessor<Ip[]>;
 	getActiveItems: Accessor<ManagerEntity[]>;
@@ -231,10 +235,17 @@ export type UseManagerPageResult = {
 	duplicateGroups: Accessor<DuplicateGroup[]>;
 	keepIds: Accessor<Set<string>>;
 	duplicateStatus: Accessor<string | null>;
+	isScanningDuplicates: Accessor<boolean>;
+	isDeletingDuplicates: Accessor<boolean>;
 	isDuplicateDeleteDialogOpen: Accessor<boolean>;
 	setIsDuplicateDeleteDialogOpen: Setter<boolean>;
 	duplicatesToDelete: Accessor<
-		{ sourceId: string; mediaId: string; fileName: string }[]
+		{
+			sourceId: string;
+			sourceName: string;
+			mediaId: string;
+			fileName: string;
+		}[]
 	>;
 	handleScanDuplicates: () => Promise<void>;
 	handleDeleteDuplicates: () => Promise<void>;
@@ -324,22 +335,64 @@ export function useManagerPage(
 	const [selectedSourceId, setSelectedSourceId] = createSignal<
 		string | undefined
 	>(undefined);
+	function changeSelectedSourceId(): undefined;
+	function changeSelectedSourceId<U extends string | undefined>(
+		value: U | ((previous: string | undefined) => U),
+	): U;
+	function changeSelectedSourceId(
+		value?: string | ((previous: string | undefined) => string | undefined),
+	) {
+		const next = setSelectedSourceId(value);
+		batches.invalidateScans();
+		return next;
+	}
 	const [forceRetag, setForceRetag] = createSignal(false);
 	const [vectorModel, setVectorModel] = createSignal<SimilarityModel>(
 		actions.startBatchEmbeddingExtraction ? "embeddinggemma2" : "ccip",
 	);
-	const [taggingStatus, setTaggingStatus] = createSignal<string | null>(null);
-	const [jobProgress, setJobProgress] = createSignal<
-		(JobProgressEvent & { failed?: number }) | null
-	>(null);
-	const [activeJobId, setActiveJobId] = createSignal<string | null>(null);
-	const [jobStatus, setJobStatus] = createSignal<JobStatus | null>(null);
-	const [trackedRun, setTrackedRun] = createSignal<ManagerBatchRun | null>(
-		null,
-	);
+	const batches = createManagerBatchState((run) => {
+		const storage = managerSessionStorage();
+		if (storage) saveManagerBatchRun(storage, run);
+	});
+	const activeJobId = batches.activeJobId;
+	const trackedRun = batches.trackedRun;
+	const batchDisplay = () => {
+		const tab = activeTab();
+		return tab === "tagging" || tab === "vectors" || tab === "thumbnails"
+			? batches.display(tab)
+			: null;
+	};
+	const batchPendingAction = () => {
+		const tab = activeTab();
+		return tab === "tagging" || tab === "vectors" || tab === "thumbnails"
+			? batches.pending(tab)
+			: null;
+	};
+	const jobStatus = () => batchDisplay()?.status ?? null;
+	const jobProgress = () => {
+		const display = batchDisplay();
+		return display?.progress
+			? { jobId: display.jobId ?? undefined, ...display.progress }
+			: null;
+	};
+	const [batchReadError, setBatchReadError] = createSignal<string | null>(null);
+	const taggingStatus = () =>
+		batchDisplay()?.kind === "run" &&
+		batchDisplay()?.jobId === trackedRun()?.jobId &&
+		batchReadError()
+			? batchReadError()
+			: (batchDisplay()?.message ?? null);
 	const activeBatches = createQuery(() => ({
 		queryKey: ["jobs", "activeBatches"],
-		queryFn: actions.getActiveBatches,
+		queryFn: async () => {
+			const versions = batches.readVersions();
+			const jobs = await actions.getActiveBatches();
+			for (const job of jobs) {
+				const version = versions[job.id];
+				if (version !== undefined) batches.acceptSnapshot(job, version);
+			}
+			return jobs;
+		},
 		enabled: !isServer,
 	}));
 	let refreshTimer: ReturnType<typeof setTimeout> | undefined;
@@ -363,20 +416,35 @@ export function useManagerPage(
 		disposed = true;
 		clearTimeout(refreshTimer);
 	});
-	const trackedJob = createQuery<JobDto>(() => ({
-		queryKey: jobsQueryKeys.detail(trackedRun()?.jobId ?? ""),
-		queryFn: () => actions.getJob(trackedRun()?.jobId ?? ""),
-		enabled: !isServer && trackedRun() !== null,
-		staleTime: 0,
-	}));
-	const trackRun = (run: ManagerBatchRun) => {
-		// Persist immediately, even if the start request finishes after navigation.
-		const storage = managerSessionStorage();
-		if (storage) saveManagerBatchRun(storage, run);
-		setTrackedRun(run);
-		setJobStatus("pending");
-		setActiveJobId(run.jobId);
-	};
+	let trackedRefreshTimer: ReturnType<typeof setTimeout> | undefined;
+	onCleanup(() => clearTimeout(trackedRefreshTimer));
+	const trackedJob = createQuery<JobDto>(() => {
+		const jobId = trackedRun()?.jobId;
+		return {
+			queryKey: jobsQueryKeys.detail(jobId ?? ""),
+			queryFn: async () => {
+				if (!jobId) throw new Error("No tracked batch");
+				const version = batches.version(jobId);
+				const job = await actions.getJob(jobId);
+				if (batches.acceptSnapshot(job, version)) setBatchReadError(null);
+				else if (
+					batches.version(jobId) !== version &&
+					!disposed &&
+					trackedRun()?.jobId === jobId
+				) {
+					// The GET started before a newer SSE observation. Read again after
+					// this query settles instead of letting its response regress the UI.
+					clearTimeout(trackedRefreshTimer);
+					trackedRefreshTimer = setTimeout(() => {
+						if (!disposed) void trackedJob.refetch();
+					}, 250);
+				}
+				return job;
+			},
+			enabled: !isServer && trackedRun() !== null,
+			staleTime: 0,
+		};
+	});
 	onMount(() => {
 		const storage = managerSessionStorage();
 		const run = storage ? readManagerBatchRun(storage) : null;
@@ -385,75 +453,31 @@ export function useManagerPage(
 		setSelectedSourceId(run.mediaSourceId);
 		setVectorModel(run.vectorModel);
 		setForceRetag(run.force);
-		setTaggingStatus("Restoring batch progress...");
-		setTrackedRun(run);
-		setActiveJobId(run.jobId);
-	});
-	createEffect(() => {
-		const job = trackedJob.data;
-		if (!job || job.id !== trackedRun()?.jobId) return;
-		setJobStatus(job.status);
-		setActiveJobId(
-			job.status === "pending" || job.status === "in_progress" ? job.id : null,
-		);
-		if (job.progress) setJobProgress({ jobId: job.id, ...job.progress });
-		setTaggingStatus(
-			job.status === "completed"
-				? "Batch operation completed successfully."
-				: job.status === "failed"
-					? `Job failed: ${job.error || "unknown error"}`
-					: job.status === "cancelled"
-						? "Batch operation cancelled."
-						: job.status === "pending"
-							? "Batch operation queued."
-							: job.progress && job.progress.total > 0
-								? "Processing..."
-								: "Preparing batch targets...",
-		);
+		batches.restore(run);
 	});
 
-	createEffect(() => {
-		const tab = activeTab();
-		if (tab !== "tagging" && tab !== "vectors" && tab !== "thumbnails") {
-			return;
-		}
-
-		if (!trackedRun()) setTaggingStatus(null);
-	});
 	createEffect(() => {
 		const error = trackedJob.error;
 		if (!error) return;
 		if ("code" in error && error.code === "NOT_FOUND") {
 			const storage = managerSessionStorage();
 			if (storage) forgetManagerBatchRun(storage);
-			setTrackedRun(null);
-			setActiveJobId(null);
-			setJobStatus(null);
-			setJobProgress(null);
-			setTaggingStatus("The tracked batch no longer exists.");
+			batches.forget();
+			setBatchReadError("The tracked batch no longer exists.");
 			return;
 		}
-		setTaggingStatus(
+		setBatchReadError(
 			`Unable to refresh batch progress: ${getErrorMessage(error)}.`,
 		);
 	});
-
-	// Duplicates state
-	const [duplicateSourceId, setDuplicateSourceId] = createSignal<
-		string | undefined
-	>(undefined);
-	const [duplicateGroups, setDuplicateGroups] = createSignal<DuplicateGroup[]>(
-		[],
-	);
-	const [keepIds, setKeepIds] = createSignal<Set<string>>(new Set());
-	const [duplicateStatus, setDuplicateStatus] = createSignal<string | null>(
-		null,
-	);
-	const [isDuplicateDeleteDialogOpen, setIsDuplicateDeleteDialogOpen] =
-		createSignal(false);
-	const [duplicatesToDelete, setDuplicatesToDelete] = createSignal<
-		{ sourceId: string; mediaId: string; fileName: string }[]
-	>([]);
+	const duplicates = createManagerDuplicatesState({
+		findDuplicateMedia: actions.findDuplicateMedia,
+		bulkDeleteMedia: actions.bulkDeleteMedia,
+		sourceName: (id) =>
+			queries.sources()?.find((source) => source.id === id)?.name ?? id,
+		success: (message) => toast.success(message),
+		error: (message) => toast.error(message),
+	});
 
 	const sources = () => queries.sources() || [];
 	const ips = () => queries.ips() || [];
@@ -588,367 +612,128 @@ export function useManagerPage(
 		}
 	};
 
+	function batchContext(tab: ManagerBatchContext["tab"]): ManagerBatchContext {
+		return {
+			tab,
+			vectorModel: vectorModel(),
+			mediaSourceId: selectedSourceId(),
+			force: tab === "thumbnails" ? false : forceRetag(),
+		};
+	}
 	const handleScan = async () => {
-		const scanTab = activeTab();
-		if (scanTab !== "tagging" && scanTab !== "vectors") {
-			return;
-		}
-
+		const tab = activeTab();
+		if (tab !== "tagging" && tab !== "vectors") return;
+		const request = batches.begin("scan", batchContext(tab));
+		if (!request) return;
+		const context = request.context;
 		try {
-			setTaggingStatus("Scanning...");
-			const result =
-				scanTab === "vectors"
-					? await (
-							vectorModel() === "embeddinggemma2" &&
-								actions.scanBatchEmbeddingTargets
-								? actions.scanBatchEmbeddingTargets
-								: actions.scanBatchCcipTargets
-						)({
-							force: forceRetag(),
-							mediaSourceId: selectedSourceId(),
-						})
-					: await actions.scanBatchTaggingTargets({
-							force: forceRetag(),
-							mediaSourceId: selectedSourceId(),
-						});
-			if (activeTab() !== scanTab) {
-				return;
-			}
-			setTaggingStatus(`${result.count} items found.`);
-		} catch (error) {
-			if (activeTab() !== scanTab) {
-				return;
-			}
-			toast.error(`Error: ${getErrorMessage(error)}`);
-			setTaggingStatus(`Error during scan: ${getErrorMessage(error)}`);
-		}
-	};
-
-	const handleStartBatchCcipExtraction = async () => {
-		const context: Omit<ManagerBatchRun, "jobId"> = {
-			tab: "vectors",
-			vectorModel: vectorModel(),
-			mediaSourceId: selectedSourceId(),
-			force: forceRetag(),
-		};
-		try {
-			setTaggingStatus("Starting...");
-			setJobProgress(null);
-			const result = await (
-				context.vectorModel === "embeddinggemma2" &&
-					actions.startBatchEmbeddingExtraction
-					? actions.startBatchEmbeddingExtraction
-					: actions.startBatchCcipExtraction
-			)({
+			const scan =
+				tab === "tagging"
+					? actions.scanBatchTaggingTargets
+					: context.vectorModel === "embeddinggemma2" &&
+						  actions.scanBatchEmbeddingTargets
+						? actions.scanBatchEmbeddingTargets
+						: actions.scanBatchCcipTargets;
+			const result = await scan({
 				force: context.force,
 				mediaSourceId: context.mediaSourceId,
 			});
-			if (result.success && result.jobId) {
-				toast.success(result.message);
-				setTaggingStatus(
-					`${vectorModel() === "embeddinggemma2" ? "EmbeddingGemma 2" : "CCIP"} extraction in progress...`,
-				);
-				trackRun({ ...context, jobId: result.jobId });
-			} else {
-				toast.error("Failed to start batch CCIP extraction.");
-				setTaggingStatus("Failed to start batch CCIP extraction.");
-			}
+			batches.setRequestMessage(request, `${result.count} items found.`);
 		} catch (error) {
+			batches.setRequestMessage(
+				request,
+				`Error during scan: ${getErrorMessage(error)}`,
+			);
 			toast.error(`Error: ${getErrorMessage(error)}`);
-			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
+		} finally {
+			batches.finish(request);
 		}
 	};
-
-	const handleStartBatchTagging = async () => {
-		const context: Omit<ManagerBatchRun, "jobId"> = {
-			tab: "tagging",
-			vectorModel: vectorModel(),
-			mediaSourceId: selectedSourceId(),
-			force: forceRetag(),
-		};
+	async function startBatch(
+		context: ManagerBatchContext,
+		start: () => Promise<StartBatchJobResult>,
+	) {
+		const request = batches.begin("start", context);
+		if (!request) return;
+		setBatchReadError(null);
 		try {
-			setTaggingStatus("Starting...");
-			setJobProgress(null);
-			const result = await actions.startBatchTagging({
+			const result = await start();
+			if (result.success && result.jobId) {
+				batches.acceptStart(request, result.jobId);
+				if (context.tab === "tagging") onBatchTaggingStart?.(result);
+				toast.success(result.message);
+			} else {
+				const message = result.message || "Failed to start batch operation.";
+				batches.setRequestMessage(request, message);
+				if (result.success) toast.success(message);
+				else toast.error(message);
+			}
+		} catch (error) {
+			const message = `Error: ${getErrorMessage(error)}`;
+			batches.setRequestMessage(request, message);
+			toast.error(message);
+		} finally {
+			batches.finish(request);
+		}
+	}
+	const handleStartBatchCcipExtraction = () => {
+		const context = batchContext("vectors");
+		return startBatch(context, () =>
+			(context.vectorModel === "embeddinggemma2" &&
+				actions.startBatchEmbeddingExtraction
+				? actions.startBatchEmbeddingExtraction
+				: actions.startBatchCcipExtraction)({
 				force: context.force,
 				mediaSourceId: context.mediaSourceId,
-			});
-			if (result.success && result.jobId) {
-				onBatchTaggingStart?.(result);
-				toast.success(result.message);
-				setTaggingStatus("Batch tagging in progress...");
-				trackRun({ ...context, jobId: result.jobId });
-			} else {
-				toast.error("Failed to start batch tagging.");
-				setTaggingStatus("Failed to start batch tagging.");
-			}
-		} catch (error) {
-			toast.error(`Error: ${getErrorMessage(error)}`);
-			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
-		}
+			}),
+		);
 	};
-
+	const handleStartBatchTagging = () => {
+		const context = batchContext("tagging");
+		return startBatch(context, () =>
+			actions.startBatchTagging({
+				force: context.force,
+				mediaSourceId: context.mediaSourceId,
+			}),
+		);
+	};
 	const handleStartThumbnailWarmup = async () => {
-		const mediaSourceId = selectedSourceId();
+		const context = batchContext("thumbnails");
+		const mediaSourceId = context.mediaSourceId;
 		if (!mediaSourceId) {
 			toast.error("Select a media source first.");
 			return;
 		}
-
-		try {
-			setTaggingStatus("Scanning for missing 256px thumbnails...");
-			setJobProgress(null);
-			const result = await actions.startThumbnailWarmup({
+		await startBatch(context, () =>
+			actions.startThumbnailWarmup({
 				mediaSourceId,
 				missingOnly: true,
 				size: 256,
-			});
-			if (result.success && result.jobId) {
-				toast.success(result.message);
-				setTaggingStatus("Thumbnail warmup in progress...");
-				trackRun({
-					jobId: result.jobId,
-					tab: "thumbnails",
-					vectorModel: vectorModel(),
-					mediaSourceId,
-					force: false,
-				});
-				return;
-			}
-			if (result.success) {
-				toast.success(result.message);
-				setTaggingStatus(result.message);
-				return;
-			}
-			toast.error(result.message || "Failed to start thumbnail warmup.");
-			setTaggingStatus(result.message || "Failed to start thumbnail warmup.");
-		} catch (error) {
-			toast.error(`Error: ${getErrorMessage(error)}`);
-			setTaggingStatus(`Error: ${getErrorMessage(error)}`);
-		}
-	};
-
-	// --- Duplicates ---
-
-	const setKeepForGroup = (_groupId: string, mediaId: string) => {
-		setKeepIds((prev) => {
-			const next = new Set(prev);
-			// Remove all items from the same group (identified by having the same media items)
-			const groups = duplicateGroups();
-			for (const group of groups) {
-				for (const item of group.media) {
-					if (item.id === mediaId) {
-						// Remove other items from this group
-						for (const otherItem of group.media) {
-							next.delete(otherItem.id);
-						}
-						next.add(mediaId);
-						break;
-					}
-				}
-			}
-			return next;
-		});
-	};
-
-	const selectKeepOldest = () => {
-		const newKeep = new Set<string>();
-		for (const group of duplicateGroups()) {
-			const sorted = [...group.media].sort(
-				(a, b) =>
-					new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-			);
-			newKeep.add(sorted[0].id);
-		}
-		setKeepIds(newKeep);
-	};
-
-	const selectKeepLargest = () => {
-		const newKeep = new Set<string>();
-		for (const group of duplicateGroups()) {
-			const sorted = [...group.media].sort(
-				(a, b) => (b.fileSize ?? 0) - (a.fileSize ?? 0),
-			);
-			newKeep.add(sorted[0].id);
-		}
-		setKeepIds(newKeep);
-	};
-
-	const handleScanDuplicates = async () => {
-		try {
-			setDuplicateStatus("Scanning...");
-			setDuplicateGroups([]);
-			const result = await actions.findDuplicateMedia(duplicateSourceId());
-			setDuplicateGroups(result.groups);
-			// Auto-select oldest in each group
-			const newKeep = new Set<string>();
-			for (const group of result.groups) {
-				const sorted = [...group.media].sort(
-					(a, b) =>
-						new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
-				);
-				newKeep.add(sorted[0].id);
-			}
-			setKeepIds(newKeep);
-			const dupCount = result.groups.reduce(
-				(sum, g) => sum + g.media.length - 1,
-				0,
-			);
-			setDuplicateStatus(
-				`${result.groups.length} groups found (${dupCount} duplicates).`,
-			);
-		} catch (error) {
-			toast.error(`Error: ${getErrorMessage(error)}`);
-			setDuplicateStatus(`Error: ${getErrorMessage(error)}`);
-		}
-	};
-
-	const handleDeleteDuplicates = async () => {
-		const groups = duplicateGroups();
-		const keepSet = keepIds();
-		const toDelete: { sourceId: string; mediaId: string; fileName: string }[] =
-			[];
-		for (const group of groups) {
-			for (const item of group.media) {
-				if (!keepSet.has(item.id)) {
-					toDelete.push({
-						sourceId: item.mediaSourceId,
-						mediaId: item.id,
-						fileName: item.fileName,
-					});
-				}
-			}
-		}
-		if (toDelete.length === 0) {
-			toast.error("No duplicates selected for deletion");
-			return;
-		}
-		setDuplicatesToDelete(toDelete);
-		setIsDuplicateDeleteDialogOpen(true);
-	};
-
-	const handleConfirmDeleteDuplicates = async () => {
-		const toDelete = duplicatesToDelete();
-		if (toDelete.length === 0) {
-			return;
-		}
-		let deleted = 0;
-		let failed = 0;
-		const deletedIds = new Set<string>();
-
-		// Group by sourceId to perform bulk deletion
-		const groupsBySource = new Map<string, string[]>();
-		for (const item of toDelete) {
-			if (!groupsBySource.has(item.sourceId)) {
-				groupsBySource.set(item.sourceId, []);
-			}
-			groupsBySource.get(item.sourceId)?.push(item.mediaId);
-		}
-
-		try {
-			for (const [sourceId, mediaIds] of groupsBySource.entries()) {
-				try {
-					await actions.bulkDeleteMedia(sourceId, mediaIds);
-					deleted += mediaIds.length;
-					for (const id of mediaIds) {
-						deletedIds.add(id);
-					}
-				} catch {
-					failed += mediaIds.length;
-				}
-			}
-		} finally {
-			setIsDuplicateDeleteDialogOpen(false);
-			setDuplicatesToDelete([]);
-			if (failed === 0) {
-				setDuplicateGroups([]);
-				setKeepIds(new Set<string>());
-				setDuplicateStatus(null);
-				toast.success(`Deleted ${deleted} duplicate(s)`);
-			} else {
-				// Remove successfully deleted items from groups
-				setDuplicateGroups((prev) =>
-					prev
-						.map((group) => ({
-							...group,
-							media: group.media.filter((m) => !deletedIds.has(m.id)),
-						}))
-						.filter((group) => group.media.length >= 2),
-				);
-				setKeepIds((prev) => {
-					const next = new Set(prev);
-					for (const id of deletedIds) next.delete(id);
-					return next;
-				});
-				if (deleted > 0) {
-					toast.error(
-						`Deleted ${deleted}, failed ${failed}. Remaining duplicates are still shown.`,
-					);
-				} else {
-					toast.error(`Failed to delete: all ${failed} items failed.`);
-				}
-			}
-		}
-	};
-
-	// --- End Duplicates ---
-
-	const deleteCount = () => {
-		const groups = duplicateGroups();
-		const keep = keepIds();
-		let count = 0;
-		for (const g of groups) {
-			for (const m of g.media) {
-				if (!keep.has(m.id)) count++;
-			}
-		}
-		return count;
-	};
-
-	const handleJobProgress = (event: JobProgressEvent) => {
-		setJobStatus("in_progress");
-		setJobProgress((previous) => ({ ...event, failed: previous?.failed ?? 0 }));
-		setTaggingStatus(
-			event.total > 0 ? "Processing..." : "Preparing batch targets...",
+			}),
 		);
-		const run = trackedRun();
-		if (run) {
-			void queryClient
-				.query({
-					queryKey: jobsQueryKeys.detail(run.jobId),
-					queryFn: () => actions.getJob(run.jobId),
-					staleTime: 1_000,
-				})
-				.catch(() => undefined);
-		}
 	};
-
-	const handleJobCompleted = (event: JobCompletedEvent) => {
-		toast.success(event.message || "Batch operation completed!");
-		setTaggingStatus("Batch operation completed successfully.");
-		setActiveJobId(null);
-		setJobStatus("completed");
-		void trackedJob.refetch();
+	const refreshTrackedJob = () => {
+		if (trackedRun()) void trackedJob.refetch();
 	};
-
-	const handleJobFailed = (event: JobFailedEvent) => {
-		const message = event.error || "unknown error";
-		toast.error(`Job failed: ${message}`);
-		setTaggingStatus(`Job failed: ${message}`);
-		setActiveJobId(null);
-		setJobStatus("failed");
-		void trackedJob.refetch();
-	};
-
 	const jobHandlers: ManagerJobHandlers = {
-		handleJobProgress,
-		handleJobCompleted,
-		handleJobFailed,
+		handleJobProgress: (event) => {
+			batches.observe({ event: "job-progress", data: event });
+			refreshTrackedJob();
+		},
+		handleJobCompleted: (event) => {
+			batches.observe({ event: "job-completed", data: event });
+			toast.success(event.message || "Batch operation completed!");
+			refreshTrackedJob();
+		},
+		handleJobFailed: (event) => {
+			batches.observe({ event: "job-failed", data: event });
+			toast.error(`Job failed: ${event.error || "unknown error"}`);
+			refreshTrackedJob();
+		},
 		handleJobCancelled: () => {
-			setJobStatus("cancelled");
-			setTaggingStatus("Batch operation cancelled.");
-			setActiveJobId(null);
-			void trackedJob.refetch();
+			const jobId = trackedRun()?.jobId;
+			if (jobId) batches.observe({ event: "job-cancelled", data: { jobId } });
+			refreshTrackedJob();
 		},
 	};
 
@@ -957,6 +742,8 @@ export function useManagerPage(
 	useBatchJobEvents?.(activeJobId, jobHandlers, {
 		subscribeImmediately: true,
 		onEvent: (event) => {
+			if (event.data.jobId !== activeJobId() || event.event === "job-retried")
+				batches.observe(event);
 			if (
 				event.event === "job-progress" ||
 				event.event === "job-retried" ||
@@ -974,7 +761,11 @@ export function useManagerPage(
 	return {
 		activeTab,
 		vectorModel,
-		setVectorModel,
+		setVectorModel: (value) => {
+			const next = setVectorModel(value);
+			batches.invalidateScans();
+			return next;
+		},
 		setActiveTab,
 		isDialogOpen,
 		setIsDialogOpen,
@@ -986,9 +777,13 @@ export function useManagerPage(
 		formData,
 		setFormData,
 		selectedSourceId,
-		setSelectedSourceId,
+		setSelectedSourceId: changeSelectedSourceId,
 		forceRetag,
-		setForceRetag,
+		setForceRetag: (value) => {
+			const next = setForceRetag(value);
+			batches.invalidateScans();
+			return next;
+		},
 		activeBatches: () => activeBatches.data ?? [],
 		activeBatchesFailed: () => activeBatches.isError,
 		retryActiveBatches: refreshActiveBatches,
@@ -996,6 +791,30 @@ export function useManagerPage(
 		jobProgress,
 		jobStatus,
 		activeJobId,
+		batchPendingAction,
+		batchDisplayKind: () => batchDisplay()?.kind ?? null,
+		displayedJobId: () => batchDisplay()?.jobId ?? null,
+		trackBatchJob: (job) => {
+			const context = batchContext(
+				job.type === "bulk_tagging_parent"
+					? "tagging"
+					: job.type === "thumbnail_generation_parent"
+						? "thumbnails"
+						: "vectors",
+			);
+			const run = {
+				...context,
+				jobId: job.id,
+				mediaSourceId: job.mediaSourceId ?? undefined,
+				vectorModel:
+					job.type === "extract_embedding_batch"
+						? ("embeddinggemma2" as const)
+						: ("ccip" as const),
+			};
+			batches.select(run);
+			batches.acceptSnapshot(job, batches.version(job.id));
+			setActiveTab(run.tab);
+		},
 		sources,
 		ips,
 		getActiveItems,
@@ -1011,20 +830,22 @@ export function useManagerPage(
 		handleStartThumbnailWarmup,
 		jobHandlers,
 		// Duplicates
-		duplicateSourceId,
-		setDuplicateSourceId,
-		duplicateGroups,
-		keepIds,
-		duplicateStatus,
-		isDuplicateDeleteDialogOpen,
-		setIsDuplicateDeleteDialogOpen,
-		duplicatesToDelete,
-		handleScanDuplicates,
-		handleDeleteDuplicates,
-		setKeepForGroup,
-		selectKeepOldest,
-		selectKeepLargest,
-		handleConfirmDeleteDuplicates,
-		deleteCount,
+		duplicateSourceId: duplicates.sourceId,
+		setDuplicateSourceId: duplicates.setSourceId,
+		duplicateGroups: duplicates.groups,
+		keepIds: duplicates.keepIds,
+		duplicateStatus: duplicates.status,
+		isScanningDuplicates: duplicates.scanning,
+		isDeletingDuplicates: duplicates.deleting,
+		isDuplicateDeleteDialogOpen: duplicates.dialogOpen,
+		setIsDuplicateDeleteDialogOpen: duplicates.setDialogOpen,
+		duplicatesToDelete: duplicates.itemsToDelete,
+		handleScanDuplicates: duplicates.scan,
+		handleDeleteDuplicates: async () => duplicates.prepareDelete(),
+		setKeepForGroup: duplicates.setKeepForGroup,
+		selectKeepOldest: duplicates.selectKeepOldest,
+		selectKeepLargest: duplicates.selectKeepLargest,
+		handleConfirmDeleteDuplicates: duplicates.confirmDelete,
+		deleteCount: duplicates.deleteCount,
 	};
 }

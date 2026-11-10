@@ -35,6 +35,21 @@ export function isBatchParentJobType(type: string): boolean {
 	return batchParentJobTypes.some((parentType) => parentType === type);
 }
 
+/** Batch history and approval requests cannot be retried as standalone worker jobs. */
+export function canRetryJob(job: {
+	status: string;
+	type?: string;
+	parentId?: string | null;
+}): boolean {
+	return (
+		job.status === "failed" &&
+		!job.parentId &&
+		job.type !== "import_request" &&
+		job.type !== "extract_embedding_batch" &&
+		!isBatchParentJobType(job.type ?? "")
+	);
+}
+
 /** Batch counts, or null when progress is unavailable for the job. */
 export const jobProgressSchema = z
 	.object({
