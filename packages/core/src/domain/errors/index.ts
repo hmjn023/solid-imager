@@ -28,6 +28,14 @@ export class MediaFileConflictError extends DomainError {
 	}
 }
 
+/** Storage side effects remain after a failed operation; replay requires reconciliation. Causes are internal log data, never an API response. */
+export class UnreconciledStorageError extends AggregateError {
+	constructor(errors: readonly unknown[]) {
+		super(errors, "Storage cleanup requires reconciliation before retry.");
+		this.name = "UnreconciledStorageError";
+	}
+}
+
 export class ValidationError extends DomainError {}
 
 export class UnexpectedError extends DomainError {

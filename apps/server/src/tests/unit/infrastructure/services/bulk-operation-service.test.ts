@@ -8,6 +8,7 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
+import { UnreconciledStorageError } from "@solid-imager/core/errors";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
 	findByIds: vi.fn(),
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 	notify: vi.fn(),
 	values: vi.fn(),
 	findSource: vi.fn(),
+	commit: vi.fn(),
 }));
 vi.mock("~/infrastructure/service-registry", () => ({
 	services: {
@@ -35,8 +37,11 @@ vi.mock("~/infrastructure/service-registry", () => ({
 }));
 vi.mock("~/infrastructure/db", () => ({
 	db: {
-		transaction: async (fn: (tx: object) => Promise<unknown>) =>
-			fn({ insert: () => ({ values: mocks.values }) }),
+		transaction: async (fn: (tx: object) => Promise<unknown>) => {
+			const result = await fn({ insert: () => ({ values: mocks.values }) });
+			await mocks.commit();
+			return result;
+		},
 	},
 }));
 vi.mock("~/infrastructure/jobs/thumbnails", () => ({
@@ -112,6 +117,74 @@ afterEach(async () => {
 });
 
 describe("bulk media item outcomes", () => {
+	it("does not delete a possibly committed copy or replay it when transaction completion is uncertain", async () => {
+		const copiedFile = path.join(directory, `copied-${one}.png`);
+		await writeFile(copiedFile, "possibly committed target");
+		mocks.commit.mockRejectedValueOnce(
+			new Error("commit acknowledgement lost"),
+		);
+		const result = await BulkOperationService.bulkCopyToSource(
+			sourceId,
+			[one],
+			targetId,
+		);
+		expect(result.items[0]).toMatchObject({
+			mediaId: one,
+			status: "failed",
+			retryable: false,
+		});
+		expect(mocks.deleteFile).not.toHaveBeenCalled();
+		expect(mocks.notify).not.toHaveBeenCalled();
+		expect(await readFile(copiedFile, "utf8")).toBe(
+			"possibly committed target",
+		);
+	});
+	it.each(["bulkCopyToSource", "bulkMoveToSource"] as const)(
+		"does not replay %s after its inner transfer reports unreconciled storage",
+		async (operation) => {
+			const perform =
+				operation === "bulkCopyToSource" ? mocks.copyMedia : mocks.moveMedia;
+			perform.mockRejectedValueOnce(
+				new UnreconciledStorageError([
+					new Error(`secret DB path ${directory}`),
+					new Error("cleanup failed"),
+				]),
+			);
+			const result = await BulkOperationService[operation](
+				sourceId,
+				[one],
+				targetId,
+			);
+			expect(result.items[0]).toMatchObject({
+				mediaId: one,
+				status: "failed",
+				retryable: false,
+			});
+			expect(JSON.stringify(result)).not.toContain(directory);
+			expect(JSON.stringify(result)).not.toContain("secret");
+			expect(mocks.notify).not.toHaveBeenCalled();
+		},
+	);
+	it("keeps a committed move unsafe to replay when deferred source cleanup fails", async () => {
+		mocks.notify.mockRejectedValueOnce(
+			new UnreconciledStorageError([
+				new Error(`source cleanup failed at ${directory}`),
+			]),
+		);
+		const result = await BulkOperationService.bulkMoveToSource(
+			sourceId,
+			[one],
+			targetId,
+		);
+		expect(result.items[0]).toMatchObject({
+			mediaId: one,
+			status: "failed",
+			retryable: false,
+		});
+		expect(mocks.values).toHaveBeenCalledOnce();
+		expect(mocks.deleteFile).not.toHaveBeenCalled(); // The committed target copy must survive.
+		expect(JSON.stringify(result)).not.toContain(directory);
+	});
 	it.each(["bulkCopyToSource", "bulkMoveToSource"] as const)(
 		"returns partial %s success without discarding successful IDs",
 		async (operation) => {

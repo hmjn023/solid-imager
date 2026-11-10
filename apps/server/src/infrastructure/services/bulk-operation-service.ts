@@ -1,4 +1,5 @@
 import type { IMediaService } from "@solid-imager/application/media";
+import { UnreconciledStorageError } from "@solid-imager/core/errors";
 import {
 	type BulkMediaItemResult,
 	type BulkMediaOperationResult,
@@ -52,9 +53,6 @@ function rejectedGroup(
 		),
 	};
 }
-/** The transaction rolled back, but a copied file could not be reconciled safely. */
-class UnreconciledTransferError extends AggregateError {}
-
 async function transferItems(
 	mediaSourceId: string,
 	inputIds: string[],
@@ -69,7 +67,7 @@ async function transferItems(
 		const mediaId = mediaIds[index];
 		if (result.status === "fulfilled") return { mediaId, status: "succeeded" };
 		logger.error({ mediaId, err: result.reason }, "Bulk media transfer failed");
-		if (result.reason instanceof UnreconciledTransferError)
+		if (result.reason instanceof UnreconciledStorageError)
 			return {
 				mediaId,
 				status: "failed",
@@ -98,6 +96,7 @@ async function commitTransfer(
 	) => Promise<void>,
 ) {
 	let copiedPath: string | undefined;
+	let transactionWorkComplete = false;
 	let result;
 	try {
 		result = await db.transaction(async (tx) => {
@@ -122,9 +121,13 @@ async function commitTransfer(
 					});
 				}
 			}
+			transactionWorkComplete = true;
 			return transferred;
 		});
 	} catch (err) {
+		// Once the callback finishes, a rejected COMMIT acknowledgement cannot
+		// prove rollback. Keep a possibly committed file intact for reconciliation.
+		if (transactionWorkComplete) throw new UnreconciledStorageError([err]);
 		if (copiedPath) {
 			try {
 				const target = await services
@@ -147,10 +150,7 @@ async function commitTransfer(
 					{ mediaId, err: cleanupError },
 					"Failed to clean up uncommitted bulk transfer",
 				);
-				throw new UnreconciledTransferError(
-					[err, cleanupError],
-					"The bulk transfer failed and its copied file could not be reconciled.",
-				);
+				throw new UnreconciledStorageError([err, cleanupError]);
 			}
 		}
 		throw err;
@@ -159,6 +159,9 @@ async function commitTransfer(
 		try {
 			await afterCommit({ ...result.deferred, jobs: [] });
 		} catch (err) {
+			// A committed move can still leave its source file or thumbnail behind.
+			// Keep that outcome uncertain and never replay the completed transfer.
+			if (err instanceof UnreconciledStorageError) throw err;
 			// The item has committed. A notification failure must not cause copying it again.
 			logger.warn(
 				{ mediaId, err },

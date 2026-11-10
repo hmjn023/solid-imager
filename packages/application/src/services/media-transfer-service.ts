@@ -5,7 +5,10 @@ import type {
 	Transaction,
 	TransactionManager,
 } from "@solid-imager/core/ports";
-import { ResourceNotFoundError } from "@solid-imager/core/errors";
+import {
+	ResourceNotFoundError,
+	UnreconciledStorageError,
+} from "@solid-imager/core/errors";
 import {
 	type AddMediaRequest,
 	type Media,
@@ -180,11 +183,12 @@ export class MediaTransferService {
 					targetConnection.path,
 					fileInfo.filePath,
 				);
-			} catch (_deleteError) {
+			} catch (cleanupError) {
 				this.logger.error(
-					{ err: _deleteError, filePath: fileInfo.filePath },
+					{ err: cleanupError, filePath: fileInfo.filePath },
 					"Failed to clean up copied file after DB failure",
 				);
+				throw new UnreconciledStorageError([error, cleanupError]);
 			}
 			throw error;
 		}
@@ -264,6 +268,7 @@ export class MediaTransferService {
 
 			let copiedFileCleanup: { targetPath: string; filePath: string } | null =
 				null;
+			let copiedFileCreated = false;
 
 			try {
 				const copyResult = await this.copyMedia(
@@ -276,6 +281,7 @@ export class MediaTransferService {
 				}
 
 				if (copyResult.success) {
+					copiedFileCreated = true;
 					const targetSource = await this.sourceRepository.findById(
 						targetSourceId,
 						t,
@@ -288,7 +294,10 @@ export class MediaTransferService {
 							targetPath: conn.path,
 							filePath: copyResult.media.filePath,
 						};
-					}
+					} else
+						throw new Error(
+							"The local transfer destination is no longer available.",
+						);
 
 					const sourceMedia = await this.mediaRepository.findById(
 						sourceMediaId,
@@ -350,10 +359,15 @@ export class MediaTransferService {
 							copiedFileCleanup.targetPath,
 							copiedFileCleanup.filePath,
 						);
-					} catch {
-						// Ignore cleanup errors
+					} catch (cleanupError) {
+						this.logger.error(
+							{ err: cleanupError, mediaId: sourceMediaId },
+							"Failed to clean up copied file after move rollback",
+						);
+						throw new UnreconciledStorageError([error, cleanupError]);
 					}
-				}
+				} else if (copiedFileCreated)
+					throw new UnreconciledStorageError([error]);
 				throw error;
 			}
 		};
