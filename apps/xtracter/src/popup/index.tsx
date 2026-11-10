@@ -1,15 +1,14 @@
 import { PixivConnection } from "./pixiv-connection";
-import { getClient } from "@ext/api";
+import { DEFAULT_API_URL, getClient } from "@ext/api";
 import {
 	downloadItemSchema,
 	type DownloadItem,
 	type MediaSource,
+	type ExtendedMessage,
+	sourcesResponseSchema,
 } from "@ext/schema";
-import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
 import { createSignal, For, onMount, Show } from "solid-js";
 import { render } from "solid-js/web";
-
-const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
 
 function Popup() {
 	const [apiUrl, setApiUrl] = createSignal(DEFAULT_API_URL);
@@ -23,43 +22,41 @@ function Popup() {
 	const [exportStatus, setExportStatus] = createSignal("");
 	const [uploadStatus, setUploadStatus] = createSignal("");
 
-	let selectRef: HTMLSelectElement | undefined;
+	const [settingsGeneration, setSettingsGeneration] = createSignal(0);
 	let fetchSeq = 0;
 
-	const loadSettings = async () => {
-		const settings: { apiUrl?: string; selectedSourceId?: string } =
-			await chrome.storage.local.get(["selectedSourceId", "apiUrl"]);
-		if (settings.apiUrl) setApiUrl(settings.apiUrl);
-
-		await fetchSources(settings.selectedSourceId);
-	};
-
-	const fetchSources = async (preferredId?: string) => {
+	const fetchSources = async (
+		message: Extract<
+			ExtendedMessage,
+			{ type: "GET_SOURCES" | "SET_API_URL" | "SET_SOURCE" }
+		> = { type: "GET_SOURCES" },
+	) => {
 		const seq = ++fetchSeq;
 		setIsLoading(true);
+		setSources([]);
+		setSelectedSourceId("");
 		setStatus("Loading sources...");
 		setStatusType("info");
-
 		try {
-			const resp: MediaSource[] = await chrome.runtime.sendMessage({
-				type: "GET_SOURCES",
-			});
+			const resp = sourcesResponseSchema.parse(
+				await chrome.runtime.sendMessage(message),
+			);
 			if (seq !== fetchSeq) return;
-			setSources(resp || []);
-
-			const previousId = preferredId ?? selectedSourceId();
-			const resolved = resolveEffectiveSourceId(resp ?? [], previousId);
-			if (resolved) {
-				setSelectedSourceId(resolved.id);
-				if (selectRef) selectRef.value = resolved.id;
-				if (resolved.id !== previousId) {
-					await chrome.storage.local.set({ selectedSourceId: resolved.id });
-				}
-			}
-			setStatus("");
-		} catch (_err) {
+			if (!resp.success) throw new Error(resp.error);
+			setApiUrl(resp.apiUrl);
+			setSettingsGeneration(resp.generation);
+			setSources(resp.sources);
+			setSelectedSourceId(resp.selectedSourceId ?? "");
+			setStatus(
+				resp.sources.length === 0 ? "No sources found on this server." : "",
+			);
+		} catch (error) {
 			if (seq !== fetchSeq) return;
-			setStatus("Failed to load sources. Check API URL.");
+			setStatus(
+				error instanceof Error
+					? error.message
+					: "Failed to load sources. Check API URL.",
+			);
 			setStatusType("error");
 		} finally {
 			if (seq === fetchSeq) setIsLoading(false);
@@ -80,6 +77,7 @@ function Popup() {
 	const handleBulkUpload = async () => {
 		setUploadStatus("Fetching metadata...");
 		try {
+			const client = await getClient();
 			const tabs = await chrome.tabs.query({
 				active: true,
 				currentWindow: true,
@@ -104,7 +102,6 @@ function Popup() {
 			}
 
 			setUploadStatus(`Uploading ${metadata.length} items...`);
-			const client = await getClient();
 			const result = (await client.imports.bulkAdd({ items: metadata })) as {
 				addedCount: number;
 				skippedCount: number;
@@ -118,7 +115,7 @@ function Popup() {
 	};
 
 	onMount(() => {
-		void loadSettings().catch(() => {
+		void fetchSources().catch(() => {
 			setStatus("Failed to load settings.");
 			setStatusType("error");
 		});
@@ -138,13 +135,7 @@ function Popup() {
 						onChange={(e) => {
 							const url = e.currentTarget.value;
 							setApiUrl(url);
-							void chrome.storage.local
-								.set({ apiUrl: url })
-								.then(() => fetchSources())
-								.catch(() => {
-									setStatus("Failed to save API URL.");
-									setStatusType("error");
-								});
+							void fetchSources({ type: "SET_API_URL", apiUrl: url });
 						}}
 						class="popup-control"
 					/>
@@ -156,17 +147,15 @@ function Popup() {
 					Target Media Source
 					<select
 						id="source-select"
-						ref={(el) => (selectRef = el)}
 						value={selectedSourceId()}
 						onChange={(e) => {
 							const id = e.currentTarget.value;
-							setSelectedSourceId(id);
-							void chrome.storage.local
-								.set({ selectedSourceId: id })
-								.catch(() => {
-									setStatus("Failed to save source selection.");
-									setStatusType("error");
-								});
+							void fetchSources({
+								type: "SET_SOURCE",
+								apiUrl: apiUrl(),
+								generation: settingsGeneration(),
+								sourceId: id,
+							});
 						}}
 						disabled={isLoading() || sources().length === 0}
 						class="popup-control"
@@ -218,6 +207,7 @@ function Popup() {
 					void handleBulkUpload();
 				}}
 				class="popup-button popup-button-upload"
+				disabled={isLoading()}
 			>
 				Bulk Upload to Solid Imager
 			</button>

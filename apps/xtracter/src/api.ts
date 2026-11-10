@@ -1,18 +1,20 @@
+import { readConnectionSettings } from "./connection-settings";
 import { APIError, createClient } from "@solid-imager/client";
 import type { AppContract } from "@solid-imager/core/contract";
 
 export { APIError };
 
-const DEFAULT_API_URL = "http://localhost:3000/api/rpc";
+export { DEFAULT_API_URL } from "./connection-settings";
 const REQUEST_TIMEOUT_MS = 10_000; // 10秒
 
 /** Creates an API client using the saved URL or localhost, with a ten-second fetch timeout. */
-export const getClient = async () => {
-	const result: { apiUrl?: string } = await chrome.storage.local.get([
-		"apiUrl",
-	]);
-	const url = result.apiUrl || DEFAULT_API_URL;
+export const getClient = async (apiUrl?: string) => {
+	const url = apiUrl ?? (await readConnectionSettings()).apiUrl;
+	return createApiClient(url);
+};
 
+/** Bind a client to an immutable connection URL for the whole operation and its retries. */
+export const createApiClient = (url: string) => {
 	return createClient<AppContract>({
 		url,
 		fetch: async (input, init) => {
@@ -31,7 +33,7 @@ export const getClient = async () => {
 
 function handleFetchError(error: unknown, url: string): APIError {
 	if (error instanceof Error) {
-		if (error.name === "AbortError") {
+		if (error.name === "AbortError" || error.name === "TimeoutError") {
 			return new APIError(
 				`Request timeout after ${REQUEST_TIMEOUT_MS}ms`,
 				"TIMEOUT",
@@ -70,11 +72,7 @@ export const testConnection = async (
 	apiUrl?: string,
 ): Promise<{ success: boolean; error?: string }> => {
 	try {
-		if (apiUrl) {
-			await chrome.storage.local.set({ apiUrl });
-		}
-
-		const client = await getClient();
+		const client = await getClient(apiUrl);
 		await client.sources.list();
 
 		return { success: true };

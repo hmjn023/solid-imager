@@ -1,5 +1,5 @@
 import { generateMediaFilename } from "@solid-imager/core/media/files";
-import type { SafeMediaSource } from "@solid-imager/core/sources";
+
 import { APIError, getClient } from "@ext/api";
 import type {
 	DownloadBulkMessage,
@@ -9,7 +9,13 @@ import type {
 	PostBulkMessage,
 	PostDownloadMessage,
 } from "@ext/schema";
-import { resolveEffectiveSourceId } from "@ext/utils/source-selection";
+import { resolveDestination } from "@ext/destination";
+import { updateConnectionSettings } from "@ext/connection-settings";
+import {
+	setApiUrlMessageSchema,
+	setSourceMessageSchema,
+	type SourcesResponse,
+} from "@ext/schema";
 import { submitAccountVerificationMessageSchema } from "@ext/schema";
 
 const DATE_STRING_LENGTH = 19; // "YYYY-MM-DDTHH-mm-ss"
@@ -82,69 +88,15 @@ async function retryWithBackoff<T>(
 	throw lastError;
 }
 
-// Fetch sources from API
-async function getMediaSources(): Promise<SafeMediaSource[]> {
-	try {
-		const sources = await retryWithBackoff(async () => {
-			const client = await getClient();
-			return await client.sources.list();
-		});
-		return sources;
-	} catch (_error) {
-		return [];
-	}
-}
-
-async function getTargetSourceId(): Promise<string | null> {
-	const result: { selectedSourceId?: string } = await chrome.storage.local.get([
-		"selectedSourceId",
-	]);
-
-	const sources = await getMediaSources();
-	if (sources.length === 0) {
-		return result.selectedSourceId ?? null;
-	}
-
-	const selectableSources = sources.filter(
-		(source): source is SafeMediaSource & { id: string } =>
-			typeof source.id === "string",
-	);
-	const resolved = resolveEffectiveSourceId(
-		selectableSources,
-		result.selectedSourceId,
-		"twitter",
-	);
-	if (!resolved?.id) {
-		return result.selectedSourceId ?? null;
-	}
-
-	if (resolved.id !== result.selectedSourceId) {
-		await chrome.storage.local.set({ selectedSourceId: resolved.id });
-	}
-	return resolved.id;
-}
-
 async function postDownloads(items: DownloadItem[]) {
-	const mediaSourceId = await getTargetSourceId();
-	if (!mediaSourceId) {
-		void chrome.notifications.create({
-			type: "basic",
-			iconUrl: "icon.png",
-			title: "xtracter Error",
-			message:
-				"No media source configured. Please set one in the extension popup.",
-		});
-		return;
-	}
-
 	try {
-		await retryWithBackoff(async () => {
-			const client = await getClient();
-			return await client.downloads.start({
-				mediaSourceId,
-				items,
-			});
-		});
+		const destination = await resolveDestination();
+		const mediaSourceId = destination.selectedSourceId;
+		if (!mediaSourceId)
+			throw new Error("No media source configured on this server.");
+		await retryWithBackoff(() =>
+			destination.client.downloads.start({ mediaSourceId, items }),
+		);
 
 		void chrome.notifications.create({
 			type: "basic",
@@ -165,7 +117,10 @@ async function postDownloads(items: DownloadItem[]) {
 				type: "basic",
 				iconUrl: "icon.png",
 				title: "xtracter Error",
-				message: "An unexpected error occurred. Check console for details.",
+				message:
+					error instanceof Error
+						? error.message
+						: "Unable to resolve the destination.",
 			});
 		}
 	}
@@ -244,9 +199,61 @@ chrome.runtime.onMessage.addListener(
 			return true;
 		}
 		// Handle Popup Requests
-		if (message.type === "GET_SOURCES") {
-			void getMediaSources().then((sources) => sendResponse(sources));
-			return true; // Async response
+		if (
+			message.type === "GET_SOURCES" ||
+			message.type === "SET_API_URL" ||
+			message.type === "SET_SOURCE"
+		) {
+			const respond = async (): Promise<SourcesResponse> => {
+				try {
+					let settings;
+					if (message.type === "SET_API_URL") {
+						const parsed = setApiUrlMessageSchema.parse(message);
+						settings = await updateConnectionSettings((current) => ({
+							...current,
+							apiUrl: parsed.apiUrl,
+							generation: current.generation + 1,
+						}));
+					} else if (message.type === "SET_SOURCE") {
+						const parsed = setSourceMessageSchema.parse(message);
+						settings = await updateConnectionSettings((current) => {
+							if (
+								current.apiUrl !== parsed.apiUrl ||
+								current.generation !== parsed.generation
+							)
+								throw new Error(
+									"Connection settings changed. Reload sources before selecting.",
+								);
+							return {
+								...current,
+								generation: current.generation + 1,
+								selectedSourceIds: {
+									...current.selectedSourceIds,
+									[parsed.apiUrl]: parsed.sourceId,
+								},
+							};
+						});
+					}
+					const destination = await resolveDestination(settings);
+					return {
+						success: true,
+						apiUrl: destination.settings.apiUrl,
+						generation: destination.settings.generation,
+						sources: destination.sources,
+						selectedSourceId: destination.selectedSourceId,
+					};
+				} catch (error) {
+					return {
+						success: false,
+						error:
+							error instanceof Error
+								? error.message
+								: "Failed to load sources.",
+					};
+				}
+			};
+			void respond().then(sendResponse);
+			return true;
 		}
 
 		if (isGetCookiesMessage(message)) {

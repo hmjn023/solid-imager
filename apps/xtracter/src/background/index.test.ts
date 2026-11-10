@@ -88,3 +88,189 @@ describe("account verification message handler", () => {
 		expect(getClient).not.toHaveBeenCalled();
 	});
 });
+
+describe("operation destination snapshot", () => {
+	const urlA = "https://a.example/api/rpc";
+	const urlB = "https://b.example/api/rpc";
+	const a = { id: "source-a", name: "twitter", type: "local" };
+	const b = { id: "source-b", name: "twitter", type: "local" };
+	const post = {
+		type: "POST_BULK",
+		data: [{ targetUrl: "https://images.example/image.png" }],
+	};
+	async function setup() {
+		type MessageListener = Parameters<
+			typeof chrome.runtime.onMessage.addListener
+		>[0];
+		const addListener = vi.fn<(listener: MessageListener) => void>();
+		const stored: Record<string, unknown> = {
+			connectionSettings: {
+				apiUrl: urlA,
+				generation: 0,
+				selectedSourceIds: { [urlA]: a.id, [urlB]: b.id },
+			},
+		};
+		const notifications = vi.fn();
+		vi.stubGlobal("chrome", {
+			runtime: { onMessage: { addListener } },
+			storage: {
+				local: {
+					get: vi.fn(async () => structuredClone(stored)),
+					set: vi.fn(async (value: object) => {
+						Object.assign(stored, value);
+					}),
+				},
+			},
+			notifications: { create: notifications },
+		});
+		const clientA = {
+			sources: { list: vi.fn().mockResolvedValue([a]) },
+			downloads: { start: vi.fn().mockResolvedValue({}) },
+		};
+		const clientB = {
+			sources: { list: vi.fn().mockResolvedValue([b]) },
+			downloads: { start: vi.fn().mockResolvedValue({}) },
+		};
+		getClient.mockImplementation(async (url: string) =>
+			url === urlA ? clientA : clientB,
+		);
+		await import("./index");
+		const listener = addListener.mock.calls[0]?.[0];
+		if (!listener) throw new Error("No listener");
+		const switchToB = () => {
+			stored.connectionSettings = {
+				apiUrl: urlB,
+				generation: 1,
+				selectedSourceIds: { [urlA]: a.id, [urlB]: b.id },
+			};
+		};
+		return { listener, stored, clientA, clientB, switchToB, notifications };
+	}
+
+	it("keeps source and client on A when settings change while the source list is pending", async () => {
+		const { listener, clientA, clientB, switchToB } = await setup();
+		let finish!: (value: (typeof a)[]) => void;
+		clientA.sources.list.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					finish = resolve;
+				}),
+		);
+		listener(post, {}, vi.fn());
+		await vi.waitFor(() =>
+			expect(clientA.sources.list).toHaveBeenCalledTimes(1),
+		);
+		switchToB();
+		finish([a]);
+		await vi.waitFor(() =>
+			expect(clientA.downloads.start).toHaveBeenCalledExactlyOnceWith({
+				mediaSourceId: a.id,
+				items: post.data,
+			}),
+		);
+		expect(clientB.downloads.start).not.toHaveBeenCalled();
+		expect(getClient).toHaveBeenCalledExactlyOnceWith(urlA);
+	});
+
+	it("retries on the original client after a connection edit", async () => {
+		const { listener, clientA, clientB, switchToB } = await setup();
+		const { APIError } = await import("@ext/api");
+		clientA.downloads.start.mockRejectedValueOnce(
+			new APIError("offline", "NETWORK_ERROR"),
+		);
+		listener(post, {}, vi.fn());
+		await vi.waitFor(() =>
+			expect(clientA.downloads.start).toHaveBeenCalledTimes(1),
+		);
+		switchToB();
+		await vi.waitFor(
+			() => expect(clientA.downloads.start).toHaveBeenCalledTimes(2),
+			{ timeout: 2000 },
+		);
+		expect(clientB.downloads.start).not.toHaveBeenCalled();
+		expect(getClient).toHaveBeenCalledExactlyOnceWith(urlA);
+	});
+
+	it("distinguishes source lookup failure from an empty list and never posts to a saved unchecked ID", async () => {
+		const { listener, clientA, notifications } = await setup();
+		clientA.sources.list.mockRejectedValue(new Error("server offline"));
+		const response = vi.fn();
+		listener({ type: "GET_SOURCES" }, {}, response);
+		listener(post, {}, vi.fn());
+		await vi.waitFor(() =>
+			expect(response).toHaveBeenCalledWith({
+				success: false,
+				error: "server offline",
+			}),
+		);
+		await vi.waitFor(() => expect(notifications).toHaveBeenCalled());
+		expect(clientA.downloads.start).not.toHaveBeenCalled();
+		clientA.sources.list.mockResolvedValue([]);
+		response.mockClear();
+		listener({ type: "GET_SOURCES" }, {}, response);
+		await vi.waitFor(() =>
+			expect(response).toHaveBeenCalledWith(
+				expect.objectContaining({
+					success: true,
+					sources: [],
+					selectedSourceId: null,
+				}),
+			),
+		);
+	});
+
+	it("uses the same fallback for the popup and POST, restores each server's selection, and rejects stale selection writes", async () => {
+		const { listener, clientA } = await setup();
+		clientA.sources.list.mockResolvedValue([
+			{ id: "first", name: "first", type: "local" },
+			a,
+		]);
+		const popup = vi.fn();
+		listener({ type: "GET_SOURCES" }, {}, popup);
+		listener(post, {}, vi.fn());
+		await vi.waitFor(() =>
+			expect(popup).toHaveBeenCalledWith(
+				expect.objectContaining({ selectedSourceId: a.id }),
+			),
+		);
+		await vi.waitFor(() =>
+			expect(clientA.downloads.start).toHaveBeenCalledWith({
+				mediaSourceId: a.id,
+				items: post.data,
+			}),
+		);
+		const changed = vi.fn();
+		listener({ type: "SET_API_URL", apiUrl: urlB }, {}, changed);
+		await vi.waitFor(() =>
+			expect(changed).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiUrl: urlB,
+					generation: 1,
+					selectedSourceId: b.id,
+				}),
+			),
+		);
+		const stale = vi.fn();
+		listener(
+			{ type: "SET_SOURCE", apiUrl: urlA, generation: 0, sourceId: "first" },
+			{},
+			stale,
+		);
+		await vi.waitFor(() =>
+			expect(stale).toHaveBeenCalledWith(
+				expect.objectContaining({ success: false }),
+			),
+		);
+		const restored = vi.fn();
+		listener({ type: "SET_API_URL", apiUrl: urlA }, {}, restored);
+		await vi.waitFor(() =>
+			expect(restored).toHaveBeenCalledWith(
+				expect.objectContaining({
+					apiUrl: urlA,
+					generation: 2,
+					selectedSourceId: a.id,
+				}),
+			),
+		);
+	});
+});
