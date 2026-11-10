@@ -2,6 +2,7 @@ import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/contract";
 import {
 	isBatchParentJobType,
+	canRetryJob,
 	batchParentJobTypes,
 	jobStatusSchema,
 	type Job,
@@ -13,6 +14,8 @@ import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { notifyJob } from "~/infrastructure/events/state-notifications";
+import { logger } from "~/infrastructure/logger";
 import {
 	JobRepository,
 	MediaRepository,
@@ -198,15 +201,10 @@ export const jobsRouter = os.router({
 
 	retry: os.retry.handler(async ({ input }) => {
 		const current = await JobRepository.findById(input.id);
-		if (
-			current &&
-			(isBatchParentJobType(current.type) ||
-				current.type === "import_request" ||
-				current.parentId !== null)
-		) {
+		if (current && !canRetryJob(current)) {
 			throw new ORPCError("BAD_REQUEST", {
 				message:
-					"Batch records and import requests cannot use job retry; start a new batch for failed items",
+					"Only failed standalone jobs can be retried; start a new batch for failed items",
 			});
 		}
 		const [requeued] = await db
@@ -240,7 +238,7 @@ export const jobsRouter = os.router({
 				message: "Only failed jobs can be retried",
 			});
 		}
-		RealtimeEventBus.publishJob("job-retried", {
+		notifyJob("job-retried", {
 			jobId: requeued.id,
 			message: "Job queued for retry",
 		});
@@ -271,7 +269,7 @@ export const jobsRouter = os.router({
 		if (cancelled.status === "completed" || cancelled.status === "failed") {
 			return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
 		}
-		RealtimeEventBus.publishJob(
+		notifyJob(
 			cancelled.status === "cancelled"
 				? "job-cancelled"
 				: "job-cancellation-requested",
@@ -283,6 +281,21 @@ export const jobsRouter = os.router({
 						: "Job cancelled",
 			},
 		);
+		if (cancelled.parentId && cancelled.status === "cancelled") {
+			try {
+				const parent = await JobRepository.findById(cancelled.parentId);
+				if (parent?.status === "failed")
+					notifyJob("job-failed", {
+						jobId: parent.id,
+						error: "A batch job was cancelled",
+					});
+			} catch (error) {
+				logger.error(
+					{ err: error, jobId: cancelled.parentId },
+					"Failed to notify committed batch cancellation",
+				);
+			}
+		}
 		return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
 	}),
 

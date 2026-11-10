@@ -359,10 +359,8 @@ export class JobWorker {
 				});
 			}
 			if (job.parentId) {
-				const parentStatus =
-					status === "completed"
-						? await this.jobRepo.finishBatch(job.parentId)
-						: (await this.jobRepo.findById(job.parentId))?.status;
+				const parentStatus = (await this.jobRepo.findById(job.parentId))
+					?.status;
 				if (parentStatus === "failed")
 					RealtimeEventBus.publishJob("job-failed", {
 						jobId: job.parentId,

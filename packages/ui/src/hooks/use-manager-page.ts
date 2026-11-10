@@ -742,7 +742,11 @@ export function useManagerPage(
 	useBatchJobEvents?.(activeJobId, jobHandlers, {
 		subscribeImmediately: true,
 		onEvent: (event) => {
-			if (event.data.jobId !== activeJobId() || event.event === "job-retried")
+			if (
+				event.data.jobId !== activeJobId() ||
+				event.event === "job-retried" ||
+				event.event === "job-cancellation-requested"
+			)
 				batches.observe(event);
 			if (
 				event.event === "job-progress" ||

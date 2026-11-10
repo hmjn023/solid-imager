@@ -368,7 +368,10 @@ describe("persisted import, attempt and batch transitions", () => {
 			status: "completed",
 			result: {},
 		});
-		expect(await repositories.job.finishBatch(parent.id)).toBe("completed");
+		expect(await repositories.job.findById(parent.id)).toMatchObject({
+			status: "completed",
+		});
+		expect(await repositories.job.finishBatch(parent.id)).toBeNull();
 		expect(
 			await repositories.job.recordBatchChildOutcome(
 				parent.id,
@@ -416,6 +419,147 @@ describe("persisted import, attempt and batch transitions", () => {
 				1,
 			),
 		).toMatchObject({ processed: 0, failed: 1 });
+	});
+
+	it("reconciles cancellation of a pending child without waiting for a worker", async () => {
+		const parent = await repositories.job.create({
+			type: "bulk_tagging_parent",
+			status: "in_progress",
+			payload: { total: 1, processed: 0, failed: 0 },
+		});
+		const child = await repositories.job.create({
+			type: "auto_tagging",
+			status: "pending",
+			parentId: parent.id,
+		});
+		expect(await call(jobsRouter.cancel, { id: child.id })).toMatchObject({
+			status: "cancelled",
+		});
+		expect(await repositories.job.findById(parent.id)).toMatchObject({
+			status: "failed",
+			finishedAt: expect.any(Date),
+		});
+	});
+
+	it("does not publish a parent failure when cancelling a legacy child of an already closed parent", async () => {
+		const parent = await repositories.job.create({
+			type: "bulk_tagging_parent",
+			status: "completed",
+			payload: { total: 1, processed: 1, failed: 0 },
+		});
+		const child = await repositories.job.create({
+			type: "auto_tagging",
+			status: "pending",
+			parentId: parent.id,
+		});
+		const publish = vi.spyOn(RealtimeEventBus, "publishJob");
+		try {
+			await call(jobsRouter.cancel, { id: child.id });
+			expect(await repositories.job.findById(parent.id)).toMatchObject({
+				status: "completed",
+			});
+			expect(publish).not.toHaveBeenCalledWith(
+				"job-failed",
+				expect.objectContaining({ jobId: parent.id }),
+			);
+		} finally {
+			publish.mockRestore();
+		}
+	});
+
+	it("closes the parent when last siblings finish concurrently on independent connections", async () => {
+		const parent = await repositories.job.create({
+			type: "bulk_tagging_parent",
+			status: "in_progress",
+			payload: { total: 2, processed: 2, failed: 0 },
+		});
+		const children = await Promise.all(
+			[1, 2].map(() =>
+				repositories.job.create({
+					type: "auto_tagging",
+					status: "in_progress",
+					parentId: parent.id,
+					attemptCount: 1,
+				}),
+			),
+		);
+		await Promise.all(
+			children.map((child) =>
+				repositories.job.finishAttempt(child.id, 1, {
+					status: "completed",
+					result: {},
+				}),
+			),
+		);
+		expect(await repositories.job.findById(parent.id)).toMatchObject({
+			status: "completed",
+			finishedAt: expect.any(Date),
+		});
+	});
+
+	it("rolls back child termination when final parent persistence fails", async () => {
+		const parent = await repositories.job.createBatch(
+			{
+				type: "bulk_tagging_parent",
+				status: "in_progress",
+				payload: { total: 0, processed: 0, failed: 0 },
+			},
+			{ type: "bulk_tagging_dispatch", status: "in_progress", attemptCount: 1 },
+		);
+		const dispatch = (
+			await database.select().from(jobs).where(eq(jobs.parentId, parent.id))
+		)[0];
+		await client.exec(
+			`CREATE FUNCTION reject_parent_confirmation() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.type = 'bulk_tagging_parent' AND NEW.status = 'completed' THEN RAISE EXCEPTION 'injected parent failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_parent_confirmation BEFORE UPDATE ON jobs FOR EACH ROW EXECUTE FUNCTION reject_parent_confirmation();`,
+		);
+		try {
+			await expect(
+				repositories.job.finishAttempt(dispatch.id, 1, {
+					status: "completed",
+					result: {},
+				}),
+			).rejects.toThrow();
+			expect(await repositories.job.findById(dispatch.id)).toMatchObject({
+				status: "in_progress",
+			});
+			expect(await repositories.job.findById(parent.id)).toMatchObject({
+				status: "in_progress",
+			});
+		} finally {
+			await client.exec(
+				"DROP TRIGGER reject_parent_confirmation ON jobs; DROP FUNCTION reject_parent_confirmation();",
+			);
+		}
+	});
+
+	it("fails ambiguous legacy chunk accounting explicitly instead of inventing a one-item contribution", async () => {
+		const parent = await repositories.job.create({
+			type: "batch_ccip_parent",
+			status: "in_progress",
+			payload: { total: 25, processed: 25, failed: 0 },
+		});
+		const child = await repositories.job.create({
+			type: "extract_ccip_vector",
+			status: "in_progress",
+			parentId: parent.id,
+			attemptCount: 2,
+			payload: { mediaIds: Array.from({ length: 25 }, () => randomUUID()) },
+			result: { parentProcessed: true },
+		});
+		expect(
+			await repositories.job.recordBatchChildOutcome(
+				parent.id,
+				child.id,
+				2,
+				25,
+				0,
+			),
+		).toBeNull();
+		expect(await repositories.job.findById(parent.id)).toMatchObject({
+			status: "failed",
+			error: "Legacy chunk progress requires a new batch",
+			payload: expect.objectContaining({ processed: 25, failed: 0 }),
+		});
 	});
 
 	it("rejects generic retry of parents, children and receipts without changing them", async () => {

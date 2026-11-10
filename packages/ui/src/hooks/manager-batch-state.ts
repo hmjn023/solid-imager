@@ -141,6 +141,8 @@ export function createManagerBatchState(
 					progress: { ...event.data, failed: previous.progress?.failed ?? 0 },
 				};
 				break;
+			case "job-cancellation-requested":
+				break;
 			case "job-retried":
 				next = { ...next, status: "pending", progress: null, error: null };
 				break;
@@ -154,6 +156,10 @@ export function createManagerBatchState(
 			case "job-cancelled":
 				next.status = "cancelled";
 				break;
+			default: {
+				const unhandled: never = event;
+				throw new Error(`Unhandled job event: ${String(unhandled)}`);
+			}
 		}
 		setObservations((all) => ({ ...all, [id]: next }));
 	}

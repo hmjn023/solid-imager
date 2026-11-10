@@ -86,6 +86,39 @@ describe("processAutoTaggingJob", () => {
 		vi.mocked(jobRepository.recordBatchChildOutcome).mockResolvedValue(null);
 	});
 
+	it("does not turn successful persisted tagging into failure when a progress observer throws", async () => {
+		vi.mocked(jobRepository.recordBatchChildOutcome).mockResolvedValue({
+			processed: 1,
+			failed: 0,
+			total: 1,
+		});
+		publishJob.mockImplementationOnce(() => {
+			throw new Error("subscriber offline");
+		});
+		await expect(
+			processAutoTaggingJob({
+				id: "00000000-0000-4000-8000-000000000020",
+				type: "auto_tagging",
+				mediaSourceId: "00000000-0000-4000-8000-000000000001",
+				status: "in_progress",
+				payload: { mediaId: "00000000-0000-4000-8000-000000000030" },
+				parentId: "00000000-0000-4000-8000-000000000010",
+				result: null,
+				error: null,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			}),
+		).resolves.toBeUndefined();
+		expect(jobRepository.recordBatchChildOutcome).toHaveBeenCalledTimes(1);
+		expect(jobRepository.recordBatchChildOutcome).toHaveBeenCalledWith(
+			"00000000-0000-4000-8000-000000000010",
+			"00000000-0000-4000-8000-000000000020",
+			0,
+			1,
+			0,
+		);
+	});
+
 	it("does not re-publish parent progress when the child was already counted", async () => {
 		await processAutoTaggingJob({
 			id: "00000000-0000-4000-8000-000000000020",

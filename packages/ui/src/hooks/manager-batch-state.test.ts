@@ -103,6 +103,21 @@ describe("Manager batch request ownership", () => {
 });
 
 describe("Manager GET and SSE observations", () => {
+	it("keeps cancellation requests nonterminal until the committed cancellation event", () => {
+		const state = createManagerBatchState(vi.fn());
+		state.restore({ ...tagging, jobId: "cancel" });
+		state.acceptSnapshot(job("cancel"), 0);
+		state.observe({
+			event: "job-cancellation-requested",
+			data: { jobId: "cancel" },
+		});
+		expect(state.display("tagging")?.status).toBe("in_progress");
+		expect(state.activeJobId()).toBe("cancel");
+		state.observe({ event: "job-cancelled", data: { jobId: "cancel" } });
+		expect(state.display("tagging")?.status).toBe("cancelled");
+		expect(state.activeJobId()).toBeNull();
+	});
+
 	it("rejects a GET started before a newer event and accepts a fresh snapshot", () => {
 		const state = createManagerBatchState(vi.fn());
 		state.restore({ ...tagging, jobId: "tracked" });

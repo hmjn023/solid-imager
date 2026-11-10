@@ -14,7 +14,7 @@ import {
 	medias,
 	type NewJob,
 } from "~/infrastructure/db/schema";
-import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import { notifyJob } from "~/infrastructure/events/state-notifications";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 import { ccipVectorService } from "~/infrastructure/services/ccip-vector-service";
@@ -77,12 +77,12 @@ async function finalizeBatchParent(
 	const status = await jobRepo.finishBatch(parentId);
 	if (!status) return;
 	if (status === "failed") {
-		RealtimeEventBus.publishJob("job-failed", {
+		notifyJob("job-failed", {
 			jobId: parentId,
 			error: `${progress.failed} batch item(s) failed`,
 		});
 	} else if (status === "completed") {
-		RealtimeEventBus.publishJob("job-completed", {
+		notifyJob("job-completed", {
 			jobId: parentId,
 			message: "Batch completed",
 		});
@@ -224,7 +224,7 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 	if (total === 0) {
 		await finalizeBatchParent(parentId, { processed: 0, failed: 0, total: 0 });
 	} else {
-		RealtimeEventBus.publishJob("job-progress", {
+		notifyJob("job-progress", {
 			jobId: parentId,
 			processed: parentPayload.processed,
 			total,
@@ -356,7 +356,7 @@ async function updateParentProgress(
 	if (!progress || progress.total <= 0) {
 		return;
 	}
-	RealtimeEventBus.publishJob("job-progress", {
+	notifyJob("job-progress", {
 		jobId: job.parentId,
 		processed: progress.processed,
 		total: progress.total,

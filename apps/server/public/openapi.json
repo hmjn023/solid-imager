@@ -2074,7 +2074,7 @@
       "post": {
         "operationId": "sources.sync",
         "summary": "メディアソース同期",
-        "description": "指定したメディアソースを走査し、ファイルシステムとデータベースの登録内容を同期します。追加・削除された項目ごとの結果を返します。",
+        "description": "指定したメディアソースを走査し、ファイルシステムとデータベースの登録内容を同期します。ソースごとの成功・失敗と、部分成功を含む追加・削除・失敗件数を返します。",
         "tags": [
           "Media Sources"
         ],
@@ -2121,9 +2121,48 @@
                                 "format": "uuid",
                                 "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                               },
+                              "sourceId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "added": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "deleted": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "failed": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
                               "success": {
                                 "type": "boolean",
                                 "const": true
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "sourceId",
+                              "added",
+                              "deleted",
+                              "failed",
+                              "success"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                               },
                               "sourceId": {
                                 "type": "string",
@@ -2139,24 +2178,11 @@
                                 "type": "integer",
                                 "minimum": 0,
                                 "maximum": 9007199254740991
-                              }
-                            },
-                            "required": [
-                              "id",
-                              "success",
-                              "sourceId",
-                              "added",
-                              "deleted"
-                            ],
-                            "additionalProperties": false
-                          },
-                          {
-                            "type": "object",
-                            "properties": {
-                              "id": {
-                                "type": "string",
-                                "format": "uuid",
-                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "failed": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
                               },
                               "success": {
                                 "type": "boolean",
@@ -2168,6 +2194,10 @@
                             },
                             "required": [
                               "id",
+                              "sourceId",
+                              "added",
+                              "deleted",
+                              "failed",
                               "success",
                               "error"
                             ],
@@ -7244,7 +7274,7 @@
       "post": {
         "operationId": "media.bulkMove",
         "summary": "メディア一括移動",
-        "description": "同じメディアソース内の複数メディアを指定ディレクトリへ移動します。",
+        "description": "同じメディアソース内の複数メディアを指定ディレクトリへ移動し、項目別の成功・失敗・未処理を返します。",
         "tags": [
           "Media"
         ],
@@ -7293,10 +7323,86 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "succeeded"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "failed"
+                              },
+                              "error": {
+                                "type": "string"
+                              },
+                              "retryable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status",
+                              "error"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "not_processed"
+                              },
+                              "error": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status",
+                              "error"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
                     }
                   },
                   "required": [
-                    "success"
+                    "success",
+                    "items"
                   ],
                   "additionalProperties": false
                 }
@@ -7389,7 +7495,7 @@
       "post": {
         "operationId": "media.bulkCopyToSource",
         "summary": "メディア一括コピー",
-        "description": "指定した複数メディアを別のメディアソースへコピーします。",
+        "description": "指定した複数メディアを別のメディアソースへコピーし、項目別の成功・失敗・未処理を返します。成功済みの項目は再試行から除外してください。",
         "tags": [
           "Media"
         ],
@@ -7439,10 +7545,86 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "succeeded"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "failed"
+                              },
+                              "error": {
+                                "type": "string"
+                              },
+                              "retryable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status",
+                              "error"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "not_processed"
+                              },
+                              "error": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status",
+                              "error"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
                     }
                   },
                   "required": [
-                    "success"
+                    "success",
+                    "items"
                   ],
                   "additionalProperties": false
                 }
@@ -7456,7 +7638,7 @@
       "post": {
         "operationId": "media.bulkMoveToSource",
         "summary": "メディア一括ソース間移動",
-        "description": "指定した複数メディアを別のメディアソースへ移動します。",
+        "description": "指定した複数メディアを別のメディアソースへ移動し、項目別の成功・失敗・未処理を返します。",
         "tags": [
           "Media"
         ],
@@ -7506,10 +7688,86 @@
                   "properties": {
                     "success": {
                       "type": "boolean"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "succeeded"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "failed"
+                              },
+                              "error": {
+                                "type": "string"
+                              },
+                              "retryable": {
+                                "type": "boolean"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status",
+                              "error"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "mediaId": {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              "status": {
+                                "type": "string",
+                                "const": "not_processed"
+                              },
+                              "error": {
+                                "type": "string"
+                              }
+                            },
+                            "required": [
+                              "mediaId",
+                              "status",
+                              "error"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
                     }
                   },
                   "required": [
-                    "success"
+                    "success",
+                    "items"
                   ],
                   "additionalProperties": false
                 }
@@ -15921,7 +16179,7 @@
       "post": {
         "operationId": "imports.process",
         "summary": "インポート処理の実行",
-        "description": "指定したインポートジョブを対象メディアソースへ取り込み、処理結果と件数を返します。",
+        "description": "pendingのインポート受付のみを承認し、download投入と受付の確定を同じトランザクションで保存します。再送で同じ受付を二重投入しません。",
         "tags": [
           "Imports"
         ],
@@ -15985,7 +16243,7 @@
       "post": {
         "operationId": "imports.cancel",
         "summary": "インポート処理のキャンセル",
-        "description": "指定したインポートジョブをキャンセルします。",
+        "description": "pendingのインポート受付のみを取り消します。投入済み受付や他の種類のジョブは変更しません。",
         "tags": [
           "Imports"
         ],
@@ -17076,7 +17334,7 @@
       "post": {
         "operationId": "jobs.retry",
         "summary": "ジョブ再実行",
-        "description": "失敗したバックグラウンドジョブを再実行し、更新後のジョブ情報を返します。",
+        "description": "失敗した単独の実行ジョブを再実行します。バッチ親子とインポート受付は対象外です。失敗項目は新しいバッチとして開始してください。",
         "tags": [
           "Jobs"
         ],
@@ -17344,7 +17602,7 @@
       "post": {
         "operationId": "jobs.cancel",
         "summary": "ジョブキャンセル",
-        "description": "実行中または待機中のバックグラウンドジョブをキャンセルし、更新後のジョブ情報を返します。",
+        "description": "待機中は取消を確定し、実行中は取消を要求します。取消要求は非終端イベント、取消確定は終端イベントとして通知します。",
         "tags": [
           "Jobs"
         ],
@@ -17670,6 +17928,32 @@
                                 "event": {
                                   "type": "string",
                                   "const": "job-retried"
+                                },
+                                "data": {
+                                  "type": "object",
+                                  "properties": {
+                                    "jobId": {
+                                      "type": "string"
+                                    },
+                                    "message": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "event",
+                                "data"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "event": {
+                                  "type": "string",
+                                  "const": "job-cancellation-requested"
                                 },
                                 "data": {
                                   "type": "object",
