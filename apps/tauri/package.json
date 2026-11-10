@@ -15,7 +15,8 @@
     "lint": "oxlint ./src",
     "format": "oxfmt --write ./src",
     "check": "oxlint --fix ./src && oxfmt --write ./src",
-    "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'"
+    "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'",
+    "test": "vitest run"
   },
   "dependencies": {
     "@solid-imager/client": "workspace:*",

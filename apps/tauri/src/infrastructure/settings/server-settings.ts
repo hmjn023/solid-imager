@@ -3,7 +3,11 @@ import { Store } from "@tauri-apps/plugin-store";
 import { z } from "zod";
 import { getBuildTimeServerUrl } from "~/infrastructure/api-base";
 import { removeDatabaseFile } from "~/infrastructure/db/database-files";
-import { closePersistence } from "~/infrastructure/db/persistence";
+import {
+	getPersistenceServerId,
+	replacePersistence,
+} from "~/infrastructure/db/persistence";
+import { setApiBaseUrl } from "~/infrastructure/api-base";
 
 const SETTINGS_FILE = "settings.json";
 const SETTINGS_KEY = "serverSettings";
@@ -45,6 +49,15 @@ export type ServerSettings = z.infer<typeof serverSettingsSchema>;
 
 let settings: ServerSettings | null = null;
 let storePromise: Promise<Store> | null = null;
+let mutation: Promise<void> = Promise.resolve();
+function serializeMutation<T>(action: () => Promise<T>): Promise<T> {
+	const pending = mutation.then(action, action);
+	mutation = pending.then(
+		() => {},
+		() => {},
+	);
+	return pending;
+}
 
 function createId(): string {
 	return crypto.randomUUID();
@@ -189,123 +202,170 @@ export function getApiDocsUrl(): string | undefined {
 		: undefined;
 }
 
-/** Normalizes and persists the supplied settings before replacing the in-memory copy. */
-export async function saveServerSettings(
-	next: ServerSettings,
-): Promise<ServerSettings> {
-	const normalized = normalizeSettings({
-		...next,
-		schemaVersion: SETTINGS_VERSION,
-	});
+/** Fully validates candidates before opening, closing, deleting or saving anything. */
+function validateSettings(value: ServerSettings): ServerSettings {
+	return normalizeSettings(serverSettingsSchema.parse(value));
+}
+
+async function commitSettings(next: ServerSettings): Promise<ServerSettings> {
+	const normalized = validateSettings(next);
+	const previous = getServerSettings();
+	for (const server of normalized.servers) {
+		const existing = previous.servers.find((item) => item.id === server.id);
+		if (existing && existing.baseUrl !== server.baseUrl)
+			throw new Error(
+				"A changed server URL requires a new cache identity. Use updateServerConnection().",
+			);
+	}
+	const oldServer = previous.servers.find(
+		(server) => server.id === previous.activeServerId,
+	);
+	const nextServer = normalized.servers.find(
+		(server) => server.id === normalized.activeServerId,
+	);
+	const changedConnection =
+		oldServer?.id !== nextServer?.id ||
+		oldServer?.baseUrl !== nextServer?.baseUrl;
+	const hadRuntime = getPersistenceServerId() !== undefined;
 	const store = await getStore();
-	await store.set(SETTINGS_KEY, normalized);
-	await store.save();
-	settings = normalized;
+	let touchedStore = false;
+	const persist = async () => {
+		touchedStore = true;
+		await store.set(SETTINGS_KEY, normalized);
+		await store.save();
+	};
+	const reset =
+		changedConnection && hadRuntime
+			? (await import("~/collections")).resetCollections
+			: null;
+	let cleanup: Promise<void> = Promise.resolve();
+	const publish = () => {
+		settings = normalized;
+		if (nextServer) setApiBaseUrl(nextServer.baseUrl);
+		// Invalidation is synchronous up to the first await, in the same turn as
+		// publishing the new DB/RPC target. Disposal completes before returning.
+		cleanup = reset?.() ?? Promise.resolve();
+	};
+	try {
+		if (changedConnection && hadRuntime)
+			await replacePersistence(nextServer?.id ?? null, persist, publish);
+		else {
+			await persist();
+			publish();
+		}
+	} catch (error) {
+		if (touchedStore) {
+			try {
+				await store.set(SETTINGS_KEY, previous);
+				await store.save();
+			} catch (rollbackError) {
+				throw new AggregateError(
+					[error, rollbackError],
+					"Failed to save server settings and restore the previous saved settings.",
+				);
+			}
+		}
+		throw error;
+	}
+	await cleanup;
+
 	return normalized;
 }
 
-/** Adds a validated profile and selects it if no server is currently active. */
-export async function addServerConnection(input: {
+/** Serializes settings commits and connection changes against the latest configuration. */
+export function saveServerSettings(
+	next: ServerSettings,
+): Promise<ServerSettings> {
+	return serializeMutation(() => commitSettings(next));
+}
+
+async function cleanOldCache(id: string): Promise<void> {
+	try {
+		await removeDatabaseFile(id);
+	} catch (error) {
+		// Configuration and runtime already committed. A disposable cache must not
+		// turn a successful connection switch into a misleading save failure.
+		console.warn("Failed to remove an unused server cache", error);
+	}
+}
+
+/** Adds a fully validated profile, selecting it if no server is active. */
+export function addServerConnection(input: {
 	baseUrl: string;
 	name: string;
 }): Promise<ServerConnection> {
-	const current = getServerSettings();
-	const server = serverConnectionSchema.parse({
-		baseUrl: normalizeUrl(input.baseUrl),
-		id: createId(),
-		name: input.name.trim(),
-	});
-	await saveServerSettings({
-		...current,
-		activeServerId: current.activeServerId ?? server.id,
-		servers: [...current.servers, server],
-	});
-	return server;
-}
-
-/**
- * Removes a profile and its local database, closing persistence if it is active.
- *
- * @param id - Profile ID; an unknown ID is ignored.
- * @throws If closing persistence, deleting the database, or saving settings fails.
- */
-export async function removeServerConnection(id: string): Promise<void> {
-	const current = getServerSettings();
-	const removedServer = current.servers.find((server) => server.id === id);
-	if (!removedServer) return;
-	const wasActive = current.activeServerId === id;
-	if (wasActive) {
-		await closePersistence();
-	}
-	await removeDatabaseFile(removedServer.id);
-	const servers = current.servers.filter((server) => server.id !== id);
-	await saveServerSettings({
-		...current,
-		activeServerId:
-			current.activeServerId === id
-				? (servers[0]?.id ?? null)
-				: current.activeServerId,
-		servers,
+	return serializeMutation(async () => {
+		const current = getServerSettings();
+		const server = serverConnectionSchema.parse({
+			baseUrl: normalizeUrl(input.baseUrl),
+			id: createId(),
+			name: input.name.trim(),
+		});
+		await commitSettings({
+			...current,
+			activeServerId: current.activeServerId ?? server.id,
+			servers: [...current.servers, server],
+		});
+		return server;
 	});
 }
 
-/**
- * Updates a profile. Changing its URL assigns a new ID and removes the old cache;
- * changing the name alone preserves both. Active persistence is closed on URL change.
- *
- * @throws If the profile is missing, its data is invalid, or persistence operations fail.
- */
-export async function updateServerConnection(
+/** Removes a profile; its disposable cache is deleted only after configuration commits. */
+export function removeServerConnection(id: string): Promise<void> {
+	return serializeMutation(async () => {
+		const current = getServerSettings();
+		if (!current.servers.some((server) => server.id === id)) return;
+		const servers = current.servers.filter((server) => server.id !== id);
+		await commitSettings({
+			...current,
+			activeServerId:
+				current.activeServerId === id
+					? (servers[0]?.id ?? null)
+					: current.activeServerId,
+			servers,
+		});
+		await cleanOldCache(id);
+	});
+}
+
+/** Changes cache identity on URL edits; name-only edits retain the open connection. */
+export function updateServerConnection(
 	server: ServerConnection,
 ): Promise<ServerConnection> {
-	const current = getServerSettings();
-	const existing = current.servers.find((item) => item.id === server.id);
-	if (!existing) {
-		throw new Error("The selected server does not exist.");
-	}
-
-	const normalizedBaseUrl = normalizeUrl(server.baseUrl);
-	const urlChanged = existing.baseUrl !== normalizedBaseUrl;
-	if (urlChanged && current.activeServerId === existing.id) {
-		await closePersistence();
-	}
-	const updatedServer = serverConnectionSchema.parse({
-		...server,
-		// A URL change points this profile at a different server. Give it a new
-		// cache scope so the next initialization cannot reuse the old server's
-		// SQLite data. Name-only edits keep the existing profile/cache identity.
-		id: existing.baseUrl === normalizedBaseUrl ? existing.id : createId(),
-		baseUrl: normalizedBaseUrl,
-		name: server.name.trim(),
+	return serializeMutation(async () => {
+		const current = getServerSettings();
+		const existing = current.servers.find((item) => item.id === server.id);
+		if (!existing) throw new Error("The selected server does not exist.");
+		const baseUrl = normalizeUrl(server.baseUrl);
+		const urlChanged = existing.baseUrl !== baseUrl;
+		const updated = serverConnectionSchema.parse({
+			...server,
+			id: urlChanged ? createId() : existing.id,
+			baseUrl,
+			name: server.name.trim(),
+		});
+		await commitSettings({
+			...current,
+			activeServerId:
+				current.activeServerId === existing.id
+					? updated.id
+					: current.activeServerId,
+			servers: current.servers.map((item) =>
+				item.id === existing.id ? updated : item,
+			),
+		});
+		if (urlChanged) await cleanOldCache(existing.id);
+		return updated;
 	});
-	if (urlChanged) {
-		await removeDatabaseFile(existing.id);
-	}
-	const activeServerId =
-		current.activeServerId === existing.id
-			? updatedServer.id
-			: current.activeServerId;
-	const nextSettings = await saveServerSettings({
-		...current,
-		activeServerId,
-		servers: current.servers.map((item) =>
-			item.id === existing.id ? updatedServer : item,
-		),
-	});
-
-	return (
-		nextSettings.servers.find((item) => item.id === updatedServer.id) ??
-		updatedServer
-	);
 }
 
-/** Persists the selected profile ID, rejecting IDs that do not exist. */
-export async function activateServer(id: string): Promise<ServerConnection> {
-	const current = getServerSettings();
-	const server = current.servers.find((item) => item.id === id);
-	if (!server) {
-		throw new Error("The selected server does not exist.");
-	}
-	await saveServerSettings({ ...current, activeServerId: id });
-	return server;
+/** Selects a server and coordinates its running persistence and API target. */
+export function activateServer(id: string): Promise<ServerConnection> {
+	return serializeMutation(async () => {
+		const current = getServerSettings();
+		const server = current.servers.find((item) => item.id === id);
+		if (!server) throw new Error("The selected server does not exist.");
+		await commitSettings({ ...current, activeServerId: id });
+		return server;
+	});
 }
