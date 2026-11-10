@@ -9,6 +9,20 @@ export const jobStatusSchema = z.enum([
 ]);
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
+/** A processor's proposed outcome; cancellation is resolved atomically in storage. */
+export const jobAttemptOutcomeSchema = z.discriminatedUnion("status", [
+	z.object({ status: z.literal("completed"), result: z.unknown() }),
+	z.object({ status: z.literal("failed"), error: z.string() }),
+	z.object({ status: z.literal("cancelled") }),
+]);
+export type JobAttemptOutcome = z.infer<typeof jobAttemptOutcomeSchema>;
+export const jobTerminalStatusSchema = z.enum([
+	"completed",
+	"failed",
+	"cancelled",
+]);
+export type JobTerminalStatus = z.infer<typeof jobTerminalStatusSchema>;
+
 /** Job types whose progress is aggregated from child jobs. */
 export const batchParentJobTypes = [
 	"batch_ccip_parent",

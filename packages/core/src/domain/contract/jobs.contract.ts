@@ -59,7 +59,7 @@ export const jobsContract = {
 				tags: ["Jobs"],
 				summary: "ジョブ再実行",
 				description:
-					"失敗したバックグラウンドジョブを再実行し、更新後のジョブ情報を返します。",
+					"失敗した単独の実行ジョブを再実行します。バッチ親子とインポート受付は対象外です。失敗項目は新しいバッチとして開始してください。",
 			}),
 		)
 		.input(jobIdRequestSchema)
@@ -70,7 +70,7 @@ export const jobsContract = {
 				tags: ["Jobs"],
 				summary: "ジョブキャンセル",
 				description:
-					"実行中または待機中のバックグラウンドジョブをキャンセルし、更新後のジョブ情報を返します。",
+					"待機中は取消を確定し、実行中は取消を要求します。取消要求は非終端イベント、取消確定は終端イベントとして通知します。",
 			}),
 		)
 		.input(jobIdRequestSchema)

@@ -43,6 +43,7 @@ export function dispatchJobEvent(
 		case "job-progress":
 			handlers.handleJobProgress(event.data);
 			break;
+		case "job-cancellation-requested":
 		case "job-retried":
 			break;
 		case "job-completed":

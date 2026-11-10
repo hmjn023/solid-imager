@@ -132,6 +132,22 @@ async function cropDetection(
 
 const os = implement(aiContract);
 
+/** Initial progress is a post-commit hint; its delivery cannot undo batch acceptance. */
+function notifyBatchQueued(jobId: string): void {
+	try {
+		RealtimeEventBus.publishJob("job-progress", {
+			jobId,
+			processed: 0,
+			total: 0,
+		});
+	} catch (error) {
+		logger.error(
+			{ err: error, jobId },
+			"Failed to notify committed batch acceptance",
+		);
+	}
+}
+
 export const aiRouter = os.router({
 	startEmbeddingExtraction: os.startEmbeddingExtraction.handler(
 		async ({ input }) => {
@@ -392,34 +408,30 @@ export const aiRouter = os.router({
 		const { mediaSourceId, force, batchSize } = input;
 		const jobRepo = services.getJobRepository();
 
-		const parentJob = await jobRepo.create({
-			type: "bulk_tagging_parent",
-			status: "in_progress",
-			mediaSourceId,
-			payload: {
-				total: 0,
-				processed: 0,
-				failed: 0,
+		const parentJob = await jobRepo.createBatch(
+			{
+				type: "bulk_tagging_parent",
+				status: "in_progress",
 				mediaSourceId,
-				force,
+				payload: {
+					total: 0,
+					processed: 0,
+					failed: 0,
+					mediaSourceId,
+					force,
+				},
 			},
-		});
-		RealtimeEventBus.publishJob("job-progress", {
-			jobId: parentJob.id,
-			processed: 0,
-			total: 0,
-		});
-
-		await jobRepo.create({
-			type: "bulk_tagging_dispatch",
-			mediaSourceId,
-			parentId: parentJob.id,
-			payload: {
+			{
+				type: "bulk_tagging_dispatch",
 				mediaSourceId,
-				force,
-				...(batchSize !== undefined ? { batchSize } : {}),
+				payload: {
+					mediaSourceId,
+					force,
+					...(batchSize !== undefined ? { batchSize } : {}),
+				},
 			},
-		});
+		);
+		notifyBatchQueued(parentJob.id);
 
 		logger.info(
 			{
@@ -514,32 +526,26 @@ export const aiRouter = os.router({
 		async ({ input }) => {
 			const { mediaSourceId, force } = input;
 			const jobRepo = services.getJobRepository();
-			const parent = await jobRepo.create({
-				type: "batch_ccip_parent",
-				status: "in_progress",
-				mediaSourceId,
-				payload: {
-					total: 0,
-					processed: 0,
-					failed: 0,
+			const parent = await jobRepo.createBatch(
+				{
+					type: "batch_ccip_parent",
+					status: "in_progress",
 					mediaSourceId,
-					force,
+					payload: {
+						total: 0,
+						processed: 0,
+						failed: 0,
+						mediaSourceId,
+						force,
+					},
 				},
-			});
-			RealtimeEventBus.publishJob("job-progress", {
-				jobId: parent.id,
-				processed: 0,
-				total: 0,
-			});
-			await jobRepo.create({
-				type: "batch_ccip_dispatch",
-				mediaSourceId,
-				parentId: parent.id,
-				payload: {
+				{
+					type: "batch_ccip_dispatch",
 					mediaSourceId,
-					force,
+					payload: { mediaSourceId, force },
 				},
-			});
+			);
+			notifyBatchQueued(parent.id);
 			logger.info(
 				{
 					jobId: parent.id,

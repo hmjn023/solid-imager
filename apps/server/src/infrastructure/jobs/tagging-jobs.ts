@@ -32,19 +32,19 @@ async function finalizeBatchParent(
 	progress: { processed: number; failed: number; total: number },
 ): Promise<void> {
 	const jobRepo = services.getJobRepository();
-	if (progress.failed > 0) {
-		await jobRepo.update(parentId, { status: "failed" });
+	const status = await jobRepo.finishBatch(parentId);
+	if (!status) return;
+	if (status === "failed") {
 		RealtimeEventBus.publishJob("job-failed", {
 			jobId: parentId,
-			error: `${progress.failed} child job(s) failed`,
+			error: `${progress.failed} batch item(s) failed`,
 		});
-		return;
+	} else if (status === "completed") {
+		RealtimeEventBus.publishJob("job-completed", {
+			jobId: parentId,
+			message: "Batch completed",
+		});
 	}
-	await jobRepo.update(parentId, { status: "completed" });
-	RealtimeEventBus.publishJob("job-completed", {
-		jobId: parentId,
-		message: "Batch tagging completed",
-	});
 }
 
 export async function processAutoTaggingJob(job: Job): Promise<void> {
@@ -79,7 +79,13 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 		);
 		if (parentId) {
 			const jobRepo = services.getJobRepository();
-			const progress = await jobRepo.incrementProgress(parentId, job.id);
+			const progress = await jobRepo.recordBatchChildOutcome(
+				parentId,
+				job.id,
+				job.attemptCount ?? 0,
+				1,
+				0,
+			);
 			if (!progress || progress.total === 0) {
 				return;
 			}
@@ -98,7 +104,13 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 		logger.error({ err: error, mediaId }, "Auto tagging failed");
 		if (parentId) {
 			const jobRepo = services.getJobRepository();
-			const progress = await jobRepo.incrementFailedCount(parentId, job.id);
+			const progress = await jobRepo.recordBatchChildOutcome(
+				parentId,
+				job.id,
+				job.attemptCount ?? 0,
+				0,
+				1,
+			);
 			if (progress && progress.total > 0) {
 				RealtimeEventBus.publishJob("job-progress", {
 					jobId: parentId,
@@ -251,11 +263,7 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 	const progress = await jobRepo.setBatchTotal(parentId, totalChildCount);
 
 	if (totalChildCount === 0) {
-		await jobRepo.update(parentId, { status: "completed" });
-		RealtimeEventBus.publishJob("job-completed", {
-			jobId: parentId,
-			message: "Batch tagging completed (no targets)",
-		});
+		await finalizeBatchParent(parentId, { processed: 0, failed: 0, total: 0 });
 	} else {
 		RealtimeEventBus.publishJob("job-progress", {
 			jobId: parentId,

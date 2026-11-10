@@ -55,6 +55,13 @@ function createJob(
 }
 
 describe("processJob", () => {
+	it("rejects unknown job types instead of reporting successful completion", async () => {
+		await expect(
+			processJob(
+				createJob("unknown_task", "22222222-2222-4222-8222-222222222222"),
+			),
+		).rejects.toThrow("Unsupported job type");
+	});
 	beforeEach(() => {
 		processCharacterClusteringJob.mockReset();
 		processBatchCcipDispatchJob.mockReset();

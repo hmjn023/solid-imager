@@ -46,7 +46,7 @@ export const importsContract = {
 				tags: ["Imports"],
 				summary: "インポート処理の実行",
 				description:
-					"指定したインポートジョブを対象メディアソースへ取り込み、処理結果と件数を返します。",
+					"pendingのインポート受付のみを承認し、download投入と受付の確定を同じトランザクションで保存します。再送で同じ受付を二重投入しません。",
 			}),
 		)
 		.input(
@@ -62,7 +62,8 @@ export const importsContract = {
 			openapi({
 				tags: ["Imports"],
 				summary: "インポート処理のキャンセル",
-				description: "指定したインポートジョブをキャンセルします。",
+				description:
+					"pendingのインポート受付のみを取り消します。投入済み受付や他の種類のジョブは変更しません。",
 			}),
 		)
 		.input(z.object({ jobIds: z.array(z.uuid()) }))

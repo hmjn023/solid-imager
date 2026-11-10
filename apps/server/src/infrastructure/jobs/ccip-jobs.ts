@@ -1,9 +1,9 @@
+import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	type CcipVectorMetadata,
 	CCIP_EMBEDDING_VERSION,
 	CCIP_MODEL,
 } from "@solid-imager/application/ccip";
-import { getErrorMessage } from "@solid-imager/core/utils";
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
@@ -74,19 +74,19 @@ async function finalizeBatchParent(
 	progress: { processed: number; failed: number; total: number },
 ): Promise<void> {
 	const jobRepo = services.getJobRepository();
-	if (progress.failed > 0) {
-		await jobRepo.update(parentId, { status: "failed" });
+	const status = await jobRepo.finishBatch(parentId);
+	if (!status) return;
+	if (status === "failed") {
 		RealtimeEventBus.publishJob("job-failed", {
 			jobId: parentId,
-			error: `${progress.failed} item(s) failed`,
+			error: `${progress.failed} batch item(s) failed`,
 		});
-		return;
+	} else if (status === "completed") {
+		RealtimeEventBus.publishJob("job-completed", {
+			jobId: parentId,
+			message: "Batch completed",
+		});
 	}
-	await jobRepo.update(parentId, { status: "completed" });
-	RealtimeEventBus.publishJob("job-completed", {
-		jobId: parentId,
-		message: "CCIP vector extraction completed",
-	});
 }
 
 /** Queues CCIP extraction in chunks and sets the parent total to the number of distinct media IDs, including previously dispatched items on resume. */
@@ -222,11 +222,7 @@ export async function processBatchCcipDispatchJob(job: Job): Promise<void> {
 	const parentPayload = await jobRepo.setBatchTotal(parentId, total);
 
 	if (total === 0) {
-		await jobRepo.update(parentId, { status: "completed" });
-		RealtimeEventBus.publishJob("job-completed", {
-			jobId: parentId,
-			message: "Batch CCIP extraction completed (no targets)",
-		});
+		await finalizeBatchParent(parentId, { processed: 0, failed: 0, total: 0 });
 	} else {
 		RealtimeEventBus.publishJob("job-progress", {
 			jobId: parentId,
@@ -276,18 +272,10 @@ export async function processCcipExtractionJob(job: Job): Promise<void> {
 			},
 			"CCIP vector extraction completed",
 		);
-		RealtimeEventBus.publishJob("job-completed", {
-			jobId: job.id,
-			message: "CCIP vector extraction completed",
-		});
 
 		await updateParentProgress(job, 1, 0);
 	} catch (error) {
 		logger.error({ err: error, mediaIds }, "CCIP vector extraction failed");
-		RealtimeEventBus.publishJob("job-failed", {
-			jobId: job.id,
-			error: getErrorMessage(error),
-		});
 		await updateParentProgress(job, 0, mediaIds.length);
 		throw error;
 	}
@@ -314,10 +302,6 @@ async function processCcipExtractionBatch(
 			{ err: error, mediaIds },
 			"CCIP vector extraction batch failed",
 		);
-		RealtimeEventBus.publishJob("job-failed", {
-			jobId: job.id,
-			error: getErrorMessage(error),
-		});
 		await updateParentProgress(job, 0, mediaIds.length);
 		throw error;
 	}
@@ -337,10 +321,6 @@ async function processCcipExtractionBatch(
 			{ err: error, mediaIds },
 			"CCIP vector extraction batch failed",
 		);
-		RealtimeEventBus.publishJob("job-failed", {
-			jobId: job.id,
-			error: error.message,
-		});
 		throw error;
 	}
 
@@ -354,10 +334,6 @@ async function processCcipExtractionBatch(
 		},
 		"CCIP vector extraction batch completed",
 	);
-	RealtimeEventBus.publishJob("job-completed", {
-		jobId: job.id,
-		message: `CCIP vector extraction completed (${mediaIds.length} items)`,
-	});
 }
 
 /** Records the child attempt’s successful and failed media counts and closes the batch once all target media are accounted for. */

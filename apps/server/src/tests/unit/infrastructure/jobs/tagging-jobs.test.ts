@@ -15,6 +15,9 @@ const getTagsForMedia = vi.fn();
 
 const jobRepository: IJobRepository = {
 	create: vi.fn(),
+	createBatch: vi.fn(),
+	finishAttempt: vi.fn().mockResolvedValue("completed"),
+	finishBatch: vi.fn().mockResolvedValue("completed"),
 	createIfUnique: (...args: Parameters<typeof createIfUnique>) =>
 		createIfUnique(...args),
 	findById: (...args: Parameters<typeof findById>) => findById(...args),
@@ -79,8 +82,8 @@ describe("processAutoTaggingJob", () => {
 			ips_mapping: {},
 		});
 		createIfUnique.mockResolvedValue(null);
-		incrementProgress.mockResolvedValue(null);
-		incrementFailedCount.mockResolvedValue(null);
+		vi.mocked(jobRepository.recordBatchChildOutcome).mockResolvedValue(null);
+		vi.mocked(jobRepository.recordBatchChildOutcome).mockResolvedValue(null);
 	});
 
 	it("does not re-publish parent progress when the child was already counted", async () => {
@@ -100,9 +103,12 @@ describe("processAutoTaggingJob", () => {
 			parentId: "00000000-0000-4000-8000-000000000010",
 		});
 
-		expect(incrementProgress).toHaveBeenCalledWith(
+		expect(jobRepository.recordBatchChildOutcome).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
 			"00000000-0000-4000-8000-000000000020",
+			0,
+			1,
+			0,
 		);
 		expect(findById).not.toHaveBeenCalled();
 		expect(createIfUnique).not.toHaveBeenCalled();
@@ -110,7 +116,7 @@ describe("processAutoTaggingJob", () => {
 	});
 
 	it("publishes parent progress and completes the parent once", async () => {
-		incrementProgress.mockResolvedValue({
+		vi.mocked(jobRepository.recordBatchChildOutcome).mockResolvedValue({
 			processed: 1,
 			failed: 0,
 			total: 1,
@@ -132,31 +138,32 @@ describe("processAutoTaggingJob", () => {
 			parentId: "00000000-0000-4000-8000-000000000010",
 		});
 
-		expect(incrementProgress).toHaveBeenCalledWith(
+		expect(jobRepository.recordBatchChildOutcome).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
 			"00000000-0000-4000-8000-000000000020",
+			0,
+			1,
+			0,
 		);
 		expect(publishJob).toHaveBeenCalledWith("job-progress", {
 			jobId: "00000000-0000-4000-8000-000000000010",
 			processed: 1,
 			total: 1,
 		});
-		expect(update).toHaveBeenCalledWith(
+		expect(jobRepository.finishBatch).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
-			{
-				status: "completed",
-			},
 		);
 		expect(publishJob).toHaveBeenCalledWith("job-completed", {
 			jobId: "00000000-0000-4000-8000-000000000010",
-			message: "Batch tagging completed",
+			message: "Batch completed",
 		});
 		expect(createIfUnique).not.toHaveBeenCalled();
 	});
 
 	it("increments failed count and marks parent failed when all children are done", async () => {
+		vi.mocked(jobRepository.finishBatch).mockResolvedValueOnce("failed");
 		getTagsForMedia.mockRejectedValue(new Error("tagging error"));
-		incrementFailedCount.mockResolvedValue({
+		vi.mocked(jobRepository.recordBatchChildOutcome).mockResolvedValue({
 			processed: 0,
 			failed: 1,
 			total: 1,
@@ -180,19 +187,19 @@ describe("processAutoTaggingJob", () => {
 			}),
 		).rejects.toThrow("tagging error");
 
-		expect(incrementFailedCount).toHaveBeenCalledWith(
+		expect(jobRepository.recordBatchChildOutcome).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
 			"00000000-0000-4000-8000-000000000020",
+			0,
+			0,
+			1,
 		);
-		expect(update).toHaveBeenCalledWith(
+		expect(jobRepository.finishBatch).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
-			{
-				status: "failed",
-			},
 		);
 		expect(publishJob).toHaveBeenCalledWith("job-failed", {
 			jobId: "00000000-0000-4000-8000-000000000010",
-			error: "1 child job(s) failed",
+			error: "1 batch item(s) failed",
 		});
 	});
 });

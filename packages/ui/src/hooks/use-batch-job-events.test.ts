@@ -6,6 +6,21 @@ import {
 } from "./use-batch-job-events";
 
 describe("useBatchJobEvents", () => {
+	it("does not treat a cancellation request as a terminal event", () => {
+		const handlers = {
+			handleJobProgress: vi.fn(),
+			handleJobCompleted: vi.fn(),
+			handleJobFailed: vi.fn(),
+			handleJobCancelled: vi.fn(),
+		};
+		dispatchJobEvent(
+			"tracked",
+			{ event: "job-cancellation-requested", data: { jobId: "tracked" } },
+			handlers,
+		);
+		expect(handlers.handleJobCancelled).not.toHaveBeenCalled();
+		expect(handlers.handleJobCompleted).not.toHaveBeenCalled();
+	});
 	it("dispatches cancellation only for the tracked job", () => {
 		const handleJobCancelled = vi.fn();
 		const handlers = {

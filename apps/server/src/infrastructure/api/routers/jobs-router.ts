@@ -197,6 +197,18 @@ export const jobsRouter = os.router({
 	}),
 
 	retry: os.retry.handler(async ({ input }) => {
+		const current = await JobRepository.findById(input.id);
+		if (
+			current &&
+			(isBatchParentJobType(current.type) ||
+				current.type === "import_request" ||
+				current.parentId !== null)
+		) {
+			throw new ORPCError("BAD_REQUEST", {
+				message:
+					"Batch records and import requests cannot use job retry; start a new batch for failed items",
+			});
+		}
 		const [requeued] = await db
 			.update(jobs)
 			.set({
@@ -256,13 +268,21 @@ export const jobsRouter = os.router({
 		if (!cancelled) {
 			throw new ORPCError("NOT_FOUND", { message: "Job not found" });
 		}
-		RealtimeEventBus.publishJob("job-cancelled", {
-			jobId: input.id,
-			message:
-				cancelled.status === "in_progress"
-					? "Cancellation requested"
-					: "Job cancelled",
-		});
+		if (cancelled.status === "completed" || cancelled.status === "failed") {
+			return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
+		}
+		RealtimeEventBus.publishJob(
+			cancelled.status === "cancelled"
+				? "job-cancelled"
+				: "job-cancellation-requested",
+			{
+				jobId: input.id,
+				message:
+					cancelled.status === "in_progress"
+						? "Cancellation requested"
+						: "Job cancelled",
+			},
+		);
 		return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
 	}),
 

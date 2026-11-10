@@ -86,7 +86,7 @@ export async function processJob(job: Job) {
 	} else if (job.type === "source_restore") {
 		return processSourceRestoreJob(job);
 	} else {
-		logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
+		throw new Error("Unsupported job type");
 	}
 }
 
