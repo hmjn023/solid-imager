@@ -1,38 +1,17 @@
 ---
 name: ai-service
-description: 画像の自動タグ付け、類似度計算、CCIP特徴量などのAI機能と Rust AI サービス (dghs-imgutils-rs) 連携を扱う。AI呼び出し、タグ推論、特徴量、SimilarSearch 調整時に使用する。
+description: 自動タグ付け、CCIP特徴量・類似検索、Rust AIサービス（dghs-imgutils-rs）連携を変更する時に使用する。
 ---
 
-# Rust AI Tagger & CCIP スキル
+# AI Service
 
-## Working Rules
+- 主実装は `packages/application/src/services/tagging-service.ts`、server adapterは `apps/server/src/infrastructure/services/tagging-service.ts`。
+- AI clientはサービス層から呼び、リトライ・エラー変換・ログ・テスト差し替えを集約する。
+- CCIPはキャラクター類似検索用の特徴量。job化は `job-system`、検索画面との接続は `media-search` を参照する。
 
-### 提供される機能
+## ネイティブ依存と推論設定
 
-- 画像の自動タグ付け (キャラクター、IP、一般タグ)
-- CCIP (Content-based Copy-detection via Image Perceptual hashing) 特徴量抽出
-- 画像間の類似度計算
-
-### AI サービス連携ルール
-
-- AI機能の主実装は `packages/application/src/services/tagging-service.ts` に置き、server adapter (`apps/server/src/application/services/tagging-service.ts`) 経由で利用します
-- AIサービスへの呼び出しはサービス層経由を基本にする。リトライ、エラー変換、ロギング、テスト差し替えの入口を一箇所に保つため。
-
-### ネイティブ依存のビルド
-
-- `dghs-imgutils-rs` は Rust の N-API アドオンです。`bun install` 時にソースからコンパイルされます。
-- **GPU (CUDA) を有効にするには、システムの共有 ONNX Runtime を動的リンクします。** 静的にバンドルされた prebuilt バイナリでは CUDA provider が正しくロードされないため、以下の環境変数を指定してビルドしてください:
-  ```bash
-  ORT_PREFER_DYNAMIC_LINK=1 ORT_LIB_PATH=/usr/lib bun install
-  ```
-- 動的リンクを使う場合、`libonnxruntime.so.1` と `libonnxruntime_providers_cuda.so` が `/usr/lib` (または `LD_LIBRARY_PATH`) で見つかる必要があります。
-- CPU のみでビルドする場合は `Cargo.toml` の `ort` features から `cuda` を削除してください。
-
-## Task Routing
-
-| ユーザーの意図     | やること                                                  |
-| ------------------ | --------------------------------------------------------- |
-| タグ付け機能の実装 | `packages/application/src/services/tagging-service.ts` を経由して AI client を呼び出し |
-| 類似度計算         | CCIP特徴量を使用したサービス層の実装                      |
-
-CCIP抽出をjob化する場合は`job-system`、検索画面へ統合する場合は`media-search`も参照する。
+- 現行の `dghs-imgutils-rs` はinstall時にGitHub Releaseのprebuiltを取得し、SHA256を検証して配置する。通常installではRustをコンパイルしない。
+- ONNX Runtimeとproviderライブラリは実行時に動的ロードする。必要なら `ORT_DYLIB_PATH` でORT本体を指定し、GPU利用時は対応するprovider・ドライバ・依存ライブラリもホストに用意する。
+- CPU/GPUは `ai.provider`・`ai.device` で選び、`apps/server/src/infrastructure/ai/inference-options.ts` でnative optionsへ変換する。CPU利用のためにCargo featuresを変更しない。
+- ソースビルドが必要な場合だけ依存先の現行README・build scriptを参照する。

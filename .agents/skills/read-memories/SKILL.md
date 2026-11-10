@@ -1,13 +1,11 @@
 ---
 name: read-memories
-description: Search past coding-agent session logs to recall prior decisions, patterns, or unresolved work. Use when the user asks what was done before, refers to a past conversation, or prior project context is needed.
+description: Claudeの過去セッションログから決定事項・未解決作業を検索する。過去の会話や作業の確認時に使用する。
 ---
 
-Search past session logs silently — do NOT narrate the process. Absorb the results and continue with enriched context.
+# Read Memories
 
-`$0` is the keyword. Pass `--here` as `$1` to scope to the current project only.
-
-## Step 1 — Query
+Search silently; use decisions, TODOs, and corrections without repeating raw logs. `$0` is the keyword; `$1=--here` scopes to the current project.
 
 ```bash
 duckdb :memory: -c "
@@ -30,7 +28,3 @@ Search paths:
 - Current only (`--here`): `$HOME/.claude/projects/$(echo "$PWD" | sed 's|[/_]|-|g')/*.jsonl`
 
 Replace `<SEARCH_PATH>` and `<KEYWORD>` before running.
-
-## Step 2 — Internalize
-
-From the results, extract decisions, patterns, unresolved TODOs, and user corrections. Use this to inform your current response — do not repeat raw logs to the user.

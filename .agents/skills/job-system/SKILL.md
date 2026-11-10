@@ -1,6 +1,6 @@
 ---
 name: job-system
-description: solid-imagerのbackground job、JobWorker、job dispatch、AI concurrency、親子batch進捗、stale recoveryを扱う。job type追加、非同期処理、Managerのbatch操作、job event変更時に使用する。
+description: job追加、worker・dispatch、AI concurrency、親子batch進捗、stale recoveryを変更する時に使用する。
 ---
 
 # Job System
@@ -8,8 +8,8 @@ description: solid-imagerのbackground job、JobWorker、job dispatch、AI concu
 ## データフロー
 
 1. jobは`IJobRepository.create`または`createIfUnique`で投入する。
-2. `apps/server/src/infrastructure/jobs/job-worker.ts`がAI jobとその他jobを別poolでclaimする。
-3. `apps/server/src/application/services/job-dispatch-service.ts`がjob typeごとのhandlerへ振り分ける。
+2. `apps/server/src/infrastructure/jobs/job-worker.ts`がAI・thumbnail・source export・generalの4 poolでclaimする。thumbnailとexportは各1枠、`jobs.concurrency` はgeneral、`jobs.aiConcurrency` はAIに適用する。
+3. `apps/server/src/infrastructure/services/job-dispatch-service.ts`がjob typeごとのhandlerへ振り分ける。
 4. handlerはpayloadをZod schemaでparseしてから処理する。
 5. UIへ進捗を出す場合は`RealtimeEventBus.publishJob`だけを使用する。
 
@@ -24,11 +24,10 @@ description: solid-imagerのbackground job、JobWorker、job dispatch、AI concu
 ## Batch Job
 
 - 親jobは進捗記録でありworkerに実行させない。`status: in_progress`で作成する。
-- 子jobへ`parentId`を設定し、子の完了時に親payloadの`processed`を原子的に更新する。
-- 親更新では`updatedAt`も更新する。
+- 子jobへ `parentId` を設定し、親のtotalは `setBatchTotal`、子の結果は `recordBatchChildOutcome` で更新する。attempt検証と前回寄与との差分記録でretry時の二重加算を防ぐ。`processed/failed` を独自に加算しない。親の `updatedAt` 更新も既存repositoryに任せる。
 - job event schemaは`packages/core/src/domain/sources/events.ts`を唯一の正とする。
 - clientは既存のjob event hookを再利用し、独自pollingやEventSourceを追加しない。
 
 ## 検証
 
-`claimPending`のinclude/exclude、AI concurrency、親job非claim、進捗完了、失敗、stale job回復を確認する。
+`claimPending` のpool分離・枠数、親job非claim、進捗完了・失敗、retry/stale attemptの二重加算防止と回復を確認する。

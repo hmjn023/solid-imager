@@ -25,3 +25,13 @@ Manager → 作者・外部アカウントで現在の@ユーザー名を入力�
 Pixiv対応を既存環境へ反映するときは、サーバーのDBマイグレーション（`author_platform` への `pixiv` 追加）を適用し、拡張機能を再ビルド・再読み込みする。
 
 開発言語はTS、ビルドシステムにはviteを使用する
+
+- manifest、permissions、background/content script、popupはこのworkspaceで管理する。共有パッケージを追加importする前に、拡張機能での実行環境とbundleサイズを確認する。
+- manifest・権限・content scriptの変更は、ビルドして拡張機能を再読み込みし、実際の対象ページで動作確認する。
+- ビルド・テストはこのworkspaceのscriptsを使う。API契約の変更は `orpc-api`、UI部品の変更は `ui-components` skillも参照する。
+
+```bash
+bun run --cwd apps/xtracter build
+bun run --cwd apps/xtracter typecheck
+bun run --cwd apps/xtracter test
+```
