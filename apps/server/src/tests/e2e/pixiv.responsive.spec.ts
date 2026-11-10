@@ -148,6 +148,15 @@ test("connects a pixiv account, restores it on reload and removes private result
 	let countRestoredChecks = false;
 	const restoredCheck = Promise.withResolvers<void>();
 	const fixtureSession = "123_fixture";
+	if (info.project.name === "tauri") {
+		await page.addInitScript(() => {
+			Object.defineProperty(window, "isTauri", { value: true });
+			window.addEventListener(
+				"open_pixiv_login",
+				() => (document.documentElement.dataset.pixivLoginOpened = "true"),
+			);
+		});
+	}
 	await page.route("**/api/rpc/viewer/**", async (route) => {
 		const rpc = route.request().url().split("/").at(-1);
 		const bearer = route.request().headers().authorization;
@@ -194,9 +203,19 @@ test("connects a pixiv account, restores it on reload and removes private result
 	).toBeVisible();
 	await page.getByRole("button", { name: "pixiv にログイン" }).click();
 	const dialog = page.getByRole("dialog", { name: "pixiv アカウント" });
-	await expect(
-		dialog.getByRole("link", { name: "公式 pixiv でログイン ↗" }),
-	).toHaveAttribute("href", "https://accounts.pixiv.net/login");
+	if (info.project.name === "tauri") {
+		await dialog
+			.getByRole("button", { name: "公式 pixiv でログイン ↗" })
+			.click();
+		await expect(page.locator("html")).toHaveAttribute(
+			"data-pixiv-login-opened",
+			"true",
+		);
+	} else {
+		await expect(
+			dialog.getByRole("link", { name: "公式 pixiv でログイン ↗" }),
+		).toHaveAttribute("href", "https://accounts.pixiv.net/login");
+	}
 	await dialog.getByLabel("接続コード").fill("bad");
 	await dialog.getByRole("button", { name: "接続する" }).click();
 	await expect(dialog.getByRole("alert")).toContainText("接続コード");
@@ -401,4 +420,94 @@ test("pixiv keeps the ranking on a failed append, retries the same page and star
 		["", 2],
 		["landscape", 1],
 	]);
+});
+
+test("a late 401 from a closed pixiv viewer preserves its replacement session", async ({
+	page,
+	browserHealth,
+}, info) => {
+	browserHealth.allowResponseFailure("/api/rpc/viewer/checkPixivSession");
+	browserHealth.allowConsole(
+		"Failed to load resource: the server responded with a status of 401",
+	);
+	const oldToken = "A".repeat(43);
+	const newToken = "B".repeat(43);
+	const releaseOldCheck = Promise.withResolvers<void>();
+	const oldCheckStarted = Promise.withResolvers<void>();
+	let logins = 0;
+	let checks = 0;
+	await page.route("**/api/rpc/viewer/**", async (route) => {
+		const method = new URL(route.request().url()).pathname.split("/").at(-1);
+		if (method === "loginPixiv") {
+			await route.fulfill({
+				json: {
+					json: {
+						token: ++logins === 1 ? oldToken : newToken,
+						userId: "123",
+						expiresAt: Date.now() + 3600000,
+					},
+				},
+			});
+		} else if (method === "checkPixivSession") {
+			if (route.request().headers().authorization === "Bearer " + oldToken) {
+				if (++checks === 1) {
+					oldCheckStarted.resolve();
+					await releaseOldCheck.promise;
+				}
+				await route.fulfill({
+					status: 401,
+					json: { json: { code: "UNAUTHORIZED", message: "expired" } },
+				});
+			} else {
+				await route.fulfill({ json: { json: { userId: "123" } } });
+			}
+		} else {
+			const provider = route.request().postDataJSON().json.provider;
+			await route.fulfill({
+				json: {
+					json: {
+						provider,
+						posts: [],
+						hasNextPage: false,
+						word: "",
+						mappings: [],
+					},
+				},
+			});
+		}
+	});
+	const login = async () => {
+		await page.getByRole("button", { name: "pixiv にログイン" }).click();
+		const dialog = page.getByRole("dialog", { name: "pixiv アカウント" });
+		await dialog.getByLabel("接続コード").fill("X".repeat(22));
+		await dialog.getByRole("button", { name: "接続する" }).click();
+		await expect(
+			page.getByRole("button", { name: "pixiv ID 123" }),
+		).toBeVisible();
+	};
+	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
+	await login();
+	await page.reload();
+	await oldCheckStarted.promise;
+	await navigateTo(page, "Danbooru");
+	await expect(
+		page.getByRole("heading", { name: "Danbooru", exact: true }),
+	).toBeVisible();
+	await navigateTo(page, "pixiv");
+	await login();
+	const oldResponse = page.waitForResponse(
+		"**/api/rpc/viewer/checkPixivSession",
+	);
+	releaseOldCheck.resolve();
+	await (await oldResponse).finished();
+	const restored = page.waitForRequest(
+		(request) =>
+			new URL(request.url()).pathname.endsWith("/viewer/checkPixivSession") &&
+			request.headers().authorization === "Bearer " + newToken,
+	);
+	await page.reload();
+	await restored;
+	await expect(
+		page.getByRole("button", { name: "pixiv ID 123" }),
+	).toBeVisible();
 });

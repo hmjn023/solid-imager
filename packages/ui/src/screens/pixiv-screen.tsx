@@ -29,6 +29,7 @@ type PixivProps = ViewerNavigation & {
 	apiBase: () => string;
 	fetch?: ViewerFetch;
 	createViewer: PixivClientFactory;
+	openPixivLogin?: () => Promise<void>;
 };
 
 function PixivSearchInfo(props: {
@@ -112,7 +113,12 @@ export function PixivScreen(props: PixivProps) {
 			suggestTags={(query) => props.client.viewer.suggestTags({ query })}
 			errorTitle="pixiv を検索できませんでした"
 			emptyTitle="該当する作品がありません"
-			actions={<PixivAccountDialog account={account} />}
+			actions={
+				<PixivAccountDialog
+					account={account}
+					openPixivLogin={props.openPixivLogin}
+				/>
+			}
 			renderSearchInfo={(data) => (
 				<PixivSearchInfo data={data} onChoose={browse.choose} />
 			)}

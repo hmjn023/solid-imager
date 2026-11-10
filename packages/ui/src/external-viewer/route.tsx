@@ -19,6 +19,7 @@ export function ExternalViewerRoute(
 		| {
 				provider: "pixiv";
 				createViewer: PixivClientFactory;
+				openPixivLogin?: () => Promise<void>;
 				fetch?: ViewerFetch;
 		  }
 	),
@@ -85,6 +86,7 @@ export function ExternalViewerRoute(
 					client={props.client}
 					apiBase={props.apiBase}
 					createViewer={props.createViewer}
+					openPixivLogin={props.openPixivLogin}
 					fetch={props.fetch}
 				/>
 			)}

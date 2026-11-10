@@ -1,6 +1,7 @@
 import { createClient } from "@solid-imager/client";
 import type { AppContract } from "@solid-imager/core/contract";
 import { ExternalViewerRoute } from "@solid-imager/ui/external-viewer";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { createFileRoute, useRouter } from "@tanstack/solid-router";
 import { client, fetchServer } from "~/orpc-client";
 import { getApiBaseUrl } from "~/infrastructure/api-base";
@@ -14,6 +15,9 @@ function PixivPage() {
 		<ExternalViewerRoute
 			history={history}
 			provider="pixiv"
+			openPixivLogin={
+				isTauri() ? () => invoke<void>("open_pixiv_login") : undefined
+			}
 			createViewer={(url, fetch) =>
 				createClient<AppContract>({ url, fetch }).viewer
 			}

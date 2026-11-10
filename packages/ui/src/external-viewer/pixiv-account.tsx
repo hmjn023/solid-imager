@@ -42,6 +42,10 @@ export function createPixivAccount(
 	send: ViewerFetch = fetch,
 ) {
 	const storageKey = "solid-imager:pixiv-session:" + base;
+	let disposed = false;
+	onCleanup(() => {
+		disposed = true;
+	});
 	let checkPending = false;
 	let nextCheckAt = 0;
 	const [session, setSession] = createSignal<PixivViewerSession>();
@@ -76,6 +80,8 @@ export function createPixivAccount(
 		};
 	});
 	function save(next: PixivViewerSession | undefined) {
+		// A newer instance of the viewer can already own this tab's storage key.
+		if (disposed) return;
 		checkPending = false;
 		nextCheckAt = 0;
 		setSession(next);
@@ -177,6 +183,7 @@ export function createPixivAccount(
 
 export function PixivAccountDialog(props: {
 	account: ReturnType<typeof createPixivAccount>;
+	openPixivLogin?: () => Promise<void>;
 }) {
 	const account = props.account;
 	const [open, setOpen] = createSignal(false);
@@ -234,14 +241,36 @@ export function PixivAccountDialog(props: {
 						when={account.session()}
 						fallback={
 							<>
-								<a
-									class={buttonVariants({ variant: "outline" })}
-									href="https://accounts.pixiv.net/login"
-									target="_blank"
-									rel="noopener noreferrer"
+								<Show
+									keyed
+									when={props.openPixivLogin}
+									fallback={
+										<a
+											class={buttonVariants({ variant: "outline" })}
+											href="https://accounts.pixiv.net/login"
+											target="_blank"
+											rel="noopener noreferrer"
+										>
+											公式 pixiv でログイン ↗
+										</a>
+									}
 								>
-									公式 pixiv でログイン ↗
-								</a>
+									{(openLogin) => (
+										<Button
+											type="button"
+											variant="outline"
+											onClick={() => {
+												void openLogin().catch(() => {
+													account.setNotice(
+														"既定のブラウザーで pixiv を開けませんでした。",
+													);
+												});
+											}}
+										>
+											公式 pixiv でログイン ↗
+										</Button>
+									)}
+								</Show>
 								<p class="break-all text-sm text-muted-foreground">
 									{useCookie()
 										? "ブラウザーの Cookie にある PHPSESSID を入力すると、ログインセッションを " +
