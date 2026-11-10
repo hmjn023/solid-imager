@@ -399,3 +399,137 @@ describe("large source sync and recovery", () => {
 		expect(getSourceSyncState("unreadable-source")).toBe("error");
 	});
 });
+
+describe("directory sync final outcomes", () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.mocked(DrizzleSourceRepository.findById).mockResolvedValue({
+			id: "outcome-source",
+			name: "source",
+			description: null,
+			type: "local",
+			connectionInfo: { path: "/source" },
+			createdAt: new Date(),
+			updatedAt: new Date(),
+		});
+		vi.mocked(DrizzleSourceRepository.update).mockResolvedValue(
+			undefined as never,
+		);
+		vi.mocked(MediaRepository.findAllPathsBySourceId).mockResolvedValue([]);
+		vi.mocked(MediaProcessingService.registerAndProcess).mockImplementation(
+			async (id, file) => mediaRecord(id, file),
+		);
+		vi.mocked(fs.access).mockResolvedValue(undefined);
+		vi.mocked(fs.opendir).mockResolvedValue(directoryWithFiles(0));
+	});
+
+	it("returns a failure for inaccessible paths with the same persisted and published status", async () => {
+		vi.mocked(fs.access).mockRejectedValueOnce(new Error("secret path"));
+		const { DirectorySyncService } =
+			await import("~/infrastructure/services/directory-sync-service");
+		const result = await DirectorySyncService.syncMediaSource(
+			"unavailable-outcome",
+		);
+		expect(result).toEqual({
+			sourceId: "unavailable-outcome",
+			success: false,
+			added: 0,
+			deleted: 0,
+			failed: 1,
+			error: "Source path is not accessible",
+		});
+		expect(DrizzleSourceRepository.update).toHaveBeenLastCalledWith(
+			"unavailable-outcome",
+			expect.objectContaining({
+				syncStatus: "error",
+				lastSyncError: result.success ? undefined : result.error,
+			}),
+		);
+		expect(RealtimeEventBus.publishSource).toHaveBeenLastCalledWith(
+			"unavailable-outcome",
+			"source-sync-status",
+			expect.objectContaining({
+				status: "error",
+				message: "Source path is not accessible",
+			}),
+		);
+	});
+
+	it("retains committed counts while reporting partially failed registrations", async () => {
+		vi.mocked(fs.opendir).mockResolvedValueOnce(directoryWithFiles(2));
+		vi.mocked(MediaProcessingService.registerAndProcess).mockRejectedValueOnce(
+			new Error("unavailable file"),
+		);
+		const { DirectorySyncService } =
+			await import("~/infrastructure/services/directory-sync-service");
+		await expect(
+			DirectorySyncService.syncMediaSource("partial-outcome"),
+		).resolves.toMatchObject({
+			success: false,
+			added: 1,
+			deleted: 0,
+			failed: 1,
+			error: "Directory sync failed",
+		});
+		expect(DrizzleSourceRepository.update).toHaveBeenLastCalledWith(
+			"partial-outcome",
+			expect.objectContaining({ syncStatus: "error" }),
+		);
+	});
+
+	it("never publishes an unsaved terminal state when persistence fails", async () => {
+		vi.mocked(DrizzleSourceRepository.update).mockRejectedValueOnce(
+			new Error("database unavailable"),
+		);
+		// The initial syncing write fails, as does the attempt to record the error.
+		vi.mocked(DrizzleSourceRepository.update).mockRejectedValueOnce(
+			new Error("database unavailable"),
+		);
+		const { DirectorySyncService } =
+			await import("~/infrastructure/services/directory-sync-service");
+		await expect(
+			DirectorySyncService.syncMediaSource("unsaved-start"),
+		).resolves.toMatchObject({
+			success: false,
+			error: "Failed to persist directory sync result",
+		});
+		expect(RealtimeEventBus.publishSource).not.toHaveBeenCalled();
+		expect(fs.opendir).not.toHaveBeenCalled();
+	});
+
+	it("keeps the last committed syncing state when the terminal write fails", async () => {
+		vi.mocked(DrizzleSourceRepository.update)
+			.mockResolvedValueOnce(undefined as never)
+			.mockRejectedValueOnce(new Error("database unavailable"));
+		const { DirectorySyncService, getSourceSyncState } =
+			await import("~/infrastructure/services/directory-sync-service");
+		await expect(
+			DirectorySyncService.syncMediaSource("unsaved-finish"),
+		).resolves.toMatchObject({
+			success: false,
+			error: "Failed to persist directory sync result",
+		});
+		expect(RealtimeEventBus.publishSource).toHaveBeenCalledTimes(1);
+		expect(RealtimeEventBus.publishSource).toHaveBeenLastCalledWith(
+			"unsaved-finish",
+			"source-sync-status",
+			expect.objectContaining({ status: "syncing" }),
+		);
+		expect(getSourceSyncState("unsaved-finish")).toBe("syncing");
+	});
+
+	it("does not turn a saved successful sync into failure when notification delivery throws", async () => {
+		vi.mocked(RealtimeEventBus.publishSource).mockImplementationOnce(() => {
+			throw new Error("subscriber unavailable");
+		});
+		const { DirectorySyncService } =
+			await import("~/infrastructure/services/directory-sync-service");
+		await expect(
+			DirectorySyncService.syncMediaSource("notification-outcome"),
+		).resolves.toMatchObject({ success: true, failed: 0 });
+		expect(DrizzleSourceRepository.update).toHaveBeenLastCalledWith(
+			"notification-outcome",
+			expect.objectContaining({ syncStatus: "idle" }),
+		);
+	});
+});

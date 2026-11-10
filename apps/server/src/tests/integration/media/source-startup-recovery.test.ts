@@ -10,9 +10,18 @@ import { FileWatcherService } from "~/infrastructure/jobs/file-watcher-service";
 import { services } from "~/infrastructure/service-registry";
 import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
 
-vi.mock("~/infrastructure/jobs/file-watcher-manager", () => ({
-	FileWatcherManager: { start: vi.fn(), stop: vi.fn() },
-}));
+vi.mock(
+	"~/infrastructure/jobs/file-watcher-manager",
+	async (importOriginal) => {
+		const actual =
+			await importOriginal<
+				typeof import("~/infrastructure/jobs/file-watcher-manager")
+			>();
+		return {
+			FileWatcherManager: { ...actual.FileWatcherManager, start: vi.fn() },
+		};
+	},
+);
 
 const image = Buffer.from(
 	"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
@@ -122,6 +131,7 @@ describe("interrupted source startup recovery", () => {
 			sourceId,
 			directory,
 			expect.any(Object),
+			expect.any(Number),
 		);
 
 		await FileWatcherService.startMonitoring(sourceId);

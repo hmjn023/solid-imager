@@ -4,27 +4,17 @@ import { z } from "zod";
 import { jobDtoSchema } from "../jobs/schemas";
 import { sourceEventSchema } from "../sources/events";
 import {
+	directorySyncResultSchema,
 	mediaSourceInfoSchema,
 	mediaSourceStatusSchema,
 	safeMediaSourceSchema,
 } from "../sources/schemas";
 
-const sourceSyncResultSchema = z.discriminatedUnion("success", [
-	z.object({
-		id: z.uuid(),
-		success: z.literal(true),
-		sourceId: z.uuid(),
-		added: z.number().int().nonnegative(),
-		deleted: z.number().int().nonnegative(),
-	}),
-	z.object({
-		id: z.uuid(),
-		success: z.literal(false),
-		error: z.string(),
-	}),
-]);
+const sourceSyncResultSchema = directorySyncResultSchema.and(
+	z.object({ id: z.uuid() }),
+);
 
-/** Per-source synchronization outcome, including counts on success or an error on failure. */
+/** Per-source outcome, retaining completed counts when a scan partially fails. */
 export type SourceSyncResult = z.infer<typeof sourceSyncResultSchema>;
 
 export const sourcesContract = {
@@ -97,7 +87,7 @@ export const sourcesContract = {
 				tags: ["Media Sources"],
 				summary: "メディアソース同期",
 				description:
-					"指定したメディアソースを走査し、ファイルシステムとデータベースの登録内容を同期します。追加・削除された項目ごとの結果を返します。",
+					"指定したメディアソースを走査し、ファイルシステムとデータベースの登録内容を同期します。ソースごとの成功・失敗と、部分成功を含む追加・削除・失敗件数を返します。",
 			}),
 		)
 		.input(z.object({ ids: z.array(z.uuid()) }))

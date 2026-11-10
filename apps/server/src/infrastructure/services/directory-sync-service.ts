@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {
 	localConnectionSchema,
+	type DirectorySyncResult,
 	type MediaSourceSyncState,
 } from "@solid-imager/core/sources";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -17,11 +18,10 @@ import { MediaProcessingService } from "~/infrastructure/services/media-processi
 
 const sourceRepo = DrizzleSourceRepository;
 
-type SyncResult = {
-	sourceId: string;
-	added: number;
-	deleted: number;
-};
+type SyncCounts = Pick<
+	DirectorySyncResult,
+	"sourceId" | "added" | "deleted" | "failed"
+>;
 
 type SourceSyncStatus = {
 	message?: string;
@@ -36,7 +36,7 @@ const sourceSyncStates =
 	syncStateGlobal.__SOLID_IMAGER_SOURCE_SYNC_STATES__ ??
 	new Map<string, SourceSyncStatus>();
 syncStateGlobal.__SOLID_IMAGER_SOURCE_SYNC_STATES__ = sourceSyncStates;
-const activeSyncs = new Map<string, Promise<SyncResult>>();
+const activeSyncs = new Map<string, Promise<DirectorySyncResult>>();
 const PublicDirectorySyncFailureMessage = "Directory sync failed";
 const DirectorySyncConcurrencyLimit = 5;
 
@@ -62,21 +62,14 @@ async function persistSyncStatus(
 	message?: string,
 ): Promise<void> {
 	const now = new Date();
-	try {
-		await sourceRepo.update(mediaSourceId, {
-			syncStatus: status,
-			...(status === "syncing"
-				? { lastSyncStartedAt: now, lastSyncError: null }
-				: status === "idle"
-					? { lastSyncCompletedAt: now, lastSyncError: null }
-					: { lastSyncError: message ?? "Directory sync failed" }),
-		});
-	} catch (error) {
-		logger.error(
-			{ err: error, mediaSourceId, status },
-			"Failed to persist media source sync status",
-		);
-	}
+	await sourceRepo.update(mediaSourceId, {
+		syncStatus: status,
+		...(status === "syncing"
+			? { lastSyncStartedAt: now, lastSyncError: null }
+			: status === "idle"
+				? { lastSyncCompletedAt: now, lastSyncError: null }
+				: { lastSyncError: message ?? PublicDirectorySyncFailureMessage }),
+	});
 }
 
 async function setSyncStatus(
@@ -85,7 +78,44 @@ async function setSyncStatus(
 	message?: string,
 ): Promise<void> {
 	await persistSyncStatus(mediaSourceId, status, message);
-	publishSyncStatus(mediaSourceId, status, message);
+	try {
+		publishSyncStatus(mediaSourceId, status, message);
+	} catch (error) {
+		// The database already committed. Notification delivery must not reverse it.
+		logger.error(
+			{ err: error, mediaSourceId, status },
+			"Failed to publish source sync status",
+		);
+	}
+}
+
+async function finishSync(
+	result: SyncCounts,
+	error?: string,
+): Promise<DirectorySyncResult> {
+	const outcome: DirectorySyncResult = error
+		? { ...result, failed: Math.max(1, result.failed), success: false, error }
+		: { ...result, success: true };
+	try {
+		await setSyncStatus(
+			result.sourceId,
+			outcome.success ? "idle" : "error",
+			error,
+		);
+	} catch (persistError) {
+		// Keep the last committed state and emit no terminal event for an unsaved result.
+		logger.error(
+			{ err: persistError, mediaSourceId: result.sourceId },
+			"Failed to persist directory sync result",
+		);
+		return {
+			...result,
+			failed: Math.max(1, result.failed),
+			success: false,
+			error: "Failed to persist directory sync result",
+		};
+	}
+	return outcome;
 }
 
 export function getSourceSyncState(
@@ -123,7 +153,7 @@ async function* scanFiles(basePath: string): AsyncGenerator<string> {
 async function processAdditions(
 	mediaSourceId: string,
 	filesToAdd: string[],
-	result: SyncResult,
+	result: SyncCounts,
 ): Promise<number> {
 	let failures = 0;
 	await Promise.all(
@@ -140,6 +170,7 @@ async function processAdditions(
 					"Failed to process new file during sync",
 				);
 				failures++;
+				result.failed++;
 			}
 		}),
 	);
@@ -149,13 +180,14 @@ async function processAdditions(
 async function processDeletions(
 	mediaSourceId: string,
 	filesToDelete: { id: string; relativePath: string }[],
-	result: SyncResult,
+	result: SyncCounts,
 ): Promise<number> {
 	let failures = 0;
 	await Promise.all(
 		filesToDelete.map(async (fileToDelete) => {
 			try {
 				await MediaRepository.delete(fileToDelete.id);
+				result.deleted++;
 				try {
 					await ccipVectorService.delete(fileToDelete.id);
 				} catch (error) {
@@ -170,13 +202,13 @@ async function processDeletions(
 					mediaId: fileToDelete.id,
 					timestamp: new Date().toISOString(),
 				});
-				result.deleted++;
 			} catch (error) {
 				logger.error(
 					{ err: error, mediaSourceId, fileToDelete },
 					"Failed to process deleted file during sync",
 				);
 				failures++;
+				result.failed++;
 			}
 		}),
 	);
@@ -191,35 +223,32 @@ export const DirectorySyncService = {
 	/**
 	 * Performs a comprehensive sync for a specific local media source.
 	 */
-	async syncMediaSource(mediaSourceId: string): Promise<SyncResult> {
+	async syncMediaSource(mediaSourceId: string): Promise<DirectorySyncResult> {
 		const activeSync = activeSyncs.get(mediaSourceId);
 		if (activeSync) {
 			return activeSync;
 		}
 
-		const syncPromise = (async (): Promise<SyncResult> => {
-			const result: SyncResult = {
+		const syncPromise = (async (): Promise<DirectorySyncResult> => {
+			const result: SyncCounts = {
 				sourceId: mediaSourceId,
 				added: 0,
 				deleted: 0,
+				failed: 0,
 			};
-			await setSyncStatus(mediaSourceId, "syncing");
 			try {
 				const source = await sourceRepo.findById(mediaSourceId);
 				if (source?.type !== "local") {
-					logger.info(
-						{ mediaSourceId },
-						"Skipping sync for non-local or missing source",
-					);
-					await setSyncStatus(
-						mediaSourceId,
-						"idle",
-						source
+					return {
+						...result,
+						failed: 1,
+						success: false,
+						error: source
 							? "Source type does not support directory sync"
 							: "Source not found",
-					);
-					return result;
+					};
 				}
+				await setSyncStatus(mediaSourceId, "syncing");
 
 				const basePath = localConnectionSchema.parse(
 					source.connectionInfo,
@@ -232,12 +261,7 @@ export const DirectorySyncService = {
 						{ mediaSourceId, basePath },
 						"Base path does not exist or is not accessible during sync",
 					);
-					await setSyncStatus(
-						mediaSourceId,
-						"error",
-						"Source path is not accessible",
-					);
-					return result;
+					return finishSync(result, "Source path is not accessible");
 				}
 
 				logger.info(
@@ -313,30 +337,19 @@ export const DirectorySyncService = {
 						{ mediaSourceId, failures, syncResult: result },
 						"Directory sync partially failed",
 					);
-					await setSyncStatus(
-						mediaSourceId,
-						"error",
-						PublicDirectorySyncFailureMessage,
-					);
-				} else {
-					logger.info(
-						{ mediaSourceId, syncResult: result },
-						"Directory sync completed successfully",
-					);
-					await setSyncStatus(mediaSourceId, "idle");
+					return finishSync(result, PublicDirectorySyncFailureMessage);
 				}
-				return result;
+				logger.info(
+					{ mediaSourceId, syncResult: result },
+					"Directory sync completed successfully",
+				);
+				return finishSync(result);
 			} catch (error) {
 				logger.error(
 					{ err: error, mediaSourceId },
 					"Error during directory sync",
 				);
-				await setSyncStatus(
-					mediaSourceId,
-					"error",
-					PublicDirectorySyncFailureMessage,
-				);
-				return result;
+				return finishSync(result, PublicDirectorySyncFailureMessage);
 			}
 		})();
 
@@ -353,10 +366,10 @@ export const DirectorySyncService = {
 	/**
 	 * Syncs all local media sources.
 	 */
-	async syncAllLocalSources(): Promise<SyncResult[]> {
+	async syncAllLocalSources(): Promise<DirectorySyncResult[]> {
 		logger.info("Starting global directory sync for all local sources");
 		const sources = await sourceRepo.findAll();
-		const results: SyncResult[] = [];
+		const results: DirectorySyncResult[] = [];
 
 		for (const source of sources) {
 			if (source.type === "local") {

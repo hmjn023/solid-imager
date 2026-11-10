@@ -5,6 +5,7 @@
  */
 
 import path from "node:path";
+import { localConnectionSchema } from "@solid-imager/core/sources";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { FileWatcherManager } from "~/infrastructure/jobs/file-watcher-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -176,17 +177,18 @@ async function handleFileChanged(
  * Starts file system monitoring for a media source.
  */
 export async function startMonitoring(mediaSourceId: string): Promise<void> {
+	const generation = FileWatcherManager.beginStart(mediaSourceId);
+	const isCurrent = () =>
+		FileWatcherManager.isCurrentStart(mediaSourceId, generation);
 	try {
+		await FileWatcherManager.prepareStart(mediaSourceId, generation);
+		if (!isCurrent()) return;
 		const source = await sourceRepo.findById(mediaSourceId);
-		if (!source) {
+		if (!isCurrent() || source?.type !== "local") {
 			return;
 		}
 
-		if (source.type !== "local") {
-			return;
-		}
-
-		const basePath = (source.connectionInfo as { path: string }).path;
+		const basePath = localConnectionSchema.parse(source.connectionInfo).path;
 
 		// Run directory sync before starting real-time file system monitoring
 		try {
@@ -198,11 +200,26 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 			);
 		}
 
-		await FileWatcherManager.start(mediaSourceId, basePath, {
-			onAdd: (filePath) => handleFileAdded(mediaSourceId, filePath),
-			onDelete: (filePath) => handleFileDeleted(mediaSourceId, filePath),
-			onChange: (filePath) => handleFileChanged(mediaSourceId, filePath),
-		});
+		if (!isCurrent()) return;
+		// Deletion and connection edits can happen while the initial scan is waiting.
+		const currentSource = await sourceRepo.findById(mediaSourceId);
+		if (
+			!isCurrent() ||
+			currentSource?.type !== "local" ||
+			localConnectionSchema.parse(currentSource.connectionInfo).path !==
+				basePath
+		)
+			return;
+		await FileWatcherManager.start(
+			mediaSourceId,
+			basePath,
+			{
+				onAdd: (filePath) => handleFileAdded(mediaSourceId, filePath),
+				onDelete: (filePath) => handleFileDeleted(mediaSourceId, filePath),
+				onChange: (filePath) => handleFileChanged(mediaSourceId, filePath),
+			},
+			generation,
+		);
 	} catch (error) {
 		logger.error({ err: error, mediaSourceId }, "Failed to start monitoring");
 	}

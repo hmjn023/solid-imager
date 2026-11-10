@@ -159,6 +159,13 @@ export const sourcesRouter = os.router({
 
 	update: os.update.handler(async ({ input }) => {
 		const result = await MediaSourceService.updateSource(input.id, input.data);
+		const { FileWatcherService } =
+			await import("~/infrastructure/jobs/file-watcher-service");
+		if (result[0].type === "local") {
+			void FileWatcherService.startMonitoring(input.id);
+		} else {
+			await FileWatcherService.stopMonitoring(input.id);
+		}
 		const mediaCounts = await getMediaCounts([result[0].id]);
 		return addSourceSummary(toSafeMediaSource(result[0]), mediaCounts);
 	}),
@@ -167,24 +174,11 @@ export const sourcesRouter = os.router({
 	 * Deletes a media source
 	 */
 	delete: os.delete.handler(async ({ input }) => {
+		// Invalidate pending starts before deleting the source, and wait for handle release.
+		const { FileWatcherService } =
+			await import("~/infrastructure/jobs/file-watcher-service");
+		await FileWatcherService.stopMonitoring(input.id);
 		await MediaSourceService.deleteSource(input.id);
-
-		// ファイル監視の停止
-		import("~/infrastructure/jobs/file-watcher-service")
-			.then((module) => {
-				module.FileWatcherService.stopMonitoring(input.id).catch((error) => {
-					logger.error(
-						{ err: error, sourceId: input.id },
-						"Failed to stop file watcher",
-					);
-				});
-			})
-			.catch((error) => {
-				logger.error(
-					{ err: error, sourceId: input.id },
-					"Failed to load file watcher service",
-				);
-			});
 
 		return { success: true };
 	}),
@@ -202,7 +196,6 @@ export const sourcesRouter = os.router({
 			if (pr.status === "fulfilled") {
 				results.push({
 					id,
-					success: true,
 					...pr.value,
 				});
 			} else {
@@ -210,7 +203,15 @@ export const sourcesRouter = os.router({
 					{ err: pr.reason, sourceId: id },
 					"Failed to sync media source",
 				);
-				results.push({ id, success: false, error: String(pr.reason) });
+				results.push({
+					id,
+					sourceId: id,
+					added: 0,
+					deleted: 0,
+					failed: 1,
+					success: false,
+					error: "Directory sync failed",
+				});
 			}
 		}
 		return { results };

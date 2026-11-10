@@ -4,6 +4,7 @@ export type {
 	SourceRepository,
 } from "../domain/repositories/source-repository";
 export type {
+	DirectorySyncResult,
 	LocalConnection,
 	MediaSourceInfo,
 	MediaSourceSyncState,
@@ -12,6 +13,7 @@ export type {
 	SftpConnection,
 } from "../domain/sources/schemas";
 export {
+	directorySyncResultSchema,
 	connectionInfoSchema,
 	localConnectionSchema,
 	mediaSourceInfoSchema,

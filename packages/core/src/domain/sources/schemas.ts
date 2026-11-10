@@ -52,6 +52,23 @@ export type MediaSourceTypeEnum = z.infer<typeof mediaSourceTypeEnumSchema>;
 export const mediaSourceSyncStateSchema = z.enum(["idle", "syncing", "error"]);
 export type MediaSourceSyncState = z.infer<typeof mediaSourceSyncStateSchema>;
 
+const directorySyncCountsSchema = z.object({
+	sourceId: z.uuid(),
+	added: z.number().int().nonnegative(),
+	deleted: z.number().int().nonnegative(),
+	failed: z.number().int().nonnegative(),
+});
+
+/** Final outcome of one directory scan, including committed work on partial failure. */
+export const directorySyncResultSchema = z.discriminatedUnion("success", [
+	directorySyncCountsSchema.extend({ success: z.literal(true) }),
+	directorySyncCountsSchema.extend({
+		success: z.literal(false),
+		error: z.string(),
+	}),
+]);
+export type DirectorySyncResult = z.infer<typeof directorySyncResultSchema>;
+
 /** Source information and its current synchronization state. */
 export const mediaSourceInfoSchema = z.object({
 	id: z.uuid().optional(),
