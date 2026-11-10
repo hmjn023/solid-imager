@@ -93,10 +93,11 @@ describe("source monitoring on startup", () => {
 			release();
 		}
 		await startup;
-		expect(vi.mocked(DirectorySyncService.syncMediaSource).mock.calls).toEqual([
-			["first"],
-			["second"],
-		]);
+		expect(
+			vi
+				.mocked(DirectorySyncService.syncMediaSource)
+				.mock.calls.map(([id]) => id),
+		).toEqual(["first", "second"]);
 		expect(FileWatcherManager.start).toHaveBeenCalledTimes(2);
 		expect(FileWatcherManager.start).toHaveBeenNthCalledWith(
 			1,
@@ -133,7 +134,13 @@ describe("source monitoring on startup", () => {
 		await FileWatcherService.startMonitoringAll();
 		expect(
 			DirectorySyncService.syncMediaSource,
-		).toHaveBeenCalledExactlyOnceWith("second");
+		).toHaveBeenCalledExactlyOnceWith(
+			"second",
+			expect.objectContaining({
+				basePath: "/source/second",
+				isCurrent: expect.any(Function),
+			}),
+		);
 		expect(FileWatcherManager.start).toHaveBeenCalledExactlyOnceWith(
 			"second",
 			"/source/second",

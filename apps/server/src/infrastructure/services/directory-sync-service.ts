@@ -36,7 +36,15 @@ const sourceSyncStates =
 	syncStateGlobal.__SOLID_IMAGER_SOURCE_SYNC_STATES__ ??
 	new Map<string, SourceSyncStatus>();
 syncStateGlobal.__SOLID_IMAGER_SOURCE_SYNC_STATES__ = sourceSyncStates;
-const activeSyncs = new Map<string, Promise<DirectorySyncResult>>();
+type MonitoringSyncScope = {
+	basePath: string;
+	isCurrent: () => boolean;
+};
+type ActiveSync = {
+	basePath: Promise<string | null>;
+	result: Promise<DirectorySyncResult>;
+};
+const activeSyncs = new Map<string, ActiveSync>();
 const PublicDirectorySyncFailureMessage = "Directory sync failed";
 const DirectorySyncConcurrencyLimit = 5;
 
@@ -223,12 +231,34 @@ export const DirectorySyncService = {
 	/**
 	 * Performs a comprehensive sync for a specific local media source.
 	 */
-	async syncMediaSource(mediaSourceId: string): Promise<DirectorySyncResult> {
+	async syncMediaSource(
+		mediaSourceId: string,
+		monitoringScope?: MonitoringSyncScope,
+	): Promise<DirectorySyncResult> {
+		const superseded = (): DirectorySyncResult => ({
+			sourceId: mediaSourceId,
+			added: 0,
+			deleted: 0,
+			failed: 1,
+			success: false,
+			error: "Monitoring preparation was superseded",
+		});
+		if (monitoringScope && !monitoringScope.isCurrent()) return superseded();
 		const activeSync = activeSyncs.get(mediaSourceId);
 		if (activeSync) {
-			return activeSync;
+			// Direct RPC callers keep source-level sharing. A watcher must instead
+			// prepare the exact path it will watch, after older-path work has finished.
+			if (!monitoringScope) return activeSync.result;
+			const activePath = await activeSync.basePath;
+			if (!monitoringScope.isCurrent()) return superseded();
+			if (activePath === monitoringScope.basePath) return activeSync.result;
+			await activeSync.result;
+			if (activeSyncs.get(mediaSourceId) === activeSync)
+				activeSyncs.delete(mediaSourceId);
+			return this.syncMediaSource(mediaSourceId, monitoringScope);
 		}
 
+		const scope = Promise.withResolvers<string | null>();
 		const syncPromise = (async (): Promise<DirectorySyncResult> => {
 			const result: SyncCounts = {
 				sourceId: mediaSourceId,
@@ -248,11 +278,17 @@ export const DirectorySyncService = {
 							: "Source not found",
 					};
 				}
-				await setSyncStatus(mediaSourceId, "syncing");
-
 				const basePath = localConnectionSchema.parse(
 					source.connectionInfo,
 				).path;
+				scope.resolve(basePath);
+				if (
+					monitoringScope &&
+					(!monitoringScope.isCurrent() ||
+						basePath !== monitoringScope.basePath)
+				)
+					return superseded();
+				await setSyncStatus(mediaSourceId, "syncing");
 
 				try {
 					await fs.access(basePath);
@@ -350,14 +386,18 @@ export const DirectorySyncService = {
 					"Error during directory sync",
 				);
 				return finishSync(result, PublicDirectorySyncFailureMessage);
+			} finally {
+				// Missing/invalid sources must also release callers waiting for scope resolution.
+				scope.resolve(null);
 			}
 		})();
 
-		activeSyncs.set(mediaSourceId, syncPromise);
+		const active = { basePath: scope.promise, result: syncPromise };
+		activeSyncs.set(mediaSourceId, active);
 		try {
 			return await syncPromise;
 		} finally {
-			if (activeSyncs.get(mediaSourceId) === syncPromise) {
+			if (activeSyncs.get(mediaSourceId) === active) {
 				activeSyncs.delete(mediaSourceId);
 			}
 		}

@@ -192,7 +192,10 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 
 		// Run directory sync before starting real-time file system monitoring
 		try {
-			await DirectorySyncService.syncMediaSource(mediaSourceId);
+			await DirectorySyncService.syncMediaSource(mediaSourceId, {
+				basePath,
+				isCurrent,
+			});
 		} catch (err) {
 			logger.error(
 				{ err, mediaSourceId },
