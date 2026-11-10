@@ -118,6 +118,24 @@ describe("Manager GET and SSE observations", () => {
 		expect(state.activeJobId()).toBeNull();
 	});
 
+	it("keeps read failures bound to their job when another remembered GET finishes late", () => {
+		const state = createManagerBatchState(vi.fn());
+		state.restore({ ...tagging, jobId: "old" });
+		const oldRead = state.version("old");
+		state.select({ ...vectors, jobId: "selected" });
+		state.failRead("selected", "Selected batch unavailable");
+		state.acceptSnapshot(job("old"), oldRead);
+		expect(state.display("vectors")?.message).toBe(
+			"Selected batch unavailable",
+		);
+		state.failRead("old", "Old batch no longer exists");
+		expect(state.forget("old")).toBe(false);
+		expect(state.trackedRun()?.jobId).toBe("selected");
+		expect(
+			state.acceptSnapshot(job("selected"), state.version("selected")),
+		).toBe(true);
+		expect(state.display("vectors")?.message).toBe("Processing...");
+	});
 	it("rejects a GET started before a newer event and accepts a fresh snapshot", () => {
 		const state = createManagerBatchState(vi.fn());
 		state.restore({ ...tagging, jobId: "tracked" });

@@ -10,6 +10,7 @@ type Observation = {
 	status: JobStatus;
 	progress: Progress | null;
 	error: string | null;
+	readError: string | null;
 	version: number;
 	attempt: number;
 	updatedAt: number;
@@ -61,6 +62,7 @@ export function createManagerBatchState(
 				status: "pending",
 				progress: null,
 				error: null,
+				readError: null,
 				version: 0,
 				attempt: 0,
 				updatedAt: 0,
@@ -183,6 +185,7 @@ export function createManagerBatchState(
 				status: job.status,
 				progress: job.progress,
 				error: job.error,
+				readError: null,
 				version,
 				attempt: job.attemptCount,
 				updatedAt: new Date(job.updatedAt).getTime(),
@@ -217,7 +220,7 @@ export function createManagerBatchState(
 								: "Preparing batch targets...";
 		return {
 			kind: "run",
-			message,
+			message: snapshot.readError ?? message,
 			status: snapshot.status,
 			progress: snapshot.progress,
 			jobId: view.jobId,
@@ -235,6 +238,14 @@ export function createManagerBatchState(
 		pending: (tab: ManagerBatchTab) =>
 			requests().find((request) => request.context.tab === tab)?.kind ?? null,
 		version: (id: string) => observations()[id]?.version ?? 0,
+		failRead: (id: string, message: string) => {
+			const previous = observations()[id];
+			if (previous)
+				setObservations((all) => ({
+					...all,
+					[id]: { ...previous, readError: message },
+				}));
+		},
 		readVersions: () =>
 			Object.fromEntries(
 				Object.entries(observations()).map(([id, observation]) => [
@@ -253,8 +264,9 @@ export function createManagerBatchState(
 			selectedRequestId = ++nextRequestId;
 			selectRun(run);
 		},
-		forget: () => {
+		forget: (jobId: string) => {
 			const run = trackedRun();
+			if (!run || run.jobId !== jobId) return false;
 			if (run)
 				setViews((previous) => ({
 					...previous,
@@ -265,6 +277,7 @@ export function createManagerBatchState(
 					},
 				}));
 			setTrackedRun(null);
+			return true;
 		},
 		invalidateScans: () => {
 			scanEpoch++;

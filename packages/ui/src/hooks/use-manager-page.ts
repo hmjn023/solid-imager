@@ -14,7 +14,6 @@ import {
 } from "@tanstack/solid-query";
 import {
 	type Accessor,
-	createEffect,
 	createSignal,
 	onMount,
 	onCleanup,
@@ -375,13 +374,8 @@ export function useManagerPage(
 			? { jobId: display.jobId ?? undefined, ...display.progress }
 			: null;
 	};
-	const [batchReadError, setBatchReadError] = createSignal<string | null>(null);
-	const taggingStatus = () =>
-		batchDisplay()?.kind === "run" &&
-		batchDisplay()?.jobId === trackedRun()?.jobId &&
-		batchReadError()
-			? batchReadError()
-			: (batchDisplay()?.message ?? null);
+	const taggingStatus = () => batchDisplay()?.message ?? null;
+
 	const activeBatches = createQuery(() => ({
 		queryKey: ["jobs", "activeBatches"],
 		queryFn: async () => {
@@ -425,15 +419,35 @@ export function useManagerPage(
 			queryFn: async () => {
 				if (!jobId) throw new Error("No tracked batch");
 				const version = batches.version(jobId);
-				const job = await actions.getJob(jobId);
-				if (batches.acceptSnapshot(job, version)) setBatchReadError(null);
-				else if (
+				let job: JobDto;
+				try {
+					job = await actions.getJob(jobId);
+				} catch (error) {
+					const missing =
+						typeof error === "object" &&
+						error !== null &&
+						"code" in error &&
+						error.code === "NOT_FOUND";
+					batches.failRead(
+						jobId,
+						missing
+							? "The tracked batch no longer exists."
+							: `Unable to refresh batch progress: ${getErrorMessage(error)}.`,
+					);
+					if (missing && batches.forget(jobId)) {
+						const storage = managerSessionStorage();
+						if (storage) forgetManagerBatchRun(storage);
+					}
+					throw error;
+				}
+				if (
+					!batches.acceptSnapshot(job, version) &&
 					batches.version(jobId) !== version &&
 					!disposed &&
 					trackedRun()?.jobId === jobId
 				) {
-					// The GET started before a newer SSE observation. Read again after
-					// this query settles instead of letting its response regress the UI.
+					// A newer SSE observation invalidates this read; request its
+					// canonical snapshot after the superseded query settles.
 					clearTimeout(trackedRefreshTimer);
 					trackedRefreshTimer = setTimeout(() => {
 						if (!disposed) void trackedJob.refetch();
@@ -456,20 +470,6 @@ export function useManagerPage(
 		batches.restore(run);
 	});
 
-	createEffect(() => {
-		const error = trackedJob.error;
-		if (!error) return;
-		if ("code" in error && error.code === "NOT_FOUND") {
-			const storage = managerSessionStorage();
-			if (storage) forgetManagerBatchRun(storage);
-			batches.forget();
-			setBatchReadError("The tracked batch no longer exists.");
-			return;
-		}
-		setBatchReadError(
-			`Unable to refresh batch progress: ${getErrorMessage(error)}.`,
-		);
-	});
 	const duplicates = createManagerDuplicatesState({
 		findDuplicateMedia: actions.findDuplicateMedia,
 		bulkDeleteMedia: actions.bulkDeleteMedia,
@@ -655,7 +655,6 @@ export function useManagerPage(
 	) {
 		const request = batches.begin("start", context);
 		if (!request) return;
-		setBatchReadError(null);
 		try {
 			const result = await start();
 			if (result.success && result.jobId) {

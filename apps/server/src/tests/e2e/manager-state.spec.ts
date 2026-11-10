@@ -47,6 +47,79 @@ function snapshot(id: string, values: Partial<JobDto> = {}): JobDto {
 	};
 }
 
+test("keeps the selected batch's read error when an earlier tracked GET finishes late", async ({
+	page,
+	browserHealth,
+}) => {
+	const oldId = randomUUID();
+	const selectedId = randomUUID();
+	let oldReadRequested = false;
+	const releaseOld = gate();
+	browserHealth.allowResponseFailure(/\/api\/rpc\/jobs\/get(?:\?|$)/);
+	browserHealth.allowConsole(/Failed to load resource:.*503/);
+	await page.route("**/api/rpc/jobs/activeBatches", (route) =>
+		route.fulfill({ json: { json: [snapshot(selectedId)] } }),
+	);
+	await page.route("**/api/rpc/ai/startBatchTagging", (route) =>
+		route.fulfill({
+			json: {
+				json: { success: true, jobId: oldId, message: "Started old batch" },
+			},
+		}),
+	);
+	await page.route(/\/api\/rpc\/jobs\/get(?:\?|$)/, async (route) => {
+		if (
+			route.request().url().includes(oldId) ||
+			route.request().postData()?.includes(oldId)
+		) {
+			oldReadRequested = true;
+			await releaseOld.promise;
+			await route.fulfill({ json: { json: snapshot(oldId) } });
+		} else
+			await route.fulfill({
+				status: 503,
+				json: {
+					defined: false,
+					code: "SERVICE_UNAVAILABLE",
+					status: 503,
+					message: "Selected batch unavailable",
+				},
+			});
+	});
+	await page.goto("/manager");
+	await waitForAppHydration(page);
+	await category(page, "Batch tagging");
+	await page
+		.getByRole("button", { name: "Start tagging", exact: true })
+		.click();
+	await expect.poll(() => oldReadRequested).toBe(true);
+	await page
+		.getByRole("button", { name: "Track progress", exact: true })
+		.click();
+	const error = page.getByText(/^Unable to refresh batch progress:/);
+	await expect(error).toBeVisible();
+	const oldResponse = page.waitForResponse(
+		(response) =>
+			response.url().includes("/api/rpc/jobs/get") &&
+			(response.url().includes(oldId) ||
+				response.request().postData()?.includes(oldId) === true),
+	);
+	releaseOld.release();
+	await (await oldResponse).finished();
+	await page.evaluate(
+		() =>
+			new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
+	);
+	await expect(error).toBeVisible();
+	const savedId = await page.evaluate(
+		() =>
+			JSON.parse(
+				sessionStorage.getItem("solid-imager:manager:batch-run") ?? "{}",
+			).jobId,
+	);
+	expect(savedId).toBe(selectedId);
+});
+
 test("retains pending submissions across tabs and restores the latest requested batch after out-of-order responses", async ({
 	page,
 }) => {
