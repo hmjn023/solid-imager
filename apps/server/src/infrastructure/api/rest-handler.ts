@@ -50,6 +50,9 @@ export async function handleRestRequest(request: Request): Promise<Response> {
 	}
 	const { response } = await handler.handle(request, {
 		prefix: REST_API_PREFIX,
+		context: {
+			pixivAuthorization: request.headers.get("authorization") ?? undefined,
+		},
 	});
 	return response ?? new Response("Not Found", { status: 404 });
 }

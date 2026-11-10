@@ -1,3 +1,4 @@
+import type { JSX } from "solid-js";
 import { createEffect, createSignal, onCleanup, Show } from "solid-js";
 
 export interface ThumbnailSource {
@@ -16,6 +17,7 @@ export interface ThumbnailImageProps {
 	fetchpriority?: "high" | "low" | "auto";
 	height?: number | null;
 	loading?: "eager" | "lazy";
+	referrerPolicy?: JSX.ImgHTMLAttributes<HTMLImageElement>["referrerpolicy"];
 	sizes?: string;
 	source: ThumbnailSource;
 	width?: number | null;
@@ -156,6 +158,7 @@ export function ThumbnailImage(props: ThumbnailImageProps) {
 					onDragStart={(event) => event.preventDefault()}
 					onError={handleError}
 					onLoad={handleLoad}
+					referrerpolicy={props.referrerPolicy}
 					sizes={srcSet() ? props.sizes : undefined}
 					srcset={srcSet()}
 					src={resolvedUrl()}

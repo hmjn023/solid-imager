@@ -32,7 +32,15 @@ export interface MediaViewerProps {
 }
 
 export function MediaViewer(props: MediaViewerProps) {
-	const [mediaUrl, setMediaUrl] = createSignal<string | null>(null);
+	const mediaSource = createMemo(() => props.source);
+	const [resolvedMedia, setResolvedMedia] = createSignal<{
+		source: MediaSource;
+		url: string;
+	}>();
+	const mediaUrl = () => {
+		const resolved = resolvedMedia();
+		return resolved?.source === mediaSource() ? resolved.url : undefined;
+	};
 	const [zoom, setZoom] = createSignal(1);
 	const [pan, setPan] = createSignal({ x: 0, y: 0 });
 	const [isPanning, setIsPanning] = createSignal(false);
@@ -85,7 +93,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
 	};
 	const handlePointerDown = (event: PointerEvent) => {
-		if (props.source.type !== "image") return;
+		if (mediaSource().type !== "image") return;
 		if (
 			event.target instanceof Element &&
 			event.target.closest("[data-media-viewer-controls]")
@@ -137,7 +145,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		setIsPanning(false);
 	};
 	const handleDragStart = (event: DragEvent) => {
-		if (props.source.type === "image") {
+		if (mediaSource().type === "image") {
 			event.preventDefault();
 		}
 	};
@@ -155,10 +163,10 @@ export function MediaViewer(props: MediaViewerProps) {
 	};
 
 	createEffect(() => {
-		const source = props.source;
+		const source = mediaSource();
 		let currentUrl: string | null = null;
 		let disposed = false;
-		setMediaUrl(null);
+		setResolvedMedia(undefined);
 		resetView();
 
 		void (async () => {
@@ -169,10 +177,10 @@ export function MediaViewer(props: MediaViewerProps) {
 					return;
 				}
 				currentUrl = url;
-				setMediaUrl(url);
+				setResolvedMedia({ source, url });
 			} catch {
 				if (!disposed) {
-					setMediaUrl(null);
+					setResolvedMedia(undefined);
 				}
 			}
 		})();
@@ -198,7 +206,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		<>
 			<section
 				class={`group/viewer media-viewer-aspect relative flex min-h-0 min-w-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring lg:aspect-auto lg:h-full ${
-					props.source.type === "image" ? "cursor-zoom-in" : ""
+					mediaSource().type === "image" ? "cursor-zoom-in" : ""
 				}`}
 				data-media-viewer
 				style={{
@@ -209,7 +217,7 @@ export function MediaViewer(props: MediaViewerProps) {
 				}}
 			>
 				<Switch>
-					<Match when={props.source.type === "video"}>
+					<Match when={mediaSource().type === "video"}>
 						<Show
 							fallback={
 								<div class="flex h-full max-h-full w-full items-center justify-center bg-foreground text-background">
@@ -221,7 +229,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							{(url) => <VideoPlayer fileName={props.fileName} src={url()} />}
 						</Show>
 					</Match>
-					<Match when={props.source.type === "audio"}>
+					<Match when={mediaSource().type === "audio"}>
 						<Show
 							fallback={
 								<div class="bg-foreground px-8 py-6 text-background">

@@ -4,4 +4,4 @@ packages:
   - packages/*
 
 allowBuilds:
-  dghs-imgutils-rs@https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/8bcaaf0e1eb719cb8177377d3b5402476b8029ba: true
+  dghs-imgutils-rs@https://codeload.github.com/hmjn023/dghs-imgutils-rs/tar.gz/05799a47274625f4708bd56d457870454725e80d: true

@@ -61,6 +61,8 @@ WebMCP で `ai_startCcipExtraction` を公開すると、`showJob: true` を指�
 
 画像と検索文は dghs の Q8・768 次元モデルで符号化し、専用ワーカーで実行します。推論先は全モデル共通の Settings → AI Service の Provider / Device 設定に従い、GPU も同じ設定を使います。Q8 はモデルの重み形式で、CPU/GPU の選択とは独立しています。初回はモデルがダウンロードされます。AI のリモート URL を設定している場合は、同じ API に対応したサーバーへ推論を委譲し、推論サーバー側の共通 Provider / Device 設定を使います。検索にはソースと結果件数を適用し、通常のタグ・ファイル名条件は適用しません。索引作成後に更新された画像は、再抽出されるまで検索結果から除外します。CCIP の索引とは独立しています。
 
+Intel GPU で実行する場合は、推論サーバーに OpenVINO 対応の ONNX Runtime と OpenVINO C ライブラリ（`openvino_c`）を用意し、Settings → AI Service の Provider で **Intel GPU**（`intel_gpu`）を選択します。Q8 モデルは初回推論時に自動変換されるため、手動変換や Python は不要です。変換には時間と追加のディスク容量が必要です。生成物は `IU_HOME/embeddinggemma2/openvino`（既定では `~/.cache/dghs-imgutils/embeddinggemma2/openvino`）に保存され、次回以降は再利用されます。
+
 ## 技術スタック
 
 ```

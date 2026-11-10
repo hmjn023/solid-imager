@@ -39,6 +39,7 @@ class MemoryStorage implements Storage {
 describe("ui storage keys", () => {
 	it("exposes the shared canonical UI keys", () => {
 		expect(UI_STORAGE_KEYS).toEqual({
+			danbooruSearch: "solid-imager:danbooru:search",
 			managerBatchRun: "solid-imager:manager:batch-run",
 			sidebarExpanded: "solid-imager:sidebar-expanded",
 			searchViewMode: "solid-imager:search:view-mode",

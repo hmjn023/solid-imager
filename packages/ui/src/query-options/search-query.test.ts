@@ -490,6 +490,14 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 		const firstPage = { media: [TEST_MEDIA], total: 2 };
 		const secondPage = { media: [TEST_MEDIA], total: 2 };
 
+		expect(
+			getNextPageParam(
+				{ media: [], total: 2 },
+				[firstPage, { media: [], total: 2 }],
+				1,
+				[0, 1],
+			),
+		).toBeUndefined();
 		expect(getNextPageParam(firstPage, [firstPage], 0, [0])).toBe(1);
 		expect(
 			getNextPageParam(secondPage, [firstPage, secondPage], 1, [0, 1]),

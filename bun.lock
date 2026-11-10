@@ -67,7 +67,7 @@
         "@tanstack/solid-start": "1.169.4",
         "archiver": "^8.0.0",
         "chokidar": "6.0.0",
-        "dghs-imgutils-rs": "github:hmjn023/dghs-imgutils-rs#v0.5.6",
+        "dghs-imgutils-rs": "github:hmjn023/dghs-imgutils-rs#v0.5.9",
         "drizzle-orm": "^0.45.4",
         "ffmpeg-static": "^5.3.0",
         "fluent-ffmpeg": "^2.1.3",
@@ -1375,7 +1375,7 @@
 
     "devlop": ["devlop@1.1.0", "", { "dependencies": { "dequal": "^2.0.0" } }, "sha512-RWmIqhcFf1lRYBvNmr7qTNuyCt/7/ns2jbpp1+PalgE/rDQcBT0fioSMUpJ93irlUhC5hrg4cYqe6U+0ImW0rA=="],
 
-    "dghs-imgutils-rs": ["dghs-imgutils-rs@github:hmjn023/dghs-imgutils-rs#8bcaaf0", { "hasInstallScript": true }, "hmjn023-dghs-imgutils-rs-8bcaaf0", "sha512-nIIHIsJd6irXB9AMnuO8jratRcuxpBPV/m3G/O3HLqFdCtJ6G2oMhAAOkmQs+L6pRB71krz8FCeudzdj4mFzaA=="],
+    "dghs-imgutils-rs": ["dghs-imgutils-rs@github:hmjn023/dghs-imgutils-rs#05799a4", { "hasInstallScript": true }, "hmjn023-dghs-imgutils-rs-05799a4", "sha512-4ccaKcLLewhqwIUR4rQxZ5vvUWG2jPyUeUmKzVAtwXDGKeeUpH7EC7R9acdSMn7mYfMScRIvfDYE8202HWJ+EA=="],
 
     "diff": ["diff@7.0.0", "", {}, "sha512-PJWHUb1RFevKCwaFA9RlG5tCd+FO5iRh9A8HEtkmBH2Li03iJriB6m6JIN4rGz3K3JLawI7/veA1xzRKP6ISBw=="],
 

@@ -1,4 +1,3 @@
-import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
 import { and, asc, eq, gt, inArray, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
@@ -115,6 +114,7 @@ export async function processAutoTaggingJob(job: Job): Promise<void> {
 	}
 }
 
+/** Queues tagging jobs for eligible media and publishes the parent total after counting its queued children. */
 export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 	const payload = bulkTaggingDispatchPayloadSchema.parse(job.payload);
 	const force = payload?.force ?? false;
@@ -243,23 +243,12 @@ export async function processBulkTaggingDispatchJob(job: Job): Promise<void> {
 	}
 
 	const jobRepo = services.getJobRepository();
-	const parentJob = await jobRepo.findById(parentId);
-	const parentPayload = batchParentPayloadSchema.parse(
-		parentJob?.payload ?? {},
-	);
 	const [{ count: rawTotalChildCount }] = await db
 		.select({ count: sql<number>`count(*)` })
 		.from(jobs)
 		.where(and(eq(jobs.parentId, parentId), eq(jobs.type, "auto_tagging")));
 	const totalChildCount = Number(rawTotalChildCount ?? 0);
-	const progress = {
-		processed: parentPayload.processed,
-		failed: parentPayload.failed,
-		total: totalChildCount,
-	};
-	await jobRepo.update(parentId, {
-		payload: { ...parentPayload, total: totalChildCount },
-	});
+	const progress = await jobRepo.setBatchTotal(parentId, totalChildCount);
 
 	if (totalChildCount === 0) {
 		await jobRepo.update(parentId, { status: "completed" });

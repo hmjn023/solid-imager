@@ -332,4 +332,54 @@ describe("AI batch target counts", () => {
 			);
 		}
 	});
+	it("resumes a serialized CCIP chunk and counts mixed outcomes once per media", async () => {
+		const sourceId = await source();
+		const ids = [
+			await media(sourceId),
+			await media(sourceId),
+			await media(sourceId),
+		];
+		const parent = await repository.create({
+			type: "batch_ccip_parent",
+			status: "in_progress",
+			payload: JSON.stringify({ processed: 0, failed: 0, total: 0 }),
+		});
+		const child = await repository.create({
+			type: "extract_ccip_vector",
+			status: "in_progress",
+			parentId: parent.id,
+			payload: JSON.stringify({ mediaIds: ids, force: true }),
+		});
+		const dispatch = await repository.create({
+			type: "batch_ccip_dispatch",
+			parentId: parent.id,
+			payload: { mediaSourceId: sourceId, force: true },
+		});
+		await processBatchCcipDispatchJob(dispatch);
+		expect((await repository.findById(parent.id))?.payload).toMatchObject({
+			total: 3,
+		});
+		for (let i = 0; i < 2; i++) {
+			expect(
+				await repository.recordBatchChildOutcome(parent.id, child.id, 0, 2, 1),
+			).toMatchObject({ processed: 2, failed: 1, total: 3 });
+		}
+		await repository.update(child.id, { attemptCount: 1 });
+		expect(
+			await repository.recordBatchChildOutcome(parent.id, child.id, 0, 0, 3),
+		).toBeNull();
+		expect(
+			await repository.recordBatchChildOutcome(parent.id, child.id, 1, 3, 0),
+		).toMatchObject({ processed: 3, failed: 0, total: 3 });
+		// Retrying a child of a closed historical batch cannot add another item to it.
+		await repository.update(parent.id, { status: "completed" });
+		expect(
+			await repository.recordBatchChildOutcome(parent.id, child.id, 1, 1, 2),
+		).toBeNull();
+		expect((await repository.findById(parent.id))?.payload).toMatchObject({
+			processed: 3,
+			failed: 0,
+			total: 3,
+		});
+	});
 });

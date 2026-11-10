@@ -120,6 +120,7 @@ export function useBatchJobEvents(
 		const cleanup = subscribeToEventStream(
 			openStream,
 			(event) => {
+				options.onEvent?.(event);
 				const jobId = activeJobId();
 				if (event.data.jobId === jobId) {
 					dispatchJobEvent(jobId, event, handlers);

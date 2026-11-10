@@ -46,6 +46,8 @@
     "./router-status": "./src/router-status.tsx",
     "./screens/about": "./src/screens/about-screen.tsx",
     "./screens/config": "./src/screens/config-state-screen.tsx",
+    "./external-viewer": "./src/external-viewer/route.tsx",
+    "./screens/danbooru": "./src/screens/danbooru-screen.tsx",
     "./screens/design-lab": "./src/screens/design-concept-screen.tsx",
     "./screens/jobs": "./src/screens/jobs-screen.tsx",
     "./screens/manager": "./src/screens/manager-screen.tsx",

@@ -12,6 +12,7 @@ const loggerError = vi.fn();
 const update = vi.fn();
 const incrementProgress = vi.fn();
 const incrementFailedCount = vi.fn();
+const recordOutcome = vi.fn();
 
 const jobRepository: IJobRepository = {
 	create: vi.fn(),
@@ -28,6 +29,8 @@ const jobRepository: IJobRepository = {
 	update: (...args: Parameters<typeof update>) => update(...args),
 	incrementProgress: (...args: Parameters<typeof incrementProgress>) =>
 		incrementProgress(...args),
+	setBatchTotal: vi.fn(),
+	recordBatchChildOutcome: recordOutcome,
 	incrementFailedCount: (...args: Parameters<typeof incrementFailedCount>) =>
 		incrementFailedCount(...args),
 	claimPending: vi.fn(),
@@ -75,7 +78,7 @@ describe("processCcipExtractionJob", () => {
 			record: { mediaId: "00000000-0000-4000-8000-000000000030" },
 			skipped: false,
 		});
-		incrementProgress.mockResolvedValue({
+		recordOutcome.mockResolvedValue({
 			processed: 1,
 			failed: 0,
 			total: 1,
@@ -98,10 +101,12 @@ describe("processCcipExtractionJob", () => {
 		});
 
 		expect(extract).toHaveBeenCalled();
-		expect(incrementProgress).toHaveBeenCalledWith(
+		expect(recordOutcome).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
 			"00000000-0000-4000-8000-000000000020",
+			0,
 			1,
+			0,
 		);
 		expect(publishJob).toHaveBeenCalledWith("job-completed", {
 			jobId: "00000000-0000-4000-8000-000000000020",
@@ -125,7 +130,7 @@ describe("processCcipExtractionJob", () => {
 			record: { mediaId: "00000000-0000-4000-8000-000000000031" },
 			skipped: false,
 		});
-		incrementProgress.mockResolvedValue(null);
+		recordOutcome.mockResolvedValue(null);
 
 		await processCcipExtractionJob({
 			id: "00000000-0000-4000-8000-000000000021",
@@ -149,7 +154,7 @@ describe("processCcipExtractionJob", () => {
 
 	it("increments failed count and marks parent failed when all children are done", async () => {
 		extract.mockRejectedValue(new Error("ccip error"));
-		incrementFailedCount.mockResolvedValue({
+		recordOutcome.mockResolvedValue({
 			processed: 0,
 			failed: 1,
 			total: 1,
@@ -173,9 +178,11 @@ describe("processCcipExtractionJob", () => {
 			}),
 		).rejects.toThrow("ccip error");
 
-		expect(incrementFailedCount).toHaveBeenCalledWith(
+		expect(recordOutcome).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
 			"00000000-0000-4000-8000-000000000020",
+			0,
+			0,
 			1,
 		);
 		expect(update).toHaveBeenCalledWith(
@@ -205,7 +212,7 @@ describe("processCcipExtractionJob", () => {
 				},
 			})),
 		);
-		incrementProgress.mockResolvedValue({
+		recordOutcome.mockResolvedValue({
 			processed: 2,
 			failed: 0,
 			total: 2,
@@ -230,10 +237,12 @@ describe("processCcipExtractionJob", () => {
 			false,
 			1,
 		);
-		expect(incrementProgress).toHaveBeenCalledWith(
+		expect(recordOutcome).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000012",
 			"00000000-0000-4000-8000-000000000022",
+			0,
 			2,
+			0,
 		);
 		expect(update).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000012",

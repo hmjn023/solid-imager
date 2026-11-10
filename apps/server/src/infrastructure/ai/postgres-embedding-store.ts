@@ -1,5 +1,6 @@
 import type {
 	IEmbeddingStore,
+	RelatedEmbeddingReader,
 	ImageEmbedding,
 } from "@solid-imager/application/embeddings";
 import {
@@ -13,7 +14,9 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 /** An independent image/text embedding space; CCIP vectors are never read here. */
-export class PostgresEmbeddingStore implements IEmbeddingStore {
+export class PostgresEmbeddingStore
+	implements IEmbeddingStore, RelatedEmbeddingReader
+{
 	constructor(private readonly database: DrizzleExecutor) {}
 
 	async get(mediaId: string): Promise<ImageEmbedding | null> {
@@ -67,6 +70,41 @@ export class PostgresEmbeddingStore implements IEmbeddingStore {
 				},
 				setWhere: sql`${imageEmbeddings.mediaModifiedAt} <= ${record.mediaModifiedAt}`,
 			});
+	}
+
+	/** A raw distance ORDER BY lets pgvector stop its HNSW scan at the requested limit. */
+	async nearestRelated(vector: number[], anchorId: string, limit: number) {
+		const literal = `[${embeddingVectorSchema.parse(vector).join(",")}]`;
+		const distance = sql<number>`${imageEmbeddings.embedding} <=> ${literal}::vector`;
+		return this.database.transaction(async (tx) => {
+			await tx.execute(sql`select set_config('hnsw.ef_search', ${String(limit)}, true),
+				set_config('hnsw.iterative_scan', 'strict_order', true)`);
+			const rows = await tx
+				.select({
+					mediaId: imageEmbeddings.mediaId,
+					cosineDistance: distance.mapWith(Number),
+				})
+				.from(imageEmbeddings)
+				.where(
+					and(
+						eq(imageEmbeddings.model, EMBEDDING_GEMMA_MODEL),
+						eq(imageEmbeddings.version, EMBEDDING_GEMMA_VERSION),
+						sql`${imageEmbeddings.mediaId} <> ${anchorId}`,
+						// Keep eligibility inside the limited scan, including for stale embeddings.
+						sql`exists (select 1 from ${medias} where ${medias.id} = ${imageEmbeddings.mediaId}
+					and ${medias.status} = 'active' and ${medias.mediaType} in ('image','video')
+					and ${imageEmbeddings.mediaModifiedAt} = date_trunc('milliseconds', ${medias.modifiedAt})
+					offset 0)`,
+					),
+				)
+				.orderBy(distance)
+				.limit(limit);
+			return rows.sort(
+				(a, b) =>
+					a.cosineDistance - b.cosineDistance ||
+					a.mediaId.localeCompare(b.mediaId),
+			);
+		});
 	}
 
 	async search(

@@ -250,6 +250,13 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
       );
       return handleRestRequest(request);
     });
+    // Authentication and animation requests share the dev RPC process and its in-memory sessions.
+    const animationMiddleware = toNodeHandler(async (request) => {
+      const { servePixivAnimation } = await runtimeImport<typeof import("./src/infrastructure/services/pixiv-animation")>(
+        serverModuleUrl("src/infrastructure/services/pixiv-animation.ts"),
+      );
+      return servePixivAnimation(Number(new URL(request.url).pathname.split("/").at(-1)), request.headers.get("authorization"));
+    });
     let backgroundWorkerStarted = false;
     let startBackgroundWorker: DevRpcHandler["startBackgroundWorker"] | undefined;
     let logger: DevRpcHandler["logger"] | undefined;
@@ -272,6 +279,10 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
 
     server.middlewares.use(async (req, res, next) => {
       const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+      if (req.method === "GET" && /^\/api\/pixiv-animation\/\d+$/.test(pathname)) {
+        await animationMiddleware(req, res);
+        return;
+      }
       if (pathname === "/api/mcp" || pathname === "/api/mcp/") {
         try {
           res.once("finish", () => {
@@ -315,6 +326,7 @@ const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
         }
         const result = await handler.handle(req, res, {
           prefix: "/api/rpc",
+          context: { pixivAuthorization: req.headers.authorization },
         });
         matched = result.matched;
         if (matched && responseFinished && res.statusCode >= 200 && res.statusCode < 300) {

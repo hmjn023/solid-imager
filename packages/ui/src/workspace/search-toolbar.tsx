@@ -456,12 +456,14 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					<PopoverTrigger
 						aria-label={`並び替え、現在は${sortLabel(searchState)}`}
 						as={Button}
-						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9"
+						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9 sm:w-56 sm:justify-between"
 						size="sm"
 						variant="outline"
 					>
 						<ArrowDownUp aria-hidden="true" size={15} />
-						<span class="hidden sm:inline">{sortLabel(searchState)}</span>
+						<span class="hidden min-w-0 flex-1 truncate text-left sm:inline">
+							{sortLabel(searchState)}
+						</span>
 						<ChevronDown aria-hidden="true" size={13} />
 					</PopoverTrigger>
 					<PopoverContent class="workspace-theme w-72 p-4 shadow-xl">

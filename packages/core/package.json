@@ -11,6 +11,8 @@
     "./collections": "./src/public/collections.ts",
     "./config": "./src/public/config.ts",
     "./contract": "./src/domain/contract/index.ts",
+    "./external-viewer": "./src/public/external-viewer.ts",
+    "./danbooru": "./src/public/danbooru.ts",
     "./errors": "./src/domain/errors/index.ts",
     "./events": "./src/public/events.ts",
     "./http": "./src/domain/contract/http-paths.ts",
