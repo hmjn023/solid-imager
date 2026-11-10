@@ -31,6 +31,7 @@ import {
 import { isServer } from "solid-js/web";
 import { buildSearchResultsQueryOptions } from "../query-options";
 import { type QueryUiState, toQueryUiState } from "../query-state";
+import { observePageBoundary } from "./observe-page-boundary";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 
 const DEFAULT_GC_TIME = 1000 * 60 * 5;
@@ -253,8 +254,8 @@ export function useSearchPage(
 	});
 	const searchResultQuery = createInfiniteQuery(searchResultQueryOptions);
 	const fetchNextPage = () =>
-		isSearchStateRestored()
-			? searchResultQuery.fetchNextPage()
+		isSearchStateRestored() && searchResultQuery.hasNextPage
+			? searchResultQuery.fetchNextPage({ cancelRefetch: false })
 			: Promise.resolve();
 	const [searchResultData, setSearchResultData] = createSignal<
 		InfiniteData<MediaSearchResponse> | undefined
@@ -398,31 +399,16 @@ export function useSearchPage(
 		HTMLDivElement | undefined
 	>(undefined);
 
-	createEffect(() => {
-		if (enableVirtualization) {
-			return;
-		}
-		const el = loadMoreRef();
-		if (!el) {
-			return;
-		}
-		const hasNextPage = searchResultQuery.hasNextPage;
-		const isFetching = searchResultQuery.isFetching;
-
-		if (!isSearchStateRestored() || !hasNextPage || isFetching) {
-			return;
-		}
-
-		const observer = new IntersectionObserver(
-			(entries) => {
-				if (entries[0].isIntersecting && isSearchStateRestored()) {
-					void fetchNextPage();
-				}
-			},
-			{ threshold: 0.5, rootMargin: "2400px" },
-		);
-		observer.observe(el);
-		onCleanup(() => observer.disconnect());
+	observePageBoundary({
+		target: loadMoreRef,
+		enabled: () =>
+			!enableVirtualization &&
+			isSearchStateRestored() &&
+			searchResultQuery.hasNextPage &&
+			!searchResultQuery.isFetching &&
+			!searchResultQuery.isFetchNextPageError,
+		rootMargin: "2400px",
+		load: fetchNextPage,
 	});
 
 	return {

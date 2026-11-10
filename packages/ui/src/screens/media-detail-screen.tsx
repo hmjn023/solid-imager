@@ -1,4 +1,5 @@
 import { Suspense } from "solid-js";
+import { MediaDetailLayout } from "../media-detail-layout";
 import { MediaDetailSkeleton } from "../media-detail-skeleton";
 import { LoadingRegion } from "../skeleton";
 import type { MediaDetailScreenProps as MediaDetailScreenBaseProps } from "./media-detail-screen.types";
@@ -30,30 +31,22 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 				<MediaDetailScreenController
 					{...props}
 					renderData={({ details, isUpdating, onUpdate, sourceRootPath }) => (
-						<div class="flex min-h-0 flex-1 flex-col">
-							{props.renderHeader?.(
+						<MediaDetailLayout
+							header={props.renderHeader?.(
 								details,
 								isUpdating,
 								() => void onUpdate(),
 								sourceRootPath,
 							)}
-							<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden scrollbar-stable">
-								<div class="min-w-0 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain scrollbar-stable">
-									<div class="lg:h-full">
-										{props.renderMediaViewer(details, sourceRootPath)}
-									</div>
-									{props.renderRelatedMedia?.(details)}
-								</div>
-								<div class="min-w-0 border-border border-t lg:min-h-0 lg:border-t-0 lg:border-l">
-									{props.renderMediaSidebar(
-										details,
-										isUpdating,
-										() => void onUpdate(),
-										sourceRootPath,
-									)}
-								</div>
-							</div>
-						</div>
+							viewer={props.renderMediaViewer(details, sourceRootPath)}
+							related={props.renderRelatedMedia?.(details)}
+							sidebar={props.renderMediaSidebar(
+								details,
+								isUpdating,
+								() => void onUpdate(),
+								sourceRootPath,
+							)}
+						/>
 					)}
 					renderPending={renderPending}
 				/>

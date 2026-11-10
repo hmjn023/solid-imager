@@ -1,3 +1,4 @@
+import { PixivConnection } from "./pixiv-connection";
 import { getClient } from "@ext/api";
 import {
 	downloadItemSchema,
@@ -194,6 +195,8 @@ function Popup() {
 				{status()}
 			</div>
 
+			<hr class="popup-divider" />
+			<PixivConnection apiUrl={apiUrl()} />
 			<hr class="popup-divider" />
 
 			<button

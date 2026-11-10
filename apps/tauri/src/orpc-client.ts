@@ -1,4 +1,4 @@
-import { createClient } from "@solid-imager/client";
+import { createClient, type ClientOptions } from "@solid-imager/client";
 import type { AppContract } from "@solid-imager/core/contract";
 import { fetch as tauriFetch } from "@tauri-apps/plugin-http";
 import {
@@ -7,10 +7,17 @@ import {
 	setApiBaseUrl,
 } from "~/infrastructure/api-base";
 
+export const fetchServer: NonNullable<ClientOptions["fetch"]> = (url, init) =>
+	isDevelopmentProxy()
+		? fetch(url, init)
+		: tauriFetch(
+				url,
+				init?.redirect === "error" ? { ...init, maxRedirections: 0 } : init,
+			);
+
 export const client = createClient<AppContract>({
 	url: getApiBaseUrl,
-	fetch: (url, init) =>
-		isDevelopmentProxy() ? fetch(url, init) : tauriFetch(url, init),
+	fetch: fetchServer,
 });
 export const orpc = client;
 

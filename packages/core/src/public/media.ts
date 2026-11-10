@@ -40,6 +40,7 @@ export {
 	mediaSearchRequestSchema,
 	mediaSearchResponseSchema,
 	mediaSourceIdSchema,
+	pendingImportJobSchema,
 	relatedMediaReasonSchema,
 	relatedMediaRequestSchema,
 	relatedMediaResponseSchema,

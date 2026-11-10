@@ -279,7 +279,7 @@ export function useSourceMediaPage(
 		}
 		nextPageFetchInFlight = true;
 		try {
-			return await mediaQuery.fetchNextPage();
+			return await mediaQuery.fetchNextPage({ cancelRefetch: false });
 		} finally {
 			nextPageFetchInFlight = false;
 		}
@@ -331,7 +331,8 @@ export function useSourceMediaPage(
 					if (
 						entries[0].isIntersecting &&
 						mediaQuery.hasNextPage &&
-						!mediaQuery.isFetchingNextPage
+						!mediaQuery.isFetchingNextPage &&
+						!mediaQuery.isFetchNextPageError
 					) {
 						void fetchNextPage();
 					}

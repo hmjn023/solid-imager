@@ -36,6 +36,15 @@ fn validate_x_verification_url(raw: &str) -> Result<(), String> {
 #[tauri::command]
 async fn open_x_verification_profile(url: String) -> Result<(), String> {
 	validate_x_verification_url(&url)?;
+	open_browser(url).await
+}
+
+#[tauri::command]
+async fn open_pixiv_login() -> Result<(), String> {
+	open_browser("https://accounts.pixiv.net/login".to_string()).await
+}
+
+async fn open_browser(url: String) -> Result<(), String> {
 	tauri::async_runtime::spawn_blocking(move || {
 		#[cfg(target_os = "windows")]
 		let mut command = {
@@ -99,7 +108,8 @@ pub fn run() {
 		.plugin(tauri_plugin_store::Builder::default().build())
 		.invoke_handler(tauri::generate_handler![
 			remove_sqlite_database,
-			open_x_verification_profile
+			open_x_verification_profile,
+			open_pixiv_login
 		])
 		.run(tauri::generate_context!())
 		.expect("error while running tauri application");

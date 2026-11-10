@@ -1,0 +1,4 @@
+[[permission]]
+identifier = "allow-open-pixiv-login"
+description = "Opens the official pixiv login page in the default browser."
+commands.allow = ["open_pixiv_login"]

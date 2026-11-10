@@ -51,7 +51,8 @@ const shouldStartTauriFixture =
 		: playwrightArguments.some(
 				(value) =>
 					value.includes("tauri-migration.spec.ts") ||
-					value.includes("search-workspace.spec.ts"),
+					value.includes("search-workspace.spec.ts") ||
+                value.includes("pixiv.responsive.spec.ts") || value.includes("danbooru.responsive.spec.ts"),
 			) ||
 			!playwrightArguments.some((value) =>
 				/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(value),
@@ -91,7 +92,12 @@ export default defineConfig({
 	projects: [
 		{
 			name: "tauri",
-			testMatch: ["**/tauri-migration.spec.ts", "**/search-workspace.spec.ts"],
+			testMatch: [
+				"**/tauri-migration.spec.ts",
+				"**/search-workspace.spec.ts",
+				"**/danbooru.responsive.spec.ts",
+                "**/pixiv.responsive.spec.ts",
+			],
 			use: {
 				...devices["Desktop Chrome"],
 				baseURL: resolvedTauriBaseURL,

@@ -264,6 +264,54 @@ const restorationCases = [
 	},
 ] as const;
 for (const restorationCase of restorationCases) {
+	test(`${restorationCase.name} loads short nonvirtual pages and retries a failed page`, async ({
+		page,
+		browserHealth,
+	}) => {
+		const successfulOffsets: number[] = [];
+		let allowRetry = false;
+		browserHealth.allowResponseFailure("/api/rpc/media/search");
+		browserHealth.allowConsole(
+			"Failed to load resource: the server responded with a status of 503",
+		);
+		await page.route(searchEndpoint, async (route) => {
+			const body = route.request().postDataJSON();
+			const params = body.json.params;
+			const offset = params.offset ?? 0;
+			if (offset === 4 && !allowRetry) {
+				await route.fulfill({ status: 503, body: "Unavailable" });
+				return;
+			}
+			successfulOffsets.push(offset);
+			const response = await route.fetch({
+				postData: {
+					...body,
+					json: {
+						...body.json,
+						params: { ...params, limit: Math.max(1, Math.min(4, 9 - offset)) },
+					},
+				},
+			});
+			const envelope = await response.json();
+			await route.fulfill({
+				response,
+				json: { ...envelope, json: { ...envelope.json, total: 9 } },
+			});
+		});
+		await page.goto(restorationCase.entryPath);
+		const scroller = page.locator(restorationCase.scrollerSelector);
+		const tiles = scroller.locator("[data-media-grid] [data-media-id]");
+		await expect(tiles).toHaveCount(4);
+		const retry = scroller.getByRole("button", {
+			name: "追加の読み込みを再試行",
+		});
+		await expect(retry).toBeVisible();
+		allowRetry = true;
+		await retry.click();
+		await expect(tiles).toHaveCount(9);
+		await expect(scroller.getByTestId("media-load-more-sentinel")).toBeEmpty();
+		expect(successfulOffsets).toEqual([0, 4, 8]);
+	});
 	for (const returnMethod of ["browser", "ui"] as const) {
 		test(`${restorationCase.name} keeps its restored scroller mounted during a fast page fetch via ${returnMethod} back`, async ({
 			page,
