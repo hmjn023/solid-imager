@@ -168,59 +168,71 @@ describe("pending monitor requests", () => {
 		vi.mocked(FileWatcherManager.start).mockResolvedValue(true);
 	});
 
-	it("buffers additions during the scan and deduplicates them against its committed registrations", async () => {
-		const item = source("buffered-events");
-		vi.mocked(DrizzleSourceRepository.findById).mockResolvedValue(item);
-		const scanning = Promise.withResolvers<void>();
-		const finish = Promise.withResolvers<void>();
-		vi.mocked(DirectorySyncService.syncMediaSource).mockImplementationOnce(
-			async () => {
-				scanning.resolve();
-				await finish.promise;
-				return {
-					sourceId: item.id,
-					success: true,
-					added: 1,
-					deleted: 0,
-					failed: 0,
-				};
-			},
-		);
-		const starting = FileWatcherService.startMonitoring(item.id);
-		await scanning.promise;
-		const callbacks = vi.mocked(FileWatcherManager.start).mock.calls[0][2];
-		await callbacks.onAdd("scan-registered.png");
-		await callbacks.onAdd("late.png");
-		expect(MediaProcessingService.registerAndProcess).not.toHaveBeenCalled();
-		vi.mocked(MediaRepository.findByPath)
-			.mockResolvedValueOnce({
-				id: "existing",
-				mediaSourceId: item.id,
-				fileName: "scan-registered.png",
-				filePath: "scan-registered.png",
-				mediaType: "image",
-				width: 1,
-				height: 1,
-				fileSize: 1,
-				description: null,
-				createdAt: new Date(),
-				modifiedAt: new Date(),
-				indexedAt: new Date(),
-				status: "active",
-			})
-			.mockResolvedValue(null);
-		finish.resolve();
-		await starting;
-		expect(
-			MediaProcessingService.registerAndProcess,
-		).toHaveBeenCalledExactlyOnceWith(item.id, "late.png");
-		await callbacks.onAdd("live.png");
-		expect(MediaProcessingService.registerAndProcess).toHaveBeenLastCalledWith(
-			item.id,
-			"live.png",
-		);
-		await FileWatcherService.stopMonitoring(item.id);
-	});
+	it.each(["complete", "partial"] as const)(
+		"replays buffered additions and deduplicates committed registrations after a %s sync",
+		async (outcome) => {
+			const item = source("buffered-events");
+			vi.mocked(DrizzleSourceRepository.findById).mockResolvedValue(item);
+			const scanning = Promise.withResolvers<void>();
+			const finish = Promise.withResolvers<void>();
+			vi.mocked(DirectorySyncService.syncMediaSource).mockImplementationOnce(
+				async () => {
+					scanning.resolve();
+					await finish.promise;
+					if (outcome === "partial")
+						return {
+							sourceId: item.id,
+							success: false,
+							failureKind: "partial",
+							error: "Directory sync failed",
+							added: 1,
+							deleted: 0,
+							failed: 1,
+						};
+					return {
+						sourceId: item.id,
+						success: true,
+						added: 1,
+						deleted: 0,
+						failed: 0,
+					};
+				},
+			);
+			const starting = FileWatcherService.startMonitoring(item.id);
+			await scanning.promise;
+			const callbacks = vi.mocked(FileWatcherManager.start).mock.calls[0][2];
+			await callbacks.onAdd("scan-registered.png");
+			await callbacks.onAdd("late.png");
+			expect(MediaProcessingService.registerAndProcess).not.toHaveBeenCalled();
+			vi.mocked(MediaRepository.findByPath)
+				.mockResolvedValueOnce({
+					id: "existing",
+					mediaSourceId: item.id,
+					fileName: "scan-registered.png",
+					filePath: "scan-registered.png",
+					mediaType: "image",
+					width: 1,
+					height: 1,
+					fileSize: 1,
+					description: null,
+					createdAt: new Date(),
+					modifiedAt: new Date(),
+					indexedAt: new Date(),
+					status: "active",
+				})
+				.mockResolvedValue(null);
+			finish.resolve();
+			await starting;
+			expect(
+				MediaProcessingService.registerAndProcess,
+			).toHaveBeenCalledExactlyOnceWith(item.id, "late.png");
+			await callbacks.onAdd("live.png");
+			expect(
+				MediaProcessingService.registerAndProcess,
+			).toHaveBeenLastCalledWith(item.id, "live.png");
+			await FileWatcherService.stopMonitoring(item.id);
+		},
+	);
 
 	it.each(["result", "throw"])(
 		"closes a prepared watcher and discards events when sync fails via %s",
@@ -236,6 +248,7 @@ describe("pending monitor requests", () => {
 					return {
 						sourceId: item.id,
 						success: false,
+						failureKind: "fatal",
 						added: 0,
 						deleted: 0,
 						failed: 1,

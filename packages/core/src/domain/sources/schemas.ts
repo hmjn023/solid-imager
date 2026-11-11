@@ -65,6 +65,9 @@ export const directorySyncResultSchema = z.discriminatedUnion("success", [
 	directorySyncCountsSchema.extend({
 		success: z.literal(false),
 		error: z.string(),
+		// Partial: traversal finished and its outcome was saved; only individual
+		// files failed. Fatal: synchronization could not be safely initialized/finalized.
+		failureKind: z.enum(["partial", "fatal"]),
 	}),
 ]);
 export type DirectorySyncResult = z.infer<typeof directorySyncResultSchema>;

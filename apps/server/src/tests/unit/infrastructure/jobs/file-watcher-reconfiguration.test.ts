@@ -165,6 +165,54 @@ function holdOldScan() {
 }
 
 describe("real sync and watcher preparation after path edits", () => {
+	it.each(["registration", "deletion"] as const)(
+		"keeps monitoring later additions after one initial %s fails",
+		async (failure) => {
+			if (failure === "registration") {
+				await fs.writeFile(path.join(oldPath, "broken.png"), "broken fixture");
+				const register = vi
+					.mocked(MediaProcessingService.registerAndProcess)
+					.getMockImplementation();
+				if (!register) throw new Error("Registration fixture is missing");
+				vi.mocked(MediaProcessingService.registerAndProcess).mockImplementation(
+					async (id, filePath, ...args) => {
+						if (filePath === "broken.png") throw new Error("Invalid image");
+						return register(id, filePath, ...args);
+					},
+				);
+			} else {
+				registered.push(mediaRecord(sourceId, "already-removed.png"));
+				vi.mocked(MediaRepository.delete).mockRejectedValueOnce(
+					new Error("Per-file deletion failure"),
+				);
+			}
+			const sync = vi.spyOn(DirectorySyncService, "syncMediaSource");
+			await FileWatcherService.startMonitoring(sourceId);
+			await expect(sync.mock.results[0].value).resolves.toMatchObject({
+				success: false,
+				failureKind: "partial",
+				failed: 1,
+			});
+			expect(currentSource?.syncStatus).toBe("error");
+			const generation = vi.mocked(FileWatcherManager.start).mock.calls[0]?.[3];
+			if (generation === undefined) throw new Error("Watcher did not start");
+			expect(FileWatcherManager.isCurrentStart(sourceId, generation)).toBe(
+				true,
+			);
+			await fs.writeFile(
+				path.join(oldPath, "healthy-later.png"),
+				"healthy fixture",
+			);
+			await vi.waitFor(
+				() =>
+					expect(registered.map((item) => item.filePath)).toContain(
+						"healthy-later.png",
+					),
+				{ timeout: 5000 },
+			);
+		},
+	);
+
 	it("captures files added or removed immediately after the initial scan using a real watcher", async () => {
 		await fs.writeFile(path.join(oldPath, "removed.png"), "fixture");
 		registered.push(mediaRecord(sourceId, "removed.png"));

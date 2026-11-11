@@ -210,6 +210,7 @@ export const sourcesRouter = os.router({
 					deleted: 0,
 					failed: 1,
 					success: false,
+					failureKind: "fatal",
 					error: "Directory sync failed",
 				});
 			}

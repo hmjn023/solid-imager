@@ -95,16 +95,24 @@ async function setSyncStatus(
 
 async function finishSync(
 	result: SyncCounts,
-	error?: string,
+	failure?: Pick<
+		Extract<DirectorySyncResult, { success: false }>,
+		"failureKind" | "error"
+	>,
 ): Promise<DirectorySyncResult> {
-	const outcome: DirectorySyncResult = error
-		? { ...result, failed: Math.max(1, result.failed), success: false, error }
+	const outcome: DirectorySyncResult = failure
+		? {
+				...result,
+				failed: Math.max(1, result.failed),
+				success: false,
+				...failure,
+			}
 		: { ...result, success: true };
 	try {
 		await setSyncStatus(
 			result.sourceId,
 			outcome.success ? "idle" : "error",
-			error,
+			failure?.error,
 		);
 	} catch (persistError) {
 		// Keep the last committed state and emit no terminal event for an unsaved result.
@@ -116,6 +124,7 @@ async function finishSync(
 			...result,
 			failed: Math.max(1, result.failed),
 			success: false,
+			failureKind: "fatal",
 			error: "Failed to persist directory sync result",
 		};
 	}
@@ -237,6 +246,7 @@ export const DirectorySyncService = {
 			deleted: 0,
 			failed: 1,
 			success: false,
+			failureKind: "fatal",
 			error: "Monitoring preparation was superseded",
 		});
 		if (monitoringScope && !monitoringScope.isCurrent()) return superseded();
@@ -269,6 +279,7 @@ export const DirectorySyncService = {
 						...result,
 						failed: 1,
 						success: false,
+						failureKind: "fatal",
 						error: source
 							? "Source type does not support directory sync"
 							: "Source not found",
@@ -292,7 +303,10 @@ export const DirectorySyncService = {
 						{ mediaSourceId, basePath },
 						"Base path does not exist or is not accessible during sync",
 					);
-					return finishSync(result, "Source path is not accessible");
+					return finishSync(result, {
+						failureKind: "fatal",
+						error: "Source path is not accessible",
+					});
 				}
 
 				logger.info(
@@ -368,7 +382,10 @@ export const DirectorySyncService = {
 						{ mediaSourceId, failures, syncResult: result },
 						"Directory sync partially failed",
 					);
-					return finishSync(result, PublicDirectorySyncFailureMessage);
+					return finishSync(result, {
+						failureKind: "partial",
+						error: PublicDirectorySyncFailureMessage,
+					});
 				}
 				logger.info(
 					{ mediaSourceId, syncResult: result },
@@ -380,7 +397,10 @@ export const DirectorySyncService = {
 					{ err: error, mediaSourceId },
 					"Error during directory sync",
 				);
-				return finishSync(result, PublicDirectorySyncFailureMessage);
+				return finishSync(result, {
+					failureKind: "fatal",
+					error: PublicDirectorySyncFailureMessage,
+				});
 			}
 		})();
 

@@ -52,30 +52,38 @@ const successful = (id: string) => ({
 	deleted: 0,
 	failed: 0,
 });
-const failed = (id: string) => ({
+const failed = (id: string, failureKind: "partial" | "fatal" = "fatal") => ({
 	id,
 	sourceId: id,
 	success: false as const,
+	failureKind,
 	added: 1,
 	deleted: 0,
 	failed: 1,
-	error: "Source path is not accessible",
+	error:
+		failureKind === "partial"
+			? "Directory sync failed"
+			: "Source path is not accessible",
 });
 
 describe("source synchronization feedback", () => {
-	it("reports a fulfilled RPC's failed result instead of showing success", async () => {
-		const { actions, page, invalidate } = setup();
-		vi.mocked(actions.syncMediaSources).mockResolvedValueOnce({
-			results: [failed("one")],
-		});
-		await page.handleSyncSource(source("one"));
-		expect(toast.success).not.toHaveBeenCalled();
-		expect(toast.error).toHaveBeenCalledExactlyOnceWith(
-			"Failed to sync one: Source path is not accessible",
-		);
-		expect(invalidate).toHaveBeenCalledOnce();
-		expect(page.isSyncing()).toBe(false);
-	});
+	it.each(["partial", "fatal"] as const)(
+		"reports a fulfilled RPC's %s result instead of showing success",
+		async (failureKind) => {
+			const { actions, page, invalidate } = setup();
+			const outcome = failed("one", failureKind);
+			vi.mocked(actions.syncMediaSources).mockResolvedValueOnce({
+				results: [outcome],
+			});
+			await page.handleSyncSource(source("one"));
+			expect(toast.success).not.toHaveBeenCalled();
+			expect(toast.error).toHaveBeenCalledExactlyOnceWith(
+				`Failed to sync one: ${outcome.error}`,
+			);
+			expect(invalidate).toHaveBeenCalledOnce();
+			expect(page.isSyncing()).toBe(false);
+		},
+	);
 
 	it("reports how many sources failed after a partially successful batch", async () => {
 		const { actions, page } = setup();

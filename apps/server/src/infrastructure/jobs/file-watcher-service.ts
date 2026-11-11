@@ -227,7 +227,10 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 			basePath,
 			isCurrent,
 		});
-		if (!result.success || !isCurrent()) return;
+		// A completed scan with per-file errors still provides a baseline for
+		// monitoring. Keep its error status/counts while replaying queued events.
+		if (!isCurrent() || (!result.success && result.failureKind !== "partial"))
+			return;
 		for (let index = 0; index < pendingEvents.length; index++) {
 			if (!isCurrent()) return;
 			await pendingEvents[index]();

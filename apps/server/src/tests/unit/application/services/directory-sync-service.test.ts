@@ -382,19 +382,36 @@ describe("large source sync and recovery", () => {
 	});
 
 	it("does not delete existing records when a subtree cannot be fully scanned", async () => {
+		vi.mocked(MediaProcessingService.registerAndProcess).mockImplementation(
+			async (id, file) => mediaRecord(id, file),
+		);
 		vi.mocked(MediaRepository.findAllPathsBySourceId).mockResolvedValueOnce([
 			{ id: "existing", filePath: "sub/existing.jpg" },
 		]);
 		vi.mocked(fs.opendir)
 			.mockResolvedValueOnce({
 				async *[Symbol.asyncIterator]() {
+					// Some work can commit before traversal encounters an unreadable subtree.
+					for (let index = 0; index < 5; index++) {
+						yield {
+							name: `healthy-${index}.jpg`,
+							isDirectory: () => false,
+							isFile: () => true,
+						};
+					}
 					yield { name: "sub", isDirectory: () => true, isFile: () => false };
 				},
 			} as Awaited<ReturnType<typeof fs.opendir>>)
 			.mockRejectedValueOnce(new Error("EACCES"));
 		const { DirectorySyncService, getSourceSyncState } =
 			await import("~/infrastructure/services/directory-sync-service");
-		await DirectorySyncService.syncMediaSource("unreadable-source");
+		await expect(
+			DirectorySyncService.syncMediaSource("unreadable-source"),
+		).resolves.toMatchObject({
+			success: false,
+			failureKind: "fatal",
+			added: 5,
+		});
 		expect(MediaRepository.delete).not.toHaveBeenCalled();
 		expect(getSourceSyncState("unreadable-source")).toBe("error");
 	});
@@ -433,6 +450,7 @@ describe("directory sync final outcomes", () => {
 		expect(result).toEqual({
 			sourceId: "unavailable-outcome",
 			success: false,
+			failureKind: "fatal",
 			added: 0,
 			deleted: 0,
 			failed: 1,
@@ -466,6 +484,7 @@ describe("directory sync final outcomes", () => {
 			DirectorySyncService.syncMediaSource("partial-outcome"),
 		).resolves.toMatchObject({
 			success: false,
+			failureKind: "partial",
 			added: 1,
 			deleted: 0,
 			failed: 1,
@@ -491,32 +510,43 @@ describe("directory sync final outcomes", () => {
 			DirectorySyncService.syncMediaSource("unsaved-start"),
 		).resolves.toMatchObject({
 			success: false,
+			failureKind: "fatal",
 			error: "Failed to persist directory sync result",
 		});
 		expect(RealtimeEventBus.publishSource).not.toHaveBeenCalled();
 		expect(fs.opendir).not.toHaveBeenCalled();
 	});
 
-	it("keeps the last committed syncing state when the terminal write fails", async () => {
-		vi.mocked(DrizzleSourceRepository.update)
-			.mockResolvedValueOnce(undefined as never)
-			.mockRejectedValueOnce(new Error("database unavailable"));
-		const { DirectorySyncService, getSourceSyncState } =
-			await import("~/infrastructure/services/directory-sync-service");
-		await expect(
-			DirectorySyncService.syncMediaSource("unsaved-finish"),
-		).resolves.toMatchObject({
-			success: false,
-			error: "Failed to persist directory sync result",
-		});
-		expect(RealtimeEventBus.publishSource).toHaveBeenCalledTimes(1);
-		expect(RealtimeEventBus.publishSource).toHaveBeenLastCalledWith(
-			"unsaved-finish",
-			"source-sync-status",
-			expect.objectContaining({ status: "syncing" }),
-		);
-		expect(getSourceSyncState("unsaved-finish")).toBe("syncing");
-	});
+	it.each(["complete", "partial"] as const)(
+		"reports a fatal outcome when persisting a %s scan result fails",
+		async (outcome) => {
+			if (outcome === "partial") {
+				vi.mocked(fs.opendir).mockResolvedValueOnce(directoryWithFiles(2));
+				vi.mocked(
+					MediaProcessingService.registerAndProcess,
+				).mockRejectedValueOnce(new Error("Invalid image"));
+			}
+			vi.mocked(DrizzleSourceRepository.update)
+				.mockResolvedValueOnce(undefined as never)
+				.mockRejectedValueOnce(new Error("database unavailable"));
+			const { DirectorySyncService, getSourceSyncState } =
+				await import("~/infrastructure/services/directory-sync-service");
+			await expect(
+				DirectorySyncService.syncMediaSource("unsaved-finish"),
+			).resolves.toMatchObject({
+				success: false,
+				failureKind: "fatal",
+				error: "Failed to persist directory sync result",
+			});
+			expect(RealtimeEventBus.publishSource).toHaveBeenCalledTimes(1);
+			expect(RealtimeEventBus.publishSource).toHaveBeenLastCalledWith(
+				"unsaved-finish",
+				"source-sync-status",
+				expect.objectContaining({ status: "syncing" }),
+			);
+			expect(getSourceSyncState("unsaved-finish")).toBe("syncing");
+		},
+	);
 
 	it("does not turn a saved successful sync into failure when notification delivery throws", async () => {
 		vi.mocked(RealtimeEventBus.publishSource).mockImplementationOnce(() => {

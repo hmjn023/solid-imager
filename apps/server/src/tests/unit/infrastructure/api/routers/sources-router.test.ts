@@ -29,46 +29,51 @@ const second = "22222222-2222-4222-8222-222222222222";
 beforeEach(() => vi.clearAllMocks());
 
 describe("source sync RPC outcomes", () => {
-	it("preserves failure outcomes and partial counts from a fulfilled scan", async () => {
-		vi.mocked(DirectorySyncService.syncMediaSource)
-			.mockResolvedValueOnce({
-				sourceId: first,
-				success: false,
-				added: 2,
-				deleted: 1,
-				failed: 1,
-				error: "Directory sync failed",
-			})
-			.mockResolvedValueOnce({
-				sourceId: second,
-				success: true,
-				added: 3,
-				deleted: 0,
-				failed: 0,
+	it.each(["partial", "fatal"] as const)(
+		"preserves %s failure outcomes and committed counts from a fulfilled scan",
+		async (failureKind) => {
+			vi.mocked(DirectorySyncService.syncMediaSource)
+				.mockResolvedValueOnce({
+					sourceId: first,
+					success: false,
+					failureKind,
+					added: 2,
+					deleted: 1,
+					failed: 1,
+					error: "Directory sync failed",
+				})
+				.mockResolvedValueOnce({
+					sourceId: second,
+					success: true,
+					added: 3,
+					deleted: 0,
+					failed: 0,
+				});
+			const { results } = await call(sourcesRouter.sync, {
+				ids: [first, second],
 			});
-		const { results } = await call(sourcesRouter.sync, {
-			ids: [first, second],
-		});
-		expect(results).toEqual([
-			{
-				id: first,
-				sourceId: first,
-				success: false,
-				added: 2,
-				deleted: 1,
-				failed: 1,
-				error: "Directory sync failed",
-			},
-			{
-				id: second,
-				sourceId: second,
-				success: true,
-				added: 3,
-				deleted: 0,
-				failed: 0,
-			},
-		]);
-	});
+			expect(results).toEqual([
+				{
+					id: first,
+					sourceId: first,
+					success: false,
+					failureKind,
+					added: 2,
+					deleted: 1,
+					failed: 1,
+					error: "Directory sync failed",
+				},
+				{
+					id: second,
+					sourceId: second,
+					success: true,
+					added: 3,
+					deleted: 0,
+					failed: 0,
+				},
+			]);
+		},
+	);
 
 	it("does not expose internal paths or credentials when a scan unexpectedly rejects", async () => {
 		vi.mocked(DirectorySyncService.syncMediaSource).mockRejectedValueOnce(
@@ -80,6 +85,7 @@ describe("source sync RPC outcomes", () => {
 					id: first,
 					sourceId: first,
 					success: false,
+					failureKind: "fatal",
 					added: 0,
 					deleted: 0,
 					failed: 1,
