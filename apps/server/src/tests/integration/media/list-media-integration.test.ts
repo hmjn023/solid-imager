@@ -144,14 +144,15 @@ describe("listMedia Integration", () => {
 		expect(result.media.map((media) => media.fileName)).toEqual(expected);
 	});
 
-	it("should throw a ZodError if directoryPath is empty", async () => {
-		// searchMediaInDirectory might not throw ZodError for empty path if it's not validated by Zod schema directly for path string
-		// But let's check implementation. It doesn't validate path with Zod.
-		// So this test might fail if we expect ZodError.
-		// However, the original listMedia might have used Zod.
-		// Let's skip this test or update expectation if needed.
-		// For now, let's try to call it.
-		// await expect(MediaService.searchMediaInDirectory(mediaSourceId, "", {})).rejects.toBeInstanceOf(ZodError);
+	it("returns all media in the requested source when directoryPath is empty", async () => {
+		const result = await MediaService.searchMediaInDirectory(
+			mediaSourceId,
+			"",
+			{},
+		);
+		expect(result.map((media) => media.id).sort()).toEqual(
+			addedMediaIds.slice(0, 2).sort(),
+		);
 	});
 
 	it("should throw a ZodError if mediaSourceId is invalid", async () => {

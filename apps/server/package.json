@@ -24,7 +24,7 @@
     "format": "oxfmt --write ./src",
     "check": "oxlint --fix ./src && oxfmt --write ./src",
     "test": "bun run test:unit && bun run test:integration && bun run test:e2e:components && bun run test:e2e",
-    "test:unit": "vitest run -c vitest.unit.config.ts",
+    "test:unit": "vitest run -c vitest.unit.config.ts && bun run test:x-activity",
     "test:integration": "vitest run -c vitest.integration.config.ts",
     "test:e2e": "bun scripts/run-e2e.ts --mode=all",
     "test:e2e:full": "bun scripts/run-e2e.ts --mode=all --full-dev",
@@ -36,7 +36,8 @@
     "test:e2e:playwright": "playwright test",
     "typecheck": "sh -c 'tsc --noEmit --project ./tsconfig.json'",
     "docs:generate": "typedoc",
-    "test:e2e:components": "bun scripts/run-e2e.ts --mode=components"
+    "test:e2e:components": "bun scripts/run-e2e.ts --mode=components",
+    "test:x-activity": "bun test scripts/x-activity"
   },
   "dependencies": {
     "@electric-sql/pglite": "0.5.11",
