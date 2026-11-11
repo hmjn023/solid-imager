@@ -108,7 +108,6 @@ export function BatchToolPanel(props: {
 						</div>
 					</Show>
 					<div class="space-y-1.5">
-						<Label>Target source</Label>
 						<SourceSelect
 							manager={props.manager}
 							onChange={props.manager.setSelectedSourceId}

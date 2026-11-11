@@ -3,6 +3,7 @@ import {
 	Select,
 	SelectContent,
 	SelectItem,
+	SelectLabel,
 	SelectTrigger,
 	SelectValue,
 } from "../../select";
@@ -16,6 +17,7 @@ export function SourceSelect(props: {
 	const placeholder = () => props.placeholder ?? "All sources";
 	return (
 		<Select
+			class="space-y-1.5"
 			itemComponent={(selectProps) => (
 				<SelectItem item={selectProps.item}>
 					{selectProps.item.rawValue.name}
@@ -32,6 +34,7 @@ export function SourceSelect(props: {
 					: null
 			}
 		>
+			<SelectLabel>Target source</SelectLabel>
 			<SelectTrigger class="w-full bg-card">
 				<SelectValue<unknown>>
 					{(state) => {

@@ -1,11 +1,11 @@
 import { createSignal, For, Show } from "solid-js";
 import { Button } from "../../button";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
-import { Label } from "../../label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
+	SelectLabel,
 	SelectTrigger,
 	SelectValue,
 } from "../../select";
@@ -39,8 +39,8 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 			<section class="border-border border-y bg-card py-4 sm:rounded-md sm:border sm:p-4">
 				<div class="grid gap-4 lg:grid-cols-content-action lg:items-end">
 					<div class="space-y-1.5">
-						<Label>Target source</Label>
 						<Select
+							class="space-y-1.5"
 							itemComponent={(selectProps) => (
 								<SelectItem item={selectProps.item}>
 									{selectProps.item.rawValue.name}
@@ -65,6 +65,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 									: ALL_SOURCES_OPTION
 							}
 						>
+							<SelectLabel>Target source</SelectLabel>
 							<SelectTrigger class="w-full bg-card">
 								<SelectValue<unknown>>
 									{(state) => {

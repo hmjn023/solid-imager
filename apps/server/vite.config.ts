@@ -152,6 +152,7 @@ const loadDevMediaFileHandler = async () => {
   const [
     { services },
     { initServices },
+    { createMediaFileResponse },
   ] = await Promise.all([
     runtimeImport<typeof import("./src/infrastructure/service-registry")>(
       serverModuleUrl("src/infrastructure/service-registry.ts"),
@@ -159,9 +160,12 @@ const loadDevMediaFileHandler = async () => {
     runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
       serverModuleUrl("src/infrastructure/bootstrap.ts"),
     ),
+    runtimeImport<typeof import("./src/infrastructure/http/media-file-response")>(
+      serverModuleUrl("src/infrastructure/http/media-file-response.ts"),
+    ),
   ]);
 
-  return async (mediaSourceId: string, mediaId: string): Promise<Response> => {
+  return async (request: Request, mediaSourceId: string, mediaId: string): Promise<Response> => {
     initServices();
     const media = await services.getMediaRepository().findById(mediaId);
     if (!media || media.mediaSourceId !== mediaSourceId) {
@@ -182,12 +186,7 @@ const loadDevMediaFileHandler = async () => {
       return new Response("File not found on disk", { status: 404 });
     }
 
-    return new Response(file, {
-      headers: {
-        "Cache-Control": "no-store",
-        "Content-Type": getContentTypeFromExtension(media.fileName),
-      },
-    });
+    return createMediaFileResponse(request, file, getContentTypeFromExtension(media.fileName));
   };
 };
 
@@ -203,25 +202,23 @@ const devMediaFileMiddlewarePlugin = (): Plugin => ({
   apply: "serve",
   configureServer(server) {
     if (!isE2e) return;
+    const mediaPathPattern = /^\/api\/sources\/([^/]+)\/([^/]+)$/;
+    const mediaMiddleware = toNodeHandler(async (request) => {
+      const match = mediaPathPattern.exec(new URL(request.url).pathname);
+      if (!match) return new Response("Media not found", { status: 404 });
+      return (await getDevMediaFileHandler())(request, match[1], match[2]);
+    });
     server.middlewares.use(async (req, res, next) => {
       const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
-      const match =
-        /^\/api\/sources\/([^/]+)\/([^/]+)$/.exec(pathname);
-      if (!match) {
+      if ((req.method !== "GET" && req.method !== "HEAD") || !mediaPathPattern.test(pathname)) {
         next();
         return;
       }
-
       try {
-        const response = await (
-          await getDevMediaFileHandler()
-        )(match[1], match[2]);
-        res.statusCode = response.status;
-        response.headers.forEach((value, key) => res.setHeader(key, value));
-        res.end(Buffer.from(await response.arrayBuffer()));
+        // Keep ranges and backpressure intact instead of buffering the complete file.
+        await mediaMiddleware(req, res);
       } catch (error) {
-        res.statusCode = 500;
-        res.end(error instanceof Error ? error.message : "Media request failed");
+        next(error);
       }
     });
   },
