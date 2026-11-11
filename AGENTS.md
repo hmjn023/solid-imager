@@ -2,7 +2,7 @@
 
 ## プロジェクト概要
 
-このプロジェクトは、AIによって生成された画像などのメディアを管理する包括的なメディア管理システムです。ファイルの整理、検索、配信を行うためのバックエンドAPIとWebフロントエンドを提供します。
+AI生成画像などを整理・検索・配信するメディア管理システム。
 
 ## 主要ドキュメント
 
@@ -12,6 +12,9 @@
 - **Tauri SPA:** [`./apps/tauri/src/`](./apps/tauri/src/)、Rust側は [`./apps/tauri/src-tauri/`](./apps/tauri/src-tauri/)
 - **Web UI実装状況:** [`./REPORT.md`](./REPORT.md)
 - **DBスキーマ:** `packages/db/src/schema.ts` (`apps/server/src/infrastructure/db/schema.ts` は再 export)
+- **開発・管理スクリプト:** [docs/development.md](docs/development.md)（セットアップ、Bun実行、サービス初期化、パス解決）
+- **CLI開発:** [apps/cli/README.md](apps/cli/README.md)
+- **ブラウザ拡張開発:** [apps/xtracter/README.md](apps/xtracter/README.md)
 
 ## 開発ルール & 内部構成
 
@@ -39,59 +42,42 @@
 
 - ドメインごとにディレクトリを分離（`media`, `tags`, `characters`, `ips`, `authors` 等）。
 - 各ドメイン配下に `schemas.ts` を配置し、Zodスキーマを定義する。
+- APIやドメイン境界で共有する型はZod schemaから `z.infer` で導出し、同じデータ構造の型を別に手書きしない。
 
 ### パッケージの公開 API
 
 - すべてのワークスペースは内部利用とし、`package.json` に `"private": true` を設定する。
-- パッケージをまたぐ import は各 `package.json` の `exports` に列挙した入口を使う。TypeScript・Vite・Vitest は workspace のパッケージ解決を共用する。パッケージ内の実装同士は相対 import で参照する。
-- server・CLI・Tauri・ブラウザ拡張は実行用アプリとして扱い、共有機能は `packages/*` に置く。ルーター実装は server 内で使い、クライアントは `@solid-imager/core/contract` の型を使う。
-- ドメイン型・schema・repository port は `@solid-imager/core/media` や `@solid-imager/core/search` などの機能別入口から取得する。API 契約は `@solid-imager/core/contract`、HTTP パス定数は `@solid-imager/core/http` にある。
-- メディアのユースケースには必要な repository 操作だけを渡す。旧 import の移行先と用途別 port は[パッケージ境界の棚卸し](docs/architecture/workspace-public-api.md)にまとめている。
-- server は `@solid-imager/application/media` などの factory に外部依存を渡す。DB repository の組み立ては `@solid-imager/db` の `createRepositories`、Drizzle のテーブル定義は `@solid-imager/db/schema` から利用する。
-- Web と Tauri の Tailwind 設定は `@solid-imager/ui/tailwind-preset` を import する。共有部品のクラス探索範囲は UI の `theme.css` が指定する。
-- `bun run lint:boundaries` は、設定・スクリプト・テストを含むワークスペースの JS/TS で、相対パスの境界越え、未公開の入口、未宣言のワークスペース依存を検出する。
-- Web と Tauri は `@solid-imager/ui/search/state` の共有状態や `@solid-imager/ui/screens/jobs` の画面を個別に読み込む。画面と共有状態の入口は分け、状態だけを使う側に画面コンポーネントを読み込ませない。
+- 境界をまたぐimportは `package.json` の `exports`、パッケージ内は相対import。TypeScript・Vite・Vitestでworkspace解決を共用する。
+- 実行用アプリは `apps/*`、共有機能は `packages/*`。router実装はserver内、クライアントの契約型は `@solid-imager/core/contract` から取得する。
+- ドメイン型・schema・portは `@solid-imager/core/media` など機能別入口、HTTPパスは `@solid-imager/core/http` を使う。
+- ユースケースへ必要なrepository操作だけを渡し、serverでapplication factoryに依存を注入する。用途別port・移行先は[パッケージ境界](docs/architecture/workspace-public-api.md)を参照。
+- DB組み立ては `@solid-imager/db` の `createRepositories`、テーブルは `@solid-imager/db/schema`。
+- Web/TauriのTailwindは `@solid-imager/ui/tailwind-preset` を使い、共有部品のクラス探索範囲は `theme.css` で指定する。
+- `bun run lint:boundaries` で設定・スクリプト・テストを含む境界越え・未公開入口・未宣言workspace依存を検出する。
+- 状態と画面の入口を分ける（例: `@solid-imager/ui/search/state`、`@solid-imager/ui/screens/jobs`）。状態だけの利用で画面を読み込ませない。
 
 ### アーキテクチャルール (Clean Architecture)
 
 - **依存方向:** `infrastructure` -> `application` -> `core` (Domain)。コアは他へ依存しない。
-- **リポジトリ層:** DB行を `as unknown as DomainModel` で飛ばさない。`packages/db/src/repositories/` の mapper に差分を集めると、DBスキーマ変更時の不整合を追いやすい。
-- **セキュリティ:** APIレスポンスに機密情報が入り得る場合は Safe DTO へマッピングする。公開可能な型を明示すると、将来フィールドが増えた時の漏えいを防ぎやすい。
-- **データベース:** 全テーブルUUID (v4)。中間テーブルは `media_{entity}` 命名。
-- **API:** oRPCを使用。スキーマ駆動開発を徹底する。
+- **リポジトリ層:** DB行は `packages/db/src/repositories/` のmapperで変換し、二重キャストで不整合を隠さない。
+- **セキュリティ:** 機密情報を含み得るエンティティは公開フィールドを明示したSafe DTOへ変換する。
+- **データベース:** エンティティIDのDB既定値はUUID v7。中間テーブルは `media_{entity}` 命名とし、複合PKは各schemaに従う。
 - **型安全性:** アプリケーション本体コードで `any`、不要な `unknown`、`as unknown as ...`、`as any` による型のごまかしは禁止。外部ライブラリ境界では公開型、型ガード、Zod schema、明示的 mapper を優先し、やむを得ない場合は最小スコープに限定して理由をコメントする。テストコードの mock では例外的に許容する。
 
-## スキル一覧
+## 共通の実装規約
 
-プロジェクト固有のスキルは `.agents/skills/` 配下に配置する。グローバル共有スキルはグローバルスキルディレクトリで管理する。
-
-| スキル名             | 説明                                                                               | ロード条件                                              |
-| -------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| `solid-imager`       | プロジェクト概要、セットアップ、コーディング規約                                   | 全体設計や作業開始時                                    |
-| `logging-rules`      | ロギング方針、Pino loggerの利用、アプリケーション・コア層でのILogger依存注入ルール | ログ出力の実装・変更、デバッグコードの整理時            |
-| `orpc-api`           | oRPC APIエンドポイント開発ワークフロー                                             | API実装・変更時                                         |
-| `database-schema`    | DBスキーマ変更・マイグレーション手順                                               | DBスキーマ変更時                                        |
-| `ai-service`         | Rust AIサービス連携                                                                | AI機能実装時                                            |
-| `browser-extension`  | apps/xtracterブラウザ拡張機能開発                                                  | 拡張機能変更時                                          |
-| `api-docs`           | OpenAPI仕様更新トリガー                                                            | API仕様更新時                                           |
-| `safe-dto`           | APIレスポンスのセキュリティ（Safe DTO）                                            | APIレスポンス実装時                                     |
-| `repository-rules`   | リポジトリ層ルール（明示的マッピング）                                             | リポジトリ実装時                                        |
-| `schema-driven-dev`  | ZodによるSchema-Driven Development                                                 | スキーマ定義時                                          |
-| `ui-components`      | solid-ui (shadcn/ui ポート) コンポーネント開発                                     | UIコンポーネント変更時                                  |
-| `package-management` | Bun/Nodeパッケージ追加・更新・削除                                                 | package.json・bun.lock変更時                            |
-| `cli`                | imager-cli コマンド開発                                                            | CLIコマンド追加・変更時                                 |
-| `tanstack-ssr`       | TanStack Start SSR、Selective SSR、hydration、loaderの診断と回帰防止               | F5・直接アクセス・Hydration Mismatch・SSR/CSR境界変更時 |
-| `tanstack-db`        | TanStack DBクライアントデータレイヤー（永続化、useLiveQuery、includes）            | クライアント側データレイヤー変更時                      |
-| `realtime-events`    | 型付きリアルタイムイベント、oRPC Event Iterator、pub/sub、再接続                   | SSE・イベント配信・購読・イベントschema変更時           |
-| `job-system`         | background job、worker、dispatch、AI concurrency、batch親子進捗                    | job type追加・非同期処理・batch操作変更時               |
-| `media-search`       | 検索schema、shared store、session persistence、preset、類似検索                    | 検索条件・mode・検索画面変更時                          |
-| `e2e-testing`        | 隔離された Playwright による dev/production E2E と SSR・非同期フロー検証          | Web E2E の追加・修正・検証時                            |
-| `run-scripts`        | サーバー等の管理スクリプト実行と Bun/TypeScript のパス解決                       | スクリプト追加・実行時                                  |
-| `pr-review`          | GitHub PR レビューコメントの取得・返信・解決                                   | PRレビュー対応時                                        |
-| `read-memories`      | 過去セッションログからプロジェクトの決定事項・未解決事項を検索                   | 過去の作業内容を確認する必要がある時                     |
+- 型だけのimportは `import type`。名前付きexportを使用し、default exportは避ける。
+- クラスの可視性は `private` / `protected` を使い、`#private` や明示的な `public` は使わない。再代入しないプロパティは `readonly`。
+- 型・クラスはUpperCamelCase、変数・関数はlowerCamelCase、グローバル定数はCONSTANT_CASE。識別子の先頭・末尾の `_` は避ける。
+- `var`、`namespace`、`const enum`、プリミティブのラッパーインスタンス、`eval` / `Function` は使わない。厳密等価比較を使い、意味のない `{}` 型は避ける。
+- 明白な型は推論を使い、オプショナル値は `?`、単純な配列は `T[]` を優先する。JSDocにTypeScriptと重複する型を書かない。
+- Bun固有APIはserver側で利用できる。ブラウザ・Tauri・共有パッケージではNode互換APIまたはWeb標準APIを優先する。
+- 通常のコード修正では開発サーバーを起動しない。UI・ブラウザ検証に必要な時は既存ポートを確認して起動する。
+- フォーマットは `.oxfmtrc.json`、lintは `.oxlintrc.json` を正本とし、クォートやインデントの規則を別に重複定義しない。
 
 ## Web toolchain
 
+- Web UI・CSS・クライアント側JSの実装前に、外部スキル `modern-web-guidance` で関連ガイドを検索・取得する。CLIは1.0.0以降を使い、導入・更新は [docs/development.md](docs/development.md#modern-web-guidance) を参照する。
 - Viteを開発サーバーとビルドに使用する。
 - Vitestをunit/integration testに使用する。
 - Oxlintをlint、Oxfmtをformatに使用する。Oxlintのtype-awareルールと`@shadcn/lint`を有効化する。

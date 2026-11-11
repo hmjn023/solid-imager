@@ -1,39 +1,30 @@
 ---
 name: database-schema
-description: Drizzle ORMを用いたデータベーススキーマの定義とマイグレーションの生成・適用。テーブル定義、インデックス、リレーション、'packages/db/src/schema.ts'、または db:generate/db:migrate 系コマンドを扱う際に使用する。
+description: DB schema・migration・repository・domain mapperを変更する時に使用する。repository単独の修正も対象。
 ---
 
-# Database Schema 変更スキル
+# Database Development
 
-## Working Rules
+- schema: `packages/db/src/schema.ts`。server側のschemaファイルは再export。
+- repository port: `packages/core/src/domain/repositories/`
+- DB実装・mapper: `packages/db/src/repositories/`
 
-### スキーマ変更手順
+## Schema変更
 
-1. `packages/db/src/schema.ts` を編集します。`apps/server/src/infrastructure/db/schema.ts` は再 export なので通常は直接編集しません。
-2. 新しいマイグレーションファイルを生成:
-   ```bash
-   bun --filter @solid-imager/server run db:generate
-   ```
-3. マイグレーションを適用:
-   ```bash
-   bun --filter @solid-imager/server run db:migrate
-   # PGliteを使う場合
-   DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
-   ```
-4. データベースの内容を確認:
-   ```bash
-   bun --filter @solid-imager/server run db:studio
-   ```
+schemaを編集し、migrationを生成・適用する。schemaと生成migrationは同じPRに含める。
 
-### 注意事項
+```bash
+bun --filter @solid-imager/server run db:generate
+bun --filter @solid-imager/server run db:migrate
+# PGliteの場合
+bun --filter @solid-imager/server run db:migrate:pglite
+# DB内容の確認
+bun --filter @solid-imager/server run db:studio
+```
 
-- スキーマ変更と生成されたマイグレーションは同じPRに含める。片方だけだと環境間でDB状態がずれるため。
-- repository 実装は `packages/db/src/repositories/`、domain port は `packages/core/src/domain/repositories/` にある。
+## Repository変更
 
-## Task Routing
-
-| ユーザーの意図                | やること                                                        |
-| ----------------------------- | --------------------------------------------------------------- |
-| テーブル追加・変更            | `packages/db/src/schema.ts` 編集 → `db:generate` → `db:migrate` |
-| DB内容の確認                  | `db:studio`                                                     |
-| マイグレーション適用 (PGlite) | `DB_HOST=pglite bun --filter @solid-imager/server run db:migrate` |
+- Core portに操作を定義し、DB実装からapplication/serverへ依存させない。
+- DB行はmapperで明示的に変換する。カラム名・nullable・JSON型とdomain schemaの差分を確認し、二重キャストで隠さない。
+- serverでの組み立ては `@solid-imager/db` の `createRepositories`、テーブル参照は `@solid-imager/db/schema` を使う。
+- schema変更がなければmigrationは不要。関連repository testと型チェックを行う。

@@ -1,4 +1,4 @@
-import { createSignal, Show } from "solid-js";
+import { Show } from "solid-js";
 import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
@@ -17,32 +17,12 @@ export function BatchToolPanel(props: {
 	kind: "tagging" | "vectors";
 	manager: UseManagerPageResult;
 }) {
-	const [pendingAction, setPendingAction] = createSignal<
-		"scan" | "start" | null
-	>(null);
+	const pendingAction = () => props.manager.batchPendingAction();
 	const isVector = () => props.kind === "vectors";
-	const runScan = async () => {
-		if (pendingAction()) return;
-		setPendingAction("scan");
-		try {
-			await props.manager.handleScan();
-		} finally {
-			setPendingAction(null);
-		}
-	};
-	const runStart = async () => {
-		if (pendingAction()) return;
-		setPendingAction("start");
-		try {
-			if (isVector()) {
-				await props.manager.handleStartBatchCcipExtraction();
-			} else {
-				await props.manager.handleStartBatchTagging();
-			}
-		} finally {
-			setPendingAction(null);
-		}
-	};
+	const runStart = () =>
+		isVector()
+			? props.manager.handleStartBatchCcipExtraction()
+			: props.manager.handleStartBatchTagging();
 
 	return (
 		<div class="space-y-5">
@@ -108,7 +88,6 @@ export function BatchToolPanel(props: {
 						</div>
 					</Show>
 					<div class="space-y-1.5">
-						<Label>Target source</Label>
 						<SourceSelect
 							manager={props.manager}
 							onChange={props.manager.setSelectedSourceId}
@@ -139,7 +118,7 @@ export function BatchToolPanel(props: {
 					<Button
 						class="w-full sm:w-auto"
 						disabled={pendingAction() !== null || !!props.manager.activeJobId()}
-						onClick={() => void runScan()}
+						onClick={() => void props.manager.handleScan()}
 						variant="outline"
 					>
 						{pendingAction() === "scan" ? "Scanning..." : "Scan targets"}

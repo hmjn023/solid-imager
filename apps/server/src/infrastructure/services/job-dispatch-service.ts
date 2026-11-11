@@ -1,4 +1,5 @@
 import type { DeferredActions } from "@solid-imager/application/media";
+import { UnreconciledStorageError } from "@solid-imager/core/errors";
 import type { Job } from "@solid-imager/core/jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
@@ -86,11 +87,11 @@ export async function processJob(job: Job) {
 	} else if (job.type === "source_restore") {
 		return processSourceRestoreJob(job);
 	} else {
-		logger.warn({ jobId: job.id, type: job.type }, "Unknown job type");
+		throw new Error("Unsupported job type");
 	}
 }
 
-/** Creates queued jobs and publishes events, then attempts file and thumbnail deletions. Deletion failures are logged. */
+/** Persists queued jobs, attempts required cleanup, then publishes independent observer notifications. Failed cleanup requires reconciliation. */
 export async function executeDeferredActions(actions: DeferredActions) {
 	if (actions.jobs.length > 0) {
 		const repo = services.getJobRepository();
@@ -111,17 +112,16 @@ export async function executeDeferredActions(actions: DeferredActions) {
 			}
 		}
 	}
-	if (actions.sourceEvents.length > 0) {
-		for (const item of actions.sourceEvents) {
-			RealtimeEventBus.publishSourceCommand(item.mediaSourceId, item);
-		}
-	}
+	const cleanupErrors: unknown[] = [];
+
 	if (actions.filesToDelete && actions.filesToDelete.length > 0) {
-		const storageService = services.getMediaStorage();
 		for (const file of actions.filesToDelete) {
 			try {
-				await storageService.deleteFile(file.basePath, file.filePath);
+				await services
+					.getMediaStorage()
+					.deleteFile(file.basePath, file.filePath);
 			} catch (e) {
+				cleanupErrors.push(e);
 				logger.error(
 					{ err: e, basePath: file.basePath, filePath: file.filePath },
 					"Failed to delete file during deferred actions",
@@ -130,11 +130,14 @@ export async function executeDeferredActions(actions: DeferredActions) {
 		}
 	}
 	if (actions.thumbnailsToDelete && actions.thumbnailsToDelete.length > 0) {
-		const { deleteThumbnail } = getThumbnailJobHandlers();
 		for (const thumb of actions.thumbnailsToDelete) {
 			try {
-				await deleteThumbnail(thumb.mediaSourceId, thumb.mediaId);
+				await getThumbnailJobHandlers().deleteThumbnail(
+					thumb.mediaSourceId,
+					thumb.mediaId,
+				);
 			} catch (e) {
+				cleanupErrors.push(e);
 				logger.error(
 					{
 						err: e,
@@ -146,4 +149,15 @@ export async function executeDeferredActions(actions: DeferredActions) {
 			}
 		}
 	}
+	for (const item of actions.sourceEvents) {
+		try {
+			RealtimeEventBus.publishSourceCommand(item.mediaSourceId, item);
+		} catch (err) {
+			logger.warn(
+				{ err, mediaSourceId: item.mediaSourceId, event: item.event },
+				"Deferred observer failed after committed media operation",
+			);
+		}
+	}
+	if (cleanupErrors.length) throw new UnreconciledStorageError(cleanupErrors);
 }

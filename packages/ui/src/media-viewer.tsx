@@ -2,6 +2,7 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
+	For,
 	Match,
 	onCleanup,
 	onMount,
@@ -15,6 +16,7 @@ import {
 	DialogDescription,
 	DialogTitle,
 } from "./dialog";
+import { clampMediaPan, type MediaPan } from "./media-viewer-pan";
 import { VideoPlayer } from "./video-player";
 import { Maximize2, Minus, Plus, RotateCcw } from "./workspace/icons";
 
@@ -31,6 +33,36 @@ export interface MediaViewerProps {
 	height?: number;
 }
 
+function AudioPreview(props: { src: string }) {
+	let audio: HTMLAudioElement | undefined;
+	onCleanup(() => {
+		if (!audio) return;
+		audio.pause();
+		audio.removeAttribute("src");
+		audio.load();
+	});
+	return (
+		<audio
+			class="max-w-full"
+			controls
+			preload="metadata"
+			ref={(element) => {
+				audio = element;
+			}}
+			src={props.src}
+		>
+			<track kind="captions" />
+		</audio>
+	);
+}
+
+const PAN_DIRECTIONS = [
+	{ name: "left", symbol: "←", x: -40, y: 0 },
+	{ name: "up", symbol: "↑", x: 0, y: -40 },
+	{ name: "down", symbol: "↓", x: 0, y: 40 },
+	{ name: "right", symbol: "→", x: 40, y: 0 },
+] as const;
+
 export function MediaViewer(props: MediaViewerProps) {
 	const mediaSource = createMemo(() => props.source);
 	const [resolvedMedia, setResolvedMedia] = createSignal<{
@@ -46,14 +78,58 @@ export function MediaViewer(props: MediaViewerProps) {
 	const [isPanning, setIsPanning] = createSignal(false);
 	const [isFullscreen, setIsFullscreen] = createSignal(false);
 	const [isViewerOpen, setIsViewerOpen] = createSignal(false);
+	const [panAnnouncement, setPanAnnouncement] = createSignal("");
 	const pointers = new Map<number, { x: number; y: number }>();
 	let viewer: HTMLElement | undefined;
+	let viewerImage: HTMLImageElement | undefined;
+	let panHandle: HTMLButtonElement | undefined;
+	let openButton: HTMLButtonElement | undefined;
 	let lastPointer: { x: number; y: number } | undefined;
 	let pinchStart:
 		| { distance: number; pan: { x: number; y: number }; zoom: number }
 		| undefined;
 	const zoomPercent = createMemo(() => Math.round(zoom() * 100));
 	const clampZoom = (value: number) => Math.min(8, Math.max(1, value));
+	const clampPan = (nextPan: MediaPan, nextZoom = zoom()) => {
+		if (!viewer) return { x: 0, y: 0 };
+		return clampMediaPan(
+			nextPan,
+			nextZoom,
+			{ width: viewer.clientWidth, height: viewer.clientHeight },
+			{
+				width: props.width ?? viewerImage?.naturalWidth ?? 0,
+				height: props.height ?? viewerImage?.naturalHeight ?? 0,
+			},
+		);
+	};
+	const panImage = (direction: (typeof PAN_DIRECTIONS)[number]) => {
+		if (zoom() <= 1) return;
+		const current = pan();
+		const next = clampPan({
+			x: current.x + direction.x,
+			y: current.y + direction.y,
+		});
+		if (next.x === current.x && next.y === current.y) return;
+		setPan(next);
+		setPanAnnouncement(`Image moved ${direction.name}`);
+	};
+	const handlePanKeyDown = (event: KeyboardEvent) => {
+		if (
+			event.target !== event.currentTarget ||
+			event.isComposing ||
+			event.altKey ||
+			event.ctrlKey ||
+			event.metaKey ||
+			zoom() <= 1
+		)
+			return;
+		const direction = PAN_DIRECTIONS.find(
+			(item) => event.key.toLowerCase() === `arrow${item.name}`,
+		);
+		if (!direction) return;
+		event.preventDefault();
+		panImage(direction);
+	};
 	const resetView = () => {
 		setZoom(1);
 		setPan({ x: 0, y: 0 });
@@ -61,6 +137,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		lastPointer = undefined;
 		pinchStart = undefined;
 		setIsPanning(false);
+		setPanAnnouncement("");
 	};
 	const setZoomAroundPoint = (
 		nextValue: number,
@@ -73,6 +150,7 @@ export function MediaViewer(props: MediaViewerProps) {
 			resetView();
 			return;
 		}
+		let nextPan = pan();
 		if (viewer && point) {
 			const bounds = viewer.getBoundingClientRect();
 			const origin = {
@@ -80,12 +158,13 @@ export function MediaViewer(props: MediaViewerProps) {
 				y: point.y - bounds.top - bounds.height / 2,
 			};
 			const ratio = nextZoom / previousZoom;
-			setPan((current) => ({
-				x: origin.x - (origin.x - current.x) * ratio,
-				y: origin.y - (origin.y - current.y) * ratio,
-			}));
+			nextPan = {
+				x: origin.x - (origin.x - nextPan.x) * ratio,
+				y: origin.y - (origin.y - nextPan.y) * ratio,
+			};
 		}
 		setZoom(nextZoom);
+		setPan(clampPan(nextPan, nextZoom));
 	};
 	const pointerDistance = () => {
 		const points = [...pointers.values()];
@@ -93,7 +172,7 @@ export function MediaViewer(props: MediaViewerProps) {
 		return Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
 	};
 	const handlePointerDown = (event: PointerEvent) => {
-		if (mediaSource().type !== "image") return;
+		if (mediaSource().type !== "image" || event.button !== 0) return;
 		if (
 			event.target instanceof Element &&
 			event.target.closest("[data-media-viewer-controls]")
@@ -101,6 +180,7 @@ export function MediaViewer(props: MediaViewerProps) {
 			return;
 		}
 		pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+		panHandle?.focus({ preventScroll: true });
 		viewer?.setPointerCapture(event.pointerId);
 		if (pointers.size === 2) {
 			pinchStart = {
@@ -120,19 +200,22 @@ export function MediaViewer(props: MediaViewerProps) {
 		if (!pointers.has(event.pointerId)) return;
 		pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
 		if (pointers.size >= 2 && pinchStart && pinchStart.distance > 0) {
-			setZoom(
-				clampZoom(pinchStart.zoom * (pointerDistance() / pinchStart.distance)),
+			const nextZoom = clampZoom(
+				pinchStart.zoom * (pointerDistance() / pinchStart.distance),
 			);
-			setPan(pinchStart.pan);
+			setZoom(nextZoom);
+			setPan(clampPan(pinchStart.pan, nextZoom));
 			return;
 		}
 		if (!isPanning() || !lastPointer || zoom() <= 1) return;
 		const previousPointer = lastPointer;
 		const nextPointer = { x: event.clientX, y: event.clientY };
-		setPan((current) => ({
-			x: current.x + nextPointer.x - previousPointer.x,
-			y: current.y + nextPointer.y - previousPointer.y,
-		}));
+		setPan((current) =>
+			clampPan({
+				x: current.x + nextPointer.x - previousPointer.x,
+				y: current.y + nextPointer.y - previousPointer.y,
+			}),
+		);
 		lastPointer = nextPointer;
 	};
 	const handlePointerEnd = (event: PointerEvent) => {
@@ -197,9 +280,12 @@ export function MediaViewer(props: MediaViewerProps) {
 			setIsFullscreen(document.fullscreenElement === viewer);
 		};
 		document.addEventListener("fullscreenchange", handleFullscreenChange);
+		const handleResize = () => setPan((current) => clampPan(current));
+		window.addEventListener("resize", handleResize);
 		onCleanup(() =>
 			document.removeEventListener("fullscreenchange", handleFullscreenChange),
 		);
+		onCleanup(() => window.removeEventListener("resize", handleResize));
 	});
 
 	return (
@@ -231,6 +317,7 @@ export function MediaViewer(props: MediaViewerProps) {
 					</Match>
 					<Match when={mediaSource().type === "audio"}>
 						<Show
+							keyed
 							fallback={
 								<div class="bg-foreground px-8 py-6 text-background">
 									Audio preview unavailable
@@ -238,11 +325,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							}
 							when={mediaUrl()}
 						>
-							{(url) => (
-								<audio class="max-w-full" controls src={url()}>
-									<track kind="captions" />
-								</audio>
-							)}
+							{(url) => <AudioPreview src={url} />}
 						</Show>
 					</Match>
 					<Match when={true}>
@@ -261,6 +344,9 @@ export function MediaViewer(props: MediaViewerProps) {
 									aria-label={`Open ${props.fileName} image viewer`}
 									class="h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 									onClick={() => setIsViewerOpen(true)}
+									ref={(element) => {
+										openButton = element;
+									}}
 									type="button"
 								>
 									<img
@@ -285,13 +371,21 @@ export function MediaViewer(props: MediaViewerProps) {
 				}}
 				open={isViewerOpen()}
 			>
-				<DialogContent class="h-dialog-screen max-h-dialog-screen w-viewport-gutter max-w-none overflow-hidden border-border bg-card p-0 sm:max-h-dialog-screen-sm sm:w-viewport-gutter-sm [&>button]:z-20">
+				<DialogContent
+					class="h-dialog-screen max-h-dialog-screen w-viewport-gutter max-w-none overflow-hidden border-border bg-card p-0 sm:max-h-dialog-screen-sm sm:w-viewport-gutter-sm [&>button]:z-20"
+					onCloseAutoFocus={(event) => {
+						if (isViewerOpen() || !openButton?.isConnected) return;
+						event.preventDefault();
+						openButton.focus({ preventScroll: true });
+					}}
+				>
 					<DialogTitle class="sr-only">{props.fileName}</DialogTitle>
 					<DialogDescription class="sr-only">
-						Use the zoom controls to zoom, and drag to pan.
+						Use the zoom controls to zoom. Use the arrow keys, direction
+						buttons, or drag to pan the enlarged image.
 					</DialogDescription>
 					<section
-						aria-label={`${props.fileName} viewer. Use the zoom controls to zoom, and drag to pan.`}
+						aria-label={`${props.fileName} viewer. Use arrow keys to pan the enlarged image.`}
 						class="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring media-viewer-stage"
 						classList={{
 							"cursor-grabbing": isPanning(),
@@ -304,6 +398,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							else setZoomAroundPoint(2);
 						}}
 						onDragStart={handleDragStart}
+						onLostPointerCapture={handlePointerEnd}
 						onPointerCancel={handlePointerEnd}
 						onPointerDown={handlePointerDown}
 						onPointerMove={handlePointerMove}
@@ -322,10 +417,21 @@ export function MediaViewer(props: MediaViewerProps) {
 						ref={(element) => {
 							viewer = element;
 						}}
+
 						style={{
 							"--media-touch-action": zoom() > 1 ? "none" : "pan-y pinch-zoom",
 						}}
 					>
+						<button
+							aria-label={`Pan ${props.fileName}. Use arrow keys to move the enlarged image.`}
+							class="absolute inset-0 z-10 h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+							data-media-viewer-pan-handle
+							onKeyDown={handlePanKeyDown}
+							ref={(element) => {
+								panHandle = element;
+							}}
+							type="button"
+						/>
 						<Show when={mediaUrl()}>
 							{(url) => (
 								<img
@@ -333,6 +439,10 @@ export function MediaViewer(props: MediaViewerProps) {
 									class="media-viewer-transform pointer-events-none h-full w-full select-none object-contain motion-safe:transition-transform"
 									draggable={false}
 									height={props.height}
+									onLoad={() => setPan((current) => clampPan(current))}
+									ref={(element) => {
+										viewerImage = element;
+									}}
 									src={url()}
 									style={{
 										"--media-pan-x": `${pan().x}px`,
@@ -346,56 +456,81 @@ export function MediaViewer(props: MediaViewerProps) {
 								/>
 							)}
 						</Show>
-						<div
-							aria-label="Image zoom controls"
-							class="absolute right-3 bottom-3 flex items-center gap-0.5 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
+						<fieldset
+							aria-label="Image controls"
+							class="absolute right-3 bottom-3 z-20 m-0 flex min-w-0 max-w-full flex-col items-end gap-2 border-0 p-0"
 							data-media-viewer-controls
-							role="toolbar"
 						>
-							<Button
-								aria-label="Zoom out"
-								class="size-8 p-0"
-								disabled={zoom() <= 1}
-								onClick={() => setZoomAroundPoint(zoom() / 1.25)}
-								size="icon"
-								variant="ghost"
+							<fieldset
+								aria-label="Image pan controls"
+								class="m-0 flex min-w-0 items-center gap-0.5 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
 							>
-								<Minus aria-hidden="true" size={15} />
-							</Button>
-							<button
-								aria-label="Reset zoom to fit"
-								class="flex h-8 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-label-sm tabular-nums hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-								onClick={resetView}
-								type="button"
+								<For each={PAN_DIRECTIONS}>
+									{(direction) => (
+										<Button
+											aria-label={`Pan image ${direction.name}`}
+											class="size-11 p-0 sm:size-8"
+											disabled={zoom() <= 1}
+											onClick={() => panImage(direction)}
+											size="icon"
+											type="button"
+											variant="ghost"
+										>
+											<span aria-hidden="true">{direction.symbol}</span>
+										</Button>
+									)}
+								</For>
+							</fieldset>
+							<div
+								aria-label="Image zoom controls"
+								class="flex items-center gap-0.5 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
+								role="toolbar"
 							>
-								<RotateCcw aria-hidden="true" size={12} />
-								{zoomPercent()}%
-							</button>
-							<Button
-								aria-label="Zoom in"
-								class="size-8 p-0"
-								disabled={zoom() >= 8}
-								onClick={() => setZoomAroundPoint(zoom() * 1.25)}
-								size="icon"
-								variant="ghost"
-							>
-								<Plus aria-hidden="true" size={15} />
-							</Button>
-							<span aria-hidden="true" class="mx-0.5 h-5 w-px bg-border" />
-							<Button
-								aria-label={
-									isFullscreen() ? "Exit fullscreen" : "Enter fullscreen"
-								}
-								class="size-8 p-0"
-								onClick={() => void toggleFullscreen()}
-								size="icon"
-								variant="ghost"
-							>
-								<Maximize2 aria-hidden="true" size={15} />
-							</Button>
-						</div>
+								<Button
+									aria-label="Zoom out"
+									class="size-8 p-0"
+									disabled={zoom() <= 1}
+									onClick={() => setZoomAroundPoint(zoom() / 1.25)}
+									size="icon"
+									variant="ghost"
+								>
+									<Minus aria-hidden="true" size={15} />
+								</Button>
+								<button
+									aria-label="Reset zoom to fit"
+									class="flex h-8 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-label-sm tabular-nums hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+									onClick={resetView}
+									type="button"
+								>
+									<RotateCcw aria-hidden="true" size={12} />
+									{zoomPercent()}%
+								</button>
+								<Button
+									aria-label="Zoom in"
+									class="size-8 p-0"
+									disabled={zoom() >= 8}
+									onClick={() => setZoomAroundPoint(zoom() * 1.25)}
+									size="icon"
+									variant="ghost"
+								>
+									<Plus aria-hidden="true" size={15} />
+								</Button>
+								<span aria-hidden="true" class="mx-0.5 h-5 w-px bg-border" />
+								<Button
+									aria-label={
+										isFullscreen() ? "Exit fullscreen" : "Enter fullscreen"
+									}
+									class="size-8 p-0"
+									onClick={() => void toggleFullscreen()}
+									size="icon"
+									variant="ghost"
+								>
+									<Maximize2 aria-hidden="true" size={15} />
+								</Button>
+							</div>
+						</fieldset>
 						<span aria-live="polite" class="sr-only">
-							Zoom {zoomPercent()} percent
+							Zoom {zoomPercent()} percent. {panAnnouncement()}
 						</span>
 					</section>
 				</DialogContent>

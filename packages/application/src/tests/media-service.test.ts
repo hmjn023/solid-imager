@@ -45,6 +45,9 @@ describe("MediaService Unit Tests", () => {
 		vi.resetAllMocks();
 		mockJobRepository = {
 			create: vi.fn(),
+			createBatch: vi.fn(),
+			finishAttempt: vi.fn(),
+			finishBatch: vi.fn(),
 			createIfUnique: vi.fn(),
 			findById: vi.fn(),
 			findPending: vi.fn(),

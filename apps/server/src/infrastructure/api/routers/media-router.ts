@@ -292,12 +292,11 @@ export const mediaRouter = os.router({
 	 * Bulk move multiple media items within the source
 	 */
 	bulkMove: os.bulkMove.handler(async ({ input }) => {
-		await BulkOperationService.bulkMoveMedia(
+		return BulkOperationService.bulkMoveMedia(
 			input.mediaSourceId,
 			input.mediaIds,
 			input.destinationPath,
 		);
-		return { success: true };
 	}),
 
 	/**
@@ -317,23 +316,21 @@ export const mediaRouter = os.router({
 	 * Bulk copy multiple media items to another source
 	 */
 	bulkCopyToSource: os.bulkCopyToSource.handler(async ({ input }) => {
-		await BulkOperationService.bulkCopyToSource(
+		return BulkOperationService.bulkCopyToSource(
 			input.mediaSourceId,
 			input.mediaIds,
 			input.targetSourceId,
 		);
-		return { success: true };
 	}),
 
 	/**
 	 * Bulk move multiple media items to another source
 	 */
 	bulkMoveToSource: os.bulkMoveToSource.handler(async ({ input }) => {
-		await BulkOperationService.bulkMoveToSource(
+		return BulkOperationService.bulkMoveToSource(
 			input.mediaSourceId,
 			input.mediaIds,
 			input.targetSourceId,
 		);
-		return { success: true };
 	}),
 });

@@ -200,6 +200,16 @@ export function CommandCenter(props: CommandCenterProps) {
 							autocomplete="off"
 							autofocus
 							class="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+							on:keydown={(event) => {
+								// Run before delegated shortcuts and preserve native IME confirmation.
+								if (
+									event.isComposing ||
+									// oxlint-disable-next-line typescript/no-deprecated -- Safari can report IME confirmation only through keyCode 229.
+									(event.key === "Enter" && event.keyCode === 229)
+								) {
+									event.stopPropagation();
+								}
+							}}
 							onInput={(event) => setQuery(event.currentTarget.value)}
 							onKeyDown={(event) => {
 								if (event.key === "ArrowDown") {

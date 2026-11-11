@@ -28,7 +28,10 @@ const mediaUtilities = plugin(({ addUtilities }) => {
 		".media-viewer-transform": {
 			transform:
 				"translate3d(var(--media-pan-x), var(--media-pan-y), 0) scale(var(--media-zoom))",
-			transitionDuration: "var(--media-transition-duration)",
+			transitionDuration: "0s",
+			"@media (prefers-reduced-motion: no-preference)": {
+				transitionDuration: "var(--media-transition-duration)",
+			},
 		},
 		".job-progress-fill": {
 			width: "var(--job-progress-width)",

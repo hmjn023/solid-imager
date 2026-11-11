@@ -48,6 +48,16 @@ function ComposerInput(props: ComposerInputProps) {
 			class="h-7 min-h-7 min-w-0 flex-1 basis-32 border-0 bg-transparent px-1 py-0 text-sm shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
 			enterkeyhint="search"
 			id={props.id}
+			on:keydown={(event: KeyboardEvent) => {
+				// Kobalte also handles delegated Enter; keep composition keys native.
+				if (
+					event.isComposing ||
+					// oxlint-disable-next-line typescript/no-deprecated -- Safari can report IME confirmation only through keyCode 229.
+					(event.key === "Enter" && event.keyCode === 229)
+				) {
+					event.stopPropagation();
+				}
+			}}
 			onFocus={props.onFocus}
 			onInput={(event: InputEvent & { currentTarget: HTMLInputElement }) => {
 				updateCaret(event);

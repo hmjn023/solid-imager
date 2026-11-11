@@ -108,6 +108,37 @@ export const mediaSourceSchema = z.object({
 
 export type MediaSource = z.infer<typeof mediaSourceSchema>;
 
+/** One persisted settings object prevents the active URL and server selections tearing apart. */
+export const connectionSettingsSchema = z.object({
+	apiUrl: z
+		.url()
+		.refine((url) => ["http:", "https:"].includes(new URL(url).protocol)),
+	generation: z.number().int().nonnegative(),
+	selectedSourceIds: z.record(z.string(), z.string()),
+});
+export type ConnectionSettings = z.infer<typeof connectionSettingsSchema>;
+export const sourcesResponseSchema = z.discriminatedUnion("success", [
+	z.object({
+		success: z.literal(true),
+		apiUrl: z.string(),
+		generation: z.number().int().nonnegative(),
+		sources: z.array(mediaSourceSchema),
+		selectedSourceId: z.string().nullable(),
+	}),
+	z.object({ success: z.literal(false), error: z.string() }),
+]);
+export type SourcesResponse = z.infer<typeof sourcesResponseSchema>;
+export const setApiUrlMessageSchema = z.object({
+	type: z.literal("SET_API_URL"),
+	apiUrl: connectionSettingsSchema.shape.apiUrl,
+});
+export const setSourceMessageSchema = z.object({
+	type: z.literal("SET_SOURCE"),
+	apiUrl: connectionSettingsSchema.shape.apiUrl,
+	generation: z.number().int().nonnegative(),
+	sourceId: z.string(),
+});
+
 export const getSourcesMessageSchema = z.object({
 	type: z.literal("GET_SOURCES"),
 });
@@ -149,6 +180,8 @@ export const extendedMessageSchema = z.discriminatedUnion("type", [
 	postDownloadMessageSchema,
 	postBulkMessageSchema,
 	getSourcesMessageSchema,
+	setApiUrlMessageSchema,
+	setSourceMessageSchema,
 	getMetadataMessageSchema,
 	downloadJsonMessageSchema,
 	getCookiesMessageSchema,

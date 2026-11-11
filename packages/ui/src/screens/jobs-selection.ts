@@ -1,16 +1,21 @@
-import { jobIdRequestSchema, type JobDto } from "@solid-imager/core/jobs";
+import {
+	canRetryJob,
+	jobIdRequestSchema,
+	type JobDto,
+} from "@solid-imager/core/jobs";
 import { z } from "zod";
 
 export const jobSelectionSearchSchema = z.object({
 	jobId: jobIdRequestSchema.shape.id.optional(),
 });
 
-type JobSelectionCandidate = Pick<JobDto, "id" | "status">;
+type JobSelectionCandidate = Pick<JobDto, "id" | "status"> &
+	Partial<Pick<JobDto, "type" | "parentId">>;
 
 export function getRetryableJobIds(
 	jobs: readonly JobSelectionCandidate[],
 ): string[] {
-	return jobs.filter((job) => job.status === "failed").map((job) => job.id);
+	return jobs.filter(canRetryJob).map((job) => job.id);
 }
 
 export function toggleJobSelection(

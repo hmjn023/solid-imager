@@ -1,5 +1,11 @@
 import type { SafeMediaSource } from "@solid-imager/core/sources";
-import { createResource, createSignal, For, Show } from "solid-js";
+import {
+	createEffect,
+	createResource,
+	createSignal,
+	For,
+	Show,
+} from "solid-js";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -10,7 +16,13 @@ import {
 	DialogTitle,
 } from "./dialog";
 import { Input } from "./input";
-import { toast } from "./toast";
+import {
+	createBulkActionCommand,
+	executeBulkActionCommand,
+	type BulkActionCommand,
+	type BulkActionItem,
+	type BulkCommandOperations,
+} from "./bulk-action-command";
 
 export type BulkActionDialogProps = {
 	open: boolean;
@@ -19,24 +31,8 @@ export type BulkActionDialogProps = {
 	mediaIds: string[];
 	mediaItems?: Array<{ mediaId: string; mediaSourceId: string }>;
 	listSources: () => Promise<SafeMediaSource[]>;
-	bulkCopyToSource: (
-		sourceId: string,
-		mediaIds: string[],
-		targetSourceId: string,
-	) => Promise<unknown>;
-	bulkMoveToSource: (
-		sourceId: string,
-		mediaIds: string[],
-		targetSourceId: string,
-	) => Promise<unknown>;
-	bulkMoveMedia: (
-		sourceId: string,
-		mediaIds: string[],
-		destinationPath: string,
-	) => Promise<unknown>;
-	bulkDeleteMedia: (sourceId: string, mediaIds: string[]) => Promise<unknown>;
-	onSuccess: (partial: boolean) => void;
-};
+	onSuccess: (partial: boolean, succeededMediaIds: string[]) => void;
+} & BulkCommandOperations;
 
 type ActionType = "copy-source" | "move-source" | "move-folder" | "delete";
 
@@ -55,6 +51,18 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	const [destinationPath, setDestinationPath] = createSignal("");
 	const [isSubmitting, setIsSubmitting] = createSignal(false);
 	const [errorMsg, setErrorMsg] = createSignal("");
+	const [retryCommand, setRetryCommand] =
+		createSignal<BulkActionCommand | null>(null);
+	const [uncertainItems, setUncertainItems] = createSignal<BulkActionItem[]>(
+		[],
+	);
+	createEffect(() => {
+		if (!props.open && !isSubmitting()) {
+			setRetryCommand(null);
+			setUncertainItems([]);
+			setErrorMsg("");
+		}
+	});
 
 	const [sources] = createResource(
 		() => (props.open ? true : null),
@@ -76,15 +84,6 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	};
 	const selectedSourceIds = () =>
 		new Set(selectedItems().map((item) => item.mediaSourceId));
-	const groupedMediaIds = () => {
-		const groups = new Map<string, string[]>();
-		for (const item of selectedItems()) {
-			const mediaIds = groups.get(item.mediaSourceId) ?? [];
-			mediaIds.push(item.mediaId);
-			groups.set(item.mediaSourceId, mediaIds);
-		}
-		return groups;
-	};
 	const usableSources = () =>
 		(sources() ?? []).filter(
 			(s): s is SafeMediaSource & { id: string } =>
@@ -92,76 +91,35 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 		);
 
 	const handleConfirm = async () => {
+		if (isSubmitting()) return;
 		setIsSubmitting(true);
 		setErrorMsg("");
 		try {
-			const groups = groupedMediaIds();
-			if (groups.size === 0) throw new Error("No media items are selected.");
-			const currentAction = action();
-			const failures: Array<{ mediaCount: number; message: string }> = [];
-			let succeededMediaCount = 0;
-			if (
-				(currentAction === "copy-source" || currentAction === "move-source") &&
-				!targetSourceId()
-			) {
-				throw new Error("Target source is required.");
-			}
-			if (currentAction === "move-folder" && !destinationPath().trim()) {
-				throw new Error("Destination path is required.");
-			}
-
-			for (const [sourceId, mediaIds] of groups) {
-				try {
-					switch (currentAction) {
-						case "copy-source":
-							await props.bulkCopyToSource(
-								sourceId,
-								mediaIds,
-								targetSourceId(),
-							);
-							break;
-						case "move-source":
-							await props.bulkMoveToSource(
-								sourceId,
-								mediaIds,
-								targetSourceId(),
-							);
-							break;
-						case "move-folder":
-							await props.bulkMoveMedia(sourceId, mediaIds, destinationPath());
-							break;
-						case "delete":
-							await props.bulkDeleteMedia(sourceId, mediaIds);
-							break;
-					}
-					succeededMediaCount += mediaIds.length;
-				} catch (error) {
-					failures.push({
-						mediaCount: mediaIds.length,
-						message:
-							error instanceof Error ? error.message : "An error occurred.",
-					});
-				}
-			}
-
-			if (failures.length > 0) {
-				const failedMediaCount = failures.reduce(
-					(total, failure) => total + failure.mediaCount,
-					0,
+			const command =
+				retryCommand() ??
+				createBulkActionCommand({
+					action: action(),
+					items: selectedItems(),
+					targetSourceId: targetSourceId(),
+					destinationPath: destinationPath(),
+				});
+			const outcome = await executeBulkActionCommand(command, props);
+			const unknown = [...uncertainItems(), ...outcome.uncertainItems];
+			setUncertainItems(unknown);
+			const partial = outcome.retryItems.length > 0 || unknown.length > 0;
+			props.onSuccess(partial, outcome.succeededMediaIds);
+			if (partial) {
+				setRetryCommand({ ...command, items: outcome.retryItems });
+				setErrorMsg(
+					`成功 ${outcome.succeededMediaIds.length} 件、再試行可能 ${outcome.retryItems.length} 件、結果不明 ${unknown.length} 件。` +
+						(unknown.length
+							? "結果不明の項目は再送せず、ダイアログを閉じて一覧と保存先を確認してください。"
+							: "失敗・未処理の項目だけを同じ宛先へ再試行できます。"),
 				);
-				if (succeededMediaCount > 0) {
-					toast.error(
-						`一部の操作に失敗しました（成功 ${succeededMediaCount} 件、失敗 ${failedMediaCount} 件）。`,
-					);
-					props.onSuccess(true);
-					props.onOpenChange(false);
-					return;
-				}
-				throw new Error(failures[0]?.message ?? "An error occurred.");
+			} else {
+				setRetryCommand(null);
+				props.onOpenChange(false);
 			}
-
-			props.onSuccess(false);
-			props.onOpenChange(false);
 		} catch (error) {
 			setErrorMsg(
 				error instanceof Error ? error.message : "An error occurred.",
@@ -172,7 +130,12 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	};
 
 	return (
-		<Dialog open={props.open} onOpenChange={props.onOpenChange}>
+		<Dialog
+			open={props.open}
+			onOpenChange={(open) => {
+				if (!isSubmitting()) props.onOpenChange(open);
+			}}
+		>
 			<DialogContent class="workspace-theme sm:max-w-dialog-xs">
 				<DialogHeader>
 					<DialogTitle>一括操作を実行</DialogTitle>
@@ -187,6 +150,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 						操作を選択
 						<select
 							id="bulk-action-type"
+							disabled={isSubmitting() || retryCommand() !== null}
 							class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 							value={action()}
 							onChange={(event) => {
@@ -206,6 +170,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 							コピー/移動先のソース
 							<select
 								id="target-source-id"
+								disabled={isSubmitting() || retryCommand() !== null}
 								class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								value={targetSourceId()}
 								onChange={(event) =>
@@ -226,6 +191,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 							<Input
 								aria-labelledby="destination-path-label"
 								id="destination-path"
+								disabled={isSubmitting() || retryCommand() !== null}
 								placeholder="e.g. subfolder/new-dir"
 								value={destinationPath()}
 								onInput={(event) =>
@@ -257,6 +223,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 					<Button
 						disabled={
 							isSubmitting() ||
+							(retryCommand() !== null && retryCommand()?.items.length === 0) ||
 							(sources.loading &&
 								(action() === "copy-source" || action() === "move-source"))
 						}
@@ -265,7 +232,11 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 						}}
 						variant={action() === "delete" ? "destructive" : "default"}
 					>
-						{isSubmitting() ? "処理中..." : "確定"}
+						{isSubmitting()
+							? "処理中..."
+							: retryCommand()
+								? "失敗・未処理だけ再試行"
+								: "確定"}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

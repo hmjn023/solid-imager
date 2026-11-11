@@ -1,46 +1,20 @@
 ---
 name: tanstack-ssr
-description: solid-imagerのTanStack Start SSR、Selective SSR、loader、Solid Query hydration、直接URL/F5、pendingComponent、shellComponentを診断・修正する。Hydration Mismatch、ルート外error、SSRだけのAPI失敗、CSR化後のローディングDOM不一致、初期表示性能を扱う時に使用する。
+description: TanStack StartのSSR・hydration・loader・pending/root shellを診断・修正する。直接URL/F5だけの失敗、初期表示の問題で使用する。
 ---
 
 # TanStack SSR
 
-TanStack Startのサーバー実行経路とクライアントhydrationを分けて調べ、F5とSPA遷移の両方で同じ画面状態になるよう修正する。
+## 診断
 
-## 事前調査
+- Context7で現行仕様を確認する。Reactの例をそのままSolidへ適用せず、必要ならインストール済みsolid-router/startのバージョンと `Match.js` / `Matches.js` のSSR分岐を読む。
+- SPA遷移・直接URL・F5を分け、HTTP status、SSR HTML、console、hydration後DOMを比較する。
+- routeと親routeの `ssr` / `loader` / `pendingComponent`、APIがHTTPかin-processか、service登録完了の順序を確認する。
+- `Hydration Mismatch` やroute外error・`[object Object]` はまずDOM不一致を調べる。SSE/job完了やstale-vector問題は配信・query更新・DB状態を別に確認する。
 
-TanStack Startは変更が速いため、実装前にContext7で現行仕様を確認する。
+## CSRを選ぶ場合
 
-```sh
-npx ctx7@latest library "TanStack Start" "Selective SSR hydration loader pendingComponent Solid"
-# library の結果から最適な /org/project ID を選び、同じ ID で docs を取得する
-npx ctx7@latest docs <library-id> "ssr false pendingComponent hydration loader shellComponent"
-```
-
-React向けドキュメントしか見つからない場合は、そのままSolidへ適用しない。インストール済みの`@tanstack/solid-router`と`@tanstack/solid-start`のバージョン、および`Match.js`/`Matches.js`のSelective SSR分岐も確認する。
-
-## 診断手順
-
-1. SPA内遷移、URL直入力、F5を分けて再現する。
-2. HTTP statusだけでなく、SSR HTML、ブラウザconsole、hydration後DOMを確認する。
-3. 対象routeの`ssr`、`loader`、`pendingComponent`、親routeを確認する。
-4. loaderが呼ぶAPIがHTTP経由か、in-process router client経由かを確認する。
-5. server loaderの実行前にrepository/service登録が完了しているか確認する。
-6. サーバーが出したDOMと、クライアント初回renderのDOMを比較する。
-
-次のログはAPI障害ではなく、まずDOM不一致として扱う。
-
-```text
-Hydration Mismatch. Unable to find DOM nodes for hydration key
-The following error wasn't caught by any route
-[object Object]
-```
-
-## 修正方針を選ぶ
-
-### Query-heavy routeをCSRにする
-
-SSR Query cacheをdehydrate/hydrateしていない画面、ブラウザ依存APIを使う画面、Tauriと共有する画面ではこちらを優先する。
+serverのQuery-heavy routeは原則CSR、Tauriは独立SPA。Query cacheをSSR統合していない画面、ブラウザ依存・Tauri共有画面ではCSRを優先する。
 
 ```ts
 export const Route = createFileRoute("/example")({
@@ -50,73 +24,30 @@ export const Route = createFileRoute("/example")({
 });
 ```
 
-- server loaderの`ensureQueryData`を削除する。
-- データ取得は画面内のSolid Queryへ一本化する。
-- `ssr: false`ではサーバーがpending fallbackを描画し得るため、route単位で空のfallbackを明示する。
-- AppShell、`html`、`head`、`Scripts`はrootの`shellComponent`でSSRする。
-- クライアント画面遷移のローディング表示はroute transition indicatorで提供する。
+- loaderの `ensureQueryData` を外し、取得を画面内Solid Queryへ集約する。
+- `ssr: false` でもserverがpending fallbackを描画し得るため、空fallbackを明示する。
+- AppShell・html・head・Scriptsはrootの `shellComponent` でSSRし、画面遷移中はroute transition indicatorを使う。
 
-CSRは`HTML → JS → API → render`のwaterfallになる。mainより初期表示が遅くなる場合、単純にloaderを戻さず、下記のSSR Query統合を検討する。
+## データ込みSSRを選ぶ場合
 
-### データ込みSSRを維持する
+SEO・初期表示性能で必要な場合に選ぶ。CSRのJS→API waterfallを改善するためにloaderだけを戻さない。
 
-SEOまたは初期表示性能のために必要な場合だけ選ぶ。
+- loaderより前にservice bootstrapを完了させる。in-process oRPCは通常の `/api/rpc` handlerのbootstrapを通らない。
+- `apps/server/src/router.tsx` の既存 `setupRouterSsrQueryIntegration({ router, queryClient })` でcacheを引き継ぐ。手動のdehydrate/hydrateを重ねず、query key・初期status・fallback DOMを一致させる。`ensureQueryData` だけでは不十分。
 
-- loader開始前にserver service bootstrapを確実に完了させる。
-- in-process oRPCは通常の`/api/rpc` handlerの`bootstrap()`を通らないことに注意する。
-- server QueryClientのcacheをdehydrateし、同じcacheをclientでhydrateする。
-- serverとclientでquery key、initial status、fallback DOMを一致させる。
-- `ensureQueryData`だけ追加してSSR Query統合を省略しない。
+## 確認箇所
 
-## solid-imager固有の確認箇所
-
-- Router設定: `apps/server/src/router.tsx`
-- Root shell: `apps/server/src/routes/__root.tsx`
-- Media detail route: `apps/server/src/routes/sources/$mediaSourceId/$mediaId/index.tsx`
-- Query設定: `packages/ui/src/query-options/`
-- Query画面状態: `packages/ui/src/query-state.ts`
-- Route pending/error UI: `packages/ui/src/router-status.tsx`
-- Server bootstrap: `apps/server/src/infrastructure/bootstrap.ts`
-- Isomorphic oRPC client: `apps/server/src/infrastructure/api-clients/orpc-client.ts`
-
-このプロジェクトではserverのQuery-heavy routeを原則CSRとし、Tauriは独立SPAとして扱う。SSRを再導入する場合は、対象routeだけでなくQuery cache hydrationとbootstrap順序まで設計する。
-
-## 禁止パターン
-
-- 非同期bootstrapを待たずにSSR loaderからin-process APIを呼ぶ。
-- server Query cacheをclientへ渡さず`ensureQueryData`だけ使う。
-- `ssr: false`でサーバー側pending DOMを無条件に描画する。
-- `errorComponent`でHydration Mismatchを隠して完了とする。
-- HTTP 200だけでSSR回帰テストを合格させる。
-- router/root変更をdev serverのHMRだけで検証する。
-- SSR問題とSSE/job完了通知の問題を同じ原因として扱う。
+- Router/root: `apps/server/src/router.tsx`、`apps/server/src/routes/__root.tsx`
+- Media detail: `apps/server/src/routes/sources/$mediaSourceId/$mediaId/index.tsx`
+- Query/UI状態: `packages/ui/src/query-options/`、`packages/ui/src/query-state.ts`、`packages/ui/src/router-status.tsx`
+- Server: `apps/server/src/infrastructure/bootstrap.ts`、`apps/server/src/infrastructure/api-clients/orpc-client.ts`
 
 ## 検証
 
-production build後のserverで検証する。router/rootを変更した場合はdev serverも再起動する。
+router/root変更後はdev serverを再起動し、fresh production buildでも確認する。typecheck・Oxlint/Oxfmtと、`e2e-testing` の直接URL/F5検証を行う。
 
-E2Eでは最低限次を確認する。
+- responseが500未満で、CSRのSSR HTMLにroute pending DOMがない。
+- hydration後とreload後に画面が表示され、Hydration Mismatch・汎用route errorがない。
+- hydration後の初期queryが重複発火しない。
 
-1. URL直入力のresponseが500未満である。
-2. CSR routeのSSR HTMLにroute pending DOMが含まれない。
-3. consoleに`Hydration Mismatch`が出ない。
-4. hydration後に汎用route error画面が出ない。
-5. `page.reload()`後も同じ結果になる。
-6. 初期queryがhydration後に重複発火しない。
-
-```ts
-const hydrationWarnings: string[] = [];
-page.on("console", (message) => {
-  if (message.text().includes("Hydration Mismatch")) {
-    hydrationWarnings.push(message.text());
-  }
-});
-
-const ssrResponse = await page.request.get(path);
-expect(await ssrResponse.text()).not.toContain("画面を読み込んでいます...");
-await page.goto(path);
-await page.reload();
-expect(hydrationWarnings).toHaveLength(0);
-```
-
-最後に対象appのtypecheck、Biome、production build、直接アクセスを含むE2Eを実行する。
+HTTP 200やHMRだけで合格にせず、errorComponentで不一致を隠さない。

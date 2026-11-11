@@ -9,6 +9,20 @@ export const jobStatusSchema = z.enum([
 ]);
 export type JobStatus = z.infer<typeof jobStatusSchema>;
 
+/** A processor's proposed outcome; cancellation is resolved atomically in storage. */
+export const jobAttemptOutcomeSchema = z.discriminatedUnion("status", [
+	z.object({ status: z.literal("completed"), result: z.unknown() }),
+	z.object({ status: z.literal("failed"), error: z.string() }),
+	z.object({ status: z.literal("cancelled") }),
+]);
+export type JobAttemptOutcome = z.infer<typeof jobAttemptOutcomeSchema>;
+export const jobTerminalStatusSchema = z.enum([
+	"completed",
+	"failed",
+	"cancelled",
+]);
+export type JobTerminalStatus = z.infer<typeof jobTerminalStatusSchema>;
+
 /** Job types whose progress is aggregated from child jobs. */
 export const batchParentJobTypes = [
 	"batch_ccip_parent",
@@ -19,6 +33,21 @@ export const batchParentJobTypes = [
 /** Tests whether a job type represents a batch parent. */
 export function isBatchParentJobType(type: string): boolean {
 	return batchParentJobTypes.some((parentType) => parentType === type);
+}
+
+/** Batch history and approval requests cannot be retried as standalone worker jobs. */
+export function canRetryJob(job: {
+	status: string;
+	type?: string;
+	parentId?: string | null;
+}): boolean {
+	return (
+		job.status === "failed" &&
+		!job.parentId &&
+		job.type !== "import_request" &&
+		job.type !== "extract_embedding_batch" &&
+		!isBatchParentJobType(job.type ?? "")
+	);
 }
 
 /** Batch counts, or null when progress is unavailable for the job. */

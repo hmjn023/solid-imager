@@ -99,6 +99,18 @@ describe("X profile verification transport", () => {
 			expect(sendMessage).toHaveBeenCalledTimes(1);
 		},
 	);
+	it("retries delivery after a normal success:false response, then stops after success:true", async () => {
+		const { observe, sendMessage } = await setup(
+			"#solid-imager-account-verification=12345678-1234-4123-8123-123456789abc",
+		);
+		sendMessage.mockResolvedValueOnce({ success: false });
+		await observe(profile("current_name"));
+		await vi.waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(1));
+		await observe(profile("current_name"));
+		await vi.waitFor(() => expect(sendMessage).toHaveBeenCalledTimes(2));
+		await observe(profile("current_name"));
+		expect(sendMessage).toHaveBeenCalledTimes(2);
+	});
 	it("does not submit normally browsed profiles without a Manager verification token", async () => {
 		const { observe, sendMessage, fakeWindow } = await setup("");
 		await observe(profile("current_name"));

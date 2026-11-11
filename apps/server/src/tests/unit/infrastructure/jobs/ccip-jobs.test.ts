@@ -16,6 +16,9 @@ const recordOutcome = vi.fn();
 
 const jobRepository: IJobRepository = {
 	create: vi.fn(),
+	createBatch: vi.fn(),
+	finishAttempt: vi.fn().mockResolvedValue("completed"),
+	finishBatch: vi.fn().mockResolvedValue("completed"),
 	createIfUnique: vi.fn(),
 	findById: vi.fn(),
 	findPending: vi.fn(),
@@ -108,20 +111,19 @@ describe("processCcipExtractionJob", () => {
 			1,
 			0,
 		);
-		expect(publishJob).toHaveBeenCalledWith("job-completed", {
-			jobId: "00000000-0000-4000-8000-000000000020",
-			message: "CCIP vector extraction completed",
-		});
+		expect(publishJob).not.toHaveBeenCalledWith(
+			"job-completed",
+			expect.objectContaining({
+				jobId: "00000000-0000-4000-8000-000000000020",
+			}),
+		);
 		expect(publishJob).toHaveBeenCalledWith("job-progress", {
 			jobId: "00000000-0000-4000-8000-000000000010",
 			processed: 1,
 			total: 1,
 		});
-		expect(update).toHaveBeenCalledWith(
+		expect(jobRepository.finishBatch).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
-			{
-				status: "completed",
-			},
 		);
 	});
 
@@ -153,6 +155,7 @@ describe("processCcipExtractionJob", () => {
 	});
 
 	it("increments failed count and marks parent failed when all children are done", async () => {
+		vi.mocked(jobRepository.finishBatch).mockResolvedValueOnce("failed");
 		extract.mockRejectedValue(new Error("ccip error"));
 		recordOutcome.mockResolvedValue({
 			processed: 0,
@@ -185,15 +188,12 @@ describe("processCcipExtractionJob", () => {
 			0,
 			1,
 		);
-		expect(update).toHaveBeenCalledWith(
+		expect(jobRepository.finishBatch).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000010",
-			{
-				status: "failed",
-			},
 		);
 		expect(publishJob).toHaveBeenCalledWith("job-failed", {
 			jobId: "00000000-0000-4000-8000-000000000010",
-			error: "1 item(s) failed",
+			error: "1 batch item(s) failed",
 		});
 	});
 
@@ -244,11 +244,8 @@ describe("processCcipExtractionJob", () => {
 			2,
 			0,
 		);
-		expect(update).toHaveBeenCalledWith(
+		expect(jobRepository.finishBatch).toHaveBeenCalledWith(
 			"00000000-0000-4000-8000-000000000012",
-			{
-				status: "completed",
-			},
 		);
 	});
 });

@@ -3,6 +3,9 @@
  */
 
 import fs from "node:fs/promises";
+import { createHash } from "node:crypto";
+import type { Transaction } from "@solid-imager/core/ports";
+import { getExecutor } from "~/infrastructure/db/executor";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -17,7 +20,6 @@ import {
 import { asyncPool, isRecord } from "@solid-imager/core/utils";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
-import { db } from "~/infrastructure/db";
 import type { Job } from "@solid-imager/core/jobs";
 import { jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
@@ -972,12 +974,31 @@ async function registerMedia(
  * Queues multiple download jobs from a list of download items.
  * Filters out items whose source URLs already exist in the database.
  */
+/** A stable queue identity for a submitted import; retained even after the download finishes. */
+export function importDownloadJobId(requestId: string): string {
+	const bytes = createHash("sha1")
+		.update("solid-imager:import-download:")
+		.update(requestId)
+		.digest()
+		.subarray(0, 16);
+	bytes[6] = (bytes[6] & 0x0f) | 0x50;
+	bytes[8] = (bytes[8] & 0x3f) | 0x80;
+	const hex = bytes.toString("hex");
+	return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
 export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
+	options: { transaction?: Transaction; requestIds?: string[] } = {},
 ): Promise<{ jobCount: number; skippedCount: number }> {
+	if (options.requestIds && options.requestIds.length !== items.length)
+		throw new Error("Import queue identities must match the items");
 	const sourceRepo = DrizzleSourceRepository;
-	const mediaSource = await sourceRepo.findById(mediaSourceId);
+	const mediaSource = await sourceRepo.findById(
+		mediaSourceId,
+		options.transaction,
+	);
 	if (mediaSource?.type !== "local") {
 		throw new Error("Media source not found or not a local source");
 	}
@@ -986,8 +1007,10 @@ export async function queueDownloadJobs(
 	const poolResults = await asyncPool(items, 5, async (item) => {
 		const urls = item.sourceUrls || [];
 		if (urls.length < 2) return { item, skip: false };
-		const existingMediaId =
-			await MediaRepository.findMediaIdWithMatchingUrlSet(urls);
+		const existingMediaId = await MediaRepository.findMediaIdWithMatchingUrlSet(
+			urls,
+			options.transaction,
+		);
 		if (existingMediaId) {
 			logger.info(
 				{ urls, existingMediaId, fileName: item.fileName },
@@ -1015,6 +1038,9 @@ export async function queueDownloadJobs(
 	}
 
 	const jobRows: NewJob[] = newItems.map((item) => ({
+		...(options.requestIds
+			? { id: importDownloadJobId(options.requestIds[items.indexOf(item)]) }
+			: {}),
 		type: "downloadImage",
 		mediaSourceId,
 		payload: {
@@ -1027,7 +1053,10 @@ export async function queueDownloadJobs(
 	const BATCH_SIZE = 500;
 	for (let i = 0; i < jobRows.length; i += BATCH_SIZE) {
 		const chunk = jobRows.slice(i, i + BATCH_SIZE);
-		await db.insert(jobs).values(chunk);
+		const insert = getExecutor(options.transaction).insert(jobs).values(chunk);
+		if (options.requestIds)
+			await insert.onConflictDoNothing({ target: jobs.id });
+		else await insert;
 	}
 
 	// Jobs are picked up by the worker automatically.

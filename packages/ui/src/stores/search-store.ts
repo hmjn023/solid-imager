@@ -8,12 +8,19 @@ import {
 	DEFAULT_SIMILARITY_TOP_K,
 	type SearchState,
 } from "@solid-imager/core/search";
+import { batch, createSignal } from "solid-js";
 import { createStore } from "solid-js/store";
 import { getSearchStateStorageKey } from "../ui-storage";
 
 export const [searchState, setSearchState] = createStore<SearchState>({
 	...defaultState,
 });
+
+// A global Find Similar action supersedes the source view that initiated it.
+// This is a view-lifetime epoch, not persisted search state or another search mode.
+const [globalSimilarityActivation, setGlobalSimilarityActivation] =
+	createSignal(0);
+export const getGlobalSimilarityActivation = globalSimilarityActivation;
 
 function getSessionStorage(): Storage | null {
 	try {
@@ -89,7 +96,10 @@ export const activateSimilaritySearch = (
 		offset: 0,
 		scrollY: 0,
 	};
-	setSearchState(nextState);
+	batch(() => {
+		setGlobalSimilarityActivation((current) => current + 1);
+		setSearchState(nextState);
+	});
 	try {
 		persistSearchState(nextState);
 	} catch {

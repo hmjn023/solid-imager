@@ -76,13 +76,13 @@ describe("shared media collection workflows", () => {
 		expect(actions.selectedMediaItems()).toEqual([]);
 	});
 
-	it("retains selection after partial bulk success and clears it after full success", () => {
+	it("removes confirmed successes and retains unresolved selection after partial results", () => {
 		const { actions, refresh } = setup();
 		actions.selectAll();
-		actions.onBulkSuccess(true);
-		expect(actions.selection.selectedIds().size).toBe(3);
+		actions.onBulkSuccess(true, ["one"]);
+		expect([...actions.selection.selectedIds()]).toEqual(["two", "three"]);
 		expect(actions.isBulkSelectMode()).toBe(true);
-		actions.onBulkSuccess(false);
+		actions.onBulkSuccess(false, ["two", "three"]);
 		expect(actions.selection.selectedIds().size).toBe(0);
 		expect(actions.isBulkSelectMode()).toBe(false);
 		expect(refresh).toHaveBeenCalledTimes(2);

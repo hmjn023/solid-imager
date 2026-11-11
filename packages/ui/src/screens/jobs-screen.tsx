@@ -1,3 +1,4 @@
+import { canRetryJob } from "@solid-imager/core/jobs";
 import type { useJobInspection } from "../hooks/use-job-inspection";
 import {
 	isBatchParentJobType,
@@ -449,7 +450,7 @@ function JobsInspector(props: {
 
 	const retry = async () => {
 		const job = props.job;
-		if (job?.status !== "failed" || isRetrying()) return;
+		if (!job || !canRetryJob(job) || isRetrying()) return;
 		setIsRetrying(true);
 		try {
 			await props.onRetry(job.id);
@@ -679,10 +680,10 @@ function JobsInspector(props: {
 							<Show
 								fallback={
 									<p class="text-xs leading-5 text-muted-foreground">
-										再実行できるのは失敗したジョブのみです。
+										単独で失敗したジョブを再実行できます。バッチ内の失敗はManagerから新しいバッチを開始してください。
 									</p>
 								}
-								when={job().status === "failed"}
+								when={canRetryJob(job())}
 							>
 								<Button
 									aria-busy={isRetrying()}

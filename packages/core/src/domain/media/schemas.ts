@@ -642,6 +642,30 @@ export const bulkTagMediaRequestSchema = z.object({
 });
 export type BulkTagMediaRequest = z.infer<typeof bulkTagMediaRequestSchema>;
 
+/** Outcome of one item; messages are safe public text, never storage paths or exception details. */
+export const bulkMediaItemResultSchema = z.discriminatedUnion("status", [
+	z.object({ mediaId: z.uuid(), status: z.literal("succeeded") }),
+	z.object({
+		mediaId: z.uuid(),
+		status: z.literal("failed"),
+		error: z.string(),
+		retryable: z.boolean().optional(),
+	}),
+	z.object({
+		mediaId: z.uuid(),
+		status: z.literal("not_processed"),
+		error: z.string(),
+	}),
+]);
+export type BulkMediaItemResult = z.infer<typeof bulkMediaItemResultSchema>;
+export const bulkMediaOperationResultSchema = z.object({
+	success: z.boolean(),
+	items: z.array(bulkMediaItemResultSchema),
+});
+export type BulkMediaOperationResult = z.infer<
+	typeof bulkMediaOperationResultSchema
+>;
+
 /** Copies selected media to another source. */
 export const bulkCopyToSourceMediaRequestSchema = z.object({
 	mediaSourceId: z.uuid("Invalid source ID format"),

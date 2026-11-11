@@ -2,6 +2,7 @@ import type { AppConfig } from "@solid-imager/core/config";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { IJobRepository, Job } from "@solid-imager/core/jobs";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
+import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 
 const { mockCleanupExpired, mockCleanupOrphaned } = vi.hoisted(() => ({
 	mockCleanupExpired: vi.fn().mockResolvedValue(undefined),
@@ -47,6 +48,9 @@ describe("JobWorker", () => {
 		// Mock Repository
 		jobRepo = {
 			create: vi.fn(),
+			createBatch: vi.fn(),
+			finishAttempt: vi.fn().mockResolvedValue("completed"),
+			finishBatch: vi.fn().mockResolvedValue("completed"),
 			createIfUnique: vi.fn(),
 			findById: vi.fn(),
 			findPending: vi.fn().mockResolvedValue([]),
@@ -74,6 +78,56 @@ describe("JobWorker", () => {
 	afterEach(() => {
 		worker.stop();
 		vi.useRealTimers();
+	});
+
+	it.each(["completed", "failed"] as const)(
+		"publishes cancelled when storage resolves a %s attempt to cancellation",
+		async (proposed) => {
+			const publish = vi.spyOn(RealtimeEventBus, "publishJob");
+			vi.mocked(jobRepo.finishAttempt).mockResolvedValue("cancelled");
+			const job = { id: "race", type: "processMedia", attemptCount: 3 } as Job;
+			processor =
+				proposed === "failed"
+					? vi.fn().mockRejectedValue(new Error("processor failure"))
+					: vi.fn().mockResolvedValue({ ok: true });
+			worker = new JobWorker(jobRepo, processor);
+			await (worker as any).processJob(job);
+			expect(jobRepo.finishAttempt).toHaveBeenCalledWith(
+				"race",
+				3,
+				expect.objectContaining({ status: proposed }),
+			);
+			expect(publish).toHaveBeenCalledWith(
+				"job-cancelled",
+				expect.objectContaining({ jobId: "race" }),
+			);
+			expect(publish).not.toHaveBeenCalledWith(
+				"job-completed",
+				expect.anything(),
+			);
+			expect(publish).not.toHaveBeenCalledWith("job-failed", expect.anything());
+			publish.mockRestore();
+		},
+	);
+
+	it("does not rewrite a committed outcome when notification fails", async () => {
+		const publish = vi
+			.spyOn(RealtimeEventBus, "publishJob")
+			.mockImplementation(() => {
+				throw new Error("offline subscriber");
+			});
+		await (worker as any).processJob({
+			id: "notification",
+			type: "processMedia",
+			attemptCount: 1,
+		} as Job);
+		expect(jobRepo.finishAttempt).toHaveBeenCalledOnce();
+		expect(jobRepo.finishAttempt).toHaveBeenCalledWith(
+			"notification",
+			1,
+			expect.objectContaining({ status: "completed" }),
+		);
+		publish.mockRestore();
 	});
 
 	it("should respect global concurrency limit for normal jobs", async () => {
@@ -291,14 +345,10 @@ describe("JobWorker", () => {
 		await vi.advanceTimersByTimeAsync(TimerDelay);
 
 		expect(processor).toHaveBeenCalledWith(customJob);
-		expect(jobRepo.markAsCompleted).toHaveBeenCalledWith(
-			"custom-1",
-			{
-				success: true,
-				parentProcessed: true,
-			},
-			0,
-		);
+		expect(jobRepo.finishAttempt).toHaveBeenCalledWith("custom-1", 0, {
+			status: "completed",
+			result: { success: true, parentProcessed: true },
+		});
 	});
 
 	it("processes at most one thumbnail generation job at a time", async () => {

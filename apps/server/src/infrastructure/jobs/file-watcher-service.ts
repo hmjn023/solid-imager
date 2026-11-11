@@ -5,6 +5,7 @@
  */
 
 import path from "node:path";
+import { localConnectionSchema } from "@solid-imager/core/sources";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { FileWatcherManager } from "~/infrastructure/jobs/file-watcher-manager";
 import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
@@ -176,35 +177,80 @@ async function handleFileChanged(
  * Starts file system monitoring for a media source.
  */
 export async function startMonitoring(mediaSourceId: string): Promise<void> {
+	const generation = FileWatcherManager.beginStart(mediaSourceId);
+	const isCurrent = () =>
+		FileWatcherManager.isCurrentStart(mediaSourceId, generation);
+	let activated = false;
+	let buffering = true;
+	const pendingEvents: Array<() => Promise<void>> = [];
+	const handle = async (
+		callback: (sourceId: string, filePath: string) => Promise<void>,
+		filePath: string,
+	) => {
+		if (!isCurrent()) return;
+		if (buffering) pendingEvents.push(() => callback(mediaSourceId, filePath));
+		else await callback(mediaSourceId, filePath);
+	};
 	try {
+		await FileWatcherManager.prepareStart(mediaSourceId, generation);
+		if (!isCurrent()) return;
 		const source = await sourceRepo.findById(mediaSourceId);
-		if (!source) {
+		if (!isCurrent() || source?.type !== "local") {
 			return;
 		}
 
-		if (source.type !== "local") {
+		const basePath = localConnectionSchema.parse(source.connectionInfo).path;
+
+		// Cover the directory before scanning. Events during preparation are
+		// replayed after the scan so registration/deletion cannot race its snapshot.
+		const ready = await FileWatcherManager.start(
+			mediaSourceId,
+			basePath,
+			{
+				onAdd: (filePath) => handle(handleFileAdded, filePath),
+				onDelete: (filePath) => handle(handleFileDeleted, filePath),
+				onChange: (filePath) => handle(handleFileChanged, filePath),
+			},
+			generation,
+		);
+		if (!ready || !isCurrent()) return;
+		// The watcher can take time to initialize; recheck the path before IO.
+		const currentSource = await sourceRepo.findById(mediaSourceId);
+		if (
+			!isCurrent() ||
+			currentSource?.type !== "local" ||
+			localConnectionSchema.parse(currentSource.connectionInfo).path !==
+				basePath
+		)
 			return;
-		}
-
-		const basePath = (source.connectionInfo as { path: string }).path;
-
-		// Run directory sync before starting real-time file system monitoring
-		try {
-			await DirectorySyncService.syncMediaSource(mediaSourceId);
-		} catch (err) {
-			logger.error(
-				{ err, mediaSourceId },
-				"Failed to sync media source before monitoring",
-			);
-		}
-
-		await FileWatcherManager.start(mediaSourceId, basePath, {
-			onAdd: (filePath) => handleFileAdded(mediaSourceId, filePath),
-			onDelete: (filePath) => handleFileDeleted(mediaSourceId, filePath),
-			onChange: (filePath) => handleFileChanged(mediaSourceId, filePath),
+		const result = await DirectorySyncService.syncMediaSource(mediaSourceId, {
+			basePath,
+			isCurrent,
 		});
+		// A completed scan with per-file errors still provides a baseline for
+		// monitoring. Keep its error status/counts while replaying queued events.
+		if (!isCurrent() || (!result.success && result.failureKind !== "partial"))
+			return;
+		for (let index = 0; index < pendingEvents.length; index++) {
+			if (!isCurrent()) return;
+			await pendingEvents[index]();
+		}
+		pendingEvents.length = 0;
+		buffering = false;
+		activated = true;
 	} catch (error) {
 		logger.error({ err: error, mediaSourceId }, "Failed to start monitoring");
+	} finally {
+		if (!activated && isCurrent()) {
+			try {
+				await FileWatcherManager.stop(mediaSourceId);
+			} catch (error) {
+				logger.error(
+					{ err: error, mediaSourceId },
+					"Failed to close uninitialized watcher",
+				);
+			}
+		}
 	}
 }
 

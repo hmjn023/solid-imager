@@ -4,6 +4,8 @@ import {
 	type IJobRepository,
 	type Job,
 	type NewJob,
+	jobTerminalStatusSchema,
+	isBatchParentJobType,
 } from "@solid-imager/core/jobs";
 import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
 import { generateThumbnailJobPayloadSchema } from "@solid-imager/core/thumbnails";
@@ -84,6 +86,97 @@ export function createJobRepository(
 			return mapJob(created);
 		},
 
+		async createBatch(parent, dispatch) {
+			if (
+				!isBatchParentJobType(parent.type) ||
+				parent.status !== "in_progress"
+			) {
+				throw new Error(
+					"Batch parents must be non-executable progress records",
+				);
+			}
+			return db().transaction(async (tx) => {
+				const [created] = await tx.insert(jobs).values(parent).returning();
+				await tx.insert(jobs).values({ ...dispatch, parentId: created.id });
+				return mapJob(created);
+			});
+		},
+
+		async finishAttempt(id, attemptCount, outcome) {
+			// The row lock taken by this UPDATE orders a concurrent cancellation
+			// against completion. A cancelled current attempt always becomes terminal.
+			return db().transaction(async (tx) => {
+				const cancel = sql`${jobs.cancelRequestedAt} IS NOT NULL OR ${outcome.status === "cancelled"}`;
+				const [finished] = await tx
+					.update(jobs)
+					.set({
+						status: sql`(CASE WHEN ${cancel} THEN 'cancelled' ELSE ${outcome.status} END)::job_status`,
+						result:
+							outcome.status === "completed"
+								? sql`CASE WHEN ${cancel} THEN NULL ELSE ${JSON.stringify(outcome.result ?? null)}::jsonb END`
+								: null,
+						error:
+							outcome.status === "failed"
+								? sql`CASE WHEN ${cancel} THEN NULL ELSE ${outcome.error} END`
+								: null,
+						cancelledAt: sql`CASE WHEN ${cancel} THEN NOW() ELSE NULL END`,
+						cancelRequestedAt: sql`CASE WHEN ${cancel} THEN COALESCE(${jobs.cancelRequestedAt}, NOW()) ELSE NULL END`,
+						finishedAt: sql`NOW()`,
+						updatedAt: sql`NOW()`,
+						artifactPath: sql`CASE WHEN ${cancel} THEN NULL ELSE ${jobs.artifactPath} END`,
+						artifactFileName: sql`CASE WHEN ${cancel} THEN NULL ELSE ${jobs.artifactFileName} END`,
+						artifactContentType: sql`CASE WHEN ${cancel} THEN NULL ELSE ${jobs.artifactContentType} END`,
+						artifactSize: sql`CASE WHEN ${cancel} THEN NULL ELSE ${jobs.artifactSize} END`,
+						artifactExpiresAt: sql`CASE WHEN ${cancel} THEN NULL ELSE ${jobs.artifactExpiresAt} END`,
+					})
+					.where(
+						and(
+							eq(jobs.id, id),
+							eq(jobs.status, "in_progress"),
+							eq(jobs.attemptCount, attemptCount),
+						),
+					)
+					.returning();
+				if (!finished) return null;
+				if (finished.parentId) {
+					// Serialize sibling terminal commits before taking a fresh snapshot of
+					// all children. Otherwise concurrent last children can each see the
+					// other's uncommitted in-progress row and both skip parent closure.
+					await tx
+						.select({ id: jobs.id })
+						.from(jobs)
+						.where(eq(jobs.id, finished.parentId))
+						.for("update");
+				}
+				if (finished.parentId && finished.status !== "completed") {
+					// Malformed payloads and failed dispatches can fail before a handler
+					// records item progress. They must not strand an open aggregate.
+					await tx
+						.update(jobs)
+						.set({
+							status: "failed",
+							error: "A batch job failed or was cancelled",
+							finishedAt: sql`NOW()`,
+							updatedAt: sql`NOW()`,
+						})
+						.where(
+							and(
+								eq(jobs.id, finished.parentId),
+								eq(jobs.status, "in_progress"),
+								inArray(jobs.type, [...batchParentJobTypes]),
+							),
+						);
+				} else if (finished.parentId) {
+					await finishBatchWith(tx, finished.parentId);
+				}
+				return jobTerminalStatusSchema.parse(finished.status);
+			});
+		},
+
+		async finishBatch(id) {
+			return finishBatchWith(db(), id);
+		},
+
 		async createIfUnique(job: NewJob): Promise<Job | null> {
 			if (job.type === "generate_thumbnail" && job.mediaSourceId) {
 				generateThumbnailJobPayloadSchema.parse(job.payload);
@@ -141,6 +234,7 @@ export function createJobRepository(
 			const conditions = [
 				eq(jobs.status, "pending"),
 				ne(jobs.type, "import_request"),
+				notInArray(jobs.type, [...batchParentJobTypes]),
 			];
 
 			if (options?.excludeTypes?.length) {
@@ -229,41 +323,46 @@ export function createJobRepository(
 		},
 
 		async requestCancellation(id: string): Promise<void> {
-			const now = new Date();
-			const cancelledPending = await db()
-				.update(jobs)
-				.set({
-					status: "cancelled",
-					cancelRequestedAt: now,
-					cancelledAt: now,
-					finishedAt: now,
-					artifactPath: null,
-					artifactFileName: null,
-					artifactContentType: null,
-					artifactSize: null,
-					artifactExpiresAt: null,
-					updatedAt: now,
-				})
-				.where(and(eq(jobs.id, id), eq(jobs.status, "pending")))
-				.returning();
-
-			if (cancelledPending.length > 0) {
-				return;
-			}
-
-			await db()
-				.update(jobs)
-				.set({
-					cancelRequestedAt: now,
-					updatedAt: now,
-				})
-				.where(
-					and(
-						eq(jobs.id, id),
-						eq(jobs.status, "in_progress"),
-						isNull(jobs.cancelRequestedAt),
-					),
-				);
+			await db().transaction(async (tx) => {
+				const [cancelled] = await tx
+					.update(jobs)
+					.set({
+						status: sql`(CASE WHEN ${jobs.status} = 'pending' THEN 'cancelled' ELSE 'in_progress' END)::job_status`,
+						cancelRequestedAt: sql`COALESCE(${jobs.cancelRequestedAt}, NOW())`,
+						cancelledAt: sql`CASE WHEN ${jobs.status} = 'pending' THEN NOW() ELSE NULL END`,
+						finishedAt: sql`CASE WHEN ${jobs.status} = 'pending' THEN NOW() ELSE NULL END`,
+						artifactPath: sql`CASE WHEN ${jobs.status} = 'pending' THEN NULL ELSE ${jobs.artifactPath} END`,
+						artifactFileName: sql`CASE WHEN ${jobs.status} = 'pending' THEN NULL ELSE ${jobs.artifactFileName} END`,
+						artifactContentType: sql`CASE WHEN ${jobs.status} = 'pending' THEN NULL ELSE ${jobs.artifactContentType} END`,
+						artifactSize: sql`CASE WHEN ${jobs.status} = 'pending' THEN NULL ELSE ${jobs.artifactSize} END`,
+						artifactExpiresAt: sql`CASE WHEN ${jobs.status} = 'pending' THEN NULL ELSE ${jobs.artifactExpiresAt} END`,
+						updatedAt: sql`NOW()`,
+					})
+					.where(
+						and(
+							eq(jobs.id, id),
+							inArray(jobs.status, ["pending", "in_progress"]),
+						),
+					)
+					.returning();
+				if (cancelled?.status === "cancelled" && cancelled.parentId) {
+					await tx
+						.update(jobs)
+						.set({
+							status: "failed",
+							error: "A batch job was cancelled",
+							finishedAt: sql`NOW()`,
+							updatedAt: sql`NOW()`,
+						})
+						.where(
+							and(
+								eq(jobs.id, cancelled.parentId),
+								eq(jobs.status, "in_progress"),
+								inArray(jobs.type, [...batchParentJobTypes]),
+							),
+						);
+				}
+			});
 		},
 
 		async markAsCancelled(
@@ -388,17 +487,25 @@ export function createJobRepository(
 			const payload = normalizedPayloadExpression();
 			const result = await db().execute(sql`
 				WITH previous AS (
-					SELECT id, ${payload} AS data FROM ${jobs}
+					SELECT id, ${payload} AS data, COALESCE(result, '{}'::jsonb) AS legacy_result FROM ${jobs}
 					WHERE id = ${childId} AND parent_id = ${parentId}
 					  AND attempt_count = ${attempt} AND status = 'in_progress'
 					FOR UPDATE
+				), ambiguous_legacy AS (
+					UPDATE ${jobs} parent SET status = 'failed', error = 'Legacy chunk progress requires a new batch', finished_at = NOW(), updated_at = NOW()
+					FROM previous WHERE parent.id = ${parentId} AND parent.status = 'in_progress'
+					AND previous.data->'batchOutcome' IS NULL
+					AND (previous.legacy_result ? 'parentProcessed' OR previous.legacy_result ? 'parentFailed')
+					AND jsonb_typeof(previous.data->'mediaIds') = 'array'
+					AND CASE WHEN jsonb_typeof(previous.data->'mediaIds') = 'array' THEN jsonb_array_length(previous.data->'mediaIds') ELSE 0 END > 1
+					RETURNING parent.id
 				), recorded AS (
 					UPDATE ${jobs} AS child SET payload = previous.data ||
 						jsonb_build_object('batchOutcome', jsonb_build_object(
 							'processed', ${processed}::int, 'failed', ${failed}::int))
-					FROM previous WHERE child.id = previous.id
-					RETURNING COALESCE((previous.data#>>'{batchOutcome,processed}')::int,0) AS old_processed,
-						COALESCE((previous.data#>>'{batchOutcome,failed}')::int,0) AS old_failed
+					FROM previous WHERE child.id = previous.id AND NOT EXISTS (SELECT 1 FROM ambiguous_legacy)
+					RETURNING COALESCE((previous.data#>>'{batchOutcome,processed}')::int, CASE WHEN previous.legacy_result ? 'parentProcessed' THEN 1 ELSE 0 END) AS old_processed,
+						COALESCE((previous.data#>>'{batchOutcome,failed}')::int, CASE WHEN previous.legacy_result ? 'parentFailed' THEN 1 ELSE 0 END) AS old_failed
 				)
 				UPDATE ${jobs} SET payload = ${payload} || jsonb_build_object(
 					'processed', COALESCE((${payload}->>'processed')::int,0) + ${processed} - recorded.old_processed,
@@ -450,6 +557,7 @@ export function createJobRepository(
 			const conditions = [
 				sql`status = 'pending'`,
 				sql`type <> 'import_request'`,
+				sql`type NOT IN ${sqlTuple([...batchParentJobTypes])}`,
 			];
 
 			if (options?.excludeTypes?.length) {
@@ -468,42 +576,94 @@ export function createJobRepository(
 		},
 
 		async requeueStaleInProgress(olderThan: Date): Promise<number> {
-			const staleBaseCondition = and(
-				eq(jobs.status, "in_progress"),
-				lt(jobs.updatedAt, olderThan),
-				notInArray(jobs.type, [...batchParentJobTypes]),
-			);
-			const cancelledRows = await db()
-				.update(jobs)
-				.set({
-					status: "cancelled",
-					cancelledAt: new Date(),
-					finishedAt: new Date(),
-					artifactPath: null,
-					artifactFileName: null,
-					artifactContentType: null,
-					artifactSize: null,
-					artifactExpiresAt: null,
-					updatedAt: new Date(),
-				})
-				.where(and(staleBaseCondition, isNotNull(jobs.cancelRequestedAt)))
-				.returning();
+			return db().transaction(async (tx) => {
+				const staleBaseCondition = and(
+					eq(jobs.status, "in_progress"),
+					lt(jobs.updatedAt, olderThan),
+					notInArray(jobs.type, [...batchParentJobTypes]),
+				);
+				const cancelledRows = await tx
+					.update(jobs)
+					.set({
+						status: "cancelled",
+						cancelledAt: new Date(),
+						finishedAt: new Date(),
+						artifactPath: null,
+						artifactFileName: null,
+						artifactContentType: null,
+						artifactSize: null,
+						artifactExpiresAt: null,
+						updatedAt: new Date(),
+					})
+					.where(and(staleBaseCondition, isNotNull(jobs.cancelRequestedAt)))
+					.returning();
+				// A crashed worker will never call finishAttempt. Recovery owns both
+				// this terminal cancellation and the aggregate's early-failure policy.
+				const parentIds = new Set(
+					cancelledRows.flatMap((child) =>
+						child.parentId ? [child.parentId] : [],
+					),
+				);
+				for (const parentId of [...parentIds].sort()) {
+					await tx
+						.update(jobs)
+						.set({
+							status: "failed",
+							error: "A batch job was cancelled",
+							finishedAt: sql`NOW()`,
+							updatedAt: sql`NOW()`,
+						})
+						.where(
+							and(
+								eq(jobs.id, parentId),
+								eq(jobs.status, "in_progress"),
+								inArray(jobs.type, [...batchParentJobTypes]),
+							),
+						);
+				}
 
-			const rows = await db()
-				.update(jobs)
-				.set({
-					status: "pending",
-					result: null,
-					error: null,
-					startedAt: null,
-					updatedAt: new Date(),
-				})
-				.where(and(staleBaseCondition, isNull(jobs.cancelRequestedAt)))
-				.returning();
+				const rows = await tx
+					.update(jobs)
+					.set({
+						status: "pending",
+						result: null,
+						error: null,
+						startedAt: null,
+						updatedAt: new Date(),
+					})
+					.where(and(staleBaseCondition, isNull(jobs.cancelRequestedAt)))
+					.returning();
 
-			return rows.length + cancelledRows.length;
+				return rows.length + cancelledRows.length;
+			});
 		},
 	};
+}
+
+/** Uses the caller's transaction so the final child and its aggregate commit together. */
+async function finishBatchWith(
+	executor: Pick<DrizzleExecutor, "update">,
+	id: string,
+) {
+	const payload = normalizedPayloadExpression();
+	const [finished] = await executor
+		.update(jobs)
+		.set({
+			status: sql`(CASE WHEN COALESCE((${payload}->>'failed')::int,0) > 0 THEN 'failed' ELSE 'completed' END)::job_status`,
+			finishedAt: sql`NOW()`,
+			updatedAt: sql`NOW()`,
+		})
+		.where(
+			and(
+				eq(jobs.id, id),
+				eq(jobs.status, "in_progress"),
+				inArray(jobs.type, [...batchParentJobTypes]),
+				sql`COALESCE((${payload}->>'processed')::int,0) + COALESCE((${payload}->>'failed')::int,0) >= COALESCE((${payload}->>'total')::int,0)`,
+				sql`NOT EXISTS (SELECT 1 FROM jobs child WHERE child.parent_id = ${jobs.id} AND child.status IN ('pending', 'in_progress'))`,
+			),
+		)
+		.returning();
+	return finished ? jobTerminalStatusSchema.parse(finished.status) : null;
 }
 
 /**

@@ -1,21 +1,10 @@
-import { createSignal } from "solid-js";
 import { Button } from "../../button";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
-import { Label } from "../../label";
 import { ManagerJobStatus } from "./job-status";
 import { SourceSelect } from "./source-select";
 
 export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
-	const [isStarting, setIsStarting] = createSignal(false);
-	const startWarmup = async () => {
-		if (isStarting() || props.manager.activeJobId()) return;
-		setIsStarting(true);
-		try {
-			await props.manager.handleStartThumbnailWarmup();
-		} finally {
-			setIsStarting(false);
-		}
-	};
+	const isStarting = () => props.manager.batchPendingAction() === "start";
 
 	return (
 		<div class="space-y-5">
@@ -29,7 +18,6 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 
 			<section class="border-border border-y bg-card py-4 sm:rounded-md sm:border sm:p-4">
 				<div class="space-y-1.5">
-					<Label>Target source</Label>
 					<SourceSelect
 						manager={props.manager}
 						onChange={props.manager.setSelectedSourceId}
@@ -49,7 +37,7 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 							!!props.manager.activeJobId() ||
 							!props.manager.selectedSourceId()
 						}
-						onClick={() => void startWarmup()}
+						onClick={() => void props.manager.handleStartThumbnailWarmup()}
 					>
 						{isStarting() ? "Submitting..." : "Warm missing thumbnails"}
 					</Button>
