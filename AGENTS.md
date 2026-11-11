@@ -77,6 +77,7 @@ AI生成画像などを整理・検索・配信するメディア管理システ
 
 ## Web toolchain
 
+- Web UI・CSS・クライアント側JSの実装前に、外部スキル `modern-web-guidance` で関連ガイドを検索・取得する。CLIは1.0.0以降を使い、導入・更新は [docs/development.md](docs/development.md#modern-web-guidance) を参照する。
 - Viteを開発サーバーとビルドに使用する。
 - Vitestをunit/integration testに使用する。
 - Oxlintをlint、Oxfmtをformatに使用する。Oxlintのtype-awareルールと`@shadcn/lint`を有効化する。

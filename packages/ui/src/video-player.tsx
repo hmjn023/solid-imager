@@ -58,6 +58,9 @@ export function VideoPlayer(props: VideoPlayerProps) {
 	onCleanup(() => {
 		disposed = true;
 		video?.pause();
+		video?.removeAttribute("src");
+		// Reset the resource selection algorithm to cancel a pending native media download.
+		video?.load();
 	});
 
 	return (

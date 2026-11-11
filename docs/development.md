@@ -25,6 +25,25 @@ PGliteを使う場合のマイグレーションは以下。保存先は `PGLITE
 bun --filter @solid-imager/server run db:migrate:pglite
 ```
 
+## Modern Web Guidance
+
+[GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) の公式CLI 1.0.0以降と公式スキルを使用する。スキル本体は共通スキルディレクトリで管理し、このリポジトリでは `skills-lock.json` の取得元・ハッシュを追跡する。
+
+初回導入は公式ウィザードで利用するエージェントとグローバルへのインストールを選択する。この方法で導入したスキルは `update` で更新できる。他の方法で導入済みの場合は、そのインストール方法で更新する。
+
+```bash
+npx -y modern-web-guidance@latest install
+npx -y modern-web-guidance@latest update
+```
+
+`skills-lock.json` の更新には、リポジトリルートで以下を実行する。生成された外部スキル本体はコミットせず、lockfileの差分を確認して反映する。
+
+```bash
+npx -y skills@latest add GoogleChrome/modern-web-guidance --skill modern-web-guidance --agent codex --yes --copy
+```
+
+Web実装では `search` → `retrieve` → 適用内容・フォールバックの確認を行う。`legacy-scan` はコードベース全体の近代化を依頼された場合に使う。Origin Trial・volatile featureのガイドは既定の制限に従い、必要性を確認してから明示的に有効化する。
+
 ## サーバー管理スクリプト
 
 配置先は `apps/server/scripts/`。所属パッケージをcwdにしてBunで実行する。

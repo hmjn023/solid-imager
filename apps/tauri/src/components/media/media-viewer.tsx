@@ -44,6 +44,8 @@ class ApiMediaSource implements MediaSource {
 
 	async getUrl() {
 		const url = buildMediaContentUrl(this.media.mediaSourceId, this.media.id);
+		// Like thumbnails, native media elements can load the remote URL without a JS CORS fetch.
+		if (this.type !== "image") return url;
 		const response = await getApiFetch()(url, { cache: "no-store" });
 		if (!response.ok) {
 			throw new Error(`Failed to fetch media: ${response.status}`);

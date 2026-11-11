@@ -5,11 +5,11 @@ import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import { Input } from "../../input";
-import { Label } from "../../label";
 import {
 	Select,
 	SelectContent,
 	SelectItem,
+	SelectLabel,
 	SelectTrigger,
 	SelectValue,
 } from "../../select";
@@ -83,8 +83,8 @@ export function DataTransferPanel(props: {
 			</div>
 
 			<section class="space-y-1.5 border-border border-y bg-card py-4 sm:rounded-md sm:border sm:p-4">
-				<Label>Target source</Label>
 				<Select
+					class="space-y-1.5"
 					itemComponent={(selectProps) => (
 						<SelectItem item={selectProps.item}>
 							{selectProps.item.rawValue.name}
@@ -97,6 +97,7 @@ export function DataTransferPanel(props: {
 					placeholder="Choose a source"
 					value={selectedSource() ?? null}
 				>
+					<SelectLabel>Target source</SelectLabel>
 					<SelectTrigger class="w-full bg-card sm:max-w-xl">
 						<SelectValue<unknown>>
 							{() => selectedSource()?.name ?? "Choose a source"}
@@ -125,8 +126,8 @@ export function DataTransferPanel(props: {
 					</div>
 					<div class="mt-4 space-y-4">
 						<div class="space-y-1.5">
-							<Label>Format</Label>
 							<Select
+								class="space-y-1.5"
 								itemComponent={(selectProps) => (
 									<SelectItem item={selectProps.item}>
 										{formatOptionLabel(selectProps.item.rawValue)}
@@ -136,6 +137,7 @@ export function DataTransferPanel(props: {
 								options={["ndjson", "tar"] as const}
 								value={exportFormat()}
 							>
+								<SelectLabel>Export format</SelectLabel>
 								<SelectTrigger class="w-full">
 									<SelectValue<string>>
 										{(state) =>
@@ -184,8 +186,8 @@ export function DataTransferPanel(props: {
 					</div>
 					<div class="mt-4 space-y-4">
 						<div class="space-y-1.5">
-							<Label>Format</Label>
 							<Select
+								class="space-y-1.5"
 								itemComponent={(selectProps) => (
 									<SelectItem item={selectProps.item}>
 										{formatOptionLabel(selectProps.item.rawValue)}
@@ -195,6 +197,7 @@ export function DataTransferPanel(props: {
 								options={["ndjson", "tar"] as const}
 								value={importFormat()}
 							>
+								<SelectLabel>Restore format</SelectLabel>
 								<SelectTrigger class="w-full">
 									<SelectValue<string>>
 										{(state) =>

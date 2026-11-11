@@ -1,6 +1,5 @@
 import { Button } from "../../button";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
-import { Label } from "../../label";
 import { ManagerJobStatus } from "./job-status";
 import { SourceSelect } from "./source-select";
 
@@ -19,7 +18,6 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 
 			<section class="border-border border-y bg-card py-4 sm:rounded-md sm:border sm:p-4">
 				<div class="space-y-1.5">
-					<Label>Target source</Label>
 					<SourceSelect
 						manager={props.manager}
 						onChange={props.manager.setSelectedSourceId}
