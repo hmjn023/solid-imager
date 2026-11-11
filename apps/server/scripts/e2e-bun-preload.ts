@@ -1,5 +1,4 @@
 import http from "node:http";
-import "./runtime-preload";
 
 const nativeServe = Bun.serve;
 
