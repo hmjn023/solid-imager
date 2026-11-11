@@ -30,3 +30,7 @@ fi
 if [ -n "$CHANGED_XTRACTER" ]; then
   echo "→ apps/xtracter changed, no package-specific tests configured"
 fi
+
+# Review the final staged tree after formatters and all other checks.
+# Missing Codex, invalid output, unresolved findings and timeouts block commit.
+bun run commit:review
