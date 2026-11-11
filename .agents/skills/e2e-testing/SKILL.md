@@ -1,6 +1,6 @@
 ---
 name: e2e-testing
-description: Isolated Solid Imager web E2E testing with Playwright, including dev and fresh-production servers, direct URL/F5 SSR checks, loading/error/offline recovery, CCIP jobs, SSE reconnects, browser health assertions, and responsive viewports. Use when adding, debugging, or validating web E2E coverage.
+description: 隔離harnessによるWeb E2Eの追加・修正・検証に使用する。dev/production、直接URL/F5、非同期処理・CCIP・SSE再接続・レスポンシブ表示を扱う。
 ---
 
 # Solid Imager E2E Testing
@@ -25,9 +25,9 @@ The harness is intentionally local. Do not reintroduce a GitHub Actions E2E job 
 ## Harness architecture
 
 - `apps/server/scripts/run-e2e.ts` allocates independent HTTP and HMR ports and runs each requested mode in a unique `/tmp/solid-imager-e2e/<mode>-<uuid>` directory.
-- `apps/server/scripts/e2e-server.ts` seeds two deterministic images, migrates PGlite, writes an isolated config, and verifies TanStack route-tree generation through a placeholder.
+- `apps/server/scripts/e2e-server.ts` calls `isolated-runtime.ts` to seed two base images plus 600 paginated media records, migrate PGlite, write isolated config, and prepare a route-tree placeholder.
 - `apps/server/playwright.config.ts` starts the isolated server, captures traces/screenshots/videos on failure, and runs desktop plus 320/375/768 responsive projects.
-- `apps/server/src/tests/e2e/support/test.ts` installs browser-health checks. Unexpected console errors, page errors, route errors, `[object Object]`, failed requests, and 4xx/5xx responses fail the test unless explicitly allowed.
+- `apps/server/src/tests/e2e/support/test.ts` installs browser-health checks. Unexpected console errors/warnings, page errors, route errors, `[object Object]`, failed requests, and API 4xx/5xx responses fail the test unless allowed or treated as expected navigation/SSE lifecycle aborts.
 
 ## Required coverage
 
@@ -45,7 +45,7 @@ For CCIP changes, `ccip-flow.spec.ts` must exercise real extraction, completion 
 
 ## Async job and realtime pitfalls
 
-- `MediaSidebar` observes `job-completed` and polls `ai.ccipVectorStatus`; a job event is not proof that a client-side query has refreshed.
+- `MediaActions` (`packages/ui/src/media-actions.tsx`) observes `job-completed` and polls `ai.ccipVectorStatus`; a job event is not proof that a client-side query has refreshed.
 - Keep job event handling through `useBatchJobEvents` and `subscribeToEventStream`; do not add direct `EventSource` or custom polling streams.
 - Source events are not replayed. In reconnect tests, wait for the second SSE connection before triggering the source sync.
 - Playwright `page.route()` can alter browser networking behavior (including cache), so use it only for deliberate delay/failure injection. Back the bug with a server/integration test when the failure involves persistence or multiple server module generations.
@@ -56,7 +56,7 @@ For CCIP changes, `ccip-flow.spec.ts` must exercise real extraction, completion 
 2. Inspect browser console, page errors, network method/status/body, and the post-hydration accessibility tree. With `agent-browser`, use `open`, `snapshot -i`, `network requests`, and `screenshot`; close the session afterward.
 3. Check whether the failure is client state, SSE delivery, job completion, or persistence visibility. Do not classify a stale-vector error as an SSR issue without checking the pgvector query and transaction state.
 4. Add a deterministic regression test before changing timing thresholds. Prefer a real isolated fixture over sleeps.
-5. Run the focused E2E, relevant unit/integration tests, typecheck, Biome, and production E2E before the full local gate.
+5. Run the focused E2E, relevant unit/integration tests, typecheck, Oxlint/Oxfmt, and production E2E before the full local gate.
 
 ## Test quality rules
 
