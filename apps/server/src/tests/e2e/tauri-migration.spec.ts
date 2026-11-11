@@ -629,3 +629,132 @@ test("Tauri opens a linked job inspector on a fresh hash route", async ({
 	await reloadTauriRoute(page);
 	await expect(inspector).toHaveAttribute("data-job-id", jobId);
 });
+
+test("Tauri server edits and selection reload the persisted connection and fresh collections", async ({
+	page,
+	browserHealth,
+}) => {
+	const apiOrigin = `http://127.0.0.1:${process.env.E2E_PORT}`;
+	const fixtureOrigin = `http://127.0.0.1:${process.env.E2E_TAURI_PORT}`;
+	const storeKey = "solid-imager:e2e:store:settings.json";
+	await page.addInitScript(
+		({ key, baseUrl }) => {
+			if (localStorage.getItem(key)) return;
+			localStorage.setItem(
+				key,
+				JSON.stringify({
+					serverSettings: {
+						schemaVersion: 1,
+						activeServerId: "e2e-active-server",
+						servers: [
+							{ id: "e2e-active-server", name: "E2E active", baseUrl },
+							{ id: "e2e-other-server", name: "E2E other", baseUrl },
+						],
+					},
+				}),
+			);
+		},
+		{ key: storeKey, baseUrl: apiOrigin },
+	);
+	const readSettings = () =>
+		page.evaluate((key) => {
+			const stored = localStorage.getItem(key);
+			if (!stored) throw new Error("Expected isolated Tauri settings");
+			const state: {
+				serverSettings: {
+					activeServerId: string;
+					servers: Array<{ id: string; name: string; baseUrl: string }>;
+				};
+			} = JSON.parse(stored);
+			return state.serverSettings;
+		}, storeKey);
+
+	await openTauriRoute(page, "/servers");
+	await page.getByRole("button", { name: "Edit", exact: true }).first().click();
+	await page.getByLabel("Name", { exact: true }).fill("E2E edited active");
+	// A second URL reaches the same isolated server through the fixture proxy.
+	await page.getByLabel("Server URL", { exact: true }).fill(fixtureOrigin);
+	await page.evaluate(() => Reflect.set(window, "__e2eOriginalDocument", true));
+	let checkpoint = browserHealth.requestCheckpoint();
+	await Promise.all([
+		page.waitForEvent("domcontentloaded"),
+		page.getByRole("button", { name: "Save changes", exact: true }).click(),
+	]);
+	await waitForTauriWorkspace(page);
+	expect(
+		await page.evaluate(() => Reflect.get(window, "__e2eOriginalDocument")),
+	).toBeUndefined();
+	const edited = await readSettings();
+	const active = edited.servers.find(
+		(server) => server.id === edited.activeServerId,
+	);
+	expect(active).toMatchObject({
+		name: "E2E edited active",
+		baseUrl: fixtureOrigin,
+	});
+	expect(active?.id).not.toBe("e2e-active-server");
+	await expect(
+		page.getByRole("link", { name: "API Docs", exact: true }).first(),
+	).toHaveAttribute("href", `${fixtureOrigin}/docs/scalar`);
+	await expect
+		.poll(() =>
+			browserHealth.apiRequestCountPathSince(
+				checkpoint,
+				"/api/rpc/sources/list",
+			),
+		)
+		.toBeGreaterThan(0);
+	await page.getByRole("link", { name: "Library", exact: true }).click();
+	await expect
+		.poll(() =>
+			browserHealth.apiRequestCountPathSince(checkpoint, "/api/rpc/tags/list"),
+		)
+		.toBeGreaterThan(0);
+	await expect(
+		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+	).toBeVisible();
+	await expectRouteHealthy(page);
+
+	await page
+		.getByRole("link", { name: "Server connections", exact: true })
+		.click();
+	await expect(
+		page.getByRole("button", { name: "Use server", exact: true }),
+	).toHaveCount(1);
+	await page.evaluate(() => Reflect.set(window, "__e2eOriginalDocument", true));
+	checkpoint = browserHealth.requestCheckpoint();
+	await Promise.all([
+		page.waitForEvent("domcontentloaded"),
+		page.getByRole("button", { name: "Use server", exact: true }).click(),
+	]);
+	await waitForTauriWorkspace(page);
+	expect(
+		await page.evaluate(() => Reflect.get(window, "__e2eOriginalDocument")),
+	).toBeUndefined();
+	const selected = await readSettings();
+	expect(selected.activeServerId).toBe("e2e-other-server");
+	expect(
+		selected.servers.find((server) => server.id === selected.activeServerId),
+	).toMatchObject({ name: "E2E other", baseUrl: apiOrigin });
+	await expect(
+		page.getByRole("link", { name: "API Docs", exact: true }).first(),
+	).toHaveAttribute("href", `${apiOrigin}/docs/scalar`);
+	await expect
+		.poll(() =>
+			browserHealth.apiRequestCountPathSince(
+				checkpoint,
+				"/api/rpc/sources/list",
+			),
+		)
+		.toBeGreaterThan(0);
+	await page.getByRole("link", { name: "Library", exact: true }).click();
+	await expect
+		.poll(() =>
+			browserHealth.apiRequestCountPathSince(checkpoint, "/api/rpc/tags/list"),
+		)
+		.toBeGreaterThan(0);
+	await expect(
+		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+	).toBeVisible();
+	await expectRouteHealthy(page);
+});

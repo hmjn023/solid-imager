@@ -1,3 +1,4 @@
+import { getSearchExecutionKind } from "./search-execution";
 import { Show } from "solid-js";
 import { Button } from "./button";
 import { Input } from "./input";
@@ -34,9 +35,7 @@ export function SortControls(props: SortControlsProps) {
 				<Label>ソート</Label>
 				<div class="flex gap-2">
 					<Select
-						disabled={Boolean(
-							props.similarityAnchorMediaId || props.semanticQuery,
-						)}
+						disabled={getSearchExecutionKind(props) !== "ordinary"}
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
 								{getSortLabel(
@@ -73,9 +72,7 @@ export function SortControls(props: SortControlsProps) {
 						<SelectContent />
 					</Select>
 					<Select
-						disabled={Boolean(
-							props.similarityAnchorMediaId || props.semanticQuery,
-						)}
+						disabled={getSearchExecutionKind(props) !== "ordinary"}
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
 								{itemProps.item.rawValue === "asc" ? "昇順" : "降順"}
@@ -99,7 +96,7 @@ export function SortControls(props: SortControlsProps) {
 			</div>
 			<Show
 				when={
-					(props.similarityAnchorMediaId || props.semanticQuery) &&
+					getSearchExecutionKind(props) !== "ordinary" &&
 					props.similarityTopK !== undefined &&
 					props.onSimilarityTopKChange
 				}
@@ -107,7 +104,9 @@ export function SortControls(props: SortControlsProps) {
 				<div class="mt-4 space-y-2 border-border border-t pt-4">
 					<div class="flex items-center justify-between gap-2">
 						<Label for={props.similarityLimitId ?? "similarity-limit"}>
-							類似度順
+							{getSearchExecutionKind(props) === "semantic"
+								? "文章検索"
+								: "類似度順"}
 						</Label>
 						<Show when={props.onClearSimilarity}>
 							<Button
@@ -121,7 +120,7 @@ export function SortControls(props: SortControlsProps) {
 						</Show>
 					</div>
 					<p class="truncate text-muted-foreground text-xs">
-						{props.semanticQuery
+						{getSearchExecutionKind(props) === "semantic"
 							? `検索文: ${props.semanticQuery}`
 							: `類似元: ${props.similarityAnchorMediaId}`}
 					</p>

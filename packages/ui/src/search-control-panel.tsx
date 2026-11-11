@@ -1,3 +1,4 @@
+import { getSearchExecutionKind } from "./search-execution";
 import type { Author } from "@solid-imager/core/authors";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
@@ -70,10 +71,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 		props.onSelectSource?.(id);
 	};
 	const handleSetMode = (mode: "simple" | "pro") => {
-		updateState({
-			...calculateNextModeState(currentState(), mode),
-			semanticQuery: "",
-		});
+		updateState(calculateNextModeState(currentState(), mode));
 	};
 	const clearSimilarityAnchor = () => {
 		if (!props.setState) {
@@ -171,10 +169,24 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			/>
 
 			<div class="my-4 h-px bg-border" />
+			<Show when={getSearchExecutionKind(currentState()) !== "ordinary"}>
+				<p class="mb-3 text-sm text-muted-foreground">
+					通常検索の条件は保持しています。類似・文章検索ではソースと結果件数だけを適用します。
+				</p>
+				<Button
+					class="mb-3"
+					size="sm"
+					variant="outline"
+					onClick={clearSimilarityAnchor}
+				>
+					通常検索に戻す
+				</Button>
+			</Show>
 
 			<div
 				class={
-					currentState().mode === "simple" && !currentState().semanticQuery
+					currentState().mode === "simple" &&
+					getSearchExecutionKind(currentState()) === "ordinary"
 						? "block"
 						: "hidden"
 				}
@@ -195,7 +207,10 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			</div>
 
 			<Show
-				when={currentState().mode === "pro" && !currentState().semanticQuery}
+				when={
+					currentState().mode === "pro" &&
+					getSearchExecutionKind(currentState()) === "ordinary"
+				}
 			>
 				<div class="space-y-4">
 					<PresetManager

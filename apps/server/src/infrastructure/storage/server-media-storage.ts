@@ -5,7 +5,10 @@ import type {
 	MediaMetadata,
 	MediaStorageResult,
 } from "@solid-imager/core/ports";
-import { MediaFileConflictError } from "@solid-imager/core/errors";
+import {
+	MediaFileConflictError,
+	UnreconciledStorageError,
+} from "@solid-imager/core/errors";
 import type { conflictSchema } from "@solid-imager/core/media";
 import type { z } from "zod";
 import { getErrorMessage } from "@solid-imager/core/utils";
@@ -365,8 +368,8 @@ export const ServerMediaStorage: IMediaStorage = {
 		} catch (e) {
 			try {
 				await fs.unlink(targetFilePath);
-			} catch (_) {
-				// Ignore error if temporary file cleanup fails
+			} catch (cleanupError) {
+				throw new UnreconciledStorageError([e, cleanupError]);
 			}
 			throw e;
 		}

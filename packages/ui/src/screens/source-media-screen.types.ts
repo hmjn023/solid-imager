@@ -61,7 +61,6 @@ export type SourceMediaScreenProps = {
 		isOpen: boolean;
 		onClose: () => void;
 		onUpload: (options: UploadOptions) => Promise<void>;
-		onUrlFetch: (file: File) => void;
 		pastedUrl: string | null;
 	}>;
 };

@@ -1,4 +1,6 @@
 export type {
+	BulkMediaItemResult,
+	BulkMediaOperationResult,
 	AddMediaRequest,
 	DownloadItem,
 	DuplicateGroup,
@@ -33,6 +35,8 @@ export type {
 export { ugoiraMetadataSchema } from "../domain/media/ugoira-schemas";
 export type { UgoiraMetadata } from "../domain/media/ugoira-schemas";
 export {
+	bulkMediaOperationResultSchema,
+	bulkMediaItemResultSchema,
 	downloadItemSchema,
 	mediaActivitySchema,
 	mediaDumpItemSchema,

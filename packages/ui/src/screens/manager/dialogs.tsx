@@ -252,21 +252,25 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						<For each={props.manager.duplicatesToDelete()}>
 							{(item) => (
 								<div class="truncate border-border border-b py-1 text-muted-foreground">
-									{item.fileName}
+									{item.sourceName} / {item.fileName}
 								</div>
 							)}
 						</For>
 					</div>
 					<AlertDialogFooter>
 						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						<Button
+							variant="destructive"
+							disabled={
+								props.manager.isDeletingDuplicates() ||
+								props.manager.duplicatesToDelete().length === 0
+							}
 							onClick={() => {
 								void props.manager.handleConfirmDeleteDuplicates();
 							}}
 						>
 							Delete {props.manager.duplicatesToDelete().length}
-						</AlertDialogAction>
+						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>
 			</AlertDialog>

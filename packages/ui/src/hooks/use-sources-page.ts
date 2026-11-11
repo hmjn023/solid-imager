@@ -1,3 +1,4 @@
+import type { SourceSyncResult } from "@solid-imager/core/contract";
 import type {
 	MediaSourceInfo,
 	SafeMediaSource,
@@ -11,7 +12,7 @@ export type SourcesPageActions = {
 	createMediaSource: (data: unknown) => Promise<unknown>;
 	updateMediaSource: (id: string, data: unknown) => Promise<unknown>;
 	deleteMediaSource: (id: string) => Promise<unknown>;
-	syncMediaSources: (ids: string[]) => Promise<unknown>;
+	syncMediaSources: (ids: string[]) => Promise<{ results: SourceSyncResult[] }>;
 };
 
 export type UseSourcesPageOptions = {
@@ -130,8 +131,16 @@ export function useSourcesPage(
 		setIsSyncing(true);
 		toast.info(`Starting sync for ${source.name}...`);
 		try {
-			await actions.syncMediaSources([source.id]);
-			toast.success(`Sync finished for ${source.name}`);
+			const { results } = await actions.syncMediaSources([source.id]);
+			const result = results.find((item) => item.id === source.id);
+			if (!result || !result.success) {
+				toast.error(
+					`Failed to sync ${source.name}: ${result?.error ?? "No synchronization result returned"}`,
+				);
+			} else {
+				toast.success(`Sync finished for ${source.name}`);
+			}
+			invalidate();
 		} catch (error) {
 			toast.error(
 				`Failed to sync ${source.name}: ${error instanceof Error ? error.message : String(error)}`,
@@ -149,9 +158,21 @@ export function useSourcesPage(
 		setIsSyncing(true);
 		toast.info("Starting sync for all sources...");
 		try {
-			const ids = sources.map((s) => s.id).filter(Boolean) as string[];
-			await actions.syncMediaSources(ids);
-			toast.success("Sync finished for all sources");
+			const ids = sources
+				.map((source) => source.id)
+				.filter((id): id is string => Boolean(id));
+			const { results } = await actions.syncMediaSources(ids);
+			const completed = ids.filter((id) =>
+				results.some((result) => result.id === id && result.success),
+			).length;
+			if (completed !== ids.length) {
+				toast.error(
+					`Sync failed for ${ids.length - completed} of ${ids.length} sources`,
+				);
+			} else {
+				toast.success("Sync finished for all sources");
+			}
+			invalidate();
 		} catch (error) {
 			toast.error(
 				`Failed to sync all sources: ${error instanceof Error ? error.message : String(error)}`,

@@ -114,6 +114,14 @@ function observeAccountVerification() {
 					displayName: profile.displayName,
 				},
 			})
+			.then((response: unknown) => {
+				sent = Boolean(
+					response &&
+					typeof response === "object" &&
+					"success" in response &&
+					response.success === true,
+				);
+			})
 			.catch(() => {
 				sent = false;
 			});

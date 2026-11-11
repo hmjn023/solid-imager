@@ -1,4 +1,8 @@
-import type { JobStatus } from "../jobs/schemas";
+import type {
+	JobStatus,
+	JobAttemptOutcome,
+	JobTerminalStatus,
+} from "../jobs/schemas";
 
 /** Persisted job state, including cancellation, retry and optional artifact metadata. */
 export type Job = {
@@ -58,6 +62,16 @@ export type BatchProgress = {
 /** Port for job persistence, claiming, cancellation and batch progress updates. */
 export type IJobRepository = {
 	create(job: NewJob): Promise<Job>;
+	/** Creates the non-executable parent and its dispatch request in one transaction. */
+	createBatch(parent: NewJob, dispatch: Omit<NewJob, "parentId">): Promise<Job>;
+	/** Resolves cancellation and the proposed outcome in a single CAS; null means this attempt no longer owns the job. */
+	finishAttempt(
+		id: string,
+		attemptCount: number,
+		outcome: JobAttemptOutcome,
+	): Promise<JobTerminalStatus | null>;
+	/** Finalizes an open aggregate only after its known item count is accounted for. */
+	finishBatch(id: string): Promise<JobTerminalStatus | null>;
 	createIfUnique(job: NewJob): Promise<Job | null>;
 	findById(id: string): Promise<Job | null>;
 	findPending(

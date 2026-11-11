@@ -125,8 +125,10 @@ export function useMediaCollectionActions(
 			setMoveCopyTarget(null);
 		}
 	};
-	const onBulkSuccess = (partial: boolean) => {
-		if (!partial) clearSelection();
+	const onBulkSuccess = (partial: boolean, succeededMediaIds: string[]) => {
+		for (const id of succeededMediaIds) forgetSelectedMedia(id);
+		if (!partial && selection.selectedIds().size === 0)
+			setIsBulkSelectMode(false);
 		options.refresh();
 	};
 

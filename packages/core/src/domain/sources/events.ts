@@ -193,6 +193,10 @@ export const jobEventSchema = z.discriminatedUnion("event", [
 	z.object({ event: z.literal("job-progress"), data: jobProgressEventSchema }),
 	z.object({ event: z.literal("job-retried"), data: jobRetriedEventSchema }),
 	z.object({
+		event: z.literal("job-cancellation-requested"),
+		data: jobCancelledEventSchema,
+	}),
+	z.object({
 		event: z.literal("job-completed"),
 		data: jobCompletedEventSchema,
 	}),

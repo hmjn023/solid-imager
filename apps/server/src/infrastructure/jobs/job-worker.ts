@@ -1,5 +1,9 @@
 import type { AppConfig } from "@solid-imager/core/config";
-import type { IJobRepository, Job } from "@solid-imager/core/jobs";
+import type {
+	IJobRepository,
+	Job,
+	JobAttemptOutcome,
+} from "@solid-imager/core/jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
 import {
@@ -282,78 +286,24 @@ export class JobWorker {
 		);
 		try {
 			if (await this.jobRepo.isCancellationRequested(job.id)) {
-				await this.markCancelled(job);
+				await this.finishAttempt(job, { status: "cancelled" });
 				return;
 			}
-
 			const result = await this.processor(job);
-			const safeResult =
-				result !== undefined ? toJsonSafeValue(result) : { success: true };
-			if (await this.jobRepo.isCancellationRequested(job.id)) {
-				await this.markCancelled(job);
-				return;
-			} else {
-				const completed = await this.jobRepo.markAsCompleted(
-					job.id,
-					safeResult,
-					attemptCount,
-				);
-				if (!completed) {
-					logger.warn(
-						{ jobId: job.id, attemptCount },
-						"Discarded completion for stale job attempt",
-					);
-					return;
-				}
-				RealtimeEventBus.publishJob("job-completed", {
-					jobId: job.id,
-					message: "Job completed",
-				});
-			}
+			await this.finishAttempt(job, {
+				status: "completed",
+				result:
+					result !== undefined ? toJsonSafeValue(result) : { success: true },
+			});
 			logger.info(
-				{
-					jobId: job.id,
-					type: job.type,
-					mediaSourceId: job.mediaSourceId,
-					parentId: job.parentId,
-					durationMs: Date.now() - startedAt,
-				},
-				"Job completed",
+				{ jobId: job.id, attemptCount, durationMs: Date.now() - startedAt },
+				"Job attempt finished",
 			);
 		} catch (error) {
-			const errorMessage =
-				error instanceof Error ? error.message : String(error);
-			if (await this.jobRepo.isCancellationRequested(job.id)) {
-				await this.markCancelled(job);
-				return;
-			}
-
-			logger.error(
-				{
-					err: error,
-					jobId: job.id,
-					type: job.type,
-					mediaSourceId: job.mediaSourceId,
-					parentId: job.parentId,
-					durationMs: Date.now() - startedAt,
-				},
-				"Job failed",
-			);
-			const failed = await this.jobRepo.markAsFailed(
-				job.id,
-				errorMessage,
-				attemptCount,
-			);
-			if (!failed) {
-				logger.warn(
-					{ jobId: job.id, attemptCount },
-					"Discarded failure for stale job attempt",
-				);
-				return;
-			}
-			RealtimeEventBus.publishJob("job-failed", {
-				jobId: job.id,
-				error: PublicJobFailureMessage,
+			logger.error({ err: error, jobId: job.id, attemptCount }, "Job failed");
+			await this.finishAttempt(job, {
+				status: "failed",
+				error: error instanceof Error ? error.message : String(error),
 			});
 		} finally {
 			clearInterval(heartbeatId);
@@ -373,36 +323,63 @@ export class JobWorker {
 		}
 	}
 
-	private async markCancelled(job: Job): Promise<void> {
-		const cancelled = await this.jobRepo.markAsCancelled(
+	private async finishAttempt(
+		job: Job,
+		outcome: JobAttemptOutcome,
+	): Promise<void> {
+		const status = await this.jobRepo.finishAttempt(
 			job.id,
-			undefined,
 			job.attemptCount ?? 0,
+			outcome,
 		);
-		if (!cancelled) {
+		if (!status) {
 			logger.warn(
 				{ jobId: job.id, attemptCount: job.attemptCount ?? 0 },
-				"Discarded cancellation for stale job attempt",
+				"Discarded outcome for stale job attempt",
 			);
 			return;
 		}
-		if (job.artifactPath) {
-			await removeJobTransferFile(job.artifactPath);
+		// Notification failures cannot undo a committed outcome or turn success into failure.
+		try {
+			if (status === "completed") {
+				RealtimeEventBus.publishJob("job-completed", {
+					jobId: job.id,
+					message: "Job completed",
+				});
+			} else if (status === "failed") {
+				RealtimeEventBus.publishJob("job-failed", {
+					jobId: job.id,
+					error: PublicJobFailureMessage,
+				});
+			} else {
+				if (job.artifactPath) await removeJobTransferFile(job.artifactPath);
+				RealtimeEventBus.publishJob("job-cancelled", {
+					jobId: job.id,
+					message: "Job cancelled",
+				});
+			}
+			if (job.parentId) {
+				const parentStatus = (await this.jobRepo.findById(job.parentId))
+					?.status;
+				if (parentStatus === "failed")
+					RealtimeEventBus.publishJob("job-failed", {
+						jobId: job.parentId,
+						error: "A batch job failed or was cancelled",
+					});
+				else if (parentStatus === "completed")
+					RealtimeEventBus.publishJob("job-completed", {
+						jobId: job.parentId,
+						message: "Batch completed",
+					});
+			}
+		} catch (error) {
+			logger.error(
+				{ err: error, jobId: job.id },
+				"Failed to notify committed job outcome",
+			);
 		}
-		RealtimeEventBus.publishJob("job-cancelled", {
-			jobId: job.id,
-			message: "Job cancelled",
-		});
-		logger.info(
-			{
-				jobId: job.id,
-				type: job.type,
-				mediaSourceId: job.mediaSourceId,
-				parentId: job.parentId,
-			},
-			"Job cancelled",
-		);
 	}
+
 	private async recoverStaleJobs() {
 		const olderThan = new Date(Date.now() - StaleInProgressJobMs);
 		try {

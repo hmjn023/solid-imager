@@ -11,6 +11,15 @@ import {
 import type { IAuthorService } from "../ports/author-service";
 
 const LIFETIME_MS = 10 * 60 * 1000;
+
+function snapshot(view: AuthorAccountVerification): AuthorAccountVerification {
+	return {
+		...view,
+		expiresAt: new Date(view.expiresAt),
+		profile: view.profile ? { ...view.profile } : null,
+	};
+}
+
 type Preview = {
 	authorId: string;
 	accountId: string | null;
@@ -90,13 +99,27 @@ export function createAuthorAccountVerificationService(
 				result: null,
 				confirming: null,
 			});
-			return { ...view };
+			return snapshot(view);
 		},
 		get(id: string): AuthorAccountVerification {
-			return { ...get(id).view };
+			return snapshot(get(id).view);
 		},
 		submit(id: string, profile: TwitterProfile): AuthorAccountVerification {
 			const preview = get(id);
+			// Accepted evidence belongs to this preview, including while confirm is awaiting the DB.
+			// Reject later observations without changing the evidence or its displayed state.
+			const accepted = preview.view.profile;
+			if (accepted) {
+				if (
+					accepted.remoteId !== profile.remoteId ||
+					accepted.username !== profile.username ||
+					accepted.displayName !== profile.displayName
+				)
+					throw new ResourceConflictError(
+						"取得結果が変化しました。再取得して確認してください。",
+					);
+				return snapshot(preview.view);
+			}
 			if (profile.username.toLowerCase() !== preview.username.toLowerCase()) {
 				preview.view.error =
 					"指定したユーザー名と取得結果が一致しません。現在のユーザー名を確認してください。";
@@ -110,18 +133,10 @@ export function createAuthorAccountVerificationService(
 					"登録済みの固定IDと異なるアカウントです。作者の付け替え・統合で修正してください。";
 				throw new ResourceConflictError(preview.view.error);
 			}
-			// Freeze the first preview; a result shown to the user must never change underneath confirmation.
-			if (preview.view.profile) {
-				if (JSON.stringify(preview.view.profile) !== JSON.stringify(profile))
-					throw new ResourceConflictError(
-						"取得結果が変化しました。再取得して確認してください。",
-					);
-				return { ...preview.view };
-			}
 			preview.view.profile = { ...profile };
 			preview.view.error = null;
 			preview.observedAt = now();
-			return { ...preview.view };
+			return snapshot(preview.view);
 		},
 		async confirm(id: string): Promise<Author> {
 			const preview = get(id);
@@ -135,7 +150,7 @@ export function createAuthorAccountVerificationService(
 				authorId: preview.authorId,
 				accountId: preview.accountId,
 				expectedUpdatedAt: preview.expectedUpdatedAt,
-				profile: preview.view.profile,
+				profile: { ...preview.view.profile },
 				observedAt: preview.observedAt,
 			});
 			try {

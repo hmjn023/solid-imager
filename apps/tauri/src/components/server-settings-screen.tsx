@@ -163,10 +163,15 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 
 	const submit = async (event: SubmitEvent) => {
 		event.preventDefault();
+		if (isSaving()) return;
 		setError(null);
 		const trimmedName = name().trim();
 		if (!trimmedName) {
 			setError("Enter a name for this server.");
+			return;
+		}
+		if (trimmedName.length > 100) {
+			setError("Server names must be 100 characters or fewer.");
 			return;
 		}
 		const urlError = validateUrl(baseUrl());

@@ -1,3 +1,4 @@
+import { getSearchExecutionKind } from "../search-execution";
 import type {
 	SearchCriterion,
 	SearchGroup,
@@ -32,10 +33,12 @@ export type SearchResultsQueryKeyInput = {
 export const searchQueryKeys = {
 	all: () => ["searchResults"] as const,
 	results: (input: SearchResultsQueryKeyInput) =>
-		["searchResults", input] as const,
+		["searchResults", activeSearchKey(input)] as const,
 };
 
 export type SourceMediaQueryKeyInput = {
+	similarityAnchorMediaId?: string | null;
+	similarityModel?: SimilarityModel;
 	semanticQuery?: string;
 	similarityTopK?: number;
 	sourceId: string | undefined;
@@ -45,11 +48,36 @@ export type SourceMediaQueryKeyInput = {
 	limit: number;
 };
 
+/** Cache only applied inputs. Suspended normal filters and editor format do not change vector results. */
+function activeSearchKey(input: SourceMediaQueryKeyInput) {
+	const kind = getSearchExecutionKind(input);
+	const base = { kind, sourceId: input.sourceId, limit: input.limit };
+	if (kind === "semantic")
+		return {
+			...base,
+			semanticQuery: input.semanticQuery?.trim(),
+			similarityTopK: input.similarityTopK ?? 1000,
+		};
+	if (kind === "similarity")
+		return {
+			...base,
+			similarityAnchorMediaId: input.similarityAnchorMediaId,
+			similarityModel: input.similarityModel ?? "ccip",
+			similarityTopK: input.similarityTopK ?? 1000,
+		};
+	return {
+		...base,
+		conditionKey: input.conditionKey,
+		sort: input.sort,
+		order: input.order,
+	};
+}
+
 export const sourceMediaQueryKeys = {
 	all: () => ["media"] as const,
 	forSource: (sourceId: string | undefined) => ["media", sourceId] as const,
 	results: (input: SourceMediaQueryKeyInput) =>
-		["media", input.sourceId, input] as const,
+		["media", input.sourceId, activeSearchKey(input)] as const,
 };
 
 /** Matches source-specific infinite result keys without matching other media cache entries. */
@@ -63,7 +91,7 @@ export function isSourceMediaResultsQueryKey(
 		querySourceId === sourceId &&
 		typeof input === "object" &&
 		input !== null &&
-		"conditionKey" in input
+		"kind" in input
 	);
 }
 
@@ -159,12 +187,71 @@ function filtersActivity(node: SearchGroup | SearchCriterion): boolean {
 }
 
 function usesMediaActivity(
-	input: Pick<SearchResultsQueryOptionsInput, "sort" | "condition">,
+	input: Pick<SearchResultsQueryOptionsInput, "sort" | "condition"> &
+		Partial<
+			Pick<
+				SearchResultsQueryOptionsInput,
+				"semanticQuery" | "similarityAnchorMediaId"
+			>
+		>,
 ) {
 	return (
-		input.sort === "rating" ||
-		input.sort === "viewCount" ||
-		Boolean(input.condition && filtersActivity(input.condition))
+		getSearchExecutionKind(input) === "ordinary" &&
+		(input.sort === "rating" ||
+			input.sort === "viewCount" ||
+			Boolean(input.condition && filtersActivity(input.condition)))
+	);
+}
+
+async function executeSearch(
+	input: SearchResultsQueryOptionsInput,
+	pageParam: number,
+	signal: AbortSignal,
+): Promise<MediaSearchResponse> {
+	if (getSearchExecutionKind(input) === "semantic") {
+		if (!input.searchSemantic)
+			throw new Error("Natural language search is unavailable");
+		return input.searchSemantic(
+			{
+				text: input.semanticQuery?.trim() ?? "",
+				mediaSourceId: input.sourceId,
+				topK: input.similarityTopK,
+				limit: Math.min(input.limit, 200),
+				offset: typeof pageParam === "number" ? pageParam : 0,
+			},
+			signal,
+		);
+	}
+	if (
+		getSearchExecutionKind(input) === "similarity" &&
+		input.similarityAnchorMediaId
+	) {
+		if (!input.searchSimilar) {
+			throw new Error("Similarity search is unavailable");
+		}
+		return await input.searchSimilar(
+			{
+				anchorMediaId: input.similarityAnchorMediaId,
+				...(input.similarityModel ? { model: input.similarityModel } : {}),
+				mediaSourceId: input.sourceId,
+				topK: input.similarityTopK,
+				limit: Math.min(input.limit, 200),
+				offset: typeof pageParam === "number" ? pageParam : 0,
+			},
+			signal,
+		);
+	}
+
+	return await input.searchMedia(
+		input.sourceId,
+		{
+			condition: input.condition || undefined,
+			sort: input.sort,
+			order: input.order,
+			limit: input.limit,
+			offset: typeof pageParam === "number" ? pageParam : 0,
+		},
+		signal,
 	);
 }
 
@@ -186,50 +273,7 @@ export function buildSearchResultsQueryOptions(
 			similarityModel: input.similarityModel,
 			semanticQuery: input.semanticQuery,
 		}),
-		queryFn: async ({ pageParam, signal }): Promise<MediaSearchResponse> => {
-			if (input.semanticQuery?.trim()) {
-				if (!input.searchSemantic)
-					throw new Error("Natural language search is unavailable");
-				return input.searchSemantic(
-					{
-						text: input.semanticQuery.trim(),
-						mediaSourceId: input.sourceId,
-						topK: input.similarityTopK,
-						limit: Math.min(input.limit, 200),
-						offset: typeof pageParam === "number" ? pageParam : 0,
-					},
-					signal,
-				);
-			}
-			if (input.similarityAnchorMediaId) {
-				if (!input.searchSimilar) {
-					return { media: [], total: 0 };
-				}
-				return await input.searchSimilar(
-					{
-						anchorMediaId: input.similarityAnchorMediaId,
-						...(input.similarityModel ? { model: input.similarityModel } : {}),
-						mediaSourceId: input.sourceId,
-						topK: input.similarityTopK,
-						limit: Math.min(input.limit, 200),
-						offset: typeof pageParam === "number" ? pageParam : 0,
-					},
-					signal,
-				);
-			}
-
-			return await input.searchMedia(
-				input.sourceId,
-				{
-					condition: input.condition || undefined,
-					sort: input.sort,
-					order: input.order,
-					limit: input.limit,
-					offset: typeof pageParam === "number" ? pageParam : 0,
-				},
-				signal,
-			);
-		},
+		queryFn: ({ pageParam, signal }) => executeSearch(input, pageParam, signal),
 		initialPageParam: 0,
 		getNextPageParam: (lastPage, allPages) => {
 			if (lastPage.media.length === 0) return;
@@ -242,9 +286,9 @@ export function buildSearchResultsQueryOptions(
 		// Similarity result sets have a user-selected size. Keeping the previous
 		// result while changing topK makes selecting 100 look like a no-op.
 		placeholderData:
-			input.similarityAnchorMediaId || input.semanticQuery?.trim()
-				? undefined
-				: keepPreviousData,
+			getSearchExecutionKind(input) === "ordinary"
+				? keepPreviousData
+				: undefined,
 		enabled: input.enabled,
 		gcTime: input.gcTime,
 		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
@@ -252,6 +296,9 @@ export function buildSearchResultsQueryOptions(
 }
 
 export type SourceMediaResultsQueryOptionsInput = {
+	similarityAnchorMediaId?: string | null;
+	similarityModel?: SimilarityModel;
+	searchSimilar?: SearchSimilar;
 	semanticQuery?: string;
 	similarityTopK?: number;
 	searchSemantic?: (
@@ -275,6 +322,8 @@ export function buildSourceMediaResultsQueryOptions(
 	return infiniteQueryOptions({
 		meta: { usesMediaActivity: usesMediaActivity(input) },
 		queryKey: sourceMediaQueryKeys.results({
+			similarityAnchorMediaId: input.similarityAnchorMediaId,
+			similarityModel: input.similarityModel,
 			...(input.semanticQuery !== undefined
 				? { semanticQuery: input.semanticQuery }
 				: {}),
@@ -288,32 +337,20 @@ export function buildSourceMediaResultsQueryOptions(
 			limit: input.limit,
 		}),
 		queryFn: async ({ pageParam, signal }): Promise<MediaSearchResponse> => {
-			if (!input.sourceId) {
-				throw new Error("Media source ID is required");
-			}
-			if (input.semanticQuery?.trim()) {
-				if (!input.searchSemantic)
-					throw new Error("Natural language search is unavailable");
-				return input.searchSemantic(
-					{
-						text: input.semanticQuery.trim(),
-						mediaSourceId: input.sourceId,
-						topK: input.similarityTopK ?? 1000,
-						limit: Math.min(input.limit, 200),
-						offset: typeof pageParam === "number" ? pageParam : 0,
-					},
-					signal,
-				);
-			}
-			return await input.searchMedia(
-				input.sourceId,
+			if (!input.sourceId) throw new Error("Media source ID is required");
+			return executeSearch(
 				{
-					condition: input.condition || undefined,
-					sort: input.sort,
-					order: input.order,
-					limit: input.limit,
-					offset: typeof pageParam === "number" ? pageParam : 0,
+					...input,
+					mode: "simple",
+					similarityAnchorMediaId: input.similarityAnchorMediaId ?? null,
+					similarityTopK: input.similarityTopK ?? 1000,
+					searchSimilar: input.searchSimilar,
+					searchMedia: (_sourceId, params, signal) => {
+						if (!input.sourceId) throw new Error("Media source ID is required");
+						return input.searchMedia(input.sourceId, params, signal);
+					},
 				},
+				pageParam,
 				signal,
 			);
 		},
@@ -326,7 +363,10 @@ export function buildSourceMediaResultsQueryOptions(
 			);
 			return loadedCount < lastPage.total ? loadedCount : undefined;
 		},
-		placeholderData: input.semanticQuery?.trim() ? undefined : keepPreviousData,
+		placeholderData:
+			getSearchExecutionKind(input) === "ordinary"
+				? keepPreviousData
+				: undefined,
 		enabled: input.enabled,
 		staleTime: MEDIA_RESULTS_STALE_TIME_MS,
 	});

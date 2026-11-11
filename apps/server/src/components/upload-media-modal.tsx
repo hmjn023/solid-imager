@@ -46,7 +46,6 @@ type UploadMediaModalProps = {
 		autoIncrement: boolean;
 	}) => Promise<void>;
 	initialFile: File | null;
-	onUrlFetch: (file: File) => void;
 	pastedUrl: string | null;
 };
 
@@ -63,7 +62,6 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 				});
 			}}
 			onUpload={props.onUpload}
-			onUrlFetch={props.onUrlFetch}
 			pastedUrl={props.pastedUrl}
 		/>
 	);

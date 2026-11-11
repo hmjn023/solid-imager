@@ -134,7 +134,7 @@ export function ManagerScreen(props: {
 								.activeBatches()
 								.filter(
 									(job) =>
-										job.id !== props.manager.activeJobId() ||
+										job.id !== props.manager.displayedJobId() ||
 										!["thumbnails", "vectors", "tagging"].includes(
 											activeCategory(),
 										),

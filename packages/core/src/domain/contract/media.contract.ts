@@ -4,6 +4,7 @@ import { rpcOnly } from "./rest-visibility";
 import { z } from "zod";
 import {
 	bulkCopyToSourceMediaRequestSchema,
+	bulkMediaOperationResultSchema,
 	bulkDeleteMediaRequestSchema,
 	bulkEditMediaRequestSchema,
 	bulkMoveMediaRequestSchema,
@@ -309,11 +310,11 @@ export const mediaContract = {
 				tags: ["Media"],
 				summary: "メディア一括移動",
 				description:
-					"同じメディアソース内の複数メディアを指定ディレクトリへ移動します。",
+					"同じメディアソース内の複数メディアを指定ディレクトリへ移動し、項目別の成功・失敗・未処理を返します。",
 			}),
 		)
 		.input(bulkMoveMediaRequestSchema)
-		.output(z.object({ success: z.boolean() })),
+		.output(bulkMediaOperationResultSchema),
 
 	bulkTag: oc
 		.meta(
@@ -331,20 +332,22 @@ export const mediaContract = {
 			openapi({
 				tags: ["Media"],
 				summary: "メディア一括コピー",
-				description: "指定した複数メディアを別のメディアソースへコピーします。",
+				description:
+					"指定した複数メディアを別のメディアソースへコピーし、項目別の成功・失敗・未処理を返します。成功済みの項目は再試行から除外してください。",
 			}),
 		)
 		.input(bulkCopyToSourceMediaRequestSchema)
-		.output(z.object({ success: z.boolean() })),
+		.output(bulkMediaOperationResultSchema),
 
 	bulkMoveToSource: oc
 		.meta(
 			openapi({
 				tags: ["Media"],
 				summary: "メディア一括ソース間移動",
-				description: "指定した複数メディアを別のメディアソースへ移動します。",
+				description:
+					"指定した複数メディアを別のメディアソースへ移動し、項目別の成功・失敗・未処理を返します。",
 			}),
 		)
 		.input(bulkMoveToSourceMediaRequestSchema)
-		.output(z.object({ success: z.boolean() })),
+		.output(bulkMediaOperationResultSchema),
 };

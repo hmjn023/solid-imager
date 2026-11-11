@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
 	activateSimilaritySearch,
+	getGlobalSimilarityActivation,
 	clearSimilaritySearch,
 	searchState,
 	setSearchState,
@@ -47,6 +48,17 @@ describe("activateSimilaritySearch", () => {
 			offset: 0,
 			scrollY: 0,
 		});
+	});
+
+	it("distinguishes a global similarity handoff from source composer updates", () => {
+		const sourceActivation = getGlobalSimilarityActivation();
+		activateSimilaritySearch("global-anchor", "embeddinggemma2");
+		expect(getGlobalSimilarityActivation()).toBe(sourceActivation + 1);
+		expect(searchState.similarityAnchorMediaId).toBe("global-anchor");
+		// A newly mounted source view owns the current epoch and can run its own composer search.
+		const newSourceActivation = getGlobalSimilarityActivation();
+		setSearchState("similarityAnchorMediaId", "source-anchor");
+		expect(getGlobalSimilarityActivation()).toBe(newSourceActivation);
 	});
 
 	it("writes the canonical state and clears the selected source", () => {

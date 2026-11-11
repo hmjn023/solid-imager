@@ -1,6 +1,14 @@
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { createForm } from "@tanstack/solid-form";
-import { createEffect, createSignal, For, on, onCleanup, Show } from "solid-js";
+import {
+	batch,
+	createEffect,
+	createSignal,
+	For,
+	on,
+	onCleanup,
+	Show,
+} from "solid-js";
 import { z } from "zod";
 import {
 	AlertDialog,
@@ -30,6 +38,7 @@ import {
 import { type UploadFormValues, uploadFormSchema } from "./form-schemas";
 import { Input } from "./input";
 import { Label } from "./label";
+import { createUploadDraft } from "./upload-draft";
 
 export type UploadConflictResolution = "overwrite" | "skip" | "rename";
 
@@ -61,7 +70,6 @@ export type UploadMediaModalContentProps = {
 	onClose: () => void;
 	initialFile: File | null;
 	pastedUrl: string | null;
-	onFilesSelected: (files: File[]) => void;
 	onUploadStart: (options: UploadMediaModalSubmitOptions) => Promise<void>;
 	onFetchUrl?: (url: string) => Promise<File>;
 	conflicts?: UploadConflict[];
@@ -108,13 +116,17 @@ function fileSizeLabel(file: File) {
 }
 
 export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
-	const [selectedFiles, setSelectedFiles] = createSignal<File[]>([]);
+	const draft = createUploadDraft({
+		fetchFile: props.onFetchUrl,
+		createPreview: (file) => URL.createObjectURL(file),
+		revokePreview: (url) => URL.revokeObjectURL(url),
+	});
+	const selectedFiles = draft.files;
+	const previewUrl = draft.previewUrl;
+	const isFetchingUrl = draft.fetching;
+	const asyncError = draft.error;
+	const setAsyncError = draft.setError;
 	const [isDragging, setIsDragging] = createSignal(false);
-	const [isFetchingUrl, setIsFetchingUrl] = createSignal(false);
-	const [lastFetchedUrl, setLastFetchedUrl] = createSignal<string | null>(null);
-	const [previewUrl, setPreviewUrl] = createSignal<string | null>(null);
-	const [previewFile, setPreviewFile] = createSignal<File | null>(null);
-	const [asyncError, setAsyncError] = createSignal<string | null>(null);
 	const [showDiscardDialog, setShowDiscardDialog] = createSignal(false);
 	let fileInputRef: HTMLInputElement | undefined;
 
@@ -122,15 +134,15 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 		defaultValues: EMPTY_UPLOAD_FORM,
 		validators: { onSubmit: uploadFormSchema },
 		onSubmit: async ({ value }) => {
-			let files = selectedFiles();
+			const epoch = draft.version();
+			let files = [...selectedFiles()];
 			let filename = value.filename;
 			if (files.length === 0 && value.sourceUrl && props.onFetchUrl) {
 				try {
-					const file = await props.onFetchUrl(value.sourceUrl);
+					const file = await draft.loadUrl(value.sourceUrl);
+					if (!file || !draft.isCurrent(epoch)) return;
 					files = [file];
 					filename ||= file.name;
-					setFiles(files);
-					updatePreview(file);
 				} catch (fetchError) {
 					setAsyncError(getErrorMessage(fetchError));
 					return;
@@ -160,8 +172,12 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 					overwrite: resolution === "overwrite",
 					autoIncrement: resolution === "rename",
 				});
-				props.onClose();
+				if (draft.isCurrent(epoch)) {
+					draft.close();
+					props.onClose();
+				}
 			} catch (submitError) {
+				if (!draft.isCurrent(epoch)) return;
 				form.setErrorMap({
 					onSubmit: {
 						form: getErrorMessage(submitError),
@@ -175,91 +191,18 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 
 	const setFiles = (files: File[]) => {
 		const previousAutoName = selectedFiles()[0]?.name;
-		setSelectedFiles(files);
-		props.onFilesSelected(files);
+		draft.selectFiles(files);
 		const filename = form.getFieldValue("filename");
 		if (files[0] && (!filename || filename === previousAutoName)) {
 			form.setFieldValue("filename", files[0].name);
 		}
 	};
 
-	const updatePreview = (file: File | null) => {
-		if (previewFile() === file) {
-			return;
-		}
-		const currentPreview = previewUrl();
-		if (currentPreview) {
-			URL.revokeObjectURL(currentPreview);
-			setPreviewUrl(null);
-		}
-		setPreviewFile(file);
-		if (file) {
-			setPreviewUrl(URL.createObjectURL(file));
-		}
-	};
-
-	createEffect(
-		on(
-			() => props.initialFile,
-			(file) => {
-				if (file) {
-					setSelectedFiles([file]);
-					if (!form.getFieldValue("filename")) {
-						form.setFieldValue("filename", file.name);
-					}
-				} else {
-					setSelectedFiles([]);
-				}
-				updatePreview(file);
-			},
-		),
-	);
-
-	createEffect(
-		on(
-			() => props.pastedUrl,
-			(url) => {
-				form.setFieldValue("sourceUrl", url || "");
-			},
-		),
-	);
-
-	createEffect(
-		on(
-			() => [sourceUrl(), isFetchingUrl(), lastFetchedUrl()] as const,
-			([url, fetching, lastUrl]) => {
-				if (
-					!(url && props.onFetchUrl && z.url().safeParse(url).success) ||
-					url === lastUrl ||
-					fetching
-				) {
-					return;
-				}
-				void handleUrlFetch(url);
-			},
-		),
-	);
-
 	const handleUrlFetch = async (url: string) => {
-		if (isFetchingUrl()) {
-			return;
-		}
-		setIsFetchingUrl(true);
-		setLastFetchedUrl(url);
-		setAsyncError(null);
-		try {
-			const file = await props.onFetchUrl?.(url);
-			if (!file) {
-				return;
-			}
+		const epoch = draft.version();
+		const file = await draft.loadUrl(url);
+		if (file && draft.isCurrent(epoch))
 			form.setFieldValue("filename", file.name);
-			setFiles([file]);
-			updatePreview(file);
-		} catch (fetchError) {
-			setAsyncError(getErrorMessage(fetchError));
-		} finally {
-			setIsFetchingUrl(false);
-		}
 	};
 
 	const handleDroppedFiles = (files: FileList | null | undefined) => {
@@ -269,7 +212,6 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 		setAsyncError(null);
 		const nextFiles = Array.from(files);
 		setFiles(nextFiles);
-		updatePreview(nextFiles[0] ?? null);
 	};
 
 	createEffect(
@@ -277,40 +219,52 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			() => props.isOpen,
 			(isOpen) => {
 				if (!isOpen) {
+					draft.close();
 					return;
 				}
-				const initialFiles = props.initialFile ? [props.initialFile] : [];
-				setSelectedFiles(initialFiles);
-				props.onFilesSelected(initialFiles);
-				updatePreview(props.initialFile);
-				setLastFetchedUrl(null);
-				form.reset({
-					...EMPTY_UPLOAD_FORM,
-					filename: props.initialFile?.name ?? "",
-					sourceUrl: props.pastedUrl ?? "",
+				batch(() => {
+					draft.open(props.initialFile);
+					form.reset({
+						...EMPTY_UPLOAD_FORM,
+						filename: props.initialFile?.name ?? "",
+						sourceUrl: props.pastedUrl ?? "",
+					});
+					setShowDiscardDialog(false);
 				});
-				setAsyncError(null);
-				setShowDiscardDialog(false);
+			},
+		),
+	);
+	createEffect(
+		on(
+			() => [props.isOpen, sourceUrl()] as const,
+			([open, url]) => {
+				draft.changeUrl(url);
+				if (
+					open &&
+					selectedFiles().length === 0 &&
+					url &&
+					props.onFetchUrl &&
+					z.url().safeParse(url).success &&
+					url !== draft.lastFetchedUrl()
+				)
+					void handleUrlFetch(url);
 			},
 		),
 	);
 
-	onCleanup(() => {
-		const currentPreview = previewUrl();
-		if (currentPreview) {
-			URL.revokeObjectURL(currentPreview);
-		}
-	});
+	onCleanup(draft.close);
 
 	const requestClose = () => {
 		if (form.state.isDirty || selectedFiles().length > 0 || isFetchingUrl()) {
 			setShowDiscardDialog(true);
 			return;
 		}
+		draft.close();
 		props.onClose();
 	};
 	const discardAndClose = () => {
 		setShowDiscardDialog(false);
+		draft.close();
 		props.onClose();
 	};
 
@@ -469,7 +423,6 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 												<Input
 													aria-describedby={`${field().name}-error`}
 													aria-invalid={field().state.meta.errors.length > 0}
-													disabled={isFetchingUrl()}
 													id={field().name}
 													onBlur={field().handleBlur}
 													onInput={(event) =>

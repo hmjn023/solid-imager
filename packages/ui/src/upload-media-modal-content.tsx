@@ -26,10 +26,6 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			isOpen={props.isOpen}
 			onClose={props.onClose}
 			onFetchUrl={props.onFetchUrl}
-			onFilesSelected={(files) => {
-				const firstFile = files[0];
-				if (firstFile) props.onUrlFetch(firstFile);
-			}}
 			onUploadStart={handleUploadStart}
 			pastedUrl={props.pastedUrl}
 		/>

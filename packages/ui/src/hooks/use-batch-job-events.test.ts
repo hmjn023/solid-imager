@@ -2,10 +2,47 @@ import type { JobEvent } from "@solid-imager/core/events";
 import { describe, expect, it, vi } from "vitest";
 import {
 	dispatchJobEvent,
+	rememberJobEvent,
 	shouldSubscribeToJobEvents,
 } from "./use-batch-job-events";
 
 describe("useBatchJobEvents", () => {
+	it("does not treat a cancellation request as a terminal event", () => {
+		const handlers = {
+			handleJobProgress: vi.fn(),
+			handleJobCompleted: vi.fn(),
+			handleJobFailed: vi.fn(),
+			handleJobCancelled: vi.fn(),
+		};
+		dispatchJobEvent(
+			"tracked",
+			{ event: "job-cancellation-requested", data: { jobId: "tracked" } },
+			handlers,
+		);
+		expect(handlers.handleJobCancelled).not.toHaveBeenCalled();
+		expect(handlers.handleJobCompleted).not.toHaveBeenCalled();
+	});
+	it("keeps terminal events received before the start response ahead of late progress", () => {
+		const buffer = new Map<string, JobEvent>();
+		rememberJobEvent(buffer, {
+			event: "job-completed",
+			data: { jobId: "early" },
+		});
+		rememberJobEvent(buffer, {
+			event: "job-progress",
+			data: { jobId: "early", processed: 1, total: 2 },
+		});
+		expect(buffer.get("early")?.event).toBe("job-completed");
+		rememberJobEvent(buffer, {
+			event: "job-retried",
+			data: { jobId: "early" },
+		});
+		rememberJobEvent(buffer, {
+			event: "job-progress",
+			data: { jobId: "early", processed: 1, total: 2 },
+		});
+		expect(buffer.get("early")?.event).toBe("job-progress");
+	});
 	it("dispatches cancellation only for the tracked job", () => {
 		const handleJobCancelled = vi.fn();
 		const handlers = {

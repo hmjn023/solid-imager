@@ -7,7 +7,10 @@ import {
 } from "@solid-imager/core/thumbnails";
 import type { Job } from "@solid-imager/core/jobs";
 import type { Media } from "~/infrastructure/db/schema";
-import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
+import {
+	notifyJob,
+	notifySource,
+} from "~/infrastructure/events/state-notifications";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import {
 	MediaRepository,
@@ -302,7 +305,7 @@ export async function generateThumbnailsForSource(
 		},
 	});
 
-	RealtimeEventBus.publishJob("job-progress", {
+	notifyJob("job-progress", {
 		jobId: parent.id,
 		processed: 0,
 		total: targets.length,
@@ -338,7 +341,7 @@ export async function generateThumbnailsForSource(
 		return { count, jobId: parent.id };
 	} catch (error) {
 		await jobRepo.update(parent.id, { status: "failed" });
-		RealtimeEventBus.publishJob("job-failed", {
+		notifyJob("job-failed", {
 			jobId: parent.id,
 			error: "Thumbnail scheduling failed",
 		});
@@ -407,7 +410,7 @@ export async function processThumbnailGenerationJob(job: Job): Promise<void> {
 			payload.mediaId,
 			payload.size,
 		);
-		RealtimeEventBus.publishSource(job.mediaSourceId, "thumbnail-generated", {
+		notifySource(job.mediaSourceId, "thumbnail-generated", {
 			mediaId: payload.mediaId,
 			size: payload.size,
 			timestamp: new Date().toISOString(),
@@ -427,13 +430,17 @@ async function updateThumbnailParentProgress(
 		return;
 	}
 	const jobRepo = services.getJobRepository();
-	const progress = succeeded
-		? await jobRepo.incrementProgress(job.parentId, job.id)
-		: await jobRepo.incrementFailedCount(job.parentId, job.id);
+	const progress = await jobRepo.recordBatchChildOutcome(
+		job.parentId,
+		job.id,
+		job.attemptCount ?? 0,
+		succeeded ? 1 : 0,
+		succeeded ? 0 : 1,
+	);
 	if (!progress) {
 		return;
 	}
-	RealtimeEventBus.publishJob("job-progress", {
+	notifyJob("job-progress", {
 		jobId: job.parentId,
 		processed: progress.processed,
 		total: progress.total,
@@ -449,17 +456,17 @@ async function finalizeThumbnailParent(
 	progress: { processed: number; failed: number; total: number },
 ): Promise<void> {
 	const jobRepo = services.getJobRepository();
-	if (progress.failed > 0) {
-		await jobRepo.update(parentId, { status: "failed" });
-		RealtimeEventBus.publishJob("job-failed", {
+	const status = await jobRepo.finishBatch(parentId);
+	if (!status) return;
+	if (status === "failed") {
+		notifyJob("job-failed", {
 			jobId: parentId,
-			error: `${progress.failed} thumbnail job(s) failed`,
+			error: `${progress.failed} batch item(s) failed`,
 		});
-		return;
+	} else if (status === "completed") {
+		notifyJob("job-completed", {
+			jobId: parentId,
+			message: "Batch completed",
+		});
 	}
-	await jobRepo.update(parentId, { status: "completed" });
-	RealtimeEventBus.publishJob("job-completed", {
-		jobId: parentId,
-		message: "Thumbnail generation completed",
-	});
 }

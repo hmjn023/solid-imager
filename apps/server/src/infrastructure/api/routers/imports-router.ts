@@ -2,12 +2,16 @@ import { implement } from "@orpc/server";
 import { importsContract } from "@solid-imager/core/contract";
 import type { downloadItemSchema } from "@solid-imager/core/media";
 import type { ImportEvent } from "@solid-imager/core/events";
-import { and, count, eq, inArray } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
-import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
+import {
+	processImportRequests,
+	cancelImportRequests,
+} from "~/infrastructure/services/import-queue-service";
+import { logger } from "~/infrastructure/logger";
 import type { BackupService } from "~/infrastructure/services/backup-service";
 
 /**
@@ -161,52 +165,38 @@ export const importsRouter = os.router({
 	 * Process selected import requests (Queue downloads).
 	 */
 	process: os.process.handler(async ({ input }) => {
-		const { jobIds, targetSourceId } = input;
-
-		// Detect if jobIds is empty
-		if (jobIds.length === 0) {
-			return { success: true, processedCount: 0 };
-		}
-
-		// Fetch jobs
-		const importJobs = await db.query.jobs.findMany({
-			where: and(inArray(jobs.id, jobIds), eq(jobs.type, "import_request")),
-		});
-
-		const itemsToDownload = importJobs.map(
-			(job) => job.payload as z.infer<typeof downloadItemSchema>,
+		const processedCount = await processImportRequests(
+			input.jobIds,
+			input.targetSourceId,
 		);
-
-		if (itemsToDownload.length > 0) {
-			await queueDownloadJobs(targetSourceId, itemsToDownload);
+		try {
+			if (processedCount > 0)
+				RealtimeEventBus.publishImport("import-request:processed", {
+					processedCount,
+				});
+		} catch (error) {
+			logger.error(
+				{ err: error },
+				"Failed to notify committed import approval",
+			);
 		}
-
-		// Update jobs to completed
-		await db
-			.update(jobs)
-			.set({ status: "completed", updatedAt: new Date() })
-			.where(inArray(jobs.id, jobIds));
-
-		RealtimeEventBus.publishImport("import-request:processed", {
-			processedCount: itemsToDownload.length,
-		});
-
-		return { success: true, processedCount: itemsToDownload.length };
+		return { success: true, processedCount };
 	}),
 
 	/**
 	 * Cancel/Delete import requests.
 	 */
 	cancel: os.cancel.handler(async ({ input }) => {
-		const { jobIds } = input;
-		if (jobIds.length === 0) {
-			return { success: true };
+		const jobIds = await cancelImportRequests(input.jobIds);
+		try {
+			if (jobIds.length > 0)
+				RealtimeEventBus.publishImport("import-request:deleted", { jobIds });
+		} catch (error) {
+			logger.error(
+				{ err: error },
+				"Failed to notify committed import cancellation",
+			);
 		}
-
-		await db.delete(jobs).where(inArray(jobs.id, jobIds));
-		RealtimeEventBus.publishImport("import-request:deleted", {
-			jobIds,
-		});
 		return { success: true };
 	}),
 
