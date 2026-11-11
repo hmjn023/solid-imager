@@ -90,6 +90,12 @@
 | `pr-review`          | GitHub PR レビューコメントの取得・返信・解決                                   | PRレビュー対応時                                        |
 | `read-memories`      | 過去セッションログからプロジェクトの決定事項・未解決事項を検索                   | 過去の作業内容を確認する必要がある時                     |
 
+## Commit前のLLMレビュー
+
+- Huskyのpre-commitで既存の整形・型チェック・テスト後に `bun run commit:review` を実行する。staged内容について、アーキテクチャ説明の更新漏れとHTTP MCP / WebMCPへの対応漏れを独立したCodexセッションで確認する。
+- 判断基準は [`tools/commit-review-policy.md`](tools/commit-review-policy.md)。不要と判断した場合も理由と参照ファイルが必要。`NEEDS_CHANGE` / `UNKNOWN` は対応してから再実行し、hookを迂回しない。
+- 差分だけでは分からない要件は `COMMIT_REVIEW_CONTEXT` で渡す。手順と前提条件は [`docs/development/commit-review.md`](docs/development/commit-review.md) を参照する。
+
 ## Web toolchain
 
 - Viteを開発サーバーとビルドに使用する。

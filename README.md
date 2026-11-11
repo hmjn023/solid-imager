@@ -102,6 +102,8 @@ bun --filter @solid-imager/server run db:migrate
 bun run dev
 ```
 
+Commit前にはCodex CLIによるアーキテクチャ・MCPのレビューも実行します。初回は `codex login` を済ませてください。判断基準、要件の渡し方、停止時の対応は[Commit前のLLMレビュー](docs/development/commit-review.md)を参照してください。
+
 Aubeを使う場合は、依存関係のインストールとスクリプト実行を次のように置き換えられます。
 
 ```bash
