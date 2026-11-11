@@ -441,6 +441,89 @@ describe("persisted import, attempt and batch transitions", () => {
 		});
 	});
 
+	it.each(["auto_tagging", "dispatch_bulk_tagging"])(
+		"closes the parent when recovery cancels a stale %s after a worker crash",
+		async (type) => {
+			const parent = await repositories.job.create({
+				type: "bulk_tagging_parent",
+				status: "in_progress",
+				payload: { total: 1, processed: 0, failed: 0 },
+			});
+			const child = await repositories.job.create({
+				type,
+				status: "in_progress",
+				parentId: parent.id,
+				attemptCount: 1,
+				artifactPath: "/tmp/stale-artifact",
+			});
+			await repositories.job.requestCancellation(child.id);
+			await database
+				.update(jobs)
+				.set({ updatedAt: new Date(0) })
+				.where(eq(jobs.id, child.id));
+			// No finishAttempt runs: a new repository represents the restarted worker.
+			const recovered = createRepositories(() => database, {
+				info: vi.fn(),
+				error: vi.fn(),
+			});
+			expect(await recovered.job.requeueStaleInProgress(new Date())).toBe(1);
+			expect(await recovered.job.findById(child.id)).toMatchObject({
+				status: "cancelled",
+				finishedAt: expect.any(Date),
+				cancelledAt: expect.any(Date),
+				artifactPath: null,
+			});
+			const finishedParent = await recovered.job.findById(parent.id);
+			expect(finishedParent).toMatchObject({
+				status: "failed",
+				finishedAt: expect.any(Date),
+			});
+			expect(await recovered.job.requeueStaleInProgress(new Date())).toBe(0);
+			expect(
+				await repositories.job.finishAttempt(child.id, 1, {
+					status: "completed",
+					result: {},
+				}),
+			).toBeNull();
+			expect(await recovered.job.findById(parent.id)).toEqual(finishedParent);
+		},
+	);
+
+	it("rolls back stale child cancellation when its parent cannot be finalized", async () => {
+		const parent = await repositories.job.create({
+			type: "bulk_tagging_parent",
+			status: "in_progress",
+			payload: { total: 1, processed: 0, failed: 0 },
+		});
+		const child = await repositories.job.create({
+			type: "auto_tagging",
+			status: "in_progress",
+			parentId: parent.id,
+			cancelRequestedAt: new Date(0),
+			updatedAt: new Date(0),
+		});
+		await client.exec(
+			`CREATE FUNCTION reject_recovered_parent() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.type = 'bulk_tagging_parent' AND NEW.status = 'failed' THEN RAISE EXCEPTION 'injected parent failure'; END IF; RETURN NEW; END $$; CREATE TRIGGER reject_recovered_parent BEFORE UPDATE ON jobs FOR EACH ROW EXECUTE FUNCTION reject_recovered_parent();`,
+		);
+		try {
+			await expect(
+				repositories.job.requeueStaleInProgress(new Date()),
+			).rejects.toThrow();
+			expect(await repositories.job.findById(child.id)).toMatchObject({
+				status: "in_progress",
+				finishedAt: null,
+			});
+			expect(await repositories.job.findById(parent.id)).toMatchObject({
+				status: "in_progress",
+				finishedAt: null,
+			});
+		} finally {
+			await client.exec(
+				"DROP TRIGGER reject_recovered_parent ON jobs; DROP FUNCTION reject_recovered_parent();",
+			);
+		}
+	});
+
 	it("does not publish a parent failure when cancelling a legacy child of an already closed parent", async () => {
 		const parent = await repositories.job.create({
 			type: "bulk_tagging_parent",

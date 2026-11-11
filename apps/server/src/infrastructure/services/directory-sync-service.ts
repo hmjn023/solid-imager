@@ -40,11 +40,7 @@ type MonitoringSyncScope = {
 	basePath: string;
 	isCurrent: () => boolean;
 };
-type ActiveSync = {
-	basePath: Promise<string | null>;
-	result: Promise<DirectorySyncResult>;
-};
-const activeSyncs = new Map<string, ActiveSync>();
+const activeSyncs = new Map<string, Promise<DirectorySyncResult>>();
 const PublicDirectorySyncFailureMessage = "Directory sync failed";
 const DirectorySyncConcurrencyLimit = 5;
 
@@ -248,17 +244,17 @@ export const DirectorySyncService = {
 		if (activeSync) {
 			// Direct RPC callers keep source-level sharing. A watcher must instead
 			// prepare the exact path it will watch, after older-path work has finished.
-			if (!monitoringScope) return activeSync.result;
-			const activePath = await activeSync.basePath;
+			if (!monitoringScope) return activeSync;
+			// Monitoring starts scanning only after its watcher is ready. An older
+			// run (even on the same path) cannot cover that watcher's initial crawl
+			// and may have skipped scanning after its own generation was invalidated.
+			await activeSync;
 			if (!monitoringScope.isCurrent()) return superseded();
-			if (activePath === monitoringScope.basePath) return activeSync.result;
-			await activeSync.result;
 			if (activeSyncs.get(mediaSourceId) === activeSync)
 				activeSyncs.delete(mediaSourceId);
 			return this.syncMediaSource(mediaSourceId, monitoringScope);
 		}
 
-		const scope = Promise.withResolvers<string | null>();
 		const syncPromise = (async (): Promise<DirectorySyncResult> => {
 			const result: SyncCounts = {
 				sourceId: mediaSourceId,
@@ -281,7 +277,6 @@ export const DirectorySyncService = {
 				const basePath = localConnectionSchema.parse(
 					source.connectionInfo,
 				).path;
-				scope.resolve(basePath);
 				if (
 					monitoringScope &&
 					(!monitoringScope.isCurrent() ||
@@ -386,18 +381,14 @@ export const DirectorySyncService = {
 					"Error during directory sync",
 				);
 				return finishSync(result, PublicDirectorySyncFailureMessage);
-			} finally {
-				// Missing/invalid sources must also release callers waiting for scope resolution.
-				scope.resolve(null);
 			}
 		})();
 
-		const active = { basePath: scope.promise, result: syncPromise };
-		activeSyncs.set(mediaSourceId, active);
+		activeSyncs.set(mediaSourceId, syncPromise);
 		try {
 			return await syncPromise;
 		} finally {
-			if (activeSyncs.get(mediaSourceId) === active) {
+			if (activeSyncs.get(mediaSourceId) === syncPromise) {
 				activeSyncs.delete(mediaSourceId);
 			}
 		}

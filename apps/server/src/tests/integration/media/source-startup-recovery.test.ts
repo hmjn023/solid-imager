@@ -18,7 +18,10 @@ vi.mock(
 				typeof import("~/infrastructure/jobs/file-watcher-manager")
 			>();
 		return {
-			FileWatcherManager: { ...actual.FileWatcherManager, start: vi.fn() },
+			FileWatcherManager: {
+				...actual.FileWatcherManager,
+				start: vi.fn().mockResolvedValue(true),
+			},
 		};
 	},
 );

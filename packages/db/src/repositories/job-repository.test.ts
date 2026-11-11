@@ -49,6 +49,9 @@ describe("JobRepository", () => {
 		};
 
 		repository = createJobRepository(() => mockExecutor as DrizzleExecutor);
+		mockExecutor.transaction = vi.fn(async (operation) =>
+			operation(mockExecutor),
+		);
 	});
 
 	it("claims jobs without source serialization", async () => {

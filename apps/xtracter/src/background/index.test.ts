@@ -219,6 +219,70 @@ describe("operation destination snapshot", () => {
 		);
 	});
 
+	it.each(["NETWORK_ERROR", "TIMEOUT"] as const)(
+		"retries transient %s source lookup using the captured server and selection",
+		async (code) => {
+			const { listener, stored, clientA, clientB, switchToB, notifications } =
+				await setup();
+			const { APIError } = await import("@ext/api");
+			vi.useFakeTimers();
+			try {
+				clientA.sources.list.mockRejectedValueOnce(
+					new APIError("temporary lookup failure", code),
+				);
+				listener(post, {}, vi.fn());
+				await vi.waitFor(() =>
+					expect(clientA.sources.list).toHaveBeenCalledTimes(1),
+				);
+				switchToB();
+				// Even editing A's saved selection must not redirect this operation.
+				const settings = stored.connectionSettings as {
+					selectedSourceIds: Record<string, string>;
+				};
+				settings.selectedSourceIds[urlA] = "another-source";
+				await vi.advanceTimersByTimeAsync(1000);
+				expect(clientA.sources.list).toHaveBeenCalledTimes(2);
+				expect(clientA.downloads.start).toHaveBeenCalledExactlyOnceWith({
+					mediaSourceId: a.id,
+					items: post.data,
+				});
+				expect(clientB.sources.list).not.toHaveBeenCalled();
+				expect(clientB.downloads.start).not.toHaveBeenCalled();
+				expect(getClient).toHaveBeenCalledExactlyOnceWith(urlA);
+				expect(notifications).toHaveBeenCalledWith(
+					expect.objectContaining({
+						message: "Successfully queued 1 download(s)",
+					}),
+				);
+			} finally {
+				vi.useRealTimers();
+			}
+		},
+	);
+
+	it("stops after bounded lookup retries without posting an unchecked saved source", async () => {
+		const { listener, clientA, notifications } = await setup();
+		const { APIError } = await import("@ext/api");
+		vi.useFakeTimers();
+		try {
+			clientA.sources.list.mockRejectedValue(
+				new APIError("offline", "NETWORK_ERROR"),
+			);
+			listener(post, {}, vi.fn());
+			await vi.waitFor(() =>
+				expect(clientA.sources.list).toHaveBeenCalledTimes(1),
+			);
+			await vi.advanceTimersByTimeAsync(3000);
+			expect(clientA.sources.list).toHaveBeenCalledTimes(3);
+			expect(clientA.downloads.start).not.toHaveBeenCalled();
+			expect(notifications).toHaveBeenCalledWith(
+				expect.objectContaining({ title: "xtracter Error" }),
+			);
+		} finally {
+			vi.useRealTimers();
+		}
+	});
+
 	it("uses the same fallback for the popup and POST, restores each server's selection, and rejects stale selection writes", async () => {
 		const { listener, clientA } = await setup();
 		clientA.sources.list.mockResolvedValue([

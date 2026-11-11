@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { MediaSource } from "@solid-imager/core/sources";
+import type { Media } from "@solid-imager/core/media";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	DrizzleSourceRepository,
@@ -12,21 +13,13 @@ import { FileWatcherService } from "~/infrastructure/jobs/file-watcher-service";
 import { FileWatcherManager } from "~/infrastructure/jobs/file-watcher-manager";
 import { MediaProcessingService } from "~/infrastructure/services/media-processing-service";
 
-vi.mock(
-	"~/infrastructure/jobs/file-watcher-manager",
-	async (importOriginal) => {
-		const actual =
-			await importOriginal<
-				typeof import("~/infrastructure/jobs/file-watcher-manager")
-			>();
-		return {
-			FileWatcherManager: { ...actual.FileWatcherManager, start: vi.fn() },
-		};
-	},
-);
 vi.mock("~/infrastructure/db/repositories", () => ({
 	DrizzleSourceRepository: { findById: vi.fn(), update: vi.fn() },
-	MediaRepository: { findAllPathsBySourceId: vi.fn(), delete: vi.fn() },
+	MediaRepository: {
+		findAllPathsBySourceId: vi.fn(),
+		findByPath: vi.fn(),
+		delete: vi.fn(),
+	},
 }));
 vi.mock("~/infrastructure/services/media-processing-service", () => ({
 	MediaProcessingService: { registerAndProcess: vi.fn() },
@@ -62,10 +55,30 @@ let directory: string;
 let oldPath: string;
 let newPath: string;
 let currentSource: MediaSource | null;
-const registered: Array<{ id: string; filePath: string }> = [];
+const registered: Media[] = [];
+
+function mediaRecord(id: string, filePath: string): Media {
+	const now = new Date();
+	return {
+		id: filePath,
+		mediaSourceId: id,
+		filePath,
+		fileName: filePath,
+		mediaType: "image",
+		width: 1,
+		height: 1,
+		fileSize: 1,
+		description: null,
+		createdAt: now,
+		modifiedAt: now,
+		indexedAt: now,
+		status: "active",
+	};
+}
 
 beforeEach(async () => {
 	vi.clearAllMocks();
+	vi.spyOn(FileWatcherManager, "start");
 	registered.splice(0);
 	directory = await fs.mkdtemp(
 		path.join(os.tmpdir(), "solid-imager-watcher-path-"),
@@ -97,6 +110,14 @@ beforeEach(async () => {
 	vi.mocked(MediaRepository.findAllPathsBySourceId).mockImplementation(
 		async () => [...registered],
 	);
+	vi.mocked(MediaRepository.findByPath).mockImplementation(
+		async (_id, filePath) =>
+			registered.find((record) => record.filePath === filePath) ?? null,
+	);
+	vi.mocked(MediaRepository.delete).mockImplementation(async (id) => {
+		const index = registered.findIndex((record) => record.id === id);
+		if (index >= 0) registered.splice(index, 1);
+	});
 	vi.mocked(MediaProcessingService.registerAndProcess).mockImplementation(
 		async (id, filePath) => {
 			const sourcePath =
@@ -106,23 +127,9 @@ beforeEach(async () => {
 					? String(currentSource.connectionInfo.path)
 					: "";
 			await fs.access(path.join(sourcePath, filePath));
-			registered.push({ id: filePath, filePath });
-			const now = new Date();
-			return {
-				id: filePath,
-				mediaSourceId: id,
-				filePath,
-				fileName: filePath,
-				mediaType: "image",
-				width: 1,
-				height: 1,
-				fileSize: 1,
-				description: null,
-				createdAt: now,
-				modifiedAt: now,
-				indexedAt: now,
-				status: "active",
-			};
+			const record = mediaRecord(id, filePath);
+			registered.push(record);
+			return record;
 		},
 	);
 });
@@ -158,7 +165,63 @@ function holdOldScan() {
 }
 
 describe("real sync and watcher preparation after path edits", () => {
-	it("scans the new path's existing files before installing its ignore-initial watcher", async () => {
+	it("captures files added or removed immediately after the initial scan using a real watcher", async () => {
+		await fs.writeFile(path.join(oldPath, "removed.png"), "fixture");
+		registered.push(mediaRecord(sourceId, "removed.png"));
+		const original =
+			DirectorySyncService.syncMediaSource.bind(DirectorySyncService);
+		vi.spyOn(DirectorySyncService, "syncMediaSource").mockImplementationOnce(
+			async (id, scope) => {
+				const result = await original(id, scope);
+				// Previously this fell between the completed scan and chokidar.watch(),
+				// whose ignoreInitial crawl suppressed late.png and missed the unlink.
+				await fs.writeFile(path.join(oldPath, "late.png"), "fixture");
+				await fs.unlink(path.join(oldPath, "removed.png"));
+				return result;
+			},
+		);
+		await FileWatcherService.startMonitoring(sourceId);
+		await vi.waitFor(
+			() =>
+				expect(registered.map((item) => item.filePath)).toEqual(["late.png"]),
+			{ timeout: 5000 },
+		);
+		expect(
+			MediaProcessingService.registerAndProcess,
+		).toHaveBeenCalledExactlyOnceWith(sourceId, "late.png");
+		expect(MediaRepository.delete).toHaveBeenCalledExactlyOnceWith(
+			"removed.png",
+		);
+	});
+
+	it("rescans when a same-path predecessor is superseded before findById resolves", async () => {
+		await fs.writeFile(path.join(oldPath, "existing.png"), "fixture");
+		const finding = Promise.withResolvers<void>();
+		const release = Promise.withResolvers<void>();
+		const original =
+			DirectorySyncService.syncMediaSource.bind(DirectorySyncService);
+		vi.spyOn(DirectorySyncService, "syncMediaSource").mockImplementationOnce(
+			(id, scope) => {
+				vi.mocked(DrizzleSourceRepository.findById).mockImplementationOnce(
+					async () => {
+						finding.resolve();
+						await release.promise;
+						return currentSource;
+					},
+				);
+				return original(id, scope);
+			},
+		);
+		const first = FileWatcherService.startMonitoring(sourceId);
+		await finding.promise;
+		const replacement = FileWatcherService.startMonitoring(sourceId);
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		release.resolve();
+		await Promise.all([first, replacement]);
+		expect(registered.map((item) => item.filePath)).toContain("existing.png");
+	});
+
+	it("scans the new path after its watcher is ready and older-path work finishes", async () => {
 		const scan = holdOldScan();
 		const first = FileWatcherService.startMonitoring(sourceId);
 		await scan.scanning;
@@ -167,7 +230,7 @@ describe("real sync and watcher preparation after path edits", () => {
 		try {
 			await new Promise<void>((resolve) => setImmediate(resolve));
 			expect(scan.opened).toEqual([oldPath]);
-			expect(FileWatcherManager.start).not.toHaveBeenCalled();
+			expect(FileWatcherManager.start).toHaveBeenCalledTimes(2);
 		} finally {
 			scan.release();
 			await Promise.all([first, replacement]);
@@ -176,7 +239,7 @@ describe("real sync and watcher preparation after path edits", () => {
 		expect(
 			MediaProcessingService.registerAndProcess,
 		).toHaveBeenCalledExactlyOnceWith(sourceId, "new-only.png");
-		expect(FileWatcherManager.start).toHaveBeenCalledExactlyOnceWith(
+		expect(FileWatcherManager.start).toHaveBeenLastCalledWith(
 			sourceId,
 			newPath,
 			expect.any(Object),
@@ -185,12 +248,12 @@ describe("real sync and watcher preparation after path edits", () => {
 		expect(
 			vi.mocked(MediaProcessingService.registerAndProcess).mock
 				.invocationCallOrder[0],
-		).toBeLessThan(
+		).toBeGreaterThan(
 			vi.mocked(FileWatcherManager.start).mock.invocationCallOrder[0],
 		);
 	});
 
-	it("shares an existing same-path scan between monitoring generations", async () => {
+	it("performs a fresh same-path scan after a replacement watcher becomes ready", async () => {
 		const scan = holdOldScan();
 		const first = FileWatcherService.startMonitoring(sourceId);
 		await scan.scanning;
@@ -198,8 +261,8 @@ describe("real sync and watcher preparation after path edits", () => {
 		await new Promise<void>((resolve) => setImmediate(resolve));
 		scan.release();
 		await Promise.all([first, replacement]);
-		expect(scan.opened).toEqual([oldPath]);
-		expect(FileWatcherManager.start).toHaveBeenCalledExactlyOnceWith(
+		expect(scan.opened).toEqual([oldPath, oldPath]);
+		expect(FileWatcherManager.start).toHaveBeenLastCalledWith(
 			sourceId,
 			oldPath,
 			expect.any(Object),
@@ -222,7 +285,7 @@ describe("real sync and watcher preparation after path edits", () => {
 			await Promise.all([first, replacement]);
 			expect(scan.opened).toEqual([oldPath]);
 			expect(MediaProcessingService.registerAndProcess).not.toHaveBeenCalled();
-			expect(FileWatcherManager.start).not.toHaveBeenCalled();
+			expect(FileWatcherManager.start).toHaveBeenCalledTimes(2);
 		},
 	);
 

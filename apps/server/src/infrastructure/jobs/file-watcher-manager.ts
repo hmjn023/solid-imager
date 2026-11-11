@@ -8,6 +8,7 @@ const IGNORE_DOTFILES_REGEX = /(^|[/\\])\../;
 type FileWatcher = {
 	watcher: FSWatcher;
 	path: string;
+	settleReady: (ready: boolean) => void;
 };
 
 const globalWatchers = globalThis as typeof globalThis & {
@@ -53,6 +54,7 @@ function serialize(
 async function closeWatcher(mediaSourceId: string): Promise<void> {
 	const entry = watchers.get(mediaSourceId);
 	if (!entry) return;
+	entry.settleReady(false);
 	// A failed close stays registered so a later stop can retry it. Never orphan a handle.
 	await entry.watcher.close();
 	watchers.delete(mediaSourceId);
@@ -112,7 +114,8 @@ export const FileWatcherManager = {
 			onChange: (filePath: string) => Promise<void>;
 		},
 		generation = nextGeneration(mediaSourceId),
-	): Promise<void> {
+	): Promise<boolean> {
+		let readiness: Promise<boolean> = Promise.resolve(false);
 		await serialize(mediaSourceId, async () => {
 			if (!this.isCurrentStart(mediaSourceId, generation)) return;
 			await closeWatcher(mediaSourceId);
@@ -127,6 +130,9 @@ export const FileWatcherManager = {
 					pollInterval: 100,
 				},
 			});
+			const ready = Promise.withResolvers<boolean>();
+			readiness = ready.promise;
+			watcher.once("ready", () => ready.resolve(true));
 
 			const run = async (
 				callback: (filePath: string) => Promise<void>,
@@ -150,6 +156,7 @@ export const FileWatcherManager = {
 				void run(callbacks.onChange, filePath);
 			});
 			watcher.on("error", (error) => {
+				ready.resolve(false);
 				if (!this.isCurrentStart(mediaSourceId, generation)) return;
 				const isUuid =
 					/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(
@@ -169,8 +176,15 @@ export const FileWatcherManager = {
 				}
 			});
 
-			watchers.set(mediaSourceId, { watcher, path: watchPath });
+			watchers.set(mediaSourceId, {
+				watcher,
+				path: watchPath,
+				settleReady: ready.resolve,
+			});
 		});
+		// Do not hold the operation queue while waiting for IO. Stop/replacement
+		// must be able to close an unready handle and settle this wait.
+		return (await readiness) && this.isCurrentStart(mediaSourceId, generation);
 	},
 
 	async stop(mediaSourceId: string): Promise<void> {

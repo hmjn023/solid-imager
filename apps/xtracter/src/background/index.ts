@@ -11,6 +11,7 @@ import type {
 } from "@ext/schema";
 import { resolveDestination } from "@ext/destination";
 import { updateConnectionSettings } from "@ext/connection-settings";
+import { retryWithBackoff } from "@ext/utils/retry";
 import {
 	setApiUrlMessageSchema,
 	setSourceMessageSchema,
@@ -51,41 +52,6 @@ function getExtensionFromUrl(url: string): string {
 		// ignore
 	}
 	return ".png"; // default
-}
-
-/**
- * リトライ付きでAPI呼び出しを実行する
- */
-async function retryWithBackoff<T>(
-	fn: () => Promise<T>,
-	maxRetries = 3,
-	initialDelay = 1000,
-): Promise<T> {
-	let lastError: unknown;
-
-	for (let attempt = 0; attempt < maxRetries; attempt++) {
-		try {
-			return await fn();
-		} catch (error) {
-			lastError = error;
-
-			// タイムアウトやネットワークエラーの場合のみリトライ
-			if (
-				error instanceof APIError &&
-				(error.code === "TIMEOUT" || error.code === "NETWORK_ERROR") &&
-				attempt < maxRetries - 1
-			) {
-				const delay = initialDelay * 2 ** attempt;
-				await new Promise((resolve) => setTimeout(resolve, delay));
-				continue;
-			}
-
-			// その他のエラーは即座に失敗
-			throw error;
-		}
-	}
-
-	throw lastError;
 }
 
 async function postDownloads(items: DownloadItem[]) {

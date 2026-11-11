@@ -576,40 +576,66 @@ export function createJobRepository(
 		},
 
 		async requeueStaleInProgress(olderThan: Date): Promise<number> {
-			const staleBaseCondition = and(
-				eq(jobs.status, "in_progress"),
-				lt(jobs.updatedAt, olderThan),
-				notInArray(jobs.type, [...batchParentJobTypes]),
-			);
-			const cancelledRows = await db()
-				.update(jobs)
-				.set({
-					status: "cancelled",
-					cancelledAt: new Date(),
-					finishedAt: new Date(),
-					artifactPath: null,
-					artifactFileName: null,
-					artifactContentType: null,
-					artifactSize: null,
-					artifactExpiresAt: null,
-					updatedAt: new Date(),
-				})
-				.where(and(staleBaseCondition, isNotNull(jobs.cancelRequestedAt)))
-				.returning();
+			return db().transaction(async (tx) => {
+				const staleBaseCondition = and(
+					eq(jobs.status, "in_progress"),
+					lt(jobs.updatedAt, olderThan),
+					notInArray(jobs.type, [...batchParentJobTypes]),
+				);
+				const cancelledRows = await tx
+					.update(jobs)
+					.set({
+						status: "cancelled",
+						cancelledAt: new Date(),
+						finishedAt: new Date(),
+						artifactPath: null,
+						artifactFileName: null,
+						artifactContentType: null,
+						artifactSize: null,
+						artifactExpiresAt: null,
+						updatedAt: new Date(),
+					})
+					.where(and(staleBaseCondition, isNotNull(jobs.cancelRequestedAt)))
+					.returning();
+				// A crashed worker will never call finishAttempt. Recovery owns both
+				// this terminal cancellation and the aggregate's early-failure policy.
+				const parentIds = new Set(
+					cancelledRows.flatMap((child) =>
+						child.parentId ? [child.parentId] : [],
+					),
+				);
+				for (const parentId of [...parentIds].sort()) {
+					await tx
+						.update(jobs)
+						.set({
+							status: "failed",
+							error: "A batch job was cancelled",
+							finishedAt: sql`NOW()`,
+							updatedAt: sql`NOW()`,
+						})
+						.where(
+							and(
+								eq(jobs.id, parentId),
+								eq(jobs.status, "in_progress"),
+								inArray(jobs.type, [...batchParentJobTypes]),
+							),
+						);
+				}
 
-			const rows = await db()
-				.update(jobs)
-				.set({
-					status: "pending",
-					result: null,
-					error: null,
-					startedAt: null,
-					updatedAt: new Date(),
-				})
-				.where(and(staleBaseCondition, isNull(jobs.cancelRequestedAt)))
-				.returning();
+				const rows = await tx
+					.update(jobs)
+					.set({
+						status: "pending",
+						result: null,
+						error: null,
+						startedAt: null,
+						updatedAt: new Date(),
+					})
+					.where(and(staleBaseCondition, isNull(jobs.cancelRequestedAt)))
+					.returning();
 
-			return rows.length + cancelledRows.length;
+				return rows.length + cancelledRows.length;
+			});
 		},
 	};
 }

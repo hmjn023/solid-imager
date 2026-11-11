@@ -180,6 +180,17 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 	const generation = FileWatcherManager.beginStart(mediaSourceId);
 	const isCurrent = () =>
 		FileWatcherManager.isCurrentStart(mediaSourceId, generation);
+	let activated = false;
+	let buffering = true;
+	const pendingEvents: Array<() => Promise<void>> = [];
+	const handle = async (
+		callback: (sourceId: string, filePath: string) => Promise<void>,
+		filePath: string,
+	) => {
+		if (!isCurrent()) return;
+		if (buffering) pendingEvents.push(() => callback(mediaSourceId, filePath));
+		else await callback(mediaSourceId, filePath);
+	};
 	try {
 		await FileWatcherManager.prepareStart(mediaSourceId, generation);
 		if (!isCurrent()) return;
@@ -190,21 +201,20 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 
 		const basePath = localConnectionSchema.parse(source.connectionInfo).path;
 
-		// Run directory sync before starting real-time file system monitoring
-		try {
-			await DirectorySyncService.syncMediaSource(mediaSourceId, {
-				basePath,
-				isCurrent,
-			});
-		} catch (err) {
-			logger.error(
-				{ err, mediaSourceId },
-				"Failed to sync media source before monitoring",
-			);
-		}
-
-		if (!isCurrent()) return;
-		// Deletion and connection edits can happen while the initial scan is waiting.
+		// Cover the directory before scanning. Events during preparation are
+		// replayed after the scan so registration/deletion cannot race its snapshot.
+		const ready = await FileWatcherManager.start(
+			mediaSourceId,
+			basePath,
+			{
+				onAdd: (filePath) => handle(handleFileAdded, filePath),
+				onDelete: (filePath) => handle(handleFileDeleted, filePath),
+				onChange: (filePath) => handle(handleFileChanged, filePath),
+			},
+			generation,
+		);
+		if (!ready || !isCurrent()) return;
+		// The watcher can take time to initialize; recheck the path before IO.
 		const currentSource = await sourceRepo.findById(mediaSourceId);
 		if (
 			!isCurrent() ||
@@ -213,18 +223,31 @@ export async function startMonitoring(mediaSourceId: string): Promise<void> {
 				basePath
 		)
 			return;
-		await FileWatcherManager.start(
-			mediaSourceId,
+		const result = await DirectorySyncService.syncMediaSource(mediaSourceId, {
 			basePath,
-			{
-				onAdd: (filePath) => handleFileAdded(mediaSourceId, filePath),
-				onDelete: (filePath) => handleFileDeleted(mediaSourceId, filePath),
-				onChange: (filePath) => handleFileChanged(mediaSourceId, filePath),
-			},
-			generation,
-		);
+			isCurrent,
+		});
+		if (!result.success || !isCurrent()) return;
+		for (let index = 0; index < pendingEvents.length; index++) {
+			if (!isCurrent()) return;
+			await pendingEvents[index]();
+		}
+		pendingEvents.length = 0;
+		buffering = false;
+		activated = true;
 	} catch (error) {
 		logger.error({ err: error, mediaSourceId }, "Failed to start monitoring");
+	} finally {
+		if (!activated && isCurrent()) {
+			try {
+				await FileWatcherManager.stop(mediaSourceId);
+			} catch (error) {
+				logger.error(
+					{ err: error, mediaSourceId },
+					"Failed to close uninitialized watcher",
+				);
+			}
+		}
 	}
 }
 

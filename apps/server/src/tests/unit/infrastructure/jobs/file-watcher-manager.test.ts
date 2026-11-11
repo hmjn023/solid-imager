@@ -16,6 +16,7 @@ const callbacks = () => ({
 });
 const handles: Array<EventEmitter & { close: ReturnType<typeof vi.fn> }> = [];
 const sourceIds = new Set<string>();
+let autoReady = true;
 function sourceId(name: string) {
 	sourceIds.add(name);
 	return name;
@@ -23,11 +24,13 @@ function sourceId(name: string) {
 
 beforeEach(() => {
 	vi.clearAllMocks();
+	autoReady = true;
 	vi.mocked(chokidar.watch).mockImplementation(() => {
 		const watcher = Object.assign(new EventEmitter(), {
 			close: vi.fn(async () => {}),
 		});
 		handles.push(watcher);
+		if (autoReady) queueMicrotask(() => watcher.emit("ready"));
 		return watcher as unknown as FSWatcher;
 	});
 });
@@ -38,6 +41,45 @@ afterEach(async () => {
 });
 
 describe("watcher lifecycle ownership", () => {
+	it("waits for initial watcher readiness before reporting a successful start", async () => {
+		autoReady = false;
+		const starting = FileWatcherManager.start(
+			sourceId("ready-gate"),
+			"/source",
+			callbacks(),
+		);
+		let finished = false;
+		void starting.then(() => {
+			finished = true;
+		});
+		await vi.waitFor(() => expect(handles).toHaveLength(1));
+		expect(finished).toBe(false);
+		handles[0].emit("ready");
+		expect(await starting).toBe(true);
+	});
+
+	it("allows stop to close a handle that never becomes ready", async () => {
+		autoReady = false;
+		const id = sourceId("stop-before-ready");
+		const starting = FileWatcherManager.start(id, "/source", callbacks());
+		await vi.waitFor(() => expect(handles).toHaveLength(1));
+		await FileWatcherManager.stop(id);
+		expect(await starting).toBe(false);
+		expect(handles[0].close).toHaveBeenCalledOnce();
+	});
+
+	it("does not report readiness when initialization emits an error", async () => {
+		autoReady = false;
+		const starting = FileWatcherManager.start(
+			sourceId("error-before-ready"),
+			"/source",
+			callbacks(),
+		);
+		await vi.waitFor(() => expect(handles).toHaveLength(1));
+		handles[0].emit("error", new Error("watch failed"));
+		expect(await starting).toBe(false);
+	});
+
 	it("invalidates prepared starts when stop completes", async () => {
 		const id = sourceId("prepared");
 		const generation = FileWatcherManager.beginStart(id);
