@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { AppContractClient } from "@solid-imager/core/contract";
 import type { PixivSearchResult } from "@solid-imager/core/external-viewer";
 import { createQuery } from "@tanstack/solid-query";
@@ -40,8 +41,8 @@ function PixivSearchInfo(props: {
 		<div class="mb-3 space-y-2">
 			<p class="text-muted-foreground text-sm" aria-live="polite">
 				{props.data.word
-					? "pixiv 検索語 · " + props.data.word
-					: "デイリーランキング"}
+					? t("pixivScreen.pixivSearch") + props.data.word
+					: t("pixivScreen.dailyRanking")}
 			</p>
 			<For each={props.data.mappings.filter((row) => row.names.length > 1)}>
 				{(row) => (
@@ -57,7 +58,7 @@ function PixivSearchInfo(props: {
 								<SelectItem item={item.item}>{item.item.rawValue}</SelectItem>
 							)}
 						>
-							<SelectTrigger aria-label={row.tag + " の pixiv タグ"}>
+							<SelectTrigger aria-label={row.tag + t("pixivScreen.pixivTags")}>
 								<SelectValue<string>>
 									{(state) => state.selectedOption()}
 								</SelectValue>
@@ -84,7 +85,8 @@ export function PixivScreen(props: PixivProps) {
 				provider: "pixiv",
 				choices,
 			});
-			if (result.provider !== "pixiv") throw new Error("検索先が一致しません");
+			if (result.provider !== "pixiv")
+				throw new Error(t("pixivScreen.searchDestinationDoesNotMatch"));
 			return result;
 		},
 		account,
@@ -111,8 +113,8 @@ export function PixivScreen(props: PixivProps) {
 			siteUrl="https://www.pixiv.net"
 			browse={browse}
 			suggestTags={(query) => props.client.viewer.suggestTags({ query })}
-			errorTitle="pixiv を検索できませんでした"
-			emptyTitle="該当する作品がありません"
+			errorTitle={t("pixivScreen.couldNotSearchPixiv")}
+			emptyTitle={t("pixivScreen.noMatchingWorks")}
 			actions={
 				<PixivAccountDialog
 					account={account}
@@ -123,10 +125,14 @@ export function PixivScreen(props: PixivProps) {
 				<PixivSearchInfo data={data} onChoose={browse.choose} />
 			)}
 			describePost={(post) => ({
-				title: post.title || `pixiv #${post.id}`,
+				title:
+					post.title ||
+					t("pixivScreen.pixivValue", { value0: String(post.id) }),
 				thumbnail:
 					post.thumbnail && pixivImageHref(props.apiBase(), post.thumbnail),
-				info: [post.author, post.pageCount + "枚"].filter(Boolean).join(" · "),
+				info: [post.author, post.pageCount + t("pixivScreen.images")]
+					.filter(Boolean)
+					.join(" · "),
 			})}
 			renderDetail={(navigation) => (
 				<PixivArtworkDetail

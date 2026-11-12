@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { useSourceRootPath } from "@solid-imager/ui/sources";
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
 import { projectsQueryKeys } from "@solid-imager/ui/query";
@@ -39,10 +40,10 @@ export const Route = createFileRoute("/sources/$mediaSourceId/$mediaId/")({
 	},
 	pendingComponent: () => (
 		<RouteDataPendingScreen
-			description="メディア詳細を準備しています..."
+			description={t("index.preparingMediaDetails")}
 			layout="media-detail"
 			showDescription
-			title="メディア詳細"
+			title={t("index.mediaDetails")}
 		/>
 	),
 	component: MediaDetailRoute,

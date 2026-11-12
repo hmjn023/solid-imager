@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Author } from "@solid-imager/core/authors";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
@@ -28,37 +29,37 @@ import { createDebouncedSignal } from "./utils/debounce";
 import { parseSelectValue } from "./utils/parse-select-value";
 
 const TARGET_LABELS: Record<string, string> = {
-	fileName: "ファイル名",
-	filePath: "ファイルパス",
-	description: "説明",
-	keyword: "キーワード",
-	tag: "タグ",
-	author: "作者",
-	project: "プロジェクト",
-	ip: "IP",
-	character: "キャラクター",
-	folder: "フォルダ",
-	favorite: "お気に入り",
-	rating: "評価",
-	viewCount: "閲覧数",
-	fileSize: "ファイルサイズ",
-	createdAt: "作成日",
-	aiGenerated: "AI生成",
+	fileName: t("uploadMediaModal.filename"),
+	filePath: t("proSearchBuilder.filePath"),
+	description: t("labels.description"),
+	keyword: t("proSearchBuilder.keywords"),
+	tag: t("pixivArtworkDetail.tags"),
+	author: t("labels.authors"),
+	project: t("labels.projects"),
+	ip: t("labels.ips"),
+	character: t("labels.characters"),
+	folder: t("proSearchBuilder.folder"),
+	favorite: t("proSearchBuilder.favorites"),
+	rating: t("sortOptions.rating"),
+	viewCount: t("sortOptions.viewCount"),
+	fileSize: t("sortOptions.fileSize"),
+	createdAt: t("collectionInspector.created"),
+	aiGenerated: t("proSearchBuilder.aIGenerated"),
 };
 
 const OPERATOR_LABELS: Record<string, string> = {
-	equals: "と一致する",
-	contains: "を含む",
-	startsWith: "で始まる",
-	endsWith: "で終わる",
-	gt: "より大きい (>)",
-	gte: "以上 (>=)",
-	lt: "より小さい (<)",
-	lte: "以下 (<=)",
-	in: "のいずれか",
-	notIn: "のいずれでもない",
-	isEmpty: "が空",
-	isNotEmpty: "が空でない",
+	equals: t("proSearchBuilder.equals"),
+	contains: t("proSearchBuilder.contains"),
+	startsWith: t("proSearchBuilder.startsWith"),
+	endsWith: t("proSearchBuilder.endsWith"),
+	gt: t("proSearchBuilder.greaterThan"),
+	gte: t("proSearchBuilder.atLeast"),
+	lt: t("proSearchBuilder.lessThan"),
+	lte: t("proSearchBuilder.atMost"),
+	in: t("proSearchBuilder.isAnyOf"),
+	notIn: t("proSearchBuilder.isNoneOf"),
+	isEmpty: t("proSearchBuilder.isEmpty"),
+	isNotEmpty: t("proSearchBuilder.isNotEmpty"),
 };
 
 const STRING_OPERATORS = [
@@ -147,7 +148,7 @@ function getSearchGroup(child: SearchCriterion | SearchGroup): SearchGroup {
 	if (child.type === "group") {
 		return child;
 	}
-	throw new Error("Expected a search group");
+	throw new Error(t("proSearchBuilder.expectedASearchGroup"));
 }
 
 function getSearchCriterion(
@@ -156,7 +157,7 @@ function getSearchCriterion(
 	if (child.type === "criterion") {
 		return child;
 	}
-	throw new Error("Expected a search criterion");
+	throw new Error(t("proSearchBuilder.expectedASearchCriterion"));
 }
 
 function GroupBuilder(props: {
@@ -238,7 +239,9 @@ function GroupBuilder(props: {
 							</SelectTrigger>
 							<SelectContent />
 						</Select>
-						<span class="text-muted-foreground text-sm">条件グループ</span>
+						<span class="text-muted-foreground text-sm">
+							{t("proSearchBuilder.conditionGroup")}
+						</span>
 					</div>
 
 					<div class="flex w-full flex-col gap-2">
@@ -249,7 +252,7 @@ function GroupBuilder(props: {
 								size="sm"
 								variant="outline"
 							>
-								+ 条件
+								{t("proSearchBuilder.condition")}
 							</Button>
 							<Button
 								class="flex-1 whitespace-nowrap"
@@ -257,7 +260,7 @@ function GroupBuilder(props: {
 								size="sm"
 								variant="outline"
 							>
-								+ グループ
+								{t("proSearchBuilder.group")}
 							</Button>
 						</div>
 						<Show when={!props.isRoot}>
@@ -267,7 +270,7 @@ function GroupBuilder(props: {
 								size="sm"
 								variant="ghost"
 							>
-								削除
+								{t("actions.delete")}
 							</Button>
 						</Show>
 					</div>
@@ -304,7 +307,7 @@ function GroupBuilder(props: {
 					</Index>
 					<Show when={props.group.children.length === 0}>
 						<div class="p-2 text-muted-foreground text-sm italic">
-							条件がありません。「+ 条件」ボタンで追加してください。
+							{t("proSearchBuilder.noConditionsUseConditionToAddOne")}
 						</div>
 					</Show>
 				</div>
@@ -507,7 +510,7 @@ function CriterionBuilder(props: {
 								: ""
 						}
 						optionValue={(item) => item.id}
-						placeholder="検索..."
+						placeholder={t("proSearchBuilder.search")}
 						triggerMode="focus"
 						value={(autocompleteItems() || []).find(
 							(item) => item.name === props.criterion.value,
@@ -524,7 +527,9 @@ function CriterionBuilder(props: {
 					<Select
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
-								{itemProps.item.rawValue === "true" ? "true" : "false"}
+								{itemProps.item.rawValue === "true"
+									? t("proSearchBuilder.true")
+									: t("proSearchBuilder.false")}
 							</SelectItem>
 						)}
 						onChange={(value) =>
@@ -558,7 +563,7 @@ function CriterionBuilder(props: {
 										.filter((value) => value.length > 0),
 								})
 							}
-							placeholder="値をカンマ区切りで入力"
+							placeholder={t("proSearchBuilder.enterCommaSeparatedValues")}
 							value={
 								Array.isArray(props.criterion.value)
 									? props.criterion.value.join(", ")
@@ -566,7 +571,7 @@ function CriterionBuilder(props: {
 							}
 						/>
 						<p class="text-muted-foreground text-xs">
-							カンマ区切りで複数の値を指定できます
+							{t("proSearchBuilder.enterMultipleValuesSeparatedByCommas")}
 						</p>
 					</div>
 				</Match>
@@ -575,7 +580,7 @@ function CriterionBuilder(props: {
 					when={["isEmpty", "isNotEmpty"].includes(props.criterion.operator)}
 				>
 					<div class="rounded-md border border-dashed p-2 text-center text-muted-foreground text-xs italic">
-						この条件に値は不要です
+						{t("proSearchBuilder.thisConditionNeedsNoValue")}
 					</div>
 				</Match>
 
@@ -590,7 +595,7 @@ function CriterionBuilder(props: {
 									: event.currentTarget.value,
 							})
 						}
-						placeholder="値..."
+						placeholder={t("proSearchBuilder.value")}
 						type={isNumericTarget() ? "number" : "text"}
 						value={
 							Array.isArray(props.criterion.value)
@@ -606,7 +611,7 @@ function CriterionBuilder(props: {
 				onClick={props.onRemove}
 				variant="ghost"
 			>
-				削除
+				{t("actions.delete")}
 			</Button>
 		</div>
 	);

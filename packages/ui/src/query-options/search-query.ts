@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { getSearchExecutionKind } from "../search-execution";
 import type {
 	SearchCriterion,
@@ -210,7 +211,7 @@ async function executeSearch(
 ): Promise<MediaSearchResponse> {
 	if (getSearchExecutionKind(input) === "semantic") {
 		if (!input.searchSemantic)
-			throw new Error("Natural language search is unavailable");
+			throw new Error(t("searchQuery.naturalLanguageSearchIsUnavailable"));
 		return input.searchSemantic(
 			{
 				text: input.semanticQuery?.trim() ?? "",
@@ -227,7 +228,7 @@ async function executeSearch(
 		input.similarityAnchorMediaId
 	) {
 		if (!input.searchSimilar) {
-			throw new Error("Similarity search is unavailable");
+			throw new Error(t("searchQuery.similaritySearchIsUnavailable"));
 		}
 		return await input.searchSimilar(
 			{
@@ -337,7 +338,8 @@ export function buildSourceMediaResultsQueryOptions(
 			limit: input.limit,
 		}),
 		queryFn: async ({ pageParam, signal }): Promise<MediaSearchResponse> => {
-			if (!input.sourceId) throw new Error("Media source ID is required");
+			if (!input.sourceId)
+				throw new Error(t("searchQuery.mediaSourceIDIsRequired"));
 			return executeSearch(
 				{
 					...input,
@@ -346,7 +348,8 @@ export function buildSourceMediaResultsQueryOptions(
 					similarityTopK: input.similarityTopK ?? 1000,
 					searchSimilar: input.searchSimilar,
 					searchMedia: (_sourceId, params, signal) => {
-						if (!input.sourceId) throw new Error("Media source ID is required");
+						if (!input.sourceId)
+							throw new Error(t("searchQuery.mediaSourceIDIsRequired"));
 						return input.searchMedia(input.sourceId, params, signal);
 					},
 				},

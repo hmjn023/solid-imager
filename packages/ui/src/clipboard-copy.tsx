@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { createSignal, onCleanup, splitProps } from "solid-js";
 import { toast } from "./toast";
 import { cn } from "./utils/cn";
@@ -80,9 +81,7 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 
 		// Secure Context check (navigator.clipboard)
 		if (!navigator.clipboard) {
-			toast.error(
-				"Clipboard API not supported or not in a Secure Context (HTTPS/localhost).",
-			);
+			toast.error(t("clipboardCopy.clipboardAPINotSupportedOrNotInASecure"));
 			return;
 		}
 
@@ -93,20 +92,20 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 		try {
 			await navigator.clipboard.writeText(local.text);
 			setCopied(true);
-			toast.success("Copied to clipboard");
+			toast.success(t("clipboardCopy.copiedToClipboard"));
 
 			timeoutId = window.setTimeout(() => {
 				setCopied(false);
 				timeoutId = undefined;
 			}, RESET_TIMEOUT);
 		} catch (_error) {
-			toast.error("Failed to copy");
+			toast.error(t("clipboardCopy.failedToCopy"));
 		}
 	};
 
 	return (
 		<button
-			aria-label={local.label || "Copy to clipboard"}
+			aria-label={local.label || t("clipboardCopy.copyToClipboard")}
 			class={cn(
 				"inline-flex items-center justify-center rounded-sm transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
 				local.class,
@@ -114,7 +113,7 @@ export function ClipboardCopy(props: ClipboardCopyProps) {
 			onClick={(event) => {
 				void handleCopy(event);
 			}}
-			title={local.label || "Copy to clipboard"}
+			title={local.label || t("clipboardCopy.copyToClipboard")}
 			type="button"
 			{...others}
 		>

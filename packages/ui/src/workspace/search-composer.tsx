@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { SearchPageFilterData } from "../hooks/use-search-page";
 import { createEffect, createMemo, For, Show } from "solid-js";
 import { SearchComposerField } from "./search-composer-field";
@@ -48,7 +49,7 @@ export function SearchComposer(props: SearchComposerProps) {
 		<SearchComposerField
 			draft={props.draft}
 			id="search-composer"
-			label="メディアを検索"
+			label={t("searchComposer.searchMedia")}
 			inputRef={props.inputRef}
 			onDraftChange={props.onDraftChange}
 			onEmptyBackspace={() => {
@@ -64,7 +65,7 @@ export function SearchComposer(props: SearchComposerProps) {
 			onSubmit={props.onSubmit}
 			options={suggestions()}
 			optionValue={(option) => `${option.key}:${option.value}`}
-			placeholder="検索、または text: / tag: / author: / similar: / limit:100 …"
+			placeholder={t("searchComposer.searchOrTextTagAuthorSimilarLimit100")}
 			virtualized
 		>
 			<For each={props.tokens.slice(0, 4)}>
@@ -77,7 +78,10 @@ export function SearchComposer(props: SearchComposerProps) {
 						</span>
 						<Show when={token.removable !== false}>
 							<button
-								aria-label={`${token.prefix}:${token.value}を解除`}
+								aria-label={t("searchComposer.removeValueValue", {
+									value0: String(token.prefix),
+									value1: String(token.value),
+								})}
 								class="flex size-4 shrink-0 items-center justify-center rounded hover:bg-black/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 								onClick={() => props.onRemoveToken(token)}
 								type="button"
@@ -90,7 +94,9 @@ export function SearchComposer(props: SearchComposerProps) {
 			</For>
 			<Show when={props.tokens.length > 4}>
 				<span class="inline-flex h-6 items-center rounded bg-muted px-2 font-medium text-label-sm text-muted-foreground">
-					ほか{props.tokens.length - 4}件
+					{t("searchComposer.valueMore", {
+						value0: String(props.tokens.length - 4),
+					})}
 				</span>
 			</Show>
 		</SearchComposerField>

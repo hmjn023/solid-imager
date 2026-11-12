@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { UploadMediaModalContent as SharedUploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-content";
 
 type UploadMediaModalProps = {
@@ -18,7 +19,11 @@ type UploadMediaModalProps = {
 async function fetchFileFromUrl(url: string) {
 	const response = await fetch(url);
 	if (!response.ok) {
-		throw new Error(`Failed to fetch URL: ${response.status}`);
+		throw new Error(
+			t("uploadMediaModalContent.failedToFetchURLValue", {
+				value0: String(response.status),
+			}),
+		);
 	}
 	const blob = await response.blob();
 	return new File(

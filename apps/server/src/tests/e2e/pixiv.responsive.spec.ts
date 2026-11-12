@@ -253,7 +253,7 @@ test("connects a pixiv account, restores it on reload and removes private result
 	expect(checkCount).toBe(2);
 	await page.getByRole("button", { name: "pixiv ID 123" }).click();
 	await dialog
-		.getByRole("button", { name: "この Viewer からログアウト" })
+		.getByRole("button", { name: "この ビューアー からログアウト" })
 		.click();
 	await expect(
 		page.getByRole("link", { name: "公開作品 を開く" }),

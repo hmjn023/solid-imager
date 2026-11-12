@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
 import {
 	useManagerPage,
@@ -104,7 +105,9 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 				);
 				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
 				toast.info(
-					`Export started (${job.id.slice(0, 8)}). Downloading when ready.`,
+					t("manager.exportStartedValueDownloadingWhenReady", {
+						value0: String(job.id.slice(0, 8)),
+					}),
 				);
 				return {
 					fileName: `source-${input.sourceId}-dump.${
@@ -113,7 +116,9 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 					jobId: job.id,
 				};
 			} catch (error) {
-				toast.error(error instanceof Error ? error.message : "Export failed");
+				toast.error(
+					error instanceof Error ? error.message : t("manager.exportFailed"),
+				);
 				throw error;
 			}
 		},
@@ -127,11 +132,15 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 				const job = await enqueueSourceImport(input.sourceId, mode, input.file);
 				await queryClient.invalidateQueries({ queryKey: jobsQueryKeys.all() });
 				toast.success(
-					`Restore queued (${job.id.slice(0, 8)}). Track it in Jobs.`,
+					t("manager.restoreQueuedValueTrackItInJobs", {
+						value0: String(job.id.slice(0, 8)),
+					}),
 				);
 				return { jobId: job.id };
 			} catch (error) {
-				toast.error(error instanceof Error ? error.message : "Restore failed");
+				toast.error(
+					error instanceof Error ? error.message : t("manager.restoreFailed"),
+				);
 				throw error;
 			}
 		},
@@ -146,10 +155,14 @@ function createTransferActions(queryClient: ReturnType<typeof useQueryClient>) {
 				anchor.click();
 				anchor.remove();
 				setTimeout(() => URL.revokeObjectURL(url), 0);
-				toast.success(`Downloaded ${input.fileName}`);
+				toast.success(
+					t("manager.downloadedValue", { value0: String(input.fileName) }),
+				);
 			} catch (error) {
 				toast.error(
-					error instanceof Error ? error.message : "Failed to download export",
+					error instanceof Error
+						? error.message
+						: t("manager.failedToDownloadExport"),
 				);
 				throw error;
 			}

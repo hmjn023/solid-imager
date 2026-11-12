@@ -1,3 +1,4 @@
+import { getLocale, t } from "@solid-imager/i18n";
 import type { MediaType } from "@solid-imager/core/media";
 import type { LibraryStatistics } from "@solid-imager/core/statistics";
 import { areaY, barY, defineChart, lineY } from "@tanstack/charts";
@@ -18,9 +19,9 @@ const chartTheme = {
 	background: "hsl(var(--card))",
 };
 const typeStyle = {
-	image: { label: "画像", fill: "var(--chart-amber)" },
-	video: { label: "動画", fill: chartBlue },
-	audio: { label: "音声", fill: "var(--chart-violet)" },
+	image: { label: t("charts.images"), fill: "var(--chart-amber)" },
+	video: { label: t("labels.media.video"), fill: chartBlue },
+	audio: { label: t("labels.media.audio"), fill: "var(--chart-violet)" },
 } satisfies Record<MediaType, { label: string; fill: string }>;
 const mediaTypes: readonly MediaType[] = ["image", "video", "audio"];
 
@@ -68,7 +69,7 @@ export function ImportTrend(props: {
 			marks: props.cumulative
 				? [
 						areaY(props.trend, {
-							id: "ライブラリ累計",
+							id: t("charts.libraryTotal"),
 							x: "bucket",
 							y: "cumulative",
 							y1: 0,
@@ -76,7 +77,7 @@ export function ImportTrend(props: {
 							fillOpacity: 0.1,
 						}),
 						lineY(props.trend, {
-							id: "累計",
+							id: t("charts.cumulative"),
 							x: "bucket",
 							y: "cumulative",
 							stroke: chartBlue,
@@ -85,7 +86,7 @@ export function ImportTrend(props: {
 					]
 				: [
 						barY(props.trend, {
-							id: "取り込み件数",
+							id: t("charts.imports"),
 							x: "bucket",
 							y: "count",
 							maxThickness: 46,
@@ -126,9 +127,13 @@ export function ImportTrend(props: {
 	return (
 		<Card class="flex min-w-0 flex-col gap-4 p-4 shadow-none sm:p-5">
 			<div class="flex flex-wrap items-center justify-between gap-2">
-				<PanelTitle index="01" title="取り込み推移" accent="bg-chart-blue" />
+				<PanelTitle
+					index="01"
+					title={t("charts.importTrends")}
+					accent="bg-chart-blue"
+				/>
 				<fieldset
-					aria-label="推移の表示方法"
+					aria-label={t("charts.trendDisplay")}
 					class="flex rounded-md bg-muted p-1"
 				>
 					<For each={[false, true]}>
@@ -140,7 +145,7 @@ export function ImportTrend(props: {
 								classList={{ "bg-card": props.cumulative === cumulative }}
 								onClick={() => props.onCumulative(cumulative)}
 							>
-								{cumulative ? "累計" : "件数"}
+								{cumulative ? t("charts.cumulative") : t("charts.count")}
 							</Button>
 						)}
 					</For>
@@ -149,24 +154,31 @@ export function ImportTrend(props: {
 			<div class="flex flex-wrap items-end justify-between gap-3">
 				<div>
 					<p class="text-xs text-muted-foreground">
-						{props.monthly ? "月別" : "日別"} ·{" "}
-						{props.cumulative ? "ライブラリ累計" : "期間計"}
+						{props.monthly ? t("charts.monthly") : t("charts.daily")} ·{" "}
+						{props.cumulative
+							? t("charts.libraryTotal")
+							: t("charts.periodTotal")}
 					</p>
 					<p class="mt-1 flex items-baseline gap-1.5">
 						<strong class="text-3xl font-semibold tracking-tight tabular-nums">
 							{total().toLocaleString()}
 						</strong>
-						<span class="text-xs text-muted-foreground">件</span>
+						<span class="text-xs text-muted-foreground">
+							{t("charts.items")}
+						</span>
 					</p>
 				</div>
 				<div class="border-l border-border pl-3 text-xs">
 					<p class="text-muted-foreground">
-						{props.monthly ? "取り込み最多月" : "取り込み最多日"}
+						{props.monthly ? t("charts.busiestMonth") : t("charts.busiestDay")}
 					</p>
-					<Show when={peak()} fallback={<span>取り込みなし</span>}>
+					<Show when={peak()} fallback={<span>{t("charts.noImports")}</span>}>
 						{(item) => (
 							<p class="mt-1 font-medium tabular-nums">
-								{label(item().bucket)} · {item().count.toLocaleString()} 件
+								{t("charts.valueValueItems", {
+									value0: String(label(item().bucket)),
+									value1: String(item().count.toLocaleString()),
+								})}
 							</p>
 						)}
 					</Show>
@@ -175,8 +187,8 @@ export function ImportTrend(props: {
 			<Chart
 				ariaLabel={
 					props.cumulative
-						? "ライブラリの累計メディア数"
-						: "メディアの取り込み件数"
+						? t("charts.cumulativeMediaInLibrary")
+						: t("charts.mediaImported")
 				}
 				definition={chart()}
 				height={186}
@@ -186,10 +198,10 @@ export function ImportTrend(props: {
 			/>
 			<details class="mt-auto border-t border-border pt-3 text-xs">
 				<summary class="w-fit cursor-pointer text-muted-foreground hover:text-foreground">
-					件数を一覧で見る
+					{t("charts.viewCountsAsAList")}
 				</summary>
 				<p class="mt-2 text-muted-foreground">
-					現在ライブラリに残るメディアをDB登録日で数えています。累計には表示期間より前の登録分も含みます。
+					{t("charts.countsMediaCurrentlyInTheLibraryByDatabaseRegistration")}
 				</p>
 				<ul class="mt-2 grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
 					<For each={props.trend}>
@@ -205,11 +217,14 @@ export function ImportTrend(props: {
 								>
 									{label(item.bucket)}{" "}
 									<span>
-										{(props.cumulative
-											? item.cumulative
-											: item.count
-										).toLocaleString()}{" "}
-										件
+										{t("charts.valueValueItems2", {
+											value0: String(
+												(props.cumulative
+													? item.cumulative
+													: item.count
+												).toLocaleString(),
+											),
+										})}
 									</span>
 								</Button>
 							</li>
@@ -261,10 +276,19 @@ export function MediaComposition(props: {
 	});
 	return (
 		<Card class="flex min-w-0 flex-col gap-3 p-4 shadow-none sm:p-5">
-			<PanelTitle index="02" title="メディアの内訳" accent="bg-chart-amber" />
+			<PanelTitle
+				index="02"
+				title={t("charts.mediaBreakdown")}
+				accent="bg-chart-amber"
+			/>
 			<p class="text-xs text-muted-foreground">
-				{props.filtered ? "絞り込みに一致したメディア" : "集計期間内のメディア"}
-				の構成比
+				{t("charts.valueDistribution", {
+					value0: String(
+						props.filtered
+							? t("charts.mediaMatchingTheFilter")
+							: t("charts.mediaInTheReportingPeriod"),
+					),
+				})}
 			</p>
 			<div class="relative mx-auto my-auto w-full max-w-48">
 				<Show
@@ -277,13 +301,13 @@ export function MediaComposition(props: {
 					}
 				>
 					<Chart
-						ariaLabel="画像・動画・音声の構成比"
+						ariaLabel={t("charts.imageVideoAndAudioDistribution")}
 						definition={chart()}
 						height={144}
 					/>
 				</Show>
 				<div class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-					<span class="text-xs text-muted-foreground">合計</span>
+					<span class="text-xs text-muted-foreground">{t("charts.total")}</span>
 					<strong class="text-2xl font-semibold tracking-tight tabular-nums">
 						{total().toLocaleString()}
 					</strong>
@@ -297,10 +321,14 @@ export function MediaComposition(props: {
 								<rect width="8" height="8" rx="2" fill={item.fill} />
 							</svg>
 							<span class="flex-1 font-medium">{item.label}</span>
-							<span class="tabular-nums">{item.count.toLocaleString()} 件</span>
+							<span class="tabular-nums">
+								{t("charts.valueItems", {
+									value0: String(item.count.toLocaleString()),
+								})}
+							</span>
 							<span class="w-12 text-right tabular-nums text-muted-foreground">
 								{total()
-									? ((100 * item.count) / total()).toLocaleString("ja-JP", {
+									? ((100 * item.count) / total()).toLocaleString(getLocale(), {
 											maximumFractionDigits: 1,
 										})
 									: "0"}
@@ -328,21 +356,25 @@ export function Ranking(props: {
 				<PanelTitle
 					index={isIp() ? "03" : "04"}
 					accent={isIp() ? "bg-chart-violet" : "bg-chart-coral"}
-					title={isIp() ? "IPランキング" : "キャラクターランキング"}
+					title={
+						isIp() ? t("charts.iPRankings") : t("charts.characterRankings")
+					}
 				/>
 				<span class="rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
-					上位10件
+					{t("charts.top10")}
 				</span>
 			</div>
 			<p class="px-4 pt-2 text-xs text-muted-foreground sm:px-5">
-				{props.periodLabel}に登録されたメディアの直接の関連付けを集計
+				{t("charts.countsDirectAssociationsForMediaRegisteredInValue", {
+					value0: String(props.periodLabel),
+				})}
 			</p>
 			<ol class="px-2 py-2 sm:px-3">
 				<For
 					each={props.items}
 					fallback={
 						<li class="p-3 text-sm text-muted-foreground">
-							関連付けられたメディアがありません。
+							{t("charts.noAssociatedMedia")}
 						</li>
 					}
 				>
@@ -365,7 +397,9 @@ export function Ranking(props: {
 											{item.name}
 										</span>
 										<span class="shrink-0 text-xs tabular-nums">
-											{item.count.toLocaleString()} 件
+											{t("charts.valueItems", {
+												value0: String(item.count.toLocaleString()),
+											})}
 										</span>
 									</span>
 									<svg
@@ -397,18 +431,18 @@ export function ModelFavorites(props: { models: LibraryStatistics["models"] }) {
 		<Card class="min-w-0 p-4 shadow-none sm:p-5">
 			<PanelTitle
 				index="05"
-				title="生成モデル別のお気に入り"
+				title={t("charts.favoritesByGenerationModel")}
 				accent="bg-chart-rose"
 			/>
 			<p class="mt-2 text-xs text-muted-foreground">
-				お気に入り件数の上位5モデル。棒の長さは、各モデルの登録件数に占めるお気に入りの割合です。
+				{t("charts.top5ModelsByFavoritesEachBarShowsThe")}
 			</p>
 			<ul class="mt-4 divide-y divide-border border-t border-border">
 				<For
 					each={props.models}
 					fallback={
 						<li class="py-3 text-sm text-muted-foreground">
-							この範囲に生成モデル名が記録されたメディアはありません。
+							{t("charts.noMediaWithARecordedGenerationModelInThis")}
 						</li>
 					}
 				>
@@ -420,8 +454,10 @@ export function ModelFavorites(props: { models: LibraryStatistics["models"] }) {
 									{model.name}
 								</span>
 								<span class="text-right text-xs tabular-nums text-muted-foreground @2xl:order-last">
-									{model.favorites.toLocaleString()} /{" "}
-									{model.count.toLocaleString()} 件
+									{t("charts.valueValueValueItems", {
+										value0: String(model.favorites.toLocaleString()),
+										value2: String(model.count.toLocaleString()),
+									})}
 								</span>
 								<span class="col-span-2 flex items-center gap-3 @2xl:col-span-1">
 									<svg
@@ -436,7 +472,7 @@ export function ModelFavorites(props: { models: LibraryStatistics["models"] }) {
 										/>
 									</svg>
 									<strong class="w-14 text-right font-medium tabular-nums">
-										{percent.toLocaleString("ja-JP", {
+										{percent.toLocaleString(getLocale(), {
 											maximumFractionDigits: 1,
 										})}
 										%

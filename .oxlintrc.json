@@ -13,6 +13,7 @@
 		],
 		"no-restricted-imports": "error",
 		"workspace/public-imports": "error",
+		"ui-text/no-raw-text": "error",
 		"typescript/no-explicit-any": "error",
 		"typescript/no-deprecated": "warn",
 		"typescript/no-floating-promises": "warn",
@@ -47,7 +48,11 @@
 		"**/.worktree",
 		"**/routeTree.gen.ts"
 	],
-	"jsPlugins": ["@shadcn/lint", "./tools/workspace-imports.mjs"],
+	"jsPlugins": [
+		"@shadcn/lint",
+		"./tools/workspace-imports.mjs",
+		"./tools/ui-text.mjs"
+	],
 	"settings": {
 		"shadcn": {
 			"ui": "@solid-imager/ui",
@@ -161,10 +166,10 @@
 				"apps/server/src/routes/about.tsx",
 				"apps/server/src/routes/config.tsx",
 				"apps/server/src/routes/danbooru.tsx",
-                "apps/server/src/routes/pixiv.tsx",
-                "apps/server/src/routes/pixiv/$postId.tsx",
-                "apps/server/src/routes/api/pixiv-image.ts",
-                "apps/server/src/routes/api/pixiv-animation.$id.ts",
+				"apps/server/src/routes/pixiv.tsx",
+				"apps/server/src/routes/pixiv/$postId.tsx",
+				"apps/server/src/routes/api/pixiv-image.ts",
+				"apps/server/src/routes/api/pixiv-animation.$id.ts",
 				"apps/server/src/routes/danbooru/$postId.tsx",
 				"apps/server/src/routes/design-lab.tsx",
 				"apps/server/src/routes/jobs.tsx",
@@ -191,7 +196,7 @@
 				"apps/server/src/components/home-route.tsx",
 				"apps/server/src/components/pages/search-content.tsx",
 				"apps/server/src/components/pages/danbooru-page.tsx",
-                "apps/server/src/components/pages/pixiv-page.tsx",
+				"apps/server/src/components/pages/pixiv-page.tsx",
 				"apps/server/src/components/pages/manager-page.tsx",
 				"apps/server/src/routes/statistics.tsx",
 				"apps/server/src/components/media/media-actions.tsx",
@@ -228,6 +233,7 @@
 									"@solid-imager/db/**",
 									"@solid-imager/ui",
 									"@solid-imager/ui/**",
+									"@solid-imager/i18n",
 									"~/**",
 									"@/**",
 									"@core/**"
@@ -254,6 +260,7 @@
 									"@solid-imager/db/**",
 									"@solid-imager/ui",
 									"@solid-imager/ui/**",
+									"@solid-imager/i18n",
 									"~/**",
 									"@/**",
 									"@core/**"
@@ -280,6 +287,7 @@
 									"@solid-imager/client/**",
 									"@solid-imager/ui",
 									"@solid-imager/ui/**",
+									"@solid-imager/i18n",
 									"~/**",
 									"@/**",
 									"@core/**"
@@ -334,6 +342,7 @@
 									"@solid-imager/db/**",
 									"@solid-imager/ui",
 									"@solid-imager/ui/**",
+									"@solid-imager/i18n",
 									"~/**",
 									"@/**",
 									"@core/**"

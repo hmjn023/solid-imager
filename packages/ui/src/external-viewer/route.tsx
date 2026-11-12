@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { ViewerFetch, PixivClientFactory } from "./pixiv-account";
 import type { AppContractClient } from "@solid-imager/core/contract";
 import {
@@ -71,7 +72,7 @@ export function ExternalViewerRoute(
 							provider: "danbooru",
 						});
 						if (result.provider !== "danbooru")
-							throw new Error("検索先が一致しません");
+							throw new Error(t("pixivScreen.searchDestinationDoesNotMatch"));
 						return result;
 					}}
 					getPost={(id) => props.client.danbooru.getPost({ id })}

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
 import type { MediaDetails } from "@solid-imager/core/media";
@@ -158,7 +159,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					)
 				) {
 					throw new Error(
-						"Cannot remove a tag that is also assigned as negative.",
+						t("mediaSidebarContent.cannotRemoveATagThatIsAlsoAssignedAs"),
 					);
 				}
 				const available = await props.tagApi.list();

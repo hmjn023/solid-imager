@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	CloseButton as DialogPrimitiveCloseButton,
 	Content as DialogPrimitiveContent,
@@ -82,7 +83,10 @@ const DialogContent = <T extends ValidComponent = "div">(
 				{...rest}
 			>
 				{props.children}
-				<DialogPrimitiveCloseButton class="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[expanded]:bg-accent data-[expanded]:text-muted-foreground">
+				<DialogPrimitiveCloseButton
+					aria-label={t("actions.close")}
+					class="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[expanded]:bg-accent data-[expanded]:text-muted-foreground"
+				>
 					<svg
 						class="size-4"
 						fill="none"
@@ -93,11 +97,11 @@ const DialogContent = <T extends ValidComponent = "div">(
 						viewBox="0 0 24 24"
 						xmlns="http://www.w3.org/2000/svg"
 					>
-						<title>Close</title>
+						<title>{t("actions.close")}</title>
 						<path d="M18 6l-12 12" />
 						<path d="M6 6l12 12" />
 					</svg>
-					<span class="sr-only">Close</span>
+					<span class="sr-only">{t("actions.close")}</span>
 				</DialogPrimitiveCloseButton>
 			</DialogPrimitiveContent>
 		</DialogPortal>

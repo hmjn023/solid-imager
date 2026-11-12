@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { getSearchExecutionKind } from "./search-execution";
 import type { Author } from "@solid-imager/core/authors";
 import type { Character } from "@solid-imager/core/characters";
@@ -90,7 +91,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 		<div class={props.class}>
 			<Show when={props.context === "global" && props.sources}>
 				<div class="mb-4 space-y-2">
-					<Label>メディアソース</Label>
+					<Label>{t("searchControlPanel.mediaSources")}</Label>
 					<Select
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
@@ -102,19 +103,21 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 							handleSelectSource(selected?.id ?? "");
 						}}
 						options={[
-							{ id: "", name: "すべてのソース" },
+							{ id: "", name: t("labels.allSources") },
 							...(props.sources || []),
 						]}
 						optionValue="id"
-						placeholder="ソースを選択"
+						placeholder={t("actions.selectSource")}
 						value={[
-							{ id: "", name: "すべてのソース" },
+							{ id: "", name: t("labels.allSources") },
 							...(props.sources || []),
 						].find((source) => source.id === selectedSource())}
 					>
 						<SelectTrigger>
 							<SelectValue<{ name: string }>>
-								{(state) => state.selectedOption()?.name || "ソースを選択"}
+								{(state) =>
+									state.selectedOption()?.name || t("actions.selectSource")
+								}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent />
@@ -123,7 +126,9 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			</Show>
 
 			<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-				<Label class="font-medium text-sm">検索モード</Label>
+				<Label class="font-medium text-sm">
+					{t("searchControlPanel.searchMode")}
+				</Label>
 				<div class="flex flex-wrap gap-2">
 					<Button
 						class="min-h-11 md:min-h-9"
@@ -131,7 +136,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						size="sm"
 						variant={currentState().mode === "simple" ? "default" : "outline"}
 					>
-						簡易
+						{t("searchControlPanel.simple")}
 					</Button>
 					<Button
 						class="min-h-11 md:min-h-9"
@@ -139,7 +144,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 						size="sm"
 						variant={currentState().mode === "pro" ? "default" : "outline"}
 					>
-						詳細
+						{t("searchControlPanel.advanced")}
 					</Button>
 				</div>
 			</div>
@@ -171,7 +176,9 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			<div class="my-4 h-px bg-border" />
 			<Show when={getSearchExecutionKind(currentState()) !== "ordinary"}>
 				<p class="mb-3 text-sm text-muted-foreground">
-					通常検索の条件は保持しています。類似・文章検索ではソースと結果件数だけを適用します。
+					{t(
+						"searchControlPanel.ordinarySearchConditionsAreSavedSimilarityAndTextSearches",
+					)}
 				</p>
 				<Button
 					class="mb-3"
@@ -179,7 +186,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					variant="outline"
 					onClick={clearSimilarityAnchor}
 				>
-					通常検索に戻す
+					{t("searchControlPanel.returnToOrdinarySearch")}
 				</Button>
 			</Show>
 

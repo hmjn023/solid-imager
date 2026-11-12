@@ -5,6 +5,7 @@
 | 利用側 | 以前の用途 | 現在の入口 |
 | --- | --- | --- |
 | Web・Tauri・共有 UI・CLI・拡張 | `core/domain/*` から DTO・検索 schema・router 型を取得 | `@solid-imager/core/media` の `MediaDetails`、`@solid-imager/core/search` の `SearchState`、`@solid-imager/core/contract` の API 契約など |
+| Web・Tauri・共有 UI・拡張 | 固定の画面文言を各画面に直書き | `@solid-imager/i18n` の型付き `t`、端末の表示言語、明示的な `createTranslator`。domain・application・DB・API client は依存しない |
 | application | `core/domain/repositories/*` から repository 型を取得 | `@solid-imager/core/media` など各機能の port。ストレージやトランザクションは `@solid-imager/core/ports` |
 | server の組み立て・管理スクリプト | `application/services/*` の具象クラス、`application/ports/*` の型、`db/repositories/*` の個別 factory を参照 | `@solid-imager/application/media` の `createMediaService`、`@solid-imager/application/ccip` などの機能別入口、`@solid-imager/db` の `createRepositories` |
 | テスト・migration | server のテストから application の内部ヘルパーを参照。Drizzle はテーブル定義を必要とする | ファイル署名の単体テストは application 内で相対 import。server の結合テストは公開 factory を使い、Drizzle の設定は server の schema ファイル経由で `@solid-imager/db/schema` を使う |

@@ -141,7 +141,9 @@ test("preserves submitted search state before immediate navigation", async ({
 	await expect(searchToken(page, E2E_PRIMARY_FILE_NAME)).toHaveCount(0);
 
 	// Leave the current search immediately after submitting its new state.
-	await page.getByRole("link", { name: "About", exact: true }).click();
+	await page
+		.getByRole("link", { name: "このアプリについて", exact: true })
+		.click();
 	await expect(page).toHaveURL(/\/about$/);
 
 	await page.goBack();

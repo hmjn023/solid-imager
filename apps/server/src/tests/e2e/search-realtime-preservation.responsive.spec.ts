@@ -42,7 +42,7 @@ test(
 		await fileNameInput.fill("e2e");
 		await fileNameInput.focus();
 		await expect(fileNameInput).toBeFocused();
-		const resultCount = page.getByText(/^[\d,]+ items$/);
+		const resultCount = page.getByText(/^[\d,]+件$/);
 		await expect(resultCount).toBeVisible();
 		const initialResultCount = Number.parseInt(
 			(await resultCount.textContent()) ?? "0",
@@ -97,7 +97,7 @@ test(
 		await fileNameInput.fill("e2e");
 		await fileNameInput.focus();
 		await expect(fileNameInput).toBeFocused();
-		const resultCount = page.getByText(/^[\d,]+ items$/);
+		const resultCount = page.getByText(/^[\d,]+件$/);
 		await expect(resultCount).toBeVisible();
 		const initialMediaCount = Number.parseInt(
 			(await resultCount.textContent()) ?? "0",

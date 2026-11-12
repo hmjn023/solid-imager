@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type {
 	LibraryStatistics,
 	StatisticsRequest,
@@ -50,7 +51,9 @@ export function StatisticsScreen(props: {
 	const periodLabel = () => {
 		const bucket = props.selection.bucket;
 		if (bucket) return recent() ? bucket : bucket.slice(0, 7);
-		return recent() ? "直近30日" : "全期間";
+		return recent()
+			? t("statisticsScreen.last30Days")
+			: t("statisticsScreen.allTime");
 	};
 	const setBucket = (bucket: string) =>
 		props.change({
@@ -77,13 +80,15 @@ export function StatisticsScreen(props: {
 	return (
 		<section class="flex h-full min-h-0 min-w-0 flex-col">
 			<ManagementHeader
-				title="ライブラリ統計"
-				eyebrow="コレクション"
-				description="取り込みの推移と内訳を確認できます。日付や順位を選ぶと、該当するメディアに絞り込めます。"
+				title={t("statisticsScreen.libraryStatistics")}
+				eyebrow={t("statisticsScreen.collection")}
+				description={t(
+					"statisticsScreen.reviewImportTrendsAndBreakdownsSelectADateOr",
+				)}
 				actions={
 					<fieldset
 						class="flex gap-0.5 rounded-lg border border-border bg-muted p-1"
-						aria-label="集計期間"
+						aria-label={t("statisticsScreen.reportingPeriod")}
 					>
 						<Button
 							class="h-11 px-3 sm:h-8"
@@ -91,7 +96,7 @@ export function StatisticsScreen(props: {
 							aria-pressed={recent()}
 							onClick={() => props.change({ period: "recent" })}
 						>
-							直近30日
+							{t("statisticsScreen.last30Days")}
 						</Button>
 						<Button
 							class="h-11 px-3 sm:h-8"
@@ -99,7 +104,7 @@ export function StatisticsScreen(props: {
 							aria-pressed={!recent()}
 							onClick={() => props.change({ period: "all" })}
 						>
-							全期間
+							{t("statisticsScreen.allTime")}
 						</Button>
 					</fieldset>
 				}
@@ -114,7 +119,9 @@ export function StatisticsScreen(props: {
 										<Show
 											when={data().trend.some((item) => item.cumulative > 0)}
 											fallback={
-												<EmptyState title="この期間の取り込みはありません" />
+												<EmptyState
+													title={t("statisticsScreen.noImportsInThisPeriod")}
+												/>
 											}
 										>
 											<ImportTrend
@@ -137,7 +144,7 @@ export function StatisticsScreen(props: {
 										class="flex flex-wrap items-center gap-2 text-sm"
 										aria-live="polite"
 									>
-										<strong>絞り込み中</strong>
+										<strong>{t("statisticsScreen.filtered")}</strong>
 										<Show when={props.selection.bucket}>
 											{(value) => (
 												<span>{recent() ? value() : value().slice(0, 7)}</span>
@@ -146,21 +153,21 @@ export function StatisticsScreen(props: {
 										<Show when={props.selection.ipId}>
 											<span>
 												{data().ips.find((ip) => ip.id === props.selection.ipId)
-													?.name ?? "選択したIP"}
+													?.name ?? t("statisticsScreen.selectedIP")}
 											</span>
 										</Show>
 										<Show when={props.selection.characterId}>
 											<span>
 												{data().characters.find(
 													(c) => c.id === props.selection.characterId,
-												)?.name ?? "選択したキャラクター"}
+												)?.name ?? t("statisticsScreen.selectedCharacter")}
 											</span>
 										</Show>
 										<Button
 											variant="outline"
 											onClick={() => props.change({ period: period() })}
 										>
-											絞り込みを解除
+											{t("statisticsScreen.clearFilter")}
 										</Button>
 									</div>
 								</Show>
@@ -183,11 +190,15 @@ export function StatisticsScreen(props: {
 								<ModelFavorites models={data().models} />
 								<Show when={isFiltered()}>
 									<Card class="p-4">
-										<h2 class="mb-2 font-semibold">該当するメディア</h2>
+										<h2 class="mb-2 font-semibold">
+											{t("statisticsScreen.matchingMedia")}
+										</h2>
 										<ul class="divide-y divide-border text-sm">
 											<For
 												each={data().media}
-												fallback={<li>該当するメディアはありません。</li>}
+												fallback={
+													<li>{t("statisticsScreen.noMatchingMedia")}</li>
+												}
 											>
 												{(item) => (
 													<li>
@@ -220,7 +231,7 @@ export function StatisticsScreen(props: {
 														})
 													}
 												>
-													前へ
+													{t("actions.previous")}
 												</Button>
 												<Button
 													variant="outline"
@@ -232,7 +243,7 @@ export function StatisticsScreen(props: {
 														})
 													}
 												>
-													次へ
+													{t("actions.next")}
 												</Button>
 											</div>
 										</Show>
@@ -245,10 +256,13 @@ export function StatisticsScreen(props: {
 						<OfflineState onRetry={retry} />
 					</Match>
 					<Match when={query.isError}>
-						<ErrorState title="統計を取得できませんでした" onRetry={retry} />
+						<ErrorState
+							title={t("statisticsScreen.couldNotLoadStatistics")}
+							onRetry={retry}
+						/>
 					</Match>
 					<Match when={query.isPending}>
-						<output>統計を読み込み中…</output>
+						<output>{t("statisticsScreen.loadingStatistics")}</output>
 					</Match>
 				</Switch>
 			</div>

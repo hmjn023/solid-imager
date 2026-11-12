@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
 import {
@@ -36,21 +37,21 @@ type HealthCheckState =
 function readError(error: unknown): string {
 	return error instanceof Error
 		? error.message
-		: "Failed to save server settings.";
+		: t("serverSettingsScreen.failedToSaveServerSettings");
 }
 
 function validateUrl(value: string): string | null {
 	try {
 		const url = new URL(value.trim());
 		if (url.protocol !== "http:" && url.protocol !== "https:") {
-			return "Use an http:// or https:// URL.";
+			return t("serverSettings.httpUrlRequired");
 		}
 		if (url.username || url.password) {
-			return "Credentials must not be embedded in the URL.";
+			return t("serverSettings.noEmbeddedCredentials");
 		}
 		return null;
 	} catch {
-		return "Enter a complete server URL, for example https://imager.example.com.";
+		return t("serverSettings.completeUrlRequired");
 	}
 }
 
@@ -68,9 +69,9 @@ function healthStatusClass(state: HealthCheckState): string {
 function healthStatusMessage(state: HealthCheckState): string {
 	switch (state.status) {
 		case "ok":
-			return `Healthy (${state.latencyMs} ms)`;
+			return t("serverSettings.healthy", { latency: state.latencyMs });
 		case "checking":
-			return "Checking…";
+			return t("status.checking");
 		case "error":
 			return state.message;
 	}
@@ -133,7 +134,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 				message:
 					healthError instanceof Error
 						? healthError.message
-						: "Unable to reach the server.",
+						: t("serverSettingsScreen.unableToReachTheServer"),
 				status: "error",
 			});
 		} finally {
@@ -167,11 +168,11 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 		setError(null);
 		const trimmedName = name().trim();
 		if (!trimmedName) {
-			setError("Enter a name for this server.");
+			setError(t("serverSettingsScreen.enterANameForThisServer"));
 			return;
 		}
 		if (trimmedName.length > 100) {
-			setError("Server names must be 100 characters or fewer.");
+			setError(t("serverSettingsScreen.serverNamesMustBe100CharactersOrFewer"));
 			return;
 		}
 		const urlError = validateUrl(baseUrl());
@@ -264,15 +265,15 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 			<Show when={props.showHeader !== false}>
 				<div class="grid gap-2">
 					<Badge class="w-fit" variant="outline">
-						Connection
+						{t("serverSettingsScreen.connection")}
 					</Badge>
 					<h1 class="font-semibold text-4xl tracking-tight">
-						Server connections
+						{t("servers.serverConnections")}
 					</h1>
 					<p class="max-w-3xl text-lg text-muted-foreground">
-						Choose which solid-imager server the Tauri app uses. These
-						connections are stored locally on this device and are independent of
-						server-side settings.
+						{t(
+							"serverSettingsScreen.chooseWhichSolidImagerServerTheTauriAppUses",
+						)}
 					</p>
 				</div>
 			</Show>
@@ -288,10 +289,11 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 			<div class="grid gap-6 lg:grid-cols-server-settings">
 				<Card>
 					<CardHeader>
-						<CardTitle>Saved servers</CardTitle>
+						<CardTitle>{t("serverSettingsScreen.savedServers")}</CardTitle>
 						<CardDescription>
-							The active server is used for API requests, thumbnails, and future
-							sync jobs. Adding a server activates it immediately.
+							{t(
+								"serverSettingsScreen.theActiveServerIsUsedForAPIRequestsThumbnails",
+							)}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
@@ -299,7 +301,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 							<Show
 								fallback={
 									<p class="rounded-lg border border-dashed px-4 py-6 text-muted-foreground text-sm">
-										No server has been added yet.
+										{t("serverSettingsScreen.noServerHasBeenAddedYet")}
 									</p>
 								}
 								when={localSettings().servers.length > 0}
@@ -316,7 +318,9 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 																localSettings().activeServerId === server.id
 															}
 														>
-															<Badge variant="secondary">Active</Badge>
+															<Badge variant="secondary">
+																{t("jobsScreen.active")}
+															</Badge>
 														</Show>
 													</div>
 													<p class="mt-1 truncate text-muted-foreground text-sm">
@@ -335,7 +339,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 														size="sm"
 														variant="outline"
 													>
-														Check
+														{t("select.check")}
 													</Button>
 													<Show
 														when={localSettings().activeServerId !== server.id}
@@ -345,7 +349,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 															onClick={() => void selectServer(server.id)}
 															size="sm"
 														>
-															Use server
+															{t("serverSettingsScreen.useServer")}
 														</Button>
 													</Show>
 													<Button
@@ -354,7 +358,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 														variant="outline"
 														size="sm"
 													>
-														Edit
+														{t("actions.edit")}
 													</Button>
 													<Button
 														disabled={isSaving() || isChecking()}
@@ -362,7 +366,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 														size="sm"
 														variant="destructive"
 													>
-														Delete
+														{t("actions.delete")}
 													</Button>
 												</div>
 											</div>
@@ -376,15 +380,21 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 
 				<Card>
 					<CardHeader>
-						<CardTitle>{editingId() ? "Edit server" : "Add server"}</CardTitle>
+						<CardTitle>
+							{editingId()
+								? t("serverSettingsScreen.editServer")
+								: t("serverSettingsScreen.addServer")}
+						</CardTitle>
 						<CardDescription>
-							Use the server origin, including its port when one is configured.
+							{t(
+								"serverSettingsScreen.useTheServerOriginIncludingItsPortWhenOne",
+							)}
 						</CardDescription>
 					</CardHeader>
 					<CardContent>
 						<form class="grid gap-4" onSubmit={(event) => void submit(event)}>
 							<div class="grid gap-2">
-								<Label for="server-name">Name</Label>
+								<Label for="server-name">{t("labels.name")}</Label>
 								<Input
 									autocomplete="off"
 									id="server-name"
@@ -392,12 +402,14 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 										setName(event.currentTarget.value);
 										setHealthCheck("form", undefined);
 									}}
-									placeholder="Home server"
+									placeholder={t("serverSettingsScreen.homeServer")}
 									value={name()}
 								/>
 							</div>
 							<div class="grid gap-2">
-								<Label for="server-url">Server URL</Label>
+								<Label for="server-url">
+									{t("serverSettingsScreen.serverURL")}
+								</Label>
 								<Input
 									autocomplete="url"
 									id="server-url"
@@ -405,7 +417,7 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 										setBaseUrl(event.currentTarget.value);
 										setHealthCheck("form", undefined);
 									}}
-									placeholder="https://imager.example.com"
+									placeholder={t("serverSettingsScreen.httpsImagerExampleCom")}
 									value={baseUrl()}
 								/>
 							</div>
@@ -416,14 +428,16 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 									type="button"
 									variant="outline"
 								>
-									Check connection
+									{t("serverSettingsScreen.checkConnection")}
 								</Button>
 								<Button disabled={isSaving() || isChecking()} type="submit">
-									{editingId() ? "Save changes" : "Add server"}
+									{editingId()
+										? t("actions.saveChanges")
+										: t("serverSettingsScreen.addServer")}
 								</Button>
 								<Show when={editingId()}>
 									<Button onClick={resetForm} type="button" variant="outline">
-										Cancel
+										{t("actions.cancel")}
 									</Button>
 								</Show>
 								<HealthStatus state={() => healthChecks().form} />

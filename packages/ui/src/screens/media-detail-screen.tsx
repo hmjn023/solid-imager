@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Suspense } from "solid-js";
 import { MediaDetailLayout } from "../media-detail-layout";
 import { MediaDetailSkeleton } from "../media-detail-skeleton";
@@ -20,7 +21,7 @@ export function MediaDetailScreen(props: MediaDetailScreenProps) {
 	const renderPending = () => (
 		<LoadingRegion
 			class="h-full min-h-0"
-			label="メディア情報を読み込んでいます..."
+			label={t("mediaDetailScreen.loadingMediaDetails")}
 		>
 			<MediaDetailSkeleton />
 		</LoadingRegion>

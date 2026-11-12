@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Ip } from "@solid-imager/core/ips";
 import { createSignal, For, Show } from "solid-js";
 import {
@@ -92,18 +93,22 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 				>
 					<DialogHeader>
 						<DialogTitle>
-							{props.manager.editingItem() ? "Edit" : "Create"}{" "}
-							{singularLabel(props.manager.activeTab())}
+							{t(
+								props.manager.editingItem()
+									? "manager.editTitle"
+									: "manager.createTitle",
+								{ item: singularLabel(props.manager.activeTab()) },
+							)}
 						</DialogTitle>
 						<DialogDescription>
 							{props.manager.editingItem()
-								? "Update this item without leaving the Manager context."
-								: "Add a new item to the current category."}
+								? t("dialogs.updateThisItemWithoutLeavingTheManagerContext")
+								: t("dialogs.addANewItemToTheCurrentCategory")}
 						</DialogDescription>
 					</DialogHeader>
 					<div class="grid gap-4 py-2">
 						<div class="space-y-1.5">
-							<Label for="manager-entity-name">Name</Label>
+							<Label for="manager-entity-name">{t("labels.name")}</Label>
 							<Input
 								id="manager-entity-name"
 								onInput={(event) =>
@@ -116,7 +121,9 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 							/>
 						</div>
 						<div class="space-y-1.5">
-							<Label for="manager-entity-description">Description</Label>
+							<Label for="manager-entity-description">
+								{t("labels.description")}
+							</Label>
 							<Input
 								id="manager-entity-description"
 								onInput={(event) =>
@@ -130,7 +137,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						</div>
 						<Show when={props.manager.activeTab() === "characters"}>
 							<div class="space-y-1.5">
-								<Label for="manager-entity-ips">IPs</Label>
+								<Label for="manager-entity-ips">{t("labels.ips")}</Label>
 								<Combobox<Ip>
 									itemComponent={(comboboxProps) => (
 										<ComboboxItem item={comboboxProps.item}>
@@ -160,7 +167,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 									<ComboboxControl>
 										<ComboboxInput
 											id="manager-entity-ips"
-											placeholder="Select IPs..."
+											placeholder={t("dialogs.selectIPs")}
 										/>
 										<ComboboxTrigger />
 									</ComboboxControl>
@@ -171,7 +178,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 					</div>
 					<DialogFooter>
 						<Button onClick={requestFormClose} variant="outline">
-							Cancel
+							{t("actions.cancel")}
 						</Button>
 						<Button
 							disabled={!props.manager.formData().name.trim()}
@@ -179,7 +186,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 								void props.manager.handleSave();
 							}}
 						>
-							Save
+							{t("actions.save")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -191,20 +198,24 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Discard unsaved changes?</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t("dialogs.discardUnsavedChanges")}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							The changes in this form have not been saved.
+							{t("dialogs.theChangesInThisFormHaveNotBeenSaved")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Keep editing</AlertDialogCancel>
+						<AlertDialogCancel>
+							{t("configScreen.keepEditing")}
+						</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={() => {
 								setDiscardDialogOpen(false);
 								props.manager.setIsDialogOpen(false);
 							}}
 						>
-							Discard
+							{t("actions.discard")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -216,21 +227,24 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete this item?</AlertDialogTitle>
+						<AlertDialogTitle>{t("dialogs.deleteThisItem")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							This permanently deletes{" "}
-							{props.manager.itemToDelete()?.name ?? "the item"}.
+							{t("dialogs.thisPermanentlyDeletesValueValue", {
+								value1: String(
+									props.manager.itemToDelete()?.name ?? t("dialogs.theItem"),
+								),
+							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							onClick={() => {
 								void props.manager.handleConfirmDelete();
 							}}
 						>
-							Delete
+							{t("actions.delete")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -242,10 +256,13 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Delete duplicate media?</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t("dialogs.deleteDuplicateMedia")}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							This permanently deletes{" "}
-							{props.manager.duplicatesToDelete().length} media items.
+							{t("dialogs.thisPermanentlyDeletesValueValueMediaItems", {
+								value1: String(props.manager.duplicatesToDelete().length),
+							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<div class="max-h-48 overflow-y-auto overscroll-contain text-sm">
@@ -258,7 +275,7 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 						</For>
 					</div>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
 						<Button
 							variant="destructive"
 							disabled={
@@ -269,7 +286,9 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 								void props.manager.handleConfirmDeleteDuplicates();
 							}}
 						>
-							Delete {props.manager.duplicatesToDelete().length}
+							{t("duplicates.deleteValue", {
+								value0: String(props.manager.duplicatesToDelete().length),
+							})}
 						</Button>
 					</AlertDialogFooter>
 				</AlertDialogContent>

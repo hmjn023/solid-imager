@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { createMemo } from "solid-js";
 import { MediaGridTile } from "../media-grid-item";
 import { isPlainPrimaryClick } from "../media-grid-item-link";
@@ -64,14 +65,14 @@ export function ViewerResultsGrid<T extends { id: number }>(
 						href={props.postHref(post.id)}
 						hasThumbnail={!!item().thumbnail}
 						imageLoadPolicy={imageLoadPolicy}
-						fallbackLabel="プレビューなし"
+						fallbackLabel={t("importReviewModal.noPreview")}
 						overlayClass="opacity-100"
 						linkComponent={(link) => (
 							<a
 								class={link.class}
 								data-media-id={link["data-media-id"]}
 								href={link.href}
-								aria-label={item().title + " を開く"}
+								aria-label={item().title + t("resultsGrid.open")}
 								onClick={(event) => {
 									if (!isPlainPrimaryClick(event)) return;
 									event.preventDefault();
@@ -85,7 +86,7 @@ export function ViewerResultsGrid<T extends { id: number }>(
 							<ThumbnailImage
 								{...thumbnail}
 								referrerPolicy="no-referrer"
-								fallback="プレビューなし"
+								fallback={t("importReviewModal.noPreview")}
 								source={{ getUrl: () => item().thumbnail ?? "" }}
 							/>
 						)}

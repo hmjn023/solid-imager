@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import {
 	Select,
@@ -14,7 +15,7 @@ export function SourceSelect(props: {
 	placeholder?: string;
 	value: string | undefined;
 }) {
-	const placeholder = () => props.placeholder ?? "All sources";
+	const placeholder = () => props.placeholder ?? t("labels.allSources");
 	return (
 		<Select
 			class="space-y-1.5"
@@ -34,7 +35,7 @@ export function SourceSelect(props: {
 					: null
 			}
 		>
-			<SelectLabel>Target source</SelectLabel>
+			<SelectLabel>{t("labels.targetSource")}</SelectLabel>
 			<SelectTrigger class="w-full bg-card">
 				<SelectValue<unknown>>
 					{(state) => {

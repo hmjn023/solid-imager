@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	danbooruPostToDownloadItem,
 	getDanbooruPostUrl,
@@ -23,11 +24,11 @@ import {
 import { danbooruRatingLabel } from "./post-media";
 
 const tagGroups = [
-	["artist", "作者"],
-	["copyright", "作品"],
-	["character", "キャラクター"],
-	["general", "タグ"],
-	["meta", "メタ"],
+	["artist", t("labels.authors")],
+	["copyright", t("detail.work")],
+	["character", t("labels.characters")],
+	["general", t("pixivArtworkDetail.tags")],
+	["meta", t("danbooruPostDetail.metadata")],
 ] as const;
 
 export function DanbooruPostDetail(
@@ -38,7 +39,9 @@ export function DanbooruPostDetail(
 	return (
 		<ViewerDetail {...props} provider="Danbooru">
 			{(post) => {
-				const title = `Danbooru #${post.id}`;
+				const title = t("danbooruScreen.danbooruValue", {
+					value0: String(post.id),
+				});
 				const preview = getDanbooruPreview(post);
 				const item = danbooruPostToDownloadItem(post);
 				return (
@@ -52,8 +55,8 @@ export function DanbooruPostDetail(
 									<ViewerActions
 										item={item}
 										imports={props.imports}
-										importLabel="画像を取り込み待ちへ"
-										sourceLabel="元の投稿"
+										importLabel={t("danbooruPostDetail.addImageToImportInbox")}
+										sourceLabel={t("danbooruPostDetail.originalPost")}
 										sourceHref={getDanbooruPostUrl(post.id)}
 									/>
 								}
@@ -69,13 +72,15 @@ export function DanbooruPostDetail(
 								/>
 							) : (
 								<EmptyState
-									title="この投稿のプレビューは利用できません"
-									description="公開範囲またはファイル形式により表示できません。元サイトで確認できます。"
+									title={t("danbooruPostDetail.thisPostHasNoPreview")}
+									description={t(
+										"danbooruPostDetail.visibilityOrFileFormatPreventsPreviewingCheckItOn",
+									)}
 								/>
 							)
 						}
 						sidebar={
-							<MediaDetailInspector label="投稿情報">
+							<MediaDetailInspector label={t("danbooruPostDetail.postDetails")}>
 								<For each={tagGroups}>
 									{([key, label]) => (
 										<Show when={post.tags[key].length}>
@@ -87,7 +92,9 @@ export function DanbooruPostDetail(
 															<Button
 																variant="secondary"
 																class="h-auto min-h-11 max-w-full whitespace-normal break-all px-2 py-1 text-left text-xs md:min-h-9"
-																title={`「${tag}」で検索`}
+																title={t("danbooruPostDetail.searchForValue", {
+																	value0: String(tag),
+																})}
 																onClick={() => props.onSearchTag(tag)}
 															>
 																{tag}
@@ -100,19 +107,33 @@ export function DanbooruPostDetail(
 									)}
 								</For>
 								<MediaFileInformation
-									title="投稿情報"
+									title={t("danbooruPostDetail.postDetails")}
 									rows={[
-										["投稿日", new Date(post.createdAt).toLocaleString()],
-										["解像度", `${post.width} × ${post.height}`],
-										["形式", post.fileExt.toUpperCase()],
-										["サイズ", formatBytes(post.fileSize)],
-										["レーティング", danbooruRatingLabel(post.rating)],
-										["スコア", post.score],
+										[
+											t("pixivArtworkDetail.posted"),
+											new Date(post.createdAt).toLocaleString(),
+										],
+										[
+											t("collectionInspector.resolution"),
+											`${post.width} × ${post.height}`,
+										],
+										[
+											t("danbooruPostDetail.format"),
+											post.fileExt.toUpperCase(),
+										],
+										[t("collectionInspector.size"), formatBytes(post.fileSize)],
+										[
+											t("danbooruPostDetail.rating"),
+											danbooruRatingLabel(post.rating),
+										],
+										[t("danbooruPostDetail.score"), post.score],
 									]}
 								/>
 								<Show when={!item}>
 									<p class="py-4 text-muted-foreground text-xs">
-										原本を取得できない投稿や、画像以外の取り込みには対応していません。
+										{t(
+											"danbooruPostDetail.postsWithoutDownloadableOriginalsAndNonImageImportsAre",
+										)}
 									</p>
 								</Show>
 							</MediaDetailInspector>

@@ -369,7 +369,7 @@ describe("buildSearchResultsQueryOptions", () => {
 				direction: "forward",
 				pageParam: 0,
 			} as unknown as Parameters<typeof queryFn>[0]),
-		).rejects.toThrow("Similarity search is unavailable");
+		).rejects.toThrow("類似検索を利用できません");
 		expect(options.enabled).toBe(false);
 		expect(searchMedia).not.toHaveBeenCalled();
 	});
@@ -537,7 +537,7 @@ describe("buildSourceMediaResultsQueryOptions", () => {
 				direction: "forward",
 				pageParam: 0,
 			} as unknown as Parameters<typeof queryFn>[0]),
-		).rejects.toThrow("Media source ID is required");
+		).rejects.toThrow("メディアソースIDが必要です");
 		expect(options.enabled).toBe(false);
 		expect(searchMedia).not.toHaveBeenCalled();
 	});
@@ -630,7 +630,7 @@ describe("applied search mechanism", () => {
 				direction: "forward",
 				pageParam: 0,
 			}),
-		).rejects.toThrow("Similarity search is unavailable");
+		).rejects.toThrow("類似検索を利用できません");
 		expect(searchMedia).not.toHaveBeenCalled();
 	});
 	it("keeps simple/pro independent of execution and restores normal applied filters when similarity is cleared", () => {

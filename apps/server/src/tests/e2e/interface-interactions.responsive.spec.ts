@@ -27,7 +27,7 @@ test(
 		await openSearch(page);
 
 		const origin = page.getByRole("button", {
-			name: "Quick actions",
+			name: "クイック操作",
 			exact: true,
 		});
 		await expect(origin).toBeVisible();
@@ -35,9 +35,9 @@ test(
 		await expect(origin).toBeFocused();
 
 		await page.keyboard.press("ControlOrMeta+KeyK");
-		const palette = page.getByRole("dialog", { name: "Quick actions" });
+		const palette = page.getByRole("dialog", { name: "クイック操作" });
 		await expect(palette).toBeVisible();
-		await expect(palette.getByPlaceholder("Search actions…")).toBeFocused();
+		await expect(palette.getByPlaceholder("操作を検索...")).toBeFocused();
 
 		await page.keyboard.press("Escape");
 		await expect(palette).toBeHidden();
@@ -118,11 +118,11 @@ test(
 		const bulkActions = page.getByTestId("bulk-actions-bar");
 
 		await mediaItems.nth(0).click({ modifiers: ["Control"] });
-		await expect(bulkActions).toContainText("1 件選択中");
+		await expect(bulkActions).toContainText("1件選択中");
 		await mediaItems.nth(2).click({ modifiers: ["Control"] });
-		await expect(bulkActions).toContainText("2 件選択中");
+		await expect(bulkActions).toContainText("2件選択中");
 		await mediaItems.nth(4).click({ modifiers: ["Shift"] });
-		await expect(bulkActions).toContainText("3 件選択中");
+		await expect(bulkActions).toContainText("3件選択中");
 	},
 );
 
@@ -140,9 +140,9 @@ test(
 		const bulkActions = page.getByTestId("search-bulk-actions-bar");
 
 		await mediaItems.nth(0).click({ modifiers: ["Control"] });
-		await expect(bulkActions).toContainText("1 件選択中");
+		await expect(bulkActions).toContainText("1件選択中");
 		await mediaItems.nth(1).click({ modifiers: ["Shift"] });
-		await expect(bulkActions).toContainText("2 件選択中");
+		await expect(bulkActions).toContainText("2件選択中");
 	},
 );
 
@@ -171,9 +171,9 @@ test(
 			.getByRole("menuitem", { name: "他のソースへ移動", exact: true })
 			.click();
 		const moveDialog = page.getByRole("dialog");
-		await expect(moveDialog).toContainText("Move Media");
+		await expect(moveDialog).toContainText("メディアを移動");
 		await moveDialog
-			.getByRole("button", { name: "Cancel", exact: true })
+			.getByRole("button", { name: "キャンセル", exact: true })
 			.click();
 
 		await mediaItem.click({ button: "right" });
@@ -188,7 +188,7 @@ test(
 
 		const bulkActions = page.getByTestId("search-bulk-actions-bar");
 		await mediaItem.click({ modifiers: ["Control"] });
-		await expect(bulkActions).toContainText("1 件選択中");
+		await expect(bulkActions).toContainText("1件選択中");
 		const bulkActionButton = bulkActions.getByRole("button", {
 			name: "一括操作を実行",
 			exact: true,
@@ -253,35 +253,35 @@ test("Workspace detail exposes zoom controls and non-destructive action choices"
 
 	await page
 		.getByRole("button", {
-			name: `Open ${E2E_PRIMARY_FILE_NAME} image viewer`,
+			name: `${E2E_PRIMARY_FILE_NAME}の画像ビューアーを開く`,
 			exact: true,
 		})
 		.click();
 	const zoomControls = page.getByRole("toolbar", {
-		name: "Image zoom controls",
+		name: "画像のズーム操作",
 	});
 	const resetZoom = zoomControls.getByRole("button", {
-		name: "Reset zoom to fit",
+		name: "画面に合わせる",
 	});
 	await expect(zoomControls).toBeVisible();
 	await expect(resetZoom).toContainText("100%");
-	await zoomControls.getByRole("button", { name: "Zoom in" }).click();
+	await zoomControls.getByRole("button", { name: "拡大" }).click();
 	await expect(resetZoom).toContainText("125%");
 	await resetZoom.click();
 	await expect(resetZoom).toContainText("100%");
 
 	await page.keyboard.press("Escape");
 	const moreActions = page.getByRole("button", {
-		name: "More actions",
+		name: "その他の操作",
 		exact: true,
 	});
 	await moreActions.scrollIntoViewIfNeeded();
 	await moreActions.click();
 	await expect(
-		page.getByRole("button", { name: "Download original", exact: true }),
+		page.getByRole("button", { name: "原本をダウンロード", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "Delete media…", exact: true }),
+		page.getByRole("button", { name: "メディアを削除...", exact: true }),
 	).toBeVisible();
 });
 
@@ -291,17 +291,17 @@ test("Workspace detail closes More actions before opening a modal", async ({
 	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
 	await waitForAppHydration(page);
 
-	await page.getByRole("button", { name: "More actions", exact: true }).click();
+	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
 	await page
-		.getByRole("button", { name: "Delete media…", exact: true })
+		.getByRole("button", { name: "メディアを削除...", exact: true })
 		.click();
 	await expect(
-		page.getByRole("button", { name: "Download original", exact: true }),
+		page.getByRole("button", { name: "原本をダウンロード", exact: true }),
 	).toBeHidden();
 	const deleteDialog = page.getByRole("alertdialog");
 	await expect(deleteDialog).toBeVisible();
 	await expect(
-		deleteDialog.getByRole("heading", { name: "Delete this media?" }),
+		deleteDialog.getByRole("heading", { name: "このメディアを削除しますか？" }),
 	).toBeVisible();
 	await expect
 		.poll(() =>
@@ -322,17 +322,20 @@ test("Workspace settings exposes device-local shortcut configuration", async ({
 
 	await expect(page.locator("form")).toHaveCount(1);
 	await expect(
-		page.getByRole("group", { name: "Job Processing", exact: true }),
+		page.getByRole("group", { name: "ジョブ処理", exact: true }),
 	).toBeVisible();
 
-	await page.getByRole("tab", { name: /^Shortcuts\b/ }).click();
+	await page.getByRole("tab", { name: /^ショートカット/ }).click();
 	await expect(
-		page.getByRole("heading", { name: "Keyboard shortcuts", exact: true }),
+		page.getByRole("heading", {
+			name: "キーボードショートカット",
+			exact: true,
+		}),
 	).toBeVisible();
 	await expect(
-		page.getByLabel("Command palette", { exact: true }),
+		page.getByLabel("コマンドパレット", { exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "Reset all", exact: true }),
+		page.getByRole("button", { name: "すべてリセット", exact: true }),
 	).toBeVisible();
 });

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { createSignal, onMount, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import type {
@@ -106,7 +107,7 @@ export const Toaster = () => {
 						class="group"
 						data-toast-container=""
 						closeButton
-						containerAriaLabel="Notifications"
+						containerAriaLabel={t("toast.notifications")}
 						duration={5000}
 						gap={10}
 						mobileOffset={{ left: 12, right: 12, top: 12 }}
@@ -114,7 +115,7 @@ export const Toaster = () => {
 						position="top-right"
 						visibleToasts={4}
 						toastOptions={{
-							closeButtonAriaLabel: "Close notification",
+							closeButtonAriaLabel: t("toast.closeNotification"),
 							classes: {
 								actionButton:
 									"group-[.toast]:bg-primary group-[.toast]:font-medium group-[.toast]:text-primary-foreground hover:group-[.toast]:bg-primary/90",

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { useWorkspaceView } from "~/presentation/workspace-view";
 import { useJobInspection, useJobsQueryEvents } from "@solid-imager/ui/jobs";
@@ -68,10 +69,10 @@ export function JobsPage() {
 					await queryClient.invalidateQueries({
 						queryKey: jobsQueryKeys.all(),
 					});
-					toast.success("Job queued for retry");
+					toast.success(t("jobs.jobQueuedForRetry"));
 				} catch (error) {
 					toast.error(
-						error instanceof Error ? error.message : "Failed to retry job",
+						error instanceof Error ? error.message : t("jobs.failedToRetryJob"),
 					);
 					throw error;
 				}
@@ -103,13 +104,18 @@ export function JobsPage() {
 				});
 				if (failedCount > 0) {
 					toast.error(
-						`${failedCount} of ${jobIds.length} jobs failed to queue for retry`,
+						t("jobs.valueOfValueJobsFailedToQueueForRetry", {
+							value0: String(failedCount),
+							value1: String(jobIds.length),
+						}),
 					);
 					throw firstError instanceof Error
 						? firstError
-						: new Error("Failed to retry some jobs");
+						: new Error(t("jobs.failedToRetrySomeJobs"));
 				}
-				toast.success(`${jobIds.length} jobs queued for retry`);
+				toast.success(
+					t("jobs.valueJobsQueuedForRetry", { value0: String(jobIds.length) }),
+				);
 			}}
 			onCancel={async (jobId) => {
 				try {
@@ -117,10 +123,12 @@ export function JobsPage() {
 					await queryClient.invalidateQueries({
 						queryKey: jobsQueryKeys.all(),
 					});
-					toast.success("Job cancellation requested");
+					toast.success(t("jobs.jobCancellationRequested"));
 				} catch (error) {
 					toast.error(
-						error instanceof Error ? error.message : "Failed to cancel job",
+						error instanceof Error
+							? error.message
+							: t("jobs.failedToCancelJob"),
 					);
 					throw error;
 				}
@@ -139,12 +147,16 @@ export function JobsPage() {
 						anchor.click();
 						anchor.remove();
 						setTimeout(() => URL.revokeObjectURL(url), 0);
-						toast.success(`Downloaded ${artifact.fileName}`);
+						toast.success(
+							t("manager.downloadedValue", {
+								value0: String(artifact.fileName),
+							}),
+						);
 					} catch (error) {
 						toast.error(
 							error instanceof Error
 								? error.message
-								: "Failed to download artifact",
+								: t("jobs.failedToDownloadArtifact"),
 						);
 						throw error;
 					}

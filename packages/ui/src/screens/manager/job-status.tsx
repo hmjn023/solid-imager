@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { JobDto } from "@solid-imager/core/jobs";
 import { For, Show } from "solid-js";
 import { Badge } from "../../badge";
@@ -16,27 +17,27 @@ export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 				<div class="flex flex-wrap items-center justify-between gap-2">
 					<h3 class="font-medium text-sm">
 						{props.manager.batchDisplayKind() === "scan"
-							? "Target scan"
+							? t("jobStatus.targetScan")
 							: props.manager.batchDisplayKind() === "start"
-								? "Batch request"
-								: "Current run"}
+								? t("jobStatus.batchRequest")
+								: t("jobStatus.currentRun")}
 					</h3>
 					<Badge variant="secondary">
 						{props.manager.batchDisplayKind() === "scan"
-							? "Scan"
+							? t("jobStatus.scan")
 							: props.manager.batchDisplayKind() === "start"
-								? "Request"
+								? t("jobStatus.request")
 								: props.manager.jobStatus() === "completed"
-									? "Completed"
+									? t("status.completed")
 									: props.manager.jobStatus() === "failed"
-										? "Failed"
+										? t("status.failed")
 										: props.manager.jobStatus() === "cancelled"
-											? "Cancelled"
+											? t("status.cancelled")
 											: props.manager.jobStatus() === "pending"
-												? "Queued"
+												? t("status.queued")
 												: props.manager.jobStatus() === "in_progress"
-													? "Running"
-													: "Status"}
+													? t("status.running")
+													: t("jobsScreen.status")}
 					</Badge>
 				</div>
 				<p class="text-xs text-muted-foreground">
@@ -53,7 +54,7 @@ export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 							}
 						>
 							<p class="text-xs text-muted-foreground">
-								Preparing target count...
+								{t("jobStatus.preparingTargetCount")}
 							</p>
 						</Show>
 					}
@@ -61,7 +62,7 @@ export function ManagerJobStatus(props: { manager: UseManagerPageResult }) {
 					{(progress) => (
 						<BatchCounts
 							progress={{ ...progress(), failed: progress().failed ?? 0 }}
-							label="Batch progress"
+							label={t("jobStatus.batchProgress")}
 						/>
 					)}
 				</Show>
@@ -81,19 +82,25 @@ function BatchCounts(props: {
 		<Show
 			when={props.progress.total > 0}
 			fallback={
-				<p class="text-xs text-muted-foreground">Preparing target count...</p>
+				<p class="text-xs text-muted-foreground">
+					{t("jobStatus.preparingTargetCount")}
+				</p>
 			}
 		>
 			<div class="space-y-2">
 				<div class="flex justify-between text-xs text-muted-foreground">
-					<span>Progress</span>
+					<span>{t("jobsScreen.progress")}</span>
 					<span>
 						{done()} / {props.progress.total} ({Math.round(percentage())}%)
 					</span>
 				</div>
 				<Progress class="h-2" aria-label={props.label} value={percentage()} />
 				<Show when={props.progress.failed}>
-					<p class="text-xs text-destructive">{props.progress.failed} failed</p>
+					<p class="text-xs text-destructive">
+						{t("jobStatus.valueFailed", {
+							value0: String(props.progress.failed),
+						})}
+					</p>
 				</Show>
 			</div>
 		</Show>
@@ -101,10 +108,10 @@ function BatchCounts(props: {
 }
 
 const batchLabels: Record<string, string> = {
-	batch_ccip_parent: "CCIP extraction",
-	bulk_tagging_parent: "Batch tagging",
-	extract_embedding_batch: "EmbeddingGemma 2 extraction",
-	thumbnail_generation_parent: "Thumbnail generation",
+	batch_ccip_parent: t("jobTypes.extract_ccip_vector"),
+	bulk_tagging_parent: t("jobTypes.bulk_tagging_parent"),
+	extract_embedding_batch: t("jobTypes.extract_embedding_vector"),
+	thumbnail_generation_parent: t("jobTypes.thumbnail_generation_parent"),
 };
 
 /** Displays the source, status and item counts of active batches returned by the server. */
@@ -122,27 +129,29 @@ export function ServerBatchStatus(props: {
 					<div class="flex items-center justify-between gap-2">
 						<h3 class="font-medium text-sm">{batchLabels[job.type]}</h3>
 						<Badge variant="secondary">
-							{job.status === "pending" ? "Queued" : "Running"}
+							{job.status === "pending"
+								? t("status.queued")
+								: t("status.running")}
 						</Badge>
 					</div>
 					<p class="text-xs text-muted-foreground">
 						{props.manager
 							.sources()
 							.find((source) => source.id === job.mediaSourceId)?.name ??
-							(job.mediaSourceId || "All sources")}
+							(job.mediaSourceId || t("labels.allSources"))}
 					</p>
 					<Show
 						when={job.progress}
 						fallback={
 							<p class="text-xs text-muted-foreground">
-								Preparing target count...
+								{t("jobStatus.preparingTargetCount")}
 							</p>
 						}
 					>
 						{(progress) => (
 							<BatchCounts
 								progress={progress()}
-								label={batchLabels[job.type] + " progress"}
+								label={batchLabels[job.type] + t("jobStatus.progress")}
 							/>
 						)}
 					</Show>
@@ -151,7 +160,7 @@ export function ServerBatchStatus(props: {
 						variant="outline"
 						onClick={() => props.manager.trackBatchJob(job)}
 					>
-						Track progress
+						{t("jobStatus.trackProgress")}
 					</Button>
 				</section>
 			)}

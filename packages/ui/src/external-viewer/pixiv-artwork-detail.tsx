@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	pixivDownloadItem,
 	type PixivArtwork,
@@ -29,7 +30,9 @@ export function PixivArtworkDetail(
 	return (
 		<ViewerDetail {...props} provider="pixiv">
 			{(post) => {
-				const title = post.title || `pixiv #${post.id}`;
+				const title =
+					post.title ||
+					t("pixivScreen.pixivValue", { value0: String(post.id) });
 				const [index, setIndex] = createSignal(0);
 				const [play, setPlay] = createSignal(false);
 				const page = () => post.pages[index()];
@@ -61,10 +64,10 @@ export function PixivArtworkDetail(
 										imports={props.imports}
 										importLabel={
 											post.animation
-												? "うごイラを取り込み待ちへ"
-												: "この画像を取り込み待ちへ"
+												? t("pixivArtworkDetail.addUgoiraToImportInbox")
+												: t("pixivArtworkDetail.addThisImageToImportInbox")
 										}
-										sourceLabel="元の作品"
+										sourceLabel={t("pixivArtworkDetail.originalWork")}
 										sourceHref={`https://www.pixiv.net/artworks/${post.id}`}
 									/>
 								}
@@ -79,12 +82,14 @@ export function PixivArtworkDetail(
 							/>
 						}
 						sidebar={
-							<MediaDetailInspector label="作品情報">
+							<MediaDetailInspector label={t("pixivArtworkDetail.workDetails")}>
 								<Show when={post.pages.length > 1}>
 									<div class="space-y-2">
-										<h2 class="font-semibold text-sm">作品内のページ</h2>
+										<h2 class="font-semibold text-sm">
+											{t("pixivArtworkDetail.pagesInThisWork")}
+										</h2>
 										<nav
-											aria-label="作品内のページ"
+											aria-label={t("pixivArtworkDetail.pagesInThisWork")}
 											class="flex flex-wrap items-center gap-2"
 										>
 											<Button
@@ -92,7 +97,7 @@ export function PixivArtworkDetail(
 												disabled={!index()}
 												onClick={() => setIndex((i) => i - 1)}
 											>
-												前の画像
+												{t("pixivArtworkDetail.previousImage")}
 											</Button>
 											<span aria-live="polite" class="text-sm tabular-nums">
 												{index() + 1} / {post.pages.length}
@@ -102,19 +107,21 @@ export function PixivArtworkDetail(
 												disabled={index() + 1 >= post.pages.length}
 												onClick={() => setIndex((i) => i + 1)}
 											>
-												次の画像
+												{t("pixivArtworkDetail.nextImage")}
 											</Button>
 										</nav>
 									</div>
 								</Show>
 								<Show when={post.isAnimation}>
 									<div class="space-y-2">
-										<h2 class="font-semibold text-sm">うごイラ</h2>
+										<h2 class="font-semibold text-sm">
+											{t("pixivArtworkDetail.ugoira")}
+										</h2>
 										<Show
 											when={post.animation}
 											fallback={
 												<p class="text-muted-foreground text-sm">
-													うごイラのフレームデータを取得できませんでした。
+													{t("pixivArtworkDetail.couldNotLoadUgoiraFrames")}
 												</p>
 											}
 										>
@@ -122,13 +129,15 @@ export function PixivArtworkDetail(
 												variant="outline"
 												onClick={() => setPlay(!play())}
 											>
-												{play() ? "プレビュー画像に戻る" : "うごイラを再生"}
+												{play()
+													? t("pixivArtworkDetail.returnToPreviewImage")
+													: t("pixivArtworkDetail.playUgoira")}
 											</Button>
 										</Show>
 									</div>
 								</Show>
 								<div class="space-y-2">
-									<h2 class="font-semibold text-sm">作者</h2>
+									<h2 class="font-semibold text-sm">{t("labels.authors")}</h2>
 									<a
 										class="break-words text-sm text-primary hover:underline"
 										href={`https://www.pixiv.net/users/${post.userId}`}
@@ -140,7 +149,9 @@ export function PixivArtworkDetail(
 								</div>
 								<Show when={post.tags.length}>
 									<div class="space-y-2">
-										<h2 class="font-semibold text-sm">タグ</h2>
+										<h2 class="font-semibold text-sm">
+											{t("pixivArtworkDetail.tags")}
+										</h2>
 										<div class="flex flex-wrap gap-2">
 											<For each={post.tags}>
 												{(tag) => (
@@ -153,7 +164,9 @@ export function PixivArtworkDetail(
 															class="ml-1.5 shrink-0 p-0.5"
 															iconSize={12}
 															text={tag}
-															label={`「${tag}」をコピー`}
+															label={t("pixivArtworkDetail.copyValue", {
+																value0: String(tag),
+															})}
 														/>
 													</Badge>
 												)}
@@ -162,16 +175,24 @@ export function PixivArtworkDetail(
 									</div>
 								</Show>
 								<MediaFileInformation
-									title="作品情報"
+									title={t("pixivArtworkDetail.workDetails")}
 									rows={[
-										["作品 ID", post.id],
-										["投稿日", new Date(post.createdAt).toLocaleString()],
-										["解像度", `${page().width} × ${page().height}`],
+										[t("pixivArtworkDetail.workID"), post.id],
+										[
+											t("pixivArtworkDetail.posted"),
+											new Date(post.createdAt).toLocaleString(),
+										],
+										[
+											t("collectionInspector.resolution"),
+											`${page().width} × ${page().height}`,
+										],
 									]}
 								/>
 								<Show when={!item()}>
 									<p class="py-4 text-muted-foreground text-xs">
-										この画像は原本を取得できないため取り込めません。
+										{t(
+											"pixivArtworkDetail.thisImageCannotBeImportedBecauseItsOriginalIs",
+										)}
 									</p>
 								</Show>
 							</MediaDetailInspector>

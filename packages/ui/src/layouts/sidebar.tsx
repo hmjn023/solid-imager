@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { Link } from "@tanstack/solid-router";
 import { For, Show } from "solid-js";
@@ -37,7 +38,7 @@ export function Sidebar(props: SidebarProps) {
 		<div class="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain bg-background p-2 scrollbar-stable *:shrink-0">
 			<div class="group mb-3 flex h-12 items-center gap-2 px-2">
 				<Link
-					aria-label="Solid Imager Library"
+					aria-label={t("sidebar.solidImagerLibrary")}
 					class="flex min-w-0 flex-1 items-center gap-2 rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
 					onClick={props.onNavigate}
 					to="/search"
@@ -47,7 +48,7 @@ export function Sidebar(props: SidebarProps) {
 					</span>
 					<Show when={props.expanded}>
 						<strong class="min-w-0 flex-1 truncate font-semibold text-base text-foreground">
-							Solid Imager
+							{t("sidebar.solidImager")}
 						</strong>
 					</Show>
 				</Link>
@@ -56,8 +57,8 @@ export function Sidebar(props: SidebarProps) {
 						<Button
 							aria-label={
 								props.expanded
-									? "サイドバーを折りたたむ"
-									: "サイドバーを展開する"
+									? t("sidebar.collapseSidebar")
+									: t("sidebar.expandSidebar")
 							}
 							class={`size-11 shrink-0 p-0 text-muted-foreground md:size-8 ${
 								props.expanded
@@ -82,16 +83,16 @@ export function Sidebar(props: SidebarProps) {
 			<Show when={props.onOpenCommandPalette}>
 				{(onOpenCommandPalette) => (
 					<Button
-						aria-label="Quick actions"
+						aria-label={t("sidebar.quickActions")}
 						class="mb-2 h-10 w-full justify-start gap-2 border border-border bg-card px-3 text-muted-foreground shadow-none hover:bg-muted"
 						onClick={onOpenCommandPalette()}
-						title="Quick actions"
+						title={t("sidebar.quickActions")}
 						variant="outline"
 					>
 						<Search aria-hidden="true" class="shrink-0" size={16} />
 						<Show when={props.expanded}>
 							<span class="min-w-0 flex-1 truncate text-left">
-								Quick actions
+								{t("sidebar.quickActions")}
 							</span>
 							<ShortcutKbd
 								class="min-h-5 text-label-xs"
@@ -102,7 +103,7 @@ export function Sidebar(props: SidebarProps) {
 				)}
 			</Show>
 
-			<nav aria-label="主要ナビゲーション" class="space-y-1">
+			<nav aria-label={t("sidebar.primaryNavigation")} class="space-y-1">
 				<NavigationItem
 					expanded={props.expanded}
 					icon={NAVIGATION_ITEMS[0].icon}
@@ -119,14 +120,14 @@ export function Sidebar(props: SidebarProps) {
 				<NavigationItem
 					expanded={props.expanded}
 					icon={Image}
-					label="Danbooru"
+					label={t("sidebar.danbooru")}
 					onClick={props.onNavigate}
 					to="/danbooru"
 				/>
 				<NavigationItem
 					expanded={props.expanded}
 					icon={Image}
-					label="pixiv"
+					label={t("sidebar.pixiv")}
 					onClick={props.onNavigate}
 					to="/pixiv"
 				/>
@@ -143,7 +144,10 @@ export function Sidebar(props: SidebarProps) {
 				onSyncSource={props.onSyncSource}
 			/>
 
-			<nav aria-label="管理ナビゲーション" class="mt-1 space-y-1">
+			<nav
+				aria-label={t("sidebar.managementNavigation")}
+				class="mt-1 space-y-1"
+			>
 				<For each={NAVIGATION_ITEMS.slice(1)}>
 					{(item) => (
 						<NavigationItem
@@ -172,7 +176,7 @@ export function Sidebar(props: SidebarProps) {
 						<NavigationItem
 							expanded={props.expanded}
 							icon={Database}
-							label="Server connections"
+							label={t("servers.serverConnections")}
 							onClick={props.onNavigate}
 							to={href()}
 						/>
@@ -181,14 +185,14 @@ export function Sidebar(props: SidebarProps) {
 				<NavigationItem
 					expanded={props.expanded}
 					icon={CircleHelp}
-					label="About"
+					label={t("sidebar.about")}
 					onClick={props.onNavigate}
 					to="/about"
 				/>
 				<Show when={props.apiDocsHref}>
 					{(apiDocsHref) => (
 						<a
-							aria-label="API Docs"
+							aria-label={t("sidebar.aPIDocs")}
 							class="flex h-11 items-center gap-2 rounded-md px-3 font-medium text-sm text-muted-foreground outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-10"
 							href={apiDocsHref()}
 							rel="noopener noreferrer"
@@ -196,7 +200,7 @@ export function Sidebar(props: SidebarProps) {
 						>
 							<FileText aria-hidden="true" class="shrink-0" size={18} />
 							<Show when={props.expanded}>
-								<span>API Docs</span>
+								<span>{t("sidebar.aPIDocs")}</span>
 							</Show>
 						</a>
 					)}

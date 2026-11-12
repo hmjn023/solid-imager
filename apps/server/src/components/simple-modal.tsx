@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Button } from "@solid-imager/ui/button";
 import { createSignal } from "solid-js";
 
@@ -16,18 +17,22 @@ export default function SimpleModal() {
 
 	return (
 		<>
-			<Button onClick={handleClick}>Open Simple Modal</Button>
+			<Button onClick={handleClick}>{t("simpleModal.openSimpleModal")}</Button>
 
 			{isOpen() && (
 				<div class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
 					<div class="mx-4 w-full max-w-md rounded-lg bg-white p-6 shadow-lg">
-						<h2 class="mb-4 font-bold text-xl">Simple Modal</h2>
-						<p class="mb-4">This is a simple modal for testing.</p>
+						<h2 class="mb-4 font-bold text-xl">
+							{t("simpleModal.simpleModal")}
+						</h2>
+						<p class="mb-4">{t("simpleModal.thisIsASimpleModalForTesting")}</p>
 						<div class="flex justify-end gap-2">
 							<Button onClick={() => setIsOpen(false)} variant="outline">
-								Close
+								{t("actions.close")}
 							</Button>
-							<Button onClick={() => setIsOpen(false)}>OK</Button>
+							<Button onClick={() => setIsOpen(false)}>
+								{t("simpleModal.oK")}
+							</Button>
 						</div>
 					</div>
 				</div>

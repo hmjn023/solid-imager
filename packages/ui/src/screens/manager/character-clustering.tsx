@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type {
 	ClusteringGroupsRequest,
 	ClusteringGroupsResponse,
@@ -89,7 +90,16 @@ function writePreference(name: string, value: string): void {
 }
 function title(run: ClusteringRunSummary): string {
 	const p = run.parameters;
-	return `${run.name.split("/").at(-1)} · 最小${p.minClusterSize}枚 / 密度${p.minSamples} / 近傍${p.neighbors} / ${p.selectionMethod}`;
+	return t(
+		"characterClustering.valueMinimumValueImagesDensityValueNeighborsValueValue",
+		{
+			value0: String(run.name.split("/").at(-1)),
+			value1: String(p.minClusterSize),
+			value2: String(p.minSamples),
+			value3: String(p.neighbors),
+			value4: String(p.selectionMethod),
+		},
+	);
 }
 
 function Thumbnail(props: {
@@ -103,7 +113,7 @@ function Thumbnail(props: {
 			<ManagedThumbnailImage
 				alt={props.alt}
 				class="h-full w-full object-contain"
-				fallback="画像を取得できません"
+				fallback={t("characterClustering.couldNotLoadImages")}
 				fetchpriority={props.eager ? "high" : undefined}
 				height={256}
 				loading={props.eager ? "eager" : "lazy"}
@@ -127,11 +137,16 @@ function Continuation(props: {
 	return (
 		<div class="space-y-3 border-t pt-3">
 			<p aria-live="polite" class="text-sm text-muted-foreground">
-				読み込み済み {props.loaded.toLocaleString()} /{" "}
-				{props.total.toLocaleString()}件
+				{t("characterClustering.loadedValueValueValueItems", {
+					value0: String(props.loaded.toLocaleString()),
+					value2: String(props.total.toLocaleString()),
+				})}
 			</p>
 			<Show when={props.failed}>
-				<ErrorState title="続きを取得できませんでした" onRetry={props.onLoad} />
+				<ErrorState
+					title={t("characterClustering.couldNotLoadMore")}
+					onRetry={props.onLoad}
+				/>
 			</Show>
 			<Show when={props.hasMore && !props.failed}>
 				<Button
@@ -139,7 +154,9 @@ function Continuation(props: {
 					onClick={props.onLoad}
 					variant="outline"
 				>
-					{props.loading ? "続きを読み込んでいます…" : "続きを読み込む"}
+					{props.loading
+						? t("characterClustering.loadingMore")
+						: t("actions.loadMore")}
 				</Button>
 			</Show>
 		</div>
@@ -172,7 +189,9 @@ function ImageGrid(props: {
 			{(media, index) => (
 				<article class="min-w-0 space-y-1">
 					<a
-						aria-label={`${media.fileName}を開く`}
+						aria-label={t("characterClustering.openValue", {
+							value0: String(media.fileName),
+						})}
 						class="block rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring"
 						href={`/sources/${media.mediaSourceId}/${media.id}`}
 						onClick={(event) => {
@@ -205,11 +224,13 @@ function ImageGrid(props: {
 					</p>
 					<p class="truncate text-xs text-muted-foreground">
 						{media.characters.map((character) => character.name).join("、") ||
-							"既存ラベルなし"}
+							t("characterClustering.noExistingLabels")}
 					</p>
 					<Show when={media.clusterId >= 0}>
 						<p class="text-xs text-muted-foreground">
-							所属強度 {Math.round(media.membershipStrength * 100)}%
+							{t("characterClustering.membershipStrengthValue", {
+								value0: String(Math.round(media.membershipStrength * 100)),
+							})}
 						</p>
 					</Show>
 					<Show when={props.comparing}>
@@ -217,7 +238,7 @@ function ImageGrid(props: {
 							when={media.comparisonClusterId !== null}
 							fallback={
 								<span class="text-xs text-muted-foreground">
-									比較先では対象外
+									{t("characterClustering.notIncludedInTheComparison")}
 								</span>
 							}
 						>
@@ -229,10 +250,15 @@ function ImageGrid(props: {
 								}}
 								variant="link"
 							>
-								比較先:{" "}
-								{media.comparisonClusterId === -1
-									? "ノイズ"
-									: `グループ #${media.comparisonClusterId}`}
+								{t("characterClustering.comparisonValueValue", {
+									value1: String(
+										media.comparisonClusterId === -1
+											? t("characterClustering.noise")
+											: t("characterClustering.groupValue", {
+													value0: String(media.comparisonClusterId),
+												}),
+									),
+								})}
 							</Button>
 						</Show>
 					</Show>
@@ -428,13 +454,17 @@ export function CharacterClusteringReviewPanel(props: {
 		<div class="space-y-4">
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div>
-					<h2 class="text-lg font-semibold">キャラクタークラスタリング</h2>
+					<h2 class="text-lg font-semibold">
+						{t("jobTypes.character_clustering")}
+					</h2>
 					<p class="mt-1 text-sm text-muted-foreground">
-						グループの混入・分断と、分類されなかった画像を見比べます。
+						{t(
+							"characterClustering.compareMixedOrSplitGroupsWithUnclassifiedImages",
+						)}
 					</p>
 				</div>
 				<Button disabled={runs.isFetching} onClick={refresh} variant="outline">
-					結果を再読み込み
+					{t("characterClustering.reloadResults")}
 				</Button>
 			</div>
 			<Show when={props.actions.startClustering}>
@@ -447,7 +477,7 @@ export function CharacterClusteringReviewPanel(props: {
 			</Show>
 			<Show when={runs.isPending && runs.fetchStatus !== "paused"}>
 				<p aria-live="polite" class="text-sm">
-					解析結果を読み込んでいます…
+					{t("characterClustering.loadingAnalysisResults")}
 				</p>
 			</Show>
 			<Show when={runs.fetchStatus === "paused" && !runsData()}>
@@ -455,14 +485,16 @@ export function CharacterClusteringReviewPanel(props: {
 			</Show>
 			<Show when={runs.isError}>
 				<ErrorState
-					title="解析結果を取得できませんでした"
+					title={t("characterClustering.couldNotLoadAnalysisResults")}
 					onRetry={() => void runs.refetch()}
 				/>
 			</Show>
 			<Show when={runsData() && runsData()?.length === 0}>
 				<EmptyState
-					title="保存済みの解析結果がありません"
-					description="クラスタリングを開始し、ジョブ完了後に結果を再読み込みしてください。"
+					title={t("characterClustering.noSavedAnalysisResults")}
+					description={t(
+						"characterClustering.startClusteringThenReloadResultsAfterTheJobCompletes",
+					)}
 				/>
 			</Show>
 			<Show when={current()}>
@@ -487,7 +519,9 @@ export function CharacterClusteringReviewPanel(props: {
 									</SelectItem>
 								)}
 							>
-								<SelectLabel>確認する解析結果</SelectLabel>
+								<SelectLabel>
+									{t("characterClustering.analysisResultToReview")}
+								</SelectLabel>
 								<SelectTrigger class="w-full min-w-0">
 									<SelectValue<ClusteringRunSummary>>
 										{(state) => (
@@ -508,7 +542,7 @@ export function CharacterClusteringReviewPanel(props: {
 										value={comparison() ?? null}
 										optionValue="id"
 										optionTextValue={title}
-										placeholder="比較先を選ぶ"
+										placeholder={t("characterClustering.chooseComparison")}
 										onChange={(value) => {
 											if (value?.id !== chosenComparison())
 												batch(() => {
@@ -521,7 +555,11 @@ export function CharacterClusteringReviewPanel(props: {
 											</SelectItem>
 										)}
 									>
-										<SelectLabel>同じ画像の別設定と比較</SelectLabel>
+										<SelectLabel>
+											{t(
+												"characterClustering.compareDifferentSettingsOnTheSameImages",
+											)}
+										</SelectLabel>
 										<SelectTrigger class="w-full min-w-0">
 											<SelectValue<ClusteringRunSummary>>
 												{(state) => (
@@ -538,38 +576,53 @@ export function CharacterClusteringReviewPanel(props: {
 								</div>
 								<Show when={comparison()}>
 									<Button
-										aria-label="比較を解除"
+										aria-label={t("characterClustering.clearComparison")}
 										onClick={() => setChosenComparison("")}
 										variant="outline"
 									>
-										解除
+										{t("actions.clear")}
 									</Button>
 								</Show>
 							</div>
 						</div>
 						<dl class="grid grid-cols-2 gap-3 border-y py-3 md:grid-cols-4">
 							<div>
-								<dt class="text-xs text-muted-foreground">対象画像</dt>
+								<dt class="text-xs text-muted-foreground">
+									{t("characterClustering.targetImages")}
+								</dt>
 								<dd class="text-lg font-semibold tabular-nums">
-									{run().points.toLocaleString()}枚
+									{t("characterClustering.valueImages", {
+										value0: String(run().points.toLocaleString()),
+									})}
 								</dd>
 							</div>
 							<div>
-								<dt class="text-xs text-muted-foreground">グループ</dt>
+								<dt class="text-xs text-muted-foreground">
+									{t("characterClustering.groups")}
+								</dt>
 								<dd class="text-lg font-semibold tabular-nums">
-									{run().clusters.toLocaleString()}群
+									{t("characterClustering.valueGroups", {
+										value0: String(run().clusters.toLocaleString()),
+									})}
 								</dd>
 							</div>
 							<div>
-								<dt class="text-xs text-muted-foreground">グループ内</dt>
+								<dt class="text-xs text-muted-foreground">
+									{t("characterClustering.grouped")}
+								</dt>
 								<dd class="text-lg font-semibold tabular-nums">
-									{run().clustered.toLocaleString()}枚
+									{t("characterClustering.valueImages", {
+										value0: String(run().clustered.toLocaleString()),
+									})}
 								</dd>
 							</div>
 							<div>
-								<dt class="text-xs text-muted-foreground">ノイズ</dt>
+								<dt class="text-xs text-muted-foreground">
+									{t("characterClustering.noise")}
+								</dt>
 								<dd class="text-lg font-semibold tabular-nums">
-									{run().noise.toLocaleString()}枚{" "}
+									{run().noise.toLocaleString()}
+									{t("pixivScreen.images")}{" "}
 									<span class="text-sm font-normal text-muted-foreground">
 										(
 										{((run().noise / Math.max(1, run().points)) * 100).toFixed(
@@ -581,10 +634,20 @@ export function CharacterClusteringReviewPanel(props: {
 							</div>
 						</dl>
 						<p class="text-xs text-muted-foreground">
-							{run().soloOnly
-								? "soloタグ付きが対象（人物検知による確認は行っていません）。"
-								: "人数による絞り込みのない解析結果です。"}{" "}
-							既存ラベルは解析時点の情報です。所属強度は識別の正解率ではありません。
+							{t(
+								"characterClustering.valueValueExistingLabelsReflectTheTimeOfAnalysis",
+								{
+									value0: String(
+										run().soloOnly
+											? t(
+													"characterClustering.onlyMediaTaggedSoloIsIncludedNotVerifiedBy",
+												)
+											: t(
+													"characterClustering.theseResultsHaveNoPersonCountFilter",
+												),
+									),
+								},
+							)}
 						</p>
 						<div class="flex flex-wrap gap-2">
 							<Button
@@ -597,7 +660,7 @@ export function CharacterClusteringReviewPanel(props: {
 								}
 								variant={view() === "groups" ? "default" : "outline"}
 							>
-								グループを見る
+								{t("characterClustering.viewGroups")}
 							</Button>
 							<Button
 								aria-pressed={view() === "noise"}
@@ -609,14 +672,16 @@ export function CharacterClusteringReviewPanel(props: {
 								}
 								variant={view() === "noise" ? "default" : "outline"}
 							>
-								ノイズを見る
+								{t("characterClustering.viewNoise")}
 							</Button>
 							<Button
 								aria-pressed={large()}
 								onClick={() => setLarge(!large())}
 								variant="ghost"
 							>
-								{large() ? "画像を小さく" : "画像を大きく"}
+								{large()
+									? t("characterClustering.smallerImages")
+									: t("characterClustering.largerImages")}
 							</Button>
 						</div>
 						<form
@@ -634,15 +699,15 @@ export function CharacterClusteringReviewPanel(props: {
 								onChange={setQuery}
 							>
 								<TextFieldLabel>
-									既存ラベル・ファイル名で絞り込む
+									{t("characterClustering.filterByExistingLabelOrFilename")}
 								</TextFieldLabel>
 								<TextFieldInput
 									maxLength={200}
-									placeholder="キャラクター名やファイル名"
+									placeholder={t("characterClustering.characterNameOrFilename")}
 									type="search"
 								/>
 							</TextField>
-							<Button type="submit">絞り込む</Button>
+							<Button type="submit">{t("characterClustering.filter")}</Button>
 							<Show when={appliedQuery()}>
 								<Button
 									onClick={() =>
@@ -653,7 +718,7 @@ export function CharacterClusteringReviewPanel(props: {
 									}
 									variant="outline"
 								>
-									クリア
+									{t("actions.clear")}
 								</Button>
 							</Show>
 						</form>
@@ -662,9 +727,20 @@ export function CharacterClusteringReviewPanel(props: {
 								<For
 									each={
 										[
-											{ value: "size", label: "枚数が多い順" },
-											{ value: "mixed", label: "ラベル混在を優先" },
-											{ value: "weak", label: "所属強度が低い順" },
+											{
+												value: "size",
+												label: t("characterClustering.mostImagesFirst"),
+											},
+											{
+												value: "mixed",
+												label: t("characterClustering.mixedLabelsFirst"),
+											},
+											{
+												value: "weak",
+												label: t(
+													"characterClustering.lowestMembershipStrengthFirst",
+												),
+											},
 										] as const
 									}
 								>
@@ -687,7 +763,7 @@ export function CharacterClusteringReviewPanel(props: {
 						</Show>
 						<Show when={fetching() && !hasPage()}>
 							<p aria-live="polite" class="text-sm text-muted-foreground">
-								画像一覧を読み込んでいます…
+								{t("characterClustering.loadingImages")}
 							</p>
 						</Show>
 						<QueryStatus
@@ -705,16 +781,20 @@ export function CharacterClusteringReviewPanel(props: {
 									: noise.isError && !noise.isFetchNextPageError
 							}
 							hideWhenIdle
-							offlineLabel="オフラインのため取得済みの画像を表示しています。"
-							updatingLabel="画像一覧を更新しています…"
+							offlineLabel={t(
+								"characterClustering.offlineShowingPreviouslyLoadedImages",
+							)}
+							updatingLabel={t("characterClustering.updatingImages")}
 						/>
 						<Show when={paused() && !hasPage()}>
 							<OfflineState onRetry={refresh} />
 						</Show>
 						<Show when={visibleError()}>
 							<ErrorState
-								title="画像一覧を取得できませんでした"
-								description="保存済みの解析結果を確認して再試行してください。"
+								title={t("characterClustering.couldNotLoadTheImageList")}
+								description={t(
+									"characterClustering.checkTheSavedAnalysisResultsAndRetry",
+								)}
 								onRetry={refresh}
 							/>
 						</Show>
@@ -727,12 +807,14 @@ export function CharacterClusteringReviewPanel(props: {
 								</div>
 							</Show>
 							<p class="text-xs text-muted-foreground">
-								上段は所属が強い画像、下段は弱い画像です（最大各3枚）。
+								{t(
+									"characterClustering.strongMembersAreOnTopWeakerMembersBelowUp",
+								)}
 							</p>
 							<ClusteringVirtualGrid
 								items={groupItems()}
 								itemKey={(group) => group.id}
-								label="クラスタ一覧"
+								label={t("characterClustering.clusterList")}
 								layout="groups"
 								resetKey={reviewKey()}
 								total={total()}
@@ -749,7 +831,13 @@ export function CharacterClusteringReviewPanel(props: {
 										<Button
 											aria-expanded={detailId() === group.id}
 											aria-haspopup="dialog"
-											aria-label={`グループ #${group.id} の${group.size}枚を確認`}
+											aria-label={t(
+												"characterClustering.reviewValueImagesInGroupValue",
+												{
+													value0: String(group.id),
+													value1: String(group.size),
+												},
+											)}
 											class="absolute inset-0 z-10 h-full w-full rounded-lg p-0 hover:bg-transparent"
 											onClick={() =>
 												batch(() => {
@@ -760,12 +848,26 @@ export function CharacterClusteringReviewPanel(props: {
 											variant="ghost"
 										>
 											<span class="sr-only">
-												グループ #{group.id} の全{group.size}枚を見る
+												{t(
+													"characterClustering.viewAllValueImagesInGroupValue",
+													{
+														value0: String(group.id),
+														value1: String(group.size),
+													},
+												)}
 											</span>
 										</Button>
 										<div class="flex flex-wrap items-center justify-between gap-2">
-											<h3 class="font-semibold">グループ #{group.id}</h3>
-											<span class="text-sm tabular-nums">{group.size}枚</span>
+											<h3 class="font-semibold">
+												{t("characterClustering.groupValue", {
+													value0: String(group.id),
+												})}
+											</h3>
+											<span class="text-sm tabular-nums">
+												{t("characterClustering.valueImages", {
+													value0: String(group.size),
+												})}
+											</span>
 										</div>
 										<div class="grid w-full grid-cols-3 gap-1">
 											<For each={group.previews}>
@@ -786,7 +888,9 @@ export function CharacterClusteringReviewPanel(props: {
 										<div class="flex flex-wrap gap-1">
 											<Show when={group.labelKinds > 1}>
 												<Badge variant="outline">
-													既存ラベル{group.labelKinds}種
+													{t("characterClustering.valueExistingLabels", {
+														value0: String(group.labelKinds),
+													})}
 												</Badge>
 											</Show>
 											<For each={group.characters}>
@@ -807,22 +911,39 @@ export function CharacterClusteringReviewPanel(props: {
 											</For>
 											<Show when={!group.characters.length}>
 												<span class="text-xs text-muted-foreground">
-													既存ラベルなし
+													{t("characterClustering.noExistingLabels")}
 												</span>
 											</Show>
 										</div>
 										<p class="text-xs text-muted-foreground">
-											所属強度 平均{Math.round(group.meanStrength * 100)}% /
-											最低{Math.round(group.minimumStrength * 100)}%
+											{t(
+												"characterClustering.membershipStrengthAverageValueMinimumValue",
+												{
+													value0: String(Math.round(group.meanStrength * 100)),
+													value1: String(
+														Math.round(group.minimumStrength * 100),
+													),
+												},
+											)}
 										</p>
 										<Show when={group.comparison}>
 											{(stats) => (
 												<p class="text-xs text-muted-foreground">
-													比較先では {stats().clusters}グループ / ノイズ
-													{stats().noise}枚
-													{stats().missing
-														? ` / 対象外${stats().missing}枚`
-														: ""}
+													{t(
+														"characterClustering.comparisonValueGroupsValueNoiseImagesValue",
+														{
+															value0: String(stats().clusters),
+															value1: String(stats().noise),
+															value2: String(
+																stats().missing
+																	? t(
+																			"characterClustering.valueImagesExcluded",
+																			{ value0: String(stats().missing) },
+																		)
+																	: "",
+															),
+														},
+													)}
 												</p>
 											)}
 										</Show>
@@ -836,7 +957,7 @@ export function CharacterClusteringReviewPanel(props: {
 								comparing={Boolean(comparison())}
 								large={large()}
 								media={noiseItems()}
-								label="ノイズ画像"
+								label={t("characterClustering.noiseImages")}
 								resetKey={reviewKey()}
 								total={total()}
 								canLoadMore={
@@ -857,10 +978,10 @@ export function CharacterClusteringReviewPanel(props: {
 							<EmptyState
 								title={
 									appliedQuery()
-										? "条件に一致する画像がありません"
+										? t("characterClustering.noImagesMatchTheseConditions")
 										: view() === "noise"
-											? "この解析結果にノイズはありません"
-											: "この解析結果にグループはありません"
+											? t("characterClustering.thisAnalysisHasNoNoise")
+											: t("characterClustering.thisAnalysisHasNoGroups")
 								}
 							/>
 						</Show>
@@ -904,10 +1025,15 @@ export function CharacterClusteringReviewPanel(props: {
 				>
 					<DialogHeader class="static z-auto pr-8">
 						<DialogTitle>
-							グループ #{detailId()} · {detailData()?.pages[0]?.total ?? "…"}枚
+							{t("characterClustering.groupValueValueImages", {
+								value0: String(detailId()),
+								value1: String(detailData()?.pages[0]?.total ?? "…"),
+							})}
 						</DialogTitle>
 						<DialogDescription>
-							所属画像をスクロールして確認できます。サムネイルをクリックすると画像の詳細ページへ移動します。
+							{t(
+								"characterClustering.scrollThroughGroupMembersClickAThumbnailToOpen",
+							)}
 						</DialogDescription>
 					</DialogHeader>
 					<div class="flex flex-wrap gap-2">
@@ -920,7 +1046,7 @@ export function CharacterClusteringReviewPanel(props: {
 							}
 							variant="outline"
 						>
-							境界の画像から
+							{t("characterClustering.boundaryImagesFirst")}
 						</Button>
 						<Button
 							aria-pressed={detailOrder() === "strong"}
@@ -931,19 +1057,21 @@ export function CharacterClusteringReviewPanel(props: {
 							}
 							variant="outline"
 						>
-							強い画像から
+							{t("characterClustering.strongMembersFirst")}
 						</Button>
 						<Button
 							aria-pressed={large()}
 							onClick={() => setLarge(!large())}
 							variant="ghost"
 						>
-							{large() ? "画像を小さく" : "画像を大きく"}
+							{large()
+								? t("characterClustering.smallerImages")
+								: t("characterClustering.largerImages")}
 						</Button>
 					</div>
 					<Show when={detail.isFetching && !detail.isFetchingNextPage}>
 						<p aria-live="polite" class="text-sm">
-							グループの画像を読み込んでいます…
+							{t("characterClustering.loadingGroupImages")}
 						</p>
 					</Show>
 					<Show when={detail.fetchStatus === "paused"}>
@@ -951,7 +1079,7 @@ export function CharacterClusteringReviewPanel(props: {
 					</Show>
 					<Show when={detail.isError && !detailData()}>
 						<ErrorState
-							title="グループの画像を取得できませんでした"
+							title={t("characterClustering.couldNotLoadGroupImages")}
 							onRetry={() => void detail.refetch()}
 						/>
 					</Show>
@@ -961,7 +1089,7 @@ export function CharacterClusteringReviewPanel(props: {
 							comparing={Boolean(comparison())}
 							large={large()}
 							media={detailItems()}
-							label="グループ画像"
+							label={t("characterClustering.groupImages")}
 							resetKey={JSON.stringify(detailInput())}
 							total={detailData()?.pages[0]?.total ?? 0}
 							canLoadMore={
