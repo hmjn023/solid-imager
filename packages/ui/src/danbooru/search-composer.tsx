@@ -66,12 +66,11 @@ export function DanbooruSearchComposer(props: {
 			options={options()}
 			placeholder={t("searchComposer.enterTagsEGLandscapeMonochrome")}
 			submitLabel={t("actions.search")}
-			hint={
-				t("searchComposer.spaceForANDTagToExcludeTagForOR") +
-				(props.provider === "pixiv"
-					? t("searchComposer.convertsDanbooruTagsToPixivTags")
-					: t("searchComposer.youCanAlsoUseRatingGAndOrderScore"))
-			}
+			hint={t(
+				props.provider === "pixiv"
+					? "searchComposer.pixivHint"
+					: "searchComposer.danbooruHint",
+			)}
 			status={
 				suggestions.isError && query() === token().query
 					? t("searchComposer.couldNotLoadTagSuggestionsYouCanStillEnter")

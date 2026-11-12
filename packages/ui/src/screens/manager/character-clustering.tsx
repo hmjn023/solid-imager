@@ -621,8 +621,9 @@ export function CharacterClusteringReviewPanel(props: {
 									{t("characterClustering.noise")}
 								</dt>
 								<dd class="text-lg font-semibold tabular-nums">
-									{run().noise.toLocaleString()}
-									{t("pixivScreen.images")}{" "}
+									{t("pixivScreen.imageCount", {
+										count: run().noise.toLocaleString(),
+									})}{" "}
 									<span class="text-sm font-normal text-muted-foreground">
 										(
 										{((run().noise / Math.max(1, run().points)) * 100).toFixed(

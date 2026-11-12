@@ -130,7 +130,10 @@ export function PixivScreen(props: PixivProps) {
 					t("pixivScreen.pixivValue", { value0: String(post.id) }),
 				thumbnail:
 					post.thumbnail && pixivImageHref(props.apiBase(), post.thumbnail),
-				info: [post.author, post.pageCount + t("pixivScreen.images")]
+				info: [
+					post.author,
+					t("pixivScreen.imageCount", { count: post.pageCount }),
+				]
 					.filter(Boolean)
 					.join(" · "),
 			})}

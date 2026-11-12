@@ -886,6 +886,8 @@ export const en = defineMessages({
 	"locale.hint":
 		"Changing language reloads the application. This preference is stored on this device.",
 	"locale.japanese": "日本語",
+	"locale.saveChangesFirst":
+		"Save or discard unsaved settings before changing the language.",
 	"locale.saveFailed":
 		"Could not save the display language. Check browser storage permissions.",
 	"locale.title": "Display language",
@@ -1258,7 +1260,7 @@ export const en = defineMessages({
 		"Set your destination to HTTPS or localhost.",
 	"pixivScreen.couldNotSearchPixiv": "Could not search pixiv",
 	"pixivScreen.dailyRanking": "Daily ranking",
-	"pixivScreen.images": "images",
+	"pixivScreen.imageCount": "{count} images",
 	"pixivScreen.noMatchingWorks": "No matching works",
 	"pixivScreen.pixivSearch": "pixiv search · ",
 	"pixivScreen.pixivTags": " pixiv tags",
@@ -1382,22 +1384,20 @@ export const en = defineMessages({
 	"routerStatus.preparingApplication2": "Preparing application",
 	"searchActionDialogs.thisActionCannotBeUndoneDeleteValue":
 		"This action cannot be undone. Delete {value0}?",
-	"searchComposer.convertsDanbooruTagsToPixivTags":
-		"Converts Danbooru tags to pixiv tags.",
 	"searchComposer.couldNotLoadTagSuggestionsYouCanStillEnter":
 		"Could not load tag suggestions. You can still enter tags to search.",
+	"searchComposer.danbooruHint":
+		"Space for AND, -tag to exclude, ~tag for OR. You can also use rating:g and order:score.",
 	"searchComposer.enterTagsEGLandscapeMonochrome":
 		"Enter tags (e.g. landscape -monochrome)",
+	"searchComposer.pixivHint":
+		"Space for AND, -tag to exclude, ~tag for OR. Converts Danbooru tags to pixiv tags.",
 	"searchComposer.removeValueValue": "Remove {value0}:{value1}",
 	"searchComposer.search": " search",
 	"searchComposer.searchMedia": "Search media",
 	"searchComposer.searchOrTextTagAuthorSimilarLimit100":
 		"Search, or text: / tag: / author: / similar: / limit:100 …",
-	"searchComposer.spaceForANDTagToExcludeTagForOR":
-		"Space for AND, -tag to exclude, ~tag for OR.",
 	"searchComposer.valueMore": "{value0} more",
-	"searchComposer.youCanAlsoUseRatingGAndOrderScore":
-		"You can also use rating:g and order:score.",
 	"searchComposerUtils.text": "Text",
 	"searchComposerUtils.valueValue": "{value0}: {value1}",
 	"searchControlPanel.advanced": "Advanced",
@@ -1749,20 +1749,20 @@ export const en = defineMessages({
 		"Batch sync completed for {value0} items",
 	"useSourceMediaPage.bulkDownloadStarted": "Bulk download started",
 	"useSourceMediaPage.copied": "copied",
+	"useSourceMediaPage.copyFailed": "Failed to copy media: {error}",
 	"useSourceMediaPage.failedToBatchSyncValue": "Failed to batch sync: {value0}",
 	"useSourceMediaPage.failedToDeleteMedia": "Failed to delete media",
 	"useSourceMediaPage.failedToStartDownloadValue":
 		"Failed to start download: {value0}",
 	"useSourceMediaPage.failedToSyncMetadataValue":
 		"Failed to sync metadata: {value0}",
-	"useSourceMediaPage.failedToValueMediaValue":
-		"Failed to {value0} media: {value1}",
 	"useSourceMediaPage.mediaDeletedSuccessfully": "Media deleted successfully",
 	"useSourceMediaPage.mediaUploadedSuccessfully": "Media uploaded successfully",
 	"useSourceMediaPage.mediaValueSuccessfully": "Media {value0} successfully",
 	"useSourceMediaPage.metadataSyncedSuccessfully":
 		"Metadata synced successfully",
 	"useSourceMediaPage.moved": "moved",
+	"useSourceMediaPage.moveFailed": "Failed to move media: {error}",
 	"useSourceMediaPage.nA": "N/A",
 	"useSourceMediaPage.skippedValueBecauseItAlreadyExists":
 		"Skipped {value0} because it already exists.",

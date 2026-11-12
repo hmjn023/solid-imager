@@ -14,9 +14,9 @@ const languageName = (locale: Locale) =>
 	t(locale === "ja" ? "locale.japanese" : "locale.english");
 
 /** A device preference, separate from server configuration. */
-export function LanguageSettings() {
+export function LanguageSettings(props: { disabled?: boolean }) {
 	const chooseLanguage = (locale: Locale | null) => {
-		if (!locale || locale === getLocale()) return;
+		if (props.disabled || !locale || locale === getLocale()) return;
 		try {
 			changeLocale(locale);
 		} catch {
@@ -27,6 +27,7 @@ export function LanguageSettings() {
 		<section class="space-y-2">
 			<Select<Locale>
 				options={LOCALES}
+				disabled={props.disabled}
 				value={getLocale()}
 				onChange={chooseLanguage}
 				itemComponent={(props) => (
@@ -57,7 +58,7 @@ export function LanguageSettings() {
 				<SelectContent />
 			</Select>
 			<p id="display-language-hint" class="text-xs text-muted-foreground">
-				{t("locale.hint")}
+				{t(props.disabled ? "locale.saveChangesFirst" : "locale.hint")}
 			</p>
 		</section>
 	);

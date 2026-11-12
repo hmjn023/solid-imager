@@ -11,6 +11,25 @@ function placeholders(text: string): string[] {
 }
 
 describe("translation contracts", () => {
+	it("keeps counts, provider hints and operation failures as complete localized messages", () => {
+		const english = createTranslator("en");
+		const japanese = createTranslator("ja");
+		expect(english("pixivScreen.imageCount", { count: 5 })).toBe("5 images");
+		expect(japanese("pixivScreen.imageCount", { count: 5 })).toBe("5枚");
+		expect(english("searchComposer.danbooruHint")).toContain(
+			"OR. You can also use",
+		);
+		expect(english("searchComposer.pixivHint")).toContain(
+			"OR. Converts Danbooru",
+		);
+		expect(japanese("searchComposer.pixivHint")).toContain("OR。Danbooru");
+		expect(
+			japanese("useSourceMediaPage.copyFailed", { error: "offline" }),
+		).toBe("メディアのコピーに失敗しました: offline");
+		expect(
+			japanese("useSourceMediaPage.moveFailed", { error: "offline" }),
+		).toBe("メディアの移動に失敗しました: offline");
+	});
 	it("requires complete, nonempty catalogs with identical interpolation names", () => {
 		expect(Object.keys(ja).sort()).toEqual(Object.keys(en).sort());
 		for (const key of Object.keys(en) as (keyof typeof en)[]) {

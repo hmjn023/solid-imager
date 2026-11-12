@@ -243,7 +243,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 
 					<div class="min-w-0 space-y-6">
 						<TabsContent value="interface">
-							<LanguageSettings />
+							<form.Subscribe selector={(state) => state.isDirty}>
+								{(isDirty) => <LanguageSettings disabled={isDirty()} />}
+							</form.Subscribe>
 						</TabsContent>
 						<TabsContent value="jobs">
 							<fieldset class={sectionClass}>

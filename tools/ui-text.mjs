@@ -285,6 +285,41 @@ const noRawText = {
 					check(node.arguments[1]);
 				if (shortName === "onError") check(node.arguments[0]);
 				if (name === "createButton") check(node.arguments[0]);
+				if (node.callee.type === "MemberExpression") {
+					if (shortName === "createTextNode") check(node.arguments[0]);
+					if (shortName === "insertAdjacentText") check(node.arguments[1]);
+					if (
+						/^(?:append|prepend|replaceChildren|before|after|replaceWith)$/.test(
+							shortName,
+						)
+					) {
+						// FormData and URLSearchParams also expose append(), but their keys are technical data.
+						const owner = node.callee.object;
+						if (owner.type === "Identifier") {
+							/** @type {ReturnType<typeof context.sourceCode.getScope> | null} */
+							let scope = context.sourceCode.getScope(owner);
+							while (scope) {
+								const variable = scope.set.get(owner.name);
+								if (variable) {
+									if (
+										variable.defs.some(
+											(definition) =>
+												definition.node.type === "VariableDeclarator" &&
+												definition.node.init?.type === "NewExpression" &&
+												/^(?:FormData|URLSearchParams)$/.test(
+													nameOf(definition.node.init.callee),
+												),
+										)
+									)
+										return;
+									break;
+								}
+								scope = scope.upper;
+							}
+						}
+						for (const argument of node.arguments) check(argument);
+					}
+				}
 				if (shortName === "failRead") check(node.arguments[1]);
 				if (name === "toast.promise") check(node.arguments[1]);
 				if (name === "requireField" || /\.(?:min|max|length)$/.test(name))

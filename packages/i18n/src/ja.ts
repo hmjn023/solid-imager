@@ -879,6 +879,8 @@ export const ja = defineLocale({
 	"locale.hint":
 		"言語を変更すると画面を再読み込みします。設定はこの端末に保存されます。",
 	"locale.japanese": "日本語",
+	"locale.saveChangesFirst":
+		"言語を切り替える前に、未保存の設定を保存または破棄してください。",
 	"locale.saveFailed":
 		"表示言語を保存できませんでした。ブラウザーの保存設定を確認してください。",
 	"locale.title": "表示言語",
@@ -1254,7 +1256,7 @@ export const ja = defineLocale({
 		"接続先を HTTPS または localhost に設定してください。",
 	"pixivScreen.couldNotSearchPixiv": "pixiv を検索できませんでした",
 	"pixivScreen.dailyRanking": "デイリーランキング",
-	"pixivScreen.images": "枚",
+	"pixivScreen.imageCount": "{count}枚",
 	"pixivScreen.noMatchingWorks": "該当する作品がありません",
 	"pixivScreen.pixivSearch": "pixiv 検索語 · ",
 	"pixivScreen.pixivTags": " の pixiv タグ",
@@ -1376,22 +1378,20 @@ export const ja = defineLocale({
 	"routerStatus.preparingApplication2": "アプリを準備しています",
 	"searchActionDialogs.thisActionCannotBeUndoneDeleteValue":
 		"この操作は取り消せません。{value0}を削除しますか？",
-	"searchComposer.convertsDanbooruTagsToPixivTags":
-		"Danbooru タグを pixiv のタグに変換します。",
 	"searchComposer.couldNotLoadTagSuggestionsYouCanStillEnter":
 		"タグ候補を取得できませんでした。タグを直接入力して検索できます。",
+	"searchComposer.danbooruHint":
+		"スペースで AND、-タグで除外、~タグで OR。rating:g や order:score も使えます。",
 	"searchComposer.enterTagsEGLandscapeMonochrome":
 		"タグを入力（例: landscape -monochrome）",
+	"searchComposer.pixivHint":
+		"スペースで AND、-タグで除外、~タグで OR。Danbooru タグを pixiv のタグに変換します。",
 	"searchComposer.removeValueValue": "{value0}:{value1}を解除",
 	"searchComposer.search": " を検索",
 	"searchComposer.searchMedia": "メディアを検索",
 	"searchComposer.searchOrTextTagAuthorSimilarLimit100":
 		"検索、または text: / tag: / author: / similar: / limit:100 …",
-	"searchComposer.spaceForANDTagToExcludeTagForOR":
-		"スペースで AND、-タグで除外、~タグで OR。",
 	"searchComposer.valueMore": "ほか{value0}件",
-	"searchComposer.youCanAlsoUseRatingGAndOrderScore":
-		"rating:g や order:score も使えます。",
 	"searchComposerUtils.text": "文章",
 	"searchComposerUtils.valueValue": "{value0}：{value1}",
 	"searchControlPanel.advanced": "詳細",
@@ -1743,6 +1743,7 @@ export const ja = defineLocale({
 		"{value0}件の一括同期が完了しました",
 	"useSourceMediaPage.bulkDownloadStarted": "一括ダウンロードを開始しました",
 	"useSourceMediaPage.copied": "コピー",
+	"useSourceMediaPage.copyFailed": "メディアのコピーに失敗しました: {error}",
 	"useSourceMediaPage.failedToBatchSyncValue":
 		"一括同期に失敗しました: {value0}",
 	"useSourceMediaPage.failedToDeleteMedia": "メディアの削除に失敗しました",
@@ -1750,8 +1751,6 @@ export const ja = defineLocale({
 		"ダウンロードの開始に失敗しました: {value0}",
 	"useSourceMediaPage.failedToSyncMetadataValue":
 		"メタデータの同期に失敗しました: {value0}",
-	"useSourceMediaPage.failedToValueMediaValue":
-		"メディアの{value0}に失敗しました: {value1}",
 	"useSourceMediaPage.mediaDeletedSuccessfully": "メディアを削除しました",
 	"useSourceMediaPage.mediaUploadedSuccessfully":
 		"メディアをアップロードしました",
@@ -1760,6 +1759,7 @@ export const ja = defineLocale({
 	"useSourceMediaPage.metadataSyncedSuccessfully":
 		"メタデータの同期が完了しました",
 	"useSourceMediaPage.moved": "移動",
+	"useSourceMediaPage.moveFailed": "メディアの移動に失敗しました: {error}",
 	"useSourceMediaPage.nA": "該当なし",
 	"useSourceMediaPage.skippedValueBecauseItAlreadyExists":
 		"{value0} は既に存在するためスキップしました。",

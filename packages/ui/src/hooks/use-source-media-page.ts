@@ -750,10 +750,14 @@ export function useSourceMediaPage(
 			}
 		} catch (e) {
 			toast.error(
-				t("useSourceMediaPage.failedToValueMediaValue", {
-					value0: String(mode),
-					value1: String(getErrorMessage(e)),
-				}),
+				t(
+					mode === "copy"
+						? "useSourceMediaPage.copyFailed"
+						: "useSourceMediaPage.moveFailed",
+					{
+						error: getErrorMessage(e),
+					},
+				),
 			);
 		} finally {
 			setMediaIdToMoveCopy(null);

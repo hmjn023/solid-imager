@@ -1,6 +1,31 @@
 import { expect, test, waitForAppHydration } from "./support/test";
 import { mediaPath } from "./support/fixture";
 
+test("unsaved server settings block language changes until discarded", async ({
+	page,
+}) => {
+	await page.goto("/config");
+	await waitForAppHydration(page);
+	const concurrency = page.getByLabel("同時実行数", { exact: true });
+	const original = await concurrency.inputValue();
+	await concurrency.fill(original === "2" ? "3" : "2");
+	await page.getByRole("tab", { name: /画面表示/ }).click();
+	const language = page.getByLabel("表示言語", { exact: true });
+	await expect(language).toBeDisabled();
+	await expect(language).toHaveAccessibleDescription(
+		"言語を切り替える前に、未保存の設定を保存または破棄してください。",
+	);
+	expect(
+		await page.evaluate(() => localStorage.getItem("solid-imager.locale")),
+	).toBeNull();
+	await page.getByRole("button", { name: "破棄", exact: true }).click();
+	await expect(language).toBeEnabled();
+	await language.click();
+	await page.getByRole("option", { name: "English", exact: true }).click();
+	await waitForAppHydration(page);
+	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+});
+
 test("display language changes the whole workspace and survives direct navigation and reload", async ({
 	page,
 }, testInfo) => {
