@@ -61,26 +61,26 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 	});
 
 	const moreActions = page.getByRole("button", {
-		name: "More actions",
+		name: "その他の操作",
 		exact: true,
 	});
 	await moreActions.click();
 	await page
-		.getByRole("button", { name: "Extract CCIP vector", exact: true })
+		.getByRole("button", { name: "CCIPベクトルを抽出", exact: true })
 		.click();
 	releaseStartRequest();
 	await postSubmitStatusRequest;
 	await moreActions.click();
 	await expect(
 		page.getByRole("button", {
-			name: "Extracting CCIP vector…",
+			name: "CCIPベクトルを抽出中...",
 			exact: true,
 		}),
 	).toBeDisabled();
 	releaseStatusRequest();
 	await expect(
 		page.getByRole("button", {
-			name: "Re-extract CCIP vector",
+			name: "CCIPベクトルを再抽出",
 			exact: true,
 		}),
 	).toBeEnabled({ timeout: 90_000 });
@@ -109,7 +109,7 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 	await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
 	await moreActions.click();
 	await page
-		.getByRole("button", { name: "Extract CCIP vector", exact: true })
+		.getByRole("button", { name: "CCIPベクトルを抽出", exact: true })
 		.click();
 	await queuedExtraction;
 	const reload = page.reload();
@@ -118,12 +118,12 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 	await moreActions.click();
 	await expect(
 		page.getByRole("button", {
-			name: "Re-extract CCIP vector",
+			name: "CCIPベクトルを再抽出",
 			exact: true,
 		}),
 	).toBeEnabled({ timeout: 90_000 });
 	await expect(
-		page.getByRole("button", { name: "Find similar", exact: true }),
+		page.getByRole("button", { name: "類似検索", exact: true }),
 	).toBeEnabled();
 
 	const similarityResponse = page.waitForResponse(
@@ -131,7 +131,7 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 			new URL(response.url()).pathname === "/api/rpc/media/searchSimilar" &&
 			response.status() === 200,
 	);
-	await page.getByRole("button", { name: "Find similar", exact: true }).click();
+	await page.getByRole("button", { name: "類似検索", exact: true }).click();
 	await similarityResponse;
 
 	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
@@ -146,7 +146,7 @@ test("extracts real CCIP vectors and finds a similar seeded image", async ({
 
 	await page.goto(sourcePath());
 	await waitForAppHydration(page);
-	await expect(page.getByText(/^\d+ items$/)).toBeVisible();
+	await expect(page.getByText(/^\d+件$/)).toBeVisible();
 	const primaryMedia = page.locator(
 		`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`,
 	);

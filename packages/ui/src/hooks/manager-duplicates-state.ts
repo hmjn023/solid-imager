@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { DuplicateGroup } from "@solid-imager/core/media";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { batch, createSignal, type Setter } from "solid-js";
@@ -94,7 +95,7 @@ export function createManagerDuplicatesState(actions: {
 		const scanId = generation;
 		const scope = sourceId();
 		setScanning(true);
-		setStatus("Scanning...");
+		setStatus(t("duplicates.scanning"));
 		try {
 			const response = await actions.findDuplicateMedia(scope);
 			if (scanId !== generation || sourceId() !== scope) return;
@@ -109,11 +110,18 @@ export function createManagerDuplicatesState(actions: {
 			}
 			setResult({ scanId, sourceId: scope, groups, keepIds });
 			setStatus(
-				`${groups.length} groups found (${groups.reduce((count, group) => count + group.media.length - 1, 0)} duplicates).`,
+				t("managerDuplicatesState.valueGroupsFoundValueDuplicates", {
+					value0: String(groups.length),
+					value1: String(
+						groups.reduce((count, group) => count + group.media.length - 1, 0),
+					),
+				}),
 			);
 		} catch (error) {
 			if (scanId !== generation) return;
-			const message = `Error: ${getErrorMessage(error)}`;
+			const message = t("useManagerPage.errorValue", {
+				value0: String(getErrorMessage(error)),
+			});
 			setStatus(message);
 			actions.error(message);
 		} finally {

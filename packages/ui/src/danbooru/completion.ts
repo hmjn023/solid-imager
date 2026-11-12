@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 /** Locate the tag at the caret; preserve exclusion/OR operators and other tokens. */
 export function getDanbooruCompletion(draft: string, caret = draft.length) {
 	const beforeCaret = draft.slice(0, caret);
@@ -20,9 +21,9 @@ export function completeDanbooruTag(
 }
 
 export const danbooruTagCategoryLabels: Record<number, string> = {
-	0: "タグ",
-	1: "作者",
-	3: "作品",
-	4: "キャラクター",
-	5: "メタ",
+	0: t("pixivArtworkDetail.tags"),
+	1: t("labels.authors"),
+	3: t("detail.work"),
+	4: t("labels.characters"),
+	5: t("danbooruPostDetail.metadata"),
 };

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 /**
  * Type-safe querySelector that returns a specific HTML element type.
  * Returns null if the element is not found.
@@ -18,7 +19,9 @@ export function requireElement<T extends HTMLElement>(
 ): T {
 	const el = parent.querySelector(selector);
 	if (!(el instanceof HTMLElement)) {
-		throw new Error(`Required element not found: ${selector}`);
+		throw new Error(
+			t("domUtils.requiredElementNotFoundValue", { value0: String(selector) }),
+		);
 	}
 	return el as T;
 }

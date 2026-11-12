@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { createResource } from "solid-js";
 import {
 	BulkActionDialog,
@@ -43,11 +44,13 @@ export function SearchActionDialogs(props: {
 			>
 				<DialogContent data-workspace-theme="">
 					<DialogHeader>
-						<DialogTitle>メディアを削除</DialogTitle>
+						<DialogTitle>{t("sourceMediaScreen.deleteMedia")}</DialogTitle>
 						<DialogDescription>
-							この操作は取り消せません。
-							{actions.deleteTarget()?.fileName ?? "選択したメディア"}
-							を削除しますか？
+							{t("searchActionDialogs.thisActionCannotBeUndoneDeleteValue", {
+								value0: String(
+									actions.deleteTarget()?.fileName ?? t("labels.selectedMedia"),
+								),
+							})}
 						</DialogDescription>
 					</DialogHeader>
 					<DialogFooter>
@@ -56,7 +59,7 @@ export function SearchActionDialogs(props: {
 							onClick={() => actions.changeDeleteOpen(false)}
 							variant="outline"
 						>
-							キャンセル
+							{t("actions.cancel")}
 						</Button>
 						<Button
 							disabled={actions.isDeleteSubmitting()}
@@ -65,7 +68,9 @@ export function SearchActionDialogs(props: {
 							}}
 							variant="destructive"
 						>
-							{actions.isDeleteSubmitting() ? "削除中..." : "削除"}
+							{actions.isDeleteSubmitting()
+								? t("status.deleting")
+								: t("actions.delete")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -82,7 +87,7 @@ export function SearchActionDialogs(props: {
 					source.id ? [{ id: source.id, name: source.name }] : [],
 				)}
 				isLoading={sources.loading}
-				error={sources.error ? "Failed to load sources." : null}
+				error={sources.error ? t("feedback.sourcesLoadFailed") : null}
 			/>
 			<BulkActionDialog
 				{...props.operations}

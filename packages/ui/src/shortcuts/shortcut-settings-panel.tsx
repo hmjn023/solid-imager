@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	createHotkeyRecorder,
 	formatForDisplay,
@@ -18,6 +19,7 @@ import {
 	getShortcutDefinition,
 	getShortcutDefinitionsForGroup,
 	SHORTCUT_GROUPS,
+	shortcutGroupLabel,
 	type ShortcutBinding,
 	type ShortcutDefinition,
 	type ShortcutId,
@@ -73,7 +75,13 @@ export function ShortcutSettingsPanel(
 			setFeedback({
 				shortcutId: id,
 				tone: "error",
-				message: `Conflict: ${displayBinding} is already assigned to ${result.conflict.label}. The shortcut was not saved.`,
+				message: t(
+					"shortcutSettingsPanel.conflictValueIsAlreadyAssignedToValueTheShortcut",
+					{
+						value0: String(displayBinding),
+						value1: String(result.conflict.label),
+					},
+				),
 			});
 			return;
 		}
@@ -82,7 +90,9 @@ export function ShortcutSettingsPanel(
 			setFeedback({
 				shortcutId: id,
 				tone: "error",
-				message: `Invalid shortcut: ${result.messages.join(" ")}`,
+				message: t("shortcutSettingsPanel.invalidShortcutValue", {
+					value0: String(result.messages.join(" ")),
+				}),
 			});
 			return;
 		}
@@ -91,8 +101,9 @@ export function ShortcutSettingsPanel(
 			setFeedback({
 				shortcutId: id,
 				tone: "error",
-				message:
-					"Shortcut preferences are unavailable because the settings provider is not mounted.",
+				message: t(
+					"shortcutSettingsPanel.shortcutPreferencesAreUnavailableBecauseTheSettingsProviderIs",
+				),
 			});
 			return;
 		}
@@ -102,8 +113,12 @@ export function ShortcutSettingsPanel(
 			tone: "success",
 			message:
 				result.binding === null
-					? `${definition.label} is disabled.`
-					: `${definition.label} was updated for this device.`,
+					? t("shortcutSettingsPanel.valueIsDisabled", {
+							value0: String(definition.label),
+						})
+					: t("shortcutSettingsPanel.valueWasUpdatedForThisDevice", {
+							value0: String(definition.label),
+						}),
 		});
 	};
 
@@ -133,7 +148,9 @@ export function ShortcutSettingsPanel(
 				setFeedback({
 					shortcutId: id,
 					tone: "info",
-					message: `Recording for ${getShortcutDefinition(id).label} was cancelled.`,
+					message: t("shortcutSettingsPanel.recordingForValueWasCancelled", {
+						value0: String(getShortcutDefinition(id).label),
+					}),
 				});
 			}
 			finishRecording();
@@ -153,8 +170,9 @@ export function ShortcutSettingsPanel(
 		setFeedback({
 			shortcutId: id,
 			tone: "info",
-			message:
-				"Recording. Press the new shortcut, Escape to cancel, or Backspace/Delete to disable it.",
+			message: t(
+				"shortcutSettingsPanel.recordingPressTheNewShortcutEscapeToCancelOr",
+			),
 		});
 		setActiveShortcutId(id);
 		preferences.setRecordingShortcutId(id);
@@ -186,7 +204,9 @@ export function ShortcutSettingsPanel(
 		setFeedback({
 			shortcutId: id,
 			tone: "success",
-			message: `${getShortcutDefinition(id).label} was reset to its default.`,
+			message: t("shortcutSettingsPanel.valueWasResetToItsDefault", {
+				value0: String(getShortcutDefinition(id).label),
+			}),
 		});
 	};
 
@@ -196,7 +216,9 @@ export function ShortcutSettingsPanel(
 		setFeedback({
 			shortcutId: null,
 			tone: "success",
-			message: "All keyboard shortcuts were reset to their defaults.",
+			message: t(
+				"shortcutSettingsPanel.allKeyboardShortcutsWereResetToTheirDefaults",
+			),
 		});
 	};
 
@@ -234,11 +256,13 @@ export function ShortcutSettingsPanel(
 			<header class="flex flex-wrap items-start justify-between gap-3 border-border border-b px-4 py-4">
 				<div class="min-w-0 space-y-1">
 					<h2 class="font-semibold text-base" id={headingId}>
-						{props.title ?? "Keyboard shortcuts"}
+						{props.title ?? t("configScreen.keyboardShortcuts")}
 					</h2>
 					<p class="max-w-text-reading text-muted-foreground text-sm">
 						{props.description ??
-							"Customize keyboard controls for this device. These preferences are stored locally."}
+							t(
+								"shortcutSettingsPanel.customizeKeyboardControlsForThisDeviceThesePreferencesAre",
+							)}
 					</p>
 				</div>
 				<Button
@@ -251,7 +275,7 @@ export function ShortcutSettingsPanel(
 					type="button"
 					variant="outline"
 				>
-					Reset all
+					{t("shortcutSettingsPanel.resetAll")}
 				</Button>
 				<output
 					aria-atomic="true"
@@ -275,7 +299,7 @@ export function ShortcutSettingsPanel(
 								class="bg-muted px-4 py-2 font-medium text-muted-foreground text-xs"
 								id={`${idPrefix}-${group}-heading`}
 							>
-								{group}
+								{shortcutGroupLabel(group)}
 							</h3>
 							{/* oxlint-disable-next-line jsx-a11y/no-redundant-roles -- Tailwind removes list markers, so Safari needs the explicit list role. */}
 							<ul class="divide-y divide-border" role="list">
@@ -344,7 +368,9 @@ export function ShortcutSettingsPanel(
 														type="button"
 														variant={isActive() ? "secondary" : "outline"}
 													>
-														{isActive() ? "Cancel" : "Record"}
+														{isActive()
+															? t("actions.cancel")
+															: t("shortcutSettingsPanel.record")}
 													</Button>
 													<Button
 														disabled={
@@ -356,7 +382,7 @@ export function ShortcutSettingsPanel(
 														type="button"
 														variant="ghost"
 													>
-														Reset
+														{t("shortcutSettingsPanel.reset")}
 													</Button>
 												</div>
 											</li>

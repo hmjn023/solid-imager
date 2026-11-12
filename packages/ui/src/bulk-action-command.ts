@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	bulkMediaOperationResultSchema,
 	type BulkMediaOperationResult,
@@ -38,14 +39,15 @@ export type BulkCommandOperations = {
 export function createBulkActionCommand(
 	input: BulkActionCommand,
 ): BulkActionCommand {
-	if (!input.items.length) throw new Error("No media items are selected.");
+	if (!input.items.length)
+		throw new Error(t("bulkActionCommand.noMediaItemsAreSelected"));
 	if (
 		(input.action === "copy-source" || input.action === "move-source") &&
 		!input.targetSourceId
 	)
-		throw new Error("Target source is required.");
+		throw new Error(t("bulkActionCommand.targetSourceIsRequired"));
 	if (input.action === "move-folder" && !input.destinationPath.trim())
-		throw new Error("Destination path is required.");
+		throw new Error(t("bulkActionCommand.destinationPathIsRequired"));
 	return Object.freeze({
 		...input,
 		items: Object.freeze([

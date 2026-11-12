@@ -75,7 +75,7 @@ test("keeps both dialog-selected files through actual upload submission", async 
 	await expect(
 		dialog.getByText(E2E_SIMILAR_FILE_NAME, { exact: true }),
 	).toBeVisible();
-	const preview = dialog.getByRole("img", { name: "Fetched preview" });
+	const preview = dialog.getByRole("img", { name: "取得したプレビュー" });
 	await expect(preview).toBeVisible();
 	await dialog
 		.getByRole("button", { name: "アップロード", exact: true })
@@ -109,7 +109,9 @@ for (const discard of [false, true]) {
 		await pasteUrl(page);
 		const dialog = page.getByRole("dialog", { name: "メディアをアップロード" });
 		await expect(dialog).toBeVisible();
-		await expect(dialog.getByText("Loading...", { exact: true })).toBeVisible();
+		await expect(
+			dialog.getByText("読み込み中...", { exact: true }),
+		).toBeVisible();
 		await requested.promise;
 		if (discard) {
 			await dialog
@@ -130,7 +132,7 @@ for (const discard of [false, true]) {
 		await expect(dialog.getByLabel("ファイル名", { exact: true })).toHaveValue(
 			E2E_PRIMARY_FILE_NAME,
 		);
-		const preview = dialog.getByRole("img", { name: "Fetched preview" });
+		const preview = dialog.getByRole("img", { name: "取得したプレビュー" });
 		await expect(preview).toBeVisible();
 		const originalPreview = await preview.getAttribute("src");
 		const finished = page.waitForResponse(
@@ -143,8 +145,8 @@ for (const discard of [false, true]) {
 		);
 		await expect(preview).toHaveAttribute("src", originalPreview ?? "");
 		await expect(dialog.getByRole("list").getByRole("listitem")).toHaveCount(1);
-		await expect(dialog.getByText("Loading...", { exact: true })).toHaveCount(
-			0,
-		);
+		await expect(
+			dialog.getByText("読み込み中...", { exact: true }),
+		).toHaveCount(0);
 	});
 }

@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { createClient } from "@solid-imager/client";
 import type { AppContract } from "@solid-imager/core/contract";
 import { canTransferPixivSession } from "@solid-imager/core/external-viewer";
@@ -14,13 +15,15 @@ export function PixivConnection(props: { apiUrl: string }) {
 		try {
 			const server = new URL(props.apiUrl);
 			if (!canTransferPixivSession(server))
-				throw new Error("接続先を HTTPS または localhost に設定してください。");
+				throw new Error(
+					t("pixivConnection.setYourDestinationToHTTPSOrLocalhost"),
+				);
 			const cookie = await chrome.cookies.get({
 				url: "https://www.pixiv.net/",
 				name: "PHPSESSID",
 			});
 			if (!cookie)
-				throw new Error("ブラウザーで pixiv にログインしてください。");
+				throw new Error(t("pixivConnection.logInToPixivInYourBrowser"));
 			const client = createClient<AppContract>({
 				url: server.href,
 				fetch: (url, init) =>
@@ -34,25 +37,29 @@ export function PixivConnection(props: { apiUrl: string }) {
 			setMessage(
 				error instanceof Error
 					? error.message
-					: "接続コードを発行できませんでした。",
+					: t("pixivConnection.couldNotGenerateAConnectionCode"),
 			);
 		} finally {
 			setBusy(false);
 		}
 	}
 	return (
-		<section class="popup-field" aria-label="pixiv アカウント接続">
-			<p class="popup-label">pixiv アカウント接続</p>
+		<section
+			class="popup-field"
+			aria-label={t("pixivConnection.connectPixivAccount")}
+		>
+			<p class="popup-label">{t("pixivConnection.connectPixivAccount")}</p>
 			<a
 				href="https://accounts.pixiv.net/login"
 				target="_blank"
 				rel="noopener noreferrer"
 			>
-				公式 pixiv でログイン ↗
+				{t("pixivAccount.logInOnPixiv")}
 			</a>
 			<p>
-				ボタンを押すと pixiv のログインセッションを {props.apiUrl}{" "}
-				に送信します。
+				{t("pixivConnection.pressTheButtonToSendYourPixivLoginSession", {
+					value0: String(props.apiUrl),
+				})}
 			</p>
 			<button
 				type="button"
@@ -60,12 +67,14 @@ export function PixivConnection(props: { apiUrl: string }) {
 				disabled={busy()}
 				onClick={() => void issue()}
 			>
-				{busy() ? "確認中…" : "Viewer の接続コードを発行"}
+				{busy()
+					? t("status.checking")
+					: t("pixivConnection.generateViewerConnectionCode")}
 			</button>
 			<Show when={code()}>
 				{(value) => (
 					<label class="popup-label">
-						Viewer に入力する接続コード（5 分間有効）
+						{t("pixivConnection.connectionCodeForTheViewerValidFor5Minutes")}
 						<input
 							class="popup-control"
 							readonly

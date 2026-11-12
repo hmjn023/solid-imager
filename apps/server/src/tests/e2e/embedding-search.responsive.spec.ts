@@ -68,7 +68,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			.toBe(2);
 		await page.goto(`/sources/${sourceId}/${primaryId}`);
 		await page
-			.getByRole("button", { name: "More actions", exact: true })
+			.getByRole("button", { name: "その他の操作", exact: true })
 			.click();
 		const extractionResponse = page.waitForResponse(
 			(response) =>
@@ -77,13 +77,13 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		);
 		await page
 			.getByRole("button", {
-				name: "Extract EmbeddingGemma 2 vector",
+				name: "EmbeddingGemma 2のベクトルを抽出",
 				exact: true,
 			})
 			.click();
 		const { json: extraction } = await (await extractionResponse).json();
 		await expect(
-			page.getByText("EmbeddingGemma 2 extraction queued", { exact: true }),
+			page.getByText("EmbeddingGemma 2の抽出を登録しました", { exact: true }),
 		).toBeVisible();
 		await expect
 			.poll(
@@ -101,21 +101,17 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			.toBe("completed");
 		await page.goto("/manager");
 		await page
-			.getByRole("button", { name: /Vector extraction/ })
+			.getByRole("button", { name: /ベクトル抽出/ })
 			.filter({ visible: true })
 			.click();
 		await expect(
-			page.getByRole("button", { name: /^Embedding model/ }),
+			page.getByRole("button", { name: /^ベクトル抽出モデル/ }),
 		).toContainText("EmbeddingGemma 2");
-		await page
-			.getByRole("button", { name: "All sources", exact: true })
-			.click();
+		await page.getByRole("button", { name: /^対象ソース / }).click();
 		await page.getByRole("option", { name: sourceName, exact: true }).click();
-		await page
-			.getByRole("button", { name: "Start extraction", exact: true })
-			.click();
+		await page.getByRole("button", { name: "抽出を開始", exact: true }).click();
 		await expect(
-			page.getByText("Batch operation completed successfully.", {
+			page.getByText("一括操作が完了しました。", {
 				exact: true,
 			}),
 		).toBeVisible({ timeout: 180_000 });
@@ -205,11 +201,11 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			relatedMedia.locator(`[data-media-id="${primaryId}"]`),
 		).toHaveCount(0);
 		await page
-			.getByRole("button", { name: "More actions", exact: true })
+			.getByRole("button", { name: "その他の操作", exact: true })
 			.click();
 		await page
 			.getByRole("button", {
-				name: "Find similar (EmbeddingGemma 2)",
+				name: "類似検索（EmbeddingGemma 2）",
 				exact: true,
 			})
 			.click();

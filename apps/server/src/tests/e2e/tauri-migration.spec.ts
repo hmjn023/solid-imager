@@ -165,7 +165,7 @@ test("Tauri Manager loads clustering thumbnails through managed Blob URLs", asyn
 			),
 		)
 		.toBe(true);
-	await dialog.getByRole("button", { name: "Dismiss", exact: true }).click();
+	await dialog.getByLabel("閉じる", { exact: true }).click();
 	// Hash navigation disposes the Manager without destroying the document,
 	// so this catches leaks that a page reload would conceal.
 	await page.evaluate(() => {
@@ -254,7 +254,10 @@ async function expectWorkspaceShell(page: Page): Promise<void> {
 	const workspace = page.locator('[data-design="workspace"]');
 	await expect(workspace).toBeVisible();
 	await expect(
-		workspace.getByRole("link", { name: "Solid Imager Library", exact: true }),
+		workspace.getByRole("link", {
+			name: "Solid Imagerのライブラリ",
+			exact: true,
+		}),
 	).toBeVisible();
 	await expect(
 		workspace.getByRole("navigation", { name: "主要ナビゲーション" }),
@@ -268,7 +271,7 @@ test("Tauri root opens the real shared Library workspace", async ({ page }) => {
 	await expect(page).toHaveURL(/\/#\/search(?:\?.*)?$/);
 	await expectWorkspaceShell(page);
 	await expect(
-		page.getByRole("link", { name: "Library", exact: true }),
+		page.getByRole("link", { name: "ライブラリ", exact: true }),
 	).toHaveAttribute("aria-current", "page");
 	const skipLink = page.getByRole("button", {
 		name: "メインコンテンツへ移動",
@@ -299,10 +302,15 @@ test("Tauri links to Scalar on the selected API server", async ({ page }) => {
 	await waitForTauriWorkspace(page);
 	const docs = `http://127.0.0.1:${process.env.E2E_PORT}/docs/scalar`;
 	await expect(
-		page.getByRole("link", { name: "API Docs", exact: true }).first(),
+		page
+			.getByRole("main")
+			.getByRole("link", { name: "APIドキュメント", exact: true })
+			.first(),
 	).toHaveAttribute("href", docs);
 	await expect(
-		page.getByRole("link", { name: "API documentation", exact: true }),
+		page
+			.getByRole("main")
+			.getByRole("link", { name: "APIドキュメント", exact: true }),
 	).toHaveAttribute("href", docs);
 });
 
@@ -411,8 +419,8 @@ test("Tauri Library separates preview selection from current media detail", asyn
 	await media.dblclick();
 	await expect(page).toHaveURL(new RegExp(`/#${mediaPath}$`));
 	await expectTauriMediaDetail(page);
-	await expect(page.getByRole("button", { name: /^Rating/ })).toBeVisible();
-	await expect(page.getByText(/^Views: [1-9]\d*$/)).toBeVisible();
+	await expect(page.getByRole("button", { name: /^評価/ })).toBeVisible();
+	await expect(page.getByText(/^閲覧数: [1-9]\d*$/)).toBeVisible();
 	await captureTauriScreenshot(page, "detail");
 
 	const detailUrl = page.url();
@@ -446,17 +454,19 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 
 	await openTauriRoute(page, "/search");
 	const addSource = page.getByRole("button", {
-		name: "Add source",
+		name: "ソースを追加",
 		exact: true,
 	});
 	await expect(addSource).toBeVisible();
 	await addSource.click();
 	const addDialog = page.getByRole("dialog");
 	await expect(
-		addDialog.getByRole("heading", { name: "Add New Source", exact: true }),
+		addDialog.getByRole("heading", { name: "ソースを追加", exact: true }),
 	).toBeVisible();
-	await expect(addDialog.getByLabel("Name", { exact: true })).toBeVisible();
-	await addDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+	await expect(addDialog.getByLabel("名前", { exact: true })).toBeVisible();
+	await addDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
 	await expect(addDialog).toHaveCount(0);
 
 	const sourceActions = page.getByRole("button", {
@@ -464,12 +474,14 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 		exact: true,
 	});
 	await sourceActions.click();
-	await page.getByRole("button", { name: "Edit", exact: true }).click();
+	await page.getByRole("button", { name: "編集", exact: true }).click();
 	const editDialog = page.getByRole("dialog");
 	await expect(
-		editDialog.getByRole("heading", { name: "Edit Source", exact: true }),
+		editDialog.getByRole("heading", { name: "ソースを編集", exact: true }),
 	).toBeVisible();
-	await editDialog.getByRole("button", { name: "Cancel", exact: true }).click();
+	await editDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
 	await expect(editDialog).toHaveCount(0);
 
 	const pendingImportUrl = new URL(
@@ -509,16 +521,18 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 
 	try {
 		await reloadTauriRoute(page);
-		const importButton = page.getByRole("button", { name: /Import inbox/ });
+		const importButton = page.getByRole("button", { name: /取り込み待ち/ });
 		await expect(importButton).toBeEnabled();
 		await importButton.click();
 		const importDialog = page.getByRole("dialog").filter({
-			has: page.getByRole("heading", { name: "Import inbox", exact: true }),
+			has: page.getByRole("heading", { name: "取り込み待ち", exact: true }),
 		});
 		await expect(importDialog).toBeVisible();
 		await expect(importDialog).toContainText(pendingImportUrl);
+		// Exercise the footer action; the separate icon has the same localized accessible name.
 		await importDialog
-			.getByRole("button", { name: "Close", exact: true })
+			.getByRole("button", { name: "閉じる", exact: true })
+			.first()
 			.click();
 		await expect(importDialog).toHaveCount(0);
 	} finally {
@@ -538,23 +552,23 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 	await openTauriRoute(page, "/manager");
 	await expectWorkspaceShell(page);
 	await expect(
-		page.getByRole("heading", { name: "Manager", exact: true }),
+		page.getByRole("heading", { name: "管理", exact: true }),
 	).toBeVisible();
 	await expect(
 		page.getByRole("heading", { name: "Entity Manager", exact: true }),
 	).toHaveCount(0);
 	await expect(
-		page.locator('nav[aria-label="Manager categories"]:visible'),
+		page.locator('nav[aria-label="管理カテゴリ"]:visible'),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: /^Batch tagging/ }),
+		page.getByRole("button", { name: /^一括タグ付け/ }),
 	).toBeVisible();
 	await captureTauriScreenshot(page, "manager");
 
 	await openTauriRoute(page, "/config");
 	await expectWorkspaceShell(page);
 	await expect(
-		page.getByRole("heading", { name: "Settings", exact: true }),
+		page.getByRole("heading", { name: "設定", exact: true }),
 	).toBeVisible();
 	await page.getByRole("tab", { name: /^MCP/ }).click();
 	await page
@@ -568,13 +582,13 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 	).toHaveCount(0);
 	await page.getByRole("tab", { name: /^AI/ }).click();
 	await expect(
-		page.getByRole("group", { name: "AI Service", exact: true }),
+		page.getByRole("group", { name: "AIサービス", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByLabel("Remote AI Server URL (oRPC)", { exact: true }),
+		page.getByLabel("リモートAIサーバーURL（oRPC）", { exact: true }),
 	).toBeVisible();
 	const checkAiButton = page.getByRole("button", {
-		name: "Check now",
+		name: "接続を確認",
 		exact: true,
 	});
 	await expect(checkAiButton).toBeVisible();
@@ -589,12 +603,14 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 		)
 		.toBe(1);
 	await expect(
-		page.getByText(/service available|AI service unavailable/i).first(),
+		page
+			.getByText(/サービスを利用できます|AIサービスを利用できません/i)
+			.first(),
 	).toBeVisible();
 
 	await openTauriRoute(page, "/search");
 	const serverLink = page.getByRole("link", {
-		name: "Server connections",
+		name: "サーバー接続",
 		exact: true,
 	});
 	await expect(serverLink).toBeVisible();
@@ -605,10 +621,10 @@ test("Tauri Manager, Settings, and Servers use current shared layouts", async ({
 	await openTauriRoute(page, "/servers");
 	await expectWorkspaceShell(page);
 	await expect(
-		page.getByRole("heading", { name: /Server connections/i, exact: true }),
+		page.getByRole("heading", { name: /サーバー接続/i, exact: true }),
 	).toBeVisible();
-	await expect(page.getByLabel("Name", { exact: true })).toBeVisible();
-	await expect(page.getByLabel("Server URL", { exact: true })).toBeVisible();
+	await expect(page.getByLabel("名前", { exact: true })).toBeVisible();
+	await expect(page.getByLabel("サーバーURL", { exact: true })).toBeVisible();
 	await expectRouteHealthy(page);
 });
 
@@ -624,7 +640,7 @@ test("Tauri opens a linked job inspector on a fresh hash route", async ({
 	expect(queued.ok()).toBe(true);
 	const { id: jobId } = (await queued.json()).json;
 	await openTauriRoute(page, "/jobs?jobId=" + jobId);
-	const inspector = page.locator('[aria-label="Job details"]:visible');
+	const inspector = page.locator('[aria-label="ジョブの詳細"]:visible');
 	await expect(inspector).toHaveAttribute("data-job-id", jobId);
 	await reloadTauriRoute(page);
 	await expect(inspector).toHaveAttribute("data-job-id", jobId);
@@ -670,15 +686,15 @@ test("Tauri server edits and selection reload the persisted connection and fresh
 		}, storeKey);
 
 	await openTauriRoute(page, "/servers");
-	await page.getByRole("button", { name: "Edit", exact: true }).first().click();
-	await page.getByLabel("Name", { exact: true }).fill("E2E edited active");
+	await page.getByRole("button", { name: "編集", exact: true }).first().click();
+	await page.getByLabel("名前", { exact: true }).fill("E2E edited active");
 	// A second URL reaches the same isolated server through the fixture proxy.
-	await page.getByLabel("Server URL", { exact: true }).fill(fixtureOrigin);
+	await page.getByLabel("サーバーURL", { exact: true }).fill(fixtureOrigin);
 	await page.evaluate(() => Reflect.set(window, "__e2eOriginalDocument", true));
 	let checkpoint = browserHealth.requestCheckpoint();
 	await Promise.all([
 		page.waitForEvent("domcontentloaded"),
-		page.getByRole("button", { name: "Save changes", exact: true }).click(),
+		page.getByRole("button", { name: "変更を保存", exact: true }).click(),
 	]);
 	await waitForTauriWorkspace(page);
 	expect(
@@ -694,7 +710,9 @@ test("Tauri server edits and selection reload the persisted connection and fresh
 	});
 	expect(active?.id).not.toBe("e2e-active-server");
 	await expect(
-		page.getByRole("link", { name: "API Docs", exact: true }).first(),
+		page
+			.getByRole("complementary", { name: "アプリケーションサイドバー" })
+			.getByRole("link", { name: "APIドキュメント", exact: true }),
 	).toHaveAttribute("href", `${fixtureOrigin}/docs/scalar`);
 	await expect
 		.poll(() =>
@@ -704,7 +722,7 @@ test("Tauri server edits and selection reload the persisted connection and fresh
 			),
 		)
 		.toBeGreaterThan(0);
-	await page.getByRole("link", { name: "Library", exact: true }).click();
+	await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
 	await expect
 		.poll(() =>
 			browserHealth.apiRequestCountPathSince(checkpoint, "/api/rpc/tags/list"),
@@ -715,17 +733,17 @@ test("Tauri server edits and selection reload the persisted connection and fresh
 	).toBeVisible();
 	await expectRouteHealthy(page);
 
-	await page
-		.getByRole("link", { name: "Server connections", exact: true })
-		.click();
+	await page.getByRole("link", { name: "サーバー接続", exact: true }).click();
 	await expect(
-		page.getByRole("button", { name: "Use server", exact: true }),
+		page.getByRole("button", { name: "このサーバーを使う", exact: true }),
 	).toHaveCount(1);
 	await page.evaluate(() => Reflect.set(window, "__e2eOriginalDocument", true));
 	checkpoint = browserHealth.requestCheckpoint();
 	await Promise.all([
 		page.waitForEvent("domcontentloaded"),
-		page.getByRole("button", { name: "Use server", exact: true }).click(),
+		page
+			.getByRole("button", { name: "このサーバーを使う", exact: true })
+			.click(),
 	]);
 	await waitForTauriWorkspace(page);
 	expect(
@@ -737,7 +755,10 @@ test("Tauri server edits and selection reload the persisted connection and fresh
 		selected.servers.find((server) => server.id === selected.activeServerId),
 	).toMatchObject({ name: "E2E other", baseUrl: apiOrigin });
 	await expect(
-		page.getByRole("link", { name: "API Docs", exact: true }).first(),
+		page
+			.getByRole("complementary", { name: "アプリケーションサイドバー" })
+			.getByRole("link", { name: "APIドキュメント", exact: true })
+			.first(),
 	).toHaveAttribute("href", `${apiOrigin}/docs/scalar`);
 	await expect
 		.poll(() =>
@@ -747,7 +768,7 @@ test("Tauri server edits and selection reload the persisted connection and fresh
 			),
 		)
 		.toBeGreaterThan(0);
-	await page.getByRole("link", { name: "Library", exact: true }).click();
+	await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
 	await expect
 		.poll(() =>
 			browserHealth.apiRequestCountPathSince(checkpoint, "/api/rpc/tags/list"),
@@ -757,4 +778,27 @@ test("Tauri server edits and selection reload the persisted connection and fresh
 		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
 	).toBeVisible();
 	await expectRouteHealthy(page);
+});
+
+test("Tauri restores its display language before mounting shared screens", async ({
+	page,
+}) => {
+	await page.addInitScript(() => {
+		if (location.protocol === "http:" || location.protocol === "https:")
+			localStorage.setItem("solid-imager.locale", "en");
+	});
+	await openTauriRoute(page, "/config");
+	await expect(page.locator("html")).toHaveAttribute("lang", "en");
+	await expect(
+		page.getByRole("link", { name: "Settings", exact: true }),
+	).toBeVisible();
+	await page.getByRole("tab", { name: /Interface/ }).click();
+	await expect(page.getByLabel("Display language", { exact: true })).toHaveText(
+		"English",
+	);
+	await reloadTauriRoute(page);
+	await expect(
+		page.getByRole("link", { name: "Library", exact: true }),
+	).toBeVisible();
+	await expect(page.locator("html")).toHaveAttribute("lang", "en");
 });

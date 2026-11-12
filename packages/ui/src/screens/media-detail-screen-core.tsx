@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { MediaDetails } from "@solid-imager/core/media";
 import type {
 	MediaChangedEvent,
@@ -53,7 +54,7 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 		const error = state().error;
 		return error instanceof Error
 			? error.message
-			: "Failed to load media details";
+			: t("mediaDetailScreenCore.failedToLoadMediaDetails");
 	};
 
 	const handleUpdate = async () => {
@@ -107,8 +108,8 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 					fetchState={state().fetchState}
 					hasData
 					hideWhenIdle
-					offlineLabel="オフラインのため保存済みデータを表示しています"
-					updatingLabel="メディア情報を更新中..."
+					offlineLabel={t("sourceMediaScreen.offlineShowingSavedData")}
+					updatingLabel={t("mediaDetailScreenCore.updatingMediaDetails")}
 				/>
 			</Show>
 			<Switch>
@@ -131,7 +132,9 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 				</Match>
 				<Match when={state().phase === "offline"}>
 					<OfflineState
-						description="接続が戻ったらメディア情報を再取得できます。"
+						description={t(
+							"mediaDetailScreenCore.reloadMediaDetailsWhenYourConnectionReturns",
+						)}
 						headingLevel={1}
 						onRetry={() => mediaDetails.refetch().then(() => undefined)}
 					/>
@@ -141,7 +144,7 @@ function MediaDetailScreenController(props: MediaDetailScreenControllerProps) {
 						description={errorMessage()}
 						headingLevel={1}
 						onRetry={() => mediaDetails.refetch().then(() => undefined)}
-						title="メディア情報を読み込めませんでした"
+						title={t("mediaDetailScreenCore.couldNotLoadMediaDetails")}
 					/>
 				</Match>
 				<Match when={state().phase === "pending"}>

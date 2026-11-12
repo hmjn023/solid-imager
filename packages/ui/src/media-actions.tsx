@@ -1,3 +1,5 @@
+import { ccipStatusLabel } from "./display-labels";
+import { t } from "@solid-imager/i18n";
 import type { MediaDetails } from "@solid-imager/core/media";
 import type {
 	CcipVectorStatus,
@@ -166,18 +168,20 @@ export function MediaActions(props: MediaActionsProps) {
 		const mediaId = props.media.id;
 		try {
 			const result = await props.startEmbeddingExtraction();
-			toast.success("EmbeddingGemma 2 extraction queued", {
+			toast.success(t("mediaActions.embeddingGemma2ExtractionQueued"), {
 				duration: 7_000,
 				action: props.onViewJobs
 					? {
-							label: "View Jobs",
+							label: t("actions.viewJobs"),
 							onClick: () => props.onViewJobs?.(result.jobId),
 						}
 					: undefined,
 			});
 		} catch (error) {
 			toast.error(
-				`Failed to extract EmbeddingGemma 2 vector: ${getErrorMessage(error)}`,
+				t("mediaActions.failedToExtractEmbeddingGemma2VectorValue", {
+					value0: String(getErrorMessage(error)),
+				}),
 			);
 		} finally {
 			if (props.media.id === mediaId) setIsExtractingEmbedding(false);
@@ -203,18 +207,22 @@ export function MediaActions(props: MediaActionsProps) {
 			setIsCcipJobPending(true);
 			setCcipMissingStatusCount(0);
 			void refreshCcipStatus();
-			toast.success("CCIP vector extraction queued", {
+			toast.success(t("mediaActions.cCIPVectorExtractionQueued"), {
 				duration: 7_000,
 				action: props.onViewJobs
 					? {
-							label: "View Jobs",
+							label: t("actions.viewJobs"),
 							onClick: () => props.onViewJobs?.(result.jobId),
 						}
 					: undefined,
 			});
 		} catch (error) {
 			if (!isCurrentMedia()) return;
-			toast.error(`Failed to extract CCIP vector: ${getErrorMessage(error)}`);
+			toast.error(
+				t("mediaActions.failedToExtractCCIPVectorValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			if (isCurrentMedia()) {
 				setIsExtractingCcip(false);
@@ -240,7 +248,11 @@ export function MediaActions(props: MediaActionsProps) {
 					setIsCcipJobPending(false);
 					setCcipMissingStatusCount(0);
 					if (event.error) {
-						toast.error(`Failed to extract CCIP vector: ${event.error}`);
+						toast.error(
+							t("mediaActions.failedToExtractCCIPVectorValue", {
+								value0: String(event.error),
+							}),
+						);
 					}
 				},
 			},
@@ -262,7 +274,11 @@ export function MediaActions(props: MediaActionsProps) {
 		try {
 			await props.onDownload();
 		} catch (error) {
-			toast.error(`Failed to download media: ${getErrorMessage(error)}`);
+			toast.error(
+				t("mediaActions.failedToDownloadMediaValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		}
 	};
 
@@ -277,9 +293,13 @@ export function MediaActions(props: MediaActionsProps) {
 		try {
 			await props.onDelete();
 			setIsDeleteDialogOpen(false);
-			toast.success("Media deleted");
+			toast.success(t("mediaActions.mediaDeleted"));
 		} catch (error) {
-			toast.error(`Failed to delete media: ${getErrorMessage(error)}`);
+			toast.error(
+				t("mediaActions.failedToDeleteMediaValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			setIsDeleting(false);
 		}
@@ -287,10 +307,11 @@ export function MediaActions(props: MediaActionsProps) {
 
 	const ccipActionLabel = () => {
 		if (ccipStatus() === "ready" || ccipStatus() === "stale") {
-			return "Re-extract CCIP vector";
+			return t("mediaActions.reExtractCCIPVector");
 		}
-		if (ccipStatus() === "processing") return "Extracting CCIP vector…";
-		return "Extract CCIP vector";
+		if (ccipStatus() === "processing")
+			return t("mediaActions.extractingCCIPVector");
+		return t("mediaActions.extractCCIPVector");
 	};
 	const hasCcipActions = () =>
 		supportsVisualAnalysis() &&
@@ -307,7 +328,7 @@ export function MediaActions(props: MediaActionsProps) {
 						size="sm"
 					>
 						<Sparkles aria-hidden="true" size={15} />
-						Extract tags
+						{t("mediaActions.extractTags")}
 					</Button>
 				</ShowAction>
 				<ShowAction when={supportsVisualAnalysis() && props.onFindSimilar}>
@@ -322,12 +343,12 @@ export function MediaActions(props: MediaActionsProps) {
 						title={
 							ccipStatus() === "ready"
 								? undefined
-								: "CCIP vector is required before similar search"
+								: t("mediaActions.cCIPVectorIsRequiredBeforeSimilarSearch")
 						}
 						variant="outline"
 					>
 						<ScanSearch aria-hidden="true" size={15} />
-						Find similar
+						{t("mediaActions.findSimilar")}
 					</Button>
 				</ShowAction>
 				<ShowAction
@@ -348,7 +369,7 @@ export function MediaActions(props: MediaActionsProps) {
 						placement="bottom-end"
 					>
 						<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-card px-3 font-medium text-foreground text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:flex-none">
-							More actions
+							{t("mediaActions.moreActions")}
 							<ChevronDown aria-hidden="true" size={14} />
 						</PopoverTrigger>
 						<PopoverContent class="workspace-theme w-64 space-y-1 p-1.5 shadow-xl">
@@ -365,7 +386,7 @@ export function MediaActions(props: MediaActionsProps) {
 									}}
 								>
 									<ScanSearch aria-hidden="true" size={14} />
-									Find similar (EmbeddingGemma 2)
+									{t("mediaActions.findSimilarEmbeddingGemma2")}
 								</Button>
 							</ShowAction>
 							<ShowAction
@@ -381,7 +402,7 @@ export function MediaActions(props: MediaActionsProps) {
 									variant="ghost"
 								>
 									<Binary aria-hidden="true" size={14} />
-									Extract EmbeddingGemma 2 vector
+									{t("mediaActions.extractEmbeddingGemma2Vector")}
 								</Button>
 							</ShowAction>
 							<ShowAction
@@ -398,7 +419,7 @@ export function MediaActions(props: MediaActionsProps) {
 									variant="ghost"
 								>
 									<Sparkles aria-hidden="true" size={14} />
-									Extract tags (OppaiOracle)
+									{t("mediaActions.extractTagsOppaiOracle")}
 								</Button>
 							</ShowAction>
 							<ShowAction when={supportsCropping() && props.characterCropModal}>
@@ -413,7 +434,7 @@ export function MediaActions(props: MediaActionsProps) {
 									variant="ghost"
 								>
 									<Scan aria-hidden="true" size={14} />
-									Detect &amp; crop characters
+									{t("mediaActions.detectCropCharacters")}
 								</Button>
 							</ShowAction>
 							<ShowAction when={hasCcipActions()}>
@@ -431,7 +452,9 @@ export function MediaActions(props: MediaActionsProps) {
 									aria-live="polite"
 									class="px-2 py-1 text-label-sm text-muted-foreground"
 								>
-									CCIP status: {ccipStatus()}
+									{t("mediaActions.cCIPStatusValue", {
+										value0: ccipStatusLabel(ccipStatus()),
+									})}
 								</p>
 							</ShowAction>
 							<ShowAction when={props.onDownload || props.onDelete}>
@@ -445,7 +468,7 @@ export function MediaActions(props: MediaActionsProps) {
 									variant="ghost"
 								>
 									<Download aria-hidden="true" size={14} />
-									Download original
+									{t("mediaActions.downloadOriginal")}
 								</Button>
 							</ShowAction>
 							<ShowAction when={props.onDelete}>
@@ -458,7 +481,7 @@ export function MediaActions(props: MediaActionsProps) {
 									variant="ghost"
 								>
 									<Trash2 aria-hidden="true" size={14} />
-									Delete media…
+									{t("mediaActions.deleteMedia")}
 								</Button>
 							</ShowAction>
 						</PopoverContent>
@@ -476,7 +499,7 @@ export function MediaActions(props: MediaActionsProps) {
 				}
 			>
 				<p class="mt-1 text-xs text-muted-foreground">
-					AI analyzes this video's representative thumbnail.
+					{t("mediaActions.aIAnalyzesThisVideoSRepresentativeThumbnail")}
 				</p>
 			</ShowAction>
 
@@ -505,22 +528,26 @@ export function MediaActions(props: MediaActionsProps) {
 				>
 					<AlertDialogContent>
 						<AlertDialogHeader>
-							<AlertDialogTitle>Delete this media?</AlertDialogTitle>
+							<AlertDialogTitle>
+								{t("mediaActions.deleteThisMedia")}
+							</AlertDialogTitle>
 							<AlertDialogDescription>
-								{props.media.fileName} will be permanently removed from its
-								source. This action cannot be undone.
+								{t(
+									"mediaActions.valueWillBePermanentlyRemovedFromItsSourceThis",
+									{ value0: String(props.media.fileName) },
+								)}
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
 							<AlertDialogCancel disabled={isDeleting()}>
-								Cancel
+								{t("actions.cancel")}
 							</AlertDialogCancel>
 							<Button
 								disabled={isDeleting()}
 								onClick={() => void handleDelete()}
 								variant="destructive"
 							>
-								{isDeleting() ? "Deleting…" : "Delete"}
+								{isDeleting() ? t("status.deleting") : t("actions.delete")}
 							</Button>
 						</AlertDialogFooter>
 					</AlertDialogContent>

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { useNavigate } from "@tanstack/solid-router";
 import {
 	type Component,
@@ -18,6 +19,7 @@ import {
 import {
 	getShortcutDefinitionsForGroup,
 	SHORTCUT_GROUPS,
+	shortcutGroupLabel,
 	type ShortcutId,
 } from "../shortcuts/definitions";
 import { ShortcutKbd } from "../shortcuts/shortcut-kbd";
@@ -67,7 +69,7 @@ export function CommandCenter(props: CommandCenterProps) {
 			group: "Navigate",
 			icon: Library,
 			keywords: "media images search browse",
-			label: "Library",
+			label: t("navigation.library"),
 			run: () => void navigate({ to: "/search" }),
 			shortcutId: "goLibrary",
 		},
@@ -75,22 +77,22 @@ export function CommandCenter(props: CommandCenterProps) {
 			group: "Navigate",
 			icon: BriefcaseBusiness,
 			keywords: "projects characters ips bulk organize",
-			label: "Manager",
+			label: t("navigation.manager"),
 			run: () => void navigate({ to: "/manager" }),
 			shortcutId: "goManager",
 		},
 		{
 			group: "Navigate",
 			icon: ChartColumn,
-			keywords: "statistics imports rankings library 統計",
-			label: "Statistics",
+			keywords: t("commandCenter.statisticsImportsRankingsLibrary"),
+			label: t("navigation.statistics"),
 			run: () => void navigate({ to: "/statistics" }),
 		},
 		{
 			group: "Navigate",
 			icon: Clock3,
 			keywords: "background activity downloads queue",
-			label: "Jobs",
+			label: t("navigation.jobs"),
 			run: () => void navigate({ to: "/jobs" }),
 			shortcutId: "goJobs",
 		},
@@ -98,7 +100,7 @@ export function CommandCenter(props: CommandCenterProps) {
 			group: "Navigate",
 			icon: Settings,
 			keywords: "preferences keyboard key bindings",
-			label: "Settings",
+			label: t("navigation.settings"),
 			run: () => void navigate({ to: "/config" }),
 			shortcutId: "goSettings",
 		},
@@ -106,14 +108,14 @@ export function CommandCenter(props: CommandCenterProps) {
 			group: "Actions",
 			icon: Plus,
 			keywords: "import folder library",
-			label: "Add media source",
+			label: t("commandCenter.addMediaSource"),
 			run: props.onAddSource,
 		},
 		{
 			group: "Actions",
 			icon: PanelLeftClose,
 			keywords: "collapse expand navigation",
-			label: "Toggle sidebar",
+			label: t("definitions.toggleSidebar"),
 			run: props.onToggleSidebar,
 			shortcutId: "toggleSidebar",
 		},
@@ -121,7 +123,7 @@ export function CommandCenter(props: CommandCenterProps) {
 			group: "Actions",
 			icon: CircleHelp,
 			keywords: "keyboard keys help reference",
-			label: "Keyboard shortcuts",
+			label: t("configScreen.keyboardShortcuts"),
 			run: () => props.onHelpOpenChange(true),
 			shortcutId: "shortcutHelp",
 		},
@@ -178,9 +180,9 @@ export function CommandCenter(props: CommandCenterProps) {
 			<Dialog onOpenChange={setPaletteOpen} open={props.paletteOpen}>
 				<DialogContent class="workspace-theme max-w-xl overflow-hidden p-0">
 					<DialogHeader class="sr-only">
-						<DialogTitle>Quick actions</DialogTitle>
+						<DialogTitle>{t("sidebar.quickActions")}</DialogTitle>
 						<DialogDescription>
-							Search navigation and application actions.
+							{t("commandCenter.searchNavigationAndApplicationActions")}
 						</DialogDescription>
 					</DialogHeader>
 					<div class="flex h-12 items-center gap-2 border-border border-b px-4 pr-12">
@@ -196,7 +198,7 @@ export function CommandCenter(props: CommandCenterProps) {
 							aria-autocomplete="list"
 							aria-controls={listId}
 							aria-expanded="true"
-							aria-label="Search quick actions"
+							aria-label={t("commandCenter.searchQuickActions")}
 							autocomplete="off"
 							autofocus
 							class="h-full min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
@@ -232,7 +234,7 @@ export function CommandCenter(props: CommandCenterProps) {
 									}
 								}
 							}}
-							placeholder="Search actions…"
+							placeholder={t("commandCenter.searchActions")}
 							role="combobox"
 							value={query()}
 						/>
@@ -245,7 +247,7 @@ export function CommandCenter(props: CommandCenterProps) {
 						<Show
 							fallback={
 								<p class="px-3 py-8 text-center text-muted-foreground text-sm">
-									No matching action.
+									{t("commandCenter.noMatchingAction")}
 								</p>
 							}
 							when={filteredActions().length > 0}
@@ -253,14 +255,20 @@ export function CommandCenter(props: CommandCenterProps) {
 							<For each={groupedActions()}>
 								{(actionGroup) => (
 									<fieldset
-										aria-label={actionGroup.group}
+										aria-label={
+											actionGroup.group === "Actions"
+												? t("entityPanel.actions")
+												: t("commandCenter.navigateGroup")
+										}
 										class="m-0 min-w-0 border-0 p-0"
 									>
 										<p
 											aria-hidden="true"
 											class="px-2 pt-2 pb-1 font-semibold text-muted-foreground text-label-sm uppercase tracking-wide"
 										>
-											{actionGroup.group}
+											{actionGroup.group === "Actions"
+												? t("entityPanel.actions")
+												: t("commandCenter.navigateGroup")}
 										</p>
 										<For each={actionGroup.actions}>
 											{(action, index) => {
@@ -310,10 +318,11 @@ export function CommandCenter(props: CommandCenterProps) {
 			<Dialog onOpenChange={props.onHelpOpenChange} open={props.helpOpen}>
 				<DialogContent class="workspace-theme max-w-2xl overflow-hidden p-0">
 					<DialogHeader class="border-border border-b px-5 py-4 pr-12">
-						<DialogTitle>Keyboard shortcuts</DialogTitle>
+						<DialogTitle>{t("configScreen.keyboardShortcuts")}</DialogTitle>
 						<DialogDescription>
-							Use these commands anywhere they apply. Customize them in Settings
-							→ Shortcuts.
+							{t(
+								"commandCenter.useTheseCommandsAnywhereTheyApplyCustomizeThemIn",
+							)}
 						</DialogDescription>
 					</DialogHeader>
 					<div class="max-h-menu-tall overflow-y-auto overscroll-contain px-5 pb-5 scrollbar-stable">
@@ -321,7 +330,7 @@ export function CommandCenter(props: CommandCenterProps) {
 							{(group) => (
 								<section class="pt-5">
 									<h3 class="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
-										{group}
+										{shortcutGroupLabel(group)}
 									</h3>
 									<ul class="divide-y divide-border rounded-lg border border-border bg-background">
 										<For each={getShortcutDefinitionsForGroup(group)}>

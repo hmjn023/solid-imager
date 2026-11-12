@@ -76,7 +76,8 @@
     "./thumbnail-source": "./src/public/thumbnail-source.ts",
     "./toast": "./src/toast.tsx",
     "./upload-media-modal-content": "./src/upload-media-modal-content.tsx",
-    "./utils": "./src/utils/index.ts"
+    "./utils": "./src/utils/index.ts",
+    "./validation-locale": "./src/validation-locale.ts"
   },
   "scripts": {
     "lint": "oxlint ./src",
@@ -89,6 +90,7 @@
   "dependencies": {
     "@kobalte/core": "^0.13.14",
     "@solid-imager/core": "workspace:*",
+    "@solid-imager/i18n": "workspace:*",
     "@solidjs/router": "^1.0.0",
     "@tanstack/charts": "^1.2.1",
     "@tanstack/solid-form": "^1.33.5",

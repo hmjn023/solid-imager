@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
 import { type Author } from "@solid-imager/core/authors";
@@ -440,7 +441,11 @@ export function useSourceMediaPage(
 				setTimeout(() => {
 					const count = addedCount();
 					if (count > 0) {
-						toast.success(`${count} new media detected. Refreshing list...`);
+						toast.success(
+							t("useSourceMediaPage.valueNewMediaDetectedRefreshingList", {
+								value0: String(count),
+							}),
+						);
 						setAddedCount(0);
 					}
 					refreshMediaQuery();
@@ -478,12 +483,18 @@ export function useSourceMediaPage(
 		onAllJobsCompleted: (data) => {
 			setJobProgress(null);
 			toast.success(
-				`All jobs completed! Processed: ${data.processed ?? "N/A"}`,
+				t("useSourceMediaPage.allJobsCompletedProcessedValue", {
+					value0: String(data.processed ?? t("useSourceMediaPage.nA")),
+				}),
 			);
 			refreshMediaQuery();
 		},
 		onWatcherError: (data) => {
-			toast.error(`Watcher Error: ${data.error || "Unknown error"}`);
+			toast.error(
+				t("useSourceMediaPage.watcherErrorValue", {
+					value0: String(data.error || t("feedback.unknownError")),
+				}),
+			);
 		},
 	});
 
@@ -498,11 +509,13 @@ export function useSourceMediaPage(
 		});
 		if (!result.success) {
 			toast.info(
-				`${result.conflict?.existingFile ?? options.filename} は既に存在するためスキップしました。`,
+				t("useSourceMediaPage.skippedValueBecauseItAlreadyExists", {
+					value0: String(result.conflict?.existingFile ?? options.filename),
+				}),
 			);
 			return;
 		}
-		toast.success("Media uploaded successfully");
+		toast.success(t("useSourceMediaPage.mediaUploadedSuccessfully"));
 		refreshMediaQuery();
 	};
 
@@ -523,25 +536,31 @@ export function useSourceMediaPage(
 					: null;
 			if (!candidateItems) {
 				throw new Error(
-					"JSONファイルはアイテムの配列であるか、'items'キーを含むオブジェクトである必要があります。",
+					t("useSourceMediaPage.theJSONFileMustBeAnArrayOfItems"),
 				);
 			}
 			const parsedItems = z.array(downloadItemSchema).safeParse(candidateItems);
 			if (!parsedItems.success) {
-				throw new Error("JSONファイルのダウンロードデータが不正です。");
+				throw new Error(
+					t("useSourceMediaPage.theJSONFileContainsInvalidDownloadData"),
+				);
 			}
 			const items: DownloadItem[] = parsedItems.data;
 
 			if (items.length === 0) {
 				throw new Error(
-					"JSONファイルにはダウンロードするアイテムが含まれていません。",
+					t("useSourceMediaPage.theJSONFileContainsNoItemsToDownload"),
 				);
 			}
 
 			await actions.startDownloadJobs(id() || "", items);
-			toast.success("Bulk download started");
+			toast.success(t("useSourceMediaPage.bulkDownloadStarted"));
 		} catch (error) {
-			toast.error(`Failed to start download: ${getErrorMessage(error)}`);
+			toast.error(
+				t("useSourceMediaPage.failedToStartDownloadValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		}
 	};
 
@@ -686,10 +705,10 @@ export function useSourceMediaPage(
 
 		try {
 			await actions.deleteMedia(id() || "", mediaId);
-			toast.success("Media deleted successfully");
+			toast.success(t("useSourceMediaPage.mediaDeletedSuccessfully"));
 			refreshMediaQuery();
 		} catch (_e) {
-			toast.error("Failed to delete media");
+			toast.error(t("useSourceMediaPage.failedToDeleteMedia"));
 		} finally {
 			setDeleteDialogOpen(false);
 			setMediaIdToDelete(null);
@@ -711,11 +730,18 @@ export function useSourceMediaPage(
 
 		const mode = moveCopyMode();
 		const action = mode === "copy" ? actions.copyMedia : actions.moveMedia;
-		const actionName = mode === "copy" ? "copied" : "moved";
+		const actionName =
+			mode === "copy"
+				? t("useSourceMediaPage.copied")
+				: t("useSourceMediaPage.moved");
 
 		try {
 			await action(mediaId, targetSourceId);
-			toast.success(`Media ${actionName} successfully`);
+			toast.success(
+				t("useSourceMediaPage.mediaValueSuccessfully", {
+					value0: String(actionName),
+				}),
+			);
 			refreshMediaQuery();
 			if (sourceId !== targetSourceId) {
 				await queryClient.invalidateQueries({
@@ -723,7 +749,16 @@ export function useSourceMediaPage(
 				});
 			}
 		} catch (e) {
-			toast.error(`Failed to ${mode} media: ${getErrorMessage(e)}`);
+			toast.error(
+				t(
+					mode === "copy"
+						? "useSourceMediaPage.copyFailed"
+						: "useSourceMediaPage.moveFailed",
+					{
+						error: getErrorMessage(e),
+					},
+				),
+			);
 		} finally {
 			setMediaIdToMoveCopy(null);
 		}
@@ -741,26 +776,38 @@ export function useSourceMediaPage(
 		}
 
 		setIsSyncingMedia(true);
-		toast.info("Starting batch sync for loaded media...");
+		toast.info(t("useSourceMediaPage.startingBatchSyncForLoadedMedia"));
 		try {
 			await actions.syncMediaItems(id() || "", mediaIds);
-			toast.success(`Batch sync completed for ${mediaIds.length} items`);
+			toast.success(
+				t("useSourceMediaPage.batchSyncCompletedForValueItems", {
+					value0: String(mediaIds.length),
+				}),
+			);
 			refreshMediaQuery();
 		} catch (error) {
-			toast.error(`Failed to batch sync: ${getErrorMessage(error)}`);
+			toast.error(
+				t("useSourceMediaPage.failedToBatchSyncValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			setIsSyncingMedia(false);
 		}
 	};
 
 	const handleSyncSingleMedia = async (mediaId: string) => {
-		toast.info("Starting metadata sync...");
+		toast.info(t("useSourceMediaPage.startingMetadataSync"));
 		try {
 			await actions.syncMediaItems(id() || "", [mediaId]);
-			toast.success("Metadata synced successfully");
+			toast.success(t("useSourceMediaPage.metadataSyncedSuccessfully"));
 			refreshMediaQuery();
 		} catch (e) {
-			toast.error(`Failed to sync metadata: ${getErrorMessage(e)}`);
+			toast.error(
+				t("useSourceMediaPage.failedToSyncMetadataValue", {
+					value0: String(getErrorMessage(e)),
+				}),
+			);
 		}
 	};
 

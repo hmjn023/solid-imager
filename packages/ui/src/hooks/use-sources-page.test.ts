@@ -78,7 +78,7 @@ describe("source synchronization feedback", () => {
 			await page.handleSyncSource(source("one"));
 			expect(toast.success).not.toHaveBeenCalled();
 			expect(toast.error).toHaveBeenCalledExactlyOnceWith(
-				`Failed to sync one: ${outcome.error}`,
+				`oneの同期に失敗しました: ${outcome.error}`,
 			);
 			expect(invalidate).toHaveBeenCalledOnce();
 			expect(page.isSyncing()).toBe(false);
@@ -93,7 +93,7 @@ describe("source synchronization feedback", () => {
 		await page.handleSyncAll([source("one"), source("two")]);
 		expect(toast.success).not.toHaveBeenCalled();
 		expect(toast.error).toHaveBeenCalledExactlyOnceWith(
-			"Sync failed for 1 of 2 sources",
+			"2ソース中1ソースの同期に失敗しました",
 		);
 	});
 
@@ -103,7 +103,7 @@ describe("source synchronization feedback", () => {
 		await page.handleSyncSource(source("one"));
 		expect(toast.success).not.toHaveBeenCalled();
 		expect(toast.error).toHaveBeenCalledWith(
-			"Failed to sync one: No synchronization result returned",
+			"oneの同期に失敗しました: 同期結果が返されませんでした",
 		);
 	});
 
@@ -122,7 +122,7 @@ describe("source synchronization feedback", () => {
 		await syncing;
 		expect(page.isSyncing()).toBe(false);
 		expect(toast.success).toHaveBeenCalledExactlyOnceWith(
-			"Sync finished for one",
+			"oneの同期が完了しました",
 		);
 	});
 });

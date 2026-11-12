@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
@@ -12,26 +13,31 @@ import {
 export const NAVIGATION_ITEMS = [
 	{
 		icon: Library,
-		label: "Library",
+		label: t("navigation.library"),
 		shortcutId: "goLibrary",
 		to: "/search",
 	},
 	{
 		icon: BriefcaseBusiness,
-		label: "Manager",
+		label: t("navigation.manager"),
 		shortcutId: "goManager",
 		to: "/manager",
 	},
 	{
 		icon: ChartColumn,
-		label: "Statistics",
+		label: t("navigation.statistics"),
 		shortcutId: undefined,
 		to: "/statistics",
 	},
-	{ icon: Clock3, label: "Jobs", shortcutId: "goJobs", to: "/jobs" },
+	{
+		icon: Clock3,
+		label: t("navigation.jobs"),
+		shortcutId: "goJobs",
+		to: "/jobs",
+	},
 	{
 		icon: Settings,
-		label: "Settings",
+		label: t("navigation.settings"),
 		shortcutId: "goSettings",
 		to: "/config",
 	},

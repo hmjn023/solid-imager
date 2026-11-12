@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import { Button } from "@solid-imager/ui/button";
 import {
@@ -126,10 +127,10 @@ export function SourceMediaPageController(
 		<Show
 			fallback={
 				<RouteDataPendingScreen
-					description="メディア一覧を読み込んでいます..."
+					description={t("sourceMediaScreen.loadingMediaList")}
 					layout="media-grid"
 					showAction
-					title="メディア一覧"
+					title={t("sourceMediaScreen.mediaList")}
 				/>
 			}
 			when={props.ssrGuard === true || isMounted()}
@@ -187,7 +188,9 @@ export function SourceMediaPageController(
 			<Show when={isBulkSelectMode()}>
 				<div class={props.bulkActionsClass} data-testid="bulk-actions-bar">
 					<span class="w-full text-center font-medium text-sm sm:w-auto">
-						{selectedMediaIds().length} 件選択中
+						{t("searchScreen.valueSelected", {
+							value0: String(selectedMediaIds().length),
+						})}
 					</span>
 					<Button
 						class="flex-1 sm:flex-none"
@@ -198,21 +201,21 @@ export function SourceMediaPageController(
 						onClick={() => selection.selectAll()}
 						variant="outline"
 					>
-						表示分をすべて選択
+						{t("searchScreen.selectAllLoadedItems")}
 					</Button>
 					<Button
 						class="flex-1 sm:flex-none"
 						disabled={selectedMediaIds().length === 0}
 						onClick={() => setIsBulkActionOpen(true)}
 					>
-						一括操作を実行
+						{t("searchScreen.runBulkAction")}
 					</Button>
 					<Button
 						class="flex-1 sm:flex-none"
 						onClick={handleCancelSelect}
 						variant="outline"
 					>
-						解除
+						{t("actions.clearSelection")}
 					</Button>
 				</div>
 			</Show>

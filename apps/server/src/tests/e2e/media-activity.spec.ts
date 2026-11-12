@@ -32,16 +32,16 @@ test("a detail visit counts once and media preferences persist after reload", as
 		await page.goto(mediaPath());
 		await first;
 		await waitForAppHydration(page);
-		const favorite = page.getByRole("button", { name: /Favorite/ });
+		const favorite = page.getByRole("button", { name: /お気に入り/ });
 		await favorite.click();
 		await expect(favorite).toHaveAttribute(
 			"aria-pressed",
 			String(!original.favorite),
 		);
-		const picker = page.getByRole("button", { name: /^Rating/ });
+		const picker = page.getByRole("button", { name: /^評価/ });
 		await picker.click();
-		await page.getByRole("option", { name: `${rating} stars` }).click();
-		await expect(picker).toContainText(`${rating} stars`);
+		await page.getByRole("option", { name: `星${rating}つ` }).click();
+		await expect(picker).toContainText(`星${rating}つ`);
 		expect(visits).toBe(1);
 		const second = visitResponses();
 		await page.reload();
@@ -49,13 +49,13 @@ test("a detail visit counts once and media preferences persist after reload", as
 			(await (await second).json()).json,
 		);
 		await expect(
-			page.getByText(`Views: ${activity.viewCount}`, { exact: true }),
+			page.getByText(`閲覧数: ${activity.viewCount}`, { exact: true }),
 		).toBeVisible();
 		await expect(favorite).toHaveAttribute(
 			"aria-pressed",
 			String(!original.favorite),
 		);
-		await expect(picker).toContainText(`${rating} stars`);
+		await expect(picker).toContainText(`星${rating}つ`);
 		expect(activity.lastViewedAt).toBeInstanceOf(Date);
 		expect(visits).toBe(2);
 	} finally {

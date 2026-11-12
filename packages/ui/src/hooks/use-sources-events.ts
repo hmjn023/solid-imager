@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	allJobsCompletedEventSchema,
 	type SourceEvent,
@@ -80,7 +81,13 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 						return;
 					}
 					toast.error(
-						`Watcher Error for ${result.data.mediaSourceId?.slice(0, 4) ?? "unknown"}...: ${result.data.error || "Unknown error"}`,
+						t("useSourcesEvents.watcherErrorForValueValue", {
+							value0: String(
+								result.data.mediaSourceId?.slice(0, 4) ??
+									t("useSourcesEvents.unknown"),
+							),
+							value1: String(result.data.error || t("feedback.unknownError")),
+						}),
 					);
 					break;
 				}
@@ -102,7 +109,9 @@ export function useSourcesEvents(options: UseSourcesEventsOptions): void {
 					if (result.data.status === "error") {
 						toast.error(
 							result.data.message ??
-								`Source sync failed for ${result.data.mediaSourceId.slice(0, 8)}`,
+								t("useSourcesEvents.sourceSyncFailedForValue", {
+									value0: String(result.data.mediaSourceId.slice(0, 8)),
+								}),
 						);
 					}
 					break;

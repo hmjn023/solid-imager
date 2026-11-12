@@ -41,7 +41,7 @@ test("search keeps controls usable without horizontal overflow", async ({
 	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
 	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
 	await expect(filterDialog).toBeHidden();
-	await expect(page.getByText("1 items", { exact: true })).toBeVisible();
+	await expect(page.getByText("1件", { exact: true })).toBeVisible();
 	await expect(primaryResult).toBeVisible();
 
 	// Filters share state with the search bar. Closing preserves the applied condition.
@@ -75,7 +75,7 @@ test("search keeps controls usable without horizontal overflow", async ({
 	await expect
 		.poll(async () =>
 			Number(
-				(await page.getByText(/^[\d,]+ items$/).textContent())?.replace(
+				(await page.getByText(/^[\d,]+件$/).textContent())?.replace(
 					/[^\d]/g,
 					"",
 				),

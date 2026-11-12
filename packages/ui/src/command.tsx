@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { DialogRootProps } from "@kobalte/core/dialog";
 import * as CommandPrimitive from "cmdk-solid";
 import type {
@@ -49,10 +50,10 @@ const CommandDialog: Component<CommandDialogProps> = (props) => {
 		<Dialog {...others}>
 			<DialogContent class="overflow-hidden p-0">
 				<DialogTitle class="sr-only">
-					{local.title ?? "Choose an action"}
+					{local.title ?? t("command.chooseAnAction")}
 				</DialogTitle>
 				<DialogDescription class="sr-only">
-					{local.description ?? "Type to filter the available actions."}
+					{local.description ?? t("command.typeToFilterTheAvailableActions")}
 				</DialogDescription>
 				<Command class="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:size-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:size-5">
 					{local.children}
@@ -79,7 +80,7 @@ const CommandInput: Component<VoidProps<CommandPrimitive.CommandInputProps>> = (
 				viewBox="0 0 24 24"
 				xmlns="http://www.w3.org/2000/svg"
 			>
-				<title>Search</title>
+				<title>{t("actions.search")}</title>
 				<circle cx="11" cy="11" r="8" />
 				<path d="m21 21-4.3-4.3" />
 			</svg>

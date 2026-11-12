@@ -71,7 +71,7 @@ test("preserves an open dialog, input value, and focus after an SSE reconnect re
 
 	await syncFixtureSource(context);
 
-	const resultCount = page.getByText(/^[\d,]+ items$/);
+	const resultCount = page.getByText(/^[\d,]+件$/);
 	await expect(resultCount).toBeVisible({ timeout: 30_000 });
 	await expect(page.getByText(syncedFileName, { exact: true })).toBeVisible({
 		timeout: 30_000,

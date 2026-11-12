@@ -254,10 +254,10 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			false,
 		);
 		await expect(
-			page.getByText("AI analyzes this video's representative thumbnail."),
+			page.getByText("AIは動画の代表サムネイルを解析します。"),
 		).toBeVisible();
 		await expect(
-			page.getByRole("button", { name: "Find similar", exact: true }),
+			page.getByRole("button", { name: "類似検索", exact: true }),
 		).toBeEnabled();
 		await page.reload();
 		await waitForAppHydration(page);
@@ -266,17 +266,17 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			false,
 		);
 		await page
-			.getByRole("button", { name: "More actions", exact: true })
+			.getByRole("button", { name: "その他の操作", exact: true })
 			.click();
 		await expect(
 			page.getByRole("button", {
-				name: "Extract EmbeddingGemma 2 vector",
+				name: "EmbeddingGemma 2のベクトルを抽出",
 				exact: true,
 			}),
 		).toBeVisible();
 		await page
 			.getByRole("button", {
-				name: "Find similar (EmbeddingGemma 2)",
+				name: "類似検索（EmbeddingGemma 2）",
 				exact: true,
 			})
 			.click();

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -20,16 +21,16 @@ export function SourceDeleteModal(props: SourceDeleteModalProps) {
 		<Dialog onOpenChange={() => props.onClose()} open={props.isOpen}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Delete Media Source</DialogTitle>
+					<DialogTitle>{t("sourceDeleteModal.deleteMediaSource")}</DialogTitle>
 					<DialogDescription>
-						Are you sure you want to delete{" "}
-						<span class="font-bold">{props.sourceToDelete?.name}</span>? This
-						action cannot be undone. Files on disk will NOT be deleted.
+						{t("sourceDeleteModal.areYouSureYouWantToDelete")}{" "}
+						<span class="font-bold">{props.sourceToDelete?.name}</span>
+						{t("sourceDeleteModal.thisActionCannotBeUndoneFilesOnDiskWill")}
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter>
 					<Button onClick={() => props.onClose()} variant="outline">
-						Cancel
+						{t("actions.cancel")}
 					</Button>
 					<Button
 						onClick={() =>
@@ -38,7 +39,7 @@ export function SourceDeleteModal(props: SourceDeleteModalProps) {
 						}
 						variant="destructive"
 					>
-						Delete
+						{t("actions.delete")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
