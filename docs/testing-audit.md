@@ -91,13 +91,25 @@ rootの `test` scriptとVitest projectsにclient・DBを追加した。以前は
 
 - TanStack Startを1.168.47から1.168.55へ合わせ、直接依存しているSolid Router 1.170.36 / router-core 1.171.32と二重化していた依存を解消。devのRouter contextエラーとproductionのSSR export解決失敗を修正した。
 - 起動・ビルドのstdout/stderrと終了状態を、隔離runtimeの `server.log` に保存。Playwrightの起動待ちタイムアウト時にも調査できるよう、失敗メッセージにログの場所を出す。報告された120秒タイムアウト自体は同じ条件で再現できていないため、exit 143だけから原因を断定しない。
-- Bun 1.4.2でproduction bundleの後から `sharp` を初期化すると、最初の `metadata()` 呼び出しが同期的に停止し、HTTP応答も止まった。通常の `start` と隔離E2Eのpreloadでbundleより先に読み込むようにした。画像処理ジョブ完了と実source syncを使うSSE検証で確認した。
+- Bun 1.4.2でproduction bundleの後から `sharp` を初期化すると、最初の `metadata()` 呼び出しが同期的に停止し、HTTP応答も止まった。当時は通常の `start` と隔離E2Eのpreloadでbundleより先に読み込むようにし、画像処理ジョブ完了と実source syncを使うSSE検証で確認した。現在は下記の再検証に基づき、この先読みを廃止している。
 - 詳細画面はqueryの初回読み込みをローカルのSuspenseで受け、空画面になる代わりに既存のdetail skeletonを表示する。
 - 詳細から一覧へ戻る操作は、直前の一覧の履歴entryが残っていればそこへ戻す。新しいentryで検索スクロール位置を失う問題を修正。直接URLで入った場合の保存URLへのfallbackも維持する。
 - 短い画面でsidebarの子要素が縮んで重なる問題、検索filterのfooterが画面外へ出る問題を修正。filterは実際に空いている高さを上限にし、本文だけをスクロールさせる。
 - 古いHome・見出し・件数・ボタン名・inline filter・source cardを前提とした操作を、現行のUIに合わせた。画像zoomはviewerを開いてから操作し、SSEは別タブの実source syncで発火させる。
 - 閉じたpopoverのDOM同一性、廃止済みのsource操作dialog、viewer背景の透明色固定など、現行仕様と無関係なassertionを除いた。一覧DOMの保持、export内容、画像pixel比較、touch target、横overflow、focusの検証は維持した。
 - gallery専用のNoto Sans 5.3.0をdev dependencyとして固定。読み込みと適用を確認してから画像比較する。OSフォント差による折り返しの変化を除き、目視確認したbaselineを更新した。本体のフォントは変更していない。
+
+## sharp先読み廃止の再検証
+
+Bun 1.4.4 / sharp 0.35.5 / Linux x64で、同じ新規production buildを先読みあり2回・なし3回起動し、すべて成功した。各回で独立した一時PGlite DB・設定・画像ディレクトリ・HTTPポートを使用した。
+
+各起動で、起動時走査による画像追加と、起動後のファイル監視による別画像の追加を確認した。両画像の `processMedia` ジョブ完了（`sharp.metadata()` によるメタデータ抽出を含む）、生成したWebPサムネイルのHTTP 200応答、処理後のRPC応答を検証し、メタデータ抽出・サムネイル生成のエラーログがないことも確認した。
+
+追加のproduction E2Eでは、隔離出力の `NODE_PATH` にworkspaceルートの `node_modules` が含まれず、Bunが自動インストール用キャッシュの `sharp/dist/index.mjs` を選択して停止する問題を確認した。同じ画像の `metadata()` は、その経路ではタイムアウトし、workspace内の `sharp/dist/index.cjs` を使うと成功した。隔離harnessの依存パスへworkspaceルートを追加し、実際にインストールした依存を使うように修正した。
+
+修正後は `realtime-preservation.spec.ts` と `route-reload.spec.ts` のdesktop E2Eがdev・production各9件成功した。実source sync後の画像処理ジョブ完了、SSE再接続後の画面・入力・フォーカス保持、直接URLと再読み込みを確認している。
+
+通常の `start` と隔離E2Eから `sharp` の先読みを削除し、専用の `runtime-preload.ts` も削除した。E2E用HTTPタイムアウト調整のpreloadは継続する。別のBunバージョン・OSでの解消を保証する検証ではない。
 
 ## 実行方法
 
