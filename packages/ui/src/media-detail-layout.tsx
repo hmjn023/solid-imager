@@ -11,12 +11,16 @@ export function MediaDetailLayout(props: {
 	return (
 		<div class="flex min-h-0 flex-1 flex-col">
 			{props.header}
-			<div class="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-contain lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden lg:snap-none scrollbar-stable">
-				<div class="min-w-0 lg:min-h-0 lg:snap-y lg:snap-mandatory lg:overflow-y-auto lg:overscroll-contain scrollbar-stable">
+			<div class="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-contain [container-type:size] lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden lg:snap-none scrollbar-stable">
+				<div class="min-w-0 lg:min-h-0 lg:snap-y lg:snap-mandatory lg:overflow-y-auto lg:overscroll-contain lg:[container-type:size] scrollbar-stable">
 					<div class="snap-start snap-always lg:h-full">{props.viewer}</div>
-					{/* Keep the entire list in one snap area so its interior scrolls freely. */}
+					{/* Fill the actual scrollport even when responsive columns or an empty tab make the list short. */}
 					<Show when={props.related}>
-						{(related) => <div class="snap-start snap-always">{related()}</div>}
+						{(related) => (
+							<div class="min-h-[100cqh] snap-start snap-always">
+								{related()}
+							</div>
+						)}
 					</Show>
 				</div>
 				<div class="min-w-0 snap-start border-border border-t lg:min-h-0 lg:snap-align-none lg:border-t-0 lg:border-l">
