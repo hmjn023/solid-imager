@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import Bot from "lucide-solid/icons/bot";
 import CopyCheck from "lucide-solid/icons/copy-check";
 import Folder from "lucide-solid/icons/folder";
@@ -42,7 +43,7 @@ export function ManagerCategoryNavigation(props: {
 	if (props.compact) {
 		return (
 			<nav
-				aria-label="Manager categories"
+				aria-label={t("navigation.managerCategories")}
 				class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-border border-b bg-background/95 px-3 py-2 backdrop-blur lg:hidden"
 			>
 				<For each={MANAGER_CATEGORIES}>
@@ -72,7 +73,7 @@ export function ManagerCategoryNavigation(props: {
 	}
 
 	return (
-		<nav aria-label="Manager categories" class="hidden lg:block">
+		<nav aria-label={t("navigation.managerCategories")} class="hidden lg:block">
 			<div class="sticky top-5 space-y-5">
 				<For each={["Entities", "Tools"] as const}>
 					{(group) => (

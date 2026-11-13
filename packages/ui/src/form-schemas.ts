@@ -1,9 +1,10 @@
+import { t } from "@solid-imager/i18n";
 import { z } from "zod";
 
 export const createSourceFormSchema = (requireSecrets: boolean) =>
 	z
 		.object({
-			name: z.string().trim().min(1, "Name is required"),
+			name: z.string().trim().min(1, t("form.nameRequired")),
 			description: z.string(),
 			type: z.enum(["local", "sftp", "s3"]),
 			path: z.string(),
@@ -37,24 +38,24 @@ export const createSourceFormSchema = (requireSecrets: boolean) =>
 			};
 
 			if (value.type === "local") {
-				requireField("path", "Path is required");
+				requireField("path", t("form.pathRequired"));
 			} else if (value.type === "sftp") {
 				if (!Number.isInteger(value.port) || value.port <= 0) {
 					context.addIssue({
 						code: "custom",
-						message: "Port must be positive",
+						message: t("formSchemas.portMustBePositive"),
 						path: ["port"],
 					});
 				}
-				requireField("host", "Host is required");
-				requireField("username", "Username is required");
-				requireField("remotePath", "Remote path is required");
+				requireField("host", t("form.hostRequired"));
+				requireField("username", t("form.usernameRequired"));
+				requireField("remotePath", t("form.remotePathRequired"));
 			} else {
-				requireField("bucket", "Bucket is required");
-				requireField("region", "Region is required");
+				requireField("bucket", t("form.bucketRequired"));
+				requireField("region", t("form.regionRequired"));
 				if (requireSecrets) {
-					requireField("accessKeyId", "Access Key ID is required");
-					requireField("secretAccessKey", "Secret Access Key is required");
+					requireField("accessKeyId", t("form.accessKeyRequired"));
+					requireField("secretAccessKey", t("form.secretKeyRequired"));
 				}
 			}
 		});
@@ -66,7 +67,7 @@ export type SourceFormValues = z.infer<
 export const uploadFormSchema = z.object({
 	filename: z.string().trim(),
 	description: z.string(),
-	sourceUrl: z.url("有効なURLを入力してください。").or(z.literal("")),
+	sourceUrl: z.url(t("formSchemas.enterAValidURL")).or(z.literal("")),
 	conflictResolution: z.enum(["overwrite", "skip", "rename"]),
 });
 

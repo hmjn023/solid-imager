@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { For, Show } from "solid-js";
 import { Button } from "../../button";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
@@ -11,7 +12,7 @@ import {
 } from "../../select";
 import { formatBytes, formatDate } from "./utils";
 
-const ALL_SOURCES_OPTION = { id: "__all__", name: "All sources" };
+const ALL_SOURCES_OPTION = { id: "__all__", name: t("labels.allSources") };
 
 export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 	const isScanning = () => props.manager.isScanningDuplicates();
@@ -20,10 +21,10 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 		<div class="space-y-5">
 			<div>
 				<h2 class="font-semibold text-lg text-foreground">
-					Duplicate detection
+					{t("duplicates.duplicateDetection")}
 				</h2>
 				<p class="mt-0.5 text-xs text-muted-foreground">
-					Find matching media and choose one item to keep in each group.
+					{t("duplicates.findMatchingMediaAndChooseOneItemToKeep")}
 				</p>
 			</div>
 
@@ -56,7 +57,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 									: ALL_SOURCES_OPTION
 							}
 						>
-							<SelectLabel>Target source</SelectLabel>
+							<SelectLabel>{t("labels.targetSource")}</SelectLabel>
 							<SelectTrigger class="w-full bg-card">
 								<SelectValue<unknown>>
 									{(state) => {
@@ -65,7 +66,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 											typeof selected === "object" &&
 											"name" in selected
 											? (selected as { name: string }).name
-											: "All sources";
+											: t("labels.allSources");
 									}}
 								</SelectValue>
 							</SelectTrigger>
@@ -77,7 +78,9 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 						disabled={isScanning() || props.manager.isDeletingDuplicates()}
 						onClick={() => void props.manager.handleScanDuplicates()}
 					>
-						{isScanning() ? "Scanning..." : "Scan for duplicates"}
+						{isScanning()
+							? t("duplicates.scanning")
+							: t("duplicates.scanForDuplicates")}
 					</Button>
 				</div>
 				<Show when={props.manager.duplicateStatus()}>
@@ -90,7 +93,9 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 			<Show when={props.manager.duplicateGroups().length > 0}>
 				<div class="flex flex-col gap-3 border-border border-b pb-3 sm:flex-row sm:items-center sm:justify-between">
 					<p class="font-medium text-sm">
-						{props.manager.duplicateGroups().length} duplicate groups
+						{t("duplicates.valueDuplicateGroups", {
+							value0: String(props.manager.duplicateGroups().length),
+						})}
 					</p>
 					<div class="grid grid-cols-2 gap-2 sm:flex">
 						<Button
@@ -99,7 +104,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 							size="sm"
 							variant="outline"
 						>
-							Keep oldest
+							{t("duplicates.keepOldest")}
 						</Button>
 						<Button
 							disabled={props.manager.isDeletingDuplicates()}
@@ -107,7 +112,7 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 							size="sm"
 							variant="outline"
 						>
-							Keep largest
+							{t("duplicates.keepLargest")}
 						</Button>
 						<Button
 							class="col-span-2 sm:col-auto"
@@ -120,7 +125,9 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 							}}
 							variant="destructive"
 						>
-							Delete {props.manager.deleteCount()}
+							{t("duplicates.deleteValue", {
+								value0: String(props.manager.deleteCount()),
+							})}
 						</Button>
 					</div>
 				</div>
@@ -131,27 +138,30 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 							<div class="overflow-x-auto rounded-md border border-border bg-card scrollbar-stable">
 								<table class="w-full min-w-table-compact border-collapse text-left text-xs">
 									<caption class="px-3 py-2 text-left font-medium text-sm text-foreground">
-										Group {index() + 1} · {group.media.length} items
+										{t("duplicates.groupValueValueItems", {
+											value0: String(index() + 1),
+											value1: String(group.media.length),
+										})}
 									</caption>
 									<thead class="border-border border-t bg-muted text-muted-foreground">
 										<tr>
 											<th class="px-3 py-2 font-medium" scope="col">
-												Preview
+												{t("duplicates.preview")}
 											</th>
 											<th class="px-3 py-2 font-medium" scope="col">
-												File
+												{t("duplicates.file")}
 											</th>
 											<th class="px-3 py-2 font-medium" scope="col">
-												Resolution
+												{t("collectionInspector.resolution")}
 											</th>
 											<th class="px-3 py-2 font-medium" scope="col">
-												Size
+												{t("collectionInspector.size")}
 											</th>
 											<th class="px-3 py-2 font-medium" scope="col">
-												Created
+												{t("jobsScreen.created")}
 											</th>
 											<th class="px-3 py-2 text-right font-medium" scope="col">
-												Decision
+												{t("duplicates.decision")}
 											</th>
 										</tr>
 									</thead>
@@ -165,7 +175,9 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 													<tr class={keep() ? "bg-accent" : undefined}>
 														<td class="px-3 py-2">
 															<img
-																alt={`Thumbnail for ${item.fileName}`}
+																alt={t("duplicates.thumbnailForValue", {
+																	value0: String(item.fileName),
+																})}
 																class="h-10 w-14 rounded object-cover"
 																loading="lazy"
 																src={thumbnail()}
@@ -193,7 +205,9 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 														</td>
 														<td class="px-3 py-2 text-right">
 															<Button
-																aria-label={`${item.fileName}を保持`}
+																aria-label={t("duplicates.keepValue", {
+																	value0: String(item.fileName),
+																})}
 																aria-pressed={keep()}
 																onClick={() =>
 																	props.manager.setKeepForGroup(
@@ -204,7 +218,9 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 																size="sm"
 																variant={keep() ? "default" : "outline"}
 															>
-																{keep() ? "Keep" : "Keep this"}
+																{keep()
+																	? t("duplicates.keep")
+																	: t("duplicates.keepThis")}
 															</Button>
 														</td>
 													</tr>

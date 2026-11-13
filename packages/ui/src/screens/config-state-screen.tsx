@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { AiHealthResponse } from "@solid-imager/core/tagging";
 import { Match, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
@@ -17,8 +18,10 @@ export function ConfigStateScreen(props: ConfigStateScreenProps) {
 	return (
 		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<ManagementHeader
-				description="アプリケーション全体の動作と接続先を管理します。"
-				title="Settings"
+				description={t(
+					"configStateScreen.manageApplicationBehaviorAndConnections",
+				)}
+				title={t("navigation.settings")}
 			/>
 			<div
 				class={cn(
@@ -31,8 +34,8 @@ export function ConfigStateScreen(props: ConfigStateScreenProps) {
 						class="mb-2"
 						fetchState={props.state.fetchState}
 						hasData
-						offlineLabel="オフラインのため保存済みの設定を表示しています。"
-						updatingLabel="設定を更新中..."
+						offlineLabel={t("configStateScreen.offlineShowingSavedSettings")}
+						updatingLabel={t("configStateScreen.updatingSettings")}
 					/>
 				</Show>
 
@@ -49,21 +52,23 @@ export function ConfigStateScreen(props: ConfigStateScreenProps) {
 						)}
 					</Match>
 					<Match when={props.state.phase === "pending"}>
-						<LoadingRegion label="設定を読み込んでいます...">
+						<LoadingRegion label={t("configStateScreen.loadingSettings")}>
 							<ConfigSkeleton />
 						</LoadingRegion>
 					</Match>
 					<Match when={props.state.phase === "offline"}>
 						<OfflineState
-							description="接続が戻ったら、この画面から設定を再取得できます。"
+							description={t(
+								"configStateScreen.reloadSettingsHereWhenYourConnectionReturns",
+							)}
 							onRetry={props.onRetry}
 						/>
 					</Match>
 					<Match when={props.state.phase === "error"}>
 						<ErrorState
-							description="接続を確認して、もう一度お試しください。"
+							description={t("jobsScreen.checkYourConnectionAndTryAgain")}
 							onRetry={props.onRetry}
-							title="設定を取得できませんでした"
+							title={t("configStateScreen.couldNotLoadSettings")}
 						/>
 					</Match>
 				</Switch>

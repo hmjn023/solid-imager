@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Button } from "./button";
 
 type PaginationControlsProps = {
@@ -16,10 +17,13 @@ export function PaginationControls(props: PaginationControlsProps) {
 				size="sm"
 				variant="outline"
 			>
-				Prev
+				{t("actions.previous")}
 			</Button>
 			<span class="flex items-center px-2 text-sm">
-				Page {props.currentPage} of {props.totalPages}
+				{t("paginationControls.pageValueOfValue", {
+					value0: String(props.currentPage),
+					value1: String(props.totalPages),
+				})}
 			</span>
 			<Button
 				disabled={props.currentPage === props.totalPages}
@@ -29,7 +33,7 @@ export function PaginationControls(props: PaginationControlsProps) {
 				size="sm"
 				variant="outline"
 			>
-				Next
+				{t("actions.next")}
 			</Button>
 		</div>
 	);

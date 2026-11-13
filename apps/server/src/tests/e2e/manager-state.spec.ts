@@ -88,15 +88,13 @@ test("keeps the selected batch's read error when an earlier tracked GET finishes
 	});
 	await page.goto("/manager");
 	await waitForAppHydration(page);
-	await category(page, "Batch tagging");
+	await category(page, "一括タグ付け");
 	await page
-		.getByRole("button", { name: "Start tagging", exact: true })
+		.getByRole("button", { name: "タグ付けを開始", exact: true })
 		.click();
 	await expect.poll(() => oldReadRequested).toBe(true);
-	await page
-		.getByRole("button", { name: "Track progress", exact: true })
-		.click();
-	const error = page.getByText(/^Unable to refresh batch progress:/);
+	await page.getByRole("button", { name: "進捗を確認", exact: true }).click();
+	const error = page.getByText(/^一括処理の進捗を更新できませんでした:/);
 	await expect(error).toBeVisible();
 	const oldResponse = page.waitForResponse(
 		(response) =>
@@ -150,20 +148,18 @@ test("retains pending submissions across tabs and restores the latest requested 
 	);
 	await page.goto("/manager");
 	await waitForAppHydration(page);
-	await category(page, "Batch tagging");
+	await category(page, "一括タグ付け");
 	await page
-		.getByRole("button", { name: "Start tagging", exact: true })
+		.getByRole("button", { name: "タグ付けを開始", exact: true })
 		.click();
 	await submitted.promise;
-	await category(page, "Vector extraction");
-	await category(page, "Batch tagging");
+	await category(page, "ベクトル抽出");
+	await category(page, "一括タグ付け");
 	await expect(
-		page.getByRole("button", { name: "Submitting...", exact: true }),
+		page.getByRole("button", { name: "登録中...", exact: true }),
 	).toBeDisabled();
-	await category(page, "Vector extraction");
-	await page
-		.getByRole("button", { name: "Start extraction", exact: true })
-		.click();
+	await category(page, "ベクトル抽出");
+	await page.getByRole("button", { name: "抽出を開始", exact: true }).click();
 	const savedId = () =>
 		page.evaluate(() => {
 			const raw = sessionStorage.getItem("solid-imager:manager:batch-run");
@@ -178,10 +174,10 @@ test("retains pending submissions across tabs and restores the latest requested 
 	expect(await savedId()).toBe(latestId);
 	await page.reload();
 	await expect(
-		page.getByRole("heading", { name: "Vector extraction", exact: true }),
+		page.getByRole("heading", { name: "ベクトル抽出", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("progressbar", { name: "Batch progress" }),
+		page.getByRole("progressbar", { name: "一括処理の進捗" }),
 	).toHaveAttribute("aria-valuenow", "25");
 });
 
@@ -210,22 +206,24 @@ test("shows a new target scan separately from the previous completed batch", asy
 	);
 	await page.goto("/manager");
 	await waitForAppHydration(page);
-	await category(page, "Batch tagging");
+	await category(page, "一括タグ付け");
 	await page
-		.getByRole("button", { name: "Start tagging", exact: true })
+		.getByRole("button", { name: "タグ付けを開始", exact: true })
 		.click();
 	await expect(
-		page.getByText("Batch operation completed successfully.", { exact: true }),
+		page.getByText("一括操作が完了しました。", { exact: true }),
 	).toBeVisible();
-	await page.getByRole("button", { name: "Scan targets", exact: true }).click();
+	await page.getByRole("button", { name: "対象を確認", exact: true }).click();
 	await expect(
-		page.getByRole("heading", { name: "Target scan", exact: true }),
+		page.getByRole("heading", { name: "対象の確認", exact: true }),
 	).toBeVisible();
-	await expect(page.getByText("3 items found.", { exact: true })).toBeVisible();
 	await expect(
-		page.getByRole("progressbar", { name: "Batch progress" }),
+		page.getByText("3件見つかりました。", { exact: true }),
+	).toBeVisible();
+	await expect(
+		page.getByRole("progressbar", { name: "一括処理の進捗" }),
 	).toHaveCount(0);
-	await expect(page.getByText("Completed", { exact: true })).toHaveCount(0);
+	await expect(page.getByText("完了", { exact: true })).toHaveCount(0);
 });
 
 test("drops a duplicate scan after scope change and confirms the actual source and delete IDs", async ({
@@ -275,38 +273,39 @@ test("drops a duplicate scan after scope change and confirms the actual source a
 	});
 	await page.goto("/manager");
 	await waitForAppHydration(page);
-	await category(page, "Duplicates");
-	const source = page.getByRole("button", { name: /^Target source\b/ });
-	await expect(source).toHaveText("All sources");
-	await source.click();
+	await category(page, "重複検出");
+	await expect(page.getByRole("button", { name: /^対象ソース / })).toHaveText(
+		"すべてのソース",
+	);
+	await page.getByRole("button", { name: /^対象ソース / }).click();
 	await page
 		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
 		.click();
-	await page
-		.getByRole("button", { name: "Scan for duplicates", exact: true })
-		.click();
+	await page.getByRole("button", { name: "重複を検出", exact: true }).click();
 	await submitted.promise;
-	await expect(source).toHaveText(E2E_SOURCE_NAME);
-	await source.click();
-	await page.getByRole("option", { name: "All sources", exact: true }).click();
+	await expect(page.getByRole("button", { name: /^対象ソース / })).toHaveText(
+		E2E_SOURCE_NAME,
+	);
+	await page.getByRole("button", { name: /^対象ソース / }).click();
+	await page
+		.getByRole("option", { name: "すべてのソース", exact: true })
+		.click();
 	delayed.release();
 	await delivered.promise;
 	await expect(
-		page.getByRole("button", { name: "Scan for duplicates", exact: true }),
+		page.getByRole("button", { name: "重複を検出", exact: true }),
 	).toBeEnabled();
 	await expect(
-		page.getByRole("button", { name: "Delete 1", exact: true }),
+		page.getByRole("button", { name: "1件を削除", exact: true }),
 	).toHaveCount(0);
-	await page
-		.getByRole("button", { name: "Scan for duplicates", exact: true })
-		.click();
-	await page.getByRole("button", { name: "Delete 1", exact: true }).click();
+	await page.getByRole("button", { name: "重複を検出", exact: true }).click();
+	await page.getByRole("button", { name: "1件を削除", exact: true }).click();
 	const confirmation = page.getByRole("alertdialog");
 	await expect(confirmation).toContainText(
 		`${E2E_SOURCE_NAME} / ${E2E_SIMILAR_FILE_NAME}`,
 	);
 	await confirmation
-		.getByRole("button", { name: "Delete 1", exact: true })
+		.getByRole("button", { name: "1件を削除", exact: true })
 		.click();
 	await expect
 		.poll(() => deletions)

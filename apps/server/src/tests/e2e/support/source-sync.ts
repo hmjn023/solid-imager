@@ -19,7 +19,7 @@ export async function syncFixtureSource(
 				new URL(response.url()).pathname === "/api/rpc/sources/sync" &&
 				response.ok(),
 		);
-		await syncPage.getByRole("button", { name: "Sync", exact: true }).click();
+		await syncPage.getByRole("button", { name: "同期", exact: true }).click();
 		await syncResponse;
 	} finally {
 		await syncPage.close();

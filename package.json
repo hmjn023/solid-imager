@@ -14,13 +14,14 @@
     "deps:update:aube": "aube update -r",
     "lint:boundaries": "oxlint --config tools/workspace-imports.oxlint.json --disable-nested-config apps packages",
     "lint": "bun run lint:boundaries && oxlint apps/*/src packages/*/src",
-    "check": "bun run lint:boundaries && oxlint --fix apps/*/src packages/*/src && oxfmt --write apps/*/src packages/*/src && bun run typecheck && bun run design:lint",
+    "check": "bun run lint:boundaries && oxlint --fix apps/*/src packages/*/src && oxfmt --write apps/*/src packages/*/src && bun run typecheck && bun run design:lint && node tools/ui-text.test.mjs && bun run --cwd packages/i18n test",
     "design:lint": "designmd lint DESIGN.md",
     "format": "oxfmt --write apps/*/src packages/*/src",
-    "test": "node tools/workspace-imports.test.mjs && bun run --cwd apps/server test:x-activity && vitest run",
+    "test": "node tools/ui-text.test.mjs && bun run --cwd packages/i18n test && node tools/workspace-imports.test.mjs && bun run --cwd apps/server test:x-activity && vitest run",
     "test:e2e": "bun run --cwd apps/server test:e2e",
     "typecheck": "bun --filter '*' typecheck && tsc -p tools/tsconfig.json",
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint:ui-text": "oxlint --config tools/ui-text.oxlint.json --disable-nested-config apps packages"
   },
   "devDependencies": {
     "@google/design.md": "^0.4.0",

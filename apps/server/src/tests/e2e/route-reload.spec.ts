@@ -66,8 +66,8 @@ async function expectTtfbWithinBudget(page: Page): Promise<void> {
 }
 
 type RouteCase = {
-	name: string;
 	tag?: string;
+	name: string;
 	path: string;
 	heading: string;
 	readyMediaLink?: string;
@@ -80,8 +80,8 @@ type RouteCase = {
 
 const routeCases: readonly RouteCase[] = [
 	...[
-		{ name: "jobs", path: "/jobs", heading: "Jobs" },
-		{ name: "about", path: "/about", heading: "About Solid Imager" },
+		{ name: "jobs", path: "/jobs", heading: "ジョブ" },
+		{ name: "about", path: "/about", heading: "Solid Imagerについて" },
 	].map((route) => ({
 		...route,
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
@@ -101,7 +101,7 @@ const routeCases: readonly RouteCase[] = [
 	{
 		name: "settings",
 		path: "/config",
-		heading: "Settings",
+		heading: "設定",
 		clientEndpoints: ["/api/rpc/config/get"],
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
@@ -109,7 +109,7 @@ const routeCases: readonly RouteCase[] = [
 	{
 		name: "entity manager",
 		path: "/manager",
-		heading: "Manager",
+		heading: "管理",
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
 		reloadBudgetMs: isProduction ? 1_500 : DEV_RELOAD_NAVIGATION_BUDGET_MS,
 	},
@@ -280,7 +280,10 @@ test(
 
 		const searchCheckpoint = browserHealth.requestCheckpoint();
 		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
-		const searchLink = page.getByRole("link", { name: "Library", exact: true });
+		const searchLink = page.getByRole("link", {
+			name: "ライブラリ",
+			exact: true,
+		});
 		await searchLink.hover();
 		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 		expect(
@@ -352,7 +355,7 @@ test(
 			exact: true,
 		});
 		await sourceSearchInput.fill(E2E_PRIMARY_FILE_NAME);
-		await page.getByRole("link", { name: "Library", exact: true }).hover();
+		await page.getByRole("link", { name: "ライブラリ", exact: true }).hover();
 		await page.waitForTimeout(300);
 		await expect(sourceSearchInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
 		await expect(
@@ -390,7 +393,7 @@ test(
 
 		const revisitCheckpoint = browserHealth.requestCheckpoint();
 		const revisitStartedAt = Date.now();
-		await page.getByRole("link", { name: "Library", exact: true }).click();
+		await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
 		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),

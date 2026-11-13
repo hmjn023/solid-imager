@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import {
@@ -101,7 +102,9 @@ export function RelationsEditor(props: Props) {
 			props.onUpdate?.();
 			setOpen(false);
 			toast.error(
-				`Failed to save relations. Some changes may have been saved: ${getErrorMessage(error)}`,
+				t("relationsEditor.failedToSaveRelationsSomeChangesMayHaveBeen", {
+					value0: String(getErrorMessage(error)),
+				}),
 			);
 		} finally {
 			setSaving(false);
@@ -115,7 +118,7 @@ export function RelationsEditor(props: Props) {
 				disabled={props.disabled}
 				onClick={begin}
 			>
-				Edit
+				{t("actions.edit")}
 			</Button>
 			<Dialog
 				open={open()}
@@ -125,10 +128,11 @@ export function RelationsEditor(props: Props) {
 			>
 				<DialogContent class="flex max-w-4xl flex-col gap-4 overflow-hidden">
 					<DialogHeader>
-						<DialogTitle>Edit relations</DialogTitle>
+						<DialogTitle>{t("relationsEditor.editRelations")}</DialogTitle>
 						<DialogDescription>
-							Select projects, IPs and characters, then save the changes
-							together.
+							{t(
+								"relationsEditor.selectProjectsIPsAndCharactersThenSaveTheChanges",
+							)}
 						</DialogDescription>
 					</DialogHeader>
 					<div class="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain sm:grid-cols-3 sm:overflow-hidden">
@@ -151,8 +155,12 @@ export function RelationsEditor(props: Props) {
 									<section class="flex min-h-0 min-w-0 flex-col gap-2 rounded-md border p-3">
 										<h3 class="font-semibold text-sm">{group.title}</h3>
 										<Input
-											aria-label={`Search ${group.title}`}
-											placeholder={`Search ${group.title.toLowerCase()}...`}
+											aria-label={t("relationsEditor.searchValue", {
+												value0: String(group.title),
+											})}
+											placeholder={t("relationsEditor.searchValue2", {
+												value0: String(group.title.toLowerCase()),
+											})}
 											value={queries()[i]}
 											onInput={(event) =>
 												setQueries((old) =>
@@ -180,7 +188,11 @@ export function RelationsEditor(props: Props) {
 											<For each={newNames()[i]}>
 												{(name) => (
 													<div class="flex items-center justify-between gap-2 text-sm">
-														<span>{name} (new)</span>
+														<span>
+															{t("relationsEditor.valueNew", {
+																value0: String(name),
+															})}
+														</span>
 														<Button
 															size="sm"
 															variant="outline"
@@ -194,7 +206,7 @@ export function RelationsEditor(props: Props) {
 																)
 															}
 														>
-															Remove
+															{t("actions.remove")}
 														</Button>
 													</div>
 												)}
@@ -204,7 +216,9 @@ export function RelationsEditor(props: Props) {
 													items().length === 0 && newNames()[i].length === 0
 												}
 											>
-												<p class="text-sm text-muted-foreground">No matches</p>
+												<p class="text-sm text-muted-foreground">
+													{t("relationsEditor.noMatches")}
+												</p>
 											</Show>
 										</div>
 										<Show
@@ -237,7 +251,9 @@ export function RelationsEditor(props: Props) {
 													);
 												}}
 											>
-												Create “{queries()[i].trim()}”
+												{t("relationsEditor.createValue", {
+													value0: String(queries()[i].trim()),
+												})}
 											</Button>
 										</Show>
 									</section>
@@ -251,10 +267,10 @@ export function RelationsEditor(props: Props) {
 							disabled={saving()}
 							onClick={requestClose}
 						>
-							Cancel
+							{t("actions.cancel")}
 						</Button>
 						<Button disabled={saving() || !dirty()} onClick={() => void save()}>
-							{saving() ? "Saving…" : "Save changes"}
+							{saving() ? t("status.saving") : t("actions.saveChanges")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -262,20 +278,24 @@ export function RelationsEditor(props: Props) {
 			<AlertDialog open={confirm()} onOpenChange={setConfirm}>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Discard changes?</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t("relationsEditor.discardChanges")}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							Your relation changes have not been saved.
+							{t("relationsEditor.yourRelationChangesHaveNotBeenSaved")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Keep editing</AlertDialogCancel>
+						<AlertDialogCancel>
+							{t("configScreen.keepEditing")}
+						</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={() => {
 								setConfirm(false);
 								setOpen(false);
 							}}
 						>
-							Discard
+							{t("actions.discard")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

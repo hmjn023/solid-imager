@@ -98,34 +98,37 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 		await waitForAppHydration(page);
 		const category =
 			kind === "tagging"
-				? "Batch tagging"
+				? "一括タグ付け"
 				: kind === "thumbnails"
-					? "Thumbnails"
-					: "Vector extraction";
+					? "サムネイル"
+					: "ベクトル抽出";
 		await page
 			.getByRole("button", { name: new RegExp(`^${category}`) })
 			.filter({ visible: true })
 			.click();
 		if (kind === "ccip") {
-			await page.getByRole("button", { name: "Embedding model" }).click();
+			await page.getByRole("button", { name: "ベクトル抽出モデル" }).click();
 			await page.getByRole("option", { name: "CCIP", exact: true }).click();
 		}
-		const source = page.getByRole("button", { name: /^Target source\b/ });
-		await source.click();
+		await page
+			.getByRole("button", {
+				name: /^対象ソース /,
+			})
+			.click();
 		await page
 			.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
 			.click();
 		const start = page.getByRole("button", {
 			name:
 				kind === "tagging"
-					? "Start tagging"
+					? "タグ付けを開始"
 					: kind === "thumbnails"
-						? "Warm missing thumbnails"
-						: "Start extraction",
+						? "不足するサムネイルを生成"
+						: "抽出を開始",
 			exact: true,
 		});
 		await start.click();
-		const bar = page.getByRole("progressbar", { name: "Batch progress" });
+		const bar = page.getByRole("progressbar", { name: "一括処理の進捗" });
 		await expect(bar).toHaveAttribute("aria-valuenow", "25");
 		await expect
 			.poll(() =>
@@ -144,17 +147,20 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 			releaseReconnect();
 			await expect(bar).toHaveAttribute("aria-valuenow", "50");
 		}
-		await navigateWorkspace(page, "Library", "/search");
+		await navigateWorkspace(page, "ライブラリ", "/search");
 		// Complete the visit before switching back: an unmounted pending search is normally cancelled.
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();
 		job.progress = { processed: 3, failed: 0, total: 4 };
-		await navigateWorkspace(page, "Manager", "/manager");
+		await navigateWorkspace(page, "管理", "/manager");
 		await expect(bar).toHaveAttribute("aria-valuenow", "75");
 		await expect(start).toBeDisabled();
-		await expect(source).toBeVisible();
-		await expect(source).toHaveText(E2E_SOURCE_NAME);
+		await expect(
+			page.getByRole("button", {
+				name: new RegExp(`^対象ソース .*${E2E_SOURCE_NAME}$`),
+			}),
+		).toBeVisible();
 		await page.reload();
 		await expect(bar).toHaveAttribute("aria-valuenow", "75");
 		await page.screenshot({
@@ -183,10 +189,10 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 		await expect(
 			page.getByText(
 				kind === "ccip"
-					? "Job failed: One extraction failed"
+					? "ジョブに失敗しました: One extraction failed"
 					: kind === "thumbnails"
-						? "Batch operation cancelled."
-						: "Batch operation completed successfully.",
+						? "一括操作をキャンセルしました。"
+						: "一括操作が完了しました。",
 				{
 					exact: true,
 				},
@@ -224,7 +230,7 @@ test("shows another client's batch on Manager and after reload", async ({
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 	const bar = page.getByRole("progressbar", {
-		name: "CCIP extraction progress",
+		name: "CCIP抽出の進捗",
 	});
 	await expect(bar).toHaveCount(0);
 	visible = true;

@@ -80,7 +80,13 @@ async function expectNoOverflow(page: Page) {
 
 test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", async ({
 	page,
+	browserHealth,
 }, testInfo) => {
+	// Import invalidation and the deliberate reload can cancel a pending source refresh.
+	browserHealth.allowRequestFailure(
+		/\/api\/rpc\/sources\/list(?:\?|$)/,
+		"net::ERR_ABORTED",
+	);
 	const searches = await mockDanbooru(page);
 	const appPath = (path: string) =>
 		testInfo.project.name === "tauri" ? `/#${path}` : path;
@@ -156,7 +162,7 @@ test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", asyn
 		animations: "disabled",
 	});
 	await detail
-		.getByRole("button", { name: "Open Danbooru #201 image viewer" })
+		.getByRole("button", { name: "Danbooru #201の画像ビューアーを開く" })
 		.click();
 	await expect(page.getByRole("dialog")).toBeVisible();
 	await page.keyboard.press("Escape");
@@ -174,7 +180,7 @@ test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", asyn
 	await expect(
 		detail.getByRole("button", { name: "取り込み待ちに追加済み", exact: true }),
 	).toBeDisabled();
-	await page.getByRole("button", { name: "Close notification" }).click();
+	await page.getByRole("button", { name: "通知を閉じる" }).click();
 	const pending = await page.request.post("/api/rpc/imports/listPending", {
 		data: { json: {} },
 	});
@@ -326,12 +332,12 @@ test(
 		});
 		const scroller = page.locator('[data-media-scroll="Danbooru"]');
 		await expect(
-			scroller.getByText("40 件を表示", { exact: true }),
+			scroller.getByText("40件を表示", { exact: true }),
 		).toBeVisible();
 		for (const total of [79, 118, 156]) {
 			await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
 			await expect(
-				scroller.getByText(`${total} 件を表示`, { exact: true }),
+				scroller.getByText(`${total}件を表示`, { exact: true }),
 			).toBeVisible();
 		}
 		expect(searches.map(({ page }) => page)).toEqual([1, 2, 3, 4]);

@@ -53,7 +53,7 @@ test("manager submits clustering conditions and prevents duplicate pending submi
 	});
 	await start.click();
 	await expect(
-		page.getByRole("button", { name: "開始しています…", exact: true }),
+		page.getByRole("button", { name: "開始中...", exact: true }),
 	).toBeDisabled();
 	release();
 	await expect(
@@ -172,7 +172,7 @@ test("virtual groups and images load on scroll, stay bounded and survive compari
 			exact: true,
 		}),
 	).toBeVisible();
-	await dialog.getByRole("button", { name: "Dismiss", exact: true }).click();
+	await dialog.getByLabel("閉じる", { exact: true }).click();
 	await page.getByRole("button", { name: /^同じ画像の別設定と比較/ }).click();
 	await page.getByRole("option", { name: /ts-review-b/ }).click();
 	await page
@@ -199,7 +199,7 @@ test("virtual groups and images load on scroll, stay bounded and survive compari
 		body: await page.screenshot(),
 		contentType: "image/png",
 	});
-	await dialog.getByRole("button", { name: "Dismiss", exact: true }).click();
+	await dialog.getByLabel("閉じる", { exact: true }).click();
 	await page.getByRole("button", { name: "ノイズを見る", exact: true }).click();
 	const noise = page.getByRole("list", { name: "ノイズ画像", exact: true });
 	await loadThroughScroll(noise, 300);
@@ -228,7 +228,7 @@ test("virtual groups and images load on scroll, stay bounded and survive compari
 	await expect(
 		dialog.getByRole("heading", { name: "グループ #2 · 599枚" }),
 	).toBeVisible();
-	await dialog.getByRole("button", { name: "Dismiss", exact: true }).click();
+	await dialog.getByLabel("閉じる", { exact: true }).click();
 	await page.getByRole("button", { name: "ノイズを見る", exact: true }).click();
 	await expect(
 		page.getByRole("link", {

@@ -545,7 +545,7 @@ test("settings publish oRPC data tools independently and revoke cached calls", a
 		await expect(http).not.toBeChecked();
 		await web.press("Space");
 		await expect(web).toBeChecked();
-		await page.getByRole("button", { name: "Save Changes" }).click();
+		await page.getByRole("button", { name: "変更を保存" }).click();
 		await expect
 			.poll(async () => (await page.webmcp.tools()).map((t) => t.name))
 			.toEqual(["jobs_list"]);
@@ -567,7 +567,7 @@ test("settings publish oRPC data tools independently and revoke cached calls", a
 			.filter({ hasText: "HTTP MCP jobs_list" })
 			.click();
 		await expect(http).toBeChecked();
-		await page.getByRole("button", { name: "Save Changes" }).click();
+		await page.getByRole("button", { name: "変更を保存" }).click();
 		await expect
 			.poll(async () =>
 				(await rpc(request, "tools/list", {})).tools.map(
@@ -627,6 +627,11 @@ test("an acknowledged tag edit never reopens the image after the user leaves", a
 	request,
 	browserHealth,
 }) => {
+	// Leaving the detail screen deliberately cancels its pending refresh.
+	browserHealth.allowRequestFailure(
+		/\/api\/rpc\/media\/getDetails(?:\?|$)/,
+		"net::ERR_ABORTED",
+	);
 	const created = await request.post("/api/rpc/tags/create", {
 		data: { json: { name: "e2e-follow-edit-once" } },
 	});
@@ -659,12 +664,10 @@ test("an acknowledged tag edit never reopens the image after the user leaves", a
 			tagIds: [id],
 		});
 		await saved.promise;
-		// Leaving detail disposes its query while the tag edit is acknowledged.
-		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/media\/getDetails(?:\?|$)/,
-			"net::ERR_ABORTED",
-		);
-		await page.getByRole("link", { name: "Jobs", exact: true }).first().click();
+		await page
+			.getByRole("link", { name: "ジョブ", exact: true })
+			.first()
+			.click();
 		await expect(page).toHaveURL(/\/jobs$/);
 		release.resolve();
 		expect(await edit).toMatchObject({
@@ -733,7 +736,7 @@ test("CCIP WebMCP follows the returned job only when requested", async ({
 		expect(result).toMatchObject({ success: true, jobId: expect.any(String) });
 		expect(result).not.toHaveProperty("presentation");
 		expect(result.jobId).not.toBe(dataOnly.jobId);
-		const inspector = page.locator('[aria-label="Job details"]:visible');
+		const inspector = page.locator('[aria-label="ジョブの詳細"]:visible');
 		await expect(page).toHaveURL(
 			new RegExp("/jobs\\?jobId=" + result.jobId + "$"),
 		);
@@ -743,7 +746,7 @@ test("CCIP WebMCP follows the returned job only when requested", async ({
 			job: { id: result.jobId, type: "extract_ccip_vector" },
 		});
 		const earlierJob = page.getByRole("button", {
-			name: new RegExp("job " + dataOnly.jobId + "$"),
+			name: new RegExp("ジョブ " + dataOnly.jobId + "$"),
 		});
 		await earlierJob.click();
 		await expect(inspector).toHaveAttribute("data-job-id", dataOnly.jobId);
@@ -778,7 +781,7 @@ test("CCIP WebMCP follows the returned job only when requested", async ({
 				"net::ERR_ABORTED",
 			);
 			await page
-				.getByRole("link", { name: "Settings", exact: true })
+				.getByRole("link", { name: "設定", exact: true })
 				.first()
 				.click();
 			await expect(page).toHaveURL(/\/config$/);

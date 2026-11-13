@@ -16,39 +16,37 @@ test("video detail offers thumbnail tagging and both vector models", async ({
 }) => {
 	const actions = await openMediaAi(page);
 	await expect(
-		page.getByText("AI analyzes this video's representative thumbnail."),
+		page.getByText("AIは動画の代表サムネイルを解析します。"),
 	).toBeVisible();
 	await actions
-		.getByRole("button", { name: "Extract tags", exact: true })
+		.getByRole("button", { name: "タグを抽出", exact: true })
 		.click();
 	await expect(
-		page.getByRole("dialog", { name: "AI Tagging Results", exact: true }),
-	).toContainText("video's representative thumbnail");
+		page.getByRole("dialog", { name: "AIタグ付け結果", exact: true }),
+	).toContainText("動画の代表サムネイル");
 	await expect(
-		page.getByRole("dialog", { name: "AI Tagging Results", exact: true }),
+		page.getByRole("dialog", { name: "AIタグ付け結果", exact: true }),
 	).toContainText("fixture-tag");
 	await expect(
 		page.getByRole("status").filter({ hasText: "Last action:" }),
 	).toHaveText("Last action: tagging:video");
 	await page.keyboard.press("Escape");
 
-	await actions
-		.getByRole("button", { name: "Find similar", exact: true })
-		.click();
+	await actions.getByRole("button", { name: "類似検索", exact: true }).click();
 	await expect(
 		page.getByRole("status").filter({ hasText: "Last action:" }),
 	).toHaveText("Last action: similar:ccip:video");
 	for (const [label, result] of [
-		["Find similar (EmbeddingGemma 2)", "similar:embeddinggemma2"],
-		["Extract EmbeddingGemma 2 vector", "embedding"],
-		["Re-extract CCIP vector", "ccip"],
+		["類似検索（EmbeddingGemma 2）", "similar:embeddinggemma2"],
+		["EmbeddingGemma 2のベクトルを抽出", "embedding"],
+		["CCIPベクトルを再抽出", "ccip"],
 	] as const) {
 		await actions
-			.getByRole("button", { name: "More actions", exact: true })
+			.getByRole("button", { name: "その他の操作", exact: true })
 			.click();
 		await expect(
 			page.getByRole("button", {
-				name: "Detect & crop characters",
+				name: "キャラクターを検出・切り抜き",
 				exact: true,
 			}),
 		).toHaveCount(0);
@@ -58,17 +56,17 @@ test("video detail offers thumbnail tagging and both vector models", async ({
 		).toHaveText(`Last action: ${result}:video`);
 	}
 	await actions
-		.getByRole("button", { name: "More actions", exact: true })
+		.getByRole("button", { name: "その他の操作", exact: true })
 		.click();
 	await page
-		.getByRole("button", { name: "Extract tags (OppaiOracle)", exact: true })
+		.getByRole("button", { name: "タグを抽出（OppaiOracle）", exact: true })
 		.click();
 	await expect(
 		page.getByRole("dialog", {
-			name: "OppaiOracle Tagging Results",
+			name: "OppaiOracleのタグ付け結果",
 			exact: true,
 		}),
-	).toContainText("video's representative thumbnail");
+	).toContainText("動画の代表サムネイル");
 	await expect(
 		page.getByRole("status").filter({ hasText: "Last action:" }),
 	).toHaveText("Last action: oppai:video");
@@ -82,44 +80,47 @@ test("audio excludes visual AI and status requests while images retain cropping"
 		page.getByText("CCIP status requests: 0", { exact: true }),
 	).toBeVisible();
 	await expect(
-		actions.getByRole("button", { name: "Extract tags", exact: true }),
+		actions.getByRole("button", { name: "タグを抽出", exact: true }),
 	).toHaveCount(0);
 	await expect(
-		actions.getByRole("button", { name: "Find similar", exact: true }),
+		actions.getByRole("button", { name: "類似検索", exact: true }),
 	).toHaveCount(0);
 	await actions
-		.getByRole("button", { name: "More actions", exact: true })
+		.getByRole("button", { name: "その他の操作", exact: true })
 		.click();
 	await expect(
-		page.getByRole("button", { name: "Download original", exact: true }),
+		page.getByRole("button", { name: "原本をダウンロード", exact: true }),
 	).toBeVisible();
 	await expect(
 		page.getByRole("button", {
-			name: /Extract|Re-extract|Find similar|Detect & crop/,
+			name: /抽出|再抽出|類似検索|キャラクター検出/,
 		}),
 	).toHaveCount(0);
 	await page.keyboard.press("Escape");
 
 	await page.getByRole("button", { name: "Select image", exact: true }).click();
 	await expect(
-		actions.getByRole("button", { name: "Extract tags", exact: true }),
+		actions.getByRole("button", { name: "タグを抽出", exact: true }),
 	).toBeVisible();
 	await expect(
-		actions.getByRole("button", { name: "Find similar", exact: true }),
+		actions.getByRole("button", { name: "類似検索", exact: true }),
 	).toBeEnabled();
 	await expect(
 		page.getByText("CCIP status requests: 1", { exact: true }),
 	).toBeVisible();
 	await actions
-		.getByRole("button", { name: "More actions", exact: true })
+		.getByRole("button", { name: "その他の操作", exact: true })
 		.click();
 	await expect(
-		page.getByRole("button", { name: "Detect & crop characters", exact: true }),
+		page.getByRole("button", {
+			name: "キャラクターを検出・切り抜き",
+			exact: true,
+		}),
 	).toBeVisible();
 	await page.keyboard.press("Escape");
 	await page.getByRole("button", { name: "Select audio", exact: true }).click();
 	await expect(
-		actions.getByRole("button", { name: "Extract tags", exact: true }),
+		actions.getByRole("button", { name: "タグを抽出", exact: true }),
 	).toHaveCount(0);
 	await expect(
 		page.getByText("CCIP status requests: 1", { exact: true }),

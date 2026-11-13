@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	createVirtualizer,
 	createWindowVirtualizer,
@@ -574,7 +575,7 @@ export function MediaTileGrid<T extends { id: string | number }>(
 		<section
 			class="@container relative min-w-0 w-full"
 			classList={{ "virtualized-media-grid": shouldVirtualize() }}
-			aria-label={props.ariaLabel ?? "メディアグリッド"}
+			aria-label={props.ariaLabel ?? t("mediaTileGrid.mediaGrid")}
 			data-media-grid
 			onKeyDown={navigate}
 			ref={(element) => {

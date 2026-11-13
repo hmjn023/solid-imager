@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { useIsFetching, useIsMutating } from "@tanstack/solid-query";
 import {
 	createEffect,
@@ -20,10 +21,10 @@ function getOnlineStatus(): boolean {
 
 function getStatusText(isOnline: boolean, activeCount: number): string {
 	if (!isOnline) {
-		return "APIに接続できません。ネットワーク接続を確認してください。";
+		return t("apiActivityIndicator.couldNotConnectToTheAPICheckYourNetwork");
 	}
 	if (activeCount > 0) {
-		return "APIの応答を待っています...";
+		return t("apiActivityIndicator.waitingForTheAPIResponse");
 	}
 	return "";
 }

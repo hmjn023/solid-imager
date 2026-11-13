@@ -46,6 +46,7 @@
     "@solid-imager/client": "workspace:*",
     "@solid-imager/core": "workspace:*",
     "@solid-imager/db": "workspace:*",
+    "@solid-imager/i18n": "workspace:*",
     "@solid-imager/ui": "workspace:*",
     "@tanstack/query-core": "5.105.0",
     "@tanstack/router-plugin": "1.168.48",

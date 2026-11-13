@@ -56,10 +56,10 @@ test("Workspace routes fit each viewport after hydration", async ({ page }) => {
 		["/search", "すべてのメディア"],
 		[sourcePath, E2E_SOURCE_NAME],
 		[mediaPath(E2E_PRIMARY_MEDIA_ID), E2E_PRIMARY_FILE_NAME],
-		["/manager", "Manager"],
-		["/jobs", "Jobs"],
-		["/config", "Settings"],
-		["/about", "About Solid Imager"],
+		["/manager", "管理"],
+		["/jobs", "ジョブ"],
+		["/config", "設定"],
+		["/about", "Solid Imagerについて"],
 	] as const;
 
 	for (const [path, visibleText] of routes) {
@@ -145,15 +145,15 @@ test(
 		await waitForAppHydration(page);
 
 		const categoryNavigation = page.locator(
-			'nav[aria-label="Manager categories"]:visible',
+			'nav[aria-label="管理カテゴリ"]:visible',
 		);
 		const transferButton = categoryNavigation
-			.getByRole("button", { name: /Data transfer/ })
+			.getByRole("button", { name: /データ転送/ })
 			.first();
 		await transferButton.scrollIntoViewIfNeeded();
 		await transferButton.click();
 		await expect(
-			page.getByRole("heading", { name: "Data transfer", exact: true }),
+			page.getByRole("heading", { name: "データ転送", exact: true }),
 		).toBeVisible();
 
 		const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
@@ -164,12 +164,12 @@ test(
 
 		await selectTriggers.nth(2).click();
 		const tarOption = page.getByRole("option", {
-			name: "TAR archive",
+			name: "TARアーカイブ",
 			exact: true,
 		});
 		await expect(tarOption).toBeVisible();
 		await tarOption.click();
-		await expect(selectTriggers.nth(2)).toContainText("TAR archive");
+		await expect(selectTriggers.nth(2)).toContainText("TARアーカイブ");
 		await expect(page.locator('input[type="file"]')).toHaveAttribute(
 			"accept",
 			".tar,application/x-tar,application/tar",
@@ -187,10 +187,10 @@ test(
 		await waitForAppHydration(page);
 
 		const categoryNavigation = page.locator(
-			'nav[aria-label="Manager categories"]:visible',
+			'nav[aria-label="管理カテゴリ"]:visible',
 		);
 		await categoryNavigation
-			.getByRole("button", { name: /Data transfer/ })
+			.getByRole("button", { name: /データ転送/ })
 			.first()
 			.click();
 
@@ -201,15 +201,15 @@ test(
 			.click();
 		await selectTriggers.nth(1).click();
 		await page
-			.getByRole("option", { name: "TAR archive", exact: true })
+			.getByRole("option", { name: "TARアーカイブ", exact: true })
 			.click();
-		await page.getByText("Include original media", { exact: true }).click();
+		await page.getByText("元のメディアを含める", { exact: true }).click();
 		await expect(
-			page.getByRole("checkbox", { name: "Include original media" }),
+			page.getByRole("checkbox", { name: "元のメディアを含める" }),
 		).toBeChecked();
 		const download = page.waitForEvent("download");
 		await page
-			.getByRole("button", { name: "Generate & download", exact: true })
+			.getByRole("button", { name: "生成してダウンロード", exact: true })
 			.click();
 		const artifact = await download;
 		expect(artifact.suggestedFilename()).toMatch(/\.tar$/);
@@ -239,10 +239,10 @@ test(
 		await waitForAppHydration(page);
 
 		const categoryNavigation = page.locator(
-			'nav[aria-label="Manager categories"]:visible',
+			'nav[aria-label="管理カテゴリ"]:visible',
 		);
 		await categoryNavigation
-			.getByRole("button", { name: /Data transfer/ })
+			.getByRole("button", { name: /データ転送/ })
 			.first()
 			.click();
 
@@ -253,7 +253,7 @@ test(
 			.click();
 		const download = page.waitForEvent("download");
 		await page
-			.getByRole("button", { name: "Generate & download", exact: true })
+			.getByRole("button", { name: "生成してダウンロード", exact: true })
 			.click();
 		const artifact = await download;
 		expect(artifact.suggestedFilename()).toMatch(/\.ndjson$/);

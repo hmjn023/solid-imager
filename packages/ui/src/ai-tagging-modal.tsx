@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import type { TaggingResponse } from "@solid-imager/core/tagging";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
@@ -20,8 +21,9 @@ export type AiTaggingModalProps = {
 };
 
 const PERCENTAGE_MULTIPLIER = 100;
-const DEFAULT_DESCRIPTION =
-	"Tags extracted from the image using the AI service.";
+const DEFAULT_DESCRIPTION = t(
+	"aiTaggingModal.tagsExtractedFromTheImageUsingTheAIService",
+);
 
 export function AiTaggingModal(props: AiTaggingModalProps) {
 	const [isLoading, setIsLoading] = createSignal(false);
@@ -45,7 +47,9 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 				} catch (err) {
 					if (!isCancelled) {
 						setError(
-							err instanceof Error ? err.message : "Unknown error occurred",
+							err instanceof Error
+								? err.message
+								: t("characterCropModal.unknownErrorOccurred"),
 						);
 					}
 				} finally {
@@ -74,11 +78,13 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 		>
 			<DialogContent class="sm:max-w-dialog-lg">
 				<DialogHeader>
-					<DialogTitle>AI Tagging Results</DialogTitle>
+					<DialogTitle>{t("aiTaggingModal.aITaggingResults")}</DialogTitle>
 					<DialogDescription>
 						{props.description ??
 							(props.mediaType === "video"
-								? "Tags extracted from the video's representative thumbnail using the AI service."
+								? t(
+										"aiTaggingModal.tagsExtractedFromTheVideoSRepresentativeThumbnailUsing",
+									)
 								: DEFAULT_DESCRIPTION)}
 					</DialogDescription>
 				</DialogHeader>
@@ -89,15 +95,15 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 							<div class="h-8 w-8 animate-spin rounded-full border-4 border-info-foreground border-t-transparent" />
 							<span class="ml-2 text-muted-foreground">
 								{props.mediaType === "video"
-									? "Analyzing video thumbnail..."
-									: "Analyzing image..."}
+									? t("oppaiOracleModal.analyzingVideoThumbnail")
+									: t("oppaiOracleModal.analyzingImage")}
 							</span>
 						</div>
 					</Show>
 
 					<Show when={error()}>
 						<div class="rounded-md bg-error p-4 text-destructive">
-							Error: {error()}
+							{t("useManagerPage.errorValue", { value0: String(error()) })}
 						</div>
 					</Show>
 
@@ -105,11 +111,13 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 						{(res) => (
 							<div class="space-y-6">
 								<div>
-									<h3 class="mb-2 font-semibold text-lg">Characters</h3>
+									<h3 class="mb-2 font-semibold text-lg">
+										{t("labels.characters")}
+									</h3>
 									<Show
 										fallback={
 											<p class="text-muted-foreground text-sm">
-												No characters detected.
+												{t("aiTaggingModal.noCharactersDetected")}
 											</p>
 										}
 										when={Object.keys(res().character).length > 0}
@@ -130,11 +138,13 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 								</div>
 
 								<div>
-									<h3 class="mb-2 font-semibold text-lg">IPs (Series)</h3>
+									<h3 class="mb-2 font-semibold text-lg">
+										{t("aiTaggingModal.iPsSeries")}
+									</h3>
 									<Show
 										fallback={
 											<p class="text-muted-foreground text-sm">
-												No IPs detected.
+												{t("aiTaggingModal.noIPsDetected")}
 											</p>
 										}
 										when={res().ips.length > 0}
@@ -148,7 +158,9 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 								</div>
 
 								<div>
-									<h3 class="mb-2 font-semibold text-lg">General Tags</h3>
+									<h3 class="mb-2 font-semibold text-lg">
+										{t("oppaiOracleModal.generalTags")}
+									</h3>
 									<div class="flex flex-wrap gap-2">
 										<For each={Object.entries(res().general)}>
 											{([name, score]) => (

@@ -76,7 +76,7 @@ test("source media exposes mobile filters and touch selection", async ({
 			.getByText(E2E_SOURCE_NAME, { exact: true })
 			.first(),
 	).toBeVisible();
-	const resultCount = page.getByText(/^[\d,]+ items$/);
+	const resultCount = page.getByText(/^[\d,]+件$/);
 	await expect(resultCount).toHaveCount(1);
 	await expect(resultCount).toBeVisible();
 	const firstMedia = page.locator("[data-media-id]").first();
@@ -149,11 +149,11 @@ test("source media exposes mobile filters and touch selection", async ({
 		await expectTouchTarget(selectModeButton);
 	await selectModeButton.click();
 	const bulkToolbar = page.getByTestId("bulk-actions-bar");
-	await expect(bulkToolbar).toContainText("0 件選択中");
+	await expect(bulkToolbar).toContainText("0件選択中");
 	await expect(
 		bulkToolbar.getByRole("button", { name: "一括操作を実行", exact: true }),
 	).toBeDisabled();
-	await page.getByRole("button", { name: "解除", exact: true }).click();
+	await page.getByRole("button", { name: "選択を解除", exact: true }).click();
 	await expect(bulkToolbar).toBeHidden();
 	await expect(addMediaButton).toBeVisible();
 
@@ -161,10 +161,10 @@ test("source media exposes mobile filters and touch selection", async ({
 	const selectableMedia = page.locator("button[data-media-id]").first();
 	await expect(selectableMedia).toBeVisible();
 	await selectableMedia.click();
-	await expect(bulkToolbar).toContainText("1 件選択中");
+	await expect(bulkToolbar).toContainText("1件選択中");
 	await expect(addMediaButton).toBeVisible();
 	await expectInsideViewport(page, bulkToolbar);
-	await page.getByRole("button", { name: "解除", exact: true }).click();
+	await page.getByRole("button", { name: "選択を解除", exact: true }).click();
 	await expect(addMediaButton).toBeVisible();
 
 	const filterButton = page.getByRole("button", { name: /^検索フィルター、/ });
@@ -182,7 +182,7 @@ test("source media exposes mobile filters and touch selection", async ({
 	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
 	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
 	await expect(filterDialog).toBeHidden();
-	await expect(resultCount).toHaveText("1 items");
+	await expect(resultCount).toHaveText("1件");
 	await expect(
 		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
 	).toBeVisible();
@@ -246,7 +246,11 @@ test("media keyboard shortcuts match context menu hints @desktop-only", async ({
 	await expect(media).toHaveAttribute("aria-pressed", "true");
 	await expect(page.getByRole("menu")).toHaveCount(0);
 	await media.click({ button: "right" });
-	await page.keyboard.press("Enter");
+	const menu = page.getByRole("menu");
+	await expect(menu).toBeVisible();
+	// Exercise the menu-root shortcut; a focused item keeps its own native activation.
+	await menu.focus();
+	await menu.press("Enter");
 	await expect(page).toHaveURL(
 		new RegExp(`/sources/[^/]+/${E2E_PRIMARY_MEDIA_ID}$`),
 	);

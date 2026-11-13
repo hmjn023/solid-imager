@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { detectPlatform, formatForDisplay } from "@tanstack/solid-hotkeys";
 import { type Accessor, createSignal, type JSX, onMount } from "solid-js";
 
@@ -22,7 +23,8 @@ export function createShortcutDisplayPlatform(): Accessor<ShortcutPlatform> {
 export function ShortcutKbd(props: ShortcutKbdProps): JSX.Element {
 	const preferences = useShortcutPreferences();
 	const platform = createShortcutDisplayPlatform();
-	const disabledLabel = (): string => props.disabledLabel ?? "Disabled";
+	const disabledLabel = (): string =>
+		props.disabledLabel ?? t("shortcutKbd.disabled");
 	const binding = (): ShortcutBinding => {
 		if (props.binding !== undefined) {
 			return props.binding;

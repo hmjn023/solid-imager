@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	createEffect,
 	createMemo,
@@ -307,7 +308,7 @@ export function MediaViewer(props: MediaViewerProps) {
 						<Show
 							fallback={
 								<div class="flex h-full max-h-full w-full items-center justify-center bg-foreground text-background">
-									Video preview unavailable
+									{t("mediaViewer.videoPreviewUnavailable")}
 								</div>
 							}
 							when={mediaUrl()}
@@ -320,7 +321,7 @@ export function MediaViewer(props: MediaViewerProps) {
 							keyed
 							fallback={
 								<div class="bg-foreground px-8 py-6 text-background">
-									Audio preview unavailable
+									{t("mediaViewer.audioPreviewUnavailable")}
 								</div>
 							}
 							when={mediaUrl()}
@@ -341,7 +342,9 @@ export function MediaViewer(props: MediaViewerProps) {
 						>
 							{(url) => (
 								<button
-									aria-label={`Open ${props.fileName} image viewer`}
+									aria-label={t("mediaViewer.openValueImageViewer", {
+										value0: String(props.fileName),
+									})}
 									class="h-full w-full cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 									onClick={() => setIsViewerOpen(true)}
 									ref={(element) => {
@@ -381,11 +384,13 @@ export function MediaViewer(props: MediaViewerProps) {
 				>
 					<DialogTitle class="sr-only">{props.fileName}</DialogTitle>
 					<DialogDescription class="sr-only">
-						Use the zoom controls to zoom. Use the arrow keys, direction
-						buttons, or drag to pan the enlarged image.
+						{t("mediaViewer.useTheZoomControlsToZoomUseTheArrow")}
 					</DialogDescription>
 					<section
-						aria-label={`${props.fileName} viewer. Use arrow keys to pan the enlarged image.`}
+						aria-label={t(
+							"mediaViewer.valueViewerUseArrowKeysToPanTheEnlarged",
+							{ value0: String(props.fileName) },
+						)}
 						class="relative flex h-full min-h-0 w-full items-center justify-center overflow-hidden bg-card outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring media-viewer-stage"
 						classList={{
 							"cursor-grabbing": isPanning(),
@@ -423,7 +428,10 @@ export function MediaViewer(props: MediaViewerProps) {
 						}}
 					>
 						<button
-							aria-label={`Pan ${props.fileName}. Use arrow keys to move the enlarged image.`}
+							aria-label={t(
+								"mediaViewer.panValueUseArrowKeysToMoveTheEnlarged",
+								{ value0: String(props.fileName) },
+							)}
 							class="absolute inset-0 z-10 h-full w-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
 							data-media-viewer-pan-handle
 							onKeyDown={handlePanKeyDown}
@@ -457,18 +465,20 @@ export function MediaViewer(props: MediaViewerProps) {
 							)}
 						</Show>
 						<fieldset
-							aria-label="Image controls"
+							aria-label={t("mediaViewer.imageControls")}
 							class="absolute right-3 bottom-3 z-20 m-0 flex min-w-0 max-w-full flex-col items-end gap-2 border-0 p-0"
 							data-media-viewer-controls
 						>
 							<fieldset
-								aria-label="Image pan controls"
+								aria-label={t("mediaViewer.imagePanControls")}
 								class="m-0 flex min-w-0 items-center gap-0.5 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
 							>
 								<For each={PAN_DIRECTIONS}>
 									{(direction) => (
 										<Button
-											aria-label={`Pan image ${direction.name}`}
+											aria-label={t("mediaViewer.panImageValue", {
+												value0: String(direction.name),
+											})}
 											class="size-11 p-0 sm:size-8"
 											disabled={zoom() <= 1}
 											onClick={() => panImage(direction)}
@@ -482,12 +492,12 @@ export function MediaViewer(props: MediaViewerProps) {
 								</For>
 							</fieldset>
 							<div
-								aria-label="Image zoom controls"
+								aria-label={t("mediaViewer.imageZoomControls")}
 								class="flex items-center gap-0.5 rounded-lg border border-border bg-background/95 p-1 shadow-lg backdrop-blur"
 								role="toolbar"
 							>
 								<Button
-									aria-label="Zoom out"
+									aria-label={t("mediaViewer.zoomOut")}
 									class="size-8 p-0"
 									disabled={zoom() <= 1}
 									onClick={() => setZoomAroundPoint(zoom() / 1.25)}
@@ -497,7 +507,7 @@ export function MediaViewer(props: MediaViewerProps) {
 									<Minus aria-hidden="true" size={15} />
 								</Button>
 								<button
-									aria-label="Reset zoom to fit"
+									aria-label={t("mediaViewer.resetZoomToFit")}
 									class="flex h-8 min-w-14 items-center justify-center gap-1 rounded-md px-1.5 font-medium text-label-sm tabular-nums hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 									onClick={resetView}
 									type="button"
@@ -506,7 +516,7 @@ export function MediaViewer(props: MediaViewerProps) {
 									{zoomPercent()}%
 								</button>
 								<Button
-									aria-label="Zoom in"
+									aria-label={t("mediaViewer.zoomIn")}
 									class="size-8 p-0"
 									disabled={zoom() >= 8}
 									onClick={() => setZoomAroundPoint(zoom() * 1.25)}
@@ -518,7 +528,9 @@ export function MediaViewer(props: MediaViewerProps) {
 								<span aria-hidden="true" class="mx-0.5 h-5 w-px bg-border" />
 								<Button
 									aria-label={
-										isFullscreen() ? "Exit fullscreen" : "Enter fullscreen"
+										isFullscreen()
+											? t("mediaViewer.exitFullscreen")
+											: t("mediaViewer.enterFullscreen")
 									}
 									class="size-8 p-0"
 									onClick={() => void toggleFullscreen()}
@@ -530,7 +542,10 @@ export function MediaViewer(props: MediaViewerProps) {
 							</div>
 						</fieldset>
 						<span aria-live="polite" class="sr-only">
-							Zoom {zoomPercent()} percent. {panAnnouncement()}
+							{t("mediaViewer.zoomValuePercentValue", {
+								value0: String(zoomPercent()),
+								value1: String(panAnnouncement()),
+							})}
 						</span>
 					</section>
 				</DialogContent>

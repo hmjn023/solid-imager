@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type {
 	MediaSafe,
 	RelatedMediaReason,
@@ -40,26 +41,38 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 
 const reasonLabels: Record<RelatedMediaReason, string> = {
-	similar: "似た画像",
-	character: "同じキャラ",
-	ip: "同じIP",
-	tag: "タグが近い",
+	similar: t("relatedMedia.similarImages"),
+	character: t("relatedMedia.sameCharacter"),
+	ip: t("relatedMedia.sameIP"),
+	tag: t("relatedMedia.similarTags"),
 };
 
 const categories = [
-	{ value: "all", label: "おすすめ", empty: "関連メディアがまだありません" },
+	{
+		value: "all",
+		label: t("relatedMedia.recommended"),
+		empty: t("relatedMedia.noRelatedMediaYet"),
+	},
 	{
 		value: "similar",
-		label: "似た画像",
-		empty: "似た画像が見つかりませんでした",
+		label: t("relatedMedia.similarImages"),
+		empty: t("relatedMedia.noSimilarImagesFound"),
 	},
 	{
 		value: "character",
-		label: "同じキャラ",
-		empty: "同じキャラの画像がありません",
+		label: t("relatedMedia.sameCharacter"),
+		empty: t("relatedMedia.noImagesWithTheSameCharacter"),
 	},
-	{ value: "ip", label: "同じIP", empty: "同じIPの画像がありません" },
-	{ value: "tag", label: "タグが近い", empty: "タグが近い画像がありません" },
+	{
+		value: "ip",
+		label: t("relatedMedia.sameIP"),
+		empty: t("relatedMedia.noImagesWithTheSameIP"),
+	},
+	{
+		value: "tag",
+		label: t("relatedMedia.similarTags"),
+		empty: t("relatedMedia.noImagesWithSimilarTags"),
+	},
 ] as const;
 
 export type RelatedMediaProps = {
@@ -74,7 +87,7 @@ export type RelatedMediaProps = {
 
 function RelatedMediaPending() {
 	return (
-		<LoadingRegion label="関連メディアを読み込んでいます...">
+		<LoadingRegion label={t("relatedMedia.loadingRelatedMedia")}>
 			<MediaGridSkeleton aspectRatio="4/3" count={12} />
 		</LoadingRegion>
 	);
@@ -84,10 +97,10 @@ function RelatedMediaPending() {
 export function RelatedMedia(props: RelatedMediaProps) {
 	return (
 		<section
-			aria-label="関連メディア"
+			aria-label={t("relatedMedia.relatedMedia")}
 			class="@container min-w-0 space-y-3 border-border border-t p-3 sm:p-4"
 		>
-			<h2 class="font-semibold text-base">関連メディア</h2>
+			<h2 class="font-semibold text-base">{t("relatedMedia.relatedMedia")}</h2>
 			<Suspense fallback={<RelatedMediaPending />}>
 				<RelatedMediaContent {...props} />
 			</Suspense>
@@ -181,13 +194,15 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 			props.media.mediaType !== "image" &&
 			props.media.mediaType !== "video"
 		) {
-			return "見た目が似ている候補は画像と動画で利用できます。";
+			return t("relatedMedia.visualSimilarityIsAvailableForImagesAndVideo");
 		}
 		if (query.data?.similarityStatus === "not_indexed") {
-			return "似た画像のおすすめには、このメディアの画像検索インデックスが必要です。操作メニューやManagerで作成できます。";
+			return t(
+				"relatedMedia.similarRecommendationsRequireAnImageSearchIndexForThis",
+			);
 		}
 		if (query.data?.similarityStatus === "unavailable") {
-			return "似た画像を取得できませんでした。キャラ・IP・タグの候補は引き続き表示できます。";
+			return t("relatedMedia.couldNotLoadSimilarImagesCharacterIPAndTag");
 		}
 		return undefined;
 	};
@@ -199,27 +214,31 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 			</Match>
 			<Match when={state().phase === "offline"}>
 				<OfflineState
-					description="接続が戻ったら関連メディアを再取得できます。"
+					description={t(
+						"relatedMedia.reloadRelatedMediaWhenYourConnectionReturns",
+					)}
 					onRetry={retry}
-					retryLabel="関連メディアを再取得"
+					retryLabel={t("relatedMedia.reloadRelatedMedia")}
 				/>
 			</Match>
 			<Match when={state().phase === "error"}>
 				<ErrorState
-					description="時間をおいて、もう一度お試しください。"
+					description={t("relatedMedia.pleaseTryAgainLater")}
 					onRetry={retry}
-					retryLabel="関連メディアを再取得"
-					title="関連メディアを読み込めませんでした"
+					retryLabel={t("relatedMedia.reloadRelatedMedia")}
+					title={t("relatedMedia.couldNotLoadRelatedMedia")}
 				/>
 			</Match>
 			<Match when={state().data !== undefined}>
 				<div class="space-y-3">
 					<div class="flex items-center justify-between gap-3">
 						<p class="text-muted-foreground text-xs">
-							画像の雰囲気・キャラ・IP・タグからおすすめ
+							{t(
+								"relatedMedia.recommendationsByVisualStyleCharactersIPsAndTags",
+							)}
 						</p>
 						<Button
-							aria-label="関連メディアを再取得"
+							aria-label={t("relatedMedia.reloadRelatedMedia")}
 							aria-busy={query.isFetching || isRefreshing()}
 							class="min-h-11 shrink-0 sm:min-h-9"
 							disabled={query.isFetching || isRefreshing()}
@@ -227,38 +246,45 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 							size="sm"
 							variant="ghost"
 						>
-							別のおすすめ
+							{t("relatedMedia.otherRecommendations")}
 						</Button>
 					</div>
 					<QueryStatus
-						errorLabel="関連メディアを更新できませんでした"
+						errorLabel={t("relatedMedia.couldNotRefreshRelatedMedia")}
 						fetchState={
 							isRefreshing() ? "background-fetching" : state().fetchState
 						}
 						hasData
 						hasError={query.isError}
 						hideWhenIdle
-						offlineLabel="オフラインのため保存済みの候補を表示しています"
-						updatingLabel="関連メディアを更新しています..."
+						offlineLabel={t("relatedMedia.offlineShowingSavedRecommendations")}
+						updatingLabel={t("relatedMedia.updatingRelatedMedia")}
 					/>
 					<Show when={activeAttempt()?.status === "error"}>
 						<ErrorState
-							description="前の候補を表示しています。もう一度取得できます。"
+							description={t(
+								"relatedMedia.showingPreviousRecommendationsYouCanReloadThem",
+							)}
 							onRetry={() => refresh(activeAttempt()?.seed)}
-							retryLabel="関連メディアを再取得"
-							title="関連メディアを更新できませんでした"
+							retryLabel={t("relatedMedia.reloadRelatedMedia")}
+							title={t("relatedMedia.couldNotRefreshRelatedMedia")}
 						/>
 					</Show>
 					<Show when={activeAttempt()?.status === "offline"}>
 						<OfflineState
-							description="前の候補を表示しています。接続が戻ったら再取得できます。"
+							description={t(
+								"relatedMedia.showingPreviousRecommendationsReloadThemWhenYourConnectionReturns",
+							)}
 							onRetry={() => refresh(activeAttempt()?.seed)}
-							retryLabel="関連メディアを再取得"
+							retryLabel={t("relatedMedia.reloadRelatedMedia")}
 						/>
 					</Show>
 					<Tabs defaultValue="all">
 						<div class="overflow-x-auto pb-1">
-							<TabsList aria-label="関連メディアの種類" class="max-w-none">
+							<TabsList
+								aria-label={t("relatedMedia.relatedMediaCategories")}
+								class="max-w-none"
+							>
 								<For each={categories}>
 									{(category) => (
 										<TabsTrigger

@@ -27,6 +27,7 @@ AI生成画像などを整理・検索・配信するメディア管理システ
 - **`packages/core`**: `@solid-imager/core` (ドメインモデル、Zodスキーマ、contract、リポジトリIF)
 - **`packages/application`**: `@solid-imager/application` (ユースケース・アプリケーションサービス)
 - **`packages/db`**: `@solid-imager/db` (Drizzleスキーマ、DBリポジトリ実装)
+- **`packages/i18n`**: `@solid-imager/i18n`（日本語・英語の文言辞書、翻訳キーと埋め込み引数の型）
 - **`packages/ui`**: `@solid-imager/ui` (Shared UI Components)
 - **`packages/client`**: `@solid-imager/client` (oRPC client factory)
 
@@ -54,6 +55,7 @@ AI生成画像などを整理・検索・配信するメディア管理システ
 - DB組み立ては `@solid-imager/db` の `createRepositories`、テーブルは `@solid-imager/db/schema`。
 - Web/TauriのTailwindは `@solid-imager/ui/tailwind-preset` を使い、共有部品のクラス探索範囲は `theme.css` で指定する。
 - `bun run lint:boundaries` で設定・スクリプト・テストを含む境界越え・未公開入口・未宣言workspace依存を検出する。
+- 固定の画面文言は `@solid-imager/i18n` の `t` と日英辞書を使う。共通操作は `actions.*` を再利用し、文を連結せず埋め込み引数で表す。UI・通知・アクセシブル名・フォーム検証に直書きを追加すると `bun run lint:ui-text` が失敗する。技術的な識別子、ユーザーデータ、サーバーからの詳細は翻訳しない。新しい表示先を導入する場合は検査ルールと回帰ケースも追加する。運用は [文言と表示言語](docs/development.md#文言と表示言語) を参照。
 - 状態と画面の入口を分ける（例: `@solid-imager/ui/search/state`、`@solid-imager/ui/screens/jobs`）。状態だけの利用で画面を読み込ませない。
 
 ### アーキテクチャルール (Clean Architecture)

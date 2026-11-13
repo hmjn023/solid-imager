@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { McpConfig, McpToolInfo } from "@solid-imager/core/config";
 import { createQuery } from "@tanstack/solid-query";
 import { createSignal, For, Show } from "solid-js";
@@ -37,34 +38,37 @@ export function McpPublicationSettings(props: Props) {
 	};
 	return (
 		<fieldset class="min-w-0 space-y-4">
-			<legend class="font-semibold">MCP ツールの公開設定</legend>
+			<legend class="font-semibold">
+				{t("mcpPublicationSettings.mCPToolAvailability")}
+			</legend>
 			<p class="text-sm text-muted-foreground">
-				外部クライアント向けの HTTP MCP と、ブラウザーの WebMCP
-				に公開する操作を選択します。
+				{t(
+					"mcpPublicationSettings.chooseWhichOperationsToExposeThroughHTTPMCPFor",
+				)}
 			</p>
 			<Input
-				aria-label="ツールを絞り込む"
-				placeholder="ツール名・説明で絞り込み"
+				aria-label={t("mcpPublicationSettings.filterTools")}
+				placeholder={t("mcpPublicationSettings.filterByToolNameOrDescription")}
 				value={filter()}
 				onInput={(e) => setFilter(e.currentTarget.value)}
 			/>
 			<Show when={catalog.isPending}>
-				<output>公開候補を読み込み中…</output>
+				<output>{t("mcpPublicationSettings.loadingAvailableTools")}</output>
 			</Show>
 			<Show when={catalog.isError}>
 				<p role="alert">
-					公開候補を取得できませんでした。{" "}
+					{t("mcpPublicationSettings.couldNotLoadAvailableTools")}{" "}
 					<Button
 						type="button"
 						variant="outline"
 						onClick={() => void catalog.refetch()}
 					>
-						再試行
+						{t("actions.retry")}
 					</Button>
 				</p>
 			</Show>
 			<Show when={catalog.isSuccess && matches().length === 0}>
-				<p>該当するツールはありません。</p>
+				<p>{t("mcpPublicationSettings.noMatchingTools")}</p>
 			</Show>
 			<For each={matches()}>
 				{(tool) => (
@@ -89,7 +93,9 @@ export function McpPublicationSettings(props: Props) {
 									>
 										<CheckboxControl />
 										<CheckboxLabel>
-											{surface === "http" ? "HTTP MCP" : "WebMCP"}
+											{surface === "http"
+												? t("mcpPublicationSettings.hTTPMCP")
+												: t("mcpPublicationSettings.webMCP")}
 											<span class="sr-only"> {tool.name}</span>
 										</CheckboxLabel>
 									</Checkbox>

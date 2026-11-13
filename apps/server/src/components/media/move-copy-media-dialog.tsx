@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { MoveCopyMediaDialog as SharedMoveCopyMediaDialog } from "@solid-imager/ui/move-copy-media-dialog";
 import { createResource } from "solid-js";
@@ -26,7 +27,7 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 	return (
 		<SharedMoveCopyMediaDialog
 			currentSourceId={props.currentSourceId}
-			error={sources.error ? "Failed to load sources." : null}
+			error={sources.error ? t("feedback.sourcesLoadFailed") : null}
 			isLoading={sources.loading}
 			mode={props.mode}
 			onConfirm={props.onConfirm}

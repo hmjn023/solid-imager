@@ -10,7 +10,14 @@ import {
 import { expect, test } from "./support/test";
 
 async function listSourcesFromScalar(page: Page, restPrefix: string) {
-	await page.getByRole("link", { name: "Media Tools", exact: true }).click();
+	// Scalar renders operations lazily; open the requested group and operation first.
+	await page
+		.getByRole("button", { name: "Open Group - Media Tools", exact: true })
+		.click();
+	await page
+		.getByRole("complementary")
+		.locator('a[href$="/POST/tools/list_sources"]')
+		.click();
 	await page
 		.getByRole("button", { name: /Test Request.*POST \/tools\/list_sources/i })
 		.click();
@@ -40,7 +47,8 @@ test("Scalar sends its documented request to the local REST API", async ({
 }) => {
 	await page.goto("/about");
 	await page
-		.getByRole("link", { name: "API documentation", exact: true })
+		.getByRole("main")
+		.getByRole("link", { name: "APIドキュメント", exact: true })
 		.click();
 	await expect(page).toHaveURL(/\/docs\/scalar\/?(?:#.*)?$/);
 	await listSourcesFromScalar(page, "/api/rest");
