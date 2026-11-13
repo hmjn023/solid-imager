@@ -1,3 +1,5 @@
+import { MediaGroups } from "@solid-imager/ui/media-groups";
+import { client } from "~/infrastructure/api-clients/orpc-client";
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
 import type { MediaDetails } from "@solid-imager/core/media";
 import {
@@ -71,13 +73,16 @@ function MediaContent(props: {
 			)}
 			renderMediaViewer={(media) => <ObservedMediaViewer media={media} />}
 			renderRelatedMedia={(media) => (
-				<RelatedMedia
-					media={media}
-					queryOptions={relatedMediaQueryOptions}
-					renderThumbnail={(thumbnailProps) => (
-						<ThumbnailImage {...thumbnailProps} />
-					)}
-				/>
+				<>
+					<MediaGroups mediaId={media.id} client={client.mediaGroups} />
+					<RelatedMedia
+						media={media}
+						queryOptions={relatedMediaQueryOptions}
+						renderThumbnail={(thumbnailProps) => (
+							<ThumbnailImage {...thumbnailProps} />
+						)}
+					/>
+				</>
 			)}
 			transport={createServerTransport(props.mediaSourceId)}
 		/>

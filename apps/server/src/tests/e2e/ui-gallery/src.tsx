@@ -1,3 +1,4 @@
+import { MediaGroupsGallery } from "./media-groups-gallery";
 import type { Media } from "@solid-imager/core/media";
 import {
 	AlertDialog,
@@ -548,7 +549,9 @@ const showVideoPlayer = new URLSearchParams(window.location.search).has(
 const showMediaAi = new URLSearchParams(window.location.search).has("media-ai");
 render(
 	() =>
-		showMediaAi ? (
+		new URLSearchParams(window.location.search).has("media-groups") ? (
+			<MediaGroupsGallery />
+		) : showMediaAi ? (
 			<MediaAiGallery />
 		) : showVideoPlayer ? (
 			<VideoPlayerGallery />

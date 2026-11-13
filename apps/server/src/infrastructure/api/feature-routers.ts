@@ -1,4 +1,5 @@
 import "zod/compile";
+import { mediaGroupsRouter } from "./routers/media-groups-router";
 
 import { aiRouter } from "~/infrastructure/api/routers/ai-router";
 import { authorsRouter } from "~/infrastructure/api/routers/authors-router";
@@ -23,6 +24,7 @@ import { utilsRouter } from "~/infrastructure/api/routers/utils-router";
 
 /** Feature procedures shared by the API and the MCP tool catalog. */
 export const featureRouters = {
+	mediaGroups: mediaGroupsRouter,
 	viewer: viewerRouter,
 	danbooru: danbooruRouter,
 	sources: sourcesRouter,

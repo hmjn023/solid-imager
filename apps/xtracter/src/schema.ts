@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { ugoiraMetadataSchema } from "@solid-imager/core/media";
+import {
+	sourcePostSchema,
+	ugoiraMetadataSchema,
+} from "@solid-imager/core/media";
 import {
 	authorPlatformSchema,
 	submitAuthorAccountVerificationSchema,
@@ -22,6 +25,7 @@ export const authorSchema = z.object({
 export type Author = z.infer<typeof authorSchema>;
 
 export const downloadItemSchema = z.object({
+	sourcePost: sourcePostSchema.optional(),
 	// Required for download
 	targetUrl: z.string(),
 

@@ -1,3 +1,4 @@
+import { sourcePostFromUrls } from "@solid-imager/core/media";
 import type { Author, DownloadItem } from "@ext/schema";
 import { querySelectorAllTyped, querySelectorTyped } from "../utils/dom-utils";
 
@@ -255,6 +256,10 @@ export function extractMetadata(
 
 	return {
 		targetUrl,
+		sourcePost: sourcePostFromUrls([
+			...(mediaLink ? [mediaLink.href] : []),
+			tweetUrl,
+		]),
 		sourceUrls,
 		description: tweetText,
 		createdAt: timestamp,

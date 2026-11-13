@@ -3,6 +3,7 @@ import { logger } from "~/infrastructure/logger";
 import { getExecutor } from "./executor";
 
 export const {
+	mediaGroup: MediaGroupRepository,
 	author: AuthorRepository,
 	category: DrizzleCategoryRepository,
 	character: DrizzleCharacterRepository,

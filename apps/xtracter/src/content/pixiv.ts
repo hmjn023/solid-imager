@@ -151,7 +151,10 @@ export function parsePixivMetadata(
 		)
 	)
 		return null;
-	return pages.data.body.map(({ urls }) => buildMetadata(body, urls.original));
+	return pages.data.body.map(({ urls }, position) => ({
+		...buildMetadata(body, urls.original),
+		sourcePost: { platform: "pixiv" as const, postId: body.id, position },
+	}));
 }
 
 function buildMetadata(

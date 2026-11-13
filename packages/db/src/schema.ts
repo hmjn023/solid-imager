@@ -1627,3 +1627,48 @@ export type MediaSource = InferSelectModel<typeof mediaSources>;
 export type Media = InferSelectModel<typeof medias>;
 export type NewMedia = InferInsertModel<typeof medias>;
 export type NewJob = InferInsertModel<typeof jobs>;
+
+/** Stable groups survive deletion of any individual page. Source identity is independent of semantic groups. */
+export const mediaGroups = pgTable(
+	"media_groups",
+	{
+		id: uuid("id")
+			.primaryKey()
+			.default(sql`uuidv7()`),
+		title: text("title").notNull(),
+		kind: text("kind", { enum: ["post", "comic", "variant"] }).notNull(),
+		sourceKey: text("source_key").unique(),
+	},
+	(t) => [
+		check("media_group_kind", sql`${t.kind} in ('post', 'comic', 'variant')`),
+	],
+);
+export const mediaGroupMembers = pgTable(
+	"media_group_members",
+	{
+		groupId: uuid("group_id")
+			.notNull()
+			.references(() => mediaGroups.id, { onDelete: "cascade" }),
+		mediaId: uuid("media_id")
+			.notNull()
+			.references(() => medias.id, { onDelete: "cascade" }),
+		position: integer("position"),
+		state: text("state", {
+			enum: ["candidate", "tentative", "confirmed", "rejected"],
+		}).notNull(),
+		origin: text("origin", { enum: ["manual", "source"] }).notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.groupId, t.mediaId] }),
+		index("media_group_member_media").on(t.mediaId),
+		check(
+			"media_group_position",
+			sql`${t.position} is null or ${t.position} >= 0`,
+		),
+		check(
+			"media_group_state",
+			sql`${t.state} in ('candidate', 'tentative', 'confirmed', 'rejected')`,
+		),
+		check("media_group_origin", sql`${t.origin} in ('manual', 'source')`),
+	],
+);

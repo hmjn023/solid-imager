@@ -4,6 +4,7 @@
  */
 
 import { z } from "zod";
+import { sourcePostSchema } from "./groups";
 import { authorSchema, newAuthorSchema } from "../authors/schemas";
 import { mediaSortSchema } from "../search/sort";
 import { searchGroupSchema } from "../search/criteria";
@@ -384,6 +385,7 @@ export type MediaDetails = z.infer<typeof mediaDetailsSchema>;
  * This is the common interface used by MediaProcessingService.
  */
 export const mediaMetadataContextSchema = z.object({
+	sourcePost: sourcePostSchema.optional(),
 	description: z.string().nullable().optional(),
 	createdAt: z
 		.union([z.literal("").transform(() => undefined), z.coerce.date()])

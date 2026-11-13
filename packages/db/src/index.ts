@@ -1,3 +1,4 @@
+import { createMediaGroupRepository } from "./repositories/media-group-repository";
 import { createAuthorRepository } from "./repositories/author-repository";
 import { createCategoryRepository } from "./repositories/category-repository";
 import { createCharacterRepository } from "./repositories/character-repository";
@@ -31,6 +32,7 @@ export function createRepositories(
 	const tag = createTagRepository(getExecutor);
 	return {
 		author,
+		mediaGroup: createMediaGroupRepository(getExecutor),
 		category: createCategoryRepository(getExecutor),
 		character: createCharacterRepository(getExecutor),
 		collection: createCollectionRepository(getExecutor),

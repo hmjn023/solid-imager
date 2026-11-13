@@ -98,6 +98,289 @@
   ],
   "openapi": "3.1.1",
   "paths": {
+    "/mediaGroups/list": {
+      "post": {
+        "operationId": "mediaGroups.list",
+        "summary": "画像の関係グループを検索",
+        "description": "mediaIdで所属グループ、queryで名前を検索します。却下済みの所属も編集用に返します。最大100グループ。",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "query": {
+                    "type": "string",
+                    "maxLength": 200
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "post",
+                          "comic",
+                          "variant"
+                        ]
+                      },
+                      "sourceKey": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "members": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "mediaId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "fileName": {
+                              "type": "string"
+                            },
+                            "mediaSourceId": {
+                              "type": "string",
+                              "format": "uuid",
+                              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                            },
+                            "position": {
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "state": {
+                              "type": "string",
+                              "enum": [
+                                "candidate",
+                                "tentative",
+                                "confirmed",
+                                "rejected"
+                              ]
+                            },
+                            "origin": {
+                              "type": "string",
+                              "enum": [
+                                "manual",
+                                "source"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "mediaId",
+                            "fileName",
+                            "mediaSourceId",
+                            "position",
+                            "state",
+                            "origin"
+                          ],
+                          "additionalProperties": false
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "kind",
+                      "sourceKey",
+                      "members"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mediaGroups/create": {
+      "post": {
+        "operationId": "mediaGroups.create",
+        "summary": "画像の関係グループを作成",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "post",
+                      "comic",
+                      "variant"
+                    ]
+                  },
+                  "mediaIds": {
+                    "minItems": 1,
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "state": {
+                    "default": "tentative",
+                    "type": "string",
+                    "enum": [
+                      "candidate",
+                      "tentative",
+                      "confirmed",
+                      "rejected"
+                    ]
+                  }
+                },
+                "required": [
+                  "title",
+                  "kind",
+                  "mediaIds"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/mediaGroups/setMember": {
+      "post": {
+        "operationId": "mediaGroups.setMember",
+        "summary": "画像の所属・状態・順番を保存",
+        "description": "rejectedで解除を記録します。自動取り込みは手動の判断を上書きしません。",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "groupId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "mediaId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "candidate",
+                      "tentative",
+                      "confirmed",
+                      "rejected"
+                    ]
+                  },
+                  "position": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "groupId",
+                  "mediaId",
+                  "state",
+                  "position"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/viewer/search": {
       "post": {
         "operationId": "viewer.search",
@@ -13449,6 +13732,40 @@
                     "items": {
                       "type": "object",
                       "properties": {
+                        "sourcePost": {
+                          "type": "object",
+                          "properties": {
+                            "platform": {
+                              "type": "string",
+                              "enum": [
+                                "twitter",
+                                "pixiv",
+                                "fanbox"
+                              ]
+                            },
+                            "postId": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "position": {
+                              "default": null,
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 100000
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "platform",
+                            "postId"
+                          ]
+                        },
                         "description": {
                           "type": [
                             "string",
@@ -15321,6 +15638,40 @@
                     "items": {
                       "type": "object",
                       "properties": {
+                        "sourcePost": {
+                          "type": "object",
+                          "properties": {
+                            "platform": {
+                              "type": "string",
+                              "enum": [
+                                "twitter",
+                                "pixiv",
+                                "fanbox"
+                              ]
+                            },
+                            "postId": {
+                              "type": "string",
+                              "pattern": "^\\d+$"
+                            },
+                            "position": {
+                              "default": null,
+                              "anyOf": [
+                                {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 100000
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "platform",
+                            "postId"
+                          ]
+                        },
                         "description": {
                           "type": [
                             "string",
@@ -15741,6 +16092,42 @@
                       "item": {
                         "type": "object",
                         "properties": {
+                          "sourcePost": {
+                            "type": "object",
+                            "properties": {
+                              "platform": {
+                                "type": "string",
+                                "enum": [
+                                  "twitter",
+                                  "pixiv",
+                                  "fanbox"
+                                ]
+                              },
+                              "postId": {
+                                "type": "string",
+                                "pattern": "^\\d+$"
+                              },
+                              "position": {
+                                "default": null,
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 100000
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "platform",
+                              "postId",
+                              "position"
+                            ],
+                            "additionalProperties": false
+                          },
                           "description": {
                             "type": [
                               "string",
