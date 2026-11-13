@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Author } from "@solid-imager/core/authors";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
@@ -122,7 +123,12 @@ function FilterSection<T>(props: {
 }
 
 const getAuthorLabel = (author: Author) =>
-	author.accountId ? `${author.name}：${author.accountId}` : author.name;
+	author.accountId
+		? t("searchComposerUtils.valueValue", {
+				value0: String(author.name),
+				value1: String(author.accountId),
+			})
+		: author.name;
 
 export function SearchFilters(props: SearchFiltersProps) {
 	const addTag = (tagName: string) => {
@@ -154,10 +160,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 	return (
 		<div class={cn("space-y-4", props.className)}>
 			<TextField class="space-y-2">
-				<TextFieldLabel>ファイル名検索</TextFieldLabel>
+				<TextFieldLabel>{t("searchFilters.filenameSearch")}</TextFieldLabel>
 				<TextFieldInput
 					onInput={(e) => props.setState("searchQuery", e.currentTarget.value)}
-					placeholder="ファイル名を入力..."
+					placeholder={t("searchFilters.enterAFilename")}
 					type="text"
 					value={props.state.searchQuery}
 				/>
@@ -169,7 +175,7 @@ export function SearchFilters(props: SearchFiltersProps) {
 				getItemKey={(ip) => ip.name}
 				getItemLabel={(ip) => ip.name}
 				items={props.ips}
-				label="IP"
+				label={t("searchFilters.iP")}
 				onRemove={(name) =>
 					props.setState(
 						"selectedIps",
@@ -184,7 +190,7 @@ export function SearchFilters(props: SearchFiltersProps) {
 						]);
 					}
 				}}
-				placeholder="IPを検索..."
+				placeholder={t("searchFilters.searchIPs")}
 				selectedItems={props.state.selectedIps}
 			/>
 
@@ -194,7 +200,7 @@ export function SearchFilters(props: SearchFiltersProps) {
 				getItemKey={(char) => char.name}
 				getItemLabel={(char) => char.name}
 				items={props.characters}
-				label="キャラクター"
+				label={t("labels.characters")}
 				onRemove={(name) =>
 					props.setState(
 						"selectedCharacters",
@@ -209,7 +215,7 @@ export function SearchFilters(props: SearchFiltersProps) {
 						]);
 					}
 				}}
-				placeholder="キャラクターを検索..."
+				placeholder={t("searchFilters.searchCharacters")}
 				selectedItems={props.state.selectedCharacters}
 			/>
 
@@ -218,10 +224,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 				getItemKey={(tag) => tag.name}
 				getItemLabel={(tag) => tag.name}
 				items={props.tags}
-				label="タグ (すべて含む)"
+				label={t("searchFilters.tagsMatchAll")}
 				onRemove={(id) => removeTag(id)}
 				onSelect={(tag) => addTag(tag.name)}
-				placeholder="タグを検索..."
+				placeholder={t("searchFilters.searchTags")}
 				selectedItems={props.state.selectedTags}
 			/>
 
@@ -230,10 +236,10 @@ export function SearchFilters(props: SearchFiltersProps) {
 				getItemKey={(tag) => tag.name}
 				getItemLabel={(tag) => tag.name}
 				items={props.tags}
-				label="除外タグ"
+				label={t("searchFilters.excludedTags")}
 				onRemove={(id) => removeExcludeTag(id)}
 				onSelect={(tag) => addExcludeTag(tag.name)}
-				placeholder="除外タグを検索..."
+				placeholder={t("searchFilters.searchExcludedTags")}
 				selectedItems={props.state.excludeTags}
 			/>
 
@@ -243,7 +249,7 @@ export function SearchFilters(props: SearchFiltersProps) {
 				getItemLabel={getAuthorLabel}
 				getSelectedItemValue={(author) => author.name}
 				items={props.authors}
-				label="作者"
+				label={t("labels.authors")}
 				onRemove={(name) =>
 					props.setState(
 						"selectedAuthors",
@@ -258,7 +264,7 @@ export function SearchFilters(props: SearchFiltersProps) {
 						]);
 					}
 				}}
-				placeholder="作者・IDを検索..."
+				placeholder={t("searchFilters.searchAuthorsOrIDs")}
 				selectedItems={props.state.selectedAuthors}
 			/>
 
@@ -268,7 +274,7 @@ export function SearchFilters(props: SearchFiltersProps) {
 				getItemKey={(project) => project.id}
 				getItemLabel={(project) => project.name}
 				items={props.projects}
-				label="プロジェクト"
+				label={t("labels.projects")}
 				onRemove={(name) =>
 					props.setState(
 						"selectedProjects",
@@ -283,13 +289,13 @@ export function SearchFilters(props: SearchFiltersProps) {
 						]);
 					}
 				}}
-				placeholder="プロジェクトを検索..."
+				placeholder={t("searchFilters.searchProjects")}
 				selectedItems={props.state.selectedProjects}
 			/>
 
 			{props.onSearch && (
 				<Button class="w-full" onClick={props.onSearch}>
-					検索
+					{t("actions.search")}
 				</Button>
 			)}
 		</div>

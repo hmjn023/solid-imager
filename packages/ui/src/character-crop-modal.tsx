@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { MediaDetails } from "@solid-imager/core/media";
 import type { DetectAndCropResponse } from "@solid-imager/core/tagging";
 import Scan from "lucide-solid/icons/scan";
@@ -47,7 +48,11 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 			const data = await props.fetchCrops(props.media.id, untrack(transparent));
 			setResult(data);
 		} catch (err) {
-			setError(err instanceof Error ? err.message : "Unknown error occurred");
+			setError(
+				err instanceof Error
+					? err.message
+					: t("characterCropModal.unknownErrorOccurred"),
+			);
 		} finally {
 			setIsLoading(false);
 		}
@@ -69,11 +74,10 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 				<DialogHeader>
 					<DialogTitle class="flex items-center gap-2">
 						<Scan class="size-4 text-info-foreground" />
-						Detect &amp; Crop Characters (Experimental)
+						{t("characterCropModal.detectCropCharactersExperimental")}
 					</DialogTitle>
 					<DialogDescription>
-						Detect persons in the image using dghs-imgutils-rs and preview the
-						cropped regions. No data is saved to the server.
+						{t("characterCropModal.detectPersonsInTheImageUsingDghsImgutilsRs")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -81,7 +85,9 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 					<Checkbox checked={transparent()} onChange={handleTransparentToggle}>
 						<CheckboxControl class="h-4 w-4 rounded border-input bg-white text-primary shadow-sm" />
 						<CheckboxLabel class="cursor-pointer text-sm">
-							Transparent background (ISNetIS segmentation, slower)
+							{t(
+								"characterCropModal.transparentBackgroundISNetISSegmentationSlower",
+							)}
 						</CheckboxLabel>
 					</Checkbox>
 				</div>
@@ -92,15 +98,17 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 							<div class="h-10 w-10 animate-spin rounded-full border-4 border-info-foreground border-t-transparent" />
 							<span class="mt-4 font-medium text-muted-foreground text-sm">
 								{transparent()
-									? "Running person detection & segmentation..."
-									: "Running person detection and cropping..."}
+									? t("characterCropModal.runningPersonDetectionSegmentation")
+									: t("characterCropModal.runningPersonDetectionAndCropping")}
 							</span>
 						</div>
 					</Show>
 
 					<Show when={error()}>
 						<div class="rounded-md border border-error bg-error p-4 text-destructive">
-							<h4 class="font-semibold">Detection Error</h4>
+							<h4 class="font-semibold">
+								{t("characterCropModal.detectionError")}
+							</h4>
 							<p class="mt-1 text-sm">{error()}</p>
 						</div>
 					</Show>
@@ -110,7 +118,9 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 							fallback={
 								<div class="py-8 text-center text-muted-foreground">
 									<ScanFace class="inline-block size-12" />
-									<p class="mt-2">No persons detected in this image.</p>
+									<p class="mt-2">
+										{t("characterCropModal.noPersonsDetectedInThisImage")}
+									</p>
 								</div>
 							}
 							when={(result()?.detections.length ?? 0) > 0}
@@ -127,7 +137,10 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 												}}
 											>
 												<img
-													alt={`${det.label} ${det.index + 1}`}
+													alt={t("characterCropModal.valueValue", {
+														value0: String(det.label),
+														value1: String(det.index + 1),
+													})}
 													class="mx-auto block max-h-64 object-contain"
 													src={`data:image/${det.format};base64,${det.imageBase64}`}
 												/>
@@ -145,7 +158,10 @@ export function CharacterCropModal(props: CharacterCropModalProps) {
 													</span>
 												</div>
 												<div class="text-muted-foreground text-xs">
-													{det.width} x {det.height}
+													{t("characterCropModal.valueXValue", {
+														value0: String(det.width),
+														value1: String(det.height),
+													})}
 												</div>
 											</div>
 										</div>

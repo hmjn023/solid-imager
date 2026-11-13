@@ -1,3 +1,5 @@
+import { configureClientValidationLocale } from "@solid-imager/ui/validation-locale";
+import { initializeBrowserLocale, t } from "@solid-imager/i18n";
 import { WorkspaceSetupFrame } from "@solid-imager/ui/app-shell";
 import { BootstrapStatusScreen } from "@solid-imager/ui/router-status";
 import { RouterProvider } from "@tanstack/solid-router";
@@ -15,10 +17,12 @@ import {
 import { configureApiBaseUrl } from "./orpc-client";
 import { createAppRouter } from "./router";
 
+configureClientValidationLocale(initializeBrowserLocale());
+
 const root = document.getElementById("app");
 
 if (!root) {
-	throw new Error("Root container not found.");
+	throw new Error(t("main.rootContainerNotFound"));
 }
 
 const router = createAppRouter();
@@ -32,7 +36,7 @@ type BootstrapState =
 function toError(error: unknown): Error {
 	return error instanceof Error
 		? error
-		: new Error("Unknown collection initialization error");
+		: new Error(t("main.unknownCollectionInitializationError"));
 }
 
 function getSetupSettings(state: BootstrapState): ServerSettings | null {

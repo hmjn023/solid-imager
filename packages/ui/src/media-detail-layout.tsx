@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { For, type JSX, type ParentProps } from "solid-js";
 import { Button } from "./button";
 import { ArrowLeft, ChevronLeft, ChevronRight } from "./workspace/icons";
@@ -38,7 +39,7 @@ export function MediaDetailToolbar(props: {
 		<header class="z-10 shrink-0 border-border border-b bg-background px-3 py-2 sm:px-4">
 			<div class="flex min-w-0 flex-wrap items-center gap-2">
 				<Button
-					aria-label="一覧に戻る"
+					aria-label={t("mediaDetailLayout.backToList")}
 					class="size-11 shrink-0 p-0 md:size-9"
 					onClick={() => props.onBack()}
 					size="icon"
@@ -61,12 +62,16 @@ export function MediaDetailToolbar(props: {
 					class="flex shrink-0 items-center rounded-md border border-border bg-card p-0.5"
 					title={
 						props.onPrevious || props.onNext
-							? "一覧の前後のメディアへ移動"
-							: "一覧コンテキストがないため前後移動は利用できません"
+							? t("mediaDetailLayout.navigateToPreviousOrNextMediaInTheList")
+							: t(
+									"mediaDetailLayout.previousAndNextAreUnavailableWithoutListContext",
+								)
 					}
 				>
 					<Button
-						aria-label={props.previousLabel ?? "前のメディア"}
+						aria-label={
+							props.previousLabel ?? t("mediaDetailLayout.previousMedia")
+						}
 						class="size-11 p-0 md:size-8"
 						disabled={!props.onPrevious}
 						onClick={() => props.onPrevious?.()}
@@ -76,7 +81,7 @@ export function MediaDetailToolbar(props: {
 						<ChevronLeft aria-hidden="true" size={16} />
 					</Button>
 					<Button
-						aria-label={props.nextLabel ?? "次のメディア"}
+						aria-label={props.nextLabel ?? t("mediaDetailLayout.nextMedia")}
 						class="size-11 p-0 md:size-8"
 						disabled={!props.onNext}
 						onClick={() => props.onNext?.()}

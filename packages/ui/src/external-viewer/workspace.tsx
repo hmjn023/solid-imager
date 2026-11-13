@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { ViewerTag } from "@solid-imager/core/external-viewer";
 import {
 	createEffect,
@@ -138,7 +139,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 									target="_blank"
 									rel="noopener noreferrer"
 								>
-									サイトを開く ↗
+									{t("workspace.openSite")}
 								</a>
 							</div>
 							<DanbooruSearchComposer
@@ -167,12 +168,14 @@ export function ViewerWorkspace<T extends ViewerResults>(
 								}
 								hasData={!!state().data}
 								hasError={results.isRefetchError}
-								offlineLabel="オフラインのため保存済みの検索結果を表示しています"
-								updatingLabel="検索結果を更新中..."
+								offlineLabel={t(
+									"searchScreen.offlineShowingSavedSearchResults",
+								)}
+								updatingLabel={t("searchScreen.updatingSearchResults")}
 							/>
 							<Switch>
 								<Match when={state().phase === "pending"}>
-									<LoadingRegion label="投稿を読み込み中">
+									<LoadingRegion label={t("workspace.loadingPosts")}>
 										<MediaGridSkeleton aspectRatio="4/3" />
 									</LoadingRegion>
 								</Match>
@@ -193,7 +196,9 @@ export function ViewerWorkspace<T extends ViewerResults>(
 												class="mb-2 text-muted-foreground text-sm"
 												aria-live="polite"
 											>
-												{data().posts.length.toLocaleString()} 件を表示
+												{t("workspace.showingValueResults", {
+													value0: String(data().posts.length.toLocaleString()),
+												})}
 											</p>
 											{props.renderSearchInfo?.(data())}
 											<Show when={browse.hasPreviousPage()}>
@@ -221,7 +226,9 @@ export function ViewerWorkspace<T extends ViewerResults>(
 													>
 														<EmptyState
 															title={props.emptyTitle}
-															description="タグを変更して検索してください。"
+															description={t(
+																"workspace.changeTheTagsAndSearchAgain",
+															)}
 														/>
 													</Show>
 												}
@@ -242,7 +249,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 												fallback={
 													<Show when={data().posts.length}>
 														<p class="py-3 text-center text-sm text-muted-foreground">
-															すべての投稿を表示しました
+															{t("workspace.allPostsDisplayed")}
 														</p>
 													</Show>
 												}

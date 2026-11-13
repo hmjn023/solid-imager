@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Label } from "@solid-imager/ui/label";
 import {
 	Select,
@@ -24,7 +25,7 @@ type SortControlsProps = {
 export function SortControls(props: SortControlsProps) {
 	return (
 		<div class={cn("space-y-2", props.className)}>
-			<Label>ソート</Label>
+			<Label>{t("sortControls.sort")}</Label>
 			<div class="grid grid-cols-2 gap-2">
 				<Select
 					itemComponent={(itemProps) => {
@@ -44,7 +45,7 @@ export function SortControls(props: SortControlsProps) {
 						props.onSortByChange(parseSelectValue(value, SORT_OPTIONS, "date"))
 					}
 					options={[...SORT_OPTIONS]}
-					placeholder="項目"
+					placeholder={t("sortControls.field")}
 					value={props.sortBy}
 				>
 					<SelectTrigger>
@@ -65,17 +66,23 @@ export function SortControls(props: SortControlsProps) {
 				<Select
 					itemComponent={(itemProps) => (
 						<SelectItem item={itemProps.item}>
-							{itemProps.item.rawValue === "asc" ? "昇順" : "降順"}
+							{itemProps.item.rawValue === "asc"
+								? t("searchToolbar.ascending")
+								: t("searchToolbar.descending")}
 						</SelectItem>
 					)}
 					onChange={(value) => props.onSortOrderChange(value || "desc")}
 					options={["asc", "desc"]}
-					placeholder="順序"
+					placeholder={t("sortControls.order")}
 					value={props.sortOrder}
 				>
 					<SelectTrigger>
 						<SelectValue<string>>
-							{(state) => (state.selectedOption() === "asc" ? "昇順" : "降順")}
+							{(state) =>
+								state.selectedOption() === "asc"
+									? t("searchToolbar.ascending")
+									: t("searchToolbar.descending")
+							}
 						</SelectValue>
 					</SelectTrigger>
 					<SelectContent />

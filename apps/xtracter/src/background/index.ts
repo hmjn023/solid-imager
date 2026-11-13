@@ -1,3 +1,4 @@
+import { initializeExtensionLocale, t } from "../i18n";
 import { generateMediaFilename } from "@solid-imager/core/media/files";
 
 import { APIError, getClient } from "@ext/api";
@@ -55,11 +56,12 @@ function getExtensionFromUrl(url: string): string {
 }
 
 async function postDownloads(items: DownloadItem[]) {
+	await initializeExtensionLocale();
 	try {
 		const destination = await resolveDestination();
 		const mediaSourceId = destination.selectedSourceId;
 		if (!mediaSourceId)
-			throw new Error("No media source configured on this server.");
+			throw new Error(t("index.noMediaSourceConfiguredOnThisServer"));
 		await retryWithBackoff(() =>
 			destination.client.downloads.start({ mediaSourceId, items }),
 		);
@@ -67,26 +69,30 @@ async function postDownloads(items: DownloadItem[]) {
 		void chrome.notifications.create({
 			type: "basic",
 			iconUrl: "icon.png",
-			title: "xtracter",
-			message: `Successfully queued ${items.length} download(s)`,
+			title: t("index.xtracter"),
+			message: t("index.successfullyQueuedValueDownloadS", {
+				value0: String(items.length),
+			}),
 		});
 	} catch (error) {
 		if (error instanceof APIError) {
 			void chrome.notifications.create({
 				type: "basic",
 				iconUrl: "icon.png",
-				title: "xtracter Error",
-				message: `Failed to queue downloads: ${error.message}`,
+				title: t("index.xtracterError"),
+				message: t("index.failedToQueueDownloadsValue", {
+					value0: String(error.message),
+				}),
 			});
 		} else {
 			void chrome.notifications.create({
 				type: "basic",
 				iconUrl: "icon.png",
-				title: "xtracter Error",
+				title: t("index.xtracterError"),
 				message:
 					error instanceof Error
 						? error.message
-						: "Unable to resolve the destination.",
+						: t("index.unableToResolveTheDestination"),
 			});
 		}
 	}
@@ -142,7 +148,8 @@ chrome.runtime.onMessage.addListener(
 				sendResponse({ success: false });
 				return;
 			}
-			void getClient()
+			void initializeExtensionLocale()
+				.then(() => getClient())
 				.then((client) =>
 					client.authors.submitAccountVerification({
 						verificationId: parsed.data.verificationId,
@@ -155,11 +162,11 @@ chrome.runtime.onMessage.addListener(
 					void chrome.notifications.create({
 						type: "basic",
 						iconUrl: "icon.png",
-						title: "xtracter アカウント確認",
+						title: t("index.xtracterAccountVerification"),
 						message:
 							error instanceof Error
 								? error.message
-								: "Managerへの送信に失敗しました。接続設定を確認してプロフィールを再読み込みしてください。",
+								: t("index.couldNotSendToManagerCheckConnectionSettingsAnd"),
 					});
 				});
 			return true;
@@ -171,6 +178,7 @@ chrome.runtime.onMessage.addListener(
 			message.type === "SET_SOURCE"
 		) {
 			const respond = async (): Promise<SourcesResponse> => {
+				await initializeExtensionLocale();
 				try {
 					let settings;
 					if (message.type === "SET_API_URL") {
@@ -188,7 +196,9 @@ chrome.runtime.onMessage.addListener(
 								current.generation !== parsed.generation
 							)
 								throw new Error(
-									"Connection settings changed. Reload sources before selecting.",
+									t(
+										"index.connectionSettingsChangedReloadSourcesBeforeSelecting",
+									),
 								);
 							return {
 								...current,
@@ -214,7 +224,7 @@ chrome.runtime.onMessage.addListener(
 						error:
 							error instanceof Error
 								? error.message
-								: "Failed to load sources.",
+								: t("feedback.sourcesLoadFailed"),
 					};
 				}
 			};

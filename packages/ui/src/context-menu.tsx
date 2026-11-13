@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	CheckboxItem,
 	Content,
@@ -139,7 +140,7 @@ const ContextMenuSubTrigger = <T extends ValidComponent = "div">(
 				viewBox="0 0 24 24"
 				xmlns="http://www.w3.org/2000/svg"
 			>
-				<title>Submenu</title>
+				<title>{t("contextMenu.submenu")}</title>
 				<path d="M9 6l6 6l-6 6" />
 			</svg>
 		</SubTrigger>
@@ -201,7 +202,7 @@ const ContextMenuCheckboxItem = <T extends ValidComponent = "div">(
 						viewBox="0 0 24 24"
 						xmlns="http://www.w3.org/2000/svg"
 					>
-						<title>Checked</title>
+						<title>{t("contextMenu.checked")}</title>
 						<path d="M5 12l5 5l10 -10" />
 					</svg>
 				</ItemIndicator>
@@ -263,7 +264,7 @@ const ContextMenuRadioItem = <T extends ValidComponent = "div">(
 						viewBox="0 0 24 24"
 						xmlns="http://www.w3.org/2000/svg"
 					>
-						<title>Selected</title>
+						<title>{t("contextMenu.selected")}</title>
 						<path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" />
 					</svg>
 				</ItemIndicator>

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
 import type { JobDto, JobStatus } from "@solid-imager/core/jobs";
@@ -417,7 +418,7 @@ export function useManagerPage(
 		return {
 			queryKey: jobsQueryKeys.detail(jobId ?? ""),
 			queryFn: async () => {
-				if (!jobId) throw new Error("No tracked batch");
+				if (!jobId) throw new Error(t("useManagerPage.noTrackedBatch"));
 				const version = batches.version(jobId);
 				let job: JobDto;
 				try {
@@ -431,8 +432,8 @@ export function useManagerPage(
 					batches.failRead(
 						jobId,
 						missing
-							? "The tracked batch no longer exists."
-							: `Unable to refresh batch progress: ${getErrorMessage(error)}.`,
+							? t("managerBatchState.theTrackedBatchNoLongerExists")
+							: t("manager.progressError", { error: getErrorMessage(error) }),
 					);
 					if (missing && batches.forget(jobId)) {
 						const storage = managerSessionStorage();
@@ -559,7 +560,11 @@ export function useManagerPage(
 			setEditingItem(null);
 			resetForm(setFormData);
 		} catch (error) {
-			toast.error(`Failed to save: ${getErrorMessage(error)}`);
+			toast.error(
+				t("useManagerPage.failedToSaveValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		}
 	};
 
@@ -584,7 +589,11 @@ export function useManagerPage(
 			setEditingItem(null);
 			resetForm(setFormData);
 		} catch (error) {
-			toast.error(`Failed to save: ${getErrorMessage(error)}`);
+			toast.error(
+				t("useManagerPage.failedToSaveValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		}
 	};
 
@@ -603,9 +612,13 @@ export function useManagerPage(
 				await actions.deleteCharacter(item.id);
 			}
 			invalidateActive();
-			toast.success("Deleted successfully");
+			toast.success(t("useManagerPage.deletedSuccessfully"));
 		} catch (error) {
-			toast.error(`Failed to delete: ${getErrorMessage(error)}`);
+			toast.error(
+				t("useManagerPage.failedToDeleteValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			setIsDeleteDialogOpen(false);
 			setItemToDelete(null);
@@ -638,13 +651,20 @@ export function useManagerPage(
 				force: context.force,
 				mediaSourceId: context.mediaSourceId,
 			});
-			batches.setRequestMessage(request, `${result.count} items found.`);
+			batches.setRequestMessage(
+				request,
+				t("manager.scanResult", { count: result.count }),
+			);
 		} catch (error) {
 			batches.setRequestMessage(
 				request,
-				`Error during scan: ${getErrorMessage(error)}`,
+				t("manager.scanError", { error: getErrorMessage(error) }),
 			);
-			toast.error(`Error: ${getErrorMessage(error)}`);
+			toast.error(
+				t("useManagerPage.errorValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			batches.finish(request);
 		}
@@ -662,13 +682,16 @@ export function useManagerPage(
 				if (context.tab === "tagging") onBatchTaggingStart?.(result);
 				toast.success(result.message);
 			} else {
-				const message = result.message || "Failed to start batch operation.";
+				const message =
+					result.message || t("useManagerPage.failedToStartBatchOperation");
 				batches.setRequestMessage(request, message);
 				if (result.success) toast.success(message);
 				else toast.error(message);
 			}
 		} catch (error) {
-			const message = `Error: ${getErrorMessage(error)}`;
+			const message = t("useManagerPage.errorValue", {
+				value0: String(getErrorMessage(error)),
+			});
 			batches.setRequestMessage(request, message);
 			toast.error(message);
 		} finally {
@@ -700,7 +723,7 @@ export function useManagerPage(
 		const context = batchContext("thumbnails");
 		const mediaSourceId = context.mediaSourceId;
 		if (!mediaSourceId) {
-			toast.error("Select a media source first.");
+			toast.error(t("useManagerPage.selectAMediaSourceFirst"));
 			return;
 		}
 		await startBatch(context, () =>
@@ -721,12 +744,18 @@ export function useManagerPage(
 		},
 		handleJobCompleted: (event) => {
 			batches.observe({ event: "job-completed", data: event });
-			toast.success(event.message || "Batch operation completed!");
+			toast.success(
+				event.message || t("useManagerPage.batchOperationCompleted"),
+			);
 			refreshTrackedJob();
 		},
 		handleJobFailed: (event) => {
 			batches.observe({ event: "job-failed", data: event });
-			toast.error(`Job failed: ${event.error || "unknown error"}`);
+			toast.error(
+				t("useManagerPage.jobFailedValue", {
+					value0: String(event.error || t("useManagerPage.unknownError")),
+				}),
+			);
 			refreshTrackedJob();
 		},
 		handleJobCancelled: () => {

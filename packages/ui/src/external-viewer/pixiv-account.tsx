@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { AppContractClient } from "@solid-imager/core/contract";
 import {
 	canTransferPixivSession,
@@ -64,7 +65,7 @@ export function createPixivAccount(
 			});
 			if (response.status === 401 && token && session()?.token === token) {
 				save(undefined);
-				setNotice("pixiv のログインが切れました。再接続してください。");
+				setNotice(t("pixivAccount.yourPixivSessionExpiredReconnectToContinue"));
 			}
 			return response;
 		};
@@ -74,7 +75,7 @@ export function createPixivAccount(
 				const res = await request(
 					new URL("/api/pixiv-animation/" + id, base).href,
 				);
-				if (!res.ok) throw new Error("うごイラを取得できませんでした。");
+				if (!res.ok) throw new Error(t("pixivAccount.couldNotLoadUgoira"));
 				return URL.createObjectURL(await res.blob());
 			},
 		};
@@ -115,7 +116,7 @@ export function createPixivAccount(
 				})
 				.catch(() => {
 					if (session() === current)
-						setNotice("pixiv との接続を確認できませんでした。");
+						setNotice(t("pixivAccount.couldNotVerifyThePixivConnection"));
 				})
 				.finally(() => {
 					if (session() === current) {
@@ -134,7 +135,7 @@ export function createPixivAccount(
 		const timeout = setTimeout(
 			() => {
 				save(undefined);
-				setNotice("pixiv の接続期限が切れました。");
+				setNotice(t("pixivAccount.thePixivConnectionExpired"));
 			},
 			Math.max(0, current.expiresAt - Date.now()),
 		);
@@ -154,21 +155,21 @@ export function createPixivAccount(
 		],
 		async login(value: string, useCookie: boolean) {
 			if (!canTransferPixivSession(new URL(base)))
-				throw new Error(
-					"接続には HTTPS または localhost のサーバーを指定してください。",
-				);
+				throw new Error(t("pixivAccount.useAnHTTPSOrLocalhostServerToConnect"));
 			const viewer = transport().viewer;
 			let code = value.trim();
 			if (useCookie) {
 				const credential = pixivWebSessionSchema.safeParse(code);
 				if (!credential.success)
-					throw new Error("PHPSESSID の値を確認してください。");
+					throw new Error(t("pixivAccount.checkYourPHPSESSIDValue"));
 				code = (await viewer.issuePixivCode({ sessionId: credential.data }))
 					.code;
 			}
 			const input = pixivCodeSchema.safeParse({ code });
 			if (!input.success)
-				throw new Error("xtracter に表示された接続コードを入力してください。");
+				throw new Error(
+					t("pixivAccount.enterTheConnectionCodeShownInXtracter"),
+				);
 			const next = await viewer.loginPixiv(input.data);
 			save(next);
 			setNotice("");
@@ -210,7 +211,9 @@ export function PixivAccountDialog(props: {
 			close(false);
 		} catch (error) {
 			account.setNotice(
-				error instanceof Error ? error.message : "接続を変更できませんでした。",
+				error instanceof Error
+					? error.message
+					: t("pixivAccount.couldNotChangeTheConnection"),
 			);
 		} finally {
 			setBusy(false);
@@ -220,15 +223,15 @@ export function PixivAccountDialog(props: {
 		<Dialog open={open()} onOpenChange={close}>
 			<DialogTrigger as={Button} variant="outline" size="sm">
 				{account.session()
-					? "pixiv ID " + account.session()?.userId
-					: "pixiv にログイン"}
+					? t("pixivAccount.pixivID") + account.session()?.userId
+					: t("pixivAccount.logInToPixiv")}
 			</DialogTrigger>
 			<DialogContent class="workspace-theme">
-				<DialogTitle>pixiv アカウント</DialogTitle>
+				<DialogTitle>{t("pixivAccount.pixivAccount")}</DialogTitle>
 				<DialogDescription>
 					{account.session()
-						? "このタブの Viewer で使用中のアカウントです。"
-						: "公式 pixiv でログインしたアカウントをこのタブに接続します。"}
+						? t("pixivAccount.theAccountUsedByThisTabSViewer")
+						: t("pixivAccount.connectTheAccountSignedInOnTheOfficialPixiv")}
 				</DialogDescription>
 				<form
 					class="grid gap-4"
@@ -251,7 +254,7 @@ export function PixivAccountDialog(props: {
 											target="_blank"
 											rel="noopener noreferrer"
 										>
-											公式 pixiv でログイン ↗
+											{t("pixivAccount.logInOnPixiv")}
 										</a>
 									}
 								>
@@ -262,27 +265,33 @@ export function PixivAccountDialog(props: {
 											onClick={() => {
 												void openLogin().catch(() => {
 													account.setNotice(
-														"既定のブラウザーで pixiv を開けませんでした。",
+														t(
+															"pixivAccount.couldNotOpenPixivInYourDefaultBrowser",
+														),
 													);
 												});
 											}}
 										>
-											公式 pixiv でログイン ↗
+											{t("pixivAccount.logInOnPixiv")}
 										</Button>
 									)}
 								</Show>
 								<p class="break-all text-sm text-muted-foreground">
 									{useCookie()
-										? "ブラウザーの Cookie にある PHPSESSID を入力すると、ログインセッションを " +
+										? t(
+												"pixivAccount.enterThePHPSESSIDFromYourBrowserCookiesToSend",
+											) +
 											account.base +
-											" に送信します。"
-										: "xtracter 拡張で接続先を " +
+											t("pixivAccount.message")
+										: t("pixivAccount.setTheXtracterExtensionDestinationTo") +
 											account.base +
-											" に設定し、接続コードを発行してください。"}
+											t("pixivAccount.andGenerateAConnectionCode")}
 								</p>
 								<div class="grid gap-2">
 									<Label for="pixiv-code">
-										{useCookie() ? "PHPSESSID" : "接続コード"}
+										{useCookie()
+											? t("pixivAccount.pHPSESSID")
+											: t("pixivAccount.connectionCode")}
 									</Label>
 									<Input
 										id="pixiv-code"
@@ -304,12 +313,20 @@ export function PixivAccountDialog(props: {
 										account.setNotice("");
 									}}
 								>
-									{useCookie() ? "接続コードを使う" : "拡張機能を使わずに接続"}
+									{useCookie()
+										? t("pixivAccount.useConnectionCode")
+										: t("pixivAccount.connectWithoutTheExtension")}
 								</Button>
 							</>
 						}
 					>
-						{(connected) => <p>pixiv ID {connected().userId}</p>}
+						{(connected) => (
+							<p>
+								{t("pixivAccount.pixivIDValue", {
+									value0: String(connected().userId),
+								})}
+							</p>
+						)}
 					</Show>
 					<Show when={account.notice()}>
 						<p role="alert" class="text-sm text-destructive">
@@ -321,10 +338,10 @@ export function PixivAccountDialog(props: {
 						disabled={busy() || (!account.session() && !code().trim())}
 					>
 						{busy()
-							? "処理中…"
+							? t("status.processing")
 							: account.session()
-								? "この Viewer からログアウト"
-								: "接続する"}
+								? t("pixivAccount.logOutOfThisViewer")
+								: t("pixivAccount.connect")}
 					</Button>
 				</form>
 			</DialogContent>

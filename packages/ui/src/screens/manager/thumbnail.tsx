@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Button } from "../../button";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import { ManagerJobStatus } from "./job-status";
@@ -9,10 +10,13 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 	return (
 		<div class="space-y-5">
 			<div>
-				<h2 class="font-semibold text-lg text-foreground">Thumbnail warmup</h2>
+				<h2 class="font-semibold text-lg text-foreground">
+					{t("thumbnail.thumbnailWarmup")}
+				</h2>
 				<p class="mt-0.5 text-xs text-muted-foreground">
-					Generate missing 256px grid thumbnails without replacing existing
-					512px previews.
+					{t(
+						"thumbnail.generateMissing256pxGridThumbnailsWithoutReplacingExisting512px",
+					)}
 				</p>
 			</div>
 
@@ -21,12 +25,11 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 					<SourceSelect
 						manager={props.manager}
 						onChange={props.manager.setSelectedSourceId}
-						placeholder="Select source"
+						placeholder={t("actions.selectSource")}
 						value={props.manager.selectedSourceId()}
 					/>
 					<p class="text-xs text-muted-foreground">
-						Only missing 256px variants are queued. Select one source to keep
-						the operation bounded.
+						{t("thumbnail.onlyMissing256pxVariantsAreQueuedSelectOneSource")}
 					</p>
 				</div>
 				<div class="mt-4 flex justify-end border-border border-t pt-4">
@@ -39,7 +42,9 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 						}
 						onClick={() => void props.manager.handleStartThumbnailWarmup()}
 					>
-						{isStarting() ? "Submitting..." : "Warm missing thumbnails"}
+						{isStarting()
+							? t("thumbnail.submitting")
+							: t("thumbnail.warmMissingThumbnails")}
 					</Button>
 				</div>
 			</section>

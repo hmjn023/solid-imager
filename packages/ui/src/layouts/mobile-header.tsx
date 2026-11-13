@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { JSX } from "solid-js";
 import { Button } from "../button";
 import { Menu, Search } from "../workspace/icons";
@@ -11,7 +12,7 @@ export function MobileHeader(props: {
 	return (
 		<header class="flex h-13 shrink-0 items-center gap-3 border-border border-b bg-background px-3 md:hidden">
 			<Button
-				aria-label="メニューを開く"
+				aria-label={t("mobileHeader.openMenu")}
 				class="size-10 p-0"
 				onClick={props.onOpenMenu}
 				ref={props.triggerRef}
@@ -21,11 +22,11 @@ export function MobileHeader(props: {
 				<Menu aria-hidden="true" size={19} />
 			</Button>
 			<strong class="min-w-0 flex-1 truncate font-semibold">
-				Solid Imager
+				{t("sidebar.solidImager")}
 			</strong>
 			{props.onOpenCommandPalette ? (
 				<Button
-					aria-label="Quick actions"
+					aria-label={t("sidebar.quickActions")}
 					class="size-10 p-0"
 					onClick={props.onOpenCommandPalette}
 					size="icon"

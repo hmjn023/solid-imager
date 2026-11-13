@@ -14,7 +14,7 @@ async function openImageViewer(page: Page) {
 	await waitForAppHydration(page);
 	await page
 		.getByRole("button", {
-			name: `Open ${E2E_PRIMARY_FILE_NAME} image viewer`,
+			name: `${E2E_PRIMARY_FILE_NAME}の画像ビューアーを開く`,
 			exact: true,
 		})
 		.click();
@@ -31,14 +31,12 @@ test("IME confirmation does not execute a command palette action", async ({
 }) => {
 	await page.goto("/search");
 	await waitForAppHydration(page);
-	await page
-		.getByRole("button", { name: "Quick actions", exact: true })
-		.click();
+	await page.getByRole("button", { name: "クイック操作", exact: true }).click();
 	const palette = page.getByRole("dialog", {
-		name: "Quick actions",
+		name: "クイック操作",
 		exact: true,
 	});
-	const input = palette.getByRole("combobox", { name: "Search quick actions" });
+	const input = palette.getByRole("combobox", { name: "クイック操作を検索" });
 	await input.fill("統計");
 	for (const composition of [{ isComposing: true }, { keyCode: 229 }]) {
 		await input.dispatchEvent("keydown", {
@@ -104,7 +102,7 @@ test("zoomed images support keyboard and single-click panning", async ({
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	const dialog = await openImageViewer(page);
 	for (let step = 0; step < 4; step++) {
-		await dialog.getByRole("button", { name: "Zoom in", exact: true }).click();
+		await dialog.getByRole("button", { name: "拡大", exact: true }).click();
 	}
 	const stage = dialog.locator("[data-media-viewer-pan-handle]");
 	const image = dialog.getByRole("img", {
@@ -130,13 +128,13 @@ test("zoomed images support keyboard and single-click panning", async ({
 		)
 		.toBeGreaterThan(0);
 	await dialog
-		.getByRole("button", { name: "Reset zoom to fit", exact: true })
+		.getByRole("button", { name: "画面に合わせる", exact: true })
 		.click();
 	for (let step = 0; step < 4; step++) {
-		await dialog.getByRole("button", { name: "Zoom in", exact: true }).click();
+		await dialog.getByRole("button", { name: "拡大", exact: true }).click();
 	}
 	await dialog
-		.getByRole("button", { name: "Pan image left", exact: true })
+		.getByRole("button", { name: "画像をleftへ移動", exact: true })
 		.click();
 	await expect
 		.poll(() =>
@@ -149,7 +147,7 @@ test("zoomed images support keyboard and single-click panning", async ({
 	await expect(dialog).toBeHidden();
 	await expect(
 		page.getByRole("button", {
-			name: `Open ${E2E_PRIMARY_FILE_NAME} image viewer`,
+			name: `${E2E_PRIMARY_FILE_NAME}の画像ビューアーを開く`,
 			exact: true,
 		}),
 	).toBeFocused();
@@ -165,7 +163,7 @@ test("reduced motion suppresses image transitions and popover scaling", async ({
 }) => {
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	const dialog = await openImageViewer(page);
-	await dialog.getByRole("button", { name: "Zoom in", exact: true }).click();
+	await dialog.getByRole("button", { name: "拡大", exact: true }).click();
 	const image = dialog.getByRole("img", {
 		name: E2E_PRIMARY_FILE_NAME,
 		exact: true,
@@ -175,10 +173,10 @@ test("reduced motion suppresses image transitions and popover scaling", async ({
 	await expect(image).toHaveCSS("transition-duration", "0.15s");
 	await page.keyboard.press("Escape");
 	await page.emulateMedia({ reducedMotion: "reduce" });
-	await page.getByRole("button", { name: "More actions", exact: true }).click();
+	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
 	const popover = page.getByRole("dialog");
 	await expect(
-		popover.getByRole("button", { name: "Download original", exact: true }),
+		popover.getByRole("button", { name: "原本をダウンロード", exact: true }),
 	).toBeVisible();
 	const scale = await popover.evaluate((element) => {
 		const style = getComputedStyle(element);
@@ -197,31 +195,27 @@ test("manager source and format selectors expose their visible labels", async ({
 }) => {
 	await page.goto("/manager");
 	await waitForAppHydration(page);
-	const navigation = page.locator(
-		'nav[aria-label="Manager categories"]:visible',
-	);
-	await navigation.getByRole("button", { name: /Data transfer/ }).click();
-	const target = page.getByRole("button", { name: /^Target source/ });
+	const navigation = page.locator('nav[aria-label="管理カテゴリ"]:visible');
+	await navigation.getByRole("button", { name: /データ転送/ }).click();
+	const target = page.getByRole("button", { name: /^保存先ソース/ });
 	await expect(target).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: /^Export format/ }),
+		page.getByRole("button", { name: /^エクスポート形式/ }),
 	).toBeVisible();
-	await expect(
-		page.getByRole("button", { name: /^Restore format/ }),
-	).toBeVisible();
+	await expect(page.getByRole("button", { name: /^復元形式/ })).toBeVisible();
 	await target.click();
 	await page
 		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
 		.click();
 	await expect(target).toHaveAccessibleName(
-		new RegExp(`Target source.*${E2E_SOURCE_NAME}`),
+		new RegExp(`保存先ソース.*${E2E_SOURCE_NAME}`),
 	);
-	for (const category of ["Batch tagging", "Thumbnails", "Duplicates"]) {
+	for (const category of ["一括タグ付け", "サムネイル", "重複検出"]) {
 		await navigation
 			.getByRole("button", { name: new RegExp(category) })
 			.click();
 		await expect(
-			page.getByRole("button", { name: /^Target source/ }),
+			page.getByRole("button", { name: /^対象ソース/ }),
 		).toBeVisible();
 	}
 });
@@ -301,7 +295,10 @@ for (const mediaType of ["audio", "video"] as const) {
 				await expect(media).toHaveAttribute("controls", "");
 			} else {
 				await expect(
-					page.getByRole("button", { name: "Toggle video loop", exact: true }),
+					page.getByRole("button", {
+						name: "動画のループ再生を切り替える",
+						exact: true,
+					}),
 				).toBeVisible();
 			}
 			await expect(media).toHaveAttribute("src", contentPath);

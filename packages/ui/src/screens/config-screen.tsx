@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	AppConfigSchema,
 	AppConfigUpdateSchema,
@@ -16,6 +17,7 @@ import DownloadCloud from "lucide-solid/icons/cloud-download";
 import HardDrive from "lucide-solid/icons/hard-drive";
 import Image from "lucide-solid/icons/image";
 import Keyboard from "lucide-solid/icons/keyboard";
+import Languages from "lucide-solid/icons/languages";
 import Logs from "lucide-solid/icons/logs";
 import Wrench from "lucide-solid/icons/wrench";
 import { createEffect, createSignal, For, Show } from "solid-js";
@@ -38,6 +40,7 @@ import {
 } from "../form-message";
 import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
+import { LanguageSettings } from "../language-settings";
 import { Label } from "../label";
 import { ShortcutSettingsPanel } from "../shortcuts/shortcut-settings-panel";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
@@ -52,38 +55,59 @@ type AppConfigFormValues = z.input<typeof AppConfigSchema>;
 
 const SETTINGS_CATEGORIES = [
 	{
-		description: "並列数と自動処理",
+		description: t("locale.description"),
+		icon: Languages,
+		label: t("locale.category"),
+		value: "interface",
+	},
+	{
+		description: t("configScreen.concurrencyAndAutomation"),
 		icon: BriefcaseBusiness,
-		label: "Jobs",
+		label: t("navigation.jobs"),
 		value: "jobs",
 	},
-	{ description: "推論サービス接続", icon: Bot, label: "AI", value: "ai" },
 	{
-		description: "取得速度と制限",
+		description: t("configScreen.inferenceServiceConnection"),
+		icon: Bot,
+		label: t("configScreen.aI"),
+		value: "ai",
+	},
+	{
+		description: t("configScreen.downloadSpeedAndLimits"),
 		icon: DownloadCloud,
-		label: "Downloads",
+		label: t("configScreen.downloads"),
 		value: "downloads",
 	},
 	{
-		description: "サムネイルと保存先",
+		description: t("configScreen.thumbnailsAndStorageLocations"),
 		icon: HardDrive,
-		label: "Storage",
+		label: t("configScreen.storage"),
 		value: "storage",
 	},
 	{
-		description: "形式とメタデータ",
+		description: t("configScreen.formatsAndMetadata"),
 		icon: Image,
-		label: "Media",
+		label: t("configScreen.media"),
 		value: "media",
 	},
 	{
-		description: "この端末のキー操作",
+		description: t("configScreen.keyboardControlsForThisDevice"),
 		icon: Keyboard,
-		label: "Shortcuts",
+		label: t("configScreen.shortcuts"),
 		value: "shortcuts",
 	},
-	{ description: "ツールの公開範囲", icon: Wrench, label: "MCP", value: "mcp" },
-	{ description: "出力レベル", icon: Logs, label: "Logging", value: "logging" },
+	{
+		description: t("configScreen.toolAvailability"),
+		icon: Wrench,
+		label: t("configScreen.mCP"),
+		value: "mcp",
+	},
+	{
+		description: t("configScreen.logOutputLevel"),
+		icon: Logs,
+		label: t("configScreen.logging"),
+		value: "logging",
+	},
 ] as const;
 
 function toFormValues(data: AppConfig): AppConfigFormValues {
@@ -136,12 +160,13 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				baseline = await props.onSubmit(AppConfigUpdateSchema.parse(patch));
 				form.reset(toFormValues(baseline));
 				props.onSubmitSuccess?.();
-				toast.success("Configuration saved successfully");
+				toast.success(t("configScreen.configurationSavedSuccessfully"));
 			} catch (error) {
 				setSubmitError(
-					getFormErrorMessage(error) ?? "Failed to save configuration",
+					getFormErrorMessage(error) ??
+						t("configScreen.failedToSaveConfiguration"),
 				);
-				toast.error("Failed to save configuration");
+				toast.error(t("configScreen.failedToSaveConfiguration"));
 			}
 		},
 	}));
@@ -159,7 +184,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 		} catch (error) {
 			setAiHealth(null);
 			setAiHealthError(
-				error instanceof Error ? error.message : "Health check failed",
+				error instanceof Error
+					? error.message
+					: t("configScreen.healthCheckFailed"),
 			);
 		} finally {
 			setIsCheckingAiHealth(false);
@@ -191,7 +218,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					value={activeTab()}
 				>
 					<TabsList
-						aria-label="Settings categories"
+						aria-label={t("configScreen.settingsCategories")}
 						class="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
 					>
 						<For each={SETTINGS_CATEGORIES}>
@@ -215,16 +242,23 @@ export function ConfigScreen(props: ConfigScreenProps) {
 					</TabsList>
 
 					<div class="min-w-0 space-y-6">
+						<TabsContent value="interface">
+							<form.Subscribe selector={(state) => state.isDirty}>
+								{(isDirty) => <LanguageSettings disabled={isDirty()} />}
+							</form.Subscribe>
+						</TabsContent>
 						<TabsContent value="jobs">
 							<fieldset class={sectionClass}>
 								<legend class="mb-4 block font-semibold text-xl">
-									Job Processing
+									{t("configScreen.jobProcessing")}
 								</legend>
 
 								<form.Field name="jobs.concurrency">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Concurrency</Label>
+											<Label for={field().name}>
+												{t("configScreen.concurrency")}
+											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
 												aria-invalid={field().state.meta.errors.length > 0}
@@ -245,7 +279,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												)}
 											/>
 											<div class="text-muted-foreground text-xs">
-												Number of concurrent downloads/processings.
+												{t(
+													"configScreen.numberOfConcurrentDownloadsProcessings",
+												)}
 											</div>
 										</div>
 									)}
@@ -254,7 +290,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<form.Field name="jobs.aiConcurrency">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>AI Concurrency</Label>
+											<Label for={field().name}>
+												{t("configScreen.aIConcurrency")}
+											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
 												aria-invalid={field().state.meta.errors.length > 0}
@@ -275,7 +313,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												)}
 											/>
 											<div class="text-muted-foreground text-xs">
-												Number of concurrent AI tagging jobs.
+												{t("configScreen.numberOfConcurrentAITaggingJobs")}
 											</div>
 										</div>
 									)}
@@ -284,7 +322,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<form.Field name="jobs.pollIntervalMs">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Poll Interval (ms)</Label>
+											<Label for={field().name}>
+												{t("configScreen.pollIntervalMs")}
+											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
 												aria-invalid={field().state.meta.errors.length > 0}
@@ -318,7 +358,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												<SwitchControl>
 													<SwitchThumb />
 												</SwitchControl>
-												<SwitchLabel>Enable Auto Tagging</SwitchLabel>
+												<SwitchLabel>
+													{t("configScreen.enableAutoTagging")}
+												</SwitchLabel>
 											</Switch>
 										</div>
 									)}
@@ -334,7 +376,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												<SwitchControl>
 													<SwitchThumb />
 												</SwitchControl>
-												<SwitchLabel>Enable Auto CCIP Extraction</SwitchLabel>
+												<SwitchLabel>
+													{t("configScreen.enableAutoCCIPExtraction")}
+												</SwitchLabel>
 											</Switch>
 										</div>
 									)}
@@ -349,7 +393,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												<SwitchThumb />
 											</SwitchControl>
 											<SwitchLabel>
-												Enable Auto EmbeddingGemma 2 Extraction
+												{t("configScreen.enableAutoEmbeddingGemma2Extraction")}
 											</SwitchLabel>
 										</Switch>
 									)}
@@ -360,15 +404,17 @@ export function ConfigScreen(props: ConfigScreenProps) {
 						<TabsContent value="ai">
 							<fieldset class={sectionClass}>
 								<legend class="mb-4 block font-semibold text-xl">
-									AI Service
+									{t("configScreen.aIService")}
 								</legend>
 								<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-muted px-3 py-2.5">
 									<div>
-										<div class="font-medium text-sm">Connection status</div>
+										<div class="font-medium text-sm">
+											{t("configScreen.connectionStatus")}
+										</div>
 										<Show
 											fallback={
 												<div class="text-muted-foreground text-xs">
-													{aiHealthError() ?? "Not checked yet."}
+													{aiHealthError() ?? t("configScreen.notCheckedYet")}
 												</div>
 											}
 											when={aiHealth()}
@@ -384,11 +430,20 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													}
 												>
 													{health().status === "available"
-														? `${health().mode === "remote" ? "Remote" : "Local"} service available`
-														: (health().message ?? "AI service unavailable")}
+														? t("configScreen.valueServiceAvailable", {
+																value0: String(
+																	health().mode === "remote"
+																		? t("configScreen.remote")
+																		: t("labels.local"),
+																),
+															})
+														: (health().message ??
+															t("configScreen.aIServiceUnavailable"))}
 													<Show when={health().latencyMs !== null}>
 														<span class="ml-2 text-muted-foreground">
-															{health().latencyMs} ms
+															{t("configScreen.valueMs", {
+																value0: String(health().latencyMs),
+															})}
 														</span>
 													</Show>
 												</div>
@@ -402,14 +457,16 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										size="sm"
 										variant="outline"
 									>
-										{isCheckingAiHealth() ? "Checking..." : "Check now"}
+										{isCheckingAiHealth()
+											? t("status.checking")
+											: t("configScreen.checkNow")}
 									</Button>
 								</div>
 								<form.Field name="ai.baseUrl">
 									{(field) => (
 										<div class="space-y-2">
 											<Label for={field().name}>
-												Remote AI Server URL (oRPC)
+												{t("configScreen.remoteAIServerURLORPC")}
 											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
@@ -417,7 +474,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => field().handleChange(e.target.value)}
-												placeholder="http://power-machine:3000"
+												placeholder={t("configScreen.httpPowerMachine3000")}
 												value={field().state.value ?? ""}
 											/>
 											<FormFieldMessage
@@ -427,9 +484,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												)}
 											/>
 											<div class="text-muted-foreground text-xs">
-												外部の solid-imager サーバーの oRPC
-												エンドポイントを指定。AI
-												処理をリモートに委託します。空欄の場合はローカルで処理します。
+												{t(
+													"configScreen.useAnotherSolidImagerServerSORPCEndpointFor",
+												)}
 											</div>
 										</div>
 									)}
@@ -437,7 +494,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<form.Field name="ai.timeoutMs">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Timeout (ms)</Label>
+											<Label for={field().name}>
+												{t("configScreen.timeoutMs")}
+											</Label>
 											<Input
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -483,7 +542,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 						<TabsContent value="downloads">
 							<fieldset class={sectionClass}>
 								<legend class="mb-4 block font-semibold text-xl">
-									Downloads
+									{t("configScreen.downloads")}
 								</legend>
 
 								<form.Field name="downloads.rateLimitEnabled">
@@ -496,7 +555,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												<SwitchControl>
 													<SwitchThumb />
 												</SwitchControl>
-												<SwitchLabel>レートリミット有効</SwitchLabel>
+												<SwitchLabel>
+													{t("configScreen.enableRateLimiting")}
+												</SwitchLabel>
 											</Switch>
 										</div>
 									)}
@@ -505,7 +566,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<form.Field name="downloads.requestIntervalMs">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>リクエスト間隔 (ms)</Label>
+											<Label for={field().name}>
+												{t("configScreen.requestIntervalMs")}
+											</Label>
 											<Input
 												aria-describedby={`${field().name}-error`}
 												aria-invalid={field().state.meta.errors.length > 0}
@@ -536,12 +599,14 @@ export function ConfigScreen(props: ConfigScreenProps) {
 						<TabsContent value="storage">
 							<fieldset class={sectionClass}>
 								<legend class="mb-4 block font-semibold text-xl">
-									Storage
+									{t("configScreen.storage")}
 								</legend>
 								<form.Field name="storage.thumbnailDir">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Thumbnail Directory</Label>
+											<Label for={field().name}>
+												{t("configScreen.thumbnailDirectory")}
+											</Label>
 											<Input
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -556,7 +621,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<form.Field name="storage.thumbnailSize">
 										{(field) => (
 											<div class="space-y-2">
-												<Label for={field().name}>Thumbnail Size (px)</Label>
+												<Label for={field().name}>
+													{t("configScreen.thumbnailSizePx")}
+												</Label>
 												<Input
 													id={field().name}
 													onBlur={field().handleBlur}
@@ -575,7 +642,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 										{(field) => (
 											<div class="space-y-2">
 												<Label for={field().name}>
-													Thumbnail Quality (1-100)
+													{t("configScreen.thumbnailQuality1100")}
 												</Label>
 												<Input
 													id={field().name}
@@ -598,14 +665,16 @@ export function ConfigScreen(props: ConfigScreenProps) {
 						<TabsContent value="media">
 							<fieldset class={sectionClass}>
 								<legend class="mb-4 block font-semibold text-xl">
-									Media Extensions
+									{t("configScreen.mediaExtensions")}
 								</legend>
 
 								<div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
 									<form.Field name="media.supportedExtensions.image">
 										{(field) => (
 											<div class="space-y-2">
-												<Label for={field().name}>Image Extensions</Label>
+												<Label for={field().name}>
+													{t("configScreen.imageExtensions")}
+												</Label>
 												<Textarea
 													id={field().name}
 													onBlur={field().handleBlur}
@@ -617,11 +686,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 															.filter(Boolean);
 														field().handleChange(list);
 													}}
-													placeholder=".jpg, .png"
+													placeholder={t("configScreen.jpgPng")}
 													value={field().state.value?.join(", ") ?? ""}
 												/>
 												<div class="text-muted-foreground text-xs">
-													Comma separated
+													{t("configScreen.commaSeparated")}
 												</div>
 											</div>
 										)}
@@ -629,7 +698,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<form.Field name="media.supportedExtensions.video">
 										{(field) => (
 											<div class="space-y-2">
-												<Label for={field().name}>Video Extensions</Label>
+												<Label for={field().name}>
+													{t("configScreen.videoExtensions")}
+												</Label>
 												<Textarea
 													id={field().name}
 													onBlur={field().handleBlur}
@@ -641,7 +712,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 															.filter(Boolean);
 														field().handleChange(list);
 													}}
-													placeholder=".mp4, .webm"
+													placeholder={t("configScreen.mp4Webm")}
 													value={field().state.value?.join(", ") ?? ""}
 												/>
 											</div>
@@ -650,7 +721,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									<form.Field name="media.supportedExtensions.audio">
 										{(field) => (
 											<div class="space-y-2">
-												<Label for={field().name}>Audio Extensions</Label>
+												<Label for={field().name}>
+													{t("configScreen.audioExtensions")}
+												</Label>
 												<Textarea
 													id={field().name}
 													onBlur={field().handleBlur}
@@ -662,7 +735,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 															.filter(Boolean);
 														field().handleChange(list);
 													}}
-													placeholder=".mp3, .wav"
+													placeholder={t("configScreen.mp3Wav")}
 													value={field().state.value?.join(", ") ?? ""}
 												/>
 											</div>
@@ -671,12 +744,14 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								</div>
 
 								<h3 class="mt-6 mb-2 font-semibold text-lg">
-									Tag Extraction (ComfyUI)
+									{t("configScreen.tagExtractionComfyUI")}
 								</h3>
 								<form.Field name="media.tagExtraction.comfyui.positiveNodeTypes">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Positive Node Types</Label>
+											<Label for={field().name}>
+												{t("configScreen.positiveNodeTypes")}
+											</Label>
 											<Textarea
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -697,7 +772,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<form.Field name="media.tagExtraction.comfyui.negativeKeywords">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Negative Keywords</Label>
+											<Label for={field().name}>
+												{t("configScreen.negativeKeywords")}
+											</Label>
 											<Textarea
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -718,7 +795,9 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								<form.Field name="media.tagExtraction.comfyui.negativeTags">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Negative Tags</Label>
+											<Label for={field().name}>
+												{t("configScreen.negativeTags")}
+											</Label>
 											<Textarea
 												id={field().name}
 												onBlur={field().handleBlur}
@@ -741,12 +820,14 @@ export function ConfigScreen(props: ConfigScreenProps) {
 						<TabsContent value="logging">
 							<fieldset class={sectionClass}>
 								<legend class="mb-4 block font-semibold text-xl">
-									Logging
+									{t("configScreen.logging")}
 								</legend>
 								<form.Field name="logging.level">
 									{(field) => (
 										<div class="space-y-2">
-											<Label for={field().name}>Log Level</Label>
+											<Label for={field().name}>
+												{t("configScreen.logLevel")}
+											</Label>
 											<select
 												class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 												id={field().name}
@@ -763,12 +844,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												}
 												value={field().state.value ?? ""}
 											>
-												<option value="trace">Trace</option>
-												<option value="debug">Debug</option>
-												<option value="info">Info</option>
-												<option value="warn">Warn</option>
-												<option value="error">Error</option>
-												<option value="fatal">Fatal</option>
+												<option value="trace">{t("configScreen.trace")}</option>
+												<option value="debug">{t("configScreen.debug")}</option>
+												<option value="info">{t("configScreen.info")}</option>
+												<option value="warn">{t("configScreen.warn")}</option>
+												<option value="error">{t("configScreen.error")}</option>
+												<option value="fatal">{t("configScreen.fatal")}</option>
 											</select>
 										</div>
 									)}
@@ -789,8 +870,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 						</TabsContent>
 						<TabsContent value="shortcuts">
 							<ShortcutSettingsPanel
-								description="Record a new key combination, disable an action, or restore defaults. Changes are saved immediately in this browser or desktop app and are not part of the server configuration."
-								title="Keyboard shortcuts"
+								description={t(
+									"configScreen.recordANewKeyCombinationDisableAnActionOr",
+								)}
+								title={t("configScreen.keyboardShortcuts")}
 							/>
 						</TabsContent>
 					</div>
@@ -806,7 +889,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 						<Show when={state().isDirty}>
 							<div class="sticky bottom-3 z-20 ml-auto flex w-fit items-center gap-2 rounded-md border border-border bg-card p-2 shadow-lg backdrop-blur">
 								<span class="px-2 text-muted-foreground text-sm">
-									Unsaved changes
+									{t("configScreen.unsavedChanges")}
 								</span>
 								<Button
 									disabled={state().isSubmitting}
@@ -818,13 +901,15 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									type="button"
 									variant="outline"
 								>
-									Discard
+									{t("actions.discard")}
 								</Button>
 								<Button
 									disabled={!state().canSubmit || state().isSubmitting}
 									type="submit"
 								>
-									{state().isSubmitting ? "Saving..." : "Save Changes"}
+									{state().isSubmitting
+										? t("status.saving")
+										: t("actions.saveChanges")}
 								</Button>
 							</div>
 						</Show>
@@ -842,13 +927,19 @@ export function ConfigScreen(props: ConfigScreenProps) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>設定変更を破棄しますか？</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t("configScreen.discardSettingsChanges")}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							保存されていない変更があります。このページを離れると入力内容は失われます。
+							{t(
+								"configScreen.youHaveUnsavedChangesLeavingThisPageWillDiscard",
+							)}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>編集を続ける</AlertDialogCancel>
+						<AlertDialogCancel>
+							{t("configScreen.keepEditing")}
+						</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={() => {
 								const resolver = navigationBlocker();
@@ -858,7 +949,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								resolver.proceed?.();
 							}}
 						>
-							破棄して移動
+							{t("configScreen.discardAndLeave")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

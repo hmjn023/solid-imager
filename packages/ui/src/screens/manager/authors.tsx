@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Author, NewAuthor } from "@solid-imager/core/authors";
 import { createQuery } from "@tanstack/solid-query";
 import { createMemo, createSignal, For, Show } from "solid-js";
@@ -38,9 +39,17 @@ import type { AuthorManagementActions } from "./authors.types";
 
 function authorLabel(author: Author): string {
 	const accounts = author.accounts
-		?.map((account) => `${account.platform ?? "不明"}: ${account.accountId}`)
+		?.map(
+			(account) =>
+				`${account.platform ?? t("status.unknown")}: ${account.accountId}`,
+		)
 		.join(" / ");
-	return `${author.name}${accounts || author.accountId ? ` (${accounts || author.accountId})` : ""} · ${author.id.slice(0, 8)}`;
+	return t("authors.valueValueValue", {
+		value0: author.name,
+		value1:
+			accounts || author.accountId ? ` (${accounts || author.accountId})` : "",
+		value2: author.id.slice(0, 8),
+	});
 }
 
 function AuthorPicker(props: {
@@ -106,8 +115,14 @@ function AuthorPicker(props: {
 		>
 			<ComboboxLabel>{props.label}</ComboboxLabel>
 			<ComboboxControl class="mt-1 w-full">
-				<ComboboxInput placeholder="作者名・ユーザー名で検索" />
-				<ComboboxTrigger aria-label={`${props.label}の候補`} />
+				<ComboboxInput
+					placeholder={t("authors.searchByAuthorNameOrUsername")}
+				/>
+				<ComboboxTrigger
+					aria-label={t("authors.candidatesForValue", {
+						value0: String(props.label),
+					})}
+				/>
 			</ComboboxControl>
 			<ComboboxContent />
 		</Combobox>
@@ -170,7 +185,9 @@ export function AuthorManagementPanel(props: {
 			await action();
 		} catch (failure) {
 			setError(
-				failure instanceof Error ? failure.message : "処理に失敗しました。",
+				failure instanceof Error
+					? failure.message
+					: t("authors.theOperationFailed"),
 			);
 		} finally {
 			setBusy(false);
@@ -190,7 +207,7 @@ export function AuthorManagementPanel(props: {
 			setName("");
 			setHandle("");
 			setRemoteId("");
-			setStatus("修正先の作者を登録しました。");
+			setStatus(t("authors.destinationAuthorRegistered"));
 		});
 	const apply = () =>
 		run(async () => {
@@ -208,7 +225,11 @@ export function AuthorManagementPanel(props: {
 				setTargetId(null);
 				setSelected(new Set<string>());
 				setOffset(0);
-				setStatus(`作者を統合しました（${result.changedCount}件のメディア）。`);
+				setStatus(
+					t("authors.authorsMergedValueMediaItems", {
+						value0: String(result.changedCount),
+					}),
+				);
 			} else {
 				const result = await props.actions.correctMedia({
 					mediaIds: [...selected()],
@@ -225,34 +246,42 @@ export function AuthorManagementPanel(props: {
 				setOffset(
 					Math.min(offset(), Math.max(0, Math.ceil(remaining / 50) - 1) * 50),
 				);
-				setStatus(`${result.changedCount}件の作者を修正しました。`);
+				setStatus(
+					t("authors.updatedAuthorsForValueItems", {
+						value0: String(result.changedCount),
+					}),
+				);
 			}
 			setConfirmation(null);
 			await authors.refetch();
 			await media.refetch();
 		});
-	const allSources = { id: "__all__", name: "すべてのソース" };
+	const allSources = { id: "__all__", name: t("labels.allSources") };
 	const platforms = ["twitter", "pixiv-fanbox", "danbooru", "pixiv"] as const;
 	return (
 		<div class="space-y-5">
 			<div>
-				<h2 class="font-semibold text-lg">作者・外部アカウント</h2>
+				<h2 class="font-semibold text-lg">
+					{t("types.authorsAndExternalAccounts")}
+				</h2>
 				<p class="mt-1 text-sm text-muted-foreground">
-					過去の誤登録は元投稿と照合して修正してください。表示名・ユーザー名だけでは同一人物と判断できません。
+					{t(
+						"authors.verifyEarlierRegistrationsAgainstTheOriginalPostsDisplayNames",
+					)}
 				</p>
 			</div>
 			<Show when={authors.isError}>
 				<ErrorState
-					title="作者一覧を取得できませんでした"
+					title={t("authors.couldNotLoadAuthors")}
 					onRetry={() => void authors.refetch()}
 				/>
 			</Show>
 			<Show when={authors.isPending}>
-				<output>作者一覧を取得中...</output>
+				<output>{t("authors.loadingAuthors")}</output>
 			</Show>
 			<div class="grid gap-4 lg:grid-cols-2">
 				<AuthorPicker
-					label="修正対象の作者"
+					label={t("authors.authorToCorrect")}
 					options={authors.data ?? []}
 					value={source()}
 					disabled={busy()}
@@ -263,7 +292,7 @@ export function AuthorManagementPanel(props: {
 					}}
 				/>
 				<AuthorPicker
-					label="正しい作者（修正先）"
+					label={t("authors.correctAuthorDestination")}
 					options={(authors.data ?? []).filter(
 						(author) => author.id !== sourceId(),
 					)}
@@ -275,19 +304,28 @@ export function AuthorManagementPanel(props: {
 			<Show when={source()}>
 				{(current) => (
 					<section class="space-y-3 border-y py-4">
-						<h3 class="font-medium">現在の登録情報: {current().name}</h3>
+						<h3 class="font-medium">
+							{t("authors.currentRegistrationValue", {
+								value0: String(current().name),
+							})}
+						</h3>
 						<For each={current().accounts ?? []}>
 							{(account) => (
 								<div class="break-words text-sm">
 									<span>
-										{account.platform ?? "プラットフォーム不明"} /{" "}
+										{account.platform ?? t("authors.unknownPlatform")} /{" "}
 										{account.displayName ?? current().name} /{" "}
 										{account.accountId}
 									</span>
 									<p class="text-xs text-muted-foreground">
-										固定ID:{" "}
-										{account.remoteId ??
-											"未確認（ユーザー名だけでは改名・再利用を追跡できません）"}
+										{t("authors.stableIDValueValue", {
+											value1: String(
+												account.remoteId ??
+													t(
+														"authors.unverifiedUsernamesAloneCannotTrackRenamingOrReuse",
+													),
+											),
+										})}
 									</p>
 									<Show
 										when={
@@ -303,7 +341,7 @@ export function AuthorManagementPanel(props: {
 												await authors.refetch();
 												await media.refetch();
 												setStatus(
-													"固定IDを確認済みとして登録しました。以降の取り込み時に固定IDで自動更新します。",
+													t("authors.stableIDVerifiedFutureImportsWillUseItTo"),
 												);
 											}}
 										/>
@@ -320,7 +358,7 @@ export function AuthorManagementPanel(props: {
 									await authors.refetch();
 									await media.refetch();
 									setStatus(
-										"固定IDを確認済みとして登録しました。以降の取り込み時に固定IDで自動更新します。",
+										t("authors.stableIDVerifiedFutureImportsWillUseItTo"),
 									);
 								}}
 							/>
@@ -339,12 +377,14 @@ export function AuthorManagementPanel(props: {
 									});
 									await authors.refetch();
 									await media.refetch();
-									setStatus("作者の管理名を更新しました。");
+									setStatus(t("authors.authorManagementNameUpdated"));
 								});
 							}}
 						>
 							<TextField class="min-w-0 flex-1">
-								<TextFieldLabel>作者の管理名</TextFieldLabel>
+								<TextFieldLabel>
+									{t("authors.authorManagementName")}
+								</TextFieldLabel>
 								<TextFieldInput
 									name="authorName"
 									required
@@ -353,7 +393,7 @@ export function AuthorManagementPanel(props: {
 								/>
 							</TextField>
 							<Button variant="outline" disabled={busy()} type="submit">
-								管理名を保存
+								{t("authors.saveManagementName")}
 							</Button>
 						</form>
 					</section>
@@ -361,7 +401,7 @@ export function AuthorManagementPanel(props: {
 			</Show>
 			<details class="border-y py-3">
 				<summary class="cursor-pointer font-medium">
-					修正先の作者を新規登録
+					{t("authors.registerANewDestinationAuthor")}
 				</summary>
 				<form
 					class="mt-3 space-y-3"
@@ -371,7 +411,7 @@ export function AuthorManagementPanel(props: {
 					}}
 				>
 					<TextField>
-						<TextFieldLabel>作者名</TextFieldLabel>
+						<TextFieldLabel>{t("authors.authorName")}</TextFieldLabel>
 						<TextFieldInput
 							required
 							value={name()}
@@ -381,7 +421,7 @@ export function AuthorManagementPanel(props: {
 					</TextField>
 					<div class="grid gap-3 sm:grid-cols-2">
 						<div>
-							<Label>プラットフォーム</Label>
+							<Label>{t("authors.platform")}</Label>
 							<Select
 								options={[...platforms]}
 								value={platform()}
@@ -393,7 +433,7 @@ export function AuthorManagementPanel(props: {
 								)}
 								disabled={busy()}
 							>
-								<SelectTrigger aria-label="プラットフォーム">
+								<SelectTrigger aria-label={t("authors.platform")}>
 									<SelectValue<string>>
 										{(state) => state.selectedOption()}
 									</SelectValue>
@@ -402,7 +442,9 @@ export function AuthorManagementPanel(props: {
 							</Select>
 						</div>
 						<TextField>
-							<TextFieldLabel>ユーザー名・クリエイター識別子</TextFieldLabel>
+							<TextFieldLabel>
+								{t("authors.usernameOrCreatorIdentifier")}
+							</TextFieldLabel>
 							<TextFieldInput
 								value={handle()}
 								onInput={(event) => setHandle(event.currentTarget.value)}
@@ -411,7 +453,9 @@ export function AuthorManagementPanel(props: {
 						</TextField>
 					</div>
 					<TextField>
-						<TextFieldLabel>固定ID（確認できた場合のみ）</TextFieldLabel>
+						<TextFieldLabel>
+							{t("authors.stableIDOnlyIfVerified")}
+						</TextFieldLabel>
 						<TextFieldInput
 							value={remoteId()}
 							onInput={(event) => setRemoteId(event.currentTarget.value)}
@@ -419,16 +463,16 @@ export function AuthorManagementPanel(props: {
 						/>
 					</TextField>
 					<p class="text-xs text-muted-foreground">
-						Twitterは数値のユーザーIDを指定します。@ユーザー名や投稿IDを固定IDとして入力しないでください。
+						{t("authors.forTwitterEnterTheNumericUserIDDoNot")}
 					</p>
 					<Button type="submit" disabled={busy() || !name().trim()}>
-						登録して修正先に設定
+						{t("authors.registerAndSetAsDestination")}
 					</Button>
 				</form>
 			</details>
 			<Show when={sourceId()}>
 				<div class="max-w-sm">
-					<Label>対象ソース</Label>
+					<Label>{t("labels.targetSource")}</Label>
 					<Select
 						options={[allSources, ...props.sources]}
 						optionValue="id"
@@ -450,7 +494,7 @@ export function AuthorManagementPanel(props: {
 							</SelectItem>
 						)}
 					>
-						<SelectTrigger aria-label="対象ソース">
+						<SelectTrigger aria-label={t("labels.targetSource")}>
 							<SelectValue<{ id: string; name: string }>>
 								{(state) => state.selectedOption()?.name}
 							</SelectValue>
@@ -459,11 +503,11 @@ export function AuthorManagementPanel(props: {
 					</Select>
 				</div>
 				<Show when={media.isPending}>
-					<output>メディアを取得中...</output>
+					<output>{t("authors.loadingMedia")}</output>
 				</Show>
 				<Show when={media.isError}>
 					<ErrorState
-						title="メディアを取得できませんでした"
+						title={t("authors.couldNotLoadMedia")}
 						onRetry={() => void media.refetch()}
 					/>
 				</Show>
@@ -472,7 +516,10 @@ export function AuthorManagementPanel(props: {
 						<>
 							<div class="flex flex-wrap items-center gap-2">
 								<p class="mr-auto text-sm">
-									全{page().total}件 / 選択{selected().size}件
+									{t("authors.valueTotalValueSelected", {
+										value0: String(page().total),
+										value1: String(selected().size),
+									})}
 								</p>
 								<Button
 									variant="outline"
@@ -485,7 +532,7 @@ export function AuthorManagementPanel(props: {
 										})
 									}
 								>
-									一覧を再取得
+									{t("authors.reloadList")}
 								</Button>
 								<Button
 									variant="outline"
@@ -494,19 +541,19 @@ export function AuthorManagementPanel(props: {
 										setSelected(new Set(page().items.map((item) => item.id)))
 									}
 								>
-									このページを選択
+									{t("authors.selectThisPage")}
 								</Button>
 								<Button
 									variant="ghost"
 									disabled={busy()}
 									onClick={() => setSelected(new Set<string>())}
 								>
-									選択解除
+									{t("actions.clearSelection")}
 								</Button>
 							</div>
 							<Show when={page().items.length === 0}>
 								<p class="py-4 text-sm text-muted-foreground">
-									この作者に紐づくメディアはありません。
+									{t("authors.noMediaIsAssociatedWithThisAuthor")}
 								</p>
 							</Show>
 							<div class="divide-y border-y">
@@ -528,7 +575,9 @@ export function AuthorManagementPanel(props: {
 											>
 												<CheckboxControl />
 												<CheckboxLabel class="sr-only">
-													{item.fileName}を選択
+													{t("sourceMediaGrid.selectValue", {
+														value0: String(item.fileName),
+													})}
 												</CheckboxLabel>
 											</Checkbox>
 											<ManagedThumbnailImage
@@ -546,8 +595,11 @@ export function AuthorManagementPanel(props: {
 													{item.fileName}
 												</p>
 												<p class="break-words text-xs text-muted-foreground">
-													現在の作者:{" "}
-													{item.authors.map(authorLabel).join(" / ")}
+													{t("authors.currentAuthorValueValue", {
+														value1: String(
+															item.authors.map(authorLabel).join(" / "),
+														),
+													})}
 												</p>
 												<For
 													each={item.sourceUrls.filter((url) =>
@@ -579,7 +631,7 @@ export function AuthorManagementPanel(props: {
 										setSelected(new Set<string>());
 									}}
 								>
-									前のページ
+									{t("jobsScreen.previousPage")}
 								</Button>
 								<span class="text-xs">
 									{page().total ? offset() + 1 : 0}–
@@ -593,7 +645,7 @@ export function AuthorManagementPanel(props: {
 										setSelected(new Set<string>());
 									}}
 								>
-									次のページ
+									{t("jobsScreen.nextPage")}
 								</Button>
 							</div>
 						</>
@@ -606,21 +658,21 @@ export function AuthorManagementPanel(props: {
 						}
 						onClick={() => setConfirmation("correct")}
 					>
-						選択したメディアの作者を付け替え
+						{t("authors.reassignSelectedMediaToAnotherAuthor")}
 					</Button>
 					<Button
 						variant="outline"
 						disabled={busy() || !selected().size || media.isFetching}
 						onClick={() => setConfirmation("remove")}
 					>
-						選択したメディアからこの作者を外す
+						{t("authors.removeThisAuthorFromSelectedMedia")}
 					</Button>
 					<Button
 						variant="outline"
 						disabled={busy() || !target()}
 						onClick={() => setConfirmation("merge")}
 					>
-						この作者を修正先に統合
+						{t("authors.mergeThisAuthorIntoTheDestination")}
 					</Button>
 				</div>
 			</Show>
@@ -642,13 +694,26 @@ export function AuthorManagementPanel(props: {
 					<DialogHeader>
 						<DialogTitle>
 							{confirmation() === "merge"
-								? "作者の統合を確認"
-								: "メディアの作者修正を確認"}
+								? t("authors.confirmAuthorMerge")
+								: t("authors.confirmMediaAuthorChanges")}
 						</DialogTitle>
 						<DialogDescription>
 							{confirmation() === "merge"
-								? `「${source()?.name}」の全メディア・外部アカウント・タグを「${target()?.name}」へ移し、元の作者レコードを削除します。ソース絞り込みや選択件数に関係なく全件が対象です。`
-								: `選択した${selected().size}件から「${source()?.name}」を${confirmation() === "remove" ? "外します" : `「${target()?.name}」へ付け替えます`}。ほかの作者の関連付けは維持します。`}
+								? t("authors.moveAllMediaExternalAccountsAndTagsFromValue", {
+										value0: String(source()?.name),
+										value1: String(target()?.name),
+									})
+								: t("authors.applyValueForValueToValueSelectedItemsOther", {
+										value0: String(selected().size),
+										value1: String(source()?.name),
+										value2: String(
+											confirmation() === "remove"
+												? t("authors.remove")
+												: t("authors.reassignToValue", {
+														value0: String(target()?.name),
+													}),
+										),
+									})}
 						</DialogDescription>
 					</DialogHeader>
 					<Show when={error()}>
@@ -662,10 +727,10 @@ export function AuthorManagementPanel(props: {
 							disabled={busy()}
 							onClick={() => setConfirmation(null)}
 						>
-							キャンセル
+							{t("actions.cancel")}
 						</Button>
 						<Button disabled={busy()} onClick={() => void apply()}>
-							{busy() ? "保存中..." : "確認して実行"}
+							{busy() ? t("status.saving") : t("authors.confirmAndRun")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

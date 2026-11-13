@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import {
 	Content as SelectPrimitiveContent,
@@ -127,7 +128,7 @@ const SelectItem = <T extends ValidComponent = "li">(
 					viewBox="0 0 24 24"
 					xmlns="http://www.w3.org/2000/svg"
 				>
-					<title>Check</title>
+					<title>{t("select.check")}</title>
 					<path d="M0 0h24v24H0z" fill="none" stroke="none" />
 					<path d="M5 12l5 5l10 -10" />
 				</svg>

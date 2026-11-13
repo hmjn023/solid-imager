@@ -251,7 +251,7 @@ describe("operation destination snapshot", () => {
 				expect(getClient).toHaveBeenCalledExactlyOnceWith(urlA);
 				expect(notifications).toHaveBeenCalledWith(
 					expect.objectContaining({
-						message: "Successfully queued 1 download(s)",
+						message: "1件のダウンロードを登録しました",
 					}),
 				);
 			} finally {
@@ -276,7 +276,7 @@ describe("operation destination snapshot", () => {
 			expect(clientA.sources.list).toHaveBeenCalledTimes(3);
 			expect(clientA.downloads.start).not.toHaveBeenCalled();
 			expect(notifications).toHaveBeenCalledWith(
-				expect.objectContaining({ title: "xtracter Error" }),
+				expect.objectContaining({ title: "xtracterのエラー" }),
 			);
 		} finally {
 			vi.useRealTimers();

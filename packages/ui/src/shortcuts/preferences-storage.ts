@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	type Hotkey,
 	normalizeHotkey,
@@ -76,7 +77,7 @@ export function parseShortcutBinding(
 	if (typeof value !== "string") {
 		return {
 			valid: false,
-			messages: ["Shortcut binding must be a string or null."],
+			messages: [t("shortcuts.invalidBindingType")],
 		};
 	}
 

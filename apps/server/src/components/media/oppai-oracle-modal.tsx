@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import { OppaiOracleModal as SharedOppaiOracleModal } from "@solid-imager/ui/oppai-oracle-modal";
 import { fetchOppaiOracleTags } from "~/infrastructure/api-clients/ai-api";
@@ -22,7 +23,7 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 					mediaId: props.mediaId,
 				});
 				if (!result) {
-					throw new Error("No OppaiOracle result returned");
+					throw new Error(t("oppaiOracleModal.noOppaiOracleResultReturned"));
 				}
 				return result;
 			}}

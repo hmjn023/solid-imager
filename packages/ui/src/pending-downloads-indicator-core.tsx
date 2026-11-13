@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	type Accessor,
@@ -51,7 +52,11 @@ export function PendingDownloadsIndicatorCore(
 						refreshRequested = true;
 					}
 				} catch (error) {
-					toast.error(`Failed to check inbox: ${getErrorMessage(error)}`);
+					toast.error(
+						t("pendingDownloadsIndicatorCore.failedToCheckInboxValue", {
+							value0: String(getErrorMessage(error)),
+						}),
+					);
 				}
 			}
 		})().finally(() => {
@@ -105,7 +110,7 @@ export function PendingDownloadsIndicatorCore(
 			})
 			.catch(() => {
 				if (!disposed) {
-					toast.error("Connection to inbox lost");
+					toast.error(t("pendingDownloadsIndicatorCore.connectionToInboxLost"));
 				}
 			});
 

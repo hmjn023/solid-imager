@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Button } from "@solid-imager/ui/button";
 import { Search } from "@solid-imager/ui/icons";
 import { Link } from "@tanstack/solid-router";
@@ -13,14 +14,14 @@ export function NotFoundRoute() {
 			</span>
 			<div>
 				<h1 class="font-semibold text-xl text-foreground" id="not-found-title">
-					ページが見つかりません
+					{t("notFoundScreen.pageNotFound")}
 				</h1>
 				<p class="mt-2 text-sm text-muted-foreground">
-					URLを確認するか、ライブラリへ戻ってください。
+					{t("notFound.checkTheURLOrReturnToTheLibrary")}
 				</p>
 			</div>
 			<Button as={Link} to="/search">
-				ライブラリへ戻る
+				{t("notFound.backToLibrary")}
 			</Button>
 		</section>
 	);

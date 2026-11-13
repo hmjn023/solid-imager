@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { Accessor, JSX, ParentProps } from "solid-js";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
@@ -146,10 +147,10 @@ export function AppShell(props: AppShellProps) {
 					}}
 					type="button"
 				>
-					メインコンテンツへ移動
+					{t("appShell.skipToMainContent")}
 				</button>
 				<aside
-					aria-label="アプリケーションサイドバー"
+					aria-label={t("appShell.applicationSidebar")}
 					class="hidden min-h-0 border-border border-r md:block"
 				>
 					<Sidebar
@@ -205,9 +206,9 @@ export function AppShell(props: AppShellProps) {
 						placement="left"
 					>
 						<DialogHeader class="sr-only">
-							<DialogTitle>ナビゲーション</DialogTitle>
+							<DialogTitle>{t("appShell.navigation")}</DialogTitle>
 							<DialogDescription>
-								画面とメディアソースを選択します。
+								{t("appShell.chooseAScreenAndMediaSource")}
 							</DialogDescription>
 						</DialogHeader>
 						<Sidebar

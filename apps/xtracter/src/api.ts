@@ -1,3 +1,4 @@
+import { t } from "./i18n";
 import { readConnectionSettings } from "./connection-settings";
 import { APIError, createClient } from "@solid-imager/client";
 import type { AppContract } from "@solid-imager/core/contract";
@@ -35,7 +36,7 @@ function handleFetchError(error: unknown, url: string): APIError {
 	if (error instanceof Error) {
 		if (error.name === "AbortError" || error.name === "TimeoutError") {
 			return new APIError(
-				`Request timeout after ${REQUEST_TIMEOUT_MS}ms`,
+				t("extension.timeout", { timeout: REQUEST_TIMEOUT_MS }),
 				"TIMEOUT",
 				error,
 			);
@@ -44,25 +45,21 @@ function handleFetchError(error: unknown, url: string): APIError {
 			error.message.includes("CORS") ||
 			error.message.includes("cross-origin")
 		) {
-			return new APIError(
-				"CORS error - server may not allow requests from this origin",
-				"CORS_ERROR",
-				error,
-			);
+			return new APIError(t("extension.corsError"), "CORS_ERROR", error);
 		}
 		if (
 			error.message.includes("Failed to fetch") ||
 			error.message.includes("NetworkError")
 		) {
 			return new APIError(
-				`Network error - cannot connect to ${url}`,
+				t("extension.networkError", { url }),
 				"NETWORK_ERROR",
 				error,
 			);
 		}
 	}
 
-	return new APIError("Unknown error during API request", "UNKNOWN", error);
+	return new APIError(t("extension.unknownApiError"), "UNKNOWN", error);
 }
 
 /**
@@ -83,7 +80,8 @@ export const testConnection = async (
 
 		return {
 			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
+			error:
+				error instanceof Error ? error.message : t("feedback.unknownError"),
 		};
 	}
 };

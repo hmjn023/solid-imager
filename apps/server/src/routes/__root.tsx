@@ -1,3 +1,5 @@
+import { configureClientValidationLocale } from "@solid-imager/ui/validation-locale";
+import { initializeBrowserLocale, t } from "@solid-imager/i18n";
 import { ShortcutPreferencesProvider } from "@solid-imager/ui/shortcuts";
 import { Toaster } from "@solid-imager/ui/toast";
 import type { QueryClient } from "@tanstack/solid-query";
@@ -28,7 +30,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				content: "width=device-width, initial-scale=1",
 			},
 			{
-				title: "Solid Imager",
+				title: t("sidebar.solidImager"),
 			},
 		],
 		links: [{ rel: "stylesheet", href: styleCss }],
@@ -51,6 +53,7 @@ function RootComponent() {
 		);
 	};
 	onMount(() => {
+		configureClientValidationLocale(initializeBrowserLocale());
 		setIsHydrated(true);
 	});
 

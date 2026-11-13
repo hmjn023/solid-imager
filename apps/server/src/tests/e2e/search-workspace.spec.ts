@@ -52,11 +52,11 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 			.click();
 		const dialog = page.getByRole("dialog").filter({
 			has: page.getByRole("heading", {
-				name: mode === "copy" ? "Copy Media" : "Move Media",
+				name: mode === "copy" ? "メディアをコピー" : "メディアを移動",
 				exact: true,
 			}),
 		});
-		await dialog.getByRole("button", { name: /^Destination source/ }).click();
+		await dialog.getByRole("button", { name: /^保存先ソース/ }).click();
 		await page
 			.locator('[role="listbox"]')
 			.getByText(destination.name, { exact: true })
@@ -68,7 +68,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 		);
 		await dialog
 			.getByRole("button", {
-				name: mode === "copy" ? "Copy" : "Move",
+				name: mode === "copy" ? "コピー" : "移動",
 				exact: true,
 			})
 			.click();
@@ -106,7 +106,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 		await mediaItem(E2E_PRIMARY_MEDIA_ID).click({ modifiers: ["Control"] });
 		await mediaItem(E2E_SIMILAR_MEDIA_ID).click({ modifiers: ["Control"] });
 		const bulkActions = page.getByTestId("search-bulk-actions-bar");
-		await expect(bulkActions).toContainText("2 件選択中");
+		await expect(bulkActions).toContainText("2件選択中");
 		await bulkActions
 			.getByRole("button", { name: "一括操作を実行", exact: true })
 			.click();
@@ -114,11 +114,11 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 			name: "一括操作を実行",
 			exact: true,
 		});
-		await expect(bulkDialog).toContainText("2 件のメディア");
+		await expect(bulkDialog).toContainText("2件のメディア");
 		await bulkDialog
 			.getByRole("button", { name: "キャンセル", exact: true })
 			.click();
-		await expect(bulkActions).toContainText("2 件選択中");
+		await expect(bulkActions).toContainText("2件選択中");
 
 		await mediaItem(E2E_PRIMARY_MEDIA_ID).click({ button: "right" });
 		await page
@@ -133,19 +133,19 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 			.getByRole("button", { name: "キャンセル", exact: true })
 			.click();
 		await expect(mediaItem(E2E_PRIMARY_MEDIA_ID)).toBeVisible();
-		await expect(bulkActions).toContainText("2 件選択中");
+		await expect(bulkActions).toContainText("2件選択中");
 
 		const copied = await transfer(
 			E2E_PRIMARY_MEDIA_ID,
 			"copy",
 			copyDestination,
 		);
-		await expect(bulkActions).toContainText("2 件選択中");
+		await expect(bulkActions).toContainText("2件選択中");
 		const moved = await transfer(copied.id, "move", moveDestination);
 		await expect(mediaItem(copied.id)).toHaveCount(0);
 		expect((await searchSource(copyDestination.id)).total).toBe(0);
 		await mediaItem(moved.id).click({ modifiers: ["Control"] });
-		await expect(bulkActions).toContainText("3 件選択中");
+		await expect(bulkActions).toContainText("3件選択中");
 		await mediaItem(moved.id).click({ button: "right" });
 		await page
 			.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
@@ -160,7 +160,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 			.click();
 		await deleted;
 		await expect(mediaItem(moved.id)).toHaveCount(0);
-		await expect(bulkActions).toContainText("2 件選択中");
+		await expect(bulkActions).toContainText("2件選択中");
 		expect((await searchSource(moveDestination.id)).total).toBe(0);
 	} finally {
 		for (const source of sources) {

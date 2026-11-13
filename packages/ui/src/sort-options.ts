@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { MediaSort } from "@solid-imager/core/search";
 
 export const SORT_OPTIONS = [
@@ -15,25 +16,25 @@ export type SortOption = (typeof SORT_OPTIONS)[number];
 
 export function getSortLabel(value: SortOption) {
 	if (value === "date") {
-		return "ファイル作成日時";
+		return t("sortOptions.fileCreationDate");
 	}
 	if (value === "modifiedAt") {
-		return "更新日時";
+		return t("sortOptions.modifiedDate");
 	}
 	if (value === "indexedAt") {
-		return "登録日時";
+		return t("sortOptions.registrationDate");
 	}
 	if (value === "name") {
-		return "名前";
+		return t("labels.name");
 	}
 	if (value === "size") {
-		return "ファイルサイズ";
+		return t("sortOptions.fileSize");
 	}
 	if (value === "resolution") {
-		return "解像度";
+		return t("collectionInspector.resolution");
 	}
 	if (value === "rating") {
-		return "評価";
+		return t("sortOptions.rating");
 	}
-	return "閲覧数";
+	return t("sortOptions.viewCount");
 }

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type {
 	DanbooruPost,
 	DanbooruSearchResult,
@@ -49,10 +50,10 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 			providerName="Danbooru"
 			siteUrl="https://danbooru.donmai.us"
 			browse={browse}
-			errorTitle="Danbooru を取得できませんでした"
-			emptyTitle="該当する投稿がありません"
+			errorTitle={t("danbooruScreen.couldNotLoadDanbooru")}
+			emptyTitle={t("danbooruScreen.noMatchingPosts")}
 			describePost={(post) => ({
-				title: `Danbooru #${post.id}`,
+				title: t("danbooruScreen.danbooruValue", { value0: String(post.id) }),
 				thumbnail: post.previewUrl,
 				info: `${post.fileExt.toUpperCase()} · ${danbooruRatingLabel(post.rating)}`,
 				width: post.width || undefined,

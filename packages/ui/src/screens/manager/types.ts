@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { ManagerEntityType } from "../../hooks/use-manager-page";
 
 export type ManagerCategoryValue =
@@ -31,63 +32,63 @@ export type ManagerTransferActions = {
 
 export const MANAGER_CATEGORIES: ManagerCategory[] = [
 	{
-		description: "解析結果・ノイズ・設定ごとの差を確認",
+		description: t("types.reviewAnalysisNoiseAndDifferencesBetweenSettings"),
 		group: "Tools",
-		label: "キャラクタークラスタリング",
+		label: t("jobTypes.character_clustering"),
 		value: "clustering",
 	},
 	{
-		description: "誤登録の確認・付け替え・統合",
+		description: t("types.reviewReassignAndMergeIncorrectRegistrations"),
 		group: "Entities",
-		label: "作者・外部アカウント",
+		label: t("types.authorsAndExternalAccounts"),
 		value: "authors",
 	},
 	{
-		description: "Collections and work",
+		description: t("types.collectionsAndWork"),
 		group: "Entities",
-		label: "Projects",
+		label: t("labels.projects"),
 		value: "projects",
 	},
 	{
-		description: "Series and franchises",
+		description: t("types.seriesAndFranchises"),
 		group: "Entities",
-		label: "IPs",
+		label: t("labels.ips"),
 		value: "ips",
 	},
 	{
-		description: "People and subjects",
+		description: t("types.peopleAndSubjects"),
 		group: "Entities",
-		label: "Characters",
+		label: t("labels.characters"),
 		value: "characters",
 	},
 	{
-		description: "Submit AI tag jobs",
+		description: t("types.submitAITagJobs"),
 		group: "Tools",
-		label: "Batch tagging",
+		label: t("jobTypes.bulk_tagging_parent"),
 		value: "tagging",
 	},
 	{
-		description: "Build image or character embeddings",
+		description: t("types.buildImageOrCharacterEmbeddings"),
 		group: "Tools",
-		label: "Vector extraction",
+		label: t("types.vectorExtraction"),
 		value: "vectors",
 	},
 	{
-		description: "Warm responsive image cache",
+		description: t("types.warmResponsiveImageCache"),
 		group: "Tools",
-		label: "Thumbnails",
+		label: t("types.thumbnails"),
 		value: "thumbnails",
 	},
 	{
-		description: "Review matching media",
+		description: t("types.reviewMatchingMedia"),
 		group: "Tools",
-		label: "Duplicates",
+		label: t("types.duplicates"),
 		value: "duplicates",
 	},
 	{
-		description: "Export and restore source data",
+		description: t("types.exportAndRestoreSourceData"),
 		group: "Tools",
-		label: "Data transfer",
+		label: t("types.dataTransfer"),
 		value: "transfer",
 	},
 ];

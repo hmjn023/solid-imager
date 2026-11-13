@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import {
 	createEffect,
@@ -111,10 +112,21 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 			if (partial) {
 				setRetryCommand({ ...command, items: outcome.retryItems });
 				setErrorMsg(
-					`成功 ${outcome.succeededMediaIds.length} 件、再試行可能 ${outcome.retryItems.length} 件、結果不明 ${unknown.length} 件。` +
+					t(
+						"bulkActionDialog.valueSucceededValueCanBeRetriedValueHaveUnknown",
+						{
+							value0: String(outcome.succeededMediaIds.length),
+							value1: String(outcome.retryItems.length),
+							value2: String(unknown.length),
+						},
+					) +
 						(unknown.length
-							? "結果不明の項目は再送せず、ダイアログを閉じて一覧と保存先を確認してください。"
-							: "失敗・未処理の項目だけを同じ宛先へ再試行できます。"),
+							? t(
+									"bulkActionDialog.doNotResubmitItemsWithUnknownOutcomesCloseThe",
+								)
+							: t(
+									"bulkActionDialog.onlyFailedOrUnprocessedItemsCanBeRetriedTo",
+								)),
 				);
 			} else {
 				setRetryCommand(null);
@@ -122,7 +134,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 			}
 		} catch (error) {
 			setErrorMsg(
-				error instanceof Error ? error.message : "An error occurred.",
+				error instanceof Error ? error.message : t("feedback.unexpectedError"),
 			);
 		} finally {
 			setIsSubmitting(false);
@@ -138,16 +150,17 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 		>
 			<DialogContent class="workspace-theme sm:max-w-dialog-xs">
 				<DialogHeader>
-					<DialogTitle>一括操作を実行</DialogTitle>
+					<DialogTitle>{t("searchScreen.runBulkAction")}</DialogTitle>
 					<DialogDescription>
-						選択された {selectedItems().length}{" "}
-						件のメディアに対して一括操作を実行します。
+						{t("bulkActionDialog.runABulkActionOnValueValueSelectedMedia", {
+							value0: String(selectedItems().length),
+						})}
 					</DialogDescription>
 				</DialogHeader>
 
 				<div class="grid gap-4 py-4">
 					<label class="flex flex-col gap-2 font-medium text-sm">
-						操作を選択
+						{t("jobsScreen.chooseAction")}
 						<select
 							id="bulk-action-type"
 							disabled={isSubmitting() || retryCommand() !== null}
@@ -158,16 +171,22 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 								if (isActionType(value)) setAction(value);
 							}}
 						>
-							<option value="copy-source">コピー (別ソースへ)</option>
-							<option value="move-source">移動 (別ソースへ)</option>
-							<option value="move-folder">フォルダ移動 (同一ソース内)</option>
-							<option value="delete">一括削除</option>
+							<option value="copy-source">
+								{t("bulkActionDialog.copyToAnotherSource")}
+							</option>
+							<option value="move-source">
+								{t("bulkActionDialog.moveToAnotherSource")}
+							</option>
+							<option value="move-folder">
+								{t("bulkActionDialog.moveFolderWithinThisSource")}
+							</option>
+							<option value="delete">{t("bulkActionDialog.bulkDelete")}</option>
 						</select>
 					</label>
 
 					<Show when={action() === "copy-source" || action() === "move-source"}>
 						<label class="flex flex-col gap-2 font-medium text-sm">
-							コピー/移動先のソース
+							{t("bulkActionDialog.copyOrMoveDestinationSource")}
 							<select
 								id="target-source-id"
 								disabled={isSubmitting() || retryCommand() !== null}
@@ -177,7 +196,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 									setTargetSourceId(event.currentTarget.value)
 								}
 							>
-								<option value="">選択してください...</option>
+								<option value="">{t("bulkActionDialog.select")}</option>
 								<For each={usableSources()}>
 									{(source) => <option value={source.id}>{source.name}</option>}
 								</For>
@@ -187,12 +206,14 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 
 					<Show when={action() === "move-folder"}>
 						<div class="flex flex-col gap-2 font-medium text-sm">
-							<span id="destination-path-label">移動先フォルダパス</span>
+							<span id="destination-path-label">
+								{t("bulkActionDialog.destinationFolderPath")}
+							</span>
 							<Input
 								aria-labelledby="destination-path-label"
 								id="destination-path"
 								disabled={isSubmitting() || retryCommand() !== null}
-								placeholder="e.g. subfolder/new-dir"
+								placeholder={t("bulkActionDialog.eGSubfolderNewDir")}
 								value={destinationPath()}
 								onInput={(event) =>
 									setDestinationPath(event.currentTarget.value)
@@ -203,7 +224,9 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 
 					<Show when={action() === "delete"}>
 						<div class="rounded-md bg-destructive/10 p-3 text-destructive text-sm">
-							警告: この操作は元に戻せません。実ファイルも削除されます。
+							{t(
+								"bulkActionDialog.warningThisActionCannotBeUndoneTheActualFiles",
+							)}
 						</div>
 					</Show>
 
@@ -218,7 +241,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 						onClick={() => props.onOpenChange(false)}
 						variant="outline"
 					>
-						キャンセル
+						{t("actions.cancel")}
 					</Button>
 					<Button
 						disabled={
@@ -233,10 +256,10 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 						variant={action() === "delete" ? "destructive" : "default"}
 					>
 						{isSubmitting()
-							? "処理中..."
+							? t("status.processing")
 							: retryCommand()
-								? "失敗・未処理だけ再試行"
-								: "確定"}
+								? t("bulkActionDialog.retryFailedOrUnprocessedItems")
+								: t("bulkActionDialog.confirm")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

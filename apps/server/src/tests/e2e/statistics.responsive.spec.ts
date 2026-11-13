@@ -23,7 +23,7 @@ test("statistics switches period and keeps the monthly drill-down across reload"
 	).toBeVisible();
 	await page.getByText("件数を一覧で見る").click();
 	await page
-		.getByRole("button", { name: /^\d{4}-\d{2} [1-9]\d* 件$/ })
+		.getByRole("button", { name: /^\d{4}-\d{2} [1-9]\d*件$/ })
 		.last()
 		.click();
 	const firstMedia = page
@@ -64,7 +64,7 @@ test("statistics opens from the sidebar and recovers a failed request @desktop-o
 	);
 	await page.goto("/about");
 	await waitForAppHydration(page);
-	await page.getByRole("link", { name: "Statistics", exact: true }).click();
+	await page.getByRole("link", { name: "統計", exact: true }).click();
 	await expect(
 		page.getByRole("heading", { name: "統計を取得できませんでした" }),
 	).toBeVisible();
@@ -139,7 +139,7 @@ test("chart views show composition, cumulative counts and selectable ranking bar
 	await expect(
 		page.getByRole("heading", { name: "生成モデル別のお気に入り" }),
 	).toBeAttached();
-	await expect(page.getByText("63 / 180 件", { exact: true })).toBeAttached();
+	await expect(page.getByText("63 / 180件", { exact: true })).toBeAttached();
 	const leading = page.getByRole("button", { name: /星の航路/ });
 	const runnerUp = page.getByRole("button", { name: /夜明けのアトリエ/ });
 	const width = (button: typeof leading) =>
@@ -158,14 +158,14 @@ test("chart views show composition, cumulative counts and selectable ranking bar
 	await page.getByText("件数を一覧で見る").click();
 	await expect(
 		page.getByRole("button", {
-			name: `2026-10-30 ${(1000 + total).toLocaleString("ja-JP")} 件`,
+			name: `2026-10-30 ${(1000 + total).toLocaleString("ja-JP")}件`,
 			exact: true,
 		}),
 	).toBeVisible();
 	await page.getByText("件数を一覧で見る").click();
 	await leading.click();
 	await expect(leading).toHaveAttribute("aria-pressed", "true");
-	await expect(page.getByText("214 件", { exact: true }).first()).toBeVisible();
+	await expect(page.getByText("214件", { exact: true }).first()).toBeVisible();
 	await expect(page.getByRole("button", { name: /アリア/ })).toHaveCount(0);
 	await expect(
 		page.getByRole("img", { name: "ライブラリの累計メディア数" }),

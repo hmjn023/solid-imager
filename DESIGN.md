@@ -245,7 +245,11 @@ Prefer sentence case. Use all caps only for very small design-lab taxonomy label
 never for ordinary navigation or actions. Filenames and identifiers may wrap or
 truncate according to context, but they must expose the full value through the
 detail view or an accessible name. A production control group uses one active
-locale; do not mix Japanese and English labels inside the same workflow. Explanatory
+locale; do not mix Japanese and English labels inside the same workflow. Fixed
+product copy comes from `@solid-imager/i18n`. Use shared action keys and complete
+messages with interpolation rather than concatenating translated fragments. The
+`ui-text/no-raw-text` lint rule rejects hardcoded product copy, including accessible
+names, notifications, and validation messages. Explanatory
 copy in the design lab may remain Japanese while product localization is undecided.
 
 ## Layout

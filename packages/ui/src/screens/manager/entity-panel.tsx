@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import Pencil from "lucide-solid/icons/pencil";
 import Plus from "lucide-solid/icons/plus";
 import Search from "lucide-solid/icons/search";
@@ -21,7 +22,7 @@ import {
 
 export function ManagerTableSkeleton() {
 	return (
-		<LoadingRegion label="管理データを読み込んでいます...">
+		<LoadingRegion label={t("entityPanel.loadingManagementData")}>
 			<div class="overflow-hidden rounded-md border border-border bg-card">
 				<div class="h-9 animate-pulse bg-muted motion-reduce:animate-none" />
 				<For each={[1, 2, 3, 4, 5]}>
@@ -55,31 +56,33 @@ function EntityInspector(props: {
 	const active = () => props.manager.activeTab();
 	return (
 		<aside
-			aria-label="選択中の項目"
+			aria-label={t("entityPanel.selectedItem")}
 			class="hidden self-start rounded-md border border-border bg-card p-4 2xl:block"
 		>
 			<p class="text-xs text-muted-foreground">
-				Selected {singularLabel(active())}
+				{t("entityPanel.selectedValue", {
+					value0: String(singularLabel(active())),
+				})}
 			</p>
 			<h3 class="mt-1 break-words font-semibold text-base text-foreground">
 				{props.item.name}
 			</h3>
 			<p class="mt-2 text-xs leading-5 text-muted-foreground">
-				{props.item.description || "No description"}
+				{props.item.description || t("labels.noDescription")}
 			</p>
 			<dl class="mt-4 space-y-3 border-border border-y py-4 text-xs">
 				<div class="grid grid-cols-label-field gap-3">
-					<dt class="text-muted-foreground">ID</dt>
+					<dt class="text-muted-foreground">{t("entityPanel.iD")}</dt>
 					<dd class="break-all text-foreground">{props.item.id}</dd>
 				</div>
 				<div class="grid grid-cols-label-field gap-3">
-					<dt class="text-muted-foreground">Updated</dt>
+					<dt class="text-muted-foreground">{t("jobsScreen.updated")}</dt>
 					<dd class="text-foreground">{formatDate(props.item.updatedAt)}</dd>
 				</div>
 				<Show when={isCharacter(props.item) || isIp(props.item)}>
 					<div class="grid grid-cols-label-field gap-3">
 						<dt class="text-muted-foreground">
-							{isCharacter(props.item) ? "IPs" : "Source"}
+							{isCharacter(props.item) ? t("labels.ips") : t("labels.source")}
 						</dt>
 						<dd class="break-words text-foreground">
 							{relationSummary(props.item)}
@@ -87,7 +90,7 @@ function EntityInspector(props: {
 					</div>
 				</Show>
 				<div class="grid grid-cols-label-field gap-3">
-					<dt class="text-muted-foreground">Media</dt>
+					<dt class="text-muted-foreground">{t("configScreen.media")}</dt>
 					<dd class="text-foreground">
 						{props.item.mediaCount?.toLocaleString() ?? "—"}
 					</dd>
@@ -95,15 +98,19 @@ function EntityInspector(props: {
 			</dl>
 			<div class="mt-4 grid grid-cols-2 gap-2">
 				<Button
-					aria-label={`${props.item.name}を編集`}
+					aria-label={t("entityPanel.editValue", {
+						value0: String(props.item.name),
+					})}
 					onClick={() => props.manager.openEditDialog(props.item)}
 					variant="outline"
 				>
 					<Pencil aria-hidden="true" size={14} />
-					Edit
+					{t("actions.edit")}
 				</Button>
 				<Button
-					aria-label={`${props.item.name}を削除`}
+					aria-label={t("entityPanel.deleteValue", {
+						value0: String(props.item.name),
+					})}
 					class="text-destructive"
 					onClick={() => {
 						props.manager.setItemToDelete(props.item);
@@ -112,7 +119,7 @@ function EntityInspector(props: {
 					variant="outline"
 				>
 					<Trash2 aria-hidden="true" size={14} />
-					Delete
+					{t("actions.delete")}
 				</Button>
 			</div>
 		</aside>
@@ -149,8 +156,9 @@ export function EntityTablePanel(props: {
 						{categoryLabel(active())}
 					</h2>
 					<p class="mt-0.5 text-xs text-muted-foreground">
-						Create, review, and maintain {categoryLabel(active()).toLowerCase()}
-						.
+						{t("entityPanel.createReviewAndMaintainValue", {
+							value0: String(categoryLabel(active()).toLowerCase()),
+						})}
 					</p>
 				</div>
 				<Button
@@ -158,7 +166,7 @@ export function EntityTablePanel(props: {
 					onClick={props.manager.openCreateDialog}
 				>
 					<Plus aria-hidden="true" size={15} />
-					New {singularLabel(active())}
+					{t("entityPanel.newValue", { value0: singularLabel(active()) })}
 				</Button>
 			</div>
 
@@ -171,12 +179,16 @@ export function EntityTablePanel(props: {
 							size={15}
 						/>
 						<Input
-							aria-label={`${categoryLabel(active())}を検索`}
+							aria-label={t("relationsEditor.searchValue", {
+								value0: String(categoryLabel(active())),
+							})}
 							class="h-9 bg-card pl-9 shadow-none"
 							onInput={(event) =>
 								props.onQueryChange(event.currentTarget.value)
 							}
-							placeholder={`Search ${categoryLabel(active()).toLowerCase()}...`}
+							placeholder={t("relationsEditor.searchValue2", {
+								value0: String(categoryLabel(active()).toLowerCase()),
+							})}
 							value={props.query}
 						/>
 					</div>
@@ -185,11 +197,17 @@ export function EntityTablePanel(props: {
 						fallback={
 							<EmptyState
 								class="min-h-52"
-								description="検索条件を変更するか、新しい項目を作成してください。"
-								title={`${categoryLabel(active())}が見つかりません`}
+								description={t(
+									"entityPanel.changeYourSearchConditionsOrCreateANewItem",
+								)}
+								title={t("entityPanel.noValueFound", {
+									value0: String(categoryLabel(active())),
+								})}
 							>
 								<Button onClick={props.manager.openCreateDialog}>
-									New {singularLabel(active())}
+									{t("entityPanel.newValue", {
+										value0: String(singularLabel(active())),
+									})}
 								</Button>
 							</EmptyState>
 						}
@@ -198,31 +216,34 @@ export function EntityTablePanel(props: {
 						<div class="overflow-x-auto rounded-md border border-border bg-card scrollbar-stable">
 							<table class="w-full min-w-table-standard border-collapse text-left text-sm">
 								<caption class="sr-only">
-									{categoryLabel(active())}の一覧。{items().length}件。
+									{t("entityPanel.valueListValueItems", {
+										value0: String(categoryLabel(active())),
+										value1: String(items().length),
+									})}
 								</caption>
 								<thead class="bg-muted text-xs text-muted-foreground">
 									<tr>
 										<th class="px-3 py-2 font-medium" scope="col">
-											Name
+											{t("labels.name")}
 										</th>
 										<th class="px-3 py-2 font-medium" scope="col">
-											Description
+											{t("labels.description")}
 										</th>
 										<th class="px-3 py-2 font-medium" scope="col">
 											{active() === "characters"
-												? "IPs"
+												? t("labels.ips")
 												: active() === "ips"
-													? "Source"
-													: "Status"}
+													? t("labels.source")
+													: t("jobsScreen.status")}
 										</th>
 										<th class="px-3 py-2 font-medium" scope="col">
-											Media
+											{t("configScreen.media")}
 										</th>
 										<th class="px-3 py-2 font-medium" scope="col">
-											Updated
+											{t("jobsScreen.updated")}
 										</th>
 										<th class="px-3 py-2 text-right font-medium" scope="col">
-											Actions
+											{t("entityPanel.actions")}
 										</th>
 									</tr>
 								</thead>
@@ -247,13 +268,13 @@ export function EntityTablePanel(props: {
 													</th>
 													<td class="max-w-dialog-reading px-3 py-2 text-xs text-muted-foreground">
 														<span class="line-clamp-2">
-															{item.description || "No description"}
+															{item.description || t("labels.noDescription")}
 														</span>
 													</td>
 													<td class="max-w-52 px-3 py-2 text-xs text-muted-foreground">
 														<span class="block truncate">
 															{active() === "projects"
-																? "Active"
+																? t("jobsScreen.active")
 																: relationSummary(item)}
 														</span>
 													</td>
@@ -266,7 +287,9 @@ export function EntityTablePanel(props: {
 													<td class="px-3 py-2">
 														<div class="flex justify-end gap-1">
 															<Button
-																aria-label={`${item.name}を編集`}
+																aria-label={t("entityPanel.editValue", {
+																	value0: String(item.name),
+																})}
 																class="size-8 p-0"
 																onClick={() =>
 																	props.manager.openEditDialog(item)
@@ -277,7 +300,9 @@ export function EntityTablePanel(props: {
 																<Pencil aria-hidden="true" size={14} />
 															</Button>
 															<Button
-																aria-label={`${item.name}を削除`}
+																aria-label={t("entityPanel.deleteValue", {
+																	value0: String(item.name),
+																})}
 																class="size-8 p-0 text-destructive"
 																onClick={() => {
 																	props.manager.setItemToDelete(item);
@@ -298,7 +323,9 @@ export function EntityTablePanel(props: {
 							</table>
 						</div>
 						<p class="mt-2 text-xs text-muted-foreground" aria-live="polite">
-							{items().length} items
+							{t("charts.valueItems", {
+								value0: String(items().length),
+							})}
 						</p>
 					</Show>
 				</div>

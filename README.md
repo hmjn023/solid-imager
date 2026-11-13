@@ -200,10 +200,12 @@ fi
 | `aube dev`                                          | Aube経由の開発サーバー起動 |
 | `aube start`                                        | Aube経由の本番サーバー起動 |
 | `bun run check`                                     | lint / format / typecheck |
-| `bun run test`                                      | Vitest テスト             |
-| `bun run --cwd apps/server test:e2e:components`       | DB不要のコンポーネント検証 |
-| `bun run --cwd apps/server test:e2e`                  | dev代表14件＋本番全97件のアプリE2E |
-| `bun run --cwd apps/server test:e2e:full`             | dev・本番とも全件のアプリE2E |
+| `bun run test`                                      | 全workspaceの通常テスト   |
+| `bun run test:e2e`                                  | devの代表ケースと本番ビルドのアプリE2E全件 |
+| `bun run test:e2e --mode=smoke`                     | devの代表ケースだけを約30秒で検証 |
+| `bun run test:e2e --mode=dev route-reload.spec.ts`  | 編集中のspecだけをdevで検証 |
+| `bun run test:e2e --mode=components`                | DB不要のコンポーネントE2E |
+| `bun run test:e2e --mode=full`                      | dev・本番ともにアプリE2E全件 |
 | `bun run format`                                    | Oxfmtによるformat         |
 | `bun run lint`                                      | lint                      |
 | `bun --filter @solid-imager/server run db:generate` | マイグレーション生成      |

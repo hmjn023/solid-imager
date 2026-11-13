@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	type MediaSort,
 	type SearchGroup,
@@ -137,7 +138,7 @@ export function PresetManager(props: PresetManagerProps) {
 		const state = currentState();
 		const condition = getSearchConditionFromState(state);
 		if (!condition) {
-			toast.error("検索条件がありません");
+			toast.error(t("presetManager.noSearchConditions"));
 			return;
 		}
 
@@ -152,10 +153,10 @@ export function PresetManager(props: PresetManagerProps) {
 			setIsSaveDialogOpen(false);
 			setNewPresetName("");
 			void refetch();
-			toast.success("プリセットを保存しました");
+			toast.success(t("presetManager.presetSaved"));
 			props.onAction?.();
 		} catch {
-			toast.error("プリセットの保存に失敗しました");
+			toast.error(t("presetManager.couldNotSavePreset"));
 		}
 	};
 
@@ -177,7 +178,7 @@ export function PresetManager(props: PresetManagerProps) {
 			}
 			void refetch();
 		} catch {
-			toast.error("プリセットの削除に失敗しました");
+			toast.error(t("presetManager.couldNotDeletePreset"));
 		} finally {
 			setIsDeleteDialogOpen(false);
 			setPresetToDelete(null);
@@ -210,20 +211,20 @@ export function PresetManager(props: PresetManagerProps) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>プリセットの削除</AlertDialogTitle>
+						<AlertDialogTitle>{t("actions.deletePreset")}</AlertDialogTitle>
 						<AlertDialogDescription>
-							本当にこのプリセットを削除しますか？この操作は取り消せません。
+							{t("presetManager.deleteThisPresetThisActionCannotBeUndone")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>キャンセル</AlertDialogCancel>
+						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-error0 hover:bg-destructive"
 							onClick={() => {
 								void executeDelete();
 							}}
 						>
-							削除する
+							{t("actions.delete")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -249,7 +250,7 @@ export function PresetManager(props: PresetManagerProps) {
 						options={
 							presets()?.map((preset: Preset) => String(preset.id)) || []
 						}
-						placeholder="プリセットを選択..."
+						placeholder={t("presetManager.selectAPreset")}
 						value={selectedPresetId()}
 					>
 						<SelectTrigger class="w-full">
@@ -261,7 +262,7 @@ export function PresetManager(props: PresetManagerProps) {
 									);
 									return (
 										<span class="truncate">
-											{preset ? preset.name : "プリセットを選択..."}
+											{preset ? preset.name : t("presetManager.selectAPreset")}
 										</span>
 									);
 								}}
@@ -276,7 +277,7 @@ export function PresetManager(props: PresetManagerProps) {
 						class="h-10 w-10 shrink-0"
 						onClick={handleClearSelection}
 						size="icon"
-						title="選択解除"
+						title={t("actions.clearSelection")}
 						variant="ghost"
 					>
 						<svg
@@ -291,7 +292,7 @@ export function PresetManager(props: PresetManagerProps) {
 							width="16"
 							xmlns="http://www.w3.org/2000/svg"
 						>
-							<title>選択解除</title>
+							<title>{t("actions.clearSelection")}</title>
 							<path d="M18 6 6 18" />
 							<path d="m6 6 12 12" />
 						</svg>
@@ -306,23 +307,25 @@ export function PresetManager(props: PresetManagerProps) {
 					onClick={handleLoad}
 					variant="outline"
 				>
-					読込
+					{t("presetManager.load")}
 				</Button>
 
 				<Dialog onOpenChange={setIsSaveDialogOpen} open={isSaveDialogOpen()}>
 					<DialogTrigger as={Button} class="flex-1" variant="secondary">
-						保存
+						{t("actions.save")}
 					</DialogTrigger>
 					<DialogContent>
 						<DialogHeader>
-							<DialogTitle>現在の検索条件を保存</DialogTitle>
+							<DialogTitle>
+								{t("presetManager.saveCurrentSearchConditions")}
+							</DialogTitle>
 							<DialogDescription>
-								現在の検索条件に名前を付けて保存します。
+								{t("presetManager.nameAndSaveTheCurrentSearchConditions")}
 							</DialogDescription>
 						</DialogHeader>
 						<div class="grid gap-4 py-4">
 							<div class="grid grid-cols-4 items-center gap-4">
-								<Label class="text-right">名前</Label>
+								<Label class="text-right">{t("labels.name")}</Label>
 								<Input
 									class="col-span-3"
 									onInput={(event) =>
@@ -338,7 +341,7 @@ export function PresetManager(props: PresetManagerProps) {
 									void handleSave(event);
 								}}
 							>
-								保存する
+								{t("actions.save")}
 							</Button>
 						</DialogFooter>
 					</DialogContent>
@@ -349,7 +352,7 @@ export function PresetManager(props: PresetManagerProps) {
 						class="hover:border-error hover:bg-error"
 						onClick={() => confirmDelete(Number(selectedPresetId()))}
 						size="icon"
-						title="プリセット削除"
+						title={t("actions.deletePreset")}
 						variant="outline"
 					>
 						<Trash2 class="size-4 text-destructive" />
