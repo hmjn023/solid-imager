@@ -6,6 +6,7 @@ import {
 } from "@solid-imager/core/danbooru";
 import { pendingImportJobSchema } from "@solid-imager/core/media";
 import { z } from "zod";
+import { E2E_PRIMARY_MEDIA_ID } from "./support/fixture";
 import { expect, test } from "./support/test";
 
 function post(id: number) {
@@ -90,6 +91,9 @@ test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", asyn
 	const appPath = (path: string) =>
 		testInfo.project.name === "tauri" ? `/#${path}` : path;
 	await page.goto(appPath("/search"));
+	await expect(
+		page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
+	).toBeVisible();
 	const menu = page.getByRole("button", {
 		name: "メニューを開く",
 		exact: true,

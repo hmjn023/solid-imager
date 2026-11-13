@@ -274,12 +274,18 @@ test("drops a duplicate scan after scope change and confirms the actual source a
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 	await category(page, "重複検出");
+	await expect(page.getByRole("button", { name: /^対象ソース / })).toHaveText(
+		"すべてのソース",
+	);
 	await page.getByRole("button", { name: /^対象ソース / }).click();
 	await page
 		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
 		.click();
 	await page.getByRole("button", { name: "重複を検出", exact: true }).click();
 	await submitted.promise;
+	await expect(page.getByRole("button", { name: /^対象ソース / })).toHaveText(
+		E2E_SOURCE_NAME,
+	);
 	await page.getByRole("button", { name: /^対象ソース / }).click();
 	await page
 		.getByRole("option", { name: "すべてのソース", exact: true })
