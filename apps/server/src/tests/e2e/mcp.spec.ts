@@ -625,6 +625,7 @@ test("settings publish oRPC data tools independently and revoke cached calls", a
 test("an acknowledged tag edit never reopens the image after the user leaves", async ({
 	page,
 	request,
+	browserHealth,
 }) => {
 	const created = await request.post("/api/rpc/tags/create", {
 		data: { json: { name: "e2e-follow-edit-once" } },
@@ -658,6 +659,11 @@ test("an acknowledged tag edit never reopens the image after the user leaves", a
 			tagIds: [id],
 		});
 		await saved.promise;
+		// Leaving detail disposes its query while the tag edit is acknowledged.
+		browserHealth.allowRequestFailure(
+			/\/api\/rpc\/media\/getDetails(?:\?|$)/,
+			"net::ERR_ABORTED",
+		);
 		await page.getByRole("link", { name: "Jobs", exact: true }).first().click();
 		await expect(page).toHaveURL(/\/jobs$/);
 		release.resolve();

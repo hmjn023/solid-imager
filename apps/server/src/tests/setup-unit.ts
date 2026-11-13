@@ -1,5 +1,5 @@
-import path from "node:path";
 import { config } from "dotenv";
+import { SERVER_ENV_FILE } from "./paths";
 import { beforeEach, vi } from "vitest";
 
 function createBunImageMock(input: string) {
@@ -179,7 +179,7 @@ vi.mock("bun", () => {
 });
 
 // Load env vars
-config({ path: path.resolve(process.cwd(), ".env") });
+config({ path: SERVER_ENV_FILE });
 
 if (process.env.NODE_ENV !== "production") {
 	process.env.NODE_ENV = "test";

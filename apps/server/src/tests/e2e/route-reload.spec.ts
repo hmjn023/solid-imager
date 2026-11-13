@@ -67,6 +67,7 @@ async function expectTtfbWithinBudget(page: Page): Promise<void> {
 
 type RouteCase = {
 	name: string;
+	tag?: string;
 	path: string;
 	heading: string;
 	readyMediaLink?: string;
@@ -88,6 +89,7 @@ const routeCases: readonly RouteCase[] = [
 	})),
 	{
 		name: "global search",
+		tag: "@dev-smoke",
 		path: "/search",
 		heading: "すべてのメディア",
 		readyMediaLink: E2E_PRIMARY_FILE_NAME,
@@ -120,6 +122,7 @@ const routeCases: readonly RouteCase[] = [
 	},
 	{
 		name: "seeded media detail",
+		tag: "@dev-smoke",
 		path: mediaPath(),
 		heading: E2E_PRIMARY_FILE_NAME,
 		directBudgetMs: isProduction ? 1_500 : DEV_DIRECT_NAVIGATION_BUDGET_MS,
@@ -129,284 +132,292 @@ const routeCases: readonly RouteCase[] = [
 
 test.describe("direct navigation and reload", () => {
 	for (const routeCase of routeCases) {
-		test(`${routeCase.name} renders after direct navigation and reload`, async ({
-			page,
-			browserHealth,
-		}) => {
-			if (routeCase.seedSearchSession) {
-				await page.addInitScript((fileName) => {
-					sessionStorage.setItem(
-						"solid-imager:search-state:current-all",
-						JSON.stringify({
-							mode: "simple",
-							selectedSource: "",
-							value: {
-								type: "group",
-								operator: "and",
-								children: [
-									{
-										type: "criterion",
-										target: "keyword",
-										operator: "contains",
-										value: fileName,
-									},
-								],
-							},
-							sort: "date",
-							order: "desc",
-						}),
+		test(
+			`${routeCase.name} renders after direct navigation and reload`,
+			{ tag: routeCase.tag },
+			async ({ page, browserHealth }) => {
+				if (routeCase.seedSearchSession) {
+					await page.addInitScript((fileName) => {
+						sessionStorage.setItem(
+							"solid-imager:search-state:current-all",
+							JSON.stringify({
+								mode: "simple",
+								selectedSource: "",
+								value: {
+									type: "group",
+									operator: "and",
+									children: [
+										{
+											type: "criterion",
+											target: "keyword",
+											operator: "contains",
+											value: fileName,
+										},
+									],
+								},
+								sort: "date",
+								order: "desc",
+							}),
+						);
+					}, E2E_PRIMARY_FILE_NAME);
+				}
+
+				const directRequestCheckpoint = browserHealth.requestCheckpoint();
+				const directNavigationStartedAt = Date.now();
+				const response = await page.goto(routeCase.path);
+				expect(response?.ok()).toBeTruthy();
+				if (!response) {
+					throw new Error(
+						`Direct navigation did not receive a response for ${routeCase.path}`,
 					);
-				}, E2E_PRIMARY_FILE_NAME);
-			}
-
-			const directRequestCheckpoint = browserHealth.requestCheckpoint();
-			const directNavigationStartedAt = Date.now();
-			const response = await page.goto(routeCase.path);
-			expect(response?.ok()).toBeTruthy();
-			if (!response) {
-				throw new Error(
-					`Direct navigation did not receive a response for ${routeCase.path}`,
+				}
+				await expectSsrHtmlHealthy(response);
+				await expect(
+					page
+						.locator("#main-content")
+						.getByText(routeCase.heading, { exact: true })
+						.first(),
+				).toBeVisible();
+				if (routeCase.readyMediaLink) {
+					await expect(
+						page.getByRole("link", {
+							name: new RegExp(routeCase.readyMediaLink),
+						}),
+					).toBeVisible();
+				}
+				if (routeCase.readyButton) {
+					await expect(
+						page.getByRole("button", {
+							name: routeCase.readyButton,
+							exact: true,
+						}),
+					).toBeVisible();
+				}
+				await waitForAppHydration(page);
+				const directNavigationElapsedMs =
+					Date.now() - directNavigationStartedAt;
+				browserHealth.recordNavigation(
+					`${routeCase.name} direct navigation`,
+					directNavigationElapsedMs,
+					directRequestCheckpoint,
 				);
-			}
-			await expectSsrHtmlHealthy(response);
-			await expect(
-				page
-					.locator("#main-content")
-					.getByText(routeCase.heading, { exact: true })
-					.first(),
-			).toBeVisible();
-			if (routeCase.readyMediaLink) {
-				await expect(
-					page.getByRole("link", {
-						name: new RegExp(routeCase.readyMediaLink),
-					}),
-				).toBeVisible();
-			}
-			if (routeCase.readyButton) {
-				await expect(
-					page.getByRole("button", {
-						name: routeCase.readyButton,
-						exact: true,
-					}),
-				).toBeVisible();
-			}
-			await waitForAppHydration(page);
-			const directNavigationElapsedMs = Date.now() - directNavigationStartedAt;
-			browserHealth.recordNavigation(
-				`${routeCase.name} direct navigation`,
-				directNavigationElapsedMs,
-				directRequestCheckpoint,
-			);
-			expect(directNavigationElapsedMs).toBeLessThan(routeCase.directBudgetMs);
-			await expectTtfbWithinBudget(page);
-			for (const endpoint of routeCase.clientEndpoints ?? []) {
-				expect(
-					browserHealth.apiRequestCountPathSince(
-						directRequestCheckpoint,
-						endpoint,
-					),
-					`Direct navigation should request ${endpoint} once`,
-				).toBe(1);
-			}
-			await expectRouteHealthy(page);
-
-			const reloadRequestCheckpoint = browserHealth.requestCheckpoint();
-			const reloadStartedAt = Date.now();
-			const reloadResponse = await page.reload();
-			expect(reloadResponse?.ok()).toBeTruthy();
-			if (!reloadResponse) {
-				throw new Error(
-					`Reload did not receive a response for ${routeCase.path}`,
+				expect(directNavigationElapsedMs).toBeLessThan(
+					routeCase.directBudgetMs,
 				);
-			}
-			await expectSsrHtmlHealthy(reloadResponse);
-			await expect(
-				page
-					.locator("#main-content")
-					.getByText(routeCase.heading, { exact: true })
-					.first(),
-			).toBeVisible();
-			if (routeCase.readyMediaLink) {
+				await expectTtfbWithinBudget(page);
+				for (const endpoint of routeCase.clientEndpoints ?? []) {
+					expect(
+						browserHealth.apiRequestCountPathSince(
+							directRequestCheckpoint,
+							endpoint,
+						),
+						`Direct navigation should request ${endpoint} once`,
+					).toBe(1);
+				}
+				await expectRouteHealthy(page);
+
+				const reloadRequestCheckpoint = browserHealth.requestCheckpoint();
+				const reloadStartedAt = Date.now();
+				const reloadResponse = await page.reload();
+				expect(reloadResponse?.ok()).toBeTruthy();
+				if (!reloadResponse) {
+					throw new Error(
+						`Reload did not receive a response for ${routeCase.path}`,
+					);
+				}
+				await expectSsrHtmlHealthy(reloadResponse);
 				await expect(
-					page.getByRole("link", {
-						name: new RegExp(routeCase.readyMediaLink),
-					}),
+					page
+						.locator("#main-content")
+						.getByText(routeCase.heading, { exact: true })
+						.first(),
 				).toBeVisible();
-			}
-			if (routeCase.readyButton) {
-				await expect(
-					page.getByRole("button", {
-						name: routeCase.readyButton,
-						exact: true,
-					}),
-				).toBeVisible();
-			}
-			await waitForAppHydration(page);
-			const reloadElapsedMs = Date.now() - reloadStartedAt;
-			browserHealth.recordNavigation(
-				`${routeCase.name} reload`,
-				reloadElapsedMs,
-				reloadRequestCheckpoint,
-			);
-			expect(reloadElapsedMs).toBeLessThan(routeCase.reloadBudgetMs);
-			await expectTtfbWithinBudget(page);
-			for (const endpoint of routeCase.clientEndpoints ?? []) {
-				expect(
-					browserHealth.apiRequestCountPathSince(
-						reloadRequestCheckpoint,
-						endpoint,
-					),
-					`Reload should request ${endpoint} once`,
-				).toBe(1);
-			}
-			await expectRouteHealthy(page);
-		});
+				if (routeCase.readyMediaLink) {
+					await expect(
+						page.getByRole("link", {
+							name: new RegExp(routeCase.readyMediaLink),
+						}),
+					).toBeVisible();
+				}
+				if (routeCase.readyButton) {
+					await expect(
+						page.getByRole("button", {
+							name: routeCase.readyButton,
+							exact: true,
+						}),
+					).toBeVisible();
+				}
+				await waitForAppHydration(page);
+				const reloadElapsedMs = Date.now() - reloadStartedAt;
+				browserHealth.recordNavigation(
+					`${routeCase.name} reload`,
+					reloadElapsedMs,
+					reloadRequestCheckpoint,
+				);
+				expect(reloadElapsedMs).toBeLessThan(routeCase.reloadBudgetMs);
+				await expectTtfbWithinBudget(page);
+				for (const endpoint of routeCase.clientEndpoints ?? []) {
+					expect(
+						browserHealth.apiRequestCountPathSince(
+							reloadRequestCheckpoint,
+							endpoint,
+						),
+						`Reload should request ${endpoint} once`,
+					).toBe(1);
+				}
+				await expectRouteHealthy(page);
+			},
+		);
 	}
 });
 
-test("canonical navigation and cache revisit do not duplicate route queries", async ({
-	page,
-	browserHealth,
-}) => {
-	await page.goto("/");
-	await waitForAppHydration(page);
+test(
+	"canonical navigation and cache revisit do not duplicate route queries",
+	{ tag: "@dev-smoke" },
+	async ({ page, browserHealth }) => {
+		await page.goto("/");
+		await waitForAppHydration(page);
 
-	const searchCheckpoint = browserHealth.requestCheckpoint();
-	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
-	const searchLink = page.getByRole("link", { name: "Library", exact: true });
-	await searchLink.hover();
-	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
-	expect(
-		browserHealth.apiRequestCountPathSince(
+		const searchCheckpoint = browserHealth.requestCheckpoint();
+		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+		const searchLink = page.getByRole("link", { name: "Library", exact: true });
+		await searchLink.hover();
+		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+		expect(
+			browserHealth.apiRequestCountPathSince(
+				searchCheckpoint,
+				"/api/rpc/tags/list",
+			),
+		).toBeLessThanOrEqual(1);
+
+		const searchNavigationStartedAt = Date.now();
+		await searchLink.click();
+		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
+		await waitForAppHydration(page);
+		const searchNavigationElapsedMs = Date.now() - searchNavigationStartedAt;
+		browserHealth.recordNavigation(
+			"search SPA navigation",
+			searchNavigationElapsedMs,
 			searchCheckpoint,
-			"/api/rpc/tags/list",
-		),
-	).toBeLessThanOrEqual(1);
+		);
+		expect(searchNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
+		for (const endpoint of [
+			...searchFilterEndpoints,
+			"/api/rpc/media/search",
+		]) {
+			expect(
+				browserHealth.apiRequestCountPathSince(searchCheckpoint, endpoint),
+				`Search intent prefetch duplicated ${endpoint}`,
+			).toBeLessThanOrEqual(1);
+		}
+		await expectRouteHealthy(page);
 
-	const searchNavigationStartedAt = Date.now();
-	await searchLink.click();
-	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
-	await expect(
-		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
-	).toBeVisible();
-	await waitForAppHydration(page);
-	const searchNavigationElapsedMs = Date.now() - searchNavigationStartedAt;
-	browserHealth.recordNavigation(
-		"search SPA navigation",
-		searchNavigationElapsedMs,
-		searchCheckpoint,
-	);
-	expect(searchNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
-	for (const endpoint of [...searchFilterEndpoints, "/api/rpc/media/search"]) {
-		expect(
-			browserHealth.apiRequestCountPathSince(searchCheckpoint, endpoint),
-			`Search intent prefetch duplicated ${endpoint}`,
-		).toBeLessThanOrEqual(1);
-	}
-	await expectRouteHealthy(page);
-
-	const sourceMediaCheckpoint = browserHealth.requestCheckpoint();
-	const sourceMediaNavigationStartedAt = Date.now();
-	await page.getByRole("link", { name: new RegExp(E2E_SOURCE_NAME) }).click();
-	await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
-	await expect(
-		page
-			.locator("#main-content")
-			.getByText(E2E_SOURCE_NAME, { exact: true })
-			.first(),
-	).toBeVisible();
-	await expect(
-		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
-	).toBeVisible();
-	await waitForAppHydration(page);
-	const sourceMediaNavigationElapsedMs =
-		Date.now() - sourceMediaNavigationStartedAt;
-	browserHealth.recordNavigation(
-		"source media SPA navigation",
-		sourceMediaNavigationElapsedMs,
-		sourceMediaCheckpoint,
-	);
-	expect(sourceMediaNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
-	expect(
-		browserHealth.apiRequestCountPathSince(
+		const sourceMediaCheckpoint = browserHealth.requestCheckpoint();
+		const sourceMediaNavigationStartedAt = Date.now();
+		await page.getByRole("link", { name: new RegExp(E2E_SOURCE_NAME) }).click();
+		await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
+		await expect(
+			page
+				.locator("#main-content")
+				.getByText(E2E_SOURCE_NAME, { exact: true })
+				.first(),
+		).toBeVisible();
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
+		await waitForAppHydration(page);
+		const sourceMediaNavigationElapsedMs =
+			Date.now() - sourceMediaNavigationStartedAt;
+		browserHealth.recordNavigation(
+			"source media SPA navigation",
+			sourceMediaNavigationElapsedMs,
 			sourceMediaCheckpoint,
-			"/api/rpc/media/search",
-		),
-	).toBeLessThanOrEqual(1);
-	await expectRouteHealthy(page);
-
-	// Intent loaders must not mutate the shared search store while the user is
-	// merely hovering a link from another search-backed route.
-	const sourceSearchInput = page.getByRole("combobox", {
-		name: "メディアを検索",
-		exact: true,
-	});
-	await sourceSearchInput.fill(E2E_PRIMARY_FILE_NAME);
-	await page.getByRole("link", { name: "Library", exact: true }).hover();
-	await page.waitForTimeout(300);
-	await expect(sourceSearchInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
-	await expect(
-		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
-	).toBeVisible();
-
-	const detailCheckpoint = browserHealth.requestCheckpoint();
-	const detailNavigationStartedAt = Date.now();
-	const primaryResult = page.getByRole("link", {
-		name: new RegExp(E2E_PRIMARY_FILE_NAME),
-	});
-	await primaryResult.click();
-	await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
-	await expect(primaryResult).toHaveAttribute("aria-current", "true");
-	await primaryResult.dblclick();
-	await expect(page).toHaveURL(new RegExp(`${mediaPath()}/?$`));
-	await expect(
-		page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
-	).toBeVisible();
-	await waitForAppHydration(page);
-	const detailNavigationElapsedMs = Date.now() - detailNavigationStartedAt;
-	browserHealth.recordNavigation(
-		"media detail SPA navigation",
-		detailNavigationElapsedMs,
-		detailCheckpoint,
-	);
-	expect(detailNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
-	for (const endpoint of mediaDetailHydratedEndpoints) {
+		);
+		expect(sourceMediaNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
 		expect(
-			browserHealth.apiRequestCountPathSince(detailCheckpoint, endpoint),
-			`Media detail intent prefetch duplicated ${endpoint}`,
+			browserHealth.apiRequestCountPathSince(
+				sourceMediaCheckpoint,
+				"/api/rpc/media/search",
+			),
 		).toBeLessThanOrEqual(1);
-	}
-	await expectRouteHealthy(page);
+		await expectRouteHealthy(page);
 
-	const revisitCheckpoint = browserHealth.requestCheckpoint();
-	const revisitStartedAt = Date.now();
-	await page.getByRole("link", { name: "Library", exact: true }).click();
-	await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
-	await expect(
-		page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
-	).toBeVisible();
-	await waitForAppHydration(page);
-	const revisitElapsedMs = Date.now() - revisitStartedAt;
-	browserHealth.recordNavigation(
-		"search cache revisit",
-		revisitElapsedMs,
-		revisitCheckpoint,
-	);
-	expect(revisitElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
-	expect(
-		browserHealth.apiRequestCountPathSince(
+		// Intent loaders must not mutate the shared search store while the user is
+		// merely hovering a link from another search-backed route.
+		const sourceSearchInput = page.getByRole("combobox", {
+			name: "メディアを検索",
+			exact: true,
+		});
+		await sourceSearchInput.fill(E2E_PRIMARY_FILE_NAME);
+		await page.getByRole("link", { name: "Library", exact: true }).hover();
+		await page.waitForTimeout(300);
+		await expect(sourceSearchInput).toHaveValue(E2E_PRIMARY_FILE_NAME);
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
+
+		const detailCheckpoint = browserHealth.requestCheckpoint();
+		const detailNavigationStartedAt = Date.now();
+		const primaryResult = page.getByRole("link", {
+			name: new RegExp(E2E_PRIMARY_FILE_NAME),
+		});
+		await primaryResult.click();
+		await expect(page).toHaveURL(new RegExp(`${sourcePath()}/?$`));
+		await expect(primaryResult).toHaveAttribute("aria-current", "true");
+		await primaryResult.dblclick();
+		await expect(page).toHaveURL(new RegExp(`${mediaPath()}/?$`));
+		await expect(
+			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+		).toBeVisible();
+		await waitForAppHydration(page);
+		const detailNavigationElapsedMs = Date.now() - detailNavigationStartedAt;
+		browserHealth.recordNavigation(
+			"media detail SPA navigation",
+			detailNavigationElapsedMs,
+			detailCheckpoint,
+		);
+		expect(detailNavigationElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
+		for (const endpoint of mediaDetailHydratedEndpoints) {
+			expect(
+				browserHealth.apiRequestCountPathSince(detailCheckpoint, endpoint),
+				`Media detail intent prefetch duplicated ${endpoint}`,
+			).toBeLessThanOrEqual(1);
+		}
+		await expectRouteHealthy(page);
+
+		const revisitCheckpoint = browserHealth.requestCheckpoint();
+		const revisitStartedAt = Date.now();
+		await page.getByRole("link", { name: "Library", exact: true }).click();
+		await expect(page).toHaveURL(/\/search(?:\?.*)?$/);
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
+		await waitForAppHydration(page);
+		const revisitElapsedMs = Date.now() - revisitStartedAt;
+		browserHealth.recordNavigation(
+			"search cache revisit",
+			revisitElapsedMs,
 			revisitCheckpoint,
-			"/api/rpc/media/search",
-		),
-	).toBeLessThanOrEqual(1);
-	const sourceEventRequestCount = browserHealth.apiRequestCountPathSince(
-		searchCheckpoint,
-		"/api/rpc/sources/events",
-	);
-	expect(sourceEventRequestCount).toBeGreaterThan(0);
-	expect(
-		sourceEventRequestCount,
-		"Source event subscriptions must be shared across cached routes",
-	).toBeLessThanOrEqual(3);
-	await expectRouteHealthy(page);
-});
+		);
+		expect(revisitElapsedMs).toBeLessThan(SPA_CONTENT_BUDGET_MS);
+		expect(
+			browserHealth.apiRequestCountPathSince(
+				revisitCheckpoint,
+				"/api/rpc/media/search",
+			),
+		).toBeLessThanOrEqual(1);
+		const sourceEventRequestCount = browserHealth.apiRequestCountPathSince(
+			searchCheckpoint,
+			"/api/rpc/sources/events",
+		);
+		expect(sourceEventRequestCount).toBeGreaterThan(0);
+		expect(
+			sourceEventRequestCount,
+			"Source event subscriptions must be shared across cached routes",
+		).toBeLessThanOrEqual(3);
+		await expectRouteHealthy(page);
+	},
+);

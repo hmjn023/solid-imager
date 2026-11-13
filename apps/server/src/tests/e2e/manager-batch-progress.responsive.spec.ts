@@ -110,12 +110,8 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 			await page.getByRole("button", { name: "Embedding model" }).click();
 			await page.getByRole("option", { name: "CCIP", exact: true }).click();
 		}
-		await page
-			.getByRole("button", {
-				name: kind === "thumbnails" ? "Select source" : "All sources",
-				exact: true,
-			})
-			.click();
+		const source = page.getByRole("button", { name: /^Target source\b/ });
+		await source.click();
 		await page
 			.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
 			.click();
@@ -157,9 +153,8 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 		await navigateWorkspace(page, "Manager", "/manager");
 		await expect(bar).toHaveAttribute("aria-valuenow", "75");
 		await expect(start).toBeDisabled();
-		await expect(
-			page.getByRole("button", { name: E2E_SOURCE_NAME, exact: true }),
-		).toBeVisible();
+		await expect(source).toBeVisible();
+		await expect(source).toHaveText(E2E_SOURCE_NAME);
 		await page.reload();
 		await expect(bar).toHaveAttribute("aria-valuenow", "75");
 		await page.screenshot({

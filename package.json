@@ -17,7 +17,8 @@
     "check": "bun run lint:boundaries && oxlint --fix apps/*/src packages/*/src && oxfmt --write apps/*/src packages/*/src && bun run typecheck && bun run design:lint",
     "design:lint": "designmd lint DESIGN.md",
     "format": "oxfmt --write apps/*/src packages/*/src",
-    "test": "node tools/workspace-imports.test.mjs && bun run --cwd apps/server test:unit && bun run --cwd apps/server test:integration && bun run --cwd apps/cli test && bun run --cwd apps/xtracter test && bun run --cwd apps/tauri test && bun run --cwd packages/application test && bun run --cwd packages/core test && bun run --cwd packages/ui test && bun run --cwd packages/client test && bun run --cwd packages/db test",
+    "test": "node tools/workspace-imports.test.mjs && bun run --cwd apps/server test:x-activity && vitest run",
+    "test:e2e": "bun run --cwd apps/server test:e2e",
     "typecheck": "bun --filter '*' typecheck && tsc -p tools/tsconfig.json",
     "prepare": "husky"
   },

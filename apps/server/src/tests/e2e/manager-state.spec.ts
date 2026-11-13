@@ -276,7 +276,9 @@ test("drops a duplicate scan after scope change and confirms the actual source a
 	await page.goto("/manager");
 	await waitForAppHydration(page);
 	await category(page, "Duplicates");
-	await page.getByRole("button", { name: "All sources", exact: true }).click();
+	const source = page.getByRole("button", { name: /^Target source\b/ });
+	await expect(source).toHaveText("All sources");
+	await source.click();
 	await page
 		.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
 		.click();
@@ -284,9 +286,8 @@ test("drops a duplicate scan after scope change and confirms the actual source a
 		.getByRole("button", { name: "Scan for duplicates", exact: true })
 		.click();
 	await submitted.promise;
-	await page
-		.getByRole("button", { name: E2E_SOURCE_NAME, exact: true })
-		.click();
+	await expect(source).toHaveText(E2E_SOURCE_NAME);
+	await source.click();
 	await page.getByRole("option", { name: "All sources", exact: true }).click();
 	delayed.release();
 	await delivered.promise;

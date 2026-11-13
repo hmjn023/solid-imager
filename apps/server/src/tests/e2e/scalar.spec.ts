@@ -10,6 +10,7 @@ import {
 import { expect, test } from "./support/test";
 
 async function listSourcesFromScalar(page: Page, restPrefix: string) {
+	await page.getByRole("link", { name: "Media Tools", exact: true }).click();
 	await page
 		.getByRole("button", { name: /Test Request.*POST \/tools\/list_sources/i })
 		.click();
