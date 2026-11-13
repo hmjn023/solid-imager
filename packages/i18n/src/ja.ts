@@ -1,5 +1,31 @@
 import { defineLocale } from "./schema";
 export const ja = defineLocale({
+	"mediaGroups.heading": "画像の関係",
+	"mediaGroups.help":
+		"同時投稿・漫画・差分は別々に管理できます。解除する画像は「却下」にして保存すると、再取り込みでも復活しません。",
+	"mediaGroups.saved": "保存しました",
+	"mediaGroups.failed": "関係情報を読み込み・保存できませんでした",
+	"mediaGroups.loading": "関係情報を読み込み中",
+	"mediaGroups.post": "同時投稿",
+	"mediaGroups.comic": "漫画",
+	"mediaGroups.variant": "差分",
+	"mediaGroups.candidate": "候補",
+	"mediaGroups.tentative": "暫定",
+	"mediaGroups.confirmed": "確定",
+	"mediaGroups.rejected": "却下・解除",
+	"mediaGroups.create": "暫定グループを作成",
+	"mediaGroups.title": "グループ名（必須）",
+	"mediaGroups.kind": "関係の種類",
+	"mediaGroups.state": "紐づけの状態",
+	"mediaGroups.position": "順番（空欄は未定）",
+	"mediaGroups.find": "既存グループを名前で検索",
+	"mediaGroups.join": "この画像を暫定追加",
+	"mediaGroups.useMembers": "この画像群で新しいグループを作成",
+	"mediaGroups.onlyCurrent": "この画像だけに戻す",
+	"mediaGroups.selected": "{count} 枚で作成します",
+	"mediaGroups.manual": "手動",
+	"mediaGroups.source": "投稿情報から取得",
+
 	"aboutScreen.aboutSolidImager": "Solid Imagerについて",
 	"aboutScreen.aPIDocumentation": "APIドキュメント",
 	"aboutScreen.aWorkspaceForOrganizingAndSearchingMediaManagingRelated":

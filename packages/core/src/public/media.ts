@@ -1,3 +1,4 @@
+export * from "../domain/media/groups";
 export type {
 	BulkMediaItemResult,
 	BulkMediaOperationResult,

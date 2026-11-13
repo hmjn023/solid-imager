@@ -77,7 +77,8 @@
     "./toast": "./src/toast.tsx",
     "./upload-media-modal-content": "./src/upload-media-modal-content.tsx",
     "./utils": "./src/utils/index.ts",
-    "./validation-locale": "./src/validation-locale.ts"
+    "./validation-locale": "./src/validation-locale.ts",
+    "./media-groups": "./src/media-groups.tsx"
   },
   "scripts": {
     "lint": "oxlint ./src",

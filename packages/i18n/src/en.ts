@@ -1,5 +1,31 @@
 import { defineMessages } from "./schema";
 export const en = defineMessages({
+	"mediaGroups.heading": "Media relationships",
+	"mediaGroups.help":
+		"Post, comic and variant groups are independent. Save a membership as rejected to unlink it and prevent reimport from restoring it.",
+	"mediaGroups.saved": "Saved",
+	"mediaGroups.failed": "Could not load or save relationships",
+	"mediaGroups.loading": "Loading relationships",
+	"mediaGroups.post": "Same post",
+	"mediaGroups.comic": "Comic",
+	"mediaGroups.variant": "Variants",
+	"mediaGroups.candidate": "Candidate",
+	"mediaGroups.tentative": "Tentative",
+	"mediaGroups.confirmed": "Confirmed",
+	"mediaGroups.rejected": "Rejected / unlinked",
+	"mediaGroups.create": "Create tentative group",
+	"mediaGroups.title": "Group name (required)",
+	"mediaGroups.kind": "Relationship type",
+	"mediaGroups.state": "Relationship status",
+	"mediaGroups.position": "Position (blank if unknown)",
+	"mediaGroups.find": "Find an existing group by name",
+	"mediaGroups.join": "Add this image tentatively",
+	"mediaGroups.useMembers": "Use these images in a new group",
+	"mediaGroups.onlyCurrent": "Use only this image",
+	"mediaGroups.selected": "Create with {count} images",
+	"mediaGroups.manual": "Manual",
+	"mediaGroups.source": "From source post",
+
 	"aboutScreen.aboutSolidImager": "About Solid Imager",
 	"aboutScreen.aPIDocumentation": "API documentation",
 	"aboutScreen.aWorkspaceForOrganizingAndSearchingMediaManagingRelated":

@@ -1,9 +1,15 @@
 import fs from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
+import {
+	processDownloadJob,
+	queueDownloadJobs,
+} from "~/infrastructure/jobs/download-jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
-import { MediaRepository } from "~/infrastructure/db/repositories";
+import {
+	MediaGroupRepository,
+	MediaRepository,
+} from "~/infrastructure/db/repositories";
 
 // Hoisted mocks
 // Hoisted mocks
@@ -61,10 +67,12 @@ vi.mock("~/infrastructure/logger", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 vi.mock("~/infrastructure/db/repositories", () => ({
+	MediaGroupRepository: { observe: vi.fn() },
 	DrizzleSourceRepository: {
 		findById: mockFindById,
 	},
 	MediaRepository: {
+		findMediaIdWithMatchingUrlSet: vi.fn(),
 		create: mockMediaCreate,
 		update: mockMediaUpdate,
 		addUrls: mockMediaAddUrls,
@@ -410,6 +418,11 @@ describe("processDownloadJob", () => {
 			expect.any(Object),
 		);
 
+		expect(MediaGroupRepository.observe).toHaveBeenCalledWith("media-1", {
+			platform: "twitter",
+			postId: "123",
+			position: null,
+		});
 		// Verify MediaProcessingService.registerAndProcess was called with correct context
 		expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledWith(
 			"source-1",
@@ -764,5 +777,45 @@ describe("processDownloadJob", () => {
 				authors: [{ name: "New Author", accountId: "@new" }],
 			}),
 		);
+	});
+	it("adds source grouping to an already downloaded item without enqueueing another download", async () => {
+		vi.mocked(MediaRepository.findMediaIdWithMatchingUrlSet).mockResolvedValue(
+			"media-1",
+		);
+		const item = {
+			targetUrl: "https://pbs.twimg.com/media/image.jpg",
+			sourceUrls: [
+				"https://pbs.twimg.com/media/image.jpg",
+				"https://x.com/user/status/123",
+			],
+		};
+		expect(await queueDownloadJobs("source-1", [item])).toEqual({
+			jobCount: 0,
+			skippedCount: 1,
+		});
+		expect(MediaGroupRepository.observe).toHaveBeenCalledWith(
+			"media-1",
+			{ platform: "twitter", postId: "123", position: null },
+			undefined,
+		);
+	});
+	it("fails retryably instead of redownloading when existing-media grouping cannot be persisted", async () => {
+		vi.mocked(MediaRepository.findMediaIdWithMatchingUrlSet).mockResolvedValue(
+			"media-1",
+		);
+		vi.mocked(MediaGroupRepository.observe).mockRejectedValueOnce(
+			new Error("group write failed"),
+		);
+		await expect(
+			queueDownloadJobs("source-1", [
+				{
+					targetUrl: "https://pbs.twimg.com/media/image.jpg",
+					sourceUrls: [
+						"https://pbs.twimg.com/media/image.jpg",
+						"https://x.com/user/status/123",
+					],
+				},
+			]),
+		).rejects.toThrow("group write failed");
 	});
 });

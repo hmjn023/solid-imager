@@ -1,3 +1,5 @@
+import { MediaGroups } from "@solid-imager/ui/media-groups";
+import { client } from "~/infrastructure/api-clients/orpc-client";
 import { t } from "@solid-imager/i18n";
 import { useSourceRootPath } from "@solid-imager/ui/sources";
 import { MediaDetailHeader } from "@solid-imager/ui/media-detail-header";
@@ -99,13 +101,16 @@ function MediaDetailRoute() {
 					)}
 					renderMediaViewer={(media) => <MediaViewer media={media} />}
 					renderRelatedMedia={(media) => (
-						<RelatedMedia
-							media={media}
-							queryOptions={relatedMediaQueryOptions}
-							renderThumbnail={(thumbnailProps) => (
-								<ThumbnailImage {...thumbnailProps} />
-							)}
-						/>
+						<>
+							<MediaGroups mediaId={media.id} client={client.mediaGroups} />
+							<RelatedMedia
+								media={media}
+								queryOptions={relatedMediaQueryOptions}
+								renderThumbnail={(thumbnailProps) => (
+									<ThumbnailImage {...thumbnailProps} />
+								)}
+							/>
+						</>
 					)}
 					sourceRootPath={sourceRootPath()}
 					transport={createTauriTransport(mediaSourceId)}

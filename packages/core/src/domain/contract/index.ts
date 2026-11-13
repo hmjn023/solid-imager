@@ -1,3 +1,5 @@
+export { mediaGroupsContract } from "./media-groups.contract";
+import { mediaGroupsContract } from "./media-groups.contract";
 import type { RouterContractClient } from "@orpc/contract";
 export { aiContract } from "./ai.contract";
 export { authorsContract } from "./authors.contract";
@@ -50,6 +52,7 @@ import { utilsContract } from "./utils.contract";
  * フロントエンド（Tauriアプリ、ブラウザ拡張等）とバックエンドで共有される型定義
  */
 export const appContract = {
+	mediaGroups: mediaGroupsContract,
 	viewer: viewerContract,
 	danbooru: danbooruContract,
 	sources: sourcesContract,

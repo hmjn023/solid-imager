@@ -1,3 +1,5 @@
+import { sourcePostFromUrls } from "@solid-imager/core/media";
+import { MediaGroupRepository } from "~/infrastructure/db/repositories";
 /**
  * Download Jobs - Handles downloading images from URLs
  */
@@ -910,6 +912,8 @@ async function updateExistingMediaWithMetadata(
 		projects: item.projects,
 	});
 
+	const post = item.sourcePost ?? sourcePostFromUrls(item.sourceUrls ?? []);
+	if (post) await MediaGroupRepository.observe(mediaId, post);
 	RealtimeEventBus.publishSource(mediaSourceId, "media-added", {
 		mediaId,
 		filePath: newMedia.filePath,
@@ -947,6 +951,8 @@ async function registerMedia(
 			},
 		);
 
+		const post = item.sourcePost ?? sourcePostFromUrls(item.sourceUrls ?? []);
+		if (post) await MediaGroupRepository.observe(insertedMedia.id, post);
 		logger.info(
 			{ mediaId: insertedMedia.id, filePath: newMedia.filePath },
 			"[DownloadJob] Media registered via MediaProcessingService",
@@ -1016,7 +1022,7 @@ export async function queueDownloadJobs(
 				{ urls, existingMediaId, fileName: item.fileName },
 				"Skipping duplicate download item (source URLs already exist)",
 			);
-			return { item, skip: true };
+			return { item, skip: true, existingMediaId };
 		}
 		return { item, skip: false };
 	});
@@ -1031,6 +1037,14 @@ export async function queueDownloadJobs(
 			);
 			newItems.push(items[index]);
 		} else if (result.value.skip) {
+			const { item, existingMediaId } = result.value;
+			const post = item.sourcePost ?? sourcePostFromUrls(item.sourceUrls ?? []);
+			if (post && existingMediaId)
+				await MediaGroupRepository.observe(
+					existingMediaId,
+					post,
+					options.transaction,
+				);
 			skippedCount++;
 		} else {
 			newItems.push(result.value.item);
