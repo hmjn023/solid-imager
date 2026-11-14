@@ -104,7 +104,10 @@ const SheetContent = <T extends ValidComponent = "div">(
 				{...others}
 			>
 				{local.children}
-				<SheetPrimitive.CloseButton class="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary">
+				<SheetPrimitive.CloseButton
+					aria-label={t("actions.close")}
+					class="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-secondary"
+				>
 					<svg
 						aria-hidden="true"
 						class="size-4"
