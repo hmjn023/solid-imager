@@ -23,8 +23,14 @@ import {
 	AlertDialogTitle,
 } from "./alert-dialog";
 import { Button } from "./button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "./dropdown-menu";
 import type { ManagerJobHandlers } from "./hooks/batch-job-events.types";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { toast } from "./toast";
 import {
 	Binary,
@@ -363,91 +369,81 @@ export function MediaActions(props: MediaActionsProps) {
 						props.onDelete
 					}
 				>
-					<Popover
+					<DropdownMenu
 						onOpenChange={setMoreActionsOpen}
 						open={moreActionsOpen()}
 						placement="bottom-end"
 					>
-						<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-card px-3 font-medium text-foreground text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:flex-none">
+						<DropdownMenuTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-card px-3 font-medium text-foreground text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:flex-none">
 							{t("mediaActions.moreActions")}
 							<ChevronDown aria-hidden="true" size={14} />
-						</PopoverTrigger>
-						<PopoverContent class="workspace-theme w-64 space-y-1 p-1.5 shadow-xl">
+						</DropdownMenuTrigger>
+						<DropdownMenuContent class="workspace-theme w-64 space-y-1 p-1.5 shadow-xl">
 							<ShowAction
 								when={props.onFindSimilar && supportsVisualAnalysis()}
 							>
-								<Button
-									class="h-auto min-h-9 w-full justify-start whitespace-normal px-2 text-left"
-									size="sm"
-									variant="ghost"
-									onClick={() => {
+								<DropdownMenuItem
+									class="min-h-9 whitespace-normal"
+									onSelect={() => {
 										setMoreActionsOpen(false);
 										props.onFindSimilar?.("embeddinggemma2");
 									}}
 								>
 									<ScanSearch aria-hidden="true" size={14} />
 									{t("mediaActions.findSimilarEmbeddingGemma2")}
-								</Button>
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction
 								when={
 									props.startEmbeddingExtraction && supportsVisualAnalysis()
 								}
 							>
-								<Button
-									class="h-auto min-h-9 w-full justify-start whitespace-normal px-2 text-left"
+								<DropdownMenuItem
+									class="min-h-9 whitespace-normal"
 									disabled={isExtractingEmbedding()}
-									onClick={() => void handleEmbeddingExtraction()}
-									size="sm"
-									variant="ghost"
+									onSelect={() => void handleEmbeddingExtraction()}
 								>
 									<Binary aria-hidden="true" size={14} />
 									{t("mediaActions.extractEmbeddingGemma2Vector")}
-								</Button>
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction
 								when={supportsVisualAnalysis() && props.oppaiOracleModal}
 							>
-								<Button
-									class="h-9 w-full justify-start px-2"
-									onClick={() =>
+								<DropdownMenuItem
+									class="min-h-9"
+									onSelect={() =>
 										openModalFromMoreActions(() =>
 											setIsOppaiOracleModalOpen(true),
 										)
 									}
-									size="sm"
-									variant="ghost"
 								>
 									<Sparkles aria-hidden="true" size={14} />
 									{t("mediaActions.extractTagsOppaiOracle")}
-								</Button>
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction when={supportsCropping() && props.characterCropModal}>
-								<Button
-									class="h-9 w-full justify-start px-2"
-									onClick={() =>
+								<DropdownMenuItem
+									class="min-h-9"
+									onSelect={() =>
 										openModalFromMoreActions(() =>
 											setIsCharacterCropModalOpen(true),
 										)
 									}
-									size="sm"
-									variant="ghost"
 								>
 									<Scan aria-hidden="true" size={14} />
 									{t("mediaActions.detectCropCharacters")}
-								</Button>
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction when={hasCcipActions()}>
-								<Button
-									class="h-9 w-full justify-start px-2"
+								<DropdownMenuItem
+									class="min-h-9"
 									disabled={isExtractingCcip() || isCcipJobPending()}
-									onClick={() => void handleCcipExtraction()}
-									size="sm"
-									variant="ghost"
+									onSelect={() => void handleCcipExtraction()}
 								>
 									<Binary aria-hidden="true" size={14} />
 									{ccipActionLabel()}
-								</Button>
+								</DropdownMenuItem>
 								<p
 									aria-live="polite"
 									class="px-2 py-1 text-label-sm text-muted-foreground"
@@ -458,34 +454,30 @@ export function MediaActions(props: MediaActionsProps) {
 								</p>
 							</ShowAction>
 							<ShowAction when={props.onDownload || props.onDelete}>
-								<div class="my-1 border-border border-t" />
+								<DropdownMenuSeparator />
 							</ShowAction>
 							<ShowAction when={props.onDownload}>
-								<Button
-									class="h-9 w-full justify-start px-2"
-									onClick={() => void handleDownload()}
-									size="sm"
-									variant="ghost"
+								<DropdownMenuItem
+									class="min-h-9"
+									onSelect={() => void handleDownload()}
 								>
 									<Download aria-hidden="true" size={14} />
 									{t("mediaActions.downloadOriginal")}
-								</Button>
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction when={props.onDelete}>
-								<Button
-									class="h-9 w-full justify-start px-2 text-destructive hover:bg-muted hover:text-destructive"
-									onClick={() =>
+								<DropdownMenuItem
+									class="min-h-9 text-destructive focus:bg-destructive/10 focus:text-destructive"
+									onSelect={() =>
 										openModalFromMoreActions(() => setIsDeleteDialogOpen(true))
 									}
-									size="sm"
-									variant="ghost"
 								>
 									<Trash2 aria-hidden="true" size={14} />
 									{t("mediaActions.deleteMedia")}
-								</Button>
+								</DropdownMenuItem>
 							</ShowAction>
-						</PopoverContent>
-					</Popover>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</ShowAction>
 			</div>
 			<ShowAction
