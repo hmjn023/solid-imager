@@ -3,6 +3,7 @@ import type { Author, NewAuthor } from "@solid-imager/core/authors";
 import { createQuery } from "@tanstack/solid-query";
 import ChevronDown from "lucide-solid/icons/chevron-down";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { Alert, AlertDescription } from "../../alert";
 import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
 import {
@@ -692,9 +693,9 @@ export function AuthorManagementPanel(props: {
 				</div>
 			</Show>
 			<Show when={error()}>
-				<p role="alert" class="break-words text-sm text-destructive">
-					{error()}
-				</p>
+				<Alert variant="destructive">
+					<AlertDescription class="break-words">{error()}</AlertDescription>
+				</Alert>
 			</Show>
 			<Show when={status()}>
 				<output class="block text-sm">{status()}</output>
@@ -732,9 +733,9 @@ export function AuthorManagementPanel(props: {
 						</DialogDescription>
 					</DialogHeader>
 					<Show when={error()}>
-						<p role="alert" class="text-sm text-destructive">
-							{error()}
-						</p>
+						<Alert variant="destructive">
+							<AlertDescription>{error()}</AlertDescription>
+						</Alert>
 					</Show>
 					<DialogFooter>
 						<Button
