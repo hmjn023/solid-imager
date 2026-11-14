@@ -27,10 +27,10 @@ test("video detail offers thumbnail tagging and both vector models", async ({
 	await expect(
 		page.getByRole("dialog", { name: "AIタグ付け結果", exact: true }),
 	).toContainText("fixture-tag");
+	await page.keyboard.press("Escape");
 	await expect(
 		page.getByRole("status").filter({ hasText: "Last action:" }),
 	).toHaveText("Last action: tagging:video");
-	await page.keyboard.press("Escape");
 
 	await actions.getByRole("button", { name: "類似検索", exact: true }).click();
 	await expect(
@@ -67,6 +67,7 @@ test("video detail offers thumbnail tagging and both vector models", async ({
 			exact: true,
 		}),
 	).toContainText("動画の代表サムネイル");
+	await page.keyboard.press("Escape");
 	await expect(
 		page.getByRole("status").filter({ hasText: "Last action:" }),
 	).toHaveText("Last action: oppai:video");
