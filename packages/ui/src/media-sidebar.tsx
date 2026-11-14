@@ -37,8 +37,8 @@ import {
 } from "./media-activity-controls";
 import { Button } from "./button";
 import { ClipboardCopy } from "./clipboard-copy";
-import { Label } from "./label";
 import { CollapsibleRoot as Collapsible } from "./collapsible";
+import { TextField, TextFieldLabel, TextFieldTextArea } from "./text-field";
 import { toast } from "./toast";
 import { ChevronDown } from "./workspace/icons";
 
@@ -168,13 +168,19 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						}
 						when={isEditingDescription()}
 					>
-						<textarea
-							class="w-full scroll-mb-24 rounded-md border border-input bg-background p-2 text-base sm:text-sm"
-							onInput={(e) => setDescriptionValue(e.currentTarget.value)}
-							placeholder={t("mediaSidebar.enterDescription")}
-							rows={6}
+						<TextField
+							onChange={setDescriptionValue}
 							value={descriptionValue()}
-						/>
+						>
+							<TextFieldLabel class="sr-only">
+								{t("labels.description")}
+							</TextFieldLabel>
+							<TextFieldTextArea
+								class="scroll-mb-24 text-base sm:text-sm"
+								placeholder={t("mediaSidebar.enterDescription")}
+								rows={6}
+							/>
+						</TextField>
 						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
 							<Button
 								class="w-full lg:w-auto"
@@ -356,16 +362,17 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						</Show>
 					}
 				>
-					<Label for="positive-tags" class="text-sm text-muted-foreground">
-						{t("mediaSidebar.oneTagPerLine")}
-					</Label>
-					<textarea
-						id="positive-tags"
-						class="w-full rounded-md border border-input bg-background p-2 text-sm"
-						rows={8}
+					<TextField
+						class="space-y-2"
+						disabled={savingTags()}
+						onChange={setTagText}
 						value={tagText()}
-						onInput={(event) => setTagText(event.currentTarget.value)}
-					/>
+					>
+						<TextFieldLabel class="text-muted-foreground text-sm">
+							{t("mediaSidebar.oneTagPerLine")}
+						</TextFieldLabel>
+						<TextFieldTextArea id="positive-tags" rows={8} />
+					</TextField>
 					<div class="flex gap-2">
 						<Button
 							size="sm"
