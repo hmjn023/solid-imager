@@ -1,16 +1,18 @@
 import { t } from "@solid-imager/i18n";
 import Upload from "lucide-solid/icons/upload";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../alert-dialog";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "../dialog";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
@@ -282,37 +284,34 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				);
 			})()}
 
-			<Dialog
+			<AlertDialog
 				onOpenChange={page().setDeleteDialogOpen}
 				open={page().deleteDialogOpen()}
 			>
-				<DialogContent class="workspace-theme">
-					<DialogHeader>
-						<DialogTitle>{t("sourceMediaScreen.deleteMedia")}</DialogTitle>
-						<DialogDescription>
+				<AlertDialogContent class="workspace-theme">
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t("sourceMediaScreen.deleteMedia")}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
 							{t(
 								"sourceMediaScreen.thisActionCannotBeUndoneDeleteTheSelectedMedia",
 							)}
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button
-							onClick={() => page().setDeleteDialogOpen(false)}
-							variant="outline"
-						>
-							{t("actions.cancel")}
-						</Button>
-						<Button
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+						<AlertDialogAction
+							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							onClick={() => {
 								void page().confirmDelete();
 							}}
-							variant="destructive"
 						>
 							{t("actions.delete")}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{(() => {
 				const MoveCopyDialog = props.moveCopyDialogComponent;
