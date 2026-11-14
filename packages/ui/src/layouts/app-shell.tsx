@@ -11,6 +11,7 @@ import {
 	SheetTitle,
 } from "../sheet";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
+import { SidebarProvider } from "../sidebar";
 import { SourceDeleteModal } from "../source-delete-modal";
 import { SourceFormModal } from "../source-form-modal";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
@@ -130,13 +131,15 @@ export function AppShell(props: AppShellProps) {
 		const sourcePage = props.sourcePage;
 
 		return (
-			<div
+			<SidebarProvider
 				class={`workspace-theme grid h-dvh min-h-0 overflow-hidden bg-background text-foreground ${
 					sidebarExpanded()
 						? "md:grid-cols-app-sidebar"
 						: "md:grid-cols-app-sidebar-collapsed"
 				}`}
 				data-design="workspace"
+				onOpenChange={setSidebarExpanded}
+				open={sidebarExpanded()}
 			>
 				<button
 					class="sr-only fixed top-2 left-2 z-app-overlay rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-ring"
@@ -152,6 +155,7 @@ export function AppShell(props: AppShellProps) {
 				<aside
 					aria-label={t("appShell.applicationSidebar")}
 					class="hidden min-h-0 border-border border-r md:block"
+					data-state={sidebarExpanded() ? "expanded" : "collapsed"}
 				>
 					<Sidebar
 						apiDocsHref={props.apiDocsHref}
@@ -254,7 +258,7 @@ export function AppShell(props: AppShellProps) {
 					onToggleSidebar={toggleSidebar}
 					paletteOpen={commandPaletteOpen()}
 				/>
-			</div>
+			</SidebarProvider>
 		);
 	};
 
