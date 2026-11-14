@@ -22,6 +22,7 @@ import {
 	Switch,
 } from "solid-js";
 import { Button } from "./button";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import { EmptyState, ErrorState, OfflineState } from "./async-state";
 import {
 	ContextMenu,
@@ -39,6 +40,15 @@ import { MediaTileGrid } from "./media-tile-grid";
 import { createMediaPreviewSelectHandler } from "./media-preview-selection";
 import type { QueryUiState } from "./query-state";
 import { LoadingRegion, MediaGridSkeleton } from "./skeleton";
+import {
+	Table,
+	TableBody,
+	TableCaption,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "./table";
 import {
 	findCollectionItemById,
 	isCollectionScrollNearEnd,
@@ -344,52 +354,52 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		});
 	};
 	const listContent = (
-		<div class="overflow-x-auto rounded-md border border-border bg-card scrollbar-stable">
-			<table class="w-full min-w-table-extra-wide border-collapse text-left text-sm">
-				<caption class="sr-only">
+		<div class="overflow-hidden rounded-md border border-border bg-card">
+			<Table class="min-w-table-extra-wide border-collapse text-left text-sm">
+				<TableCaption class="sr-only mt-0">
 					{t("sourceMediaGrid.mediaListValueItems", {
 						value0: String(totalCount().toLocaleString()),
 					})}
-				</caption>
-				<thead class="bg-muted text-xs text-muted-foreground">
-					<tr>
+				</TableCaption>
+				<TableHeader class="bg-muted text-xs text-muted-foreground">
+					<TableRow class="hover:bg-transparent">
 						<Show when={props.isBulkSelectMode?.()}>
-							<th class="w-10 px-3 py-2" scope="col">
+							<TableHead class="h-auto w-10 px-3 py-2" scope="col">
 								<span class="sr-only">{t("jobsScreen.select")}</span>
-							</th>
+							</TableHead>
 						</Show>
-						<th class="px-3 py-2 font-medium" scope="col">
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 							{t("labels.name")}
-						</th>
-						<th class="px-3 py-2 font-medium" scope="col">
+						</TableHead>
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 							{t("jobsScreen.type")}
-						</th>
-						<th class="px-3 py-2 font-medium" scope="col">
+						</TableHead>
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 							{t("sourceMediaGrid.dimensions")}
-						</th>
-						<th class="px-3 py-2 font-medium" scope="col">
+						</TableHead>
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 							{t("collectionInspector.size")}
-						</th>
-						<th class="px-3 py-2 font-medium" scope="col">
+						</TableHead>
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 							{t("sourceMediaGrid.modified")}
-						</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-border">
+						</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody class="divide-y divide-border">
 					<For each={props.mediaResults()}>
 						{(media) => (
-							<tr
+							<TableRow
 								aria-label={t("sourceMediaGrid.valueValue", {
 									value0: String(media.fileName),
 									value1: String(media.filePath),
 								})}
 								aria-selected={props.previewSelectedMediaId?.() === media.id}
-								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+								class={
 									props.isSelected?.(media.id) ||
 									props.previewSelectedMediaId?.() === media.id
-										? "bg-accent"
-										: "hover:bg-muted"
-								}`}
+										? "bg-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-accent"
+										: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-muted"
+								}
 								data-media-id={media.id}
 								onClick={(event) => {
 									if (
@@ -454,25 +464,29 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								}
 							>
 								<Show when={props.isBulkSelectMode?.()}>
-									<td class="px-3 py-2">
-										<input
-											aria-label={t("sourceMediaGrid.selectValue", {
-												value0: String(media.fileName),
-											})}
+									<TableCell class="px-3 py-2">
+										<Checkbox
 											checked={props.isSelected?.(media.id) ?? false}
-											data-collection-row-control
+											class="flex min-h-10 items-center justify-center"
+											data-collection-row-control=""
 											onChange={() => props.onToggleSelect?.(media.id)}
-											onClick={(event) => event.stopPropagation()}
-											type="checkbox"
-										/>
-									</td>
+											onClick={(event: MouseEvent) => event.stopPropagation()}
+										>
+											<CheckboxControl />
+											<CheckboxLabel class="sr-only">
+												{t("sourceMediaGrid.selectValue", {
+													value0: String(media.fileName),
+												})}
+											</CheckboxLabel>
+										</Checkbox>
+									</TableCell>
 								</Show>
-								<th
+								<TableHead
 									aria-label={t("sourceMediaGrid.valueValue", {
 										value0: String(media.fileName),
 										value1: String(media.filePath),
 									})}
-									class="max-w-dialog-reading px-3 py-2 font-normal"
+									class="h-auto max-w-dialog-reading px-3 py-2 font-normal text-foreground"
 									scope="row"
 								>
 									<div class="min-h-10 w-full px-1 py-1 text-left">
@@ -489,24 +503,24 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											{media.filePath}
 										</span>
 									</div>
-								</th>
-								<td class="px-3 py-2 text-muted-foreground">
+								</TableHead>
+								<TableCell class="px-3 py-2 text-muted-foreground">
 									{mediaTypeLabel(media.mediaType)}
-								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+								</TableCell>
+								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{media.width} × {media.height}
-								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+								</TableCell>
+								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{formatFileSize(media.fileSize)}
-								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+								</TableCell>
+								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{media.modifiedAt.toLocaleDateString(getLocale())}
-								</td>
-							</tr>
+								</TableCell>
+							</TableRow>
 						)}
 					</For>
-				</tbody>
-			</table>
+				</TableBody>
+			</Table>
 		</div>
 	);
 	const hasContextMenuActions = (media: Media) =>
