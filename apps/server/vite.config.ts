@@ -21,325 +21,377 @@ const isDevStartupMeasurement = process.env.DEV_STARTUP_MEASUREMENT === "1";
 const defaultRouteTreePath = path.resolve(__dirname, "src/routeTree.gen.ts");
 
 type IsolatedDevConfig = {
-  port: number;
-  hmrPort: number;
-  runtimeDir: string;
-  routeTreePath: string;
+	port: number;
+	hmrPort: number;
+	runtimeDir: string;
+	routeTreePath: string;
 };
 
 function getRequiredEnvironment(name: string, mode: string): string {
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`${name} must be set when ${mode}`);
-  }
-  return value;
+	const value = process.env[name];
+	if (!value) {
+		throw new Error(`${name} must be set when ${mode}`);
+	}
+	return value;
 }
 
 function getPort(name: string, mode: string): number {
-  const port = Number.parseInt(getRequiredEnvironment(name, mode), 10);
-  if (!Number.isInteger(port) || port < 1 || port > 65_535) {
-    throw new Error(`${name} must be an integer between 1 and 65535 when ${mode}`);
-  }
-  return port;
+	const port = Number.parseInt(getRequiredEnvironment(name, mode), 10);
+	if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+		throw new Error(
+			`${name} must be an integer between 1 and 65535 when ${mode}`,
+		);
+	}
+	return port;
 }
 
 function getIsolatedDevConfig(): IsolatedDevConfig | undefined {
-  if (!(isE2e || isDevStartupMeasurement)) {
-    return undefined;
-  }
+	if (!(isE2e || isDevStartupMeasurement)) {
+		return undefined;
+	}
 
-  const prefix = isE2e ? "E2E" : "DEV_STARTUP";
-  const mode = isE2e ? "E2E=1" : "DEV_STARTUP_MEASUREMENT=1";
-  return {
-    port: getPort(`${prefix}_PORT`, mode),
-    hmrPort: getPort(`${prefix}_HMR_PORT`, mode),
-    runtimeDir: path.resolve(getRequiredEnvironment(`${prefix}_RUNTIME_DIR`, mode)),
-    routeTreePath: path.resolve(getRequiredEnvironment(`${prefix}_ROUTE_TREE_PATH`, mode)),
-  };
+	const prefix = isE2e ? "E2E" : "DEV_STARTUP";
+	const mode = isE2e ? "E2E=1" : "DEV_STARTUP_MEASUREMENT=1";
+	return {
+		port: getPort(`${prefix}_PORT`, mode),
+		hmrPort: getPort(`${prefix}_HMR_PORT`, mode),
+		runtimeDir: path.resolve(
+			getRequiredEnvironment(`${prefix}_RUNTIME_DIR`, mode),
+		),
+		routeTreePath: path.resolve(
+			getRequiredEnvironment(`${prefix}_ROUTE_TREE_PATH`, mode),
+		),
+	};
 }
 
 const isolatedDevConfig = getIsolatedDevConfig();
 const routeTreePath = isolatedDevConfig?.routeTreePath ?? defaultRouteTreePath;
 const e2eNitroOutput = isE2e
-  ? (() => {
-      const dir = path.resolve(getRequiredEnvironment("E2E_OUTPUT_DIR", "E2E=1"));
-      return {
-        dir,
-        serverDir: path.join(dir, "server"),
-        publicDir: path.join(dir, "public"),
-      };
-    })()
-  : undefined;
+	? (() => {
+			const dir = path.resolve(
+				getRequiredEnvironment("E2E_OUTPUT_DIR", "E2E=1"),
+			);
+			return {
+				dir,
+				serverDir: path.join(dir, "server"),
+				publicDir: path.join(dir, "public"),
+			};
+		})()
+	: undefined;
 const viteCacheDir = isolatedDevConfig
-  ? path.join(isolatedDevConfig.runtimeDir, "vite-cache")
-  : undefined;
+	? path.join(isolatedDevConfig.runtimeDir, "vite-cache")
+	: undefined;
 const routerTmpDir = isolatedDevConfig
-  ? path.join(isolatedDevConfig.runtimeDir, "tanstack-tmp")
-  : undefined;
+	? path.join(isolatedDevConfig.runtimeDir, "tanstack-tmp")
+	: undefined;
 const workspaceRoot = path.resolve(__dirname, "../..");
 const routeFileIgnorePattern = "^components$";
 const shouldUseMkcert =
-  !isE2e && (!isDevStartupMeasurement || process.env.DEV_STARTUP_DISABLE_MKCERT !== "1");
+	!isE2e &&
+	(!isDevStartupMeasurement || process.env.DEV_STARTUP_DISABLE_MKCERT !== "1");
 const shouldUseDevtools =
-  !isDevStartupMeasurement || process.env.DEV_STARTUP_DISABLE_DEVTOOLS !== "1";
+	!isDevStartupMeasurement || process.env.DEV_STARTUP_DISABLE_DEVTOOLS !== "1";
 
 type RuntimeImport = <TModule>(specifier: string) => Promise<TModule>;
 
 // Keep these imports out of Vite config bundling; the server modules rely on Bun's runtime TS path resolution.
-const runtimeImport = new Function("specifier", "return import(specifier)") as RuntimeImport;
+const runtimeImport = new Function(
+	"specifier",
+	"return import(specifier)",
+) as RuntimeImport;
 
 function serverModuleUrl(relativePath: string): string {
-  return pathToFileURL(path.resolve(__dirname, relativePath)).href;
+	return pathToFileURL(path.resolve(__dirname, relativePath)).href;
 }
 
 function resolveSafeMediaPath(basePath: string, targetPath: string): string {
-  const resolvedPath = path.resolve(basePath, targetPath);
-  const absoluteBase = path.resolve(basePath);
-  if (
-    resolvedPath !== absoluteBase &&
-    !resolvedPath.startsWith(`${absoluteBase}${path.sep}`)
-  ) {
-    throw new Error(`Invalid path: ${targetPath}`);
-  }
-  return resolvedPath;
+	const resolvedPath = path.resolve(basePath, targetPath);
+	const absoluteBase = path.resolve(basePath);
+	if (
+		resolvedPath !== absoluteBase &&
+		!resolvedPath.startsWith(`${absoluteBase}${path.sep}`)
+	) {
+		throw new Error(`Invalid path: ${targetPath}`);
+	}
+	return resolvedPath;
 }
 
 const bypassSecFetchDestPlugin = (): Plugin => ({
-  name: "bypass-sec-fetch-dest",
-  configureServer(server) {
-    server.middlewares.use((req, _res, next) => {
-      if (req.url?.startsWith("/api/")) {
-        if (req.headers["sec-fetch-dest"] === "image") {
-          req.headers["x-orig-sec-fetch-dest"] = req.headers["sec-fetch-dest"];
-          delete req.headers["sec-fetch-dest"];
-        }
-      }
-      next();
-    });
-  },
+	name: "bypass-sec-fetch-dest",
+	configureServer(server) {
+		server.middlewares.use((req, _res, next) => {
+			if (req.url?.startsWith("/api/")) {
+				if (req.headers["sec-fetch-dest"] === "image") {
+					req.headers["x-orig-sec-fetch-dest"] = req.headers["sec-fetch-dest"];
+					delete req.headers["sec-fetch-dest"];
+				}
+			}
+			next();
+		});
+	},
 });
 
 const loadDevRpcHandler = async () => {
-  const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }] = await Promise.all([
-    runtimeImport<typeof import("./src/infrastructure/api/app-router")>(
-      serverModuleUrl("src/infrastructure/api/app-router.ts"),
-    ),
-    runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
-      serverModuleUrl("src/infrastructure/bootstrap.ts"),
-    ),
-    runtimeImport<typeof import("./src/infrastructure/logger")>(
-      serverModuleUrl("src/infrastructure/logger.ts"),
-    ),
-  ]);
+	const [{ appRouter }, { initServices, startBackgroundWorker }, { logger }] =
+		await Promise.all([
+			runtimeImport<typeof import("./src/infrastructure/api/app-router")>(
+				serverModuleUrl("src/infrastructure/api/app-router.ts"),
+			),
+			runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
+				serverModuleUrl("src/infrastructure/bootstrap.ts"),
+			),
+			runtimeImport<typeof import("./src/infrastructure/logger")>(
+				serverModuleUrl("src/infrastructure/logger.ts"),
+			),
+		]);
 
-  return {
-    handler: new RPCHandler(appRouter),
-    initServices,
-    startBackgroundWorker,
-    logger,
-  };
+	return {
+		handler: new RPCHandler(appRouter),
+		initServices,
+		startBackgroundWorker,
+		logger,
+	};
 };
 
 let devRpcHandlerPromise: ReturnType<typeof loadDevRpcHandler> | undefined;
 type DevRpcHandler = Awaited<ReturnType<typeof loadDevRpcHandler>>;
 
 function getDevRpcHandler(): ReturnType<typeof loadDevRpcHandler> {
-  devRpcHandlerPromise ??= loadDevRpcHandler();
-  return devRpcHandlerPromise;
+	devRpcHandlerPromise ??= loadDevRpcHandler();
+	return devRpcHandlerPromise;
 }
 
 const loadDevMediaFileHandler = async () => {
-  const [
-    { services },
-    { initServices },
-    { createMediaFileResponse },
-  ] = await Promise.all([
-    runtimeImport<typeof import("./src/infrastructure/service-registry")>(
-      serverModuleUrl("src/infrastructure/service-registry.ts"),
-    ),
-    runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
-      serverModuleUrl("src/infrastructure/bootstrap.ts"),
-    ),
-    runtimeImport<typeof import("./src/infrastructure/http/media-file-response")>(
-      serverModuleUrl("src/infrastructure/http/media-file-response.ts"),
-    ),
-  ]);
+	const [{ services }, { initServices }, { createMediaFileResponse }] =
+		await Promise.all([
+			runtimeImport<typeof import("./src/infrastructure/service-registry")>(
+				serverModuleUrl("src/infrastructure/service-registry.ts"),
+			),
+			runtimeImport<typeof import("./src/infrastructure/bootstrap")>(
+				serverModuleUrl("src/infrastructure/bootstrap.ts"),
+			),
+			runtimeImport<
+				typeof import("./src/infrastructure/http/media-file-response")
+			>(serverModuleUrl("src/infrastructure/http/media-file-response.ts")),
+		]);
 
-  return async (request: Request, mediaSourceId: string, mediaId: string): Promise<Response> => {
-    initServices();
-    const media = await services.getMediaRepository().findById(mediaId);
-    if (!media || media.mediaSourceId !== mediaSourceId) {
-      return new Response("Media not found", { status: 404 });
-    }
+	return async (
+		request: Request,
+		mediaSourceId: string,
+		mediaId: string,
+	): Promise<Response> => {
+		initServices();
+		const media = await services.getMediaRepository().findById(mediaId);
+		if (!media || media.mediaSourceId !== mediaSourceId) {
+			return new Response("Media not found", { status: 404 });
+		}
 
-    const mediaSource = await services
-      .getSourceRepository()
-      .findById(mediaSourceId);
-    if (mediaSource?.type !== "local") {
-      return new Response("Invalid media source", { status: 400 });
-    }
+		const mediaSource = await services
+			.getSourceRepository()
+			.findById(mediaSourceId);
+		if (mediaSource?.type !== "local") {
+			return new Response("Invalid media source", { status: 400 });
+		}
 
-    const connectionInfo = localConnectionSchema.parse(mediaSource.connectionInfo);
-    const fullPath = resolveSafeMediaPath(connectionInfo.path, media.filePath);
-    const file = Bun.file(fullPath);
-    if (!(await file.exists())) {
-      return new Response("File not found on disk", { status: 404 });
-    }
+		const connectionInfo = localConnectionSchema.parse(
+			mediaSource.connectionInfo,
+		);
+		const fullPath = resolveSafeMediaPath(connectionInfo.path, media.filePath);
+		const file = Bun.file(fullPath);
+		if (!(await file.exists())) {
+			return new Response("File not found on disk", { status: 404 });
+		}
 
-    return createMediaFileResponse(request, file, getContentTypeFromExtension(media.fileName));
-  };
+		return createMediaFileResponse(
+			request,
+			file,
+			getContentTypeFromExtension(media.fileName),
+		);
+	};
 };
 
-let devMediaFileHandlerPromise: ReturnType<typeof loadDevMediaFileHandler> | undefined;
+let devMediaFileHandlerPromise:
+	| ReturnType<typeof loadDevMediaFileHandler>
+	| undefined;
 
 function getDevMediaFileHandler(): ReturnType<typeof loadDevMediaFileHandler> {
-  devMediaFileHandlerPromise ??= loadDevMediaFileHandler();
-  return devMediaFileHandlerPromise;
+	devMediaFileHandlerPromise ??= loadDevMediaFileHandler();
+	return devMediaFileHandlerPromise;
 }
 
 const devMediaFileMiddlewarePlugin = (): Plugin => ({
-  name: "dev-media-file-middleware",
-  apply: "serve",
-  configureServer(server) {
-    if (!isE2e) return;
-    const mediaPathPattern = /^\/api\/sources\/([^/]+)\/([^/]+)$/;
-    const mediaMiddleware = toNodeHandler(async (request) => {
-      const match = mediaPathPattern.exec(new URL(request.url).pathname);
-      if (!match) return new Response("Media not found", { status: 404 });
-      return (await getDevMediaFileHandler())(request, match[1], match[2]);
-    });
-    server.middlewares.use(async (req, res, next) => {
-      const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
-      if ((req.method !== "GET" && req.method !== "HEAD") || !mediaPathPattern.test(pathname)) {
-        next();
-        return;
-      }
-      try {
-        // Keep ranges and backpressure intact instead of buffering the complete file.
-        await mediaMiddleware(req, res);
-      } catch (error) {
-        next(error);
-      }
-    });
-  },
+	name: "dev-media-file-middleware",
+	apply: "serve",
+	configureServer(server) {
+		if (!isE2e) return;
+		const mediaPathPattern = /^\/api\/sources\/([^/]+)\/([^/]+)$/;
+		const mediaMiddleware = toNodeHandler(async (request) => {
+			const match = mediaPathPattern.exec(new URL(request.url).pathname);
+			if (!match) return new Response("Media not found", { status: 404 });
+			return (await getDevMediaFileHandler())(request, match[1], match[2]);
+		});
+		server.middlewares.use(async (req, res, next) => {
+			const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+			if (
+				(req.method !== "GET" && req.method !== "HEAD") ||
+				!mediaPathPattern.test(pathname)
+			) {
+				next();
+				return;
+			}
+			try {
+				// Keep ranges and backpressure intact instead of buffering the complete file.
+				await mediaMiddleware(req, res);
+			} catch (error) {
+				next(error);
+			}
+		});
+	},
 });
 
 const devOrpcNodeMiddlewarePlugin = (): Plugin => ({
-  name: "dev-orpc-node-middleware",
-  apply: "serve",
-  configureServer(server) {
-    // Nitro dev runs in another Bun process. Keep MCP writes on the same PGlite
-    // connection as browser RPC requests so both see the same committed tags.
-    const mcpMiddleware = toNodeHandler(async (request) => {
-      const [{ handleMcpRequest }, devRpcHandler] = await Promise.all([
-        runtimeImport<typeof import("./src/infrastructure/mcp/http-handler")>(
-          serverModuleUrl("src/infrastructure/mcp/http-handler.ts"),
-        ),
-        getDevRpcHandler(),
-      ]);
-      logger = devRpcHandler.logger;
-      startBackgroundWorker = devRpcHandler.startBackgroundWorker;
-      return handleMcpRequest(request, devRpcHandler.initServices);
-    });
-    const restMiddleware = toNodeHandler(async (request) => {
-      const { handleRestRequest } = await runtimeImport<typeof import("./src/infrastructure/api/rest-handler")>(
-        serverModuleUrl("src/infrastructure/api/rest-handler.ts"),
-      );
-      return handleRestRequest(request);
-    });
-    // Authentication and animation requests share the dev RPC process and its in-memory sessions.
-    const animationMiddleware = toNodeHandler(async (request) => {
-      const { servePixivAnimation } = await runtimeImport<typeof import("./src/infrastructure/services/pixiv-animation")>(
-        serverModuleUrl("src/infrastructure/services/pixiv-animation.ts"),
-      );
-      return servePixivAnimation(Number(new URL(request.url).pathname.split("/").at(-1)), request.headers.get("authorization"));
-    });
-    let backgroundWorkerStarted = false;
-    let startBackgroundWorker: DevRpcHandler["startBackgroundWorker"] | undefined;
-    let logger: DevRpcHandler["logger"] | undefined;
+	name: "dev-orpc-node-middleware",
+	apply: "serve",
+	configureServer(server) {
+		// Nitro dev runs in another Bun process. Keep MCP writes on the same PGlite
+		// connection as browser RPC requests so both see the same committed tags.
+		const mcpMiddleware = toNodeHandler(async (request) => {
+			const [{ handleMcpRequest }, devRpcHandler] = await Promise.all([
+				runtimeImport<typeof import("./src/infrastructure/mcp/http-handler")>(
+					serverModuleUrl("src/infrastructure/mcp/http-handler.ts"),
+				),
+				getDevRpcHandler(),
+			]);
+			logger = devRpcHandler.logger;
+			startBackgroundWorker = devRpcHandler.startBackgroundWorker;
+			return handleMcpRequest(request, devRpcHandler.initServices);
+		});
+		const restMiddleware = toNodeHandler(async (request) => {
+			const { handleRestRequest } = await runtimeImport<
+				typeof import("./src/infrastructure/api/rest-handler")
+			>(serverModuleUrl("src/infrastructure/api/rest-handler.ts"));
+			return handleRestRequest(request);
+		});
+		// Authentication and animation requests share the dev RPC process and its in-memory sessions.
+		const animationMiddleware = toNodeHandler(async (request) => {
+			const { servePixivAnimation } = await runtimeImport<
+				typeof import("./src/infrastructure/services/pixiv-animation")
+			>(serverModuleUrl("src/infrastructure/services/pixiv-animation.ts"));
+			return servePixivAnimation(
+				Number(new URL(request.url).pathname.split("/").at(-1)),
+				request.headers.get("authorization"),
+			);
+		});
+		let backgroundWorkerStarted = false;
+		let startBackgroundWorker:
+			| DevRpcHandler["startBackgroundWorker"]
+			| undefined;
+		let logger: DevRpcHandler["logger"] | undefined;
 
-    const startBackgroundWorkerOnce = () => {
-      if (backgroundWorkerStarted || !startBackgroundWorker) {
-        return;
-      }
-      backgroundWorkerStarted = true;
-      try {
-        if (isDevStartupMeasurement) {
-          logger?.info("Dev startup measurement: matched RPC response finished");
-        }
-        startBackgroundWorker();
-      } catch (error) {
-        backgroundWorkerStarted = false;
-        logger?.error({ err: error }, "Failed to start background worker after dev RPC response");
-      }
-    };
+		const startBackgroundWorkerOnce = () => {
+			if (backgroundWorkerStarted || !startBackgroundWorker) {
+				return;
+			}
+			backgroundWorkerStarted = true;
+			try {
+				if (isDevStartupMeasurement) {
+					logger?.info(
+						"Dev startup measurement: matched RPC response finished",
+					);
+				}
+				startBackgroundWorker();
+			} catch (error) {
+				backgroundWorkerStarted = false;
+				logger?.error(
+					{ err: error },
+					"Failed to start background worker after dev RPC response",
+				);
+			}
+		};
 
-    server.middlewares.use(async (req, res, next) => {
-      const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
-      if (req.method === "GET" && /^\/api\/pixiv-animation\/\d+$/.test(pathname)) {
-        await animationMiddleware(req, res);
-        return;
-      }
-      if (pathname === "/api/mcp" || pathname === "/api/mcp/") {
-        try {
-          res.once("finish", () => {
-            if (res.statusCode >= 200 && res.statusCode < 300) {
-              startBackgroundWorkerOnce();
-            }
-          });
-          await mcpMiddleware(req, res);
-        } catch (error) {
-          next(error);
-        }
-        return;
-      }
-      const isRest = pathname === REST_API_PREFIX || pathname.startsWith(REST_API_PREFIX + "/");
-      if (!isRest && pathname !== "/api/rpc" && !pathname.startsWith("/api/rpc/")) {
-        next();
-        return;
-      }
+		server.middlewares.use(async (req, res, next) => {
+			const pathname = new URL(req.url ?? "/", "http://localhost").pathname;
+			if (
+				req.method === "GET" &&
+				/^\/api\/pixiv-animation\/\d+$/.test(pathname)
+			) {
+				await animationMiddleware(req, res);
+				return;
+			}
+			if (pathname === "/api/mcp" || pathname === "/api/mcp/") {
+				try {
+					res.once("finish", () => {
+						if (res.statusCode >= 200 && res.statusCode < 300) {
+							startBackgroundWorkerOnce();
+						}
+					});
+					await mcpMiddleware(req, res);
+				} catch (error) {
+					next(error);
+				}
+				return;
+			}
+			const isRest =
+				pathname === REST_API_PREFIX ||
+				pathname.startsWith(REST_API_PREFIX + "/");
+			if (
+				!isRest &&
+				pathname !== "/api/rpc" &&
+				!pathname.startsWith("/api/rpc/")
+			) {
+				next();
+				return;
+			}
 
-      try {
-        const devRpcHandler = await getDevRpcHandler();
-        logger = devRpcHandler.logger;
-        const { handler, initServices } = devRpcHandler;
-        startBackgroundWorker = devRpcHandler.startBackgroundWorker;
-        initServices();
+			try {
+				const devRpcHandler = await getDevRpcHandler();
+				logger = devRpcHandler.logger;
+				const { handler, initServices } = devRpcHandler;
+				startBackgroundWorker = devRpcHandler.startBackgroundWorker;
+				initServices();
 
-        let matched = false;
-        let responseFinished = false;
-        const startAfterSuccessfulResponse = () => {
-          responseFinished = true;
-          if (matched && res.statusCode >= 200 && res.statusCode < 300) {
-            startBackgroundWorkerOnce();
-          }
-        };
-        res.once("finish", startAfterSuccessfulResponse);
+				let matched = false;
+				let responseFinished = false;
+				const startAfterSuccessfulResponse = () => {
+					responseFinished = true;
+					if (matched && res.statusCode >= 200 && res.statusCode < 300) {
+						startBackgroundWorkerOnce();
+					}
+				};
+				res.once("finish", startAfterSuccessfulResponse);
 
-        if (isRest) {
-          matched = true;
-          await restMiddleware(req, res);
-          return;
-        }
-        const result = await handler.handle(req, res, {
-          prefix: "/api/rpc",
-          context: { pixivAuthorization: req.headers.authorization },
-        });
-        matched = result.matched;
-        if (matched && responseFinished && res.statusCode >= 200 && res.statusCode < 300) {
-          startBackgroundWorkerOnce();
-        }
+				if (isRest) {
+					matched = true;
+					await restMiddleware(req, res);
+					return;
+				}
+				const result = await handler.handle(req, res, {
+					prefix: "/api/rpc",
+					context: { pixivAuthorization: req.headers.authorization },
+				});
+				matched = result.matched;
+				if (
+					matched &&
+					responseFinished &&
+					res.statusCode >= 200 &&
+					res.statusCode < 300
+				) {
+					startBackgroundWorkerOnce();
+				}
 
-        if (!matched) {
-          logger.warn({ method: req.method, url: req.url }, "Unmatched RPC request");
-          res.statusCode = 404;
-          res.end("Not Found");
-        }
-      } catch (error) {
-        logger?.error({ err: error }, "Dev RPC middleware failed");
-        next(error);
-      }
-    });
+				if (!matched) {
+					logger.warn(
+						{ method: req.method, url: req.url },
+						"Unmatched RPC request",
+					);
+					res.statusCode = 404;
+					res.end("Not Found");
+				}
+			} catch (error) {
+				logger?.error({ err: error }, "Dev RPC middleware failed");
+				next(error);
+			}
+		});
 	},
 });
 
@@ -348,14 +400,15 @@ const e2eReadinessPlugin = (): Plugin => ({
 	apply: "serve",
 	configureServer(server) {
 		if (!isE2e) return;
-	server.middlewares.use("/__e2e_ready", async (_req, res) => {
+		server.middlewares.use("/__e2e_ready", async (_req, res) => {
 			try {
 				const devRpcHandler = await getDevRpcHandler();
 				devRpcHandler.initServices();
 				devRpcHandler.startBackgroundWorker();
 
 				const probeUrl = `http://127.0.0.1:${isolatedDevConfig?.port}/api/rpc/sources/list`;
-				let lastProbeFailure = "SSR readiness probe did not return a successful response";
+				let lastProbeFailure =
+					"SSR readiness probe did not return a successful response";
 				for (let attempt = 0; attempt < 120; attempt += 1) {
 					const controller = new AbortController();
 					const timeout = setTimeout(() => controller.abort(), 5_000);
@@ -374,7 +427,8 @@ const e2eReadinessPlugin = (): Plugin => ({
 						}
 						lastProbeFailure = `SSR readiness probe returned ${probeResponse.status}`;
 					} catch (error) {
-						lastProbeFailure = error instanceof Error ? error.message : String(error);
+						lastProbeFailure =
+							error instanceof Error ? error.message : String(error);
 					} finally {
 						clearTimeout(timeout);
 					}
@@ -386,7 +440,9 @@ const e2eReadinessPlugin = (): Plugin => ({
 				return;
 			} catch (error) {
 				res.statusCode = 503;
-				res.end(error instanceof Error ? error.message : "E2E server is not ready");
+				res.end(
+					error instanceof Error ? error.message : "E2E server is not ready",
+				);
 			}
 		});
 	},
@@ -427,157 +483,170 @@ const nitroSsrCodeSplittingPlugin = (): Plugin => ({
 });
 
 export default defineConfig({
-  root: __dirname,
-  cacheDir: viteCacheDir,
-  server: isolatedDevConfig
-    ? {
-        host: "127.0.0.1",
-        port: isolatedDevConfig.port,
-        strictPort: true,
-        hmr: {
-          protocol: shouldUseMkcert ? "wss" : "ws",
-          host: "127.0.0.1",
-          port: isolatedDevConfig.hmrPort,
-          clientPort: isolatedDevConfig.hmrPort,
-          overlay: false,
-        },
-        fs: {
-          allow: [workspaceRoot, path.dirname(routeTreePath)],
-        },
-        watch: {
-          ignored: ["**/.cache/**", "**/.output/**"],
-        },
-      }
-    : {
-        hmr: {
-          protocol: "wss",
-          host: "localhost",
-          port: 3001,
-          clientPort: 3001,
-        },
-        watch: {
-          ignored: ["**/.cache/**", "**/.output/**"],
-        },
-      },
-  resolve: {
-    alias: {
-      "#route-tree": routeTreePath,
+	root: __dirname,
+	cacheDir: viteCacheDir,
+	server: isolatedDevConfig
+		? {
+				host: "127.0.0.1",
+				port: isolatedDevConfig.port,
+				strictPort: true,
+				hmr: {
+					protocol: shouldUseMkcert ? "wss" : "ws",
+					host: "127.0.0.1",
+					port: isolatedDevConfig.hmrPort,
+					clientPort: isolatedDevConfig.hmrPort,
+					overlay: false,
+				},
+				fs: {
+					allow: [workspaceRoot, path.dirname(routeTreePath)],
+				},
+				watch: {
+					ignored: ["**/.cache/**", "**/.output/**"],
+				},
+			}
+		: {
+				hmr: {
+					protocol: "wss",
+					host: "localhost",
+					port: 3001,
+					clientPort: 3001,
+				},
+				watch: {
+					ignored: ["**/.cache/**", "**/.output/**"],
+				},
+			},
+	resolve: {
+		alias: {
+			"#route-tree": routeTreePath,
 
-
-      "~": path.resolve(__dirname, "./src"),
-    },
-    tsconfigPaths: true,
-  },
-  plugins: [
-    ...(shouldUseMkcert ? [mkcert()] : []),
-    bypassSecFetchDestPlugin(),
-    devOrpcNodeMiddlewarePlugin(),
-    devMediaFileMiddlewarePlugin(),
-    e2eServerTimeoutPlugin(),
-    e2eReadinessPlugin(),
-    nitroSsrCodeSplittingPlugin(),
-    ...(shouldUseDevtools
-      ? [
-          devtools({
-            consolePiping: { enabled: false },
-          }),
-        ]
-      : []),
-    nitro({
-      ...(e2eNitroOutput && { output: e2eNitroOutput }),
-      publicAssets: [{
-        baseURL: "/_scalar",
-        dir: path.join(path.dirname(createRequire(import.meta.url).resolve("@scalar/api-reference")), "browser"),
-        ignore: ["**/chunks/**", "**/*.map", "**/*.esm.js"],
-      }],
-    }),
-    tailwindcss(),
-    tanstackStart({
-      router: {
-        // The generator matches each directory name, not its full path.
-        routeFileIgnorePattern,
-        // Start is the only route-tree and code-splitting plugin for this app.
-        // Its output path is isolated above for E2E and measurements.
-        generatedRouteTree: routeTreePath,
-        enableRouteGeneration: true,
-        tmpDir: routerTmpDir,
-      },
-    }),
-    solidPlugin({ ssr: true }),
-  ],
-  optimizeDeps: {
-    // Workspace and dynamically split routes expose these after the initial scan.
-    // Pre-bundle them so cold navigation does not invalidate in-flight shared chunks.
-    include: [
-      "@floating-ui/dom",
-      "@internationalized/number",
-      "@kobalte/utils",
-      "@solid-primitives/props",
-      "@solid-primitives/refs",
-      "@solid-primitives/resize-observer",
-      "@tanstack/form-core",
-      "@tanstack/history",
-      "@tanstack/query-core",
-      "@tanstack/router-core",
-      "@tanstack/router-core/isServer",
-      "@tanstack/router-core/scroll-restoration-script",
-      "@tanstack/router-core/ssr/client",
-      "@tanstack/router-core/ssr/server",
-      "@tanstack/router-ssr-query-core",
-      "@tanstack/solid-store",
-      "h3-v2",
-      "isbot",
-      "seroval",
-    ],
+			"~": path.resolve(__dirname, "./src"),
+		},
+		tsconfigPaths: true,
+	},
+	plugins: [
+		...(shouldUseMkcert ? [mkcert()] : []),
+		bypassSecFetchDestPlugin(),
+		devOrpcNodeMiddlewarePlugin(),
+		devMediaFileMiddlewarePlugin(),
+		e2eServerTimeoutPlugin(),
+		e2eReadinessPlugin(),
+		nitroSsrCodeSplittingPlugin(),
+		...(shouldUseDevtools
+			? [
+					devtools({
+						consolePiping: { enabled: false },
+					}),
+				]
+			: []),
+		nitro({
+			...(e2eNitroOutput && { output: e2eNitroOutput }),
+			publicAssets: [
+				{
+					baseURL: "/_scalar",
+					dir: path.join(
+						path.dirname(
+							createRequire(import.meta.url).resolve("@scalar/api-reference"),
+						),
+						"browser",
+					),
+					ignore: ["**/chunks/**", "**/*.map", "**/*.esm.js"],
+				},
+			],
+		}),
+		tailwindcss(),
+		tanstackStart({
+			router: {
+				// The generator matches each directory name, not its full path.
+				routeFileIgnorePattern,
+				// Start is the only route-tree and code-splitting plugin for this app.
+				// Its output path is isolated above for E2E and measurements.
+				generatedRouteTree: routeTreePath,
+				enableRouteGeneration: true,
+				tmpDir: routerTmpDir,
+			},
+		}),
+		solidPlugin({ ssr: true }),
+	],
+	optimizeDeps: {
+		// Workspace and dynamically split routes expose these after the initial scan.
+		// Pre-bundle them so cold navigation does not invalidate in-flight shared chunks.
+		include: [
+			"@floating-ui/dom",
+			"@internationalized/number",
+			"@kobalte/utils",
+			"@solid-primitives/props",
+			"@solid-primitives/refs",
+			"@solid-primitives/resize-observer",
+			"@tanstack/form-core",
+			"@tanstack/history",
+			"@tanstack/query-core",
+			"@tanstack/router-core",
+			"@tanstack/router-core/isServer",
+			"@tanstack/router-core/scroll-restoration-script",
+			"@tanstack/router-core/ssr/client",
+			"@tanstack/router-core/ssr/server",
+			"@tanstack/router-ssr-query-core",
+			"@tanstack/solid-store",
+			"h3-v2",
+			"isbot",
+			"seroval",
+		],
 		exclude: ["bun", "dghs-imgutils-rs"],
-  },
-  customLogger: {
-    warn(msg, options) {
-      if (typeof msg === "string" && msg.includes("externalized for browser compatibility")) {
-        return;
-      }
-      console.warn(msg, options);
-    },
-    warnOnce(msg, options) {
-      this.warn(msg, options);
-    },
-    info: console.info,
-    error: console.error,
-    clearScreen: () => {},
-    hasWarned: false,
-  },
-  build: {
-    rollupOptions: {
-      external: [
-        "bun",
-        "dghs-imgutils-rs",
-        "ffmpeg-static",
-        "fluent-ffmpeg",
-        "@electric-sql/pglite",
-        "archiver",
-        "sharp",
-      ],
-    },
-  },
-  ssr: {
-    noExternal: [
-      "@tanstack/solid-router",
-      "@tanstack/solid-query",
-      "@tanstack/solid-start",
-      "@kobalte/core",
-      "solid-sonner",
-      "corvu",
-      "@solid-primitives/.*",
-    ],
-    external: [
-      "bun",
-      "@electric-sql/pglite",
-      "ffmpeg-static",
-      "ffmpeg-static-static",
-      "fluent-ffmpeg",
-      "archiver",
-      "dghs-imgutils-rs",
-      "sharp",
-    ],
-  },
+	},
+	customLogger: {
+		warn(msg, options) {
+			if (
+				typeof msg === "string" &&
+				msg.includes("externalized for browser compatibility")
+			) {
+				return;
+			}
+			console.warn(msg, options);
+		},
+		warnOnce(msg, options) {
+			this.warn(msg, options);
+		},
+		info: console.info,
+		error: console.error,
+		clearScreen: () => {},
+		hasWarned: false,
+	},
+	build: {
+		rollupOptions: {
+			external: [
+				"bun",
+				"dghs-imgutils-rs",
+				"ffmpeg-static",
+				"fluent-ffmpeg",
+				"@electric-sql/pglite",
+				"archiver",
+				"sharp",
+			],
+		},
+	},
+	ssr: {
+		noExternal: [
+			"@tanstack/solid-router",
+			"@tanstack/solid-query",
+			"@tanstack/solid-start",
+			"@kobalte/core",
+			"cmdk-solid",
+			"lucide-solid",
+			"@tanstack/solid-form",
+			"@tanstack/charts",
+			"solid-sonner",
+			"corvu",
+			"@solid-primitives/.*",
+		],
+		external: [
+			"bun",
+			"@electric-sql/pglite",
+			"ffmpeg-static",
+			"ffmpeg-static-static",
+			"fluent-ffmpeg",
+			"archiver",
+			"dghs-imgutils-rs",
+			"sharp",
+		],
+	},
 });
