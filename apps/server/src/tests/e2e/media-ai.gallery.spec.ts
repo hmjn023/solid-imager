@@ -45,12 +45,12 @@ test("video detail offers thumbnail tagging and both vector models", async ({
 			.getByRole("button", { name: "その他の操作", exact: true })
 			.click();
 		await expect(
-			page.getByRole("button", {
+			page.getByRole("menuitem", {
 				name: "キャラクターを検出・切り抜き",
 				exact: true,
 			}),
 		).toHaveCount(0);
-		await page.getByRole("button", { name: label, exact: true }).click();
+		await page.getByRole("menuitem", { name: label, exact: true }).click();
 		await expect(
 			page.getByRole("status").filter({ hasText: "Last action:" }),
 		).toHaveText(`Last action: ${result}:video`);
@@ -59,7 +59,7 @@ test("video detail offers thumbnail tagging and both vector models", async ({
 		.getByRole("button", { name: "その他の操作", exact: true })
 		.click();
 	await page
-		.getByRole("button", { name: "タグを抽出（OppaiOracle）", exact: true })
+		.getByRole("menuitem", { name: "タグを抽出（OppaiOracle）", exact: true })
 		.click();
 	await expect(
 		page.getByRole("dialog", {
@@ -89,10 +89,10 @@ test("audio excludes visual AI and status requests while images retain cropping"
 		.getByRole("button", { name: "その他の操作", exact: true })
 		.click();
 	await expect(
-		page.getByRole("button", { name: "原本をダウンロード", exact: true }),
+		page.getByRole("menuitem", { name: "原本をダウンロード", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", {
+		page.getByRole("menuitem", {
 			name: /抽出|再抽出|類似検索|キャラクター検出/,
 		}),
 	).toHaveCount(0);
@@ -112,7 +112,7 @@ test("audio excludes visual AI and status requests while images retain cropping"
 		.getByRole("button", { name: "その他の操作", exact: true })
 		.click();
 	await expect(
-		page.getByRole("button", {
+		page.getByRole("menuitem", {
 			name: "キャラクターを検出・切り抜き",
 			exact: true,
 		}),

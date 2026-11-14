@@ -174,11 +174,11 @@ test("reduced motion suppresses image transitions and popover scaling", async ({
 	await page.keyboard.press("Escape");
 	await page.emulateMedia({ reducedMotion: "reduce" });
 	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
-	const popover = page.getByRole("dialog");
+	const menu = page.getByRole("menu");
 	await expect(
-		popover.getByRole("button", { name: "原本をダウンロード", exact: true }),
+		menu.getByRole("menuitem", { name: "原本をダウンロード", exact: true }),
 	).toBeVisible();
-	const scale = await popover.evaluate((element) => {
+	const scale = await menu.evaluate((element) => {
 		const style = getComputedStyle(element);
 		return [
 			style.getPropertyValue("--tw-enter-scale"),

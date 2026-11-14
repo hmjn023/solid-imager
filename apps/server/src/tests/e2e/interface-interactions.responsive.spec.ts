@@ -278,10 +278,10 @@ test("Workspace detail exposes zoom controls and non-destructive action choices"
 	await moreActions.scrollIntoViewIfNeeded();
 	await moreActions.click();
 	await expect(
-		page.getByRole("button", { name: "原本をダウンロード", exact: true }),
+		page.getByRole("menuitem", { name: "原本をダウンロード", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "メディアを削除...", exact: true }),
+		page.getByRole("menuitem", { name: "メディアを削除...", exact: true }),
 	).toBeVisible();
 });
 
@@ -293,10 +293,10 @@ test("Workspace detail closes More actions before opening a modal", async ({
 
 	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
 	await page
-		.getByRole("button", { name: "メディアを削除...", exact: true })
+		.getByRole("menuitem", { name: "メディアを削除...", exact: true })
 		.click();
 	await expect(
-		page.getByRole("button", { name: "原本をダウンロード", exact: true }),
+		page.getByRole("menuitem", { name: "原本をダウンロード", exact: true }),
 	).toBeHidden();
 	const deleteDialog = page.getByRole("alertdialog");
 	await expect(deleteDialog).toBeVisible();
