@@ -15,7 +15,6 @@ import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
-	BreadcrumbLink,
 	BreadcrumbList,
 	BreadcrumbSeparator,
 } from "../breadcrumb";
@@ -352,23 +351,16 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				<Breadcrumb class="min-w-0">
 					<BreadcrumbList class="min-w-0 flex-nowrap gap-2 sm:gap-2">
 						<BreadcrumbItem class="shrink-0">
-							<BreadcrumbLink
-								as="span"
-								class="cursor-default hover:text-muted-foreground"
-								disabled
-							>
-								{t("navigation.library")}
-							</BreadcrumbLink>
+							<span class="cursor-default">{t("navigation.library")}</span>
 						</BreadcrumbItem>
 						<BreadcrumbSeparator />
 						<BreadcrumbItem class="min-w-0">
-							<BreadcrumbLink
-								as="span"
-								class="min-w-0 truncate data-[current]:font-semibold"
-								current
+							<span
+								aria-current="page"
+								class="min-w-0 truncate font-semibold text-foreground"
 							>
 								{props.sourceName}
-							</BreadcrumbLink>
+							</span>
 						</BreadcrumbItem>
 					</BreadcrumbList>
 				</Breadcrumb>
