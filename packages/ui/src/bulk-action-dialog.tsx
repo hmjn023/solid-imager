@@ -1,6 +1,7 @@
 import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { createEffect, createResource, createSignal, Show } from "solid-js";
+import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -257,15 +258,19 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 					</Show>
 
 					<Show when={action() === "delete"}>
-						<div class="rounded-md bg-destructive/10 p-3 text-destructive text-sm">
-							{t(
-								"bulkActionDialog.warningThisActionCannotBeUndoneTheActualFiles",
-							)}
-						</div>
+						<Alert variant="destructive">
+							<AlertDescription>
+								{t(
+									"bulkActionDialog.warningThisActionCannotBeUndoneTheActualFiles",
+								)}
+							</AlertDescription>
+						</Alert>
 					</Show>
 
 					<Show when={errorMsg()}>
-						<div class="font-medium text-destructive text-sm">{errorMsg()}</div>
+						<Alert variant="destructive">
+							<AlertDescription>{errorMsg()}</AlertDescription>
+						</Alert>
 					</Show>
 				</div>
 

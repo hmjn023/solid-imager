@@ -11,6 +11,7 @@ import {
 	Show,
 } from "solid-js";
 import { z } from "zod";
+import { Alert, AlertDescription, AlertTitle } from "./alert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -509,23 +510,25 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								</form.Field>
 
 								<Show when={(props.conflicts?.length ?? 0) > 0}>
-									<div class="rounded-md border border-input bg-warning p-3 text-warning-foreground text-sm">
-										<p class="font-medium">
+									<Alert variant="warning">
+										<AlertTitle>
 											{t("uploadMediaModal.aFileWithThisNameAlreadyExists")}
-										</p>
-										<ul class="mt-2 list-disc space-y-1 pl-5">
-											<For each={props.conflicts}>
-												{(conflict) => (
-													<li>
-														{conflict.filename}
-														<Show when={conflict.suggestedName}>
-															<span> → {conflict.suggestedName}</span>
-														</Show>
-													</li>
-												)}
-											</For>
-										</ul>
-									</div>
+										</AlertTitle>
+										<AlertDescription>
+											<ul class="mt-2 list-disc space-y-1 pl-5">
+												<For each={props.conflicts}>
+													{(conflict) => (
+														<li>
+															{conflict.filename}
+															<Show when={conflict.suggestedName}>
+																<span> → {conflict.suggestedName}</span>
+															</Show>
+														</li>
+													)}
+												</For>
+											</ul>
+										</AlertDescription>
+									</Alert>
 								</Show>
 
 								<Show when={props.uploadProgress}>
