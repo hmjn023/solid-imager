@@ -217,7 +217,7 @@ test("media keyboard shortcuts match context menu hints @desktop-only", async ({
 	await page.goto(sourcePath());
 	await waitForAppHydration(page);
 	const media = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
-	const deleteDialog = page.getByRole("dialog", {
+	const deleteDialog = page.getByRole("alertdialog", {
 		name: "メディアを削除",
 		exact: true,
 	});

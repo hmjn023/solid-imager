@@ -180,7 +180,7 @@ test(
 		await page
 			.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
 			.click();
-		const deleteDialog = page.getByRole("dialog");
+		const deleteDialog = page.getByRole("alertdialog");
 		await expect(deleteDialog).toContainText(E2E_PRIMARY_FILE_NAME);
 		await deleteDialog
 			.getByRole("button", { name: "キャンセル", exact: true })
@@ -196,7 +196,7 @@ test(
 		await expect(bulkActionButton).toBeEnabled();
 		await bulkActionButton.click();
 		const bulkDialog = page.getByRole("dialog");
-		await expect(bulkDialog).toContainText("一括削除");
+		await expect(bulkDialog).toContainText("他のソースへコピー");
 		await bulkDialog
 			.getByRole("button", { name: "キャンセル", exact: true })
 			.click();

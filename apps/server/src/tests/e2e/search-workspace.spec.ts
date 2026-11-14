@@ -124,7 +124,7 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 		await page
 			.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
 			.click();
-		const deleteDialog = page.getByRole("dialog", {
+		const deleteDialog = page.getByRole("alertdialog", {
 			name: "メディアを削除",
 			exact: true,
 		});
