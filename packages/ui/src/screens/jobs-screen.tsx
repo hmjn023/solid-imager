@@ -30,6 +30,7 @@ import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
+import { Progress } from "../progress";
 import type { QueryUiState } from "../query-state";
 import {
 	Select,
@@ -177,21 +178,15 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 							{progress().total.toLocaleString()}
 						</span>
 					</div>
-					<div
+					<Progress
 						aria-label={t("jobsScreen.valueComplete", {
 							value0: String(percent()),
 						})}
-						aria-valuemax="100"
-						aria-valuemin="0"
-						aria-valuenow={percent()}
-						class="h-1.5 overflow-hidden rounded-full bg-border"
-						role="progressbar"
-					>
-						<div
-							class="job-progress-fill h-full rounded-full bg-primary transition-width"
-							style={{ "--job-progress-width": `${percent()}%` }}
-						/>
-					</div>
+						class="h-1.5 bg-border [&>div]:bg-border [&>div>div]:rounded-full"
+						maxValue={100}
+						minValue={0}
+						value={percent()}
+					/>
 				</div>
 			)}
 		</Show>
