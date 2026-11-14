@@ -2,14 +2,14 @@ import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { Accessor, JSX, ParentProps } from "solid-js";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "../dialog";
 import type { UseSourcesPageResult } from "../hooks/use-sources-page";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "../sheet";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
 import { SourceDeleteModal } from "../source-delete-modal";
 import { SourceFormModal } from "../source-form-modal";
@@ -192,8 +192,8 @@ export function AppShell(props: AppShellProps) {
 					</main>
 				</div>
 
-				<Dialog onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
-					<DialogContent
+				<Sheet onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
+					<SheetContent
 						class="workspace-theme p-0"
 						onCloseAutoFocus={(event) => {
 							event.preventDefault();
@@ -203,14 +203,14 @@ export function AppShell(props: AppShellProps) {
 								}
 							});
 						}}
-						placement="left"
+						position="left"
 					>
-						<DialogHeader class="sr-only">
-							<DialogTitle>{t("appShell.navigation")}</DialogTitle>
-							<DialogDescription>
+						<SheetHeader class="sr-only">
+							<SheetTitle>{t("appShell.navigation")}</SheetTitle>
+							<SheetDescription>
 								{t("appShell.chooseAScreenAndMediaSource")}
-							</DialogDescription>
-						</DialogHeader>
+							</SheetDescription>
+						</SheetHeader>
 						<Sidebar
 							apiDocsHref={props.apiDocsHref}
 							expanded
@@ -229,8 +229,8 @@ export function AppShell(props: AppShellProps) {
 							}
 							serverConnectionsHref={props.serverConnectionsHref}
 						/>
-					</DialogContent>
-				</Dialog>
+					</SheetContent>
+				</Sheet>
 
 				<SourceFormModal
 					editingSource={sourcePage.editingSource()}
