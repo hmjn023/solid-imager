@@ -196,7 +196,7 @@ test(
 		await expect(bulkActionButton).toBeEnabled();
 		await bulkActionButton.click();
 		const bulkDialog = page.getByRole("dialog");
-		await expect(bulkDialog).toContainText("他のソースへコピー");
+		await expect(bulkDialog).toContainText("コピー (別ソースへ)");
 		await bulkDialog
 			.getByRole("button", { name: "キャンセル", exact: true })
 			.click();
