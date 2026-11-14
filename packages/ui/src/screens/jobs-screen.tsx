@@ -26,9 +26,11 @@ import {
 	Show,
 	Switch,
 } from "solid-js";
+import { Alert, AlertDescription } from "../alert";
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
+import { Callout, CalloutContent } from "../callout";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
 import { Progress } from "../progress";
 import type { QueryUiState } from "../query-state";
@@ -653,25 +655,23 @@ function JobsInspector(props: {
 
 						<Show when={job().error}>
 							{(error) => (
-								<div class="mt-4 rounded-md border border-input bg-muted p-3 text-destructive text-sm">
-									<div class="flex items-start gap-2">
-										<CircleAlert
-											aria-hidden="true"
-											class="mt-0.5 shrink-0"
-											size={16}
-										/>
-										<p class="break-words">{error()}</p>
-									</div>
-								</div>
+								<Alert class="mt-4" variant="destructive">
+									<CircleAlert aria-hidden="true" size={16} />
+									<AlertDescription class="break-words">
+										{error()}
+									</AlertDescription>
+								</Alert>
 							)}
 						</Show>
 
 						<Show when={job().cancelRequestedAt}>
-							<p class="mt-4 rounded-md border border-input bg-warning p-3 text-warning-foreground text-xs">
-								{t("jobsScreen.cancellationRequestedAtValue", {
-									value0: String(formatDate(job().cancelRequestedAt)),
-								})}
-							</p>
+							<Callout class="mt-4" variant="warning">
+								<CalloutContent class="mt-0 text-xs">
+									{t("jobsScreen.cancellationRequestedAtValue", {
+										value0: String(formatDate(job().cancelRequestedAt)),
+									})}
+								</CalloutContent>
+							</Callout>
 						</Show>
 
 						<Show when={job().artifact}>
