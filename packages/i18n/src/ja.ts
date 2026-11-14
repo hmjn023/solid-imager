@@ -179,6 +179,7 @@ export const ja = defineLocale({
 	"batchTools.startTagging": "タグ付けを開始",
 	"batchTools.whenDisabledProcessedMediaIsSkipped":
 		"無効にすると処理済みのメディアはスキップします。",
+	"breadcrumb.more": "その他",
 	"bulkActionCommand.destinationPathIsRequired": "保存先のパスが必要です。",
 	"bulkActionCommand.noMediaItemsAreSelected": "メディアが選択されていません。",
 	"bulkActionCommand.targetSourceIsRequired": "保存先ソースが必要です。",
@@ -1180,6 +1181,7 @@ export const ja = defineLocale({
 		"OppaiOracleモデルで画像から抽出したタグです。",
 	"oppaiOracleModal.tagsExtractedFromTheVideoSRepresentativeThumbnailUsing":
 		"OppaiOracleモデルで動画の代表サムネイルから抽出したタグです。",
+	"pagination.morePages": "その他のページ",
 	"paginationControls.pageValueOfValue": "{value1}ページ中{value0}ページ",
 	"pendingDownloadsIndicator.importInboxValue": "取り込み待ち{value0}",
 	"pendingDownloadsIndicator.valueItems": ", {value0}件",
@@ -1513,6 +1515,8 @@ export const ja = defineLocale({
 	"sidebar.danbooru": "Danbooru",
 	"sidebar.expandSidebar": "サイドバーを展開する",
 	"sidebar.managementNavigation": "管理ナビゲーション",
+	"sidebar.missingProvider":
+		"useSidebar は SidebarProvider 内で使用する必要があります。",
 	"sidebar.pixiv": "pixiv",
 	"sidebar.primaryNavigation": "主要ナビゲーション",
 	"sidebar.quickActions": "クイック操作",
