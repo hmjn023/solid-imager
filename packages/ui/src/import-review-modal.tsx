@@ -20,6 +20,7 @@ import {
 	AlertDialogTitle,
 } from "./alert-dialog";
 import { Button } from "./button";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -38,7 +39,20 @@ import {
 	isImportSourceRemembered,
 	setImportSourcePreference,
 } from "./import-source-preference";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "./select";
 import { toast } from "./toast";
+
+type ImportSourceOption = {
+	id: string;
+	label: string;
+};
 
 function getPreviewUrl(url?: string): string {
 	if (!url) {
@@ -187,6 +201,20 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		);
 	};
 
+	const sourceOptions = (): ImportSourceOption[] =>
+		(sources() ?? []).flatMap((source) =>
+			source.id
+				? [
+						{
+							id: source.id,
+							label: `${source.name} · ${sourceTypeLabel(source.type)}`,
+						},
+					]
+				: [],
+		);
+	const selectedSourceOption = () =>
+		sourceOptions().find((option) => option.id === selectedSourceId()) ?? null;
+
 	const confirmDelete = async () => {
 		try {
 			setActiveAction("delete");
@@ -230,42 +258,50 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 					<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
 						<div class="flex flex-col gap-3 border-border border-b bg-muted px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
 							<div class="grid min-w-0 gap-2 sm:w-80">
-								<label class="grid gap-1 font-medium text-sm">
-									{t("importReviewModal.targetSource")}
-									<select
-										class="min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-										disabled={sources.loading || activeAction() !== null}
-										onChange={(event) => {
-											const sourceId = event.currentTarget.value;
-											setSelectedSourceId(sourceId);
-											if (rememberSource()) {
-												setImportSourcePreference(true, sourceId);
-											}
-											setIsDirty(true);
-										}}
-										value={selectedSourceId()}
-									>
-										<For each={sources()}>
-											{(source) => (
-												<option value={source.id}>
-													{source.name} · {sourceTypeLabel(source.type)}
-												</option>
-											)}
-										</For>
-									</select>
-								</label>
-								<label class="flex items-center gap-2 text-muted-foreground text-sm">
-									<input
-										checked={rememberSource()}
-										class="size-4 accent-primary"
-										disabled={sources.loading || activeAction() !== null}
-										onChange={(event) =>
-											handleRememberSourceChange(event.currentTarget.checked)
+								<Select<ImportSourceOption>
+									class="grid gap-1"
+									disabled={sources.loading || activeAction() !== null}
+									disallowEmptySelection
+									itemComponent={(itemProps) => (
+										<SelectItem item={itemProps.item}>
+											{itemProps.item.rawValue.label}
+										</SelectItem>
+									)}
+									onChange={(option) => {
+										if (!option) return;
+										setSelectedSourceId(option.id);
+										if (rememberSource()) {
+											setImportSourcePreference(true, option.id);
 										}
-										type="checkbox"
-									/>
-									{t("importReviewModal.rememberThisSource")}
-								</label>
+										setIsDirty(true);
+									}}
+									options={sourceOptions()}
+									optionTextValue="label"
+									optionValue="id"
+									placeholder={t("actions.selectSource")}
+									value={selectedSourceOption()}
+								>
+									<SelectLabel>
+										{t("importReviewModal.targetSource")}
+									</SelectLabel>
+									<SelectTrigger class="w-full bg-background">
+										<SelectValue<ImportSourceOption>>
+											{(state) => state.selectedOption()?.label ?? ""}
+										</SelectValue>
+									</SelectTrigger>
+									<SelectContent />
+								</Select>
+								<Checkbox
+									checked={rememberSource()}
+									class="flex items-center gap-2"
+									disabled={sources.loading || activeAction() !== null}
+									onChange={handleRememberSourceChange}
+								>
+									<CheckboxControl />
+									<CheckboxLabel class="cursor-pointer font-normal text-muted-foreground text-sm">
+										{t("importReviewModal.rememberThisSource")}
+									</CheckboxLabel>
+								</Checkbox>
 							</div>
 							<div class="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
 								<div class="text-muted-foreground text-sm" aria-live="polite">
@@ -319,51 +355,43 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
 									<For each={pendingJobs()}>
 										{(job) => (
-											<label
-												class={`relative min-w-0 cursor-pointer rounded-lg border p-2 transition-colors focus-within:ring-2 focus-within:ring-ring ${
-													selectedJobIds().has(job.id)
-														? "border-primary bg-primary/5"
-														: "border-border bg-card hover:bg-accent/50"
-												}`}
+											<Checkbox
+												checked={selectedJobIds().has(job.id)}
+												class="relative block min-w-0 space-x-0 rounded-lg border border-border bg-card transition-colors focus-within:ring-2 focus-within:ring-ring hover:bg-accent/50 data-[checked]:border-primary data-[checked]:bg-primary/5"
+												disabled={activeAction() !== null}
+												onChange={() => toggleSelection(job.id)}
 											>
-												<input
-													checked={selectedJobIds().has(job.id)}
-													class="peer sr-only"
-													disabled={activeAction() !== null}
-													onChange={() => toggleSelection(job.id)}
-													type="checkbox"
-												/>
-												<span class="absolute top-3 right-3 z-10 flex size-5 items-center justify-center rounded border border-input bg-background font-bold text-primary text-xs peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground">
-													{selectedJobIds().has(job.id) ? "✓" : ""}
-												</span>
-												<div class="aspect-landscape w-full overflow-hidden rounded-md bg-muted">
-													<Show
-														fallback={
-															<div class="flex h-full items-center justify-center text-muted-foreground text-xs">
-																{t("importReviewModal.noPreview")}
-															</div>
-														}
-														when={job.item.targetUrl}
-													>
-														<img
-															alt={t("importReviewModal.importPreview")}
-															class="h-full w-full object-cover"
-															onError={(event) => {
-																event.currentTarget.style.display = "none";
-															}}
-															src={getPreviewUrl(job.item.targetUrl)}
-														/>
-													</Show>
-												</div>
-												<div class="mt-2 truncate font-medium text-sm">
-													{job.item.description ||
-														job.item.targetUrl ||
-														t("importReviewModal.untitledImport")}
-												</div>
-												<div class="truncate text-muted-foreground text-xs">
-													{getPendingImportPrimaryAuthor(job.item)}
-												</div>
-											</label>
+												<CheckboxControl class="absolute top-3 right-3 z-10 h-5 w-5 border-input bg-background" />
+												<CheckboxLabel class="block cursor-pointer p-2">
+													<div class="aspect-landscape w-full overflow-hidden rounded-md bg-muted">
+														<Show
+															fallback={
+																<div class="flex h-full items-center justify-center text-muted-foreground text-xs">
+																	{t("importReviewModal.noPreview")}
+																</div>
+															}
+															when={job.item.targetUrl}
+														>
+															<img
+																alt={t("importReviewModal.importPreview")}
+																class="h-full w-full object-cover"
+																onError={(event) => {
+																	event.currentTarget.style.display = "none";
+																}}
+																src={getPreviewUrl(job.item.targetUrl)}
+															/>
+														</Show>
+													</div>
+													<div class="mt-2 truncate font-medium text-sm">
+														{job.item.description ||
+															job.item.targetUrl ||
+															t("importReviewModal.untitledImport")}
+													</div>
+													<div class="truncate text-muted-foreground text-xs">
+														{getPendingImportPrimaryAuthor(job.item)}
+													</div>
+												</CheckboxLabel>
+											</Checkbox>
 										)}
 									</For>
 								</div>
