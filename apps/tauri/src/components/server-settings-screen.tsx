@@ -1,4 +1,5 @@
 import { t } from "@solid-imager/i18n";
+import { Alert, AlertDescription } from "@solid-imager/ui/alert";
 import { Badge } from "@solid-imager/ui/badge";
 import { Button } from "@solid-imager/ui/button";
 import {
@@ -280,9 +281,9 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 
 			<Show when={error()}>
 				{(message) => (
-					<div class="rounded-lg border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm">
-						{message()}
-					</div>
+					<Alert variant="destructive">
+						<AlertDescription>{message()}</AlertDescription>
+					</Alert>
 				)}
 			</Show>
 
