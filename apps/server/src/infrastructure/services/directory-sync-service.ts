@@ -1,3 +1,9 @@
+import { ClosedImportScanError } from "@solid-imager/db";
+import {
+	finishDirectoryImport,
+	reserveImportFiles,
+	runImportSubmission,
+} from "./import-submission";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -137,7 +143,7 @@ export function getSourceSyncState(
 	return sourceSyncStates.get(mediaSourceId)?.status ?? "idle";
 }
 
-async function* scanFiles(basePath: string): AsyncGenerator<string> {
+export async function* scanFiles(basePath: string): AsyncGenerator<string> {
 	const pendingDirectories = [""];
 
 	while (pendingDirectories.length > 0) {
@@ -167,15 +173,34 @@ async function processAdditions(
 	mediaSourceId: string,
 	filesToAdd: string[],
 	result: SyncCounts,
+	reservations?: string[],
 ): Promise<number> {
 	let failures = 0;
 	await Promise.all(
-		filesToAdd.map(async (fileToAdd) => {
+		filesToAdd.map(async (fileToAdd, index) => {
 			try {
-				await MediaProcessingService.registerAndProcess(
-					mediaSourceId,
-					fileToAdd,
-				);
+				const register = (
+					owner?: import("@solid-imager/core/jobs").ImportWorkOwner,
+				) =>
+					owner
+						? MediaProcessingService.registerAndProcess(
+								mediaSourceId,
+								fileToAdd,
+								undefined,
+								owner,
+							)
+						: MediaProcessingService.registerAndProcess(
+								mediaSourceId,
+								fileToAdd,
+							);
+				if (reservations)
+					await runImportSubmission(
+						mediaSourceId,
+						reservations[index],
+						"import_register",
+						register,
+					);
+				else await register();
 				result.added++;
 			} catch (error) {
 				logger.error(
@@ -338,25 +363,57 @@ export const DirectorySyncService = {
 				// Await each small batch before reading more files. Registration reads
 				// image/video metadata before enqueueing a job, outside JobWorker's pool.
 				let failures = 0;
-				let additions: string[] = [];
-				for await (const relativePath of scanFiles(basePath)) {
-					if (dbPathMap.delete(relativePath)) {
-						continue;
-					}
-					if (!allowedExts.has(path.extname(relativePath).toLowerCase())) {
-						continue;
-					}
-					additions.push(relativePath.split("/").join(path.sep));
-					if (additions.length >= concurrency) {
+				const scanId = crypto.randomUUID();
+				let collecting = false;
+				let scanFinished = false;
+				const additions: string[] = [];
+				const registerPage = async (last: boolean) => {
+					if (!additions.length) return;
+					const page = additions.splice(0, concurrency);
+					if (!collecting && last && page.length === 1) {
+						failures += await processAdditions(mediaSourceId, page, result);
+					} else {
+						const { reservations } = await reserveImportFiles(
+							mediaSourceId,
+							page,
+							"import_register",
+							{ id: scanId, firstPage: !collecting },
+						);
+						collecting = true;
 						failures += await processAdditions(
 							mediaSourceId,
-							additions,
+							page,
 							result,
+							reservations,
 						);
-						additions = [];
 					}
+				};
+				try {
+					for await (const relativePath of scanFiles(basePath)) {
+						if (
+							dbPathMap.delete(relativePath) ||
+							!allowedExts.has(path.extname(relativePath).toLowerCase())
+						)
+							continue;
+						additions.push(relativePath.split("/").join(path.sep));
+						if (
+							additions.length >= concurrency &&
+							(collecting || additions.length > 1)
+						)
+							await registerPage(false);
+					}
+					await registerPage(true);
+					scanFinished = true;
+				} catch (error) {
+					if (error instanceof ClosedImportScanError)
+						return finishSync(result, {
+							failureKind: "partial",
+							error: "Directory import stopped",
+						});
+					throw error;
+				} finally {
+					if (collecting) await finishDirectoryImport(scanId, !scanFinished);
 				}
-				failures += await processAdditions(mediaSourceId, additions, result);
 
 				// Only delete after the entire scan succeeds. A failed/inaccessible
 				// subtree must never make its existing media look like missing files.

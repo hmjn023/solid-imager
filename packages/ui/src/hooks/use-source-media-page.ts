@@ -53,6 +53,7 @@ const DEBOUNCE_DELAY_MS = 1000;
 const MEDIA_REFRESH_DEBOUNCE_MS = 300;
 
 export type UploadOptions = {
+	reservationId?: string;
 	file: File;
 	filename: string;
 	description: string;
@@ -507,6 +508,7 @@ export function useSourceMediaPage(
 	const handleUpload = async (options: UploadOptions) => {
 		const result = await actions.uploadMedia(id() || "", options.file, {
 			filename: options.filename,
+			reservationId: options.reservationId,
 			description: options.description,
 			sourceUrl: options.sourceUrl,
 			overwrite: options.overwrite,

@@ -1,5 +1,7 @@
 import {
 	batchParentJobTypes,
+	readImportBatch,
+	hasBatchTargetHistory,
 	type BatchProgress,
 	type IJobRepository,
 	type Job,
@@ -23,6 +25,13 @@ import {
 	type SQL,
 	sql,
 } from "drizzle-orm";
+import {
+	bindImportMedia,
+	sealImportScan,
+	importStageReady,
+	lockBatchAdmissions,
+	settleImportTarget,
+} from "./import-batch";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
@@ -138,6 +147,25 @@ export function createJobRepository(
 					)
 					.returning();
 				if (!finished) return null;
+				const importBatch = readImportBatch(finished);
+				if (importBatch) {
+					if (
+						finished.type === "import_upload" &&
+						finished.status === "completed" &&
+						outcome.status === "completed" &&
+						outcome.result &&
+						typeof outcome.result === "object" &&
+						"skipped" in outcome.result &&
+						outcome.result.skipped === true
+					) {
+						await tx
+							.update(jobs)
+							.set({ payload: sql`payload || '{"skipped":true}'::jsonb` })
+							.where(eq(jobs.id, importBatch.importTargetId));
+					}
+					await settleImportTarget(tx, importBatch);
+					return jobTerminalStatusSchema.parse(finished.status);
+				}
 				if (finished.parentId) {
 					// Serialize sibling terminal commits before taking a fresh snapshot of
 					// all children. Otherwise concurrent last children can each see the
@@ -177,7 +205,48 @@ export function createJobRepository(
 			return finishBatchWith(db(), id);
 		},
 
-		async createIfUnique(job: NewJob): Promise<Job | null> {
+		async createIfUnique(job, owner): Promise<Job | null> {
+			if (owner) {
+				return db().transaction(async (tx) => {
+					await lockBatchAdmissions(tx, owner.importBatchId);
+					const [producer] = await tx
+						.select({ id: jobs.id })
+						.from(jobs)
+						.where(
+							and(
+								eq(jobs.id, owner.workId),
+								eq(jobs.parentId, owner.importTargetId),
+								eq(jobs.attemptCount, owner.attempt),
+								eq(jobs.status, "in_progress"),
+								isNull(jobs.cancelRequestedAt),
+							),
+						)
+						.for("update");
+					if (!producer) throw new Error("Import work no longer active");
+					const targetId =
+						job.type === "processMedia" &&
+						job.payload &&
+						typeof job.payload === "object" &&
+						"mediaId" in job.payload &&
+						typeof job.payload.mediaId === "string"
+							? await bindImportMedia(tx, owner, job.payload.mediaId)
+							: owner.importTargetId;
+					const [created] = await tx
+						.insert(jobs)
+						.values({
+							...job,
+							parentId: targetId,
+							payload: {
+								...(typeof job.payload === "object" ? job.payload : {}),
+								importTargetId: targetId,
+								importBatchId: owner.importBatchId,
+							},
+						})
+						.onConflictDoNothing()
+						.returning();
+					return created ? mapJob(created) : null;
+				});
+			}
 			if (job.type === "generate_thumbnail" && job.mediaSourceId) {
 				generateThumbnailJobPayloadSchema.parse(job.payload);
 				const [created] = await db()
@@ -234,7 +303,8 @@ export function createJobRepository(
 			const conditions = [
 				eq(jobs.status, "pending"),
 				ne(jobs.type, "import_request"),
-				notInArray(jobs.type, [...batchParentJobTypes]),
+				notInArray(jobs.type, [...batchParentJobTypes, "import_batch_target"]),
+				workerOwnedSubmission(),
 			];
 
 			if (options?.excludeTypes?.length) {
@@ -322,8 +392,96 @@ export function createJobRepository(
 			return rows.length > 0;
 		},
 
+		async retryFailedBatch(id, replacementUploadId) {
+			return db().transaction(async (tx) => {
+				await lockBatchAdmissions(tx, id, true);
+				const [parent] = await tx
+					.select()
+					.from(jobs)
+					.where(eq(jobs.id, id))
+					.for("update");
+				if (
+					!parent ||
+					!hasBatchTargetHistory(parent.type) ||
+					(parent.status !== "failed" && parent.status !== "cancelled")
+				)
+					return null;
+				if (replacementUploadId) {
+					const [failedUpload] = await tx
+						.select({ id: jobs.id })
+						.from(jobs)
+						.where(
+							and(
+								eq(jobs.id, replacementUploadId),
+								eq(jobs.type, "import_upload"),
+								eq(jobs.status, "failed"),
+								sql`EXISTS (SELECT 1 FROM jobs target WHERE target.id=jobs.parent_id AND target.type='import_batch_target' AND target.parent_id=${id} AND target.status='failed')`,
+							),
+						);
+					if (!failedUpload) return null;
+				}
+				// Keep successful later stages and attempts. Only the next claim advances
+				// attempt_count, so a late outcome from the old attempt cannot win.
+				await tx.execute(sql`
+					WITH reopened_work AS (
+						UPDATE jobs w SET status='pending',error=NULL,result=NULL,started_at=NULL,finished_at=NULL,
+							cancel_requested_at=NULL,cancelled_at=NULL,updated_at=now(),
+							payload=CASE WHEN w.type IN ('import_upload','import_register')
+								THEN w.payload || jsonb_build_object('retrySubmission',true,'awaitingFile',
+									w.type='import_upload' AND (w.id IS NOT DISTINCT FROM ${replacementUploadId ?? null}::uuid OR coalesce((w.payload#>>'{uploadInput,expiresAt}')::bigint,0) <= extract(epoch from now())*1000))
+								ELSE w.payload END
+						FROM jobs target WHERE target.parent_id=${id}::uuid AND target.type='import_batch_target'
+						  AND target.status='failed' AND w.parent_id=target.id AND w.status='failed'
+						RETURNING w.parent_id
+					), reopened_targets AS (
+						UPDATE jobs SET status='in_progress',finished_at=NULL,cancelled_at=NULL,updated_at=now(),error=NULL
+						WHERE id IN (SELECT parent_id FROM reopened_work) RETURNING 1
+					), delta AS (SELECT count(*)::int n FROM reopened_targets)
+					UPDATE jobs SET status='in_progress', error=NULL,finished_at=NULL,cancel_requested_at=NULL,cancelled_at=NULL,updated_at=now(),
+						payload=payload || jsonb_build_object('failed',(payload->>'failed')::int - delta.n)
+					FROM delta WHERE id=${id}::uuid AND delta.n>0`);
+				const [reopened] = await tx
+					.select()
+					.from(jobs)
+					.where(and(eq(jobs.id, id), eq(jobs.status, "in_progress")));
+				return reopened ? mapJob(reopened) : null;
+			});
+		},
+
 		async requestCancellation(id: string): Promise<void> {
 			await db().transaction(async (tx) => {
+				const [job] = await tx
+					.select({ type: jobs.type })
+					.from(jobs)
+					.where(eq(jobs.id, id));
+				if (job && hasBatchTargetHistory(job.type)) {
+					await lockBatchAdmissions(tx, id, true);
+					// Admissions are fenced. A concurrently finishing attempt can still commit
+					// until its work row is locked by this update.
+					await tx.execute(sql`
+						UPDATE jobs w SET cancel_requested_at = coalesce(w.cancel_requested_at,now()),
+							status = (CASE WHEN w.status='pending' THEN 'cancelled' ELSE 'in_progress' END)::job_status,
+							cancelled_at = CASE WHEN w.status='pending' THEN now() END,
+							finished_at = CASE WHEN w.status='pending' THEN now() END, updated_at = now()
+						FROM jobs target
+						WHERE target.parent_id=${id}::uuid AND target.type='import_batch_target'
+						  AND w.parent_id=target.id AND w.status IN ('pending','in_progress')`);
+					const done = sql`(payload->>'processed')::int + (payload->>'failed')::int + coalesce((payload->>'cancelled')::int,0) + delta.n >= (payload->>'total')::int`;
+					await tx.execute(sql`
+						WITH cancelled_targets AS (
+							UPDATE jobs target SET status=CASE WHEN EXISTS (SELECT 1 FROM jobs w WHERE w.parent_id=target.id AND w.status='failed') THEN 'failed'::job_status ELSE 'cancelled'::job_status END,finished_at=now(),updated_at=now(),cancelled_at=now()
+							WHERE target.parent_id=${id}::uuid AND target.type='import_batch_target' AND target.status='in_progress'
+							  AND NOT EXISTS (SELECT 1 FROM jobs w WHERE w.parent_id=target.id AND w.status IN ('pending','in_progress'))
+							RETURNING target.status
+						), delta AS (SELECT count(*)::int n, count(*) FILTER (WHERE status='failed')::int failed FROM cancelled_targets)
+						UPDATE jobs SET cancel_requested_at=coalesce(cancel_requested_at,now()),updated_at=now(),
+							payload=(payload - 'collecting') || jsonb_build_object('failed',(payload->>'failed')::int + delta.failed, 'cancelled',coalesce((payload->>'cancelled')::int,0) + delta.n - delta.failed),
+							status=CASE WHEN ${done} THEN 'cancelled'::job_status ELSE status END,
+							cancelled_at=CASE WHEN ${done} THEN now() END,
+							finished_at=CASE WHEN ${done} THEN now() END
+						FROM delta WHERE id=${id}::uuid AND status='in_progress'`);
+					return;
+				}
 				const [cancelled] = await tx
 					.update(jobs)
 					.set({
@@ -345,7 +503,10 @@ export function createJobRepository(
 						),
 					)
 					.returning();
-				if (cancelled?.status === "cancelled" && cancelled.parentId) {
+				const importBatch = cancelled && readImportBatch(cancelled);
+				if (cancelled?.status === "cancelled" && importBatch) {
+					await settleImportTarget(tx, importBatch);
+				} else if (cancelled?.status === "cancelled" && cancelled.parentId) {
 					await tx
 						.update(jobs)
 						.set({
@@ -428,7 +589,11 @@ export function createJobRepository(
 				.where(eq(jobs.id, id));
 		},
 
-		async update(id: string, data: Partial<Job>): Promise<void> {
+		async update(
+			id: string,
+			data: Partial<Job>,
+			attempt?: number,
+		): Promise<void> {
 			const updates: Partial<typeof jobs.$inferInsert> = {};
 			if (data.type !== undefined) updates.type = data.type;
 			if (data.mediaSourceId !== undefined)
@@ -458,7 +623,20 @@ export function createJobRepository(
 				updates.artifactExpiresAt = data.artifactExpiresAt;
 			updates.updatedAt = new Date();
 
-			await db().update(jobs).set(updates).where(eq(jobs.id, id));
+			await db()
+				.update(jobs)
+				.set(updates)
+				.where(
+					and(
+						eq(jobs.id, id),
+						attempt === undefined
+							? undefined
+							: and(
+									eq(jobs.status, "in_progress"),
+									eq(jobs.attemptCount, attempt),
+								),
+					),
+				);
 		},
 
 		/** Sets the dispatched item count while preserving progress recorded concurrently by children. */
@@ -542,6 +720,9 @@ export function createJobRepository(
 			options?: {
 				excludeTypes?: string[];
 				includeTypes?: string[];
+				createdBefore?: Date;
+				preferStandalone?: boolean;
+				standaloneOnly?: boolean;
 			},
 		): Promise<Job[]> {
 			if (limit <= 0) {
@@ -556,7 +737,9 @@ export function createJobRepository(
 
 			const conditions = [
 				sql`status = 'pending'`,
-				sql`type <> 'import_request'`,
+				sql`type NOT IN ('import_request','import_batch_target')`,
+				workerOwnedSubmission(),
+				importStageReady(),
 				sql`type NOT IN ${sqlTuple([...batchParentJobTypes])}`,
 			];
 
@@ -569,7 +752,24 @@ export function createJobRepository(
 			}
 
 			const now = new Date();
-			const query = buildSimpleClaimQuery(conditions, limit, now);
+			if (options?.standaloneOnly) conditions.push(sql`jobs.parent_id IS NULL`);
+			if (options?.createdBefore) {
+				// Keep whole import batches in the same model turn, even when a single
+				// started that turn while a batch was still preparing its last media.
+				// Database-generated created_at uses the session's local timezone.
+				const cutoff = sql`${options.createdBefore.toISOString()}::timestamptz::timestamp`;
+				conditions.push(sql`(jobs.created_at <= ${cutoff} OR EXISTS (
+					SELECT 1 FROM jobs target JOIN jobs root ON root.id = target.parent_id
+					WHERE target.id=jobs.parent_id AND root.created_at <= ${cutoff}
+					AND root.id::text=jobs.payload->>'importBatchId'
+				))`);
+			}
+			const query = buildSimpleClaimQuery(
+				conditions,
+				limit,
+				now,
+				options?.preferStandalone,
+			);
 			const result: unknown = await db().execute(query);
 
 			return extractRows(result).map(mapClaimedJob);
@@ -580,7 +780,11 @@ export function createJobRepository(
 				const staleBaseCondition = and(
 					eq(jobs.status, "in_progress"),
 					lt(jobs.updatedAt, olderThan),
-					notInArray(jobs.type, [...batchParentJobTypes]),
+					notInArray(jobs.type, [
+						...batchParentJobTypes,
+						"import_batch_target",
+					]),
+					workerOwnedSubmission(),
 				);
 				const cancelledRows = await tx
 					.update(jobs)
@@ -599,6 +803,37 @@ export function createJobRepository(
 					.returning();
 				// A crashed worker will never call finishAttempt. Recovery owns both
 				// this terminal cancellation and the aggregate's early-failure policy.
+				for (const child of cancelledRows) {
+					const context = readImportBatch(child);
+					if (context) await settleImportTarget(tx, context);
+				}
+				// A disconnected uploader or directory scanner cannot be resumed by a worker.
+				await sealImportScan(tx, lt(jobs.updatedAt, olderThan), true);
+				const expired = await tx
+					.update(jobs)
+					.set({
+						status: sql`CASE WHEN cancel_requested_at IS NULL THEN 'failed'::job_status ELSE 'cancelled'::job_status END`,
+						cancelledAt: sql`CASE WHEN cancel_requested_at IS NOT NULL THEN now() END`,
+						error: sql`CASE WHEN cancel_requested_at IS NULL THEN 'Import submission interrupted' END`,
+						finishedAt: new Date(),
+						updatedAt: new Date(),
+					})
+					.where(
+						and(
+							inArray(jobs.type, ["import_upload", "import_register"]),
+							sql`NOT ${workerOwnedSubmission()}`,
+							inArray(jobs.status, ["pending", "in_progress"]),
+							lt(jobs.updatedAt, olderThan),
+							sql`(jobs.status = 'in_progress' OR NOT EXISTS (
+								SELECT 1 FROM jobs target JOIN jobs root ON root.id = target.parent_id WHERE target.id = jobs.parent_id AND root.updated_at >= ${olderThan.toISOString()}::timestamp
+							))`,
+						),
+					)
+					.returning();
+				for (const child of expired) {
+					const context = readImportBatch(child);
+					if (context) await settleImportTarget(tx, context);
+				}
 				const parentIds = new Set(
 					cancelledRows.flatMap((child) =>
 						child.parentId ? [child.parentId] : [],
@@ -634,10 +869,15 @@ export function createJobRepository(
 					.where(and(staleBaseCondition, isNull(jobs.cancelRequestedAt)))
 					.returning();
 
-				return rows.length + cancelledRows.length;
+				return rows.length + cancelledRows.length + expired.length;
 			});
 		},
 	};
+}
+
+/** External uploads and the initial scan own their reservations until a retry hands work to the worker. */
+function workerOwnedSubmission() {
+	return sql`(jobs.type NOT IN ('import_register','import_upload') OR (jobs.payload->>'retrySubmission' IS NOT DISTINCT FROM 'true' AND jobs.payload->>'awaitingFile' IS DISTINCT FROM 'true'))`;
 }
 
 /** Uses the caller's transaction so the final child and its aggregate commit together. */
@@ -688,13 +928,18 @@ export async function allocateJobId(
 	return row.id;
 }
 
-function buildSimpleClaimQuery(conditions: SQL[], limit: number, now: Date) {
+function buildSimpleClaimQuery(
+	conditions: SQL[],
+	limit: number,
+	now: Date,
+	preferStandalone = false,
+) {
 	return sql`
 		WITH next_jobs AS (
 			SELECT id
 			FROM jobs
 			WHERE ${sql.join(conditions, sql` AND `)}
-			ORDER BY created_at ASC, id ASC
+			ORDER BY ${preferStandalone ? sql`(parent_id IS NULL) DESC,` : sql.empty()} created_at ASC, id ASC
 			LIMIT ${limit}
 			FOR UPDATE SKIP LOCKED
 		)

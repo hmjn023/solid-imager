@@ -15,6 +15,11 @@ const JOB_TYPE_KEYS: Record<string, StaticMessageKey | undefined> = {
 	character_clustering: "jobTypes.character_clustering",
 	source_export: "jobTypes.source_export",
 	source_restore: "jobTypes.source_restore",
+	import_batch_parent: "jobTypes.import_batch_parent",
+	import_batch_target: "jobTypes.import_batch_target",
+	import_upload: "uploadMediaModal.upload",
+	import_register: "jobTypes.import_register",
+	batch_embedding_parent: "jobTypes.extract_embedding_batch",
 	import_request: "jobTypes.import_request",
 };
 

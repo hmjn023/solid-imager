@@ -4,7 +4,7 @@
 
 import type { Transaction } from "@solid-imager/core/ports";
 import type { MediaMetadataContext } from "@solid-imager/core/media";
-import type { Job } from "@solid-imager/core/jobs";
+import type { ImportWorkOwner, Job } from "@solid-imager/core/jobs";
 import { services } from "~/infrastructure/service-registry";
 
 export const MediaProcessingService = {
@@ -12,10 +12,11 @@ export const MediaProcessingService = {
 		mediaSourceId: string,
 		relativePath: string,
 		contextMetadata?: Partial<MediaMetadataContext>,
+		owner?: ImportWorkOwner,
 	) => {
 		return services
 			.getMediaProcessingService()
-			.registerAndProcess(mediaSourceId, relativePath, contextMetadata);
+			.registerAndProcess(mediaSourceId, relativePath, contextMetadata, owner);
 	},
 
 	executeProcessMediaJob: async (job: Job) => {

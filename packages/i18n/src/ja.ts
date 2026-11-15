@@ -798,8 +798,10 @@ export const ja = defineLocale({
 	"jobsScreen.reloadTheJobOrSelectAnotherOneFromThe":
 		"ジョブを再取得するか一覧から別のジョブを選択してください。",
 	"jobsScreen.retryFailedJobs": "失敗したジョブを再試行",
-	"jobsScreen.retryIndividualFailedJobsHereForFailedBatchItems":
-		"単独で失敗したジョブを再実行できます。バッチ内の失敗は管理から新しいバッチを開始してください。",
+	"jobsScreen.retryFailedStages": "失敗した工程を再実行",
+	"jobsScreen.cancelledCount": "キャンセル {count}件",
+	"jobsScreen.cancelImportBatch": "一括取り込みをキャンセル",
+	"jobsScreen.chooseRetryFile": "{filename} のファイルを再選択",
 	"jobsScreen.retryJob": "ジョブを再試行",
 	"jobsScreen.reviewBackgroundJobProgressFailuresAndHistory":
 		"バックグラウンド処理の進捗、失敗、履歴を確認します。",
@@ -844,6 +846,13 @@ export const ja = defineLocale({
 	"jobTypes.extract_embedding_batch": "ベクトルの一括抽出",
 	"jobTypes.extract_embedding_vector": "EmbeddingGemma 2抽出",
 	"jobTypes.generate_thumbnail": "サムネイル生成",
+	"jobTypes.import_batch_parent": "一括取り込み",
+	"jobTypes.import_batch_target": "取り込み対象",
+	"jobTypes.import_register": "ファイル登録",
+	"jobsScreen.noRecordedTargets": "記録された対象はありません。",
+	"jobsScreen.itemOutcomeUnavailable": "個別の結果は未記録",
+	"jobsScreen.batchTargets": "バッチの処理対象",
+	"jobsScreen.skipped": "スキップ",
 	"jobTypes.import_request": "取り込み依頼",
 	"jobTypes.processMedia": "メディア処理",
 	"jobTypes.source_export": "ソースのエクスポート",

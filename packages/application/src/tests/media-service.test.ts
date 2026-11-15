@@ -47,6 +47,7 @@ describe("MediaService Unit Tests", () => {
 			create: vi.fn(),
 			createBatch: vi.fn(),
 			finishAttempt: vi.fn(),
+			retryFailedBatch: vi.fn(),
 			finishBatch: vi.fn(),
 			createIfUnique: vi.fn(),
 			findById: vi.fn(),
@@ -285,6 +286,59 @@ describe("MediaService Unit Tests", () => {
 			);
 			expect(mockMediaRepository.upsert).toHaveBeenCalled();
 			expect(mockJobRepository.createIfUnique).not.toHaveBeenCalled();
+		});
+		it("resumes a saved batch upload after a database failure without another numbered file", async () => {
+			const sourceId = crypto.randomUUID();
+			const owner = {
+				workId: crypto.randomUUID(),
+				importBatchId: crypto.randomUUID(),
+				importTargetId: crypto.randomUUID(),
+				attempt: 1,
+			};
+			const file = new File(["content"], "input.txt");
+			const options = { autoIncrement: true, overwrite: false };
+			const info = {
+				filePath: "input_(2).txt",
+				fileName: "input_(2).txt",
+				height: 1,
+				width: 1,
+				size: 7,
+				createdAt: new Date(),
+				modifiedAt: new Date(),
+			};
+			(mockSourceRepository.findById as Mock).mockResolvedValue({
+				id: sourceId,
+				type: "local",
+				connectionInfo: { path: "/source" },
+			});
+			vi.mocked(mockStorageService.saveFile).mockResolvedValue(info);
+			vi.mocked(mockStorageService.getFileMetadata).mockResolvedValue(info);
+			(mockMediaRepository.upsert as Mock)
+				.mockRejectedValueOnce(new Error("DB unavailable"))
+				.mockResolvedValueOnce({ id: crypto.randomUUID() });
+			const work = {
+				payload: {},
+				status: "in_progress",
+				attemptCount: 1,
+			} as any;
+			vi.mocked(mockJobRepository.findById).mockResolvedValue(work);
+			vi.mocked(mockJobRepository.update).mockImplementation(
+				async (_id, data) => {
+					work.payload = data.payload;
+				},
+			);
+			await expect(
+				mediaService.uploadMedia(sourceId, file, options, owner),
+			).rejects.toThrow("DB unavailable");
+			work.attemptCount = 2;
+			await expect(
+				mediaService.uploadMedia(sourceId, file, options, {
+					...owner,
+					attempt: 2,
+				}),
+			).resolves.toMatchObject({ success: true, filePath: info.filePath });
+			expect(mockStorageService.saveFile).toHaveBeenCalledTimes(1);
+			expect(mockStorageService.deleteFile).not.toHaveBeenCalled();
 		});
 	});
 

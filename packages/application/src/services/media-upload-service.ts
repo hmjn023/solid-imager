@@ -1,3 +1,4 @@
+import type { ImportWorkOwner } from "@solid-imager/core/jobs";
 import path from "node:path";
 import type {
 	IMediaStorage,
@@ -18,6 +19,7 @@ import {
 	type MediaWriter,
 } from "@solid-imager/core/media";
 import { getMediaTypeFromExtension } from "@solid-imager/core/media/files";
+import { isRecord } from "@solid-imager/core/utils";
 import type { IJobRepository } from "@solid-imager/core/jobs";
 import {
 	type SourceRepository,
@@ -84,6 +86,7 @@ export class MediaUploadService {
 		mediaSourceId: string,
 		file: File,
 		options: UploadMediaRequest,
+		owner?: ImportWorkOwner,
 	): Promise<UploadResponse> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const mediaSource = await this.sourceRepository.findById(validatedSourceId);
@@ -107,13 +110,52 @@ export class MediaUploadService {
 
 		await validateFileSignature(file, uploadRequest.filename ?? file.name);
 
+		const work = owner ? await this.jobRepo.findById(owner.workId) : null;
+		if (
+			owner &&
+			(!work ||
+				work.status !== "in_progress" ||
+				work.attemptCount !== owner.attempt ||
+				work.cancelRequestedAt)
+		)
+			throw new Error("Upload no longer active");
+		const payload = isRecord(work?.payload) ? work.payload : {};
+		// Once a batch publishes a file, resume registration at that path. Saving
+		// again could silently skip the item or create another numbered copy.
+		const savedPath =
+			typeof payload.savedUploadPath === "string"
+				? payload.savedUploadPath
+				: undefined;
 		let fileInfo: MediaStorageResult;
 		try {
-			fileInfo = await this.storageService.saveFile(basePath, file, {
-				filename: uploadRequest.filename,
-				overwrite: uploadRequest.overwrite,
-				autoIncrement: uploadRequest.autoIncrement,
-			});
+			if (savedPath) {
+				try {
+					fileInfo = {
+						...(await this.storageService.getFileMetadata(
+							path.join(basePath, savedPath),
+						)),
+						filePath: savedPath,
+						fileName: path.basename(savedPath),
+					};
+				} catch (error) {
+					if (!isRecord(error) || error.code !== "ENOENT") throw error;
+					fileInfo = await this.storageService.saveFile(basePath, file, {
+						filename: savedPath,
+					});
+				}
+			} else {
+				fileInfo = await this.storageService.saveFile(basePath, file, {
+					filename: uploadRequest.filename,
+					overwrite: uploadRequest.overwrite,
+					autoIncrement: uploadRequest.autoIncrement,
+				});
+				if (owner)
+					await this.jobRepo.update(
+						owner.workId,
+						{ payload: { ...payload, savedUploadPath: fileInfo.filePath } },
+						owner.attempt,
+					);
+			}
 		} catch (error) {
 			if (error instanceof MediaFileConflictError) {
 				return {
@@ -147,6 +189,7 @@ export class MediaUploadService {
 		try {
 			insertedMedia = await this.mediaRepository.upsert(newMedia);
 		} catch (error) {
+			if (owner) throw error;
 			try {
 				await this.storageService.deleteFile(basePath, fileInfo.filePath);
 			} catch (_deleteError) {
@@ -161,7 +204,7 @@ export class MediaUploadService {
 			]);
 		}
 
-		await this.jobRepo.create({
+		const prepareJob = {
 			type: "processMedia",
 			mediaSourceId: validatedSourceId,
 			payload: {
@@ -169,7 +212,9 @@ export class MediaUploadService {
 				sourcePath: basePath,
 				type: "processMedia",
 			},
-		});
+		};
+		if (owner) await this.jobRepo.createIfUnique(prepareJob, owner);
+		else await this.jobRepo.create(prepareJob);
 
 		return {
 			success: true,

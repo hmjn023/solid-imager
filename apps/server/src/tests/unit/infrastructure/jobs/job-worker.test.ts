@@ -59,6 +59,7 @@ describe("JobWorker", () => {
 			markAsInProgress: vi.fn().mockResolvedValue(undefined),
 			markAsCompleted: vi.fn().mockResolvedValue(true),
 			markAsFailed: vi.fn().mockResolvedValue(true),
+			retryFailedBatch: vi.fn(),
 			requestCancellation: vi.fn().mockResolvedValue(undefined),
 			markAsCancelled: vi.fn().mockResolvedValue(true),
 			isCancellationRequested: vi.fn().mockResolvedValue(false),
@@ -187,6 +188,8 @@ describe("JobWorker", () => {
 			jobs: { concurrency: 3, aiConcurrency: 1, pollIntervalMs: 1000 },
 		} as AppConfig);
 
+		processor = vi.fn(() => new Promise<void>(() => {}));
+		worker = new JobWorker(jobRepo, processor);
 		// Mock 3 pending AI jobs
 		const aiJobs = Array.from(
 			{ length: 3 },
@@ -221,12 +224,7 @@ describe("JobWorker", () => {
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({
-				includeTypes: [
-					"auto_tagging",
-					"extract_ccip_vector",
-					"extract_embedding_batch",
-					"extract_embedding_vector",
-				],
+				includeTypes: ["auto_tagging"],
 			}),
 		);
 		expect(processor).toHaveBeenCalledTimes(1);
@@ -235,12 +233,96 @@ describe("JobWorker", () => {
 		);
 	});
 
+	it("admits a late single in the current stage and releases each model, including the last", async () => {
+		const order: string[] = [];
+		const backlog = Array.from(
+			{ length: 20 },
+			(_, i) =>
+				({
+					id: String(i),
+					type: "auto_tagging",
+					parentId: "target",
+					createdAt: new Date(0),
+				}) as Job,
+		);
+		backlog.push({
+			id: "embedding",
+			type: "extract_embedding_vector",
+			parentId: "target",
+			createdAt: new Date(0),
+		} as Job);
+		vi.mocked(jobRepo.claimPending).mockImplementation(async (limit, opts) => {
+			const available = backlog
+				.filter(
+					(job) =>
+						opts?.includeTypes?.includes(job.type) &&
+						(!opts.standaloneOnly || !job.parentId) &&
+						(!opts.createdBefore || job.createdAt <= opts.createdBefore),
+				)
+				.slice(0, limit);
+			for (const job of available) backlog.splice(backlog.indexOf(job), 1);
+			return available;
+		});
+		worker = new JobWorker(
+			jobRepo,
+			async (job) => {
+				order.push(job.id);
+				if (job.id === "0")
+					backlog.push({
+						id: "late-single",
+						type: "auto_tagging",
+						parentId: null,
+						createdAt: new Date(Date.now() + 1),
+					} as Job);
+			},
+			async () => {
+				order.push("offload");
+			},
+		);
+		worker.start();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(order.indexOf("late-single")).toBe(16);
+		expect(order.slice(-3)).toEqual(["offload", "embedding", "offload"]);
+	});
+	it("processes a new single download while the next AI stage waits for offload", async () => {
+		const tagging = [{ id: "tag", type: "auto_tagging" } as Job];
+		const embeddings = [
+			{ id: "embed", type: "extract_embedding_vector" } as Job,
+		];
+		const downloads: Job[] = [];
+		vi.mocked(jobRepo.claimPending).mockImplementation(async (limit, opts) => {
+			if (opts?.includeTypes?.includes("auto_tagging"))
+				return tagging.splice(0, limit);
+			if (opts?.includeTypes?.includes("extract_embedding_vector"))
+				return embeddings.splice(0, limit);
+			return opts?.excludeTypes ? downloads.splice(0, limit) : [];
+		});
+		const barrier = Promise.withResolvers<void>();
+		const offload = vi
+			.fn()
+			.mockReturnValueOnce(barrier.promise)
+			.mockResolvedValue(undefined);
+		worker = new JobWorker(jobRepo, processor, offload);
+		worker.start();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(offload).toHaveBeenCalledOnce();
+		downloads.push({ id: "single", type: "downloadImage" } as Job);
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(processor).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "single" }),
+		);
+		expect(embeddings).toHaveLength(1);
+		barrier.resolve();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(embeddings).toHaveLength(0);
+	});
+
 	it("should run AI and normal jobs concurrently up to their respective limits", async () => {
-		// Setup config: concurrency 2 (for normal), aiConcurrency 1
+		processor = vi.fn(() => new Promise<void>(() => {}));
+		worker = new JobWorker(jobRepo, processor);
 		worker.updateConfig({
 			jobs: { concurrency: 2, aiConcurrency: 1, pollIntervalMs: 1000 },
 		} as AppConfig);
-
 		const aiJob = {
 			id: "ai-1",
 			type: "auto_tagging",
@@ -285,12 +367,7 @@ describe("JobWorker", () => {
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(
 			1,
 			expect.objectContaining({
-				includeTypes: [
-					"auto_tagging",
-					"extract_ccip_vector",
-					"extract_embedding_batch",
-					"extract_embedding_vector",
-				],
+				includeTypes: ["auto_tagging"],
 			}),
 		);
 		expect(jobRepo.claimPending).toHaveBeenCalledWith(

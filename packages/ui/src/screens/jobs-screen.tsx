@@ -1,6 +1,16 @@
+import { Input } from "../input";
+import { Label } from "../label";
+import { jobsQueryKeys } from "../query-options/jobs-query";
+import { createQuery } from "@tanstack/solid-query";
+import type { BatchTargets } from "@solid-imager/core/jobs";
+import { PaginationControls } from "../pagination-controls";
 import { jobTypeLabel } from "../display-labels";
 import { t } from "@solid-imager/i18n";
-import { canRetryJob } from "@solid-imager/core/jobs";
+import {
+	canCancelJobType,
+	canRetryJob,
+	hasBatchTargetHistory,
+} from "@solid-imager/core/jobs";
 import type { useJobInspection } from "../hooks/use-job-inspection";
 import {
 	isBatchParentJobType,
@@ -21,6 +31,7 @@ import {
 	createEffect,
 	createMemo,
 	createSignal,
+	createUniqueId,
 	For,
 	Match,
 	Show,
@@ -113,13 +124,30 @@ export type JobsPagination = {
 	total: number;
 };
 
+type LoadTargets = (
+	id: string,
+	offset: number,
+	limit: number,
+	signal: AbortSignal,
+) => Promise<BatchTargets>;
+
 export type JobsScreenProps = {
+	loadTargets?: LoadTargets;
+	onUploadTarget?: (
+		sourceId: string,
+		reservationId: string,
+		filename: string,
+		file: File,
+	) => Promise<unknown>;
 	inspection?: ReturnType<typeof useJobInspection>;
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	isRefreshing: Accessor<boolean>;
 	jobs: Accessor<JobDto[]>;
 	onRefresh: () => void | Promise<void>;
-	onRetry: (jobId: string) => void | Promise<void>;
+	onRetry: (
+		jobId: string,
+		replacementUploadId?: string,
+	) => void | Promise<void>;
 	onRetryMany: (jobIds: string[]) => void | Promise<void>;
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
@@ -167,12 +195,15 @@ function JobStatusBadge(props: { status: JobDto["status"] }) {
 }
 
 function JobProgress(props: { progress: JobDto["progress"] }) {
+	const finished = () =>
+		props.progress
+			? props.progress.processed +
+				props.progress.failed +
+				(props.progress.cancelled ?? 0)
+			: 0;
 	const percent = () => {
 		if (!props.progress || props.progress.total === 0) return 0;
-		return Math.min(
-			100,
-			Math.round((props.progress.processed / props.progress.total) * 100),
-		);
+		return Math.min(100, Math.round((finished() / props.progress.total) * 100));
 	};
 
 	return (
@@ -185,8 +216,7 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 					<div class="flex items-center justify-between gap-2 whitespace-nowrap text-xs tabular-nums">
 						<span>{percent()}%</span>
 						<span class="text-muted-foreground">
-							{progress().processed.toLocaleString()}/
-							{progress().total.toLocaleString()}
+							{finished().toLocaleString()}/{progress().total.toLocaleString()}
 						</span>
 					</div>
 					<Progress
@@ -466,13 +496,157 @@ function JobsBulkActions(props: {
 	);
 }
 
+function BatchTargetList(props: {
+	id: string;
+	load: LoadTargets;
+	upload?: (
+		reservationId: string,
+		filename: string,
+		file: File,
+	) => Promise<void>;
+}) {
+	const inputId = createUniqueId();
+	const [page, setPage] = createSignal(1);
+	const size = 25;
+	const [submitting, setSubmitting] = createSignal<string>();
+	const [inputError, setInputError] = createSignal<string>();
+	const sendFile = async (
+		reservation: string,
+		filename: string,
+		file: File,
+	) => {
+		if (!props.upload || submitting()) return;
+		setSubmitting(reservation);
+		setInputError(undefined);
+		try {
+			await props.upload(reservation, filename, file);
+			await query.refetch();
+		} catch {
+			setInputError(t("index.uploadFailed"));
+		} finally {
+			setSubmitting(undefined);
+		}
+	};
+	const query = createQuery(() => ({
+		queryKey: [...jobsQueryKeys.targets(props.id), page()],
+		queryFn: ({ signal }) =>
+			props.load(props.id, (page() - 1) * size, size, signal),
+	}));
+	return (
+		<section class="mt-4">
+			<Show when={inputError()}>
+				{(error) => <p role="alert">{error()}</p>}
+			</Show>
+			<Show when={query.isPending}>
+				<p role="status">{t("status.loading")}</p>
+			</Show>
+			<Show when={query.isError}>
+				<Button variant="outline" onClick={() => void query.refetch()}>
+					{t("actions.retry")}
+				</Button>
+			</Show>
+			<Show when={query.data}>
+				{(data) => (
+					<>
+						<Table>
+							<TableCaption>{t("jobsScreen.batchTargets")}</TableCaption>
+							<TableHeader>
+								<TableRow>
+									<TableHead scope="col">{t("jobsScreen.target")}</TableHead>
+									<TableHead scope="col">{t("jobsScreen.status")}</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								<For
+									each={data().items}
+									fallback={
+										<TableRow>
+											<TableCell colSpan={2}>
+												{t("jobsScreen.noRecordedTargets")}
+											</TableCell>
+										</TableRow>
+									}
+								>
+									{(item) => (
+										<TableRow>
+											<TableCell class="break-all">
+												{item.label}
+												<Show when={props.upload && item.uploadReservationId}>
+													{(reservation) => (
+														<Label for={`${inputId}-${reservation()}`}>
+															{t("jobsScreen.chooseRetryFile", {
+																filename: item.label,
+															})}
+															<Input
+																type="file"
+																id={`${inputId}-${reservation()}`}
+																disabled={!!submitting()}
+																onChange={(event) => {
+																	const file = event.currentTarget.files?.[0];
+																	event.currentTarget.value = "";
+																	if (file)
+																		void sendFile(
+																			reservation(),
+																			item.label,
+																			file,
+																		);
+																}}
+															/>
+														</Label>
+													)}
+												</Show>
+											</TableCell>
+											<TableCell>
+												{item.skipped ? (
+													t("jobsScreen.skipped")
+												) : (
+													<Show
+														when={item.status}
+														fallback={t("jobsScreen.itemOutcomeUnavailable")}
+													>
+														{(status) => <JobStatusBadge status={status()} />}
+													</Show>
+												)}
+												<Show when={item.stage}>
+													{(stage) => <div>{jobTypeLabel(stage())}</div>}
+												</Show>
+											</TableCell>
+										</TableRow>
+									)}
+								</For>
+							</TableBody>
+						</Table>
+						<Show when={data().total > size}>
+							<PaginationControls
+								currentPage={page()}
+								totalPages={Math.ceil(data().total / size)}
+								onPageChange={setPage}
+							/>
+						</Show>
+					</>
+				)}
+			</Show>
+		</section>
+	);
+}
+
 function JobsInspector(props: {
+	loadTargets?: LoadTargets;
+	onUploadTarget?: (
+		sourceId: string,
+		reservationId: string,
+		filename: string,
+		file: File,
+	) => Promise<unknown>;
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	class?: string;
 	job: JobDto | undefined;
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
-	onRetry: (jobId: string) => void | Promise<void>;
+	onRetry: (
+		jobId: string,
+		replacementUploadId?: string,
+	) => void | Promise<void>;
 }) {
 	const [isRetrying, setIsRetrying] = createSignal(false);
 	const [isCancelling, setIsCancelling] = createSignal(false);
@@ -507,7 +681,8 @@ function JobsInspector(props: {
 		if (
 			!job ||
 			(job.status !== "pending" && job.status !== "in_progress") ||
-			isBatchParentJobType(job.type) ||
+			job.cancelRequestedAt ||
+			!canCancelJobType(job.type) ||
 			isCancelling()
 		)
 			return;
@@ -557,6 +732,36 @@ function JobsInspector(props: {
 						<p class="mt-3 font-medium text-sm text-foreground">
 							{jobTypeLabel(job().type)}
 						</p>
+						<Show
+							when={
+								props.loadTargets &&
+								(isBatchParentJobType(job().type) ||
+									job().type === "extract_embedding_batch") &&
+								job().id
+							}
+							keyed
+						>
+							{(id) => (
+								<BatchTargetList
+									id={id}
+									load={props.loadTargets!}
+									upload={
+										props.onUploadTarget &&
+										job().mediaSourceId &&
+										(!job().cancelRequestedAt || canRetryJob(job()))
+											? async (reservation, filename, file) => {
+													const source = job().mediaSourceId;
+													const upload = props.onUploadTarget;
+													if (!source || !upload) return;
+													if (canRetryJob(job()))
+														await props.onRetry(id, reservation);
+													await upload(source, reservation, filename, file);
+												}
+											: undefined
+									}
+								/>
+							)}
+						</Show>
 						<Show
 							fallback={
 								<div
@@ -653,6 +858,20 @@ function JobsInspector(props: {
 										{t("jobsScreen.progress")}
 									</p>
 									<JobProgress progress={progress()} />
+									<Show when={progress().failed > 0}>
+										<p>
+											{t("jobStatus.valueFailed", {
+												value0: String(progress().failed),
+											})}
+										</p>
+									</Show>
+									<Show when={progress().cancelled}>
+										<p>
+											{t("jobsScreen.cancelledCount", {
+												count: String(progress().cancelled),
+											})}
+										</p>
+									</Show>
 								</div>
 							)}
 						</Show>
@@ -706,32 +925,25 @@ function JobsInspector(props: {
 								when={
 									(job().status === "pending" ||
 										job().status === "in_progress") &&
-									!isBatchParentJobType(job().type)
+									canCancelJobType(job().type)
 								}
 							>
 								<Button
 									aria-busy={isCancelling()}
 									class="w-full"
-									disabled={isCancelling()}
+									disabled={isCancelling() || !!job().cancelRequestedAt}
 									onClick={() => void cancel()}
 									variant="outline"
 								>
 									<Ban aria-hidden="true" size={15} />
-									{isCancelling()
+									{isCancelling() || job().cancelRequestedAt
 										? t("jobsScreen.cancelling")
-										: t("jobsScreen.cancelJob")}
+										: job().type === "import_batch_parent"
+											? t("jobsScreen.cancelImportBatch")
+											: t("jobsScreen.cancelJob")}
 								</Button>
 							</Show>
-							<Show
-								fallback={
-									<p class="text-xs leading-5 text-muted-foreground">
-										{t(
-											"jobsScreen.retryIndividualFailedJobsHereForFailedBatchItems",
-										)}
-									</p>
-								}
-								when={canRetryJob(job())}
-							>
+							<Show when={canRetryJob(job())}>
 								<Button
 									aria-busy={isRetrying()}
 									class="w-full"
@@ -742,7 +954,9 @@ function JobsInspector(props: {
 									<RotateCcw aria-hidden="true" size={15} />
 									{isRetrying()
 										? t("status.retrying")
-										: t("jobsScreen.retryJob")}
+										: hasBatchTargetHistory(job().type)
+											? t("jobsScreen.retryFailedStages")
+											: t("jobsScreen.retryJob")}
 								</Button>
 							</Show>
 						</div>
@@ -888,6 +1102,8 @@ export function JobsScreen(props: JobsScreenProps) {
 								class="mb-4 xl:hidden"
 							>
 								<JobsInspector
+									loadTargets={props.loadTargets}
+									onUploadTarget={props.onUploadTarget}
 									buildThumbnailUrl={props.buildThumbnailUrl}
 									class="rounded-md border border-border bg-background p-4"
 									job={job()}
@@ -1083,6 +1299,8 @@ export function JobsScreen(props: JobsScreenProps) {
 				</div>
 
 				<JobsInspector
+					loadTargets={props.loadTargets}
+					onUploadTarget={props.onUploadTarget}
 					buildThumbnailUrl={props.buildThumbnailUrl}
 					job={selectedJob()}
 					onCancel={props.onCancel}

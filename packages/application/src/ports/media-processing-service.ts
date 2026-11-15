@@ -1,6 +1,6 @@
 import type { Transaction } from "@solid-imager/core/ports";
 import type { Media, MediaMetadataContext } from "@solid-imager/core/media";
-import type { Job } from "@solid-imager/core/jobs";
+import type { ImportWorkOwner, Job } from "@solid-imager/core/jobs";
 
 /** Registers media, executes processing jobs and controls automatic processing options. */
 export interface IMediaProcessingService {
@@ -8,6 +8,7 @@ export interface IMediaProcessingService {
 		mediaSourceId: string,
 		relativePath: string,
 		contextMetadata?: Partial<MediaMetadataContext>,
+		owner?: ImportWorkOwner,
 	): Promise<Media>;
 
 	executeProcessMediaJob(job: Job): Promise<void>;

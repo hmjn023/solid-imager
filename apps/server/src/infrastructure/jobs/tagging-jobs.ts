@@ -1,7 +1,7 @@
 import { and, asc, eq, gt, inArray, notExists, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
-import type { Job } from "@solid-imager/core/jobs";
+import { readImportBatch, type Job } from "@solid-imager/core/jobs";
 import {
 	jobs,
 	mediaCharacters,
@@ -50,7 +50,8 @@ async function finalizeBatchParent(
 export async function processAutoTaggingJob(job: Job): Promise<void> {
 	const payload = autoTaggingPayloadSchema.parse(job.payload);
 	const { mediaId, force } = payload;
-	const { mediaSourceId, parentId } = job;
+	const { mediaSourceId } = job;
+	const parentId = readImportBatch(job) ? null : job.parentId;
 
 	if (!(mediaId && mediaSourceId)) {
 		throw new Error("Missing mediaId or mediaSourceId");

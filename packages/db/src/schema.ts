@@ -1150,6 +1150,16 @@ export const jobs = pgTable(
 		index("idx_jobs_artifact_expiry")
 			.on(table.artifactExpiresAt)
 			.where(sql`${table.artifactPath} IS NOT NULL`),
+		index("idx_jobs_import_stage")
+			.on(sql`(${table.payload}->>'importBatchId')`, table.type)
+			.where(
+				sql`${table.status} IN ('pending','in_progress') AND ${table.payload}->>'importBatchId' IS NOT NULL`,
+			),
+		uniqueIndex("uq_jobs_import_media_step")
+			.on(table.parentId, table.type, sql`(${table.payload}->>'mediaId')`)
+			.where(
+				sql`${table.parentId} IS NOT NULL AND ${table.payload}->>'importBatchId' IS NOT NULL AND ${table.payload}->>'mediaId' IS NOT NULL`,
+			),
 		index("idx_jobs_parent_type")
 			.on(table.parentId, table.type)
 			.where(sql`${table.parentId} IS NOT NULL`),

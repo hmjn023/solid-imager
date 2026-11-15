@@ -1,14 +1,14 @@
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import type { Worker } from "node:worker_threads";
+import { inferenceLifecycle } from "~/infrastructure/ai/inference-lifecycle";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { EmbeddingGemmaWorker } from "~/infrastructure/ai/embedding-gemma-worker";
 
 const mocks = vi.hoisted(() => ({
 	modulePath: "",
-	workers: [] as Worker[],
+
 	info: vi.fn(),
 	error: vi.fn(),
 }));
@@ -18,28 +18,10 @@ vi.mock("~/infrastructure/logger", () => ({
 vi.mock("~/infrastructure/ai/dghs-imgutils-loader", () => ({
 	resolveDghsImgutilsPath: () => mocks.modulePath,
 }));
-vi.mock("node:worker_threads", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("node:worker_threads")>();
-	return {
-		...actual,
-		Worker: class extends actual.Worker {
-			constructor(
-				filename: string | URL,
-				options?: import("node:worker_threads").WorkerOptions,
-			) {
-				super(filename, options);
-				mocks.workers.push(this);
-			}
-		},
-	};
-});
-
 describe("EmbeddingGemma worker inference settings", () => {
 	let directory: string;
 	afterEach(async () => {
-		await Promise.all(
-			mocks.workers.splice(0).map((worker) => worker.terminate()),
-		);
+		await inferenceLifecycle.offload();
 		if (directory) await rm(directory, { recursive: true, force: true });
 		vi.clearAllMocks();
 	});
@@ -51,6 +33,7 @@ describe("EmbeddingGemma worker inference settings", () => {
 		await writeFile(
 			mocks.modulePath,
 			`
+      exports.offloadInferenceSessions = async () => {};
       function encode(kind, model, options) {
         if (options.backend || options.precision) throw new Error('Unexpected per-model override');
         if (model.dtype !== 'q8' || model.dimensions !== 768) throw new Error('Wrong model');
@@ -85,7 +68,7 @@ describe("EmbeddingGemma worker inference settings", () => {
 		);
 		expect((await first).slice(0, 3)).toEqual([1, 1, 0]);
 		expect((await second).slice(0, 3)).toEqual([2, 2, 1]);
-		expect(mocks.workers).toHaveLength(1);
+
 		await expect(
 			worker.encode(
 				"text",

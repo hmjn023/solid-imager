@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { readFile } from "node:fs/promises";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_SIMILAR_FILE_NAME,
@@ -88,6 +89,51 @@ test("keeps both dialog-selected files through actual upload submission", async 
 		true,
 	);
 	await expect(dialog).toBeHidden();
+});
+
+test("stops sending remaining files when another client cancels the upload batch", async ({
+	page,
+	request,
+	browserHealth,
+}) => {
+	const upload = /\/api\/rpc\/media\/upload(?:\?|$)/;
+	browserHealth.allowResponseFailure(upload);
+	// The RPC transport returns HTTP 400 for a declared application error.
+	browserHealth.allowConsole(/400 \(Bad Request\)/);
+	await page.route("**/api/rpc/media/reserveUploads", async (route) => {
+		const response = await route.fetch();
+		const {
+			json: { jobId },
+		} = await response.json();
+		const cancelled = await request.post("/api/rest/jobs/cancel", {
+			data: { id: jobId },
+		});
+		expect(cancelled.ok()).toBe(true);
+		await route.fulfill({ response });
+	});
+	await page.goto(sourcePath());
+	await waitForAppHydration(page);
+	await openFromFile(page);
+	const dialog = page.getByRole("dialog", { name: "メディアをアップロード" });
+	const buffer = await readFile(getFixtureMediaPath(E2E_PRIMARY_FILE_NAME));
+	await dialog.locator('input[type="file"]').setInputFiles(
+		Array.from({ length: 8 }, (_, i) => ({
+			name: `cancel-${i}.png`,
+			mimeType: "image/png",
+			buffer,
+		})),
+	);
+	const rejected = page.waitForResponse(upload);
+	await dialog
+		.getByRole("button", { name: "アップロード", exact: true })
+		.click();
+	expect(await (await rejected).json()).toMatchObject({
+		json: { defined: true, code: "BATCH_CANCELLED" },
+	});
+	await expect(
+		dialog.getByText("一括操作をキャンセルしました。"),
+	).toBeVisible();
+	expect(browserHealth.apiRequestCount(upload)).toBe(3);
 });
 
 for (const discard of [false, true]) {

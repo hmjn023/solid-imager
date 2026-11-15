@@ -1,8 +1,10 @@
 export type UploadMediaModalContentProps = {
 	isOpen: boolean;
+	reserveUploads?: (files: string[]) => Promise<string[]>;
 	onClose: () => void;
 	onUpload: (options: {
 		file: File;
+		reservationId?: string;
 		filename: string;
 		description: string;
 		sourceUrl?: string;

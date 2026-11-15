@@ -76,7 +76,10 @@ function BatchCounts(props: {
 	progress: NonNullable<JobDto["progress"]>;
 	label: string;
 }) {
-	const done = () => props.progress.processed + props.progress.failed;
+	const done = () =>
+		props.progress.processed +
+		props.progress.failed +
+		(props.progress.cancelled ?? 0);
 	const percentage = () => (done() / props.progress.total) * 100;
 	return (
 		<Show
@@ -110,6 +113,7 @@ function BatchCounts(props: {
 const batchLabels: Record<string, string> = {
 	batch_ccip_parent: t("jobTypes.extract_ccip_vector"),
 	bulk_tagging_parent: t("jobTypes.bulk_tagging_parent"),
+	batch_embedding_parent: t("jobTypes.extract_embedding_vector"),
 	extract_embedding_batch: t("jobTypes.extract_embedding_vector"),
 	thumbnail_generation_parent: t("jobTypes.thumbnail_generation_parent"),
 };

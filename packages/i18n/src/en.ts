@@ -805,8 +805,10 @@ export const en = defineMessages({
 	"jobsScreen.reloadTheJobOrSelectAnotherOneFromThe":
 		"Reload the job or select another one from the list.",
 	"jobsScreen.retryFailedJobs": "Retry failed jobs",
-	"jobsScreen.retryIndividualFailedJobsHereForFailedBatchItems":
-		"Retry individual failed jobs here. For failed batch items, start a new batch in Manager.",
+	"jobsScreen.retryFailedStages": "Retry failed stages",
+	"jobsScreen.cancelledCount": "Cancelled: {count}",
+	"jobsScreen.cancelImportBatch": "Cancel batch import",
+	"jobsScreen.chooseRetryFile": "Choose replacement file for {filename}",
 	"jobsScreen.retryJob": "Retry job",
 	"jobsScreen.reviewBackgroundJobProgressFailuresAndHistory":
 		"Review background job progress, failures, and history.",
@@ -851,6 +853,13 @@ export const en = defineMessages({
 	"jobTypes.extract_embedding_batch": "Batch embedding extraction",
 	"jobTypes.extract_embedding_vector": "EmbeddingGemma 2 extraction",
 	"jobTypes.generate_thumbnail": "Generate thumbnail",
+	"jobTypes.import_batch_parent": "Batch import",
+	"jobTypes.import_batch_target": "Import item",
+	"jobTypes.import_register": "Register file",
+	"jobsScreen.noRecordedTargets": "No targets recorded.",
+	"jobsScreen.itemOutcomeUnavailable": "Individual result unavailable",
+	"jobsScreen.batchTargets": "Batch targets",
+	"jobsScreen.skipped": "Skipped",
 	"jobTypes.import_request": "Import request",
 	"jobTypes.processMedia": "Process media",
 	"jobTypes.source_export": "Source export",

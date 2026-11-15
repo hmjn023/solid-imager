@@ -1,9 +1,14 @@
 import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
-import { MediaRepository } from "~/infrastructure/db/repositories";
+import {
+	JobRepository,
+	MediaRepository,
+} from "~/infrastructure/db/repositories";
 
 // Hoisted mocks
 // Hoisted mocks
@@ -61,6 +66,7 @@ vi.mock("~/infrastructure/logger", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 vi.mock("~/infrastructure/db/repositories", () => ({
+	JobRepository: { update: vi.fn(), isCancellationRequested: vi.fn() },
 	DrizzleSourceRepository: {
 		findById: mockFindById,
 	},
@@ -350,6 +356,122 @@ describe("processDownloadJob", () => {
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledTimes(2);
 	});
 
+	it("resumes a grouped multi-file download at the unpublished output", async () => {
+		const parentId = crypto.randomUUID();
+		const job = {
+			id: crypto.randomUUID(),
+			parentId,
+			type: "downloadImage",
+			mediaSourceId: "source-1",
+			payload: {
+				targetUrl: "https://x.com/user/status/123",
+				importBatchId: crypto.randomUUID(),
+				importTargetId: parentId,
+			},
+			attemptCount: 1,
+		} as any;
+		const stdout = ["123", "456"]
+			.map((id) =>
+				JSON.stringify({
+					id,
+					title: "Video",
+					description: id,
+					ext: "mp4",
+					filename: `/tmp/downloads/${id}.mp4`,
+				}),
+			)
+			.join("\n");
+		mockYtDlpExec.mockResolvedValueOnce({ stdout, stderr: "", exitCode: 0 });
+		vi.mocked(JobRepository.update).mockImplementation(async (_id, data) => {
+			job.payload = data.payload;
+		});
+		mockMediaRegisterAndProcess
+			.mockResolvedValueOnce({ id: "first" })
+			.mockRejectedValueOnce(new Error("registration interrupted"))
+			.mockResolvedValueOnce({ id: "second" });
+		await expect(processDownloadJob(job)).rejects.toThrow(
+			"registration interrupted",
+		);
+		expect(job.payload.nextOutput).toBe(1);
+		job.attemptCount++;
+		await processDownloadJob(job);
+		expect(mockYtDlpExec).toHaveBeenCalledTimes(1);
+		expect(
+			mockMediaRegisterAndProcess.mock.calls.map((call) => call[2].description),
+		).toEqual(["123", "456", "456"]);
+	});
+	it("preserves a concurrently published video and resumes registration at the chosen filename", async () => {
+		const disk =
+			await vi.importActual<typeof import("node:fs/promises")>(
+				"node:fs/promises",
+			);
+		const dir = await disk.mkdtemp(path.join(os.tmpdir(), "yt-dlp-collision-"));
+		try {
+			mockFindById.mockResolvedValue({
+				id: "source-1",
+				type: "local",
+				connectionInfo: { path: dir },
+			});
+			const parentId = crypto.randomUUID();
+			const job = {
+				id: crypto.randomUUID(),
+				parentId,
+				attemptCount: 1,
+				type: "downloadImage",
+				mediaSourceId: "source-1",
+				payload: {
+					targetUrl: "https://x.com/user/status/123",
+					importBatchId: crypto.randomUUID(),
+					importTargetId: parentId,
+				},
+			} as any;
+			const raw = path.join(dir, `.${job.id}-123.mp4`);
+			await disk.writeFile(raw, "this download");
+			mockYtDlpExec.mockResolvedValueOnce({
+				stdout: JSON.stringify({
+					id: "123",
+					title: "Video",
+					description: "",
+					ext: "mp4",
+					filename: raw,
+				}),
+				stderr: "",
+				exitCode: 0,
+			});
+			vi.mocked(JobRepository.update).mockImplementation(async (_id, data) => {
+				job.payload = data.payload;
+			});
+			vi.mocked(fs.access).mockImplementation(disk.access);
+			vi.mocked(fs.stat).mockImplementation(disk.stat);
+			vi.mocked(fs.unlink).mockImplementation(disk.unlink);
+			let occupied = "";
+			vi.mocked(fs.link)
+				.mockImplementation(disk.link)
+				.mockImplementationOnce(async (src, dest) => {
+					occupied = String(dest);
+					await disk.writeFile(dest, "other download", { flag: "wx" });
+					await disk.link(src, dest);
+				});
+			mockMediaRegisterAndProcess.mockRejectedValueOnce(
+				new Error("registration interrupted"),
+			);
+			await expect(processDownloadJob(job)).rejects.toThrow(
+				"registration interrupted",
+			);
+			job.attemptCount++;
+			await processDownloadJob(job);
+			expect(mockYtDlpExec).toHaveBeenCalledOnce();
+			expect(await disk.readFile(occupied, "utf8")).toBe("other download");
+			const filename = mockMediaRegisterAndProcess.mock.calls[0][1];
+			expect(mockMediaRegisterAndProcess.mock.calls[1][1]).toBe(filename);
+			expect(await disk.readFile(path.join(dir, filename), "utf8")).toBe(
+				"this download",
+			);
+			expect(await disk.readdir(dir)).toHaveLength(2);
+		} finally {
+			await disk.rm(dir, { recursive: true, force: true });
+		}
+	});
 	it("should resolve a direct image timestamp from raw yt-dlp metadata", async () => {
 		mockYtDlpExec.mockResolvedValueOnce({
 			stdout: JSON.stringify({
