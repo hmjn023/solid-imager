@@ -565,16 +565,9 @@ describe("applied search mechanism", () => {
 			searchSimilar,
 			searchMedia,
 		});
-		if (typeof options.queryFn !== "function")
-			throw new Error("Missing query function");
-		const signal = new AbortController().signal;
-		await options.queryFn({
-			client: new QueryClient(),
-			queryKey: options.queryKey,
-			signal,
-			meta: undefined,
-			direction: "forward",
-			pageParam: 20,
+		await new QueryClient().infiniteQuery({
+			...options,
+			initialPageParam: 20,
 		});
 		expect(searchSimilar).toHaveBeenCalledExactlyOnceWith(
 			{
@@ -585,7 +578,7 @@ describe("applied search mechanism", () => {
 				limit: 40,
 				offset: 20,
 			},
-			signal,
+			expect.any(AbortSignal),
 		);
 		expect(searchMedia).not.toHaveBeenCalled();
 		expect(options.placeholderData).toBeUndefined();
@@ -619,17 +612,8 @@ describe("applied search mechanism", () => {
 			searchMedia,
 			searchSimilar: undefined,
 		});
-		if (typeof options.queryFn !== "function")
-			throw new Error("Missing query function");
 		await expect(
-			options.queryFn({
-				client: new QueryClient(),
-				queryKey: options.queryKey,
-				signal: new AbortController().signal,
-				meta: undefined,
-				direction: "forward",
-				pageParam: 0,
-			}),
+			new QueryClient().infiniteQuery({ ...options, initialPageParam: 0 }),
 		).rejects.toThrow("類似検索を利用できません");
 		expect(searchMedia).not.toHaveBeenCalled();
 	});
@@ -668,15 +652,9 @@ describe("applied search mechanism", () => {
 				conditionKey: "other",
 			}).queryKey,
 		);
-		if (typeof options.queryFn !== "function")
-			throw new Error("Missing query function");
-		await options.queryFn({
-			client: new QueryClient(),
-			queryKey: options.queryKey,
-			signal: new AbortController().signal,
-			meta: undefined,
-			direction: "forward",
-			pageParam: 0,
+		await new QueryClient().infiniteQuery({
+			...options,
+			initialPageParam: 0,
 		});
 		expect(searchSemantic).toHaveBeenCalledWith(
 			expect.objectContaining({ text: "a cat", mediaSourceId: "source-3" }),

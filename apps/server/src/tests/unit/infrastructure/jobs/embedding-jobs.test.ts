@@ -10,7 +10,7 @@ import { createImportBatch, createRepositories } from "@solid-imager/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq, sql } from "drizzle-orm";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { assert, afterEach, describe, expect, it, vi } from "vitest";
 import { PostgresEmbeddingStore } from "~/infrastructure/ai/postgres-embedding-store";
 import { createPglite } from "~/infrastructure/db/pglite";
 import * as schema from "~/infrastructure/db/schema";
@@ -209,7 +209,8 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		const [work] = await repo.claimPending(1, {
 			includeTypes: ["downloadImage"],
 		});
-		const owner = importWorkOwner(work)!;
+		const owner = importWorkOwner(work);
+		assert.isDefined(owner);
 		for (const mediaId of [ids[0], ids[1], ids[1]])
 			await repo.createIfUnique(
 				{ type: "processMedia", mediaSourceId: sourceId, payload: { mediaId } },
@@ -265,7 +266,8 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			includeTypes: ["processMedia"],
 		});
 		for (const job of [a, b]) {
-			const owner = importWorkOwner(job)!;
+			const owner = importWorkOwner(job);
+			assert.isDefined(owner);
 			for (const type of [
 				"auto_tagging",
 				"extract_embedding_vector",

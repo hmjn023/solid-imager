@@ -21,7 +21,9 @@ export function ViewerLoadBoundary(props: {
 	});
 	return (
 		<div
-			ref={boundary}
+			ref={(element) => {
+				boundary = element;
+			}}
 			class="flex min-h-11 flex-wrap items-center justify-center gap-2 py-2 text-sm text-muted-foreground"
 		>
 			<Show when={props.failed}>
