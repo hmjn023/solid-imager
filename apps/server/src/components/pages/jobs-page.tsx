@@ -56,6 +56,9 @@ export function JobsPage() {
 
 	return (
 		<JobsScreen
+			loadTargets={(id, offset, limit, signal) =>
+				orpc.jobs.targets({ id, offset, limit }, { signal })
+			}
 			inspection={inspection}
 			buildThumbnailUrl={buildThumbnailUrl}
 			isRefreshing={() => jobsQuery.isFetching}

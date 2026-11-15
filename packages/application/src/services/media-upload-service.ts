@@ -1,3 +1,4 @@
+import type { ImportWorkOwner } from "@solid-imager/core/jobs";
 import path from "node:path";
 import type {
 	IMediaStorage,
@@ -84,6 +85,7 @@ export class MediaUploadService {
 		mediaSourceId: string,
 		file: File,
 		options: UploadMediaRequest,
+		owner?: ImportWorkOwner,
 	): Promise<UploadResponse> {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const mediaSource = await this.sourceRepository.findById(validatedSourceId);
@@ -161,7 +163,7 @@ export class MediaUploadService {
 			]);
 		}
 
-		await this.jobRepo.create({
+		const prepareJob = {
 			type: "processMedia",
 			mediaSourceId: validatedSourceId,
 			payload: {
@@ -169,7 +171,9 @@ export class MediaUploadService {
 				sourcePath: basePath,
 				type: "processMedia",
 			},
-		});
+		};
+		if (owner) await this.jobRepo.createIfUnique(prepareJob, owner);
+		else await this.jobRepo.create(prepareJob);
 
 		return {
 			success: true,

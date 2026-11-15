@@ -9,8 +9,8 @@ import { queueDownloadJobs } from "~/infrastructure/jobs/download-jobs";
 export async function processImportRequests(
 	jobIds: string[],
 	targetSourceId: string,
-): Promise<number> {
-	if (jobIds.length === 0) return 0;
+): Promise<{ processedCount: number; batchId?: string }> {
+	if (jobIds.length === 0) return { processedCount: 0 };
 	return DrizzleTransactionManager.transaction(async (transaction) => {
 		const executor = getExecutor(transaction);
 		const pending = await executor
@@ -25,8 +25,8 @@ export async function processImportRequests(
 			)
 			.orderBy(asc(jobs.id))
 			.for("update");
-		if (pending.length === 0) return 0;
-		await queueDownloadJobs(
+		if (pending.length === 0) return { processedCount: 0 };
+		const { batchId } = await queueDownloadJobs(
 			targetSourceId,
 			pending.map((job) => downloadItemSchema.parse(job.payload)),
 			{
@@ -39,7 +39,11 @@ export async function processImportRequests(
 			.set({
 				status: "completed",
 				mediaSourceId: targetSourceId,
-				result: { status: "submitted", targetSourceId },
+				result: {
+					status: "submitted",
+					targetSourceId,
+					...(batchId ? { batchId } : {}),
+				},
 				finishedAt: new Date(),
 				updatedAt: new Date(),
 			})
@@ -53,7 +57,7 @@ export async function processImportRequests(
 					eq(jobs.status, "pending"),
 				),
 			);
-		return pending.length;
+		return { processedCount: pending.length, batchId };
 	});
 }
 

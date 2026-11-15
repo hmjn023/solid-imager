@@ -839,7 +839,8 @@ export function useManagerPage(
 				jobId: job.id,
 				mediaSourceId: job.mediaSourceId ?? undefined,
 				vectorModel:
-					job.type === "extract_embedding_batch"
+					job.type === "extract_embedding_batch" ||
+					job.type === "batch_embedding_parent"
 						? ("embeddinggemma2" as const)
 						: ("ccip" as const),
 			};

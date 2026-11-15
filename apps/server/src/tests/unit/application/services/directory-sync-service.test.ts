@@ -2,6 +2,18 @@ import fs from "node:fs/promises";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mocks
+vi.mock("~/infrastructure/services/import-submission", () => ({
+	reserveImportFiles: async (_source: string, paths: string[]) => ({
+		reservations: paths,
+	}),
+	runImportSubmission: (
+		_source: string,
+		_id: string,
+		_type: string,
+		submit: () => Promise<unknown>,
+	) => submit(),
+	finishDirectoryImport: vi.fn(),
+}));
 vi.mock("~/infrastructure/logger", () => ({
 	logger: {
 		info: vi.fn(),

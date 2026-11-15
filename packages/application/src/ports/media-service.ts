@@ -1,3 +1,4 @@
+import type { ImportWorkOwner } from "@solid-imager/core/jobs";
 import type { Transaction } from "@solid-imager/core/ports";
 import type {
 	FindDuplicatesRequest,
@@ -118,6 +119,7 @@ export interface IMediaService {
 		mediaSourceId: string,
 		file: File,
 		options: UploadMediaRequest,
+		owner?: ImportWorkOwner,
 	): Promise<UploadResponse>;
 
 	getMediaDetails(

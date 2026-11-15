@@ -16,7 +16,12 @@ import type {
 } from "@solid-imager/core/media";
 import type { IAuthorRepository } from "@solid-imager/core/authors";
 import type { IIpRepository } from "@solid-imager/core/ips";
-import type { IJobRepository, Job } from "@solid-imager/core/jobs";
+import {
+	importWorkOwner,
+	type ImportWorkOwner,
+	type IJobRepository,
+	type Job,
+} from "@solid-imager/core/jobs";
 import type { IProjectRepository } from "@solid-imager/core/projects";
 import {
 	type SourceRepository,
@@ -113,6 +118,7 @@ class MediaProcessingServiceImpl implements IMediaProcessingService {
 		mediaSourceId: string,
 		relativePath: string,
 		contextMetadata?: Partial<MediaMetadataContext>,
+		owner?: ImportWorkOwner,
 	): Promise<Media> {
 		const source = await this.sourceRepo.findById(mediaSourceId);
 		if (source?.type !== "local") {
@@ -165,7 +171,7 @@ class MediaProcessingServiceImpl implements IMediaProcessingService {
 		}
 
 		// Step 3: Queue processMedia job
-		await this.jobRepo.create({
+		const prepareJob = {
 			type: "processMedia",
 			mediaSourceId,
 			payload: {
@@ -173,7 +179,9 @@ class MediaProcessingServiceImpl implements IMediaProcessingService {
 				sourcePath: basePath,
 				type: "processMedia",
 			},
-		});
+		};
+		if (owner) await this.jobRepo.createIfUnique(prepareJob, owner);
+		else await this.jobRepo.create(prepareJob);
 
 		// Notify clients
 		this.publishSourceEvent(mediaSourceId, "media-added", {
@@ -200,6 +208,8 @@ class MediaProcessingServiceImpl implements IMediaProcessingService {
 
 		const media = await this.mediaRepo.findById(mediaId);
 		if (!media) {
+			if (importWorkOwner(job))
+				throw new Error("Import target media no longer exists");
 			this.logger?.warn({ mediaId }, "Media not found for processMedia job");
 			return;
 		}
@@ -253,12 +263,36 @@ class MediaProcessingServiceImpl implements IMediaProcessingService {
 			});
 		} catch (e) {
 			this.logger?.error({ err: e, mediaId }, "Thumbnail generation failed");
-			if (media.mediaType === "video") return;
+			if (media.mediaType === "video") {
+				if (importWorkOwner(job)) throw e;
+				return;
+			}
 		}
 
 		// Step 3: AI tagging
 		const supportsVisualInference =
 			media.mediaType === "image" || media.mediaType === "video";
+		const owner = importWorkOwner(job);
+		if (owner) {
+			if (!supportsVisualInference) return;
+			const types = [
+				...(this.enableAutoTagging && !payload.skipMetadataExtraction
+					? ["auto_tagging"]
+					: []),
+				...(this.enableAutoEmbeddingExtraction
+					? ["extract_embedding_vector"]
+					: []),
+				...(this.enableAutoCcipExtraction ? ["extract_ccip_vector"] : []),
+			];
+			for (const type of types) {
+				await this.jobRepo.createIfUnique(
+					{ type, mediaSourceId, payload: { mediaId } },
+					owner,
+				);
+			}
+			return;
+		}
+
 		if (
 			this.enableAutoTagging &&
 			!payload?.skipMetadataExtraction &&

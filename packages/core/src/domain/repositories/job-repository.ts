@@ -72,7 +72,10 @@ export type IJobRepository = {
 	): Promise<JobTerminalStatus | null>;
 	/** Finalizes an open aggregate only after its known item count is accounted for. */
 	finishBatch(id: string): Promise<JobTerminalStatus | null>;
-	createIfUnique(job: NewJob): Promise<Job | null>;
+	createIfUnique(
+		job: NewJob,
+		owner?: import("../jobs/import-batch").ImportWorkOwner,
+	): Promise<Job | null>;
 	findById(id: string): Promise<Job | null>;
 	findPending(
 		limit: number,
@@ -109,7 +112,7 @@ export type IJobRepository = {
 			expiresAt: Date;
 		},
 	): Promise<void>;
-	update(id: string, data: Partial<Job>): Promise<void>;
+	update(id: string, data: Partial<Job>, attempt?: number): Promise<void>;
 	setBatchTotal(parentId: string, total: number): Promise<BatchProgress>;
 	recordBatchChildOutcome(
 		parentId: string,
@@ -133,6 +136,9 @@ export type IJobRepository = {
 		options?: {
 			excludeTypes?: string[];
 			includeTypes?: string[];
+			createdBefore?: Date;
+			preferStandalone?: boolean;
+			standaloneOnly?: boolean;
 		},
 	): Promise<Job[]>;
 	requeueStaleInProgress(olderThan: Date): Promise<number>;

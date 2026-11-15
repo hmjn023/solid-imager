@@ -14,6 +14,14 @@ vi.mock("~/infrastructure/ai/embedding-gemma-worker", () => ({
 vi.mock("~/infrastructure/ai/dghs-imgutils-loader", () => ({
 	loadDghsImgutils: () => ({ getPixaiTags: mocks.tag }),
 }));
+vi.mock("~/infrastructure/ai/native-inference-process", () => ({
+	nativeInferenceProcess: {
+		call: (method: string, ...args: unknown[]) => {
+			if (method === "getPixaiTags") return mocks.tag(...args);
+			throw new Error(method);
+		},
+	},
+}));
 vi.mock("@solid-imager/client", () => ({ createClient: mocks.createClient }));
 const vector = Array.from({ length: 768 }, (_, index) => (index === 0 ? 1 : 0));
 

@@ -3,6 +3,8 @@ import { asyncIteratorObject, oc } from "@orpc/contract";
 import { z } from "zod";
 import {
 	jobDtoSchema,
+	batchTargetsInputSchema,
+	batchTargetsSchema,
 	jobIdRequestSchema,
 	jobListRequestSchema,
 	jobListResponseSchema,
@@ -10,6 +12,10 @@ import {
 import { jobEventSchema } from "../sources/events";
 
 export const jobsContract = {
+	targets: oc
+		.meta(openapi({ tags: ["Jobs"], summary: "バッチの処理対象一覧" }))
+		.input(batchTargetsInputSchema)
+		.output(batchTargetsSchema),
 	activeBatches: oc
 		.meta(openapi({ tags: ["Jobs"], summary: "Managerの実行中バッチ一覧" }))
 		.input(z.object({}))

@@ -1,3 +1,5 @@
+import { notifyBatchState } from "~/infrastructure/events/batch-state";
+import { importAiStages, readImportBatch } from "@solid-imager/core/jobs";
 import type { AppConfig } from "@solid-imager/core/config";
 import type {
 	IJobRepository,
@@ -47,6 +49,7 @@ function toJsonSafeValue(value: unknown): JsonSafeValue {
 }
 
 const StaleInProgressJobMs = 60 * 60 * 1000;
+const SingleAdmissionInterval = 16;
 const JobHeartbeatMs = 5 * 60 * 1000;
 const PublicJobFailureMessage = "Job failed";
 
@@ -61,6 +64,13 @@ export class JobWorker {
 	private aiConcurrency = 1;
 	private activeJobs = 0;
 	private activeAiJobs = 0;
+	private stageIndex = 0;
+	private stageStartedAt?: Date;
+	private admittedLateSingle = false;
+	private needsOffload = false;
+	private stageClaims = 0;
+	private generalClaims = 0;
+	private offloading?: Promise<void>;
 	private activeThumbnailJobs = 0;
 	private activeExportJobs = 0;
 
@@ -79,6 +89,7 @@ export class JobWorker {
 	constructor(
 		jobRepo: IJobRepository,
 		processor: (job: Job) => Promise<unknown>,
+		private readonly offload: () => Promise<void> = async () => {},
 	) {
 		this.jobRepo = jobRepo;
 		this.processor = processor;
@@ -109,6 +120,7 @@ export class JobWorker {
 			clearInterval(this.recoverStaleJobsIntervalId);
 			this.recoverStaleJobsIntervalId = null;
 		}
+		this.releaseIfStopped();
 		logger.info("Job processing worker stopped");
 	}
 
@@ -146,17 +158,11 @@ export class JobWorker {
 		this.pollRequested = false;
 
 		try {
-			// 1. Poll AI Jobs
-			if (this.activeAiJobs < this.aiConcurrency) {
-				const slots = this.aiConcurrency - this.activeAiJobs;
-				if (slots > 0) {
-					const jobs = await this.jobRepo.claimPending(slots, {
-						includeTypes: Array.from(this.aiJobTypes),
-					});
-					for (const job of jobs) {
-						void this.tryProcessJob(job);
-					}
-				}
+			try {
+				if (this.offloading) await this.offloading;
+				await this.pollAiStage();
+			} catch (error) {
+				logger.error({ err: error }, "Failed to advance AI job stage");
 			}
 
 			// 2. Keep thumbnail warming in its own single-worker pool. A burst of
@@ -192,13 +198,17 @@ export class JobWorker {
 			if (activeOtherJobs < this.concurrency) {
 				const slots = this.concurrency - activeOtherJobs;
 				if (slots > 0) {
+					const preferSingle = this.generalClaims >= SingleAdmissionInterval;
 					const jobs = await this.jobRepo.claimPending(slots, {
+						...(preferSingle ? { preferStandalone: true } : {}),
 						excludeTypes: [
 							...this.aiJobTypes,
 							...this.thumbnailJobTypes,
 							...this.exportJobTypes,
 						],
 					});
+					this.generalClaims =
+						(preferSingle ? 0 : this.generalClaims) + jobs.length;
 					for (const job of jobs) {
 						void this.tryProcessJob(job);
 					}
@@ -208,11 +218,89 @@ export class JobWorker {
 			logger.error({ err: error }, "Error polling for jobs");
 		} finally {
 			this.isPolling = false;
+			this.releaseIfStopped();
 			if (this.isRunning) {
 				const nextDelay = this.pollRequested ? 0 : this.pollIntervalMs;
 				this.pollRequested = false;
 				this.schedulePoll(nextDelay);
 			}
+		}
+	}
+
+	private async pollAiStage() {
+		const slots = this.aiConcurrency - this.activeAiJobs;
+		if (slots <= 0) return;
+		for (let checked = 0; checked < importAiStages.length; checked++) {
+			const includeTypes = [...importAiStages[this.stageIndex]];
+			const cutoff = this.stageStartedAt ?? new Date();
+			if (this.stageStartedAt && this.stageClaims >= SingleAdmissionInterval) {
+				this.stageClaims = 0;
+				const [single] = await this.jobRepo.claimPending(1, {
+					includeTypes,
+					standaloneOnly: true,
+				});
+				if (single) {
+					void this.processJob(single);
+					return;
+				}
+			}
+			const work = await this.jobRepo.claimPending(slots, {
+				includeTypes,
+				createdBefore: cutoff,
+				preferStandalone: true,
+			});
+			if (work.length) {
+				this.stageStartedAt = cutoff;
+				this.stageClaims += work.length;
+				this.needsOffload = true;
+				for (const job of work) void this.processJob(job);
+				return;
+			}
+			if (this.activeAiJobs) return;
+			// Admit one late arrival before closing this snapshot. Continuous submissions
+			// must not extend the current model's turn indefinitely.
+			if (this.stageStartedAt && !this.admittedLateSingle) {
+				this.admittedLateSingle = true;
+				const extra = await this.jobRepo.claimPending(1, {
+					includeTypes,
+					standaloneOnly: true,
+				});
+				if (extra.length) {
+					void this.processJob(extra[0]);
+					return;
+				}
+			}
+			if (this.needsOffload) {
+				await this.releaseStage();
+			}
+			this.stageStartedAt = undefined;
+			this.stageClaims = 0;
+			this.admittedLateSingle = false;
+			this.stageIndex = (this.stageIndex + 1) % importAiStages.length;
+		}
+	}
+
+	private releaseStage(): Promise<void> {
+		this.offloading ??= this.offload()
+			.then(() => {
+				this.needsOffload = false;
+			})
+			.finally(() => {
+				this.offloading = undefined;
+			});
+		return this.offloading;
+	}
+
+	private releaseIfStopped() {
+		if (
+			!this.isRunning &&
+			!this.isPolling &&
+			!this.activeAiJobs &&
+			this.needsOffload
+		) {
+			void this.releaseStage().catch((err) =>
+				logger.error({ err }, "Failed to offload stopped job worker"),
+			);
 		}
 	}
 
@@ -265,7 +353,7 @@ export class JobWorker {
 		}
 		const heartbeatId = setInterval(() => {
 			void Promise.resolve(
-				this.jobRepo.update(job.id, { updatedAt: new Date() }),
+				this.jobRepo.update(job.id, { updatedAt: new Date() }, attemptCount),
 			).catch((error) => {
 				logger.error(
 					{ err: error, jobId: job.id },
@@ -310,6 +398,7 @@ export class JobWorker {
 			this.activeJobs--;
 			if (isAiJob) {
 				this.activeAiJobs--;
+				this.releaseIfStopped();
 			}
 			if (isThumbnailJob) {
 				this.activeThumbnailJobs--;
@@ -317,7 +406,7 @@ export class JobWorker {
 			if (isExportJob) {
 				this.activeExportJobs--;
 			}
-			if (isThumbnailJob) {
+			if (isThumbnailJob || isAiJob) {
 				this.requestPoll();
 			}
 		}
@@ -358,17 +447,22 @@ export class JobWorker {
 					message: "Job cancelled",
 				});
 			}
-			if (job.parentId) {
-				const parentStatus = (await this.jobRepo.findById(job.parentId))
-					?.status;
+			const batch = readImportBatch(job);
+			if (batch) {
+				await notifyBatchState(this.jobRepo, batch.importBatchId);
+				return;
+			}
+			const parentId = job.parentId;
+			if (parentId) {
+				const parentStatus = (await this.jobRepo.findById(parentId))?.status;
 				if (parentStatus === "failed")
 					RealtimeEventBus.publishJob("job-failed", {
-						jobId: job.parentId,
+						jobId: parentId,
 						error: "A batch job failed or was cancelled",
 					});
 				else if (parentStatus === "completed")
 					RealtimeEventBus.publishJob("job-completed", {
-						jobId: job.parentId,
+						jobId: parentId,
 						message: "Batch completed",
 					});
 			}

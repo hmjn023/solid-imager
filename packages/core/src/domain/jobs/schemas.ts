@@ -28,11 +28,20 @@ export const batchParentJobTypes = [
 	"batch_ccip_parent",
 	"bulk_tagging_parent",
 	"thumbnail_generation_parent",
+	"import_batch_parent",
+	"batch_embedding_parent",
 ] as const;
 
 /** Tests whether a job type represents a batch parent. */
 export function isBatchParentJobType(type: string): boolean {
 	return batchParentJobTypes.some((parentType) => parentType === type);
+}
+
+export function canCancelJobType(type: string) {
+	return (
+		type === "batch_embedding_parent" ||
+		(!isBatchParentJobType(type) && type !== "import_batch_target")
+	);
 }
 
 /** Batch history and approval requests cannot be retried as standalone worker jobs. */
@@ -45,6 +54,7 @@ export function canRetryJob(job: {
 		job.status === "failed" &&
 		!job.parentId &&
 		job.type !== "import_request" &&
+		job.type !== "import_batch_target" &&
 		job.type !== "extract_embedding_batch" &&
 		!isBatchParentJobType(job.type ?? "")
 	);
@@ -126,3 +136,21 @@ export const sourceRestoreJobPayloadSchema = z.object({
 export type SourceRestoreJobPayload = z.infer<
 	typeof sourceRestoreJobPayloadSchema
 >;
+
+export const batchTargetsInputSchema = jobIdRequestSchema.extend({
+	limit: z.number().int().min(1).max(200).default(25),
+	offset: z.number().int().nonnegative().default(0),
+});
+export const batchTargetsSchema = z.object({
+	items: z.array(
+		z.object({
+			label: z.string(),
+			mediaId: z.uuid().nullable(),
+			status: jobStatusSchema.nullable(),
+			skipped: z.boolean(),
+			stage: z.string().nullable(),
+		}),
+	),
+	total: z.number().int().nonnegative(),
+});
+export type BatchTargets = z.infer<typeof batchTargetsSchema>;

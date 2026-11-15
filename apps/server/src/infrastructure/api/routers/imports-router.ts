@@ -165,7 +165,7 @@ export const importsRouter = os.router({
 	 * Process selected import requests (Queue downloads).
 	 */
 	process: os.process.handler(async ({ input }) => {
-		const processedCount = await processImportRequests(
+		const { processedCount, batchId } = await processImportRequests(
 			input.jobIds,
 			input.targetSourceId,
 		);
@@ -180,7 +180,7 @@ export const importsRouter = os.router({
 				"Failed to notify committed import approval",
 			);
 		}
-		return { success: true, processedCount };
+		return { success: true, processedCount, batchId };
 	}),
 
 	/**

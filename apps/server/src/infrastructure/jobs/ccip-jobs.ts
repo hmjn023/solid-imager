@@ -7,7 +7,7 @@ import {
 import { and, asc, eq, gt, inArray } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "~/infrastructure/db";
-import type { Job } from "@solid-imager/core/jobs";
+import { readImportBatch, type Job } from "@solid-imager/core/jobs";
 import {
 	jobs,
 	mediaSources,
@@ -342,7 +342,7 @@ async function updateParentProgress(
 	processed: number,
 	failed: number,
 ): Promise<void> {
-	if (!job.parentId) {
+	if (!job.parentId || readImportBatch(job)) {
 		return;
 	}
 	const jobRepo = services.getJobRepository();

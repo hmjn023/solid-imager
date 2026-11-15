@@ -79,6 +79,7 @@ export const jobProgressEventSchema = z.object({
 	jobId: z.string().optional(),
 	processed: z.number(),
 	total: z.number(),
+	failed: z.number().int().nonnegative().optional(),
 });
 export type JobProgressEvent = z.infer<typeof jobProgressEventSchema>;
 

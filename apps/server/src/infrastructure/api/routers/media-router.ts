@@ -1,3 +1,8 @@
+import {
+	reserveImportFiles,
+	runImportSubmission,
+} from "~/infrastructure/services/import-submission";
+import type { ImportWorkOwner } from "@solid-imager/core/jobs";
 import { implement, ORPCError } from "@orpc/server";
 import { mediaContract } from "@solid-imager/core/contract";
 import type { MediaPreferencesPatch } from "@solid-imager/core/media";
@@ -236,22 +241,32 @@ export const mediaRouter = os.router({
 		return result;
 	}),
 
-	/**
-	 * Upload media to a source
-	 */
-	/**
-	 * Upload media to a source
-	 */
-	upload: os.upload.handler(
-		async ({ input }) =>
-			await MediaService.uploadMedia(input.sourceId, input.file, {
-				filename: input.filename,
-				description: input.description,
-				sourceUrl: input.sourceUrl,
-				overwrite: input.overwrite === "true",
-				autoIncrement: input.autoIncrement === "true",
-			}),
+	reserveUploads: os.reserveUploads.handler(({ input }) =>
+		reserveImportFiles(input.sourceId, input.filenames, "import_upload"),
 	),
+	upload: os.upload.handler(async ({ input }) => {
+		const submit = (owner?: ImportWorkOwner) =>
+			MediaService.uploadMedia(
+				input.sourceId,
+				input.file,
+				{
+					filename: input.filename,
+					description: input.description,
+					sourceUrl: input.sourceUrl,
+					overwrite: input.overwrite === "true",
+					autoIncrement: input.autoIncrement === "true",
+				},
+				owner,
+			);
+		return input.reservationId
+			? runImportSubmission(
+					input.sourceId,
+					input.reservationId,
+					"import_upload",
+					submit,
+				)
+			: submit();
+	}),
 
 	/**
 	 * Bulk edit multiple media metadata

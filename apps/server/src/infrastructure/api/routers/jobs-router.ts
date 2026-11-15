@@ -1,14 +1,15 @@
+import { listBatchTargets } from "~/infrastructure/services/job-batch-targets";
 import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/contract";
 import {
-	isBatchParentJobType,
+	canCancelJobType,
 	canRetryJob,
 	batchParentJobTypes,
 	jobStatusSchema,
 	type Job,
 } from "@solid-imager/core/jobs";
 import type { JobEvent } from "@solid-imager/core/events";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
@@ -135,12 +136,17 @@ export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
 }
 
 function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
-	return status ? and(eq(jobs.status, status)) : undefined;
+	return and(
+		ne(jobs.type, "import_batch_target"),
+		sql`${jobs.payload}->>'importBatchId' IS NULL`,
+		status ? eq(jobs.status, status) : undefined,
+	);
 }
 
 const os = implement(jobsContract);
 
 export const jobsRouter = os.router({
+	targets: os.targets.handler(({ input }) => listBatchTargets(input)),
 	activeBatches: os.activeBatches.handler(async () => {
 		const rows = await db
 			.select()
@@ -148,7 +154,9 @@ export const jobsRouter = os.router({
 			.where(
 				and(
 					inArray(jobs.type, [
-						...batchParentJobTypes,
+						...batchParentJobTypes.filter(
+							(type) => type !== "import_batch_parent",
+						),
 						"extract_embedding_batch",
 					]),
 					inArray(jobs.status, ["pending", "in_progress"]),
@@ -255,7 +263,7 @@ export const jobsRouter = os.router({
 				message: "Only pending or in-progress jobs can be cancelled",
 			});
 		}
-		if (isBatchParentJobType(job.type)) {
+		if (!canCancelJobType(job.type)) {
 			throw new ORPCError("BAD_REQUEST", {
 				message: "Batch parent jobs cannot be cancelled",
 			});

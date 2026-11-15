@@ -25,6 +25,12 @@ import {
 } from "../tagging/schemas";
 
 export const aiContract = {
+	offload: oc
+		.meta(
+			openapi({ tags: ["AI"], summary: "実行中の推論終了後にモデルを解放" }),
+		)
+		.input(z.object({}))
+		.output(z.object({})),
 	startEmbeddingExtraction: oc
 		.meta(
 			openapi({

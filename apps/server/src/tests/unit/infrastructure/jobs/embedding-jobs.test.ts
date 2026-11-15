@@ -3,7 +3,9 @@ import {
 	EMBEDDING_GEMMA_MODEL,
 	EMBEDDING_GEMMA_VERSION,
 } from "@solid-imager/core/search";
-import { createRepositories } from "@solid-imager/db";
+import { importWorkOwner, type IJobRepository } from "@solid-imager/core/jobs";
+import { listBatchTargets } from "~/infrastructure/services/job-batch-targets";
+import { createImportBatch, createRepositories } from "@solid-imager/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { eq, sql } from "drizzle-orm";
@@ -39,6 +41,7 @@ vi.mock("~/infrastructure/logger", () => ({
 }));
 import {
 	countEmbeddingTargets,
+	queueEmbeddingBatch,
 	processEmbeddingBatchJob,
 	processEmbeddingExtractionJob,
 } from "~/infrastructure/jobs/embedding-jobs";
@@ -108,6 +111,188 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		return { database, store, record };
 	}
 
+	it("snapshots new embedding batches and lists individual targets", async () => {
+		await setup();
+		const batch = await queueEmbeddingBatch({
+			mediaSourceId: sourceId,
+			force: false,
+		});
+		expect(batch.total).toBe(2);
+		const page = await listBatchTargets({ id: batch.id, offset: 1, limit: 1 });
+		expect(page.total).toBe(2);
+		expect(page.items).toHaveLength(1);
+		expect(page.items[0]).toMatchObject({
+			stage: "extract_embedding_vector",
+			status: "pending",
+		});
+		expect(ids).toContain(page.items[0].mediaId);
+	});
+
+	it("claims DB-created jobs at an absolute stage cutoff in a non-UTC timezone", async () => {
+		const { database } = await setup();
+		await database.execute(sql`SET TIME ZONE 'Asia/Tokyo'`);
+		await mocks.repository.create({ type: "auto_tagging", payload: {} });
+		const opts = { includeTypes: ["auto_tagging"] };
+		expect(
+			await mocks.repository.claimPending(1, {
+				...opts,
+				createdBefore: new Date(Date.now() - 60000),
+			}),
+		).toHaveLength(0);
+		expect(
+			await mocks.repository.claimPending(1, {
+				...opts,
+				createdBefore: new Date(Date.now() + 1000),
+			}),
+		).toHaveLength(1);
+	});
+	it("cancels the pending embedding targets and waits for an already-running attempt", async () => {
+		await setup();
+		const repo: IJobRepository = mocks.repository;
+		const batch = await queueEmbeddingBatch({
+			mediaSourceId: sourceId,
+			force: false,
+		});
+		const [running] = await repo.claimPending(1, {
+			includeTypes: ["extract_embedding_vector"],
+		});
+		await repo.requestCancellation(batch.id);
+		expect(await repo.isCancellationRequested(running.id)).toBe(true);
+		expect(await repo.findById(batch.id)).toMatchObject({
+			status: "in_progress",
+			payload: { failed: 1, total: 2 },
+		});
+		await repo.finishAttempt(running.id, 1, {
+			status: "completed",
+			result: null,
+		});
+		expect(await repo.findById(batch.id)).toMatchObject({
+			status: "cancelled",
+			payload: { failed: 2, total: 2 },
+		});
+	});
+	it("binds multiple download outputs once even when registration is replayed", async () => {
+		const { database } = await setup();
+		const repo: IJobRepository = mocks.repository;
+		const group = await database.transaction((tx) =>
+			createImportBatch(tx, sourceId, [
+				{ label: "multi", work: { type: "downloadImage" } },
+			]),
+		);
+		const [work] = await repo.claimPending(1, {
+			includeTypes: ["downloadImage"],
+		});
+		const owner = importWorkOwner(work)!;
+		for (const mediaId of [ids[0], ids[1], ids[1]])
+			await repo.createIfUnique(
+				{ type: "processMedia", mediaSourceId: sourceId, payload: { mediaId } },
+				owner,
+			);
+		await repo.finishAttempt(work.id, 1, { status: "completed", result: null });
+		const prepare = await repo.claimPending(10, {
+			includeTypes: ["processMedia"],
+		});
+		expect(prepare).toHaveLength(2);
+		for (const job of prepare)
+			await repo.finishAttempt(job.id, 1, {
+				status: "completed",
+				result: null,
+			});
+		expect(await repo.findById(group.id)).toMatchObject({
+			status: "completed",
+			payload: { processed: 2, total: 2 },
+		});
+	});
+	it("fails an interrupted scan and settles abandoned reservations without double counting", async () => {
+		const { database } = await setup();
+		const repo: IJobRepository = mocks.repository;
+		const scanId = crypto.randomUUID();
+		await database.transaction((tx) =>
+			createImportBatch(
+				tx,
+				sourceId,
+				[{ label: "unfinished", work: { type: "import_register" } }],
+				scanId,
+			),
+		);
+		const cutoff = new Date(Date.now() + 24 * 60 * 60 * 1000);
+		expect(await repo.requeueStaleInProgress(cutoff)).toBe(1);
+		expect(await repo.requeueStaleInProgress(cutoff)).toBe(0);
+		expect(await repo.findById(scanId)).toMatchObject({
+			status: "failed",
+			payload: { total: 1, processed: 0, failed: 1, scanFailed: true },
+		});
+	});
+	it("drains every preceding stage, accounts for failed targets once, and pages beyond 25", async () => {
+		const { database } = await setup();
+		const repo: IJobRepository = mocks.repository;
+		const items = Array.from({ length: 27 }, (_, i) => ({
+			label: String(i),
+			skipped: i >= 2,
+			work: { type: "processMedia", payload: { mediaId: ids[i % 3] } },
+		}));
+		const parent = await database.transaction((tx) =>
+			createImportBatch(tx, sourceId, items),
+		);
+		const [a, b] = await repo.claimPending(2, {
+			includeTypes: ["processMedia"],
+		});
+		for (const job of [a, b]) {
+			const owner = importWorkOwner(job)!;
+			for (const type of [
+				"auto_tagging",
+				"extract_embedding_vector",
+				"extract_ccip_vector",
+			]) {
+				await repo.createIfUnique(
+					{ type, mediaSourceId: sourceId, payload: { mediaId: ids[0] } },
+					owner,
+				);
+			}
+		}
+		// The turn began before these preparation jobs created all their tagging work.
+		// A late member of the same batch must still run before switching models.
+		await database
+			.update(schema.jobs)
+			.set({ createdAt: sql`now() + interval '1 hour'` })
+			.where(eq(schema.jobs.type, "auto_tagging"));
+		const done = { status: "completed" as const, result: null };
+		await repo.finishAttempt(a.id, 1, done);
+		expect(
+			await repo.claimPending(3, { includeTypes: ["auto_tagging"] }),
+		).toEqual([]);
+		await repo.finishAttempt(b.id, 1, done);
+		const tags = await repo.claimPending(3, {
+			includeTypes: ["auto_tagging"],
+			createdBefore: new Date(Date.now() + 1000),
+		});
+		expect(tags).toHaveLength(2);
+		await repo.finishAttempt(tags[0].id, 1, {
+			status: "failed",
+			error: "tagger",
+		});
+		expect(
+			await repo.claimPending(3, {
+				includeTypes: ["extract_embedding_vector"],
+			}),
+		).toEqual([]);
+		await repo.finishAttempt(tags[1].id, 1, done);
+		for (const type of ["extract_embedding_vector", "extract_ccip_vector"]) {
+			const stage = await repo.claimPending(3, { includeTypes: [type] });
+			expect(stage).toHaveLength(2);
+			for (const job of stage) await repo.finishAttempt(job.id, 1, done);
+		}
+		expect(await repo.findById(parent.id)).toMatchObject({
+			status: "failed",
+			payload: { total: 27, processed: 26, failed: 1 },
+		});
+		expect(
+			await listBatchTargets({ id: parent.id, offset: 25, limit: 25 }),
+		).toMatchObject({
+			total: 27,
+			items: [expect.anything(), expect.anything()],
+		});
+	});
 	it("does not run cancelled or replaced job attempts, and validates extraction payloads", async () => {
 		await setup();
 		const job = await mocks.repository.create({

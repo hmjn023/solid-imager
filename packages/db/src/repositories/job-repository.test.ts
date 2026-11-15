@@ -90,13 +90,13 @@ describe("JobRepository", () => {
 	});
 
 	it("returns the number of stale jobs requeued", async () => {
-		mockExecutor.returning.mockResolvedValueOnce([]);
+		mockExecutor.returning.mockResolvedValueOnce([]).mockResolvedValueOnce([]);
 		const count = await repository.requeueStaleInProgress(
 			new Date("2026-06-23T00:00:00.000Z"),
 		);
 
 		expect(count).toBe(1);
-		expect(mockExecutor.update).toHaveBeenCalledTimes(2);
+		expect(mockExecutor.update).toHaveBeenCalledTimes(4);
 	});
 
 	it("does not requeue thumbnail batch parent progress records", async () => {
@@ -131,8 +131,8 @@ describe("JobRepository", () => {
 			new Date("2026-06-23T00:00:00.000Z"),
 		);
 
-		expect(mockExecutor.set).toHaveBeenCalledTimes(2);
-		expect(mockExecutor.set).toHaveBeenLastCalledWith({
+		expect(mockExecutor.set).toHaveBeenCalledTimes(4);
+		expect(mockExecutor.set).toHaveBeenCalledWith({
 			status: "pending",
 			result: null,
 			error: null,

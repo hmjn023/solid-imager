@@ -1,0 +1,2 @@
+CREATE INDEX "idx_jobs_import_stage" ON "jobs" USING btree (("payload"->>'importBatchId'),"type") WHERE "jobs"."status" IN ('pending','in_progress') AND "jobs"."payload"->>'importBatchId' IS NOT NULL;--> statement-breakpoint
+CREATE UNIQUE INDEX "uq_jobs_import_media_step" ON "jobs" USING btree ("parent_id","type",("payload"->>'mediaId')) WHERE "jobs"."parent_id" IS NOT NULL AND "jobs"."payload"->>'importBatchId' IS NOT NULL AND "jobs"."payload"->>'mediaId' IS NOT NULL;

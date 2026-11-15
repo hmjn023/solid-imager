@@ -20,6 +20,7 @@ export const downloadsRouter = os.router({
 		return {
 			success: true,
 			jobCount: result.jobCount,
+			batchId: result.batchId,
 			skippedCount: result.skippedCount,
 			message: msg,
 		};

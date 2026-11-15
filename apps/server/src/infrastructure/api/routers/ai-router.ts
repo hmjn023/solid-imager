@@ -1,3 +1,4 @@
+import { notifyJob } from "~/infrastructure/events/state-notifications";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { tmpdir } from "node:os";
 import { mkdtemp, rm } from "node:fs/promises";
@@ -13,7 +14,8 @@ import { localConnectionSchema } from "@solid-imager/core/sources";
 import type { NapiInferenceOptions } from "dghs-imgutils-rs";
 import { and, desc, eq, sql } from "drizzle-orm";
 import sharp from "sharp";
-import { loadDghsImgutils } from "~/infrastructure/ai/dghs-imgutils-loader";
+import { inferenceLifecycle } from "~/infrastructure/ai/inference-lifecycle";
+import { nativeInferenceProcess } from "~/infrastructure/ai/native-inference-process";
 import { createNativeInferenceOptions } from "~/infrastructure/ai/inference-options";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
@@ -27,7 +29,10 @@ import {
 	countCcipTargets,
 	countTaggingTargets,
 } from "~/infrastructure/services/ai-batch-targets";
-import { countEmbeddingTargets } from "~/infrastructure/jobs/embedding-jobs";
+import {
+	countEmbeddingTargets,
+	queueEmbeddingBatch,
+} from "~/infrastructure/jobs/embedding-jobs";
 
 function isRemoteServerLocal(url: string): boolean {
 	try {
@@ -95,9 +100,15 @@ async function cropDetection(
 			.png()
 			.toFile(cropPath);
 		try {
-			const { segmentRgbaWithIsnetis } = loadDghsImgutils();
 			cropBuffer = Buffer.from(
-				await segmentRgbaWithIsnetis(cropPath, undefined, inferenceOptions),
+				await inferenceLifecycle.run("segmentation", async () =>
+					nativeInferenceProcess.call(
+						"segmentRgbaWithIsnetis",
+						cropPath,
+						undefined,
+						inferenceOptions,
+					),
+				),
 			);
 			_format = "png";
 		} finally {
@@ -149,6 +160,10 @@ function notifyBatchQueued(jobId: string): void {
 }
 
 export const aiRouter = os.router({
+	offload: os.offload.handler(async () => {
+		await inferenceLifecycle.offload();
+		return {};
+	}),
 	startEmbeddingExtraction: os.startEmbeddingExtraction.handler(
 		async ({ input }) => {
 			const job = await services.getJobRepository().create({
@@ -195,16 +210,17 @@ export const aiRouter = os.router({
 	),
 	startBatchEmbeddingExtraction: os.startBatchEmbeddingExtraction.handler(
 		async ({ input }) => {
-			const job = await services.getJobRepository().create({
-				type: "extract_embedding_batch",
-				mediaSourceId: input.mediaSourceId,
-				payload: { ...input, processed: 0, failed: 0, total: 0 },
-			});
-			RealtimeEventBus.publishJob("job-progress", {
+			const job = await queueEmbeddingBatch(input);
+			notifyJob("job-progress", {
 				jobId: job.id,
 				processed: 0,
-				total: 0,
+				total: job.total,
 			});
+			if (!job.total)
+				notifyJob("job-completed", {
+					jobId: job.id,
+					message: "Batch completed",
+				});
 			return {
 				success: true,
 				message: "EmbeddingGemma 2 indexing queued",
@@ -593,14 +609,18 @@ export const aiRouter = os.router({
 					);
 					await Bun.write(tmpPath, buffer);
 					try {
-						const { detectPerson } = loadDghsImgutils();
-						const detections = await detectPerson(
-							tmpPath,
-							undefined,
-							undefined,
-							undefined,
-							undefined,
-							inferenceOptions,
+						const detections = await inferenceLifecycle.run(
+							"detection",
+							async () =>
+								nativeInferenceProcess.call(
+									"detectPerson",
+									tmpPath,
+									undefined,
+									undefined,
+									undefined,
+									undefined,
+									inferenceOptions,
+								),
 						);
 
 						const resultDetections = await Promise.all(
@@ -675,15 +695,17 @@ export const aiRouter = os.router({
 					return result;
 				}
 
-				const { detectPerson } = loadDghsImgutils();
 				const inferenceOptions = createNativeInferenceOptions(config.ai);
-				const detections = await detectPerson(
-					fullPath,
-					undefined,
-					undefined,
-					undefined,
-					undefined,
-					inferenceOptions,
+				const detections = await inferenceLifecycle.run("detection", async () =>
+					nativeInferenceProcess.call(
+						"detectPerson",
+						fullPath,
+						undefined,
+						undefined,
+						undefined,
+						undefined,
+						inferenceOptions,
+					),
 				);
 
 				const resultDetections = await Promise.all(

@@ -247,6 +247,20 @@ export const mediaContract = {
 		)
 		.output(z.object({ success: z.boolean() })),
 
+	reserveUploads: oc
+		.meta(
+			openapi({
+				tags: ["Media"],
+				summary: "複数アップロードの取り込み対象を登録",
+			}),
+		)
+		.input(
+			z.object({
+				sourceId: z.uuid(),
+				filenames: z.array(z.string().min(1)).min(1),
+			}),
+		)
+		.output(z.object({ jobId: z.uuid(), reservations: z.array(z.uuid()) })),
 	upload: oc
 		.meta(
 			openapi({
@@ -260,6 +274,7 @@ export const mediaContract = {
 			z.object({
 				sourceId: z.uuid(),
 				file: z.file(),
+				reservationId: z.uuid().optional(),
 				filename: z.string().optional(),
 				description: z.string().optional(),
 				sourceUrl: z.string().optional(),

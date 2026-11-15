@@ -1,6 +1,10 @@
+import { jobsQueryKeys } from "../query-options/jobs-query";
+import { createQuery } from "@tanstack/solid-query";
+import type { BatchTargets } from "@solid-imager/core/jobs";
+import { PaginationControls } from "../pagination-controls";
 import { jobTypeLabel } from "../display-labels";
 import { t } from "@solid-imager/i18n";
-import { canRetryJob } from "@solid-imager/core/jobs";
+import { canCancelJobType, canRetryJob } from "@solid-imager/core/jobs";
 import type { useJobInspection } from "../hooks/use-job-inspection";
 import {
 	isBatchParentJobType,
@@ -113,7 +117,15 @@ export type JobsPagination = {
 	total: number;
 };
 
+type LoadTargets = (
+	id: string,
+	offset: number,
+	limit: number,
+	signal: AbortSignal,
+) => Promise<BatchTargets>;
+
 export type JobsScreenProps = {
+	loadTargets?: LoadTargets;
 	inspection?: ReturnType<typeof useJobInspection>;
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	isRefreshing: Accessor<boolean>;
@@ -466,7 +478,85 @@ function JobsBulkActions(props: {
 	);
 }
 
+function BatchTargetList(props: { id: string; load: LoadTargets }) {
+	const [page, setPage] = createSignal(1);
+	const size = 25;
+	const query = createQuery(() => ({
+		queryKey: [...jobsQueryKeys.targets(props.id), page()],
+		queryFn: ({ signal }) =>
+			props.load(props.id, (page() - 1) * size, size, signal),
+	}));
+	return (
+		<section class="mt-4">
+			<Show when={query.isPending}>
+				<p role="status">{t("status.loading")}</p>
+			</Show>
+			<Show when={query.isError}>
+				<Button variant="outline" onClick={() => void query.refetch()}>
+					{t("actions.retry")}
+				</Button>
+			</Show>
+			<Show when={query.data}>
+				{(data) => (
+					<>
+						<Table>
+							<TableCaption>{t("jobsScreen.batchTargets")}</TableCaption>
+							<TableHeader>
+								<TableRow>
+									<TableHead scope="col">{t("jobsScreen.target")}</TableHead>
+									<TableHead scope="col">{t("jobsScreen.status")}</TableHead>
+								</TableRow>
+							</TableHeader>
+							<TableBody>
+								<For
+									each={data().items}
+									fallback={
+										<TableRow>
+											<TableCell colSpan={2}>
+												{t("jobsScreen.noRecordedTargets")}
+											</TableCell>
+										</TableRow>
+									}
+								>
+									{(item) => (
+										<TableRow>
+											<TableCell class="break-all">{item.label}</TableCell>
+											<TableCell>
+												{item.skipped ? (
+													t("jobsScreen.skipped")
+												) : (
+													<Show
+														when={item.status}
+														fallback={t("jobsScreen.itemOutcomeUnavailable")}
+													>
+														{(status) => <JobStatusBadge status={status()} />}
+													</Show>
+												)}
+												<Show when={item.stage}>
+													{(stage) => <div>{jobTypeLabel(stage())}</div>}
+												</Show>
+											</TableCell>
+										</TableRow>
+									)}
+								</For>
+							</TableBody>
+						</Table>
+						<Show when={data().total > size}>
+							<PaginationControls
+								currentPage={page()}
+								totalPages={Math.ceil(data().total / size)}
+								onPageChange={setPage}
+							/>
+						</Show>
+					</>
+				)}
+			</Show>
+		</section>
+	);
+}
+
 function JobsInspector(props: {
+	loadTargets?: LoadTargets;
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	class?: string;
 	job: JobDto | undefined;
@@ -507,7 +597,7 @@ function JobsInspector(props: {
 		if (
 			!job ||
 			(job.status !== "pending" && job.status !== "in_progress") ||
-			isBatchParentJobType(job.type) ||
+			!canCancelJobType(job.type) ||
 			isCancelling()
 		)
 			return;
@@ -557,6 +647,17 @@ function JobsInspector(props: {
 						<p class="mt-3 font-medium text-sm text-foreground">
 							{jobTypeLabel(job().type)}
 						</p>
+						<Show
+							when={
+								props.loadTargets &&
+								(isBatchParentJobType(job().type) ||
+									job().type === "extract_embedding_batch") &&
+								job().id
+							}
+							keyed
+						>
+							{(id) => <BatchTargetList id={id} load={props.loadTargets!} />}
+						</Show>
 						<Show
 							fallback={
 								<div
@@ -706,7 +807,7 @@ function JobsInspector(props: {
 								when={
 									(job().status === "pending" ||
 										job().status === "in_progress") &&
-									!isBatchParentJobType(job().type)
+									canCancelJobType(job().type)
 								}
 							>
 								<Button
@@ -888,6 +989,7 @@ export function JobsScreen(props: JobsScreenProps) {
 								class="mb-4 xl:hidden"
 							>
 								<JobsInspector
+									loadTargets={props.loadTargets}
 									buildThumbnailUrl={props.buildThumbnailUrl}
 									class="rounded-md border border-border bg-background p-4"
 									job={job()}
@@ -1083,6 +1185,7 @@ export function JobsScreen(props: JobsScreenProps) {
 				</div>
 
 				<JobsInspector
+					loadTargets={props.loadTargets}
 					buildThumbnailUrl={props.buildThumbnailUrl}
 					job={selectedJob()}
 					onCancel={props.onCancel}

@@ -1,3 +1,4 @@
+import type { ImportWorkOwner } from "@solid-imager/core/jobs";
 /**
  * MediaServiceImpl - Thin facade that delegates to focused services.
  * Implements the application media-service port by delegating to focused services.
@@ -56,8 +57,9 @@ export class MediaServiceImpl implements IMediaService {
 		mediaSourceId: string,
 		file: File,
 		options: UploadMediaRequest,
+		owner?: ImportWorkOwner,
 	): Promise<UploadResponse> {
-		return this.uploadService.uploadMedia(mediaSourceId, file, options);
+		return this.uploadService.uploadMedia(mediaSourceId, file, options, owner);
 	}
 
 	async getMediaDetails(

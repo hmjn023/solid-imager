@@ -58,7 +58,7 @@
     "@tanstack/solid-start": "1.169.4",
     "archiver": "^8.0.0",
     "chokidar": "6.0.0",
-    "dghs-imgutils-rs": "github:hmjn023/dghs-imgutils-rs#v0.5.9",
+    "dghs-imgutils-rs": "github:hmjn023/dghs-imgutils-rs#e7001f5fa61e6e4d1294bfa4685bdf7839ad9958",
     "drizzle-orm": "^0.45.4",
     "ffmpeg-static": "^5.3.0",
     "fluent-ffmpeg": "^2.1.3",

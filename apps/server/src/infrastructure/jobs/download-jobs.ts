@@ -20,7 +20,13 @@ import {
 import { asyncPool, isRecord } from "@solid-imager/core/utils";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
-import type { Job } from "@solid-imager/core/jobs";
+import {
+	importWorkOwner,
+	type Job,
+	type ImportWorkOwner,
+} from "@solid-imager/core/jobs";
+import { createImportBatch } from "@solid-imager/db";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
@@ -389,6 +395,7 @@ async function handleYtDlpDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
+	owner?: ImportWorkOwner,
 ) {
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for yt-dlp download");
@@ -416,6 +423,7 @@ async function handleYtDlpDownload(
 			await _processSingleYtDlpResult({
 				index: i,
 				results,
+				owner,
 				item,
 				mediaSourceId,
 				basePath,
@@ -434,13 +442,14 @@ async function handleYtDlpDownload(
 }
 
 async function _processSingleYtDlpResult(params: {
+	owner?: ImportWorkOwner;
 	index: number;
 	results: { filePath: string; metadata: YtDlpOutput }[];
 	item: DownloadItem;
 	mediaSourceId: string;
 	basePath: string;
 }) {
-	const { index, results, item, mediaSourceId, basePath } = params;
+	const { index, results, item, mediaSourceId, basePath, owner } = params;
 	const res = results[index];
 	let { filePath, metadata } = res;
 
@@ -506,7 +515,7 @@ async function _processSingleYtDlpResult(params: {
 		),
 	};
 
-	await registerMedia(newMedia, mediaSourceId, item, basePath);
+	await registerMedia(newMedia, mediaSourceId, item, basePath, owner);
 }
 
 async function _resolveFinalPathWithAvoidance(
@@ -576,6 +585,7 @@ async function handleDirectImageDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
+	owner?: ImportWorkOwner,
 ) {
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for direct download");
@@ -697,7 +707,7 @@ async function handleDirectImageDownload(
 			),
 		};
 
-		await registerMedia(newMedia, mediaSourceId, item, basePath);
+		await registerMedia(newMedia, mediaSourceId, item, basePath, owner);
 
 		logger.info(
 			{ url: item.targetUrl },
@@ -752,6 +762,7 @@ async function handleUgoiraDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
+	owner?: ImportWorkOwner,
 ): Promise<void> {
 	if (!item.ugoira || !item.targetUrl)
 		throw new Error("Missing ugoira download metadata");
@@ -794,6 +805,7 @@ async function handleUgoiraDownload(
 				mediaSourceId,
 				item,
 				basePath,
+				owner,
 			);
 		} catch (error) {
 			// A watcher may already own the file. Remove only an unregistered result.
@@ -865,12 +877,27 @@ export async function processDownloadJob(job: Job): Promise<void> {
 
 	try {
 		if (item.ugoira) {
-			await handleUgoiraDownload(item, mediaSourceId, basePath);
+			await handleUgoiraDownload(
+				item,
+				mediaSourceId,
+				basePath,
+				importWorkOwner(job),
+			);
 		} else if (isTwitterPost) {
 			logger.info({}, "[DownloadJob] Using yt-dlp download method");
-			await handleYtDlpDownload(item, mediaSourceId, basePath);
+			await handleYtDlpDownload(
+				item,
+				mediaSourceId,
+				basePath,
+				importWorkOwner(job),
+			);
 		} else {
-			await handleDirectImageDownload(item, mediaSourceId, basePath);
+			await handleDirectImageDownload(
+				item,
+				mediaSourceId,
+				basePath,
+				importWorkOwner(job),
+			);
 		}
 	} catch (error) {
 		logger.error(
@@ -924,7 +951,8 @@ async function registerMedia(
 	newMedia: AddMediaRequest,
 	mediaSourceId: string,
 	item: DownloadItem,
-	_basePath: string,
+	basePath: string,
+	owner?: ImportWorkOwner,
 ) {
 	try {
 		// Use MediaProcessingService for unified registration and processing
@@ -945,6 +973,7 @@ async function registerMedia(
 				projects: item.projects,
 				generationInfo: item.generationInfo,
 			},
+			...(owner ? ([owner] as const) : []),
 		);
 
 		logger.info(
@@ -958,6 +987,18 @@ async function registerMedia(
 			newMedia.filePath,
 		);
 		if (existing) {
+			if (owner) {
+				const { JobRepository } =
+					await import("~/infrastructure/db/repositories");
+				await JobRepository.createIfUnique(
+					{
+						type: "processMedia",
+						mediaSourceId,
+						payload: { mediaId: existing.id, sourcePath: basePath },
+					},
+					owner,
+				);
+			}
 			await updateExistingMediaWithMetadata(
 				existing.id,
 				mediaSourceId,
@@ -991,7 +1032,7 @@ export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
 	options: { transaction?: Transaction; requestIds?: string[] } = {},
-): Promise<{ jobCount: number; skippedCount: number }> {
+): Promise<{ jobCount: number; skippedCount: number; batchId?: string }> {
 	if (options.requestIds && options.requestIds.length !== items.length)
 		throw new Error("Import queue identities must match the items");
 	const sourceRepo = DrizzleSourceRepository;
@@ -1016,11 +1057,45 @@ export async function queueDownloadJobs(
 				{ urls, existingMediaId, fileName: item.fileName },
 				"Skipping duplicate download item (source URLs already exist)",
 			);
-			return { item, skip: true };
+			return { item, skip: true, mediaId: existingMediaId };
 		}
 		return { item, skip: false };
 	});
 
+	if (items.length > 1) {
+		const targets = items.map((item, index) => {
+			const result = poolResults[index];
+			return {
+				label: path.win32.basename(
+					item.fileName || generateMediaFilename(item, ""),
+				),
+				mediaId:
+					result.status === "fulfilled" ? result.value.mediaId : undefined,
+				skipped: result.status === "fulfilled" && result.value.skip,
+				work: {
+					...(options.requestIds
+						? { id: importDownloadJobId(options.requestIds[index]) }
+						: {}),
+					type: "downloadImage",
+					payload: {
+						...item,
+						description: item.description ?? formatMetadataAsMarkdown(item),
+					},
+				},
+			};
+		});
+		const insert = (tx: Transaction) =>
+			createImportBatch(getExecutor(tx), mediaSourceId, targets);
+		const batch = options.transaction
+			? await insert(options.transaction)
+			: await DrizzleTransactionManager.transaction(insert);
+		const skippedCount = targets.filter((target) => target.skipped).length;
+		return {
+			jobCount: targets.length - skippedCount,
+			skippedCount,
+			batchId: batch.id,
+		};
+	}
 	const newItems: DownloadItem[] = [];
 	let skippedCount = 0;
 	for (const [index, result] of poolResults.entries()) {

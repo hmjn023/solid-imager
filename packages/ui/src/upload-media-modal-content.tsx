@@ -1,3 +1,4 @@
+import { asyncPool } from "@solid-imager/core/utils";
 import {
 	UploadMediaModalContent as SharedUploadMediaModalContent,
 	type UploadMediaModalSubmitOptions,
@@ -6,18 +7,29 @@ import type { UploadMediaModalContentProps } from "./upload-media-modal-content.
 
 export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 	const handleUploadStart = async (options: UploadMediaModalSubmitOptions) => {
-		await Promise.all(
-			options.files.map((file, index) =>
-				props.onUpload({
-					file,
-					filename: index === 0 ? options.filename : file.name,
-					description: options.description,
-					sourceUrl: index === 0 ? options.sourceUrl : undefined,
-					overwrite: options.overwrite,
-					autoIncrement: options.autoIncrement,
-				}),
-			),
+		const reservations =
+			options.files.length > 1 && props.reserveUploads
+				? await props.reserveUploads(
+						options.files.map((file, index) =>
+							index === 0 ? options.filename : file.name,
+						),
+					)
+				: [];
+		// Reserve the entire batch first, then bound the number of request bodies in memory.
+		const uploads = options.files.map((file, index) => ({
+			file,
+			reservationId: reservations[index],
+			filename: index === 0 ? options.filename : file.name,
+			description: options.description,
+			sourceUrl: index === 0 ? options.sourceUrl : undefined,
+			overwrite: options.overwrite,
+			autoIncrement: options.autoIncrement,
+		}));
+		const results = await asyncPool(uploads, 3, (upload) =>
+			props.onUpload(upload),
 		);
+		const failure = results.find((result) => result.status === "rejected");
+		if (failure) throw failure.reason;
 	};
 
 	return (
