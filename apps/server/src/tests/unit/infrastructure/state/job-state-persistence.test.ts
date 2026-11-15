@@ -351,6 +351,92 @@ describe("persisted import, attempt and batch transitions", () => {
 		expect((await database.select().from(jobs)).length).toBe(4);
 	});
 
+	it("shows one import parent for an approved batch and keeps receipts out of lists, counts and type filters", async () => {
+		const requests = await Promise.all([receipt(), receipt(), receipt()]);
+		const approval = await processImportRequests(
+			requests.map((job) => job.id),
+			SOURCE_ID,
+		);
+		expect(approval.processedCount).toBe(3);
+		expect(approval.batchId).toBeDefined();
+		const batchId = approval.batchId!;
+		const list = await call(jobsRouter.list, { limit: 200, offset: 0 });
+		expect(list.total).toBe(1);
+		expect(list.items).toEqual([
+			expect.objectContaining({
+				id: batchId,
+				type: "import_batch_parent",
+				progress: { processed: 0, failed: 0, total: 3 },
+			}),
+		]);
+		expect(await call(jobsRouter.types, undefined)).toEqual([
+			"import_batch_parent",
+		]);
+		expect(
+			await call(jobsRouter.list, {
+				status: "completed",
+				limit: 200,
+				offset: 0,
+			}),
+		).toEqual({ items: [], total: 0 });
+		expect(
+			await call(jobsRouter.list, {
+				type: "import_request",
+				limit: 200,
+				offset: 0,
+			}),
+		).toEqual({ items: [], total: 0 });
+		const targets = await call(jobsRouter.targets, {
+			id: batchId,
+			limit: 25,
+			offset: 0,
+		});
+		expect(targets.total).toBe(3);
+		expect(targets.items).toHaveLength(3);
+		for (const request of requests) {
+			expect(await repositories.job.findById(request.id)).toMatchObject({
+				status: "completed",
+				result: { batchId },
+			});
+		}
+		await call(jobsRouter.cancel, { id: batchId });
+		const history = await call(jobsRouter.list, {
+			status: "cancelled",
+			limit: 200,
+			offset: 0,
+		});
+		expect(history.total).toBe(1);
+		expect(history.items[0].id).toBe(batchId);
+		expect(
+			(
+				await call(jobsRouter.targets, { id: batchId, limit: 25, offset: 0 })
+			).items.every((target) => target.status === "cancelled"),
+		).toBe(true);
+	});
+
+	it("preserves standalone and unapproved receipts when hiding batch approval receipts", async () => {
+		const standalone = await receipt();
+		await processImportRequests([standalone.id], SOURCE_ID);
+		const waiting = await receipt();
+		const batch = await Promise.all([receipt(), receipt()]);
+		await processImportRequests(
+			batch.map((job) => job.id),
+			SOURCE_ID,
+		);
+		const receipts = await call(jobsRouter.list, {
+			type: "import_request",
+			limit: 200,
+			offset: 0,
+		});
+		expect(receipts.total).toBe(2);
+		expect(receipts.items.map((job) => job.id).sort()).toEqual(
+			[standalone.id, waiting.id].sort(),
+		);
+		expect(
+			(await call(importsRouter.listPending, undefined)).map((job) => job.id),
+		).toEqual([waiting.id]);
+	});
+
 	it("orders concurrent approval and cancellation without an orphaned download", async () => {
 		const request = await receipt();
 		await Promise.all([

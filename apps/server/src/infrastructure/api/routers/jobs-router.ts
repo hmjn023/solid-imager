@@ -146,6 +146,8 @@ function jobWhere(input: Pick<JobListRequest, "status" | "type"> = {}) {
 	return and(
 		ne(jobs.type, "import_batch_target"),
 		sql`${jobs.payload}->>'importBatchId' IS NULL`,
+		// Approval receipts retain their audit history, but the batch represents them in Jobs.
+		sql`(${jobs.type} <> 'import_request' OR ${jobs.result}->>'batchId' IS NULL)`,
 		input.status === "active"
 			? inArray(jobs.status, ["pending", "in_progress"])
 			: input.status
