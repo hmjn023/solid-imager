@@ -122,3 +122,26 @@ it("keeps infinite filter caches separate and updates progress on every loaded p
 		flattenJobPages({ pages: [page2, page2], pageParams: [0, 1] })?.items,
 	).toHaveLength(1);
 });
+
+it.each([false, true])(
+	"keeps the newest duplicate without moving its position (newer first: %s)",
+	async (newerFirst) => {
+		const { flattenJobPages } = await import("./jobs-query");
+		const old = jobList.items[0];
+		const newer = {
+			...old,
+			status: "completed" as const,
+			updatedAt: new Date(old.updatedAt.getTime() + 1000),
+			progress: { processed: 10, failed: 0, total: 10 },
+		};
+		const other = { ...old, id: "00000000-0000-4000-8000-000000000002" };
+		const result = flattenJobPages({
+			pages: [
+				{ items: [newerFirst ? newer : old, other], total: 2 },
+				{ items: [newerFirst ? old : newer], total: 2 },
+			],
+			pageParams: [0, 2],
+		});
+		expect(result?.items).toEqual([newer, other]);
+	},
+);

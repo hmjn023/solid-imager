@@ -77,7 +77,11 @@ export function flattenJobPages(
 	if (!data) return undefined;
 	const rows = new Map<string, JobDto>();
 	for (const page of data.pages)
-		for (const job of page.items) if (!rows.has(job.id)) rows.set(job.id, job);
+		for (const job of page.items) {
+			const previous = rows.get(job.id);
+			if (!previous || job.updatedAt > previous.updatedAt)
+				rows.set(job.id, job);
+		}
 	return { items: [...rows.values()], total: data.pages[0]?.total ?? 0 };
 }
 
