@@ -138,6 +138,7 @@ export function AppShell(props: AppShellProps) {
 						: "md:grid-cols-app-sidebar-collapsed"
 				}`}
 				data-design="workspace"
+				enableKeyboardShortcut={false}
 				onOpenChange={setSidebarExpanded}
 				open={sidebarExpanded()}
 			>

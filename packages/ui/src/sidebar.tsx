@@ -78,14 +78,19 @@ type SidebarProviderProps = ComponentProps<"div"> & {
 	defaultOpen?: boolean;
 	open?: boolean;
 	onOpenChange?: (open: boolean) => void;
+	enableKeyboardShortcut?: boolean;
 };
 
 const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
-	const props = mergeProps({ defaultOpen: true }, rawProps);
+	const props = mergeProps(
+		{ defaultOpen: true, enableKeyboardShortcut: true },
+		rawProps,
+	);
 	const [local, others] = splitProps(props, [
 		"defaultOpen",
 		"open",
 		"onOpenChange",
+		"enableKeyboardShortcut",
 		"class",
 		"children",
 	]);
@@ -97,11 +102,10 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
 	const open = () => local.open ?? _open();
 	const setOpen = (value: boolean | ((previous: boolean) => boolean)) => {
 		const nextValue = typeof value === "function" ? value(open()) : value;
-		if (local.onOpenChange) {
-			local.onOpenChange(nextValue);
-			return;
+		if (local.open === undefined) {
+			_setOpen(nextValue);
 		}
-		_setOpen(nextValue);
+		local.onOpenChange?.(nextValue);
 		if (typeof document !== "undefined") {
 			document.cookie = `${SIDEBAR_COOKIE_NAME}=${nextValue}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
 		}
@@ -115,6 +119,7 @@ const SidebarProvider: Component<SidebarProviderProps> = (rawProps) => {
 	onMount(() => {
 		const handleKeyDown = (event: KeyboardEvent) => {
 			if (
+				local.enableKeyboardShortcut &&
 				event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
 				(event.metaKey || event.ctrlKey)
 			) {
@@ -533,33 +538,58 @@ const SidebarMenuButton = <T extends ValidComponent = "button">(
 		{ isActive: false, variant: "default", size: "default" },
 		rawProps,
 	);
-	const [local, others] = splitProps(props as SidebarMenuButtonProps, [
-		"isActive",
-		"tooltip",
-		"variant",
-		"size",
-		"class",
-	]);
-	const { isMobile, state } = useSidebar();
-
-	const button = (
-		<Polymorphic<SidebarMenuButtonProps>
-			as="button"
-			class={cn(
-				sidebarMenuButtonVariants({ variant: local.variant, size: local.size }),
-				local.class,
-			)}
-			data-active={local.isActive}
-			data-sidebar="menu-button"
-			data-size={local.size}
-			{...others}
-		/>
+	const [local, others] = splitProps(
+		props as SidebarMenuButtonProps & { as?: ValidComponent },
+		["as", "type", "isActive", "tooltip", "variant", "size", "class"],
 	);
+	const { isMobile, state } = useSidebar();
+	const component = () => local.as ?? "button";
+	const buttonType = (): "button" | "submit" | "reset" | undefined =>
+		local.type === "submit" || local.type === "reset" || local.type === "button"
+			? local.type
+			: component() === "button"
+				? "button"
+				: undefined;
 
 	return (
-		<Show fallback={button} when={local.tooltip}>
+		<Show
+			fallback={
+				<Polymorphic<SidebarMenuButtonProps>
+					as={component()}
+					class={cn(
+						sidebarMenuButtonVariants({
+							variant: local.variant,
+							size: local.size,
+						}),
+						local.class,
+					)}
+					data-active={local.isActive}
+					data-sidebar="menu-button"
+					data-size={local.size}
+					type={buttonType()}
+					{...others}
+				/>
+			}
+			when={local.tooltip}
+		>
 			<Tooltip placement="right">
-				<TooltipTrigger class="w-full">{button}</TooltipTrigger>
+				<TooltipTrigger
+					as={component()}
+					class={cn(
+						// oxlint-disable-next-line shadcn/require-static-classes -- SidebarMenuButton forwards CVA variant classes to TooltipTrigger.
+						sidebarMenuButtonVariants({
+							variant: local.variant,
+							size: local.size,
+						}),
+						// oxlint-disable-next-line shadcn/require-static-classes -- SidebarMenuButton forwards caller class override to TooltipTrigger.
+						local.class,
+					)}
+					data-active={local.isActive}
+					data-sidebar="menu-button"
+					data-size={local.size}
+					type={buttonType()}
+					{...others}
+				/>
 				<TooltipContent hidden={state() !== "collapsed" || isMobile()}>
 					{local.tooltip}
 				</TooltipContent>

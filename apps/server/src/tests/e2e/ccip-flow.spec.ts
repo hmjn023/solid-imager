@@ -122,6 +122,7 @@ test(
 				exact: true,
 			}),
 		).toBeEnabled({ timeout: 90_000 });
+		await page.keyboard.press("Escape");
 		await expect(
 			page.getByRole("button", { name: "類似検索", exact: true }),
 		).toBeEnabled();

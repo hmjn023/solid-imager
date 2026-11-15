@@ -303,7 +303,8 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-							onClick={() => {
+							onClick={(event) => {
+								event.preventDefault();
 								void page().confirmDelete();
 							}}
 						>

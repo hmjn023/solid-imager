@@ -38,8 +38,8 @@ const RadioGroupItem = <T extends ValidComponent = "div">(
 			class={cn("flex items-center space-x-2", local.class)}
 			{...others}
 		>
-			<RadioGroupPrimitive.ItemInput />
-			<RadioGroupPrimitive.ItemControl class="aspect-square size-4 shrink-0 rounded-full border border-primary text-primary ring-offset-background focus:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+			<RadioGroupPrimitive.ItemInput class="peer" />
+			<RadioGroupPrimitive.ItemControl class="aspect-square size-4 shrink-0 rounded-full border border-primary text-primary ring-offset-background focus:outline-none peer-focus-visible:ring-2 peer-focus-visible:ring-ring peer-focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
 				<RadioGroupPrimitive.ItemIndicator class="flex h-full items-center justify-center">
 					<svg
 						aria-hidden="true"

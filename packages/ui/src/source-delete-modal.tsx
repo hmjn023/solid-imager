@@ -40,10 +40,12 @@ export function SourceDeleteModal(props: SourceDeleteModalProps) {
 					<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
 					<AlertDialogAction
 						class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-						onClick={() =>
-							props.sourceToDelete?.id &&
-							props.onConfirm(props.sourceToDelete.id)
-						}
+						onClick={(event) => {
+							event.preventDefault();
+							if (props.sourceToDelete?.id) {
+								props.onConfirm(props.sourceToDelete.id);
+							}
+						}}
 					>
 						{t("actions.delete")}
 					</AlertDialogAction>
