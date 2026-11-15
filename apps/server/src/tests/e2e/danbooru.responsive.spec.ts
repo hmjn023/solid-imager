@@ -1,4 +1,4 @@
-import type { Locator, Page } from "@playwright/test";
+import type { Locator, Page, Route } from "@playwright/test";
 import {
 	danbooruPostSchema,
 	danbooruSearchSchema,
@@ -35,12 +35,13 @@ function post(id: number) {
 
 async function mockDanbooru(page: Page, pageSizes = [40, 39], overlap = false) {
 	const searches: DanbooruSearch[] = [];
-	await page.route("https://cdn.donmai.us/**", (route) =>
+	const fulfillImage = (route: Route) =>
 		route.fulfill({
 			contentType: "image/svg+xml",
 			body: '<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900"><rect width="1200" height="900" fill="#dae6e8"/><path d="M0 900 480 250 1200 900" fill="#608080"/></svg>',
-		}),
-	);
+		});
+	await page.route("**/api/danbooru-thumbnail?*", fulfillImage);
+	await page.route("https://cdn.donmai.us/original/**", fulfillImage);
 	await page.route(/\/api\/rpc\/(?:viewer|danbooru)\//, async (route) => {
 		const method = new URL(route.request().url()).pathname.split("/").at(-1);
 		const { json: input } = route.request().postDataJSON();
@@ -109,6 +110,10 @@ test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", asyn
 	await expect(
 		page.getByRole("link", { name: "Danbooru #101 を開く", exact: true }),
 	).toBeVisible();
+	const thumbnail = page.locator('[data-media-id="101"] img');
+	await expect
+		.poll(() => thumbnail.evaluate((img: HTMLImageElement) => img.naturalWidth))
+		.toBeGreaterThan(0);
 	const input = page.getByRole("combobox", {
 		name: "Danbooru を検索",
 		exact: true,

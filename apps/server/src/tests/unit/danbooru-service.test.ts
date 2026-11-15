@@ -4,6 +4,8 @@ import {
 	DanbooruRequestError,
 } from "~/infrastructure/services/danbooru-service";
 
+import { serveDanbooruThumbnail } from "~/infrastructure/services/danbooru-thumbnail";
+
 function requestUrl(value: Parameters<typeof fetch>[0]): URL {
 	if (value instanceof URL) return value;
 	return new URL(typeof value === "string" ? value : value.url);
@@ -171,4 +173,38 @@ describe("Danbooru service", () => {
 			DanbooruRequestError,
 		);
 	});
+});
+
+it("relays only Danbooru thumbnails and identifies the viewer to the CDN", async () => {
+	const url = "https://cdn.donmai.us/180x180/ab/cd/abcd.jpg";
+	const fetchImage = vi
+		.fn<typeof fetch>()
+		.mockResolvedValue(
+			new Response("thumbnail", { headers: { "content-type": "image/jpeg" } }),
+		);
+	const relay = (value: string) =>
+		serveDanbooruThumbnail(
+			new Request(
+				"http://localhost/api/danbooru-thumbnail?" +
+					new URLSearchParams({ url: value }),
+			),
+			fetchImage,
+		);
+	for (const invalid of [
+		"not a url",
+		url.replace("cdn.donmai.us", "example.org"),
+		url.replace("180x180", "original"),
+	]) {
+		expect((await relay(invalid)).status).toBe(400);
+	}
+	expect(fetchImage).not.toHaveBeenCalled();
+	const response = await relay(url);
+	expect(await response.text()).toBe("thumbnail");
+	expect(response.headers.get("content-type")).toBe("image/jpeg");
+	const [src, options] = fetchImage.mock.calls[0];
+	expect(src).toBe(url);
+	expect(options?.redirect).toBe("error");
+	expect(new Headers(options?.headers).get("user-agent")).toContain(
+		"SolidImager",
+	);
 });

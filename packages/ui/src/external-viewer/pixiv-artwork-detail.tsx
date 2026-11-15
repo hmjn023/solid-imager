@@ -1,12 +1,16 @@
+import {
+	MediaAuthorsSection,
+	MediaAuthorRow,
+	MediaMetadataSection,
+	MediaTagBadge,
+} from "../media-detail-metadata";
 import { t } from "@solid-imager/i18n";
 import {
 	pixivDownloadItem,
 	type PixivArtwork,
 } from "@solid-imager/core/external-viewer";
 import { createMemo, createSignal, For, Show } from "solid-js";
-import { Badge } from "../badge";
 import { Button } from "../button";
-import { ClipboardCopy } from "../clipboard-copy";
 import {
 	MediaDetailInspector,
 	MediaDetailLayout,
@@ -84,10 +88,9 @@ export function PixivArtworkDetail(
 						sidebar={
 							<MediaDetailInspector label={t("pixivArtworkDetail.workDetails")}>
 								<Show when={post.pages.length > 1}>
-									<div class="space-y-2">
-										<h2 class="font-semibold text-sm">
-											{t("pixivArtworkDetail.pagesInThisWork")}
-										</h2>
+									<MediaMetadataSection
+										title={t("pixivArtworkDetail.pagesInThisWork")}
+									>
 										<nav
 											aria-label={t("pixivArtworkDetail.pagesInThisWork")}
 											class="flex flex-wrap items-center gap-2"
@@ -110,13 +113,10 @@ export function PixivArtworkDetail(
 												{t("pixivArtworkDetail.nextImage")}
 											</Button>
 										</nav>
-									</div>
+									</MediaMetadataSection>
 								</Show>
 								<Show when={post.isAnimation}>
-									<div class="space-y-2">
-										<h2 class="font-semibold text-sm">
-											{t("pixivArtworkDetail.ugoira")}
-										</h2>
+									<MediaMetadataSection title={t("pixivArtworkDetail.ugoira")}>
 										<Show
 											when={post.animation}
 											fallback={
@@ -134,45 +134,37 @@ export function PixivArtworkDetail(
 													: t("pixivArtworkDetail.playUgoira")}
 											</Button>
 										</Show>
-									</div>
+									</MediaMetadataSection>
 								</Show>
-								<div class="space-y-2">
-									<h2 class="font-semibold text-sm">{t("labels.authors")}</h2>
-									<a
-										class="break-words text-sm text-primary hover:underline"
-										href={`https://www.pixiv.net/users/${post.userId}`}
-										target="_blank"
-										rel="noopener noreferrer"
-									>
-										{post.author}
-									</a>
-								</div>
+								<MediaAuthorsSection>
+									<MediaAuthorRow
+										name={
+											<a
+												class="text-primary hover:underline"
+												href={`https://www.pixiv.net/users/${post.userId}`}
+												target="_blank"
+												rel="noopener noreferrer"
+											>
+												{post.author}
+											</a>
+										}
+									/>
+								</MediaAuthorsSection>
 								<Show when={post.tags.length}>
-									<div class="space-y-2">
-										<h2 class="font-semibold text-sm">
-											{t("pixivArtworkDetail.tags")}
-										</h2>
+									<MediaMetadataSection title={t("pixivArtworkDetail.tags")}>
 										<div class="flex flex-wrap gap-2">
 											<For each={post.tags}>
 												{(tag) => (
-													<Badge
-														class="max-w-full break-all"
-														variant="secondary"
-													>
-														{tag}
-														<ClipboardCopy
-															class="ml-1.5 shrink-0 p-0.5"
-															iconSize={12}
-															text={tag}
-															label={t("pixivArtworkDetail.copyValue", {
-																value0: String(tag),
-															})}
-														/>
-													</Badge>
+													<MediaTagBadge
+														name={tag}
+														copyLabel={t("pixivArtworkDetail.copyValue", {
+															value0: tag,
+														})}
+													/>
 												)}
 											</For>
 										</div>
-									</div>
+									</MediaMetadataSection>
 								</Show>
 								<MediaFileInformation
 									title={t("pixivArtworkDetail.workDetails")}

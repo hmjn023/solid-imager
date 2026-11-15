@@ -1,3 +1,9 @@
+import {
+	MediaAuthorsSection,
+	MediaAuthorRow,
+	MediaMetadataSection,
+	MediaTagBadge,
+} from "../media-detail-metadata";
 import { t } from "@solid-imager/i18n";
 import {
 	danbooruPostToDownloadItem,
@@ -7,7 +13,6 @@ import {
 } from "@solid-imager/core/danbooru";
 import { For, Show } from "solid-js";
 import { EmptyState } from "../async-state";
-import { Button } from "../button";
 import {
 	formatBytes,
 	MediaDetailInspector,
@@ -24,7 +29,6 @@ import {
 import { danbooruRatingLabel } from "./post-media";
 
 const tagGroups = [
-	["artist", t("labels.authors")],
 	["copyright", t("detail.work")],
 	["character", t("labels.characters")],
 	["general", t("pixivArtworkDetail.tags")],
@@ -81,28 +85,50 @@ export function DanbooruPostDetail(
 						}
 						sidebar={
 							<MediaDetailInspector label={t("danbooruPostDetail.postDetails")}>
+								<Show when={post.tags.artist.length}>
+									<MediaAuthorsSection>
+										<For each={post.tags.artist}>
+											{(artist) => (
+												<MediaAuthorRow
+													name={
+														<button
+															type="button"
+															class="text-left text-primary hover:underline"
+															title={t("danbooruPostDetail.searchForValue", {
+																value0: artist,
+															})}
+															onClick={() => props.onSearchTag(artist)}
+														>
+															{artist}
+														</button>
+													}
+												/>
+											)}
+										</For>
+									</MediaAuthorsSection>
+								</Show>
 								<For each={tagGroups}>
 									{([key, label]) => (
 										<Show when={post.tags[key].length}>
-											<div class="space-y-2">
-												<h2 class="font-semibold text-sm">{label}</h2>
-												<div class="flex flex-wrap gap-1">
+											<MediaMetadataSection title={label}>
+												<div class="flex flex-wrap gap-2">
 													<For each={post.tags[key]}>
 														{(tag) => (
-															<Button
-																variant="secondary"
-																class="h-auto min-h-11 max-w-full whitespace-normal break-all px-2 py-1 text-left text-xs md:min-h-9"
-																title={t("danbooruPostDetail.searchForValue", {
-																	value0: String(tag),
-																})}
-																onClick={() => props.onSearchTag(tag)}
-															>
-																{tag}
-															</Button>
+															<MediaTagBadge
+																name={tag}
+																variant={
+																	key === "general" ? "default" : "secondary"
+																}
+																searchLabel={t(
+																	"danbooruPostDetail.searchForValue",
+																	{ value0: tag },
+																)}
+																onSearch={() => props.onSearchTag(tag)}
+															/>
 														)}
 													</For>
 												</div>
-											</div>
+											</MediaMetadataSection>
 										</Show>
 									)}
 								</For>

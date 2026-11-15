@@ -11,7 +11,15 @@ export function danbooruRatingLabel(rating: string): string {
 }
 
 export function pixivImageHref(base: string, url: string): string {
-	const proxy = new URL("/api/pixiv-image", base);
+	return viewerImageHref(base, "/api/pixiv-image", url);
+}
+
+export function viewerImageHref(
+	base: string,
+	path: "/api/pixiv-image" | "/api/danbooru-thumbnail",
+	url: string,
+) {
+	const proxy = new URL(path, base);
 	proxy.searchParams.set("url", url);
 	return proxy.href;
 }
