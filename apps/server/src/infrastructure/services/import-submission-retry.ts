@@ -1,7 +1,11 @@
 import path from "node:path";
 import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
-import { importWorkOwner, type Job } from "@solid-imager/core/jobs";
+import {
+	importWorkOwner,
+	readImportBatch,
+	type Job,
+} from "@solid-imager/core/jobs";
 import {
 	uploadMediaRequestSchema,
 	type UploadMediaRequest,
@@ -37,6 +41,21 @@ const retryPayload = z.object({
 	uploadInput: uploadInputSchema.optional(),
 });
 const inputKey = (id: string, attempt: number) => `${id}-${attempt}`;
+
+export async function isUploadBatchCancelled(sourceId: string, id: string) {
+	const job = await JobRepository.findById(id);
+	if (
+		job?.mediaSourceId !== sourceId ||
+		job.type !== "import_upload" ||
+		job.status !== "cancelled"
+	)
+		return false;
+	const batch = readImportBatch(job);
+	return !!(
+		batch &&
+		(await JobRepository.findById(batch.importBatchId))?.cancelRequestedAt
+	);
+}
 
 /** Keep a disk-backed input until this upload is committed or transfer storage expires. */
 export async function submitBatchUpload(

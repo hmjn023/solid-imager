@@ -7,6 +7,7 @@ import {
 	canRetryJob,
 	batchParentJobTypes,
 	jobStatusSchema,
+	readImportBatch,
 	type Job,
 } from "@solid-imager/core/jobs";
 import type { JobEvent } from "@solid-imager/core/events";
@@ -17,7 +18,7 @@ import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { notifyJob } from "~/infrastructure/events/state-notifications";
-import { logger } from "~/infrastructure/logger";
+import { notifyBatchState } from "~/infrastructure/events/batch-state";
 import {
 	JobRepository,
 	MediaRepository,
@@ -308,19 +309,10 @@ export const jobsRouter = os.router({
 			},
 		);
 		if (cancelled.parentId && cancelled.status === "cancelled") {
-			try {
-				const parent = await JobRepository.findById(cancelled.parentId);
-				if (parent?.status === "failed")
-					notifyJob("job-failed", {
-						jobId: parent.id,
-						error: "A batch job was cancelled",
-					});
-			} catch (error) {
-				logger.error(
-					{ err: error, jobId: cancelled.parentId },
-					"Failed to notify committed batch cancellation",
-				);
-			}
+			await notifyBatchState(
+				JobRepository,
+				readImportBatch(cancelled)?.importBatchId ?? cancelled.parentId,
+			);
 		}
 		return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
 	}),

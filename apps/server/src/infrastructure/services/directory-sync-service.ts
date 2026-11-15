@@ -373,13 +373,13 @@ export const DirectorySyncService = {
 					if (!collecting && last && page.length === 1) {
 						failures += await processAdditions(mediaSourceId, page, result);
 					} else {
-						collecting = true;
 						const { reservations } = await reserveImportFiles(
 							mediaSourceId,
 							page,
 							"import_register",
-							scanId,
+							{ id: scanId, firstPage: !collecting },
 						);
+						collecting = true;
 						failures += await processAdditions(
 							mediaSourceId,
 							page,

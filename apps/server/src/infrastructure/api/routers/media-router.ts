@@ -1,5 +1,8 @@
 import { reserveImportFiles } from "~/infrastructure/services/import-submission";
-import { submitBatchUpload } from "~/infrastructure/services/import-submission-retry";
+import {
+	isUploadBatchCancelled,
+	submitBatchUpload,
+} from "~/infrastructure/services/import-submission-retry";
 import { implement, ORPCError } from "@orpc/server";
 import { mediaContract } from "@solid-imager/core/contract";
 import type { MediaPreferencesPatch } from "@solid-imager/core/media";
@@ -241,7 +244,7 @@ export const mediaRouter = os.router({
 	reserveUploads: os.reserveUploads.handler(({ input }) =>
 		reserveImportFiles(input.sourceId, input.filenames, "import_upload"),
 	),
-	upload: os.upload.handler(async ({ input }) => {
+	upload: os.upload.handler(async ({ input, errors }) => {
 		const options = {
 			filename: input.filename,
 			description: input.description,
@@ -249,14 +252,20 @@ export const mediaRouter = os.router({
 			overwrite: input.overwrite === "true",
 			autoIncrement: input.autoIncrement === "true",
 		};
-		return input.reservationId
-			? submitBatchUpload(
-					input.sourceId,
-					input.reservationId,
-					input.file,
-					options,
-				)
-			: MediaService.uploadMedia(input.sourceId, input.file, options);
+		if (!input.reservationId)
+			return MediaService.uploadMedia(input.sourceId, input.file, options);
+		try {
+			return await submitBatchUpload(
+				input.sourceId,
+				input.reservationId,
+				input.file,
+				options,
+			);
+		} catch (error) {
+			if (await isUploadBatchCancelled(input.sourceId, input.reservationId))
+				throw errors.BATCH_CANCELLED();
+			throw error;
+		}
 	}),
 
 	/**

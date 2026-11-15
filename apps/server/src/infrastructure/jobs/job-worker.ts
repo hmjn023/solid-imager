@@ -159,8 +159,7 @@ export class JobWorker {
 
 		try {
 			try {
-				if (this.offloading) await this.offloading;
-				await this.pollAiStage();
+				if (!this.offloading) await this.pollAiStage();
 			} catch (error) {
 				logger.error({ err: error }, "Failed to advance AI job stage");
 			}
@@ -271,19 +270,28 @@ export class JobWorker {
 				}
 			}
 			if (this.needsOffload) {
-				await this.releaseStage();
+				void this.releaseStage().then(
+					() => this.requestPoll(),
+					(err) => logger.error({ err }, "Failed to offload AI job stage"),
+				);
+				return;
 			}
-			this.stageStartedAt = undefined;
-			this.stageClaims = 0;
-			this.admittedLateSingle = false;
-			this.stageIndex = (this.stageIndex + 1) % importAiStages.length;
+			this.advanceStage();
 		}
+	}
+
+	private advanceStage() {
+		this.stageStartedAt = undefined;
+		this.stageClaims = 0;
+		this.admittedLateSingle = false;
+		this.stageIndex = (this.stageIndex + 1) % importAiStages.length;
 	}
 
 	private releaseStage(): Promise<void> {
 		this.offloading ??= this.offload()
 			.then(() => {
 				this.needsOffload = false;
+				this.advanceStage();
 			})
 			.finally(() => {
 				this.offloading = undefined;

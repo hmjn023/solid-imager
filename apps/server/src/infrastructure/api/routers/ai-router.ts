@@ -82,8 +82,7 @@ async function cropDetection(
 	const w = Math.round(x2 - x1);
 	const h = Math.round(y2 - y1);
 
-	let cropBuffer: Buffer;
-	let _format: string;
+	let imageBase64: string;
 
 	if (transparent) {
 		const cropPath = path.join(
@@ -100,24 +99,21 @@ async function cropDetection(
 			.png()
 			.toFile(cropPath);
 		try {
-			cropBuffer = Buffer.from(
-				await inferenceLifecycle.run("segmentation", async () =>
-					nativeInferenceProcess.call(
-						"segmentRgbaWithIsnetis",
-						cropPath,
-						undefined,
-						inferenceOptions,
-					),
+			imageBase64 = await inferenceLifecycle.run("segmentation", async () =>
+				nativeInferenceProcess.call(
+					"segmentPngBase64",
+					cropPath,
+					undefined,
+					inferenceOptions,
 				),
 			);
-			_format = "png";
 		} finally {
 			await Bun.file(cropPath)
 				.delete()
 				.catch(() => {});
 		}
 	} else {
-		cropBuffer = await sharp(imagePath)
+		const cropBuffer = await sharp(imagePath)
 			.extract({
 				left: Math.round(x1),
 				top: Math.round(y1),
@@ -126,7 +122,7 @@ async function cropDetection(
 			})
 			.webp()
 			.toBuffer();
-		_format = "webp";
+		imageBase64 = cropBuffer.toString("base64");
 	}
 
 	return {
@@ -134,7 +130,7 @@ async function cropDetection(
 		bbox: { x1, y1, x2, y2 },
 		label: det.label,
 		score: det.score,
-		imageBase64: cropBuffer.toString("base64"),
+		imageBase64,
 		width: w,
 		height: h,
 		format: transparent ? ("png" as const) : ("webp" as const),
@@ -148,6 +144,7 @@ function notifyBatchQueued(jobId: string): void {
 	try {
 		RealtimeEventBus.publishJob("job-progress", {
 			jobId,
+			created: true,
 			processed: 0,
 			total: 0,
 		});
@@ -213,6 +210,7 @@ export const aiRouter = os.router({
 			const job = await queueEmbeddingBatch(input);
 			notifyJob("job-progress", {
 				jobId: job.id,
+				created: true,
 				processed: 0,
 				total: job.total,
 			});

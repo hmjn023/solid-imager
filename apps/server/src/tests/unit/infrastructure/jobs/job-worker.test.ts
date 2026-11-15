@@ -284,6 +284,39 @@ describe("JobWorker", () => {
 		expect(order.indexOf("late-single")).toBe(16);
 		expect(order.slice(-3)).toEqual(["offload", "embedding", "offload"]);
 	});
+	it("processes a new single download while the next AI stage waits for offload", async () => {
+		const tagging = [{ id: "tag", type: "auto_tagging" } as Job];
+		const embeddings = [
+			{ id: "embed", type: "extract_embedding_vector" } as Job,
+		];
+		const downloads: Job[] = [];
+		vi.mocked(jobRepo.claimPending).mockImplementation(async (limit, opts) => {
+			if (opts?.includeTypes?.includes("auto_tagging"))
+				return tagging.splice(0, limit);
+			if (opts?.includeTypes?.includes("extract_embedding_vector"))
+				return embeddings.splice(0, limit);
+			return opts?.excludeTypes ? downloads.splice(0, limit) : [];
+		});
+		const barrier = Promise.withResolvers<void>();
+		const offload = vi
+			.fn()
+			.mockReturnValueOnce(barrier.promise)
+			.mockResolvedValue(undefined);
+		worker = new JobWorker(jobRepo, processor, offload);
+		worker.start();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(offload).toHaveBeenCalledOnce();
+		downloads.push({ id: "single", type: "downloadImage" } as Job);
+		await vi.advanceTimersByTimeAsync(1000);
+		expect(processor).toHaveBeenCalledWith(
+			expect.objectContaining({ id: "single" }),
+		);
+		expect(embeddings).toHaveLength(1);
+		barrier.resolve();
+		await vi.advanceTimersByTimeAsync(100);
+		expect(embeddings).toHaveLength(0);
+	});
+
 	it("should run AI and normal jobs concurrently up to their respective limits", async () => {
 		processor = vi.fn(() => new Promise<void>(() => {}));
 		worker = new JobWorker(jobRepo, processor);

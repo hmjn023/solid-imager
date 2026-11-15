@@ -36,7 +36,7 @@ export function useJobsQueryEvents(openStream: JobEventStreamFactory) {
 		}
 	}
 	useJobEvents(openStream, (event) => {
-		if (event.event === "job-progress") {
+		if (event.event === "job-progress" && !event.data.created) {
 			updateCachedJobProgress(client, event.data);
 			if (event.data.jobId)
 				void client.invalidateQueries(

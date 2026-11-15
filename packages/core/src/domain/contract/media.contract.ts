@@ -262,6 +262,9 @@ export const mediaContract = {
 		)
 		.output(z.object({ jobId: z.uuid(), reservations: z.array(z.uuid()) })),
 	upload: oc
+		.errors({
+			BATCH_CANCELLED: { status: 410, message: "Upload batch cancelled" },
+		})
 		.meta(
 			openapi({
 				tags: ["Media"],

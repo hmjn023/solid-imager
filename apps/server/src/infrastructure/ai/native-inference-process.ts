@@ -15,7 +15,10 @@ lines.on("close", () => process.exit(0));
 lines.on("line", async line => {
 	const {id,method,args} = JSON.parse(line);
 	try {
-		const value = await native[method](...args);
+		// Keep PNG bytes out of the JSON channel's per-byte number arrays.
+		const value = method === "segmentPngBase64"
+			? Buffer.from(await native.segmentRgbaWithIsnetis(...args)).toString("base64")
+			: await native[method](...args);
 		process.stdout.write(JSON.stringify({id,value}) + "\\n");
 	} catch (error) {
 		process.stdout.write(JSON.stringify({id,error:error instanceof Error ? error.message : String(error)}) + "\\n");
@@ -35,11 +38,14 @@ type Method =
 	| "ccipDistance"
 	| "ccipDistances"
 	| "detectPerson"
-	| "segmentRgbaWithIsnetis"
+	| "segmentPngBase64"
 	| "embeddinggemma2TextEncode"
 	| "embeddinggemma2ImageEncode"
 	| "offloadInferenceSessions";
 type NativeMethods = DghsImgutilsModule & {
+	segmentPngBase64: (
+		...args: Parameters<DghsImgutilsModule["segmentRgbaWithIsnetis"]>
+	) => string;
 	ccipDistances: (feature: number[], candidates: number[][]) => number[];
 };
 
@@ -118,7 +124,7 @@ export class NativeInferenceProcess {
 					if (error) request.reject(error);
 				},
 			);
-			// The isolated process invokes the corresponding function in this same installed native module.
+			// The child serializes the result for the requested method before replying with this ID.
 			return (await request.promise) as Awaited<ReturnType<NativeMethods[K]>>;
 		} finally {
 			clearTimeout(timeout);

@@ -3,6 +3,8 @@ import { inferenceLifecycle } from "./inference-lifecycle";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createClient } from "@solid-imager/client";
+import { ORPCError } from "@orpc/server";
+import { logger } from "~/infrastructure/logger";
 import type { AiConfig } from "@solid-imager/core/config";
 import type { AppContract } from "@solid-imager/core/contract";
 import type { IAiClient } from "@solid-imager/core/ports";
@@ -88,8 +90,15 @@ export class RustAiClient implements IAiClient {
 	}
 
 	async offload(): Promise<void> {
-		if (this.client) await this.client.ai.offload({});
-		else await inferenceLifecycle.offload();
+		if (!this.client) return inferenceLifecycle.offload();
+		try {
+			await this.client.ai.offload({});
+		} catch (error) {
+			// Older remote servers can still run inference during a rolling upgrade.
+			if (!(error instanceof ORPCError && error.code === "NOT_FOUND"))
+				throw error;
+			logger.warn("Remote AI server does not support model offload");
+		}
 	}
 
 	getBaseUrl(): string {

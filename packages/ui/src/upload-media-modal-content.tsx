@@ -1,4 +1,5 @@
-import { asyncPool } from "@solid-imager/core/utils";
+import { asyncPool, isRecord } from "@solid-imager/core/utils";
+import { t } from "@solid-imager/i18n";
 import {
 	UploadMediaModalContent as SharedUploadMediaModalContent,
 	type UploadMediaModalSubmitOptions,
@@ -25,9 +26,25 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			overwrite: options.overwrite,
 			autoIncrement: options.autoIncrement,
 		}));
-		const results = await asyncPool(uploads, 3, (upload) =>
-			props.onUpload(upload),
-		);
+		let cancelled = false;
+		const results = await asyncPool(uploads, 3, async (upload) => {
+			if (cancelled) return;
+			try {
+				await props.onUpload(upload);
+			} catch (error) {
+				if (
+					upload.reservationId &&
+					isRecord(error) &&
+					error.code === "BATCH_CANCELLED"
+				) {
+					cancelled = true;
+					return;
+				}
+				throw error;
+			}
+		});
+		if (cancelled)
+			throw new Error(t("managerBatchState.batchOperationCancelled"));
 		const failure = results.find((result) => result.status === "rejected");
 		if (failure) throw failure.reason;
 	};

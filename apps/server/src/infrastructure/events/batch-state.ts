@@ -8,6 +8,7 @@ import { notifyJob } from "./state-notifications";
 export async function notifyBatchState(
 	repo: Pick<IJobRepository, "findById">,
 	id: string,
+	options: { created?: boolean } = {},
 ) {
 	try {
 		const job = await repo.findById(id);
@@ -23,6 +24,7 @@ export async function notifyBatchState(
 			if (progress.success && progress.data)
 				notifyJob("job-progress", {
 					jobId: id,
+					...options,
 					processed: progress.data.processed,
 					total: progress.data.total,
 					failed: progress.data.failed,

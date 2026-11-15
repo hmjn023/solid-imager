@@ -6,6 +6,8 @@ import { and, count, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
+import { JobRepository } from "~/infrastructure/db/repositories";
+import { notifyBatchState } from "~/infrastructure/events/batch-state";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
 	processImportRequests,
@@ -169,6 +171,8 @@ export const importsRouter = os.router({
 			input.jobIds,
 			input.targetSourceId,
 		);
+		if (batchId)
+			await notifyBatchState(JobRepository, batchId, { created: true });
 		try {
 			if (processedCount > 0)
 				RealtimeEventBus.publishImport("import-request:processed", {

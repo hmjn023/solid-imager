@@ -19,6 +19,12 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 		{ length: 26 },
 		(_, i) => `batch-target-${i}.png`,
 	);
+	const subscribed = page.waitForRequest((request) =>
+		request.url().endsWith("/jobs/events"),
+	);
+	await page.goto("/jobs");
+	await waitForAppHydration(page);
+	await subscribed;
 	const response = await page.request.post("/api/rpc/media/reserveUploads", {
 		data: { json: { sourceId: E2E_SOURCE_ID, filenames } },
 	});
@@ -26,8 +32,6 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 	const {
 		json: { jobId },
 	} = await response.json();
-	await page.goto("/jobs");
-	await waitForAppHydration(page);
 	await page
 		.getByRole("button", { name: new RegExp(jobId) })
 		.filter({ visible: true })

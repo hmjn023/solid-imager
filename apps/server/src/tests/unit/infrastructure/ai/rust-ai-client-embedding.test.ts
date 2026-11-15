@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
+import { ORPCError } from "@orpc/server";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 
 const mocks = vi.hoisted(() => ({
@@ -78,6 +79,21 @@ describe("RustAiClient shared embedding configuration", () => {
 		expect(mocks.encode).toHaveBeenLastCalledWith("image", "/image.png", {
 			provider: "cpu",
 		});
+	});
+
+	it("allows an older remote server to keep processing but propagates transient offload failures", async () => {
+		const offload = vi
+			.fn()
+			.mockRejectedValueOnce(new ORPCError("NOT_FOUND"))
+			.mockRejectedValueOnce(new ORPCError("SERVICE_UNAVAILABLE"))
+			.mockResolvedValueOnce({});
+		mocks.createClient.mockReturnValue({ ai: { offload } });
+		const client = new RustAiClient({ baseUrl: "http://ai.example" });
+		await expect(client.offload()).resolves.toBeUndefined();
+		await expect(client.offload()).rejects.toMatchObject({
+			code: "SERVICE_UNAVAILABLE",
+		});
+		await expect(client.offload()).resolves.toBeUndefined();
 	});
 
 	it("uses the shared remote client for both embeddings and switches back to local inference", async () => {

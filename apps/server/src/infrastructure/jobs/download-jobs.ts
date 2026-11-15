@@ -3,6 +3,7 @@
  */
 
 import fs from "node:fs/promises";
+import { constants } from "node:fs";
 import { createHash } from "node:crypto";
 import type { Transaction } from "@solid-imager/core/ports";
 import { getExecutor } from "~/infrastructure/db/executor";
@@ -252,12 +253,13 @@ function createYtDlpError(error: unknown): Error {
 async function downloadWithYtDlp(
 	url: string,
 	outputDir: string,
+	jobId: string,
 	cookies?: Cookie[],
 	userAgent?: string,
 ): Promise<{ filePath: string; metadata: YtDlpOutput }[]> {
 	await fs.mkdir(outputDir, { recursive: true });
 
-	const template = "%(id)s.%(ext)s";
+	const template = `.${jobId}-%(id)s.%(ext)s`;
 	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
 
 	try {
@@ -437,6 +439,7 @@ async function handleYtDlpDownload(
 			const results = await downloadWithYtDlp(
 				item.targetUrl,
 				basePath,
+				job.id,
 				item.cookies,
 				item.userAgent,
 			);
@@ -456,16 +459,31 @@ async function handleYtDlpDownload(
 					return { ...res, targetPath };
 				}),
 			);
+		}
+		const checkpointOutputs = async (nextOutput: number) => {
 			if (owner)
 				await JobRepository.update(
 					job.id,
-					{ payload: { ...payload, downloadOutputs: outputs } },
+					{ payload: { ...payload, downloadOutputs: outputs, nextOutput } },
 					owner.attempt,
 				);
-		}
+		};
+		if (!checkpoint.downloadOutputs) await checkpointOutputs(0);
 		for (let i = checkpoint.nextOutput; i < outputs.length; i++) {
-			if (owner && (await JobRepository.isCancellationRequested(job.id)))
+			if (owner && (await JobRepository.isCancellationRequested(job.id))) {
+				for (const { filePath } of outputs.slice(i)) {
+					if (
+						path.dirname(filePath) === path.resolve(basePath) &&
+						path.basename(filePath).startsWith(`.${job.id}-`)
+					) {
+						await fs.rm(filePath, { force: true });
+					}
+				}
 				return;
+			}
+			await publishYtDlpOutput(outputs[i], !!checkpoint.downloadOutputs, () =>
+				checkpointOutputs(i),
+			);
 			await registerYtDlpOutput(
 				outputs[i],
 				item,
@@ -473,18 +491,7 @@ async function handleYtDlpDownload(
 				basePath,
 				owner,
 			);
-			if (owner)
-				await JobRepository.update(
-					job.id,
-					{
-						payload: {
-							...payload,
-							downloadOutputs: outputs,
-							nextOutput: i + 1,
-						},
-					},
-					owner.attempt,
-				);
+			await checkpointOutputs(i + 1);
 		}
 	} catch (error) {
 		logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
@@ -498,6 +505,55 @@ async function handleYtDlpDownload(
 	}
 }
 
+/** Publish without replacing another import between choosing a name and registering it. */
+async function publishYtDlpOutput(
+	output: z.infer<typeof downloadOutputsSchema>[number],
+	resuming: boolean,
+	checkpoint: () => Promise<void>,
+) {
+	const { filePath } = output;
+	const dir = path.dirname(output.targetPath);
+	const name = path.basename(output.targetPath);
+	while (filePath !== output.targetPath) {
+		try {
+			try {
+				await fs.link(filePath, output.targetPath);
+			} catch (err) {
+				if (
+					!isRecord(err) ||
+					!["ENOTSUP", "EPERM", "EXDEV", "EOPNOTSUPP"].includes(
+						String(err.code),
+					)
+				)
+					throw err;
+				await fs.copyFile(filePath, output.targetPath, constants.COPYFILE_EXCL);
+			}
+		} catch (err) {
+			if (resuming && isRecord(err) && err.code === "ENOENT") {
+				await fs.access(output.targetPath);
+				return;
+			}
+			if (!isRecord(err) || err.code !== "EEXIST") throw err;
+			const [from, to] = await Promise.all([
+				fs.stat(filePath),
+				fs.stat(output.targetPath),
+			]);
+			// A worker can exit after linking and before removing its temporary name.
+			if (!from.ino || from.dev !== to.dev || from.ino !== to.ino) {
+				output.targetPath = await _resolveFinalPathWithAvoidance(
+					dir,
+					name,
+					filePath,
+				);
+				await checkpoint();
+				continue;
+			}
+		}
+		await fs.unlink(filePath);
+		return;
+	}
+}
+
 async function registerYtDlpOutput(
 	output: z.infer<typeof downloadOutputsSchema>[number],
 	item: DownloadItem,
@@ -505,26 +561,7 @@ async function registerYtDlpOutput(
 	basePath: string,
 	owner?: ImportWorkOwner,
 ) {
-	const { metadata, targetPath } = output;
-	let filePath = output.filePath;
-	if (filePath !== targetPath) {
-		try {
-			await fs.rename(filePath, targetPath);
-			filePath = targetPath;
-		} catch (err) {
-			// A retry may reach this point after the earlier attempt already renamed the file.
-			if (owner && isRecord(err) && err.code === "ENOENT") {
-				await fs.access(targetPath);
-				filePath = targetPath;
-			} else {
-				logger.warn(
-					{ err, filePath, targetPath },
-					"[DownloadJob] Failed to rename yt-dlp output",
-				);
-			}
-		}
-	}
-
+	const { metadata, targetPath: filePath } = output;
 	// Calculate relative path
 	const relativePath = path.relative(basePath, filePath);
 

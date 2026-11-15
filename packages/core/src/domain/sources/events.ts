@@ -77,6 +77,7 @@ export type SourceSyncStatusEvent = z.infer<typeof sourceSyncStatusEventSchema>;
 /** Progress counts for a job, with an optional job identifier. */
 export const jobProgressEventSchema = z.object({
 	jobId: z.string().optional(),
+	created: z.boolean().optional(),
 	processed: z.number(),
 	total: z.number(),
 	failed: z.number().int().nonnegative().optional(),

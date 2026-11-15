@@ -5,6 +5,7 @@ import {
 } from "@solid-imager/core/search";
 import { importWorkOwner, type IJobRepository } from "@solid-imager/core/jobs";
 import { listBatchTargets } from "~/infrastructure/services/job-batch-targets";
+import { runImportSubmission } from "~/infrastructure/services/import-submission";
 import { createImportBatch, createRepositories } from "@solid-imager/db";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
@@ -25,6 +26,11 @@ const mocks = vi.hoisted(() => ({
 vi.mock("~/infrastructure/db", () => ({
 	get db() {
 		return mocks.database;
+	},
+}));
+vi.mock("~/infrastructure/db/repositories", () => ({
+	get JobRepository() {
+		return mocks.repository;
 	},
 }));
 vi.mock("~/infrastructure/service-registry", () => ({
@@ -170,6 +176,27 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			status: "cancelled",
 			payload: { failed: 0, cancelled: 2, total: 2 },
 		});
+	});
+	it("publishes the parent's cancellation when the final upload finishes after cancel", async () => {
+		const { database } = await setup();
+		const repo: IJobRepository = mocks.repository;
+		const id = crypto.randomUUID();
+		const batch = await database.transaction((tx) =>
+			createImportBatch(tx, sourceId, [
+				{ label: "upload.png", work: { type: "import_upload", id } },
+			]),
+		);
+		await expect(
+			runImportSubmission(sourceId, id, "import_upload", async () => {
+				await repo.requestCancellation(batch.id);
+				return { success: true };
+			}),
+		).rejects.toThrow("no longer active");
+		expect((await repo.findById(batch.id))?.status).toBe("cancelled");
+		expect(mocks.publishJob).toHaveBeenCalledWith(
+			"job-cancelled",
+			expect.objectContaining({ jobId: batch.id }),
+		);
 	});
 	it("binds multiple download outputs once even when registration is replayed", async () => {
 		const { database } = await setup();

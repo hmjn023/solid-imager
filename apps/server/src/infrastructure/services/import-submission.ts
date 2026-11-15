@@ -17,7 +17,7 @@ export async function reserveImportFiles(
 	sourceId: string,
 	labels: string[],
 	type: SubmissionType,
-	scanId?: string,
+	scan?: { id: string; firstPage: boolean },
 ) {
 	const reservations = labels.map(() => crypto.randomUUID());
 	const batch = await DrizzleTransactionManager.transaction((tx) =>
@@ -32,12 +32,13 @@ export async function reserveImportFiles(
 					payload: type === "import_register" ? { relativePath: label } : {},
 				},
 			})),
-			scanId,
+			scan?.id,
 		),
 	);
-	if (!scanId)
+	if (!scan || scan.firstPage)
 		notifyJob("job-progress", {
 			jobId: batch.id,
+			created: true,
 			processed: 0,
 			total: labels.length,
 		});
@@ -119,9 +120,9 @@ export async function runImportSubmission<T>(
 				? { skipped: true }
 				: null,
 	});
+	if (status) await notifyBatchState(JobRepository, context.importBatchId);
 	if (status !== "completed")
 		throw new Error("Import reservation no longer active");
-	await notifyBatchState(JobRepository, context.importBatchId);
 	return result;
 }
 
