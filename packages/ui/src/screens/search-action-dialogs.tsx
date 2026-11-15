@@ -65,7 +65,7 @@ export function SearchActionDialogs(props: {
 							{t("actions.cancel")}
 						</AlertDialogCancel>
 						<AlertDialogAction
-							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							variant="destructive"
 							disabled={actions.isDeleteSubmitting()}
 							onClick={() => {
 								void actions.confirmDelete();

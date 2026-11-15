@@ -347,23 +347,27 @@ function JobsTable(props: {
 									</div>
 								</TableCell>
 								<TableCell class="px-2 py-2">
-									<button
+									<Button
 										aria-label={t("jobsScreen.valueJobValue", {
 											value0: String(jobTypeLabel(job.type)),
 											value1: String(job.id),
 										})}
 										aria-pressed={props.selectedJobId === job.id}
-										class="w-full rounded px-2 py-2 text-left font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										variant="ghost"
+										class="h-auto w-full flex-col items-start gap-0 px-2 py-2 text-left"
 										onClick={() => props.onSelect(job)}
 										type="button"
 									>
-										<div class="truncate" title={jobTypeLabel(job.type)}>
+										<span
+											class="max-w-full truncate"
+											title={jobTypeLabel(job.type)}
+										>
 											{jobTypeLabel(job.type)}
-										</div>
-										<div class="mt-0.5 font-normal text-muted-foreground text-xs">
+										</span>
+										<span class="mt-0.5 font-normal text-muted-foreground text-xs">
 											{job.id.slice(0, 8)}
-										</div>
-									</button>
+										</span>
+									</Button>
 								</TableCell>
 								<TableCell class="px-4 py-3 whitespace-nowrap">
 									<JobStatusBadge status={job.status} />
@@ -676,9 +680,10 @@ function JobsInspector(props: {
 
 						<Show when={job().artifact}>
 							{(artifact) => (
-								<button
+								<Button
 									aria-busy={isDownloading()}
-									class="mt-4 flex w-full items-center gap-2 rounded-md border border-border px-3 py-2 text-left text-sm text-primary hover:bg-muted"
+									variant="outline"
+									class="mt-4 h-auto w-full justify-start px-3 py-2 text-primary"
 									disabled={isDownloading()}
 									onClick={() => void download()}
 									type="button"
@@ -691,7 +696,7 @@ function JobsInspector(props: {
 													value0: String(artifact().fileName),
 												})}
 									</span>
-								</button>
+								</Button>
 							)}
 						</Show>
 

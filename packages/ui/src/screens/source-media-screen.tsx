@@ -308,7 +308,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							{t("actions.cancel")}
 						</AlertDialogCancel>
 						<AlertDialogAction
-							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							variant="destructive"
 							disabled={page().isDeletingMedia()}
 							onClick={(event) => {
 								event.preventDefault();
