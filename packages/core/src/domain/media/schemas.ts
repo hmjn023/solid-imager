@@ -188,7 +188,7 @@ export type RelatedMediaReason = z.infer<typeof relatedMediaReasonSchema>;
 
 /** Limit applies separately to recommendations and each category. */
 export const relatedMediaRequestSchema = mediaLocationSchema.extend({
-	limit: z.number().int().min(1).max(24).default(12),
+	limit: z.number().int().min(1).max(48).default(12),
 	seed: z.string().min(1).max(128).default("default"),
 });
 export type RelatedMediaRequest = z.infer<typeof relatedMediaRequestSchema>;

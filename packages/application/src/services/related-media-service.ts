@@ -75,7 +75,7 @@ export class RelatedMediaService {
 		}
 
 		// Fetch more than the displayed count so refresh can change membership too.
-		const candidateLimit = Math.max(96, limit * 8);
+		const candidateLimit = Math.min(192, Math.max(96, limit * 8));
 		const [similar, characters, ips, tags] = await Promise.all([
 			this.findSimilar(anchor, candidateLimit),
 			this.deps.mediaRepository.findRelatedByRelation(
