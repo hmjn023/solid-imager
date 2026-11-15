@@ -275,17 +275,18 @@ export function EntityTablePanel(props: {
 														class="h-auto p-0 font-normal text-foreground"
 														scope="row"
 													>
-														<button
+														<Button
 															aria-label={item.name}
 															aria-pressed={selected()}
-															class="block min-h-12 w-full px-3 py-2 text-left font-medium text-foreground outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+															variant="ghost"
+															class="min-h-12 w-full justify-start px-3 py-2 text-left focus-visible:ring-inset"
 															onClick={() => props.onSelect(item.id)}
 															type="button"
 														>
 															<span class="block max-w-52 truncate">
 																{item.name}
 															</span>
-														</button>
+														</Button>
 													</TableHead>
 													<TableCell class="max-w-dialog-reading px-3 py-2 text-xs text-muted-foreground">
 														<span class="line-clamp-2">

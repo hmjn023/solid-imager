@@ -1,5 +1,4 @@
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
-import * as ToggleButtonPrimitive from "@kobalte/core/toggle-button";
 import type { VariantProps } from "class-variance-authority";
 import type { JSX, ValidComponent } from "solid-js";
 import {
@@ -10,7 +9,7 @@ import {
 	useContext,
 } from "solid-js";
 
-import { toggleVariants } from "./toggle";
+import { Toggle, type ToggleProps, type toggleVariants } from "./toggle";
 import { cn } from "./utils/cn";
 
 type ToggleGroupOrientation = "horizontal" | "vertical";
@@ -155,6 +154,7 @@ type ToggleGroupRootProps = ToggleGroupSelectionProps &
 		disallowEmptySelection?: boolean;
 	};
 
+// The registry root consumes Escape to clear selection. Let parent dialogs handle it.
 const ToggleGroup = (props: ToggleGroupRootProps) => {
 	const [local, others] = splitProps(props, [
 		"class",
@@ -254,14 +254,12 @@ const ToggleGroup = (props: ToggleGroupRootProps) => {
 };
 
 type ToggleGroupItemProps<T extends ValidComponent = "button"> = Omit<
-	ToggleButtonPrimitive.ToggleButtonRootProps<T>,
+	ToggleProps<T>,
 	"pressed" | "defaultPressed" | "onChange"
-> &
-	VariantProps<typeof toggleVariants> & {
-		value: string;
-		class?: string | undefined;
-		onKeyDown?: JSX.EventHandlerUnion<HTMLElement, KeyboardEvent>;
-	};
+> & {
+	value: string;
+	onKeyDown?: JSX.EventHandlerUnion<HTMLElement, KeyboardEvent>;
+};
 
 const ToggleGroupItem = <T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, ToggleGroupItemProps<T>>,
@@ -303,18 +301,16 @@ const ToggleGroupItem = <T extends ValidComponent = "button">(
 	};
 
 	return (
-		<ToggleButtonPrimitive.Root
+		<Toggle
 			data-toggle-group-item=""
 			data-orientation={context.orientation}
 			pressed={context.isSelected(local.value)}
 			disabled={context.disabled || local.disabled}
 			onChange={(pressed) => context.onItemToggle(local.value, pressed)}
 			onKeyDown={handleKeyDown}
+			size={context.size || local.size}
+			variant={context.variant || local.variant}
 			class={cn(
-				toggleVariants({
-					size: context.size || local.size,
-					variant: context.variant || local.variant,
-				}),
 				"hover:bg-muted hover:text-muted-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground",
 				local.class,
 			)}

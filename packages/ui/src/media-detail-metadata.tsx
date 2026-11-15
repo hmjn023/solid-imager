@@ -1,3 +1,4 @@
+import { Button } from "./button";
 import { t } from "@solid-imager/i18n";
 import type { JSX, ParentProps } from "solid-js";
 import { Show } from "solid-js";
@@ -60,14 +61,15 @@ export function MediaTagBadge(
 			title={props.title}
 		>
 			<Show when={props.onSearch} fallback={props.name}>
-				<button
+				<Button
 					type="button"
-					class="min-w-0 break-all text-left hover:underline"
+					variant="link"
+					class="h-auto min-w-0 whitespace-normal break-all p-0 text-left text-inherit font-semibold text-xs"
 					title={props.searchLabel}
 					onClick={() => props.onSearch?.()}
 				>
 					{props.name}
-				</button>
+				</Button>
 			</Show>
 			<ClipboardCopy
 				class="ml-1.5 shrink-0 p-0.5"

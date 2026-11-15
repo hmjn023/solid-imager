@@ -1,3 +1,4 @@
+import { Button } from "../button";
 import {
 	MediaAuthorsSection,
 	MediaAuthorRow,
@@ -91,16 +92,17 @@ export function DanbooruPostDetail(
 											{(artist) => (
 												<MediaAuthorRow
 													name={
-														<button
+														<Button
 															type="button"
-															class="text-left text-primary hover:underline"
+															variant="link"
+															class="h-auto max-w-full whitespace-normal break-words p-0 text-left text-base"
 															title={t("danbooruPostDetail.searchForValue", {
 																value0: artist,
 															})}
 															onClick={() => props.onSearchTag(artist)}
 														>
 															{artist}
-														</button>
+														</Button>
 													}
 												/>
 											)}
