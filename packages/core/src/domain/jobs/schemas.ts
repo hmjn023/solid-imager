@@ -37,9 +37,14 @@ export function isBatchParentJobType(type: string): boolean {
 	return batchParentJobTypes.some((parentType) => parentType === type);
 }
 
+/** These parents keep one target record per input and durable work for each stage. */
+export function hasBatchTargetHistory(type: string) {
+	return type === "import_batch_parent" || type === "batch_embedding_parent";
+}
+
 export function canCancelJobType(type: string) {
 	return (
-		type === "batch_embedding_parent" ||
+		hasBatchTargetHistory(type) ||
 		(!isBatchParentJobType(type) && type !== "import_batch_target")
 	);
 }
@@ -49,7 +54,14 @@ export function canRetryJob(job: {
 	status: string;
 	type?: string;
 	parentId?: string | null;
+	progress?: { failed: number } | null;
 }): boolean {
+	if (job.type && hasBatchTargetHistory(job.type))
+		return (
+			(job.status === "failed" || job.status === "cancelled") &&
+			!job.parentId &&
+			(job.progress?.failed ?? 1) > 0
+		);
 	return (
 		job.status === "failed" &&
 		!job.parentId &&
@@ -65,6 +77,7 @@ export const jobProgressSchema = z
 	.object({
 		processed: z.number().int().nonnegative(),
 		failed: z.number().int().nonnegative(),
+		cancelled: z.number().int().nonnegative().optional(),
 		total: z.number().int().nonnegative(),
 	})
 	.nullable();
@@ -117,6 +130,9 @@ export type JobListResponse = z.infer<typeof jobListResponseSchema>;
 export const jobIdRequestSchema = z.object({
 	id: z.uuid(),
 });
+export const retryJobRequestSchema = jobIdRequestSchema.extend({
+	replacementUploadId: z.uuid().optional(),
+});
 export type JobIdRequest = z.infer<typeof jobIdRequestSchema>;
 
 /** Export format and whether image files should be included. */
@@ -149,6 +165,7 @@ export const batchTargetsSchema = z.object({
 			status: jobStatusSchema.nullable(),
 			skipped: z.boolean(),
 			stage: z.string().nullable(),
+			uploadReservationId: z.uuid().nullish(),
 		}),
 	),
 	total: z.number().int().nonnegative(),

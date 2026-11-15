@@ -430,6 +430,11 @@ export class JobWorker {
 		}
 		// Notification failures cannot undo a committed outcome or turn success into failure.
 		try {
+			if (job.type === "import_upload" && status !== "failed") {
+				const { cleanupReplayedUpload } =
+					await import("~/infrastructure/services/import-submission-retry");
+				await cleanupReplayedUpload(job);
+			}
 			if (status === "completed") {
 				RealtimeEventBus.publishJob("job-completed", {
 					jobId: job.id,

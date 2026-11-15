@@ -50,4 +50,8 @@ export function createRepositories(
 		allocateJobId: () => allocateJobId(getExecutor),
 	};
 }
-export { createImportBatch, sealImportScan } from "./repositories/import-batch";
+export {
+	ClosedImportScanError,
+	createImportBatch,
+	sealImportScan,
+} from "./repositories/import-batch";

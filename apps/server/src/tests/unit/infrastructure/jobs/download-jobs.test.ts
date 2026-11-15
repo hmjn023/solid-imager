@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { logger } from "~/infrastructure/logger";
-import { MediaRepository } from "~/infrastructure/db/repositories";
+import {
+	JobRepository,
+	MediaRepository,
+} from "~/infrastructure/db/repositories";
 
 // Hoisted mocks
 // Hoisted mocks
@@ -61,6 +64,7 @@ vi.mock("~/infrastructure/logger", () => ({
 	logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }));
 vi.mock("~/infrastructure/db/repositories", () => ({
+	JobRepository: { update: vi.fn(), isCancellationRequested: vi.fn() },
 	DrizzleSourceRepository: {
 		findById: mockFindById,
 	},
@@ -350,6 +354,50 @@ describe("processDownloadJob", () => {
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledTimes(2);
 	});
 
+	it("resumes a grouped multi-file download at the unpublished output", async () => {
+		const parentId = crypto.randomUUID();
+		const job = {
+			id: crypto.randomUUID(),
+			parentId,
+			type: "downloadImage",
+			mediaSourceId: "source-1",
+			payload: {
+				targetUrl: "https://x.com/user/status/123",
+				importBatchId: crypto.randomUUID(),
+				importTargetId: parentId,
+			},
+			attemptCount: 1,
+		} as any;
+		const stdout = ["123", "456"]
+			.map((id) =>
+				JSON.stringify({
+					id,
+					title: "Video",
+					description: id,
+					ext: "mp4",
+					filename: `/tmp/downloads/${id}.mp4`,
+				}),
+			)
+			.join("\n");
+		mockYtDlpExec.mockResolvedValueOnce({ stdout, stderr: "", exitCode: 0 });
+		vi.mocked(JobRepository.update).mockImplementation(async (_id, data) => {
+			job.payload = data.payload;
+		});
+		mockMediaRegisterAndProcess
+			.mockResolvedValueOnce({ id: "first" })
+			.mockRejectedValueOnce(new Error("registration interrupted"))
+			.mockResolvedValueOnce({ id: "second" });
+		await expect(processDownloadJob(job)).rejects.toThrow(
+			"registration interrupted",
+		);
+		expect(job.payload.nextOutput).toBe(1);
+		job.attemptCount++;
+		await processDownloadJob(job);
+		expect(mockYtDlpExec).toHaveBeenCalledTimes(1);
+		expect(
+			mockMediaRegisterAndProcess.mock.calls.map((call) => call[2].description),
+		).toEqual(["123", "456", "456"]);
+	});
 	it("should resolve a direct image timestamp from raw yt-dlp metadata", async () => {
 		mockYtDlpExec.mockResolvedValueOnce({
 			stdout: JSON.stringify({

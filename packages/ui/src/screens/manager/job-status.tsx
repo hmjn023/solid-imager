@@ -76,7 +76,10 @@ function BatchCounts(props: {
 	progress: NonNullable<JobDto["progress"]>;
 	label: string;
 }) {
-	const done = () => props.progress.processed + props.progress.failed;
+	const done = () =>
+		props.progress.processed +
+		props.progress.failed +
+		(props.progress.cancelled ?? 0);
 	const percentage = () => (done() / props.progress.total) * 100;
 	return (
 		<Show

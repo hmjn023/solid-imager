@@ -6,6 +6,7 @@ import {
 	batchTargetsInputSchema,
 	batchTargetsSchema,
 	jobIdRequestSchema,
+	retryJobRequestSchema,
 	jobListRequestSchema,
 	jobListResponseSchema,
 } from "../jobs/schemas";
@@ -65,10 +66,10 @@ export const jobsContract = {
 				tags: ["Jobs"],
 				summary: "ジョブ再実行",
 				description:
-					"失敗した単独の実行ジョブを再実行します。バッチ親子とインポート受付は対象外です。失敗項目は新しいバッチとして開始してください。",
+					"一括取り込み・EmbeddingGemmaの親ジョブは対象別の失敗工程を再投入します。単独ジョブは失敗したジョブを再実行します。",
 			}),
 		)
-		.input(jobIdRequestSchema)
+		.input(retryJobRequestSchema)
 		.output(jobDtoSchema),
 	cancel: oc
 		.meta(
@@ -76,7 +77,7 @@ export const jobsContract = {
 				tags: ["Jobs"],
 				summary: "ジョブキャンセル",
 				description:
-					"待機中は取消を確定し、実行中は取消を要求します。取消要求は非終端イベント、取消確定は終端イベントとして通知します。",
+					"一括取り込みではその親に属する待機工程を取り消し、実行中の工程に取消を要求します。単独ジョブにも同じ待機・実行中の規則を適用します。取消要求は非終端イベント、取消確定は終端イベントとして通知します。",
 			}),
 		)
 		.input(jobIdRequestSchema)

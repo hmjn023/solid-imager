@@ -25,6 +25,7 @@ const jobRepository: IJobRepository = {
 	markAsInProgress: vi.fn(),
 	markAsCompleted: vi.fn(),
 	markAsFailed: vi.fn(),
+	retryFailedBatch: vi.fn(),
 	requestCancellation: vi.fn(),
 	markAsCancelled: vi.fn(),
 	isCancellationRequested: vi.fn(),

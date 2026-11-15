@@ -1,3 +1,4 @@
+import { ClosedImportScanError } from "@solid-imager/db";
 import {
 	finishDirectoryImport,
 	reserveImportFiles,
@@ -142,7 +143,7 @@ export function getSourceSyncState(
 	return sourceSyncStates.get(mediaSourceId)?.status ?? "idle";
 }
 
-async function* scanFiles(basePath: string): AsyncGenerator<string> {
+export async function* scanFiles(basePath: string): AsyncGenerator<string> {
 	const pendingDirectories = [""];
 
 	while (pendingDirectories.length > 0) {
@@ -403,6 +404,13 @@ export const DirectorySyncService = {
 					}
 					await registerPage(true);
 					scanFinished = true;
+				} catch (error) {
+					if (error instanceof ClosedImportScanError)
+						return finishSync(result, {
+							failureKind: "partial",
+							error: "Directory import stopped",
+						});
+					throw error;
 				} finally {
 					if (collecting) await finishDirectoryImport(scanId, !scanFinished);
 				}

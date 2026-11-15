@@ -69,6 +69,9 @@ export async function listBatchTargets(input: {
 				label: sql<string>`coalesce(${medias.fileName},${page.label},${page.mediaId}::text,'')`,
 				status: sql<JobStatus | null>`coalesce(step.status,${page.status})`,
 				skipped: page.skipped,
+				uploadReservationId: sql<
+					string | null
+				>`CASE WHEN step.type='import_upload' AND ((step.status='failed' AND EXISTS (SELECT 1 FROM jobs root WHERE root.id=${input.id}::uuid AND root.status IN ('failed','cancelled'))) OR (step.status='pending' AND step.payload->>'awaitingFile'='true')) THEN step.id END`,
 				stage: sql<
 					string | null
 				>`CASE WHEN ${page.type}='import_batch_target' THEN step.type ELSE ${page.type} END`,
@@ -77,8 +80,8 @@ export async function listBatchTargets(input: {
 			.leftJoin(medias, sql`${medias.id}=${page.mediaId}`)
 			.leftJoin(
 				sql`LATERAL (
-			SELECT w.type,w.status FROM jobs w WHERE w.parent_id=${page.childId}
-			AND ${page.type}='import_batch_target' AND w.status IN ('pending','in_progress')
+			SELECT w.id,w.type,w.status,w.payload FROM jobs w WHERE w.parent_id=${page.childId}
+			AND ${page.type}='import_batch_target' AND (w.status IN ('pending','in_progress') OR (w.status='failed' AND ${page.status}='failed'))
 			ORDER BY (w.status='in_progress') DESC, CASE w.type ${sql.join(ranks, sql` `)} ELSE 0 END,w.created_at,w.id LIMIT 1
 		) step`,
 				sql`true`,

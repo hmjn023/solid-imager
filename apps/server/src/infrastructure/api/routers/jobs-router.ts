@@ -3,6 +3,7 @@ import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/contract";
 import {
 	canCancelJobType,
+	hasBatchTargetHistory,
 	canRetryJob,
 	batchParentJobTypes,
 	jobStatusSchema,
@@ -62,6 +63,9 @@ function readProgress(payload: unknown) {
 	return {
 		processed,
 		failed: readNonNegativeInteger(payload.failed) ?? 0,
+		...(payload.cancelled !== undefined && {
+			cancelled: readNonNegativeInteger(payload.cancelled) ?? 0,
+		}),
 		total,
 	};
 }
@@ -209,10 +213,24 @@ export const jobsRouter = os.router({
 
 	retry: os.retry.handler(async ({ input }) => {
 		const current = await JobRepository.findById(input.id);
-		if (current && !canRetryJob(current)) {
+		if (current && hasBatchTargetHistory(current.type)) {
+			const parent = await JobRepository.retryFailedBatch(
+				input.id,
+				input.replacementUploadId,
+			);
+			if (!parent)
+				throw new ORPCError("BAD_REQUEST", {
+					message: "No failed target stages to retry",
+				});
+			notifyJob("job-retried", {
+				jobId: parent.id,
+				message: "Failed target stages queued for retry",
+			});
+			return toJobDto(parent);
+		}
+		if (input.replacementUploadId || (current && !canRetryJob(current))) {
 			throw new ORPCError("BAD_REQUEST", {
-				message:
-					"Only failed standalone jobs can be retried; start a new batch for failed items",
+				message: "No independently retryable work for this job",
 			});
 		}
 		const [requeued] = await db

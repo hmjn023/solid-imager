@@ -10,6 +10,7 @@ export {
 	batchParentJobTypes,
 	canRetryJob,
 	canCancelJobType,
+	hasBatchTargetHistory,
 	jobProgressSchema,
 	isBatchParentJobType,
 	jobIdRequestSchema,

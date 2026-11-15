@@ -65,6 +65,8 @@ function withProgress(job: JobDto, event: JobProgressEvent): JobDto {
 	return {
 		...job,
 		progress: {
+			...job.progress,
+			...(event.cancelled !== undefined && { cancelled: event.cancelled }),
 			failed: event.failed ?? job.progress?.failed ?? 0,
 			processed: event.processed,
 			total: event.total,

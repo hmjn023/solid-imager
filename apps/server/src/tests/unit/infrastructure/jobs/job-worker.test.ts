@@ -59,6 +59,7 @@ describe("JobWorker", () => {
 			markAsInProgress: vi.fn().mockResolvedValue(undefined),
 			markAsCompleted: vi.fn().mockResolvedValue(true),
 			markAsFailed: vi.fn().mockResolvedValue(true),
+			retryFailedBatch: vi.fn(),
 			requestCancellation: vi.fn().mockResolvedValue(undefined),
 			markAsCancelled: vi.fn().mockResolvedValue(true),
 			isCancellationRequested: vi.fn().mockResolvedValue(false),

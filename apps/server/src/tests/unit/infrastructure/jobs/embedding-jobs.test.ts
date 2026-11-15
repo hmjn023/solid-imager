@@ -160,7 +160,7 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		expect(await repo.isCancellationRequested(running.id)).toBe(true);
 		expect(await repo.findById(batch.id)).toMatchObject({
 			status: "in_progress",
-			payload: { failed: 1, total: 2 },
+			payload: { failed: 0, cancelled: 1, total: 2 },
 		});
 		await repo.finishAttempt(running.id, 1, {
 			status: "completed",
@@ -168,7 +168,7 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		});
 		expect(await repo.findById(batch.id)).toMatchObject({
 			status: "cancelled",
-			payload: { failed: 2, total: 2 },
+			payload: { failed: 0, cancelled: 2, total: 2 },
 		});
 	});
 	it("binds multiple download outputs once even when registration is replayed", async () => {
@@ -286,12 +286,132 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 			status: "failed",
 			payload: { total: 27, processed: 26, failed: 1 },
 		});
+		const retries = await Promise.all([
+			repo.retryFailedBatch(parent.id),
+			repo.retryFailedBatch(parent.id),
+		]);
+		expect(retries.filter(Boolean)).toHaveLength(1);
+		expect(await repo.findById(parent.id)).toMatchObject({
+			status: "in_progress",
+			payload: { total: 27, processed: 26, failed: 0 },
+		});
+		const retried = await repo.claimPending(10, {
+			includeTypes: [
+				"auto_tagging",
+				"processMedia",
+				"extract_embedding_vector",
+				"extract_ccip_vector",
+			],
+		});
+		expect(
+			retried.map(({ id, attemptCount }) => ({ id, attemptCount })),
+		).toEqual([{ id: tags[0].id, attemptCount: 2 }]);
+		expect(await repo.finishAttempt(tags[0].id, 1, done)).toBeNull();
+		await repo.finishAttempt(tags[0].id, 2, done);
+		expect(await repo.findById(parent.id)).toMatchObject({
+			status: "completed",
+			payload: { total: 27, processed: 27, failed: 0 },
+		});
 		expect(
 			await listBatchTargets({ id: parent.id, offset: 25, limit: 25 }),
 		).toMatchObject({
 			total: 27,
 			items: [expect.anything(), expect.anything()],
 		});
+	});
+	it("cancels only the selected import, fences late work and leaves a concurrent single import runnable", async () => {
+		const { database } = await setup();
+		const repo: IJobRepository = mocks.repository;
+		const id = crypto.randomUUID();
+		const batch = await database.transaction((tx) =>
+			createImportBatch(
+				tx,
+				sourceId,
+				[
+					{ label: "running", work: { type: "downloadImage" } },
+					{ label: "failed", work: { type: "processMedia" } },
+					{ label: "pending", work: { type: "import_upload" } },
+					{ label: "done", skipped: true, work: { type: "processMedia" } },
+				],
+				id,
+			),
+		);
+		const [running] = await repo.claimPending(1, {
+			includeTypes: ["downloadImage"],
+		});
+		const [failed] = await repo.claimPending(1, {
+			includeTypes: ["processMedia"],
+		});
+		await repo.finishAttempt(failed.id, 1, {
+			status: "failed",
+			error: "metadata unavailable",
+		});
+		const single = await repo.create({
+			type: "downloadImage",
+			mediaSourceId: sourceId,
+			payload: {},
+		});
+		await repo.requestCancellation(batch.id);
+		await repo.requestCancellation(batch.id);
+		await expect(
+			database.transaction((tx) =>
+				createImportBatch(
+					tx,
+					sourceId,
+					[{ label: "late", work: { type: "import_register" } }],
+					id,
+				),
+			),
+		).rejects.toThrow("scan is closed");
+		const owner = importWorkOwner(running);
+		if (!owner) throw new Error("Missing import owner");
+		await expect(
+			repo.createIfUnique(
+				{ type: "processMedia", payload: { mediaId: ids[0] } },
+				owner,
+			),
+		).rejects.toThrow("no longer active");
+		expect(await repo.findById(id)).toMatchObject({
+			status: "in_progress",
+			payload: { processed: 1, failed: 1, cancelled: 1, total: 4 },
+		});
+		const [independent] = await repo.claimPending(1, {
+			includeTypes: ["downloadImage"],
+		});
+		expect(independent).toMatchObject({
+			id: single.id,
+			cancelRequestedAt: null,
+			parentId: null,
+		});
+		await repo.finishAttempt(running.id, 1, {
+			status: "completed",
+			result: null,
+		});
+		expect(await repo.findById(id)).toMatchObject({
+			status: "cancelled",
+			payload: { processed: 1, failed: 1, cancelled: 2, total: 4 },
+		});
+		expect(
+			await repo.finishAttempt(single.id, 1, {
+				status: "completed",
+				result: null,
+			}),
+		).toBe("completed");
+		expect(await repo.retryFailedBatch(id)).toMatchObject({
+			status: "in_progress",
+			cancelRequestedAt: null,
+		});
+		const retries = await repo.claimPending(10);
+		expect(retries.map((job) => job.id)).toEqual([failed.id]);
+		await repo.finishAttempt(failed.id, 2, {
+			status: "completed",
+			result: null,
+		});
+		expect(await repo.findById(id)).toMatchObject({
+			status: "cancelled",
+			payload: { processed: 2, failed: 0, cancelled: 2, total: 4 },
+		});
+		expect(await repo.retryFailedBatch(id)).toBeNull();
 	});
 	it("does not run cancelled or replaced job attempts, and validates extraction payloads", async () => {
 		await setup();

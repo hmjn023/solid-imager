@@ -6,7 +6,26 @@ import { and, eq, inArray, sql, type SQL } from "drizzle-orm";
 import { jobs } from "../schema";
 import type { DrizzleExecutor } from "../types";
 
-type Executor = Pick<DrizzleExecutor, "select" | "update" | "insert">;
+type Executor = Pick<
+	DrizzleExecutor,
+	"select" | "update" | "insert" | "execute"
+>;
+
+/** Prevent new descendants appearing mid-cancellation. Finishers keep their work → target → root lock order. */
+export async function lockBatchAdmissions(
+	tx: Pick<Executor, "execute">,
+	id: string,
+	exclusive = false,
+) {
+	const key = sql`hashtextextended(${id}::text, 0)`;
+	await tx.execute(
+		exclusive
+			? sql`SELECT pg_advisory_xact_lock(${key})`
+			: sql`SELECT pg_advisory_xact_lock_shared(${key})`,
+	);
+}
+
+export class ClosedImportScanError extends Error {}
 
 /** All target reservations and their first work are published by the caller's transaction. */
 export async function createImportBatch(
@@ -20,6 +39,7 @@ export async function createImportBatch(
 	}[],
 	scanId?: string,
 ) {
+	if (scanId) await lockBatchAdmissions(tx, scanId);
 	const skipped = items.filter((item) => item.skipped).length;
 	const insert = tx.insert(jobs).values({
 		id: scanId,
@@ -43,11 +63,11 @@ export async function createImportBatch(
 						payload: sql`jobs.payload || jsonb_build_object('total',(jobs.payload->>'total')::int + ${items.length}::int, 'processed', (jobs.payload->>'processed')::int + ${skipped}::int)`,
 						updatedAt: new Date(),
 					},
-					setWhere: sql`jobs.payload->>'collecting'='true' AND jobs.status='in_progress'`,
+					setWhere: sql`jobs.payload->>'collecting'='true' AND jobs.status='in_progress' AND jobs.cancel_requested_at IS NULL`,
 				})
 				.returning()
 		: await insert.returning();
-	if (!parent) throw new Error("Directory scan is closed");
+	if (!parent) throw new ClosedImportScanError("Directory scan is closed");
 	for (let offset = 0; offset < items.length; offset += 250) {
 		const page = items.slice(offset, offset + 250);
 		const targets = page.map((item) => ({
@@ -139,15 +159,20 @@ export async function settleImportTarget(
 			finishedAt: new Date(),
 		})
 		.where(eq(jobs.id, context.importTargetId));
-	const key = failed ? "failed" : "processed";
-	const done = sql`coalesce(payload->>'collecting','false') <> 'true' AND (payload->>'processed')::int + (payload->>'failed')::int + 1 >= (payload->>'total')::int`;
+	const key =
+		failed?.status === "cancelled"
+			? "cancelled"
+			: failed
+				? "failed"
+				: "processed";
+	const done = sql`coalesce(payload->>'collecting','false') <> 'true' AND (payload->>'processed')::int + (payload->>'failed')::int + coalesce((payload->>'cancelled')::int,0) + 1 >= (payload->>'total')::int`;
 	await tx
 		.update(jobs)
 		.set({
-			payload: sql`payload || jsonb_build_object(${key}::text, (payload->>${key})::int + 1)`,
-			status: sql`CASE WHEN ${done} THEN (CASE WHEN cancel_requested_at IS NOT NULL THEN 'cancelled' WHEN payload->>'scanFailed'='true' OR ${!!failed} OR (payload->>'failed')::int > 0 THEN 'failed' ELSE 'completed' END)::job_status ELSE status END`,
+			payload: sql`payload || jsonb_build_object(${key}::text, coalesce((payload->>${key})::int,0) + 1)`,
+			status: sql`CASE WHEN ${done} THEN (CASE WHEN cancel_requested_at IS NOT NULL THEN 'cancelled' WHEN payload->>'scanFailed'='true' OR ${key === "failed"} OR (payload->>'failed')::int > 0 THEN 'failed' WHEN ${key === "cancelled"} OR coalesce((payload->>'cancelled')::int,0)>0 THEN 'cancelled' ELSE 'completed' END)::job_status ELSE status END`,
 			finishedAt: sql`CASE WHEN ${done} THEN NOW() ELSE NULL END`,
-			cancelledAt: sql`CASE WHEN ${done} AND cancel_requested_at IS NOT NULL THEN NOW() END`,
+			cancelledAt: sql`CASE WHEN ${done} AND (cancel_requested_at IS NOT NULL OR coalesce((payload->>'cancelled')::int,0)>0 OR ${key === "cancelled"}) THEN NOW() END`,
 			updatedAt: new Date(),
 		})
 		.where(
@@ -240,13 +265,13 @@ export async function sealImportScan(
 	condition: SQL,
 	interrupted = false,
 ) {
-	const done = sql`(payload->>'processed')::int + (payload->>'failed')::int >= (payload->>'total')::int`;
+	const done = sql`(payload->>'processed')::int + (payload->>'failed')::int + coalesce((payload->>'cancelled')::int,0) >= (payload->>'total')::int`;
 	await tx
 		.update(jobs)
 		.set({
 			payload: sql`(payload - 'collecting') || CASE WHEN ${interrupted} THEN '{"scanFailed":true}'::jsonb ELSE '{}'::jsonb END`,
 			error: interrupted ? "Directory scan interrupted" : null,
-			status: sql`CASE WHEN ${done} THEN (CASE WHEN ${interrupted} OR (payload->>'failed')::int > 0 THEN 'failed' ELSE 'completed' END)::job_status ELSE status END`,
+			status: sql`CASE WHEN ${done} THEN (CASE WHEN ${interrupted} OR (payload->>'failed')::int > 0 THEN 'failed' WHEN coalesce((payload->>'cancelled')::int,0)>0 THEN 'cancelled' ELSE 'completed' END)::job_status ELSE status END`,
 			finishedAt: sql`CASE WHEN ${done} THEN NOW() ELSE NULL END`,
 			updatedAt: new Date(),
 		})

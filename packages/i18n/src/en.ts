@@ -805,8 +805,10 @@ export const en = defineMessages({
 	"jobsScreen.reloadTheJobOrSelectAnotherOneFromThe":
 		"Reload the job or select another one from the list.",
 	"jobsScreen.retryFailedJobs": "Retry failed jobs",
-	"jobsScreen.retryIndividualFailedJobsHereForFailedBatchItems":
-		"Retry individual failed jobs here. For failed batch items, start a new batch in Manager.",
+	"jobsScreen.retryFailedStages": "Retry failed stages",
+	"jobsScreen.cancelledCount": "Cancelled: {count}",
+	"jobsScreen.cancelImportBatch": "Cancel batch import",
+	"jobsScreen.chooseRetryFile": "Choose replacement file for {filename}",
 	"jobsScreen.retryJob": "Retry job",
 	"jobsScreen.reviewBackgroundJobProgressFailuresAndHistory":
 		"Review background job progress, failures, and history.",

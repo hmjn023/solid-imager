@@ -92,6 +92,9 @@ function JobsRoute() {
 
 	return (
 		<JobsScreen
+			onUploadTarget={(sourceId, reservationId, filename, file) =>
+				orpc.media.upload({ sourceId, reservationId, filename, file })
+			}
 			loadTargets={(id, offset, limit, signal) =>
 				orpc.jobs.targets({ id, offset, limit }, { signal })
 			}
@@ -102,9 +105,9 @@ function JobsRoute() {
 			onRefresh={async () => {
 				await jobsQuery.refetch();
 			}}
-			onRetry={async (jobId) => {
+			onRetry={async (jobId, replacementUploadId) => {
 				try {
-					await orpc.jobs.retry({ id: jobId });
+					await orpc.jobs.retry({ id: jobId, replacementUploadId });
 					await queryClient.invalidateQueries({
 						queryKey: jobsQueryKeys.all(),
 					});

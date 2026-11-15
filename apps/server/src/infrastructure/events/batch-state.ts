@@ -26,6 +26,7 @@ export async function notifyBatchState(
 					processed: progress.data.processed,
 					total: progress.data.total,
 					failed: progress.data.failed,
+					cancelled: progress.data.cancelled,
 				});
 		}
 	} catch (err) {

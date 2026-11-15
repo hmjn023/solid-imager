@@ -10,6 +10,7 @@ import os from "node:os";
 import path from "node:path";
 import {
 	type AddMediaRequest,
+	addMediaRequestSchema,
 	type DownloadItem,
 	downloadItemSchema,
 } from "@solid-imager/core/media";
@@ -33,6 +34,7 @@ import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-li
 import { logger } from "~/infrastructure/logger";
 import {
 	MediaRepository,
+	JobRepository,
 	DrizzleSourceRepository,
 } from "~/infrastructure/db/repositories";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
@@ -143,6 +145,22 @@ const ytDlpOutputSchema = z.object({
 });
 
 const ytDlpOutputArraySchema = z.array(ytDlpOutputSchema);
+
+const savedDownloadRegistration = addMediaRequestSchema.pick({
+	filePath: true,
+	createdAt: true,
+	description: true,
+	sourceUrls: true,
+});
+type DownloadRegistration = z.infer<typeof savedDownloadRegistration>;
+
+const downloadOutputsSchema = z.array(
+	z.object({
+		filePath: z.string(),
+		targetPath: z.string(),
+		metadata: ytDlpOutputSchema,
+	}),
+);
 
 type Cookie = {
 	domain: string;
@@ -395,7 +413,7 @@ async function handleYtDlpDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
-	owner?: ImportWorkOwner,
+	job: Job,
 ) {
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for yt-dlp download");
@@ -405,29 +423,68 @@ async function handleYtDlpDownload(
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
 
 	try {
-		await waitForDownloadRateLimit();
-
-		const results = await downloadWithYtDlp(
-			item.targetUrl,
-			basePath,
-			item.cookies,
-			item.userAgent,
-		);
-
-		logger.info(
-			{ count: results.length },
-			"[DownloadJob] yt-dlp download completed",
-		);
-
-		for (let i = 0; i < results.length; i++) {
-			await _processSingleYtDlpResult({
-				index: i,
-				results,
-				owner,
+		const owner = importWorkOwner(job);
+		const payload = isRecord(job.payload) ? job.payload : {};
+		const checkpoint = z
+			.object({
+				downloadOutputs: downloadOutputsSchema.optional(),
+				nextOutput: z.number().int().nonnegative().default(0),
+			})
+			.parse(owner ? payload : {});
+		let outputs = checkpoint.downloadOutputs;
+		if (!outputs) {
+			await waitForDownloadRateLimit();
+			const results = await downloadWithYtDlp(
+				item.targetUrl,
+				basePath,
+				item.cookies,
+				item.userAgent,
+			);
+			outputs = await Promise.all(
+				results.map(async (res, index) => {
+					const extension = path.extname(res.filePath);
+					const name = generateMediaFilename(item, extension);
+					const indexed =
+						results.length === 1
+							? name
+							: `${path.basename(name, extension)}_${index}${extension}`;
+					const targetPath = await _resolveFinalPathWithAvoidance(
+						path.dirname(res.filePath),
+						indexed,
+						res.filePath,
+					);
+					return { ...res, targetPath };
+				}),
+			);
+			if (owner)
+				await JobRepository.update(
+					job.id,
+					{ payload: { ...payload, downloadOutputs: outputs } },
+					owner.attempt,
+				);
+		}
+		for (let i = checkpoint.nextOutput; i < outputs.length; i++) {
+			if (owner && (await JobRepository.isCancellationRequested(job.id)))
+				return;
+			await registerYtDlpOutput(
+				outputs[i],
 				item,
 				mediaSourceId,
 				basePath,
-			});
+				owner,
+			);
+			if (owner)
+				await JobRepository.update(
+					job.id,
+					{
+						payload: {
+							...payload,
+							downloadOutputs: outputs,
+							nextOutput: i + 1,
+						},
+					},
+					owner.attempt,
+				);
 		}
 	} catch (error) {
 		logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
@@ -441,48 +498,31 @@ async function handleYtDlpDownload(
 	}
 }
 
-async function _processSingleYtDlpResult(params: {
-	owner?: ImportWorkOwner;
-	index: number;
-	results: { filePath: string; metadata: YtDlpOutput }[];
-	item: DownloadItem;
-	mediaSourceId: string;
-	basePath: string;
-}) {
-	const { index, results, item, mediaSourceId, basePath, owner } = params;
-	const res = results[index];
-	let { filePath, metadata } = res;
-
-	// Unify filename
-	const extension = path.extname(filePath);
-	let unifiedName = generateMediaFilename(item, extension);
-
-	// If multiple results for the same item, append index
-	if (results.length > 1) {
-		const ext = path.extname(unifiedName);
-		const base = path.basename(unifiedName, ext);
-		unifiedName = `${base}_${index}${ext}`;
-	}
-
-	const dir = path.dirname(filePath);
-	const targetPath = await _resolveFinalPathWithAvoidance(
-		dir,
-		unifiedName,
-		filePath,
-	);
-
-	try {
-		await fs.rename(filePath, targetPath);
-		filePath = targetPath;
-		logger.info(
-			{ from: res.filePath, to: filePath },
-			"[DownloadJob] Renamed yt-dlp output to unified name",
-		);
-	} catch (e) {
-		logger.warn(
-			{ err: e, filePath, targetPath },
-			"[DownloadJob] Failed to rename yt-dlp output",
-		);
+async function registerYtDlpOutput(
+	output: z.infer<typeof downloadOutputsSchema>[number],
+	item: DownloadItem,
+	mediaSourceId: string,
+	basePath: string,
+	owner?: ImportWorkOwner,
+) {
+	const { metadata, targetPath } = output;
+	let filePath = output.filePath;
+	if (filePath !== targetPath) {
+		try {
+			await fs.rename(filePath, targetPath);
+			filePath = targetPath;
+		} catch (err) {
+			// A retry may reach this point after the earlier attempt already renamed the file.
+			if (owner && isRecord(err) && err.code === "ENOENT") {
+				await fs.access(targetPath);
+				filePath = targetPath;
+			} else {
+				logger.warn(
+					{ err, filePath, targetPath },
+					"[DownloadJob] Failed to rename yt-dlp output",
+				);
+			}
+		}
 	}
 
 	// Calculate relative path
@@ -707,7 +747,13 @@ async function handleDirectImageDownload(
 			),
 		};
 
-		await registerMedia(newMedia, mediaSourceId, item, basePath, owner);
+		await registerPublishedDownload(
+			newMedia,
+			mediaSourceId,
+			item,
+			basePath,
+			owner,
+		);
 
 		logger.info(
 			{ url: item.targetUrl },
@@ -786,7 +832,7 @@ async function handleUgoiraDownload(
 			generateMediaFilename(item, ".mp4"),
 		);
 		try {
-			await registerMedia(
+			await registerPublishedDownload(
 				{
 					mediaSourceId,
 					filePath: fileName,
@@ -810,7 +856,10 @@ async function handleUgoiraDownload(
 		} catch (error) {
 			// A watcher may already own the file. Remove only an unregistered result.
 			try {
-				if (!(await MediaRepository.findByPath(mediaSourceId, fileName))) {
+				if (
+					!owner &&
+					!(await MediaRepository.findByPath(mediaSourceId, fileName))
+				) {
 					await fs.unlink(path.join(basePath, fileName));
 				}
 			} catch (cleanupError) {
@@ -876,6 +925,12 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	);
 
 	try {
+		const owner = importWorkOwner(job);
+		if (owner && isRecord(job.payload) && job.payload.savedDownload) {
+			const saved = savedDownloadRegistration.parse(job.payload.savedDownload);
+			await registerMedia(saved, mediaSourceId, item, basePath, owner);
+			return;
+		}
 		if (item.ugoira) {
 			await handleUgoiraDownload(
 				item,
@@ -885,12 +940,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 			);
 		} else if (isTwitterPost) {
 			logger.info({}, "[DownloadJob] Using yt-dlp download method");
-			await handleYtDlpDownload(
-				item,
-				mediaSourceId,
-				basePath,
-				importWorkOwner(job),
-			);
+			await handleYtDlpDownload(item, mediaSourceId, basePath, job);
 		} else {
 			await handleDirectImageDownload(
 				item,
@@ -920,7 +970,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 async function updateExistingMediaWithMetadata(
 	mediaId: string,
 	mediaSourceId: string,
-	newMedia: AddMediaRequest,
+	newMedia: DownloadRegistration,
 	item: DownloadItem,
 ): Promise<void> {
 	const { MediaProcessingService } =
@@ -947,8 +997,33 @@ async function updateExistingMediaWithMetadata(
 	);
 }
 
-async function registerMedia(
+async function registerPublishedDownload(
 	newMedia: AddMediaRequest,
+	mediaSourceId: string,
+	item: DownloadItem,
+	basePath: string,
+	owner?: ImportWorkOwner,
+) {
+	if (owner) {
+		const producer = await JobRepository.findById(owner.workId);
+		if (!isRecord(producer?.payload) || producer.cancelRequestedAt)
+			throw new Error("Download no longer active");
+		await JobRepository.update(
+			owner.workId,
+			{
+				payload: {
+					...producer.payload,
+					savedDownload: savedDownloadRegistration.parse(newMedia),
+				},
+			},
+			owner.attempt,
+		);
+	}
+	await registerMedia(newMedia, mediaSourceId, item, basePath, owner);
+}
+
+async function registerMedia(
+	newMedia: DownloadRegistration,
 	mediaSourceId: string,
 	item: DownloadItem,
 	basePath: string,

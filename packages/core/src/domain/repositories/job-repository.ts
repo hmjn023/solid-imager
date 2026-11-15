@@ -95,6 +95,11 @@ export type IJobRepository = {
 		error: string,
 		attemptCount: number,
 	): Promise<boolean>;
+	/** Reopens failed work and its existing targets in one transaction. */
+	retryFailedBatch(
+		id: string,
+		replacementUploadId?: string,
+	): Promise<Job | null>;
 	requestCancellation(id: string): Promise<void>;
 	markAsCancelled(
 		id: string,

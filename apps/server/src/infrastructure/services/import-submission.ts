@@ -26,7 +26,11 @@ export async function reserveImportFiles(
 			sourceId,
 			labels.map((label, i) => ({
 				label: path.win32.basename(label),
-				work: { type, id: reservations[i] },
+				work: {
+					type,
+					id: reservations[i],
+					payload: type === "import_register" ? { relativePath: label } : {},
+				},
 			})),
 			scanId,
 		),
@@ -44,7 +48,7 @@ export async function runImportSubmission<T>(
 	sourceId: string,
 	id: string,
 	type: SubmissionType,
-	submit: (owner: ImportWorkOwner) => Promise<T>,
+	submit: (owner: ImportWorkOwner, payload: unknown) => Promise<T>,
 ) {
 	const [reservation] = await db
 		.update(jobs)
@@ -60,6 +64,7 @@ export async function runImportSubmission<T>(
 				eq(jobs.type, type),
 				eq(jobs.mediaSourceId, sourceId),
 				eq(jobs.status, "pending"),
+				sql`(payload->>'retrySubmission' IS DISTINCT FROM 'true' OR payload->>'awaitingFile'='true')`,
 			),
 		)
 		.returning();
@@ -93,7 +98,7 @@ export async function runImportSubmission<T>(
 	let result: T;
 	try {
 		await renew();
-		result = await submit(owner);
+		result = await submit(owner, reservation.payload);
 	} catch (error) {
 		const status = await JobRepository.finishAttempt(id, owner.attempt, {
 			status: "failed",
