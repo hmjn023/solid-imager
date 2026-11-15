@@ -9,6 +9,9 @@ export type {
 export {
 	batchParentJobTypes,
 	canRetryJob,
+	canCancelJobType,
+	hasBatchTargetHistory,
+	jobProgressSchema,
 	isBatchParentJobType,
 	jobIdRequestSchema,
 	jobStatusSchema,
@@ -22,3 +25,12 @@ export type {
 	Job,
 	NewJob,
 } from "../domain/repositories/job-repository";
+export {
+	importBatchContextSchema,
+	importAiStages,
+	importWorkOwner,
+	type ImportWorkOwner,
+	readImportBatch,
+	type ImportBatchContext,
+} from "../domain/jobs/import-batch";
+export { batchTargetsSchema, type BatchTargets } from "../domain/jobs/schemas";

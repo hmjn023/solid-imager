@@ -55,7 +55,13 @@ export const importsContract = {
 				targetSourceId: z.uuid(),
 			}),
 		)
-		.output(z.object({ success: z.boolean(), processedCount: z.number() })),
+		.output(
+			z.object({
+				success: z.boolean(),
+				processedCount: z.number(),
+				batchId: z.uuid().optional(),
+			}),
+		),
 
 	cancel: oc
 		.meta(

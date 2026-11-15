@@ -18,6 +18,7 @@ export const downloadsContract = {
 			z.object({
 				success: z.boolean(),
 				jobCount: z.number(),
+				batchId: z.uuid().optional(),
 				skippedCount: z.number(),
 				message: z.string(),
 			}),

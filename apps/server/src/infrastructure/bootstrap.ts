@@ -91,7 +91,9 @@ export function initServices() {
 		rustAiClient.updateConfig(newConfig.ai),
 	);
 
-	const jobWorker = new JobWorker(jobRepo, processJob);
+	const jobWorker = new JobWorker(jobRepo, processJob, () =>
+		rustAiClient.offload(),
+	);
 	// Initialize worker with current config and subscribe to changes
 	jobWorker.updateConfig(configService.getConfig());
 	configService.onChange((newConfig) => jobWorker.updateConfig(newConfig));

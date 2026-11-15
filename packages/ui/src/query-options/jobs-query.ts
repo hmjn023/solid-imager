@@ -16,6 +16,7 @@ export const jobsQueryKeys = {
 	all: () => ["jobs"] as const,
 	listPrefix: () => ["jobs", "list"] as const,
 	list: (input: JobListRequest) => ["jobs", "list", input] as const,
+	targets: (jobId: string) => ["jobs", "targets", jobId] as const,
 	detail: (jobId: string) => ["jobs", "detail", jobId] as const,
 };
 
@@ -64,7 +65,9 @@ function withProgress(job: JobDto, event: JobProgressEvent): JobDto {
 	return {
 		...job,
 		progress: {
-			...(job.progress ?? { failed: 0 }),
+			...job.progress,
+			...(event.cancelled !== undefined && { cancelled: event.cancelled }),
+			failed: event.failed ?? job.progress?.failed ?? 0,
 			processed: event.processed,
 			total: event.total,
 		},

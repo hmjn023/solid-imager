@@ -57,6 +57,7 @@ export type SourceMediaScreenProps = {
 	selectedCount?: () => number;
 	showOpenInNewTab?: boolean;
 	uploadModalComponent: Component<{
+		sourceId?: string;
 		initialFile: File | null;
 		isOpen: boolean;
 		onClose: () => void;

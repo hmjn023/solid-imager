@@ -112,6 +112,7 @@ describe("interrupted source startup recovery", () => {
 		for (const record of records) {
 			const mediaJobs = queued.filter(
 				(job) =>
+					job.type === "processMedia" &&
 					job.payload &&
 					typeof job.payload === "object" &&
 					"mediaId" in job.payload &&
@@ -122,9 +123,11 @@ describe("interrupted source startup recovery", () => {
 				expect(mediaJobs).toHaveLength(1);
 		}
 		expect(
-			queued.every(
-				(job) => job.type === "processMedia" && job.status === "pending",
-			),
+			queued
+				.filter((job) => job.type === "processMedia")
+				.every(
+					(job) => job.type === "processMedia" && job.status === "pending",
+				),
 		).toBe(true);
 
 		expect(

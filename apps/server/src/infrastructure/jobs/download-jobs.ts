@@ -3,6 +3,7 @@
  */
 
 import fs from "node:fs/promises";
+import { constants } from "node:fs";
 import { createHash } from "node:crypto";
 import type { Transaction } from "@solid-imager/core/ports";
 import { getExecutor } from "~/infrastructure/db/executor";
@@ -10,6 +11,7 @@ import os from "node:os";
 import path from "node:path";
 import {
 	type AddMediaRequest,
+	addMediaRequestSchema,
 	type DownloadItem,
 	downloadItemSchema,
 } from "@solid-imager/core/media";
@@ -20,13 +22,20 @@ import {
 import { asyncPool, isRecord } from "@solid-imager/core/utils";
 import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
-import type { Job } from "@solid-imager/core/jobs";
+import {
+	importWorkOwner,
+	type Job,
+	type ImportWorkOwner,
+} from "@solid-imager/core/jobs";
+import { createImportBatch } from "@solid-imager/db";
+import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { jobs, type NewJob } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { waitForDownloadRateLimit } from "~/infrastructure/jobs/download-rate-limiter";
 import { logger } from "~/infrastructure/logger";
 import {
 	MediaRepository,
+	JobRepository,
 	DrizzleSourceRepository,
 } from "~/infrastructure/db/repositories";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
@@ -138,6 +147,22 @@ const ytDlpOutputSchema = z.object({
 
 const ytDlpOutputArraySchema = z.array(ytDlpOutputSchema);
 
+const savedDownloadRegistration = addMediaRequestSchema.pick({
+	filePath: true,
+	createdAt: true,
+	description: true,
+	sourceUrls: true,
+});
+type DownloadRegistration = z.infer<typeof savedDownloadRegistration>;
+
+const downloadOutputsSchema = z.array(
+	z.object({
+		filePath: z.string(),
+		targetPath: z.string(),
+		metadata: ytDlpOutputSchema,
+	}),
+);
+
 type Cookie = {
 	domain: string;
 	path: string;
@@ -228,12 +253,13 @@ function createYtDlpError(error: unknown): Error {
 async function downloadWithYtDlp(
 	url: string,
 	outputDir: string,
+	jobId: string,
 	cookies?: Cookie[],
 	userAgent?: string,
 ): Promise<{ filePath: string; metadata: YtDlpOutput }[]> {
 	await fs.mkdir(outputDir, { recursive: true });
 
-	const template = "%(id)s.%(ext)s";
+	const template = `.${jobId}-%(id)s.%(ext)s`;
 	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
 
 	try {
@@ -389,6 +415,7 @@ async function handleYtDlpDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
+	job: Job,
 ) {
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for yt-dlp download");
@@ -398,28 +425,73 @@ async function handleYtDlpDownload(
 	logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
 
 	try {
-		await waitForDownloadRateLimit();
-
-		const results = await downloadWithYtDlp(
-			item.targetUrl,
-			basePath,
-			item.cookies,
-			item.userAgent,
-		);
-
-		logger.info(
-			{ count: results.length },
-			"[DownloadJob] yt-dlp download completed",
-		);
-
-		for (let i = 0; i < results.length; i++) {
-			await _processSingleYtDlpResult({
-				index: i,
-				results,
+		const owner = importWorkOwner(job);
+		const payload = isRecord(job.payload) ? job.payload : {};
+		const checkpoint = z
+			.object({
+				downloadOutputs: downloadOutputsSchema.optional(),
+				nextOutput: z.number().int().nonnegative().default(0),
+			})
+			.parse(owner ? payload : {});
+		let outputs = checkpoint.downloadOutputs;
+		if (!outputs) {
+			await waitForDownloadRateLimit();
+			const results = await downloadWithYtDlp(
+				item.targetUrl,
+				basePath,
+				job.id,
+				item.cookies,
+				item.userAgent,
+			);
+			outputs = await Promise.all(
+				results.map(async (res, index) => {
+					const extension = path.extname(res.filePath);
+					const name = generateMediaFilename(item, extension);
+					const indexed =
+						results.length === 1
+							? name
+							: `${path.basename(name, extension)}_${index}${extension}`;
+					const targetPath = await _resolveFinalPathWithAvoidance(
+						path.dirname(res.filePath),
+						indexed,
+						res.filePath,
+					);
+					return { ...res, targetPath };
+				}),
+			);
+		}
+		const checkpointOutputs = async (nextOutput: number) => {
+			if (owner)
+				await JobRepository.update(
+					job.id,
+					{ payload: { ...payload, downloadOutputs: outputs, nextOutput } },
+					owner.attempt,
+				);
+		};
+		if (!checkpoint.downloadOutputs) await checkpointOutputs(0);
+		for (let i = checkpoint.nextOutput; i < outputs.length; i++) {
+			if (owner && (await JobRepository.isCancellationRequested(job.id))) {
+				for (const { filePath } of outputs.slice(i)) {
+					if (
+						path.dirname(filePath) === path.resolve(basePath) &&
+						path.basename(filePath).startsWith(`.${job.id}-`)
+					) {
+						await fs.rm(filePath, { force: true });
+					}
+				}
+				return;
+			}
+			await publishYtDlpOutput(outputs[i], !!checkpoint.downloadOutputs, () =>
+				checkpointOutputs(i),
+			);
+			await registerYtDlpOutput(
+				outputs[i],
 				item,
 				mediaSourceId,
 				basePath,
-			});
+				owner,
+			);
+			await checkpointOutputs(i + 1);
 		}
 	} catch (error) {
 		logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
@@ -433,49 +505,63 @@ async function handleYtDlpDownload(
 	}
 }
 
-async function _processSingleYtDlpResult(params: {
-	index: number;
-	results: { filePath: string; metadata: YtDlpOutput }[];
-	item: DownloadItem;
-	mediaSourceId: string;
-	basePath: string;
-}) {
-	const { index, results, item, mediaSourceId, basePath } = params;
-	const res = results[index];
-	let { filePath, metadata } = res;
-
-	// Unify filename
-	const extension = path.extname(filePath);
-	let unifiedName = generateMediaFilename(item, extension);
-
-	// If multiple results for the same item, append index
-	if (results.length > 1) {
-		const ext = path.extname(unifiedName);
-		const base = path.basename(unifiedName, ext);
-		unifiedName = `${base}_${index}${ext}`;
+/** Publish without replacing another import between choosing a name and registering it. */
+async function publishYtDlpOutput(
+	output: z.infer<typeof downloadOutputsSchema>[number],
+	resuming: boolean,
+	checkpoint: () => Promise<void>,
+) {
+	const { filePath } = output;
+	const dir = path.dirname(output.targetPath);
+	const name = path.basename(output.targetPath);
+	while (filePath !== output.targetPath) {
+		try {
+			try {
+				await fs.link(filePath, output.targetPath);
+			} catch (err) {
+				if (
+					!isRecord(err) ||
+					!["ENOTSUP", "EPERM", "EXDEV", "EOPNOTSUPP"].includes(
+						String(err.code),
+					)
+				)
+					throw err;
+				await fs.copyFile(filePath, output.targetPath, constants.COPYFILE_EXCL);
+			}
+		} catch (err) {
+			if (resuming && isRecord(err) && err.code === "ENOENT") {
+				await fs.access(output.targetPath);
+				return;
+			}
+			if (!isRecord(err) || err.code !== "EEXIST") throw err;
+			const [from, to] = await Promise.all([
+				fs.stat(filePath),
+				fs.stat(output.targetPath),
+			]);
+			// A worker can exit after linking and before removing its temporary name.
+			if (!from.ino || from.dev !== to.dev || from.ino !== to.ino) {
+				output.targetPath = await _resolveFinalPathWithAvoidance(
+					dir,
+					name,
+					filePath,
+				);
+				await checkpoint();
+				continue;
+			}
+		}
+		await fs.unlink(filePath);
+		return;
 	}
+}
 
-	const dir = path.dirname(filePath);
-	const targetPath = await _resolveFinalPathWithAvoidance(
-		dir,
-		unifiedName,
-		filePath,
-	);
-
-	try {
-		await fs.rename(filePath, targetPath);
-		filePath = targetPath;
-		logger.info(
-			{ from: res.filePath, to: filePath },
-			"[DownloadJob] Renamed yt-dlp output to unified name",
-		);
-	} catch (e) {
-		logger.warn(
-			{ err: e, filePath, targetPath },
-			"[DownloadJob] Failed to rename yt-dlp output",
-		);
-	}
-
+async function registerYtDlpOutput(
+	output: z.infer<typeof downloadOutputsSchema>[number],
+	item: DownloadItem,
+	mediaSourceId: string,
+	basePath: string,
+	owner?: ImportWorkOwner,
+) {
+	const { metadata, targetPath: filePath } = output;
 	// Calculate relative path
 	const relativePath = path.relative(basePath, filePath);
 
@@ -506,7 +592,7 @@ async function _processSingleYtDlpResult(params: {
 		),
 	};
 
-	await registerMedia(newMedia, mediaSourceId, item, basePath);
+	await registerMedia(newMedia, mediaSourceId, item, basePath, owner);
 }
 
 async function _resolveFinalPathWithAvoidance(
@@ -576,6 +662,7 @@ async function handleDirectImageDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
+	owner?: ImportWorkOwner,
 ) {
 	if (!item.targetUrl) {
 		throw new Error("Missing targetUrl for direct download");
@@ -697,7 +784,13 @@ async function handleDirectImageDownload(
 			),
 		};
 
-		await registerMedia(newMedia, mediaSourceId, item, basePath);
+		await registerPublishedDownload(
+			newMedia,
+			mediaSourceId,
+			item,
+			basePath,
+			owner,
+		);
 
 		logger.info(
 			{ url: item.targetUrl },
@@ -752,6 +845,7 @@ async function handleUgoiraDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
+	owner?: ImportWorkOwner,
 ): Promise<void> {
 	if (!item.ugoira || !item.targetUrl)
 		throw new Error("Missing ugoira download metadata");
@@ -775,7 +869,7 @@ async function handleUgoiraDownload(
 			generateMediaFilename(item, ".mp4"),
 		);
 		try {
-			await registerMedia(
+			await registerPublishedDownload(
 				{
 					mediaSourceId,
 					filePath: fileName,
@@ -794,11 +888,15 @@ async function handleUgoiraDownload(
 				mediaSourceId,
 				item,
 				basePath,
+				owner,
 			);
 		} catch (error) {
 			// A watcher may already own the file. Remove only an unregistered result.
 			try {
-				if (!(await MediaRepository.findByPath(mediaSourceId, fileName))) {
+				if (
+					!owner &&
+					!(await MediaRepository.findByPath(mediaSourceId, fileName))
+				) {
 					await fs.unlink(path.join(basePath, fileName));
 				}
 			} catch (cleanupError) {
@@ -864,13 +962,29 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	);
 
 	try {
+		const owner = importWorkOwner(job);
+		if (owner && isRecord(job.payload) && job.payload.savedDownload) {
+			const saved = savedDownloadRegistration.parse(job.payload.savedDownload);
+			await registerMedia(saved, mediaSourceId, item, basePath, owner);
+			return;
+		}
 		if (item.ugoira) {
-			await handleUgoiraDownload(item, mediaSourceId, basePath);
+			await handleUgoiraDownload(
+				item,
+				mediaSourceId,
+				basePath,
+				importWorkOwner(job),
+			);
 		} else if (isTwitterPost) {
 			logger.info({}, "[DownloadJob] Using yt-dlp download method");
-			await handleYtDlpDownload(item, mediaSourceId, basePath);
+			await handleYtDlpDownload(item, mediaSourceId, basePath, job);
 		} else {
-			await handleDirectImageDownload(item, mediaSourceId, basePath);
+			await handleDirectImageDownload(
+				item,
+				mediaSourceId,
+				basePath,
+				importWorkOwner(job),
+			);
 		}
 	} catch (error) {
 		logger.error(
@@ -893,7 +1007,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 async function updateExistingMediaWithMetadata(
 	mediaId: string,
 	mediaSourceId: string,
-	newMedia: AddMediaRequest,
+	newMedia: DownloadRegistration,
 	item: DownloadItem,
 ): Promise<void> {
 	const { MediaProcessingService } =
@@ -920,11 +1034,37 @@ async function updateExistingMediaWithMetadata(
 	);
 }
 
-async function registerMedia(
+async function registerPublishedDownload(
 	newMedia: AddMediaRequest,
 	mediaSourceId: string,
 	item: DownloadItem,
-	_basePath: string,
+	basePath: string,
+	owner?: ImportWorkOwner,
+) {
+	if (owner) {
+		const producer = await JobRepository.findById(owner.workId);
+		if (!isRecord(producer?.payload) || producer.cancelRequestedAt)
+			throw new Error("Download no longer active");
+		await JobRepository.update(
+			owner.workId,
+			{
+				payload: {
+					...producer.payload,
+					savedDownload: savedDownloadRegistration.parse(newMedia),
+				},
+			},
+			owner.attempt,
+		);
+	}
+	await registerMedia(newMedia, mediaSourceId, item, basePath, owner);
+}
+
+async function registerMedia(
+	newMedia: DownloadRegistration,
+	mediaSourceId: string,
+	item: DownloadItem,
+	basePath: string,
+	owner?: ImportWorkOwner,
 ) {
 	try {
 		// Use MediaProcessingService for unified registration and processing
@@ -945,6 +1085,7 @@ async function registerMedia(
 				projects: item.projects,
 				generationInfo: item.generationInfo,
 			},
+			...(owner ? ([owner] as const) : []),
 		);
 
 		logger.info(
@@ -958,6 +1099,18 @@ async function registerMedia(
 			newMedia.filePath,
 		);
 		if (existing) {
+			if (owner) {
+				const { JobRepository } =
+					await import("~/infrastructure/db/repositories");
+				await JobRepository.createIfUnique(
+					{
+						type: "processMedia",
+						mediaSourceId,
+						payload: { mediaId: existing.id, sourcePath: basePath },
+					},
+					owner,
+				);
+			}
 			await updateExistingMediaWithMetadata(
 				existing.id,
 				mediaSourceId,
@@ -991,7 +1144,7 @@ export async function queueDownloadJobs(
 	mediaSourceId: string,
 	items: DownloadItem[],
 	options: { transaction?: Transaction; requestIds?: string[] } = {},
-): Promise<{ jobCount: number; skippedCount: number }> {
+): Promise<{ jobCount: number; skippedCount: number; batchId?: string }> {
 	if (options.requestIds && options.requestIds.length !== items.length)
 		throw new Error("Import queue identities must match the items");
 	const sourceRepo = DrizzleSourceRepository;
@@ -1016,11 +1169,45 @@ export async function queueDownloadJobs(
 				{ urls, existingMediaId, fileName: item.fileName },
 				"Skipping duplicate download item (source URLs already exist)",
 			);
-			return { item, skip: true };
+			return { item, skip: true, mediaId: existingMediaId };
 		}
 		return { item, skip: false };
 	});
 
+	if (items.length > 1) {
+		const targets = items.map((item, index) => {
+			const result = poolResults[index];
+			return {
+				label: path.win32.basename(
+					item.fileName || generateMediaFilename(item, ""),
+				),
+				mediaId:
+					result.status === "fulfilled" ? result.value.mediaId : undefined,
+				skipped: result.status === "fulfilled" && result.value.skip,
+				work: {
+					...(options.requestIds
+						? { id: importDownloadJobId(options.requestIds[index]) }
+						: {}),
+					type: "downloadImage",
+					payload: {
+						...item,
+						description: item.description ?? formatMetadataAsMarkdown(item),
+					},
+				},
+			};
+		});
+		const insert = (tx: Transaction) =>
+			createImportBatch(getExecutor(tx), mediaSourceId, targets);
+		const batch = options.transaction
+			? await insert(options.transaction)
+			: await DrizzleTransactionManager.transaction(insert);
+		const skippedCount = targets.filter((target) => target.skipped).length;
+		return {
+			jobCount: targets.length - skippedCount,
+			skippedCount,
+			batchId: batch.id,
+		};
+	}
 	const newItems: DownloadItem[] = [];
 	let skippedCount = 0;
 	for (const [index, result] of poolResults.entries()) {

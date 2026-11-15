@@ -1,3 +1,4 @@
+import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { UploadMediaModalContent } from "@solid-imager/ui/upload-media-modal-content";
 import { fetchFromUrl } from "~/infrastructure/api-clients/fetch-url-api";
 
@@ -35,10 +36,12 @@ function getFetchedFilename(url: string, type: string) {
 }
 
 type UploadMediaModalProps = {
+	sourceId?: string;
 	isOpen: boolean;
 	onClose: () => void;
 	onUpload: (options: {
 		file: File;
+		reservationId?: string;
 		filename: string;
 		description: string;
 		sourceUrl?: string;
@@ -61,6 +64,17 @@ export function UploadMediaModal(props: UploadMediaModalProps) {
 					type: blob.type,
 				});
 			}}
+			reserveUploads={
+				props.sourceId
+					? async (filenames) =>
+							(
+								await orpc.media.reserveUploads({
+									sourceId: props.sourceId!,
+									filenames,
+								})
+							).reservations
+					: undefined
+			}
 			onUpload={props.onUpload}
 			pastedUrl={props.pastedUrl}
 		/>

@@ -35,6 +35,7 @@ export type {
 export { ugoiraMetadataSchema } from "../domain/media/ugoira-schemas";
 export type { UgoiraMetadata } from "../domain/media/ugoira-schemas";
 export {
+	addMediaRequestSchema,
 	bulkMediaOperationResultSchema,
 	bulkMediaItemResultSchema,
 	downloadItemSchema,

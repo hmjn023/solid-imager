@@ -31,7 +31,11 @@ function targetQuery(
 	cursor?: string,
 ) {
 	return db
-		.select({ id: medias.id, mediaSourceId: medias.mediaSourceId })
+		.select({
+			id: medias.id,
+			mediaSourceId: medias.mediaSourceId,
+			fileName: medias.fileName,
+		})
 		.from(medias)
 		.innerJoin(mediaSources, eq(mediaSources.id, medias.mediaSourceId))
 		.leftJoin(
@@ -68,6 +72,51 @@ export async function countEmbeddingTargets(
 		.select({ count: sql<number>`count(*)::int` })
 		.from(targetQuery(input).as("targets"));
 	return Number(row?.count ?? 0);
+}
+
+/** One snapshot fixes the target list even when media are added or updated during indexing. */
+export async function queueEmbeddingBatch(
+	input: z.infer<typeof batchCcipExtractionRequestSchema>,
+) {
+	return db.transaction(async (tx) => {
+		const [parent] = await tx
+			.insert(jobs)
+			.values({
+				type: "batch_embedding_parent",
+				mediaSourceId: input.mediaSourceId,
+				status: "in_progress",
+				payload: { total: 0, processed: 0, failed: 0 },
+			})
+			.returning();
+		const matches = targetQuery(input);
+		await tx.execute(sql`
+			WITH target_rows AS (
+				INSERT INTO jobs (type, parent_id, source_id, status, payload)
+				SELECT 'import_batch_target', ${parent.id}::uuid, m.source_id, 'in_progress',
+					jsonb_build_object('mediaId', m.id, 'label', m.file_name)
+				FROM (${matches}) m RETURNING id, source_id, payload
+			)
+			INSERT INTO jobs (type, parent_id, source_id, payload)
+			SELECT 'extract_embedding_vector', id, source_id, jsonb_build_object(
+				'mediaId',payload->>'mediaId','force',${input.force}::boolean,
+				'importTargetId',id,'importBatchId',${parent.id}::uuid
+			) FROM target_rows
+		`);
+		const [count] = await tx
+			.select({ total: sql<number>`count(*)::int` })
+			.from(jobs)
+			.where(eq(jobs.parentId, parent.id));
+		const total = count.total;
+		await tx
+			.update(jobs)
+			.set({
+				payload: { total, processed: 0, failed: 0 },
+				status: total ? "in_progress" : "completed",
+				finishedAt: total ? null : new Date(),
+			})
+			.where(eq(jobs.id, parent.id));
+		return { id: parent.id, total };
+	});
 }
 
 export async function processEmbeddingBatchJob(job: Job): Promise<void> {

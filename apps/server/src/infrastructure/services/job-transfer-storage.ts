@@ -15,7 +15,7 @@ const JobTransferDirectory = path.resolve(
 			? path.join(isolatedRuntimeDirectory, ".cache", "job-transfers")
 			: path.join(process.cwd(), ".cache", "job-transfers")),
 );
-const JobArtifactTtlMs = 24 * 60 * 60 * 1000;
+export const JobArtifactTtlMs = 24 * 60 * 60 * 1000;
 const JobTransferStaleFileTtlMs = 60 * 60 * 1000;
 
 /** Supported source transfer formats and their filename extensions. */
@@ -35,32 +35,19 @@ export function getJobTransferRoot(): string {
 	return JobTransferDirectory;
 }
 
-function getModeExtension(mode: JobTransferMode): string {
-	return mode;
-}
+type InputMode = JobTransferMode | "upload";
 
-export function getInputPath(jobId: string, mode: JobTransferMode): string {
-	return path.join(
-		JobTransferDirectory,
-		"inputs",
-		`${jobId}.${getModeExtension(mode)}`,
-	);
+export function getInputPath(jobId: string, mode: InputMode): string {
+	return path.join(JobTransferDirectory, "inputs", `${jobId}.${mode}`);
 }
 
 /** Returns the temporary upload path used before an input is fully persisted. */
-export function getInputPartialPath(
-	jobId: string,
-	mode: JobTransferMode,
-): string {
+export function getInputPartialPath(jobId: string, mode: InputMode): string {
 	return `${getInputPath(jobId, mode)}.partial`;
 }
 
 export function getArtifactPath(jobId: string, mode: JobTransferMode): string {
-	return path.join(
-		JobTransferDirectory,
-		"artifacts",
-		`${jobId}.${getModeExtension(mode)}`,
-	);
+	return path.join(JobTransferDirectory, "artifacts", `${jobId}.${mode}`);
 }
 
 /** Returns the temporary path used while an export artifact is being written. */
@@ -113,7 +100,7 @@ export function getArtifactMetadata(
  */
 export async function persistJobInput(
 	jobId: string,
-	mode: JobTransferMode,
+	mode: InputMode,
 	file: File,
 ): Promise<string> {
 	const inputPath = getInputPath(jobId, mode);

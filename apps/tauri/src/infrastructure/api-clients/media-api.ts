@@ -31,6 +31,7 @@ export function uploadMedia(
 	file: File,
 	options?: {
 		filename?: string;
+		reservationId?: string;
 		description?: string;
 		sourceUrl?: string;
 		overwrite?: boolean;
@@ -40,6 +41,7 @@ export function uploadMedia(
 	return client.media.upload({
 		sourceId,
 		file,
+		reservationId: options?.reservationId,
 		filename: options?.filename,
 		description: options?.description,
 		sourceUrl: options?.sourceUrl,

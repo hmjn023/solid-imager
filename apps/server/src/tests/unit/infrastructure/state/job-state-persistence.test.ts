@@ -141,10 +141,14 @@ describe("persisted import, attempt and batch transitions", () => {
 				jobIds: [request.id, submitted.id, unrelated.id, request.id],
 				targetSourceId: SOURCE_ID,
 			}).then((result) => result.processedCount),
-			processImportRequests([request.id], SOURCE_ID),
+			processImportRequests([request.id], SOURCE_ID).then(
+				(result) => result.processedCount,
+			),
 		]);
 		expect(counts.reduce((sum, value) => sum + value, 0)).toBe(1);
-		expect(await processImportRequests([request.id], SOURCE_ID)).toBe(0);
+		expect(await processImportRequests([request.id], SOURCE_ID)).toEqual({
+			processedCount: 0,
+		});
 		const rows = await database.select().from(jobs);
 		expect(rows.filter((job) => job.type === "downloadImage")).toEqual([
 			expect.objectContaining({

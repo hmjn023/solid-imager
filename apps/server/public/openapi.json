@@ -2424,6 +2424,11 @@
                               "minimum": 0,
                               "maximum": 9007199254740991
                             },
+                            "cancelled": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
                             "total": {
                               "type": "integer",
                               "minimum": 0,
@@ -2702,6 +2707,11 @@
                               "maximum": 9007199254740991
                             },
                             "failed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "cancelled": {
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
@@ -6683,6 +6693,76 @@
         }
       }
     },
+    "/media/reserveUploads": {
+      "post": {
+        "operationId": "media.reserveUploads",
+        "summary": "複数アップロードの取り込み対象を登録",
+        "tags": [
+          "Media"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "sourceId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "filenames": {
+                    "minItems": 1,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1
+                    }
+                  }
+                },
+                "required": [
+                  "sourceId",
+                  "filenames"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "jobId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    "reservations": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      }
+                    }
+                  },
+                  "required": [
+                    "jobId",
+                    "reservations"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/media/upload": {
       "post": {
         "operationId": "media.upload",
@@ -6707,6 +6787,11 @@
                     "type": "string",
                     "format": "binary",
                     "contentEncoding": "binary"
+                  },
+                  "reservationId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                   },
                   "filename": {
                     "type": "string"
@@ -6768,6 +6853,23 @@
                     "filePath"
                   ],
                   "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Upload batch cancelled",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/BatchCancelled"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UndefinedError"
+                    }
+                  ]
                 }
               }
             }
@@ -13852,6 +13954,11 @@
                     "jobCount": {
                       "type": "number"
                     },
+                    "batchId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
                     "skippedCount": {
                       "type": "number"
                     },
@@ -14040,6 +14147,40 @@
           "200": {
             "description": "OK",
             "content": {}
+          }
+        }
+      }
+    },
+    "/ai/offload": {
+      "post": {
+        "operationId": "ai.offload",
+        "summary": "実行中の推論終了後にモデルを解放",
+        "tags": [
+          "AI"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {}
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {},
+                  "additionalProperties": false
+                }
+              }
+            }
           }
         }
       }
@@ -16233,6 +16374,11 @@
                     },
                     "processedCount": {
                       "type": "number"
+                    },
+                    "batchId": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                     }
                   },
                   "required": [
@@ -16465,6 +16611,140 @@
         }
       }
     },
+    "/jobs/targets": {
+      "post": {
+        "operationId": "jobs.targets",
+        "summary": "バッチの処理対象一覧",
+        "tags": [
+          "Jobs"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "limit": {
+                    "default": 25,
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 200
+                  },
+                  "offset": {
+                    "default": 0,
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "mediaId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "status": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "pending",
+                                  "in_progress",
+                                  "completed",
+                                  "failed",
+                                  "cancelled"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "skipped": {
+                            "type": "boolean"
+                          },
+                          "stage": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "uploadReservationId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uuid",
+                                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "mediaId",
+                          "status",
+                          "skipped",
+                          "stage"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/activeBatches": {
       "post": {
         "operationId": "jobs.activeBatches",
@@ -16639,6 +16919,11 @@
                                 "maximum": 9007199254740991
                               },
                               "failed": {
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 9007199254740991
+                              },
+                              "cancelled": {
                                 "type": "integer",
                                 "minimum": 0,
                                 "maximum": 9007199254740991
@@ -16931,6 +17216,11 @@
                                     "minimum": 0,
                                     "maximum": 9007199254740991
                                   },
+                                  "cancelled": {
+                                    "type": "integer",
+                                    "minimum": 0,
+                                    "maximum": 9007199254740991
+                                  },
                                   "total": {
                                     "type": "integer",
                                     "minimum": 0,
@@ -17212,6 +17502,11 @@
                               "minimum": 0,
                               "maximum": 9007199254740991
                             },
+                            "cancelled": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
                             "total": {
                               "type": "integer",
                               "minimum": 0,
@@ -17342,7 +17637,7 @@
       "post": {
         "operationId": "jobs.retry",
         "summary": "ジョブ再実行",
-        "description": "失敗した単独の実行ジョブを再実行します。バッチ親子とインポート受付は対象外です。失敗項目は新しいバッチとして開始してください。",
+        "description": "一括取り込み・EmbeddingGemmaの親ジョブは対象別の失敗工程を再投入します。単独ジョブは失敗したジョブを再実行します。",
         "tags": [
           "Jobs"
         ],
@@ -17354,6 +17649,11 @@
                 "type": "object",
                 "properties": {
                   "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "replacementUploadId": {
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
@@ -17520,6 +17820,11 @@
                               "maximum": 9007199254740991
                             },
                             "failed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "cancelled": {
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
@@ -17610,7 +17915,7 @@
       "post": {
         "operationId": "jobs.cancel",
         "summary": "ジョブキャンセル",
-        "description": "待機中は取消を確定し、実行中は取消を要求します。取消要求は非終端イベント、取消確定は終端イベントとして通知します。",
+        "description": "一括取り込みではその親に属する待機工程を取り消し、実行中の工程に取消を要求します。単独ジョブにも同じ待機・実行中の規則を適用します。取消要求は非終端イベント、取消確定は終端イベントとして通知します。",
         "tags": [
           "Jobs"
         ],
@@ -17788,6 +18093,11 @@
                               "maximum": 9007199254740991
                             },
                             "failed": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 9007199254740991
+                            },
+                            "cancelled": {
                               "type": "integer",
                               "minimum": 0,
                               "maximum": 9007199254740991
@@ -17910,11 +18220,24 @@
                                     "jobId": {
                                       "type": "string"
                                     },
+                                    "created": {
+                                      "type": "boolean"
+                                    },
                                     "processed": {
                                       "type": "number"
                                     },
                                     "total": {
                                       "type": "number"
+                                    },
+                                    "failed": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "cancelled": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
                                     }
                                   },
                                   "required": [
@@ -20566,6 +20889,27 @@
           },
           "code": {
             "type": "string"
+          },
+          "message": {
+            "type": "string"
+          },
+          "data": {}
+        },
+        "required": [
+          "defined",
+          "code",
+          "message"
+        ]
+      },
+      "BatchCancelled": {
+        "title": "BATCH_CANCELLED",
+        "type": "object",
+        "properties": {
+          "defined": {
+            "const": true
+          },
+          "code": {
+            "const": "BATCH_CANCELLED"
           },
           "message": {
             "type": "string"

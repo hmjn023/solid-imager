@@ -56,6 +56,10 @@ export async function processJob(job: Job) {
 		const { MediaProcessingService } =
 			await import("~/infrastructure/services/media-processing-service");
 		await MediaProcessingService.executeProcessMediaJob(job);
+	} else if (job.type === "import_upload" || job.type === "import_register") {
+		const { replayImportSubmission } =
+			await import("./import-submission-retry");
+		return replayImportSubmission(job);
 	} else if (job.type === "downloadImage") {
 		const { processDownloadJob } =
 			await import("~/infrastructure/jobs/download-jobs");

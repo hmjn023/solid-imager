@@ -6,6 +6,8 @@ import { and, count, eq } from "drizzle-orm";
 import type { z } from "zod";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
+import { JobRepository } from "~/infrastructure/db/repositories";
+import { notifyBatchState } from "~/infrastructure/events/batch-state";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
 	processImportRequests,
@@ -165,10 +167,12 @@ export const importsRouter = os.router({
 	 * Process selected import requests (Queue downloads).
 	 */
 	process: os.process.handler(async ({ input }) => {
-		const processedCount = await processImportRequests(
+		const { processedCount, batchId } = await processImportRequests(
 			input.jobIds,
 			input.targetSourceId,
 		);
+		if (batchId)
+			await notifyBatchState(JobRepository, batchId, { created: true });
 		try {
 			if (processedCount > 0)
 				RealtimeEventBus.publishImport("import-request:processed", {
@@ -180,7 +184,7 @@ export const importsRouter = os.router({
 				"Failed to notify committed import approval",
 			);
 		}
-		return { success: true, processedCount };
+		return { success: true, processedCount, batchId };
 	}),
 
 	/**

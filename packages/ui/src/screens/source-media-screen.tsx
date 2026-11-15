@@ -271,6 +271,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				const UploadModal = props.uploadModalComponent;
 				return (
 					<UploadModal
+						sourceId={page().mediaSourceId()}
 						initialFile={page().fileToUpload()}
 						isOpen={page().showUploadModal()}
 						onClose={() => {

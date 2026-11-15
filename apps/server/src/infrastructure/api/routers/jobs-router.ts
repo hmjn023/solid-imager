@@ -1,21 +1,24 @@
+import { listBatchTargets } from "~/infrastructure/services/job-batch-targets";
 import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/contract";
 import {
-	isBatchParentJobType,
+	canCancelJobType,
+	hasBatchTargetHistory,
 	canRetryJob,
 	batchParentJobTypes,
 	jobStatusSchema,
+	readImportBatch,
 	type Job,
 } from "@solid-imager/core/jobs";
 import type { JobEvent } from "@solid-imager/core/events";
-import { and, count, desc, eq, inArray } from "drizzle-orm";
+import { and, count, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { resolveJobArtifact } from "~/infrastructure/api/job-artifact";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import { notifyJob } from "~/infrastructure/events/state-notifications";
-import { logger } from "~/infrastructure/logger";
+import { notifyBatchState } from "~/infrastructure/events/batch-state";
 import {
 	JobRepository,
 	MediaRepository,
@@ -61,6 +64,9 @@ function readProgress(payload: unknown) {
 	return {
 		processed,
 		failed: readNonNegativeInteger(payload.failed) ?? 0,
+		...(payload.cancelled !== undefined && {
+			cancelled: readNonNegativeInteger(payload.cancelled) ?? 0,
+		}),
 		total,
 	};
 }
@@ -135,12 +141,17 @@ export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
 }
 
 function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
-	return status ? and(eq(jobs.status, status)) : undefined;
+	return and(
+		ne(jobs.type, "import_batch_target"),
+		sql`${jobs.payload}->>'importBatchId' IS NULL`,
+		status ? eq(jobs.status, status) : undefined,
+	);
 }
 
 const os = implement(jobsContract);
 
 export const jobsRouter = os.router({
+	targets: os.targets.handler(({ input }) => listBatchTargets(input)),
 	activeBatches: os.activeBatches.handler(async () => {
 		const rows = await db
 			.select()
@@ -148,7 +159,9 @@ export const jobsRouter = os.router({
 			.where(
 				and(
 					inArray(jobs.type, [
-						...batchParentJobTypes,
+						...batchParentJobTypes.filter(
+							(type) => type !== "import_batch_parent",
+						),
 						"extract_embedding_batch",
 					]),
 					inArray(jobs.status, ["pending", "in_progress"]),
@@ -201,10 +214,24 @@ export const jobsRouter = os.router({
 
 	retry: os.retry.handler(async ({ input }) => {
 		const current = await JobRepository.findById(input.id);
-		if (current && !canRetryJob(current)) {
+		if (current && hasBatchTargetHistory(current.type)) {
+			const parent = await JobRepository.retryFailedBatch(
+				input.id,
+				input.replacementUploadId,
+			);
+			if (!parent)
+				throw new ORPCError("BAD_REQUEST", {
+					message: "No failed target stages to retry",
+				});
+			notifyJob("job-retried", {
+				jobId: parent.id,
+				message: "Failed target stages queued for retry",
+			});
+			return toJobDto(parent);
+		}
+		if (input.replacementUploadId || (current && !canRetryJob(current))) {
 			throw new ORPCError("BAD_REQUEST", {
-				message:
-					"Only failed standalone jobs can be retried; start a new batch for failed items",
+				message: "No independently retryable work for this job",
 			});
 		}
 		const [requeued] = await db
@@ -255,7 +282,7 @@ export const jobsRouter = os.router({
 				message: "Only pending or in-progress jobs can be cancelled",
 			});
 		}
-		if (isBatchParentJobType(job.type)) {
+		if (!canCancelJobType(job.type)) {
 			throw new ORPCError("BAD_REQUEST", {
 				message: "Batch parent jobs cannot be cancelled",
 			});
@@ -282,19 +309,10 @@ export const jobsRouter = os.router({
 			},
 		);
 		if (cancelled.parentId && cancelled.status === "cancelled") {
-			try {
-				const parent = await JobRepository.findById(cancelled.parentId);
-				if (parent?.status === "failed")
-					notifyJob("job-failed", {
-						jobId: parent.id,
-						error: "A batch job was cancelled",
-					});
-			} catch (error) {
-				logger.error(
-					{ err: error, jobId: cancelled.parentId },
-					"Failed to notify committed batch cancellation",
-				);
-			}
+			await notifyBatchState(
+				JobRepository,
+				readImportBatch(cancelled)?.importBatchId ?? cancelled.parentId,
+			);
 		}
 		return toJobDto(cancelled, await findTargetMediaModifiedAt(cancelled));
 	}),

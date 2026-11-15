@@ -142,7 +142,11 @@ export function createManagerBatchState(
 				next = {
 					...next,
 					status: "in_progress",
-					progress: { ...event.data, failed: previous.progress?.failed ?? 0 },
+					progress: {
+						...previous.progress,
+						...event.data,
+						failed: event.data.failed ?? previous.progress?.failed ?? 0,
+					},
 				};
 				break;
 			case "job-cancellation-requested":
