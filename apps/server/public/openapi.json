@@ -3887,7 +3887,7 @@
                     "default": 12,
                     "type": "integer",
                     "minimum": 1,
-                    "maximum": 24
+                    "maximum": 48
                   },
                   "seed": {
                     "default": "default",

@@ -244,7 +244,21 @@ describe("RelatedMediaService", () => {
 		expect(store.get).not.toHaveBeenCalled();
 	});
 
-	it.each([0, -1, 25, 1.5])(
+	it("returns 48 distinct recommendations when the detail grid has enough matches", async () => {
+		const { repository, service } = setup();
+		const pool = Array.from({ length: 60 }, (_, index) =>
+			media(`candidate-${index}`),
+		);
+		repository.findRelatedByRelation.mockResolvedValue(pool);
+		const result = await service.getRelated({ sourceId, mediaId, limit: 48 });
+		expect(result.items).toHaveLength(48);
+		expect(result.recommendations).toHaveLength(48);
+		expect(
+			new Set(result.recommendations.map((item) => item.media.id)).size,
+		).toBe(48);
+	});
+
+	it.each([0, -1, 49, 1.5])(
 		"rejects invalid per-category limit %s before reading media",
 		async (limit) => {
 			const { repository, service } = setup();
