@@ -443,24 +443,27 @@ export class JobWorker {
 					await import("~/infrastructure/services/import-submission-retry");
 				await cleanupReplayedUpload(job);
 			}
+			const batch = readImportBatch(job);
 			if (status === "completed") {
 				RealtimeEventBus.publishJob("job-completed", {
 					jobId: job.id,
+					...(batch && { importBatchId: batch.importBatchId }),
 					message: "Job completed",
 				});
 			} else if (status === "failed") {
 				RealtimeEventBus.publishJob("job-failed", {
 					jobId: job.id,
+					...(batch && { importBatchId: batch.importBatchId }),
 					error: PublicJobFailureMessage,
 				});
 			} else {
 				if (job.artifactPath) await removeJobTransferFile(job.artifactPath);
 				RealtimeEventBus.publishJob("job-cancelled", {
 					jobId: job.id,
+					...(batch && { importBatchId: batch.importBatchId }),
 					message: "Job cancelled",
 				});
 			}
-			const batch = readImportBatch(job);
 			if (batch) {
 				await notifyBatchState(this.jobRepo, batch.importBatchId);
 				return;

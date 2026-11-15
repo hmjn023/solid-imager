@@ -1,9 +1,4 @@
-import { ClosedImportScanError } from "@solid-imager/db";
-import {
-	finishDirectoryImport,
-	reserveImportFiles,
-	runImportSubmission,
-} from "./import-submission";
+import { reserveImportFiles, runImportSubmission } from "./import-submission";
 import fs from "node:fs/promises";
 import path from "node:path";
 import {
@@ -360,59 +355,35 @@ export const DirectorySyncService = {
 						.map((ext) => ext.toLowerCase()),
 				);
 
-				// Await each small batch before reading more files. Registration reads
-				// image/video metadata before enqueueing a job, outside JobWorker's pool.
-				let failures = 0;
-				const scanId = crypto.randomUUID();
-				let collecting = false;
-				let scanFinished = false;
+				// Discover and reserve the full batch before metadata processing begins.
+				// Only paths are collected; expensive registration stays concurrency-limited.
 				const additions: string[] = [];
-				const registerPage = async (last: boolean) => {
-					if (!additions.length) return;
-					const page = additions.splice(0, concurrency);
-					if (!collecting && last && page.length === 1) {
-						failures += await processAdditions(mediaSourceId, page, result);
-					} else {
-						const { reservations } = await reserveImportFiles(
-							mediaSourceId,
-							page,
-							"import_register",
-							{ id: scanId, firstPage: !collecting },
-						);
-						collecting = true;
-						failures += await processAdditions(
-							mediaSourceId,
-							page,
-							result,
-							reservations,
-						);
-					}
-				};
-				try {
-					for await (const relativePath of scanFiles(basePath)) {
-						if (
-							dbPathMap.delete(relativePath) ||
-							!allowedExts.has(path.extname(relativePath).toLowerCase())
-						)
-							continue;
-						additions.push(relativePath.split("/").join(path.sep));
-						if (
-							additions.length >= concurrency &&
-							(collecting || additions.length > 1)
-						)
-							await registerPage(false);
-					}
-					await registerPage(true);
-					scanFinished = true;
-				} catch (error) {
-					if (error instanceof ClosedImportScanError)
-						return finishSync(result, {
-							failureKind: "partial",
-							error: "Directory import stopped",
-						});
-					throw error;
-				} finally {
-					if (collecting) await finishDirectoryImport(scanId, !scanFinished);
+				for await (const relativePath of scanFiles(basePath)) {
+					if (
+						dbPathMap.delete(relativePath) ||
+						!allowedExts.has(path.extname(relativePath).toLowerCase())
+					)
+						continue;
+					additions.push(relativePath.split("/").join(path.sep));
+				}
+				const reservations =
+					additions.length > 1
+						? (
+								await reserveImportFiles(
+									mediaSourceId,
+									additions,
+									"import_register",
+								)
+							).reservations
+						: undefined;
+				let failures = 0;
+				for (let offset = 0; offset < additions.length; offset += concurrency) {
+					failures += await processAdditions(
+						mediaSourceId,
+						additions.slice(offset, offset + concurrency),
+						result,
+						reservations?.slice(offset, offset + concurrency),
+					);
 				}
 
 				// Only delete after the entire scan succeeds. A failed/inaccessible

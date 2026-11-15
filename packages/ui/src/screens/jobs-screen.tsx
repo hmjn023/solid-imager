@@ -1,3 +1,5 @@
+import { createStore, reconcile, unwrap } from "solid-js/store";
+import { observePageBoundary } from "../hooks/observe-page-boundary";
 import { Input } from "../input";
 import { Label } from "../label";
 import { jobsQueryKeys } from "../query-options/jobs-query";
@@ -15,11 +17,10 @@ import type { useJobInspection } from "../hooks/use-job-inspection";
 import {
 	isBatchParentJobType,
 	type JobDto,
+	type JobListRequest,
 	type JobListResponse,
 } from "@solid-imager/core/jobs";
 import Ban from "lucide-solid/icons/ban";
-import ChevronLeft from "lucide-solid/icons/chevron-left";
-import ChevronRight from "lucide-solid/icons/chevron-right";
 import CircleAlert from "lucide-solid/icons/circle-alert";
 import CircleCheck from "lucide-solid/icons/circle-check";
 import Clock3 from "lucide-solid/icons/clock-3";
@@ -113,17 +114,6 @@ const JOB_FILTERS = [
 	},
 ] as const;
 
-type JobFilter = (typeof JOB_FILTERS)[number]["value"];
-
-export type JobsPagination = {
-	canNext: boolean;
-	canPrevious: boolean;
-	current: number;
-	onNext: () => void;
-	onPrevious: () => void;
-	total: number;
-};
-
 type LoadTargets = (
 	id: string,
 	offset: number,
@@ -151,7 +141,16 @@ export type JobsScreenProps = {
 	onRetryMany: (jobIds: string[]) => void | Promise<void>;
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
-	page: Accessor<JobsPagination>;
+	status: Accessor<JobListRequest["status"]>;
+	onStatusChange: (status: JobListRequest["status"]) => void;
+	type: Accessor<string | undefined>;
+	onTypeChange: (type: string | undefined) => void;
+	jobTypes: Accessor<QueryUiState<string[]>>;
+	onRetryTypes: () => void;
+	hasMore: Accessor<boolean>;
+	isLoadingMore: Accessor<boolean>;
+	loadMoreError: Accessor<boolean>;
+	onLoadMore: () => void;
 	state: Accessor<QueryUiState<JobListResponse>>;
 };
 
@@ -291,6 +290,10 @@ function JobsTable(props: {
 	selectedJobId: string | null;
 	selectedJobIds: ReadonlySet<string>;
 }) {
+	// Own the row objects so reconciliation never mutates query-cache data.
+	const copyJobs = () => structuredClone(unwrap(props.jobs));
+	const [rows, setRows] = createStore<{ jobs: JobDto[] }>({ jobs: copyJobs() });
+	createEffect(() => setRows("jobs", reconcile(copyJobs(), { key: "id" })));
 	return (
 		<div class="overflow-hidden rounded-md border border-border bg-card">
 			{/* Live progress must not resize columns and rewrap neighboring rows. */}
@@ -323,7 +326,7 @@ function JobsTable(props: {
 					</TableRow>
 				</TableHeader>
 				<TableBody>
-					<For each={props.jobs}>
+					<For each={rows.jobs}>
 						{(job) => (
 							<TableRow
 								class={
@@ -970,8 +973,55 @@ function JobsInspector(props: {
 	);
 }
 
+function JobsLoadMore(props: {
+	screen: JobsScreenProps;
+	root: Accessor<HTMLDivElement | undefined>;
+	active: Accessor<boolean>;
+}) {
+	const [boundary, setBoundary] = createSignal<HTMLDivElement>();
+	observePageBoundary({
+		target: boundary,
+		root: props.root,
+		enabled: () =>
+			props.active() &&
+			props.screen.hasMore() &&
+			!props.screen.isRefreshing() &&
+			!props.screen.isLoadingMore() &&
+			!props.screen.loadMoreError(),
+		rootMargin: "200px",
+		load: props.screen.onLoadMore,
+	});
+	return (
+		<div
+			ref={setBoundary}
+			class="mt-4 flex min-h-11 flex-col items-center gap-2"
+		>
+			<Show when={props.screen.loadMoreError()}>
+				<Alert variant="destructive">
+					<AlertDescription>{t("jobsScreen.loadMoreFailed")}</AlertDescription>
+				</Alert>
+			</Show>
+			<Show when={props.screen.hasMore()}>
+				<Button
+					variant="outline"
+					onClick={props.screen.onLoadMore}
+					disabled={props.screen.isLoadingMore()}
+					aria-busy={props.screen.isLoadingMore()}
+				>
+					{props.screen.isLoadingMore()
+						? t("jobsScreen.loadingJobs")
+						: props.screen.loadMoreError()
+							? t("actions.retry")
+							: t("actions.loadMore")}
+				</Button>
+			</Show>
+		</div>
+	);
+}
+
 export function JobsScreen(props: JobsScreenProps) {
-	const [activeFilter, setActiveFilter] = createSignal<JobFilter>("all");
+	const activeFilter = () => props.status() ?? "all";
+	const [scrollRoot, setScrollRoot] = createSignal<HTMLDivElement>();
 	const [localSelection, setLocalSelection] = createSignal<string | null>(null);
 	const [selectedJobIds, setSelectedJobIds] = createSignal<Set<string>>(
 		new Set(),
@@ -998,24 +1048,7 @@ export function JobsScreen(props: JobsScreenProps) {
 					inlineInspector.scrollIntoView({ block: "nearest" });
 			});
 	});
-	const filteredJobs = createMemo(() => {
-		const jobs = props.jobs();
-		switch (activeFilter()) {
-			case "active":
-				return jobs.filter(
-					(job) => job.status === "pending" || job.status === "in_progress",
-				);
-			case "completed":
-				return jobs.filter((job) => job.status === "completed");
-			case "failed":
-				return jobs.filter((job) => job.status === "failed");
-			case "cancelled":
-				return jobs.filter((job) => job.status === "cancelled");
-			default:
-				return jobs;
-		}
-	});
-	const retryableJobIds = createMemo(() => getRetryableJobIds(filteredJobs()));
+	const retryableJobIds = createMemo(() => getRetryableJobIds(props.jobs()));
 	const selectedRetryableJobIds = createMemo(() =>
 		retryableJobIds().filter((jobId) => selectedJobIds().has(jobId)),
 	);
@@ -1086,7 +1119,10 @@ export function JobsScreen(props: JobsScreenProps) {
 			/>
 
 			<div class="grid min-h-0 flex-1 xl:grid-cols-detail-sidebar">
-				<div class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable">
+				<div
+					ref={setScrollRoot}
+					class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable"
+				>
 					<Show when={props.inspection?.failed()}>
 						<ErrorState
 							title={t("jobsScreen.couldNotLoadTheSelectedJob")}
@@ -1117,9 +1153,53 @@ export function JobsScreen(props: JobsScreenProps) {
 							</div>
 						)}
 					</Show>
+					<div class="mb-4 flex flex-wrap items-center gap-2">
+						<Select<string>
+							options={["", ...(props.jobTypes().data ?? [])]}
+							value={props.type() ?? ""}
+							onChange={(type) => {
+								props.onTypeChange(type || undefined);
+								clearBulkSelection();
+								scrollRoot()?.scrollTo({ top: 0 });
+							}}
+							itemComponent={(itemProps) => (
+								<SelectItem item={itemProps.item}>
+									{itemProps.item.rawValue
+										? jobTypeLabel(itemProps.item.rawValue)
+										: t("jobsScreen.allTypes")}
+								</SelectItem>
+							)}
+						>
+							<SelectTrigger
+								aria-label={t("jobsScreen.jobTypeFilter")}
+								class="w-full sm:w-64"
+							>
+								<SelectValue<string>>
+									{(state) =>
+										state.selectedOption()
+											? jobTypeLabel(state.selectedOption()!)
+											: t("jobsScreen.allTypes")
+									}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent />
+						</Select>
+						<Show when={props.jobTypes().error}>
+							<Button variant="outline" onClick={props.onRetryTypes}>
+								{t("jobsScreen.retryTypes")}
+							</Button>
+						</Show>
+					</div>
 					<Tabs
 						onChange={(value) => {
-							setActiveFilter(value as JobFilter);
+							const filter = JOB_FILTERS.find(
+								(filter) => filter.value === value,
+							);
+							if (!filter) return;
+							props.onStatusChange(
+								filter.value === "all" ? undefined : filter.value,
+							);
+							scrollRoot()?.scrollTo({ top: 0 });
 							clearBulkSelection();
 						}}
 						value={activeFilter()}
@@ -1192,7 +1272,7 @@ export function JobsScreen(props: JobsScreenProps) {
 																})}
 															/>
 														}
-														when={filteredJobs().length > 0}
+														when={props.jobs().length > 0}
 													>
 														<Show when={retryableJobIds().length > 0}>
 															<JobsBulkActions
@@ -1214,83 +1294,29 @@ export function JobsScreen(props: JobsScreenProps) {
 														</Show>
 														<JobsTable
 															buildThumbnailUrl={props.buildThumbnailUrl}
-															jobs={filteredJobs()}
+															jobs={props.jobs()}
 															onSelect={selectJob}
 															onToggleSelect={toggleJob}
 															selectedJobId={selectedId() ?? null}
 															selectedJobIds={selectedJobIds()}
 														/>
-														<Show when={props.state().data?.total}>
-															{(total) => (
-																<p class="mt-3 text-xs text-muted-foreground">
-																	{t(
-																		"jobsScreen.showingValueValueOfValueValueJobs",
-																		{
-																			value1: String(
-																				filteredJobs().length.toLocaleString(),
-																			),
-																			value3: String(total().toLocaleString()),
-																		},
-																	)}
-																</p>
-															)}
-														</Show>
 													</Show>
-													<Show when={props.page().total > 1}>
-														<nav
-															aria-label={t("jobsScreen.jobPages")}
-															class="mt-4 flex items-center justify-between gap-3"
-														>
-															<Button
-																aria-label={t("jobsScreen.previousPage")}
-																disabled={
-																	!props.page().canPrevious ||
-																	props.isRefreshing()
-																}
-																onClick={() => {
-																	if (props.page().canPrevious) {
-																		clearBulkSelection();
-																		props.page().onPrevious();
-																	}
-																}}
-																size="sm"
-																variant="outline"
-															>
-																<ChevronLeft aria-hidden="true" size={14} />
-																<span class="hidden sm:inline">
-																	{t("actions.previous")}
-																</span>
-															</Button>
-															<span
-																aria-live="polite"
-																class="text-sm text-muted-foreground"
-															>
-																{t("jobsScreen.pageValueOfValueValue", {
-																	value0: String(props.page().current),
-																	value2: String(props.page().total),
-																})}
-															</span>
-															<Button
-																aria-label={t("jobsScreen.nextPage")}
-																disabled={
-																	!props.page().canNext || props.isRefreshing()
-																}
-																onClick={() => {
-																	if (props.page().canNext) {
-																		clearBulkSelection();
-																		props.page().onNext();
-																	}
-																}}
-																size="sm"
-																variant="outline"
-															>
-																<span class="hidden sm:inline">
-																	{t("actions.next")}
-																</span>
-																<ChevronRight aria-hidden="true" size={14} />
-															</Button>
-														</nav>
-													</Show>
+													<p
+														class="mt-3 text-xs text-muted-foreground"
+														aria-live="polite"
+													>
+														{t("jobsScreen.showingValueValueOfValueValueJobs", {
+															value1: props.jobs().length.toLocaleString(),
+															value3: (
+																props.state().data?.total ?? 0
+															).toLocaleString(),
+														})}
+													</p>
+													<JobsLoadMore
+														screen={props}
+														root={scrollRoot}
+														active={() => activeFilter() === filter.value}
+													/>
 												</Match>
 											</Switch>
 										</TabsContent>

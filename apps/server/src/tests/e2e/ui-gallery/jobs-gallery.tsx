@@ -1,7 +1,7 @@
-import type { JobDto } from "@solid-imager/core/jobs";
+import type { JobDto, JobListRequest } from "@solid-imager/core/jobs";
 import { Button } from "@solid-imager/ui/button";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs";
-import { createSignal } from "solid-js";
+import { createMemo, createSignal } from "solid-js";
 
 const date = new Date("2026-01-01T00:00:00Z");
 const initialJobs: JobDto[] = [
@@ -30,6 +30,19 @@ const initialJobs: JobDto[] = [
 
 export function JobsGallery() {
 	const [jobs, setJobs] = createSignal(initialJobs);
+	const [refreshing, setRefreshing] = createSignal(false);
+	const [status, setStatus] = createSignal<JobListRequest["status"]>();
+	const [type, setType] = createSignal<string>();
+	const filtered = createMemo(() =>
+		jobs().filter(
+			(job) =>
+				(!type() || job.type === type()) &&
+				(!status() ||
+					(status() === "active"
+						? ["pending", "in_progress"].includes(job.status)
+						: job.status === status())),
+		),
+	);
 	const [step, setStep] = createSignal(0);
 	const advance = () => {
 		const next = step() + 1;
@@ -53,28 +66,39 @@ export function JobsGallery() {
 	return (
 		<div class="flex h-dvh min-w-0 flex-col">
 			<Button onClick={advance}>Advance jobs</Button>
+			<Button onClick={() => setRefreshing(true)}>
+				Start background refresh
+			</Button>
 			<div class="min-h-0 min-w-0 flex-1">
 				<JobsScreen
 					buildThumbnailUrl={({ mediaId }) => `/job-thumbnail/${mediaId}.webp`}
-					jobs={jobs}
-					isRefreshing={() => false}
+					jobs={filtered}
+					isRefreshing={refreshing}
 					onRefresh={() => {}}
 					onRetry={() => {}}
 					onRetryMany={() => {}}
 					onCancel={() => {}}
 					onDownload={() => {}}
-					page={() => ({
-						current: 1,
-						total: 1,
-						canNext: false,
-						canPrevious: false,
-						onNext: () => {},
-						onPrevious: () => {},
+					status={status}
+					onStatusChange={setStatus}
+					type={type}
+					onTypeChange={setType}
+					jobTypes={() => ({
+						phase: "data",
+						fetchState: "idle",
+						error: undefined,
+						data: initialJobs.map((job) => job.type),
 					})}
+					onRetryTypes={() => {}}
+					hasMore={() => false}
+					isLoadingMore={() => false}
+					loadMoreError={() => false}
+					onLoadMore={() => {}}
+
 					state={() => ({
 						phase: "data",
 						fetchState: "idle",
-						data: { items: jobs(), total: jobs().length },
+						data: { items: filtered(), total: filtered().length },
 						error: undefined,
 					})}
 				/>

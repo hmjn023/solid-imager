@@ -72,3 +72,26 @@ for (const width of [375, 1024, 1440]) {
 		).toBeLessThanOrEqual(1);
 	});
 }
+
+test("background updates preserve job rows, focus, and filter controls", async ({
+	page,
+}) => {
+	await page.goto(`http://127.0.0.1:${process.env.E2E_GALLERY_PORT}/?jobs=1`);
+	const table = page.getByRole("table");
+	await expect(table.getByRole("row")).toHaveCount(4);
+	await page.getByRole("button", { name: "Start background refresh" }).click();
+	const types = page.getByRole("button", { name: "ジョブの種類で絞り込む" });
+	await expect(types).toBeEnabled();
+	const jobButton = table.locator("tbody tr").first().getByRole("button");
+	await jobButton.focus();
+	await jobButton.evaluate((button) =>
+		button.setAttribute("data-preserved", "true"),
+	);
+	await page
+		.getByRole("button", { name: "Advance jobs" })
+		.evaluate((button: HTMLButtonElement) => button.click());
+	await expect(table.getByRole("progressbar")).toHaveCount(3);
+	await expect(jobButton).toBeFocused();
+	await expect(jobButton).toHaveAttribute("data-preserved", "true");
+	await expect(types).toBeEnabled();
+});

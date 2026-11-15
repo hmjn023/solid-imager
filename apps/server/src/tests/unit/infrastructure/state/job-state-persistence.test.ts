@@ -118,6 +118,186 @@ describe("persisted import, attempt and batch transitions", () => {
 		});
 	});
 
+	it("filters statuses and types before pagination and uses the same visibility rules for totals", async () => {
+		const statuses = [
+			"pending",
+			"in_progress",
+			"completed",
+			"failed",
+			"cancelled",
+		] as const;
+		for (const status of statuses) {
+			await database.insert(jobs).values([
+				{ type: "processMedia", status },
+				{ type: "source_export", status },
+				{ type: "import_batch_target", status },
+				{
+					type: "hidden_child",
+					status,
+					payload: { importBatchId: randomUUID() },
+				},
+			]);
+		}
+		// New completed work must not hide older active work behind a page boundary.
+		await database.insert(jobs).values(
+			Array.from({ length: 205 }, () => ({
+				type: "processMedia",
+				status: "completed" as const,
+			})),
+		);
+		expect(await call(jobsRouter.types, undefined)).toEqual([
+			"processMedia",
+			"source_export",
+		]);
+		for (const status of [...statuses, "active"] as const) {
+			const expected =
+				status === "active" ? 4 : status === "completed" ? 207 : 2;
+			const first = await call(jobsRouter.list, {
+				status,
+				limit: 1,
+				offset: 0,
+			});
+			const second = await call(jobsRouter.list, {
+				status,
+				limit: 1,
+				offset: 1,
+			});
+			expect(first.total).toBe(expected);
+			expect(second.total).toBe(expected);
+			expect(first.items).toHaveLength(1);
+			expect(second.items[0].id).not.toBe(first.items[0].id);
+			for (const item of [...first.items, ...second.items])
+				expect(
+					status === "active" ? ["pending", "in_progress"] : [status],
+				).toContain(item.status);
+			const typed = await call(jobsRouter.list, {
+				status,
+				type: "source_export",
+				limit: 200,
+				offset: 0,
+			});
+			expect(typed.total).toBe(status === "active" ? 2 : 1);
+			expect(typed.items).toHaveLength(typed.total);
+			expect(typed.items.every((job) => job.type === "source_export")).toBe(
+				true,
+			);
+		}
+		expect(
+			await call(jobsRouter.list, { type: "missing", limit: 200, offset: 0 }),
+		).toEqual({ items: [], total: 0 });
+		expect((await call(jobsRouter.list, { limit: 1, offset: 0 })).total).toBe(
+			215,
+		);
+	});
+
+	it("orders the whole list by processing stage before pagination, keeping parallel work together", async () => {
+		const date = (day: number) => new Date(Date.UTC(2026, 0, day));
+		const id = (index: number) =>
+			`00000000-0000-4000-8000-${String(index).padStart(12, "0")}`;
+		const entries = [
+			{ type: "extract_ccip_vector", status: "pending" },
+			{ type: "extract_embedding_vector", status: "pending" },
+			{ type: "auto_tagging", status: "pending" },
+			{ type: "downloadImage", status: "pending" },
+			{ type: "generate_thumbnail", status: "pending" },
+			{ type: "processMedia", status: "pending" },
+			{ type: "extract_ccip_vector", status: "in_progress" },
+			{ type: "auto_tagging", status: "completed", finishedAt: date(18) },
+			{ type: "processMedia", status: "failed", finishedAt: date(20) },
+			{ type: "downloadImage", status: "cancelled", cancelledAt: date(19) },
+			{ type: "generate_thumbnail", status: "pending" },
+			{ type: "downloadImage", status: "in_progress" },
+			{ type: "import_request", status: "pending" },
+		] as const;
+		await database.insert(jobs).values(
+			entries.map((entry, index) => ({
+				...entry,
+				id: id(index),
+				createdAt: date(index + 1),
+				updatedAt: date(index + 1),
+			})),
+		);
+		const expected = [11, 6, 3, 4, 5, 10, 2, 1, 0, 12, 8, 9, 7].map(id);
+		const list = () => call(jobsRouter.list, { limit: 200, offset: 0 });
+		expect((await list()).items.map((job) => job.id)).toEqual(expected);
+		const paged: string[] = [];
+		for (let offset = 0; offset < expected.length; offset += 3) {
+			const page = await call(jobsRouter.list, { limit: 3, offset });
+			expect(page.total).toBe(entries.length);
+			paged.push(...page.items.map((job) => job.id));
+		}
+		expect(paged).toEqual(expected);
+		const active = await call(jobsRouter.list, {
+			status: "active",
+			limit: 200,
+			offset: 0,
+		});
+		expect(active.items.map((job) => job.id)).toEqual(expected.slice(0, 10));
+		const thumbnails = await call(jobsRouter.list, {
+			type: "generate_thumbnail",
+			limit: 200,
+			offset: 0,
+		});
+		expect(thumbnails.items.map((job) => job.id)).toEqual([id(4), id(10)]);
+		// Progress/heartbeat writes cannot reshuffle active rows.
+		await database
+			.update(jobs)
+			.set({
+				updatedAt: date(30),
+				payload: { processed: 1, failed: 0, total: 3 },
+			})
+			.where(eq(jobs.id, id(3)));
+		expect((await list()).items.map((job) => job.id)).toEqual(expected);
+	});
+
+	it("groups batch parents with their inference stage and preserves standalone AI priority", async () => {
+		const date = (day: number) => new Date(Date.UTC(2026, 0, day));
+		const parentTypes = [
+			"batch_ccip_parent",
+			"batch_embedding_parent",
+			"bulk_tagging_parent",
+			"import_batch_parent",
+			"thumbnail_generation_parent",
+		];
+		const parents = await database
+			.insert(jobs)
+			.values(
+				parentTypes.map((type, index) => ({
+					type,
+					status: "in_progress" as const,
+					createdAt: date(index + 1),
+				})),
+			)
+			.returning();
+		await database.insert(jobs).values([
+			{
+				type: "auto_tagging",
+				status: "pending",
+				parentId: parents[2].id,
+				createdAt: date(1),
+			},
+			{ type: "auto_tagging", status: "pending", createdAt: date(10) },
+			{
+				type: "extract_embedding_batch",
+				status: "pending",
+				createdAt: date(1),
+			},
+		]);
+		const list = await call(jobsRouter.list, { limit: 200, offset: 0 });
+		expect(list.items.slice(0, 5).map((job) => job.type)).toEqual([
+			"import_batch_parent",
+			"thumbnail_generation_parent",
+			"bulk_tagging_parent",
+			"batch_embedding_parent",
+			"batch_ccip_parent",
+		]);
+		expect(list.items.slice(5).map((job) => [job.type, job.parentId])).toEqual([
+			["auto_tagging", null],
+			["auto_tagging", parents[2].id],
+			["extract_embedding_batch", null],
+		]);
+	});
+
 	async function receipt(status: "pending" | "completed" = "pending") {
 		return repositories.job.create({
 			type: "import_request",

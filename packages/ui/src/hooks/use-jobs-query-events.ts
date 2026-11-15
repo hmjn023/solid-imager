@@ -36,7 +36,14 @@ export function useJobsQueryEvents(openStream: JobEventStreamFactory) {
 		}
 	}
 	useJobEvents(openStream, (event) => {
-		if (event.event === "job-progress" && !event.data.created) {
+		if ("importBatchId" in event.data && event.data.importBatchId) {
+			// Child jobs are hidden from the list. The parent publishes its own progress.
+			if (event.data.jobId)
+				void client.invalidateQueries(
+					{ queryKey: jobsQueryKeys.detail(event.data.jobId) },
+					{ cancelRefetch: false },
+				);
+		} else if (event.event === "job-progress" && !event.data.created) {
 			updateCachedJobProgress(client, event.data);
 			if (event.data.jobId)
 				void client.invalidateQueries(

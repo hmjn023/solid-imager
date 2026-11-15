@@ -1,3 +1,4 @@
+import { jobListOrder } from "./job-list-order";
 import { listBatchTargets } from "~/infrastructure/services/job-batch-targets";
 import { implement, ORPCError } from "@orpc/server";
 import { jobsContract } from "@solid-imager/core/contract";
@@ -6,6 +7,7 @@ import {
 	hasBatchTargetHistory,
 	canRetryJob,
 	batchParentJobTypes,
+	type JobListRequest,
 	jobStatusSchema,
 	readImportBatch,
 	type Job,
@@ -140,17 +142,30 @@ export function toJobDto(job: Job, targetMediaModifiedAt: Date | null = null) {
 	};
 }
 
-function jobWhere(status?: z.infer<typeof jobStatusSchema>) {
+function jobWhere(input: Pick<JobListRequest, "status" | "type"> = {}) {
 	return and(
 		ne(jobs.type, "import_batch_target"),
 		sql`${jobs.payload}->>'importBatchId' IS NULL`,
-		status ? eq(jobs.status, status) : undefined,
+		input.status === "active"
+			? inArray(jobs.status, ["pending", "in_progress"])
+			: input.status
+				? eq(jobs.status, input.status)
+				: undefined,
+		input.type ? eq(jobs.type, input.type) : undefined,
 	);
 }
 
 const os = implement(jobsContract);
 
 export const jobsRouter = os.router({
+	types: os.types.handler(async () => {
+		const rows = await db
+			.selectDistinct({ type: jobs.type })
+			.from(jobs)
+			.where(jobWhere())
+			.orderBy(jobs.type);
+		return rows.map((row) => row.type);
+	}),
 	targets: os.targets.handler(({ input }) => listBatchTargets(input)),
 	activeBatches: os.activeBatches.handler(async () => {
 		const rows = await db
@@ -171,13 +186,13 @@ export const jobsRouter = os.router({
 		return rows.map((job) => toJobDto(job, null));
 	}),
 	list: os.list.handler(async ({ input }) => {
-		const where = jobWhere(input.status);
+		const where = jobWhere(input);
 		const [rows, totalRows] = await Promise.all([
 			db
 				.select()
 				.from(jobs)
 				.where(where)
-				.orderBy(desc(jobs.createdAt), desc(jobs.id))
+				.orderBy(...jobListOrder())
 				.limit(input.limit)
 				.offset(input.offset),
 			db.select({ total: count() }).from(jobs).where(where),

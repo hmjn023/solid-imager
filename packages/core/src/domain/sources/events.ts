@@ -86,6 +86,8 @@ export const jobProgressEventSchema = z.object({
 export type JobProgressEvent = z.infer<typeof jobProgressEventSchema>;
 
 export const jobCompletedEventSchema = z.object({
+	/** Internal import work updates its parent instead of refreshing the job list. */
+	importBatchId: z.uuid().optional(),
 	jobId: z.string().optional(),
 	message: z.string().optional(),
 });
@@ -98,12 +100,16 @@ export const jobRetriedEventSchema = z.object({
 export type JobRetriedEvent = z.infer<typeof jobRetriedEventSchema>;
 
 export const jobFailedEventSchema = z.object({
+	/** Internal import work updates its parent instead of refreshing the job list. */
+	importBatchId: z.uuid().optional(),
 	jobId: z.string().optional(),
 	error: z.string().optional(),
 });
 export type JobFailedEvent = z.infer<typeof jobFailedEventSchema>;
 
 export const jobCancelledEventSchema = z.object({
+	/** Internal import work updates its parent instead of refreshing the job list. */
+	importBatchId: z.uuid().optional(),
 	jobId: z.string().optional(),
 	message: z.string().optional(),
 });

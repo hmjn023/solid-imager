@@ -13,6 +13,9 @@ import {
 import { jobEventSchema } from "../sources/events";
 
 export const jobsContract = {
+	types: oc
+		.meta(openapi({ tags: ["Jobs"], summary: "ジョブ一覧で選択できる種類" }))
+		.output(z.array(z.string())),
 	targets: oc
 		.meta(openapi({ tags: ["Jobs"], summary: "バッチの処理対象一覧" }))
 		.input(batchTargetsInputSchema)
@@ -27,7 +30,7 @@ export const jobsContract = {
 				tags: ["Jobs"],
 				summary: "ジョブ一覧取得",
 				description:
-					"バックグラウンドジョブを指定条件で絞り込んで一覧取得します。",
+					"バックグラウンドジョブを指定条件で絞り込み、実行中・待機中・履歴の順に取得します。実行中と待機中は並列処理群、タグ付け、Embedding、CCIPの順で、履歴は終了日時の新しい順に並びます。",
 			}),
 		)
 		.input(jobListRequestSchema)

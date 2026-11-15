@@ -16611,6 +16611,30 @@
         }
       }
     },
+    "/jobs/types": {
+      "post": {
+        "operationId": "jobs.types",
+        "summary": "ジョブ一覧で選択できる種類",
+        "tags": [
+          "Jobs"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/jobs/targets": {
       "post": {
         "operationId": "jobs.targets",
@@ -17015,7 +17039,7 @@
       "post": {
         "operationId": "jobs.list",
         "summary": "ジョブ一覧取得",
-        "description": "バックグラウンドジョブを指定条件で絞り込んで一覧取得します。",
+        "description": "バックグラウンドジョブを指定条件で絞り込み、実行中・待機中・履歴の順に取得します。実行中と待機中は並列処理群、タグ付け、Embedding、CCIPの順で、履歴は終了日時の新しい順に並びます。",
         "tags": [
           "Jobs"
         ],
@@ -17027,14 +17051,26 @@
                 "type": "object",
                 "properties": {
                   "status": {
-                    "type": "string",
-                    "enum": [
-                      "pending",
-                      "in_progress",
-                      "completed",
-                      "failed",
-                      "cancelled"
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "pending",
+                          "in_progress",
+                          "completed",
+                          "failed",
+                          "cancelled"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "const": "active"
+                      }
                     ]
+                  },
+                  "type": {
+                    "type": "string",
+                    "minLength": 1
                   },
                   "limit": {
                     "default": 50,
@@ -18289,6 +18325,11 @@
                                 "data": {
                                   "type": "object",
                                   "properties": {
+                                    "importBatchId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
                                     "jobId": {
                                       "type": "string"
                                     },
@@ -18315,6 +18356,11 @@
                                 "data": {
                                   "type": "object",
                                   "properties": {
+                                    "importBatchId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
                                     "jobId": {
                                       "type": "string"
                                     },
@@ -18341,6 +18387,11 @@
                                 "data": {
                                   "type": "object",
                                   "properties": {
+                                    "importBatchId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
                                     "jobId": {
                                       "type": "string"
                                     },
@@ -18367,6 +18418,11 @@
                                 "data": {
                                   "type": "object",
                                   "properties": {
+                                    "importBatchId": {
+                                      "type": "string",
+                                      "format": "uuid",
+                                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                                    },
                                     "jobId": {
                                       "type": "string"
                                     },

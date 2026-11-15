@@ -4,7 +4,12 @@ import type {
 	JobListResponse,
 } from "@solid-imager/core/jobs";
 import type { JobProgressEvent } from "@solid-imager/core/events";
-import type { QueryClient, QueryFunctionContext } from "@tanstack/solid-query";
+import {
+	infiniteQueryOptions,
+	type InfiniteData,
+	type QueryClient,
+	type QueryFunctionContext,
+} from "@tanstack/solid-query";
 
 export const DEFAULT_JOBS_PAGE_SIZE = 200;
 export const defaultJobsQueryInput = {
@@ -16,6 +21,10 @@ export const jobsQueryKeys = {
 	all: () => ["jobs"] as const,
 	listPrefix: () => ["jobs", "list"] as const,
 	list: (input: JobListRequest) => ["jobs", "list", input] as const,
+	infinitePrefix: () => ["jobs", "infinite"] as const,
+	infinite: (input: Pick<JobListRequest, "status" | "type">) =>
+		["jobs", "infinite", input] as const,
+	types: () => ["jobs", "types"] as const,
 	targets: (jobId: string) => ["jobs", "targets", jobId] as const,
 	detail: (jobId: string) => ["jobs", "detail", jobId] as const,
 };
@@ -36,6 +45,40 @@ export function buildJobsQueryOptions(
 		queryFn: ({ signal }: QueryFunctionContext) => queryFn(input, signal),
 		...defaultJobsQueryConfig,
 	};
+}
+
+export function buildInfiniteJobsQueryOptions(
+	input: Pick<JobListRequest, "status" | "type">,
+	queryFn: (
+		input: JobListRequest,
+		signal: AbortSignal,
+	) => Promise<JobListResponse>,
+) {
+	return infiniteQueryOptions({
+		queryKey: jobsQueryKeys.infinite(input),
+		initialPageParam: 0,
+		queryFn: ({ signal, pageParam }) =>
+			queryFn(
+				{ ...input, limit: DEFAULT_JOBS_PAGE_SIZE, offset: pageParam },
+				signal,
+			),
+		getNextPageParam: (page, pages, offset) =>
+			page.items.length > 0 && offset + page.items.length < page.total
+				? offset + page.items.length
+				: undefined,
+		...defaultJobsQueryConfig,
+	});
+}
+
+/** Retain the newest occurrence if a live insertion moved a row across page boundaries. */
+export function flattenJobPages(
+	data: InfiniteData<JobListResponse> | undefined,
+): JobListResponse | undefined {
+	if (!data) return undefined;
+	const rows = new Map<string, JobDto>();
+	for (const page of data.pages)
+		for (const job of page.items) if (!rows.has(job.id)) rows.set(job.id, job);
+	return { items: [...rows.values()], total: data.pages[0]?.total ?? 0 };
 }
 
 /**
@@ -82,6 +125,18 @@ export function updateCachedJobProgress(
 	client.setQueriesData<JobListResponse>(
 		{ queryKey: jobsQueryKeys.listPrefix() },
 		(data) => updateJobProgress(data, event),
+	);
+	client.setQueriesData<InfiniteData<JobListResponse>>(
+		{ queryKey: jobsQueryKeys.infinitePrefix() },
+		(data) =>
+			data
+				? {
+						...data,
+						pages: data.pages.map(
+							(page) => updateJobProgress(page, event) ?? page,
+						),
+					}
+				: data,
 	);
 	if (event.jobId)
 		client.setQueryData<JobDto>(jobsQueryKeys.detail(event.jobId), (job) =>
