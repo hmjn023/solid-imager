@@ -1,3 +1,9 @@
+import {
+	changeExtensionLocale,
+	getExtensionLocale,
+	initializeExtensionLocale,
+	t,
+} from "../i18n";
 import { PixivConnection } from "./pixiv-connection";
 import { DEFAULT_API_URL, getClient } from "@ext/api";
 import {
@@ -35,7 +41,7 @@ function Popup() {
 		setIsLoading(true);
 		setSources([]);
 		setSelectedSourceId("");
-		setStatus("Loading sources...");
+		setStatus(t("moveCopyMediaDialog.loadingSources"));
 		setStatusType("info");
 		try {
 			const resp = sourcesResponseSchema.parse(
@@ -48,14 +54,14 @@ function Popup() {
 			setSources(resp.sources);
 			setSelectedSourceId(resp.selectedSourceId ?? "");
 			setStatus(
-				resp.sources.length === 0 ? "No sources found on this server." : "",
+				resp.sources.length === 0 ? t("index.noSourcesFoundOnThisServer") : "",
 			);
 		} catch (error) {
 			if (seq !== fetchSeq) return;
 			setStatus(
 				error instanceof Error
 					? error.message
-					: "Failed to load sources. Check API URL.",
+					: t("index.failedToLoadSourcesCheckAPIURL"),
 			);
 			setStatusType("error");
 		} finally {
@@ -64,18 +70,18 @@ function Popup() {
 	};
 
 	const handleExport = async () => {
-		setExportStatus("Requesting data...");
+		setExportStatus(t("index.requestingData"));
 		try {
 			await chrome.runtime.sendMessage({ type: "DOWNLOAD_JSON_FROM_POPUP" });
-			setExportStatus("Download started!");
+			setExportStatus(t("index.downloadStarted"));
 			setTimeout(() => setExportStatus(""), 3000);
 		} catch (_err) {
-			setExportStatus("Failed. Are you on X.com?");
+			setExportStatus(t("index.failedAreYouOnXCom"));
 		}
 	};
 
 	const handleBulkUpload = async () => {
-		setUploadStatus("Fetching metadata...");
+		setUploadStatus(t("index.fetchingMetadata"));
 		try {
 			const client = await getClient();
 			const tabs = await chrome.tabs.query({
@@ -83,7 +89,7 @@ function Popup() {
 				currentWindow: true,
 			});
 			const activeTabId = tabs[0]?.id;
-			if (!activeTabId) throw new Error("No active tab");
+			if (!activeTabId) throw new Error(t("index.noActiveTab"));
 
 			const metadata = await new Promise<DownloadItem[]>((resolve, reject) => {
 				chrome.tabs.sendMessage(
@@ -97,37 +103,63 @@ function Popup() {
 			});
 
 			if (!metadata || metadata.length === 0) {
-				setUploadStatus("No media found.");
+				setUploadStatus(t("index.noMediaFound"));
 				return;
 			}
 
-			setUploadStatus(`Uploading ${metadata.length} items...`);
+			setUploadStatus(
+				t("index.uploadingValueItems", { value0: String(metadata.length) }),
+			);
 			const result = (await client.imports.bulkAdd({ items: metadata })) as {
 				addedCount: number;
 				skippedCount: number;
 			};
 			setUploadStatus(
-				`Uploaded! Added: ${result.addedCount}, Skipped: ${result.skippedCount}`,
+				t("index.uploadedAddedValueSkippedValue", {
+					value0: String(result.addedCount),
+					value1: String(result.skippedCount),
+				}),
 			);
 		} catch (_err) {
-			setUploadStatus("Upload failed.");
+			setUploadStatus(t("index.uploadFailed"));
 		}
 	};
 
 	onMount(() => {
 		void fetchSources().catch(() => {
-			setStatus("Failed to load settings.");
+			setStatus(t("index.failedToLoadSettings"));
 			setStatusType("error");
 		});
 	});
 
 	return (
 		<div class="popup">
-			<h2 class="popup-title">Settings</h2>
+			<h2 class="popup-title">{t("navigation.settings")}</h2>
+			<label>
+				{t("locale.title")}
+				<select
+					value={getExtensionLocale()}
+					onChange={(event) => {
+						const locale = event.currentTarget.value;
+						if (locale !== "ja" && locale !== "en") return;
+						void changeExtensionLocale(locale).catch(() => {
+							setStatus(t("locale.saveFailed"));
+							setStatusType("error");
+						});
+					}}
+				>
+					<option lang="ja" value="ja">
+						{t("locale.japanese")}
+					</option>
+					<option lang="en" value="en">
+						{t("locale.english")}
+					</option>
+				</select>
+			</label>
 
 			<div class="popup-field">
 				<label class="popup-label">
-					API URL
+					{t("index.aPIURL")}
 					<input
 						id="api-url"
 						type="text"
@@ -144,7 +176,7 @@ function Popup() {
 
 			<div class="popup-field">
 				<label class="popup-label">
-					Target Media Source
+					{t("index.targetMediaSource")}
 					<select
 						id="source-select"
 						value={selectedSourceId()}
@@ -161,7 +193,7 @@ function Popup() {
 						class="popup-control"
 					>
 						<Show when={sources().length === 0}>
-							<option value="">No sources found</option>
+							<option value="">{t("index.noSourcesFound")}</option>
 						</Show>
 						<For each={sources()}>
 							{(source) => (
@@ -195,7 +227,7 @@ function Popup() {
 				}}
 				class="popup-button popup-button-export"
 			>
-				Export Collected JSON
+				{t("index.exportCollectedJSON")}
 			</button>
 			<div class="popup-result">{exportStatus()}</div>
 
@@ -209,7 +241,7 @@ function Popup() {
 				class="popup-button popup-button-upload"
 				disabled={isLoading()}
 			>
-				Bulk Upload to Solid Imager
+				{t("index.bulkUploadToSolidImager")}
 			</button>
 			<div class="popup-result">{uploadStatus()}</div>
 		</div>
@@ -217,4 +249,9 @@ function Popup() {
 }
 
 const root = document.getElementById("root");
-if (root) render(() => <Popup />, root);
+if (root)
+	void initializeExtensionLocale().then((locale) => {
+		document.documentElement.lang = locale;
+		document.title = t("locale.extensionTitle");
+		render(() => <Popup />, root);
+	});

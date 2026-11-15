@@ -1,4 +1,18 @@
-import { beforeAll, describe, expect, it } from "vitest";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { eq } from "drizzle-orm";
+import {
+	afterEach,
+	beforeAll,
+	beforeEach,
+	describe,
+	expect,
+	it,
+	vi,
+} from "vitest";
+import { db } from "~/infrastructure/db/index";
+import { mediaSources } from "~/infrastructure/db/schema";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import {
@@ -27,23 +41,76 @@ describe("File System Access Denied Integration", () => {
 		services.registerIpRepository(IpRepository);
 		services.registerAiClient(new RustAiClient());
 	});
-	const testSourceId = "b0000000-0000-0000-0000-000000000000";
+	let directory: string;
+	let sourceId: string;
+	let mediaId: string;
+	const fileName = "image.png";
 
-	it("should throw an error when registerExistingMedia encounters file system access denied", async () => {
-		// This assumes registerExistingMedia checks file existence/stats
-		const filePath = "/no-access/path/image.png";
-		await expect(
-			MediaService.registerExistingMedia(testSourceId, filePath),
-		).rejects.toThrow();
+	beforeEach(async () => {
+		directory = await mkdtemp(join(tmpdir(), "si-access-denied-"));
+		await writeFile(join(directory, fileName), "existing media bytes");
+		const [source] = await db
+			.insert(mediaSources)
+			.values({
+				name: "Access denied test",
+				type: "local",
+				connectionInfo: { path: directory },
+			})
+			.returning();
+		sourceId = source.id;
+		const media = await MediaRepository.create({
+			mediaSourceId: sourceId,
+			filePath: fileName,
+			fileName,
+			mediaType: "image",
+			fileSize: 20,
+			width: 1,
+			height: 1,
+			description: null,
+		});
+		mediaId = media.id;
 	});
 
-	it("should throw an error when deleteMedia encounters file system access denied", async () => {
-		const mediaId = "mock-uuid-for-denied-access";
-		// Note: deleteMedia might fail at DB level first if media not found.
-		// But if we want to test FS access denied, we might need to mock or ensure DB has entry but FS is denied.
-		// However, for integration test, maybe we just expect failure.
+	afterEach(async () => {
+		vi.restoreAllMocks();
+		await db.delete(mediaSources).where(eq(mediaSources.id, sourceId));
+		await rm(directory, { recursive: true, force: true });
+	});
+
+	it("propagates a denied directory scan without changing registered media", async () => {
+		const denied = Object.assign(new Error("Permission denied"), {
+			code: "EACCES",
+		});
+		const scan = vi
+			.spyOn(ServerMediaStorage, "scanDirectory")
+			.mockRejectedValueOnce(denied);
+
 		await expect(
-			MediaService.deleteMedia(testSourceId, mediaId),
-		).rejects.toThrow();
+			MediaService.registerExistingMedia(sourceId, directory),
+		).rejects.toBe(denied);
+
+		expect(scan).toHaveBeenCalledExactlyOnceWith(directory);
+		expect(
+			(await MediaService.getAllMedia(sourceId)).map((media) => media.id),
+		).toEqual([mediaId]);
+	});
+
+	it("removes the database record even when deleting the physical file is denied", async () => {
+		const denied = Object.assign(new Error("Permission denied"), {
+			code: "EACCES",
+		});
+		const deleteFile = vi
+			.spyOn(ServerMediaStorage, "deleteFile")
+			.mockRejectedValueOnce(denied);
+
+		await expect(
+			MediaService.deleteMedia(sourceId, mediaId),
+		).resolves.toBeUndefined();
+
+		expect(deleteFile).toHaveBeenCalledExactlyOnceWith(directory, fileName);
+		expect(await MediaRepository.findById(mediaId)).toBeNull();
+		expect(await readFile(join(directory, fileName), "utf8")).toBe(
+			"existing media bytes",
+		);
 	});
 });

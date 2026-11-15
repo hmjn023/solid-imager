@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	getSearchConditionCount,
 	getSearchExecutionKind,
@@ -11,8 +12,15 @@ import Grid3X3 from "lucide-solid/icons/grid-3x3";
 import List from "lucide-solid/icons/list";
 import type { JSX } from "solid-js";
 import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
+import {
+	Breadcrumb,
+	BreadcrumbItem,
+	BreadcrumbList,
+	BreadcrumbSeparator,
+} from "../breadcrumb";
 import { Button } from "../button";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import { ToggleGroup, ToggleGroupItem } from "../toggle-group";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
@@ -205,12 +213,23 @@ function submitComposerDraft(rawDraft: string): boolean {
 
 function sortLabel(state: SearchState): string {
 	if (getSearchExecutionKind(state) === "semantic")
-		return `文章検索・${state.similarityTopK}件`;
+		return t("searchToolbar.textSearchValueResults", {
+			value0: String(state.similarityTopK),
+		});
 	if (getSearchExecutionKind(state) === "similarity") {
-		return `類似度順・${state.similarityTopK}件`;
+		return t("searchToolbar.similarityValueResults", {
+			value0: String(state.similarityTopK),
+		});
 	}
 	const field = getSortLabel(state.sortBy);
-	return `${field}・${state.sortOrder === "desc" ? "降順" : "昇順"}`;
+	return t("searchToolbar.valueValue", {
+		value0: String(field),
+		value1: String(
+			state.sortOrder === "desc"
+				? t("searchToolbar.descending")
+				: t("searchToolbar.ascending"),
+		),
+	});
 }
 
 export function SearchToolbar(props: SearchToolbarProps) {
@@ -329,13 +348,22 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	return (
 		<header class="shrink-0 border-border border-b bg-background px-3 py-3 sm:px-4">
 			<div class="mb-2 flex min-h-6 items-center gap-2 text-sm">
-				<span class="text-muted-foreground">Library</span>
-				<span aria-hidden="true" class="text-input">
-					/
-				</span>
-				<strong class="min-w-0 truncate font-semibold">
-					{props.sourceName}
-				</strong>
+				<Breadcrumb class="min-w-0">
+					<BreadcrumbList class="min-w-0 flex-nowrap gap-2 sm:gap-2">
+						<BreadcrumbItem class="shrink-0">
+							<span class="cursor-default">{t("navigation.library")}</span>
+						</BreadcrumbItem>
+						<BreadcrumbSeparator />
+						<BreadcrumbItem class="min-w-0">
+							<span
+								aria-current="page"
+								class="min-w-0 truncate font-semibold text-foreground"
+							>
+								{props.sourceName}
+							</span>
+						</BreadcrumbItem>
+					</BreadcrumbList>
+				</Breadcrumb>
 				<Show when={props.isUpdating}>
 					<output
 						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-muted-foreground"
@@ -345,18 +373,22 @@ export function SearchToolbar(props: SearchToolbarProps) {
 							aria-hidden="true"
 							class="size-2 shrink-0 animate-pulse rounded-full bg-current motion-reduce:animate-none"
 						/>
-						<span class="truncate">{props.updatingLabel ?? "更新中..."}</span>
+						<span class="truncate">
+							{props.updatingLabel ?? t("searchToolbar.updating")}
+						</span>
 					</output>
 				</Show>
 				<Show when={!props.isUpdating && props.itemCount !== undefined}>
 					<span class="ml-auto shrink-0 text-xs text-muted-foreground">
-						{props.itemCount?.toLocaleString()} items
+						{t("charts.valueItems", {
+							value0: String(props.itemCount?.toLocaleString()),
+						})}
 					</span>
 				</Show>
 			</div>
 			<Show when={getSearchExecutionKind(searchState) !== "ordinary"}>
 				<output class="mb-2 block text-xs text-muted-foreground">
-					通常検索の絞り込み条件と並び順は退避中です。類似・文章検索を解除すると再適用されます。
+					{t("searchToolbar.filtersAndSortingForOrdinarySearchAreSavedThey")}
 				</output>
 			</Show>
 			<Show
@@ -367,7 +399,9 @@ export function SearchToolbar(props: SearchToolbarProps) {
 				}
 			>
 				<p class="mb-2 text-xs text-muted-foreground">
-					詳細条件を適用中です。「フィルター」で条件式を確認できます。
+					{t(
+						"searchToolbar.advancedConditionsAreActiveOpenFiltersToReviewThem",
+					)}
 				</p>
 			</Show>
 			<div class="flex min-w-0 flex-wrap items-start gap-2">
@@ -407,14 +441,16 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					placement="bottom-end"
 				>
 					<PopoverTrigger
-						aria-label={`検索フィルター、${appliedFilterCount()}件の条件`}
+						aria-label={t("searchToolbar.searchFiltersValueConditions", {
+							value0: String(appliedFilterCount()),
+						})}
 						as={Button}
 						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9"
 						size="sm"
 						variant="outline"
 					>
 						<Filter aria-hidden="true" size={15} />
-						フィルター
+						{t("searchToolbar.filters")}
 						<Show when={appliedFilterCount() > 0}>
 							<span class="flex min-w-5 items-center justify-center rounded-full bg-primary px-1.5 py-0.5 text-label-xs text-white">
 								{appliedFilterCount()}
@@ -422,14 +458,16 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						</Show>
 					</PopoverTrigger>
 					<PopoverContent
-						aria-label="検索フィルター"
+						aria-label={t("searchToolbar.searchFilters")}
 						class="workspace-theme relative flex min-h-0 max-h-popover-fit-available w-popover-compact flex-col overflow-hidden bg-card p-0 text-foreground shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
 					>
 						<div class="flex shrink-0 items-start justify-between border-border border-b px-4 py-3">
 							<div>
-								<h2 class="font-semibold text-sm">検索フィルター</h2>
+								<h2 class="font-semibold text-sm">
+									{t("searchToolbar.searchFilters")}
+								</h2>
 								<p class="mt-0.5 text-label-sm text-muted-foreground">
-									検索バーと同じ条件を編集します
+									{t("searchToolbar.editTheSameConditionsAsTheSearchBar")}
 								</p>
 							</div>
 							<Button
@@ -441,7 +479,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								size="sm"
 								variant="ghost"
 							>
-								すべて解除
+								{t("searchToolbar.clearAll")}
 							</Button>
 						</div>
 						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4">
@@ -463,7 +501,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								size="sm"
 								variant="outline"
 							>
-								閉じる
+								{t("actions.close")}
 							</Button>
 							<Button
 								onClick={() => {
@@ -472,7 +510,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								}}
 								size="sm"
 							>
-								適用
+								{t("actions.apply")}
 							</Button>
 						</div>
 					</PopoverContent>
@@ -484,7 +522,9 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					placement="bottom-end"
 				>
 					<PopoverTrigger
-						aria-label={`並び替え、現在は${sortLabel(searchState)}`}
+						aria-label={t("searchToolbar.sortCurrentlyValue", {
+							value0: String(sortLabel(searchState)),
+						})}
 						as={Button}
 						class="min-h-11 border-input bg-card px-3 shadow-none sm:min-h-9 sm:w-56 sm:justify-between"
 						size="sm"
@@ -513,36 +553,30 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						/>
 					</PopoverContent>
 				</Popover>
-				<div class="flex rounded-md border border-input bg-card p-0.5">
-					<Button
-						aria-label="グリッド表示"
-						aria-pressed={(props.viewMode ?? "grid") === "grid"}
-						class={
-							(props.viewMode ?? "grid") === "grid"
-								? "size-11 bg-primary p-0 text-white hover:bg-primary sm:size-8"
-								: "size-11 p-0 sm:size-8"
+				<ToggleGroup
+					class="gap-0 rounded-md border border-input bg-card p-0.5"
+					onChange={(next) => {
+						if (next === "grid" || next === "list") {
+							props.onViewModeChange?.(next);
 						}
-						onClick={() => props.onViewModeChange?.("grid")}
-						size="icon"
-						variant="ghost"
+					}}
+					value={props.viewMode ?? "grid"}
+				>
+					<ToggleGroupItem
+						aria-label={t("actions.gridView")}
+						class="size-11 p-0 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground sm:size-8"
+						value="grid"
 					>
 						<Grid3X3 aria-hidden="true" size={15} />
-					</Button>
-					<Button
-						aria-label="リスト表示"
-						aria-pressed={(props.viewMode ?? "grid") === "list"}
-						class={
-							(props.viewMode ?? "grid") === "list"
-								? "size-11 bg-primary p-0 text-white hover:bg-primary sm:size-8"
-								: "size-11 p-0 sm:size-8"
-						}
-						onClick={() => props.onViewModeChange?.("list")}
-						size="icon"
-						variant="ghost"
+					</ToggleGroupItem>
+					<ToggleGroupItem
+						aria-label={t("actions.listView")}
+						class="size-11 p-0 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground sm:size-8"
+						value="list"
 					>
 						<List aria-hidden="true" size={15} />
-					</Button>
-				</div>
+					</ToggleGroupItem>
+				</ToggleGroup>
 				{props.actions}
 			</div>
 		</header>

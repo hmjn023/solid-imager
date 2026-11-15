@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { createForm } from "@tanstack/solid-form";
 import {
@@ -10,6 +11,7 @@ import {
 	Show,
 } from "solid-js";
 import { z } from "zod";
+import { Alert, AlertDescription, AlertTitle } from "./alert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -38,6 +40,7 @@ import {
 import { type UploadFormValues, uploadFormSchema } from "./form-schemas";
 import { Input } from "./input";
 import { Label } from "./label";
+import { RadioGroup, RadioGroupItem, RadioGroupItemLabel } from "./radio-group";
 import { createUploadDraft } from "./upload-draft";
 
 export type UploadConflictResolution = "overwrite" | "skip" | "rename";
@@ -76,6 +79,12 @@ export type UploadMediaModalContentProps = {
 	uploadProgress?: UploadProgress | null;
 };
 
+function isUploadConflictResolution(
+	value: string,
+): value is UploadConflictResolution {
+	return value === "overwrite" || value === "skip" || value === "rename";
+}
+
 const resolutionOptions: Array<{
 	value: UploadConflictResolution;
 	label: string;
@@ -83,18 +92,18 @@ const resolutionOptions: Array<{
 }> = [
 	{
 		value: "overwrite",
-		label: "上書き",
-		description: "同名ファイルがある場合は既存ファイルを置き換えます。",
+		label: t("uploadMediaModal.overwrite"),
+		description: t("uploadMediaModal.replaceTheExistingFileWhenNamesMatch"),
 	},
 	{
 		value: "skip",
-		label: "スキップ",
-		description: "同名ファイルがある場合はアップロードを実行しません。",
+		label: t("uploadMediaModal.skip"),
+		description: t("uploadMediaModal.doNotUploadFilesWhenNamesMatch"),
 	},
 	{
 		value: "rename",
-		label: "リネーム",
-		description: "同名ファイルがある場合は連番を付けて保存します。",
+		label: t("uploadMediaModal.rename"),
+		description: t("uploadMediaModal.addASequenceNumberWhenNamesMatch"),
 	},
 ];
 
@@ -107,12 +116,16 @@ const EMPTY_UPLOAD_FORM: UploadFormValues = {
 
 function fileSizeLabel(file: File) {
 	if (file.size < 1024) {
-		return `${file.size} B`;
+		return t("uploadMediaModal.valueB", { value0: String(file.size) });
 	}
 	if (file.size < 1024 * 1024) {
-		return `${(file.size / 1024).toFixed(1)} KB`;
+		return t("uploadMediaModal.valueKB", {
+			value0: String((file.size / 1024).toFixed(1)),
+		});
 	}
-	return `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+	return t("uploadMediaModal.valueMB", {
+		value0: String((file.size / (1024 * 1024)).toFixed(1)),
+	});
 }
 
 export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
@@ -151,7 +164,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 			if (files.length === 0) {
 				form.setErrorMap({
 					onSubmit: {
-						form: "アップロードするファイルがありません。",
+						form: t("uploadMediaModal.thereAreNoFilesToUpload"),
 						fields: {},
 					},
 				});
@@ -277,9 +290,9 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 				<Show when={props.isOpen}>
 					<DialogContent class="sm:max-w-dialog-md">
 						<DialogHeader>
-							<DialogTitle>メディアをアップロード</DialogTitle>
+							<DialogTitle>{t("uploadMediaModal.uploadMedia")}</DialogTitle>
 							<DialogDescription>
-								アップロードするメディアの詳細を入力してください。
+								{t("uploadMediaModal.enterDetailsForTheMediaYouWantToUpload")}
 							</DialogDescription>
 						</DialogHeader>
 
@@ -318,26 +331,28 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 											type="button"
 										>
 											<p class="font-medium text-sm">
-												ファイルをドラッグ&ドロップ
+												{t("uploadMediaModal.dragAndDropFiles")}
 											</p>
 											<p class="mt-1 text-muted-foreground text-xs">
-												またはファイル選択ダイアログから追加します。
+												{t("uploadMediaModal.orAddFilesUsingTheFilePicker")}
 											</p>
 											<span class="mt-3 inline-flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 font-medium text-sm ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50">
-												ファイルを選択
+												{t("uploadMediaModal.chooseFiles")}
 											</span>
 										</button>
 									}
 								>
 									<div class="rounded-md border p-3">
 										<div class="mb-2 flex items-center justify-between gap-3">
-											<p class="font-medium text-sm">選択したファイル</p>
+											<p class="font-medium text-sm">
+												{t("uploadMediaModal.selectedFiles")}
+											</p>
 											<Button
 												onClick={() => fileInputRef?.click()}
 												type="button"
 												variant="outline"
 											>
-												ファイルを変更
+												{t("uploadMediaModal.changeFiles")}
 											</Button>
 										</div>
 										<ul class="space-y-2">
@@ -370,7 +385,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 									{(field) => (
 										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
 											<Label class="sm:text-right" for={field().name}>
-												ファイル名
+												{t("uploadMediaModal.filename")}
 											</Label>
 											<div class="space-y-2 sm:col-span-3">
 												<Input
@@ -398,7 +413,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 									{(field) => (
 										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
 											<Label class="sm:text-right" for={field().name}>
-												説明
+												{t("labels.description")}
 											</Label>
 											<Input
 												class="sm:col-span-3"
@@ -417,7 +432,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 									{(field) => (
 										<div class="grid gap-2 sm:grid-cols-4 sm:items-center sm:gap-4">
 											<Label class="sm:text-right" for={field().name}>
-												ソースURL
+												{t("uploadMediaModal.sourceURL")}
 											</Label>
 											<div class="relative space-y-2 sm:col-span-3">
 												<Input
@@ -432,7 +447,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 												/>
 												<Show when={isFetchingUrl()}>
 													<div class="-translate-y-1/2 absolute top-1/2 right-2 text-muted-foreground text-xs">
-														Loading...
+														{t("status.loading")}
 													</div>
 												</Show>
 												<FormFieldMessage
@@ -445,7 +460,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 											<Show when={previewUrl()}>
 												<div class="mt-2 flex justify-center sm:col-span-4">
 													<img
-														alt="Fetched preview"
+														alt={t("uploadMediaModal.fetchedPreview")}
 														class="max-h-48 rounded-md object-contain"
 														src={previewUrl() || undefined}
 													/>
@@ -458,61 +473,80 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								<form.Field name="conflictResolution">
 									{(field) => (
 										<div class="space-y-2">
-											<Label>競合時の処理</Label>
-											<div class="grid gap-2 sm:grid-cols-3">
+											<Label id="conflict-resolution-label">
+												{t("uploadMediaModal.onFilenameConflict")}
+											</Label>
+											<RadioGroup
+												aria-labelledby="conflict-resolution-label"
+												class="grid gap-2 sm:grid-cols-3"
+												name={field().name}
+												onChange={(value) => {
+													if (isUploadConflictResolution(value)) {
+														field().handleChange(value);
+													}
+												}}
+												value={field().state.value}
+											>
 												<For each={resolutionOptions}>
 													{(option) => (
-														<label class="rounded-md border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-															<div class="flex items-center gap-2">
-																<input
-																	checked={field().state.value === option.value}
-																	name={field().name}
-																	onChange={() =>
-																		field().handleChange(option.value)
-																	}
-																	type="radio"
-																/>
-																<span class="font-medium">{option.label}</span>
-															</div>
-															<p class="mt-1 text-muted-foreground text-xs">
-																{option.description}
-															</p>
-														</label>
+														<RadioGroupItem
+															class="items-start rounded-md border p-3 text-sm data-[checked]:border-primary data-[checked]:bg-primary/5"
+															value={option.value}
+														>
+															<RadioGroupItemLabel class="block cursor-pointer space-y-1 font-normal leading-normal">
+																<span class="block font-medium leading-none">
+																	{option.label}
+																</span>
+																<span class="block text-muted-foreground text-xs">
+																	{option.description}
+																</span>
+															</RadioGroupItemLabel>
+														</RadioGroupItem>
 													)}
 												</For>
-											</div>
+											</RadioGroup>
 										</div>
 									)}
 								</form.Field>
 
 								<Show when={(props.conflicts?.length ?? 0) > 0}>
-									<div class="rounded-md border border-input bg-warning p-3 text-warning-foreground text-sm">
-										<p class="font-medium">同名ファイルがあります</p>
-										<ul class="mt-2 list-disc space-y-1 pl-5">
-											<For each={props.conflicts}>
-												{(conflict) => (
-													<li>
-														{conflict.filename}
-														<Show when={conflict.suggestedName}>
-															<span> → {conflict.suggestedName}</span>
-														</Show>
-													</li>
-												)}
-											</For>
-										</ul>
-									</div>
+									<Alert variant="warning">
+										<AlertTitle>
+											{t("uploadMediaModal.aFileWithThisNameAlreadyExists")}
+										</AlertTitle>
+										<AlertDescription>
+											<ul class="mt-2 list-disc space-y-1 pl-5">
+												<For each={props.conflicts}>
+													{(conflict) => (
+														<li>
+															{conflict.filename}
+															<Show when={conflict.suggestedName}>
+																<span> → {conflict.suggestedName}</span>
+															</Show>
+														</li>
+													)}
+												</For>
+											</ul>
+										</AlertDescription>
+									</Alert>
 								</Show>
 
 								<Show when={props.uploadProgress}>
 									{(progress) => (
 										<div class="rounded-md border p-3 text-sm">
 											<div class="flex justify-between gap-3">
-												<span>{progress().filename || "アップロード中"}</span>
+												<span>
+													{progress().filename ||
+														t("uploadMediaModal.uploading")}
+												</span>
 												<span class="text-muted-foreground">
 													{progress().status ||
 														(progress().total
-															? `${progress().current ?? 0}/${progress().total}`
-															: "処理中")}
+															? t("uploadMediaModal.valueValue", {
+																	value0: String(progress().current ?? 0),
+																	value1: String(progress().total),
+																})
+															: t("uploadMediaModal.processing"))}
 												</span>
 											</div>
 											<div class="mt-2 h-2 overflow-hidden rounded bg-muted">
@@ -542,7 +576,7 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 
 							<DialogFooter>
 								<Button onClick={requestClose} type="button" variant="outline">
-									キャンセル
+									{t("actions.cancel")}
 								</Button>
 								<form.Subscribe
 									selector={(state) => ({
@@ -560,8 +594,8 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 											type="submit"
 										>
 											{state().isSubmitting
-												? "アップロード中..."
-												: "アップロード"}
+												? t("uploadMediaModal.uploading2")
+												: t("uploadMediaModal.upload")}
 										</Button>
 									)}
 								</form.Subscribe>
@@ -577,16 +611,18 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 				<AlertDialogContent>
 					<AlertDialogHeader>
 						<AlertDialogTitle>
-							アップロード内容を破棄しますか？
+							{t("uploadMediaModal.discardUploadChanges")}
 						</AlertDialogTitle>
 						<AlertDialogDescription>
-							選択したファイルと入力内容は保存されていません。
+							{t("uploadMediaModal.yourSelectedFilesAndInputHaveNotBeenSaved")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>編集を続ける</AlertDialogCancel>
+						<AlertDialogCancel>
+							{t("configScreen.keepEditing")}
+						</AlertDialogCancel>
 						<AlertDialogAction onClick={discardAndClose}>
-							破棄して閉じる
+							{t("importReviewModal.discardAndClose")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

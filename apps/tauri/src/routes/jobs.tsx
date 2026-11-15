@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	useJobInspection,
 	jobSelectionSearchSchema,
@@ -45,10 +46,14 @@ async function downloadJobArtifact(job: JobDto): Promise<void> {
 		anchor.click();
 		anchor.remove();
 		URL.revokeObjectURL(url);
-		toast.success(`Downloaded ${job.artifact.fileName}`);
+		toast.success(
+			t("manager.downloadedValue", { value0: String(job.artifact.fileName) }),
+		);
 	} catch (error) {
 		toast.error(
-			error instanceof Error ? error.message : "Failed to download artifact",
+			error instanceof Error
+				? error.message
+				: t("jobs.failedToDownloadArtifact"),
 		);
 		throw error;
 	}
@@ -100,10 +105,10 @@ function JobsRoute() {
 					await queryClient.invalidateQueries({
 						queryKey: jobsQueryKeys.all(),
 					});
-					toast.success("Job queued for retry");
+					toast.success(t("jobs.jobQueuedForRetry"));
 				} catch (error) {
 					toast.error(
-						error instanceof Error ? error.message : "Failed to retry job",
+						error instanceof Error ? error.message : t("jobs.failedToRetryJob"),
 					);
 					throw error;
 				}
@@ -135,13 +140,18 @@ function JobsRoute() {
 				});
 				if (failedCount > 0) {
 					toast.error(
-						`${failedCount} of ${jobIds.length} jobs failed to queue for retry`,
+						t("jobs.valueOfValueJobsFailedToQueueForRetry", {
+							value0: String(failedCount),
+							value1: String(jobIds.length),
+						}),
 					);
 					throw firstError instanceof Error
 						? firstError
-						: new Error("Failed to retry some jobs");
+						: new Error(t("jobs.failedToRetrySomeJobs"));
 				}
-				toast.success(`${jobIds.length} jobs queued for retry`);
+				toast.success(
+					t("jobs.valueJobsQueuedForRetry", { value0: String(jobIds.length) }),
+				);
 			}}
 			onCancel={async (jobId) => {
 				try {
@@ -149,10 +159,12 @@ function JobsRoute() {
 					await queryClient.invalidateQueries({
 						queryKey: jobsQueryKeys.all(),
 					});
-					toast.success("Job cancellation requested");
+					toast.success(t("jobs.jobCancellationRequested"));
 				} catch (error) {
 					toast.error(
-						error instanceof Error ? error.message : "Failed to cancel job",
+						error instanceof Error
+							? error.message
+							: t("jobs.failedToCancelJob"),
 					);
 					throw error;
 				}

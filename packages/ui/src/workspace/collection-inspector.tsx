@@ -1,3 +1,4 @@
+import { getLocale, t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import ExternalLink from "lucide-solid/icons/external-link";
 import X from "lucide-solid/icons/x";
@@ -22,11 +23,16 @@ function formatFileSize(bytes: number | null): string {
 		value /= 1024;
 		unitIndex += 1;
 	}
-	return `${value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1)} ${units[unitIndex]}`;
+	return t("characterCropModal.valueValue", {
+		value0: String(
+			value >= 10 || unitIndex === 0 ? value.toFixed(0) : value.toFixed(1),
+		),
+		value1: String(units[unitIndex]),
+	});
 }
 
 function formatDate(date: Date) {
-	return new Intl.DateTimeFormat("ja-JP", {
+	return new Intl.DateTimeFormat(getLocale(), {
 		dateStyle: "medium",
 		timeStyle: "short",
 	}).format(date);
@@ -39,16 +45,16 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 
 	return (
 		<aside
-			aria-label="選択中のメディア"
+			aria-label={t("labels.selectedMedia")}
 			class="sticky top-0 hidden max-h-dialog-screen-compact min-h-0 min-w-0 overflow-hidden rounded-md border border-border bg-card 2xl:flex 2xl:flex-col"
 		>
 			<header class="z-10 flex h-12 shrink-0 items-center border-border border-b bg-card/95 px-4 backdrop-blur-sm">
 				<h2 class="min-w-0 flex-1 truncate font-semibold text-foreground text-sm">
-					選択中のメディア
+					{t("labels.selectedMedia")}
 				</h2>
 				<Show when={props.onClose}>
 					<Button
-						aria-label="インスペクターを閉じる"
+						aria-label={t("collectionInspector.closeInspector")}
 						class="size-8 shrink-0 p-0 text-muted-foreground"
 						onClick={() => props.onClose?.()}
 						size="icon"
@@ -65,10 +71,10 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 					fallback={
 						<div class="space-y-4">
 							<div class="flex aspect-landscape items-center justify-center rounded-md bg-muted px-6 text-center text-muted-foreground text-sm">
-								メディアを選択するとプレビューを表示します
+								{t("collectionInspector.selectMediaToShowAPreview")}
 							</div>
 							<p class="text-center text-muted-foreground text-xs leading-5">
-								一覧からメディアを選択してください
+								{t("collectionInspector.selectMediaFromTheList")}
 							</p>
 						</div>
 					}
@@ -87,30 +93,38 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 									{media.fileName}
 								</h3>
 								<p class="mt-2 whitespace-pre-wrap break-words text-muted-foreground text-xs leading-5">
-									{media.description?.trim() || "説明はありません"}
+									{media.description?.trim() || t("labels.noDescription")}
 								</p>
 							</section>
 							<dl class="grid grid-cols-label-field gap-x-3 gap-y-2.5 border-border border-b py-4 text-xs">
-								<dt class="text-muted-foreground">解像度</dt>
+								<dt class="text-muted-foreground">
+									{t("collectionInspector.resolution")}
+								</dt>
 								<dd class="text-right text-foreground">
 									{media.width} × {media.height}
 								</dd>
-								<dt class="text-muted-foreground">サイズ</dt>
+								<dt class="text-muted-foreground">
+									{t("collectionInspector.size")}
+								</dt>
 								<dd class="text-right text-foreground">
 									{formatFileSize(media.fileSize)}
 								</dd>
-								<dt class="text-muted-foreground">ソース</dt>
+								<dt class="text-muted-foreground">{t("labels.source")}</dt>
 								<dd
 									class="truncate text-right text-foreground"
 									title={props.sourceName}
 								>
 									{props.sourceName ?? "—"}
 								</dd>
-								<dt class="text-muted-foreground">作成日</dt>
+								<dt class="text-muted-foreground">
+									{t("collectionInspector.created")}
+								</dt>
 								<dd class="text-right text-foreground">
 									{formatDate(media.createdAt)}
 								</dd>
-								<dt class="text-muted-foreground">更新日</dt>
+								<dt class="text-muted-foreground">
+									{t("collectionInspector.updated")}
+								</dt>
 								<dd class="text-right text-foreground">
 									{formatDate(media.modifiedAt)}
 								</dd>
@@ -122,7 +136,7 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 									size="sm"
 								>
 									<ExternalLink aria-hidden="true" size={14} />
-									詳細を開く
+									{t("collectionInspector.openDetails")}
 								</Button>
 							</Show>
 						</div>

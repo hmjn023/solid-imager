@@ -149,7 +149,7 @@ test(
 	async ({ page }) => {
 		await page.goto("/about");
 		await waitForAppHydration(page);
-		await page.getByRole("link", { name: "Library", exact: true }).click();
+		await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
 		await waitForAppHydration(page);
 		await expect(
 			page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`),
@@ -212,7 +212,7 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		expect(imageBox?.width ?? 0).toBeGreaterThanOrEqual(640);
 	}
 	const detailsHeading = page.getByRole("heading", {
-		name: "File information",
+		name: "ファイル情報",
 		exact: true,
 	});
 	await detailsHeading.scrollIntoViewIfNeeded();
@@ -221,24 +221,26 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 
 	await page.goto("/manager");
 	await expect(
-		page.getByRole("heading", { name: "Manager", exact: true }),
+		page.getByRole("heading", { name: "管理", exact: true }),
 	).toBeVisible();
 	await waitForAppHydration(page);
 	await expectNoHorizontalOverflow(page);
 
 	const projectName = `Responsive project ${testInfo.project.name}`;
-	await page.getByRole("button", { name: "New Project", exact: true }).click();
+	await page
+		.getByRole("button", { name: "プロジェクトを新規作成", exact: true })
+		.click();
 	const projectDialog = page.getByRole("dialog");
 	await expect(projectDialog).toBeVisible();
 	await expect(
 		projectDialog.getByRole("heading", {
-			name: "Create Project",
+			name: "プロジェクトを作成",
 			exact: true,
 		}),
 	).toBeVisible();
-	await projectDialog.getByLabel("Name", { exact: true }).fill(projectName);
+	await projectDialog.getByLabel("名前", { exact: true }).fill(projectName);
 	await projectDialog
-		.getByRole("button", { name: "Save", exact: true })
+		.getByRole("button", { name: "保存", exact: true })
 		.click();
 	await expect(projectDialog).toBeHidden();
 	const projectRow = page.getByRole("button", {
@@ -253,35 +255,35 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		.click();
 	await expect(projectDialog).toBeVisible();
 	await expect(
-		projectDialog.getByLabel("Name", { exact: true }),
+		projectDialog.getByLabel("名前", { exact: true }),
 	).toBeInViewport();
 	await page.keyboard.press("Escape");
 	await expect(projectDialog).toBeHidden();
 
 	await page
-		.getByRole("button", { name: /^Batch tagging(?: Submit AI tag jobs)?$/ })
+		.getByRole("button", { name: /^一括タグ付け(?: AIタグ付けジョブを登録)?$/ })
 		.click();
 	await expect(
-		page.getByRole("heading", { name: "Batch tagging", exact: true }),
+		page.getByRole("heading", { name: "一括タグ付け", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "Scan targets", exact: true }),
+		page.getByRole("button", { name: "対象を確認", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "Start tagging", exact: true }),
+		page.getByRole("button", { name: "タグ付けを開始", exact: true }),
 	).toBeVisible();
 	await expectNoHorizontalOverflow(page);
 
 	await page.goto("/config");
 	await expect(
-		page.getByRole("heading", { name: "Settings", exact: true }),
+		page.getByRole("heading", { name: "設定", exact: true }),
 	).toBeVisible();
 	await waitForAppHydration(page);
 	const saveButton = page.getByRole("button", {
-		name: "Save Changes",
+		name: "変更を保存",
 		exact: true,
 	});
-	const concurrencyInput = page.getByLabel("Concurrency", { exact: true });
+	const concurrencyInput = page.getByLabel("同時実行数", { exact: true });
 	await concurrencyInput.fill("0");
 	await expect(concurrencyInput).toHaveAttribute("aria-invalid", "true");
 	await expect(saveButton).toBeDisabled();
@@ -290,12 +292,12 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 	await expect(saveButton).toBeEnabled();
 
 	for (const category of [
-		{ tab: "Jobs", heading: "Job Processing" },
-		{ tab: "AI", heading: "AI Service" },
-		{ tab: "Downloads", heading: "Downloads" },
-		{ tab: "Storage", heading: "Storage" },
-		{ tab: "Media", heading: "Media Extensions" },
-		{ tab: "Logging", heading: "Logging" },
+		{ tab: "ジョブ", heading: "ジョブ処理" },
+		{ tab: "AI", heading: "AIサービス" },
+		{ tab: "ダウンロード", heading: "ダウンロード" },
+		{ tab: "ストレージ", heading: "ストレージ" },
+		{ tab: "メディア", heading: "メディアの拡張子" },
+		{ tab: "ログ", heading: "ログ" },
 	]) {
 		await page
 			.getByRole("tab", { name: new RegExp(`^${category.tab}(?: |$)`) })
@@ -305,8 +307,8 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		).toBeVisible();
 	}
 
-	await page.getByRole("tab", { name: /^Storage(?: |$)/ }).click();
-	const thumbnailDirectory = page.getByLabel("Thumbnail Directory", {
+	await page.getByRole("tab", { name: /^ストレージ(?: |$)/ }).click();
+	const thumbnailDirectory = page.getByLabel("サムネイル保存先", {
 		exact: true,
 	});
 	await expect(thumbnailDirectory).toBeVisible();
@@ -318,12 +320,10 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		);
 		expect(fontSize).toBeGreaterThanOrEqual(16);
 
-		await page.getByRole("tab", { name: /^Media(?: |$)/ }).click();
-		await page
-			.getByLabel("Negative Tags", { exact: true })
-			.scrollIntoViewIfNeeded();
+		await page.getByRole("tab", { name: /^メディア(?: |$)/ }).click();
+		await page.getByLabel("除外タグ", { exact: true }).scrollIntoViewIfNeeded();
 		await expect(
-			page.getByRole("button", { name: "Save Changes", exact: true }),
+			page.getByRole("button", { name: "変更を保存", exact: true }),
 		).toBeInViewport();
 	}
 });

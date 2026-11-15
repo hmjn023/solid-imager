@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type {
 	AuthorAccount,
 	AuthorAccountVerification,
@@ -52,10 +53,12 @@ export function AuthorAccountVerificationPanel(props: {
 		(result.isError
 			? result.error instanceof Error
 				? result.error.message
-				: "取得結果を確認できませんでした。"
+				: t("authorAccountVerification.couldNotVerifyTheFetchedData")
 			: "") ||
 		(timedOut() && !result.data?.profile
-			? "プロフィールを取得できませんでした。xtracterの更新・接続先設定とXへのログインを確認して、再取得してください。"
+			? t(
+					"authorAccountVerification.couldNotFetchTheProfileCheckXtracterUpdatesIts",
+				)
 			: "");
 	const begin = async () => {
 		if (busy()) return;
@@ -78,7 +81,7 @@ export function AuthorAccountVerificationPanel(props: {
 			setError(
 				failure instanceof Error
 					? failure.message
-					: "確認を開始できませんでした。",
+					: t("authorAccountVerification.couldNotStartVerification"),
 			);
 		} finally {
 			setBusy(false);
@@ -108,7 +111,7 @@ export function AuthorAccountVerificationPanel(props: {
 			setError(
 				failure instanceof Error
 					? failure.message
-					: "確認結果を保存できませんでした。",
+					: t("authorAccountVerification.couldNotSaveVerification"),
 			);
 		} finally {
 			setBusy(false);
@@ -117,7 +120,11 @@ export function AuthorAccountVerificationPanel(props: {
 	return (
 		<div class="mt-3 space-y-2">
 			<Show when={props.account?.remoteId}>
-				<p class="text-sm">固定ID確認済み・以降の取り込み時に自動更新</p>
+				<p class="text-sm">
+					{t(
+						"authorAccountVerification.stableIDVerifiedUpdatedAutomaticallyOnFutureImports",
+					)}
+				</p>
 			</Show>
 			<form
 				class="flex flex-wrap items-end gap-2"
@@ -132,9 +139,11 @@ export function AuthorAccountVerificationPanel(props: {
 					disabled={busy()}
 					class="min-w-0 flex-1"
 				>
-					<TextFieldLabel>現在のXユーザー名</TextFieldLabel>
+					<TextFieldLabel>
+						{t("authorAccountVerification.currentXUsername")}
+					</TextFieldLabel>
 					<TextFieldInput
-						placeholder="@username"
+						placeholder={t("authorAccountVerification.username")}
 						required
 						pattern="@?[A-Za-z0-9_]{1,15}"
 					/>
@@ -144,7 +153,9 @@ export function AuthorAccountVerificationPanel(props: {
 					variant="outline"
 					disabled={busy() || !username().trim()}
 				>
-					{busy() ? "取得中..." : "プロフィールを取得して確認"}
+					{busy()
+						? t("authorAccountVerification.fetching")
+						: t("authorAccountVerification.fetchAndVerifyProfile")}
 				</Button>
 			</form>
 			<Show when={error() && !open()}>
@@ -167,15 +178,33 @@ export function AuthorAccountVerificationPanel(props: {
 			>
 				<DialogContent class="max-w-lg">
 					<DialogHeader>
-						<DialogTitle>Xアカウントを確認</DialogTitle>
+						<DialogTitle>
+							{t("authorAccountVerification.verifyXAccount")}
+						</DialogTitle>
 						<DialogDescription>
-							現在のプロフィールを開いて取得し、元の作者と同じアカウントか確認してください。
+							{t(
+								"authorAccountVerification.openAndFetchTheCurrentProfileThenVerifyIt",
+							)}
 						</DialogDescription>
 					</DialogHeader>
 					<p class="break-words text-sm">
-						登録情報: {props.account?.displayName ?? "表示名未登録"} / @
-						{props.account?.accountId.replace(/^@/, "") ?? "未登録"} / 固定ID{" "}
-						{props.account?.remoteId ?? "未確認"}
+						{t(
+							"authorAccountVerification.registeredValueValueStableIDValueValue",
+							{
+								value0: String(
+									props.account?.displayName ??
+										t("authorAccountVerification.noDisplayNameRegistered"),
+								),
+								value1: String(
+									props.account?.accountId.replace(/^@/, "") ??
+										t("authorAccountVerification.notRegistered"),
+								),
+								value3: String(
+									props.account?.remoteId ??
+										t("authorAccountVerification.unverified"),
+								),
+							},
+						)}
 					</p>
 					<Show when={preview()}>
 						{(pending) => (
@@ -199,27 +228,27 @@ export function AuthorAccountVerificationPanel(props: {
 								}}
 								class="text-sm underline underline-offset-4"
 							>
-								Xプロフィールを開いて取得
+								{t("authorAccountVerification.openAndFetchXProfile")}
 							</a>
 						)}
 					</Show>
 					<p class="text-xs text-muted-foreground">
-						更新済みのxtracterが必要です。拡張機能の接続先を、このManagerと同じサーバーに設定してください。
+						{t("authorAccountVerification.anUpToDateXtracterIsRequiredSetIts")}
 					</p>
 					<Show when={!result.data?.profile && !failureMessage()}>
 						<output class="text-sm" aria-live="polite">
-							Xプロフィールからの取得を待っています...
+							{t("authorAccountVerification.waitingForXProfileData")}
 						</output>
 					</Show>
 					<Show when={result.data?.profile}>
 						{(profile) => (
 							<div class="space-y-2">
 								<dl class="grid grid-cols-2 gap-x-3 gap-y-1 break-words text-sm">
-									<dt>取得した表示名</dt>
+									<dt>{t("authorAccountVerification.fetchedDisplayName")}</dt>
 									<dd>{profile().displayName}</dd>
-									<dt>現在のユーザー名</dt>
+									<dt>{t("authorAccountVerification.currentUsername")}</dt>
 									<dd>@{profile().username}</dd>
-									<dt>固定ID</dt>
+									<dt>{t("authorAccountVerification.stableID")}</dt>
 									<dd>{profile().remoteId}</dd>
 								</dl>
 								<Checkbox
@@ -229,11 +258,15 @@ export function AuthorAccountVerificationPanel(props: {
 								>
 									<CheckboxControl />
 									<CheckboxLabel>
-										元の作者と同じアカウントであることを確認しました
+										{t(
+											"authorAccountVerification.iVerifiedThatThisIsTheOriginalAuthorS",
+										)}
 									</CheckboxLabel>
 								</Checkbox>
 								<p class="text-xs text-muted-foreground">
-									確認後はこの固定IDで照合し、以降の取り込み時に表示名・ユーザー名を自動更新します。
+									{t(
+										"authorAccountVerification.afterVerificationUseTheStableIDToMatchThe",
+									)}
 								</p>
 							</div>
 						)}
@@ -247,7 +280,7 @@ export function AuthorAccountVerificationPanel(props: {
 							disabled={busy()}
 							onClick={() => void begin()}
 						>
-							再取得
+							{t("authorAccountVerification.fetchAgain")}
 						</Button>
 					</Show>
 					<DialogFooter>
@@ -256,7 +289,7 @@ export function AuthorAccountVerificationPanel(props: {
 							disabled={busy()}
 							onClick={() => setOpen(false)}
 						>
-							キャンセル
+							{t("actions.cancel")}
 						</Button>
 						<Button
 							disabled={
@@ -267,7 +300,7 @@ export function AuthorAccountVerificationPanel(props: {
 							}
 							onClick={() => void save()}
 						>
-							同じアカウントと確認して更新
+							{t("authorAccountVerification.verifySameAccountAndUpdate")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>

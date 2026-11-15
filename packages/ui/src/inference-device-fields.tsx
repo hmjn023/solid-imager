@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { type AiProvider, AiProviderSchema } from "@solid-imager/core/config";
 import { Show } from "solid-js";
 import { FormFieldMessage } from "./form-message";
@@ -18,16 +19,16 @@ type ProviderOption = {
 };
 
 const PROVIDER_OPTIONS: ProviderOption[] = [
-	{ value: "auto", label: "自動選択 (Auto)" },
-	{ value: "cpu", label: "CPU" },
-	{ value: "cuda", label: "NVIDIA CUDA" },
-	{ value: "tensorrt", label: "NVIDIA TensorRT" },
-	{ value: "directml", label: "DirectML" },
-	{ value: "intel_gpu", label: "Intel GPU" },
-	{ value: "intel_npu", label: "Intel NPU" },
-	{ value: "amd_gpu", label: "AMD GPU" },
-	{ value: "amd_npu", label: "AMD NPU" },
-	{ value: "openvino", label: "OpenVINO" },
+	{ value: "auto", label: t("inferenceDeviceFields.automatic") },
+	{ value: "cpu", label: t("inferenceDeviceFields.cPU") },
+	{ value: "cuda", label: t("inferenceDeviceFields.nVIDIACUDA") },
+	{ value: "tensorrt", label: t("inferenceDeviceFields.nVIDIATensorRT") },
+	{ value: "directml", label: t("inferenceDeviceFields.directML") },
+	{ value: "intel_gpu", label: t("inferenceDeviceFields.intelGPU") },
+	{ value: "intel_npu", label: t("inferenceDeviceFields.intelNPU") },
+	{ value: "amd_gpu", label: t("inferenceDeviceFields.aMDGPU") },
+	{ value: "amd_npu", label: t("inferenceDeviceFields.aMDNPU") },
+	{ value: "openvino", label: t("inferenceDeviceFields.openVINO") },
 ];
 
 const PROVIDERS_WITHOUT_DEVICE: ReadonlySet<AiProvider> = new Set([
@@ -46,33 +47,39 @@ function getDevicePlaceholder(provider: AiProvider): string {
 		case "tensorrt":
 		case "directml":
 		case "amd_gpu":
-			return "0 (または 1, 2...)";
+			return t("inferenceDeviceFields.0Or12");
 		case "intel_gpu":
-			return "0 または GPU.0";
+			return t("inferenceDeviceFields.0OrGPU0");
 		case "intel_npu":
-			return "0 または NPU.0";
+			return t("inferenceDeviceFields.0OrNPU0");
 		case "openvino":
-			return "AUTO, GPU, NPU, HETERO:GPU,CPU";
+			return t("labels.openVinoExample");
 		default:
-			return "このproviderでは不要";
+			return t("inferenceDeviceFields.notRequiredByThisProvider");
 	}
 }
 
 function getDeviceDescription(provider: AiProvider): string {
 	switch (provider) {
 		case "auto":
-			return "利用可能なproviderを自動選択し、最後にCPUへフォールバックします。";
+			return t(
+				"inferenceDeviceFields.automaticallySelectsAnAvailableProviderFallingBackToCPU",
+			);
 		case "cpu":
 		case "amd_npu":
-			return "このproviderはdevice selectorを使用しません。";
+			return t("inferenceDeviceFields.thisProviderDoesNotUseADeviceSelector");
 		case "intel_gpu":
-			return "Intel GPUの番号を指定できます。省略時はproviderの既定値を使用します。";
+			return t("inferenceDeviceFields.enterAnIntelGPUIndexLeaveEmptyToUse");
 		case "intel_npu":
-			return "Intel NPUの番号を指定できます。省略時はproviderの既定値を使用します。";
+			return t("inferenceDeviceFields.enterAnIntelNPUIndexLeaveEmptyToUse");
 		case "openvino":
-			return "OpenVINOのdevice policyを指定します。例: AUTO、GPU、NPU、HETERO:GPU,CPU。";
+			return t(
+				"inferenceDeviceFields.specifyTheOpenVINODevicePolicySuchAsAUTOGPU",
+			);
 		default:
-			return "provider固有のdevice番号を指定できます。省略時は0を使用します。";
+			return t(
+				"inferenceDeviceFields.enterTheProviderSpecificDeviceIndexDefaultsTo0",
+			);
 	}
 }
 
@@ -99,7 +106,9 @@ export function InferenceDeviceFields(props: InferenceDeviceFieldsProps) {
 	return (
 		<div class={cn("grid gap-4 md:grid-cols-2", props.class)}>
 			<div class="space-y-2">
-				<Label id={`${idPrefix()}-provider-label`}>推論provider</Label>
+				<Label id={`${idPrefix()}-provider-label`}>
+					{t("inferenceDeviceFields.inferenceProvider")}
+				</Label>
 				<Select
 					aria-describedby={`${idPrefix()}-provider-description ${idPrefix()}-provider-error`}
 					aria-invalid={Boolean(props.providerError)}
@@ -125,7 +134,10 @@ export function InferenceDeviceFields(props: InferenceDeviceFieldsProps) {
 				>
 					<SelectTrigger>
 						<SelectValue<ProviderOption>>
-							{(state) => state.selectedOption()?.label ?? "自動選択 (Auto)"}
+							{(state) =>
+								state.selectedOption()?.label ??
+								t("inferenceDeviceFields.automatic")
+							}
 						</SelectValue>
 					</SelectTrigger>
 					<SelectContent />
@@ -138,12 +150,16 @@ export function InferenceDeviceFields(props: InferenceDeviceFieldsProps) {
 					class="text-muted-foreground text-xs"
 					id={`${idPrefix()}-provider-description`}
 				>
-					ローカル推論に使用するproviderを選択します。リモートAIサーバー指定時はリモート側の設定が適用されます。
+					{t(
+						"inferenceDeviceFields.selectAProviderForLocalInferenceRemoteAIServers",
+					)}
 				</p>
 			</div>
 
 			<div class="space-y-2">
-				<Label for={`${idPrefix()}-device`}>Device (任意)</Label>
+				<Label for={`${idPrefix()}-device`}>
+					{t("inferenceDeviceFields.deviceOptional")}
+				</Label>
 				<Input
 					aria-describedby={`${deviceDescriptionId()} ${idPrefix()}-device-error`}
 					aria-invalid={Boolean(props.deviceError)}
@@ -162,7 +178,9 @@ export function InferenceDeviceFields(props: InferenceDeviceFieldsProps) {
 				</p>
 				<Show when={!deviceIsSupported()}>
 					<p class="text-muted-foreground text-xs">
-						現在のproviderではdevice指定は使用されません。
+						{t(
+							"inferenceDeviceFields.theSelectedProviderDoesNotUseADeviceSelector",
+						)}
 					</p>
 				</Show>
 			</div>

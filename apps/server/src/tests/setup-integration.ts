@@ -1,5 +1,5 @@
-import path from "node:path";
 import { config } from "dotenv";
+import { MIGRATIONS_DIR, SERVER_ENV_FILE } from "./paths";
 import { beforeAll, beforeEach, vi } from "vitest";
 
 function createBunImageMock(input: string) {
@@ -208,7 +208,7 @@ beforeAll(async () => {
 	startBackgroundWorker();
 });
 
-config({ path: path.resolve(process.cwd(), ".env") });
+config({ path: SERVER_ENV_FILE });
 
 process.env.DB_HOST = "pglite";
 if (process.env.NODE_ENV !== "production") {
@@ -227,14 +227,10 @@ const { mockDbFactory } = vi.hoisted(() => {
 			const { drizzle } = await import("drizzle-orm/pglite");
 			const { migrate } = await import("drizzle-orm/pglite/migrator");
 			const schema = await import("~/infrastructure/db/schema");
-			const nodePath = await import("node:path");
 
 			const client = createPglite();
 			const testDb = drizzle(client, { schema });
-			const migrationsFolder = process.cwd().endsWith("apps/server")
-				? nodePath.resolve(process.cwd(), "drizzle")
-				: nodePath.resolve(process.cwd(), "apps/server/drizzle");
-			await migrate(testDb, { migrationsFolder });
+			await migrate(testDb, { migrationsFolder: MIGRATIONS_DIR });
 
 			dbInstance = { db: testDb };
 			return dbInstance;

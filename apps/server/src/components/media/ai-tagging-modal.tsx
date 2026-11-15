@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import { AiTaggingModal as SharedAiTaggingModal } from "@solid-imager/ui/ai-tagging-modal";
 import { fetchAiTags } from "~/infrastructure/api-clients/ai-api";
@@ -22,7 +23,7 @@ export function AiTaggingModal(props: AiTaggingModalProps) {
 					mediaId: props.mediaId,
 				});
 				if (!result) {
-					throw new Error("No tagging result returned");
+					throw new Error(t("aiTaggingModal.noTaggingResultReturned"));
 				}
 				return result;
 			}}

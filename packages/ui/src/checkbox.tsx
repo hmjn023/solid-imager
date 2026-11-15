@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	Control as CheckboxControlPrimitive,
 	type CheckboxControlProps as CheckboxControlPropsPrimitive,
@@ -45,7 +46,7 @@ const CheckboxControl = <T extends ValidComponent = "div">(
 						viewBox="0 0 24 24"
 						xmlns="http://www.w3.org/2000/svg"
 					>
-						<title>Checked</title>
+						<title>{t("contextMenu.checked")}</title>
 						<path d="M5 12l5 5l10 -10" />
 					</svg>
 				</CheckboxIndicator>

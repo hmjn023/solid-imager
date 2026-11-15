@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { createSignal } from "solid-js";
 
 export function Counter() {
@@ -8,7 +9,7 @@ export function Counter() {
 			onClick={() => setCount(count() + 1)}
 			type="button"
 		>
-			Clicks: {count()}
+			{t("counter.clicksValue", { value0: String(count()) })}
 		</button>
 	);
 }

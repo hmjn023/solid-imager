@@ -1,3 +1,11 @@
+import { Button } from "../button";
+import {
+	MediaAuthorsSection,
+	MediaAuthorRow,
+	MediaMetadataSection,
+	MediaTagBadge,
+} from "../media-detail-metadata";
+import { t } from "@solid-imager/i18n";
 import {
 	danbooruPostToDownloadItem,
 	getDanbooruPostUrl,
@@ -6,7 +14,6 @@ import {
 } from "@solid-imager/core/danbooru";
 import { For, Show } from "solid-js";
 import { EmptyState } from "../async-state";
-import { Button } from "../button";
 import {
 	formatBytes,
 	MediaDetailInspector,
@@ -23,11 +30,10 @@ import {
 import { danbooruRatingLabel } from "./post-media";
 
 const tagGroups = [
-	["artist", "作者"],
-	["copyright", "作品"],
-	["character", "キャラクター"],
-	["general", "タグ"],
-	["meta", "メタ"],
+	["copyright", t("detail.work")],
+	["character", t("labels.characters")],
+	["general", t("pixivArtworkDetail.tags")],
+	["meta", t("danbooruPostDetail.metadata")],
 ] as const;
 
 export function DanbooruPostDetail(
@@ -38,7 +44,9 @@ export function DanbooruPostDetail(
 	return (
 		<ViewerDetail {...props} provider="Danbooru">
 			{(post) => {
-				const title = `Danbooru #${post.id}`;
+				const title = t("danbooruScreen.danbooruValue", {
+					value0: String(post.id),
+				});
 				const preview = getDanbooruPreview(post);
 				const item = danbooruPostToDownloadItem(post);
 				return (
@@ -52,8 +60,8 @@ export function DanbooruPostDetail(
 									<ViewerActions
 										item={item}
 										imports={props.imports}
-										importLabel="画像を取り込み待ちへ"
-										sourceLabel="元の投稿"
+										importLabel={t("danbooruPostDetail.addImageToImportInbox")}
+										sourceLabel={t("danbooruPostDetail.originalPost")}
 										sourceHref={getDanbooruPostUrl(post.id)}
 									/>
 								}
@@ -69,50 +77,91 @@ export function DanbooruPostDetail(
 								/>
 							) : (
 								<EmptyState
-									title="この投稿のプレビューは利用できません"
-									description="公開範囲またはファイル形式により表示できません。元サイトで確認できます。"
+									title={t("danbooruPostDetail.thisPostHasNoPreview")}
+									description={t(
+										"danbooruPostDetail.visibilityOrFileFormatPreventsPreviewingCheckItOn",
+									)}
 								/>
 							)
 						}
 						sidebar={
-							<MediaDetailInspector label="投稿情報">
+							<MediaDetailInspector label={t("danbooruPostDetail.postDetails")}>
+								<Show when={post.tags.artist.length}>
+									<MediaAuthorsSection>
+										<For each={post.tags.artist}>
+											{(artist) => (
+												<MediaAuthorRow
+													name={
+														<Button
+															type="button"
+															variant="link"
+															class="h-auto max-w-full whitespace-normal break-words p-0 text-left text-base"
+															title={t("danbooruPostDetail.searchForValue", {
+																value0: artist,
+															})}
+															onClick={() => props.onSearchTag(artist)}
+														>
+															{artist}
+														</Button>
+													}
+												/>
+											)}
+										</For>
+									</MediaAuthorsSection>
+								</Show>
 								<For each={tagGroups}>
 									{([key, label]) => (
 										<Show when={post.tags[key].length}>
-											<div class="space-y-2">
-												<h2 class="font-semibold text-sm">{label}</h2>
-												<div class="flex flex-wrap gap-1">
+											<MediaMetadataSection title={label}>
+												<div class="flex flex-wrap gap-2">
 													<For each={post.tags[key]}>
 														{(tag) => (
-															<Button
-																variant="secondary"
-																class="h-auto min-h-11 max-w-full whitespace-normal break-all px-2 py-1 text-left text-xs md:min-h-9"
-																title={`「${tag}」で検索`}
-																onClick={() => props.onSearchTag(tag)}
-															>
-																{tag}
-															</Button>
+															<MediaTagBadge
+																name={tag}
+																variant={
+																	key === "general" ? "default" : "secondary"
+																}
+																searchLabel={t(
+																	"danbooruPostDetail.searchForValue",
+																	{ value0: tag },
+																)}
+																onSearch={() => props.onSearchTag(tag)}
+															/>
 														)}
 													</For>
 												</div>
-											</div>
+											</MediaMetadataSection>
 										</Show>
 									)}
 								</For>
 								<MediaFileInformation
-									title="投稿情報"
+									title={t("danbooruPostDetail.postDetails")}
 									rows={[
-										["投稿日", new Date(post.createdAt).toLocaleString()],
-										["解像度", `${post.width} × ${post.height}`],
-										["形式", post.fileExt.toUpperCase()],
-										["サイズ", formatBytes(post.fileSize)],
-										["レーティング", danbooruRatingLabel(post.rating)],
-										["スコア", post.score],
+										[
+											t("pixivArtworkDetail.posted"),
+											new Date(post.createdAt).toLocaleString(),
+										],
+										[
+											t("collectionInspector.resolution"),
+											`${post.width} × ${post.height}`,
+										],
+										[
+											t("danbooruPostDetail.format"),
+											post.fileExt.toUpperCase(),
+										],
+										[t("collectionInspector.size"), formatBytes(post.fileSize)],
+										[
+											t("danbooruPostDetail.rating"),
+											danbooruRatingLabel(post.rating),
+										],
+										[t("danbooruPostDetail.score"), post.score],
 									]}
 								/>
 								<Show when={!item}>
 									<p class="py-4 text-muted-foreground text-xs">
-										原本を取得できない投稿や、画像以外の取り込みには対応していません。
+										{t(
+											"danbooruPostDetail.postsWithoutDownloadableOriginalsAndNonImageImportsAre",
+										)}
 									</p>
 								</Show>
 							</MediaDetailInspector>

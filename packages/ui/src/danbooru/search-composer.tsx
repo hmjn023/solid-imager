@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { ViewerTag } from "@solid-imager/core/external-viewer";
 import { createQuery } from "@tanstack/solid-query";
 import { createEffect, createMemo, createSignal } from "solid-js";
@@ -37,7 +38,8 @@ export function DanbooruSearchComposer(props: {
 			label: tag.name,
 			value: tag.name,
 			description: [
-				danbooruTagCategoryLabels[tag.category ?? -1] ?? "タグ",
+				danbooruTagCategoryLabels[tag.category ?? -1] ??
+					t("pixivArtworkDetail.tags"),
 				tag.postCount?.toLocaleString(),
 			]
 				.filter(Boolean)
@@ -47,7 +49,9 @@ export function DanbooruSearchComposer(props: {
 	return (
 		<SearchComposerField
 			id="external-search-composer"
-			label={(props.provider ?? "Danbooru") + " を検索"}
+			label={
+				(props.provider ?? t("sidebar.danbooru")) + t("searchComposer.search")
+			}
 			draft={props.draft}
 			inputRef={(element) => {
 				input = element;
@@ -60,17 +64,16 @@ export function DanbooruSearchComposer(props: {
 			})}
 			onSubmit={props.onSubmit}
 			options={options()}
-			placeholder="タグを入力（例: landscape -monochrome）"
-			submitLabel="検索"
-			hint={
-				"スペースで AND、-タグで除外、~タグで OR。" +
-				(props.provider === "pixiv"
-					? "Danbooru タグを pixiv のタグに変換します。"
-					: "rating:g や order:score も使えます。")
-			}
+			placeholder={t("searchComposer.enterTagsEGLandscapeMonochrome")}
+			submitLabel={t("actions.search")}
+			hint={t(
+				props.provider === "pixiv"
+					? "searchComposer.pixivHint"
+					: "searchComposer.danbooruHint",
+			)}
 			status={
 				suggestions.isError && query() === token().query
-					? "タグ候補を取得できませんでした。タグを直接入力して検索できます。"
+					? t("searchComposer.couldNotLoadTagSuggestionsYouCanStillEnter")
 					: undefined
 			}
 		/>

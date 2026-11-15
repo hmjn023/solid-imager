@@ -78,7 +78,7 @@ describe("source synchronization feedback", () => {
 			await page.handleSyncSource(source("one"));
 			expect(toast.success).not.toHaveBeenCalled();
 			expect(toast.error).toHaveBeenCalledExactlyOnceWith(
-				`Failed to sync one: ${outcome.error}`,
+				`oneの同期に失敗しました: ${outcome.error}`,
 			);
 			expect(invalidate).toHaveBeenCalledOnce();
 			expect(page.isSyncing()).toBe(false);
@@ -93,7 +93,7 @@ describe("source synchronization feedback", () => {
 		await page.handleSyncAll([source("one"), source("two")]);
 		expect(toast.success).not.toHaveBeenCalled();
 		expect(toast.error).toHaveBeenCalledExactlyOnceWith(
-			"Sync failed for 1 of 2 sources",
+			"2ソース中1ソースの同期に失敗しました",
 		);
 	});
 
@@ -103,7 +103,7 @@ describe("source synchronization feedback", () => {
 		await page.handleSyncSource(source("one"));
 		expect(toast.success).not.toHaveBeenCalled();
 		expect(toast.error).toHaveBeenCalledWith(
-			"Failed to sync one: No synchronization result returned",
+			"oneの同期に失敗しました: 同期結果が返されませんでした",
 		);
 	});
 
@@ -122,7 +122,62 @@ describe("source synchronization feedback", () => {
 		await syncing;
 		expect(page.isSyncing()).toBe(false);
 		expect(toast.success).toHaveBeenCalledExactlyOnceWith(
-			"Sync finished for one",
+			"oneの同期が完了しました",
 		);
+	});
+});
+
+describe("source deletion confirmation", () => {
+	it("ignores duplicate confirm calls while deletion is in flight", async () => {
+		const { actions, page, invalidate } = setup();
+		const request = Promise.withResolvers<unknown>();
+		vi.mocked(actions.deleteMediaSource).mockReturnValueOnce(request.promise);
+
+		page.handleDeleteSource(source("one"));
+		expect(page.showDeleteModal()).toBe(true);
+		expect(page.deletingSource()?.id).toBe("one");
+
+		const deleting = page.handleDeleteConfirm("one");
+		expect(page.isDeleting()).toBe(true);
+
+		await page.handleDeleteConfirm("one");
+		expect(actions.deleteMediaSource).toHaveBeenCalledExactlyOnceWith("one");
+
+		request.resolve(undefined);
+		await deleting;
+
+		expect(page.isDeleting()).toBe(false);
+		expect(page.showDeleteModal()).toBe(false);
+		expect(page.deletingSource()).toBeNull();
+		expect(invalidate).toHaveBeenCalledOnce();
+	});
+
+	it("preserves source B confirmation state if source A deletion finishes after switching to B", async () => {
+		const { actions, page } = setup();
+		const requestA = Promise.withResolvers<unknown>();
+		vi.mocked(actions.deleteMediaSource)
+			.mockReturnValueOnce(requestA.promise)
+			.mockResolvedValueOnce(undefined);
+
+		page.handleDeleteSource(source("one"));
+		const deletingA = page.handleDeleteConfirm("one");
+
+		page.setShowDeleteModal(false);
+		page.handleDeleteSource(source("two"));
+		expect(page.showDeleteModal()).toBe(true);
+		expect(page.deletingSource()?.id).toBe("two");
+
+		requestA.resolve(undefined);
+		await deletingA;
+
+		expect(page.isDeleting()).toBe(false);
+		expect(page.showDeleteModal()).toBe(true);
+		expect(page.deletingSource()?.id).toBe("two");
+
+		await page.handleDeleteConfirm("two");
+		expect(actions.deleteMediaSource).toHaveBeenCalledTimes(2);
+		expect(actions.deleteMediaSource).toHaveBeenNthCalledWith(2, "two");
+		expect(page.showDeleteModal()).toBe(false);
+		expect(page.deletingSource()).toBeNull();
 	});
 });

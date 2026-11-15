@@ -4,6 +4,7 @@ import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { readPlaywrightSelection } from "./e2e-arguments";
 
 type E2eMode = "dev" | "production" | "components";
 
@@ -12,37 +13,48 @@ const appRoot = path.resolve(
 	"..",
 );
 const runtimeRoot = path.join(tmpdir(), "solid-imager-e2e");
-const fullDevRun = process.argv.includes("--full-dev");
-const playwrightArguments = process.argv
-	.slice(2)
-	.filter((value) => !value.startsWith("--mode=") && value !== "--full-dev");
-const hasExplicitSpec = playwrightArguments.some((value) =>
-	/\.spec\.[cm]?[jt]sx?$/.test(value),
-);
+const args = process.argv.slice(2);
+if (args.includes("--help") || args.includes("-h")) {
+	console.log(`bun run test:e2e [--mode=smoke|dev|production|components|full] [Playwright options or spec]
 
-// Production runs every browser scenario. In the default combined gate, dev
-// exercises the distinct Vite, SSR, Tauri, native job and SSE startup paths.
-// Use --full-dev when a change warrants the complete suite in both runtimes.
-const devSmokeSpecs = [
-	"route-reload.spec.ts",
-	"tauri-migration.spec.ts",
-	"ccip-flow.spec.ts",
-	"realtime-preservation.spec.ts",
-] as const;
+Default: dev smoke tests, then the full production suite. Explicit filters run in both.
+  --mode=smoke        Tagged dev smoke cases only
+  --mode=dev          Dev only (all matching app tests)
+  --mode=production   Fresh production build only
+  --mode=components   Component gallery only (no app server or DB)
+  --mode=full         All matching app tests in both dev and production
+  --list              List the selected tests without starting servers
 
-function getRequestedMode(): E2eMode | "all" {
-	const argument = process.argv.find((value) => value.startsWith("--mode="));
-	const mode = argument?.slice("--mode=".length) ?? "all";
-	if (
-		mode === "dev" ||
-		mode === "production" ||
-		mode === "components" ||
-		mode === "all"
-	) {
-		return mode;
-	}
-	throw new Error("--mode must be dev, production, components, or all");
+Example: bun run test:e2e --mode=dev route-reload.spec.ts`);
+	process.exit(0);
 }
+
+let requestedMode: E2eMode | "full" | "smoke" | undefined;
+const playwrightArguments: string[] = [];
+for (let index = 0; index < args.length; index++) {
+	const argument = args[index];
+	if (argument === "--mode" || argument.startsWith("--mode=")) {
+		const mode = argument === "--mode" ? args[++index] : argument.slice(7);
+		if (
+			mode !== "smoke" &&
+			mode !== "dev" &&
+			mode !== "production" &&
+			mode !== "components" &&
+			mode !== "full"
+		) {
+			throw new Error(
+				"--mode must be smoke, dev, production, components, or full",
+			);
+		}
+		if (requestedMode) throw new Error("Specify --mode once");
+		requestedMode = mode;
+	} else {
+		playwrightArguments.push(argument);
+	}
+}
+// Accept the package-script separator before a spec or Playwright options.
+if (playwrightArguments[0] === "--") playwrightArguments.shift();
+const { hasSelection, listOnly } = readPlaywrightSelection(playwrightArguments);
 
 async function findAvailablePort(): Promise<string> {
 	return await new Promise((resolve, reject) => {
@@ -75,22 +87,21 @@ async function createEnvironment(
 			value === undefined ? [] : [[key, value]],
 		),
 	);
-	const [port, hmrPort, galleryPort, tauriPort, tauriHmrPort] =
-		await Promise.all([
-			findAvailablePort(),
-			findAvailablePort(),
-			findAvailablePort(),
-			findAvailablePort(),
-			findAvailablePort(),
-		]);
+	const portNames =
+		mode === "components"
+			? ["E2E_GALLERY_PORT"]
+			: ["E2E_PORT", "E2E_HMR_PORT", "E2E_TAURI_PORT", "E2E_TAURI_HMR_PORT"];
+	// Playwright collects specs without launching webServer in list mode.
+	const ports = await Promise.all(
+		portNames.map(
+			async (name) =>
+				[name, listOnly ? "0" : await findAvailablePort()] as const,
+		),
+	);
 	return {
 		...inherited,
 		E2E_MODE: mode,
-		E2E_PORT: port,
-		E2E_HMR_PORT: hmrPort,
-		E2E_GALLERY_PORT: galleryPort,
-		E2E_TAURI_PORT: tauriPort,
-		E2E_TAURI_HMR_PORT: tauriHmrPort,
+		...Object.fromEntries(ports),
 		E2E_RUNTIME_DIR: runtimeDir,
 	};
 }
@@ -98,21 +109,21 @@ async function createEnvironment(
 async function runMode(mode: E2eMode, devSmoke: boolean): Promise<void> {
 	const runtimeDir = path.join(runtimeRoot, `${mode}-${randomUUID()}`);
 	const environment = await createEnvironment(mode, runtimeDir);
+	console.error(`E2E ${mode}${devSmoke ? " (@dev-smoke)" : ""}`);
 	const childProcess = Bun.spawn(
 		[
 			process.execPath,
 			"run",
-			"test:e2e:playwright",
-			"--",
+			"playwright",
+			"test",
 			...(mode === "components"
 				? ["--config=playwright.components.config.ts"]
 				: []),
-			...(devSmoke ? devSmokeSpecs : []),
 			...playwrightArguments,
 		],
 		{
 			cwd: appRoot,
-			env: environment,
+			env: { ...environment, E2E_DEV_SMOKE: devSmoke ? "1" : "0" },
 			stdout: "inherit",
 			stderr: "inherit",
 			stdin: "inherit",
@@ -131,14 +142,16 @@ async function runMode(mode: E2eMode, devSmoke: boolean): Promise<void> {
 	await rm(runtimeDir, { recursive: true, force: true });
 }
 
-const requestedMode = getRequestedMode();
 const modes: E2eMode[] =
-	requestedMode === "all" ? ["dev", "production"] : [requestedMode];
+	!requestedMode || requestedMode === "full"
+		? ["dev", "production"]
+		: [requestedMode === "smoke" ? "dev" : requestedMode];
 
 for (const mode of modes) {
 	await runMode(
 		mode,
-		requestedMode === "all" && mode === "dev" && !fullDevRun && !hasExplicitSpec,
+		requestedMode === "smoke" ||
+			(!requestedMode && mode === "dev" && !hasSelection),
 	);
 	if (process.exitCode) {
 		break;

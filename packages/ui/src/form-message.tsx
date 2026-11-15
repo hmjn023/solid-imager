@@ -1,5 +1,6 @@
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
+import { Alert, AlertDescription } from "./alert";
 import { cn } from "./utils/cn";
 
 export function getFormErrorMessage(error: unknown): string | undefined {
@@ -55,18 +56,20 @@ export type FormErrorProps = {
 
 /** Form-level error for asynchronous submission and server failures. */
 export function FormError(props: FormErrorProps): JSX.Element {
+	const renderAlert = (message: string) => (
+		<Alert class="bg-destructive/10 p-3" variant="destructive">
+			<AlertDescription>{message}</AlertDescription>
+		</Alert>
+	);
+
 	return (
 		<Show when={props.message}>
 			{(message) => (
-				<div
-					class={cn(
-						"rounded-md border border-destructive/40 bg-destructive/10 p-3 text-destructive text-sm",
-						props.class,
+				<Show fallback={renderAlert(message())} when={props.class}>
+					{(className) => (
+						<div class={className()}>{renderAlert(message())}</div>
 					)}
-					role="alert"
-				>
-					{message()}
-				</div>
+				</Show>
 			)}
 		</Show>
 	);

@@ -1,3 +1,4 @@
+import { initializeExtensionLocale, t } from "../i18n";
 import {
 	enrichTwitterMetadata,
 	observeTwitterAccounts,
@@ -19,6 +20,7 @@ const OBSERVER_CONFIG: MutationObserverInit = {
 		: {}),
 };
 const ERROR_TIMEOUT_MS = 2000;
+let localeReady = false;
 
 function createButtonContainer(
 	metadata: DownloadItem,
@@ -38,10 +40,12 @@ function createButtonContainer(
 		e.stopPropagation();
 	});
 
-	const dlBtn = createButton(type === "VIDEO" ? "DL VIDEO" : "DL", "#000", () =>
-		handleAction(metadata, "DOWNLOAD", type),
+	const dlBtn = createButton(
+		type === "VIDEO" ? t("extension.downloadVideo") : t("extension.download"),
+		"#000",
+		() => handleAction(metadata, "DOWNLOAD", type),
 	);
-	const postBtn = createButton("POST", "#0056b3", () =>
+	const postBtn = createButton(t("extension.import"), "#0056b3", () =>
 		handleAction(metadata, "POST_DOWNLOAD", type),
 	);
 
@@ -72,7 +76,7 @@ export function createAsyncButtonContainer(
 	});
 
 	const dlBtn = createButton(
-		type === "VIDEO" ? "DL VIDEO" : "DL",
+		type === "VIDEO" ? t("extension.downloadVideo") : t("extension.download"),
 		"#000",
 		() => {
 			handleAsyncAction("DOWNLOAD").catch(() => {
@@ -80,7 +84,7 @@ export function createAsyncButtonContainer(
 			});
 		},
 	);
-	const postBtn = createButton("POST", "#0056b3", () => {
+	const postBtn = createButton(t("extension.import"), "#0056b3", () => {
 		handleAsyncAction("POST_DOWNLOAD").catch(() => {
 			/* ignore */
 		});
@@ -88,8 +92,9 @@ export function createAsyncButtonContainer(
 
 	let resetTimeout: ReturnType<typeof setTimeout> | undefined;
 	const resetLabels = () => {
-		dlBtn.innerText = type === "VIDEO" ? "DL VIDEO" : "DL";
-		postBtn.innerText = "POST";
+		dlBtn.innerText =
+			type === "VIDEO" ? t("extension.downloadVideo") : t("extension.download");
+		postBtn.innerText = t("extension.import");
 		container.removeAttribute("title");
 	};
 	const handleAsyncAction = async (
@@ -109,15 +114,13 @@ export function createAsyncButtonContainer(
 				handleAction(metadata, actionType, type);
 				resetLabels();
 			} else {
-				throw new Error(
-					"Could not load this image. Try again on the artwork page.",
-				);
+				throw new Error(t("index.couldNotLoadThisImageTryAgainOnThe"));
 			}
 		} catch (error) {
 			dlBtn.innerText = "❌";
 			postBtn.innerText = "❌";
 			container.title =
-				error instanceof Error ? error.message : "Could not load this image.";
+				error instanceof Error ? error.message : t("extension.imageLoadFailed");
 			resetTimeout = setTimeout(resetLabels, ERROR_TIMEOUT_MS);
 		} finally {
 			dlBtn.disabled = false;
@@ -210,6 +213,7 @@ chrome.runtime.onMessage.addListener(
 );
 
 function processMedia() {
+	if (!localeReady) return;
 	const hostname = window.location.hostname;
 	if (hostname.includes("twitter.com") || hostname.includes("x.com")) {
 		processTwitterMedia(processedMetadata, createButtonContainer);
@@ -273,4 +277,7 @@ if (window.location.hostname === "www.pixiv.net") {
 	}
 }
 
-processMedia();
+void initializeExtensionLocale().then(() => {
+	localeReady = true;
+	processMedia();
+});

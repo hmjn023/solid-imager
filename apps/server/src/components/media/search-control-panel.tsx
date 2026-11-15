@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Author } from "@solid-imager/core/authors";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
@@ -49,7 +50,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 			{/* Source Selector (Global Only) */}
 			<Show when={props.context === "global" && props.sources}>
 				<div class="mb-4 space-y-2">
-					<Label>メディアソース</Label>
+					<Label>{t("searchControlPanel.mediaSources")}</Label>
 					<Select
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
@@ -61,19 +62,21 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 							props.onSelectSource?.(selected?.id ?? "");
 						}}
 						options={[
-							{ id: "", name: "すべてのソース" },
+							{ id: "", name: t("labels.allSources") },
 							...(props.sources || []),
 						]}
 						optionValue="id"
-						placeholder="ソースを選択"
+						placeholder={t("actions.selectSource")}
 						value={[
-							{ id: "", name: "すべてのソース" },
+							{ id: "", name: t("labels.allSources") },
 							...(props.sources || []),
 						].find((s) => s.id === props.selectedSource)}
 					>
 						<SelectTrigger>
 							<SelectValue<{ name: string }>>
-								{(state) => state.selectedOption()?.name || "ソースを選択"}
+								{(state) =>
+									state.selectedOption()?.name || t("actions.selectSource")
+								}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent />
@@ -83,21 +86,21 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 
 			{/* Mode Toggle */}
 			<div class="mb-4 flex items-center justify-between">
-				<Label>検索モード</Label>
+				<Label>{t("searchControlPanel.searchMode")}</Label>
 				<div class="flex gap-2">
 					<Button
 						onClick={() => setSearchMode("simple")}
 						size="sm"
 						variant={searchState.mode === "simple" ? "default" : "outline"}
 					>
-						簡易
+						{t("searchControlPanel.simple")}
 					</Button>
 					<Button
 						onClick={() => setSearchMode("pro")}
 						size="sm"
 						variant={searchState.mode === "pro" ? "default" : "outline"}
 					>
-						詳細
+						{t("searchControlPanel.advanced")}
 					</Button>
 				</div>
 			</div>

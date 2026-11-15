@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
+import { MIGRATIONS_DIR } from "~/tests/paths";
 import { db } from "~/infrastructure/db";
 import { characterIps, characters, ips } from "~/infrastructure/db/schema";
 import { DrizzleCharacterRepository } from "~/infrastructure/db/repositories";
@@ -13,7 +14,7 @@ describe("CharacterRepository Multi-IP Support", () => {
 			await db.execute("DROP SCHEMA IF EXISTS drizzle CASCADE");
 			await db.execute("DROP SCHEMA IF EXISTS public CASCADE");
 			await db.execute("CREATE SCHEMA public");
-			await migrate(db as any, { migrationsFolder: "drizzle" });
+			await migrate(db as any, { migrationsFolder: MIGRATIONS_DIR });
 		} catch (e) {
 			console.error(e);
 		}

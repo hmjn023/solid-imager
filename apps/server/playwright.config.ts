@@ -1,4 +1,6 @@
+import { join, matchesGlob } from "node:path";
 import { defineConfig, devices } from "@playwright/test";
+import { readPlaywrightSelection } from "./scripts/e2e-arguments";
 
 type E2eMode = "dev" | "production";
 
@@ -8,7 +10,7 @@ function getE2eMode(): E2eMode {
 		return mode;
 	}
 	throw new Error(
-		"E2E_MODE must be set to dev or production. Use bun run test:e2e:dev, test:e2e:production, or test:e2e.",
+		"E2E_MODE must be set to dev or production. Use bun run test:e2e.",
 	);
 }
 
@@ -34,29 +36,38 @@ if (!(runtimeDir && port)) {
 const baseURL = `http://127.0.0.1:${port}`;
 const tauriBaseURL = tauriPort ? `http://127.0.0.1:${tauriPort}` : undefined;
 const resolvedTauriBaseURL = tauriBaseURL ?? baseURL;
-const playwrightArguments = process.argv.slice(2);
-const requestedProjects = playwrightArguments.flatMap((value, index) => {
-	if (value.startsWith("--project=")) {
-		return [value.slice("--project=".length)];
-	}
-	if (value === "--project") {
-		const project = playwrightArguments[index + 1];
-		return project ? [project] : [];
-	}
-	return [];
-});
-const shouldStartTauriFixture =
-	requestedProjects.length > 0
-		? requestedProjects.includes("tauri")
-		: playwrightArguments.some(
-				(value) =>
-					value.includes("tauri-migration.spec.ts") ||
-					value.includes("search-workspace.spec.ts") ||
-                value.includes("pixiv.responsive.spec.ts") || value.includes("danbooru.responsive.spec.ts"),
-			) ||
-			!playwrightArguments.some((value) =>
-				/\.(?:spec|test)\.[cm]?[jt]sx?$/.test(value),
+const tauriSpecs = [
+	"tauri-migration.spec.ts",
+	"search-workspace.spec.ts",
+	"danbooru.responsive.spec.ts",
+	"pixiv.responsive.spec.ts",
+];
+
+function needsTauriFixture(args: string[]): boolean {
+	const { projects, files } = readPlaywrightSelection(args);
+	if (
+		projects.length &&
+		!projects.some((name) => matchesGlob("tauri", name.toLowerCase()))
+	)
+		return false;
+	return (
+		!files.length ||
+		files.some((filter) => {
+			// Positional filters are regular expressions, including partial file names.
+			// Only skip the fixture for simple spec paths we can rule out.
+			const file = /^([\w./-]+\.spec\.ts)(?::\d+(?::\d+)?)?$/i.exec(
+				filter,
+			)?.[1];
+			if (!file) return true;
+			const pattern = new RegExp(file, "i");
+			return tauriSpecs.some((spec) =>
+				pattern.test(join(import.meta.dirname, "src/tests/e2e", spec)),
 			);
+		})
+	);
+}
+
+const shouldStartTauriFixture = needsTauriFixture(process.argv.slice(3));
 
 if (shouldStartTauriFixture && !tauriBaseURL) {
 	throw new Error(
@@ -65,6 +76,8 @@ if (shouldStartTauriFixture && !tauriBaseURL) {
 }
 
 export default defineConfig({
+	globalSetup: "./src/tests/e2e/support/wait-for-source-sync.ts",
+	grep: process.env.E2E_DEV_SMOKE === "1" ? /@dev-smoke/ : undefined,
 	testDir: "./src/tests/e2e",
 	testIgnore: ["**/*.gallery.spec.ts"],
 	fullyParallel: false,
@@ -92,12 +105,7 @@ export default defineConfig({
 	projects: [
 		{
 			name: "tauri",
-			testMatch: [
-				"**/tauri-migration.spec.ts",
-				"**/search-workspace.spec.ts",
-				"**/danbooru.responsive.spec.ts",
-                "**/pixiv.responsive.spec.ts",
-			],
+			testMatch: tauriSpecs.map((spec) => `**/${spec}`),
 			use: {
 				...devices["Desktop Chrome"],
 				baseURL: resolvedTauriBaseURL,

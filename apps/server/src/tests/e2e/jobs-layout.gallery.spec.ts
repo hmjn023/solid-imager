@@ -61,7 +61,7 @@ for (const width of [375, 1024, 1440]) {
 		);
 		expect(await geometry()).toEqual(before);
 		await page.getByRole("button", { name: "Advance jobs" }).click();
-		await expect(table.getByText("Completed", { exact: true })).toHaveCount(3);
+		await expect(table.getByText("完了", { exact: true })).toHaveCount(3);
 		expect(await geometry()).toEqual(before);
 		expect(
 			await page.evaluate(

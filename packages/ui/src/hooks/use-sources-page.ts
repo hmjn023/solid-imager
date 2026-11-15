@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { SourceSyncResult } from "@solid-imager/core/contract";
 import type {
 	MediaSourceInfo,
@@ -30,6 +31,7 @@ export type UseSourcesPageResult = {
 	setShowDeleteModal: (v: boolean) => void;
 	editingSource: () => SafeMediaSource | MediaSourceInfo | null;
 	deletingSource: () => SafeMediaSource | MediaSourceInfo | null;
+	isDeleting: () => boolean;
 	isSyncing: () => boolean;
 	handleAddSource: () => void;
 	handleEditSource: (source: SafeMediaSource | MediaSourceInfo) => void;
@@ -61,6 +63,7 @@ export function useSourcesPage(
 	const [deletingSource, setDeletingSource] = createSignal<
 		SafeMediaSource | MediaSourceInfo | null
 	>(null);
+	const [isDeleting, setIsDeleting] = createSignal(false);
 	const [isSyncing, setIsSyncing] = createSignal(false);
 
 	const invalidate = () => {
@@ -98,7 +101,11 @@ export function useSourcesPage(
 			setShowFormModal(false);
 		} catch (error) {
 			toast.error(
-				`Failed to save source: ${error instanceof Error ? error.message : String(error)}`,
+				t("useSourcesPage.failedToSaveSourceValue", {
+					value0: String(
+						error instanceof Error ? error.message : String(error),
+					),
+				}),
 			);
 			throw error;
 		}
@@ -110,15 +117,28 @@ export function useSourcesPage(
 	};
 
 	const handleDeleteConfirm = async (mediaSourceId: string) => {
+		if (isDeleting()) {
+			return;
+		}
+		setIsDeleting(true);
 		try {
 			await actions.deleteMediaSource(mediaSourceId);
 			invalidate();
-			setShowDeleteModal(false);
-			setDeletingSource(null);
+			const currentDeletingId = deletingSource()?.id;
+			if (!currentDeletingId || currentDeletingId === mediaSourceId) {
+				setShowDeleteModal(false);
+				setDeletingSource(null);
+			}
 		} catch (error) {
 			toast.error(
-				`Failed to delete source: ${error instanceof Error ? error.message : String(error)}`,
+				t("useSourcesPage.failedToDeleteSourceValue", {
+					value0: String(
+						error instanceof Error ? error.message : String(error),
+					),
+				}),
 			);
+		} finally {
+			setIsDeleting(false);
 		}
 	};
 
@@ -129,21 +149,38 @@ export function useSourcesPage(
 			return;
 		}
 		setIsSyncing(true);
-		toast.info(`Starting sync for ${source.name}...`);
+		toast.info(
+			t("useSourcesPage.startingSyncForValue", { value0: String(source.name) }),
+		);
 		try {
 			const { results } = await actions.syncMediaSources([source.id]);
 			const result = results.find((item) => item.id === source.id);
 			if (!result || !result.success) {
 				toast.error(
-					`Failed to sync ${source.name}: ${result?.error ?? "No synchronization result returned"}`,
+					t("useSourcesPage.failedToSyncValueValue", {
+						value0: String(source.name),
+						value1: String(
+							result?.error ??
+								t("useSourcesPage.noSynchronizationResultReturned"),
+						),
+					}),
 				);
 			} else {
-				toast.success(`Sync finished for ${source.name}`);
+				toast.success(
+					t("useSourcesPage.syncFinishedForValue", {
+						value0: String(source.name),
+					}),
+				);
 			}
 			invalidate();
 		} catch (error) {
 			toast.error(
-				`Failed to sync ${source.name}: ${error instanceof Error ? error.message : String(error)}`,
+				t("useSourcesPage.failedToSyncValueValue", {
+					value0: String(source.name),
+					value1: String(
+						error instanceof Error ? error.message : String(error),
+					),
+				}),
 			);
 		} finally {
 			setIsSyncing(false);
@@ -156,7 +193,7 @@ export function useSourcesPage(
 		}
 
 		setIsSyncing(true);
-		toast.info("Starting sync for all sources...");
+		toast.info(t("useSourcesPage.startingSyncForAllSources"));
 		try {
 			const ids = sources
 				.map((source) => source.id)
@@ -167,15 +204,22 @@ export function useSourcesPage(
 			).length;
 			if (completed !== ids.length) {
 				toast.error(
-					`Sync failed for ${ids.length - completed} of ${ids.length} sources`,
+					t("useSourcesPage.syncFailedForValueOfValueSources", {
+						value0: String(ids.length - completed),
+						value1: String(ids.length),
+					}),
 				);
 			} else {
-				toast.success("Sync finished for all sources");
+				toast.success(t("useSourcesPage.syncFinishedForAllSources"));
 			}
 			invalidate();
 		} catch (error) {
 			toast.error(
-				`Failed to sync all sources: ${error instanceof Error ? error.message : String(error)}`,
+				t("useSourcesPage.failedToSyncAllSourcesValue", {
+					value0: String(
+						error instanceof Error ? error.message : String(error),
+					),
+				}),
 			);
 		} finally {
 			setIsSyncing(false);
@@ -189,6 +233,7 @@ export function useSourcesPage(
 		setShowDeleteModal,
 		editingSource,
 		deletingSource,
+		isDeleting,
 		isSyncing,
 		handleAddSource,
 		handleEditSource,

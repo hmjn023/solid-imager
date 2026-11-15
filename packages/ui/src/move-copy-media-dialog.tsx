@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { createEffect, createMemo, createSignal, Show } from "solid-js";
 import { Button } from "./button";
 import {
@@ -54,18 +55,30 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>
-						{props.mode === "copy" ? "Copy Media" : "Move Media"}
+						{props.mode === "copy"
+							? t("moveCopyMediaDialog.copyMedia")
+							: t("moveCopyMediaDialog.moveMedia")}
 					</DialogTitle>
 					<DialogDescription>
-						Select the destination source for this media item.
-						{props.mode === "move" &&
-							" The original item will be deleted after a successful copy."}
+						{t(
+							"moveCopyMediaDialog.selectTheDestinationSourceForThisMediaItemValue",
+							{
+								value0: String(
+									props.mode === "move" &&
+										t(
+											"moveCopyMediaDialog.theOriginalItemWillBeDeletedAfterASuccessful",
+										),
+								),
+							},
+						)}
 					</DialogDescription>
 				</DialogHeader>
 
 				<div class="py-4">
 					<Show when={props.isLoading}>
-						<p class="text-muted-foreground text-sm">Loading sources...</p>
+						<p class="text-muted-foreground text-sm">
+							{t("moveCopyMediaDialog.loadingSources")}
+						</p>
 					</Show>
 					<Show when={props.error}>
 						<p class="text-destructive text-sm">{props.error}</p>
@@ -81,15 +94,17 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 							options={options()}
 							optionTextValue="label"
 							optionValue="value"
-							placeholder="Select a source"
+							placeholder={t("actions.selectSource")}
 							value={
 								options().find((o) => o.value === targetSourceId()) ?? null
 							}
 						>
-							<SelectTrigger aria-label="Destination source">
+							<SelectTrigger
+								aria-label={t("moveCopyMediaDialog.destinationSource")}
+							>
 								<SelectValue<{ label: string; value: string }>>
 									{(state) =>
-										state.selectedOption()?.label ?? "Select a source"
+										state.selectedOption()?.label ?? t("actions.selectSource")
 									}
 								</SelectValue>
 							</SelectTrigger>
@@ -100,10 +115,12 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 
 				<DialogFooter>
 					<Button onClick={() => props.onOpenChange(false)} variant="outline">
-						Cancel
+						{t("actions.cancel")}
 					</Button>
 					<Button disabled={!targetSourceId()} onClick={handleConfirm}>
-						{props.mode === "copy" ? "Copy" : "Move"}
+						{props.mode === "copy"
+							? t("moveCopyMediaDialog.copy")
+							: t("moveCopyMediaDialog.move")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

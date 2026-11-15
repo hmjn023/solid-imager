@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import { Badge } from "./badge";
@@ -46,7 +47,10 @@ export function AssociationManager(props: AssociationManagerProps) {
 			await props.onRemove(id);
 		} catch (error) {
 			toast.error(
-				`${props.title} の削除に失敗しました: ${getErrorMessage(error)}`,
+				t("associationManager.couldNotRemoveValueValue", {
+					value0: String(props.title),
+					value1: String(getErrorMessage(error)),
+				}),
 			);
 		} finally {
 			setIsMutating(false);
@@ -60,7 +64,10 @@ export function AssociationManager(props: AssociationManagerProps) {
 			setSearch("");
 		} catch (error) {
 			toast.error(
-				`${props.title} の追加に失敗しました: ${getErrorMessage(error)}`,
+				t("associationManager.couldNotAddValueValue", {
+					value0: String(props.title),
+					value1: String(getErrorMessage(error)),
+				}),
 			);
 		} finally {
 			setIsMutating(false);
@@ -80,7 +87,10 @@ export function AssociationManager(props: AssociationManagerProps) {
 			setSearch("");
 		} catch (error) {
 			toast.error(
-				`${props.title} の作成に失敗しました: ${getErrorMessage(error)}`,
+				t("associationManager.couldNotCreateValueValue", {
+					value0: String(props.title),
+					value1: String(getErrorMessage(error)),
+				}),
 			);
 		} finally {
 			setIsMutating(false);
@@ -98,7 +108,7 @@ export function AssociationManager(props: AssociationManagerProps) {
 						size="sm"
 						variant="outline"
 					>
-						Add
+						{t("actions.add")}
 					</Button>
 				</Show>
 			</div>
@@ -125,18 +135,20 @@ export function AssociationManager(props: AssociationManagerProps) {
 									viewBox="0 0 24 24"
 									xmlns="http://www.w3.org/2000/svg"
 								>
-									<title>Remove</title>
+									<title>{t("actions.remove")}</title>
 									<path d="M18 6 6 18" />
 									<path d="m6 6 12 12" />
 								</svg>
-								<span class="sr-only">Remove</span>
+								<span class="sr-only">{t("actions.remove")}</span>
 							</button>
 						</Badge>
 					)}
 				</For>
 				<Show when={props.items.length === 0}>
 					<span class="text-muted-foreground text-sm italic">
-						No {props.title.toLowerCase()} associated
+						{t("mediaSidebar.noValueAssociated", {
+							value0: String(props.title.toLowerCase()),
+						})}
 					</span>
 				</Show>
 			</div>
@@ -145,20 +157,26 @@ export function AssociationManager(props: AssociationManagerProps) {
 				<CommandInput
 					disabled={isBusy()}
 					onValueChange={setSearch}
-					placeholder={`Search ${props.title.toLowerCase()}...`}
+					placeholder={t("relationsEditor.searchValue2", {
+						value0: String(props.title.toLowerCase()),
+					})}
 					value={search()}
 				/>
 				<CommandList>
 					<Show when={props.isLoading}>
 						<div class="px-2 py-6 text-center text-muted-foreground text-sm">
-							Loading {props.title.toLowerCase()}...
+							{t("associationManager.loadingValue", {
+								value0: String(props.title.toLowerCase()),
+							})}
 						</div>
 					</Show>
 					<CommandEmpty>
 						<Show when={props.onCreate && search().length > 0}>
 							<div class="p-2">
 								<p class="mb-2 text-muted-foreground text-sm">
-									No {props.title.toLowerCase()} found.
+									{t("associationManager.noValueFound", {
+										value0: String(props.title.toLowerCase()),
+									})}
 								</p>
 								<Button
 									class="w-full justify-start"
@@ -168,15 +186,19 @@ export function AssociationManager(props: AssociationManagerProps) {
 									}}
 									variant="outline"
 								>
-									Create "{search()}"
+									{t("associationManager.createValue", {
+										value0: String(search()),
+									})}
 								</Button>
 							</div>
 						</Show>
 						<Show when={!props.onCreate || search().length === 0}>
-							No {props.title.toLowerCase()} found.
+							{t("associationManager.noValueFound", {
+								value0: String(props.title.toLowerCase()),
+							})}
 						</Show>
 					</CommandEmpty>
-					<CommandGroup heading="Available">
+					<CommandGroup heading={t("associationManager.available")}>
 						<For each={selectableItems()}>
 							{(item) => (
 								<CommandItem

@@ -1,15 +1,18 @@
+import { t } from "@solid-imager/i18n";
 import Upload from "lucide-solid/icons/upload";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../alert-dialog";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "../dialog";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
@@ -86,7 +89,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 
 	return (
 		<section
-			aria-label="Media upload area"
+			aria-label={t("sourceMediaScreen.mediaUploadArea")}
 			class="flex h-full min-h-0 min-w-0 flex-col bg-background"
 			onDragOver={page().handleDragOver}
 			onDrop={page().handleDrop}
@@ -101,7 +104,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 								size="sm"
 								variant="outline"
 							>
-								複数選択
+								{t("sourceMediaScreen.selectMultiple")}
 							</Button>
 						</Show>
 						<Button
@@ -113,7 +116,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							size="sm"
 							variant="outline"
 						>
-							{page().isSyncingMedia() ? "同期中..." : "表示分を同期"}
+							{page().isSyncingMedia()
+								? t("status.syncing")
+								: t("sourceMediaScreen.syncLoadedItems")}
 						</Button>
 						<Button
 							class="min-h-11 sm:min-h-9"
@@ -121,7 +126,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							size="sm"
 						>
 							<Upload aria-hidden="true" size={15} />
-							追加
+							{t("actions.add")}
 						</Button>
 					</div>
 				}
@@ -131,8 +136,10 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				isUpdating={page().contentState().fetchState === "background-fetching"}
 				onSearch={page().handleSearch}
 				presetClient={page().presetClient}
-				sourceName={props.mediaSourceName?.() ?? "メディア一覧"}
-				updatingLabel="メディア一覧を更新中..."
+				sourceName={
+					props.mediaSourceName?.() ?? t("sourceMediaScreen.mediaList")
+				}
+				updatingLabel={t("sourceMediaScreen.updatingMediaList")}
 				onViewModeChange={updateViewMode}
 				viewMode={viewMode()}
 			/>
@@ -145,7 +152,9 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					<Show when={hasFilterError()}>
 						<FilterErrorBanner
 							class="mb-2"
-							message="一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。"
+							message={t(
+								"sourceMediaScreen.someSearchFiltersCouldNotBeLoadedYouCan",
+							)}
 							onRetry={props.onRetryFilters}
 						/>
 					</Show>
@@ -153,8 +162,8 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 						fetchState={page().contentState().fetchState}
 						hasData={page().contentState().data !== undefined}
 						hideWhenIdle
-						offlineLabel="オフラインのため保存済みデータを表示しています"
-						updatingLabel="メディア一覧を更新中..."
+						offlineLabel={t("sourceMediaScreen.offlineShowingSavedData")}
+						updatingLabel={t("sourceMediaScreen.updatingMediaList")}
 					/>
 				</div>
 			</Show>
@@ -173,7 +182,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					<div class="min-w-0">
 						<Show
 							fallback={
-								<LoadingRegion label="メディア一覧を読み込んでいます...">
+								<LoadingRegion label={t("sourceMediaScreen.loadingMediaList")}>
 									<MediaGridSkeleton aspectRatio="4/3" />
 								</LoadingRegion>
 							}
@@ -275,35 +284,44 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				);
 			})()}
 
-			<Dialog
-				onOpenChange={page().setDeleteDialogOpen}
+			<AlertDialog
+				onOpenChange={(open) => {
+					if (open || !page().isDeletingMedia()) {
+						page().setDeleteDialogOpen(open);
+					}
+				}}
 				open={page().deleteDialogOpen()}
 			>
-				<DialogContent class="workspace-theme">
-					<DialogHeader>
-						<DialogTitle>メディアを削除</DialogTitle>
-						<DialogDescription>
-							この操作は取り消せません。選択したメディアを削除しますか？
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button
-							onClick={() => page().setDeleteDialogOpen(false)}
-							variant="outline"
-						>
-							キャンセル
-						</Button>
-						<Button
-							onClick={() => {
-								void page().confirmDelete();
-							}}
+				<AlertDialogContent class="workspace-theme">
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t("sourceMediaScreen.deleteMedia")}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{t(
+								"sourceMediaScreen.thisActionCannotBeUndoneDeleteTheSelectedMedia",
+							)}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={page().isDeletingMedia()}>
+							{t("actions.cancel")}
+						</AlertDialogCancel>
+						<AlertDialogAction
 							variant="destructive"
+							disabled={page().isDeletingMedia()}
+							onClick={(event) => {
+								event.preventDefault();
+								if (!page().isDeletingMedia()) {
+									void page().confirmDelete();
+								}
+							}}
 						>
-							削除
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+							{t("actions.delete")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{(() => {
 				const MoveCopyDialog = props.moveCopyDialogComponent;

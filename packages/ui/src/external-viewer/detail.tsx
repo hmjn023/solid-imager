@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { DownloadItem } from "@solid-imager/core/media";
 import {
 	createSignal,
@@ -30,8 +31,8 @@ export function createViewerImports(
 		try {
 			await enqueue(item);
 			setTargets((current) => new Map(current).set(url, "queued"));
-			toast.success("取り込み待ちに追加しました", {
-				description: "サイドバーの取り込み待ちから保存先を選んで取り込めます。",
+			toast.success(t("detail.addedToImportInbox"), {
+				description: t("detail.chooseADestinationFromTheSidebarImportInboxTo"),
 			});
 		} catch (error) {
 			setTargets((current) => {
@@ -39,9 +40,9 @@ export function createViewerImports(
 				next.delete(url);
 				return next;
 			});
-			toast.error("取り込み待ちへの追加に失敗しました", {
+			toast.error(t("detail.couldNotAddToImportInbox"), {
 				description:
-					error instanceof Error ? error.message : "再試行してください。",
+					error instanceof Error ? error.message : t("detail.pleaseRetry"),
 			});
 		}
 	}
@@ -74,7 +75,8 @@ export function ViewerToolbar(
 ) {
 	const navigate = (id?: number) =>
 		id === undefined ? undefined : () => props.onNavigate(id);
-	const noun = () => (props.provider === "pixiv" ? "作品" : "投稿");
+	const noun = () =>
+		props.provider === "pixiv" ? t("detail.work") : t("detail.post");
 	return (
 		<MediaDetailToolbar
 			title={props.title}
@@ -82,8 +84,8 @@ export function ViewerToolbar(
 			onBack={props.onBack}
 			onPrevious={navigate(props.previousId)}
 			onNext={navigate(props.nextId)}
-			previousLabel={`前の${noun()}`}
-			nextLabel={`次の${noun()}`}
+			previousLabel={t("detail.previousValue", { value0: String(noun()) })}
+			nextLabel={t("detail.nextValue", { value0: String(noun()) })}
 			actions={props.actions}
 		/>
 	);
@@ -113,9 +115,9 @@ export function ViewerActions(props: {
 				onClick={() => props.item && void props.imports.add(props.item)}
 			>
 				{status() === "queued"
-					? "取り込み待ちに追加済み"
+					? t("detail.alreadyInImportInbox")
 					: status() === "pending"
-						? "追加中..."
+						? t("detail.adding")
 						: props.importLabel}
 			</Button>
 		</div>
@@ -129,7 +131,11 @@ export function ViewerDetail<Post extends { id: number }>(
 		children: (post: Post) => JSX.Element;
 	},
 ) {
-	const title = () => `${props.provider} #${props.postId}`;
+	const title = () =>
+		t("detail.valueValue", {
+			value0: String(props.provider),
+			value1: String(props.postId),
+		});
 	const selected = () => {
 		const post =
 			props.query.status === "pending" ? undefined : props.query.data;
@@ -186,8 +192,8 @@ export function ViewerDetail<Post extends { id: number }>(
 				hasData={!!selected()}
 				hasError={!!state().error}
 				hideWhenIdle
-				offlineLabel="オフラインのため保存済みデータを表示しています"
-				updatingLabel="投稿情報を更新中..."
+				offlineLabel={t("sourceMediaScreen.offlineShowingSavedData")}
+				updatingLabel={t("detail.updatingPostDetails")}
 			/>
 			<Switch>
 				<Match when={state().phase === "data"}>
@@ -202,8 +208,8 @@ export function ViewerDetail<Post extends { id: number }>(
 					<ErrorState
 						title={
 							props.provider === "pixiv"
-								? "作品を取得できませんでした"
-								: "投稿を取得できませんでした"
+								? t("detail.couldNotLoadTheWork")
+								: t("detail.couldNotLoadThePost")
 						}
 						description={
 							props.query.error instanceof Error
@@ -215,7 +221,7 @@ export function ViewerDetail<Post extends { id: number }>(
 				</Match>
 				<Match when={state().phase === "pending"}>
 					<LoadingRegion
-						label="メディア情報を読み込んでいます..."
+						label={t("mediaDetailScreen.loadingMediaDetails")}
 						class="min-h-0 flex-1"
 					>
 						<MediaDetailSkeleton includeHeader={false} />

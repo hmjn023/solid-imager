@@ -1,3 +1,5 @@
+import { mediaTypeLabel } from "./display-labels";
+import { t } from "@solid-imager/i18n";
 import type { MediaSafe } from "@solid-imager/core/media";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
@@ -45,15 +47,21 @@ type MediaCardItemProps = {
 
 function formatFileSize(bytes: number | null | undefined) {
 	if (!bytes) {
-		return "N/A";
+		return t("useSourceMediaPage.nA");
 	}
-	return `${(bytes / 1024).toFixed(1)} KB`;
+	return t("uploadMediaModal.valueKB", {
+		value0: String((bytes / 1024).toFixed(1)),
+	});
 }
 
 function formatDimensions(media: MediaCardMedia, separator: string) {
 	return media.width && media.height
-		? `${media.width}${separator}${media.height}`
-		: "N/A";
+		? t("mediaCardItem.valueValueValue", {
+				value0: String(media.width),
+				value1: String(separator),
+				value2: String(media.height),
+			})
+		: t("useSourceMediaPage.nA");
 }
 
 export function MediaCardItem(props: MediaCardItemProps) {
@@ -87,7 +95,9 @@ export function MediaCardItem(props: MediaCardItemProps) {
 				>
 					<Show
 						fallback={
-							<div class="text-muted-foreground">{props.media.mediaType}</div>
+							<div class="text-muted-foreground">
+								{mediaTypeLabel(props.media.mediaType)}
+							</div>
 						}
 						when={canRenderThumbnail()}
 					>
@@ -119,7 +129,9 @@ export function MediaCardItem(props: MediaCardItemProps) {
 							onChange={() => props.onSelect?.(props.media.id)}
 						>
 							<CheckboxControl class="h-5 w-5 rounded border-input bg-white text-primary shadow-sm focus:ring-primary" />
-							<CheckboxLabel class="sr-only">Select media</CheckboxLabel>
+							<CheckboxLabel class="sr-only">
+								{t("actions.selectMedia")}
+							</CheckboxLabel>
 						</Checkbox>
 					</div>
 				</Show>
@@ -155,7 +167,7 @@ export function MediaCardItem(props: MediaCardItemProps) {
 								href={href()}
 								onClick={(event) => event.stopPropagation()}
 							>
-								Check Details
+								{t("mediaCardItem.checkDetails")}
 							</a>
 						}
 						when={props.linkComponent}

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { SearchState } from "@solid-imager/core/search";
 import { createEffect, createSignal, Show } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
@@ -24,7 +25,9 @@ export function EmbeddingSearchControls(props: {
 		<div class="mb-4 space-y-3">
 			<Show when={props.state.similarityAnchorMediaId}>
 				<div class="space-y-2">
-					<Label for={`${props.id}-model`}>類似検索モデル</Label>
+					<Label for={`${props.id}-model`}>
+						{t("embeddingSearchControls.similaritySearchModel")}
+					</Label>
 					<Select
 						options={["ccip", "embeddinggemma2"]}
 						value={props.state.similarityModel}
@@ -37,17 +40,20 @@ export function EmbeddingSearchControls(props: {
 						itemComponent={(item) => (
 							<SelectItem item={item.item}>
 								{item.item.rawValue === "ccip"
-									? "CCIP（キャラクター）"
-									: "EmbeddingGemma 2（見た目）"}
+									? t("embeddingSearchControls.cCIPCharacters")
+									: t("embeddingSearchControls.embeddingGemma2Visual")}
 							</SelectItem>
 						)}
 					>
-						<SelectTrigger id={`${props.id}-model`} aria-label="類似検索モデル">
+						<SelectTrigger
+							id={`${props.id}-model`}
+							aria-label={t("embeddingSearchControls.similaritySearchModel")}
+						>
 							<SelectValue<string>>
 								{(state) =>
 									state.selectedOption() === "ccip"
-										? "CCIP（キャラクター）"
-										: "EmbeddingGemma 2（見た目）"
+										? t("embeddingSearchControls.cCIPCharacters")
+										: t("embeddingSearchControls.embeddingGemma2Visual")
 								}
 							</SelectValue>
 						</SelectTrigger>
@@ -70,18 +76,22 @@ export function EmbeddingSearchControls(props: {
 					props.onSearch();
 				}}
 			>
-				<Label for={`${props.id}-text`}>自然言語検索（EmbeddingGemma 2）</Label>
+				<Label for={`${props.id}-text`}>
+					{t("embeddingSearchControls.naturalLanguageSearchEmbeddingGemma2")}
+				</Label>
 				<Input
 					id={`${props.id}-text`}
 					name="semantic-query"
 					maxLength={2000}
-					placeholder="例: 夕焼けの海辺に立つ赤い服の人物"
+					placeholder={t(
+						"embeddingSearchControls.exampleAPersonInRedStandingOnABeach",
+					)}
 					value={draft()}
 					onInput={(event) => setDraft(event.currentTarget.value)}
 				/>
 				<div class="flex flex-wrap gap-2">
 					<Button type="submit" size="sm" disabled={!draft().trim()}>
-						文章で画像・動画を検索
+						{t("embeddingSearchControls.searchImagesAndVideoWithText")}
 					</Button>
 					<Show when={props.state.semanticQuery}>
 						<Button
@@ -94,20 +104,22 @@ export function EmbeddingSearchControls(props: {
 								props.onSearch();
 							}}
 						>
-							文章検索を解除
+							{t("embeddingSearchControls.clearTextSearch")}
 						</Button>
 					</Show>
 				</div>
 			</form>
 			<Show when={props.state.semanticQuery}>
 				<p class="text-xs text-muted-foreground">
-					検索文: {props.state.semanticQuery}
+					{t("sortControls.searchTextValue", {
+						value0: String(props.state.semanticQuery),
+					})}
 				</p>
 			</Show>
 			<p class="text-xs text-muted-foreground">
-				画像と動画の代表サムネイルの索引は Manager → Vector extraction
-				で作成できます。類似検索・文章検索にはソースと件数を適用します。CCIP
-				はキャラクターの類似性を検索します。
+				{t(
+					"embeddingSearchControls.buildIndexesForImagesAndRepresentativeVideoThumbnailsIn",
+				)}
 			</p>
 		</div>
 	);

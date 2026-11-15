@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import type { OppaiOracleResponse } from "@solid-imager/core/tagging";
 import { createEffect, createSignal, For, onCleanup, Show } from "solid-js";
@@ -20,8 +21,9 @@ export type OppaiOracleModalProps = {
 };
 
 const PERCENTAGE_MULTIPLIER = 100;
-const DEFAULT_DESCRIPTION =
-	"Tags extracted from the image using the OppaiOracle model.";
+const DEFAULT_DESCRIPTION = t(
+	"oppaiOracleModal.tagsExtractedFromTheImageUsingTheOppaiOracleModel",
+);
 const MAX_GENERAL_TAGS_DISPLAY = 50;
 
 export function OppaiOracleModal(props: OppaiOracleModalProps) {
@@ -46,7 +48,9 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 				} catch (err) {
 					if (!isCancelled) {
 						setError(
-							err instanceof Error ? err.message : "Unknown error occurred",
+							err instanceof Error
+								? err.message
+								: t("characterCropModal.unknownErrorOccurred"),
 						);
 					}
 				} finally {
@@ -75,11 +79,15 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 		>
 			<DialogContent class="sm:max-w-dialog-lg">
 				<DialogHeader>
-					<DialogTitle>OppaiOracle Tagging Results</DialogTitle>
+					<DialogTitle>
+						{t("oppaiOracleModal.oppaiOracleTaggingResults")}
+					</DialogTitle>
 					<DialogDescription>
 						{props.description ??
 							(props.mediaType === "video"
-								? "Tags extracted from the video's representative thumbnail using the OppaiOracle model."
+								? t(
+										"oppaiOracleModal.tagsExtractedFromTheVideoSRepresentativeThumbnailUsing",
+									)
 								: DEFAULT_DESCRIPTION)}
 					</DialogDescription>
 				</DialogHeader>
@@ -90,15 +98,15 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 							<div class="h-8 w-8 animate-spin rounded-full border-4 border-warning-foreground border-t-transparent" />
 							<span class="ml-2 text-muted-foreground">
 								{props.mediaType === "video"
-									? "Analyzing video thumbnail..."
-									: "Analyzing image..."}
+									? t("oppaiOracleModal.analyzingVideoThumbnail")
+									: t("oppaiOracleModal.analyzingImage")}
 							</span>
 						</div>
 					</Show>
 
 					<Show when={error()}>
 						<div class="rounded-md bg-error p-4 text-destructive">
-							Error: {error()}
+							{t("useManagerPage.errorValue", { value0: String(error()) })}
 						</div>
 					</Show>
 
@@ -107,7 +115,9 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 							<div class="space-y-6">
 								<Show when={Object.keys(res().rating).length > 0}>
 									<div>
-										<h3 class="mb-2 font-semibold text-lg">Rating</h3>
+										<h3 class="mb-2 font-semibold text-lg">
+											{t("sortOptions.rating")}
+										</h3>
 										<div class="flex flex-wrap gap-2">
 											<For each={Object.entries(res().rating)}>
 												{([name, score]) => (
@@ -124,7 +134,9 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 								</Show>
 
 								<div>
-									<h3 class="mb-2 font-semibold text-lg">General Tags</h3>
+									<h3 class="mb-2 font-semibold text-lg">
+										{t("oppaiOracleModal.generalTags")}
+									</h3>
 									<div class="flex flex-wrap gap-2">
 										<For
 											each={Object.entries(res().general)
@@ -151,8 +163,10 @@ export function OppaiOracleModal(props: OppaiOracleModalProps) {
 										}
 									>
 										<p class="mt-2 text-muted-foreground text-sm">
-											Showing top {MAX_GENERAL_TAGS_DISPLAY} of{" "}
-											{Object.keys(res().general).length} tags
+											{t("oppaiOracleModal.showingTopValueOfValueValueTags", {
+												value0: String(MAX_GENERAL_TAGS_DISPLAY),
+												value2: String(Object.keys(res().general).length),
+											})}
 										</p>
 									</Show>
 								</div>

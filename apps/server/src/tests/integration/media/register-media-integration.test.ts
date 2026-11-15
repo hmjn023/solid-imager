@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { FIXTURES_DIR } from "~/tests/paths";
 import { db } from "~/infrastructure/db/index";
 import {
 	type MediaSource,
@@ -16,14 +17,13 @@ const TEST_TIMEOUT = 15_000;
 
 describe("registerExistingMedia Integration", () => {
 	let mediaSource: MediaSource;
-	const fixturesDir = "src/tests/fixtures";
 	const testImageName = "test-register-image.png";
 	let tempSourceDir: string;
 
 	beforeEach(async () => {
 		// Create a temporary directory for the media source
 		tempSourceDir = await fs.mkdtemp(
-			path.join(fixturesDir, "test-source-register-"),
+			path.join(FIXTURES_DIR, "test-source-register-"),
 		);
 
 		// Create a dummy image file (1x1 red PNG)

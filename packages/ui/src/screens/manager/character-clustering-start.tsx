@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	startCharacterClusteringSchema,
 	type StartCharacterClustering,
@@ -46,15 +47,21 @@ export function CharacterClusteringStart(props: {
 			}}
 		>
 			<p class="text-sm text-muted-foreground">
-				保存済みCCIPのあるsolo画像を全ソースから解析します。キャラクター登録は変更しません。
+				{t(
+					"characterClusteringStart.analyzeSoloImagesWithSavedCCIPVectorsAcrossAll",
+				)}
 			</p>
 			<fieldset
 				class="grid min-w-0 gap-3 sm:grid-cols-2 xl:grid-cols-4"
 				disabled={mutation.isPending}
 			>
-				<legend class="sr-only">クラスタリングの実行条件</legend>
+				<legend class="sr-only">
+					{t("characterClusteringStart.clusteringSettings")}
+				</legend>
 				<TextField value={neighbors()} onChange={setNeighbors}>
-					<TextFieldLabel>近傍数</TextFieldLabel>
+					<TextFieldLabel>
+						{t("characterClusteringStart.neighborCount")}
+					</TextFieldLabel>
 					<TextFieldInput
 						name="neighbors"
 						type="number"
@@ -65,7 +72,9 @@ export function CharacterClusteringStart(props: {
 					/>
 				</TextField>
 				<TextField value={minClusterSize()} onChange={setMinClusterSize}>
-					<TextFieldLabel>最小クラスタ枚数</TextFieldLabel>
+					<TextFieldLabel>
+						{t("characterClusteringStart.minimumClusterSize")}
+					</TextFieldLabel>
 					<TextFieldInput
 						name="minClusterSize"
 						type="number"
@@ -76,7 +85,9 @@ export function CharacterClusteringStart(props: {
 					/>
 				</TextField>
 				<TextField value={minSamples()} onChange={setMinSamples}>
-					<TextFieldLabel>密度の最小サンプル数</TextFieldLabel>
+					<TextFieldLabel>
+						{t("characterClusteringStart.minimumSamplesForDensity")}
+					</TextFieldLabel>
 					<TextFieldInput
 						name="minSamples"
 						type="number"
@@ -96,18 +107,20 @@ export function CharacterClusteringStart(props: {
 					itemComponent={(item) => (
 						<SelectItem item={item.item}>
 							{item.item.rawValue === "leaf"
-								? "細かいグループ（leaf）"
-								: "安定したグループ（EOM）"}
+								? t("characterClusteringStart.fineGroupsLeaf")
+								: t("characterClusteringStart.stableGroupsEOM")}
 						</SelectItem>
 					)}
 				>
-					<SelectLabel>グループの選び方</SelectLabel>
+					<SelectLabel>
+						{t("characterClusteringStart.groupSelectionMethod")}
+					</SelectLabel>
 					<SelectTrigger>
 						<SelectValue<string>>
 							{(state) =>
 								state.selectedOption() === "leaf"
-									? "細かいグループ（leaf）"
-									: "安定したグループ（EOM）"
+									? t("characterClusteringStart.fineGroupsLeaf")
+									: t("characterClusteringStart.stableGroupsEOM")
 							}
 						</SelectValue>
 					</SelectTrigger>
@@ -120,20 +133,26 @@ export function CharacterClusteringStart(props: {
 					type="submit"
 					disabled={mutation.isPending}
 				>
-					{mutation.isPending ? "開始しています…" : "クラスタリングを開始"}
+					{mutation.isPending
+						? t("status.starting")
+						: t("characterClusteringStart.startClustering")}
 				</Button>
 				<Show when={mutation.isSuccess}>
 					<p aria-live="polite" class="text-sm">
-						解析ジョブを登録しました。完了後に「結果を再読み込み」で確認できます。
+						{t(
+							"characterClusteringStart.analysisJobQueuedReloadResultsAfterItCompletes",
+						)}
 					</p>
 					<Button type="button" variant="outline" onClick={props.openJobs}>
-						Jobsで確認
+						{t("actions.viewJobs")}
 					</Button>
 				</Show>
 			</div>
 			<Show when={mutation.isError}>
 				<p role="alert" class="text-sm text-destructive">
-					解析を開始できませんでした。{mutation.error?.message}
+					{t("characterClusteringStart.couldNotStartAnalysisValue", {
+						value0: String(mutation.error?.message),
+					})}
 				</p>
 			</Show>
 		</form>

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { ServerBatchStatus } from "./manager/job-status";
 import { AuthorManagementPanel } from "./manager/authors";
 import type { AuthorManagementActions } from "./manager/authors.types";
@@ -102,8 +103,10 @@ export function ManagerScreen(props: {
 	return (
 		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<ManagementHeader
-				description="分類データの管理とバッチ処理の投入を行います。"
-				title="Manager"
+				description={t(
+					"managerScreen.manageClassificationDataAndSubmitBatchJobs",
+				)}
+				title={t("navigation.manager")}
 			/>
 
 			<div
@@ -124,7 +127,7 @@ export function ManagerScreen(props: {
 					<div class="min-w-0">
 						<Show when={props.manager.activeBatchesFailed()}>
 							<ErrorState
-								title="実行中のバッチを取得できませんでした"
+								title={t("managerScreen.couldNotLoadActiveBatches")}
 								onRetry={props.manager.retryActiveBatches}
 							/>
 						</Show>
@@ -143,7 +146,11 @@ export function ManagerScreen(props: {
 						<Show when={activeCategory() === "authors"}>
 							<Show
 								when={props.authorActions}
-								fallback={<ErrorState title="作者管理を利用できません" />}
+								fallback={
+									<ErrorState
+										title={t("managerScreen.authorManagementIsUnavailable")}
+									/>
+								}
 							>
 								{(actions) => (
 									<AuthorManagementPanel
@@ -161,7 +168,9 @@ export function ManagerScreen(props: {
 							<Show
 								when={props.clusteringActions}
 								fallback={
-									<ErrorState title="クラスタリング結果を利用できません" />
+									<ErrorState
+										title={t("managerScreen.clusteringResultsAreUnavailable")}
+									/>
 								}
 							>
 								{(actions) => (
@@ -180,8 +189,10 @@ export function ManagerScreen(props: {
 								fetchState={activeQueryState().fetchState}
 								hasData={activeQueryState().data !== undefined}
 								hideWhenIdle
-								offlineLabel="オフラインのため保存済みの管理データを表示しています。"
-								updatingLabel="管理データを更新中..."
+								offlineLabel={t(
+									"managerScreen.offlineShowingSavedManagementData",
+								)}
+								updatingLabel={t("managerScreen.updatingManagementData")}
 							/>
 
 							<Switch>
@@ -190,14 +201,16 @@ export function ManagerScreen(props: {
 								</Match>
 								<Match when={activeQueryState().phase === "error"}>
 									<ErrorState
-										description="接続を確認して、もう一度お試しください。"
+										description={t("jobsScreen.checkYourConnectionAndTryAgain")}
 										onRetry={props.manager.retryQueries}
-										title="管理データを取得できませんでした"
+										title={t("managerScreen.couldNotLoadManagementData")}
 									/>
 								</Match>
 								<Match when={activeQueryState().phase === "offline"}>
 									<OfflineState
-										description="接続が戻ったら、この画面から再試行できます。"
+										description={t(
+											"managerScreen.retryHereWhenYourConnectionReturns",
+										)}
 										onRetry={props.manager.retryQueries}
 									/>
 								</Match>
@@ -210,11 +223,17 @@ export function ManagerScreen(props: {
 								}
 							>
 								<EmptyState
-									description="最初の項目を作成すると、ここに表示されます。"
-									title={`${categoryLabel(activeCategory())}はまだありません`}
+									description={t(
+										"managerScreen.createYourFirstItemToSeeItHere",
+									)}
+									title={t("managerScreen.noValueYet", {
+										value0: String(categoryLabel(activeCategory())),
+									})}
 								>
 									<Button onClick={props.manager.openCreateDialog}>
-										New {singularLabel(props.manager.activeTab())}
+										{t("entityPanel.newValue", {
+											value0: String(singularLabel(props.manager.activeTab())),
+										})}
 									</Button>
 								</EmptyState>
 							</Show>
@@ -246,11 +265,13 @@ export function ManagerScreen(props: {
 										>
 											<div class="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3">
 												<p class="text-xs text-muted-foreground">
-													IP候補を取得できませんでした。Characters一覧は引き続き利用できます。
+													{t(
+														"managerScreen.couldNotLoadIPOptionsYouCanStillUse",
+													)}
 												</p>
 												<RetryButton
 													class="h-8 px-3 text-xs"
-													label="IP候補を再取得"
+													label={t("managerScreen.reloadIPOptions")}
 													onRetry={props.manager.retryQueries}
 												/>
 											</div>
@@ -279,8 +300,10 @@ export function ManagerScreen(props: {
 										<Show
 											fallback={
 												<ErrorState
-													description="Data transfer actions are not configured for this client."
-													title="Data transfer is unavailable"
+													description={t(
+														"managerScreen.dataTransferActionsAreNotConfiguredForThisClient",
+													)}
+													title={t("managerScreen.dataTransferIsUnavailable")}
 												/>
 											}
 											when={props.transferActions}

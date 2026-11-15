@@ -1,3 +1,5 @@
+import { sourceTypeLabel } from "./display-labels";
+import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
@@ -18,6 +20,7 @@ import {
 	AlertDialogTitle,
 } from "./alert-dialog";
 import { Button } from "./button";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import {
 	Dialog,
 	DialogContent,
@@ -36,7 +39,20 @@ import {
 	isImportSourceRemembered,
 	setImportSourcePreference,
 } from "./import-source-preference";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "./select";
 import { toast } from "./toast";
+
+type ImportSourceOption = {
+	id: string;
+	label: string;
+};
 
 function getPreviewUrl(url?: string): string {
 	if (!url) {
@@ -167,7 +183,11 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			props.onImportCompleted();
 			props.onClose();
 		} catch (error) {
-			toast.error(`Failed to process imports: ${getErrorMessage(error)}`);
+			toast.error(
+				t("importReviewModal.failedToProcessImportsValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			setActiveAction(null);
 		}
@@ -181,6 +201,20 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		);
 	};
 
+	const sourceOptions = (): ImportSourceOption[] =>
+		(sources() ?? []).flatMap((source) =>
+			source.id
+				? [
+						{
+							id: source.id,
+							label: `${source.name} · ${sourceTypeLabel(source.type)}`,
+						},
+					]
+				: [],
+		);
+	const selectedSourceOption = () =>
+		sourceOptions().find((option) => option.id === selectedSourceId()) ?? null;
+
 	const confirmDelete = async () => {
 		try {
 			setActiveAction("delete");
@@ -188,9 +222,13 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			await refetchJobs();
 			setSelectedJobIds(createEmptySelection());
 			setIsDirty(false);
-			toast.success("Requests deleted");
+			toast.success(t("importReviewModal.requestsDeleted"));
 		} catch (error) {
-			toast.error(`Failed to cancel imports: ${getErrorMessage(error)}`);
+			toast.error(
+				t("importReviewModal.failedToCancelImportsValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			setActiveAction(null);
 			setIsDeleteDialogOpen(false);
@@ -209,57 +247,68 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			>
 				<DialogContent class="workspace-theme flex max-h-dialog-fit max-w-5xl flex-col gap-0 overflow-hidden p-0">
 					<DialogHeader class="border-b px-5 py-4 pr-12">
-						<DialogTitle>Import inbox</DialogTitle>
+						<DialogTitle>{t("navigation.importInbox")}</DialogTitle>
 						<DialogDescription>
-							Review downloaded media, choose a source, then import the selected
-							items.
+							{t(
+								"importReviewModal.reviewDownloadedMediaChooseASourceThenImportThe",
+							)}
 						</DialogDescription>
 					</DialogHeader>
 
 					<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
 						<div class="flex flex-col gap-3 border-border border-b bg-muted px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
 							<div class="grid min-w-0 gap-2 sm:w-80">
-								<label class="grid gap-1 font-medium text-sm">
-									Target source
-									<select
-										class="min-h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-										disabled={sources.loading || activeAction() !== null}
-										onChange={(event) => {
-											const sourceId = event.currentTarget.value;
-											setSelectedSourceId(sourceId);
-											if (rememberSource()) {
-												setImportSourcePreference(true, sourceId);
-											}
-											setIsDirty(true);
-										}}
-										value={selectedSourceId()}
-									>
-										<For each={sources()}>
-											{(source) => (
-												<option value={source.id}>
-													{source.name} · {source.type}
-												</option>
-											)}
-										</For>
-									</select>
-								</label>
-								<label class="flex items-center gap-2 text-muted-foreground text-sm">
-									<input
-										checked={rememberSource()}
-										class="size-4 accent-primary"
-										disabled={sources.loading || activeAction() !== null}
-										onChange={(event) =>
-											handleRememberSourceChange(event.currentTarget.checked)
+								<Select<ImportSourceOption>
+									class="grid gap-1"
+									disabled={sources.loading || activeAction() !== null}
+									disallowEmptySelection
+									itemComponent={(itemProps) => (
+										<SelectItem item={itemProps.item}>
+											{itemProps.item.rawValue.label}
+										</SelectItem>
+									)}
+									onChange={(option) => {
+										if (!option) return;
+										setSelectedSourceId(option.id);
+										if (rememberSource()) {
+											setImportSourcePreference(true, option.id);
 										}
-										type="checkbox"
-									/>
-									Remember this source
-								</label>
+										setIsDirty(true);
+									}}
+									options={sourceOptions()}
+									optionTextValue="label"
+									optionValue="id"
+									placeholder={t("actions.selectSource")}
+									value={selectedSourceOption()}
+								>
+									<SelectLabel>
+										{t("importReviewModal.targetSource")}
+									</SelectLabel>
+									<SelectTrigger class="w-full bg-background">
+										<SelectValue<ImportSourceOption>>
+											{(state) => state.selectedOption()?.label ?? ""}
+										</SelectValue>
+									</SelectTrigger>
+									<SelectContent />
+								</Select>
+								<Checkbox
+									checked={rememberSource()}
+									class="flex items-center gap-2"
+									disabled={sources.loading || activeAction() !== null}
+									onChange={handleRememberSourceChange}
+								>
+									<CheckboxControl />
+									<CheckboxLabel class="cursor-pointer font-normal text-muted-foreground text-sm">
+										{t("importReviewModal.rememberThisSource")}
+									</CheckboxLabel>
+								</Checkbox>
 							</div>
 							<div class="flex flex-wrap items-center justify-between gap-2 sm:justify-end">
 								<div class="text-muted-foreground text-sm" aria-live="polite">
-									{selectedJobIds().size} of {pendingJobs()?.length ?? 0}{" "}
-									selected
+									{t("importReviewModal.valueOfValueValueSelected", {
+										value0: String(selectedJobIds().size),
+										value1: String(pendingJobs()?.length ?? 0),
+									})}
 								</div>
 								<div class="flex items-center gap-1">
 									<Button
@@ -273,7 +322,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										size="sm"
 										variant="ghost"
 									>
-										Select all
+										{t("importReviewModal.selectAll")}
 									</Button>
 									<Button
 										class="h-8 px-2 text-xs"
@@ -284,7 +333,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 										size="sm"
 										variant="ghost"
 									>
-										Clear
+										{t("actions.clear")}
 									</Button>
 								</div>
 							</div>
@@ -293,7 +342,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
 							<Show when={pendingJobs.loading}>
 								<div class="flex min-h-48 items-center justify-center text-muted-foreground text-sm">
-									Loading import inbox…
+									{t("importReviewModal.loadingImportInbox")}
 								</div>
 							</Show>
 							<Show
@@ -306,51 +355,43 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
 									<For each={pendingJobs()}>
 										{(job) => (
-											<label
-												class={`relative min-w-0 cursor-pointer rounded-lg border p-2 transition-colors focus-within:ring-2 focus-within:ring-ring ${
-													selectedJobIds().has(job.id)
-														? "border-primary bg-primary/5"
-														: "border-border bg-card hover:bg-accent/50"
-												}`}
+											<Checkbox
+												checked={selectedJobIds().has(job.id)}
+												class="relative block min-w-0 space-x-0 rounded-lg border border-border bg-card transition-colors focus-within:ring-2 focus-within:ring-ring hover:bg-accent/50 data-[checked]:border-primary data-[checked]:bg-primary/5"
+												disabled={activeAction() !== null}
+												onChange={() => toggleSelection(job.id)}
 											>
-												<input
-													checked={selectedJobIds().has(job.id)}
-													class="peer sr-only"
-													disabled={activeAction() !== null}
-													onChange={() => toggleSelection(job.id)}
-													type="checkbox"
-												/>
-												<span class="absolute top-3 right-3 z-10 flex size-5 items-center justify-center rounded border border-input bg-background font-bold text-primary text-xs peer-checked:border-primary peer-checked:bg-primary peer-checked:text-primary-foreground">
-													{selectedJobIds().has(job.id) ? "✓" : ""}
-												</span>
-												<div class="aspect-landscape w-full overflow-hidden rounded-md bg-muted">
-													<Show
-														fallback={
-															<div class="flex h-full items-center justify-center text-muted-foreground text-xs">
-																No preview
-															</div>
-														}
-														when={job.item.targetUrl}
-													>
-														<img
-															alt="Import preview"
-															class="h-full w-full object-cover"
-															onError={(event) => {
-																event.currentTarget.style.display = "none";
-															}}
-															src={getPreviewUrl(job.item.targetUrl)}
-														/>
-													</Show>
-												</div>
-												<div class="mt-2 truncate font-medium text-sm">
-													{job.item.description ||
-														job.item.targetUrl ||
-														"Untitled import"}
-												</div>
-												<div class="truncate text-muted-foreground text-xs">
-													{getPendingImportPrimaryAuthor(job.item)}
-												</div>
-											</label>
+												<CheckboxControl class="absolute top-3 right-3 z-10 h-5 w-5 border-input bg-background" />
+												<CheckboxLabel class="block cursor-pointer p-2">
+													<div class="aspect-landscape w-full overflow-hidden rounded-md bg-muted">
+														<Show
+															fallback={
+																<div class="flex h-full items-center justify-center text-muted-foreground text-xs">
+																	{t("importReviewModal.noPreview")}
+																</div>
+															}
+															when={job.item.targetUrl}
+														>
+															<img
+																alt={t("importReviewModal.importPreview")}
+																class="h-full w-full object-cover"
+																onError={(event) => {
+																	event.currentTarget.style.display = "none";
+																}}
+																src={getPreviewUrl(job.item.targetUrl)}
+															/>
+														</Show>
+													</div>
+													<div class="mt-2 truncate font-medium text-sm">
+														{job.item.description ||
+															job.item.targetUrl ||
+															t("importReviewModal.untitledImport")}
+													</div>
+													<div class="truncate text-muted-foreground text-xs">
+														{getPendingImportPrimaryAuthor(job.item)}
+													</div>
+												</CheckboxLabel>
+											</Checkbox>
 										)}
 									</For>
 								</div>
@@ -358,10 +399,10 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 							<Show when={!pendingJobs.loading && pendingJobs.error}>
 								<div class="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
 									<p class="text-destructive text-sm">
-										Failed to load import inbox.
+										{t("importReviewModal.failedToLoadImportInbox")}
 									</p>
 									<Button onClick={() => void refetchJobs()} variant="outline">
-										Retry
+										{t("actions.retry")}
 									</Button>
 								</div>
 							</Show>
@@ -373,9 +414,11 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 								}
 							>
 								<div class="flex min-h-48 flex-col items-center justify-center gap-1 text-center">
-									<p class="font-medium">Import inbox is empty</p>
+									<p class="font-medium">
+										{t("importReviewModal.importInboxIsEmpty")}
+									</p>
 									<p class="text-muted-foreground text-sm">
-										New bulk-upload requests will appear here.
+										{t("importReviewModal.newBulkUploadRequestsWillAppearHere")}
 									</p>
 								</div>
 							</Show>
@@ -389,14 +432,14 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 							onClick={() => setIsDeleteDialogOpen(true)}
 							variant="destructive"
 						>
-							Delete selected
+							{t("importReviewModal.deleteSelected")}
 						</Button>
 						<Button
 							disabled={activeAction() !== null}
 							onClick={requestClose}
 							variant="outline"
 						>
-							Close
+							{t("actions.close")}
 						</Button>
 						<Button
 							disabled={
@@ -407,8 +450,16 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 							onClick={() => void handleProcess()}
 						>
 							{activeAction() === "import"
-								? "Importing…"
-								: `Import${selectedJobIds().size ? ` (${selectedJobIds().size})` : ""}`}
+								? t("importReviewModal.importing")
+								: t("importReviewModal.importValue", {
+										value0: String(
+											selectedJobIds().size
+												? t("importReviewModal.value", {
+														value0: String(selectedJobIds().size),
+													})
+												: "",
+										),
+									})}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
@@ -419,15 +470,21 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			>
 				<AlertDialogContent class="workspace-theme">
 					<AlertDialogHeader>
-						<AlertDialogTitle>Discard selected changes?</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t("importReviewModal.discardSelectedChanges")}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							Your selected items and target source have not been imported yet.
+							{t(
+								"importReviewModal.yourSelectedItemsAndTargetSourceHaveNotBeen",
+							)}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Continue reviewing</AlertDialogCancel>
+						<AlertDialogCancel>
+							{t("importReviewModal.continueReviewing")}
+						</AlertDialogCancel>
 						<AlertDialogAction onClick={discardAndClose}>
-							Discard and close
+							{t("importReviewModal.discardAndClose")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
@@ -438,19 +495,25 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Are you sure?</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t("importReviewModal.areYouSure")}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							This will remove {selectedJobIds().size} import requests.
+							{t("importReviewModal.thisWillRemoveValueImportRequests", {
+								value0: String(selectedJobIds().size),
+							})}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
+						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
 							disabled={activeAction() === "delete"}
 							onClick={() => void confirmDelete()}
 						>
-							{activeAction() === "delete" ? "Deleting…" : "Delete"}
+							{activeAction() === "delete"
+								? t("status.deleting")
+								: t("actions.delete")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

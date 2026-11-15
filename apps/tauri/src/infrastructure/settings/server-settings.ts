@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { SCALAR_DOCS_PATH } from "@solid-imager/core/http";
 import { Store } from "@tauri-apps/plugin-store";
 import { z } from "zod";
@@ -27,8 +28,7 @@ const serverConnectionSchema = z.object({
 				);
 			},
 			{
-				message:
-					"Server URL must use http or https without embedded credentials.",
+				message: t("serverSettings.serverURLMustUseHttpOrHttpsWithoutEmbedded"),
 			},
 		),
 });

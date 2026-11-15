@@ -1,3 +1,4 @@
+import { getLocale, t } from "@solid-imager/i18n";
 import {
 	createEffect,
 	createSignal,
@@ -68,6 +69,7 @@ export function VideoPlayer(props: VideoPlayerProps) {
 			attr:defaultstreamtype="on-demand"
 			class="video-player"
 			component="media-controller"
+			lang={getLocale()}
 		>
 			<video
 				aria-label={props.fileName}
@@ -87,7 +89,7 @@ export function VideoPlayer(props: VideoPlayerProps) {
 				<div class="video-player-controls" data-media-viewer-controls>
 					<Dynamic component="media-time-range" />
 					<Dynamic
-						aria-label="Video playback controls"
+						aria-label={t("videoPlayer.videoPlaybackControls")}
 						component="media-control-bar"
 					>
 						<Dynamic component="media-play-button" />
@@ -101,14 +103,16 @@ export function VideoPlayer(props: VideoPlayerProps) {
 						<span class="video-player-spacer" />
 						{/* Solid UI supplies the toggle; Media Chrome's loop button is a menu item. */}
 						<Button
-							aria-label="Toggle video loop"
+							aria-label={t("videoPlayer.toggleVideoLoop")}
 							aria-pressed={isLooping()}
 							class="video-player-loop"
 							on:keydown={handleLoopKey}
 							on:keyup={handleLoopKey}
 							onClick={() => setIsLooping((current) => !current)}
 							size="icon"
-							title={isLooping() ? "Loop: on" : "Loop: off"}
+							title={
+								isLooping() ? t("videoPlayer.loopOn") : t("videoPlayer.loopOff")
+							}
 							variant="ghost"
 						>
 							<RefreshCw aria-hidden="true" size={20} />

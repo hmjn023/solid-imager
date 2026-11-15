@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
 
@@ -14,7 +15,7 @@ export function ManagementHeader(props: ManagementHeaderProps) {
 			<div class="flex flex-wrap items-start justify-between gap-3">
 				<div class="min-w-0">
 					<p class="font-medium text-xs text-primary">
-						{props.eyebrow ?? "Workspace"}
+						{props.eyebrow ?? t("managementLayout.workspace")}
 					</p>
 					<h1 class="mt-0.5 font-semibold text-xl text-foreground">
 						{props.title}

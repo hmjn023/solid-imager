@@ -1,3 +1,5 @@
+import { ccipStatusLabel } from "./display-labels";
+import { t } from "@solid-imager/i18n";
 import type { MediaDetails } from "@solid-imager/core/media";
 import type {
 	CcipVectorStatus,
@@ -21,8 +23,14 @@ import {
 	AlertDialogTitle,
 } from "./alert-dialog";
 import { Button } from "./button";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuSeparator,
+	DropdownMenuTrigger,
+} from "./dropdown-menu";
 import type { ManagerJobHandlers } from "./hooks/batch-job-events.types";
-import { Popover, PopoverContent, PopoverTrigger } from "./popover";
 import { toast } from "./toast";
 import {
 	Binary,
@@ -166,18 +174,20 @@ export function MediaActions(props: MediaActionsProps) {
 		const mediaId = props.media.id;
 		try {
 			const result = await props.startEmbeddingExtraction();
-			toast.success("EmbeddingGemma 2 extraction queued", {
+			toast.success(t("mediaActions.embeddingGemma2ExtractionQueued"), {
 				duration: 7_000,
 				action: props.onViewJobs
 					? {
-							label: "View Jobs",
+							label: t("actions.viewJobs"),
 							onClick: () => props.onViewJobs?.(result.jobId),
 						}
 					: undefined,
 			});
 		} catch (error) {
 			toast.error(
-				`Failed to extract EmbeddingGemma 2 vector: ${getErrorMessage(error)}`,
+				t("mediaActions.failedToExtractEmbeddingGemma2VectorValue", {
+					value0: String(getErrorMessage(error)),
+				}),
 			);
 		} finally {
 			if (props.media.id === mediaId) setIsExtractingEmbedding(false);
@@ -203,18 +213,22 @@ export function MediaActions(props: MediaActionsProps) {
 			setIsCcipJobPending(true);
 			setCcipMissingStatusCount(0);
 			void refreshCcipStatus();
-			toast.success("CCIP vector extraction queued", {
+			toast.success(t("mediaActions.cCIPVectorExtractionQueued"), {
 				duration: 7_000,
 				action: props.onViewJobs
 					? {
-							label: "View Jobs",
+							label: t("actions.viewJobs"),
 							onClick: () => props.onViewJobs?.(result.jobId),
 						}
 					: undefined,
 			});
 		} catch (error) {
 			if (!isCurrentMedia()) return;
-			toast.error(`Failed to extract CCIP vector: ${getErrorMessage(error)}`);
+			toast.error(
+				t("mediaActions.failedToExtractCCIPVectorValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			if (isCurrentMedia()) {
 				setIsExtractingCcip(false);
@@ -240,7 +254,11 @@ export function MediaActions(props: MediaActionsProps) {
 					setIsCcipJobPending(false);
 					setCcipMissingStatusCount(0);
 					if (event.error) {
-						toast.error(`Failed to extract CCIP vector: ${event.error}`);
+						toast.error(
+							t("mediaActions.failedToExtractCCIPVectorValue", {
+								value0: String(event.error),
+							}),
+						);
 					}
 				},
 			},
@@ -262,7 +280,11 @@ export function MediaActions(props: MediaActionsProps) {
 		try {
 			await props.onDownload();
 		} catch (error) {
-			toast.error(`Failed to download media: ${getErrorMessage(error)}`);
+			toast.error(
+				t("mediaActions.failedToDownloadMediaValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		}
 	};
 
@@ -277,9 +299,13 @@ export function MediaActions(props: MediaActionsProps) {
 		try {
 			await props.onDelete();
 			setIsDeleteDialogOpen(false);
-			toast.success("Media deleted");
+			toast.success(t("mediaActions.mediaDeleted"));
 		} catch (error) {
-			toast.error(`Failed to delete media: ${getErrorMessage(error)}`);
+			toast.error(
+				t("mediaActions.failedToDeleteMediaValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		} finally {
 			setIsDeleting(false);
 		}
@@ -287,10 +313,11 @@ export function MediaActions(props: MediaActionsProps) {
 
 	const ccipActionLabel = () => {
 		if (ccipStatus() === "ready" || ccipStatus() === "stale") {
-			return "Re-extract CCIP vector";
+			return t("mediaActions.reExtractCCIPVector");
 		}
-		if (ccipStatus() === "processing") return "Extracting CCIP vector…";
-		return "Extract CCIP vector";
+		if (ccipStatus() === "processing")
+			return t("mediaActions.extractingCCIPVector");
+		return t("mediaActions.extractCCIPVector");
 	};
 	const hasCcipActions = () =>
 		supportsVisualAnalysis() &&
@@ -307,7 +334,7 @@ export function MediaActions(props: MediaActionsProps) {
 						size="sm"
 					>
 						<Sparkles aria-hidden="true" size={15} />
-						Extract tags
+						{t("mediaActions.extractTags")}
 					</Button>
 				</ShowAction>
 				<ShowAction when={supportsVisualAnalysis() && props.onFindSimilar}>
@@ -322,12 +349,12 @@ export function MediaActions(props: MediaActionsProps) {
 						title={
 							ccipStatus() === "ready"
 								? undefined
-								: "CCIP vector is required before similar search"
+								: t("mediaActions.cCIPVectorIsRequiredBeforeSimilarSearch")
 						}
 						variant="outline"
 					>
 						<ScanSearch aria-hidden="true" size={15} />
-						Find similar
+						{t("mediaActions.findSimilar")}
 					</Button>
 				</ShowAction>
 				<ShowAction
@@ -342,127 +369,115 @@ export function MediaActions(props: MediaActionsProps) {
 						props.onDelete
 					}
 				>
-					<Popover
+					<DropdownMenu
 						onOpenChange={setMoreActionsOpen}
 						open={moreActionsOpen()}
 						placement="bottom-end"
 					>
-						<PopoverTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-card px-3 font-medium text-foreground text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:flex-none">
-							More actions
+						<DropdownMenuTrigger class="flex h-10 min-w-32 flex-1 items-center justify-center gap-2 rounded-md border border-input bg-card px-3 font-medium text-foreground text-xs outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring md:h-9 md:flex-none">
+							{t("mediaActions.moreActions")}
 							<ChevronDown aria-hidden="true" size={14} />
-						</PopoverTrigger>
-						<PopoverContent class="workspace-theme w-64 space-y-1 p-1.5 shadow-xl">
+						</DropdownMenuTrigger>
+						<DropdownMenuContent class="workspace-theme w-64 space-y-1 p-1.5 shadow-xl">
 							<ShowAction
 								when={props.onFindSimilar && supportsVisualAnalysis()}
 							>
-								<Button
-									class="h-auto min-h-9 w-full justify-start whitespace-normal px-2 text-left"
-									size="sm"
-									variant="ghost"
-									onClick={() => {
+								<DropdownMenuItem
+									class="min-h-9 whitespace-normal"
+									onSelect={() => {
 										setMoreActionsOpen(false);
 										props.onFindSimilar?.("embeddinggemma2");
 									}}
 								>
 									<ScanSearch aria-hidden="true" size={14} />
-									Find similar (EmbeddingGemma 2)
-								</Button>
+									{t("mediaActions.findSimilarEmbeddingGemma2")}
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction
 								when={
 									props.startEmbeddingExtraction && supportsVisualAnalysis()
 								}
 							>
-								<Button
-									class="h-auto min-h-9 w-full justify-start whitespace-normal px-2 text-left"
+								<DropdownMenuItem
+									class="min-h-9 whitespace-normal"
 									disabled={isExtractingEmbedding()}
-									onClick={() => void handleEmbeddingExtraction()}
-									size="sm"
-									variant="ghost"
+									onSelect={() => void handleEmbeddingExtraction()}
 								>
 									<Binary aria-hidden="true" size={14} />
-									Extract EmbeddingGemma 2 vector
-								</Button>
+									{t("mediaActions.extractEmbeddingGemma2Vector")}
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction
 								when={supportsVisualAnalysis() && props.oppaiOracleModal}
 							>
-								<Button
-									class="h-9 w-full justify-start px-2"
-									onClick={() =>
+								<DropdownMenuItem
+									class="min-h-9"
+									onSelect={() =>
 										openModalFromMoreActions(() =>
 											setIsOppaiOracleModalOpen(true),
 										)
 									}
-									size="sm"
-									variant="ghost"
 								>
 									<Sparkles aria-hidden="true" size={14} />
-									Extract tags (OppaiOracle)
-								</Button>
+									{t("mediaActions.extractTagsOppaiOracle")}
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction when={supportsCropping() && props.characterCropModal}>
-								<Button
-									class="h-9 w-full justify-start px-2"
-									onClick={() =>
+								<DropdownMenuItem
+									class="min-h-9"
+									onSelect={() =>
 										openModalFromMoreActions(() =>
 											setIsCharacterCropModalOpen(true),
 										)
 									}
-									size="sm"
-									variant="ghost"
 								>
 									<Scan aria-hidden="true" size={14} />
-									Detect &amp; crop characters
-								</Button>
+									{t("mediaActions.detectCropCharacters")}
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction when={hasCcipActions()}>
-								<Button
-									class="h-9 w-full justify-start px-2"
+								<DropdownMenuItem
+									class="min-h-9"
 									disabled={isExtractingCcip() || isCcipJobPending()}
-									onClick={() => void handleCcipExtraction()}
-									size="sm"
-									variant="ghost"
+									onSelect={() => void handleCcipExtraction()}
 								>
 									<Binary aria-hidden="true" size={14} />
 									{ccipActionLabel()}
-								</Button>
+								</DropdownMenuItem>
 								<p
 									aria-live="polite"
 									class="px-2 py-1 text-label-sm text-muted-foreground"
 								>
-									CCIP status: {ccipStatus()}
+									{t("mediaActions.cCIPStatusValue", {
+										value0: ccipStatusLabel(ccipStatus()),
+									})}
 								</p>
 							</ShowAction>
 							<ShowAction when={props.onDownload || props.onDelete}>
-								<div class="my-1 border-border border-t" />
+								<DropdownMenuSeparator />
 							</ShowAction>
 							<ShowAction when={props.onDownload}>
-								<Button
-									class="h-9 w-full justify-start px-2"
-									onClick={() => void handleDownload()}
-									size="sm"
-									variant="ghost"
+								<DropdownMenuItem
+									class="min-h-9"
+									onSelect={() => void handleDownload()}
 								>
 									<Download aria-hidden="true" size={14} />
-									Download original
-								</Button>
+									{t("mediaActions.downloadOriginal")}
+								</DropdownMenuItem>
 							</ShowAction>
 							<ShowAction when={props.onDelete}>
-								<Button
-									class="h-9 w-full justify-start px-2 text-destructive hover:bg-muted hover:text-destructive"
-									onClick={() =>
+								<DropdownMenuItem
+									class="min-h-9 text-destructive focus:bg-destructive/10 focus:text-destructive"
+									onSelect={() =>
 										openModalFromMoreActions(() => setIsDeleteDialogOpen(true))
 									}
-									size="sm"
-									variant="ghost"
 								>
 									<Trash2 aria-hidden="true" size={14} />
-									Delete media…
-								</Button>
+									{t("mediaActions.deleteMedia")}
+								</DropdownMenuItem>
 							</ShowAction>
-						</PopoverContent>
-					</Popover>
+						</DropdownMenuContent>
+					</DropdownMenu>
 				</ShowAction>
 			</div>
 			<ShowAction
@@ -476,7 +491,7 @@ export function MediaActions(props: MediaActionsProps) {
 				}
 			>
 				<p class="mt-1 text-xs text-muted-foreground">
-					AI analyzes this video's representative thumbnail.
+					{t("mediaActions.aIAnalyzesThisVideoSRepresentativeThumbnail")}
 				</p>
 			</ShowAction>
 
@@ -505,22 +520,26 @@ export function MediaActions(props: MediaActionsProps) {
 				>
 					<AlertDialogContent>
 						<AlertDialogHeader>
-							<AlertDialogTitle>Delete this media?</AlertDialogTitle>
+							<AlertDialogTitle>
+								{t("mediaActions.deleteThisMedia")}
+							</AlertDialogTitle>
 							<AlertDialogDescription>
-								{props.media.fileName} will be permanently removed from its
-								source. This action cannot be undone.
+								{t(
+									"mediaActions.valueWillBePermanentlyRemovedFromItsSourceThis",
+									{ value0: String(props.media.fileName) },
+								)}
 							</AlertDialogDescription>
 						</AlertDialogHeader>
 						<AlertDialogFooter>
 							<AlertDialogCancel disabled={isDeleting()}>
-								Cancel
+								{t("actions.cancel")}
 							</AlertDialogCancel>
 							<Button
 								disabled={isDeleting()}
 								onClick={() => void handleDelete()}
 								variant="destructive"
 							>
-								{isDeleting() ? "Deleting…" : "Delete"}
+								{isDeleting() ? t("status.deleting") : t("actions.delete")}
 							</Button>
 						</AlertDialogFooter>
 					</AlertDialogContent>

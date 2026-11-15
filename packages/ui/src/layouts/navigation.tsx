@@ -1,6 +1,8 @@
+import { t } from "@solid-imager/i18n";
 import { Link, useLocation } from "@tanstack/solid-router";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
+import { SidebarMenuButton, SidebarMenuItem } from "../sidebar";
 import {
 	BriefcaseBusiness,
 	ChartColumn,
@@ -12,26 +14,31 @@ import {
 export const NAVIGATION_ITEMS = [
 	{
 		icon: Library,
-		label: "Library",
+		label: t("navigation.library"),
 		shortcutId: "goLibrary",
 		to: "/search",
 	},
 	{
 		icon: BriefcaseBusiness,
-		label: "Manager",
+		label: t("navigation.manager"),
 		shortcutId: "goManager",
 		to: "/manager",
 	},
 	{
 		icon: ChartColumn,
-		label: "Statistics",
+		label: t("navigation.statistics"),
 		shortcutId: undefined,
 		to: "/statistics",
 	},
-	{ icon: Clock3, label: "Jobs", shortcutId: "goJobs", to: "/jobs" },
+	{
+		icon: Clock3,
+		label: t("navigation.jobs"),
+		shortcutId: "goJobs",
+		to: "/jobs",
+	},
 	{
 		icon: Settings,
-		label: "Settings",
+		label: t("navigation.settings"),
 		shortcutId: "goSettings",
 		to: "/config",
 	},
@@ -52,22 +59,23 @@ export function NavigationItem(props: {
 	const Icon = props.icon;
 
 	return (
-		<Link
-			aria-current={active() ? "page" : undefined}
-			aria-label={props.label}
-			class={`flex h-11 w-full items-center gap-2 rounded-md px-3 font-medium text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring md:h-10 ${
-				active()
-					? "bg-accent text-primary"
-					: "text-muted-foreground hover:bg-muted hover:text-foreground"
-			}`}
-			onClick={props.onClick}
-			to={props.to}
-		>
-			<Icon aria-hidden="true" class="shrink-0" size={18} />
-			<Show when={props.expanded}>
-				<span class="min-w-0 flex-1 truncate">{props.label}</span>
-				{props.children}
-			</Show>
-		</Link>
+		<SidebarMenuItem>
+			<SidebarMenuButton
+				aria-current={active() ? "page" : undefined}
+				aria-label={props.label}
+				as={Link}
+				class="h-11 px-3 font-medium text-muted-foreground md:h-10"
+				isActive={active()}
+				onClick={props.onClick}
+				title={props.expanded ? undefined : props.label}
+				to={props.to}
+			>
+				<Icon aria-hidden="true" class="shrink-0" size={18} />
+				<Show when={props.expanded}>
+					<span class="min-w-0 flex-1 truncate">{props.label}</span>
+					{props.children}
+				</Show>
+			</SidebarMenuButton>
+		</SidebarMenuItem>
 	);
 }

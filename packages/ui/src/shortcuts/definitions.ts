@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Hotkey } from "@tanstack/solid-hotkeys";
 
 export type ShortcutId =
@@ -36,80 +37,80 @@ export const SHORTCUT_GROUPS: readonly ShortcutGroup[] = [
 export const SHORTCUT_DEFINITIONS = {
 	commandPalette: {
 		id: "commandPalette",
-		label: "Command palette",
-		description: "Find and run an action from anywhere in the app.",
+		label: t("definitions.commandPalette"),
+		description: t("definitions.findAndRunAnActionFromAnywhereInThe"),
 		group: "General",
 		scope: "application",
 		defaultBinding: "Mod+K",
 	},
 	shortcutHelp: {
 		id: "shortcutHelp",
-		label: "Keyboard shortcut help",
-		description: "Open the keyboard shortcut reference.",
+		label: t("definitions.keyboardShortcutHelp"),
+		description: t("definitions.openTheKeyboardShortcutReference"),
 		group: "General",
 		scope: "application",
 		defaultBinding: "Mod+/",
 	},
 	focusSearch: {
 		id: "focusSearch",
-		label: "Focus search",
-		description: "Move focus to the primary media search field.",
+		label: t("definitions.focusSearch"),
+		description: t("definitions.moveFocusToThePrimaryMediaSearchField"),
 		group: "General",
 		scope: "application",
 		defaultBinding: "/",
 	},
 	toggleSidebar: {
 		id: "toggleSidebar",
-		label: "Toggle sidebar",
-		description: "Expand or collapse the application sidebar.",
+		label: t("definitions.toggleSidebar"),
+		description: t("definitions.expandOrCollapseTheApplicationSidebar"),
 		group: "General",
 		scope: "application",
 		defaultBinding: "Mod+B",
 	},
 	goLibrary: {
 		id: "goLibrary",
-		label: "Go to Library",
-		description: "Open the media library.",
+		label: t("definitions.goToLibrary"),
+		description: t("definitions.openTheMediaLibrary"),
 		group: "Navigation",
 		scope: "application",
 		defaultBinding: "Mod+1",
 	},
 	goManager: {
 		id: "goManager",
-		label: "Go to Manager",
-		description: "Open media management tools.",
+		label: t("definitions.goToManager"),
+		description: t("definitions.openMediaManagementTools"),
 		group: "Navigation",
 		scope: "application",
 		defaultBinding: "Mod+2",
 	},
 	goJobs: {
 		id: "goJobs",
-		label: "Go to Jobs",
-		description: "Open background job activity.",
+		label: t("definitions.goToJobs"),
+		description: t("definitions.openBackgroundJobActivity"),
 		group: "Navigation",
 		scope: "application",
 		defaultBinding: "Mod+3",
 	},
 	goSettings: {
 		id: "goSettings",
-		label: "Go to Settings",
-		description: "Open application settings.",
+		label: t("definitions.goToSettings"),
+		description: t("definitions.openApplicationSettings"),
 		group: "Navigation",
 		scope: "application",
 		defaultBinding: "Mod+,",
 	},
 	viewGrid: {
 		id: "viewGrid",
-		label: "Grid view",
-		description: "Show media in a visual grid.",
+		label: t("actions.gridView"),
+		description: t("definitions.showMediaInAVisualGrid"),
 		group: "View",
 		scope: "application",
 		defaultBinding: "1",
 	},
 	viewList: {
 		id: "viewList",
-		label: "List view",
-		description: "Show media in a compact list.",
+		label: t("actions.listView"),
+		description: t("definitions.showMediaInACompactList"),
 		group: "View",
 		scope: "application",
 		defaultBinding: "2",
@@ -142,4 +143,13 @@ export function getShortcutDefinitionsForGroup(
 	return SHORTCUT_DEFINITION_LIST.filter(
 		(definition) => definition.group === group,
 	);
+}
+
+export function shortcutGroupLabel(group: ShortcutGroup): string {
+	const keys = {
+		General: "labels.general",
+		Navigation: "shortcuts.group.navigation",
+		View: "shortcuts.group.view",
+	} as const;
+	return t(keys[group]);
 }

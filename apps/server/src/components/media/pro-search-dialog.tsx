@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Author } from "@solid-imager/core/authors";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
@@ -34,11 +35,13 @@ export function ProSearchDialog(props: Props) {
 	return (
 		<Dialog onOpenChange={setOpen} open={open()}>
 			<DialogTrigger as={Button} class="w-full" variant="outline">
-				詳細条件を編集
+				{t("proSearchDialog.editAdvancedConditions")}
 			</DialogTrigger>
 			<DialogContent class="flex max-w-5xl flex-col">
 				<DialogHeader>
-					<DialogTitle>詳細検索条件の編集</DialogTitle>
+					<DialogTitle>
+						{t("proSearchDialog.editAdvancedSearchConditions")}
+					</DialogTitle>
 				</DialogHeader>
 				<div class="flex-1 overflow-y-auto p-1">
 					<ProSearchBuilder
@@ -58,7 +61,7 @@ export function ProSearchDialog(props: Props) {
 							setOpen(false);
 						}}
 					>
-						検索
+						{t("actions.search")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

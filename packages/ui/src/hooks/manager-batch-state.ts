@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { JobEvent } from "@solid-imager/core/events";
 import type { JobDto, JobStatus } from "@solid-imager/core/jobs";
 import { createSignal } from "solid-js";
@@ -96,7 +97,8 @@ export function createManagerBatchState(
 			[context.tab]: {
 				kind,
 				requestId: request.id,
-				message: kind === "scan" ? "Scanning..." : "Starting...",
+				message:
+					kind === "scan" ? t("duplicates.scanning") : t("status.starting"),
 			},
 		}));
 		if (kind === "start") selectedRequestId = request.id;
@@ -160,7 +162,11 @@ export function createManagerBatchState(
 				break;
 			default: {
 				const unhandled: never = event;
-				throw new Error(`Unhandled job event: ${String(unhandled)}`);
+				throw new Error(
+					t("useBatchJobEvents.unhandledJobEventValue", {
+						value0: String(String(unhandled)),
+					}),
+				);
 			}
 		}
 		setObservations((all) => ({ ...all, [id]: next }));
@@ -208,16 +214,20 @@ export function createManagerBatchState(
 		if (!snapshot) return null;
 		const message =
 			snapshot.status === "completed"
-				? "Batch operation completed successfully."
+				? t("managerBatchState.batchOperationCompletedSuccessfully")
 				: snapshot.status === "failed"
-					? `Job failed: ${snapshot.error || "unknown error"}`
+					? t("useManagerPage.jobFailedValue", {
+							value0: String(
+								snapshot.error || t("useManagerPage.unknownError"),
+							),
+						})
 					: snapshot.status === "cancelled"
-						? "Batch operation cancelled."
+						? t("managerBatchState.batchOperationCancelled")
 						: snapshot.status === "pending"
-							? "Batch operation queued."
+							? t("managerBatchState.batchOperationQueued")
 							: snapshot.progress && snapshot.progress.total > 0
-								? "Processing..."
-								: "Preparing batch targets...";
+								? t("status.processing")
+								: t("managerBatchState.preparingBatchTargets");
 		return {
 			kind: "run",
 			message: snapshot.readError ?? message,
@@ -273,7 +283,7 @@ export function createManagerBatchState(
 					[run.tab]: {
 						kind: "start",
 						requestId: -1,
-						message: "The tracked batch no longer exists.",
+						message: t("managerBatchState.theTrackedBatchNoLongerExists"),
 					},
 				}));
 			setTrackedRun(null);

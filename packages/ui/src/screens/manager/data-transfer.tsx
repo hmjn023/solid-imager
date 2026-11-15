@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import Download from "lucide-solid/icons/download";
 import Upload from "lucide-solid/icons/upload";
 import { createSignal, Show } from "solid-js";
@@ -16,7 +17,9 @@ import {
 import type { ManagerTransferActions, ManagerTransferFormat } from "./types";
 
 function formatOptionLabel(format: ManagerTransferFormat): string {
-	return format === "ndjson" ? "NDJSON metadata" : "TAR archive";
+	return format === "ndjson"
+		? t("dataTransfer.nDJSONMetadata")
+		: t("dataTransfer.tARArchive");
 }
 
 export function DataTransferPanel(props: {
@@ -76,9 +79,11 @@ export function DataTransferPanel(props: {
 	return (
 		<div class="space-y-5">
 			<div>
-				<h2 class="font-semibold text-lg text-foreground">Data transfer</h2>
+				<h2 class="font-semibold text-lg text-foreground">
+					{t("types.dataTransfer")}
+				</h2>
 				<p class="mt-0.5 text-xs text-muted-foreground">
-					Export a portable source dump or restore one into an existing source.
+					{t("dataTransfer.exportAPortableSourceDumpOrRestoreOneInto")}
 				</p>
 			</div>
 
@@ -94,20 +99,21 @@ export function DataTransferPanel(props: {
 					options={props.manager.sources()}
 					optionTextValue="name"
 					optionValue="id"
-					placeholder="Choose a source"
+					placeholder={t("dataTransfer.chooseASource")}
 					value={selectedSource() ?? null}
 				>
-					<SelectLabel>Target source</SelectLabel>
+					<SelectLabel>{t("importReviewModal.targetSource")}</SelectLabel>
 					<SelectTrigger class="w-full bg-card sm:max-w-xl">
 						<SelectValue<unknown>>
-							{() => selectedSource()?.name ?? "Choose a source"}
+							{() => selectedSource()?.name ?? t("dataTransfer.chooseASource")}
 						</SelectValue>
 					</SelectTrigger>
 					<SelectContent />
 				</Select>
 				<p class="text-xs text-muted-foreground">
-					Restore writes into the selected source. Existing source configuration
-					is not replaced.
+					{t(
+						"dataTransfer.restoreWritesIntoTheSelectedSourceExistingSourceConfiguration",
+					)}
 				</p>
 			</section>
 
@@ -118,9 +124,11 @@ export function DataTransferPanel(props: {
 							<Download aria-hidden="true" size={17} />
 						</span>
 						<div>
-							<h3 class="font-medium text-sm text-foreground">Export</h3>
+							<h3 class="font-medium text-sm text-foreground">
+								{t("dataTransfer.export")}
+							</h3>
 							<p class="mt-0.5 text-xs text-muted-foreground">
-								Generate and download metadata or a media archive.
+								{t("dataTransfer.generateAndDownloadMetadataOrAMediaArchive")}
 							</p>
 						</div>
 					</div>
@@ -137,15 +145,15 @@ export function DataTransferPanel(props: {
 								options={["ndjson", "tar"] as const}
 								value={exportFormat()}
 							>
-								<SelectLabel>Export format</SelectLabel>
+								<SelectLabel>{t("dataTransfer.exportFormat")}</SelectLabel>
 								<SelectTrigger class="w-full">
 									<SelectValue<string>>
 										{(state) =>
 											state.selectedOption() === "ndjson"
-												? "NDJSON metadata"
+												? t("dataTransfer.nDJSONMetadata")
 												: state.selectedOption() === "tar"
-													? "TAR archive"
-													: "TAR archive"
+													? t("dataTransfer.tARArchive")
+													: t("dataTransfer.tARArchive")
 										}
 									</SelectValue>
 								</SelectTrigger>
@@ -159,7 +167,9 @@ export function DataTransferPanel(props: {
 								onChange={setIncludeImages}
 							>
 								<CheckboxControl />
-								<CheckboxLabel>Include original media</CheckboxLabel>
+								<CheckboxLabel>
+									{t("dataTransfer.includeOriginalMedia")}
+								</CheckboxLabel>
 							</Checkbox>
 						</Show>
 						<Button
@@ -167,7 +177,9 @@ export function DataTransferPanel(props: {
 							disabled={!sourceId() || pending() !== null}
 							onClick={() => void runExport()}
 						>
-							{pending() === "export" ? "Generating..." : "Generate & download"}
+							{pending() === "export"
+								? t("dataTransfer.generating")
+								: t("dataTransfer.generateDownload")}
 						</Button>
 					</div>
 				</section>
@@ -178,9 +190,11 @@ export function DataTransferPanel(props: {
 							<Upload aria-hidden="true" size={17} />
 						</span>
 						<div>
-							<h3 class="font-medium text-sm text-foreground">Restore</h3>
+							<h3 class="font-medium text-sm text-foreground">
+								{t("dataTransfer.restore")}
+							</h3>
 							<p class="mt-0.5 text-xs text-muted-foreground">
-								Choose the dump type before selecting its file.
+								{t("dataTransfer.chooseTheDumpTypeBeforeSelectingItsFile")}
 							</p>
 						</div>
 					</div>
@@ -197,15 +211,15 @@ export function DataTransferPanel(props: {
 								options={["ndjson", "tar"] as const}
 								value={importFormat()}
 							>
-								<SelectLabel>Restore format</SelectLabel>
+								<SelectLabel>{t("dataTransfer.restoreFormat")}</SelectLabel>
 								<SelectTrigger class="w-full">
 									<SelectValue<string>>
 										{(state) =>
 											state.selectedOption() === "ndjson"
-												? "NDJSON metadata"
+												? t("dataTransfer.nDJSONMetadata")
 												: state.selectedOption() === "tar"
-													? "TAR archive"
-													: "TAR archive"
+													? t("dataTransfer.tARArchive")
+													: t("dataTransfer.tARArchive")
 										}
 									</SelectValue>
 								</SelectTrigger>
@@ -214,7 +228,7 @@ export function DataTransferPanel(props: {
 						</div>
 						<Input
 							accept={accept()}
-							aria-label="復元するダンプファイル"
+							aria-label={t("dataTransfer.dumpFileToRestore")}
 							class="sr-only"
 							onChange={(event) => {
 								const file = event.currentTarget.files?.[0];
@@ -231,14 +245,17 @@ export function DataTransferPanel(props: {
 							onClick={() => fileInput?.click()}
 							variant="outline"
 						>
-							{pending() === "import" ? "Queueing..." : "Choose dump file"}
+							{pending() === "import"
+								? t("dataTransfer.queueing")
+								: t("dataTransfer.chooseDumpFile")}
 						</Button>
 					</div>
 				</section>
 			</div>
 			<p class="text-xs text-muted-foreground">
-				Exports run as background jobs and download automatically when complete.
-				Open Jobs for history or to download them again.
+				{t(
+					"dataTransfer.exportsRunAsBackgroundJobsAndDownloadAutomaticallyWhen",
+				)}
 			</p>
 		</div>
 	);

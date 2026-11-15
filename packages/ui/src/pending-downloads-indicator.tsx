@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Show } from "solid-js";
 import { ImportReviewModal } from "./import-review-modal";
 import type { PendingDownloadsIndicatorProps as PendingDownloadsIndicatorBaseProps } from "./pending-downloads-indicator.types";
@@ -25,7 +26,15 @@ export function PendingDownloadsIndicator(
 				return (
 					<button
 						aria-disabled={!hasPendingImports()}
-						aria-label={`Import inbox${hasPendingImports() ? `, ${pendingCount()}件` : ""}`}
+						aria-label={t("pendingDownloadsIndicator.importInboxValue", {
+							value0: String(
+								hasPendingImports()
+									? t("pendingDownloadsIndicator.valueItems", {
+											value0: String(pendingCount()),
+										})
+									: "",
+							),
+						})}
 						class={cn(
 							"relative flex h-10 w-full items-center justify-start gap-2 rounded-md px-3 font-medium text-muted-foreground text-xs transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:pointer-events-auto disabled:opacity-60",
 							props.compact && "size-10 justify-center px-0",
@@ -38,7 +47,7 @@ export function PendingDownloadsIndicator(
 							↓
 						</span>
 						<span class={props.compact ? "sr-only" : undefined}>
-							Import inbox
+							{t("navigation.importInbox")}
 						</span>
 						<Show when={hasPendingImports()}>
 							<span
@@ -59,7 +68,7 @@ export function PendingDownloadsIndicator(
 					disabled
 					type="button"
 				>
-					Inbox
+					{t("navigation.importInbox")}
 				</button>
 			)}
 			renderModal={(modalProps) => (

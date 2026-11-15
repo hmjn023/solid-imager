@@ -1,3 +1,4 @@
+import { getLocale, t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
 import type {
@@ -30,13 +31,13 @@ export function categoryLabel(value: ManagerCategoryValue): string {
 export function singularLabel(value: ManagerEntityType): string {
 	switch (value) {
 		case "projects":
-			return "Project";
+			return t("labels.project");
 		case "ips":
-			return "IP";
+			return t("labels.ips");
 		case "characters":
-			return "Character";
+			return t("labels.character");
 		default:
-			return "Item";
+			return t("labels.item");
 	}
 }
 
@@ -52,7 +53,7 @@ export function formatDate(
 		return "—";
 	}
 	return new Intl.DateTimeFormat(
-		"ja-JP",
+		getLocale(),
 		options?.includeTime
 			? { dateStyle: "medium", timeStyle: "short" }
 			: { year: "numeric", month: "short", day: "numeric" },

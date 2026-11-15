@@ -10,6 +10,7 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { FIXTURES_DIR, MIGRATIONS_DIR } from "~/tests/paths";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import {
@@ -46,7 +47,6 @@ vi.mock("~/infrastructure/db/index", async () => {
 describe("getMediaDetails", () => {
 	let mediaSource: any;
 	let media: any;
-	const fixturesDir = "src/tests/fixtures";
 	const testImageName = "test-image-with-metadata.png";
 
 	beforeAll(async () => {
@@ -74,17 +74,17 @@ describe("getMediaDetails", () => {
 		db = drizzle(testDb, { schema });
 
 		await migrate(db, {
-			migrationsFolder: "drizzle",
+			migrationsFolder: MIGRATIONS_DIR,
 		});
 	});
 
 	beforeEach(async () => {
 		// Create a temporary directory for the media source
 		const tempSourceDir = await fs.mkdtemp(
-			path.join(fixturesDir, "test-source-"),
+			path.join(FIXTURES_DIR, "test-source-"),
 		);
 		await fs.copyFile(
-			path.join(fixturesDir, testImageName),
+			path.join(FIXTURES_DIR, testImageName),
 			path.join(tempSourceDir, testImageName),
 		);
 

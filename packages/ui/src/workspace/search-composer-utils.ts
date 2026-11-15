@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { getSearchExecutionKind } from "../search-execution";
 import { mediaIdSchema } from "@solid-imager/core/media";
 import type { SearchState } from "@solid-imager/core/search";
@@ -49,7 +50,7 @@ export function getSearchComposerTokens(state: SearchState): SearchToken[] {
 		return [
 			{
 				key: "semanticQuery",
-				prefix: "文章",
+				prefix: t("searchComposerUtils.text"),
 				value: state.semanticQuery.trim(),
 			},
 		];
@@ -192,7 +193,10 @@ function getSourceValues(
 		case "authors":
 			return (filterData.authors ?? []).map((author) => ({
 				label: author.accountId
-					? `${author.name}：${author.accountId}`
+					? t("searchComposerUtils.valueValue", {
+							value0: String(author.name),
+							value1: String(author.accountId),
+						})
 					: author.name,
 				value: author.name,
 			}));

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Show } from "solid-js";
 import { Button } from "../button";
 import { observePageBoundary } from "../hooks/observe-page-boundary";
@@ -24,7 +25,7 @@ export function ViewerLoadBoundary(props: {
 			class="flex min-h-11 flex-wrap items-center justify-center gap-2 py-2 text-sm text-muted-foreground"
 		>
 			<Show when={props.failed}>
-				<p role="alert">投稿を追加で読み込めませんでした。</p>
+				<p role="alert">{t("loadBoundary.couldNotLoadMorePosts")}</p>
 			</Show>
 			<Button
 				type="button"
@@ -36,12 +37,12 @@ export function ViewerLoadBoundary(props: {
 				onClick={() => void props.onLoad()}
 			>
 				{props.loading
-					? "読み込み中..."
+					? t("status.loading")
 					: props.failed
-						? "再試行"
+						? t("actions.retry")
 						: props.direction === "next"
-							? "さらに読み込む"
-							: "前の投稿を読み込む"}
+							? t("actions.loadMore")
+							: t("loadBoundary.loadPreviousPosts")}
 			</Button>
 		</div>
 	);

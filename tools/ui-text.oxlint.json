@@ -1,0 +1,6 @@
+{
+  "categories": { "correctness": "off" },
+  "plugins": [],
+  "jsPlugins": ["./ui-text.mjs"],
+  "rules": { "ui-text/no-raw-text": "error" }
+}

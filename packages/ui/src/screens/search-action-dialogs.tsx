@@ -1,17 +1,19 @@
+import { t } from "@solid-imager/i18n";
 import { createResource } from "solid-js";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../alert-dialog";
 import {
 	BulkActionDialog,
 	type BulkActionDialogProps,
 } from "../bulk-action-dialog";
-import { Button } from "../button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "../dialog";
 import type { MediaCollectionActions } from "../hooks/use-media-collection-actions";
 import { MoveCopyMediaDialog } from "../move-copy-media-dialog";
 
@@ -37,39 +39,45 @@ export function SearchActionDialogs(props: {
 
 	return (
 		<>
-			<Dialog
+			<AlertDialog
 				open={actions.isDeleteDialogOpen()}
-				onOpenChange={actions.changeDeleteOpen}
+				onOpenChange={(open) => {
+					if (open || !actions.isDeleteSubmitting()) {
+						actions.changeDeleteOpen(open);
+					}
+				}}
 			>
-				<DialogContent data-workspace-theme="">
-					<DialogHeader>
-						<DialogTitle>メディアを削除</DialogTitle>
-						<DialogDescription>
-							この操作は取り消せません。
-							{actions.deleteTarget()?.fileName ?? "選択したメディア"}
-							を削除しますか？
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button
-							disabled={actions.isDeleteSubmitting()}
-							onClick={() => actions.changeDeleteOpen(false)}
-							variant="outline"
-						>
-							キャンセル
-						</Button>
-						<Button
+				<AlertDialogContent data-workspace-theme="">
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t("sourceMediaScreen.deleteMedia")}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
+							{t("searchActionDialogs.thisActionCannotBeUndoneDeleteValue", {
+								value0: String(
+									actions.deleteTarget()?.fileName ?? t("labels.selectedMedia"),
+								),
+							})}
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={actions.isDeleteSubmitting()}>
+							{t("actions.cancel")}
+						</AlertDialogCancel>
+						<AlertDialogAction
+							variant="destructive"
 							disabled={actions.isDeleteSubmitting()}
 							onClick={() => {
 								void actions.confirmDelete();
 							}}
-							variant="destructive"
 						>
-							{actions.isDeleteSubmitting() ? "削除中..." : "削除"}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+							{actions.isDeleteSubmitting()
+								? t("status.deleting")
+								: t("actions.delete")}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 			<MoveCopyMediaDialog
 				currentSourceId={actions.moveCopyTarget()?.mediaSourceId ?? ""}
 				mode={actions.moveCopyMode()}
@@ -82,7 +90,7 @@ export function SearchActionDialogs(props: {
 					source.id ? [{ id: source.id, name: source.name }] : [],
 				)}
 				isLoading={sources.loading}
-				error={sources.error ? "Failed to load sources." : null}
+				error={sources.error ? t("feedback.sourcesLoadFailed") : null}
 			/>
 			<BulkActionDialog
 				{...props.operations}

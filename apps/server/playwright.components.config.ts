@@ -3,7 +3,7 @@ import { defineConfig, devices } from "@playwright/test";
 const port = process.env.E2E_GALLERY_PORT;
 if (!port) {
 	throw new Error(
-		"Use bun run test:e2e:components to allocate an isolated port.",
+		"Use bun run test:e2e --mode=components to allocate an isolated port.",
 	);
 }
 
@@ -13,7 +13,7 @@ export default defineConfig({
 	testDir: "./src/tests/e2e",
 	testMatch: "**/*.gallery.spec.ts",
 	forbidOnly: true,
-	workers: 1,
+	workers: 2,
 	retries: 0,
 	timeout: 120_000,
 	expect: { timeout: 15_000 },

@@ -1,7 +1,9 @@
+import { t } from "@solid-imager/i18n";
 import type { ErrorComponentProps } from "@tanstack/solid-router";
 import { Link, useRouter, useRouterState } from "@tanstack/solid-router";
 import { createEffect, createSignal, onCleanup, Show, untrack } from "solid-js";
 import { ErrorState } from "./async-state";
+import { Progress } from "./progress";
 import { ScreenSkeleton, type ScreenSkeletonLayout } from "./screen-skeleton";
 
 export const ROUTE_PENDING_DELAY_MS = 300;
@@ -58,14 +60,11 @@ export function RouteTransitionIndicator() {
 
 	return (
 		<Show when={isVisible()}>
-			<div
-				aria-label="画面を読み込んでいます"
-				aria-valuetext="読み込み中"
-				class="fixed inset-x-0 top-0 z-router-status h-1 overflow-hidden bg-primary/20"
-				role="progressbar"
-			>
-				<div class="h-full w-1/2 animate-pulse rounded-full bg-primary motion-reduce:animate-none" />
-			</div>
+			<Progress
+				aria-label={t("routerStatus.loadingPage")}
+				class="fixed inset-x-0 top-0 z-router-status h-1 rounded-none bg-primary/20 [&>div]:bg-transparent [&>div>div]:w-1/2 [&>div>div]:animate-pulse [&>div>div]:rounded-full [&>div>div]:motion-reduce:animate-none"
+				indeterminate
+			/>
 		</Show>
 	);
 }
@@ -74,8 +73,8 @@ export function RoutePendingScreen() {
 	return (
 		<ScreenSkeleton
 			layout="cards"
-			loadingLabel="画面を読み込んでいます..."
-			title="画面を読み込んでいます"
+			loadingLabel={t("routerStatus.loadingPage2")}
+			title={t("routerStatus.loadingPage")}
 		/>
 	);
 }
@@ -116,16 +115,16 @@ export function RouteErrorScreen(props: ErrorComponentProps) {
 		<div class="container mx-auto p-4">
 			<ErrorState
 				class="mx-auto max-w-xl"
-				description="通信状態を確認して、もう一度お試しください。"
+				description={t("routerStatus.checkYourNetworkConnectionAndTryAgain")}
 				headingLevel={1}
 				onRetry={retry}
-				title="画面を表示できませんでした"
+				title={t("routerStatus.couldNotDisplayThisPage")}
 			>
 				<Link
 					class="rounded-md border border-border px-4 py-2 hover:bg-muted"
 					to="/"
 				>
-					ホームへ戻る
+					{t("routerStatus.backToHome")}
 				</Link>
 			</ErrorState>
 		</div>
@@ -142,21 +141,21 @@ export function BootstrapStatusScreen(props: BootstrapStatusScreenProps) {
 		<Show
 			fallback={
 				<ScreenSkeleton
-					description="保存済みデータを読み込んでいます。"
+					description={t("routerStatus.loadingSavedData")}
 					layout="cards"
-					loadingLabel="アプリを準備しています..."
+					loadingLabel={t("routerStatus.preparingApplication")}
 					showDescription
-					title="アプリを準備しています"
+					title={t("routerStatus.preparingApplication2")}
 				/>
 			}
 			when={props.error}
 		>
 			<ErrorState
 				class="mx-auto max-w-xl"
-				description="ローカルデータの初期化に失敗しました。"
+				description={t("routerStatus.couldNotInitializeLocalData")}
 				headingLevel={1}
 				onRetry={props.onRetry}
-				title="アプリを起動できませんでした"
+				title={t("routerStatus.couldNotStartTheApplication")}
 			/>
 		</Show>
 	);

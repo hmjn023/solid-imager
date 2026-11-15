@@ -9,6 +9,7 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { FIXTURES_DIR, MIGRATIONS_DIR } from "~/tests/paths";
 import { RustAiClient } from "~/infrastructure/ai/rust-ai-client";
 import { ImageProcessor } from "~/infrastructure/processing/image-processor";
 import {
@@ -71,7 +72,6 @@ import type { MediaSource } from "~/infrastructure/db/schema";
 
 describe("Media Type Handling Integration", () => {
 	let mediaSource: MediaSource;
-	const fixturesDir = "src/tests/fixtures";
 	let tempSourceDir: string;
 	const ExpectedMixedMediaCount = 3;
 
@@ -104,7 +104,7 @@ describe("Media Type Handling Integration", () => {
 			}
 
 			await migrate(db, {
-				migrationsFolder: "drizzle",
+				migrationsFolder: MIGRATIONS_DIR,
 			});
 		} catch (e) {
 			console.error("Setup failed", e);
@@ -113,7 +113,7 @@ describe("Media Type Handling Integration", () => {
 
 	beforeEach(async () => {
 		tempSourceDir = await fs.mkdtemp(
-			path.join(fixturesDir, "test-media-types-"),
+			path.join(FIXTURES_DIR, "test-media-types-"),
 		);
 
 		[mediaSource] = await db

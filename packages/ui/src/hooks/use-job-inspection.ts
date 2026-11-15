@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { JobDto, JobListResponse } from "@solid-imager/core/jobs";
 import { createQuery } from "@tanstack/solid-query";
 import { createMemo, type Accessor } from "solid-js";
@@ -18,7 +19,7 @@ export function useJobInspection(
 			queryKey: jobsQueryKeys.detail(jobId ?? ""),
 			enabled: !!jobId && !row(),
 			queryFn: ({ signal }: { signal: AbortSignal }) => {
-				if (!jobId) throw new Error("No job selected");
+				if (!jobId) throw new Error(t("useJobInspection.noJobSelected"));
 				return getJob(jobId, signal);
 			},
 		};

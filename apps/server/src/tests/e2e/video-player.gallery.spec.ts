@@ -1,7 +1,7 @@
 import type { Page } from "@playwright/test";
 import { expect, test } from "./support/test";
 
-async function openVideoPlayer(page: Page) {
+async function openVideoPlayer(page: Page, playLabel = "再生") {
 	const port = process.env.E2E_GALLERY_PORT;
 	if (!port) throw new Error("E2E_GALLERY_PORT must be set by the E2E runner");
 	await page.goto(`http://127.0.0.1:${port}/?video-player=1`);
@@ -12,12 +12,39 @@ async function openVideoPlayer(page: Page) {
 		.poll(() => video.evaluate((element: HTMLVideoElement) => element.duration))
 		.toBeGreaterThan(0);
 	await expect(player.locator("media-time-display")).toContainText("/ 0:04");
+	await expect(player.locator("media-play-button")).toHaveAccessibleName(
+		playLabel,
+	);
 	return {
 		player,
 		video,
-		loop: player.getByRole("button", { name: "Toggle video loop" }),
+		loop: player.getByRole("button", {
+			name:
+				playLabel === "play"
+					? "Toggle video loop"
+					: "動画のループ再生を切り替える",
+		}),
 	};
 }
+
+test("video control labels restore the application's English preference", async ({
+	page,
+}) => {
+	await page.addInitScript(() => {
+		if (location.protocol === "http:" || location.protocol === "https:")
+			localStorage.setItem("solid-imager.locale", "en");
+	});
+	const { player, loop } = await openVideoPlayer(page, "play");
+	await expect(player).toHaveAttribute("lang", "en");
+	await expect(loop).toHaveAccessibleName("Toggle video loop");
+	await expect(player.locator("media-mute-button")).toHaveAccessibleName(
+		"mute",
+	);
+	await page.reload();
+	await expect(player.locator("media-play-button")).toHaveAccessibleName(
+		"play",
+	);
+});
 
 test("video controls share one bar and support playback, keyboard, seek and fullscreen", async ({
 	page,
@@ -25,7 +52,7 @@ test("video controls share one bar and support playback, keyboard, seek and full
 	const { player, video, loop } = await openVideoPlayer(page);
 	await expect(
 		player.locator("media-control-bar").getByRole("button", {
-			name: "Toggle video loop",
+			name: "動画のループ再生を切り替える",
 		}),
 	).toBeVisible();
 	await expect(loop).toHaveAttribute("aria-pressed", "true");
@@ -181,7 +208,7 @@ test.describe("narrow touch video controls", () => {
 		await player.locator("media-play-button").tap();
 		await expect(video).toHaveJSProperty("paused", true);
 		await expect(player.locator("media-play-button")).toHaveAccessibleName(
-			"play",
+			"再生",
 		);
 		await testInfo.attach("video-player-320", {
 			body: await page.screenshot(),

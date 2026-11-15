@@ -1,6 +1,8 @@
+import { t } from "@solid-imager/i18n";
 import type { JSX, ParentProps } from "solid-js";
 import { createSignal, Match, Show, Switch } from "solid-js";
 import { Dynamic } from "solid-js/web";
+import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";
 import type { QueryUiFetchState } from "./query-state";
 import { cn } from "./utils/cn";
@@ -37,7 +39,9 @@ export function RetryButton(props: RetryButtonProps) {
 			onClick={() => void retry()}
 			type="button"
 		>
-			{isRetrying() ? "再試行中..." : (props.label ?? "再試行")}
+			{isRetrying()
+				? t("status.retrying")
+				: (props.label ?? t("actions.retry"))}
 		</Button>
 	);
 }
@@ -173,7 +177,7 @@ export function OfflineState(props: OfflineStateProps) {
 			icon="×"
 			announce
 			state="offline"
-			title={props.title ?? "オフラインです"}
+			title={props.title ?? t("asyncState.youAreOffline")}
 		>
 			<Show when={props.onRetry}>
 				{(onRetry) => (
@@ -195,20 +199,23 @@ export type FilterErrorBannerProps = {
 /** Keeps usable content visible when only supplementary search filters fail. */
 export function FilterErrorBanner(props: FilterErrorBannerProps) {
 	return (
-		<div
+		<Alert
 			class={cn(
-				"flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3",
+				"flex flex-wrap items-center justify-between gap-2 bg-warning/40 p-3",
 				props.class,
 			)}
 			data-state-ui="filter-error"
+			variant="warning"
 		>
-			<output class="text-muted-foreground text-sm">{props.message}</output>
+			<AlertDescription class="text-muted-foreground">
+				{props.message}
+			</AlertDescription>
 			<RetryButton
 				class="h-8 px-3 text-xs"
-				label={props.retryLabel ?? "フィルターを再取得"}
+				label={props.retryLabel ?? t("asyncState.reloadFilters")}
 				onRetry={props.onRetry}
 			/>
-		</div>
+		</Alert>
 	);
 }
 
@@ -267,7 +274,7 @@ export function QueryStatus(props: QueryStatusProps) {
 							data-state-ui="cached-sync-error"
 						>
 							<span aria-hidden="true" class="size-2 rounded-full bg-current" />
-							{props.errorLabel ?? "最新のデータを取得できませんでした"}
+							{props.errorLabel ?? t("asyncState.couldNotLoadTheLatestData")}
 						</output>
 					</Match>
 				</Switch>

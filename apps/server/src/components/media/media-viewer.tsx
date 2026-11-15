@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { MediaDetails } from "@solid-imager/core/media";
 import {
 	type MediaSource,
@@ -46,7 +47,11 @@ class ApiMediaSource implements MediaSource {
 		if (this.type !== "image") return url;
 		const response = await fetch(url, { cache: "no-store" });
 		if (!response.ok) {
-			throw new Error(`Failed to fetch media: ${response.status}`);
+			throw new Error(
+				t("mediaViewer.failedToFetchMediaValue", {
+					value0: String(response.status),
+				}),
+			);
 		}
 		const blob = await response.blob();
 		const typedBlob = new Blob([blob], {

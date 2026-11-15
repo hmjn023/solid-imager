@@ -1,15 +1,17 @@
+import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
 import type { Accessor, JSX, ParentProps } from "solid-js";
 import { createEffect, createSignal, onCleanup, onMount } from "solid-js";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-} from "../dialog";
 import type { UseSourcesPageResult } from "../hooks/use-sources-page";
+import {
+	Sheet,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetTitle,
+} from "../sheet";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
+import { SidebarProvider } from "../sidebar";
 import { SourceDeleteModal } from "../source-delete-modal";
 import { SourceFormModal } from "../source-form-modal";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
@@ -129,13 +131,16 @@ export function AppShell(props: AppShellProps) {
 		const sourcePage = props.sourcePage;
 
 		return (
-			<div
+			<SidebarProvider
 				class={`workspace-theme grid h-dvh min-h-0 overflow-hidden bg-background text-foreground ${
 					sidebarExpanded()
 						? "md:grid-cols-app-sidebar"
 						: "md:grid-cols-app-sidebar-collapsed"
 				}`}
 				data-design="workspace"
+				enableKeyboardShortcut={false}
+				onOpenChange={setSidebarExpanded}
+				open={sidebarExpanded()}
 			>
 				<button
 					class="sr-only fixed top-2 left-2 z-app-overlay rounded-md bg-white px-4 py-2 shadow focus:not-sr-only focus:ring-2 focus:ring-ring"
@@ -146,11 +151,12 @@ export function AppShell(props: AppShellProps) {
 					}}
 					type="button"
 				>
-					メインコンテンツへ移動
+					{t("appShell.skipToMainContent")}
 				</button>
 				<aside
-					aria-label="アプリケーションサイドバー"
+					aria-label={t("appShell.applicationSidebar")}
 					class="hidden min-h-0 border-border border-r md:block"
+					data-state={sidebarExpanded() ? "expanded" : "collapsed"}
 				>
 					<Sidebar
 						apiDocsHref={props.apiDocsHref}
@@ -191,8 +197,8 @@ export function AppShell(props: AppShellProps) {
 					</main>
 				</div>
 
-				<Dialog onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
-					<DialogContent
+				<Sheet onOpenChange={setMobileMenuOpen} open={mobileMenuOpen()}>
+					<SheetContent
 						class="workspace-theme p-0"
 						onCloseAutoFocus={(event) => {
 							event.preventDefault();
@@ -202,14 +208,14 @@ export function AppShell(props: AppShellProps) {
 								}
 							});
 						}}
-						placement="left"
+						position="left"
 					>
-						<DialogHeader class="sr-only">
-							<DialogTitle>ナビゲーション</DialogTitle>
-							<DialogDescription>
-								画面とメディアソースを選択します。
-							</DialogDescription>
-						</DialogHeader>
+						<SheetHeader class="sr-only">
+							<SheetTitle>{t("appShell.navigation")}</SheetTitle>
+							<SheetDescription>
+								{t("appShell.chooseAScreenAndMediaSource")}
+							</SheetDescription>
+						</SheetHeader>
 						<Sidebar
 							apiDocsHref={props.apiDocsHref}
 							expanded
@@ -228,8 +234,8 @@ export function AppShell(props: AppShellProps) {
 							}
 							serverConnectionsHref={props.serverConnectionsHref}
 						/>
-					</DialogContent>
-				</Dialog>
+					</SheetContent>
+				</Sheet>
 
 				<SourceFormModal
 					editingSource={sourcePage.editingSource()}
@@ -238,6 +244,7 @@ export function AppShell(props: AppShellProps) {
 					onSubmit={sourcePage.handleFormSubmit}
 				/>
 				<SourceDeleteModal
+					isDeleting={sourcePage.isDeleting()}
 					isOpen={sourcePage.showDeleteModal()}
 					onClose={() => sourcePage.setShowDeleteModal(false)}
 					onConfirm={(event) => {
@@ -253,7 +260,7 @@ export function AppShell(props: AppShellProps) {
 					onToggleSidebar={toggleSidebar}
 					paletteOpen={commandPaletteOpen()}
 				/>
-			</div>
+			</SidebarProvider>
 		);
 	};
 

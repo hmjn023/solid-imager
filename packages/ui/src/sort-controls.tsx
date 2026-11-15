@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { getSearchExecutionKind } from "./search-execution";
 import { Show } from "solid-js";
 import { Button } from "./button";
@@ -32,7 +33,7 @@ export function SortControls(props: SortControlsProps) {
 	return (
 		<div class={props.className}>
 			<div class="space-y-2">
-				<Label>ソート</Label>
+				<Label>{t("sortControls.sort")}</Label>
 				<div class="flex gap-2">
 					<Select
 						disabled={getSearchExecutionKind(props) !== "ordinary"}
@@ -53,7 +54,7 @@ export function SortControls(props: SortControlsProps) {
 							)
 						}
 						options={[...SORT_OPTIONS]}
-						placeholder="項目"
+						placeholder={t("sortControls.field")}
 						value={props.sortBy}
 					>
 						<SelectTrigger class="min-w-0 flex-1 gap-2 whitespace-nowrap text-left">
@@ -75,18 +76,22 @@ export function SortControls(props: SortControlsProps) {
 						disabled={getSearchExecutionKind(props) !== "ordinary"}
 						itemComponent={(itemProps) => (
 							<SelectItem item={itemProps.item}>
-								{itemProps.item.rawValue === "asc" ? "昇順" : "降順"}
+								{itemProps.item.rawValue === "asc"
+									? t("searchToolbar.ascending")
+									: t("searchToolbar.descending")}
 							</SelectItem>
 						)}
 						onChange={(value) => props.onSortOrderChange(value || "desc")}
 						options={["asc", "desc"]}
-						placeholder="順序"
+						placeholder={t("sortControls.order")}
 						value={props.sortOrder}
 					>
 						<SelectTrigger class="w-20 shrink-0 gap-2 whitespace-nowrap text-left">
 							<SelectValue<string>>
 								{(state) =>
-									state.selectedOption() === "asc" ? "昇順" : "降順"
+									state.selectedOption() === "asc"
+										? t("searchToolbar.ascending")
+										: t("searchToolbar.descending")
 								}
 							</SelectValue>
 						</SelectTrigger>
@@ -105,8 +110,8 @@ export function SortControls(props: SortControlsProps) {
 					<div class="flex items-center justify-between gap-2">
 						<Label for={props.similarityLimitId ?? "similarity-limit"}>
 							{getSearchExecutionKind(props) === "semantic"
-								? "文章検索"
-								: "類似度順"}
+								? t("sortControls.textSearch")
+								: t("sortControls.similarity")}
 						</Label>
 						<Show when={props.onClearSimilarity}>
 							<Button
@@ -115,14 +120,18 @@ export function SortControls(props: SortControlsProps) {
 								size="sm"
 								variant="ghost"
 							>
-								解除
+								{t("actions.clear")}
 							</Button>
 						</Show>
 					</div>
 					<p class="truncate text-muted-foreground text-xs">
 						{getSearchExecutionKind(props) === "semantic"
-							? `検索文: ${props.semanticQuery}`
-							: `類似元: ${props.similarityAnchorMediaId}`}
+							? t("sortControls.searchTextValue", {
+									value0: String(props.semanticQuery),
+								})
+							: t("sortControls.referenceMediaValue", {
+									value0: String(props.similarityAnchorMediaId),
+								})}
 					</p>
 					<div class="flex items-center gap-2">
 						<Input
@@ -142,13 +151,15 @@ export function SortControls(props: SortControlsProps) {
 							type="number"
 							value={props.similarityTopK}
 						/>
-						<span class="text-muted-foreground text-xs">件</span>
+						<span class="text-muted-foreground text-xs">
+							{t("charts.items")}
+						</span>
 					</div>
 					<p
 						class="text-muted-foreground text-xs"
 						id={`${props.similarityLimitId ?? "similarity-limit"}-help`}
 					>
-						1以上の整数を指定できます。
+						{t("sortControls.enterAnIntegerOf1OrGreater")}
 					</p>
 				</div>
 			</Show>

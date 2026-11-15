@@ -134,7 +134,7 @@ describe("Manager GET and SSE observations", () => {
 		expect(
 			state.acceptSnapshot(job("selected"), state.version("selected")),
 		).toBe(true);
-		expect(state.display("vectors")?.message).toBe("Processing...");
+		expect(state.display("vectors")?.message).toBe("処理中...");
 	});
 	it("rejects a GET started before a newer event and accepts a fresh snapshot", () => {
 		const state = createManagerBatchState(vi.fn());

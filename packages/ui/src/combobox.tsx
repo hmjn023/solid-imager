@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import * as ComboboxPrimitive from "@kobalte/core/combobox";
 import type { PolymorphicProps } from "@kobalte/core/polymorphic";
 import { createVirtualizer } from "@tanstack/solid-virtual";
@@ -72,7 +73,7 @@ const ComboboxItemIndicator = <T extends ValidComponent = "div">(
 			<Show
 				fallback={
 					<svg
-						aria-label="Selected"
+						aria-label={t("contextMenu.selected")}
 						class="size-4"
 						fill="none"
 						stroke="currentColor"
@@ -82,7 +83,7 @@ const ComboboxItemIndicator = <T extends ValidComponent = "div">(
 						viewBox="0 0 24 24"
 						xmlns="http://www.w3.org/2000/svg"
 					>
-						<title>Selected</title>
+						<title>{t("contextMenu.selected")}</title>
 						<path d="M5 12l5 5l10 -10" />
 					</svg>
 				}
@@ -166,6 +167,7 @@ const ComboboxTrigger = <T extends ValidComponent = "button">(
 	]);
 	return (
 		<ComboboxPrimitive.Trigger
+			aria-label={t("controls.toggleOptions")}
 			class={cn(
 				"flex min-h-11 min-w-11 items-center justify-center opacity-50",
 				local.class,
@@ -176,7 +178,7 @@ const ComboboxTrigger = <T extends ValidComponent = "button">(
 				<Show
 					fallback={
 						<svg
-							aria-label="Toggle"
+							aria-label={t("combobox.toggle")}
 							class="size-4"
 							fill="none"
 							stroke="currentColor"
@@ -186,7 +188,7 @@ const ComboboxTrigger = <T extends ValidComponent = "button">(
 							viewBox="0 0 24 24"
 							xmlns="http://www.w3.org/2000/svg"
 						>
-							<title>Toggle</title>
+							<title>{t("combobox.toggle")}</title>
 							<path d="M8 9l4 -4l4 4" />
 							<path d="M16 15l-4 4l-4 -4" />
 						</svg>

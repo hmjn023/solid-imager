@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Badge } from "../badge";
 import { Button } from "../button";
 import { Card, CardContent, CardHeader, CardTitle } from "../card";
@@ -13,17 +14,19 @@ export function AboutScreen(props: AboutScreenProps) {
 				<div class="flex flex-wrap items-start justify-between gap-3">
 					<div>
 						<h1 class="font-semibold text-xl text-foreground">
-							About Solid Imager
+							{t("aboutScreen.aboutSolidImager")}
 						</h1>
 						<p class="mt-1 text-sm text-muted-foreground">
-							メディアを整理・検索し、関連情報とバックグラウンド処理を一か所で管理するワークベンチです。
+							{t(
+								"aboutScreen.aWorkspaceForOrganizingAndSearchingMediaManagingRelated",
+							)}
 						</p>
 					</div>
 					<Badge
 						class="border-input bg-muted text-muted-foreground"
 						variant="outline"
 					>
-						Current workspace
+						{t("aboutScreen.currentWorkspace")}
 					</Badge>
 				</div>
 			</header>
@@ -31,23 +34,29 @@ export function AboutScreen(props: AboutScreenProps) {
 			<div class="grid gap-4 p-4 sm:p-6 lg:grid-cols-about-layout">
 				<Card class="border-border bg-card shadow-none">
 					<CardHeader class="p-5 pb-3">
-						<CardTitle class="text-base">Media-first workspace</CardTitle>
+						<CardTitle class="text-base">
+							{t("aboutScreen.mediaFirstWorkspace")}
+						</CardTitle>
 					</CardHeader>
 					<CardContent class="px-5 pb-5 text-sm leading-6 text-muted-foreground">
 						<p>
-							Solid
-							Imagerは、複数のメディアソース、検索条件、タグ・作品・キャラクターなどの関連情報をまとめて扱います。
-							AI補助処理やインポートは、閲覧作業を妨げないバックグラウンドジョブとして実行されます。
+							{t(
+								"aboutScreen.solidImagerBringsMediaSourcesSearchConditionsTagsSeries",
+							)}
 						</p>
 						<p class="mt-3">
-							検索、ソース管理、ジョブ、設定、AI補助処理を同じワークスペースから操作できます。各画面は実データとリアルタイム更新に接続されています。
+							{t(
+								"aboutScreen.searchManageSourcesTrackJobsChangeSettingsAndRun",
+							)}
 						</p>
 					</CardContent>
 				</Card>
 
 				<Card class="border-border bg-card shadow-none">
 					<CardHeader class="p-5 pb-3">
-						<CardTitle class="text-base">Documentation</CardTitle>
+						<CardTitle class="text-base">
+							{t("aboutScreen.documentation")}
+						</CardTitle>
 					</CardHeader>
 					<CardContent class="space-y-2 px-5 pb-5">
 						{props.docsHref && (
@@ -57,7 +66,7 @@ export function AboutScreen(props: AboutScreenProps) {
 								href={props.docsHref}
 								variant="outline"
 							>
-								API documentation
+								{t("aboutScreen.aPIDocumentation")}
 							</Button>
 						)}
 						<Button
@@ -68,7 +77,7 @@ export function AboutScreen(props: AboutScreenProps) {
 							target="_blank"
 							variant="outline"
 						>
-							Source repository
+							{t("aboutScreen.sourceRepository")}
 						</Button>
 					</CardContent>
 				</Card>

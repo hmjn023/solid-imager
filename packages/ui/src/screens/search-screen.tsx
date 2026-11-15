@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
@@ -109,7 +110,7 @@ export function SearchScreen(props: SearchScreenProps) {
 	};
 	const sourceName = () =>
 		props.sources?.find((source) => source.id === props.selectedSource)?.name ??
-		"すべてのメディア";
+		t("searchScreen.allMedia");
 	const canRenderContent = () => !props.ssrGuard || isMounted();
 	const previewMedia = () =>
 		page()
@@ -175,7 +176,7 @@ export function SearchScreen(props: SearchScreenProps) {
 				selectedSource={props.selectedSource ?? undefined}
 				sourceName={sourceName()}
 				sources={props.sources}
-				updatingLabel="検索結果を更新中..."
+				updatingLabel={t("searchScreen.updatingSearchResults")}
 				onViewModeChange={updateViewMode}
 				viewMode={viewMode()}
 			/>
@@ -184,7 +185,9 @@ export function SearchScreen(props: SearchScreenProps) {
 					<Show when={hasFilterError()}>
 						<FilterErrorBanner
 							class="mb-2"
-							message="一部の検索フィルターを取得できませんでした。検索結果は引き続き利用できます。"
+							message={t(
+								"searchScreen.someSearchFiltersCouldNotBeLoadedYouCan",
+							)}
 							onRetry={page().retryFilters}
 						/>
 					</Show>
@@ -193,8 +196,8 @@ export function SearchScreen(props: SearchScreenProps) {
 							fetchState={page().contentState().fetchState}
 							hasData={page().contentState().data !== undefined}
 							hideWhenIdle
-							offlineLabel="オフラインのため保存済みの検索結果を表示しています"
-							updatingLabel="検索結果を更新中..."
+							offlineLabel={t("searchScreen.offlineShowingSavedSearchResults")}
+							updatingLabel={t("searchScreen.updatingSearchResults")}
 						/>
 					</Show>
 				</div>
@@ -214,7 +217,7 @@ export function SearchScreen(props: SearchScreenProps) {
 					<div class="min-w-0">
 						<Show
 							fallback={
-								<LoadingRegion label="検索結果を読み込んでいます...">
+								<LoadingRegion label={t("searchScreen.loadingSearchResults")}>
 									<MediaGridSkeleton aspectRatio="4/3" />
 								</LoadingRegion>
 							}
@@ -223,7 +226,7 @@ export function SearchScreen(props: SearchScreenProps) {
 							<SourceMediaGrid
 								detailBasePath={props.detailBasePath}
 								enableVirtualization={props.enableVirtualization}
-								errorTitle="検索結果を取得できませんでした"
+								errorTitle={t("searchScreen.couldNotLoadSearchResults")}
 								hasNextPage={page().searchResultQuery.hasNextPage}
 								isFetchingNextPage={page().searchResultQuery.isFetchingNextPage}
 								isFetchNextPageError={
@@ -296,7 +299,9 @@ export function SearchScreen(props: SearchScreenProps) {
 					data-testid="search-bulk-actions-bar"
 				>
 					<span class="w-full text-center font-medium text-sm sm:w-auto">
-						{props.selectedCount?.() ?? 0} 件選択中
+						{t("searchScreen.valueSelected", {
+							value0: String(props.selectedCount?.() ?? 0),
+						})}
 					</span>
 					<Button
 						class="flex-1 sm:flex-none"
@@ -307,7 +312,7 @@ export function SearchScreen(props: SearchScreenProps) {
 						onClick={props.onSelectAll}
 						variant="outline"
 					>
-						表示分をすべて選択
+						{t("searchScreen.selectAllLoadedItems")}
 					</Button>
 					<Show when={props.onBulkAction}>
 						<Button
@@ -315,7 +320,7 @@ export function SearchScreen(props: SearchScreenProps) {
 							disabled={(props.selectedCount?.() ?? 0) === 0}
 							onClick={props.onBulkAction}
 						>
-							一括操作を実行
+							{t("searchScreen.runBulkAction")}
 						</Button>
 					</Show>
 					<Button
@@ -323,7 +328,7 @@ export function SearchScreen(props: SearchScreenProps) {
 						onClick={props.onClearSelection}
 						variant="outline"
 					>
-						解除
+						{t("actions.clearSelection")}
 					</Button>
 				</div>
 			</Show>

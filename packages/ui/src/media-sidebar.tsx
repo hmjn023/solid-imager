@@ -1,3 +1,10 @@
+import {
+	MediaAuthorsSection,
+	MediaAuthorRow,
+	MediaMetadataSection,
+	MediaTagBadge,
+} from "./media-detail-metadata";
+import { t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
 import type { MediaDetails } from "@solid-imager/core/media";
@@ -36,8 +43,8 @@ import {
 } from "./media-activity-controls";
 import { Button } from "./button";
 import { ClipboardCopy } from "./clipboard-copy";
-import { Label } from "./label";
 import { CollapsibleRoot as Collapsible } from "./collapsible";
+import { TextField, TextFieldLabel, TextFieldTextArea } from "./text-field";
 import { toast } from "./toast";
 import { ChevronDown } from "./workspace/icons";
 
@@ -122,7 +129,11 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			setIsEditingDescription(false);
 			props.onUpdate?.();
 		} catch (error) {
-			toast.error(`Failed to update description: ${getErrorMessage(error)}`);
+			toast.error(
+				t("mediaSidebar.failedToUpdateDescriptionValue", {
+					value0: String(getErrorMessage(error)),
+				}),
+			);
 		}
 	};
 
@@ -135,7 +146,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		<MediaDetailInspector>
 			<div class="space-y-2">
 				<div class="flex items-start justify-between gap-2">
-					<h2 class="font-semibold text-sm">Description</h2>
+					<h2 class="font-semibold text-sm">{t("labels.description")}</h2>
 					<Show when={!isEditingDescription()}>
 						<Button
 							size="sm"
@@ -143,14 +154,14 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							onClick={() => setIsEditingDescription(true)}
 							type="button"
 						>
-							Edit
+							{t("actions.edit")}
 						</Button>
 					</Show>
 				</div>
 				<Show
 					fallback={
 						<div class="rounded-md bg-muted p-3 text-muted-foreground text-sm italic">
-							No description
+							{t("labels.noDescription")}
 						</div>
 					}
 					when={isEditingDescription() || props.media.description}
@@ -163,13 +174,19 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						}
 						when={isEditingDescription()}
 					>
-						<textarea
-							class="w-full scroll-mb-24 rounded-md border border-input bg-background p-2 text-base sm:text-sm"
-							onInput={(e) => setDescriptionValue(e.currentTarget.value)}
-							placeholder="Enter description..."
-							rows={6}
+						<TextField
+							onChange={setDescriptionValue}
 							value={descriptionValue()}
-						/>
+						>
+							<TextFieldLabel class="sr-only">
+								{t("labels.description")}
+							</TextFieldLabel>
+							<TextFieldTextArea
+								class="scroll-mb-24 text-base sm:text-sm"
+								placeholder={t("mediaSidebar.enterDescription")}
+								rows={6}
+							/>
+						</TextField>
 						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
 							<Button
 								class="w-full lg:w-auto"
@@ -178,7 +195,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								}}
 								size="sm"
 							>
-								Save
+								{t("actions.save")}
 							</Button>
 							<Button
 								class="w-full lg:w-auto"
@@ -186,7 +203,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								size="sm"
 								variant="outline"
 							>
-								Cancel
+								{t("actions.cancel")}
 							</Button>
 						</div>
 					</Show>
@@ -197,7 +214,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 
 			<Show when={props.media.urls?.length > 0}>
 				<div class="space-y-2">
-					<h2 class="font-semibold text-sm">Source URLs</h2>
+					<h2 class="font-semibold text-sm">{t("mediaSidebar.sourceURLs")}</h2>
 					<ul class="space-y-1">
 						<For each={props.media.urls}>
 							{(url) => (
@@ -218,39 +235,32 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			</Show>
 
 			<Show when={props.media.authors?.length > 0}>
-				<div class="space-y-2">
-					<h2 class="font-semibold text-sm">Authors</h2>
-					<ul class="space-y-1">
-						<For each={props.media.authors}>
-							{(author) => (
-								<li>
-									<div class="flex min-w-0 items-center gap-2">
-										<span class="break-words font-medium">{author.name}</span>
-										<Show when={!author.accounts?.length && author.accountId}>
-											<span class="break-all text-muted-foreground text-xs">
-												({author.accountId})
-											</span>
-										</Show>
-									</div>
-									<For each={author.accounts ?? []}>
-										{(account) => (
-											<p class="break-words text-xs text-muted-foreground">
-												{account.platform ?? "不明"}:{" "}
-												{account.displayName ?? author.name} (
-												{account.accountId})
-											</p>
-										)}
-									</For>
-								</li>
-							)}
-						</For>
-					</ul>
-				</div>
+				<MediaAuthorsSection>
+					<For each={props.media.authors}>
+						{(author) => (
+							<MediaAuthorRow
+								name={author.name}
+								accountId={
+									!author.accounts?.length ? author.accountId : undefined
+								}
+							>
+								<For each={author.accounts ?? []}>
+									{(account) => (
+										<p class="break-words text-xs text-muted-foreground">
+											{account.platform ?? t("status.unknown")}:{" "}
+											{account.displayName ?? author.name} ({account.accountId})
+										</p>
+									)}
+								</For>
+							</MediaAuthorRow>
+						)}
+					</For>
+				</MediaAuthorsSection>
 			</Show>
 
 			<div class="space-y-4">
 				<div class="flex items-center justify-between">
-					<h2 class="font-semibold text-sm">Relations</h2>
+					<h2 class="font-semibold text-sm">{t("mediaSidebar.relations")}</h2>
 					<RelationsEditor
 						disabled={
 							props.isProjectsLoading ||
@@ -266,7 +276,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						onUpdate={props.onUpdate}
 						groups={[
 							{
-								title: "Projects",
+								title: t("labels.projects"),
 								items: props.projects,
 								available: props.allProjects,
 								add: props.onProjectAdd,
@@ -274,7 +284,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								create: props.onProjectCreate,
 							},
 							{
-								title: "IPs",
+								title: t("labels.ips"),
 								items: props.media.ips,
 								available: props.allIps,
 								add: props.onIpAdd,
@@ -282,7 +292,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								create: props.onIpCreate,
 							},
 							{
-								title: "Characters",
+								title: t("labels.characters"),
 								items: props.media.characters,
 								available: props.allCharacters,
 								add: props.onCharacterAdd,
@@ -294,9 +304,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</div>
 				<For
 					each={[
-						{ title: "Projects", items: props.projects },
-						{ title: "IPs", items: props.media.ips },
-						{ title: "Characters", items: props.media.characters },
+						{ title: t("labels.projects"), items: props.projects },
+						{ title: t("labels.ips"), items: props.media.ips },
+						{ title: t("labels.characters"), items: props.media.characters },
 					]}
 				>
 					{(group) => (
@@ -308,7 +318,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								</For>
 								<Show when={group.items.length === 0}>
 									<span class="text-muted-foreground text-sm italic">
-										No {group.title.toLowerCase()} associated
+										{t("mediaSidebar.noValueAssociated", {
+											value0: String(group.title.toLowerCase()),
+										})}
 									</span>
 								</Show>
 							</div>
@@ -317,9 +329,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</For>
 			</div>
 
-			<div class="space-y-2">
-				<div class="flex items-center justify-between">
-					<h2 class="font-semibold text-sm">Positive Tags</h2>
+			<MediaMetadataSection
+				title={t("mediaSidebar.positiveTags")}
+				action={
 					<Show when={!editingTags()}>
 						<Button
 							size="sm"
@@ -333,30 +345,32 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								setEditingTags(true);
 							}}
 						>
-							Edit
+							{t("actions.edit")}
 						</Button>
 					</Show>
-				</div>
+				}
+			>
 				<Show
 					when={editingTags()}
 					fallback={
 						<Show when={positiveTags().length === 0}>
 							<span class="text-muted-foreground text-sm italic">
-								No positive tags
+								{t("mediaSidebar.noPositiveTags")}
 							</span>
 						</Show>
 					}
 				>
-					<Label for="positive-tags" class="text-sm text-muted-foreground">
-						One tag per line
-					</Label>
-					<textarea
-						id="positive-tags"
-						class="w-full rounded-md border border-input bg-background p-2 text-sm"
-						rows={8}
+					<TextField
+						class="space-y-2"
+						disabled={savingTags()}
+						onChange={setTagText}
 						value={tagText()}
-						onInput={(event) => setTagText(event.currentTarget.value)}
-					/>
+					>
+						<TextFieldLabel class="text-muted-foreground text-sm">
+							{t("mediaSidebar.oneTagPerLine")}
+						</TextFieldLabel>
+						<TextFieldTextArea id="positive-tags" rows={8} />
+					</TextField>
 					<div class="flex gap-2">
 						<Button
 							size="sm"
@@ -377,7 +391,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 										props.onUpdate?.();
 									} catch (error) {
 										toast.error(
-											`Failed to update tags: ${getErrorMessage(error)}`,
+											t("mediaSidebar.failedToUpdateTagsValue", {
+												value0: String(getErrorMessage(error)),
+											}),
 										);
 									} finally {
 										setSavingTags(false);
@@ -385,7 +401,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								})();
 							}}
 						>
-							Save
+							{t("actions.save")}
 						</Button>
 						<Button
 							size="sm"
@@ -393,7 +409,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							disabled={savingTags()}
 							onClick={() => setEditingTags(false)}
 						>
-							Cancel
+							{t("actions.cancel")}
 						</Button>
 					</div>
 				</Show>
@@ -401,7 +417,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<div class="flex flex-wrap gap-2">
 						<For each={positiveTags()}>
 							{(tag) => (
-								<Badge
+								<MediaTagBadge
 									classList={{
 										"border-input":
 											tag.source === "AI" || tag.source === "comfyui_workflow",
@@ -410,36 +426,33 @@ export function MediaSidebar(props: MediaSidebarProps) {
 										"bg-accent": tag.source === "comfyui_workflow",
 										"text-primary": tag.source === "comfyui_workflow",
 									}}
-									title={`Source: ${tag.source}`}
+									title={t("mediaSidebar.sourceValue", {
+										value0: String(tag.source),
+									})}
 									variant={tag.source === "AI" ? "outline" : "default"}
-								>
-									{tag.name}
-									<ClipboardCopy
-										class="ml-1.5 p-0.5"
-										iconSize={12}
-										text={tag.name}
-									/>
-								</Badge>
+									name={tag.name}
+								/>
 							)}
 						</For>
 					</div>
 				</Show>
-			</div>
+			</MediaMetadataSection>
 
 			<Show when={negativeTags().length > 0}>
 				<div class="space-y-2">
-					<h2 class="font-semibold text-sm">Negative Tags</h2>
+					<h2 class="font-semibold text-sm">
+						{t("configScreen.negativeTags")}
+					</h2>
 					<div class="flex flex-wrap gap-2">
 						<For each={negativeTags()}>
 							{(tag) => (
-								<Badge title={`Source: ${tag.source}`} variant="secondary">
-									{tag.name}
-									<ClipboardCopy
-										class="ml-1.5 p-0.5"
-										iconSize={12}
-										text={tag.name}
-									/>
-								</Badge>
+								<MediaTagBadge
+									title={t("mediaSidebar.sourceValue", {
+										value0: String(tag.source),
+									})}
+									variant="secondary"
+									name={tag.name}
+								/>
 							)}
 						</For>
 					</div>
@@ -456,7 +469,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				<div class="space-y-2">
 					<Collapsible.Root>
 						<Collapsible.Trigger class="flex w-full items-center justify-between font-semibold text-sm">
-							Generation Info
+							{t("mediaSidebar.generationInfo")}
 							<ChevronDown
 								class="data-[expanded]:rotate-180 transition-transform"
 								size={14}
@@ -467,7 +480,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								<div>
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-muted-foreground">
-											Prompt:
+											{t("mediaSidebar.prompt")}
 										</span>
 										<ClipboardCopy text={genInfo()?.prompt ?? ""} />
 									</div>
@@ -480,7 +493,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								<div>
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-muted-foreground">
-											Negative Prompt:
+											{t("mediaSidebar.negativePrompt")}
 										</span>
 										<ClipboardCopy text={genInfo()?.negativePrompt ?? ""} />
 									</div>
@@ -493,7 +506,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								<div>
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-muted-foreground">
-											Workflow:
+											{t("mediaSidebar.workflow")}
 										</span>
 										<ClipboardCopy
 											text={
@@ -514,7 +527,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			</Show>
 
 			<MediaFileInformation
-				title="File information"
+				title={t("mediaSidebar.fileInformation")}
 				rows={[
 					["Original date", new Date(props.media.createdAt).toLocaleString()],
 					["Registered", new Date(props.media.indexedAt).toLocaleString()],
@@ -545,10 +558,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Unsaved changes</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t("configScreen.unsavedChanges")}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							You have unsaved changes to this description. Leave without
-							saving?
+							{t(
+								"mediaSidebar.youHaveUnsavedChangesToThisDescriptionLeaveWithout",
+							)}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
@@ -557,7 +573,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								navigationBlocker().reset?.();
 							}}
 						>
-							Stay
+							{t("mediaSidebar.stay")}
 						</AlertDialogCancel>
 						<AlertDialogAction
 							onClick={() => {
@@ -570,7 +586,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								resolver.proceed?.();
 							}}
 						>
-							Leave
+							{t("mediaSidebar.leave")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>

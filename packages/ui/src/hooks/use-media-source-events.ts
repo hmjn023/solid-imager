@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	type AllJobsCompletedEvent,
 	allJobsCompletedEventSchema,
@@ -101,7 +102,11 @@ type SafeParseSchema<T> = {
 };
 
 function assertNever(value: never): never {
-	throw new Error(`Unhandled source event: ${String(value)}`);
+	throw new Error(
+		t("useMediaSourceEvents.unhandledSourceEventValue", {
+			value0: String(String(value)),
+		}),
+	);
 }
 
 function validateAndDispatch<T>(

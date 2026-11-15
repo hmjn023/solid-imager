@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import { Show } from "solid-js";
 import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
@@ -28,12 +29,18 @@ export function BatchToolPanel(props: {
 		<div class="space-y-5">
 			<div>
 				<h2 class="font-semibold text-lg text-foreground">
-					{isVector() ? "Vector extraction" : "Batch tagging"}
+					{isVector()
+						? t("types.vectorExtraction")
+						: t("jobTypes.bulk_tagging_parent")}
 				</h2>
 				<p class="mt-0.5 text-xs text-muted-foreground">
 					{isVector()
-						? "Analyze images and representative video thumbnails with EmbeddingGemma 2 for visual and natural language search, or CCIP for character similarity."
-						: "Analyze images and representative video thumbnails and submit AI tagging jobs."}
+						? t(
+								"batchTools.analyzeImagesAndRepresentativeVideoThumbnailsWithEmbeddingGemma2",
+							)
+						: t(
+								"batchTools.analyzeImagesAndRepresentativeVideoThumbnailsAndSubmitAI",
+							)}
 				</p>
 			</div>
 
@@ -42,12 +49,12 @@ export function BatchToolPanel(props: {
 				class="border-border border-y bg-card py-4 sm:rounded-md sm:border sm:p-4"
 			>
 				<h3 class="sr-only" id={`${props.kind}-options-title`}>
-					Job options
+					{t("batchTools.jobOptions")}
 				</h3>
 				<div class="grid gap-4 lg:grid-cols-2">
 					<Show when={isVector()}>
 						<div class="space-y-1.5">
-							<Label for="batch-vector-model">Model</Label>
+							<Label for="batch-vector-model">{t("batchTools.model")}</Label>
 							<Select
 								options={["embeddinggemma2", "ccip"]}
 								value={props.manager.vectorModel()}
@@ -62,28 +69,29 @@ export function BatchToolPanel(props: {
 								itemComponent={(item) => (
 									<SelectItem item={item.item}>
 										{item.item.rawValue === "ccip"
-											? "CCIP"
-											: "EmbeddingGemma 2"}
+											? t("batchTools.cCIP")
+											: t("batchTools.embeddingGemma2")}
 									</SelectItem>
 								)}
 							>
 								<SelectTrigger
 									id="batch-vector-model"
-									aria-label="Embedding model"
+									aria-label={t("batchTools.embeddingModel")}
 								>
 									<SelectValue<string>>
 										{(state) =>
 											state.selectedOption() === "ccip"
-												? "CCIP"
-												: "EmbeddingGemma 2"
+												? t("batchTools.cCIP")
+												: t("batchTools.embeddingGemma2")
 										}
 									</SelectValue>
 								</SelectTrigger>
 								<SelectContent />
 							</Select>
 							<p class="text-xs text-muted-foreground">
-								EmbeddingGemma 2 uses the shared AI Provider / Device settings.
-								The first run downloads the Q8 model (768 dimensions).
+								{t(
+									"batchTools.embeddingGemma2UsesTheSharedAIProviderDeviceSettings",
+								)}
 							</p>
 						</div>
 					</Show>
@@ -94,11 +102,11 @@ export function BatchToolPanel(props: {
 							value={props.manager.selectedSourceId()}
 						/>
 						<p class="text-xs text-muted-foreground">
-							Leave empty to process all sources.
+							{t("batchTools.leaveEmptyToProcessAllSources")}
 						</p>
 					</div>
 					<div class="space-y-2">
-						<Label>Existing results</Label>
+						<Label>{t("batchTools.existingResults")}</Label>
 						<Checkbox
 							checked={props.manager.forceRetag()}
 							class="flex min-h-9 items-center gap-2"
@@ -106,11 +114,13 @@ export function BatchToolPanel(props: {
 						>
 							<CheckboxControl />
 							<CheckboxLabel>
-								{isVector() ? "Force re-extraction" : "Force re-tagging"}
+								{isVector()
+									? t("batchTools.forceReExtraction")
+									: t("batchTools.forceReTagging")}
 							</CheckboxLabel>
 						</Checkbox>
 						<p class="text-xs text-muted-foreground">
-							When disabled, processed media is skipped.
+							{t("batchTools.whenDisabledProcessedMediaIsSkipped")}
 						</p>
 					</div>
 				</div>
@@ -121,7 +131,9 @@ export function BatchToolPanel(props: {
 						onClick={() => void props.manager.handleScan()}
 						variant="outline"
 					>
-						{pendingAction() === "scan" ? "Scanning..." : "Scan targets"}
+						{pendingAction() === "scan"
+							? t("duplicates.scanning")
+							: t("batchTools.scanTargets")}
 					</Button>
 					<Button
 						class="w-full sm:w-auto"
@@ -129,10 +141,10 @@ export function BatchToolPanel(props: {
 						onClick={() => void runStart()}
 					>
 						{pendingAction() === "start"
-							? "Submitting..."
+							? t("thumbnail.submitting")
 							: isVector()
-								? "Start extraction"
-								: "Start tagging"}
+								? t("batchTools.startExtraction")
+								: t("batchTools.startTagging")}
 					</Button>
 				</div>
 			</section>

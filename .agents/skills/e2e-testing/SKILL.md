@@ -12,12 +12,15 @@ Use the isolated harness for all browser regression work. It creates a temporary
 Run from the repository root:
 
 ```bash
-bun run --cwd apps/server test:e2e              # dev representative specs + full fresh production
-bun run --cwd apps/server test:e2e:full         # full dev + full fresh production
-bun run --cwd apps/server test:e2e:dev          # dev only
-bun run --cwd apps/server test:e2e:production   # production only
-bun run --cwd apps/server test:e2e:dev -- ccip-flow.spec.ts
-bun run --cwd apps/server test                  # unit, integration, components, then balanced E2E
+bun run test:e2e                             # tagged dev smoke cases + full fresh production
+bun run test:e2e --mode=smoke                # dev smoke cases only
+bun run test:e2e --mode=full                 # full dev + full fresh production
+bun run test:e2e --mode=dev                  # dev only
+bun run test:e2e --mode=production           # production only
+bun run test:e2e --mode=dev ccip-flow.spec.ts
+bun run test:e2e --mode=components           # gallery only (no DB or AI)
+bun run test:e2e --list                      # collect the default selection without a server
+bun run --cwd apps/server test               # unit, integration, components, then balanced E2E
 ```
 
 The harness is intentionally local. Do not reintroduce a GitHub Actions E2E job unless the project explicitly accepts the native AI dependency and model-cache cost.

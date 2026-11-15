@@ -71,7 +71,7 @@ test.describe("loading and recovery", () => {
 
 		const navigation = page.goto("/search", { waitUntil: "commit" });
 		await expect(
-			page.getByRole("link", { name: "Library", exact: true }),
+			page.getByRole("link", { name: "ライブラリ", exact: true }),
 		).toBeVisible();
 		const screenSkeleton = page.locator('[data-screen-skeleton="media-grid"]');
 		// Production can mount the route content before the route-level fallback
@@ -194,7 +194,7 @@ test.describe("loading and recovery", () => {
 		const navigation = mediaLink.dblclick();
 		await requestSeen;
 		await expect(
-			page.getByRole("link", { name: "Library", exact: true }),
+			page.getByRole("link", { name: "ライブラリ", exact: true }),
 		).toBeVisible();
 		await expect(page.locator('[data-skeleton="media-detail"]')).toBeVisible();
 
@@ -227,7 +227,7 @@ test.describe("loading and recovery", () => {
 			.dblclick();
 		await expect(page).toHaveURL(new RegExp(`${mediaPath()}/?$`));
 		await expect(
-			page.getByRole("link", { name: "Library", exact: true }),
+			page.getByRole("link", { name: "ライブラリ", exact: true }),
 		).toBeVisible();
 		await expect(page.getByRole("alert")).toContainText(
 			"メディア情報を読み込めませんでした",
@@ -359,7 +359,7 @@ test.describe("loading and recovery", () => {
 		);
 		await context.setOffline(false);
 		await recoveredSearch;
-		await expect(page.getByText("1 items", { exact: true })).toBeVisible();
+		await expect(page.getByText("1件", { exact: true })).toBeVisible();
 		await expect(
 			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
 		).toBeVisible();

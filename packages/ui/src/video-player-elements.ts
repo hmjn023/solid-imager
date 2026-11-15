@@ -1,4 +1,5 @@
 // Register only the controls used by VideoPlayer, after mounting in the browser.
+import "./video-player-locale";
 import "media-chrome/media-controller";
 import "media-chrome/media-control-bar";
 import "media-chrome/media-play-button";

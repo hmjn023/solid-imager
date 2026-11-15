@@ -56,6 +56,7 @@
         "@solid-imager/client": "workspace:*",
         "@solid-imager/core": "workspace:*",
         "@solid-imager/db": "workspace:*",
+        "@solid-imager/i18n": "workspace:*",
         "@solid-imager/ui": "workspace:*",
         "@tanstack/query-core": "5.105.0",
         "@tanstack/router-plugin": "1.168.48",
@@ -118,6 +119,7 @@
       "dependencies": {
         "@solid-imager/client": "workspace:*",
         "@solid-imager/core": "workspace:*",
+        "@solid-imager/i18n": "workspace:*",
         "@solid-imager/ui": "workspace:*",
         "@tanstack/db": "0.15.2",
         "@tanstack/query-db-collection": "1.4.8",
@@ -150,6 +152,7 @@
       "dependencies": {
         "@solid-imager/client": "workspace:*",
         "@solid-imager/core": "workspace:*",
+        "@solid-imager/i18n": "workspace:*",
         "zod": "^4.6.7",
       },
       "devDependencies": {
@@ -214,12 +217,17 @@
         "drizzle-orm": "^0.45.4",
       },
     },
+    "packages/i18n": {
+      "name": "@solid-imager/i18n",
+      "version": "0.0.0",
+    },
     "packages/ui": {
       "name": "@solid-imager/ui",
       "version": "0.0.0",
       "dependencies": {
         "@kobalte/core": "^0.13.14",
         "@solid-imager/core": "workspace:*",
+        "@solid-imager/i18n": "workspace:*",
         "@solidjs/router": "^1.0.0",
         "@tanstack/charts": "^1.2.1",
         "@tanstack/solid-form": "^1.33.5",
@@ -810,6 +818,8 @@
     "@solid-imager/core": ["@solid-imager/core@workspace:packages/core"],
 
     "@solid-imager/db": ["@solid-imager/db@workspace:packages/db"],
+
+    "@solid-imager/i18n": ["@solid-imager/i18n@workspace:packages/i18n"],
 
     "@solid-imager/server": ["@solid-imager/server@workspace:apps/server"],
 

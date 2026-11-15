@@ -1,4 +1,4 @@
-# テスト棚卸し（2026-09-23更新）
+# テスト棚卸し
 
 今回の対象は、テストの検出力、実行対象の漏れ、E2Eの重複実行と起動コスト。テストが落ちること自体は削除理由にしない。実装に触れない成功確認を除去し、ブラウザーが必要な回帰検証を残した。
 
@@ -12,7 +12,7 @@
 | 削除する | 定数の自己比較、手作りのレスポンスの自己比較、コメントだけのテスト、完了した移行のディレクトリ存在確認 |
 | 調査を続ける | 実際に失敗している、古い画面操作を参照する、外部条件で揺れる。通すためにassertionを弱めない |
 
-## 数量と実行対象
+## 2026-09-23 の数量と実行対象
 
 Playwrightの `--list --reporter=json` による収集数。成功数やカバレッジ率ではない。
 
@@ -113,34 +113,23 @@ Bun 1.4.4 / sharp 0.35.5 / Linux x64で、同じ新規production buildを先読�
 
 ## 実行方法
 
+リポジトリのルートから実行する。
+
 ```bash
-# 日常のunit / integration。client・DBも含む
-bun run test
-
-# ブラウザー内のコンポーネント。DB・native AIは不要
-bun run --cwd apps/server test:e2e:components
-
-# アプリE2E（galleryを除く）。通常はdevの代表14件＋fresh production全97件
-bun run --cwd apps/server test:e2e
-
-# dev / fresh productionを両方とも全件実行
-bun run --cwd apps/server test:e2e:full
-
-# 各モード単独では全件を実行
-bun run --cwd apps/server test:e2e:dev
-bun run --cwd apps/server test:e2e:production
-
-# serverのunit/integration + components + 通常のアプリE2E
-bun run --cwd apps/server test
-
-# 全projectを起動せず、対象だけ確認
-bun run --cwd apps/server test:e2e:dev -- routes.responsive.spec.ts --project=responsive-desktop
-bun run --cwd apps/server test:e2e:dev -- --list
+bun run test                                         # 全workspaceの通常テスト
+bun run test --project server-unit e2e-arguments     # Vitestの対象を絞る
+bun run test:e2e                                     # dev代表ケース → fresh production全件
+bun run test:e2e --mode=smoke                        # devの代表ケースだけを確認
+bun run test:e2e --mode=dev route-reload.spec.ts     # 編集中のspecのみ
+bun run test:e2e --mode=production                   # fresh productionのみ
+bun run test:e2e --mode=components                   # DB不要のブラウザー内コンポーネント
+bun run test:e2e --mode=full                         # dev・fresh productionとも全件
+bun run test:e2e --list                              # 通常の実行対象を起動前に確認
 ```
 
-通常の `test:e2e` はdevで `route-reload`（直接URL/F5とhydration）、`tauri-migration`（独立SPA）、`ccip-flow`（実推論とジョブ）、`realtime-preservation`（実イベントとSSE再接続）の14件を実行し、fresh productionでは97件すべてを実行する。前回の全件実測ではdev 5.1分、production 3.9分かかった。production固有の画像処理停止を実際に検出したため、本番側は全件を維持し、同じ画面操作をdevでもう一度行う時間を減らす。ブラウザー内コンポーネント7件は約10秒だったため、Vitest Browser Modeへの移行より重複実行の削減を優先した。
+dev の代表ケースは `@dev-smoke` で指定し、検索・詳細の直接URLとF5、SPA内の遷移、Tauriの起動と再接続設定の永続化、実CCIP推論、SSE再接続を検証する。対象ファイルに別のケースを追加すると、production全件と `--mode=dev` の全件実行で検証できる。
 
-dev固有の問題を調べるときは `test:e2e:dev`、両runtimeの全件が必要な変更やリリース前の検証には `test:e2e:full` を使う。`test:e2e` にspecファイルを明示した場合は、そのファイルだけを両runtimeで実行する。`test:e2e:quick` はdesktop・responsive-desktop・375・768を選ぶ。320とTauri、独立componentsはquickに含まれない。完全なゲートの代わりにはしない。
+spec・行番号・`--grep`・`--project` で絞り込める。モードを省略してspecを指定するとその対象をdevとproductionで実行する。旧 `test:e2e:quick:dev` と同じ画面幅をまとめて検証するには `bun run test:e2e --mode=dev --project desktop responsive-desktop responsive-375 responsive-768` を使う。`bun run --cwd apps/server test` は引き続きserverのunit/integration、components、通常のアプリE2Eを順番に実行する。
 
 `@desktop-only` / `@mobile-only` はprojectの `grepInvert` で収集時に振り分ける。画面幅に依存しない検証はdesktop、レイアウト・touch・breakpoint依存の検証は該当幅に置く。対応する画面幅を増やす際はタグの適用条件も確認する。
 
@@ -148,7 +137,23 @@ dev固有の問題を調べるときは `test:e2e:dev`、両runtimeの全件が�
 
 アプリE2E失敗時は `/tmp/solid-imager-e2e/<mode>-<uuid>/server.log` も残る。成功した隔離runtimeは自動削除する。
 
-## 実測と未解決事項
+## 2026-11-13 の計測
+
+同じマシンで変更前後を各1回実行した。通常テストはコマンド全体の経過時間、ブラウザーテストは隔離環境の起動を含むPlaywrightの所要時間。
+
+| 対象 | 変更前 | 変更後 | 実行内容 |
+| --- | ---: | ---: | --- |
+| 通常テスト | 30.0秒 | 25.7秒 | 比較時のVitest 971件、Node 9件、Bun 11件。Vitestは10プロジェクトを1回で実行 |
+| dev代表ケース | 56.7秒 | 29.9秒 | 4ファイルの全20件からタグ付き7件へ変更 |
+| コンポーネントE2E | 24.2秒 | 14.5秒 | 同じ24件。独立したgalleryを1ワーカーから2ワーカーへ変更 |
+
+修正後の通常のアプリE2Eは14分03秒で完走した。うちfresh productionは274件すべて成功し、スキップ・再試行は0件。812.5秒のうち最初のテスト開始までが9.7秒、各テストの所要時間の合計が798.1秒だった。spec別の合計ではManagerのバッチ進捗（20件・117.5秒）、EmbeddingGemmaの実推論を含む検索（4件・73.2秒）、pixiv（25件・72.9秒）の順に長い。productionの一部はほかの検証と並行しており、全件の変更前後の短縮率は計測していない。
+
+アプリE2Eは同一モード内でメディア、AI設定、SSEの同期対象を共有するため1ワーカーで実行する。実行開始時には隔離ソースの初回同期完了を待つ。EmbeddingGemmaのシナリオはテスト単位のfixtureでソースと画像を片付け、失敗時にも次の画面幅の検索結果に同名の画像が残るのを防ぐ。
+
+Managerではラベル追加前のボタン名を探して1ケースにつき10秒待ち切るテストがあり、画面幅とジョブの種類ごとに繰り返していた。対象ソースの選択欄を現在のラベルで取得し、復元後の選択値も照合するようにした。
+
+## 2026-09-23 の実測と未解決事項
 
 - `bun run test`: 最終状態で89ファイル・411件成功。
 - `bun run check`: Oxlint/Oxfmt、全workspaceのtypecheck、design lint成功。

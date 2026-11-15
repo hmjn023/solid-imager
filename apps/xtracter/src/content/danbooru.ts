@@ -237,6 +237,7 @@ export function parseDanbooruApiMetadata(
 	return {
 		targetUrl,
 		sourceUrls,
+		// oxlint-disable-next-line ui-text/no-raw-text -- Persist the source metadata independently of the extension display language.
 		description: `Danbooru Post #${postId}`,
 		createdAt: data.created_at,
 		authors,

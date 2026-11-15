@@ -1,15 +1,18 @@
-import { Button } from "./button";
+import { t } from "@solid-imager/i18n";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "./dialog";
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "./alert-dialog";
 
 export type SourceDeleteModalProps = {
 	isOpen: boolean;
+	isDeleting?: boolean;
 	onClose: () => void;
 	onConfirm: (id: string) => void;
 	sourceToDelete?: { id?: string | null; name?: string | null } | null;
@@ -17,31 +20,41 @@ export type SourceDeleteModalProps = {
 
 export function SourceDeleteModal(props: SourceDeleteModalProps) {
 	return (
-		<Dialog onOpenChange={() => props.onClose()} open={props.isOpen}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>Delete Media Source</DialogTitle>
-					<DialogDescription>
-						Are you sure you want to delete{" "}
-						<span class="font-bold">{props.sourceToDelete?.name}</span>? This
-						action cannot be undone. Files on disk will NOT be deleted.
-					</DialogDescription>
-				</DialogHeader>
-				<DialogFooter>
-					<Button onClick={() => props.onClose()} variant="outline">
-						Cancel
-					</Button>
-					<Button
-						onClick={() =>
-							props.sourceToDelete?.id &&
-							props.onConfirm(props.sourceToDelete.id)
-						}
+		<AlertDialog
+			onOpenChange={(open) => {
+				if (!open && !props.isDeleting) props.onClose();
+			}}
+			open={props.isOpen}
+		>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>
+						{t("sourceDeleteModal.deleteMediaSource")}
+					</AlertDialogTitle>
+					<AlertDialogDescription>
+						{t("sourceDeleteModal.areYouSureYouWantToDelete")}{" "}
+						<span class="font-bold">{props.sourceToDelete?.name}</span>
+						{t("sourceDeleteModal.thisActionCannotBeUndoneFilesOnDiskWill")}
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel disabled={props.isDeleting}>
+						{t("actions.cancel")}
+					</AlertDialogCancel>
+					<AlertDialogAction
 						variant="destructive"
+						disabled={props.isDeleting}
+						onClick={(event) => {
+							event.preventDefault();
+							if (!props.isDeleting && props.sourceToDelete?.id) {
+								props.onConfirm(props.sourceToDelete.id);
+							}
+						}}
 					>
-						Delete
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+						{t("actions.delete")}
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }

@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import {
 	defaultState,
 	type SearchState,
@@ -53,44 +54,84 @@ function getActiveConditionLabels(
 		const source = props.sources?.find(
 			(item) => item.id === state.selectedSource,
 		);
-		labels.push(`ソース: ${source?.name ?? "選択済み"}`);
+		labels.push(
+			t("mediaSidebar.sourceValue", {
+				value0: String(source?.name ?? t("contextMenu.selected")),
+			}),
+		);
 	}
 	if (state.similarityAnchorMediaId) {
-		labels.push(`類似度順: ${state.similarityTopK}件`);
+		labels.push(
+			t("mobileSearchFilterDialog.similarityValueResults", {
+				value0: String(state.similarityTopK),
+			}),
+		);
 	}
 	if (state.semanticQuery) {
-		labels.push(`文章検索: ${state.semanticQuery}`);
+		labels.push(
+			t("mobileSearchFilterDialog.textSearchValue", {
+				value0: String(state.semanticQuery),
+			}),
+		);
 		return labels;
 	}
 
 	if (state.mode === "simple") {
 		if (state.searchQuery.trim()) {
-			labels.push(`ファイル名: ${state.searchQuery.trim()}`);
+			labels.push(
+				t("mobileSearchFilterDialog.filenameValue", {
+					value0: String(state.searchQuery.trim()),
+				}),
+			);
 		}
 		if (state.selectedTags.length > 0) {
-			labels.push(`タグ: ${state.selectedTags.length}件`);
+			labels.push(
+				t("mobileSearchFilterDialog.tagsValue", {
+					value0: String(state.selectedTags.length),
+				}),
+			);
 		}
 		if (state.excludeTags.length > 0) {
-			labels.push(`除外タグ: ${state.excludeTags.length}件`);
+			labels.push(
+				t("mobileSearchFilterDialog.excludedTagsValue", {
+					value0: String(state.excludeTags.length),
+				}),
+			);
 		}
 		if (state.selectedProjects.length > 0) {
-			labels.push(`プロジェクト: ${state.selectedProjects.length}件`);
+			labels.push(
+				t("mobileSearchFilterDialog.projectsValue", {
+					value0: String(state.selectedProjects.length),
+				}),
+			);
 		}
 		if (state.selectedIps.length > 0) {
-			labels.push(`IP: ${state.selectedIps.length}件`);
+			labels.push(
+				t("mobileSearchFilterDialog.iPsValue", {
+					value0: String(state.selectedIps.length),
+				}),
+			);
 		}
 		if (state.selectedCharacters.length > 0) {
-			labels.push(`キャラクター: ${state.selectedCharacters.length}件`);
+			labels.push(
+				t("mobileSearchFilterDialog.charactersValue", {
+					value0: String(state.selectedCharacters.length),
+				}),
+			);
 		}
 		if (state.selectedAuthors.length > 0) {
-			labels.push(`作者: ${state.selectedAuthors.length}件`);
+			labels.push(
+				t("mobileSearchFilterDialog.authorsValue", {
+					value0: String(state.selectedAuthors.length),
+				}),
+			);
 		}
 		return labels;
 	}
 
 	if (state.mode === "pro") {
 		if (state.advancedCondition) {
-			labels.push("詳細条件を設定済み");
+			labels.push(t("mobileSearchFilterDialog.advancedConditionsConfigured"));
 		}
 		return labels;
 	}
@@ -113,14 +154,20 @@ function CurrentSearchConditions(props: {
 			data-testid="current-search-conditions"
 		>
 			<div class="flex items-center justify-between gap-3">
-				<span class="font-medium">現在の条件</span>
+				<span class="font-medium">
+					{t("mobileSearchFilterDialog.currentConditions")}
+				</span>
 				<span class="text-muted-foreground text-xs">
-					{labels().length > 0 ? `${labels().length}件` : "指定なし"}
+					{labels().length > 0
+						? t("charts.valueItems", { value0: String(labels().length) })
+						: t("mobileSearchFilterDialog.notSpecified")}
 				</span>
 			</div>
 			<Show
 				fallback={
-					<p class="mt-2 text-muted-foreground">条件は指定されていません。</p>
+					<p class="mt-2 text-muted-foreground">
+						{t("mobileSearchFilterDialog.noConditionsSpecified")}
+					</p>
 				}
 				when={labels().length > 0}
 			>
@@ -168,9 +215,11 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 		<Dialog onOpenChange={props.onOpenChange} open={props.open}>
 			<DialogContent class="max-w-lg gap-4 p-4 sm:p-6">
 				<DialogHeader>
-					<DialogTitle>検索フィルター</DialogTitle>
+					<DialogTitle>{t("searchToolbar.searchFilters")}</DialogTitle>
 					<DialogDescription>
-						条件を確認・変更してから検索結果へ適用できます。
+						{t(
+							"mobileSearchFilterDialog.reviewOrEditConditionsBeforeApplyingThemToThe",
+						)}
 					</DialogDescription>
 				</DialogHeader>
 				<CurrentSearchConditions
@@ -194,10 +243,10 @@ export function MobileSearchFilterDialog(props: MobileSearchFilterDialogProps) {
 				</div>
 				<DialogFooter class="border-t pt-4">
 					<Button onClick={handleClear} type="button" variant="outline">
-						条件をクリア
+						{t("mobileSearchFilterDialog.clearConditions")}
 					</Button>
 					<Button onClick={handleApply} type="button">
-						適用
+						{t("actions.apply")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

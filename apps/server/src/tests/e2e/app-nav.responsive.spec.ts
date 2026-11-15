@@ -75,7 +75,7 @@ test("app navigation is responsive and accessible", async ({
 	);
 	if (!usesMobileMenu) {
 		const aboutLink = page.getByRole("link", {
-			name: "About",
+			name: "このアプリについて",
 			exact: true,
 		});
 		await expect(aboutLink).toHaveAttribute("aria-current", "page");
@@ -91,10 +91,10 @@ test("app navigation is responsive and accessible", async ({
 		dialog.getByRole("navigation", { name: "主要ナビゲーション" }),
 	).toBeVisible();
 	await expect(
-		dialog.getByRole("link", { name: "About", exact: true }),
+		dialog.getByRole("link", { name: "このアプリについて", exact: true }),
 	).toHaveAttribute("aria-current", "page");
 	await expect(
-		dialog.getByRole("link", { name: "Library", exact: true }),
+		dialog.getByRole("link", { name: "ライブラリ", exact: true }),
 	).toBeVisible();
 	await expectTextContrast(
 		page,
@@ -107,7 +107,7 @@ test("app navigation is responsive and accessible", async ({
 	await expect(menuButton).toBeFocused();
 
 	await menuButton.click();
-	await dialog.getByRole("link", { name: "Library", exact: true }).click();
+	await dialog.getByRole("link", { name: "ライブラリ", exact: true }).click();
 	await expect(page).toHaveURL((url) => url.pathname === "/search");
 	await expect(dialog).toBeHidden();
 	await expectNoHorizontalOverflow(page);

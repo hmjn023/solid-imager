@@ -6,6 +6,10 @@ bunx lint-staged
 # Typecheck every workspace so cross-package and unchanged consumers cannot drift.
 bun run typecheck
 
+# Guard the copy checker and catalog invariants on every commit.
+node tools/ui-text.test.mjs
+bun run --cwd packages/i18n test
+
 # Run tests only for changed packages.
 CHANGED_SERVER=$(git diff --cached --name-only -- apps/server/ | head -1)
 CHANGED_CORE=$(git diff --cached --name-only -- packages/core/ | head -1)

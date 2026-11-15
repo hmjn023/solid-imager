@@ -239,7 +239,7 @@ test(
 		await withRelatedMedia(page.request, async () => {
 			await page.goto("/about");
 			await waitForAppHydration(page);
-			await page.getByRole("link", { name: "Library", exact: true }).click();
+			await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
 			await expect(page).toHaveURL("/search");
 			const primary = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 			await primary.focus();
@@ -270,13 +270,13 @@ test(
 		// This scenario deliberately leaves details before supplemental queries
 		// finish; disposing those queries cancels their requests during SPA navigation.
 		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/(?:projects\/listForMedia|media\/getRelated)(?:\?|$)/,
+			/\/api\/rpc\/(?:projects\/listForメディア|media\/getRelated)(?:\?|$)/,
 			"net::ERR_ABORTED",
 		);
 		await withRelatedMedia(page.request, async () => {
 			await page.goto("/about");
 			await waitForAppHydration(page);
-			await page.getByRole("link", { name: "Library", exact: true }).click();
+			await page.getByRole("link", { name: "ライブラリ", exact: true }).click();
 			const primary = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 			await primary.focus();
 			await primary.press("Enter");
@@ -298,9 +298,9 @@ test(
 			await expect.poll(() => new URL(page.url()).pathname).toBe("/search");
 			await page.goBack();
 			await expect(page).toHaveURL("/about");
-			await page.getByRole("link", { name: "Jobs", exact: true }).click();
+			await page.getByRole("link", { name: "ジョブ", exact: true }).click();
 			await expect(page).toHaveURL("/jobs");
-			await page.getByRole("link", { name: "Manager", exact: true }).click();
+			await page.getByRole("link", { name: "管理", exact: true }).click();
 			await page
 				.getByRole("button", { name: /キャラクタークラスタリング/ })
 				.filter({ visible: true })

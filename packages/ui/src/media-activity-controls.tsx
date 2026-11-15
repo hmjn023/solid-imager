@@ -1,3 +1,4 @@
+import { getLocale, t } from "@solid-imager/i18n";
 import type {
 	MediaActivity,
 	MediaDetails,
@@ -20,6 +21,7 @@ import {
 	SelectValue,
 } from "./select";
 import { toast } from "./toast";
+import { Toggle } from "./toggle";
 
 type MediaLocation = { sourceId: string; mediaId: string };
 export type MediaActivityApi = {
@@ -30,12 +32,9 @@ export type MediaActivityApi = {
 };
 
 const ratings = [
-	"Unrated",
-	"1 star",
-	"2 stars",
-	"3 stars",
-	"4 stars",
-	"5 stars",
+	t("mediaActivityControls.unrated"),
+	t("mediaActivityControls.oneStar"),
+	...[2, 3, 4, 5].map((count) => t("mediaActivityControls.stars", { count })),
 ];
 
 export function MediaActivityControls(props: {
@@ -87,30 +86,34 @@ export function MediaActivityControls(props: {
 			props.api.updatePreferences(input),
 		onSuccess: ({ rating, favorite }, input) =>
 			refresh(input, { rating, favorite }),
-		onError: () => toast.error("Could not save media preferences"),
+		onError: () =>
+			toast.error(t("mediaActivityControls.couldNotSaveMediaPreferences")),
 	}));
 	const lastViewed = () => props.media.activity?.lastViewedAt;
 
 	return (
 		<div class="space-y-2">
-			<h2 class="font-semibold text-sm">Activity</h2>
+			<h2 class="font-semibold text-sm">
+				{t("mediaActivityControls.activity")}
+			</h2>
 			<div class="flex flex-wrap items-center gap-2">
-				<Button
-					aria-pressed={props.media.activity?.favorite ?? false}
+				<Toggle
+					class="min-h-11 gap-2 hover:bg-accent hover:text-accent-foreground data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary/90 data-[pressed]:hover:text-primary-foreground"
 					disabled={save.isPending}
-					variant={props.media.activity?.favorite ? "default" : "outline"}
-					onClick={() =>
+					onChange={(favorite) =>
 						save.mutate({
 							...location(),
-							data: { favorite: !props.media.activity?.favorite },
+							data: { favorite },
 						})
 					}
+					pressed={props.media.activity?.favorite ?? false}
+					variant="outline"
 				>
 					<span aria-hidden="true">
 						{props.media.activity?.favorite ? "♥" : "♡"}
 					</span>{" "}
-					Favorite
-				</Button>
+					{t("mediaActivityControls.favorite")}
+				</Toggle>
 				<Select
 					options={ratings}
 					value={ratings[props.media.activity?.rating ?? 0]}
@@ -127,7 +130,10 @@ export function MediaActivityControls(props: {
 						<SelectItem item={item.item}>{item.item.rawValue}</SelectItem>
 					)}
 				>
-					<SelectTrigger aria-label="Rating" class="min-h-11 w-auto gap-2">
+					<SelectTrigger
+						aria-label={t("sortOptions.rating")}
+						class="min-h-11 w-auto gap-2"
+					>
 						<SelectValue<string>>
 							{(state) => state.selectedOption()}
 						</SelectValue>
@@ -136,21 +142,26 @@ export function MediaActivityControls(props: {
 				</Select>
 			</div>
 			<p class="text-xs text-muted-foreground">
-				Views: {props.media.activity?.viewCount ?? 0}
+				{t("mediaActivityControls.viewsValue", {
+					value0: String(props.media.activity?.viewCount ?? 0),
+				})}
 			</p>
 			<p class="text-xs text-muted-foreground">
-				Last viewed:{" "}
-				<Show when={lastViewed()} fallback="Never">
+				{t("mediaActivityControls.lastViewed")}{" "}
+				<Show
+					when={lastViewed()}
+					fallback={t("mediaActivityControls.neverViewed")}
+				>
 					{(date) => (
 						<time dateTime={date().toISOString()}>
-							{date().toLocaleString()}
+							{date().toLocaleString(getLocale())}
 						</time>
 					)}
 				</Show>
 			</p>
 			<Show when={visit.isError}>
 				<div class="text-xs">
-					<output>Could not record this view.</output>{" "}
+					<output>{t("mediaActivityControls.couldNotRecordThisView")}</output>{" "}
 					<Button
 						size="sm"
 						variant="link"
@@ -158,7 +169,7 @@ export function MediaActivityControls(props: {
 							if (visit.variables) visit.mutate(visit.variables);
 						}}
 					>
-						Retry
+						{t("actions.retry")}
 					</Button>
 				</div>
 			</Show>

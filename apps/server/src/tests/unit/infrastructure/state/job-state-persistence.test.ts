@@ -1,6 +1,5 @@
 import { call } from "@orpc/server";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
-import path from "node:path";
 import { randomUUID } from "node:crypto";
 import { createRepositories, type DrizzleExecutor } from "@solid-imager/db";
 import { jobs, mediaSources } from "@solid-imager/db/schema";
@@ -19,6 +18,7 @@ import {
 	it,
 	vi,
 } from "vitest";
+import { MIGRATIONS_DIR } from "~/tests/paths";
 import { createPglite } from "~/infrastructure/db/pglite";
 
 const state = vi.hoisted(() => ({
@@ -95,7 +95,7 @@ describe("persisted import, attempt and batch transitions", () => {
 			const pgliteDatabase = drizzle(pglite, { schema });
 			database = pgliteDatabase;
 			await migrate(pgliteDatabase, {
-				migrationsFolder: path.resolve("drizzle"),
+				migrationsFolder: MIGRATIONS_DIR,
 			});
 		}
 		state.database = database;

@@ -1,5 +1,4 @@
 import {
-	CloseButton as AlertDialogPrimitiveCloseButton,
 	Content as AlertDialogPrimitiveContent,
 	Description as AlertDialogPrimitiveDescription,
 	Overlay as AlertDialogPrimitiveOverlay,
@@ -8,9 +7,10 @@ import {
 	Title as AlertDialogPrimitiveTitle,
 	Trigger as AlertDialogPrimitiveTrigger,
 } from "@kobalte/core/alert-dialog";
-import type { Component, ComponentProps } from "solid-js";
+import { useDialogContext } from "@kobalte/core/dialog";
+import type { Component, ComponentProps, JSX } from "solid-js";
 import { splitProps } from "solid-js";
-import { buttonVariants } from "./button";
+import { Button } from "./button";
 import { cn } from "./utils/cn";
 
 type ClassProps<T> = Omit<T, "class"> & { class?: string | undefined };
@@ -116,29 +116,53 @@ const AlertDialogDescription: Component<
 	);
 };
 
-const AlertDialogAction: Component<
-	ClassProps<ComponentProps<typeof AlertDialogPrimitiveCloseButton>>
-> = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+type AlertDialogButtonProps = ClassProps<
+	ComponentProps<typeof Button<"button">>
+>;
+
+type AlertDialogButtonClickEvent = MouseEvent & {
+	currentTarget: HTMLButtonElement;
+	target: Element;
+};
+
+function invokeButtonClick(
+	handler: JSX.EventHandlerUnion<HTMLButtonElement, MouseEvent> | undefined,
+	event: AlertDialogButtonClickEvent,
+) {
+	if (!handler) return;
+	if (typeof handler === "function") {
+		handler(event);
+		return;
+	}
+	handler[0](handler[1], event);
+}
+
+const AlertDialogButton: Component<AlertDialogButtonProps> = (props) => {
+	const context = useDialogContext();
+	const [local, rest] = splitProps(props, ["onClick"]);
 	return (
-		<AlertDialogPrimitiveCloseButton
-			class={cn(buttonVariants(), props.class)}
+		<Button
+			onClick={(event: AlertDialogButtonClickEvent) => {
+				invokeButtonClick(local.onClick, event);
+				if (!event.defaultPrevented) {
+					context.close();
+				}
+			}}
 			{...rest}
 		/>
 	);
 };
 
-const AlertDialogCancel: Component<
-	ClassProps<ComponentProps<typeof AlertDialogPrimitiveCloseButton>>
-> = (props) => {
-	const [, rest] = splitProps(props, ["class"]);
+const AlertDialogAction: Component<AlertDialogButtonProps> = (props) => (
+	<AlertDialogButton {...props} />
+);
+
+const AlertDialogCancel: Component<AlertDialogButtonProps> = (props) => {
+	const [local, rest] = splitProps(props, ["class", "variant"]);
 	return (
-		<AlertDialogPrimitiveCloseButton
-			class={cn(
-				buttonVariants({ variant: "outline" }),
-				"mt-2 sm:mt-0",
-				props.class,
-			)}
+		<AlertDialogButton
+			class={cn("mt-2 sm:mt-0", local.class)}
+			variant={local.variant ?? "outline"}
 			{...rest}
 		/>
 	);

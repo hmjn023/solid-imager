@@ -69,8 +69,7 @@ API 通信は `danbooru.donmai.us` 固定で、リクエスト開始間隔を 25
 `bun run check` と `bun run test` に加え、隔離環境で次を実行する。
 
 ```sh
-bun run --cwd apps/server test:e2e:dev -- danbooru.responsive.spec.ts pixiv.responsive.spec.ts
-bun run --cwd apps/server test:e2e:production -- danbooru.responsive.spec.ts pixiv.responsive.spec.ts
+bun run test:e2e danbooru.responsive.spec.ts pixiv.responsive.spec.ts
 ```
 
 E2E は外部の検索・画像配信を固定データに差し替え、取り込み待ち登録は実 API と

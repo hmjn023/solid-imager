@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type { MediaDetails } from "@solid-imager/core/media";
 import { MediaActions as SharedMediaActions } from "@solid-imager/ui/media-actions";
 import { OppaiOracleModal } from "@solid-imager/ui/oppai-oracle-modal";
@@ -21,7 +22,11 @@ async function downloadMedia(media: MediaDetails): Promise<void> {
 		buildMediaContentUrl(media.mediaSourceId, media.id),
 	);
 	if (!response.ok) {
-		throw new Error(`Failed to fetch media: ${response.status}`);
+		throw new Error(
+			t("mediaViewer.failedToFetchMediaValue", {
+				value0: String(response.status),
+			}),
+		);
 	}
 	const blob = await response.blob();
 	const url = URL.createObjectURL(blob);

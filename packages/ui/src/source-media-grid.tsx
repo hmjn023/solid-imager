@@ -1,3 +1,5 @@
+import { mediaTypeLabel } from "./display-labels";
+import { getLocale, t } from "@solid-imager/i18n";
 import type { SimilarityModel } from "@solid-imager/core/search";
 import type { Media } from "@solid-imager/core/media";
 import { useMenuContext } from "@kobalte/core/menu";
@@ -20,6 +22,7 @@ import {
 	Switch,
 } from "solid-js";
 import { Button } from "./button";
+import { Checkbox, CheckboxControl, CheckboxLabel } from "./checkbox";
 import { EmptyState, ErrorState, OfflineState } from "./async-state";
 import {
 	ContextMenu,
@@ -37,6 +40,15 @@ import { MediaTileGrid } from "./media-tile-grid";
 import { createMediaPreviewSelectHandler } from "./media-preview-selection";
 import type { QueryUiState } from "./query-state";
 import { LoadingRegion, MediaGridSkeleton } from "./skeleton";
+import {
+	Table,
+	TableBody,
+	TableCaption,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "./table";
 import {
 	findCollectionItemById,
 	isCollectionScrollNearEnd,
@@ -140,7 +152,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const viewMode = () => props.viewMode?.() ?? "grid";
 	const errorMessage = () => {
 		const error = props.state().error;
-		return error instanceof Error ? error.message : "API接続に失敗しました";
+		return error instanceof Error
+			? error.message
+			: t("sourceMediaGrid.couldNotConnectToTheAPI");
 	};
 	const canFindSimilar = (media: Media) =>
 		props.onFindSimilar !== undefined &&
@@ -287,7 +301,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	const gridContent = (
 		<MediaTileGrid
 			items={props.mediaResults()}
-			ariaLabel="メディア一覧"
+			ariaLabel={t("sourceMediaScreen.mediaList")}
 			itemAspectRatio={props.itemAspectRatio}
 			enableVirtualization={props.enableVirtualization}
 			scrollMode={props.scrollMode}
@@ -329,52 +343,63 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 	);
 	const formatFileSize = (bytes: number | null): string => {
 		if (bytes === null) return "—";
-		if (bytes < 1024) return `${bytes} B`;
-		if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-		return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+		if (bytes < 1024)
+			return t("uploadMediaModal.valueB", { value0: String(bytes) });
+		if (bytes < 1024 * 1024)
+			return t("uploadMediaModal.valueKB", {
+				value0: String((bytes / 1024).toFixed(1)),
+			});
+		return t("uploadMediaModal.valueMB", {
+			value0: String((bytes / (1024 * 1024)).toFixed(1)),
+		});
 	};
 	const listContent = (
-		<div class="overflow-x-auto rounded-md border border-border bg-card scrollbar-stable">
-			<table class="w-full min-w-table-extra-wide border-collapse text-left text-sm">
-				<caption class="sr-only">
-					メディア一覧。{totalCount().toLocaleString()}件。
-				</caption>
-				<thead class="bg-muted text-xs text-muted-foreground">
-					<tr>
+		<div class="overflow-hidden rounded-md border border-border bg-card">
+			<Table class="min-w-table-extra-wide border-collapse text-left text-sm">
+				<TableCaption class="sr-only mt-0">
+					{t("sourceMediaGrid.mediaListValueItems", {
+						value0: String(totalCount().toLocaleString()),
+					})}
+				</TableCaption>
+				<TableHeader class="bg-muted text-xs text-muted-foreground">
+					<TableRow class="hover:bg-transparent">
 						<Show when={props.isBulkSelectMode?.()}>
-							<th class="w-10 px-3 py-2" scope="col">
-								<span class="sr-only">選択</span>
-							</th>
+							<TableHead class="h-auto w-10 px-3 py-2" scope="col">
+								<span class="sr-only">{t("jobsScreen.select")}</span>
+							</TableHead>
 						</Show>
-						<th class="px-3 py-2 font-medium" scope="col">
-							Name
-						</th>
-						<th class="px-3 py-2 font-medium" scope="col">
-							Type
-						</th>
-						<th class="px-3 py-2 font-medium" scope="col">
-							Dimensions
-						</th>
-						<th class="px-3 py-2 font-medium" scope="col">
-							Size
-						</th>
-						<th class="px-3 py-2 font-medium" scope="col">
-							Modified
-						</th>
-					</tr>
-				</thead>
-				<tbody class="divide-y divide-border">
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+							{t("labels.name")}
+						</TableHead>
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+							{t("jobsScreen.type")}
+						</TableHead>
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+							{t("sourceMediaGrid.dimensions")}
+						</TableHead>
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+							{t("collectionInspector.size")}
+						</TableHead>
+						<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
+							{t("sourceMediaGrid.modified")}
+						</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody class="divide-y divide-border">
 					<For each={props.mediaResults()}>
 						{(media) => (
-							<tr
-								aria-label={`${media.fileName}, ${media.filePath}`}
+							<TableRow
+								aria-label={t("sourceMediaGrid.valueValue", {
+									value0: String(media.fileName),
+									value1: String(media.filePath),
+								})}
 								aria-selected={props.previewSelectedMediaId?.() === media.id}
-								class={`outline-none transition-colors focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+								class={
 									props.isSelected?.(media.id) ||
 									props.previewSelectedMediaId?.() === media.id
-										? "bg-accent"
-										: "hover:bg-muted"
-								}`}
+										? "bg-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-accent"
+										: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-muted"
+								}
 								data-media-id={media.id}
 								onClick={(event) => {
 									if (
@@ -439,20 +464,29 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								}
 							>
 								<Show when={props.isBulkSelectMode?.()}>
-									<td class="px-3 py-2">
-										<input
-											aria-label={`${media.fileName}を選択`}
+									<TableCell class="px-3 py-2">
+										<Checkbox
 											checked={props.isSelected?.(media.id) ?? false}
-											data-collection-row-control
+											class="flex min-h-10 items-center justify-center"
+											data-collection-row-control=""
 											onChange={() => props.onToggleSelect?.(media.id)}
-											onClick={(event) => event.stopPropagation()}
-											type="checkbox"
-										/>
-									</td>
+											onClick={(event: MouseEvent) => event.stopPropagation()}
+										>
+											<CheckboxControl />
+											<CheckboxLabel class="sr-only">
+												{t("sourceMediaGrid.selectValue", {
+													value0: String(media.fileName),
+												})}
+											</CheckboxLabel>
+										</Checkbox>
+									</TableCell>
 								</Show>
-								<th
-									aria-label={`${media.fileName}, ${media.filePath}`}
-									class="max-w-dialog-reading px-3 py-2 font-normal"
+								<TableHead
+									aria-label={t("sourceMediaGrid.valueValue", {
+										value0: String(media.fileName),
+										value1: String(media.filePath),
+									})}
+									class="h-auto max-w-dialog-reading px-3 py-2 font-normal text-foreground"
 									scope="row"
 								>
 									<div class="min-h-10 w-full px-1 py-1 text-left">
@@ -469,24 +503,24 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 											{media.filePath}
 										</span>
 									</div>
-								</th>
-								<td class="px-3 py-2 text-muted-foreground">
-									{media.mediaType}
-								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+								</TableHead>
+								<TableCell class="px-3 py-2 text-muted-foreground">
+									{mediaTypeLabel(media.mediaType)}
+								</TableCell>
+								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{media.width} × {media.height}
-								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+								</TableCell>
+								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 									{formatFileSize(media.fileSize)}
-								</td>
-								<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
-									{media.modifiedAt.toLocaleDateString("ja-JP")}
-								</td>
-							</tr>
+								</TableCell>
+								<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+									{media.modifiedAt.toLocaleDateString(getLocale())}
+								</TableCell>
+							</TableRow>
 						)}
 					</For>
-				</tbody>
-			</table>
+				</TableBody>
+			</Table>
 		</div>
 	);
 	const hasContextMenuActions = (media: Media) =>
@@ -560,7 +594,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		<div class="min-h-0 min-w-0 space-y-4" ref={setCollectionRoot}>
 			<Switch>
 				<Match when={props.state().phase === "pending"}>
-					<LoadingRegion label="メディア一覧を読み込んでいます...">
+					<LoadingRegion label={t("sourceMediaScreen.loadingMediaList")}>
 						<MediaGridSkeleton
 							aspectRatio={
 								props.scrollMode === "element"
@@ -576,12 +610,14 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					<ErrorState
 						description={errorMessage()}
 						onRetry={props.onRetry}
-						title={props.errorTitle ?? "メディア一覧を読み込めませんでした"}
+						title={
+							props.errorTitle ?? t("sourceMediaGrid.couldNotLoadTheMediaList")
+						}
 					/>
 				</Match>
 				<Match when={props.state().phase === "offline"}>
 					<OfflineState
-						description="接続を確認してから再試行してください。"
+						description={t("sourceMediaGrid.checkYourConnectionAndRetry")}
 						onRetry={props.onRetry}
 					/>
 				</Match>
@@ -594,7 +630,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					<Show when={showResultCount() && props.mediaResults().length > 0}>
 						<div class="mb-4 flex min-w-0 items-center justify-between gap-3">
 							<p class="text-muted-foreground text-sm">
-								{totalCount()} 件の結果
+								{t("sourceMediaGrid.valueResults", {
+									value0: String(totalCount()),
+								})}
 							</p>
 						</div>
 					</Show>
@@ -621,7 +659,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 							>
 								<section
 									class="min-w-0 w-full"
-									aria-label="メディア一覧の操作対象"
+									aria-label={t("sourceMediaGrid.mediaListActionTarget")}
 									onContextMenu={(event) => {
 										const media = findMediaFromEventTarget(event.target);
 										setContextMenuTarget(media);
@@ -639,7 +677,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									keyed
 									fallback={
 										<ContextMenuItem disabled>
-											メディアを選択してください
+											{t("actions.selectMedia")}
 										</ContextMenuItem>
 									}
 									when={contextMenuMedia()}
@@ -656,7 +694,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 												<ContextMenuSeparator />
 												<Show when={!hasContextMenuActions(media)}>
 													<ContextMenuItem disabled>
-														利用できる操作はありません
+														{t("sourceMediaGrid.noActionsAvailable")}
 													</ContextMenuItem>
 												</Show>
 												<Show when={props.onOpenMediaDetail}>
@@ -668,8 +706,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															class="mr-2 shrink-0"
 															size={14}
 														/>
-														詳細を開く
-														<ContextMenuShortcut>Enter</ContextMenuShortcut>
+														{t("collectionInspector.openDetails")}
+														<ContextMenuShortcut>
+															{t("sourceMediaGrid.enter")}
+														</ContextMenuShortcut>
 													</ContextMenuItem>
 												</Show>
 												<Show
@@ -683,7 +723,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															class="mr-2 shrink-0"
 															size={14}
 														/>
-														新しいタブで開く
+														{t("sourceMediaGrid.openInANewTab")}
 													</ContextMenuItem>
 												</Show>
 												<Show when={canFindSimilar(media)}>
@@ -697,7 +737,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															class="mr-2 shrink-0"
 															size={14}
 														/>
-														類似度検索
+														{t("sourceMediaGrid.similaritySearch")}
 													</ContextMenuItem>
 													<ContextMenuItem
 														onSelect={() =>
@@ -709,7 +749,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															class="mr-2 shrink-0"
 															size={14}
 														/>
-														類似度検索（EmbeddingGemma 2）
+														{t(
+															"sourceMediaGrid.similaritySearchEmbeddingGemma2",
+														)}
 													</ContextMenuItem>
 												</Show>
 												<Show when={props.onToggleSelect}>
@@ -723,9 +765,11 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 														/>
 														{props.isBulkSelectMode?.() &&
 														props.isSelected?.(media.id)
-															? "選択解除"
-															: "選択"}
-														<ContextMenuShortcut>Space</ContextMenuShortcut>
+															? t("actions.clearSelection")
+															: t("jobsScreen.select")}
+														<ContextMenuShortcut>
+															{t("sourceMediaGrid.space")}
+														</ContextMenuShortcut>
 													</ContextMenuItem>
 												</Show>
 												<Show
@@ -744,7 +788,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 																class="mr-2 shrink-0"
 																size={14}
 															/>
-															一括操作を実行 ({props.selectedCount?.()}件選択中)
+															{t("sourceMediaGrid.runBulkAction")}
+															{props.selectedCount?.()}
+															{t("sourceMediaGrid.selected")}
 														</ContextMenuItem>
 													</Show>
 													<Show when={props.onClearSelection}>
@@ -756,7 +802,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 																class="mr-2 shrink-0"
 																size={14}
 															/>
-															選択をクリア
+															{t("actions.clearSelection")}
 														</ContextMenuItem>
 													</Show>
 												</Show>
@@ -771,8 +817,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															class="mr-2 shrink-0"
 															size={14}
 														/>
-														削除
-														<ContextMenuShortcut>Delete</ContextMenuShortcut>
+														{t("actions.delete")}
+														<ContextMenuShortcut>
+															{t("keys.delete")}
+														</ContextMenuShortcut>
 													</ContextMenuItem>
 												</Show>
 												<Show when={props.onCopyMove}>
@@ -787,7 +835,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															class="mr-2 shrink-0"
 															size={14}
 														/>
-														他のソースへコピー
+														{t("sourceMediaGrid.copyToAnotherSource")}
 													</ContextMenuItem>
 													<ContextMenuItem
 														onSelect={() =>
@@ -799,7 +847,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															class="mr-2 shrink-0"
 															size={14}
 														/>
-														他のソースへ移動
+														{t("sourceMediaGrid.moveToAnotherSource")}
 													</ContextMenuItem>
 												</Show>
 												<Show when={props.onSyncSingleMedia}>
@@ -812,7 +860,7 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 															class="mr-2 shrink-0"
 															size={14}
 														/>
-														メタデータを同期 (再処理)
+														{t("sourceMediaGrid.syncMetadataReprocess")}
 													</ContextMenuItem>
 												</Show>
 											</ContextMenuGroup>
@@ -826,8 +874,10 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					{/* Empty state */}
 					<Show when={showEmptyState() && props.state().phase === "empty"}>
 						<EmptyState
-							description="検索条件を変更して、もう一度お試しください。"
-							title="検索結果が見つかりませんでした"
+							description={t(
+								"sourceMediaGrid.changeYourSearchConditionsAndTryAgain",
+							)}
+							title={t("sourceMediaGrid.noSearchResultsFound")}
 						/>
 					</Show>
 
@@ -847,21 +897,21 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 								<Show when={props.hasNextPage}>
 									<Show
 										when={props.isFetchNextPageError}
-										fallback={<p>スクロールしてさらに読み込む</p>}
+										fallback={<p>{t("sourceMediaGrid.scrollToLoadMore")}</p>}
 									>
 										<Button
 											variant="outline"
 											size="sm"
 											onClick={props.onLoadMore}
 										>
-											追加の読み込みを再試行
+											{t("sourceMediaGrid.retryLoadingMore")}
 										</Button>
 									</Show>
 								</Show>
 							}
 							when={props.isFetchingNextPage}
 						>
-							<p>読み込み中...</p>
+							<p>{t("status.loading")}</p>
 						</Show>
 					</div>
 				</Match>

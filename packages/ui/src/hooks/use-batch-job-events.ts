@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type {
 	JobEvent,
 	JobFailedEvent,
@@ -19,7 +20,11 @@ export type JobEventStreamFactory = (
 const BUFFERED_JOB_EVENT_LIMIT = 20;
 
 function assertNever(value: never): never {
-	throw new Error(`Unhandled job event: ${String(value)}`);
+	throw new Error(
+		t("useBatchJobEvents.unhandledJobEventValue", {
+			value0: String(String(value)),
+		}),
+	);
 }
 
 export function shouldSubscribeToJobEvents(

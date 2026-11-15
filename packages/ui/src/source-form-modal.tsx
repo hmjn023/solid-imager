@@ -1,3 +1,4 @@
+import { t } from "@solid-imager/i18n";
 import type {
 	MediaSourceInfo,
 	SafeMediaSource,
@@ -79,9 +80,9 @@ export type SourceFormModalProps = {
 };
 
 const SOURCE_TYPE_OPTIONS: { value: SourceFormType; label: string }[] = [
-	{ value: "local", label: "Local Filesystem" },
-	{ value: "sftp", label: "SFTP" },
-	{ value: "s3", label: "S3 Compatible Storage" },
+	{ value: "local", label: t("sourceFormModal.localFilesystem") },
+	{ value: "sftp", label: t("sourceFormModal.sFTP") },
+	{ value: "s3", label: t("sourceFormModal.s3CompatibleStorage") },
 ];
 
 const SOURCE_TYPE_VALUES = SOURCE_TYPE_OPTIONS.map(
@@ -315,11 +316,15 @@ export function SourceFormModal(props: SourceFormModalProps) {
 				>
 					<DialogHeader>
 						<DialogTitle>
-							{props.editingSource ? "Edit Source" : "Add New Source"}
+							{props.editingSource
+								? t("sourceFormModal.editSource")
+								: t("sourceFormModal.addNewSource")}
 						</DialogTitle>
 						<DialogDescription>
 							{props.description ??
-								"Configure the connection details for your media source."}
+								t(
+									"sourceFormModal.configureTheConnectionDetailsForYourMediaSource",
+								)}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -339,14 +344,14 @@ export function SourceFormModal(props: SourceFormModalProps) {
 										field().state.meta.errors.length > 0 ? "invalid" : "valid"
 									}
 								>
-									<TextFieldLabel>Name</TextFieldLabel>
+									<TextFieldLabel>{t("labels.name")}</TextFieldLabel>
 									<TextFieldInput
 										id={field().name}
 										onBlur={field().handleBlur}
 										onInput={(event) =>
 											field().handleChange(event.currentTarget.value)
 										}
-										placeholder="My Media Source"
+										placeholder={t("sourceFormModal.myMediaSource")}
 										value={field().state.value}
 									/>
 									<Show when={fieldError(field().state.meta.errors)}>
@@ -363,14 +368,16 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						<form.Field name="description">
 							{(field) => (
 								<TextField class="space-y-2">
-									<TextFieldLabel>Description (Optional)</TextFieldLabel>
+									<TextFieldLabel>
+										{t("sourceFormModal.descriptionOptional")}
+									</TextFieldLabel>
 									<TextFieldInput
 										id={field().name}
 										onBlur={field().handleBlur}
 										onInput={(event) =>
 											field().handleChange(event.currentTarget.value)
 										}
-										placeholder="Photos from my camera"
+										placeholder={t("sourceFormModal.photosFromMyCamera")}
 										value={field().state.value}
 									/>
 								</TextField>
@@ -381,7 +388,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 							<form.Field name="type">
 								{(field) => (
 									<div class="space-y-2">
-										<Label>Type</Label>
+										<Label>{t("jobsScreen.type")}</Label>
 										<Select
 											itemComponent={(itemProps) => (
 												<SelectItem item={itemProps.item}>
@@ -418,17 +425,19 @@ export function SourceFormModal(props: SourceFormModalProps) {
 						<form.Subscribe selector={(state) => state.values.type}>
 							{(type) => (
 								<div class="space-y-4 rounded-md border p-4">
-									<h4 class="font-medium text-sm">Connection Details</h4>
+									<h4 class="font-medium text-sm">
+										{t("sourceFormModal.connectionDetails")}
+									</h4>
 									<Show when={type() === "local"}>
 										<form.Field name="path">
 											{(field) => (
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Directory Path"
+													label={t("sourceFormModal.directoryPath")}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
-													placeholder="/mnt/data/photos"
+													placeholder={t("sourceFormModal.mntDataPhotos")}
 													value={field().state.value}
 												/>
 											)}
@@ -441,7 +450,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 													<SourceTextInput
 														errors={field().state.meta.errors}
 														id={field().name}
-														label="Host"
+														label={t("sourceFormModal.host")}
 														onBlur={field().handleBlur}
 														onChange={field().handleChange}
 														placeholder="192.168.1.10"
@@ -452,7 +461,9 @@ export function SourceFormModal(props: SourceFormModalProps) {
 											<form.Field name="port">
 												{(field) => (
 													<div class="space-y-2">
-														<Label for={field().name}>Port</Label>
+														<Label for={field().name}>
+															{t("sourceFormModal.port")}
+														</Label>
 														<Input
 															aria-describedby={`${field().name}-error`}
 															aria-invalid={
@@ -482,10 +493,10 @@ export function SourceFormModal(props: SourceFormModalProps) {
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Username"
+													label={t("sourceFormModal.username")}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
-													placeholder="user"
+													placeholder={t("sourceFormModal.user")}
 													value={field().state.value}
 												/>
 											)}
@@ -495,7 +506,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Password (Optional)"
+													label={t("sourceFormModal.passwordOptional")}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
 													placeholder="********"
@@ -509,10 +520,10 @@ export function SourceFormModal(props: SourceFormModalProps) {
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Remote Path"
+													label={t("sourceFormModal.remotePath")}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
-													placeholder="/home/user/photos"
+													placeholder={t("sourceFormModal.homeUserPhotos")}
 													value={field().state.value}
 												/>
 											)}
@@ -525,10 +536,10 @@ export function SourceFormModal(props: SourceFormModalProps) {
 													<SourceTextInput
 														errors={field().state.meta.errors}
 														id={field().name}
-														label="Bucket"
+														label={t("sourceFormModal.bucket")}
 														onBlur={field().handleBlur}
 														onChange={field().handleChange}
-														placeholder="my-bucket"
+														placeholder={t("sourceFormModal.myBucket")}
 														value={field().state.value}
 													/>
 												)}
@@ -538,10 +549,10 @@ export function SourceFormModal(props: SourceFormModalProps) {
 													<SourceTextInput
 														errors={field().state.meta.errors}
 														id={field().name}
-														label="Region"
+														label={t("sourceFormModal.region")}
 														onBlur={field().handleBlur}
 														onChange={field().handleChange}
-														placeholder="us-east-1"
+														placeholder={t("sourceFormModal.usEast1")}
 														value={field().state.value}
 													/>
 												)}
@@ -552,10 +563,10 @@ export function SourceFormModal(props: SourceFormModalProps) {
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Access Key ID"
+													label={t("sourceFormModal.accessKeyID")}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
-													placeholder="AKIA..."
+													placeholder={t("sourceFormModal.aKIA")}
 													value={field().state.value}
 												/>
 											)}
@@ -565,7 +576,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Secret Access Key"
+													label={t("sourceFormModal.secretAccessKey")}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
 													placeholder="********"
@@ -579,10 +590,10 @@ export function SourceFormModal(props: SourceFormModalProps) {
 												<SourceTextInput
 													errors={field().state.meta.errors}
 													id={field().name}
-													label="Prefix (Optional)"
+													label={t("sourceFormModal.prefixOptional")}
 													onBlur={field().handleBlur}
 													onChange={field().handleChange}
-													placeholder="photos/"
+													placeholder={t("sourceFormModal.photos")}
 													value={field().state.value}
 												/>
 											)}
@@ -598,7 +609,7 @@ export function SourceFormModal(props: SourceFormModalProps) {
 
 						<DialogFooter>
 							<Button onClick={requestClose} type="button" variant="outline">
-								Cancel
+								{t("actions.cancel")}
 							</Button>
 							<form.Subscribe
 								selector={(state) => ({
@@ -612,9 +623,11 @@ export function SourceFormModal(props: SourceFormModalProps) {
 										type="submit"
 									>
 										{state().isSubmitting
-											? "Saving..."
+											? t("status.saving")
 											: (props.submitLabel ??
-												(props.editingSource ? "Save Changes" : "Add Source"))}
+												(props.editingSource
+													? t("actions.saveChanges")
+													: t("actions.addSource")))}
 									</Button>
 								)}
 							</form.Subscribe>
@@ -628,15 +641,19 @@ export function SourceFormModal(props: SourceFormModalProps) {
 			>
 				<AlertDialogContent>
 					<AlertDialogHeader>
-						<AlertDialogTitle>Discard source changes?</AlertDialogTitle>
+						<AlertDialogTitle>
+							{t("sourceFormModal.discardSourceChanges")}
+						</AlertDialogTitle>
 						<AlertDialogDescription>
-							The values entered in this form have not been saved.
+							{t("sourceFormModal.theValuesEnteredInThisFormHaveNotBeen")}
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>Keep editing</AlertDialogCancel>
+						<AlertDialogCancel>
+							{t("configScreen.keepEditing")}
+						</AlertDialogCancel>
 						<AlertDialogAction onClick={discardAndClose}>
-							Discard changes
+							{t("sourceFormModal.discardChanges")}
 						</AlertDialogAction>
 					</AlertDialogFooter>
 				</AlertDialogContent>
