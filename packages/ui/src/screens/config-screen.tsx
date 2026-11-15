@@ -42,6 +42,14 @@ import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
 import { LanguageSettings } from "../language-settings";
 import { Label } from "../label";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "../select";
 import { ShortcutSettingsPanel } from "../shortcuts/shortcut-settings-panel";
 import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
@@ -52,6 +60,24 @@ import { CategoryLabel } from "../workspace/management-layout";
 import { McpPublicationSettings } from "./mcp-publication-settings";
 
 type AppConfigFormValues = z.input<typeof AppConfigSchema>;
+
+type LogLevel = "trace" | "debug" | "info" | "warn" | "error" | "fatal";
+
+type LogLevelOption = {
+	value: LogLevel;
+	label: string;
+};
+
+function getLogLevelOptions(): LogLevelOption[] {
+	return [
+		{ value: "trace", label: t("configScreen.trace") },
+		{ value: "debug", label: t("configScreen.debug") },
+		{ value: "info", label: t("configScreen.info") },
+		{ value: "warn", label: t("configScreen.warn") },
+		{ value: "error", label: t("configScreen.error") },
+		{ value: "fatal", label: t("configScreen.fatal") },
+	];
+}
 
 const SETTINGS_CATEGORIES = [
 	{
@@ -823,36 +849,44 @@ export function ConfigScreen(props: ConfigScreenProps) {
 									{t("configScreen.logging")}
 								</legend>
 								<form.Field name="logging.level">
-									{(field) => (
-										<div class="space-y-2">
-											<Label for={field().name}>
-												{t("configScreen.logLevel")}
-											</Label>
-											<select
-												class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:font-medium file:text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-												id={field().name}
-												onInput={(e) =>
-													field().handleChange(
-														e.target.value as
-															| "trace"
-															| "debug"
-															| "info"
-															| "warn"
-															| "error"
-															| "fatal",
-													)
-												}
-												value={field().state.value ?? ""}
+									{(field) => {
+										const options = getLogLevelOptions();
+										const selectedOption = () =>
+											options.find(
+												(option) => option.value === field().state.value,
+											) ?? null;
+										return (
+											<Select<LogLevelOption>
+												class="space-y-2"
+												disallowEmptySelection
+												itemComponent={(itemProps) => (
+													<SelectItem item={itemProps.item}>
+														{itemProps.item.rawValue.label}
+													</SelectItem>
+												)}
+												onChange={(option) => {
+													if (option) {
+														field().handleChange(option.value);
+													}
+												}}
+												options={options}
+												optionTextValue="label"
+												optionValue="value"
+												value={selectedOption()}
 											>
-												<option value="trace">{t("configScreen.trace")}</option>
-												<option value="debug">{t("configScreen.debug")}</option>
-												<option value="info">{t("configScreen.info")}</option>
-												<option value="warn">{t("configScreen.warn")}</option>
-												<option value="error">{t("configScreen.error")}</option>
-												<option value="fatal">{t("configScreen.fatal")}</option>
-											</select>
-										</div>
-									)}
+												<SelectLabel>{t("configScreen.logLevel")}</SelectLabel>
+												<SelectTrigger
+													class="w-full scroll-mt-28 text-base sm:text-sm"
+													id={field().name}
+												>
+													<SelectValue<LogLevelOption>>
+														{(state) => state.selectedOption()?.label ?? ""}
+													</SelectValue>
+												</SelectTrigger>
+												<SelectContent />
+											</Select>
+										);
+									}}
 								</form.Field>
 							</fieldset>
 						</TabsContent>

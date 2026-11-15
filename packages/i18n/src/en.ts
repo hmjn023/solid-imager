@@ -181,6 +181,7 @@ export const en = defineMessages({
 	"batchTools.startTagging": "Start tagging",
 	"batchTools.whenDisabledProcessedMediaIsSkipped":
 		"When disabled, processed media is skipped.",
+	"breadcrumb.more": "More",
 	"bulkActionCommand.destinationPathIsRequired":
 		"Destination path is required.",
 	"bulkActionCommand.noMediaItemsAreSelected": "No media items are selected.",
@@ -1183,6 +1184,7 @@ export const en = defineMessages({
 		"Tags extracted from the image using the OppaiOracle model.",
 	"oppaiOracleModal.tagsExtractedFromTheVideoSRepresentativeThumbnailUsing":
 		"Tags extracted from the video's representative thumbnail using the OppaiOracle model.",
+	"pagination.morePages": "More pages",
 	"paginationControls.pageValueOfValue": "Page {value0} of {value1}",
 	"pendingDownloadsIndicator.importInboxValue": "Import inbox{value0}",
 	"pendingDownloadsIndicator.valueItems": ", {value0} items",
@@ -1519,6 +1521,8 @@ export const en = defineMessages({
 	"sidebar.danbooru": "Danbooru",
 	"sidebar.expandSidebar": "Expand sidebar",
 	"sidebar.managementNavigation": "Management navigation",
+	"sidebar.missingProvider":
+		"useSidebar must be used within a SidebarProvider.",
 	"sidebar.pixiv": "pixiv",
 	"sidebar.primaryNavigation": "Primary navigation",
 	"sidebar.quickActions": "Quick actions",

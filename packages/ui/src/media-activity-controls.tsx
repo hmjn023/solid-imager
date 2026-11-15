@@ -21,6 +21,7 @@ import {
 	SelectValue,
 } from "./select";
 import { toast } from "./toast";
+import { Toggle } from "./toggle";
 
 type MediaLocation = { sourceId: string; mediaId: string };
 export type MediaActivityApi = {
@@ -96,22 +97,23 @@ export function MediaActivityControls(props: {
 				{t("mediaActivityControls.activity")}
 			</h2>
 			<div class="flex flex-wrap items-center gap-2">
-				<Button
-					aria-pressed={props.media.activity?.favorite ?? false}
+				<Toggle
+					class="min-h-11 gap-2 hover:bg-accent hover:text-accent-foreground data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary/90 data-[pressed]:hover:text-primary-foreground"
 					disabled={save.isPending}
-					variant={props.media.activity?.favorite ? "default" : "outline"}
-					onClick={() =>
+					onChange={(favorite) =>
 						save.mutate({
 							...location(),
-							data: { favorite: !props.media.activity?.favorite },
+							data: { favorite },
 						})
 					}
+					pressed={props.media.activity?.favorite ?? false}
+					variant="outline"
 				>
 					<span aria-hidden="true">
 						{props.media.activity?.favorite ? "♥" : "♡"}
 					</span>{" "}
 					{t("mediaActivityControls.favorite")}
-				</Button>
+				</Toggle>
 				<Select
 					options={ratings}
 					value={ratings[props.media.activity?.rating ?? 0]}

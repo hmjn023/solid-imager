@@ -478,7 +478,7 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 		exact: true,
 	});
 	await sourceActions.click();
-	await page.getByRole("button", { name: "編集", exact: true }).click();
+	await page.getByRole("menuitem", { name: "編集", exact: true }).click();
 	const editDialog = page.getByRole("dialog");
 	await expect(
 		editDialog.getByRole("heading", { name: "ソースを編集", exact: true }),

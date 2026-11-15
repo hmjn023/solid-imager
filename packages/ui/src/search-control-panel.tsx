@@ -25,12 +25,14 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./select";
+import { Separator } from "./separator";
 import { SortControls } from "./sort-controls";
 import {
 	clearSimilaritySearch,
 	searchState,
 	setSearchState,
 } from "./stores/search-store";
+import { ToggleGroup, ToggleGroupItem } from "./toggle-group";
 
 export type { PresetManagerClient };
 
@@ -129,24 +131,31 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				<Label class="font-medium text-sm">
 					{t("searchControlPanel.searchMode")}
 				</Label>
-				<div class="flex flex-wrap gap-2">
-					<Button
-						class="min-h-11 md:min-h-9"
-						onClick={() => handleSetMode("simple")}
-						size="sm"
-						variant={currentState().mode === "simple" ? "default" : "outline"}
+				<ToggleGroup
+					aria-label={t("searchControlPanel.searchMode")}
+					class="flex-wrap gap-2"
+					onChange={(next) => {
+						if (next === "simple" || next === "pro") {
+							handleSetMode(next);
+						}
+					}}
+					size="sm"
+					value={currentState().mode}
+					variant="outline"
+				>
+					<ToggleGroupItem
+						class="min-h-11 data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground md:min-h-9"
+						value="simple"
 					>
 						{t("searchControlPanel.simple")}
-					</Button>
-					<Button
-						class="min-h-11 md:min-h-9"
-						onClick={() => handleSetMode("pro")}
-						size="sm"
-						variant={currentState().mode === "pro" ? "default" : "outline"}
+					</ToggleGroupItem>
+					<ToggleGroupItem
+						class="min-h-11 data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground md:min-h-9"
+						value="pro"
 					>
 						{t("searchControlPanel.advanced")}
-					</Button>
-				</div>
+					</ToggleGroupItem>
+				</ToggleGroup>
 			</div>
 
 			<EmbeddingSearchControls
@@ -173,7 +182,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				sortOrder={currentState().sortOrder}
 			/>
 
-			<div class="my-4 h-px bg-border" />
+			<Separator class="my-4" />
 			<Show when={getSearchExecutionKind(currentState()) !== "ordinary"}>
 				<p class="mb-3 text-sm text-muted-foreground">
 					{t(

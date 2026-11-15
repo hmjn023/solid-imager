@@ -65,6 +65,7 @@ export function ExternalViewerRoute(
 		<>
 			{props.provider === "danbooru" ? (
 				<DanbooruScreen
+					apiBase={props.apiBase}
 					{...navigation}
 					search={async (input) => {
 						const result = await props.client.viewer.search({

@@ -1,16 +1,18 @@
 import { t } from "@solid-imager/i18n";
 import Upload from "lucide-solid/icons/upload";
 import { createEffect, createSignal, onMount, Show } from "solid-js";
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "../alert-dialog";
 import { FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
-import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "../dialog";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
@@ -282,37 +284,44 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				);
 			})()}
 
-			<Dialog
-				onOpenChange={page().setDeleteDialogOpen}
+			<AlertDialog
+				onOpenChange={(open) => {
+					if (open || !page().isDeletingMedia()) {
+						page().setDeleteDialogOpen(open);
+					}
+				}}
 				open={page().deleteDialogOpen()}
 			>
-				<DialogContent class="workspace-theme">
-					<DialogHeader>
-						<DialogTitle>{t("sourceMediaScreen.deleteMedia")}</DialogTitle>
-						<DialogDescription>
+				<AlertDialogContent class="workspace-theme">
+					<AlertDialogHeader>
+						<AlertDialogTitle>
+							{t("sourceMediaScreen.deleteMedia")}
+						</AlertDialogTitle>
+						<AlertDialogDescription>
 							{t(
 								"sourceMediaScreen.thisActionCannotBeUndoneDeleteTheSelectedMedia",
 							)}
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter>
-						<Button
-							onClick={() => page().setDeleteDialogOpen(false)}
-							variant="outline"
-						>
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={page().isDeletingMedia()}>
 							{t("actions.cancel")}
-						</Button>
-						<Button
-							onClick={() => {
-								void page().confirmDelete();
+						</AlertDialogCancel>
+						<AlertDialogAction
+							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							disabled={page().isDeletingMedia()}
+							onClick={(event) => {
+								event.preventDefault();
+								if (!page().isDeletingMedia()) {
+									void page().confirmDelete();
+								}
 							}}
-							variant="destructive"
 						>
 							{t("actions.delete")}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
 
 			{(() => {
 				const MoveCopyDialog = props.moveCopyDialogComponent;

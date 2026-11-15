@@ -269,13 +269,13 @@ test("indexes real video thumbnails for tags, character similarity and semantic 
 			.getByRole("button", { name: "その他の操作", exact: true })
 			.click();
 		await expect(
-			page.getByRole("button", {
+			page.getByRole("menuitem", {
 				name: "EmbeddingGemma 2のベクトルを抽出",
 				exact: true,
 			}),
 		).toBeVisible();
 		await page
-			.getByRole("button", {
+			.getByRole("menuitem", {
 				name: "類似検索（EmbeddingGemma 2）",
 				exact: true,
 			})

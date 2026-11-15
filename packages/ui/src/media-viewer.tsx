@@ -18,6 +18,7 @@ import {
 	DialogTitle,
 } from "./dialog";
 import { clampMediaPan, type MediaPan } from "./media-viewer-pan";
+import { Separator } from "./separator";
 import { VideoPlayer } from "./video-player";
 import { Maximize2, Minus, Plus, RotateCcw } from "./workspace/icons";
 
@@ -525,7 +526,7 @@ export function MediaViewer(props: MediaViewerProps) {
 								>
 									<Plus aria-hidden="true" size={15} />
 								</Button>
-								<span aria-hidden="true" class="mx-0.5 h-5 w-px bg-border" />
+								<Separator class="mx-0.5 h-5" orientation="vertical" />
 								<Button
 									aria-label={
 										isFullscreen()

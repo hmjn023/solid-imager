@@ -26,10 +26,13 @@ import {
 	Show,
 	Switch,
 } from "solid-js";
+import { Alert, AlertDescription } from "../alert";
 import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Badge } from "../badge";
 import { Button } from "../button";
+import { Callout, CalloutContent } from "../callout";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../checkbox";
+import { Progress } from "../progress";
 import type { QueryUiState } from "../query-state";
 import {
 	Select,
@@ -39,6 +42,15 @@ import {
 	SelectValue,
 } from "../select";
 import { LoadingRegion } from "../skeleton";
+import {
+	Table,
+	TableBody,
+	TableCaption,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "../table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { ThumbnailImage } from "../thumbnail-image";
 import {
@@ -177,21 +189,15 @@ function JobProgress(props: { progress: JobDto["progress"] }) {
 							{progress().total.toLocaleString()}
 						</span>
 					</div>
-					<div
+					<Progress
 						aria-label={t("jobsScreen.valueComplete", {
 							value0: String(percent()),
 						})}
-						aria-valuemax="100"
-						aria-valuemin="0"
-						aria-valuenow={percent()}
-						class="h-1.5 overflow-hidden rounded-full bg-border"
-						role="progressbar"
-					>
-						<div
-							class="job-progress-fill h-full rounded-full bg-primary transition-width"
-							style={{ "--job-progress-width": `${percent()}%` }}
-						/>
-					</div>
+						class="h-1.5 bg-border [&>div]:bg-border [&>div>div]:rounded-full"
+						maxValue={100}
+						minValue={0}
+						value={percent()}
+					/>
 				</div>
 			)}
 		</Show>
@@ -257,120 +263,122 @@ function JobsTable(props: {
 }) {
 	return (
 		<div class="overflow-hidden rounded-md border border-border bg-card">
-			<div class="overflow-x-auto">
-				{/* Live progress must not resize columns and rewrap neighboring rows. */}
-				<table class="w-full min-w-table-wide table-fixed text-left text-sm">
-					<caption class="sr-only">
-						{t("jobsScreen.jobListValueJobs", {
-							value0: String(props.jobs.length),
-						})}
-					</caption>
-					<thead class="border-border border-b bg-muted text-xs uppercase tracking-wide">
-						<tr>
-							<th class="w-12 px-2 py-3 font-medium" scope="col">
-								<span class="sr-only">{t("jobsScreen.select")}</span>
-							</th>
-							<th class="w-20 px-2 py-3 font-medium" scope="col">
-								{t("jobsScreen.target")}
-							</th>
-							<th class="px-4 py-3 font-medium" scope="col">
-								{t("jobsScreen.type")}
-							</th>
-							<th class="w-32 px-4 py-3 font-medium" scope="col">
-								{t("jobsScreen.status")}
-							</th>
-							<th class="w-48 px-4 py-3 font-medium" scope="col">
-								{t("jobsScreen.progress")}
-							</th>
-							<th class="w-48 px-4 py-3 font-medium" scope="col">
-								{t("jobsScreen.updated")}
-							</th>
-						</tr>
-					</thead>
-					<tbody class="divide-y divide-border">
-						<For each={props.jobs}>
-							{(job) => (
-								<tr
-									class={props.selectedJobId === job.id ? "bg-accent" : ""}
-									data-selected={props.selectedJobId === job.id}
-								>
-									<td class="px-2 py-2">
-										<Show
-											fallback={
-												<span
-													aria-hidden="true"
-													class="block text-center text-muted-foreground"
-												>
-													—
-												</span>
-											}
-											when={job.status === "failed"}
-										>
-											<Checkbox
-												aria-label={t("jobsScreen.selectValueJob", {
-													value0: String(jobTypeLabel(job.type)),
-												})}
-												checked={props.selectedJobIds.has(job.id)}
-												class="flex min-h-11 items-center justify-center sm:min-h-9"
-												onChange={() => props.onToggleSelect(job.id)}
+			{/* Live progress must not resize columns and rewrap neighboring rows. */}
+			<Table class="min-w-table-wide table-fixed text-left">
+				<TableCaption class="sr-only">
+					{t("jobsScreen.jobListValueJobs", {
+						value0: String(props.jobs.length),
+					})}
+				</TableCaption>
+				<TableHeader class="border-border border-b bg-muted text-xs uppercase tracking-wide">
+					<TableRow class="hover:bg-transparent">
+						<TableHead class="h-auto w-12 px-2 py-3" scope="col">
+							<span class="sr-only">{t("jobsScreen.select")}</span>
+						</TableHead>
+						<TableHead class="h-auto w-20 px-2 py-3" scope="col">
+							{t("jobsScreen.target")}
+						</TableHead>
+						<TableHead class="h-auto px-4 py-3" scope="col">
+							{t("jobsScreen.type")}
+						</TableHead>
+						<TableHead class="h-auto w-32 px-4 py-3" scope="col">
+							{t("jobsScreen.status")}
+						</TableHead>
+						<TableHead class="h-auto w-48 px-4 py-3" scope="col">
+							{t("jobsScreen.progress")}
+						</TableHead>
+						<TableHead class="h-auto w-48 px-4 py-3" scope="col">
+							{t("jobsScreen.updated")}
+						</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody>
+					<For each={props.jobs}>
+						{(job) => (
+							<TableRow
+								class={
+									props.selectedJobId === job.id
+										? "bg-accent hover:bg-accent"
+										: undefined
+								}
+								data-selected={props.selectedJobId === job.id}
+							>
+								<TableCell class="px-2 py-2 [&:has([role=checkbox])]:pr-2">
+									<Show
+										fallback={
+											<span
+												aria-hidden="true"
+												class="block text-center text-muted-foreground"
 											>
-												<CheckboxControl class="border-input bg-card data-[checked]:border-primary data-[checked]:bg-primary" />
-												<CheckboxLabel class="sr-only">
-													{t("jobsScreen.selectValueJob", {
-														value0: String(jobTypeLabel(job.type)),
-													})}
-												</CheckboxLabel>
-											</Checkbox>
-										</Show>
-									</td>
-									<td class="px-2 py-2">
-										<div class="flex size-12 items-center justify-center overflow-hidden rounded-sm text-xs">
-											<JobThumbnail
-												alt={t("jobsScreen.targetMediaForValueJob", {
+												—
+											</span>
+										}
+										when={job.status === "failed"}
+									>
+										<Checkbox
+											aria-label={t("jobsScreen.selectValueJob", {
+												value0: String(jobTypeLabel(job.type)),
+											})}
+											checked={props.selectedJobIds.has(job.id)}
+											class="flex min-h-11 items-center justify-center sm:min-h-9"
+											onChange={() => props.onToggleSelect(job.id)}
+										>
+											<CheckboxControl class="border-input bg-card data-[checked]:border-primary data-[checked]:bg-primary" />
+											<CheckboxLabel class="sr-only">
+												{t("jobsScreen.selectValueJob", {
 													value0: String(jobTypeLabel(job.type)),
 												})}
-												buildUrl={props.buildThumbnailUrl}
-												class="size-12 shrink-0 rounded-sm object-cover"
-												height={48}
-												job={job}
-												width={48}
-											/>
-										</div>
-									</td>
-									<td class="px-2 py-2">
-										<button
-											aria-label={t("jobsScreen.valueJobValue", {
+											</CheckboxLabel>
+										</Checkbox>
+									</Show>
+								</TableCell>
+								<TableCell class="px-2 py-2">
+									<div class="flex size-12 items-center justify-center overflow-hidden rounded-sm text-xs">
+										<JobThumbnail
+											alt={t("jobsScreen.targetMediaForValueJob", {
 												value0: String(jobTypeLabel(job.type)),
-												value1: String(job.id),
 											})}
-											aria-pressed={props.selectedJobId === job.id}
-											class="w-full rounded px-2 py-2 text-left font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-											onClick={() => props.onSelect(job)}
-											type="button"
-										>
-											<div class="truncate" title={jobTypeLabel(job.type)}>
-												{jobTypeLabel(job.type)}
-											</div>
-											<div class="mt-0.5 font-normal text-muted-foreground text-xs">
-												{job.id.slice(0, 8)}
-											</div>
-										</button>
-									</td>
-									<td class="px-4 py-3 whitespace-nowrap">
-										<JobStatusBadge status={job.status} />
-									</td>
-									<td class="px-4 py-3">
-										<JobProgress progress={job.progress} />
-									</td>
-									<td class="px-4 py-3 whitespace-nowrap text-muted-foreground tabular-nums">
-										{formatDate(job.updatedAt, { includeTime: true })}
-									</td>
-								</tr>
-							)}
-						</For>
-					</tbody>
-				</table>
-			</div>
+											buildUrl={props.buildThumbnailUrl}
+											class="size-12 shrink-0 rounded-sm object-cover"
+											height={48}
+											job={job}
+											width={48}
+										/>
+									</div>
+								</TableCell>
+								<TableCell class="px-2 py-2">
+									<button
+										aria-label={t("jobsScreen.valueJobValue", {
+											value0: String(jobTypeLabel(job.type)),
+											value1: String(job.id),
+										})}
+										aria-pressed={props.selectedJobId === job.id}
+										class="w-full rounded px-2 py-2 text-left font-medium text-foreground hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+										onClick={() => props.onSelect(job)}
+										type="button"
+									>
+										<div class="truncate" title={jobTypeLabel(job.type)}>
+											{jobTypeLabel(job.type)}
+										</div>
+										<div class="mt-0.5 font-normal text-muted-foreground text-xs">
+											{job.id.slice(0, 8)}
+										</div>
+									</button>
+								</TableCell>
+								<TableCell class="px-4 py-3 whitespace-nowrap">
+									<JobStatusBadge status={job.status} />
+								</TableCell>
+								<TableCell class="px-4 py-3">
+									<JobProgress progress={job.progress} />
+								</TableCell>
+								<TableCell class="px-4 py-3 whitespace-nowrap text-muted-foreground tabular-nums">
+									{formatDate(job.updatedAt, { includeTime: true })}
+								</TableCell>
+							</TableRow>
+						)}
+					</For>
+				</TableBody>
+			</Table>
 		</div>
 	);
 }
@@ -647,25 +655,23 @@ function JobsInspector(props: {
 
 						<Show when={job().error}>
 							{(error) => (
-								<div class="mt-4 rounded-md border border-input bg-muted p-3 text-destructive text-sm">
-									<div class="flex items-start gap-2">
-										<CircleAlert
-											aria-hidden="true"
-											class="mt-0.5 shrink-0"
-											size={16}
-										/>
-										<p class="break-words">{error()}</p>
-									</div>
-								</div>
+								<Alert class="mt-4" variant="destructive">
+									<CircleAlert aria-hidden="true" size={16} />
+									<AlertDescription class="break-words">
+										{error()}
+									</AlertDescription>
+								</Alert>
 							)}
 						</Show>
 
 						<Show when={job().cancelRequestedAt}>
-							<p class="mt-4 rounded-md border border-input bg-warning p-3 text-warning-foreground text-xs">
-								{t("jobsScreen.cancellationRequestedAtValue", {
-									value0: String(formatDate(job().cancelRequestedAt)),
-								})}
-							</p>
+							<Callout class="mt-4" variant="warning">
+								<CalloutContent class="mt-0 text-xs">
+									{t("jobsScreen.cancellationRequestedAtValue", {
+										value0: String(formatDate(job().cancelRequestedAt)),
+									})}
+								</CalloutContent>
+							</Callout>
 						</Show>
 
 						<Show when={job().artifact}>

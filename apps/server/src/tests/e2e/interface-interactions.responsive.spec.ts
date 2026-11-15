@@ -39,6 +39,13 @@ test(
 		await expect(palette).toBeVisible();
 		await expect(palette.getByPlaceholder("操作を検索...")).toBeFocused();
 
+		const items = palette.locator("[cmdk-item]");
+		await expect(items.first()).toHaveAttribute("aria-selected", "true");
+		await page.keyboard.press("ArrowUp");
+		await expect(items.last()).toHaveAttribute("aria-selected", "true");
+		await page.keyboard.press("ArrowDown");
+		await expect(items.first()).toHaveAttribute("aria-selected", "true");
+
 		await page.keyboard.press("Escape");
 		await expect(palette).toBeHidden();
 		await expect(origin).toBeFocused();
@@ -180,7 +187,7 @@ test(
 		await page
 			.getByRole("menuitem", { name: /^削除(?: Delete)?$/, exact: true })
 			.click();
-		const deleteDialog = page.getByRole("dialog");
+		const deleteDialog = page.getByRole("alertdialog");
 		await expect(deleteDialog).toContainText(E2E_PRIMARY_FILE_NAME);
 		await deleteDialog
 			.getByRole("button", { name: "キャンセル", exact: true })
@@ -196,7 +203,7 @@ test(
 		await expect(bulkActionButton).toBeEnabled();
 		await bulkActionButton.click();
 		const bulkDialog = page.getByRole("dialog");
-		await expect(bulkDialog).toContainText("一括削除");
+		await expect(bulkDialog).toContainText("コピー (別ソースへ)");
 		await bulkDialog
 			.getByRole("button", { name: "キャンセル", exact: true })
 			.click();
@@ -278,10 +285,10 @@ test("Workspace detail exposes zoom controls and non-destructive action choices"
 	await moreActions.scrollIntoViewIfNeeded();
 	await moreActions.click();
 	await expect(
-		page.getByRole("button", { name: "原本をダウンロード", exact: true }),
+		page.getByRole("menuitem", { name: "原本をダウンロード", exact: true }),
 	).toBeVisible();
 	await expect(
-		page.getByRole("button", { name: "メディアを削除...", exact: true }),
+		page.getByRole("menuitem", { name: "メディアを削除...", exact: true }),
 	).toBeVisible();
 });
 
@@ -293,10 +300,10 @@ test("Workspace detail closes More actions before opening a modal", async ({
 
 	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
 	await page
-		.getByRole("button", { name: "メディアを削除...", exact: true })
+		.getByRole("menuitem", { name: "メディアを削除...", exact: true })
 		.click();
 	await expect(
-		page.getByRole("button", { name: "原本をダウンロード", exact: true }),
+		page.getByRole("menuitem", { name: "原本をダウンロード", exact: true }),
 	).toBeHidden();
 	const deleteDialog = page.getByRole("alertdialog");
 	await expect(deleteDialog).toBeVisible();

@@ -100,7 +100,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 			response.status() === 200,
 	);
 	await page
-		.getByRole("button", {
+		.getByRole("menuitem", {
 			name: "EmbeddingGemma 2のベクトルを抽出",
 			exact: true,
 		})
@@ -226,7 +226,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	).toHaveCount(0);
 	await page.getByRole("button", { name: "その他の操作", exact: true }).click();
 	await page
-		.getByRole("button", {
+		.getByRole("menuitem", {
 			name: "類似検索（EmbeddingGemma 2）",
 			exact: true,
 		})

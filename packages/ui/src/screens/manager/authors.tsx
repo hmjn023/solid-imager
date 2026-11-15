@@ -1,9 +1,16 @@
 import { t } from "@solid-imager/i18n";
 import type { Author, NewAuthor } from "@solid-imager/core/authors";
 import { createQuery } from "@tanstack/solid-query";
+import ChevronDown from "lucide-solid/icons/chevron-down";
 import { createMemo, createSignal, For, Show } from "solid-js";
+import { Alert, AlertDescription } from "../../alert";
 import { Button } from "../../button";
 import { Checkbox, CheckboxControl, CheckboxLabel } from "../../checkbox";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "../../collapsible";
 import {
 	Combobox,
 	ComboboxContent,
@@ -399,77 +406,86 @@ export function AuthorManagementPanel(props: {
 					</section>
 				)}
 			</Show>
-			<details class="border-y py-3">
-				<summary class="cursor-pointer font-medium">
-					{t("authors.registerANewDestinationAuthor")}
-				</summary>
-				<form
-					class="mt-3 space-y-3"
-					onSubmit={(event) => {
-						event.preventDefault();
-						void createAuthor();
-					}}
-				>
-					<TextField>
-						<TextFieldLabel>{t("authors.authorName")}</TextFieldLabel>
-						<TextFieldInput
-							required
-							value={name()}
-							onInput={(event) => setName(event.currentTarget.value)}
-							disabled={busy()}
-						/>
-					</TextField>
-					<div class="grid gap-3 sm:grid-cols-2">
-						<div>
-							<Label>{t("authors.platform")}</Label>
-							<Select
-								options={[...platforms]}
-								value={platform()}
-								onChange={(value) => {
-									if (value) setPlatform(value);
-								}}
-								itemComponent={(item) => (
-									<SelectItem item={item.item}>{item.item.rawValue}</SelectItem>
-								)}
-								disabled={busy()}
-							>
-								<SelectTrigger aria-label={t("authors.platform")}>
-									<SelectValue<string>>
-										{(state) => state.selectedOption()}
-									</SelectValue>
-								</SelectTrigger>
-								<SelectContent />
-							</Select>
-						</div>
+			<Collapsible class="border-y py-3">
+				<CollapsibleTrigger class="group flex w-full cursor-pointer items-center justify-between gap-2 rounded-md py-1 text-left font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+					<span>{t("authors.registerANewDestinationAuthor")}</span>
+					<ChevronDown
+						aria-hidden="true"
+						class="shrink-0 text-muted-foreground transition-transform motion-reduce:transition-none group-data-[expanded]:rotate-180"
+						size={16}
+					/>
+				</CollapsibleTrigger>
+				<CollapsibleContent>
+					<form
+						class="mt-3 space-y-3"
+						onSubmit={(event) => {
+							event.preventDefault();
+							void createAuthor();
+						}}
+					>
 						<TextField>
-							<TextFieldLabel>
-								{t("authors.usernameOrCreatorIdentifier")}
-							</TextFieldLabel>
+							<TextFieldLabel>{t("authors.authorName")}</TextFieldLabel>
 							<TextFieldInput
-								value={handle()}
-								onInput={(event) => setHandle(event.currentTarget.value)}
+								required
+								value={name()}
+								onInput={(event) => setName(event.currentTarget.value)}
 								disabled={busy()}
 							/>
 						</TextField>
-					</div>
-					<TextField>
-						<TextFieldLabel>
-							{t("authors.stableIDOnlyIfVerified")}
-						</TextFieldLabel>
-						<TextFieldInput
-							value={remoteId()}
-							onInput={(event) => setRemoteId(event.currentTarget.value)}
-							disabled={busy()}
-						/>
-					</TextField>
-					<p class="text-xs text-muted-foreground">
-						{t("authors.forTwitterEnterTheNumericUserIDDoNot")}
-					</p>
-					<Button type="submit" disabled={busy() || !name().trim()}>
-						{t("authors.registerAndSetAsDestination")}
-					</Button>
-				</form>
-			</details>
+						<div class="grid gap-3 sm:grid-cols-2">
+							<div>
+								<Label>{t("authors.platform")}</Label>
+								<Select
+									options={[...platforms]}
+									value={platform()}
+									onChange={(value) => {
+										if (value) setPlatform(value);
+									}}
+									itemComponent={(item) => (
+										<SelectItem item={item.item}>
+											{item.item.rawValue}
+										</SelectItem>
+									)}
+									disabled={busy()}
+								>
+									<SelectTrigger aria-label={t("authors.platform")}>
+										<SelectValue<string>>
+											{(state) => state.selectedOption()}
+										</SelectValue>
+									</SelectTrigger>
+									<SelectContent />
+								</Select>
+							</div>
+							<TextField>
+								<TextFieldLabel>
+									{t("authors.usernameOrCreatorIdentifier")}
+								</TextFieldLabel>
+								<TextFieldInput
+									value={handle()}
+									onInput={(event) => setHandle(event.currentTarget.value)}
+									disabled={busy()}
+								/>
+							</TextField>
+						</div>
+						<TextField>
+							<TextFieldLabel>
+								{t("authors.stableIDOnlyIfVerified")}
+							</TextFieldLabel>
+							<TextFieldInput
+								value={remoteId()}
+								onInput={(event) => setRemoteId(event.currentTarget.value)}
+								disabled={busy()}
+							/>
+						</TextField>
+						<p class="text-xs text-muted-foreground">
+							{t("authors.forTwitterEnterTheNumericUserIDDoNot")}
+						</p>
+						<Button type="submit" disabled={busy() || !name().trim()}>
+							{t("authors.registerAndSetAsDestination")}
+						</Button>
+					</form>
+				</CollapsibleContent>
+			</Collapsible>
 			<Show when={sourceId()}>
 				<div class="max-w-sm">
 					<Label>{t("labels.targetSource")}</Label>
@@ -677,9 +693,9 @@ export function AuthorManagementPanel(props: {
 				</div>
 			</Show>
 			<Show when={error()}>
-				<p role="alert" class="break-words text-sm text-destructive">
-					{error()}
-				</p>
+				<Alert variant="destructive">
+					<AlertDescription class="break-words">{error()}</AlertDescription>
+				</Alert>
 			</Show>
 			<Show when={status()}>
 				<output class="block text-sm">{status()}</output>
@@ -717,9 +733,9 @@ export function AuthorManagementPanel(props: {
 						</DialogDescription>
 					</DialogHeader>
 					<Show when={error()}>
-						<p role="alert" class="text-sm text-destructive">
-							{error()}
-						</p>
+						<Alert variant="destructive">
+							<AlertDescription>{error()}</AlertDescription>
+						</Alert>
 					</Show>
 					<DialogFooter>
 						<Button

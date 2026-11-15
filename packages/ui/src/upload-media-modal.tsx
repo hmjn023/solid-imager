@@ -11,6 +11,7 @@ import {
 	Show,
 } from "solid-js";
 import { z } from "zod";
+import { Alert, AlertDescription, AlertTitle } from "./alert";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -39,6 +40,7 @@ import {
 import { type UploadFormValues, uploadFormSchema } from "./form-schemas";
 import { Input } from "./input";
 import { Label } from "./label";
+import { RadioGroup, RadioGroupItem, RadioGroupItemLabel } from "./radio-group";
 import { createUploadDraft } from "./upload-draft";
 
 export type UploadConflictResolution = "overwrite" | "skip" | "rename";
@@ -76,6 +78,12 @@ export type UploadMediaModalContentProps = {
 	conflicts?: UploadConflict[];
 	uploadProgress?: UploadProgress | null;
 };
+
+function isUploadConflictResolution(
+	value: string,
+): value is UploadConflictResolution {
+	return value === "overwrite" || value === "skip" || value === "rename";
+}
 
 const resolutionOptions: Array<{
 	value: UploadConflictResolution;
@@ -465,51 +473,62 @@ export function UploadMediaModalContent(props: UploadMediaModalContentProps) {
 								<form.Field name="conflictResolution">
 									{(field) => (
 										<div class="space-y-2">
-											<Label>{t("uploadMediaModal.onFilenameConflict")}</Label>
-											<div class="grid gap-2 sm:grid-cols-3">
+											<Label id="conflict-resolution-label">
+												{t("uploadMediaModal.onFilenameConflict")}
+											</Label>
+											<RadioGroup
+												aria-labelledby="conflict-resolution-label"
+												class="grid gap-2 sm:grid-cols-3"
+												name={field().name}
+												onChange={(value) => {
+													if (isUploadConflictResolution(value)) {
+														field().handleChange(value);
+													}
+												}}
+												value={field().state.value}
+											>
 												<For each={resolutionOptions}>
 													{(option) => (
-														<label class="rounded-md border p-3 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5">
-															<div class="flex items-center gap-2">
-																<input
-																	checked={field().state.value === option.value}
-																	name={field().name}
-																	onChange={() =>
-																		field().handleChange(option.value)
-																	}
-																	type="radio"
-																/>
-																<span class="font-medium">{option.label}</span>
-															</div>
-															<p class="mt-1 text-muted-foreground text-xs">
-																{option.description}
-															</p>
-														</label>
+														<RadioGroupItem
+															class="items-start rounded-md border p-3 text-sm data-[checked]:border-primary data-[checked]:bg-primary/5"
+															value={option.value}
+														>
+															<RadioGroupItemLabel class="block cursor-pointer space-y-1 font-normal leading-normal">
+																<span class="block font-medium leading-none">
+																	{option.label}
+																</span>
+																<span class="block text-muted-foreground text-xs">
+																	{option.description}
+																</span>
+															</RadioGroupItemLabel>
+														</RadioGroupItem>
 													)}
 												</For>
-											</div>
+											</RadioGroup>
 										</div>
 									)}
 								</form.Field>
 
 								<Show when={(props.conflicts?.length ?? 0) > 0}>
-									<div class="rounded-md border border-input bg-warning p-3 text-warning-foreground text-sm">
-										<p class="font-medium">
+									<Alert variant="warning">
+										<AlertTitle>
 											{t("uploadMediaModal.aFileWithThisNameAlreadyExists")}
-										</p>
-										<ul class="mt-2 list-disc space-y-1 pl-5">
-											<For each={props.conflicts}>
-												{(conflict) => (
-													<li>
-														{conflict.filename}
-														<Show when={conflict.suggestedName}>
-															<span> → {conflict.suggestedName}</span>
-														</Show>
-													</li>
-												)}
-											</For>
-										</ul>
-									</div>
+										</AlertTitle>
+										<AlertDescription>
+											<ul class="mt-2 list-disc space-y-1 pl-5">
+												<For each={props.conflicts}>
+													{(conflict) => (
+														<li>
+															{conflict.filename}
+															<Show when={conflict.suggestedName}>
+																<span> → {conflict.suggestedName}</span>
+															</Show>
+														</li>
+													)}
+												</For>
+											</ul>
+										</AlertDescription>
+									</Alert>
 								</Show>
 
 								<Show when={props.uploadProgress}>

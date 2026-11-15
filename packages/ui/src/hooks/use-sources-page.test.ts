@@ -126,3 +126,58 @@ describe("source synchronization feedback", () => {
 		);
 	});
 });
+
+describe("source deletion confirmation", () => {
+	it("ignores duplicate confirm calls while deletion is in flight", async () => {
+		const { actions, page, invalidate } = setup();
+		const request = Promise.withResolvers<unknown>();
+		vi.mocked(actions.deleteMediaSource).mockReturnValueOnce(request.promise);
+
+		page.handleDeleteSource(source("one"));
+		expect(page.showDeleteModal()).toBe(true);
+		expect(page.deletingSource()?.id).toBe("one");
+
+		const deleting = page.handleDeleteConfirm("one");
+		expect(page.isDeleting()).toBe(true);
+
+		await page.handleDeleteConfirm("one");
+		expect(actions.deleteMediaSource).toHaveBeenCalledExactlyOnceWith("one");
+
+		request.resolve(undefined);
+		await deleting;
+
+		expect(page.isDeleting()).toBe(false);
+		expect(page.showDeleteModal()).toBe(false);
+		expect(page.deletingSource()).toBeNull();
+		expect(invalidate).toHaveBeenCalledOnce();
+	});
+
+	it("preserves source B confirmation state if source A deletion finishes after switching to B", async () => {
+		const { actions, page } = setup();
+		const requestA = Promise.withResolvers<unknown>();
+		vi.mocked(actions.deleteMediaSource)
+			.mockReturnValueOnce(requestA.promise)
+			.mockResolvedValueOnce(undefined);
+
+		page.handleDeleteSource(source("one"));
+		const deletingA = page.handleDeleteConfirm("one");
+
+		page.setShowDeleteModal(false);
+		page.handleDeleteSource(source("two"));
+		expect(page.showDeleteModal()).toBe(true);
+		expect(page.deletingSource()?.id).toBe("two");
+
+		requestA.resolve(undefined);
+		await deletingA;
+
+		expect(page.isDeleting()).toBe(false);
+		expect(page.showDeleteModal()).toBe(true);
+		expect(page.deletingSource()?.id).toBe("two");
+
+		await page.handleDeleteConfirm("two");
+		expect(actions.deleteMediaSource).toHaveBeenCalledTimes(2);
+		expect(actions.deleteMediaSource).toHaveBeenNthCalledWith(2, "two");
+		expect(page.showDeleteModal()).toBe(false);
+		expect(page.deletingSource()).toBeNull();
+	});
+});

@@ -11,7 +11,10 @@ import type { DownloadItem } from "@solid-imager/core/media";
 import { createQuery } from "@tanstack/solid-query";
 import { DanbooruPostDetail } from "../external-viewer/danbooru-post-detail";
 import { createViewerImports } from "../external-viewer/detail";
-import { danbooruRatingLabel } from "../external-viewer/post-media";
+import {
+	danbooruRatingLabel,
+	viewerImageHref,
+} from "../external-viewer/post-media";
 import { createViewerSearch } from "../external-viewer/use-viewer-search";
 import {
 	ViewerWorkspace,
@@ -19,6 +22,7 @@ import {
 } from "../external-viewer/workspace";
 
 export type DanbooruScreenProps = ViewerNavigation & {
+	apiBase: () => string;
 	search: (input: ExternalSearch) => Promise<DanbooruSearchResult>;
 	getPost: (id: number) => Promise<DanbooruPost>;
 	suggestTags: (query: string) => Promise<ViewerTag[]>;
@@ -54,7 +58,13 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 			emptyTitle={t("danbooruScreen.noMatchingPosts")}
 			describePost={(post) => ({
 				title: t("danbooruScreen.danbooruValue", { value0: String(post.id) }),
-				thumbnail: post.previewUrl,
+				thumbnail:
+					post.previewUrl &&
+					viewerImageHref(
+						props.apiBase(),
+						"/api/danbooru-thumbnail",
+						post.previewUrl,
+					),
 				info: `${post.fileExt.toUpperCase()} · ${danbooruRatingLabel(post.rating)}`,
 				width: post.width || undefined,
 				height: post.height || undefined,

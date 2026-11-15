@@ -8,8 +8,14 @@ import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { Chart } from "@tanstack/charts/solid";
 import { tooltip } from "@tanstack/charts/tooltip";
 import { createMemo, For, Show } from "solid-js";
-import { Button } from "../../button";
 import { Card } from "../../card";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "../../collapsible";
+import { Toggle } from "../../toggle";
+import { ToggleGroup, ToggleGroupItem } from "../../toggle-group";
 
 const chartBlue = "var(--chart-blue)";
 const chartTheme = {
@@ -132,24 +138,29 @@ export function ImportTrend(props: {
 					title={t("charts.importTrends")}
 					accent="bg-chart-blue"
 				/>
-				<fieldset
+				<ToggleGroup
 					aria-label={t("charts.trendDisplay")}
-					class="flex rounded-md bg-muted p-1"
+					class="gap-0 rounded-md bg-muted p-1"
+					onChange={(next) => {
+						if (next === "count" || next === "cumulative") {
+							props.onCumulative(next === "cumulative");
+						}
+					}}
+					value={props.cumulative ? "cumulative" : "count"}
 				>
-					<For each={[false, true]}>
-						{(cumulative) => (
-							<Button
-								variant={props.cumulative === cumulative ? "outline" : "ghost"}
-								aria-pressed={props.cumulative === cumulative}
-								class="h-10 px-3 text-xs sm:h-8"
-								classList={{ "bg-card": props.cumulative === cumulative }}
-								onClick={() => props.onCumulative(cumulative)}
-							>
-								{cumulative ? t("charts.cumulative") : t("charts.count")}
-							</Button>
-						)}
-					</For>
-				</fieldset>
+					<ToggleGroupItem
+						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-input data-[pressed]:bg-card data-[pressed]:text-foreground data-[pressed]:shadow-sm data-[pressed]:hover:bg-card data-[pressed]:hover:text-foreground sm:h-8"
+						value="count"
+					>
+						{t("charts.count")}
+					</ToggleGroupItem>
+					<ToggleGroupItem
+						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-input data-[pressed]:bg-card data-[pressed]:text-foreground data-[pressed]:shadow-sm data-[pressed]:hover:bg-card data-[pressed]:hover:text-foreground sm:h-8"
+						value="cumulative"
+					>
+						{t("charts.cumulative")}
+					</ToggleGroupItem>
+				</ToggleGroup>
 			</div>
 			<div class="flex flex-wrap items-end justify-between gap-3">
 				<div>
@@ -196,42 +207,45 @@ export function ImportTrend(props: {
 					if (point) props.select(point.datum.bucket);
 				}}
 			/>
-			<details class="mt-auto border-t border-border pt-3 text-xs">
-				<summary class="w-fit cursor-pointer text-muted-foreground hover:text-foreground">
+			<Collapsible class="mt-auto border-t border-border pt-3 text-xs">
+				<CollapsibleTrigger
+					as="button"
+					class="w-fit cursor-pointer rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					type="button"
+				>
 					{t("charts.viewCountsAsAList")}
-				</summary>
-				<p class="mt-2 text-muted-foreground">
-					{t("charts.countsMediaCurrentlyInTheLibraryByDatabaseRegistration")}
-				</p>
-				<ul class="mt-2 grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
-					<For each={props.trend}>
-						{(item) => (
-							<li>
-								<Button
-									class="w-full justify-between gap-1 px-2 text-xs tabular-nums"
-									variant={
-										props.selected === item.bucket ? "secondary" : "ghost"
-									}
-									aria-pressed={props.selected === item.bucket}
-									onClick={() => props.select(item.bucket)}
-								>
-									{label(item.bucket)}{" "}
-									<span>
-										{t("charts.valueValueItems2", {
-											value0: String(
-												(props.cumulative
-													? item.cumulative
-													: item.count
-												).toLocaleString(),
-											),
-										})}
-									</span>
-								</Button>
-							</li>
-						)}
-					</For>
-				</ul>
-			</details>
+				</CollapsibleTrigger>
+				<CollapsibleContent>
+					<p class="mt-2 text-muted-foreground">
+						{t("charts.countsMediaCurrentlyInTheLibraryByDatabaseRegistration")}
+					</p>
+					<ul class="mt-2 grid gap-1 sm:grid-cols-2 xl:grid-cols-3">
+						<For each={props.trend}>
+							{(item) => (
+								<li>
+									<Toggle
+										class="w-full justify-between gap-1 px-2 text-xs tabular-nums hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-secondary data-[pressed]:text-secondary-foreground data-[pressed]:hover:bg-secondary/80"
+										onChange={() => props.select(item.bucket)}
+										pressed={props.selected === item.bucket}
+									>
+										{label(item.bucket)}{" "}
+										<span>
+											{t("charts.valueValueItems2", {
+												value0: String(
+													(props.cumulative
+														? item.cumulative
+														: item.count
+													).toLocaleString(),
+												),
+											})}
+										</span>
+									</Toggle>
+								</li>
+							)}
+						</For>
+					</ul>
+				</CollapsibleContent>
+			</Collapsible>
 		</Card>
 	);
 }
@@ -380,11 +394,10 @@ export function Ranking(props: {
 				>
 					{(item, index) => (
 						<li>
-							<Button
-								aria-pressed={props.selected === item.id}
-								variant={props.selected === item.id ? "secondary" : "ghost"}
-								class="h-auto min-h-11 w-full items-start gap-3 px-2 py-2 text-left [&_svg]:h-1.5 [&_svg]:w-full"
-								onClick={() => props.select(item.id)}
+							<Toggle
+								class="h-auto min-h-11 w-full items-start justify-start gap-3 px-2 py-2 text-left hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-secondary data-[pressed]:text-secondary-foreground data-[pressed]:hover:bg-secondary/80 [&_svg]:h-1.5 [&_svg]:w-full"
+								onChange={() => props.select(item.id)}
+								pressed={props.selected === item.id}
 							>
 								<span
 									class={`pt-0.5 font-mono text-xs tabular-nums ${index() === 0 ? "font-semibold text-foreground" : "text-muted-foreground"}`}
@@ -416,7 +429,7 @@ export function Ranking(props: {
 										/>
 									</svg>
 								</span>
-							</Button>
+							</Toggle>
 						</li>
 					)}
 				</For>

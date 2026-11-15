@@ -35,6 +35,7 @@ const Command: Component<ParentProps<CommandPrimitive.CommandRootProps>> = (
 type CommandDialogProps = ParentProps<
 	DialogRootProps & {
 		description?: string;
+		loop?: boolean;
 		title?: string;
 	}
 >;
@@ -43,6 +44,7 @@ const CommandDialog: Component<CommandDialogProps> = (props) => {
 	const [local, others] = splitProps(props, [
 		"children",
 		"description",
+		"loop",
 		"title",
 	]);
 
@@ -55,7 +57,10 @@ const CommandDialog: Component<CommandDialogProps> = (props) => {
 				<DialogDescription class="sr-only">
 					{local.description ?? t("command.typeToFilterTheAvailableActions")}
 				</DialogDescription>
-				<Command class="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:size-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:size-5">
+				<Command
+					class="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-input-wrapper]_svg]:size-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:size-5"
+					loop={local.loop}
+				>
 					{local.children}
 				</Command>
 			</DialogContent>

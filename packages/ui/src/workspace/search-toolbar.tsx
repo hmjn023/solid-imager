@@ -12,8 +12,15 @@ import Grid3X3 from "lucide-solid/icons/grid-3x3";
 import List from "lucide-solid/icons/list";
 import type { JSX } from "solid-js";
 import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
+import {
+	Breadcrumb,
+	BreadcrumbItem,
+	BreadcrumbList,
+	BreadcrumbSeparator,
+} from "../breadcrumb";
 import { Button } from "../button";
 import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import { ToggleGroup, ToggleGroupItem } from "../toggle-group";
 import type { PresetManagerClient } from "../search-control-panel";
 import { SearchControlPanel } from "../search-control-panel";
 import { createAppShortcut } from "../shortcuts/create-app-shortcut";
@@ -341,13 +348,22 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	return (
 		<header class="shrink-0 border-border border-b bg-background px-3 py-3 sm:px-4">
 			<div class="mb-2 flex min-h-6 items-center gap-2 text-sm">
-				<span class="text-muted-foreground">{t("navigation.library")}</span>
-				<span aria-hidden="true" class="text-input">
-					/
-				</span>
-				<strong class="min-w-0 truncate font-semibold">
-					{props.sourceName}
-				</strong>
+				<Breadcrumb class="min-w-0">
+					<BreadcrumbList class="min-w-0 flex-nowrap gap-2 sm:gap-2">
+						<BreadcrumbItem class="shrink-0">
+							<span class="cursor-default">{t("navigation.library")}</span>
+						</BreadcrumbItem>
+						<BreadcrumbSeparator />
+						<BreadcrumbItem class="min-w-0">
+							<span
+								aria-current="page"
+								class="min-w-0 truncate font-semibold text-foreground"
+							>
+								{props.sourceName}
+							</span>
+						</BreadcrumbItem>
+					</BreadcrumbList>
+				</Breadcrumb>
 				<Show when={props.isUpdating}>
 					<output
 						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-muted-foreground"
@@ -537,36 +553,30 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						/>
 					</PopoverContent>
 				</Popover>
-				<div class="flex rounded-md border border-input bg-card p-0.5">
-					<Button
-						aria-label={t("actions.gridView")}
-						aria-pressed={(props.viewMode ?? "grid") === "grid"}
-						class={
-							(props.viewMode ?? "grid") === "grid"
-								? "size-11 bg-primary p-0 text-white hover:bg-primary sm:size-8"
-								: "size-11 p-0 sm:size-8"
+				<ToggleGroup
+					class="gap-0 rounded-md border border-input bg-card p-0.5"
+					onChange={(next) => {
+						if (next === "grid" || next === "list") {
+							props.onViewModeChange?.(next);
 						}
-						onClick={() => props.onViewModeChange?.("grid")}
-						size="icon"
-						variant="ghost"
+					}}
+					value={props.viewMode ?? "grid"}
+				>
+					<ToggleGroupItem
+						aria-label={t("actions.gridView")}
+						class="size-11 p-0 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground sm:size-8"
+						value="grid"
 					>
 						<Grid3X3 aria-hidden="true" size={15} />
-					</Button>
-					<Button
+					</ToggleGroupItem>
+					<ToggleGroupItem
 						aria-label={t("actions.listView")}
-						aria-pressed={(props.viewMode ?? "grid") === "list"}
-						class={
-							(props.viewMode ?? "grid") === "list"
-								? "size-11 bg-primary p-0 text-white hover:bg-primary sm:size-8"
-								: "size-11 p-0 sm:size-8"
-						}
-						onClick={() => props.onViewModeChange?.("list")}
-						size="icon"
-						variant="ghost"
+						class="size-11 p-0 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground sm:size-8"
+						value="list"
 					>
 						<List aria-hidden="true" size={15} />
-					</Button>
-				</div>
+					</ToggleGroupItem>
+				</ToggleGroup>
 				{props.actions}
 			</div>
 		</header>

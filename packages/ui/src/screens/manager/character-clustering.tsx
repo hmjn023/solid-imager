@@ -43,6 +43,8 @@ import {
 import { Skeleton } from "../../skeleton";
 import { ManagedThumbnailImage } from "../../managed-thumbnail-image";
 import { TextField, TextFieldInput, TextFieldLabel } from "../../text-field";
+import { Toggle } from "../../toggle";
+import { ToggleGroup, ToggleGroupItem } from "../../toggle-group";
 
 import { ClusteringVirtualGrid } from "./clustering-virtual-grid";
 import { CharacterClusteringStart } from "./character-clustering-start";
@@ -650,40 +652,42 @@ export function CharacterClusteringReviewPanel(props: {
 								},
 							)}
 						</p>
-						<div class="flex flex-wrap gap-2">
-							<Button
-								aria-pressed={view() === "groups"}
-								onClick={() =>
-									batch(() => {
-										setView("groups");
-										reset();
-									})
-								}
-								variant={view() === "groups" ? "default" : "outline"}
+						<div class="flex flex-wrap items-center gap-2">
+							<ToggleGroup
+								class="flex-wrap justify-start gap-2"
+								onChange={(value) => {
+									if (value === "groups" || value === "noise") {
+										batch(() => {
+											setView(value);
+											reset();
+										});
+									}
+								}}
+								value={view()}
+								variant="outline"
 							>
-								{t("characterClustering.viewGroups")}
-							</Button>
-							<Button
-								aria-pressed={view() === "noise"}
-								onClick={() =>
-									batch(() => {
-										setView("noise");
-										reset();
-									})
-								}
-								variant={view() === "noise" ? "default" : "outline"}
-							>
-								{t("characterClustering.viewNoise")}
-							</Button>
-							<Button
-								aria-pressed={large()}
-								onClick={() => setLarge(!large())}
-								variant="ghost"
+								<ToggleGroupItem
+									class="min-h-11 px-4 data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary/90 data-[pressed]:hover:text-primary-foreground sm:min-h-9"
+									value="groups"
+								>
+									{t("characterClustering.viewGroups")}
+								</ToggleGroupItem>
+								<ToggleGroupItem
+									class="min-h-11 px-4 data-[pressed]:border-primary data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary/90 data-[pressed]:hover:text-primary-foreground sm:min-h-9"
+									value="noise"
+								>
+									{t("characterClustering.viewNoise")}
+								</ToggleGroupItem>
+							</ToggleGroup>
+							<Toggle
+								class="min-h-11 px-4 hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground sm:min-h-9"
+								onChange={setLarge}
+								pressed={large()}
 							>
 								{large()
 									? t("characterClustering.smallerImages")
 									: t("characterClustering.largerImages")}
-							</Button>
+							</Toggle>
 						</div>
 						<form
 							class="flex flex-wrap items-end gap-2"
@@ -724,7 +728,21 @@ export function CharacterClusteringReviewPanel(props: {
 							</Show>
 						</form>
 						<Show when={view() === "groups"}>
-							<div class="flex flex-wrap gap-2">
+							<ToggleGroup
+								class="flex-wrap justify-start gap-2"
+								onChange={(value) => {
+									if (
+										value === "size" ||
+										value === "mixed" ||
+										value === "weak"
+									) {
+										batch(() => {
+											setSort(value);
+										});
+									}
+								}}
+								value={sort()}
+							>
 								<For
 									each={
 										[
@@ -746,21 +764,15 @@ export function CharacterClusteringReviewPanel(props: {
 									}
 								>
 									{(option) => (
-										<Button
-											aria-pressed={sort() === option.value}
-											class="text-xs"
-											onClick={() =>
-												batch(() => {
-													setSort(option.value);
-												})
-											}
-											variant={sort() === option.value ? "secondary" : "ghost"}
+										<ToggleGroupItem
+											class="min-h-11 px-4 text-xs data-[pressed]:bg-secondary data-[pressed]:text-secondary-foreground data-[pressed]:hover:bg-secondary/80 data-[pressed]:hover:text-secondary-foreground sm:min-h-9"
+											value={option.value}
 										>
 											{option.label}
-										</Button>
+										</ToggleGroupItem>
 									)}
 								</For>
-							</div>
+							</ToggleGroup>
 						</Show>
 						<Show when={fetching() && !hasPage()}>
 							<p aria-live="polite" class="text-sm text-muted-foreground">
@@ -1037,38 +1049,35 @@ export function CharacterClusteringReviewPanel(props: {
 							)}
 						</DialogDescription>
 					</DialogHeader>
-					<div class="flex flex-wrap gap-2">
-						<Button
-							aria-pressed={detailOrder() === "weak"}
-							onClick={() =>
-								batch(() => {
-									setDetailOrder("weak");
-								})
-							}
+					<div class="flex flex-wrap items-center gap-2">
+						<ToggleGroup
+							class="flex-wrap justify-start gap-2"
+							onChange={(value) => {
+								if (value === "weak" || value === "strong") {
+									batch(() => {
+										setDetailOrder(value);
+									});
+								}
+							}}
+							value={detailOrder()}
 							variant="outline"
 						>
-							{t("characterClustering.boundaryImagesFirst")}
-						</Button>
-						<Button
-							aria-pressed={detailOrder() === "strong"}
-							onClick={() =>
-								batch(() => {
-									setDetailOrder("strong");
-								})
-							}
-							variant="outline"
-						>
-							{t("characterClustering.strongMembersFirst")}
-						</Button>
-						<Button
-							aria-pressed={large()}
-							onClick={() => setLarge(!large())}
-							variant="ghost"
+							<ToggleGroupItem class="min-h-11 px-4 sm:min-h-9" value="weak">
+								{t("characterClustering.boundaryImagesFirst")}
+							</ToggleGroupItem>
+							<ToggleGroupItem class="min-h-11 px-4 sm:min-h-9" value="strong">
+								{t("characterClustering.strongMembersFirst")}
+							</ToggleGroupItem>
+						</ToggleGroup>
+						<Toggle
+							class="min-h-11 px-4 hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground sm:min-h-9"
+							onChange={setLarge}
+							pressed={large()}
 						>
 							{large()
 								? t("characterClustering.smallerImages")
 								: t("characterClustering.largerImages")}
-						</Button>
+						</Toggle>
 					</div>
 					<Show when={detail.isFetching && !detail.isFetchingNextPage}>
 						<p aria-live="polite" class="text-sm">

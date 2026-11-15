@@ -8,7 +8,12 @@ import {
 	CollapsibleRoot,
 	CollapsibleTrigger,
 } from "../collapsible";
-import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "../dropdown-menu";
 import {
 	ChevronDown,
 	Database,
@@ -62,44 +67,35 @@ function SourceActions(props: {
 	sourceName: string;
 }) {
 	return (
-		<Popover placement="right-start">
-			<PopoverTrigger
+		<DropdownMenu placement="right-start">
+			<DropdownMenuTrigger
 				aria-label={t("sourceList.actionsForValue", {
 					value0: String(props.sourceName),
 				})}
 				class="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-white focus-visible:ring-2 focus-visible:ring-ring md:size-7"
 			>
 				<Ellipsis aria-hidden="true" size={14} />
-			</PopoverTrigger>
-			<PopoverContent class="w-44 space-y-1 p-1.5">
-				<Button
-					class="h-11 w-full justify-start px-2 md:h-8"
+			</DropdownMenuTrigger>
+			<DropdownMenuContent class="w-44 space-y-1 p-1.5">
+				<DropdownMenuItem
+					class="min-h-11 md:min-h-8"
 					disabled={props.isSyncing}
-					onClick={props.onSync}
-					size="sm"
-					variant="ghost"
+					onSelect={props.onSync}
 				>
 					<RefreshCw aria-hidden="true" size={14} />
 					{props.isSyncing ? t("status.syncing") : t("sourceList.sync")}
-				</Button>
-				<Button
-					class="h-11 w-full justify-start px-2 md:h-8"
-					onClick={props.onEdit}
-					size="sm"
-					variant="ghost"
-				>
+				</DropdownMenuItem>
+				<DropdownMenuItem class="min-h-11 md:min-h-8" onSelect={props.onEdit}>
 					{t("actions.edit")}
-				</Button>
-				<Button
-					class="h-11 w-full justify-start px-2 text-destructive md:h-8"
-					onClick={props.onDelete}
-					size="sm"
-					variant="ghost"
+				</DropdownMenuItem>
+				<DropdownMenuItem
+					class="min-h-11 text-destructive focus:bg-destructive/10 focus:text-destructive md:min-h-8"
+					onSelect={props.onDelete}
 				>
 					{t("actions.delete")}
-				</Button>
-			</PopoverContent>
-		</Popover>
+				</DropdownMenuItem>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	);
 }
 

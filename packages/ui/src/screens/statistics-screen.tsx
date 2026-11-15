@@ -11,6 +11,7 @@ import { EmptyState, ErrorState, OfflineState } from "../async-state";
 import { Button } from "../button";
 import { Card } from "../card";
 import { saveMediaContext } from "../media-context";
+import { ToggleGroup, ToggleGroupItem } from "../toggle-group";
 import { ManagementHeader } from "../workspace/management-layout";
 
 import {
@@ -86,27 +87,29 @@ export function StatisticsScreen(props: {
 					"statisticsScreen.reviewImportTrendsAndBreakdownsSelectADateOr",
 				)}
 				actions={
-					<fieldset
-						class="flex gap-0.5 rounded-lg border border-border bg-muted p-1"
+					<ToggleGroup
 						aria-label={t("statisticsScreen.reportingPeriod")}
+						class="gap-0.5 rounded-lg border border-border bg-muted p-1"
+						onChange={(next) => {
+							if (next === "recent" || next === "all") {
+								props.change({ period: next });
+							}
+						}}
+						value={period()}
 					>
-						<Button
-							class="h-11 px-3 sm:h-8"
-							variant={recent() ? "default" : "ghost"}
-							aria-pressed={recent()}
-							onClick={() => props.change({ period: "recent" })}
+						<ToggleGroupItem
+							class="h-11 px-3 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground sm:h-8"
+							value="recent"
 						>
 							{t("statisticsScreen.last30Days")}
-						</Button>
-						<Button
-							class="h-11 px-3 sm:h-8"
-							variant={recent() ? "ghost" : "default"}
-							aria-pressed={!recent()}
-							onClick={() => props.change({ period: "all" })}
+						</ToggleGroupItem>
+						<ToggleGroupItem
+							class="h-11 px-3 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground sm:h-8"
+							value="all"
 						>
 							{t("statisticsScreen.allTime")}
-						</Button>
-					</fieldset>
+						</ToggleGroupItem>
+					</ToggleGroup>
 				}
 			/>
 			<div class="@container min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain bg-background p-3 scrollbar-stable sm:p-5">

@@ -13,6 +13,15 @@ import type {
 import { Input } from "../../input";
 import { LoadingRegion } from "../../skeleton";
 import {
+	Table,
+	TableBody,
+	TableCaption,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "../../table";
+import {
 	categoryLabel,
 	formatDate,
 	isCharacter,
@@ -213,47 +222,59 @@ export function EntityTablePanel(props: {
 						}
 						when={items().length > 0}
 					>
-						<div class="overflow-x-auto rounded-md border border-border bg-card scrollbar-stable">
-							<table class="w-full min-w-table-standard border-collapse text-left text-sm">
-								<caption class="sr-only">
+						<div class="overflow-hidden rounded-md border border-border bg-card">
+							<Table class="min-w-table-standard border-collapse text-left text-sm">
+								<TableCaption class="sr-only mt-0">
 									{t("entityPanel.valueListValueItems", {
 										value0: String(categoryLabel(active())),
 										value1: String(items().length),
 									})}
-								</caption>
-								<thead class="bg-muted text-xs text-muted-foreground">
-									<tr>
-										<th class="px-3 py-2 font-medium" scope="col">
+								</TableCaption>
+								<TableHeader class="bg-muted text-xs text-muted-foreground">
+									<TableRow class="hover:bg-transparent">
+										<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 											{t("labels.name")}
-										</th>
-										<th class="px-3 py-2 font-medium" scope="col">
+										</TableHead>
+										<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 											{t("labels.description")}
-										</th>
-										<th class="px-3 py-2 font-medium" scope="col">
+										</TableHead>
+										<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 											{active() === "characters"
 												? t("labels.ips")
 												: active() === "ips"
 													? t("labels.source")
 													: t("jobsScreen.status")}
-										</th>
-										<th class="px-3 py-2 font-medium" scope="col">
+										</TableHead>
+										<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 											{t("configScreen.media")}
-										</th>
-										<th class="px-3 py-2 font-medium" scope="col">
+										</TableHead>
+										<TableHead class="h-auto px-3 py-2 font-medium" scope="col">
 											{t("jobsScreen.updated")}
-										</th>
-										<th class="px-3 py-2 text-right font-medium" scope="col">
+										</TableHead>
+										<TableHead
+											class="h-auto px-3 py-2 text-right font-medium"
+											scope="col"
+										>
 											{t("entityPanel.actions")}
-										</th>
-									</tr>
-								</thead>
-								<tbody class="divide-y divide-border">
+										</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody class="divide-y divide-border">
 									<For each={items()}>
 										{(item) => {
 											const selected = () => selectedItem()?.id === item.id;
 											return (
-												<tr class={selected() ? "bg-accent" : "hover:bg-muted"}>
-													<th class="p-0 font-normal" scope="row">
+												<TableRow
+													class={
+														selected()
+															? "bg-accent hover:bg-accent"
+															: "hover:bg-muted"
+													}
+												>
+													<TableHead
+														class="h-auto p-0 font-normal text-foreground"
+														scope="row"
+													>
 														<button
 															aria-label={item.name}
 															aria-pressed={selected()}
@@ -265,26 +286,26 @@ export function EntityTablePanel(props: {
 																{item.name}
 															</span>
 														</button>
-													</th>
-													<td class="max-w-dialog-reading px-3 py-2 text-xs text-muted-foreground">
+													</TableHead>
+													<TableCell class="max-w-dialog-reading px-3 py-2 text-xs text-muted-foreground">
 														<span class="line-clamp-2">
 															{item.description || t("labels.noDescription")}
 														</span>
-													</td>
-													<td class="max-w-52 px-3 py-2 text-xs text-muted-foreground">
+													</TableCell>
+													<TableCell class="max-w-52 px-3 py-2 text-xs text-muted-foreground">
 														<span class="block truncate">
 															{active() === "projects"
 																? t("jobsScreen.active")
 																: relationSummary(item)}
 														</span>
-													</td>
-													<td class="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
+													</TableCell>
+													<TableCell class="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
 														{item.mediaCount?.toLocaleString() ?? "—"}
-													</td>
-													<td class="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
+													</TableCell>
+													<TableCell class="whitespace-nowrap px-3 py-2 text-xs text-muted-foreground">
 														{formatDate(item.updatedAt)}
-													</td>
-													<td class="px-3 py-2">
+													</TableCell>
+													<TableCell class="px-3 py-2">
 														<div class="flex justify-end gap-1">
 															<Button
 																aria-label={t("entityPanel.editValue", {
@@ -314,13 +335,13 @@ export function EntityTablePanel(props: {
 																<Trash2 aria-hidden="true" size={14} />
 															</Button>
 														</div>
-													</td>
-												</tr>
+													</TableCell>
+												</TableRow>
 											);
 										}}
 									</For>
-								</tbody>
-							</table>
+								</TableBody>
+							</Table>
 						</div>
 						<p class="mt-2 text-xs text-muted-foreground" aria-live="polite">
 							{t("charts.valueItems", {

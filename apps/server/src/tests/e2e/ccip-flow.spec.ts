@@ -66,20 +66,20 @@ test(
 		});
 		await moreActions.click();
 		await page
-			.getByRole("button", { name: "CCIPベクトルを抽出", exact: true })
+			.getByRole("menuitem", { name: "CCIPベクトルを抽出", exact: true })
 			.click();
 		releaseStartRequest();
 		await postSubmitStatusRequest;
 		await moreActions.click();
 		await expect(
-			page.getByRole("button", {
+			page.getByRole("menuitem", {
 				name: "CCIPベクトルを抽出中...",
 				exact: true,
 			}),
 		).toBeDisabled();
 		releaseStatusRequest();
 		await expect(
-			page.getByRole("button", {
+			page.getByRole("menuitem", {
 				name: "CCIPベクトルを再抽出",
 				exact: true,
 			}),
@@ -109,7 +109,7 @@ test(
 		await page.goto(mediaPath(E2E_PRIMARY_MEDIA_ID));
 		await moreActions.click();
 		await page
-			.getByRole("button", { name: "CCIPベクトルを抽出", exact: true })
+			.getByRole("menuitem", { name: "CCIPベクトルを抽出", exact: true })
 			.click();
 		await queuedExtraction;
 		const reload = page.reload();
@@ -117,11 +117,12 @@ test(
 		await reload;
 		await moreActions.click();
 		await expect(
-			page.getByRole("button", {
+			page.getByRole("menuitem", {
 				name: "CCIPベクトルを再抽出",
 				exact: true,
 			}),
 		).toBeEnabled({ timeout: 90_000 });
+		await page.keyboard.press("Escape");
 		await expect(
 			page.getByRole("button", { name: "類似検索", exact: true }),
 		).toBeEnabled();

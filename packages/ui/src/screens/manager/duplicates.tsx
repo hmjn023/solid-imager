@@ -10,6 +10,15 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../../select";
+import {
+	Table,
+	TableBody,
+	TableCaption,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from "../../table";
 import { formatBytes, formatDate } from "./utils";
 
 const ALL_SOURCES_OPTION = { id: "__all__", name: t("labels.allSources") };
@@ -135,45 +144,67 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 				<div class="space-y-4">
 					<For each={props.manager.duplicateGroups()}>
 						{(group, index) => (
-							<div class="overflow-x-auto rounded-md border border-border bg-card scrollbar-stable">
-								<table class="w-full min-w-table-compact border-collapse text-left text-xs">
-									<caption class="px-3 py-2 text-left font-medium text-sm text-foreground">
+							<div class="overflow-hidden rounded-md border border-border bg-card">
+								<Table class="min-w-table-compact border-collapse caption-top text-left text-xs">
+									<TableCaption class="mt-0 px-3 py-2 text-left font-medium text-sm text-foreground">
 										{t("duplicates.groupValueValueItems", {
 											value0: String(index() + 1),
 											value1: String(group.media.length),
 										})}
-									</caption>
-									<thead class="border-border border-t bg-muted text-muted-foreground">
-										<tr>
-											<th class="px-3 py-2 font-medium" scope="col">
+									</TableCaption>
+									<TableHeader class="border-border border-t bg-muted text-muted-foreground">
+										<TableRow class="hover:bg-transparent">
+											<TableHead
+												class="h-auto px-3 py-2 font-medium"
+												scope="col"
+											>
 												{t("duplicates.preview")}
-											</th>
-											<th class="px-3 py-2 font-medium" scope="col">
+											</TableHead>
+											<TableHead
+												class="h-auto px-3 py-2 font-medium"
+												scope="col"
+											>
 												{t("duplicates.file")}
-											</th>
-											<th class="px-3 py-2 font-medium" scope="col">
+											</TableHead>
+											<TableHead
+												class="h-auto px-3 py-2 font-medium"
+												scope="col"
+											>
 												{t("collectionInspector.resolution")}
-											</th>
-											<th class="px-3 py-2 font-medium" scope="col">
+											</TableHead>
+											<TableHead
+												class="h-auto px-3 py-2 font-medium"
+												scope="col"
+											>
 												{t("collectionInspector.size")}
-											</th>
-											<th class="px-3 py-2 font-medium" scope="col">
+											</TableHead>
+											<TableHead
+												class="h-auto px-3 py-2 font-medium"
+												scope="col"
+											>
 												{t("jobsScreen.created")}
-											</th>
-											<th class="px-3 py-2 text-right font-medium" scope="col">
+											</TableHead>
+											<TableHead
+												class="h-auto px-3 py-2 text-right font-medium"
+												scope="col"
+											>
 												{t("duplicates.decision")}
-											</th>
-										</tr>
-									</thead>
-									<tbody class="divide-y divide-border">
+											</TableHead>
+										</TableRow>
+									</TableHeader>
+									<TableBody class="divide-y divide-border">
 										<For each={group.media}>
 											{(item) => {
 												const keep = () => props.manager.keepIds().has(item.id);
 												const thumbnail = () =>
 													`/api/sources/${item.mediaSourceId}/thumbnail/${item.id}?t=${new Date(item.modifiedAt).getTime()}`;
 												return (
-													<tr class={keep() ? "bg-accent" : undefined}>
-														<td class="px-3 py-2">
+													<TableRow
+														class={
+															keep() ? "bg-accent hover:bg-accent" : undefined
+														}
+													>
+														<TableCell class="px-3 py-2">
 															<img
 																alt={t("duplicates.thumbnailForValue", {
 																	value0: String(item.fileName),
@@ -182,9 +213,9 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 																loading="lazy"
 																src={thumbnail()}
 															/>
-														</td>
-														<th
-															class="max-w-64 px-3 py-2 font-medium"
+														</TableCell>
+														<TableHead
+															class="h-auto max-w-64 px-3 py-2 font-medium text-foreground"
 															scope="row"
 														>
 															<span
@@ -193,17 +224,17 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 															>
 																{item.fileName}
 															</span>
-														</th>
-														<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+														</TableHead>
+														<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 															{item.width} × {item.height}
-														</td>
-														<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+														</TableCell>
+														<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 															{formatBytes(item.fileSize)}
-														</td>
-														<td class="whitespace-nowrap px-3 py-2 text-muted-foreground">
+														</TableCell>
+														<TableCell class="whitespace-nowrap px-3 py-2 text-muted-foreground">
 															{formatDate(item.createdAt)}
-														</td>
-														<td class="px-3 py-2 text-right">
+														</TableCell>
+														<TableCell class="px-3 py-2 text-right">
 															<Button
 																aria-label={t("duplicates.keepValue", {
 																	value0: String(item.fileName),
@@ -222,13 +253,13 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 																	? t("duplicates.keep")
 																	: t("duplicates.keepThis")}
 															</Button>
-														</td>
-													</tr>
+														</TableCell>
+													</TableRow>
 												);
 											}}
 										</For>
-									</tbody>
-								</table>
+									</TableBody>
+								</Table>
 							</div>
 						)}
 					</For>

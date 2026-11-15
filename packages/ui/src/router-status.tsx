@@ -3,6 +3,7 @@ import type { ErrorComponentProps } from "@tanstack/solid-router";
 import { Link, useRouter, useRouterState } from "@tanstack/solid-router";
 import { createEffect, createSignal, onCleanup, Show, untrack } from "solid-js";
 import { ErrorState } from "./async-state";
+import { Progress } from "./progress";
 import { ScreenSkeleton, type ScreenSkeletonLayout } from "./screen-skeleton";
 
 export const ROUTE_PENDING_DELAY_MS = 300;
@@ -59,14 +60,11 @@ export function RouteTransitionIndicator() {
 
 	return (
 		<Show when={isVisible()}>
-			<div
+			<Progress
 				aria-label={t("routerStatus.loadingPage")}
-				aria-valuetext={t("routerStatus.loading")}
-				class="fixed inset-x-0 top-0 z-router-status h-1 overflow-hidden bg-primary/20"
-				role="progressbar"
-			>
-				<div class="h-full w-1/2 animate-pulse rounded-full bg-primary motion-reduce:animate-none" />
-			</div>
+				class="fixed inset-x-0 top-0 z-router-status h-1 rounded-none bg-primary/20 [&>div]:bg-transparent [&>div>div]:w-1/2 [&>div>div]:animate-pulse [&>div>div]:rounded-full [&>div>div]:motion-reduce:animate-none"
+				indeterminate
+			/>
 		</Show>
 	);
 }

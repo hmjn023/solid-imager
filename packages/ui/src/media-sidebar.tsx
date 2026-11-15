@@ -1,3 +1,9 @@
+import {
+	MediaAuthorsSection,
+	MediaAuthorRow,
+	MediaMetadataSection,
+	MediaTagBadge,
+} from "./media-detail-metadata";
 import { t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
@@ -37,8 +43,8 @@ import {
 } from "./media-activity-controls";
 import { Button } from "./button";
 import { ClipboardCopy } from "./clipboard-copy";
-import { Label } from "./label";
 import { CollapsibleRoot as Collapsible } from "./collapsible";
+import { TextField, TextFieldLabel, TextFieldTextArea } from "./text-field";
 import { toast } from "./toast";
 import { ChevronDown } from "./workspace/icons";
 
@@ -168,13 +174,19 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						}
 						when={isEditingDescription()}
 					>
-						<textarea
-							class="w-full scroll-mb-24 rounded-md border border-input bg-background p-2 text-base sm:text-sm"
-							onInput={(e) => setDescriptionValue(e.currentTarget.value)}
-							placeholder={t("mediaSidebar.enterDescription")}
-							rows={6}
+						<TextField
+							onChange={setDescriptionValue}
 							value={descriptionValue()}
-						/>
+						>
+							<TextFieldLabel class="sr-only">
+								{t("labels.description")}
+							</TextFieldLabel>
+							<TextFieldTextArea
+								class="scroll-mb-24 text-base sm:text-sm"
+								placeholder={t("mediaSidebar.enterDescription")}
+								rows={6}
+							/>
+						</TextField>
 						<div class="sticky bottom-0 z-10 -mx-3 flex flex-col gap-2 border-t bg-background px-3 py-3 sm:-mx-4 sm:px-4 lg:static lg:mx-0 lg:flex-row lg:border-0 lg:bg-transparent lg:p-0">
 							<Button
 								class="w-full lg:w-auto"
@@ -223,34 +235,27 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			</Show>
 
 			<Show when={props.media.authors?.length > 0}>
-				<div class="space-y-2">
-					<h2 class="font-semibold text-sm">{t("labels.authors")}</h2>
-					<ul class="space-y-1">
-						<For each={props.media.authors}>
-							{(author) => (
-								<li>
-									<div class="flex min-w-0 items-center gap-2">
-										<span class="break-words font-medium">{author.name}</span>
-										<Show when={!author.accounts?.length && author.accountId}>
-											<span class="break-all text-muted-foreground text-xs">
-												({author.accountId})
-											</span>
-										</Show>
-									</div>
-									<For each={author.accounts ?? []}>
-										{(account) => (
-											<p class="break-words text-xs text-muted-foreground">
-												{account.platform ?? t("status.unknown")}:{" "}
-												{account.displayName ?? author.name} (
-												{account.accountId})
-											</p>
-										)}
-									</For>
-								</li>
-							)}
-						</For>
-					</ul>
-				</div>
+				<MediaAuthorsSection>
+					<For each={props.media.authors}>
+						{(author) => (
+							<MediaAuthorRow
+								name={author.name}
+								accountId={
+									!author.accounts?.length ? author.accountId : undefined
+								}
+							>
+								<For each={author.accounts ?? []}>
+									{(account) => (
+										<p class="break-words text-xs text-muted-foreground">
+											{account.platform ?? t("status.unknown")}:{" "}
+											{account.displayName ?? author.name} ({account.accountId})
+										</p>
+									)}
+								</For>
+							</MediaAuthorRow>
+						)}
+					</For>
+				</MediaAuthorsSection>
 			</Show>
 
 			<div class="space-y-4">
@@ -324,11 +329,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				</For>
 			</div>
 
-			<div class="space-y-2">
-				<div class="flex items-center justify-between">
-					<h2 class="font-semibold text-sm">
-						{t("mediaSidebar.positiveTags")}
-					</h2>
+			<MediaMetadataSection
+				title={t("mediaSidebar.positiveTags")}
+				action={
 					<Show when={!editingTags()}>
 						<Button
 							size="sm"
@@ -345,7 +348,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							{t("actions.edit")}
 						</Button>
 					</Show>
-				</div>
+				}
+			>
 				<Show
 					when={editingTags()}
 					fallback={
@@ -356,16 +360,17 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						</Show>
 					}
 				>
-					<Label for="positive-tags" class="text-sm text-muted-foreground">
-						{t("mediaSidebar.oneTagPerLine")}
-					</Label>
-					<textarea
-						id="positive-tags"
-						class="w-full rounded-md border border-input bg-background p-2 text-sm"
-						rows={8}
+					<TextField
+						class="space-y-2"
+						disabled={savingTags()}
+						onChange={setTagText}
 						value={tagText()}
-						onInput={(event) => setTagText(event.currentTarget.value)}
-					/>
+					>
+						<TextFieldLabel class="text-muted-foreground text-sm">
+							{t("mediaSidebar.oneTagPerLine")}
+						</TextFieldLabel>
+						<TextFieldTextArea id="positive-tags" rows={8} />
+					</TextField>
 					<div class="flex gap-2">
 						<Button
 							size="sm"
@@ -412,7 +417,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<div class="flex flex-wrap gap-2">
 						<For each={positiveTags()}>
 							{(tag) => (
-								<Badge
+								<MediaTagBadge
 									classList={{
 										"border-input":
 											tag.source === "AI" || tag.source === "comfyui_workflow",
@@ -425,19 +430,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 										value0: String(tag.source),
 									})}
 									variant={tag.source === "AI" ? "outline" : "default"}
-								>
-									{tag.name}
-									<ClipboardCopy
-										class="ml-1.5 p-0.5"
-										iconSize={12}
-										text={tag.name}
-									/>
-								</Badge>
+									name={tag.name}
+								/>
 							)}
 						</For>
 					</div>
 				</Show>
-			</div>
+			</MediaMetadataSection>
 
 			<Show when={negativeTags().length > 0}>
 				<div class="space-y-2">
@@ -447,19 +446,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<div class="flex flex-wrap gap-2">
 						<For each={negativeTags()}>
 							{(tag) => (
-								<Badge
+								<MediaTagBadge
 									title={t("mediaSidebar.sourceValue", {
 										value0: String(tag.source),
 									})}
 									variant="secondary"
-								>
-									{tag.name}
-									<ClipboardCopy
-										class="ml-1.5 p-0.5"
-										iconSize={12}
-										text={tag.name}
-									/>
-								</Badge>
+									name={tag.name}
+								/>
 							)}
 						</For>
 					</div>

@@ -1,16 +1,18 @@
 import { t } from "@solid-imager/i18n";
-import { Button } from "./button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogFooter,
-	DialogHeader,
-	DialogTitle,
-} from "./dialog";
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "./alert-dialog";
 
 export type SourceDeleteModalProps = {
 	isOpen: boolean;
+	isDeleting?: boolean;
 	onClose: () => void;
 	onConfirm: (id: string) => void;
 	sourceToDelete?: { id?: string | null; name?: string | null } | null;
@@ -18,31 +20,41 @@ export type SourceDeleteModalProps = {
 
 export function SourceDeleteModal(props: SourceDeleteModalProps) {
 	return (
-		<Dialog onOpenChange={() => props.onClose()} open={props.isOpen}>
-			<DialogContent>
-				<DialogHeader>
-					<DialogTitle>{t("sourceDeleteModal.deleteMediaSource")}</DialogTitle>
-					<DialogDescription>
+		<AlertDialog
+			onOpenChange={(open) => {
+				if (!open && !props.isDeleting) props.onClose();
+			}}
+			open={props.isOpen}
+		>
+			<AlertDialogContent>
+				<AlertDialogHeader>
+					<AlertDialogTitle>
+						{t("sourceDeleteModal.deleteMediaSource")}
+					</AlertDialogTitle>
+					<AlertDialogDescription>
 						{t("sourceDeleteModal.areYouSureYouWantToDelete")}{" "}
 						<span class="font-bold">{props.sourceToDelete?.name}</span>
 						{t("sourceDeleteModal.thisActionCannotBeUndoneFilesOnDiskWill")}
-					</DialogDescription>
-				</DialogHeader>
-				<DialogFooter>
-					<Button onClick={() => props.onClose()} variant="outline">
+					</AlertDialogDescription>
+				</AlertDialogHeader>
+				<AlertDialogFooter>
+					<AlertDialogCancel disabled={props.isDeleting}>
 						{t("actions.cancel")}
-					</Button>
-					<Button
-						onClick={() =>
-							props.sourceToDelete?.id &&
-							props.onConfirm(props.sourceToDelete.id)
-						}
-						variant="destructive"
+					</AlertDialogCancel>
+					<AlertDialogAction
+						class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						disabled={props.isDeleting}
+						onClick={(event) => {
+							event.preventDefault();
+							if (!props.isDeleting && props.sourceToDelete?.id) {
+								props.onConfirm(props.sourceToDelete.id);
+							}
+						}}
 					>
 						{t("actions.delete")}
-					</Button>
-				</DialogFooter>
-			</DialogContent>
-		</Dialog>
+					</AlertDialogAction>
+				</AlertDialogFooter>
+			</AlertDialogContent>
+		</AlertDialog>
 	);
 }

@@ -2,6 +2,7 @@ import { t } from "@solid-imager/i18n";
 import type { JSX, ParentProps } from "solid-js";
 import { createSignal, Match, Show, Switch } from "solid-js";
 import { Dynamic } from "solid-js/web";
+import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";
 import type { QueryUiFetchState } from "./query-state";
 import { cn } from "./utils/cn";
@@ -198,20 +199,23 @@ export type FilterErrorBannerProps = {
 /** Keeps usable content visible when only supplementary search filters fail. */
 export function FilterErrorBanner(props: FilterErrorBannerProps) {
 	return (
-		<div
+		<Alert
 			class={cn(
-				"flex flex-wrap items-center justify-between gap-2 rounded-md border border-warning-foreground/30 bg-warning/40 p-3",
+				"flex flex-wrap items-center justify-between gap-2 bg-warning/40 p-3",
 				props.class,
 			)}
 			data-state-ui="filter-error"
+			variant="warning"
 		>
-			<output class="text-muted-foreground text-sm">{props.message}</output>
+			<AlertDescription class="text-muted-foreground">
+				{props.message}
+			</AlertDescription>
 			<RetryButton
 				class="h-8 px-3 text-xs"
 				label={props.retryLabel ?? t("asyncState.reloadFilters")}
 				onRetry={props.onRetry}
 			/>
-		</div>
+		</Alert>
 	);
 }
 
