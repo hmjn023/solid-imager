@@ -8,7 +8,7 @@
     "dev": "bun --bun run vite dev",
     "build": "bun --bun run vite build",
     "preview": "bun --bun run vite preview",
-    "start": "bun --bun --preload ./scripts/runtime-preload.ts .output/server/index.mjs",
+    "start": "bun --bun .output/server/index.mjs",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:reconcile-uuidv7-paths": "bun scripts/reconcile-uuidv7-paths.ts",

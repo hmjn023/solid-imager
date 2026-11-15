@@ -47,6 +47,9 @@ function serverEnvironment(
 	);
 	const runtimeNodePath = [
 		path.join(appRoot, "node_modules"),
+		// The isolated output lives under /tmp, outside the workspace dependency
+		// tree. Include hoisted packages so Bun cannot fall back to auto-install.
+		path.join(appRoot, "../..", "node_modules"),
 		inherited.NODE_PATH,
 	]
 		.filter((value): value is string => Boolean(value))

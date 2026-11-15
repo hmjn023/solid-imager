@@ -297,6 +297,142 @@ describe("MaintenanceService", () => {
 			expect(mockJobRepo.createIfUnique).toHaveBeenCalledOnce();
 		});
 
+		it("should reuse a source listing across two populated pages", async () => {
+			const firstPage = Array.from({ length: 1000 }, (_, i) =>
+				makeMedia(`m-${i}`),
+			);
+			const secondPage = [makeMedia("m-1000"), makeMedia("missing")];
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices
+				.mockResolvedValueOnce(firstPage)
+				.mockResolvedValueOnce(secondPage);
+			(fs.readdir as unknown as Mock).mockResolvedValue(
+				[...firstPage, secondPage[0]].map((media) => `${media.id}.webp`),
+			);
+			mockSourceRepo.findById.mockResolvedValue(
+				makeLocalSource("source-1", "/local/images"),
+			);
+			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+
+			await service.performStartupChecks();
+
+			expect(fs.readdir).toHaveBeenCalledOnce();
+			expect(fs.readdir).toHaveBeenCalledWith("/cache/source-1");
+			expect(mockMediaRepo.findAllMediaIndices).toHaveBeenCalledTimes(2);
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledOnce();
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
+				expect.objectContaining({
+					payload: expect.objectContaining({
+						mediaId: "missing",
+						skipMetadataExtraction: true,
+					}),
+				}),
+			);
+		});
+
+		it("should keep source listings separate across pages", async () => {
+			const firstPage = Array.from({ length: 1000 }, (_, i) =>
+				makeMedia(`m-${i}`, i % 2 === 0 ? "source-1" : "source-2"),
+			);
+			const secondPage = [
+				makeMedia("present-1", "source-1"),
+				makeMedia("present-2", "source-2"),
+			];
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices
+				.mockResolvedValueOnce(firstPage)
+				.mockResolvedValueOnce(secondPage);
+			(fs.readdir as unknown as Mock).mockImplementation(
+				async (directory: string) =>
+					[...firstPage, ...secondPage]
+						.filter((media) => directory === `/cache/${media.mediaSourceId}`)
+						.map((media) => `${media.id}.webp`),
+			);
+
+			await service.performStartupChecks();
+
+			expect(fs.readdir).toHaveBeenCalledTimes(2);
+			expect(fs.readdir).toHaveBeenCalledWith("/cache/source-1");
+			expect(fs.readdir).toHaveBeenCalledWith("/cache/source-2");
+			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+		});
+
+		it("should reuse an absent directory result and queue all missing thumbnails across pages", async () => {
+			const firstPage = Array.from({ length: 1000 }, (_, i) =>
+				makeMedia(`m-${i}`),
+			);
+			const secondPage = [makeMedia("m-1000")];
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices
+				.mockResolvedValueOnce(firstPage)
+				.mockResolvedValueOnce(secondPage);
+			(fs.readdir as unknown as Mock).mockRejectedValue(
+				Object.assign(new Error("ENOENT"), { code: "ENOENT" }),
+			);
+			mockSourceRepo.findById.mockResolvedValue(
+				makeLocalSource("source-1", "/local/images"),
+			);
+			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+
+			await service.performStartupChecks();
+
+			expect(fs.readdir).toHaveBeenCalledOnce();
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledTimes(1001);
+			expect(
+				mockJobRepo.createIfUnique.mock.calls.map(
+					([job]) => job.payload.mediaId,
+				),
+			).toEqual([...firstPage, ...secondPage].map((media) => media.id));
+		});
+
+		it("should refresh source listings for the next startup scan", async () => {
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices.mockResolvedValue([
+				makeMedia("media-1"),
+			]);
+			(fs.readdir as unknown as Mock)
+				.mockResolvedValueOnce(["media-1.webp"])
+				.mockResolvedValueOnce([]);
+			mockSourceRepo.findById.mockResolvedValue(
+				makeLocalSource("source-1", "/local/images"),
+			);
+			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+
+			await service.performStartupChecks();
+			expect(mockJobRepo.createIfUnique).not.toHaveBeenCalled();
+			await service.performStartupChecks();
+
+			expect(fs.readdir).toHaveBeenCalledTimes(2);
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledOnce();
+		});
+
+		it("should retry a failed source read on the next page instead of caching the failure", async () => {
+			const firstPage = Array.from({ length: 1000 }, (_, i) =>
+				makeMedia(`m-${i}`),
+			);
+			mockMediaRepo.findIdsWithMissingGenerationInfo.mockResolvedValue([]);
+			mockMediaRepo.findAllMediaIndices
+				.mockResolvedValueOnce(firstPage)
+				.mockResolvedValueOnce([makeMedia("missing")]);
+			(fs.readdir as unknown as Mock)
+				.mockRejectedValueOnce(Object.assign(new Error("EIO"), { code: "EIO" }))
+				.mockResolvedValueOnce([]);
+			mockSourceRepo.findById.mockResolvedValue(
+				makeLocalSource("source-1", "/local/images"),
+			);
+			mockJobRepo.createIfUnique.mockResolvedValue({ id: "job-new" });
+
+			await service.performStartupChecks();
+
+			expect(fs.readdir).toHaveBeenCalledTimes(2);
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledOnce();
+			expect(mockJobRepo.createIfUnique).toHaveBeenCalledWith(
+				expect.objectContaining({
+					payload: expect.objectContaining({ mediaId: "missing" }),
+				}),
+			);
+		});
+
 		it("should fetch the next batch by last media id when a page is full", async () => {
 			// Simulate exactly BATCH_SIZE (1000) items in the first batch.
 			// The loop does NOT exit early and fetches the next page (which is empty).
