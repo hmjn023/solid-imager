@@ -766,6 +766,11 @@ export const en = defineMessages({
 	"jobs.valueJobsQueuedForRetry": "{value0} jobs queued for retry",
 	"jobs.valueOfValueJobsFailedToQueueForRetry":
 		"{value0} of {value1} jobs failed to queue for retry",
+	"jobsScreen.backToList": "Back to jobs",
+	"jobsScreen.executionInfo": "Execution details and job ID",
+	"jobsScreen.currentStage": "Current stage",
+	"jobsScreen.batchSummary":
+		"Completed {completed} · Failed {failed} · Remaining {remaining}",
 	"jobsScreen.allTypes": "All types",
 	"jobsScreen.jobTypeFilter": "Filter by job type",
 	"jobsScreen.retryTypes": "Retry loading job types",

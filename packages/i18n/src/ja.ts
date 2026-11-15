@@ -759,6 +759,11 @@ export const ja = defineLocale({
 	"jobs.valueJobsQueuedForRetry": "{value0}件のジョブの再試行を登録しました",
 	"jobs.valueOfValueJobsFailedToQueueForRetry":
 		"{value1}件中{value0}件の再試行を登録できませんでした",
+	"jobsScreen.backToList": "一覧へ戻る",
+	"jobsScreen.executionInfo": "実行情報・ジョブID",
+	"jobsScreen.currentStage": "現在の工程",
+	"jobsScreen.batchSummary":
+		"完了 {completed} · 失敗 {failed} · 残り {remaining}",
 	"jobsScreen.allTypes": "すべての種類",
 	"jobsScreen.jobTypeFilter": "ジョブの種類で絞り込む",
 	"jobsScreen.retryTypes": "種類の取得を再試行",

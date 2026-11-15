@@ -1,3 +1,10 @@
+import ArrowLeft from "lucide-solid/icons/arrow-left";
+import ChevronDown from "lucide-solid/icons/chevron-down";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "../collapsible";
 import { createStore, reconcile, unwrap } from "solid-js/store";
 import { observePageBoundary } from "../hooks/observe-page-boundary";
 import { Input } from "../input";
@@ -283,6 +290,7 @@ function JobThumbnail(props: {
 }
 
 function JobsTable(props: {
+	compact: boolean;
 	jobs: JobDto[];
 	onSelect: (job: JobDto) => void;
 	onToggleSelect: (jobId: string) => void;
@@ -297,7 +305,13 @@ function JobsTable(props: {
 	return (
 		<div class="overflow-hidden rounded-md border border-border bg-card">
 			{/* Live progress must not resize columns and rewrap neighboring rows. */}
-			<Table class="min-w-table-wide table-fixed text-left">
+			<Table
+				class={
+					props.compact
+						? "table-fixed text-left [&_th:first-child]:hidden [&_td:first-child]:hidden [&_th:nth-child(2)]:hidden [&_td:nth-child(2)]:hidden [&_th:nth-child(5)]:hidden [&_td:nth-child(5)]:hidden [&_th:nth-child(6)]:hidden [&_td:nth-child(6)]:hidden"
+						: "min-w-table-wide table-fixed text-left"
+				}
+			>
 				<TableCaption class="sr-only">
 					{t("jobsScreen.jobListValueJobs", {
 						value0: String(props.jobs.length),
@@ -536,7 +550,10 @@ function BatchTargetList(props: {
 			props.load(props.id, (page() - 1) * size, size, signal),
 	}));
 	return (
-		<section class="mt-4">
+		<section
+			class="@container min-w-0 [&>div:has(table)]:overflow-visible"
+			aria-label={t("jobsScreen.batchTargets")}
+		>
 			<Show when={inputError()}>
 				{(error) => <p role="alert">{error()}</p>}
 			</Show>
@@ -551,12 +568,23 @@ function BatchTargetList(props: {
 			<Show when={query.data}>
 				{(data) => (
 					<>
-						<Table>
-							<TableCaption>{t("jobsScreen.batchTargets")}</TableCaption>
-							<TableHeader>
+						<h3 class="mb-3 font-semibold text-base">
+							{t("jobsScreen.batchTargets")}
+						</h3>
+						<Table class="table-fixed">
+							<TableCaption class="sr-only">
+								{t("jobsScreen.batchTargets")}
+							</TableCaption>
+
+							<TableHeader class="sticky top-0 z-10 bg-background">
 								<TableRow>
 									<TableHead scope="col">{t("jobsScreen.target")}</TableHead>
-									<TableHead scope="col">{t("jobsScreen.status")}</TableHead>
+									<TableHead class="hidden w-40 @xl:table-cell" scope="col">
+										{t("jobsScreen.currentStage")}
+									</TableHead>
+									<TableHead class="w-28" scope="col">
+										{t("jobsScreen.status")}
+									</TableHead>
 								</TableRow>
 							</TableHeader>
 							<TableBody>
@@ -564,7 +592,7 @@ function BatchTargetList(props: {
 									each={data().items}
 									fallback={
 										<TableRow>
-											<TableCell colSpan={2}>
+											<TableCell colSpan={3}>
 												{t("jobsScreen.noRecordedTargets")}
 											</TableCell>
 										</TableRow>
@@ -572,8 +600,13 @@ function BatchTargetList(props: {
 								>
 									{(item) => (
 										<TableRow>
-											<TableCell class="break-all">
-												{item.label}
+											<TableCell class="break-words [overflow-wrap:anywhere]">
+												<span class="block">{item.label}</span>
+												<Show when={item.stage}>
+													<div class="mt-1 text-xs text-muted-foreground @xl:hidden">
+														{jobTypeLabel(item.stage!)}
+													</div>
+												</Show>
 												<Show when={props.upload && item.uploadReservationId}>
 													{(reservation) => (
 														<Label for={`${inputId}-${reservation()}`}>
@@ -599,6 +632,9 @@ function BatchTargetList(props: {
 													)}
 												</Show>
 											</TableCell>
+											<TableCell class="hidden text-xs text-muted-foreground @xl:table-cell">
+												{item.stage ? jobTypeLabel(item.stage) : "—"}
+											</TableCell>
 											<TableCell>
 												{item.skipped ? (
 													t("jobsScreen.skipped")
@@ -610,9 +646,6 @@ function BatchTargetList(props: {
 														{(status) => <JobStatusBadge status={status()} />}
 													</Show>
 												)}
-												<Show when={item.stage}>
-													{(stage) => <div>{jobTypeLabel(stage())}</div>}
-												</Show>
 											</TableCell>
 										</TableRow>
 									)}
@@ -642,7 +675,7 @@ function JobsInspector(props: {
 		file: File,
 	) => Promise<unknown>;
 	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
-	class?: string;
+	onBack: () => void;
 	job: JobDto | undefined;
 	onCancel: (jobId: string) => void | Promise<void>;
 	onDownload: (job: JobDto) => void | Promise<void>;
@@ -703,268 +736,296 @@ function JobsInspector(props: {
 		<aside
 			aria-label={t("jobsScreen.jobDetails")}
 			data-job-id={props.job?.id}
-			class={
-				props.class ??
-				"hidden min-h-0 overflow-y-auto overscroll-contain border-border border-l bg-background p-5 scrollbar-stable xl:block"
-			}
+			class="flex h-full min-h-0 min-w-0 flex-col bg-background"
 		>
-			<div class="flex items-start justify-between gap-3">
-				<div>
-					<p class="text-xs text-muted-foreground">
-						{t("jobsScreen.inspector")}
-					</p>
-					<h2 class="mt-1 font-semibold text-base text-foreground">
-						{t("jobsScreen.jobDetails")}
-					</h2>
-				</div>
-				<Show when={props.job}>
-					{(job) => <JobStatusBadge status={job().status} />}
-				</Show>
-			</div>
-
-			<Show
-				fallback={
-					<p class="mt-3 text-sm leading-6 text-muted-foreground">
-						{t("jobsScreen.selectAJobToSeeItsTargetAndStatus")}
-					</p>
-				}
-				when={props.job}
-			>
+			<Show when={props.job}>
 				{(job) => (
 					<>
-						<p class="mt-3 font-medium text-sm text-foreground">
-							{jobTypeLabel(job().type)}
-						</p>
-						<Show
-							when={
-								(isBatchParentJobType(job().type) ||
-									job().type === "extract_embedding_batch") &&
-								job().id
-							}
-							keyed
-						>
-							{(id) => (
-								<Show when={props.loadTargets}>
-									{(load) => (
-										<BatchTargetList
-											id={id}
-											load={load()}
-											upload={
-												props.onUploadTarget &&
-												job().mediaSourceId &&
-												(!job().cancelRequestedAt || canRetryJob(job()))
-													? async (reservation, filename, file) => {
-															const source = job().mediaSourceId;
-															const upload = props.onUploadTarget;
-															if (!source || !upload) return;
-															if (canRetryJob(job()))
-																await props.onRetry(id, reservation);
-															await upload(source, reservation, filename, file);
-														}
-													: undefined
-											}
-										/>
+						<header class="shrink-0 border-b border-border bg-card px-4 py-4 sm:px-6">
+							<Button
+								variant="ghost"
+								size="sm"
+								class="mb-2 -ml-2"
+								onClick={props.onBack}
+							>
+								<ArrowLeft aria-hidden="true" size={16} />
+								{t("jobsScreen.backToList")}
+							</Button>
+							<div class="flex flex-wrap items-center justify-between gap-2">
+								<h2 class="font-semibold text-xl">
+									{jobTypeLabel(job().type)}
+								</h2>
+								<JobStatusBadge status={job().status} />
+							</div>
+							<Show when={job().progress}>
+								{(progress) => (
+									<div class="mt-4">
+										<p class="mb-2 text-xs text-muted-foreground">
+											{t("jobsScreen.progress")}
+										</p>
+										<JobProgress progress={progress()} />
+
+										<Show when={progress().cancelled}>
+											<p>
+												{t("jobsScreen.cancelledCount", {
+													count: String(progress().cancelled),
+												})}
+											</p>
+										</Show>
+									</div>
+								)}
+							</Show>
+
+							<Show when={job().progress}>
+								{(progress) => (
+									<p class="mt-2 text-xs text-muted-foreground">
+										{t("jobsScreen.batchSummary", {
+											completed: String(progress().processed),
+											failed: String(progress().failed),
+											remaining: String(
+												Math.max(
+													0,
+													progress().total -
+														progress().processed -
+														progress().failed -
+														(progress().cancelled ?? 0),
+												),
+											),
+										})}
+									</p>
+								)}
+							</Show>
+							<div class="mt-4 flex flex-wrap gap-2">
+								<Show when={job().artifact}>
+									{(artifact) => (
+										<Button
+											aria-busy={isDownloading()}
+											variant="outline"
+											class="h-auto max-w-full justify-start px-3 py-2 text-primary"
+											disabled={isDownloading()}
+											onClick={() => void download()}
+											type="button"
+										>
+											<Download aria-hidden="true" size={15} />
+											<span class="min-w-0 truncate">
+												{isDownloading()
+													? t("jobsScreen.downloading")
+													: t("jobsScreen.downloadValue", {
+															value0: String(artifact().fileName),
+														})}
+											</span>
+										</Button>
 									)}
 								</Show>
-							)}
-						</Show>
-						<Show
-							fallback={
-								<div
-									aria-hidden="true"
-									class="mt-4 flex h-24 items-center justify-center rounded-md border border-border bg-card text-muted-foreground"
-								>
-									—
-								</div>
-							}
-							when={job().targetMediaId && job().mediaSourceId}
-						>
-							<div class="mt-4 overflow-hidden rounded-md border border-border bg-card">
-								<JobThumbnail
-									alt={t("jobsScreen.targetMediaForValueJob", {
-										value0: String(jobTypeLabel(job().type)),
-									})}
-									buildUrl={props.buildThumbnailUrl}
-									class="aspect-landscape w-full object-cover"
-									height={192}
-									job={job()}
-									requestedSize={512}
-									width={256}
-								/>
-								<p class="border-border border-t px-3 py-2 text-xs text-muted-foreground">
-									{t("jobsScreen.targetMedia")}
-								</p>
-							</div>
-						</Show>
-						<dl class="mt-5 space-y-3 border-border border-y py-4 text-xs">
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">{t("jobsScreen.status")}</dt>
-								<dd class="text-right text-muted-foreground">
-									{statusLabel(job().status)}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">{t("labels.source")}</dt>
-								<dd class="max-w-40 truncate text-right text-muted-foreground">
-									{job().mediaSourceId?.slice(0, 8) ?? "—"}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">{t("jobsScreen.created")}</dt>
-								<dd class="text-right text-muted-foreground">
-									{formatDate(job().createdAt, { includeTime: true })}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">{t("jobsScreen.updated")}</dt>
-								<dd class="text-right text-muted-foreground">
-									{formatDate(job().updatedAt, { includeTime: true })}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">
-									{t("jobsScreen.attempts")}
-								</dt>
-								<dd class="text-right text-muted-foreground">
-									{job().attemptCount}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">{t("jobsScreen.started")}</dt>
-								<dd class="text-right text-muted-foreground">
-									{job().startedAt ? formatDate(job().startedAt) : "—"}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">
-									{t("jobsScreen.finished")}
-								</dt>
-								<dd class="text-right text-muted-foreground">
-									{job().finishedAt ? formatDate(job().finishedAt) : "—"}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">{t("jobsScreen.target")}</dt>
-								<dd class="max-w-40 truncate text-right text-muted-foreground">
-									{job().targetMediaId?.slice(0, 8) ?? "—"}
-								</dd>
-							</div>
-							<div class="flex justify-between gap-3">
-								<dt class="text-muted-foreground">{t("jobsScreen.jobID")}</dt>
-								<dd class="max-w-40 truncate text-right text-muted-foreground">
-									{job().id}
-								</dd>
-							</div>
-						</dl>
 
-						<Show when={job().progress}>
-							{(progress) => (
-								<div class="mt-4">
-									<p class="mb-2 text-xs text-muted-foreground">
-										{t("jobsScreen.progress")}
-									</p>
-									<JobProgress progress={progress()} />
-									<Show when={progress().failed > 0}>
-										<p>
-											{t("jobStatus.valueFailed", {
-												value0: String(progress().failed),
-											})}
-										</p>
+								<div class="flex flex-wrap gap-2">
+									<Show
+										fallback={null}
+										when={
+											(job().status === "pending" ||
+												job().status === "in_progress") &&
+											canCancelJobType(job().type)
+										}
+									>
+										<Button
+											aria-busy={isCancelling()}
+											class="w-full sm:w-auto"
+											disabled={isCancelling() || !!job().cancelRequestedAt}
+											onClick={() => void cancel()}
+											variant="outline"
+										>
+											<Ban aria-hidden="true" size={15} />
+											{isCancelling() || job().cancelRequestedAt
+												? t("jobsScreen.cancelling")
+												: job().type === "import_batch_parent"
+													? t("jobsScreen.cancelImportBatch")
+													: t("jobsScreen.cancelJob")}
+										</Button>
 									</Show>
-									<Show when={progress().cancelled}>
-										<p>
-											{t("jobsScreen.cancelledCount", {
-												count: String(progress().cancelled),
-											})}
-										</p>
+									<Show when={canRetryJob(job())}>
+										<Button
+											aria-busy={isRetrying()}
+											class="w-full sm:w-auto"
+											disabled={isRetrying()}
+											onClick={() => void retry()}
+											variant="outline"
+										>
+											<RotateCcw aria-hidden="true" size={15} />
+											{isRetrying()
+												? t("status.retrying")
+												: hasBatchTargetHistory(job().type)
+													? t("jobsScreen.retryFailedStages")
+													: t("jobsScreen.retryJob")}
+										</Button>
 									</Show>
 								</div>
-							)}
-						</Show>
+							</div>
+						</header>
+						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-6 scrollbar-stable">
+							<Show when={job().error}>
+								{(error) => (
+									<Alert class="mt-3" variant="destructive">
+										<CircleAlert aria-hidden="true" size={16} />
+										<AlertDescription class="break-words">
+											{error()}
+										</AlertDescription>
+									</Alert>
+								)}
+							</Show>
 
-						<Show when={job().error}>
-							{(error) => (
-								<Alert class="mt-4" variant="destructive">
-									<CircleAlert aria-hidden="true" size={16} />
-									<AlertDescription class="break-words">
-										{error()}
-									</AlertDescription>
-								</Alert>
-							)}
-						</Show>
+							<Show when={job().cancelRequestedAt}>
+								<Callout class="mt-3" variant="warning">
+									<CalloutContent class="mt-0 text-xs">
+										{t("jobsScreen.cancellationRequestedAtValue", {
+											value0: String(formatDate(job().cancelRequestedAt)),
+										})}
+									</CalloutContent>
+								</Callout>
+							</Show>
 
-						<Show when={job().cancelRequestedAt}>
-							<Callout class="mt-4" variant="warning">
-								<CalloutContent class="mt-0 text-xs">
-									{t("jobsScreen.cancellationRequestedAtValue", {
-										value0: String(formatDate(job().cancelRequestedAt)),
-									})}
-								</CalloutContent>
-							</Callout>
-						</Show>
-
-						<Show when={job().artifact}>
-							{(artifact) => (
-								<Button
-									aria-busy={isDownloading()}
-									variant="outline"
-									class="mt-4 h-auto w-full justify-start px-3 py-2 text-primary"
-									disabled={isDownloading()}
-									onClick={() => void download()}
-									type="button"
-								>
-									<Download aria-hidden="true" size={15} />
-									<span class="min-w-0 truncate">
-										{isDownloading()
-											? t("jobsScreen.downloading")
-											: t("jobsScreen.downloadValue", {
-													value0: String(artifact().fileName),
-												})}
-									</span>
-								</Button>
-							)}
-						</Show>
-
-						<div class="mt-5 space-y-2">
 							<Show
-								fallback={null}
 								when={
-									(job().status === "pending" ||
-										job().status === "in_progress") &&
-									canCancelJobType(job().type)
+									(isBatchParentJobType(job().type) ||
+										job().type === "extract_embedding_batch") &&
+									job().id
 								}
+								keyed
 							>
-								<Button
-									aria-busy={isCancelling()}
-									class="w-full"
-									disabled={isCancelling() || !!job().cancelRequestedAt}
-									onClick={() => void cancel()}
-									variant="outline"
-								>
-									<Ban aria-hidden="true" size={15} />
-									{isCancelling() || job().cancelRequestedAt
-										? t("jobsScreen.cancelling")
-										: job().type === "import_batch_parent"
-											? t("jobsScreen.cancelImportBatch")
-											: t("jobsScreen.cancelJob")}
-								</Button>
+								{(id) => (
+									<Show when={props.loadTargets}>
+										{(load) => (
+											<BatchTargetList
+												id={id}
+												load={load()}
+												upload={
+													props.onUploadTarget &&
+													job().mediaSourceId &&
+													(!job().cancelRequestedAt || canRetryJob(job()))
+														? async (reservation, filename, file) => {
+																const source = job().mediaSourceId;
+																const upload = props.onUploadTarget;
+																if (!source || !upload) return;
+																if (canRetryJob(job()))
+																	await props.onRetry(id, reservation);
+																await upload(
+																	source,
+																	reservation,
+																	filename,
+																	file,
+																);
+															}
+														: undefined
+												}
+											/>
+										)}
+									</Show>
+								)}
 							</Show>
-							<Show when={canRetryJob(job())}>
-								<Button
-									aria-busy={isRetrying()}
-									class="w-full"
-									disabled={isRetrying()}
-									onClick={() => void retry()}
-									variant="outline"
-								>
-									<RotateCcw aria-hidden="true" size={15} />
-									{isRetrying()
-										? t("status.retrying")
-										: hasBatchTargetHistory(job().type)
-											? t("jobsScreen.retryFailedStages")
-											: t("jobsScreen.retryJob")}
-								</Button>
+							<Show when={job().targetMediaId && job().mediaSourceId}>
+								<div class="mt-4 overflow-hidden rounded-md border border-border bg-card">
+									<JobThumbnail
+										alt={t("jobsScreen.targetMediaForValueJob", {
+											value0: String(jobTypeLabel(job().type)),
+										})}
+										buildUrl={props.buildThumbnailUrl}
+										class="max-h-64 w-full object-contain"
+										height={192}
+										job={job()}
+										requestedSize={512}
+										width={256}
+									/>
+									<p class="border-border border-t px-3 py-2 text-xs text-muted-foreground">
+										{t("jobsScreen.targetMedia")}
+									</p>
+								</div>
 							</Show>
+
+							<Collapsible class="mt-6 border-t border-border pt-4">
+								<CollapsibleTrigger class="group flex min-h-11 w-full items-center justify-between gap-2 rounded-md text-left text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring">
+									{t("jobsScreen.executionInfo")}
+									<ChevronDown
+										aria-hidden="true"
+										size={16}
+										class="group-data-[expanded]:rotate-180"
+									/>
+								</CollapsibleTrigger>
+								<CollapsibleContent>
+									<dl class="mt-3 grid gap-3 text-xs sm:grid-cols-2">
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("jobsScreen.status")}
+											</dt>
+											<dd class="text-right text-muted-foreground">
+												{statusLabel(job().status)}
+											</dd>
+										</div>
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("labels.source")}
+											</dt>
+											<dd class="min-w-0 break-all text-right text-muted-foreground">
+												{job().mediaSourceId ?? "—"}
+											</dd>
+										</div>
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("jobsScreen.created")}
+											</dt>
+											<dd class="text-right text-muted-foreground">
+												{formatDate(job().createdAt, { includeTime: true })}
+											</dd>
+										</div>
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("jobsScreen.updated")}
+											</dt>
+											<dd class="text-right text-muted-foreground">
+												{formatDate(job().updatedAt, { includeTime: true })}
+											</dd>
+										</div>
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("jobsScreen.attempts")}
+											</dt>
+											<dd class="text-right text-muted-foreground">
+												{job().attemptCount}
+											</dd>
+										</div>
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("jobsScreen.started")}
+											</dt>
+											<dd class="text-right text-muted-foreground">
+												{job().startedAt ? formatDate(job().startedAt) : "—"}
+											</dd>
+										</div>
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("jobsScreen.finished")}
+											</dt>
+											<dd class="text-right text-muted-foreground">
+												{job().finishedAt ? formatDate(job().finishedAt) : "—"}
+											</dd>
+										</div>
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("jobsScreen.target")}
+											</dt>
+											<dd class="min-w-0 break-all text-right text-muted-foreground">
+												{job().targetMediaId ?? "—"}
+											</dd>
+										</div>
+										<div class="flex justify-between gap-3">
+											<dt class="text-muted-foreground">
+												{t("jobsScreen.jobID")}
+											</dt>
+											<dd class="min-w-0 break-all text-right text-muted-foreground">
+												{job().id}
+											</dd>
+										</div>
+									</dl>
+								</CollapsibleContent>
+							</Collapsible>
 						</div>
 					</>
 				)}
@@ -1034,19 +1095,16 @@ export function JobsScreen(props: JobsScreenProps) {
 			? props.inspection.job()
 			: props.jobs().find((job) => job.id === localSelection()),
 	);
+	const [detailOpen, setDetailOpen] = createSignal(false);
+
 	const selectJob = (job: JobDto) => {
+		setDetailOpen(true);
 		if (props.inspection) props.inspection.select(job.id);
 		else setLocalSelection(job.id);
 	};
 	const selectedId = createMemo(() => selectedJob()?.id);
-	let inlineInspector: HTMLDivElement | undefined;
 	createEffect(() => {
-		const id = selectedId();
-		if (id)
-			queueMicrotask(() => {
-				if (id === selectedId() && inlineInspector?.getClientRects().length)
-					inlineInspector.scrollIntoView({ block: "nearest" });
-			});
+		if (selectedId()) setDetailOpen(true);
 	});
 	const retryableJobIds = createMemo(() => getRetryableJobIds(props.jobs()));
 	const selectedRetryableJobIds = createMemo(() =>
@@ -1118,10 +1176,16 @@ export function JobsScreen(props: JobsScreenProps) {
 				title={t("navigation.jobs")}
 			/>
 
-			<div class="grid min-h-0 flex-1 xl:grid-cols-detail-sidebar">
+			<div
+				class={
+					detailOpen() && selectedJob()
+						? "grid min-h-0 min-w-0 flex-1 lg:grid-cols-[22rem_minmax(0,1fr)]"
+						: "grid min-h-0 min-w-0 flex-1"
+				}
+			>
 				<div
 					ref={setScrollRoot}
-					class="min-h-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable"
+					class={`min-h-0 min-w-0 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 scrollbar-stable ${detailOpen() && selectedJob() ? "hidden border-r border-border lg:block" : "lg:px-6 xl:px-8"}`}
 				>
 					<Show when={props.inspection?.failed()}>
 						<ErrorState
@@ -1132,29 +1196,9 @@ export function JobsScreen(props: JobsScreenProps) {
 							onRetry={() => props.inspection?.retry()}
 						/>
 					</Show>
-					<Show when={selectedJob()}>
-						{(job) => (
-							<div
-								ref={(element) => {
-									inlineInspector = element;
-								}}
-								class="mb-4 xl:hidden"
-							>
-								<JobsInspector
-									loadTargets={props.loadTargets}
-									onUploadTarget={props.onUploadTarget}
-									buildThumbnailUrl={props.buildThumbnailUrl}
-									class="rounded-md border border-border bg-background p-4"
-									job={job()}
-									onCancel={props.onCancel}
-									onDownload={props.onDownload}
-									onRetry={props.onRetry}
-								/>
-							</div>
-						)}
-					</Show>
 					<div class="mb-4 flex flex-wrap items-center gap-2">
 						<Select<string>
+							placeholder={t("jobsScreen.allTypes")}
 							options={["", ...(props.jobTypes().data ?? [])]}
 							value={props.type() ?? ""}
 							onChange={(type) => {
@@ -1204,25 +1248,41 @@ export function JobsScreen(props: JobsScreenProps) {
 						}}
 						value={activeFilter()}
 					>
-						<div class="grid gap-6 lg:grid-cols-settings-sidebar xl:gap-8">
+						<div
+							class={
+								detailOpen()
+									? "grid gap-4"
+									: "grid gap-6 lg:grid-cols-settings-sidebar xl:gap-8"
+							}
+						>
 							<TabsList
 								aria-label={t("jobsScreen.jobStatusFilter")}
-								class="flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
+								class={`flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 ${detailOpen() ? "" : "lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"}`}
 							>
 								<For each={JOB_FILTERS}>
 									{(filter) => {
 										const Icon = filter.icon;
 										return (
 											<TabsTrigger
-												class="min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start"
+												class={`min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 ${detailOpen() ? "" : "lg:w-full lg:justify-start"}`}
 												type="button"
 												value={filter.value}
 											>
-												<CategoryLabel
-													description={filter.description}
-													icon={<Icon aria-hidden="true" size={16} />}
-													label={filter.label}
-												/>
+												<Show
+													when={!detailOpen()}
+													fallback={
+														<>
+															<Icon aria-hidden="true" size={16} />
+															<span>{filter.label}</span>
+														</>
+													}
+												>
+													<CategoryLabel
+														description={filter.description}
+														icon={<Icon aria-hidden="true" size={16} />}
+														label={filter.label}
+													/>
+												</Show>
 											</TabsTrigger>
 										);
 									}}
@@ -1293,6 +1353,7 @@ export function JobsScreen(props: JobsScreenProps) {
 															/>
 														</Show>
 														<JobsTable
+															compact={detailOpen()}
 															buildThumbnailUrl={props.buildThumbnailUrl}
 															jobs={props.jobs()}
 															onSelect={selectJob}
@@ -1327,15 +1388,27 @@ export function JobsScreen(props: JobsScreenProps) {
 					</Tabs>
 				</div>
 
-				<JobsInspector
-					loadTargets={props.loadTargets}
-					onUploadTarget={props.onUploadTarget}
-					buildThumbnailUrl={props.buildThumbnailUrl}
-					job={selectedJob()}
-					onCancel={props.onCancel}
-					onDownload={props.onDownload}
-					onRetry={props.onRetry}
-				/>
+				<Show when={detailOpen() && selectedJob()}>
+					<JobsInspector
+						loadTargets={props.loadTargets}
+						onUploadTarget={props.onUploadTarget}
+						buildThumbnailUrl={props.buildThumbnailUrl}
+						job={selectedJob()}
+						onBack={() => {
+							setDetailOpen(false);
+							queueMicrotask(() =>
+								scrollRoot()
+									?.querySelector<HTMLButtonElement>(
+										"button[aria-pressed=true]",
+									)
+									?.focus({ preventScroll: true }),
+							);
+						}}
+						onCancel={props.onCancel}
+						onDownload={props.onDownload}
+						onRetry={props.onRetry}
+					/>
+				</Show>
 			</div>
 		</section>
 	);
