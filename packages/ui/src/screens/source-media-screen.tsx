@@ -285,7 +285,11 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			})()}
 
 			<AlertDialog
-				onOpenChange={page().setDeleteDialogOpen}
+				onOpenChange={(open) => {
+					if (open || !page().isDeletingMedia()) {
+						page().setDeleteDialogOpen(open);
+					}
+				}}
 				open={page().deleteDialogOpen()}
 			>
 				<AlertDialogContent class="workspace-theme">
@@ -300,12 +304,17 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 						</AlertDialogDescription>
 					</AlertDialogHeader>
 					<AlertDialogFooter>
-						<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+						<AlertDialogCancel disabled={page().isDeletingMedia()}>
+							{t("actions.cancel")}
+						</AlertDialogCancel>
 						<AlertDialogAction
 							class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+							disabled={page().isDeletingMedia()}
 							onClick={(event) => {
 								event.preventDefault();
-								void page().confirmDelete();
+								if (!page().isDeletingMedia()) {
+									void page().confirmDelete();
+								}
 							}}
 						>
 							{t("actions.delete")}

@@ -201,6 +201,7 @@ export function CommandCenter(props: CommandCenterProps) {
 		<>
 			<CommandDialog
 				description={t("commandCenter.searchNavigationAndApplicationActions")}
+				loop
 				onOpenChange={setPaletteOpen}
 				open={props.paletteOpen}
 				title={t("sidebar.quickActions")}

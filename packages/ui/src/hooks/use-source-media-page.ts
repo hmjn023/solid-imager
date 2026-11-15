@@ -154,6 +154,7 @@ export type UseSourceMediaPageResult = {
 	setPastedUrl: Setter<string | null>;
 	deleteDialogOpen: () => boolean;
 	setDeleteDialogOpen: Setter<boolean>;
+	isDeletingMedia: () => boolean;
 	moveCopyDialogOpen: () => boolean;
 	setMoveCopyDialogOpen: Setter<boolean>;
 	moveCopyMode: () => "copy" | "move";
@@ -369,6 +370,10 @@ export function useSourceMediaPage(
 	const [mediaIdToDelete, setMediaIdToDelete] = createSignal<string | null>(
 		null,
 	);
+	const [deletingMediaId, setDeletingMediaId] = createSignal<string | null>(
+		null,
+	);
+	const isDeletingMedia = () => deletingMediaId() !== null;
 	const [moveCopyDialogOpen, setMoveCopyDialogOpen] = createSignal(false);
 	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
 	const [mediaIdToMoveCopy, setMediaIdToMoveCopy] = createSignal<string | null>(
@@ -699,10 +704,11 @@ export function useSourceMediaPage(
 
 	const confirmDelete = async () => {
 		const mediaId = mediaIdToDelete();
-		if (!mediaId) {
+		if (!mediaId || isDeletingMedia()) {
 			return;
 		}
 
+		setDeletingMediaId(mediaId);
 		try {
 			await actions.deleteMedia(id() || "", mediaId);
 			toast.success(t("useSourceMediaPage.mediaDeletedSuccessfully"));
@@ -710,8 +716,13 @@ export function useSourceMediaPage(
 		} catch (_e) {
 			toast.error(t("useSourceMediaPage.failedToDeleteMedia"));
 		} finally {
-			setDeleteDialogOpen(false);
-			setMediaIdToDelete(null);
+			if (deletingMediaId() === mediaId) {
+				setDeletingMediaId(null);
+			}
+			if (mediaIdToDelete() === mediaId) {
+				setDeleteDialogOpen(false);
+				setMediaIdToDelete(null);
+			}
 		}
 	};
 
@@ -832,6 +843,7 @@ export function useSourceMediaPage(
 		setPastedUrl,
 		deleteDialogOpen,
 		setDeleteDialogOpen,
+		isDeletingMedia,
 		moveCopyDialogOpen,
 		setMoveCopyDialogOpen,
 		moveCopyMode,

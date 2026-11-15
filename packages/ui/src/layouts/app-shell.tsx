@@ -244,6 +244,7 @@ export function AppShell(props: AppShellProps) {
 					onSubmit={sourcePage.handleFormSubmit}
 				/>
 				<SourceDeleteModal
+					isDeleting={sourcePage.isDeleting()}
 					isOpen={sourcePage.showDeleteModal()}
 					onClose={() => sourcePage.setShowDeleteModal(false)}
 					onConfirm={(event) => {

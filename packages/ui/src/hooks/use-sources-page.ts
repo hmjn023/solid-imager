@@ -31,6 +31,7 @@ export type UseSourcesPageResult = {
 	setShowDeleteModal: (v: boolean) => void;
 	editingSource: () => SafeMediaSource | MediaSourceInfo | null;
 	deletingSource: () => SafeMediaSource | MediaSourceInfo | null;
+	isDeleting: () => boolean;
 	isSyncing: () => boolean;
 	handleAddSource: () => void;
 	handleEditSource: (source: SafeMediaSource | MediaSourceInfo) => void;
@@ -62,6 +63,7 @@ export function useSourcesPage(
 	const [deletingSource, setDeletingSource] = createSignal<
 		SafeMediaSource | MediaSourceInfo | null
 	>(null);
+	const [isDeleting, setIsDeleting] = createSignal(false);
 	const [isSyncing, setIsSyncing] = createSignal(false);
 
 	const invalidate = () => {
@@ -115,11 +117,18 @@ export function useSourcesPage(
 	};
 
 	const handleDeleteConfirm = async (mediaSourceId: string) => {
+		if (isDeleting()) {
+			return;
+		}
+		setIsDeleting(true);
 		try {
 			await actions.deleteMediaSource(mediaSourceId);
 			invalidate();
-			setShowDeleteModal(false);
-			setDeletingSource(null);
+			const currentDeletingId = deletingSource()?.id;
+			if (!currentDeletingId || currentDeletingId === mediaSourceId) {
+				setShowDeleteModal(false);
+				setDeletingSource(null);
+			}
 		} catch (error) {
 			toast.error(
 				t("useSourcesPage.failedToDeleteSourceValue", {
@@ -128,6 +137,8 @@ export function useSourcesPage(
 					),
 				}),
 			);
+		} finally {
+			setIsDeleting(false);
 		}
 	};
 
@@ -222,6 +233,7 @@ export function useSourcesPage(
 		setShowDeleteModal,
 		editingSource,
 		deletingSource,
+		isDeleting,
 		isSyncing,
 		handleAddSource,
 		handleEditSource,

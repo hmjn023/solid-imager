@@ -12,6 +12,7 @@ import {
 
 export type SourceDeleteModalProps = {
 	isOpen: boolean;
+	isDeleting?: boolean;
 	onClose: () => void;
 	onConfirm: (id: string) => void;
 	sourceToDelete?: { id?: string | null; name?: string | null } | null;
@@ -21,7 +22,7 @@ export function SourceDeleteModal(props: SourceDeleteModalProps) {
 	return (
 		<AlertDialog
 			onOpenChange={(open) => {
-				if (!open) props.onClose();
+				if (!open && !props.isDeleting) props.onClose();
 			}}
 			open={props.isOpen}
 		>
@@ -37,12 +38,15 @@ export function SourceDeleteModal(props: SourceDeleteModalProps) {
 					</AlertDialogDescription>
 				</AlertDialogHeader>
 				<AlertDialogFooter>
-					<AlertDialogCancel>{t("actions.cancel")}</AlertDialogCancel>
+					<AlertDialogCancel disabled={props.isDeleting}>
+						{t("actions.cancel")}
+					</AlertDialogCancel>
 					<AlertDialogAction
 						class="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+						disabled={props.isDeleting}
 						onClick={(event) => {
 							event.preventDefault();
-							if (props.sourceToDelete?.id) {
+							if (!props.isDeleting && props.sourceToDelete?.id) {
 								props.onConfirm(props.sourceToDelete.id);
 							}
 						}}

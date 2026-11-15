@@ -39,6 +39,13 @@ test(
 		await expect(palette).toBeVisible();
 		await expect(palette.getByPlaceholder("操作を検索...")).toBeFocused();
 
+		const items = palette.locator("[cmdk-item]");
+		await expect(items.first()).toHaveAttribute("aria-selected", "true");
+		await page.keyboard.press("ArrowUp");
+		await expect(items.last()).toHaveAttribute("aria-selected", "true");
+		await page.keyboard.press("ArrowDown");
+		await expect(items.first()).toHaveAttribute("aria-selected", "true");
+
 		await page.keyboard.press("Escape");
 		await expect(palette).toBeHidden();
 		await expect(origin).toBeFocused();
