@@ -734,7 +734,6 @@ function JobsInspector(props: {
 						</p>
 						<Show
 							when={
-								props.loadTargets &&
 								(isBatchParentJobType(job().type) ||
 									job().type === "extract_embedding_batch") &&
 								job().id
@@ -742,24 +741,28 @@ function JobsInspector(props: {
 							keyed
 						>
 							{(id) => (
-								<BatchTargetList
-									id={id}
-									load={props.loadTargets!}
-									upload={
-										props.onUploadTarget &&
-										job().mediaSourceId &&
-										(!job().cancelRequestedAt || canRetryJob(job()))
-											? async (reservation, filename, file) => {
-													const source = job().mediaSourceId;
-													const upload = props.onUploadTarget;
-													if (!source || !upload) return;
-													if (canRetryJob(job()))
-														await props.onRetry(id, reservation);
-													await upload(source, reservation, filename, file);
-												}
-											: undefined
-									}
-								/>
+								<Show when={props.loadTargets}>
+									{(load) => (
+										<BatchTargetList
+											id={id}
+											load={load()}
+											upload={
+												props.onUploadTarget &&
+												job().mediaSourceId &&
+												(!job().cancelRequestedAt || canRetryJob(job()))
+													? async (reservation, filename, file) => {
+															const source = job().mediaSourceId;
+															const upload = props.onUploadTarget;
+															if (!source || !upload) return;
+															if (canRetryJob(job()))
+																await props.onRetry(id, reservation);
+															await upload(source, reservation, filename, file);
+														}
+													: undefined
+											}
+										/>
+									)}
+								</Show>
 							)}
 						</Show>
 						<Show

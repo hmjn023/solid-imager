@@ -12,13 +12,13 @@ export function MediaDetailLayout(props: {
 	return (
 		<div class="flex min-h-0 flex-1 flex-col">
 			{props.header}
-			<div class="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-contain [container-type:size] lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden lg:snap-none scrollbar-stable">
-				<div class="min-w-0 lg:min-h-0 lg:snap-y lg:snap-mandatory lg:overflow-y-auto lg:overscroll-contain lg:[container-type:size] scrollbar-stable">
+			<div class="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-contain @container-size lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden lg:snap-none scrollbar-stable">
+				<div class="min-w-0 lg:min-h-0 lg:snap-y lg:snap-mandatory lg:overflow-y-auto lg:overscroll-contain lg:@container-size scrollbar-stable">
 					<div class="snap-start snap-always lg:h-full">{props.viewer}</div>
 					{/* Fill the actual scrollport even when responsive columns or an empty tab make the list short. */}
 					<Show when={props.related}>
 						{(related) => (
-							<div class="min-h-[100cqh] snap-start snap-always">
+							<div class="min-h-scrollport snap-start snap-always">
 								{related()}
 							</div>
 						)}

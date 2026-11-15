@@ -39,23 +39,24 @@ async function fetchFileFromUrl(url: string) {
 }
 
 export function UploadMediaModalContent(props: UploadMediaModalProps) {
+	const reserveUploads = () => {
+		const sourceId = props.sourceId;
+		if (!sourceId) return undefined;
+		return async (filenames: string[]) => {
+			const { reservations } = await orpc.media.reserveUploads({
+				sourceId,
+				filenames,
+			});
+			return reservations;
+		};
+	};
 	return (
 		<SharedUploadMediaModalContent
 			initialFile={props.initialFile}
 			isOpen={props.isOpen}
 			onClose={props.onClose}
 			onFetchUrl={fetchFileFromUrl}
-			reserveUploads={
-				props.sourceId
-					? async (filenames) =>
-							(
-								await orpc.media.reserveUploads({
-									sourceId: props.sourceId!,
-									filenames,
-								})
-							).reservations
-					: undefined
-			}
+			reserveUploads={reserveUploads()}
 			onUpload={props.onUpload}
 			pastedUrl={props.pastedUrl}
 		/>

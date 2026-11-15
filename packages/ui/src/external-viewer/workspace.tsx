@@ -88,12 +88,13 @@ export function ViewerWorkspace<T extends ViewerResults>(
 			return;
 		const grid = browse.gridHandle();
 		let cancelled = false;
-		const frame = requestAnimationFrame(async () => {
+		const restoreFocus = async () => {
 			const focused = await grid?.focusPost(id);
 			if (cancelled) return;
 			if (!focused) collectionTitle?.focus({ preventScroll: true });
 			setReturnFocusId(undefined);
-		});
+		};
+		const frame = requestAnimationFrame(() => void restoreFocus());
 		onCleanup(() => {
 			cancelled = true;
 			cancelAnimationFrame(frame);
@@ -126,7 +127,9 @@ export function ViewerWorkspace<T extends ViewerResults>(
 						<header class="shrink-0 border-b border-border px-3 py-3 sm:px-4">
 							<div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
 								<h1
-									ref={collectionTitle}
+									ref={(element) => {
+										collectionTitle = element;
+									}}
 									tabindex="-1"
 									class="mr-auto font-semibold text-xl"
 								>

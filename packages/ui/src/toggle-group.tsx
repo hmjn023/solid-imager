@@ -265,7 +265,6 @@ const ToggleGroupItem = <T extends ValidComponent = "button">(
 	props: PolymorphicProps<T, ToggleGroupItemProps<T>>,
 ) => {
 	const [local, others] = splitProps(props as ToggleGroupItemProps, [
-		"class",
 		"size",
 		"variant",
 		"value",
@@ -310,10 +309,6 @@ const ToggleGroupItem = <T extends ValidComponent = "button">(
 			onKeyDown={handleKeyDown}
 			size={context.size || local.size}
 			variant={context.variant || local.variant}
-			class={cn(
-				"hover:bg-muted hover:text-muted-foreground data-[pressed]:bg-accent data-[pressed]:text-accent-foreground",
-				local.class,
-			)}
 			{...others}
 		/>
 	);

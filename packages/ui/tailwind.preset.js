@@ -177,6 +177,7 @@ const solidUiPreset = {
 			"popover-input": "min(16rem, 100%)",
 		},
 		minHeight: {
+			"scrollport": "100cqh",
 			"thumbnail-preview": "80px",
 			"media-detail": "55dvh",
 		},
