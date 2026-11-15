@@ -61,7 +61,7 @@ export function createAppQueryOptions(client: AppContractClient) {
 			sourceId: string,
 			mediaId: string,
 			seed = "default",
-			limit = 12,
+			limit = 48,
 		) =>
 			buildRelatedMediaQueryOptions(
 				sourceId,
