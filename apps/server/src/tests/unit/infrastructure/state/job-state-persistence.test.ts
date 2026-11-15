@@ -393,6 +393,11 @@ describe("persisted import, attempt and batch transitions", () => {
 		});
 		expect(targets.total).toBe(3);
 		expect(targets.items).toHaveLength(3);
+		expect(
+			targets.items.every(
+				(item) => item.mediaSourceId === null && item.mediaModifiedAt === null,
+			),
+		).toBe(true);
 		for (const request of requests) {
 			expect(await repositories.job.findById(request.id)).toMatchObject({
 				status: "completed",

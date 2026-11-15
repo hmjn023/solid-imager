@@ -101,12 +101,33 @@ for (const width of [390, 1440]) {
 		page,
 	}) => {
 		await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+		let releaseImages!: () => void;
+		const imageGate = new Promise<void>((resolve) => {
+			releaseImages = resolve;
+		});
+		await page.route("**/virtual-thumbnail/**", async (route) => {
+			await imageGate;
+			await route.continue();
+		});
 		await page.goto(
 			`http://127.0.0.1:${process.env.E2E_GALLERY_PORT}/?jobs=1&jobDetails=1`,
 		);
 		const detail = page.getByRole("complementary", { name: "ジョブの詳細" });
 		const targets = detail.getByRole("table", { name: "バッチの処理対象" });
 		await expect(targets.locator("tbody tr")).toHaveCount(25);
+		const firstRow = targets.locator("tbody tr").first();
+		const beforeImage = await firstRow.boundingBox();
+		releaseImages();
+		const thumbnail = firstRow.locator("img");
+		await expect
+			.poll(() =>
+				thumbnail.evaluate((img: HTMLImageElement) => img.naturalWidth),
+			)
+			.toBeGreaterThan(0);
+		expect(await firstRow.boundingBox()).toEqual(beforeImage);
+		await expect(targets.locator("tbody tr").last().locator("img")).toHaveCount(
+			0,
+		);
 		await expect(
 			detail.getByText("完了 68 · 失敗 2 · 残り 30", { exact: true }),
 		).toBeVisible();

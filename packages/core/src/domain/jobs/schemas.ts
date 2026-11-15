@@ -163,6 +163,8 @@ export const batchTargetsSchema = z.object({
 		z.object({
 			label: z.string(),
 			mediaId: z.uuid().nullable(),
+			mediaSourceId: z.uuid().nullable(),
+			mediaModifiedAt: z.coerce.date().nullable(),
 			status: jobStatusSchema.nullable(),
 			skipped: z.boolean(),
 			stage: z.string().nullable(),

@@ -513,7 +513,48 @@ function JobsBulkActions(props: {
 	);
 }
 
+function BatchTargetThumbnail(props: {
+	target: BatchTargets["items"][number];
+	buildUrl: (args: BuildThumbnailUrlArgs) => string;
+}) {
+	const source = createMemo(() => {
+		const { mediaId, mediaSourceId, mediaModifiedAt } = props.target;
+		if (!mediaId || !mediaSourceId || !mediaModifiedAt) return undefined;
+		return createHttpThumbnailSource({
+			buildUrl: props.buildUrl,
+			mediaId,
+			mediaSourceId,
+			modifiedAt: mediaModifiedAt,
+			defaultSize: 256,
+		});
+	});
+	return (
+		<div
+			class="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted"
+			aria-hidden="true"
+		>
+			<Show
+				when={source()}
+				fallback={<span class="text-xs text-muted-foreground">—</span>}
+			>
+				{(thumbnail) => (
+					<ThumbnailImage
+						alt=""
+						fallback=""
+						source={thumbnail()}
+						class="size-12 object-cover"
+						width={48}
+						height={48}
+						loading="lazy"
+					/>
+				)}
+			</Show>
+		</div>
+	);
+}
+
 function BatchTargetList(props: {
+	buildThumbnailUrl: (args: BuildThumbnailUrlArgs) => string;
 	id: string;
 	load: LoadTargets;
 	upload?: (
@@ -578,6 +619,9 @@ function BatchTargetList(props: {
 
 							<TableHeader class="sticky top-0 z-10 bg-background">
 								<TableRow>
+									<TableHead class="w-16" scope="col">
+										<span class="sr-only">{t("jobsScreen.targetMedia")}</span>
+									</TableHead>
 									<TableHead scope="col">{t("jobsScreen.target")}</TableHead>
 									<TableHead class="hidden w-40 @xl:table-cell" scope="col">
 										{t("jobsScreen.currentStage")}
@@ -592,7 +636,7 @@ function BatchTargetList(props: {
 									each={data().items}
 									fallback={
 										<TableRow>
-											<TableCell colSpan={3}>
+											<TableCell colSpan={4}>
 												{t("jobsScreen.noRecordedTargets")}
 											</TableCell>
 										</TableRow>
@@ -600,6 +644,12 @@ function BatchTargetList(props: {
 								>
 									{(item) => (
 										<TableRow>
+											<TableCell class="px-2">
+												<BatchTargetThumbnail
+													target={item}
+													buildUrl={props.buildThumbnailUrl}
+												/>
+											</TableCell>
 											<TableCell class="break-words [overflow-wrap:anywhere]">
 												<span class="block">{item.label}</span>
 												<Show when={item.stage}>
@@ -895,6 +945,7 @@ function JobsInspector(props: {
 									<Show when={props.loadTargets}>
 										{(load) => (
 											<BatchTargetList
+												buildThumbnailUrl={props.buildThumbnailUrl}
 												id={id}
 												load={load()}
 												upload={

@@ -46,7 +46,7 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 		.filter({ visible: true });
 	await expect(table.getByRole("row")).toHaveCount(26);
 	const firstPage = await table
-		.locator("tbody tr td:first-child > span")
+		.locator("tbody tr td:nth-child(2) > span")
 		.allTextContents();
 	await page
 		.locator("section")
@@ -56,7 +56,7 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 		.click();
 	await expect(table.getByRole("row")).toHaveCount(2);
 	const last = await table
-		.locator("tbody tr td:first-child > span")
+		.locator("tbody tr td:nth-child(2) > span")
 		.innerText();
 	expect([...firstPage, last].sort()).toEqual(filenames.sort());
 	await page.reload();

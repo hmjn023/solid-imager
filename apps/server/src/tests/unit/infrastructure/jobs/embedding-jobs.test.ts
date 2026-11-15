@@ -130,6 +130,8 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		expect(page.items[0]).toMatchObject({
 			stage: "extract_embedding_vector",
 			status: "pending",
+			mediaSourceId: sourceId,
+			mediaModifiedAt: modifiedAt,
 		});
 		expect(ids).toContain(page.items[0].mediaId);
 	});

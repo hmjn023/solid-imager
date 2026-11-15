@@ -115,7 +115,12 @@ export function JobsGallery() {
 											{ length: Math.min(limit, 100 - offset) },
 											(_, index) => ({
 												label: `${["forest-evening", "character-study", "city-lights", "landscape-mountains"][index % 4]}-${String(offset + index + 1).padStart(3, "0")}.png`,
-												mediaId: null,
+												mediaId:
+													index === 24
+														? null
+														: `00000000-0000-4000-8000-${String(offset + index + 1).padStart(12, "0")}`,
+												mediaSourceId: initialJobs[0].id,
+												mediaModifiedAt: date,
 												skipped: false,
 												status:
 													index < 2
@@ -135,7 +140,9 @@ export function JobsGallery() {
 								: undefined
 						}
 						buildThumbnailUrl={({ mediaId }) =>
-							`/job-thumbnail/${mediaId}.webp`
+							detailDemo
+								? `/virtual-thumbnail/${mediaId}-256.webp`
+								: `/job-thumbnail/${mediaId}.webp`
 						}
 						jobs={filtered}
 						isRefreshing={refreshing}
