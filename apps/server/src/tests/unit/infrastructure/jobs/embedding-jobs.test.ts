@@ -134,6 +134,20 @@ describe("EmbeddingGemma 2 pgvector indexing and jobs", () => {
 		expect(ids).toContain(page.items[0].mediaId);
 	});
 
+	it("restores connection JIT settings after empty and successful claims", async () => {
+		const { database } = await setup();
+		await database.execute(sql`SET jit = on`);
+		const repo: IJobRepository = mocks.repository;
+		const options = { includeTypes: ["auto_tagging"] };
+
+		expect(await repo.claimPending(1, options)).toHaveLength(0);
+		expect((await client.query("SHOW jit")).rows).toEqual([{ jit: "on" }]);
+
+		await repo.create({ type: "auto_tagging", payload: {} });
+		expect(await repo.claimPending(1, options)).toHaveLength(1);
+		expect((await client.query("SHOW jit")).rows).toEqual([{ jit: "on" }]);
+	});
+
 	it("claims DB-created jobs at an absolute stage cutoff in a non-UTC timezone", async () => {
 		const { database } = await setup();
 		await database.execute(sql`SET TIME ZONE 'Asia/Tokyo'`);

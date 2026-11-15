@@ -770,7 +770,13 @@ export function createJobRepository(
 				now,
 				options?.preferStandalone,
 			);
-			const result: unknown = await db().execute(query);
+			// Batch dependency subqueries can trigger expensive JIT compilation even
+			// when the pending queue is empty. Scope this setting to the claim's
+			// transaction so pooled connections retain their normal JIT behavior.
+			const result: unknown = await db().transaction(async (tx) => {
+				await tx.execute(sql`SET LOCAL jit = off`);
+				return tx.execute(query);
+			});
 
 			return extractRows(result).map(mapClaimedJob);
 		},

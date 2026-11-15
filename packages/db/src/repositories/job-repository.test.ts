@@ -70,12 +70,35 @@ describe("JobRepository", () => {
 				artifactSize: 1048576,
 			}),
 		]);
-		expect(mockExecutor.execute).toHaveBeenCalledOnce();
-		const query = extractSqlText(mockExecutor.execute.mock.calls[0]?.[0]);
+		expect(mockExecutor.transaction).toHaveBeenCalledOnce();
+		expect(mockExecutor.execute).toHaveBeenCalledTimes(2);
+		expect(extractSqlText(mockExecutor.execute.mock.calls[0]?.[0])).toContain(
+			"SET LOCAL jit = off",
+		);
+		const query = extractSqlText(mockExecutor.execute.mock.calls[1]?.[0]);
 		expect(query).not.toContain("eligible_jobs");
 		expect(query).not.toContain("DISTINCT ON");
 		expect(query).not.toContain("active.status = 'in_progress'");
 		expect(query).toContain("FOR UPDATE SKIP LOCKED");
+	});
+
+	it("keeps the JIT setting and claim on the same transaction connection", async () => {
+		const execute = vi.fn().mockResolvedValue({ rows: [] });
+		mockExecutor.transaction.mockImplementation(
+			async (
+				operation: (tx: { execute: typeof execute }) => Promise<unknown>,
+			) => operation({ execute }),
+		);
+
+		expect(await repository.claimPending(1)).toEqual([]);
+		expect(mockExecutor.execute).not.toHaveBeenCalled();
+		expect(execute).toHaveBeenCalledTimes(2);
+		expect(extractSqlText(execute.mock.calls[0]?.[0])).toContain(
+			"SET LOCAL jit = off",
+		);
+		expect(extractSqlText(execute.mock.calls[1]?.[0])).toContain(
+			"FOR UPDATE SKIP LOCKED",
+		);
 	});
 
 	it("rejects conflicting pending filters", async () => {
