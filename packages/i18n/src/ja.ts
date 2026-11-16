@@ -487,12 +487,13 @@ export const ja = defineLocale({
 	"controls.toggleOptions": "選択肢を切り替える",
 	"counter.clicksValue": "クリック回数: {value0}",
 	"danbooruPostDetail.addImageToImportInbox": "画像を取り込み待ちへ",
+	"danbooruPostDetail.addVideoToImportInbox": "動画を取り込み待ちへ",
 	"danbooruPostDetail.format": "形式",
 	"danbooruPostDetail.metadata": "メタ",
 	"danbooruPostDetail.originalPost": "元の投稿",
 	"danbooruPostDetail.postDetails": "投稿情報",
-	"danbooruPostDetail.postsWithoutDownloadableOriginalsAndNonImageImportsAre":
-		"原本を取得できない投稿や、画像以外の取り込みには対応していません。",
+	"danbooruPostDetail.unsupportedImport":
+		"原本を取得できない投稿や、画像・MP4・WebM以外の形式の取り込みには対応していません。",
 	"danbooruPostDetail.rating": "レーティング",
 	"danbooruPostDetail.score": "スコア",
 	"danbooruPostDetail.searchForValue": "「{value0}」で検索",

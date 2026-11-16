@@ -53,6 +53,29 @@ describe("Danbooru import metadata", () => {
 		expect(item.ips?.[0].name).toBe("series");
 		expect(item.tags?.map((tag) => tag.name)).toEqual(["blue_sky", "highres"]);
 	});
+	it.each(["mp4", "webm"])(
+		"imports the original %s video with its categorized metadata",
+		(fileExt) => {
+			const fileUrl = `https://cdn.donmai.us/original/123.${fileExt}`;
+			const item = downloadItemSchema.parse(
+				danbooruPostToDownloadItem({
+					...post,
+					fileExt,
+					fileUrl,
+					sampleUrl: "https://cdn.donmai.us/sample/123.webm",
+				}),
+			);
+			expect(item).toEqual({
+				...danbooruPostToDownloadItem(post),
+				targetUrl: fileUrl,
+				sourceUrls: [
+					fileUrl,
+					post.source,
+					"https://danbooru.donmai.us/posts/123",
+				],
+			});
+		},
+	);
 	it("does not enqueue samples when the original is unavailable", () => {
 		expect(
 			danbooruPostToDownloadItem({
@@ -63,6 +86,19 @@ describe("Danbooru import metadata", () => {
 		).toBeNull();
 		expect(danbooruPostToDownloadItem({ ...post, fileExt: "zip" })).toBeNull();
 	});
+	it.each(["mp4", "webm", "zip", "swf"])(
+		"does not substitute a video sample for an unavailable or unsupported %s original",
+		(fileExt) => {
+			expect(
+				danbooruPostToDownloadItem({
+					...post,
+					fileExt,
+					fileUrl: ["mp4", "webm"].includes(fileExt) ? null : post.fileUrl,
+					sampleUrl: "https://cdn.donmai.us/sample/123.webm",
+				}),
+			).toBeNull();
+		},
+	);
 	it("only accepts HTTPS Danbooru media hosts without credentials or custom ports", () => {
 		for (const url of [
 			"not a url",

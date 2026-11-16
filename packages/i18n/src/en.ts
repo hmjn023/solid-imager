@@ -497,12 +497,13 @@ export const en = defineMessages({
 	"controls.toggleOptions": "Toggle options",
 	"counter.clicksValue": "Clicks: {value0}",
 	"danbooruPostDetail.addImageToImportInbox": "Add image to import inbox",
+	"danbooruPostDetail.addVideoToImportInbox": "Add video to import inbox",
 	"danbooruPostDetail.format": "Format",
 	"danbooruPostDetail.metadata": "Metadata",
 	"danbooruPostDetail.originalPost": "Original post",
 	"danbooruPostDetail.postDetails": "Post details",
-	"danbooruPostDetail.postsWithoutDownloadableOriginalsAndNonImageImportsAre":
-		"Posts without downloadable originals and non-image imports are not supported.",
+	"danbooruPostDetail.unsupportedImport":
+		"Imports require a downloadable original in an image, MP4, or WebM format.",
 	"danbooruPostDetail.rating": "Rating",
 	"danbooruPostDetail.score": "Score",
 	"danbooruPostDetail.searchForValue": "Search for “{value0}”",
