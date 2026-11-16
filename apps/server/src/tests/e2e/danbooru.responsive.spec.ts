@@ -33,7 +33,12 @@ function post(id: number) {
 	});
 }
 
-async function mockDanbooru(page: Page, pageSizes = [40, 39], overlap = false) {
+async function mockDanbooru(
+	page: Page,
+	pageSizes = [40, 39],
+	overlap = false,
+	createPost = post,
+) {
 	const searches: DanbooruSearch[] = [];
 	const fulfillImage = (route: Route) =>
 		route.fulfill({
@@ -53,7 +58,7 @@ async function mockDanbooru(page: Page, pageSizes = [40, 39], overlap = false) {
 			result = {
 				provider: "danbooru",
 				posts: Array.from({ length: pageSizes[query.page - 1] ?? 0 }, (_, i) =>
-					post(
+					createPost(
 						overlap && query.page > 1 && i === 0
 							? (query.page - 1) * 100 + pageSizes[query.page - 2]
 							: start + i,
@@ -61,7 +66,7 @@ async function mockDanbooru(page: Page, pageSizes = [40, 39], overlap = false) {
 				),
 				hasNextPage: query.page < pageSizes.length,
 			};
-		} else if (method === "getPost") result = post(input.id);
+		} else if (method === "getPost") result = createPost(input.id);
 		else result = [{ name: "landscape", category: 0, postCount: 1234 }];
 		await route.fulfill({
 			contentType: "application/json",
@@ -78,6 +83,96 @@ async function expectNoOverflow(page: Page) {
 		),
 	).toBe(true);
 }
+
+test("Danbooru video imports preserve the original and metadata after navigation and reload", async ({
+	page,
+	browserHealth,
+}, info) => {
+	browserHealth.allowRequestFailure(
+		/\/api\/rpc\/sources\/list(?:\?|$)/,
+		"net::ERR_ABORTED",
+	);
+	const videoPost = {
+		...post(101),
+		fileExt: "webm",
+		fileUrl: "https://cdn.donmai.us/original/101.webm",
+		sampleUrl: "https://cdn.donmai.us/sample/101.webm",
+	};
+	await mockDanbooru(page, [40], false, (id) =>
+		id === videoPost.id ? videoPost : post(id),
+	);
+	await page.route(videoPost.fileUrl, (route) =>
+		route.fulfill({
+			path: "src/tests/e2e/ui-gallery/video-player.webm",
+			contentType: "video/webm",
+		}),
+	);
+	await page.goto(info.project.name === "tauri" ? "/#/danbooru" : "/danbooru");
+	await page
+		.getByRole("link", { name: "Danbooru #101 を開く", exact: true })
+		.click();
+	const detail = page.getByRole("region", {
+		name: "Danbooru #101",
+		exact: true,
+	});
+	const add = detail.getByRole("button", {
+		name: "動画を取り込み待ちへ",
+		exact: true,
+	});
+	await expect(add).toBeEnabled();
+	await expect
+		.poll(() =>
+			detail.locator("video").evaluate((el: HTMLVideoElement) => ({
+				loaded: el.readyState >= 1,
+				error: el.error?.message ?? null,
+			})),
+		)
+		.toEqual({ loaded: true, error: null });
+	await page.reload();
+	await expect(add).toBeEnabled();
+	await expect(detail.locator("video")).toHaveAttribute(
+		"src",
+		videoPost.fileUrl,
+	);
+	// Importing uses the original URL independently of the player's reload/preload state.
+	const added = page.waitForResponse(
+		(response) =>
+			new URL(response.url()).pathname === "/api/rpc/imports/bulkAdd" &&
+			response.ok(),
+	);
+	await add.click();
+	await added;
+	await expect(
+		detail.getByRole("button", { name: "取り込み待ちに追加済み", exact: true }),
+	).toBeDisabled();
+	const pending = await page.request.post("/api/rpc/imports/listPending", {
+		data: { json: {} },
+	});
+	const jobs = z
+		.array(pendingImportJobSchema)
+		.parse((await pending.json()).json);
+	const job = jobs.find((entry) => entry.item.targetUrl === videoPost.fileUrl);
+	expect(job).toBeDefined();
+	expect(job?.item.sourceUrls).toEqual([
+		videoPost.fileUrl,
+		videoPost.source,
+		"https://danbooru.donmai.us/posts/101",
+	]);
+	expect(job?.item.authors?.[0].accountId).toBe("test_artist");
+	expect(job?.item.characters?.[0].name).toBe("test_character");
+	expect(job?.item.ips?.[0].name).toBe("test_series");
+	expect(job?.item.tags?.map((tag) => tag.name)).toEqual([
+		"landscape",
+		"blue_sky",
+		"highres",
+	]);
+	if (job) {
+		const cancelled = await page.request.post("/api/rpc/imports/cancel", {
+			data: { json: { jobIds: [job.id] } },
+		});
+		expect(cancelled.ok()).toBe(true);
+	}
+});
 
 test("Danbooru sidebar, completion, scrolling, viewer, imports and reload", async ({
 	page,

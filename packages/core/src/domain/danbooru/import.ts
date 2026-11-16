@@ -10,8 +10,7 @@ export function getDanbooruPostUrl(id: number): string {
 export function danbooruPostToDownloadItem(
 	post: DanbooruPost,
 ): DownloadItem | null {
-	if (!post.fileUrl || getDanbooruMediaType(post.fileExt) !== "image")
-		return null;
+	if (!post.fileUrl || !getDanbooruMediaType(post.fileExt)) return null;
 	const postUrl = getDanbooruPostUrl(post.id);
 	let sourceUrl: string | undefined;
 	try {

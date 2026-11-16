@@ -60,7 +60,11 @@ export function DanbooruPostDetail(
 									<ViewerActions
 										item={item}
 										imports={props.imports}
-										importLabel={t("danbooruPostDetail.addImageToImportInbox")}
+										importLabel={
+											preview?.type === "video"
+												? t("danbooruPostDetail.addVideoToImportInbox")
+												: t("danbooruPostDetail.addImageToImportInbox")
+										}
 										sourceLabel={t("danbooruPostDetail.originalPost")}
 										sourceHref={getDanbooruPostUrl(post.id)}
 									/>
@@ -159,9 +163,7 @@ export function DanbooruPostDetail(
 								/>
 								<Show when={!item}>
 									<p class="py-4 text-muted-foreground text-xs">
-										{t(
-											"danbooruPostDetail.postsWithoutDownloadableOriginalsAndNonImageImportsAre",
-										)}
+										{t("danbooruPostDetail.unsupportedImport")}
 									</p>
 								</Show>
 							</MediaDetailInspector>

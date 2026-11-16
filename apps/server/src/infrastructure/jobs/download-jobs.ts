@@ -1,5 +1,5 @@
 /**
- * Download Jobs - Handles downloading images from URLs
+ * Download Jobs - Handles downloading media from URLs
  */
 
 import fs from "node:fs/promises";
@@ -46,7 +46,7 @@ import { convertUgoiraToMp4 } from "~/infrastructure/services/ugoira-converter";
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
 const TWITTER_URL_REGEX =
 	/(twitter|x)\.com\/(?:\w+\/status|i\/web\/status)\/\d+/;
-const IMAGE_EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
+const MEDIA_EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
 	"image/avif": ".avif",
 	"image/bmp": ".bmp",
 	"image/gif": ".gif",
@@ -56,6 +56,8 @@ const IMAGE_EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
 	"image/svg+xml": ".svg",
 	"image/tiff": ".tiff",
 	"image/webp": ".webp",
+	"video/mp4": ".mp4",
+	"video/webm": ".webm",
 };
 
 let ytDlpPathCache: string | null = null;
@@ -651,14 +653,10 @@ function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	return headers;
 }
 
-function getDirectImageExtension(contentType: string): string | null {
-	return IMAGE_EXTENSION_BY_CONTENT_TYPE[contentType] ?? null;
-}
-
 /**
- * Handles direct image download (non-twitter)
+ * Handles direct image and video downloads (non-Twitter).
  */
-async function handleDirectImageDownload(
+async function handleDirectMediaDownload(
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
@@ -670,11 +668,11 @@ async function handleDirectImageDownload(
 
 	logger.info(
 		{ url: item.targetUrl },
-		"[DownloadJob] Using direct image download method",
+		"[DownloadJob] Using direct media download method",
 	);
 
 	try {
-		// Download the image
+		// Download the media
 		const headers = buildFetchHeaders(item);
 
 		await waitForDownloadRateLimit();
@@ -692,7 +690,7 @@ async function handleDirectImageDownload(
 				"[DownloadJob] Fetch failed",
 			);
 			throw new Error(
-				`Failed to download image: ${response.status} ${response.statusText}`,
+				`Failed to download media: ${response.status} ${response.statusText}`,
 			);
 		}
 
@@ -701,16 +699,15 @@ async function handleDirectImageDownload(
 			?.split(";", 1)[0]
 			.trim()
 			.toLowerCase();
-		if (!contentType?.startsWith("image/")) {
-			throw new Error(
-				`Direct image URL returned a non-image response: ${contentType ?? "unknown content type"}`,
-			);
-		}
-
 		// Use the response MIME type when a CDN URL has no file extension.
-		const extension = getDirectImageExtension(contentType);
+		const extension =
+			contentType && Object.hasOwn(MEDIA_EXTENSION_BY_CONTENT_TYPE, contentType)
+				? MEDIA_EXTENSION_BY_CONTENT_TYPE[contentType]
+				: undefined;
 		if (!extension) {
-			throw new Error(`Unsupported image content type: ${contentType}`);
+			throw new Error(
+				`Unsupported direct media content type: ${contentType ?? "unknown content type"}`,
+			);
 		}
 		const filename = generateMediaFilename(item, extension);
 
@@ -979,7 +976,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 			logger.info({}, "[DownloadJob] Using yt-dlp download method");
 			await handleYtDlpDownload(item, mediaSourceId, basePath, job);
 		} else {
-			await handleDirectImageDownload(
+			await handleDirectMediaDownload(
 				item,
 				mediaSourceId,
 				basePath,

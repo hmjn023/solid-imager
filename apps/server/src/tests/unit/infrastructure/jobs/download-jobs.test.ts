@@ -742,28 +742,88 @@ describe("processDownloadJob", () => {
 		expect(mockConvertUgoiraToMp4).not.toHaveBeenCalled();
 	});
 
-	it("should reject non-image direct download responses", async () => {
-		fetchMock.mockResolvedValueOnce({
-			ok: true,
-			headers: new Headers({ "content-type": "text/html" }),
-			arrayBuffer: async () => new ArrayBuffer(10),
-		});
+	it.each(["mp4", "webm"])(
+		"downloads a Danbooru %s original and retains its import metadata",
+		async (extension) => {
+			const targetUrl = `https://cdn.donmai.us/original/123.${extension}`;
+			const sourceUrls = [targetUrl, "https://danbooru.donmai.us/posts/123"];
+			const payload = {
+				targetUrl,
+				sourceUrls,
+				createdAt: "2026-01-01T00:00:00Z",
+				authors: [
+					{ name: "artist", accountId: "artist", platform: "danbooru" },
+				],
+				tags: [{ name: "animation", source: "danbooru" }],
+			};
+			const bytes = new ArrayBuffer(12);
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				headers: new Headers({
+					"content-type": `video/${extension}; charset=binary`,
+				}),
+				arrayBuffer: async () => bytes,
+			});
+			await processDownloadJob({
+				id: "job-danbooru-video",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload,
+			} as any);
+			expect(fetchMock).toHaveBeenCalledExactlyOnceWith(
+				targetUrl,
+				expect.any(Object),
+			);
+			expect(mockYtDlpExec).not.toHaveBeenCalled();
+			const file = mockSaveFile.mock.calls[0][1];
+			expect(file.name).toMatch(new RegExp(`\\.${extension}$`));
+			expect(await file.arrayBuffer()).toBe(bytes);
+			expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+				"source-1",
+				expect.stringMatching(new RegExp(`\\.${extension}$`)),
+				expect.objectContaining({
+					sourceUrls,
+					authors: payload.authors,
+					tags: payload.tags,
+					createdAt: new Date(payload.createdAt),
+				}),
+			);
+		},
+	);
+	it.each([
+		"text/html",
+		"application/zip",
+		"application/octet-stream",
+		"video/quicktime",
+		"__proto__",
+		"",
+	])(
+		"rejects unsupported direct download responses (%s)",
+		async (contentType) => {
+			fetchMock.mockResolvedValueOnce({
+				ok: true,
+				headers: new Headers(
+					contentType ? { "content-type": contentType } : {},
+				),
+				arrayBuffer: async () => new ArrayBuffer(10),
+			});
 
-		const job = {
-			id: "job-non-image",
-			mediaSourceId: "source-1",
-			type: "downloadImage",
-			payload: {
-				targetUrl: "https://x.com/home",
-			},
-		} as any;
+			const job = {
+				id: "job-non-image",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload: {
+					targetUrl: "https://cdn.donmai.us/original/123.mp4",
+				},
+			} as any;
 
-		await expect(processDownloadJob(job)).rejects.toThrow(
-			"non-image response: text/html",
-		);
-		expect(mockSaveFile).not.toHaveBeenCalled();
-		expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
-	});
+			await expect(processDownloadJob(job)).rejects.toThrow(
+				`Unsupported direct media content type: ${contentType || "unknown content type"}`,
+			);
+			expect(mockSaveFile).not.toHaveBeenCalled();
+			expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
+		},
+	);
 
 	it.each([
 		{
@@ -817,7 +877,7 @@ describe("processDownloadJob", () => {
 		} as any;
 
 		await expect(processDownloadJob(job)).rejects.toThrow(
-			"Unsupported image content type: image/x-custom",
+			"Unsupported direct media content type: image/x-custom",
 		);
 		expect(mockSaveFile).not.toHaveBeenCalled();
 		expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
