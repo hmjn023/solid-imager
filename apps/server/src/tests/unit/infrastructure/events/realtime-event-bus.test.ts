@@ -85,6 +85,23 @@ describe("RealtimeEventBus", () => {
 		expect(importListener).not.toHaveBeenCalled();
 	});
 
+	it.each(["job-completed", "job-failed", "job-cancelled"] as const)(
+		"preserves import batch identity through validation and replay of %s",
+		(event) => {
+			const data = {
+				jobId: `import-child-${event}`,
+				importBatchId: "00000000-0000-4000-8000-000000000001",
+			};
+			const live = vi.fn();
+			cleanups.push(RealtimeEventBus.subscribeToJobs(live));
+			RealtimeEventBus.publishJob(event, data);
+			expect(live).toHaveBeenCalledWith({ event, data });
+			const replay = vi.fn();
+			cleanups.push(RealtimeEventBus.subscribeToJobs(replay));
+			expect(replay).toHaveBeenCalledWith({ event, data });
+		},
+	);
+
 	it("replays recent job events to a late subscriber", () => {
 		const event = {
 			event: "job-completed" as const,

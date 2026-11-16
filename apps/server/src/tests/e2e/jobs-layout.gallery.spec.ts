@@ -72,3 +72,99 @@ for (const width of [375, 1024, 1440]) {
 		).toBeLessThanOrEqual(1);
 	});
 }
+
+test("background updates preserve job rows, focus, and filter controls", async ({
+	page,
+}) => {
+	await page.goto(`http://127.0.0.1:${process.env.E2E_GALLERY_PORT}/?jobs=1`);
+	const table = page.getByRole("table");
+	await expect(table.getByRole("row")).toHaveCount(4);
+	await page.getByRole("button", { name: "Start background refresh" }).click();
+	const types = page.getByRole("button", { name: "ジョブの種類で絞り込む" });
+	await expect(types).toBeEnabled();
+	const jobButton = table.locator("tbody tr").first().getByRole("button");
+	await jobButton.focus();
+	await jobButton.evaluate((button) =>
+		button.setAttribute("data-preserved", "true"),
+	);
+	await page
+		.getByRole("button", { name: "Advance jobs" })
+		.evaluate((button: HTMLButtonElement) => button.click());
+	await expect(table.getByRole("progressbar")).toHaveCount(3);
+	await expect(jobButton).toBeFocused();
+	await expect(jobButton).toHaveAttribute("data-preserved", "true");
+	await expect(types).toBeEnabled();
+});
+
+for (const width of [390, 1440]) {
+	test(`batch detail keeps summary visible and returns to the list at ${width}px`, async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width, height: width === 390 ? 844 : 1000 });
+		let releaseImages!: () => void;
+		const imageGate = new Promise<void>((resolve) => {
+			releaseImages = resolve;
+		});
+		await page.route("**/virtual-thumbnail/**", async (route) => {
+			await imageGate;
+			await route.continue();
+		});
+		await page.goto(
+			`http://127.0.0.1:${process.env.E2E_GALLERY_PORT}/?jobs=1&jobDetails=1`,
+		);
+		const detail = page.getByRole("complementary", { name: "ジョブの詳細" });
+		const targets = detail.getByRole("table", { name: "バッチの処理対象" });
+		await expect(targets.locator("tbody tr")).toHaveCount(25);
+		const firstRow = targets.locator("tbody tr").first();
+		const beforeImage = await firstRow.boundingBox();
+		releaseImages();
+		const thumbnail = firstRow.locator("img");
+		await expect
+			.poll(() =>
+				thumbnail.evaluate((img: HTMLImageElement) => img.naturalWidth),
+			)
+			.toBeGreaterThan(0);
+		expect(await firstRow.boundingBox()).toEqual(beforeImage);
+		await expect(targets.locator("tbody tr").last().locator("img")).toHaveCount(
+			0,
+		);
+		await expect(
+			detail.getByText("完了 68 · 失敗 2 · 残り 30", { exact: true }),
+		).toBeVisible();
+		const cancel = detail.getByRole("button", {
+			name: "一括取り込みをキャンセル",
+		});
+		await expect(cancel).toBeVisible();
+		await page.screenshot({
+			path: `/tmp/jobs-detail-${width}.png`,
+			fullPage: true,
+		});
+		const before = await cancel.boundingBox();
+		await targets.locator("tbody tr").last().scrollIntoViewIfNeeded();
+		await expect(cancel).toBeInViewport();
+		expect(await cancel.boundingBox()).toEqual(before);
+		await detail.getByRole("button", { name: "次へ", exact: true }).click();
+		await expect(targets).toContainText("forest-evening-026.png");
+		const info = detail.getByRole("button", { name: "実行情報・ジョブID" });
+		await info.scrollIntoViewIfNeeded();
+		await info.click();
+		await expect(
+			detail
+				.getByText("00000000-0000-4000-8000-000000000000", { exact: true })
+				.first(),
+		).toBeVisible();
+		await detail.getByRole("button", { name: "一覧へ戻る" }).click();
+		await expect(detail).toBeHidden();
+		const selected = page.getByRole("button", { name: /一括取り込みジョブ/ });
+		await expect(selected).toBeFocused();
+		await selected.click();
+		await expect(detail).toBeVisible();
+		expect(
+			await page.evaluate(
+				() =>
+					document.documentElement.scrollWidth -
+					document.documentElement.clientWidth,
+			),
+		).toBeLessThanOrEqual(1);
+	});
+}

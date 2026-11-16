@@ -1,35 +1,24 @@
 import { t } from "@solid-imager/i18n";
 import {
 	useJobInspection,
+	useJobsList,
 	jobSelectionSearchSchema,
 	useJobsQueryEvents,
 } from "@solid-imager/ui/jobs";
 import { downloadCompletedJobArtifact } from "@solid-imager/client";
-import type { JobDto, JobListResponse } from "@solid-imager/core/jobs";
-import {
-	DEFAULT_JOBS_PAGE_SIZE,
-	jobsQueryKeys,
-	toQueryUiState,
-} from "@solid-imager/ui/query";
+import type { JobDto } from "@solid-imager/core/jobs";
+import { jobsQueryKeys } from "@solid-imager/ui/query";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs";
 import { toast } from "@solid-imager/ui/toast";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
+import { useQueryClient } from "@tanstack/solid-query";
 import { createFileRoute } from "@tanstack/solid-router";
-import { createSignal } from "solid-js";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
 import { buildThumbnailUrl } from "~/infrastructure/media/thumbnail-runtime";
-import { jobsQueryOptions } from "~/queries";
 
 const BULK_RETRY_CONCURRENCY = 8;
 
 export const Route = createFileRoute("/jobs")({
 	validateSearch: jobSelectionSearchSchema,
-	loader: ({ context }) => {
-		void context.queryClient.query(jobsQueryOptions()).then(
-			() => undefined,
-			() => undefined,
-		);
-	},
 	component: JobsRoute,
 });
 
@@ -60,38 +49,23 @@ async function downloadJobArtifact(job: JobDto): Promise<void> {
 }
 
 function JobsRoute() {
-	const [pageIndex, setPageIndex] = createSignal(0);
-	const jobsQuery = createQuery<JobListResponse>(() =>
-		jobsQueryOptions({
-			limit: DEFAULT_JOBS_PAGE_SIZE,
-			offset: pageIndex() * DEFAULT_JOBS_PAGE_SIZE,
-		}),
-	);
+	const jobsList = useJobsList(orpc.jobs);
+	const jobsQuery = jobsList.query;
 	const search = Route.useSearch();
 	const navigate = Route.useNavigate();
 	const inspection = useJobInspection(
 		() => search().jobId,
-		jobsQuery,
+		jobsList.list,
 		(id, signal) => orpc.jobs.get({ id }, { signal }),
 		(jobId) => void navigate({ search: { jobId } }),
 	);
 	const queryClient = useQueryClient();
-	const pagination = () => {
-		const total = jobsQuery.data?.total ?? 0;
-		return {
-			canNext: (pageIndex() + 1) * DEFAULT_JOBS_PAGE_SIZE < total,
-			canPrevious: pageIndex() > 0,
-			current: pageIndex() + 1,
-			onNext: () => setPageIndex((current) => current + 1),
-			onPrevious: () => setPageIndex((current) => Math.max(0, current - 1)),
-			total: Math.max(1, Math.ceil(total / DEFAULT_JOBS_PAGE_SIZE)),
-		};
-	};
 
 	useJobsQueryEvents((signal) => orpc.jobs.events(undefined, { signal }));
 
 	return (
 		<JobsScreen
+			{...jobsList.screen}
 			onUploadTarget={(sourceId, reservationId, filename, file) =>
 				orpc.media.upload({ sourceId, reservationId, filename, file })
 			}
@@ -100,8 +74,6 @@ function JobsRoute() {
 			}
 			inspection={inspection}
 			buildThumbnailUrl={buildThumbnailUrl}
-			isRefreshing={() => jobsQuery.isFetching}
-			jobs={() => jobsQuery.data?.items ?? []}
 			onRefresh={async () => {
 				await jobsQuery.refetch();
 			}}
@@ -176,8 +148,6 @@ function JobsRoute() {
 				}
 			}}
 			onDownload={downloadJobArtifact}
-			page={pagination}
-			state={() => toQueryUiState(jobsQuery)}
 		/>
 	);
 }

@@ -3,9 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mocks
 vi.mock("~/infrastructure/services/import-submission", () => ({
-	reserveImportFiles: async (_source: string, paths: string[]) => ({
+	reserveImportFiles: vi.fn(async (_source: string, paths: string[]) => ({
 		reservations: paths,
-	}),
+	})),
 	runImportSubmission: (
 		_source: string,
 		_id: string,
@@ -252,7 +252,7 @@ describe("large source sync and recovery", () => {
 		vi.mocked(MediaRepository.delete).mockReset();
 	});
 
-	it("reads and registers only five files at a time while completing all additions", async () => {
+	it("reserves all files once before registering at most five at a time", async () => {
 		const count = 115_894;
 		let scanned = 0;
 		vi.mocked(fs.opendir).mockResolvedValueOnce(
@@ -287,7 +287,19 @@ describe("large source sync and recovery", () => {
 		try {
 			await started;
 			expect(active).toBe(5);
-			expect(scanned).toBe(5);
+			expect(scanned).toBe(count);
+			const { reserveImportFiles } =
+				await import("~/infrastructure/services/import-submission");
+			expect(reserveImportFiles).toHaveBeenCalledOnce();
+			expect(vi.mocked(reserveImportFiles).mock.calls[0][1]).toHaveLength(
+				count,
+			);
+			expect(
+				vi.mocked(reserveImportFiles).mock.invocationCallOrder[0],
+			).toBeLessThan(
+				vi.mocked(MediaProcessingService.registerAndProcess).mock
+					.invocationCallOrder[0],
+			);
 			expect(MediaProcessingService.registerAndProcess).toHaveBeenCalledTimes(
 				5,
 			);
@@ -403,7 +415,7 @@ describe("large source sync and recovery", () => {
 		vi.mocked(fs.opendir)
 			.mockResolvedValueOnce({
 				async *[Symbol.asyncIterator]() {
-					// Some work can commit before traversal encounters an unreadable subtree.
+					// No registration begins until traversal succeeds.
 					for (let index = 0; index < 5; index++) {
 						yield {
 							name: `healthy-${index}.jpg`,
@@ -422,7 +434,7 @@ describe("large source sync and recovery", () => {
 		).resolves.toMatchObject({
 			success: false,
 			failureKind: "fatal",
-			added: 5,
+			added: 0,
 		});
 		expect(MediaRepository.delete).not.toHaveBeenCalled();
 		expect(getSourceSyncState("unreadable-source")).toBe("error");

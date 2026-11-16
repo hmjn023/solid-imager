@@ -111,6 +111,45 @@ describe("JobWorker", () => {
 		},
 	);
 
+	it.each(["completed", "failed", "cancelled"] as const)(
+		"identifies internal import %s events and publishes parent progress",
+		async (status) => {
+			const batchId = "00000000-0000-4000-8000-000000000001";
+			const targetId = "00000000-0000-4000-8000-000000000002";
+			const publish = vi.spyOn(RealtimeEventBus, "publishJob");
+			vi.mocked(jobRepo.finishAttempt).mockResolvedValue(status);
+			vi.mocked(jobRepo.findById).mockResolvedValue({
+				id: batchId,
+				status: "in_progress",
+				payload: { total: 10, processed: 2, failed: 1 },
+			} as Job);
+			await (worker as any).processJob({
+				id: "import-child",
+				type: "processMedia",
+				attemptCount: 1,
+				parentId: targetId,
+				payload: { importBatchId: batchId, importTargetId: targetId },
+			} as Job);
+			expect(publish).toHaveBeenCalledWith(
+				`job-${status}`,
+				expect.objectContaining({
+					jobId: "import-child",
+					importBatchId: batchId,
+				}),
+			);
+			expect(publish).toHaveBeenCalledWith(
+				"job-progress",
+				expect.objectContaining({
+					jobId: batchId,
+					total: 10,
+					processed: 2,
+					failed: 1,
+				}),
+			);
+			publish.mockRestore();
+		},
+	);
+
 	it("does not rewrite a committed outcome when notification fails", async () => {
 		const publish = vi
 			.spyOn(RealtimeEventBus, "publishJob")

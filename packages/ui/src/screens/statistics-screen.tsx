@@ -98,13 +98,13 @@ export function StatisticsScreen(props: {
 						value={period()}
 					>
 						<ToggleGroupItem
-							class="h-11 px-3 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground sm:h-8"
+							class="h-11 px-3 data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
 							value="recent"
 						>
 							{t("statisticsScreen.last30Days")}
 						</ToggleGroupItem>
 						<ToggleGroupItem
-							class="h-11 px-3 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground data-[pressed]:hover:bg-primary data-[pressed]:hover:text-primary-foreground sm:h-8"
+							class="h-11 px-3 data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
 							value="all"
 						>
 							{t("statisticsScreen.allTime")}

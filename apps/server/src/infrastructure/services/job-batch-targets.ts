@@ -66,6 +66,8 @@ export async function listBatchTargets(input: {
 		db
 			.select({
 				mediaId: page.mediaId,
+				mediaSourceId: medias.mediaSourceId,
+				mediaModifiedAt: medias.modifiedAt,
 				label: sql<string>`coalesce(${medias.fileName},${page.label},${page.mediaId}::text,'')`,
 				status: sql<JobStatus | null>`coalesce(step.status,${page.status})`,
 				skipped: page.skipped,

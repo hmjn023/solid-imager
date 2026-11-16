@@ -1,36 +1,28 @@
 import { t } from "@solid-imager/i18n";
 import { useWorkspaceNavigation } from "~/presentation/workspace-navigation";
 import { useWorkspaceView } from "~/presentation/workspace-view";
-import { useJobInspection, useJobsQueryEvents } from "@solid-imager/ui/jobs";
-import { downloadCompletedJobArtifact } from "@solid-imager/client";
-import type { JobListResponse } from "@solid-imager/core/jobs";
 import {
-	DEFAULT_JOBS_PAGE_SIZE,
-	jobsQueryKeys,
-	toQueryUiState,
-} from "@solid-imager/ui/query";
+	useJobInspection,
+	useJobsList,
+	useJobsQueryEvents,
+} from "@solid-imager/ui/jobs";
+import { downloadCompletedJobArtifact } from "@solid-imager/client";
+import { jobsQueryKeys } from "@solid-imager/ui/query";
 import { JobsScreen } from "@solid-imager/ui/screens/jobs";
 import { toast } from "@solid-imager/ui/toast";
-import { createQuery, useQueryClient } from "@tanstack/solid-query";
-import { createSignal } from "solid-js";
+import { useQueryClient } from "@tanstack/solid-query";
 import { buildThumbnailUrl } from "~/components/media/thumbnail-image";
 import { orpc } from "~/infrastructure/api-clients/orpc-client";
-import { jobsQueryOptions } from "~/infrastructure/api-clients/queries";
 
 const BULK_RETRY_CONCURRENCY = 8;
 
 export function JobsPage() {
-	const [pageIndex, setPageIndex] = createSignal(0);
-	const jobsQuery = createQuery<JobListResponse>(() =>
-		jobsQueryOptions({
-			limit: DEFAULT_JOBS_PAGE_SIZE,
-			offset: pageIndex() * DEFAULT_JOBS_PAGE_SIZE,
-		}),
-	);
+	const jobsList = useJobsList(orpc.jobs);
+	const jobsQuery = jobsList.query;
 	const workspace = useWorkspaceNavigation();
 	const inspection = useJobInspection(
 		workspace.selectedJobId,
-		jobsQuery,
+		jobsList.list,
 		(id, signal) => orpc.jobs.get({ id }, { signal }),
 		(jobId) => void workspace.open({ kind: "job", jobId }),
 	);
@@ -40,22 +32,12 @@ export function JobsPage() {
 		failed: inspection.failed(),
 	}));
 	const queryClient = useQueryClient();
-	const pagination = () => {
-		const total = jobsQuery.data?.total ?? 0;
-		return {
-			canNext: (pageIndex() + 1) * DEFAULT_JOBS_PAGE_SIZE < total,
-			canPrevious: pageIndex() > 0,
-			current: pageIndex() + 1,
-			onNext: () => setPageIndex((current) => current + 1),
-			onPrevious: () => setPageIndex((current) => Math.max(0, current - 1)),
-			total: Math.max(1, Math.ceil(total / DEFAULT_JOBS_PAGE_SIZE)),
-		};
-	};
 
 	useJobsQueryEvents((signal) => orpc.jobs.events(undefined, { signal }));
 
 	return (
 		<JobsScreen
+			{...jobsList.screen}
 			onUploadTarget={(sourceId, reservationId, filename, file) =>
 				orpc.media.upload({ sourceId, reservationId, filename, file })
 			}
@@ -64,8 +46,6 @@ export function JobsPage() {
 			}
 			inspection={inspection}
 			buildThumbnailUrl={buildThumbnailUrl}
-			isRefreshing={() => jobsQuery.isFetching}
-			jobs={() => jobsQuery.data?.items ?? []}
 			onRefresh={async () => {
 				await jobsQuery.refetch();
 			}}
@@ -168,8 +148,6 @@ export function JobsPage() {
 					}
 				})();
 			}}
-			page={pagination}
-			state={() => toQueryUiState(jobsQuery)}
 		/>
 	);
 }

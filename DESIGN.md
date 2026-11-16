@@ -70,15 +70,15 @@ spacing:
   3xl: "32px"
 components:
   import-bar:
-    backgroundColor: "{colors.chart-blue}"
+    backgroundColor: "{colors.primary}"
   ip-bar:
-    backgroundColor: "{colors.chart-violet}"
+    backgroundColor: "{colors.primary}"
   character-bar:
-    backgroundColor: "{colors.chart-coral}"
+    backgroundColor: "{colors.primary}"
   image-slice:
-    backgroundColor: "{colors.chart-amber}"
+    backgroundColor: "{colors.primary}"
   favorite-bar:
-    backgroundColor: "{colors.chart-rose}"
+    backgroundColor: "{colors.primary}"
   app-shell:
     backgroundColor: "{colors.canvas}"
     textColor: "{colors.text}"
@@ -214,10 +214,13 @@ tool than a colorful dashboard.
 - `destructive` is only for irreversible or failed actions. Warnings and information
   use their dedicated foreground/surface pairs and must not borrow destructive red.
 
-In library statistics, blue identifies imports, violet identifies IPs, coral
-identifies characters, and rose identifies favorites. In the media-type chart,
-amber denotes images, blue denotes video, and violet denotes audio. Keep each
-legend swatch paired with its label and count when filtering or changing periods.
+In library statistics, single-series charts share the primary teal; panel titles
+use neutral text without category-colored decorations. In the media-type chart,
+images use primary, video uses muted foreground, and audio uses a lighter neutral
+mixed from muted foreground and the card surface. Keep each legend swatch paired
+with its label, count, and percentage when filtering or changing periods.
+Selected controls use the pale accent surface with primary text and an outline,
+consistently across period, view, and ranking selectors.
 
 Avoid broad gradients, tinted page backgrounds, and arbitrary accent colors. A
 black-to-transparent gradient is allowed only as a thumbnail text scrim. Do not add

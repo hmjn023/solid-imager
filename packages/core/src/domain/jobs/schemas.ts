@@ -113,9 +113,10 @@ export const jobDtoSchema = z.object({
 });
 export type JobDto = z.infer<typeof jobDtoSchema>;
 
-/** Paginated job listing with an optional status filter. */
+/** Job listing filtered before pagination and counting. Active includes queued and running jobs. */
 export const jobListRequestSchema = z.object({
-	status: jobStatusSchema.optional(),
+	status: jobStatusSchema.or(z.literal("active")).optional(),
+	type: z.string().min(1).optional(),
 	limit: z.number().int().min(1).max(200).default(50),
 	offset: z.number().int().min(0).default(0),
 });
@@ -162,6 +163,8 @@ export const batchTargetsSchema = z.object({
 		z.object({
 			label: z.string(),
 			mediaId: z.uuid().nullable(),
+			mediaSourceId: z.uuid().nullable(),
+			mediaModifiedAt: z.coerce.date().nullable(),
 			status: jobStatusSchema.nullable(),
 			skipped: z.boolean(),
 			stage: z.string().nullable(),

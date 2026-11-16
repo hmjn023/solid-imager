@@ -12,15 +12,17 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 }) => {
 	// SSE invalidation supersedes in-flight reads of these same two queries.
 	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/jobs\/(list|targets)$/,
+		/\/api\/rpc\/jobs\/(list|targets|types)$/,
 		"net::ERR_ABORTED",
 	);
 	const filenames = Array.from(
 		{ length: 26 },
 		(_, i) => `batch-target-${i}.png`,
 	);
-	const subscribed = page.waitForRequest((request) =>
-		request.url().endsWith("/jobs/events"),
+	// The first dev navigation compiles the route before opening the stream.
+	const subscribed = page.waitForRequest(
+		(request) => request.url().endsWith("/jobs/events"),
+		{ timeout: 60_000 },
 	);
 	await page.goto("/jobs");
 	await waitForAppHydration(page);
@@ -44,7 +46,7 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 		.filter({ visible: true });
 	await expect(table.getByRole("row")).toHaveCount(26);
 	const firstPage = await table
-		.locator("tbody tr td:first-child")
+		.locator("tbody tr td:nth-child(2) > span")
 		.allTextContents();
 	await page
 		.locator("section")
@@ -53,7 +55,9 @@ test("opens a batch, pages past 25 targets and restores its details after reload
 		.last()
 		.click();
 	await expect(table.getByRole("row")).toHaveCount(2);
-	const last = await table.locator("tbody tr td:first-child").innerText();
+	const last = await table
+		.locator("tbody tr td:nth-child(2) > span")
+		.innerText();
 	expect([...firstPage, last].sort()).toEqual(filenames.sort());
 	await page.reload();
 	await waitForAppHydration(page);
@@ -80,7 +84,7 @@ test("retries a failed upload from the parent and replaces only its file", async
 	browserHealth,
 }) => {
 	browserHealth.allowRequestFailure(
-		/\/api\/rpc\/jobs\/(list|targets)$/,
+		/\/api\/rpc\/jobs\/(list|targets|types)$/,
 		"net::ERR_ABORTED",
 	);
 	const name = `retry-${crypto.randomUUID()}.png`;
