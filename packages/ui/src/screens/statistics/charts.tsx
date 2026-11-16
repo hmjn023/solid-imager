@@ -17,7 +17,7 @@ import {
 import { Toggle } from "../../toggle";
 import { ToggleGroup, ToggleGroupItem } from "../../toggle-group";
 
-const chartBlue = "var(--chart-blue)";
+const chartPrimary = "hsl(var(--primary))";
 const chartTheme = {
 	foreground: "hsl(var(--foreground))",
 	muted: "hsl(var(--muted-foreground))",
@@ -25,13 +25,19 @@ const chartTheme = {
 	background: "hsl(var(--card))",
 };
 const typeStyle = {
-	image: { label: t("charts.images"), fill: "var(--chart-amber)" },
-	video: { label: t("labels.media.video"), fill: chartBlue },
-	audio: { label: t("labels.media.audio"), fill: "var(--chart-violet)" },
+	image: { label: t("charts.images"), fill: chartPrimary },
+	video: {
+		label: t("labels.media.video"),
+		fill: "hsl(var(--muted-foreground))",
+	},
+	audio: {
+		label: t("labels.media.audio"),
+		fill: "color-mix(in srgb, hsl(var(--muted-foreground)) 75%, hsl(var(--card)))",
+	},
 } satisfies Record<MediaType, { label: string; fill: string }>;
 const mediaTypes: readonly MediaType[] = ["image", "video", "audio"];
 
-function PanelTitle(props: { index: string; title: string; accent: string }) {
+function PanelTitle(props: { index: string; title: string }) {
 	return (
 		<div class="flex items-center gap-2.5">
 			<span
@@ -40,10 +46,6 @@ function PanelTitle(props: { index: string; title: string; accent: string }) {
 			>
 				{props.index}
 			</span>
-			<span
-				aria-hidden="true"
-				class={`h-3.5 w-1 rounded-full ${props.accent}`}
-			/>
 			<h2 class="text-base font-semibold tracking-tight">{props.title}</h2>
 		</div>
 	);
@@ -79,14 +81,14 @@ export function ImportTrend(props: {
 							x: "bucket",
 							y: "cumulative",
 							y1: 0,
-							fill: chartBlue,
+							fill: chartPrimary,
 							fillOpacity: 0.1,
 						}),
 						lineY(props.trend, {
 							id: t("charts.cumulative"),
 							x: "bucket",
 							y: "cumulative",
-							stroke: chartBlue,
+							stroke: chartPrimary,
 							points: props.trend.length < 2,
 						}),
 					]
@@ -99,8 +101,8 @@ export function ImportTrend(props: {
 							radius: [3, 3, 0, 0],
 							fill: (item) =>
 								props.selected && props.selected !== item.bucket
-									? "color-mix(in srgb, var(--chart-blue) 77%, transparent)"
-									: chartBlue,
+									? "color-mix(in srgb, hsl(var(--primary)) 30%, hsl(var(--card)))"
+									: chartPrimary,
 						}),
 					],
 			scales: {
@@ -133,11 +135,7 @@ export function ImportTrend(props: {
 	return (
 		<Card class="flex min-w-0 flex-col gap-4 p-4 shadow-none sm:p-5">
 			<div class="flex flex-wrap items-center justify-between gap-2">
-				<PanelTitle
-					index="01"
-					title={t("charts.importTrends")}
-					accent="bg-chart-blue"
-				/>
+				<PanelTitle index="01" title={t("charts.importTrends")} />
 				<ToggleGroup
 					aria-label={t("charts.trendDisplay")}
 					class="gap-0 rounded-md bg-muted p-1"
@@ -149,13 +147,13 @@ export function ImportTrend(props: {
 					value={props.cumulative ? "cumulative" : "count"}
 				>
 					<ToggleGroupItem
-						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-input data-[pressed]:bg-card data-[pressed]:text-foreground data-[pressed]:shadow-sm data-[pressed]:hover:bg-card data-[pressed]:hover:text-foreground sm:h-8"
+						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
 						value="count"
 					>
 						{t("charts.count")}
 					</ToggleGroupItem>
 					<ToggleGroupItem
-						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-input data-[pressed]:bg-card data-[pressed]:text-foreground data-[pressed]:shadow-sm data-[pressed]:hover:bg-card data-[pressed]:hover:text-foreground sm:h-8"
+						class="h-10 px-3 text-xs data-[pressed]:border data-[pressed]:border-primary data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:hover:bg-accent data-[pressed]:hover:text-primary sm:h-8"
 						value="cumulative"
 					>
 						{t("charts.cumulative")}
@@ -224,7 +222,7 @@ export function ImportTrend(props: {
 							{(item) => (
 								<li>
 									<Toggle
-										class="w-full justify-between gap-1 px-2 text-xs tabular-nums hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-secondary data-[pressed]:text-secondary-foreground data-[pressed]:hover:bg-secondary/80"
+										class="w-full justify-between gap-1 px-2 text-xs tabular-nums hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent"
 										onChange={() => props.select(item.bucket)}
 										pressed={props.selected === item.bucket}
 									>
@@ -290,11 +288,7 @@ export function MediaComposition(props: {
 	});
 	return (
 		<Card class="flex min-w-0 flex-col gap-3 p-4 shadow-none sm:p-5">
-			<PanelTitle
-				index="02"
-				title={t("charts.mediaBreakdown")}
-				accent="bg-chart-amber"
-			/>
+			<PanelTitle index="02" title={t("charts.mediaBreakdown")} />
 			<p class="text-xs text-muted-foreground">
 				{t("charts.valueDistribution", {
 					value0: String(
@@ -369,7 +363,6 @@ export function Ranking(props: {
 			<div class="flex items-center justify-between gap-2 border-b border-border px-4 py-4 sm:px-5">
 				<PanelTitle
 					index={isIp() ? "03" : "04"}
-					accent={isIp() ? "bg-chart-violet" : "bg-chart-coral"}
 					title={
 						isIp() ? t("charts.iPRankings") : t("charts.characterRankings")
 					}
@@ -395,7 +388,7 @@ export function Ranking(props: {
 					{(item, index) => (
 						<li>
 							<Toggle
-								class="h-auto min-h-11 w-full items-start justify-start gap-3 px-2 py-2 text-left hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-secondary data-[pressed]:text-secondary-foreground data-[pressed]:hover:bg-secondary/80 [&_svg]:h-1.5 [&_svg]:w-full"
+								class="h-auto min-h-11 w-full items-start justify-start gap-3 px-2 py-2 text-left hover:bg-accent hover:text-accent-foreground data-[pressed]:bg-accent data-[pressed]:text-primary data-[pressed]:ring-1 data-[pressed]:ring-inset data-[pressed]:ring-primary data-[pressed]:hover:bg-accent [&_svg]:h-1.5 [&_svg]:w-full"
 								onChange={() => props.select(item.id)}
 								pressed={props.selected === item.id}
 							>
@@ -425,7 +418,7 @@ export function Ranking(props: {
 											width={`${(100 * item.count) / props.items[0].count}%`}
 											height="5"
 											rx="2"
-											class={isIp() ? "fill-chart-violet" : "fill-chart-coral"}
+											class="fill-primary"
 										/>
 									</svg>
 								</span>
@@ -442,11 +435,7 @@ export function Ranking(props: {
 export function ModelFavorites(props: { models: LibraryStatistics["models"] }) {
 	return (
 		<Card class="min-w-0 p-4 shadow-none sm:p-5">
-			<PanelTitle
-				index="05"
-				title={t("charts.favoritesByGenerationModel")}
-				accent="bg-chart-rose"
-			/>
+			<PanelTitle index="05" title={t("charts.favoritesByGenerationModel")} />
 			<p class="mt-2 text-xs text-muted-foreground">
 				{t("charts.top5ModelsByFavoritesEachBarShowsThe")}
 			</p>
@@ -481,7 +470,7 @@ export function ModelFavorites(props: { models: LibraryStatistics["models"] }) {
 											width={`${percent}%`}
 											height="100%"
 											rx="2"
-											class="fill-chart-rose"
+											class="fill-primary"
 										/>
 									</svg>
 									<strong class="w-14 text-right font-medium tabular-nums">

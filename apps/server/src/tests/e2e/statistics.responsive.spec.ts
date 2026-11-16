@@ -78,6 +78,8 @@ test("statistics opens from the sidebar and recovers a failed request @desktop-o
 test("chart views show composition, cumulative counts and selectable ranking bars", async ({
 	page,
 }, testInfo) => {
+	if (testInfo.project.name === "responsive-desktop")
+		await page.setViewportSize({ width: 1440, height: 1200 });
 	const counts = [
 		9, 16, 12, 21, 7, 4, 0, 18, 29, 21, 38, 16, 10, 8, 20, 34, 18, 57, 41, 23,
 		14, 0, 12, 31, 27, 20, 43, 26, 16, 35,
