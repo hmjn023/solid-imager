@@ -107,12 +107,12 @@ export const bulkAddHandler = async ({
 			updatedAt: new Date(),
 		}));
 
-		// Chunking inserts
-		const ChunkSize = 100;
-		for (let i = 0; i < jobValues.length; i += ChunkSize) {
-			const chunk = jobValues.slice(i, i + ChunkSize);
-			await db.insert(jobs).values(chunk);
-		}
+		await db.transaction(async (tx) => {
+			const chunkSize = 100;
+			for (let i = 0; i < jobValues.length; i += chunkSize) {
+				await tx.insert(jobs).values(jobValues.slice(i, i + chunkSize));
+			}
+		});
 		addedCount = importItems.length;
 
 		RealtimeEventBus.publishImport("import-request:created", {

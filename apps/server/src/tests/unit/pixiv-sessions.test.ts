@@ -213,4 +213,118 @@ describe("pixiv account connection", () => {
 		for (const cookie of ["", "123; another=value", "123\r\nother"])
 			expect(pixivWebSessionSchema.safeParse(cookie).success).toBe(false);
 	});
+
+	it("uses the connected account to add and remove bookmarks without exposing credentials or overwriting an existing bookmark", async () => {
+		const cookie = "123_fixture";
+		const csrfToken = "fixture-csrf-token";
+		const bookmarkId = "9007199254740999";
+		let accountId = "123";
+		let bookmarked: { id: string; private: boolean } | null = null;
+		const writes: string[] = [];
+		const remote = vi
+			.spyOn(globalThis, "fetch")
+			.mockImplementation(async (url, init) => {
+				const target = new URL(url instanceof Request ? url.url : url);
+				const headers = new Headers(init?.headers);
+				expect(target.origin).toBe("https://www.pixiv.net");
+				expect(headers.get("cookie")).toBe("PHPSESSID=" + cookie);
+				if (target.pathname === "/") {
+					const state = JSON.stringify({
+						userData: { self: { id: accountId } },
+						api: { token: csrfToken },
+					});
+					const data = JSON.stringify({
+						props: {
+							pageProps: {
+								isLoggedIn: true,
+								serverSerializedPreloadedState: state,
+							},
+						},
+					});
+					return new Response(
+						'<script id="__NEXT_DATA__" type="application/json">' +
+							data +
+							"</script>",
+					);
+				}
+				expect(init?.redirect).toBe("error");
+				if (target.pathname === "/ajax/illust/456/bookmarkData")
+					return Response.json({
+						error: false,
+						body: {
+							illustId: "456",
+							isBookmarkable: true,
+							bookmarkData: bookmarked,
+						},
+					});
+				expect(init?.method).toBe("POST");
+				expect(headers.get("x-csrf-token")).toBe(csrfToken);
+				writes.push(target.pathname);
+				if (target.pathname.endsWith("/add")) {
+					expect(JSON.parse(String(init?.body))).toEqual({
+						illust_id: 456,
+						restrict: 1,
+						comment: "",
+						tags: [],
+					});
+					bookmarked = { id: bookmarkId, private: true };
+				} else {
+					expect(String(init?.body)).toBe("bookmark_id=" + bookmarkId);
+					bookmarked = null;
+				}
+				return Response.json({ error: false, body: {} });
+			});
+		const input = { id: 456, visibility: "private" as const };
+		try {
+			await expect(
+				call(viewerRouter.setPixivBookmark, input),
+			).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+			expect(remote).not.toHaveBeenCalled();
+			const code = await call(viewerRouter.issuePixivCode, {
+				sessionId: cookie,
+			});
+			const session = await call(viewerRouter.loginPixiv, code);
+			const options = {
+				context: { pixivAuthorization: "Bearer " + session.token },
+			};
+			await expect(
+				call(viewerRouter.pixivBookmarkState, { id: 456 }, options),
+			).resolves.toEqual({ visibility: null, canAdd: true });
+			await expect(
+				call(viewerRouter.setPixivBookmark, input, options),
+			).resolves.toEqual({ visibility: "private", canAdd: true });
+			await expect(
+				call(
+					viewerRouter.setPixivBookmark,
+					{ ...input, visibility: "public" },
+					options,
+				),
+			).resolves.toEqual({ visibility: "private", canAdd: true });
+			await expect(
+				call(
+					viewerRouter.setPixivBookmark,
+					{ ...input, visibility: null },
+					options,
+				),
+			).resolves.toEqual({ visibility: null, canAdd: true });
+			await expect(
+				call(
+					viewerRouter.setPixivBookmark,
+					{ ...input, visibility: null },
+					options,
+				),
+			).resolves.toEqual({ visibility: null, canAdd: true });
+			accountId = "124";
+			await expect(
+				call(viewerRouter.setPixivBookmark, input, options),
+			).rejects.toMatchObject({ code: "UNAUTHORIZED" });
+			expect(writes).toEqual([
+				"/ajax/illusts/bookmarks/add",
+				"/ajax/illusts/bookmarks/delete",
+			]);
+			await call(viewerRouter.logoutPixiv, undefined, options);
+		} finally {
+			remote.mockRestore();
+		}
+	});
 });

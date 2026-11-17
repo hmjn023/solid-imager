@@ -10,7 +10,7 @@ import type {
 import type { DownloadItem } from "@solid-imager/core/media";
 import { createQuery } from "@tanstack/solid-query";
 import { DanbooruPostDetail } from "../external-viewer/danbooru-post-detail";
-import { createViewerImports } from "../external-viewer/detail";
+import { createViewerImports } from "../external-viewer/viewer-imports";
 import {
 	danbooruRatingLabel,
 	viewerImageHref,
@@ -36,7 +36,9 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 		undefined,
 		() => props.selectedPostId,
 	);
-	const imports = createViewerImports(props.enqueueImport);
+	const imports = createViewerImports((items) =>
+		Promise.all(items.map((item) => props.enqueueImport(item))),
+	);
 	const detail = createQuery(() => ({
 		queryKey: ["danbooru", "post", props.selectedPostId],
 		queryFn: () => props.getPost(props.selectedPostId ?? 0),
