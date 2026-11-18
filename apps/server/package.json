@@ -13,7 +13,6 @@
     "db:check": "drizzle-kit check",
     "db:migrate": "drizzle-kit migrate",
     "db:reconcile-uuidv7-paths": "bun scripts/reconcile-uuidv7-paths.ts",
-    "db:migrate:pglite": "bun scripts/migrate-pglite.ts",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "validate:native": "bun scripts/validate-native-runtime.ts",

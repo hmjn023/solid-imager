@@ -12,20 +12,19 @@ cp apps/server/.env.example apps/server/.env
 ```
 
 既存の `.env` がある場合は上書きせず、exampleとの差分を確認する。
-テンプレートの既定はPGlite。PostgreSQLを使う場合は `apps/server/.env` の `DB_HOST=localhost` と接続情報を設定し、Composeにも同じファイルを渡す。
+テンプレートの既定はPGlite。PGliteの保存先は `PGLITE_DATA_DIR`、未指定なら `apps/server/.data/pglite`。PostgreSQLを使う場合は `apps/server/.env` の `DB_HOST=localhost` と接続情報を設定し、Composeにも同じファイルを渡す。
 
 ```bash
 docker compose --env-file apps/server/.env --project-directory . up -d
-bun --filter @solid-imager/server run db:migrate
 ```
 
-PGliteを使う場合のマイグレーションは以下。保存先は `PGLITE_DATA_DIR`、未指定なら `apps/server/.data/pglite`。schemaやrepositoryの変更は `database-schema` を参照する。
+PGliteとPostgreSQLのどちらも、同じコマンドでマイグレーションを適用する。
 
 ```bash
-bun --filter @solid-imager/server run db:migrate:pglite
+bun run --cwd apps/server db:migrate
 ```
 
-Drizzle 0.x から更新する既存環境では、DBをバックアップしてから上記の移行コマンドを実行する。初回実行時にDrizzleが適用履歴をv1形式に更新し、未適用のマイグレーションを実行する。リポジトリの履歴は `bun --filter @solid-imager/server run db:check` で検証できる。
+Drizzle 0.x から更新する既存環境では、DBをバックアップしてから `db:migrate` を実行する。初回実行時にDrizzleが適用履歴をv1形式に更新し、未適用のマイグレーションを実行する。リポジトリの履歴は `bun run --cwd apps/server db:check` で検証できる。schemaやrepositoryの変更は `database-schema` を参照する。
 
 ## Modern Web Guidance
 
