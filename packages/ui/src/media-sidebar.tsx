@@ -7,7 +7,10 @@ import {
 import { t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
-import type { MediaDetails } from "@solid-imager/core/media";
+import type {
+	MediaDetails,
+	UpdatePositiveMediaTags,
+} from "@solid-imager/core/media";
 import type { Project } from "@solid-imager/core/projects";
 import { getErrorMessage } from "@solid-imager/core/utils";
 // oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
@@ -44,6 +47,17 @@ import {
 import { Button } from "./button";
 import { ClipboardCopy } from "./clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "./collapsible";
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "./dialog";
+import {
+	TagDictionaryBrowser,
+	type TagDictionaryLookup,
+} from "./tag-dictionary-browser";
 import { TextField, TextFieldLabel, TextFieldTextArea } from "./text-field";
 import { toast } from "./toast";
 import { ChevronDown } from "./workspace/icons";
@@ -51,6 +65,7 @@ import { ChevronDown } from "./workspace/icons";
 export type MediaSidebarProps = {
 	media: MediaDetails;
 	activityApi: MediaActivityApi;
+	tagDictionaryLookup?: TagDictionaryLookup;
 	isUpdating?: Accessor<boolean>;
 	projects: Project[];
 	allProjects: Project[];
@@ -60,7 +75,9 @@ export type MediaSidebarProps = {
 	isAllIpsLoading?: boolean;
 	isAllCharactersLoading?: boolean;
 	onUpdate?: () => void;
-	onPositiveTagsUpdate: (names: string[]) => Promise<void>;
+	onPositiveTagsUpdate: (
+		tags: Pick<UpdatePositiveMediaTags, "entries" | "expected">,
+	) => Promise<void>;
 	onDescriptionUpdate: (description: string) => void | Promise<void>;
 	onProjectAdd: (projectId: string) => void | Promise<void>;
 	onProjectRemove: (projectId: string) => void | Promise<void>;
@@ -77,6 +94,13 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [editingTags, setEditingTags] = createSignal(false);
 	const [tagText, setTagText] = createSignal("");
+	const [expectedTags, setExpectedTags] = createSignal<
+		UpdatePositiveMediaTags["expected"]
+	>([]);
+	const [dictionaryNames, setDictionaryNames] = createSignal<
+		ReadonlySet<string>
+	>(new Set());
+	const [dictionaryOpen, setDictionaryOpen] = createSignal(false);
 	const [savingTags, setSavingTags] = createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [descriptionValue, setDescriptionValue] = createSignal(
@@ -337,12 +361,14 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							size="sm"
 							variant="outline"
 							onClick={() => {
-								setTagText(
-									positiveTags()
-										.map((tag) => tag.name)
-										.join("\n"),
-								);
+								const expected = positiveTags().map(({ id, name }) => ({
+									id,
+									name,
+								}));
+								setExpectedTags(expected);
+								setTagText(expected.map(({ name }) => name).join("\n"));
 								setEditingTags(true);
+								setDictionaryNames(new Set<string>());
 							}}
 						>
 							{t("actions.edit")}
@@ -363,15 +389,72 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<TextField
 						class="space-y-2"
 						disabled={savingTags()}
-						onChange={setTagText}
+						onChange={(text) => {
+							setTagText(text);
+							const present = new Set(
+								text.split("\n").map((name) => name.trim()),
+							);
+							setDictionaryNames(
+								(names) =>
+									new Set([...names].filter((name) => present.has(name))),
+							);
+						}}
 						value={tagText()}
 					>
 						<TextFieldLabel class="text-muted-foreground text-sm">
 							{t("mediaSidebar.oneTagPerLine")}
 						</TextFieldLabel>
-						<TextFieldTextArea id="positive-tags" rows={8} />
+						<TextFieldTextArea
+							id="positive-tags"
+							rows={8}
+							spellcheck={false}
+							autocapitalize="none"
+							autocorrect="off"
+						/>
 					</TextField>
 					<div class="flex gap-2">
+						<Show when={props.tagDictionaryLookup}>
+							{(api) => (
+								<Dialog
+									open={dictionaryOpen()}
+									onOpenChange={setDictionaryOpen}
+								>
+									<DialogTrigger
+										as={Button}
+										variant="outline"
+										size="sm"
+										disabled={savingTags()}
+									>
+										{t("tagDictionary.title")}
+									</DialogTrigger>
+									<DialogContent class="max-w-2xl">
+										<DialogHeader>
+											<DialogTitle>{t("tagDictionary.title")}</DialogTitle>
+										</DialogHeader>
+										<TagDictionaryBrowser
+											api={api()}
+											onAdd={(entry) => {
+												if (
+													!tagText()
+														.split("\n")
+														.some((name) => name.trim() === entry.name)
+												) {
+													setTagText((text) =>
+														[text.trimEnd(), entry.name]
+															.filter(Boolean)
+															.join("\n"),
+													);
+												}
+												setDictionaryNames(
+													(names) => new Set([...names, entry.name]),
+												);
+												setDictionaryOpen(false);
+											}}
+										/>
+									</DialogContent>
+								</Dialog>
+							)}
+						</Show>
 						<Button
 							size="sm"
 							disabled={savingTags()}
@@ -379,14 +462,20 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								void (async () => {
 									setSavingTags(true);
 									try {
-										await props.onPositiveTagsUpdate([
-											...new Set(
-												tagText()
-													.split("\n")
-													.map((name) => name.trim())
-													.filter(Boolean),
-											),
-										]);
+										await props.onPositiveTagsUpdate({
+											expected: expectedTags(),
+											entries: [
+												...new Set(
+													tagText()
+														.split("\n")
+														.map((name) => name.trim())
+														.filter(Boolean),
+												),
+											].map((name) => ({
+												name,
+												fromDictionary: dictionaryNames().has(name),
+											})),
+										});
 										setEditingTags(false);
 										props.onUpdate?.();
 									} catch (error) {
@@ -431,6 +520,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									})}
 									variant={tag.source === "AI" ? "outline" : "default"}
 									name={tag.name}
+									wikiLookup={props.tagDictionaryLookup?.dictionaryDetail}
 								/>
 							)}
 						</For>
@@ -452,6 +542,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									})}
 									variant="secondary"
 									name={tag.name}
+									wikiLookup={props.tagDictionaryLookup?.dictionaryDetail}
 								/>
 							)}
 						</For>

@@ -15,6 +15,7 @@ export const {
 	searchSnapshot: SearchSnapshotRepository,
 	source: DrizzleSourceRepository,
 	tag: TagRepository,
+	tagDictionary: TagDictionaryRepository,
 	user: UserRepository,
 	allocateJobId,
 } = createRepositories(getExecutor, logger);

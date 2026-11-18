@@ -1,5 +1,9 @@
 import type { InferInsertModel, InferSelectModel } from "drizzle-orm";
 import { relations, sql } from "drizzle-orm";
+import type {
+	TagDictionarySource,
+	TagDictionaryEntry,
+} from "@solid-imager/core/tags";
 import {
 	type AnyPgColumn,
 	bigint,
@@ -375,10 +379,58 @@ export const tags = pgTable(
 	],
 );
 
+export const tagNameRedirects = pgTable(
+	"tag_name_redirects",
+	{
+		name: text("name").primaryKey(),
+		tagId: uuid("tag_id")
+			.notNull()
+			.references(() => tags.id, { onDelete: "cascade" }),
+	},
+	(table) => [index("idx_tag_name_redirects_tag_id").on(table.tagId)],
+);
+
 /** Number of active images with a positive, nonzero-confidence occurrence. */
 export const relatedTagFrequencies = pgTable("related_tag_frequencies", {
 	tagId: uuid("tag_id").primaryKey(),
 	imageCount: bigint("image_count", { mode: "number" }).notNull(),
+});
+
+export const tagDictionaryTags = pgTable(
+	"tag_dictionary_tags",
+	{
+		name: text("name").primaryKey(),
+		category: integer("category")
+			.$type<TagDictionaryEntry["category"]>()
+			.notNull(),
+		postCount: integer("post_count").notNull(),
+		japanese: text("japanese"),
+		aliases: jsonb("aliases").$type<string[]>().notNull(),
+		searchText: text("search_text").notNull(),
+	},
+	(table) => [
+		index("idx_tag_dictionary_popular").on(table.postCount.desc(), table.name),
+		index("idx_tag_dictionary_aliases").using("gin", table.aliases),
+	],
+);
+
+export const tagDictionaryWiki = pgTable("tag_dictionary_wiki", {
+	name: text("name").primaryKey(),
+	body: text("body"),
+	otherNames: jsonb("other_names").$type<string[]>().notNull(),
+	updatedAt: text("updated_at").notNull(),
+});
+
+export const tagDictionaryAttributes = pgTable("tag_dictionary_attributes", {
+	name: text("name").primaryKey(),
+	attributes: jsonb("attributes").$type<string[]>().notNull(),
+});
+
+export const tagDictionarySnapshots = pgTable("tag_dictionary_snapshots", {
+	source: text("source").$type<TagDictionarySource>().primaryKey(),
+	version: text("version").notNull(),
+	count: integer("count").notNull(),
+	installedAt: timestamp("installed_at").notNull().defaultNow(),
 });
 
 /**
@@ -1143,6 +1195,11 @@ export const jobs = pgTable(
 				sql`${table.type} = 'generate_thumbnail'
 					AND ${table.status} IN ('pending', 'in_progress')
 					AND ${table.mediaSourceId} IS NOT NULL`,
+			),
+		uniqueIndex("uq_jobs_active_tag_dictionary_refresh")
+			.on(table.type)
+			.where(
+				sql`${table.type} = 'tag_dictionary_refresh' AND ${table.status} IN ('pending', 'in_progress')`,
 			),
 		index("idx_jobs_cancelable")
 			.on(table.status, table.updatedAt)

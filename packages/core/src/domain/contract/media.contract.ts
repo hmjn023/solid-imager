@@ -24,6 +24,7 @@ import {
 	similarMediaSearchResponseSchema,
 	tagSchema,
 	updateMediaRequestSchema,
+	updatePositiveMediaTagsSchema,
 } from "../media/schemas";
 import { uploadResponseSchema } from "../media/upload-schemas";
 import { similarMediaRequestSchema } from "../tagging/schemas";
@@ -333,6 +334,11 @@ export const mediaContract = {
 		)
 		.input(bulkMoveMediaRequestSchema)
 		.output(bulkMediaOperationResultSchema),
+
+	updatePositiveTags: oc
+		.meta(openapi({ tags: ["Media"], summary: "メディアの正タグを更新" }))
+		.input(updatePositiveMediaTagsSchema)
+		.output(z.object({ success: z.literal(true) })),
 
 	bulkTag: oc
 		.meta(

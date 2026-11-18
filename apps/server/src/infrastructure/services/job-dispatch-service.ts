@@ -37,6 +37,11 @@ function getThumbnailJobHandlers(): ThumbnailJobHandlers {
 
 /** Dispatches a job to its type-specific handler; most types require a media source ID. */
 export async function processJob(job: Job) {
+	if (job.type === "tag_dictionary_refresh") {
+		const { processTagDictionaryRefresh } =
+			await import("./tag-dictionary-service");
+		return processTagDictionaryRefresh(job);
+	}
 	const mediaSourceId = job.mediaSourceId;
 	if (
 		!mediaSourceId &&

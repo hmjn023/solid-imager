@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TAG_DICTIONARY_JOB } from "../tags/dictionary-job";
 
 export const jobStatusSchema = z.enum([
 	"pending",
@@ -68,6 +69,7 @@ export function canRetryJob(job: {
 		job.type !== "import_request" &&
 		job.type !== "import_batch_target" &&
 		job.type !== "extract_embedding_batch" &&
+		job.type !== TAG_DICTIONARY_JOB &&
 		!isBatchParentJobType(job.type ?? "")
 	);
 }

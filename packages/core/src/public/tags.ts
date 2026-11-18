@@ -4,3 +4,4 @@ export type {
 	TagRepository,
 } from "../domain/repositories/tag-repository";
 export type { TagResponse, UpdateTag } from "../domain/tags/schemas";
+export * from "../domain/tags/dictionary";

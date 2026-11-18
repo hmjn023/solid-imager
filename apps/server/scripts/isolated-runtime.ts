@@ -3,6 +3,7 @@ import { copyFile, link, mkdir, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultAppConfig } from "@solid-imager/core/config";
 import { authorAccounts, authors, mediaAuthors, mediaUrls, mediaGenerationInfo, medias, mediaSources } from "@solid-imager/db/schema";
+import { tagDictionaryAttributes, tagDictionarySnapshots, tagDictionaryTags, tagDictionaryWiki } from "@solid-imager/db/schema";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
 import sharp from "sharp";
@@ -122,6 +123,29 @@ async function seedMediaFixtures(runtimeDir: string): Promise<void> {
   try {
     await migrate(db, { migrationsFolder: path.join(appRoot, "drizzle") });
     const seededAt = new Date();
+    await db.insert(tagDictionaryTags).values({
+      name: "wavy_hair",
+      category: 0,
+      postCount: 100,
+      japanese: "ウェーブヘア",
+      aliases: ["waved_hair"],
+      searchText: "wavy hair\nwaved hair",
+    });
+    await db.insert(tagDictionaryWiki).values({
+      name: "wavy_hair",
+      body: "Hair that falls in waves.",
+      otherNames: ["波状の髪"],
+      updatedAt: "2026-06-01T00:00:00.000Z",
+    });
+    await db.insert(tagDictionaryAttributes).values({
+      name: "wavy_hair",
+      attributes: ["头发", "发型"],
+    });
+    await db.insert(tagDictionarySnapshots).values([
+      { source: "tags", version: "2026-11-16T11:07:21Z", count: 1 },
+      { source: "wiki", version: "2026-06-01", count: 1 },
+      { source: "attributes", version: "2026-08-20", count: 1 },
+    ]);
     await db.insert(mediaSources).values({
       id: E2E_SOURCE_ID,
       name: E2E_SOURCE_NAME,

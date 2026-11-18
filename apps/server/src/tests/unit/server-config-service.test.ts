@@ -62,6 +62,7 @@ describe("ConfigService", () => {
 		service.load();
 
 		expect(service.getConfig().downloads).toEqual(defaultAppConfig.downloads);
+		expect(service.getConfig().tagDictionary.fetchMissingWiki).toBe(false);
 		expect(fs.writeFileSync).toHaveBeenCalledTimes(1);
 		expect(vi.mocked(fs.writeFileSync).mock.calls[0]?.[0]).toContain(
 			"config.json",
@@ -74,6 +75,7 @@ describe("ConfigService", () => {
 			...legacyConfig,
 			downloads: defaultAppConfig.downloads,
 			mcp: defaultAppConfig.mcp,
+			tagDictionary: { fetchMissingWiki: false },
 		});
 	});
 

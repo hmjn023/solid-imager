@@ -1,6 +1,11 @@
-import { implement } from "@orpc/server";
+import { implement, ORPCError } from "@orpc/server";
 import { mcp } from "@orpc/mcp";
 import { tagsContract } from "@solid-imager/core/contract";
+import { TagDictionaryRepository } from "~/infrastructure/db/repositories";
+import {
+	getTagDictionaryDetail,
+	queueTagDictionaryRefresh,
+} from "~/infrastructure/services/tag-dictionary-service";
 import { TagService } from "~/infrastructure/services/tag-service";
 
 /**
@@ -14,6 +19,30 @@ const os = implement({
 });
 
 export const tagsRouter = os.router({
+	dictionarySearch: os.dictionarySearch.handler(({ input }) =>
+		TagDictionaryRepository.search(input),
+	),
+	dictionaryDetail: os.dictionaryDetail.handler(({ input }) =>
+		getTagDictionaryDetail(input.name),
+	),
+	dictionaryStatus: os.dictionaryStatus.handler(() =>
+		TagDictionaryRepository.status(),
+	),
+	dictionaryRefresh: os.dictionaryRefresh.handler(() =>
+		queueTagDictionaryRefresh("manual"),
+	),
+	dictionaryLegacy: os.dictionaryLegacy.handler(({ input }) =>
+		TagDictionaryRepository.listLegacy(input),
+	),
+	dictionaryMigrate: os.dictionaryMigrate.handler(async ({ input }) => {
+		if (!(await TagDictionaryRepository.migrateLegacy(input))) {
+			throw new ORPCError("CONFLICT", {
+				message: "Tag migration is no longer available",
+			});
+		}
+		return { success: true };
+	}),
+
 	list: os.list.handler(async () => await TagService.getAllTags()),
 
 	get: os.get.handler(async ({ input }) => {

@@ -10,6 +10,7 @@ import {
 	isBatchParentJobType,
 } from "@solid-imager/core/jobs";
 import { batchParentPayloadSchema } from "@solid-imager/core/tagging";
+import { TAG_DICTIONARY_JOB } from "@solid-imager/core/tags";
 import { generateThumbnailJobPayloadSchema } from "@solid-imager/core/thumbnails";
 import { isJobStatus } from "@solid-imager/core/utils";
 import {
@@ -247,8 +248,12 @@ export function createJobRepository(
 					return created ? mapJob(created) : null;
 				});
 			}
-			if (job.type === "generate_thumbnail" && job.mediaSourceId) {
-				generateThumbnailJobPayloadSchema.parse(job.payload);
+			if (
+				(job.type === "generate_thumbnail" && job.mediaSourceId) ||
+				job.type === TAG_DICTIONARY_JOB
+			) {
+				if (job.type === "generate_thumbnail")
+					generateThumbnailJobPayloadSchema.parse(job.payload);
 				const [created] = await db()
 					.insert(jobs)
 					.values(job)

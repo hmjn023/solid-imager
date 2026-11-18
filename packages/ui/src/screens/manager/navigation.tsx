@@ -4,6 +4,7 @@ import CopyCheck from "lucide-solid/icons/copy-check";
 import Folder from "lucide-solid/icons/folder";
 import Image from "lucide-solid/icons/image";
 import Share2 from "lucide-solid/icons/share-2";
+import Tags from "lucide-solid/icons/tags";
 import { For } from "solid-js";
 import { Button } from "../../button";
 import {
@@ -23,6 +24,8 @@ function ManagerCategoryIcon(props: { value: ManagerCategoryValue }) {
 			return <Image aria-hidden="true" size={16} />;
 		case "tagging":
 			return <Bot aria-hidden="true" size={16} />;
+		case "tagDictionary":
+			return <Tags aria-hidden="true" size={16} />;
 		case "vectors":
 		case "clustering":
 			return <Share2 aria-hidden="true" size={16} />;
