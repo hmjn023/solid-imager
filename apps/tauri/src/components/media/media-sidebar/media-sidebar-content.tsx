@@ -35,6 +35,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	return (
 		<MediaSidebarContent
 			activityApi={client.media}
+			tagDictionaryLookup={client.tags}
 			tagApi={{
 				list: () => client.tags.list(),
 				create: (data) => client.tags.create(data),

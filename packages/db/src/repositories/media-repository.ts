@@ -5,6 +5,7 @@ import {
 	readRelatedTagMatches,
 } from "./related-media";
 import { createAuthorRepository, mapAuthor } from "./author-repository";
+import { lockTagNames } from "./tag-migration";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
@@ -77,6 +78,7 @@ import {
 	mediaUrls,
 	type NewMedia,
 	projects,
+	tagNameRedirects,
 	tags,
 	viewHistory,
 } from "../schema";
@@ -326,18 +328,33 @@ function makeBuildRelationQuery(
 
 		switch (target) {
 			case "tag":
-				subquery = exists(
-					getExecutor()
-						.select({ id: mediaTags.mediaId })
-						.from(mediaTags)
-						.innerJoin(tags, eq(mediaTags.tagId, tags.id))
-						.where(
-							and(
-								eq(mediaTags.mediaId, medias.id),
-								buildValueCondition(tags.name, operator, value),
-							),
-						),
-				);
+				{
+					const match = buildValueCondition(tags.name, operator, value);
+					const oldNameMatch = [
+						"equals",
+						"contains",
+						"startsWith",
+						"endsWith",
+					].includes(operator)
+						? buildValueCondition(tagNameRedirects.name, operator, value)
+						: undefined;
+					const renamed = oldNameMatch
+						? inArray(
+								tags.id,
+								getExecutor()
+									.select({ id: tagNameRedirects.tagId })
+									.from(tagNameRedirects)
+									.where(oldNameMatch),
+							)
+						: undefined;
+					subquery = exists(
+						getExecutor()
+							.select({ id: mediaTags.mediaId })
+							.from(mediaTags)
+							.innerJoin(tags, eq(mediaTags.tagId, tags.id))
+							.where(and(eq(mediaTags.mediaId, medias.id), or(match, renamed))),
+					);
+				}
 				break;
 			case "project":
 				subquery = exists(
@@ -800,6 +817,7 @@ export function createMediaRepository(
 		 */
 		async clearAiAssociations(mediaId, tx) {
 			const client = getExecutor(tx);
+			await lockTagNames(client, true);
 			// Serialize replacement even when this media has no AI associations yet.
 			await client
 				.select({ id: medias.id })
@@ -1293,7 +1311,18 @@ export function createMediaRepository(
 						.select({ mediaId: mediaTags.mediaId })
 						.from(mediaTags)
 						.innerJoin(tags, eq(mediaTags.tagId, tags.id))
-						.where(inArray(tags.name, params.tags));
+						.where(
+							or(
+								inArray(tags.name, params.tags),
+								inArray(
+									tags.id,
+									client
+										.select({ id: tagNameRedirects.tagId })
+										.from(tagNameRedirects)
+										.where(inArray(tagNameRedirects.name, params.tags)),
+								),
+							),
+						);
 					conditions.push(inArray(medias.id, matching));
 				}
 				const rows = await client

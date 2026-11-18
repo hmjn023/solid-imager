@@ -31,6 +31,7 @@ import {
 import { MaintenanceService } from "~/infrastructure/services/maintenance-service";
 import { createMediaProcessingService } from "@solid-imager/application/media-processing";
 import { ServerConfigService } from "~/infrastructure/services/server-config-service";
+import { startTagDictionarySchedule } from "~/infrastructure/services/tag-dictionary-service";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
 
 export let isBootstrapped = false;
@@ -162,6 +163,7 @@ export function startBackgroundWorker() {
 	// Singleton management for JobWorker to prevent duplicates during HMR
 	const globalAny = globalThis as typeof globalThis & {
 		__JOB_WORKER__?: JobWorker;
+		__STOP_TAG_DICTIONARY_SCHEDULE__?: () => void;
 		__BOOTSTRAP_CLEANUP_REGISTERED__?: boolean;
 	};
 	if (globalAny.__JOB_WORKER__) {
@@ -170,6 +172,8 @@ export function startBackgroundWorker() {
 
 	globalAny.__JOB_WORKER__ = jobWorker;
 	jobWorker.start();
+	globalAny.__STOP_TAG_DICTIONARY_SCHEDULE__?.();
+	globalAny.__STOP_TAG_DICTIONARY_SCHEDULE__ = startTagDictionarySchedule();
 
 	// Initialize MaintenanceService and perform startup checks (background)
 	const maintenanceService = new MaintenanceService(
@@ -185,6 +189,7 @@ export function startBackgroundWorker() {
 	// Cleanup on process exit
 	if (!globalAny.__BOOTSTRAP_CLEANUP_REGISTERED__) {
 		const cleanup = () => {
+			globalAny.__STOP_TAG_DICTIONARY_SCHEDULE__?.();
 			if (globalAny.__JOB_WORKER__) {
 				globalAny.__JOB_WORKER__.stop();
 			}

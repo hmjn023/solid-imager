@@ -168,6 +168,10 @@ const DEFAULT_MEDIA_CONFIG = {
 	},
 };
 
+const TagDictionaryConfigSchema = z.object({
+	fetchMissingWiki: z.boolean(),
+});
+
 export const LoggingConfigSchema = z.object({
 	level: z
 		.enum(["trace", "debug", "info", "warn", "error", "fatal"])
@@ -186,6 +190,7 @@ export const AppConfigSchema = z.object({
 	downloads: DownloadsConfigSchema.default(DEFAULT_DOWNLOADS_CONFIG),
 	storage: StorageConfigSchema.default(DEFAULT_STORAGE_CONFIG),
 	media: MediaConfigSchema.default(DEFAULT_MEDIA_CONFIG),
+	tagDictionary: TagDictionaryConfigSchema.default({ fetchMissingWiki: false }),
 	logging: LoggingConfigSchema.default(DEFAULT_LOGGING_CONFIG),
 });
 
@@ -199,6 +204,7 @@ export const AppConfigUpdateSchema = z
 		downloads: DownloadsConfigSchema,
 		storage: StorageConfigSchema,
 		media: MediaConfigSchema,
+		tagDictionary: TagDictionaryConfigSchema.partial(),
 		logging: LoggingConfigSchema,
 	})
 	.partial();

@@ -2,12 +2,49 @@ import { openapi } from "@orpc/openapi";
 import { oc } from "@orpc/contract";
 import { z } from "zod";
 import {
+	tagDictionaryDetailSchema,
+	tagDictionaryLegacyResultSchema,
+	tagDictionaryLegacySearchSchema,
+	tagDictionaryMigrationSchema,
+	tagDictionarySearchResultSchema,
+	tagDictionarySearchSchema,
+	tagDictionaryStatusSchema,
+} from "../tags/dictionary";
+import {
 	newTagSchema,
 	tagResponseSchema,
 	updateTagSchema,
 } from "../tags/schemas";
 
 export const tagsContract = {
+	dictionarySearch: oc
+		.meta(openapi({ tags: ["Tags"], summary: "Danbooruタグ辞書の検索" }))
+		.input(tagDictionarySearchSchema)
+		.output(tagDictionarySearchResultSchema),
+
+	dictionaryDetail: oc
+		.meta(openapi({ tags: ["Tags"], summary: "Danbooruタグ辞書の詳細" }))
+		.input(z.object({ name: z.string().trim().min(1).max(200) }))
+		.output(tagDictionaryDetailSchema.nullable()),
+
+	dictionaryStatus: oc
+		.meta(openapi({ tags: ["Tags"], summary: "タグ辞書の取り込み状況" }))
+		.output(tagDictionaryStatusSchema),
+
+	dictionaryRefresh: oc
+		.meta(openapi({ tags: ["Tags"], summary: "タグ辞書の更新を予約" }))
+		.output(tagDictionaryStatusSchema),
+
+	dictionaryLegacy: oc
+		.meta(openapi({ tags: ["Tags"], summary: "タグ辞書への移行候補を取得" }))
+		.input(tagDictionaryLegacySearchSchema)
+		.output(tagDictionaryLegacyResultSchema),
+
+	dictionaryMigrate: oc
+		.meta(openapi({ tags: ["Tags"], summary: "旧タグを辞書の正式名に統合" }))
+		.input(tagDictionaryMigrationSchema)
+		.output(z.object({ success: z.literal(true) })),
+
 	list: oc
 		.meta(
 			openapi({

@@ -9,6 +9,7 @@ import {
 } from "@solid-imager/core/config";
 import type { AiHealthResponse } from "@solid-imager/core/tagging";
 import { createForm } from "@tanstack/solid-form";
+import { useQueryClient } from "@tanstack/solid-query";
 // oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
 import { useBlocker } from "@tanstack/solid-router";
 import Bot from "lucide-solid/icons/bot";
@@ -42,6 +43,7 @@ import { InferenceDeviceFields } from "../inference-device-fields";
 import { Input } from "../input";
 import { LanguageSettings } from "../language-settings";
 import { Label } from "../label";
+import { TAG_DICTIONARY_DETAIL_QUERY_KEY } from "../query-options/tags-query";
 import {
 	Select,
 	SelectContent,
@@ -51,7 +53,13 @@ import {
 	SelectValue,
 } from "../select";
 import { ShortcutSettingsPanel } from "../shortcuts/shortcut-settings-panel";
-import { Switch, SwitchControl, SwitchLabel, SwitchThumb } from "../switch";
+import {
+	Switch,
+	SwitchControl,
+	SwitchDescription,
+	SwitchLabel,
+	SwitchThumb,
+} from "../switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
@@ -164,6 +172,7 @@ export type ConfigScreenProps = {
 };
 
 export function ConfigScreen(props: ConfigScreenProps) {
+	const queryClient = useQueryClient();
 	const [activeTab, setActiveTab] = createSignal("jobs");
 	const [aiHealth, setAiHealth] = createSignal<AiHealthResponse | null>(null);
 	const [aiHealthError, setAiHealthError] = createSignal<string | null>(null);
@@ -183,7 +192,14 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				// Patch only edited sections, including each MCP surface independently.
 				const patch = changedFields(baseline, parsedValue);
 				if (patch.mcp) patch.mcp = changedFields(baseline.mcp, parsedValue.mcp);
-				baseline = await props.onSubmit(AppConfigUpdateSchema.parse(patch));
+				const previousWikiSetting = baseline.tagDictionary.fetchMissingWiki;
+				const saved = await props.onSubmit(AppConfigUpdateSchema.parse(patch));
+				if (saved.tagDictionary.fetchMissingWiki !== previousWikiSetting) {
+					void queryClient.invalidateQueries({
+						queryKey: TAG_DICTIONARY_DETAIL_QUERY_KEY,
+					});
+				}
+				baseline = saved;
 				form.reset(toFormValues(baseline));
 				props.onSubmitSuccess?.();
 				toast.success(t("configScreen.configurationSavedSuccessfully"));
@@ -689,6 +705,33 @@ export function ConfigScreen(props: ConfigScreenProps) {
 						</TabsContent>
 
 						<TabsContent value="media">
+							<fieldset class={sectionClass}>
+								<legend class="mb-4 block font-semibold text-xl">
+									{t("tagDictionary.title")}
+								</legend>
+								<form.Field name="tagDictionary.fetchMissingWiki">
+									{(field) => (
+										<Switch
+											class="space-y-2"
+											checked={field().state.value ?? false}
+											onChange={field().handleChange}
+										>
+											<div class="flex items-center gap-2">
+												<SwitchControl>
+													<SwitchThumb />
+												</SwitchControl>
+												<SwitchLabel class="leading-normal">
+													{t("tagDictionary.fetchMissingWiki")}
+												</SwitchLabel>
+											</div>
+											<SwitchDescription class="text-sm text-muted-foreground">
+												{t("tagDictionary.fetchMissingWikiDescription")}
+											</SwitchDescription>
+										</Switch>
+									)}
+								</form.Field>
+							</fieldset>
+
 							<fieldset class={sectionClass}>
 								<legend class="mb-4 block font-semibold text-xl">
 									{t("configScreen.mediaExtensions")}

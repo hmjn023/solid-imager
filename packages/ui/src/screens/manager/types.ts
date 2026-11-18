@@ -5,7 +5,8 @@ export type ManagerCategoryValue =
 	| ManagerEntityType
 	| "transfer"
 	| "authors"
-	| "clustering";
+	| "clustering"
+	| "tagDictionary";
 
 export type ManagerCategory = {
 	description: string;
@@ -31,6 +32,12 @@ export type ManagerTransferActions = {
 };
 
 export const MANAGER_CATEGORIES: ManagerCategory[] = [
+	{
+		description: t("tagDictionary.navigationDescription"),
+		group: "Entities",
+		label: t("tagDictionary.title"),
+		value: "tagDictionary",
+	},
 	{
 		description: t("types.reviewAnalysisNoiseAndDifferencesBetweenSettings"),
 		group: "Tools",

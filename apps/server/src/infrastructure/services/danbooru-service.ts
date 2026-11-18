@@ -208,6 +208,30 @@ export function createDanbooruService(
 				);
 			return rows.find((row) => row.title === tag)?.other_names ?? [];
 		},
+		async wikiPage(tag: string) {
+			const rows = z
+				.array(
+					z.object({
+						title: z.string(),
+						body: z.string(),
+						other_names: z.array(z.string()),
+						updated_at: z.iso.datetime({ offset: true }),
+					}),
+				)
+				.parse(
+					await request(
+						"/wiki_pages.json",
+						new URLSearchParams({
+							"search[title]": tag,
+							"search[hide_deleted]": "true",
+							only: "title,body,other_names,updated_at",
+							limit: "1",
+						}),
+						3_600_000,
+					),
+				);
+			return rows.find((row) => row.title === tag) ?? null;
+		},
 		async suggestWikiTitles(query: string) {
 			const rows = z
 				.array(

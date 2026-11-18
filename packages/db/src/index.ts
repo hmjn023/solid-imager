@@ -13,6 +13,7 @@ import { createProjectRepository } from "./repositories/project-repository";
 import { createSearchSnapshotRepository } from "./repositories/search-snapshot-repository";
 import { createSourceRepository } from "./repositories/source-repository";
 import { createTagRepository } from "./repositories/tag-repository";
+import { createTagDictionaryRepository } from "./repositories/tag-dictionary-repository";
 import { createUserRepository } from "./repositories/user-repository";
 import type { DrizzleExecutor } from "./types";
 
@@ -46,6 +47,7 @@ export function createRepositories(
 		searchSnapshot: createSearchSnapshotRepository(getExecutor),
 		source: createSourceRepository(getExecutor),
 		tag,
+		tagDictionary: createTagDictionaryRepository(getExecutor),
 		user: createUserRepository(getExecutor),
 		allocateJobId: () => allocateJobId(getExecutor),
 	};

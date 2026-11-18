@@ -3,6 +3,7 @@ import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
 import type { MediaDetails } from "@solid-imager/core/media";
 import type { Project } from "@solid-imager/core/projects";
+import { canonicalTagName } from "@solid-imager/core/tags";
 import {
 	createQuery,
 	type QueryFunctionContext,
@@ -11,6 +12,7 @@ import {
 import type { Accessor } from "solid-js";
 import type { MediaActivityApi } from "./media-activity-controls";
 import { MediaSidebar } from "./media-sidebar";
+import type { TagDictionaryLookup } from "./tag-dictionary-browser";
 import {
 	charactersQueryKeys,
 	ipsQueryKeys,
@@ -26,6 +28,7 @@ type QueryOptionsFactory<TData> = () => QueryOptions<TData>;
 export type MediaSidebarContentProps = {
 	media: MediaDetails;
 	activityApi: MediaActivityApi;
+	tagDictionaryLookup?: TagDictionaryLookup;
 	tagApi: {
 		list: () => Promise<{ id: string; name: string }[]>;
 		create: (data: { name: string }) => Promise<{ id: string; name: string }>;
@@ -116,6 +119,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 	return (
 		<MediaSidebar
 			activityApi={props.activityApi}
+			tagDictionaryLookup={props.tagDictionaryLookup}
 			allCharacters={allCharacters.data || []}
 			allIps={allIps.data || []}
 			allProjects={allProjects.data || []}
@@ -146,7 +150,7 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 				);
 				props.onUpdate?.();
 			}}
-			onPositiveTagsUpdate={async (names) => {
+			onPositiveTagsUpdate={async (names, dictionaryNames) => {
 				const existing = props.media.tags.filter(
 					(tag) => tag.type === "positive",
 				);
@@ -163,20 +167,29 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 					);
 				}
 				const available = await props.tagApi.list();
-				const added = [];
+				const added = new Set<string>();
 				for (const name of names.filter(
 					(name) => !existing.some((tag) => tag.name === name),
 				)) {
+					const exact = available.find((item) => item.name === name);
+					const equivalent =
+						!exact && dictionaryNames.has(name)
+							? available.filter((item) => canonicalTagName(item.name) === name)
+							: [];
 					const tag =
-						available.find((item) => item.name === name) ??
-						(await props.tagApi.create({ name }));
-					added.push(tag.id);
+						exact ??
+						(equivalent.length === 1
+							? equivalent[0]
+							: await props.tagApi.create({ name }));
+					added.add(tag.id);
 				}
 				await props.tagApi.bulkTag({
 					mediaSourceId: props.media.mediaSourceId,
 					mediaIds: [props.media.id],
-					tagsToAdd: added,
-					tagsToRemove: removed.map((tag) => tag.id),
+					tagsToAdd: [...added],
+					tagsToRemove: removed
+						.filter((tag) => !added.has(tag.id))
+						.map((tag) => tag.id),
 				});
 			}}
 			onDescriptionUpdate={async (description) => {
