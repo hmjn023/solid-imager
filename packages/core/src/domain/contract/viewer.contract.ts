@@ -7,10 +7,17 @@ import {
 	danbooruPostRequestSchema,
 } from "../danbooru/schemas";
 import {
+	pixivBookmarksRequestSchema,
+	pixivBookmarkVisibilitySchema,
 	viewerRequestSchema,
 	viewerTagSchema,
 } from "../external-viewer/search";
 import {
+	pixivCardSchema,
+	pixivBookmarkChangeSchema,
+	pixivBookmarkStateSchema,
+	pixivRelatedRequestSchema,
+	pixivRelatedPageSchema,
 	pixivArtworkSchema,
 	pixivSearchResultSchema,
 } from "../external-viewer/pixiv";
@@ -32,6 +39,22 @@ export const viewerContract = {
 		.output(pixivViewerSessionSchema),
 	checkPixivSession: oc.meta(rpcOnly).output(z.object({ userId: z.string() })),
 	logoutPixiv: oc.meta(rpcOnly).output(z.null()),
+	pixivBookmarks: oc
+		.meta(rpcOnly)
+		.input(pixivBookmarksRequestSchema)
+		.output(pixivSearchResultSchema),
+	pixivBookmarkTags: oc
+		.meta(rpcOnly)
+		.input(z.object({ visibility: pixivBookmarkVisibilitySchema }))
+		.output(z.array(z.string())),
+	pixivBookmarkState: oc
+		.meta(rpcOnly)
+		.input(danbooruPostRequestSchema)
+		.output(pixivBookmarkStateSchema),
+	setPixivBookmark: oc
+		.meta(rpcOnly)
+		.input(pixivBookmarkChangeSchema)
+		.output(pixivBookmarkStateSchema),
 	search: oc
 		.meta(
 			openapi({
@@ -55,6 +78,21 @@ export const viewerContract = {
 		)
 		.input(danbooruTagSearchSchema)
 		.output(z.array(viewerTagSchema)),
+	pixivRelatedPage: oc
+		.meta(
+			openapi({
+				tags: ["External Viewer"],
+				summary: "pixiv の関連作品を追加取得",
+			}),
+		)
+		.input(pixivRelatedRequestSchema)
+		.output(pixivRelatedPageSchema),
+	pixivRelated: oc
+		.meta(
+			openapi({ tags: ["External Viewer"], summary: "pixiv の関連作品を取得" }),
+		)
+		.input(danbooruPostRequestSchema)
+		.output(z.array(pixivCardSchema)),
 	pixivArtwork: oc
 		.meta(
 			openapi({

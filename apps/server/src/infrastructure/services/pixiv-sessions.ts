@@ -11,6 +11,7 @@ const accountPage = z.object({
 	props: z.object({
 		pageProps: z.object({
 			isLoggedIn: z.boolean(),
+			token: z.string().optional(),
 			gaUserData: z
 				.object({ userId: z.union([z.string(), z.number()]) })
 				.optional(),
@@ -49,7 +50,7 @@ async function fetchAccountPage(
 	throw new Error("Too many pixiv redirects");
 }
 
-export async function verifyPixivAccount(
+async function readPixivAccount(
 	sessionId: string,
 	fetchPage: FetchAccountPage = fetch,
 ) {
@@ -73,17 +74,24 @@ export async function verifyPixivAccount(
 	if (!page.isLoggedIn) throw loginRequired();
 	// Prefer the account itself when pixiv returns its serialized page state.
 	const state = z.object({
-		userData: z.object({
-			self: z.object({ id: z.union([z.string(), z.number()]) }),
-		}),
+		api: z.object({ token: z.string() }).optional(),
+		userData: z
+			.object({
+				self: z.object({ id: z.union([z.string(), z.number()]) }),
+			})
+			.optional(),
 	});
 	let userId = String(page.gaUserData?.userId ?? "");
+	let csrfToken = page.token;
 	if (page.serverSerializedPreloadedState) {
 		try {
 			const parsed = state.safeParse(
 				JSON.parse(page.serverSerializedPreloadedState),
 			);
-			if (parsed.success) userId = String(parsed.data.userData.self.id);
+			if (parsed.success) {
+				if (parsed.data.userData) userId = String(parsed.data.userData.self.id);
+				csrfToken ||= parsed.data.api?.token;
+			}
 		} catch {
 			/* The page also exposes the login ID in gaUserData. */
 		}
@@ -92,7 +100,28 @@ export async function verifyPixivAccount(
 		throw new ORPCError("BAD_GATEWAY", {
 			message: "pixiv のユーザー ID を確認できませんでした。",
 		});
-	return userId;
+	return { userId, csrfToken };
+}
+
+export async function verifyPixivAccount(
+	sessionId: string,
+	fetchPage: FetchAccountPage = fetch,
+) {
+	return (await readPixivAccount(sessionId, fetchPage)).userId;
+}
+
+export async function readPixivBookmarkToken(
+	sessionId: string,
+	expectedUserId: string,
+	fetchPage: FetchAccountPage = fetch,
+) {
+	const { userId, csrfToken } = await readPixivAccount(sessionId, fetchPage);
+	if (userId !== expectedUserId) throw loginRequired();
+	if (!csrfToken || !/^[\x21-\x7e]{1,512}$/.test(csrfToken))
+		throw new ORPCError("BAD_GATEWAY", {
+			message: "pixiv のブックマーク操作に必要な情報を取得できませんでした。",
+		});
+	return csrfToken;
 }
 
 type Entry = { sessionId: string; userId: string; expiresAt: number };
@@ -177,6 +206,7 @@ export function createPixivSessions(
 		},
 		credential: (token?: string) =>
 			token === undefined ? undefined : get(token).sessionId,
+		account: (token: string) => get(token),
 		logout: (token: string) => {
 			sessions.delete(token);
 		},

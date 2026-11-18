@@ -44,6 +44,7 @@ export function ExternalViewerRoute(
 			props.history.createHref("/" + props.provider + "/" + id),
 		onOpenPost: (id: number, replace?: boolean) => {
 			if (!selectedPostId()) openedFromCollection = true;
+			else if (!replace) openedFromCollection = false;
 			void navigate({
 				to: props.provider === "pixiv" ? "/pixiv/$postId" : "/danbooru/$postId",
 				params: { postId: String(id) },

@@ -9,7 +9,15 @@ import {
 	pixivDownloadItem,
 	type PixivArtwork,
 } from "@solid-imager/core/external-viewer";
-import { createMemo, createSignal, For, Show } from "solid-js";
+import {
+	createMemo,
+	createSignal,
+	For,
+	onMount,
+	Show,
+	type JSX,
+} from "solid-js";
+import { Toggle } from "../toggle";
 import { Button } from "../button";
 import {
 	MediaDetailInspector,
@@ -24,10 +32,19 @@ import {
 	ViewerToolbar,
 } from "./detail";
 import { pixivImageHref } from "./post-media";
+import { PixivPageImports } from "./pixiv-page-imports";
+import { PixivPageReader } from "./pixiv-page-reader";
+import { readUiStorageValue } from "../ui-storage";
 
 export function PixivArtworkDetail(
 	props: ViewerDetailProps<PixivArtwork> & {
+		related: (id: number) => JSX.Element;
+		historyAction?: JSX.Element;
+		bookmarkAction?: (id: number, title: string) => JSX.Element;
+		onSearchTag: (tag: string) => void;
+		onOpenAuthor: (id: string, name: string) => void;
 		apiBase: () => string;
+		readingScope: readonly (string | number)[];
 		animation: (id: number) => Promise<string>;
 	},
 ) {
@@ -38,6 +55,38 @@ export function PixivArtworkDetail(
 					post.title ||
 					t("pixivScreen.pixivValue", { value0: String(post.id) });
 				const [index, setIndex] = createSignal(0);
+				const [showOriginal, setShowOriginal] = createSignal(false);
+				const canRead = post.pages.length > 1 && !post.isAnimation;
+				const readingKey =
+					"solid-imager:pixiv-reading-position:v1:" +
+					JSON.stringify([...props.readingScope, post.id]);
+				onMount(() => {
+					if (!canRead) return;
+					try {
+						const saved = Number(
+							readUiStorageValue(sessionStorage, readingKey),
+						);
+						if (
+							Number.isInteger(saved) &&
+							saved >= 0 &&
+							saved < post.pages.length
+						)
+							setIndex(saved);
+					} catch {
+						return;
+					}
+				});
+				function changePage(next: number) {
+					if (next === index()) return;
+					setShowOriginal(false);
+					setIndex(next);
+					if (!canRead) return;
+					try {
+						sessionStorage.setItem(readingKey, String(next));
+					} catch {
+						return;
+					}
+				}
 				const [play, setPlay] = createSignal(false);
 				const page = () => post.pages[index()];
 				const item = createMemo(() => pixivDownloadItem(post, index()));
@@ -51,7 +100,7 @@ export function PixivArtworkDetail(
 					}
 					const url = pixivImageHref(
 						props.apiBase(),
-						page().original ?? page().preview,
+						(showOriginal() && page().original) || page().preview,
 					);
 					return { type: "image", getUrl: () => url };
 				});
@@ -63,17 +112,46 @@ export function PixivArtworkDetail(
 								title={title}
 								provider="pixiv"
 								actions={
-									<ViewerActions
-										item={item()}
-										imports={props.imports}
-										importLabel={
-											post.animation
-												? t("pixivArtworkDetail.addUgoiraToImportInbox")
-												: t("pixivArtworkDetail.addThisImageToImportInbox")
-										}
-										sourceLabel={t("pixivArtworkDetail.originalWork")}
-										sourceHref={`https://www.pixiv.net/artworks/${post.id}`}
-									/>
+									<div class="flex flex-wrap items-center gap-2">
+										<Show when={canRead}>
+											<PixivPageReader
+												pages={post.pages}
+												apiBase={props.apiBase()}
+												title={title}
+												index={index()}
+												onPageChange={changePage}
+											/>
+										</Show>
+										<Show
+											when={
+												!post.isAnimation &&
+												page().original &&
+												page().original !== page().preview
+											}
+										>
+											<Toggle
+												variant="outline"
+												class="h-11 data-[pressed]:bg-primary data-[pressed]:text-primary-foreground"
+												pressed={showOriginal()}
+												onChange={setShowOriginal}
+											>
+												{t("pixivArtworkDetail.viewOriginal")}
+											</Toggle>
+										</Show>
+										<ViewerActions
+											item={item()}
+											imports={props.imports}
+											importLabel={
+												post.animation
+													? t("pixivArtworkDetail.addUgoiraToImportInbox")
+													: t("pixivArtworkDetail.addThisImageToImportInbox")
+											}
+											sourceLabel={t("pixivArtworkDetail.originalWork")}
+											sourceHref={`https://www.pixiv.net/artworks/${post.id}`}
+										/>
+										{props.historyAction}
+										{props.bookmarkAction?.(post.id, title)}
+									</div>
 								}
 							/>
 						}
@@ -85,6 +163,7 @@ export function PixivArtworkDetail(
 								height={page().height}
 							/>
 						}
+						related={props.related(post.id)}
 						sidebar={
 							<MediaDetailInspector label={t("pixivArtworkDetail.workDetails")}>
 								<Show when={post.pages.length > 1}>
@@ -98,7 +177,7 @@ export function PixivArtworkDetail(
 											<Button
 												variant="outline"
 												disabled={!index()}
-												onClick={() => setIndex((i) => i - 1)}
+												onClick={() => changePage(index() - 1)}
 											>
 												{t("pixivArtworkDetail.previousImage")}
 											</Button>
@@ -108,11 +187,18 @@ export function PixivArtworkDetail(
 											<Button
 												variant="outline"
 												disabled={index() + 1 >= post.pages.length}
-												onClick={() => setIndex((i) => i + 1)}
+												onClick={() => changePage(index() + 1)}
 											>
 												{t("pixivArtworkDetail.nextImage")}
 											</Button>
 										</nav>
+										<Show when={!post.isAnimation}>
+											<PixivPageImports
+												artwork={post}
+												apiBase={props.apiBase()}
+												imports={props.imports}
+											/>
+										</Show>
 									</MediaMetadataSection>
 								</Show>
 								<Show when={post.isAnimation}>
@@ -139,14 +225,15 @@ export function PixivArtworkDetail(
 								<MediaAuthorsSection>
 									<MediaAuthorRow
 										name={
-											<a
-												class="text-primary hover:underline"
-												href={`https://www.pixiv.net/users/${post.userId}`}
-												target="_blank"
-												rel="noopener noreferrer"
+											<Button
+												variant="link"
+												class="h-auto whitespace-normal p-0 text-left"
+												onClick={() =>
+													props.onOpenAuthor(post.userId, post.author)
+												}
 											>
 												{post.author}
-											</a>
+											</Button>
 										}
 									/>
 								</MediaAuthorsSection>
@@ -157,6 +244,11 @@ export function PixivArtworkDetail(
 												{(tag) => (
 													<MediaTagBadge
 														name={tag}
+														onSearch={() => props.onSearchTag(tag)}
+														searchLabel={t(
+															"danbooruPostDetail.searchForValue",
+															{ value0: tag },
+														)}
 														copyLabel={t("pixivArtworkDetail.copyValue", {
 															value0: tag,
 														})}

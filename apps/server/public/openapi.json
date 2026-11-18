@@ -112,6 +112,16 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "pixivFeed": {
+                    "type": "string",
+                    "enum": [
+                      "daily",
+                      "weekly",
+                      "monthly",
+                      "rookie",
+                      "follow"
+                    ]
+                  },
                   "tags": {
                     "default": "",
                     "type": "string",
@@ -129,6 +139,14 @@
                       "danbooru",
                       "pixiv"
                     ]
+                  },
+                  "literalPixivTag": {
+                    "type": "boolean"
+                  },
+                  "pixivUserId": {
+                    "type": "string",
+                    "maxLength": 30,
+                    "pattern": "^[1-9]\\d*$"
                   },
                   "choices": {
                     "type": "object",
@@ -503,6 +521,196 @@
         }
       }
     },
+    "/viewer/pixivRelatedPage": {
+      "post": {
+        "operationId": "viewer.pixivRelatedPage",
+        "summary": "pixiv の関連作品を追加取得",
+        "tags": [
+          "External Viewer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "ids": {
+                    "minItems": 1,
+                    "maxItems": 18,
+                    "type": "array",
+                    "items": {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    }
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "posts": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "author": {
+                            "type": "string"
+                          },
+                          "thumbnail": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "format": "uri"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "pageCount": {
+                            "type": "integer",
+                            "exclusiveMinimum": 0,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "title",
+                          "author",
+                          "thumbnail",
+                          "pageCount"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextIds": {
+                      "type": "array",
+                      "items": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    }
+                  },
+                  "required": [
+                    "posts",
+                    "nextIds"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/viewer/pixivRelated": {
+      "post": {
+        "operationId": "viewer.pixivRelated",
+        "summary": "pixiv の関連作品を取得",
+        "tags": [
+          "External Viewer"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "integer",
+                    "exclusiveMinimum": 0,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "id"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "author": {
+                        "type": "string"
+                      },
+                      "thumbnail": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uri"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "pageCount": {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "title",
+                      "author",
+                      "thumbnail",
+                      "pageCount"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/viewer/pixivArtwork": {
       "post": {
         "operationId": "viewer.pixivArtwork",
@@ -706,6 +914,16 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "pixivFeed": {
+                    "type": "string",
+                    "enum": [
+                      "daily",
+                      "weekly",
+                      "monthly",
+                      "rookie",
+                      "follow"
+                    ]
+                  },
                   "tags": {
                     "default": "",
                     "type": "string",
