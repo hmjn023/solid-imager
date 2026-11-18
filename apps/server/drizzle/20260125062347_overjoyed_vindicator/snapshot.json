@@ -1,0 +1,136 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "5674d4c3-c8c9-4333-b01e-384546bb0ef7",
+  "prevIds": [
+    "2883a03b-a7d9-4f78-a322-64eb54f571d6"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_urls",
+        "idx_media_urls_url_unique"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_urls_url_unique",
+        "n|idx|public.idx_media_urls_url_unique",
+        "e|idx|public.idx_media_urls_url_unique",
+        "n|rel|public.idx_media_urls_url_unique"
+      ],
+      "reads": [
+        "n|tbl|public.media_urls",
+        "n|sch|public",
+        "e|col|public.media_urls.url"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.media_urls.url"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_urls",
+        "idx_media_urls_url"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_urls_url",
+        "n|idx|public.idx_media_urls_url",
+        "e|idx|public.idx_media_urls_url",
+        "n|rel|public.idx_media_urls_url"
+      ],
+      "reads": [
+        "n|tbl|public.media_urls",
+        "n|sch|public",
+        "n|col|public.media_urls.url"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_urls",
+        "idx_media_urls_media_id_url_unique"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_urls_media_id_url_unique",
+        "n|idx|public.idx_media_urls_media_id_url_unique",
+        "e|idx|public.idx_media_urls_media_id_url_unique",
+        "n|rel|public.idx_media_urls_media_id_url_unique"
+      ],
+      "reads": [
+        "n|tbl|public.media_urls",
+        "n|sch|public",
+        "n|col|public.media_urls.media_id",
+        "n|col|public.media_urls.url"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_urls",
+        "name": "idx_media_urls_url",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "url",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_urls",
+        "name": "idx_media_urls_media_id_url_unique",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "url",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_media_urls_url_unique\"]"
+    }
+  ]
+}

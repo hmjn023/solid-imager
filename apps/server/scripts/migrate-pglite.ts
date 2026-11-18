@@ -13,7 +13,7 @@ async function main(): Promise<void> {
 	}
 
 	const client = createPglite(dataDir);
-	const db = drizzle(client);
+	const db = drizzle({ client });
 
 	try {
 		console.log("Starting migration...");

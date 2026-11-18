@@ -33,10 +33,10 @@ let testDb: any, db: any;
 vi.mock("~/infrastructure/db/index", async () => {
 	const { createPglite } = await import("~/infrastructure/db/pglite");
 	const { drizzle: drizzleFunc } = await import("drizzle-orm/pglite");
-	const schemaModule = await import("~/infrastructure/db/schema");
+	const { relations } = await import("@solid-imager/db");
 
 	const pg = createPglite();
-	const dbInstance = drizzleFunc(pg, { schema: schemaModule });
+	const dbInstance = drizzleFunc({ client: pg, relations });
 
 	// Expose the testDb instance to the global scope for the test file
 	(global as any).vitestTestDb = pg;
@@ -71,7 +71,8 @@ describe("getMediaDetails", () => {
 		schema = await import("~/infrastructure/db/schema");
 
 		testDb = (global as any).vitestTestDb;
-		db = drizzle(testDb, { schema });
+		const { relations } = await import("@solid-imager/db");
+		db = drizzle({ client: testDb, relations });
 
 		await migrate(db, {
 			migrationsFolder: MIGRATIONS_DIR,

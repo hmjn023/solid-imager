@@ -1,0 +1,42 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "ce3e2d15-0114-48d5-9725-5d05282f384a",
+  "prevIds": [
+    "babab756-29e3-487e-bb53-b266ca23fd8e"
+  ],
+  "footprints": [
+    {
+      "statementType": "recreate_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "jobs",
+        "uq_jobs_active_thumbnail"
+      ],
+      "writes": [
+        "s|idx|public.uq_jobs_active_thumbnail",
+        "n|idx|public.uq_jobs_active_thumbnail",
+        "e|idx|public.uq_jobs_active_thumbnail",
+        "n|rel|public.uq_jobs_active_thumbnail"
+      ],
+      "reads": [
+        "n|tbl|public.jobs",
+        "n|sch|public",
+        "n|col|public.jobs.source_id"
+      ],
+      "sharedWrites": [],
+      "sqlHash": "cea077c93bf1a78e"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "indexes\u0000[\"public\",\"uq_jobs_active_thumbnail\"]",
+      "set": {
+        "where": "\"type\" = 'generate_thumbnail'\n\t\t\t\t\tAND \"status\" IN ('pending', 'in_progress')\n\t\t\t\t\tAND \"source_id\" IS NOT NULL"
+      }
+    }
+  ]
+}

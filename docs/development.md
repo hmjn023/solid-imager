@@ -25,6 +25,8 @@ PGliteを使う場合のマイグレーションは以下。保存先は `PGLITE
 bun --filter @solid-imager/server run db:migrate:pglite
 ```
 
+Drizzle 0.x から更新する既存環境では、DBをバックアップしてから上記の移行コマンドを実行する。初回実行時にDrizzleが適用履歴をv1形式に更新し、未適用のマイグレーションを実行する。リポジトリの履歴は `bun --filter @solid-imager/server run db:check` で検証できる。
+
 ## Modern Web Guidance
 
 [GoogleChrome/modern-web-guidance](https://github.com/GoogleChrome/modern-web-guidance) の公式CLI 1.0.0以降と公式スキルを使用する。スキル本体は共通スキルディレクトリで管理し、このリポジトリでは `skills-lock.json` の取得元・ハッシュを追跡する。

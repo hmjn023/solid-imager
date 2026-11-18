@@ -1,0 +1,86 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "45820c86-d9b5-48b1-bdb6-4abf0d8b8fb0",
+  "prevIds": [
+    "b854634b-fb16-47b6-a59b-e8ff1cc5cc10"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "related_tag_frequencies"
+      ],
+      "writes": [
+        "s|tbl|public.related_tag_frequencies",
+        "n|tbl|public.related_tag_frequencies",
+        "e|tbl|public.related_tag_frequencies",
+        "n|rel|public.related_tag_frequencies",
+        "n|type|public.related_tag_frequencies",
+        "n|rel|public.related_tag_frequencies_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "related_tag_frequencies",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "related_tag_frequencies",
+        "name": "tag_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "related_tag_frequencies",
+        "name": "image_count",
+        "type": "bigint",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "related_tag_frequencies",
+        "name": "related_tag_frequencies_pkey",
+        "columns": [
+          "tag_id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    }
+  ]
+}

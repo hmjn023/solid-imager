@@ -10,9 +10,8 @@ import {
 } from "@solid-imager/core/media";
 import { localConnectionSchema } from "@solid-imager/core/sources";
 import { getErrorMessage } from "@solid-imager/core/utils";
-import type { Table } from "drizzle-orm";
-import { and, eq, gt, inArray, sql } from "drizzle-orm";
-import type { PgColumn } from "drizzle-orm/pg-core";
+import { inArray, sql } from "drizzle-orm";
+import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
 import {
 	characterIps,
@@ -23,7 +22,6 @@ import {
 	mediaGenerationInfo,
 	mediaIps,
 	mediaProjects,
-	mediaSources,
 	medias,
 	mediaTags,
 	mediaUrls,
@@ -212,9 +210,10 @@ async function* iterateMediaDumpItems(
 
 	while (hasMore) {
 		const mediaList: MediaListQueryItem[] = await db.query.medias.findMany({
-			where: lastId
-				? and(eq(medias.mediaSourceId, mediaSourceId), gt(medias.id, lastId))
-				: eq(medias.mediaSourceId, mediaSourceId),
+			where: {
+				mediaSourceId,
+				...(lastId ? { id: { gt: lastId } } : {}),
+			},
 			limit,
 			with: {
 				generationInfo: true,
@@ -231,7 +230,7 @@ async function* iterateMediaDumpItems(
 				ips: { with: { ip: true } },
 				projects: { with: { project: true } },
 			},
-			orderBy: medias.id,
+			orderBy: { id: "asc" },
 		});
 
 		if (mediaList.length < limit) {
@@ -367,7 +366,7 @@ export const BackupService = {
 		}
 
 		const localSources = await db.query.mediaSources.findMany({
-			where: eq(mediaSources.type, "local"),
+			where: { type: "local" },
 		});
 
 		for (const source of localSources) {
@@ -396,7 +395,7 @@ export const BackupService = {
 	 */
 	async restoreSource(mediaSourceId: string, items: unknown[]) {
 		const mediaSource = await db.query.mediaSources.findFirst({
-			where: eq(mediaSources.id, mediaSourceId),
+			where: { id: mediaSourceId },
 		});
 
 		if (!mediaSource) {
@@ -865,7 +864,7 @@ export const BackupService = {
 		}
 
 		// Insert new relations in chunks
-		const insertChunked = async <T>(table: Table, data: T[]) => {
+		const insertChunked = async <T>(table: PgTable, data: T[]) => {
 			const BatchSize = 1_000;
 			for (let i = 0; i < data.length; i += BatchSize) {
 				await d
@@ -902,7 +901,7 @@ export const BackupService = {
 	},
 
 	async _ensureMasterData(
-		table: Table,
+		table: PgTable,
 		idColumn: PgColumn,
 		nameColumn: PgColumn,
 		names: Set<string>,
@@ -988,7 +987,7 @@ export const BackupService = {
 
 	async importSourceTar(mediaSourceId: string, tarFilePath: string) {
 		const mediaSource = await db.query.mediaSources.findFirst({
-			where: eq(mediaSources.id, mediaSourceId),
+			where: { id: mediaSourceId },
 		});
 
 		if (!mediaSource) {
@@ -1084,7 +1083,7 @@ export const BackupService = {
 	) {
 		// 1. Fetch Media Source Info (needed for Driver)
 		const mediaSource = await db.query.mediaSources.findFirst({
-			where: eq(mediaSources.id, mediaSourceId),
+			where: { id: mediaSourceId },
 		});
 
 		if (!mediaSource) {

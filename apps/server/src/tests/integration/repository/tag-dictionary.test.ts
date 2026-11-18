@@ -1,4 +1,4 @@
-import { createRepositories } from "@solid-imager/db";
+import { relations, createRepositories } from "@solid-imager/db";
 import * as schema from "@solid-imager/db/schema";
 import {
 	TAG_DICTIONARY_JOB,
@@ -35,7 +35,7 @@ async function* batch<T>(data: T[]) {
 it("serializes refresh jobs and preserves the searchable snapshot on failure or stale redelivery", async () => {
 	const client = createPglite();
 	try {
-		const db = drizzle(client, { schema });
+		const db = drizzle({ client, relations });
 		await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
 		const { job, tagDictionary } = createRepositories(() => db, {
 			info() {},
@@ -165,7 +165,7 @@ it("serializes refresh jobs and preserves the searchable snapshot on failure or 
 it("automatically merges exact aliases and preserves old assignments and searches after manual migration", async () => {
 	const client = createPglite();
 	try {
-		const db = drizzle(client, { schema });
+		const db = drizzle({ client, relations });
 		await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
 		const {
 			job,
@@ -358,7 +358,7 @@ it("automatically merges exact aliases and preserves old assignments and searche
 it("keeps positive tag edits atomic across migrations and preserves negative assignments", async () => {
 	const client = createPglite();
 	try {
-		const db = drizzle(client, { schema });
+		const db = drizzle({ client, relations });
 		await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
 		const {
 			tagDictionary,

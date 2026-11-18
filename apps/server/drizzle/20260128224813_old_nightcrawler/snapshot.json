@@ -1,0 +1,373 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "23bd4668-aa6e-44ad-bf70-a1e6781771f2",
+  "prevIds": [
+    "7b500850-e180-4e2b-80d5-26b0f716236a"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "character_ips"
+      ],
+      "writes": [
+        "s|tbl|public.character_ips",
+        "n|tbl|public.character_ips",
+        "e|tbl|public.character_ips",
+        "n|rel|public.character_ips",
+        "n|type|public.character_ips",
+        "n|rel|public.character_ips_character_id_ip_id_pk"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "characters"
+      ],
+      "writes": [
+        "s|fk|public.characters.characters_ip_id_ips_id_fk",
+        "n|fk|public.characters.characters_ip_id_ips_id_fk",
+        "e|fk|public.characters.characters_ip_id_ips_id_fk",
+        "n|con|public.characters.characters_ip_id_ips_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.characters",
+        "n|sch|public",
+        "e|col|public.characters.ip_id"
+      ]
+    },
+    {
+      "statementType": "drop_unique",
+      "statementTarget": [
+        "table",
+        "public",
+        "characters"
+      ],
+      "writes": [
+        "s|uq|public.characters.name_ipId_unique",
+        "n|uq|public.characters.name_ipId_unique",
+        "e|uq|public.characters.name_ipId_unique",
+        "n|con|public.characters.name_ipId_unique",
+        "n|rel|public.name_ipId_unique"
+      ],
+      "reads": [
+        "n|tbl|public.characters",
+        "n|sch|public",
+        "e|col|public.characters.name",
+        "e|col|public.characters.ip_id"
+      ],
+      "sharedWrites": [
+        "e|uniqueness|public.characters.ip_id.name"
+      ]
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "characters",
+        "idx_characters_ip_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_characters_ip_id",
+        "n|idx|public.idx_characters_ip_id",
+        "e|idx|public.idx_characters_ip_id",
+        "n|rel|public.idx_characters_ip_id"
+      ],
+      "reads": [
+        "e|tbl|public.characters",
+        "n|sch|public",
+        "e|col|public.characters.ip_id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "characters",
+        "ip_id"
+      ],
+      "writes": [
+        "s|col|public.characters.ip_id",
+        "n|col|public.characters.ip_id",
+        "e|col|public.characters.ip_id"
+      ],
+      "reads": [
+        "n|tbl|public.characters",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "add_unique",
+      "statementTarget": [
+        "table",
+        "public",
+        "characters"
+      ],
+      "writes": [
+        "s|uq|public.characters.characters_name_unique",
+        "n|uq|public.characters.characters_name_unique",
+        "e|uq|public.characters.characters_name_unique",
+        "n|con|public.characters.characters_name_unique",
+        "n|rel|public.characters_name_unique"
+      ],
+      "reads": [
+        "n|tbl|public.characters",
+        "n|sch|public",
+        "n|col|public.characters.name"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "character_ips",
+        "idx_character_ips_ip_id_character_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_character_ips_ip_id_character_id",
+        "n|idx|public.idx_character_ips_ip_id_character_id",
+        "e|idx|public.idx_character_ips_ip_id_character_id",
+        "n|rel|public.idx_character_ips_ip_id_character_id"
+      ],
+      "reads": [
+        "n|tbl|public.character_ips",
+        "n|sch|public",
+        "n|col|public.character_ips.ip_id",
+        "n|col|public.character_ips.character_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "character_ips"
+      ],
+      "writes": [
+        "s|fk|public.character_ips.character_ips_character_id_characters_id_fk",
+        "n|fk|public.character_ips.character_ips_character_id_characters_id_fk",
+        "e|fk|public.character_ips.character_ips_character_id_characters_id_fk",
+        "n|con|public.character_ips.character_ips_character_id_characters_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.character_ips",
+        "n|sch|public",
+        "n|tbl|public.characters",
+        "n|sch|public",
+        "n|col|public.character_ips.character_id",
+        "n|col|public.characters.id",
+        "e|uniqueness|public.characters.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "character_ips"
+      ],
+      "writes": [
+        "s|fk|public.character_ips.character_ips_ip_id_ips_id_fk",
+        "n|fk|public.character_ips.character_ips_ip_id_ips_id_fk",
+        "e|fk|public.character_ips.character_ips_ip_id_ips_id_fk",
+        "n|con|public.character_ips.character_ips_ip_id_ips_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.character_ips",
+        "n|sch|public",
+        "n|tbl|public.ips",
+        "n|sch|public",
+        "n|col|public.character_ips.ip_id",
+        "n|col|public.ips.id",
+        "e|uniqueness|public.ips.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "character_ips",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "character_ips",
+        "name": "character_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "character_ips",
+        "name": "ip_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "character_ips",
+        "name": "source",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "'manual'",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "character_ips",
+        "name": "idx_character_ips_ip_id_character_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "ip_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          },
+          {
+            "value": "character_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "character_ips",
+        "name": "character_ips_character_id_characters_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "character_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "characters",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "character_ips",
+        "name": "character_ips_ip_id_ips_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "ip_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "ips",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "character_ips",
+        "name": "character_ips_character_id_ip_id_pk",
+        "columns": [
+          "character_id",
+          "ip_id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "characters",
+        "name": "characters_name_unique",
+        "nameExplicit": true,
+        "columns": [
+          "name"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"characters\",\"ip_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_characters_ip_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"characters\",\"characters_ip_id_ips_id_fk\"]"
+    },
+    {
+      "op": "drop",
+      "key": "uniques\u0000[\"public\",\"characters\",\"name_ipId_unique\"]"
+    }
+  ]
+}

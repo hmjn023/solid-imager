@@ -124,10 +124,10 @@ importerが削除され、依存関係を解決できなくなります。通常
 引き続き `aube i` を使用します。Bun側の依存関係を更新した場合は
 `bun.lock` も合わせて更新してください。
 
-PostgreSQLを使わずPGliteで動かす場合は、DB_HOSTを上書きしてマイグレーションを実行します。
+PGliteで動かす場合は、pgvectorを読み込む専用のマイグレーションコマンドを使います。
 
 ```bash
-DB_HOST=pglite bun --filter @solid-imager/server run db:migrate
+bun --filter @solid-imager/server run db:migrate:pglite
 ```
 
 PostgreSQL接続はBun.SQLを既定で使用します。`COPY`、`LISTEN/NOTIFY`、PostGISなどBun.SQLで未対応の機能が必要な環境では、`DB_POSTGRES_DRIVER=node-postgres` を設定すると従来の `pg` 経路へ切り替えられます。

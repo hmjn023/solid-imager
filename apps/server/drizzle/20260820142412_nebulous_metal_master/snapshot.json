@@ -1,0 +1,193 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "ed86b785-ed10-4de8-94e6-a389bee87ea7",
+  "prevIds": [
+    "65fa6c9c-2e70-45bb-ab6d-04644838f7d0"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "search_snapshots"
+      ],
+      "writes": [
+        "s|tbl|public.search_snapshots",
+        "n|tbl|public.search_snapshots",
+        "e|tbl|public.search_snapshots",
+        "n|rel|public.search_snapshots",
+        "n|type|public.search_snapshots",
+        "n|rel|public.search_snapshots_pkey",
+        "n|rel|public.search_snapshots_fingerprint_unique"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "search_snapshots",
+        "idx_search_snapshots_created_at"
+      ],
+      "writes": [
+        "s|idx|public.idx_search_snapshots_created_at",
+        "n|idx|public.idx_search_snapshots_created_at",
+        "e|idx|public.idx_search_snapshots_created_at",
+        "n|rel|public.idx_search_snapshots_created_at"
+      ],
+      "reads": [
+        "n|tbl|public.search_snapshots",
+        "n|sch|public",
+        "n|col|public.search_snapshots.created_at"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "search_snapshots",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "search_snapshots",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "search_snapshots",
+        "name": "version",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "1",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "search_snapshots",
+        "name": "fingerprint",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "search_snapshots",
+        "name": "state",
+        "type": "jsonb",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "search_snapshots",
+        "name": "created_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "search_snapshots",
+        "name": "idx_search_snapshots_created_at",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "created_at",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "search_snapshots",
+        "name": "search_snapshots_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "search_snapshots",
+        "name": "search_snapshots_fingerprint_unique",
+        "nameExplicit": false,
+        "columns": [
+          "fingerprint"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    }
+  ]
+}

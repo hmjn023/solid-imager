@@ -1,0 +1,151 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "737bc2cb-3279-4656-88aa-7d0072ecda50",
+  "prevIds": [
+    "2b7f60d1-2079-4a0a-8311-0b28278cdaa3"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "uuidv7_migration_map"
+      ],
+      "writes": [
+        "s|tbl|public.uuidv7_migration_map",
+        "n|tbl|public.uuidv7_migration_map",
+        "e|tbl|public.uuidv7_migration_map",
+        "n|rel|public.uuidv7_migration_map",
+        "n|type|public.uuidv7_migration_map",
+        "n|rel|public.uuidv7_migration_map_entity_old_id_pk",
+        "n|rel|public.uuidv7_migration_map_entity_new_id_unique"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "uuidv7_migration_map",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "uuidv7_migration_map",
+        "name": "entity",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "uuidv7_migration_map",
+        "name": "old_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "uuidv7_migration_map",
+        "name": "new_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "uuidv7_migration_map",
+        "name": "source_timestamp",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "uuidv7_migration_map",
+        "name": "migrated_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "uuidv7_migration_map",
+        "name": "uuidv7_migration_map_entity_old_id_pk",
+        "columns": [
+          "entity",
+          "old_id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "uuidv7_migration_map",
+        "name": "uuidv7_migration_map_entity_new_id_unique",
+        "nameExplicit": true,
+        "columns": [
+          "entity",
+          "new_id"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    }
+  ]
+}

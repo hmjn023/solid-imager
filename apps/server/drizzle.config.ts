@@ -13,12 +13,13 @@ if (DB_HOST === "pglite") {
   config = {
     schema: "./src/infrastructure/db/schema.ts",
     out: "./drizzle",
-    dialect: "postgresql", // PGlite is compatible with PostgreSQL dialect
+    dialect: "postgresql",
+    driver: "pglite",
+    schemaFilter: ["public"],
     dbCredentials: {
       url: "./.data/pglite", // PGliteのデータディレクトリを指定
     },
     verbose: true,
-    strict: true,
   };
 } else {
   // PostgreSQL用の設定
@@ -31,11 +32,11 @@ if (DB_HOST === "pglite") {
     schema: "./src/infrastructure/db/schema.ts",
     out: "./drizzle",
     dialect: "postgresql",
+    schemaFilter: ["public"],
     dbCredentials: {
       url: databaseUrl,
     },
     verbose: true,
-    strict: true,
   };
 }
 

@@ -1,0 +1,135 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "65fa6c9c-2e70-45bb-ab6d-04644838f7d0",
+  "prevIds": [
+    "ce3e2d15-0114-48d5-9725-5d05282f384a"
+  ],
+  "footprints": [
+    {
+      "statementType": "drop_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "lancedb_sync_dirty"
+      ],
+      "writes": [
+        "s|tbl|public.lancedb_sync_dirty",
+        "n|tbl|public.lancedb_sync_dirty",
+        "e|tbl|public.lancedb_sync_dirty",
+        "n|rel|public.lancedb_sync_dirty",
+        "n|type|public.lancedb_sync_dirty"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "jobs",
+        "idx_jobs_pending_lancedb_source"
+      ],
+      "writes": [
+        "s|idx|public.idx_jobs_pending_lancedb_source",
+        "n|idx|public.idx_jobs_pending_lancedb_source",
+        "e|idx|public.idx_jobs_pending_lancedb_source",
+        "n|rel|public.idx_jobs_pending_lancedb_source"
+      ],
+      "reads": [
+        "e|tbl|public.jobs",
+        "n|sch|public",
+        "e|col|public.jobs.source_id",
+        "e|col|public.jobs.created_at",
+        "e|col|public.jobs.id"
+      ],
+      "sharedWrites": []
+    },
+    {
+      "statementType": "drop_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "jobs",
+        "idx_jobs_active_lancedb_source"
+      ],
+      "writes": [
+        "s|idx|public.idx_jobs_active_lancedb_source",
+        "n|idx|public.idx_jobs_active_lancedb_source",
+        "e|idx|public.idx_jobs_active_lancedb_source",
+        "n|rel|public.idx_jobs_active_lancedb_source"
+      ],
+      "reads": [
+        "e|tbl|public.jobs",
+        "n|sch|public",
+        "e|col|public.jobs.source_id"
+      ],
+      "sharedWrites": []
+    }
+  ],
+  "deltas": [
+    {
+      "op": "drop",
+      "key": "tables\u0000[\"public\",\"lancedb_sync_dirty\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"lancedb_sync_dirty\",\"id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"lancedb_sync_dirty\",\"source_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"lancedb_sync_dirty\",\"media_id\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"lancedb_sync_dirty\",\"operation\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"lancedb_sync_dirty\",\"attempts\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"lancedb_sync_dirty\",\"last_error\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"lancedb_sync_dirty\",\"created_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"lancedb_sync_dirty\",\"updated_at\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_lancedb_sync_dirty_source_updated\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_jobs_pending_lancedb_source\"]"
+    },
+    {
+      "op": "drop",
+      "key": "indexes\u0000[\"public\",\"idx_jobs_active_lancedb_source\"]"
+    },
+    {
+      "op": "drop",
+      "key": "fks\u0000[\"public\",\"lancedb_sync_dirty\",\"lancedb_sync_dirty_source_id_media_sources_id_fk\"]"
+    },
+    {
+      "op": "drop",
+      "key": "pks\u0000[\"public\",\"lancedb_sync_dirty\",\"lancedb_sync_dirty_pkey\"]"
+    },
+    {
+      "op": "drop",
+      "key": "uniques\u0000[\"public\",\"lancedb_sync_dirty\",\"lancedb_sync_dirty_source_media_unique\"]"
+    }
+  ]
+}

@@ -1,0 +1,733 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2453ddc4-ac38-4eb3-bbb2-5a74f621fbfa",
+  "prevIds": [
+    "1928bf68-5088-4c28-9755-00116d14c19c"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_enum",
+      "statementTarget": [
+        "enum",
+        "public",
+        "media_region_kind"
+      ],
+      "writes": [
+        "s|enum|public.media_region_kind",
+        "n|enum|public.media_region_kind",
+        "e|enum|public.media_region_kind",
+        "n|type|public.media_region_kind"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "ccip_embeddings"
+      ],
+      "writes": [
+        "s|tbl|public.ccip_embeddings",
+        "n|tbl|public.ccip_embeddings",
+        "e|tbl|public.ccip_embeddings",
+        "n|rel|public.ccip_embeddings",
+        "n|type|public.ccip_embeddings",
+        "n|rel|public.ccip_embeddings_pkey",
+        "n|rel|public.uq_ccip_embeddings_region_model_version"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "media_regions"
+      ],
+      "writes": [
+        "s|tbl|public.media_regions",
+        "n|tbl|public.media_regions",
+        "e|tbl|public.media_regions",
+        "n|rel|public.media_regions",
+        "n|type|public.media_regions",
+        "n|rel|public.media_regions_pkey"
+      ],
+      "reads": [
+        "n|sch|public",
+        "n|enum|public.media_region_kind"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "ccip_embeddings",
+        "idx_ccip_embeddings_region_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_ccip_embeddings_region_id",
+        "n|idx|public.idx_ccip_embeddings_region_id",
+        "e|idx|public.idx_ccip_embeddings_region_id",
+        "n|rel|public.idx_ccip_embeddings_region_id"
+      ],
+      "reads": [
+        "n|tbl|public.ccip_embeddings",
+        "n|sch|public",
+        "n|col|public.ccip_embeddings.region_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_regions",
+        "idx_media_regions_media_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_media_regions_media_id",
+        "n|idx|public.idx_media_regions_media_id",
+        "e|idx|public.idx_media_regions_media_id",
+        "n|rel|public.idx_media_regions_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_regions",
+        "n|sch|public",
+        "n|col|public.media_regions.media_id"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "media_regions",
+        "uq_media_regions_full_media_id"
+      ],
+      "writes": [
+        "s|idx|public.uq_media_regions_full_media_id",
+        "n|idx|public.uq_media_regions_full_media_id",
+        "e|idx|public.uq_media_regions_full_media_id",
+        "n|rel|public.uq_media_regions_full_media_id"
+      ],
+      "reads": [
+        "n|tbl|public.media_regions",
+        "n|sch|public",
+        "n|col|public.media_regions.media_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "ccip_embeddings"
+      ],
+      "writes": [
+        "s|fk|public.ccip_embeddings.ccip_embeddings_region_id_media_regions_id_fk",
+        "n|fk|public.ccip_embeddings.ccip_embeddings_region_id_media_regions_id_fk",
+        "e|fk|public.ccip_embeddings.ccip_embeddings_region_id_media_regions_id_fk",
+        "n|con|public.ccip_embeddings.ccip_embeddings_region_id_media_regions_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.ccip_embeddings",
+        "n|sch|public",
+        "n|tbl|public.media_regions",
+        "n|sch|public",
+        "n|col|public.ccip_embeddings.region_id",
+        "n|col|public.media_regions.id",
+        "e|uniqueness|public.media_regions.id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "media_regions"
+      ],
+      "writes": [
+        "s|fk|public.media_regions.media_regions_media_id_media_id_fk",
+        "n|fk|public.media_regions.media_regions_media_id_media_id_fk",
+        "e|fk|public.media_regions.media_regions_media_id_media_id_fk",
+        "n|con|public.media_regions.media_regions_media_id_media_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.media_regions",
+        "n|sch|public",
+        "n|tbl|public.media",
+        "n|sch|public",
+        "n|col|public.media_regions.media_id",
+        "n|col|public.media.id",
+        "e|uniqueness|public.media.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "ccip_embeddings",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "media_regions",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "media_region_kind",
+        "values": [
+          "full",
+          "person",
+          "manual"
+        ],
+        "entityType": "enums"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "region_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "embedding",
+        "type": "vector(768)",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "model",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "embedding_version",
+        "type": "integer",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "media_modified_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "extracted_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "created_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "updated_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "gen_random_uuid()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "media_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "kind",
+        "type": "media_region_kind",
+        "typeSchema": "public",
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "x",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "y",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "width",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "height",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "source_modified_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "detector",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "detector_version",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "score",
+        "type": "real",
+        "typeSchema": null,
+        "notNull": false,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "created_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "updated_at",
+        "type": "timestamp",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": "now()",
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "idx_ccip_embeddings_region_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "region_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "idx_media_regions_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "uq_media_regions_full_media_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "media_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": true,
+        "where": "\"kind\" = 'full'",
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "ccip_embeddings_region_id_media_regions_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "region_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "media_regions",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "media_regions_media_id_media_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "media_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "media",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "ccip_embeddings_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "media_regions_pkey",
+        "columns": [
+          "id"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "ccip_embeddings",
+        "name": "uq_ccip_embeddings_region_model_version",
+        "nameExplicit": true,
+        "columns": [
+          "region_id",
+          "model",
+          "embedding_version"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "media_regions_bbox_by_kind",
+        "value": "(\n\t\t\t\t(\"kind\" = 'full' AND \"x\" IS NULL AND \"y\" IS NULL AND \"width\" IS NULL AND \"height\" IS NULL)\n\t\t\t\tOR\n\t\t\t\t(\"kind\" <> 'full' AND \"x\" IS NOT NULL AND \"y\" IS NOT NULL AND \"width\" IS NOT NULL AND \"height\" IS NOT NULL\n\t\t\t\t\tAND \"x\" >= 0 AND \"y\" >= 0 AND \"width\" > 0 AND \"height\" > 0\n\t\t\t\t\tAND \"x\" + \"width\" <= 1 AND \"y\" + \"height\" <= 1)\n\t\t\t)",
+        "entityType": "checks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "media_regions",
+        "name": "media_regions_score_range",
+        "value": "\"score\" IS NULL OR (\"score\" >= 0 AND \"score\" <= 1)",
+        "entityType": "checks"
+      }
+    }
+  ]
+}

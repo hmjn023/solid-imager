@@ -34,7 +34,7 @@ it("migrates persisted source transfer modes without changing job state or other
 		);
 		const migration = await readFile(
 			new URL(
-				"../../../../drizzle/0031_normalize_source_transfer_modes.sql",
+				"../../../../drizzle/20261003195146_normalize_source_transfer_modes/migration.sql",
 				import.meta.url,
 			),
 			"utf8",

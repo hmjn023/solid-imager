@@ -1,0 +1,239 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "3a70e9ba-ca9a-4b63-bd76-5b86a18eb7b3",
+  "prevIds": [
+    "71a8a78f-771f-437e-8f44-5542ccef8de0"
+  ],
+  "footprints": [
+    {
+      "statementType": "create_table",
+      "statementTarget": [
+        "table",
+        "public",
+        "tag_name_redirects"
+      ],
+      "writes": [
+        "s|tbl|public.tag_name_redirects",
+        "n|tbl|public.tag_name_redirects",
+        "e|tbl|public.tag_name_redirects",
+        "n|rel|public.tag_name_redirects",
+        "n|type|public.tag_name_redirects",
+        "n|rel|public.tag_name_redirects_pkey"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "drop_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "tag_dictionary_wiki",
+        "search_text"
+      ],
+      "writes": [
+        "s|col|public.tag_dictionary_wiki.search_text",
+        "n|col|public.tag_dictionary_wiki.search_text",
+        "e|col|public.tag_dictionary_wiki.search_text"
+      ],
+      "reads": [
+        "n|tbl|public.tag_dictionary_wiki",
+        "n|sch|public"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "tag_dictionary_tags",
+        "idx_tag_dictionary_aliases"
+      ],
+      "writes": [
+        "s|idx|public.idx_tag_dictionary_aliases",
+        "n|idx|public.idx_tag_dictionary_aliases",
+        "e|idx|public.idx_tag_dictionary_aliases",
+        "n|rel|public.idx_tag_dictionary_aliases"
+      ],
+      "reads": [
+        "n|tbl|public.tag_dictionary_tags",
+        "n|sch|public",
+        "n|col|public.tag_dictionary_tags.aliases"
+      ]
+    },
+    {
+      "statementType": "create_index",
+      "statementTarget": [
+        "index",
+        "public",
+        "tag_name_redirects",
+        "idx_tag_name_redirects_tag_id"
+      ],
+      "writes": [
+        "s|idx|public.idx_tag_name_redirects_tag_id",
+        "n|idx|public.idx_tag_name_redirects_tag_id",
+        "e|idx|public.idx_tag_name_redirects_tag_id",
+        "n|rel|public.idx_tag_name_redirects_tag_id"
+      ],
+      "reads": [
+        "n|tbl|public.tag_name_redirects",
+        "n|sch|public",
+        "n|col|public.tag_name_redirects.tag_id"
+      ]
+    },
+    {
+      "statementType": "create_fk",
+      "statementTarget": [
+        "table",
+        "public",
+        "tag_name_redirects"
+      ],
+      "writes": [
+        "s|fk|public.tag_name_redirects.tag_name_redirects_tag_id_tags_id_fk",
+        "n|fk|public.tag_name_redirects.tag_name_redirects_tag_id_tags_id_fk",
+        "e|fk|public.tag_name_redirects.tag_name_redirects_tag_id_tags_id_fk",
+        "n|con|public.tag_name_redirects.tag_name_redirects_tag_id_tags_id_fk"
+      ],
+      "reads": [
+        "n|tbl|public.tag_name_redirects",
+        "n|sch|public",
+        "n|tbl|public.tags",
+        "n|sch|public",
+        "n|col|public.tag_name_redirects.tag_id",
+        "n|col|public.tags.id",
+        "e|uniqueness|public.tags.id"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "name": "tag_name_redirects",
+        "isRlsEnabled": false,
+        "entityType": "tables"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_name_redirects",
+        "name": "name",
+        "type": "text",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_name_redirects",
+        "name": "tag_id",
+        "type": "uuid",
+        "typeSchema": null,
+        "notNull": true,
+        "dimensions": 0,
+        "default": null,
+        "generated": null,
+        "identity": null,
+        "entityType": "columns"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_dictionary_tags",
+        "name": "idx_tag_dictionary_aliases",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "aliases",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "gin",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_name_redirects",
+        "name": "idx_tag_name_redirects_tag_id",
+        "nameExplicit": true,
+        "columns": [
+          {
+            "value": "tag_id",
+            "isExpression": false,
+            "asc": true,
+            "nullsFirst": false,
+            "opclass": null
+          }
+        ],
+        "isUnique": false,
+        "where": null,
+        "with": "",
+        "method": "btree",
+        "concurrently": false,
+        "entityType": "indexes"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_name_redirects",
+        "name": "tag_name_redirects_tag_id_tags_id_fk",
+        "nameExplicit": false,
+        "columns": [
+          "tag_id"
+        ],
+        "schemaTo": "public",
+        "tableTo": "tags",
+        "columnsTo": [
+          "id"
+        ],
+        "onUpdate": "NO ACTION",
+        "onDelete": "CASCADE",
+        "entityType": "fks"
+      }
+    },
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "tag_name_redirects",
+        "name": "tag_name_redirects_pkey",
+        "columns": [
+          "name"
+        ],
+        "nameExplicit": false,
+        "entityType": "pks"
+      }
+    },
+    {
+      "op": "drop",
+      "key": "columns\u0000[\"public\",\"tag_dictionary_wiki\",\"search_text\"]"
+    }
+  ]
+}
