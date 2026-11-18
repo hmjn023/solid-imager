@@ -745,7 +745,8 @@ test("opens related Pixiv works, reloads, retries recommendations and returns to
 	});
 	const path = (value: string) =>
 		info.project.name === "tauri" ? "/#" + value : value;
-	await page.goto(path("/pixiv"));
+	await page.goto(path("/about"));
+	await navigateTo(page, "pixiv");
 	await page.getByRole("link", { name: "海の風景 を開く" }).click();
 	const related = page.getByRole("region", { name: "関連作品", exact: true });
 	await expect(
@@ -761,6 +762,10 @@ test("opens related Pixiv works, reloads, retries recommendations and returns to
 	await page.goBack();
 	await expect(page).toHaveURL(/\/pixiv\/123$/);
 	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+	await expect(page).toHaveURL(/\/pixiv$/);
+	await page.goBack();
+	await expect(page).toHaveURL(/\/about$/);
+	await page.goForward();
 	await expect(page).toHaveURL(/\/pixiv$/);
 	await page.getByRole("link", { name: "海の風景 を開く" }).click();
 	await related.getByRole("link", { name: "関連の風景 を開く" }).click();
@@ -916,6 +921,57 @@ test("searches for the exact artwork tag from Pixiv detail", async ({
 		page.getByRole("link", { name: "タグの検索結果 を開く" }),
 	).toBeVisible();
 });
+
+for (const action of ["author", "tag"] as const) {
+	test(`starts a new Pixiv ${action} collection at the top from artwork detail`, async ({
+		page,
+	}, info) => {
+		await mockPixivDetail(page, artwork);
+		const posts = [
+			...Array.from({ length: 40 }, (_, index) => ({
+				...artwork,
+				id: 1000 + index,
+				title: "検索結果 " + index,
+			})),
+			artwork,
+		];
+		await page.route("**/api/rpc/viewer/search", (route) => {
+			const input = viewerRequestSchema.parse(
+				route.request().postDataJSON().json,
+			);
+			const filtered = !!(input.pixivUserId || input.literalPixivTag);
+			return route.fulfill({
+				json: {
+					json: {
+						provider: "pixiv",
+						word: input.tags,
+						mappings: [],
+						posts: filtered ? posts : [artwork],
+						hasNextPage: false,
+					},
+				},
+			});
+		});
+		await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
+		await page.getByRole("link", { name: "海の風景 を開く" }).click();
+		await page
+			.getByRole("button", {
+				name: action === "author" ? artwork.author : artwork.tags[0],
+				exact: true,
+			})
+			.click();
+		const scroller = page.locator('[data-media-scroll="pixiv"]');
+		await expect(
+			scroller.getByRole("link", { name: "検索結果 0 を開く" }),
+		).toBeInViewport();
+		await expect(
+			page.getByRole("heading", { name: "pixiv", exact: true }),
+		).toBeFocused();
+		await expect
+			.poll(() => scroller.evaluate((element) => element.scrollTop))
+			.toBe(0);
+	});
+}
 
 test("reapplies Pixiv search history with operators and exact tags after reload", async ({
 	page,

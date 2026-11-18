@@ -291,7 +291,7 @@ export function PixivScreen(props: PixivProps) {
 				</Show>
 			)}
 			describePost={describePost}
-			renderDetail={(navigation) => (
+			renderDetail={(navigation, openNewCollection) => (
 				<PixivArtworkDetail
 					{...navigation}
 					query={detail}
@@ -338,11 +338,11 @@ export function PixivScreen(props: PixivProps) {
 					)}
 					onOpenAuthor={(id, name) => {
 						browse.openAuthor(id, name);
-						props.onClosePost();
+						openNewCollection();
 					}}
 					onSearchTag={(tag) => {
 						browse.submit(tag, true);
-						props.onClosePost();
+						openNewCollection();
 					}}
 					apiBase={props.apiBase}
 					readingScope={account.scope()}

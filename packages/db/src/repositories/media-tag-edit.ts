@@ -5,15 +5,9 @@ import {
 import type { UpdatePositiveMediaTags } from "@solid-imager/core/media";
 import { canonicalTagName } from "@solid-imager/core/tags";
 import { and, eq, inArray } from "drizzle-orm";
-import {
-	medias,
-	mediaTags,
-	tagDictionaryTags,
-	tagNameRedirects,
-	tags,
-} from "../schema";
+import { medias, mediaTags, tagDictionaryTags, tags } from "../schema";
 import type { DrizzleExecutor } from "../types";
-import { lockTagNames } from "./tag-migration";
+import { lockTagNames, resolveTagNameRedirects } from "./tag-migration";
 
 export async function writePositiveMediaTags(
 	db: DrizzleExecutor,
@@ -103,6 +97,7 @@ async function resolveTagNames(
 			.filter(({ fromDictionary }) => fromDictionary)
 			.map(({ name }) => name),
 	);
+	const redirects = await resolveTagNameRedirects(db, requested);
 	const exactRows = await db
 		.select({ name: tags.name })
 		.from(tags)
@@ -119,7 +114,9 @@ async function resolveTagNames(
 				"The dictionary changed. Choose the tag again.",
 			);
 		}
-		const unmatched = new Set([...selected].filter((name) => !exact.has(name)));
+		const unmatched = new Set(
+			[...selected].filter((name) => !exact.has(name) && !redirects.has(name)),
+		);
 		if (unmatched.size > 0) {
 			for (const { name } of await db.select({ name: tags.name }).from(tags)) {
 				const canonical = canonicalTagName(name);
@@ -129,25 +126,9 @@ async function resolveTagNames(
 			}
 		}
 	}
-	const manual = requested.filter(
-		(name) => !exact.has(name) && !selected.has(name),
-	);
-	const redirected = new Map<string, string>();
-	if (manual.length > 0) {
-		const rows = await db
-			.select({ oldName: tagNameRedirects.name, name: tags.name })
-			.from(tagNameRedirects)
-			.innerJoin(tags, eq(tags.id, tagNameRedirects.tagId))
-			.where(inArray(tagNameRedirects.name, manual));
-		for (const { oldName, name } of rows) redirected.set(oldName, name);
-	}
 	return new Set(
-		requested.map((name) =>
-			exact.has(name)
-				? name
-				: selected.has(name)
-					? (equivalents.get(name) ?? name)
-					: (redirected.get(name) ?? name),
+		requested.map(
+			(name) => redirects.get(name)?.name ?? equivalents.get(name) ?? name,
 		),
 	);
 }

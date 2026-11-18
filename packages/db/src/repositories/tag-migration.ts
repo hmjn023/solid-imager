@@ -19,6 +19,20 @@ export async function lockTagNames(db: DrizzleExecutor, shared: boolean) {
 	);
 }
 
+export async function resolveTagNameRedirects(
+	db: DrizzleExecutor,
+	names: string[],
+) {
+	if (names.length === 0)
+		return new Map<string, { id: string; name: string }>();
+	const rows = await db
+		.select({ oldName: tagNameRedirects.name, id: tags.id, name: tags.name })
+		.from(tagNameRedirects)
+		.innerJoin(tags, eq(tagNameRedirects.tagId, tags.id))
+		.where(inArray(tagNameRedirects.name, [...new Set(names)]));
+	return new Map(rows.map(({ oldName, id, name }) => [oldName, { id, name }]));
+}
+
 export async function assertTagIdsExist(db: DrizzleExecutor, tagIds: string[]) {
 	await lockTagNames(db, true);
 	const unique = [...new Set(tagIds)];
@@ -38,8 +52,10 @@ export async function assertTagIdsExist(db: DrizzleExecutor, tagIds: string[]) {
 export async function mergeTag(
 	db: DrizzleExecutor,
 	legacy: { id: string; name: string },
-	targetName: string,
+	destination: string,
 ) {
+	const redirects = await resolveTagNameRedirects(db, [destination]);
+	const targetName = redirects.get(destination)?.name ?? destination;
 	const rows = await db
 		.select()
 		.from(tags)

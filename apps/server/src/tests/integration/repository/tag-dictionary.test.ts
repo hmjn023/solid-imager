@@ -455,7 +455,7 @@ it("keeps positive tag edits atomic across migrations and preserves negative ass
 			]),
 		);
 
-		// The previous alias can be selected as an independent official name in a new snapshot.
+		// Preserve the migration when a later snapshot lists the old name as canonical.
 		const promoted = await library.create({ name: "promoted_alias" });
 		await library.addTagsToMedia(image.id, [
 			{ name: promoted.name, type: "positive" },
@@ -483,7 +483,11 @@ it("keeps positive tag edits atomic across migrations and preserves negative ass
 		});
 		expect(await library.findByMediaId(image.id)).toEqual(
 			expect.arrayContaining([
-				expect.objectContaining({ name: promoted.name, type: "positive" }),
+				expect.objectContaining({
+					id: old.id,
+					name: "cyan_hair",
+					type: "positive",
+				}),
 				expect.objectContaining({
 					id: shared.id,
 					name: shared.name,
@@ -497,6 +501,17 @@ it("keeps positive tag edits atomic across migrations and preserves negative ass
 				.from(schema.tagNameRedirects)
 				.where(eq(schema.tagNameRedirects.name, promoted.name)),
 		).toEqual([{ name: promoted.name, tagId: old.id }]);
+		await library.addTagsToMedia(
+			image.id,
+			[{ name: promoted.name, type: "positive" }],
+			"user_provided",
+		);
+		expect(await library.findByName(promoted.name)).toBeNull();
+		expect(
+			(await library.findByMediaId(image.id)).filter(
+				({ type }) => type === "positive",
+			),
+		).toEqual([expect.objectContaining({ id: old.id, name: "cyan_hair" })]);
 	} finally {
 		await client.close();
 	}
