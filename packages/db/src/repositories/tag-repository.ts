@@ -11,8 +11,9 @@ import type {
 	UpdateTag,
 } from "@solid-imager/core/tags";
 import { eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
-import { mediaTags, tags } from "../schema";
+import { mediaTags, tagNameRedirects, tags } from "../schema";
 import type { DrizzleExecutor } from "../types";
+import { lockTagNames, resolveTagNameRedirects } from "./tag-migration";
 
 type DbTag = InferSelectModel<typeof tags>;
 const DeadlockRetryLimit = 3;
@@ -60,6 +61,18 @@ function mapMediaTag(row: MediaTagResult): MediaTag {
 		type: row.type,
 		confidence: row.confidence,
 	};
+}
+
+async function assertAvailableTagName(db: DrizzleExecutor, name: string) {
+	await lockTagNames(db, true);
+	const [redirect] = await db
+		.select({ name: tagNameRedirects.name })
+		.from(tagNameRedirects)
+		.where(eq(tagNameRedirects.name, name));
+	if (redirect)
+		throw new ResourceConflictError(
+			`Tag '${name}' was migrated to another tag`,
+		);
 }
 
 export function createTagRepository(
@@ -110,12 +123,16 @@ export function createTagRepository(
 
 		async create(tag: NewTag, tx?: unknown): Promise<Tag> {
 			try {
-				const result = await getExecutor(tx)
-					.insert(tags)
-					.values(tag)
-					.returning();
-				return mapTag(result[0]);
+				const execute = async (exec: DrizzleExecutor) => {
+					await assertAvailableTagName(exec, tag.name);
+					const [result] = await exec.insert(tags).values(tag).returning();
+					return mapTag(result);
+				};
+				return tx
+					? await execute(getExecutor(tx))
+					: await getExecutor().transaction(execute);
 			} catch (error: unknown) {
+				if (error instanceof ResourceConflictError) throw error;
 				if (
 					error &&
 					typeof error === "object" &&
@@ -132,18 +149,25 @@ export function createTagRepository(
 
 		async update(id: string, tag: UpdateTag, tx?: unknown): Promise<Tag> {
 			try {
-				const result = await getExecutor(tx)
-					.update(tags)
-					.set(tag)
-					.where(eq(tags.id, id))
-					.returning();
-
-				if (result.length === 0) {
-					throw new ResourceNotFoundError("Tag", id);
-				}
-				return mapTag(result[0]);
+				const execute = async (exec: DrizzleExecutor) => {
+					if (tag.name !== undefined)
+						await assertAvailableTagName(exec, tag.name);
+					const [result] = await exec
+						.update(tags)
+						.set(tag)
+						.where(eq(tags.id, id))
+						.returning();
+					if (!result) throw new ResourceNotFoundError("Tag", id);
+					return mapTag(result);
+				};
+				return tx
+					? await execute(getExecutor(tx))
+					: await getExecutor().transaction(execute);
 			} catch (error) {
-				if (error instanceof ResourceNotFoundError) {
+				if (
+					error instanceof ResourceNotFoundError ||
+					error instanceof ResourceConflictError
+				) {
 					throw error;
 				}
 				if (
@@ -220,15 +244,26 @@ export function createTagRepository(
 		): Promise<void> {
 			try {
 				const execute = async (exec: DrizzleExecutor) => {
-					const uniqueTagNames = Array.from(
-						new Set(tagsToInsert.map((tag) => tag.name)),
-					).sort(compareTagNames);
-					if (uniqueTagNames.length === 0) {
-						return;
+					if (tagsToInsert.length === 0) return;
+					await lockTagNames(exec, true);
+					const redirects = await resolveTagNameRedirects(
+						exec,
+						tagsToInsert.map(({ name }) => name),
+					);
+					const assignments = new Map<string, (typeof tagsToInsert)[number]>();
+					for (const tag of tagsToInsert) {
+						const name = redirects.get(tag.name)?.name ?? tag.name;
+						const key = `${tag.type}:${name}`;
+						if (name === tag.name || !assignments.has(key)) {
+							assignments.set(key, { ...tag, name });
+						}
 					}
-
+					const resolvedTags = [...assignments.values()];
 					const tagAttributes = new Map(
-						tagsToInsert.map((tag) => [tag.name, tag.attribute ?? null]),
+						resolvedTags.map((tag) => [tag.name, tag.attribute ?? null]),
+					);
+					const uniqueTagNames = [...tagAttributes.keys()].sort(
+						compareTagNames,
 					);
 
 					await exec
@@ -253,7 +288,7 @@ export function createTagRepository(
 						.where(inArray(tags.name, uniqueTagNames));
 
 					const allTagsMap = new Map(allTags.map((t) => [t.name, t]));
-					const mediaTagsToInsert = tagsToInsert
+					const mediaTagsToInsert = resolvedTags
 						.map((tagToInsert) => {
 							const foundTag = allTagsMap.get(tagToInsert.name);
 							if (!foundTag) {

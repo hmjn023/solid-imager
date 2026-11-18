@@ -13,6 +13,7 @@ const JOB_TYPE_KEYS: Record<string, StaticMessageKey | undefined> = {
 	thumbnail_generation_parent: "jobTypes.thumbnail_generation_parent",
 	generate_thumbnail: "jobTypes.generate_thumbnail",
 	character_clustering: "jobTypes.character_clustering",
+	tag_dictionary_refresh: "jobTypes.tag_dictionary_refresh",
 	source_export: "jobTypes.source_export",
 	source_restore: "jobTypes.source_restore",
 	import_batch_parent: "jobTypes.import_batch_parent",

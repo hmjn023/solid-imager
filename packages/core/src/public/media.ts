@@ -31,6 +31,7 @@ export type {
 	SimilarMediaSearchResponse,
 	UpdateMediaRequest,
 	UpdateMediaRequestInput,
+	UpdatePositiveMediaTags,
 } from "../domain/media/schemas";
 export { ugoiraMetadataSchema } from "../domain/media/ugoira-schemas";
 export type { UgoiraMetadata } from "../domain/media/ugoira-schemas";

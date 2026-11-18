@@ -47,7 +47,10 @@ export function ViewerWorkspace<T extends ViewerResults>(
 		emptyTitle: string;
 		actions?: JSX.Element;
 		renderSearchInfo?: (result: T) => JSX.Element;
-		renderDetail: (navigation: ViewerDetailNavigation) => JSX.Element;
+		renderDetail: (
+			navigation: ViewerDetailNavigation,
+			openNewCollection: () => void,
+		) => JSX.Element;
 	},
 ) {
 	const browse = props.browse;
@@ -67,7 +70,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 		await results.refetch();
 	};
 	let collectionTitle: HTMLHeadingElement | undefined;
-	const [returnFocusId, setReturnFocusId] = createSignal<number>();
+	const [returnFocusId, setReturnFocusId] = createSignal<number | null>();
 	createEffect(
 		on(
 			() => props.selectedPostId,
@@ -80,7 +83,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 	createEffect(() => {
 		const id = returnFocusId();
 		if (
-			!id ||
+			id === undefined ||
 			props.selectedPostId ||
 			state().phase === "pending" ||
 			browse.restoring()
@@ -89,7 +92,7 @@ export function ViewerWorkspace<T extends ViewerResults>(
 		const grid = browse.gridHandle();
 		let cancelled = false;
 		const restoreFocus = async () => {
-			const focused = await grid?.focusPost(id);
+			const focused = id === null ? false : await grid?.focusPost(id);
 			if (cancelled) return;
 			if (!focused) collectionTitle?.focus({ preventScroll: true });
 			setReturnFocusId(undefined);
@@ -280,19 +283,25 @@ export function ViewerWorkspace<T extends ViewerResults>(
 				}
 			>
 				{(id) =>
-					props.renderDetail({
-						get postId() {
-							return id();
+					props.renderDetail(
+						{
+							get postId() {
+								return id();
+							},
+							get previousId() {
+								return neighbor(-1);
+							},
+							get nextId() {
+								return neighbor(1);
+							},
+							onNavigate: (postId) => props.onOpenPost(postId, true),
+							onBack: props.onClosePost,
 						},
-						get previousId() {
-							return neighbor(-1);
+						() => {
+							setReturnFocusId(null);
+							props.onClosePost();
 						},
-						get nextId() {
-							return neighbor(1);
-						},
-						onNavigate: (postId) => props.onOpenPost(postId, true),
-						onBack: props.onClosePost,
-					})
+					)
 				}
 			</Show>
 		</div>

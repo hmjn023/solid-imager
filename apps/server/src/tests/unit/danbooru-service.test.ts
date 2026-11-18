@@ -65,6 +65,27 @@ describe("Danbooru service", () => {
 		});
 	});
 
+	it("retries malformed Wiki responses and caches a validated description", async () => {
+		const page = {
+			title: "blue_hair",
+			body: "Blue hair.",
+			other_names: [],
+			updated_at: "2026-06-01T00:00:00Z",
+		};
+		const fetchRemote = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(Response.json([{ title: page.title }]))
+			.mockResolvedValueOnce(Response.json([page]));
+		const service = createDanbooruService({
+			fetch: fetchRemote,
+			wait: async () => undefined,
+		});
+		await expect(service.wikiPage(page.title)).rejects.toThrow();
+		await expect(service.wikiPage(page.title)).resolves.toEqual(page);
+		await expect(service.wikiPage(page.title)).resolves.toEqual(page);
+		expect(fetchRemote).toHaveBeenCalledTimes(2);
+	});
+
 	it("coalesces concurrent tag requests and caches their results", async () => {
 		const fetchRemote = vi
 			.fn<typeof fetch>()

@@ -1,56 +1,13 @@
 import { t } from "@solid-imager/i18n";
 import type { DownloadItem } from "@solid-imager/core/media";
-import {
-	createSignal,
-	type JSX,
-	Match,
-	onCleanup,
-	onMount,
-	Show,
-	Switch,
-} from "solid-js";
+import { type JSX, Match, onCleanup, onMount, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { Button, buttonVariants } from "../button";
 import { MediaDetailSkeleton } from "../media-detail-skeleton";
 import { MediaDetailToolbar } from "../media-detail-layout";
 import { toQueryUiState, type QueryStateLike } from "../query-state";
 import { LoadingRegion } from "../skeleton";
-import { toast } from "../toast";
-
-/** Keep the state of an import with its URL as the viewer moves between posts and pages. */
-export function createViewerImports(
-	enqueue: (item: DownloadItem) => Promise<unknown>,
-) {
-	const [targets, setTargets] = createSignal(
-		new Map<string, "pending" | "queued">(),
-	);
-	async function add(item: DownloadItem) {
-		const url = item.targetUrl;
-		if (!url || targets().has(url)) return;
-		setTargets((current) => new Map(current).set(url, "pending"));
-		try {
-			await enqueue(item);
-			setTargets((current) => new Map(current).set(url, "queued"));
-			toast.success(t("detail.addedToImportInbox"), {
-				description: t("detail.chooseADestinationFromTheSidebarImportInboxTo"),
-			});
-		} catch (error) {
-			setTargets((current) => {
-				const next = new Map(current);
-				next.delete(url);
-				return next;
-			});
-			toast.error(t("detail.couldNotAddToImportInbox"), {
-				description:
-					error instanceof Error ? error.message : t("detail.pleaseRetry"),
-			});
-		}
-	}
-	return {
-		state: (url?: string) => (url ? targets().get(url) : undefined),
-		add,
-	};
-}
+import type { createViewerImports } from "./viewer-imports";
 
 type ViewerNavigation = {
 	previousId?: number;
@@ -112,7 +69,7 @@ export function ViewerActions(props: {
 			<Button
 				disabled={!props.item?.targetUrl || status() !== undefined}
 				aria-busy={status() === "pending"}
-				onClick={() => props.item && void props.imports.add(props.item)}
+				onClick={() => props.item && void props.imports.add([props.item])}
 			>
 				{status() === "queued"
 					? t("detail.alreadyInImportInbox")

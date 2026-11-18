@@ -1,7 +1,10 @@
 import {
 	externalSearchSchema,
+	pixivBookmarkFilterSchema,
+	pixivFeedSchema,
 	viewerProviderSchema,
 	type ExternalSearch,
+	type PixivBookmarkFilter,
 	type ViewerProvider,
 } from "@solid-imager/core/external-viewer";
 import {
@@ -22,9 +25,27 @@ import { z } from "zod";
 import { toQueryUiState } from "../query-state";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
 import type { ViewerGridHandle } from "./results-grid";
+import type { ViewerSearchHistoryEntry } from "./viewer-search-history";
 
+const authorSchema = z.object({
+	id: z
+		.string()
+		.regex(/^[1-9]\d*$/)
+		.max(30),
+	name: z.string(),
+});
+const pixivCollectionSchema = pixivFeedSchema.or(z.literal("bookmarks"));
+export type PixivCollection = z.infer<typeof pixivCollectionSchema>;
+const defaultBookmarkFilter: PixivBookmarkFilter = {
+	visibility: "public",
+	tag: "",
+};
 const session = externalSearchSchema.extend({
+	pixivFeed: pixivCollectionSchema.optional(),
+	bookmarkFilter: pixivBookmarkFilterSchema.optional(),
+	author: authorSchema.optional(),
 	provider: viewerProviderSchema.default("danbooru"),
+	literalPixivTag: z.boolean().default(false),
 	draft: z.string().default(""),
 	scrollTop: z.number().nonnegative().default(0),
 	choices: z.record(z.string(), z.string()).default({}),
@@ -42,11 +63,26 @@ type ScrollAnchor = Position & { offset: number };
 
 export function createViewerSearch<T extends ViewerPage>(
 	provider: ViewerProvider,
-	run: (params: ExternalSearch, choices: Record<string, string>) => Promise<T>,
+	run: (
+		params: ExternalSearch,
+		choices: Record<string, string>,
+		literalPixivTag: boolean,
+		pixivUserId?: string,
+		bookmark?: PixivBookmarkFilter,
+	) => Promise<T>,
 	identity?: { scope: () => (string | number)[]; ready: () => boolean },
 	selectedPostId?: () => number | undefined,
+	onCommitSearch?: (entry: ViewerSearchHistoryEntry) => void,
 ) {
 	const client = useQueryClient();
+	const [author, setAuthor] = createSignal<z.infer<typeof authorSchema>>();
+	const [literalPixivTag, setLiteralPixivTag] = createSignal(false);
+	const [pixivFeed, setPixivFeed] = createSignal<PixivCollection>("daily");
+	const [bookmarkFilter, setBookmarkFilter] = createSignal(
+		defaultBookmarkFilter,
+	);
+	const showingBookmarks = () =>
+		pixivFeed() === "bookmarks" && !tags() && !author();
 	const [tags, setTags] = createSignal("");
 	const [draft, setDraft] = createSignal("");
 	const [choices, setChoices] = createSignal<Record<string, string>>({});
@@ -71,6 +107,11 @@ export function createViewerSearch<T extends ViewerPage>(
 				key,
 				JSON.stringify({
 					tags: tags(),
+					pixivFeed: pixivFeed(),
+					bookmarkFilter:
+						pixivFeed() === "bookmarks" ? bookmarkFilter() : undefined,
+					author: author(),
+					literalPixivTag: literalPixivTag(),
 					page: anchor?.page ?? firstPage(),
 					anchor: anchor && { index: anchor.index, offset: anchor.offset },
 					choices: choices(),
@@ -112,6 +153,8 @@ export function createViewerSearch<T extends ViewerPage>(
 					// The same Pixiv screen can change accounts while it is mounted.
 					batch(() => {
 						resetScroll();
+						setBookmarkFilter(defaultBookmarkFilter);
+						if (pixivFeed() === "bookmarks") setPixivFeed("daily");
 						setScope(currentScope);
 					});
 					return;
@@ -123,6 +166,27 @@ export function createViewerSearch<T extends ViewerPage>(
 					const parsed = session.safeParse(raw ? JSON.parse(raw) : null);
 					if (parsed.success) {
 						const saved = parsed.data;
+						setLiteralPixivTag(
+							provider === "pixiv" &&
+								saved.provider === provider &&
+								saved.literalPixivTag,
+						);
+						setAuthor(
+							provider === "pixiv" && saved.provider === provider
+								? saved.author
+								: undefined,
+						);
+						setPixivFeed(
+							provider === "pixiv" &&
+								saved.provider === provider &&
+								((saved.pixivFeed !== "follow" &&
+									saved.pixivFeed !== "bookmarks") ||
+									saved.scope === currentScope)
+								? (saved.pixivFeed ?? "daily")
+								: "daily",
+						);
+						if (pixivFeed() === "bookmarks")
+							setBookmarkFilter(saved.bookmarkFilter ?? defaultBookmarkFilter);
 						setTags(saved.tags);
 						setDraft(saved.draft);
 						setChoices(saved.choices);
@@ -151,8 +215,25 @@ export function createViewerSearch<T extends ViewerPage>(
 		persist();
 	});
 
-	const queryKey = (word: string, mappings: Record<string, string>) =>
-		["external-viewer", provider, word, mappings, scope()] as const;
+	const queryKey = (
+		word: string,
+		mappings: Record<string, string>,
+		literal = literalPixivTag(),
+		userId: string | null = author()?.id ?? null,
+		feed = pixivFeed(),
+		bookmark = bookmarkFilter(),
+	) =>
+		[
+			"external-viewer",
+			provider,
+			word,
+			mappings,
+			literal,
+			userId,
+			feed,
+			feed === "bookmarks" && !word && userId === null ? bookmark : null,
+			scope(),
+		] as const;
 	const results = createInfiniteQuery<
 		T,
 		Error,
@@ -161,11 +242,27 @@ export function createViewerSearch<T extends ViewerPage>(
 		number
 	>(() => {
 		const word = tags(),
-			mappings = choices();
+			mappings = choices(),
+			literal = literalPixivTag(),
+			userId = author()?.id,
+			feed = pixivFeed(),
+			bookmark = showingBookmarks() ? bookmarkFilter() : undefined;
 		return {
-			queryKey: queryKey(word, mappings),
+			queryKey: queryKey(word, mappings, literal, userId ?? null, feed),
 			queryFn: ({ pageParam }) =>
-				run({ tags: word, page: pageParam }, mappings),
+				run(
+					{
+						tags: word,
+						page: pageParam,
+						...(provider === "pixiv" && feed !== "bookmarks"
+							? { pixivFeed: feed }
+							: {}),
+					},
+					mappings,
+					literal,
+					userId,
+					bookmark,
+				),
 			initialPageParam: firstPage(),
 			getNextPageParam: (page, _pages, number) =>
 				page.hasNextPage && number < 1000 ? number + 1 : undefined,
@@ -333,33 +430,74 @@ export function createViewerSearch<T extends ViewerPage>(
 		}
 	}
 
-	function restart(word: string, mappings: Record<string, string>) {
-		const nextKey = queryKey(word, mappings);
+	function restart(
+		word: string,
+		mappings: Record<string, string>,
+		literal = false,
+		nextAuthor?: z.infer<typeof authorSchema>,
+		feed = pixivFeed(),
+		bookmark = bookmarkFilter(),
+	) {
+		const nextKey = queryKey(
+			word,
+			mappings,
+			literal,
+			nextAuthor?.id ?? null,
+			feed,
+			bookmark,
+		);
 		const cached = client.getQueryState(nextKey);
 		batch(() => {
 			resetScroll();
+			setAuthor(nextAuthor);
+			setPixivFeed(feed);
+			setBookmarkFilter(bookmark);
+			setLiteralPixivTag(literal);
 			setTags(word);
 			setChoices(mappings);
 		});
 		if (cached) void client.resetQueries({ queryKey: nextKey, exact: true });
 	}
-	function submit(value = draft()) {
+	function submit(value = draft(), literal = false) {
 		const word = value.trim();
 		const active = new Set(
 			word.split(/\s+/).map((token) => token.replace(/^[-~]/, "")),
 		);
-		setDraft(value);
-		restart(
-			word,
-			Object.fromEntries(
-				Object.entries(choices()).filter(([tag]) => active.has(tag)),
-			),
-		);
+		const mappings = literal
+			? {}
+			: Object.fromEntries(
+					Object.entries(choices()).filter(([tag]) => active.has(tag)),
+				);
+		setDraft(provider === "pixiv" && word ? word + " " : value);
+		commitSearch({ tags: word, literalPixivTag: literal, choices: mappings });
+	}
+	function commitSearch(entry: ViewerSearchHistoryEntry) {
+		restart(entry.tags, entry.choices, entry.literalPixivTag);
+		if (entry.tags) onCommitSearch?.(entry);
 	}
 	function choose(tag: string, name: string) {
-		if (choices()[tag] !== name) restart(tags(), { ...choices(), [tag]: name });
+		if (choices()[tag] !== name)
+			commitSearch({
+				tags: tags(),
+				literalPixivTag: literalPixivTag(),
+				choices: { ...choices(), [tag]: name },
+			});
 	}
 	return {
+		pixivFeed,
+		showingBookmarks,
+		bookmarkFilter,
+		selectBookmarkFilter: (bookmark: PixivBookmarkFilter) =>
+			restart("", {}, false, undefined, "bookmarks", bookmark),
+		selectFeed: (feed: PixivCollection) => {
+			setDraft("");
+			restart("", {}, false, undefined, feed);
+		},
+		author,
+		openAuthor: (id: string, name: string) => {
+			setDraft("");
+			restart("", {}, false, { id, name });
+		},
 		draft,
 		setDraft,
 		results,
@@ -380,6 +518,10 @@ export function createViewerSearch<T extends ViewerPage>(
 		loadMore,
 		loadPrevious,
 		submit,
+		restoreSearch: (entry: ViewerSearchHistoryEntry) => {
+			setDraft(entry.tags + " ");
+			commitSearch(entry);
+		},
 		choose,
 	};
 }

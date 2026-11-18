@@ -184,6 +184,15 @@ function ManagerPage() {
 
 	return (
 		<ManagerScreen
+			tagDictionaryActions={{
+				dictionarySearch: orpc.tags.dictionarySearch,
+				dictionaryDetail: orpc.tags.dictionaryDetail,
+				dictionaryStatus: () => orpc.tags.dictionaryStatus(),
+				dictionaryRefresh: () => orpc.tags.dictionaryRefresh(),
+				dictionaryLegacy: orpc.tags.dictionaryLegacy,
+				dictionaryMigrate: orpc.tags.dictionaryMigrate,
+				openJobEvents: (signal) => orpc.jobs.events(undefined, { signal }),
+			}}
 			clusteringActions={{
 				startClustering: async (input) => {
 					const result = await orpc.characters.startClustering(input);

@@ -298,6 +298,27 @@ describe("persisted import, attempt and batch transitions", () => {
 		]);
 	});
 
+	it("rolls back earlier import pages if a later chunk cannot be queued", async () => {
+		const items = Array.from({ length: 101 }, (_, index) => ({
+			targetUrl: `https://example.com/artwork_p${index}.png`,
+		}));
+		// PostgreSQL jsonb rejects a NUL in the last page's metadata.
+		const invalid = [
+			...items.slice(0, -1),
+			{ ...items[100], description: "\0" },
+		];
+		await expect(
+			call(importsRouter.bulkAdd, { items: invalid }),
+		).rejects.toThrow();
+		expect(await call(importsRouter.countPending, undefined)).toEqual({
+			count: 0,
+		});
+		await call(importsRouter.bulkAdd, { items });
+		expect(await call(importsRouter.countPending, undefined)).toEqual({
+			count: items.length,
+		});
+	});
+
 	async function receipt(status: "pending" | "completed" = "pending") {
 		return repositories.job.create({
 			type: "import_request",

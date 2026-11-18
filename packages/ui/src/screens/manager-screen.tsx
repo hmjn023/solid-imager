@@ -19,6 +19,10 @@ import { ManagerDialogs } from "./manager/dialogs";
 import { DuplicateToolPanel } from "./manager/duplicates";
 import { EntityTablePanel, ManagerTableSkeleton } from "./manager/entity-panel";
 import { ManagerCategoryNavigation } from "./manager/navigation";
+import {
+	TagDictionaryPanel,
+	type TagDictionaryActions,
+} from "./manager/tag-dictionary";
 import { ThumbnailWarmupPanel } from "./manager/thumbnail";
 import {
 	CharacterClusteringReviewPanel,
@@ -41,6 +45,7 @@ export function ManagerScreen(props: {
 	transferActions?: ManagerTransferActions;
 	authorActions?: AuthorManagementActions;
 	clusteringActions?: CharacterClusteringReviewActions;
+	tagDictionaryActions?: TagDictionaryActions;
 }) {
 	const [query, setQuery] = createSignal("");
 	const [selectedId, setSelectedId] = createSignal<string | null>(null);
@@ -48,6 +53,14 @@ export function ManagerScreen(props: {
 		createSignal<ManagerCategoryValue>(
 			(() => {
 				try {
+					if (
+						typeof sessionStorage !== "undefined" &&
+						sessionStorage.getItem(
+							"solid-imager:manager:tag-dictionary-open",
+						) === "1"
+					) {
+						return "tagDictionary";
+					}
 					return typeof sessionStorage !== "undefined" &&
 						sessionStorage.getItem("solid-imager:manager:clustering-open") ===
 							"1"
@@ -88,15 +101,25 @@ export function ManagerScreen(props: {
 		setSelectedId(null);
 		setActiveCategory(value);
 		try {
-			if (typeof sessionStorage !== "undefined")
+			if (typeof sessionStorage !== "undefined") {
 				sessionStorage.setItem(
 					"solid-imager:manager:clustering-open",
 					value === "clustering" ? "1" : "0",
 				);
+				sessionStorage.setItem(
+					"solid-imager:manager:tag-dictionary-open",
+					value === "tagDictionary" ? "1" : "0",
+				);
+			}
 		} catch {
 			/* Storage can be disabled. */
 		}
-		if (value !== "transfer" && value !== "authors" && value !== "clustering")
+		if (
+			value !== "transfer" &&
+			value !== "authors" &&
+			value !== "clustering" &&
+			value !== "tagDictionary"
+		)
 			props.manager.setActiveTab(value);
 	};
 
@@ -180,8 +203,17 @@ export function ManagerScreen(props: {
 						</Show>
 						<Show
 							when={
+								activeCategory() === "tagDictionary" &&
+								props.tagDictionaryActions
+							}
+						>
+							{(actions) => <TagDictionaryPanel actions={actions()} />}
+						</Show>
+						<Show
+							when={
 								activeCategory() !== "authors" &&
-								activeCategory() !== "clustering"
+								activeCategory() !== "clustering" &&
+								activeCategory() !== "tagDictionary"
 							}
 						>
 							<QueryStatus

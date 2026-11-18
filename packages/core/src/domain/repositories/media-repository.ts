@@ -15,6 +15,7 @@ import type {
 	RelatedMediaTagCandidate,
 	RelatedMediaSignals,
 	UpdateMediaRequest,
+	UpdatePositiveMediaTags,
 } from "../media/schemas";
 import type { Author } from "../authors/schemas";
 
@@ -144,6 +145,7 @@ export type MediaMaintenanceRepository = {
 };
 
 export type MediaBulkRepository = {
+	updatePositiveTags(input: UpdatePositiveMediaTags): Promise<void>;
 	bulkUpdate(
 		mediaIds: string[],
 		updates: UpdateMediaRequest,

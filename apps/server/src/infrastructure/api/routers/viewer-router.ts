@@ -8,6 +8,7 @@ import {
 import {
 	pixivBearerToken,
 	pixivSessions,
+	readPixivBookmarkToken,
 } from "~/infrastructure/services/pixiv-sessions";
 import { createPixivService } from "~/infrastructure/services/pixiv-service";
 import {
@@ -21,6 +22,19 @@ const service = (context: ViewerContext) =>
 		fetch,
 		pixivSessions.credential(pixivBearerToken(context.pixivAuthorization)),
 	);
+function bookmarkAccount(context: ViewerContext) {
+	const token = pixivBearerToken(context.pixivAuthorization) ?? "";
+	const { userId, sessionId } = pixivSessions.account(token);
+	return {
+		userId,
+		service: createPixivService(fetch, sessionId),
+		async getWriteToken() {
+			const csrfToken = await readPixivBookmarkToken(sessionId, userId);
+			pixivSessions.account(token);
+			return csrfToken;
+		},
+	};
+}
 async function readViewer<T>(operation: () => Promise<T>): Promise<T> {
 	try {
 		return await operation();
@@ -54,6 +68,31 @@ export const viewerRouter = os.router({
 		pixivSessions.logout(pixivBearerToken(context.pixivAuthorization) ?? "");
 		return null;
 	}),
+	pixivBookmarks: os.pixivBookmarks.handler(({ input, context }) =>
+		readViewer(() => {
+			const account = bookmarkAccount(context);
+			return account.service.bookmarks(account.userId, input);
+		}),
+	),
+	pixivBookmarkTags: os.pixivBookmarkTags.handler(({ input, context }) =>
+		readViewer(() => {
+			const account = bookmarkAccount(context);
+			return account.service.bookmarkTags(account.userId, input.visibility);
+		}),
+	),
+	pixivBookmarkState: os.pixivBookmarkState.handler(({ input, context }) =>
+		readViewer(() => bookmarkAccount(context).service.bookmarkState(input.id)),
+	),
+	setPixivBookmark: os.setPixivBookmark.handler(({ input, context }) =>
+		readViewer(() => {
+			const account = bookmarkAccount(context);
+			return account.service.setBookmark(
+				account.userId,
+				input,
+				account.getWriteToken,
+			);
+		}),
+	),
 	search: os.search.handler(({ input, context }) =>
 		readViewer(async () => {
 			if (input.provider === "danbooru")
@@ -61,16 +100,35 @@ export const viewerRouter = os.router({
 					provider: "danbooru" as const,
 					...(await danbooruService.search(danbooruSearchSchema.parse(input))),
 				};
-			const query = await resolvePixivQuery(input.tags, input.choices);
+			if (input.pixivUserId)
+				return {
+					provider: "pixiv" as const,
+					word: "",
+					mappings: [],
+					...(await service(context).userWorks(input.pixivUserId, input.page)),
+				};
+			const query = input.literalPixivTag
+				? { word: input.tags, mappings: [] }
+				: await resolvePixivQuery(input.tags, input.choices);
 			return {
 				provider: "pixiv" as const,
 				...query,
-				...(await service(context).search(query.word, input.page)),
+				...(await service(context).search(
+					query.word,
+					input.page,
+					input.pixivFeed,
+				)),
 			};
 		}),
 	),
 	suggestTags: os.suggestTags.handler(({ input }) =>
 		readViewer(() => suggestViewerTags(input.query)),
+	),
+	pixivRelatedPage: os.pixivRelatedPage.handler(({ input, context }) =>
+		readViewer(() => service(context).related(input.id, input.ids)),
+	),
+	pixivRelated: os.pixivRelated.handler(({ input, context }) =>
+		readViewer(async () => (await service(context).related(input.id)).posts),
 	),
 	pixivArtwork: os.pixivArtwork.handler(({ input, context }) =>
 		readViewer(() => service(context).getPost(input.id)),

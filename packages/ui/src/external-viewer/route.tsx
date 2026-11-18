@@ -14,7 +14,7 @@ export function ExternalViewerRoute(
 	props: {
 		client: Pick<AppContractClient, "viewer" | "danbooru" | "imports">;
 		apiBase: () => string;
-		history: Pick<RouterHistory, "back" | "createHref">;
+		history: Pick<RouterHistory, "go" | "createHref">;
 	} & (
 		| { provider: "danbooru" }
 		| {
@@ -27,7 +27,16 @@ export function ExternalViewerRoute(
 ) {
 	const navigate = useNavigate(),
 		location = useLocation();
-	let openedFromCollection = false;
+	const collectionDepth = () => {
+		const { state } = location();
+		if (
+			"externalViewerCollectionDepth" in state &&
+			typeof state.externalViewerCollectionDepth === "number" &&
+			Number.isSafeInteger(state.externalViewerCollectionDepth) &&
+			state.externalViewerCollectionDepth > 0
+		)
+			return state.externalViewerCollectionDepth;
+	};
 	const selectedPostId = () => {
 		const path = location().pathname.split("/");
 		const id =
@@ -43,18 +52,23 @@ export function ExternalViewerRoute(
 		postHref: (id: number) =>
 			props.history.createHref("/" + props.provider + "/" + id),
 		onOpenPost: (id: number, replace?: boolean) => {
-			if (!selectedPostId()) openedFromCollection = true;
+			const depth = selectedPostId() ? collectionDepth() : 0;
+			const nextDepth =
+				depth === undefined ? undefined : depth + (replace ? 0 : 1);
 			void navigate({
 				to: props.provider === "pixiv" ? "/pixiv/$postId" : "/danbooru/$postId",
 				params: { postId: String(id) },
 				replace,
+				state: (state: RouterHistory["location"]["state"]) => ({
+					...state,
+					externalViewerCollectionDepth: nextDepth,
+				}),
 			});
 		},
 		onClosePost: () => {
-			if (openedFromCollection) {
-				openedFromCollection = false;
-				props.history.back();
-			} else
+			const depth = collectionDepth();
+			if (depth) props.history.go(-depth);
+			else
 				void navigate({
 					to: props.provider === "pixiv" ? "/pixiv" : "/danbooru",
 					replace: true,

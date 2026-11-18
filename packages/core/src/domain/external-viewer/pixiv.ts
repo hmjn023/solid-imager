@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { tagMappingSchema } from "./search";
+import { pixivBookmarkVisibilitySchema, tagMappingSchema } from "./search";
 import type { DownloadItem } from "../media/schemas";
 import { ugoiraMetadataSchema } from "../media/ugoira-schemas";
 
@@ -23,7 +23,27 @@ export const pixivCardSchema = z.object({
 	thumbnail: pixivImageUrlSchema.nullable(),
 	pageCount: z.number().int().positive(),
 });
+export const pixivRelatedRequestSchema = z.object({
+	id: z.number().int().positive(),
+	ids: z.array(z.number().int().positive()).min(1).max(18).optional(),
+});
+export const pixivRelatedPageSchema = z.object({
+	posts: z.array(pixivCardSchema),
+	nextIds: z.array(z.number().int().positive()),
+});
+export type PixivRelatedPage = z.infer<typeof pixivRelatedPageSchema>;
 export type PixivCard = z.infer<typeof pixivCardSchema>;
+export const pixivBookmarkStateSchema = z.object({
+	visibility: pixivBookmarkVisibilitySchema.nullable(),
+	canAdd: z.boolean(),
+});
+export type PixivBookmarkState = z.infer<typeof pixivBookmarkStateSchema>;
+export const pixivBookmarkChangeSchema = pixivBookmarkStateSchema
+	.pick({ visibility: true })
+	.extend({
+		id: pixivCardSchema.shape.id,
+	});
+export type PixivBookmarkChange = z.infer<typeof pixivBookmarkChangeSchema>;
 export const pixivArtworkSchema = pixivCardSchema.extend({
 	userId: z.string().regex(/^\d+$/),
 	tags: z.array(z.string()),
