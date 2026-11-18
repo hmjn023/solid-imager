@@ -1,4 +1,5 @@
-import { eq, or, sql } from "drizzle-orm";
+import { ResourceConflictError } from "@solid-imager/core/errors";
+import { eq, inArray, or, sql } from "drizzle-orm";
 import {
 	mediaTags,
 	relatedTagFrequencies,
@@ -18,6 +19,22 @@ export async function lockTagNames(db: DrizzleExecutor, shared: boolean) {
 	);
 }
 
+export async function assertTagIdsExist(db: DrizzleExecutor, tagIds: string[]) {
+	await lockTagNames(db, true);
+	const unique = [...new Set(tagIds)];
+	const rows = await db
+		.select({ id: tags.id })
+		.from(tags)
+		.where(inArray(tags.id, unique))
+		.orderBy(tags.id)
+		.for("key share");
+	if (rows.length !== unique.length) {
+		throw new ResourceConflictError(
+			"One or more tags changed. Reload the tags and try again.",
+		);
+	}
+}
+
 export async function mergeTag(
 	db: DrizzleExecutor,
 	legacy: { id: string; name: string },
@@ -34,11 +51,6 @@ export async function mergeTag(
 	const target = rows.find((row) => row.name === targetName);
 	const tagId = target?.id ?? source.id;
 
-	// A destination that becomes a canonical name in a later snapshot takes
-	// precedence over an older redirect for that spelling.
-	await db
-		.delete(tagNameRedirects)
-		.where(eq(tagNameRedirects.name, targetName));
 	if (!target) {
 		await db
 			.update(tags)

@@ -318,12 +318,31 @@ export const mediaRouter = os.router({
 	 * Bulk add/remove tags on multiple media items
 	 */
 	bulkTag: os.bulkTag.handler(async ({ input }) => {
-		await BulkOperationService.bulkTagMedia(
-			input.mediaSourceId,
-			input.mediaIds,
-			input.tagsToAdd,
-			input.tagsToRemove,
-		);
+		try {
+			await BulkOperationService.bulkTagMedia(
+				input.mediaSourceId,
+				input.mediaIds,
+				input.tagsToAdd,
+				input.tagsToRemove,
+			);
+		} catch (error) {
+			if (error instanceof ResourceConflictError)
+				throw new ORPCError("CONFLICT", { message: error.message });
+			throw error;
+		}
+		return { success: true };
+	}),
+
+	updatePositiveTags: os.updatePositiveTags.handler(async ({ input }) => {
+		try {
+			await services.getMediaRepository().updatePositiveTags(input);
+		} catch (error) {
+			if (error instanceof ResourceNotFoundError)
+				throw new ORPCError("NOT_FOUND", { message: error.message });
+			if (error instanceof ResourceConflictError)
+				throw new ORPCError("CONFLICT", { message: error.message });
+			throw error;
+		}
 		return { success: true };
 	}),
 

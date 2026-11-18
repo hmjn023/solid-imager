@@ -1,7 +1,6 @@
 import type { Job } from "@solid-imager/core/jobs";
 import {
 	canonicalTagName,
-	TAG_DICTIONARY_JOB,
 	tagDictionaryJobPayloadSchema,
 	type TagDictionarySource,
 } from "@solid-imager/core/tags";
@@ -30,34 +29,31 @@ const DAY_MS = 24 * HOUR_MS;
 export async function queueTagDictionaryRefresh(
 	trigger: "manual" | "automatic",
 ) {
-	const job = await JobRepository.createIfUnique({
-		type: TAG_DICTIONARY_JOB,
-		payload: { trigger },
-	});
-	if (job) {
+	const now = Date.now();
+	const jobId = await TagDictionaryRepository.queueRefresh(
+		trigger === "automatic"
+			? {
+					trigger,
+					completedBefore: new Date(now - 7 * DAY_MS),
+					retryBefore: new Date(now - DAY_MS),
+				}
+			: { trigger },
+	);
+	if (jobId) {
 		notifyJob("job-progress", {
-			jobId: job.id,
+			jobId,
 			created: true,
 			processed: 0,
 			total: 3,
 		});
 	}
-	return TagDictionaryRepository.status();
+	return { jobId };
 }
 
 /** Automatic checks begin after the user initializes the dictionary. */
 export function startTagDictionarySchedule() {
-	const check = async () => {
-		const { job } = await TagDictionaryRepository.status();
-		if (!job || job.status === "pending" || job.status === "in_progress")
-			return;
-		const interval = job.status === "completed" ? 7 * DAY_MS : DAY_MS;
-		if (Date.now() - Date.parse(job.updatedAt) >= interval) {
-			await queueTagDictionaryRefresh("automatic");
-		}
-	};
 	const tick = () =>
-		void check().catch((err) => {
+		void queueTagDictionaryRefresh("automatic").catch((err) => {
 			logger.warn({ err }, "Scheduled tag dictionary check failed");
 		});
 	tick();
@@ -71,6 +67,14 @@ export async function processTagDictionaryRefresh(job: Job) {
 	notifyJob("job-progress", { jobId: job.id, processed: 0, total: 3 });
 	const { snapshots } = await TagDictionaryRepository.status();
 	const attempt = { id: job.id, number: job.attemptCount ?? 0 };
+	const isCurrentAttempt = async () => {
+		const current = await JobRepository.findById(job.id);
+		return (
+			current?.status === "in_progress" &&
+			current.attemptCount === attempt.number &&
+			!current.cancelRequestedAt
+		);
+	};
 	const failures: TagDictionarySource[] = [];
 	const installed = new Map(
 		snapshots.map(({ source, version }) => [source, version]),
@@ -80,9 +84,11 @@ export async function processTagDictionaryRefresh(job: Job) {
 		source: TagDictionarySource,
 		refresh: () => Promise<void>,
 	) => {
+		if (!(await isCurrentAttempt())) return false;
 		try {
 			await refresh();
 		} catch (err) {
+			if (!(await isCurrentAttempt())) return false;
 			logger.warn(
 				{ err, source, jobId: job.id },
 				"Tag dictionary source refresh failed",
@@ -96,49 +102,60 @@ export async function processTagDictionaryRefresh(job: Job) {
 			total: 3,
 			failed: failures.length,
 		});
+		return true;
 	};
-	await sync("tags", async () => {
-		const { version, count } = await fetchTagDictionaryVersion();
-		const current = installed.get("tags");
-		if (!current || Date.parse(current) < Date.parse(version)) {
-			const rows = await fetchDictionaryTags(count);
-			const verified = await fetchTagDictionaryVersion();
-			if (verified.version !== version || verified.count !== count) {
-				throw new Error("Tag snapshot changed during download");
+	if (
+		!(await sync("tags", async () => {
+			const { version, count } = await fetchTagDictionaryVersion();
+			const current = installed.get("tags");
+			if (!current || Date.parse(current) < Date.parse(version)) {
+				const rows = await fetchDictionaryTags(count);
+				if (!(await isCurrentAttempt())) return;
+				const verified = await fetchTagDictionaryVersion();
+				if (verified.version !== version || verified.count !== count) {
+					throw new Error("Tag snapshot changed during download");
+				}
+				await TagDictionaryRepository.replace(
+					{ source: "tags", rows },
+					version,
+					attempt,
+				);
 			}
+			await TagDictionaryRepository.reconcileLegacy(attempt);
+		}))
+	)
+		return;
+	if (
+		!(await sync("wiki", async () => {
+			if (installed.get("wiki") === WIKI_VERSION) return;
+			await withWikiSnapshot((filename) =>
+				TagDictionaryRepository.replace(
+					{
+						source: "wiki",
+						rows: readDictionaryWiki(filename),
+					},
+					WIKI_VERSION,
+					attempt,
+				),
+			);
+		}))
+	)
+		return;
+	if (
+		!(await sync("attributes", async () => {
+			if (installed.get("attributes") === ATTRIBUTES_VERSION) return;
+			const lines = await fetchDictionaryAttributes();
 			await TagDictionaryRepository.replace(
-				{ source: "tags", rows },
-				version,
+				{
+					source: "attributes",
+					rows: readDictionaryAttributes(lines),
+				},
+				ATTRIBUTES_VERSION,
 				attempt,
 			);
-		}
-		await TagDictionaryRepository.reconcileLegacy(attempt);
-	});
-	await sync("wiki", async () => {
-		if (installed.get("wiki") === WIKI_VERSION) return;
-		await withWikiSnapshot((filename) =>
-			TagDictionaryRepository.replace(
-				{
-					source: "wiki",
-					rows: readDictionaryWiki(filename),
-				},
-				WIKI_VERSION,
-				attempt,
-			),
-		);
-	});
-	await sync("attributes", async () => {
-		if (installed.get("attributes") === ATTRIBUTES_VERSION) return;
-		const lines = await fetchDictionaryAttributes();
-		await TagDictionaryRepository.replace(
-			{
-				source: "attributes",
-				rows: readDictionaryAttributes(lines),
-			},
-			ATTRIBUTES_VERSION,
-			attempt,
-		);
-	});
+		}))
+	)
+		return;
 	if (failures.length)
 		throw new Error(`Tag dictionary refresh failed: ${failures.join(", ")}`);
 }

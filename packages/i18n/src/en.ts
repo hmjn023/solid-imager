@@ -863,7 +863,7 @@ export const en = defineMessages({
 	"tagDictionary.fetchMissingWiki":
 		"Fetch missing Wiki descriptions automatically",
 	"tagDictionary.fetchMissingWikiDescription":
-		"When you open a tag whose description is missing, the server sends its name to Danbooru to retrieve the Wiki description.",
+		"When you open the details for a tag with a missing description, or hover over or focus its media tag, the server sends the tag name to Danbooru to retrieve the Wiki description.",
 	"tagDictionary.navigationDescription":
 		"Browse Danbooru tags and update dictionary data",
 	"tagDictionary.schedule":
@@ -1183,8 +1183,6 @@ export const en = defineMessages({
 	"mediaSidebar.workflow": "Workflow:",
 	"mediaSidebar.youHaveUnsavedChangesToThisDescriptionLeaveWithout":
 		"You have unsaved changes to this description. Leave without saving?",
-	"mediaSidebarContent.cannotRemoveATagThatIsAlsoAssignedAs":
-		"Cannot remove a tag that is also assigned as negative.",
 	"mediaTileGrid.mediaGrid": "Media grid",
 	"mediaViewer.audioPreviewUnavailable": "Audio preview unavailable",
 	"mediaViewer.enterFullscreen": "Enter fullscreen",

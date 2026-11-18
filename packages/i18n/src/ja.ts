@@ -856,7 +856,7 @@ export const ja = defineLocale({
 	"tagDictionary.title": "タグ辞書",
 	"tagDictionary.fetchMissingWiki": "不足しているWikiの説明を自動取得",
 	"tagDictionary.fetchMissingWikiDescription":
-		"辞書に説明がないタグを開くと、サーバーがタグ名をDanbooruに送ってWikiの説明を取得します。",
+		"説明がないタグの詳細を開くか、メディア上のタグにカーソルを合わせたりフォーカスを移したりすると、サーバーがタグ名をDanbooruに送ってWikiの説明を取得します。",
 	"tagDictionary.navigationDescription": "Danbooruタグの検索と辞書データの更新",
 	"tagDictionary.schedule":
 		"初回取り込み後、サーバーが週に一度タグの更新を確認します。",
@@ -883,7 +883,7 @@ export const ja = defineLocale({
 	"tagDictionary.selectMigration": "このタグを選ぶ",
 	"tagDictionary.migrationTitle": "タグの移行を確認",
 	"tagDictionary.migrationConfirm":
-		"「{source}」を「{target}」に統合します。画像への割り当てを引き継ぎ、重複する割り当てをまとめます。",
+		"「{source}」を「{target}」に統合します。メディアへの割り当てを引き継ぎ、重複する割り当てをまとめます。",
 	"tagDictionary.migrate": "タグを移行",
 	"tagDictionary.migrationError":
 		"タグを移行できませんでした。最新の候補を確認してください。",
@@ -1178,8 +1178,6 @@ export const ja = defineLocale({
 	"mediaSidebar.workflow": "ワークフロー:",
 	"mediaSidebar.youHaveUnsavedChangesToThisDescriptionLeaveWithout":
 		"説明に未保存の変更があります。保存せずに移動しますか？",
-	"mediaSidebarContent.cannotRemoveATagThatIsAlsoAssignedAs":
-		"除外タグにも設定されているタグは削除できません。",
 	"mediaTileGrid.mediaGrid": "メディアグリッド",
 	"mediaViewer.audioPreviewUnavailable": "音声プレビューを利用できません",
 	"mediaViewer.enterFullscreen": "全画面表示",

@@ -36,11 +36,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		<MediaSidebarContent
 			activityApi={client.media}
 			tagDictionaryLookup={client.tags}
-			tagApi={{
-				list: () => client.tags.list(),
-				create: (data) => client.tags.create(data),
-				bulkTag: (data) => client.media.bulkTag(data),
-			}}
+			updatePositiveTags={client.media.updatePositiveTags}
 			addCharacterToMedia={addCharacterToMedia}
 			addIpToMedia={addIpToMedia}
 			addProjectToMedia={addProjectToMedia}

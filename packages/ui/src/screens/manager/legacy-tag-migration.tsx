@@ -6,7 +6,7 @@ import {
 } from "@solid-imager/core/tags";
 import { t } from "@solid-imager/i18n";
 import { createMutation, createQuery } from "@tanstack/solid-query";
-import { createSignal, For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import { ErrorState } from "../../async-state";
 import { Button } from "../../button";
@@ -71,13 +71,20 @@ export function LegacyTagMigration(props: {
 			setDone({ source: input.sourceName, target: input.target });
 			editTrigger = undefined;
 			setSource(undefined);
-			if (offset() > 0 && legacy.data?.items.length === 1) {
-				setOffset(offset() - TAG_DICTIONARY_PAGE_SIZE);
-			}
 			props.onMigrated();
 		},
 		onError: () => void legacy.refetch(),
 	}));
+	createEffect(() => {
+		if (
+			offset() > 0 &&
+			legacy.isSuccess &&
+			!legacy.isFetching &&
+			legacy.data.items.length === 0
+		) {
+			setOffset(offset() - TAG_DICTIONARY_PAGE_SIZE);
+		}
+	});
 	const close = () => {
 		if (!migrate.isPending) setSource(undefined);
 	};

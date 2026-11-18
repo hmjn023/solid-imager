@@ -83,9 +83,9 @@ function TagDictionaryDetailView(props: {
 	onAdd?: (entry: TagDictionaryEntry) => void;
 	actionLabel?: string;
 }) {
-	const detail = createQuery(() =>
-		tagDictionaryDetailQuery(props.api.dictionaryDetail, props.entry.name),
-	);
+	const detailOptions = () =>
+		tagDictionaryDetailQuery(props.api.dictionaryDetail, props.entry.name);
+	const detail = createQuery(detailOptions);
 	const wikiNames = () => detail.data?.wikiNames ?? props.entry.wikiNames;
 
 	return (
@@ -137,7 +137,7 @@ function TagDictionaryDetailView(props: {
 					</div>
 				</Show>
 			</dl>
-			<Show when={detail.isPending}>
+			<Show when={detailOptions().enabled && detail.isPending}>
 				<p class="text-muted-foreground">{t("status.loading")}</p>
 			</Show>
 			<Show when={detail.isError}>
@@ -146,7 +146,7 @@ function TagDictionaryDetailView(props: {
 					onRetry={() => void detail.refetch()}
 				/>
 			</Show>
-			<Show when={detail.isSuccess}>
+			<Show when={detail.isSuccess || !detailOptions().enabled}>
 				<Show
 					when={detail.data?.body}
 					fallback={

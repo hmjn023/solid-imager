@@ -68,7 +68,12 @@ function MediaTagWikiPreview(props: {
 	const excerpt = () => {
 		const body = detail.data?.body;
 		if (!body) return null;
-		return plainTagWikiText(body.trim()).split(/\n\s*\n/u, 1)[0];
+		return (
+			plainTagWikiText(body)
+				.split(/\n\s*\n/u)
+				.map((part) => part.trim())
+				.find(Boolean) ?? null
+		);
 	};
 	return (
 		<div class="space-y-1 break-words">

@@ -8,14 +8,14 @@ import {
 	createQuery,
 	useQueryClient,
 } from "@tanstack/solid-query";
-import { For, Show } from "solid-js";
+import { createEffect, For, Show } from "solid-js";
 import { isServer } from "solid-js/web";
 import { ErrorState } from "../../async-state";
 import { Button } from "../../button";
 import {
 	type JobEventStreamFactory,
-	useJobEvents,
-} from "../../hooks/use-job-events";
+	useBatchJobEvents,
+} from "../../hooks/use-batch-job-events";
 import { TagDictionaryBrowser } from "../../tag-dictionary-browser";
 import {
 	searchQueryKeys,
@@ -33,7 +33,7 @@ import { formatDate } from "./utils";
 
 export type TagDictionaryActions = LegacyTagMigrationActions & {
 	dictionaryStatus: () => Promise<TagDictionaryStatus>;
-	dictionaryRefresh: () => Promise<TagDictionaryStatus>;
+	dictionaryRefresh: () => Promise<{ jobId: string | null }>;
 	openJobEvents: JobEventStreamFactory;
 };
 
@@ -91,35 +91,49 @@ export function TagDictionaryPanel(props: { actions: TagDictionaryActions }) {
 	};
 	const refresh = createMutation(() => ({
 		mutationFn: () => props.actions.dictionaryRefresh(),
-		onSuccess: (data) => {
-			client.setQueryData(STATUS_QUERY_KEY, data);
-			void invalidate();
-		},
+		onSuccess: invalidate,
 	}));
-	useJobEvents(
-		async (signal) => {
-			const stream = await props.actions.openJobEvents(signal);
-			void invalidate();
-			return stream;
+	let lastLibraryRefresh: string | undefined;
+	const refreshLibraryFor = (id: string | null) => {
+		if (id && id !== lastLibraryRefresh) {
+			lastLibraryRefresh = id;
+			invalidateLibrary();
+		}
+	};
+	const jobId = () => status.data?.job?.id ?? null;
+	const finish = () => {
+		refreshLibraryFor(jobId());
+		void invalidate();
+	};
+	useBatchJobEvents(
+		jobId,
+		{
+			handleJobProgress: () => void invalidate(),
+			handleJobCompleted: finish,
+			handleJobFailed: finish,
+			handleJobCancelled: finish,
 		},
-		(event) => {
-			const currentJob = event.data.jobId === status.data?.job?.id;
-			if (
-				currentJob ||
-				(event.event === "job-progress" && event.data.created)
-			) {
-				void invalidate();
-			}
-			if (
-				currentJob &&
-				(event.event === "job-completed" ||
-					event.event === "job-failed" ||
-					event.event === "job-cancelled")
-			) {
-				invalidateLibrary();
-			}
+		(signal) => props.actions.openJobEvents(signal),
+		{
+			subscribeImmediately: true,
+			onConnected: invalidate,
+			onEvent: (event) => {
+				if (
+					event.event === "job-progress" &&
+					event.data.created &&
+					event.data.jobId !== jobId()
+				)
+					void invalidate();
+			},
 		},
 	);
+	createEffect(() => {
+		// The persisted job outcome also covers terminal events missed while disconnected.
+		const job = status.data?.job;
+		if (job && job.status !== "pending" && job.status !== "in_progress") {
+			refreshLibraryFor(job.id);
+		}
+	});
 	const active = () =>
 		status.data?.job?.status === "pending" ||
 		status.data?.job?.status === "in_progress";

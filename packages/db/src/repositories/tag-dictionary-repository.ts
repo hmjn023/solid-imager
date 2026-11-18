@@ -56,50 +56,100 @@ async function assertRefreshAttempt(
 	if (!owner) throw new Error("Tag dictionary refresh attempt ended");
 }
 
+async function readDictionaryJob(db: DrizzleExecutor) {
+	const [job] = await db
+		.select({
+			id: jobs.id,
+			status: jobs.status,
+			error: jobs.error,
+			updatedAt: jobs.updatedAt,
+			// Job completion uses database-local NOW() on a timestamp without a time zone.
+			finishedAtUtc: sql<string | null>`to_char(
+	${jobs.finishedAt} AT TIME ZONE current_setting('TimeZone') AT TIME ZONE 'UTC',
+	'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+)`,
+		})
+		.from(jobs)
+		.where(eq(jobs.type, TAG_DICTIONARY_JOB))
+		.orderBy(
+			sql`case when ${jobs.status} in ('pending', 'in_progress') then 0 else 1 end`,
+			desc(jobs.updatedAt),
+			desc(jobs.id),
+		)
+		.limit(1);
+	return job;
+}
+
 export function createTagDictionaryRepository(
 	db: () => DrizzleExecutor,
 ): TagDictionaryRepository {
 	return {
-		async status() {
-			const versions = await db()
-				.select()
-				.from(snapshots)
-				.orderBy(snapshots.source);
-			const [job] = await db()
-				.select({
-					id: jobs.id,
-					status: jobs.status,
-					error: jobs.error,
-					updatedAt: jobs.updatedAt,
-					// Job completion uses database-local NOW() on a timestamp without a time zone.
-					finishedAtUtc: sql<string | null>`to_char(
-					${jobs.finishedAt} AT TIME ZONE current_setting('TimeZone') AT TIME ZONE 'UTC',
-					'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
-				)`,
-				})
-				.from(jobs)
-				.where(eq(jobs.type, TAG_DICTIONARY_JOB))
-				.orderBy(
-					sql`case when ${jobs.status} in ('pending', 'in_progress') then 0 else 1 end`,
-					desc(jobs.updatedAt),
-					desc(jobs.id),
-				)
-				.limit(1);
-			return tagDictionaryStatusSchema.parse({
-				snapshots: versions.map((row) => ({
-					...row,
-					installedAt: row.installedAt.toISOString(),
-				})),
-				job: job
-					? {
-							id: job.id,
-							status: job.status,
-							error: job.error?.startsWith("Tag dictionary refresh failed: ")
-								? job.error
-								: null,
-							updatedAt: job.finishedAtUtc ?? job.updatedAt.toISOString(),
-						}
-					: null,
+		status: () =>
+			db().transaction(
+				async (tx) => {
+					const versions = await tx
+						.select()
+						.from(snapshots)
+						.orderBy(snapshots.source);
+					const job = await readDictionaryJob(tx);
+					return tagDictionaryStatusSchema.parse({
+						snapshots: versions.map((row) => ({
+							...row,
+							installedAt: row.installedAt.toISOString(),
+						})),
+						job: job
+							? {
+									id: job.id,
+									status: job.status,
+									error: job.error?.startsWith(
+										"Tag dictionary refresh failed: ",
+									)
+										? job.error
+										: null,
+									updatedAt: job.finishedAtUtc ?? job.updatedAt.toISOString(),
+								}
+							: null,
+					});
+				},
+				{ isolationLevel: "repeatable read", accessMode: "read only" },
+			),
+
+		async queueRefresh(options) {
+			return db().transaction(async (tx) => {
+				await tx.execute(sql`select pg_advisory_xact_lock(621745)`);
+				if (options.trigger === "automatic") {
+					const last = await readDictionaryJob(tx);
+					if (
+						!last ||
+						last.status === "pending" ||
+						last.status === "in_progress"
+					)
+						return null;
+					const cutoff =
+						last.status === "completed"
+							? options.completedBefore
+							: options.retryBefore;
+					const finished = last.finishedAtUtc
+						? new Date(last.finishedAtUtc)
+						: last.updatedAt;
+					if (finished > cutoff) return null;
+					if (last.status === "cancelled") {
+						const [installed] = await tx
+							.select({ source: snapshots.source })
+							.from(snapshots)
+							.limit(1);
+						if (!installed) return null;
+					}
+				}
+				const [created] = await tx
+					.insert(jobs)
+					.values({
+						type: TAG_DICTIONARY_JOB,
+						payload: { trigger: options.trigger },
+					})
+					.onConflictDoNothing()
+					.returning();
+				return created?.id ?? null;
 			});
 		},
 
@@ -129,7 +179,7 @@ export function createTagDictionaryRepository(
 						when starts_with(${tags.name}, ${name}) then 1 else 2 end`,
 							]
 						: []),
-					desc(tags.postCount),
+					sql`${tags.postCount} desc nulls last`,
 					tags.name,
 				)
 				.limit(TAG_DICTIONARY_PAGE_SIZE + 1)

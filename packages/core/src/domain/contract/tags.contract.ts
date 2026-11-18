@@ -33,7 +33,7 @@ export const tagsContract = {
 
 	dictionaryRefresh: oc
 		.meta(openapi({ tags: ["Tags"], summary: "タグ辞書の更新を予約" }))
-		.output(tagDictionaryStatusSchema),
+		.output(z.object({ jobId: z.uuid().nullable() })),
 
 	dictionaryLegacy: oc
 		.meta(openapi({ tags: ["Tags"], summary: "タグ辞書への移行候補を取得" }))

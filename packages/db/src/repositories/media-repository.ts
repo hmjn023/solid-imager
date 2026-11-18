@@ -5,7 +5,8 @@ import {
 	readRelatedTagMatches,
 } from "./related-media";
 import { createAuthorRepository, mapAuthor } from "./author-repository";
-import { lockTagNames } from "./tag-migration";
+import { assertTagIdsExist, lockTagNames } from "./tag-migration";
+import { writePositiveMediaTags } from "./media-tag-edit";
 import {
 	ResourceConflictError,
 	ResourceNotFoundError,
@@ -321,7 +322,7 @@ function makeBuildRelationQuery(
 	return (
 		target: "tag" | "project" | "ip" | "character" | "author",
 		operator: SearchCriterion["operator"],
-		value: string | number | boolean,
+		value: CriterionValue,
 		negate: boolean,
 	): SQL | undefined => {
 		let subquery: SQL | undefined;
@@ -330,13 +331,19 @@ function makeBuildRelationQuery(
 			case "tag":
 				{
 					const match = buildValueCondition(tags.name, operator, value);
+					const redirectOperator = operator === "notIn" ? "in" : operator;
 					const oldNameMatch = [
 						"equals",
 						"contains",
 						"startsWith",
 						"endsWith",
-					].includes(operator)
-						? buildValueCondition(tagNameRedirects.name, operator, value)
+						"in",
+					].includes(redirectOperator)
+						? buildValueCondition(
+								tagNameRedirects.name,
+								redirectOperator,
+								value,
+							)
 						: undefined;
 					const renamed = oldNameMatch
 						? inArray(
@@ -352,7 +359,14 @@ function makeBuildRelationQuery(
 							.select({ id: mediaTags.mediaId })
 							.from(mediaTags)
 							.innerJoin(tags, eq(mediaTags.tagId, tags.id))
-							.where(and(eq(mediaTags.mediaId, medias.id), or(match, renamed))),
+							.where(
+								and(
+									eq(mediaTags.mediaId, medias.id),
+									operator === "notIn" && renamed
+										? and(match, not(renamed))
+										: or(match, renamed),
+								),
+							),
 					);
 				}
 				break;
@@ -485,7 +499,7 @@ function makeBuildCriterionQuery(
 			return buildRelationQuery(
 				target as "tag" | "project" | "ip" | "character" | "author",
 				node.operator,
-				node.value as string,
+				node.value,
 				node.negate ?? false,
 			);
 		}
@@ -1705,6 +1719,9 @@ export function createMediaRepository(
 			}
 		},
 
+		updatePositiveTags: (input) =>
+			getExecutor().transaction((tx) => writePositiveMediaTags(tx, input)),
+
 		async bulkAddTags(
 			mediaIds: string[],
 			tagIds: string[],
@@ -1712,27 +1729,32 @@ export function createMediaRepository(
 		): Promise<void> {
 			if (mediaIds.length === 0 || tagIds.length === 0) return;
 			try {
-				const client = getExecutor(tx);
-				const values = mediaIds.flatMap((mediaId) =>
-					tagIds.map((tagId) => ({
-						mediaId,
-						tagId,
-						tagType: "positive" as const,
-						confidence: 1.0,
-					})),
-				);
+				const execute = async (client: DrizzleExecutor) => {
+					await assertTagIdsExist(client, tagIds);
+					const values = mediaIds.flatMap((mediaId) =>
+						tagIds.map((tagId) => ({
+							mediaId,
+							tagId,
+							tagType: "positive" as const,
+							confidence: 1.0,
+						})),
+					);
 
-				const CHUNK_SIZE = 500;
-				for (let i = 0; i < values.length; i += CHUNK_SIZE) {
-					const chunk = values.slice(i, i + CHUNK_SIZE);
-					await client
-						.insert(mediaTags)
-						.values(chunk)
-						.onConflictDoNothing({
-							target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
-						});
-				}
+					const CHUNK_SIZE = 500;
+					for (let i = 0; i < values.length; i += CHUNK_SIZE) {
+						const chunk = values.slice(i, i + CHUNK_SIZE);
+						await client
+							.insert(mediaTags)
+							.values(chunk)
+							.onConflictDoNothing({
+								target: [mediaTags.mediaId, mediaTags.tagId, mediaTags.tagType],
+							});
+					}
+				};
+				if (tx) await execute(getExecutor(tx));
+				else await getExecutor().transaction(execute);
 			} catch (error) {
+				if (error instanceof ResourceConflictError) throw error;
 				throw new UnexpectedError("Failed to bulk add tags to media", error);
 			}
 		},
@@ -1744,16 +1766,21 @@ export function createMediaRepository(
 		): Promise<void> {
 			if (mediaIds.length === 0 || tagIds.length === 0) return;
 			try {
-				const client = getExecutor(tx);
-				await client
-					.delete(mediaTags)
-					.where(
-						and(
-							inArray(mediaTags.mediaId, mediaIds),
-							inArray(mediaTags.tagId, tagIds),
-						),
-					);
+				const execute = async (client: DrizzleExecutor) => {
+					await assertTagIdsExist(client, tagIds);
+					await client
+						.delete(mediaTags)
+						.where(
+							and(
+								inArray(mediaTags.mediaId, mediaIds),
+								inArray(mediaTags.tagId, tagIds),
+							),
+						);
+				};
+				if (tx) await execute(getExecutor(tx));
+				else await getExecutor().transaction(execute);
 			} catch (error) {
+				if (error instanceof ResourceConflictError) throw error;
 				throw new UnexpectedError(
 					"Failed to bulk remove tags from media",
 					error,

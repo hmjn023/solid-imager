@@ -121,6 +121,11 @@ export type TagDictionaryImport =
 
 export type TagDictionaryRepository = {
 	status: () => Promise<TagDictionaryStatus>;
+	queueRefresh: (
+		options:
+			| { trigger: "manual" }
+			| { trigger: "automatic"; completedBefore: Date; retryBefore: Date },
+	) => Promise<string | null>;
 	search: (
 		input: z.output<typeof tagDictionarySearchSchema>,
 	) => Promise<TagDictionarySearchResult>;

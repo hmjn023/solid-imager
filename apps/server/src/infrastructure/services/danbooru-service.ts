@@ -93,6 +93,7 @@ export function createDanbooruService(
 		path: string,
 		params: URLSearchParams,
 		ttl = 30_000,
+		validate?: (value: unknown) => void,
 	): Promise<unknown> {
 		const url = new URL(path, "https://danbooru.donmai.us");
 		url.search = params.toString();
@@ -150,6 +151,7 @@ export function createDanbooruService(
 					"Danbooru の応答を読み取れませんでした。",
 				);
 			}
+			validate?.(value);
 			if (cache.size >= 128) {
 				const oldest = cache.keys().next().value;
 				if (oldest) cache.delete(oldest);
@@ -209,27 +211,25 @@ export function createDanbooruService(
 			return rows.find((row) => row.title === tag)?.other_names ?? [];
 		},
 		async wikiPage(tag: string) {
-			const rows = z
-				.array(
-					z.object({
-						title: z.string(),
-						body: z.string(),
-						other_names: z.array(z.string()),
-						updated_at: z.iso.datetime({ offset: true }),
-					}),
-				)
-				.parse(
-					await request(
-						"/wiki_pages.json",
-						new URLSearchParams({
-							"search[title]": tag,
-							"search[hide_deleted]": "true",
-							only: "title,body,other_names,updated_at",
-							limit: "1",
-						}),
-						3_600_000,
-					),
-				);
+			const schema = z.array(
+				z.object({
+					title: z.string(),
+					body: z.string(),
+					other_names: z.array(z.string()),
+					updated_at: z.iso.datetime({ offset: true }),
+				}),
+			);
+			const params = new URLSearchParams({
+				"search[title]": tag,
+				"search[hide_deleted]": "true",
+				only: "title,body,other_names,updated_at",
+				limit: "1",
+			});
+			const rows = schema.parse(
+				await request("/wiki_pages.json", params, 3_600_000, (value) => {
+					schema.parse(value);
+				}),
+			);
 			return rows.find((row) => row.title === tag) ?? null;
 		},
 		async suggestWikiTitles(query: string) {

@@ -1,9 +1,10 @@
-import { t } from "@solid-imager/i18n";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
-import type { MediaDetails } from "@solid-imager/core/media";
+import type {
+	MediaDetails,
+	UpdatePositiveMediaTags,
+} from "@solid-imager/core/media";
 import type { Project } from "@solid-imager/core/projects";
-import { canonicalTagName } from "@solid-imager/core/tags";
 import {
 	createQuery,
 	type QueryFunctionContext,
@@ -29,16 +30,7 @@ export type MediaSidebarContentProps = {
 	media: MediaDetails;
 	activityApi: MediaActivityApi;
 	tagDictionaryLookup?: TagDictionaryLookup;
-	tagApi: {
-		list: () => Promise<{ id: string; name: string }[]>;
-		create: (data: { name: string }) => Promise<{ id: string; name: string }>;
-		bulkTag: (data: {
-			mediaSourceId: string;
-			mediaIds: string[];
-			tagsToAdd: string[];
-			tagsToRemove: string[];
-		}) => Promise<unknown>;
-	};
+	updatePositiveTags: (data: UpdatePositiveMediaTags) => Promise<unknown>;
 	isUpdating?: Accessor<boolean>;
 	onUpdate?: () => void;
 	projectsForMediaQueryOptions: (
@@ -150,46 +142,11 @@ export function MediaSidebarContent(props: MediaSidebarContentProps) {
 				);
 				props.onUpdate?.();
 			}}
-			onPositiveTagsUpdate={async (names, dictionaryNames) => {
-				const existing = props.media.tags.filter(
-					(tag) => tag.type === "positive",
-				);
-				const removed = existing.filter((tag) => !names.includes(tag.name));
-				if (
-					removed.some((tag) =>
-						props.media.tags.some(
-							(other) => other.id === tag.id && other.type === "negative",
-						),
-					)
-				) {
-					throw new Error(
-						t("mediaSidebarContent.cannotRemoveATagThatIsAlsoAssignedAs"),
-					);
-				}
-				const available = await props.tagApi.list();
-				const added = new Set<string>();
-				for (const name of names.filter(
-					(name) => !existing.some((tag) => tag.name === name),
-				)) {
-					const exact = available.find((item) => item.name === name);
-					const equivalent =
-						!exact && dictionaryNames.has(name)
-							? available.filter((item) => canonicalTagName(item.name) === name)
-							: [];
-					const tag =
-						exact ??
-						(equivalent.length === 1
-							? equivalent[0]
-							: await props.tagApi.create({ name }));
-					added.add(tag.id);
-				}
-				await props.tagApi.bulkTag({
+			onPositiveTagsUpdate={async (tags) => {
+				await props.updatePositiveTags({
+					...tags,
 					mediaSourceId: props.media.mediaSourceId,
-					mediaIds: [props.media.id],
-					tagsToAdd: [...added],
-					tagsToRemove: removed
-						.filter((tag) => !added.has(tag.id))
-						.map((tag) => tag.id),
+					mediaId: props.media.id,
 				});
 			}}
 			onDescriptionUpdate={async (description) => {

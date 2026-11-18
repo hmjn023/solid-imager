@@ -36,11 +36,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 		<MediaSidebarContent
 			activityApi={orpc.media}
 			tagDictionaryLookup={orpc.tags}
-			tagApi={{
-				list: () => orpc.tags.list(),
-				create: (data) => orpc.tags.create(data),
-				bulkTag: (data) => orpc.media.bulkTag(data),
-			}}
+			updatePositiveTags={orpc.media.updatePositiveTags}
 			addCharacterToMedia={addCharacterToMedia}
 			addIpToMedia={addIpToMedia}
 			addProjectToMedia={addProjectToMedia}

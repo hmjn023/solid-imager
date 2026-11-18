@@ -43,6 +43,22 @@ it("serializes refresh jobs and preserves the searchable snapshot on failure or 
 		});
 		const payload = { trigger: "manual" };
 		const type = TAG_DICTIONARY_JOB;
+		const cancelledId = await tagDictionary.queueRefresh({ trigger: "manual" });
+		expect(cancelledId).not.toBeNull();
+		await db
+			.update(schema.jobs)
+			.set({
+				status: "cancelled",
+				finishedAt: new Date(0),
+				updatedAt: new Date(0),
+			})
+			.where(eq(schema.jobs.id, cancelledId ?? ""));
+		const automatic = {
+			trigger: "automatic" as const,
+			completedBefore: new Date(),
+			retryBefore: new Date(),
+		};
+		expect(await tagDictionary.queueRefresh(automatic)).toBeNull();
 		const queued = await job.createIfUnique({ type, payload });
 		expect(queued).not.toBeNull();
 		expect(await job.createIfUnique({ type, payload })).toBeNull();
@@ -307,19 +323,26 @@ it("automatically merges exact aliases and preserves old assignments and searche
 		);
 		expect(await library.findById(custom.id)).toBeNull();
 		expect(await library.findByName(old.name)).toBeNull();
-		for (const value of [old.name, custom.name, target.name]) {
-			const result = await media.search(source.id, {
-				condition: {
-					type: "group",
-					operator: "and",
-					children: [
-						{ type: "criterion", target: "tag", operator: "equals", value },
-					],
-				},
-				offset: 0,
-				order: "desc",
-			});
-			expect(result.media.map(({ id }) => id)).toEqual([image.id]);
+		for (const term of [old.name, custom.name, target.name]) {
+			for (const operator of ["equals", "in"] as const) {
+				const result = await media.search(source.id, {
+					condition: {
+						type: "group",
+						operator: "and",
+						children: [
+							{
+								type: "criterion",
+								target: "tag",
+								operator,
+								value: operator === "in" ? [term] : term,
+							},
+						],
+					},
+					offset: 0,
+					order: "desc",
+				});
+				expect(result.media.map(({ id }) => id)).toEqual([image.id]);
+			}
 		}
 		expect(
 			await db
@@ -327,6 +350,153 @@ it("automatically merges exact aliases and preserves old assignments and searche
 				.from(schema.relatedTagFrequencies)
 				.where(eq(schema.relatedTagFrequencies.tagId, target.id)),
 		).toEqual([{ tagId: target.id, imageCount: 1 }]);
+	} finally {
+		await client.close();
+	}
+});
+
+it("keeps positive tag edits atomic across migrations and preserves negative assignments", async () => {
+	const client = createPglite();
+	try {
+		const db = drizzle(client, { schema });
+		await migrate(db, { migrationsFolder: MIGRATIONS_DIR });
+		const {
+			tagDictionary,
+			tag: library,
+			media,
+		} = createRepositories(() => db, { info() {}, error() {} });
+		const [source] = await db
+			.insert(schema.mediaSources)
+			.values({
+				type: "local",
+				name: "Tag editing",
+				connectionInfo: { path: "/isolated" },
+			})
+			.returning();
+		const [image] = await db
+			.insert(schema.medias)
+			.values({
+				mediaSourceId: source.id,
+				fileName: "sample.png",
+				filePath: "sample.png",
+				mediaType: "image",
+				width: 10,
+				height: 10,
+			})
+			.returning();
+		await db.insert(schema.tagDictionaryTags).values([
+			{ ...tag, name: "blue_hair", aliases: [], searchText: "blue hair" },
+			{ ...tag, name: "cyan_hair", aliases: [], searchText: "cyan hair" },
+		]);
+		const old = await library.create({ name: "Blue Hair" });
+		const shared = await library.create({ name: "shared_tag" });
+		const expected = [
+			{ id: old.id, name: old.name },
+			{ id: shared.id, name: shared.name },
+		];
+		await library.addTagsToMedia(image.id, [
+			{ name: old.name, type: "positive" },
+			{ name: shared.name, type: "positive" },
+			{ name: shared.name, type: "negative" },
+		]);
+
+		const edit = {
+			mediaId: image.id,
+			mediaSourceId: source.id,
+			expected,
+			entries: [{ name: "blue_hair", fromDictionary: true }],
+		};
+		await expect(
+			media.updatePositiveTags({
+				...edit,
+				entries: [{ name: "unknown", fromDictionary: true }],
+			}),
+		).rejects.toThrow("dictionary changed");
+		expect(await library.findByMediaId(image.id)).toHaveLength(3);
+		await media.updatePositiveTags(edit);
+		expect(await library.findByMediaId(image.id)).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: old.id,
+					name: old.name,
+					type: "positive",
+				}),
+				expect.objectContaining({
+					id: shared.id,
+					name: shared.name,
+					type: "negative",
+				}),
+			]),
+		);
+		expect(await library.findByName("blue_hair")).toBeNull();
+		const beforeRename = [{ id: old.id, name: old.name }];
+		expect(
+			await tagDictionary.migrateLegacy({
+				tagId: old.id,
+				sourceName: old.name,
+				target: "cyan_hair",
+			}),
+		).toBe(true);
+		await expect(
+			media.updatePositiveTags({ ...edit, expected: beforeRename }),
+		).rejects.toThrow("changed since editing began");
+		expect(await library.findByMediaId(image.id)).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					id: old.id,
+					name: "cyan_hair",
+					type: "positive",
+				}),
+				expect.objectContaining({
+					id: shared.id,
+					name: shared.name,
+					type: "negative",
+				}),
+			]),
+		);
+
+		// The previous alias can be selected as an independent official name in a new snapshot.
+		const promoted = await library.create({ name: "promoted_alias" });
+		await library.addTagsToMedia(image.id, [
+			{ name: promoted.name, type: "positive" },
+		]);
+		expect(
+			await tagDictionary.migrateLegacy({
+				tagId: promoted.id,
+				sourceName: promoted.name,
+				target: "cyan_hair",
+			}),
+		).toBe(true);
+		await expect(
+			media.bulkRemoveTags([image.id], [promoted.id]),
+		).rejects.toThrow("tags changed");
+		await db.insert(schema.tagDictionaryTags).values({
+			...tag,
+			name: promoted.name,
+			aliases: [],
+			searchText: "promoted alias",
+		});
+		await media.updatePositiveTags({
+			...edit,
+			expected: [{ id: old.id, name: "cyan_hair" }],
+			entries: [{ name: promoted.name, fromDictionary: true }],
+		});
+		expect(await library.findByMediaId(image.id)).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ name: promoted.name, type: "positive" }),
+				expect.objectContaining({
+					id: shared.id,
+					name: shared.name,
+					type: "negative",
+				}),
+			]),
+		);
+		expect(
+			await db
+				.select()
+				.from(schema.tagNameRedirects)
+				.where(eq(schema.tagNameRedirects.name, promoted.name)),
+		).toEqual([{ name: promoted.name, tagId: old.id }]);
 	} finally {
 		await client.close();
 	}
@@ -373,7 +543,7 @@ it("reports real update-job outcomes and retries an overdue failure with the wor
 		await vi.waitFor(
 			async () => {
 				expect((await status()).job).toMatchObject({
-					id: first.job?.id,
+					id: first.jobId,
 					status: "completed",
 				});
 			},
@@ -394,7 +564,7 @@ it("reports real update-job outcomes and retries an overdue failure with the wor
 		await vi.waitFor(
 			async () => {
 				expect((await status()).job).toMatchObject({
-					id: latest.job?.id,
+					id: latest.jobId,
 					status: "completed",
 				});
 			},
@@ -416,7 +586,7 @@ it("reports real update-job outcomes and retries an overdue failure with the wor
 		await vi.waitFor(
 			async () => {
 				expect((await status()).job).toMatchObject({
-					id: failed.job?.id,
+					id: failed.jobId,
 					status: "failed",
 				});
 			},
@@ -433,16 +603,14 @@ it("reports real update-job outcomes and retries an overdue failure with the wor
 				finishedAt: sql`now() - interval '2 days'`,
 				updatedAt: sql`now() - interval '2 days'`,
 			})
-			.where(eq(schema.jobs.id, failed.job?.id ?? ""));
+			.where(eq(schema.jobs.id, failed.jobId ?? ""));
 		await workerDb
 			.update(schema.jobs)
 			.set({
 				finishedAt: sql`now() - interval '3 days'`,
 				updatedAt: sql`now() - interval '3 days'`,
 			})
-			.where(
-				inArray(schema.jobs.id, [first.job?.id ?? "", latest.job?.id ?? ""]),
-			);
+			.where(inArray(schema.jobs.id, [first.jobId ?? "", latest.jobId ?? ""]));
 		upstreamCount = 1;
 		stopSchedule = startTagDictionarySchedule();
 		await vi.waitFor(

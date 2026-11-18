@@ -73,16 +73,37 @@ export async function fetchDictionaryTags(expectedCount: number) {
 function* tagBatches(
 	tags: z.infer<typeof tagsSchema>,
 ): Generator<TagDictionaryTagRow[]> {
-	for (let i = 0; i < tags.length; i += BATCH_SIZE) {
-		yield tags.slice(i, i + BATCH_SIZE).map((tag) => ({
-			name: canonicalTagName(tag.t),
-			category: tag.c,
-			postCount: tag.cnt,
-			japanese: tag.ja?.trim() || null,
-			aliases: [...new Set(tag.a?.map(canonicalTagName).filter(Boolean))],
-			searchText: searchText([tag.t, ...(tag.a ?? [])]),
-		}));
+	type Row = Omit<TagDictionaryTagRow, "searchText">;
+	const unique = new Map<string, Row>();
+	for (const tag of tags) {
+		const name = canonicalTagName(tag.t);
+		const previous = unique.get(name);
+		const higherCount = !previous || tag.cnt > previous.postCount;
+		const japanese = tag.ja?.trim() || null;
+		unique.set(name, {
+			name,
+			category: higherCount ? tag.c : previous.category,
+			postCount: higherCount ? tag.cnt : previous.postCount,
+			japanese: higherCount
+				? (japanese ?? previous?.japanese ?? null)
+				: (previous.japanese ?? japanese),
+			aliases: [
+				...new Set([
+					...(previous?.aliases ?? []),
+					...(tag.a ?? []).map(canonicalTagName),
+				]),
+			].filter((alias) => alias && alias !== name),
+		});
 	}
+	let batch: TagDictionaryTagRow[] = [];
+	for (const row of unique.values()) {
+		batch.push({ ...row, searchText: searchText([row.name, ...row.aliases]) });
+		if (batch.length >= BATCH_SIZE) {
+			yield batch;
+			batch = [];
+		}
+	}
+	if (batch.length) yield batch;
 }
 
 export async function withWikiSnapshot<T>(
@@ -136,9 +157,16 @@ export async function* readDictionaryWiki(
 }
 
 function readAttributeColumns(line: string): string[] {
-	return [
-		...line.matchAll(/(?:^|,)(?:"((?:[^"]|"")*)"|([^",]*))(?=,|$)/gu),
-	].map(([, quoted, plain]) => quoted?.replaceAll('""', '"') ?? plain);
+	const columns: string[] = [];
+	let end = 0;
+	for (const match of line.matchAll(
+		/(?:^|,)(?:"((?:[^"]|"")*)"|([^",]*))(?=,|$)/guy,
+	)) {
+		end = match.index + match[0].length;
+		columns.push(match[1]?.replaceAll('""', '"') ?? match[2]);
+	}
+	if (end !== line.length) throw new Error("Invalid attribute snapshot row");
+	return columns;
 }
 
 export async function fetchDictionaryAttributes() {

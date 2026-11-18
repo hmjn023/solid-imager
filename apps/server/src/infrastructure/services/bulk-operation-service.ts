@@ -373,12 +373,11 @@ export const BulkOperationService = {
 			}
 		}
 
-		if (tagsToRemove.length > 0) {
-			await mediaRepo.bulkRemoveTags(mediaIds, tagsToRemove);
-		}
-		if (tagsToAdd.length > 0) {
-			await mediaRepo.bulkAddTags(mediaIds, tagsToAdd);
-		}
+		if (tagsToRemove.length === 0 && tagsToAdd.length === 0) return;
+		await db.transaction(async (tx) => {
+			await mediaRepo.bulkRemoveTags(mediaIds, tagsToRemove, tx);
+			await mediaRepo.bulkAddTags(mediaIds, tagsToAdd, tx);
+		});
 	},
 
 	/**

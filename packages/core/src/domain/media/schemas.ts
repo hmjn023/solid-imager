@@ -642,6 +642,18 @@ export const bulkTagMediaRequestSchema = z.object({
 });
 export type BulkTagMediaRequest = z.infer<typeof bulkTagMediaRequestSchema>;
 
+export const updatePositiveMediaTagsSchema = z.object({
+	mediaSourceId: z.uuid(),
+	mediaId: z.uuid(),
+	expected: z.array(z.object({ id: z.uuid(), name: z.string() })),
+	entries: z.array(
+		z.object({ name: z.string().trim().min(1), fromDictionary: z.boolean() }),
+	),
+});
+export type UpdatePositiveMediaTags = z.infer<
+	typeof updatePositiveMediaTagsSchema
+>;
+
 /** Outcome of one item; messages are safe public text, never storage paths or exception details. */
 export const bulkMediaItemResultSchema = z.discriminatedUnion("status", [
 	z.object({ mediaId: z.uuid(), status: z.literal("succeeded") }),

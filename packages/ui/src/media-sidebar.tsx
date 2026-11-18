@@ -5,10 +5,12 @@ import {
 	MediaTagBadge,
 } from "./media-detail-metadata";
 import { t } from "@solid-imager/i18n";
-import { canonicalTagName } from "@solid-imager/core/tags";
 import type { Character } from "@solid-imager/core/characters";
 import type { Ip } from "@solid-imager/core/ips";
-import type { MediaDetails } from "@solid-imager/core/media";
+import type {
+	MediaDetails,
+	UpdatePositiveMediaTags,
+} from "@solid-imager/core/media";
 import type { Project } from "@solid-imager/core/projects";
 import { getErrorMessage } from "@solid-imager/core/utils";
 // oxlint-disable-next-line typescript/no-deprecated -- TanStack Router's current Solid custom navigation-blocking API is exported under this deprecated annotation.
@@ -74,8 +76,7 @@ export type MediaSidebarProps = {
 	isAllCharactersLoading?: boolean;
 	onUpdate?: () => void;
 	onPositiveTagsUpdate: (
-		names: string[],
-		dictionaryNames: ReadonlySet<string>,
+		tags: Pick<UpdatePositiveMediaTags, "entries" | "expected">,
 	) => Promise<void>;
 	onDescriptionUpdate: (description: string) => void | Promise<void>;
 	onProjectAdd: (projectId: string) => void | Promise<void>;
@@ -93,6 +94,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [editingTags, setEditingTags] = createSignal(false);
 	const [tagText, setTagText] = createSignal("");
+	const [expectedTags, setExpectedTags] = createSignal<
+		UpdatePositiveMediaTags["expected"]
+	>([]);
 	const [dictionaryNames, setDictionaryNames] = createSignal<
 		ReadonlySet<string>
 	>(new Set());
@@ -357,11 +361,12 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							size="sm"
 							variant="outline"
 							onClick={() => {
-								setTagText(
-									positiveTags()
-										.map((tag) => tag.name)
-										.join("\n"),
-								);
+								const expected = positiveTags().map(({ id, name }) => ({
+									id,
+									name,
+								}));
+								setExpectedTags(expected);
+								setTagText(expected.map(({ name }) => name).join("\n"));
 								setEditingTags(true);
 								setDictionaryNames(new Set<string>());
 							}}
@@ -384,13 +389,28 @@ export function MediaSidebar(props: MediaSidebarProps) {
 					<TextField
 						class="space-y-2"
 						disabled={savingTags()}
-						onChange={setTagText}
+						onChange={(text) => {
+							setTagText(text);
+							const present = new Set(
+								text.split("\n").map((name) => name.trim()),
+							);
+							setDictionaryNames(
+								(names) =>
+									new Set([...names].filter((name) => present.has(name))),
+							);
+						}}
 						value={tagText()}
 					>
 						<TextFieldLabel class="text-muted-foreground text-sm">
 							{t("mediaSidebar.oneTagPerLine")}
 						</TextFieldLabel>
-						<TextFieldTextArea id="positive-tags" rows={8} />
+						<TextFieldTextArea
+							id="positive-tags"
+							rows={8}
+							spellcheck={false}
+							autocapitalize="none"
+							autocorrect="off"
+						/>
 					</TextField>
 					<div class="flex gap-2">
 						<Show when={props.tagDictionaryLookup}>
@@ -417,19 +437,17 @@ export function MediaSidebar(props: MediaSidebarProps) {
 												if (
 													!tagText()
 														.split("\n")
-														.some(
-															(name) => canonicalTagName(name) === entry.name,
-														)
+														.some((name) => name.trim() === entry.name)
 												) {
 													setTagText((text) =>
 														[text.trimEnd(), entry.name]
 															.filter(Boolean)
 															.join("\n"),
 													);
-													setDictionaryNames(
-														(names) => new Set([...names, entry.name]),
-													);
 												}
+												setDictionaryNames(
+													(names) => new Set([...names, entry.name]),
+												);
 												setDictionaryOpen(false);
 											}}
 										/>
@@ -444,17 +462,20 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								void (async () => {
 									setSavingTags(true);
 									try {
-										await props.onPositiveTagsUpdate(
-											[
+										await props.onPositiveTagsUpdate({
+											expected: expectedTags(),
+											entries: [
 												...new Set(
 													tagText()
 														.split("\n")
 														.map((name) => name.trim())
 														.filter(Boolean),
 												),
-											],
-											dictionaryNames(),
-										);
+											].map((name) => ({
+												name,
+												fromDictionary: dictionaryNames().has(name),
+											})),
+										});
 										setEditingTags(false);
 										props.onUpdate?.();
 									} catch (error) {
