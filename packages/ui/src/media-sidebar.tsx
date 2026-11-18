@@ -554,7 +554,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				when={
 					genInfo()?.prompt ||
 					genInfo()?.negativePrompt ||
-					(genInfo()?.workflow && JSON.stringify(genInfo()?.workflow) !== "{}")
+					(Boolean(genInfo()?.workflow) &&
+						JSON.stringify(genInfo()?.workflow) !== "{}")
 				}
 			>
 				<div class="space-y-2">
@@ -593,7 +594,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									</p>
 								</div>
 							</Show>
-							<Show when={genInfo()?.workflow}>
+							<Show when={Boolean(genInfo()?.workflow)}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-muted-foreground">

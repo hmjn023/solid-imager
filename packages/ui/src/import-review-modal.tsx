@@ -396,7 +396,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 									</For>
 								</div>
 							</Show>
-							<Show when={!pendingJobs.loading && pendingJobs.error}>
+							<Show when={!pendingJobs.loading && Boolean(pendingJobs.error)}>
 								<div class="flex min-h-48 flex-col items-center justify-center gap-3 text-center">
 									<p class="text-destructive text-sm">
 										{t("importReviewModal.failedToLoadImportInbox")}
