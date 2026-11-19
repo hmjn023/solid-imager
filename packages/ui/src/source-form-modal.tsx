@@ -252,6 +252,9 @@ export function SourceFormModal(props: SourceFormModalProps) {
 	};
 	const form = createForm(() => ({
 		defaultValues: defaultValues(),
+		listeners: {
+			onChange: () => setSubmitError(undefined),
+		},
 		validators: {
 			onSubmit: createSourceFormSchema(props.editingSource?.type !== "s3"),
 		},

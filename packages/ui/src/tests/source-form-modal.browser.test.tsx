@@ -10,59 +10,79 @@ import {
 } from "../source-form-modal";
 import { renderComponent } from "./render-component";
 
-test("keeps source fields after a failed save and resubmits them on retry", async ({
-	onTestFinished,
-}) => {
-	const firstSave = Promise.withResolvers<void>();
-	const [open, setOpen] = createSignal(true);
-	const onSubmit = vi.fn<(source: SourceFormSubmitData) => Promise<void>>(
-		async () => {
-			setOpen(false);
-		},
-	);
-	onSubmit.mockReturnValueOnce(firstSave.promise);
-	onTestFinished(
-		renderComponent(() => (
-			<SourceFormModal
-				isOpen={open()}
-				onClose={() => setOpen(false)}
-				onSubmit={onSubmit}
-			/>
-		)),
-	);
+test.for([
+	{ action: "retrying", correctedPath: undefined },
+	{
+		action: "correcting the path and retrying",
+		correctedPath: "/library/corrected",
+	},
+])(
+	"recovers from a failed source save by $action",
+	async ({ correctedPath }, { onTestFinished }) => {
+		const firstSave = Promise.withResolvers<void>();
+		const [open, setOpen] = createSignal(true);
+		const onSubmit = vi.fn<(source: SourceFormSubmitData) => Promise<void>>(
+			async () => {
+				setOpen(false);
+			},
+		);
+		onSubmit.mockReturnValueOnce(firstSave.promise);
+		onTestFinished(
+			renderComponent(() => (
+				<SourceFormModal
+					isOpen={open()}
+					onClose={() => setOpen(false)}
+					onSubmit={onSubmit}
+				/>
+			)),
+		);
 
-	const dialog = page.getByRole("dialog", {
-		name: t("sourceFormModal.addNewSource"),
-	});
-	const name = dialog.getByRole("textbox", { name: t("labels.name") });
-	const path = dialog.getByRole("textbox", {
-		name: t("sourceFormModal.directoryPath"),
-	});
-	const add = dialog.getByRole("button", { name: t("actions.addSource") });
-	const source = {
-		name: "Illustration library",
-		description: null,
-		type: "local",
-		connectionInfo: { path: "/library/illustrations" },
-	};
-	await name.fill(source.name);
-	await path.fill(source.connectionInfo.path);
-	await userEvent.keyboard("{Enter}");
-	const saving = dialog.getByRole("button", { name: t("status.saving") });
-	await expect.element(saving).toBeDisabled();
-	expect(onSubmit).toHaveBeenCalledExactlyOnceWith(source);
+		const dialog = page.getByRole("dialog", {
+			name: t("sourceFormModal.addNewSource"),
+		});
+		const name = dialog.getByRole("textbox", { name: t("labels.name") });
+		const path = dialog.getByRole("textbox", {
+			name: t("sourceFormModal.directoryPath"),
+		});
+		const add = dialog.getByRole("button", { name: t("actions.addSource") });
+		const source = {
+			name: "Illustration library",
+			description: null,
+			type: "local",
+			connectionInfo: { path: "/library/illustrations" },
+		};
+		await name.fill(source.name);
+		await path.fill(source.connectionInfo.path);
+		await userEvent.keyboard("{Enter}");
+		const saving = dialog.getByRole("button", { name: t("status.saving") });
+		await expect.element(saving).toBeDisabled();
+		expect(onSubmit).toHaveBeenCalledExactlyOnceWith(source);
 
-	firstSave.reject(new Error("The source is temporarily unavailable."));
-	await expect
-		.element(dialog.getByRole("alert"))
-		.toHaveTextContent("The source is temporarily unavailable.");
-	await expect.element(name).toHaveValue(source.name);
-	await expect.element(path).toHaveValue(source.connectionInfo.path);
-	await expect.element(add).toBeEnabled();
-	await add.click();
-	await expect.element(dialog).not.toBeInTheDocument();
-	expect(onSubmit.mock.calls).toEqual([[source], [source]]);
-});
+		firstSave.reject(new Error("The source is temporarily unavailable."));
+		await expect
+			.element(dialog.getByRole("alert"))
+			.toHaveTextContent("The source is temporarily unavailable.");
+		await expect.element(name).toHaveValue(source.name);
+		await expect.element(path).toHaveValue(source.connectionInfo.path);
+		await expect.element(add).toBeEnabled();
+		if (correctedPath) {
+			await path.fill(correctedPath);
+			await expect.element(dialog.getByRole("alert")).not.toBeInTheDocument();
+			expect(onSubmit).toHaveBeenCalledTimes(1);
+		}
+		await add.click();
+		await expect.element(dialog).not.toBeInTheDocument();
+		expect(onSubmit.mock.calls).toEqual([
+			[source],
+			[
+				{
+					...source,
+					connectionInfo: { path: correctedPath ?? source.connectionInfo.path },
+				},
+			],
+		]);
+	},
+);
 
 test("dismisses source discard confirmation independently and resets the draft after discard", async ({
 	onTestFinished,
