@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { JSX } from "solid-js";
-import { Show } from "solid-js";
+import { Show, splitProps } from "solid-js";
 import {
 	Select,
 	SelectContent,
@@ -9,6 +9,51 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../select";
+
+import { cn } from "../utils/cn";
+
+export const MANAGEMENT_CONTENT_PADDING =
+	"px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8";
+export const MANAGEMENT_CATEGORY_GRID =
+	"grid w-full min-w-0 gap-6 lg:grid-cols-settings-sidebar xl:gap-8";
+export const MANAGEMENT_CATEGORY_LIST =
+	"hidden lg:sticky lg:top-5 lg:self-start";
+
+export function ManagementScreen(props: {
+	header: JSX.Element;
+	children: JSX.Element;
+}) {
+	return (
+		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
+			{props.header}
+			{props.children}
+		</section>
+	);
+}
+
+export function ManagementScrollArea(
+	props: JSX.HTMLAttributes<HTMLDivElement>,
+) {
+	const [local, rest] = splitProps(props, ["class"]);
+	return (
+		<div
+			{...rest}
+			data-management-scroll
+			class={cn(
+				"min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain scrollbar-stable",
+				local.class,
+			)}
+		/>
+	);
+}
+
+export function ManagementMobileCategory(props: { children: JSX.Element }) {
+	return (
+		<div class="sticky top-0 z-10 min-w-0 self-start border-border border-b bg-background px-3 py-2 lg:hidden">
+			{props.children}
+		</div>
+	);
+}
 
 type ManagementHeaderProps = {
 	actions?: JSX.Element;
