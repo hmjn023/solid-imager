@@ -118,6 +118,7 @@ Bun 1.4.4 / sharp 0.35.5 / Linux x64で、同じ新規production buildを先読�
 ```bash
 bun run test                                         # 全workspaceの通常テスト
 bun run test --project server-unit e2e-arguments     # Vitestの対象を絞る
+bun run test:browser                                 # Vitest Browser Modeで共有UIの操作を検証
 bun run test:e2e                                     # dev代表ケース → fresh production全件
 bun run test:e2e --mode=smoke                        # devの代表ケースだけを確認
 bun run test:e2e --mode=dev route-reload.spec.ts     # 編集中のspecのみ
@@ -126,6 +127,8 @@ bun run test:e2e --mode=components                   # DB不要のブラウザ�
 bun run test:e2e --mode=full                         # dev・fresh productionとも全件
 bun run test:e2e --list                              # 通常の実行対象を起動前に確認
 ```
+
+`bun run test:browser` は Chromium で `packages/ui/src` の `*.browser.test.tsx` を実行する。初回は `bun run --cwd packages/ui playwright install chromium` でブラウザーを用意する。
 
 dev の代表ケースは `@dev-smoke` で指定し、検索・詳細の直接URLとF5、SPA内の遷移、Tauriの起動と再接続設定の永続化、実CCIP推論、SSE再接続を検証する。対象ファイルに別のケースを追加すると、production全件と `--mode=dev` の全件実行で検証できる。
 
