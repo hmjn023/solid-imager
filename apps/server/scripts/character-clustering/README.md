@@ -116,7 +116,7 @@ bun run test:unit -- src/tests/unit/application/services/sparse-hdbscan.test.ts 
   src/tests/unit/infrastructure/character-clustering-review.test.ts
 
 bun run test:e2e -- character-clustering.responsive.spec.ts \
-  --project=responsive-desktop --project=responsive-320 --project=responsive-375
+  --project=responsive-desktop --project=responsive-320 --project=responsive-390
 ```
 
 既知のクラスタ・noise、EOMとleaf、core distanceの影響、非連結成分、近傍不足、ゼロ距離、深い階層、数値ファイルの相互運用、ARI、HNSWクエリ条件を確認する。実DB全体の68,674枚で保存済みPython結果と比較し、別の使い捨てPostgreSQLでTSだけの抽出も確認する。

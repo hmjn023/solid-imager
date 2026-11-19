@@ -18,6 +18,7 @@
     "design:lint": "designmd lint DESIGN.md",
     "format": "oxfmt --write apps/*/src packages/*/src",
     "test": "node tools/ui-text.test.mjs && bun run --cwd packages/i18n test && node tools/workspace-imports.test.mjs && bun run --cwd apps/server test:x-activity && vitest run",
+    "test:browser": "bun run --cwd packages/ui test:browser",
     "test:e2e": "bun run --cwd apps/server test:e2e",
     "typecheck": "bun --filter '*' typecheck && tsc -p tools/tsconfig.json",
     "prepare": "husky",
@@ -32,8 +33,8 @@
     "lint-staged": "^17.6.0",
     "nitro": "npm:nitro-nightly@3.0.1-20261024-005652-6bccaad1",
     "oxfmt": "0.74.0",
-    "oxlint": "^1.90.0",
-    "oxlint-tsgolint": "^7.0.2005",
+    "oxlint": "^1.94.0",
+    "tsrs": "0.25.0-ts7.1.0-beta",
     "typescript": "^7.0.2",
     "vitest": "^5.0.5"
   },

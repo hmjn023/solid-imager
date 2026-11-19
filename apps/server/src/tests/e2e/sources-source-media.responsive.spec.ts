@@ -14,7 +14,7 @@ import {
 } from "./support/test";
 
 function usesMobileControls(projectName: string): boolean {
-	return ["responsive-320", "responsive-375"].includes(projectName);
+	return ["responsive-320", "responsive-390"].includes(projectName);
 }
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {

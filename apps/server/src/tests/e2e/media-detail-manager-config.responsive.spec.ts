@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { z } from "zod";
 import {
 	E2E_PRIMARY_FILE_NAME,
 	E2E_PRIMARY_MEDIA_ID,
@@ -8,8 +9,159 @@ import {
 	sourcePath,
 } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
+import { selectManagerCategory } from "./support/manager-navigation";
+import {
+	selectSettingsCategory,
+	settingsCategorySelect,
+} from "./support/settings-navigation";
 
-const mobileProjects = ["responsive-320", "responsive-375"];
+const mobileProjects = ["responsive-320", "responsive-390"];
+const entityResponse = z.object({ json: z.object({ id: z.uuid() }) });
+
+test("edits linked IPs and characters without losing the selection across tabs", async ({
+	browserHealth,
+	page,
+	request,
+}, testInfo) => {
+	// The RPC client may cancel the empty response body after reading the 200.
+	browserHealth.allowRequestFailure(
+		"/api/rpc/ips/addToMedia",
+		"net::ERR_ABORTED",
+	);
+	const ipName = `Relation fixture IP ${testInfo.project.name}`;
+	const characterName = `Relation fixture character ${testInfo.project.name}`;
+	const ipResponse = await request.post("/api/rpc/ips/create", {
+		data: { json: { name: ipName } },
+	});
+	expect(ipResponse.ok()).toBe(true);
+	const ipId = entityResponse.parse(await ipResponse.json()).json.id;
+	let characterId: string | undefined;
+	try {
+		const characterResponse = await request.post("/api/rpc/characters/create", {
+			data: { json: { name: characterName, ipIds: [ipId] } },
+		});
+		expect(characterResponse.ok()).toBe(true);
+		characterId = entityResponse.parse(await characterResponse.json()).json.id;
+
+		await page.goto(mediaPath());
+		await waitForAppHydration(page);
+		const relationHeader = page
+			.getByRole("heading", { name: "関連付け", exact: true })
+			.locator("..");
+		const edit = relationHeader.getByRole("button", {
+			name: "編集",
+			exact: true,
+		});
+		await edit.click();
+		const dialog = page.getByRole("dialog", { name: "関連付けを編集" });
+		await dialog.getByRole("button", { name: "閉じる", exact: true }).click();
+		await expect(edit).toBeFocused();
+		await edit.click();
+		const ipTab = dialog.getByRole("tab", { name: /^IP/ });
+		const characterTab = dialog.getByRole("tab", { name: /^キャラクター/ });
+		await expect(ipTab).toHaveAttribute("aria-selected", "true");
+		const ipSearch = dialog.getByRole("searchbox", { name: "IPを検索" });
+		if (await page.evaluate(() => matchMedia("(pointer: coarse)").matches)) {
+			await expect(ipSearch).not.toBeFocused();
+		} else {
+			await expect(ipSearch).toBeFocused();
+		}
+		const draftName = "New relation draft";
+		await ipSearch.fill(draftName);
+		await dialog
+			.getByRole("button", { name: `「${draftName}」を新規項目として選択` })
+			.click();
+		await expect(
+			dialog.getByText(`${draftName}（新規）`, { exact: true }),
+		).toBeVisible();
+		await dialog
+			.getByRole("button", { name: `「${draftName}」を選択から外す` })
+			.click();
+		await characterTab.click();
+		const search = dialog.getByRole("searchbox", {
+			name: "キャラクターを検索",
+		});
+		await search.fill(ipName);
+		const character = dialog.getByRole("checkbox", {
+			name: new RegExp(characterName),
+		});
+		await expect(character).toBeVisible();
+		await dialog.getByText(characterName, { exact: true }).click();
+		await expect(character).toBeChecked();
+		await search.fill("no matching relation");
+		await expect(
+			dialog.getByRole("button", {
+				name: `「${characterName}」を選択から外す`,
+			}),
+		).toBeVisible();
+		await ipTab.click();
+		await expect(
+			dialog.getByRole("checkbox", { name: ipName, exact: true }),
+		).toBeChecked();
+		await characterTab.click();
+		await expect(search).toHaveValue("no matching relation");
+
+		await page.keyboard.press("Escape");
+		const discard = page.getByRole("alertdialog", {
+			name: "変更を破棄しますか？",
+		});
+		await expect(discard).toBeVisible();
+		await discard.getByRole("button", { name: "編集を続ける" }).click();
+		await expect(discard).toBeHidden();
+		await expect(search).toHaveValue("no matching relation");
+		const save = dialog.getByRole("button", { name: "変更を保存" });
+		const saveButton = await save.boundingBox();
+		expect(saveButton?.y).toBeGreaterThanOrEqual(0);
+		expect(
+			(saveButton?.y ?? 0) + (saveButton?.height ?? 0),
+		).toBeLessThanOrEqual(page.viewportSize()?.height ?? 0);
+		await expectNoHorizontalOverflow(page);
+		const saved = Promise.all(
+			["ips", "characters"].map((group) =>
+				page.waitForResponse(
+					(response) =>
+						new URL(response.url()).pathname ===
+							`/api/rpc/${group}/addToMedia` && response.ok(),
+				),
+			),
+		);
+		await save.click();
+		await saved;
+		await expect(dialog).toBeHidden();
+
+		const relations = relationHeader.locator("..");
+		await expect(
+			relations.getByText(characterName, { exact: true }),
+		).toBeVisible();
+		await expect(relations.getByText(ipName, { exact: true })).toBeVisible();
+		await page.reload();
+		await waitForAppHydration(page);
+		await edit.click();
+		await expect(
+			dialog.getByRole("button", { name: `「${ipName}」を選択から外す` }),
+		).toBeVisible();
+		await dialog
+			.getByRole("button", { name: `「${ipName}」を選択から外す` })
+			.click();
+		await expect(dialog.getByRole("heading", { name: "選択中" })).toBeFocused();
+		await page.keyboard.press("Escape");
+		await discard.getByRole("button", { name: "破棄", exact: true }).click();
+		await expect(dialog).toBeHidden();
+		await expect(edit).toBeFocused();
+		await expect(relations.getByText(ipName, { exact: true })).toBeVisible();
+	} finally {
+		if (characterId) {
+			const response = await request.post("/api/rpc/characters/delete", {
+				data: { json: { id: characterId } },
+			});
+			expect(response.ok()).toBe(true);
+		}
+		const response = await request.post("/api/rpc/ips/delete", {
+			data: { json: { id: ipId } },
+		});
+		expect(response.ok()).toBe(true);
+	}
+});
 
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	const overflow = await page.evaluate(
@@ -260,9 +412,14 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 	await page.keyboard.press("Escape");
 	await expect(projectDialog).toBeHidden();
 
-	await page
-		.getByRole("button", { name: /^一括タグ付け(?: AIタグ付けジョブを登録)?$/ })
-		.click();
+	await selectManagerCategory(page, "一括タグ付け");
+	if (testInfo.project.name !== "responsive-desktop") {
+		const currentCategory = page.getByRole("button", {
+			name: /^管理カテゴリ/,
+		});
+		await expect(currentCategory).toHaveText("一括タグ付け");
+		await expect(currentCategory).toBeInViewport();
+	}
 	await expect(
 		page.getByRole("heading", { name: "一括タグ付け", exact: true }),
 	).toBeVisible();
@@ -291,6 +448,22 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 	await expect(concurrencyInput).toHaveAttribute("aria-invalid", "false");
 	await expect(saveButton).toBeEnabled();
 
+	const compactCategory = settingsCategorySelect(page);
+	if (await compactCategory.isVisible()) {
+		await expect(compactCategory).toHaveText("ジョブ");
+		await compactCategory.press("ArrowDown");
+		await expect(
+			page.getByRole("option", { name: "ログ", exact: true }),
+		).toBeVisible();
+		await page.keyboard.press("End");
+		await page.keyboard.press("Enter");
+		await expect(compactCategory).toHaveText("ログ");
+		await expect(compactCategory).toBeFocused();
+		await expect(
+			page.getByRole("group", { name: "ログ", exact: true }),
+		).toBeVisible();
+	}
+
 	for (const category of [
 		{ tab: "ジョブ", heading: "ジョブ処理" },
 		{ tab: "AI", heading: "AIサービス" },
@@ -299,15 +472,27 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		{ tab: "メディア", heading: "メディアの拡張子" },
 		{ tab: "ログ", heading: "ログ" },
 	]) {
-		await page
-			.getByRole("tab", { name: new RegExp(`^${category.tab}(?: |$)`) })
-			.click();
+		await selectSettingsCategory(page, category.tab);
 		await expect(
 			page.getByRole("group", { name: category.heading, exact: true }),
 		).toBeVisible();
 	}
 
-	await page.getByRole("tab", { name: /^ストレージ(?: |$)/ }).click();
+	await selectSettingsCategory(page, "ジョブ");
+	await expect(concurrencyInput).toHaveValue("3");
+	await expect(saveButton).toBeEnabled();
+
+	await selectSettingsCategory(page, "AI");
+	const aiUrl = page.getByLabel("リモートAIサーバーURL（oRPC）", {
+		exact: true,
+	});
+	await expect(aiUrl).toHaveValue("");
+	await expect(aiUrl).toHaveAccessibleDescription(/空欄の場合はローカルで処理/);
+	await expect(
+		page.getByText("入力例：http://power-machine:3000"),
+	).toBeVisible();
+
+	await selectSettingsCategory(page, "ストレージ");
 	const thumbnailDirectory = page.getByLabel("サムネイル保存先", {
 		exact: true,
 	});
@@ -320,7 +505,7 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		);
 		expect(fontSize).toBeGreaterThanOrEqual(16);
 
-		await page.getByRole("tab", { name: /^メディア(?: |$)/ }).click();
+		await selectSettingsCategory(page, "メディア");
 		await page.getByLabel("除外タグ", { exact: true }).scrollIntoViewIfNeeded();
 		await expect(
 			page.getByRole("button", { name: "変更を保存", exact: true }),

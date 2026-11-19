@@ -6,6 +6,7 @@ import {
 	E2E_SIMILAR_MEDIA_ID,
 	E2E_SOURCE_ID,
 } from "./support/fixture";
+import { selectSettingsCategory } from "./support/settings-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 const searchPath = "/search";
@@ -132,6 +133,67 @@ test(
 		await expect(bulkActions).toContainText("3件選択中");
 	},
 );
+
+for (const collection of [
+	{ name: "Library", path: searchPath, bulkBar: "search-bulk-actions-bar" },
+	{ name: "Source", path: sourcePath, bulkBar: "bulk-actions-bar" },
+]) {
+	test(`${collection.name} opens media and selects it the same way in grid and list`, async ({
+		browserHealth,
+		page,
+	}) => {
+		// Back immediately after opening detail can cancel its initial requests.
+		browserHealth.allowRequestFailure(
+			"/api/rpc/media/getDetails",
+			"net::ERR_ABORTED",
+		);
+		browserHealth.allowRequestFailure(
+			"/api/rpc/media/getRelated",
+			"net::ERR_ABORTED",
+		);
+		browserHealth.allowRequestFailure(
+			"/api/rpc/jobs/events",
+			"net::ERR_ABORTED",
+		);
+		const item = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
+		const currentFile = item
+			.getByText(E2E_PRIMARY_FILE_NAME, { exact: true })
+			.first();
+		const grid = page.getByRole("button", {
+			name: "グリッド表示",
+			exact: true,
+		});
+		const list = page.getByRole("button", { name: "リスト表示", exact: true });
+		const bulkBar = page.getByTestId(collection.bulkBar);
+
+		await page.goto(collection.path);
+		await waitForAppHydration(page);
+		await expect(item).toBeVisible();
+		await item.click();
+		await expect(page).toHaveURL(mediaPath(E2E_PRIMARY_MEDIA_ID));
+		await expect(
+			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+		).toBeVisible();
+
+		await page.goBack();
+		await list.click();
+		await currentFile.click();
+		await expect(page).toHaveURL(mediaPath(E2E_PRIMARY_MEDIA_ID));
+		await expect(
+			page.getByRole("heading", { name: E2E_PRIMARY_FILE_NAME, exact: true }),
+		).toBeVisible();
+
+		await page.goBack();
+		await page.getByRole("button", { name: "複数選択", exact: true }).click();
+		await currentFile.click();
+		await expect(item).toHaveAttribute("aria-selected", "true");
+		await expect(bulkBar).toContainText("1件選択中");
+		await grid.click();
+		await expect(item).toHaveAttribute("aria-pressed", "true");
+		await item.click();
+		await expect(bulkBar).toContainText("0件選択中");
+	});
+}
 
 test(
 	"Workspace global search keeps collection selection independent from preview",
@@ -332,7 +394,7 @@ test("Workspace settings exposes device-local shortcut configuration", async ({
 		page.getByRole("group", { name: "ジョブ処理", exact: true }),
 	).toBeVisible();
 
-	await page.getByRole("tab", { name: /^ショートカット/ }).click();
+	await selectSettingsCategory(page, "ショートカット");
 	await expect(
 		page.getByRole("heading", {
 			name: "キーボードショートカット",

@@ -9,8 +9,21 @@ import type {
 	PixivSearchResult,
 } from "@solid-imager/core/external-viewer";
 import { createQuery } from "@tanstack/solid-query";
+import Clock3 from "lucide-solid/icons/clock-3";
+import Search from "lucide-solid/icons/search";
+import UserRound from "lucide-solid/icons/user-round";
 import { Button } from "../button";
-import { createEffect, For, on, Show } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	For,
+	on,
+	Show,
+} from "solid-js";
+import { Dialog } from "../dialog";
+import { DropdownMenuItem, DropdownMenuSeparator } from "../dropdown-menu";
+import { ViewerActionsMenu } from "../external-viewer/actions-menu";
 import { createViewerImports } from "../external-viewer/viewer-imports";
 import {
 	createPixivAccount,
@@ -21,14 +34,14 @@ import {
 import { PixivRelatedWorks } from "../external-viewer/pixiv-related-works";
 import { PixivArtworkDetail } from "../external-viewer/pixiv-artwork-detail";
 import { createPixivViewingHistory } from "../external-viewer/pixiv-viewing-history";
-import { PixivViewingHistoryDialog } from "../external-viewer/pixiv-viewing-history-dialog";
-import { createPixivSearchHistory } from "../external-viewer/viewer-search-history";
-import { ViewerSearchHistoryDialog } from "../external-viewer/viewer-search-history-dialog";
-import { pixivImageHref } from "../external-viewer/post-media";
 import {
-	createViewerSearch,
-	type PixivCollection,
-} from "../external-viewer/use-viewer-search";
+	PixivViewingHistoryContent,
+	PixivViewingHistoryDialog,
+} from "../external-viewer/pixiv-viewing-history-dialog";
+import { createPixivSearchHistory } from "../external-viewer/viewer-search-history";
+import { ViewerSearchHistoryContent } from "../external-viewer/viewer-search-history-dialog";
+import { pixivImageHref } from "../external-viewer/post-media";
+import { createViewerSearch } from "../external-viewer/use-viewer-search";
 import { PixivBookmarkFilters } from "../external-viewer/pixiv-bookmark-filters";
 import { PixivBookmarkAction } from "../external-viewer/pixiv-bookmark-action";
 import {
@@ -42,6 +55,8 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "../select";
+
+type PixivToolbarDialog = "viewingHistory" | "searchHistory" | "account";
 
 type PixivProps = ViewerNavigation & {
 	client: Pick<AppContractClient, "viewer" | "imports">;
@@ -62,42 +77,53 @@ function feedOptions() {
 	];
 }
 function PixivSearchInfo(props: {
-	feed: PixivCollection;
 	data: PixivSearchResult;
 	onChoose: (tag: string, value: string) => void;
 }) {
+	const tagChoices = createMemo(() =>
+		props.data.mappings.filter((row) => row.names.length > 1),
+	);
 	return (
-		<div class="mb-3 space-y-2">
-			<p class="text-muted-foreground text-sm" aria-live="polite">
-				{props.data.word
-					? t("pixivScreen.pixivSearch") + props.data.word
-					: feedOptions().find((option) => option.value === props.feed)?.label}
-			</p>
-			<For each={props.data.mappings.filter((row) => row.names.length > 1)}>
-				{(row) => (
-					<div class="flex min-w-0 items-center gap-2">
-						<span class="truncate text-sm">{row.tag}</span>
-						<Select
-							options={row.names}
-							value={row.selected}
-							onChange={(value) => {
-								if (value) props.onChoose(row.tag, value);
-							}}
-							itemComponent={(item) => (
-								<SelectItem item={item.item}>{item.item.rawValue}</SelectItem>
-							)}
+		<Show when={props.data.word || tagChoices().length > 0}>
+			<div class="mb-3 space-y-2">
+				<Show when={props.data.word}>
+					{(word) => (
+						<p
+							class="break-words text-muted-foreground text-sm"
+							aria-live="polite"
 						>
-							<SelectTrigger aria-label={row.tag + t("pixivScreen.pixivTags")}>
-								<SelectValue<string>>
-									{(state) => state.selectedOption()}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent />
-						</Select>
-					</div>
-				)}
-			</For>
-		</div>
+							{t("pixivScreen.pixivSearch", { word: word() })}
+						</p>
+					)}
+				</Show>
+				<For each={tagChoices()}>
+					{(row) => (
+						<div class="flex min-w-0 items-center gap-2">
+							<span class="truncate text-sm">{row.tag}</span>
+							<Select
+								options={row.names}
+								value={row.selected}
+								onChange={(value) => {
+									if (value) props.onChoose(row.tag, value);
+								}}
+								itemComponent={(item) => (
+									<SelectItem item={item.item}>{item.item.rawValue}</SelectItem>
+								)}
+							>
+								<SelectTrigger
+									aria-label={t("pixivScreen.pixivTags", { tag: row.tag })}
+								>
+									<SelectValue<string>>
+										{(state) => state.selectedOption()}
+									</SelectValue>
+								</SelectTrigger>
+								<SelectContent />
+							</Select>
+						</div>
+					)}
+				</For>
+			</div>
+		</Show>
 	);
 }
 export function PixivScreen(props: PixivProps) {
@@ -106,6 +132,26 @@ export function PixivScreen(props: PixivProps) {
 		props.createViewer,
 		props.fetch,
 	);
+	const [toolbarDialog, setToolbarDialog] = createSignal<PixivToolbarDialog>();
+	let pendingToolbarDialog: PixivToolbarDialog | undefined;
+	let toolbarTrigger: HTMLButtonElement | undefined;
+	const openPendingToolbarDialog = () => {
+		const dialog = pendingToolbarDialog;
+		pendingToolbarDialog = undefined;
+		// Wait for the menu's focus scope to finish before mounting the dialog.
+		if (dialog) {
+			queueMicrotask(() => {
+				if (toolbarTrigger?.isConnected) setToolbarDialog(dialog);
+			});
+		}
+	};
+	const closeToolbarDialog = (open: boolean) => {
+		if (!open) setToolbarDialog(undefined);
+	};
+	const restoreToolbarFocus = (event: Event) => {
+		event.preventDefault();
+		toolbarTrigger?.focus({ preventScroll: true });
+	};
 	const historyScope = () =>
 		account.ready()
 			? JSON.stringify([props.apiBase(), account.session()?.userId ?? "guest"])
@@ -130,7 +176,7 @@ export function PixivScreen(props: PixivProps) {
 		},
 		account,
 		() => props.selectedPostId,
-		searchHistory.record,
+		(entry) => searchHistory.record(entry),
 	);
 	const relatedHistory = new Map<string, PixivRelatedSnapshot>();
 	createEffect(
@@ -183,32 +229,46 @@ export function PixivScreen(props: PixivProps) {
 			.filter(Boolean)
 			.join(" · "),
 	});
-	const renderHistory = () => (
-		<PixivViewingHistoryDialog
-			ready={account.ready()}
-			posts={history.posts()}
-			describePost={describePost}
-			postHref={props.postHref}
-			onOpenPost={(id) => {
-				if (id !== props.selectedPostId) {
-					browse.rememberScroll();
-					props.onOpenPost(id);
-				}
-			}}
-			onClear={history.clear}
-		/>
-	);
+	const viewingHistory = {
+		get posts() {
+			return history.posts();
+		},
+		describePost,
+		get postHref() {
+			return props.postHref;
+		},
+		onOpenPost(id: number) {
+			if (id !== props.selectedPostId) {
+				browse.rememberScroll();
+				props.onOpenPost(id);
+			}
+		},
+		onClear: history.clear,
+	};
+	const accountLabel = () => {
+		const session = account.session();
+		return session
+			? t("pixivAccount.pixivIDValue", { value0: session.userId })
+			: t("pixivAccount.logInToPixiv");
+	};
+	const emptyDescription = (data: PixivSearchResult) => {
+		if (browse.author()) return t("pixivScreen.emptyAuthor");
+		if (data.word) return t("workspace.changeTheTagsAndSearchAgain");
+		if (browse.showingBookmarks()) return t("pixivScreen.emptyBookmarks");
+		if (browse.pixivFeed() === "follow") return t("pixivScreen.emptyFollowing");
+		return t("pixivScreen.emptyRanking");
+	};
 	return (
 		<ViewerWorkspace
 			{...props}
 			providerName="pixiv"
-			siteUrl="https://www.pixiv.net"
 			browse={browse}
 			suggestTags={(query) => props.client.viewer.suggestTags({ query })}
 			errorTitle={t("pixivScreen.couldNotSearchPixiv")}
 			emptyTitle={t("pixivScreen.noMatchingWorks")}
+			emptyDescription={emptyDescription}
 			actions={
-				<div class="flex min-w-0 flex-wrap items-center gap-2">
+				<>
 					<Select
 						options={feedOptions()}
 						optionValue="value"
@@ -230,7 +290,7 @@ export function PixivScreen(props: PixivProps) {
 						)}
 					>
 						<SelectTrigger
-							class="w-full sm:w-auto"
+							class="min-w-0 w-auto gap-2"
 							aria-label={t("pixivScreen.feed")}
 						>
 							<SelectValue<ReturnType<typeof feedOptions>[number]>>
@@ -239,6 +299,49 @@ export function PixivScreen(props: PixivProps) {
 						</SelectTrigger>
 						<SelectContent />
 					</Select>
+					<ViewerActionsMenu
+						siteUrl="https://www.pixiv.net"
+						triggerRef={(element) => {
+							toolbarTrigger = element;
+						}}
+						onCloseAutoFocus={openPendingToolbarDialog}
+					>
+						<DropdownMenuItem
+							class="min-h-11"
+							disabled={!account.ready()}
+							onSelect={() => {
+								pendingToolbarDialog = "viewingHistory";
+							}}
+						>
+							<Clock3 aria-hidden="true" size={16} />
+							{t("pixivViewingHistory.title")}
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							class="min-h-11"
+							disabled={!account.ready()}
+							onSelect={() => {
+								pendingToolbarDialog = "searchHistory";
+							}}
+						>
+							<Search aria-hidden="true" size={16} />
+							{t("viewerSearchHistory.title")}
+						</DropdownMenuItem>
+						<DropdownMenuSeparator />
+						<DropdownMenuItem
+							class="min-h-11"
+							disabled={!account.ready()}
+							onSelect={() => {
+								pendingToolbarDialog = "account";
+							}}
+						>
+							<UserRound aria-hidden="true" size={16} />
+							{accountLabel()}
+						</DropdownMenuItem>
+					</ViewerActionsMenu>
+				</>
+			}
+			toolbarContent={
+				<>
 					<Show when={browse.showingBookmarks() && account.session()}>
 						<PixivBookmarkFilters
 							filter={browse.bookmarkFilter()}
@@ -249,34 +352,39 @@ export function PixivScreen(props: PixivProps) {
 							onChange={browse.selectBookmarkFilter}
 						/>
 					</Show>
-					{renderHistory()}
-					<ViewerSearchHistoryDialog
-						ready={account.ready()}
-						entries={searchHistory.entries()}
-						onSelect={browse.restoreSearch}
-						onClear={searchHistory.clear}
-					/>
+					<Dialog
+						open={toolbarDialog() === "viewingHistory"}
+						onOpenChange={closeToolbarDialog}
+					>
+						<PixivViewingHistoryContent
+							{...viewingHistory}
+							onCloseAutoFocus={restoreToolbarFocus}
+						/>
+					</Dialog>
+					<Dialog
+						open={toolbarDialog() === "searchHistory"}
+						onOpenChange={closeToolbarDialog}
+					>
+						<ViewerSearchHistoryContent
+							entries={searchHistory.entries()}
+							onSelect={browse.restoreSearch}
+							onClear={searchHistory.clear}
+							onCloseAutoFocus={restoreToolbarFocus}
+						/>
+					</Dialog>
 					<PixivAccountDialog
 						account={account}
 						openPixivLogin={props.openPixivLogin}
+						open={toolbarDialog() === "account"}
+						onOpenChange={closeToolbarDialog}
+						onCloseAutoFocus={restoreToolbarFocus}
 					/>
-					<Show when={!account.session()}>
-						<p class="text-xs text-muted-foreground">
-							{t("pixivScreen.followLogin")}
-						</p>
-					</Show>
-				</div>
+				</>
 			}
 			renderSearchInfo={(data) => (
 				<Show
 					when={browse.author()}
-					fallback={
-						<PixivSearchInfo
-							data={data}
-							feed={browse.pixivFeed()}
-							onChoose={browse.choose}
-						/>
-					}
+					fallback={<PixivSearchInfo data={data} onChoose={browse.choose} />}
 				>
 					{(author) => (
 						<div class="mb-3 flex flex-wrap items-center gap-2">
@@ -291,12 +399,17 @@ export function PixivScreen(props: PixivProps) {
 				</Show>
 			)}
 			describePost={describePost}
-			renderDetail={(navigation) => (
+			renderDetail={(navigation, openNewCollection) => (
 				<PixivArtworkDetail
 					{...navigation}
 					query={detail}
 					imports={imports}
-					historyAction={renderHistory()}
+					historyAction={
+						<PixivViewingHistoryDialog
+							{...viewingHistory}
+							ready={account.ready()}
+						/>
+					}
 					bookmarkAction={(id, title) => (
 						<Show when={account.session()} keyed>
 							{(session) => (
@@ -338,11 +451,11 @@ export function PixivScreen(props: PixivProps) {
 					)}
 					onOpenAuthor={(id, name) => {
 						browse.openAuthor(id, name);
-						props.onClosePost();
+						openNewCollection();
 					}}
 					onSearchTag={(tag) => {
 						browse.submit(tag, true);
-						props.onClosePost();
+						openNewCollection();
 					}}
 					apiBase={props.apiBase}
 					readingScope={account.scope()}

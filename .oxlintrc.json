@@ -157,7 +157,7 @@
 			],
 			"rules": { "shadcn/require-static-classes": "off" }
 		},
-		// tsgolint currently resolves TanStack's generated file-route registration as `error` in these files.
+		// Oxlint's type-aware backend resolves TanStack's generated file-route registration as `error` in these files.
 		// TypeScript's own project checks pass, so suppress only the resulting unsafe-type diagnostics here.
 		{
 			"files": [

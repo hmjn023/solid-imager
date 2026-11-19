@@ -71,14 +71,14 @@ export function DanbooruScreen(props: DanbooruScreenProps) {
 				width: post.width || undefined,
 				height: post.height || undefined,
 			})}
-			renderDetail={(navigation) => (
+			renderDetail={(navigation, openNewCollection) => (
 				<DanbooruPostDetail
 					{...navigation}
 					query={detail}
 					imports={imports}
 					onSearchTag={(tag) => {
 						browse.submit(tag);
-						props.onClosePost();
+						openNewCollection();
 					}}
 				/>
 			)}

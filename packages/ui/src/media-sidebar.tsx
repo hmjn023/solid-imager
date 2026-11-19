@@ -39,6 +39,7 @@ import {
 	MediaFileInformation,
 } from "./media-detail-layout";
 import { RelationsEditor } from "./relations-editor";
+import { MediaTagEditor } from "./media-tag-editor";
 import { Badge } from "./badge";
 import {
 	MediaActivityControls,
@@ -47,17 +48,7 @@ import {
 import { Button } from "./button";
 import { ClipboardCopy } from "./clipboard-copy";
 import { CollapsibleRoot as Collapsible } from "./collapsible";
-import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "./dialog";
-import {
-	TagDictionaryBrowser,
-	type TagDictionaryLookup,
-} from "./tag-dictionary-browser";
+import type { TagDictionaryLookup } from "./tag-dictionary-browser";
 import { TextField, TextFieldLabel, TextFieldTextArea } from "./text-field";
 import { toast } from "./toast";
 import { ChevronDown } from "./workspace/icons";
@@ -93,15 +84,7 @@ export type MediaSidebarProps = {
 export function MediaSidebar(props: MediaSidebarProps) {
 	const tags = createMemo(() => props.media.tags || []);
 	const [editingTags, setEditingTags] = createSignal(false);
-	const [tagText, setTagText] = createSignal("");
-	const [expectedTags, setExpectedTags] = createSignal<
-		UpdatePositiveMediaTags["expected"]
-	>([]);
-	const [dictionaryNames, setDictionaryNames] = createSignal<
-		ReadonlySet<string>
-	>(new Set());
-	const [dictionaryOpen, setDictionaryOpen] = createSignal(false);
-	const [savingTags, setSavingTags] = createSignal(false);
+	const [tagsDirty, setTagsDirty] = createSignal(false);
 	const [isEditingDescription, setIsEditingDescription] = createSignal(false);
 	const [descriptionValue, setDescriptionValue] = createSignal(
 		props.media.description || "",
@@ -109,23 +92,10 @@ export function MediaSidebar(props: MediaSidebarProps) {
 	const descriptionDirty = () =>
 		isEditingDescription() &&
 		descriptionValue() !== (props.media.description ?? "");
+	const hasUnsavedChanges = () => descriptionDirty() || tagsDirty();
 	const navigationBlocker = useBlocker({
-		shouldBlockFn: () =>
-			descriptionDirty() ||
-			(editingTags() &&
-				tagText() !==
-					tags()
-						.filter((tag) => tag.type === "positive")
-						.map((tag) => tag.name)
-						.join("\n")),
-		enableBeforeUnload: () =>
-			descriptionDirty() ||
-			(editingTags() &&
-				tagText() !==
-					tags()
-						.filter((tag) => tag.type === "positive")
-						.map((tag) => tag.name)
-						.join("\n")),
+		shouldBlockFn: hasUnsavedChanges,
+		enableBeforeUnload: hasUnsavedChanges,
 		withResolver: true,
 	});
 	const [allowBlockedNavigation, setAllowBlockedNavigation] =
@@ -292,14 +262,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 							props.isAllCharactersLoading ||
 							props.isUpdating?.()
 						}
-						characterIps={(id) =>
-							props.allCharacters
-								.find((character) => character.id === id)
-								?.ips.map((ip) => ip.id) ?? []
-						}
 						onUpdate={props.onUpdate}
-						groups={[
-							{
+						groups={{
+							projects: {
 								title: t("labels.projects"),
 								items: props.projects,
 								available: props.allProjects,
@@ -307,7 +272,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								remove: props.onProjectRemove,
 								create: props.onProjectCreate,
 							},
-							{
+							ips: {
 								title: t("labels.ips"),
 								items: props.media.ips,
 								available: props.allIps,
@@ -315,7 +280,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								remove: props.onIpRemove,
 								create: props.onIpCreate,
 							},
-							{
+							characters: {
 								title: t("labels.characters"),
 								items: props.media.characters,
 								available: props.allCharacters,
@@ -323,7 +288,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 								remove: props.onCharacterRemove,
 								create: props.onCharacterCreate,
 							},
-						]}
+						}}
 					/>
 				</div>
 				<For
@@ -356,176 +321,44 @@ export function MediaSidebar(props: MediaSidebarProps) {
 			<MediaMetadataSection
 				title={t("mediaSidebar.positiveTags")}
 				action={
-					<Show when={!editingTags()}>
-						<Button
-							size="sm"
-							variant="outline"
-							onClick={() => {
-								const expected = positiveTags().map(({ id, name }) => ({
-									id,
-									name,
-								}));
-								setExpectedTags(expected);
-								setTagText(expected.map(({ name }) => name).join("\n"));
-								setEditingTags(true);
-								setDictionaryNames(new Set<string>());
-							}}
-						>
-							{t("actions.edit")}
-						</Button>
-					</Show>
+					<MediaTagEditor
+						tags={positiveTags()}
+						dictionary={props.tagDictionaryLookup}
+						open={editingTags()}
+						onOpenChange={setEditingTags}
+						onDirtyChange={setTagsDirty}
+						onSave={props.onPositiveTagsUpdate}
+						onUpdated={props.onUpdate}
+					/>
 				}
 			>
-				<Show
-					when={editingTags()}
-					fallback={
-						<Show when={positiveTags().length === 0}>
-							<span class="text-muted-foreground text-sm italic">
-								{t("mediaSidebar.noPositiveTags")}
-							</span>
-						</Show>
-					}
-				>
-					<TextField
-						class="space-y-2"
-						disabled={savingTags()}
-						onChange={(text) => {
-							setTagText(text);
-							const present = new Set(
-								text.split("\n").map((name) => name.trim()),
-							);
-							setDictionaryNames(
-								(names) =>
-									new Set([...names].filter((name) => present.has(name))),
-							);
-						}}
-						value={tagText()}
-					>
-						<TextFieldLabel class="text-muted-foreground text-sm">
-							{t("mediaSidebar.oneTagPerLine")}
-						</TextFieldLabel>
-						<TextFieldTextArea
-							id="positive-tags"
-							rows={8}
-							spellcheck={false}
-							autocapitalize="none"
-							autocorrect="off"
-						/>
-					</TextField>
-					<div class="flex gap-2">
-						<Show when={props.tagDictionaryLookup}>
-							{(api) => (
-								<Dialog
-									open={dictionaryOpen()}
-									onOpenChange={setDictionaryOpen}
-								>
-									<DialogTrigger
-										as={Button}
-										variant="outline"
-										size="sm"
-										disabled={savingTags()}
-									>
-										{t("tagDictionary.title")}
-									</DialogTrigger>
-									<DialogContent class="max-w-2xl">
-										<DialogHeader>
-											<DialogTitle>{t("tagDictionary.title")}</DialogTitle>
-										</DialogHeader>
-										<TagDictionaryBrowser
-											api={api()}
-											onAdd={(entry) => {
-												if (
-													!tagText()
-														.split("\n")
-														.some((name) => name.trim() === entry.name)
-												) {
-													setTagText((text) =>
-														[text.trimEnd(), entry.name]
-															.filter(Boolean)
-															.join("\n"),
-													);
-												}
-												setDictionaryNames(
-													(names) => new Set([...names, entry.name]),
-												);
-												setDictionaryOpen(false);
-											}}
-										/>
-									</DialogContent>
-								</Dialog>
-							)}
-						</Show>
-						<Button
-							size="sm"
-							disabled={savingTags()}
-							onClick={() => {
-								void (async () => {
-									setSavingTags(true);
-									try {
-										await props.onPositiveTagsUpdate({
-											expected: expectedTags(),
-											entries: [
-												...new Set(
-													tagText()
-														.split("\n")
-														.map((name) => name.trim())
-														.filter(Boolean),
-												),
-											].map((name) => ({
-												name,
-												fromDictionary: dictionaryNames().has(name),
-											})),
-										});
-										setEditingTags(false);
-										props.onUpdate?.();
-									} catch (error) {
-										toast.error(
-											t("mediaSidebar.failedToUpdateTagsValue", {
-												value0: String(getErrorMessage(error)),
-											}),
-										);
-									} finally {
-										setSavingTags(false);
-									}
-								})();
-							}}
-						>
-							{t("actions.save")}
-						</Button>
-						<Button
-							size="sm"
-							variant="outline"
-							disabled={savingTags()}
-							onClick={() => setEditingTags(false)}
-						>
-							{t("actions.cancel")}
-						</Button>
-					</div>
+				<Show when={positiveTags().length === 0}>
+					<span class="text-muted-foreground text-sm italic">
+						{t("mediaSidebar.noPositiveTags")}
+					</span>
 				</Show>
-				<Show when={!editingTags()}>
-					<div class="flex flex-wrap gap-2">
-						<For each={positiveTags()}>
-							{(tag) => (
-								<MediaTagBadge
-									classList={{
-										"border-input":
-											tag.source === "AI" || tag.source === "comfyui_workflow",
-										"bg-info": tag.source === "AI",
-										"dark:bg-info/20": tag.source === "AI",
-										"bg-accent": tag.source === "comfyui_workflow",
-										"text-primary": tag.source === "comfyui_workflow",
-									}}
-									title={t("mediaSidebar.sourceValue", {
-										value0: String(tag.source),
-									})}
-									variant={tag.source === "AI" ? "outline" : "default"}
-									name={tag.name}
-									wikiLookup={props.tagDictionaryLookup?.dictionaryDetail}
-								/>
-							)}
-						</For>
-					</div>
-				</Show>
+				<div class="flex flex-wrap gap-2">
+					<For each={positiveTags()}>
+						{(tag) => (
+							<MediaTagBadge
+								classList={{
+									"border-input":
+										tag.source === "AI" || tag.source === "comfyui_workflow",
+									"bg-info": tag.source === "AI",
+									"dark:bg-info/20": tag.source === "AI",
+									"bg-accent": tag.source === "comfyui_workflow",
+									"text-primary": tag.source === "comfyui_workflow",
+								}}
+								title={t("mediaSidebar.sourceValue", {
+									value0: String(tag.source),
+								})}
+								variant={tag.source === "AI" ? "outline" : "default"}
+								name={tag.name}
+								wikiLookup={props.tagDictionaryLookup?.dictionaryDetail}
+							/>
+						)}
+					</For>
+				</div>
 			</MediaMetadataSection>
 
 			<Show when={negativeTags().length > 0}>
@@ -554,7 +387,8 @@ export function MediaSidebar(props: MediaSidebarProps) {
 				when={
 					genInfo()?.prompt ||
 					genInfo()?.negativePrompt ||
-					(genInfo()?.workflow && JSON.stringify(genInfo()?.workflow) !== "{}")
+					(Boolean(genInfo()?.workflow) &&
+						JSON.stringify(genInfo()?.workflow) !== "{}")
 				}
 			>
 				<div class="space-y-2">
@@ -593,7 +427,7 @@ export function MediaSidebar(props: MediaSidebarProps) {
 									</p>
 								</div>
 							</Show>
-							<Show when={genInfo()?.workflow}>
+							<Show when={Boolean(genInfo()?.workflow)}>
 								<div>
 									<div class="mb-1 flex items-center justify-between">
 										<span class="font-medium text-muted-foreground">
@@ -654,7 +488,9 @@ export function MediaSidebar(props: MediaSidebarProps) {
 						</AlertDialogTitle>
 						<AlertDialogDescription>
 							{t(
-								"mediaSidebar.youHaveUnsavedChangesToThisDescriptionLeaveWithout",
+								tagsDirty()
+									? "mediaTagEditor.leaveWithoutSaving"
+									: "mediaSidebar.youHaveUnsavedChangesToThisDescriptionLeaveWithout",
 							)}
 						</AlertDialogDescription>
 					</AlertDialogHeader>

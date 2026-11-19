@@ -3,7 +3,7 @@ import { initializeBrowserLocale, t } from "@solid-imager/i18n";
 import { WorkspaceSetupFrame } from "@solid-imager/ui/app-shell";
 import { BootstrapStatusScreen } from "@solid-imager/ui/router-status";
 import { RouterProvider } from "@tanstack/solid-router";
-import { createSignal, Match, onMount, Switch } from "solid-js";
+import { createSignal, Match, onMount, Show, Switch } from "solid-js";
 import { render } from "solid-js/web";
 import "./index.css";
 import { initializeCollections } from "./collections";
@@ -103,7 +103,7 @@ function App() {
 							error={bootstrapError()}
 							onRetry={initialize}
 						/>
-						<Match when={getStoredSettings()}>
+						<Show when={getStoredSettings()}>
 							{(settings) => (
 								<ServerSettingsScreen
 									initialSettings={settings()}
@@ -116,13 +116,13 @@ function App() {
 									onNoActiveServer={initialize}
 								/>
 							)}
-						</Match>
+						</Show>
 					</div>
 				</WorkspaceSetupFrame>
 			</Match>
 			<Match when={state().status === "needs-server"}>
 				<WorkspaceSetupFrame>
-					<Match when={getSetupSettings(state())}>
+					<Show when={getSetupSettings(state())}>
 						{(settings) => (
 							<ServerSettingsScreen
 								initialSettings={settings()}
@@ -133,7 +133,7 @@ function App() {
 								}}
 							/>
 						)}
-					</Match>
+					</Show>
 				</WorkspaceSetupFrame>
 			</Match>
 			<Match when={state().status === "loading"}>

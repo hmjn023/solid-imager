@@ -18,8 +18,10 @@ import {
 	mediaTags,
 	mediaUrls,
 	projects,
+	tagDictionaryTags,
 	tags,
 } from "~/infrastructure/db/schema";
+import { TagDictionaryRepository } from "~/infrastructure/db/repositories";
 import { BackupService } from "~/infrastructure/services/backup-service";
 
 // Mock external modules if necessary (e.g. storage driver, archiver)
@@ -92,6 +94,84 @@ describe("BackupService Integration", () => {
 				),
 			);
 		expect(processMediaJobs).toHaveLength(0);
+	});
+
+	it("restores pre-migration tag names onto the current tag without recreating them", async () => {
+		const access = vi.spyOn(fs, "access").mockResolvedValue(undefined);
+		const currentName = "backup_canonical";
+		const oldName = "backup_legacy";
+		await db.insert(tagDictionaryTags).values({
+			name: currentName,
+			category: 0,
+			postCount: 1,
+			aliases: [],
+			searchText: currentName,
+		});
+		try {
+			const item = {
+				filePath: "tag-migration.png",
+				fileName: "tag-migration.png",
+				mediaType: "image",
+				width: 10,
+				height: 10,
+				tags: [
+					{
+						name: oldName,
+						type: "positive",
+						source: "manual",
+						confidence: 0.8,
+					},
+					{ name: oldName, type: "negative", source: "AI", confidence: 0.6 },
+				],
+			};
+			expect(
+				(await BackupService.restoreSource(testSourceId, [item])).processed,
+			).toBe(1);
+			const [old] = await db.select().from(tags).where(eq(tags.name, oldName));
+			expect(
+				await TagDictionaryRepository.migrateLegacy({
+					tagId: old.id,
+					sourceName: old.name,
+					target: currentName,
+				}),
+			).toBe(true);
+			expect(
+				(await BackupService.restoreSource(testSourceId, [item])).processed,
+			).toBe(1);
+			expect(
+				await db.select().from(tags).where(eq(tags.name, oldName)),
+			).toEqual([]);
+			const [media] = await db
+				.select()
+				.from(medias)
+				.where(eq(medias.filePath, item.filePath));
+			expect(
+				await db
+					.select()
+					.from(mediaTags)
+					.where(eq(mediaTags.mediaId, media.id)),
+			).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({
+						tagId: old.id,
+						tagType: "positive",
+						source: "manual",
+						confidence: expect.closeTo(0.8),
+					}),
+					expect.objectContaining({
+						tagId: old.id,
+						tagType: "negative",
+						source: "AI",
+						confidence: expect.closeTo(0.6),
+					}),
+				]),
+			);
+		} finally {
+			access.mockRestore();
+			await db
+				.delete(tagDictionaryTags)
+				.where(eq(tagDictionaryTags.name, currentName));
+		}
 	});
 
 	afterEach(() => {

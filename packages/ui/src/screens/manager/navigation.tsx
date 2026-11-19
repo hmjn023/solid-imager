@@ -6,9 +6,9 @@ import Image from "lucide-solid/icons/image";
 import Share2 from "lucide-solid/icons/share-2";
 import Tags from "lucide-solid/icons/tags";
 import { For } from "solid-js";
-import { Button } from "../../button";
 import {
 	CategoryLabel,
+	CompactCategorySelect,
 	categoryButtonClass,
 } from "../../workspace/management-layout";
 import { MANAGER_CATEGORIES, type ManagerCategoryValue } from "./types";
@@ -47,30 +47,17 @@ export function ManagerCategoryNavigation(props: {
 		return (
 			<nav
 				aria-label={t("navigation.managerCategories")}
-				class="sticky top-0 z-10 flex gap-1 overflow-x-auto border-border border-b bg-background/95 px-3 py-2 backdrop-blur lg:hidden"
+				class="sticky top-0 z-10 border-border border-b bg-background/95 px-3 py-2 backdrop-blur lg:hidden"
 			>
-				<For each={MANAGER_CATEGORIES}>
-					{(category) => (
-						<Button
-							aria-current={
-								props.active === category.value ? "page" : undefined
-							}
-							class={`min-h-11 shrink-0 gap-2.5 px-2.5 ${
-								props.active === category.value
-									? "bg-accent text-primary"
-									: "text-muted-foreground"
-							}`}
-							onClick={() => props.onChange(category.value)}
-							variant="ghost"
-						>
-							<CategoryLabel
-								description={category.description}
-								icon={<ManagerCategoryIcon value={category.value} />}
-								label={category.label}
-							/>
-						</Button>
+				<CompactCategorySelect
+					active={props.active}
+					label={t("navigation.managerCategories")}
+					options={MANAGER_CATEGORIES}
+					onChange={props.onChange}
+					renderIcon={(category) => (
+						<ManagerCategoryIcon value={category.value} />
 					)}
-				</For>
+				/>
 			</nav>
 		);
 	}

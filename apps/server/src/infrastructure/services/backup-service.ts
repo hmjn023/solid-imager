@@ -10,9 +10,11 @@ import {
 } from "@solid-imager/core/media";
 import { localConnectionSchema } from "@solid-imager/core/sources";
 import { getErrorMessage } from "@solid-imager/core/utils";
+import { lockTagNames, resolveTagNameRedirects } from "@solid-imager/db";
 import { inArray, sql } from "drizzle-orm";
 import type { PgColumn, PgTable } from "drizzle-orm/pg-core";
 import { db } from "~/infrastructure/db";
+import { getExecutor } from "~/infrastructure/db/executor";
 import {
 	characterIps,
 	characters,
@@ -507,7 +509,7 @@ export const BackupService = {
 		return { validItems, skippedCount, errorMessages };
 	},
 
-	async _restoreMasterData(validItems: MediaDumpItem[], _tx?: BackupDbClient) {
+	async _restoreMasterData(validItems: MediaDumpItem[], _tx: BackupDbClient) {
 		const tagNames = new Set<string>();
 		const authorData = new Map<string, NewAuthor>();
 		const projectNames = new Set<string>();
@@ -559,16 +561,20 @@ export const BackupService = {
 			}
 		}
 
+		const executor = getExecutor(_tx);
+		if (tagNames.size > 0) await lockTagNames(executor, true);
+		const redirects = await resolveTagNameRedirects(executor, [...tagNames]);
 		const tagMap = await this._ensureMasterData(
 			tags,
 			tags.id,
 			tags.name,
-			tagNames,
+			new Set([...tagNames].filter((name) => !redirects.has(name))),
 			{
 				source: "restored",
 			},
 			_tx,
 		);
+		for (const [oldName, target] of redirects) tagMap.set(oldName, target.id);
 		const authorInputs = [...authorData.values()];
 		const authorMap = new Map<string, string>();
 		const validAuthorInputs = authorInputs.filter(

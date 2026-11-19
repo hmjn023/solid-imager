@@ -63,7 +63,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../tabs";
 import { Textarea } from "../textarea";
 import { toast } from "../toast";
-import { CategoryLabel } from "../workspace/management-layout";
+import {
+	CategoryLabel,
+	CompactCategorySelect,
+} from "../workspace/management-layout";
 
 import { McpPublicationSettings } from "./mcp-publication-settings";
 
@@ -257,18 +260,31 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				<Tabs
 					class="grid min-w-0 w-full gap-6 lg:grid-cols-settings-sidebar xl:gap-8"
 					onChange={setActiveTab}
+					orientation="vertical"
 					value={activeTab()}
 				>
+					<div class="lg:hidden">
+						<CompactCategorySelect
+							active={activeTab()}
+							label={t("configScreen.settingsCategories")}
+							onChange={setActiveTab}
+							options={SETTINGS_CATEGORIES}
+							renderIcon={(category) => {
+								const Icon = category.icon;
+								return <Icon aria-hidden="true" size={16} />;
+							}}
+						/>
+					</div>
 					<TabsList
 						aria-label={t("configScreen.settingsCategories")}
-						class="flex h-auto w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"
+						class="hidden h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex lg:flex-col lg:self-start"
 					>
 						<For each={SETTINGS_CATEGORIES}>
 							{(category) => {
 								const Icon = category.icon;
 								return (
 									<TabsTrigger
-										class="min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start"
+										class="min-h-10 w-full justify-start gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary"
 										type="button"
 										value={category.value}
 									>
@@ -511,12 +527,11 @@ export function ConfigScreen(props: ConfigScreenProps) {
 												{t("configScreen.remoteAIServerURLORPC")}
 											</Label>
 											<Input
-												aria-describedby={`${field().name}-error`}
+												aria-describedby={`${field().name}-help ${field().name}-example ${field().name}-error`}
 												aria-invalid={field().state.meta.errors.length > 0}
 												id={field().name}
 												onBlur={field().handleBlur}
 												onInput={(e) => field().handleChange(e.target.value)}
-												placeholder={t("configScreen.httpPowerMachine3000")}
 												value={field().state.value ?? ""}
 											/>
 											<FormFieldMessage
@@ -525,11 +540,20 @@ export function ConfigScreen(props: ConfigScreenProps) {
 													field().state.meta.errors[0],
 												)}
 											/>
-											<div class="text-muted-foreground text-xs">
-												{t(
-													"configScreen.useAnotherSolidImagerServerSORPCEndpointFor",
-												)}
-											</div>
+											<p
+												class="text-muted-foreground text-xs"
+												id={`${field().name}-help`}
+											>
+												{t("configScreen.remoteAiUrlHelp")}
+											</p>
+											<p
+												class="text-muted-foreground text-xs"
+												id={`${field().name}-example`}
+											>
+												{t("configScreen.remoteAiUrlExample", {
+													url: "http://power-machine:3000",
+												})}
+											</p>
 										</div>
 									)}
 								</form.Field>

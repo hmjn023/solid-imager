@@ -449,6 +449,29 @@ test("Tauri source route reloads and exposes source and import dialogs", async (
 	).toBeVisible();
 	const sourceMedia = page.locator(`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
 	await expect(sourceMedia).toBeVisible();
+	await sourceMedia.click();
+	await expect(
+		page.getByRole("complementary", { name: "選択中のメディア" }),
+	).toContainText(E2E_PRIMARY_FILE_NAME);
+	await page.getByRole("button", { name: "複数選択", exact: true }).click();
+	const bulkBar = page.getByTestId("bulk-actions-bar");
+	await expect(bulkBar).toContainText("0件選択中");
+	const selectAll = bulkBar.getByRole("button", { name: "表示分をすべて選択" });
+	await selectAll.click();
+	await expect(selectAll).toBeDisabled();
+	await expect(sourceMedia).toHaveAttribute("aria-pressed", "true");
+	await bulkBar
+		.getByRole("button", { name: "一括操作を実行", exact: true })
+		.click();
+	const bulkDialog = page.getByRole("dialog", { name: "一括操作を実行" });
+	await expect(bulkDialog).toBeVisible();
+	await bulkDialog
+		.getByRole("button", { name: "キャンセル", exact: true })
+		.click();
+	await bulkBar
+		.getByRole("button", { name: "選択を解除", exact: true })
+		.click();
+	await expect(bulkBar).toBeHidden();
 	await sourceMedia.press("Enter");
 	await expect(page).toHaveURL(new RegExp(`/#${mediaPath}$`));
 	await expectTauriMediaDetail(page);
@@ -649,6 +672,61 @@ test("Tauri opens a linked job inspector on a fresh hash route", async ({
 	await reloadTauriRoute(page);
 	await expect(inspector).toHaveAttribute("data-job-id", jobId);
 });
+
+test(
+	"Tauri opens the Library after adding the first server",
+	{ tag: "@dev-smoke" },
+	async ({ page }) => {
+		const fixtureOrigin = `http://127.0.0.1:${process.env.E2E_TAURI_PORT}`;
+		await page.addInitScript((origin) => {
+			if (location.origin !== origin) return;
+			const key = "solid-imager:e2e:store:settings.json";
+			if (localStorage.getItem(key)) return;
+			localStorage.setItem(
+				key,
+				JSON.stringify({
+					serverSettings: {
+						schemaVersion: 1,
+						activeServerId: null,
+						servers: [],
+					},
+				}),
+			);
+		}, fixtureOrigin);
+
+		await page.goto("/");
+		const setupHeading = page.getByRole("heading", {
+			name: "サーバー接続",
+			exact: true,
+		});
+		await expect(setupHeading).toBeVisible();
+		await expect(
+			page.getByRole("heading", { name: "保存済みサーバー", exact: true }),
+		).toHaveCount(0);
+		await expect(
+			page.getByRole("navigation", { name: "主要ナビゲーション" }),
+		).toHaveCount(0);
+		await expectRouteHealthy(page);
+
+		const apiOrigin = `http://127.0.0.1:${process.env.E2E_PORT}`;
+		await page.getByLabel("名前", { exact: true }).fill("E2E server");
+		await page.getByLabel("サーバーURL", { exact: true }).fill(apiOrigin);
+		await page
+			.getByRole("button", { name: "サーバーを追加", exact: true })
+			.click();
+
+		await expectWorkspaceShell(page);
+		await expect(setupHeading).toHaveCount(0);
+		await expect(page).toHaveURL(/\/#\/search(?:\?.*)?$/);
+		const libraryItem = page.locator(
+			`[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`,
+		);
+		await expect(libraryItem).toBeVisible();
+		await reloadTauriRoute(page);
+		await expect(libraryItem).toBeVisible();
+		await expectRouteHealthy(page);
+	},
+);
 
 test(
 	"Tauri server edits and selection reload the persisted connection and fresh collections",

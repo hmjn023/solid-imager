@@ -21,6 +21,16 @@ async function navigateTo(page: Page, name: string) {
 		.filter({ visible: true })
 		.click();
 }
+
+function pixivActions(page: Page) {
+	return page.getByRole("button", { name: "その他の操作", exact: true });
+}
+
+async function openPixivAction(page: Page, name: string) {
+	await pixivActions(page).click();
+	await page.getByRole("menuitem", { name, exact: true }).click();
+}
+
 const base = "https://i.pximg.net/img-original/img/2026/01/01/00/00/00/123_p";
 const artwork = pixivArtworkSchema.parse({
 	id: 123,
@@ -171,6 +181,92 @@ test("switches the same canonical tag between viewers, chooses a pixiv name and 
 	).toHaveValue("landscape ");
 });
 
+test("keeps Pixiv browsing controls on one row and describes empty results by collection", async ({
+	page,
+}, info) => {
+	await page.route("**/api/rpc/viewer/search", (route) => {
+		const input = viewerRequestSchema.parse(
+			route.request().postDataJSON().json,
+		);
+		return route.fulfill({
+			json: {
+				json: {
+					provider: "pixiv",
+					posts: [],
+					hasNextPage: false,
+					word: input.tags,
+					mappings: [],
+				},
+			},
+		});
+	});
+	await page.route("**/api/rpc/viewer/suggestTags", (route) =>
+		route.fulfill({ json: { json: [] } }),
+	);
+	await page
+		.context()
+		.route("https://www.pixiv.net/**", (route) =>
+			route.fulfill({ contentType: "text/html", body: "<title>pixiv</title>" }),
+		);
+	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
+	await expect(
+		page.getByText("別のランキングを選ぶか、タグで作品を検索してください。"),
+	).toBeVisible();
+	const heading = page.getByRole("heading", { name: "pixiv", exact: true });
+	const search = page.getByRole("button", { name: "検索", exact: true });
+	const resultCount = page
+		.locator("header")
+		.getByText("0件を表示", { exact: true });
+	const actions = pixivActions(page);
+	const feed = page.getByRole("button", { name: /^表示する作品/ });
+	for (const control of [heading, search, resultCount, actions, feed]) {
+		await expect(control).toBeVisible();
+	}
+	await expect(
+		page
+			.getByText("デイリーランキング", { exact: true })
+			.filter({ visible: true }),
+	).toHaveCount(1);
+	const headingBounds = await heading.boundingBox();
+	const searchBounds = await search.boundingBox();
+	const feedBounds = await feed.boundingBox();
+	const actionsBounds = await actions.boundingBox();
+	expect(headingBounds?.y).toBeLessThan(searchBounds?.y ?? 0);
+	expect(searchBounds?.y).toBeLessThan(feedBounds?.y ?? 0);
+	expect(feedBounds?.y).toBe(actionsBounds?.y);
+	expect(actionsBounds?.width).toBeGreaterThanOrEqual(44);
+	expect(actionsBounds?.height).toBeGreaterThanOrEqual(44);
+	await actions.focus();
+	await actions.press("ArrowDown");
+	await expect(
+		page.getByRole("menuitem", { name: "サイトを開く ↗" }),
+	).toHaveAttribute("href", "https://www.pixiv.net");
+	await expect(
+		page.getByRole("menuitem", { name: "pixiv にログイン" }),
+	).toBeVisible();
+	const recentlyViewed = page.getByRole("menuitem", { name: "最近見た作品" });
+	await expect(recentlyViewed).toBeFocused();
+	await page.keyboard.press("ArrowDown");
+	await expect(page.getByRole("menuitem", { name: "検索履歴" })).toBeFocused();
+	await page.keyboard.press("Enter");
+	await expect(page.getByRole("dialog", { name: "検索履歴" })).toBeVisible();
+	await page.keyboard.press("Escape");
+	await expect(actions).toBeFocused();
+	await actions.press("ArrowUp");
+	const site = page.getByRole("menuitem", { name: "サイトを開く ↗" });
+	await expect(site).toBeFocused();
+	const popupOpened = page.waitForEvent("popup");
+	await page.keyboard.press("Enter");
+	const popup = await popupOpened;
+	await expect(popup).toHaveURL("https://www.pixiv.net/");
+	await popup.close();
+	await page.getByRole("combobox", { name: "pixiv を検索" }).fill("landscape");
+	await page.getByRole("button", { name: "検索", exact: true }).click();
+	await expect(
+		page.getByText("タグを変更して検索してください。"),
+	).toBeVisible();
+});
+
 test("switches Pixiv rankings and followed works and removes search badges with one click", async ({
 	page,
 }, info) => {
@@ -227,9 +323,7 @@ test("switches Pixiv rankings and followed works and removes search badges with 
 	).toBeVisible();
 	await page.reload();
 	await expect(feed).toContainText("ウィークリーランキング");
-	await page
-		.getByRole("button", { name: "pixiv にログイン", exact: true })
-		.click();
+	await openPixivAction(page, "pixiv にログイン");
 	const dialog = page.getByRole("dialog", { name: "pixiv アカウント" });
 	await dialog.getByLabel("接続コード").fill(code);
 	await dialog.getByRole("button", { name: "接続する", exact: true }).click();
@@ -366,9 +460,7 @@ test("browses private Pixiv bookmarks by tag, opens a work and restores the sele
 	await feed.click();
 	await expect(bookmarks).toHaveAttribute("aria-disabled", "true");
 	await page.keyboard.press("Escape");
-	await page
-		.getByRole("button", { name: "pixiv にログイン", exact: true })
-		.click();
+	await openPixivAction(page, "pixiv にログイン");
 	const account = page.getByRole("dialog", { name: "pixiv アカウント" });
 	await account.getByLabel("接続コード").fill(code);
 	await account.getByRole("button", { name: "接続する" }).click();
@@ -402,7 +494,7 @@ test("browses private Pixiv bookmarks by tag, opens a work and restores the sele
 	await page.reload();
 	await expect(tag).toContainText("夜 景");
 	await expect(first).toBeVisible();
-	await page.getByRole("button", { name: "pixiv ID 23" }).click();
+	await openPixivAction(page, "pixiv ID 23");
 	await account
 		.getByRole("button", { name: "この ビューアー からログアウト" })
 		.click();
@@ -479,9 +571,7 @@ test("adds and removes a Pixiv bookmark from the artwork and refreshes the list"
 	const open = page.getByRole("button", { name: "ブックマーク", exact: true });
 	await expect(open).toHaveCount(0);
 	await page.getByRole("button", { name: "一覧に戻る" }).click();
-	await page
-		.getByRole("button", { name: "pixiv にログイン", exact: true })
-		.click();
+	await openPixivAction(page, "pixiv にログイン");
 	const account = page.getByRole("dialog", { name: "pixiv アカウント" });
 	await account.getByLabel("接続コード").fill(code);
 	await account.getByRole("button", { name: "接続する" }).click();
@@ -643,6 +733,51 @@ test("restores expanded related works and scroll position on Back and Forward", 
 	await expect(related.getByText("37件を表示", { exact: true })).toHaveCount(1);
 });
 
+test("shows Pixiv related works offline before the first load and retains cached cards", async ({
+	page,
+}, info) => {
+	await mockPixivDetail(page, artwork);
+	await page.route("**/api/rpc/viewer/pixivArtwork", async (route) => {
+		// Deliver the detail already in flight while the next query sees the disconnect.
+		await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+		await route.fulfill({ json: { json: artwork } });
+	});
+	const relatedCard = { ...artwork, id: 456, title: "保存済みの関連作品" };
+	let relatedRequests = 0;
+	await page.route("**/api/rpc/viewer/pixivRelatedPage", (route) => {
+		relatedRequests += 1;
+		return route.fulfill({
+			json: { json: { posts: [relatedCard], nextIds: [457] } },
+		});
+	});
+	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
+	await page.getByRole("link", { name: "海の風景 を開く" }).click();
+	const related = page.getByRole("region", { name: "関連作品", exact: true });
+	await expect(
+		related.getByRole("heading", { name: "オフラインです" }),
+	).toBeVisible();
+	await expect(related.locator('[data-state-ui="pending"]')).toHaveCount(0);
+	await expect(
+		related.getByRole("button", { name: "再試行", exact: true }),
+	).toBeVisible();
+	expect(relatedRequests).toBe(0);
+
+	await page.evaluate(() => window.dispatchEvent(new Event("online")));
+	const card = related.getByRole("link", { name: "保存済みの関連作品 を開く" });
+	const more = related.getByRole("button", { name: "もっと見る", exact: true });
+	await expect(card).toBeVisible();
+
+	await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+	const cachedStatus = related.locator('[data-state-ui="cached-offline"]');
+	await expect(cachedStatus).toBeVisible();
+	await expect(card).toBeVisible();
+	await expect(more).toBeDisabled();
+
+	await page.evaluate(() => window.dispatchEvent(new Event("online")));
+	await expect(cachedStatus).toHaveCount(0);
+	await expect(more).toBeEnabled();
+});
+
 test("loads more related works in batches and retries the same cursor", async ({
 	page,
 	browserHealth,
@@ -656,6 +791,10 @@ test("loads more related works in batches and retries the same cursor", async ({
 	const first = Array.from({ length: 18 }, (_, i) => 500 + i);
 	const next = Array.from({ length: 19 }, (_, i) => 600 + i);
 	let fail = true;
+	let releaseFailure: () => void = () => {};
+	const holdFailure = new Promise<void>((resolve) => {
+		releaseFailure = resolve;
+	});
 	const batches: number[][] = [];
 	await page.route("**/api/rpc/viewer/pixivRelatedPage", async (route) => {
 		const ids: number[] | undefined = route.request().postDataJSON().json.ids;
@@ -670,6 +809,7 @@ test("loads more related works in batches and retries the same cursor", async ({
 		batches.push(ids);
 		if (fail) {
 			fail = false;
+			await holdFailure;
 			await route.fulfill({
 				status: 503,
 				json: { json: { code: "SERVICE_UNAVAILABLE", message: "unavailable" } },
@@ -685,7 +825,19 @@ test("loads more related works in batches and retries the same cursor", async ({
 	const related = page.getByRole("region", { name: "関連作品", exact: true });
 	const more = related.getByRole("button", { name: "もっと見る", exact: true });
 	await more.click();
-	await expect(related.getByText("18件を表示", { exact: true })).toHaveCount(1);
+	try {
+		await expect(
+			related.locator('[data-state-ui="background-fetching"]'),
+		).toHaveText("関連作品を更新中");
+		await expect(related.getByText("18件を表示", { exact: true })).toHaveCount(
+			1,
+		);
+	} finally {
+		releaseFailure();
+	}
+	await expect(related.getByRole("alert")).toHaveText(
+		"関連作品を取得できませんでした",
+	);
 	await related.getByRole("button", { name: "再試行", exact: true }).click();
 	await expect(related.getByText("36件を表示", { exact: true })).toHaveCount(1);
 	await more.click();
@@ -745,7 +897,8 @@ test("opens related Pixiv works, reloads, retries recommendations and returns to
 	});
 	const path = (value: string) =>
 		info.project.name === "tauri" ? "/#" + value : value;
-	await page.goto(path("/pixiv"));
+	await page.goto(path("/about"));
+	await navigateTo(page, "pixiv");
 	await page.getByRole("link", { name: "海の風景 を開く" }).click();
 	const related = page.getByRole("region", { name: "関連作品", exact: true });
 	await expect(
@@ -761,6 +914,10 @@ test("opens related Pixiv works, reloads, retries recommendations and returns to
 	await page.goBack();
 	await expect(page).toHaveURL(/\/pixiv\/123$/);
 	await page.getByRole("button", { name: "一覧に戻る", exact: true }).click();
+	await expect(page).toHaveURL(/\/pixiv$/);
+	await page.goBack();
+	await expect(page).toHaveURL(/\/about$/);
+	await page.goForward();
 	await expect(page).toHaveURL(/\/pixiv$/);
 	await page.getByRole("link", { name: "海の風景 を開く" }).click();
 	await related.getByRole("link", { name: "関連の風景 を開く" }).click();
@@ -917,6 +1074,57 @@ test("searches for the exact artwork tag from Pixiv detail", async ({
 	).toBeVisible();
 });
 
+for (const action of ["author", "tag"] as const) {
+	test(`starts a new Pixiv ${action} collection at the top from artwork detail`, async ({
+		page,
+	}, info) => {
+		await mockPixivDetail(page, artwork);
+		const posts = [
+			...Array.from({ length: 40 }, (_, index) => ({
+				...artwork,
+				id: 1000 + index,
+				title: "検索結果 " + index,
+			})),
+			artwork,
+		];
+		await page.route("**/api/rpc/viewer/search", (route) => {
+			const input = viewerRequestSchema.parse(
+				route.request().postDataJSON().json,
+			);
+			const filtered = !!(input.pixivUserId || input.literalPixivTag);
+			return route.fulfill({
+				json: {
+					json: {
+						provider: "pixiv",
+						word: input.tags,
+						mappings: [],
+						posts: filtered ? posts : [artwork],
+						hasNextPage: false,
+					},
+				},
+			});
+		});
+		await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
+		await page.getByRole("link", { name: "海の風景 を開く" }).click();
+		await page
+			.getByRole("button", {
+				name: action === "author" ? artwork.author : artwork.tags[0],
+				exact: true,
+			})
+			.click();
+		const scroller = page.locator('[data-media-scroll="pixiv"]');
+		await expect(
+			scroller.getByRole("link", { name: "検索結果 0 を開く" }),
+		).toBeInViewport();
+		await expect(
+			page.getByRole("heading", { name: "pixiv", exact: true }),
+		).toBeFocused();
+		await expect
+			.poll(() => scroller.evaluate((element) => element.scrollTop))
+			.toBe(0);
+	});
+}
+
 test("reapplies Pixiv search history with operators and exact tags after reload", async ({
 	page,
 }, info) => {
@@ -953,10 +1161,10 @@ test("reapplies Pixiv search history with operators and exact tags after reload"
 		route.fulfill({ json: { json: [] } }),
 	);
 	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
-	const open = page.getByRole("button", { name: "検索履歴", exact: true });
+	const open = () => openPixivAction(page, "検索履歴");
 	const dialog = page.getByRole("dialog", { name: "検索履歴", exact: true });
 	const empty = dialog.getByText("検索履歴はありません", { exact: true });
-	await open.click();
+	await open();
 	await expect(empty).toBeVisible();
 	await page.keyboard.press("Escape");
 
@@ -976,7 +1184,7 @@ test("reapplies Pixiv search history with operators and exact tags after reload"
 	await expect.poll(() => searches.at(-1)?.literalPixivTag).toBe(true);
 
 	await page.reload();
-	await open.click();
+	await open();
 	const entries = dialog.getByRole("listitem");
 	await expect(entries).toHaveText([
 		/Re:ゼロ/,
@@ -997,14 +1205,14 @@ test("reapplies Pixiv search history with operators and exact tags after reload"
 	await expect(
 		page.getByRole("button", { name: "「-monochrome」を検索条件から削除" }),
 	).toBeVisible();
-	await open.click();
+	await open();
 	await expect(entries.first()).toContainText("景色");
 	await expect(entries).toHaveCount(3);
 	await dialog.getByRole("button", { name: /^Re:ゼロ/ }).click();
 	await expect
 		.poll(() => searches.at(-1))
 		.toMatchObject({ tags: "Re:ゼロ", literalPixivTag: true });
-	await open.click();
+	await open();
 	await dialog.getByRole("button", { name: "履歴を消去" }).click();
 	const confirmation = page.getByRole("alertdialog", {
 		name: "検索履歴を消去しますか？",
@@ -1015,7 +1223,7 @@ test("reapplies Pixiv search history with operators and exact tags after reload"
 	await confirmation.getByRole("button", { name: "履歴を消去" }).click();
 	await expect(empty).toBeVisible();
 	await page.reload();
-	await open.click();
+	await open();
 	await expect(empty).toBeVisible();
 });
 
@@ -1040,7 +1248,7 @@ test("reopens recent Pixiv works in order and clears the saved viewing history",
 	});
 	const path = info.project.name === "tauri" ? "/#/pixiv" : "/pixiv";
 	await page.goto(path);
-	const open = page.getByRole("button", { name: "最近見た作品", exact: true });
+	const open = () => openPixivAction(page, "最近見た作品");
 	const history = page.getByRole("dialog", {
 		name: "最近見た作品",
 		exact: true,
@@ -1048,17 +1256,17 @@ test("reopens recent Pixiv works in order and clears the saved viewing history",
 	const empty = history.getByText("閲覧履歴はありません", { exact: true });
 	const close = () =>
 		history.getByRole("button", { name: "閉じる", exact: true }).click();
-	await open.click();
+	await open();
 	await expect(empty).toBeVisible();
 	await close();
-	await expect(open).toBeFocused();
+	await expect(pixivActions(page)).toBeFocused();
 
 	await page.getByRole("link", { name: "海の風景 を開く" }).click();
 	await page.getByRole("link", { name: "森の風景 を開く" }).click();
 	await expect(
 		page.getByRole("heading", { name: "森の風景", exact: true }),
 	).toBeVisible();
-	await open.click();
+	await page.getByRole("button", { name: "最近見た作品", exact: true }).click();
 	await expect(history.getByRole("link")).toHaveText([/森の風景/, /海の風景/]);
 	await history.getByRole("link", { name: "海の風景 を開く" }).click();
 	await expect(history).toBeHidden();
@@ -1067,7 +1275,7 @@ test("reopens recent Pixiv works in order and clears the saved viewing history",
 	).toBeVisible();
 
 	await page.goto(path);
-	await open.click();
+	await open();
 	await expect(history.getByRole("link")).toHaveText([/海の風景/, /森の風景/]);
 	const clear = history.getByRole("button", { name: "履歴を消去" });
 	const confirm = page.getByRole("alertdialog", {
@@ -1082,7 +1290,7 @@ test("reopens recent Pixiv works in order and clears the saved viewing history",
 	await confirm.getByRole("button", { name: "履歴を消去" }).click();
 	await expect(empty).toBeVisible();
 	await page.reload();
-	await open.click();
+	await open();
 	await expect(empty).toBeVisible();
 });
 
@@ -1295,7 +1503,7 @@ test("connects a pixiv account, restores it on reload and removes private result
 	await expect(
 		page.getByRole("link", { name: "公開作品 を開く" }),
 	).toBeVisible();
-	await page.getByRole("button", { name: "pixiv にログイン" }).click();
+	await openPixivAction(page, "pixiv にログイン");
 	const dialog = page.getByRole("dialog", { name: "pixiv アカウント" });
 	if (info.project.name === "tauri") {
 		await dialog
@@ -1358,7 +1566,7 @@ test("connects a pixiv account, restores it on reload and removes private result
 	await focusViewer();
 	await nextCheck;
 	expect(checkCount).toBe(2);
-	await page.getByRole("button", { name: "pixiv ID 123" }).click();
+	await openPixivAction(page, "pixiv ID 123");
 	await dialog
 		.getByRole("button", { name: "この ビューアー からログアウト" })
 		.click();
@@ -1368,10 +1576,10 @@ test("connects a pixiv account, restores it on reload and removes private result
 	await expect(page.getByRole("link", { name: "会員作品 を開く" })).toHaveCount(
 		0,
 	);
-	await openHistory.click();
+	await openPixivAction(page, "最近見た作品");
 	await expect(viewingHistory.getByText("閲覧履歴はありません")).toBeVisible();
 	await page.reload();
-	await page.getByRole("button", { name: "pixiv にログイン" }).click();
+	await openPixivAction(page, "pixiv にログイン");
 	await dialog.getByRole("button", { name: "拡張機能を使わずに接続" }).click();
 	await dialog.getByLabel("PHPSESSID").fill(fixtureSession);
 	await dialog.getByRole("button", { name: "接続する" }).click();
@@ -1577,13 +1785,15 @@ test("a late 401 from a closed pixiv viewer preserves its replacement session", 
 		}
 	});
 	const login = async () => {
-		await page.getByRole("button", { name: "pixiv にログイン" }).click();
+		await openPixivAction(page, "pixiv にログイン");
 		const dialog = page.getByRole("dialog", { name: "pixiv アカウント" });
 		await dialog.getByLabel("接続コード").fill("X".repeat(22));
 		await dialog.getByRole("button", { name: "接続する" }).click();
+		await pixivActions(page).click();
 		await expect(
-			page.getByRole("button", { name: "pixiv ID 123" }),
+			page.getByRole("menuitem", { name: "pixiv ID 123" }),
 		).toBeVisible();
+		await page.keyboard.press("Escape");
 	};
 	await page.goto(info.project.name === "tauri" ? "/#/pixiv" : "/pixiv");
 	await login();
@@ -1607,7 +1817,8 @@ test("a late 401 from a closed pixiv viewer preserves its replacement session", 
 	);
 	await page.reload();
 	await restored;
+	await pixivActions(page).click();
 	await expect(
-		page.getByRole("button", { name: "pixiv ID 123" }),
+		page.getByRole("menuitem", { name: "pixiv ID 123" }),
 	).toBeVisible();
 });

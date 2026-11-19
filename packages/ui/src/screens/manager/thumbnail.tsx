@@ -23,9 +23,8 @@ export function ThumbnailWarmupPanel(props: { manager: UseManagerPageResult }) {
 			<section class="border-border border-y bg-card py-4 sm:rounded-md sm:border sm:p-4">
 				<div class="space-y-1.5">
 					<SourceSelect
-						manager={props.manager}
+						sources={props.manager.sources()}
 						onChange={props.manager.setSelectedSourceId}
-						placeholder={t("actions.selectSource")}
 						value={props.manager.selectedSourceId()}
 					/>
 					<p class="text-xs text-muted-foreground">

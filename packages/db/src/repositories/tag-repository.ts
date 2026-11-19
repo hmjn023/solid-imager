@@ -13,7 +13,7 @@ import type {
 import { eq, type InferSelectModel, inArray, sql } from "drizzle-orm";
 import { mediaTags, tagNameRedirects, tags } from "../schema";
 import type { DrizzleExecutor } from "../types";
-import { lockTagNames } from "./tag-migration";
+import { lockTagNames, resolveTagNameRedirects } from "./tag-migration";
 
 type DbTag = InferSelectModel<typeof tags>;
 const DeadlockRetryLimit = 3;
@@ -246,22 +246,13 @@ export function createTagRepository(
 				const execute = async (exec: DrizzleExecutor) => {
 					if (tagsToInsert.length === 0) return;
 					await lockTagNames(exec, true);
-					const redirects = await exec
-						.select({ oldName: tagNameRedirects.name, name: tags.name })
-						.from(tagNameRedirects)
-						.innerJoin(tags, eq(tagNameRedirects.tagId, tags.id))
-						.where(
-							inArray(
-								tagNameRedirects.name,
-								tagsToInsert.map((tag) => tag.name),
-							),
-						);
-					const nameByAlias = new Map(
-						redirects.map(({ oldName, name }) => [oldName, name]),
+					const redirects = await resolveTagNameRedirects(
+						exec,
+						tagsToInsert.map(({ name }) => name),
 					);
 					const assignments = new Map<string, (typeof tagsToInsert)[number]>();
 					for (const tag of tagsToInsert) {
-						const name = nameByAlias.get(tag.name) ?? tag.name;
+						const name = redirects.get(tag.name)?.name ?? tag.name;
 						const key = `${tag.type}:${name}`;
 						if (name === tag.name || !assignments.has(key)) {
 							assignments.set(key, { ...tag, name });

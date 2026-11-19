@@ -19,6 +19,10 @@ import type { DrizzleExecutor } from "./types";
 
 export type { DrizzleExecutor } from "./types";
 export { relations } from "./relations";
+export {
+	lockTagNames,
+	resolveTagNameRedirects,
+} from "./repositories/tag-migration";
 export { createTransactionManager } from "./transaction-manager";
 
 /** Wire the repositories together once, preserving transaction-aware executor lookup. */

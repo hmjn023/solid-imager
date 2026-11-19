@@ -1,6 +1,14 @@
 import { t } from "@solid-imager/i18n";
 import type { JSX } from "solid-js";
 import { Show } from "solid-js";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectLabel,
+	SelectTrigger,
+	SelectValue,
+} from "../select";
 
 type ManagementHeaderProps = {
 	actions?: JSX.Element;
@@ -34,6 +42,48 @@ export function ManagementHeader(props: ManagementHeaderProps) {
 
 export const CATEGORY_TABS_CLASS =
 	"min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 lg:w-full lg:justify-start";
+
+export function CompactCategorySelect<
+	Category extends { label: string; value: string },
+>(props: {
+	active: string;
+	options: readonly Category[];
+	label: string;
+	onChange: (value: Category["value"]) => void;
+	renderIcon: (category: Category) => JSX.Element;
+}) {
+	return (
+		<Select<Category>
+			class="flex items-center gap-3"
+			disallowEmptySelection
+			options={[...props.options]}
+			optionTextValue="label"
+			optionValue="value"
+			value={props.options.find((category) => category.value === props.active)}
+			onChange={(category) => {
+				if (category) props.onChange(category.value);
+			}}
+			itemComponent={(itemProps) => (
+				<SelectItem item={itemProps.item}>
+					<span class="flex items-center gap-2">
+						{props.renderIcon(itemProps.item.rawValue)}
+						{itemProps.item.rawValue.label}
+					</span>
+				</SelectItem>
+			)}
+		>
+			<SelectLabel class="shrink-0 text-muted-foreground">
+				{props.label}
+			</SelectLabel>
+			<SelectTrigger class="min-w-0 gap-2 bg-card text-start">
+				<SelectValue<Category>>
+					{(state) => state.selectedOption()?.label}
+				</SelectValue>
+			</SelectTrigger>
+			<SelectContent class="lg:hidden" />
+		</Select>
+	);
+}
 
 export function categoryButtonClass(active: boolean): string {
 	return `flex min-h-10 w-full items-center gap-2.5 rounded-md px-2.5 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring ${

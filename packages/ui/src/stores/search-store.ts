@@ -21,6 +21,8 @@ export const [searchState, setSearchState] = createStore<SearchState>({
 const [globalSimilarityActivation, setGlobalSimilarityActivation] =
 	createSignal(0);
 export const getGlobalSimilarityActivation = globalSimilarityActivation;
+const [searchFiltersRevision, setSearchFiltersRevision] = createSignal(0);
+export const getSearchFiltersRevision = searchFiltersRevision;
 
 function getSessionStorage(): Storage | null {
 	try {
@@ -35,6 +37,7 @@ export const resetSearchState = () => {
 };
 
 export const clearPresetFilters = () => {
+	setSearchFiltersRevision((revision) => revision + 1);
 	setSearchState((prev) => ({
 		...defaultState,
 		mode: prev.mode,
@@ -125,3 +128,10 @@ export const clearSimilaritySearch = () => {
 
 export const getSearchCondition = () =>
 	getSearchConditionFromState(searchState);
+
+export const hasSearchConditions = () =>
+	Boolean(
+		getSearchCondition()?.children.length ||
+		searchState.similarityAnchorMediaId ||
+		searchState.semanticQuery.trim(),
+	);

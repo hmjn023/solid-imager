@@ -114,6 +114,9 @@ test("shared search selection, bulk dialog, copy, move and delete workflows", as
 			name: "一括操作を実行",
 			exact: true,
 		});
+		await expect(
+			bulkDialog.getByRole("button", { name: "確定", exact: true }),
+		).toBeDisabled();
 		await expect(bulkDialog).toContainText("2件のメディア");
 		await bulkDialog
 			.getByRole("button", { name: "キャンセル", exact: true })

@@ -25,7 +25,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "./select";
-import { Separator } from "./separator";
 import { SortControls } from "./sort-controls";
 import {
 	clearSimilaritySearch,
@@ -55,6 +54,8 @@ export type SearchControlPanelProps = {
 	setState?: SetStoreFunction<SearchState>;
 	/** Hide inline submit controls when an enclosing surface supplies Apply. */
 	showSearchButton?: boolean;
+	/** Hide sorting when the workspace toolbar provides it. */
+	showSortControls?: boolean;
 	class?: string;
 	usePopover?: boolean;
 };
@@ -62,6 +63,8 @@ export type SearchControlPanelProps = {
 export function SearchControlPanel(props: SearchControlPanelProps) {
 	const currentState = () => props.state ?? searchState;
 	const updateState = props.setState ?? setSearchState;
+	const isOrdinarySearch = () =>
+		getSearchExecutionKind(currentState()) === "ordinary";
 	const selectedSource = () =>
 		props.state?.selectedSource ??
 		props.selectedSource ??
@@ -91,43 +94,7 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 
 	return (
 		<div class={props.class}>
-			<Show when={props.context === "global" && props.sources}>
-				<div class="mb-4 space-y-2">
-					<Label>{t("searchControlPanel.mediaSources")}</Label>
-					<Select
-						itemComponent={(itemProps) => (
-							<SelectItem item={itemProps.item}>
-								{itemProps.item.rawValue.name}
-							</SelectItem>
-						)}
-						onChange={(value) => {
-							const selected = value as { id: string } | undefined;
-							handleSelectSource(selected?.id ?? "");
-						}}
-						options={[
-							{ id: "", name: t("labels.allSources") },
-							...(props.sources || []),
-						]}
-						optionValue="id"
-						placeholder={t("actions.selectSource")}
-						value={[
-							{ id: "", name: t("labels.allSources") },
-							...(props.sources || []),
-						].find((source) => source.id === selectedSource())}
-					>
-						<SelectTrigger>
-							<SelectValue<{ name: string }>>
-								{(state) =>
-									state.selectedOption()?.name || t("actions.selectSource")
-								}
-							</SelectValue>
-						</SelectTrigger>
-						<SelectContent />
-					</Select>
-				</div>
-			</Show>
-
-			<div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+			<div class="flex flex-wrap items-center justify-between gap-2 border-border border-b pb-3">
 				<Label class="font-medium text-sm">
 					{t("searchControlPanel.searchMode")}
 				</Label>
@@ -158,52 +125,23 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				</ToggleGroup>
 			</div>
 
-			<EmbeddingSearchControls
-				state={currentState()}
-				setState={updateState}
-				onSearch={props.onSearch}
-				id={props.setState ? "mobile-embedding-search" : "embedding-search"}
-			/>
-			<SortControls
-				className="mb-4"
-				onClearSimilarity={clearSimilarityAnchor}
-				onSimilarityTopKChange={(value) => updateState("similarityTopK", value)}
-				onSortByChange={(value) => updateState("sortBy", value)}
-				onSortOrderChange={(value) => updateState("sortOrder", value)}
-				similarityAnchorMediaId={currentState().similarityAnchorMediaId}
-				similarityLimitId={
-					props.setState
-						? "mobile-search-panel-similarity-limit"
-						: "search-panel-similarity-limit"
-				}
-				similarityTopK={currentState().similarityTopK}
-				semanticQuery={currentState().semanticQuery}
-				sortBy={currentState().sortBy}
-				sortOrder={currentState().sortOrder}
-			/>
-
-			<Separator class="my-4" />
-			<Show when={getSearchExecutionKind(currentState()) !== "ordinary"}>
-				<p class="mb-3 text-sm text-muted-foreground">
-					{t(
-						"searchControlPanel.ordinarySearchConditionsAreSavedSimilarityAndTextSearches",
-					)}
-				</p>
-				<Button
-					class="mb-3"
-					size="sm"
-					variant="outline"
-					onClick={clearSimilarityAnchor}
-				>
-					{t("searchControlPanel.returnToOrdinarySearch")}
-				</Button>
+			<Show when={!isOrdinarySearch()}>
+				<div class="mt-4 space-y-2">
+					<p class="text-sm text-muted-foreground">
+						{t(
+							"searchControlPanel.ordinarySearchConditionsAreSavedSimilarityAndTextSearches",
+						)}
+					</p>
+					<Button size="sm" variant="outline" onClick={clearSimilarityAnchor}>
+						{t("searchControlPanel.returnToOrdinarySearch")}
+					</Button>
+				</div>
 			</Show>
 
 			<div
 				class={
-					currentState().mode === "simple" &&
-					getSearchExecutionKind(currentState()) === "ordinary"
-						? "block"
+					currentState().mode === "simple" && isOrdinarySearch()
+						? "mt-4"
 						: "hidden"
 				}
 			>
@@ -222,13 +160,8 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 				/>
 			</div>
 
-			<Show
-				when={
-					currentState().mode === "pro" &&
-					getSearchExecutionKind(currentState()) === "ordinary"
-				}
-			>
-				<div class="space-y-4">
+			<Show when={currentState().mode === "pro" && isOrdinarySearch()}>
+				<div class="mt-4 space-y-4">
 					<PresetManager
 						class="w-full flex-col items-stretch"
 						presetClient={props.presetClient}
@@ -249,6 +182,70 @@ export function SearchControlPanel(props: SearchControlPanelProps) {
 					/>
 				</div>
 			</Show>
+
+			<div class="mt-4 space-y-4 border-border border-t pt-4">
+				<Show when={props.context === "global" && props.sources}>
+					<div class="space-y-2">
+						<Label>{t("searchControlPanel.mediaSources")}</Label>
+						<Select
+							itemComponent={(itemProps) => (
+								<SelectItem item={itemProps.item}>
+									{itemProps.item.rawValue.name}
+								</SelectItem>
+							)}
+							onChange={(value) => {
+								const selected = value as { id: string } | undefined;
+								handleSelectSource(selected?.id ?? "");
+							}}
+							options={[
+								{ id: "", name: t("labels.allSources") },
+								...(props.sources || []),
+							]}
+							optionValue="id"
+							placeholder={t("actions.selectSource")}
+							value={[
+								{ id: "", name: t("labels.allSources") },
+								...(props.sources || []),
+							].find((source) => source.id === selectedSource())}
+						>
+							<SelectTrigger aria-label={t("searchControlPanel.mediaSources")}>
+								<SelectValue<{ name: string }>>
+									{(state) =>
+										state.selectedOption()?.name || t("actions.selectSource")
+									}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent />
+						</Select>
+					</div>
+				</Show>
+				<EmbeddingSearchControls
+					state={currentState()}
+					setState={updateState}
+					onSearch={props.onSearch}
+					id={props.setState ? "mobile-embedding-search" : "embedding-search"}
+				/>
+				<Show when={props.showSortControls !== false}>
+					<SortControls
+						onClearSimilarity={clearSimilarityAnchor}
+						onSimilarityTopKChange={(value) =>
+							updateState("similarityTopK", value)
+						}
+						onSortByChange={(value) => updateState("sortBy", value)}
+						onSortOrderChange={(value) => updateState("sortOrder", value)}
+						similarityAnchorMediaId={currentState().similarityAnchorMediaId}
+						similarityLimitId={
+							props.setState
+								? "mobile-search-panel-similarity-limit"
+								: "search-panel-similarity-limit"
+						}
+						similarityTopK={currentState().similarityTopK}
+						semanticQuery={currentState().semanticQuery}
+						sortBy={currentState().sortBy}
+						sortOrder={currentState().sortOrder}
+					/>
+				</Show>
+			</div>
 		</div>
 	);
 }

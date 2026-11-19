@@ -70,7 +70,7 @@ test("app navigation is responsive and accessible", async ({
 	).toBeAttached();
 	await expectNoHorizontalOverflow(page);
 
-	const usesMobileMenu = ["responsive-320", "responsive-375"].includes(
+	const usesMobileMenu = ["responsive-320", "responsive-390"].includes(
 		testInfo.project.name,
 	);
 	if (!usesMobileMenu) {
