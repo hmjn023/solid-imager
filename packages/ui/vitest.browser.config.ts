@@ -6,7 +6,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
 	plugins: [solidPlugin(), tailwindcss()],
 	optimizeDeps: {
-		include: ["@tanstack/solid-query", "@tanstack/solid-virtual"],
+		include: ["@tanstack/solid-query", "@tanstack/solid-virtual", "zod"],
 	},
 	resolve: {
 		tsconfigPaths: true,
