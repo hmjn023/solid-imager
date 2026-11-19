@@ -1,5 +1,4 @@
 import type { DeferredActions } from "@solid-imager/application/media";
-import { UnreconciledStorageError } from "@solid-imager/core/errors";
 import type { Job } from "@solid-imager/core/jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
 import {
@@ -13,9 +12,10 @@ import {
 	processSourceRestoreJob,
 } from "~/infrastructure/services/source-transfer-job-service";
 
+import { mediaDeletionEffects } from "./media-deletion-effects";
+
 /** Thumbnail operations injected into job dispatch to avoid a direct module dependency. */
 export type ThumbnailJobHandlers = {
-	deleteThumbnail: (mediaSourceId: string, mediaId: string) => Promise<void>;
 	processThumbnailGenerationJob: (job: Job) => Promise<void>;
 };
 
@@ -100,73 +100,48 @@ export async function processJob(job: Job) {
 	}
 }
 
-/** Persists queued jobs, attempts required cleanup, then publishes independent observer notifications. Failed cleanup requires reconciliation. */
-export async function executeDeferredActions(actions: DeferredActions) {
-	if (actions.jobs.length > 0) {
-		const repo = services.getJobRepository();
-		for (const item of actions.jobs) {
-			for (const job of item.jobs) {
-				const jobPayload = {
-					...(job.payload && typeof job.payload === "object"
-						? job.payload
-						: {}),
-					mediaId: job.mediaId,
-					sourcePath: job.sourcePath,
-				};
-				await repo.create({
-					type: job.type,
-					mediaSourceId: item.mediaSourceId,
-					payload: jobPayload,
-				});
-			}
+async function dispatchDeferredJobs(groups: DeferredActions["jobs"]) {
+	if (groups.length === 0) return;
+	const repo = services.getJobRepository();
+	for (const group of groups) {
+		for (const job of group.jobs) {
+			const jobPayload = {
+				...(job.payload && typeof job.payload === "object" ? job.payload : {}),
+				mediaId: job.mediaId,
+				sourcePath: job.sourcePath,
+			};
+			await repo.create({
+				type: job.type,
+				mediaSourceId: group.mediaSourceId,
+				payload: jobPayload,
+			});
 		}
 	}
-	const cleanupErrors: unknown[] = [];
+}
 
-	if (actions.filesToDelete && actions.filesToDelete.length > 0) {
-		for (const file of actions.filesToDelete) {
-			try {
-				await services
-					.getMediaStorage()
-					.deleteFile(file.basePath, file.filePath);
-			} catch (e) {
-				cleanupErrors.push(e);
-				logger.error(
-					{ err: e, basePath: file.basePath, filePath: file.filePath },
-					"Failed to delete file during deferred actions",
-				);
-			}
-		}
-	}
-	if (actions.thumbnailsToDelete && actions.thumbnailsToDelete.length > 0) {
-		for (const thumb of actions.thumbnailsToDelete) {
-			try {
-				await getThumbnailJobHandlers().deleteThumbnail(
-					thumb.mediaSourceId,
-					thumb.mediaId,
-				);
-			} catch (e) {
-				cleanupErrors.push(e);
-				logger.error(
-					{
-						err: e,
-						mediaSourceId: thumb.mediaSourceId,
-						mediaId: thumb.mediaId,
-					},
-					"Failed to delete thumbnail during deferred actions",
-				);
-			}
-		}
-	}
-	for (const item of actions.sourceEvents) {
+/** Runs post-commit work so job or cleanup errors cannot suppress notifications. */
+export async function executeDeferredActions(actions: DeferredActions) {
+	try {
+		await dispatchDeferredJobs(actions.jobs);
+	} catch (err) {
+		logger.error({ err }, "Unable to queue processing for committed media");
+		throw err;
+	} finally {
 		try {
-			RealtimeEventBus.publishSourceCommand(item.mediaSourceId, item);
-		} catch (err) {
-			logger.warn(
-				{ err, mediaSourceId: item.mediaSourceId, event: item.event },
-				"Deferred observer failed after committed media operation",
-			);
+			if (actions.mediaDeletion) {
+				await mediaDeletionEffects.execute(actions.mediaDeletion);
+			}
+		} finally {
+			for (const item of actions.sourceEvents) {
+				try {
+					RealtimeEventBus.publishSourceCommand(item.mediaSourceId, item);
+				} catch (err) {
+					logger.warn(
+						{ err, mediaSourceId: item.mediaSourceId, event: item.event },
+						"Deferred observer failed after committed media operation",
+					);
+				}
+			}
 		}
 	}
-	if (cleanupErrors.length) throw new UnreconciledStorageError(cleanupErrors);
 }

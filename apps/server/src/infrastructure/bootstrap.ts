@@ -5,7 +5,6 @@ import { NodeFileSystem } from "~/infrastructure/file-system/node-file-system";
 import { updateDownloadRateLimitConfig } from "~/infrastructure/jobs/download-rate-limiter";
 import { JobWorker } from "~/infrastructure/jobs/job-worker";
 import {
-	deleteThumbnail,
 	generateThumbnail,
 	processThumbnailGenerationJob,
 } from "~/infrastructure/jobs/thumbnails";
@@ -76,7 +75,6 @@ export function initServices() {
 	const jobRepo = JobRepository;
 	services.registerJobRepository(jobRepo);
 	configureThumbnailJobHandlers({
-		deleteThumbnail,
 		processThumbnailGenerationJob,
 	});
 

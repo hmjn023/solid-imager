@@ -203,14 +203,6 @@ export const mediaRouter = os.router({
 	 */
 	delete: os.delete.handler(async ({ input }) => {
 		await MediaService.deleteMedia(input.sourceId, input.mediaId);
-		try {
-			await ccipVectorService.delete(input.mediaId);
-		} catch (err) {
-			logger.warn(
-				{ err, mediaId: input.mediaId },
-				"[MediaRouter] Vector delete failed after media delete",
-			);
-		}
 		return { success: true };
 	}),
 
@@ -225,21 +217,9 @@ export const mediaRouter = os.router({
 	/**
 	 * Move a media item to another source
 	 */
-	move: os.move.handler(async ({ input }) => {
-		const result = await MediaService.moveMedia(
-			input.mediaId,
-			input.targetSourceId,
-		);
-		try {
-			await ccipVectorService.delete(input.mediaId);
-		} catch (err) {
-			logger.warn(
-				{ err, mediaId: input.mediaId },
-				"[MediaRouter] Vector delete failed after media move",
-			);
-		}
-		return result;
-	}),
+	move: os.move.handler(({ input }) =>
+		MediaService.moveMedia(input.mediaId, input.targetSourceId),
+	),
 
 	reserveUploads: os.reserveUploads.handler(({ input }) =>
 		reserveImportFiles(input.sourceId, input.filenames, "import_upload"),
@@ -287,18 +267,6 @@ export const mediaRouter = os.router({
 		await BulkOperationService.bulkDeleteMedia(
 			input.mediaSourceId,
 			input.mediaIds,
-		);
-		await Promise.allSettled(
-			input.mediaIds.map(async (mediaId) => {
-				try {
-					await ccipVectorService.delete(mediaId);
-				} catch (err) {
-					logger.warn(
-						{ err, mediaId },
-						"[MediaRouter] Vector delete failed after bulk media delete",
-					);
-				}
-			}),
 		);
 		return { success: true };
 	}),

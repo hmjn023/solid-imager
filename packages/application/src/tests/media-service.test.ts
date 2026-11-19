@@ -145,7 +145,7 @@ describe("MediaService Unit Tests", () => {
 			imageProcessor: mockImageProcessor,
 			transactionManager: { transaction: (callback) => callback("mock-tx") },
 			eventPublisher: { publishSource: vi.fn(), notifyMediaCopied: vi.fn() },
-			thumbnailManager: { deleteThumbnail: vi.fn() },
+			mediaDeletionEffects: { execute: vi.fn() },
 			logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
 			deferredActionExecutor: { execute: vi.fn() },
 			mediaContextProcessor,

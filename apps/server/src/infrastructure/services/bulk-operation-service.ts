@@ -10,7 +10,8 @@ import {
 } from "@solid-imager/core/media";
 import { db } from "~/infrastructure/db";
 import { jobs } from "~/infrastructure/db/schema";
-import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
+import { localConnectionSchema } from "@solid-imager/core/sources";
+import { mediaDeletionEffects } from "./media-deletion-effects";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
 
@@ -137,8 +138,6 @@ async function commitTransfer(
 					throw new Error(
 						"The copied file's local destination is no longer available.",
 					);
-				const { localConnectionSchema } =
-					await import("@solid-imager/core/sources");
 				await services
 					.getMediaStorage()
 					.deleteFile(
@@ -214,59 +213,37 @@ export const BulkOperationService = {
 	 */
 	async bulkDeleteMedia(mediaSourceId: string, mediaIds: string[]) {
 		const mediaRepo = getBulkMediaRepository();
-		const mediaStorage = services.getMediaStorage();
 		const sourceRepo = services.getSourceRepository();
+		const ids = [...new Set(mediaIds)];
 
-		const source = await sourceRepo.findById(mediaSourceId);
-		if (!source) {
-			throw new Error(`Media source not found: ${mediaSourceId}`);
-		}
-		const connectionInfo = source.connectionInfo as Record<
-			string,
-			unknown
-		> | null;
-		const basePath = connectionInfo?.path as string | undefined;
-		if (!basePath) {
-			throw new Error(`Base path not found for media source: ${mediaSourceId}`);
-		}
-
-		// 一括取得してセキュリティ及び整合性チェック
-		const mediaList = await mediaRepo.findByIds(mediaIds);
-		const mediaMap = new Map(mediaList.map((m) => [m.id, m]));
-
-		for (const mediaId of mediaIds) {
-			const media = mediaMap.get(mediaId);
-			if (!media || media.mediaSourceId !== mediaSourceId) {
+		const targets = await db.transaction(async (tx) => {
+			const source = await sourceRepo.findById(mediaSourceId, tx);
+			if (!source) {
+				throw new Error(`Media source not found: ${mediaSourceId}`);
+			}
+			const connection = localConnectionSchema.safeParse(source.connectionInfo);
+			if (!connection.success) {
 				throw new Error(
-					`Media with ID ${mediaId} does not belong to source ${mediaSourceId}`,
+					`Base path not found for media source: ${mediaSourceId}`,
 				);
 			}
-		}
 
-		for (const media of mediaList) {
-			// 実ファイルの削除
-			try {
-				await mediaStorage.deleteFile(basePath, media.filePath);
-			} catch (e) {
-				logger.warn(
-					{ mediaId: media.id, filePath: media.filePath, error: e },
-					"Failed to delete file from storage during bulk delete",
+			const deleted = await mediaRepo.bulkDelete(mediaSourceId, ids, tx);
+			if (deleted.length !== ids.length) {
+				const deletedIds = new Set(deleted.map(({ id }) => id));
+				const invalidId = ids.find((id) => !deletedIds.has(id));
+				throw new Error(
+					`Media with ID ${invalidId} does not belong to source ${mediaSourceId}`,
 				);
 			}
-			// サムネイルの削除
-			try {
-				await deleteThumbnail(mediaSourceId, media.id);
-			} catch (e) {
-				logger.warn(
-					{ mediaId: media.id, error: e },
-					"Failed to delete thumbnail during bulk delete",
-				);
-			}
-		}
-
-		if (mediaIds.length > 0) {
-			await mediaRepo.bulkDelete(mediaIds);
-		}
+			return deleted.map(({ id, filePath }) => ({
+				mediaSourceId,
+				mediaId: id,
+				filePath,
+				basePath: connection.data.path,
+			}));
+		});
+		await mediaDeletionEffects.execute({ kind: "delete", targets });
 	},
 
 	/**
