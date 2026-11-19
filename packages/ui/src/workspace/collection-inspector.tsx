@@ -2,9 +2,66 @@ import { getLocale, t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
 import ExternalLink from "lucide-solid/icons/external-link";
 import X from "lucide-solid/icons/x";
-import type { JSX } from "solid-js";
-import { getOwner, runWithOwner, Show } from "solid-js";
+import type { Accessor, JSX } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	getOwner,
+	onCleanup,
+	onMount,
+	runWithOwner,
+	Show,
+} from "solid-js";
 import { Button } from "../button";
+import type { QueryUiState } from "../query-state";
+import { reconcileCollectionPreviewId } from "./collection-navigation";
+
+export function createCollectionInspector(options: {
+	media: Accessor<Media[]>;
+	enabled: Accessor<boolean>;
+	phase: Accessor<QueryUiState<Media[]>["phase"]>;
+}) {
+	const [isWide, setIsWide] = createSignal(false);
+	const [isOpen, setIsOpen] = createSignal(true);
+	const [previewId, setPreviewId] = createSignal<string | null>(null);
+	const canPreview = () => isWide() && options.enabled();
+	const isVisible = () =>
+		canPreview() &&
+		isOpen() &&
+		(options.phase() === "pending" || options.phase() === "data");
+
+	onMount(() => {
+		// Use the workspace's 2xl threshold for both the layout and its pointer action.
+		const viewport = window.matchMedia("(min-width: 96rem)");
+		const update = () => setIsWide(viewport.matches);
+		update();
+		viewport.addEventListener("change", update);
+		onCleanup(() => viewport.removeEventListener("change", update));
+	});
+
+	createEffect(() => {
+		const nextId = options.enabled()
+			? reconcileCollectionPreviewId(options.media(), previewId())
+			: null;
+		if (nextId !== previewId()) setPreviewId(nextId);
+	});
+	const selectMedia = (media: Media) => {
+		setPreviewId(media.id);
+		setIsOpen(true);
+	};
+	const previewSelection = createMemo(() =>
+		canPreview() ? selectMedia : undefined,
+	);
+
+	return {
+		isVisible,
+		previewId: () => (isVisible() ? previewId() : null),
+		media: () => options.media().find((item) => item.id === previewId()),
+		previewSelection,
+		close: () => setIsOpen(false),
+	};
+}
 
 type CollectionInspectorProps = {
 	media: Media | undefined;
@@ -46,7 +103,7 @@ export function CollectionInspector(props: CollectionInspectorProps) {
 	return (
 		<aside
 			aria-label={t("labels.selectedMedia")}
-			class="sticky top-0 hidden max-h-dialog-screen-compact min-h-0 min-w-0 overflow-hidden rounded-md border border-border bg-card 2xl:flex 2xl:flex-col"
+			class="sticky top-0 flex max-h-dialog-screen-compact min-h-0 min-w-0 flex-col overflow-hidden rounded-md border border-border bg-card"
 		>
 			<header class="z-10 flex h-12 shrink-0 items-center border-border border-b bg-card/95 px-4 backdrop-blur-sm">
 				<h2 class="min-w-0 flex-1 truncate font-semibold text-foreground text-sm">

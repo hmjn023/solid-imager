@@ -1,5 +1,7 @@
+import type { SafeMediaSource } from "@solid-imager/core/sources";
 import { t } from "@solid-imager/i18n";
-import { createEffect, createMemo, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
+import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";
 import {
 	Dialog,
@@ -10,49 +12,51 @@ import {
 	DialogTitle,
 } from "./dialog";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "./select";
+	MediaDestinationField,
+	useMediaDestinationSources,
+} from "./media-destination-field";
 
 export type MoveCopyMediaDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	mode: "copy" | "move";
 	currentSourceId: string;
-	sources: { id: string; name: string }[];
-	isLoading?: boolean;
-	error?: string | null;
-	onConfirm: (targetSourceId: string) => void;
+	listSources: () => Promise<SafeMediaSource[]>;
+	isSubmitting: boolean;
+	error?: string;
+	onConfirm: (targetSourceId: string) => Promise<void>;
 };
 
 export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
-	const [targetSourceId, setTargetSourceId] = createSignal<string | null>(null);
+	const [targetSourceId, setTargetSourceId] = createSignal("");
+	const sourceList = useMediaDestinationSources(
+		() => props.open,
+		props.listSources,
+	);
+	const options = () =>
+		sourceList
+			.sources()
+			.filter((source) => source.id !== props.currentSourceId);
+	const target = () =>
+		options().find((source) => source.id === targetSourceId());
+	const canSubmit = () =>
+		!props.isSubmitting && !sourceList.loading() && Boolean(target());
 
 	createEffect(() => {
-		if (!props.open) setTargetSourceId(null);
+		if (!props.open) setTargetSourceId("");
 	});
 
-	const handleConfirm = () => {
-		const target = targetSourceId();
-		if (target) {
-			props.onConfirm(target);
-			props.onOpenChange(false);
-			setTargetSourceId(null);
-		}
-	};
-
-	const options = createMemo(() =>
-		props.sources.flatMap((s) =>
-			s.id !== props.currentSourceId ? [{ value: s.id, label: s.name }] : [],
-		),
-	);
-
 	return (
-		<Dialog onOpenChange={props.onOpenChange} open={props.open}>
-			<DialogContent>
+		<Dialog
+			onOpenChange={(open) => {
+				if (!props.isSubmitting) props.onOpenChange(open);
+			}}
+			open={props.open}
+		>
+			<DialogContent
+				class="workspace-theme sm:max-w-dialog-xs"
+				closeDisabled={props.isSubmitting}
+			>
 				<DialogHeader>
 					<DialogTitle>
 						{props.mode === "copy"
@@ -61,68 +65,58 @@ export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
 					</DialogTitle>
 					<DialogDescription>
 						{t(
-							"moveCopyMediaDialog.selectTheDestinationSourceForThisMediaItemValue",
-							{
-								value0: String(
-									props.mode === "move" &&
-										t(
-											"moveCopyMediaDialog.theOriginalItemWillBeDeletedAfterASuccessful",
-										),
-								),
-							},
+							props.mode === "copy"
+								? "moveCopyMediaDialog.copyDescription"
+								: "moveCopyMediaDialog.moveDescription",
 						)}
 					</DialogDescription>
 				</DialogHeader>
 
-				<div class="py-4">
-					<Show when={props.isLoading}>
-						<p class="text-muted-foreground text-sm">
-							{t("moveCopyMediaDialog.loadingSources")}
-						</p>
-					</Show>
+				<form
+					class="grid gap-4"
+					onSubmit={(event) => {
+						event.preventDefault();
+						const destination = target();
+						if (canSubmit() && destination)
+							void props.onConfirm(destination.id);
+					}}
+				>
+					<MediaDestinationField
+						options={options()}
+						value={target()}
+						onChange={setTargetSourceId}
+						disabled={props.isSubmitting}
+						loading={sourceList.loading()}
+						failed={sourceList.failed()}
+						onRetry={sourceList.retry}
+					/>
 					<Show when={props.error}>
-						<p class="text-destructive text-sm">{props.error}</p>
+						<Alert variant="destructive">
+							<AlertDescription>{props.error}</AlertDescription>
+						</Alert>
 					</Show>
-					<Show when={!(props.isLoading || props.error)}>
-						<Select<{ value: string; label: string }>
-							itemComponent={(itemProps) => (
-								<SelectItem item={itemProps.item}>
-									{itemProps.item.rawValue.label}
-								</SelectItem>
-							)}
-							onChange={(val) => setTargetSourceId(val?.value ?? null)}
-							options={options()}
-							optionTextValue="label"
-							optionValue="value"
-							placeholder={t("actions.selectSource")}
-							value={
-								options().find((o) => o.value === targetSourceId()) ?? null
-							}
+					<DialogFooter>
+						<Button
+							disabled={props.isSubmitting}
+							onClick={() => props.onOpenChange(false)}
+							type="button"
+							variant="outline"
 						>
-							<SelectTrigger
-								aria-label={t("moveCopyMediaDialog.destinationSource")}
-							>
-								<SelectValue<{ label: string; value: string }>>
-									{(state) =>
-										state.selectedOption()?.label ?? t("actions.selectSource")
-									}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent />
-						</Select>
-					</Show>
-				</div>
-
-				<DialogFooter>
-					<Button onClick={() => props.onOpenChange(false)} variant="outline">
-						{t("actions.cancel")}
-					</Button>
-					<Button disabled={!targetSourceId()} onClick={handleConfirm}>
-						{props.mode === "copy"
-							? t("moveCopyMediaDialog.copy")
-							: t("moveCopyMediaDialog.move")}
-					</Button>
-				</DialogFooter>
+							{t("actions.cancel")}
+						</Button>
+						<Button
+							aria-busy={props.isSubmitting}
+							disabled={!canSubmit()}
+							type="submit"
+						>
+							{props.isSubmitting
+								? t("status.processing")
+								: props.mode === "copy"
+									? t("moveCopyMediaDialog.copy")
+									: t("moveCopyMediaDialog.move")}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

@@ -129,7 +129,7 @@ bun run test:e2e --list                              # 通常の実行対象を�
 
 dev の代表ケースは `@dev-smoke` で指定し、検索・詳細の直接URLとF5、SPA内の遷移、Tauriの起動と再接続設定の永続化、実CCIP推論、SSE再接続を検証する。対象ファイルに別のケースを追加すると、production全件と `--mode=dev` の全件実行で検証できる。
 
-spec・行番号・`--grep`・`--project` で絞り込める。モードを省略してspecを指定するとその対象をdevとproductionで実行する。旧 `test:e2e:quick:dev` と同じ画面幅をまとめて検証するには `bun run test:e2e --mode=dev --project desktop responsive-desktop responsive-375 responsive-768` を使う。`bun run --cwd apps/server test` は引き続きserverのunit/integration、components、通常のアプリE2Eを順番に実行する。
+spec・行番号・`--grep`・`--project` で絞り込める。モードを省略してspecを指定するとその対象をdevとproductionで実行する。代表的な画面幅をまとめて検証するには `bun run test:e2e --mode=dev --project desktop responsive-desktop responsive-390 responsive-768` を使う。スマートフォンの基準は 390 × 844 CSS px（DPR 3）で、320 CSS px は狭い画面での表示確認に使う。`bun run --cwd apps/server test` は引き続きserverのunit/integration、components、通常のアプリE2Eを順番に実行する。
 
 `@desktop-only` / `@mobile-only` はprojectの `grepInvert` で収集時に振り分ける。画面幅に依存しない検証はdesktop、レイアウト・touch・breakpoint依存の検証は該当幅に置く。対応する画面幅を増やす際はタグの適用条件も確認する。
 

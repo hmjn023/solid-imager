@@ -21,7 +21,6 @@ import {
 	DialogContent,
 	DialogDescription,
 	DialogTitle,
-	DialogTrigger,
 } from "../dialog";
 import { Input } from "../input";
 import { Label } from "../label";
@@ -185,14 +184,16 @@ export function createPixivAccount(
 export function PixivAccountDialog(props: {
 	account: ReturnType<typeof createPixivAccount>;
 	openPixivLogin?: () => Promise<void>;
+	open: boolean;
+	onOpenChange: (open: boolean) => void;
+	onCloseAutoFocus: (event: Event) => void;
 }) {
 	const account = props.account;
-	const [open, setOpen] = createSignal(false);
 	const [code, setCode] = createSignal("");
 	const [busy, setBusy] = createSignal(false);
 	const [useCookie, setUseCookie] = createSignal(false);
 	const close = (value: boolean) => {
-		setOpen(value);
+		props.onOpenChange(value);
 		if (!value) {
 			setCode("");
 			setUseCookie(false);
@@ -220,19 +221,22 @@ export function PixivAccountDialog(props: {
 		}
 	}
 	return (
-		<Dialog open={open()} onOpenChange={close}>
-			<DialogTrigger as={Button} variant="outline" size="sm">
-				{account.session()
-					? t("pixivAccount.pixivID") + account.session()?.userId
-					: t("pixivAccount.logInToPixiv")}
-			</DialogTrigger>
-			<DialogContent class="workspace-theme">
+		<Dialog open={props.open} onOpenChange={close}>
+			<DialogContent
+				class="workspace-theme"
+				onCloseAutoFocus={props.onCloseAutoFocus}
+			>
 				<DialogTitle>{t("pixivAccount.pixivAccount")}</DialogTitle>
 				<DialogDescription>
 					{account.session()
 						? t("pixivAccount.theAccountUsedByThisTabSViewer")
 						: t("pixivAccount.connectTheAccountSignedInOnTheOfficialPixiv")}
 				</DialogDescription>
+				<Show when={!account.session()}>
+					<p class="text-sm text-muted-foreground">
+						{t("pixivScreen.followLogin")}
+					</p>
+				</Show>
 				<form
 					class="grid gap-4"
 					onSubmit={(event) => {

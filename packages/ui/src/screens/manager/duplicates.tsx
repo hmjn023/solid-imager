@@ -3,14 +3,6 @@ import { For, Show } from "solid-js";
 import { Button } from "../../button";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectLabel,
-	SelectTrigger,
-	SelectValue,
-} from "../../select";
-import {
 	Table,
 	TableBody,
 	TableCaption,
@@ -20,8 +12,7 @@ import {
 	TableRow,
 } from "../../table";
 import { formatBytes, formatDate } from "./utils";
-
-const ALL_SOURCES_OPTION = { id: "__all__", name: t("labels.allSources") };
+import { SourceSelect } from "./source-select";
 
 export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 	const isScanning = () => props.manager.isScanningDuplicates();
@@ -39,49 +30,12 @@ export function DuplicateToolPanel(props: { manager: UseManagerPageResult }) {
 
 			<section class="border-border border-y bg-card py-4 sm:rounded-md sm:border sm:p-4">
 				<div class="grid gap-4 lg:grid-cols-content-action lg:items-end">
-					<div class="space-y-1.5">
-						<Select
-							class="space-y-1.5"
-							itemComponent={(selectProps) => (
-								<SelectItem item={selectProps.item}>
-									{selectProps.item.rawValue.name}
-								</SelectItem>
-							)}
-							onChange={(value) =>
-								props.manager.setDuplicateSourceId(
-									value?.id === ALL_SOURCES_OPTION.id ? undefined : value?.id,
-								)
-							}
-							options={[ALL_SOURCES_OPTION, ...props.manager.sources()]}
-							optionTextValue="name"
-							optionValue="id"
-							value={
-								props.manager.duplicateSourceId()
-									? props.manager
-											.sources()
-											.find(
-												(source) =>
-													source.id === props.manager.duplicateSourceId(),
-											)
-									: ALL_SOURCES_OPTION
-							}
-						>
-							<SelectLabel>{t("labels.targetSource")}</SelectLabel>
-							<SelectTrigger class="w-full bg-card">
-								<SelectValue<unknown>>
-									{(state) => {
-										const selected = state.selectedOption();
-										return selected &&
-											typeof selected === "object" &&
-											"name" in selected
-											? (selected as { name: string }).name
-											: t("labels.allSources");
-									}}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent />
-						</Select>
-					</div>
+					<SourceSelect
+						allowAll
+						sources={props.manager.sources()}
+						onChange={props.manager.setDuplicateSourceId}
+						value={props.manager.duplicateSourceId()}
+					/>
 					<Button
 						class="w-full lg:w-auto"
 						disabled={isScanning() || props.manager.isDeletingDuplicates()}

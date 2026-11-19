@@ -14,6 +14,7 @@ export const ja = defineLocale({
 	"aboutScreen.sourceRepository": "ソースコード",
 	"actions.add": "追加",
 	"actions.addSource": "ソースを追加",
+	"actions.clearSearchConditions": "検索条件をクリア",
 	"actions.apply": "適用",
 	"actions.cancel": "キャンセル",
 	"actions.clear": "クリア",
@@ -171,8 +172,6 @@ export const ja = defineLocale({
 	"batchTools.forceReExtraction": "強制的に再抽出",
 	"batchTools.forceReTagging": "強制的に再タグ付け",
 	"batchTools.jobOptions": "ジョブの設定",
-	"batchTools.leaveEmptyToProcessAllSources":
-		"空欄の場合はすべてのソースが対象です。",
 	"batchTools.model": "モデル",
 	"batchTools.scanTargets": "対象を確認",
 	"batchTools.startExtraction": "抽出を開始",
@@ -185,7 +184,6 @@ export const ja = defineLocale({
 	"bulkActionCommand.targetSourceIsRequired": "保存先ソースが必要です。",
 	"bulkActionDialog.bulkDelete": "一括削除",
 	"bulkActionDialog.confirm": "確定",
-	"bulkActionDialog.copyOrMoveDestinationSource": "コピー/移動先のソース",
 	"bulkActionDialog.copyToAnotherSource": "コピー (別ソースへ)",
 	"bulkActionDialog.destinationFolderPath": "移動先フォルダパス",
 	"bulkActionDialog.doNotResubmitItemsWithUnknownOutcomesCloseThe":
@@ -198,7 +196,6 @@ export const ja = defineLocale({
 	"bulkActionDialog.retryFailedOrUnprocessedItems": "失敗・未処理だけ再試行",
 	"bulkActionDialog.runABulkActionOnValueValueSelectedMedia":
 		"選択された {value0}件のメディアに対して一括操作を実行します。",
-	"bulkActionDialog.select": "選択してください...",
 	"bulkActionDialog.valueSucceededValueCanBeRetriedValueHaveUnknown":
 		"成功 {value0}件、再試行可能 {value1}件、結果不明 {value2}件。",
 	"bulkActionDialog.warningThisActionCannotBeUndoneTheActualFiles":
@@ -421,7 +418,6 @@ export const ja = defineLocale({
 	"configScreen.fatal": "致命的エラー",
 	"configScreen.formatsAndMetadata": "形式とメタデータ",
 	"configScreen.healthCheckFailed": "接続確認に失敗しました",
-	"configScreen.httpPowerMachine3000": "http://power-machine:3000",
 	"configScreen.imageExtensions": "画像の拡張子",
 	"configScreen.inferenceServiceConnection": "推論サービス接続",
 	"configScreen.info": "情報",
@@ -450,6 +446,9 @@ export const ja = defineLocale({
 	"configScreen.recordANewKeyCombinationDisableAnActionOr":
 		"新しいキー操作の記録、無効化、既定値への復元ができます。変更はこのブラウザー・デスクトップアプリに即時保存され、サーバー設定には含まれません。",
 	"configScreen.remote": "リモート",
+	"configScreen.remoteAiUrlExample": "入力例：{url}",
+	"configScreen.remoteAiUrlHelp":
+		"空欄の場合はローカルで処理します。別の solid-imager サーバーを使う場合は、そのベース URL を入力してください。",
 	"configScreen.remoteAIServerURLORPC": "リモートAIサーバーURL（oRPC）",
 	"configScreen.requestIntervalMs": "リクエスト間隔 (ms)",
 	"configScreen.settingsCategories": "設定カテゴリ",
@@ -464,8 +463,6 @@ export const ja = defineLocale({
 	"configScreen.toolAvailability": "ツールの公開範囲",
 	"configScreen.trace": "トレース",
 	"configScreen.unsavedChanges": "未保存の変更",
-	"configScreen.useAnotherSolidImagerServerSORPCEndpointFor":
-		"外部の solid-imager サーバーの oRPC エンドポイントを指定。AI 処理をリモートに委託します。空欄の場合はローカルで処理します。",
 	"configScreen.valueMs": "{value0}ミリ秒",
 	"configScreen.valueServiceAvailable": "{value0}サービスを利用できます",
 	"configScreen.videoExtensions": "動画の拡張子",
@@ -666,6 +663,7 @@ export const ja = defineLocale({
 	"importReviewModal.newBulkUploadRequestsWillAppearHere":
 		"新しい一括アップロード依頼はここに表示されます。",
 	"importReviewModal.noPreview": "プレビューなし",
+	"importReviewModal.preview": "内容を見る",
 	"importReviewModal.rememberThisSource": "このソースを記憶する",
 	"importReviewModal.requestsDeleted": "取り込み依頼を削除しました",
 	"importReviewModal.reviewDownloadedMediaChooseASourceThenImportThe":
@@ -797,11 +795,15 @@ export const ja = defineLocale({
 	"jobsScreen.jobPages": "ジョブのページ移動",
 	"jobsScreen.jobsRequiringAttention": "確認が必要な処理",
 	"jobsScreen.jobStatusFilter": "ジョブの状態で絞り込む",
+	"jobsScreen.allStatuses": "すべての状態",
 	"jobsScreen.loadingJobs": "ジョブ一覧を読み込んでいます...",
 	"jobsScreen.newJobsAndTheirStatusWillAppearHere":
 		"ジョブが作成されると、ここに実行状態が表示されます。",
 	"jobsScreen.nextPage": "次のページ",
-	"jobsScreen.noJobsValue": "{value0} jobsはありません",
+	"jobsScreen.noJobsYet": "ジョブはまだありません",
+	"jobsScreen.noMatchingJobs": "条件に一致するジョブがありません",
+	"jobsScreen.adjustFiltersToSeeJobs":
+		"ジョブの状態や種類を切り替えると、ほかのジョブを確認できます。",
 	"jobsScreen.pageValueOfValueValue": "{value2}ページ中{value0}ページ ",
 	"jobsScreen.previousPage": "前のページ",
 	"jobsScreen.progress": "進捗",
@@ -858,11 +860,15 @@ export const ja = defineLocale({
 	"tagDictionary.fetchMissingWikiDescription":
 		"説明がないタグの詳細を開くか、メディア上のタグにカーソルを合わせたりフォーカスを移したりすると、サーバーがタグ名をDanbooruに送ってWikiの説明を取得します。",
 	"tagDictionary.navigationDescription": "Danbooruタグの検索と辞書データの更新",
+	"tagDictionary.importDescription":
+		"Danbooruのタグ一覧、日本語表記、Wikiの説明、タグ属性をサーバーの辞書に取り込みます。",
 	"tagDictionary.schedule":
 		"初回取り込み後、サーバーが週に一度タグの更新を確認します。",
 	"tagDictionary.refresh": "更新を確認",
 	"tagDictionary.install": "辞書を取り込む",
-	"tagDictionary.lastCheck": "前回の更新確認 · {status} · {date}",
+	"tagDictionary.requestingRefresh": "辞書ジョブを登録しています…",
+	"tagDictionary.refreshJob": "辞書の取り込み・更新",
+	"tagDictionary.jobUpdatedAt": "ジョブの最終更新 {date}",
 	"tagDictionary.statusError": "辞書の更新状況を取得できませんでした",
 	"tagDictionary.refreshError":
 		"辞書の更新を予約できませんでした。もう一度お試しください。",
@@ -870,8 +876,10 @@ export const ja = defineLocale({
 	"tagDictionary.wikiSource": "Wikiの説明 · Hugging Face",
 	"tagDictionary.attributesSource": "一般タグの属性 · StoryAura",
 	"tagDictionary.notInstalled": "未取り込み",
+	"tagDictionary.installed": "取り込み済み",
 	"tagDictionary.snapshotStatus": "{count}件 · {version}版 · 取り込み {date}",
 	"tagDictionary.searchLabel": "タグ名・別名",
+	"tagDictionary.searchTitle": "辞書を検索",
 	"tagDictionary.legacyTitle": "旧タグの移行",
 	"tagDictionary.legacyHelp":
 		"辞書を更新すると、正式名または一意の別名に完全一致したタグが自動でまとまります。ほかの旧タグはここで移行先を選べます。",
@@ -1144,6 +1152,8 @@ export const ja = defineLocale({
 	"mediaChrome.videoPlayer": "動画プレーヤー",
 	"mediaChrome.volume": "音量",
 	"mediaDetailLayout.backToList": "一覧に戻る",
+	"mediaDetailLayout.editMetadata": "編集欄へ",
+	"mediaDetailLayout.metadata": "メディア情報",
 	"mediaDetailLayout.navigateToPreviousOrNextMediaInTheList":
 		"一覧の前後のメディアへ移動",
 	"mediaDetailLayout.nextMedia": "次のメディア",
@@ -1168,7 +1178,18 @@ export const ja = defineLocale({
 	"mediaSidebar.negativePrompt": "除外プロンプト:",
 	"mediaSidebar.noPositiveTags": "タグはありません",
 	"mediaSidebar.noValueAssociated": "関連する{value0}はありません",
-	"mediaSidebar.oneTagPerLine": "1行に1タグ",
+	"mediaTagEditor.title": "タグを割り当てる",
+	"mediaTagEditor.description":
+		"タグを選び、保存するとメディアに反映されます。",
+	"mediaTagEditor.assignedCount": "割り当てタグ · {count}件",
+	"mediaTagEditor.removeName": "「{name}」の割り当てを外す",
+	"mediaTagEditor.tagNames": "タグ名",
+	"mediaTagEditor.entryHelp":
+		"タグ名や別名で検索できます。複数のタグは改行区切りで貼り付けられます。",
+	"mediaTagEditor.createTag": "「{name}」を新規作成",
+	"mediaTagEditor.unsavedChanges": "タグの割り当てに未保存の変更があります。",
+	"mediaTagEditor.leaveWithoutSaving":
+		"タグの割り当てに未保存の変更があります。保存せず移動しますか？",
 	"mediaSidebar.positiveTags": "タグ",
 	"mediaSidebar.prompt": "プロンプト:",
 	"mediaSidebar.relations": "関連付け",
@@ -1219,15 +1240,17 @@ export const ja = defineLocale({
 	"mobileSearchFilterDialog.tagsValue": "タグ: {value0}件",
 	"mobileSearchFilterDialog.textSearchValue": "文章検索: {value0}",
 	"moveCopyMediaDialog.copy": "コピー",
+	"moveCopyMediaDialog.copyDescription":
+		"このメディアの保存先ソースを選択してください。",
 	"moveCopyMediaDialog.copyMedia": "メディアをコピー",
 	"moveCopyMediaDialog.destinationSource": "保存先ソース",
 	"moveCopyMediaDialog.loadingSources": "ソースを読み込み中...",
 	"moveCopyMediaDialog.move": "移動",
+	"moveCopyMediaDialog.moveDescription":
+		"このメディアの保存先ソースを選択してください。移動が完了すると、元のソースから削除されます。",
 	"moveCopyMediaDialog.moveMedia": "メディアを移動",
-	"moveCopyMediaDialog.selectTheDestinationSourceForThisMediaItemValue":
-		"このメディアの保存先ソースを選択してください。{value0}",
-	"moveCopyMediaDialog.theOriginalItemWillBeDeletedAfterASuccessful":
-		" コピーが成功した後、元の項目を削除します。",
+	"moveCopyMediaDialog.noDestinationSources":
+		"選択できる保存先ソースがありません。",
 	"navigation.importInbox": "取り込み待ち",
 	"navigation.jobs": "ジョブ",
 	"navigation.library": "ライブラリ",
@@ -1315,6 +1338,7 @@ export const ja = defineLocale({
 	"pixivArtworkDetail.moreRelated": "もっと見る",
 	"pixivArtworkDetail.relatedWorks": "関連作品",
 	"pixivArtworkDetail.loadingRelated": "関連作品を読み込み中",
+	"pixivArtworkDetail.updatingRelated": "関連作品を更新中",
 	"pixivArtworkDetail.relatedError": "関連作品を取得できませんでした",
 	"pixivArtworkDetail.noRelated": "関連作品はありません",
 	"pixivArtworkDetail.nextImage": "次の画像",
@@ -1389,8 +1413,16 @@ export const ja = defineLocale({
 	"pixivScreen.dailyRanking": "デイリーランキング",
 	"pixivScreen.imageCount": "{count}枚",
 	"pixivScreen.noMatchingWorks": "該当する作品がありません",
-	"pixivScreen.pixivSearch": "pixiv 検索語 · ",
-	"pixivScreen.pixivTags": " の pixiv タグ",
+	"pixivScreen.emptyRanking":
+		"別のランキングを選ぶか、タグで作品を検索してください。",
+	"pixivScreen.emptyFollowing":
+		"フォローしている作者の新着作品がここに表示されます。",
+	"pixivScreen.emptyBookmarks":
+		"作品をブックマークするか、公開範囲やタグの絞り込みを変更してください。",
+	"pixivScreen.emptyAuthor":
+		"作者の絞り込みを解除すると、ほかの作品を探せます。",
+	"pixivScreen.pixivSearch": "pixiv 検索語 · {word}",
+	"pixivScreen.pixivTags": "{tag} の pixiv タグ",
 	"pixivScreen.pixivValue": "pixiv #{value0}",
 	"pixivScreen.searchDestinationDoesNotMatch": "検索先が一致しません",
 	"presetManager.couldNotDeletePreset": "プリセットの削除に失敗しました",
@@ -1480,16 +1512,25 @@ export const ja = defineLocale({
 	"relatedMedia.updatingRelatedMedia": "関連メディアを更新しています...",
 	"relatedMedia.visualSimilarityIsAvailableForImagesAndVideo":
 		"見た目が似ている候補は画像と動画で利用できます。",
-	"relationsEditor.createValue": "「{value0}」を作成",
+	"relationsEditor.createValue": "「{value0}」を新規項目として選択",
+	"relationsEditor.candidates": "候補",
+	"relationsEditor.characterIpHint":
+		"キャラクターを選ぶと、関連するIPも選択に加わります。",
+	"relationsEditor.characterSearchHint": "キャラクター名・IP名で絞り込む",
 	"relationsEditor.discardChanges": "変更を破棄しますか？",
 	"relationsEditor.editRelations": "関連付けを編集",
 	"relationsEditor.failedToSaveRelationsSomeChangesMayHaveBeen":
 		"関連付けの保存に失敗しました。一部は保存された可能性があります: {value0}",
 	"relationsEditor.noMatches": "一致する項目がありません",
+	"relationsEditor.noCandidates":
+		"候補がありません。名前を入力すると、新規項目を追加できます。",
+	"relationsEditor.nameSearchHint": "名前で絞り込む",
+	"relationsEditor.noneSelected": "選択中の項目はありません",
+	"relationsEditor.removeSelection": "「{name}」を選択から外す",
+	"relationsEditor.selectedItems": "選択中",
 	"relationsEditor.searchValue": "{value0}を検索",
 	"relationsEditor.searchValue2": "{value0}を検索...",
-	"relationsEditor.selectProjectsIPsAndCharactersThenSaveTheChanges":
-		"プロジェクト・IP・キャラクターを選び、変更をまとめて保存します。",
+	"relationsEditor.editHelp": "選択内容は保存するとメディアに反映されます。",
 	"relationsEditor.valueNew": "{value0}（新規）",
 	"relationsEditor.yourRelationChangesHaveNotBeenSaved":
 		"関連付けの変更は保存されていません。",
@@ -1513,12 +1554,12 @@ export const ja = defineLocale({
 		"タグ候補を取得できませんでした。タグを直接入力して検索できます。",
 	"searchComposer.danbooruHint":
 		"スペースで AND、-タグで除外、~タグで OR。rating:g や order:score も使えます。",
-	"searchComposer.enterTagsEGLandscapeMonochrome":
-		"タグを入力（例: landscape -monochrome）",
+	"searchComposer.enterTags": "タグを入力",
 	"searchComposer.pixivHint":
 		"スペースで AND、-タグで除外、~タグで OR。Danbooru タグを pixiv のタグに変換します。",
 	"searchComposer.removeValueValue": "{value0}:{value1}を解除",
 	"searchComposer.search": " を検索",
+	"searchComposer.searchHelp": "検索の使い方",
 	"searchComposer.searchMedia": "メディアを検索",
 	"searchComposer.searchOrTextTagAuthorSimilarLimit100":
 		"検索、または text: / tag: / author: / similar: / limit:100 …",
@@ -1546,7 +1587,12 @@ export const ja = defineLocale({
 	"searchQuery.mediaSourceIDIsRequired": "メディアソースIDが必要です",
 	"searchQuery.naturalLanguageSearchIsUnavailable": "文章検索を利用できません",
 	"searchQuery.similaritySearchIsUnavailable": "類似検索を利用できません",
+	"searchScreen.addSourceToLibrary":
+		"画像や動画を管理するには、まずソースを追加してください。",
 	"searchScreen.allMedia": "すべてのメディア",
+	"searchScreen.libraryIsEmpty": "ライブラリにメディアがありません",
+	"searchScreen.openSourceToAddMedia":
+		"サイドバーからソースを開き、ファイルを追加するか、ソースを同期してください。",
 	"searchScreen.couldNotLoadSearchResults": "検索結果を取得できませんでした",
 	"searchScreen.loadingSearchResults": "検索結果を読み込んでいます...",
 	"searchScreen.offlineShowingSavedSearchResults":
@@ -1746,7 +1792,10 @@ export const ja = defineLocale({
 	"sourceMediaGrid.valueValue": "{value0}, {value1}",
 	"sourceMediaScreen.deleteMedia": "メディアを削除",
 	"sourceMediaScreen.loadingMediaList": "メディア一覧を読み込んでいます...",
+	"sourceMediaScreen.addOrDropMedia":
+		"ファイルを選ぶか、この画面にドラッグして追加できます。",
 	"sourceMediaScreen.mediaList": "メディア一覧",
+	"sourceMediaScreen.noMediaYet": "このソースにはまだメディアがありません",
 	"sourceMediaScreen.mediaUploadArea": "メディアのアップロード領域",
 	"sourceMediaScreen.offlineShowingSavedData":
 		"オフラインのため保存済みデータを表示しています",
@@ -1754,8 +1803,6 @@ export const ja = defineLocale({
 	"sourceMediaScreen.someSearchFiltersCouldNotBeLoadedYouCan":
 		"一部の検索フィルターを取得できませんでした。メディア一覧は引き続き利用できます。",
 	"sourceMediaScreen.syncLoadedItems": "表示分を同期",
-	"sourceMediaScreen.thisActionCannotBeUndoneDeleteTheSelectedMedia":
-		"この操作は取り消せません。選択したメディアを削除しますか？",
 	"sourceMediaScreen.updatingMediaList": "メディア一覧を更新中...",
 	"statisticsScreen.allTime": "全期間",
 	"statisticsScreen.clearFilter": "絞り込みを解除",
@@ -1879,7 +1926,6 @@ export const ja = defineLocale({
 	"useSourceMediaPage.copyFailed": "メディアのコピーに失敗しました: {error}",
 	"useSourceMediaPage.failedToBatchSyncValue":
 		"一括同期に失敗しました: {value0}",
-	"useSourceMediaPage.failedToDeleteMedia": "メディアの削除に失敗しました",
 	"useSourceMediaPage.failedToStartDownloadValue":
 		"ダウンロードの開始に失敗しました: {value0}",
 	"useSourceMediaPage.failedToSyncMetadataValue":

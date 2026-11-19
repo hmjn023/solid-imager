@@ -37,7 +37,12 @@ import {
 import type { MediaCollectionSelectionMode } from "./hooks/use-media-collection-selection";
 import type { MediaGridImageLoadPolicy } from "./media-grid-item";
 import { MediaTileGrid } from "./media-tile-grid";
-import { createMediaPreviewSelectHandler } from "./media-preview-selection";
+import {
+	createMediaPreviewSelectHandler,
+	isFineMediaPointer,
+	isModifiedSelectionClick,
+	isPlainPrimaryClick,
+} from "./media-preview-selection";
 import type { QueryUiState } from "./query-state";
 import { LoadingRegion, MediaGridSkeleton } from "./skeleton";
 import {
@@ -115,6 +120,8 @@ type SourceMediaGridProps = {
 	showResultCount?: boolean;
 	/** Show empty state message. Default: true. */
 	showEmptyState?: boolean;
+	emptyState?: JSX.Element;
+	onClearSearch?: () => void;
 	/** Show "Open in New Tab" context menu item. Default: true. */
 	showOpenInNewTab?: boolean;
 	/** Total result count. If omitted, uses mediaResults().length (may not reflect total). */
@@ -149,6 +156,13 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 		props.onSelectMedia?.(media.id, selectionModeFromEvent(event));
 		props.onPreviewSelect?.(media);
 	};
+	const toggleRowSelection = (media: Media) => {
+		if (props.onToggleSelect) props.onToggleSelect(media.id);
+		else props.onSelectMedia?.(media.id, "toggle");
+	};
+	const isRowControl = (target: EventTarget | null) =>
+		target instanceof Element &&
+		target.closest("[data-collection-row-control]");
 	const viewMode = () => props.viewMode?.() ?? "grid";
 	const errorMessage = () => {
 		const error = props.state().error;
@@ -393,63 +407,93 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									value0: String(media.fileName),
 									value1: String(media.filePath),
 								})}
-								aria-selected={props.previewSelectedMediaId?.() === media.id}
+								aria-selected={
+									props.isBulkSelectMode?.()
+										? props.isSelected?.(media.id)
+										: props.previewSelectedMediaId?.() === media.id
+								}
 								class={
-									props.isSelected?.(media.id) ||
-									props.previewSelectedMediaId?.() === media.id
+									(
+										props.isBulkSelectMode?.()
+											? props.isSelected?.(media.id)
+											: props.previewSelectedMediaId?.() === media.id
+									)
 										? "bg-accent outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-accent"
 										: "outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring hover:bg-muted"
 								}
 								data-media-id={media.id}
 								onClick={(event) => {
-									if (
-										event.target instanceof Element &&
-										event.target.closest("[data-collection-row-control]")
-									) {
-										return;
-									}
+									if (isRowControl(event.target)) return;
+									const bulk = props.isBulkSelectMode?.();
 									if (
 										props.onSelectMedia &&
-										(event.metaKey || event.ctrlKey || event.shiftKey)
+										isModifiedSelectionClick(event) &&
+										(bulk || isFineMediaPointer(event))
 									) {
 										event.preventDefault();
 										selectFromGesture(media, event);
-									} else {
+									} else if (!isPlainPrimaryClick(event)) {
+										return;
+									} else if (bulk) {
+										toggleRowSelection(media);
+									} else if (
+										props.onPreviewSelect &&
+										isFineMediaPointer(event)
+									) {
 										props.onPreviewSelect?.(media);
+									} else if (props.onOpenMediaDetail) {
+										prepareAndOpenMediaDetail(media);
+										return;
 									}
 									event.currentTarget.focus({ preventScroll: true });
 								}}
 								onContextMenu={onContextMenuHandler(media)}
 								onDblClick={(event) => {
 									if (
-										event.target instanceof Element &&
-										event.target.closest("[data-collection-row-control]")
+										isRowControl(event.target) ||
+										props.isBulkSelectMode?.() ||
+										!props.onPreviewSelect ||
+										!isPlainPrimaryClick(event) ||
+										!isFineMediaPointer(event)
 									) {
 										return;
 									}
 									prepareAndOpenMediaDetail(media);
 								}}
 								onKeyDown={(event) => {
-									if (event.target !== event.currentTarget) return;
-									if (event.key === "Enter" && props.onOpenMediaDetail) {
+									if (
+										event.target !== event.currentTarget ||
+										event.altKey ||
+										event.ctrlKey ||
+										event.metaKey ||
+										event.shiftKey
+									)
+										return;
+									if (
+										event.key === "Enter" &&
+										(props.isBulkSelectMode?.() || props.onOpenMediaDetail)
+									) {
 										event.preventDefault();
-										prepareAndOpenMediaDetail(media);
+										if (event.repeat) return;
+										if (props.isBulkSelectMode?.()) toggleRowSelection(media);
+										else prepareAndOpenMediaDetail(media);
 									}
 									if (event.key === " ") event.preventDefault();
 								}}
 								onKeyUp={(event) => {
 									if (
 										event.target !== event.currentTarget ||
-										event.key !== " "
+										event.key !== " " ||
+										event.altKey ||
+										event.ctrlKey ||
+										event.metaKey ||
+										event.shiftKey
 									) {
 										return;
 									}
 									event.preventDefault();
-									if (props.onSelectMedia) {
-										props.onSelectMedia(media.id, "toggle");
-										props.onPreviewSelect?.(media);
-									} else if (props.onToggleSelect) {
-										props.onToggleSelect(media.id);
+									if (props.onToggleSelect || props.onSelectMedia) {
+										toggleRowSelection(media);
 									} else {
 										props.onPreviewSelect?.(media);
 									}
@@ -467,9 +511,9 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 									<TableCell class="px-3 py-2">
 										<Checkbox
 											checked={props.isSelected?.(media.id) ?? false}
-											class="flex min-h-10 items-center justify-center"
+											class="flex min-h-11 items-center justify-center sm:min-h-10"
 											data-collection-row-control=""
-											onChange={() => props.onToggleSelect?.(media.id)}
+											onChange={() => toggleRowSelection(media)}
 											onClick={(event: MouseEvent) => event.stopPropagation()}
 										>
 											<CheckboxControl />
@@ -873,12 +917,21 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 
 					{/* Empty state */}
 					<Show when={showEmptyState() && props.state().phase === "empty"}>
-						<EmptyState
-							description={t(
-								"sourceMediaGrid.changeYourSearchConditionsAndTryAgain",
-							)}
-							title={t("sourceMediaGrid.noSearchResultsFound")}
-						/>
+						{props.emptyState ?? (
+							<EmptyState
+								description={t(
+									"sourceMediaGrid.changeYourSearchConditionsAndTryAgain",
+								)}
+								icon={<ScanSearch size={20} />}
+								title={t("sourceMediaGrid.noSearchResultsFound")}
+							>
+								<Show when={props.onClearSearch}>
+									<Button onClick={props.onClearSearch} variant="outline">
+										{t("actions.clearSearchConditions")}
+									</Button>
+								</Show>
+							</EmptyState>
+						)}
 					</Show>
 
 					{/* Load more sentinel */}

@@ -59,7 +59,7 @@ function validateUrl(value: string): string | null {
 function healthStatusClass(state: HealthCheckState): string {
 	switch (state.status) {
 		case "ok":
-			return "text-emerald-700 text-sm";
+			return "text-success-foreground text-sm";
 		case "checking":
 			return "text-muted-foreground text-sm";
 		case "error":
@@ -92,6 +92,7 @@ function HealthStatus(props: { state: () => HealthCheckState | undefined }) {
 
 export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 	const [localSettings, setLocalSettings] = createSignal(props.initialSettings);
+	const hasSavedServers = () => localSettings().servers.length > 0;
 	const [editingId, setEditingId] = createSignal<string | null>(null);
 	const [name, setName] = createSignal("");
 	const [baseUrl, setBaseUrl] = createSignal("");
@@ -262,21 +263,21 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 	};
 
 	return (
-		<section class="grid gap-6">
+		<section
+			class="grid min-w-0 gap-4"
+			classList={{ "px-4 py-6 sm:px-6": props.showHeader !== false }}
+		>
 			<Show when={props.showHeader !== false}>
-				<div class="grid gap-2">
-					<Badge class="w-fit" variant="outline">
-						{t("serverSettingsScreen.connection")}
-					</Badge>
-					<h1 class="font-semibold text-4xl tracking-tight">
+				<header class="space-y-1 border-primary border-s-2 ps-3">
+					<h1 class="font-semibold text-xl tracking-tight">
 						{t("servers.serverConnections")}
 					</h1>
-					<p class="max-w-3xl text-lg text-muted-foreground">
+					<p class="text-muted-foreground text-sm">
 						{t(
 							"serverSettingsScreen.chooseWhichSolidImagerServerTheTauriAppUses",
 						)}
 					</p>
-				</div>
+				</header>
 			</Show>
 
 			<Show when={error()}>
@@ -287,117 +288,109 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 				)}
 			</Show>
 
-			<div class="grid gap-6 lg:grid-cols-server-settings">
-				<Card>
-					<CardHeader>
-						<CardTitle>{t("serverSettingsScreen.savedServers")}</CardTitle>
-						<CardDescription>
-							{t(
-								"serverSettingsScreen.theActiveServerIsUsedForAPIRequestsThumbnails",
-							)}
-						</CardDescription>
-					</CardHeader>
-					<CardContent>
-						<div class="grid gap-3">
-							<Show
-								fallback={
-									<p class="rounded-lg border border-dashed px-4 py-6 text-muted-foreground text-sm">
-										{t("serverSettingsScreen.noServerHasBeenAddedYet")}
-									</p>
-								}
-								when={localSettings().servers.length > 0}
-							>
-								<div class="grid gap-3">
-									<For each={localSettings().servers}>
-										{(server) => (
-											<div class="grid gap-3 rounded-lg border p-4 sm:grid-cols-content-action sm:items-center">
-												<div class="min-w-0">
-													<div class="flex flex-wrap items-center gap-2">
-														<span class="font-medium">{server.name}</span>
-														<Show
-															when={
-																localSettings().activeServerId === server.id
-															}
-														>
-															<Badge variant="secondary">
-																{t("jobsScreen.active")}
-															</Badge>
-														</Show>
-													</div>
-													<p class="mt-1 truncate text-muted-foreground text-sm">
-														{server.baseUrl}
-													</p>
-													<HealthStatus
-														state={() => healthChecks()[server.id]}
-													/>
-												</div>
-												<div class="flex flex-wrap gap-2 sm:justify-end">
-													<Button
-														disabled={isSaving() || isChecking()}
-														onClick={() =>
-															void runHealthCheck(server.id, server.baseUrl)
-														}
-														size="sm"
-														variant="outline"
-													>
-														{t("select.check")}
-													</Button>
+			<div
+				class="grid items-start gap-4"
+				classList={{ "lg:grid-cols-server-settings": hasSavedServers() }}
+			>
+				<Show when={hasSavedServers()}>
+					<Card class="@container min-w-0">
+						<CardHeader>
+							<CardTitle>{t("serverSettingsScreen.savedServers")}</CardTitle>
+							<CardDescription>
+								{t(
+									"serverSettingsScreen.theActiveServerIsUsedForAPIRequestsThumbnails",
+								)}
+							</CardDescription>
+						</CardHeader>
+						<CardContent>
+							<div class="divide-y divide-border border-border border-t">
+								<For each={localSettings().servers}>
+									{(server) => (
+										<div class="grid gap-3 py-3 text-sm last:pb-0 @xl:grid-cols-content-action @xl:items-center">
+											<div class="min-w-0">
+												<div class="flex flex-wrap items-center gap-2">
+													<span class="min-w-0 wrap-break-word font-medium">
+														{server.name}
+													</span>
 													<Show
-														when={localSettings().activeServerId !== server.id}
+														when={localSettings().activeServerId === server.id}
 													>
-														<Button
-															disabled={isSaving() || isChecking()}
-															onClick={() => void selectServer(server.id)}
-															size="sm"
-														>
-															{t("serverSettingsScreen.useServer")}
-														</Button>
+														<Badge>{t("jobsScreen.active")}</Badge>
 													</Show>
-													<Button
-														disabled={isSaving() || isChecking()}
-														onClick={() => beginEdit(server)}
-														variant="outline"
-														size="sm"
-													>
-														{t("actions.edit")}
-													</Button>
-													<Button
-														disabled={isSaving() || isChecking()}
-														onClick={() => void deleteServer(server.id)}
-														size="sm"
-														variant="destructive"
-													>
-														{t("actions.delete")}
-													</Button>
 												</div>
+												<p class="mt-1 break-all text-muted-foreground">
+													{server.baseUrl}
+												</p>
+												<HealthStatus state={() => healthChecks()[server.id]} />
 											</div>
-										)}
-									</For>
-								</div>
-							</Show>
-						</div>
-					</CardContent>
-				</Card>
-
-				<Card>
+											<div class="flex flex-wrap gap-2 @xl:justify-end">
+												<Button
+													disabled={isSaving() || isChecking()}
+													onClick={() =>
+														void runHealthCheck(server.id, server.baseUrl)
+													}
+													class="h-11 sm:h-9"
+													size="sm"
+													variant="outline"
+												>
+													{t("select.check")}
+												</Button>
+												<Show
+													when={localSettings().activeServerId !== server.id}
+												>
+													<Button
+														disabled={isSaving() || isChecking()}
+														onClick={() => void selectServer(server.id)}
+														class="h-11 sm:h-9"
+														size="sm"
+													>
+														{t("serverSettingsScreen.useServer")}
+													</Button>
+												</Show>
+												<Button
+													disabled={isSaving() || isChecking()}
+													onClick={() => beginEdit(server)}
+													variant="outline"
+													class="h-11 sm:h-9"
+													size="sm"
+												>
+													{t("actions.edit")}
+												</Button>
+												<Button
+													disabled={isSaving() || isChecking()}
+													onClick={() => void deleteServer(server.id)}
+													class="h-11 sm:h-9"
+													size="sm"
+													variant="destructive"
+												>
+													{t("actions.delete")}
+												</Button>
+											</div>
+										</div>
+									)}
+								</For>
+							</div>
+						</CardContent>
+					</Card>
+				</Show>
+				<Card class="@container min-w-0">
 					<CardHeader>
 						<CardTitle>
 							{editingId()
 								? t("serverSettingsScreen.editServer")
 								: t("serverSettingsScreen.addServer")}
 						</CardTitle>
-						<CardDescription>
-							{t(
-								"serverSettingsScreen.useTheServerOriginIncludingItsPortWhenOne",
-							)}
-						</CardDescription>
 					</CardHeader>
 					<CardContent>
-						<form class="grid gap-4" onSubmit={(event) => void submit(event)}>
-							<div class="grid gap-2">
+						<form
+							class="grid grid-cols-1 items-start gap-4 @xl:grid-cols-2"
+							onSubmit={(event) => void submit(event)}
+						>
+							<div class="grid min-w-0 gap-2">
 								<Label for="server-name">{t("labels.name")}</Label>
 								<Input
 									autocomplete="off"
+									class="sm:min-h-9"
 									id="server-name"
 									onInput={(event) => {
 										setName(event.currentTarget.value);
@@ -407,12 +400,14 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 									value={name()}
 								/>
 							</div>
-							<div class="grid gap-2">
+							<div class="grid min-w-0 gap-2">
 								<Label for="server-url">
 									{t("serverSettingsScreen.serverURL")}
 								</Label>
 								<Input
+									aria-describedby="server-url-help"
 									autocomplete="url"
+									class="sm:min-h-9"
 									id="server-url"
 									onInput={(event) => {
 										setBaseUrl(event.currentTarget.value);
@@ -421,9 +416,15 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 									placeholder={t("serverSettingsScreen.httpsImagerExampleCom")}
 									value={baseUrl()}
 								/>
+								<p class="text-muted-foreground text-xs" id="server-url-help">
+									{t(
+										"serverSettingsScreen.useTheServerOriginIncludingItsPortWhenOne",
+									)}
+								</p>
 							</div>
-							<div class="flex flex-wrap gap-2">
+							<div class="col-span-full flex flex-wrap items-center gap-2 border-border border-t pt-4">
 								<Button
+									class="sm:h-9"
 									disabled={isSaving() || isChecking()}
 									onClick={() => void runHealthCheck("form", baseUrl())}
 									type="button"
@@ -431,13 +432,22 @@ export function ServerSettingsScreen(props: ServerSettingsScreenProps) {
 								>
 									{t("serverSettingsScreen.checkConnection")}
 								</Button>
-								<Button disabled={isSaving() || isChecking()} type="submit">
+								<Button
+									class="sm:h-9"
+									disabled={isSaving() || isChecking()}
+									type="submit"
+								>
 									{editingId()
 										? t("actions.saveChanges")
 										: t("serverSettingsScreen.addServer")}
 								</Button>
 								<Show when={editingId()}>
-									<Button onClick={resetForm} type="button" variant="outline">
+									<Button
+										class="sm:h-9"
+										onClick={resetForm}
+										type="button"
+										variant="outline"
+									>
 										{t("actions.cancel")}
 									</Button>
 								</Show>

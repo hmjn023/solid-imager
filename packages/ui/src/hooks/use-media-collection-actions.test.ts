@@ -1,4 +1,5 @@
 import type { Media } from "@solid-imager/core/media";
+import { t } from "@solid-imager/i18n";
 import { createRoot, createSignal } from "solid-js";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { useMediaCollectionActions } from "./use-media-collection-actions";
@@ -43,7 +44,7 @@ function setup() {
 			copyMedia: vi.fn(async (_id: string, _target: string) => {}),
 			moveMedia: vi.fn(async (_id: string, _target: string) => {}),
 		};
-		const notify = { success: vi.fn(), error: vi.fn() };
+		const notify = { success: vi.fn() };
 		const refresh = vi.fn();
 		const actions = useMediaCollectionActions({
 			media: items,
@@ -107,6 +108,7 @@ describe("shared media collection workflows", () => {
 		const deleting = actions.confirmDelete();
 		actions.changeDeleteOpen(false);
 		actions.openDelete("three");
+		expect(actions.isDeleteDialogOpen()).toBe(true);
 		await actions.confirmDelete();
 		expect(operations.deleteMedia).toHaveBeenCalledExactlyOnceWith(
 			"source-b",
@@ -117,25 +119,29 @@ describe("shared media collection workflows", () => {
 		pending.resolve();
 		await deleting;
 		expect([...actions.selection.selectedIds()]).toEqual(["one", "three"]);
-		expect(actions.deleteTarget()).toBeNull();
+		expect(actions.deleteTarget()).toBeUndefined();
 		expect(actions.isDeleteSubmitting()).toBe(false);
-		expect(notify.success).toHaveBeenCalledWith("Media deleted");
+		expect(notify.success).toHaveBeenCalledWith(
+			t("useSourceMediaPage.mediaDeletedSuccessfully"),
+		);
 		expect(refresh).toHaveBeenCalledOnce();
 	});
 
 	it("keeps failed deletions selected and allows a later retry", async () => {
-		const { actions, operations, refresh, notify } = setup();
+		const { actions, operations, refresh } = setup();
 		operations.deleteMedia.mockRejectedValueOnce(new Error("offline"));
 		actions.selectMedia("one", "replace");
 		actions.openDelete("one");
 		await actions.confirmDelete();
 		expect(actions.selection.isSelected("one")).toBe(true);
-		expect(notify.error).toHaveBeenCalledWith(
-			"Failed to delete media: offline",
+		expect(actions.deleteError()).toBe(
+			t("mediaActions.failedToDeleteMediaValue", { value0: "offline" }),
 		);
 		expect(refresh).not.toHaveBeenCalled();
-		actions.openDelete("one");
+		expect(actions.isDeleteDialogOpen()).toBe(true);
 		await actions.confirmDelete();
+		expect(actions.deleteError()).toBeUndefined();
+		expect(actions.isDeleteDialogOpen()).toBe(false);
 		expect(actions.isBulkSelectMode()).toBe(false);
 		expect(actions.selection.selectedIds().size).toBe(0);
 	});
@@ -157,8 +163,8 @@ describe("shared media collection workflows", () => {
 		},
 	);
 
-	it("does not let a closed pending move retarget or submit twice", async () => {
-		const { actions, operations, refresh, notify } = setup();
+	it("keeps a pending move open and retries a failure without retargeting", async () => {
+		const { actions, operations, refresh } = setup();
 		const pending = Promise.withResolvers<void>();
 		operations.moveMedia.mockReturnValueOnce(pending.promise);
 		actions.openCopyMove("one", "move");
@@ -166,7 +172,7 @@ describe("shared media collection workflows", () => {
 		await actions.confirmCopyMove("other-destination");
 		actions.changeCopyMoveOpen(false);
 		actions.openCopyMove("three", "copy");
-		expect(actions.isMoveCopyDialogOpen()).toBe(false);
+		expect(actions.isMoveCopyDialogOpen()).toBe(true);
 		pending.reject(new Error("connection lost"));
 		await moving;
 		expect(operations.moveMedia).toHaveBeenCalledExactlyOnceWith(
@@ -175,10 +181,13 @@ describe("shared media collection workflows", () => {
 		);
 		expect(operations.copyMedia).not.toHaveBeenCalled();
 		expect(refresh).not.toHaveBeenCalled();
-		expect(notify.error).toHaveBeenCalledWith(
-			"Failed to move media: connection lost",
+		expect(actions.moveCopyError()).toBe(
+			t("useSourceMediaPage.moveFailed", { error: "connection lost" }),
 		);
-		actions.openCopyMove("three", "copy");
-		expect(actions.moveCopyTarget()?.id).toBe("three");
+		expect(actions.moveCopyTarget()?.id).toBe("one");
+		await actions.confirmCopyMove("destination");
+		expect(operations.moveMedia).toHaveBeenCalledTimes(2);
+		expect(actions.moveCopyError()).toBeUndefined();
+		expect(actions.isMoveCopyDialogOpen()).toBe(false);
 	});
 });

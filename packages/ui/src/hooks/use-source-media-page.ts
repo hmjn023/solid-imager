@@ -45,6 +45,7 @@ import {
 } from "../stores/source-scroll-store";
 import { scrollToPosition, useScrollRestoration } from "./scroll-container";
 import { createStableMediaResults } from "./stable-media-results";
+import { useMediaItemActions } from "./use-media-collection-actions";
 import type { MediaSourceEventTransport } from "./use-media-source-events";
 import { useMediaSourceEvents } from "./use-media-source-events";
 
@@ -154,11 +155,16 @@ export type UseSourceMediaPageResult = {
 	pastedUrl: () => string | null;
 	setPastedUrl: Setter<string | null>;
 	deleteDialogOpen: () => boolean;
-	setDeleteDialogOpen: Setter<boolean>;
+	setDeleteDialogOpen: (open: boolean) => void;
+	deleteFileName: () => string | undefined;
 	isDeletingMedia: () => boolean;
+	deleteError: () => string | undefined;
 	moveCopyDialogOpen: () => boolean;
-	setMoveCopyDialogOpen: Setter<boolean>;
+	setMoveCopyDialogOpen: (open: boolean) => void;
 	moveCopyMode: () => "copy" | "move";
+	moveCopySourceId: () => string | undefined;
+	isMoveCopySubmitting: () => boolean;
+	moveCopyError: () => string | undefined;
 	contextMenuMediaId: () => string | null;
 	setContextMenuMediaId: (
 		value: string | null | ((prev: string | null) => string | null),
@@ -367,19 +373,6 @@ export function useSourceMediaPage(
 	const [showUploadModal, setShowUploadModal] = createSignal(false);
 	const [fileToUpload, setFileToUpload] = createSignal<File | null>(null);
 	const [pastedUrl, setPastedUrl] = createSignal<string | null>(null);
-	const [deleteDialogOpen, setDeleteDialogOpen] = createSignal(false);
-	const [mediaIdToDelete, setMediaIdToDelete] = createSignal<string | null>(
-		null,
-	);
-	const [deletingMediaId, setDeletingMediaId] = createSignal<string | null>(
-		null,
-	);
-	const isDeletingMedia = () => deletingMediaId() !== null;
-	const [moveCopyDialogOpen, setMoveCopyDialogOpen] = createSignal(false);
-	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
-	const [mediaIdToMoveCopy, setMediaIdToMoveCopy] = createSignal<string | null>(
-		null,
-	);
 	const [contextMenuMediaId, setContextMenuMediaId] = createSignal<
 		string | null
 	>(null);
@@ -699,83 +692,27 @@ export function useSourceMediaPage(
 		});
 	});
 
-	const handleDelete = (mediaId: string) => {
-		setMediaIdToDelete(mediaId);
-		setDeleteDialogOpen(true);
-	};
-
-	const confirmDelete = async () => {
-		const mediaId = mediaIdToDelete();
-		if (!mediaId || isDeletingMedia()) {
-			return;
-		}
-
-		setDeletingMediaId(mediaId);
-		try {
-			await actions.deleteMedia(id() || "", mediaId);
-			toast.success(t("useSourceMediaPage.mediaDeletedSuccessfully"));
+	const itemActions = useMediaItemActions({
+		findMedia: (mediaId) => {
+			const sourceId = id();
+			if (!sourceId) return;
+			return {
+				id: mediaId,
+				mediaSourceId: sourceId,
+				fileName: mediaResults().find((media) => media.id === mediaId)
+					?.fileName,
+			};
+		},
+		operations: actions,
+		notify: toast,
+		onDeleted: refreshMediaQuery,
+		onTransferred: (_media, targetSourceId) => {
 			refreshMediaQuery();
-		} catch (_e) {
-			toast.error(t("useSourceMediaPage.failedToDeleteMedia"));
-		} finally {
-			if (deletingMediaId() === mediaId) {
-				setDeletingMediaId(null);
-			}
-			if (mediaIdToDelete() === mediaId) {
-				setDeleteDialogOpen(false);
-				setMediaIdToDelete(null);
-			}
-		}
-	};
-
-	const handleCopyMove = (mediaId: string, mode: "copy" | "move") => {
-		setMediaIdToMoveCopy(mediaId);
-		setMoveCopyMode(mode);
-		setMoveCopyDialogOpen(true);
-	};
-
-	const handleConfirmCopyMove = async (targetSourceId: string) => {
-		const mediaId = mediaIdToMoveCopy();
-		const sourceId = id();
-		if (!(mediaId && sourceId)) {
-			return;
-		}
-
-		const mode = moveCopyMode();
-		const action = mode === "copy" ? actions.copyMedia : actions.moveMedia;
-		const actionName =
-			mode === "copy"
-				? t("useSourceMediaPage.copied")
-				: t("useSourceMediaPage.moved");
-
-		try {
-			await action(mediaId, targetSourceId);
-			toast.success(
-				t("useSourceMediaPage.mediaValueSuccessfully", {
-					value0: String(actionName),
-				}),
-			);
-			refreshMediaQuery();
-			if (sourceId !== targetSourceId) {
-				await queryClient.invalidateQueries({
-					queryKey: sourceMediaQueryKeys.forSource(targetSourceId),
-				});
-			}
-		} catch (e) {
-			toast.error(
-				t(
-					mode === "copy"
-						? "useSourceMediaPage.copyFailed"
-						: "useSourceMediaPage.moveFailed",
-					{
-						error: getErrorMessage(e),
-					},
-				),
-			);
-		} finally {
-			setMediaIdToMoveCopy(null);
-		}
-	};
+			void queryClient.invalidateQueries({
+				queryKey: sourceMediaQueryKeys.forSource(targetSourceId),
+			});
+		},
+	});
 
 	const handleSyncLoadedMedia = async () => {
 		const allPages = mediaQueryData()?.pages;
@@ -843,12 +780,17 @@ export function useSourceMediaPage(
 		setFileToUpload,
 		pastedUrl,
 		setPastedUrl,
-		deleteDialogOpen,
-		setDeleteDialogOpen,
-		isDeletingMedia,
-		moveCopyDialogOpen,
-		setMoveCopyDialogOpen,
-		moveCopyMode,
+		deleteDialogOpen: itemActions.isDeleteDialogOpen,
+		setDeleteDialogOpen: itemActions.changeDeleteOpen,
+		deleteFileName: () => itemActions.deleteTarget()?.fileName,
+		isDeletingMedia: itemActions.isDeleteSubmitting,
+		deleteError: itemActions.deleteError,
+		moveCopyDialogOpen: itemActions.isMoveCopyDialogOpen,
+		setMoveCopyDialogOpen: itemActions.changeCopyMoveOpen,
+		moveCopyMode: itemActions.moveCopyMode,
+		moveCopySourceId: () => itemActions.moveCopyTarget()?.mediaSourceId,
+		isMoveCopySubmitting: itemActions.isMoveCopySubmitting,
+		moveCopyError: itemActions.moveCopyError,
 		contextMenuMediaId,
 		setContextMenuMediaId,
 		isSyncingMedia,
@@ -859,10 +801,10 @@ export function useSourceMediaPage(
 		handleAddButtonClick,
 		handleDrop,
 		handleDragOver,
-		handleDelete,
-		confirmDelete,
-		handleCopyMove,
-		handleConfirmCopyMove,
+		handleDelete: itemActions.openDelete,
+		confirmDelete: itemActions.confirmDelete,
+		handleCopyMove: itemActions.openCopyMove,
+		handleConfirmCopyMove: itemActions.confirmCopyMove,
 		handleSyncLoadedMedia,
 		handleSyncSingleMedia,
 		fileInputRef,

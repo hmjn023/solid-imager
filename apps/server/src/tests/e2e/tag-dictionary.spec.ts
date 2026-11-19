@@ -1,5 +1,78 @@
+import type { TagDictionaryStatus } from "@solid-imager/core/tags";
 import { E2E_SIMILAR_MEDIA_ID, mediaPath } from "./support/fixture";
 import { expect, test, waitForAppHydration } from "./support/test";
+
+test("shows the import job and individual dictionary sources on a narrow screen", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 375, height: 812 });
+	const jobId = crypto.randomUUID();
+	const updatedAt = new Date().toISOString();
+	let status: TagDictionaryStatus = { snapshots: [], job: null };
+	await page.route(/\/api\/rpc\/tags\/dictionaryStatus(?:\?|$)/, (route) =>
+		route.fulfill({ json: { json: status } }),
+	);
+	const { promise: responseGate, resolve: finishRequest } =
+		Promise.withResolvers<void>();
+	await page.route(
+		/\/api\/rpc\/tags\/dictionaryRefresh(?:\?|$)/,
+		async (route) => {
+			await responseGate;
+			status = {
+				snapshots: [],
+				job: { id: jobId, status: "pending", error: null, updatedAt },
+			};
+			await route.fulfill({ json: { json: { jobId } } });
+		},
+	);
+
+	await page.goto("/manager");
+	await waitForAppHydration(page);
+	await page
+		.getByRole("button", { name: /^タグ辞書/ })
+		.filter({ visible: true })
+		.click();
+	const panel = page.getByRole("region", { name: "タグ辞書", exact: true });
+	const install = panel.getByRole("button", { name: "辞書を取り込む" });
+	await expect(panel.getByText("未取り込み", { exact: true })).toHaveCount(3);
+	await expect(panel.getByRole("searchbox")).toHaveCount(0);
+	try {
+		await install.press("Enter");
+		await expect(install).toBeDisabled();
+		await expect(panel.getByText("辞書ジョブを登録しています…")).toBeVisible();
+	} finally {
+		finishRequest();
+	}
+	await expect(panel.getByText("待機中", { exact: true })).toBeVisible();
+	await expect(install).toBeDisabled();
+	await expect(
+		panel.getByRole("link", { name: "ジョブの詳細" }),
+	).toHaveAttribute("href", `/jobs?jobId=${jobId}`);
+
+	status = {
+		snapshots: [
+			{ source: "tags", version: updatedAt, count: 1, installedAt: updatedAt },
+		],
+		job: {
+			id: jobId,
+			status: "failed",
+			error: "Wiki snapshot unavailable",
+			updatedAt,
+		},
+	};
+	await page.reload();
+	await waitForAppHydration(page);
+	await expect(panel.getByText("Wiki snapshot unavailable")).toBeVisible();
+	await expect(panel.getByText("取り込み済み", { exact: true })).toHaveCount(1);
+	await expect(panel.getByText("未取り込み", { exact: true })).toHaveCount(2);
+	await expect(panel.getByRole("button", { name: "更新を確認" })).toBeEnabled();
+	await expect(
+		panel.getByRole("searchbox", { name: "タグ名・別名" }),
+	).toBeVisible();
+	expect(
+		await panel.evaluate((element) => element.scrollWidth),
+	).toBeLessThanOrEqual(await panel.evaluate((element) => element.clientWidth));
+});
 
 test("browses the imported dictionary after reload and assigns a tag from the media editor", async ({
 	page,
@@ -51,16 +124,80 @@ test("browses the imported dictionary after reload and assigns a tag from the me
 		.getByRole("heading", { name: "タグ", exact: true })
 		.locator("..")
 		.locator("..");
-	await tags.getByRole("button", { name: "編集", exact: true }).click();
+	const edit = tags.getByRole("button", { name: "編集", exact: true });
+	const editor = page.getByRole("dialog", { name: "タグを割り当てる" });
+	const remove = editor.getByRole("button", {
+		name: "「wavy_hair」の割り当てを外す",
+	});
+	await page.setViewportSize({ width: 320, height: 720 });
+	await edit.click();
 	try {
-		await tags.getByRole("button", { name: "タグ辞書", exact: true }).click();
-		const dialog = page.getByRole("dialog", { name: "タグ辞書" });
-		await dialog.getByRole("searchbox").fill("waved_hair");
-		await dialog.getByRole("searchbox").press("Enter");
-		await dialog.getByRole("button", { name: /^wavy_hair/ }).click();
-		await dialog.getByRole("button", { name: "タグに追加" }).click();
-		await expect(page.locator("#positive-tags")).toHaveValue(/wavy_hair/);
-		await tags.getByRole("button", { name: "保存", exact: true }).click();
+		const input = editor.getByRole("combobox", { name: "タグ名", exact: true });
+		const options = page.getByRole("listbox").getByRole("option");
+		await input.fill("wavy_hair");
+		await expect(options.first()).toHaveText("「wavy_hair」を新規作成");
+		await expect(options.nth(1)).toContainText("ウェーブヘア");
+		await input.fill("waved_hair");
+		await expect(options.first()).toHaveText("「waved_hair」を新規作成");
+		await expect(options.nth(1)).toContainText("wavy_hair");
+		await input.press("ArrowDown");
+		await input.press("ArrowDown");
+		await expect(options.nth(1)).toHaveAttribute("data-highlighted", "");
+		await input.press("Enter");
+		await expect(remove).toBeVisible();
+		await expect(input).toHaveValue("");
+		await expect(input).toBeFocused();
+		await expect(editor.getByRole("tablist")).toHaveCount(0);
+		await input.fill("night sky");
+		await input.press("Enter");
+		await expect(input).toHaveValue("");
+		await input.fill("open sky");
+		await page
+			.getByRole("option", { name: "「open sky」を新規作成", exact: true })
+			.click();
+		await expect(input).toBeFocused();
+		await input.evaluate((element) => {
+			const clipboardData = new DataTransfer();
+			clipboardData.setData("text/plain", "night sky\r\n夜景\r\n夜景");
+			element.dispatchEvent(
+				new ClipboardEvent("paste", {
+					clipboardData,
+					bubbles: true,
+					cancelable: true,
+				}),
+			);
+		});
+		for (const name of ["night sky", "open sky", "夜景"]) {
+			const chip = editor.getByRole("button", {
+				name: `「${name}」の割り当てを外す`,
+				exact: true,
+			});
+			await expect(chip).toHaveCount(1);
+			await chip.click();
+		}
+		await page.keyboard.press("Escape");
+		const discard = page.getByRole("alertdialog", {
+			name: "変更を破棄しますか？",
+		});
+		await expect(discard).toBeVisible();
+		await discard.getByRole("button", { name: "編集を続ける" }).click();
+		await expect(remove).toBeVisible();
+		expect(
+			await editor.evaluate((element) => element.scrollWidth),
+		).toBeLessThanOrEqual(
+			await editor.evaluate((element) => element.clientWidth),
+		);
+		const save = page.waitForRequest("**/api/rpc/media/updatePositiveTags");
+		await editor.getByRole("button", { name: "保存", exact: true }).click();
+		expect((await save).postDataJSON()).toMatchObject({
+			json: {
+				entries: expect.arrayContaining([
+					{ name: "wavy_hair", fromDictionary: true },
+				]),
+			},
+		});
+		await expect(editor).toBeHidden();
+		await page.setViewportSize({ width: 1440, height: 900 });
 		await expect(tags.getByText("wavy_hair", { exact: true })).toBeVisible();
 
 		let wikiRequests = 0;
@@ -111,15 +248,9 @@ test("browses the imported dictionary after reload and assigns a tag from the me
 	} finally {
 		const assigned = tags.getByText("wavy_hair", { exact: true });
 		if (await assigned.isVisible()) {
-			await tags.getByRole("button", { name: "編集", exact: true }).click();
-			const text = page.locator("#positive-tags");
-			await text.fill(
-				(await text.inputValue())
-					.split("\n")
-					.filter((name) => name !== "wavy_hair")
-					.join("\n"),
-			);
-			await tags.getByRole("button", { name: "保存", exact: true }).click();
+			await edit.click();
+			await remove.click();
+			await editor.getByRole("button", { name: "保存", exact: true }).click();
 			await expect(assigned).toBeHidden();
 		}
 	}
@@ -137,10 +268,10 @@ test("confirms manual migration and keeps the tag attached to the media after re
 		.locator("..")
 		.locator("..");
 	await tags.getByRole("button", { name: "編集", exact: true }).click();
-	const input = page.locator("#positive-tags");
-	const before = await input.inputValue();
-	await input.fill([before, oldName].filter(Boolean).join("\n"));
-	await tags.getByRole("button", { name: "保存", exact: true }).click();
+	const editor = page.getByRole("dialog", { name: "タグを割り当てる" });
+	const input = editor.getByRole("combobox", { name: "タグ名", exact: true });
+	await input.fill(oldName);
+	await editor.getByRole("button", { name: "保存", exact: true }).click();
 	await expect(tags.getByText(oldName, { exact: true })).toBeVisible();
 	try {
 		await page.goto("/manager");
@@ -192,8 +323,10 @@ test("confirms manual migration and keeps the tag attached to the media after re
 		await page.goto(imagePath);
 		await waitForAppHydration(page);
 		await tags.getByRole("button", { name: "編集", exact: true }).click();
-		await input.fill(before);
-		await tags.getByRole("button", { name: "保存", exact: true }).click();
+		await editor
+			.getByRole("button", { name: "「wavy_hair」の割り当てを外す" })
+			.click();
+		await editor.getByRole("button", { name: "保存", exact: true }).click();
 		await expect(tags.getByText("wavy_hair", { exact: true })).toBeHidden();
 	}
 });

@@ -1,6 +1,5 @@
 import { t } from "@solid-imager/i18n";
-import type { Ip } from "@solid-imager/core/ips";
-import { createSignal, For, Show } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -21,6 +20,7 @@ import {
 	ComboboxItemIndicator,
 	ComboboxItemLabel,
 	ComboboxTrigger,
+	useComboboxContext,
 } from "../../combobox";
 import {
 	Dialog,
@@ -30,10 +30,33 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "../../dialog";
+import { FormError } from "../../form-message";
 import type { UseManagerPageResult } from "../../hooks/use-manager-page";
 import { Input } from "../../input";
 import { Label } from "../../label";
+import { SelectedRelationItems } from "../../selected-relation-items";
 import { isCharacter, singularLabel } from "./utils";
+
+type IpOption = { id: string; name: string };
+
+function IpPickerInput() {
+	const combobox = useComboboxContext();
+	return (
+		<ComboboxInput
+			id="manager-entity-ips"
+			placeholder={t("dialogs.selectIPs")}
+			on:keydown={(event: KeyboardEvent) => {
+				if (event.key !== "Escape" || !combobox.isOpen()) return;
+				event.preventDefault();
+				event.stopPropagation();
+				combobox.resetInputValue(
+					combobox.listState().selectionManager().selectedKeys(),
+				);
+				combobox.close();
+			}}
+		/>
+	);
+}
 
 function entityFormIsDirty(manager: UseManagerPageResult): boolean {
 	const form = manager.formData();
@@ -58,7 +81,28 @@ function entityFormIsDirty(manager: UseManagerPageResult): boolean {
 
 export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 	const [discardDialogOpen, setDiscardDialogOpen] = createSignal(false);
+	let ipField: HTMLDivElement | undefined;
+	const availableIps = createMemo(() => {
+		const editing = props.manager.editingItem();
+		const linkedIps = editing && isCharacter(editing) ? editing.ips : [];
+		return [
+			...new Map(
+				[...linkedIps, ...props.manager.ips()].map((ip) => [ip.id, ip]),
+			).values(),
+		];
+	});
+	const selectedIps = createMemo(() => {
+		const ipIds = props.manager.formData().ipIds ?? [];
+		return availableIps().filter((ip) => ipIds.includes(ip.id));
+	});
+	const setSelectedIps = (ips: IpOption[]) => {
+		props.manager.setFormData((data) => ({
+			...data,
+			ipIds: ips.map((ip) => ip.id),
+		}));
+	};
 	const requestFormClose = () => {
+		if (props.manager.isSavingEntity()) return;
 		if (entityFormIsDirty(props.manager)) {
 			setDiscardDialogOpen(true);
 			return;
@@ -81,14 +125,12 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 			>
 				<DialogContent
 					onEscapeKeyDown={(event) => {
-						if (!entityFormIsDirty(props.manager)) return;
 						event.preventDefault();
-						setDiscardDialogOpen(true);
+						requestFormClose();
 					}}
 					onPointerDownOutside={(event) => {
-						if (!entityFormIsDirty(props.manager)) return;
 						event.preventDefault();
-						setDiscardDialogOpen(true);
+						requestFormClose();
 					}}
 				>
 					<DialogHeader>
@@ -106,89 +148,121 @@ export function ManagerDialogs(props: { manager: UseManagerPageResult }) {
 								: t("dialogs.addANewItemToTheCurrentCategory")}
 						</DialogDescription>
 					</DialogHeader>
-					<div class="grid gap-4 py-2">
-						<div class="space-y-1.5">
-							<Label for="manager-entity-name">{t("labels.name")}</Label>
-							<Input
-								id="manager-entity-name"
-								onInput={(event) =>
-									props.manager.setFormData({
-										...props.manager.formData(),
-										name: event.currentTarget.value,
-									})
-								}
-								value={props.manager.formData().name}
-							/>
-						</div>
-						<div class="space-y-1.5">
-							<Label for="manager-entity-description">
-								{t("labels.description")}
-							</Label>
-							<Input
-								id="manager-entity-description"
-								onInput={(event) =>
-									props.manager.setFormData({
-										...props.manager.formData(),
-										description: event.currentTarget.value,
-									})
-								}
-								value={props.manager.formData().description}
-							/>
-						</div>
-						<Show when={props.manager.activeTab() === "characters"}>
+					<form
+						class="grid min-w-0 gap-4"
+						onSubmit={(event) => {
+							event.preventDefault();
+							void props.manager.handleSave();
+						}}
+					>
+						<div class="grid min-w-0 gap-4 py-2">
 							<div class="space-y-1.5">
-								<Label for="manager-entity-ips">{t("labels.ips")}</Label>
-								<Combobox<Ip>
-									itemComponent={(comboboxProps) => (
-										<ComboboxItem item={comboboxProps.item}>
-											<ComboboxItemLabel>
-												{comboboxProps.item.rawValue.name}
-											</ComboboxItemLabel>
-											<ComboboxItemIndicator />
-										</ComboboxItem>
-									)}
-									multiple
-									onChange={(values) =>
+								<Label for="manager-entity-name">{t("labels.name")}</Label>
+								<Input
+									id="manager-entity-name"
+									name="name"
+									required
+									pattern={".*\\S.*"}
+									disabled={props.manager.isSavingEntity()}
+									onInvalid={(event) =>
+										event.currentTarget.setCustomValidity(
+											t("form.nameRequired"),
+										)
+									}
+									onInput={(event) => {
+										event.currentTarget.setCustomValidity("");
 										props.manager.setFormData({
 											...props.manager.formData(),
-											ipIds: values.map((value) => value.id),
+											name: event.currentTarget.value,
+										});
+									}}
+									value={props.manager.formData().name}
+								/>
+							</div>
+							<div class="space-y-1.5">
+								<Label for="manager-entity-description">
+									{t("labels.description")}
+								</Label>
+								<Input
+									id="manager-entity-description"
+									name="description"
+									disabled={props.manager.isSavingEntity()}
+									onInput={(event) =>
+										props.manager.setFormData({
+											...props.manager.formData(),
+											description: event.currentTarget.value,
 										})
 									}
-									optionLabel="name"
-									options={props.manager.ips()}
-									optionTextValue="name"
-									optionValue="id"
-									value={props.manager
-										.ips()
-										.filter((ip) =>
-											props.manager.formData().ipIds?.includes(ip.id),
-										)}
-								>
-									<ComboboxControl>
-										<ComboboxInput
-											id="manager-entity-ips"
-											placeholder={t("dialogs.selectIPs")}
-										/>
-										<ComboboxTrigger />
-									</ComboboxControl>
-									<ComboboxContent />
-								</Combobox>
+									value={props.manager.formData().description}
+								/>
 							</div>
-						</Show>
-					</div>
-					<DialogFooter>
-						<Button onClick={requestFormClose} variant="outline">
-							{t("actions.cancel")}
-						</Button>
-						<Button
-							disabled={!props.manager.formData().name.trim()}
-							onClick={() => {
-								void props.manager.handleSave();
-							}}
-						>
-							{t("actions.save")}
-						</Button>
-					</DialogFooter>
+							<Show when={props.manager.activeTab() === "characters"}>
+								<div
+									class="min-w-0 space-y-2"
+									ref={(element) => {
+										ipField = element;
+									}}
+								>
+									<Label for="manager-entity-ips">{t("labels.ips")}</Label>
+									<Combobox<IpOption>
+										name="ipIds"
+										disabled={props.manager.isSavingEntity()}
+										itemComponent={(comboboxProps) => (
+											<ComboboxItem item={comboboxProps.item}>
+												<ComboboxItemLabel>
+													{comboboxProps.item.rawValue.name}
+												</ComboboxItemLabel>
+												<ComboboxItemIndicator />
+											</ComboboxItem>
+										)}
+										multiple
+										onChange={setSelectedIps}
+										optionLabel="name"
+										options={availableIps()}
+										optionTextValue="name"
+										optionValue="id"
+										value={selectedIps()}
+									>
+										<ComboboxControl>
+											<IpPickerInput />
+											<ComboboxTrigger />
+										</ComboboxControl>
+										<ComboboxContent portalMount={ipField} />
+									</Combobox>
+									<SelectedRelationItems
+										items={selectedIps()}
+										disabled={props.manager.isSavingEntity()}
+										onRemove={(id) =>
+											props.manager.setFormData((data) => ({
+												...data,
+												ipIds: data.ipIds?.filter((ipId) => ipId !== id),
+											}))
+										}
+									/>
+								</div>
+							</Show>
+						</div>
+						<FormError message={props.manager.entitySaveError()} />
+						<DialogFooter>
+							<Button
+								type="button"
+								onClick={requestFormClose}
+								disabled={props.manager.isSavingEntity()}
+								variant="outline"
+							>
+								{t("actions.cancel")}
+							</Button>
+							<Button
+								type="submit"
+								aria-busy={props.manager.isSavingEntity()}
+								disabled={props.manager.isSavingEntity()}
+							>
+								{props.manager.isSavingEntity()
+									? t("status.saving")
+									: t("actions.save")}
+							</Button>
+						</DialogFooter>
+					</form>
 				</DialogContent>
 			</Dialog>
 

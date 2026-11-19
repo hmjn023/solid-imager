@@ -195,6 +195,8 @@ export type UseManagerPageResult = {
 	setItemToDelete: Setter<ManagerEntity | null>;
 	formData: Accessor<ManagerFormData>;
 	setFormData: Setter<ManagerFormData>;
+	isSavingEntity: Accessor<boolean>;
+	entitySaveError: Accessor<string | null>;
 	selectedSourceId: Accessor<string | undefined>;
 	setSelectedSourceId: Setter<string | undefined>;
 	forceRetag: Accessor<boolean>;
@@ -331,6 +333,10 @@ export function useManagerPage(
 		description: "",
 		ipIds: [],
 	});
+	const [isSavingEntity, setIsSavingEntity] = createSignal(false);
+	const [entitySaveError, setEntitySaveError] = createSignal<string | null>(
+		null,
+	);
 
 	const [selectedSourceId, setSelectedSourceId] = createSignal<
 		string | undefined
@@ -520,8 +526,7 @@ export function useManagerPage(
 		]);
 	};
 
-	const invalidateActive = () => {
-		const tab = activeCrudTab(activeTab());
+	const invalidateActive = (tab = activeCrudTab(activeTab())) => {
 		if (tab) {
 			const option = queryOptions[tab]();
 			void queryClient.invalidateQueries({ queryKey: option.queryKey });
@@ -529,12 +534,14 @@ export function useManagerPage(
 	};
 
 	const openCreateDialog = () => {
+		setEntitySaveError(null);
 		setEditingItem(null);
 		resetForm(setFormData);
 		setIsDialogOpen(true);
 	};
 
 	const openEditDialog = (item: ManagerEntity) => {
+		setEntitySaveError(null);
 		setEditingItem(item);
 		setFormData({
 			name: item.name,
@@ -544,56 +551,42 @@ export function useManagerPage(
 		setIsDialogOpen(true);
 	};
 
-	const handleCreate = async () => {
-		const data = formData();
-		try {
-			if (activeTab() === "projects") {
-				await actions.createProject(data);
-			} else if (activeTab() === "ips") {
-				await actions.createIp(data);
-			} else if (activeTab() === "characters") {
-				await actions.createCharacter(data);
-			}
-
-			invalidateActive();
-			setIsDialogOpen(false);
-			setEditingItem(null);
-			resetForm(setFormData);
-		} catch (error) {
-			toast.error(
-				t("useManagerPage.failedToSaveValue", {
-					value0: String(getErrorMessage(error)),
-				}),
-			);
-		}
-	};
-
-	const handleUpdate = async () => {
+	const handleSave = async () => {
+		const tab = activeCrudTab(activeTab());
 		const data = formData();
 		const current = editingItem();
-		if (!current) {
-			return;
-		}
+		if (!tab || isSavingEntity() || !data.name.trim()) return;
 
+		setIsSavingEntity(true);
+		setEntitySaveError(null);
 		try {
-			if (activeTab() === "projects") {
-				await actions.updateProject(current.id, data);
-			} else if (activeTab() === "ips") {
-				await actions.updateIp(current.id, data);
-			} else if (activeTab() === "characters") {
-				await actions.updateCharacter(current.id, data);
+			switch (tab) {
+				case "projects":
+					if (current) await actions.updateProject(current.id, data);
+					else await actions.createProject(data);
+					break;
+				case "ips":
+					if (current) await actions.updateIp(current.id, data);
+					else await actions.createIp(data);
+					break;
+				case "characters":
+					if (current) await actions.updateCharacter(current.id, data);
+					else await actions.createCharacter(data);
+					break;
 			}
 
-			invalidateActive();
+			invalidateActive(tab);
 			setIsDialogOpen(false);
 			setEditingItem(null);
 			resetForm(setFormData);
 		} catch (error) {
-			toast.error(
+			setEntitySaveError(
 				t("useManagerPage.failedToSaveValue", {
 					value0: String(getErrorMessage(error)),
 				}),
 			);
+		} finally {
+			setIsSavingEntity(false);
 		}
 	};
 
@@ -808,6 +801,8 @@ export function useManagerPage(
 		setItemToDelete,
 		formData,
 		setFormData,
+		isSavingEntity,
+		entitySaveError,
 		selectedSourceId,
 		setSelectedSourceId: changeSelectedSourceId,
 		forceRetag,
@@ -855,7 +850,7 @@ export function useManagerPage(
 		retryQueries,
 		openCreateDialog,
 		openEditDialog,
-		handleSave: () => (editingItem() ? handleUpdate() : handleCreate()),
+		handleSave,
 		handleConfirmDelete,
 		handleScan,
 		handleStartBatchTagging,

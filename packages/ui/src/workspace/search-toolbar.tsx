@@ -10,6 +10,7 @@ import ChevronDown from "lucide-solid/icons/chevron-down";
 import Filter from "lucide-solid/icons/funnel";
 import Grid3X3 from "lucide-solid/icons/grid-3x3";
 import List from "lucide-solid/icons/list";
+import SquareCheck from "lucide-solid/icons/square-check";
 import type { JSX } from "solid-js";
 import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
 import {
@@ -33,6 +34,7 @@ import {
 	searchState,
 	setSearchState,
 } from "../stores/search-store";
+import { CollectionHeader } from "./collection-header";
 import {
 	getSearchComposerTokens,
 	parseSimilarityAnchor,
@@ -46,6 +48,11 @@ import { parseSemanticSearchDraft } from "./search-composer-utils";
 
 export type SearchToolbarProps = {
 	actions?: JSX.Element;
+	bulkSelection?: {
+		active: boolean;
+		onEnter: () => void;
+		onClear?: () => void;
+	};
 	context: "global" | "source";
 	filterData: {
 		authors: import("@solid-imager/core/authors").Author[] | undefined;
@@ -346,8 +353,8 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	);
 
 	return (
-		<header class="shrink-0 border-border border-b bg-background px-3 py-3 sm:px-4">
-			<div class="mb-2 flex min-h-6 items-center gap-2 text-sm">
+		<CollectionHeader
+			heading={
 				<Breadcrumb class="min-w-0">
 					<BreadcrumbList class="min-w-0 flex-nowrap gap-2 sm:gap-2">
 						<BreadcrumbItem class="shrink-0">
@@ -364,28 +371,33 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						</BreadcrumbItem>
 					</BreadcrumbList>
 				</Breadcrumb>
-				<Show when={props.isUpdating}>
-					<output
-						class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-muted-foreground"
-						data-state-ui="background-fetching"
-					>
-						<span
-							aria-hidden="true"
-							class="size-2 shrink-0 animate-pulse rounded-full bg-current motion-reduce:animate-none"
-						/>
-						<span class="truncate">
-							{props.updatingLabel ?? t("searchToolbar.updating")}
+			}
+			summary={
+				<>
+					<Show when={props.isUpdating}>
+						<output
+							class="ml-auto flex min-w-0 max-w-56 shrink-0 items-center gap-2 truncate text-xs text-muted-foreground"
+							data-state-ui="background-fetching"
+						>
+							<span
+								aria-hidden="true"
+								class="size-2 shrink-0 animate-pulse rounded-full bg-current motion-reduce:animate-none"
+							/>
+							<span class="truncate">
+								{props.updatingLabel ?? t("searchToolbar.updating")}
+							</span>
+						</output>
+					</Show>
+					<Show when={!props.isUpdating && props.itemCount !== undefined}>
+						<span class="ml-auto shrink-0 text-xs text-muted-foreground">
+							{t("charts.valueItems", {
+								value0: String(props.itemCount?.toLocaleString()),
+							})}
 						</span>
-					</output>
-				</Show>
-				<Show when={!props.isUpdating && props.itemCount !== undefined}>
-					<span class="ml-auto shrink-0 text-xs text-muted-foreground">
-						{t("charts.valueItems", {
-							value0: String(props.itemCount?.toLocaleString()),
-						})}
-					</span>
-				</Show>
-			</div>
+					</Show>
+				</>
+			}
+		>
 			<Show when={getSearchExecutionKind(searchState) !== "ordinary"}>
 				<output class="mb-2 block text-xs text-muted-foreground">
 					{t("searchToolbar.filtersAndSortingForOrdinarySearchAreSavedThey")}
@@ -459,7 +471,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 					</PopoverTrigger>
 					<PopoverContent
 						aria-label={t("searchToolbar.searchFilters")}
-						class="workspace-theme relative flex min-h-0 max-h-popover-fit-available w-popover-compact flex-col overflow-hidden bg-card p-0 text-foreground shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
+						class="workspace-theme relative flex min-h-0 max-h-popover-fit-available w-popover-compact! flex-col overflow-hidden bg-card p-0 text-foreground shadow-xl data-[closed]:hidden data-[expanded]:animate-none"
 					>
 						<div class="flex shrink-0 items-start justify-between border-border border-b px-4 py-3">
 							<div>
@@ -491,6 +503,7 @@ export function SearchToolbar(props: SearchToolbarProps) {
 								presetClient={props.presetClient}
 								selectedSource={props.selectedSource}
 								showSearchButton={false}
+								showSortControls={false}
 								sources={props.sources}
 								usePopover={false}
 							/>
@@ -577,8 +590,25 @@ export function SearchToolbar(props: SearchToolbarProps) {
 						<List aria-hidden="true" size={15} />
 					</ToggleGroupItem>
 				</ToggleGroup>
+				<Show when={props.bulkSelection}>
+					{(selection) => (
+						<Button
+							aria-pressed={selection().active}
+							class="min-h-11 sm:min-h-9"
+							onClick={() => {
+								if (selection().active) selection().onClear?.();
+								else selection().onEnter();
+							}}
+							size="sm"
+							variant={selection().active ? "secondary" : "outline"}
+						>
+							<SquareCheck aria-hidden="true" size={15} />
+							{t("sourceMediaScreen.selectMultiple")}
+						</Button>
+					)}
+				</Show>
 				{props.actions}
 			</div>
-		</header>
+		</CollectionHeader>
 	);
 }

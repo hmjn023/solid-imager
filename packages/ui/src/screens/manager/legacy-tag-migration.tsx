@@ -29,6 +29,7 @@ import {
 	type TagDictionaryLookup,
 } from "../../tag-dictionary-browser";
 import { TextField, TextFieldInput, TextFieldLabel } from "../../text-field";
+import { ChevronDown } from "../../workspace/icons";
 
 export type LegacyTagMigrationActions = TagDictionaryLookup & {
 	dictionaryLegacy: (
@@ -93,18 +94,22 @@ export function LegacyTagMigration(props: {
 		<Collapsible
 			open={open()}
 			onOpenChange={setOpen}
-			class="rounded-lg border border-border"
+			class="rounded-lg border border-border bg-card"
 		>
 			<h3>
 				<CollapsibleTrigger
 					as={Button}
 					variant="ghost"
-					class="min-h-11 w-full justify-start"
+					class="group min-h-11 w-full justify-between px-4"
 					ref={(element: HTMLButtonElement) => {
 						listTrigger = element;
 					}}
 				>
 					{t("tagDictionary.legacyTitle")}
+					<ChevronDown
+						class="text-muted-foreground group-data-[expanded]:rotate-180"
+						size={16}
+					/>
 				</CollapsibleTrigger>
 			</h3>
 			<CollapsibleContent class="space-y-3 border-t border-border p-3">

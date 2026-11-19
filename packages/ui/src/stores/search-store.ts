@@ -125,3 +125,10 @@ export const clearSimilaritySearch = () => {
 
 export const getSearchCondition = () =>
 	getSearchConditionFromState(searchState);
+
+export const hasSearchConditions = () =>
+	Boolean(
+		getSearchCondition()?.children.length ||
+		searchState.similarityAnchorMediaId ||
+		searchState.semanticQuery.trim(),
+	);

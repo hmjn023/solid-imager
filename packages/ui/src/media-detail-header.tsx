@@ -91,6 +91,7 @@ export function MediaDetailHeader(props: MediaDetailHeaderProps) {
 
 	return (
 		<MediaDetailToolbar
+			showMetadataLink
 			title={props.media.fileName}
 			sourceName={props.sourceName}
 			onBack={returnToCollection}

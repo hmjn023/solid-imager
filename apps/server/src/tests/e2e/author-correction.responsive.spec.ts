@@ -7,6 +7,7 @@ import {
 	E2E_WRONG_AUTHOR_ID,
 	mediaPath,
 } from "./support/fixture";
+import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 async function rpc(page: Page, name: string, input: object) {
@@ -17,10 +18,7 @@ async function rpc(page: Page, name: string, input: object) {
 	return response.json() as Promise<{ json: { items?: { id: string }[] } }>;
 }
 async function openAuthors(page: Page) {
-	await page
-		.getByRole("button", { name: /作者・外部アカウント/ })
-		.filter({ visible: true })
-		.click();
+	await selectManagerCategory(page, "作者・外部アカウント");
 	await expect(
 		page.getByRole("heading", { name: "作者・外部アカウント", exact: true }),
 	).toBeVisible();

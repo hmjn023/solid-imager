@@ -128,6 +128,18 @@ test(
 		await expect(
 			inspector.getByRole("img", { name: E2E_SIMILAR_FILE_NAME, exact: true }),
 		).toBeVisible();
+
+		await page.getByRole("button", { name: "リスト表示", exact: true }).click();
+		const row = page.locator(`tr[data-media-id="${E2E_PRIMARY_MEDIA_ID}"]`);
+		await row.getByText(E2E_PRIMARY_FILE_NAME, { exact: true }).first().click();
+		await expect(page).toHaveURL(new RegExp(`${sourcePath}(?:\\?[^#]*)?$`));
+		await expect(inspector).toContainText(E2E_PRIMARY_FILE_NAME);
+		await page
+			.locator(`tr[data-media-id="${E2E_SIMILAR_MEDIA_ID}"]`)
+			.getByText(E2E_SIMILAR_FILE_NAME, { exact: true })
+			.first()
+			.click();
+		await expect(inspector).toContainText(E2E_SIMILAR_FILE_NAME);
 		await inspector.getByRole("button", { name: "詳細を開く" }).click();
 		await expect(page).toHaveURL(
 			new RegExp(`${mediaPath(E2E_SIMILAR_MEDIA_ID)}(?:\\?[^#]*)?$`),
@@ -156,7 +168,9 @@ test(
 			page.getByRole("heading", { name: "データ転送", exact: true }),
 		).toBeVisible();
 
-		const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
+		const selectTriggers = page.locator(
+			'button[aria-haspopup="listbox"]:visible',
+		);
 		await selectTriggers.nth(0).click();
 		await page
 			.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
@@ -194,7 +208,9 @@ test(
 			.first()
 			.click();
 
-		const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
+		const selectTriggers = page.locator(
+			'button[aria-haspopup="listbox"]:visible',
+		);
 		await selectTriggers.nth(0).click();
 		await page
 			.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })
@@ -246,7 +262,9 @@ test(
 			.first()
 			.click();
 
-		const selectTriggers = page.locator('button[aria-haspopup="listbox"]');
+		const selectTriggers = page.locator(
+			'button[aria-haspopup="listbox"]:visible',
+		);
 		await selectTriggers.nth(0).click();
 		await page
 			.getByRole("option", { name: E2E_SOURCE_NAME, exact: true })

@@ -6,6 +6,7 @@ import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";
 import type { QueryUiFetchState } from "./query-state";
 import { cn } from "./utils/cn";
+import { Minus } from "./workspace/icons";
 
 export type RetryButtonProps = {
 	class?: string;
@@ -61,48 +62,53 @@ function StatePanel(props: StatePanelProps) {
 	return (
 		<section
 			class={cn(
-				"flex min-h-48 flex-col items-center justify-center gap-4 rounded-lg border border-dashed p-6 text-center",
-				props.state === "error" && "border-destructive/40 bg-error/60",
+				"@container min-w-0 rounded-lg border border-border bg-card",
+				props.state === "error" && "border-destructive/30 bg-error/60",
 				props.state === "offline" &&
-					"border-warning-foreground/40 bg-warning/60",
-				props.state === "empty" && "bg-muted/30",
+					"border-warning-foreground/30 bg-warning/60",
 				props.class,
 			)}
 			data-state-ui={props.state}
 		>
-			<div
-				aria-hidden="true"
-				class={cn(
-					"flex size-10 items-center justify-center rounded-full text-lg",
-					props.state === "error" && "bg-destructive/15 text-destructive",
-					props.state === "offline" &&
-						"bg-warning-foreground/15 text-warning-foreground",
-					props.state === "empty" && "bg-muted text-muted-foreground",
-				)}
-			>
-				{props.icon}
-			</div>
-			<div
-				aria-atomic={props.announce ? "true" : undefined}
-				aria-live={props.announce ? "polite" : undefined}
-				class="max-w-lg space-y-2"
-				role={props.role}
-			>
-				<Dynamic
-					class="font-semibold text-lg"
-					component={props.headingLevel === 1 ? "h1" : "h2"}
+			<div class="flex items-start gap-3 p-4 @xl:items-center @xl:gap-4 @xl:p-5">
+				<div
+					aria-hidden="true"
+					class={cn(
+						"grid size-10 shrink-0 place-items-center rounded-lg text-lg font-semibold",
+						props.state === "error" && "bg-destructive/15 text-destructive",
+						props.state === "offline" &&
+							"bg-warning-foreground/15 text-warning-foreground",
+						props.state === "empty" && "bg-accent text-accent-foreground",
+					)}
 				>
-					{props.title}
-				</Dynamic>
-				<Show when={props.description}>
-					<p class="text-muted-foreground text-sm">{props.description}</p>
-				</Show>
-			</div>
-			<Show when={props.children}>
-				<div class="flex flex-wrap items-center justify-center gap-2">
-					{props.children}
+					{props.icon}
 				</div>
-			</Show>
+				<div class="flex min-w-0 flex-1 flex-col gap-3 self-center @xl:flex-row @xl:items-center @xl:gap-4">
+					<div
+						aria-atomic={props.announce ? "true" : undefined}
+						aria-live={props.announce ? "polite" : undefined}
+						class="min-w-0 flex-1 break-words"
+						role={props.role}
+					>
+						<Dynamic
+							class="font-semibold text-base text-foreground"
+							component={props.headingLevel === 1 ? "h1" : "h2"}
+						>
+							{props.title}
+						</Dynamic>
+						<Show when={props.description}>
+							<p class="mt-1 text-muted-foreground text-sm">
+								{props.description}
+							</p>
+						</Show>
+					</div>
+					<Show when={props.children}>
+						<div class="flex flex-wrap items-center gap-2 [&_button]:min-h-11 @xl:[&_button]:min-h-9">
+							{props.children}
+						</div>
+					</Show>
+				</div>
+			</div>
 		</section>
 	);
 }
@@ -111,6 +117,7 @@ export type EmptyStateProps = ParentProps<{
 	class?: string;
 	description?: JSX.Element;
 	headingLevel?: 1 | 2;
+	icon?: JSX.Element;
 	title: string;
 }>;
 
@@ -120,7 +127,7 @@ export function EmptyState(props: EmptyStateProps) {
 			class={props.class}
 			description={props.description}
 			headingLevel={props.headingLevel}
-			icon="–"
+			icon={props.icon ?? <Minus size={18} />}
 			state="empty"
 			title={props.title}
 		>

@@ -1,5 +1,5 @@
-import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
+import { t } from "@solid-imager/i18n";
 import { createMemo, createSignal, For, Show } from "solid-js";
 import {
 	AlertDialog,
@@ -20,11 +20,18 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	DialogTrigger,
 } from "./dialog";
 import { Input } from "./input";
+import { SelectedRelationItems } from "./selected-relation-items";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "./tabs";
 import { toast } from "./toast";
+import { Plus, Search } from "./workspace/icons";
 
-type Item = { id: string; name: string };
+const RELATION_GROUPS = ["projects", "ips", "characters"] as const;
+type RelationGroup = (typeof RELATION_GROUPS)[number];
+type NamedItem = { id: string; name: string };
+type Item = NamedItem & { ips?: NamedItem[] };
 type Group = {
 	title: string;
 	items: Item[];
@@ -33,36 +40,189 @@ type Group = {
 	remove: (id: string) => void | Promise<void>;
 	create: (name: string) => Promise<{ id: string }>;
 };
+type Draft = { ids: string[]; names: string[]; query: string };
 type Props = {
-	groups: Group[];
-	characterIps: (id: string) => string[];
+	groups: Record<RelationGroup, Group>;
 	onUpdate?: () => void;
 	disabled?: boolean;
 };
+
+function groupDraft(group: Group): Draft {
+	return { ids: group.items.map((item) => item.id), names: [], query: "" };
+}
+
+function RelationGroupPanel(props: {
+	group: Group;
+	draft: Draft;
+	characters: boolean;
+	saving: boolean;
+	onQuery: (query: string) => void;
+	onToggle: (id: string, checked: boolean) => void;
+	onStageName: (name: string) => void;
+	onRemoveName: (name: string) => void;
+	searchRef: (input: HTMLInputElement) => void;
+}) {
+	const items = createMemo(() => [
+		...new Map(
+			[...props.group.items, ...props.group.available].map((item) => [
+				item.id,
+				item,
+			]),
+		).values(),
+	]);
+	const selected = () =>
+		items().filter((item) => props.draft.ids.includes(item.id));
+	const searchName = () => props.draft.query.trim();
+	const normalizedQuery = () => searchName().toLowerCase();
+	const candidates = createMemo(() => {
+		const query = normalizedQuery();
+		return items().filter(
+			(item) =>
+				item.name.toLowerCase().includes(query) ||
+				item.ips?.some((ip) => ip.name.toLowerCase().includes(query)),
+		);
+	});
+	const canStageName = () =>
+		searchName() &&
+		!items().some((item) => item.name.toLowerCase() === normalizedQuery()) &&
+		!props.draft.names.some((name) => name.toLowerCase() === normalizedQuery());
+	let searchInput: HTMLInputElement | undefined;
+
+	return (
+		<div class="grid min-w-0 content-start gap-4 md:grid-cols-3">
+			<SelectedRelationItems
+				items={selected()}
+				staged={{ names: props.draft.names, onRemove: props.onRemoveName }}
+				disabled={props.saving}
+				onRemove={(id) => props.onToggle(id, false)}
+			/>
+
+			<section class="min-w-0 space-y-3 md:col-span-2">
+				<div class="space-y-1">
+					<h3 class="font-semibold text-sm">
+						{t("relationsEditor.candidates")}
+					</h3>
+					<Show when={props.characters}>
+						<p class="text-xs text-muted-foreground">
+							{t("relationsEditor.characterIpHint")}
+						</p>
+					</Show>
+				</div>
+				<div class="relative">
+					<Search
+						class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted-foreground"
+						size={16}
+					/>
+					<Input
+						ref={(input) => {
+							searchInput = input;
+							props.searchRef(input);
+						}}
+						type="search"
+						class="bg-card pl-9 shadow-none"
+						aria-label={t("relationsEditor.searchValue", {
+							value0: props.group.title,
+						})}
+						placeholder={t(
+							props.characters
+								? "relationsEditor.characterSearchHint"
+								: "relationsEditor.nameSearchHint",
+						)}
+						value={props.draft.query}
+						disabled={props.saving}
+						onInput={(event) => props.onQuery(event.currentTarget.value)}
+					/>
+				</div>
+				<Show when={canStageName()}>
+					<Button
+						type="button"
+						size="sm"
+						variant="outline"
+						class="h-auto min-h-11 max-w-full whitespace-normal py-2 text-start sm:min-h-9"
+						disabled={props.saving}
+						onClick={() => {
+							searchInput?.focus({ preventScroll: true });
+							props.onStageName(searchName());
+						}}
+					>
+						<Plus size={16} />
+						<span class="min-w-0 wrap-anywhere">
+							{t("relationsEditor.createValue", { value0: searchName() })}
+						</span>
+					</Button>
+				</Show>
+				<Show
+					when={candidates().length > 0}
+					fallback={
+						<p class="rounded-md border border-border bg-card p-3 text-sm text-muted-foreground">
+							{t(
+								searchName()
+									? "relationsEditor.noMatches"
+									: "relationsEditor.noCandidates",
+							)}
+						</p>
+					}
+				>
+					<ul class="divide-y divide-border rounded-md border border-border bg-card">
+						<For each={candidates()}>
+							{(item) => (
+								<li>
+									<Checkbox
+										class="flex min-h-11 min-w-0 items-center gap-2.5 rounded-sm px-3 hover:bg-muted data-[checked]:bg-accent/60"
+										checked={props.draft.ids.includes(item.id)}
+										disabled={props.saving}
+										onChange={(checked) => props.onToggle(item.id, checked)}
+									>
+										<CheckboxControl />
+										<CheckboxLabel class="min-w-0 flex-1 cursor-pointer self-stretch py-2.5 text-sm">
+											<span class="block font-medium wrap-anywhere">
+												{item.name}
+											</span>
+											<Show when={item.ips?.length}>
+												<span class="block text-xs text-muted-foreground wrap-anywhere">
+													{item.ips?.map((ip) => ip.name).join(" / ")}
+												</span>
+											</Show>
+										</CheckboxLabel>
+									</Checkbox>
+								</li>
+							)}
+						</For>
+					</ul>
+				</Show>
+			</section>
+		</div>
+	);
+}
 
 export function RelationsEditor(props: Props) {
 	const [open, setOpen] = createSignal(false);
 	const [confirm, setConfirm] = createSignal(false);
 	const [saving, setSaving] = createSignal(false);
-	const [selected, setSelected] = createSignal<string[][]>([[], [], []]);
-	const [newNames, setNewNames] = createSignal<string[][]>([[], [], []]);
-	const [queries, setQueries] = createSignal<string[]>(["", "", ""]);
+	const [active, setActive] = createSignal<RelationGroup>("ips");
+	const readDraft = () => ({
+		projects: groupDraft(props.groups.projects),
+		ips: groupDraft(props.groups.ips),
+		characters: groupDraft(props.groups.characters),
+	});
+	const [drafts, setDrafts] = createSignal(readDraft());
+	let initialSearch: HTMLInputElement | undefined;
+	const updateDraft = (key: RelationGroup, update: (draft: Draft) => Draft) =>
+		setDrafts((previous) => ({ ...previous, [key]: update(previous[key]) }));
 	const dirty = createMemo(() =>
-		props.groups.some((group, i) => {
-			const old = group.items.map((item) => item.id);
+		RELATION_GROUPS.some((key) => {
+			const items = props.groups[key].items;
+			const draft = drafts()[key];
 			return (
-				newNames()[i].length > 0 ||
-				old.length !== selected()[i].length ||
-				old.some((id) => !selected()[i].includes(id))
+				draft.names.length > 0 ||
+				items.length !== draft.ids.length ||
+				items.some((item) => !draft.ids.includes(item.id))
 			);
 		}),
 	);
 	const begin = () => {
-		setSelected(
-			props.groups.map((group) => group.items.map((item) => item.id)),
-		);
-		setNewNames([[], [], []]);
-		setQueries(["", "", ""]);
+		setDrafts(readDraft());
+		setActive("ips");
 		setOpen(true);
 	};
 	const requestClose = () => {
@@ -70,28 +230,40 @@ export function RelationsEditor(props: Props) {
 		if (dirty()) setConfirm(true);
 		else setOpen(false);
 	};
-	const toggle = (groupIndex: number, id: string, checked: boolean) => {
-		setSelected((previous) => {
-			const next = previous.map((ids) => [...ids]);
-			next[groupIndex] = checked
-				? [...next[groupIndex], id]
-				: next[groupIndex].filter((value) => value !== id);
-			if (groupIndex === 2 && checked)
-				for (const ip of props.characterIps(id))
-					if (!next[1].includes(ip)) next[1].push(ip);
+	const toggle = (key: RelationGroup, id: string, checked: boolean) => {
+		if (saving()) return;
+		setDrafts((previous) => {
+			const group = previous[key];
+			const ids = checked
+				? [...new Set([...group.ids, id])]
+				: group.ids.filter((value) => value !== id);
+			const next = { ...previous, [key]: { ...group, ids } };
+			if (key === "characters" && checked) {
+				const ips =
+					props.groups.characters.available.find((item) => item.id === id)
+						?.ips ?? [];
+				next.ips = {
+					...next.ips,
+					ids: [...new Set([...next.ips.ids, ...ips.map((ip) => ip.id)])],
+				};
+			}
 			return next;
 		});
 	};
 	const save = async () => {
+		if (saving() || !dirty()) return;
+		const changes = drafts();
 		setSaving(true);
 		try {
-			for (const [i, group] of props.groups.entries()) {
+			for (const key of RELATION_GROUPS) {
+				const group = props.groups[key];
 				const old = group.items.map((item) => item.id);
-				for (const id of old.filter((id) => !selected()[i].includes(id)))
+				const { ids, names } = changes[key];
+				for (const id of old.filter((id) => !ids.includes(id)))
 					await group.remove(id);
-				for (const id of selected()[i].filter((id) => !old.includes(id)))
+				for (const id of ids.filter((id) => !old.includes(id)))
 					await group.add(id);
-				for (const name of newNames()[i]) {
+				for (const name of names) {
 					const item = await group.create(name);
 					await group.add(item.id);
 				}
@@ -112,171 +284,118 @@ export function RelationsEditor(props: Props) {
 	};
 	return (
 		<>
-			<Button
-				size="sm"
-				variant="outline"
-				disabled={props.disabled}
-				onClick={begin}
-			>
-				{t("actions.edit")}
-			</Button>
 			<Dialog
 				open={open()}
-				onOpenChange={(value) => {
-					if (!value) requestClose();
-				}}
+				onOpenChange={(value) => (value ? begin() : requestClose())}
 			>
-				<DialogContent class="flex max-w-4xl flex-col gap-4 overflow-hidden">
-					<DialogHeader>
+				<DialogTrigger
+					as={Button}
+					size="sm"
+					variant="outline"
+					disabled={props.disabled}
+				>
+					{t("actions.edit")}
+				</DialogTrigger>
+				<DialogContent
+					class="workspace-theme flex h-dialog-screen max-w-3xl flex-col gap-0 overflow-hidden rounded-lg bg-card p-0 sm:h-120 [&>button]:top-2 [&>button]:right-2 [&>button]:z-20 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center"
+					onOpenAutoFocus={(event) => {
+						if (
+							initialSearch?.isConnected &&
+							!window.matchMedia("(pointer: coarse)").matches
+						) {
+							event.preventDefault();
+							initialSearch.focus({ preventScroll: true });
+						}
+					}}
+				>
+					<DialogHeader class="border-b border-border bg-card p-4 pr-14 text-start sm:px-5 sm:pr-14">
 						<DialogTitle>{t("relationsEditor.editRelations")}</DialogTitle>
 						<DialogDescription>
-							{t(
-								"relationsEditor.selectProjectsIPsAndCharactersThenSaveTheChanges",
-							)}
+							{t("relationsEditor.editHelp")}
 						</DialogDescription>
 					</DialogHeader>
-					<div class="grid min-h-0 flex-1 gap-4 overflow-y-auto overscroll-contain sm:grid-cols-3 sm:overflow-hidden">
-						<For each={props.groups}>
-							{(group, index) => {
-								const i = index();
-								const items = createMemo(() => {
-									const unique = new Map(
-										[...group.available, ...group.items].map((item) => [
-											item.id,
-											item,
-										]),
-									);
-									const query = queries()[i].trim().toLowerCase();
-									return [...unique.values()].filter((item) =>
-										item.name.toLowerCase().includes(query),
-									);
-								});
-								return (
-									<section class="flex min-h-0 min-w-0 flex-col gap-2 rounded-md border p-3">
-										<h3 class="font-semibold text-sm">{group.title}</h3>
-										<Input
-											aria-label={t("relationsEditor.searchValue", {
-												value0: String(group.title),
-											})}
-											placeholder={t("relationsEditor.searchValue2", {
-												value0: String(group.title.toLowerCase()),
-											})}
-											value={queries()[i]}
-											onInput={(event) =>
-												setQueries((old) =>
-													old.map((v, n) =>
-														n === i ? event.currentTarget.value : v,
-													),
-												)
-											}
-										/>
-										<div class="space-y-2 sm:max-h-64 sm:min-h-0 sm:overflow-y-auto sm:overscroll-contain">
-											<For each={items()}>
-												{(item) => (
-													<Checkbox
-														class="flex items-center gap-2"
-														checked={selected()[i].includes(item.id)}
-														onChange={(checked) => toggle(i, item.id, checked)}
-													>
-														<CheckboxControl />
-														<CheckboxLabel class="cursor-pointer text-sm">
-															{item.name}
-														</CheckboxLabel>
-													</Checkbox>
-												)}
-											</For>
-											<For each={newNames()[i]}>
-												{(name) => (
-													<div class="flex items-center justify-between gap-2 text-sm">
-														<span>
-															{t("relationsEditor.valueNew", {
-																value0: String(name),
-															})}
-														</span>
-														<Button
-															size="sm"
-															variant="outline"
-															onClick={() =>
-																setNewNames((old) =>
-																	old.map((names, n) =>
-																		n === i
-																			? names.filter((value) => value !== name)
-																			: names,
-																	),
-																)
-															}
-														>
-															{t("actions.remove")}
-														</Button>
-													</div>
-												)}
-											</For>
-											<Show
-												when={
-													items().length === 0 && newNames()[i].length === 0
-												}
-											>
-												<p class="text-sm text-muted-foreground">
-													{t("relationsEditor.noMatches")}
-												</p>
-											</Show>
-										</div>
-										<Show
-											when={
-												queries()[i].trim() &&
-												!group.available.some(
-													(item) =>
-														item.name.toLowerCase() ===
-														queries()[i].trim().toLowerCase(),
-												) &&
-												!newNames()[i].some(
-													(name) =>
-														name.toLowerCase() ===
-														queries()[i].trim().toLowerCase(),
-												)
-											}
+					<Tabs
+						class="flex min-h-0 flex-1 flex-col"
+						value={active()}
+						onChange={setActive}
+					>
+						<div class="shrink-0 border-b border-border bg-card px-3 py-2 sm:px-5">
+							<TabsList
+								aria-label={t("mediaSidebar.relations")}
+								class="grid w-full grid-cols-3 gap-1"
+							>
+								<For each={RELATION_GROUPS}>
+									{(key) => (
+										<TabsTrigger
+											value={key}
+											class="min-h-11 min-w-0 flex-col gap-0.5 px-0.5 text-xs data-[selected]:bg-accent data-[selected]:text-accent-foreground sm:min-h-9 sm:flex-row sm:gap-2 sm:px-2 sm:text-sm"
 										>
-											<Button
-												size="sm"
-												variant="outline"
-												onClick={() => {
-													const name = queries()[i].trim();
-													setNewNames((old) =>
-														old.map((names, n) =>
-															n === i ? [...names, name] : names,
-														),
-													);
-													setQueries((old) =>
-														old.map((value, n) => (n === i ? "" : value)),
-													);
-												}}
-											>
-												{t("relationsEditor.createValue", {
-													value0: String(queries()[i].trim()),
-												})}
-											</Button>
-										</Show>
-									</section>
-								);
-							}}
+											{props.groups[key].title}
+											<span class="rounded-full bg-card px-1.5 text-xs tabular-nums">
+												{drafts()[key].ids.length + drafts()[key].names.length}
+											</span>
+										</TabsTrigger>
+									)}
+								</For>
+							</TabsList>
+						</div>
+						<For each={RELATION_GROUPS}>
+							{(key) => (
+								<TabsContent
+									value={key}
+									class="mt-0 min-h-0 flex-1 overflow-y-auto overscroll-contain bg-background p-3 sm:p-5"
+								>
+									<RelationGroupPanel
+										group={props.groups[key]}
+										draft={drafts()[key]}
+										characters={key === "characters"}
+										saving={saving()}
+										onQuery={(query) =>
+											updateDraft(key, (draft) => ({ ...draft, query }))
+										}
+										onToggle={(id, checked) => toggle(key, id, checked)}
+										onStageName={(name) =>
+											updateDraft(key, (draft) => ({
+												...draft,
+												names: [...draft.names, name],
+												query: "",
+											}))
+										}
+										onRemoveName={(name) =>
+											updateDraft(key, (draft) => ({
+												...draft,
+												names: draft.names.filter((value) => value !== name),
+											}))
+										}
+										searchRef={(input) => {
+											if (key === "ips") initialSearch = input;
+										}}
+									/>
+								</TabsContent>
+							)}
 						</For>
-					</div>
-					<DialogFooter>
+					</Tabs>
+					<DialogFooter class="flex-row justify-end border-t border-border bg-card px-3 py-3 sm:px-5 [&>button]:w-auto">
 						<Button
+							type="button"
 							variant="outline"
 							disabled={saving()}
 							onClick={requestClose}
 						>
 							{t("actions.cancel")}
 						</Button>
-						<Button disabled={saving() || !dirty()} onClick={() => void save()}>
+						<Button
+							type="button"
+							disabled={saving() || !dirty()}
+							onClick={() => void save()}
+						>
 							{saving() ? t("status.saving") : t("actions.saveChanges")}
 						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 			<AlertDialog open={confirm()} onOpenChange={setConfirm}>
-				<AlertDialogContent>
+				<AlertDialogContent class="workspace-theme rounded-lg">
 					<AlertDialogHeader>
 						<AlertDialogTitle>
 							{t("relationsEditor.discardChanges")}
