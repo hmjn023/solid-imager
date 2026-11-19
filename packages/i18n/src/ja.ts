@@ -1924,6 +1924,8 @@ export const ja = defineLocale({
 	"useSourceMediaPage.bulkDownloadStarted": "一括ダウンロードを開始しました",
 	"useSourceMediaPage.copied": "コピー",
 	"useSourceMediaPage.copyFailed": "メディアのコピーに失敗しました: {error}",
+	"useSourceMediaPage.copyOutcomeUnknown":
+		"コピーの結果を確認できませんでした。コピー先を確認してください。",
 	"useSourceMediaPage.failedToBatchSyncValue":
 		"一括同期に失敗しました: {value0}",
 	"useSourceMediaPage.failedToStartDownloadValue":

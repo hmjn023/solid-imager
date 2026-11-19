@@ -1929,6 +1929,8 @@ export const en = defineMessages({
 	"useSourceMediaPage.bulkDownloadStarted": "Bulk download started",
 	"useSourceMediaPage.copied": "copied",
 	"useSourceMediaPage.copyFailed": "Failed to copy media: {error}",
+	"useSourceMediaPage.copyOutcomeUnknown":
+		"The copy could not be confirmed. Check the destination for the copied media.",
 	"useSourceMediaPage.failedToBatchSyncValue": "Failed to batch sync: {value0}",
 	"useSourceMediaPage.failedToStartDownloadValue":
 		"Failed to start download: {value0}",

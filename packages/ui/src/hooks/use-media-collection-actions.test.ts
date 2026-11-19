@@ -163,6 +163,29 @@ describe("shared media collection workflows", () => {
 		},
 	);
 
+	it("does not resend an unconfirmed copy to the same destination", async () => {
+		const { actions, operations } = setup();
+		operations.copyMedia.mockRejectedValueOnce(new Error("connection lost"));
+		actions.openCopyMove("one", "copy");
+		await actions.confirmCopyMove("destination");
+		expect(actions.moveCopyError()).toBe(
+			t("useSourceMediaPage.copyOutcomeUnknown"),
+		);
+		await actions.confirmCopyMove("destination");
+		actions.changeCopyMoveOpen(false);
+		actions.openCopyMove("one", "copy");
+		await actions.confirmCopyMove("destination");
+		expect(operations.copyMedia).toHaveBeenCalledExactlyOnceWith(
+			"one",
+			"destination",
+		);
+		await actions.confirmCopyMove("other-destination");
+		expect(operations.copyMedia).toHaveBeenLastCalledWith(
+			"one",
+			"other-destination",
+		);
+	});
+
 	it("keeps a pending move open and retries a failure without retargeting", async () => {
 		const { actions, operations, refresh } = setup();
 		const pending = Promise.withResolvers<void>();

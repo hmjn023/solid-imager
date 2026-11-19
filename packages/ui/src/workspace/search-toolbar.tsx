@@ -12,7 +12,15 @@ import Grid3X3 from "lucide-solid/icons/grid-3x3";
 import List from "lucide-solid/icons/list";
 import SquareCheck from "lucide-solid/icons/square-check";
 import type { JSX } from "solid-js";
-import { batch, createMemo, createSignal, onCleanup, Show } from "solid-js";
+import {
+	batch,
+	createEffect,
+	createMemo,
+	createSignal,
+	on,
+	onCleanup,
+	Show,
+} from "solid-js";
 import {
 	Breadcrumb,
 	BreadcrumbItem,
@@ -30,6 +38,7 @@ import { SortControls } from "../sort-controls";
 import type { SourceMediaViewMode } from "../source-media-grid";
 import {
 	clearPresetFilters,
+	getSearchFiltersRevision,
 	clearSimilaritySearch,
 	searchState,
 	setSearchState,
@@ -299,6 +308,18 @@ export function SearchToolbar(props: SearchToolbarProps) {
 	onCleanup(() => {
 		if (searchApplyTimer) clearTimeout(searchApplyTimer);
 	});
+	createEffect(
+		on(
+			getSearchFiltersRevision,
+			() => {
+				clearTimeout(searchApplyTimer);
+				searchApplyTimer = undefined;
+				setPendingSuggestions([]);
+				setPendingRemovals([]);
+			},
+			{ defer: true },
+		),
+	);
 	const selectSuggestion = (suggestion: SearchSuggestion) => {
 		const suggestionId = tokenId(suggestion);
 		if (pendingRemovals().some((token) => tokenId(token) === suggestionId)) {

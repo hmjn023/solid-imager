@@ -205,23 +205,26 @@ export function RelationsEditor(props: Props) {
 		ips: groupDraft(props.groups.ips),
 		characters: groupDraft(props.groups.characters),
 	});
-	const [drafts, setDrafts] = createSignal(readDraft());
+	const [baseline, setBaseline] = createSignal(readDraft());
+	const [drafts, setDrafts] = createSignal(baseline());
 	let initialSearch: HTMLInputElement | undefined;
 	const updateDraft = (key: RelationGroup, update: (draft: Draft) => Draft) =>
 		setDrafts((previous) => ({ ...previous, [key]: update(previous[key]) }));
 	const dirty = createMemo(() =>
 		RELATION_GROUPS.some((key) => {
-			const items = props.groups[key].items;
+			const initialIds = baseline()[key].ids;
 			const draft = drafts()[key];
 			return (
 				draft.names.length > 0 ||
-				items.length !== draft.ids.length ||
-				items.some((item) => !draft.ids.includes(item.id))
+				initialIds.length !== draft.ids.length ||
+				initialIds.some((id) => !draft.ids.includes(id))
 			);
 		}),
 	);
 	const begin = () => {
-		setDrafts(readDraft());
+		const initial = readDraft();
+		setBaseline(initial);
+		setDrafts(initial);
 		setActive("ips");
 		setOpen(true);
 	};
@@ -253,11 +256,12 @@ export function RelationsEditor(props: Props) {
 	const save = async () => {
 		if (saving() || !dirty()) return;
 		const changes = drafts();
+		const original = baseline();
 		setSaving(true);
 		try {
 			for (const key of RELATION_GROUPS) {
 				const group = props.groups[key];
-				const old = group.items.map((item) => item.id);
+				const old = original[key].ids;
 				const { ids, names } = changes[key];
 				for (const id of old.filter((id) => !ids.includes(id)))
 					await group.remove(id);

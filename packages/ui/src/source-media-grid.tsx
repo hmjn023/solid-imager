@@ -341,10 +341,12 @@ export function SourceMediaGrid(props: SourceMediaGridProps) {
 					onToggleSelect: props.onToggleSelect
 						? () => props.onToggleSelect?.(media.id)
 						: undefined,
-					onPreviewSelect: createMediaPreviewSelectHandler(
-						media,
-						props.onPreviewSelect,
-					),
+					get onPreviewSelect() {
+						return createMediaPreviewSelectHandler(
+							media,
+							props.onPreviewSelect,
+						);
+					},
 					onSelectGesture: props.onSelectMedia
 						? (event) => selectFromGesture(media, event)
 						: undefined,

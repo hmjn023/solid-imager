@@ -1,7 +1,8 @@
 import type { UpdatePositiveMediaTags } from "@solid-imager/core/media";
+import { TAG_DICTIONARY_PAGE_SIZE } from "@solid-imager/core/tags";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import { t } from "@solid-imager/i18n";
-import { createQuery } from "@tanstack/solid-query";
+import { createInfiniteQuery } from "@tanstack/solid-query";
 import X from "lucide-solid/icons/x";
 import {
 	createEffect,
@@ -131,20 +132,19 @@ export function MediaTagEditor(props: {
 		() => new Set(expected().map(({ name }) => name)),
 	);
 	const pendingName = () => input().trim();
-	const dictionary = createQuery(() => {
+	const dictionary = createInfiniteQuery(() => {
 		const search = props.dictionary?.dictionarySearch;
 		const key = query();
 		return {
-			queryKey: [
-				...TAG_DICTIONARY_QUERY_KEY,
-				"search",
-				{ query: key, offset: 0 },
-			],
-			queryFn: async ({ signal }) =>
-				(await search?.({ query: key, offset: 0 }, { signal })) ?? {
+			queryKey: [...TAG_DICTIONARY_QUERY_KEY, "search", { query: key }],
+			initialPageParam: 0,
+			queryFn: async ({ signal, pageParam }) =>
+				(await search?.({ query: key, offset: pageParam }, { signal })) ?? {
 					items: [],
 					hasMore: false,
 				},
+			getNextPageParam: (page, _pages, offset) =>
+				page.hasMore ? offset + TAG_DICTIONARY_PAGE_SIZE : undefined,
 			enabled:
 				!isServer &&
 				props.open &&
@@ -221,16 +221,19 @@ export function MediaTagEditor(props: {
 			});
 		}
 		if (props.dictionary && query() === name) {
-			const entries = dictionary.data?.items ?? [];
+			const entries =
+				dictionary.data?.pages.flatMap((page) => page.items) ?? [];
+			const seen = new Set<string>();
 			for (const entry of entries) {
-				if (assignedFromDictionary(entry.name)) continue;
+				if (seen.has(entry.name) || assignedFromDictionary(entry.name))
+					continue;
+				seen.add(entry.name);
 				result.push({
 					name: entry.name,
 					label: entry.name,
 					fromDictionary: true,
 					japanese: entry.japanese,
 				});
-				if (result.length >= 9) break;
 			}
 		}
 		return result;
@@ -352,6 +355,12 @@ export function MediaTagEditor(props: {
 								addManualTags(
 									text.split(/[\r\n]+/u).map((name) => name.trim()),
 								);
+								if (
+									event.currentTarget.selectionStart === 0 &&
+									event.currentTarget.selectionEnd ===
+										event.currentTarget.value.length
+								)
+									clearInput();
 							}}
 						/>
 					</ComboboxControl>
@@ -363,14 +372,29 @@ export function MediaTagEditor(props: {
 					<ComboboxInlineListbox />
 				</Show>
 			</Combobox>
-			<Show
-				when={
-					props.dictionary && query() === pendingName() && dictionary.isError
-				}
-			>
-				<p aria-live="polite" class="mt-2 text-xs text-muted-foreground">
-					{t("tagDictionary.searchError")}
-				</p>
+			<Show when={query() === pendingName() && !saving() && !confirm()}>
+				<Show when={dictionary.isError}>
+					<p aria-live="polite" class="mt-2 text-xs text-muted-foreground">
+						{t("tagDictionary.searchError")}
+					</p>
+				</Show>
+				<Show when={dictionary.isError || dictionary.hasNextPage}>
+					<Button
+						class="mt-2"
+						type="button"
+						variant="outline"
+						size="sm"
+						disabled={dictionary.isFetching}
+						onClick={() => {
+							entryInput?.focus({ preventScroll: true });
+							setSuggestionsOpen(true);
+							if (dictionary.hasNextPage) void dictionary.fetchNextPage();
+							else void dictionary.refetch();
+						}}
+					>
+						{dictionary.isError ? t("actions.retry") : t("actions.loadMore")}
+					</Button>
+				</Show>
 			</Show>
 		</form>
 	);

@@ -1,5 +1,6 @@
 import type { TagDictionaryStatus } from "@solid-imager/core/tags";
 import { E2E_SIMILAR_MEDIA_ID, mediaPath } from "./support/fixture";
+import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 test("shows the import job and individual dictionary sources on a narrow screen", async ({
@@ -28,10 +29,7 @@ test("shows the import job and individual dictionary sources on a narrow screen"
 
 	await page.goto("/manager");
 	await waitForAppHydration(page);
-	await page
-		.getByRole("button", { name: /^タグ辞書/ })
-		.filter({ visible: true })
-		.click();
+	await selectManagerCategory(page, "タグ辞書");
 	const panel = page.getByRole("region", { name: "タグ辞書", exact: true });
 	const install = panel.getByRole("button", { name: "辞書を取り込む" });
 	await expect(panel.getByText("未取り込み", { exact: true })).toHaveCount(3);
@@ -156,7 +154,9 @@ test("browses the imported dictionary after reload and assigns a tag from the me
 			.getByRole("option", { name: "「open sky」を新規作成", exact: true })
 			.click();
 		await expect(input).toBeFocused();
+		await input.fill("stale draft");
 		await input.evaluate((element) => {
+			if (element instanceof HTMLInputElement) element.select();
 			const clipboardData = new DataTransfer();
 			clipboardData.setData("text/plain", "night sky\r\n夜景\r\n夜景");
 			element.dispatchEvent(
@@ -167,6 +167,7 @@ test("browses the imported dictionary after reload and assigns a tag from the me
 				}),
 			);
 		});
+		await expect(input).toHaveValue("");
 		for (const name of ["night sky", "open sky", "夜景"]) {
 			const chip = editor.getByRole("button", {
 				name: `「${name}」の割り当てを外す`,

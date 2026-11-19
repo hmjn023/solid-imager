@@ -28,6 +28,17 @@ type MediaCollectionActionsOptions = {
 type MediaActionTarget = Pick<Media, "id" | "mediaSourceId"> &
 	Partial<Pick<Media, "fileName">>;
 
+function isCopyRejected(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		"code" in error &&
+		(error.code === "BAD_REQUEST" ||
+			error.code === "UNAUTHORIZED" ||
+			error.code === "FORBIDDEN" ||
+			error.code === "NOT_FOUND")
+	);
+}
+
 export function useMediaItemActions(options: {
 	findMedia: (id: string) => MediaActionTarget | undefined;
 	operations: MediaCollectionOperations;
@@ -42,6 +53,7 @@ export function useMediaItemActions(options: {
 	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
 	const [isMoveCopySubmitting, setIsMoveCopySubmitting] = createSignal(false);
 	const [moveCopyError, setMoveCopyError] = createSignal<string>();
+	const unconfirmedCopies = new Map<string, Set<string>>();
 
 	const openDelete = (id: string) => {
 		if (isDeleteSubmitting()) return;
@@ -99,6 +111,13 @@ export function useMediaItemActions(options: {
 		)
 			return;
 		const mode = moveCopyMode();
+		if (
+			mode === "copy" &&
+			unconfirmedCopies.get(media.id)?.has(targetSourceId)
+		) {
+			setMoveCopyError(t("useSourceMediaPage.copyOutcomeUnknown"));
+			return;
+		}
 		setIsMoveCopySubmitting(true);
 		setMoveCopyError(undefined);
 		try {
@@ -108,6 +127,14 @@ export function useMediaItemActions(options: {
 					: options.operations.moveMedia;
 			await action(media.id, targetSourceId);
 		} catch (error) {
+			if (mode === "copy" && !isCopyRejected(error)) {
+				const destinations =
+					unconfirmedCopies.get(media.id) ?? new Set<string>();
+				destinations.add(targetSourceId);
+				unconfirmedCopies.set(media.id, destinations);
+				setMoveCopyError(t("useSourceMediaPage.copyOutcomeUnknown"));
+				return;
+			}
 			setMoveCopyError(
 				t(
 					mode === "copy"
