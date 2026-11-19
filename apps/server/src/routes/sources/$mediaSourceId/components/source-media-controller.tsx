@@ -1,6 +1,5 @@
 import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
-import { Button } from "@solid-imager/ui/button";
 import {
 	type MediaCollectionSelectionMode,
 	useMediaCollectionSelection,
@@ -49,7 +48,6 @@ export type SourceMediaPageControllerProps = {
 	uploadModalComponent: SourceMediaPageProps["uploadModalComponent"];
 	searchHistoryClient: SearchHistoryClient;
 	renderItem: SourceMediaGridRenderer;
-	bulkActionsClass: string;
 	ssrGuard?: boolean;
 	scrollContainerSelector?: Accessor<string>;
 	onOpenMediaDetail?: SourceMediaPageProps["onOpenMediaDetail"];
@@ -169,6 +167,7 @@ export function SourceMediaPageController(
 				isSelected={isSelected}
 				onBulkAction={() => setIsBulkActionOpen(true)}
 				onClearSelection={handleCancelSelect}
+				onSelectAll={selection.selectAll}
 				selectedCount={() => selectedMediaIds().length}
 				onEnterBulkSelectMode={() => setIsBulkSelectMode(true)}
 				scrollContainerSelector={props.scrollContainerSelector?.()}
@@ -183,42 +182,6 @@ export function SourceMediaPageController(
 				uploadModalComponent={props.uploadModalComponent}
 				showOpenInNewTab
 			/>
-
-			{/* 一括選択ツールバー */}
-			<Show when={isBulkSelectMode()}>
-				<div class={props.bulkActionsClass} data-testid="bulk-actions-bar">
-					<span class="w-full text-center font-medium text-sm sm:w-auto">
-						{t("searchScreen.valueSelected", {
-							value0: String(selectedMediaIds().length),
-						})}
-					</span>
-					<Button
-						class="flex-1 sm:flex-none"
-						disabled={
-							visibleMediaIds().length === 0 ||
-							selectedMediaIds().length === visibleMediaIds().length
-						}
-						onClick={() => selection.selectAll()}
-						variant="outline"
-					>
-						{t("searchScreen.selectAllLoadedItems")}
-					</Button>
-					<Button
-						class="flex-1 sm:flex-none"
-						disabled={selectedMediaIds().length === 0}
-						onClick={() => setIsBulkActionOpen(true)}
-					>
-						{t("searchScreen.runBulkAction")}
-					</Button>
-					<Button
-						class="flex-1 sm:flex-none"
-						onClick={handleCancelSelect}
-						variant="outline"
-					>
-						{t("actions.clearSelection")}
-					</Button>
-				</div>
-			</Show>
 
 			{/* 一括操作ダイアログ */}
 			<BulkActionDialog

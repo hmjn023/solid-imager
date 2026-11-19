@@ -7,6 +7,7 @@ import type {
 	UseSourceMediaPageResult,
 } from "../hooks/use-source-media-page";
 import type { MediaGridImageLoadPolicy } from "../media-grid-item";
+import type { MoveCopyMediaDialogProps } from "../move-copy-media-dialog";
 
 /** Presentation contract shared by source-media workspaces. */
 export type SourceMediaScreenProps = {
@@ -15,13 +16,9 @@ export type SourceMediaScreenProps = {
 	isBulkSelectMode?: () => boolean;
 	isSelected?: (mediaId: string) => boolean;
 	mediaSourceName?: () => string | undefined;
-	moveCopyDialogComponent: Component<{
-		currentSourceId: string;
-		mode: "copy" | "move";
-		onConfirm: (targetSourceId: string) => void;
-		onOpenChange: (open: boolean) => void;
-		open: boolean;
-	}>;
+	moveCopyDialogComponent: Component<
+		Omit<MoveCopyMediaDialogProps, "listSources">
+	>;
 	onBulkAction?: () => void;
 	onClearSelection?: () => void;
 	onEnterBulkSelectMode?: () => void;
@@ -29,6 +26,7 @@ export type SourceMediaScreenProps = {
 	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
 	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onRetryFilters: () => void | Promise<void>;
+	onSelectAll?: () => void;
 	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
 	onToggleSelect?: (mediaId: string) => void;
 	page: UseSourceMediaPageResult;

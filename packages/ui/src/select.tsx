@@ -75,14 +75,18 @@ const SelectTrigger = <T extends ValidComponent = "button">(
 type SelectContentProps<T extends ValidComponent = "div"> =
 	SelectPrimitiveContentProps<T> & {
 		class?: string | undefined;
+		portalMount?: HTMLElement;
 	};
 
 const SelectContent = <T extends ValidComponent = "div">(
 	props: PolymorphicProps<T, SelectContentProps<T>>,
 ) => {
-	const [local, others] = splitProps(props as SelectContentProps, ["class"]);
+	const [local, others] = splitProps(props as SelectContentProps, [
+		"class",
+		"portalMount",
+	]);
 	return (
-		<SelectPrimitivePortal>
+		<SelectPrimitivePortal mount={local.portalMount}>
 			<SelectPrimitiveContent
 				class={cn(
 					"fade-in-80 relative z-50 max-h-popover-fit min-w-32 max-w-viewport-gutter animate-in overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",

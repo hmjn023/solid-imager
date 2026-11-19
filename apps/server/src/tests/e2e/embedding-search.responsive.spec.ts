@@ -7,6 +7,7 @@ import {
 	getE2eRuntimeDir,
 	getFixtureMediaPath,
 } from "./support/fixture";
+import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test as base } from "./support/test";
 
 const test = base.extend<{
@@ -124,10 +125,7 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		)
 		.toBe("completed");
 	await page.goto("/manager");
-	await page
-		.getByRole("button", { name: /ベクトル抽出/ })
-		.filter({ visible: true })
-		.click();
+	await selectManagerCategory(page, "ベクトル抽出");
 	await expect(
 		page.getByRole("button", { name: /^ベクトル抽出モデル/ }),
 	).toContainText("EmbeddingGemma 2");
@@ -143,9 +141,16 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 	await page.goto(`/sources/${sourceId}`);
 	const sourceFilters = page.getByRole("button", { name: /^検索フィルター/ });
 	await sourceFilters.click();
-	await expect(
-		page.getByRole("textbox", { name: "自然言語検索（EmbeddingGemma 2）" }),
-	).toBeVisible();
+	const naturalLanguageSearch = "自然言語検索（EmbeddingGemma 2）";
+	const sourceTextSearch = page.getByRole("textbox", {
+		name: naturalLanguageSearch,
+		exact: true,
+	});
+	await expect(sourceTextSearch).toBeHidden();
+	await page
+		.getByRole("button", { name: naturalLanguageSearch, exact: true })
+		.click();
+	await expect(sourceTextSearch).toBeVisible();
 	await sourceFilters.click();
 	const sourceSearch = page.locator("#search-composer");
 	await expect(sourceSearch).toBeVisible();
@@ -171,9 +176,20 @@ test("indexes real EmbeddingGemma 2 images and restores natural language and ima
 		name: "検索フィルター",
 		exact: true,
 	});
-	await dialog
-		.getByRole("textbox", { name: "自然言語検索（EmbeddingGemma 2）" })
-		.fill("アニメのキャラクター");
+	const textSearchToggle = dialog.getByRole("button", {
+		name: naturalLanguageSearch,
+		exact: true,
+	});
+	const textSearch = dialog.getByRole("textbox", {
+		name: naturalLanguageSearch,
+		exact: true,
+	});
+	await textSearchToggle.click();
+	await textSearch.fill("アニメのキャラクター");
+	await textSearchToggle.click();
+	await expect(textSearch).toBeHidden();
+	await textSearchToggle.click();
+	await expect(textSearch).toHaveValue("アニメのキャラクター");
 	await dialog
 		.getByRole("button", { name: "文章で画像・動画を検索", exact: true })
 		.click();

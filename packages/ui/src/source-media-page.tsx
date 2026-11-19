@@ -62,6 +62,7 @@ export type SourceMediaPageProps = {
 	onFindSimilar?: (media: Media, model?: SimilarityModel) => void;
 	showOpenInNewTab?: boolean;
 	onToggleSelect?: (mediaId: string) => void;
+	onSelectAll?: () => void;
 	onSelectMedia?: (mediaId: string, mode: MediaCollectionSelectionMode) => void;
 	onVisibleMediaIdsChange?: (mediaIds: readonly string[]) => void;
 	isBulkSelectMode?: () => boolean;
@@ -168,6 +169,7 @@ export function SourceMediaPage(props: SourceMediaPageProps): JSX.Element {
 			uploadModalComponent={props.uploadModalComponent}
 			showOpenInNewTab={props.showOpenInNewTab}
 			onToggleSelect={props.onToggleSelect}
+			onSelectAll={props.onSelectAll}
 			onSelectMedia={props.onSelectMedia}
 			isBulkSelectMode={props.isBulkSelectMode}
 			isSelected={props.isSelected}

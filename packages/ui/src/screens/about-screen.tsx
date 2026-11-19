@@ -1,86 +1,86 @@
 import { t } from "@solid-imager/i18n";
-import { Badge } from "../badge";
+import { Show } from "solid-js";
 import { Button } from "../button";
-import { Card, CardContent, CardHeader, CardTitle } from "../card";
+import { Binary, ChevronRight, FileText, Image } from "../workspace/icons";
 
 export type AboutScreenProps = {
 	docsHref?: string;
 };
 
+const RESOURCE_LINK_CLASS =
+	"h-auto min-h-11 w-full justify-start gap-3 whitespace-normal px-2 py-1.5 text-start";
+
 export function AboutScreen(props: AboutScreenProps) {
 	return (
-		<section class="h-full min-h-0 overflow-y-auto overscroll-contain bg-background scrollbar-stable">
-			<header class="border-border border-b bg-background px-4 py-4 sm:px-6">
-				<div class="flex flex-wrap items-start justify-between gap-3">
-					<div>
-						<h1 class="font-semibold text-xl text-foreground">
+		<section
+			aria-labelledby="about-title"
+			class="@container h-full min-h-0 overflow-y-auto overscroll-contain bg-background p-3 scrollbar-stable sm:p-6"
+		>
+			<div class="grid rounded-lg border border-border bg-card @3xl:grid-cols-about-layout">
+				<header class="flex min-w-0 items-start gap-3 p-4 sm:gap-4 sm:p-6">
+					<span class="flex size-11 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+						<Image size={22} />
+					</span>
+					<div class="min-w-0">
+						<h1 class="font-semibold text-xl text-foreground" id="about-title">
 							{t("aboutScreen.aboutSolidImager")}
 						</h1>
-						<p class="mt-1 text-sm text-muted-foreground">
-							{t(
-								"aboutScreen.aWorkspaceForOrganizingAndSearchingMediaManagingRelated",
-							)}
-						</p>
-					</div>
-					<Badge
-						class="border-input bg-muted text-muted-foreground"
-						variant="outline"
-					>
-						{t("aboutScreen.currentWorkspace")}
-					</Badge>
-				</div>
-			</header>
-
-			<div class="grid gap-4 p-4 sm:p-6 lg:grid-cols-about-layout">
-				<Card class="border-border bg-card shadow-none">
-					<CardHeader class="p-5 pb-3">
-						<CardTitle class="text-base">
-							{t("aboutScreen.mediaFirstWorkspace")}
-						</CardTitle>
-					</CardHeader>
-					<CardContent class="px-5 pb-5 text-sm leading-6 text-muted-foreground">
-						<p>
+						<p class="mt-2 max-w-prose text-sm leading-6 text-muted-foreground">
 							{t(
 								"aboutScreen.solidImagerBringsMediaSourcesSearchConditionsTagsSeries",
 							)}
 						</p>
-						<p class="mt-3">
-							{t(
-								"aboutScreen.searchManageSourcesTrackJobsChangeSettingsAndRun",
-							)}
-						</p>
-					</CardContent>
-				</Card>
+					</div>
+				</header>
 
-				<Card class="border-border bg-card shadow-none">
-					<CardHeader class="p-5 pb-3">
-						<CardTitle class="text-base">
-							{t("aboutScreen.documentation")}
-						</CardTitle>
-					</CardHeader>
-					<CardContent class="space-y-2 px-5 pb-5">
-						{props.docsHref && (
+				<nav
+					aria-labelledby="about-resources-title"
+					class="min-w-0 border-border border-t p-4 @3xl:border-s @3xl:border-t-0 sm:p-6"
+				>
+					<h2 class="font-semibold text-base" id="about-resources-title">
+						{t("aboutScreen.documentation")}
+					</h2>
+					<ul class="mt-3 space-y-1">
+						<Show when={props.docsHref}>
+							{(href) => (
+								<li>
+									<Button
+										as="a"
+										class={RESOURCE_LINK_CLASS}
+										href={href()}
+										variant="ghost"
+									>
+										<span class="grid size-8 shrink-0 place-items-center rounded-md bg-muted text-primary">
+											<FileText />
+										</span>
+										<span class="min-w-0 flex-1">
+											{t("aboutScreen.aPIDocumentation")}
+										</span>
+										<ChevronRight class="text-muted-foreground" />
+									</Button>
+								</li>
+							)}
+						</Show>
+						<li>
 							<Button
 								as="a"
-								class="w-full"
-								href={props.docsHref}
-								variant="outline"
+								class={RESOURCE_LINK_CLASS}
+								href="https://github.com/hmjn023/solid-imager"
+								rel="noopener noreferrer"
+								target="_blank"
+								variant="ghost"
 							>
-								{t("aboutScreen.aPIDocumentation")}
+								<span class="grid size-8 shrink-0 place-items-center rounded-md bg-muted text-primary">
+									<Binary />
+								</span>
+								<span class="min-w-0 flex-1">
+									{t("aboutScreen.sourceRepository")}
+								</span>
+								<ChevronRight class="text-muted-foreground" />
 							</Button>
-						)}
-						<Button
-							as="a"
-							class="w-full"
-							href="https://github.com/hmjn023/solid-imager"
-							rel="noopener noreferrer"
-							target="_blank"
-							variant="outline"
-						>
-							{t("aboutScreen.sourceRepository")}
-						</Button>
-					</CardContent>
-				</Card>
+						</li>
+					</ul>
+				</nav>
 			</div>
 		</section>
 	);

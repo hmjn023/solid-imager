@@ -24,6 +24,7 @@ import {
 import { createSignal } from "solid-js";
 import { MediaGridItem } from "~/components/media/media-grid-item";
 import { MoveCopyMediaDialog } from "~/components/media/move-copy-media-dialog";
+import { ThumbnailImage } from "~/components/media/thumbnail-image";
 import { UploadMediaModal } from "~/components/upload-media-modal";
 import { createTauriTransport } from "~/hooks/use-media-source-events";
 import { PresetClient as rawPresetClient } from "~/infrastructure/api/clients/preset-client";
@@ -135,6 +136,7 @@ export function SourceMediaPage() {
 				isSelected={selection.isSelected}
 				onBulkAction={() => setIsBulkActionOpen(true)}
 				onClearSelection={clearSelection}
+				onSelectAll={selection.selectAll}
 				selectedCount={() => selectedMediaIds().length}
 				onEnterBulkSelectMode={() => setIsBulkSelectMode(true)}
 				onPrepareMediaDetail={(media, context) =>
@@ -172,6 +174,17 @@ export function SourceMediaPage() {
 					/>
 				)}
 				moveCopyDialogComponent={MoveCopyMediaDialog}
+				renderMediaPreview={(media) => (
+					<ThumbnailImage
+						alt={media.fileName}
+						class="h-full w-full object-contain"
+						height={media.height}
+						loading="eager"
+						media={media}
+						requestedSize={512}
+						width={media.width}
+					/>
+				)}
 				uploadModalComponent={UploadMediaModal}
 				showOpenInNewTab
 			/>

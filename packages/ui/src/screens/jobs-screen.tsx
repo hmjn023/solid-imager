@@ -1165,6 +1165,13 @@ export function JobsScreen(props: JobsScreenProps) {
 		setSelectedJobIds(new Set<string>());
 		setBulkAction(null);
 	};
+	const changeStatus = (value: string) => {
+		const filter = JOB_FILTERS.find((filter) => filter.value === value);
+		if (!filter) return;
+		props.onStatusChange(filter.value === "all" ? undefined : filter.value);
+		scrollRoot()?.scrollTo({ top: 0 });
+		clearBulkSelection();
+	};
 	const toggleJob = (jobId: string) => {
 		setSelectedJobIds((current) => toggleJobSelection(current, jobId));
 	};
@@ -1247,8 +1254,9 @@ export function JobsScreen(props: JobsScreenProps) {
 							onRetry={() => props.inspection?.retry()}
 						/>
 					</Show>
-					<div class="mb-4 flex flex-wrap items-center gap-2">
+					<div class="mb-4 flex flex-wrap items-end gap-2">
 						<Select<string>
+							class={`min-w-0 flex-1 basis-32 ${detailOpen() ? "" : "sm:max-w-64"}`}
 							placeholder={t("jobsScreen.allTypes")}
 							options={["", ...(props.jobTypes().data ?? [])]}
 							value={props.type() ?? ""}
@@ -1267,7 +1275,7 @@ export function JobsScreen(props: JobsScreenProps) {
 						>
 							<SelectTrigger
 								aria-label={t("jobsScreen.jobTypeFilter")}
-								class="w-full sm:w-64"
+								class="gap-2 bg-card text-start"
 							>
 								<SelectValue<string>>
 									{(state) =>
@@ -1279,26 +1287,45 @@ export function JobsScreen(props: JobsScreenProps) {
 							</SelectTrigger>
 							<SelectContent />
 						</Select>
+						<Select<(typeof JOB_FILTERS)[number]>
+							class={`min-w-0 flex-1 basis-32 ${detailOpen() ? "" : "sm:max-w-64 lg:hidden"}`}
+							disallowEmptySelection
+							options={[...JOB_FILTERS]}
+							optionTextValue="label"
+							optionValue="value"
+							value={JOB_FILTERS.find(
+								(filter) => filter.value === activeFilter(),
+							)}
+							onChange={(filter) => {
+								if (filter) changeStatus(filter.value);
+							}}
+							itemComponent={(itemProps) => (
+								<SelectItem item={itemProps.item}>
+									{itemProps.item.rawValue.label}
+								</SelectItem>
+							)}
+						>
+							<SelectTrigger
+								aria-label={t("jobsScreen.jobStatusFilter")}
+								class="gap-2 bg-card text-start"
+							>
+								<SelectValue<(typeof JOB_FILTERS)[number]>>
+									{(state) =>
+										activeFilter() === "all"
+											? t("jobsScreen.allStatuses")
+											: state.selectedOption()?.label
+									}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent />
+						</Select>
 						<Show when={props.jobTypes().error}>
 							<Button variant="outline" onClick={props.onRetryTypes}>
 								{t("jobsScreen.retryTypes")}
 							</Button>
 						</Show>
 					</div>
-					<Tabs
-						onChange={(value) => {
-							const filter = JOB_FILTERS.find(
-								(filter) => filter.value === value,
-							);
-							if (!filter) return;
-							props.onStatusChange(
-								filter.value === "all" ? undefined : filter.value,
-							);
-							scrollRoot()?.scrollTo({ top: 0 });
-							clearBulkSelection();
-						}}
-						value={activeFilter()}
-					>
+					<Tabs onChange={changeStatus} value={activeFilter()}>
 						<div
 							class={
 								detailOpen()
@@ -1308,32 +1335,22 @@ export function JobsScreen(props: JobsScreenProps) {
 						>
 							<TabsList
 								aria-label={t("jobsScreen.jobStatusFilter")}
-								class={`flex h-auto max-w-full justify-start gap-1 overflow-x-auto rounded-none bg-transparent p-0 ${detailOpen() ? "" : "lg:sticky lg:top-0 lg:flex-col lg:self-start lg:overflow-visible"}`}
+								class={`hidden h-auto justify-start gap-1 rounded-none bg-transparent p-0 ${detailOpen() ? "" : "lg:sticky lg:top-0 lg:flex lg:flex-col lg:self-start"}`}
 							>
 								<For each={JOB_FILTERS}>
 									{(filter) => {
 										const Icon = filter.icon;
 										return (
 											<TabsTrigger
-												class={`min-h-11 shrink-0 gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary lg:min-h-10 ${detailOpen() ? "" : "lg:w-full lg:justify-start"}`}
+												class="min-h-10 w-full justify-start gap-2.5 rounded-md px-2.5 text-muted-foreground shadow-none data-[selected]:bg-accent data-[selected]:text-primary"
 												type="button"
 												value={filter.value}
 											>
-												<Show
-													when={!detailOpen()}
-													fallback={
-														<>
-															<Icon aria-hidden="true" size={16} />
-															<span>{filter.label}</span>
-														</>
-													}
-												>
-													<CategoryLabel
-														description={filter.description}
-														icon={<Icon aria-hidden="true" size={16} />}
-														label={filter.label}
-													/>
-												</Show>
+												<CategoryLabel
+													description={filter.description}
+													icon={<Icon aria-hidden="true" size={16} />}
+													label={filter.label}
+												/>
 											</TabsTrigger>
 										);
 									}}
@@ -1376,11 +1393,16 @@ export function JobsScreen(props: JobsScreenProps) {
 														fallback={
 															<EmptyState
 																description={t(
-																	"jobsScreen.newJobsAndTheirStatusWillAppearHere",
+																	filter.value === "all" && !props.type()
+																		? "jobsScreen.newJobsAndTheirStatusWillAppearHere"
+																		: "jobsScreen.adjustFiltersToSeeJobs",
 																)}
-																title={t("jobsScreen.noJobsValue", {
-																	value0: String(filter.label),
-																})}
+																icon={<Clock3 size={20} />}
+																title={t(
+																	filter.value === "all" && !props.type()
+																		? "jobsScreen.noJobsYet"
+																		: "jobsScreen.noMatchingJobs",
+																)}
 															/>
 														}
 														when={props.jobs().length > 0}
@@ -1413,17 +1435,22 @@ export function JobsScreen(props: JobsScreenProps) {
 															selectedJobIds={selectedJobIds()}
 														/>
 													</Show>
-													<p
-														class="mt-3 text-xs text-muted-foreground"
-														aria-live="polite"
-													>
-														{t("jobsScreen.showingValueValueOfValueValueJobs", {
-															value1: props.jobs().length.toLocaleString(),
-															value3: (
-																props.state().data?.total ?? 0
-															).toLocaleString(),
-														})}
-													</p>
+													<Show when={props.jobs().length > 0}>
+														<p
+															class="mt-3 text-xs text-muted-foreground"
+															aria-live="polite"
+														>
+															{t(
+																"jobsScreen.showingValueValueOfValueValueJobs",
+																{
+																	value1: props.jobs().length.toLocaleString(),
+																	value3: (
+																		props.state().data?.total ?? 0
+																	).toLocaleString(),
+																},
+															)}
+														</p>
+													</Show>
 													<JobsLoadMore
 														screen={props}
 														root={scrollRoot}

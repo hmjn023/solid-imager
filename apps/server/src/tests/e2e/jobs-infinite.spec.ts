@@ -38,6 +38,34 @@ const jobs: JobDto[] = Array.from({ length: 240 }, (_, i) => ({
 	targetMediaModifiedAt: null,
 }));
 
+test("keeps the active job status visible on a phone", async ({ page }) => {
+	await page.setViewportSize({ width: 430, height: 932 });
+	await page.goto("/jobs");
+	await waitForAppHydration(page);
+	const status = page.getByRole("button", { name: "ジョブの状態で絞り込む" });
+	await expect(status).toHaveText("すべての状態");
+	await status.click();
+	const updated = page.waitForRequest(
+		(request) =>
+			request.url().endsWith("/api/rpc/jobs/list") &&
+			request.postDataJSON()?.json?.status === "cancelled",
+	);
+	await page
+		.getByRole("option", { name: "キャンセル済み", exact: true })
+		.click();
+	await updated;
+	await expect(status).toHaveText("キャンセル済み");
+	await expect(status).toBeInViewport();
+	await expect(
+		page.getByRole("heading", { name: "条件に一致するジョブがありません" }),
+	).toBeVisible();
+	expect(
+		await page.evaluate(
+			() => document.documentElement.scrollWidth - innerWidth,
+		),
+	).toBeLessThanOrEqual(1);
+});
+
 test("loads more jobs on scroll and counts all status/type matches beyond the first page", async ({
 	page,
 	browserHealth,
@@ -122,7 +150,7 @@ test("loads more jobs on scroll and counts all status/type matches beyond the fi
 	await type.click();
 	await page.getByRole("option", { name: "AIタグ付け", exact: true }).click();
 	await expect(
-		page.getByText("全0件中0件を表示", { exact: true }),
+		page.getByRole("heading", { name: "条件に一致するジョブがありません" }),
 	).toBeVisible();
 	await page.getByRole("tab", { name: /^失敗/ }).click();
 	await expect(rows).toHaveCount(3);

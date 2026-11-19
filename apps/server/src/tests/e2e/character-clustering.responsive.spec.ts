@@ -4,15 +4,13 @@ import {
 	E2E_SIMILAR_FILE_NAME,
 	mediaPath,
 } from "./support/fixture";
+import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 async function openReview(page: Page) {
 	await page.goto("/manager");
 	await waitForAppHydration(page);
-	await page
-		.getByRole("button", { name: /キャラクタークラスタリング/ })
-		.filter({ visible: true })
-		.click();
+	await selectManagerCategory(page, "キャラクタークラスタリング");
 	await expect(
 		page.getByRole("heading", { name: "グループ #0", exact: true }),
 	).toBeVisible();
@@ -360,10 +358,7 @@ test("initial loading, next-page failure and offline recovery preserve the curre
 	});
 	await page.goto("/manager");
 	await waitForAppHydration(page);
-	await page
-		.getByRole("button", { name: /キャラクタークラスタリング/ })
-		.filter({ visible: true })
-		.click();
+	await selectManagerCategory(page, "キャラクタークラスタリング");
 	await expect(
 		page.getByRole("heading", {
 			name: "キャラクタークラスタリング",

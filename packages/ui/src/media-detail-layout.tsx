@@ -1,7 +1,14 @@
 import { t } from "@solid-imager/i18n";
 import { For, type JSX, type ParentProps, Show } from "solid-js";
 import { Button } from "./button";
-import { ArrowLeft, ChevronLeft, ChevronRight } from "./workspace/icons";
+import {
+	ArrowLeft,
+	ChevronLeft,
+	ChevronRight,
+	FileText,
+} from "./workspace/icons";
+
+const MEDIA_DETAIL_METADATA_ID = "media-detail-metadata";
 
 export function MediaDetailLayout(props: {
 	header?: JSX.Element;
@@ -12,21 +19,25 @@ export function MediaDetailLayout(props: {
 	return (
 		<div class="flex min-h-0 flex-1 flex-col">
 			{props.header}
-			<div class="min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-contain @container-size lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden lg:snap-none scrollbar-stable">
+			<div class="min-h-0 flex-1 snap-y snap-proximity overflow-y-auto overscroll-contain @container-size lg:grid lg:grid-cols-detail-sidebar lg:overflow-hidden lg:snap-none scrollbar-stable">
 				<div class="min-w-0 lg:min-h-0 lg:snap-y lg:snap-mandatory lg:overflow-y-auto lg:overscroll-contain lg:@container-size scrollbar-stable">
-					<div class="snap-start snap-always lg:h-full">{props.viewer}</div>
-					{/* Fill the actual scrollport even when responsive columns or an empty tab make the list short. */}
+					<div class="snap-start lg:h-full lg:snap-always">{props.viewer}</div>
 					<Show when={props.related}>
 						{(related) => (
-							<div class="min-h-scrollport snap-start snap-always">
+							<div class="snap-start lg:min-h-scrollport lg:snap-always">
 								{related()}
 							</div>
 						)}
 					</Show>
 				</div>
-				<div class="min-w-0 snap-start border-border border-t lg:min-h-0 lg:snap-align-none lg:border-t-0 lg:border-l">
+				<section
+					aria-label={t("mediaDetailLayout.metadata")}
+					class="min-w-0 snap-start border-border border-t outline-none lg:min-h-0 lg:snap-align-none lg:border-t-0 lg:border-l"
+					id={MEDIA_DETAIL_METADATA_ID}
+					tabindex="-1"
+				>
 					{props.sidebar}
-				</div>
+				</section>
 			</div>
 		</div>
 	);
@@ -40,6 +51,7 @@ export function MediaDetailToolbar(props: {
 	onNext?: () => void;
 	previousLabel?: string;
 	nextLabel?: string;
+	showMetadataLink?: boolean;
 	actions?: JSX.Element;
 }) {
 	return (
@@ -98,6 +110,25 @@ export function MediaDetailToolbar(props: {
 						<ChevronRight aria-hidden="true" size={16} />
 					</Button>
 				</div>
+				<Show when={props.showMetadataLink}>
+					<Button
+						aria-controls={MEDIA_DETAIL_METADATA_ID}
+						class="min-h-11 min-w-11 shrink-0 gap-1 px-2 lg:hidden"
+						onClick={(event) => {
+							const metadata = event.currentTarget.ownerDocument.getElementById(
+								MEDIA_DETAIL_METADATA_ID,
+							);
+							metadata?.focus({ preventScroll: true });
+							metadata?.scrollIntoView({ block: "start" });
+						}}
+						size="sm"
+						title={t("mediaDetailLayout.editMetadata")}
+						variant="outline"
+					>
+						<FileText aria-hidden="true" class="hidden sm:block" size={16} />
+						{t("mediaDetailLayout.editMetadata")}
+					</Button>
+				</Show>
 				<div class="order-last w-full empty:hidden md:order-none md:w-auto">
 					{props.actions}
 				</div>

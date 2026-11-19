@@ -95,16 +95,12 @@ export function BatchToolPanel(props: {
 							</p>
 						</div>
 					</Show>
-					<div class="space-y-1.5">
-						<SourceSelect
-							manager={props.manager}
-							onChange={props.manager.setSelectedSourceId}
-							value={props.manager.selectedSourceId()}
-						/>
-						<p class="text-xs text-muted-foreground">
-							{t("batchTools.leaveEmptyToProcessAllSources")}
-						</p>
-					</div>
+					<SourceSelect
+						allowAll
+						sources={props.manager.sources()}
+						onChange={props.manager.setSelectedSourceId}
+						value={props.manager.selectedSourceId()}
+					/>
 					<div class="space-y-2">
 						<Label>{t("batchTools.existingResults")}</Label>
 						<Checkbox

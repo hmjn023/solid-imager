@@ -206,18 +206,26 @@ export function TagDictionaryBrowser(props: {
 	};
 
 	return (
-		<div class="min-w-0 space-y-3">
+		<div class="@container min-w-0 space-y-3">
 			<form
-				class="flex flex-wrap items-end gap-2"
+				class="grid grid-cols-2 items-end gap-2 @lg:flex @lg:flex-wrap"
 				onSubmit={(event) => {
 					event.preventDefault();
 					setQuery(draft().trim());
 					goTo(0);
 				}}
 			>
-				<TextField value={draft()} onChange={setDraft} class="min-w-0 flex-1">
+				<TextField
+					value={draft()}
+					onChange={setDraft}
+					class="col-span-full min-w-0 flex-1"
+				>
 					<TextFieldLabel>{t("tagDictionary.searchLabel")}</TextFieldLabel>
-					<TextFieldInput maxLength={200} type="search" />
+					<TextFieldInput
+						maxLength={200}
+						type="search"
+						class="bg-card text-base sm:text-sm"
+					/>
 				</TextField>
 				<Select
 					options={CATEGORIES}
@@ -234,7 +242,10 @@ export function TagDictionaryBrowser(props: {
 						</SelectItem>
 					)}
 				>
-					<SelectTrigger aria-label={t("tagDictionary.category")}>
+					<SelectTrigger
+						aria-label={t("tagDictionary.category")}
+						class="w-full min-w-0 min-h-11 bg-card @lg:w-auto"
+					>
 						<SelectValue<(typeof CATEGORIES)[number]>>
 							{(state) => tagCategory(state.selectedOption().category)}
 						</SelectValue>

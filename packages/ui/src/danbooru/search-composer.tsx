@@ -1,12 +1,21 @@
-import { t } from "@solid-imager/i18n";
 import type { ViewerTag } from "@solid-imager/core/external-viewer";
+import { t } from "@solid-imager/i18n";
 import { createQuery } from "@tanstack/solid-query";
-import { createEffect, createMemo, createSignal, For } from "solid-js";
-import { createAppShortcut } from "../shortcuts/create-app-shortcut";
-import { createDebouncedSignal } from "../utils/debounce";
+import X from "lucide-solid/icons/x";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	createUniqueId,
+	For,
+	type JSX,
+} from "solid-js";
 import { Badge } from "../badge";
 import { Button } from "../button";
-import X from "lucide-solid/icons/x";
+import { Popover, PopoverContent, PopoverTrigger } from "../popover";
+import { createAppShortcut } from "../shortcuts/create-app-shortcut";
+import { createDebouncedSignal } from "../utils/debounce";
+import { CircleHelp } from "../workspace/icons";
 import { SearchComposerField } from "../workspace/search-composer-field";
 import {
 	completeDanbooruTag,
@@ -15,6 +24,7 @@ import {
 } from "./completion";
 
 export function DanbooruSearchComposer(props: {
+	actions?: JSX.Element;
 	provider?: "Danbooru" | "pixiv";
 	draft: string;
 	onDraftChange: (value: string) => void;
@@ -71,66 +81,97 @@ export function DanbooruSearchComposer(props: {
 				.join(" · "),
 		}));
 	});
+	const searchHelp = () => t("searchComposer.searchHelp");
+	const helpDescriptionId = createUniqueId();
 	return (
-		<SearchComposerField
-			id="external-search-composer"
-			label={
-				(props.provider ?? t("sidebar.danbooru")) + t("searchComposer.search")
-			}
-			draft={parts().active}
-			inputRef={(element) => {
-				input = element;
-			}}
-			onDraftChange={(value) => props.onDraftChange(parts().prefix + value)}
-			onCaretChange={(value) => setCaret(parts().prefix.length + value)}
-			onSelect={(option) => {
-				const full = completeDanbooruTag(props.draft, caret(), option.value);
-				if (props.provider === "pixiv") {
-					props.onDraftChange(full);
-					setCaret(full.length);
-					return { draft: "", caret: 0 };
+		<div class="flex min-w-0 flex-col gap-2">
+			<SearchComposerField
+				id="external-search-composer"
+				label={
+					(props.provider ?? t("sidebar.danbooru")) + t("searchComposer.search")
 				}
-				return {
-					draft: full,
-					caret:
-						token().start + token().prefix.length + option.value.length + 1,
-				};
-			}}
-			onEmptyBackspace={() => {
-				if (parts().tags.length) remove(parts().tags.length - 1);
-			}}
-
-			onSubmit={submit}
-			options={options()}
-			placeholder={t("searchComposer.enterTagsEGLandscapeMonochrome")}
-			submitLabel={t("actions.search")}
-			hint={t(
-				props.provider === "pixiv"
-					? "searchComposer.pixivHint"
-					: "searchComposer.danbooruHint",
-			)}
-			status={
-				suggestions.isError && query() === token().query
-					? t("searchComposer.couldNotLoadTagSuggestionsYouCanStillEnter")
-					: undefined
-			}
-		>
-			<For each={parts().tags}>
-				{(tag, index) => (
-					<Badge variant="secondary" class="max-w-full gap-1 text-sm">
-						<span class="break-all">{tag}</span>
-						<Button
-							type="button"
-							variant="ghost"
-							class="h-6 w-6 shrink-0 p-0"
-							aria-label={t("pixivScreen.removeTag", { tag })}
-							onClick={() => remove(index())}
+				draft={parts().active}
+				inputRef={(element) => {
+					input = element;
+				}}
+				onDraftChange={(value) => props.onDraftChange(parts().prefix + value)}
+				onCaretChange={(value) => setCaret(parts().prefix.length + value)}
+				onSelect={(option) => {
+					const full = completeDanbooruTag(props.draft, caret(), option.value);
+					if (props.provider === "pixiv") {
+						props.onDraftChange(full);
+						setCaret(full.length);
+						return { draft: "", caret: 0 };
+					}
+					return {
+						draft: full,
+						caret:
+							token().start + token().prefix.length + option.value.length + 1,
+					};
+				}}
+				onEmptyBackspace={() => {
+					if (parts().tags.length) remove(parts().tags.length - 1);
+				}}
+				onSubmit={submit}
+				options={options()}
+				placeholder={t("searchComposer.enterTags")}
+				submitLabel={t("actions.search")}
+				status={
+					suggestions.isError && query() === token().query
+						? t("searchComposer.couldNotLoadTagSuggestionsYouCanStillEnter")
+						: undefined
+				}
+			>
+				<For each={parts().tags}>
+					{(tag, index) => (
+						<Badge variant="secondary" class="max-w-full gap-1 text-sm">
+							<span class="break-all">{tag}</span>
+							<Button
+								type="button"
+								variant="ghost"
+								class="h-6 w-6 shrink-0 p-0"
+								aria-label={t("pixivScreen.removeTag", { tag })}
+								onClick={() => remove(index())}
+							>
+								<X aria-hidden="true" size={12} />
+							</Button>
+						</Badge>
+					)}
+				</For>
+			</SearchComposerField>
+			<div class="flex min-w-0 flex-wrap items-center gap-2">
+				{props.actions}
+				<Popover placement="bottom-end">
+					<PopoverTrigger
+						aria-label={searchHelp()}
+						as={Button}
+						class="size-11 shrink-0"
+						size="icon"
+						title={searchHelp()}
+						type="button"
+						variant="outline"
+					>
+						<CircleHelp aria-hidden="true" />
+					</PopoverTrigger>
+					<PopoverContent
+						aria-describedby={helpDescriptionId}
+						aria-label={searchHelp()}
+						class="workspace-theme"
+					>
+						<h2 class="font-semibold text-sm">{searchHelp()}</h2>
+						<p
+							class="mt-1 text-muted-foreground text-sm"
+							id={helpDescriptionId}
 						>
-							<X aria-hidden="true" size={12} />
-						</Button>
-					</Badge>
-				)}
-			</For>
-		</SearchComposerField>
+							{t(
+								props.provider === "pixiv"
+									? "searchComposer.pixivHint"
+									: "searchComposer.danbooruHint",
+							)}
+						</p>
+					</PopoverContent>
+				</Popover>
+			</div>
+		</div>
 	);
 }

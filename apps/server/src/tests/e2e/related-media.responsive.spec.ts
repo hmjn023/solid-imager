@@ -11,6 +11,7 @@ import {
 	withRelatedMedia,
 	withRelatedMediaTag,
 } from "./support/related-media-fixture";
+import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 const relatedEndpoint = "**/api/rpc/media/getRelated";
@@ -26,6 +27,44 @@ async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 		),
 	).toBeLessThanOrEqual(1);
 }
+
+test(
+	"mobile detail reaches editing without an empty related-media scroll screen",
+	{ tag: "@mobile-only" },
+	async ({ page }, testInfo) => {
+		await page.goto(mediaPath());
+		await waitForAppHydration(page);
+		const related = relatedSection(page);
+		await expect(
+			related.getByText("関連メディアがまだありません"),
+		).toBeVisible();
+		const metadata = page.getByRole("region", { name: "メディア情報" });
+		const descriptionEdit = metadata
+			.getByRole("button", {
+				name: "編集",
+				exact: true,
+			})
+			.first();
+		const relatedBottom = await related.evaluate(
+			(element) => element.getBoundingClientRect().bottom,
+		);
+		const metadataTop = await metadata.evaluate(
+			(element) => element.getBoundingClientRect().top,
+		);
+		expect(metadataTop - relatedBottom).toBeLessThanOrEqual(1);
+		await page.getByRole("button", { name: "編集欄へ", exact: true }).click();
+		await expect(metadata).toBeFocused();
+		await expect(descriptionEdit).toBeInViewport();
+		await expect(page).toHaveURL(mediaPath());
+		await expectNoHorizontalOverflow(page);
+		await page.screenshot({
+			path: testInfo.outputPath("detail-metadata.png"),
+			animations: "disabled",
+		});
+		await page.keyboard.press("Tab");
+		await expect(descriptionEdit).toBeFocused();
+	},
+);
 
 test("tag recommendations retain their seed on Back and reload, and refresh without losing content", async ({
 	page,
@@ -301,10 +340,7 @@ test(
 			await page.getByRole("link", { name: "ジョブ", exact: true }).click();
 			await expect(page).toHaveURL("/jobs");
 			await page.getByRole("link", { name: "管理", exact: true }).click();
-			await page
-				.getByRole("button", { name: /キャラクタークラスタリング/ })
-				.filter({ visible: true })
-				.click();
+			await selectManagerCategory(page, "キャラクタークラスタリング");
 			await page
 				.getByRole("button", { name: "グループ #0 の60枚を確認", exact: true })
 				.click();

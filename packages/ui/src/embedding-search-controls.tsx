@@ -1,8 +1,14 @@
 import { t } from "@solid-imager/i18n";
 import type { SearchState } from "@solid-imager/core/search";
+import ChevronDown from "lucide-solid/icons/chevron-down";
 import { createEffect, createSignal, Show } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Button } from "./button";
+import {
+	Collapsible,
+	CollapsibleContent,
+	CollapsibleTrigger,
+} from "./collapsible";
 import { Input } from "./input";
 import { Label } from "./label";
 import {
@@ -20,9 +26,17 @@ export function EmbeddingSearchControls(props: {
 	id: string;
 }) {
 	const [draft, setDraft] = createSignal(props.state.semanticQuery);
-	createEffect(() => setDraft(props.state.semanticQuery));
+	const [textSearchOpen, setTextSearchOpen] = createSignal(
+		Boolean(props.state.semanticQuery.trim()),
+	);
+	createEffect(() => {
+		const query = props.state.semanticQuery;
+		setDraft(query);
+		if (query.trim()) setTextSearchOpen(true);
+	});
+
 	return (
-		<div class="mb-4 space-y-3">
+		<div class="space-y-3">
 			<Show when={props.state.similarityAnchorMediaId}>
 				<div class="space-y-2">
 					<Label for={`${props.id}-model`}>
@@ -61,66 +75,82 @@ export function EmbeddingSearchControls(props: {
 					</Select>
 				</div>
 			</Show>
-			<form
-				class="space-y-2"
-				onSubmit={(event) => {
-					event.preventDefault();
-					if (!draft().trim()) return;
-					props.setState({
-						semanticQuery: draft().trim(),
-						similarityAnchorMediaId: null,
-						similarityModel: "embeddinggemma2",
-						offset: 0,
-						scrollY: 0,
-					});
-					props.onSearch();
-				}}
+			<Collapsible
+				class="space-y-3"
+				open={textSearchOpen()}
+				onOpenChange={setTextSearchOpen}
 			>
-				<Label for={`${props.id}-text`}>
+				<CollapsibleTrigger
+					as={Button}
+					class="group h-auto min-h-11 w-full justify-between whitespace-normal text-left sm:min-h-9"
+					type="button"
+					variant="outline"
+				>
 					{t("embeddingSearchControls.naturalLanguageSearchEmbeddingGemma2")}
-				</Label>
-				<Input
-					id={`${props.id}-text`}
-					name="semantic-query"
-					maxLength={2000}
-					placeholder={t(
-						"embeddingSearchControls.exampleAPersonInRedStandingOnABeach",
-					)}
-					value={draft()}
-					onInput={(event) => setDraft(event.currentTarget.value)}
-				/>
-				<div class="flex flex-wrap gap-2">
-					<Button type="submit" size="sm" disabled={!draft().trim()}>
-						{t("embeddingSearchControls.searchImagesAndVideoWithText")}
-					</Button>
-					<Show when={props.state.semanticQuery}>
-						<Button
-							type="button"
-							size="sm"
-							variant="outline"
-							onClick={() => {
-								props.setState("semanticQuery", "");
-								setDraft("");
-								props.onSearch();
-							}}
-						>
-							{t("embeddingSearchControls.clearTextSearch")}
-						</Button>
-					</Show>
-				</div>
-			</form>
-			<Show when={props.state.semanticQuery}>
-				<p class="text-xs text-muted-foreground">
-					{t("sortControls.searchTextValue", {
-						value0: String(props.state.semanticQuery),
-					})}
-				</p>
-			</Show>
-			<p class="text-xs text-muted-foreground">
-				{t(
-					"embeddingSearchControls.buildIndexesForImagesAndRepresentativeVideoThumbnailsIn",
-				)}
-			</p>
+					<ChevronDown
+						aria-hidden="true"
+						class="text-muted-foreground transition-transform motion-reduce:transition-none group-data-[expanded]:rotate-180"
+					/>
+				</CollapsibleTrigger>
+				<CollapsibleContent class="space-y-3 rounded-md border border-border bg-muted/30 p-3">
+					<form
+						class="space-y-2"
+						onSubmit={(event) => {
+							event.preventDefault();
+							const query = draft().trim();
+							if (!query) return;
+							props.setState({
+								semanticQuery: query,
+								similarityAnchorMediaId: null,
+								similarityModel: "embeddinggemma2",
+								offset: 0,
+								scrollY: 0,
+							});
+							props.onSearch();
+						}}
+					>
+						<Label class="sr-only" for={`${props.id}-text`}>
+							{t(
+								"embeddingSearchControls.naturalLanguageSearchEmbeddingGemma2",
+							)}
+						</Label>
+						<Input
+							id={`${props.id}-text`}
+							name="semantic-query"
+							maxLength={2000}
+							placeholder={t(
+								"embeddingSearchControls.exampleAPersonInRedStandingOnABeach",
+							)}
+							value={draft()}
+							onInput={(event) => setDraft(event.currentTarget.value)}
+						/>
+						<div class="flex flex-wrap gap-2">
+							<Button type="submit" size="sm" disabled={!draft().trim()}>
+								{t("embeddingSearchControls.searchImagesAndVideoWithText")}
+							</Button>
+							<Show when={props.state.semanticQuery}>
+								<Button
+									type="button"
+									size="sm"
+									variant="outline"
+									onClick={() => {
+										props.setState("semanticQuery", "");
+										setDraft("");
+										props.onSearch();
+									}}
+								>
+									{t("embeddingSearchControls.clearTextSearch")}
+								</Button>
+							</Show>
+						</div>
+					</form>
+					<p class="text-xs text-muted-foreground">
+						{t(
+							"embeddingSearchControls.buildIndexesForImagesAndRepresentativeVideoThumbnailsIn",
+						)}
+					</p>
+				</CollapsibleContent>
+			</Collapsible>
 		</div>
 	);
 }

@@ -178,7 +178,7 @@ describe("useSourceMediaPage delete confirmation", () => {
 		expect(page.deleteDialogOpen()).toBe(false);
 	});
 
-	it("preserves media B confirmation state if media A deletion finishes after A -> cancel -> B", async () => {
+	it("keeps the pending delete target until its result is known", async () => {
 		const { actions, page } = setupSourceMediaPage();
 		const requestA = Promise.withResolvers<unknown>();
 		vi.mocked(actions.deleteMedia)
@@ -196,8 +196,10 @@ describe("useSourceMediaPage delete confirmation", () => {
 		await deletingA;
 
 		expect(page.isDeletingMedia()).toBe(false);
-		expect(page.deleteDialogOpen()).toBe(true);
+		expect(page.deleteDialogOpen()).toBe(false);
+		expect(actions.deleteMedia).toHaveBeenCalledOnce();
 
+		page.handleDelete("media-b");
 		await page.confirmDelete();
 		expect(actions.deleteMedia).toHaveBeenCalledTimes(2);
 		expect(actions.deleteMedia).toHaveBeenNthCalledWith(

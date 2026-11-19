@@ -3,6 +3,7 @@ import {
 	authorSchema,
 	authorAccountVerificationSchema,
 } from "@solid-imager/core/authors";
+import { selectManagerCategory } from "./support/manager-navigation";
 import { expect, test, waitForAppHydration } from "./support/test";
 
 async function rpc(page: Page, name: string, input: object = {}) {
@@ -35,10 +36,7 @@ for (const withAccount of [true, false]) {
 		await rpc(page, "updateName", { id: author.id, name });
 		await page.goto("/manager");
 		await waitForAppHydration(page);
-		await page
-			.getByRole("button", { name: /作者・外部アカウント/ })
-			.filter({ visible: true })
-			.click();
+		await selectManagerCategory(page, "作者・外部アカウント");
 		await page
 			.getByRole("combobox", { name: "修正対象の作者", exact: true })
 			.fill(name);
@@ -149,10 +147,7 @@ for (const withAccount of [true, false]) {
 		expect(renamed.id).toBe(author.id);
 		await page.reload();
 		await waitForAppHydration(page);
-		await page
-			.getByRole("button", { name: /作者・外部アカウント/ })
-			.filter({ visible: true })
-			.click();
+		await selectManagerCategory(page, "作者・外部アカウント");
 		await page
 			.getByRole("combobox", { name: "修正対象の作者", exact: true })
 			.fill(name);

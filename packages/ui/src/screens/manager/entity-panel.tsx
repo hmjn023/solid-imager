@@ -205,7 +205,6 @@ export function EntityTablePanel(props: {
 					<Show
 						fallback={
 							<EmptyState
-								class="min-h-52"
 								description={t(
 									"entityPanel.changeYourSearchConditionsOrCreateANewItem",
 								)}

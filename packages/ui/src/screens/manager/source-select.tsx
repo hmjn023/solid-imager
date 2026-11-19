@@ -1,5 +1,5 @@
 import { t } from "@solid-imager/i18n";
-import type { UseManagerPageResult } from "../../hooks/use-manager-page";
+import { createMemo } from "solid-js";
 import {
 	Select,
 	SelectContent,
@@ -9,43 +9,51 @@ import {
 	SelectValue,
 } from "../../select";
 
+type SourceOption = { id: string; name: string };
+const ALL_SOURCES_ID = "__all__";
+
 export function SourceSelect(props: {
-	manager: UseManagerPageResult;
+	sources: { id?: string; name: string }[];
 	onChange: (id: string | undefined) => void;
-	placeholder?: string;
+	allowAll?: boolean;
 	value: string | undefined;
 }) {
-	const placeholder = () => props.placeholder ?? t("labels.allSources");
+	const options = createMemo(() => {
+		const available = props.sources.filter((source): source is SourceOption =>
+			Boolean(source.id),
+		);
+		return props.allowAll
+			? [{ id: ALL_SOURCES_ID, name: t("labels.allSources") }, ...available]
+			: available;
+	});
 	return (
-		<Select
+		<Select<SourceOption>
 			class="space-y-1.5"
+			disallowEmptySelection
 			itemComponent={(selectProps) => (
 				<SelectItem item={selectProps.item}>
 					{selectProps.item.rawValue.name}
 				</SelectItem>
 			)}
-			onChange={(value) => props.onChange(value?.id)}
-			options={props.manager.sources()}
+			onChange={(option) => {
+				if (!option) return;
+				const id = option.id === ALL_SOURCES_ID ? undefined : option.id;
+				if (id !== props.value) props.onChange(id);
+			}}
+			options={options()}
 			optionTextValue="name"
 			optionValue="id"
-			placeholder={placeholder()}
+			placeholder={t("actions.selectSource")}
 			value={
-				props.value
-					? props.manager.sources().find((source) => source.id === props.value)
-					: null
+				options().find(
+					(option) => option.id === (props.value ?? ALL_SOURCES_ID),
+				) ?? null
 			}
 		>
 			<SelectLabel>{t("labels.targetSource")}</SelectLabel>
 			<SelectTrigger class="w-full bg-card">
-				<SelectValue<unknown>>
-					{(state) => {
-						const selected = state.selectedOption();
-						return selected &&
-							typeof selected === "object" &&
-							"name" in selected
-							? (selected as { name: string }).name
-							: placeholder();
-					}}
+				<SelectValue<SourceOption>>
+					{(state) => state.selectedOption()?.name ?? t("actions.selectSource")}
 				</SelectValue>
 			</SelectTrigger>
 			<SelectContent />

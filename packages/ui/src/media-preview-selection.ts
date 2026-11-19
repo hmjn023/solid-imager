@@ -14,3 +14,21 @@ export function createMediaPreviewSelectHandler<T>(
 
 	return () => onPreviewSelect(item);
 }
+export const isPlainPrimaryClick = (event: MouseEvent) =>
+	event.button === 0 &&
+	!event.metaKey &&
+	!event.ctrlKey &&
+	!event.shiftKey &&
+	!event.altKey;
+
+export const isModifiedSelectionClick = (event: MouseEvent) =>
+	event.button === 0 &&
+	!event.altKey &&
+	(event.metaKey || event.ctrlKey || event.shiftKey);
+
+export function isFineMediaPointer(event: MouseEvent): boolean {
+	if ("pointerType" in event && event.pointerType) {
+		return event.pointerType === "mouse" || event.pointerType === "pen";
+	}
+	return window.matchMedia("(pointer: fine)").matches;
+}

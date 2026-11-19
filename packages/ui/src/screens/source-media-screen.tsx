@@ -1,36 +1,38 @@
 import { t } from "@solid-imager/i18n";
 import Upload from "lucide-solid/icons/upload";
-import { createEffect, createSignal, onMount, Show } from "solid-js";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "../alert-dialog";
-import { FilterErrorBanner, QueryStatus } from "../async-state";
+import { createSignal, onMount, Show } from "solid-js";
+import { EmptyState, FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
+import { MediaDeleteDialog } from "../media-delete-dialog";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import {
 	SourceMediaGrid,
 	type SourceMediaViewMode,
 } from "../source-media-grid";
+import {
+	clearPresetFilters,
+	hasSearchConditions,
+} from "../stores/search-store";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
-import { CollectionInspector } from "../workspace/collection-inspector";
-import { reconcileCollectionPreviewId } from "../workspace/collection-navigation";
+import { CollectionBulkActions } from "../workspace/collection-bulk-actions";
+import {
+	CollectionInspector,
+	createCollectionInspector,
+} from "../workspace/collection-inspector";
+import { Image } from "../workspace/icons";
 import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SourceMediaScreenProps } from "./source-media-screen.types";
 
 /** Renders a source collection with search, upload, preview, and optional virtualized results. */
 export function SourceMediaScreen(props: SourceMediaScreenProps) {
 	const [isMounted, setIsMounted] = createSignal(false);
-	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
-	const [isInspectorVisible, setIsInspectorVisible] = createSignal(true);
 	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
+	const inspector = createCollectionInspector({
+		enabled: () => Boolean(props.renderMediaPreview),
+		media: () => page().mediaResults(),
+		phase: () => page().contentState().phase,
+	});
 	const filterStates = () => Object.values(page().filterStates());
 	const hasFilterError = () =>
 		filterStates().some(
@@ -41,21 +43,20 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		return state.fetchState === "paused" && state.data !== undefined;
 	};
 	const shouldRenderGrid = () => !props.enableVirtualization || isMounted();
-	const previewMedia = () =>
-		page()
-			.mediaResults()
-			.find((media) => media.id === previewMediaId());
+	const showEmptySource = () =>
+		shouldRenderGrid() &&
+		page().contentState().phase === "empty" &&
+		!page().mediaQuery.isPlaceholderData &&
+		!hasSearchConditions();
+	const clearSearch = () => {
+		clearPresetFilters();
+		page().handleSearch();
+	};
 	const openMediaDetail = (media: import("@solid-imager/core/media").Media) =>
 		props.onOpenMediaDetail?.(media, page().mediaResults());
 	const prepareMediaDetail = (
 		media: import("@solid-imager/core/media").Media,
 	) => props.onPrepareMediaDetail?.(media, page().mediaResults());
-	const selectPreviewMedia = (
-		media: import("@solid-imager/core/media").Media,
-	) => {
-		setPreviewMediaId(media.id);
-		setIsInspectorVisible(true);
-	};
 	const updateViewMode = (mode: SourceMediaViewMode) => {
 		setViewMode(mode);
 		try {
@@ -64,13 +65,6 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 			// Storage can be unavailable in hardened browser contexts.
 		}
 	};
-
-	createEffect(() => {
-		const nextId = props.renderMediaPreview
-			? reconcileCollectionPreviewId(page().mediaResults(), previewMediaId())
-			: null;
-		if (nextId !== previewMediaId()) setPreviewMediaId(nextId);
-	});
 
 	onMount(() => {
 		setIsMounted(true);
@@ -96,39 +90,43 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 		>
 			<SearchToolbar
 				actions={
-					<div class="flex flex-wrap gap-2">
-						<Show when={props.onEnterBulkSelectMode}>
+					<Show when={!showEmptySource()}>
+						<div class="flex flex-wrap gap-2">
 							<Button
 								class="min-h-11 sm:min-h-9"
-								onClick={() => props.onEnterBulkSelectMode?.()}
+								disabled={
+									page().isSyncingMedia() || page().mediaResults().length === 0
+								}
+								onClick={() => {
+									void page().handleSyncLoadedMedia();
+								}}
 								size="sm"
 								variant="outline"
 							>
-								{t("sourceMediaScreen.selectMultiple")}
+								{page().isSyncingMedia()
+									? t("status.syncing")
+									: t("sourceMediaScreen.syncLoadedItems")}
 							</Button>
-						</Show>
-						<Button
-							class="min-h-11 sm:min-h-9"
-							disabled={page().isSyncingMedia() || !page().hasData()}
-							onClick={() => {
-								void page().handleSyncLoadedMedia();
-							}}
-							size="sm"
-							variant="outline"
-						>
-							{page().isSyncingMedia()
-								? t("status.syncing")
-								: t("sourceMediaScreen.syncLoadedItems")}
-						</Button>
-						<Button
-							class="min-h-11 sm:min-h-9"
-							onClick={page().handleAddButtonClick}
-							size="sm"
-						>
-							<Upload aria-hidden="true" size={15} />
-							{t("actions.add")}
-						</Button>
-					</div>
+							<Button
+								class="min-h-11 sm:min-h-9"
+								onClick={page().handleAddButtonClick}
+								size="sm"
+							>
+								<Upload aria-hidden="true" size={15} />
+								{t("actions.add")}
+							</Button>
+						</div>
+					</Show>
+				}
+				bulkSelection={
+					props.onEnterBulkSelectMode &&
+					(page().mediaResults().length > 0 || props.isBulkSelectMode?.())
+						? {
+								active: props.isBulkSelectMode?.() ?? false,
+								onEnter: props.onEnterBulkSelectMode,
+								onClear: props.onClearSelection,
+							}
+						: undefined
 				}
 				context="source"
 				filterData={page().filterData()}
@@ -173,11 +171,10 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				data-media-scroll={page().mediaSourceId() ?? "source-media"}
 			>
 				<div
-					class={
-						props.renderMediaPreview && isInspectorVisible()
-							? "2xl:grid 2xl:grid-cols-workspace-sidebar 2xl:items-start 2xl:gap-4"
-							: "2xl:grid 2xl:grid-cols-1 2xl:items-start"
-					}
+					classList={{
+						"grid grid-cols-workspace-sidebar items-start gap-4":
+							inspector.isVisible(),
+					}}
 				>
 					<div class="min-w-0">
 						<Show
@@ -191,6 +188,20 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 							<SourceMediaGrid
 								contextMenuMediaId={page().contextMenuMediaId}
 								detailBasePath={props.detailBasePath}
+								emptyState={
+									showEmptySource() ? (
+										<EmptyState
+											description={t("sourceMediaScreen.addOrDropMedia")}
+											icon={<Image size={20} />}
+											title={t("sourceMediaScreen.noMediaYet")}
+										>
+											<Button onClick={page().handleAddButtonClick}>
+												<Upload aria-hidden="true" size={16} />
+												{t("actions.add")}
+											</Button>
+										</EmptyState>
+									) : undefined
+								}
 								enableVirtualization={props.enableVirtualization}
 								hasNextPage={page().mediaQuery.hasNextPage}
 								isBulkSelectMode={props.isBulkSelectMode}
@@ -206,15 +217,18 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 								onPrepareMediaDetail={prepareMediaDetail}
 								onBulkAction={props.onBulkAction}
 								onClearSelection={props.onClearSelection}
+								onClearSearch={
+									!page().mediaQuery.isPlaceholderData && hasSearchConditions()
+										? clearSearch
+										: undefined
+								}
 								onCopyMove={page().handleCopyMove}
 								onDelete={page().handleDelete}
 								onFindSimilar={props.onFindSimilar}
 								onLoadMore={() => {
 									void page().fetchNextPage();
 								}}
-								onPreviewSelect={
-									props.renderMediaPreview ? selectPreviewMedia : undefined
-								}
+								onPreviewSelect={inspector.previewSelection()}
 								onRetry={async () => {
 									await page().mediaQuery.refetch();
 								}}
@@ -224,9 +238,7 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 								}}
 								onToggleSelect={props.onToggleSelect}
 								renderItem={props.renderItem}
-								previewSelectedMediaId={
-									props.renderMediaPreview ? previewMediaId : undefined
-								}
+								previewSelectedMediaId={inspector.previewId}
 								selectedCount={props.selectedCount}
 								setContextMenuMediaId={page().setContextMenuMediaId}
 								setLoadMoreRef={page().setLoadMoreRef}
@@ -241,10 +253,10 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					</div>
 					<Show when={props.renderMediaPreview}>
 						{(renderPreview) => (
-							<Show when={isInspectorVisible()}>
+							<Show when={inspector.isVisible()}>
 								<CollectionInspector
-									media={previewMedia()}
-									onClose={() => setIsInspectorVisible(false)}
+									media={inspector.media()}
+									onClose={inspector.close}
 									onOpenDetail={
 										props.onOpenMediaDetail ? openMediaDetail : undefined
 									}
@@ -256,6 +268,16 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 					</Show>
 				</div>
 			</div>
+			<Show when={props.isBulkSelectMode?.()}>
+				<CollectionBulkActions
+					loadedCount={page().mediaResults().length}
+					selectedCount={props.selectedCount?.() ?? 0}
+					onSelectAll={props.onSelectAll}
+					onBulkAction={props.onBulkAction}
+					onClearSelection={props.onClearSelection}
+					testId="bulk-actions-bar"
+				/>
+			</Show>
 
 			<input
 				accept="image/*,.json"
@@ -285,56 +307,26 @@ export function SourceMediaScreen(props: SourceMediaScreenProps) {
 				);
 			})()}
 
-			<AlertDialog
-				onOpenChange={(open) => {
-					if (open || !page().isDeletingMedia()) {
-						page().setDeleteDialogOpen(open);
-					}
-				}}
+			<MediaDeleteDialog
 				open={page().deleteDialogOpen()}
-			>
-				<AlertDialogContent class="workspace-theme">
-					<AlertDialogHeader>
-						<AlertDialogTitle>
-							{t("sourceMediaScreen.deleteMedia")}
-						</AlertDialogTitle>
-						<AlertDialogDescription>
-							{t(
-								"sourceMediaScreen.thisActionCannotBeUndoneDeleteTheSelectedMedia",
-							)}
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel disabled={page().isDeletingMedia()}>
-							{t("actions.cancel")}
-						</AlertDialogCancel>
-						<AlertDialogAction
-							variant="destructive"
-							disabled={page().isDeletingMedia()}
-							onClick={(event) => {
-								event.preventDefault();
-								if (!page().isDeletingMedia()) {
-									void page().confirmDelete();
-								}
-							}}
-						>
-							{t("actions.delete")}
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+				fileName={page().deleteFileName()}
+				isSubmitting={page().isDeletingMedia()}
+				error={page().deleteError()}
+				onOpenChange={page().setDeleteDialogOpen}
+				onConfirm={page().confirmDelete}
+			/>
 
 			{(() => {
 				const MoveCopyDialog = props.moveCopyDialogComponent;
 				return (
 					<MoveCopyDialog
-						currentSourceId={page().mediaSourceId() || ""}
+						currentSourceId={page().moveCopySourceId() ?? ""}
 						mode={page().moveCopyMode()}
-						onConfirm={(event) => {
-							void page().handleConfirmCopyMove(event);
-						}}
+						onConfirm={page().handleConfirmCopyMove}
 						onOpenChange={page().setMoveCopyDialogOpen}
 						open={page().moveCopyDialogOpen()}
+						isSubmitting={page().isMoveCopySubmitting()}
+						error={page().moveCopyError()}
 					/>
 				);
 			})()}

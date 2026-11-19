@@ -6,6 +6,13 @@ import {
 	createRelatedMediaReturnMarker,
 	type MediaContextItem,
 } from "./media-context";
+import {
+	isFineMediaPointer,
+	isModifiedSelectionClick,
+	isPlainPrimaryClick,
+} from "./media-preview-selection";
+
+export { isPlainPrimaryClick } from "./media-preview-selection";
 
 export type MediaGridItemLinkProps = {
 	children: MediaGridLinkProps["children"];
@@ -21,20 +28,6 @@ export type MediaGridItemLinkProps = {
 	onToggleSelect?: () => void;
 };
 
-export const isPlainPrimaryClick = (event: MouseEvent) =>
-	event.button === 0 &&
-	!event.metaKey &&
-	!event.ctrlKey &&
-	!event.shiftKey &&
-	!event.altKey;
-
-const isModifiedSelectionClick = (event: MouseEvent) =>
-	event.button === 0 &&
-	!event.altKey &&
-	(event.metaKey || event.ctrlKey || event.shiftKey);
-
-const hasFinePointer = () => window.matchMedia("(pointer: fine)").matches;
-
 /** Shared link, preview, keyboard, and bulk-selection behavior for media tiles. */
 export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 	const detailLink = () => (
@@ -46,7 +39,7 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 			onClick={(event: MouseEvent) => {
 				if (
 					props.onSelectGesture &&
-					hasFinePointer() &&
+					isFineMediaPointer(event) &&
 					isModifiedSelectionClick(event)
 				) {
 					event.preventDefault();
@@ -55,7 +48,7 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 				}
 				if (!isPlainPrimaryClick(event)) return;
 
-				if (props.onPreviewSelect && hasFinePointer()) {
+				if (props.onPreviewSelect && isFineMediaPointer(event)) {
 					event.preventDefault();
 					props.onPreviewSelect();
 					return;
@@ -66,7 +59,7 @@ export function MediaGridItemLink(props: MediaGridItemLinkProps) {
 			onDblClick={(event: MouseEvent) => {
 				if (
 					!isPlainPrimaryClick(event) ||
-					!hasFinePointer() ||
+					!isFineMediaPointer(event) ||
 					!props.onOpenMediaDetail
 				) {
 					return;
