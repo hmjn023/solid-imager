@@ -306,10 +306,10 @@ test(
 	"related return context does not jump into a different browser history branch",
 	{ tag: "@desktop-only" },
 	async ({ page, browserHealth }) => {
-		// This scenario deliberately leaves details before supplemental queries
-		// finish; disposing those queries cancels their requests during SPA navigation.
+		// This scenario deliberately leaves details while supplemental queries
+		// and the job event connection may still be pending.
 		browserHealth.allowRequestFailure(
-			/\/api\/rpc\/(?:projects\/listForメディア|media\/getRelated)(?:\?|$)/,
+			/\/api\/rpc\/(?:projects\/listForMedia|media\/getRelated|jobs\/events)(?:\?|$)/,
 			"net::ERR_ABORTED",
 		);
 		await withRelatedMedia(page.request, async () => {

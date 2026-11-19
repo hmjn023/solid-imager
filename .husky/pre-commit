@@ -29,6 +29,7 @@ fi
 if [ -n "$CHANGED_UI" ]; then
   echo "→ packages/ui changed, running tests..."
   bun run --cwd packages/ui test
+  bun run test:browser
 fi
 
 if [ -n "$CHANGED_XTRACTER" ]; then

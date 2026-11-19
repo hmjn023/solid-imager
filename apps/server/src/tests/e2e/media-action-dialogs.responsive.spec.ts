@@ -98,11 +98,27 @@ for (const collection of [
 			} finally {
 				releaseCopy();
 			}
-			await expect(transfer.getByRole("alert")).toContainText(
-				"メディアのコピーに失敗しました",
-			);
+			const copyWarning =
+				"コピーの結果を確認できませんでした。コピー先を確認してください。";
+			const copyAlert = transfer.getByRole("alert");
+			await expect(copyAlert).toHaveText(copyWarning);
 			await expect(destinationField).toContainText(destination);
-			await expect(copy).toBeEnabled();
+			const retryCheckpoint = browserHealth.requestCheckpoint();
+			// Hold any unexpected retry so it cannot complete before the assertions.
+			const releaseRetry = await delayMutationFailure(page, "copy");
+			try {
+				await copy.click();
+				await expect(copy).toBeEnabled();
+				await expect(copyAlert).toHaveText(copyWarning);
+				expect(
+					browserHealth.apiRequestCountPathSince(
+						retryCheckpoint,
+						"/api/rpc/media/copy",
+					),
+				).toBe(0);
+			} finally {
+				releaseRetry();
+			}
 			await transfer
 				.getByRole("button", { name: "キャンセル", exact: true })
 				.click();

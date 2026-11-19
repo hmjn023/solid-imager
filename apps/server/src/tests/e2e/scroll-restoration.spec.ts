@@ -102,9 +102,6 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 
 	const mediaLink = page.locator(`[data-media-id="${mediaId}"]`);
 	await mediaLink.click();
-	await expect.poll(() => new URL(page.url()).pathname).toBe(entryPath);
-	await expect(mediaLink).toHaveAttribute("aria-current", "true");
-	await mediaLink.dblclick();
 	await expect(page).toHaveURL(/\/sources\/[^/]+\/[^/]+$/);
 	await expect(
 		page.getByRole("heading", { name: mediaFileName, exact: true }),

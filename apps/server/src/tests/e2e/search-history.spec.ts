@@ -78,8 +78,6 @@ test("search results remain traversable across detail navigation", async ({
 		name: new RegExp(E2E_SIMILAR_FILE_NAME),
 	});
 	await similarResult.click();
-	await expect(page).toHaveURL(secondSearchUrl);
-	await similarResult.dblclick();
 	await expect(page).toHaveURL(
 		new RegExp(`${mediaPath(E2E_SIMILAR_MEDIA_ID)}/?$`),
 	);
