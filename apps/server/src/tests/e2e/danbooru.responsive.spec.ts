@@ -431,14 +431,15 @@ test(
 			exact: true,
 		});
 		const scroller = page.locator('[data-media-scroll="Danbooru"]');
-		await expect(
-			scroller.getByText("40件を表示", { exact: true }),
-		).toBeVisible();
+		const resultCount = (count: number) =>
+			page.locator("header").getByText(`${count}件を表示`, { exact: true });
+		await expect(resultCount(40)).toBeVisible();
+		await expect(scroller.getByText("40件を表示", { exact: true })).toHaveCount(
+			0,
+		);
 		for (const total of [79, 118, 156]) {
 			await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight));
-			await expect(
-				scroller.getByText(`${total}件を表示`, { exact: true }),
-			).toBeVisible();
+			await expect(resultCount(total)).toBeVisible();
 		}
 		expect(searches.map(({ page }) => page)).toEqual([1, 2, 3, 4]);
 		await scroller.evaluate((el) => el.scrollTo(0, el.scrollHeight * 0.73));
@@ -503,6 +504,43 @@ test("the shared search field completes a tag at the caret and submits the full 
 		page.getByRole("link", { name: "Danbooru #101 を開く" }),
 	).toBeVisible();
 	const input = page.getByRole("combobox", { name: "Danbooru を検索" });
+	const heading = page.getByRole("heading", { name: "Danbooru", exact: true });
+	const search = page.getByRole("button", { name: "検索", exact: true });
+	const moreActions = page.getByRole("button", {
+		name: "その他の操作",
+		exact: true,
+	});
+	const help = page.getByRole("button", { name: "検索の使い方", exact: true });
+	const helpPanel = page.getByRole("dialog", {
+		name: "検索の使い方",
+		exact: true,
+	});
+	for (const control of [heading, search, moreActions, help]) {
+		await expect(control).toBeVisible();
+	}
+	const headingBounds = await heading.boundingBox();
+	const searchBounds = await search.boundingBox();
+	const toolsBounds = await moreActions.boundingBox();
+	expect(headingBounds?.y).toBeLessThan(searchBounds?.y ?? 0);
+	expect(searchBounds?.y).toBeLessThan(toolsBounds?.y ?? 0);
+
+	await expect(helpPanel).toBeHidden();
+	await help.focus();
+	await help.press("Enter");
+	await expect(helpPanel).toContainText("rating:g や order:score");
+	await page.keyboard.press("Escape");
+	await expect(helpPanel).toBeHidden();
+	await expect(help).toBeFocused();
+
+	await moreActions.focus();
+	await moreActions.press("ArrowDown");
+	await expect(
+		page.getByRole("menuitem", { name: "サイトを開く ↗", exact: true }),
+	).toHaveAttribute("href", "https://danbooru.donmai.us");
+	await page.keyboard.press("Escape");
+	await expect(moreActions).toBeFocused();
+	await expectNoOverflow(page);
+
 	await page.keyboard.press("/");
 	await expect(input).toBeFocused();
 

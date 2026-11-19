@@ -56,6 +56,7 @@ type DialogContentProps<_T extends ValidComponent = "div"> = ComponentProps<
 	class?: string | undefined;
 	children?: JSX.Element;
 	placement?: "center" | "left" | "right";
+	closeDisabled?: boolean;
 };
 
 const DialogContent = <T extends ValidComponent = "div">(
@@ -65,6 +66,7 @@ const DialogContent = <T extends ValidComponent = "div">(
 		"class",
 		"children",
 		"placement",
+		"closeDisabled",
 	]);
 	const placement = () => props.placement ?? "center";
 	return (
@@ -85,6 +87,7 @@ const DialogContent = <T extends ValidComponent = "div">(
 				{props.children}
 				<DialogPrimitiveCloseButton
 					aria-label={t("actions.close")}
+					disabled={props.closeDisabled}
 					class="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[expanded]:bg-accent data-[expanded]:text-muted-foreground"
 				>
 					<svg

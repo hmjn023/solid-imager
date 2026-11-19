@@ -18,6 +18,8 @@ import {
 	QueryStatus,
 } from "../async-state";
 import { DanbooruSearchComposer } from "../danbooru/search-composer";
+import { CollectionHeader } from "../workspace/collection-header";
+import { ViewerActionsMenu } from "./actions-menu";
 import { ViewerLoadBoundary } from "./load-boundary";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import type { ViewerDetailNavigation } from "./detail";
@@ -39,13 +41,15 @@ type ViewerResults = { posts: { id: number }[]; hasNextPage: boolean };
 export function ViewerWorkspace<T extends ViewerResults>(
 	props: ViewerNavigation & {
 		providerName: "Danbooru" | "pixiv";
-		siteUrl: string;
+		siteUrl?: string;
 		browse: ReturnType<typeof createViewerSearch<T>>;
 		suggestTags: (query: string) => Promise<ViewerTag[]>;
 		describePost: (post: T["posts"][number]) => ViewerGridItemDescription;
 		errorTitle: string;
 		emptyTitle: string;
+		emptyDescription?: (result: T) => string;
 		actions?: JSX.Element;
+		toolbarContent?: JSX.Element;
 		renderSearchInfo?: (result: T) => JSX.Element;
 		renderDetail: (
 			navigation: ViewerDetailNavigation,
@@ -127,35 +131,47 @@ export function ViewerWorkspace<T extends ViewerResults>(
 				when={props.selectedPostId}
 				fallback={
 					<>
-						<header class="shrink-0 border-b border-border px-3 py-3 sm:px-4">
-							<div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+						<CollectionHeader
+							heading={
 								<h1
 									ref={(element) => {
 										collectionTitle = element;
 									}}
 									tabindex="-1"
-									class="mr-auto font-semibold text-xl"
+									class="min-w-0 truncate font-semibold text-foreground"
 								>
 									{props.providerName}
 								</h1>
-								{props.actions}
-								<a
-									class="text-primary text-sm underline-offset-4 hover:underline"
-									href={props.siteUrl}
-									target="_blank"
-									rel="noopener noreferrer"
-								>
-									{t("workspace.openSite")}
-								</a>
-							</div>
+							}
+							summary={
+								<Show when={state().data}>
+									{(data) => (
+										<output class="ml-auto shrink-0 text-xs text-muted-foreground">
+											{t("workspace.showingValueResults", {
+												value0: data().posts.length.toLocaleString(),
+											})}
+										</output>
+									)}
+								</Show>
+							}
+						>
 							<DanbooruSearchComposer
+								actions={
+									<>
+										{props.actions}
+										<Show when={props.siteUrl}>
+											{(siteUrl) => <ViewerActionsMenu siteUrl={siteUrl()} />}
+										</Show>
+									</>
+								}
 								provider={props.providerName}
 								draft={browse.draft()}
 								onDraftChange={browse.setDraft}
 								onSubmit={() => browse.submit()}
 								suggestTags={props.suggestTags}
 							/>
-						</header>
+							{props.toolbarContent}
+						</CollectionHeader>
 						<div
 							class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-3 scrollbar-stable sm:px-4"
 							data-media-scroll={props.providerName}
@@ -198,14 +214,6 @@ export function ViewerWorkspace<T extends ViewerResults>(
 								<Match when={state().data}>
 									{(data) => (
 										<>
-											<p
-												class="mb-2 text-muted-foreground text-sm"
-												aria-live="polite"
-											>
-												{t("workspace.showingValueResults", {
-													value0: String(data().posts.length.toLocaleString()),
-												})}
-											</p>
 											{props.renderSearchInfo?.(data())}
 											<Show when={browse.hasPreviousPage()}>
 												<ViewerLoadBoundary
@@ -232,9 +240,10 @@ export function ViewerWorkspace<T extends ViewerResults>(
 													>
 														<EmptyState
 															title={props.emptyTitle}
-															description={t(
-																"workspace.changeTheTagsAndSearchAgain",
-															)}
+															description={
+																props.emptyDescription?.(data()) ??
+																t("workspace.changeTheTagsAndSearchAgain")
+															}
 														/>
 													</Show>
 												}

@@ -1,6 +1,6 @@
 import { t } from "@solid-imager/i18n";
 import type { SafeMediaSource } from "@solid-imager/core/sources";
-import { createEffect, createResource, createSignal, Show } from "solid-js";
+import { createEffect, createSignal, Show } from "solid-js";
 import { Alert, AlertDescription } from "./alert";
 import { Button } from "./button";
 import {
@@ -12,6 +12,10 @@ import {
 	DialogTitle,
 } from "./dialog";
 import { Input } from "./input";
+import {
+	MediaDestinationField,
+	useMediaDestinationSources,
+} from "./media-destination-field";
 import {
 	Select,
 	SelectContent,
@@ -45,8 +49,6 @@ type ActionOption = {
 	label: string;
 };
 
-type TargetSourceOption = SafeMediaSource & { id: string };
-
 function isActionType(value: string): value is ActionType {
 	return (
 		value === "copy-source" ||
@@ -57,6 +59,7 @@ function isActionType(value: string): value is ActionType {
 }
 
 export function BulkActionDialog(props: BulkActionDialogProps) {
+	const [form, setForm] = createSignal<HTMLFormElement>();
 	const [action, setAction] = createSignal<ActionType>("copy-source");
 	const [targetSourceId, setTargetSourceId] = createSignal("");
 	const [destinationPath, setDestinationPath] = createSignal("");
@@ -67,18 +70,21 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	const [uncertainItems, setUncertainItems] = createSignal<BulkActionItem[]>(
 		[],
 	);
+	const isTargetSourceAction = () =>
+		action() === "copy-source" || action() === "move-source";
 	createEffect(() => {
 		if (!props.open && !isSubmitting()) {
+			setTargetSourceId("");
+			setDestinationPath("");
 			setRetryCommand(null);
 			setUncertainItems([]);
 			setErrorMsg("");
 		}
 	});
 
-	const [sources] = createResource(
-		() => (props.open ? true : null),
+	const sourceList = useMediaDestinationSources(
+		() => props.open && isTargetSourceAction(),
 		props.listSources,
-		{ initialValue: [] },
 	);
 
 	const selectedItems = () => {
@@ -95,10 +101,10 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	};
 	const selectedSourceIds = () =>
 		new Set(selectedItems().map((item) => item.mediaSourceId));
-	const usableSources = (): TargetSourceOption[] =>
-		(sources() ?? []).filter(
-			(s): s is TargetSourceOption => !!s.id && !selectedSourceIds().has(s.id),
-		);
+	const usableSources = () => {
+		const excluded = selectedSourceIds();
+		return sourceList.sources().filter((source) => !excluded.has(source.id));
+	};
 	const actionOptions = (): ActionOption[] => [
 		{ value: "copy-source", label: t("bulkActionDialog.copyToAnotherSource") },
 		{ value: "move-source", label: t("bulkActionDialog.moveToAnotherSource") },
@@ -111,10 +117,20 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 	const selectedActionOption = () =>
 		actionOptions().find((option) => option.value === action()) ?? null;
 	const selectedTargetSource = () =>
-		usableSources().find((source) => source.id === targetSourceId()) ?? null;
+		usableSources().find((source) => source.id === targetSourceId());
+	const canSubmit = () => {
+		if (isSubmitting()) return false;
+		const retry = retryCommand();
+		if (retry) return retry.items.length > 0;
+		if (!selectedItems().length) return false;
+		if (isTargetSourceAction()) {
+			return !sourceList.loading() && Boolean(selectedTargetSource());
+		}
+		return action() === "delete" || Boolean(destinationPath().trim());
+	};
 
 	const handleConfirm = async () => {
-		if (isSubmitting()) return;
+		if (!canSubmit()) return;
 		setIsSubmitting(true);
 		setErrorMsg("");
 		try {
@@ -123,7 +139,7 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 				createBulkActionCommand({
 					action: action(),
 					items: selectedItems(),
-					targetSourceId: targetSourceId(),
+					targetSourceId: selectedTargetSource()?.id ?? "",
 					destinationPath: destinationPath(),
 				});
 			const outcome = await executeBulkActionCommand(command, props);
@@ -170,7 +186,10 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 				if (!isSubmitting()) props.onOpenChange(open);
 			}}
 		>
-			<DialogContent class="workspace-theme sm:max-w-dialog-xs">
+			<DialogContent
+				class="workspace-theme sm:max-w-dialog-xs"
+				closeDisabled={isSubmitting()}
+			>
 				<DialogHeader>
 					<DialogTitle>{t("searchScreen.runBulkAction")}</DialogTitle>
 					<DialogDescription>
@@ -180,7 +199,14 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 					</DialogDescription>
 				</DialogHeader>
 
-				<div class="grid gap-4 py-4">
+				<form
+					class="grid gap-4"
+					ref={setForm}
+					onSubmit={(event) => {
+						event.preventDefault();
+						void handleConfirm();
+					}}
+				>
 					<Select<ActionOption>
 						class="flex flex-col gap-2"
 						disabled={isSubmitting() || retryCommand() !== null}
@@ -206,37 +232,20 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 								{(state) => state.selectedOption()?.label ?? ""}
 							</SelectValue>
 						</SelectTrigger>
-						<SelectContent />
+						<SelectContent portalMount={form()} />
 					</Select>
 
-					<Show when={action() === "copy-source" || action() === "move-source"}>
-						<Select<TargetSourceOption>
-							class="flex flex-col gap-2"
-							disabled={isSubmitting() || retryCommand() !== null}
-							itemComponent={(itemProps) => (
-								<SelectItem item={itemProps.item}>
-									{itemProps.item.rawValue.name}
-								</SelectItem>
-							)}
-							onChange={(source) => setTargetSourceId(source?.id ?? "")}
+					<Show when={isTargetSourceAction()}>
+						<MediaDestinationField
 							options={usableSources()}
-							optionTextValue="name"
-							optionValue="id"
-							placeholder={t("bulkActionDialog.select")}
 							value={selectedTargetSource()}
-						>
-							<SelectLabel>
-								{t("bulkActionDialog.copyOrMoveDestinationSource")}
-							</SelectLabel>
-							<SelectTrigger class="w-full" id="target-source-id">
-								<SelectValue<TargetSourceOption>>
-									{(state) =>
-										state.selectedOption()?.name ?? t("bulkActionDialog.select")
-									}
-								</SelectValue>
-							</SelectTrigger>
-							<SelectContent />
-						</Select>
+							onChange={setTargetSourceId}
+							disabled={isSubmitting() || retryCommand() !== null}
+							loading={sourceList.loading()}
+							failed={sourceList.failed()}
+							onRetry={sourceList.retry}
+							id="target-source-id"
+						/>
 					</Show>
 
 					<Show when={action() === "move-folder"}>
@@ -272,35 +281,29 @@ export function BulkActionDialog(props: BulkActionDialogProps) {
 							<AlertDescription>{errorMsg()}</AlertDescription>
 						</Alert>
 					</Show>
-				</div>
-
-				<DialogFooter>
-					<Button
-						disabled={isSubmitting()}
-						onClick={() => props.onOpenChange(false)}
-						variant="outline"
-					>
-						{t("actions.cancel")}
-					</Button>
-					<Button
-						disabled={
-							isSubmitting() ||
-							(retryCommand() !== null && retryCommand()?.items.length === 0) ||
-							(sources.loading &&
-								(action() === "copy-source" || action() === "move-source"))
-						}
-						onClick={() => {
-							void handleConfirm();
-						}}
-						variant={action() === "delete" ? "destructive" : "default"}
-					>
-						{isSubmitting()
-							? t("status.processing")
-							: retryCommand()
-								? t("bulkActionDialog.retryFailedOrUnprocessedItems")
-								: t("bulkActionDialog.confirm")}
-					</Button>
-				</DialogFooter>
+					<DialogFooter>
+						<Button
+							disabled={isSubmitting()}
+							onClick={() => props.onOpenChange(false)}
+							type="button"
+							variant="outline"
+						>
+							{t("actions.cancel")}
+						</Button>
+						<Button
+							aria-busy={isSubmitting()}
+							disabled={!canSubmit()}
+							type="submit"
+							variant={action() === "delete" ? "destructive" : "default"}
+						>
+							{isSubmitting()
+								? t("status.processing")
+								: retryCommand()
+									? t("bulkActionDialog.retryFailedOrUnprocessedItems")
+									: t("bulkActionDialog.confirm")}
+						</Button>
+					</DialogFooter>
+				</form>
 			</DialogContent>
 		</Dialog>
 	);

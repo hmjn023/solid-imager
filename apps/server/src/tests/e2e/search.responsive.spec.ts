@@ -38,6 +38,33 @@ test("search keeps controls usable without horizontal overflow", async ({
 		name: "ファイル名検索",
 		exact: true,
 	});
+	await expect(fileNameInput).toBeInViewport();
+	await expect(
+		filterDialog.getByRole("combobox", {
+			name: "タグ (すべて含む)",
+			exact: true,
+		}),
+	).toBeInViewport();
+	if (testInfo.project.name === "responsive-390") {
+		await expect(
+			filterDialog.getByRole("combobox", { name: "IP", exact: true }),
+		).toBeInViewport();
+		await expect(
+			filterDialog.getByRole("combobox", {
+				name: "キャラクター",
+				exact: true,
+			}),
+		).toBeInViewport();
+		await expect(filterDialog).toHaveCSS("width", "366px");
+	}
+	await expect(
+		filterDialog.getByRole("textbox", {
+			name: "自然言語検索（EmbeddingGemma 2）",
+		}),
+	).toBeHidden();
+	await expect(filterDialog.getByText("ソート", { exact: true })).toHaveCount(
+		0,
+	);
 	await fileNameInput.fill(E2E_PRIMARY_FILE_NAME);
 	await filterDialog.getByRole("button", { name: "適用", exact: true }).click();
 	await expect(filterDialog).toBeHidden();

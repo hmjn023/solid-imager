@@ -205,6 +205,9 @@ const ComboboxTrigger = <T extends ValidComponent = "button">(
 type ComboboxContentProps<T extends ValidComponent = "div"> =
 	ComboboxPrimitive.ComboboxContentProps<T> & { class?: string | undefined };
 
+type PortalledComboboxContentProps<T extends ValidComponent = "div"> =
+	ComboboxContentProps<T> & { portalMount?: HTMLElement };
+
 const preventInputBlur = (event: MouseEvent) => {
 	// Touch selection is committed on click, after the compatibility mousedown.
 	// Keep input focus so blur cannot reset the query and replace the tapped item.
@@ -214,12 +217,24 @@ const preventInputBlur = (event: MouseEvent) => {
 	}
 };
 
-const ComboboxContent = <T extends ValidComponent = "div">(
-	props: PolymorphicProps<T, ComboboxContentProps<T>>,
-) => {
-	const [local, others] = splitProps(props as ComboboxContentProps, ["class"]);
+function ComboboxInlineListbox() {
 	return (
-		<ComboboxPrimitive.Portal>
+		<ComboboxPrimitive.Listbox
+			class="m-0 max-h-60 overflow-y-auto overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground"
+			onMouseDown={preventInputBlur}
+		/>
+	);
+}
+
+const ComboboxContent = <T extends ValidComponent = "div">(
+	props: PolymorphicProps<T, PortalledComboboxContentProps<T>>,
+) => {
+	const [local, others] = splitProps(props as PortalledComboboxContentProps, [
+		"class",
+		"portalMount",
+	]);
+	return (
+		<ComboboxPrimitive.Portal mount={local.portalMount}>
 			<ComboboxPrimitive.Content
 				class={cn(
 					"fade-in-80 relative z-50 max-h-popover-fit min-w-32 max-w-viewport-gutter animate-in overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover text-popover-foreground shadow-md",
@@ -340,6 +355,7 @@ export {
 	ComboboxContent,
 	ComboboxControl,
 	ComboboxHiddenSelect,
+	ComboboxInlineListbox,
 	ComboboxInput,
 	ComboboxItem,
 	ComboboxItemIndicator,

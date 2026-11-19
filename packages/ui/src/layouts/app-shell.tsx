@@ -15,6 +15,7 @@ import { SidebarProvider } from "../sidebar";
 import { SourceDeleteModal } from "../source-delete-modal";
 import { SourceFormModal } from "../source-form-modal";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
+import { AddSourceContext } from "../workspace/add-source-context";
 import { CommandCenter } from "./command-center";
 import { MobileHeader } from "./mobile-header";
 import { Sidebar } from "./sidebar";
@@ -193,7 +194,9 @@ export function AppShell(props: AppShellProps) {
 						id="main-content"
 						tabIndex={-1}
 					>
-						{props.children}
+						<AddSourceContext.Provider value={sourcePage.handleAddSource}>
+							{props.children}
+						</AddSourceContext.Provider>
 					</main>
 				</div>
 

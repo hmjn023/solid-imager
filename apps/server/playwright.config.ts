@@ -145,12 +145,13 @@ export default defineConfig({
 			},
 		},
 		{
-			name: "responsive-375",
+			name: "responsive-390",
 			grepInvert: /@desktop-only/,
 			testMatch: "**/*.responsive.spec.ts",
 			use: {
 				...devices["Pixel 5"],
-				viewport: { width: 375, height: 812 },
+				viewport: { width: 390, height: 844 },
+				deviceScaleFactor: 3,
 				isMobile: true,
 				hasTouch: true,
 			},

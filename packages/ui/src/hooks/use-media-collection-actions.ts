@@ -1,5 +1,6 @@
 import type { Media } from "@solid-imager/core/media";
 import { getErrorMessage } from "@solid-imager/core/utils";
+import { t } from "@solid-imager/i18n";
 import { type Accessor, createMemo, createSignal } from "solid-js";
 import {
 	type MediaCollectionSelectionMode,
@@ -15,7 +16,6 @@ export type MediaCollectionOperations = {
 
 export type MediaCollectionNotifications = {
 	success: (message: string) => void;
-	error: (message: string) => void;
 };
 
 type MediaCollectionActionsOptions = {
@@ -25,6 +25,162 @@ type MediaCollectionActionsOptions = {
 	notify: MediaCollectionNotifications;
 };
 
+type MediaActionTarget = Pick<Media, "id" | "mediaSourceId"> &
+	Partial<Pick<Media, "fileName">>;
+
+function isCopyRejected(error: unknown): boolean {
+	return (
+		error instanceof Error &&
+		"code" in error &&
+		(error.code === "BAD_REQUEST" ||
+			error.code === "UNAUTHORIZED" ||
+			error.code === "FORBIDDEN" ||
+			error.code === "NOT_FOUND")
+	);
+}
+
+export function useMediaItemActions(options: {
+	findMedia: (id: string) => MediaActionTarget | undefined;
+	operations: MediaCollectionOperations;
+	notify: MediaCollectionNotifications;
+	onDeleted: (media: MediaActionTarget) => void;
+	onTransferred: (media: MediaActionTarget, targetSourceId: string) => void;
+}) {
+	const [deleteTarget, setDeleteTarget] = createSignal<MediaActionTarget>();
+	const [isDeleteSubmitting, setIsDeleteSubmitting] = createSignal(false);
+	const [deleteError, setDeleteError] = createSignal<string>();
+	const [moveCopyTarget, setMoveCopyTarget] = createSignal<MediaActionTarget>();
+	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
+	const [isMoveCopySubmitting, setIsMoveCopySubmitting] = createSignal(false);
+	const [moveCopyError, setMoveCopyError] = createSignal<string>();
+	const unconfirmedCopies = new Map<string, Set<string>>();
+
+	const openDelete = (id: string) => {
+		if (isDeleteSubmitting()) return;
+		const target = options.findMedia(id);
+		if (!target) return;
+		setDeleteError(undefined);
+		setDeleteTarget(target);
+	};
+	const changeDeleteOpen = (open: boolean) => {
+		if (open || isDeleteSubmitting()) return;
+		setDeleteTarget(undefined);
+		setDeleteError(undefined);
+	};
+	const confirmDelete = async () => {
+		const media = deleteTarget();
+		if (!media || isDeleteSubmitting()) return;
+		setIsDeleteSubmitting(true);
+		setDeleteError(undefined);
+		try {
+			await options.operations.deleteMedia(media.mediaSourceId, media.id);
+		} catch (error) {
+			setDeleteError(
+				t("mediaActions.failedToDeleteMediaValue", {
+					value0: getErrorMessage(error),
+				}),
+			);
+			return;
+		} finally {
+			setIsDeleteSubmitting(false);
+		}
+		setDeleteTarget(undefined);
+		options.notify.success(t("useSourceMediaPage.mediaDeletedSuccessfully"));
+		options.onDeleted(media);
+	};
+	const openCopyMove = (id: string, mode: "copy" | "move") => {
+		if (isMoveCopySubmitting()) return;
+		const target = options.findMedia(id);
+		if (!target) return;
+		setMoveCopyMode(mode);
+		setMoveCopyError(undefined);
+		setMoveCopyTarget(target);
+	};
+	const changeCopyMoveOpen = (open: boolean) => {
+		if (open || isMoveCopySubmitting()) return;
+		setMoveCopyTarget(undefined);
+		setMoveCopyError(undefined);
+	};
+	const confirmCopyMove = async (targetSourceId: string) => {
+		const media = moveCopyTarget();
+		if (
+			!media ||
+			isMoveCopySubmitting() ||
+			!targetSourceId ||
+			targetSourceId === media.mediaSourceId
+		)
+			return;
+		const mode = moveCopyMode();
+		if (
+			mode === "copy" &&
+			unconfirmedCopies.get(media.id)?.has(targetSourceId)
+		) {
+			setMoveCopyError(t("useSourceMediaPage.copyOutcomeUnknown"));
+			return;
+		}
+		setIsMoveCopySubmitting(true);
+		setMoveCopyError(undefined);
+		try {
+			const action =
+				mode === "copy"
+					? options.operations.copyMedia
+					: options.operations.moveMedia;
+			await action(media.id, targetSourceId);
+		} catch (error) {
+			if (mode === "copy" && !isCopyRejected(error)) {
+				const destinations =
+					unconfirmedCopies.get(media.id) ?? new Set<string>();
+				destinations.add(targetSourceId);
+				unconfirmedCopies.set(media.id, destinations);
+				setMoveCopyError(t("useSourceMediaPage.copyOutcomeUnknown"));
+				return;
+			}
+			setMoveCopyError(
+				t(
+					mode === "copy"
+						? "useSourceMediaPage.copyFailed"
+						: "useSourceMediaPage.moveFailed",
+					{
+						error: getErrorMessage(error),
+					},
+				),
+			);
+			return;
+		} finally {
+			setIsMoveCopySubmitting(false);
+		}
+		setMoveCopyTarget(undefined);
+		options.notify.success(
+			t("useSourceMediaPage.mediaValueSuccessfully", {
+				value0: t(
+					mode === "copy"
+						? "useSourceMediaPage.copied"
+						: "useSourceMediaPage.moved",
+				),
+			}),
+		);
+		options.onTransferred(media, targetSourceId);
+	};
+
+	return {
+		deleteTarget,
+		isDeleteDialogOpen: () => deleteTarget() !== undefined,
+		isDeleteSubmitting,
+		deleteError,
+		openDelete,
+		changeDeleteOpen,
+		confirmDelete,
+		moveCopyTarget,
+		moveCopyMode,
+		isMoveCopySubmitting,
+		moveCopyError,
+		isMoveCopyDialogOpen: () => moveCopyTarget() !== undefined,
+		openCopyMove,
+		changeCopyMoveOpen,
+		confirmCopyMove,
+	};
+}
+
 /** Selection and mutation workflows shared by Web and Tauri collections. */
 export function useMediaCollectionActions(
 	options: MediaCollectionActionsOptions,
@@ -33,12 +189,6 @@ export function useMediaCollectionActions(
 	const selection = useMediaCollectionSelection(visibleIds);
 	const [isBulkSelectMode, setIsBulkSelectMode] = createSignal(false);
 	const [isBulkActionOpen, setIsBulkActionOpen] = createSignal(false);
-	const [deleteTarget, setDeleteTarget] = createSignal<Media | null>(null);
-	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
-	const [isDeleteSubmitting, setIsDeleteSubmitting] = createSignal(false);
-	const [moveCopyTarget, setMoveCopyTarget] = createSignal<Media | null>(null);
-	const [moveCopyMode, setMoveCopyMode] = createSignal<"copy" | "move">("copy");
-	const [isMoveCopySubmitting, setIsMoveCopySubmitting] = createSignal(false);
 	const selectedMediaItems = createMemo(() =>
 		options
 			.media()
@@ -65,66 +215,16 @@ export function useMediaCollectionActions(
 		if (selection.isSelected(id)) selection.select(id, "toggle");
 		if (selection.selectedIds().size === 0) setIsBulkSelectMode(false);
 	};
-	const openDelete = (id: string) => {
-		if (isDeleteSubmitting()) return;
-		const media = options.media().find((item) => item.id === id);
-		if (!media) return;
-		setDeleteTarget(media);
-		setIsDeleteDialogOpen(true);
-	};
-	const changeDeleteOpen = (open: boolean) => {
-		setIsDeleteDialogOpen(open);
-		if (!open && !isDeleteSubmitting()) setDeleteTarget(null);
-	};
-	const confirmDelete = async () => {
-		const media = deleteTarget();
-		if (!media || isDeleteSubmitting()) return;
-		setIsDeleteSubmitting(true);
-		try {
-			await options.operations.deleteMedia(media.mediaSourceId, media.id);
+	const itemActions = useMediaItemActions({
+		findMedia: (id) => options.media().find((item) => item.id === id),
+		operations: options.operations,
+		notify: options.notify,
+		onDeleted: (media) => {
 			forgetSelectedMedia(media.id);
-			options.notify.success("Media deleted");
 			options.refresh();
-		} catch (error) {
-			options.notify.error(`Failed to delete media: ${getErrorMessage(error)}`);
-		} finally {
-			setIsDeleteSubmitting(false);
-			setIsDeleteDialogOpen(false);
-			setDeleteTarget(null);
-		}
-	};
-	const openCopyMove = (id: string, mode: "copy" | "move") => {
-		if (isMoveCopySubmitting()) return;
-		const media = options.media().find((item) => item.id === id);
-		if (!media) return;
-		setMoveCopyTarget(media);
-		setMoveCopyMode(mode);
-	};
-	const changeCopyMoveOpen = (open: boolean) => {
-		if (!open) setMoveCopyTarget(null);
-	};
-	const confirmCopyMove = async (targetSourceId: string) => {
-		const media = moveCopyTarget();
-		if (!media || isMoveCopySubmitting()) return;
-		const mode = moveCopyMode();
-		setIsMoveCopySubmitting(true);
-		try {
-			const action =
-				mode === "copy"
-					? options.operations.copyMedia
-					: options.operations.moveMedia;
-			await action(media.id, targetSourceId);
-			options.notify.success(`Media ${mode === "copy" ? "copied" : "moved"}`);
-			options.refresh();
-		} catch (error) {
-			options.notify.error(
-				`Failed to ${mode} media: ${getErrorMessage(error)}`,
-			);
-		} finally {
-			setIsMoveCopySubmitting(false);
-			setMoveCopyTarget(null);
-		}
-	};
+		},
+		onTransferred: options.refresh,
+	});
 	const onBulkSuccess = (partial: boolean, succeededMediaIds: string[]) => {
 		for (const id of succeededMediaIds) forgetSelectedMedia(id);
 		if (!partial && selection.selectedIds().size === 0)
@@ -135,6 +235,7 @@ export function useMediaCollectionActions(
 	return {
 		selection,
 		isBulkSelectMode,
+		enterBulkSelection: () => setIsBulkSelectMode(true),
 		selectedMediaItems,
 		selectMedia,
 		selectAll,
@@ -142,18 +243,7 @@ export function useMediaCollectionActions(
 		isBulkActionOpen,
 		changeBulkActionOpen: (open: boolean) => setIsBulkActionOpen(open),
 		onBulkSuccess,
-		deleteTarget,
-		isDeleteDialogOpen,
-		isDeleteSubmitting,
-		openDelete,
-		changeDeleteOpen,
-		confirmDelete,
-		moveCopyTarget,
-		moveCopyMode,
-		isMoveCopyDialogOpen: () => moveCopyTarget() !== null,
-		openCopyMove,
-		changeCopyMoveOpen,
-		confirmCopyMove,
+		...itemActions,
 	};
 }
 

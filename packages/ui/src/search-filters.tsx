@@ -5,7 +5,7 @@ import type { Ip } from "@solid-imager/core/ips";
 import type { Project } from "@solid-imager/core/projects";
 import type { SearchState } from "@solid-imager/core/search";
 import type { TagResponse } from "@solid-imager/core/tags";
-import { createMemo, createSignal, For } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 import type { SetStoreFunction } from "solid-js/store";
 import { Badge } from "./badge";
 import { Button } from "./button";
@@ -63,31 +63,34 @@ function FilterSection<T>(props: {
 	return (
 		<div class="space-y-2">
 			<Label>{props.label}</Label>
-			<div class="mb-2 flex flex-wrap gap-2">
-				<For each={props.selectedItems}>
-					{(id) => {
-						const item = props.items?.find(
-							(i) =>
-								(props.getSelectedItemValue?.(i) ?? props.getItemKey(i)) === id,
-						) as T;
-						return (
-							<Badge
-								class="cursor-pointer"
-								variant={props.badgeVariant || "default"}
-							>
-								{item ? props.getItemLabel(item) : id}
-								<button
-									class="ml-1 hover:text-destructive"
-									onClick={() => props.onRemove(id)}
-									type="button"
+			<Show when={props.selectedItems.length > 0}>
+				<div class="flex flex-wrap gap-2">
+					<For each={props.selectedItems}>
+						{(id) => {
+							const item = props.items?.find(
+								(i) =>
+									(props.getSelectedItemValue?.(i) ?? props.getItemKey(i)) ===
+									id,
+							) as T;
+							return (
+								<Badge
+									class="cursor-pointer"
+									variant={props.badgeVariant || "default"}
 								>
-									×
-								</button>
-							</Badge>
-						);
-					}}
-				</For>
-			</div>
+									{item ? props.getItemLabel(item) : id}
+									<button
+										class="ml-1 hover:text-destructive"
+										onClick={() => props.onRemove(id)}
+										type="button"
+									>
+										×
+									</button>
+								</Badge>
+							);
+						}}
+					</For>
+				</div>
+			</Show>
 			<Combobox<T>
 				itemComponent={(itemProps) => (
 					<ComboboxItem item={itemProps.item}>
@@ -170,6 +173,18 @@ export function SearchFilters(props: SearchFiltersProps) {
 			</TextField>
 
 			<FilterSection
+				badgeVariant="default"
+				getItemKey={(tag) => tag.name}
+				getItemLabel={(tag) => tag.name}
+				items={props.tags}
+				label={t("searchFilters.tagsMatchAll")}
+				onRemove={(id) => removeTag(id)}
+				onSelect={(tag) => addTag(tag.name)}
+				placeholder={t("searchFilters.searchTags")}
+				selectedItems={props.state.selectedTags}
+			/>
+
+			<FilterSection
 				badgeVariant="secondary"
 				getItemDescription={(ip) => ip.description}
 				getItemKey={(ip) => ip.name}
@@ -217,18 +232,6 @@ export function SearchFilters(props: SearchFiltersProps) {
 				}}
 				placeholder={t("searchFilters.searchCharacters")}
 				selectedItems={props.state.selectedCharacters}
-			/>
-
-			<FilterSection
-				badgeVariant="default"
-				getItemKey={(tag) => tag.name}
-				getItemLabel={(tag) => tag.name}
-				items={props.tags}
-				label={t("searchFilters.tagsMatchAll")}
-				onRemove={(id) => removeTag(id)}
-				onSelect={(tag) => addTag(tag.name)}
-				placeholder={t("searchFilters.searchTags")}
-				selectedItems={props.state.selectedTags}
 			/>
 
 			<FilterSection

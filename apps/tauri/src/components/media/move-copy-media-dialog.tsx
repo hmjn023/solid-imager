@@ -1,43 +1,13 @@
-import { t } from "@solid-imager/i18n";
-import type { SafeMediaSource } from "@solid-imager/core/sources";
-import { MoveCopyMediaDialog as SharedMoveCopyMediaDialog } from "@solid-imager/ui/move-copy-media-dialog";
-import { createResource } from "solid-js";
+import {
+	MoveCopyMediaDialog as SharedMoveCopyMediaDialog,
+	type MoveCopyMediaDialogProps,
+} from "@solid-imager/ui/move-copy-media-dialog";
 import { fetchMediaSources } from "~/infrastructure/api-clients/sources-api";
 
-type MoveCopyMediaDialogProps = {
-	open: boolean;
-	onOpenChange: (open: boolean) => void;
-	mode: "copy" | "move";
-	onConfirm: (targetSourceId: string) => void;
-	currentSourceId: string;
-};
-
-export function MoveCopyMediaDialog(props: MoveCopyMediaDialogProps) {
-	const [sources] = createResource<SafeMediaSource[], boolean>(
-		() => props.open,
-		async (isOpen) => {
-			if (!isOpen) {
-				return [];
-			}
-			return fetchMediaSources();
-		},
-	);
-
-	const sourceOptions = () =>
-		(sources() || []).flatMap((s) =>
-			s.id ? [{ id: s.id, name: s.name }] : [],
-		);
-
+export function MoveCopyMediaDialog(
+	props: Omit<MoveCopyMediaDialogProps, "listSources">,
+) {
 	return (
-		<SharedMoveCopyMediaDialog
-			open={props.open}
-			onOpenChange={props.onOpenChange}
-			mode={props.mode}
-			currentSourceId={props.currentSourceId}
-			sources={sourceOptions()}
-			isLoading={sources.loading}
-			error={sources.error ? t("feedback.sourcesLoadFailed") : null}
-			onConfirm={props.onConfirm}
-		/>
+		<SharedMoveCopyMediaDialog {...props} listSources={fetchMediaSources} />
 	);
 }

@@ -1,3 +1,4 @@
+import { selectManagerCategory } from "./support/manager-navigation";
 import { randomUUID } from "node:crypto";
 import type { Page } from "@playwright/test";
 import type { JobDto } from "@solid-imager/core/jobs";
@@ -102,10 +103,7 @@ for (const kind of ["embedding", "ccip", "tagging", "thumbnails"] as const) {
 				: kind === "thumbnails"
 					? "サムネイル"
 					: "ベクトル抽出";
-		await page
-			.getByRole("button", { name: new RegExp(`^${category}`) })
-			.filter({ visible: true })
-			.click();
+		await selectManagerCategory(page, category);
 		if (kind === "ccip") {
 			await page.getByRole("button", { name: "ベクトル抽出モデル" }).click();
 			await page.getByRole("option", { name: "CCIP", exact: true }).click();

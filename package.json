@@ -18,6 +18,7 @@
     "design:lint": "designmd lint DESIGN.md",
     "format": "oxfmt --write apps/*/src packages/*/src",
     "test": "node tools/ui-text.test.mjs && bun run --cwd packages/i18n test && node tools/workspace-imports.test.mjs && bun run --cwd apps/server test:x-activity && vitest run",
+    "test:browser": "bun run --cwd packages/ui test:browser",
     "test:e2e": "bun run --cwd apps/server test:e2e",
     "typecheck": "bun --filter '*' typecheck && tsc -p tools/tsconfig.json",
     "prepare": "husky",

@@ -298,6 +298,7 @@ test.describe("loading and recovery", () => {
 	test("shows the shared empty state for an unmatched search", async ({
 		page,
 	}) => {
+		await page.setViewportSize({ width: 1600, height: 900 });
 		await page.goto("/search");
 		const searchInput = page.getByRole("combobox", {
 			name: "メディアを検索",
@@ -310,6 +311,61 @@ test.describe("loading and recovery", () => {
 		await expect(emptyState).toBeVisible();
 		await expect(emptyState).toContainText("検索結果が見つかりませんでした");
 		await expect(emptyState.locator('[role="alert"]')).toHaveCount(0);
+		await expect(
+			page.getByRole("complementary", { name: "選択中のメディア" }),
+		).toHaveCount(0);
+		await emptyState.getByRole("button", { name: "検索条件をクリア" }).click();
+		await expect(
+			page.getByRole("link", { name: new RegExp(E2E_PRIMARY_FILE_NAME) }),
+		).toBeVisible();
+	});
+
+	test("opens the source form from an unconfigured library", async ({
+		page,
+	}) => {
+		await page.route(/\/api\/rpc\/sources\/list(?:\?|$)/, (route) =>
+			route.fulfill({ json: { json: [] } }),
+		);
+		await page.route(searchEndpoint, (route) =>
+			route.fulfill({ json: { json: { media: [], total: 0 } } }),
+		);
+		await page.goto("/search");
+		const emptyState = page.locator('#main-content [data-state-ui="empty"]');
+		await expect(
+			emptyState.getByRole("heading", { name: "ソースはまだありません" }),
+		).toBeVisible();
+		await emptyState.getByRole("button", { name: "ソースを追加" }).click();
+		await expect(
+			page.getByRole("dialog").getByRole("heading", { name: "ソースを追加" }),
+		).toBeVisible();
+	});
+
+	test("offers the file chooser when a source is empty after reload", async ({
+		page,
+	}) => {
+		await page.setViewportSize({ width: 1600, height: 900 });
+		await page.route(searchEndpoint, (route) =>
+			route.fulfill({ json: { json: { media: [], total: 0 } } }),
+		);
+		await page.goto(sourcePath());
+		const emptyState = page.locator('#main-content [data-state-ui="empty"]');
+		const addMedia = emptyState.getByRole("button", {
+			name: "追加",
+			exact: true,
+		});
+		await expect(addMedia).toBeVisible();
+		await page.reload();
+		await expect(
+			emptyState.getByRole("heading", {
+				name: "このソースにはまだメディアがありません",
+			}),
+		).toBeVisible();
+		await expect(
+			page.getByRole("complementary", { name: "選択中のメディア" }),
+		).toHaveCount(0);
+		const fileChooser = page.waitForEvent("filechooser");
+		await addMedia.click();
+		await fileChooser;
 	});
 
 	test("preserves existing content offline and completes the queued search after reconnecting", async ({

@@ -320,7 +320,7 @@ function RelatedMediaContent(props: RelatedMediaProps) {
 										</Show>
 										<Show
 											fallback={
-												<p class="py-6 text-muted-foreground text-sm">
+												<p class="py-2 text-muted-foreground text-sm lg:py-6">
 													{category.empty}
 												</p>
 											}

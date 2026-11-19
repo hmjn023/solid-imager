@@ -1,7 +1,13 @@
 import { t } from "@solid-imager/i18n";
 import type { Media } from "@solid-imager/core/media";
-import { createEffect, createSignal, onMount, Show } from "solid-js";
-import { FilterErrorBanner, QueryStatus } from "../async-state";
+import {
+	createEffect,
+	createSignal,
+	onMount,
+	Show,
+	useContext,
+} from "solid-js";
+import { EmptyState, FilterErrorBanner, QueryStatus } from "../async-state";
 import { Button } from "../button";
 import type { SearchWorkspaceController } from "../hooks/use-search-workspace";
 import type { MediaCollectionSelectionMode } from "../hooks/use-media-collection-selection";
@@ -10,9 +16,18 @@ import {
 	SourceMediaGrid,
 	type SourceMediaViewMode,
 } from "../source-media-grid";
+import {
+	clearPresetFilters,
+	hasSearchConditions,
+} from "../stores/search-store";
 import { readUiStorageValue, UI_STORAGE_KEYS } from "../ui-storage";
-import { CollectionInspector } from "../workspace/collection-inspector";
-import { reconcileCollectionPreviewId } from "../workspace/collection-navigation";
+import { AddSourceContext } from "../workspace/add-source-context";
+import { CollectionBulkActions } from "../workspace/collection-bulk-actions";
+import {
+	CollectionInspector,
+	createCollectionInspector,
+} from "../workspace/collection-inspector";
+import { Database, Library, Plus } from "../workspace/icons";
 import { SearchToolbar } from "../workspace/search-toolbar";
 import type { SearchWorkspaceProps } from "./search-screen.types";
 import {
@@ -52,6 +67,7 @@ export function SearchWorkspace(props: SearchWorkspaceComponentProps) {
 				selectedCount={() => actions.selection.selectedIds().size}
 				onBulkAction={() => actions.changeBulkActionOpen(true)}
 				onClearSelection={actions.clearSelection}
+				onEnterBulkSelectMode={actions.enterBulkSelection}
 				onCopyMove={actions.openCopyMove}
 				onDelete={actions.openDelete}
 				onSelectAll={actions.selectAll}
@@ -76,6 +92,7 @@ export type SearchScreenProps = SearchWorkspaceProps & {
 	onClearSelection?: () => void;
 	onCopyMove?: (mediaId: string, mode: "copy" | "move") => void;
 	onDelete?: (mediaId: string) => void;
+	onEnterBulkSelectMode?: () => void;
 	onOpenMediaDetail?: (media: Media, context?: Media[]) => void;
 	onPrepareMediaDetail?: (media: Media, context?: Media[]) => void;
 	onSelectAll?: () => void;
@@ -87,11 +104,15 @@ export type SearchScreenProps = SearchWorkspaceProps & {
 };
 
 export function SearchScreen(props: SearchScreenProps) {
+	const addSource = useContext(AddSourceContext);
 	const [isMounted, setIsMounted] = createSignal(false);
-	const [previewMediaId, setPreviewMediaId] = createSignal<string | null>(null);
-	const [isInspectorVisible, setIsInspectorVisible] = createSignal(true);
 	const [viewMode, setViewMode] = createSignal<SourceMediaViewMode>("grid");
 	const page = () => props.page;
+	const inspector = createCollectionInspector({
+		enabled: () => Boolean(props.renderMediaPreview),
+		media: () => page().searchResults(),
+		phase: () => page().contentState().phase,
+	});
 	const filterStates = () => [
 		page().filterStates.tags(),
 		page().filterStates.sources(),
@@ -112,19 +133,24 @@ export function SearchScreen(props: SearchScreenProps) {
 		props.sources?.find((source) => source.id === props.selectedSource)?.name ??
 		t("searchScreen.allMedia");
 	const canRenderContent = () => !props.ssrGuard || isMounted();
-	const previewMedia = () =>
-		page()
-			.searchResults()
-			.find((media) => media.id === previewMediaId());
+	const noSources = () => {
+		const state = page().filterStates.sources();
+		return (
+			state.phase === "empty" && state.fetchState === "idle" && !state.error
+		);
+	};
+	const isUnfiltered = () =>
+		page().resultsCurrent() && !props.selectedSource && !hasSearchConditions();
+	const clearSearch = () => {
+		clearPresetFilters();
+		page().handleSearch();
+	};
 	const previewSourceName = () =>
-		props.sources?.find((source) => source.id === previewMedia()?.mediaSourceId)
-			?.name;
+		props.sources?.find(
+			(source) => source.id === inspector.media()?.mediaSourceId,
+		)?.name;
 	const openMediaDetail = (media: Media) =>
 		props.onOpenMediaDetail?.(media, page().searchResults());
-	const selectPreviewMedia = (media: Media) => {
-		setPreviewMediaId(media.id);
-		setIsInspectorVisible(true);
-	};
 	const updateViewMode = (mode: SourceMediaViewMode) => {
 		setViewMode(mode);
 		try {
@@ -139,13 +165,6 @@ export function SearchScreen(props: SearchScreenProps) {
 				.searchResults()
 				.map((media) => media.id),
 		);
-	});
-
-	createEffect(() => {
-		const nextId = props.renderMediaPreview
-			? reconcileCollectionPreviewId(page().searchResults(), previewMediaId())
-			: null;
-		if (nextId !== previewMediaId()) setPreviewMediaId(nextId);
 	});
 
 	onMount(() => {
@@ -166,6 +185,16 @@ export function SearchScreen(props: SearchScreenProps) {
 	return (
 		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
 			<SearchToolbar
+				bulkSelection={
+					props.onEnterBulkSelectMode &&
+					(page().searchResults().length > 0 || props.isBulkSelectMode?.())
+						? {
+								active: props.isBulkSelectMode?.() ?? false,
+								onEnter: props.onEnterBulkSelectMode,
+								onClear: props.onClearSelection,
+							}
+						: undefined
+				}
 				context="global"
 				filterData={props.filterData}
 				itemCount={page().totalCount()}
@@ -208,11 +237,10 @@ export function SearchScreen(props: SearchScreenProps) {
 				data-media-scroll="search"
 			>
 				<div
-					class={
-						props.renderMediaPreview && isInspectorVisible()
-							? "2xl:grid 2xl:grid-cols-workspace-sidebar 2xl:items-start 2xl:gap-4"
-							: "2xl:grid 2xl:grid-cols-1 2xl:items-start"
-					}
+					classList={{
+						"grid grid-cols-workspace-sidebar items-start gap-4":
+							inspector.isVisible(),
+					}}
 				>
 					<div class="min-w-0">
 						<Show
@@ -225,6 +253,33 @@ export function SearchScreen(props: SearchScreenProps) {
 						>
 							<SourceMediaGrid
 								detailBasePath={props.detailBasePath}
+								emptyState={
+									isUnfiltered() ? (
+										<Show
+											when={noSources()}
+											fallback={
+												<EmptyState
+													description={t("searchScreen.openSourceToAddMedia")}
+													icon={<Library size={20} />}
+													title={t("searchScreen.libraryIsEmpty")}
+												/>
+											}
+										>
+											<EmptyState
+												description={t("searchScreen.addSourceToLibrary")}
+												icon={<Database size={20} />}
+												title={t("sourceList.noSourcesYet")}
+											>
+												<Show when={addSource}>
+													<Button onClick={addSource}>
+														<Plus size={16} />
+														{t("actions.addSource")}
+													</Button>
+												</Show>
+											</EmptyState>
+										</Show>
+									) : undefined
+								}
 								enableVirtualization={props.enableVirtualization}
 								errorTitle={t("searchScreen.couldNotLoadSearchResults")}
 								hasNextPage={page().searchResultQuery.hasNextPage}
@@ -239,6 +294,11 @@ export function SearchScreen(props: SearchScreenProps) {
 								mediaSourceId={() => undefined}
 								onBulkAction={props.onBulkAction}
 								onClearSelection={props.onClearSelection}
+								onClearSearch={
+									page().resultsCurrent() && hasSearchConditions()
+										? clearSearch
+										: undefined
+								}
 								onCopyMove={props.onCopyMove}
 								onDelete={props.onDelete}
 								onFindSimilar={props.onFindSimilar}
@@ -257,12 +317,8 @@ export function SearchScreen(props: SearchScreenProps) {
 								onSelectMedia={props.onSelectMedia}
 								onToggleSelect={props.onToggleSelect}
 								selectedCount={props.selectedCount}
-								onPreviewSelect={
-									props.renderMediaPreview ? selectPreviewMedia : undefined
-								}
-								previewSelectedMediaId={
-									props.renderMediaPreview ? previewMediaId : undefined
-								}
+								onPreviewSelect={inspector.previewSelection()}
+								previewSelectedMediaId={inspector.previewId}
 								renderItem={(media, options) =>
 									props.renderMediaItem(media, options)
 								}
@@ -278,10 +334,10 @@ export function SearchScreen(props: SearchScreenProps) {
 					</div>
 					<Show when={props.renderMediaPreview}>
 						{(renderPreview) => (
-							<Show when={isInspectorVisible()}>
+							<Show when={inspector.isVisible()}>
 								<CollectionInspector
-									media={previewMedia()}
-									onClose={() => setIsInspectorVisible(false)}
+									media={inspector.media()}
+									onClose={inspector.close}
 									onOpenDetail={
 										props.onOpenMediaDetail ? openMediaDetail : undefined
 									}
@@ -294,43 +350,14 @@ export function SearchScreen(props: SearchScreenProps) {
 				</div>
 			</div>
 			<Show when={props.isBulkSelectMode?.()}>
-				<div
-					class="fixed bottom-safe left-1/2 z-40 flex w-dialog-inset max-w-md -translate-x-1/2 flex-wrap items-center justify-center gap-2 rounded-md border border-border bg-card px-3 py-3 shadow-lg sm:bottom-safe-sm sm:w-auto sm:max-w-none sm:flex-nowrap sm:gap-3 sm:px-4"
-					data-testid="search-bulk-actions-bar"
-				>
-					<span class="w-full text-center font-medium text-sm sm:w-auto">
-						{t("searchScreen.valueSelected", {
-							value0: String(props.selectedCount?.() ?? 0),
-						})}
-					</span>
-					<Button
-						class="flex-1 sm:flex-none"
-						disabled={
-							page().searchResults().length === 0 ||
-							(props.selectedCount?.() ?? 0) === page().searchResults().length
-						}
-						onClick={props.onSelectAll}
-						variant="outline"
-					>
-						{t("searchScreen.selectAllLoadedItems")}
-					</Button>
-					<Show when={props.onBulkAction}>
-						<Button
-							class="flex-1 sm:flex-none"
-							disabled={(props.selectedCount?.() ?? 0) === 0}
-							onClick={props.onBulkAction}
-						>
-							{t("searchScreen.runBulkAction")}
-						</Button>
-					</Show>
-					<Button
-						class="flex-1 sm:flex-none"
-						onClick={props.onClearSelection}
-						variant="outline"
-					>
-						{t("actions.clearSelection")}
-					</Button>
-				</div>
+				<CollectionBulkActions
+					loadedCount={page().searchResults().length}
+					selectedCount={props.selectedCount?.() ?? 0}
+					onSelectAll={props.onSelectAll}
+					onBulkAction={props.onBulkAction}
+					onClearSelection={props.onClearSelection}
+					testId="search-bulk-actions-bar"
+				/>
 			</Show>
 		</section>
 	);

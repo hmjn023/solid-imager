@@ -1,10 +1,10 @@
-import { sourceTypeLabel } from "./display-labels";
 import { t } from "@solid-imager/i18n";
 import { getErrorMessage } from "@solid-imager/core/utils";
 import {
 	createEffect,
 	createResource,
 	createSignal,
+	createUniqueId,
 	For,
 	Show,
 	untrack,
@@ -28,12 +28,17 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
+	DialogTrigger,
 } from "./dialog";
+import { sourceTypeLabel } from "./display-labels";
 import {
 	getPendingImportPrimaryAuthor,
 	getPreferredImportSourceId,
 } from "./import-inbox-helpers";
-import type { ImportReviewModalProps } from "./import-review-modal.types";
+import type {
+	ImportReviewModalProps,
+	PendingImportJob,
+} from "./import-review-modal.types";
 import {
 	getRememberedImportSourceId,
 	isImportSourceRemembered,
@@ -48,6 +53,7 @@ import {
 	SelectValue,
 } from "./select";
 import { toast } from "./toast";
+import { Maximize2 } from "./workspace/icons";
 
 type ImportSourceOption = {
 	id: string;
@@ -73,6 +79,119 @@ function getPreviewUrl(url?: string): string {
 	}
 
 	return url;
+}
+
+function ImportPreviewImage(props: { src?: string; expanded?: boolean }) {
+	const [failed, setFailed] = createSignal(false);
+	return (
+		<div
+			class="overflow-hidden rounded-md bg-muted"
+			classList={{ "aspect-landscape": !props.expanded }}
+		>
+			<Show
+				when={!failed() && props.src}
+				fallback={
+					<div class="flex h-full min-h-thumbnail-preview items-center justify-center px-2 text-muted-foreground text-xs">
+						{t("importReviewModal.noPreview")}
+					</div>
+				}
+			>
+				{(src) => (
+					<img
+						alt={props.expanded ? t("importReviewModal.importPreview") : ""}
+						class="block w-full"
+						classList={{
+							"max-h-dialog-screen-compact object-contain": props.expanded,
+							"h-full object-cover": !props.expanded,
+						}}
+						loading={props.expanded ? "eager" : "lazy"}
+						onError={() => setFailed(true)}
+						src={src()}
+					/>
+				)}
+			</Show>
+		</div>
+	);
+}
+
+function ImportReviewCard(props: {
+	item: PendingImportJob["item"];
+	checked: boolean;
+	disabled: boolean;
+	onToggle: () => void;
+}) {
+	const titleId = createUniqueId();
+	const title = () =>
+		props.item.description ||
+		props.item.fileName ||
+		props.item.targetUrl ||
+		t("importReviewModal.untitledImport");
+	const author = () => getPendingImportPrimaryAuthor(props.item);
+	return (
+		<div
+			class="flex min-w-0 flex-col rounded-lg border border-border bg-card transition-colors"
+			classList={{ "border-primary bg-primary/5": props.checked }}
+		>
+			<Checkbox
+				checked={props.checked}
+				class="relative min-w-0 flex-1 rounded-t-lg focus-within:ring-2 focus-within:ring-ring hover:bg-accent/50"
+				disabled={props.disabled}
+				onChange={props.onToggle}
+			>
+				<CheckboxControl class="absolute top-3 right-3 z-10 size-5 border-input bg-background" />
+				<CheckboxLabel class="block h-full cursor-pointer p-2">
+					<ImportPreviewImage src={getPreviewUrl(props.item.targetUrl)} />
+					<p
+						class="mt-2 line-clamp-3 wrap-anywhere font-medium text-sm"
+						id={titleId}
+					>
+						{title()}
+					</p>
+					<p class="truncate text-muted-foreground text-xs">{author()}</p>
+				</CheckboxLabel>
+			</Checkbox>
+			<Dialog>
+				<DialogTrigger
+					aria-describedby={titleId}
+					as={Button}
+					class="min-h-11 w-full rounded-t-none border-border border-t"
+					disabled={props.disabled}
+					size="sm"
+					variant="ghost"
+				>
+					<Maximize2 aria-hidden="true" size={14} />
+					{t("importReviewModal.preview")}
+				</DialogTrigger>
+				<DialogContent class="workspace-theme block max-w-dialog-xl gap-0 p-0 [&>button]:top-1 [&>button]:right-1 [&>button]:z-20 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center">
+					<DialogHeader class="flex min-h-14 items-center border-border border-b px-4 py-3 pr-14 text-left">
+						<DialogTitle>{t("importReviewModal.importPreview")}</DialogTitle>
+					</DialogHeader>
+					<div class="space-y-3 px-3 py-4 sm:px-5">
+						<div class="space-y-1">
+							<p class="wrap-anywhere whitespace-pre-wrap font-medium text-sm">
+								{title()}
+							</p>
+							<Show
+								when={props.item.fileName && props.item.fileName !== title()}
+							>
+								<p class="wrap-anywhere text-muted-foreground text-sm">
+									{props.item.fileName}
+								</p>
+							</Show>
+							<Show when={props.item.authors?.[0]?.name}>
+								{(name) => (
+									<p class="wrap-anywhere text-muted-foreground text-sm">
+										{name()}
+									</p>
+								)}
+							</Show>
+						</div>
+						<ImportPreviewImage expanded src={props.item.targetUrl} />
+					</div>
+				</DialogContent>
+			</Dialog>
+		</div>
+	);
 }
 
 export function ImportReviewModal(props: ImportReviewModalProps) {
@@ -245,8 +364,8 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 				}}
 				open={props.isOpen}
 			>
-				<DialogContent class="workspace-theme flex max-h-dialog-fit max-w-5xl flex-col gap-0 overflow-hidden p-0">
-					<DialogHeader class="border-b px-5 py-4 pr-12">
+				<DialogContent class="workspace-theme flex max-h-dialog-fit max-w-5xl flex-col gap-0 overflow-hidden p-0 [&>button]:top-2 [&>button]:right-2 [&>button]:z-20 [&>button]:grid [&>button]:size-11 [&>button]:place-items-center">
+					<DialogHeader class="border-b px-5 py-4 pr-14 text-left">
 						<DialogTitle>{t("navigation.importInbox")}</DialogTitle>
 						<DialogDescription>
 							{t(
@@ -339,7 +458,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 							</div>
 						</div>
 
-						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5">
+						<div class="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3 sm:p-5">
 							<Show when={pendingJobs.loading}>
 								<div class="flex min-h-48 items-center justify-center text-muted-foreground text-sm">
 									{t("importReviewModal.loadingImportInbox")}
@@ -352,46 +471,15 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 									(pendingJobs()?.length ?? 0) > 0
 								}
 							>
-								<div class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+								<div class="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4">
 									<For each={pendingJobs()}>
 										{(job) => (
-											<Checkbox
+											<ImportReviewCard
 												checked={selectedJobIds().has(job.id)}
-												class="relative block min-w-0 space-x-0 rounded-lg border border-border bg-card transition-colors focus-within:ring-2 focus-within:ring-ring hover:bg-accent/50 data-[checked]:border-primary data-[checked]:bg-primary/5"
 												disabled={activeAction() !== null}
-												onChange={() => toggleSelection(job.id)}
-											>
-												<CheckboxControl class="absolute top-3 right-3 z-10 h-5 w-5 border-input bg-background" />
-												<CheckboxLabel class="block cursor-pointer p-2">
-													<div class="aspect-landscape w-full overflow-hidden rounded-md bg-muted">
-														<Show
-															fallback={
-																<div class="flex h-full items-center justify-center text-muted-foreground text-xs">
-																	{t("importReviewModal.noPreview")}
-																</div>
-															}
-															when={job.item.targetUrl}
-														>
-															<img
-																alt={t("importReviewModal.importPreview")}
-																class="h-full w-full object-cover"
-																onError={(event) => {
-																	event.currentTarget.style.display = "none";
-																}}
-																src={getPreviewUrl(job.item.targetUrl)}
-															/>
-														</Show>
-													</div>
-													<div class="mt-2 truncate font-medium text-sm">
-														{job.item.description ||
-															job.item.targetUrl ||
-															t("importReviewModal.untitledImport")}
-													</div>
-													<div class="truncate text-muted-foreground text-xs">
-														{getPendingImportPrimaryAuthor(job.item)}
-													</div>
-												</CheckboxLabel>
-											</Checkbox>
+												item={job.item}
+												onToggle={() => toggleSelection(job.id)}
+											/>
 										)}
 									</For>
 								</div>
@@ -425,16 +513,17 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 						</div>
 					</div>
 
-					<DialogFooter class="border-t px-5 py-3">
+					<DialogFooter class="flex-row border-t px-3 py-3 sm:px-5 [&>button]:w-auto">
 						<Button
-							class="sm:mr-auto"
+							class="flex-1 px-2 text-destructive hover:text-destructive sm:mr-auto sm:flex-none sm:px-4"
 							disabled={selectedJobIds().size === 0 || activeAction() !== null}
 							onClick={() => setIsDeleteDialogOpen(true)}
-							variant="destructive"
+							variant="outline"
 						>
 							{t("importReviewModal.deleteSelected")}
 						</Button>
 						<Button
+							class="hidden sm:inline-flex"
 							disabled={activeAction() !== null}
 							onClick={requestClose}
 							variant="outline"
@@ -442,6 +531,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 							{t("actions.close")}
 						</Button>
 						<Button
+							class="flex-1 px-2 sm:flex-none sm:px-4"
 							disabled={
 								selectedJobIds().size === 0 ||
 								!selectedSourceId() ||

@@ -2,12 +2,28 @@ import type { PixivRelatedPage } from "@solid-imager/core/external-viewer";
 import { t } from "@solid-imager/i18n";
 import {
 	createInfiniteQuery,
+	onlineManager,
 	useQueryClient,
 	type InfiniteData,
 } from "@tanstack/solid-query";
-import { createEffect, createMemo, onCleanup, onMount, Show } from "solid-js";
+import {
+	createEffect,
+	createMemo,
+	createSignal,
+	Match,
+	onCleanup,
+	onMount,
+	Show,
+	Switch,
+} from "solid-js";
+import {
+	ErrorState,
+	OfflineState,
+	QueryStatus,
+	RetryButton,
+} from "../async-state";
 import { Button } from "../button";
-import { ErrorState } from "../async-state";
+import { toQueryUiState } from "../query-state";
 import { LoadingRegion, MediaGridSkeleton } from "../skeleton";
 import { ViewerResultsGrid } from "./results-grid";
 import {
@@ -31,6 +47,7 @@ export function PixivRelatedWorks(props: {
 	const initialKey = key();
 	const saved =
 		props.history.get(initialKey) ?? readPixivRelatedSnapshot(initialKey);
+	const [isOnline, setOnline] = createSignal(true);
 	let restoring = !!saved;
 	let saveTimer: ReturnType<typeof setTimeout> | undefined;
 	const queryKey = () => [
@@ -73,6 +90,8 @@ export function PixivRelatedWorks(props: {
 		props.onOpenPost(id);
 	}
 	onMount(() => {
+		setOnline(onlineManager.isOnline());
+		onCleanup(onlineManager.subscribe(setOnline));
 		const area = scroller();
 		const save = () => {
 			if (saveTimer !== undefined) clearTimeout(saveTimer);
@@ -121,6 +140,16 @@ export function PixivRelatedWorks(props: {
 		staleTime: 30_000,
 		retry: false,
 	}));
+	const state = () =>
+		toQueryUiState({
+			data: query.data,
+			error: query.error,
+			status: query.status,
+			fetchStatus: isOnline() ? query.fetchStatus : "paused",
+		});
+	const retry = async () => {
+		await query.refetch();
+	};
 	createEffect(() => {
 		if (query.data) remember();
 	});
@@ -145,19 +174,33 @@ export function PixivRelatedWorks(props: {
 			<h2 class="text-sm font-semibold">
 				{t("pixivArtworkDetail.relatedWorks")}
 			</h2>
-			<Show when={query.isPending}>
-				<LoadingRegion label={t("pixivArtworkDetail.loadingRelated")}>
-					<MediaGridSkeleton aspectRatio="4/3" count={18} />
-				</LoadingRegion>
+			<QueryStatus
+				fetchState={state().fetchState}
+				hasData={state().data !== undefined}
+				hasError={query.isRefetchError}
+				hideWhenIdle
+				offlineLabel={t("sourceMediaScreen.offlineShowingSavedData")}
+				updatingLabel={t("pixivArtworkDetail.updatingRelated")}
+			/>
+			<Show when={query.isRefetchError && state().fetchState === "idle"}>
+				<RetryButton onRetry={retry} />
 			</Show>
-			<Show when={query.isError && !posts()}>
-				<ErrorState
-					title={t("pixivArtworkDetail.relatedError")}
-					onRetry={async () => {
-						await query.refetch();
-					}}
-				/>
-			</Show>
+			<Switch>
+				<Match when={state().phase === "offline"}>
+					<OfflineState onRetry={retry} />
+				</Match>
+				<Match when={state().phase === "error"}>
+					<ErrorState
+						title={t("pixivArtworkDetail.relatedError")}
+						onRetry={retry}
+					/>
+				</Match>
+				<Match when={state().phase === "pending"}>
+					<LoadingRegion label={t("pixivArtworkDetail.loadingRelated")}>
+						<MediaGridSkeleton aspectRatio="4/3" count={18} />
+					</LoadingRegion>
+				</Match>
+			</Switch>
 			<Show when={posts()}>
 				{(items) => (
 					<Show
@@ -211,10 +254,10 @@ export function PixivRelatedWorks(props: {
 			<Show when={query.hasNextPage}>
 				<Button
 					variant="outline"
-					disabled={query.isFetching}
+					disabled={state().fetchState !== "idle"}
 					aria-busy={query.isFetchingNextPage}
 					onClick={() => {
-						if (!query.isFetching)
+						if (state().fetchState === "idle")
 							void query.fetchNextPage({ cancelRefetch: false });
 					}}
 				>

@@ -14,6 +14,7 @@ export const en = defineMessages({
 	"aboutScreen.sourceRepository": "Source repository",
 	"actions.add": "Add",
 	"actions.addSource": "Add source",
+	"actions.clearSearchConditions": "Clear search conditions",
 	"actions.apply": "Apply",
 	"actions.cancel": "Cancel",
 	"actions.clear": "Clear",
@@ -173,8 +174,6 @@ export const en = defineMessages({
 	"batchTools.forceReExtraction": "Force re-extraction",
 	"batchTools.forceReTagging": "Force re-tagging",
 	"batchTools.jobOptions": "Job options",
-	"batchTools.leaveEmptyToProcessAllSources":
-		"Leave empty to process all sources.",
 	"batchTools.model": "Model",
 	"batchTools.scanTargets": "Scan targets",
 	"batchTools.startExtraction": "Start extraction",
@@ -188,8 +187,6 @@ export const en = defineMessages({
 	"bulkActionCommand.targetSourceIsRequired": "Target source is required.",
 	"bulkActionDialog.bulkDelete": "Bulk delete",
 	"bulkActionDialog.confirm": "Confirm",
-	"bulkActionDialog.copyOrMoveDestinationSource":
-		"Copy or move destination source",
 	"bulkActionDialog.copyToAnotherSource": "Copy (to another source)",
 	"bulkActionDialog.destinationFolderPath": "Destination folder path",
 	"bulkActionDialog.doNotResubmitItemsWithUnknownOutcomesCloseThe":
@@ -204,7 +201,6 @@ export const en = defineMessages({
 		"Retry failed or unprocessed items",
 	"bulkActionDialog.runABulkActionOnValueValueSelectedMedia":
 		"Run a bulk action on {value0}  selected media items.",
-	"bulkActionDialog.select": "Select...",
 	"bulkActionDialog.valueSucceededValueCanBeRetriedValueHaveUnknown":
 		"{value0} succeeded, {value1} can be retried, {value2} have unknown outcomes.",
 	"bulkActionDialog.warningThisActionCannotBeUndoneTheActualFiles":
@@ -429,7 +425,6 @@ export const en = defineMessages({
 	"configScreen.fatal": "Fatal",
 	"configScreen.formatsAndMetadata": "Formats and metadata",
 	"configScreen.healthCheckFailed": "Health check failed",
-	"configScreen.httpPowerMachine3000": "http://power-machine:3000",
 	"configScreen.imageExtensions": "Image Extensions",
 	"configScreen.inferenceServiceConnection": "Inference service connection",
 	"configScreen.info": "Info",
@@ -459,6 +454,9 @@ export const en = defineMessages({
 	"configScreen.recordANewKeyCombinationDisableAnActionOr":
 		"Record a new key combination, disable an action, or restore defaults. Changes are saved immediately in this browser or desktop app and are not part of the server configuration.",
 	"configScreen.remote": "Remote",
+	"configScreen.remoteAiUrlExample": "Example: {url}",
+	"configScreen.remoteAiUrlHelp":
+		"Leave empty to process locally. To use another solid-imager server, enter its base URL.",
 	"configScreen.remoteAIServerURLORPC": "Remote AI Server URL (oRPC)",
 	"configScreen.requestIntervalMs": "Request interval (ms)",
 	"configScreen.settingsCategories": "Settings categories",
@@ -474,8 +472,6 @@ export const en = defineMessages({
 	"configScreen.toolAvailability": "Tool availability",
 	"configScreen.trace": "Trace",
 	"configScreen.unsavedChanges": "Unsaved changes",
-	"configScreen.useAnotherSolidImagerServerSORPCEndpointFor":
-		"Use another solid-imager server's oRPC endpoint for remote AI processing. Leave empty to process locally.",
 	"configScreen.valueMs": "{value0} ms",
 	"configScreen.valueServiceAvailable": "{value0} service available",
 	"configScreen.videoExtensions": "Video Extensions",
@@ -674,6 +670,7 @@ export const en = defineMessages({
 	"importReviewModal.newBulkUploadRequestsWillAppearHere":
 		"New bulk-upload requests will appear here.",
 	"importReviewModal.noPreview": "No preview",
+	"importReviewModal.preview": "View details",
 	"importReviewModal.rememberThisSource": "Remember this source",
 	"importReviewModal.requestsDeleted": "Requests deleted",
 	"importReviewModal.reviewDownloadedMediaChooseASourceThenImportThe":
@@ -803,11 +800,15 @@ export const en = defineMessages({
 	"jobsScreen.jobPages": "Job pages",
 	"jobsScreen.jobsRequiringAttention": "Jobs requiring attention",
 	"jobsScreen.jobStatusFilter": "Job status filter",
+	"jobsScreen.allStatuses": "All statuses",
 	"jobsScreen.loadingJobs": "Loading jobs...",
 	"jobsScreen.newJobsAndTheirStatusWillAppearHere":
 		"New jobs and their status will appear here.",
 	"jobsScreen.nextPage": "Next page",
-	"jobsScreen.noJobsValue": "No jobs: {value0}",
+	"jobsScreen.noJobsYet": "No jobs yet",
+	"jobsScreen.noMatchingJobs": "No jobs match these filters",
+	"jobsScreen.adjustFiltersToSeeJobs":
+		"Change the status or type filter to see other jobs.",
 	"jobsScreen.pageValueOfValueValue": "Page {value0} of {value2}",
 	"jobsScreen.previousPage": "Previous page",
 	"jobsScreen.progress": "Progress",
@@ -866,11 +867,15 @@ export const en = defineMessages({
 		"When you open the details for a tag with a missing description, or hover over or focus its media tag, the server sends the tag name to Danbooru to retrieve the Wiki description.",
 	"tagDictionary.navigationDescription":
 		"Browse Danbooru tags and update dictionary data",
+	"tagDictionary.importDescription":
+		"Import Danbooru tags, Japanese labels, Wiki descriptions, and tag attributes into the server’s dictionary.",
 	"tagDictionary.schedule":
 		"After setup, the server checks for tag updates weekly.",
 	"tagDictionary.refresh": "Check for updates",
 	"tagDictionary.install": "Set up dictionary",
-	"tagDictionary.lastCheck": "Last update check · {status} · {date}",
+	"tagDictionary.requestingRefresh": "Submitting the dictionary job…",
+	"tagDictionary.refreshJob": "Dictionary import and update",
+	"tagDictionary.jobUpdatedAt": "Job updated {date}",
 	"tagDictionary.statusError": "Could not load dictionary status",
 	"tagDictionary.refreshError":
 		"Could not queue the dictionary update. Try again.",
@@ -878,9 +883,11 @@ export const en = defineMessages({
 	"tagDictionary.wikiSource": "Wiki descriptions · Hugging Face",
 	"tagDictionary.attributesSource": "General tag attributes · StoryAura",
 	"tagDictionary.notInstalled": "Awaiting import",
+	"tagDictionary.installed": "Imported",
 	"tagDictionary.snapshotStatus":
 		"{count} entries · Version {version} · Imported {date}",
 	"tagDictionary.searchLabel": "Tag name or alias",
+	"tagDictionary.searchTitle": "Search the dictionary",
 	"tagDictionary.legacyTitle": "Migrate legacy tags",
 	"tagDictionary.legacyHelp":
 		"Dictionary updates merge tags that exactly match an official name or a unique alias. Choose a destination here for other legacy tags.",
@@ -1149,6 +1156,8 @@ export const en = defineMessages({
 	"mediaChrome.videoPlayer": "video player",
 	"mediaChrome.volume": "volume",
 	"mediaDetailLayout.backToList": "Back to list",
+	"mediaDetailLayout.editMetadata": "Edit details",
+	"mediaDetailLayout.metadata": "Media details",
 	"mediaDetailLayout.navigateToPreviousOrNextMediaInTheList":
 		"Navigate to previous or next media in the list",
 	"mediaDetailLayout.nextMedia": "Next media",
@@ -1173,7 +1182,18 @@ export const en = defineMessages({
 	"mediaSidebar.negativePrompt": "Negative Prompt:",
 	"mediaSidebar.noPositiveTags": "No positive tags",
 	"mediaSidebar.noValueAssociated": "No {value0} associated",
-	"mediaSidebar.oneTagPerLine": "One tag per line",
+	"mediaTagEditor.title": "Assign tags",
+	"mediaTagEditor.description":
+		"Choose tags and save to apply them to this media item.",
+	"mediaTagEditor.assignedCount": "Assigned tags · {count}",
+	"mediaTagEditor.removeName": "Remove “{name}” from this media item",
+	"mediaTagEditor.tagNames": "Tag names",
+	"mediaTagEditor.entryHelp":
+		"Search by tag name or alias. To add multiple tags, paste them on separate lines.",
+	"mediaTagEditor.createTag": "Create “{name}”",
+	"mediaTagEditor.unsavedChanges": "Your tag assignments have unsaved changes.",
+	"mediaTagEditor.leaveWithoutSaving":
+		"Your tag assignments have unsaved changes. Leave without saving?",
 	"mediaSidebar.positiveTags": "Positive Tags",
 	"mediaSidebar.prompt": "Prompt:",
 	"mediaSidebar.relations": "Relations",
@@ -1224,15 +1244,17 @@ export const en = defineMessages({
 	"mobileSearchFilterDialog.tagsValue": "Tags: {value0}",
 	"mobileSearchFilterDialog.textSearchValue": "Text search: {value0}",
 	"moveCopyMediaDialog.copy": "Copy",
+	"moveCopyMediaDialog.copyDescription":
+		"Select the destination source for this media item.",
 	"moveCopyMediaDialog.copyMedia": "Copy Media",
 	"moveCopyMediaDialog.destinationSource": "Destination source",
 	"moveCopyMediaDialog.loadingSources": "Loading sources...",
 	"moveCopyMediaDialog.move": "Move",
+	"moveCopyMediaDialog.moveDescription":
+		"Select the destination source for this media item. Once the move completes, the item is removed from its original source.",
 	"moveCopyMediaDialog.moveMedia": "Move Media",
-	"moveCopyMediaDialog.selectTheDestinationSourceForThisMediaItemValue":
-		"Select the destination source for this media item.{value0}",
-	"moveCopyMediaDialog.theOriginalItemWillBeDeletedAfterASuccessful":
-		" The original item will be deleted after a successful copy.",
+	"moveCopyMediaDialog.noDestinationSources":
+		"There are no available destination sources.",
 	"navigation.importInbox": "Import inbox",
 	"navigation.jobs": "Jobs",
 	"navigation.library": "Library",
@@ -1321,6 +1343,7 @@ export const en = defineMessages({
 	"pixivArtworkDetail.moreRelated": "Show more",
 	"pixivArtworkDetail.relatedWorks": "Related works",
 	"pixivArtworkDetail.loadingRelated": "Loading related works",
+	"pixivArtworkDetail.updatingRelated": "Updating related works",
 	"pixivArtworkDetail.relatedError": "Could not load related works",
 	"pixivArtworkDetail.noRelated": "No related works",
 	"pixivArtworkDetail.nextImage": "Next image",
@@ -1394,8 +1417,14 @@ export const en = defineMessages({
 	"pixivScreen.dailyRanking": "Daily ranking",
 	"pixivScreen.imageCount": "{count} images",
 	"pixivScreen.noMatchingWorks": "No matching works",
-	"pixivScreen.pixivSearch": "pixiv search · ",
-	"pixivScreen.pixivTags": " pixiv tags",
+	"pixivScreen.emptyRanking": "Choose another ranking or search by tag.",
+	"pixivScreen.emptyFollowing":
+		"New works from creators you follow will appear here.",
+	"pixivScreen.emptyBookmarks":
+		"Bookmark a work or change the visibility or tag filter.",
+	"pixivScreen.emptyAuthor": "Clear the author filter to browse other works.",
+	"pixivScreen.pixivSearch": "pixiv search · {word}",
+	"pixivScreen.pixivTags": "{tag} pixiv tags",
 	"pixivScreen.pixivValue": "pixiv #{value0}",
 	"pixivScreen.searchDestinationDoesNotMatch":
 		"Search destination does not match",
@@ -1487,16 +1516,26 @@ export const en = defineMessages({
 	"relatedMedia.updatingRelatedMedia": "Updating related media...",
 	"relatedMedia.visualSimilarityIsAvailableForImagesAndVideo":
 		"Visual similarity is available for images and video.",
-	"relationsEditor.createValue": "Create “{value0}”",
+	"relationsEditor.createValue": "Select “{value0}” as a new item",
+	"relationsEditor.candidates": "Candidates",
+	"relationsEditor.characterIpHint":
+		"Selecting a character also selects its linked IPs.",
+	"relationsEditor.characterSearchHint": "Filter by character or IP name",
 	"relationsEditor.discardChanges": "Discard changes?",
 	"relationsEditor.editRelations": "Edit relations",
 	"relationsEditor.failedToSaveRelationsSomeChangesMayHaveBeen":
 		"Failed to save relations. Some changes may have been saved: {value0}",
 	"relationsEditor.noMatches": "No matches",
+	"relationsEditor.noCandidates":
+		"No items yet. Enter a name to add a new item.",
+	"relationsEditor.nameSearchHint": "Filter by name",
+	"relationsEditor.noneSelected": "No items selected",
+	"relationsEditor.removeSelection": "Remove “{name}” from selection",
+	"relationsEditor.selectedItems": "Selected",
 	"relationsEditor.searchValue": "Search {value0}",
 	"relationsEditor.searchValue2": "Search {value0}...",
-	"relationsEditor.selectProjectsIPsAndCharactersThenSaveTheChanges":
-		"Select projects, IPs and characters, then save the changes together.",
+	"relationsEditor.editHelp":
+		"Save to apply your selection to this media item.",
 	"relationsEditor.valueNew": "{value0} (new)",
 	"relationsEditor.yourRelationChangesHaveNotBeenSaved":
 		"Your relation changes have not been saved.",
@@ -1520,12 +1559,12 @@ export const en = defineMessages({
 		"Could not load tag suggestions. You can still enter tags to search.",
 	"searchComposer.danbooruHint":
 		"Space for AND, -tag to exclude, ~tag for OR. You can also use rating:g and order:score.",
-	"searchComposer.enterTagsEGLandscapeMonochrome":
-		"Enter tags (e.g. landscape -monochrome)",
+	"searchComposer.enterTags": "Enter tags",
 	"searchComposer.pixivHint":
 		"Space for AND, -tag to exclude, ~tag for OR. Converts Danbooru tags to pixiv tags.",
 	"searchComposer.removeValueValue": "Remove {value0}:{value1}",
 	"searchComposer.search": " search",
+	"searchComposer.searchHelp": "How to search",
 	"searchComposer.searchMedia": "Search media",
 	"searchComposer.searchOrTextTagAuthorSimilarLimit100":
 		"Search, or text: / tag: / author: / similar: / limit:100 …",
@@ -1555,7 +1594,12 @@ export const en = defineMessages({
 		"Natural language search is unavailable",
 	"searchQuery.similaritySearchIsUnavailable":
 		"Similarity search is unavailable",
+	"searchScreen.addSourceToLibrary":
+		"Add a source to start organizing your images and videos.",
 	"searchScreen.allMedia": "All media",
+	"searchScreen.libraryIsEmpty": "Your library is empty",
+	"searchScreen.openSourceToAddMedia":
+		"Open a source from the sidebar to add files or sync its contents.",
 	"searchScreen.couldNotLoadSearchResults": "Could not load search results",
 	"searchScreen.loadingSearchResults": "Loading search results...",
 	"searchScreen.offlineShowingSavedSearchResults":
@@ -1755,15 +1799,16 @@ export const en = defineMessages({
 	"sourceMediaGrid.valueValue": "{value0}, {value1}",
 	"sourceMediaScreen.deleteMedia": "Delete media",
 	"sourceMediaScreen.loadingMediaList": "Loading media list...",
+	"sourceMediaScreen.addOrDropMedia":
+		"Choose a file or drag it onto this screen to add it.",
 	"sourceMediaScreen.mediaList": "Media list",
+	"sourceMediaScreen.noMediaYet": "This source has no media yet",
 	"sourceMediaScreen.mediaUploadArea": "Media upload area",
 	"sourceMediaScreen.offlineShowingSavedData": "Offline. Showing saved data.",
 	"sourceMediaScreen.selectMultiple": "Select multiple",
 	"sourceMediaScreen.someSearchFiltersCouldNotBeLoadedYouCan":
 		"Some search filters could not be loaded. You can still use the media list.",
 	"sourceMediaScreen.syncLoadedItems": "Sync loaded items",
-	"sourceMediaScreen.thisActionCannotBeUndoneDeleteTheSelectedMedia":
-		"This action cannot be undone. Delete the selected media?",
 	"sourceMediaScreen.updatingMediaList": "Updating media list...",
 	"statisticsScreen.allTime": "All time",
 	"statisticsScreen.clearFilter": "Clear filter",
@@ -1884,8 +1929,9 @@ export const en = defineMessages({
 	"useSourceMediaPage.bulkDownloadStarted": "Bulk download started",
 	"useSourceMediaPage.copied": "copied",
 	"useSourceMediaPage.copyFailed": "Failed to copy media: {error}",
+	"useSourceMediaPage.copyOutcomeUnknown":
+		"The copy could not be confirmed. Check the destination for the copied media.",
 	"useSourceMediaPage.failedToBatchSyncValue": "Failed to batch sync: {value0}",
-	"useSourceMediaPage.failedToDeleteMedia": "Failed to delete media",
 	"useSourceMediaPage.failedToStartDownloadValue":
 		"Failed to start download: {value0}",
 	"useSourceMediaPage.failedToSyncMetadataValue":
