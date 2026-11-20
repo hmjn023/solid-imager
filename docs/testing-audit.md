@@ -12,6 +12,62 @@
 | 削除する | 定数の自己比較、手作りのレスポンスの自己比較、コメントだけのテスト、完了した移行のディレクトリ存在確認 |
 | 調査を続ける | 実際に失敗している、古い画面操作を参照する、外部条件で揺れる。通すためにassertionを弱めない |
 
+## 主要なブラウザー操作と対応するテスト
+
+共有UIの状態・入力・フォーカスは Vitest Browser Mode、画面寸法・タッチ・仮想化・メディア再生は Playwright のコンポーネントギャラリーを使う。ルーター・実API・DB・SSEを通す操作は隔離アプリE2Eで確認する。Tauri のアプリE2Eは実SPAと隔離サーバーを使い、HTTP・SQL・ストアなどのネイティブ境界はテスト用アダプターを経由する。以下はテストが検証する操作の棚卸しで、実行結果は別に記録する。 [Browser Mode 設定](../packages/ui/vitest.browser.config.ts) · [ギャラリー設定](../apps/server/playwright.components.config.ts) · [アプリE2E設定](../apps/server/playwright.config.ts) · [Tauri fixture](../apps/server/src/tests/e2e/tauri-app/vite.config.ts)
+
+| 対象 | 検証する操作と観測点 | 対応するテスト |
+| --- | --- | --- |
+| ナビゲーションと画面の初期化 | メニューの現在位置とフォーカス、狭い画面と短い画面のレイアウト、直接URL・F5のHTMLとhydration後の表示、SPA再訪時のリクエスト数 | E2E [app-nav](../apps/server/src/tests/e2e/app-nav.responsive.spec.ts) · [routes](../apps/server/src/tests/e2e/routes.responsive.spec.ts) · [route-reload](../apps/server/src/tests/e2e/route-reload.spec.ts) |
+| 検索と履歴 | 絞り込み・解除、入力中のフォーカス、詳細から戻ったときの条件と結果、送信直後の遷移での状態保存 | E2E [search](../apps/server/src/tests/e2e/search.responsive.spec.ts) · [search-pro-dialog](../apps/server/src/tests/e2e/search-pro-dialog.responsive.spec.ts) · [search-history](../apps/server/src/tests/e2e/search-history.spec.ts) |
+| キーボードとIME | パレット起動・フォーカス復帰、検索へ移動するショートカット、IME変換中のキーイベントで検索やパレットの操作が起きないこと、タグ候補挿入後の式 | E2E [interface-interactions](../apps/server/src/tests/e2e/interface-interactions.responsive.spec.ts) · [modern-web-guidance](../apps/server/src/tests/e2e/modern-web-guidance.spec.ts) · [danbooru](../apps/server/src/tests/e2e/danbooru.responsive.spec.ts) |
+| オーバーレイと候補の選択 | メニューの矢印操作と起点へのフォーカス復帰、ダイアログのEscape、通常・仮想コンボボックスのタップとスクロール | Browser Mode [ビューアー操作メニュー](../packages/ui/src/tests/external-viewer-actions-menu.browser.test.tsx) · ギャラリー [ui-components](../apps/server/src/tests/e2e/ui-components.gallery.spec.ts) · [combobox-touch](../apps/server/src/tests/e2e/combobox-touch.gallery.spec.ts) |
+| ライブラリ・ソースの選択 | グリッド・リスト共通の開く操作、修飾キーでの複数・範囲選択、タッチ選択、プレビューと選択の独立、コンテキストメニュー | E2E [interface-interactions](../apps/server/src/tests/e2e/interface-interactions.responsive.spec.ts) · [sources-source-media](../apps/server/src/tests/e2e/sources-source-media.responsive.spec.ts) · [tauri-migration](../apps/server/src/tests/e2e/tauri-migration.spec.ts) |
+| 仮想一覧と位置復元 | 高速スクロール中のDOM数、仮想グリッドの再マウント・ページ描画と位置保持、DPRに応じた画像選択、詳細から戻るときのページ追加・再試行 | ギャラリー [ui-components](../apps/server/src/tests/e2e/ui-components.gallery.spec.ts) · E2E [scroll-restoration](../apps/server/src/tests/e2e/scroll-restoration.spec.ts) |
+| 複製・移動・削除 | コピー先のキーボード選択、処理中の操作抑止、コピー・削除の失敗時に対象や宛先を保持、成功時の一覧とAPI結果 | Browser Mode [コピー・移動](../packages/ui/src/tests/move-copy-media-dialog.browser.test.tsx) · E2E [media-action-dialogs](../apps/server/src/tests/e2e/media-action-dialogs.responsive.spec.ts) · [search-workspace](../apps/server/src/tests/e2e/search-workspace.spec.ts) |
+| 詳細とメタデータ編集 | タグの作成・辞書からの追加、関連付けのタブ間保持・破棄と保存後のF5、選択済み関連項目を外したときのフォーカス、お気に入りや評価の保存 | Browser Mode [タグ編集](../packages/ui/src/tests/media-tag-editor.browser.test.tsx) · [関連項目の選択](../packages/ui/src/tests/selected-relation-items.browser.test.tsx) · E2E [tag-dictionary](../apps/server/src/tests/e2e/tag-dictionary.spec.ts) · [media-detail-manager-config](../apps/server/src/tests/e2e/media-detail-manager-config.responsive.spec.ts) · [media-activity](../apps/server/src/tests/e2e/media-activity.spec.ts) |
+| 画像・動画と関連メディア | 画像の拡大・パン・フォーカス復帰、動画の再生・シーク・ループ・全画面、関連メディアの一覧・再試行・履歴の保持 | ギャラリー [video-player](../apps/server/src/tests/e2e/video-player.gallery.spec.ts) · E2E [modern-web-guidance](../apps/server/src/tests/e2e/modern-web-guidance.spec.ts) · [related-media](../apps/server/src/tests/e2e/related-media.responsive.spec.ts) |
+| AI検索とジョブ連携 | メディア種別に応じた操作、実CCIPの抽出と類似検索、実EmbeddingGemmaのテキスト・画像検索、ソース内検索から横断検索への引き継ぎ | ギャラリー [media-ai](../apps/server/src/tests/e2e/media-ai.gallery.spec.ts) · E2E [ccip-flow](../apps/server/src/tests/e2e/ccip-flow.spec.ts) · [embedding-search](../apps/server/src/tests/e2e/embedding-search.responsive.spec.ts) · [source-similarity-navigation](../apps/server/src/tests/e2e/source-similarity-navigation.spec.ts) · [video-ai](../apps/server/src/tests/e2e/video-ai.spec.ts) |
+| ソース管理 | 未設定・空のソースからの操作、フォームでの作成・編集とF5後の反映、実SSE同期後の一覧更新、MCPから作ったソースの一覧表示とF5 | E2E [loading-recovery](../apps/server/src/tests/e2e/loading-recovery.spec.ts) · [source-management](../apps/server/src/tests/e2e/source-management.spec.ts) · [tauri-migration](../apps/server/src/tests/e2e/tauri-migration.spec.ts) · [realtime-preservation](../apps/server/src/tests/e2e/realtime-preservation.spec.ts) · [mcp](../apps/server/src/tests/e2e/mcp.spec.ts) |
+| アップロードと取り込み | ファイル選択・破棄確認、複数ファイルの実送信、古いURLレスポンスの無視、別クライアントからの取消、取り込み待ちプレビュー後の選択とフォーカス、失敗ファイルを親ジョブから再試行 | E2E [sources-source-media](../apps/server/src/tests/e2e/sources-source-media.responsive.spec.ts) · [upload-draft](../apps/server/src/tests/e2e/upload-draft.spec.ts) · [import-review](../apps/server/src/tests/e2e/import-review.responsive.spec.ts) · [import-batch-targets](../apps/server/src/tests/e2e/import-batch-targets.spec.ts) |
+| 読み込み・障害復帰 | 初回pending中のシェルとスケルトン、背景更新時の既存結果・入力、通信断からの復帰、タイムアウトや503後の再試行、空結果 | E2E [loading-recovery](../apps/server/src/tests/e2e/loading-recovery.spec.ts) · [scroll-restoration](../apps/server/src/tests/e2e/scroll-restoration.spec.ts) |
+| リアルタイム更新 | 実source event後の一覧更新、SSE再接続後も開いているダイアログと入力・フォーカスを維持、モバイル検索での同じ保持 | E2E [realtime-preservation](../apps/server/src/tests/e2e/realtime-preservation.spec.ts) · [search-realtime-preservation](../apps/server/src/tests/e2e/search-realtime-preservation.responsive.spec.ts) |
+| ジョブ一覧と詳細 | ページ追加、全件に対するフィルター件数、進捗更新中の行とフォーカス、バッチ詳細の幅別レイアウト、Tauriでのリンクからの表示 | ギャラリー [jobs-layout](../apps/server/src/tests/e2e/jobs-layout.gallery.spec.ts) · E2E [jobs-infinite](../apps/server/src/tests/e2e/jobs-infinite.spec.ts) · [import-batch-targets](../apps/server/src/tests/e2e/import-batch-targets.spec.ts) · [tauri-migration](../apps/server/src/tests/e2e/tauri-migration.spec.ts) |
+| 管理 | キャラクターのEnter保存失敗と復帰、作者訂正の競合、バッチ状態と順不同の応答、重複削除対象、クラスタリングの仮想化と再試行、バックアップのダウンロードと復元 | E2E [manager-controls](../apps/server/src/tests/e2e/manager-controls.responsive.spec.ts) · [author-correction](../apps/server/src/tests/e2e/author-correction.responsive.spec.ts) · [author-account-verification](../apps/server/src/tests/e2e/author-account-verification.responsive.spec.ts) · [manager-batch-progress](../apps/server/src/tests/e2e/manager-batch-progress.responsive.spec.ts) · [manager-state](../apps/server/src/tests/e2e/manager-state.spec.ts) · [character-clustering](../apps/server/src/tests/e2e/character-clustering.responsive.spec.ts) · [routes](../apps/server/src/tests/e2e/routes.responsive.spec.ts) · [data-transfer-restore](../apps/server/src/tests/e2e/data-transfer-restore.spec.ts) |
+| 設定・統計 | 未保存の設定で言語変更を止めること、表示言語とTauriの接続切り替えをF5後に復元、ショートカット設定への導線、統計の期間変更・ドリルダウン・再試行 | E2E [i18n](../apps/server/src/tests/e2e/i18n.spec.ts) · [tauri-migration](../apps/server/src/tests/e2e/tauri-migration.spec.ts) · [interface-interactions](../apps/server/src/tests/e2e/interface-interactions.responsive.spec.ts) · [statistics](../apps/server/src/tests/e2e/statistics.responsive.spec.ts) |
+| 外部ビューアー | 外部の応答をfixtureで再現し、Danbooru候補・ページ追加・動画取り込み、Pixivの閲覧履歴・閲覧位置・ブックマーク・認証切り替え・ページ指定取り込み、エラーや古い応答からの復帰を確認 | E2E [danbooru](../apps/server/src/tests/e2e/danbooru.responsive.spec.ts) · [pixiv](../apps/server/src/tests/e2e/pixiv.responsive.spec.ts) |
+| 実APIとDB | UIでのメディア変更の反映、RESTとRPCの共有データ、multipart upload、WebMCPからの変更の再取得、DB側の永続化・検索・移行それぞれの挙動 | E2E [search-workspace](../apps/server/src/tests/e2e/search-workspace.spec.ts) · [scalar](../apps/server/src/tests/e2e/scalar.spec.ts) · [mcp](../apps/server/src/tests/e2e/mcp.spec.ts) · 統合テスト [メディア操作](../apps/server/src/tests/integration/media) · [検索](../apps/server/src/tests/integration/queries/search.test.ts) · [リポジトリと移行](../apps/server/src/tests/integration/repository) |
+
+### 今回追加した回帰ケース
+
+| 対象 | 追加した操作と観測点 | テスト |
+| --- | --- | --- |
+| 一括操作ダイアログ | 応答に成功・失敗・未処理・結果不明を含める。内訳を表示し、再試行では元の宛先に失敗・未処理のIDだけが送られる | Browser Mode [一括操作](../packages/ui/src/tests/bulk-action-dialog.browser.test.tsx) |
+| 関連付けエディター | 編集中の外部更新から入力・選択・フォーカスを保持する。検索だけで閉じるときは破棄確認を出さず、編集を保存したときは意図した差分を送る | Browser Mode [関連付けエディター](../packages/ui/src/tests/relations-editor.browser.test.tsx) |
+| 仮想メディアグリッド | 描画範囲外の末尾に `End` で移動し、対象のタイルがスクロール領域に現れてフォーカスされる | ギャラリー [ui-components](../apps/server/src/tests/e2e/ui-components.gallery.spec.ts) |
+| 検索ツールバー | 候補からの条件更新が待機中に解除を実行し、待機時間を過ぎても古い条件で検索が再実行されない | Browser Mode [検索ツールバー](../packages/ui/src/tests/search-toolbar.browser.test.tsx) |
+| ファイルアップロード | 有効な画像をドロップし、プレビューのデコードと確定時の送信内容を確認する | Browser Mode [アップロード](../packages/ui/src/tests/upload-media-modal.browser.test.tsx) |
+| 取り込み待ち | 保存先の候補をキーボードで確定してフォーカスを戻す。短い画面でも一覧がダイアログ内に収まり、末尾を選べる。処理中は `Escape` で閉じず、失敗後は選択と保存先を維持して再試行できる | Browser Mode [取り込み待ち](../packages/ui/src/tests/import-review-modal.browser.test.tsx) |
+| ソースフォーム | 保存失敗後に入力値を再送できる。破棄確認を `Escape` で閉じると編集が続き、破棄して開き直すと初期値が表示される | Browser Mode [ソースフォーム](../packages/ui/src/tests/source-form-modal.browser.test.tsx) |
+| タグ辞書の次ページ | 一時エラー後に同じページを再試行し、入力欄のフォーカスを保ち、候補の重複を除く | Browser Mode [タグ編集](../packages/ui/src/tests/media-tag-editor.browser.test.tsx) |
+| ショートカット設定 | 使用済みのキーを記録すると競合が表示される。別のキーに変更すると実際に操作でき、設定の再マウント後にも動作する | Browser Mode [ショートカット設定](../packages/ui/src/tests/shortcut-settings-panel.browser.test.tsx) |
+| ソース管理 | サイドバーでローカルソースを作成、編集し、F5後の表示とAPIの名前・パスを確認する | E2E [source-management](../apps/server/src/tests/e2e/source-management.spec.ts) |
+| データ転送 | TARを選択したローカルソースへ復元し、返されたジョブの完了、原画像のバイト列、検索結果のメタデータを確認する | E2E [data-transfer-restore](../apps/server/src/tests/e2e/data-transfer-restore.spec.ts) |
+
+### 実行結果（2026-11-20）
+
+| コマンド | 結果 |
+| --- | --- |
+| `bun run check` | Web・Tauriのビルドでルートツリーを生成後に成功 |
+| `bun run test` | 成功。Vitestの160ファイル・1,061件と、各スクリプトのテストが通過 |
+| `bun run test:browser` | Chromium 11ファイル・17件通過 |
+| `bun run test:e2e --mode=components` | 29件通過 |
+| `bun run test:e2e --mode=smoke` | Tauri fixtureの初回依存読み込みと画面幅別のルート操作を修正後、8件通過 |
+| `bun run test:e2e --mode=production` | 独立した環境に2分割し、42ファイル・416件通過。スキップと再試行は0件 |
+| 隔離した本番ビルドの取り込み待ちE2E | 保存先候補の表示とキーボード操作を修正後、4画面幅で通過 |
+
+全件実行で見つかった古い操作・文言の前提は、画面幅に応じたナビゲーション、言語設定、コピー結果が確認できないときの警告に合わせて更新した。ジョブの状態フィルターは、他のテストが作るキャンセル済みジョブの影響を受けないようにした。画面遷移で破棄されるリクエストは、該当するテストでパスと中断理由を限定して扱った。
+
 ## 2026-09-23 の数量と実行対象
 
 Playwrightの `--list --reporter=json` による収集数。成功数やカバレッジ率ではない。
@@ -128,7 +184,7 @@ bun run test:e2e --mode=full                         # dev・fresh productionと
 bun run test:e2e --list                              # 通常の実行対象を起動前に確認
 ```
 
-`bun run test:browser` は Chromium で `packages/ui/src` の `*.browser.test.tsx` を実行する。初回は `bun run --cwd packages/ui playwright install chromium` でブラウザーを用意する。
+`bun run test:browser` は Chromium で `packages/ui/src` の `*.browser.test.tsx` を実行する。`packages/ui/` の変更をコミットすると、Husky の pre-commit でも実行する。初回は `bun run --cwd packages/ui playwright install chromium` でブラウザーを用意する。
 
 dev の代表ケースは `@dev-smoke` で指定し、検索・詳細の直接URLとF5、SPA内の遷移、Tauriの起動と再接続設定の永続化、実CCIP推論、SSE再接続を検証する。対象ファイルに別のケースを追加すると、production全件と `--mode=dev` の全件実行で検証できる。
 

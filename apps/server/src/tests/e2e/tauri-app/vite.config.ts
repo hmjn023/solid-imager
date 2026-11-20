@@ -132,6 +132,11 @@ const proxy = {
 export default defineConfig({
 	root: tauriRoot,
 	base: "./",
+	cacheDir: path.join(runtimeDirectory, "tauri-vite-cache"),
+	optimizeDeps: {
+		// Split routes can first expose these dependencies after navigation starts.
+		include: ["@tanstack/solid-db", "@tanstack/solid-virtual"],
+	},
 	resolve: {
 		alias: {
 			"~": path.join(tauriRoot, "src"),

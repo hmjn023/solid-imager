@@ -200,6 +200,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 		createEmptySelection(),
 	);
 	const [selectedSourceId, setSelectedSourceId] = createSignal("");
+	const [sourceField, setSourceField] = createSignal<HTMLDivElement>();
 	const [rememberSource, setRememberSource] = createSignal(
 		isImportSourceRemembered(),
 	);
@@ -376,7 +377,7 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 
 					<div class="flex min-h-0 flex-1 flex-col overflow-hidden">
 						<div class="flex flex-col gap-3 border-border border-b bg-muted px-5 py-3 sm:flex-row sm:items-end sm:justify-between">
-							<div class="grid min-w-0 gap-2 sm:w-80">
+							<div class="grid min-w-0 gap-2 sm:w-80" ref={setSourceField}>
 								<Select<ImportSourceOption>
 									class="grid gap-1"
 									disabled={sources.loading || activeAction() !== null}
@@ -408,7 +409,10 @@ export function ImportReviewModal(props: ImportReviewModalProps) {
 											{(state) => state.selectedOption()?.label ?? ""}
 										</SelectValue>
 									</SelectTrigger>
-									<SelectContent />
+									<SelectContent
+										class="max-h-popover-fit-available"
+										portalMount={sourceField()}
+									/>
 								</Select>
 								<Checkbox
 									checked={rememberSource()}

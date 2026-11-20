@@ -56,6 +56,7 @@ export interface ShortcutPreferences {
 	readonly findConflict: (
 		id: ShortcutId,
 		binding: ShortcutBinding,
+		event?: KeyboardEvent,
 	) => ShortcutConflict | null;
 	readonly hasCustomBindings: Accessor<boolean>;
 	readonly recordingShortcutId: Accessor<ShortcutId | null>;
@@ -79,8 +80,14 @@ const DEFAULT_SHORTCUT_PREFERENCES: ShortcutPreferences = {
 	updateBinding: unavailableUpdate,
 	resetBinding: unavailableUpdate,
 	resetAllBindings: () => undefined,
-	findConflict: (id, binding) =>
-		findShortcutConflict(DEFAULT_SHORTCUT_BINDINGS, id, binding),
+	findConflict: (id, binding, event) =>
+		findShortcutConflict(
+			DEFAULT_SHORTCUT_BINDINGS,
+			id,
+			binding,
+			"linux",
+			event,
+		),
 	hasCustomBindings: () => false,
 	recordingShortcutId: () => null,
 	isRecording: () => false,
@@ -176,8 +183,8 @@ export const ShortcutPreferencesProvider: ParentComponent = (props) => {
 		updateBinding,
 		resetBinding,
 		resetAllBindings,
-		findConflict: (id, binding) =>
-			findShortcutConflict(bindings(), id, binding, platform),
+		findConflict: (id, binding, event) =>
+			findShortcutConflict(bindings(), id, binding, platform, event),
 		hasCustomBindings: () => hasCustomShortcutBindings(bindings(), platform),
 		recordingShortcutId,
 		isRecording: () => recordingShortcutId() !== null,
