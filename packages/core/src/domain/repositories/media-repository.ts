@@ -151,7 +151,12 @@ export type MediaBulkRepository = {
 		updates: UpdateMediaRequest,
 		tx?: Transaction,
 	): Promise<void>;
-	bulkDelete(mediaIds: string[], tx?: Transaction): Promise<void>;
+	/** Deletes only rows in the specified source and returns the rows for cleanup after commit. */
+	bulkDelete(
+		mediaSourceId: string,
+		mediaIds: string[],
+		tx: Transaction,
+	): Promise<Pick<Media, "id" | "filePath">[]>;
 	bulkUpdatePaths(
 		updates: { id: string; filePath: string; fileName: string }[],
 		tx?: Transaction,

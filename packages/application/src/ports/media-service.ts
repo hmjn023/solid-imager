@@ -43,24 +43,25 @@ export type DeferredSourceEvent = {
 	mediaSourceId: string;
 } & SourceEventCommand;
 
-/** A file deletion request identifying the source base and file path. */
-export type FileToDelete = {
-	basePath: string;
-	filePath: string;
+/** The stored media row and the optional local file it owns. */
+export type MediaDeletionTarget = {
+	readonly mediaSourceId: string;
+	readonly mediaId: string;
+	readonly filePath: string;
+	readonly basePath?: string;
 };
 
-/** A thumbnail deletion request scoped to a media source. */
-export type ThumbnailToDelete = {
-	mediaSourceId: string;
-	mediaId: string;
+/** Source cleanup to run only after the media row deletion commits. */
+export type MediaDeletionPlan = {
+	readonly kind: "delete" | "move";
+	readonly targets: readonly MediaDeletionTarget[];
 };
 
 /** Side effects collected by a media operation for execution after its transaction. */
 export type DeferredActions = {
 	jobs: DeferredJobs[];
 	sourceEvents: DeferredSourceEvent[];
-	filesToDelete?: FileToDelete[];
-	thumbnailsToDelete?: ThumbnailToDelete[];
+	mediaDeletion?: MediaDeletionPlan;
 };
 
 // ============================================================================

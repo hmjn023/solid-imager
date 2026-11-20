@@ -14,14 +14,21 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
 	publish: vi.fn(),
+	createJob: vi.fn(),
 	deleteFile: vi.fn(),
 	deleteThumbnail: vi.fn(),
 }));
 vi.mock("~/infrastructure/events/realtime-event-bus", () => ({
 	RealtimeEventBus: { publishSourceCommand: mocks.publish },
 }));
+vi.mock("~/infrastructure/jobs/thumbnails", () => ({
+	deleteThumbnail: mocks.deleteThumbnail,
+}));
 vi.mock("~/infrastructure/service-registry", () => ({
-	services: { getMediaStorage: () => ({ deleteFile: mocks.deleteFile }) },
+	services: {
+		getMediaStorage: () => ({ deleteFile: mocks.deleteFile }),
+		getJobRepository: () => ({ create: mocks.createJob }),
+	},
 }));
 vi.mock("~/infrastructure/jobs/tagging-jobs", () => ({
 	processBulkTaggingDispatchJob: vi.fn(),
@@ -37,10 +44,7 @@ vi.mock("~/infrastructure/services/source-transfer-job-service", () => ({
 vi.mock("~/infrastructure/logger", () => ({
 	logger: { error: vi.fn(), warn: vi.fn() },
 }));
-import {
-	configureThumbnailJobHandlers,
-	executeDeferredActions,
-} from "~/infrastructure/services/job-dispatch-service";
+import { executeDeferredActions } from "~/infrastructure/services/job-dispatch-service";
 
 const sourceId = "11111111-1111-4111-8111-111111111111";
 const targetId = "22222222-2222-4222-8222-222222222222";
@@ -59,16 +63,19 @@ beforeEach(async () => {
 	mocks.deleteThumbnail.mockImplementation(async () =>
 		unlink(path.join(directory, "thumbnail.webp")),
 	);
-	configureThumbnailJobHandlers({
-		deleteThumbnail: mocks.deleteThumbnail,
-		processThumbnailGenerationJob: vi.fn(),
-	});
 	actions = {
 		jobs: [],
-		filesToDelete: [
-			{ basePath: path.join(directory, "source"), filePath: "image.png" },
-		],
-		thumbnailsToDelete: [{ mediaSourceId: sourceId, mediaId }],
+		mediaDeletion: {
+			kind: "move",
+			targets: [
+				{
+					basePath: path.join(directory, "source"),
+					filePath: "image.png",
+					mediaSourceId: sourceId,
+					mediaId,
+				},
+			],
+		},
 		sourceEvents: [
 			{
 				mediaSourceId: sourceId,
@@ -111,6 +118,19 @@ describe("committed move cleanup", () => {
 		).rejects.toThrow();
 		expect(mocks.publish).toHaveBeenCalledTimes(2);
 	});
+	it("cleans up the original and notifies both sources when post-commit job enqueue fails", async () => {
+		const failure = new Error("queue unavailable");
+		mocks.createJob.mockRejectedValueOnce(failure);
+		actions.jobs.push({
+			mediaSourceId: targetId,
+			jobs: [{ type: "processMedia" }],
+		});
+		await expect(executeDeferredActions(actions)).rejects.toBe(failure);
+		expect(mocks.deleteFile).toHaveBeenCalledOnce();
+		expect(mocks.deleteThumbnail).toHaveBeenCalledOnce();
+		expect(mocks.publish).toHaveBeenCalledTimes(2);
+	});
+
 	it.each(["file", "thumbnail"] as const)(
 		"reports unreconciled %s cleanup while still attempting the remaining cleanup and observers",
 		async (failure) => {
