@@ -3,14 +3,12 @@ experimental = true
 
 [daemons.postgres]
 image = "docker.io/pgvector/pgvector:pg18"
-port = 55432
-container_port = 5432
 proxy = false
 data_mount = "/var/lib/postgresql"
 data_dir = ".data/mise-postgres"
-init = ". ./tools/mise/init-postgres.sh"
-runtime_args = ["--shm-size=256m", "--env=POSTGRES_DB", "--env=POSTGRES_USER", "--env=POSTGRES_PASSWORD"]
-ready_cmd = { run = '''{{ runtime }} exec {{ container }} sh -c 'pg_isready -h 127.0.0.1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' ''', timeout = "180s" }
+command = ["postgres", "-c", "listen_addresses=127.0.0.1"]
+runtime_args = ["--network=host", "--shm-size=256m", "--env=PGPORT", "--env=POSTGRES_DB", "--env=POSTGRES_USER", "--env=POSTGRES_PASSWORD"]
+ready_cmd = { run = '''{{ runtime }} exec {{ container }} sh -c 'test "$(cat /proc/1/comm)" = postgres && pg_isready -h /var/run/postgresql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-${POSTGRES_USER:-postgres}}"' ''', timeout = "180s" }
 
 [daemons.app]
 depends = ["postgres"]
@@ -23,19 +21,24 @@ ready_cmd = { run = 'curl -fsS -o /dev/null --max-time 3 --noproxy 127.0.0.1 "ht
 depends = ["app"]
 image = "docker.io/library/nginx:trixie"
 proxy = false
-runtime_args = ["--network=host"]
+runtime_args = ["--network=host", "--env=NITRO_PORT", "--env=NGINX_PORT", "--env=NGINX_TLS_PORT"]
+env = { NGINX_ENVSUBST_OUTPUT_DIR = "/etc/nginx", NGINX_ENVSUBST_FILTER = "^(NITRO_PORT|NGINX_PORT|NGINX_TLS_PORT)$" }
 init = "sh ./tools/mise/init-nginx.sh"
 volumes = [
-    "./.data/mise-nginx/nginx.conf:/etc/nginx/nginx.conf:ro",
+    "./.data/mise-nginx/nginx.conf:/etc/nginx/templates/nginx.conf.template:ro",
     "./.data/mise-nginx/letsencrypt:/etc/letsencrypt:ro",
 ]
 ready_cmd = { run = '''{{ runtime }} exec {{ container }} sh -c 'grep -zFxq "nginx: worker process" /proc/[0-9]*/cmdline 2>/dev/null' ''', timeout = "180s" }
 
 [tasks.attach_db]
-run = "psql -h ${DB_HOST} -p ${DB_PORT} -U ${DB_USER} ${DB_DATABASE}"
+run = 'psql -h "${DB_HOST:-${PGHOST:-127.0.0.1}}" -p "$PGPORT" -U "${POSTGRES_USER:-${DB_USER:-${PGUSER:-postgres}}}" "${POSTGRES_DB:-${DB_DATABASE:-${DB_NAME:-${PGDATABASE:-postgres}}}}"'
 
 [env]
 _.file = '.env'
+PGPORT = "{% if env.PGPORT %}{{ env.PGPORT }}{% elif env.DB_PORT %}{{ env.DB_PORT }}{% else %}5432{% endif %}"
+NITRO_PORT = "{% if env.NITRO_PORT %}{{ env.NITRO_PORT }}{% elif env.PORT %}{{ env.PORT }}{% else %}3000{% endif %}"
+NGINX_PORT = "{% if env.NGINX_PORT %}{{ env.NGINX_PORT }}{% else %}80{% endif %}"
+NGINX_TLS_PORT = "{% if env.NGINX_TLS_PORT %}{{ env.NGINX_TLS_PORT }}{% else %}443{% endif %}"
 AGENT_BROWSER_SOCKET_DIR = "/tmp/solid-imager-agent-browser"
 
 [tools]

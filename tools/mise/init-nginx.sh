@@ -1,7 +1,7 @@
 #!/bin/sh
 set -eu
 
-config="${NGINX_CONFIG:-nginx.dev.conf.example}"
+config="${NGINX_CONFIG:-nginx.conf.example}"
 if [ ! -f "$config" ]; then
     printf 'nginx config file missing: %s\n' "$config" >&2
     exit 1
