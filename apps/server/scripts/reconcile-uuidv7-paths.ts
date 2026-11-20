@@ -2,6 +2,7 @@ import { readdir, rename, stat } from "node:fs/promises";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { Pool } from "pg";
+import { readPostgresConfig } from "../src/infrastructure/db/postgres-config";
 import { getJobTransferRoot } from "../src/infrastructure/services/job-transfer-storage";
 
 type IdMapping = {
@@ -17,20 +18,13 @@ const UUID_PATTERN =
 	/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function getDatabasePool(): Pool {
-	const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE } = process.env;
-	if (!(DB_HOST && DB_PORT && DB_USER && DB_PASSWORD && DB_DATABASE)) {
+	const { host, port, user, password, database } = readPostgresConfig();
+	if (!(host && user && password && database)) {
 		throw new Error(
-			"DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, and DB_DATABASE are required",
+			"Set DB_HOST, POSTGRES_DB, POSTGRES_USER, and POSTGRES_PASSWORD to connect to PostgreSQL",
 		);
 	}
-
-	return new Pool({
-		host: DB_HOST,
-		port: Number(DB_PORT),
-		user: DB_USER,
-		password: DB_PASSWORD,
-		database: DB_DATABASE,
-	});
+	return new Pool({ host, port: Number(port), user, password, database });
 }
 
 async function pathExists(targetPath: string): Promise<boolean> {
@@ -39,7 +33,10 @@ async function pathExists(targetPath: string): Promise<boolean> {
 		.catch(() => false);
 }
 
-async function renameIfNeeded(oldPath: string, newPath: string): Promise<boolean> {
+async function renameIfNeeded(
+	oldPath: string,
+	newPath: string,
+): Promise<boolean> {
 	if (!(await pathExists(oldPath))) {
 		return false;
 	}
@@ -150,8 +147,7 @@ try {
 		 WHERE entity IN ('jobs', 'media_sources', 'media')`,
 	);
 	const mappings = result.rows.filter(
-		({ oldId, newId }) =>
-			UUID_PATTERN.test(oldId) && UUID_PATTERN.test(newId),
+		({ oldId, newId }) => UUID_PATTERN.test(oldId) && UUID_PATTERN.test(newId),
 	);
 	if (mappings.length === 0) {
 		process.stdout.write("No UUIDv7 job path mappings found.\n");

@@ -35,7 +35,7 @@ bun scripts/cluster-characters.ts fit \
 
 ## 対象とDB接続
 
-`extract` だけがPostgreSQLへ接続する。Bunが `apps/server/.env` を読み込み、`DB_HOST`、`DB_PORT`、`DB_DATABASE`（または `DB_NAME`）、`DB_USER`、`DB_PASSWORD` を使用する。対応する `PG*` 変数にも対応する。資格情報は引数や結果に保存しない。
+`extract` だけがPostgreSQLへ接続する。Bunが `apps/server/.env` を読み込み、`DB_HOST`、`PGPORT`、`POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` を使用する。従来の `DB_*` や対応する `PG*` 変数も利用できる。資格情報は引数や結果に保存しない。
 
 アプリ全体をbootstrapせず、専用の読み取り専用接続を開く。workerや自動タグ付けを起動しない。REPEATABLE READ / READ ONLYの同じトランザクションで対象・近傍・監査を取得する。
 
