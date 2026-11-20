@@ -66,6 +66,9 @@ import { toast } from "../toast";
 import {
 	CategoryLabel,
 	CompactCategorySelect,
+	MANAGEMENT_CATEGORY_GRID,
+	MANAGEMENT_CATEGORY_LIST,
+	ManagementMobileCategory,
 } from "../workspace/management-layout";
 
 import { McpPublicationSettings } from "./mcp-publication-settings";
@@ -247,7 +250,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 	});
 
 	return (
-		<div class="min-w-0 space-y-6 [&_input]:scroll-mt-28 [&_input]:text-base [&_select]:scroll-mt-28 [&_select]:text-base [&_textarea]:scroll-mt-28 [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
+		<div class="min-w-0 space-y-6 [&_input]:text-base [&_select]:text-base [&_textarea]:text-base sm:[&_input]:text-sm sm:[&_select]:text-sm sm:[&_textarea]:text-sm">
 			<FormError message={submitError()} />
 
 			<form
@@ -258,12 +261,12 @@ export function ConfigScreen(props: ConfigScreenProps) {
 				}}
 			>
 				<Tabs
-					class="grid min-w-0 w-full gap-6 lg:grid-cols-settings-sidebar xl:gap-8"
+					class={MANAGEMENT_CATEGORY_GRID}
 					onChange={setActiveTab}
 					orientation="vertical"
 					value={activeTab()}
 				>
-					<div class="lg:hidden">
+					<ManagementMobileCategory>
 						<CompactCategorySelect
 							active={activeTab()}
 							label={t("configScreen.settingsCategories")}
@@ -274,10 +277,10 @@ export function ConfigScreen(props: ConfigScreenProps) {
 								return <Icon aria-hidden="true" size={16} />;
 							}}
 						/>
-					</div>
+					</ManagementMobileCategory>
 					<TabsList
 						aria-label={t("configScreen.settingsCategories")}
-						class="hidden h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0 lg:sticky lg:top-0 lg:flex lg:flex-col lg:self-start"
+						class={`${MANAGEMENT_CATEGORY_LIST} h-auto w-full justify-start gap-1 rounded-none bg-transparent p-0 lg:flex lg:flex-col`}
 					>
 						<For each={SETTINGS_CATEGORIES}>
 							{(category) => {
@@ -943,7 +946,7 @@ export function ConfigScreen(props: ConfigScreenProps) {
 											>
 												<SelectLabel>{t("configScreen.logLevel")}</SelectLabel>
 												<SelectTrigger
-													class="w-full scroll-mt-28 text-base sm:text-sm"
+													class="w-full text-base sm:text-sm"
 													id={field().name}
 												>
 													<SelectValue<LogLevelOption>>

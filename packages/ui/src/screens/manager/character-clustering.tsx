@@ -1,3 +1,4 @@
+import type { Accessor } from "solid-js";
 import { t } from "@solid-imager/i18n";
 import type {
 	ClusteringGroupsRequest,
@@ -166,6 +167,7 @@ function Continuation(props: {
 }
 
 function ImageGrid(props: {
+	scrollRoot: Accessor<HTMLElement | undefined>;
 	resetKey: string;
 	total: number;
 	canLoadMore: boolean;
@@ -179,6 +181,7 @@ function ImageGrid(props: {
 }) {
 	return (
 		<ClusteringVirtualGrid
+			scrollRoot={props.scrollRoot}
 			items={props.media}
 			itemKey={(image) => image.id}
 			label={props.label}
@@ -271,6 +274,7 @@ function ImageGrid(props: {
 }
 
 export function CharacterClusteringReviewPanel(props: {
+	scrollRoot: Accessor<HTMLElement | undefined>;
 	actions: CharacterClusteringReviewActions;
 }) {
 	const [chosenRun, setChosenRun] = createSignal(readPreference("run"));
@@ -283,6 +287,8 @@ export function CharacterClusteringReviewPanel(props: {
 	const [query, setQuery] = createSignal("");
 	const [appliedQuery, setAppliedQuery] = createSignal("");
 	const [sort, setSort] = createSignal<ClusteringGroupsRequest["sort"]>("size");
+	const [detailScrollRoot, setDetailScrollRoot] =
+		createSignal<HTMLDivElement>();
 	const [detailId, setDetailId] = createSignal<number | null>(null);
 	const [detailOrder, setDetailOrder] =
 		createSignal<ClusteringMediaRequest["order"]>("weak");
@@ -825,6 +831,7 @@ export function CharacterClusteringReviewPanel(props: {
 								)}
 							</p>
 							<ClusteringVirtualGrid
+								scrollRoot={props.scrollRoot}
 								items={groupItems()}
 								itemKey={(group) => group.id}
 								label={t("characterClustering.clusterList")}
@@ -969,6 +976,7 @@ export function CharacterClusteringReviewPanel(props: {
 								actions={props.actions}
 								comparing={Boolean(comparison())}
 								large={large()}
+								scrollRoot={props.scrollRoot}
 								media={noiseItems()}
 								label={t("characterClustering.noiseImages")}
 								resetKey={reviewKey()}
@@ -1034,7 +1042,8 @@ export function CharacterClusteringReviewPanel(props: {
 			>
 				<DialogContent
 					class="max-w-7xl gap-3 p-3 sm:p-5"
-					data-clustering-scroll
+					ref={setDetailScrollRoot}
+					data-management-scroll
 				>
 					<DialogHeader class="static z-auto pr-8">
 						<DialogTitle>
@@ -1098,6 +1107,7 @@ export function CharacterClusteringReviewPanel(props: {
 							actions={props.actions}
 							comparing={Boolean(comparison())}
 							large={large()}
+							scrollRoot={detailScrollRoot}
 							media={detailItems()}
 							label={t("characterClustering.groupImages")}
 							resetKey={JSON.stringify(detailInput())}

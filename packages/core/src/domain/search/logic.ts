@@ -211,32 +211,30 @@ const addFilterConditions = (
 	}
 };
 
-/**
- * Builds the state changes needed to apply a saved preset.
- *
- * Presets that cannot be represented by simple filters use pro mode. Older
- * presets without a stored mode retain the current mode when possible.
- * Missing sort and order default to date and descending respectively.
- *
- * @param preset - Saved condition and optional mode and ordering.
- * @param currentState - Current mode, used for presets without a stored mode.
- * @returns A partial state update to merge into the current search state.
- */
+/** Builds the state changes needed to apply a saved user preset. */
 export const preparePresetState = (
 	preset: Preset,
 	currentState: SearchState,
-) => {
-	const simpleState = restoreFromSearchGroup(preset.value);
+) => ({
+	...prepareSearchConditionState(preset, currentState.mode),
+	activePresetId: preset.id,
+});
+
+/** Applies the saved condition, using the supplied mode for legacy values. */
+export const prepareSearchConditionState = (
+	saved: Pick<Preset, "value" | "mode" | "sort" | "order">,
+	fallbackMode: SearchState["mode"],
+): Partial<SearchState> => {
+	const simpleState = restoreFromSearchGroup(saved.value);
 	const sortState = {
-		sortBy: preset.sort || "date",
-		sortOrder: preset.order || "desc",
+		sortBy: saved.sort || "date",
+		sortOrder: saved.order || "desc",
 	};
 
-	if (preset.mode != null) {
-		if (preset.mode === "simple" && simpleState) {
+	if (saved.mode != null) {
+		if (saved.mode === "simple" && simpleState) {
 			return {
 				mode: "simple" as const,
-				activePresetId: preset.id,
 				advancedCondition: null,
 				...simpleState,
 				...sortState,
@@ -244,8 +242,7 @@ export const preparePresetState = (
 		}
 		return {
 			mode: "pro" as const,
-			activePresetId: preset.id,
-			advancedCondition: preset.value,
+			advancedCondition: saved.value,
 			searchQuery: "",
 			selectedTags: [],
 			excludeTags: [],
@@ -259,19 +256,17 @@ export const preparePresetState = (
 
 	// Fallback for older presets without mode
 	if (simpleState) {
-		const targetMode = currentState.mode || "simple";
+		const targetMode = fallbackMode;
 		return {
 			mode: targetMode,
-			activePresetId: preset.id,
-			advancedCondition: targetMode === "pro" ? preset.value : null,
+			advancedCondition: targetMode === "pro" ? saved.value : null,
 			...(targetMode === "simple" ? simpleState : {}),
 			...sortState,
 		};
 	}
 	return {
 		mode: "pro" as const,
-		activePresetId: preset.id,
-		advancedCondition: preset.value,
+		advancedCondition: saved.value,
 		...sortState,
 	};
 };

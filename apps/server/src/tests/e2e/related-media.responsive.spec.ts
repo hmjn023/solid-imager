@@ -18,6 +18,20 @@ const relatedEndpoint = "**/api/rpc/media/getRelated";
 const relatedSection = (page: Page) =>
 	page.getByRole("region", { name: "関連メディア", exact: true });
 
+function mockEmptyRelatedMedia(page: Page): Promise<void> {
+	return page.route(relatedEndpoint, (route) =>
+		route.fulfill({
+			json: {
+				json: {
+					items: [],
+					recommendations: [],
+					similarityStatus: "available",
+				},
+			},
+		}),
+	);
+}
+
 async function expectNoHorizontalOverflow(page: Page): Promise<void> {
 	expect(
 		await page.evaluate(
@@ -32,6 +46,8 @@ test(
 	"mobile detail reaches editing without an empty related-media scroll screen",
 	{ tag: "@mobile-only" },
 	async ({ page }, testInfo) => {
+		// Other viewport projects add relations to the shared fixture media.
+		await mockEmptyRelatedMedia(page);
 		await page.goto(mediaPath());
 		await waitForAppHydration(page);
 		const related = relatedSection(page);
@@ -454,17 +470,7 @@ test(
 	"empty related media does not suggest unrelated images",
 	{ tag: "@desktop-only" },
 	async ({ page }) => {
-		await page.route(relatedEndpoint, (route) =>
-			route.fulfill({
-				json: {
-					json: {
-						items: [],
-						recommendations: [],
-						similarityStatus: "available",
-					},
-				},
-			}),
-		);
+		await mockEmptyRelatedMedia(page);
 		await page.goto(mediaPath());
 		await waitForAppHydration(page);
 		const related = relatedSection(page);

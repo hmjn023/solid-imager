@@ -7,7 +7,6 @@ import { constants } from "node:fs";
 import { createHash } from "node:crypto";
 import type { Transaction } from "@solid-imager/core/ports";
 import { getExecutor } from "~/infrastructure/db/executor";
-import os from "node:os";
 import path from "node:path";
 import {
 	type AddMediaRequest,
@@ -20,7 +19,6 @@ import {
 	getMediaTypeFromExtension,
 } from "@solid-imager/core/media/files";
 import { asyncPool, isRecord } from "@solid-imager/core/utils";
-import { create as createYtDlp, type Flags } from "youtube-dl-exec";
 import { z } from "zod";
 import {
 	importWorkOwner,
@@ -39,13 +37,14 @@ import {
 	DrizzleSourceRepository,
 } from "~/infrastructure/db/repositories";
 import { ServerMediaStorage } from "~/infrastructure/storage/server-media-storage";
-import { resolveFfmpegPath } from "~/infrastructure/utils/ffmpeg";
 import { downloadUgoiraArchive } from "~/infrastructure/services/ugoira-download";
 import { convertUgoiraToMp4 } from "~/infrastructure/services/ugoira-converter";
+import {
+	fetchTwitterPost,
+	getTwitterPostReference,
+} from "~/infrastructure/services/twitter-post";
 
 const DATE_REGEX = /(\d{4})(\d{2})(\d{2})/;
-const TWITTER_URL_REGEX =
-	/(twitter|x)\.com\/(?:\w+\/status|i\/web\/status)\/\d+/;
 const MEDIA_EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
 	"image/avif": ".avif",
 	"image/bmp": ".bmp",
@@ -60,94 +59,15 @@ const MEDIA_EXTENSION_BY_CONTENT_TYPE: Readonly<Record<string, string>> = {
 	"video/webm": ".webm",
 };
 
-let ytDlpPathCache: string | null = null;
-let ytDlpResolvePromise: Promise<string> | null = null;
-
-async function resolveYtDlpPath(): Promise<string> {
-	if (ytDlpResolvePromise) return ytDlpResolvePromise;
-
-	ytDlpResolvePromise = (async () => {
-		if (ytDlpPathCache) return ytDlpPathCache;
-
-		const { existsSync } = await import("node:fs");
-
-		// 1. Check built output location first (for production builds)
-		const outputBin = path.join(process.cwd(), "yt-dlp");
-		if (existsSync(outputBin)) {
-			ytDlpPathCache = outputBin;
-			return ytDlpPathCache;
-		}
-
-		// 2. Check node_modules in current working directory
-		const nodeModulesBin = path.join(
-			process.cwd(),
-			"node_modules/youtube-dl-exec/bin/yt-dlp",
-		);
-		if (existsSync(nodeModulesBin)) {
-			ytDlpPathCache = nodeModulesBin;
-			return ytDlpPathCache;
-		}
-
-		// 3. Walk up from current file to find workspace root
-		const { fileURLToPath } = await import("node:url");
-		const { dirname } = await import("node:path");
-		let dir = dirname(fileURLToPath(new URL(import.meta.url)));
-		for (let i = 0; i < 10; i++) {
-			const candidate = path.join(
-				dir,
-				"node_modules/youtube-dl-exec/bin/yt-dlp",
-			);
-			if (existsSync(candidate)) {
-				ytDlpPathCache = candidate;
-				return ytDlpPathCache;
-			}
-			const parent = dirname(dir);
-			if (parent === dir) break;
-			dir = parent;
-		}
-
-		// 4. Fallback to PATH
-		ytDlpPathCache = "yt-dlp";
-		return ytDlpPathCache;
-	})();
-
-	return ytDlpResolvePromise;
-}
-
-type YtDlpOutput = {
-	id: string;
-
-	title: string;
-	description: string;
-	duration?: number;
-	width?: number;
-	height?: number;
-	ext: string;
-	uploader?: string;
-
-	uploader_id?: string;
-
-	upload_date?: string;
-	_filename?: string;
-	filename: string;
-};
-
-const ytDlpOutputSchema = z.object({
-	id: z.string(),
-	title: z.string(),
-	description: z.string(),
-	duration: z.number().optional(),
+const downloadMetadataSchema = z.object({
+	description: z.string().optional(),
+	title: z.string().optional(),
 	width: z.number().optional(),
 	height: z.number().optional(),
-	ext: z.string(),
-	uploader: z.string().optional(),
-	uploader_id: z.string().optional(),
+	dateEpoch: z.number().optional(),
+	// Older in-flight jobs checkpointed the date as YYYYMMDD.
 	upload_date: z.string().optional(),
-	_filename: z.string().optional(),
-	filename: z.string(),
 });
-
-const ytDlpOutputArraySchema = z.array(ytDlpOutputSchema);
 
 const savedDownloadRegistration = addMediaRequestSchema.pick({
 	filePath: true,
@@ -161,223 +81,79 @@ const downloadOutputsSchema = z.array(
 	z.object({
 		filePath: z.string(),
 		targetPath: z.string(),
-		metadata: ytDlpOutputSchema,
+		metadata: downloadMetadataSchema,
 	}),
 );
 
-type Cookie = {
-	domain: string;
-	path: string;
-	secure: boolean;
-	expirationDate?: number;
-	name: string;
-	value: string;
-};
+type DownloadOutput = z.infer<typeof downloadOutputsSchema>[number];
 
-async function createNetscapeCookieFile(
-	cookies: Cookie[],
-): Promise<string | null> {
-	if (!Array.isArray(cookies) || cookies.length === 0) {
-		return null;
+async function stageTwitterDownloads(
+	postReference: NonNullable<ReturnType<typeof getTwitterPostReference>>,
+	item: DownloadItem,
+	basePath: string,
+	job: Job,
+): Promise<DownloadOutput[]> {
+	const post = await fetchTwitterPost(postReference.id);
+	const videos =
+		postReference.videoIndex === undefined
+			? post.videos
+			: post.videos.filter((video) => video.index === postReference.videoIndex);
+	if (videos.length === 0) {
+		throw new Error("vxTwitter returned no downloadable MP4 for the post");
 	}
 
-	const randomSuffix = Math.random().toString(36).slice(2);
-	const cookieFilePath = path.join(
-		os.tmpdir(),
-		`cookies-${Date.now()}-${randomSuffix}.txt`,
-	);
-
+	await fs.mkdir(basePath, { recursive: true });
+	const outputs: DownloadOutput[] = [];
+	const stagedPaths: string[] = [];
 	try {
-		const lines = ["# Netscape HTTP Cookie File"];
-
-		for (const cookie of cookies) {
-			const domain = cookie.domain;
-			const flag = domain.startsWith(".") ? "TRUE" : "FALSE";
-			const cookiePath = cookie.path;
-			const secure = cookie.secure ? "TRUE" : "FALSE";
-			const expiration = cookie.expirationDate
-				? Math.floor(cookie.expirationDate)
-				: 0;
-			const name = cookie.name;
-			const value = cookie.value;
-
-			lines.push(
-				`${domain}\t${flag}\t${cookiePath}\t${secure}\t${expiration}\t${name}\t${value}`,
+		for (const [index, media] of videos.entries()) {
+			const response = await fetchMedia(
+				media.url,
+				{ Accept: "*/*" },
+				{
+					redirect: "error",
+					signal: AbortSignal.timeout(120_000),
+				},
 			);
-		}
-
-		await fs.writeFile(cookieFilePath, lines.join("\n"));
-		return cookieFilePath;
-	} catch (e) {
-		logger.warn({ err: e }, "Failed to create cookie file");
-		return null;
-	}
-}
-
-function createYtDlpError(error: unknown): Error {
-	const details = isRecord(error) ? error : {};
-	const stderr =
-		typeof details.stderr === "string" ? details.stderr.trim() : "";
-	const exitCode =
-		typeof details.exitCode === "number" ? details.exitCode : undefined;
-	const signal =
-		typeof details.signalCode === "string"
-			? details.signalCode
-			: typeof details.signal === "string"
-				? details.signal
-				: undefined;
-	const code = typeof details.code === "string" ? details.code : undefined;
-	const status = [
-		exitCode !== undefined ? `exit code ${exitCode}` : undefined,
-		signal ? `signal ${signal}` : undefined,
-		code ? `code ${code}` : undefined,
-	]
-		.filter(Boolean)
-		.join(", ");
-	// tinyspawn's message embeds the full command; use its termination details instead.
-	const reason =
-		stderr ||
-		(status
-			? "process failed without stderr"
-			: error instanceof Error
-				? error.message.trim()
-				: String(error).trim()) ||
-		"unknown execution error (no diagnostic output)";
-	return Object.assign(
-		new Error(`yt-dlp failed${status ? ` (${status})` : ""}: ${reason}`, {
-			cause: error,
-		}),
-		{ stderr, exitCode, signal, code },
-	);
-}
-
-/** Downloads video/media using yt-dlp via youtube-dl-exec. */
-async function downloadWithYtDlp(
-	url: string,
-	outputDir: string,
-	jobId: string,
-	cookies?: Cookie[],
-	userAgent?: string,
-): Promise<{ filePath: string; metadata: YtDlpOutput }[]> {
-	await fs.mkdir(outputDir, { recursive: true });
-
-	const template = `.${jobId}-%(id)s.%(ext)s`;
-	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
-
-	try {
-		const ffmpegLocation = await resolveFfmpegPath();
-		const ytDlpPath = await resolveYtDlpPath();
-		const ytdlp = createYtDlp(ytDlpPath);
-		const flags: Flags = {
-			simulate: false,
-			printJson: true,
-			paths: outputDir,
-			output: template,
-			format: "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best",
-			mergeOutputFormat: "mp4",
-			...(ffmpegLocation && { ffmpegLocation }),
-			...(userAgent && { userAgent }),
-			...(cookieFilePath && { cookies: cookieFilePath }),
-		};
-		// Use the raw subprocess API: the wrapper reparses rejected errors and can
-		// replace spawn/JSON errors with an empty stderr-based message.
-		const result = await ytdlp.exec(url, flags);
-
-		// output handling
-		const outputs = parseYtDlpOutput(result.stdout);
-		if (outputs.length === 0) {
-			const stderr = result.stderr.trim();
-			throw new Error(
-				`yt-dlp returned no valid media metadata${stderr ? `: ${stderr}` : ""}`,
-			);
-		}
-
-		return outputs.map((metadata) => {
-			let finalPath = metadata.filename || metadata._filename || "";
-			if (finalPath && !path.isAbsolute(finalPath)) {
-				finalPath = path.join(outputDir, finalPath);
+			if (response.extension !== ".mp4") {
+				throw new Error("vxTwitter video did not return an MP4");
 			}
-			return { filePath: finalPath, metadata };
-		});
-	} catch (error) {
-		const executionError = createYtDlpError(error);
-		logger.error({ err: executionError }, "yt-dlp execution failed");
-		throw executionError;
-	} finally {
-		if (cookieFilePath) {
-			fs.unlink(cookieFilePath).catch((err) =>
-				logger.warn({ err }, "Failed to clean up cookie file"),
+			const { extension } = response;
+			const filePath = path.resolve(
+				basePath,
+				`.${job.id}-vx-${job.attemptCount}-${index}${extension}`,
 			);
-		}
-	}
-}
-
-function parseYtDlpOutput(result: unknown): YtDlpOutput[] {
-	let outputs: YtDlpOutput[] = [];
-
-	if (typeof result === "string") {
-		const lines = (result as string)
-			.split("\n")
-			.filter((line) => line.trim().length > 0);
-		outputs = lines.reduce<YtDlpOutput[]>((acc, line) => {
-			try {
-				const parsed: unknown = JSON.parse(line);
-				acc.push(ytDlpOutputSchema.parse(parsed));
-			} catch (e) {
-				logger.warn({ err: e, line }, "Failed to parse yt-dlp JSON line");
-			}
-			return acc;
-		}, []);
-	} else if (Array.isArray(result)) {
-		outputs = ytDlpOutputArraySchema.parse(result);
-	} else if (typeof result === "object" && result !== null) {
-		outputs = [ytDlpOutputSchema.parse(result)];
-	} else {
-		logger.warn(
-			{ resultType: typeof result, result },
-			"Unexpected yt-dlp output type",
-		);
-		throw new Error(`Unexpected yt-dlp output type: ${typeof result}`);
-	}
-	return outputs;
-}
-
-/**
- * Fetches metadata using yt-dlp without downloading the file.
- */
-async function fetchMetadataWithYtDlp(
-	url: string,
-	cookies?: Cookie[],
-	userAgent?: string,
-): Promise<YtDlpOutput | null> {
-	const cookieFilePath = await createNetscapeCookieFile(cookies || []);
-
-	try {
-		const ffmpegLocation = await resolveFfmpegPath();
-		const ytDlpPath = await resolveYtDlpPath();
-		const ytdlp = createYtDlp(ytDlpPath);
-		const flags: Flags = {
-			dumpSingleJson: true,
-			skipDownload: true,
-			...(ffmpegLocation && { ffmpegLocation }),
-			...(userAgent && { userAgent }),
-			...(cookieFilePath && { cookies: cookieFilePath }),
-		};
-		const result = await ytdlp.exec(url, flags);
-
-		return ytDlpOutputSchema.parse(JSON.parse(result.stdout));
-	} catch (error) {
-		logger.warn(
-			{ err: createYtDlpError(error), url },
-			"Failed to fetch metadata with yt-dlp",
-		);
-		return null;
-	} finally {
-		if (cookieFilePath) {
-			fs.unlink(cookieFilePath).catch((err) =>
-				logger.warn({ err }, "Failed to clean up cookie file"),
+			const name = generateMediaFilename(item, extension);
+			const indexed =
+				videos.length === 1
+					? name
+					: `${path.basename(name, extension)}_${index}${extension}`;
+			const targetPath = await resolveFinalPathWithAvoidance(
+				path.dirname(filePath),
+				indexed,
+				filePath,
 			);
+			const stream = response.body.body;
+			if (!stream) throw new Error("X media response body is empty");
+			stagedPaths.push(filePath);
+			await fs.writeFile(filePath, stream.values());
+			outputs.push({
+				filePath,
+				targetPath,
+				metadata: {
+					description: post.text,
+					dateEpoch: post.dateEpoch,
+					width: media.size?.width,
+					height: media.size?.height,
+				},
+			});
 		}
+		return outputs;
+	} catch (error) {
+		await Promise.allSettled(
+			stagedPaths.map((filePath) => fs.rm(filePath, { force: true })),
+		);
+		throw error;
 	}
 }
 
@@ -393,7 +169,7 @@ function formatMetadataAsMarkdown(item: DownloadItem): string {
  */
 function resolveCreatedAt(
 	item: DownloadItem,
-	metadata: YtDlpOutput,
+	metadata: DownloadOutput["metadata"],
 	fileMeta: { createdAt: Date },
 ): Date {
 	if (item.createdAt) {
@@ -402,6 +178,8 @@ function resolveCreatedAt(
 			return d;
 		}
 	}
+	if (metadata.dateEpoch !== undefined)
+		return new Date(metadata.dateEpoch * 1000);
 	if (metadata.upload_date) {
 		const d = new Date(metadata.upload_date.replace(DATE_REGEX, "$1-$2-$3"));
 		if (!Number.isNaN(d.getTime())) {
@@ -411,105 +189,62 @@ function resolveCreatedAt(
 	return fileMeta.createdAt;
 }
 
-// Update helper to determine media type from extension
-
-async function handleYtDlpDownload(
+async function handleTwitterDownload(
+	postReference: NonNullable<ReturnType<typeof getTwitterPostReference>>,
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
 	job: Job,
 ) {
-	if (!item.targetUrl) {
-		throw new Error("Missing targetUrl for yt-dlp download");
-	}
-
-	// Use yt-dlp
-	logger.info({ url: item.targetUrl }, "[DownloadJob] Using yt-dlp");
-
-	try {
-		const owner = importWorkOwner(job);
-		const payload = isRecord(job.payload) ? job.payload : {};
-		const checkpoint = z
-			.object({
-				downloadOutputs: downloadOutputsSchema.optional(),
-				nextOutput: z.number().int().nonnegative().default(0),
-			})
-			.parse(owner ? payload : {});
-		let outputs = checkpoint.downloadOutputs;
-		if (!outputs) {
-			await waitForDownloadRateLimit();
-			const results = await downloadWithYtDlp(
-				item.targetUrl,
-				basePath,
+	const owner = importWorkOwner(job);
+	const payload = isRecord(job.payload) ? job.payload : {};
+	const checkpoint = z
+		.object({
+			downloadOutputs: downloadOutputsSchema.optional(),
+			nextOutput: z.number().int().nonnegative().default(0),
+		})
+		.parse(owner ? payload : {});
+	const outputs =
+		checkpoint.downloadOutputs ??
+		(await stageTwitterDownloads(postReference, item, basePath, job));
+	const checkpointOutputs = async (nextOutput: number) => {
+		if (owner)
+			await JobRepository.update(
 				job.id,
-				item.cookies,
-				item.userAgent,
+				{ payload: { ...payload, downloadOutputs: outputs, nextOutput } },
+				owner.attempt,
 			);
-			outputs = await Promise.all(
-				results.map(async (res, index) => {
-					const extension = path.extname(res.filePath);
-					const name = generateMediaFilename(item, extension);
-					const indexed =
-						results.length === 1
-							? name
-							: `${path.basename(name, extension)}_${index}${extension}`;
-					const targetPath = await _resolveFinalPathWithAvoidance(
-						path.dirname(res.filePath),
-						indexed,
-						res.filePath,
-					);
-					return { ...res, targetPath };
-				}),
-			);
-		}
-		const checkpointOutputs = async (nextOutput: number) => {
-			if (owner)
-				await JobRepository.update(
-					job.id,
-					{ payload: { ...payload, downloadOutputs: outputs, nextOutput } },
-					owner.attempt,
-				);
-		};
-		if (!checkpoint.downloadOutputs) await checkpointOutputs(0);
-		for (let i = checkpoint.nextOutput; i < outputs.length; i++) {
-			if (owner && (await JobRepository.isCancellationRequested(job.id))) {
-				for (const { filePath } of outputs.slice(i)) {
-					if (
-						path.dirname(filePath) === path.resolve(basePath) &&
-						path.basename(filePath).startsWith(`.${job.id}-`)
-					) {
-						await fs.rm(filePath, { force: true });
-					}
+	};
+	if (!checkpoint.downloadOutputs) await checkpointOutputs(0);
+	for (let i = checkpoint.nextOutput; i < outputs.length; i++) {
+		if (owner && (await JobRepository.isCancellationRequested(job.id))) {
+			for (const { filePath } of outputs.slice(i)) {
+				if (
+					path.dirname(filePath) === path.resolve(basePath) &&
+					path.basename(filePath).startsWith(`.${job.id}-`)
+				) {
+					await fs.rm(filePath, { force: true });
 				}
-				return;
 			}
-			await publishYtDlpOutput(outputs[i], !!checkpoint.downloadOutputs, () =>
-				checkpointOutputs(i),
-			);
-			await registerYtDlpOutput(
-				outputs[i],
-				item,
-				mediaSourceId,
-				basePath,
-				owner,
-			);
-			await checkpointOutputs(i + 1);
+			return;
 		}
-	} catch (error) {
-		logger.error({ err: error }, "[DownloadJob] yt-dlp download failed");
-
-		// Notify frontend through the typed event bus.
-		RealtimeEventBus.publishSource(mediaSourceId, "download-error", {
-			url: item.targetUrl,
-			error: error instanceof Error ? error.message : String(error),
-		});
-		throw error;
+		await publishDownloadOutput(outputs[i], !!checkpoint.downloadOutputs, () =>
+			checkpointOutputs(i),
+		);
+		await registerDownloadOutput(
+			outputs[i],
+			item,
+			mediaSourceId,
+			basePath,
+			owner,
+		);
+		await checkpointOutputs(i + 1);
 	}
 }
 
 /** Publish without replacing another import between choosing a name and registering it. */
-async function publishYtDlpOutput(
-	output: z.infer<typeof downloadOutputsSchema>[number],
+async function publishDownloadOutput(
+	output: DownloadOutput,
 	resuming: boolean,
 	checkpoint: () => Promise<void>,
 ) {
@@ -542,7 +277,7 @@ async function publishYtDlpOutput(
 			]);
 			// A worker can exit after linking and before removing its temporary name.
 			if (!from.ino || from.dev !== to.dev || from.ino !== to.ino) {
-				output.targetPath = await _resolveFinalPathWithAvoidance(
+				output.targetPath = await resolveFinalPathWithAvoidance(
 					dir,
 					name,
 					filePath,
@@ -556,8 +291,8 @@ async function publishYtDlpOutput(
 	}
 }
 
-async function registerYtDlpOutput(
-	output: z.infer<typeof downloadOutputsSchema>[number],
+async function registerDownloadOutput(
+	output: DownloadOutput,
 	item: DownloadItem,
 	mediaSourceId: string,
 	basePath: string,
@@ -572,7 +307,7 @@ async function registerYtDlpOutput(
 
 	logger.info(
 		{ relativePath, mediaType },
-		"[DownloadJob] Processing file from yt-dlp",
+		"[DownloadJob] Processing file from X post",
 	);
 
 	// Get file metadata
@@ -583,9 +318,10 @@ async function registerYtDlpOutput(
 		filePath: relativePath,
 		fileName: path.basename(filePath),
 		mediaType,
-		description: item.description || metadata.description || metadata.title,
-		width: metadata.width || fileMeta.width || 0,
-		height: metadata.height || fileMeta.height || 0,
+		description:
+			item.description || metadata.description || metadata.title || null,
+		width: fileMeta.width || metadata.width || 0,
+		height: fileMeta.height || metadata.height || 0,
 		fileSize: fileMeta.size,
 		createdAt: resolveCreatedAt(item, metadata, fileMeta),
 		modifiedAt: fileMeta.modifiedAt,
@@ -597,7 +333,7 @@ async function registerYtDlpOutput(
 	await registerMedia(newMedia, mediaSourceId, item, basePath, owner);
 }
 
-async function _resolveFinalPathWithAvoidance(
+async function resolveFinalPathWithAvoidance(
 	dir: string,
 	unifiedName: string,
 	currentPath: string,
@@ -653,6 +389,35 @@ function buildFetchHeaders(item: DownloadItem): Record<string, string> {
 	return headers;
 }
 
+async function fetchMedia(
+	url: string,
+	headers: Record<string, string>,
+	options?: RequestInit,
+) {
+	await waitForDownloadRateLimit();
+	const body = await fetch(url, { ...options, headers });
+	if (!body.ok) {
+		throw new Error(
+			`Failed to download media: ${body.status} ${body.statusText}`,
+		);
+	}
+	const contentType = body.headers
+		.get("content-type")
+		?.split(";", 1)[0]
+		.trim()
+		.toLowerCase();
+	const extension =
+		contentType && Object.hasOwn(MEDIA_EXTENSION_BY_CONTENT_TYPE, contentType)
+			? MEDIA_EXTENSION_BY_CONTENT_TYPE[contentType]
+			: undefined;
+	if (!extension) {
+		throw new Error(
+			`Unsupported direct media content type: ${contentType ?? "unknown content type"}`,
+		);
+	}
+	return { body, extension };
+}
+
 /**
  * Handles direct image and video downloads (non-Twitter).
  */
@@ -672,46 +437,13 @@ async function handleDirectMediaDownload(
 	);
 
 	try {
-		// Download the media
-		const headers = buildFetchHeaders(item);
-
-		await waitForDownloadRateLimit();
-
-		const response = await fetch(item.targetUrl, {
-			headers,
-		});
-		if (!response.ok) {
-			logger.error(
-				{
-					status: response.status,
-					statusText: response.statusText,
-					url: item.targetUrl,
-				},
-				"[DownloadJob] Fetch failed",
-			);
-			throw new Error(
-				`Failed to download media: ${response.status} ${response.statusText}`,
-			);
-		}
-
-		const contentType = response.headers
-			.get("content-type")
-			?.split(";", 1)[0]
-			.trim()
-			.toLowerCase();
-		// Use the response MIME type when a CDN URL has no file extension.
-		const extension =
-			contentType && Object.hasOwn(MEDIA_EXTENSION_BY_CONTENT_TYPE, contentType)
-				? MEDIA_EXTENSION_BY_CONTENT_TYPE[contentType]
-				: undefined;
-		if (!extension) {
-			throw new Error(
-				`Unsupported direct media content type: ${contentType ?? "unknown content type"}`,
-			);
-		}
+		const { body, extension } = await fetchMedia(
+			item.targetUrl,
+			buildFetchHeaders(item),
+		);
 		const filename = generateMediaFilename(item, extension);
 
-		const arrayBuffer = await response.arrayBuffer();
+		const arrayBuffer = await body.arrayBuffer();
 
 		// Use ServerMediaStorage to save with autoIncrement
 		const fileInfo = await ServerMediaStorage.saveFile(
@@ -731,26 +463,18 @@ async function handleDirectMediaDownload(
 
 		let createdAt = item.createdAt ? new Date(item.createdAt) : undefined;
 
-		// If createdAt is missing, try to fetch from source URL (e.g. Tweet URL)
 		if (!createdAt) {
-			const tweetUrl = item.sourceUrls?.find((u) => u.match(TWITTER_URL_REGEX));
-			if (tweetUrl) {
-				logger.info(
-					{ tweetUrl },
-					"[DownloadJob] Attempting to fetch metadata from source URL for timestamp",
-				);
-				const meta = await fetchMetadataWithYtDlp(
-					tweetUrl,
-					item.cookies,
-					item.userAgent,
-				);
-				if (meta?.upload_date) {
-					createdAt = new Date(
-						meta.upload_date.replace(DATE_REGEX, "$1-$2-$3"),
-					);
-					logger.info(
-						{ createdAt },
-						"[DownloadJob] Resolved createdAt from source URL",
+			const postId = item.sourceUrls
+				?.map(getTwitterPostReference)
+				.find(Boolean)?.id;
+			if (postId) {
+				try {
+					const post = await fetchTwitterPost(postId);
+					createdAt = new Date(post.dateEpoch * 1000);
+				} catch (error) {
+					logger.warn(
+						{ err: error, postId },
+						"Failed to fetch X post timestamp",
 					);
 				}
 			}
@@ -949,14 +673,7 @@ export async function processDownloadJob(job: Job): Promise<void> {
 	const connectionInfo = mediaSource.connectionInfo as { path: string };
 	const basePath = connectionInfo.path;
 
-	// Decision: Direct download or yt-dlp?
-	// Use regex to detect Twitter URLs which might need yt-dlp if target is the tweet link
-	const isTwitterPost = item.targetUrl.match(TWITTER_URL_REGEX);
-
-	logger.info(
-		{ isTwitterPost: !!isTwitterPost },
-		"[DownloadJob] URL pattern check",
-	);
+	const postReference = getTwitterPostReference(item.targetUrl);
 
 	try {
 		const owner = importWorkOwner(job);
@@ -972,9 +689,14 @@ export async function processDownloadJob(job: Job): Promise<void> {
 				basePath,
 				importWorkOwner(job),
 			);
-		} else if (isTwitterPost) {
-			logger.info({}, "[DownloadJob] Using yt-dlp download method");
-			await handleYtDlpDownload(item, mediaSourceId, basePath, job);
+		} else if (postReference) {
+			await handleTwitterDownload(
+				postReference,
+				item,
+				mediaSourceId,
+				basePath,
+				job,
+			);
 		} else {
 			await handleDirectMediaDownload(
 				item,

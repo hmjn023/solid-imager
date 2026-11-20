@@ -4,7 +4,6 @@ import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { processDownloadJob } from "~/infrastructure/jobs/download-jobs";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
-import { logger } from "~/infrastructure/logger";
 import {
 	JobRepository,
 	MediaRepository,
@@ -24,8 +23,6 @@ const {
 	mockAuthorCreate,
 	mockAuthorAddMedia,
 	mockSaveFile,
-	mockYtDlpExec,
-	mockYtDlp,
 	mockDownloadUgoiraArchive,
 	mockConvertUgoiraToMp4,
 } = vi.hoisted(() => ({
@@ -40,8 +37,6 @@ const {
 	mockAuthorCreate: vi.fn(),
 	mockAuthorAddMedia: vi.fn(),
 	mockSaveFile: vi.fn(),
-	mockYtDlpExec: vi.fn(),
-	mockYtDlp: vi.fn(),
 	mockDownloadUgoiraArchive: vi.fn(),
 	mockConvertUgoiraToMp4: vi.fn(),
 }));
@@ -52,12 +47,6 @@ vi.mock("~/infrastructure/services/ugoira-download", () => ({
 }));
 vi.mock("~/infrastructure/services/ugoira-converter", () => ({
 	convertUgoiraToMp4: mockConvertUgoiraToMp4,
-}));
-vi.mock("youtube-dl-exec", () => ({
-	create: () => Object.assign(mockYtDlp, { exec: mockYtDlpExec }),
-}));
-vi.mock("~/infrastructure/utils/ffmpeg", () => ({
-	resolveFfmpegPath: vi.fn().mockResolvedValue("/usr/bin/ffmpeg"),
 }));
 vi.mock("~/infrastructure/jobs/download-rate-limiter", () => ({
 	waitForDownloadRateLimit: vi.fn(),
@@ -124,6 +113,24 @@ const fetchMock = vi.fn();
 global.fetch = fetchMock as any;
 
 // Unified format: {author}_{platform}_{postId}_{assetId}.{ext}
+const TWITTER_POST_URL = "https://x.com/user/status/123";
+const VXTWITTER_API_URL = "https://api.vxtwitter.com/i/status/123";
+const POST_DATE = new Date("2026-09-30T14:32:00Z");
+
+function mockTwitterPost(
+	media: { type: string; url: string }[],
+	text = "Post text",
+) {
+	fetchMock.mockResolvedValueOnce(
+		Response.json({
+			tweetID: "123",
+			text,
+			date_epoch: POST_DATE.getTime() / 1000,
+			media_extended: media,
+		}),
+	);
+}
+
 const DOWNLOAD_FILENAME_PATTERN = /^user_twitter_123_image\.jpg$/;
 
 describe("processDownloadJob", () => {
@@ -223,137 +230,164 @@ describe("processDownloadJob", () => {
 		});
 	});
 
-	it.each([
-		{
-			error: Object.assign(new Error(""), {
-				stderr: "ERROR: HTTP Error 403",
-				exitCode: 1,
+	it("rejects an HTML response even when the vxTwitter API returns HTTP 200", async () => {
+		fetchMock.mockResolvedValueOnce(
+			new Response("<html></html>", {
+				headers: { "content-type": "text/html" },
 			}),
-			message: "yt-dlp failed (exit code 1): ERROR: HTTP Error 403",
-		},
-		{
-			error: Object.assign(new Error(""), { stderr: "", exitCode: 1 }),
-			message: "yt-dlp failed (exit code 1): process failed without stderr",
-		},
-		{
-			error: Object.assign(new Error(""), {
-				stderr: "",
-				exitCode: null,
-				signalCode: "SIGKILL",
-			}),
-			message: "yt-dlp failed (signal SIGKILL): process failed without stderr",
-		},
-		{
-			error: Object.assign(new Error("spawn yt-dlp ENOENT"), {
-				code: "ENOENT",
-			}),
-			message: "yt-dlp failed (code ENOENT): process failed without stderr",
-		},
-		{
-			error: new Error(""),
-			message: "yt-dlp failed: unknown execution error (no diagnostic output)",
-		},
-	])(
-		"should preserve yt-dlp failure diagnostics: $message",
-		async ({ error, message }) => {
-			mockYtDlpExec.mockRejectedValueOnce(error);
-			const job = {
-				id: "job-ytdlp-error",
-				mediaSourceId: "source-1",
-				type: "downloadImage",
-				payload: { targetUrl: "https://x.com/user/status/123" },
-			} as any;
-
-			await expect(processDownloadJob(job)).rejects.toMatchObject({
-				message,
-				cause: error,
-			});
-			expect(logger.error).toHaveBeenCalledWith(
-				{ err: expect.objectContaining({ message, cause: error }) },
-				"yt-dlp execution failed",
-			);
-			expect(RealtimeEventBus.publishSource).toHaveBeenCalledWith(
-				"source-1",
-				"download-error",
-				{ url: job.payload.targetUrl, error: message },
-			);
-			expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
-		},
-	);
-
-	it("should process raw yt-dlp JSON output without using the error-reparsing wrapper", async () => {
-		mockYtDlpExec.mockResolvedValueOnce({
-			stdout: JSON.stringify({
-				id: "123",
-				title: "Video",
-				description: "Video description",
-				ext: "mp4",
-				filename: "/tmp/downloads/123.mp4",
-			}),
-			stderr: "",
-			exitCode: 0,
-		});
+		);
 		const job = {
-			id: "job-ytdlp-success",
+			id: "job-vx-error",
 			mediaSourceId: "source-1",
 			type: "downloadImage",
-			payload: { targetUrl: "https://x.com/user/status/123" },
-		} as any;
-
-		await processDownloadJob(job);
-		expect(mockYtDlpExec).toHaveBeenCalledWith(
-			job.payload.targetUrl,
-			expect.objectContaining({ printJson: true, simulate: false }),
-		);
-		expect(mockYtDlp).not.toHaveBeenCalled();
-		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
-			"source-1",
-			expect.stringMatching(/\.mp4$/),
-			expect.objectContaining({ description: "Video description" }),
-		);
-	});
-
-	it("should fail the job when yt-dlp returns no valid media metadata", async () => {
-		mockYtDlpExec.mockResolvedValueOnce({
-			stdout: "not JSON",
-			stderr: "  extractor reported no metadata\n",
-			exitCode: 0,
-		});
-		const job = {
-			id: "job-ytdlp-invalid-json",
-			mediaSourceId: "source-1",
-			type: "downloadImage",
-			payload: { targetUrl: "https://x.com/user/status/123" },
+			payload: { targetUrl: TWITTER_POST_URL },
 		} as any;
 
 		await expect(processDownloadJob(job)).rejects.toThrow(
-			"yt-dlp returned no valid media metadata: extractor reported no metadata",
+			"vxTwitter returned a non-JSON response",
+		);
+		expect(RealtimeEventBus.publishSource).toHaveBeenCalledWith(
+			"source-1",
+			"download-error",
+			{
+				url: TWITTER_POST_URL,
+				error: "vxTwitter returned a non-JSON response",
+			},
 		);
 		expect(mockMediaRegisterAndProcess).not.toHaveBeenCalled();
 	});
 
-	it("should register every media item in newline-delimited yt-dlp output", async () => {
-		const stdout = ["123", "456"]
-			.map((id) =>
-				JSON.stringify({
-					id,
-					title: "Video",
-					description: "Video description",
-					ext: "mp4",
-					filename: `/tmp/downloads/${id}.mp4`,
-				}),
-			)
-			.join("\n");
-		mockYtDlpExec.mockResolvedValueOnce({ stdout, stderr: "", exitCode: 0 });
+	it("downloads the GIF from a mixed X post and keeps its original post metadata", async () => {
+		const image = "https://pbs.twimg.com/media/photo.jpg";
+		const video = "https://video.twimg.com/ext_tw_video/sample.mp4";
+		mockTwitterPost([
+			{ type: "image", url: image },
+			{ type: "gif", url: video },
+		]);
+		fetchMock.mockResolvedValueOnce(
+			new Response("video", { headers: { "content-type": "video/mp4" } }),
+		);
 		const job = {
-			id: "job-ytdlp-multiple",
+			id: "job-vx-mixed",
 			mediaSourceId: "source-1",
 			type: "downloadImage",
-			payload: { targetUrl: "https://x.com/user/status/123" },
+			payload: {
+				targetUrl: TWITTER_POST_URL,
+				cookies: [
+					{
+						domain: ".x.com",
+						path: "/",
+						secure: true,
+						name: "auth_token",
+						value: "private",
+					},
+				],
+			},
 		} as any;
 
 		await processDownloadJob(job);
-		expect(mockMediaRegisterAndProcess).toHaveBeenCalledTimes(2);
+		expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+			VXTWITTER_API_URL,
+			video,
+		]);
+		for (const [, init] of fetchMock.mock.calls) {
+			expect(init.redirect).toBe("error");
+			expect(new Headers(init.headers).has("cookie")).toBe(false);
+		}
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledOnce();
+		expect(mockMediaRegisterAndProcess).toHaveBeenLastCalledWith(
+			"source-1",
+			expect.stringMatching(/\.mp4$/),
+			expect.objectContaining({
+				description: "Post text",
+				createdAt: POST_DATE,
+				sourceUrls: [TWITTER_POST_URL],
+			}),
+		);
+	});
+
+	it("downloads only the requested attachment from an indexed X video URL", async () => {
+		const selected = "https://video.twimg.com/selected.mp4";
+		mockTwitterPost([
+			{ type: "image", url: "https://pbs.twimg.com/media/photo.jpg" },
+			{ type: "video", url: selected },
+			{ type: "video", url: "https://video.twimg.com/other.mp4" },
+		]);
+		fetchMock.mockResolvedValueOnce(
+			new Response("video", {
+				headers: { "content-type": "video/mp4" },
+			}),
+		);
+
+		await processDownloadJob({
+			id: "job-vx-indexed",
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: { targetUrl: `${TWITTER_POST_URL}/video/2` },
+		} as any);
+
+		expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+			VXTWITTER_API_URL,
+			selected,
+		]);
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledOnce();
+	});
+
+	it("resumes a pre-upgrade checkpoint without downloading the post again", async () => {
+		const parentId = crypto.randomUUID();
+		await processDownloadJob({
+			id: crypto.randomUUID(),
+			parentId,
+			attemptCount: 2,
+			mediaSourceId: "source-1",
+			type: "downloadImage",
+			payload: {
+				targetUrl: TWITTER_POST_URL,
+				importBatchId: crypto.randomUUID(),
+				importTargetId: parentId,
+				downloadOutputs: [
+					{
+						filePath: "/tmp/downloads/staged.mp4",
+						targetPath: "/tmp/downloads/final.mp4",
+						metadata: {
+							id: "123",
+							title: "Legacy video",
+							description: "",
+							ext: "mp4",
+							filename: "staged.mp4",
+							upload_date: "20260930",
+						},
+					},
+				],
+				nextOutput: 0,
+			},
+		} as any);
+
+		expect(fetchMock).not.toHaveBeenCalled();
+		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
+			"source-1",
+			"final.mp4",
+			expect.objectContaining({
+				description: "Legacy video",
+				createdAt: new Date("2026-09-30"),
+			}),
+			expect.objectContaining({ attempt: 2 }),
+		);
+	});
+
+	it("rejects video URLs outside the X media CDN", async () => {
+		mockTwitterPost([
+			{ type: "video", url: "https://video.twimg.com.example.com/video.mp4" },
+		]);
+		await expect(
+			processDownloadJob({
+				id: "job-vx-untrusted",
+				mediaSourceId: "source-1",
+				type: "downloadImage",
+				payload: { targetUrl: TWITTER_POST_URL },
+			} as any),
+		).rejects.toThrow("vxTwitter returned no downloadable MP4");
+		expect(fetchMock).toHaveBeenCalledTimes(1);
 	});
 
 	it("resumes a grouped multi-file download at the unpublished output", async () => {
@@ -370,18 +404,15 @@ describe("processDownloadJob", () => {
 			},
 			attemptCount: 1,
 		} as any;
-		const stdout = ["123", "456"]
-			.map((id) =>
-				JSON.stringify({
-					id,
-					title: "Video",
-					description: id,
-					ext: "mp4",
-					filename: `/tmp/downloads/${id}.mp4`,
-				}),
-			)
-			.join("\n");
-		mockYtDlpExec.mockResolvedValueOnce({ stdout, stderr: "", exitCode: 0 });
+		mockTwitterPost([
+			{ type: "video", url: "https://video.twimg.com/123.mp4" },
+			{ type: "video", url: "https://video.twimg.com/456.mp4" },
+		]);
+		for (const clip of ["first", "second"]) {
+			fetchMock.mockResolvedValueOnce(
+				new Response(clip, { headers: { "content-type": "video/mp4" } }),
+			);
+		}
 		vi.mocked(JobRepository.update).mockImplementation(async (_id, data) => {
 			job.payload = data.payload;
 		});
@@ -395,17 +426,23 @@ describe("processDownloadJob", () => {
 		expect(job.payload.nextOutput).toBe(1);
 		job.attemptCount++;
 		await processDownloadJob(job);
-		expect(mockYtDlpExec).toHaveBeenCalledTimes(1);
+		expect(fetchMock).toHaveBeenCalledTimes(3);
 		expect(
-			mockMediaRegisterAndProcess.mock.calls.map((call) => call[2].description),
-		).toEqual(["123", "456", "456"]);
+			mockMediaRegisterAndProcess.mock.calls.map((call) => call[1]),
+		).toEqual([
+			expect.stringMatching(/_0\.mp4$/),
+			expect.stringMatching(/_1\.mp4$/),
+			expect.stringMatching(/_1\.mp4$/),
+		]);
 	});
 	it("preserves a concurrently published video and resumes registration at the chosen filename", async () => {
 		const disk =
 			await vi.importActual<typeof import("node:fs/promises")>(
 				"node:fs/promises",
 			);
-		const dir = await disk.mkdtemp(path.join(os.tmpdir(), "yt-dlp-collision-"));
+		const dir = await disk.mkdtemp(
+			path.join(os.tmpdir(), "download-collision-"),
+		);
 		try {
 			mockFindById.mockResolvedValue({
 				id: "source-1",
@@ -425,19 +462,15 @@ describe("processDownloadJob", () => {
 					importTargetId: parentId,
 				},
 			} as any;
-			const raw = path.join(dir, `.${job.id}-123.mp4`);
-			await disk.writeFile(raw, "this download");
-			mockYtDlpExec.mockResolvedValueOnce({
-				stdout: JSON.stringify({
-					id: "123",
-					title: "Video",
-					description: "",
-					ext: "mp4",
-					filename: raw,
+			mockTwitterPost([
+				{ type: "video", url: "https://video.twimg.com/123.mp4" },
+			]);
+			fetchMock.mockResolvedValueOnce(
+				new Response("this download", {
+					headers: { "content-type": "video/mp4" },
 				}),
-				stderr: "",
-				exitCode: 0,
-			});
+			);
+			vi.mocked(fs.writeFile).mockImplementation(disk.writeFile);
 			vi.mocked(JobRepository.update).mockImplementation(async (_id, data) => {
 				job.payload = data.payload;
 			});
@@ -460,7 +493,7 @@ describe("processDownloadJob", () => {
 			);
 			job.attemptCount++;
 			await processDownloadJob(job);
-			expect(mockYtDlpExec).toHaveBeenCalledOnce();
+			expect(fetchMock).toHaveBeenCalledTimes(2);
 			expect(await disk.readFile(occupied, "utf8")).toBe("other download");
 			const filename = mockMediaRegisterAndProcess.mock.calls[0][1];
 			expect(mockMediaRegisterAndProcess.mock.calls[1][1]).toBe(filename);
@@ -472,21 +505,13 @@ describe("processDownloadJob", () => {
 			await disk.rm(dir, { recursive: true, force: true });
 		}
 	});
-	it("should resolve a direct image timestamp from raw yt-dlp metadata", async () => {
-		mockYtDlpExec.mockResolvedValueOnce({
-			stdout: JSON.stringify({
-				id: "123",
-				title: "Post",
-				description: "Description",
-				ext: "jpg",
-				filename: "image.jpg",
-				upload_date: "20260930",
-			}),
-			stderr: "",
-			exitCode: 0,
-		});
+	it("should resolve a direct image timestamp from vxTwitter metadata", async () => {
+		fetchMock.mockResolvedValueOnce(
+			new Response("image", { headers: { "content-type": "image/jpeg" } }),
+		);
+		mockTwitterPost([]);
 		const job = {
-			id: "job-ytdlp-metadata",
+			id: "job-vx-metadata",
 			mediaSourceId: "source-1",
 			type: "downloadImage",
 			payload: {
@@ -496,14 +521,14 @@ describe("processDownloadJob", () => {
 		} as any;
 
 		await processDownloadJob(job);
-		expect(mockYtDlpExec).toHaveBeenCalledWith(
-			"https://x.com/user/status/123",
-			expect.objectContaining({ dumpSingleJson: true, skipDownload: true }),
+		expect(fetchMock).toHaveBeenLastCalledWith(
+			VXTWITTER_API_URL,
+			expect.any(Object),
 		);
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
 			"source-1",
 			expect.any(String),
-			expect.objectContaining({ createdAt: new Date("2026-09-30") }),
+			expect.objectContaining({ createdAt: POST_DATE }),
 		);
 	});
 
@@ -580,7 +605,6 @@ describe("processDownloadJob", () => {
 				headers: expect.objectContaining({ Referer: artworkUrl }),
 			}),
 		);
-		expect(mockYtDlpExec).not.toHaveBeenCalled();
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
 			"source-1",
 			expect.stringMatching(/123456789_p1\.png$/),
@@ -635,7 +659,6 @@ describe("processDownloadJob", () => {
 			"/tmp/downloads/.xtracter-ugoira-fixture/animation.mp4",
 			ugoira.frames,
 		);
-		expect(mockYtDlpExec).not.toHaveBeenCalled();
 		expect(fetchMock).not.toHaveBeenCalled();
 		expect(mockSaveFile).not.toHaveBeenCalled();
 		expect(mockMediaRegisterAndProcess).toHaveBeenCalledWith(
@@ -774,7 +797,6 @@ describe("processDownloadJob", () => {
 				targetUrl,
 				expect.any(Object),
 			);
-			expect(mockYtDlpExec).not.toHaveBeenCalled();
 			const file = mockSaveFile.mock.calls[0][1];
 			expect(file.name).toMatch(new RegExp(`\\.${extension}$`));
 			expect(await file.arrayBuffer()).toBe(bytes);

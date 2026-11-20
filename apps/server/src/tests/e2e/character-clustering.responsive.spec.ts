@@ -80,7 +80,7 @@ test("manager submits clustering conditions and prevents duplicate pending submi
 
 async function scrollList(list: Locator, end: boolean) {
 	await list.evaluate((element, toEnd) => {
-		const owner = element.closest("[data-clustering-scroll]");
+		const owner = element.closest("[data-management-scroll]");
 		if (!(owner instanceof HTMLElement))
 			throw new Error("Missing review scroller");
 		owner.scrollTop = toEnd ? owner.scrollHeight : 0;

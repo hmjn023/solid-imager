@@ -4,9 +4,9 @@ import {
 } from "@solid-imager/application/media";
 import { DrizzleTransactionManager } from "~/infrastructure/db/transaction-manager";
 import { RealtimeEventBus } from "~/infrastructure/events/realtime-event-bus";
-import { deleteThumbnail } from "~/infrastructure/jobs/thumbnails";
 import { logger } from "~/infrastructure/logger";
 import { services } from "~/infrastructure/service-registry";
+import { mediaDeletionEffects } from "./media-deletion-effects";
 import { executeDeferredActions } from "~/infrastructure/services/job-dispatch-service";
 
 // Defer construction until the service registry is initialized.
@@ -30,7 +30,7 @@ function getMediaService(): IMediaService {
 		imageProcessor: services.getImageProcessor(),
 		transactionManager: DrizzleTransactionManager,
 		eventPublisher: RealtimeEventBus,
-		thumbnailManager: { deleteThumbnail },
+		mediaDeletionEffects,
 		logger,
 		deferredActionExecutor: { execute: executeDeferredActions },
 		mediaContextProcessor: {

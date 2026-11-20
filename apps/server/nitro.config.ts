@@ -118,26 +118,6 @@ export default defineNitroConfig({
         `[Nitro] Successfully copied dghs-imgutils-rs runtime files to ${dghsOutputPath}`,
       );
 
-      // Copy yt-dlp binary for bundled youtube-dl-exec
-      const ytDlpLocalPath = path.resolve(__dirname, "node_modules/youtube-dl-exec/bin/yt-dlp");
-      const ytDlpRootPath = path.resolve(
-        __dirname,
-        "../../node_modules/youtube-dl-exec/bin/yt-dlp",
-      );
-      const ytDlpSource = fs.existsSync(ytDlpLocalPath) ? ytDlpLocalPath : ytDlpRootPath;
-      const binDir = path.join(serverDir, "bin");
-      const ytDlpDest = path.join(binDir, "yt-dlp");
-      if (fs.existsSync(ytDlpSource)) {
-        if (!fs.existsSync(binDir)) {
-          fs.mkdirSync(binDir, { recursive: true });
-        }
-        fs.copyFileSync(ytDlpSource, ytDlpDest);
-        fs.chmodSync(ytDlpDest, 0o755);
-        console.log(`[Nitro] Successfully copied yt-dlp to ${ytDlpDest}`);
-      } else {
-        console.warn(`[Nitro] Warning: yt-dlp binary not found at ${ytDlpSource}`);
-      }
-
       // Copy ffmpeg binary for bundled ffmpeg-static
       const ffmpegLocalPath = path.resolve(__dirname, "node_modules/ffmpeg-static/ffmpeg");
       const ffmpegRootPath = path.resolve(__dirname, "../../node_modules/ffmpeg-static/ffmpeg");

@@ -101,7 +101,7 @@ async function verifyRestoredScrollerDuringFastPageFetch(
 		throw new Error("The visible media item has no file name");
 
 	const mediaLink = page.locator(`[data-media-id="${mediaId}"]`);
-	await mediaLink.click();
+	await mediaLink.press("Enter");
 	await expect(page).toHaveURL(/\/sources\/[^/]+\/[^/]+$/);
 	await expect(
 		page.getByRole("heading", { name: mediaFileName, exact: true }),

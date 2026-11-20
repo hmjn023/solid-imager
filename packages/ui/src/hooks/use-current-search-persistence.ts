@@ -1,36 +1,27 @@
-import { type Preset, presetSchema } from "@solid-imager/core/presets";
-import { DEFAULT_SIMILARITY_TOP_K } from "@solid-imager/core/search";
+import {
+	decodeSearchSession,
+	defaultState,
+	encodeSearchSession,
+} from "@solid-imager/core/search";
 import {
 	type Accessor,
 	createEffect,
+	createMemo,
 	createSignal,
 	onCleanup,
 	untrack,
 } from "solid-js";
 import { isServer } from "solid-js/web";
-import {
-	getSearchCondition,
-	loadPreset,
-	resetSearchState,
-	searchState,
-	setSearchState,
-} from "../stores/search-store";
+import { searchState, setSearchState } from "../stores/search-store";
 import {
 	getSearchScrollStorageKey,
 	getSearchStateStorageKey,
+	getSessionStorage,
 	readSearchScrollStorageValue,
 	readSearchStateStorageValue,
 } from "../ui-storage";
 
 const DEBOUNCE_MS = 1000;
-
-function getSessionStorage(): Storage | null {
-	try {
-		return typeof sessionStorage === "undefined" ? null : sessionStorage;
-	} catch {
-		return null;
-	}
-}
 
 export type SearchPersistenceOptions = {
 	historyEntryKey?: string | Accessor<string | undefined>;
@@ -40,7 +31,7 @@ export type SearchPersistenceSource =
 	| string
 	| Accessor<string | null | undefined>;
 
-function getCurrentPresetName(sourceId: string | null | undefined) {
+function getCurrentSessionName(sourceId: string | null | undefined) {
 	if (sourceId === "current") {
 		return "current";
 	}
@@ -51,7 +42,7 @@ function getCurrentPresetName(sourceId: string | null | undefined) {
 }
 
 function readScrollPosition(
-	presetName: string,
+	sessionName: string,
 	historyEntryKey?: string,
 ): number {
 	const storage = getSessionStorage();
@@ -59,7 +50,7 @@ function readScrollPosition(
 	try {
 		const storedValue = readSearchScrollStorageValue(
 			storage,
-			presetName,
+			sessionName,
 			historyEntryKey,
 		);
 		if (storedValue === null) {
@@ -78,16 +69,6 @@ function normalizeScrollPosition(value: number): number {
 	return Number.isFinite(value) && value >= 0 ? value : 0;
 }
 
-/** Restores a valid result cap or falls back to the shared default. */
-function normalizeSimilarityTopK(value: unknown): number {
-	return typeof value === "number" &&
-		Number.isInteger(value) &&
-		Number.isSafeInteger(value) &&
-		value >= 1
-		? value
-		: DEFAULT_SIMILARITY_TOP_K;
-}
-
 /**
  * Persist the scroll owner explicitly when a route owns a non-window
  * collection scroller. The reactive persistence effect remains the fallback,
@@ -104,8 +85,8 @@ export function persistSearchScrollPosition(
 
 	const resolvedSourceId =
 		typeof sourceId === "function" ? sourceId() : sourceId;
-	const presetName = getCurrentPresetName(resolvedSourceId);
-	if (!presetName) {
+	const sessionName = getCurrentSessionName(resolvedSourceId);
+	if (!sessionName) {
 		return;
 	}
 
@@ -117,7 +98,7 @@ export function persistSearchScrollPosition(
 				? options.historyEntryKey()
 				: options.historyEntryKey;
 		storage.setItem(
-			getSearchScrollStorageKey(presetName, historyEntryKey),
+			getSearchScrollStorageKey(sessionName, historyEntryKey),
 			String(normalizeScrollPosition(position)),
 		);
 	} catch {
@@ -139,128 +120,16 @@ export function readPersistedSearchScrollPosition(
 	if (isServer) return 0;
 	const resolvedSourceId =
 		typeof sourceId === "function" ? sourceId() : sourceId;
-	const presetName = getCurrentPresetName(resolvedSourceId);
-	if (!presetName) return 0;
+	const sessionName = getCurrentSessionName(resolvedSourceId);
+	if (!sessionName) return 0;
 	const historyEntryKey =
 		typeof options.historyEntryKey === "function"
 			? options.historyEntryKey()
 			: options.historyEntryKey;
 	try {
-		return readScrollPosition(presetName, historyEntryKey);
+		return readScrollPosition(sessionName, historyEntryKey);
 	} catch {
 		return 0;
-	}
-}
-
-function resetSearchStatePreservingScroll() {
-	const preservedScrollY = searchState.scrollY;
-	resetSearchState();
-	setSearchState("scrollY", preservedScrollY);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
-}
-
-function applyPreset(
-	preset: Preset,
-	shouldApply: () => boolean,
-	clearActivePreset: boolean,
-	selectedSource: string,
-) {
-	if (!shouldApply()) {
-		return;
-	}
-	const preservedScrollY = searchState.scrollY;
-	resetSearchState();
-	loadPreset(preset);
-	setSearchState({ selectedSource, scrollY: preservedScrollY });
-	if (clearActivePreset) {
-		setSearchState("activePresetId", null);
-	}
-}
-
-function restoreCurrentSearchState(
-	sourceId: string | null | undefined,
-	shouldApply: () => boolean,
-) {
-	const presetName = getCurrentPresetName(sourceId);
-	const storage = getSessionStorage();
-	if (!presetName || !storage) {
-		return;
-	}
-
-	let sessionDataStr: string | null;
-	try {
-		sessionDataStr = readSearchStateStorageValue(storage, presetName);
-	} catch {
-		if (shouldApply()) {
-			resetSearchStatePreservingScroll();
-		}
-		return;
-	}
-
-	if (!sessionDataStr) {
-		if (shouldApply()) {
-			resetSearchStatePreservingScroll();
-		}
-		return;
-	}
-
-	let current: unknown;
-	try {
-		current = JSON.parse(sessionDataStr);
-	} catch {
-		if (shouldApply()) {
-			resetSearchStatePreservingScroll();
-		}
-		return;
-	}
-
-	if (!isRecord(current)) {
-		if (shouldApply()) {
-			resetSearchStatePreservingScroll();
-		}
-		return;
-	}
-
-	const localPresetResult = presetSchema.safeParse({
-		id: -1,
-		name: presetName,
-		value: current.value,
-		sort: current.sort,
-		order: current.order,
-		mode: current.mode,
-		createdAt: new Date(),
-	});
-	if (!localPresetResult.success) {
-		if (shouldApply()) {
-			resetSearchStatePreservingScroll();
-		}
-		return;
-	}
-	const selectedSource =
-		typeof current.selectedSource === "string"
-			? current.selectedSource
-			: searchState.selectedSource;
-
-	applyPreset(localPresetResult.data, shouldApply, true, selectedSource);
-	if (shouldApply()) {
-		setSearchState({
-			similarityAnchorMediaId:
-				typeof current.similarityAnchorMediaId === "string"
-					? current.similarityAnchorMediaId
-					: null,
-			similarityTopK: normalizeSimilarityTopK(current.similarityTopK),
-			similarityModel:
-				current.similarityModel === "embeddinggemma2"
-					? "embeddinggemma2"
-					: "ccip",
-			semanticQuery:
-				typeof current.semanticQuery === "string"
-					? current.semanticQuery.slice(0, 2000)
-					: "",
-		});
 	}
 }
 
@@ -277,15 +146,17 @@ export function useCurrentSearchPersistence(
 	options: SearchPersistenceOptions = {},
 ): Accessor<boolean> {
 	const [isRestored, setIsRestored] = createSignal(false);
+	const trackSession = createMemo(() =>
+		isServer ? "" : encodeSearchSession(searchState),
+	);
 	let debounceTimer: ReturnType<typeof setTimeout> | null = null;
-	let restoreVersion = 0;
-	let lastPersistedPresetName: string | null = null;
+	let lastPersistedSessionName: string | null = null;
 	let pendingScrollKey: string | null = null;
 	let pendingScrollPosition = 0;
 
 	const getSourceId = () =>
 		typeof sourceId === "function" ? sourceId() : sourceId;
-	const resolvePresetName = () => getCurrentPresetName(getSourceId());
+	const resolveSessionName = () => getCurrentSessionName(getSourceId());
 	const resolveHistoryEntryKey = () =>
 		typeof options.historyEntryKey === "function"
 			? options.historyEntryKey()
@@ -305,66 +176,41 @@ export function useCurrentSearchPersistence(
 
 	createEffect(() => {
 		const currentSourceId = getSourceId();
-		const presetName = getCurrentPresetName(currentSourceId);
-		if (!presetName || isServer) {
+		const sessionName = getCurrentSessionName(currentSourceId);
+		if (!sessionName || isServer) {
 			return;
 		}
 
-		const version = restoreVersion + 1;
-		restoreVersion = version;
-		let isCurrentRestore = true;
-		onCleanup(() => {
-			isCurrentRestore = false;
-		});
-		const shouldApply = () => isCurrentRestore && restoreVersion === version;
 		setIsRestored(false);
-
 		untrack(() => {
-			setSearchState(
-				"scrollY",
-				readScrollPosition(presetName, resolveHistoryEntryKey()),
-			);
-			restoreCurrentSearchState(currentSourceId, shouldApply);
+			const scrollY = readScrollPosition(sessionName, resolveHistoryEntryKey());
+			const storage = getSessionStorage();
+			const saved =
+				storage && readSearchStateStorageValue(storage, sessionName);
+			if (storage) {
+				const state = saved
+					? decodeSearchSession(saved, searchState.selectedSource)
+					: null;
+				setSearchState({ ...(state ?? defaultState), scrollY });
+			} else {
+				setSearchState("scrollY", scrollY);
+			}
 		});
-		if (shouldApply()) {
-			setIsRestored(true);
-		}
+		setIsRestored(true);
 	});
 
 	createEffect(() => {
-		const _track = [
-			searchState.mode,
-			searchState.selectedSource,
-			searchState.searchQuery,
-			searchState.selectedTags,
-			searchState.excludeTags,
-			searchState.tagMode,
-			searchState.selectedProjects,
-			searchState.selectedIps,
-			searchState.selectedCharacters,
-			searchState.selectedAuthors,
-			searchState.advancedCondition,
-			searchState.similarityAnchorMediaId,
-			searchState.similarityTopK,
-			searchState.similarityModel,
-			searchState.semanticQuery,
-			searchState.sortBy,
-			searchState.sortOrder,
-			searchState.scrollY,
-		];
-		void _track;
-
 		if (debounceTimer) {
 			clearTimeout(debounceTimer);
 			debounceTimer = null;
 		}
 
-		const presetName = resolvePresetName();
-		if (!isRestored() || !presetName || isServer) {
+		const sessionName = resolveSessionName();
+		if (!isRestored() || !sessionName || isServer) {
 			return;
 		}
 		const nextScrollKey = getSearchScrollStorageKey(
-			presetName,
+			sessionName,
 			resolveHistoryEntryKey(),
 		);
 		if (pendingScrollKey && pendingScrollKey !== nextScrollKey) {
@@ -372,32 +218,23 @@ export function useCurrentSearchPersistence(
 		}
 		pendingScrollKey = nextScrollKey;
 		pendingScrollPosition = searchState.scrollY;
+		const trackedSession = trackSession();
+		const initialSave = lastPersistedSessionName !== sessionName;
+		// Restoration can update the store in the same effect cycle as the first
+		// save. Read it directly before the memo has refreshed in that cycle.
+		const serializedSession = initialSave
+			? untrack(() => encodeSearchSession(searchState))
+			: trackedSession;
 
 		const persistCurrentState = () => {
-			const condition = getSearchCondition() || {
-				type: "group" as const,
-				operator: "and" as const,
-				children: [],
-			};
-			const presetData = {
-				value: condition,
-				selectedSource: searchState.selectedSource,
-				sort: searchState.sortBy,
-				order: searchState.sortOrder,
-				mode: searchState.mode,
-				similarityAnchorMediaId: searchState.similarityAnchorMediaId,
-				similarityTopK: searchState.similarityTopK,
-				similarityModel: searchState.similarityModel,
-				semanticQuery: searchState.semanticQuery,
-			};
 			try {
 				const storage = getSessionStorage();
 				if (!storage) return;
 				storage.setItem(
-					getSearchStateStorageKey(presetName),
-					JSON.stringify(presetData),
+					getSearchStateStorageKey(sessionName),
+					serializedSession,
 				);
-				lastPersistedPresetName = presetName;
+				lastPersistedSessionName = sessionName;
 				persistPendingScrollPosition();
 			} catch {
 				// Persistence errors must not disrupt the UI.
@@ -406,7 +243,7 @@ export function useCurrentSearchPersistence(
 
 		// Persist the initial state synchronously so navigating to a media detail
 		// before the debounce expires cannot reset the list on return.
-		if (lastPersistedPresetName !== presetName) {
+		if (initialSave) {
 			persistCurrentState();
 			return;
 		}
