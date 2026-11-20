@@ -12,7 +12,14 @@ import {
 } from "../async-state";
 import { Button } from "../button";
 import type { UseManagerPageResult } from "../hooks/use-manager-page";
-import { ManagementHeader } from "../workspace/management-layout";
+import {
+	MANAGEMENT_CATEGORY_GRID,
+	MANAGEMENT_CONTENT_PADDING,
+	ManagementHeader,
+	ManagementMobileCategory,
+	ManagementScreen,
+	ManagementScrollArea,
+} from "../workspace/management-layout";
 import { BatchToolPanel } from "./manager/batch-tools";
 import { DataTransferPanel } from "./manager/data-transfer";
 import { ManagerDialogs } from "./manager/dialogs";
@@ -123,25 +130,32 @@ export function ManagerScreen(props: {
 			props.manager.setActiveTab(value);
 	};
 
+	const [scrollRoot, setScrollRoot] = createSignal<HTMLDivElement>();
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
-			<ManagementHeader
-				description={t(
-					"managerScreen.manageClassificationDataAndSubmitBatchJobs",
-				)}
-				title={t("navigation.manager")}
-			/>
-
-			<div
-				class="min-h-0 flex-1 overflow-y-auto overscroll-contain scrollbar-stable"
-				data-clustering-scroll
-			>
-				<ManagerCategoryNavigation
-					active={activeCategory()}
-					compact
-					onChange={changeCategory}
+		<ManagementScreen
+			header={
+				<ManagementHeader
+					description={t(
+						"managerScreen.manageClassificationDataAndSubmitBatchJobs",
+					)}
+					title={t("navigation.manager")}
 				/>
-				<div class="grid w-full gap-6 px-3 py-4 sm:px-4 lg:grid-cols-settings-sidebar lg:px-6 lg:py-5 xl:gap-8 xl:px-8">
+			}
+		>
+			<ManagementScrollArea
+				ref={setScrollRoot}
+				class="scroll-pt-16 lg:scroll-pt-0"
+			>
+				<ManagementMobileCategory>
+					<ManagerCategoryNavigation
+						active={activeCategory()}
+						compact
+						onChange={changeCategory}
+					/>
+				</ManagementMobileCategory>
+				<div
+					class={`${MANAGEMENT_CATEGORY_GRID} ${MANAGEMENT_CONTENT_PADDING}`}
+				>
 					<ManagerCategoryNavigation
 						active={activeCategory()}
 						onChange={changeCategory}
@@ -197,7 +211,10 @@ export function ManagerScreen(props: {
 								}
 							>
 								{(actions) => (
-									<CharacterClusteringReviewPanel actions={actions()} />
+									<CharacterClusteringReviewPanel
+										actions={actions()}
+										scrollRoot={scrollRoot}
+									/>
 								)}
 							</Show>
 						</Show>
@@ -353,9 +370,9 @@ export function ManagerScreen(props: {
 						</Show>
 					</div>
 				</div>
-			</div>
+			</ManagementScrollArea>
 
 			<ManagerDialogs manager={props.manager} />
-		</section>
+		</ManagementScreen>
 	);
 }

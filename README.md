@@ -162,7 +162,7 @@ CUDA を使用する場合は CUDA 対応の ONNX Runtime、NVIDIA ドライバ�
 
 ### 本番コンテナ
 
-本番の `app` コンテナは Python 3 を追加した `Dockerfile.runtime` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。`youtube-dl-exec` が同梱する `yt-dlp` は Python zipapp のため、Python 3 が必要です。アプリケーション依存関係の `bun install` はコンテナ内で実行しません。
+本番の `app` コンテナは FFmpeg を含む `Dockerfile.runtime` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。アプリケーション依存関係の `bun install` はコンテナ内で実行しません。
 
 ビルドホストで一度だけ実行します。
 
@@ -186,6 +186,8 @@ fi
 
 `APP_ARTIFACT_DIR` には `node_modules/` と `apps/server/.output/` を含む、ビルドホストのプロジェクトディレクトリを指定してください。
 `APP_RUNTIME_IMAGE` を指定した場合は、Python 3 がインストール済みの互換イメージを使用してください。この場合、`app` はローカルビルドせず、指定イメージをそのまま使用します。
+
+mise Daemons で PostgreSQL・Bun・nginx を起動する場合は、[開発環境と管理スクリプト](docs/development.md#mise-でサービスを起動)を参照してください。
 
 ## 主要スクリプト
 

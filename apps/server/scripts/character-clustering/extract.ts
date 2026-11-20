@@ -7,6 +7,7 @@ import {
 import { Client } from "pg";
 import pino from "pino";
 import { z } from "zod";
+import { readPostgresConfig } from "../../src/infrastructure/db/postgres-config";
 import { mediaRecordSchema } from "./schemas";
 import { checksum, encodeNpy, writeJson } from "./snapshot";
 
@@ -109,18 +110,10 @@ export async function extract(output: string, request: object) {
 		createdAt: new Date().toISOString(),
 	};
 	await writeJson(path.join(output, "graph.json"), initial);
-	const env = process.env;
+	const { port, ...databaseConfig } = readPostgresConfig();
 	const client = new Client({
-		host: env.DB_HOST ?? env.PGHOST,
-		port: z.coerce
-			.number()
-			.int()
-			.min(1)
-			.max(65535)
-			.parse(env.DB_PORT ?? env.PGPORT ?? 5432),
-		database: env.DB_DATABASE ?? env.DB_NAME ?? env.PGDATABASE,
-		user: env.DB_USER ?? env.PGUSER,
-		password: env.DB_PASSWORD ?? env.PGPASSWORD,
+		...databaseConfig,
+		port: z.coerce.number().int().min(1).max(65535).parse(port),
 		application_name: "solid-imager-hdbscan-ts",
 		connectionTimeoutMillis: 10_000,
 	});

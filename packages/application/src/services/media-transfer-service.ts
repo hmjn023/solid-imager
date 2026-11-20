@@ -35,8 +35,10 @@ import type {
 	IDeferredActionExecutor,
 	IMediaContextProcessor,
 	ISourceEventPublisher,
-	IThumbnailManager,
+	MediaDeletionTarget,
 } from "../ports/media-service";
+
+import type { MediaDeletionEffects } from "./media-deletion-effects";
 
 export type MediaTransferRepository = Pick<MediaReader, "findById"> &
 	Pick<MediaDetailsReader, "getAuthors" | "getUrls"> &
@@ -55,7 +57,7 @@ export class MediaTransferService {
 		private readonly transactionManager: TransactionManager,
 		private readonly jobRepo: IJobRepository,
 		private readonly eventPublisher: ISourceEventPublisher,
-		private readonly thumbnailManager: IThumbnailManager,
+		private readonly mediaDeletionEffects: MediaDeletionEffects,
 		private readonly logger: ILogger,
 		private readonly deferredActionExecutor: IDeferredActionExecutor,
 		private readonly mediaContextProcessor: IMediaContextProcessor,
@@ -304,26 +306,10 @@ export class MediaTransferService {
 						t,
 					);
 					if (sourceMedia) {
-						const deleteResult = await this.deleteMedia(
-							sourceMedia.mediaSourceId,
-							sourceMediaId,
-							t,
-						);
-						if (deleteResult) {
-							accumulatedDeferred.jobs.push(...deleteResult.jobs);
-							if (deleteResult.filesToDelete) {
-								accumulatedDeferred.filesToDelete = [
-									...(accumulatedDeferred.filesToDelete ?? []),
-									...deleteResult.filesToDelete,
-								];
-							}
-							if (deleteResult.thumbnailsToDelete) {
-								accumulatedDeferred.thumbnailsToDelete = [
-									...(accumulatedDeferred.thumbnailsToDelete ?? []),
-									...deleteResult.thumbnailsToDelete,
-								];
-							}
-						}
+						accumulatedDeferred.mediaDeletion = {
+							kind: "move",
+							targets: [await this.deleteMediaRecord(sourceMedia, t)],
+						};
 
 						const sourceEvent: DeferredSourceEvent = {
 							mediaSourceId: sourceMedia.mediaSourceId,
@@ -393,82 +379,44 @@ export class MediaTransferService {
 		const validatedSourceId = mediaSourceIdSchema.parse(mediaSourceId);
 		const validatedMediaId = mediaIdSchema.parse(mediaId);
 
-		const media = await this.mediaRepository.findById(validatedMediaId, tx);
-		if (!media) {
-			throw new ResourceNotFoundError("Media", validatedMediaId);
-		}
-		if (media.mediaSourceId !== validatedSourceId) {
-			throw new Error("Media not in specified source");
-		}
-
-		await this.mediaRepository.delete(validatedMediaId, tx);
-
-		let filesToDelete: DeferredActions["filesToDelete"];
-		if (media.mediaSourceId) {
-			const mediaSource = await this.sourceRepository.findById(
-				media.mediaSourceId,
-				tx,
-			);
-			if (mediaSource && mediaSource.type === "local") {
-				const connectionInfo = localConnectionSchema.parse(
-					mediaSource.connectionInfo,
-				);
-				filesToDelete = [
-					{ basePath: connectionInfo.path, filePath: media.filePath },
-				];
+		const execute = async (t: Transaction) => {
+			const media = await this.mediaRepository.findById(validatedMediaId, t);
+			if (!media) {
+				throw new ResourceNotFoundError("Media", validatedMediaId);
 			}
-		}
-
-		const thumbnailsToDelete: DeferredActions["thumbnailsToDelete"] = [
-			{ mediaSourceId: validatedSourceId, mediaId: validatedMediaId },
-		];
-
-		const sourceEvent: DeferredSourceEvent = {
-			mediaSourceId: validatedSourceId,
-			event: "media-deleted",
-			payload: {
-				filePath: media.filePath,
-				mediaId: validatedMediaId,
-				timestamp: new Date().toISOString(),
-			},
+			if (media.mediaSourceId !== validatedSourceId) {
+				throw new Error("Media not in specified source");
+			}
+			return this.deleteMediaRecord(media, t);
 		};
 
-		if (tx) {
-			return {
-				jobs: [],
-				sourceEvents: [sourceEvent],
-				filesToDelete,
-				thumbnailsToDelete,
-			};
-		}
+		const target = tx
+			? await execute(tx)
+			: await this.transactionManager.transaction(execute);
+		const mediaDeletion = { kind: "delete" as const, targets: [target] };
+		if (tx) return { jobs: [], sourceEvents: [], mediaDeletion };
+		await this.mediaDeletionEffects.execute(mediaDeletion);
+	}
 
-		if (thumbnailsToDelete) {
-			for (const thumb of thumbnailsToDelete) {
-				try {
-					await this.thumbnailManager.deleteThumbnail(
-						thumb.mediaSourceId,
-						thumb.mediaId,
-					);
-				} catch (_e) {
-					// Log error
-				}
-			}
-		}
-		if (filesToDelete) {
-			for (const file of filesToDelete) {
-				try {
-					await this.storageService.deleteFile(file.basePath, file.filePath);
-				} catch (_e) {
-					// Log error
-				}
-			}
-		}
-
-		this.eventPublisher.publishSource(
-			sourceEvent.mediaSourceId,
-			sourceEvent.event,
-			sourceEvent.payload,
+	private async deleteMediaRecord(
+		media: Media,
+		tx: Transaction,
+	): Promise<MediaDeletionTarget> {
+		const source = await this.sourceRepository.findById(
+			media.mediaSourceId,
+			tx,
 		);
+		const basePath =
+			source?.type === "local"
+				? localConnectionSchema.parse(source.connectionInfo).path
+				: undefined;
+		await this.mediaRepository.delete(media.id, tx);
+		return {
+			mediaSourceId: media.mediaSourceId,
+			mediaId: media.id,
+			filePath: media.filePath,
+			basePath,
+		};
 	}
 
 	private async copyMediaMetadata(

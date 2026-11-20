@@ -1644,15 +1644,29 @@ export function createMediaRepository(
 			}
 		},
 
-		async bulkDelete(mediaIds: string[], tx?: Transaction): Promise<void> {
-			if (mediaIds.length === 0) return;
+		async bulkDelete(mediaSourceId, mediaIds, tx) {
+			if (mediaIds.length === 0) return [];
 			try {
 				const client = getExecutor(tx);
 				const CHUNK_SIZE = 500;
+				const deleted: Pick<
+					InferSelectModel<typeof medias>,
+					"id" | "filePath"
+				>[] = [];
 				for (let i = 0; i < mediaIds.length; i += CHUNK_SIZE) {
 					const chunk = mediaIds.slice(i, i + CHUNK_SIZE);
-					await client.delete(medias).where(inArray(medias.id, chunk));
+					const rows = await client
+						.delete(medias)
+						.where(
+							and(
+								eq(medias.mediaSourceId, mediaSourceId),
+								inArray(medias.id, chunk),
+							),
+						)
+						.returning();
+					deleted.push(...rows.map(({ id, filePath }) => ({ id, filePath })));
 				}
+				return deleted;
 			} catch (error) {
 				throw new UnexpectedError("Failed to bulk delete media", error);
 			}

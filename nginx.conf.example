@@ -9,72 +9,67 @@ http {
     # Media uploads are sent as multipart request bodies.
     client_max_body_size 100m;
 
-    # アクセスログとエラーログ
     access_log /var/log/nginx/access.log;
     error_log  /var/log/nginx/error.log;
 
-    # TLSプロトコル設定 (HTTP/3にはTLS 1.3が必須、TLS 1.2は下位互換用)
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_prefer_server_ciphers off;
+    upstream solid_imager {
+        server 127.0.0.1:${NITRO_PORT};
+        # Compose を使う場合は上の行と入れ替える。
+        # server app:${NITRO_PORT};
+    }
+
+    map $http_upgrade $connection_upgrade {
+        default upgrade;
+        '' '';
+    }
+
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection $connection_upgrade;
 
     server {
-        # HTTP/3 (QUIC) 用の設定
-        listen 443 quic reuseport;
-        # 従来のHTTPS用設定
-        listen 443 ssl;
-        http2 on;
+        # mise のローカル検証ではループバックで待ち受ける。
+        listen 127.0.0.1:${NGINX_PORT};
+        # Compose や公開 HTTP では上の listen と入れ替える。
+        # listen ${NGINX_PORT};
 
-        # 🌟 本番ドメイン名に変更してください (例: imager.yourdomain.com)
-        server_name imager.example.com;
+        # HTTPS を使う場合は HTTP の listen をコメントアウトし、以下を有効にする。
+        # listen ${NGINX_TLS_PORT} ssl;
+        # http2 on;
+        # ssl_protocols TLSv1.2 TLSv1.3;
+        # server_name imager.example.com;
+        # ssl_certificate     /etc/letsencrypt/live/imager.example.com/fullchain.pem;
+        # ssl_certificate_key /etc/letsencrypt/live/imager.example.com/privkey.pem;
+        # add_header X-Frame-Options DENY;
+        # add_header X-Content-Type-Options nosniff;
 
-        # Certbotで取得した証明書をマウントしたパス (ドメイン名部分を変更してください)
-        ssl_certificate     /etc/letsencrypt/live/imager.example.com/fullchain.pem;
-        ssl_certificate_key /etc/letsencrypt/live/imager.example.com/privkey.pem;
+        # HTTP/3 を使う場合はさらに有効にする。
+        # listen ${NGINX_TLS_PORT} quic reuseport;
+        # http3 on;
+        # add_header Alt-Svc 'h3=":${NGINX_TLS_PORT}"; ma=86400';
 
-        # HTTP/3 有効化と Alt-Svc ヘッダーの付与
-        http3 on;
-        add_header Alt-Svc 'h3=":443"; ma=86400';
-        add_header X-Frame-Options DENY;
-        add_header X-Content-Type-Options nosniff;
-
-        # oRPC event streams must not be buffered, otherwise small SSE events
-        # remain inside nginx until the upstream closes the long-lived response.
+        # Flush oRPC SSE events as soon as the app sends them.
         location ~ ^/api/rpc/(sources|imports|jobs)/events$ {
-            proxy_pass http://app:3000;
-            proxy_http_version 1.1;
-
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-
+            proxy_pass http://solid_imager;
             proxy_buffering off;
             proxy_cache off;
             proxy_read_timeout 1h;
             proxy_send_timeout 1h;
-            proxy_set_header Connection "";
         }
 
         location / {
-            # アプリコンテナ（app）へ転送
-            proxy_pass http://app:3000;
-
-            proxy_set_header Host $host;
-            proxy_set_header X-Real-IP $remote_addr;
-            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-            proxy_set_header X-Forwarded-Proto $scheme;
-            
-            # WebSocketサポート (oRPC や HMR等で必要な場合)
-            proxy_http_version 1.1;
-            proxy_set_header Upgrade $http_upgrade;
-            proxy_set_header Connection "upgrade";
+            proxy_pass http://solid_imager;
         }
     }
 
-    # HTTP から HTTPS へのリダイレクト
-    server {
-        listen 80;
-        server_name imager.example.com; # 🌟 本番ドメイン名に変更してください
-        return 301 https://$host$request_uri;
-    }
+    # HTTPS を使う場合に HTTP からリダイレクトする。
+    # server {
+    #     listen ${NGINX_PORT};
+    #     server_name imager.example.com;
+    #     return 301 https://$host:${NGINX_TLS_PORT}$request_uri;
+    # }
 }

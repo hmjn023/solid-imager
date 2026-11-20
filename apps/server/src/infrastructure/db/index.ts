@@ -8,6 +8,7 @@ import { drizzle as drizzlePglite } from "drizzle-orm/pglite";
 import { Pool } from "pg";
 import { logger } from "~/infrastructure/logger";
 import { createPglite } from "./pglite";
+import { readPostgresConfig } from "./postgres-config";
 import { resolvePostgresDriver } from "./postgres-driver";
 
 type QueryClient = SQL | Pool | PGlite;
@@ -57,7 +58,13 @@ function initializeDb() {
 		return _db;
 	}
 
-	const dbHost = process.env.DB_HOST;
+	const {
+		host: dbHost,
+		port: dbPort,
+		database: dbName,
+		user: dbUser,
+		password: dbPassword,
+	} = readPostgresConfig();
 	const isTestEnv =
 		process.env.NODE_ENV === "test" || process.env.VITEST === "true";
 
@@ -85,14 +92,9 @@ function initializeDb() {
 		return _db;
 	}
 
-	const dbPort = process.env.DB_PORT || "5432";
-	const dbName = process.env.DB_DATABASE || process.env.DB_NAME;
-	const dbUser = process.env.DB_USER;
-	const dbPassword = process.env.DB_PASSWORD;
-
 	if (!(dbHost && dbName && dbUser && dbPassword)) {
 		throw new Error(
-			"Database environment variables are not set (DB_HOST, DB_DATABASE/DB_NAME, DB_USER, DB_PASSWORD)",
+			"Set DB_HOST, POSTGRES_DB, POSTGRES_USER, and POSTGRES_PASSWORD to connect to PostgreSQL",
 		);
 	}
 

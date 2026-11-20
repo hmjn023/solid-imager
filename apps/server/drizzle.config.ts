@@ -2,15 +2,16 @@ import { mkdirSync } from "node:fs";
 import { config as dotenvConfig } from "dotenv";
 import type { Config } from "drizzle-kit";
 import { createPglite } from "./src/infrastructure/db/pglite";
+import { readPostgresConfig } from "./src/infrastructure/db/postgres-config";
 
 // .envファイルを読み込む
 dotenvConfig();
 
-const { DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_DATABASE } = process.env;
+const { host, port, user, password, database } = readPostgresConfig();
 
 let config: Config;
 
-if (DB_HOST === "pglite") {
+if (host === "pglite") {
 	const dataDir = process.env.PGLITE_DATA_DIR || "./.data/pglite";
 	// Drizzle Kit also loads this config for commands that run offline.
 	const needsConnection = ["migrate", "push", "pull", "studio", "mcp"].includes(
@@ -32,21 +33,24 @@ if (DB_HOST === "pglite") {
 	};
 } else {
 	// PostgreSQL用の設定
-	if (!(DB_HOST && DB_PORT && DB_USER && DB_PASSWORD && DB_DATABASE)) {
+	if (!(host && user && password && database)) {
 		throw new Error(
 			"Database environment variables are not set for PostgreSQL",
 		);
 	}
 
-	const databaseUrl = `postgresql://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_DATABASE}`;
+	// Drizzle Kit enables TLS if ssl is omitted. Match pg's PGSSLMODE defaults.
+	const sslMode = process.env.PGSSLMODE ?? "";
+	const ssl =
+		sslMode === "no-verify"
+			? { rejectUnauthorized: false }
+			: /^(prefer|require|verify-ca|verify-full)$/.test(sslMode);
 	config = {
 		schema: "./src/infrastructure/db/schema.ts",
 		out: "./drizzle",
 		dialect: "postgresql",
 		schemaFilter: ["public"],
-		dbCredentials: {
-			url: databaseUrl,
-		},
+		dbCredentials: { host, port: Number(port), user, password, database, ssl },
 		verbose: true,
 	};
 }

@@ -12,19 +12,42 @@ cp apps/server/.env.example apps/server/.env
 ```
 
 既存の `.env` がある場合は上書きせず、exampleとの差分を確認する。
-テンプレートの既定はPGlite。PGliteの保存先は `PGLITE_DATA_DIR`、未指定なら `apps/server/.data/pglite`。PostgreSQLを使う場合は `apps/server/.env` の `DB_HOST=localhost` と接続情報を設定し、Composeにも同じファイルを渡す。
+テンプレートの既定は PGlite です。保存先は `PGLITE_DATA_DIR` で指定でき、未指定なら `apps/server/.data/pglite` です。PostgreSQL は [mise Daemons](#mise-でサービスを起動) または Compose で起動できます。Compose を使う場合は `apps/server/.env` の `DB_HOST=127.0.0.1` と接続情報を設定し、Compose にも同じファイルを渡します。
 
 ```bash
 docker compose --env-file apps/server/.env --project-directory . up -d
 ```
 
-PGliteとPostgreSQLのどちらも、同じコマンドでマイグレーションを適用する。
+PGlite と PostgreSQL のどちらも、同じコマンドでマイグレーションを適用します。
 
 ```bash
 bun run --cwd apps/server db:migrate
 ```
 
 Drizzle 0.x から更新する既存環境では、DBをバックアップしてから `db:migrate` を実行する。初回実行時にDrizzleが適用履歴をv1形式に更新し、未適用のマイグレーションを実行する。リポジトリの履歴は `bun run --cwd apps/server db:check` で検証できる。schemaやrepositoryの変更は `database-schema` を参照する。
+
+## mise でサービスを起動
+
+Linux で mise 2026.11.10 以降、Docker または Podman、`curl` を用意します。ルートの `.env` に `DB_HOST=127.0.0.1`、`POSTGRES_DB`、`POSTGRES_USER`、`POSTGRES_PASSWORD` を設定します。作成済みの DB には初期化時の認証情報を指定します。従来の `DB_DATABASE`、`DB_USER`、`DB_PASSWORD` を使っていた場合は、mise の PostgreSQL 用に同じ値を `POSTGRES_*` に移します。初回とアプリのコード変更後は、リポジトリルートでサーバーをビルドします。
+
+```bash
+bun run --cwd apps/server build
+```
+
+```bash
+mise daemons start nginx
+mise daemons status
+mise daemons logs --follow
+mise daemons stop
+```
+
+`start nginx` は PostgreSQL 18 + pgvector を起動し、DB マイグレーションを適用してから `bun run start` でアプリを起動します。アプリの `/api/health` と nginx のワーカー起動を順に確認します。初回起動時に mise が Pitchfork をインストールします。
+
+ポートを省略すると PostgreSQL は `5432`、Bun は `3000`、nginx は HTTP `80` と HTTPS `443` を使います。上書きする場合は `.env` の `PGPORT`、`NITRO_PORT`、`NGINX_PORT`、`NGINX_TLS_PORT` を設定します。80 番へのバインド権限がない場合は `NGINX_PORT=8080` などを指定してください。mise の PostgreSQL は [専用の認証設定](../tools/mise/pg_hba.conf) を使い、既存のデータディレクトリでも TCP 接続に SCRAM パスワード認証を要求します。
+
+mise で `NGINX_CONFIG` を省略すると `nginx.conf.example` のループバック HTTP 設定を使います。公開用や Compose 用には `nginx.conf.example` を `nginx.conf` にコピーし、接続先・待ち受け・TLS の該当箇所を切り替えます。mise でコピーを使う場合は `.env` に `NGINX_CONFIG=./nginx.conf` を設定します。相対パスはリポジトリルートが基準です。指定ファイルはコンテナに読み取り専用で渡し、起動時にポート変数を展開します。
+
+nginx の設定ファイルだけを差し替える場合は `mise daemons stop nginx` に続けて `mise daemons start nginx` を実行します。TLS では `~/.config/letsencrypt` をコンテナの `/etc/letsencrypt` から参照できます。公開先に合わせて `.env` の `REST_PUBLIC_ORIGIN` や `MCP_ALLOWED_HOSTS` を設定します。mise の DB データは `.data/mise-postgres` に保存します。Compose から切り替える場合は既存 DB を論理ダンプから復元します。
 
 ## Modern Web Guidance
 
