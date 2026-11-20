@@ -167,7 +167,7 @@ CUDA を使用する場合は CUDA 対応の ONNX Runtime、NVIDIA ドライバ�
 
 ### 本番コンテナ
 
-本番の `app` コンテナは Python 3 を追加した `Dockerfile.runtime` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。`youtube-dl-exec` が同梱する `yt-dlp` は Python zipapp のため、Python 3 が必要です。アプリケーション依存関係の `bun install` はコンテナ内で実行しません。
+本番の `app` コンテナは FFmpeg を含む `Dockerfile.runtime` をランタイムとして起動し、ホスト側でビルド済みのプロジェクトを `/app` にマウントします。アプリケーション依存関係の `bun install` はコンテナ内で実行しません。
 
 ビルドホストで一度だけ実行します。
 

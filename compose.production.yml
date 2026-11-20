@@ -3,7 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.runtime
-    image: ${APP_RUNTIME_IMAGE:-solid-imager-runtime:python3}
+    image: ${APP_RUNTIME_IMAGE:-solid-imager-runtime:latest}
     container_name: solid-imager-app
     restart: always
     working_dir: /app
