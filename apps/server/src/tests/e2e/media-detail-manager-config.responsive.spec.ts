@@ -512,3 +512,26 @@ test("media detail, manager, and settings remain usable on narrow screens", asyn
 		).toBeInViewport();
 	}
 });
+
+test("keeps the mobile settings category selector reachable after scrolling", async ({
+	page,
+}) => {
+	await page.setViewportSize({ width: 390, height: 500 });
+	await page.goto("/config");
+	await waitForAppHydration(page);
+	await selectSettingsCategory(page, "AI");
+	const selector = settingsCategorySelect(page);
+	const scrollArea = page.locator("[data-management-scroll]");
+	await expect(selector).toBeInViewport();
+	await scrollArea.evaluate((element) => {
+		element.scrollTop = element.scrollHeight;
+	});
+	expect(
+		await scrollArea.evaluate((element) => element.scrollTop),
+	).toBeGreaterThan(100);
+	await expect(selector).toBeInViewport();
+	await selectSettingsCategory(page, "ストレージ");
+	await expect(
+		page.getByRole("group", { name: "ストレージ", exact: true }),
+	).toBeVisible();
+});

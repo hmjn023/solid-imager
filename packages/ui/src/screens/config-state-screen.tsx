@@ -4,7 +4,12 @@ import { Match, Show, Switch } from "solid-js";
 import { ErrorState, OfflineState, QueryStatus } from "../async-state";
 import { ConfigSkeleton, LoadingRegion } from "../skeleton";
 import { cn } from "../utils/cn";
-import { ManagementHeader } from "../workspace/management-layout";
+import {
+	MANAGEMENT_CONTENT_PADDING,
+	ManagementHeader,
+	ManagementScreen,
+	ManagementScrollArea,
+} from "../workspace/management-layout";
 import { ConfigScreen } from "./config-screen";
 import type { ConfigStateScreenProps as ConfigStateScreenBaseProps } from "./config-state-screen.types";
 
@@ -16,16 +21,20 @@ export function ConfigStateScreen(props: ConfigStateScreenProps) {
 	const hasData = () => props.data !== undefined;
 
 	return (
-		<section class="flex h-full min-h-0 min-w-0 flex-col bg-background">
-			<ManagementHeader
-				description={t(
-					"configStateScreen.manageApplicationBehaviorAndConnections",
-				)}
-				title={t("navigation.settings")}
-			/>
-			<div
+		<ManagementScreen
+			header={
+				<ManagementHeader
+					description={t(
+						"configStateScreen.manageApplicationBehaviorAndConnections",
+					)}
+					title={t("navigation.settings")}
+				/>
+			}
+		>
+			<ManagementScrollArea
 				class={cn(
-					"min-h-0 flex-1 overflow-y-auto overscroll-contain px-3 py-4 sm:px-4 lg:px-6 lg:py-5 xl:px-8 scrollbar-stable",
+					MANAGEMENT_CONTENT_PADDING,
+					"scroll-pt-16 scroll-pb-20 lg:scroll-pt-0",
 					props.class,
 				)}
 			>
@@ -72,7 +81,7 @@ export function ConfigStateScreen(props: ConfigStateScreenProps) {
 						/>
 					</Match>
 				</Switch>
-			</div>
-		</section>
+			</ManagementScrollArea>
+		</ManagementScreen>
 	);
 }

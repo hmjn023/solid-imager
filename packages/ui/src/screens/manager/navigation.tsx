@@ -8,6 +8,7 @@ import Tags from "lucide-solid/icons/tags";
 import { For } from "solid-js";
 import {
 	CategoryLabel,
+	MANAGEMENT_CATEGORY_LIST,
 	CompactCategorySelect,
 	categoryButtonClass,
 } from "../../workspace/management-layout";
@@ -45,10 +46,7 @@ export function ManagerCategoryNavigation(props: {
 }) {
 	if (props.compact) {
 		return (
-			<nav
-				aria-label={t("navigation.managerCategories")}
-				class="sticky top-0 z-10 border-border border-b bg-background/95 px-3 py-2 backdrop-blur lg:hidden"
-			>
+			<nav aria-label={t("navigation.managerCategories")}>
 				<CompactCategorySelect
 					active={props.active}
 					label={t("navigation.managerCategories")}
@@ -63,8 +61,11 @@ export function ManagerCategoryNavigation(props: {
 	}
 
 	return (
-		<nav aria-label={t("navigation.managerCategories")} class="hidden lg:block">
-			<div class="sticky top-5 space-y-5">
+		<nav
+			aria-label={t("navigation.managerCategories")}
+			class={`${MANAGEMENT_CATEGORY_LIST} lg:block`}
+		>
+			<div class="space-y-5">
 				<For each={["Entities", "Tools"] as const}>
 					{(group) => (
 						<div>
