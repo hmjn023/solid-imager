@@ -1,5 +1,6 @@
 import path from "node:path";
 import type { PGlite } from "@electric-sql/pglite";
+import { relations, type DrizzleExecutor } from "@solid-imager/db";
 import { SQL } from "bun";
 import { drizzle as drizzleBunSql } from "drizzle-orm/bun-sql";
 import { drizzle as drizzleNodePg } from "drizzle-orm/node-postgres";
@@ -9,25 +10,16 @@ import { logger } from "~/infrastructure/logger";
 import { createPglite } from "./pglite";
 import { readPostgresConfig } from "./postgres-config";
 import { resolvePostgresDriver } from "./postgres-driver";
-import * as schema from "./schema";
 
-export type BunSqlDb = ReturnType<typeof drizzleBunSql<typeof schema>>;
-export type NodePgDb = ReturnType<typeof drizzleNodePg<typeof schema>>;
-export type PgLiteDb = ReturnType<typeof drizzlePglite<typeof schema>>;
-export type DbInstance = BunSqlDb | NodePgDb | PgLiteDb;
-
-/**
- * Type representing either a database instance or a transaction client.
- * In Drizzle, both share the same common interface for queries.
- */
-export type TransactionClient = BunSqlDb | NodePgDb | PgLiteDb;
+type QueryClient = SQL | Pool | PGlite;
+type DbInstance = DrizzleExecutor & { readonly $client: QueryClient };
 
 let _db: DbInstance | null = null;
-let _queryClient: SQL | Pool | PGlite | null = null;
+let _queryClient: QueryClient | null = null;
 
 type SharedDbState = {
 	db: DbInstance;
-	queryClient: SQL | Pool | PGlite;
+	queryClient: QueryClient;
 };
 
 const sharedDbGlobal = globalThis as typeof globalThis & {
@@ -52,7 +44,6 @@ function setSharedDbState(state: SharedDbState): void {
  * Initializes and returns the Drizzle ORM database instance.
  * This function ensures that the database connection is established only once.
  * It reads database connection details from environment variables.
- * @returns {BunSqlDb | NodePgDb | PgLiteDb} The initialized Drizzle ORM database instance.
  * @throws {Error} If required database environment variables are not set.
  */
 function initializeDb() {
@@ -93,7 +84,7 @@ function initializeDb() {
 		);
 		const client = createPglite(pglitePath);
 		_queryClient = client;
-		_db = drizzlePglite(client, { schema });
+		_db = drizzlePglite({ client, relations });
 		setSharedDbState({
 			db: _db,
 			queryClient: client,
@@ -111,7 +102,7 @@ function initializeDb() {
 	logger.info({ postgresDriver }, "[DB] Using PostgreSQL driver");
 
 	let queryClient: SQL | Pool;
-	let database: BunSqlDb | NodePgDb;
+	let database: DbInstance;
 	if (postgresDriver === "bun-sql") {
 		const client = new SQL({
 			adapter: "postgres",
@@ -122,7 +113,7 @@ function initializeDb() {
 			database: dbName,
 		});
 		queryClient = client;
-		database = drizzleBunSql({ client, schema });
+		database = drizzleBunSql({ client, relations });
 	} else {
 		const client = new Pool({
 			host: dbHost,
@@ -132,7 +123,7 @@ function initializeDb() {
 			database: dbName,
 		});
 		queryClient = client;
-		database = drizzleNodePg(client, { schema });
+		database = drizzleNodePg({ client, relations });
 	}
 	_queryClient = queryClient;
 	_db = database;

@@ -77,7 +77,7 @@ describe("AuthorRepository Deduplication", () => {
 		expect(accounts).toHaveLength(1);
 		expect(accounts[0]?.authorId).toBe(author1.id);
 		const storedAuthor = await db.query.authors.findFirst({
-			where: eq(authors.id, author1.id),
+			where: { id: author1.id },
 		});
 		expect(storedAuthor?.name).toBe("Updated Display Name");
 	});

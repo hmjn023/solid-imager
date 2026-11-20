@@ -1,7 +1,7 @@
 import type { DrizzleExecutor } from "@solid-imager/db";
-import { db, type TransactionClient } from "~/infrastructure/db/index";
+import { db } from "~/infrastructure/db/index";
 
-function isTransactionClient(value: unknown): value is TransactionClient {
+function isTransactionClient(value: unknown): value is DrizzleExecutor {
 	return (
 		value !== null &&
 		typeof value === "object" &&

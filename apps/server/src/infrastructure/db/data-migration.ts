@@ -29,7 +29,7 @@ type ImportData = {
 export const selectMediaSourceData = async (mediaSourceId: string) => {
 	try {
 		const mediaSource = await db.query.mediaSources.findFirst({
-			where: eq(mediaSources.id, mediaSourceId),
+			where: { id: mediaSourceId },
 			with: {
 				media: {
 					with: {

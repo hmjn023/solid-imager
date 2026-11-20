@@ -1,0 +1,47 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2d64529a-dcc7-4074-b940-a55c4545669f",
+  "prevIds": [
+    "dbaa8751-a999-44fc-88b0-f9201061c067"
+  ],
+  "footprints": [
+    {
+      "statementType": "add_unique",
+      "statementTarget": [
+        "table",
+        "public",
+        "projects"
+      ],
+      "writes": [
+        "s|uq|public.projects.projects_name_unique",
+        "n|uq|public.projects.projects_name_unique",
+        "e|uq|public.projects.projects_name_unique",
+        "n|con|public.projects.projects_name_unique",
+        "n|rel|public.projects_name_unique"
+      ],
+      "reads": [
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.projects.name"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "create",
+      "row": {
+        "schema": "public",
+        "table": "projects",
+        "name": "projects_name_unique",
+        "nameExplicit": true,
+        "columns": [
+          "name"
+        ],
+        "nullsNotDistinct": false,
+        "entityType": "uniques"
+      }
+    }
+  ]
+}

@@ -1,0 +1,488 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "2b7f60d1-2079-4a0a-8311-0b28278cdaa3",
+  "prevIds": [
+    "ed86b785-ed10-4de8-94e6-a389bee87ea7"
+  ],
+  "footprints": [
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "authors",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.authors.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.authors",
+        "n|sch|public",
+        "n|col|public.authors.id"
+      ],
+      "sqlHash": "238934bb828ca840"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "categories",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.categories.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.categories",
+        "n|sch|public",
+        "n|col|public.categories.id"
+      ],
+      "sqlHash": "1180601dc6aa7a72"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "characters",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.characters.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.characters",
+        "n|sch|public",
+        "n|col|public.characters.id"
+      ],
+      "sqlHash": "d7efd204b30adab1"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "collections",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.collections.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.collections",
+        "n|sch|public",
+        "n|col|public.collections.id"
+      ],
+      "sqlHash": "5855e84e077f899b"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "ips",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.ips.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.ips",
+        "n|sch|public",
+        "n|col|public.ips.id"
+      ],
+      "sqlHash": "30fa0b6eb3da8a26"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "jobs",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.jobs.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.jobs",
+        "n|sch|public",
+        "n|col|public.jobs.id"
+      ],
+      "sqlHash": "53586e6bfe0c5b0e"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "media_relations",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.media_relations.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.media_relations",
+        "n|sch|public",
+        "n|col|public.media_relations.id"
+      ],
+      "sqlHash": "95eb1bd226f1068e"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "media_sources",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.media_sources.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.media_sources",
+        "n|sch|public",
+        "n|col|public.media_sources.id"
+      ],
+      "sqlHash": "c18cf37681d60d0e"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "media_urls",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.media_urls.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.media_urls",
+        "n|sch|public",
+        "n|col|public.media_urls.id"
+      ],
+      "sqlHash": "57c3283dced96972"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "media",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.media.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.media",
+        "n|sch|public",
+        "n|col|public.media.id"
+      ],
+      "sqlHash": "2be35d32a5691fa6"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "projects",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.projects.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.projects",
+        "n|sch|public",
+        "n|col|public.projects.id"
+      ],
+      "sqlHash": "f84da92a530c21b3"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "similar_media",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.similar_media.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.similar_media",
+        "n|sch|public",
+        "n|col|public.similar_media.id"
+      ],
+      "sqlHash": "e24094850f54ebab"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "tags",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.tags.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.tags",
+        "n|sch|public",
+        "n|col|public.tags.id"
+      ],
+      "sqlHash": "8fbc0d6f85c51ac3"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "users",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.users.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.users",
+        "n|sch|public",
+        "n|col|public.users.id"
+      ],
+      "sqlHash": "fc7619aa66227ccc"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "view_history",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.view_history.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.view_history",
+        "n|sch|public",
+        "n|col|public.view_history.id"
+      ],
+      "sqlHash": "bfd267fd244407d4"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "author_accounts",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.author_accounts.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.author_accounts",
+        "n|sch|public",
+        "n|col|public.author_accounts.id"
+      ],
+      "sqlHash": "aaea6016d0ad59be"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "ccip_embeddings",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.ccip_embeddings.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.ccip_embeddings",
+        "n|sch|public",
+        "n|col|public.ccip_embeddings.id"
+      ],
+      "sqlHash": "cc71becab175d383"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "media_regions",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.media_regions.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.media_regions",
+        "n|sch|public",
+        "n|col|public.media_regions.id"
+      ],
+      "sqlHash": "71610a8715493c47"
+    },
+    {
+      "statementType": "alter_column",
+      "statementTarget": [
+        "column",
+        "public",
+        "search_snapshots",
+        "id"
+      ],
+      "writes": [
+        "s|colprop|public.search_snapshots.id.default"
+      ],
+      "reads": [
+        "n|tbl|public.search_snapshots",
+        "n|sch|public",
+        "n|col|public.search_snapshots.id"
+      ],
+      "sqlHash": "2997e8b62f980e58"
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"authors\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"categories\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"characters\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"collections\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"ips\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"jobs\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"media_relations\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"media_sources\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"media_urls\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"media\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"projects\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"similar_media\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"tags\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"users\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"view_history\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"author_accounts\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"ccip_embeddings\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"media_regions\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    },
+    {
+      "op": "alter",
+      "key": "columns\u0000[\"public\",\"search_snapshots\",\"id\"]",
+      "set": {
+        "default": "uuidv7()"
+      }
+    }
+  ]
+}

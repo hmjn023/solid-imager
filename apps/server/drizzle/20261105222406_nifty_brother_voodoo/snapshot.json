@@ -1,0 +1,39 @@
+{
+  "type": "diff",
+  "version": "9",
+  "dialect": "postgres",
+  "id": "0ba4ad97-b02f-48a5-8b0e-4a1c8c42c540",
+  "prevIds": [
+    "c1e2da8f-84ed-4212-9301-253e5394cace"
+  ],
+  "footprints": [
+    {
+      "statementType": "alter_enum",
+      "statementTarget": [
+        "enum",
+        "public",
+        "author_platform"
+      ],
+      "writes": [
+        "s|enum|public.author_platform"
+      ],
+      "reads": [
+        "n|sch|public"
+      ]
+    }
+  ],
+  "deltas": [
+    {
+      "op": "alter",
+      "key": "enums\u0000[\"public\",\"author_platform\"]",
+      "set": {
+        "values": [
+          "twitter",
+          "pixiv-fanbox",
+          "danbooru",
+          "pixiv"
+        ]
+      }
+    }
+  ]
+}
